@@ -13,5 +13,9 @@
     "db:generate": "pnpm --filter @repo/database prisma:generate",
     "docker:up": "docker-compose -f docker/docker-compose.dev.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.dev.yml down"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

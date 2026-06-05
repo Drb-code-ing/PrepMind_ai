@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@repo/types": "workspace:*"
+    "@repo/types": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

@@ -9,10 +9,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/types": "workspace:*",
-    "@repo/ai": "workspace:*",
-    "@repo/fsrs": "workspace:*",
-    "@repo/rag": "workspace:*"
+    "@repo/types": "*",
+    "@repo/ai": "*",
+    "@repo/fsrs": "*",
+    "@repo/rag": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

@@ -77,16 +77,33 @@ mcp → ai, fsrs, rag, types
 - **Zod 用于**：DTO 验证 + API Schema
 - **SQL 索引**：高频查询必须建索引，Prisma `@@index` 或 raw SQL
 
-## 当前阶段：Phase 0 — 系统设计
+## 开发路线
 
+严格按照 `docs/roadmap.md` 的 Phase 0 ~ Phase 10 顺序推进。
+
+### 当前进度：Phase 0 — 系统设计（进行中）
+
+**已完成**
 - [x] 初始化 Monorepo（npm workspaces + Next.js 16 + NestJS 11）
 - [x] 创建 8 个 workspace 包骨架（types/database/ai/fsrs/rag/agent/mcp/ui）
 - [x] 完成 Prisma schema 设计（packages/database/prisma/schema.prisma）
 - [x] Docker 配置（docker-compose.dev.yml + Dockerfile）
-- [ ] 运行首次数据库迁移（需先启动 PostgreSQL）
-- [ ] 搭建基础 API 网关（NestJS + Swagger）
+- [x] 编写 CLAUDE.md + DEVLOG.md
+
+**待完成**
+- [ ] 安装 Docker Desktop，启动 PostgreSQL + Redis + MinIO
+- [ ] 运行 Prisma 首次迁移建表
+- [ ] 搭建 NestJS 基础 API 网关 + Swagger
 - [ ] 实现 JWT 认证模块（GitHub OAuth）
 - [ ] 前后端联调测试
+
+### 下一阶段预告：Phase 1 — MVP（2 周）
+
+- 登录（Github OAuth）
+- AI 聊天 + 流式输出（SSE）
+- 拍照识题 + 图片上传
+- 错题本 CRUD
+- 今日任务（静态）
 
 ## 注意事项
 
