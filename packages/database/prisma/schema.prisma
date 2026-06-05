@@ -1,0 +1,207 @@
+// packages/database/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 运行: CREATE EXTENSION IF NOT EXISTS vector;
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  questions      Question[]
+  wrongQuestions WrongQuestion[]
+  cards          Card[]
+  documents      Document[]
+  chatMessages   ChatMessage[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+// ---------- 题目与错题 ----------
+model Question {
+  id              String   @id @default(cuid())
+  content         String   @db.Text
+  imageUrl        String?
+  answer          String?  @db.Text
+  analysis        String?  @db.Text
+  knowledgePoints String[]
+  difficulty      Float?
+  source          String?
+  createdAt       DateTime @default(now())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  wrongQuestions WrongQuestion[]
+  cards          Card[]
+}
+
+model WrongQuestion {
+  id            String   @id @default(cuid())
+  questionId    String
+  userAnswer    String   @db.Text
+  correctAnswer String   @db.Text
+  errorReason   String?  @db.Text
+  correctedAt   DateTime?
+  createdAt     DateTime @default(now())
+  userId        String
+
+  question Question @relation(fields: [questionId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ---------- FSRS 记忆系统 ----------
+model Card {
+  id             String    @id @default(cuid())
+  userId         String
+  questionId     String    @unique
+  difficulty     Float     @default(5.0)
+  stability      Float     @default(0.0)
+  retrievability Float     @default(1.0)
+  lastReview     DateTime  @default(now())
+  nextReview     DateTime  @default(now())
+  reviewCount    Int       @default(0)
+  lapses         Int       @default(0)
+  state          CardState @default(NEW)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+  logs     ReviewLog[]
+
+  @@index([userId, nextReview])
+  @@index([userId, state])
+}
+
+enum CardState {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+}
+
+model ReviewLog {
+  id              String   @id @default(cuid())
+  cardId          String
+  rating          Int
+  scheduledDays   Int
+  stabilityBefore Float
+  stabilityAfter  Float
+  difficultyBefore Float
+  difficultyAfter  Float
+  reviewedAt      DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id])
+
+  @@index([cardId])
+  @@index([reviewedAt])
+}
+
+// ---------- RAG 知识库 ----------
+model Document {
+  id         String         @id @default(cuid())
+  name       String
+  type       DocumentType
+  size       Int
+  mimeType   String
+  storageKey String
+  status     ProcessStatus @default(PENDING)
+  userId     String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  chunks Chunk[]
+}
+
+enum DocumentType {
+  PDF
+  DOCX
+  MD
+  TXT
+}
+
+enum ProcessStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model Chunk {
+  id         String   @id @default(cuid())
+  documentId String
+  content    String   @db.Text
+  embedding  Unsupported("vector")?
+  metadata   Json
+  index      Int
+  userId     String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([userId])
+}
+
+// ---------- 聊天历史 ----------
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String
+  content        String   @db.Text
+  toolCalls      Json?
+  createdAt      DateTime @default(now())
+  userId         String
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, conversationId])
+  @@index([createdAt])
+}

@@ -1,0 +1,28 @@
+FROM node:20-alpine AS base
+RUN corepack enable
+
+FROM base AS deps
+WORKDIR /app
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY apps/server/package.json ./apps/server/
+RUN pnpm install --frozen-lockfile
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
+COPY . .
+RUN pnpm --filter @repo/server build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
+
+COPY --from=builder /app/apps/server/dist ./dist
+COPY --from=builder /app/apps/server/node_modules ./node_modules
+COPY --from=builder /app/apps/server/package.json ./
+
+USER nestjs
+EXPOSE 3001
+CMD ["node", "dist/main"]
