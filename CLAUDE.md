@@ -96,8 +96,8 @@ mcp → ai, fsrs, rag, types
 
 ## 注意事项
 
-- **pnpm 工作正常**：使用 pnpm 9.x，store 在 `C:/Users/Lenovo/AppData/Local/pnpm-store-fresh`
-- **npmrc 已配置 npmmirror 镜像**加速下载
+- **⚠️ 包管理器问题**：pnpm 9.x/11.x 在本机有 `ERR_PNPM_EPERM` 权限错误，store 文件无法写入。目前**用 npm** 代替，后续排查修复后切回 pnpm
+- **.npmrc** 已配置 npmmirror 镜像加速下载
 - **PostgreSQL 必须启用 pgvector 扩展**：`CREATE EXTENSION IF NOT EXISTS vector;`
 - **Agent 框架用 LangGraph，不要用 AutoGen**
 - **异步任务用 BullMQ**：OCR、Embedding、PDF 解析都走队列
