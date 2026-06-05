@@ -11,11 +11,11 @@
   "dependencies": {
     "@langchain/langgraph": "^0.2.0",
     "@langchain/core": "^0.3.0",
-    "@repo/types": "*",
-    "@repo/ai": "*",
-    "@repo/fsrs": "*",
-    "@repo/rag": "*",
-    "@repo/mcp": "*"
+    "@repo/types": "workspace:*",
+    "@repo/ai": "workspace:*",
+    "@repo/fsrs": "workspace:*",
+    "@repo/rag": "workspace:*",
+    "@repo/mcp": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

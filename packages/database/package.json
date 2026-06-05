@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
-    "@repo/types": "*"
+    "@repo/types": "workspace:*"
   },
   "devDependencies": {
     "prisma": "^6.6.0",

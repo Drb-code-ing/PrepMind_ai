@@ -9,9 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/types": "*",
-    "@repo/database": "*",
-    "@repo/ai": "*"
+    "@repo/types": "workspace:*",
+    "@repo/database": "workspace:*",
+    "@repo/ai": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

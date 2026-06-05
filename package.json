@@ -1,20 +1,16 @@
 {
   "name": "prepmind",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "npm run --workspace=@repo/web dev",
-    "dev:server": "npm run --workspace=@repo/server start:dev",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
-    "build": "npm run --workspace=@repo/web build && npm run --workspace=@repo/server build",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "db:migrate": "npm run --workspace=@repo/database prisma:migrate",
-    "db:studio": "npm run --workspace=@repo/database prisma:studio",
-    "db:generate": "npm run --workspace=@repo/database prisma:generate",
+    "dev": "pnpm --filter @repo/web dev",
+    "dev:server": "pnpm --filter @repo/server start:dev",
+    "dev:all": "pnpm run --parallel dev dev:server",
+    "build": "pnpm --filter @repo/web build && pnpm --filter @repo/server build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:migrate": "pnpm --filter @repo/database prisma:migrate",
+    "db:studio": "pnpm --filter @repo/database prisma:studio",
+    "db:generate": "pnpm --filter @repo/database prisma:generate",
     "docker:up": "docker-compose -f docker/docker-compose.dev.yml up -d",
     "docker:down": "docker-compose -f docker/docker-compose.dev.yml down"
   }

@@ -19,16 +19,16 @@
 
 | 命令 | 说明 |
 |------|------|
-| `npm install` | 安装所有 workspace 依赖 |
-| `npm run dev` | 启动前端 (port 3000) |
-| `npm run dev:server` | 启动后端 (port 3001) |
-| `npm run build` | 构建全部 |
-| `npm run --workspace=@repo/database prisma:migrate` | 运行数据库迁移 |
-| `npm run --workspace=@repo/database prisma:studio` | 打开 Prisma Studio |
-| `npm run --workspace=@repo/database prisma:generate` | 生成 Prisma Client |
-| `docker-compose -f docker/docker-compose.dev.yml up -d` | 启动基础设施（PG/Redis/MinIO） |
-| `npm run lint` | 代码检查 |
-| `npm run test` | 运行全部测试 |
+| `pnpm install` | 安装所有 workspace 依赖 |
+| `pnpm dev` | 启动前端 (port 3000) |
+| `pnpm dev:server` | 启动后端 (port 3001) |
+| `pnpm build` | 构建全部 |
+| `pnpm db:migrate` | 运行数据库迁移 |
+| `pnpm db:studio` | 打开 Prisma Studio |
+| `pnpm db:generate` | 生成 Prisma Client |
+| `pnpm docker:up` | 启动基础设施（PG/Redis/MinIO） |
+| `pnpm lint` | 代码检查 |
+| `pnpm test` | 运行全部测试 |
 
 ## 目录结构
 
@@ -90,7 +90,8 @@ mcp → ai, fsrs, rag, types
 
 ## 注意事项
 
-- **npm workspaces**，不是 pnpm（pnpm store 有 SQLite 错误）
+- **pnpm 工作正常**：使用 pnpm 9.x，store 在 `C:/Users/Lenovo/AppData/Local/pnpm-store-fresh`
+- **npmrc 已配置 npmmirror 镜像**加速下载
 - **PostgreSQL 必须启用 pgvector 扩展**：`CREATE EXTENSION IF NOT EXISTS vector;`
 - **Agent 框架用 LangGraph，不要用 AutoGen**
 - **异步任务用 BullMQ**：OCR、Embedding、PDF 解析都走队列
