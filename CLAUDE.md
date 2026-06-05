@@ -83,13 +83,11 @@ mcp → ai, fsrs, rag, types
 
 ### 当前进度：Phase 1 — MVP（2 周）
 
-> 目标：真正跑起来。
+> 目标：真正跑起来。纯前端 MVP，不涉及数据库。
 
 **Phase 0 已完成** ✅（Monorepo + 设计文档）
 
 **Phase 1 待完成**
-- [ ] 安装 Docker Desktop，启动 PostgreSQL + Redis + MinIO
-- [ ] 运行 Prisma 首次迁移建表
 - [ ] 实现登录（Github OAuth）
 - [ ] 实现 AI 聊天 + 流式输出（SSE）
 - [ ] 拍照识题 + 图片上传
