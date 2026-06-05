@@ -15,7 +15,7 @@
 
 **项目初始化**
 - 初始化了 Git 仓库
-- 搭建了 npm workspaces 的 Monorepo 结构
+- 搭建了 pnpm workspaces 的 Monorepo 结构
 - 创建了 Next.js 16 前端应用（`apps/web`）
 - 创建了 NestJS 11 后端服务（`apps/server`）
 - 创建了 8 个 workspace 包骨架：
@@ -30,15 +30,17 @@
 - 完成了 Prisma Schema 设计（12 个 model：User, Account, Session, Question, WrongQuestion, Card, ReviewLog, Document, Chunk, ChatMessage 等）
 - 配置了 Docker Compose（PostgreSQL+pgvector, Redis, MinIO）
 - 编写了 CLAUDE.md 项目指引
+- 创建了 DEVLOG.md 开发日志
 
 **验证**
-- `npm install` 成功（1031 个包）
-- NestJS 类型检查通过
-- Next.js 编译通过
-- 首次 Git 提交完成（96 files, 18,163 insertions）
+- `pnpm install` 成功（pnpm 9.x，配置了 npmmirror 镜像）
+- NestJS 构建通过（`pnpm --filter @repo/server build`）
+- Next.js 构建通过（`pnpm --filter @repo/web build`）
+- Git 提交完成（3 次提交）
 
 ### 踩的坑
-- pnpm 有 SQLite 错误，换成了 npm workspaces
+- pnpm 11.x 的 SQLite store 在 Windows 上有权限问题（`ERR_SQLITE_ERROR: disk I/O error`）
+- 解决方案：降级到 pnpm 9.x + 配置 npmmirror 镜像 + 自定义 store 位置
 - `create-next-app` 会自动生成 `pnpm-workspace.yaml`，和根目录冲突，需要删除
 - `nest new` 安装依赖也会失败，需要从根目录统一安装
 
@@ -46,3 +48,16 @@
 - 启动 PostgreSQL（Docker），运行 Prisma 首次迁移
 - 搭建 NestJS 基础 API 网关 + Swagger
 - 实现 JWT 认证模块
+
+---
+
+## 2026-06-05（Day 1 补充）
+
+### 恢复 pnpm
+
+- 发现 pnpm 11.x 的 SQLite 错误是因为 store 文件权限被锁定
+- 降级到 pnpm 9.x（`9.15.9`），配置了 npmmirror 镜像加速
+- 自定义 store 位置到 `C:/Users/Lenovo/AppData/Local/pnpm-store-fresh`
+- `pnpm install` 成功（14 分钟），所有构建验证通过
+- 更新了 CLAUDE.md 和 package.json 为 pnpm 命令
+- 提交了修复：`e8d8570 fix: 恢复 pnpm 工作流`
