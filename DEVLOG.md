@@ -126,3 +126,71 @@ cd44f63 feat: 登录/注册表单正则验证
 ### 明天计划
 - 实现 AI 聊天页面 + 流式输出（Vercel AI SDK mock）
 - 拍照识题 UI
+
+---
+
+## 2026-06-06（Day 3）
+
+### 今天完成了
+
+**AI 聊天流式输出**
+- 安装 Vercel AI SDK（`ai` + `@ai-sdk/openai`）
+- 创建 `lib/ai-provider.ts`：统一封装 Provider，切模型只改环境变量
+- 创建 `app/api/chat/route.ts`：streamText SSE 流式输出
+- ChatPage 改用 `useChat()` hook，自动管理消息收发
+- ChatBubble 支持流式光标动画
+- DeepSeek API 已连通，打字机效果跑通
+
+**聊天页面重构（参考豆包）**
+- ChatTopBar：顶部标题栏 + 菜单按钮
+- ChatSidebar：右侧滑出面板（今日任务/错题本/个人中心/退出登录）
+- ChatInputBar：底部输入栏（文本框 + [+] [📷] [🎤/发送]）
+- 消息发送后欢迎页消失，展示聊天气泡
+
+**chatStore 临时状态管理**
+- 新增 `stores/chatStore.ts`：zustand + persist
+- `inputDraft`：输入框内容持久化到 localStorage，切页面不丢失
+- `currentSessionId`：当前会话 ID（Phase 2 对接后端）
+- `isWaiting`：AI 回复等待态
+- `partialize` 只持久化 inputDraft，其他字段内存态
+
+**架构决策**
+- **上下文传递**：useChat 自动传完整对话历史给 API，模型能看到所有之前的对话
+- **当前无上下文长度限制**，Phase 2 加 maxTokens 或滑动窗口截断
+- **Provider 抽象**：DeepSeek/OpenAI 共用 OpenAI 协议，`aiProvider("model-name")` 一行切模型
+- **API Route 临时后端**：Phase 1 用 Next.js route.ts，Phase 2 迁移到 NestJS
+
+**其他修复**
+- AuthGuard 等待 zustand rehydration 完成再校验（刷新页面不丢失登录态）
+- 删除 BottomNav 组件（侧边栏已替代导航）
+- 修复滚动问题：只有聊天区域可滚动
+- 集成 shadcn/ui 组件库
+
+### Git 提交记录
+```
+a260fea feat: chatStore 管理聊天临时状态
+cd0b7fb feat: AI 聊天流式输出，Vercel AI SDK + DeepSeek
+72b21a8 fix: 修复滚动问题，只有聊天区域可滚动
+db8a8dc refactor: 删除 BottomNav，重做 ChatInputBar 参考豆包
+b19f752 feat: 重构聊天页面，参考豆包布局
+e788cd5 feat: 集成 shadcn/ui 组件库
+3c9f6fc fix: AuthGuard 等待 zustand rehydration 完成再校验
+2b7eb0c feat: 聊天消息发送功能 + 消息气泡
+```
+
+### Phase 1 进度
+
+| 功能 | 状态 |
+|------|------|
+| 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
+| AI 聊天 + 流式输出（SSE） | ✅ 完成 |
+| chatStore 临时状态管理 | ✅ 完成 |
+| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
+| 拍照识题 + 图片上传 | ⬜ 待做 |
+| 错题本 CRUD | ⬜ 待做 |
+| 今日任务（静态版本） | ⬜ 待做 |
+
+### 待解决
+- 上下文长度限制（Phase 2）
+- AI 回复的 Markdown 渲染（代码块、列表等）
+- 消息持久化到数据库（Phase 2）

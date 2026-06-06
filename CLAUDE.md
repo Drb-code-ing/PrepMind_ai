@@ -97,8 +97,9 @@ mcp → ai, fsrs, rag, types
 - [x] 登录/注册页面 UI + 正则校验
 - [x] zustand userStore + localStorage 持久化
 - [x] AuthGuard 登录守卫
-- [x] 移动端优先布局 + PWA manifest
-- [ ] 实现 AI 聊天 + 流式输出（SSE）
+- [x] 移动端优先布局 + PWA manifest + shadcn/ui
+- [x] AI 聊天 + 流式输出（Vercel AI SDK + DeepSeek SSE）
+- [x] chatStore 临时状态管理（inputDraft 切页面不丢）
 - [ ] 拍照识题 + 图片上传
 - [ ] 错题本 CRUD
 - [ ] 今日任务（静态版本）
