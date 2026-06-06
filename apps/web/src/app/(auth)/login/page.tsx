@@ -235,11 +235,10 @@ export default function LoginPage() {
         {/* 主按钮 */}
         <button
           type="submit"
-          disabled={!agreed}
           className={`tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium transition-all ${
             agreed
               ? "bg-primary text-white hover:bg-primary-dark active:scale-[0.98]"
-              : "bg-primary/40 text-white/70 cursor-not-allowed"
+              : "bg-primary/40 text-white/70"
           }`}
         >
           登录
@@ -258,7 +257,7 @@ export default function LoginPage() {
       <div className="mt-6 flex items-start gap-2 text-xs text-muted-foreground">
         <input
           type="checkbox"
-          checked={agreed}
+          checked={!!agreed}
           onChange={(e) => setAgreed(e.target.checked)}
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
         />

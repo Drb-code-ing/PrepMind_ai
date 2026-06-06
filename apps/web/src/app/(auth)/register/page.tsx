@@ -173,11 +173,10 @@ export default function RegisterPage() {
         {/* 注册按钮 */}
         <button
           type="submit"
-          disabled={!agreed}
           className={`tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium transition-all ${
             agreed
               ? "bg-primary text-white hover:bg-primary-dark active:scale-[0.98]"
-              : "bg-primary/40 text-white/70 cursor-not-allowed"
+              : "bg-primary/40 text-white/70"
           }`}
         >
           注册
