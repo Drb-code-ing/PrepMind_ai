@@ -92,8 +92,12 @@ mcp → ai, fsrs, rag, types
 
 **Phase 0 已完成** ✅（Monorepo + 设计文档）
 
-**Phase 1 待完成**
-- [ ] 实现登录（Github OAuth）
+**Phase 1 进行中 — MVP（2 周）**
+
+- [x] 登录/注册页面 UI + 正则校验
+- [x] zustand userStore + localStorage 持久化
+- [x] AuthGuard 登录守卫
+- [x] 移动端优先布局 + PWA manifest
 - [ ] 实现 AI 聊天 + 流式输出（SSE）
 - [ ] 拍照识题 + 图片上传
 - [ ] 错题本 CRUD
