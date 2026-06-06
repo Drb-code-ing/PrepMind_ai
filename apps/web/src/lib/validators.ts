@@ -13,7 +13,7 @@ export const VALIDATORS = {
   username: /^[一-龥a-zA-Z0-9_]{2,20}$/,
 };
 
-export type FieldError = string | null;
+export type FieldError = string | null | undefined;
 
 /** 验证手机号 */
 export function validatePhone(value: string): FieldError {
