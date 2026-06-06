@@ -1,51 +1,36 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useChat } from "@ai-sdk/react";
 import ChatTopBar from "@/components/chat/chat-top-bar";
 import ChatSidebar from "@/components/chat/chat-sidebar";
 import ChatInputBar from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
-import { Bot } from "lucide-react";
-
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: number;
-}
+import { Bot, Loader2 } from "lucide-react";
 
 export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const currentUser = useUserStore((s) => s.currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { messages, handleInputChange, handleSubmit, input, setInput, isLoading } = useChat({
+    api: "/api/chat",
+  });
 
   // 新消息自动滚到底部
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  function handleSend(content: string) {
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-
-    // TODO: Phase 3 接入 AI 回复，目前用 mock 回复
+  function handleQuickSend(text: string) {
+    setInput(text);
+    // 用 setTimeout 确保 input 更新后再提交
     setTimeout(() => {
-      const aiMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `收到你的消息："${content}"。AI 讲解功能将在后续版本上线，敬请期待！`,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    }, 800);
+      const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
+      form?.requestSubmit();
+    }, 0);
   }
 
   const hasMessages = messages.length > 0;
@@ -58,35 +43,49 @@ export default function ChatPage() {
       {/* 聊天主区域 */}
       <main ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
         {hasMessages ? (
-          /* 消息列表 */
           <div className="flex flex-col gap-3 px-4 py-4">
             {messages.map((msg) => (
               <ChatBubble
                 key={msg.id}
-                message={msg}
+                role={msg.role as "user" | "assistant"}
+                content={msg.content}
                 username={currentUser?.username || "我"}
+                isLoading={isLoading && msg.id === messages[messages.length - 1]?.id && msg.role === "assistant"}
               />
             ))}
+            {/* AI 正在输入的加载态 */}
+            {isLoading && messages[messages.length - 1]?.role === "user" && (
+              <ChatBubble
+                role="assistant"
+                content=""
+                username=""
+                isLoading
+              />
+            )}
           </div>
         ) : (
-          /* 欢迎页 */
           <div className="flex flex-col items-center px-4 pt-12">
             <h1 className="text-xl font-bold">你好，我是 PrepMind 👋</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               你的 AI 备考助手，随时为你解答
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <QuickTag label="📷 拍照识题" onSelect={() => handleSend("拍照识题")} />
-              <QuickTag label="📝 错题复习" onSelect={() => handleSend("错题复习")} />
-              <QuickTag label="📊 学习计划" onSelect={() => handleSend("学习计划")} />
-              <QuickTag label="💡 知识讲解" onSelect={() => handleSend("知识讲解")} />
+              <QuickTag label="📷 拍照识题" onSelect={() => handleQuickSend("请帮我讲解拍照识题功能怎么用")} />
+              <QuickTag label="📝 错题复习" onSelect={() => handleQuickSend("帮我制定一个错题复习计划")} />
+              <QuickTag label="📊 学习计划" onSelect={() => handleQuickSend("帮我制定今天的学习计划")} />
+              <QuickTag label="💡 知识讲解" onSelect={() => handleQuickSend("用简单的方式讲解一下深度学习的基本概念")} />
             </div>
           </div>
         )}
       </main>
 
-      {/* 底部输入栏 */}
-      <ChatInputBar onSend={handleSend} />
+      {/* 底部输入栏 — 用 form 包裹，走 handleSubmit */}
+      <form data-chat-form onSubmit={handleSubmit}>
+        <ChatInputBar
+          input={input}
+          onInputChange={handleInputChange}
+        />
+      </form>
 
       {/* 侧边栏 */}
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -95,13 +94,17 @@ export default function ChatPage() {
 }
 
 function ChatBubble({
-  message,
+  role,
+  content,
   username,
+  isLoading,
 }: {
-  message: ChatMessage;
+  role: "user" | "assistant";
+  content: string;
   username: string;
+  isLoading?: boolean;
 }) {
-  const isUser = message.role === "user";
+  const isUser = role === "user";
 
   return (
     <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
@@ -124,7 +127,16 @@ function ChatBubble({
             : "bg-muted text-foreground rounded-tl-md"
         }`}
       >
-        {message.content}
+        {isLoading && !content ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : (
+          <>
+            {content}
+            {isLoading && content && (
+              <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
+            )}
+          </>
+        )}
       </div>
     </div>
   );
