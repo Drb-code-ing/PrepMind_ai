@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { Camera, Image, FileText, Plus, Mic, Send } from "lucide-react";
+import { useRef } from "react";
+import { Camera, Plus, Mic, Send } from "lucide-react";
 
 interface ChatInputBarProps {
   input: string;
@@ -11,24 +11,14 @@ interface ChatInputBarProps {
 export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 自动调整输入框高度
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 120) + "px";
-    }
-  }, [input]);
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      // 不在这里 preventDefault，让 form 的 onSubmit 处理
-    }
+  function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
+    const el = e.currentTarget;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
   }
 
   return (
     <div className="shrink-0 bg-white">
-      {/* 顶部分割线 */}
       <div className="h-px bg-border" />
 
       {/* 文本输入区 */}
@@ -38,7 +28,7 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
             ref={textareaRef}
             value={input}
             onChange={onInputChange}
-            onKeyDown={handleKeyDown}
+            onInput={handleInput}
             placeholder="发消息..."
             rows={1}
             className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -49,7 +39,6 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
 
       {/* 功能按钮行 */}
       <div className="flex items-center justify-between px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
-        {/* 左侧按钮组 */}
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -68,7 +57,6 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
           </button>
         </div>
 
-        {/* 右侧按钮 */}
         {input.trim() ? (
           <button
             type="submit"

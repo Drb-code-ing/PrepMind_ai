@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useChat } from "@ai-sdk/react";
 import ChatTopBar from "@/components/chat/chat-top-bar";
 import ChatSidebar from "@/components/chat/chat-sidebar";
@@ -11,11 +11,16 @@ import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+const remarkPlugins = [remarkGfm];
+const SCROLL_THRESHOLD = 100;
+
 export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const isAutoScrollRef = useRef(true);
+  const rafRef = useRef<number>(0);
 
   const { inputDraft, setInputDraft } = useChatStore();
 
@@ -31,45 +36,52 @@ export default function ChatPage() {
     initialInput: inputDraft,
   });
 
-  // 同步 useChat 的 input 到 chatStore（切页面不丢失）
-  useEffect(() => {
-    if (input !== inputDraft) {
-      setInputDraft(input);
-    }
-  }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 包装 onInputChange，同步到 chatStore
+  const onInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      handleInputChange(e);
+      setInputDraft(e.target.value);
+    },
+    [handleInputChange, setInputDraft],
+  );
 
   // 检测用户是否手动滚动离开底部
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const threshold = 100;
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    const isAtBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
     isAutoScrollRef.current = isAtBottom;
-  }
+  }, []);
 
-  // 新消息/流式输出时，仅在用户处于底部时自动滚动
+  // 新消息/流式输出时，仅在用户处于底部时自动滚动（rAF 节流）
   useEffect(() => {
-    if (isAutoScrollRef.current && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (!isAutoScrollRef.current) return;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+    return () => cancelAnimationFrame(rafRef.current);
   }, [messages, isLoading]);
 
   // 用户发送新消息时，强制滚到底部
   const scrollToBottom = useCallback(() => {
     isAutoScrollRef.current = true;
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
   }, []);
 
   const handleQuickSend = useCallback(
     (text: string) => {
       setInput(text);
       scrollToBottom();
-      setTimeout(() => {
-        const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
-        form?.requestSubmit();
-      }, 0);
+      // 等 React 更新 input 后再提交
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
     },
     [setInput, scrollToBottom],
   );
@@ -80,19 +92,21 @@ export default function ChatPage() {
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto hide-scrollbar">
+      <main
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto hide-scrollbar"
+      >
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
-            {messages.map((msg) => (
+            {messages.map((msg, i) => (
               <ChatBubble
                 key={msg.id}
                 role={msg.role as "user" | "assistant"}
                 content={msg.content}
                 username={currentUser?.username || "我"}
                 isLoading={
-                  isLoading &&
-                  msg.id === messages[messages.length - 1]?.id &&
-                  msg.role === "assistant"
+                  isLoading && i === messages.length - 1 && msg.role === "assistant"
                 }
               />
             ))}
@@ -116,8 +130,8 @@ export default function ChatPage() {
         )}
       </main>
 
-      <form data-chat-form onSubmit={handleSubmit}>
-        <ChatInputBar input={input} onInputChange={handleInputChange} />
+      <form ref={formRef} data-chat-form onSubmit={handleSubmit}>
+        <ChatInputBar input={input} onInputChange={onInputChange} />
       </form>
 
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -125,7 +139,7 @@ export default function ChatPage() {
   );
 }
 
-function ChatBubble({
+const ChatBubble = memo(function ChatBubble({
   role,
   content,
   username,
@@ -157,16 +171,14 @@ function ChatBubble({
             : "bg-muted text-foreground rounded-tl-md"
         }`}
       >
-        {isLoading && !content ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : isUser ? (
+        {isUser ? (
           <span>{content}</span>
+        ) : isLoading && !content ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           <>
             <div className="markdown-body">
-              <Markdown remarkPlugins={[remarkGfm]}>
-                {content}
-              </Markdown>
+              <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
             </div>
             {isLoading && (
               <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
@@ -176,7 +188,7 @@ function ChatBubble({
       </div>
     </div>
   );
-}
+});
 
 function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) {
   return (
