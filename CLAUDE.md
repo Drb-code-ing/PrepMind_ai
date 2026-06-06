@@ -3,11 +3,13 @@
 面向大厂 AI 应用方向的校招级项目。技术栈覆盖 Next.js + NestJS + LangGraph + MCP，
 目标是 3~6 个月完成 Phase 0~10，产出一个完整的生产级 AI 应用。
 
+**定位**：移动端优先的 Web + PWA 应用。学生主要用手机刷题和 AI 对话，交互体验要接近原生 App。
+
 ## 技术栈
 
 | 层级     | 技术                                                              |
 | -------- | ----------------------------------------------------------------- |
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, zustand  |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, zustand, PWA (next-pwa) |
 | Backend  | NestJS 11, Prisma, PostgreSQL, Redis, BullMQ                      |
 | AI       | Vercel AI SDK, OpenAI, DeepSeek, Gemini                           |
 | Agent    | LangGraph（不要 AutoGen）                                         |
@@ -76,6 +78,9 @@ mcp → ai, fsrs, rag, types
 - **NestJS 模式**：Controller → Service → Repository
 - **Zod 用于**：DTO 验证 + API Schema
 - **SQL 索引**：高频查询必须建索引，Prisma `@@index` 或 raw SQL
+- **移动端优先**：所有页面默认 mobile 布局，用 Tailwind `sm:`/`md:`/`lg:` 向上适配桌面端
+- **PWA 体验**：Service Worker 缓存策略、离线可用的静态页面、可添加到主屏幕
+- **触摸交互**：按钮最小 44×44px 触摸区域，滑动操作，下拉刷新
 
 ## 开发路线
 
