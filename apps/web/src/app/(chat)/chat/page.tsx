@@ -8,6 +8,8 @@ import ChatInputBar from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
 import { Bot, Loader2 } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -130,7 +132,7 @@ function ChatBubble({
       </div>
 
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
             ? "bg-primary text-primary-foreground rounded-tr-md"
             : "bg-muted text-foreground rounded-tl-md"
@@ -138,10 +140,16 @@ function ChatBubble({
       >
         {isLoading && !content ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : isUser ? (
+          <span>{content}</span>
         ) : (
           <>
-            {content}
-            {isLoading && content && (
+            <div className="markdown-body">
+              <Markdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </Markdown>
+            </div>
+            {isLoading && (
               <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
             )}
           </>
