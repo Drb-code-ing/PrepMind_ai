@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, Image, FileText, Plus, Mic, Send, ChevronDown } from "lucide-react";
+import { Camera, Image, FileText, Plus, Mic, Send } from "lucide-react";
 
-export default function ChatInputBar() {
+interface ChatInputBarProps {
+  onSend: (content: string) => void;
+}
+
+export default function ChatInputBar({ onSend }: ChatInputBarProps) {
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 自动调整输入框高度
@@ -19,8 +22,9 @@ export default function ChatInputBar() {
   }, [input]);
 
   function handleSend() {
-    if (!input.trim()) return;
-    // TODO: 发送消息逻辑
+    const text = input.trim();
+    if (!text) return;
+    onSend(text);
     setInput("");
     setShowMenu(false);
   }
@@ -54,8 +58,6 @@ export default function ChatInputBar() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
             placeholder="发消息..."
             rows={1}
             className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -68,7 +70,6 @@ export default function ChatInputBar() {
       <div className="flex items-center justify-between px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
         {/* 左侧按钮组 */}
         <div className="flex items-center gap-3">
-          {/* 加号 */}
           <button
             type="button"
             onClick={() => setShowMenu(!showMenu)}
@@ -82,7 +83,6 @@ export default function ChatInputBar() {
             <Plus className="h-5 w-5 transition-transform duration-200" />
           </button>
 
-          {/* 相机 */}
           <button
             type="button"
             className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
@@ -124,10 +124,7 @@ function ExpandMenuItem({
   label: string;
 }) {
   return (
-    <button
-      type="button"
-      className="flex flex-col items-center gap-2 tap-target active:scale-95"
-    >
+    <button type="button" className="flex flex-col items-center gap-2 tap-target active:scale-95">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted transition-colors hover:bg-muted/80">
         <Icon className="h-6 w-6 text-foreground" />
       </div>
