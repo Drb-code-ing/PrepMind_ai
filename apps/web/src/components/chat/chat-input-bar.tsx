@@ -33,7 +33,7 @@ export default function ChatInputBar() {
   }
 
   return (
-    <div className="sticky bottom-0 z-30 bg-white">
+    <div className="shrink-0 bg-white">
       {/* 顶部分割线 */}
       <div className="h-px bg-border" />
 

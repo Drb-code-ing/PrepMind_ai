@@ -9,7 +9,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       {/* 顶部导航栏 */}
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
 
