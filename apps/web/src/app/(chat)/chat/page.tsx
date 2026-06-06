@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollRef = useRef(true);
 
   const { inputDraft, setInputDraft } = useChatStore();
 
@@ -37,22 +38,40 @@ export default function ChatPage() {
     }
   }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 新消息自动滚到底部
+  // 检测用户是否手动滚动离开底部
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 100;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    isAutoScrollRef.current = isAtBottom;
+  }
+
+  // 新消息/流式输出时，仅在用户处于底部时自动滚动
   useEffect(() => {
-    if (scrollRef.current) {
+    if (isAutoScrollRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
 
+  // 用户发送新消息时，强制滚到底部
+  const scrollToBottom = useCallback(() => {
+    isAutoScrollRef.current = true;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
   const handleQuickSend = useCallback(
     (text: string) => {
       setInput(text);
+      scrollToBottom();
       setTimeout(() => {
         const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
         form?.requestSubmit();
       }, 0);
     },
-    [setInput],
+    [setInput, scrollToBottom],
   );
 
   const hasMessages = messages.length > 0;
@@ -61,7 +80,7 @@ export default function ChatPage() {
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
 
-      <main ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
+      <main ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto hide-scrollbar">
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
             {messages.map((msg) => (
