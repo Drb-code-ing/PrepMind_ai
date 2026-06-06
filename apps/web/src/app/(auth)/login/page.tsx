@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Partial<Record<string, FieldError>>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
 
   function setFieldError(field: string, error: FieldError) {
     setErrors((prev) => ({ ...prev, [field]: error }));
@@ -51,6 +52,11 @@ export default function LoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setServerError(null);
+
+    if (!agreed) {
+      setServerError("请先同意用户协议");
+      return;
+    }
 
     if (activeTab === "phone") {
       setTouched({ phone: true, smsCode: true });
@@ -229,7 +235,12 @@ export default function LoginPage() {
         {/* 主按钮 */}
         <button
           type="submit"
-          className="tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-white text-sm font-medium transition-all hover:bg-primary-dark active:scale-[0.98]"
+          disabled={!agreed}
+          className={`tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium transition-all ${
+            agreed
+              ? "bg-primary text-white hover:bg-primary-dark active:scale-[0.98]"
+              : "bg-primary/40 text-white/70 cursor-not-allowed"
+          }`}
         >
           登录
         </button>
@@ -245,7 +256,12 @@ export default function LoginPage() {
 
       {/* 协议勾选 */}
       <div className="mt-6 flex items-start gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary" />
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
+        />
         <span>
           登录即表示同意 <span className="text-primary">《用户协议》</span> 和{" "}
           <span className="text-primary">《隐私政策》</span>
