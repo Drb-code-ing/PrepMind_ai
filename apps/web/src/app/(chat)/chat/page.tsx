@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import ChatTopBar from "@/components/chat/chat-top-bar";
 import ChatSidebar from "@/components/chat/chat-sidebar";
 import ChatInputBar from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
+import { useChatStore } from "@/stores/chatStore";
 import { Bot, Loader2 } from "lucide-react";
 
 export default function ChatPage() {
@@ -13,9 +14,26 @@ export default function ChatPage() {
   const currentUser = useUserStore((s) => s.currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { messages, handleInputChange, handleSubmit, input, setInput, isLoading } = useChat({
+  const { inputDraft, setInputDraft } = useChatStore();
+
+  const {
+    messages,
+    handleInputChange,
+    handleSubmit,
+    input,
+    setInput,
+    isLoading,
+  } = useChat({
     api: "/api/chat",
+    initialInput: inputDraft,
   });
+
+  // 同步 useChat 的 input 到 chatStore（切页面不丢失）
+  useEffect(() => {
+    if (input !== inputDraft) {
+      setInputDraft(input);
+    }
+  }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 新消息自动滚到底部
   useEffect(() => {
@@ -24,23 +42,23 @@ export default function ChatPage() {
     }
   }, [messages, isLoading]);
 
-  function handleQuickSend(text: string) {
-    setInput(text);
-    // 用 setTimeout 确保 input 更新后再提交
-    setTimeout(() => {
-      const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
-      form?.requestSubmit();
-    }, 0);
-  }
+  const handleQuickSend = useCallback(
+    (text: string) => {
+      setInput(text);
+      setTimeout(() => {
+        const form = document.querySelector<HTMLFormElement>("[data-chat-form]");
+        form?.requestSubmit();
+      }, 0);
+    },
+    [setInput],
+  );
 
   const hasMessages = messages.length > 0;
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
-      {/* 顶部导航栏 */}
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
 
-      {/* 聊天主区域 */}
       <main ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar">
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
@@ -50,17 +68,15 @@ export default function ChatPage() {
                 role={msg.role as "user" | "assistant"}
                 content={msg.content}
                 username={currentUser?.username || "我"}
-                isLoading={isLoading && msg.id === messages[messages.length - 1]?.id && msg.role === "assistant"}
+                isLoading={
+                  isLoading &&
+                  msg.id === messages[messages.length - 1]?.id &&
+                  msg.role === "assistant"
+                }
               />
             ))}
-            {/* AI 正在输入的加载态 */}
             {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <ChatBubble
-                role="assistant"
-                content=""
-                username=""
-                isLoading
-              />
+              <ChatBubble role="assistant" content="" username="" isLoading />
             )}
           </div>
         ) : (
@@ -79,15 +95,10 @@ export default function ChatPage() {
         )}
       </main>
 
-      {/* 底部输入栏 — 用 form 包裹，走 handleSubmit */}
       <form data-chat-form onSubmit={handleSubmit}>
-        <ChatInputBar
-          input={input}
-          onInputChange={handleInputChange}
-        />
+        <ChatInputBar input={input} onInputChange={handleInputChange} />
       </form>
 
-      {/* 侧边栏 */}
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   );
@@ -108,7 +119,6 @@ function ChatBubble({
 
   return (
     <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-      {/* 头像 */}
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
           isUser
@@ -119,7 +129,6 @@ function ChatBubble({
         {isUser ? username[0]?.toUpperCase() : <Bot className="h-4 w-4" />}
       </div>
 
-      {/* 气泡 */}
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
