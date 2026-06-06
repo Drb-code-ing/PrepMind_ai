@@ -99,7 +99,9 @@ mcp → ai, fsrs, rag, types
 - [x] AuthGuard 登录守卫
 - [x] 移动端优先布局 + PWA manifest + shadcn/ui
 - [x] AI 聊天 + 流式输出（Vercel AI SDK + DeepSeek SSE）
+- [x] AI 回复 Markdown 渲染（react-markdown + remark-gfm）
 - [x] chatStore 临时状态管理（inputDraft 切页面不丢）
+- [x] 代码质量审查 + 性能优化（React.memo, rAF 节流, useRef）
 - [ ] 拍照识题 + 图片上传
 - [ ] 错题本 CRUD
 - [ ] 今日任务（静态版本）

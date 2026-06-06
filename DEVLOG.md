@@ -192,5 +192,66 @@ e788cd5 feat: 集成 shadcn/ui 组件库
 
 ### 待解决
 - 上下文长度限制（Phase 2）
-- AI 回复的 Markdown 渲染（代码块、列表等）
 - 消息持久化到数据库（Phase 2）
+
+---
+
+## 2026-06-06（Day 4）
+
+### 今天完成了
+
+**AI 回复 Markdown 渲染**
+- 安装 react-markdown + remark-gfm
+- AI 气泡用 Markdown 组件渲染（标题、列表、代码块、表格、引用）
+- 用户气泡纯文本，AI 气泡支持完整 GFM
+
+**智能自动滚动**
+- 用户上翻查看历史时停止自动滚动
+- 发送新消息时强制回到底部
+- 流式输出只在用户处于底部时跟随滚动
+- 实现方式：rAF 节流，避免每 token 强制布局
+
+**聊天 Store 管理**
+- 创建 chatStore（zustand + persist）
+- inputDraft 持久化到 localStorage，切页面不丢
+- 包装 onInputChange 回调同步 store，去掉 useEffect + eslint-disable
+
+**shadcn/ui 集成**
+- 安装 shadcn/ui（base-nova style, neutral 色系）
+- 添加 button/input/card/dialog/label/textarea 组件
+- globals.css 更新为 shadcn 标准 CSS 变量（oklch 色彩空间）
+
+**代码质量优化（/simplify 4 维度审查）**
+- 移除 chatStore 死代码（isWaiting, currentSessionId, resetChat）
+- ChatBubble 用 React.memo，已完成消息跳过重渲染
+- remarkPlugins 数组提升到模块级
+- document.querySelector 改为 useRef
+- AuthGuard 合并两个 loading 状态
+- API Route 加 try/catch + 消息校验
+- textarea 高度从 useEffect 改为 onInput
+
+### Git 提交记录
+```
+e43d058 refactor: /simplify 代码质量优化（4 维度审查）
+6bcf6e8 feat: AI 回复 Markdown 渲染
+c3cb433 feat: 智能自动滚动，用户上翻时不强制拉回底部
+a260fea feat: chatStore 管理聊天临时状态
+cd0b7fb feat: AI 聊天流式输出，Vercel AI SDK + DeepSeek
+```
+
+### Phase 1 进度
+
+| 功能 | 状态 |
+|------|------|
+| 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
+| AI 聊天 + 流式输出 + Markdown 渲染 | ✅ 完成 |
+| chatStore 临时状态管理 | ✅ 完成 |
+| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
+| 代码质量审查 + 性能优化 | ✅ 完成 |
+| 拍照识题 + 图片上传 | ⬜ 待做 |
+| 错题本 CRUD | ⬜ 待做 |
+| 今日任务（静态版本） | ⬜ 待做 |
+
+### 明天计划
+- 拍照识题 UI + 图片上传功能
+- 错题本 CRUD 页面

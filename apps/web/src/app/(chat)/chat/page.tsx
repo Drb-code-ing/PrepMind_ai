@@ -28,7 +28,7 @@ export default function ChatPage() {
     messages,
     handleInputChange,
     handleSubmit,
-    input,
+    input,// 当前输入框内容 用户打字 -> input 实时变化 -> useEffect同步更新到Zustand的inputDraft
     setInput,
     isLoading,
   } = useChat({
@@ -39,10 +39,11 @@ export default function ChatPage() {
   // 包装 onInputChange，同步到 chatStore
   const onInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      handleInputChange(e);
+      handleInputChange(e);// 处理输入框变化，更新 input
+      // 同步更新到 Zustand 的 inputDraft
       setInputDraft(e.target.value);
     },
-    [handleInputChange, setInputDraft],
+    [handleInputChange, setInputDraft],// 依赖 handleInputChange 和 setInputDraft
   );
 
   // 检测用户是否手动滚动离开底部
