@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { validatePhone, validateSmsCode, validateEmail, validatePassword, type FieldError } from "@/lib/validators";
+import { useUserStore, FIXED_SMS_CODE } from "@/stores/userStore";
 
 type TabType = "phone" | "email";
 
@@ -12,18 +14,20 @@ function FieldHint({ error }: { error: FieldError }) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const loginByPhone = useUserStore((s) => s.loginByPhone);
+  const loginByEmail = useUserStore((s) => s.loginByEmail);
+
   const [activeTab, setActiveTab] = useState<TabType>("phone");
 
-  // 字段值
   const [phone, setPhone] = useState("");
   const [smsCode, setSmsCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // 错误状态
   const [errors, setErrors] = useState<Partial<Record<string, FieldError>>>({});
-  // 是否已触发过校验（失焦后才显示错误）
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
 
   function setFieldError(field: string, error: FieldError) {
     setErrors((prev) => ({ ...prev, [field]: error }));
@@ -37,24 +41,45 @@ export default function LoginPage() {
     if (field === "password") setFieldError("password", validatePassword(value));
   }
 
+  function switchTab(tab: TabType) {
+    setActiveTab(tab);
+    setErrors({});
+    setTouched({});
+    setServerError(null);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // 全部标记为 touched
-    setTouched({ phone: true, smsCode: true, email: true, password: true });
+    setServerError(null);
 
     if (activeTab === "phone") {
+      setTouched({ phone: true, smsCode: true });
       const phoneErr = validatePhone(phone);
       const codeErr = validateSmsCode(smsCode);
       setErrors({ phone: phoneErr, smsCode: codeErr });
       if (phoneErr || codeErr) return;
+
+      const result = loginByPhone(phone, smsCode);
+      if (!result.ok) {
+        setServerError(result.error!);
+        return;
+      }
     } else {
+      setTouched({ email: true, password: true });
       const emailErr = validateEmail(email);
       const passErr = validatePassword(password);
       setErrors({ email: emailErr, password: passErr });
       if (emailErr || passErr) return;
+
+      const result = loginByEmail(email, password);
+      if (!result.ok) {
+        setServerError(result.error!);
+        return;
+      }
     }
 
-    // TODO: 提交逻辑
+    // 登录成功 → 跳转 chat 页面
+    router.push("/chat");
   }
 
   return (
@@ -72,7 +97,7 @@ export default function LoginPage() {
       <div className="flex rounded-xl bg-muted p-1 mb-6">
         <button
           type="button"
-          onClick={() => { setActiveTab("phone"); setErrors({}); setTouched({}); }}
+          onClick={() => switchTab("phone")}
           className={`tap-target flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
             activeTab === "phone" ? "bg-white text-foreground shadow-sm" : "text-muted-foreground"
           }`}
@@ -81,7 +106,7 @@ export default function LoginPage() {
         </button>
         <button
           type="button"
-          onClick={() => { setActiveTab("email"); setErrors({}); setTouched({}); }}
+          onClick={() => switchTab("email")}
           className={`tap-target flex-1 rounded-lg py-2.5 text-sm font-medium transition-all ${
             activeTab === "email" ? "bg-white text-foreground shadow-sm" : "text-muted-foreground"
           }`}
@@ -89,6 +114,13 @@ export default function LoginPage() {
           邮箱登录
         </button>
       </div>
+
+      {/* 服务端错误 */}
+      {serverError && (
+        <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          {serverError}
+        </div>
+      )}
 
       {/* 表单 */}
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
@@ -125,7 +157,7 @@ export default function LoginPage() {
                     type="text"
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder="验证码"
+                    placeholder={`验证码（测试: ${FIXED_SMS_CODE}）`}
                     value={smsCode}
                     onChange={(e) => { setSmsCode(e.target.value); if (touched.smsCode) setFieldError("smsCode", null); }}
                     onBlur={() => handleBlur("smsCode", smsCode)}
@@ -134,7 +166,12 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { if (!validatePhone(phone)) { /* TODO: 发送验证码 */ } else { setTouched((p) => ({ ...p, phone: true })); setFieldError("phone", validatePhone(phone)); } }}
+                  onClick={() => {
+                    if (validatePhone(phone)) {
+                      setTouched((p) => ({ ...p, phone: true }));
+                      setFieldError("phone", validatePhone(phone));
+                    }
+                  }}
                   className="tap-target shrink-0 rounded-xl border border-primary bg-primary/5 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
                 >
                   获取验证码

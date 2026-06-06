@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   validateEmail,
@@ -9,6 +10,7 @@ import {
   validateConfirmPassword,
   type FieldError,
 } from "@/lib/validators";
+import { useUserStore, FIXED_SMS_CODE } from "@/stores/userStore";
 
 function FieldHint({ error }: { error: FieldError }) {
   if (!error) return null;
@@ -16,6 +18,9 @@ function FieldHint({ error }: { error: FieldError }) {
 }
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const register = useUserStore((s) => s.register);
+
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +29,8 @@ export default function RegisterPage() {
 
   const [errors, setErrors] = useState<Partial<Record<string, FieldError>>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverSuccess, setServerSuccess] = useState<string | null>(null);
 
   function setFieldError(field: string, error: FieldError) {
     setErrors((prev) => ({ ...prev, [field]: error }));
@@ -39,6 +46,9 @@ export default function RegisterPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setServerError(null);
+    setServerSuccess(null);
+
     const allTouched = { email: true, username: true, password: true, confirm: true };
     setTouched(allTouched);
 
@@ -51,9 +61,20 @@ export default function RegisterPage() {
     setErrors(errs);
 
     if (Object.values(errs).some(Boolean)) return;
-    if (!agreed) return;
+    if (!agreed) {
+      setServerError("请先同意用户协议");
+      return;
+    }
 
-    // TODO: 注册提交逻辑
+    const result = register({ email, username, password });
+    if (!result.ok) {
+      setServerError(result.error!);
+      return;
+    }
+
+    // 注册成功 → 跳转登录页
+    setServerSuccess("注册成功！正在跳转到登录页…");
+    setTimeout(() => router.push("/login"), 1200);
   }
 
   const inputClass = (field: string) =>
@@ -73,6 +94,18 @@ export default function RegisterPage() {
         <h1 className="text-2xl font-bold tracking-tight">创建账号</h1>
         <p className="text-sm text-muted-foreground">加入 PrepMind AI，开始高效备考</p>
       </div>
+
+      {/* 服务端反馈 */}
+      {serverError && (
+        <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          {serverError}
+        </div>
+      )}
+      {serverSuccess && (
+        <div className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+          {serverSuccess}
+        </div>
+      )}
 
       {/* 表单 */}
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
