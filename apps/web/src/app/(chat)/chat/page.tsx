@@ -140,6 +140,7 @@ function ChatView({
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let fullContent = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -159,10 +160,11 @@ function ChatView({
           try {
             const parsed = JSON.parse(data);
             if (parsed.content) {
+              fullContent += parsed.content;
               setOcrMessages((prev) =>
                 prev.map((m) =>
                   m.id === resultMsgId
-                    ? { ...m, content: m.content + parsed.content }
+                    ? { ...m, content: fullContent }
                     : m,
                 ),
               );
@@ -172,14 +174,22 @@ function ChatView({
           }
         }
       }
+
+      // 流式完成，直接保存到 Dexie
+      setOcrMessages((prev) => {
+        saveOcrRef.current.mutate(prev);
+        return prev;
+      });
     } catch (err) {
-      setOcrMessages((prev) =>
-        prev.map((m) =>
+      setOcrMessages((prev) => {
+        const updated = prev.map((m) =>
           m.id === resultMsgId
             ? { ...m, content: `识别失败：${err instanceof Error ? err.message : "未知错误"}` }
             : m,
-        ),
-      );
+        );
+        saveOcrRef.current.mutate(updated);
+        return updated;
+      });
     } finally {
       setOcrLoading(false);
     }
@@ -204,14 +214,6 @@ function ChatView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isLoading]);
-
-  // 持久化 OCR 记录到 Dexie
-  useEffect(() => {
-    if (ocrMessages.length > 0) {
-      saveOcrRef.current.mutate(ocrMessages);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ocrMessages.length, ocrLoading]);
 
   // 页面关闭/隐藏时强制保存（防止流式输出中途丢失）
   useEffect(() => {
