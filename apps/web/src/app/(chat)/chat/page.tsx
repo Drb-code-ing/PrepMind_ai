@@ -24,6 +24,8 @@ export default function ChatPage() {
   const { data: persistedMessages, isSuccess: messagesReady } = usePersistedMessages();
   const { data: persistedOcr } = useOcrRecords();
 
+  console.log("[ChatPage] messagesReady:", messagesReady, "messages:", persistedMessages?.length, "ocr:", persistedOcr?.length);
+
   if (!messagesReady) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
@@ -68,6 +70,8 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(initialOcrRecords);
+
+  console.log("[ChatView] mounted, initialMessages:", initialMessages.length, "initialOcr:", initialOcrRecords.length, "ocrMessages:", ocrMessages.length);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -192,10 +196,12 @@ function ChatView({
   useEffect(() => {
     if (!messagesSavedRef.current) {
       messagesSavedRef.current = true;
+      console.log("[save] skipping initial save");
       return;
     }
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
+      console.log("[save] saving messages:", msgs.length, "isLoading:", isLoading);
       saveMessagesRef.current.mutate(
         msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }))
       );
@@ -206,6 +212,7 @@ function ChatView({
   // 持久化 OCR 记录到 Dexie
   useEffect(() => {
     if (ocrMessages.length > 0) {
+      console.log("[save] saving ocr:", ocrMessages.length, "ocrLoading:", ocrLoading);
       saveOcrRef.current.mutate(ocrMessages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
