@@ -26,7 +26,6 @@ export default function ChatPage() {
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
   const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
   const initialLoadDoneRef = useRef(false);
-  const messagesRef = useRef(messages);
 
   const {
     messages,
@@ -41,6 +40,8 @@ export default function ChatPage() {
     initialMessages: persistedMessages,
   });
 
+  // ref 持有最新 messages，供 effect 读取（避免 messages 作为 effect 依赖导致循环）
+  const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
   // 持久化聊天消息到 zustand（仅消息数量变化时，避免流式输出无限循环）
