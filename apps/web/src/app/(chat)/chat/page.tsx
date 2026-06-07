@@ -38,17 +38,11 @@ export default function ChatPage() {
   }>>([]);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
-    setSelectedImage((prev) => {
-      if (prev) URL.revokeObjectURL(prev.previewUrl);
-      return img;
-    });
+    setSelectedImage(img);
   }, []);
 
   const handleImageRemove = useCallback(() => {
-    setSelectedImage((prev) => {
-      if (prev) URL.revokeObjectURL(prev.previewUrl);
-      return null;
-    });
+    setSelectedImage(null);
   }, []);
 
   const {
@@ -144,13 +138,6 @@ export default function ChatPage() {
       );
     }
   }, [messages.length, isLoading, setPersistedMessages]);
-
-  // 清理 selectedImage 的 object URL
-  useEffect(() => {
-    return () => {
-      if (selectedImage) URL.revokeObjectURL(selectedImage.previewUrl);
-    };
-  }, [selectedImage]);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {

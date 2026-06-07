@@ -40,10 +40,12 @@ export default function ChatInputBar({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file || !onImageSelect) return;
-      const previewUrl = URL.createObjectURL(file);
-      onImageSelect({ file, previewUrl });
+      const reader = new FileReader();
+      reader.onload = () => {
+        onImageSelect({ file, previewUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
       setMenuOpen(false);
-      // 重置 input value 使同一文件可再次选择
       e.target.value = "";
     },
     [onImageSelect],
