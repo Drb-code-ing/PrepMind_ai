@@ -358,20 +358,27 @@ function OcrBubble({
 }) {
   if (type === "user") {
     return (
-      <div className="flex flex-row-reverse gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-          {username[0]?.toUpperCase()}
-        </div>
-        <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+      <div className="flex flex-col items-end gap-1.5">
+        <div className="flex flex-row-reverse gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+            {username[0]?.toUpperCase()}
+          </div>
           {imageUrl && (
             <img
               src={imageUrl}
               alt="发送的图片"
-              className="mb-2 max-h-48 rounded-lg object-cover"
+              className="max-h-52 max-w-[70%] rounded-2xl object-cover"
             />
           )}
-          {content && <span>{content}</span>}
         </div>
+        {content && (
+          <div className="flex flex-row-reverse gap-2.5">
+            <div className="w-8 shrink-0" />
+            <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+              <span>{content}</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
