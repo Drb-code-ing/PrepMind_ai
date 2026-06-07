@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import ChatTopBar from "@/components/chat/chat-top-bar";
 import ChatSidebar from "@/components/chat/chat-sidebar";
 import ChatInputBar from "@/components/chat/chat-input-bar";
+import type { SelectedImage } from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
 import { useMessageStore } from "@/stores/messageStore";
@@ -26,6 +27,21 @@ export default function ChatPage() {
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
   const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
   const initialLoadDoneRef = useRef(false);
+  const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
+
+  const handleImageSelect = useCallback((img: SelectedImage) => {
+    setSelectedImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return img;
+    });
+  }, []);
+
+  const handleImageRemove = useCallback(() => {
+    setSelectedImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  }, []);
 
   const {
     messages,
@@ -55,6 +71,13 @@ export default function ChatPage() {
       );
     }
   }, [messages.length, isLoading, setPersistedMessages]);
+
+  // 清理 selectedImage 的 object URL
+  useEffect(() => {
+    return () => {
+      if (selectedImage) URL.revokeObjectURL(selectedImage.previewUrl);
+    };
+  }, [selectedImage]);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {
@@ -162,7 +185,13 @@ export default function ChatPage() {
       </main>
 
       <form ref={formRef} data-chat-form onSubmit={handleSubmit}>
-        <ChatInputBar input={input} onInputChange={onInputChange} />
+        <ChatInputBar
+          input={input}
+          onInputChange={onInputChange}
+          selectedImage={selectedImage}
+          onImageSelect={handleImageSelect}
+          onImageRemove={handleImageRemove}
+        />
       </form>
 
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

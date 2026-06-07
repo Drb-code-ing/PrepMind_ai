@@ -3,13 +3,29 @@
 import { useRef, useState, useCallback } from "react";
 import { Camera, Plus, Mic, Send, Image, FileText, X } from "lucide-react";
 
+export interface SelectedImage {
+  file: File;
+  previewUrl: string;
+}
+
 interface ChatInputBarProps {
   input: string;
   onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  selectedImage?: SelectedImage | null;
+  onImageSelect?: (image: SelectedImage) => void;
+  onImageRemove?: () => void;
 }
 
-export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps) {
+export default function ChatInputBar({
+  input,
+  onInputChange,
+  selectedImage,
+  onImageSelect,
+  onImageRemove,
+}: ChatInputBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
@@ -20,9 +36,43 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
 
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !onImageSelect) return;
+      const previewUrl = URL.createObjectURL(file);
+      onImageSelect({ file, previewUrl });
+      setMenuOpen(false);
+      // 重置 input value 使同一文件可再次选择
+      e.target.value = "";
+    },
+    [onImageSelect],
+  );
+
   return (
     <div className="shrink-0 bg-white">
       <div className="h-px bg-border" />
+
+      {/* 已选图片预览 */}
+      {selectedImage && (
+        <div className="px-3 pt-2">
+          <div className="relative inline-block">
+            <img
+              src={selectedImage.previewUrl}
+              alt="已选图片"
+              className="h-20 w-20 rounded-xl object-cover ring-1 ring-border"
+            />
+            <button
+              type="button"
+              onClick={onImageRemove}
+              className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-foreground/70 text-white transition-colors hover:bg-foreground"
+              aria-label="移除图片"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 文本输入区 */}
       <div className="px-3 pt-3">
@@ -40,12 +90,29 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
         </div>
       </div>
 
+      {/* 隐藏的文件输入 */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       {/* 功能菜单 */}
       {menuOpen && (
         <div className="flex items-center gap-4 px-5 py-3">
           <button
             type="button"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => galleryInputRef.current?.click()}
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
@@ -65,7 +132,7 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
           </button>
           <button
             type="button"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => cameraInputRef.current?.click()}
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
@@ -93,6 +160,7 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
           </button>
           <button
             type="button"
+            onClick={() => cameraInputRef.current?.click()}
             className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
             aria-label="拍照识题"
           >
@@ -100,7 +168,7 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
           </button>
         </div>
 
-        {input.trim() ? (
+        {input.trim() || selectedImage ? (
           <button
             type="submit"
             className="tap-target flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:bg-primary/90 active:scale-90"
