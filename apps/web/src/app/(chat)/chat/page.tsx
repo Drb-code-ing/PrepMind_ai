@@ -22,11 +22,11 @@ const SCROLL_THRESHOLD = 100;
 // 父组件：等待 Dexie 加载完成后才挂载子组件
 export default function ChatPage() {
   const { data: persistedMessages, isSuccess: messagesReady } = usePersistedMessages();
-  const { data: persistedOcr } = useOcrRecords();
+  const { data: persistedOcr, isSuccess: ocrReady } = useOcrRecords();
 
-  console.log("[ChatPage] messagesReady:", messagesReady, "messages:", persistedMessages?.length, "ocr:", persistedOcr?.length);
+  const allReady = messagesReady && ocrReady;
 
-  if (!messagesReady) {
+  if (!allReady) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -70,8 +70,6 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(initialOcrRecords);
-
-  console.log("[ChatView] mounted, initialMessages:", initialMessages.length, "initialOcr:", initialOcrRecords.length, "ocrMessages:", ocrMessages.length);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -196,12 +194,10 @@ function ChatView({
   useEffect(() => {
     if (!messagesSavedRef.current) {
       messagesSavedRef.current = true;
-      console.log("[save] skipping initial save");
       return;
     }
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
-      console.log("[save] saving messages:", msgs.length, "isLoading:", isLoading);
       saveMessagesRef.current.mutate(
         msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }))
       );
@@ -212,7 +208,6 @@ function ChatView({
   // 持久化 OCR 记录到 Dexie
   useEffect(() => {
     if (ocrMessages.length > 0) {
-      console.log("[save] saving ocr:", ocrMessages.length, "ocrLoading:", ocrLoading);
       saveOcrRef.current.mutate(ocrMessages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
