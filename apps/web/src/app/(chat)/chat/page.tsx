@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import { useChat } from "@ai-sdk/react";
 import ChatTopBar from "@/components/chat/chat-top-bar";
 import ChatSidebar from "@/components/chat/chat-sidebar";
@@ -31,7 +31,7 @@ export default function ChatPage() {
     messages,
     handleInputChange,
     handleSubmit,
-    input,
+    input,// 当前输入框内容 用户打字 -> input 实时变化 -> useEffect同步更新到Zustand的inputDraft
     setInput,
     isLoading,
   } = useChat({
@@ -42,7 +42,9 @@ export default function ChatPage() {
 
   // ref 持有最新 messages，供 effect 读取（避免 messages 作为 effect 依赖导致循环）
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  useLayoutEffect(() => {
+    messagesRef.current = messages;
+  });
 
   // 持久化聊天消息到 zustand（仅消息数量变化时，避免流式输出无限循环）
   useEffect(() => {
