@@ -70,6 +70,7 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(initialOcrRecords);
+  const ocrMsgRef = useRef(ocrMessages);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -175,21 +176,25 @@ function ChatView({
         }
       }
 
-      // 流式完成，直接保存到 Dexie
-      setOcrMessages((prev) => {
-        saveOcrRef.current.mutate(prev);
-        return prev;
-      });
+      // 流式完成，用 ref 获取最新 OCR 消息并保存
+      setTimeout(() => {
+        const current = ocrMsgRef.current;
+        if (current.length > 0) {
+          saveOcrRef.current.mutate(current);
+        }
+      }, 100);
     } catch (err) {
-      setOcrMessages((prev) => {
-        const updated = prev.map((m) =>
+      setOcrMessages((prev) =>
+        prev.map((m) =>
           m.id === resultMsgId
             ? { ...m, content: `识别失败：${err instanceof Error ? err.message : "未知错误"}` }
             : m,
-        );
-        saveOcrRef.current.mutate(updated);
-        return updated;
-      });
+        ),
+      );
+      setTimeout(() => {
+        const current = ocrMsgRef.current;
+        if (current.length > 0) saveOcrRef.current.mutate(current);
+      }, 100);
     } finally {
       setOcrLoading(false);
     }
@@ -198,6 +203,7 @@ function ChatView({
   const messagesRef = useRef(messages);
   useLayoutEffect(() => {
     messagesRef.current = messages;
+    ocrMsgRef.current = ocrMessages;
   });
 
   // 持久化聊天消息到 Dexie（跳过首次加载，数据已在 Dexie 中）
