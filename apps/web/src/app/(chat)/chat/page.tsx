@@ -26,12 +26,13 @@ export default function ChatPage() {
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
   const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
   const initialLoadDoneRef = useRef(false);
+  const messagesRef = useRef(messages);
 
   const {
     messages,
     handleInputChange,
     handleSubmit,
-    input,// 当前输入框内容 用户打字 -> input 实时变化 -> useEffect同步更新到Zustand的inputDraft
+    input,
     setInput,
     isLoading,
   } = useChat({
@@ -40,14 +41,17 @@ export default function ChatPage() {
     initialMessages: persistedMessages,
   });
 
-  // 持久化聊天消息到 zustand
+  messagesRef.current = messages;
+
+  // 持久化聊天消息到 zustand（仅消息数量变化时，避免流式输出无限循环）
   useEffect(() => {
-    if (messages.length > 0) {
+    const msgs = messagesRef.current;
+    if (msgs.length > 0) {
       setPersistedMessages(
-        messages.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
+        msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
       );
     }
-  }, [messages, setPersistedMessages]);
+  }, [messages.length, setPersistedMessages]);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {
