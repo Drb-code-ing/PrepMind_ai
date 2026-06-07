@@ -46,7 +46,7 @@ export default function ChatPage() {
     messagesRef.current = messages;
   });
 
-  // 持久化聊天消息到 zustand（仅消息数量变化时，避免流式输出无限循环）
+  // 持久化聊天消息到 zustand（消息数量变化 或 AI 回复完成时）
   useEffect(() => {
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
@@ -54,7 +54,7 @@ export default function ChatPage() {
         msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
       );
     }
-  }, [messages.length, setPersistedMessages]);
+  }, [messages.length, isLoading, setPersistedMessages]);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {
