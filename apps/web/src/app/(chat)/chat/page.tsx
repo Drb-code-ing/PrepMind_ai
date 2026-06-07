@@ -29,6 +29,7 @@ export default function ChatPage() {
   const initialLoadDoneRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<Array<{
     id: string;
     type: "user" | "ocr-loading" | "ocr-result";
@@ -237,6 +238,7 @@ export default function ChatPage() {
                 content={msg.content}
                 imageUrl={msg.imageUrl}
                 username={currentUser?.username || "我"}
+                onImageClick={(url) => setPreviewImage(url)}
               />
             ))}
           </div>
@@ -278,6 +280,20 @@ export default function ChatPage() {
       </form>
 
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* 图片全屏预览 */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setPreviewImage(null)}
+        >
+          <img
+            src={previewImage}
+            alt="图片预览"
+            className="max-h-[90vh] max-w-[95vw] object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -350,11 +366,13 @@ function OcrBubble({
   content,
   imageUrl,
   username,
+  onImageClick,
 }: {
   type: "user" | "ocr-loading" | "ocr-result";
   content: string;
   imageUrl?: string;
   username: string;
+  onImageClick?: (url: string) => void;
 }) {
   if (type === "user") {
     return (
@@ -367,7 +385,8 @@ function OcrBubble({
             <img
               src={imageUrl}
               alt="发送的图片"
-              className="max-h-52 max-w-[70%] rounded-2xl object-cover"
+              onClick={() => onImageClick?.(imageUrl)}
+              className="max-h-52 max-w-[70%] cursor-pointer rounded-2xl object-cover"
             />
           )}
         </div>
