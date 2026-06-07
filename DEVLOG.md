@@ -165,3 +165,137 @@ cd44f63 feat: 登录/注册表单正则验证
 ### 明天计划
 - 拍照识题 UI + 图片上传功能
 - 错题本 CRUD 页面
+
+---
+
+## 2026-06-07（Day 3）
+
+### 今天完成了
+
+**Bug 修复（3 个）**
+
+- 修复登录态丢失：根页面改为 client component，等待 zustand hydration 完成后再校验
+- 修复 inputDraft 残留：新增 `clearInputDraft`，消息发送后清空输入框草稿
+- 修复聊天上下文丢失：创建 `messageStore`（zustand + persist），消息持久化到 localStorage
+
+**状态管理 + 数据流**
+
+- 创建 `stores/messageStore.ts`：聊天消息持久化，刷新页面不丢上下文
+- 修复无限循环：`messages` 每 token 产生新引用 → 改用 `messages.length` 作 effect 依赖 + `messagesRef` 读内容
+- 修复 TDZ 错误：`messagesRef` 初始化移到 `useChat()` 之后
+- 修复渲染警告：`messagesRef.current = messages` 移入 `useLayoutEffect`
+- 修复 AI 回复丢失：persistence effect 增加 `isLoading` 依赖，AI 完成时最终持久化
+- TanStack Query 讨论决策：Phase 2 接入后端时再引入，管理 server state
+
+**聊天页面增强**
+
+- 加号按钮展开功能菜单（图片/文件/拍照），Plus 图标旋转 45° 动画
+- 恢复底部栏独立相机按钮
+- 智能发送按钮：有文字/图片时显示发送，否则显示麦克风
+
+**拍照识题 + 图片上传**
+
+- 相机/相册唤醒：两个隐藏 `<input type="file">`（camera capture + gallery）
+- 菜单「图片」触发相册、「拍照」触发摄像头、底部相机按钮触发摄像头
+- 已选图片在输入区上方显示 80×80 预览缩略图 + 移除按钮
+- 新建 `/api/ocr` 路由：接收 FormData，调用 MIMO v2.5 多模态识别
+- 系统提示词要求结构化输出：题干、知识点、分析思路、参考答案
+- 有图片时表单提交拦截走 OCR 流程，不走 useChat
+- 识别结果 Markdown 渲染 +「📝 保存到错题本」占位按钮
+- 图片独立显示（不包裹在气泡内），点击全屏预览
+- 图片改用 base64 data URL（FileReader），修复预览不可见问题
+
+**文档**
+
+- 创建 `docs/data-flow.md` 数据流向全景图（7 章节，671 行）
+- 覆盖存储层概览、6 条核心数据流、Store 关系图、Phase 2 迁移规划、前后端职责矩阵
+
+### Git 提交记录
+```
+8d7bd0f fix: 图片改用 base64 data URL，修复预览不可见
+31479c3 feat: 点击图片全屏预览
+d446b45 fix: OCR 图片独立显示，不包裹在气泡内
+13f962e fix: OCR 用户消息显示图片缩略图 + 文字可选
+ce1dade feat: 拍照识题 — MIMO v2.5 图片识别 + 错题本占位
+f2c763f feat: 实现相机和相册唤醒功能
+7d3aeaf fix: AI 回复完成后也持久化消息，刷新不丢最新回复
+145d656 fix: messagesRef 赋值移入 useLayoutEffect，消除渲染期警告
+504348e fix: messagesRef 初始化移到 useChat 之后，修复 TDZ 错误
+81da953 fix: 修复消息持久化导致的 Maximum update depth exceeded
+bf142f4 fix: 恢复底部栏相机按钮
+a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
+0d969fd docs: 添加数据流向全景图
+4ce5e59 fix: 修复 3 个 bug — 登录态持久化、输入框残留、聊天上下文丢失
+```
+
+### Phase 1 进度
+
+| 功能 | 状态 |
+|------|------|
+| 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
+| AI 聊天 + 流式输出 + Markdown 渲染 | ✅ 完成 |
+| chatStore 临时状态管理 | ✅ 完成 |
+| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
+| 代码质量审查 + 性能优化 | ✅ 完成 |
+| 拍照识题 + 图片上传 | ✅ 完成 |
+| 错题本 CRUD | ⬜ 待做 |
+| 今日任务（静态版本） | ⬜ 待做 |
+
+### 待解决
+- localForage 迁移（替代 localStorage 存储大数据）
+- 错题本 CRUD 页面
+
+### 明天计划
+- 安装 localForage，迁移 messageStore / OCR 记录到 IndexedDB
+- 错题本 CRUD 页面（列表 + 详情 + 删除）
+- 今日任务静态页面
+
+---
+
+## Phase 1→Phase 2 迁移规划
+
+> 此区为统一迁移规划，后续每期在此追加进展。
+
+### 存储分层策略
+
+| 层级 | Phase 1（当前） | Phase 2（目标） | 存什么 |
+|------|-----------------|-----------------|--------|
+| localStorage | zustand + persist | 保留 | 配置、token、用户信息、UI 偏好（体积小、同步读写） |
+| IndexedDB | — | localForage → IDB + Dexie | 错题、聊天记录、OCR 图片记录（体积大、异步读写） |
+| PostgreSQL | — | Prisma + pgvector | 题库、用户、账号、AI 对话、云端错题、学习记录、分类字典（唯一真值来源） |
+| Redis | — | ioredis | 接口缓存、题库缓存、登录态、限流计数器 |
+| 对象存储 | — | OSS / COS / MinIO | 图片、大文件、PDF；PG 只存 URL |
+
+### 迁移路线
+
+```
+Phase 1                    Phase 2
+──────────────────────────────────────────────────
+localStorage (全量)   →    localStorage (仅 config/token)
+zustand + persist     →    zustand (纯 UI 状态)
+messageStore          →    useInfiniteQuery (TanStack Query)
+userStore (持久化)    →    useQuery + JWT auth
+localForage (新增)    →    IDB + Dexie (替代 localForage)
+—                     →    PostgreSQL (唯一真值)
+—                     →    Redis (缓存层)
+—                     →    OSS (文件存储)
+```
+
+### 设计原则
+
+- **zustand 仅存 UI 状态和业务数据的缓存/中转**，不作为最终数据源
+- **前端存储是离线副本**，提升移动端体验，支持弱网/离线场景
+- **PostgreSQL 是唯一真值来源**，前端数据最终同步到后端
+- **Phase 2 引入 TanStack Query** 管理 server state（消息分页、错题 CRUD、用户数据）
+- **useChat 继续管流式聊天**，与 TanStack Query 职责不冲突
+
+### 当前进展
+
+- [x] localStorage 三层分离（userStore / chatStore / messageStore）
+- [x] messageStore 消息持久化 + isLoading 触发最终保存
+- [ ] localForage 迁移 messageStore + OCR 记录
+- [ ] IDB + Dexie 替代 localForage（Phase 2）
+- [ ] PostgreSQL + Prisma 接入（Phase 2）
+- [ ] Redis 缓存层（Phase 2）
+- [ ] TanStack Query 引入（Phase 2）
+- [ ] OSS 文件存储（Phase 2）
