@@ -10,7 +10,7 @@ import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
 import { usePersistedMessages, useSaveMessages } from "@/hooks/use-messages";
 import { useOcrRecords, useSaveOcrRecords } from "@/hooks/use-ocr-records";
-import type { OcrRecord } from "@/lib/db";
+import type { StoredMessage, OcrRecord } from "@/lib/db";
 import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -18,7 +18,35 @@ import remarkGfm from "remark-gfm";
 const remarkPlugins = [remarkGfm];
 const SCROLL_THRESHOLD = 100;
 
+// 父组件：等待 Dexie 加载完成后才挂载子组件
 export default function ChatPage() {
+  const { data: persistedMessages, isSuccess: messagesReady } = usePersistedMessages();
+  const { data: persistedOcr } = useOcrRecords();
+
+  if (!messagesReady) {
+    return (
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <ChatView
+      initialMessages={persistedMessages ?? []}
+      initialOcrRecords={persistedOcr ?? []}
+    />
+  );
+}
+
+// 子组件：包含 useChat，首次挂载时 initialMessages 已就绪
+function ChatView({
+  initialMessages,
+  initialOcrRecords,
+}: {
+  initialMessages: StoredMessage[];
+  initialOcrRecords: OcrRecord[];
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -27,22 +55,13 @@ export default function ChatPage() {
   const rafRef = useRef<number>(0);
 
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
-  const { data: persistedMessages, isSuccess: messagesReady } = usePersistedMessages();
   const saveMessages = useSaveMessages();
-  const { data: persistedOcr } = useOcrRecords();
   const saveOcr = useSaveOcrRecords();
   const initialLoadDoneRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>([]);
-
-  // Dexie 加载完后初始化 OCR 记录
-  useEffect(() => {
-    if (persistedOcr && persistedOcr.length > 0) {
-      setOcrMessages(persistedOcr);
-    }
-  }, [persistedOcr]);
+  const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(initialOcrRecords);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -56,16 +75,15 @@ export default function ChatPage() {
     messages,
     handleInputChange,
     handleSubmit,
-    input,// 当前输入框内容 用户打字 -> input 实时变化 -> useEffect同步更新到Zustand的inputDraft
+    input,
     setInput,
     isLoading,
   } = useChat({
     api: "/api/chat",
     initialInput: inputDraft,
-    initialMessages: messagesReady ? persistedMessages : undefined,
+    initialMessages,
   });
 
-  // 用户发送新消息时，强制滚到底部
   const scrollToBottom = useCallback(() => {
     isAutoScrollRef.current = true;
     requestAnimationFrame(() => {
@@ -75,7 +93,6 @@ export default function ChatPage() {
     });
   }, []);
 
-  // 拍照识题：拦截提交，发送图片到 /api/ocr
   const handleOcrSubmit = useCallback(async () => {
     if (!selectedImage || ocrLoading) return;
 
@@ -83,7 +100,6 @@ export default function ChatPage() {
     const userMsgId = `ocr-user-${Date.now()}`;
     const loadingMsgId = `ocr-loading-${Date.now()}`;
 
-    // 显示用户消息 + loading（保存图片 URL 用于展示）
     const imgUrl = selectedImage.previewUrl;
     setOcrMessages((prev) => [
       ...prev,
@@ -91,7 +107,6 @@ export default function ChatPage() {
       { id: loadingMsgId, type: "ocr-loading", content: "", createdAt: Date.now() },
     ]);
 
-    // 清空输入
     const img = selectedImage;
     setSelectedImage(null);
     setInput("");
@@ -109,7 +124,6 @@ export default function ChatPage() {
 
       if (!res.ok) throw new Error(data.error || "识别失败");
 
-      // 替换 loading 为结果
       setOcrMessages((prev) =>
         prev.map((m) =>
           m.id === loadingMsgId
@@ -130,13 +144,12 @@ export default function ChatPage() {
     }
   }, [selectedImage, ocrLoading, input, setInput, clearInputDraft, scrollToBottom]);
 
-  // ref 持有最新 messages，供 effect 读取（避免 messages 作为 effect 依赖导致循环）
   const messagesRef = useRef(messages);
   useLayoutEffect(() => {
     messagesRef.current = messages;
   });
 
-  // 持久化聊天消息到 Dexie（消息数量变化 或 AI 回复完成时）
+  // 持久化聊天消息到 Dexie
   useEffect(() => {
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
@@ -162,17 +175,14 @@ export default function ChatPage() {
     clearInputDraft();
   }, [messages.length, clearInputDraft]);
 
-  // 包装 onInputChange，同步到 chatStore
   const onInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      handleInputChange(e);// 处理输入框变化，更新 input
-      // 同步更新到 Zustand 的 inputDraft
+      handleInputChange(e);
       setInputDraft(e.target.value);
     },
-    [handleInputChange, setInputDraft],// 依赖 handleInputChange 和 setInputDraft
+    [handleInputChange, setInputDraft],
   );
 
-  // 检测用户是否手动滚动离开底部
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -181,7 +191,6 @@ export default function ChatPage() {
     isAutoScrollRef.current = isAtBottom;
   }, []);
 
-  // 新消息/流式输出时，仅在用户处于底部时自动滚动（rAF 节流）
   useEffect(() => {
     if (!isAutoScrollRef.current) return;
     cancelAnimationFrame(rafRef.current);
@@ -197,22 +206,12 @@ export default function ChatPage() {
     (text: string) => {
       setInput(text);
       scrollToBottom();
-      // 等 React 更新 input 后再提交
       setTimeout(() => formRef.current?.requestSubmit(), 0);
     },
     [setInput, scrollToBottom],
   );
 
   const hasMessages = messages.length > 0 || ocrMessages.length > 0;
-
-  // Dexie 加载完成前显示骨架屏（useChat 需要 initialMessages 在首次渲染时就绪）
-  if (!messagesReady) {
-    return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
@@ -223,7 +222,6 @@ export default function ChatPage() {
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto hide-scrollbar"
       >
-        {/* 显示聊天消息 */}
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
             {messages.map((msg, i) => (
@@ -240,7 +238,6 @@ export default function ChatPage() {
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <ChatBubble role="assistant" content="" username="" isLoading />
             )}
-            {/* OCR 识别消息 */}
             {ocrMessages.map((msg) => (
               <OcrBubble
                 key={msg.id}
@@ -291,7 +288,6 @@ export default function ChatPage() {
 
       <ChatSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* 图片全屏预览 */}
       {previewImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
@@ -307,7 +303,7 @@ export default function ChatPage() {
     </div>
   );
 }
-// memo 优化性能，避免重复渲染 ChatBubble 组件时触发的 useEffect
+
 const ChatBubble = memo(function ChatBubble({
   role,
   content,
@@ -428,7 +424,6 @@ function OcrBubble({
     );
   }
 
-  // ocr-result
   return (
     <div className="flex gap-2.5">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
