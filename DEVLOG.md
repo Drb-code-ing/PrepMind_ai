@@ -44,22 +44,11 @@
 - `create-next-app` 会自动生成 `pnpm-workspace.yaml`，和根目录冲突，需要删除
 - `nest new` 安装依赖也会失败，需要从根目录统一安装
 
-### 明天计划
-- 启动 PostgreSQL（Docker），运行 Prisma 首次迁移
-- 搭建 NestJS 基础 API 网关 + Swagger
-- 实现 JWT 认证模块
+### 恢复 pnpm（Day 1 补充）
 
----
-
-## 2026-06-05（Day 1 补充）
-
-### 恢复 pnpm
-
-- 发现 pnpm 11.x 的 SQLite 错误是因为 store 文件权限被锁定
 - 降级到 pnpm 9.x（`9.15.9`），配置了 npmmirror 镜像加速
 - 自定义 store 位置到 `C:/Users/Lenovo/AppData/Local/pnpm-store-fresh`
 - `pnpm install` 成功（14 分钟），所有构建验证通过
-- 更新了 CLAUDE.md 和 package.json 为 pnpm 命令
 - 提交了修复：`e8d8570 fix: 恢复 pnpm 工作流`
 
 ---
@@ -122,7 +111,8 @@
 - API Route 加 try/catch + 消息校验
 - textarea 高度从 useEffect 改为 onInput
 
-### Git 提交记录
+### Git 提交记录（Day 2）
+
 ```
 af62415 docs: 更新开发日志 + Phase 1 进度 + 开发博客
 e43d058 refactor: /simplify 代码质量优化（4 维度审查）
@@ -145,27 +135,6 @@ cd44f63 feat: 登录/注册表单正则验证
 08ef74b docs: 记录 pnpm EPERM 权限问题，当前用 npm
 ```
 
-### Phase 1 进度
-
-| 功能 | 状态 |
-|------|------|
-| 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
-| AI 聊天 + 流式输出 + Markdown 渲染 | ✅ 完成 |
-| chatStore 临时状态管理 | ✅ 完成 |
-| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
-| 代码质量审查 + 性能优化 | ✅ 完成 |
-| 拍照识题 + 图片上传 | ⬜ 待做 |
-| 错题本 CRUD | ⬜ 待做 |
-| 今日任务（静态版本） | ⬜ 待做 |
-
-### 待解决
-- 上下文长度限制（Phase 2）
-- 消息持久化到数据库（Phase 2）
-
-### 明天计划
-- 拍照识题 UI + 图片上传功能
-- 错题本 CRUD 页面
-
 ---
 
 ## 2026-06-07（Day 3）
@@ -185,7 +154,7 @@ cd44f63 feat: 登录/注册表单正则验证
 - 修复 TDZ 错误：`messagesRef` 初始化移到 `useChat()` 之后
 - 修复渲染警告：`messagesRef.current = messages` 移入 `useLayoutEffect`
 - 修复 AI 回复丢失：persistence effect 增加 `isLoading` 依赖，AI 完成时最终持久化
-- TanStack Query 讨论决策：Phase 2 接入后端时再引入，管理 server state
+- TanStack Query 讨论决策：Phase 2 接入后端时引入，管理 server state
 
 **聊天页面增强**
 
@@ -201,17 +170,66 @@ cd44f63 feat: 登录/注册表单正则验证
 - 新建 `/api/ocr` 路由：接收 FormData，调用 MIMO v2.5 多模态识别
 - 系统提示词要求结构化输出：题干、知识点、分析思路、参考答案
 - 有图片时表单提交拦截走 OCR 流程，不走 useChat
+- OCR 改为 SSE 流式输出（MIMO stream: true），逐 token 渲染结果
 - 识别结果 Markdown 渲染 +「📝 保存到错题本」占位按钮
 - 图片独立显示（不包裹在气泡内），点击全屏预览
 - 图片改用 base64 data URL（FileReader），修复预览不可见问题
+
+**存储架构迁移：localStorage → Dexie + TanStack Query**
+
+- 安装 `dexie` + `@tanstack/react-query`
+- 创建 `lib/db.ts`：Dexie 数据库 `prepmind-db`，两张表（messages + ocrRecords）
+- 创建 `lib/query-client.ts`：QueryClient 工厂（staleTime/gcTime Infinity）
+- 创建 `app/providers.tsx`：客户端 QueryClientProvider 包装
+- 创建 `hooks/use-messages.ts`：usePersistedMessages / useSaveMessages / useClearMessages
+- 创建 `hooks/use-ocr-records.ts`：useOcrRecords / useSaveOcrRecords
+- layout.tsx 添加 Providers 包装
+- 删除 `stores/messageStore.ts`，localStorage 仅保留 config/token/UI 状态
+- 直接采用 Dexie 跳过 localForage，省去 Phase 2 迁移
+
+**ChatPage 重构：父组件 + 子组件模式**
+
+- ChatPage（父）：负责 Dexie 加载，数据未就绪时显示 loading
+- ChatView（子）：包含 useChat，首次挂载时 initialMessages 已就绪
+- 解决 useChat 的 initialMessages 只在首次渲染生效的问题
+
+**Dexie 持久化修复（多轮迭代）**
+
+- 修复 mutation 对象放在 useEffect 依赖中导致无限 clear+bulkAdd 循环
+- clear() + bulkAdd() 包裹在 db.transaction() 原子事务中
+- mutation 对象改用 ref 持有，从 effect 依赖中移除
+- 首次加载跳过保存（数据已在 Dexie 中）
+- 添加 beforeunload + visibilitychange 监听，页面关闭时强制保存
+- StoredMessage 加 order 字段，Dexie schema v2，解决刷新后消息顺序错乱
+- /simplify 审查发现 Dexie v2 schema 遗漏 ocrRecords 表导致数据丢失，已修复
 
 **文档**
 
 - 创建 `docs/data-flow.md` 数据流向全景图（7 章节，671 行）
 - 覆盖存储层概览、6 条核心数据流、Store 关系图、Phase 2 迁移规划、前后端职责矩阵
 
-### Git 提交记录
+### 已知问题
+
+- **OCR 刷新后渲染顺序错误**：拍照识别的图片+结果在刷新后与文字聊天消息的相对顺序可能错乱。Dexie 存储本身正常，问题在渲染层（OCR 消息和聊天消息是两套独立的状态和渲染逻辑）
+
+### Git 提交记录（Day 3，27 次提交）
+
 ```
+b3de1e8 fix: /simplify 审查修复 — OCR 数据丢失根因 + 4 个问题
+9f59fbf docs: Day 3 深夜补充 — Dexie 迁移 + OCR 流式 + 审查修复
+08b3ec0 fix: OCR 保存改用 ref + setTimeout，确保数据写入 Dexie
+e21c30d fix: OCR 记录直接在流式完成后保存，不依赖 effect
+8b5c227 chore: 移除 debug 日志
+941ccd7 debug: 追踪消息顺序问题
+ddf430a fix: 等待 OCR 数据加载完成再挂载 ChatView
+dcc3eec debug: 添加 Dexie 持久化 debug 日志
+55755f3 fix: OCR 消息持久化 — 加 ocrLoading 依赖触发流式完成后保存
+fcd37e1 fix: 消息顺序 + OCR 流式输出 + OCR 持久化
+0d8c464 fix: 修复 Dexie 持久化数据丢失（3 个关键问题）
+3a5527e fix: 拆分 ChatPage + ChatView，彻底修复消息丢失
+fb8f590 refactor: Dexie + TanStack Query 替代 messageStore + localStorage
+322cc83 fix: localForage 加载完成前阻塞渲染，修复 AI 回复丢失
+402796c refactor: 引入 TanStack Query + localForage，替代 messageStore
 8d7bd0f fix: 图片改用 base64 data URL，修复预览不可见
 31479c3 feat: 点击图片全屏预览
 d446b45 fix: OCR 图片独立显示，不包裹在气泡内
@@ -228,7 +246,9 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 4ce5e59 fix: 修复 3 个 bug — 登录态持久化、输入框残留、聊天上下文丢失
 ```
 
-### Phase 1 进度
+---
+
+## Phase 1 进度
 
 | 功能 | 状态 |
 |------|------|
@@ -237,17 +257,20 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 | chatStore 临时状态管理 | ✅ 完成 |
 | 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
 | 代码质量审查 + 性能优化 | ✅ 完成 |
-| 拍照识题 + 图片上传 | ✅ 完成 |
+| 拍照识题 + 图片上传 + OCR 流式 | ✅ 完成（刷新渲染顺序待修复） |
 | 错题本 CRUD | ⬜ 待做 |
 | 今日任务（静态版本） | ⬜ 待做 |
 
-### 待解决
-- localForage 迁移（替代 localStorage 存储大数据）
-- 错题本 CRUD 页面
+## 待解决
 
-### 明天计划
-- 安装 localForage，迁移 messageStore / OCR 记录到 IndexedDB
-- 错题本 CRUD 页面（列表 + 详情 + 删除）
+- OCR 刷新后渲染顺序错误（OCR 和聊天消息是两套独立状态）
+- 上下文长度限制（Phase 2）
+- 消息持久化到数据库（Phase 2）
+
+## 明天计划
+
+- 修复 OCR 刷新后渲染顺序（统一消息渲染管线）
+- 错题本 CRUD 页面
 - 今日任务静态页面
 
 ---
@@ -260,11 +283,12 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 
 | 层级 | Phase 1（当前） | Phase 2（目标） | 存什么 |
 |------|-----------------|-----------------|--------|
-| localStorage | zustand + persist | 保留 | 配置、token、用户信息、UI 偏好（体积小、同步读写） |
-| IndexedDB | — | localForage → IDB + Dexie | 错题、聊天记录、OCR 图片记录（体积大、异步读写） |
-| PostgreSQL | — | Prisma + pgvector | 题库、用户、账号、AI 对话、云端错题、学习记录、分类字典（唯一真值来源） |
-| Redis | — | ioredis | 接口缓存、题库缓存、登录态、限流计数器 |
-| 对象存储 | — | OSS / COS / MinIO | 图片、大文件、PDF；PG 只存 URL |
+| localStorage | zustand + persist | 保留 | 配置、token、用户信息、UI 偏好 |
+| TanStack Query | 内存缓存 | 扩展为 server state 管理 | Dexie/API 数据的内存副本 |
+| IndexedDB | Dexie (`prepmind-db`) | 保留为离线缓存 | 聊天消息、OCR 记录、错题 |
+| PostgreSQL | — | Prisma + pgvector | 唯一真值来源 |
+| Redis | — | ioredis | 接口缓存、登录态、限流 |
+| 对象存储 | — | OSS / COS / MinIO | 图片、大文件；PG 只存 URL |
 
 ### 迁移路线
 
@@ -273,9 +297,9 @@ Phase 1                    Phase 2
 ──────────────────────────────────────────────────
 localStorage (全量)   →    localStorage (仅 config/token)
 zustand + persist     →    zustand (纯 UI 状态)
-messageStore          →    useInfiniteQuery (TanStack Query)
+Dexie messages        →    useInfiniteQuery (TanStack Query)
+Dexie ocrRecords      →    useQuery + API
 userStore (持久化)    →    useQuery + JWT auth
-localForage (新增)    →    IDB + Dexie（已直接采用，跳过 localForage）
 —                     →    PostgreSQL (唯一真值)
 —                     →    Redis (缓存层)
 —                     →    OSS (文件存储)
@@ -286,99 +310,15 @@ localForage (新增)    →    IDB + Dexie（已直接采用，跳过 localForag
 - **zustand 仅存 UI 状态和业务数据的缓存/中转**，不作为最终数据源
 - **前端存储是离线副本**，提升移动端体验，支持弱网/离线场景
 - **PostgreSQL 是唯一真值来源**，前端数据最终同步到后端
-- **Phase 2 引入 TanStack Query** 管理 server state（消息分页、错题 CRUD、用户数据）
 - **useChat 继续管流式聊天**，与 TanStack Query 职责不冲突
 
 ### 当前进展
 
-- [x] localStorage 三层分离（userStore / chatStore / messageStore）
-- [x] messageStore 消息持久化 + isLoading 触发最终保存
-- [x] Dexie + TanStack Query 替代 messageStore（跳过 localForage）
-- [x] 消息持久化到 Dexie（文字聊天正常，OCR 待修复）
-- [ ] OCR 记录 Dexie 持久化（已知问题）
+- [x] localStorage 三层分离（userStore / chatStore）
+- [x] Dexie + TanStack Query 替代 messageStore
+- [x] 聊天消息持久化到 Dexie（正常工作）
+- [ ] OCR 记录刷新后渲染顺序修复
 - [ ] PostgreSQL + Prisma 接入（Phase 2）
 - [ ] Redis 缓存层（Phase 2）
 - [ ] TanStack Query 管理 server state（Phase 2）
 - [ ] OSS 文件存储（Phase 2）
-
----
-
-## 2026-06-07/08（Day 3 补充 — 深夜）
-
-### 今天完成了
-
-**存储架构迁移：localStorage → Dexie + TanStack Query**
-
-- 安装 `dexie` + `@tanstack/react-query`
-- 创建 `lib/db.ts`：Dexie 数据库 `prepmind-db`，两张表（messages + ocrRecords）
-- 创建 `lib/query-client.ts`：QueryClient 工厂（staleTime/gcTime Infinity）
-- 创建 `app/providers.tsx`：客户端 QueryClientProvider 包装
-- 创建 `hooks/use-messages.ts`：usePersistedMessages / useSaveMessages / useClearMessages
-- 创建 `hooks/use-ocr-records.ts`：useOcrRecords / useSaveOcrRecords
-- layout.tsx 添加 Providers 包装
-- 删除 `stores/messageStore.ts`，localStorage 仅保留 config/token/UI 状态
-
-**ChatPage 重构：父组件 + 子组件模式**
-
-- ChatPage（父）：负责 Dexie 加载，数据未就绪时显示 loading
-- ChatView（子）：包含 useChat，首次挂载时 initialMessages 已就绪
-- 解决 useChat 的 initialMessages 只在首次渲染生效的问题
-
-**Dexie 持久化修复（多轮迭代）**
-
-- 修复 mutation 对象放在 useEffect 依赖中导致无限 clear+bulkAdd 循环
-- clear() + bulkAdd() 包裹在 db.transaction() 原子事务中
-- mutation 对象改用 ref 持有，从 effect 依赖中移除
-- 首次加载跳过保存（数据已在 Dexie 中）
-- 添加 beforeunload + visibilitychange 监听，页面关闭时强制保存
-- StoredMessage 加 order 字段，Dexie schema v2，解决刷新后消息顺序错乱
-
-**OCR 流式输出**
-
-- `/api/ocr` 改为 SSE 流式转发（MIMO stream: true）
-- 前端 handleOcrSubmit 用 ReadableStream 逐 token 更新结果
-- OcrBubble 空内容时显示加载中，有内容后逐字渲染
-
-### 已知问题（待解决）
-
-**🔴 OCR 记录刷新后丢失**
-- 现象：拍照识别结果在页面刷新后消失
-- 排查：文字聊天消息的 Dexie 持久化已正常工作（4 条消息正确加载）
-- OCR 的 save 机制经过多次迭代（effect 依赖 → 直接调用 → ref + setTimeout）仍未解决
-- 可能根因：React 批处理导致 setOcrMessages 的 state 更新在 save 时还未 commit
-- **明天优先修复此问题**
-
-### Git 提交记录
-```
-08b3ec0 fix: OCR 保存改用 ref + setTimeout，确保数据写入 Dexie
-e21c30d fix: OCR 记录直接在流式完成后保存，不依赖 effect
-8b5c227 chore: 移除 debug 日志
-941ccd7 debug: 追踪消息顺序问题
-ddf430a fix: 等待 OCR 数据加载完成再挂载 ChatView
-dcc3eec debug: 添加 Dexie 持久化 debug 日志
-55755f3 fix: OCR 消息持久化 — 加 ocrLoading 依赖触发流式完成后保存
-fcd37e1 fix: 消息顺序 + OCR 流式输出 + OCR 持久化
-0d8c464 fix: 修复 Dexie 持久化数据丢失（3 个关键问题）
-3a5527e fix: 拆分 ChatPage + ChatView，彻底修复消息丢失
-fb8f590 refactor: Dexie + TanStack Query 替代 messageStore + localStorage
-322cc83 fix: localForage 加载完成前阻塞渲染，修复 AI 回复丢失
-402796c refactor: 引入 TanStack Query + localForage，替代 messageStore
-```
-
-### Phase 1 进度
-
-| 功能 | 状态 |
-|------|------|
-| 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
-| AI 聊天 + 流式输出 + Markdown 渲染 | ✅ 完成 |
-| chatStore 临时状态管理 | ✅ 完成 |
-| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
-| 代码质量审查 + 性能优化 | ✅ 完成 |
-| 拍照识题 + 图片上传（OCR 持久化待修复） | ⚠️ 90% |
-| 错题本 CRUD | ⬜ 待做 |
-| 今日任务（静态版本） | ⬜ 待做 |
-
-### 明天计划
-- **优先**：修复 OCR 记录 Dexie 持久化（可能需要换方案：直接在流式循环中写 Dexie）
-- 错题本 CRUD 页面
-- 代码审查 + 清理
