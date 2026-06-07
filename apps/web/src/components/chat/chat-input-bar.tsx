@@ -91,6 +91,13 @@ export default function ChatInputBar({ input, onInputChange }: ChatInputBarProps
               <Plus className="h-5 w-5" />
             </span>
           </button>
+          <button
+            type="button"
+            className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
+            aria-label="拍照识题"
+          >
+            <Camera className="h-5 w-5" />
+          </button>
         </div>
 
         {input.trim() ? (
