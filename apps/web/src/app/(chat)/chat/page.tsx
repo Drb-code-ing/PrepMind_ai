@@ -26,6 +26,10 @@ export default function ChatPage() {
 
   const allReady = messagesReady && ocrReady;
 
+  if (allReady) {
+    console.log("[ChatPage] loaded messages:", (persistedMessages ?? []).map((m, i) => `${i}:${m.role}:${m.order}`));
+  }
+
   if (!allReady) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
@@ -91,6 +95,8 @@ function ChatView({
     initialInput: inputDraft,
     initialMessages,
   });
+
+  console.log("[ChatView] useChat messages:", messages.map((m, i) => `${i}:${m.role}`));
 
   const scrollToBottom = useCallback(() => {
     isAutoScrollRef.current = true;
@@ -198,9 +204,9 @@ function ChatView({
     }
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
-      saveMessagesRef.current.mutate(
-        msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }))
-      );
+      const stored = msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }));
+      console.log("[save] saving:", stored.map(m => `${m.order}:${m.role}`));
+      saveMessagesRef.current.mutate(stored);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isLoading]);
