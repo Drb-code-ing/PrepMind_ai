@@ -8,7 +8,9 @@ import ChatInputBar from "@/components/chat/chat-input-bar";
 import type { SelectedImage } from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
-import { useMessageStore } from "@/stores/messageStore";
+import { usePersistedMessages, useSaveMessages } from "@/hooks/use-messages";
+import { useOcrRecords, useSaveOcrRecords } from "@/hooks/use-ocr-records";
+import type { OcrRecord } from "@/lib/storage";
 import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,17 +27,22 @@ export default function ChatPage() {
   const rafRef = useRef<number>(0);
 
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
-  const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
+  const { data: persistedMessages, isSuccess: messagesReady } = usePersistedMessages();
+  const saveMessages = useSaveMessages();
+  const { data: persistedOcr } = useOcrRecords();
+  const saveOcr = useSaveOcrRecords();
   const initialLoadDoneRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [ocrMessages, setOcrMessages] = useState<Array<{
-    id: string;
-    type: "user" | "ocr-loading" | "ocr-result";
-    content: string;
-    imageUrl?: string;
-  }>>([]);
+  const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>([]);
+
+  // localForage 加载完后初始化 OCR 记录
+  useEffect(() => {
+    if (persistedOcr && persistedOcr.length > 0) {
+      setOcrMessages(persistedOcr);
+    }
+  }, [persistedOcr]);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -55,7 +62,7 @@ export default function ChatPage() {
   } = useChat({
     api: "/api/chat",
     initialInput: inputDraft,
-    initialMessages: persistedMessages,
+    initialMessages: messagesReady ? persistedMessages : undefined,
   });
 
   // 用户发送新消息时，强制滚到底部
@@ -80,8 +87,8 @@ export default function ChatPage() {
     const imgUrl = selectedImage.previewUrl;
     setOcrMessages((prev) => [
       ...prev,
-      { id: userMsgId, type: "user", content: userText, imageUrl: imgUrl },
-      { id: loadingMsgId, type: "ocr-loading", content: "" },
+      { id: userMsgId, type: "user", content: userText, imageUrl: imgUrl, createdAt: Date.now() },
+      { id: loadingMsgId, type: "ocr-loading", content: "", createdAt: Date.now() },
     ]);
 
     // 清空输入
@@ -106,7 +113,7 @@ export default function ChatPage() {
       setOcrMessages((prev) =>
         prev.map((m) =>
           m.id === loadingMsgId
-            ? { id: `ocr-result-${Date.now()}`, type: "ocr-result", content: data.result }
+            ? { id: `ocr-result-${Date.now()}`, type: "ocr-result", content: data.result, createdAt: Date.now() }
             : m,
         ),
       );
@@ -114,7 +121,7 @@ export default function ChatPage() {
       setOcrMessages((prev) =>
         prev.map((m) =>
           m.id === loadingMsgId
-            ? { id: `ocr-err-${Date.now()}`, type: "ocr-result", content: `识别失败：${err instanceof Error ? err.message : "未知错误"}` }
+            ? { id: `ocr-err-${Date.now()}`, type: "ocr-result", content: `识别失败：${err instanceof Error ? err.message : "未知错误"}`, createdAt: Date.now() }
             : m,
         ),
       );
@@ -129,15 +136,22 @@ export default function ChatPage() {
     messagesRef.current = messages;
   });
 
-  // 持久化聊天消息到 zustand（消息数量变化 或 AI 回复完成时）
+  // 持久化聊天消息到 localForage（消息数量变化 或 AI 回复完成时）
   useEffect(() => {
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
-      setPersistedMessages(
+      saveMessages.mutate(
         msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
       );
     }
-  }, [messages.length, isLoading, setPersistedMessages]);
+  }, [messages.length, isLoading, saveMessages]);
+
+  // 持久化 OCR 记录到 localForage
+  useEffect(() => {
+    if (ocrMessages.length > 0) {
+      saveOcr.mutate(ocrMessages);
+    }
+  }, [ocrMessages.length, saveOcr]);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {

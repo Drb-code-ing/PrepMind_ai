@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUserStore } from "@/stores/userStore";
-import { useMessageStore } from "@/stores/messageStore";
+import { useClearMessages } from "@/hooks/use-messages";
 import {
   CalendarDays,
   BookOpen,
@@ -26,7 +26,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const pathname = usePathname();
   const currentUser = useUserStore((s) => s.currentUser);
   const logout = useUserStore((s) => s.logout);
-  const clearMessages = useMessageStore((s) => s.clearMessages);
+  const clearMessages = useClearMessages();
 
   return (
     <>
@@ -112,7 +112,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             type="button"
             onClick={() => {
               logout();
-              clearMessages();
+              clearMessages.mutate();
               onClose();
             }}
             className="tap-target flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-red-50"
