@@ -10,7 +10,7 @@ import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
 import { usePersistedMessages, useSaveMessages } from "@/hooks/use-messages";
 import { useOcrRecords, useSaveOcrRecords } from "@/hooks/use-ocr-records";
-import type { OcrRecord } from "@/lib/storage";
+import type { OcrRecord } from "@/lib/db";
 import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -37,7 +37,7 @@ export default function ChatPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>([]);
 
-  // localForage 加载完后初始化 OCR 记录
+  // Dexie 加载完后初始化 OCR 记录
   useEffect(() => {
     if (persistedOcr && persistedOcr.length > 0) {
       setOcrMessages(persistedOcr);
@@ -136,7 +136,7 @@ export default function ChatPage() {
     messagesRef.current = messages;
   });
 
-  // 持久化聊天消息到 localForage（消息数量变化 或 AI 回复完成时）
+  // 持久化聊天消息到 Dexie（消息数量变化 或 AI 回复完成时）
   useEffect(() => {
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
@@ -146,7 +146,7 @@ export default function ChatPage() {
     }
   }, [messages.length, isLoading, saveMessages]);
 
-  // 持久化 OCR 记录到 localForage
+  // 持久化 OCR 记录到 Dexie
   useEffect(() => {
     if (ocrMessages.length > 0) {
       saveOcr.mutate(ocrMessages);
@@ -205,7 +205,7 @@ export default function ChatPage() {
 
   const hasMessages = messages.length > 0 || ocrMessages.length > 0;
 
-  // localForage 加载完成前显示骨架屏（useChat 需要 initialMessages 在首次渲染时就绪）
+  // Dexie 加载完成前显示骨架屏（useChat 需要 initialMessages 在首次渲染时就绪）
   if (!messagesReady) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
