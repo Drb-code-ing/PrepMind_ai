@@ -10,8 +10,6 @@ export function useOcrRecords() {
   return useQuery<OcrRecord[]>({
     queryKey: OCR_QUERY_KEY,
     queryFn: () => db.ocrRecords.orderBy("createdAt").toArray(),
-    staleTime: Infinity,
-    gcTime: Infinity,
   });
 }
 

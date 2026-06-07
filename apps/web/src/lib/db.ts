@@ -29,4 +29,5 @@ db.version(1).stores({
 
 db.version(2).stores({
   messages: "id, role, order",
+  ocrRecords: "id, type, createdAt",
 });

@@ -10,8 +10,6 @@ export function usePersistedMessages() {
   return useQuery<StoredMessage[]>({
     queryKey: MESSAGE_QUERY_KEY,
     queryFn: () => db.messages.orderBy("order").toArray(),
-    staleTime: Infinity,
-    gcTime: Infinity,
   });
 }
 

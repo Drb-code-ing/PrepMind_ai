@@ -227,15 +227,28 @@ function ChatView({
       const msgs = messagesRef.current;
       if (msgs.length > 0) {
         const stored = msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }));
-        // 同步写入 Dexie（beforeunload 中 async 可能不完成）
-        db.messages.clear().then(() => db.messages.bulkAdd(stored));
+        db.transaction("rw", db.messages, async () => {
+          await db.messages.clear();
+          await db.messages.bulkAdd(stored);
+        });
+      }
+      const ocr = ocrMsgRef.current;
+      if (ocr.length > 0) {
+        db.transaction("rw", db.ocrRecords, async () => {
+          await db.ocrRecords.clear();
+          await db.ocrRecords.bulkAdd(ocr);
+        });
       }
     };
-    window.addEventListener("beforeunload", flush);
-    document.addEventListener("visibilitychange", () => {
+    const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") flush();
-    });
-    return () => window.removeEventListener("beforeunload", flush);
+    };
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
