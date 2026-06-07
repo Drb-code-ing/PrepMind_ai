@@ -205,6 +205,15 @@ export default function ChatPage() {
 
   const hasMessages = messages.length > 0 || ocrMessages.length > 0;
 
+  // localForage 加载完成前显示骨架屏（useChat 需要 initialMessages 在首次渲染时就绪）
+  if (!messagesReady) {
+    return (
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
