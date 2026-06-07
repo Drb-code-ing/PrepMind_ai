@@ -1,3 +1,7 @@
+// 用户状态管理
+// 用于管理用户相关的状态，如当前登录用户、所有已注册用户等
+// 本地存储,后续可使用数据库存储
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

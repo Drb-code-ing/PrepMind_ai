@@ -1,3 +1,6 @@
+// 聊天状态管理
+// 用于管理聊天相关的临时状态，如输入框内容（切页面不丢失）
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

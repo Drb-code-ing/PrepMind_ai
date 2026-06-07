@@ -120,6 +120,7 @@ export default function ChatPage() {
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto hide-scrollbar"
       >
+        {/* 显示聊天消息 */}
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
             {messages.map((msg, i) => (
@@ -161,7 +162,7 @@ export default function ChatPage() {
     </div>
   );
 }
-
+// memo 优化性能，避免重复渲染 ChatBubble 组件时触发的 useEffect
 const ChatBubble = memo(function ChatBubble({
   role,
   content,
