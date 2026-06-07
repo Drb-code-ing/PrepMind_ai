@@ -33,6 +33,7 @@ export default function ChatPage() {
     id: string;
     type: "user" | "ocr-loading" | "ocr-result";
     content: string;
+    imageUrl?: string;
   }>>([]);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
@@ -80,10 +81,11 @@ export default function ChatPage() {
     const userMsgId = `ocr-user-${Date.now()}`;
     const loadingMsgId = `ocr-loading-${Date.now()}`;
 
-    // 显示用户消息 + loading
+    // 显示用户消息 + loading（保存图片 URL 用于展示）
+    const imgUrl = selectedImage.previewUrl;
     setOcrMessages((prev) => [
       ...prev,
-      { id: userMsgId, type: "user", content: userText || "请识别这道题目" },
+      { id: userMsgId, type: "user", content: userText, imageUrl: imgUrl },
       { id: loadingMsgId, type: "ocr-loading", content: "" },
     ]);
 
@@ -123,7 +125,6 @@ export default function ChatPage() {
       );
     } finally {
       setOcrLoading(false);
-      URL.revokeObjectURL(img.previewUrl);
     }
   }, [selectedImage, ocrLoading, input, setInput, clearInputDraft, scrollToBottom]);
 
@@ -234,6 +235,7 @@ export default function ChatPage() {
                 key={msg.id}
                 type={msg.type}
                 content={msg.content}
+                imageUrl={msg.imageUrl}
                 username={currentUser?.username || "我"}
               />
             ))}
@@ -346,10 +348,12 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
 function OcrBubble({
   type,
   content,
+  imageUrl,
   username,
 }: {
   type: "user" | "ocr-loading" | "ocr-result";
   content: string;
+  imageUrl?: string;
   username: string;
 }) {
   if (type === "user") {
@@ -359,7 +363,14 @@ function OcrBubble({
           {username[0]?.toUpperCase()}
         </div>
         <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
-          <span>{content}</span>
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt="发送的图片"
+              className="mb-2 max-h-48 rounded-lg object-cover"
+            />
+          )}
+          {content && <span>{content}</span>}
         </div>
       </div>
     );
