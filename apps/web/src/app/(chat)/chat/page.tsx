@@ -28,6 +28,12 @@ export default function ChatPage() {
   const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
   const initialLoadDoneRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrMessages, setOcrMessages] = useState<Array<{
+    id: string;
+    type: "user" | "ocr-loading" | "ocr-result";
+    content: string;
+  }>>([]);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage((prev) => {
@@ -55,6 +61,71 @@ export default function ChatPage() {
     initialInput: inputDraft,
     initialMessages: persistedMessages,
   });
+
+  // 用户发送新消息时，强制滚到底部
+  const scrollToBottom = useCallback(() => {
+    isAutoScrollRef.current = true;
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+  }, []);
+
+  // 拍照识题：拦截提交，发送图片到 /api/ocr
+  const handleOcrSubmit = useCallback(async () => {
+    if (!selectedImage || ocrLoading) return;
+
+    const userText = input.trim();
+    const userMsgId = `ocr-user-${Date.now()}`;
+    const loadingMsgId = `ocr-loading-${Date.now()}`;
+
+    // 显示用户消息 + loading
+    setOcrMessages((prev) => [
+      ...prev,
+      { id: userMsgId, type: "user", content: userText || "请识别这道题目" },
+      { id: loadingMsgId, type: "ocr-loading", content: "" },
+    ]);
+
+    // 清空输入
+    const img = selectedImage;
+    setSelectedImage(null);
+    setInput("");
+    clearInputDraft();
+    scrollToBottom();
+    setOcrLoading(true);
+
+    try {
+      const fd = new FormData();
+      fd.append("image", img.file);
+      if (userText) fd.append("text", userText);
+
+      const res = await fetch("/api/ocr", { method: "POST", body: fd });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "识别失败");
+
+      // 替换 loading 为结果
+      setOcrMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingMsgId
+            ? { id: `ocr-result-${Date.now()}`, type: "ocr-result", content: data.result }
+            : m,
+        ),
+      );
+    } catch (err) {
+      setOcrMessages((prev) =>
+        prev.map((m) =>
+          m.id === loadingMsgId
+            ? { id: `ocr-err-${Date.now()}`, type: "ocr-result", content: `识别失败：${err instanceof Error ? err.message : "未知错误"}` }
+            : m,
+        ),
+      );
+    } finally {
+      setOcrLoading(false);
+      URL.revokeObjectURL(img.previewUrl);
+    }
+  }, [selectedImage, ocrLoading, input, setInput, clearInputDraft, scrollToBottom]);
 
   // ref 持有最新 messages，供 effect 读取（避免 messages 作为 effect 依赖导致循环）
   const messagesRef = useRef(messages);
@@ -119,16 +190,6 @@ export default function ChatPage() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [messages, isLoading]);
 
-  // 用户发送新消息时，强制滚到底部
-  const scrollToBottom = useCallback(() => {
-    isAutoScrollRef.current = true;
-    requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    });
-  }, []);
-
   const handleQuickSend = useCallback(
     (text: string) => {
       setInput(text);
@@ -139,7 +200,7 @@ export default function ChatPage() {
     [setInput, scrollToBottom],
   );
 
-  const hasMessages = messages.length > 0;
+  const hasMessages = messages.length > 0 || ocrMessages.length > 0;
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
@@ -167,6 +228,15 @@ export default function ChatPage() {
             {isLoading && messages[messages.length - 1]?.role === "user" && (
               <ChatBubble role="assistant" content="" username="" isLoading />
             )}
+            {/* OCR 识别消息 */}
+            {ocrMessages.map((msg) => (
+              <OcrBubble
+                key={msg.id}
+                type={msg.type}
+                content={msg.content}
+                username={currentUser?.username || "我"}
+              />
+            ))}
           </div>
         ) : (
           <div className="flex flex-col items-center px-4 pt-12">
@@ -184,7 +254,18 @@ export default function ChatPage() {
         )}
       </main>
 
-      <form ref={formRef} data-chat-form onSubmit={handleSubmit}>
+      <form
+        ref={formRef}
+        data-chat-form
+        onSubmit={(e) => {
+          if (selectedImage) {
+            e.preventDefault();
+            handleOcrSubmit();
+          } else {
+            handleSubmit(e);
+          }
+        }}
+      >
         <ChatInputBar
           input={input}
           onInputChange={onInputChange}
@@ -259,5 +340,65 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
     >
       {label}
     </button>
+  );
+}
+
+function OcrBubble({
+  type,
+  content,
+  username,
+}: {
+  type: "user" | "ocr-loading" | "ocr-result";
+  content: string;
+  username: string;
+}) {
+  if (type === "user") {
+    return (
+      <div className="flex flex-row-reverse gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+          {username[0]?.toUpperCase()}
+        </div>
+        <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+          <span>{content}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "ocr-loading") {
+    return (
+      <div className="flex gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Bot className="h-4 w-4" />
+        </div>
+        <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-muted px-4 py-2.5 text-sm text-foreground">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-muted-foreground">正在识别题目...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ocr-result
+  return (
+    <div className="flex gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Bot className="h-4 w-4" />
+      </div>
+      <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
+        <div className="markdown-body">
+          <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
+        </div>
+        <button
+          type="button"
+          onClick={() => alert("错题本功能即将上线，敬请期待！")}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
+        >
+          📝 保存到错题本
+        </button>
+      </div>
+    </div>
   );
 }
