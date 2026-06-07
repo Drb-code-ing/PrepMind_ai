@@ -104,13 +104,13 @@ function ChatView({
 
     const userText = input.trim();
     const userMsgId = `ocr-user-${Date.now()}`;
-    const loadingMsgId = `ocr-loading-${Date.now()}`;
+    const resultMsgId = `ocr-result-${Date.now()}`;
 
     const imgUrl = selectedImage.previewUrl;
     setOcrMessages((prev) => [
       ...prev,
       { id: userMsgId, type: "user", content: userText, imageUrl: imgUrl, createdAt: Date.now() },
-      { id: loadingMsgId, type: "ocr-loading", content: "", createdAt: Date.now() },
+      { id: resultMsgId, type: "ocr-result", content: "", createdAt: Date.now() },
     ]);
 
     const img = selectedImage;
@@ -126,22 +126,55 @@ function ChatView({
       if (userText) fd.append("text", userText);
 
       const res = await fetch("/api/ocr", { method: "POST", body: fd });
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "识别失败");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "识别失败");
+      }
 
-      setOcrMessages((prev) =>
-        prev.map((m) =>
-          m.id === loadingMsgId
-            ? { id: `ocr-result-${Date.now()}`, type: "ocr-result", content: data.result, createdAt: Date.now() }
-            : m,
-        ),
-      );
+      // 流式读取 SSE
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("无法读取响应流");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              setOcrMessages((prev) =>
+                prev.map((m) =>
+                  m.id === resultMsgId
+                    ? { ...m, content: m.content + parsed.content }
+                    : m,
+                ),
+              );
+            }
+          } catch {
+            // 跳过
+          }
+        }
+      }
     } catch (err) {
       setOcrMessages((prev) =>
         prev.map((m) =>
-          m.id === loadingMsgId
-            ? { id: `ocr-err-${Date.now()}`, type: "ocr-result", content: `识别失败：${err instanceof Error ? err.message : "未知错误"}`, createdAt: Date.now() }
+          m.id === resultMsgId
+            ? { ...m, content: `识别失败：${err instanceof Error ? err.message : "未知错误"}` }
             : m,
         ),
       );
@@ -164,7 +197,7 @@ function ChatView({
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
       saveMessagesRef.current.mutate(
-        msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
+        msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }))
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,7 +216,7 @@ function ChatView({
     const flush = () => {
       const msgs = messagesRef.current;
       if (msgs.length > 0) {
-        const stored = msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }));
+        const stored = msgs.map((m, i) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content, order: i }));
         // 同步写入 Dexie（beforeunload 中 async 可能不完成）
         db.messages.clear().then(() => db.messages.bulkAdd(stored));
       }
@@ -437,38 +470,32 @@ function OcrBubble({
     );
   }
 
-  if (type === "ocr-loading") {
-    return (
-      <div className="flex gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <Bot className="h-4 w-4" />
-        </div>
-        <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-muted px-4 py-2.5 text-sm text-foreground">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <span className="text-muted-foreground">正在识别题目...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // ocr-result（内容为空时显示加载中，流式输出时逐字渲染）
   return (
     <div className="flex gap-2.5">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Bot className="h-4 w-4" />
       </div>
       <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
-        <div className="markdown-body">
-          <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
-        </div>
-        <button
-          type="button"
-          onClick={() => alert("错题本功能即将上线，敬请期待！")}
-          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
-        >
-          📝 保存到错题本
-        </button>
+        {content ? (
+          <>
+            <div className="markdown-body">
+              <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
+            </div>
+            <button
+              type="button"
+              onClick={() => alert("错题本功能即将上线，敬请期待！")}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
+            >
+              📝 保存到错题本
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-muted-foreground">正在识别题目...</span>
+          </div>
+        )}
       </div>
     </div>
   );

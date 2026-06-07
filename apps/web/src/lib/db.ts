@@ -4,6 +4,7 @@ export interface StoredMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  order: number;
 }
 
 export interface OcrRecord {
@@ -24,4 +25,8 @@ export const db = new PrepMindDB("prepmind-db");
 db.version(1).stores({
   messages: "id, role",
   ocrRecords: "id, type, createdAt",
+});
+
+db.version(2).stores({
+  messages: "id, role, order",
 });

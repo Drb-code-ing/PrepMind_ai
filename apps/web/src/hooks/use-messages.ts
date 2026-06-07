@@ -9,7 +9,7 @@ export const MESSAGE_QUERY_KEY = ["messages"];
 export function usePersistedMessages() {
   return useQuery<StoredMessage[]>({
     queryKey: MESSAGE_QUERY_KEY,
-    queryFn: () => db.messages.toArray(),
+    queryFn: () => db.messages.orderBy("order").toArray(),
     staleTime: Infinity,
     gcTime: Infinity,
   });

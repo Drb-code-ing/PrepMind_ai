@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 const MIMO_API_URL = "https://api.xiaomimimo.com/v1/chat/completions";
 const MIMO_MODEL = "mimo-v2.5";
@@ -30,16 +30,18 @@ export async function POST(req: NextRequest) {
     const userText = formData.get("text") as string | null;
 
     if (!image) {
-      return NextResponse.json({ error: "请提供图片" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "请提供图片" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    // 读取图片为 base64 data URI
     const buffer = await image.arrayBuffer();
     const base64 = Buffer.from(buffer).toString("base64");
     const mimeType = image.type || "image/jpeg";
     const dataUri = `data:${mimeType};base64,${base64}`;
 
-    // 调用 MIMO v2.5
+    // 调用 MIMO v2.5 streaming
     const response = await fetch(MIMO_API_URL, {
       method: "POST",
       headers: {
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: MIMO_MODEL,
+        stream: true,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           {
@@ -65,34 +68,83 @@ export async function POST(req: NextRequest) {
           },
         ],
       }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!response.ok) {
       const err = await response.text();
       console.error("MIMO API error:", response.status, err);
-      return NextResponse.json(
-        { error: "图片识别服务暂时不可用，请稍后重试" },
-        { status: 502 },
+      return new Response(
+        JSON.stringify({ error: "图片识别服务暂时不可用，请稍后重试" }),
+        { status: 502, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    const data = await response.json();
-    const result = data.choices?.[0]?.message?.content;
+    // 转发 MIMO SSE 流到客户端
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    if (!result) {
-      return NextResponse.json(
-        { error: "未能识别图片内容" },
-        { status: 500 },
-      );
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
 
-    return NextResponse.json({ result });
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+              const data = trimmed.slice(6);
+              if (data === "[DONE]") {
+                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify({ content })}\n\n`)
+                  );
+                }
+              } catch {
+                // 跳过无法解析的行
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Stream error:", err);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch (err) {
     console.error("OCR route error:", err);
-    return NextResponse.json(
-      { error: "识别过程中发生错误" },
-      { status: 500 },
+    return new Response(
+      JSON.stringify({ error: "识别过程中发生错误" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }
