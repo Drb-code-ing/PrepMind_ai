@@ -209,7 +209,7 @@ function ChatView({
       saveOcrRef.current.mutate(ocrMessages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ocrMessages.length]);
+  }, [ocrMessages.length, ocrLoading]);
 
   // 页面关闭/隐藏时强制保存（防止流式输出中途丢失）
   useEffect(() => {
