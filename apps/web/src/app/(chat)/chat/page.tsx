@@ -7,6 +7,7 @@ import ChatSidebar from "@/components/chat/chat-sidebar";
 import ChatInputBar from "@/components/chat/chat-input-bar";
 import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
+import { useMessageStore } from "@/stores/messageStore";
 import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -22,7 +23,9 @@ export default function ChatPage() {
   const isAutoScrollRef = useRef(true);
   const rafRef = useRef<number>(0);
 
-  const { inputDraft, setInputDraft } = useChatStore();
+  const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
+  const { messages: persistedMessages, setMessages: setPersistedMessages } = useMessageStore();
+  const initialLoadDoneRef = useRef(false);
 
   const {
     messages,
@@ -34,7 +37,26 @@ export default function ChatPage() {
   } = useChat({
     api: "/api/chat",
     initialInput: inputDraft,
+    initialMessages: persistedMessages,
   });
+
+  // 持久化聊天消息到 zustand
+  useEffect(() => {
+    if (messages.length > 0) {
+      setPersistedMessages(
+        messages.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
+      );
+    }
+  }, [messages, setPersistedMessages]);
+
+  // 消息数量变化时清空 inputDraft（跳过初始加载）
+  useEffect(() => {
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      return;
+    }
+    clearInputDraft();
+  }, [messages.length, clearInputDraft]);
 
   // 包装 onInputChange，同步到 chatStore
   const onInputChange = useCallback(

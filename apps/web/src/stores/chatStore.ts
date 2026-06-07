@@ -5,6 +5,7 @@ interface ChatState {
   /** 输入框内容（切页面不丢失） */
   inputDraft: string;
   setInputDraft: (text: string) => void;
+  clearInputDraft: () => void;
   /** 清空所有临时状态 */
   resetChat: () => void;
 }
@@ -14,6 +15,7 @@ export const useChatStore = create<ChatState>()(
     (set) => ({
       inputDraft: "",
       setInputDraft: (text) => set({ inputDraft: text }),
+      clearInputDraft: () => set({ inputDraft: "" }),
       resetChat: () => set({ inputDraft: "" }),
     }),
     {

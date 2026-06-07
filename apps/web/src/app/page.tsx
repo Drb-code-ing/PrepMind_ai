@@ -1,4 +1,34 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useUserStore } from "@/stores/userStore";
+
 export default function Home() {
+  const router = useRouter();
+  const currentUser = useUserStore((s) => s.currentUser);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const unsub = useUserStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    if (useUserStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && currentUser) {
+      router.replace("/chat");
+    }
+  }, [hydrated, currentUser, router]);
+
+  if (hydrated && currentUser) {
+    return null;
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
       <h1 className="text-3xl font-bold">PrepMind AI</h1>
