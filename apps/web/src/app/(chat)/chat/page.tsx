@@ -10,6 +10,7 @@ import { useUserStore } from "@/stores/userStore";
 import { useChatStore } from "@/stores/chatStore";
 import { usePersistedMessages, useSaveMessages } from "@/hooks/use-messages";
 import { useOcrRecords, useSaveOcrRecords } from "@/hooks/use-ocr-records";
+import { db } from "@/lib/db";
 import type { StoredMessage, OcrRecord } from "@/lib/db";
 import { Bot, Loader2 } from "lucide-react";
 import Markdown from "react-markdown";
@@ -57,7 +58,12 @@ function ChatView({
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
   const saveMessages = useSaveMessages();
   const saveOcr = useSaveOcrRecords();
+  const saveMessagesRef = useRef(saveMessages);
+  const saveOcrRef = useRef(saveOcr);
+  saveMessagesRef.current = saveMessages;
+  saveOcrRef.current = saveOcr;
   const initialLoadDoneRef = useRef(false);
+  const messagesSavedRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -149,22 +155,45 @@ function ChatView({
     messagesRef.current = messages;
   });
 
-  // 持久化聊天消息到 Dexie
+  // 持久化聊天消息到 Dexie（跳过首次加载，数据已在 Dexie 中）
   useEffect(() => {
+    if (!messagesSavedRef.current) {
+      messagesSavedRef.current = true;
+      return;
+    }
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
-      saveMessages.mutate(
+      saveMessagesRef.current.mutate(
         msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }))
       );
     }
-  }, [messages.length, isLoading, saveMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, isLoading]);
 
   // 持久化 OCR 记录到 Dexie
   useEffect(() => {
     if (ocrMessages.length > 0) {
-      saveOcr.mutate(ocrMessages);
+      saveOcrRef.current.mutate(ocrMessages);
     }
-  }, [ocrMessages.length, saveOcr]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ocrMessages.length]);
+
+  // 页面关闭/隐藏时强制保存（防止流式输出中途丢失）
+  useEffect(() => {
+    const flush = () => {
+      const msgs = messagesRef.current;
+      if (msgs.length > 0) {
+        const stored = msgs.map((m) => ({ id: m.id, role: m.role as "user" | "assistant", content: m.content }));
+        // 同步写入 Dexie（beforeunload 中 async 可能不完成）
+        db.messages.clear().then(() => db.messages.bulkAdd(stored));
+      }
+    };
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
+    return () => window.removeEventListener("beforeunload", flush);
+  }, []);
 
   // 消息数量变化时清空 inputDraft（跳过初始加载）
   useEffect(() => {

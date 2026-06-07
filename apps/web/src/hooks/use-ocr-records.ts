@@ -19,8 +19,10 @@ export function useSaveOcrRecords() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (records: OcrRecord[]) => {
-      await db.ocrRecords.clear();
-      await db.ocrRecords.bulkAdd(records);
+      await db.transaction("rw", db.ocrRecords, async () => {
+        await db.ocrRecords.clear();
+        await db.ocrRecords.bulkAdd(records);
+      });
     },
     onSuccess: (_, records) => qc.setQueryData(OCR_QUERY_KEY, records),
   });

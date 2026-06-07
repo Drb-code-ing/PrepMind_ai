@@ -19,8 +19,10 @@ export function useSaveMessages() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (msgs: StoredMessage[]) => {
-      await db.messages.clear();
-      await db.messages.bulkAdd(msgs);
+      await db.transaction("rw", db.messages, async () => {
+        await db.messages.clear();
+        await db.messages.bulkAdd(msgs);
+      });
     },
     onSuccess: (_, msgs) => qc.setQueryData(MESSAGE_QUERY_KEY, msgs),
   });
