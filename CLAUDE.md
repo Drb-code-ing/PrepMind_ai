@@ -9,7 +9,7 @@
 
 | 层级     | 技术                                                              |
 | -------- | ----------------------------------------------------------------- |
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, zustand, PWA (next-pwa) |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, zustand, TanStack Query, Dexie (IndexedDB), PWA (next-pwa) |
 | Backend  | NestJS 11, Prisma, PostgreSQL, Redis, BullMQ                      |
 | AI       | Vercel AI SDK, OpenAI, DeepSeek, Gemini                           |
 | Agent    | LangGraph（不要 AutoGen）                                         |
@@ -102,7 +102,7 @@ mcp → ai, fsrs, rag, types
 - [x] AI 回复 Markdown 渲染（react-markdown + remark-gfm）
 - [x] chatStore 临时状态管理（inputDraft 切页面不丢）
 - [x] 代码质量审查 + 性能优化（React.memo, rAF 节流, useRef）
-- [ ] 拍照识题 + 图片上传
+- [x] 拍照识题 + 图片上传（OCR 持久化待修复）
 - [ ] 错题本 CRUD
 - [ ] 今日任务（静态版本）
 
