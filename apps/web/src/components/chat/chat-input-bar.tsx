@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Camera, Plus, Mic, Send, Image as ImageIcon, FileText, X } from 'lucide-react';
 
 export interface SelectedImage {
@@ -59,9 +60,12 @@ export default function ChatInputBar({
       {selectedImage && (
         <div className="px-3 pt-2">
           <div className="relative inline-block">
-            <img
+            <Image
               src={selectedImage.previewUrl}
               alt="已选图片"
+              width={80}
+              height={80}
+              unoptimized
               className="h-20 w-20 rounded-xl object-cover ring-1 ring-border"
             />
             <button

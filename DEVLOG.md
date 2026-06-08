@@ -126,18 +126,28 @@
 - 暂不引入统一请求/响应拦截器；Phase 2 接入 NestJS API 后再封装 `apiClient`。
 - 新增 `today-tasks` 回归测试，覆盖 storage key、任务 toggle 和进度计算。
 
+**Phase 1 收尾**
+
+- 清理注册页未使用的 `FIXED_SMS_CODE` 导入，前端 lint 不再有该 warning。
+- 关键图片预览统一改用 `next/image` + `unoptimized`，保留 base64 预览能力并清除 `<img>` warning。
+- 错题详情页备注保存的短暂状态改为可清理 timer，避免卸载后触发状态更新。
+- OCR 提示词升级为固定 Markdown schema，并复用前端 schema 常量。
+- 保存错题前新增字段预览确认，显示题目、学科、错因、知识点、参考答案和缺失字段提示。
+- 新增 `wrong-question-parser` 回归测试，覆盖严格 schema 解析和缺失字段识别。
+
 **代码 review 结论**
 
 - 未发现 P0/P1 阻塞问题。
-- Phase 1 本地错题本数据流可继续使用 Dexie；Phase 2 需要迁移到后端 API + PostgreSQL，并补齐用户级数据隔离。
-- `formatOcrContentForDisplay()` 当前是前端正则兜底，适合 Phase 1；后续应依赖更稳定的 AI JSON/Markdown schema。
-- 错题详情页存在低优先级维护点：备注保存后的临时 `setTimeout` 可在后续改成可清理 ref，避免卸载后触发状态更新。
+- Phase 1 本地错题本数据流可继续使用 Dexie；Phase 2 需要迁移到后端 API + PostgreSQL。
+- Phase 1 已完成本地用户级数据隔离；Phase 2 迁移为后端用户归属。
+- `formatOcrContentForDisplay()` 仍作为展示兜底；字段提取优先依赖固定 Markdown schema。
 
 **验证**
 
 - `node --test apps/web/src/lib/user-scope.test.mts` 通过。
 - `node --test apps/web/src/lib/today-tasks.test.mts` 通过。
-- `npm --workspace @repo/web run lint` 通过，仅剩 `<img>` 与注册页固定验证码常量的 warning。
+- `node --test apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `npm --workspace @repo/web run lint` 通过，0 warning。
 - `npm --workspace @repo/web run build` 通过。
 
 **提交记录**
@@ -159,7 +169,7 @@ c09cde6 feat: 增强错题本操作反馈
 
 - Monorepo、设计文档、基础目录、初始数据库设计、基础设施配置。
 
-**Phase 1：进行中**
+**Phase 1：已完成**
 
 | 功能 | 状态 |
 | --- | --- |
@@ -179,16 +189,9 @@ c09cde6 feat: 增强错题本操作反馈
 
 ## 待办与规划
 
-**Phase 1 剩余待办**
+**Phase 1**
 
-- [ ] 注册页 `FIXED_SMS_CODE` warning 清理或统一复用。
-- [ ] 将关键 `<img>` 场景评估是否替换为 `next/image`，或明确保留 base64 预览例外。
-- [ ] 错题详情页 `setTimeout` 状态复位改为可清理 ref。
-
-**Phase 1 数据流改进**
-
-- [ ] 为 OCR 输出设计更严格的 AI 输出 schema，减少前端正则兜底。
-- [ ] 保存错题前增加更明确的字段预览或二次确认入口。
+- [x] MVP 收尾完成。
 
 **Phase 2 准备**
 

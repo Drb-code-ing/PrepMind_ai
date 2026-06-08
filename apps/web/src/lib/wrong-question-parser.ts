@@ -7,6 +7,32 @@ const HEADING_ALIASES = {
   errorType: ['错因建议', '错因', '错误原因'],
 } as const;
 
+export const WRONG_QUESTION_REQUIRED_FIELDS = [
+  'questionText',
+  'knowledgePoints',
+  'analysis',
+  'answer',
+] as const;
+
+export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 题目
+完整题干。多题时用（1）（2）分段，但仍放在本节内。
+
+## 学科
+只能输出一个值：数学 / 英语 / 物理 / 化学 / 生物 / 计算机 / 其他。
+
+## 知识点
+- 至少 1 个核心知识点
+- 可补充相关章节或概念
+
+## 分析思路
+分步骤解释关键推理过程，避免只给结论。
+
+## 参考答案
+给出最终答案，并保留必要计算或依据。
+
+## 错因建议
+只能优先输出一个值：概念不清 / 审题错误 / 计算错误 / 方法不会 / 记忆遗漏 / 其他。`;
+
 export interface ParsedWrongQuestion {
   questionText: string;
   subject: string;
@@ -17,6 +43,8 @@ export interface ParsedWrongQuestion {
   errorType: string;
   rawContent: string;
 }
+
+type RequiredWrongQuestionField = (typeof WRONG_QUESTION_REQUIRED_FIELDS)[number];
 
 export function formatOcrContentForDisplay(content: string) {
   return content
@@ -137,4 +165,13 @@ export function parseOcrResult(content: string): ParsedWrongQuestion {
         .trim() || inferErrorType(rawContent),
     rawContent,
   };
+}
+
+export function getMissingWrongQuestionFields(parsed: ParsedWrongQuestion) {
+  const missing: RequiredWrongQuestionField[] = [];
+  if (!parsed.questionText.trim()) missing.push('questionText');
+  if (parsed.knowledgePoints.length === 0) missing.push('knowledgePoints');
+  if (!parsed.analysis.trim()) missing.push('analysis');
+  if (!parsed.answer.trim()) missing.push('answer');
+  return missing;
 }

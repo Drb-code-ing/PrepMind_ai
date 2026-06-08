@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
 import { useChat } from '@ai-sdk/react';
+import Image from 'next/image';
 import ChatTopBar from '@/components/chat/chat-top-bar';
 import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
@@ -12,8 +13,13 @@ import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { getScopedUserId } from '@/lib/user-scope';
-import { formatOcrContentForDisplay, parseOcrResult } from '@/lib/wrong-question-parser';
-import { Bot, Check, Loader2 } from 'lucide-react';
+import {
+  formatOcrContentForDisplay,
+  getMissingWrongQuestionFields,
+  parseOcrResult,
+  type ParsedWrongQuestion,
+} from '@/lib/wrong-question-parser';
+import { Bot, Check, Loader2, X } from 'lucide-react';
 
 const SCROLL_THRESHOLD = 100;
 
@@ -45,6 +51,14 @@ type UnifiedMsg =
       content: string;
       time: number;
     };
+
+type PendingWrongQuestionSave = {
+  result: OcrRecord;
+  parsed: ParsedWrongQuestion;
+  imageUrl?: string;
+  sourceGroupId?: string;
+  missingFields: string[];
+};
 
 // ─── Parent: load from Dexie, then mount ChatView ───────────────────
 
@@ -123,6 +137,9 @@ function ChatView({
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
   const [saveWrongErrors, setSaveWrongErrors] = useState<Record<string, string>>({});
+  const [pendingWrongQuestion, setPendingWrongQuestion] =
+    useState<PendingWrongQuestionSave | null>(null);
+  const [confirmSaving, setConfirmSaving] = useState(false);
 
   // ── Chat message timestamps (for unified ordering in-session) ──
   const [chatTimestamps, setChatTimestamps] = useState<Record<string, number>>(() => {
@@ -441,7 +458,7 @@ function ChatView({
     [setInput, scrollToBottom],
   );
 
-  const handleSaveWrongQuestion = useCallback(async (result: OcrRecord) => {
+  const prepareWrongQuestionSave = useCallback(async (result: OcrRecord) => {
     const ownerId = getScopedUserId({ id: userId });
     if (!result.content.trim()) return;
 
@@ -468,6 +485,20 @@ function ChatView({
           .reverse()
           .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
     const parsed = parseOcrResult(result.content);
+    setPendingWrongQuestion({
+      result,
+      parsed,
+      imageUrl: relatedUser?.imageUrl,
+      sourceGroupId,
+      missingFields: getMissingWrongQuestionFields(parsed),
+    });
+  }, [userId]);
+
+  const confirmWrongQuestionSave = useCallback(async () => {
+    if (!pendingWrongQuestion || confirmSaving) return;
+
+    const ownerId = getScopedUserId({ id: userId });
+    const { result, parsed, imageUrl, sourceGroupId } = pendingWrongQuestion;
     const now = Date.now();
     const record: WrongQuestionRecord = {
       id: crypto.randomUUID(),
@@ -475,7 +506,7 @@ function ChatView({
       source: 'ocr',
       sourceRecordId: result.id,
       sourceGroupId,
-      imageUrl: relatedUser?.imageUrl,
+      imageUrl,
       questionText: parsed.questionText,
       subject: parsed.subject,
       category: parsed.category,
@@ -490,16 +521,22 @@ function ChatView({
       updatedAt: now,
     };
 
-    await db.wrongQuestions.add(record);
-    if (sourceGroupId) {
-      setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
-      setSaveWrongErrors((prev) => {
-        const next = { ...prev };
-        delete next[sourceGroupId];
-        return next;
-      });
+    setConfirmSaving(true);
+    try {
+      await db.wrongQuestions.add(record);
+      if (sourceGroupId) {
+        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        setSaveWrongErrors((prev) => {
+          const next = { ...prev };
+          delete next[sourceGroupId];
+          return next;
+        });
+      }
+      setPendingWrongQuestion(null);
+    } finally {
+      setConfirmSaving(false);
     }
-  }, [userId]);
+  }, [confirmSaving, pendingWrongQuestion, userId]);
 
   // ── Unified message timeline (chat + OCR interleaved by time) ──
   const unifiedMessages = useMemo<UnifiedMsg[]>(() => {
@@ -584,7 +621,7 @@ function ChatView({
                   isSaved={Boolean(msg.groupId && savedWrongGroupIds.has(msg.groupId))}
                   saveError={msg.groupId ? saveWrongErrors[msg.groupId] : undefined}
                   onSave={() =>
-                    handleSaveWrongQuestion({
+                    prepareWrongQuestionSave({
                       id: msg.id,
                       userId,
                       type: 'ocr-result',
@@ -662,12 +699,24 @@ function ChatView({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
           onClick={() => setPreviewImage(null)}
         >
-          <img
+          <Image
             src={previewImage}
             alt="图片预览"
+            width={1200}
+            height={1200}
+            unoptimized
             className="max-h-[90vh] max-w-[95vw] object-contain"
           />
         </div>
+      )}
+
+      {pendingWrongQuestion && (
+        <WrongQuestionSaveDialog
+          pending={pendingWrongQuestion}
+          saving={confirmSaving}
+          onCancel={() => setPendingWrongQuestion(null)}
+          onConfirm={() => void confirmWrongQuestionSave()}
+        />
       )}
     </div>
   );
@@ -777,9 +826,12 @@ function OcrBubble({
             {username[0]?.toUpperCase()}
           </div>
           {imageUrl && (
-            <img
+            <Image
               src={imageUrl}
               alt="发送的图片"
+              width={280}
+              height={208}
+              unoptimized
               onClick={() => onImageClick?.(imageUrl)}
               className="max-h-52 max-w-[70%] cursor-pointer rounded-2xl object-cover"
             />
@@ -836,6 +888,128 @@ function OcrBubble({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function WrongQuestionSaveDialog({
+  pending,
+  saving,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingWrongQuestionSave;
+  saving: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const missingLabels: Record<string, string> = {
+    questionText: '题目',
+    knowledgePoints: '知识点',
+    analysis: '分析思路',
+    answer: '参考答案',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/45 sm:items-center sm:justify-center">
+      <div className="max-h-[88dvh] w-full overflow-y-auto rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-md sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">保存到错题本</h2>
+            <p className="mt-1 text-xs text-muted-foreground">确认字段后再保存，后续可在错题详情里修改备注。</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-muted"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {pending.missingFields.length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            AI 输出缺少：
+            {pending.missingFields.map((field) => missingLabels[field] ?? field).join('、')}。
+            仍可保存，但建议稍后补充。
+          </div>
+        )}
+
+        {pending.imageUrl && (
+          <Image
+            src={pending.imageUrl}
+            alt="错题图片预览"
+            width={640}
+            height={360}
+            unoptimized
+            className="mt-3 max-h-48 w-full rounded-lg object-contain ring-1 ring-border"
+          />
+        )}
+
+        <div className="mt-3 space-y-3">
+          <PreviewField label="题目" value={pending.parsed.questionText} />
+          <div className="grid grid-cols-2 gap-2">
+            <PreviewPill label="学科" value={pending.parsed.subject} />
+            <PreviewPill label="错因" value={pending.parsed.errorType} />
+          </div>
+          {pending.parsed.knowledgePoints.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">知识点</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {pending.parsed.knowledgePoints.map((point) => (
+                  <span
+                    key={point}
+                    className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                  >
+                    {point}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <PreviewField label="参考答案" value={pending.parsed.answer} />
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="tap-target flex min-h-11 items-center justify-center rounded-lg border border-border text-sm font-medium transition-colors hover:bg-muted disabled:opacity-60"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={saving}
+            className="tap-target flex min-h-11 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground"
+          >
+            {saving ? '保存中...' : '确认保存'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 max-h-28 overflow-y-auto rounded-lg bg-muted/50 px-3 py-2 text-sm leading-6">
+        {value || '未识别'}
+      </p>
+    </div>
+  );
+}
+
+function PreviewPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/50 px-3 py-2">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-medium">{value || '未识别'}</p>
     </div>
   );
 }

@@ -66,6 +66,7 @@ prepmind / apps / web / server / packages / ui / types / database / ai / fsrs / 
 ## Phase 1：MVP — 最小可行产品（2 周）
 
 > 目标：真正跑起来。
+> 状态：已完成（2026-06-08）。当前实现为纯前端 MVP，本地数据使用 localStorage + Dexie。
 
 ### 技术栈
 

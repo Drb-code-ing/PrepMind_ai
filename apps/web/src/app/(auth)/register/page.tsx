@@ -10,7 +10,7 @@ import {
   validateConfirmPassword,
   type FieldError,
 } from "@/lib/validators";
-import { useUserStore, FIXED_SMS_CODE } from "@/stores/userStore";
+import { useUserStore } from "@/stores/userStore";
 
 function FieldHint({ error }: { error: FieldError }) {
   if (!error) return null;

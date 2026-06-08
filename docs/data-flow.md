@@ -22,7 +22,7 @@ localStorage 或 IndexedDB(Dexie)
 
 ```text
 聊天输入 → /api/chat → DeepSeek → SSE → useChat → Dexie messages
-拍照识题 → /api/ocr  → MIMO v2.5 → SSE → Dexie ocrRecords → 用户确认保存 → Dexie wrongQuestions
+拍照识题 → /api/ocr  → MIMO v2.5 → SSE → 固定 Markdown schema → 用户预览确认 → Dexie wrongQuestions
 ```
 
 Phase 1 没有后端数据库，因此：
@@ -190,7 +190,7 @@ sort(time)
 
 ## 7. 错题本数据流
 
-错题来源目前只有 OCR：
+错题来源目前只有 OCR。OCR prompt 要求 AI 保留固定二级标题 schema，前端解析后先弹出保存预览：
 
 ```text
 OCR 识别结果
@@ -201,7 +201,11 @@ OCR 识别结果
   ↓
 parseOcrResult(content)
   ↓
-组装 WrongQuestionRecord
+校验必填字段：题目 / 知识点 / 分析思路 / 参考答案
+  ↓
+展示保存预览与缺失字段提示
+  ↓
+用户确认后组装 WrongQuestionRecord
   ↓
 db.wrongQuestions.add(record)
   ↓
@@ -253,6 +257,7 @@ db.wrongQuestions.update/delete
 - `category`：优先取第一个知识点，缺失时回退到学科。
 - `knowledgePoints`：从 AI 输出的知识点列表提取，最多保留 8 个。
 - `errorType`：优先取 AI 输出的错因，缺失时由关键词推断。
+- `questionText`、`knowledgePoints`、`analysis`、`answer` 是保存预览的重点字段，缺失时提示用户补充。
 
 ---
 
@@ -334,4 +339,4 @@ writeTodayTaskState(userId, state)
 - PostgreSQL 成为唯一真实数据源。
 - Dexie 降级为离线缓存和乐观更新层。
 - TanStack Query 只管理 API server state，不再包裹本地 Dexie 读写。
-- OCR 输出应升级为严格 schema，前端解析只做校验和兜底。
+- OCR 输出在 Phase 1 已使用固定 Markdown schema；Phase 2 可升级为后端 schema 校验和结构化 JSON。

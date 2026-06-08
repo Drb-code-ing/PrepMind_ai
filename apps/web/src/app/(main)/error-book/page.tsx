@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, Trash2, X } from 'lucide-react';
 
@@ -336,9 +337,12 @@ function WrongQuestionCard({
             </p>
           </div>
           {item.imageUrl && (
-            <img
+            <Image
               src={item.imageUrl}
               alt="错题图片"
+              width={64}
+              height={64}
+              unoptimized
               className="h-16 w-16 shrink-0 rounded-md object-cover ring-1 ring-border"
             />
           )}
@@ -392,6 +396,7 @@ function WrongQuestionDetail({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [detailNotice, setDetailNotice] = useState<ActionNotice | null>(null);
   const detailNoticeTimerRef = useRef<number | null>(null);
+  const noteSavedTimerRef = useRef<number | null>(null);
   const noteChanged = note !== item.userNote;
 
   const showDetailNotice = (message: string, type: ActionNotice['type'] = 'success') => {
@@ -410,6 +415,9 @@ function WrongQuestionDetail({
       if (detailNoticeTimerRef.current) {
         window.clearTimeout(detailNoticeTimerRef.current);
       }
+      if (noteSavedTimerRef.current) {
+        window.clearTimeout(noteSavedTimerRef.current);
+      }
     };
   }, []);
 
@@ -422,7 +430,13 @@ function WrongQuestionDetail({
       setNoteSaved(true);
       showDetailNotice('备注已保存');
       onAction('备注已保存');
-      window.setTimeout(() => setNoteSaved(false), 1400);
+      if (noteSavedTimerRef.current) {
+        window.clearTimeout(noteSavedTimerRef.current);
+      }
+      noteSavedTimerRef.current = window.setTimeout(() => {
+        setNoteSaved(false);
+        noteSavedTimerRef.current = null;
+      }, 1400);
     } finally {
       setSavingNote(false);
     }
@@ -488,9 +502,12 @@ function WrongQuestionDetail({
         </div>
 
         {item.imageUrl && (
-          <img
+          <Image
             src={item.imageUrl}
             alt="错题图片"
+            width={800}
+            height={480}
+            unoptimized
             className="mt-4 max-h-80 w-full rounded-lg object-contain ring-1 ring-border"
           />
         )}

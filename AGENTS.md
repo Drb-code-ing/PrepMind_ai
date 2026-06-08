@@ -93,7 +93,7 @@ mcp → ai, fsrs, rag, types
 - Prisma Schema 初稿。
 - Docker 基础设施配置。
 
-### Phase 1 — MVP 进行中
+### Phase 1 — MVP 已完成
 
 目标：真正跑起来。当前是纯前端 MVP，不接入数据库服务端。
 
@@ -120,8 +120,8 @@ mcp → ai, fsrs, rag, types
   - `messages`：聊天消息，按 `userId` 隔离。
   - `ocrRecords`：OCR 图片与识别结果，按 `userId` 隔离，使用 `groupId` 绑定同一次 OCR。
   - `wrongQuestions`：错题本记录，按 `userId` 隔离，使用 `sourceGroupId` 防重复保存。
-- OCR 是当前错题唯一来源：AI 识别题目，用户点击保存后写入错题本。
-- 错题分类由 AI 输出字段优先决定，前端解析失败时按关键词兜底。
+- OCR 是当前错题唯一来源：AI 按固定 Markdown schema 识别题目，用户预览确认后写入错题本。
+- 错题分类由 AI 输出字段优先决定，前端解析失败时按关键词兜底，并在保存预览中提示缺失字段。
 - 退出登录只清除登录态，不删除 IndexedDB 业务数据；同一账号重新登录可恢复自己的历史。
 - 详细数据流见 `docs/data-flow.md`。
 
@@ -137,7 +137,6 @@ mcp → ai, fsrs, rag, types
 
 ## 下一步
 
-- 暂不引入统一请求/响应拦截器；Phase 2 接入 NestJS API 后再封装 `apiClient`。
-- 为 OCR 输出设计更严格的 AI schema。
 - 为 Phase 2 准备 Auth、WrongQuestion、ChatMessage、OCRRecord API。
+- Phase 2 接入 NestJS API 后再封装 `apiClient` 与请求/响应拦截器。
 - Phase 2 恢复 TanStack Query，并将 Dexie 降级为离线缓存。
