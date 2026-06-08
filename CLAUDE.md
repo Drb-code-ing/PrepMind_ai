@@ -109,11 +109,12 @@ mcp → ai, fsrs, rag, types
 - [x] Dexie 本地持久化：`messages`、`ocrRecords`、`wrongQuestions`
 - [x] OCR 与聊天统一时间线
 - [x] 错题本 CRUD（本地版）
-- [ ] 今日任务（静态版本）
+- [x] 今日任务（静态版本）
 
 ## Phase 1 数据流
 
 - localStorage：只保存 `prepmind-user` 和 `prepmind-chat`。
+- 今日任务静态版使用 `prepmind-today:{userId}:{yyyy-mm-dd}` 保存当天完成状态。
 - Dexie 数据库：`prepmind-db`。
 - Dexie 表：
   - `messages`：聊天消息，按 `userId` 隔离。
@@ -136,7 +137,7 @@ mcp → ai, fsrs, rag, types
 
 ## 下一步
 
-- 完成 Phase 1 今日任务静态版。
+- 暂不引入统一请求/响应拦截器；Phase 2 接入 NestJS API 后再封装 `apiClient`。
 - 为 OCR 输出设计更严格的 AI schema。
 - 为 Phase 2 准备 Auth、WrongQuestion、ChatMessage、OCRRecord API。
 - Phase 2 恢复 TanStack Query，并将 Dexie 降级为离线缓存。

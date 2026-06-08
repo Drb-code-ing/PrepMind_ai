@@ -117,6 +117,15 @@
 - 重写 `CLAUDE.md` 与 `AGENTS.md`，同步当前命令、模块规则、Phase 1 进度和下一步。
 - 整理 `DEVLOG.md`，将同一天改动合并记录，并把所有待办与规划统一收口到文末。
 
+**今日任务静态版**
+
+- 新增 `TODAY_TASKS` 静态任务模板：知识点复盘、错题回看、拍照识题、学习总结。
+- `/today` 改为可交互任务面板，支持任务勾选、进度条、预计时长和快捷入口。
+- 完成状态保存到 `prepmind-today:{userId}:{yyyy-mm-dd}`，按账号和日期隔离。
+- 页面读取当前用户未掌握错题数量，用于增强错题复习任务提示。
+- 暂不引入统一请求/响应拦截器；Phase 2 接入 NestJS API 后再封装 `apiClient`。
+- 新增 `today-tasks` 回归测试，覆盖 storage key、任务 toggle 和进度计算。
+
 **代码 review 结论**
 
 - 未发现 P0/P1 阻塞问题。
@@ -127,6 +136,7 @@
 **验证**
 
 - `node --test apps/web/src/lib/user-scope.test.mts` 通过。
+- `node --test apps/web/src/lib/today-tasks.test.mts` 通过。
 - `npm --workspace @repo/web run lint` 通过，仅剩 `<img>` 与注册页固定验证码常量的 warning。
 - `npm --workspace @repo/web run build` 通过。
 
@@ -163,7 +173,7 @@ c09cde6 feat: 增强错题本操作反馈
 | Dexie 保存 messages / ocrRecords / wrongQuestions + userId 账号隔离 | 完成 |
 | 聊天 + OCR 统一时间线 | 完成 |
 | 错题本 CRUD（本地版） | 完成 |
-| 今日任务（静态版） | 待做 |
+| 今日任务（静态版） | 完成 |
 
 ---
 
@@ -171,7 +181,6 @@ c09cde6 feat: 增强错题本操作反馈
 
 **Phase 1 剩余待办**
 
-- [ ] 今日任务静态页面：任务列表、完成状态、简单统计。
 - [ ] 注册页 `FIXED_SMS_CODE` warning 清理或统一复用。
 - [ ] 将关键 `<img>` 场景评估是否替换为 `next/image`，或明确保留 base64 预览例外。
 - [ ] 错题详情页 `setTimeout` 状态复位改为可清理 ref。
