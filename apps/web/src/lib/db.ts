@@ -5,6 +5,7 @@ export interface StoredMessage {
   role: "user" | "assistant";
   content: string;
   order: number;
+  createdAt: number;
 }
 
 export interface OcrRecord {
@@ -30,4 +31,17 @@ db.version(1).stores({
 db.version(2).stores({
   messages: "id, role, order",
   ocrRecords: "id, type, createdAt",
+});
+
+db.version(3).stores({
+  messages: "id, role, order, createdAt",
+  ocrRecords: "id, type, createdAt",
+}).upgrade(async (tx) => {
+  // Populate createdAt for existing messages that lack it
+  const baseTime = Date.now();
+  await tx.table("messages").toCollection().modify((msg) => {
+    if (!msg.createdAt) {
+      msg.createdAt = baseTime - (1000 * (msg.order || 0));
+    }
+  });
 });

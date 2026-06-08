@@ -248,6 +248,50 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 
 ---
 
+## 2026-06-08（Day 4）
+
+### 今天完成了
+
+**架构审查：TanStack Query 真实角色分析**
+
+- 逐行审查了 TanStack Query + Dexie 的全部代码，发现 TanStack Query 在 Phase 1 是死重：
+  - `staleTime: Infinity` + `gcTime: Infinity` 关闭了所有自动刷新能力
+  - `useQuery` 直接读 Dexie，不走 HTTP，等价于 `useState + await Dexie`
+  - 全局只用了 `useQuery` + `useMutation` + `setQueryData`，`invalidateQueries`、`useInfiniteQuery` 等核心 API 全未使用
+  - `beforeunload` 处理器已经证明直接 Dexie 写入完全可行
+- 结论：当前引入纯粹是 Day 3 迁移 localStorage→Dexie 时的过早引入，Phase 2 接入 API 时再装回来即可
+
+**移除 TanStack Query**
+
+- 删除 `hooks/use-messages.ts`、`hooks/use-ocr-records.ts`（TanStack Query 薄封装）
+- 删除 `lib/query-client.ts`（QueryClient 工厂）
+- 删除 `app/providers.tsx`（QueryClientProvider）
+- `app/layout.tsx` 移除 Providers 包裹
+- `chat-sidebar.tsx` 退出登录改为直接 `db.transaction()` 清空两张 Dexie 表
+- 卸载 `@tanstack/react-query` 依赖，bundle 减小 ~47KB
+- 空 `hooks/` 目录一并移除
+
+**Dexie schema v3 — 消息时间戳**
+
+- `StoredMessage` 新增 `createdAt: number` 字段
+- 新增 v3 schema：`messages: "id, role, order, createdAt"` + upgrade 迁移填充旧数据
+
+**统一消息渲染管线（修复 OCR 渲染顺序）**
+
+- 新增 `UnifiedMsg` 类型（`"chat" | "ocr-user" | "ocr-result"`）
+- `chatTimestamps` state + effect 追踪每条聊天消息的创建时间戳
+- `useMemo` 将 chat messages + OCR records 合并并按 `time` 排序，ChatBubble 和 OcrBubble 按时间线交错渲染
+- OCR 流式完成保存移除 `setTimeout(100)` 竞态，改为直接用 `fullContent`（权威数据）patch ref 后保存
+- 保存路径统一：chat 和 OCR 都走直接 Dexie `clear + bulkAdd` 事务，不再有双重写入路径
+
+### Git 提交记录（Day 4）
+
+```
+（待提交）
+```
+
+---
+
 ## Phase 1 进度
 
 | 功能 | 状态 |
@@ -257,20 +301,19 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 | chatStore 临时状态管理 | ✅ 完成 |
 | 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
 | 代码质量审查 + 性能优化 | ✅ 完成 |
-| 拍照识题 + 图片上传 + OCR 流式 | ✅ 完成（刷新渲染顺序待修复） |
+| 拍照识题 + 图片上传 + OCR 流式 | ✅ 完成 |
+| OCR/聊天消息渲染顺序统一 | ✅ 完成 |
 | 错题本 CRUD | ⬜ 待做 |
 | 今日任务（静态版本） | ⬜ 待做 |
 
 ## 待解决
 
-- **OCR 消息与聊天消息渲染顺序错乱**：先发图片再发文字，新文字消息显示在图片对话上方。根因：OCR 消息和聊天消息是两套独立的状态和渲染管线（`ocrMessages` state vs `useChat` messages），没有统一的时间线排序
-- OCR 刷新后渲染顺序错误（同上，统一渲染管线可一并解决）
 - 上下文长度限制（Phase 2）
 - 消息持久化到数据库（Phase 2）
+- 无对话历史管理（Phase 2）
 
 ## 明天计划
 
-- 修复 OCR + 聊天消息渲染顺序（统一消息渲染管线，按时间线排序）
 - 错题本 CRUD 页面
 - 今日任务静态页面
 
@@ -278,15 +321,15 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 
 ## Phase 1→Phase 2 迁移规划
 
-> 此区为统一迁移规划，后续每期在此追加进展。
+> Phase 2 接入后端时恢复 TanStack Query，当前 Phase 1 直接 Dexie 足够。
 
 ### 存储分层策略
 
 | 层级 | Phase 1（当前） | Phase 2（目标） | 存什么 |
 |------|-----------------|-----------------|--------|
 | localStorage | zustand + persist | 保留 | 配置、token、用户信息、UI 偏好 |
-| TanStack Query | 内存缓存 | 扩展为 server state 管理 | Dexie/API 数据的内存副本 |
 | IndexedDB | Dexie (`prepmind-db`) | 保留为离线缓存 | 聊天消息、OCR 记录、错题 |
+| TanStack Query | —（已移除） | 引入管理 server state | API 数据的缓存层 |
 | PostgreSQL | — | Prisma + pgvector | 唯一真值来源 |
 | Redis | — | ioredis | 接口缓存、登录态、限流 |
 | 对象存储 | — | OSS / COS / MinIO | 图片、大文件；PG 只存 URL |
@@ -294,32 +337,26 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 ### 迁移路线
 
 ```
-Phase 1                    Phase 2
+Phase 1（当前）             Phase 2
 ──────────────────────────────────────────────────
-localStorage (全量)   →    localStorage (仅 config/token)
-zustand + persist     →    zustand (纯 UI 状态)
-Dexie messages        →    useInfiniteQuery (TanStack Query)
-Dexie ocrRecords      →    useQuery + API
-userStore (持久化)    →    useQuery + JWT auth
-—                     →    PostgreSQL (唯一真值)
-—                     →    Redis (缓存层)
-—                     →    OSS (文件存储)
+localStorage (config+token)  →  保留
+zustand (UI 状态)             →  保留
+Dexie messages + ocrRecords  →  useInfiniteQuery + API（TanStack Query 重新引入）
+useChat (流式聊天)            →  不变
+—                             →  PostgreSQL (唯一真值)
+—                             →  Redis (缓存层)
+—                             →  OSS (文件存储)
 ```
-
-### 设计原则
-
-- **zustand 仅存 UI 状态和业务数据的缓存/中转**，不作为最终数据源
-- **前端存储是离线副本**，提升移动端体验，支持弱网/离线场景
-- **PostgreSQL 是唯一真值来源**，前端数据最终同步到后端
-- **useChat 继续管流式聊天**，与 TanStack Query 职责不冲突
 
 ### 当前进展
 
 - [x] localStorage 三层分离（userStore / chatStore）
-- [x] Dexie + TanStack Query 替代 messageStore
-- [x] 聊天消息持久化到 Dexie（正常工作）
-- [ ] OCR 记录刷新后渲染顺序修复
+- [x] 聊天消息 + OCR 记录持久化到 Dexie
+- [x] 统一消息渲染管线（chat + OCR 按时间线排序）
+- [x] 移除过早引入的 TanStack Query（Phase 2 再装）
+- [ ] 错题本 CRUD
+- [ ] 今日任务（静态版本）
 - [ ] PostgreSQL + Prisma 接入（Phase 2）
 - [ ] Redis 缓存层（Phase 2）
-- [ ] TanStack Query 管理 server state（Phase 2）
+- [ ] TanStack Query 重新引入（Phase 2）
 - [ ] OSS 文件存储（Phase 2）

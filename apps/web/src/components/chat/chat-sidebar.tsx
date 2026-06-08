@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUserStore } from "@/stores/userStore";
-import { useClearMessages } from "@/hooks/use-messages";
+import { db } from "@/lib/db";
 import {
   CalendarDays,
   BookOpen,
@@ -26,7 +26,6 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const pathname = usePathname();
   const currentUser = useUserStore((s) => s.currentUser);
   const logout = useUserStore((s) => s.logout);
-  const clearMessages = useClearMessages();
 
   return (
     <>
@@ -112,7 +111,10 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             type="button"
             onClick={() => {
               logout();
-              clearMessages.mutate();
+              db.transaction("rw", db.messages, db.ocrRecords, async () => {
+                await db.messages.clear();
+                await db.ocrRecords.clear();
+              });
               onClose();
             }}
             className="tap-target flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-red-50"
