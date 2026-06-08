@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CheckCircle2, Clock, Trash2, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, Trash2, X } from 'lucide-react';
 
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
@@ -303,7 +303,7 @@ function WrongQuestionCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="rounded-lg border border-border bg-card p-3">
+    <article className="rounded-lg border border-border bg-card p-3 transition-colors active:bg-muted/40">
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -343,7 +343,7 @@ function WrongQuestionCard({
           <button
             type="button"
             onClick={onToggleStatus}
-            className="tap-target flex h-9 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10"
+            className="tap-target flex h-9 items-center gap-1 rounded-md px-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
           >
             <CheckCircle2 className="h-4 w-4" />
             {item.status === 'resolved' ? '标为未掌握' : '标为已掌握'}
@@ -351,7 +351,7 @@ function WrongQuestionCard({
           <button
             type="button"
             onClick={onDelete}
-            className="tap-target flex h-9 w-9 items-center justify-center rounded-md text-destructive hover:bg-destructive/10"
+            className="tap-target flex h-9 w-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 active:scale-[0.96]"
             aria-label="删除错题"
           >
             <Trash2 className="h-4 w-4" />
@@ -378,13 +378,38 @@ function WrongQuestionDetail({
   const [note, setNote] = useState(item.userNote);
   const [savingNote, setSavingNote] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [detailNotice, setDetailNotice] = useState<ActionNotice | null>(null);
+  const detailNoticeTimerRef = useRef<number | null>(null);
+  const noteChanged = note !== item.userNote;
+
+  const showDetailNotice = (message: string, type: ActionNotice['type'] = 'success') => {
+    if (detailNoticeTimerRef.current) {
+      window.clearTimeout(detailNoticeTimerRef.current);
+    }
+    setDetailNotice({ message, type });
+    detailNoticeTimerRef.current = window.setTimeout(() => {
+      setDetailNotice(null);
+      detailNoticeTimerRef.current = null;
+    }, NOTICE_DURATION);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (detailNoticeTimerRef.current) {
+        window.clearTimeout(detailNoticeTimerRef.current);
+      }
+    };
+  }, []);
 
   const saveNote = async () => {
+    if (!noteChanged || savingNote) return;
     setSavingNote(true);
     setNoteSaved(false);
     try {
       await onUpdate({ userNote: note });
       setNoteSaved(true);
+      showDetailNotice('备注已保存');
       onAction('备注已保存');
       window.setTimeout(() => setNoteSaved(false), 1400);
     } finally {
@@ -392,28 +417,63 @@ function WrongQuestionDetail({
     }
   };
 
+  const toggleStatus = async () => {
+    if (statusUpdating) return;
+
+    const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';
+    setStatusUpdating(true);
+    try {
+      await onUpdate({ status: nextStatus });
+      const message = nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握';
+      showDetailNotice(message);
+      onAction(message);
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">错题详情</h2>
-          <p className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
+    <div className="fixed inset-0 z-50 bg-muted/30">
+      <header className="sticky top-0 z-10 border-b border-border bg-background px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">错题详情</h2>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  item.status === 'resolved'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {statusLabels[item.status]}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{formatDate(item.createdAt)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="tap-target flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted active:scale-95"
+            aria-label="关闭"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="tap-target flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted"
-          aria-label="关闭"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {detailNotice && (
+          <div className="mt-3">
+            <ActionNoticeBar notice={detailNotice} />
+          </div>
+        )}
       </header>
 
-      <div className="h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-4">
-        <div className="flex flex-wrap gap-1.5">
-          <Badge>{item.subject || '其他'}</Badge>
-          <Badge subtle>{item.category || '未分类'}</Badge>
-          <Badge subtle>{item.errorType || '其他'}</Badge>
+      <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto px-4 py-4 pb-28">
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge>{item.subject || '其他'}</Badge>
+            <Badge subtle>{item.category || '未分类'}</Badge>
+            <Badge subtle>{item.errorType || '其他'}</Badge>
+          </div>
         </div>
 
         {item.imageUrl && (
@@ -426,7 +486,7 @@ function WrongQuestionDetail({
 
         <DetailSection title="题目" content={item.questionText} />
         {item.knowledgePoints.length > 0 && (
-          <section className="mt-5">
+          <section className="mt-4 rounded-lg border border-border bg-background p-3">
             <h3 className="text-sm font-semibold">知识点</h3>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {item.knowledgePoints.map((point) => (
@@ -440,16 +500,22 @@ function WrongQuestionDetail({
         <DetailSection title="分析思路" content={item.analysis} />
         <DetailSection title="参考答案" content={item.answer} />
 
-        <section className="mt-5">
+        <section className="mt-4 rounded-lg border border-border bg-background p-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">我的备注</h3>
             <button
               type="button"
               onClick={() => void saveNote()}
-              disabled={savingNote}
-              className="min-h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors disabled:bg-muted disabled:text-muted-foreground"
+              disabled={savingNote || !noteChanged}
+              className="min-h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
             >
-              {savingNote ? '保存中...' : noteSaved ? '已保存' : '保存备注'}
+              {savingNote
+                ? '保存中...'
+                : noteSaved
+                  ? '已保存'
+                  : noteChanged
+                    ? '保存备注'
+                    : '已同步'}
             </button>
           </div>
           <Textarea
@@ -460,27 +526,31 @@ function WrongQuestionDetail({
           />
         </section>
 
-        <div className="mt-6 flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={() => {
-              const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';
-              void onUpdate({ status: nextStatus }).then(() => {
-                onAction(nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握');
-              });
-            }}
-            className="tap-target flex flex-1 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground"
-          >
-            {item.status === 'resolved' ? '标为未掌握' : '标为已掌握'}
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="tap-target flex h-11 w-11 items-center justify-center rounded-lg bg-destructive/10 text-destructive"
-            aria-label="删除错题"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void toggleStatus()}
+              disabled={statusUpdating}
+              className="tap-target flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
+            >
+              {statusUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+              {statusUpdating
+                ? '更新中...'
+                : item.status === 'resolved'
+                  ? '标为未掌握'
+                  : '标为已掌握'}
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="tap-target flex h-11 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 text-sm font-medium text-destructive transition-colors active:scale-[0.96]"
+              aria-label="删除错题"
+            >
+              <Trash2 className="h-5 w-5" />
+              删除
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -491,9 +561,9 @@ function DetailSection({ title, content }: { title: string; content: string }) {
   if (!content.trim()) return null;
 
   return (
-    <section className="mt-5">
+    <section className="mt-4 rounded-lg border border-border bg-background p-3">
       <h3 className="text-sm font-semibold">{title}</h3>
-      <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm leading-6">
+      <div className="mt-2 text-sm leading-6">
         <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
       </div>
     </section>
