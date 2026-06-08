@@ -1,335 +1,213 @@
-# PrepMind AI — 数据流向全景图
+# PrepMind AI — Phase 1 数据流
 
-> Phase 1 最新版（2026-06-08 Day 4）：移除 TanStack Query，统一消息渲染管线，直接 Dexie 持久化。
-
----
-
-## 一、存储层总览（Phase 1 现状）
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        浏览器 (Client)                           │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  localStorage（zustand + persist）                        │   │
-│  │                                                          │   │
-│  │  prepmind-user  → { currentUser, users[] }  配置/token   │   │
-│  │  prepmind-chat  → { inputDraft }            UI 状态      │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  IndexedDB — Dexie (prepmind-db)                          │   │
-│  │                                                          │   │
-│  │  messages       → { id, role, content, order, createdAt }│   │
-│  │  ocrRecords     → { id, type, groupId, imageUrl, ... }   │   │
-│  │  wrongQuestions → { questionText, subject, status, ... } │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  内存态 (React)                                           │   │
-│  │                                                          │   │
-│  │  useChat (Vercel AI SDK) → messages[], input, isLoading  │   │
-│  │  chatTimestamps (useState) → 每条消息的创建时间戳         │   │
-│  │  useUserStore (zustand)   → currentUser                  │   │
-│  │  useChatStore (zustand)   → inputDraft                   │   │
-│  │  ocrMessages (useState)   → OCR 识别记录                  │   │
-│  │  unifiedMessages (useMemo) → chat + OCR 合并时间线       │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  外部服务                                                 │   │
-│  │                                                          │   │
-│  │  DeepSeek API ← /api/chat (Vercel AI SDK streamText)    │   │
-│  │  MIMO v2.5    ← /api/ocr  (SSE 流式转发)                │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**与 Day 3 的关键差异**：
-
-- 移除 TanStack Query 内存缓存层（Phase 1 无服务端，`staleTime: Infinity` 使其无实际价值）
-- 新增 `chatTimestamps` state 追踪聊天消息创建时间
-- 新增 `unifiedMessages` 合并 chat + OCR 统一渲染
+> 当前版本：2026-06-08。Phase 1 是纯前端 MVP，不接入数据库服务端；浏览器本地状态暂由 localStorage + Dexie 承担。
 
 ---
 
-## 二、核心数据流详解
+## 1. 总览
 
-### 2.1 用户注册流
-
-```
-用户输入 (email + username + password + confirm)
-        │
-        ▼
-  register/page — 客户端校验 (validateEmail/Password/Username)
-        │
-        ▼
-  useUserStore.register(user)
-        │
-        ├──→ zustand state: currentUser + users[] 更新
-        │
-        └──→ persist → localStorage "prepmind-user" 写入
+```text
+用户操作
+  ↓
+Next.js Client Component
+  ↓
+React / zustand 内存态
+  ↓
+localStorage 或 IndexedDB(Dexie)
+  ↓
+页面刷新后从本地恢复
 ```
 
-### 2.2 用户登录流
+外部 AI 调用仍通过 Next.js API Route 代理：
 
-```
-用户输入 (phone/email + code/password)
-        │
-        ▼
-  login/page — 校验通过
-        │
-        ▼
-  useUserStore.loginByPhone() / loginByEmail()
-        │
-        ├──→ zustand state: currentUser 更新
-        │
-        └──→ persist → localStorage "prepmind-user" 写入
+```text
+聊天输入 → /api/chat → DeepSeek → SSE → useChat → Dexie messages
+拍照识题 → /api/ocr  → MIMO v2.5 → SSE → Dexie ocrRecords → 用户确认保存 → Dexie wrongQuestions
 ```
 
-### 2.3 登录态持久化 + AuthGuard
+Phase 1 没有后端数据库，因此：
 
-```
-页面刷新 / 新标签页
-        │
-        ▼
-  zustand persist 自动从 localStorage 恢复
-        │
-        ▼
-  useUserStore.persist.onFinishHydration() 等待水合完成
-        │
-        ▼
-  AuthGuard 检查 currentUser
-        │
-        ├── 有值 → 放行
-        └── null → redirect /login
-```
-
-### 2.4 AI 聊天消息流（核心）
-
-```
-用户输入文字 → onInputChange → useChat input + chatStore.inputDraft
-        │
-        ▼  点击发送
-  handleSubmit → POST /api/chat { messages }
-        │
-        ▼
-  streamText (DeepSeek) → SSE 流式响应
-        │
-        ▼  逐 token
-  useChat 内部: messages[] 更新 → React 重渲染
-        │
-        ├──→ chatTimestamps effect: 新消息 ID 记录 Date.now()
-        │
-        ├──→ unifiedMessages useMemo: chat + OCR 合并排序
-        │         │
-        │         └──→ ChatBubble Markdown 渲染（rAF 节流滚动）
-        │
-        ├──→ messagesRef (useLayoutEffect 同步)
-        │
-        └──→ saveChatToDb effect (messages.length/isLoading 变化)
-                    │
-                    ▼
-              Dexie transaction: messages.clear() + bulkAdd()
-              （每条消息含 createdAt 时间戳）
-```
-
-**保存时机**（每次聊天至少 2 次全量写入）：
-
-1. 用户消息 + assistant 占位进入数组 → `messages.length` 变化 → 第 1 次 clear + bulkAdd
-2. AI 流式完成 → `isLoading` true→false → 第 2 次 clear + bulkAdd
-
-### 2.5 拍照识题 OCR 流
-
-```
-用户选图 → camera/gallery <input type="file">
-        │
-        ▼
-  FileReader.readAsDataURL → base64 预览
-        │
-        ▼  点击发送（有图片时拦截，不走 useChat）
-  handleOcrSubmit
-        │
-        ├──→ ocrMsgRef.current 追加 user + ocr-result 占位
-        ├──→ setOcrMessages: 立即渲染用户消息卡片
-        │
-        ▼
-  POST /api/ocr (FormData: image + text)
-        │
-        ▼
-  MIMO v2.5 (stream: true) → SSE 转发
-        │
-        ▼  逐 token
-  ReadableStream 消费 → setOcrMessages 更新 result 内容
-        │
-        ▼  流式完成
-  fullContent（权威数据）patch ocrMsgRef.current → saveOcrToDb
-  （直接保存，无 setTimeout）
-        │
-        ▼
-  OcrBubble 渲染: Markdown + 「保存到错题本」按钮
-        │
-        ▼
-  用户点击保存 → parseOcrResult(content) → Dexie wrongQuestions.add()
-  （按 groupId 绑定 OCR 图片与识别结果，并防止重复保存）
-```
-
-### 2.6 上下文恢复（刷新页面）
-
-```
-页面刷新
-        │
-        ▼
-  ChatPage (父组件)
-        │
-        ├── useEffect: db.messages.orderBy("order").toArray()
-        ├── useEffect: db.ocrRecords.orderBy("createdAt").toArray()
-        │
-        ▼  两个查询都完成
-  ChatView (子组件) 挂载
-        │
-        ├── initialMessages → useChat 初始化（首次渲染就有正确数据）
-        ├── initialOcrRecords → ocrMessages + chatTimestamps 初始化
-        │
-        ▼
-  unifiedMessages useMemo: 合并两个来源 → 按 createdAt 排序 → 渲染
-```
-
-### 2.7 退出登录流
-
-```
-点击「退出登录」
-        │
-        ├── useUserStore.logout() → localStorage 清空 currentUser
-        │
-        ├── db.transaction("rw", db.messages, db.ocrRecords, async () => {
-        │       await db.messages.clear();
-        │       await db.ocrRecords.clear();
-        │   })
-        │
-        └── onClose() → 侧边栏关闭
-```
-
-### 2.8 页面关闭保护流
-
-```
-beforeunload / visibilitychange(hidden)
-        │
-        ▼
-  flush()
-        │
-        ├── messagesRef.current → map 为 StoredMessage（含 createdAt）
-        │       → db.transaction: messages.clear() + bulkAdd()
-        │
-        └── ocrMsgRef.current
-                → db.transaction: ocrRecords.clear() + bulkAdd()
-```
+- localStorage 只存用户态和 UI 草稿。
+- Dexie 是本地业务数据源。
+- TanStack Query 已移除，Phase 2 接入 HTTP API 后再恢复。
 
 ---
 
-## 三、统一消息时间线（Day 4 核心修复）
+## 2. 存储分层
 
-### 问题
-
-Day 3 之前 OCR 消息和聊天消息是两套独立渲染管线：
-
-```jsx
-{
-  messages.map((msg) => <ChatBubble />);
-} // ← 所有聊天消息
-{
-  ocrMessages.map((msg) => <OcrBubble />);
-} // ← 所有 OCR（始终在聊天后面）
-```
-
-先发文字 → 再拍照 → 再发文字，顺序变为 [聊天1, 聊天2, 聊天3, OCR1] 而非正确的 [聊天1, OCR1, 聊天2, 聊天3]。
-
-### 方案
-
-```ts
-type UnifiedMsg =
-  | { kind: "chat"; ... time: number }       // 聊天消息，time 来自 chatTimestamps
-  | { kind: "ocr-user"; ... time: number }   // OCR 用户消息，time 来自 OcrRecord.createdAt
-  | { kind: "ocr-result"; ... time: number } // OCR 识别结果
-
-// 渲染时合并排序
-const unifiedMessages = useMemo(() => {
-  const chatEntries = messages.map(m => ({ kind: "chat", time: chatTimestamps[m.id] }));
-  const ocrEntries  = ocrMessages.map(m => ({ kind: "ocr-...", time: m.createdAt }));
-  return [...chatEntries, ...ocrEntries].sort((a, b) => a.time - b.time);
-}, [messages, ocrMessages, chatTimestamps]);
-
-// JSX 单次遍历，按 kind 分派 Bubble
-{unifiedMessages.map(msg => msg.kind === "chat" ? <ChatBubble /> : <OcrBubble />)}
-```
-
-- **在会话中**：`chatTimestamps` state 为每条聊天消息记录 `Date.now()` 作为时间基准
-- **刷新恢复**：从 Dexie 的 `createdAt` 字段恢复（v3 schema 迁移保证每条消息都有 createdAt）
-- **OCR 消息**：已有 `createdAt` 字段，直接参与排序
+| 存储 | Key / 表 | 当前内容 | 说明 |
+| --- | --- | --- | --- |
+| localStorage | `prepmind-user` | `currentUser`、`users[]` | Phase 1 模拟登录注册 |
+| localStorage | `prepmind-chat` | `inputDraft` | 切页不丢输入框草稿 |
+| IndexedDB | `messages` | 聊天消息 | 由 `useChat()` 产生，写入 Dexie |
+| IndexedDB | `ocrRecords` | OCR 用户图片与识别结果 | 按 `groupId` 绑定同一次 OCR |
+| IndexedDB | `wrongQuestions` | 错题本记录 | Phase 1 错题本唯一数据源 |
 
 ---
 
-## 四、Store / Hook 关系图
+## 3. 登录态数据流
 
+```text
+注册/登录表单
+  ↓
+客户端校验
+  ↓
+useUserStore.register / loginByPhone / loginByEmail
+  ↓
+zustand state 更新
+  ↓
+persist 写入 localStorage: prepmind-user
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     ChatPage (父)                        │
-│  useEffect: db.messages.orderBy("order").toArray()      │
-│  useEffect: db.ocrRecords.orderBy("createdAt").toArray()│
-│         │                         │                      │
-│         ▼                         ▼                      │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │              ChatView (子)                       │    │
-│  │                                                  │    │
-│  │  useChat()           ← initialMessages (Dexie)  │    │
-│  │  useUserStore()      ← localStorage (config)    │    │
-│  │  useChatStore()      ← localStorage (inputDraft)│    │
-│  │  chatTimestamps      → 聊天消息创建时间追踪      │    │
-│  │  ocrMessages state   → OCR 识别记录              │    │
-│  │  unifiedMessages     → chat + OCR 合并时间线     │    │
-│  │                                                  │    │
-│  │  saveChatToDb() ──→ Dexie messages (effect 触发)│    │
-│  │  saveOcrToDb()   ──→ Dexie ocrRecords (流式完成)│    │
-│  │  flush()         ──→ Dexie (beforeunload 保护)  │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                          │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │  ChatSidebar                                    │    │
-│  │  useUserStore.logout()                          │    │
-│  │  db.transaction: messages.clear() + ocr.clear() │    │
-│  └─────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
+
+刷新或进入受保护页面时：
+
+```text
+Client useEffect
+  ↓
+hydrateUserStoreFromStorage()
+  ↓
+从 localStorage 手动恢复 currentUser / users
+  ↓
+AuthGuard 判断 currentUser
+  ↓
+有用户：放行；无用户：redirect /login
 ```
+
+这里不用服务端读取 localStorage，避免 SSR 与 CSR 首屏不一致导致 hydration warning。
 
 ---
 
-## 五、Dexie Schema
+## 4. 聊天数据流
 
-| 版本 | messages 索引              | ocrRecords 索引              | 说明                                 |
-| ---- | -------------------------- | ---------------------------- | ------------------------------------ |
-| v1   | id, role                   | id, type, createdAt          | 初始版本                             |
-| v2   | id, role, order            | id, type, createdAt          | 新增 order 解决刷新乱序              |
-| v3   | id, role, order, createdAt | id, type, createdAt          | 新增 createdAt 支持统一时间线        |
-| v4   | id, role, order, createdAt | id, type, groupId, createdAt | 新增 wrongQuestions 表 + OCR groupId |
+```text
+用户输入文本
+  ↓
+ChatInputBar onInputChange
+  ↓
+useChat input + chatStore.inputDraft
+  ↓
+提交到 /api/chat
+  ↓
+DeepSeek SSE 流式返回
+  ↓
+useChat messages[] 更新
+  ↓
+MarkdownRenderer 渲染 Markdown / GFM / 数学公式
+  ↓
+saveChatToDb()
+  ↓
+Dexie transaction: messages.clear() + messages.bulkAdd()
+```
+
+`messages` 表字段：
 
 ```ts
 interface StoredMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  order: number; // 自增序号，刷新恢复时保证基础顺序
-  createdAt: number; // 创建时间戳，统一时间线排序基准
+  order: number;
+  createdAt: number;
 }
+```
 
+保存策略：
+
+- 用户消息进入数组后保存一次。
+- AI 流式完成、`isLoading` 变为 false 后再保存一次，确保最终回复不丢。
+- 页面关闭或隐藏时执行 flush，减少未写入风险。
+
+---
+
+## 5. OCR 数据流
+
+```text
+用户选择图片或拍照
+  ↓
+FileReader 转 base64 预览
+  ↓
+提交到 /api/ocr
+  ↓
+MIMO v2.5 SSE 流式返回
+  ↓
+ocrMessages 实时更新
+  ↓
+流式完成后写入 Dexie ocrRecords
+```
+
+`ocrRecords` 表字段：
+
+```ts
 interface OcrRecord {
   id: string;
   type: 'user' | 'ocr-loading' | 'ocr-result';
-  groupId?: string; // 同一次 OCR 的图片与识别结果共享 groupId
+  groupId?: string;
   content: string;
-  imageUrl?: string; // base64 data URL
-  createdAt: number; // 创建时间戳
+  imageUrl?: string;
+  createdAt: number;
 }
+```
 
+`groupId` 用来把同一次 OCR 的图片消息与识别结果绑定起来，也是保存错题时防重复的关键来源。
+
+---
+
+## 6. 聊天 + OCR 统一时间线
+
+Day 3 的问题是聊天消息和 OCR 消息分两段渲染，刷新后顺序可能变成“全部聊天在前，OCR 在后”。
+
+当前方案：
+
+```ts
+type UnifiedMsg =
+  | { kind: 'chat'; time: number }
+  | { kind: 'ocr-user'; time: number }
+  | { kind: 'ocr-result'; time: number };
+```
+
+渲染时：
+
+```text
+messages + ocrMessages
+  ↓
+按 createdAt / chatTimestamps 合并
+  ↓
+sort(time)
+  ↓
+一次 map，根据 kind 分发到 ChatBubble / OcrBubble
+```
+
+刷新恢复时：
+
+- `messages` 使用 Dexie 里的 `createdAt`。
+- `ocrRecords` 直接使用表里的 `createdAt`。
+- 新消息用 `chatTimestamps` 记录创建时间。
+
+---
+
+## 7. 错题本数据流
+
+错题来源目前只有 OCR：
+
+```text
+OCR 识别结果
+  ↓
+用户点击“保存到错题本”
+  ↓
+检查 sourceGroupId 是否已存在
+  ↓
+parseOcrResult(content)
+  ↓
+组装 WrongQuestionRecord
+  ↓
+db.wrongQuestions.add(record)
+  ↓
+按钮变为“已保存”，禁止重复保存
+```
+
+`wrongQuestions` 表字段：
+
+```ts
 interface WrongQuestionRecord {
   id: string;
   source: 'ocr' | 'manual' | 'chat';
@@ -351,51 +229,78 @@ interface WrongQuestionRecord {
 }
 ```
 
----
+错题本页面读写：
 
-## 六、Phase 2 迁移规划
-
-### 存储分层策略
-
-| 层级           | Phase 1（当前）   | Phase 2（目标）             |
-| -------------- | ----------------- | --------------------------- |
-| localStorage   | zustand + persist | 保留（config/token/UI）     |
-| IndexedDB      | Dexie 直接读写    | 保留为离线缓存              |
-| TanStack Query | —（Day 4 移除）   | 重新引入，管理 server state |
-| PostgreSQL     | —                 | Prisma + pgvector           |
-| Redis          | —                 | 接口缓存、登录态、限流      |
-| 对象存储       | —                 | OSS / MinIO                 |
-
-### 迁移路线
-
-```
-Phase 1（当前）              Phase 2
-───────────────────────────────────────────────────
-localStorage (config+token)  →  保留
-zustand (UI 状态)            →  保留
-Dexie messages + ocrRecords  →  useInfiniteQuery + API
-Dexie 直接读写                →  TanStack Query 缓存层
-useChat (流式聊天)            →  不变
-—                             →  PostgreSQL (唯一真值)
-—                             →  Redis (缓存层)
-—                             →  OSS (文件存储)
+```text
+/error-book 初始加载
+  ↓
+db.wrongQuestions.orderBy('createdAt').reverse().toArray()
+  ↓
+本地 state items
+  ↓
+筛选 / 详情 / 删除 / 标记掌握 / 保存备注
+  ↓
+db.wrongQuestions.update/delete
 ```
 
-### 设计原则
+当前分类策略：
 
-- **zustand 仅存 UI 状态**，不作为最终数据源
-- **Dexie 是离线副本**，Phase 2 降级为本地缓存层
-- **Phase 2 恢复 TanStack Query** 时，`queryFn` 从 Dexie 改为 API，利用 `staleTime` 做乐观缓存
-- **useChat 继续管流式聊天**，与 TanStack Query 职责不冲突
+- `subject`：优先取 AI 输出的学科，缺失时由关键词推断。
+- `category`：优先取第一个知识点，缺失时回退到学科。
+- `knowledgePoints`：从 AI 输出的知识点列表提取，最多保留 8 个。
+- `errorType`：优先取 AI 输出的错因，缺失时由关键词推断。
 
 ---
 
-## 七、前端 vs 后端职责划分
+## 8. Dexie Schema 版本
 
-| 功能 | Phase 1 前端                        | Phase 2 后端               |
-| ---- | ----------------------------------- | -------------------------- |
-| 认证 | zustand + localStorage              | NestJS AuthModule + Prisma |
-| 聊天 | useChat + Dexie 直接读写            | ChatModule + PostgreSQL    |
-| OCR  | /api/ocr → MIMO                     | BullMQ 异步队列            |
-| 错题 | Dexie wrongQuestions + OCR 保存入口 | WrongQuestion CRUD         |
-| 文件 | base64 内联                         | MinIO/OSS 存储             |
+| 版本 | messages | ocrRecords | wrongQuestions | 说明 |
+| --- | --- | --- | --- | --- |
+| v1 | `id, role` | `id, type, createdAt` | - | 初始本地消息/OCR |
+| v2 | `id, role, order` | `id, type, createdAt` | - | 增加消息顺序 |
+| v3 | `id, role, order, createdAt` | `id, type, createdAt` | - | 增加消息时间戳 |
+| v4 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, subject, category, errorType, status, createdAt, updatedAt` | 增加错题本 |
+| v5 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加 `sourceGroupId` 索引 |
+
+v5 的 `sourceGroupId` 索引用于保存错题时按 OCR group 防重复。
+
+---
+
+## 9. 登出数据流
+
+```text
+点击“退出登录”
+  ↓
+useUserStore.logout()
+  ↓
+currentUser 置空
+  ↓
+Dexie transaction 清空：
+  - messages
+  - ocrRecords
+  - wrongQuestions
+  ↓
+返回登录/聊天入口
+```
+
+Phase 1 采用“登出清空本地业务数据”的策略，避免模拟多用户时数据串用。Phase 2 后需要改为后端用户隔离，不应简单清空真实历史数据。
+
+---
+
+## 10. Phase 2 迁移方向
+
+| 功能 | Phase 1 | Phase 2 |
+| --- | --- | --- |
+| 认证 | zustand + localStorage | NestJS AuthModule + session/JWT |
+| 聊天记录 | Dexie `messages` | ChatMessage API + PostgreSQL |
+| OCR 记录 | Dexie `ocrRecords` + base64 | OCR API + BullMQ + 对象存储 URL |
+| 错题本 | Dexie `wrongQuestions` | WrongQuestion CRUD API + PostgreSQL |
+| 服务端状态 | 无 TanStack Query | TanStack Query 管理 API 缓存 |
+| 离线能力 | Dexie 是主数据源 | Dexie 作为离线缓存 |
+
+迁移原则：
+
+- PostgreSQL 成为唯一真实数据源。
+- Dexie 降级为离线缓存和乐观更新层。
+- TanStack Query 只管理 API server state，不再包裹本地 Dexie 读写。
+- OCR 输出应升级为严格 schema，前端解析只做校验和兜底。
