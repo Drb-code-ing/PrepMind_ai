@@ -77,11 +77,20 @@
 
 **Dexie 与消息时间线**
 
-- Dexie schema 升级到 v5。
+- Dexie schema 升级到 v6。
 - `messages` 增加 `createdAt`，支持刷新后按时间线恢复。
 - `ocrRecords` 增加 `groupId`，绑定同一次 OCR 的图片与识别结果。
 - 新增 `wrongQuestions` 表，作为 Phase 1 错题本唯一数据源。
 - 聊天消息与 OCR 消息合并为 `unifiedMessages`，按时间排序统一渲染。
+
+**本地账号隔离修复**
+
+- `messages`、`ocrRecords`、`wrongQuestions` 新增 `userId` 字段和 Dexie 索引。
+- 聊天页、OCR 记录、错题本页面全部按当前 `currentUser.id` 读写。
+- 保存聊天和 OCR 时只替换当前用户自己的本地记录，不再全表 `clear()`。
+- 退出登录不再清空 IndexedDB 业务数据，同一账号重新登录可以恢复自己的历史。
+- 清空 localStorage 但未清空 IndexedDB 时，旧的无 `userId` 数据不会再展示给新注册账号。
+- 新增 `user-scope` 回归测试，覆盖当前用户过滤和未登录写入保护。
 
 **错题本 CRUD**
 
@@ -117,6 +126,7 @@
 
 **验证**
 
+- `node --test apps/web/src/lib/user-scope.test.mts` 通过。
 - `npm --workspace @repo/web run lint` 通过，仅剩 `<img>` 与注册页固定验证码常量的 warning。
 - `npm --workspace @repo/web run build` 通过。
 
@@ -150,7 +160,7 @@ c09cde6 feat: 增强错题本操作反馈
 | Markdown + GFM + 数学公式渲染 | 完成 |
 | chatStore 输入草稿保存 | 完成 |
 | 拍照识题 + 图片上传 + OCR 流式输出 | 完成 |
-| Dexie 保存 messages / ocrRecords / wrongQuestions | 完成 |
+| Dexie 保存 messages / ocrRecords / wrongQuestions + userId 账号隔离 | 完成 |
 | 聊天 + OCR 统一时间线 | 完成 |
 | 错题本 CRUD（本地版） | 完成 |
 | 今日任务（静态版） | 待做 |
@@ -170,7 +180,6 @@ c09cde6 feat: 增强错题本操作反馈
 
 - [ ] 为 OCR 输出设计更严格的 AI 输出 schema，减少前端正则兜底。
 - [ ] 保存错题前增加更明确的字段预览或二次确认入口。
-- [ ] 规划本地数据按用户隔离，避免多用户共享同一个 IndexedDB 数据集。
 
 **Phase 2 准备**
 

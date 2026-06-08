@@ -11,6 +11,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
+import { getScopedUserId } from '@/lib/user-scope';
 import { formatOcrContentForDisplay, parseOcrResult } from '@/lib/wrong-question-parser';
 import { Bot, Check, Loader2 } from 'lucide-react';
 
@@ -48,15 +49,34 @@ type UnifiedMsg =
 // ─── Parent: load from Dexie, then mount ChatView ───────────────────
 
 export default function ChatPage() {
-  const [loadedMessages, setLoadedMessages] = useState<StoredMessage[] | null>(null);
-  const [loadedOcr, setLoadedOcr] = useState<OcrRecord[] | null>(null);
+  const currentUser = useUserStore((s) => s.currentUser);
+  const [loaded, setLoaded] = useState<{
+    userId: string;
+    messages: StoredMessage[];
+    ocrRecords: OcrRecord[];
+  } | null>(null);
+  const userId = currentUser?.id ?? null;
 
   useEffect(() => {
-    db.messages.orderBy('order').toArray().then(setLoadedMessages);
-    db.ocrRecords.orderBy('createdAt').toArray().then(setLoadedOcr);
-  }, []);
+    if (!userId) return;
 
-  if (loadedMessages === null || loadedOcr === null) {
+    let cancelled = false;
+
+    Promise.all([
+      db.messages.where('userId').equals(userId).sortBy('order'),
+      db.ocrRecords.where('userId').equals(userId).sortBy('createdAt'),
+    ]).then(([messages, ocrRecords]) => {
+      if (!cancelled) {
+        setLoaded({ userId, messages, ocrRecords });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  if (!userId || !loaded || loaded.userId !== userId) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -64,15 +84,24 @@ export default function ChatPage() {
     );
   }
 
-  return <ChatView initialMessages={loadedMessages} initialOcrRecords={loadedOcr} />;
+  return (
+    <ChatView
+      key={userId}
+      userId={userId}
+      initialMessages={loaded.messages}
+      initialOcrRecords={loaded.ocrRecords}
+    />
+  );
 }
 
 // ─── ChatView: main chat UI ─────────────────────────────────────────
 
 function ChatView({
+  userId,
   initialMessages: persistedMessages,
   initialOcrRecords: persistedOcr,
 }: {
+  userId: string;
   initialMessages: StoredMessage[];
   initialOcrRecords: OcrRecord[];
 }) {
@@ -134,12 +163,16 @@ function ChatView({
   });
 
   useEffect(() => {
-    db.wrongQuestions.toArray().then((items) => {
-      setSavedWrongGroupIds(
-        new Set(items.map((item) => item.sourceGroupId).filter(Boolean) as string[]),
-      );
-    });
-  }, []);
+    db.wrongQuestions
+      .where('userId')
+      .equals(userId)
+      .toArray()
+      .then((items) => {
+        setSavedWrongGroupIds(
+          new Set(items.map((item) => item.sourceGroupId).filter(Boolean) as string[]),
+        );
+      });
+  }, [userId]);
 
   // ── Track chat message creation timestamps ──
   const prevMsgIdsRef = useRef<Set<string>>(new Set(persistedMessages.map((m) => m.id)));
@@ -160,17 +193,21 @@ function ChatView({
   // ── Direct Dexie save helpers (no TanStack Query) ──
   const saveChatToDb = useCallback(async (msgs: StoredMessage[]) => {
     await db.transaction('rw', db.messages, async () => {
-      await db.messages.clear();
-      await db.messages.bulkAdd(msgs);
+      await db.messages.where('userId').equals(userId).delete();
+      if (msgs.length > 0) {
+        await db.messages.bulkAdd(msgs);
+      }
     });
-  }, []);
+  }, [userId]);
 
   const saveOcrToDb = useCallback(async (records: OcrRecord[]) => {
     await db.transaction('rw', db.ocrRecords, async () => {
-      await db.ocrRecords.clear();
-      await db.ocrRecords.bulkAdd(records);
+      await db.ocrRecords.where('userId').equals(userId).delete();
+      if (records.length > 0) {
+        await db.ocrRecords.bulkAdd(records);
+      }
     });
-  }, []);
+  }, [userId]);
 
   // ── Persist chat messages to Dexie (skip first load) ──
   useEffect(() => {
@@ -184,6 +221,7 @@ function ChatView({
       saveChatToDb(
         msgs.map((m, i) => ({
           id: m.id,
+          userId,
           role: m.role as 'user' | 'assistant',
           content: m.content,
           order: i,
@@ -202,20 +240,21 @@ function ChatView({
         const ts = chatTimestampsRef.current;
         const stored = msgs.map((m, i) => ({
           id: m.id,
+          userId,
           role: m.role as 'user' | 'assistant',
           content: m.content,
           order: i,
           createdAt: ts[m.id] ?? Date.now(),
         }));
         db.transaction('rw', db.messages, async () => {
-          await db.messages.clear();
+          await db.messages.where('userId').equals(userId).delete();
           await db.messages.bulkAdd(stored);
         });
       }
       const ocr = ocrMsgRef.current;
       if (ocr.length > 0) {
         db.transaction('rw', db.ocrRecords, async () => {
-          await db.ocrRecords.clear();
+          await db.ocrRecords.where('userId').equals(userId).delete();
           await db.ocrRecords.bulkAdd(ocr);
         });
       }
@@ -229,7 +268,7 @@ function ChatView({
       window.removeEventListener('beforeunload', flush);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, []);
+  }, [userId]);
 
   // ── Message count change → clear input draft (skip initial load) ──
   useEffect(() => {
@@ -291,13 +330,21 @@ function ChatView({
       ...ocrMsgRef.current,
       {
         id: userMsgId,
+        userId,
         type: 'user',
         groupId,
         content: userText,
         imageUrl: imgUrl,
         createdAt: Date.now(),
       },
-      { id: resultMsgId, type: 'ocr-result', groupId, content: '', createdAt: Date.now() + 1 },
+      {
+        id: resultMsgId,
+        userId,
+        type: 'ocr-result',
+        groupId,
+        content: '',
+        createdAt: Date.now() + 1,
+      },
     ];
     setOcrMessages(initialOcrMsgs);
 
@@ -374,7 +421,16 @@ function ChatView({
     } finally {
       setOcrLoading(false);
     }
-  }, [selectedImage, ocrLoading, input, setInput, clearInputDraft, scrollToBottom, saveOcrToDb]);
+  }, [
+    selectedImage,
+    ocrLoading,
+    input,
+    userId,
+    setInput,
+    clearInputDraft,
+    scrollToBottom,
+    saveOcrToDb,
+  ]);
 
   const handleQuickSend = useCallback(
     (text: string) => {
@@ -386,12 +442,14 @@ function ChatView({
   );
 
   const handleSaveWrongQuestion = useCallback(async (result: OcrRecord) => {
+    const ownerId = getScopedUserId({ id: userId });
     if (!result.content.trim()) return;
 
     const sourceGroupId = result.groupId;
     if (sourceGroupId) {
       const existing = await db.wrongQuestions
-        .filter((item) => item.sourceGroupId === sourceGroupId)
+        .where('[userId+sourceGroupId]')
+        .equals([ownerId, sourceGroupId])
         .first();
       if (existing) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
@@ -413,6 +471,7 @@ function ChatView({
     const now = Date.now();
     const record: WrongQuestionRecord = {
       id: crypto.randomUUID(),
+      userId: ownerId,
       source: 'ocr',
       sourceRecordId: result.id,
       sourceGroupId,
@@ -440,7 +499,7 @@ function ChatView({
         return next;
       });
     }
-  }, []);
+  }, [userId]);
 
   // ── Unified message timeline (chat + OCR interleaved by time) ──
   const unifiedMessages = useMemo<UnifiedMsg[]>(() => {
@@ -527,6 +586,7 @@ function ChatView({
                   onSave={() =>
                     handleSaveWrongQuestion({
                       id: msg.id,
+                      userId,
                       type: 'ocr-result',
                       groupId: msg.groupId,
                       content: msg.content,

@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 
 export interface StoredMessage {
   id: string;
+  userId: string;
   role: 'user' | 'assistant';
   content: string;
   order: number;
@@ -10,6 +11,7 @@ export interface StoredMessage {
 
 export interface OcrRecord {
   id: string;
+  userId: string;
   type: 'user' | 'ocr-loading' | 'ocr-result';
   groupId?: string;
   content: string;
@@ -22,6 +24,7 @@ export type WrongQuestionStatus = 'unresolved' | 'resolved';
 
 export interface WrongQuestionRecord {
   id: string;
+  userId: string;
   source: WrongQuestionSource;
   sourceRecordId?: string;
   sourceGroupId?: string;
@@ -47,6 +50,22 @@ class PrepMindDB extends Dexie {
 }
 
 export const db = new PrepMindDB('prepmind-db');
+
+function readLegacyOwnerId() {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = window.localStorage.getItem('prepmind-user');
+    if (!raw) return undefined;
+
+    const parsed = JSON.parse(raw) as {
+      state?: { currentUser?: { id?: unknown } | null };
+    };
+    const id = parsed.state?.currentUser?.id;
+    return typeof id === 'string' && id ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 db.version(1).stores({
   messages: 'id, role',
@@ -88,3 +107,28 @@ db.version(5).stores({
   wrongQuestions:
     'id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt',
 });
+
+db.version(6)
+  .stores({
+    messages: 'id, userId, [userId+order], role, order, createdAt',
+    ocrRecords: 'id, userId, [userId+createdAt], type, groupId, createdAt',
+    wrongQuestions:
+      'id, userId, [userId+sourceGroupId], [userId+createdAt], source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt',
+  })
+  .upgrade(async (tx) => {
+    const legacyOwnerId = readLegacyOwnerId();
+    if (!legacyOwnerId) return;
+
+    await Promise.all(
+      ['messages', 'ocrRecords', 'wrongQuestions'].map((tableName) =>
+        tx
+          .table(tableName)
+          .toCollection()
+          .modify((record) => {
+            if (!record.userId) {
+              record.userId = legacyOwnerId;
+            }
+          }),
+      ),
+    );
+  });

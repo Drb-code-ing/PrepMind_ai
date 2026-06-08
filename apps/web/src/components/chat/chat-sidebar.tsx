@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUserStore } from '@/stores/userStore';
-import { db } from '@/lib/db';
 import { CalendarDays, BookOpen, User, LogOut, X } from 'lucide-react';
 
 interface ChatSidebarProps {
@@ -98,11 +97,6 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             type="button"
             onClick={() => {
               logout();
-              db.transaction('rw', db.messages, db.ocrRecords, db.wrongQuestions, async () => {
-                await db.messages.clear();
-                await db.ocrRecords.clear();
-                await db.wrongQuestions.clear();
-              });
               onClose();
             }}
             className="tap-target flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-red-50"

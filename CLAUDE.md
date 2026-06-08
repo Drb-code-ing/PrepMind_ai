@@ -116,11 +116,12 @@ mcp → ai, fsrs, rag, types
 - localStorage：只保存 `prepmind-user` 和 `prepmind-chat`。
 - Dexie 数据库：`prepmind-db`。
 - Dexie 表：
-  - `messages`：聊天消息。
-  - `ocrRecords`：OCR 图片与识别结果，使用 `groupId` 绑定同一次 OCR。
-  - `wrongQuestions`：错题本记录，使用 `sourceGroupId` 防重复保存。
+  - `messages`：聊天消息，按 `userId` 隔离。
+  - `ocrRecords`：OCR 图片与识别结果，按 `userId` 隔离，使用 `groupId` 绑定同一次 OCR。
+  - `wrongQuestions`：错题本记录，按 `userId` 隔离，使用 `sourceGroupId` 防重复保存。
 - OCR 是当前错题唯一来源：AI 识别题目，用户点击保存后写入错题本。
 - 错题分类由 AI 输出字段优先决定，前端解析失败时按关键词兜底。
+- 退出登录只清除登录态，不删除 IndexedDB 业务数据；同一账号重新登录可恢复自己的历史。
 - 详细数据流见 `docs/data-flow.md`。
 
 ## 当前注意事项

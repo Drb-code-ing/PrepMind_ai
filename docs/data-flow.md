@@ -39,9 +39,9 @@ Phase 1 没有后端数据库，因此：
 | --- | --- | --- | --- |
 | localStorage | `prepmind-user` | `currentUser`、`users[]` | Phase 1 模拟登录注册 |
 | localStorage | `prepmind-chat` | `inputDraft` | 切页不丢输入框草稿 |
-| IndexedDB | `messages` | 聊天消息 | 由 `useChat()` 产生，写入 Dexie |
-| IndexedDB | `ocrRecords` | OCR 用户图片与识别结果 | 按 `groupId` 绑定同一次 OCR |
-| IndexedDB | `wrongQuestions` | 错题本记录 | Phase 1 错题本唯一数据源 |
+| IndexedDB | `messages` | 聊天消息 | 按 `userId` 隔离，当前账号只读写自己的记录 |
+| IndexedDB | `ocrRecords` | OCR 用户图片与识别结果 | 按 `userId` 隔离，`groupId` 绑定同一次 OCR |
+| IndexedDB | `wrongQuestions` | 错题本记录 | 按 `userId` 隔离，Phase 1 错题本唯一数据源 |
 
 ---
 
@@ -96,7 +96,7 @@ MarkdownRenderer 渲染 Markdown / GFM / 数学公式
   ↓
 saveChatToDb()
   ↓
-Dexie transaction: messages.clear() + messages.bulkAdd()
+Dexie transaction: 删除当前 userId 的旧 messages + bulkAdd 新 messages
 ```
 
 `messages` 表字段：
@@ -104,6 +104,7 @@ Dexie transaction: messages.clear() + messages.bulkAdd()
 ```ts
 interface StoredMessage {
   id: string;
+  userId: string;
   role: 'user' | 'assistant';
   content: string;
   order: number;
@@ -140,6 +141,7 @@ ocrMessages 实时更新
 ```ts
 interface OcrRecord {
   id: string;
+  userId: string;
   type: 'user' | 'ocr-loading' | 'ocr-result';
   groupId?: string;
   content: string;
@@ -148,7 +150,7 @@ interface OcrRecord {
 }
 ```
 
-`groupId` 用来把同一次 OCR 的图片消息与识别结果绑定起来，也是保存错题时防重复的关键来源。
+`userId` 用于本地账号隔离。`groupId` 用来把同一次 OCR 的图片消息与识别结果绑定起来，也是保存错题时防重复的关键来源。
 
 ---
 
@@ -194,7 +196,7 @@ OCR 识别结果
   ↓
 用户点击“保存到错题本”
   ↓
-检查 sourceGroupId 是否已存在
+按 userId + sourceGroupId 检查是否已存在
   ↓
 parseOcrResult(content)
   ↓
@@ -210,6 +212,7 @@ db.wrongQuestions.add(record)
 ```ts
 interface WrongQuestionRecord {
   id: string;
+  userId: string;
   source: 'ocr' | 'manual' | 'chat';
   sourceRecordId?: string;
   sourceGroupId?: string;
@@ -234,7 +237,7 @@ interface WrongQuestionRecord {
 ```text
 /error-book 初始加载
   ↓
-db.wrongQuestions.orderBy('createdAt').reverse().toArray()
+db.wrongQuestions.where('userId').equals(currentUser.id).sortBy('createdAt')
   ↓
 本地 state items
   ↓
@@ -261,8 +264,10 @@ db.wrongQuestions.update/delete
 | v3 | `id, role, order, createdAt` | `id, type, createdAt` | - | 增加消息时间戳 |
 | v4 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, subject, category, errorType, status, createdAt, updatedAt` | 增加错题本 |
 | v5 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加 `sourceGroupId` 索引 |
+| v6 | `id, userId, [userId+order], role, order, createdAt` | `id, userId, [userId+createdAt], type, groupId, createdAt` | `id, userId, [userId+sourceGroupId], [userId+createdAt], source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加本地账号隔离 |
 
 v5 的 `sourceGroupId` 索引用于保存错题时按 OCR group 防重复。
+v6 的 `userId` 索引用于阻断不同本地账号之间的聊天、OCR、错题串用。
 
 ---
 
@@ -275,15 +280,12 @@ useUserStore.logout()
   ↓
 currentUser 置空
   ↓
-Dexie transaction 清空：
-  - messages
-  - ocrRecords
-  - wrongQuestions
-  ↓
 返回登录/聊天入口
 ```
 
-Phase 1 采用“登出清空本地业务数据”的策略，避免模拟多用户时数据串用。Phase 2 后需要改为后端用户隔离，不应简单清空真实历史数据。
+Phase 1 当前采用“本地业务数据按 `userId` 隔离”的策略。退出登录不删除 IndexedDB 业务数据，同一账号再次登录可以恢复自己的聊天、OCR 和错题记录；新账号不会看到旧账号数据。
+
+如果用户在浏览器里只清空 localStorage 而没有清空 IndexedDB，旧的 v5 及以前无 `userId` 数据会保持无主状态，不再自动展示给新注册账号。
 
 ---
 
@@ -292,9 +294,9 @@ Phase 1 采用“登出清空本地业务数据”的策略，避免模拟多用
 | 功能 | Phase 1 | Phase 2 |
 | --- | --- | --- |
 | 认证 | zustand + localStorage | NestJS AuthModule + session/JWT |
-| 聊天记录 | Dexie `messages` | ChatMessage API + PostgreSQL |
-| OCR 记录 | Dexie `ocrRecords` + base64 | OCR API + BullMQ + 对象存储 URL |
-| 错题本 | Dexie `wrongQuestions` | WrongQuestion CRUD API + PostgreSQL |
+| 聊天记录 | Dexie `messages` + `userId` | ChatMessage API + PostgreSQL 用户归属 |
+| OCR 记录 | Dexie `ocrRecords` + `userId` + base64 | OCR API + BullMQ + 对象存储 URL |
+| 错题本 | Dexie `wrongQuestions` + `userId` | WrongQuestion CRUD API + PostgreSQL 用户归属 |
 | 服务端状态 | 无 TanStack Query | TanStack Query 管理 API 缓存 |
 | 离线能力 | Dexie 是主数据源 | Dexie 作为离线缓存 |
 

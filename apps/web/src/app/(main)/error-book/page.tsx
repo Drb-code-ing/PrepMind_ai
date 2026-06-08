@@ -9,6 +9,7 @@ import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
+import { useUserStore } from '@/stores/userStore';
 import { Textarea } from '@/components/ui/textarea';
 
 type StatusFilter = 'all' | WrongQuestionStatus;
@@ -34,6 +35,7 @@ function getSummary(text: string) {
 }
 
 export default function ErrorBookPage() {
+  const currentUser = useUserStore((s) => s.currentUser);
   const [items, setItems] = useState<WrongQuestionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -42,6 +44,7 @@ export default function ErrorBookPage() {
   const [selected, setSelected] = useState<WrongQuestionRecord | null>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
+  const userId = currentUser?.id ?? null;
 
   const showNotice = (message: string, type: ActionNotice['type'] = 'success') => {
     if (noticeTimerRef.current) {
@@ -55,12 +58,20 @@ export default function ErrorBookPage() {
   };
 
   useEffect(() => {
+    if (!userId) return;
+
     let cancelled = false;
     const timeout = new Promise<WrongQuestionRecord[]>((_, reject) => {
       window.setTimeout(() => reject(new Error('本地数据库升级超时')), 3000);
     });
 
-    void Promise.race([db.wrongQuestions.orderBy('createdAt').reverse().toArray(), timeout])
+    const records = db.wrongQuestions
+      .where('userId')
+      .equals(userId)
+      .sortBy('createdAt')
+      .then((items) => items.reverse());
+
+    void Promise.race([records, timeout])
       .then((records) => {
         if (cancelled) return;
         setItems(records);
@@ -78,7 +89,7 @@ export default function ErrorBookPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     return () => {
