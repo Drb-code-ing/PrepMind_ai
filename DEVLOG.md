@@ -116,7 +116,7 @@
 - 重写 `docs/data-flow.md`，同步 Phase 1 当前 localStorage + Dexie + OCR + 错题本数据流。
 - 重写 `CLAUDE.md` 与 `AGENTS.md`，同步当前命令、模块规则、Phase 1 进度和下一步。
 - 整理 `DEVLOG.md`，将同一天改动合并记录，并把所有待办与规划统一收口到文末。
-- 新增 `docs/dev-blog/2026-06-08-phase-1-complete.md`，归档 Phase 1 收官总结、数据流取舍、质量审查和 Phase 2 入口。
+- 新增本地博客 `Blog/2026-06-08-phase-1-complete.md`，归档 Phase 1 收官总结、数据流取舍、质量审查和 Phase 2 入口；`Blog/` 目录按约定不进入 Git 跟踪。
 
 **今日任务静态版**
 
