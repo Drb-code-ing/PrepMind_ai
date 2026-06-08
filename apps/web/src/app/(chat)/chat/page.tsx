@@ -6,16 +6,14 @@ import ChatTopBar from '@/components/chat/chat-top-bar';
 import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
 import type { SelectedImage } from '@/components/chat/chat-input-bar';
+import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { formatOcrContentForDisplay, parseOcrResult } from '@/lib/wrong-question-parser';
 import { Bot, Check, Loader2 } from 'lucide-react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
-const remarkPlugins = [remarkGfm];
 const SCROLL_THRESHOLD = 100;
 
 // ─── Unified message type for rendering ─────────────────────────────
@@ -653,9 +651,7 @@ const ChatBubble = memo(function ChatBubble({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           <>
-            <div className="markdown-body">
-              <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
-            </div>
+            <MarkdownRenderer content={content} />
             {isLoading && (
               <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
             )}
@@ -750,11 +746,7 @@ function OcrBubble({
       <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
         {content ? (
           <>
-            <div className="markdown-body">
-              <Markdown remarkPlugins={remarkPlugins}>
-                {formatOcrContentForDisplay(content)}
-              </Markdown>
-            </div>
+            <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
             <button
               type="button"
               onClick={handleSave}

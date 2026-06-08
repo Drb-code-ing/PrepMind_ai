@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: oklch(1 0 0);
@@ -127,9 +127,15 @@ body {
   font-weight: 600;
   margin: 0.75em 0 0.375em;
 }
-.markdown-body h1 { font-size: 1.25em; }
-.markdown-body h2 { font-size: 1.125em; }
-.markdown-body h3 { font-size: 1em; }
+.markdown-body h1 {
+  font-size: 1.25em;
+}
+.markdown-body h2 {
+  font-size: 1.125em;
+}
+.markdown-body h3 {
+  font-size: 1em;
+}
 .markdown-body ul,
 .markdown-body ol {
   margin: 0.375em 0;
@@ -198,4 +204,13 @@ body {
 }
 .markdown-body strong {
   font-weight: 600;
+}
+.markdown-body .katex-display {
+  margin: 0.75em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15em 0;
+}
+.markdown-body .katex {
+  font-size: 1.02em;
 }

@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock, Trash2, X } from 'lucide-react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
+import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
@@ -18,7 +17,6 @@ const statusLabels: Record<WrongQuestionStatus, string> = {
   unresolved: '未掌握',
   resolved: '已掌握',
 };
-const remarkPlugins = [remarkGfm];
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat('zh-CN', {
@@ -429,8 +427,8 @@ function DetailSection({ title, content }: { title: string; content: string }) {
   return (
     <section className="mt-5">
       <h3 className="text-sm font-semibold">{title}</h3>
-      <div className="markdown-body mt-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm leading-6">
-        <Markdown remarkPlugins={remarkPlugins}>{formatOcrContentForDisplay(content)}</Markdown>
+      <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm leading-6">
+        <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
       </div>
     </section>
   );

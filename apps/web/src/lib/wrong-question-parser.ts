@@ -23,6 +23,7 @@ export function formatOcrContentForDisplay(content: string) {
     .trim()
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+/g, ' ')
+    .replace(/([；;。])\s*(\(\d+\))/g, '$1\n\n$2')
     .replace(/\s*(\(\d+\))\s*/g, '\n\n### $1 ')
     .replace(/。\s*(解释[:：])/g, '。\n\n**$1**')
     .replace(/。\s*(分析[:：])/g, '。\n\n**$1**')
