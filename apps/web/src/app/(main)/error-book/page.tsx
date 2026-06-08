@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock, Trash2, X } from 'lucide-react';
@@ -12,11 +12,13 @@ import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
 import { Textarea } from '@/components/ui/textarea';
 
 type StatusFilter = 'all' | WrongQuestionStatus;
+type ActionNotice = { message: string; type: 'success' | 'danger' };
 
 const statusLabels: Record<WrongQuestionStatus, string> = {
   unresolved: '未掌握',
   resolved: '已掌握',
 };
+const NOTICE_DURATION = 1800;
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat('zh-CN', {
@@ -38,6 +40,19 @@ export default function ErrorBookPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('全部');
   const [selected, setSelected] = useState<WrongQuestionRecord | null>(null);
+  const [notice, setNotice] = useState<ActionNotice | null>(null);
+  const noticeTimerRef = useRef<number | null>(null);
+
+  const showNotice = (message: string, type: ActionNotice['type'] = 'success') => {
+    if (noticeTimerRef.current) {
+      window.clearTimeout(noticeTimerRef.current);
+    }
+    setNotice({ message, type });
+    noticeTimerRef.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimerRef.current = null;
+    }, NOTICE_DURATION);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +77,14 @@ export default function ErrorBookPage() {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current);
+      }
     };
   }, []);
 
@@ -102,6 +125,7 @@ export default function ErrorBookPage() {
     await db.wrongQuestions.delete(id);
     setItems((prev) => prev.filter((item) => item.id !== id));
     setSelected(null);
+    showNotice('已删除这道错题', 'danger');
   };
 
   return (
@@ -129,6 +153,8 @@ export default function ErrorBookPage() {
       </header>
 
       <main className="px-4 py-4">
+        {notice && <ActionNoticeBar notice={notice} />}
+
         <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
           {[
             { value: 'all', label: '全部' },
@@ -193,8 +219,10 @@ export default function ErrorBookPage() {
                 item={item}
                 onOpen={() => setSelected(item)}
                 onToggleStatus={() =>
-                  updateItem(item.id, {
+                  void updateItem(item.id, {
                     status: item.status === 'resolved' ? 'unresolved' : 'resolved',
+                  }).then(() => {
+                    showNotice(item.status === 'resolved' ? '已标记为未掌握' : '已标记为已掌握');
                   })
                 }
                 onDelete={() => deleteItem(item.id)}
@@ -211,8 +239,25 @@ export default function ErrorBookPage() {
           onClose={() => setSelected(null)}
           onDelete={() => deleteItem(selected.id)}
           onUpdate={(patch) => updateItem(selected.id, patch)}
+          onAction={showNotice}
         />
       )}
+    </div>
+  );
+}
+
+function ActionNoticeBar({ notice }: { notice: ActionNotice }) {
+  return (
+    <div
+      className={`mb-3 flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
+        notice.type === 'danger'
+          ? 'border-destructive/20 bg-destructive/10 text-destructive'
+          : 'border-primary/20 bg-primary/10 text-primary'
+      }`}
+      role="status"
+    >
+      <CheckCircle2 className="h-4 w-4 shrink-0" />
+      <span>{notice.message}</span>
     </div>
   );
 }
@@ -322,13 +367,30 @@ function WrongQuestionDetail({
   onClose,
   onDelete,
   onUpdate,
+  onAction,
 }: {
   item: WrongQuestionRecord;
   onClose: () => void;
   onDelete: () => void;
-  onUpdate: (patch: Partial<WrongQuestionRecord>) => void;
+  onUpdate: (patch: Partial<WrongQuestionRecord>) => Promise<void>;
+  onAction: (message: string, type?: ActionNotice['type']) => void;
 }) {
   const [note, setNote] = useState(item.userNote);
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  const saveNote = async () => {
+    setSavingNote(true);
+    setNoteSaved(false);
+    try {
+      await onUpdate({ userNote: note });
+      setNoteSaved(true);
+      onAction('备注已保存');
+      window.setTimeout(() => setNoteSaved(false), 1400);
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background">
@@ -383,10 +445,11 @@ function WrongQuestionDetail({
             <h3 className="text-sm font-semibold">我的备注</h3>
             <button
               type="button"
-              onClick={() => onUpdate({ userNote: note })}
-              className="min-h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground"
+              onClick={() => void saveNote()}
+              disabled={savingNote}
+              className="min-h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors disabled:bg-muted disabled:text-muted-foreground"
             >
-              保存备注
+              {savingNote ? '保存中...' : noteSaved ? '已保存' : '保存备注'}
             </button>
           </div>
           <Textarea
@@ -400,9 +463,12 @@ function WrongQuestionDetail({
         <div className="mt-6 flex gap-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
-            onClick={() =>
-              onUpdate({ status: item.status === 'resolved' ? 'unresolved' : 'resolved' })
-            }
+            onClick={() => {
+              const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';
+              void onUpdate({ status: nextStatus }).then(() => {
+                onAction(nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握');
+              });
+            }}
             className="tap-target flex flex-1 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground"
           >
             {item.status === 'resolved' ? '标为未掌握' : '标为已掌握'}
