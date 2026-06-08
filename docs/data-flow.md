@@ -20,8 +20,9 @@
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  IndexedDB — Dexie (prepmind-db)                          │   │
 │  │                                                          │   │
-│  │  messages    → { id, role, content, order, createdAt }   │   │
-│  │  ocrRecords  → { id, type, content, imageUrl, createdAt }│   │
+│  │  messages       → { id, role, content, order, createdAt }│   │
+│  │  ocrRecords     → { id, type, groupId, imageUrl, ... }   │   │
+│  │  wrongQuestions → { questionText, subject, status, ... } │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -45,6 +46,7 @@
 ```
 
 **与 Day 3 的关键差异**：
+
 - 移除 TanStack Query 内存缓存层（Phase 1 无服务端，`staleTime: Infinity` 使其无实际价值）
 - 新增 `chatTimestamps` state 追踪聊天消息创建时间
 - 新增 `unifiedMessages` 合并 chat + OCR 统一渲染
@@ -133,6 +135,7 @@
 ```
 
 **保存时机**（每次聊天至少 2 次全量写入）：
+
 1. 用户消息 + assistant 占位进入数组 → `messages.length` 变化 → 第 1 次 clear + bulkAdd
 2. AI 流式完成 → `isLoading` true→false → 第 2 次 clear + bulkAdd
 
@@ -165,6 +168,10 @@
         │
         ▼
   OcrBubble 渲染: Markdown + 「保存到错题本」按钮
+        │
+        ▼
+  用户点击保存 → parseOcrResult(content) → Dexie wrongQuestions.add()
+  （按 groupId 绑定 OCR 图片与识别结果，并防止重复保存）
 ```
 
 ### 2.6 上下文恢复（刷新页面）
@@ -225,10 +232,16 @@ beforeunload / visibilitychange(hidden)
 ### 问题
 
 Day 3 之前 OCR 消息和聊天消息是两套独立渲染管线：
+
 ```jsx
-{messages.map(msg => <ChatBubble />)}      // ← 所有聊天消息
-{ocrMessages.map(msg => <OcrBubble />)}    // ← 所有 OCR（始终在聊天后面）
+{
+  messages.map((msg) => <ChatBubble />);
+} // ← 所有聊天消息
+{
+  ocrMessages.map((msg) => <OcrBubble />);
+} // ← 所有 OCR（始终在聊天后面）
 ```
+
 先发文字 → 再拍照 → 再发文字，顺序变为 [聊天1, 聊天2, 聊天3, OCR1] 而非正确的 [聊天1, OCR1, 聊天2, 聊天3]。
 
 ### 方案
@@ -292,27 +305,49 @@ const unifiedMessages = useMemo(() => {
 
 ## 五、Dexie Schema
 
-| 版本 | messages 索引 | ocrRecords 索引 | 说明 |
-|------|-------------|----------------|------|
-| v1 | id, role | id, type, createdAt | 初始版本 |
-| v2 | id, role, order | id, type, createdAt | 新增 order 解决刷新乱序 |
-| v3 | id, role, order, createdAt | id, type, createdAt | 新增 createdAt 支持统一时间线 |
+| 版本 | messages 索引              | ocrRecords 索引              | 说明                                 |
+| ---- | -------------------------- | ---------------------------- | ------------------------------------ |
+| v1   | id, role                   | id, type, createdAt          | 初始版本                             |
+| v2   | id, role, order            | id, type, createdAt          | 新增 order 解决刷新乱序              |
+| v3   | id, role, order, createdAt | id, type, createdAt          | 新增 createdAt 支持统一时间线        |
+| v4   | id, role, order, createdAt | id, type, groupId, createdAt | 新增 wrongQuestions 表 + OCR groupId |
 
 ```ts
 interface StoredMessage {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
-  order: number;       // 自增序号，刷新恢复时保证基础顺序
-  createdAt: number;   // 创建时间戳，统一时间线排序基准
+  order: number; // 自增序号，刷新恢复时保证基础顺序
+  createdAt: number; // 创建时间戳，统一时间线排序基准
 }
 
 interface OcrRecord {
   id: string;
-  type: "user" | "ocr-loading" | "ocr-result";
+  type: 'user' | 'ocr-loading' | 'ocr-result';
+  groupId?: string; // 同一次 OCR 的图片与识别结果共享 groupId
   content: string;
-  imageUrl?: string;   // base64 data URL
-  createdAt: number;   // 创建时间戳
+  imageUrl?: string; // base64 data URL
+  createdAt: number; // 创建时间戳
+}
+
+interface WrongQuestionRecord {
+  id: string;
+  source: 'ocr' | 'manual' | 'chat';
+  sourceRecordId?: string;
+  sourceGroupId?: string;
+  imageUrl?: string;
+  questionText: string;
+  subject: string;
+  category: string;
+  knowledgePoints: string[];
+  analysis: string;
+  answer: string;
+  errorType: string;
+  userNote: string;
+  rawContent: string;
+  status: 'unresolved' | 'resolved';
+  createdAt: number;
+  updatedAt: number;
 }
 ```
 
@@ -322,14 +357,14 @@ interface OcrRecord {
 
 ### 存储分层策略
 
-| 层级 | Phase 1（当前） | Phase 2（目标） |
-|------|-----------------|-----------------|
-| localStorage | zustand + persist | 保留（config/token/UI） |
-| IndexedDB | Dexie 直接读写 | 保留为离线缓存 |
-| TanStack Query | —（Day 4 移除） | 重新引入，管理 server state |
-| PostgreSQL | — | Prisma + pgvector |
-| Redis | — | 接口缓存、登录态、限流 |
-| 对象存储 | — | OSS / MinIO |
+| 层级           | Phase 1（当前）   | Phase 2（目标）             |
+| -------------- | ----------------- | --------------------------- |
+| localStorage   | zustand + persist | 保留（config/token/UI）     |
+| IndexedDB      | Dexie 直接读写    | 保留为离线缓存              |
+| TanStack Query | —（Day 4 移除）   | 重新引入，管理 server state |
+| PostgreSQL     | —                 | Prisma + pgvector           |
+| Redis          | —                 | 接口缓存、登录态、限流      |
+| 对象存储       | —                 | OSS / MinIO                 |
 
 ### 迁移路线
 
@@ -357,10 +392,10 @@ useChat (流式聊天)            →  不变
 
 ## 七、前端 vs 后端职责划分
 
-| 功能 | Phase 1 前端 | Phase 2 后端 |
-|------|-------------|-------------|
-| 认证 | zustand + localStorage | NestJS AuthModule + Prisma |
-| 聊天 | useChat + Dexie 直接读写 | ChatModule + PostgreSQL |
-| OCR | /api/ocr → MIMO | BullMQ 异步队列 |
-| 错题 | ⬜ 未实现 | WrongQuestion CRUD |
-| 文件 | base64 内联 | MinIO/OSS 存储 |
+| 功能 | Phase 1 前端                        | Phase 2 后端               |
+| ---- | ----------------------------------- | -------------------------- |
+| 认证 | zustand + localStorage              | NestJS AuthModule + Prisma |
+| 聊天 | useChat + Dexie 直接读写            | ChatModule + PostgreSQL    |
+| OCR  | /api/ocr → MIMO                     | BullMQ 异步队列            |
+| 错题 | Dexie wrongQuestions + OCR 保存入口 | WrongQuestion CRUD         |
+| 文件 | base64 内联                         | MinIO/OSS 存储             |

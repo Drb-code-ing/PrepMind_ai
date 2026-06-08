@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useUserStore } from "@/stores/userStore";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { hydrateUserStoreFromStorage, useUserStore } from '@/stores/userStore';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -10,27 +10,25 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useUserStore.persist.onFinishHydration(() => {
+    hydrateUserStoreFromStorage();
+    const timer = window.setTimeout(() => {
       setHydrated(true);
-    });
-    if (useUserStore.persist.hasHydrated()) {
-      setHydrated(true);
-    }
-    return unsub;
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
     if (hydrated && !currentUser) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [hydrated, currentUser, router]);
 
   if (!hydrated || !currentUser) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">
-          {!hydrated ? "加载中…" : "正在跳转…"}
-        </div>
+        <div className="text-sm text-muted-foreground">{!hydrated ? '加载中…' : '正在跳转…'}</div>
       </div>
     );
   }

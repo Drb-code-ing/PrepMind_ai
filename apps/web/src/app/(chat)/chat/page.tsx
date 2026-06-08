@@ -1,18 +1,19 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from "react";
-import { useChat } from "@ai-sdk/react";
-import ChatTopBar from "@/components/chat/chat-top-bar";
-import ChatSidebar from "@/components/chat/chat-sidebar";
-import ChatInputBar from "@/components/chat/chat-input-bar";
-import type { SelectedImage } from "@/components/chat/chat-input-bar";
-import { useUserStore } from "@/stores/userStore";
-import { useChatStore } from "@/stores/chatStore";
-import { db } from "@/lib/db";
-import type { StoredMessage, OcrRecord } from "@/lib/db";
-import { Bot, Loader2 } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
+import { useChat } from '@ai-sdk/react';
+import ChatTopBar from '@/components/chat/chat-top-bar';
+import ChatSidebar from '@/components/chat/chat-sidebar';
+import ChatInputBar from '@/components/chat/chat-input-bar';
+import type { SelectedImage } from '@/components/chat/chat-input-bar';
+import { useUserStore } from '@/stores/userStore';
+import { useChatStore } from '@/stores/chatStore';
+import { db } from '@/lib/db';
+import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
+import { formatOcrContentForDisplay, parseOcrResult } from '@/lib/wrong-question-parser';
+import { Bot, Check, Loader2 } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const remarkPlugins = [remarkGfm];
 const SCROLL_THRESHOLD = 100;
@@ -20,9 +21,31 @@ const SCROLL_THRESHOLD = 100;
 // ─── Unified message type for rendering ─────────────────────────────
 
 type UnifiedMsg =
-  | { kind: "chat"; id: string; role: "user" | "assistant"; content: string; time: number; isLoading: boolean }
-  | { kind: "ocr-user"; id: string; type: "user"; content: string; imageUrl?: string; time: number }
-  | { kind: "ocr-result"; id: string; type: "ocr-result"; content: string; time: number };
+  | {
+      kind: 'chat';
+      id: string;
+      role: 'user' | 'assistant';
+      content: string;
+      time: number;
+      isLoading: boolean;
+    }
+  | {
+      kind: 'ocr-user';
+      id: string;
+      type: 'user';
+      groupId?: string;
+      content: string;
+      imageUrl?: string;
+      time: number;
+    }
+  | {
+      kind: 'ocr-result';
+      id: string;
+      type: 'ocr-result';
+      groupId?: string;
+      content: string;
+      time: number;
+    };
 
 // ─── Parent: load from Dexie, then mount ChatView ───────────────────
 
@@ -31,8 +54,8 @@ export default function ChatPage() {
   const [loadedOcr, setLoadedOcr] = useState<OcrRecord[] | null>(null);
 
   useEffect(() => {
-    db.messages.orderBy("order").toArray().then(setLoadedMessages);
-    db.ocrRecords.orderBy("createdAt").toArray().then(setLoadedOcr);
+    db.messages.orderBy('order').toArray().then(setLoadedMessages);
+    db.ocrRecords.orderBy('createdAt').toArray().then(setLoadedOcr);
   }, []);
 
   if (loadedMessages === null || loadedOcr === null) {
@@ -43,12 +66,7 @@ export default function ChatPage() {
     );
   }
 
-  return (
-    <ChatView
-      initialMessages={loadedMessages}
-      initialOcrRecords={loadedOcr}
-    />
-  );
+  return <ChatView initialMessages={loadedMessages} initialOcrRecords={loadedOcr} />;
 }
 
 // ─── ChatView: main chat UI ─────────────────────────────────────────
@@ -76,6 +94,8 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
+  const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
+  const [saveWrongErrors, setSaveWrongErrors] = useState<Record<string, string>>({});
 
   // ── Chat message timestamps (for unified ordering in-session) ──
   const [chatTimestamps, setChatTimestamps] = useState<Record<string, number>>(() => {
@@ -96,19 +116,12 @@ function ChatView({
     setSelectedImage(null);
   }, []);
 
-  const {
-    messages,
-    handleInputChange,
-    handleSubmit,
-    input,
-    setInput,
-    isLoading,
-  } = useChat({
-    api: "/api/chat",
+  const { messages, handleInputChange, handleSubmit, input, setInput, isLoading } = useChat({
+    api: '/api/chat',
     initialInput: inputDraft,
     initialMessages: persistedMessages.map((m) => ({
       id: m.id,
-      role: m.role as "user" | "assistant",
+      role: m.role as 'user' | 'assistant',
       content: m.content,
     })),
   });
@@ -121,6 +134,14 @@ function ChatView({
     ocrMsgRef.current = ocrMessages;
     chatTimestampsRef.current = chatTimestamps;
   });
+
+  useEffect(() => {
+    db.wrongQuestions.toArray().then((items) => {
+      setSavedWrongGroupIds(
+        new Set(items.map((item) => item.sourceGroupId).filter(Boolean) as string[]),
+      );
+    });
+  }, []);
 
   // ── Track chat message creation timestamps ──
   const prevMsgIdsRef = useRef<Set<string>>(new Set(persistedMessages.map((m) => m.id)));
@@ -140,14 +161,14 @@ function ChatView({
 
   // ── Direct Dexie save helpers (no TanStack Query) ──
   const saveChatToDb = useCallback(async (msgs: StoredMessage[]) => {
-    await db.transaction("rw", db.messages, async () => {
+    await db.transaction('rw', db.messages, async () => {
       await db.messages.clear();
       await db.messages.bulkAdd(msgs);
     });
   }, []);
 
   const saveOcrToDb = useCallback(async (records: OcrRecord[]) => {
-    await db.transaction("rw", db.ocrRecords, async () => {
+    await db.transaction('rw', db.ocrRecords, async () => {
       await db.ocrRecords.clear();
       await db.ocrRecords.bulkAdd(records);
     });
@@ -165,7 +186,7 @@ function ChatView({
       saveChatToDb(
         msgs.map((m, i) => ({
           id: m.id,
-          role: m.role as "user" | "assistant",
+          role: m.role as 'user' | 'assistant',
           content: m.content,
           order: i,
           createdAt: ts[m.id] ?? Date.now(),
@@ -183,32 +204,32 @@ function ChatView({
         const ts = chatTimestampsRef.current;
         const stored = msgs.map((m, i) => ({
           id: m.id,
-          role: m.role as "user" | "assistant",
+          role: m.role as 'user' | 'assistant',
           content: m.content,
           order: i,
           createdAt: ts[m.id] ?? Date.now(),
         }));
-        db.transaction("rw", db.messages, async () => {
+        db.transaction('rw', db.messages, async () => {
           await db.messages.clear();
           await db.messages.bulkAdd(stored);
         });
       }
       const ocr = ocrMsgRef.current;
       if (ocr.length > 0) {
-        db.transaction("rw", db.ocrRecords, async () => {
+        db.transaction('rw', db.ocrRecords, async () => {
           await db.ocrRecords.clear();
           await db.ocrRecords.bulkAdd(ocr);
         });
       }
     };
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") flush();
+      if (document.visibilityState === 'hidden') flush();
     };
-    window.addEventListener("beforeunload", flush);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener('beforeunload', flush);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
-      window.removeEventListener("beforeunload", flush);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener('beforeunload', flush);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -243,8 +264,7 @@ function ChatView({
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const isAtBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
     isAutoScrollRef.current = isAtBottom;
   }, []);
 
@@ -264,67 +284,73 @@ function ChatView({
     if (!selectedImage || ocrLoading) return;
 
     const userText = input.trim();
-    const userMsgId = `ocr-user-${Date.now()}`;
-    const resultMsgId = `ocr-result-${Date.now()}`;
+    const groupId = `ocr-${Date.now()}`;
+    const userMsgId = `${groupId}-user`;
+    const resultMsgId = `${groupId}-result`;
     const imgUrl = selectedImage.previewUrl;
 
     const initialOcrMsgs: OcrRecord[] = [
       ...ocrMsgRef.current,
-      { id: userMsgId, type: "user", content: userText, imageUrl: imgUrl, createdAt: Date.now() },
-      { id: resultMsgId, type: "ocr-result", content: "", createdAt: Date.now() + 1 },
+      {
+        id: userMsgId,
+        type: 'user',
+        groupId,
+        content: userText,
+        imageUrl: imgUrl,
+        createdAt: Date.now(),
+      },
+      { id: resultMsgId, type: 'ocr-result', groupId, content: '', createdAt: Date.now() + 1 },
     ];
     setOcrMessages(initialOcrMsgs);
 
     const img = selectedImage;
     setSelectedImage(null);
-    setInput("");
+    setInput('');
     clearInputDraft();
     scrollToBottom();
     setOcrLoading(true);
 
     try {
       const fd = new FormData();
-      fd.append("image", img.file);
-      if (userText) fd.append("text", userText);
+      fd.append('image', img.file);
+      if (userText) fd.append('text', userText);
 
-      const res = await fetch("/api/ocr", { method: "POST", body: fd });
+      const res = await fetch('/api/ocr', { method: 'POST', body: fd });
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "识别失败");
+        throw new Error(errData.error || '识别失败');
       }
 
       // Stream SSE
       const reader = res.body?.getReader();
-      if (!reader) throw new Error("无法读取响应流");
+      if (!reader) throw new Error('无法读取响应流');
 
       const decoder = new TextDecoder();
-      let buffer = "";
-      let fullContent = "";
+      let buffer = '';
+      let fullContent = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data: ")) continue;
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
 
           const data = trimmed.slice(6);
-          if (data === "[DONE]") continue;
+          if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
             if (parsed.content) {
               fullContent += parsed.content;
               setOcrMessages((prev) =>
-                prev.map((m) =>
-                  m.id === resultMsgId ? { ...m, content: fullContent } : m,
-                ),
+                prev.map((m) => (m.id === resultMsgId ? { ...m, content: fullContent } : m)),
               );
             }
           } catch {
@@ -339,11 +365,9 @@ function ChatView({
       );
       saveOcrToDb(finalOcr);
     } catch (err) {
-      const errMsg = `识别失败：${err instanceof Error ? err.message : "未知错误"}`;
+      const errMsg = `识别失败：${err instanceof Error ? err.message : '未知错误'}`;
       setOcrMessages((prev) =>
-        prev.map((m) =>
-          m.id === resultMsgId ? { ...m, content: errMsg } : m,
-        ),
+        prev.map((m) => (m.id === resultMsgId ? { ...m, content: errMsg } : m)),
       );
       const finalOcr = ocrMsgRef.current.map((m) =>
         m.id === resultMsgId ? { ...m, content: errMsg } : m,
@@ -363,32 +387,91 @@ function ChatView({
     [setInput, scrollToBottom],
   );
 
+  const handleSaveWrongQuestion = useCallback(async (result: OcrRecord) => {
+    if (!result.content.trim()) return;
+
+    const sourceGroupId = result.groupId;
+    if (sourceGroupId) {
+      const existing = await db.wrongQuestions
+        .filter((item) => item.sourceGroupId === sourceGroupId)
+        .first();
+      if (existing) {
+        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        setSaveWrongErrors((prev) => {
+          const next = { ...prev };
+          delete next[sourceGroupId];
+          return next;
+        });
+        return;
+      }
+    }
+
+    const relatedUser = sourceGroupId
+      ? ocrMsgRef.current.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
+      : [...ocrMsgRef.current]
+          .reverse()
+          .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
+    const parsed = parseOcrResult(result.content);
+    const now = Date.now();
+    const record: WrongQuestionRecord = {
+      id: crypto.randomUUID(),
+      source: 'ocr',
+      sourceRecordId: result.id,
+      sourceGroupId,
+      imageUrl: relatedUser?.imageUrl,
+      questionText: parsed.questionText,
+      subject: parsed.subject,
+      category: parsed.category,
+      knowledgePoints: parsed.knowledgePoints,
+      analysis: parsed.analysis,
+      answer: parsed.answer,
+      errorType: parsed.errorType,
+      userNote: '',
+      rawContent: parsed.rawContent,
+      status: 'unresolved',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.wrongQuestions.add(record);
+    if (sourceGroupId) {
+      setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+      setSaveWrongErrors((prev) => {
+        const next = { ...prev };
+        delete next[sourceGroupId];
+        return next;
+      });
+    }
+  }, []);
+
   // ── Unified message timeline (chat + OCR interleaved by time) ──
   const unifiedMessages = useMemo<UnifiedMsg[]>(() => {
     const ts = chatTimestamps;
     const chatEntries: UnifiedMsg[] = messages.map((msg, i) => ({
-      kind: "chat",
+      kind: 'chat',
       id: msg.id,
-      role: msg.role as "user" | "assistant",
+      role: msg.role as 'user' | 'assistant',
       content: msg.content,
-      time: ts[msg.id] ?? (Date.now() + 1000 + i),
-      isLoading: isLoading && i === messages.length - 1 && msg.role === "assistant",
+      time: ts[msg.id] ?? i,
+      isLoading: isLoading && i === messages.length - 1 && msg.role === 'assistant',
     }));
 
     const ocrEntries: UnifiedMsg[] = ocrMessages.map((msg) =>
-      msg.type === "user"
+      msg.type === 'user'
         ? {
-            kind: "ocr-user",
+            kind: 'ocr-user',
             id: msg.id,
-            type: "user",
+            type: 'user',
+            groupId: msg.groupId,
             content: msg.content,
             imageUrl: msg.imageUrl,
             time: msg.createdAt,
           }
         : {
-            kind: "ocr-result",
+            kind: 'ocr-result',
             id: msg.id,
-            type: "ocr-result",
+            type: 'ocr-result',
+            groupId: msg.groupId,
             content: msg.content,
             time: msg.createdAt,
           },
@@ -411,25 +494,25 @@ function ChatView({
         {hasMessages ? (
           <div className="flex flex-col gap-3 px-4 py-4">
             {unifiedMessages.map((msg) => {
-              if (msg.kind === "chat") {
+              if (msg.kind === 'chat') {
                 return (
                   <ChatBubble
                     key={msg.id}
                     role={msg.role}
                     content={msg.content}
-                    username={currentUser?.username || "我"}
+                    username={currentUser?.username || '我'}
                     isLoading={msg.isLoading}
                   />
                 );
               }
-              if (msg.kind === "ocr-user") {
+              if (msg.kind === 'ocr-user') {
                 return (
                   <OcrBubble
                     key={msg.id}
                     type="user"
                     content={msg.content}
                     imageUrl={msg.imageUrl}
-                    username={currentUser?.username || "我"}
+                    username={currentUser?.username || '我'}
                     onImageClick={(url) => setPreviewImage(url)}
                   />
                 );
@@ -439,27 +522,55 @@ function ChatView({
                   key={msg.id}
                   type="ocr-result"
                   content={msg.content}
-                  username={currentUser?.username || "我"}
+                  username={currentUser?.username || '我'}
                   onImageClick={(url) => setPreviewImage(url)}
+                  isSaved={Boolean(msg.groupId && savedWrongGroupIds.has(msg.groupId))}
+                  saveError={msg.groupId ? saveWrongErrors[msg.groupId] : undefined}
+                  onSave={() =>
+                    handleSaveWrongQuestion({
+                      id: msg.id,
+                      type: 'ocr-result',
+                      groupId: msg.groupId,
+                      content: msg.content,
+                      createdAt: msg.time,
+                    }).catch((error) => {
+                      if (!msg.groupId) return;
+                      setSaveWrongErrors((prev) => ({
+                        ...prev,
+                        [msg.groupId as string]:
+                          error instanceof Error ? error.message : '保存失败，请稍后重试',
+                      }));
+                    })
+                  }
                 />
               );
             })}
             {/* Streaming indicator: assistant placeholder not yet in messages */}
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
+            {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <ChatBubble role="assistant" content="" username="" isLoading />
             )}
           </div>
         ) : (
           <div className="flex flex-col items-center px-4 pt-12">
             <h1 className="text-xl font-bold">你好，我是 PrepMind 👋</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              你的 AI 备考助手，随时为你解答
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">你的 AI 备考助手，随时为你解答</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <QuickTag label="📷 拍照识题" onSelect={() => handleQuickSend("请帮我讲解拍照识题功能怎么用")} />
-              <QuickTag label="📝 错题复习" onSelect={() => handleQuickSend("帮我制定一个错题复习计划")} />
-              <QuickTag label="📊 学习计划" onSelect={() => handleQuickSend("帮我制定今天的学习计划")} />
-              <QuickTag label="💡 知识讲解" onSelect={() => handleQuickSend("用简单的方式讲解一下深度学习的基本概念")} />
+              <QuickTag
+                label="📷 拍照识题"
+                onSelect={() => handleQuickSend('请帮我讲解拍照识题功能怎么用')}
+              />
+              <QuickTag
+                label="📝 错题复习"
+                onSelect={() => handleQuickSend('帮我制定一个错题复习计划')}
+              />
+              <QuickTag
+                label="📊 学习计划"
+                onSelect={() => handleQuickSend('帮我制定今天的学习计划')}
+              />
+              <QuickTag
+                label="💡 知识讲解"
+                onSelect={() => handleQuickSend('用简单的方式讲解一下深度学习的基本概念')}
+              />
             </div>
           </div>
         )}
@@ -512,20 +623,18 @@ const ChatBubble = memo(function ChatBubble({
   username,
   isLoading,
 }: {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
   username: string;
   isLoading?: boolean;
 }) {
-  const isUser = role === "user";
+  const isUser = role === 'user';
 
   return (
-    <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground"
+          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
         }`}
       >
         {isUser ? username[0]?.toUpperCase() : <Bot className="h-4 w-4" />}
@@ -534,8 +643,8 @@ const ChatBubble = memo(function ChatBubble({
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
           isUser
-            ? "bg-primary text-primary-foreground rounded-tr-md"
-            : "bg-muted text-foreground rounded-tl-md"
+            ? 'bg-primary text-primary-foreground rounded-tr-md'
+            : 'bg-muted text-foreground rounded-tl-md'
         }`}
       >
         {isUser ? (
@@ -579,14 +688,32 @@ function OcrBubble({
   imageUrl,
   username,
   onImageClick,
+  onSave,
+  isSaved,
+  saveError,
 }: {
-  type: "user" | "ocr-loading" | "ocr-result";
+  type: 'user' | 'ocr-loading' | 'ocr-result';
   content: string;
   imageUrl?: string;
   username: string;
   onImageClick?: (url: string) => void;
+  onSave?: () => Promise<void>;
+  isSaved?: boolean;
+  saveError?: string;
 }) {
-  if (type === "user") {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!onSave || saving || isSaved) return;
+    setSaving(true);
+    try {
+      await onSave();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (type === 'user') {
     return (
       <div className="flex flex-col items-end gap-1.5">
         <div className="flex flex-row-reverse gap-2.5">
@@ -624,15 +751,31 @@ function OcrBubble({
         {content ? (
           <>
             <div className="markdown-body">
-              <Markdown remarkPlugins={remarkPlugins}>{content}</Markdown>
+              <Markdown remarkPlugins={remarkPlugins}>
+                {formatOcrContentForDisplay(content)}
+              </Markdown>
             </div>
             <button
               type="button"
-              onClick={() => alert("错题本功能即将上线，敬请期待！")}
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98]"
+              onClick={handleSave}
+              disabled={saving || isSaved}
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
             >
-              📝 保存到错题本
+              {isSaved ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  已保存到错题本
+                </>
+              ) : saving ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  正在保存
+                </>
+              ) : (
+                '保存到错题本'
+              )}
             </button>
+            {saveError && <p className="mt-2 text-xs text-destructive">{saveError}</p>}
           </>
         ) : (
           <div className="flex items-center gap-2">

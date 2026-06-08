@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useRef, useState, useCallback } from "react";
-import { Camera, Plus, Mic, Send, Image, FileText, X } from "lucide-react";
+import { useRef, useState, useCallback } from 'react';
+import { Camera, Plus, Mic, Send, Image as ImageIcon, FileText, X } from 'lucide-react';
 
 export interface SelectedImage {
   file: File;
@@ -30,8 +30,8 @@ export default function ChatInputBar({
 
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const el = e.currentTarget;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
@@ -46,7 +46,7 @@ export default function ChatInputBar({
       };
       reader.readAsDataURL(file);
       setMenuOpen(false);
-      e.target.value = "";
+      e.target.value = '';
     },
     [onImageSelect],
   );
@@ -87,7 +87,7 @@ export default function ChatInputBar({
             placeholder="发消息..."
             rows={1}
             className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            style={{ maxHeight: "120px" }}
+            style={{ maxHeight: '120px' }}
           />
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function ChatInputBar({
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
-              <Image className="h-5 w-5" />
+              <ImageIcon className="h-5 w-5" />
             </div>
             <span className="text-[11px] text-muted-foreground">图片</span>
           </button>
@@ -152,11 +152,11 @@ export default function ChatInputBar({
             type="button"
             onClick={toggleMenu}
             className={`tap-target flex h-9 w-9 items-center justify-center rounded-full transition-all hover:bg-muted active:scale-95 ${
-              menuOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+              menuOpen ? 'bg-muted text-foreground' : 'text-muted-foreground'
             }`}
-            aria-label={menuOpen ? "收起菜单" : "更多功能"}
+            aria-label={menuOpen ? '收起菜单' : '更多功能'}
           >
-            <span className={`transition-transform duration-200 ${menuOpen ? "rotate-45" : ""}`}>
+            <span className={`transition-transform duration-200 ${menuOpen ? 'rotate-45' : ''}`}>
               <Plus className="h-5 w-5" />
             </span>
           </button>

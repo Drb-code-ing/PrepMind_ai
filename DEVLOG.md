@@ -9,11 +9,13 @@
 ### 今天完成了
 
 **项目规划**
+
 - 整理了 AI 智能备考助手的学习与开发规划文档（Phase 0~10，共 11 个阶段）
 - 从 DeepSeek 导出了完整的架构设计文档（10 章节：系统架构、Monorepo、数据库、API、Agent、MCP 等）
 - 两份文档都转成了 Markdown 格式放在 `docs/` 目录
 
 **项目初始化**
+
 - 初始化了 Git 仓库
 - 搭建了 pnpm workspaces 的 Monorepo 结构
 - 创建了 Next.js 16 前端应用（`apps/web`）
@@ -33,12 +35,14 @@
 - 创建了 DEVLOG.md 开发日志
 
 **验证**
+
 - `pnpm install` 成功（pnpm 9.x，配置了 npmmirror 镜像）
 - NestJS 构建通过（`pnpm --filter @repo/server build`）
 - Next.js 构建通过（`pnpm --filter @repo/web build`）
 - Git 提交完成（3 次提交）
 
 ### 踩的坑
+
 - pnpm 11.x 的 SQLite store 在 Windows 上有权限问题（`ERR_SQLITE_ERROR: disk I/O error`）
 - 解决方案：降级到 pnpm 9.x + 配置 npmmirror 镜像 + 自定义 store 位置
 - `create-next-app` 会自动生成 `pnpm-workspace.yaml`，和根目录冲突，需要删除
@@ -284,27 +288,38 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 - OCR 流式完成保存移除 `setTimeout(100)` 竞态，改为直接用 `fullContent`（权威数据）patch ref 后保存
 - 保存路径统一：chat 和 OCR 都走直接 Dexie `clear + bulkAdd` 事务，不再有双重写入路径
 
+**错题本 CRUD（Phase 1 本地版）**
+
+- Dexie 新增 `wrongQuestions` 表，作为 Phase 1 错题本唯一数据源
+- `ocrRecords` 新增 `groupId`，稳定绑定同一次 OCR 的图片与识别结果
+- 新增 `parseOcrResult()`，把 OCR Markdown 解析为题目、学科、知识点、解析、答案、错因等字段
+- OCR 提示词改为稳定 Markdown 标题结构，便于前端轻量提取字段
+- OCR 结果的「保存到错题本」改为真实写入 Dexie，并按 `sourceGroupId` 防重复保存
+- `/error-book` 实现移动端优先的错题列表、状态/学科筛选、详情查看、删除、标记掌握、备注编辑
+- 退出登录时同步清空 `messages`、`ocrRecords`、`wrongQuestions`
+
 ### Git 提交记录（Day 4）
 
 ```
-（待提交）
+4a92f87 refactor: Day 4 — 移除 TanStack Query + 统一消息时间线 + 修复 OCR 渲染顺序
+（错题本 CRUD 待提交）
 ```
 
 ---
 
 ## Phase 1 进度
 
-| 功能 | 状态 |
-|------|------|
+| 功能                                 | 状态    |
+| ------------------------------------ | ------- |
 | 登录/注册 UI + 校验 + zustand + 守卫 | ✅ 完成 |
-| AI 聊天 + 流式输出 + Markdown 渲染 | ✅ 完成 |
-| chatStore 临时状态管理 | ✅ 完成 |
-| 移动端优先布局 + PWA + shadcn/ui | ✅ 完成 |
-| 代码质量审查 + 性能优化 | ✅ 完成 |
-| 拍照识题 + 图片上传 + OCR 流式 | ✅ 完成 |
-| OCR/聊天消息渲染顺序统一 | ✅ 完成 |
-| 错题本 CRUD | ⬜ 待做 |
-| 今日任务（静态版本） | ⬜ 待做 |
+| AI 聊天 + 流式输出 + Markdown 渲染   | ✅ 完成 |
+| chatStore 临时状态管理               | ✅ 完成 |
+| 移动端优先布局 + PWA + shadcn/ui     | ✅ 完成 |
+| 代码质量审查 + 性能优化              | ✅ 完成 |
+| 拍照识题 + 图片上传 + OCR 流式       | ✅ 完成 |
+| OCR/聊天消息渲染顺序统一             | ✅ 完成 |
+| 错题本 CRUD                          | ✅ 完成 |
+| 今日任务（静态版本）                 | ⬜ 待做 |
 
 ## 待解决
 
@@ -314,7 +329,6 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 
 ## 明天计划
 
-- 错题本 CRUD 页面
 - 今日任务静态页面
 
 ---
@@ -325,14 +339,14 @@ a5b134d feat: 加号按钮展开功能菜单（图片/文件/拍照）
 
 ### 存储分层策略
 
-| 层级 | Phase 1（当前） | Phase 2（目标） | 存什么 |
-|------|-----------------|-----------------|--------|
-| localStorage | zustand + persist | 保留 | 配置、token、用户信息、UI 偏好 |
-| IndexedDB | Dexie (`prepmind-db`) | 保留为离线缓存 | 聊天消息、OCR 记录、错题 |
-| TanStack Query | —（已移除） | 引入管理 server state | API 数据的缓存层 |
-| PostgreSQL | — | Prisma + pgvector | 唯一真值来源 |
-| Redis | — | ioredis | 接口缓存、登录态、限流 |
-| 对象存储 | — | OSS / COS / MinIO | 图片、大文件；PG 只存 URL |
+| 层级           | Phase 1（当前）       | Phase 2（目标）       | 存什么                         |
+| -------------- | --------------------- | --------------------- | ------------------------------ |
+| localStorage   | zustand + persist     | 保留                  | 配置、token、用户信息、UI 偏好 |
+| IndexedDB      | Dexie (`prepmind-db`) | 保留为离线缓存        | 聊天消息、OCR 记录、错题       |
+| TanStack Query | —（已移除）           | 引入管理 server state | API 数据的缓存层               |
+| PostgreSQL     | —                     | Prisma + pgvector     | 唯一真值来源                   |
+| Redis          | —                     | ioredis               | 接口缓存、登录态、限流         |
+| 对象存储       | —                     | OSS / COS / MinIO     | 图片、大文件；PG 只存 URL      |
 
 ### 迁移路线
 

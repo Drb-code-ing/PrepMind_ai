@@ -1,16 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUserStore } from "@/stores/userStore";
-import { db } from "@/lib/db";
-import {
-  CalendarDays,
-  BookOpen,
-  User,
-  LogOut,
-  X,
-} from "lucide-react";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useUserStore } from '@/stores/userStore';
+import { db } from '@/lib/db';
+import { CalendarDays, BookOpen, User, LogOut, X } from 'lucide-react';
 
 interface ChatSidebarProps {
   open: boolean;
@@ -18,8 +12,8 @@ interface ChatSidebarProps {
 }
 
 const navItems = [
-  { href: "/today", label: "今日任务", icon: CalendarDays },
-  { href: "/error-book", label: "错题本", icon: BookOpen },
+  { href: '/today', label: '今日任务', icon: CalendarDays },
+  { href: '/error-book', label: '错题本', icon: BookOpen },
 ];
 
 export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
@@ -31,16 +25,13 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
     <>
       {/* 遮罩 */}
       {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 transition-opacity"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 z-50 bg-black/40 transition-opacity" onClick={onClose} />
       )}
 
       {/* 侧边栏面板 */}
       <aside
         className={`fixed right-0 top-0 z-50 flex h-full w-72 flex-col bg-white shadow-xl transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
+          open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* 顶部：用户名 + 关闭 */}
@@ -50,11 +41,9 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
               <User className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium">
-                {currentUser?.username || "未登录"}
-              </p>
+              <p className="text-sm font-medium">{currentUser?.username || '未登录'}</p>
               <p className="text-xs text-muted-foreground">
-                {currentUser?.email || currentUser?.phone || ""}
+                {currentUser?.email || currentUser?.phone || ''}
               </p>
             </div>
           </div>
@@ -79,9 +68,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                     href={item.href}
                     onClick={onClose}
                     className={`tap-target flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-primary/5 text-primary"
-                        : "text-foreground hover:bg-muted"
+                      isActive ? 'bg-primary/5 text-primary' : 'text-foreground hover:bg-muted'
                     }`}
                   >
                     <item.icon className="h-5 w-5" />
@@ -99,9 +86,9 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             href="/profile"
             onClick={onClose}
             className={`tap-target flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-              pathname === "/profile"
-                ? "bg-primary/5 text-primary"
-                : "text-foreground hover:bg-muted"
+              pathname === '/profile'
+                ? 'bg-primary/5 text-primary'
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             <User className="h-5 w-5" />
@@ -111,9 +98,10 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             type="button"
             onClick={() => {
               logout();
-              db.transaction("rw", db.messages, db.ocrRecords, async () => {
+              db.transaction('rw', db.messages, db.ocrRecords, db.wrongQuestions, async () => {
                 await db.messages.clear();
                 await db.ocrRecords.clear();
+                await db.wrongQuestions.clear();
               });
               onClose();
             }}

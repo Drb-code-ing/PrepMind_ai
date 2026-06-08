@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useUserStore } from "@/stores/userStore";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { hydrateUserStoreFromStorage, useUserStore } from '@/stores/userStore';
 
 export default function Home() {
   const router = useRouter();
@@ -10,18 +10,18 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useUserStore.persist.onFinishHydration(() => {
+    hydrateUserStoreFromStorage();
+    const timer = window.setTimeout(() => {
       setHydrated(true);
-    });
-    if (useUserStore.persist.hasHydrated()) {
-      setHydrated(true);
-    }
-    return unsub;
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
     if (hydrated && currentUser) {
-      router.replace("/chat");
+      router.replace('/chat');
     }
   }, [hydrated, currentUser, router]);
 
