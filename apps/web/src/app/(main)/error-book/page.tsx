@@ -433,7 +433,7 @@ function WrongQuestionDetail({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-muted/30">
+    <div className="fixed inset-0 z-50 bg-background">
       <header className="sticky top-0 z-10 border-b border-border bg-background px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -467,7 +467,7 @@ function WrongQuestionDetail({
         )}
       </header>
 
-      <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto px-4 py-4 pb-28">
+      <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto bg-muted/30 px-4 py-4 pb-28">
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="flex flex-wrap gap-1.5">
             <Badge>{item.subject || '其他'}</Badge>
@@ -526,7 +526,7 @@ function WrongQuestionDetail({
           />
         </section>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex gap-2">
             <button
               type="button"
