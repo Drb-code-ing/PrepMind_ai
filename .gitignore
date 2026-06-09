@@ -31,3 +31,6 @@ pgdata/
 
 # Blog
 Blog/
+
+# Local worktrees
+.worktrees/
