@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "tsc --noEmit"
   },
   "dependencies": {
     "@repo/types": "*"

@@ -1,267 +1,89 @@
-# PrepMind AI — Phase 1 数据流
+# PrepMind AI 数据流
 
-> 当前版本：2026-06-08。Phase 1 是纯前端 MVP，不接入数据库服务端；浏览器本地状态暂由 localStorage + Dexie 承担。
-
----
+> 当前版本：2026-06-09。Phase 1 前端 MVP 已完成；Phase 2.1 后端基础与鉴权已完成。前端业务 UI 尚未全面迁移到后端 API。
 
 ## 1. 总览
 
 ```text
+Phase 1 前端业务流
 用户操作
-  ↓
-Next.js Client Component
-  ↓
-React / zustand 内存态
-  ↓
-localStorage 或 IndexedDB(Dexie)
-  ↓
-页面刷新后从本地恢复
+  -> Next.js Client Component
+  -> React state / zustand
+  -> localStorage / IndexedDB(Dexie)
+  -> 页面刷新后从本地恢复
 ```
-
-外部 AI 调用仍通过 Next.js API Route 代理：
 
 ```text
-聊天输入 → /api/chat → DeepSeek → SSE → useChat → Dexie messages
-拍照识题 → /api/ocr  → MIMO v2.5 → SSE → 固定 Markdown schema → 用户预览确认 → Dexie wrongQuestions
+Phase 2.1 后端鉴权流
+客户端 HTTP 请求
+  -> NestJS Controller
+  -> Service
+  -> Prisma
+  -> PostgreSQL
+  -> 统一响应 envelope
 ```
 
-Phase 1 没有后端数据库，因此：
+当前阶段的关键边界：
 
-- localStorage 只存用户态和 UI 草稿。
-- Dexie 是本地业务数据源。
-- TanStack Query 已移除，Phase 2 接入 HTTP API 后再恢复。
+- 前端登录/注册页面仍使用 Phase 1 localStorage 模拟账号。
+- NestJS Auth API 已可独立工作，是 Phase 2.2 前端迁移目标。
+- 聊天和 OCR 仍由 Next.js API Route 代理外部 AI 服务。
+- Dexie 仍是前端聊天、OCR、错题和今日任务的本地数据源。
+- PostgreSQL 已承载后端用户、refresh token 等服务端模型。
 
----
+## 2. Phase 1 前端本地存储
 
-## 2. 存储分层
-
-| 存储 | Key / 表 | 当前内容 | 说明 |
+| 存储 | Key / 表 | 内容 | 说明 |
 | --- | --- | --- | --- |
 | localStorage | `prepmind-user` | `currentUser`、`users[]` | Phase 1 模拟登录注册 |
 | localStorage | `prepmind-chat` | `inputDraft` | 切页不丢输入框草稿 |
-| localStorage | `prepmind-today:{userId}:{date}` | 当天已完成任务 ID | 今日任务静态版，本地按账号和日期隔离 |
-| IndexedDB | `messages` | 聊天消息 | 按 `userId` 隔离，当前账号只读写自己的记录 |
-| IndexedDB | `ocrRecords` | OCR 用户图片与识别结果 | 按 `userId` 隔离，`groupId` 绑定同一次 OCR |
-| IndexedDB | `wrongQuestions` | 错题本记录 | 按 `userId` 隔离，Phase 1 错题本唯一数据源 |
+| localStorage | `prepmind-today:{userId}:{date}` | 当日已完成任务 ID | 今日任务静态版，按账号和日期隔离 |
+| IndexedDB | `messages` | 聊天消息 | 按 `userId` 隔离 |
+| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 按 `userId` 隔离，`groupId` 绑定同一次 OCR |
+| IndexedDB | `wrongQuestions` | 错题本记录 | 按 `userId` 隔离，`sourceGroupId` 防重复保存 |
 
----
-
-## 3. 登录态数据流
-
-```text
-注册/登录表单
-  ↓
-客户端校验
-  ↓
-useUserStore.register / loginByPhone / loginByEmail
-  ↓
-zustand state 更新
-  ↓
-persist 写入 localStorage: prepmind-user
-```
-
-刷新或进入受保护页面时：
-
-```text
-Client useEffect
-  ↓
-hydrateUserStoreFromStorage()
-  ↓
-从 localStorage 手动恢复 currentUser / users
-  ↓
-AuthGuard 判断 currentUser
-  ↓
-有用户：放行；无用户：redirect /login
-```
-
-这里不用服务端读取 localStorage，避免 SSR 与 CSR 首屏不一致导致 hydration warning。
-
----
-
-## 4. 聊天数据流
+## 3. Phase 1 聊天数据流
 
 ```text
 用户输入文本
-  ↓
-ChatInputBar onInputChange
-  ↓
-useChat input + chatStore.inputDraft
-  ↓
-提交到 /api/chat
-  ↓
-DeepSeek SSE 流式返回
-  ↓
-useChat messages[] 更新
-  ↓
-MarkdownRenderer 渲染 Markdown / GFM / 数学公式
-  ↓
-saveChatToDb()
-  ↓
-Dexie transaction: 删除当前 userId 的旧 messages + bulkAdd 新 messages
+  -> ChatInputBar
+  -> useChat input + chatStore.inputDraft
+  -> POST /api/chat
+  -> DeepSeek / OpenAI SSE
+  -> useChat messages[]
+  -> MarkdownRenderer 渲染 Markdown / GFM / 数学公式
+  -> Dexie messages
 ```
 
-`messages` 表字段：
+`/api/chat` 当前仍是 Next.js API Route。它会检查 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 是否存在；缺失时返回明确错误，前端显示可见提示。
 
-```ts
-interface StoredMessage {
-  id: string;
-  userId: string;
-  role: 'user' | 'assistant';
-  content: string;
-  order: number;
-  createdAt: number;
-}
-```
-
-保存策略：
-
-- 用户消息进入数组后保存一次。
-- AI 流式完成、`isLoading` 变为 false 后再保存一次，确保最终回复不丢。
-- 页面关闭或隐藏时执行 flush，减少未写入风险。
-
----
-
-## 5. OCR 数据流
+## 4. Phase 1 OCR 与错题本数据流
 
 ```text
 用户选择图片或拍照
-  ↓
-FileReader 转 base64 预览
-  ↓
-提交到 /api/ocr
-  ↓
-MIMO v2.5 SSE 流式返回
-  ↓
-ocrMessages 实时更新
-  ↓
-流式完成后写入 Dexie ocrRecords
+  -> FileReader 生成预览
+  -> POST /api/ocr
+  -> OCR 模型 SSE 返回固定 Markdown schema
+  -> ocrRecords
+  -> 用户点击“保存到错题本”
+  -> parseOcrResult(content)
+  -> 保存预览弹窗
+  -> db.wrongQuestions.add(record)
 ```
 
-`ocrRecords` 表字段：
+错题来源当前只有 OCR。字段提取策略：
 
-```ts
-interface OcrRecord {
-  id: string;
-  userId: string;
-  type: 'user' | 'ocr-loading' | 'ocr-result';
-  groupId?: string;
-  content: string;
-  imageUrl?: string;
-  createdAt: number;
-}
-```
+- `questionText`：来自 OCR Markdown 的“题目”段。
+- `subject`：优先取 AI 输出，缺失时按关键词兜底。
+- `knowledgePoints`：来自 AI 输出列表，最多保留 8 个。
+- `category`：优先取第一个知识点，缺失时退回学科。
+- `analysis`：来自“分析思路”段。
+- `answer`：来自“参考答案”段。
+- `errorType`：优先取 AI 输出错因，缺失时按关键词兜底。
 
-`userId` 用于本地账号隔离。`groupId` 用来把同一次 OCR 的图片消息与识别结果绑定起来，也是保存错题时防重复的关键来源。
+保存预览中的题目与参考答案使用统一 Markdown/KaTeX 渲染，避免数学公式裸露为 `$...$`。
 
----
-
-## 6. 聊天 + OCR 统一时间线
-
-Day 3 的问题是聊天消息和 OCR 消息分两段渲染，刷新后顺序可能变成“全部聊天在前，OCR 在后”。
-
-当前方案：
-
-```ts
-type UnifiedMsg =
-  | { kind: 'chat'; time: number }
-  | { kind: 'ocr-user'; time: number }
-  | { kind: 'ocr-result'; time: number };
-```
-
-渲染时：
-
-```text
-messages + ocrMessages
-  ↓
-按 createdAt / chatTimestamps 合并
-  ↓
-sort(time)
-  ↓
-一次 map，根据 kind 分发到 ChatBubble / OcrBubble
-```
-
-刷新恢复时：
-
-- `messages` 使用 Dexie 里的 `createdAt`。
-- `ocrRecords` 直接使用表里的 `createdAt`。
-- 新消息用 `chatTimestamps` 记录创建时间。
-
----
-
-## 7. 错题本数据流
-
-错题来源目前只有 OCR。OCR prompt 要求 AI 保留固定二级标题 schema，前端解析后先弹出保存预览：
-
-```text
-OCR 识别结果
-  ↓
-用户点击“保存到错题本”
-  ↓
-按 userId + sourceGroupId 检查是否已存在
-  ↓
-parseOcrResult(content)
-  ↓
-校验必填字段：题目 / 知识点 / 分析思路 / 参考答案
-  ↓
-展示保存预览与缺失字段提示
-  ↓
-用户确认后组装 WrongQuestionRecord
-  ↓
-db.wrongQuestions.add(record)
-  ↓
-按钮变为“已保存”，禁止重复保存
-```
-
-`wrongQuestions` 表字段：
-
-```ts
-interface WrongQuestionRecord {
-  id: string;
-  userId: string;
-  source: 'ocr' | 'manual' | 'chat';
-  sourceRecordId?: string;
-  sourceGroupId?: string;
-  imageUrl?: string;
-  questionText: string;
-  subject: string;
-  category: string;
-  knowledgePoints: string[];
-  analysis: string;
-  answer: string;
-  errorType: string;
-  userNote: string;
-  rawContent: string;
-  status: 'unresolved' | 'resolved';
-  createdAt: number;
-  updatedAt: number;
-}
-```
-
-错题本页面读写：
-
-```text
-/error-book 初始加载
-  ↓
-db.wrongQuestions.where('userId').equals(currentUser.id).sortBy('createdAt')
-  ↓
-本地 state items
-  ↓
-筛选 / 详情 / 删除 / 标记掌握 / 保存备注
-  ↓
-db.wrongQuestions.update/delete
-```
-
-当前分类策略：
-
-- `subject`：优先取 AI 输出的学科，缺失时由关键词推断。
-- `category`：优先取第一个知识点，缺失时回退到学科。
-- `knowledgePoints`：从 AI 输出的知识点列表提取，最多保留 8 个。
-- `errorType`：优先取 AI 输出的错因，缺失时由关键词推断。
-- `questionText`、`knowledgePoints`、`analysis`、`answer` 是保存预览的重点字段，缺失时提示用户补充。
-
----
-
-## 8. Dexie Schema 版本
+## 5. Dexie Schema
 
 | 版本 | messages | ocrRecords | wrongQuestions | 说明 |
 | --- | --- | --- | --- | --- |
@@ -272,71 +94,168 @@ db.wrongQuestions.update/delete
 | v5 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加 `sourceGroupId` 索引 |
 | v6 | `id, userId, [userId+order], role, order, createdAt` | `id, userId, [userId+createdAt], type, groupId, createdAt` | `id, userId, [userId+sourceGroupId], [userId+createdAt], source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加本地账号隔离 |
 
-v5 的 `sourceGroupId` 索引用于保存错题时按 OCR group 防重复。
-v6 的 `userId` 索引用于阻断不同本地账号之间的聊天、OCR、错题串用。
+## 6. Phase 2.1 后端基础数据流
 
----
-
-## 9. 登出数据流
+### 6.1 请求入口
 
 ```text
-点击“退出登录”
-  ↓
-useUserStore.logout()
-  ↓
-currentUser 置空
-  ↓
-返回登录/聊天入口
+HTTP Request
+  -> cookie-parser
+  -> CORS(credentials: true)
+  -> RequestIdMiddleware
+  -> Controller
+  -> Service
+  -> PrismaService
+  -> PostgreSQL
+  -> ResponseEnvelopeInterceptor
+  -> HTTP Response
 ```
 
-Phase 1 当前采用“本地业务数据按 `userId` 隔离”的策略。退出登录不删除 IndexedDB 业务数据，同一账号再次登录可以恢复自己的聊天、OCR 和错题记录；新账号不会看到旧账号数据。
+统一成功响应：
 
-如果用户在浏览器里只清空 localStorage 而没有清空 IndexedDB，旧的 v5 及以前无 `userId` 数据会保持无主状态，不再自动展示给新注册账号。
+```json
+{
+  "success": true,
+  "data": {},
+  "requestId": "..."
+}
+```
 
-## 10. 今日任务静态版
+统一错误响应：
 
-Phase 1 的今日任务不调用后端，也不引入请求/响应拦截器。
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "..."
+  },
+  "requestId": "..."
+}
+```
+
+### 6.2 注册
 
 ```text
-/today
-  ↓
-读取 currentUser.id + 当天日期
-  ↓
-readTodayTaskState(userId, dateKey)
-  ↓
-渲染静态任务模板 + 完成进度
-  ↓
-用户勾选任务
-  ↓
-writeTodayTaskState(userId, state)
+POST /auth/register
+  -> registerRequestSchema 校验
+  -> 检查 email 是否已存在
+  -> bcrypt hash password
+  -> prisma.user.create()
+  -> 创建 refresh token family
+  -> refresh token hash 写入 PostgreSQL
+  -> Set-Cookie: prepmind_refresh=httpOnly
+  -> 返回 user + accessToken
 ```
 
-任务模板在前端常量 `TODAY_TASKS` 中维护，包括：
+### 6.3 登录
 
-- 知识点复盘
-- 错题回看
-- 拍照识题
-- 学习总结
+```text
+POST /auth/login
+  -> loginRequestSchema 校验
+  -> prisma.user.findUnique(email)
+  -> bcrypt compare password
+  -> 创建 refresh token
+  -> Set-Cookie: prepmind_refresh=httpOnly
+  -> 返回 user + accessToken
+```
 
-页面会读取 Dexie `wrongQuestions` 中当前用户的未掌握错题数量，用来增强“错题回看”任务提示，但任务本身仍是静态模板。
+### 6.4 当前用户
 
----
+```text
+GET /auth/me
+  -> Authorization: Bearer accessToken
+  -> JwtAuthGuard
+  -> CurrentUser decorator
+  -> prisma.user.findUniqueOrThrow()
+  -> 返回 AuthUser
+```
 
-## 11. Phase 2 迁移方向
+### 6.5 Refresh Token 轮换
 
-| 功能 | Phase 1 | Phase 2 |
-| --- | --- | --- |
-| 认证 | zustand + localStorage | NestJS AuthModule + session/JWT |
-| 聊天记录 | Dexie `messages` + `userId` | ChatMessage API + PostgreSQL 用户归属 |
-| OCR 记录 | Dexie `ocrRecords` + `userId` + base64 | OCR API + BullMQ + 对象存储 URL |
-| 错题本 | Dexie `wrongQuestions` + `userId` | WrongQuestion CRUD API + PostgreSQL 用户归属 |
-| 今日任务 | 静态模板 + localStorage 用户/日期隔离 | Task API + AI/FSRS 推荐 |
-| 服务端状态 | 无 TanStack Query | TanStack Query 管理 API 缓存 |
-| 离线能力 | Dexie 是主数据源 | Dexie 作为离线缓存 |
+```text
+POST /auth/refresh
+  -> 读取 httpOnly cookie: prepmind_refresh
+  -> hash 后查 refreshTokens
+  -> 校验未过期、未撤销
+  -> revoke 旧 refresh token
+  -> 创建同 familyId 新 refresh token
+  -> Set-Cookie 新 refresh token
+  -> 返回 user + accessToken
+```
 
-迁移原则：
+### 6.6 Logout
 
-- PostgreSQL 成为唯一真实数据源。
-- Dexie 降级为离线缓存和乐观更新层。
-- TanStack Query 只管理 API server state，不再包裹本地 Dexie 读写。
-- OCR 输出在 Phase 1 已使用固定 Markdown schema；Phase 2 可升级为后端 schema 校验和结构化 JSON。
+```text
+POST /auth/logout
+  -> 读取 refresh cookie
+  -> revoke 当前 refresh token
+  -> 清除 prepmind_refresh cookie
+  -> 返回 { ok: true }
+```
+
+### 6.7 用户资料
+
+```text
+GET /users/me
+  -> JwtAuthGuard
+  -> 返回当前用户资料
+
+PATCH /users/me
+  -> JwtAuthGuard
+  -> updateMeRequestSchema
+  -> prisma.user.update()
+  -> 返回更新后的 AuthUser
+```
+
+## 7. PostgreSQL / Prisma
+
+当前 Phase 2.1 已落地 migration：
+
+- `User`
+- `RefreshToken`
+- `Account`
+- `Session`
+- `Question`
+- `WrongQuestion`
+- `Card`
+- `ReviewLog`
+- `Document`
+- `Chunk`
+- `Conversation`
+- `ChatMessage`
+- `OcrRecord`
+
+本机 Docker PostgreSQL 映射：
+
+```text
+localhost:5433 -> container:5432
+```
+
+Prisma migration 状态应为：
+
+```text
+Database schema is up to date
+```
+
+## 8. Phase 2.2 迁移目标
+
+Phase 2.2 重点是把前端从“本地模拟登录”迁移到“后端 Auth API”：
+
+```text
+登录/注册页面
+  -> apiClient
+  -> NestJS Auth API
+  -> TanStack Query 缓存 current user
+  -> AuthGuard 读取 server session
+  -> Dexie 降级为离线缓存
+```
+
+优先顺序：
+
+1. 封装 `apiClient`：baseURL、credentials、错误解析、requestId。
+2. 引入 TanStack Query：`useMe`、`useLogin`、`useRegister`、`useLogout`。
+3. 登录/注册 UI 接入 `/auth/register`、`/auth/login`。
+4. AuthGuard 改为以后端 `/auth/me` 为权威来源。
+5. 401 统一处理：跳转登录、清理前端 session cache。
+6. 保留 Dexie 历史数据读取，为 WrongQuestion/Chat/OCR API 迁移做准备。
