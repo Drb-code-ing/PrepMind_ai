@@ -25,6 +25,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.1",
+    "@prisma/client": "^6.6.0",
     "@repo/database": "*",
     "@repo/types": "*",
     "argon2": "^0.44.0",
