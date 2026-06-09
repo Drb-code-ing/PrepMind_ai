@@ -16,6 +16,7 @@ dist/
 
 # Build
 *.tsbuildinfo
+.tmp/
 
 # IDE
 .vscode/
