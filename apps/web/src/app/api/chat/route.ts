@@ -1,15 +1,18 @@
-import { streamText } from "ai";
-import { aiProvider, DEFAULT_MODEL } from "@/lib/ai-provider";
+import { streamText } from 'ai';
+import { aiProvider, DEFAULT_MODEL, getAiProviderStatus } from '@/lib/ai-provider';
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return Response.json(
-        { error: "消息列表不能为空" },
-        { status: 400 },
-      );
+      return Response.json({ error: '消息列表不能为空' }, { status: 400 });
+    }
+
+    const providerStatus = getAiProviderStatus();
+
+    if (!providerStatus.configured) {
+      return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
     const result = streamText({
@@ -22,12 +25,11 @@ export async function POST(req: Request) {
       messages,
     });
 
-    return result.toDataStreamResponse();
+    return result.toDataStreamResponse({
+      getErrorMessage: () => 'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。',
+    });
   } catch (error) {
-    console.error("[Chat API]", error);
-    return Response.json(
-      { error: "AI 服务暂时不可用，请稍后重试" },
-      { status: 500 },
-    );
+    console.error('[Chat API]', error);
+    return Response.json({ error: 'AI 服务暂时不可用，请稍后重试' }, { status: 500 });
   }
 }

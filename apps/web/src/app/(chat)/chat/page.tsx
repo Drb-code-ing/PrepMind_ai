@@ -23,6 +23,17 @@ import { Bot, Check, Loader2, X } from 'lucide-react';
 
 const SCROLL_THRESHOLD = 100;
 
+function getReadableChatError(error: Error) {
+  try {
+    const parsed = JSON.parse(error.message) as { error?: string };
+    if (parsed.error) return parsed.error;
+  } catch {
+    // The AI SDK may pass plain text messages for stream errors.
+  }
+
+  return error.message || 'AI 服务暂时不可用，请稍后重试';
+}
+
 // ─── Unified message type for rendering ─────────────────────────────
 
 type UnifiedMsg =
@@ -140,6 +151,7 @@ function ChatView({
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   // ── Chat message timestamps (for unified ordering in-session) ──
   const [chatTimestamps, setChatTimestamps] = useState<Record<string, number>>(() => {
@@ -168,6 +180,10 @@ function ChatView({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     })),
+    keepLastMessageOnError: true,
+    onError: (error) => {
+      setChatError(getReadableChatError(error));
+    },
   });
 
   // ── Refs (kept in sync via useLayoutEffect) ──
@@ -644,6 +660,7 @@ function ChatView({
             {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <ChatBubble role="assistant" content="" username="" isLoading />
             )}
+            {chatError && <ChatErrorNotice message={chatError} />}
           </div>
         ) : (
           <div className="flex flex-col items-center px-4 pt-12">
@@ -667,6 +684,7 @@ function ChatView({
                 onSelect={() => handleQuickSend('用简单的方式讲解一下深度学习的基本概念')}
               />
             </div>
+            {chatError && <ChatErrorNotice message={chatError} />}
           </div>
         )}
       </main>
@@ -679,6 +697,7 @@ function ChatView({
             e.preventDefault();
             handleOcrSubmit();
           } else {
+            setChatError(null);
             handleSubmit(e);
           }
         }}
@@ -782,6 +801,14 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
     >
       {label}
     </button>
+  );
+}
+
+function ChatErrorNotice({ message }: { message: string }) {
+  return (
+    <div className="mx-auto mt-2 max-w-[85%] rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+      {message}
+    </div>
   );
 }
 
@@ -948,7 +975,7 @@ function WrongQuestionSaveDialog({
         )}
 
         <div className="mt-3 space-y-3">
-          <PreviewField label="题目" value={pending.parsed.questionText} />
+          <PreviewField label="题目" value={pending.parsed.questionText} renderMarkdown />
           <div className="grid grid-cols-2 gap-2">
             <PreviewPill label="学科" value={pending.parsed.subject} />
             <PreviewPill label="错因" value={pending.parsed.errorType} />
@@ -968,7 +995,7 @@ function WrongQuestionSaveDialog({
               </div>
             </div>
           )}
-          <PreviewField label="参考答案" value={pending.parsed.answer} />
+          <PreviewField label="参考答案" value={pending.parsed.answer} renderMarkdown />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -994,13 +1021,21 @@ function WrongQuestionSaveDialog({
   );
 }
 
-function PreviewField({ label, value }: { label: string; value: string }) {
+function PreviewField({
+  label,
+  value,
+  renderMarkdown,
+}: {
+  label: string;
+  value: string;
+  renderMarkdown?: boolean;
+}) {
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 max-h-28 overflow-y-auto rounded-lg bg-muted/50 px-3 py-2 text-sm leading-6">
-        {value || '未识别'}
-      </p>
+      <div className="mt-1 max-h-36 overflow-y-auto rounded-lg bg-muted/50 px-3 py-2 text-sm leading-6">
+        {value ? renderMarkdown ? <MarkdownRenderer content={value} /> : value : '未识别'}
+      </div>
     </div>
   );
 }
