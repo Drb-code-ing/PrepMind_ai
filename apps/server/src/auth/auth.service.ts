@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
-import type { LoginRequest, RegisterRequest } from '@repo/types';
+import type { LoginRequest, RegisterRequest } from '@repo/types/api/auth';
 
 import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
