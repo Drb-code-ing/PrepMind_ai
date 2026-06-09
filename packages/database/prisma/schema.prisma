@@ -11,21 +11,26 @@ datasource db {
 // 运行: CREATE EXTENSION IF NOT EXISTS vector;
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  avatarUrl     String?
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  name         String?
+  avatarUrl    String?
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   accounts       Account[]
   sessions       Session[]
+  refreshTokens  RefreshToken[]
   questions      Question[]
   wrongQuestions WrongQuestion[]
   cards          Card[]
   documents      Document[]
+  conversations  Conversation[]
   chatMessages   ChatMessage[]
+  ocrRecords     OcrRecord[]
 }
 
 model Account {
@@ -55,9 +60,52 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model RefreshToken {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  familyId   String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([familyId])
+}
+
 enum Role {
   STUDENT
   ADMIN
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum WrongQuestionSource {
+  OCR
+  MANUAL
+  CHAT
+}
+
+enum WrongQuestionStatus {
+  UNRESOLVED
+  RESOLVED
 }
 
 // ---------- 题目与错题 ----------
@@ -74,25 +122,35 @@ model Question {
   userId          String
   user            User     @relation(fields: [userId], references: [id])
 
-  wrongQuestions WrongQuestion[]
-  cards          Card[]
+  cards Card[]
 }
 
 model WrongQuestion {
-  id            String   @id @default(cuid())
-  questionId    String
-  userAnswer    String   @db.Text
-  correctAnswer String   @db.Text
-  errorReason   String?  @db.Text
-  correctedAt   DateTime?
-  createdAt     DateTime @default(now())
-  userId        String
+  id              String              @id @default(cuid())
+  userId          String
+  source          WrongQuestionSource @default(OCR)
+  sourceRecordId  String?
+  sourceGroupId   String?
+  imageUrl        String?
+  questionText    String              @db.Text
+  subject         String
+  category        String
+  knowledgePoints String[]
+  analysis        String              @db.Text
+  answer          String              @db.Text
+  errorType       String?
+  userNote        String?             @db.Text
+  rawContent      String?             @db.Text
+  status          WrongQuestionStatus @default(UNRESOLVED)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
-  question Question @relation(fields: [questionId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([createdAt])
+  @@unique([userId, sourceGroupId])
+  @@index([userId, createdAt])
+  @@index([userId, status])
+  @@index([userId, subject])
 }
 
 // ---------- FSRS 记忆系统 ----------
@@ -111,8 +169,8 @@ model Card {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id])
-  question Question @relation(fields: [questionId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  question Question    @relation(fields: [questionId], references: [id])
   logs     ReviewLog[]
 
   @@index([userId, nextReview])
@@ -127,15 +185,15 @@ enum CardState {
 }
 
 model ReviewLog {
-  id              String   @id @default(cuid())
-  cardId          String
-  rating          Int
-  scheduledDays   Int
-  stabilityBefore Float
-  stabilityAfter  Float
+  id               String   @id @default(cuid())
+  cardId           String
+  rating           Int
+  scheduledDays    Int
+  stabilityBefore  Float
+  stabilityAfter   Float
   difficultyBefore Float
   difficultyAfter  Float
-  reviewedAt      DateTime @default(now())
+  reviewedAt       DateTime @default(now())
 
   card Card @relation(fields: [cardId], references: [id])
 
@@ -145,7 +203,7 @@ model ReviewLog {
 
 // ---------- RAG 知识库 ----------
 model Document {
-  id         String         @id @default(cuid())
+  id         String        @id @default(cuid())
   name       String
   type       DocumentType
   size       Int
@@ -153,8 +211,8 @@ model Document {
   storageKey String
   status     ProcessStatus @default(PENDING)
   userId     String
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   user   User    @relation(fields: [userId], references: [id])
   chunks Chunk[]
@@ -175,14 +233,14 @@ enum ProcessStatus {
 }
 
 model Chunk {
-  id         String   @id @default(cuid())
+  id         String                 @id @default(cuid())
   documentId String
-  content    String   @db.Text
+  content    String                 @db.Text
   embedding  Unsupported("vector")?
   metadata   Json
   index      Int
   userId     String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime               @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
@@ -191,17 +249,50 @@ model Chunk {
 }
 
 // ---------- 聊天历史 ----------
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
 model ChatMessage {
-  id             String   @id @default(cuid())
-  conversationId String
-  role           String
-  content        String   @db.Text
-  toolCalls      Json?
-  createdAt      DateTime @default(now())
+  id             String      @id @default(cuid())
   userId         String
+  conversationId String
+  role           MessageRole
+  content        String      @db.Text
+  order          Int
+  metadata       Json?
+  createdAt      DateTime    @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
+  @@unique([conversationId, order])
   @@index([userId, conversationId])
-  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model OcrRecord {
+  id         String    @id @default(cuid())
+  userId     String
+  groupId    String
+  imageUrl   String?
+  rawText    String    @db.Text
+  parsedJson Json?
+  status     OcrStatus @default(DONE)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([userId, createdAt])
 }
