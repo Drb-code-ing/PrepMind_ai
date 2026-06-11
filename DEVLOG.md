@@ -151,6 +151,8 @@ afb2578 feat: add frontend auth session state
 9c27aaa feat: add auth query hooks
 19f54e1 feat: migrate frontend auth to backend
 37b7cf6 fix: stabilize frontend auth build
+65ad246 docs: update Phase 2.2 auth flow
+8ebc04f feat: detect refresh token reuse
 ```
 
 ---
