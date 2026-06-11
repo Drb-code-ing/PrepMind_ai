@@ -10,6 +10,11 @@ import { ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, Trash2, X } from 'lu
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
+import {
+  getCrudSuccessMessage,
+  getDeleteActionState,
+  type DeleteActionState,
+} from '@/lib/crud-feedback';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
 import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
@@ -54,6 +59,8 @@ export default function ErrorBookPage() {
   const [subjectFilter, setSubjectFilter] = useState('全部');
   const [selected, setSelected] = useState<WrongQuestionRecord | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const userId = currentUser?.id ?? null;
@@ -221,17 +228,18 @@ export default function ErrorBookPage() {
   };
 
   const deleteItem = async (id: string) => {
-    const confirmed = window.confirm('删除后无法恢复，确认删除这道错题？');
-    if (!confirmed) return;
-
+    setDeletingId(id);
     try {
       await deleteWrongQuestion.mutateAsync(id);
       await db.wrongQuestions.delete(id);
       setItems((prev) => prev.filter((item) => item.id !== id));
       setSelected(null);
-      showNotice('已删除这道错题', 'danger');
+      setPendingDeleteId(null);
+      showNotice(getCrudSuccessMessage('错题', 'delete'), 'danger');
     } catch (error) {
       showNotice(error instanceof Error ? error.message : '删除失败，请稍后重试', 'danger');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -267,7 +275,7 @@ export default function ErrorBookPage() {
       </header>
 
       <main className="px-4 py-4">
-        {notice && <ActionNoticeBar notice={notice} />}
+        {notice && <ActionNoticeBar notice={notice} floating />}
         {syncError && !loadError && (
           <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
             {syncError}
@@ -350,7 +358,14 @@ export default function ErrorBookPage() {
                     }
                   })()
                 }
-                onDelete={() => deleteItem(item.id)}
+                deleteState={getDeleteActionState({
+                  itemId: item.id,
+                  pendingDeleteId,
+                  deletingId,
+                })}
+                onRequestDelete={() => setPendingDeleteId(item.id)}
+                onCancelDelete={() => setPendingDeleteId(null)}
+                onConfirmDelete={() => deleteItem(item.id)}
               />
             ))}
           </div>
@@ -361,8 +376,18 @@ export default function ErrorBookPage() {
         <WrongQuestionDetail
           key={selected.id}
           item={selected}
-          onClose={() => setSelected(null)}
-          onDelete={() => deleteItem(selected.id)}
+          onClose={() => {
+            setPendingDeleteId(null);
+            setSelected(null);
+          }}
+          deleteState={getDeleteActionState({
+            itemId: selected.id,
+            pendingDeleteId,
+            deletingId,
+          })}
+          onRequestDelete={() => setPendingDeleteId(selected.id)}
+          onCancelDelete={() => setPendingDeleteId(null)}
+          onConfirmDelete={() => deleteItem(selected.id)}
           onUpdate={(patch) => updateItem(selected.id, patch)}
           onAction={showNotice}
         />
@@ -371,10 +396,16 @@ export default function ErrorBookPage() {
   );
 }
 
-function ActionNoticeBar({ notice }: { notice: ActionNotice }) {
+function ActionNoticeBar({
+  notice,
+  floating = false,
+}: {
+  notice: ActionNotice;
+  floating?: boolean;
+}) {
   return (
     <div
-      className={`mb-3 flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
+      className={`${floating ? 'fixed left-4 right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[70] mx-auto max-w-md shadow-lg backdrop-blur' : 'mb-3'} flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
         notice.type === 'danger'
           ? 'border-destructive/20 bg-destructive/10 text-destructive'
           : 'border-primary/20 bg-primary/10 text-primary'
@@ -421,14 +452,22 @@ function WrongQuestionCard({
   highlighted,
   onOpen,
   onToggleStatus,
-  onDelete,
+  deleteState,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
 }: {
   item: WrongQuestionRecord;
   highlighted?: boolean;
   onOpen: () => void;
   onToggleStatus: () => void;
-  onDelete: () => void;
+  deleteState: DeleteActionState;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
 }) {
+  const confirmingDelete = deleteState !== 'idle';
+
   return (
     <article
       id={`wrong-question-${item.id}`}
@@ -487,7 +526,8 @@ function WrongQuestionCard({
           </button>
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onRequestDelete}
+            disabled={confirmingDelete}
             className="tap-target flex h-9 w-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 active:scale-[0.96]"
             aria-label="删除错题"
           >
@@ -495,20 +535,76 @@ function WrongQuestionCard({
           </button>
         </div>
       </div>
+      {confirmingDelete && (
+        <DeleteConfirmStrip
+          state={deleteState}
+          onCancel={onCancelDelete}
+          onConfirm={onConfirmDelete}
+        />
+      )}
     </article>
+  );
+}
+
+function DeleteConfirmStrip({
+  state,
+  onCancel,
+  onConfirm,
+}: {
+  state: DeleteActionState;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const deleting = state === 'deleting';
+
+  return (
+    <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+      <p className="text-xs font-medium text-destructive">删除后无法恢复，确认删除这道错题？</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={deleting}
+          className="min-h-10 rounded-md border border-border bg-background text-xs font-medium text-foreground transition-colors active:scale-[0.98] disabled:text-muted-foreground"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={deleting}
+          className="min-h-10 rounded-md bg-destructive text-xs font-medium text-destructive-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground"
+        >
+          {deleting ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              删除中
+            </span>
+          ) : (
+            '确认删除'
+          )}
+        </button>
+      </div>
+    </div>
   );
 }
 
 function WrongQuestionDetail({
   item,
   onClose,
-  onDelete,
+  deleteState,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
   onUpdate,
   onAction,
 }: {
   item: WrongQuestionRecord;
   onClose: () => void;
-  onDelete: () => void;
+  deleteState: DeleteActionState;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
   onUpdate: (patch: UpdateLocalWrongQuestionRequest) => Promise<void>;
   onAction: (message: string, type?: ActionNotice['type']) => void;
 }) {
@@ -520,6 +616,7 @@ function WrongQuestionDetail({
   const detailNoticeTimerRef = useRef<number | null>(null);
   const noteSavedTimerRef = useRef<number | null>(null);
   const noteChanged = note !== item.userNote;
+  const confirmingDelete = deleteState !== 'idle';
 
   const showDetailNotice = (message: string, type: ActionNotice['type'] = 'success') => {
     if (detailNoticeTimerRef.current) {
@@ -550,8 +647,9 @@ function WrongQuestionDetail({
     try {
       await onUpdate({ userNote: note });
       setNoteSaved(true);
-      showDetailNotice('备注已保存');
-      onAction('备注已保存');
+      const message = getCrudSuccessMessage('备注', 'save');
+      showDetailNotice(message);
+      onAction(message);
       if (noteSavedTimerRef.current) {
         window.clearTimeout(noteSavedTimerRef.current);
       }
@@ -614,7 +712,7 @@ function WrongQuestionDetail({
         )}
       </header>
 
-      <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto bg-muted/30 px-4 py-4 pb-28">
+      <div className="h-[calc(100dvh-4.25rem)] overflow-y-auto bg-muted/30 px-4 py-4 pb-48">
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="flex flex-wrap gap-1.5">
             <Badge>{item.subject || '其他'}</Badge>
@@ -677,29 +775,39 @@ function WrongQuestionDetail({
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void toggleStatus()}
-              disabled={statusUpdating}
-              className="tap-target flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
-            >
-              {statusUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
-              {statusUpdating
-                ? '更新中...'
-                : item.status === 'resolved'
-                  ? '标为未掌握'
-                  : '标为已掌握'}
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="tap-target flex h-11 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 text-sm font-medium text-destructive transition-colors active:scale-[0.96]"
-              aria-label="删除错题"
-            >
-              <Trash2 className="h-5 w-5" />
-              删除
-            </button>
+          <div className="space-y-2">
+            {confirmingDelete && (
+              <DeleteConfirmStrip
+                state={deleteState}
+                onCancel={onCancelDelete}
+                onConfirm={onConfirmDelete}
+              />
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void toggleStatus()}
+                disabled={statusUpdating}
+                className="tap-target flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
+              >
+                {statusUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {statusUpdating
+                  ? '更新中...'
+                  : item.status === 'resolved'
+                    ? '标为未掌握'
+                    : '标为已掌握'}
+              </button>
+              <button
+                type="button"
+                onClick={onRequestDelete}
+                disabled={confirmingDelete}
+                className="tap-target flex h-11 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 text-sm font-medium text-destructive transition-colors active:scale-[0.96]"
+                aria-label="删除错题"
+              >
+                <Trash2 className="h-5 w-5" />
+                删除
+              </button>
+            </div>
           </div>
         </div>
       </div>
