@@ -1,5 +1,6 @@
 const HEADING_ALIASES = {
   recognitionResult: ['识别结果', '类型', '内容类型'],
+  nonQuestionSummary: ['内容说明', '图片内容', '识别说明'],
   questionText: ['题目', '题干', '完整题目'],
   subject: ['学科', '科目'],
   knowledgePoints: ['知识点', '考点'],
@@ -15,8 +16,18 @@ export const WRONG_QUESTION_REQUIRED_FIELDS = [
   'answer',
 ] as const;
 
-export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 识别结果
-只能输出一个值：题目 / 非题目。
+export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `如果识别结果为“非题目”，只输出以下两个标题：
+
+## 识别结果
+非题目
+
+## 内容说明
+用 1-3 句自然语言说明图片内容，以及为什么没有识别到考试题或练习题。
+
+如果识别结果为“题目”，输出以下完整标题：
+
+## 识别结果
+题目
 
 ## 题目
 完整题干。多题时用（1）（2）分段，但仍放在本节内。
@@ -39,6 +50,7 @@ export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 识别结果
 
 export interface ParsedWrongQuestion {
   isQuestion: boolean;
+  nonQuestionSummary: string;
   questionText: string;
   subject: string;
   category: string;
@@ -54,7 +66,16 @@ type RequiredWrongQuestionField = (typeof WRONG_QUESTION_REQUIRED_FIELDS)[number
 export type OcrResultStatus = 'streaming' | 'done' | 'failed' | 'aborted';
 
 export function formatOcrContentForDisplay(content: string) {
-  return content
+  const trimmed = content.trim();
+  if (!trimmed) return '';
+
+  const parsed = parseOcrResult(trimmed);
+  if (!parsed.isQuestion) {
+    const summary = parsed.nonQuestionSummary || '图片中没有可识别的题目内容。';
+    return `我没有在图片里识别到考试题或练习题。\n\n${summary}`.trim();
+  }
+
+  return trimmed
     .trim()
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+/g, ' ')
@@ -147,6 +168,14 @@ function isUnknownValue(text: string) {
   return !normalized || /^未识别/.test(normalized);
 }
 
+function cleanNonQuestionSummary(text: string) {
+  return text
+    .replace(/^无题目内容[。.\s]*/u, '')
+    .replace(/^未识别到题目[。.\s]*/u, '')
+    .replace(/^该图片(?:本身)?(?:不是|不属于)题目[。.\s]*/u, '')
+    .trim();
+}
+
 function inferIsQuestion({
   recognitionResult,
   questionText,
@@ -190,6 +219,7 @@ export function parseOcrResult(content: string): ParsedWrongQuestion {
   const rawContent = content.trim();
   const sections = extractSections(rawContent);
   const recognitionResult = pickSection(sections, HEADING_ALIASES.recognitionResult);
+  const nonQuestionSummaryText = pickSection(sections, HEADING_ALIASES.nonQuestionSummary);
   const questionText = pickSection(sections, HEADING_ALIASES.questionText, rawContent);
   const analysis = pickSection(sections, HEADING_ALIASES.analysis);
   const answer = pickSection(sections, HEADING_ALIASES.answer);
@@ -202,17 +232,22 @@ export function parseOcrResult(content: string): ParsedWrongQuestion {
       .split('\n')[0]
       ?.replace(/^[-*•\s]+/, '')
       .trim() || inferSubject(rawContent);
+  const isQuestion = inferIsQuestion({
+    recognitionResult,
+    questionText,
+    subject,
+    knowledgePoints,
+    analysis,
+    answer,
+    rawContent,
+  });
+  const nonQuestionSummary = !isQuestion
+    ? cleanNonQuestionSummary(nonQuestionSummaryText || questionText || analysis)
+    : '';
 
   return {
-    isQuestion: inferIsQuestion({
-      recognitionResult,
-      questionText,
-      subject,
-      knowledgePoints,
-      analysis,
-      answer,
-      rawContent,
-    }),
+    isQuestion,
+    nonQuestionSummary,
     questionText,
     subject,
     category: knowledgePoints[0] ?? subject,

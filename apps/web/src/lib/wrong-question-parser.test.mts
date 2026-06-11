@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   canSaveOcrResult,
+  formatOcrContentForDisplay,
   getMissingWrongQuestionFields,
   parseOcrResult,
   WRONG_QUESTION_REQUIRED_FIELDS,
@@ -77,6 +78,30 @@ test('detects non-question OCR output and blocks wrong-question saving', () => {
 
   assert.equal(parsed.isQuestion, false);
   assert.equal(canSaveOcrResult(parsed, 'done'), false);
+});
+
+test('formats non-question OCR output as a natural assistant response', () => {
+  const content = `## 识别结果
+非题目
+
+## 内容说明
+这是一张年轻女性的肖像照片，没有发现题干、选项、公式或学科图形符号。`;
+
+  const parsed = parseOcrResult(content);
+  const display = formatOcrContentForDisplay(content);
+
+  assert.equal(parsed.isQuestion, false);
+  assert.equal(
+    parsed.nonQuestionSummary,
+    '这是一张年轻女性的肖像照片，没有发现题干、选项、公式或学科图形符号。',
+  );
+  assert.equal(
+    display,
+    '我没有在图片里识别到考试题或练习题。\n\n这是一张年轻女性的肖像照片，没有发现题干、选项、公式或学科图形符号。',
+  );
+  assert.equal(display.includes('## 学科'), false);
+  assert.equal(display.includes('## 知识点'), false);
+  assert.equal(display.includes('错因建议'), false);
 });
 
 test('blocks saving while OCR result is still streaming', () => {

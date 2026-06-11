@@ -1128,12 +1128,7 @@ function OcrBubble({
             )}
             {ocrStatus === 'streaming' && (
               <p className="mt-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                正在识别，完成后再决定是否保存到错题本。
-              </p>
-            )}
-            {ocrStatus === 'done' && parsedOcr && !parsedOcr.isQuestion && (
-              <p className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-                未识别到题目，已隐藏错题保存入口。
+                正在识别图片内容...
               </p>
             )}
             {ocrStatus === 'done' && parsedOcr?.isQuestion && !canSave && missingFields.length > 0 && (
