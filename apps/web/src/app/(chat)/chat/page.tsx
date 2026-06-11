@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
 import { useChat } from '@ai-sdk/react';
 import Image from 'next/image';
+import Link from 'next/link';
 import ChatTopBar from '@/components/chat/chat-top-bar';
 import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
@@ -22,7 +23,8 @@ import {
   parseOcrResult,
   type ParsedWrongQuestion,
 } from '@/lib/wrong-question-parser';
-import { Bot, Check, Loader2, X } from 'lucide-react';
+import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
+import { ArrowRight, Bot, Check, CheckCircle2, Loader2, X } from 'lucide-react';
 
 const SCROLL_THRESHOLD = 100;
 const STREAM_UI_THROTTLE_MS = 80;
@@ -151,6 +153,9 @@ function ChatView({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
+  const [savedWrongQuestionIdsByGroup, setSavedWrongQuestionIdsByGroup] = useState<
+    Record<string, string>
+  >({});
   const [saveWrongErrors, setSaveWrongErrors] = useState<Record<string, string>>({});
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
@@ -209,6 +214,15 @@ function ChatView({
       .then((items) => {
         setSavedWrongGroupIds(
           new Set(items.map((item) => item.sourceGroupId).filter(Boolean) as string[]),
+        );
+        setSavedWrongQuestionIdsByGroup(
+          Object.fromEntries(
+            items
+              .filter((item): item is WrongQuestionRecord & { sourceGroupId: string } =>
+                Boolean(item.sourceGroupId),
+              )
+              .map((item) => [item.sourceGroupId, item.id]),
+          ),
         );
       });
   }, [userId]);
@@ -502,6 +516,10 @@ function ChatView({
         .first();
       if (existing) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        setSavedWrongQuestionIdsByGroup((prev) => ({
+          ...prev,
+          [sourceGroupId]: existing.id,
+        }));
         setSaveWrongErrors((prev) => {
           const next = { ...prev };
           delete next[sourceGroupId];
@@ -562,6 +580,10 @@ function ChatView({
       });
       if (sourceGroupId) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        setSavedWrongQuestionIdsByGroup((prev) => ({
+          ...prev,
+          [sourceGroupId]: savedRecord.id,
+        }));
         setSaveWrongErrors((prev) => {
           const next = { ...prev };
           delete next[sourceGroupId];
@@ -679,6 +701,9 @@ function ChatView({
                   username={currentUser?.username || '我'}
                   onImageClick={(url) => setPreviewImage(url)}
                   isSaved={Boolean(msg.groupId && savedWrongGroupIds.has(msg.groupId))}
+                  savedWrongQuestionId={
+                    msg.groupId ? savedWrongQuestionIdsByGroup[msg.groupId] : undefined
+                  }
                   saveError={msg.groupId ? saveWrongErrors[msg.groupId] : undefined}
                   onSave={() =>
                     prepareWrongQuestionSave({
@@ -866,6 +891,7 @@ function OcrBubble({
   onImageClick,
   onSave,
   isSaved,
+  savedWrongQuestionId,
   saveError,
 }: {
   type: 'user' | 'ocr-loading' | 'ocr-result';
@@ -875,6 +901,7 @@ function OcrBubble({
   onImageClick?: (url: string) => void;
   onSave?: () => Promise<void>;
   isSaved?: boolean;
+  savedWrongQuestionId?: string;
   saveError?: string;
 }) {
   const [saving, setSaving] = useState(false);
@@ -950,6 +977,23 @@ function OcrBubble({
                 '保存到错题本'
               )}
             </button>
+            {isSaved && (
+              <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-primary/20 bg-background px-3 py-2 text-xs text-foreground shadow-sm">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 font-medium">已加入错题本</span>
+                </div>
+                <Link
+                  href={getWrongQuestionFocusHref(savedWrongQuestionId)}
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-transform active:scale-95"
+                >
+                  查看
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
             {saveError && <p className="mt-2 text-xs text-destructive">{saveError}</p>}
           </>
         ) : (

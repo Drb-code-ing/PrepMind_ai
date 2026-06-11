@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, Trash2, X } from 'lucide-react';
 
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
+import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
 import {
   useDeleteWrongQuestion,
@@ -43,12 +45,15 @@ function getSummary(text: string) {
 
 export default function ErrorBookPage() {
   const currentUser = useUserStore((s) => s.currentUser);
+  const searchParams = useSearchParams();
+  const focusId = getWrongQuestionFocusId(searchParams);
   const [items, setItems] = useState<WrongQuestionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [subjectFilter, setSubjectFilter] = useState('全部');
   const [selected, setSelected] = useState<WrongQuestionRecord | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const userId = currentUser?.id ?? null;
@@ -146,6 +151,33 @@ export default function ErrorBookPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!focusId) return;
+
+    const applyTimer = window.setTimeout(() => {
+      setHighlightedId(focusId);
+      setStatusFilter('all');
+      setSubjectFilter('全部');
+    }, 0);
+    const clearTimer = window.setTimeout(() => setHighlightedId(null), 2200);
+
+    return () => {
+      window.clearTimeout(applyTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [focusId]);
+
+  useEffect(() => {
+    if (!highlightedId || items.length === 0) return;
+
+    const target = document.getElementById(`wrong-question-${highlightedId}`);
+    if (!target) return;
+
+    window.setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+  }, [highlightedId, items.length]);
 
   const subjects = useMemo(() => {
     const values = Array.from(new Set(items.map((item) => item.subject || '其他')));
@@ -304,6 +336,7 @@ export default function ErrorBookPage() {
               <WrongQuestionCard
                 key={item.id}
                 item={item}
+                highlighted={highlightedId === item.id}
                 onOpen={() => setSelected(item)}
                 onToggleStatus={() =>
                   void (async () => {
@@ -385,17 +418,26 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
 
 function WrongQuestionCard({
   item,
+  highlighted,
   onOpen,
   onToggleStatus,
   onDelete,
 }: {
   item: WrongQuestionRecord;
+  highlighted?: boolean;
   onOpen: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
 }) {
   return (
-    <article className="rounded-lg border border-border bg-card p-3 transition-colors active:bg-muted/40">
+    <article
+      id={`wrong-question-${item.id}`}
+      className={`rounded-lg border bg-card p-3 transition-all duration-300 active:bg-muted/40 ${
+        highlighted
+          ? 'border-primary/50 bg-primary/5 shadow-sm ring-2 ring-primary/20'
+          : 'border-border'
+      }`}
+    >
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">

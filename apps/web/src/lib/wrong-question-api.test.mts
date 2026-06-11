@@ -8,15 +8,34 @@ import {
   mapWrongQuestionStatusToApi,
   mapWrongQuestionStatusToLocal,
 } from './wrong-question-api.ts';
+import {
+  getWrongQuestionFocusHref,
+  getWrongQuestionFocusId,
+} from './wrong-question-navigation.ts';
 import type { WrongQuestionRecord } from './db.ts';
 
 async function run() {
+  testBuildsFocusHref();
+  testReadsFocusIdFromSearchParams();
   testMapsStatuses();
   testMapsServerResponseToLocalRecord();
   testMapsLocalRecordToCreateRequest();
   testOmitsLocalDataUrlImageFromCreateRequest();
   await testListsWrongQuestionsWithFilters();
   await testUpdatesWrongQuestion();
+}
+
+function testBuildsFocusHref() {
+  assert.equal(getWrongQuestionFocusHref('wrong_1'), '/error-book?focus=wrong_1');
+  assert.equal(getWrongQuestionFocusHref('wrong 1'), '/error-book?focus=wrong+1');
+  assert.equal(getWrongQuestionFocusHref(''), '/error-book');
+  assert.equal(getWrongQuestionFocusHref(undefined), '/error-book');
+}
+
+function testReadsFocusIdFromSearchParams() {
+  assert.equal(getWrongQuestionFocusId(new URLSearchParams('focus=wrong_1')), 'wrong_1');
+  assert.equal(getWrongQuestionFocusId(new URLSearchParams('focus=')), null);
+  assert.equal(getWrongQuestionFocusId(new URLSearchParams('page=1')), null);
 }
 
 function testMapsStatuses() {
