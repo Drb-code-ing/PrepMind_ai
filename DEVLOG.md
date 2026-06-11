@@ -120,6 +120,14 @@
 - 修复前端 build 中 `.next/dev` 本地缓存污染导致的类型检查问题。
 - 更新 `AGENTS.md`、`CLAUDE.md`、`docs/roadmap.md`、`docs/data-flow.md`。
 
+**Auth 安全增强**
+
+- 在 refresh token rotation 基础上增加 reuse detection。
+- 已轮换的旧 RT 再次被使用时，返回 `AUTH_REFRESH_REUSED`。
+- 当同 token family 仍存在活跃 RT 时，立即撤销整个 family 并清除 refresh cookie。
+- logout 后的旧 cookie 或已全量撤销的 family 继续按普通失效处理。
+- 当前 Auth 主链路仍使用 PostgreSQL 存储 refresh token 状态，不引入 Redis。
+
 **验证**
 
 - `bun --filter @repo/web lint` 通过。
@@ -129,7 +137,7 @@
 - `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过：2 suites / 4 tests。
+- `bun --filter @repo/server test` 通过：2 suites / 5 tests。
 - `bun --filter @repo/server test:e2e` 通过：2 suites / 2 tests。
 - Prisma migration status：`Database schema is up to date`。
 

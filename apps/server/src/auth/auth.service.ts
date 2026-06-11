@@ -87,11 +87,36 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (
-      !tokenRecord ||
-      tokenRecord.revokedAt ||
-      tokenRecord.expiresAt.getTime() <= Date.now()
-    ) {
+    if (!tokenRecord) {
+      throw new AppError(
+        'AUTH_REFRESH_INVALID',
+        '登录状态已失效',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (tokenRecord.revokedAt) {
+      const revokedActiveTokens = await this.revokeRefreshTokenFamily(
+        tokenRecord.familyId,
+      );
+      this.clearRefreshCookie(response);
+
+      if (revokedActiveTokens === 0) {
+        throw new AppError(
+          'AUTH_REFRESH_INVALID',
+          '登录状态已失效',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      throw new AppError(
+        'AUTH_REFRESH_REUSED',
+        '登录状态存在安全风险，请重新登录',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (tokenRecord.expiresAt.getTime() <= Date.now()) {
       throw new AppError(
         'AUTH_REFRESH_INVALID',
         '登录状态已失效',
@@ -132,12 +157,7 @@ export class AuthService {
       });
     }
 
-    response.clearCookie(this.getRefreshCookieName(), {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: this.isProduction(),
-      path: '/',
-    });
+    this.clearRefreshCookie(response);
 
     return { ok: true };
   }
@@ -211,6 +231,30 @@ export class AuthService {
 
   private getRefreshCookieName(): string {
     return this.configService.get('REFRESH_COOKIE_NAME', { infer: true });
+  }
+
+  private async revokeRefreshTokenFamily(familyId: string): Promise<number> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        familyId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+        lastUsedAt: new Date(),
+      },
+    });
+
+    return result.count;
+  }
+
+  private clearRefreshCookie(response: Response): void {
+    response.clearCookie(this.getRefreshCookieName(), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: this.isProduction(),
+      path: '/',
+    });
   }
 
   private isProduction(): boolean {

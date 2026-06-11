@@ -114,8 +114,42 @@ describe('AuthController (e2e)', () => {
     expect(refreshedCookie).not.toBe(loginCookie);
 
     await request(server)
-      .post('/auth/logout')
+      .post('/auth/refresh')
+      .set('Cookie', loginCookie)
+      .expect(401)
+      .expect((response) => {
+        const body = getErrorBody(response);
+
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('AUTH_REFRESH_REUSED');
+        expect(getRefreshCookie(response)).toContain(
+          `${REFRESH_COOKIE_NAME}=;`,
+        );
+      });
+
+    await request(server)
+      .post('/auth/refresh')
       .set('Cookie', refreshedCookie)
+      .expect(401)
+      .expect((response) => {
+        const body = getErrorBody(response);
+
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('AUTH_REFRESH_INVALID');
+      });
+
+    const reloginResponse = await request(server)
+      .post('/auth/login')
+      .send({
+        email,
+        password,
+      })
+      .expect(201);
+    const reloginCookie = getRefreshCookie(reloginResponse);
+
+    await request(server)
+      .post('/auth/logout')
+      .set('Cookie', reloginCookie)
       .expect(201)
       .expect((response) => {
         expect(getSuccessData(response)).toEqual({ ok: true });
@@ -126,7 +160,7 @@ describe('AuthController (e2e)', () => {
 
     await request(server)
       .post('/auth/refresh')
-      .set('Cookie', refreshedCookie)
+      .set('Cookie', reloginCookie)
       .expect(401)
       .expect((response) => {
         const body = getErrorBody(response);

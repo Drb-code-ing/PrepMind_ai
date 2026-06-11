@@ -68,6 +68,8 @@ mcp -> ai, fsrs, rag, types
 
 - 前端登录/注册已调用 NestJS Auth API。
 - refresh token 使用 httpOnly cookie，服务端只存 hash。
+- refresh token 已启用 rotation；旧 RT 重放时会撤销同 family 的活跃 RT 并强制重新登录。
+- Phase 2 Auth 主链路不依赖 Redis，refresh token 状态存放在 PostgreSQL。
 - 前端运行态保存 access token 与当前用户。
 - 应用启动时调用 `/auth/refresh` 恢复 session。
 - `AuthGuard` 以后端 session 为权威来源。

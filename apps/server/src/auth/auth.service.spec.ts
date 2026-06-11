@@ -131,4 +131,46 @@ describe('AuthService', () => {
       expect.objectContaining({ httpOnly: true }),
     );
   });
+
+  it('revokes the refresh token family when a rotated token is reused', async () => {
+    const reusedToken = {
+      id: 'refresh_1',
+      userId: user.id,
+      tokenHash: 'hash',
+      familyId: 'family_1',
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: new Date('2026-06-09T00:00:00.000Z'),
+      lastUsedAt: null,
+      userAgent: null,
+      ipAddress: null,
+      createdAt: new Date('2026-06-09T00:00:00.000Z'),
+      user,
+    };
+    prisma.refreshToken.findUnique.mockResolvedValue(reusedToken);
+    prisma.refreshToken.updateMany.mockResolvedValue({ count: 2 });
+
+    const service = await createService();
+
+    await expect(
+      service.refresh('stolen-old-refresh-token', response, {
+        userAgent: 'jest',
+        ipAddress: '127.0.0.1',
+      }),
+    ).rejects.toMatchObject({ code: 'AUTH_REFRESH_REUSED' });
+
+    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: {
+        familyId: 'family_1',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date) as Date,
+        lastUsedAt: expect.any(Date) as Date,
+      },
+    });
+    expect(clearCookieMock).toHaveBeenCalledWith(
+      'prepmind_refresh',
+      expect.objectContaining({ httpOnly: true }),
+    );
+  });
 });

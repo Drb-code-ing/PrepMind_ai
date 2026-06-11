@@ -87,6 +87,22 @@ AuthSessionProvider
 
 refresh 失败视为未登录，不弹全局错误。
 
+Refresh token 已启用 rotation 与 reuse detection：
+
+```text
+旧 RT 首次用于 /auth/refresh
+  -> 标记旧 RT revokedAt
+  -> 签发同 familyId 的新 RT
+
+已轮换旧 RT 再次被使用
+  -> 判定为 AUTH_REFRESH_REUSED
+  -> 撤销同 familyId 下仍活跃的 RT
+  -> 清除 refresh cookie
+  -> 强制用户重新登录
+```
+
+当前 Auth 主链路不依赖 Redis。Refresh token family、撤销状态和审计字段继续存放在 PostgreSQL。
+
 ### 2.4 受保护页面
 
 ```text

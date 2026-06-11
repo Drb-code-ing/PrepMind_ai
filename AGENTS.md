@@ -127,6 +127,8 @@ mcp -> ai, fsrs, rag, types
 
 - 前端登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - 前端运行态保存 access token 和当前用户；刷新页面通过 refresh cookie 恢复。
+- Refresh token 已启用 rotation；旧 RT 重放时会撤销同 family 的活跃 RT 并强制重新登录。
+- Phase 2 Auth 主链路不依赖 Redis，refresh token 状态存放在 PostgreSQL。
 - Phase 1 业务数据仍保存在 Dexie：聊天、OCR、错题本、今日任务。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
