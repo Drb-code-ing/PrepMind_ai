@@ -150,6 +150,7 @@
 - 错题本页面改为通过 TanStack Query 读取服务端错题列表。
 - 标记已掌握、保存备注、删除错题改为调用服务端 API，并同步 Dexie 缓存。
 - 服务端同步失败时，错题本页面继续展示 Dexie 本地缓存并提示用户。
+- 修复本地开发 CORS：开发环境允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，避免 Next.js 自动切到 `3002` 后注册/登录请求被浏览器拦截。
 
 **验证**
 
@@ -161,7 +162,7 @@
 - `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过：3 suites / 9 tests。
+- `bun --filter @repo/server test` 通过：4 suites / 13 tests。
 - `bun --filter @repo/server test:e2e` 通过：3 suites / 4 tests。
 - `bun --cwd packages/types typecheck` 通过。
 - Prisma migration status：`Database schema is up to date`。

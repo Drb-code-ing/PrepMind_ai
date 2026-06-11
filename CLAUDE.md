@@ -35,6 +35,7 @@ bun --filter @repo/server test:e2e
 ```
 
 后端 e2e 需要 Docker PostgreSQL 运行在 `127.0.0.1:5433`。
+开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，Next.js 自动切到 `3002` 等端口时不需要额外改后端配置。
 
 ## 环境变量
 

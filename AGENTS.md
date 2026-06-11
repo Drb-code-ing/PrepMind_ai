@@ -148,6 +148,7 @@ mcp -> ai, fsrs, rag, types
 ## 当前注意事项
 
 - 本机 PostgreSQL 使用 Docker 的 `5433 -> 5432` 映射，避免与 Windows 本地 PostgreSQL 服务冲突。
+- 后端开发环境 CORS 会允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，方便 Next.js 自动切换端口和手机真机测试。
 - PostgreSQL 必须启用 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
 - 异步任务后续用 BullMQ：OCR、Embedding、PDF 解析都走队列。
