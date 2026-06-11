@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Camera, Plus, Mic, Send, Image as ImageIcon, FileText, X } from 'lucide-react';
+import { Camera, Plus, Mic, Send, Image as ImageIcon, FileText, X, Square } from 'lucide-react';
 
 export interface SelectedImage {
   file: File;
@@ -15,6 +15,8 @@ interface ChatInputBarProps {
   selectedImage?: SelectedImage | null;
   onImageSelect?: (image: SelectedImage) => void;
   onImageRemove?: () => void;
+  isGenerating?: boolean;
+  onStop?: () => void;
 }
 
 export default function ChatInputBar({
@@ -23,6 +25,8 @@ export default function ChatInputBar({
   selectedImage,
   onImageSelect,
   onImageRemove,
+  isGenerating = false,
+  onStop,
 }: ChatInputBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -35,10 +39,15 @@ export default function ChatInputBar({
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }
 
-  const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
+  const toggleMenu = useCallback(() => {
+    if (isGenerating) return;
+    setMenuOpen((v) => !v);
+  }, [isGenerating]);
+  const isMenuVisible = menuOpen && !isGenerating;
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (isGenerating) return;
       const file = e.target.files?.[0];
       if (!file || !onImageSelect) return;
       const reader = new FileReader();
@@ -49,7 +58,7 @@ export default function ChatInputBar({
       setMenuOpen(false);
       e.target.value = '';
     },
-    [onImageSelect],
+    [isGenerating, onImageSelect],
   );
 
   return (
@@ -104,6 +113,7 @@ export default function ChatInputBar({
         capture="environment"
         className="hidden"
         onChange={handleFileChange}
+        disabled={isGenerating}
       />
       <input
         ref={galleryInputRef}
@@ -111,14 +121,16 @@ export default function ChatInputBar({
         accept="image/*"
         className="hidden"
         onChange={handleFileChange}
+        disabled={isGenerating}
       />
 
       {/* 功能菜单 */}
-      {menuOpen && (
+      {isMenuVisible && (
         <div className="flex items-center gap-4 px-5 py-3">
           <button
             type="button"
             onClick={() => galleryInputRef.current?.click()}
+            disabled={isGenerating}
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
@@ -129,6 +141,7 @@ export default function ChatInputBar({
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
+            disabled={isGenerating}
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
@@ -139,6 +152,7 @@ export default function ChatInputBar({
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}
+            disabled={isGenerating}
             className="flex flex-col items-center gap-1"
           >
             <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-colors hover:bg-primary/20 active:scale-95">
@@ -155,26 +169,37 @@ export default function ChatInputBar({
           <button
             type="button"
             onClick={toggleMenu}
+            disabled={isGenerating}
             className={`tap-target flex h-9 w-9 items-center justify-center rounded-full transition-all hover:bg-muted active:scale-95 ${
-              menuOpen ? 'bg-muted text-foreground' : 'text-muted-foreground'
-            }`}
-            aria-label={menuOpen ? '收起菜单' : '更多功能'}
+              isMenuVisible ? 'bg-muted text-foreground' : 'text-muted-foreground'
+            } disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100`}
+            aria-label={isMenuVisible ? '收起菜单' : '更多功能'}
           >
-            <span className={`transition-transform duration-200 ${menuOpen ? 'rotate-45' : ''}`}>
+            <span className={`transition-transform duration-200 ${isMenuVisible ? 'rotate-45' : ''}`}>
               <Plus className="h-5 w-5" />
             </span>
           </button>
           <button
             type="button"
             onClick={() => cameraInputRef.current?.click()}
-            className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95"
+            disabled={isGenerating}
+            className="tap-target flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100"
             aria-label="拍照识题"
           >
             <Camera className="h-5 w-5" />
           </button>
         </div>
 
-        {input.trim() || selectedImage ? (
+        {isGenerating ? (
+          <button
+            type="button"
+            onClick={onStop}
+            className="tap-target flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-all hover:bg-foreground/90 active:scale-90"
+            aria-label="停止生成"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+          </button>
+        ) : input.trim() || selectedImage ? (
           <button
             type="submit"
             className="tap-target flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:bg-primary/90 active:scale-90"

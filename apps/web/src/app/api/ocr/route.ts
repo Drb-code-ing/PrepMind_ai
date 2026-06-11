@@ -5,11 +5,14 @@ import { OCR_WRONG_QUESTION_MARKDOWN_SCHEMA } from '@/lib/wrong-question-parser'
 const MIMO_API_URL = 'https://api.xiaomimimo.com/v1/chat/completions';
 const MIMO_MODEL = 'mimo-v2.5';
 
-const SYSTEM_PROMPT = `你是一个专业的考试题目识别助手。请仔细识别图片中的题目，并严格按以下 Markdown schema 输出，不要改名、合并或省略标题：
+const SYSTEM_PROMPT = `你是一个专业的考试题目识别助手。请先判断图片是否包含考试题、作业题、练习题或学科图形符号，再严格按以下 Markdown schema 输出，不要改名、合并或省略标题：
 
 ${OCR_WRONG_QUESTION_MARKDOWN_SCHEMA}
 
 注意事项：
+- “识别结果”必须先输出，只能写“题目”或“非题目”。
+- 如果图片是题目内容，“识别结果”写“题目”，然后正常识别题干、学科、知识点、分析思路和参考答案。
+- 如果图片不是题目内容，“识别结果”写“非题目”；“题目”写图片实际内容的简短说明；“学科 / 知识点 / 参考答案”写“未识别”；“分析思路”说明为什么不是题目，不要编造题干或答案。
 - 每个标题必须使用二级标题，格式固定为：## 标题名。
 - 如果图片中有多个题目，请在“题目 / 分析思路 / 参考答案”中用（1）（2）（3）分段对应。
 - 如果图片不清晰，尽量识别并在“分析思路”中说明不确定处。
@@ -33,39 +36,59 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(buffer).toString('base64');
     const mimeType = image.type || 'image/jpeg';
     const dataUri = `data:${mimeType};base64,${base64}`;
+    const upstreamController = new AbortController();
+    const timeoutId = setTimeout(() => upstreamController.abort(), 120_000);
+    const abortUpstream = () => upstreamController.abort();
+    const cleanupUpstream = () => {
+      clearTimeout(timeoutId);
+      req.signal.removeEventListener('abort', abortUpstream);
+    };
+
+    if (req.signal.aborted) {
+      upstreamController.abort();
+    } else {
+      req.signal.addEventListener('abort', abortUpstream, { once: true });
+    }
 
     // 调用 MIMO v2.5 streaming
-    const response = await fetch(MIMO_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.MIMO_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MIMO_MODEL,
-        stream: true,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: userText?.trim() || '请识别这道题目，给出详细的结构化分析',
-              },
-              {
-                type: 'image_url',
-                image_url: { url: dataUri },
-              },
-            ],
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(120_000),
-    });
+    let response: Response;
+    try {
+      response = await fetch(MIMO_API_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.MIMO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: MIMO_MODEL,
+          stream: true,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: userText?.trim() || '请识别这道题目，给出详细的结构化分析',
+                },
+                {
+                  type: 'image_url',
+                  image_url: { url: dataUri },
+                },
+              ],
+            },
+          ],
+        }),
+        signal: upstreamController.signal,
+      });
+    } catch (error) {
+      cleanupUpstream();
+      throw error;
+    }
 
     if (!response.ok) {
       const err = await response.text();
+      cleanupUpstream();
       console.error('MIMO API error:', response.status, err);
       return new Response(JSON.stringify({ error: '图片识别服务暂时不可用，请稍后重试' }), {
         status: 502,
@@ -117,8 +140,11 @@ export async function POST(req: NextRequest) {
           // Flush remaining buffer
           if (buffer.trim()) processLine(buffer);
         } catch (err) {
-          console.error('Stream error:', err);
+          if (!(err instanceof DOMException && err.name === 'AbortError')) {
+            console.error('Stream error:', err);
+          }
         } finally {
+          cleanupUpstream();
           controller.close();
         }
       },

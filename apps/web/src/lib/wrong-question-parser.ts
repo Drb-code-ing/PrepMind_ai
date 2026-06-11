@@ -1,4 +1,5 @@
 const HEADING_ALIASES = {
+  recognitionResult: ['识别结果', '类型', '内容类型'],
   questionText: ['题目', '题干', '完整题目'],
   subject: ['学科', '科目'],
   knowledgePoints: ['知识点', '考点'],
@@ -14,7 +15,10 @@ export const WRONG_QUESTION_REQUIRED_FIELDS = [
   'answer',
 ] as const;
 
-export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 题目
+export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 识别结果
+只能输出一个值：题目 / 非题目。
+
+## 题目
 完整题干。多题时用（1）（2）分段，但仍放在本节内。
 
 ## 学科
@@ -34,6 +38,7 @@ export const OCR_WRONG_QUESTION_MARKDOWN_SCHEMA = `## 题目
 只能优先输出一个值：概念不清 / 审题错误 / 计算错误 / 方法不会 / 记忆遗漏 / 其他。`;
 
 export interface ParsedWrongQuestion {
+  isQuestion: boolean;
   questionText: string;
   subject: string;
   category: string;
@@ -45,6 +50,8 @@ export interface ParsedWrongQuestion {
 }
 
 type RequiredWrongQuestionField = (typeof WRONG_QUESTION_REQUIRED_FIELDS)[number];
+
+export type OcrResultStatus = 'streaming' | 'done' | 'failed' | 'aborted';
 
 export function formatOcrContentForDisplay(content: string) {
   return content
@@ -135,9 +142,54 @@ function inferErrorType(text: string) {
   return '其他';
 }
 
+function isUnknownValue(text: string) {
+  const normalized = text.trim();
+  return !normalized || /^未识别/.test(normalized);
+}
+
+function inferIsQuestion({
+  recognitionResult,
+  questionText,
+  subject,
+  knowledgePoints,
+  analysis,
+  answer,
+  rawContent,
+}: {
+  recognitionResult: string;
+  questionText: string;
+  subject: string;
+  knowledgePoints: string[];
+  analysis: string;
+  answer: string;
+  rawContent: string;
+}) {
+  const marker = recognitionResult.split('\n')[0]?.trim() ?? '';
+  const inspectionText = [marker, questionText, analysis].join('\n');
+
+  if (/非题目|不是题目|未识别到题目|无题目内容|没有题目|不包含.*题目/.test(inspectionText)) {
+    return false;
+  }
+
+  if (/^题目$|^是题目$|考试题目|练习题/.test(marker)) {
+    return true;
+  }
+
+  const allFieldsUnknown =
+    isUnknownValue(subject) &&
+    isUnknownValue(answer) &&
+    (knowledgePoints.length === 0 || knowledgePoints.every(isUnknownValue));
+  if (allFieldsUnknown && /照片|图片|人像|风景|截图|不是.*题目|未包含.*题目/.test(rawContent)) {
+    return false;
+  }
+
+  return true;
+}
+
 export function parseOcrResult(content: string): ParsedWrongQuestion {
   const rawContent = content.trim();
   const sections = extractSections(rawContent);
+  const recognitionResult = pickSection(sections, HEADING_ALIASES.recognitionResult);
   const questionText = pickSection(sections, HEADING_ALIASES.questionText, rawContent);
   const analysis = pickSection(sections, HEADING_ALIASES.analysis);
   const answer = pickSection(sections, HEADING_ALIASES.answer);
@@ -152,6 +204,15 @@ export function parseOcrResult(content: string): ParsedWrongQuestion {
       .trim() || inferSubject(rawContent);
 
   return {
+    isQuestion: inferIsQuestion({
+      recognitionResult,
+      questionText,
+      subject,
+      knowledgePoints,
+      analysis,
+      answer,
+      rawContent,
+    }),
     questionText,
     subject,
     category: knowledgePoints[0] ?? subject,
@@ -169,9 +230,15 @@ export function parseOcrResult(content: string): ParsedWrongQuestion {
 
 export function getMissingWrongQuestionFields(parsed: ParsedWrongQuestion) {
   const missing: RequiredWrongQuestionField[] = [];
-  if (!parsed.questionText.trim()) missing.push('questionText');
-  if (parsed.knowledgePoints.length === 0) missing.push('knowledgePoints');
-  if (!parsed.analysis.trim()) missing.push('analysis');
-  if (!parsed.answer.trim()) missing.push('answer');
+  if (isUnknownValue(parsed.questionText)) missing.push('questionText');
+  if (parsed.knowledgePoints.length === 0 || parsed.knowledgePoints.every(isUnknownValue)) {
+    missing.push('knowledgePoints');
+  }
+  if (isUnknownValue(parsed.analysis)) missing.push('analysis');
+  if (isUnknownValue(parsed.answer)) missing.push('answer');
   return missing;
+}
+
+export function canSaveOcrResult(parsed: ParsedWrongQuestion, status: OcrResultStatus) {
+  return status === 'done' && parsed.isQuestion && getMissingWrongQuestionFields(parsed).length === 0;
 }

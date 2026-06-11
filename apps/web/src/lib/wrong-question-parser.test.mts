@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  canSaveOcrResult,
   getMissingWrongQuestionFields,
   parseOcrResult,
   WRONG_QUESTION_REQUIRED_FIELDS,
@@ -50,4 +51,54 @@ test('reports missing required fields before saving a weak OCR result', () => {
     'analysis',
     'answer',
   ]);
+});
+
+test('detects non-question OCR output and blocks wrong-question saving', () => {
+  const parsed = parseOcrResult(`## 识别结果
+非题目
+
+## 题目
+无题目内容。该图片是一张人像照片，未包含任何可识别的题目文字或学科图形符号。
+
+## 学科
+未识别
+
+## 知识点
+- 未识别
+
+## 分析思路
+图片主体为人物照片，不是考试题目。
+
+## 参考答案
+未识别
+
+## 错因建议
+其他`);
+
+  assert.equal(parsed.isQuestion, false);
+  assert.equal(canSaveOcrResult(parsed, 'done'), false);
+});
+
+test('blocks saving while OCR result is still streaming', () => {
+  const parsed = parseOcrResult(`## 题目
+求函数 f(x)=x^2 的导数。
+
+## 学科
+数学
+
+## 知识点
+- 导数
+
+## 分析思路
+使用导数公式。
+
+## 参考答案
+2x
+
+## 错因建议
+公式记忆遗漏`);
+
+  assert.equal(parsed.isQuestion, true);
+  assert.equal(canSaveOcrResult(parsed, 'streaming'), false);
+  assert.equal(canSaveOcrResult(parsed, 'done'), true);
 });

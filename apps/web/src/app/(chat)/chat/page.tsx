@@ -19,9 +19,11 @@ import { ApiClientError } from '@/lib/api-client';
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import {
+  canSaveOcrResult,
   formatOcrContentForDisplay,
   getMissingWrongQuestionFields,
   parseOcrResult,
+  type OcrResultStatus,
   type ParsedWrongQuestion,
 } from '@/lib/wrong-question-parser';
 import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
@@ -68,6 +70,7 @@ type UnifiedMsg =
       groupId?: string;
       content: string;
       time: number;
+      ocrStatus: OcrResultStatus;
     };
 
 type PendingWrongQuestionSave = {
@@ -143,6 +146,7 @@ function ChatView({
   const formRef = useRef<HTMLFormElement>(null);
   const isAutoScrollRef = useRef(true);
   const rafRef = useRef<number>(0);
+  const ocrAbortControllerRef = useRef<AbortController | null>(null);
 
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
 
@@ -155,6 +159,7 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
+  const [ocrResultStatuses, setOcrResultStatuses] = useState<Record<string, OcrResultStatus>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
   const [savedWrongQuestionIdsByGroup, setSavedWrongQuestionIdsByGroup] = useState<
@@ -198,6 +203,7 @@ function ChatView({
     input,
     setInput,
     isLoading,
+    stop,
   } = useChat({
     api: '/api/chat',
     experimental_throttle: STREAM_UI_THROTTLE_MS,
@@ -221,6 +227,8 @@ function ChatView({
     ocrMsgRef.current = ocrMessages;
     chatTimestampsRef.current = chatTimestamps;
   });
+
+  const isGenerating = isLoading || ocrLoading;
 
   const toStoredMessages = useCallback(
     (msgs: typeof messages): StoredMessage[] => {
@@ -455,7 +463,7 @@ function ChatView({
 
   // ── OCR submit ──
   const handleOcrSubmit = useCallback(async () => {
-    if (!selectedImage || ocrLoading) return;
+    if (!selectedImage || isGenerating) return;
 
     const userText = input.trim();
     const groupId = `ocr-${Date.now()}`;
@@ -483,9 +491,12 @@ function ChatView({
         createdAt: Date.now() + 1,
       },
     ];
+    setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'streaming' }));
     setOcrMessages(initialOcrMsgs);
 
     const img = selectedImage;
+    const controller = new AbortController();
+    ocrAbortControllerRef.current = controller;
     setSelectedImage(null);
     setInput('');
     clearInputDraft();
@@ -508,7 +519,7 @@ function ChatView({
       fd.append('image', img.file);
       if (userText) fd.append('text', userText);
 
-      const res = await fetch('/api/ocr', { method: 'POST', body: fd });
+      const res = await fetch('/api/ocr', { method: 'POST', body: fd, signal: controller.signal });
 
       if (!res.ok) {
         const errData = await res.json();
@@ -554,10 +565,18 @@ function ChatView({
       const finalOcr = ocrMsgRef.current.map((m) =>
         m.id === resultMsgId ? { ...m, content: fullContent } : m,
       );
+      setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'done' }));
       saveOcrToDb(finalOcr);
     } catch (err) {
       ocrContentPublisher.cancel();
-      const errMsg = `识别失败：${err instanceof Error ? err.message : '未知错误'}`;
+      const isAbortError = err instanceof DOMException && err.name === 'AbortError';
+      const errMsg = isAbortError
+        ? '已停止识别'
+        : `识别失败：${err instanceof Error ? err.message : '未知错误'}`;
+      setOcrResultStatuses((prev) => ({
+        ...prev,
+        [groupId]: isAbortError ? 'aborted' : 'failed',
+      }));
       setOcrMessages((prev) =>
         prev.map((m) => (m.id === resultMsgId ? { ...m, content: errMsg } : m)),
       );
@@ -566,11 +585,14 @@ function ChatView({
       );
       saveOcrToDb(finalOcr);
     } finally {
+      if (ocrAbortControllerRef.current === controller) {
+        ocrAbortControllerRef.current = null;
+      }
       setOcrLoading(false);
     }
   }, [
     selectedImage,
-    ocrLoading,
+    isGenerating,
     input,
     userId,
     setInput,
@@ -579,13 +601,23 @@ function ChatView({
     saveOcrToDb,
   ]);
 
+  const stopOcr = useCallback(() => {
+    ocrAbortControllerRef.current?.abort();
+  }, []);
+
+  const handleStopGeneration = useCallback(() => {
+    if (ocrLoading) stopOcr();
+    if (isLoading) stop();
+  }, [isLoading, ocrLoading, stop, stopOcr]);
+
   const handleQuickSend = useCallback(
     (text: string) => {
+      if (isGenerating) return;
       setInput(text);
       scrollToBottom();
       setTimeout(() => formRef.current?.requestSubmit(), 0);
     },
-    [setInput, scrollToBottom],
+    [isGenerating, setInput, scrollToBottom],
   );
 
   const prepareWrongQuestionSave = useCallback(async (result: OcrRecord) => {
@@ -619,14 +651,31 @@ function ChatView({
           .reverse()
           .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
     const parsed = parseOcrResult(result.content);
+    const ocrStatus = sourceGroupId ? (ocrResultStatuses[sourceGroupId] ?? 'done') : 'done';
+    const missingFields = getMissingWrongQuestionFields(parsed);
+
+    if (!canSaveOcrResult(parsed, ocrStatus)) {
+      if (sourceGroupId) {
+        setSaveWrongErrors((prev) => ({
+          ...prev,
+          [sourceGroupId]: !parsed.isQuestion
+            ? '未识别到题目，不能保存到错题本'
+            : ocrStatus !== 'done'
+              ? '识别完成后才能保存到错题本'
+              : '识别结果缺少必要字段，请重新识别后再保存',
+        }));
+      }
+      return;
+    }
+
     setPendingWrongQuestion({
       result,
       parsed,
       imageUrl: relatedUser?.imageUrl,
       sourceGroupId,
-      missingFields: getMissingWrongQuestionFields(parsed),
+      missingFields,
     });
-  }, [userId]);
+  }, [ocrResultStatuses, userId]);
 
   const confirmWrongQuestionSave = useCallback(async () => {
     if (!pendingWrongQuestion || confirmSaving) return;
@@ -734,11 +783,12 @@ function ChatView({
             groupId: msg.groupId,
             content: msg.content,
             time: msg.createdAt,
+            ocrStatus: msg.groupId ? (ocrResultStatuses[msg.groupId] ?? 'done') : 'done',
           },
     );
 
     return [...chatEntries, ...ocrEntries].sort((a, b) => a.time - b.time);
-  }, [messages, ocrMessages, chatTimestamps, isLoading]);
+  }, [messages, ocrMessages, chatTimestamps, isLoading, ocrResultStatuses]);
 
   const hasMessages = unifiedMessages.length > 0;
 
@@ -784,6 +834,7 @@ function ChatView({
                   content={msg.content}
                   username={currentUser?.username || '我'}
                   onImageClick={(url) => setPreviewImage(url)}
+                  ocrStatus={msg.ocrStatus}
                   isSaved={Boolean(msg.groupId && savedWrongGroupIds.has(msg.groupId))}
                   savedWrongQuestionId={
                     msg.groupId ? savedWrongQuestionIdsByGroup[msg.groupId] : undefined
@@ -846,6 +897,11 @@ function ChatView({
         ref={formRef}
         data-chat-form
         onSubmit={(e) => {
+          if (isGenerating) {
+            e.preventDefault();
+            return;
+          }
+
           if (selectedImage) {
             e.preventDefault();
             handleOcrSubmit();
@@ -861,6 +917,8 @@ function ChatView({
           selectedImage={selectedImage}
           onImageSelect={handleImageSelect}
           onImageRemove={handleImageRemove}
+          isGenerating={isGenerating}
+          onStop={handleStopGeneration}
         />
       </form>
 
@@ -974,6 +1032,7 @@ function OcrBubble({
   username,
   onImageClick,
   onSave,
+  ocrStatus = 'done',
   isSaved,
   savedWrongQuestionId,
   saveError,
@@ -984,14 +1043,18 @@ function OcrBubble({
   username: string;
   onImageClick?: (url: string) => void;
   onSave?: () => Promise<void>;
+  ocrStatus?: OcrResultStatus;
   isSaved?: boolean;
   savedWrongQuestionId?: string;
   saveError?: string;
 }) {
   const [saving, setSaving] = useState(false);
+  const parsedOcr = type === 'ocr-result' && content ? parseOcrResult(content) : null;
+  const canSave = parsedOcr ? canSaveOcrResult(parsedOcr, ocrStatus) : false;
+  const missingFields = parsedOcr ? getMissingWrongQuestionFields(parsedOcr) : [];
 
   const handleSave = async () => {
-    if (!onSave || saving || isSaved) return;
+    if (!onSave || saving || isSaved || !canSave) return;
     setSaving(true);
     try {
       await onSave();
@@ -1041,26 +1104,53 @@ function OcrBubble({
         {content ? (
           <>
             <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || isSaved}
-              className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
-            >
-              {isSaved ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  已保存到错题本
-                </>
-              ) : saving ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  正在保存
-                </>
-              ) : (
-                '保存到错题本'
-              )}
-            </button>
+            {(canSave || isSaved) && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || isSaved}
+                className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
+              >
+                {isSaved ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    已保存到错题本
+                  </>
+                ) : saving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    正在保存
+                  </>
+                ) : (
+                  '保存到错题本'
+                )}
+              </button>
+            )}
+            {ocrStatus === 'streaming' && (
+              <p className="mt-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                正在识别，完成后再决定是否保存到错题本。
+              </p>
+            )}
+            {ocrStatus === 'done' && parsedOcr && !parsedOcr.isQuestion && (
+              <p className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                未识别到题目，已隐藏错题保存入口。
+              </p>
+            )}
+            {ocrStatus === 'done' && parsedOcr?.isQuestion && !canSave && missingFields.length > 0 && (
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                识别结果缺少必要字段，暂不能保存到错题本。建议重新识别或补充更清晰的图片。
+              </p>
+            )}
+            {ocrStatus === 'aborted' && (
+              <p className="mt-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                已停止本次识别。
+              </p>
+            )}
+            {ocrStatus === 'failed' && (
+              <p className="mt-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                本次识别失败，可以重新上传图片再试。
+              </p>
+            )}
             {isSaved && (
               <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-primary/20 bg-background px-3 py-2 text-xs text-foreground shadow-sm">
                 <div className="flex min-w-0 items-center gap-2">
