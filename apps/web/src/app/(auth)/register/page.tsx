@@ -1,16 +1,12 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  validateEmail,
-  validateUsername,
-  validatePassword,
-  validateConfirmPassword,
-  type FieldError,
-} from "@/lib/validators";
-import { useUserStore } from "@/stores/userStore";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+import { useRegister } from '@/hooks/use-auth';
+
+type FieldError = string | null;
 
 function FieldHint({ error }: { error: FieldError }) {
   if (!error) return null;
@@ -19,193 +15,190 @@ function FieldHint({ error }: { error: FieldError }) {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const register = useUserStore((s) => s.register);
-
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const register = useRegister();
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [agreed, setAgreed] = useState(false);
-
-  const [errors, setErrors] = useState<Partial<Record<string, FieldError>>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, FieldError>>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const [serverSuccess, setServerSuccess] = useState<string | null>(null);
 
-  function setFieldError(field: string, error: FieldError) {
-    setErrors((prev) => ({ ...prev, [field]: error }));
-  }
-
-  function handleBlur(field: string) {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    if (field === "email") setFieldError("email", validateEmail(email));
-    if (field === "username") setFieldError("username", validateUsername(username));
-    if (field === "password") setFieldError("password", validatePassword(password));
-    if (field === "confirm") setFieldError("confirm", validateConfirmPassword(confirm, password));
-  }
-
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setServerError(null);
-    setServerSuccess(null);
 
-    const allTouched = { email: true, username: true, password: true, confirm: true };
-    setTouched(allTouched);
-
-    const errs = {
+    const nextErrors = {
       email: validateEmail(email),
       username: validateUsername(username),
-      password: validatePassword(password),
+      password: validateRegisterPassword(password),
       confirm: validateConfirmPassword(confirm, password),
     };
-    setErrors(errs);
+    setErrors(nextErrors);
 
-    if (Object.values(errs).some(Boolean)) return;
+    if (Object.values(nextErrors).some(Boolean)) return;
     if (!agreed) {
-      setServerError("请先同意用户协议");
+      setServerError('请先同意用户协议和隐私政策');
       return;
     }
 
-    const result = register({ email, username, password });
-    if (!result.ok) {
-      setServerError(result.error!);
-      return;
+    try {
+      await register.mutateAsync({
+        email: email.trim(),
+        password,
+        name: username.trim(),
+      });
+      router.replace('/chat');
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : '注册失败，请稍后重试');
     }
-
-    // 注册成功 → 跳转登录页
-    setServerSuccess("注册成功！正在跳转到登录页…");
-    setTimeout(() => router.push("/login"), 1200);
   }
 
-  const inputClass = (field: string) =>
-    `flex items-center rounded-xl border bg-muted/50 px-4 py-3 transition-all ${
-      errors[field] && touched[field]
-        ? "border-red-500"
-        : "border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary"
-    }`;
+  const submitting = register.isPending;
 
   return (
-    <div className="flex flex-1 flex-col px-6 pt-16 pb-8">
-      {/* Logo + 标语 */}
-      <div className="flex flex-col items-center gap-2 mb-10">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-          <span className="text-3xl">🧠</span>
+    <div className="flex flex-1 flex-col px-6 pb-8 pt-16">
+      <div className="mb-10 flex flex-col items-center gap-2">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-xl font-bold text-primary">
+          PM
         </div>
         <h1 className="text-2xl font-bold tracking-tight">创建账号</h1>
         <p className="text-sm text-muted-foreground">加入 PrepMind AI，开始高效备考</p>
       </div>
 
-      {/* 服务端反馈 */}
       {serverError && (
         <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
           {serverError}
         </div>
       )}
-      {serverSuccess && (
-        <div className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
-          {serverSuccess}
-        </div>
-      )}
 
-      {/* 表单 */}
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        {/* 邮箱 */}
         <div>
-          <div className={inputClass("email")}>
+          <div className={inputClass(errors.email)}>
             <input
               type="email"
               inputMode="email"
               placeholder="邮箱地址"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); if (touched.email) setFieldError("email", null); }}
-              onBlur={() => handleBlur("email")}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors((prev) => ({ ...prev, email: null }));
+              }}
               className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          {touched.email && <FieldHint error={errors.email} />}
+          <FieldHint error={errors.email} />
         </div>
 
-        {/* 用户名 */}
         <div>
-          <div className={inputClass("username")}>
+          <div className={inputClass(errors.username)}>
             <input
               type="text"
-              placeholder="用户名（2-20 个字符）"
+              placeholder="用户名"
               value={username}
-              onChange={(e) => { setUsername(e.target.value); if (touched.username) setFieldError("username", null); }}
-              onBlur={() => handleBlur("username")}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setErrors((prev) => ({ ...prev, username: null }));
+              }}
               className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          {touched.username && <FieldHint error={errors.username} />}
+          <FieldHint error={errors.username} />
         </div>
 
-        {/* 密码 */}
         <div>
-          <div className={inputClass("password")}>
+          <div className={inputClass(errors.password)}>
             <input
               type="password"
-              placeholder="设置密码（6-20 位，含字母+数字）"
+              placeholder="设置密码，至少 8 位"
               value={password}
-              onChange={(e) => { setPassword(e.target.value); if (touched.password) setFieldError("password", null); }}
-              onBlur={() => handleBlur("password")}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrors((prev) => ({ ...prev, password: null }));
+              }}
               className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          {touched.password && <FieldHint error={errors.password} />}
+          <FieldHint error={errors.password} />
         </div>
 
-        {/* 确认密码 */}
         <div>
-          <div className={inputClass("confirm")}>
+          <div className={inputClass(errors.confirm)}>
             <input
               type="password"
               placeholder="确认密码"
               value={confirm}
-              onChange={(e) => { setConfirm(e.target.value); if (touched.confirm) setFieldError("confirm", null); }}
-              onBlur={() => handleBlur("confirm")}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                setErrors((prev) => ({ ...prev, confirm: null }));
+              }}
               className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          {touched.confirm && <FieldHint error={errors.confirm} />}
+          <FieldHint error={errors.confirm} />
         </div>
 
-        {/* 注册按钮 */}
+        <label className="mt-1 flex items-start gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
+          />
+          <span>
+            注册即表示同意 <span className="text-primary">《用户协议》</span> 和{' '}
+            <span className="text-primary">《隐私政策》</span>
+          </span>
+        </label>
+
         <button
           type="submit"
-          className={`tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl text-sm font-medium transition-all ${
-            agreed
-              ? "bg-primary text-white hover:bg-primary-dark active:scale-[0.98]"
-              : "bg-primary/40 text-white/70"
-          }`}
+          disabled={!agreed || submitting}
+          className="tap-target mt-2 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-white transition-all hover:bg-primary-dark active:scale-[0.98] disabled:bg-primary/40 disabled:text-white/70 disabled:active:scale-100"
         >
-          注册
+          {submitting ? '注册中...' : '注册'}
         </button>
       </form>
 
-      {/* 协议勾选 */}
-      <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary"
-        />
-        <span>
-          注册即表示同意 <span className="text-primary">《用户协议》</span> 和{" "}
-          <span className="text-primary">《隐私政策》</span>
-        </span>
-      </div>
-
-      {/* 登录链接 */}
       <div className="mt-6 text-center">
         <span className="text-sm text-muted-foreground">已有账号？</span>
-        <Link href="/login" className="tap-target text-sm font-medium text-primary ml-1">
+        <Link href="/login" className="tap-target ml-1 text-sm font-medium text-primary">
           去登录
         </Link>
       </div>
-
-      <div className="mt-auto" />
     </div>
   );
+}
+
+function inputClass(error: FieldError) {
+  return `flex items-center rounded-xl border bg-muted/50 px-4 py-3 transition-all ${
+    error
+      ? 'border-red-500'
+      : 'border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'
+  }`;
+}
+
+function validateEmail(value: string): FieldError {
+  if (!value.trim()) return '请输入邮箱';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return '请输入正确的邮箱格式';
+  return null;
+}
+
+function validateUsername(value: string): FieldError {
+  if (!value.trim()) return '请输入用户名';
+  if (value.trim().length > 50) return '用户名最多 50 个字符';
+  return null;
+}
+
+function validateRegisterPassword(value: string): FieldError {
+  if (!value) return '请输入密码';
+  if (value.length < 8) return '密码至少 8 位';
+  if (value.length > 128) return '密码最多 128 位';
+  return null;
+}
+
+function validateConfirmPassword(value: string, password: string): FieldError {
+  if (!value) return '请确认密码';
+  if (value !== password) return '两次密码不一致';
+  return null;
 }

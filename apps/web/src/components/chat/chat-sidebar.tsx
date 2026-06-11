@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { BookOpen, CalendarDays, LogOut, User, X } from 'lucide-react';
+
+import { useLogout } from '@/hooks/use-auth';
 import { useUserStore } from '@/stores/userStore';
-import { CalendarDays, BookOpen, User, LogOut, X } from 'lucide-react';
 
 interface ChatSidebarProps {
   open: boolean;
@@ -17,31 +19,29 @@ const navItems = [
 
 export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const currentUser = useUserStore((s) => s.currentUser);
-  const logout = useUserStore((s) => s.logout);
+  const logout = useLogout();
 
   return (
     <>
-      {/* 遮罩 */}
       {open && (
         <div className="fixed inset-0 z-50 bg-black/40 transition-opacity" onClick={onClose} />
       )}
 
-      {/* 侧边栏面板 */}
       <aside
         className={`fixed right-0 top-0 z-50 flex h-full w-72 flex-col bg-white shadow-xl transition-transform duration-300 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* 顶部：用户名 + 关闭 */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
               <User className="h-5 w-5 text-primary" />
             </div>
-            <div>
-              <p className="text-sm font-medium">{currentUser?.username || '未登录'}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{currentUser?.username || '未登录'}</p>
+              <p className="truncate text-xs text-muted-foreground">
                 {currentUser?.email || currentUser?.phone || ''}
               </p>
             </div>
@@ -56,7 +56,6 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
           </button>
         </div>
 
-        {/* 导航列表 */}
         <nav className="flex-1 px-3 py-4">
           <ul className="space-y-1">
             {navItems.map((item) => {
@@ -79,8 +78,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
           </ul>
         </nav>
 
-        {/* 底部：个人中心 + 登出 */}
-        <div className="border-t border-border px-3 py-4 space-y-1">
+        <div className="space-y-1 border-t border-border px-3 py-4">
           <Link
             href="/profile"
             onClick={onClose}
@@ -95,14 +93,16 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
           </Link>
           <button
             type="button"
-            onClick={() => {
-              logout();
+            disabled={logout.isPending}
+            onClick={async () => {
+              await logout.mutateAsync().catch(() => undefined);
               onClose();
+              router.replace('/login');
             }}
-            className="tap-target flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-red-50"
+            className="tap-target flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-red-50 disabled:opacity-60"
           >
             <LogOut className="h-5 w-5" />
-            退出登录
+            {logout.isPending ? '退出中...' : '退出登录'}
           </button>
         </div>
       </aside>

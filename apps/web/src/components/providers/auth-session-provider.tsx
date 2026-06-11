@@ -6,7 +6,7 @@ import { useRefreshSession } from '@/hooks/use-auth';
 import { useUserStore } from '@/stores/userStore';
 
 export function AuthSessionProvider({ children }: { children: React.ReactNode }) {
-  const refreshSession = useRefreshSession();
+  const { mutate } = useRefreshSession();
   const setSessionHydrated = useUserStore((state) => state.setSessionHydrated);
   const bootstrappedRef = useRef(false);
 
@@ -14,12 +14,12 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
     if (bootstrappedRef.current) return;
     bootstrappedRef.current = true;
 
-    refreshSession.mutate(undefined, {
+    mutate(undefined, {
       onSettled: () => {
         setSessionHydrated(true);
       },
     });
-  }, [refreshSession, setSessionHydrated]);
+  }, [mutate, setSessionHydrated]);
 
   return <>{children}</>;
 }

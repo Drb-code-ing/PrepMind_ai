@@ -1,34 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { hydrateUserStoreFromStorage, useUserStore } from '@/stores/userStore';
+
+import { useMe } from '@/hooks/use-auth';
+import { useUserStore } from '@/stores/userStore';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const currentUser = useUserStore((s) => s.currentUser);
-  const [hydrated, setHydrated] = useState(false);
+  const accessToken = useUserStore((s) => s.accessToken);
+  const sessionHydrated = useUserStore((s) => s.sessionHydrated);
+  const clearSession = useUserStore((s) => s.clearSession);
+  const meQuery = useMe();
 
   useEffect(() => {
-    hydrateUserStoreFromStorage();
-    const timer = window.setTimeout(() => {
-      setHydrated(true);
-    }, 0);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
+    if (!sessionHydrated) return;
 
-  useEffect(() => {
-    if (hydrated && !currentUser) {
+    if (!accessToken && !currentUser) {
+      router.replace('/login');
+      return;
+    }
+
+    if (meQuery.isError) {
+      clearSession();
       router.replace('/login');
     }
-  }, [hydrated, currentUser, router]);
+  }, [accessToken, clearSession, currentUser, meQuery.isError, router, sessionHydrated]);
 
-  if (!hydrated || !currentUser) {
+  const loading = !sessionHydrated || (!!accessToken && meQuery.isLoading && !currentUser);
+
+  if (loading || !currentUser) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-sm text-muted-foreground">{!hydrated ? '加载中…' : '正在跳转…'}</div>
+        <div className="text-sm text-muted-foreground">
+          {loading ? '正在恢复登录状态...' : '正在跳转...'}
+        </div>
       </div>
     );
   }
