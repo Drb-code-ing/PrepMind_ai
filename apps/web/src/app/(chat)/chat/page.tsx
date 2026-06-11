@@ -13,6 +13,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
+import { formatChatAssistantContent } from '@/lib/chat-content-formatter';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
@@ -42,6 +43,15 @@ function getReadableChatError(error: Error) {
   }
 
   return error.message || 'AI 服务暂时不可用，请稍后重试';
+}
+
+function logBackgroundSyncError(scope: string, error: unknown) {
+  if (error instanceof ApiClientError) {
+    console.warn(`${scope}: ${error.code} (${error.status}) ${error.message}`);
+    return;
+  }
+
+  console.warn(`${scope}: ${error instanceof Error ? error.message : 'unknown error'}`);
 }
 
 // ─── Unified message type for rendering ─────────────────────────────
@@ -379,7 +389,7 @@ function ChatView({
           }
         })
         .catch((error) => {
-          console.error('[ChatMessages initial sync]', error);
+          logBackgroundSyncError('[ChatMessages initial sync]', error);
         });
     });
   }, [chatMessagesQuery.data, saveChatToDb, setMessages, syncChatMessages, toStoredMessages]);
@@ -409,7 +419,7 @@ function ChatView({
             }
           })
           .catch((error) => {
-            console.error('[ChatMessages sync]', error);
+            logBackgroundSyncError('[ChatMessages sync]', error);
           });
       }
     }
@@ -1039,7 +1049,7 @@ const ChatBubble = memo(function ChatBubble({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           <>
-            <MarkdownRenderer content={content} />
+            <MarkdownRenderer content={formatChatAssistantContent(content)} />
             {isLoading && (
               <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
             )}
