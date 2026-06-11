@@ -16,6 +16,7 @@ import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
+import type { ActiveStudyContext } from '@/lib/chat-context';
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import {
@@ -80,6 +81,34 @@ type PendingWrongQuestionSave = {
   sourceGroupId?: string;
   missingFields: string[];
 };
+
+function createActiveStudyContextFromOcr(record: OcrRecord): ActiveStudyContext | null {
+  if (record.type !== 'ocr-result' || !record.content.trim()) return null;
+  if (/^(已停止识别|识别失败)/.test(record.content.trim())) return null;
+
+  const parsed = parseOcrResult(record.content);
+  if (!parsed.isQuestion) return null;
+
+  return {
+    type: 'ocr-question',
+    sourceGroupId: record.groupId,
+    questionText: parsed.questionText,
+    subject: parsed.subject,
+    knowledgePoints: parsed.knowledgePoints,
+    analysis: parsed.analysis,
+    answer: parsed.answer,
+    rawContent: parsed.rawContent,
+    updatedAt: record.createdAt,
+  };
+}
+
+function getLatestActiveStudyContext(records: OcrRecord[]) {
+  for (const record of [...records].sort((a, b) => b.createdAt - a.createdAt)) {
+    const context = createActiveStudyContextFromOcr(record);
+    if (context) return context;
+  }
+  return null;
+}
 
 // ─── Parent: load from Dexie, then mount ChatView ───────────────────
 
@@ -159,6 +188,9 @@ function ChatView({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
+  const [activeStudyContext, setActiveStudyContext] = useState<ActiveStudyContext | null>(() =>
+    getLatestActiveStudyContext(persistedOcr),
+  );
   const [ocrResultStatuses, setOcrResultStatuses] = useState<Record<string, OcrResultStatus>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
@@ -186,6 +218,7 @@ function ChatView({
     return ts;
   });
   const chatTimestampsRef = useRef(chatTimestamps);
+  const activeStudyContextRef = useRef(activeStudyContext);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -213,6 +246,11 @@ function ChatView({
       role: m.role as 'user' | 'assistant',
       content: m.content,
     })),
+    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => ({
+      ...requestBody,
+      messages: requestMessages,
+      activeContext: activeStudyContextRef.current,
+    }),
     keepLastMessageOnError: true,
     onError: (error) => {
       setChatError(getReadableChatError(error));
@@ -226,6 +264,7 @@ function ChatView({
     messagesRef.current = messages;
     ocrMsgRef.current = ocrMessages;
     chatTimestampsRef.current = chatTimestamps;
+    activeStudyContextRef.current = activeStudyContext;
   });
 
   const isGenerating = isLoading || ocrLoading;
@@ -493,6 +532,7 @@ function ChatView({
     ];
     setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'streaming' }));
     setOcrMessages(initialOcrMsgs);
+    setActiveStudyContext(null);
 
     const img = selectedImage;
     const controller = new AbortController();
@@ -562,9 +602,18 @@ function ChatView({
       ocrContentPublisher.flush();
 
       // Save: use fullContent (authoritative) to patch the ref's final state
+      const finalResultRecord: OcrRecord = {
+        id: resultMsgId,
+        userId,
+        type: 'ocr-result',
+        groupId,
+        content: fullContent,
+        createdAt: Date.now() + 1,
+      };
       const finalOcr = ocrMsgRef.current.map((m) =>
         m.id === resultMsgId ? { ...m, content: fullContent } : m,
       );
+      setActiveStudyContext(createActiveStudyContextFromOcr(finalResultRecord));
       setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'done' }));
       saveOcrToDb(finalOcr);
     } catch (err) {
