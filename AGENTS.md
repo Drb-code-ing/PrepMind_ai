@@ -128,7 +128,9 @@ mcp -> ai, fsrs, rag, types
 - 后端已新增 WrongQuestion CRUD API，使用 Prisma/PostgreSQL 持久化。
 - WrongQuestion API 已接入 `JwtAuthGuard`，所有读写按当前 `userId` 隔离。
 - 已提供 `@repo/types/api/wrong-question` 共享 Zod schema 与请求/响应类型。
-- 前端错题本页面尚未接入该 API，当前仍读取 Dexie。
+- 前端新增 `wrong-question-api` 与 TanStack Query hooks。
+- 聊天页保存错题已改为先写服务端，再同步 Dexie 缓存。
+- 错题本页面已从服务端读取、更新和删除错题，Dexie 作为离线缓存。
 
 ## 当前数据流摘要
 
@@ -137,7 +139,8 @@ mcp -> ai, fsrs, rag, types
 - Refresh token 已启用 rotation；旧 RT 重放时会撤销同 family 的活跃 RT 并强制重新登录。
 - Phase 2 Auth 主链路不依赖 Redis，refresh token 状态存放在 PostgreSQL。
 - WrongQuestion 服务端 CRUD 已进入 PostgreSQL，API 路径为 `/wrong-questions`。
-- Phase 1 业务数据仍保存在 Dexie：聊天、OCR、错题本、今日任务。
+- 前端错题本已接入 `/wrong-questions`，Dexie 继续作为离线缓存。
+- 聊天、OCR、今日任务仍主要保存在 Dexie。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
 - 详细数据流见 `docs/data-flow.md`。
@@ -155,7 +158,6 @@ mcp -> ai, fsrs, rag, types
 
 Phase 2.3 最优先：
 
-- 前端错题本接入 `apiClient` + TanStack Query。
 - ChatMessage API。
 - OCRRecord API。
 - Dexie 降级为离线缓存与乐观更新层。

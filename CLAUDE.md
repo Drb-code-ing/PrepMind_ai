@@ -12,8 +12,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 - Phase 1：前端 MVP 已完成。
 - Phase 2.1：后端基础与 Auth/User API 已完成。
 - Phase 2.2：前端 Auth 已接入后端，已完成。
-- Phase 2.3：业务 API 迁移进行中，后端 WrongQuestion CRUD API 已完成。
-- 下一步：前端错题本接入服务端 WrongQuestion API。
+- Phase 2.3：业务 API 迁移进行中，WrongQuestion 后端 API 与前端接入已完成。
+- 下一步：ChatMessage API。
 
 ## 开发命令
 
@@ -74,15 +74,15 @@ mcp -> ai, fsrs, rag, types
 - 前端运行态保存 access token 与当前用户。
 - 应用启动时调用 `/auth/refresh` 恢复 session。
 - `AuthGuard` 以后端 session 为权威来源。
-- 后端 `/wrong-questions` 已提供错题 CRUD，使用 PostgreSQL 持久化并按当前用户隔离。
-- Dexie 仍保存 Phase 1 业务数据：聊天、OCR、错题本、今日任务。
+- `/wrong-questions` 已提供错题 CRUD，使用 PostgreSQL 持久化并按当前用户隔离。
+- 前端错题本页面已接入服务端 API，Dexie 作为离线缓存。
+- 聊天、OCR、今日任务仍主要保存在 Dexie。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
 ## 下一步重点
 
 Phase 2.3：
 
-- 前端错题本接入 `apiClient` + TanStack Query。
 - ChatMessage API。
 - OCRRecord API。
 - Dexie 作为离线缓存与乐观更新层。

@@ -142,6 +142,15 @@
 - `sourceGroupId` 用于同用户同 OCR 来源防重复保存，重复时返回 `WRONG_QUESTION_DUPLICATED`。
 - 访问不存在或非当前用户的错题统一返回 `WRONG_QUESTION_NOT_FOUND`。
 
+**Phase 2.3 前端错题本接入服务端**
+
+- 新增 `wrong-question-api`，封装本地错题记录与服务端 WrongQuestion schema 的双向映射。
+- 新增 `useWrongQuestions`、`useCreateWrongQuestion`、`useUpdateWrongQuestion`、`useDeleteWrongQuestion`。
+- 聊天页保存错题流程改为先调用 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie。
+- 错题本页面改为通过 TanStack Query 读取服务端错题列表。
+- 标记已掌握、保存备注、删除错题改为调用服务端 API，并同步 Dexie 缓存。
+- 服务端同步失败时，错题本页面继续展示 Dexie 本地缓存并提示用户。
+
 **验证**
 
 - `bun --filter @repo/web lint` 通过。
@@ -149,6 +158,7 @@
 - `node --experimental-strip-types apps/web/src/lib/api-client.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/auth-api.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
 - `bun --filter @repo/server test` 通过：3 suites / 9 tests。
@@ -193,7 +203,7 @@ afb2578 feat: add frontend auth session state
 
 **Phase 2.3：进行中**
 
-- 后端 WrongQuestion CRUD API 已完成，前端错题本尚未接入服务端 API。
+- WrongQuestion CRUD API 与前端错题本接入已完成。
 
 ---
 
@@ -202,7 +212,7 @@ afb2578 feat: add frontend auth session state
 **Phase 2.3：业务 API 迁移**
 
 - [x] WrongQuestion CRUD API + Prisma/PostgreSQL。
-- [ ] 前端错题本接入 `apiClient` + TanStack Query。
+- [x] 前端错题本接入 `apiClient` + TanStack Query。
 - [ ] ChatMessage API。
 - [ ] OCRRecord API。
 - [ ] Dexie 降级为离线缓存与乐观更新层。

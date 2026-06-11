@@ -14,6 +14,8 @@ import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
+import { ApiClientError } from '@/lib/api-client';
+import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import {
   formatOcrContentForDisplay,
   getMissingWrongQuestionFields,
@@ -153,6 +155,7 @@ function ChatView({
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const createWrongQuestion = useCreateWrongQuestion();
   const [chatError, setChatError] = useState<string | null>(null);
 
   // ── Chat message timestamps (for unified ordering in-session) ──
@@ -552,7 +555,8 @@ function ChatView({
 
     setConfirmSaving(true);
     try {
-      await db.wrongQuestions.add(record);
+      const savedRecord = await createWrongQuestion.mutateAsync(record);
+      await db.wrongQuestions.put(savedRecord);
       if (sourceGroupId) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
         setSaveWrongErrors((prev) => {
@@ -562,10 +566,30 @@ function ChatView({
         });
       }
       setPendingWrongQuestion(null);
+    } catch (error) {
+      if (error instanceof ApiClientError && error.code === 'WRONG_QUESTION_DUPLICATED') {
+        if (sourceGroupId) {
+          setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+          setSaveWrongErrors((prev) => {
+            const next = { ...prev };
+            delete next[sourceGroupId];
+            return next;
+          });
+        }
+        setPendingWrongQuestion(null);
+        return;
+      }
+
+      if (sourceGroupId) {
+        setSaveWrongErrors((prev) => ({
+          ...prev,
+          [sourceGroupId]: error instanceof Error ? error.message : '保存失败，请稍后重试',
+        }));
+      }
     } finally {
       setConfirmSaving(false);
     }
-  }, [confirmSaving, pendingWrongQuestion, userId]);
+  }, [confirmSaving, createWrongQuestion, pendingWrongQuestion, userId]);
 
   // ── Unified message timeline (chat + OCR interleaved by time) ──
   const unifiedMessages = useMemo<UnifiedMsg[]>(() => {

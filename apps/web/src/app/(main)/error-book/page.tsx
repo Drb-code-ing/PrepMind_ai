@@ -9,7 +9,13 @@ import { ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, Trash2, X } from 'lu
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
+import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
+import {
+  useDeleteWrongQuestion,
+  useUpdateWrongQuestion,
+  useWrongQuestions,
+} from '@/hooks/use-wrong-questions';
 import { useUserStore } from '@/stores/userStore';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -46,6 +52,9 @@ export default function ErrorBookPage() {
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const userId = currentUser?.id ?? null;
+  const wrongQuestionsQuery = useWrongQuestions({ pageSize: 50 });
+  const updateWrongQuestion = useUpdateWrongQuestion();
+  const deleteWrongQuestion = useDeleteWrongQuestion();
 
   const showNotice = (message: string, type: ActionNotice['type'] = 'success') => {
     if (noticeTimerRef.current) {
@@ -93,6 +102,23 @@ export default function ErrorBookPage() {
   }, [userId]);
 
   useEffect(() => {
+    const serverItems = wrongQuestionsQuery.data?.items;
+    if (!serverItems || !userId) return;
+
+    queueMicrotask(() => {
+      setItems(serverItems);
+      setLoadError('');
+      setLoading(false);
+      setSelected((prev) =>
+        prev ? (serverItems.find((item) => item.id === prev.id) ?? null) : prev,
+      );
+    });
+    void db.wrongQuestions.bulkPut(serverItems).catch((error) => {
+      console.error('[WrongQuestions cache sync]', error);
+    });
+  }, [userId, wrongQuestionsQuery.data?.items]);
+
+  useEffect(() => {
     return () => {
       if (noticeTimerRef.current) {
         window.clearTimeout(noticeTimerRef.current);
@@ -121,9 +147,20 @@ export default function ErrorBookPage() {
     };
   }, [items]);
 
-  const updateItem = async (id: string, patch: Partial<WrongQuestionRecord>) => {
+  const updateItem = async (id: string, patch: UpdateLocalWrongQuestionRequest) => {
+    try {
+      const updated = await updateWrongQuestion.mutateAsync({ id, patch });
+      await db.wrongQuestions.put(updated);
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      setSelected((prev) => (prev?.id === id ? updated : prev));
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : '更新失败，请稍后重试', 'danger');
+      throw error;
+    }
+  };
+
+  const updateLocalItem = (id: string, patch: UpdateLocalWrongQuestionRequest) => {
     const updatedAt = Number(new Date());
-    await db.wrongQuestions.update(id, { ...patch, updatedAt });
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...patch, updatedAt } : item)),
     );
@@ -134,11 +171,21 @@ export default function ErrorBookPage() {
     const confirmed = window.confirm('删除后无法恢复，确认删除这道错题？');
     if (!confirmed) return;
 
-    await db.wrongQuestions.delete(id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    setSelected(null);
-    showNotice('已删除这道错题', 'danger');
+    try {
+      await deleteWrongQuestion.mutateAsync(id);
+      await db.wrongQuestions.delete(id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      setSelected(null);
+      showNotice('已删除这道错题', 'danger');
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : '删除失败，请稍后重试', 'danger');
+    }
   };
+
+  const loadingContent = loading && wrongQuestionsQuery.isLoading;
+  const syncError = wrongQuestionsQuery.isError
+    ? '服务端错题同步失败，当前展示本地缓存。'
+    : '';
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -153,7 +200,9 @@ export default function ErrorBookPage() {
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold leading-tight">错题本</h1>
-            <p className="text-xs text-muted-foreground">本地保存，Phase 2 接入数据库后迁移</p>
+            <p className="text-xs text-muted-foreground">
+              已接入服务端，离线时展示本地缓存
+            </p>
           </div>
         </div>
 
@@ -166,6 +215,11 @@ export default function ErrorBookPage() {
 
       <main className="px-4 py-4">
         {notice && <ActionNoticeBar notice={notice} />}
+        {syncError && !loadError && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+            {syncError}
+          </div>
+        )}
 
         <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
           {[
@@ -205,7 +259,7 @@ export default function ErrorBookPage() {
           ))}
         </div>
 
-        {loading ? (
+        {loadingContent ? (
           <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">
             加载中...
           </div>
@@ -231,11 +285,16 @@ export default function ErrorBookPage() {
                 item={item}
                 onOpen={() => setSelected(item)}
                 onToggleStatus={() =>
-                  void updateItem(item.id, {
-                    status: item.status === 'resolved' ? 'unresolved' : 'resolved',
-                  }).then(() => {
-                    showNotice(item.status === 'resolved' ? '已标记为未掌握' : '已标记为已掌握');
-                  })
+                  void (async () => {
+                    const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';
+                    updateLocalItem(item.id, { status: nextStatus });
+                    try {
+                      await updateItem(item.id, { status: nextStatus });
+                      showNotice(nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握');
+                    } catch {
+                      updateLocalItem(item.id, { status: item.status });
+                    }
+                  })()
                 }
                 onDelete={() => deleteItem(item.id)}
               />
@@ -387,7 +446,7 @@ function WrongQuestionDetail({
   item: WrongQuestionRecord;
   onClose: () => void;
   onDelete: () => void;
-  onUpdate: (patch: Partial<WrongQuestionRecord>) => Promise<void>;
+  onUpdate: (patch: UpdateLocalWrongQuestionRequest) => Promise<void>;
   onAction: (message: string, type?: ActionNotice['type']) => void;
 }) {
   const [note, setNote] = useState(item.userNote);
