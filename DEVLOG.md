@@ -168,6 +168,18 @@
 - AI 聊天仍由 Next.js `/api/chat` 代理外部 AI SSE，回复完成后批量同步到 NestJS ChatMessage API。
 - 新增 ChatMessage service 单测与 e2e 测试。
 
+**Phase 2.3.2 聊天上下文与 OCR 交互收尾**
+
+- 修复聊天后台同步鉴权失败时触发 Next.js dev overlay 的问题，改为降级日志，不打断用户对话。
+- 新增聊天上下文窗口：单次 `/api/chat` 请求按估算 token budget 截断普通历史，完整历史仍保存在 Dexie / PostgreSQL。
+- OCR 识别出有效题目后生成 `activeStudyContext`，后续普通追问会把当前题目上下文注入 system prompt，支持“为什么这样做”等承接式对话。
+- 非题目图片不再套用学科、知识点、错因分析等题目框架，也不会显示保存错题入口。
+- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮，可中断当前输出。
+- 保存错题按钮只在有效题目识别完成后显示，避免解析过程中提前出现。
+- 优化保存错题、标记掌握、保存备注、删除等 CRUD 操作的轻提示与确认交互。
+- 优化聊天内容渲染：规范模型输出公式 delimiters，拆分紧凑步骤文本，提升公式和解题步骤可读性。
+- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`，准备进入 Phase 2.3 下一步。
+
 **验证**
 
 - `bun --filter @repo/web lint` 通过。
@@ -177,6 +189,9 @@
 - `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
 - `bun --filter @repo/server test` 通过。
@@ -210,32 +225,6 @@ fc88c46 fix: polish wrong question action feedback
 a82f3a9 feat: add chat context window
 bee4789 fix: improve chat rendering
 ```
-
----
-
-## 2026-06-12（Day 7）
-
-**Phase 2.3.2 聊天上下文与 OCR 交互收尾**
-
-- 修复聊天后台同步鉴权失败时触发 Next.js dev overlay 的问题，改为降级日志，不打断用户对话。
-- 新增聊天上下文窗口：单次 `/api/chat` 请求按估算 token budget 截断普通历史，完整历史仍保存在 Dexie / PostgreSQL。
-- OCR 识别出有效题目后生成 `activeStudyContext`，后续普通追问会把当前题目上下文注入 system prompt，支持“为什么这样做”等承接式对话。
-- 非题目图片不再套用学科、知识点、错因分析等题目框架，也不会显示保存错题入口。
-- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮，可中断当前输出。
-- 保存错题按钮只在有效题目识别完成后显示，避免解析过程中提前出现。
-- 优化保存错题、标记掌握、保存备注、删除等 CRUD 操作的轻提示与确认交互。
-- 优化聊天内容渲染：规范模型输出公式 delimiters，拆分紧凑步骤文本，提升公式和解题步骤可读性。
-- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`，准备进入 Phase 2.3 下一步。
-
-**验证**
-
-- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
 
 ---
 

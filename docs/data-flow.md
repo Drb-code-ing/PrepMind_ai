@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion 与 ChatMessage 后端 API 及前端接入已完成；OCR 原始记录仍保留在 Dexie。
+> 当前版本：2026-06-11。Phase 2.3 进行中，WrongQuestion 与 ChatMessage 后端 API 及前端接入已完成；OCR 原始记录仍保留在 Dexie。
 
 ## 1. 总览
 
