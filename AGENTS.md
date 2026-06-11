@@ -19,7 +19,7 @@
 
 ## 当前本机命令
 
-当前仓库已切换到 Bun workspace。Windows 本机 pnpm store 仍可能有权限问题，开发验证优先使用 Bun。
+当前仓库使用 Bun workspace。Windows 本机 pnpm store 仍可能有权限问题，开发验证优先使用 Bun。
 
 | 命令 | 说明 |
 | --- | --- |
@@ -32,7 +32,7 @@
 | `bun --filter @repo/server lint` | 后端 lint |
 | `bun --filter @repo/server build` | 后端构建 |
 | `bun --filter @repo/server test` | 后端单元测试 |
-| `bun --filter @repo/server test:e2e` | 后端 e2e 测试 |
+| `bun --filter @repo/server test:e2e` | 后端 e2e 测试，需要 Docker PostgreSQL 5433 正在运行 |
 | `bun --cwd packages/database test` | database package 类型检查 |
 | `bun --cwd packages/fsrs test` | fsrs package 类型检查 |
 
@@ -48,27 +48,6 @@ DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
 ```
 
 这些 env 文件都被 git 忽略，不提交密钥。
-
-## 目录结构
-
-```text
-prepmind/
-├── apps/
-│   ├── web/                    # Next.js 前端
-│   └── server/                 # NestJS 后端服务
-├── packages/
-│   ├── types/                  # 共享 TypeScript 类型 + Zod schemas
-│   ├── database/               # Prisma schema + 数据访问
-│   ├── ai/                     # LLM 调用封装
-│   ├── fsrs/                   # FSRS 间隔重复算法核心
-│   ├── rag/                    # RAG 核心
-│   ├── agent/                  # LangGraph Agent
-│   ├── mcp/                    # MCP 工具注册 + JSON-RPC
-│   └── ui/                     # 共享 React 组件
-├── docker/
-├── infra/
-└── docs/
-```
 
 ## 模块依赖规则
 
@@ -112,36 +91,43 @@ mcp -> ai, fsrs, rag, types
 
 ### Phase 1 — MVP 已完成
 
-当前是纯前端 MVP，不接入后端业务数据库。
-
-- [x] 登录/注册页面 UI + 正则校验
-- [x] zustand userStore + localStorage 持久化
-- [x] AuthGuard 登录守卫
-- [x] 移动端优先布局 + PWA manifest + shadcn/ui
-- [x] AI 聊天 + 流式输出
-- [x] AI 回复 Markdown + GFM + 数学公式渲染
-- [x] 拍照识题 + 图片上传 + OCR 流式输出
-- [x] Dexie 本地持久化：`messages`、`ocrRecords`、`wrongQuestions`
-- [x] OCR 与聊天统一时间线
-- [x] 错题本 CRUD（本地版）
-- [x] 今日任务（静态版本）
+- 登录/注册页面 UI + 正则校验。
+- Phase 1 本地模拟登录与 AuthGuard。
+- AI 聊天 + 流式输出。
+- AI 回复 Markdown + GFM + 数学公式渲染。
+- 拍照识题 + 图片上传 + OCR 流式输出。
+- Dexie 本地持久化：`messages`、`ocrRecords`、`wrongQuestions`。
+- OCR 与聊天统一时间线。
+- 错题本 CRUD（本地版）。
+- 今日任务（静态版本）。
 
 ### Phase 2.1 — 后端基础与鉴权已完成
 
-- [x] Bun workspace 迁移
-- [x] Docker PostgreSQL + pgvector 固定本机端口 5433
-- [x] Prisma Auth schema 与 migration
-- [x] NestJS Config / Database / Health 模块
-- [x] 统一响应 envelope、异常过滤器、requestId
-- [x] AuthModule：注册、登录、`/auth/me`、refresh token 轮换、logout
-- [x] UsersModule：当前用户资料读取与更新
-- [x] 共享 `@repo/types/api/auth`、`@repo/types/api/common`
-- [x] Auth 单元测试与 e2e 覆盖
+- Bun workspace 迁移。
+- Docker PostgreSQL + pgvector 固定本机端口 5433。
+- Prisma Auth schema 与 migration。
+- NestJS Config / Database / Health 模块。
+- 统一响应 envelope、异常过滤器、requestId。
+- AuthModule：注册、登录、`/auth/me`、refresh token 轮换、logout。
+- UsersModule：当前用户资料读取与更新。
+- 共享 `@repo/types/api/auth`、`@repo/types/api/common`。
+- Auth 单元测试与 e2e 覆盖。
+
+### Phase 2.2 — 前端接入后端 Auth 已完成
+
+- 前端新增 `apiClient`，统一处理 response envelope、cookie、错误和 requestId。
+- 恢复 TanStack Query，管理 Auth/User server state。
+- 登录/注册页面已迁移到 NestJS Auth API。
+- `AuthGuard` 改为以后端 session 为权威来源。
+- 应用启动通过 `/auth/refresh` 恢复 session。
+- 登出调用 `/auth/logout` 并清理前端 session cache。
+- Dexie 仍作为离线业务数据缓存，不再作为登录态权威来源。
 
 ## 当前数据流摘要
 
-- Phase 1 前端业务数据仍保存在 localStorage + Dexie。
-- Phase 2.1 后端已提供 Auth/User API，但前端登录 UI 尚未迁移到后端。
+- 前端登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
+- 前端运行态保存 access token 和当前用户；刷新页面通过 refresh cookie 恢复。
+- Phase 1 业务数据仍保存在 Dexie：聊天、OCR、错题本、今日任务。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
 - 详细数据流见 `docs/data-flow.md`。
@@ -157,10 +143,10 @@ mcp -> ai, fsrs, rag, types
 
 ## 下一步
 
-Phase 2.2 最优先：
+Phase 2.3 最优先：
 
-- 封装前端 `apiClient` 与请求/响应错误处理。
-- 接入 TanStack Query 管理 Auth/User server state。
-- 将登录/注册从 localStorage 模拟迁移到 NestJS Auth API。
-- 建立前端 session 恢复、登出、401 处理流程。
-- 保留 Dexie 作为离线缓存，不再作为登录态权威来源。
+- WrongQuestion CRUD API + Prisma/PostgreSQL。
+- ChatMessage API。
+- OCRRecord API。
+- Dexie 降级为离线缓存与乐观更新层。
+- 图片从 base64 逐步迁移到 MinIO/OSS URL。

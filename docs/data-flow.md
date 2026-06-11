@@ -1,48 +1,163 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-09。Phase 1 前端 MVP 已完成；Phase 2.1 后端基础与鉴权已完成。前端业务 UI 尚未全面迁移到后端 API。
+> 当前版本：2026-06-11。Phase 2.2 已完成，前端 Auth 已接入后端；业务数据仍保留在 Dexie。
 
 ## 1. 总览
 
 ```text
-Phase 1 前端业务流
+Phase 2.2 鉴权流
 用户操作
   -> Next.js Client Component
-  -> React state / zustand
-  -> localStorage / IndexedDB(Dexie)
-  -> 页面刷新后从本地恢复
-```
-
-```text
-Phase 2.1 后端鉴权流
-客户端 HTTP 请求
-  -> NestJS Controller
-  -> Service
+  -> TanStack Query mutation/query
+  -> apiClient
+  -> NestJS Auth API
   -> Prisma
   -> PostgreSQL
   -> 统一响应 envelope
+  -> 前端 session store
+```
+
+```text
+Phase 1 业务数据流仍保留
+用户操作
+  -> Next.js Client Component
+  -> React state / zustand
+  -> IndexedDB(Dexie)
+  -> 页面刷新后从本地恢复
 ```
 
 当前阶段的关键边界：
 
-- 前端登录/注册页面仍使用 Phase 1 localStorage 模拟账号。
-- NestJS Auth API 已可独立工作，是 Phase 2.2 前端迁移目标。
-- 聊天和 OCR 仍由 Next.js API Route 代理外部 AI 服务。
-- Dexie 仍是前端聊天、OCR、错题和今日任务的本地数据源。
-- PostgreSQL 已承载后端用户、refresh token 等服务端模型。
+- 登录/注册/登出/会话恢复已由后端 Auth API 承担。
+- refresh token 使用 httpOnly cookie，服务端只保存 hash。
+- 前端运行态保存 access token 和当前用户。
+- 聊天、OCR、错题本、今日任务仍是前端本地业务数据。
+- `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
-## 2. Phase 1 前端本地存储
+## 2. Phase 2.2 前端 Auth 数据流
 
-| 存储 | Key / 表 | 内容 | 说明 |
+### 2.1 注册
+
+```text
+RegisterPage
+  -> useRegister()
+  -> authApi.register()
+  -> apiClient.post('/auth/register')
+  -> NestJS AuthService.register()
+  -> prisma.user.create()
+  -> prisma.refreshToken.create()
+  -> Set-Cookie: prepmind_refresh=httpOnly
+  -> 返回 { user, accessToken }
+  -> userStore.setSession()
+  -> queryClient.setQueryData(['auth', 'me'])
+  -> router.replace('/chat')
+```
+
+### 2.2 登录
+
+```text
+LoginPage
+  -> useLogin()
+  -> authApi.login()
+  -> apiClient.post('/auth/login')
+  -> NestJS AuthService.login()
+  -> bcrypt verify password
+  -> prisma.refreshToken.create()
+  -> Set-Cookie: prepmind_refresh=httpOnly
+  -> 返回 { user, accessToken }
+  -> userStore.setSession()
+  -> queryClient.setQueryData(['auth', 'me'])
+  -> router.replace('/chat')
+```
+
+### 2.3 刷新页面恢复 session
+
+```text
+AuthSessionProvider
+  -> useRefreshSession()
+  -> authApi.refresh()
+  -> apiClient.post('/auth/refresh', credentials: include)
+  -> NestJS AuthService.refresh()
+  -> 校验 refresh cookie
+  -> 轮换 refresh token
+  -> 返回新的 { user, accessToken }
+  -> userStore.setSession()
+  -> sessionHydrated = true
+```
+
+refresh 失败视为未登录，不弹全局错误。
+
+### 2.4 受保护页面
+
+```text
+AuthGuard
+  -> 读取 userStore.currentUser / accessToken / sessionHydrated
+  -> useMe() 调用 /auth/me 校验 access token
+  -> 成功：渲染子页面
+  -> 失败：clearSession() + router.replace('/login')
+```
+
+### 2.5 登出
+
+```text
+ChatSidebar
+  -> useLogout()
+  -> authApi.logout()
+  -> apiClient.post('/auth/logout')
+  -> NestJS AuthService.logout()
+  -> revoke 当前 refresh token
+  -> clearCookie(prepmind_refresh)
+  -> userStore.clearSession()
+  -> queryClient.removeQueries(['auth', 'me'])
+  -> router.replace('/login')
+```
+
+## 3. apiClient 约定
+
+`apps/web/src/lib/api-client.ts` 负责：
+
+- 默认 baseURL：`NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001'`。
+- 默认 `credentials: 'include'`。
+- 自动 JSON 序列化 request body。
+- access token 注入 `Authorization: Bearer <token>`。
+- 解析成功 envelope：
+
+```json
+{
+  "success": true,
+  "data": {},
+  "requestId": "..."
+}
+```
+
+- 解析失败 envelope 并抛出 `ApiClientError`：
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "..."
+  },
+  "requestId": "..."
+}
+```
+
+## 4. Phase 1 本地业务数据
+
+| 存储 | Key / 表 | 内容 | 当前状态 |
 | --- | --- | --- | --- |
-| localStorage | `prepmind-user` | `currentUser`、`users[]` | Phase 1 模拟登录注册 |
-| localStorage | `prepmind-chat` | `inputDraft` | 切页不丢输入框草稿 |
-| localStorage | `prepmind-today:{userId}:{date}` | 当日已完成任务 ID | 今日任务静态版，按账号和日期隔离 |
-| IndexedDB | `messages` | 聊天消息 | 按 `userId` 隔离 |
-| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 按 `userId` 隔离，`groupId` 绑定同一次 OCR |
-| IndexedDB | `wrongQuestions` | 错题本记录 | 按 `userId` 隔离，`sourceGroupId` 防重复保存 |
+| localStorage | `prepmind-chat` | `inputDraft` | 保留 |
+| localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
+| IndexedDB | `messages` | 聊天消息 | 保留，按 `userId` 隔离 |
+| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 保留，按 `userId` 隔离 |
+| IndexedDB | `wrongQuestions` | 错题本记录 | 保留，按 `userId` 隔离 |
 
-## 3. Phase 1 聊天数据流
+Phase 2.2 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id。
+
+## 5. Chat / OCR 数据流
+
+### 5.1 聊天
 
 ```text
 用户输入文本
@@ -55,9 +170,7 @@ Phase 2.1 后端鉴权流
   -> Dexie messages
 ```
 
-`/api/chat` 当前仍是 Next.js API Route。它会检查 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 是否存在；缺失时返回明确错误，前端显示可见提示。
-
-## 4. Phase 1 OCR 与错题本数据流
+### 5.2 OCR 与错题本
 
 ```text
 用户选择图片或拍照
@@ -71,19 +184,9 @@ Phase 2.1 后端鉴权流
   -> db.wrongQuestions.add(record)
 ```
 
-错题来源当前只有 OCR。字段提取策略：
+错题来源当前仍只有 OCR。Phase 2.3 会新增服务端 WrongQuestion CRUD API。
 
-- `questionText`：来自 OCR Markdown 的“题目”段。
-- `subject`：优先取 AI 输出，缺失时按关键词兜底。
-- `knowledgePoints`：来自 AI 输出列表，最多保留 8 个。
-- `category`：优先取第一个知识点，缺失时退回学科。
-- `analysis`：来自“分析思路”段。
-- `answer`：来自“参考答案”段。
-- `errorType`：优先取 AI 输出错因，缺失时按关键词兜底。
-
-保存预览中的题目与参考答案使用统一 Markdown/KaTeX 渲染，避免数学公式裸露为 `$...$`。
-
-## 5. Dexie Schema
+## 6. Dexie Schema
 
 | 版本 | messages | ocrRecords | wrongQuestions | 说明 |
 | --- | --- | --- | --- | --- |
@@ -94,9 +197,7 @@ Phase 2.1 后端鉴权流
 | v5 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加 `sourceGroupId` 索引 |
 | v6 | `id, userId, [userId+order], role, order, createdAt` | `id, userId, [userId+createdAt], type, groupId, createdAt` | `id, userId, [userId+sourceGroupId], [userId+createdAt], source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加本地账号隔离 |
 
-## 6. Phase 2.1 后端基础数据流
-
-### 6.1 请求入口
+## 7. 后端 Auth 数据流
 
 ```text
 HTTP Request
@@ -111,106 +212,9 @@ HTTP Request
   -> HTTP Response
 ```
 
-统一成功响应：
+## 8. PostgreSQL / Prisma
 
-```json
-{
-  "success": true,
-  "data": {},
-  "requestId": "..."
-}
-```
-
-统一错误响应：
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "..."
-  },
-  "requestId": "..."
-}
-```
-
-### 6.2 注册
-
-```text
-POST /auth/register
-  -> registerRequestSchema 校验
-  -> 检查 email 是否已存在
-  -> bcrypt hash password
-  -> prisma.user.create()
-  -> 创建 refresh token family
-  -> refresh token hash 写入 PostgreSQL
-  -> Set-Cookie: prepmind_refresh=httpOnly
-  -> 返回 user + accessToken
-```
-
-### 6.3 登录
-
-```text
-POST /auth/login
-  -> loginRequestSchema 校验
-  -> prisma.user.findUnique(email)
-  -> bcrypt compare password
-  -> 创建 refresh token
-  -> Set-Cookie: prepmind_refresh=httpOnly
-  -> 返回 user + accessToken
-```
-
-### 6.4 当前用户
-
-```text
-GET /auth/me
-  -> Authorization: Bearer accessToken
-  -> JwtAuthGuard
-  -> CurrentUser decorator
-  -> prisma.user.findUniqueOrThrow()
-  -> 返回 AuthUser
-```
-
-### 6.5 Refresh Token 轮换
-
-```text
-POST /auth/refresh
-  -> 读取 httpOnly cookie: prepmind_refresh
-  -> hash 后查 refreshTokens
-  -> 校验未过期、未撤销
-  -> revoke 旧 refresh token
-  -> 创建同 familyId 新 refresh token
-  -> Set-Cookie 新 refresh token
-  -> 返回 user + accessToken
-```
-
-### 6.6 Logout
-
-```text
-POST /auth/logout
-  -> 读取 refresh cookie
-  -> revoke 当前 refresh token
-  -> 清除 prepmind_refresh cookie
-  -> 返回 { ok: true }
-```
-
-### 6.7 用户资料
-
-```text
-GET /users/me
-  -> JwtAuthGuard
-  -> 返回当前用户资料
-
-PATCH /users/me
-  -> JwtAuthGuard
-  -> updateMeRequestSchema
-  -> prisma.user.update()
-  -> 返回更新后的 AuthUser
-```
-
-## 7. PostgreSQL / Prisma
-
-当前 Phase 2.1 已落地 migration：
+当前 Phase 2 已落地 migration：
 
 - `User`
 - `RefreshToken`
@@ -238,24 +242,22 @@ Prisma migration 状态应为：
 Database schema is up to date
 ```
 
-## 8. Phase 2.2 迁移目标
-
-Phase 2.2 重点是把前端从“本地模拟登录”迁移到“后端 Auth API”：
+## 9. Phase 2.3 迁移目标
 
 ```text
-登录/注册页面
+WrongQuestion / Chat / OCR UI
+  -> TanStack Query
   -> apiClient
-  -> NestJS Auth API
-  -> TanStack Query 缓存 current user
-  -> AuthGuard 读取 server session
-  -> Dexie 降级为离线缓存
+  -> NestJS REST API
+  -> Prisma
+  -> PostgreSQL / MinIO
+  -> Dexie 离线缓存和乐观更新
 ```
 
 优先顺序：
 
-1. 封装 `apiClient`：baseURL、credentials、错误解析、requestId。
-2. 引入 TanStack Query：`useMe`、`useLogin`、`useRegister`、`useLogout`。
-3. 登录/注册 UI 接入 `/auth/register`、`/auth/login`。
-4. AuthGuard 改为以后端 `/auth/me` 为权威来源。
-5. 401 统一处理：跳转登录、清理前端 session cache。
-6. 保留 Dexie 历史数据读取，为 WrongQuestion/Chat/OCR API 迁移做准备。
+1. WrongQuestion CRUD API。
+2. 前端错题本接入 server state。
+3. ChatMessage API。
+4. OCRRecord API。
+5. 图片存储迁移到 MinIO/OSS。
