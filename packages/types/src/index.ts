@@ -6,3 +6,4 @@ export * from './rag';
 export * from './api/common';
 export * from './api/auth';
 export * from './api/wrong-question';
+export * from './api/chat-message';

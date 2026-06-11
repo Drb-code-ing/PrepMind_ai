@@ -153,6 +153,21 @@
 - 修复本地开发 CORS：开发环境允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，避免 Next.js 自动切到 `3002` 后注册/登录请求被浏览器拦截。
 - 修复保存错题时 OCR base64 图片导致请求体过大并返回 500 的问题：前端创建错题请求不再上传 `data:` 图片，Dexie 本地缓存继续保留图片；后端将 body parser 超大请求映射为 `PAYLOAD_TOO_LARGE`。
 
+**Phase 2.3 ChatMessage API 与前端聊天历史迁移**
+
+- 新增 `@repo/types/api/chat-message`，提供聊天消息 role、列表响应、批量同步请求等 Zod schema。
+- 新增 `ChatMessagesModule`、`ChatMessagesController`、`ChatMessagesService`。
+- 新增 `/chat-messages` REST API：
+  - `GET /chat-messages`
+  - `POST /chat-messages/sync`
+  - `DELETE /chat-messages`
+- 所有聊天历史接口接入 `JwtAuthGuard`，Service 层按当前 `userId` 强制隔离。
+- `POST /chat-messages/sync` 支持无 `conversationId` 时创建默认会话，并按当前消息数组替换会话消息。
+- 前端新增 `chat-message-api`、`useChatMessages`、`useSyncChatMessages`、`useClearChatMessages`。
+- 聊天页启动时先用 Dexie 快速恢复，再读取服务端聊天历史；服务端有记录时覆盖本地缓存，服务端无记录但本地有旧消息时自动迁移到服务端。
+- AI 聊天仍由 Next.js `/api/chat` 代理外部 AI SSE，回复完成后批量同步到 NestJS ChatMessage API。
+- 新增 ChatMessage service 单测与 e2e 测试。
+
 **验证**
 
 - `bun --filter @repo/web lint` 通过。
@@ -161,10 +176,11 @@
 - `node --experimental-strip-types apps/web/src/lib/auth-api.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
 - `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过：5 suites / 14 tests。
-- `bun --filter @repo/server test:e2e` 通过：3 suites / 4 tests。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e` 通过。
 - `bun --cwd packages/types typecheck` 通过。
 - Prisma migration status：`Database schema is up to date`。
 
@@ -215,7 +231,7 @@ afb2578 feat: add frontend auth session state
 
 - [x] WrongQuestion CRUD API + Prisma/PostgreSQL。
 - [x] 前端错题本接入 `apiClient` + TanStack Query。
-- [ ] ChatMessage API。
+- [x] ChatMessage API。
 - [ ] OCRRecord API。
 - [ ] Dexie 降级为离线缓存与乐观更新层。
 - [ ] 图片从 base64 迁移到 MinIO/OSS URL。

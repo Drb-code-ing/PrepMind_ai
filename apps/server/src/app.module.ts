@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 
 import { AuthModule } from './auth/auth.module';
+import { ChatMessagesModule } from './chat-messages/chat-messages.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
@@ -16,6 +17,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     AuthModule,
     UsersModule,
     WrongQuestionsModule,
+    ChatMessagesModule,
   ],
 })
 export class AppModule implements NestModule {

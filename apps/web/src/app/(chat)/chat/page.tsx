@@ -16,6 +16,7 @@ import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
+import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import {
   formatOcrContentForDisplay,
@@ -148,10 +149,13 @@ function ChatView({
   // ── UI state ──
   const initialLoadDoneRef = useRef(false);
   const messagesSavedRef = useRef(false);
+  const serverMessagesHydratedRef = useRef(false);
+  const suppressNextServerSyncRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
   const [savedWrongQuestionIdsByGroup, setSavedWrongQuestionIdsByGroup] = useState<
     Record<string, string>
@@ -160,6 +164,10 @@ function ChatView({
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const chatMessagesQuery = useChatMessages(
+    conversationId ? { conversationId } : {},
+  );
+  const syncChatMessages = useSyncChatMessages();
   const createWrongQuestion = useCreateWrongQuestion();
   const [chatError, setChatError] = useState<string | null>(null);
 
@@ -182,7 +190,15 @@ function ChatView({
     setSelectedImage(null);
   }, []);
 
-  const { messages, handleInputChange, handleSubmit, input, setInput, isLoading } = useChat({
+  const {
+    messages,
+    setMessages,
+    handleInputChange,
+    handleSubmit,
+    input,
+    setInput,
+    isLoading,
+  } = useChat({
     api: '/api/chat',
     experimental_throttle: STREAM_UI_THROTTLE_MS,
     initialInput: inputDraft,
@@ -205,6 +221,21 @@ function ChatView({
     ocrMsgRef.current = ocrMessages;
     chatTimestampsRef.current = chatTimestamps;
   });
+
+  const toStoredMessages = useCallback(
+    (msgs: typeof messages): StoredMessage[] => {
+      const ts = chatTimestampsRef.current;
+      return msgs.map((m, i) => ({
+        id: m.id,
+        userId,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        order: i,
+        createdAt: ts[m.id] ?? Date.now(),
+      }));
+    },
+    [userId],
+  );
 
   useEffect(() => {
     db.wrongQuestions
@@ -262,6 +293,50 @@ function ChatView({
     });
   }, [userId]);
 
+  useEffect(() => {
+    const serverData = chatMessagesQuery.data;
+    if (!serverData || serverMessagesHydratedRef.current) return;
+
+    serverMessagesHydratedRef.current = true;
+
+    queueMicrotask(() => {
+      if (serverData.conversationId) {
+        setConversationId(serverData.conversationId);
+      }
+
+      if (serverData.messages.length > 0) {
+        const nextTimestamps = Object.fromEntries(
+          serverData.messages.map((message) => [message.id, message.createdAt]),
+        );
+        suppressNextServerSyncRef.current = true;
+        setChatTimestamps(nextTimestamps);
+        setMessages(
+          serverData.messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+          })),
+        );
+        void saveChatToDb(serverData.messages);
+        return;
+      }
+
+      const localMessages = toStoredMessages(messagesRef.current);
+      if (localMessages.length === 0) return;
+
+      syncChatMessages
+        .mutateAsync({ messages: localMessages, conversationId: serverData.conversationId })
+        .then((result) => {
+          if (result.conversationId) {
+            setConversationId(result.conversationId);
+          }
+        })
+        .catch((error) => {
+          console.error('[ChatMessages initial sync]', error);
+        });
+    });
+  }, [chatMessagesQuery.data, saveChatToDb, setMessages, syncChatMessages, toStoredMessages]);
+
   // ── Persist chat messages to Dexie (skip first load) ──
   useEffect(() => {
     if (!messagesSavedRef.current) {
@@ -270,17 +345,26 @@ function ChatView({
     }
     const msgs = messagesRef.current;
     if (msgs.length > 0) {
-      const ts = chatTimestampsRef.current;
-      saveChatToDb(
-        msgs.map((m, i) => ({
-          id: m.id,
-          userId,
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          order: i,
-          createdAt: ts[m.id] ?? Date.now(),
-        })),
-      );
+      const storedMessages = toStoredMessages(msgs);
+      saveChatToDb(storedMessages);
+
+      if (suppressNextServerSyncRef.current) {
+        suppressNextServerSyncRef.current = false;
+        return;
+      }
+
+      if (!isLoading) {
+        syncChatMessages
+          .mutateAsync({ messages: storedMessages, conversationId })
+          .then((result) => {
+            if (result.conversationId) {
+              setConversationId(result.conversationId);
+            }
+          })
+          .catch((error) => {
+            console.error('[ChatMessages sync]', error);
+          });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isLoading]);
