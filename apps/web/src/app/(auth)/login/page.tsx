@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { useLogin } from '@/hooks/use-auth';
 
-type FieldError = string | null;
+type FieldError = string | null | undefined;
 
 function FieldHint({ error }: { error: FieldError }) {
   if (!error) return null;

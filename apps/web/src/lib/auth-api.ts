@@ -2,27 +2,20 @@ import {
   authResponseSchema,
   authUserSchema,
   type AuthResponse,
-  type AuthUser,
   type LoginRequest,
   type RegisterRequest,
 } from '@repo/types/api/auth';
 
 import type { CurrentUser } from '@/stores/userStore';
 
-import { apiClient } from './api-client.ts';
+import { apiClient } from './api-client';
+import { mapAuthUserToCurrentUser } from './auth-user-mapper';
+
+export { mapAuthUserToCurrentUser } from './auth-user-mapper';
 
 export interface FrontendAuthSession {
   accessToken: string;
   user: CurrentUser;
-}
-
-export function mapAuthUserToCurrentUser(user: AuthUser): CurrentUser {
-  return {
-    id: user.id,
-    username: user.name?.trim() || user.email.split('@')[0] || '用户',
-    email: user.email,
-    phone: user.phone ?? undefined,
-  };
 }
 
 export const authApi = {
@@ -48,7 +41,7 @@ export const authApi = {
 
   async me(accessToken: string): Promise<CurrentUser> {
     const response = authUserSchema.parse(
-      await apiClient.get<AuthUser>('/auth/me', {
+      await apiClient.get('/auth/me', {
         accessToken,
       }),
     );

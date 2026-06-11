@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { mapAuthUserToCurrentUser } from './auth-api.ts';
+import { mapAuthUserToCurrentUser } from './auth-user-mapper.ts';
 
 const baseUser = {
   id: 'user_1',
@@ -37,4 +37,3 @@ assert.deepEqual(
     phone: undefined,
   },
 );
-
