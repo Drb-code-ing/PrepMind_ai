@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict';
 
 import {
+  getDeleteConfirmButtonClassName,
   getCrudSuccessMessage,
   getDeleteActionState,
+  shouldForwardCrudNotice,
   type DeleteActionInput,
 } from './crud-feedback.ts';
 
 function run() {
   testBuildsSuccessMessages();
   testResolvesDeleteActionState();
+  testKeepsDangerButtonTextVisible();
+  testScopesCrudNotices();
 }
 
 function testBuildsSuccessMessages() {
@@ -32,6 +36,15 @@ function testResolvesDeleteActionState() {
     getDeleteActionState({ ...base, pendingDeleteId: 'wrong_2', deletingId: 'wrong_2' }),
     'idle',
   );
+}
+
+function testKeepsDangerButtonTextVisible() {
+  assert.match(getDeleteConfirmButtonClassName(), /\btext-white\b/);
+}
+
+function testScopesCrudNotices() {
+  assert.equal(shouldForwardCrudNotice('page'), true);
+  assert.equal(shouldForwardCrudNotice('detail'), false);
 }
 
 run();

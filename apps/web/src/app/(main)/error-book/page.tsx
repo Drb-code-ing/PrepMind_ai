@@ -12,7 +12,9 @@ import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
 import {
   getCrudSuccessMessage,
+  getDeleteConfirmButtonClassName,
   getDeleteActionState,
+  shouldForwardCrudNotice,
   type DeleteActionState,
 } from '@/lib/crud-feedback';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
@@ -573,7 +575,7 @@ function DeleteConfirmStrip({
           type="button"
           onClick={onConfirm}
           disabled={deleting}
-          className="min-h-10 rounded-md bg-destructive text-xs font-medium text-destructive-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground"
+          className={getDeleteConfirmButtonClassName()}
         >
           {deleting ? (
             <span className="inline-flex items-center gap-1.5">
@@ -649,7 +651,7 @@ function WrongQuestionDetail({
       setNoteSaved(true);
       const message = getCrudSuccessMessage('备注', 'save');
       showDetailNotice(message);
-      onAction(message);
+      if (shouldForwardCrudNotice('detail')) onAction(message);
       if (noteSavedTimerRef.current) {
         window.clearTimeout(noteSavedTimerRef.current);
       }
@@ -671,7 +673,7 @@ function WrongQuestionDetail({
       await onUpdate({ status: nextStatus });
       const message = nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握';
       showDetailNotice(message);
-      onAction(message);
+      if (shouldForwardCrudNotice('detail')) onAction(message);
     } finally {
       setStatusUpdating(false);
     }

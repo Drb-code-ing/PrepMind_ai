@@ -1,5 +1,6 @@
 export type CrudAction = 'create' | 'update' | 'delete' | 'save';
 export type DeleteActionState = 'idle' | 'confirming' | 'deleting';
+export type CrudNoticeScope = 'page' | 'detail';
 
 export type DeleteActionInput = {
   itemId: string;
@@ -26,4 +27,12 @@ export function getDeleteActionState({
   if (deletingId === itemId) return 'deleting';
   if (pendingDeleteId === itemId) return 'confirming';
   return 'idle';
+}
+
+export function getDeleteConfirmButtonClassName() {
+  return 'min-h-10 rounded-md bg-destructive text-xs font-medium text-white transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground';
+}
+
+export function shouldForwardCrudNotice(scope: CrudNoticeScope) {
+  return scope === 'page';
 }
