@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Markdown from 'react-markdown';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -8,7 +9,7 @@ import remarkMath from 'remark-math';
 const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeKatex];
 
-export default function MarkdownRenderer({ content }: { content: string }) {
+function MarkdownRenderer({ content }: { content: string }) {
   return (
     <div className="markdown-body">
       <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
@@ -17,3 +18,5 @@ export default function MarkdownRenderer({ content }: { content: string }) {
     </div>
   );
 }
+
+export default memo(MarkdownRenderer);

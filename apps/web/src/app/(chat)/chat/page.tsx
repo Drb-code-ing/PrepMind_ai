@@ -12,6 +12,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
 import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
+import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import {
   formatOcrContentForDisplay,
@@ -22,6 +23,7 @@ import {
 import { Bot, Check, Loader2, X } from 'lucide-react';
 
 const SCROLL_THRESHOLD = 100;
+const STREAM_UI_THROTTLE_MS = 80;
 
 function getReadableChatError(error: Error) {
   try {
@@ -174,6 +176,7 @@ function ChatView({
 
   const { messages, handleInputChange, handleSubmit, input, setInput, isLoading } = useChat({
     api: '/api/chat',
+    experimental_throttle: STREAM_UI_THROTTLE_MS,
     initialInput: inputDraft,
     initialMessages: persistedMessages.map((m) => ({
       id: m.id,
@@ -388,6 +391,17 @@ function ChatView({
     scrollToBottom();
     setOcrLoading(true);
 
+    let fullContent = '';
+    const publishOcrContent = (content: string) => {
+      setOcrMessages((prev) =>
+        prev.map((m) => (m.id === resultMsgId ? { ...m, content } : m)),
+      );
+    };
+    const ocrContentPublisher = createThrottledTextPublisher({
+      waitMs: STREAM_UI_THROTTLE_MS,
+      publish: publishOcrContent,
+    });
+
     try {
       const fd = new FormData();
       fd.append('image', img.file);
@@ -406,7 +420,6 @@ function ChatView({
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let fullContent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -427,15 +440,14 @@ function ChatView({
             const parsed = JSON.parse(data);
             if (parsed.content) {
               fullContent += parsed.content;
-              setOcrMessages((prev) =>
-                prev.map((m) => (m.id === resultMsgId ? { ...m, content: fullContent } : m)),
-              );
+              ocrContentPublisher.push(fullContent);
             }
           } catch {
             // skip unparseable lines
           }
         }
       }
+      ocrContentPublisher.flush();
 
       // Save: use fullContent (authoritative) to patch the ref's final state
       const finalOcr = ocrMsgRef.current.map((m) =>
@@ -443,6 +455,7 @@ function ChatView({
       );
       saveOcrToDb(finalOcr);
     } catch (err) {
+      ocrContentPublisher.cancel();
       const errMsg = `识别失败：${err instanceof Error ? err.message : '未知错误'}`;
       setOcrMessages((prev) =>
         prev.map((m) => (m.id === resultMsgId ? { ...m, content: errMsg } : m)),
@@ -565,6 +578,10 @@ function ChatView({
       time: ts[msg.id] ?? i,
       isLoading: isLoading && i === messages.length - 1 && msg.role === 'assistant',
     }));
+
+    if (ocrMessages.length === 0) {
+      return chatEntries;
+    }
 
     const ocrEntries: UnifiedMsg[] = ocrMessages.map((msg) =>
       msg.type === 'user'
