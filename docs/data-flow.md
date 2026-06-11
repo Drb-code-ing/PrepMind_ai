@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-11。Phase 2.3 进行中，WrongQuestion 与 ChatMessage 后端 API 及前端接入已完成；OCR 仍保留在 Dexie。
+> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion 与 ChatMessage 后端 API 及前端接入已完成；OCR 原始记录仍保留在 Dexie。
 
 ## 1. 总览
 
@@ -36,6 +36,8 @@ Phase 2.3 业务数据流
 - 后端 `/wrong-questions` 已提供错题 CRUD，并按当前 `userId` 隔离数据。
 - 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
 - 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
+- `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
+- 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
 - OCR、今日任务仍是前端本地业务数据。
 - `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
@@ -216,6 +218,8 @@ ChatPage
 - 普通聊天消息由 `buildChatContextMessages()` 按估算 token budget 保留最近上下文，并始终保留最新用户消息。
 - 聊天历史仍完整保存在 Dexie / PostgreSQL；截断只影响单次模型请求。
 - 当前活跃题目上下文通过 `activeContext` 注入 system prompt，不参与普通消息截断。
+- system prompt 要求模型优先使用 Markdown 有序步骤，并使用 `$...$` / `$$...$$` 输出数学公式。
+- 前端会对常见公式 delimiters 和紧凑步骤文本做轻量格式化，再交给 MarkdownRenderer 渲染。
 
 服务端 ChatMessage API：
 
@@ -238,12 +242,21 @@ ChatPage
   -> 用户点击“保存到错题本”
   -> parseOcrResult(content)
   -> 保存预览弹窗
-  -> db.wrongQuestions.add(record)
+  -> POST /wrong-questions
+  -> Prisma WrongQuestion
+  -> PostgreSQL
+  -> db.wrongQuestions.put(record) 同步本地缓存
 ```
 
 错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存。
 
-非题目 OCR 不会写入 activeStudyContext，也不会显示错题保存入口。
+非题目 OCR 不会写入 `activeStudyContext`，不会显示错题保存入口，也不会套用学科、知识点、错因分析等题目框架。
+
+OCR / 聊天交互门禁：
+
+- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮。
+- 用户点击停止时会中断当前 OCR 请求，不再继续追加输出。
+- 保存错题入口只在有效题目 OCR 输出结束后出现。
 
 ### 5.3 服务端 WrongQuestion API
 
@@ -375,7 +388,7 @@ WrongQuestion / Chat / OCR UI
 
 优先顺序：
 
-1. ChatMessage API。
-2. OCRRecord API。
+1. OCRRecord API。
+2. 图片存储迁移到 MinIO/OSS。
 3. Dexie 离线 mutation 队列与乐观更新层。
-4. 图片存储迁移到 MinIO/OSS。
+4. Phase 3 OCR structured output schema 与 tool calling 设计。

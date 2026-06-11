@@ -196,7 +196,46 @@ afb2578 feat: add frontend auth session state
 37b7cf6 fix: stabilize frontend auth build
 65ad246 docs: update Phase 2.2 auth flow
 8ebc04f feat: detect refresh token reuse
+bc61a27 docs: complete Phase 2.2 devlog commits
+cc132b5 feat: add wrong question CRUD API
+d022234 feat: connect wrong question frontend to API
+6a68627 fix: allow dynamic dev cors origins
+73c5e05 fix: avoid uploading local wrong question images
+6da9d34 feat: improve wrong question save feedback
+c892796 feat: refine wrong question crud feedback
+fc88c46 fix: polish wrong question action feedback
+265ba42 feat: add chat message api sync
+049c9af fix: refine ocr streaming controls
+587e5e7 fix: simplify non-question ocr results
+a82f3a9 feat: add chat context window
+bee4789 fix: improve chat rendering
 ```
+
+---
+
+## 2026-06-12（Day 7）
+
+**Phase 2.3.2 聊天上下文与 OCR 交互收尾**
+
+- 修复聊天后台同步鉴权失败时触发 Next.js dev overlay 的问题，改为降级日志，不打断用户对话。
+- 新增聊天上下文窗口：单次 `/api/chat` 请求按估算 token budget 截断普通历史，完整历史仍保存在 Dexie / PostgreSQL。
+- OCR 识别出有效题目后生成 `activeStudyContext`，后续普通追问会把当前题目上下文注入 system prompt，支持“为什么这样做”等承接式对话。
+- 非题目图片不再套用学科、知识点、错因分析等题目框架，也不会显示保存错题入口。
+- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮，可中断当前输出。
+- 保存错题按钮只在有效题目识别完成后显示，避免解析过程中提前出现。
+- 优化保存错题、标记掌握、保存备注、删除等 CRUD 操作的轻提示与确认交互。
+- 优化聊天内容渲染：规范模型输出公式 delimiters，拆分紧凑步骤文本，提升公式和解题步骤可读性。
+- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`，准备进入 Phase 2.3 下一步。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
 
 ---
 
@@ -221,7 +260,8 @@ afb2578 feat: add frontend auth session state
 
 **Phase 2.3：进行中**
 
-- WrongQuestion CRUD API 与前端错题本接入已完成。
+- WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移已完成。
+- 聊天上下文窗口、OCR 题目上下文注入、非题目 OCR 门禁和聊天渲染优化已完成。
 
 ---
 

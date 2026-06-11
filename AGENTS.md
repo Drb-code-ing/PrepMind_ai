@@ -131,6 +131,11 @@ mcp -> ai, fsrs, rag, types
 - 前端新增 `wrong-question-api` 与 TanStack Query hooks。
 - 聊天页保存错题已改为先写服务端，再同步 Dexie 缓存。
 - 错题本页面已从服务端读取、更新和删除错题，Dexie 作为离线缓存。
+- 后端已新增 ChatMessage API，支持读取、批量同步和清空当前用户聊天历史。
+- 前端聊天页启动时先读 Dexie 快速恢复，再以服务端聊天历史为权威来源同步。
+- `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
+- OCR 有效题目会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
+- 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
 
 ## 当前数据流摘要
 
@@ -140,7 +145,9 @@ mcp -> ai, fsrs, rag, types
 - Phase 2 Auth 主链路不依赖 Redis，refresh token 状态存放在 PostgreSQL。
 - WrongQuestion 服务端 CRUD 已进入 PostgreSQL，API 路径为 `/wrong-questions`。
 - 前端错题本已接入 `/wrong-questions`，Dexie 继续作为离线缓存。
-- 聊天、OCR、今日任务仍主要保存在 Dexie。
+- ChatMessage 服务端 API 已进入 PostgreSQL，API 路径为 `/chat-messages`。
+- 聊天历史以服务端为权威来源，Dexie 继续作为本地缓存。
+- OCR 原始记录、今日任务仍主要保存在 Dexie。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
 - 详细数据流见 `docs/data-flow.md`。
@@ -159,7 +166,6 @@ mcp -> ai, fsrs, rag, types
 
 Phase 2.3 最优先：
 
-- ChatMessage API。
 - OCRRecord API。
-- Dexie 降级为离线缓存与乐观更新层。
 - 图片从 base64 逐步迁移到 MinIO/OSS URL。
+- Dexie 降级为离线缓存与乐观更新层。
