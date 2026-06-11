@@ -128,6 +128,20 @@
 - logout 后的旧 cookie 或已全量撤销的 family 继续按普通失效处理。
 - 当前 Auth 主链路仍使用 PostgreSQL 存储 refresh token 状态，不引入 Redis。
 
+**Phase 2.3 后端 WrongQuestion CRUD API**
+
+- 新增 `@repo/types/api/wrong-question`，提供错题 CRUD 的 Zod schema 与请求/响应类型。
+- 新增 `WrongQuestionsModule`、`WrongQuestionsController`、`WrongQuestionsService`。
+- 新增 `/wrong-questions` REST API：
+  - `GET /wrong-questions`
+  - `GET /wrong-questions/:id`
+  - `POST /wrong-questions`
+  - `PATCH /wrong-questions/:id`
+  - `DELETE /wrong-questions/:id`
+- 所有错题接口接入 `JwtAuthGuard`，Service 层按当前 `userId` 强制隔离。
+- `sourceGroupId` 用于同用户同 OCR 来源防重复保存，重复时返回 `WRONG_QUESTION_DUPLICATED`。
+- 访问不存在或非当前用户的错题统一返回 `WRONG_QUESTION_NOT_FOUND`。
+
 **验证**
 
 - `bun --filter @repo/web lint` 通过。
@@ -137,8 +151,9 @@
 - `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过：2 suites / 5 tests。
-- `bun --filter @repo/server test:e2e` 通过：2 suites / 2 tests。
+- `bun --filter @repo/server test` 通过：3 suites / 9 tests。
+- `bun --filter @repo/server test:e2e` 通过：3 suites / 4 tests。
+- `bun --cwd packages/types typecheck` 通过。
 - Prisma migration status：`Database schema is up to date`。
 
 **提交记录**
@@ -176,13 +191,17 @@ afb2578 feat: add frontend auth session state
 - 前端 Auth 已接入后端，登录态权威来源迁移到 NestJS Auth API。
 - Dexie 继续作为离线业务数据缓存。
 
+**Phase 2.3：进行中**
+
+- 后端 WrongQuestion CRUD API 已完成，前端错题本尚未接入服务端 API。
+
 ---
 
 ## 待办与规划
 
 **Phase 2.3：业务 API 迁移**
 
-- [ ] WrongQuestion CRUD API + Prisma/PostgreSQL。
+- [x] WrongQuestion CRUD API + Prisma/PostgreSQL。
 - [ ] 前端错题本接入 `apiClient` + TanStack Query。
 - [ ] ChatMessage API。
 - [ ] OCRRecord API。
