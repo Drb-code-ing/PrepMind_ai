@@ -556,7 +556,10 @@ function ChatView({
     setConfirmSaving(true);
     try {
       const savedRecord = await createWrongQuestion.mutateAsync(record);
-      await db.wrongQuestions.put(savedRecord);
+      await db.wrongQuestions.put({
+        ...savedRecord,
+        imageUrl: savedRecord.imageUrl ?? record.imageUrl,
+      });
       if (sourceGroupId) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
         setSaveWrongErrors((prev) => {

@@ -151,6 +151,7 @@
 - 标记已掌握、保存备注、删除错题改为调用服务端 API，并同步 Dexie 缓存。
 - 服务端同步失败时，错题本页面继续展示 Dexie 本地缓存并提示用户。
 - 修复本地开发 CORS：开发环境允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，避免 Next.js 自动切到 `3002` 后注册/登录请求被浏览器拦截。
+- 修复保存错题时 OCR base64 图片导致请求体过大并返回 500 的问题：前端创建错题请求不再上传 `data:` 图片，Dexie 本地缓存继续保留图片；后端将 body parser 超大请求映射为 `PAYLOAD_TOO_LARGE`。
 
 **验证**
 
@@ -162,7 +163,7 @@
 - `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过：4 suites / 13 tests。
+- `bun --filter @repo/server test` 通过：5 suites / 14 tests。
 - `bun --filter @repo/server test:e2e` 通过：3 suites / 4 tests。
 - `bun --cwd packages/types typecheck` 通过。
 - Prisma migration status：`Database schema is up to date`。

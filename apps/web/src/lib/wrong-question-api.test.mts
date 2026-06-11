@@ -14,6 +14,7 @@ async function run() {
   testMapsStatuses();
   testMapsServerResponseToLocalRecord();
   testMapsLocalRecordToCreateRequest();
+  testOmitsLocalDataUrlImageFromCreateRequest();
   await testListsWrongQuestionsWithFilters();
   await testUpdatesWrongQuestion();
 }
@@ -105,6 +106,31 @@ function testMapsLocalRecordToCreateRequest() {
     errorType: '计算错误',
     rawContent: 'raw',
   });
+}
+
+function testOmitsLocalDataUrlImageFromCreateRequest() {
+  const local: WrongQuestionRecord = {
+    id: 'local_2',
+    userId: 'user_1',
+    source: 'ocr',
+    sourceRecordId: 'ocr_2',
+    sourceGroupId: 'group_2',
+    imageUrl: 'data:image/png;base64,abcdefg',
+    questionText: '题干',
+    subject: '数学',
+    category: '极限',
+    knowledgePoints: ['极限'],
+    analysis: '分析',
+    answer: '答案',
+    errorType: '',
+    userNote: '',
+    rawContent: 'raw',
+    status: 'unresolved',
+    createdAt: 1,
+    updatedAt: 1,
+  };
+
+  assert.equal(mapLocalWrongQuestionToCreateRequest(local).imageUrl, undefined);
 }
 
 async function testListsWrongQuestionsWithFilters() {

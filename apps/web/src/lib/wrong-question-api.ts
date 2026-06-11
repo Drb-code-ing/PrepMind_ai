@@ -138,7 +138,7 @@ export function mapLocalWrongQuestionToCreateRequest(
     source: mapWrongQuestionSourceToApi(record.source),
     sourceRecordId: nonEmpty(record.sourceRecordId),
     sourceGroupId: nonEmpty(record.sourceGroupId),
-    imageUrl: nonEmpty(record.imageUrl),
+    imageUrl: toServerImageUrl(record.imageUrl),
     questionText: record.questionText,
     subject: record.subject,
     category: record.category,
@@ -222,6 +222,12 @@ function toQueryString(filters: WrongQuestionListFilters) {
 function nonEmpty(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function toServerImageUrl(value: string | undefined) {
+  const imageUrl = nonEmpty(value);
+  if (!imageUrl || imageUrl.startsWith('data:')) return undefined;
+  return imageUrl;
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T): T {

@@ -105,17 +105,38 @@ export default function ErrorBookPage() {
     const serverItems = wrongQuestionsQuery.data?.items;
     if (!serverItems || !userId) return;
 
-    queueMicrotask(() => {
-      setItems(serverItems);
+    let cancelled = false;
+    const syncServerItems = async () => {
+      const cachedItems = await db.wrongQuestions
+        .where('userId')
+        .equals(userId)
+        .toArray()
+        .catch(() => []);
+      const cachedById = new Map(cachedItems.map((item) => [item.id, item]));
+      const mergedItems = serverItems.map((item) => ({
+        ...item,
+        imageUrl: item.imageUrl ?? cachedById.get(item.id)?.imageUrl,
+      }));
+
+      if (cancelled) return;
+      setItems(mergedItems);
       setLoadError('');
       setLoading(false);
       setSelected((prev) =>
-        prev ? (serverItems.find((item) => item.id === prev.id) ?? null) : prev,
+        prev ? (mergedItems.find((item) => item.id === prev.id) ?? null) : prev,
       );
+      void db.wrongQuestions.bulkPut(mergedItems).catch((error) => {
+        console.error('[WrongQuestions cache sync]', error);
+      });
+    };
+
+    queueMicrotask(() => {
+      void syncServerItems();
     });
-    void db.wrongQuestions.bulkPut(serverItems).catch((error) => {
-      console.error('[WrongQuestions cache sync]', error);
-    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId, wrongQuestionsQuery.data?.items]);
 
   useEffect(() => {

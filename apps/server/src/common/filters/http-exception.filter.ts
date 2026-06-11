@@ -73,10 +73,36 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
+    if (isPayloadTooLargeError(exception)) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: '请求内容过大',
+      };
+    }
+
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       code: 'INTERNAL_SERVER_ERROR',
       message: '服务器内部错误',
     };
   }
+}
+
+function isPayloadTooLargeError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) {
+    return false;
+  }
+
+  const value = exception as {
+    type?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+  };
+
+  return (
+    value.type === 'entity.too.large' ||
+    value.status === HttpStatus.PAYLOAD_TOO_LARGE ||
+    value.statusCode === HttpStatus.PAYLOAD_TOO_LARGE
+  );
 }
