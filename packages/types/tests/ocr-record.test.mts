@@ -8,7 +8,7 @@ import {
 
 function run() {
   testCreateRequestDefaultsToDone();
-  testCreateRequestRejectsBase64ImageUrls();
+  testCreateRequestAllowsImageUrlForServiceValidation();
   testListQueryCoercesPaginationAndQuestionFilter();
   testOcrRecordResponseAcceptsParsedPayload();
 }
@@ -26,14 +26,14 @@ function testCreateRequestDefaultsToDone() {
   assert.equal(result.status, 'DONE');
 }
 
-function testCreateRequestRejectsBase64ImageUrls() {
-  const result = createOcrRecordRequestSchema.safeParse({
+function testCreateRequestAllowsImageUrlForServiceValidation() {
+  const result = createOcrRecordRequestSchema.parse({
     groupId: 'ocr-1',
     rawText: 'raw',
     imageUrl: 'data:image/png;base64,abc',
   });
 
-  assert.equal(result.success, false);
+  assert.equal(result.imageUrl, 'data:image/png;base64,abc');
 }
 
 function testListQueryCoercesPaginationAndQuestionFilter() {

@@ -88,7 +88,9 @@ describe('OcrRecordsService', () => {
   it('throws OCR_RECORD_NOT_FOUND for unowned records', async () => {
     prisma.ocrRecord.findFirst.mockResolvedValue(null);
 
-    await expect(createService().getById('user_2', 'ocr_1')).rejects.toMatchObject({
+    await expect(
+      createService().getById('user_2', 'ocr_1'),
+    ).rejects.toMatchObject({
       code: 'OCR_RECORD_NOT_FOUND',
     });
   });

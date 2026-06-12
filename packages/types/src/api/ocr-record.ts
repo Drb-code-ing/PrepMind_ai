@@ -23,10 +23,8 @@ export const ocrParsedPayloadSchema = z
 
 export const serverImageUrlSchema = z
   .string()
-  .url()
-  .refine((value) => !value.startsWith('data:'), {
-    message: 'Base64 data URLs are not supported',
-  });
+  .min(1)
+  .max(2_048);
 
 export const ocrRecordSchema = z.object({
   id: z.string().min(1),
