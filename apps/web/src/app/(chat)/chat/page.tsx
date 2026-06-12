@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
-import { useChat } from '@ai-sdk/react';
 import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,18 +9,18 @@ import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
 import type { SelectedImage } from '@/components/chat/chat-input-bar';
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
+import { useChatRuntime } from '@/components/providers/chat-runtime-provider';
 import { useUserStore } from '@/stores/userStore';
-import { useChatStore } from '@/stores/chatStore';
 import { db } from '@/lib/db';
-import type { StoredMessage, OcrRecord, WrongQuestionRecord } from '@/lib/db';
+import type { OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { formatChatAssistantContent } from '@/lib/chat-content-formatter';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
 import type { ActiveStudyContext } from '@/lib/chat-context';
-import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
+import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
   canSaveOcrResult,
   formatOcrContentForDisplay,
@@ -33,19 +32,7 @@ import {
 import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
 import { ArrowRight, Bot, Check, CheckCircle2, Loader2, X } from 'lucide-react';
 
-const SCROLL_THRESHOLD = 100;
 const STREAM_UI_THROTTLE_MS = 80;
-
-function getReadableChatError(error: Error) {
-  try {
-    const parsed = JSON.parse(error.message) as { error?: string };
-    if (parsed.error) return parsed.error;
-  } catch {
-    // The AI SDK may pass plain text messages for stream errors.
-  }
-
-  return error.message || 'AI 服务暂时不可用，请稍后重试';
-}
 
 function logBackgroundSyncError(scope: string, error: unknown) {
   if (error instanceof ApiClientError) {
@@ -153,7 +140,6 @@ export default function ChatPage() {
   const currentUser = useUserStore((s) => s.currentUser);
   const [loaded, setLoaded] = useState<{
     userId: string;
-    messages: StoredMessage[];
     ocrRecords: OcrRecord[];
   } | null>(null);
   const userId = currentUser?.id ?? null;
@@ -163,12 +149,9 @@ export default function ChatPage() {
 
     let cancelled = false;
 
-    Promise.all([
-      db.messages.where('userId').equals(userId).sortBy('order'),
-      db.ocrRecords.where('userId').equals(userId).sortBy('createdAt'),
-    ]).then(([messages, ocrRecords]) => {
+    db.ocrRecords.where('userId').equals(userId).sortBy('createdAt').then((ocrRecords) => {
       if (!cancelled) {
-        setLoaded({ userId, messages, ocrRecords });
+        setLoaded({ userId, ocrRecords });
       }
     });
 
@@ -189,7 +172,6 @@ export default function ChatPage() {
     <ChatView
       key={userId}
       userId={userId}
-      initialMessages={loaded.messages}
       initialOcrRecords={loaded.ocrRecords}
     />
   );
@@ -199,38 +181,37 @@ export default function ChatPage() {
 
 function ChatView({
   userId,
-  initialMessages: persistedMessages,
   initialOcrRecords: persistedOcr,
 }: {
   userId: string;
-  initialMessages: StoredMessage[];
   initialOcrRecords: OcrRecord[];
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const isAutoScrollRef = useRef(true);
-  const rafRef = useRef<number>(0);
   const ocrAbortControllerRef = useRef<AbortController | null>(null);
-
-  const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
+  const {
+    messages,
+    input,
+    setInput,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    stop,
+    chatError,
+    setChatError,
+    chatTimestamps,
+    setActiveStudyContext,
+    isHydrated: chatRuntimeHydrated,
+  } = useChatRuntime();
 
   // ── UI state ──
-  const initialLoadDoneRef = useRef(false);
-  const messagesSavedRef = useRef(false);
-  const serverMessagesHydratedRef = useRef(false);
   const serverOcrHydratedRef = useRef(false);
-  const suppressNextServerSyncRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
-  const [activeStudyContext, setActiveStudyContext] = useState<ActiveStudyContext | null>(() =>
-    getLatestActiveStudyContext(persistedOcr),
-  );
   const [ocrResultStatuses, setOcrResultStatuses] = useState<Record<string, OcrResultStatus>>({});
-  const [conversationId, setConversationId] = useState<string | null>(null);
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
   const [savedWrongQuestionIdsByGroup, setSavedWrongQuestionIdsByGroup] = useState<
     Record<string, string>
@@ -239,26 +220,9 @@ function ChatView({
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
   const [confirmSaving, setConfirmSaving] = useState(false);
-  const chatMessagesQuery = useChatMessages(
-    conversationId ? { conversationId } : {},
-  );
   const ocrRecordsQuery = useOcrRecords({ pageSize: 50 });
-  const syncChatMessages = useSyncChatMessages();
   const createOcrRecord = useCreateOcrRecord();
   const createWrongQuestion = useCreateWrongQuestion();
-  const [chatError, setChatError] = useState<string | null>(null);
-
-  // ── Chat message timestamps (for unified ordering in-session) ──
-  const [chatTimestamps, setChatTimestamps] = useState<Record<string, number>>(() => {
-    // Initialize from persisted messages
-    const ts: Record<string, number> = {};
-    for (const m of persistedMessages) {
-      ts[m.id] = m.createdAt ?? Date.now();
-    }
-    return ts;
-  });
-  const chatTimestampsRef = useRef(chatTimestamps);
-  const activeStudyContextRef = useRef(activeStudyContext);
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
     setSelectedImage(img);
@@ -268,61 +232,13 @@ function ChatView({
     setSelectedImage(null);
   }, []);
 
-  const {
-    messages,
-    setMessages,
-    handleInputChange,
-    handleSubmit,
-    input,
-    setInput,
-    isLoading,
-    stop,
-  } = useChat({
-    api: '/api/chat',
-    experimental_throttle: STREAM_UI_THROTTLE_MS,
-    initialInput: inputDraft,
-    initialMessages: persistedMessages.map((m) => ({
-      id: m.id,
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    })),
-    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => ({
-      ...requestBody,
-      messages: requestMessages,
-      activeContext: activeStudyContextRef.current,
-    }),
-    keepLastMessageOnError: true,
-    onError: (error) => {
-      setChatError(getReadableChatError(error));
-    },
-  });
-
   // ── Refs (kept in sync via useLayoutEffect) ──
-  const messagesRef = useRef(messages);
   const ocrMsgRef = useRef(ocrMessages);
   useLayoutEffect(() => {
-    messagesRef.current = messages;
     ocrMsgRef.current = ocrMessages;
-    chatTimestampsRef.current = chatTimestamps;
-    activeStudyContextRef.current = activeStudyContext;
   });
 
   const isGenerating = isLoading || ocrLoading;
-
-  const toStoredMessages = useCallback(
-    (msgs: typeof messages): StoredMessage[] => {
-      const ts = chatTimestampsRef.current;
-      return msgs.map((m, i) => ({
-        id: m.id,
-        userId,
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-        order: i,
-        createdAt: ts[m.id] ?? Date.now(),
-      }));
-    },
-    [userId],
-  );
 
   useEffect(() => {
     db.wrongQuestions
@@ -345,32 +261,7 @@ function ChatView({
       });
   }, [userId]);
 
-  // ── Track chat message creation timestamps ──
-  const prevMsgIdsRef = useRef<Set<string>>(new Set(persistedMessages.map((m) => m.id)));
-  useEffect(() => {
-    const currentIds = new Set(messages.map((m) => m.id));
-    let changed = false;
-    const ts = { ...chatTimestampsRef.current };
-    for (const msg of messages) {
-      if (!prevMsgIdsRef.current.has(msg.id)) {
-        ts[msg.id] = Date.now();
-        changed = true;
-      }
-    }
-    prevMsgIdsRef.current = currentIds;
-    if (changed) setChatTimestamps(ts);
-  }, [messages]);
-
   // ── Direct Dexie save helpers (no TanStack Query) ──
-  const saveChatToDb = useCallback(async (msgs: StoredMessage[]) => {
-    await db.transaction('rw', db.messages, async () => {
-      await db.messages.where('userId').equals(userId).delete();
-      if (msgs.length > 0) {
-        await db.messages.bulkAdd(msgs);
-      }
-    });
-  }, [userId]);
-
   const saveOcrToDb = useCallback(async (records: OcrRecord[]) => {
     await db.transaction('rw', db.ocrRecords, async () => {
       await db.ocrRecords.where('userId').equals(userId).delete();
@@ -429,103 +320,16 @@ function ChatView({
     setOcrMessages(merged);
     setActiveStudyContext(getLatestActiveStudyContext(merged));
     void saveOcrToDb(merged);
-  }, [mergeOcrRecordsPreservingLocalImages, ocrRecordsQuery.data, saveOcrToDb]);
+  }, [
+    mergeOcrRecordsPreservingLocalImages,
+    ocrRecordsQuery.data,
+    saveOcrToDb,
+    setActiveStudyContext,
+  ]);
 
-  useEffect(() => {
-    const serverData = chatMessagesQuery.data;
-    if (!serverData || serverMessagesHydratedRef.current) return;
-
-    serverMessagesHydratedRef.current = true;
-
-    queueMicrotask(() => {
-      if (serverData.conversationId) {
-        setConversationId(serverData.conversationId);
-      }
-
-      if (serverData.messages.length > 0) {
-        const nextTimestamps = Object.fromEntries(
-          serverData.messages.map((message) => [message.id, message.createdAt]),
-        );
-        suppressNextServerSyncRef.current = true;
-        setChatTimestamps(nextTimestamps);
-        setMessages(
-          serverData.messages.map((message) => ({
-            id: message.id,
-            role: message.role,
-            content: message.content,
-          })),
-        );
-        void saveChatToDb(serverData.messages);
-        return;
-      }
-
-      const localMessages = toStoredMessages(messagesRef.current);
-      if (localMessages.length === 0) return;
-
-      syncChatMessages
-        .mutateAsync({ messages: localMessages, conversationId: serverData.conversationId })
-        .then((result) => {
-          if (result.conversationId) {
-            setConversationId(result.conversationId);
-          }
-        })
-        .catch((error) => {
-          logBackgroundSyncError('[ChatMessages initial sync]', error);
-        });
-    });
-  }, [chatMessagesQuery.data, saveChatToDb, setMessages, syncChatMessages, toStoredMessages]);
-
-  // ── Persist chat messages to Dexie (skip first load) ──
-  useEffect(() => {
-    if (!messagesSavedRef.current) {
-      messagesSavedRef.current = true;
-      return;
-    }
-    const msgs = messagesRef.current;
-    if (msgs.length > 0) {
-      const storedMessages = toStoredMessages(msgs);
-      saveChatToDb(storedMessages);
-
-      if (suppressNextServerSyncRef.current) {
-        suppressNextServerSyncRef.current = false;
-        return;
-      }
-
-      if (!isLoading) {
-        syncChatMessages
-          .mutateAsync({ messages: storedMessages, conversationId })
-          .then((result) => {
-            if (result.conversationId) {
-              setConversationId(result.conversationId);
-            }
-          })
-          .catch((error) => {
-            logBackgroundSyncError('[ChatMessages sync]', error);
-          });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, isLoading]);
-
-  // ── Page close / visibility change → force save ──
+  // ── Page close / visibility change → force save OCR records ──
   useEffect(() => {
     const flush = () => {
-      const msgs = messagesRef.current;
-      if (msgs.length > 0) {
-        const ts = chatTimestampsRef.current;
-        const stored = msgs.map((m, i) => ({
-          id: m.id,
-          userId,
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          order: i,
-          createdAt: ts[m.id] ?? Date.now(),
-        }));
-        db.transaction('rw', db.messages, async () => {
-          await db.messages.where('userId').equals(userId).delete();
-          await db.messages.bulkAdd(stored);
-        });
-      }
       const ocr = ocrMsgRef.current;
       if (ocr.length > 0) {
         db.transaction('rw', db.ocrRecords, async () => {
@@ -545,51 +349,24 @@ function ChatView({
     };
   }, [userId]);
 
-  // ── Message count change → clear input draft (skip initial load) ──
-  useEffect(() => {
-    if (!initialLoadDoneRef.current) {
-      initialLoadDoneRef.current = true;
-      return;
-    }
-    clearInputDraft();
-  }, [messages.length, clearInputDraft]);
-
-  // ── Input binding ──
-  const onInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      handleInputChange(e);
-      setInputDraft(e.target.value);
-    },
-    [handleInputChange, setInputDraft],
-  );
-
   // ── Scroll ──
-  const scrollToBottom = useCallback(() => {
-    isAutoScrollRef.current = true;
-    requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
+  const latestChatMessage = messages[messages.length - 1];
+  const latestOcrMessage = ocrMessages[ocrMessages.length - 1];
+  const scrollContentKey = [
+    messages.length,
+    latestChatMessage?.id ?? '',
+    latestChatMessage?.content.length ?? 0,
+    ocrMessages.length,
+    latestOcrMessage?.id ?? '',
+    latestOcrMessage?.content.length ?? 0,
+    isLoading ? 'chat-loading' : 'chat-idle',
+    ocrLoading ? 'ocr-loading' : 'ocr-idle',
+  ].join(':');
+  const { scrollRef, handleScroll, handleUserScrollIntent, scrollToBottom } =
+    useStreamingAutoScroll<HTMLDivElement>({
+      contentKey: scrollContentKey,
+      enabled: true,
     });
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
-    isAutoScrollRef.current = isAtBottom;
-  }, []);
-
-  useEffect(() => {
-    if (!isAutoScrollRef.current) return;
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    });
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [messages, isLoading]);
 
   // ── OCR submit ──
   const handleOcrSubmit = useCallback(async () => {
@@ -630,8 +407,7 @@ function ChatView({
     ocrAbortControllerRef.current = controller;
     setSelectedImage(null);
     setInput('');
-    clearInputDraft();
-    scrollToBottom();
+    scrollToBottom({ force: true });
     setOcrLoading(true);
 
     let fullContent = '';
@@ -762,10 +538,10 @@ function ChatView({
     input,
     userId,
     setInput,
-    clearInputDraft,
     scrollToBottom,
     saveOcrToDb,
     createOcrRecord,
+    setActiveStudyContext,
   ]);
 
   const stopOcr = useCallback(() => {
@@ -781,7 +557,7 @@ function ChatView({
     (text: string) => {
       if (isGenerating) return;
       setInput(text);
-      scrollToBottom();
+      scrollToBottom({ force: true });
       setTimeout(() => formRef.current?.requestSubmit(), 0);
     },
     [isGenerating, setInput, scrollToBottom],
@@ -959,6 +735,14 @@ function ChatView({
 
   const hasMessages = unifiedMessages.length > 0;
 
+  if (!chatRuntimeHydrated) {
+    return (
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
@@ -966,6 +750,9 @@ function ChatView({
       <main
         ref={scrollRef}
         onScroll={handleScroll}
+        onWheel={handleUserScrollIntent}
+        onTouchMove={handleUserScrollIntent}
+        onPointerDown={handleUserScrollIntent}
         className="flex-1 overflow-y-auto hide-scrollbar"
       >
         {hasMessages ? (
@@ -1080,7 +867,7 @@ function ChatView({
       >
         <ChatInputBar
           input={input}
-          onInputChange={onInputChange}
+          onInputChange={handleInputChange}
           selectedImage={selectedImage}
           onImageSelect={handleImageSelect}
           onImageRemove={handleImageRemove}
