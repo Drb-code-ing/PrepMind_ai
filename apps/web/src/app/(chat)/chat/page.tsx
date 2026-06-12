@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, useDeferredValue, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ChatTopBar from '@/components/chat/chat-top-bar';
@@ -21,6 +21,7 @@ import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
   canSaveOcrResult,
   formatOcrContentForDisplay,
+  formatStreamingOcrContent,
   getMissingWrongQuestionFields,
   parseOcrResult,
   type OcrResultStatus,
@@ -639,7 +640,7 @@ function ChatErrorNotice({ message }: { message: string }) {
 
 // ─── OcrBubble ──────────────────────────────────────────────────────
 
-function OcrBubble({
+const OcrBubble = memo(function OcrBubble({
   type,
   content,
   imageUrl,
@@ -663,7 +664,20 @@ function OcrBubble({
   saveError?: string;
 }) {
   const [saving, setSaving] = useState(false);
-  const parsedOcr = type === 'ocr-result' && content ? parseOcrResult(content) : null;
+  const isStreaming = ocrStatus === 'streaming';
+  const deferredContent = useDeferredValue(content);
+  const renderContent = isStreaming ? deferredContent : content;
+  const parsedOcr = useMemo(
+    () => (type === 'ocr-result' && content && !isStreaming ? parseOcrResult(content) : null),
+    [content, isStreaming, type],
+  );
+  const displayContent = useMemo(
+    () =>
+      isStreaming
+        ? formatStreamingOcrContent(renderContent)
+        : formatOcrContentForDisplay(renderContent),
+    [isStreaming, renderContent],
+  );
   const canSave = parsedOcr ? canSaveOcrResult(parsedOcr, ocrStatus) : false;
   const missingFields = parsedOcr ? getMissingWrongQuestionFields(parsedOcr) : [];
 
@@ -717,7 +731,11 @@ function OcrBubble({
       <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
         {content ? (
           <>
-            <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
+            {isStreaming ? (
+              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+            ) : (
+              <MarkdownRenderer content={displayContent} />
+            )}
             {(canSave || isSaved) && (
               <button
                 type="button"
@@ -789,7 +807,7 @@ function OcrBubble({
       </div>
     </div>
   );
-}
+});
 
 function WrongQuestionSaveDialog({
   pending,

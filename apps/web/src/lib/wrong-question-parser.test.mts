@@ -166,3 +166,34 @@ test('parses relaxed OCR headings shown as bold labels', () => {
   assert.deepEqual(getMissingWrongQuestionFields(parsed), []);
   assert.equal(canSaveOcrResult(parsed, 'done'), true);
 });
+
+test('formats dense OCR answer steps into readable sections', () => {
+  const display = formatOcrContentForDisplay(`## 识别结果
+题目
+
+## 题目
+利用格林公式计算曲线积分。
+
+## 学科
+数学
+
+## 知识点
+- 格林公式
+
+## 分析思路
+补线后使用格林公式。
+
+## 参考答案
+(3) 答案：π²/8 + 1 计算过程：补充路径：从(π/2,1)到(0,0)的直线段L₁，参数化或直接计算。先求闭曲线积分：设完整闭曲线C = L + L₁（逆时针），应用格林公式。P = 2xy³ - y²cosx，Q = 1 - 2ysinx + 3x²y²。∂Q/∂x = -2y cosx + 6xy²，∂P/∂y = 6xy² - 2y cosx。所以∂Q/∂x - ∂P/∂y = 0，因此∮ C = 0。
+
+## 错因建议
+方法不会`);
+
+  assert.match(display, /### \(3\)/);
+  assert.match(display, /\*\*答案：\*\* \$\\pi\^2\/8 \+ 1\$/);
+  assert.match(display, /\*\*计算过程：\*\*\n\n/);
+  assert.match(display, /\n\nP = 2xy³ - y²cosx/);
+  assert.match(display, /\n\nQ = 1 - 2ysinx \+ 3x²y²/);
+  assert.match(display, /\n\n∂Q\/∂x = -2y cosx \+ 6xy²/);
+  assert.match(display, /\n\n所以∂Q\/∂x - ∂P\/∂y = 0/);
+});

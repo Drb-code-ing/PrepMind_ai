@@ -65,6 +65,87 @@ type RequiredWrongQuestionField = (typeof WRONG_QUESTION_REQUIRED_FIELDS)[number
 
 export type OcrResultStatus = 'streaming' | 'done' | 'failed' | 'aborted';
 
+const SUPERSCRIPT_DIGITS: Record<string, string> = {
+  '⁰': '^0',
+  '¹': '^1',
+  '²': '^2',
+  '³': '^3',
+  '⁴': '^4',
+  '⁵': '^5',
+  '⁶': '^6',
+  '⁷': '^7',
+  '⁸': '^8',
+  '⁹': '^9',
+};
+
+const SUBSCRIPT_DIGITS: Record<string, string> = {
+  '₀': '_0',
+  '₁': '_1',
+  '₂': '_2',
+  '₃': '_3',
+  '₄': '_4',
+  '₅': '_5',
+  '₆': '_6',
+  '₇': '_7',
+  '₈': '_8',
+  '₉': '_9',
+};
+
+function normalizeMathExpression(expression: string) {
+  return expression
+    .trim()
+    .replace(/[，,。；;]+$/u, '')
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, (char) => SUPERSCRIPT_DIGITS[char] ?? char)
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]/gu, (char) => SUBSCRIPT_DIGITS[char] ?? char)
+    .replace(/π/g, '\\pi');
+}
+
+function looksLikeMathExpression(text: string) {
+  return /[π∂∮∫=+\-*/^_⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]|\d/.test(text);
+}
+
+function wrapAnswerMath(content: string) {
+  return content.replace(
+    /(\*\*答案：\*\*\s*)([^\n]+)/g,
+    (_, label: string, answerText: string) => {
+      const answer = answerText.trim();
+      if (!answer || answer.startsWith('$') || !looksLikeMathExpression(answer)) {
+        return `${label}${answerText}`;
+      }
+
+      return `${label}$${normalizeMathExpression(answer)}$`;
+    },
+  );
+}
+
+function formatOcrQuestionContent(content: string) {
+  return content
+    .trim()
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/([；;。])\s*(\(\d+\))/g, '$1\n\n$2')
+    .replace(/\s*(\(\d+\))\s*/g, '\n\n### $1 ')
+    .replace(/(###\s*\(\d+\))\s*答案[:：]\s*/g, '$1\n\n**答案：** ')
+    .replace(/\s*计算过程[:：]\s*/g, '\n\n**计算过程：**\n\n')
+    .replace(/([。；;])\s*(补充路径[:：]|先求|现计算|具体[:：]|合并后|则|但|因此|所以)/g, '$1\n\n$2')
+    .replace(/([。；;，,])\s*(P\s*=)/g, '$1\n\n$2')
+    .replace(/([。；;，,])\s*(Q\s*=)/g, '$1\n\n$2')
+    .replace(/([。；;，,])\s*(∂[PQ]\/∂[xy]\s*=)/g, '$1\n\n$2')
+    .replace(/。\s*(解释[:：])/g, '。\n\n**$1**')
+    .replace(/。\s*(分析[:：])/g, '。\n\n**$1**')
+    .replace(/。\s*(答案[:：])/g, '。\n\n**$1**')
+    .replace(/。\s*(但需注意)/g, '。\n\n$1')
+    .replace(/。\s*(因此|由此|故|所以)/g, '。\n\n$1')
+    .replace(/(\*\*答案[:：]\*\*)/g, '**答案：**')
+    .replace(/(\*\*计算过程[:：]\*\*)/g, '**计算过程：**')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function formatStreamingOcrContent(content: string) {
+  return formatOcrQuestionContent(content);
+}
+
 export function formatOcrContentForDisplay(content: string) {
   const trimmed = content.trim();
   if (!trimmed) return '';
@@ -75,17 +156,7 @@ export function formatOcrContentForDisplay(content: string) {
     return `我没有在图片里识别到考试题或练习题。\n\n${summary}`.trim();
   }
 
-  return trimmed
-    .trim()
-    .replace(/\r\n/g, '\n')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/([；;。])\s*(\(\d+\))/g, '$1\n\n$2')
-    .replace(/\s*(\(\d+\))\s*/g, '\n\n### $1 ')
-    .replace(/。\s*(解释[:：])/g, '。\n\n**$1**')
-    .replace(/。\s*(分析[:：])/g, '。\n\n**$1**')
-    .replace(/。\s*(答案[:：])/g, '。\n\n**$1**')
-    .replace(/。\s*(但需注意)/g, '。\n\n$1')
-    .replace(/。\s*(因此|由此|故|所以)/g, '。\n\n$1')
+  return wrapAnswerMath(formatOcrQuestionContent(trimmed))
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

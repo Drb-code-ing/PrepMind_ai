@@ -25,7 +25,7 @@ import {
 import { useUserStore } from '@/stores/userStore';
 import { useChatRuntime } from './chat-runtime-provider';
 
-const STREAM_UI_THROTTLE_MS = 80;
+const STREAM_UI_THROTTLE_MS = 120;
 
 export type OcrRuntimeImage = {
   file: File;
