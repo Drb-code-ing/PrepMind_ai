@@ -26,6 +26,13 @@ export function applyUserIntentToAutoScrollState(): AutoScrollState {
   };
 }
 
+export function applyGenerationStartToAutoScrollState(): AutoScrollState {
+  return {
+    shouldAutoScroll: true,
+    userScrollIntent: false,
+  };
+}
+
 export function applyScrollPositionToAutoScrollState(
   state: AutoScrollState,
   metrics: ScrollMetrics,

@@ -3,6 +3,7 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import {
+  applyGenerationStartToAutoScrollState,
   applyScrollPositionToAutoScrollState,
   applyUserIntentToAutoScrollState,
 } from '@/lib/streaming-scroll';
@@ -26,8 +27,9 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
 
   const scrollToBottom = useCallback((options: { force?: boolean } = {}) => {
     if (options.force) {
-      shouldAutoScrollRef.current = true;
-      userScrollIntentRef.current = false;
+      const next = applyGenerationStartToAutoScrollState();
+      shouldAutoScrollRef.current = next.shouldAutoScroll;
+      userScrollIntentRef.current = next.userScrollIntent;
     }
 
     cancelAnimationFrame(rafRef.current);

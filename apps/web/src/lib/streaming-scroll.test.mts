@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  applyGenerationStartToAutoScrollState,
   applyScrollPositionToAutoScrollState,
   applyUserIntentToAutoScrollState,
   isNearScrollBottom,
@@ -67,4 +68,20 @@ test('resumes auto scroll only after the user returns to the bottom', () => {
       userScrollIntent: false,
     },
   );
+});
+
+test('resumes auto scroll when a new generation starts after user paused scrolling', () => {
+  const pausedStateBeforeGeneration: AutoScrollState = {
+    shouldAutoScroll: false,
+    userScrollIntent: true,
+  };
+
+  assert.deepEqual(pausedStateBeforeGeneration, {
+    shouldAutoScroll: false,
+    userScrollIntent: true,
+  });
+  assert.deepEqual(applyGenerationStartToAutoScrollState(), {
+    shouldAutoScroll: true,
+    userScrollIntent: false,
+  });
 });

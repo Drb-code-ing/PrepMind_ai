@@ -523,6 +523,7 @@ function ChatView({ userId }: { userId: string }) {
             handleOcrSubmit();
           } else {
             setChatError(null);
+            scrollToBottom({ force: true });
             handleSubmit(e);
           }
         }}
