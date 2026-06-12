@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
 import { useChat } from '@ai-sdk/react';
+import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 import Image from 'next/image';
 import Link from 'next/link';
 import ChatTopBar from '@/components/chat/chat-top-bar';
@@ -19,6 +20,7 @@ import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
+import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import {
   canSaveOcrResult,
@@ -112,6 +114,20 @@ function createActiveStudyContextFromOcr(record: OcrRecord): ActiveStudyContext 
   };
 }
 
+function toOcrParsedPayload(parsed: ParsedWrongQuestion): OcrParsedPayload {
+  return {
+    isQuestion: parsed.isQuestion,
+    nonQuestionSummary: parsed.nonQuestionSummary || undefined,
+    subject: parsed.subject || undefined,
+    questionText: parsed.questionText || undefined,
+    category: parsed.category || undefined,
+    knowledgePoints: parsed.knowledgePoints,
+    analysis: parsed.analysis || undefined,
+    answer: parsed.answer || undefined,
+    errorSuggestion: parsed.errorType || undefined,
+  };
+}
+
 function getLatestActiveStudyContext(records: OcrRecord[]) {
   for (const record of [...records].sort((a, b) => b.createdAt - a.createdAt)) {
     const context = createActiveStudyContextFromOcr(record);
@@ -193,6 +209,7 @@ function ChatView({
   const initialLoadDoneRef = useRef(false);
   const messagesSavedRef = useRef(false);
   const serverMessagesHydratedRef = useRef(false);
+  const serverOcrHydratedRef = useRef(false);
   const suppressNextServerSyncRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -214,7 +231,9 @@ function ChatView({
   const chatMessagesQuery = useChatMessages(
     conversationId ? { conversationId } : {},
   );
+  const ocrRecordsQuery = useOcrRecords({ pageSize: 50 });
   const syncChatMessages = useSyncChatMessages();
+  const createOcrRecord = useCreateOcrRecord();
   const createWrongQuestion = useCreateWrongQuestion();
   const [chatError, setChatError] = useState<string | null>(null);
 
@@ -349,6 +368,57 @@ function ChatView({
       }
     });
   }, [userId]);
+
+  const mergeOcrRecordsPreservingLocalImages = useCallback(
+    (serverItems: OcrRecord[], localItems: OcrRecord[]) => {
+      const serverGroupIds = new Set(
+        serverItems.map((item) => item.groupId).filter(Boolean) as string[],
+      );
+      const localUserRecordsByGroup = new Map(
+        localItems
+          .filter((item): item is OcrRecord & { groupId: string } =>
+            Boolean(item.groupId && item.type === 'user'),
+          )
+          .map((item) => [item.groupId, item]),
+      );
+      const localResultImagesByGroup = new Map(
+        localItems
+          .filter((item): item is OcrRecord & { groupId: string; imageUrl: string } =>
+            Boolean(item.groupId && item.type === 'ocr-result' && item.imageUrl),
+          )
+          .map((item) => [item.groupId, item.imageUrl]),
+      );
+      const localFallbackResults = localItems.filter(
+        (item) => item.type !== 'user' && (!item.groupId || !serverGroupIds.has(item.groupId)),
+      );
+      const serverResultRecords = serverItems.map((item) => ({
+        ...item,
+        imageUrl:
+          item.imageUrl ?? (item.groupId ? localResultImagesByGroup.get(item.groupId) : undefined),
+      }));
+
+      return [
+        ...Array.from(localUserRecordsByGroup.values()),
+        ...localFallbackResults,
+        ...serverResultRecords,
+      ].sort((a, b) => a.createdAt - b.createdAt);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (serverOcrHydratedRef.current) return;
+    if (!ocrRecordsQuery.data) return;
+
+    serverOcrHydratedRef.current = true;
+    const serverItems = ocrRecordsQuery.data.items;
+    if (serverItems.length === 0) return;
+
+    const merged = mergeOcrRecordsPreservingLocalImages(serverItems, ocrMsgRef.current);
+    setOcrMessages(merged);
+    setActiveStudyContext(getLatestActiveStudyContext(merged));
+    void saveOcrToDb(merged);
+  }, [mergeOcrRecordsPreservingLocalImages, ocrRecordsQuery.data, saveOcrToDb]);
 
   useEffect(() => {
     const serverData = chatMessagesQuery.data;
@@ -620,12 +690,37 @@ function ChatView({
         content: fullContent,
         createdAt: Date.now() + 1,
       };
+      const parsed = parseOcrResult(fullContent);
+      let persistedResultRecord = finalResultRecord;
+      try {
+        persistedResultRecord = await createOcrRecord.mutateAsync({
+          record: finalResultRecord,
+          parsedJson: toOcrParsedPayload(parsed),
+        });
+      } catch (error) {
+        logBackgroundSyncError('[OCRRecord sync]', error);
+      }
+
       const finalOcr = ocrMsgRef.current.map((m) =>
-        m.id === resultMsgId ? { ...m, content: fullContent } : m,
+        m.id === resultMsgId
+          ? {
+              ...m,
+              id: persistedResultRecord.id,
+              content: fullContent,
+              imageUrl: m.imageUrl ?? persistedResultRecord.imageUrl,
+            }
+          : m,
       );
-      setActiveStudyContext(createActiveStudyContextFromOcr(finalResultRecord));
+      setOcrMessages(finalOcr);
+      setActiveStudyContext(
+        createActiveStudyContextFromOcr({
+          ...persistedResultRecord,
+          content: fullContent,
+          createdAt: finalResultRecord.createdAt,
+        }),
+      );
       setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'done' }));
-      saveOcrToDb(finalOcr);
+      void saveOcrToDb(finalOcr);
     } catch (err) {
       ocrContentPublisher.cancel();
       const isAbortError = err instanceof DOMException && err.name === 'AbortError';
@@ -642,7 +737,8 @@ function ChatView({
       const finalOcr = ocrMsgRef.current.map((m) =>
         m.id === resultMsgId ? { ...m, content: errMsg } : m,
       );
-      saveOcrToDb(finalOcr);
+      setOcrMessages(finalOcr);
+      void saveOcrToDb(finalOcr);
     } finally {
       if (ocrAbortControllerRef.current === controller) {
         ocrAbortControllerRef.current = null;
@@ -658,6 +754,7 @@ function ChatView({
     clearInputDraft,
     scrollToBottom,
     saveOcrToDb,
+    createOcrRecord,
   ]);
 
   const stopOcr = useCallback(() => {
