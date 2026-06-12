@@ -365,6 +365,26 @@ f7da6e1 feat: add frontend image upload API
 023066b feat: upload OCR images during recognition
 ```
 
+**Phase 2.3 流式 Markdown 渲染体验优化**
+
+- 新增流式 Markdown 切分 helper，将正在生成的内容拆为“稳定 Markdown 段落”和“尾部实时文本”。
+- 新增 `StreamingMarkdownRenderer`，Chat 与 OCR 流式阶段共用渐进渲染逻辑。
+- 已完成的段落在生成中即可使用 Markdown / KaTeX 渲染，最后一段保持轻量文本，减少输出结束后的整体格式跳变。
+- 保留完整输出完成后的 `MarkdownRenderer` 终态渲染，不影响 OCR 原始内容、错题解析和 `activeStudyContext`。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/streaming-markdown.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+
+**提交记录**
+
+```text
+816df7b feat: stream stable markdown while generating
+```
+
 ---
 
 ## 当前状态
