@@ -319,6 +319,43 @@ c3b708b test: cover OCR record API
 - `bun --cwd packages/database test` 通过。
 - `bun --cwd packages/fsrs test` 通过。
 
+**Phase 2.3.4 MinIO 图片存储迁移**
+
+- 完成 MinIO 图片存储中文设计与实现计划，采用后端代理上传方案，不在当前阶段引入前端直传 presigned URL。
+- 新增 `@repo/types/api/upload`，统一图片上传 purpose、mime type、表单字段和响应 schema。
+- 后端新增 `UploadsModule` 与 `StorageService`，提供 `POST /uploads/images` 和 `GET /uploads/images/users/...`。
+- 上传接口接入 `JwtAuthGuard`，对象 key 按 `users/{userId}/{purpose}/{groupId}/{uuid}.{ext}` 隔离。
+- 支持 `image/jpeg`、`image/png`、`image/webp`，通过 `UPLOAD_IMAGE_MAX_BYTES` 控制大小上限。
+- Docker 开发环境纳入 MinIO，后端首次上传时自动创建默认 bucket。
+- 前端新增 multipart `upload-api` 与 `useUploadImage`，不复用 JSON `apiClient`。
+- OCR 选择图片后本地即时预览，同时并行上传到 MinIO；OCRRecord 和 WrongQuestion 优先保存服务端图片 URL。
+- 上传失败不阻塞 OCR 识别，Dexie 继续保留当前设备本地预览作为兜底。
+- 保持 `/ocr-records` 与 `/wrong-questions` 拒绝 `data:` base64 的边界，前端请求前继续剥离本地 base64。
+
+**验证**
+
+- `bun --cwd apps/server test storage.service.spec.ts` 通过。
+- `bun --filter @repo/server test:e2e -- uploads.e2e-spec.ts` 通过。
+- `bun --filter @repo/server build` 通过。
+- `node --experimental-strip-types apps/web/src/lib/upload-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+
+**提交记录**
+
+```text
+e2afd83 docs: design minio image storage migration
+c5d90b6 docs: plan minio image storage migration
+c275694 feat: add upload API contract
+c6859cb chore: configure minio upload environment
+dcc0fdd feat: add minio image upload backend
+7e7a797 test: cover image upload API
+f7da6e1 feat: add frontend image upload API
+023066b feat: upload OCR images during recognition
+```
+
 ---
 
 ## 当前状态
@@ -344,7 +381,7 @@ c3b708b test: cover OCR record API
 
 - WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移、OCRRecord API 与前端 OCR 历史迁移已完成。
 - 聊天上下文窗口、OCR 题目上下文注入、非题目 OCR 门禁和聊天渲染优化已完成。
-- 图片 base64 仍仅保留在 Dexie，后续迁移到 MinIO/OSS。
+- 新 OCR 图片已接入 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL，Dexie 继续作为本地预览兜底。
 
 ---
 
@@ -356,7 +393,7 @@ c3b708b test: cover OCR record API
 - [x] 前端错题本接入 `apiClient` + TanStack Query。
 - [x] ChatMessage API。
 - [x] OCRRecord API。
-- [ ] 图片从 base64 迁移到 MinIO/OSS URL。
+- [x] 图片从 base64 迁移到 MinIO/OSS URL。
 - [ ] Dexie 离线 mutation 队列与乐观更新层。
 
 **Phase 3 准备**

@@ -70,6 +70,20 @@ bun --filter @repo/web dev
 前端：http://localhost:3000
 后端：http://localhost:3001
 健康检查：http://localhost:3001/health
+MinIO API：http://127.0.0.1:9000
+MinIO Console：http://127.0.0.1:9001
+```
+
+MinIO 默认登录：
+
+```text
+minioadmin / minioadmin
+```
+
+默认 bucket 由后端首次上传时自动创建：
+
+```text
+prepmind-dev
 ```
 
 ## 4. 常用验证

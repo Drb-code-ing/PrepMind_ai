@@ -135,6 +135,8 @@ mcp -> ai, fsrs, rag, types
 - 前端聊天页启动时先读 Dexie 快速恢复，再以服务端聊天历史为权威来源同步。
 - 后端已新增 OCRRecord API，支持读取、创建 upsert 和删除当前用户 OCR 历史。
 - 前端聊天页 OCR 完成后先写入服务端 OCRRecord，再同步 Dexie 缓存。
+- 后端已新增 Uploads API，`POST /uploads/images` 将登录用户图片写入 MinIO，`GET /uploads/images/users/...` 通过后端稳定 URL 读取图片。
+- 前端 OCR 选择图片后会本地即时预览，同时并行上传到 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL。
 - `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
 - OCR 有效题目会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
 - 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
@@ -152,8 +154,9 @@ mcp -> ai, fsrs, rag, types
 - `/chat-messages/sync` 要保持幂等；前端按消息快照去重，避免同一批聊天消息重复同步触发唯一约束错误。
 - OCRRecord 服务端 API 已进入 PostgreSQL，API 路径为 `/ocr-records`。
 - OCR 识别结果以服务端为权威来源，Dexie 继续作为本地缓存。
-- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回本地图片预览，服务端返回空列表时本地缓存也要清空。
-- OCR 图片 base64 暂不上传服务端；当前设备预览图仍保存在 Dexie，后续迁移到 MinIO/OSS。
+- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回旧数据或上传失败时的本地图片预览，服务端返回空列表时本地缓存也要清空。
+- 新 OCR 图片会先本地预览，再通过 NestJS `/uploads/images` 上传到 MinIO；OCRRecord 和 WrongQuestion 优先保存 `/uploads/images/users/...` 服务端 URL。
+- `/ocr-records` 与 `/wrong-questions` 仍不接收 `data:` base64 图片，前端创建请求前会剥离本地 base64。
 - Chat / OCR 流式输出阶段使用轻量文本渲染，完成后再做 Markdown / KaTeX 完整渲染；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
 - 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
 - 今日任务仍主要保存在 Dexie。
@@ -176,5 +179,5 @@ mcp -> ai, fsrs, rag, types
 
 Phase 2.3 最优先：
 
-- 图片从 base64 逐步迁移到 MinIO/OSS URL。
 - Dexie 降级为离线缓存与乐观更新层。
+- 历史 base64 图片的可选迁移或清理策略。

@@ -12,8 +12,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 - Phase 1：前端 MVP 已完成。
 - Phase 2.1：后端基础与 Auth/User API 已完成。
 - Phase 2.2：前端 Auth 已接入后端，已完成。
-- Phase 2.3：业务 API 迁移进行中，WrongQuestion、ChatMessage 与 OCRRecord 后端 API 及前端接入已完成。
-- 下一步：图片存储迁移与 Dexie 离线缓存/乐观更新层。
+- Phase 2.3：业务 API 迁移进行中，WrongQuestion、ChatMessage、OCRRecord 与新图片上传链路已接入服务端。
+- 下一步：Dexie 离线缓存/乐观更新层与历史图片清理策略。
 
 ## 开发命令
 
@@ -80,8 +80,9 @@ mcp -> ai, fsrs, rag, types
 - `/chat-messages` 已提供聊天历史读取、同步和清空；聊天历史以服务端为权威来源，Dexie 作为本地缓存。
 - `/chat-messages/sync` 要保持幂等；前端按消息快照去重，避免同一批聊天消息重复同步触发唯一约束错误。
 - `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除；OCR 识别结果以服务端为权威来源，Dexie 作为本地缓存。
-- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回本地图片预览，服务端返回空列表时本地缓存也要清空。
-- OCR 图片 base64 暂不上传服务端；当前设备预览图仍保存在 Dexie，后续迁移到 MinIO/OSS。
+- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回旧数据或上传失败时的本地图片预览，服务端返回空列表时本地缓存也要清空。
+- 新 OCR 图片会先本地预览，再通过 NestJS `/uploads/images` 上传到 MinIO；OCRRecord 和 WrongQuestion 优先保存 `/uploads/images/users/...` 服务端 URL。
+- `/ocr-records` 与 `/wrong-questions` 仍不接收 `data:` base64 图片，前端创建请求前会剥离本地 base64。
 - `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
 - 有效题目 OCR 会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
 - Chat / OCR 流式输出阶段使用轻量文本渲染，完成后再做 Markdown / KaTeX 完整渲染；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
@@ -95,5 +96,5 @@ mcp -> ai, fsrs, rag, types
 
 Phase 2.3：
 
-- 图片存储从 base64 迁移到 MinIO/OSS URL。
 - Dexie 作为离线缓存与乐观更新层。
+- 历史 base64 图片的可选迁移或清理策略。

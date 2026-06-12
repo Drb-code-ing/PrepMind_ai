@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion、ChatMessage 与 OCRRecord 后端 API 及前端接入已完成；图片二进制仍保留在 Dexie。
+> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion、ChatMessage、OCRRecord 与新图片上传链路已接入服务端；Dexie 继续作为本地缓存和旧图片预览兜底。
 
 ## 1. 总览
 
@@ -24,7 +24,7 @@ Phase 2.3 业务数据流
   -> TanStack Query / React state
   -> apiClient 或 Next.js API Route
   -> NestJS REST API / 外部 AI 服务
-  -> PostgreSQL
+  -> PostgreSQL / MinIO
   -> Dexie 本地缓存
 ```
 
@@ -37,13 +37,14 @@ Phase 2.3 业务数据流
 - 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
 - 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
 - 后端 `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除能力；Dexie 作为 OCR 本地缓存。
-- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；本地仅补回服务端尚未持久化的图片预览。
+- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；Dexie 只补回旧数据或上传失败时的本地图片预览。
 - `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
 - 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
 - ChatMessage 同步按消息快照去重，服务端 `/chat-messages/sync` 支持重复快照幂等写入，避免重复同步触发唯一约束错误。
 - Chat / OCR 流式输出期间前端使用轻量文本渲染，输出完成后再进入 Markdown / KaTeX 完整渲染。
 - 聊天页面自动滚动遵循用户意图：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
-- OCR 图片预览和今日任务仍是前端本地业务数据。
+- 新 OCR 图片会先本地预览，再通过 `POST /uploads/images` 上传到 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL。
+- 今日任务仍是前端本地业务数据。
 - `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
 ## 2. Phase 2.2 前端 Auth 数据流
@@ -178,7 +179,7 @@ ChatSidebar
 | localStorage | `prepmind-chat` | `inputDraft` | 保留 |
 | localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
 | IndexedDB | `messages` | 聊天消息 | 本地缓存，服务端权威来源为 `/chat-messages` |
-| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，同步成功后替换当前用户缓存，图片预览仍本地保留 |
+| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，同步成功后替换当前用户缓存；服务端图片 URL 优先，本地预览仅作兜底 |
 | IndexedDB | `wrongQuestions` | 错题本记录 | 本地缓存；服务端权威来源为 `/wrong-questions`，同步成功后替换当前用户缓存 |
 
 Phase 2.3 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id；已迁移的业务数据以服务端为权威来源。
@@ -247,21 +248,23 @@ ChatPage
 
 ```text
 用户选择图片或拍照
-  -> FileReader 生成预览
-  -> POST /api/ocr
+  -> 本地 preview URL 即时展示
+  -> 并行：
+      A. POST /api/ocr -> 外部 OCR 模型 SSE
+      B. POST /uploads/images -> MinIO object -> /uploads/images/users/...
   -> OCR 模型 SSE 返回固定 Markdown schema
   -> 流式阶段轻量文本渲染
   -> 输出完成后 parseOcrResult(content)
-  -> POST /ocr-records
+  -> POST /ocr-records（携带 MinIO imageUrl，上传失败则不携带）
   -> Prisma OcrRecord
   -> PostgreSQL
-  -> Dexie ocrRecords 缓存
+  -> Dexie ocrRecords 缓存服务端 URL；上传失败时继续保留本地预览兜底
   -> 若识别结果为题目：生成 activeStudyContext
   -> 后续普通聊天请求携带 activeStudyContext，AI 可承接“这道题 / 刚才那一步”等追问
   -> 用户点击“保存到错题本”
   -> parseOcrResult(content)
   -> 保存预览弹窗
-  -> POST /wrong-questions
+  -> POST /wrong-questions（优先使用 OcrRecord.imageUrl）
   -> sourceRecordId 指向服务端 OcrRecord.id
   -> Prisma WrongQuestion
   -> PostgreSQL
@@ -283,11 +286,13 @@ ChatPage
 
 图片策略：
 
-- 当前阶段 `/ocr-records` 不接收 `data:` base64 图片，服务端会返回 `OCR_RECORD_IMAGE_NOT_SUPPORTED`。
-- 前端会在创建 OCRRecord 请求前剥离 base64 `imageUrl`。
-- 用户拍照预览图继续保存在 Dexie；后续迁移到 MinIO/OSS 后，`imageUrl` 再写入服务端。
+- `/uploads/images` 接收登录用户的 multipart 图片，后端写入 MinIO 并返回稳定的 `/uploads/images/users/...` URL。
+- 当前支持 `image/jpeg`、`image/png`、`image/webp`，默认大小上限由 `UPLOAD_IMAGE_MAX_BYTES` 控制。
+- `/ocr-records` 与 `/wrong-questions` 仍拒绝 `data:` base64 图片；前端创建请求前会剥离 base64 `imageUrl`。
+- 新 OCR 图片上传成功后，`OcrRecord.imageUrl` 与后续 `WrongQuestion.imageUrl` 都优先保存服务端 URL。
+- 上传失败不阻塞 OCR 识别；当前设备 Dexie 继续保留本地预览作为兜底。
 - OCR 历史启动时先读取 Dexie 快速恢复；服务端 `/ocr-records` 同步成功后，以服务端列表替换当前用户 Dexie 缓存。
-- 服务端 OCRRecord 不保存 base64 图片时，前端会按 `groupId` 补回本地 user 图片预览和 result 图片预览；服务端返回空列表时清空当前用户 OCR Dexie 缓存。
+- 服务端历史缺少图片 URL 时，前端会按 `groupId` 补回本地 user/result 图片预览；服务端返回空列表时清空当前用户 OCR Dexie 缓存。
 
 OCR / 聊天交互门禁：
 
@@ -428,6 +433,6 @@ WrongQuestion / Chat / OCR UI
 
 优先顺序：
 
-1. 图片存储迁移到 MinIO/OSS。
-2. Dexie 离线 mutation 队列与乐观更新层。
+1. Dexie 离线 mutation 队列与乐观更新层。
+2. 历史 base64 图片的可选迁移或清理策略。
 3. Phase 3 OCR structured output schema 与 tool calling 设计。
