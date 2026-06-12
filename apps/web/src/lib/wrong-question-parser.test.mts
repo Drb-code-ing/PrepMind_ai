@@ -197,3 +197,30 @@ test('formats dense OCR answer steps into readable sections', () => {
   assert.match(display, /\n\n∂Q\/∂x = -2y cosx \+ 6xy²/);
   assert.match(display, /\n\n所以∂Q\/∂x - ∂P\/∂y = 0/);
 });
+
+test('does not treat function arguments as numbered subquestions', () => {
+  const display = formatOcrContentForDisplay(`## 识别结果
+题目
+
+## 题目
+求函数 f(x)=x^2 在 x=2 处的导数。
+
+## 学科
+数学
+
+## 知识点
+- 导数定义
+
+## 分析思路
+使用幂函数求导法则，f'(x)=2x，因此 f'(2)=4。
+
+## 参考答案
+4
+
+## 错因建议
+概念不清`);
+
+  assert.equal(display.includes("f'\n\n(2)"), false);
+  assert.equal(display.includes("f'(2)=4"), true);
+  assert.equal(display.includes('### (2)'), false);
+});

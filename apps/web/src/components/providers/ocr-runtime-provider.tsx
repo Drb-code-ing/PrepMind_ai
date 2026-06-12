@@ -17,6 +17,7 @@ import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { db, type OcrRecord } from '@/lib/db';
+import { mergeOcrRecordsFromServer } from '@/lib/server-cache-sync';
 import {
   parseOcrResult,
   type OcrResultStatus,
@@ -94,43 +95,6 @@ function toOcrParsedPayload(parsed: ParsedWrongQuestion): OcrParsedPayload {
   };
 }
 
-function mergeOcrRecordsPreservingLocalImages(
-  serverItems: OcrRecord[],
-  localItems: OcrRecord[],
-) {
-  const serverGroupIds = new Set(
-    serverItems.map((item) => item.groupId).filter(Boolean) as string[],
-  );
-  const localUserRecordsByGroup = new Map(
-    localItems
-      .filter((item): item is OcrRecord & { groupId: string } =>
-        Boolean(item.groupId && item.type === 'user'),
-      )
-      .map((item) => [item.groupId, item]),
-  );
-  const localResultImagesByGroup = new Map(
-    localItems
-      .filter((item): item is OcrRecord & { groupId: string; imageUrl: string } =>
-        Boolean(item.groupId && item.type === 'ocr-result' && item.imageUrl),
-      )
-      .map((item) => [item.groupId, item.imageUrl]),
-  );
-  const localFallbackResults = localItems.filter(
-    (item) => item.type !== 'user' && (!item.groupId || !serverGroupIds.has(item.groupId)),
-  );
-  const serverResultRecords = serverItems.map((item) => ({
-    ...item,
-    imageUrl:
-      item.imageUrl ?? (item.groupId ? localResultImagesByGroup.get(item.groupId) : undefined),
-  }));
-
-  return [
-    ...Array.from(localUserRecordsByGroup.values()),
-    ...localFallbackResults,
-    ...serverResultRecords,
-  ].sort((a, b) => a.createdAt - b.createdAt);
-}
-
 export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
   const currentUser = useUserStore((state) => state.currentUser);
   const userId = currentUser?.id ?? null;
@@ -206,9 +170,8 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
 
     serverOcrHydratedRef.current = true;
     const serverItems = ocrRecordsQuery.data.items;
-    if (serverItems.length === 0) return;
 
-    const merged = mergeOcrRecordsPreservingLocalImages(serverItems, ocrMsgRef.current);
+    const merged = mergeOcrRecordsFromServer(serverItems, ocrMsgRef.current);
     ocrMsgRef.current = merged;
     setOcrMessages(merged);
     setActiveStudyContext(getLatestActiveStudyContext(merged));

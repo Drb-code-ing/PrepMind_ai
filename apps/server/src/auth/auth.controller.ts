@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Post,
   Req,
   Res,
@@ -48,6 +49,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   login(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
@@ -63,6 +65,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @HttpCode(200)
   refresh(
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
@@ -75,6 +78,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @HttpCode(200)
   logout(
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,

@@ -124,7 +124,7 @@ function formatOcrQuestionContent(content: string) {
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+/g, ' ')
     .replace(/([；;。])\s*(\(\d+\))/g, '$1\n\n$2')
-    .replace(/\s*(\(\d+\))\s*/g, '\n\n### $1 ')
+    .replace(/(^|\n)\s*(\(\d+\))\s*/g, '$1### $2 ')
     .replace(/(###\s*\(\d+\))\s*答案[:：]\s*/g, '$1\n\n**答案：** ')
     .replace(/\s*计算过程[:：]\s*/g, '\n\n**计算过程：**\n\n')
     .replace(/([。；;])\s*(补充路径[:：]|先求|现计算|具体[:：]|合并后|则|但|因此|所以)/g, '$1\n\n$2')

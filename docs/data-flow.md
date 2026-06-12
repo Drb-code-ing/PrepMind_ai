@@ -37,6 +37,7 @@ Phase 2.3 业务数据流
 - 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
 - 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
 - 后端 `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除能力；Dexie 作为 OCR 本地缓存。
+- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；本地仅补回服务端尚未持久化的图片预览。
 - `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
 - 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
 - ChatMessage 同步按消息快照去重，服务端 `/chat-messages/sync` 支持重复快照幂等写入，避免重复同步触发唯一约束错误。
@@ -177,8 +178,8 @@ ChatSidebar
 | localStorage | `prepmind-chat` | `inputDraft` | 保留 |
 | localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
 | IndexedDB | `messages` | 聊天消息 | 本地缓存，服务端权威来源为 `/chat-messages` |
-| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，图片预览仍本地保留 |
-| IndexedDB | `wrongQuestions` | 错题本记录 | 保留，按 `userId` 隔离 |
+| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，同步成功后替换当前用户缓存，图片预览仍本地保留 |
+| IndexedDB | `wrongQuestions` | 错题本记录 | 本地缓存；服务端权威来源为 `/wrong-questions`，同步成功后替换当前用户缓存 |
 
 Phase 2.3 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id；已迁移的业务数据以服务端为权威来源。
 
@@ -285,6 +286,8 @@ ChatPage
 - 当前阶段 `/ocr-records` 不接收 `data:` base64 图片，服务端会返回 `OCR_RECORD_IMAGE_NOT_SUPPORTED`。
 - 前端会在创建 OCRRecord 请求前剥离 base64 `imageUrl`。
 - 用户拍照预览图继续保存在 Dexie；后续迁移到 MinIO/OSS 后，`imageUrl` 再写入服务端。
+- OCR 历史启动时先读取 Dexie 快速恢复；服务端 `/ocr-records` 同步成功后，以服务端列表替换当前用户 Dexie 缓存。
+- 服务端 OCRRecord 不保存 base64 图片时，前端会按 `groupId` 补回本地 user 图片预览和 result 图片预览；服务端返回空列表时清空当前用户 OCR Dexie 缓存。
 
 OCR / 聊天交互门禁：
 
@@ -332,8 +335,9 @@ ErrorBookPage
   -> wrongQuestionApi.list()
   -> apiClient.get('/wrong-questions')
   -> 服务端返回 items
-  -> 页面渲染 server state
-  -> db.wrongQuestions.bulkPut(items) 写入本地缓存
+  -> 与本地缓存按 id 合并图片预览
+  -> 页面渲染服务端权威快照
+  -> 清空当前用户 db.wrongQuestions 后写入合并结果
 ```
 
 更新与删除：
@@ -349,7 +353,8 @@ ErrorBookPage
 离线与失败策略：
 
 - 页面首次进入会先读取 Dexie 中当前用户缓存。
-- 服务端同步成功后，以服务端返回为准覆盖页面列表。
+- 服务端同步成功后，以服务端返回为准覆盖页面列表和当前用户 Dexie 缓存；服务端返回空列表时本地缓存也会清空。
+- 如果服务端错题暂未保存图片 URL，前端会按错题 id 保留本机 Dexie 中的图片预览。
 - 服务端同步失败时，页面继续展示本地缓存并显示提示。
 - 当前阶段暂不做完整离线 mutation 队列；乐观更新和离线写队列后续统一设计。
 

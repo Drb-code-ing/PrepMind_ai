@@ -80,6 +80,7 @@ mcp -> ai, fsrs, rag, types
 - `/chat-messages` 已提供聊天历史读取、同步和清空；聊天历史以服务端为权威来源，Dexie 作为本地缓存。
 - `/chat-messages/sync` 要保持幂等；前端按消息快照去重，避免同一批聊天消息重复同步触发唯一约束错误。
 - `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除；OCR 识别结果以服务端为权威来源，Dexie 作为本地缓存。
+- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回本地图片预览，服务端返回空列表时本地缓存也要清空。
 - OCR 图片 base64 暂不上传服务端；当前设备预览图仍保存在 Dexie，后续迁移到 MinIO/OSS。
 - `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
 - 有效题目 OCR 会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
@@ -88,6 +89,7 @@ mcp -> ai, fsrs, rag, types
 - 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
 - 今日任务仍主要保存在 Dexie。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
+- 前端生产构建不依赖 `next/font/google`，使用系统字体栈以适配受限网络环境。
 
 ## 下一步重点
 

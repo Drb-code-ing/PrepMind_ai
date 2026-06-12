@@ -293,6 +293,32 @@ c3b708b test: cover OCR record API
 - `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
 - `bun --cwd apps/server test chat-messages.service.spec.ts` 通过。
 
+**Phase 2.3 预检查问题修复**
+
+- 修复 OCR / 错题展示格式化误判 `f'(2)` 这类函数参数为小题编号的问题。
+- 新增服务端权威缓存合并 helper：WrongQuestion / OCRRecord 同步成功后按服务端列表替换当前用户 Dexie 缓存，同时保留本地图片预览。
+- 修复服务端返回空列表时 Dexie 旧错题或旧 OCR 历史不会被清理的问题。
+- 修复侧边栏关闭后内部链接仍可被聚焦或测试工具发现的问题。
+- 移除 `next/font/google` 依赖，改用系统字体栈，避免受限网络下前端生产构建失败。
+- 补齐 PWA `favicon.ico`、`icon-192.png` 和 `icon-512.png`。
+- `POST /auth/login`、`POST /auth/refresh`、`POST /auth/logout` 显式返回 200，注册继续返回 201。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/fsrs test` 通过。
+
 ---
 
 ## 当前状态

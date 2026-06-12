@@ -18,6 +18,7 @@ import {
   type DeleteActionState,
 } from '@/lib/crud-feedback';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
+import { mergeWrongQuestionsFromServer } from '@/lib/server-cache-sync';
 import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
 import {
@@ -126,11 +127,7 @@ export default function ErrorBookPage() {
         .equals(userId)
         .toArray()
         .catch(() => []);
-      const cachedById = new Map(cachedItems.map((item) => [item.id, item]));
-      const mergedItems = serverItems.map((item) => ({
-        ...item,
-        imageUrl: item.imageUrl ?? cachedById.get(item.id)?.imageUrl,
-      }));
+      const mergedItems = mergeWrongQuestionsFromServer(serverItems, cachedItems);
 
       if (cancelled) return;
       setItems(mergedItems);
@@ -139,9 +136,16 @@ export default function ErrorBookPage() {
       setSelected((prev) =>
         prev ? (mergedItems.find((item) => item.id === prev.id) ?? null) : prev,
       );
-      void db.wrongQuestions.bulkPut(mergedItems).catch((error) => {
-        console.error('[WrongQuestions cache sync]', error);
-      });
+      void db
+        .transaction('rw', db.wrongQuestions, async () => {
+          await db.wrongQuestions.where('userId').equals(userId).delete();
+          if (mergedItems.length > 0) {
+            await db.wrongQuestions.bulkPut(mergedItems);
+          }
+        })
+        .catch((error) => {
+          console.error('[WrongQuestions cache sync]', error);
+        });
     };
 
     queueMicrotask(() => {
@@ -347,7 +351,10 @@ export default function ErrorBookPage() {
                 key={item.id}
                 item={item}
                 highlighted={highlightedId === item.id}
-                onOpen={() => setSelected(item)}
+                onOpen={() => {
+                  setPendingDeleteId(null);
+                  setSelected(item);
+                }}
                 onToggleStatus={() =>
                   void (async () => {
                     const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';

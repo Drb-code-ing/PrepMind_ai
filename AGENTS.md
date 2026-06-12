@@ -152,11 +152,13 @@ mcp -> ai, fsrs, rag, types
 - `/chat-messages/sync` 要保持幂等；前端按消息快照去重，避免同一批聊天消息重复同步触发唯一约束错误。
 - OCRRecord 服务端 API 已进入 PostgreSQL，API 路径为 `/ocr-records`。
 - OCR 识别结果以服务端为权威来源，Dexie 继续作为本地缓存。
+- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回本地图片预览，服务端返回空列表时本地缓存也要清空。
 - OCR 图片 base64 暂不上传服务端；当前设备预览图仍保存在 Dexie，后续迁移到 MinIO/OSS。
 - Chat / OCR 流式输出阶段使用轻量文本渲染，完成后再做 Markdown / KaTeX 完整渲染；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
 - 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
 - 今日任务仍主要保存在 Dexie。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
+- 前端生产构建不依赖 `next/font/google`，使用系统字体栈以适配受限网络环境。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
 - 详细数据流见 `docs/data-flow.md`。
 

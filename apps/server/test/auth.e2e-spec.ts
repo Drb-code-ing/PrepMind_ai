@@ -84,7 +84,7 @@ describe('AuthController (e2e)', () => {
         email,
         password,
       })
-      .expect(201);
+      .expect(200);
 
     const loggedIn = authResponseSchema.parse(getSuccessData(loginResponse));
     const loginCookie = getRefreshCookie(loginResponse);
@@ -104,7 +104,7 @@ describe('AuthController (e2e)', () => {
     const refreshResponse = await request(server)
       .post('/auth/refresh')
       .set('Cookie', loginCookie)
-      .expect(201);
+      .expect(200);
 
     const refreshed = authResponseSchema.parse(getSuccessData(refreshResponse));
     const refreshedCookie = getRefreshCookie(refreshResponse);
@@ -144,13 +144,13 @@ describe('AuthController (e2e)', () => {
         email,
         password,
       })
-      .expect(201);
+      .expect(200);
     const reloginCookie = getRefreshCookie(reloginResponse);
 
     await request(server)
       .post('/auth/logout')
       .set('Cookie', reloginCookie)
-      .expect(201)
+      .expect(200)
       .expect((response) => {
         expect(getSuccessData(response)).toEqual({ ok: true });
         expect(getRefreshCookie(response)).toContain(
