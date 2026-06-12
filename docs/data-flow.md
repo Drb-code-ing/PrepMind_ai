@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-11。Phase 2.3 进行中，WrongQuestion 与 ChatMessage 后端 API 及前端接入已完成；OCR 原始记录仍保留在 Dexie。
+> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion、ChatMessage 与 OCRRecord 后端 API 及前端接入已完成；图片二进制仍保留在 Dexie。
 
 ## 1. 总览
 
@@ -36,9 +36,10 @@ Phase 2.3 业务数据流
 - 后端 `/wrong-questions` 已提供错题 CRUD，并按当前 `userId` 隔离数据。
 - 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
 - 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
+- 后端 `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除能力；Dexie 作为 OCR 本地缓存。
 - `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
 - 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
-- OCR、今日任务仍是前端本地业务数据。
+- OCR 图片预览和今日任务仍是前端本地业务数据。
 - `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
 ## 2. Phase 2.2 前端 Auth 数据流
@@ -173,7 +174,7 @@ ChatSidebar
 | localStorage | `prepmind-chat` | `inputDraft` | 保留 |
 | localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
 | IndexedDB | `messages` | 聊天消息 | 本地缓存，服务端权威来源为 `/chat-messages` |
-| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 保留，按 `userId` 隔离 |
+| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，图片预览仍本地保留 |
 | IndexedDB | `wrongQuestions` | 错题本记录 | 保留，按 `userId` 隔离 |
 
 Phase 2.3 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id；已迁移的业务数据以服务端为权威来源。
@@ -236,21 +237,41 @@ ChatPage
   -> FileReader 生成预览
   -> POST /api/ocr
   -> OCR 模型 SSE 返回固定 Markdown schema
-  -> ocrRecords
-  -> 若识别结果为题目：parseOcrResult(content) 生成 activeStudyContext
+  -> parseOcrResult(content)
+  -> POST /ocr-records
+  -> Prisma OcrRecord
+  -> PostgreSQL
+  -> Dexie ocrRecords 缓存
+  -> 若识别结果为题目：生成 activeStudyContext
   -> 后续普通聊天请求携带 activeStudyContext，AI 可承接“这道题 / 刚才那一步”等追问
   -> 用户点击“保存到错题本”
   -> parseOcrResult(content)
   -> 保存预览弹窗
   -> POST /wrong-questions
+  -> sourceRecordId 指向服务端 OcrRecord.id
   -> Prisma WrongQuestion
   -> PostgreSQL
   -> db.wrongQuestions.put(record) 同步本地缓存
 ```
 
-错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存。
+错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存；新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
 
 非题目 OCR 不会写入 `activeStudyContext`，不会显示错题保存入口，也不会套用学科、知识点、错因分析等题目框架。
+
+服务端 OCRRecord API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/ocr-records` | 读取当前用户 OCR 历史，支持 `page`、`pageSize`、`status`、`keyword`、`isQuestion` |
+| `GET` | `/ocr-records/:id` | 当前用户 OCR 详情 |
+| `POST` | `/ocr-records` | 创建或按 `userId + groupId` upsert OCR 结果 |
+| `DELETE` | `/ocr-records/:id` | 删除当前用户 OCR 记录 |
+
+图片策略：
+
+- 当前阶段 `/ocr-records` 不接收 `data:` base64 图片，服务端会返回 `OCR_RECORD_IMAGE_NOT_SUPPORTED`。
+- 前端会在创建 OCRRecord 请求前剥离 base64 `imageUrl`。
+- 用户拍照预览图继续保存在 Dexie；后续迁移到 MinIO/OSS 后，`imageUrl` 再写入服务端。
 
 OCR / 聊天交互门禁：
 
@@ -374,7 +395,7 @@ Prisma migration 状态应为：
 Database schema is up to date
 ```
 
-## 9. Phase 2.3 迁移目标
+## 9. Phase 2.3 后续迁移目标
 
 ```text
 WrongQuestion / Chat / OCR UI
@@ -388,7 +409,6 @@ WrongQuestion / Chat / OCR UI
 
 优先顺序：
 
-1. OCRRecord API。
-2. 图片存储迁移到 MinIO/OSS。
-3. Dexie 离线 mutation 队列与乐观更新层。
-4. Phase 3 OCR structured output schema 与 tool calling 设计。
+1. 图片存储迁移到 MinIO/OSS。
+2. Dexie 离线 mutation 队列与乐观更新层。
+3. Phase 3 OCR structured output schema 与 tool calling 设计。

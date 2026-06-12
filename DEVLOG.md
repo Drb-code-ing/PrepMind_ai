@@ -228,6 +228,57 @@ bee4789 fix: improve chat rendering
 
 ---
 
+## 2026-06-12（Day 7）
+
+**Phase 2.3 OCRRecord API 与前端 OCR 历史迁移**
+
+- 完成 OCRRecord API 中文设计与实现计划。
+- 新增 `@repo/types/api/ocr-record`，提供 OCRRecord status、parsed payload、创建请求、列表查询和响应 schema。
+- 新增后端 `OcrRecordsModule`、`OcrRecordsController`、`OcrRecordsService`。
+- 新增 `/ocr-records` REST API：
+  - `GET /ocr-records`
+  - `GET /ocr-records/:id`
+  - `POST /ocr-records`
+  - `DELETE /ocr-records/:id`
+- OCRRecord API 接入 `JwtAuthGuard`，所有读写按当前 `userId` 隔离。
+- `POST /ocr-records` 按 `userId + groupId` upsert，避免同一次 OCR 重复写入。
+- 服务端拒绝 `data:` base64 图片 URL，返回 `OCR_RECORD_IMAGE_NOT_SUPPORTED`。
+- 新增 OCRRecord service 单测与 e2e 测试，覆盖创建、upsert、列表过滤、详情读取、跨用户隔离、base64 拒绝和删除。
+- 前端新增 `ocr-record-api` 与 `useOcrRecords`、`useCreateOcrRecord`、`useDeleteOcrRecord`。
+- 前端创建 OCRRecord 请求前会剥离 base64 `imageUrl`，图片预览继续保存在 Dexie。
+- 聊天页 OCR 完成后先写入服务端 OCRRecord，再同步 Dexie 缓存。
+- 聊天页启动时先读取 Dexie 快速恢复，再用服务端 OCR 历史合并本地图片预览缓存。
+- 新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
+- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过；首次受限网络下因 Google Fonts 拉取失败，联网重跑通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+
+**提交记录**
+
+```text
+6ad7d78 docs: design OCR record API
+a964bb0 docs: plan OCR record API implementation
+ab2a925 feat: add OCR record API contract
+40e615f feat: add OCR record backend API
+c3b708b test: cover OCR record API
+1228d01 feat: add OCR record frontend API
+84f8d39 feat: sync OCR records from chat
+```
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -249,8 +300,9 @@ bee4789 fix: improve chat rendering
 
 **Phase 2.3：进行中**
 
-- WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移已完成。
+- WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移、OCRRecord API 与前端 OCR 历史迁移已完成。
 - 聊天上下文窗口、OCR 题目上下文注入、非题目 OCR 门禁和聊天渲染优化已完成。
+- 图片 base64 仍仅保留在 Dexie，后续迁移到 MinIO/OSS。
 
 ---
 
@@ -261,9 +313,9 @@ bee4789 fix: improve chat rendering
 - [x] WrongQuestion CRUD API + Prisma/PostgreSQL。
 - [x] 前端错题本接入 `apiClient` + TanStack Query。
 - [x] ChatMessage API。
-- [ ] OCRRecord API。
-- [ ] Dexie 降级为离线缓存与乐观更新层。
+- [x] OCRRecord API。
 - [ ] 图片从 base64 迁移到 MinIO/OSS URL。
+- [ ] Dexie 离线 mutation 队列与乐观更新层。
 
 **Phase 3 准备**
 
