@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { AuthSessionProvider } from '@/components/providers/auth-session-provider';
 import { ChatRuntimeProvider } from '@/components/providers/chat-runtime-provider';
+import { OcrRuntimeProvider } from '@/components/providers/ocr-runtime-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import 'katex/dist/katex.min.css';
 import './globals.css';
@@ -45,7 +46,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           <AuthSessionProvider>
-            <ChatRuntimeProvider>{children}</ChatRuntimeProvider>
+            <ChatRuntimeProvider>
+              <OcrRuntimeProvider>{children}</OcrRuntimeProvider>
+            </ChatRuntimeProvider>
           </AuthSessionProvider>
         </QueryProvider>
       </body>

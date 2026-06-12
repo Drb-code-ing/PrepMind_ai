@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
-import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ChatTopBar from '@/components/chat/chat-top-bar';
@@ -10,15 +9,13 @@ import ChatInputBar from '@/components/chat/chat-input-bar';
 import type { SelectedImage } from '@/components/chat/chat-input-bar';
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { useChatRuntime } from '@/components/providers/chat-runtime-provider';
+import { useOcrRuntime } from '@/components/providers/ocr-runtime-provider';
 import { useUserStore } from '@/stores/userStore';
 import { db } from '@/lib/db';
 import type { OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { formatChatAssistantContent } from '@/lib/chat-content-formatter';
-import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
-import type { ActiveStudyContext } from '@/lib/chat-context';
-import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
@@ -31,17 +28,6 @@ import {
 } from '@/lib/wrong-question-parser';
 import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
 import { ArrowRight, Bot, Check, CheckCircle2, Loader2, X } from 'lucide-react';
-
-const STREAM_UI_THROTTLE_MS = 80;
-
-function logBackgroundSyncError(scope: string, error: unknown) {
-  if (error instanceof ApiClientError) {
-    console.warn(`${scope}: ${error.code} (${error.status}) ${error.message}`);
-    return;
-  }
-
-  console.warn(`${scope}: ${error instanceof Error ? error.message : 'unknown error'}`);
-}
 
 // ─── Unified message type for rendering ─────────────────────────────
 
@@ -92,75 +78,13 @@ function formatMissingWrongQuestionFields(fields: string[]) {
   return fields.map((field) => WRONG_QUESTION_FIELD_LABELS[field] ?? field).join('、');
 }
 
-function createActiveStudyContextFromOcr(record: OcrRecord): ActiveStudyContext | null {
-  if (record.type !== 'ocr-result' || !record.content.trim()) return null;
-  if (/^(已停止识别|识别失败)/.test(record.content.trim())) return null;
-
-  const parsed = parseOcrResult(record.content);
-  if (!parsed.isQuestion) return null;
-
-  return {
-    type: 'ocr-question',
-    sourceGroupId: record.groupId,
-    questionText: parsed.questionText,
-    subject: parsed.subject,
-    knowledgePoints: parsed.knowledgePoints,
-    analysis: parsed.analysis,
-    answer: parsed.answer,
-    rawContent: parsed.rawContent,
-    updatedAt: record.createdAt,
-  };
-}
-
-function toOcrParsedPayload(parsed: ParsedWrongQuestion): OcrParsedPayload {
-  return {
-    isQuestion: parsed.isQuestion,
-    nonQuestionSummary: parsed.nonQuestionSummary || undefined,
-    subject: parsed.subject || undefined,
-    questionText: parsed.questionText || undefined,
-    category: parsed.category || undefined,
-    knowledgePoints: parsed.knowledgePoints,
-    analysis: parsed.analysis || undefined,
-    answer: parsed.answer || undefined,
-    errorSuggestion: parsed.errorType || undefined,
-  };
-}
-
-function getLatestActiveStudyContext(records: OcrRecord[]) {
-  for (const record of [...records].sort((a, b) => b.createdAt - a.createdAt)) {
-    const context = createActiveStudyContextFromOcr(record);
-    if (context) return context;
-  }
-  return null;
-}
-
-// ─── Parent: load from Dexie, then mount ChatView ───────────────────
+// ─── Parent: gate by current user, runtime providers hydrate data ───
 
 export default function ChatPage() {
   const currentUser = useUserStore((s) => s.currentUser);
-  const [loaded, setLoaded] = useState<{
-    userId: string;
-    ocrRecords: OcrRecord[];
-  } | null>(null);
   const userId = currentUser?.id ?? null;
 
-  useEffect(() => {
-    if (!userId) return;
-
-    let cancelled = false;
-
-    db.ocrRecords.where('userId').equals(userId).sortBy('createdAt').then((ocrRecords) => {
-      if (!cancelled) {
-        setLoaded({ userId, ocrRecords });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  if (!userId || !loaded || loaded.userId !== userId) {
+  if (!userId) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -168,28 +92,15 @@ export default function ChatPage() {
     );
   }
 
-  return (
-    <ChatView
-      key={userId}
-      userId={userId}
-      initialOcrRecords={loaded.ocrRecords}
-    />
-  );
+  return <ChatView key={userId} userId={userId} />;
 }
 
 // ─── ChatView: main chat UI ─────────────────────────────────────────
 
-function ChatView({
-  userId,
-  initialOcrRecords: persistedOcr,
-}: {
-  userId: string;
-  initialOcrRecords: OcrRecord[];
-}) {
+function ChatView({ userId }: { userId: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentUser = useUserStore((s) => s.currentUser);
   const formRef = useRef<HTMLFormElement>(null);
-  const ocrAbortControllerRef = useRef<AbortController | null>(null);
   const {
     messages,
     input,
@@ -201,17 +112,20 @@ function ChatView({
     chatError,
     setChatError,
     chatTimestamps,
-    setActiveStudyContext,
     isHydrated: chatRuntimeHydrated,
   } = useChatRuntime();
+  const {
+    ocrMessages,
+    ocrResultStatuses,
+    ocrLoading,
+    startOcr,
+    stopOcr,
+    isHydrated: ocrRuntimeHydrated,
+  } = useOcrRuntime();
 
   // ── UI state ──
-  const serverOcrHydratedRef = useRef(false);
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [ocrMessages, setOcrMessages] = useState<OcrRecord[]>(persistedOcr);
-  const [ocrResultStatuses, setOcrResultStatuses] = useState<Record<string, OcrResultStatus>>({});
   const [savedWrongGroupIds, setSavedWrongGroupIds] = useState<Set<string>>(new Set());
   const [savedWrongQuestionIdsByGroup, setSavedWrongQuestionIdsByGroup] = useState<
     Record<string, string>
@@ -220,8 +134,6 @@ function ChatView({
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
   const [confirmSaving, setConfirmSaving] = useState(false);
-  const ocrRecordsQuery = useOcrRecords({ pageSize: 50 });
-  const createOcrRecord = useCreateOcrRecord();
   const createWrongQuestion = useCreateWrongQuestion();
 
   const handleImageSelect = useCallback((img: SelectedImage) => {
@@ -231,12 +143,6 @@ function ChatView({
   const handleImageRemove = useCallback(() => {
     setSelectedImage(null);
   }, []);
-
-  // ── Refs (kept in sync via useLayoutEffect) ──
-  const ocrMsgRef = useRef(ocrMessages);
-  useLayoutEffect(() => {
-    ocrMsgRef.current = ocrMessages;
-  });
 
   const isGenerating = isLoading || ocrLoading;
 
@@ -259,94 +165,6 @@ function ChatView({
           ),
         );
       });
-  }, [userId]);
-
-  // ── Direct Dexie save helpers (no TanStack Query) ──
-  const saveOcrToDb = useCallback(async (records: OcrRecord[]) => {
-    await db.transaction('rw', db.ocrRecords, async () => {
-      await db.ocrRecords.where('userId').equals(userId).delete();
-      if (records.length > 0) {
-        await db.ocrRecords.bulkAdd(records);
-      }
-    });
-  }, [userId]);
-
-  const mergeOcrRecordsPreservingLocalImages = useCallback(
-    (serverItems: OcrRecord[], localItems: OcrRecord[]) => {
-      const serverGroupIds = new Set(
-        serverItems.map((item) => item.groupId).filter(Boolean) as string[],
-      );
-      const localUserRecordsByGroup = new Map(
-        localItems
-          .filter((item): item is OcrRecord & { groupId: string } =>
-            Boolean(item.groupId && item.type === 'user'),
-          )
-          .map((item) => [item.groupId, item]),
-      );
-      const localResultImagesByGroup = new Map(
-        localItems
-          .filter((item): item is OcrRecord & { groupId: string; imageUrl: string } =>
-            Boolean(item.groupId && item.type === 'ocr-result' && item.imageUrl),
-          )
-          .map((item) => [item.groupId, item.imageUrl]),
-      );
-      const localFallbackResults = localItems.filter(
-        (item) => item.type !== 'user' && (!item.groupId || !serverGroupIds.has(item.groupId)),
-      );
-      const serverResultRecords = serverItems.map((item) => ({
-        ...item,
-        imageUrl:
-          item.imageUrl ?? (item.groupId ? localResultImagesByGroup.get(item.groupId) : undefined),
-      }));
-
-      return [
-        ...Array.from(localUserRecordsByGroup.values()),
-        ...localFallbackResults,
-        ...serverResultRecords,
-      ].sort((a, b) => a.createdAt - b.createdAt);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (serverOcrHydratedRef.current) return;
-    if (!ocrRecordsQuery.data) return;
-
-    serverOcrHydratedRef.current = true;
-    const serverItems = ocrRecordsQuery.data.items;
-    if (serverItems.length === 0) return;
-
-    const merged = mergeOcrRecordsPreservingLocalImages(serverItems, ocrMsgRef.current);
-    setOcrMessages(merged);
-    setActiveStudyContext(getLatestActiveStudyContext(merged));
-    void saveOcrToDb(merged);
-  }, [
-    mergeOcrRecordsPreservingLocalImages,
-    ocrRecordsQuery.data,
-    saveOcrToDb,
-    setActiveStudyContext,
-  ]);
-
-  // ── Page close / visibility change → force save OCR records ──
-  useEffect(() => {
-    const flush = () => {
-      const ocr = ocrMsgRef.current;
-      if (ocr.length > 0) {
-        db.transaction('rw', db.ocrRecords, async () => {
-          await db.ocrRecords.where('userId').equals(userId).delete();
-          await db.ocrRecords.bulkAdd(ocr);
-        });
-      }
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') flush();
-    };
-    window.addEventListener('beforeunload', flush);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => {
-      window.removeEventListener('beforeunload', flush);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
   }, [userId]);
 
   // ── Scroll ──
@@ -372,181 +190,23 @@ function ChatView({
   const handleOcrSubmit = useCallback(async () => {
     if (!selectedImage || isGenerating) return;
 
+    const image = selectedImage;
     const userText = input.trim();
-    const groupId = `ocr-${Date.now()}`;
-    const userMsgId = `${groupId}-user`;
-    const resultMsgId = `${groupId}-result`;
-    const imgUrl = selectedImage.previewUrl;
-
-    const initialOcrMsgs: OcrRecord[] = [
-      ...ocrMsgRef.current,
-      {
-        id: userMsgId,
-        userId,
-        type: 'user',
-        groupId,
-        content: userText,
-        imageUrl: imgUrl,
-        createdAt: Date.now(),
-      },
-      {
-        id: resultMsgId,
-        userId,
-        type: 'ocr-result',
-        groupId,
-        content: '',
-        createdAt: Date.now() + 1,
-      },
-    ];
-    setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'streaming' }));
-    setOcrMessages(initialOcrMsgs);
-    setActiveStudyContext(null);
-
-    const img = selectedImage;
-    const controller = new AbortController();
-    ocrAbortControllerRef.current = controller;
+    setChatError(null);
     setSelectedImage(null);
     setInput('');
     scrollToBottom({ force: true });
-    setOcrLoading(true);
 
-    let fullContent = '';
-    const publishOcrContent = (content: string) => {
-      setOcrMessages((prev) =>
-        prev.map((m) => (m.id === resultMsgId ? { ...m, content } : m)),
-      );
-    };
-    const ocrContentPublisher = createThrottledTextPublisher({
-      waitMs: STREAM_UI_THROTTLE_MS,
-      publish: publishOcrContent,
-    });
-
-    try {
-      const fd = new FormData();
-      fd.append('image', img.file);
-      if (userText) fd.append('text', userText);
-
-      const res = await fetch('/api/ocr', { method: 'POST', body: fd, signal: controller.signal });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || '识别失败');
-      }
-
-      // Stream SSE
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error('无法读取响应流');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
-              fullContent += parsed.content;
-              ocrContentPublisher.push(fullContent);
-            }
-          } catch {
-            // skip unparseable lines
-          }
-        }
-      }
-      ocrContentPublisher.flush();
-
-      // Save: use fullContent (authoritative) to patch the ref's final state
-      const finalResultRecord: OcrRecord = {
-        id: resultMsgId,
-        userId,
-        type: 'ocr-result',
-        groupId,
-        content: fullContent,
-        createdAt: Date.now() + 1,
-      };
-      const parsed = parseOcrResult(fullContent);
-      let persistedResultRecord = finalResultRecord;
-      try {
-        persistedResultRecord = await createOcrRecord.mutateAsync({
-          record: finalResultRecord,
-          parsedJson: toOcrParsedPayload(parsed),
-        });
-      } catch (error) {
-        logBackgroundSyncError('[OCRRecord sync]', error);
-      }
-
-      const finalOcr = ocrMsgRef.current.map((m) =>
-        m.id === resultMsgId
-          ? {
-              ...m,
-              id: persistedResultRecord.id,
-              content: fullContent,
-              imageUrl: m.imageUrl ?? persistedResultRecord.imageUrl,
-            }
-          : m,
-      );
-      setOcrMessages(finalOcr);
-      setActiveStudyContext(
-        createActiveStudyContextFromOcr({
-          ...persistedResultRecord,
-          content: fullContent,
-          createdAt: finalResultRecord.createdAt,
-        }),
-      );
-      setOcrResultStatuses((prev) => ({ ...prev, [groupId]: 'done' }));
-      void saveOcrToDb(finalOcr);
-    } catch (err) {
-      ocrContentPublisher.cancel();
-      const isAbortError = err instanceof DOMException && err.name === 'AbortError';
-      const errMsg = isAbortError
-        ? '已停止识别'
-        : `识别失败：${err instanceof Error ? err.message : '未知错误'}`;
-      setOcrResultStatuses((prev) => ({
-        ...prev,
-        [groupId]: isAbortError ? 'aborted' : 'failed',
-      }));
-      setOcrMessages((prev) =>
-        prev.map((m) => (m.id === resultMsgId ? { ...m, content: errMsg } : m)),
-      );
-      const finalOcr = ocrMsgRef.current.map((m) =>
-        m.id === resultMsgId ? { ...m, content: errMsg } : m,
-      );
-      setOcrMessages(finalOcr);
-      void saveOcrToDb(finalOcr);
-    } finally {
-      if (ocrAbortControllerRef.current === controller) {
-        ocrAbortControllerRef.current = null;
-      }
-      setOcrLoading(false);
-    }
+    await startOcr({ image, userText });
   }, [
-    selectedImage,
-    isGenerating,
     input,
-    userId,
-    setInput,
+    isGenerating,
     scrollToBottom,
-    saveOcrToDb,
-    createOcrRecord,
-    setActiveStudyContext,
+    selectedImage,
+    setChatError,
+    setInput,
+    startOcr,
   ]);
-
-  const stopOcr = useCallback(() => {
-    ocrAbortControllerRef.current?.abort();
-  }, []);
 
   const handleStopGeneration = useCallback(() => {
     if (ocrLoading) stopOcr();
@@ -589,8 +249,8 @@ function ChatView({
     }
 
     const relatedUser = sourceGroupId
-      ? ocrMsgRef.current.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
-      : [...ocrMsgRef.current]
+      ? ocrMessages.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
+      : [...ocrMessages]
           .reverse()
           .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
     const parsed = parseOcrResult(result.content);
@@ -618,7 +278,7 @@ function ChatView({
       sourceGroupId,
       missingFields,
     });
-  }, [ocrResultStatuses, userId]);
+  }, [ocrMessages, ocrResultStatuses, userId]);
 
   const confirmWrongQuestionSave = useCallback(async () => {
     if (!pendingWrongQuestion || confirmSaving) return;
@@ -735,7 +395,7 @@ function ChatView({
 
   const hasMessages = unifiedMessages.length > 0;
 
-  if (!chatRuntimeHydrated) {
+  if (!chatRuntimeHydrated || !ocrRuntimeHydrated) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

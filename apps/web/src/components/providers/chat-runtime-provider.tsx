@@ -255,11 +255,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   ]);
 
   useEffect(() => {
-    const currentIds = new Set(messages.map((message) => message.id));
+    const runtimeMessages = messagesRef.current as RuntimeMessage[];
+    const currentIds = new Set(runtimeMessages.map((message) => message.id));
     let changed = false;
     const nextTimestamps = { ...chatTimestampsRef.current };
 
-    for (const message of messages) {
+    for (const message of runtimeMessages) {
       if (!prevMsgIdsRef.current.has(message.id)) {
         nextTimestamps[message.id] = Date.now();
         changed = true;
@@ -270,7 +271,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     if (changed) {
       setChatTimestamps(nextTimestamps);
     }
-  }, [messages]);
+  }, [messages.length]);
 
   useEffect(() => {
     if (!userId || !isHydrated) return;
@@ -280,7 +281,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const storedMessages = toStoredMessages(messages as RuntimeMessage[]);
+    const storedMessages = toStoredMessages(messagesRef.current as RuntimeMessage[]);
     if (storedMessages.length === 0) return;
 
     void saveChatToDb(storedMessages);
@@ -306,7 +307,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     conversationId,
     isHydrated,
     isLoading,
-    messages,
+    messages.length,
     saveChatToDb,
     syncChatMessages,
     toStoredMessages,
