@@ -3,6 +3,31 @@ import { ArgumentsHost, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 describe('HttpExceptionFilter', () => {
+  it('maps zod-like errors from shared packages to validation errors', () => {
+    const json = jest.fn();
+    const status = jest.fn(() => ({ json }));
+    const host = createHost(status);
+    const filter = new HttpExceptionFilter();
+
+    filter.catch(
+      {
+        name: 'ZodError',
+        issues: [{ path: ['purpose'], message: 'Invalid enum value' }],
+      },
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(json).toHaveBeenCalledWith({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '请求参数不合法',
+      },
+      requestId: 'req_test',
+    });
+  });
+
   it('maps payload too large parser errors to 413', () => {
     const json = jest.fn();
     const status = jest.fn(() => ({ json }));

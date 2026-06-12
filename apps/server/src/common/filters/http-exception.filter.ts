@@ -47,7 +47,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       };
     }
 
-    if (exception instanceof ZodError) {
+    if (exception instanceof ZodError || isZodLikeError(exception)) {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
         code: 'VALIDATION_ERROR',
@@ -87,6 +87,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: '服务器内部错误',
     };
   }
+}
+
+function isZodLikeError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) {
+    return false;
+  }
+
+  const value = exception as {
+    name?: unknown;
+    issues?: unknown;
+  };
+
+  return value.name === 'ZodError' && Array.isArray(value.issues);
 }
 
 function isPayloadTooLargeError(exception: unknown): boolean {
