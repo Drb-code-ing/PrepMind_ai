@@ -581,6 +581,12 @@ const ChatBubble = memo(function ChatBubble({
   isLoading?: boolean;
 }) {
   const isUser = role === 'user';
+  const deferredContent = useDeferredValue(content);
+  const renderContent = isLoading ? deferredContent : content;
+  const displayContent = useMemo(
+    () => formatChatAssistantContent(renderContent),
+    [renderContent],
+  );
 
   return (
     <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -603,13 +609,13 @@ const ChatBubble = memo(function ChatBubble({
           <span>{content}</span>
         ) : isLoading && !content ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : (
+        ) : isLoading ? (
           <>
-            <MarkdownRenderer content={formatChatAssistantContent(content)} />
-            {isLoading && (
-              <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
-            )}
+            <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+            <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
           </>
+        ) : (
+          <MarkdownRenderer content={displayContent} />
         )}
       </div>
     </div>

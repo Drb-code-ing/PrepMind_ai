@@ -59,6 +59,7 @@ export class ChatMessagesService {
               ? new Date(message.createdAt)
               : undefined,
           })),
+          skipDuplicates: true,
         });
       }
 

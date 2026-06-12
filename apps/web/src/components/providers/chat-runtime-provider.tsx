@@ -18,6 +18,7 @@ import { useChat } from '@ai-sdk/react';
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { ApiClientError } from '@/lib/api-client';
 import type { ActiveStudyContext } from '@/lib/chat-context';
+import { buildChatSyncSignature } from '@/lib/chat-sync';
 import { db, type StoredMessage } from '@/lib/db';
 import { useChatStore } from '@/stores/chatStore';
 import { useUserStore } from '@/stores/userStore';
@@ -94,6 +95,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const suppressNextServerSyncRef = useRef(false);
   const messagesSavedRef = useRef(false);
   const inputDraftClearReadyRef = useRef(false);
+  const lastServerSyncKeyRef = useRef('');
+  const inFlightServerSyncKeyRef = useRef('');
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
   const chatTimestampsRef = useRef(chatTimestamps);
   const activeStudyContextRef = useRef(activeStudyContext);
@@ -132,6 +135,11 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
 
   const chatMessagesQuery = useChatMessages(conversationId ? { conversationId } : {});
   const syncChatMessages = useSyncChatMessages();
+  const syncChatMessagesMutateAsyncRef = useRef(syncChatMessages.mutateAsync);
+
+  useLayoutEffect(() => {
+    syncChatMessagesMutateAsyncRef.current = syncChatMessages.mutateAsync;
+  });
 
   const toStoredMessages = useCallback(
     (runtimeMessages: RuntimeMessage[]): StoredMessage[] => {
@@ -162,12 +170,57 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     [userId],
   );
 
+  const syncStoredMessagesToServer = useCallback(
+    async (
+      storedMessages: StoredMessage[],
+      targetConversationId: string | null | undefined,
+      scope: string,
+    ) => {
+      if (storedMessages.length === 0) return;
+
+      const syncKey = buildChatSyncSignature(storedMessages, targetConversationId);
+      if (
+        syncKey === lastServerSyncKeyRef.current ||
+        syncKey === inFlightServerSyncKeyRef.current
+      ) {
+        return;
+      }
+
+      inFlightServerSyncKeyRef.current = syncKey;
+
+      try {
+        const result = await syncChatMessagesMutateAsyncRef.current({
+          messages: storedMessages,
+          conversationId: targetConversationId,
+        });
+        const acknowledgedConversationId = result.conversationId ?? targetConversationId ?? null;
+        lastServerSyncKeyRef.current = buildChatSyncSignature(
+          storedMessages,
+          acknowledgedConversationId,
+        );
+
+        if (result.conversationId) {
+          setConversationId(result.conversationId);
+        }
+      } catch (error) {
+        logBackgroundSyncError(scope, error);
+      } finally {
+        if (inFlightServerSyncKeyRef.current === syncKey) {
+          inFlightServerSyncKeyRef.current = '';
+        }
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!userId) {
       serverMessagesHydratedRef.current = false;
       suppressNextServerSyncRef.current = false;
       messagesSavedRef.current = false;
       inputDraftClearReadyRef.current = false;
+      lastServerSyncKeyRef.current = '';
+      inFlightServerSyncKeyRef.current = '';
       prevMsgIdsRef.current = new Set();
       queueMicrotask(() => {
         setMessages([]);
@@ -184,6 +237,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     suppressNextServerSyncRef.current = false;
     messagesSavedRef.current = false;
     inputDraftClearReadyRef.current = false;
+    lastServerSyncKeyRef.current = '';
+    inFlightServerSyncKeyRef.current = '';
     queueMicrotask(() => {
       if (cancelled) return;
       setIsHydrated(false);
@@ -224,6 +279,10 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         const serverRuntimeMessages = toRuntimeMessages(serverData.messages);
         suppressNextServerSyncRef.current = true;
         setChatTimestamps(toTimestampMap(serverData.messages));
+        lastServerSyncKeyRef.current = buildChatSyncSignature(
+          serverData.messages,
+          serverData.conversationId,
+        );
         prevMsgIdsRef.current = new Set(serverData.messages.map((message) => message.id));
         setMessages(serverRuntimeMessages);
         void saveChatToDb(serverData.messages);
@@ -233,23 +292,18 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       const localMessages = toStoredMessages(messagesRef.current as RuntimeMessage[]);
       if (localMessages.length === 0) return;
 
-      syncChatMessages
-        .mutateAsync({ messages: localMessages, conversationId: serverData.conversationId })
-        .then((result) => {
-          if (result.conversationId) {
-            setConversationId(result.conversationId);
-          }
-        })
-        .catch((error) => {
-          logBackgroundSyncError('[ChatMessages initial sync]', error);
-        });
+      void syncStoredMessagesToServer(
+        localMessages,
+        serverData.conversationId,
+        '[ChatMessages initial sync]',
+      );
     });
   }, [
     chatMessagesQuery.data,
     isHydrated,
     saveChatToDb,
     setMessages,
-    syncChatMessages,
+    syncStoredMessagesToServer,
     toStoredMessages,
     userId,
   ]);
@@ -292,16 +346,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isLoading) {
-      syncChatMessages
-        .mutateAsync({ messages: storedMessages, conversationId })
-        .then((result) => {
-          if (result.conversationId) {
-            setConversationId(result.conversationId);
-          }
-        })
-        .catch((error) => {
-          logBackgroundSyncError('[ChatMessages sync]', error);
-        });
+      void syncStoredMessagesToServer(storedMessages, conversationId, '[ChatMessages sync]');
     }
   }, [
     conversationId,
@@ -309,7 +354,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     isLoading,
     messages.length,
     saveChatToDb,
-    syncChatMessages,
+    syncStoredMessagesToServer,
     toStoredMessages,
     userId,
   ]);

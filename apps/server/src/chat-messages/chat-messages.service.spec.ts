@@ -117,8 +117,40 @@ describe('ChatMessagesService', () => {
           createdAt: new Date('2026-06-11T00:00:00.000Z'),
         },
       ],
+      skipDuplicates: true,
     });
     expect(result.conversationId).toBe('conv_1');
+  });
+
+  it('writes chat sync idempotently when the same local snapshot is submitted again', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany.mockResolvedValue([message]);
+    const runTransaction = (
+      callback: (
+        tx: typeof prisma,
+      ) => Promise<typeof conversation> | typeof conversation,
+    ) => callback(prisma);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    const service = createService();
+    await service.sync('user_1', {
+      conversationId: 'conv_1',
+      messages: [
+        {
+          id: 'msg_1',
+          role: 'USER',
+          content: 'hi',
+          order: 0,
+          createdAt: '2026-06-11T00:00:00.000Z',
+        },
+      ],
+    });
+
+    expect(prisma.chatMessage.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skipDuplicates: true,
+      }),
+    );
   });
 
   it('rejects syncing into an unowned conversation', async () => {

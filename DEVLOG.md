@@ -277,6 +277,22 @@ c3b708b test: cover OCR record API
 84f8d39 feat: sync OCR records from chat
 ```
 
+**Phase 2.3 Chat / OCR 流式体验与同步稳定性修复**
+
+- 修复 `/chat-messages/sync` 重复同步导致的 `DATABASE_UNIQUE_CONSTRAINT (409)` 控制台刷屏问题。
+- 后端 ChatMessage sync 增加幂等写入，重复快照不会因 message id 或 order 唯一约束失败。
+- 前端 Chat runtime 增加消息快照签名，已同步或正在同步的同一批消息不会重复提交到服务端。
+- Chat 和 OCR 流式阶段统一采用轻量文本渲染，输出完成后再进行 Markdown / KaTeX 完整渲染，降低长公式输出时的主线程压力。
+- OCR 展示层继续保留“答案 / 计算过程 / 公式”拆段优化，但不回写 OCR 原始内容和 `activeStudyContext`，不影响用户继续追问当前题目。
+- 修复自动滚动交互：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
+- 更新 `docs/data-flow.md`、`CLAUDE.md`、`AGENTS.md`，补充同步幂等、流式渲染和自动滚动约定。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
+- `bun --cwd apps/server test chat-messages.service.spec.ts` 通过。
+
 ---
 
 ## 当前状态

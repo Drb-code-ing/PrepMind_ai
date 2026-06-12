@@ -2,7 +2,10 @@
 
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
-import { isNearScrollBottom } from '@/lib/streaming-scroll';
+import {
+  applyScrollPositionToAutoScrollState,
+  applyUserIntentToAutoScrollState,
+} from '@/lib/streaming-scroll';
 
 type UseStreamingAutoScrollOptions = {
   contentKey: string;
@@ -13,7 +16,7 @@ type UseStreamingAutoScrollOptions = {
 export function useStreamingAutoScroll<T extends HTMLElement>({
   contentKey,
   enabled,
-  threshold = 100,
+  threshold = 24,
 }: UseStreamingAutoScrollOptions) {
   const scrollRef = useRef<T>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -43,29 +46,29 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
   }, []);
 
   const handleUserScrollIntent = useCallback(() => {
-    userScrollIntentRef.current = true;
+    const next = applyUserIntentToAutoScrollState();
+    shouldAutoScrollRef.current = next.shouldAutoScroll;
+    userScrollIntentRef.current = next.userScrollIntent;
   }, []);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
 
-    const nearBottom = isNearScrollBottom({
-      scrollHeight: el.scrollHeight,
-      scrollTop: el.scrollTop,
-      clientHeight: el.clientHeight,
-      threshold,
-    });
-
-    if (nearBottom) {
-      shouldAutoScrollRef.current = true;
-      userScrollIntentRef.current = false;
-      return;
-    }
-
-    if (userScrollIntentRef.current) {
-      shouldAutoScrollRef.current = false;
-    }
+    const next = applyScrollPositionToAutoScrollState(
+      {
+        shouldAutoScroll: shouldAutoScrollRef.current,
+        userScrollIntent: userScrollIntentRef.current,
+      },
+      {
+        scrollHeight: el.scrollHeight,
+        scrollTop: el.scrollTop,
+        clientHeight: el.clientHeight,
+        threshold,
+      },
+    );
+    shouldAutoScrollRef.current = next.shouldAutoScroll;
+    userScrollIntentRef.current = next.userScrollIntent;
   }, [threshold]);
 
   useLayoutEffect(() => {
