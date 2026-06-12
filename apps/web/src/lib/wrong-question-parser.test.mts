@@ -127,3 +127,42 @@ test('blocks saving while OCR result is still streaming', () => {
   assert.equal(canSaveOcrResult(parsed, 'streaming'), false);
   assert.equal(canSaveOcrResult(parsed, 'done'), true);
 });
+
+test('parses relaxed OCR headings shown as bold labels', () => {
+  const parsed = parseOcrResult(`**题目**
+利用格林公式，计算下列曲线积分：
+(1) 第一题。
+(2) 第二题。
+(3) 第三题。
+
+**学科**
+数学
+
+**知识点**
+格林公式的应用
+平面曲线积分的计算
+保守场的判定与势函数
+
+**分析思路**
+分别判断每个积分是否满足格林公式条件，再计算区域面积或补线积分。
+
+**参考答案**
+(1) 12
+(2) 0
+(3) π²/4
+
+**错因建议**
+计算错误 / 概念不清`);
+
+  assert.equal(parsed.isQuestion, true);
+  assert.equal(parsed.subject, '数学');
+  assert.deepEqual(parsed.knowledgePoints, [
+    '格林公式的应用',
+    '平面曲线积分的计算',
+    '保守场的判定与势函数',
+  ]);
+  assert.equal(parsed.analysis.includes('格林公式条件'), true);
+  assert.equal(parsed.answer.includes('π²/4'), true);
+  assert.deepEqual(getMissingWrongQuestionFields(parsed), []);
+  assert.equal(canSaveOcrResult(parsed, 'done'), true);
+});

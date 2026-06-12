@@ -105,7 +105,7 @@ function normalizeSectionContent(text: string) {
     .trim();
 }
 
-function extractSections(content: string) {
+function extractMarkdownSections(content: string) {
   const sections = new Map<string, string>();
   const headingRegex = /^#{2,3}\s*(.+?)\s*$/gm;
   const matches = [...content.matchAll(headingRegex)];
@@ -120,6 +120,93 @@ function extractSections(content: string) {
   }
 
   return sections;
+}
+
+function extractRelaxedSections(content: string) {
+  const sections = new Map<string, string>();
+  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  let currentHeading = '';
+  let currentLines: string[] = [];
+
+  const flush = () => {
+    if (!currentHeading) return;
+    sections.set(currentHeading, normalizeSectionContent(currentLines.join('\n')));
+  };
+
+  for (const line of lines) {
+    const heading = parseRelaxedHeading(line, {
+      allowPlainQuestionHeading: !currentHeading,
+    });
+
+    if (heading) {
+      flush();
+      currentHeading = heading.title;
+      currentLines = heading.inlineContent ? [heading.inlineContent] : [];
+      continue;
+    }
+
+    if (currentHeading) {
+      currentLines.push(line);
+    }
+  }
+
+  flush();
+  return sections;
+}
+
+function extractSections(content: string) {
+  const markdownSections = extractMarkdownSections(content);
+  if (markdownSections.size > 0) return markdownSections;
+
+  return extractRelaxedSections(content);
+}
+
+const RELAXED_HEADING_ALIASES = new Set(
+  Object.values(HEADING_ALIASES)
+    .flat()
+    .map((heading) => normalizeHeading(heading)),
+);
+
+function parseRelaxedHeading(
+  line: string,
+  options: { allowPlainQuestionHeading: boolean },
+) {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  let candidate = trimmed;
+  let inlineContent = '';
+  let style: 'bold' | 'colon' | 'plain' = 'plain';
+
+  const boldMatch = candidate.match(/^\*\*(.+?)\*\*\s*(.*)$/);
+  if (boldMatch) {
+    candidate = boldMatch[1]?.trim() ?? '';
+    inlineContent = boldMatch[2]?.replace(/^[:：]\s*/, '').trim() ?? '';
+    style = 'bold';
+  } else {
+    const colonMatch = candidate.match(/^(.+?)[：:]\s*(.+)$/);
+    if (colonMatch) {
+      candidate = colonMatch[1]?.trim() ?? '';
+      inlineContent = colonMatch[2]?.trim() ?? '';
+      style = 'colon';
+    }
+  }
+
+  candidate = candidate.replace(/^#{1,6}\s*/, '').trim();
+  const normalized = normalizeHeading(candidate);
+  if (!RELAXED_HEADING_ALIASES.has(normalized)) return null;
+  if (
+    normalized === normalizeHeading('题目') &&
+    style === 'plain' &&
+    !options.allowPlainQuestionHeading
+  ) {
+    return null;
+  }
+
+  return {
+    title: normalized,
+    inlineContent,
+  };
 }
 
 function pickSection(sections: Map<string, string>, aliases: readonly string[], fallback = '') {

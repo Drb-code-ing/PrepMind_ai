@@ -94,6 +94,17 @@ type PendingWrongQuestionSave = {
   missingFields: string[];
 };
 
+const WRONG_QUESTION_FIELD_LABELS: Record<string, string> = {
+  questionText: '题目',
+  knowledgePoints: '知识点',
+  analysis: '分析思路',
+  answer: '参考答案',
+};
+
+function formatMissingWrongQuestionFields(fields: string[]) {
+  return fields.map((field) => WRONG_QUESTION_FIELD_LABELS[field] ?? field).join('、');
+}
+
 function createActiveStudyContextFromOcr(record: OcrRecord): ActiveStudyContext | null {
   if (record.type !== 'ocr-result' || !record.content.trim()) return null;
   if (/^(已停止识别|识别失败)/.test(record.content.trim())) return null;
@@ -818,7 +829,7 @@ function ChatView({
             ? '未识别到题目，不能保存到错题本'
             : ocrStatus !== 'done'
               ? '识别完成后才能保存到错题本'
-              : '识别结果缺少必要字段，请重新识别后再保存',
+              : `识别结果缺少：${formatMissingWrongQuestionFields(missingFields)}，请重新识别后再保存`,
         }));
       }
       return;
@@ -1289,7 +1300,8 @@ function OcrBubble({
             )}
             {ocrStatus === 'done' && parsedOcr?.isQuestion && !canSave && missingFields.length > 0 && (
               <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                识别结果缺少必要字段，暂不能保存到错题本。建议重新识别或补充更清晰的图片。
+                识别结果缺少：{formatMissingWrongQuestionFields(missingFields)}，暂不能保存到错题本。
+                建议重新识别或补充更清晰的图片。
               </p>
             )}
             {ocrStatus === 'aborted' && (
