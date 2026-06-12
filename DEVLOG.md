@@ -349,6 +349,8 @@ c3b708b test: cover OCR record API
 - `bun --cwd packages/types typecheck` 通过。
 - `bun --cwd packages/database test` 通过。
 - `bun --cwd packages/fsrs test` 通过。
+- `bun --filter @repo/server start:dev` 短跑启动通过，确认 `/uploads/images` POST 与 `/uploads/images/*objectKey` GET 路由映射成功。
+- `bun --filter @repo/web dev` 短跑启动通过，Next.js dev server Ready。
 
 **提交记录**
 
