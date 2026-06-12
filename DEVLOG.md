@@ -342,6 +342,13 @@ c3b708b test: cover OCR record API
 - `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
+- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/fsrs test` 通过。
 
 **提交记录**
 
