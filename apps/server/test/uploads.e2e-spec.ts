@@ -20,7 +20,8 @@ describe('UploadsController (e2e)', () => {
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET ??= 'dev-secret-change-me';
-    process.env.DATABASE_URL ??= 'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
+    process.env.DATABASE_URL ??=
+      'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
     process.env.MINIO_ENDPOINT = '127.0.0.1';
     process.env.MINIO_PORT = '9000';
     process.env.MINIO_USE_SSL = 'false';
@@ -77,13 +78,17 @@ describe('UploadsController (e2e)', () => {
       })
       .expect(400)
       .expect((response) => {
-        expect(getErrorBody(response).error.code).toBe('UPLOAD_IMAGE_INVALID_TYPE');
+        expect(getErrorBody(response).error.code).toBe(
+          'UPLOAD_IMAGE_INVALID_TYPE',
+        );
       });
   });
 
   it('uploads and reads an image through the backend image URL', async () => {
     const user = await registerUser('upload-valid');
-    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const pngBytes = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
 
     const uploadResponse = await request(server)
       .post('/uploads/images')
@@ -96,7 +101,9 @@ describe('UploadsController (e2e)', () => {
       })
       .expect(201);
 
-    const uploaded = uploadImageResponseSchema.parse(getSuccessData(uploadResponse));
+    const uploaded = uploadImageResponseSchema.parse(
+      getSuccessData(uploadResponse),
+    );
     expect(uploaded.objectKey).toContain(`users/${user.userId}/ocr/ocr-e2e/`);
     expect(uploaded.imageUrl).toContain('/uploads/images/users/');
 
