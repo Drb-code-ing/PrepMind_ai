@@ -275,7 +275,7 @@ function ChatView({ userId }: { userId: string }) {
     setPendingWrongQuestion({
       result,
       parsed,
-      imageUrl: relatedUser?.imageUrl,
+      imageUrl: result.imageUrl ?? relatedUser?.imageUrl,
       sourceGroupId,
       missingFields,
     });

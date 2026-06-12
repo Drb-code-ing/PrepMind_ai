@@ -11,6 +11,7 @@ import type { OcrRecord } from './db.ts';
 async function run() {
   testMapsServerResponseToLocalRecord();
   testStripsBase64ImageFromCreateRequest();
+  testKeepsServerImageUrlInCreateRequest();
   await testListsOcrRecords();
   await testCreatesOcrRecord();
 }
@@ -64,6 +65,28 @@ function testStripsBase64ImageFromCreateRequest() {
       },
       status: 'DONE',
     },
+  );
+}
+
+function testKeepsServerImageUrlInCreateRequest() {
+  const imageUrl =
+    'http://localhost:3001/uploads/images/users/user_1/ocr/group_2/image.png';
+  const record: OcrRecord = {
+    id: 'ocr_2',
+    userId: 'user_1',
+    type: 'ocr-result',
+    groupId: 'group_2',
+    content: 'raw',
+    imageUrl,
+    createdAt: 1,
+  };
+
+  assert.equal(
+    mapLocalOcrRecordToCreateRequest(record, {
+      isQuestion: true,
+      questionText: 'question',
+    }).imageUrl,
+    imageUrl,
   );
 }
 

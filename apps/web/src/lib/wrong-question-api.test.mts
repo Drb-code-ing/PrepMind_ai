@@ -21,6 +21,7 @@ async function run() {
   testMapsServerResponseToLocalRecord();
   testMapsLocalRecordToCreateRequest();
   testOmitsLocalDataUrlImageFromCreateRequest();
+  testKeepsServerUploadImageUrlInCreateRequest();
   await testListsWrongQuestionsWithFilters();
   await testUpdatesWrongQuestion();
 }
@@ -150,6 +151,33 @@ function testOmitsLocalDataUrlImageFromCreateRequest() {
   };
 
   assert.equal(mapLocalWrongQuestionToCreateRequest(local).imageUrl, undefined);
+}
+
+function testKeepsServerUploadImageUrlInCreateRequest() {
+  const imageUrl =
+    'http://localhost:3001/uploads/images/users/user_1/ocr/group_3/image.png';
+  const local: WrongQuestionRecord = {
+    id: 'local_3',
+    userId: 'user_1',
+    source: 'ocr',
+    sourceRecordId: 'ocr_3',
+    sourceGroupId: 'group_3',
+    imageUrl,
+    questionText: 'question',
+    subject: 'math',
+    category: 'calculus',
+    knowledgePoints: ['calculus'],
+    analysis: 'analysis',
+    answer: 'answer',
+    errorType: '',
+    userNote: '',
+    rawContent: 'raw',
+    status: 'unresolved',
+    createdAt: 1,
+    updatedAt: 1,
+  };
+
+  assert.equal(mapLocalWrongQuestionToCreateRequest(local).imageUrl, imageUrl);
 }
 
 async function testListsWrongQuestionsWithFilters() {

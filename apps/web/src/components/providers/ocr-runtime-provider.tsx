@@ -14,6 +14,7 @@ import {
 import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 
 import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
+import { useUploadImage } from '@/hooks/use-upload-image';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { db, type OcrRecord } from '@/lib/db';
@@ -107,6 +108,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
   const ocrMsgRef = useRef<OcrRecord[]>(ocrMessages);
   const serverOcrHydratedRef = useRef(false);
   const createOcrRecord = useCreateOcrRecord();
+  const uploadImage = useUploadImage();
   const ocrRecordsQuery = useOcrRecords({ pageSize: 50 });
 
   useLayoutEffect(() => {
@@ -236,6 +238,29 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
       setOcrLoading(true);
 
       let fullContent = '';
+      let uploadedImageUrl: string | undefined;
+      const uploadPromise = uploadImage
+        .mutateAsync({
+          file: image.file,
+          purpose: 'ocr',
+          groupId,
+        })
+        .then((uploaded) => {
+          uploadedImageUrl = uploaded.imageUrl;
+          const withServerImage = ocrMsgRef.current.map((message) =>
+            message.groupId === groupId && message.type === 'user'
+              ? { ...message, imageUrl: uploaded.imageUrl }
+              : message,
+          );
+          ocrMsgRef.current = withServerImage;
+          setOcrMessages(withServerImage);
+          void saveOcrToDb(withServerImage);
+          return uploaded;
+        })
+        .catch((error) => {
+          logBackgroundSyncError('[Image upload]', error);
+          return null;
+        });
       const publishOcrContent = (content: string) => {
         setOcrMessages((prev) => {
           const next = prev.map((message) =>
@@ -299,6 +324,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
           }
         }
         ocrContentPublisher.flush();
+        await uploadPromise;
 
         const finalResultRecord: OcrRecord = {
           id: resultMsgId,
@@ -306,6 +332,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
           type: 'ocr-result',
           groupId,
           content: fullContent,
+          imageUrl: uploadedImageUrl,
           createdAt: Date.now() + 1,
         };
         const parsed = parseOcrResult(fullContent);
@@ -319,16 +346,22 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
           logBackgroundSyncError('[OCRRecord sync]', error);
         }
 
-        const finalOcr = ocrMsgRef.current.map((message) =>
-          message.id === resultMsgId
-            ? {
-                ...message,
-                id: persistedResultRecord.id,
-                content: fullContent,
-                imageUrl: message.imageUrl ?? persistedResultRecord.imageUrl,
-            }
-            : message,
-        );
+        const finalOcr = ocrMsgRef.current.map((message) => {
+          if (message.groupId !== groupId) return message;
+          if (message.id === resultMsgId) {
+            return {
+              ...message,
+              id: persistedResultRecord.id,
+              content: fullContent,
+              imageUrl:
+                persistedResultRecord.imageUrl ?? uploadedImageUrl ?? message.imageUrl,
+            };
+          }
+          if (message.type === 'user' && uploadedImageUrl) {
+            return { ...message, imageUrl: uploadedImageUrl };
+          }
+          return message;
+        });
         ocrMsgRef.current = finalOcr;
         setOcrMessages(finalOcr);
         setActiveStudyContext(
@@ -369,6 +402,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
       ocrLoading,
       saveOcrToDb,
       setActiveStudyContext,
+      uploadImage,
       userId,
     ],
   );
