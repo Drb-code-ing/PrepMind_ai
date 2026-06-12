@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client as MinioClient } from 'minio';
 import type {
@@ -33,18 +33,27 @@ export class StorageService {
   private readonly bucket: string;
   private readonly publicApiBaseUrl: string;
   private readonly maxImageBytes: number;
+  private readonly minioClient: MinioClientLike;
   private bucketReadyPromise: Promise<void> | null = null;
 
   constructor(
     private readonly configService: ConfigService<ServerEnv, true>,
-    private readonly minioClient: MinioClientLike = new MinioClient({
-      endPoint: configService.get('MINIO_ENDPOINT', { infer: true }),
-      port: configService.get('MINIO_PORT', { infer: true }),
-      useSSL: configService.get('MINIO_USE_SSL', { infer: true }),
-      accessKey: configService.get('MINIO_ACCESS_KEY', { infer: true }),
-      secretKey: configService.get('MINIO_SECRET_KEY', { infer: true }),
-    }),
+    @Optional() @Inject('MINIO_CLIENT') minioClient?: MinioClientLike,
   ) {
+    const endpoint = parseMinioEndpoint(
+      configService.get('MINIO_ENDPOINT', { infer: true }),
+      configService.get('MINIO_PORT', { infer: true }),
+    );
+
+    this.minioClient =
+      minioClient ??
+      new MinioClient({
+        endPoint: endpoint.endPoint,
+        port: endpoint.port,
+        useSSL: configService.get('MINIO_USE_SSL', { infer: true }),
+        accessKey: configService.get('MINIO_ACCESS_KEY', { infer: true }),
+        secretKey: configService.get('MINIO_SECRET_KEY', { infer: true }),
+      });
     this.bucket = this.configService.get('MINIO_BUCKET', { infer: true });
     this.publicApiBaseUrl = this.configService
       .get('PUBLIC_API_BASE_URL', { infer: true })
@@ -209,4 +218,17 @@ export class StorageService {
 
 function sanitizeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 100) || 'unknown';
+}
+
+export function parseMinioEndpoint(endpoint: string, configuredPort: number) {
+  const trimmed = endpoint.trim();
+  const parsed = new URL(
+    /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`,
+  );
+  const port = parsed.port ? Number(parsed.port) : configuredPort;
+
+  return {
+    endPoint: parsed.hostname,
+    port,
+  };
 }

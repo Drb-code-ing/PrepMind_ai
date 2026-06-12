@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
 import type { ServerEnv } from '../config/env';
-import { StorageService } from './storage.service';
+import { parseMinioEndpoint, StorageService } from './storage.service';
 
 describe('StorageService', () => {
   const configValues: ServerEnv = {
@@ -158,6 +158,17 @@ describe('StorageService', () => {
     expectReadObjectKeyError('../secret');
     expectReadObjectKeyError('users\\user_1\\x.png');
     expectReadObjectKeyError('documents/file.png');
+  });
+
+  it('accepts endpoint values that accidentally include a port', () => {
+    expect(parseMinioEndpoint('localhost:9000', 9000)).toEqual({
+      endPoint: 'localhost',
+      port: 9000,
+    });
+    expect(parseMinioEndpoint('http://127.0.0.1:19000', 9000)).toEqual({
+      endPoint: '127.0.0.1',
+      port: 19000,
+    });
   });
 
   function expectReadObjectKeyError(objectKey: string) {

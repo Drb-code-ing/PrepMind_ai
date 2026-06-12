@@ -5,6 +5,7 @@ import {
   Controller,
   ExecutionContext,
   Get,
+  Inject,
   Param,
   Post,
   Res,
@@ -67,6 +68,7 @@ function createImageFileInterceptor(): Type<NestInterceptor> {
     private readonly delegate: NestInterceptor;
 
     constructor(
+      @Inject(ConfigService)
       private readonly configService: ConfigService<ServerEnv, true>,
     ) {
       const maxImageBytes = this.configService.get('UPLOAD_IMAGE_MAX_BYTES', {
