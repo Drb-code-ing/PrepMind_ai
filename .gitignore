@@ -23,6 +23,9 @@ dist/
 .idea/
 *.swp
 
+# Local test artifacts
+.playwright-mcp/
+
 # OS
 .DS_Store
 Thumbs.db

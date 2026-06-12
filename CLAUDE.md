@@ -85,8 +85,8 @@ mcp -> ai, fsrs, rag, types
 - `/ocr-records` 与 `/wrong-questions` 仍不接收 `data:` base64 图片，前端创建请求前会剥离本地 base64。
 - `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
 - 有效题目 OCR 会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
-- Chat / OCR 流式输出阶段使用轻量文本渲染，完成后再做 Markdown / KaTeX 完整渲染；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
-- 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
+- Chat / OCR 流式输出阶段使用渐进 Markdown 渲染：稳定段落实时进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
+- 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
 - 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
 - 今日任务仍主要保存在 Dexie。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。

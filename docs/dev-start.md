@@ -102,7 +102,7 @@ bun --cwd packages/types typecheck
 bun --cwd packages/fsrs test
 ```
 
-前端 build 如果因为 `next/font` 无法拉取 Google Fonts 失败，需要确认当前环境可以访问网络后重跑。
+前端已移除 `next/font/google`，生产构建使用系统字体栈，受限网络下不应再因为 Google Fonts 拉取失败。
 
 ## 5. Prisma
 

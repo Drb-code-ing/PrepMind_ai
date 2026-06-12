@@ -388,6 +388,12 @@ f7da6e1 feat: add frontend image upload API
 88d17d7 fix: resume auto scroll on new generation
 ```
 
+**每日收尾**
+
+- 同步 `docs/roadmap.md`、`docs/data-flow.md`、`CLAUDE.md`、`AGENTS.md`、`docs/dev-start.md`，修正 MinIO 图片链路、渐进流式渲染、自动滚动恢复和下一步优先级表述。
+- `.gitignore` 增加 `.playwright-mcp/`，避免本地 Playwright MCP 日志污染工作区状态。
+- 补充 `Blog/2026-06-12-phase-2-3-minio-streaming-polish.md`；`Blog/` 继续保持不跟踪。
+
 ---
 
 ## 当前状态
