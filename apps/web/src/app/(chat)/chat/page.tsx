@@ -8,6 +8,7 @@ import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
 import type { SelectedImage } from '@/components/chat/chat-input-bar';
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
+import StreamingMarkdownRenderer from '@/components/markdown/streaming-markdown-renderer';
 import { useChatRuntime } from '@/components/providers/chat-runtime-provider';
 import { useOcrRuntime } from '@/components/providers/ocr-runtime-provider';
 import { useUserStore } from '@/stores/userStore';
@@ -610,10 +611,7 @@ const ChatBubble = memo(function ChatBubble({
         ) : isLoading && !content ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : isLoading ? (
-          <>
-            <div className="whitespace-pre-wrap break-words">{displayContent}</div>
-            <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-foreground" />
-          </>
+          <StreamingMarkdownRenderer content={displayContent} />
         ) : (
           <MarkdownRenderer content={displayContent} />
         )}
@@ -738,7 +736,7 @@ const OcrBubble = memo(function OcrBubble({
         {content ? (
           <>
             {isStreaming ? (
-              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+              <StreamingMarkdownRenderer content={displayContent} />
             ) : (
               <MarkdownRenderer content={displayContent} />
             )}
