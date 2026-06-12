@@ -6,6 +6,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { OcrRecordsModule } from './ocr-records/ocr-records.module';
 import { UsersModule } from './users/users.module';
 import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
 
@@ -18,6 +19,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     UsersModule,
     WrongQuestionsModule,
     ChatMessagesModule,
+    OcrRecordsModule,
   ],
 })
 export class AppModule implements NestModule {
