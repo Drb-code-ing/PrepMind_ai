@@ -18,6 +18,11 @@ import { useUploadImage } from '@/hooks/use-upload-image';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { createThrottledTextPublisher } from '@/lib/throttled-text-publisher';
 import { db, type OcrRecord } from '@/lib/db';
+import {
+  createMutationQueueItem,
+  enqueueMutationQueueItem,
+  getMutationErrorMessage,
+} from '@/lib/mutation-queue';
 import { mergeOcrRecordsFromServer } from '@/lib/server-cache-sync';
 import {
   parseOcrResult,
@@ -343,6 +348,26 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
             parsedJson: toOcrParsedPayload(parsed),
           });
         } catch (error) {
+          const errorMessage = getMutationErrorMessage(error);
+          const parsedJson = toOcrParsedPayload(parsed);
+          persistedResultRecord = {
+            ...finalResultRecord,
+            syncStatus: 'failed',
+            syncError: errorMessage,
+            pendingOperation: 'create',
+          };
+          await enqueueMutationQueueItem(
+            createMutationQueueItem({
+              userId,
+              entity: 'ocrRecord',
+              operation: 'create',
+              entityId: finalResultRecord.id,
+              payload: {
+                record: finalResultRecord,
+                parsedJson,
+              },
+            }),
+          );
           logBackgroundSyncError('[OCRRecord sync]', error);
         }
 
@@ -355,6 +380,9 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
               content: fullContent,
               imageUrl:
                 persistedResultRecord.imageUrl ?? uploadedImageUrl ?? message.imageUrl,
+              syncStatus: persistedResultRecord.syncStatus,
+              syncError: persistedResultRecord.syncError,
+              pendingOperation: persistedResultRecord.pendingOperation,
             };
           }
           if (message.type === 'user' && uploadedImageUrl) {
