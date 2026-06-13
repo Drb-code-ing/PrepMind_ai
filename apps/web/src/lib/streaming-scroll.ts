@@ -10,6 +10,18 @@ export type AutoScrollState = {
   userScrollIntent: boolean;
 };
 
+export type AutoScrollBehavior = 'auto' | 'smooth';
+
+export function getAutoScrollBehavior({
+  isGenerating,
+  preferSmoothWhileGenerating,
+}: {
+  isGenerating: boolean;
+  preferSmoothWhileGenerating: boolean;
+}): AutoScrollBehavior {
+  return isGenerating && preferSmoothWhileGenerating ? 'smooth' : 'auto';
+}
+
 export function isNearScrollBottom({
   scrollHeight,
   scrollTop,

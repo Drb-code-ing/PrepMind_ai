@@ -5,6 +5,7 @@ import {
   applyGenerationStartToAutoScrollState,
   applyScrollPositionToAutoScrollState,
   applyUserIntentToAutoScrollState,
+  getAutoScrollBehavior,
   isNearScrollBottom,
   type AutoScrollState,
 } from './streaming-scroll.ts';
@@ -84,4 +85,24 @@ test('resumes auto scroll when a new generation starts after user paused scrolli
     shouldAutoScroll: true,
     userScrollIntent: false,
   });
+});
+
+test('uses instant scroll when restoring existing history', () => {
+  assert.equal(
+    getAutoScrollBehavior({
+      isGenerating: false,
+      preferSmoothWhileGenerating: true,
+    }),
+    'auto',
+  );
+});
+
+test('uses smooth scroll only while new content is generating', () => {
+  assert.equal(
+    getAutoScrollBehavior({
+      isGenerating: true,
+      preferSmoothWhileGenerating: true,
+    }),
+    'smooth',
+  );
 });

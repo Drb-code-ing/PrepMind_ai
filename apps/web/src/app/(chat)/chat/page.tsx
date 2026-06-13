@@ -191,6 +191,7 @@ function ChatView({ userId }: { userId: string }) {
     useStreamingAutoScroll<HTMLDivElement>({
       contentKey: scrollContentKey,
       enabled: true,
+      isGenerating,
     });
 
   // ── OCR submit ──
@@ -449,7 +450,7 @@ function ChatView({ userId }: { userId: string }) {
         onWheel={handleUserScrollIntent}
         onTouchMove={handleUserScrollIntent}
         onPointerDown={handleUserScrollIntent}
-        className="flex-1 overflow-y-auto scroll-smooth hide-scrollbar"
+        className="flex-1 overflow-y-auto hide-scrollbar"
       >
         {hasMessages ? (
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-4">

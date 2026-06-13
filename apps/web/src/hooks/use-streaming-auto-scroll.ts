@@ -6,17 +6,23 @@ import {
   applyGenerationStartToAutoScrollState,
   applyScrollPositionToAutoScrollState,
   applyUserIntentToAutoScrollState,
+  getAutoScrollBehavior,
+  type AutoScrollBehavior,
 } from '@/lib/streaming-scroll';
 
 type UseStreamingAutoScrollOptions = {
   contentKey: string;
   enabled: boolean;
+  isGenerating?: boolean;
+  preferSmoothWhileGenerating?: boolean;
   threshold?: number;
 };
 
 export function useStreamingAutoScroll<T extends HTMLElement>({
   contentKey,
   enabled,
+  isGenerating = false,
+  preferSmoothWhileGenerating = true,
   threshold = 24,
 }: UseStreamingAutoScrollOptions) {
   const scrollRef = useRef<T>(null);
@@ -25,7 +31,10 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
   const rafRef = useRef<number>(0);
   const timeoutRef = useRef<number>(0);
 
-  const scrollToBottom = useCallback((options: { force?: boolean } = {}) => {
+  const scrollToBottom = useCallback((options: {
+    force?: boolean;
+    behavior?: AutoScrollBehavior;
+  } = {}) => {
     if (options.force) {
       const next = applyGenerationStartToAutoScrollState();
       shouldAutoScrollRef.current = next.shouldAutoScroll;
@@ -38,14 +47,22 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
     const run = () => {
       const el = scrollRef.current;
       if (!el) return;
-      el.scrollTop = el.scrollHeight;
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior:
+          options.behavior ??
+          getAutoScrollBehavior({
+            isGenerating,
+            preferSmoothWhileGenerating,
+          }),
+      });
     };
 
     rafRef.current = requestAnimationFrame(() => {
       run();
       timeoutRef.current = window.setTimeout(run, 80);
     });
-  }, []);
+  }, [isGenerating, preferSmoothWhileGenerating]);
 
   const handleUserScrollIntent = useCallback(() => {
     const next = applyUserIntentToAutoScrollState();
