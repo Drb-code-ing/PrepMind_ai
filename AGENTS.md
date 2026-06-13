@@ -123,7 +123,7 @@ mcp -> ai, fsrs, rag, types
 - 登出调用 `/auth/logout` 并清理前端 session cache。
 - Dexie 仍作为离线业务数据缓存，不再作为登录态权威来源。
 
-### Phase 2.3 — 业务 API 迁移进行中
+### Phase 2.3 — 业务 API 迁移已完成
 
 - 后端已新增 WrongQuestion CRUD API，使用 Prisma/PostgreSQL 持久化。
 - WrongQuestion API 已接入 `JwtAuthGuard`，所有读写按当前 `userId` 隔离。
@@ -140,6 +140,11 @@ mcp -> ai, fsrs, rag, types
 - `/api/chat` 已加入上下文窗口，单次模型请求只注入裁剪后的近期聊天消息。
 - OCR 有效题目会生成 `activeStudyContext`，后续追问会携带当前题目上下文。
 - 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
+- 已新增 Dexie `mutationQueue`，WrongQuestion / OCRRecord 写操作失败时进入本地补偿队列。
+- WrongQuestion 创建、更新、删除支持乐观写入与失败暂存；session 恢复、online、focus 时自动尝试 flush。
+- OCRRecord 创建失败时保留本地 OCR 历史并进入补偿队列。
+- ChatMessage 不进入通用 CRUD mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
+- 历史 base64 图片不自动静默迁移，仅作为当前设备旧数据预览兜底；新图片继续走 MinIO URL。
 
 ## 当前数据流摘要
 
@@ -154,7 +159,9 @@ mcp -> ai, fsrs, rag, types
 - `/chat-messages/sync` 要保持幂等；前端按消息快照去重，避免同一批聊天消息重复同步触发唯一约束错误。
 - OCRRecord 服务端 API 已进入 PostgreSQL，API 路径为 `/ocr-records`。
 - OCR 识别结果以服务端为权威来源，Dexie 继续作为本地缓存。
-- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回旧数据或上传失败时的本地图片预览，服务端返回空列表时本地缓存也要清空。
+- WrongQuestion / OCRRecord 服务端同步成功后会按服务端列表替换当前用户 Dexie 缓存；Dexie 只补回旧数据、本地图片预览和尚未同步成功的本地 mutation 记录。
+- WrongQuestion / OCRRecord 写操作失败时会写入 Dexie `mutationQueue`；本地记录使用 `syncStatus`、`syncError`、`pendingOperation` 标记同步状态。
+- ChatMessage 不进入通用 CRUD mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
 - 新 OCR 图片会先本地预览，再通过 NestJS `/uploads/images` 上传到 MinIO；OCRRecord 和 WrongQuestion 优先保存 `/uploads/images/users/...` 服务端 URL。
 - `/ocr-records` 与 `/wrong-questions` 仍不接收 `data:` base64 图片，前端创建请求前会剥离本地 base64。
 - Chat / OCR 流式输出阶段使用渐进 Markdown 渲染：稳定段落实时进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
@@ -177,7 +184,8 @@ mcp -> ai, fsrs, rag, types
 
 ## 下一步
 
-Phase 2.3 最优先：
+Phase 3 最优先：
 
-- Dexie 降级为离线缓存与乐观更新层。
-- 历史 base64 图片的可选迁移或清理策略。
+- OCR structured output schema。
+- AI 讲题 prompt 与 tool calling 设计。
+- createWrongQuestion / searchKnowledge / createReviewTask 工具规划。

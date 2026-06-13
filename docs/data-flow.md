@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-12。Phase 2.3 进行中，WrongQuestion、ChatMessage、OCRRecord 与新图片上传链路已接入服务端；Dexie 继续作为本地缓存和旧图片预览兜底。
+> 当前版本：2026-06-13。Phase 2.3 已完成，WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入；Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。
 
 ## 1. 总览
 
@@ -37,13 +37,15 @@ Phase 2.3 业务数据流
 - 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
 - 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
 - 后端 `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除能力；Dexie 作为 OCR 本地缓存。
-- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；Dexie 只补回旧数据或上传失败时的本地图片预览。
+- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；Dexie 只补回旧数据、本地图片预览和尚未同步成功的本地 mutation 记录。
 - `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
 - 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
 - ChatMessage 同步按消息快照去重，服务端 `/chat-messages/sync` 支持重复快照幂等写入，避免重复同步触发唯一约束错误。
+- ChatMessage 不进入通用 CRUD mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
 - Chat / OCR 流式输出期间前端使用渐进 Markdown 渲染：稳定段落实时进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
 - 聊天页面自动滚动遵循用户意图：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
 - 新 OCR 图片会先本地预览，再通过 `POST /uploads/images` 上传到 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL。
+- WrongQuestion / OCRRecord 写操作失败时会写入 Dexie `mutationQueue`，并在 session 恢复、网络恢复或页面重新聚焦时自动补偿同步。
 - 今日任务仍是前端本地业务数据。
 - `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
@@ -258,7 +260,8 @@ ChatPage
   -> POST /ocr-records（携带 MinIO imageUrl，上传失败则不携带）
   -> Prisma OcrRecord
   -> PostgreSQL
-  -> Dexie ocrRecords 缓存服务端 URL；上传失败时继续保留本地预览兜底
+  -> 成功：Dexie ocrRecords 缓存服务端 URL；上传失败时继续保留本地预览兜底
+  -> 失败：Dexie ocrRecords 标记 syncStatus=failed，并写入 mutationQueue(create)
   -> 若识别结果为题目：生成 activeStudyContext
   -> 后续普通聊天请求携带 activeStudyContext，AI 可承接“这道题 / 刚才那一步”等追问
   -> 用户点击“保存到错题本”
@@ -268,10 +271,11 @@ ChatPage
   -> sourceRecordId 指向服务端 OcrRecord.id
   -> Prisma WrongQuestion
   -> PostgreSQL
-  -> db.wrongQuestions.put(record) 同步本地缓存
+  -> 成功：db.wrongQuestions.put(record) 同步本地缓存
+  -> 失败：db.wrongQuestions.put(localRecord) 暂存本地记录，并写入 mutationQueue(create)
 ```
 
-错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存；新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
+错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存；如果服务端暂时不可用，则把错题本地暂存为 `syncStatus=failed` 并写入 `mutationQueue`，后续自动补偿同步。新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
 
 非题目 OCR 不会写入 `activeStudyContext`，不会显示错题保存入口，也不会套用学科、知识点、错因分析等题目框架。
 
@@ -292,7 +296,7 @@ ChatPage
 - 新 OCR 图片上传成功后，`OcrRecord.imageUrl` 与后续 `WrongQuestion.imageUrl` 都优先保存服务端 URL。
 - 上传失败不阻塞 OCR 识别；当前设备 Dexie 继续保留本地预览作为兜底。
 - OCR 历史启动时先读取 Dexie 快速恢复；服务端 `/ocr-records` 同步成功后，以服务端列表替换当前用户 Dexie 缓存。
-- 服务端历史缺少图片 URL 时，前端会按 `groupId` 补回本地 user/result 图片预览；服务端返回空列表时清空当前用户 OCR Dexie 缓存。
+- 服务端历史缺少图片 URL 时，前端会按 `groupId` 补回本地 user/result 图片预览；服务端返回空列表时清空当前用户已同步 OCR Dexie 缓存，但保留 `syncStatus !== synced` 且不是 `pendingOperation=delete` 的本地待同步记录。
 
 OCR / 聊天交互门禁：
 
@@ -301,7 +305,41 @@ OCR / 聊天交互门禁：
 - 保存错题入口只在有效题目 OCR 输出结束后出现。
 - OCR 展示层会把密集的“答案 / 计算过程 / 公式”文本拆段提升可读性；持久化和 `activeStudyContext` 仍使用原始模型输出解析，避免影响后续追问。
 
-### 5.3 服务端 WrongQuestion API
+### 5.3 Dexie mutationQueue
+
+```text
+WrongQuestion / OCRRecord 写操作
+  -> 乐观更新 TanStack Query / Dexie
+  -> 调用 NestJS API
+  -> 成功：服务端返回覆盖本地缓存，syncStatus=synced
+  -> 失败：写入 Dexie mutationQueue，业务记录标记 syncStatus=failed
+  -> session 恢复 / online / focus 时 flushMutationQueue
+  -> 成功后清理 mutationQueue，服务端仍是最终权威来源
+```
+
+当前进入队列的操作：
+
+- WrongQuestion：create / update / delete。
+- OCRRecord：create；delete 已预留在 flush 逻辑中，当前页面暂无主要手动删除入口。
+
+不进入队列的操作：
+
+- ChatMessage：继续使用 `/chat-messages/sync` 的会话快照幂等同步。
+- 图片上传：上传失败不阻塞 OCR，图片仍保留在当前设备 Dexie 本地预览中，不自动静默迁移历史 base64。
+
+重试触发：
+
+- 登录态恢复后。
+- 浏览器 online 事件。
+- 页面重新 focus。
+
+冲突边界：
+
+- 删除操作服务端返回 404 视为成功。
+- WrongQuestion 重复创建返回 `WRONG_QUESTION_DUPLICATED` 视为已存在，不再重复保存。
+- 服务端列表仍是已同步数据的权威来源；本地仅保留未同步 mutation 记录作为补偿。
+
+### 5.4 服务端 WrongQuestion API
 
 ```text
 HTTP Client
@@ -332,7 +370,7 @@ HTTP Client
 - 访问不存在或不属于当前用户的错题，统一返回 `WRONG_QUESTION_NOT_FOUND`。
 - 同一用户重复提交相同 `sourceGroupId`，返回 `WRONG_QUESTION_DUPLICATED`。
 
-### 5.4 前端错题本页面
+### 5.5 前端错题本页面
 
 ```text
 ErrorBookPage
@@ -431,8 +469,8 @@ WrongQuestion / Chat / OCR UI
   -> Dexie 离线缓存和乐观更新
 ```
 
-优先顺序：
+Phase 2.3 已完成边界：
 
-1. Dexie 离线 mutation 队列与乐观更新层。
-2. 历史 base64 图片的可选迁移或清理策略。
-3. Phase 3 OCR structured output schema 与 tool calling 设计。
+1. Dexie 离线 mutation 队列与乐观更新层已接入 WrongQuestion / OCRRecord。
+2. 历史 base64 图片暂不静默自动迁移；服务端列表同步时保留当前设备本地预览兜底，后续如需跨设备补图再单独做显式迁移入口。
+3. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。

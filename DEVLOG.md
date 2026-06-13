@@ -396,6 +396,57 @@ f7da6e1 feat: add frontend image upload API
 
 ---
 
+## 2026-06-13（Day 8）
+
+**Phase 2.3 Final Stabilization**
+
+- 完成 Phase 2.3 收尾中文设计与实现计划，明确 Dexie mutation queue、乐观更新、失败补偿、ChatMessage 边界和历史 base64 图片策略。
+- Dexie schema 升级到 v7，新增 `mutationQueue` 表；WrongQuestion / OCRRecord 本地记录新增 `syncStatus`、`syncError`、`pendingOperation`。
+- 新增 mutation queue helper，覆盖入队、dedupe key、update 合并、create 后 delete 抵消和 retry backoff。
+- 新增 mutation queue flush 逻辑，支持 WrongQuestion create/update/delete 与 OCRRecord create/delete；delete 404 视为成功，WrongQuestion 重复创建视为已存在，401/403 不重试，网络和 5xx 按退避重试。
+- `AuthSessionProvider` 接入 `useMutationQueueFlush`，session 恢复、online、focus 时自动尝试 flush 本地队列。
+- WrongQuestion 创建、更新、删除支持乐观写入和失败补偿同步；保存错题失败时本地暂存并禁用重复保存入口。
+- 错题本页面更新失败不再回滚用户备注或掌握状态，删除失败后列表继续隐藏记录并等待后续同步。
+- OCRRecord 创建失败时保留本地 OCR 历史并进入补偿队列。
+- 服务端列表同步时继续以服务端为权威，但保留未同步成功且不是待删除的本地 mutation 记录。
+- ChatMessage 继续使用 `/chat-messages/sync` 的会话快照幂等同步，不进入通用 CRUD mutation queue。
+- 历史 base64 图片不自动静默迁移，仅作为当前设备旧数据预览兜底；新图片继续走 MinIO URL。
+
+**验证**
+
+- `node --experimental-strip-types apps/web/src/lib/db-schema.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/mutation-queue.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/mutation-queue-flush.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
+- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/fsrs test` 通过。
+
+**提交记录**
+
+```text
+9309358 docs: design phase 2.3 final stabilization
+7262d67 docs: plan phase 2.3 final stabilization
+eb2b2d0 feat: add local mutation queue schema
+18392df feat: add mutation queue helpers
+d30682e feat: add mutation queue flush logic
+7cb5043 feat: flush local mutation queue
+0b681a8 fix: preserve unsynced local cache items
+e296758 feat: queue failed wrong question saves
+82f1b7e feat: queue wrong question offline mutations
+c2c6bc5 feat: queue failed ocr record sync
+```
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -415,11 +466,12 @@ f7da6e1 feat: add frontend image upload API
 - 前端 Auth 已接入后端，登录态权威来源迁移到 NestJS Auth API。
 - Dexie 继续作为离线业务数据缓存。
 
-**Phase 2.3：进行中**
+**Phase 2.3：已完成**
 
 - WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移、OCRRecord API 与前端 OCR 历史迁移已完成。
 - 聊天上下文窗口、OCR 题目上下文注入、非题目 OCR 门禁和聊天渲染优化已完成。
 - 新 OCR 图片已接入 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL，Dexie 继续作为本地预览兜底。
+- Dexie mutationQueue 与乐观更新层已完成；WrongQuestion / OCRRecord 写失败时可本地暂存并后续补偿同步。
 
 ---
 
@@ -432,7 +484,7 @@ f7da6e1 feat: add frontend image upload API
 - [x] ChatMessage API。
 - [x] OCRRecord API。
 - [x] 图片从 base64 迁移到 MinIO/OSS URL。
-- [ ] Dexie 离线 mutation 队列与乐观更新层。
+- [x] Dexie 离线 mutation 队列与乐观更新层。
 
 **Phase 3 准备**
 
