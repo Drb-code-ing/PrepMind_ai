@@ -1,5 +1,33 @@
 import Dexie, { type Table } from 'dexie';
 
+export type LocalSyncStatus = 'synced' | 'pending' | 'failed';
+export type PendingOperation = 'create' | 'update' | 'delete';
+export type MutationEntity = 'wrongQuestion' | 'ocrRecord';
+export type MutationOperation = 'create' | 'update' | 'delete';
+export type MutationStatus = 'pending' | 'syncing' | 'failed';
+
+export interface LocalSyncMetadata {
+  syncStatus?: LocalSyncStatus;
+  syncError?: string;
+  pendingOperation?: PendingOperation;
+}
+
+export interface MutationQueueItem {
+  id: string;
+  userId: string;
+  entity: MutationEntity;
+  operation: MutationOperation;
+  entityId?: string;
+  dedupeKey?: string;
+  payload: unknown;
+  status: MutationStatus;
+  retryCount: number;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+  nextRetryAt?: string;
+}
+
 export interface StoredMessage {
   id: string;
   userId: string;
@@ -9,7 +37,7 @@ export interface StoredMessage {
   createdAt: number;
 }
 
-export interface OcrRecord {
+export interface OcrRecord extends LocalSyncMetadata {
   id: string;
   userId: string;
   type: 'user' | 'ocr-loading' | 'ocr-result';
@@ -22,7 +50,7 @@ export interface OcrRecord {
 export type WrongQuestionSource = 'ocr' | 'manual' | 'chat';
 export type WrongQuestionStatus = 'unresolved' | 'resolved';
 
-export interface WrongQuestionRecord {
+export interface WrongQuestionRecord extends LocalSyncMetadata {
   id: string;
   userId: string;
   source: WrongQuestionSource;
@@ -47,6 +75,7 @@ class PrepMindDB extends Dexie {
   messages!: Table<StoredMessage, string>;
   ocrRecords!: Table<OcrRecord, string>;
   wrongQuestions!: Table<WrongQuestionRecord, string>;
+  mutationQueue!: Table<MutationQueueItem, string>;
 }
 
 export const db = new PrepMindDB('prepmind-db');
@@ -132,3 +161,13 @@ db.version(6)
       ),
     );
   });
+
+db.version(7).stores({
+  messages: 'id, userId, [userId+order], role, order, createdAt',
+  ocrRecords:
+    'id, userId, [userId+createdAt], [userId+pendingOperation], type, groupId, createdAt, syncStatus',
+  wrongQuestions:
+    'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
+  mutationQueue:
+    '&id, userId, [userId+status], [userId+entity], dedupeKey, nextRetryAt, updatedAt',
+});
