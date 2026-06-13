@@ -1,9 +1,11 @@
 import {
   authResponseSchema,
   authUserSchema,
+  updateMeRequestSchema,
   type AuthResponse,
   type LoginRequest,
   type RegisterRequest,
+  type UpdateMeRequest,
 } from '@repo/types/api/auth';
 
 import type { CurrentUser } from '@/stores/userStore';
@@ -42,6 +44,17 @@ export const authApi = {
   async me(accessToken: string): Promise<CurrentUser> {
     const response = authUserSchema.parse(
       await apiClient.get('/auth/me', {
+        accessToken,
+      }),
+    );
+
+    return mapAuthUserToCurrentUser(response);
+  },
+
+  async updateMe(request: UpdateMeRequest, accessToken: string): Promise<CurrentUser> {
+    const body = updateMeRequestSchema.parse(request);
+    const response = authUserSchema.parse(
+      await apiClient.patch('/users/me', body, {
         accessToken,
       }),
     );

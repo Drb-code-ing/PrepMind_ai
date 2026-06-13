@@ -13,6 +13,10 @@ export interface CurrentUser {
   username: string;
   email?: string;
   phone?: string;
+  avatarUrl?: string;
+  role?: 'STUDENT' | 'ADMIN';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface UserState {

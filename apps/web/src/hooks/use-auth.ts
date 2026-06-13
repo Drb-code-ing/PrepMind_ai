@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LoginRequest, RegisterRequest } from '@repo/types/api/auth';
+import type { LoginRequest, RegisterRequest, UpdateMeRequest } from '@repo/types/api/auth';
 
 import { authApi, type FrontendAuthSession } from '@/lib/auth-api';
 import { useUserStore, type CurrentUser } from '@/stores/userStore';
@@ -70,6 +70,26 @@ export function useRegister() {
     onSuccess: (session) => {
       applyAuthSession(queryClient, session);
       setSession(session);
+    },
+  });
+}
+
+export function useUpdateMe() {
+  const queryClient = useQueryClient();
+  const accessToken = useUserStore((state) => state.accessToken);
+  const setCurrentUser = useUserStore((state) => state.setCurrentUser);
+
+  return useMutation({
+    mutationFn: async (request: UpdateMeRequest) => {
+      if (!accessToken) {
+        throw new Error('Missing access token');
+      }
+
+      return authApi.updateMe(request, accessToken);
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData<CurrentUser>(authQueryKeys.me, user);
+      setCurrentUser(user);
     },
   });
 }
