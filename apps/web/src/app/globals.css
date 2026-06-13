@@ -40,16 +40,16 @@
   --pm-ink: #2b2335;
   --pm-muted: #7f728c;
   --pm-paper: #fffdf8;
-  --pm-soft: #fff7fb;
-  --pm-line: rgba(101, 78, 120, 0.14);
-  --pm-line-strong: rgba(101, 78, 120, 0.22);
-  --pm-pink: #ff8fc7;
-  --pm-pink-strong: #e9579f;
-  --pm-blue: #81c8ff;
-  --pm-mint: #7ce2ca;
-  --pm-lavender: #b8a7ff;
-  --pm-lemon: #ffe59b;
-  --pm-shadow: 0 26px 72px rgba(164, 123, 177, 0.18);
+  --pm-soft: #f2fffb;
+  --pm-line: rgba(66, 85, 95, 0.14);
+  --pm-line-strong: rgba(66, 85, 95, 0.22);
+  --pm-accent: #6fcbbf;
+  --pm-accent-strong: #55b8ac;
+  --pm-sky: #a9d8ff;
+  --pm-mint: #86dccf;
+  --pm-periwinkle: #b9c8ff;
+  --pm-cream: #ffe89a;
+  --pm-shadow: 0 26px 72px rgba(64, 112, 117, 0.15);
 }
 
 @theme inline {
@@ -117,20 +117,19 @@ body {
 }
 
 .pm-anime-bg {
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.38) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.38) 1px, transparent 1px),
-    radial-gradient(circle at 12% 9%, rgba(255, 143, 199, 0.3), transparent 28%),
-    radial-gradient(circle at 87% 14%, rgba(129, 200, 255, 0.25), transparent 27%),
-    radial-gradient(circle at 60% 90%, rgba(124, 226, 202, 0.2), transparent 32%),
-    linear-gradient(180deg, #fff7fb 0%, #f8fbff 48%, #fffaf0 100%);
+  background-color: #fffdf8;
+  background-image:
+    radial-gradient(circle, rgba(55, 157, 146, 0.14) 1px, transparent 1.45px),
+    linear-gradient(rgba(43, 35, 53, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 35, 53, 0.028) 1px, transparent 1px);
   background-size:
-    28px 28px,
-    28px 28px,
-    auto,
-    auto,
-    auto,
-    auto;
+    18px 18px,
+    72px 72px,
+    72px 72px;
+  background-position:
+    0 0,
+    -1px -1px,
+    -1px -1px;
 }
 
 .pm-glass-card {
@@ -140,9 +139,9 @@ body {
 }
 
 .pm-soft-chip {
-  border: 1px solid rgba(233, 87, 159, 0.24);
-  background: #fff1f8;
-  color: #a43b75;
+  border: 1px solid rgba(85, 184, 172, 0.28);
+  background: #eafff9;
+  color: #247269;
 }
 
 .pm-sync-chip {

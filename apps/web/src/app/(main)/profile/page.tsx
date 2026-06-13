@@ -114,7 +114,7 @@ export default function ProfilePage() {
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <Link
             href="/chat"
-            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
             aria-label="返回聊天"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -123,7 +123,7 @@ export default function ProfilePage() {
             <p className="text-xs font-medium text-[var(--pm-muted)]">Personal center</p>
             <h1 className="text-lg font-semibold leading-tight">我的学习档案</h1>
           </div>
-          <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f8] text-sm font-black text-[#d94b91] ring-1 ring-pink-100">
+          <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff7d6] text-sm font-black text-[#247269] ring-1 ring-[#f3e6a8]">
             学
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
         <section className="pm-glass-card pm-enter rounded-[1.5rem] p-4">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-[#ffe0f0] via-white to-[#def2ff] text-2xl font-black text-[#d94b91] ring-1 ring-white">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] bg-[#fff7d6] text-2xl font-black text-[#247269] ring-1 ring-[#f3e6a8]">
               {currentUser?.avatarUrl ? <UserRound className="h-8 w-8" /> : initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -181,7 +181,7 @@ export default function ProfilePage() {
 
         <section className="pm-glass-card pm-enter rounded-[1.5rem] p-4">
           <div className="flex items-center gap-2">
-            <Pencil className="h-4 w-4 text-[#d94b91]" />
+            <Pencil className="h-4 w-4 text-[#247269]" />
             <h2 className="text-base font-semibold">昵称</h2>
           </div>
           <div className="mt-3 flex gap-2">
@@ -189,7 +189,7 @@ export default function ProfilePage() {
               value={displayName}
               onChange={(event) => setDisplayNameDraft(event.target.value)}
               maxLength={50}
-              className="min-h-11 min-w-0 flex-1 rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-base outline-none transition-all placeholder:text-[var(--pm-muted)] focus:border-[#ff8fc7] focus:ring-4 focus:ring-pink-100"
+              className="min-h-11 min-w-0 flex-1 rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-base outline-none transition-all placeholder:text-[var(--pm-muted)] focus:border-[#6fcbbf] focus:ring-4 focus:ring-[#d8f8f0]"
               placeholder="给自己起一个学习昵称"
             />
             <button
@@ -215,7 +215,7 @@ export default function ProfilePage() {
               value={preferences.examGoal}
               onChange={(event) => updatePreference('examGoal', event.target.value)}
               maxLength={80}
-              className="mt-2 min-h-11 w-full rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-base outline-none transition-all focus:border-[#ff8fc7] focus:ring-4 focus:ring-pink-100"
+              className="mt-2 min-h-11 w-full rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-base outline-none transition-all focus:border-[#6fcbbf] focus:ring-4 focus:ring-[#d8f8f0]"
               placeholder="例如：考研数学一 / 高数期末强化"
             />
           </label>
@@ -230,7 +230,7 @@ export default function ProfilePage() {
                   onClick={() => updatePreference('explanationStyle', style)}
                   className={`tap-target rounded-2xl px-3 py-2 text-sm font-semibold ring-1 transition-all active:scale-95 ${
                     preferences.explanationStyle === style
-                      ? 'bg-[#fff1f8] text-[#a43b75] ring-pink-200'
+                      ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
                       : 'bg-white/70 text-[var(--pm-muted)] ring-[var(--pm-line)] hover:bg-white'
                   }`}
                 >
@@ -264,7 +264,7 @@ export default function ProfilePage() {
             type="button"
             onClick={handleSavePreferences}
             disabled={!userId}
-            className="tap-target mt-4 w-full rounded-2xl bg-[#ff8fc7] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e9579f] active:scale-[0.99] disabled:opacity-50"
+            className="tap-target mt-4 w-full rounded-2xl bg-[#86dccf] px-4 py-2 text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.99] disabled:opacity-50"
           >
             保存学习偏好
           </button>

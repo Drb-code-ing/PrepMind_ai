@@ -89,7 +89,7 @@ export default function ChatInputBar({
       ) : null}
 
       <div className="px-3 pt-3">
-        <div className="rounded-[1.4rem] border border-[var(--pm-line)] bg-white/85 px-4 py-2.5 shadow-sm transition-all focus-within:border-[#ff8fc7] focus-within:ring-4 focus-within:ring-pink-100">
+        <div className="rounded-[1.4rem] border border-[var(--pm-line)] bg-white/85 px-4 py-2.5 shadow-sm transition-all focus-within:border-[#6fcbbf] focus-within:ring-4 focus-within:ring-[#d8f8f0]">
           <textarea
             ref={textareaRef}
             value={input}
@@ -149,7 +149,7 @@ export default function ChatInputBar({
             disabled={isGenerating}
             className={`tap-target flex h-10 w-10 items-center justify-center rounded-full ring-1 transition-all active:scale-95 ${
               isMenuVisible
-                ? 'bg-[#fff1f8] text-[#d94b91] ring-pink-100'
+                ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
                 : 'bg-white/75 text-[var(--pm-muted)] ring-[var(--pm-line)] hover:bg-white'
             } disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100`}
             aria-label={isMenuVisible ? '收起菜单' : '更多功能'}
@@ -181,7 +181,7 @@ export default function ChatInputBar({
         ) : input.trim() || selectedImage ? (
           <button
             type="submit"
-            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-[#ff8fc7] text-white shadow-sm transition-all hover:bg-[#e9579f] active:scale-90"
+            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-[#86dccf] text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-90"
             aria-label="发送"
           >
             <Send className="h-4 w-4" />
@@ -211,7 +211,7 @@ function ToolButton({
 }) {
   return (
     <button type="button" onClick={onClick} className="flex flex-col items-center gap-1">
-      <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-[#fff1f8] text-[#d94b91] transition-all hover:bg-pink-100 active:scale-95">
+      <div className="tap-target flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eafff9] text-[#247269] transition-all hover:bg-[#d8f8f0] active:scale-95">
         {icon}
       </div>
       <span className="text-[11px] font-medium text-[var(--pm-muted)]">{label}</span>

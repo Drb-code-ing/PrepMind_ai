@@ -47,7 +47,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             <div className="px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="pm-mascot-float flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-[#ffe0f0] via-white to-[#def2ff] text-base font-black text-[#d94b91] ring-1 ring-white">
+                  <div className="pm-mascot-float flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] bg-[#fff7d6] text-base font-black text-[#247269] ring-1 ring-[#f3e6a8]">
                     学
                   </div>
                   <div className="min-w-0">
@@ -62,19 +62,19 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+                  className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
                   aria-label="关闭导航"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="mt-4 rounded-[1.35rem] border border-pink-100 bg-[#fff1f8]/80 p-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#a43b75]">
+              <div className="mt-4 rounded-[1.35rem] border border-[#bdeee5] bg-[#eafff9]/80 p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#247269]">
                   <Sparkles className="h-4 w-4" />
                   Chat-first 学习流
                 </div>
-                <p className="mt-1 text-xs leading-5 text-[#7f4b6a]">
+                <p className="mt-1 text-xs leading-5 text-[#5e6f69]">
                   对话仍是主入口，任务、错题和档案都围绕 AI 学习过程展开。
                 </p>
               </div>
@@ -92,14 +92,14 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                         onClick={onClose}
                         className={`tap-target group flex items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm transition-all active:scale-[0.99] ${
                           isActive
-                            ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-pink-100'
+                            ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-[#bdeee5]'
                             : 'text-[var(--pm-muted)] hover:bg-white/70 hover:text-[var(--pm-ink)]'
                         }`}
                       >
                         <span
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ring-1 transition-all ${
                             isActive
-                              ? 'bg-[#fff1f8] text-[#d94b91] ring-pink-100'
+                              ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
                               : 'bg-white/70 text-[var(--pm-muted)] ring-[var(--pm-line)] group-hover:bg-[#f8fbff]'
                           }`}
                         >

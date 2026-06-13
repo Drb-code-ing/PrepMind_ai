@@ -114,7 +114,7 @@ export default function TodayPage() {
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <Link
             href="/chat"
-            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+            className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
             aria-label="返回聊天"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -124,7 +124,7 @@ export default function TodayPage() {
             <h1 className="text-lg font-semibold leading-tight">今日任务</h1>
             <p className="mt-0.5 text-xs text-[var(--pm-muted)]">{formatTodayLabel(dateKey)}</p>
           </div>
-          <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f8] text-sm font-black text-[#d94b91] ring-1 ring-pink-100">
+          <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff7d6] text-sm font-black text-[#247269] ring-1 ring-[#f3e6a8]">
             记
           </div>
         </div>
@@ -146,14 +146,14 @@ export default function TodayPage() {
                 {progress.completed}/{progress.total}
               </p>
             </div>
-            <div className="rounded-2xl bg-[#fff1f8] px-3 py-2 text-sm font-bold text-[#a43b75] ring-1 ring-pink-100">
+            <div className="rounded-2xl bg-[#eafff9] px-3 py-2 text-sm font-bold text-[#247269] ring-1 ring-[#bdeee5]">
               {progress.percent}% 完成
             </div>
           </div>
 
           <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/70 ring-1 ring-[var(--pm-line)]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#ff8fc7] via-[#81c8ff] to-[#7ce2ca] transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-[#78d6c8] via-[#a9d8ff] to-[#ffe89a] transition-all"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -221,7 +221,7 @@ export default function TodayPage() {
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Link
             href="/chat"
-            className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#ff8fc7] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e9579f] active:scale-[0.98]"
+            className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.98]"
           >
             <MessageCircle className="h-4 w-4" />
             AI 对话
@@ -273,7 +273,7 @@ function TaskCard({
           className={`tap-target mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 transition-all active:scale-95 ${
             completed
               ? 'bg-[#7ce2ca] text-[#174d43] ring-emerald-200'
-              : 'bg-white/80 text-[var(--pm-muted)] ring-[var(--pm-line)] hover:bg-[#fff1f8] hover:text-[#d94b91]'
+              : 'bg-white/80 text-[var(--pm-muted)] ring-[var(--pm-line)] hover:bg-[#eafff9] hover:text-[#247269]'
           }`}
           aria-label={completed ? '标记为未完成' : '标记为已完成'}
         >
@@ -304,7 +304,7 @@ function TaskCard({
             </span>
             <Link
               href={task.href}
-              className="tap-target flex min-h-9 items-center justify-center rounded-xl px-2 text-xs font-semibold text-[#d94b91] transition-all hover:bg-[#fff1f8] active:scale-95"
+              className="tap-target flex min-h-9 items-center justify-center rounded-xl px-2 text-xs font-semibold text-[#247269] transition-all hover:bg-[#eafff9] active:scale-95"
             >
               {task.actionLabel}
             </Link>

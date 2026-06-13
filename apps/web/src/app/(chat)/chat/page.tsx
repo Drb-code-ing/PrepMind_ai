@@ -520,7 +520,7 @@ function ChatView({ userId }: { userId: string }) {
           </div>
         ) : (
           <div className="mx-auto flex max-w-2xl flex-col items-center px-4 pt-12 text-center">
-            <div className="pm-mascot-float flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-[#ffe0f0] via-white to-[#def2ff] text-3xl font-black text-[#d94b91] shadow-sm ring-1 ring-white">
+            <div className="pm-mascot-float flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-[#fff7d6] text-3xl font-black text-[#247269] shadow-sm ring-1 ring-[#f3e6a8]">
               学
             </div>
             <h1 className="mt-5 text-2xl font-black text-[var(--pm-ink)]">你好，我是 PrepMind 👋</h1>
@@ -636,7 +636,7 @@ const ChatBubble = memo(function ChatBubble({
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1 ${
           isUser
-            ? 'bg-[#fff1f8] text-[#d94b91] ring-pink-100'
+            ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
             : 'bg-white/80 text-[var(--pm-muted)] ring-[var(--pm-line)]'
         }`}
       >
@@ -646,7 +646,7 @@ const ChatBubble = memo(function ChatBubble({
       <div
         className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
           isUser
-            ? 'rounded-tr-md bg-gradient-to-br from-[#ff8fc7] to-[#81c8ff] text-white'
+            ? 'rounded-tr-md bg-[#a7e4d8] text-[#23433f] ring-1 ring-[#79d3c5]/60'
             : 'rounded-tl-md border border-[var(--pm-line)] bg-white/88 text-[var(--pm-ink)]'
         }`}
       >
@@ -671,7 +671,7 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
     <button
       type="button"
       onClick={onSelect}
-      className="rounded-full border border-[var(--pm-line)] bg-white/75 px-4 py-2 text-sm font-semibold text-[var(--pm-ink)] transition-all hover:bg-[#fff1f8] active:scale-95"
+      className="rounded-full border border-[var(--pm-line)] bg-white/75 px-4 py-2 text-sm font-semibold text-[var(--pm-ink)] transition-all hover:bg-[#eafff9] active:scale-95"
     >
       {label}
     </button>
@@ -743,7 +743,7 @@ const OcrBubble = memo(function OcrBubble({
     return (
       <div className="pm-bubble-in flex flex-col items-end gap-1.5">
         <div className="flex flex-row-reverse gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff1f8] text-xs font-semibold text-[#d94b91] ring-1 ring-pink-100">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eafff9] text-xs font-semibold text-[#247269] ring-1 ring-[#bdeee5]">
             {username[0]?.toUpperCase()}
           </div>
           {imageUrl && (
@@ -761,7 +761,7 @@ const OcrBubble = memo(function OcrBubble({
         {content && (
           <div className="flex flex-row-reverse gap-2.5">
             <div className="w-8 shrink-0" />
-            <div className="max-w-[82%] rounded-2xl rounded-tr-md bg-gradient-to-br from-[#ff8fc7] to-[#81c8ff] px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
+            <div className="max-w-[82%] rounded-2xl rounded-tr-md bg-[#a7e4d8] px-4 py-2.5 text-sm leading-relaxed text-[#23433f] shadow-sm ring-1 ring-[#79d3c5]/60">
               <span>{content}</span>
             </div>
           </div>
@@ -789,7 +789,7 @@ const OcrBubble = memo(function OcrBubble({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || isSaved}
-                className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-pink-200 bg-[#fff1f8] px-3 py-2 text-xs font-semibold text-[#a43b75] transition-all hover:bg-pink-100 active:scale-[0.98] disabled:border-[var(--pm-line)] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:active:scale-100"
+                className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-[#bdeee5] bg-[#eafff9] px-3 py-2 text-xs font-semibold text-[#247269] transition-all hover:bg-[#d8f8f0] active:scale-[0.98] disabled:border-[var(--pm-line)] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:active:scale-100"
               >
                 {isSaved ? (
                   <>
@@ -886,7 +886,7 @@ function WrongQuestionSaveDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+            className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
             aria-label="关闭"
           >
             <X className="h-4 w-4" />
@@ -949,7 +949,7 @@ function WrongQuestionSaveDialog({
             type="button"
             onClick={onConfirm}
             disabled={saving}
-            className="tap-target flex min-h-11 items-center justify-center rounded-2xl bg-[#ff8fc7] text-sm font-semibold text-white transition-all hover:bg-[#e9579f] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)]"
+            className="tap-target flex min-h-11 items-center justify-center rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] transition-all hover:bg-[#70cfc1] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)]"
           >
             {saving ? '保存中...' : '确认保存'}
           </button>

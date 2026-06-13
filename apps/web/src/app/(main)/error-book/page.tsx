@@ -337,7 +337,7 @@ export default function ErrorBookPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/chat"
-              className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+              className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
               aria-label="返回聊天"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -349,7 +349,7 @@ export default function ErrorBookPage() {
                 服务端为权威，本地缓存负责离线展示
               </p>
             </div>
-            <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f8] text-sm font-black text-[#d94b91] ring-1 ring-pink-100">
+            <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff7d6] text-sm font-black text-[#247269] ring-1 ring-[#f3e6a8]">
               复
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function ErrorBookPage() {
               onClick={() => setSubjectFilter(subject)}
               className={`min-h-9 shrink-0 rounded-full px-3 text-xs font-semibold ring-1 transition-all active:scale-95 ${
                 subjectFilter === subject
-                  ? 'bg-[#fff1f8] text-[#a43b75] ring-pink-200'
+                  ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
                   : 'bg-white/65 text-[var(--pm-muted)] ring-[var(--pm-line)] hover:bg-white'
               }`}
             >
@@ -522,7 +522,7 @@ function StatBox({ label, value }: { label: string; value: number }) {
 function EmptyState({ hasAny }: { hasAny: boolean }) {
   return (
     <div className="pm-glass-card flex min-h-64 flex-col items-center justify-center rounded-[1.45rem] px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-[#fff1f8] text-[#d94b91] ring-1 ring-pink-100">
+      <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-[#eafff9] text-[#247269] ring-1 ring-[#bdeee5]">
         <BookOpen className="h-7 w-7" />
       </div>
       <p className="mt-3 text-sm font-semibold">
@@ -534,7 +534,7 @@ function EmptyState({ hasAny }: { hasAny: boolean }) {
       {!hasAny ? (
         <Link
           href="/chat"
-          className="tap-target mt-4 flex items-center justify-center rounded-2xl bg-[#ff8fc7] px-4 text-sm font-semibold text-white transition-all hover:bg-[#e9579f] active:scale-95"
+          className="tap-target mt-4 flex items-center justify-center rounded-2xl bg-[#86dccf] px-4 text-sm font-semibold text-[#173b37] transition-all hover:bg-[#70cfc1] active:scale-95"
         >
           去拍照识题
         </Link>
@@ -568,7 +568,7 @@ function WrongQuestionCard({
     <article
       id={`wrong-question-${item.id}`}
       className={`pm-glass-card pm-enter rounded-[1.35rem] p-3 transition-all duration-300 active:scale-[0.99] ${
-        highlighted ? 'ring-2 ring-[#ff8fc7]/40' : ''
+        highlighted ? 'ring-2 ring-[#6fcbbf]/45' : ''
       }`}
     >
       <button type="button" onClick={onOpen} className="block w-full text-left">
@@ -799,7 +799,7 @@ function WrongQuestionDetail({
             <button
               type="button"
               onClick={onClose}
-              className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+              className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/75 ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
               aria-label="关闭"
             >
               <X className="h-5 w-5" />
@@ -857,7 +857,7 @@ function WrongQuestionDetail({
                 type="button"
                 onClick={() => void saveNote()}
                 disabled={savingNote || !noteChanged}
-                className="min-h-9 rounded-xl bg-[#ff8fc7] px-3 text-xs font-semibold text-white transition-all active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)]"
+                className="min-h-9 rounded-xl bg-[#86dccf] px-3 text-xs font-semibold text-[#173b37] transition-all active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)]"
               >
                 {savingNote
                   ? '保存中...'

@@ -10,7 +10,7 @@ export default function ChatTopBar({ onMenuClick }: ChatTopBarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--pm-line)] bg-white/72 px-4 py-3 backdrop-blur-xl">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f8] text-[#d94b91] ring-1 ring-pink-100">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff7d6] text-[#247269] ring-1 ring-[#f3e6a8]">
           <Sparkles className="h-5 w-5" />
         </div>
 
@@ -24,7 +24,7 @@ export default function ChatTopBar({ onMenuClick }: ChatTopBarProps) {
         <button
           type="button"
           onClick={onMenuClick}
-          className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+          className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
           aria-label="打开导航"
         >
           <Menu className="h-5 w-5" />
