@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-13。Phase 2.3 已完成，WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入；Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。
+> 当前版本：2026-06-13。Phase 2.3 业务 API 迁移已完成，Phase 2.5 产品体验补全已完成；WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入，Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。
 
 ## 1. 总览
 
@@ -28,6 +28,14 @@ Phase 2.3 业务数据流
   -> Dexie 本地缓存
 ```
 
+```text
+Phase 2.5 产品体验本地流
+用户操作
+  -> 个人中心 / 今日任务
+  -> localStorage(userId scoped)
+  -> 页面轻提示与本地状态恢复
+```
+
 当前阶段的关键边界：
 
 - 登录/注册/登出/会话恢复已由后端 Auth API 承担。
@@ -46,7 +54,8 @@ Phase 2.3 业务数据流
 - 聊天页面自动滚动遵循用户意图：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
 - 新 OCR 图片会先本地预览，再通过 `POST /uploads/images` 上传到 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL。
 - WrongQuestion / OCRRecord 写操作失败时会写入 Dexie `mutationQueue`，并在 session 恢复、网络恢复或页面重新聚焦时自动补偿同步。
-- 今日任务仍是前端本地业务数据。
+- 今日任务仍是前端本地业务数据，使用 `localStorage prepmind-today:{userId}:{date}` 保存当日完成状态。
+- 学习偏好是 Phase 2.5 新增的前端本地数据，使用 `localStorage prepmind-preferences:{userId}` 保存，不进入 Dexie mutationQueue，也不注入 `/api/chat` prompt。
 - `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 
 ## 2. Phase 2.2 前端 Auth 数据流
@@ -180,11 +189,23 @@ ChatSidebar
 | --- | --- | --- | --- |
 | localStorage | `prepmind-chat` | `inputDraft` | 保留 |
 | localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
+| localStorage | `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，按用户隔离 |
 | IndexedDB | `messages` | 聊天消息 | 本地缓存，服务端权威来源为 `/chat-messages` |
 | IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，同步成功后替换当前用户缓存；服务端图片 URL 优先，本地预览仅作兜底 |
 | IndexedDB | `wrongQuestions` | 错题本记录 | 本地缓存；服务端权威来源为 `/wrong-questions`，同步成功后替换当前用户缓存 |
 
 Phase 2.3 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id；已迁移的业务数据以服务端为权威来源。
+
+### 4.1 Learning Preferences
+
+```text
+ProfilePage
+  -> readLearningPreferences(userId)
+  -> localStorage prepmind-preferences:{userId}
+  -> writeLearningPreferences(userId, preferences)
+```
+
+学习偏好当前是前端本地数据，按 `userId` 隔离。它不参与 Phase 2.3 mutationQueue，也不影响 `/api/chat` prompt；后续如需让偏好影响 AI 讲解风格，需要在 Phase 3 单独设计 prompt 注入边界。
 
 ## 5. Chat / OCR 数据流
 
@@ -399,7 +420,7 @@ ErrorBookPage
 - 服务端同步成功后，以服务端返回为准覆盖页面列表和当前用户 Dexie 缓存；服务端返回空列表时本地缓存也会清空。
 - 如果服务端错题暂未保存图片 URL，前端会按错题 id 保留本机 Dexie 中的图片预览。
 - 服务端同步失败时，页面继续展示本地缓存并显示提示。
-- 当前阶段暂不做完整离线 mutation 队列；乐观更新和离线写队列后续统一设计。
+- 当前阶段已接入 Dexie `mutationQueue`；WrongQuestion 更新、删除失败时会保留本地状态并等待后续补偿同步。
 
 ## 6. Dexie Schema
 
@@ -457,7 +478,7 @@ Prisma migration 状态应为：
 Database schema is up to date
 ```
 
-## 9. Phase 2.3 后续迁移目标
+## 9. Phase 2.5 后续迁移目标
 
 ```text
 WrongQuestion / Chat / OCR UI
@@ -469,8 +490,9 @@ WrongQuestion / Chat / OCR UI
   -> Dexie 离线缓存和乐观更新
 ```
 
-Phase 2.3 已完成边界：
+Phase 2.5 已完成边界：
 
 1. Dexie 离线 mutation 队列与乐观更新层已接入 WrongQuestion / OCRRecord。
 2. 历史 base64 图片暂不静默自动迁移；服务端列表同步时保留当前设备本地预览兜底，后续如需跨设备补图再单独做显式迁移入口。
-3. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。
+3. Chat-first 产品体验壳层已补齐；个人中心学习偏好和今日任务继续作为本地前端数据。
+4. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。

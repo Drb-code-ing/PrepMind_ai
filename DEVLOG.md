@@ -445,6 +445,54 @@ e296758 feat: queue failed wrong question saves
 c2c6bc5 feat: queue failed ocr record sync
 ```
 
+**Phase 2.5 Product Experience**
+
+- 完成 Phase 2.5 产品体验补全计划，明确 Chat-first 主入口、侧边栏导航层和辅助学习页边界。
+- 新增学习偏好本地存储模块，按 `userId` 使用 `localStorage prepmind-preferences:{userId}` 隔离。
+- 新增个人中心：支持昵称更新、本地学习偏好保存、账号信息展示和轻提示反馈。
+- 新增 Phase 2.5 亮色软萌日漫风视觉 token、轻量动效和 reduced-motion 边界。
+- 重设侧边栏与顶部栏，保持 AI 对话为主入口。
+- 今日任务升级为轻学习手账，保留 `localStorage prepmind-today:{userId}:{date}` 本地完成状态。
+- 错题本完成视觉与交互打磨，继续保留服务端 CRUD、Dexie 缓存、乐观更新和 mutationQueue 逻辑。
+- 聊天页、输入区、OCR/AI 气泡、保存错题弹层和空状态完成学习搭子风格打磨。
+- 完成浏览器冒烟路径：注册、侧边栏导航、今日任务、个人中心、错题本空状态和聊天输入均可正常访问；无 API key 环境下 `/api/chat` 返回预期 503。
+
+**Phase 2.5 验证**
+
+- `node --experimental-strip-types apps/web/src/lib/learning-preferences.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/auth-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/profile-feedback.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/today-tasks.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/crud-feedback.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/mutation-queue-flush.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/streaming-markdown.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
+- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
+- `git diff --check` 通过，仅有 Windows 换行提示。
+
+**Phase 2.5 提交记录**
+
+```text
+13f892a feat: add learning preferences storage
+af3a012 feat: add profile update client plumbing
+5544de0 style: add phase 2.5 visual tokens
+a43c25d feat: complete profile center
+c027233 style: redesign chat navigation drawer
+9ea86b5 feat: redesign today study notebook
+881140a style: polish error book experience
+ff746a6 style: refresh chat study buddy UI
+85d7c65 fix: polish chat empty state
+```
+
 ---
 
 ## 当前状态
@@ -473,6 +521,12 @@ c2c6bc5 feat: queue failed ocr record sync
 - 新 OCR 图片已接入 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL，Dexie 继续作为本地预览兜底。
 - Dexie mutationQueue 与乐观更新层已完成；WrongQuestion / OCRRecord 写失败时可本地暂存并后续补偿同步。
 
+**Phase 2.5：已完成**
+
+- Chat-first 产品体验壳层、侧边栏导航、亮色软萌日漫风视觉系统已完成。
+- 个人中心、本地学习偏好、今日任务轻学习手账已完成。
+- 错题本、聊天页、输入区、保存错题弹层和空状态体验已完成打磨。
+
 ---
 
 ## 待办与规划
@@ -485,6 +539,14 @@ c2c6bc5 feat: queue failed ocr record sync
 - [x] OCRRecord API。
 - [x] 图片从 base64 迁移到 MinIO/OSS URL。
 - [x] Dexie 离线 mutation 队列与乐观更新层。
+
+**Phase 2.5：产品体验补全**
+
+- [x] Chat-first 视觉系统与全局动效 token。
+- [x] 侧边栏导航层升级。
+- [x] 个人中心与本地学习偏好。
+- [x] 今日任务轻学习手账。
+- [x] 错题本、聊天页、输入区和保存错题弹层体验打磨。
 
 **Phase 3 准备**
 

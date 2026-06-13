@@ -13,6 +13,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 - Phase 2.1：后端基础与 Auth/User API 已完成。
 - Phase 2.2：前端 Auth 已接入后端，已完成。
 - Phase 2.3：业务 API 迁移已完成，WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入。
+- Phase 2.5：产品体验补全已完成，Chat-first 视觉系统、个人中心、今日任务手账、错题本与聊天页交互已打磨。
 - 下一步：Phase 3 OCR structured output schema、AI 讲题 prompt 与 tool calling 设计。
 
 ## 开发命令
@@ -90,7 +91,8 @@ mcp -> ai, fsrs, rag, types
 - Chat / OCR 流式输出阶段使用渐进 Markdown 渲染：稳定段落实时进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本；展示格式化不回写 OCR 原始内容和 `activeStudyContext`。
 - 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
 - 非题目 OCR 不显示保存错题入口，也不套用题目分析框架。
-- 今日任务仍主要保存在 Dexie。
+- 今日任务使用 `localStorage prepmind-today:{userId}:{date}` 保存当日完成状态。
+- 学习偏好使用 `localStorage prepmind-preferences:{userId}` 保存，当前不进入 Dexie mutationQueue，也不注入 `/api/chat` prompt。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 前端生产构建不依赖 `next/font/google`，使用系统字体栈以适配受限网络环境。
 
