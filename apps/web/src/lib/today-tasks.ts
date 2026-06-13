@@ -16,12 +16,18 @@ export interface TodayTaskState {
   updatedAt: number;
 }
 
+export interface TodayNextAction {
+  title: string;
+  description: string;
+  href: string;
+}
+
 export const TODAY_TASKS: TodayTaskTemplate[] = [
   {
     id: 'knowledge-review',
     kind: 'review',
-    title: '知识点复盘',
-    description: '花 20 分钟回顾昨天最薄弱的一个知识点。',
+    title: '复盘薄弱知识点',
+    description: '花 20 分钟回顾一个最近最容易卡住的知识点。',
     estimateMinutes: 20,
     actionLabel: '找 AI 梳理',
     href: '/chat',
@@ -30,7 +36,7 @@ export const TODAY_TASKS: TodayTaskTemplate[] = [
     id: 'wrong-question-review',
     kind: 'wrong-question',
     title: '错题回看',
-    description: '优先复习未掌握错题，记录本次卡住的原因。',
+    description: '优先复习未掌握错题，记录这次卡住的原因。',
     estimateMinutes: 15,
     actionLabel: '打开错题本',
     href: '/error-book',
@@ -92,6 +98,34 @@ export function getTodayProgress(state: TodayTaskState) {
     completed,
     total,
     percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+}
+
+export function getTodayNextAction(
+  state: TodayTaskState,
+  unresolvedCount: number,
+): TodayNextAction {
+  if (unresolvedCount > 0 && !state.completedTaskIds.includes('wrong-question-review')) {
+    return {
+      title: '先复习未掌握错题',
+      description: `当前还有 ${unresolvedCount} 道未掌握错题，建议先回看错因和备注。`,
+      href: '/error-book',
+    };
+  }
+
+  const nextTask = TODAY_TASKS.find((task) => !state.completedTaskIds.includes(task.id));
+  if (nextTask) {
+    return {
+      title: nextTask.title,
+      description: nextTask.description,
+      href: nextTask.href,
+    };
+  }
+
+  return {
+    title: '今天的学习闭环已完成',
+    description: '可以回到 AI 对话，让 PrepMind 帮你总结明天的优先级。',
+    href: '/chat',
   };
 }
 

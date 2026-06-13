@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   TODAY_TASKS,
   createEmptyTodayState,
+  getTodayNextAction,
   getTodayProgress,
   getTodayStorageKey,
   toggleTaskCompletion,
@@ -36,5 +37,39 @@ test('calculates task progress from completed ids', () => {
     completed: 2,
     total: TODAY_TASKS.length,
     percent: Math.round((2 / TODAY_TASKS.length) * 100),
+  });
+});
+
+test('recommends wrong question review when unresolved questions exist', () => {
+  const state = createEmptyTodayState('2026-06-13');
+
+  assert.deepEqual(getTodayNextAction(state, 3), {
+    title: '先复习未掌握错题',
+    description: '当前还有 3 道未掌握错题，建议先回看错因和备注。',
+    href: '/error-book',
+  });
+});
+
+test('recommends the first incomplete task when no unresolved question exists', () => {
+  const state = {
+    date: '2026-06-13',
+    completedTaskIds: [TODAY_TASKS[0].id],
+    updatedAt: 1,
+  };
+
+  assert.equal(getTodayNextAction(state, 0).title, TODAY_TASKS[1].title);
+});
+
+test('recommends summary after all tasks are completed', () => {
+  const state = {
+    date: '2026-06-13',
+    completedTaskIds: TODAY_TASKS.map((task) => task.id),
+    updatedAt: 1,
+  };
+
+  assert.deepEqual(getTodayNextAction(state, 0), {
+    title: '今天的学习闭环已完成',
+    description: '可以回到 AI 对话，让 PrepMind 帮你总结明天的优先级。',
+    href: '/chat',
   });
 });
