@@ -126,3 +126,53 @@ test('ocr cache clears when server returns no records', () => {
 
   assert.deepEqual(mergeOcrRecordsFromServer([], [localUser]), []);
 });
+
+test('wrong question cache keeps local failed items while following server authority', () => {
+  const localFailed: WrongQuestionRecord = {
+    ...cachedWrongQuestion,
+    id: 'wrong_failed',
+    sourceGroupId: 'group_failed',
+    questionText: 'local unsynced',
+    syncStatus: 'failed',
+    pendingOperation: 'create',
+  };
+
+  const merged = mergeWrongQuestionsFromServer([], [localFailed]);
+
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ['wrong_failed'],
+  );
+  assert.equal(merged[0].syncStatus, 'failed');
+});
+
+test('wrong question cache hides pending delete items from merged cache', () => {
+  const pendingDelete: WrongQuestionRecord = {
+    ...cachedWrongQuestion,
+    syncStatus: 'failed',
+    pendingOperation: 'delete',
+  };
+
+  assert.deepEqual(mergeWrongQuestionsFromServer([], [pendingDelete]), []);
+});
+
+test('ocr cache keeps local failed result records while following server authority', () => {
+  const localFailed: OcrRecord = {
+    id: 'ocr_failed',
+    userId: 'user_1',
+    type: 'ocr-result',
+    groupId: 'group_failed',
+    imageUrl: 'data:image/png;base64,local',
+    content: 'local failed sync',
+    createdAt: 1,
+    syncStatus: 'failed',
+    pendingOperation: 'create',
+  };
+
+  const merged = mergeOcrRecordsFromServer([], [localFailed]);
+
+  assert.deepEqual(
+    merged.map((item) => item.id),
+    ['ocr_failed'],
+  );
+});

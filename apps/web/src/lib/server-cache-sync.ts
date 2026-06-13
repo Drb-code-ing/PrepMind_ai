@@ -1,22 +1,39 @@
 import type { OcrRecord, WrongQuestionRecord } from './db';
 
+function shouldKeepUnsyncedLocalItem(item: {
+  syncStatus?: string;
+  pendingOperation?: string;
+}) {
+  return Boolean(item.syncStatus && item.syncStatus !== 'synced' && item.pendingOperation !== 'delete');
+}
+
 export function mergeWrongQuestionsFromServer(
   serverItems: WrongQuestionRecord[],
   cachedItems: WrongQuestionRecord[],
 ) {
   const cachedById = new Map(cachedItems.map((item) => [item.id, item]));
+  const serverIds = new Set(serverItems.map((item) => item.id));
+  const unsyncedLocalItems = cachedItems.filter(
+    (item) => shouldKeepUnsyncedLocalItem(item) && !serverIds.has(item.id),
+  );
 
-  return serverItems.map((item) => ({
+  const mergedServerItems = serverItems.map((item) => ({
     ...item,
     imageUrl: item.imageUrl ?? cachedById.get(item.id)?.imageUrl,
+    syncStatus: 'synced' as const,
+    syncError: undefined,
+    pendingOperation: undefined,
   }));
+
+  return [...unsyncedLocalItems, ...mergedServerItems].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function mergeOcrRecordsFromServer(
   serverItems: OcrRecord[],
   localItems: OcrRecord[],
 ) {
-  if (serverItems.length === 0) return [];
+  const unsyncedLocalItems = localItems.filter(shouldKeepUnsyncedLocalItem);
+  if (serverItems.length === 0) return unsyncedLocalItems;
 
   const serverGroupIds = new Set(
     serverItems
@@ -41,9 +58,15 @@ export function mergeOcrRecordsFromServer(
     ...item,
     imageUrl:
       item.imageUrl ?? (item.groupId ? localResultImagesByGroup.get(item.groupId) : undefined),
+    syncStatus: 'synced' as const,
+    syncError: undefined,
+    pendingOperation: undefined,
   }));
+  const merged = [...Array.from(localUserRecordsByGroup.values()), ...serverRecords];
+  const mergedIds = new Set(merged.map((item) => item.id));
 
-  return [...Array.from(localUserRecordsByGroup.values()), ...serverRecords].sort(
-    (a, b) => a.createdAt - b.createdAt,
-  );
+  return [
+    ...unsyncedLocalItems.filter((item) => !mergedIds.has(item.id)),
+    ...merged,
+  ].sort((a, b) => a.createdAt - b.createdAt);
 }
