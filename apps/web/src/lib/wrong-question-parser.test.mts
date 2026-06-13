@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   canSaveOcrResult,
   formatOcrContentForDisplay,
+  formatWrongQuestionFieldForDisplay,
   getMissingWrongQuestionFields,
   parseOcrResult,
   WRONG_QUESTION_REQUIRED_FIELDS,
@@ -223,4 +224,51 @@ test('does not treat function arguments as numbered subquestions', () => {
   assert.equal(display.includes("f'\n\n(2)"), false);
   assert.equal(display.includes("f'(2)=4"), true);
   assert.equal(display.includes('### (2)'), false);
+});
+
+test('formats full-width numbered multi-question OCR sections', () => {
+  const display = formatOcrContentForDisplay(`## 识别结果
+题目
+
+## 题目
+利用格林公式，计算下列曲线积分： （1）第一题； （2）第二题； （3）第三题。
+
+## 学科
+数学
+
+## 知识点
+- 格林公式及其应用
+
+## 分析思路
+（1）识别曲线类型：L 是三角形边界，是闭曲线，可直接应用格林公式。（2）识别曲线类型：L 是星形线，是闭曲线，可直接应用格林公式。（3）识别曲线类型：L 是抛物线上的一段弧，不是闭曲线，需要补充辅助路径。
+
+## 参考答案
+（1）12；（2）0；（3）π²/4
+
+## 错因建议
+方法不会`);
+
+  assert.match(display, /### （1）\s*第一题/);
+  assert.match(display, /### （2）\s*第二题/);
+  assert.match(display, /### （3）\s*第三题/);
+  assert.match(display, /### （1）\s*识别曲线类型/);
+  assert.match(display, /### （2）\s*识别曲线类型/);
+  assert.match(display, /### （3）\s*识别曲线类型/);
+});
+
+test('formats standalone wrong-question fields without schema parsing', () => {
+  const question = formatWrongQuestionFieldForDisplay(
+    '利用格林公式，计算下列曲线积分： （1）第一题； （2）第二题； （3）第三题。',
+  );
+  const analysis = formatWrongQuestionFieldForDisplay(
+    '（1）识别曲线类型：L 是三角形边界。（2）识别曲线类型：L 是星形线。（3）识别曲线类型：L 是抛物线上的一段弧。',
+  );
+
+  assert.match(question, /### （1）\s*第一题/);
+  assert.match(question, /### （2）\s*第二题/);
+  assert.match(question, /### （3）\s*第三题/);
+  assert.match(analysis, /### （1）\s*识别曲线类型/);
+  assert.match(analysis, /### （2）\s*识别曲线类型/);
+  assert.match(analysis, /### （3）\s*识别曲线类型/);
+  assert.equal(analysis.includes('我没有在图片里识别到考试题'), false);
 });

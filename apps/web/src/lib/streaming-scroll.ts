@@ -14,11 +14,14 @@ export type AutoScrollBehavior = 'auto' | 'smooth';
 
 export function getAutoScrollBehavior({
   isGenerating,
+  isInitialScroll,
   preferSmoothWhileGenerating,
 }: {
   isGenerating: boolean;
+  isInitialScroll: boolean;
   preferSmoothWhileGenerating: boolean;
 }): AutoScrollBehavior {
+  if (isInitialScroll) return 'auto';
   return isGenerating && preferSmoothWhileGenerating ? 'smooth' : 'auto';
 }
 

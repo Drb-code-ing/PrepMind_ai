@@ -28,6 +28,7 @@ import {
   canSaveOcrResult,
   formatOcrContentForDisplay,
   formatStreamingOcrContent,
+  formatWrongQuestionFieldForDisplay,
   getMissingWrongQuestionFields,
   parseOcrResult,
   type OcrResultStatus,
@@ -971,7 +972,15 @@ function PreviewField({
     <div>
       <p className="text-xs font-semibold text-[var(--pm-muted)]">{label}</p>
       <div className="mt-1 max-h-36 overflow-y-auto rounded-2xl bg-white/70 px-3 py-2 text-sm leading-6 ring-1 ring-[var(--pm-line)]">
-        {value ? renderMarkdown ? <MarkdownRenderer content={value} /> : value : '未识别'}
+        {value ? (
+          renderMarkdown ? (
+            <MarkdownRenderer content={formatWrongQuestionFieldForDisplay(value)} />
+          ) : (
+            value
+          )
+        ) : (
+          '未识别'
+        )}
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ import {
   getMutationErrorMessage,
 } from '@/lib/mutation-queue';
 import { mergeWrongQuestionsFromServer } from '@/lib/server-cache-sync';
-import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
+import { formatWrongQuestionFieldForDisplay } from '@/lib/wrong-question-parser';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
 import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
 import { useUserStore } from '@/stores/userStore';
@@ -925,7 +925,7 @@ function DetailSection({ title, content }: { title: string; content: string }) {
     <section className="pm-glass-card mt-4 rounded-[1.35rem] p-3">
       <h3 className="text-sm font-semibold">{title}</h3>
       <div className="mt-2 text-sm leading-6">
-        <MarkdownRenderer content={formatOcrContentForDisplay(content)} />
+        <MarkdownRenderer content={formatWrongQuestionFieldForDisplay(content)} />
       </div>
     </section>
   );

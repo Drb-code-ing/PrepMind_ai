@@ -28,6 +28,7 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
   const scrollRef = useRef<T>(null);
   const shouldAutoScrollRef = useRef(true);
   const userScrollIntentRef = useRef(false);
+  const hasInitializedScrollRef = useRef(false);
   const rafRef = useRef<number>(0);
   const timeoutRef = useRef<number>(0);
 
@@ -44,6 +45,7 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
     cancelAnimationFrame(rafRef.current);
     window.clearTimeout(timeoutRef.current);
 
+    const isInitialScrollCycle = !hasInitializedScrollRef.current;
     const run = () => {
       const el = scrollRef.current;
       if (!el) return;
@@ -53,10 +55,16 @@ export function useStreamingAutoScroll<T extends HTMLElement>({
           options.behavior ??
           getAutoScrollBehavior({
             isGenerating,
+            isInitialScroll: isInitialScrollCycle,
             preferSmoothWhileGenerating,
           }),
       });
     };
+
+    if (isInitialScrollCycle) {
+      run();
+    }
+    hasInitializedScrollRef.current = true;
 
     rafRef.current = requestAnimationFrame(() => {
       run();

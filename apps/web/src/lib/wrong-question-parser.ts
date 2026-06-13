@@ -123,9 +123,10 @@ function formatOcrQuestionContent(content: string) {
     .trim()
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+/g, ' ')
-    .replace(/([；;。])\s*(\(\d+\))/g, '$1\n\n$2')
-    .replace(/(^|\n)\s*(\(\d+\))\s*/g, '$1### $2 ')
-    .replace(/(###\s*\(\d+\))\s*答案[:：]\s*/g, '$1\n\n**答案：** ')
+    .replace(/([：:；;。])\s*([（(]\d+[）)])/g, '$1\n\n$2')
+    .replace(/([^\n。；;])([。；;])\s*([（(]\d+[）)])/g, '$1$2\n\n$3')
+    .replace(/(^|\n)\s*([（(]\d+[）)])\s*/g, '$1### $2 ')
+    .replace(/(###\s*[（(]\d+[）)])\s*答案[:：]\s*/g, '$1\n\n**答案：** ')
     .replace(/\s*计算过程[:：]\s*/g, '\n\n**计算过程：**\n\n')
     .replace(/([。；;])\s*(补充路径[:：]|先求|现计算|具体[:：]|合并后|则|但|因此|所以)/g, '$1\n\n$2')
     .replace(/([。；;，,])\s*(P\s*=)/g, '$1\n\n$2')
@@ -146,6 +147,12 @@ export function formatStreamingOcrContent(content: string) {
   return formatOcrQuestionContent(content);
 }
 
+export function formatWrongQuestionFieldForDisplay(content: string) {
+  return wrapAnswerMath(formatOcrQuestionContent(content))
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function formatOcrContentForDisplay(content: string) {
   const trimmed = content.trim();
   if (!trimmed) return '';
@@ -156,9 +163,7 @@ export function formatOcrContentForDisplay(content: string) {
     return `我没有在图片里识别到考试题或练习题。\n\n${summary}`.trim();
   }
 
-  return wrapAnswerMath(formatOcrQuestionContent(trimmed))
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return formatWrongQuestionFieldForDisplay(trimmed);
 }
 
 function normalizeHeading(text: string) {

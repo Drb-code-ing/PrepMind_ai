@@ -91,16 +91,41 @@ test('uses instant scroll when restoring existing history', () => {
   assert.equal(
     getAutoScrollBehavior({
       isGenerating: false,
+      isInitialScroll: true,
       preferSmoothWhileGenerating: true,
     }),
     'auto',
   );
 });
 
-test('uses smooth scroll only while new content is generating', () => {
+test('uses instant scroll when restoring existing history during generation', () => {
   assert.equal(
     getAutoScrollBehavior({
       isGenerating: true,
+      isInitialScroll: true,
+      preferSmoothWhileGenerating: true,
+    }),
+    'auto',
+  );
+});
+
+test('keeps retry scrolls instant during the initial restoration cycle', () => {
+  const cycleBehaviors = Array.from({ length: 3 }, () =>
+    getAutoScrollBehavior({
+      isGenerating: true,
+      isInitialScroll: true,
+      preferSmoothWhileGenerating: true,
+    }),
+  );
+
+  assert.deepEqual(cycleBehaviors, ['auto', 'auto', 'auto']);
+});
+
+test('uses smooth scroll only after the initial restore while new content is generating', () => {
+  assert.equal(
+    getAutoScrollBehavior({
+      isGenerating: true,
+      isInitialScroll: false,
       preferSmoothWhileGenerating: true,
     }),
     'smooth',
