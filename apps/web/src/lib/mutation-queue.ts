@@ -1,8 +1,9 @@
+import { db } from './db.ts';
 import type {
   MutationEntity,
   MutationOperation,
   MutationQueueItem,
-} from './db';
+} from './db.ts';
 
 type CreateMutationQueueItemInput = {
   userId: string;
@@ -13,7 +14,19 @@ type CreateMutationQueueItemInput = {
   payload: unknown;
 };
 
+type MutationQueueStore = {
+  findByDedupeKey: (dedupeKey: string) => Promise<MutationQueueItem | undefined>;
+  put: (item: MutationQueueItem) => Promise<unknown>;
+  delete: (id: string) => Promise<unknown>;
+};
+
 const RETRY_DELAYS_MS = [10_000, 30_000, 120_000] as const;
+
+const dexieMutationQueueStore: MutationQueueStore = {
+  findByDedupeKey: (dedupeKey) => db.mutationQueue.where('dedupeKey').equals(dedupeKey).first(),
+  put: (item) => db.mutationQueue.put(item),
+  delete: (id) => db.mutationQueue.delete(id),
+};
 
 export function createMutationQueueItem(
   input: CreateMutationQueueItemInput,
@@ -105,6 +118,31 @@ export function getMutationErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : '同步失败，请稍后重试';
 }
 
+export async function enqueueMutationQueueItem(
+  item: MutationQueueItem,
+  store: MutationQueueStore = dexieMutationQueueStore,
+) {
+  if (!item.dedupeKey) {
+    await store.put(item);
+    return item;
+  }
+
+  const existing = await store.findByDedupeKey(item.dedupeKey);
+  if (!existing) {
+    await store.put(item);
+    return item;
+  }
+
+  const merged = mergeMutationQueueItems(existing, item);
+  if (!merged) {
+    await store.delete(existing.id);
+    return null;
+  }
+
+  await store.put(merged);
+  return merged;
+}
+
 function mergePayloadObjects(current: unknown, next: unknown) {
   if (isRecord(current) && isRecord(next)) {
     const currentPatch = isRecord(current.patch) ? current.patch : undefined;
@@ -143,4 +181,3 @@ function mergePayloadObjects(current: unknown, next: unknown) {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
-

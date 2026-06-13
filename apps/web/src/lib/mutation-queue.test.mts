@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import {
   createMutationQueueItem,
+  enqueueMutationQueueItem,
   getNextRetryAt,
   mergeMutationQueueItems,
   shouldAttemptMutation,
 } from './mutation-queue.ts';
+import type { MutationQueueItem } from './db.ts';
 
 test('creates a pending queue item with a stable dedupe key', () => {
   const item = createMutationQueueItem(
@@ -129,3 +131,68 @@ test('skips future retry items and allows due items', () => {
   );
 });
 
+test('enqueue merges with an existing item through a provided store', async () => {
+  const writes: MutationQueueItem[] = [];
+  const existing = createMutationQueueItem({
+    userId: 'user_1',
+    entity: 'wrongQuestion',
+    operation: 'update',
+    entityId: 'wrong_1',
+    payload: { patch: { status: 'resolved' } },
+  });
+  const incoming = createMutationQueueItem({
+    userId: 'user_1',
+    entity: 'wrongQuestion',
+    operation: 'update',
+    entityId: 'wrong_1',
+    payload: { patch: { userNote: 'queued note' } },
+  });
+
+  const result = await enqueueMutationQueueItem(incoming, {
+    findByDedupeKey: async () => existing,
+    put: async (item) => {
+      writes.push(item);
+    },
+    delete: async () => {
+      throw new Error('unexpected delete');
+    },
+  });
+
+  assert.ok(result);
+  assert.equal(result.id, existing.id);
+  assert.deepEqual(result.payload, {
+    patch: { status: 'resolved', userNote: 'queued note' },
+  });
+  assert.deepEqual(writes, [result]);
+});
+
+test('enqueue removes an unsynced local create when delete is queued', async () => {
+  const deletedIds: string[] = [];
+  const existing = createMutationQueueItem({
+    userId: 'user_1',
+    entity: 'wrongQuestion',
+    operation: 'create',
+    entityId: 'wrong_local',
+    payload: { record: { id: 'wrong_local' } },
+  });
+  const incoming = createMutationQueueItem({
+    userId: 'user_1',
+    entity: 'wrongQuestion',
+    operation: 'delete',
+    entityId: 'wrong_local',
+    payload: { id: 'wrong_local' },
+  });
+
+  const result = await enqueueMutationQueueItem(incoming, {
+    findByDedupeKey: async () => existing,
+    put: async () => {
+      throw new Error('unexpected put');
+    },
+    delete: async (id) => {
+      deletedIds.push(id);
+    },
+  });
+
+  assert.equal(result, null);
+  assert.deepEqual(deletedIds, [existing.id]);
+});
