@@ -456,6 +456,11 @@ c2c6bc5 feat: queue failed ocr record sync
 - 错题本完成视觉与交互打磨，继续保留服务端 CRUD、Dexie 缓存、乐观更新和 mutationQueue 逻辑。
 - 聊天页、输入区、OCR/AI 气泡、保存错题弹层和空状态完成学习搭子风格打磨。
 - 完成浏览器冒烟路径：注册、侧边栏导航、今日任务、个人中心、错题本空状态和聊天输入均可正常访问；无 API key 环境下 `/api/chat` 返回预期 503。
+- 修复 OCR / 错题展示格式化中全角小题编号、函数参数和多题内容的可读性问题。
+- 修复聊天页切换页面再返回时历史恢复从顶部平滑滚到底部的问题，恢复阶段使用即时滚动。
+- 将主应用视觉从偏粉色气泡调整为薄荷绿、奶油黄和柔和天蓝的轻漫画网点底风格。
+- 今日任务、错题本、个人中心、聊天页、侧边栏、顶部栏和输入区统一到新的柔和卡通配色。
+- 注册/登录页接入同一套视觉语言，保留后端 Auth API 行为，并补齐表单 `autocomplete` 以提升移动端填写体验。
 
 **Phase 2.5 验证**
 
@@ -478,6 +483,8 @@ c2c6bc5 feat: queue failed ocr record sync
 - `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
 - `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
 - `git diff --check` 通过，仅有 Windows 换行提示。
+- 浏览器抽样 `/chat`、`/today`、`/error-book`、`/profile`、`/login`、`/register` 通过。
+- 注册页实测提交后可进入 `/chat`，临时测试用户已清理。
 
 **Phase 2.5 提交记录**
 
@@ -491,6 +498,9 @@ c027233 style: redesign chat navigation drawer
 881140a style: polish error book experience
 ff746a6 style: refresh chat study buddy UI
 85d7c65 fix: polish chat empty state
+c67fda3 fix: stabilize ocr rendering and chat restore scroll
+f5a2eb1 style: soften cartoon theme palette
+0b07ef3 style: refresh auth pages theme
 ```
 
 ---
@@ -526,6 +536,7 @@ ff746a6 style: refresh chat study buddy UI
 - Chat-first 产品体验壳层、侧边栏导航、亮色软萌日漫风视觉系统已完成。
 - 个人中心、本地学习偏好、今日任务轻学习手账已完成。
 - 错题本、聊天页、输入区、保存错题弹层和空状态体验已完成打磨。
+- 注册/登录页已统一到 Phase 2.5 视觉系统，Auth 数据流不变。
 
 ---
 

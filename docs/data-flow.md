@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-13。Phase 2.3 业务 API 迁移已完成，Phase 2.5 产品体验补全已完成；WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入，Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。
+> 当前版本：2026-06-13。Phase 2.3 业务 API 迁移已完成，Phase 2.5 产品体验补全已完成；WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入，Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。注册/登录页与主应用视觉已统一，但 Auth 数据流不变。
 
 ## 1. 总览
 
@@ -39,6 +39,7 @@ Phase 2.5 产品体验本地流
 当前阶段的关键边界：
 
 - 登录/注册/登出/会话恢复已由后端 Auth API 承担。
+- 注册/登录页在 Phase 2.5 只做视觉统一和表单体验补齐，不改变后端 Auth API、cookie 或 session 恢复流程。
 - refresh token 使用 httpOnly cookie，服务端只保存 hash。
 - 前端运行态保存 access token 和当前用户。
 - 后端 `/wrong-questions` 已提供错题 CRUD，并按当前 `userId` 隔离数据。
@@ -494,5 +495,6 @@ Phase 2.5 已完成边界：
 
 1. Dexie 离线 mutation 队列与乐观更新层已接入 WrongQuestion / OCRRecord。
 2. 历史 base64 图片暂不静默自动迁移；服务端列表同步时保留当前设备本地预览兜底，后续如需跨设备补图再单独做显式迁移入口。
-3. Chat-first 产品体验壳层已补齐；个人中心学习偏好和今日任务继续作为本地前端数据。
-4. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。
+3. Chat-first 产品体验壳层已补齐；注册/登录页、聊天页、错题本、今日任务和个人中心已统一视觉系统。
+4. 个人中心学习偏好和今日任务继续作为本地前端数据。
+5. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。

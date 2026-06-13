@@ -153,6 +153,7 @@ mcp -> ai, fsrs, rag, types
 - 个人中心已补齐昵称更新、本地学习偏好和轻提示反馈。
 - 今日任务已升级为轻学习手账，任务完成状态按用户和日期保存在 localStorage。
 - 错题本、聊天页、输入区、保存错题弹层和空状态已完成视觉与交互打磨。
+- 注册/登录页已统一到 Phase 2.5 视觉系统，认证数据流保持 NestJS Auth API 不变。
 - Phase 2.3 的 Chat / OCR / WrongQuestion 数据流、mutationQueue、activeStudyContext 和自动滚动行为保持不变。
 
 ## 当前数据流摘要
@@ -177,6 +178,7 @@ mcp -> ai, fsrs, rag, types
 - 聊天页自动滚动默认跟随最新输出；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
 - 今日任务使用 `localStorage prepmind-today:{userId}:{date}` 保存当日完成状态。
 - 学习偏好使用 `localStorage prepmind-preferences:{userId}` 保存，当前不进入 Dexie mutationQueue，也不注入 `/api/chat` prompt。
+- Phase 2.5 视觉更新不改变 Auth、Chat、OCR、WrongQuestion 的服务端权威来源和同步边界。
 - `/api/chat`、`/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 前端生产构建不依赖 `next/font/google`，使用系统字体栈以适配受限网络环境。
 - PostgreSQL 当前承载后端用户、refresh token、后续错题/聊天/OCR 等服务端数据模型。
