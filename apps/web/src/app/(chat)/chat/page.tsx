@@ -17,6 +17,11 @@ import type { OcrRecord, WrongQuestionRecord } from '@/lib/db';
 import { formatChatAssistantContent } from '@/lib/chat-content-formatter';
 import { getScopedUserId } from '@/lib/user-scope';
 import { ApiClientError } from '@/lib/api-client';
+import {
+  createMutationQueueItem,
+  enqueueMutationQueueItem,
+  getMutationErrorMessage,
+} from '@/lib/mutation-queue';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
@@ -315,6 +320,9 @@ function ChatView({ userId }: { userId: string }) {
       await db.wrongQuestions.put({
         ...savedRecord,
         imageUrl: savedRecord.imageUrl ?? record.imageUrl,
+        syncStatus: 'synced',
+        syncError: undefined,
+        pendingOperation: undefined,
       });
       if (sourceGroupId) {
         setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
@@ -343,12 +351,38 @@ function ChatView({ userId }: { userId: string }) {
         return;
       }
 
+      const errorMessage = getMutationErrorMessage(error);
+      const localRecord: WrongQuestionRecord = {
+        ...record,
+        syncStatus: 'failed',
+        syncError: errorMessage,
+        pendingOperation: 'create',
+      };
+
+      await db.wrongQuestions.put(localRecord);
+      await enqueueMutationQueueItem(
+        createMutationQueueItem({
+          userId: ownerId,
+          entity: 'wrongQuestion',
+          operation: 'create',
+          entityId: record.id,
+          payload: { record },
+        }),
+      );
+
       if (sourceGroupId) {
+        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        setSavedWrongQuestionIdsByGroup((prev) => ({
+          ...prev,
+          [sourceGroupId]: record.id,
+        }));
         setSaveWrongErrors((prev) => ({
           ...prev,
-          [sourceGroupId]: error instanceof Error ? error.message : '保存失败，请稍后重试',
+          [sourceGroupId]: '网络异常，错题已暂存，稍后自动同步',
         }));
       }
+      setPendingWrongQuestion(null);
+      return;
     } finally {
       setConfirmSaving(false);
     }
