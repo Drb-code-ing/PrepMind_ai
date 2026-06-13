@@ -93,8 +93,8 @@ export default function ChatPage() {
 
   if (!userId) {
     return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="pm-anime-bg flex h-[100dvh] flex-col items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--pm-muted)]" />
       </div>
     );
   }
@@ -433,14 +433,14 @@ function ChatView({ userId }: { userId: string }) {
 
   if (!chatRuntimeHydrated || !ocrRuntimeHydrated) {
     return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="pm-anime-bg flex h-[100dvh] flex-col items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--pm-muted)]" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
+    <div className="pm-anime-bg flex h-[100dvh] flex-col overflow-hidden text-[var(--pm-ink)]">
       <ChatTopBar onMenuClick={() => setSidebarOpen(true)} />
 
       <main
@@ -449,10 +449,10 @@ function ChatView({ userId }: { userId: string }) {
         onWheel={handleUserScrollIntent}
         onTouchMove={handleUserScrollIntent}
         onPointerDown={handleUserScrollIntent}
-        className="flex-1 overflow-y-auto hide-scrollbar"
+        className="flex-1 overflow-y-auto scroll-smooth hide-scrollbar"
       >
         {hasMessages ? (
-          <div className="flex flex-col gap-3 px-4 py-4">
+          <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-4">
             {unifiedMessages.map((msg) => {
               if (msg.kind === 'chat') {
                 return (
@@ -625,20 +625,22 @@ const ChatBubble = memo(function ChatBubble({
   );
 
   return (
-    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`pm-bubble-in flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ring-1 ${
+          isUser
+            ? 'bg-[#fff1f8] text-[#d94b91] ring-pink-100'
+            : 'bg-white/80 text-[var(--pm-muted)] ring-[var(--pm-line)]'
         }`}
       >
         {isUser ? username[0]?.toUpperCase() : <Bot className="h-4 w-4" />}
       </div>
 
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
           isUser
-            ? 'bg-primary text-primary-foreground rounded-tr-md'
-            : 'bg-muted text-foreground rounded-tl-md'
+            ? 'rounded-tr-md bg-gradient-to-br from-[#ff8fc7] to-[#81c8ff] text-white'
+            : 'rounded-tl-md border border-[var(--pm-line)] bg-white/88 text-[var(--pm-ink)]'
         }`}
       >
         {isUser ? (
@@ -662,7 +664,7 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
     <button
       type="button"
       onClick={onSelect}
-      className="rounded-full border border-border bg-muted/50 px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted active:scale-95"
+      className="rounded-full border border-[var(--pm-line)] bg-white/75 px-4 py-2 text-sm font-semibold text-[var(--pm-ink)] transition-all hover:bg-[#fff1f8] active:scale-95"
     >
       {label}
     </button>
@@ -671,7 +673,7 @@ function QuickTag({ label, onSelect }: { label: string; onSelect: () => void }) 
 
 function ChatErrorNotice({ message }: { message: string }) {
   return (
-    <div className="mx-auto mt-2 max-w-[85%] rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+    <div className="mx-auto mt-2 max-w-[85%] rounded-2xl border border-red-100 bg-red-50/90 px-3 py-2 text-xs leading-5 text-red-700">
       {message}
     </div>
   );
@@ -732,9 +734,9 @@ const OcrBubble = memo(function OcrBubble({
 
   if (type === 'user') {
     return (
-      <div className="flex flex-col items-end gap-1.5">
+      <div className="pm-bubble-in flex flex-col items-end gap-1.5">
         <div className="flex flex-row-reverse gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff1f8] text-xs font-semibold text-[#d94b91] ring-1 ring-pink-100">
             {username[0]?.toUpperCase()}
           </div>
           {imageUrl && (
@@ -745,14 +747,14 @@ const OcrBubble = memo(function OcrBubble({
               height={208}
               unoptimized
               onClick={() => onImageClick?.(imageUrl)}
-              className="max-h-52 max-w-[70%] cursor-pointer rounded-2xl object-cover"
+              className="max-h-52 max-w-[70%] cursor-pointer rounded-2xl object-cover shadow-sm ring-1 ring-[var(--pm-line)]"
             />
           )}
         </div>
         {content && (
           <div className="flex flex-row-reverse gap-2.5">
             <div className="w-8 shrink-0" />
-            <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+            <div className="max-w-[82%] rounded-2xl rounded-tr-md bg-gradient-to-br from-[#ff8fc7] to-[#81c8ff] px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
               <span>{content}</span>
             </div>
           </div>
@@ -763,11 +765,11 @@ const OcrBubble = memo(function OcrBubble({
 
   // ocr-result
   return (
-    <div className="flex gap-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+    <div className="pm-bubble-in flex gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
         <Bot className="h-4 w-4" />
       </div>
-      <div className="max-w-[85%] rounded-2xl rounded-tl-md bg-muted px-4 py-3 text-sm leading-relaxed text-foreground">
+      <div className="max-w-[86%] rounded-2xl rounded-tl-md border border-[var(--pm-line)] bg-white/88 px-4 py-3 text-sm leading-relaxed text-[var(--pm-ink)] shadow-sm">
         {content ? (
           <>
             {isStreaming ? (
@@ -780,7 +782,7 @@ const OcrBubble = memo(function OcrBubble({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || isSaved}
-                className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10 active:scale-[0.98] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:active:scale-100"
+                className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-pink-200 bg-[#fff1f8] px-3 py-2 text-xs font-semibold text-[#a43b75] transition-all hover:bg-pink-100 active:scale-[0.98] disabled:border-[var(--pm-line)] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:active:scale-100"
               >
                 {isSaved ? (
                   <>
@@ -798,37 +800,37 @@ const OcrBubble = memo(function OcrBubble({
               </button>
             )}
             {ocrStatus === 'streaming' && (
-              <p className="mt-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+              <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-xs text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
                 正在识别图片内容...
               </p>
             )}
             {ocrStatus === 'done' && parsedOcr?.isQuestion && !canSave && missingFields.length > 0 && (
-              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+              <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                 识别结果缺少：{formatMissingWrongQuestionFields(missingFields)}，暂不能保存到错题本。
                 建议重新识别或补充更清晰的图片。
               </p>
             )}
             {ocrStatus === 'aborted' && (
-              <p className="mt-2 rounded-lg bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+              <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-xs text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
                 已停止本次识别。
               </p>
             )}
             {ocrStatus === 'failed' && (
-              <p className="mt-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+              <p className="mt-2 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
                 本次识别失败，可以重新上传图片再试。
               </p>
             )}
             {isSaved && (
-              <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-primary/20 bg-background px-3 py-2 text-xs text-foreground shadow-sm">
+              <div className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-800 shadow-sm">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/80 text-emerald-700">
                     <CheckCircle2 className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 font-medium">已加入错题本</span>
                 </div>
                 <Link
                   href={getWrongQuestionFocusHref(savedWrongQuestionId)}
-                  className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-transform active:scale-95"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-[#2b2335] px-2.5 text-xs font-semibold text-white transition-transform active:scale-95"
                 >
                   查看
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -867,8 +869,8 @@ function WrongQuestionSaveDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45 sm:items-center sm:justify-center">
-      <div className="max-h-[88dvh] w-full overflow-y-auto rounded-t-2xl bg-background p-4 shadow-xl sm:max-w-md sm:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-end bg-[#2b2335]/30 backdrop-blur-[2px] sm:items-center sm:justify-center">
+      <div className="pm-glass-card max-h-[88dvh] w-full overflow-y-auto rounded-t-[1.5rem] p-4 shadow-xl sm:max-w-md sm:rounded-[1.5rem]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">保存到错题本</h2>
@@ -877,7 +879,7 @@ function WrongQuestionSaveDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-muted"
+            className="tap-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/75 ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
             aria-label="关闭"
           >
             <X className="h-4 w-4" />
@@ -885,7 +887,7 @@ function WrongQuestionSaveDialog({
         </div>
 
         {pending.missingFields.length > 0 && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
             AI 输出缺少：
             {pending.missingFields.map((field) => missingLabels[field] ?? field).join('、')}。
             仍可保存，但建议稍后补充。
@@ -899,7 +901,7 @@ function WrongQuestionSaveDialog({
             width={640}
             height={360}
             unoptimized
-            className="mt-3 max-h-48 w-full rounded-lg object-contain ring-1 ring-border"
+            className="mt-3 max-h-48 w-full rounded-2xl bg-white/60 object-contain ring-1 ring-[var(--pm-line)]"
           />
         )}
 
@@ -916,7 +918,7 @@ function WrongQuestionSaveDialog({
                 {pending.parsed.knowledgePoints.map((point) => (
                   <span
                     key={point}
-                    className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                    className="pm-soft-chip rounded-full px-2 py-0.5 text-[11px] font-semibold"
                   >
                     {point}
                   </span>
@@ -932,7 +934,7 @@ function WrongQuestionSaveDialog({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="tap-target flex min-h-11 items-center justify-center rounded-lg border border-border text-sm font-medium transition-colors hover:bg-muted disabled:opacity-60"
+            className="tap-target flex min-h-11 items-center justify-center rounded-2xl border border-[var(--pm-line)] bg-white/75 text-sm font-semibold transition-all hover:bg-white active:scale-[0.98] disabled:opacity-60"
           >
             取消
           </button>
@@ -940,7 +942,7 @@ function WrongQuestionSaveDialog({
             type="button"
             onClick={onConfirm}
             disabled={saving}
-            className="tap-target flex min-h-11 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground"
+            className="tap-target flex min-h-11 items-center justify-center rounded-2xl bg-[#ff8fc7] text-sm font-semibold text-white transition-all hover:bg-[#e9579f] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)]"
           >
             {saving ? '保存中...' : '确认保存'}
           </button>
@@ -961,8 +963,8 @@ function PreviewField({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 max-h-36 overflow-y-auto rounded-lg bg-muted/50 px-3 py-2 text-sm leading-6">
+      <p className="text-xs font-semibold text-[var(--pm-muted)]">{label}</p>
+      <div className="mt-1 max-h-36 overflow-y-auto rounded-2xl bg-white/70 px-3 py-2 text-sm leading-6 ring-1 ring-[var(--pm-line)]">
         {value ? renderMarkdown ? <MarkdownRenderer content={value} /> : value : '未识别'}
       </div>
     </div>
@@ -971,8 +973,8 @@ function PreviewField({
 
 function PreviewPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-muted/50 px-3 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+    <div className="rounded-2xl bg-white/70 px-3 py-2 ring-1 ring-[var(--pm-line)]">
+      <p className="text-[11px] text-[var(--pm-muted)]">{label}</p>
       <p className="mt-0.5 truncate text-sm font-medium">{value || '未识别'}</p>
     </div>
   );
