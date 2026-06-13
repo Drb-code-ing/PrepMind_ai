@@ -517,9 +517,14 @@ function ChatView({ userId }: { userId: string }) {
             {chatError && <ChatErrorNotice message={chatError} />}
           </div>
         ) : (
-          <div className="flex flex-col items-center px-4 pt-12">
-            <h1 className="text-xl font-bold">你好，我是 PrepMind 👋</h1>
-            <p className="mt-2 text-sm text-muted-foreground">你的 AI 备考助手，随时为你解答</p>
+          <div className="mx-auto flex max-w-2xl flex-col items-center px-4 pt-12 text-center">
+            <div className="pm-mascot-float flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-[#ffe0f0] via-white to-[#def2ff] text-3xl font-black text-[#d94b91] shadow-sm ring-1 ring-white">
+              学
+            </div>
+            <h1 className="mt-5 text-2xl font-black text-[var(--pm-ink)]">你好，我是 PrepMind 👋</h1>
+            <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--pm-muted)]">
+              你的 AI 备考助手，随时为你解答
+            </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <QuickTag
                 label="📷 拍照识题"
