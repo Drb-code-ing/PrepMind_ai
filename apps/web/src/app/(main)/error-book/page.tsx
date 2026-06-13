@@ -19,6 +19,11 @@ import {
 } from '@/lib/crud-feedback';
 import type { UpdateLocalWrongQuestionRequest } from '@/lib/wrong-question-api';
 import { mergeWrongQuestionsFromServer } from '@/lib/server-cache-sync';
+import {
+  createMutationQueueItem,
+  enqueueMutationQueueItem,
+  getMutationErrorMessage,
+} from '@/lib/mutation-queue';
 import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
 import { formatOcrContentForDisplay } from '@/lib/wrong-question-parser';
 import {
@@ -49,6 +54,10 @@ function formatDate(timestamp: number) {
 
 function getSummary(text: string) {
   return text.replace(/\s+/g, ' ').trim();
+}
+
+function getClientTimestamp() {
+  return Number(new Date());
 }
 
 export default function ErrorBookPage() {
@@ -199,6 +208,7 @@ export default function ErrorBookPage() {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      if (item.pendingOperation === 'delete') return false;
       const statusMatched = statusFilter === 'all' || item.status === statusFilter;
       const subjectMatched = subjectFilter === '全部' || item.subject === subjectFilter;
       return statusMatched && subjectMatched;
@@ -214,36 +224,98 @@ export default function ErrorBookPage() {
   }, [items]);
 
   const updateItem = async (id: string, patch: UpdateLocalWrongQuestionRequest) => {
+    const current = items.find((item) => item.id === id);
+    if (!current || !userId) return;
+
+    const optimistic: WrongQuestionRecord = {
+      ...current,
+      ...patch,
+      updatedAt: getClientTimestamp(),
+      syncStatus: 'pending',
+      syncError: undefined,
+      pendingOperation: 'update',
+    };
+
+    await db.wrongQuestions.put(optimistic);
+    setItems((prev) => prev.map((item) => (item.id === id ? optimistic : item)));
+    setSelected((prev) => (prev?.id === id ? optimistic : prev));
+
     try {
       const updated = await updateWrongQuestion.mutateAsync({ id, patch });
-      await db.wrongQuestions.put(updated);
-      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
-      setSelected((prev) => (prev?.id === id ? updated : prev));
+      const synced: WrongQuestionRecord = {
+        ...updated,
+        syncStatus: 'synced',
+        syncError: undefined,
+        pendingOperation: undefined,
+      };
+      await db.wrongQuestions.put(synced);
+      setItems((prev) => prev.map((item) => (item.id === id ? synced : item)));
+      setSelected((prev) => (prev?.id === id ? synced : prev));
     } catch (error) {
-      showNotice(error instanceof Error ? error.message : '更新失败，请稍后重试', 'danger');
-      throw error;
+      const errorMessage = getMutationErrorMessage(error);
+      const failed: WrongQuestionRecord = {
+        ...optimistic,
+        syncStatus: 'failed',
+        syncError: errorMessage,
+        pendingOperation: 'update',
+      };
+
+      await db.wrongQuestions.put(failed);
+      await enqueueMutationQueueItem(
+        createMutationQueueItem({
+          userId,
+          entity: 'wrongQuestion',
+          operation: 'update',
+          entityId: id,
+          payload: { patch },
+        }),
+      );
+      setItems((prev) => prev.map((item) => (item.id === id ? failed : item)));
+      setSelected((prev) => (prev?.id === id ? failed : prev));
+      showNotice('网络异常，修改已暂存，稍后自动同步');
     }
   };
 
-  const updateLocalItem = (id: string, patch: UpdateLocalWrongQuestionRequest) => {
-    const updatedAt = Number(new Date());
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...patch, updatedAt } : item)),
-    );
-    setSelected((prev) => (prev?.id === id ? { ...prev, ...patch, updatedAt } : prev));
-  };
-
   const deleteItem = async (id: string) => {
+    const current = items.find((item) => item.id === id);
+    if (!current || !userId) return;
+
     setDeletingId(id);
+    const deletingRecord: WrongQuestionRecord = {
+      ...current,
+      syncStatus: 'pending',
+      syncError: undefined,
+      pendingOperation: 'delete',
+      updatedAt: getClientTimestamp(),
+    };
+
+    await db.wrongQuestions.put(deletingRecord);
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    setSelected(null);
+    setPendingDeleteId(null);
+
     try {
       await deleteWrongQuestion.mutateAsync(id);
       await db.wrongQuestions.delete(id);
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      setSelected(null);
-      setPendingDeleteId(null);
       showNotice(getCrudSuccessMessage('错题', 'delete'), 'danger');
     } catch (error) {
-      showNotice(error instanceof Error ? error.message : '删除失败，请稍后重试', 'danger');
+      const errorMessage = getMutationErrorMessage(error);
+      await db.wrongQuestions.put({
+        ...deletingRecord,
+        syncStatus: 'failed',
+        syncError: errorMessage,
+        pendingOperation: 'delete',
+      });
+      await enqueueMutationQueueItem(
+        createMutationQueueItem({
+          userId,
+          entity: 'wrongQuestion',
+          operation: 'delete',
+          entityId: id,
+          payload: { id },
+        }),
+      );
+      showNotice('网络异常，删除已暂存，稍后自动同步', 'danger');
     } finally {
       setDeletingId(null);
     }
@@ -358,12 +430,11 @@ export default function ErrorBookPage() {
                 onToggleStatus={() =>
                   void (async () => {
                     const nextStatus = item.status === 'resolved' ? 'unresolved' : 'resolved';
-                    updateLocalItem(item.id, { status: nextStatus });
                     try {
                       await updateItem(item.id, { status: nextStatus });
                       showNotice(nextStatus === 'resolved' ? '已标记为已掌握' : '已标记为未掌握');
                     } catch {
-                      updateLocalItem(item.id, { status: item.status });
+                      // updateItem keeps the optimistic value and queues a retry.
                     }
                   })()
                 }
@@ -501,6 +572,11 @@ function WrongQuestionCard({
               >
                 {statusLabels[item.status]}
               </span>
+              {item.syncStatus === 'failed' && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                  待同步
+                </span>
+              )}
             </div>
             <p className="mt-2 max-h-12 overflow-hidden text-sm font-medium leading-6">
               {getSummary(item.questionText)}
