@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { Menu } from "lucide-react";
+import { Menu, Sparkles } from 'lucide-react';
 
 interface ChatTopBarProps {
   onMenuClick: () => void;
@@ -8,25 +8,28 @@ interface ChatTopBarProps {
 
 export default function ChatTopBar({ onMenuClick }: ChatTopBarProps) {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-white px-4 py-3">
-      {/* 左侧占位 */}
-      <div className="w-10" />
+    <header className="sticky top-0 z-40 border-b border-[var(--pm-line)] bg-white/72 px-4 py-3 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fff1f8] text-[#d94b91] ring-1 ring-pink-100">
+          <Sparkles className="h-5 w-5" />
+        </div>
 
-      {/* 中间标题 */}
-      <div className="flex flex-col items-center">
-        <h1 className="text-base font-semibold">PrepMind</h1>
-        <span className="text-[11px] text-muted-foreground">AI 备考助手</span>
+        <div className="min-w-0 flex-1 text-center">
+          <h1 className="truncate text-base font-semibold text-[var(--pm-ink)]">PrepMind AI</h1>
+          <span className="text-[11px] font-medium text-[var(--pm-muted)]">
+            正在陪你备考
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-pink-50 active:scale-95"
+          aria-label="打开导航"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
       </div>
-
-      {/* 右侧菜单按钮 */}
-      <button
-        type="button"
-        onClick={onMenuClick}
-        className="tap-target flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted active:scale-95"
-        aria-label="打开菜单"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
     </header>
   );
 }
