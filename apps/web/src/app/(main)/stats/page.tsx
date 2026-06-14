@@ -288,13 +288,13 @@ function ReviewTrendChart({ items }: { items: Array<{ date: string; count: numbe
       >
         <defs>
           <linearGradient id="review-trend-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffe89a" stopOpacity="0.82" />
-            <stop offset="55%" stopColor="#9be3c7" stopOpacity="0.42" />
-            <stop offset="100%" stopColor="#78d6c8" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#d9f4ee" stopOpacity="0.58" />
+            <stop offset="62%" stopColor="#eaf4ff" stopOpacity="0.26" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
           </linearGradient>
           <linearGradient id="review-trend-line" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#78d6c8" />
-            <stop offset="100%" stopColor="#d8bf5b" />
+            <stop offset="0%" stopColor="#78cfc4" />
+            <stop offset="100%" stopColor="#7aaedc" />
           </linearGradient>
         </defs>
         {[0, 1, 2].map((line) => {
@@ -319,7 +319,7 @@ function ReviewTrendChart({ items }: { items: Array<{ date: string; count: numbe
           stroke="url(#review-trend-line)"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="4"
+          strokeWidth="2.25"
           vectorEffect="non-scaling-stroke"
         />
         {points.map((point) => (
@@ -327,10 +327,10 @@ function ReviewTrendChart({ items }: { items: Array<{ date: string; count: numbe
             key={point.date}
             cx={point.x}
             cy={point.y}
-            r={point.count > 0 ? 4.5 : 2.5}
-            fill={point.count > 0 ? '#fff4a8' : '#cfe8dd'}
-            stroke={point.count > 0 ? '#78d6c8' : '#b7d9ce'}
-            strokeWidth={point.count > 0 ? 2 : 1}
+            r={point.count > 0 ? 4 : 2.25}
+            fill={point.count > 0 ? '#fbfffd' : '#d6eae5'}
+            stroke={point.count > 0 ? '#74c8bd' : '#b9d8d1'}
+            strokeWidth={point.count > 0 ? 1.5 : 1}
             vectorEffect="non-scaling-stroke"
           >
             <title>{`${point.date}: ${point.count} 次`}</title>
