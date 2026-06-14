@@ -13,6 +13,7 @@
     "./api/ocr-question": "./src/api/ocr-question.ts",
     "./api/ocr-record": "./src/api/ocr-record.ts",
     "./api/review": "./src/api/review.ts",
+    "./api/review-task": "./src/api/review-task.ts",
     "./api/upload": "./src/api/upload.ts"
   },
   "scripts": {
