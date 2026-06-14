@@ -2,20 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import type { ReviewRating, ReviewTaskResponse } from '@repo/types/api/review';
 import {
   ArrowLeft,
   BookOpen,
+  Brain,
   Camera,
+  CalendarCheck,
   Check,
   CheckCircle2,
   ClipboardList,
+  Eye,
+  Loader2,
   MessageCircle,
   PencilLine,
   RotateCcw,
   Sparkles,
 } from 'lucide-react';
 
+import MarkdownRenderer from '@/components/markdown/markdown-renderer';
+import { useSubmitReviewRating, useTodayReviewTasks } from '@/hooks/use-reviews';
 import { db } from '@/lib/db';
+import { getMutationErrorMessage } from '@/lib/mutation-queue';
 import {
   TODAY_TASKS,
   createEmptyTodayState,
@@ -28,6 +36,7 @@ import {
   type TodayTaskKind,
   type TodayTaskTemplate,
 } from '@/lib/today-tasks';
+import { formatWrongQuestionFieldForDisplay } from '@/lib/wrong-question-parser';
 import { useUserStore } from '@/stores/userStore';
 
 const taskIcons: Record<TodayTaskKind, typeof BookOpen> = {
@@ -60,6 +69,9 @@ export default function TodayPage() {
   const [taskState, setTaskState] = useState(() => createEmptyTodayState(dateKey));
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [revealedCardIds, setRevealedCardIds] = useState<Set<string>>(new Set());
+  const todayReviewTasks = useTodayReviewTasks(dateKey);
+  const submitReviewRating = useSubmitReviewRating();
 
   useEffect(() => {
     if (!userId) return;
@@ -94,6 +106,41 @@ export default function TodayPage() {
     setNotice(message);
     window.setTimeout(() => setNotice(null), 1800);
   }, []);
+
+  const toggleAnswer = useCallback((cardId: string) => {
+    setRevealedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  }, []);
+
+  const rateCard = useCallback(
+    async (cardId: string, rating: ReviewRating) => {
+      try {
+        await submitReviewRating.mutateAsync({
+          cardId,
+          request: {
+            rating,
+            reviewedAt: new Date().toISOString(),
+          },
+        });
+        setRevealedCardIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cardId);
+          return next;
+        });
+        showNotice('复习记录已保存');
+      } catch (error) {
+        showNotice(getMutationErrorMessage(error));
+      }
+    },
+    [showNotice, submitReviewRating],
+  );
 
   const toggleTask = useCallback(
     (taskId: string) => {
@@ -181,6 +228,61 @@ export default function TodayPage() {
           <div className="mt-3 flex items-center justify-between text-xs font-medium text-[var(--pm-muted)]">
             <span>预计 {totalMinutes} 分钟</span>
             <span>{unresolvedCount} 道未掌握错题</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <MiniStat label="待复习" value={`${todayReviewTasks.data?.dueCount ?? 0} 张`} />
+            <MiniStat label="新卡" value={`${todayReviewTasks.data?.newCount ?? 0} 张`} />
+            <MiniStat label="复习卡" value={`${todayReviewTasks.data?.reviewCount ?? 0} 张`} />
+          </div>
+        </section>
+
+        <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
+                  <Brain className="h-4 w-4" />
+                </span>
+                <div>
+                  <h2 className="text-sm font-semibold">今日复习</h2>
+                  <p className="mt-0.5 text-xs text-[var(--pm-muted)]">
+                    来自错题本的到期复习卡
+                  </p>
+                </div>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#315f86] ring-1 ring-[var(--pm-line)]">
+              {todayReviewTasks.data?.dueCount ?? 0} 张
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {todayReviewTasks.isLoading ? (
+              <div className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-sm text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                正在读取复习卡...
+              </div>
+            ) : todayReviewTasks.isError ? (
+              <p className="rounded-2xl bg-red-50/80 px-3 py-3 text-sm text-red-600 ring-1 ring-red-100">
+                复习任务读取失败，稍后再试。
+              </p>
+            ) : todayReviewTasks.data?.tasks.length ? (
+              todayReviewTasks.data.tasks.map((task) => (
+                <ReviewTaskCard
+                  key={task.cardId}
+                  task={task}
+                  revealed={revealedCardIds.has(task.cardId)}
+                  ratingPending={submitReviewRating.isPending}
+                  onToggleAnswer={() => toggleAnswer(task.cardId)}
+                  onRate={(rating) => void rateCard(task.cardId, rating)}
+                />
+              ))
+            ) : (
+              <p className="rounded-2xl bg-white/70 px-3 py-3 text-sm leading-6 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+                今天没有到期复习卡。可以从错题详情里把重要题目加入复习计划。
+              </p>
+            )}
           </div>
         </section>
 
@@ -310,6 +412,134 @@ function TaskCard({
           </div>
         </div>
       </div>
+    </article>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-[var(--pm-line)]">
+      <p className="text-[11px] font-medium text-[var(--pm-muted)]">{label}</p>
+      <p className="mt-1 text-sm font-bold text-[var(--pm-ink)]">{value}</p>
+    </div>
+  );
+}
+
+function ReviewTaskCard({
+  task,
+  revealed,
+  ratingPending,
+  onToggleAnswer,
+  onRate,
+}: {
+  task: ReviewTaskResponse;
+  revealed: boolean;
+  ratingPending: boolean;
+  onToggleAnswer: () => void;
+  onRate: (rating: ReviewRating) => void;
+}) {
+  const wrongQuestion = task.wrongQuestion;
+  const ratingOptions: Array<{ rating: ReviewRating; label: string; className: string }> = [
+    {
+      rating: 1,
+      label: '忘了',
+      className: 'bg-red-50 text-red-600 ring-red-100',
+    },
+    {
+      rating: 2,
+      label: '吃力',
+      className: 'bg-[#fff7df] text-[#9a6a18] ring-amber-100',
+    },
+    {
+      rating: 3,
+      label: '掌握',
+      className: 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]',
+    },
+    {
+      rating: 4,
+      label: '轻松',
+      className: 'bg-[#eef7ff] text-[#315f86] ring-[#cfe5f8]',
+    },
+  ];
+
+  return (
+    <article className="rounded-[1.25rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#fff6d8] text-[#6f5212] ring-1 ring-[#ead68c]">
+          <CalendarCheck className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-[#eef7ff] px-2 py-0.5 text-[11px] font-semibold text-[#315f86]">
+              {wrongQuestion?.subject ?? '复习卡'}
+            </span>
+            <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+              {task.state}
+            </span>
+          </div>
+          <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-[var(--pm-ink)]">
+            {wrongQuestion?.questionText ?? '这张复习卡暂时没有题干'}
+          </p>
+          {wrongQuestion?.knowledgePoints.length ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {wrongQuestion.knowledgePoints.slice(0, 3).map((point) => (
+                <span
+                  key={point}
+                  className="rounded-full bg-[#eafff9] px-2 py-0.5 text-[11px] font-semibold text-[#247269]"
+                >
+                  {point}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {revealed && wrongQuestion ? (
+        <div className="mt-3 space-y-3 rounded-2xl bg-white/75 p-3 text-sm leading-6 ring-1 ring-[var(--pm-line)]">
+          <div>
+            <p className="text-xs font-semibold text-[var(--pm-muted)]">参考答案</p>
+            <div className="mt-1">
+              <MarkdownRenderer
+                content={formatWrongQuestionFieldForDisplay(wrongQuestion.answer || '暂无答案')}
+              />
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[var(--pm-muted)]">解析</p>
+            <div className="mt-1">
+              <MarkdownRenderer
+                content={formatWrongQuestionFieldForDisplay(wrongQuestion.analysis || '暂无解析')}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={onToggleAnswer}
+        className="tap-target mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white/75 text-sm font-semibold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98]"
+      >
+        <Eye className="h-4 w-4" />
+        {revealed ? '收起答案' : '查看答案'}
+      </button>
+
+      {revealed ? (
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {ratingOptions.map((option) => (
+            <button
+              key={option.rating}
+              type="button"
+              disabled={ratingPending}
+              onClick={() => onRate(option.rating)}
+              className={`tap-target min-h-10 rounded-2xl text-xs font-bold ring-1 transition-all active:scale-[0.96] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-[var(--pm-line)] ${option.className}`}
+            >
+              {ratingPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </article>
   );
 }

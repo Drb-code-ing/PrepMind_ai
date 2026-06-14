@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   BookOpen,
+  CalendarCheck,
   CheckCircle2,
   Clock,
   Loader2,
@@ -17,6 +18,10 @@ import {
 
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  useCreateReviewCardFromWrongQuestion,
+  useWrongQuestionReviewCard,
+} from '@/hooks/use-reviews';
 import { useDeleteWrongQuestion, useUpdateWrongQuestion, useWrongQuestions } from '@/hooks/use-wrong-questions';
 import {
   getCrudSuccessMessage,
@@ -54,6 +59,15 @@ function formatDate(timestamp: number) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(timestamp));
+}
+
+function formatReviewDate(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }
 
 function getSummary(text: string) {
@@ -716,6 +730,9 @@ function WrongQuestionDetail({
   const noteSavedTimerRef = useRef<number | null>(null);
   const noteChanged = note !== item.userNote;
   const confirmingDelete = deleteState !== 'idle';
+  const reviewCardQuery = useWrongQuestionReviewCard(item.id);
+  const createReviewCard = useCreateReviewCardFromWrongQuestion();
+  const reviewCard = reviewCardQuery.data?.card ?? null;
 
   const showDetailNotice = (message: string, type: ActionNotice['type'] = 'success') => {
     if (detailNoticeTimerRef.current) {
@@ -773,6 +790,21 @@ function WrongQuestionDetail({
       if (shouldForwardCrudNotice('detail')) onAction(message);
     } finally {
       setStatusUpdating(false);
+    }
+  };
+
+  const addToReview = async () => {
+    if (createReviewCard.isPending || reviewCard) return;
+
+    try {
+      const result = await createReviewCard.mutateAsync(item.id);
+      const message = result.created ? '已加入复习计划' : '这道题已在复习计划中';
+      showDetailNotice(message);
+      if (shouldForwardCrudNotice('detail')) onAction(message);
+    } catch (error) {
+      const message = getMutationErrorMessage(error);
+      showDetailNotice(message, 'danger');
+      if (shouldForwardCrudNotice('detail')) onAction(message, 'danger');
     }
   };
 
@@ -886,6 +918,27 @@ function WrongQuestionDetail({
                 onConfirm={onConfirmDelete}
               />
             ) : null}
+            <button
+              type="button"
+              onClick={() => void addToReview()}
+              disabled={createReviewCard.isPending || reviewCardQuery.isLoading || !!reviewCard}
+              className={`tap-target flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold ring-1 transition-all active:scale-[0.98] disabled:active:scale-100 ${
+                reviewCard
+                  ? 'bg-[#eef7ff] text-[#315f86] ring-[#cfe5f8]'
+                  : 'bg-[#fff6d8] text-[#6f5212] ring-[#ead68c] hover:bg-[#fff0bd]'
+              }`}
+            >
+              {createReviewCard.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarCheck className="h-4 w-4" />
+              )}
+              {createReviewCard.isPending
+                ? '加入中...'
+                : reviewCard
+                  ? `复习中 · 下次 ${formatReviewDate(reviewCard.nextReview)}`
+                  : '加入复习计划'}
+            </button>
             <div className="flex gap-2">
               <button
                 type="button"
