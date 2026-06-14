@@ -9,6 +9,29 @@ export function getMaxDailyReviewCount(items: Array<{ count: number }>) {
   return Math.max(1, ...items.map((item) => item.count));
 }
 
+export function shouldShowDailyReviewTick(index: number, total: number) {
+  if (total <= 10) return true;
+  if (index === 0 || index === total - 1) return true;
+
+  const interval = total <= 14 ? 2 : total <= 21 ? 4 : 5;
+  return index % interval === 0;
+}
+
+export function getDailyReviewActivitySummary(items: Array<{ count: number }>) {
+  return items.reduce(
+    (summary, item) => ({
+      activeDays: summary.activeDays + (item.count > 0 ? 1 : 0),
+      totalCount: summary.totalCount + item.count,
+      maxCount: Math.max(summary.maxCount, item.count),
+    }),
+    {
+      activeDays: 0,
+      totalCount: 0,
+      maxCount: 0,
+    },
+  );
+}
+
 export function getRatingLabel(rating: ReviewRating) {
   const labels: Record<ReviewRating, string> = {
     1: '忘了',

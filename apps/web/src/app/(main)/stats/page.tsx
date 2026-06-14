@@ -20,9 +20,11 @@ import type { ReviewStatsRange } from '@repo/types/api/review';
 import { useReviewLogs, useReviewStats } from '@/hooks/use-reviews';
 import {
   formatPercent,
+  getDailyReviewActivitySummary,
   getMaxDailyReviewCount,
   getRatingLabel,
   getStateLabel,
+  shouldShowDailyReviewTick,
   shouldShowStatsEmptyState,
 } from '@/lib/review-stats-view';
 import { getLocalDateKey } from '@/lib/today-tasks';
@@ -38,7 +40,8 @@ export default function StatsPage() {
   const logsQuery = useReviewLogs({ page, pageSize });
   const stats = statsQuery.data;
   const logs = logsQuery.data;
-  const maxDailyCount = getMaxDailyReviewCount(stats?.dailyReviews ?? []);
+  const dailyReviews = stats?.dailyReviews ?? [];
+  const dailySummary = getDailyReviewActivitySummary(dailyReviews);
   const empty = shouldShowStatsEmptyState(stats?.totalReviews ?? 0, logs?.total ?? 0);
   const hasNextPage = logs ? page * logs.pageSize < logs.total : false;
 
@@ -134,22 +137,12 @@ export default function StatsPage() {
                 title="复习趋势"
                 subtitle={`${stats?.fromDate} 到 ${stats?.toDate}`}
               />
-              <div className="mt-4 flex h-32 items-end gap-1.5">
-                {(stats?.dailyReviews ?? []).map((item) => (
-                  <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                    <div className="flex h-24 w-full items-end rounded-full bg-white/55 ring-1 ring-[var(--pm-line)]">
-                      <div
-                        className="w-full rounded-full bg-gradient-to-t from-[#78d6c8] to-[#ffe89a]"
-                        style={{ height: `${Math.max(6, (item.count / maxDailyCount) * 100)}%` }}
-                        title={`${item.date}: ${item.count}`}
-                      />
-                    </div>
-                    <span className="text-[10px] font-semibold text-[var(--pm-muted)]">
-                      {item.date.slice(5)}
-                    </span>
-                  </div>
-                ))}
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <TrendPill label="活跃" value={`${dailySummary.activeDays} 天`} />
+                <TrendPill label="合计" value={`${dailySummary.totalCount} 次`} />
+                <TrendPill label="峰值" value={`${dailySummary.maxCount} 次`} />
               </div>
+              <ReviewTrendChart items={dailyReviews} />
             </section>
 
             <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
@@ -253,6 +246,126 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function TrendPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/60 px-3 py-2 ring-1 ring-[var(--pm-line)]">
+      <p className="text-[11px] font-medium text-[var(--pm-muted)]">{label}</p>
+      <p className="mt-0.5 text-sm font-black text-[var(--pm-ink)]">{value}</p>
+    </div>
+  );
+}
+
+function ReviewTrendChart({ items }: { items: Array<{ date: string; count: number }> }) {
+  const maxDailyCount = getMaxDailyReviewCount(items);
+  const chartWidth = 320;
+  const chartHeight = 132;
+  const paddingX = 12;
+  const paddingTop = 14;
+  const paddingBottom = 22;
+  const baseY = chartHeight - paddingBottom;
+  const usableHeight = chartHeight - paddingTop - paddingBottom;
+  const points = items.map((item, index) => {
+    const x =
+      items.length <= 1
+        ? chartWidth / 2
+        : paddingX + (index / (items.length - 1)) * (chartWidth - paddingX * 2);
+    const y = baseY - (item.count / maxDailyCount) * usableHeight;
+    return { ...item, x, y };
+  });
+  const linePath = buildSmoothPath(points);
+  const areaPath = `${linePath} L ${points.at(-1)?.x ?? paddingX} ${baseY} L ${
+    points[0]?.x ?? paddingX
+  } ${baseY} Z`;
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-[1.25rem] bg-gradient-to-b from-white/78 to-[#f3fffb]/70 px-3 pb-3 pt-2 ring-1 ring-[var(--pm-line)]">
+      <svg
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        role="img"
+        aria-label="复习趋势折线图"
+        className="h-36 w-full overflow-visible"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="review-trend-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#ffe89a" stopOpacity="0.82" />
+            <stop offset="55%" stopColor="#9be3c7" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="#78d6c8" stopOpacity="0.08" />
+          </linearGradient>
+          <linearGradient id="review-trend-line" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#78d6c8" />
+            <stop offset="100%" stopColor="#d8bf5b" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2].map((line) => {
+          const y = paddingTop + (line / 2) * usableHeight;
+          return (
+            <line
+              key={line}
+              x1={paddingX}
+              x2={chartWidth - paddingX}
+              y1={y}
+              y2={y}
+              stroke="#e6eee9"
+              strokeDasharray="3 7"
+              strokeWidth="1"
+            />
+          );
+        })}
+        <path d={areaPath} fill="url(#review-trend-fill)" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke="url(#review-trend-line)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="4"
+          vectorEffect="non-scaling-stroke"
+        />
+        {points.map((point) => (
+          <circle
+            key={point.date}
+            cx={point.x}
+            cy={point.y}
+            r={point.count > 0 ? 4.5 : 2.5}
+            fill={point.count > 0 ? '#fff4a8' : '#cfe8dd'}
+            stroke={point.count > 0 ? '#78d6c8' : '#b7d9ce'}
+            strokeWidth={point.count > 0 ? 2 : 1}
+            vectorEffect="non-scaling-stroke"
+          >
+            <title>{`${point.date}: ${point.count} 次`}</title>
+          </circle>
+        ))}
+      </svg>
+      <div className="relative h-6">
+        {items.map((item, index) =>
+          shouldShowDailyReviewTick(index, items.length) ? (
+            <span
+              key={item.date}
+              className="absolute top-0 block whitespace-nowrap text-[10px] font-bold text-[var(--pm-muted)]"
+              style={{
+                left:
+                  index === items.length - 1
+                    ? 'auto'
+                    : `${items.length <= 1 ? 50 : (index / (items.length - 1)) * 100}%`,
+                right: index === items.length - 1 ? 0 : 'auto',
+                transform:
+                  index === 0
+                    ? 'translateX(0)'
+                    : index === items.length - 1
+                      ? 'translateX(0)'
+                      : 'translateX(-50%)',
+              }}
+            >
+              {item.date.slice(5)}
+            </span>
+          ) : null,
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({
   icon: Icon,
   title,
@@ -273,6 +386,16 @@ function SectionTitle({
       </div>
     </div>
   );
+}
+
+function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (points.length === 0) return '';
+  const [first, ...rest] = points;
+  return rest.reduce((path, point, index) => {
+    const previous = points[index];
+    const midX = (previous.x + point.x) / 2;
+    return `${path} C ${midX} ${previous.y}, ${midX} ${point.y}, ${point.x} ${point.y}`;
+  }, `M ${first.x} ${first.y}`);
 }
 
 function DistributionRow({
