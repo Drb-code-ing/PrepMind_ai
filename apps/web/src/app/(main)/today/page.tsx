@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { ReviewRating, ReviewTaskResponse } from '@repo/types/api/review';
 import {
@@ -24,6 +24,11 @@ import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import { useSubmitReviewRating, useTodayReviewTasks } from '@/hooks/use-reviews';
 import { db } from '@/lib/db';
 import { getMutationErrorMessage } from '@/lib/mutation-queue';
+import {
+  buildReviewRatingFeedback,
+  getReviewRatingOptions,
+  type ReviewRatingFeedback,
+} from '@/lib/review-feedback';
 import {
   TODAY_TASKS,
   createEmptyTodayState,
@@ -70,6 +75,8 @@ export default function TodayPage() {
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [revealedCardIds, setRevealedCardIds] = useState<Set<string>>(new Set());
+  const [reviewFeedbacks, setReviewFeedbacks] = useState<Record<string, ReviewRatingFeedback>>({});
+  const noticeTimerRef = useRef<number | null>(null);
   const todayReviewTasks = useTodayReviewTasks(dateKey);
   const submitReviewRating = useSubmitReviewRating();
 
@@ -103,8 +110,22 @@ export default function TodayPage() {
   const totalMinutes = TODAY_TASKS.reduce((sum, task) => sum + task.estimateMinutes, 0);
 
   const showNotice = useCallback((message: string) => {
+    if (noticeTimerRef.current) {
+      window.clearTimeout(noticeTimerRef.current);
+    }
     setNotice(message);
-    window.setTimeout(() => setNotice(null), 1800);
+    noticeTimerRef.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimerRef.current = null;
+    }, 2400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) {
+        window.clearTimeout(noticeTimerRef.current);
+      }
+    };
   }, []);
 
   const toggleAnswer = useCallback((cardId: string) => {
@@ -122,19 +143,27 @@ export default function TodayPage() {
   const rateCard = useCallback(
     async (cardId: string, rating: ReviewRating) => {
       try {
-        await submitReviewRating.mutateAsync({
+        const result = await submitReviewRating.mutateAsync({
           cardId,
           request: {
             rating,
             reviewedAt: new Date().toISOString(),
           },
         });
+        const feedback = buildReviewRatingFeedback({
+          rating,
+          nextReview: result.card.nextReview,
+        });
+        setReviewFeedbacks((prev) => ({
+          ...prev,
+          [cardId]: feedback,
+        }));
         setRevealedCardIds((prev) => {
           const next = new Set(prev);
           next.delete(cardId);
           return next;
         });
-        showNotice('复习记录已保存');
+        showNotice(`${feedback.title}，${feedback.description}`);
       } catch (error) {
         showNotice(getMutationErrorMessage(error));
       }
@@ -177,14 +206,18 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <main className="mx-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-3xl">
-        {notice ? (
-          <div className="pm-enter mb-3 flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/90 px-3 py-2 text-sm font-medium text-emerald-700 shadow-sm">
-            <Check className="h-4 w-4" />
-            {notice}
-          </div>
-        ) : null}
+      {notice ? (
+        <div
+          aria-live="polite"
+          role="status"
+          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-emerald-100 bg-white/95 px-3 py-2 text-sm font-semibold text-emerald-700 shadow-[0_18px_45px_rgba(40,120,96,0.18)] backdrop-blur-xl"
+        >
+          <Check className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1">{notice}</span>
+        </div>
+      ) : null}
 
+      <main className="mx-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-3xl">
         <section className="pm-glass-card pm-enter rounded-[1.6rem] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -273,6 +306,7 @@ export default function TodayPage() {
                   key={task.cardId}
                   task={task}
                   revealed={revealedCardIds.has(task.cardId)}
+                  feedback={reviewFeedbacks[task.cardId] ?? null}
                   ratingPending={submitReviewRating.isPending}
                   onToggleAnswer={() => toggleAnswer(task.cardId)}
                   onRate={(rating) => void rateCard(task.cardId, rating)}
@@ -428,39 +462,20 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function ReviewTaskCard({
   task,
   revealed,
+  feedback,
   ratingPending,
   onToggleAnswer,
   onRate,
 }: {
   task: ReviewTaskResponse;
   revealed: boolean;
+  feedback: ReviewRatingFeedback | null;
   ratingPending: boolean;
   onToggleAnswer: () => void;
   onRate: (rating: ReviewRating) => void;
 }) {
   const wrongQuestion = task.wrongQuestion;
-  const ratingOptions: Array<{ rating: ReviewRating; label: string; className: string }> = [
-    {
-      rating: 1,
-      label: '忘了',
-      className: 'bg-red-50 text-red-600 ring-red-100',
-    },
-    {
-      rating: 2,
-      label: '吃力',
-      className: 'bg-[#fff7df] text-[#9a6a18] ring-amber-100',
-    },
-    {
-      rating: 3,
-      label: '掌握',
-      className: 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]',
-    },
-    {
-      rating: 4,
-      label: '轻松',
-      className: 'bg-[#eef7ff] text-[#315f86] ring-[#cfe5f8]',
-    },
-  ];
+  const ratingOptions = getReviewRatingOptions();
 
   return (
     <article className="rounded-[1.25rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -516,6 +531,16 @@ function ReviewTaskCard({
         </div>
       ) : null}
 
+      {feedback ? (
+        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-[#effdf9] px-3 py-2 text-sm text-[#247269] ring-1 ring-[#bdeee5]">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-bold">{feedback.title}</p>
+            <p className="mt-0.5 text-xs font-semibold text-[#347d70]">{feedback.description}</p>
+          </div>
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={onToggleAnswer}
@@ -526,16 +551,25 @@ function ReviewTaskCard({
       </button>
 
       {revealed ? (
-        <div className="mt-2 grid grid-cols-4 gap-1.5">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           {ratingOptions.map((option) => (
             <button
               key={option.rating}
               type="button"
               disabled={ratingPending}
               onClick={() => onRate(option.rating)}
-              className={`tap-target min-h-10 rounded-2xl text-xs font-bold ring-1 transition-all active:scale-[0.96] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-[var(--pm-line)] ${option.className}`}
+              className={`tap-target min-h-14 rounded-2xl px-2 text-left ring-1 transition-all active:scale-[0.96] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-[var(--pm-line)] ${option.className}`}
             >
-              {ratingPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : option.label}
+              {ratingPending ? (
+                <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <>
+                  <span className="block text-sm font-black">{option.label}</span>
+                  <span className="mt-0.5 block text-[11px] font-semibold opacity-75">
+                    {option.effect}
+                  </span>
+                </>
+              )}
             </button>
           ))}
         </div>
