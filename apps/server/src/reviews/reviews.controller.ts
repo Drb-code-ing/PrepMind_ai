@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import {
   createReviewCardFromWrongQuestionRequestSchema,
+  reviewLogListQuerySchema,
   reviewRatingRequestSchema,
+  reviewStatsQuerySchema,
 } from '@repo/types/api/review';
 import { z } from 'zod';
 
@@ -54,6 +56,18 @@ export class ReviewsController {
   ) {
     const input = todayTasksQuerySchema.parse(query);
     return this.reviewsService.getTodayTasks(user.id, input.date);
+  }
+
+  @Get('stats')
+  getStats(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
+    const input = reviewStatsQuerySchema.parse(query);
+    return this.reviewsService.getStats(user.id, input);
+  }
+
+  @Get('logs')
+  getLogs(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
+    const input = reviewLogListQuerySchema.parse(query);
+    return this.reviewsService.getLogs(user.id, input);
   }
 
   @Post('cards/:cardId/rating')

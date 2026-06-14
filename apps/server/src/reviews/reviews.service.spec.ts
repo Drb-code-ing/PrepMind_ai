@@ -49,6 +49,8 @@ describe('ReviewsService', () => {
       findFirst: jest.fn(),
     },
     card: {
+      count: jest.fn(),
+      groupBy: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -56,7 +58,9 @@ describe('ReviewsService', () => {
       update: jest.fn(),
     },
     reviewLog: {
+      count: jest.fn(),
       create: jest.fn(),
+      findMany: jest.fn(),
     },
   };
 
@@ -139,6 +143,145 @@ describe('ReviewsService', () => {
           cardId: 'card_1',
           source: 'wrongQuestion',
           wrongQuestion: { id: 'wrong_1', subject: '数学' },
+        },
+      ],
+    });
+  });
+
+  it('summarizes review stats scoped to the current user', async () => {
+    prisma.reviewLog.findMany.mockResolvedValue([
+      {
+        ...reviewLog,
+        id: 'log_1',
+        cardId: 'card_1',
+        rating: 1,
+        reviewedAt: new Date('2026-06-12T08:00:00.000Z'),
+      },
+      {
+        ...reviewLog,
+        id: 'log_2',
+        cardId: 'card_1',
+        rating: 3,
+        reviewedAt: new Date('2026-06-13T08:00:00.000Z'),
+      },
+      {
+        ...reviewLog,
+        id: 'log_3',
+        cardId: 'card_2',
+        rating: 4,
+        reviewedAt: new Date('2026-06-14T08:00:00.000Z'),
+      },
+    ]);
+    prisma.card.count.mockResolvedValue(1);
+    prisma.card.groupBy.mockResolvedValue([
+      { state: 'NEW', _count: { _all: 1 } },
+      { state: 'REVIEW', _count: { _all: 2 } },
+    ]);
+
+    const result = await createService().getStats('user_1', {
+      range: '7d',
+      endDate: '2026-06-14',
+      timezoneOffsetMinutes: -480,
+    });
+
+    expect(prisma.reviewLog.findMany).toHaveBeenCalledWith({
+      where: {
+        reviewedAt: {
+          gte: new Date('2026-06-07T16:00:00.000Z'),
+          lte: new Date('2026-06-14T15:59:59.999Z'),
+        },
+        card: { userId: 'user_1' },
+      },
+      select: {
+        cardId: true,
+        rating: true,
+        reviewedAt: true,
+      },
+      orderBy: { reviewedAt: 'asc' },
+    });
+    expect(result).toMatchObject({
+      range: '7d',
+      fromDate: '2026-06-08',
+      toDate: '2026-06-14',
+      totalReviews: 3,
+      reviewedCards: 2,
+      dueCards: 1,
+      accuracyLikeRate: 0.67,
+      streakDays: 3,
+      ratingCounts: { again: 1, hard: 0, good: 1, easy: 1 },
+      stateCounts: { NEW: 1, LEARNING: 0, REVIEW: 2, RELEARNING: 0 },
+    });
+    expect(result.dailyReviews).toHaveLength(7);
+    expect(result.dailyReviews.at(-1)).toEqual({
+      date: '2026-06-14',
+      count: 1,
+    });
+  });
+
+  it('returns zeroed stats when there are no review logs', async () => {
+    prisma.reviewLog.findMany.mockResolvedValue([]);
+    prisma.card.count.mockResolvedValue(0);
+    prisma.card.groupBy.mockResolvedValue([]);
+
+    const result = await createService().getStats('user_1', {
+      range: '7d',
+      endDate: '2026-06-14',
+      timezoneOffsetMinutes: -480,
+    });
+
+    expect(result.totalReviews).toBe(0);
+    expect(result.reviewedCards).toBe(0);
+    expect(result.accuracyLikeRate).toBe(0);
+    expect(result.streakDays).toBe(0);
+    expect(result.dailyReviews.every((item) => item.count === 0)).toBe(true);
+  });
+
+  it('lists recent review logs scoped to the current user', async () => {
+    prisma.reviewLog.findMany.mockResolvedValue([
+      {
+        ...reviewLog,
+        card: {
+          ...card,
+          nextReview: new Date('2026-06-15T08:00:00.000Z'),
+          wrongQuestion,
+        },
+      },
+    ]);
+    prisma.reviewLog.count.mockResolvedValue(1);
+
+    const result = await createService().getLogs('user_1', {
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(prisma.reviewLog.findMany).toHaveBeenCalledWith({
+      where: {
+        card: { userId: 'user_1' },
+      },
+      include: {
+        card: {
+          include: { wrongQuestion: true },
+        },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      skip: 0,
+      take: 20,
+    });
+    expect(result).toMatchObject({
+      total: 1,
+      page: 1,
+      pageSize: 20,
+      items: [
+        {
+          id: 'log_1',
+          cardId: 'card_1',
+          rating: 3,
+          nextReview: '2026-06-15T08:00:00.000Z',
+          currentCardState: 'NEW',
+          wrongQuestion: {
+            id: 'wrong_1',
+            subject: '数学',
+          },
         },
       ],
     });

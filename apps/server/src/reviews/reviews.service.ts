@@ -3,7 +3,9 @@ import { Prisma } from '@prisma/client';
 import { scheduleReview } from '@repo/fsrs';
 import type {
   CreateReviewCardFromWrongQuestionRequest,
+  ReviewLogListQuery,
   ReviewRatingRequest,
+  ReviewStatsQuery,
 } from '@repo/types/api/review';
 
 import { AppError } from '../common/errors/app-error';
@@ -76,6 +78,95 @@ export class ReviewsService {
       ).length,
       reviewCount: cards.filter((card) => card.state === 'REVIEW').length,
       tasks: cards.map((card) => this.toTaskResponse(card)),
+    };
+  }
+
+  async getStats(userId: string, input: ReviewStatsQuery) {
+    const window = this.resolveStatsWindow(input);
+    const [logs, dueCards, groupedStates] = await Promise.all([
+      this.prisma.reviewLog.findMany({
+        where: {
+          reviewedAt: {
+            gte: window.fromUtc,
+            lte: window.toUtc,
+          },
+          card: { userId },
+        },
+        select: {
+          cardId: true,
+          rating: true,
+          reviewedAt: true,
+        },
+        orderBy: { reviewedAt: 'asc' },
+      }),
+      this.prisma.card.count({
+        where: {
+          userId,
+          suspendedAt: null,
+          nextReview: { lte: new Date() },
+        },
+      }),
+      this.prisma.card.groupBy({
+        by: ['state'],
+        where: {
+          userId,
+          suspendedAt: null,
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const ratingCounts = {
+      again: logs.filter((log) => log.rating === 1).length,
+      hard: logs.filter((log) => log.rating === 2).length,
+      good: logs.filter((log) => log.rating === 3).length,
+      easy: logs.filter((log) => log.rating === 4).length,
+    };
+    const totalReviews = logs.length;
+    const masteredReviews = ratingCounts.good + ratingCounts.easy;
+
+    return {
+      range: input.range,
+      fromDate: window.fromDate,
+      toDate: window.toDate,
+      totalReviews,
+      reviewedCards: new Set(logs.map((log) => log.cardId)).size,
+      dueCards,
+      accuracyLikeRate:
+        totalReviews === 0 ? 0 : roundRatio(masteredReviews / totalReviews),
+      streakDays: this.calculateStreakDays(logs, window),
+      ratingCounts,
+      stateCounts: this.toStateCounts(groupedStates),
+      dailyReviews: this.toDailyReviewCounts(logs, window),
+    };
+  }
+
+  async getLogs(userId: string, input: ReviewLogListQuery) {
+    const skip = (input.page - 1) * input.pageSize;
+    const where = {
+      card: { userId },
+    } satisfies Prisma.ReviewLogWhereInput;
+
+    const [items, total] = await Promise.all([
+      this.prisma.reviewLog.findMany({
+        where,
+        include: {
+          card: {
+            include: { wrongQuestion: true },
+          },
+        },
+        orderBy: { reviewedAt: 'desc' },
+        skip,
+        take: input.pageSize,
+      }),
+      this.prisma.reviewLog.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => this.toLogListItemResponse(item)),
+      total,
+      page: input.page,
+      pageSize: input.pageSize,
     };
   }
 
@@ -163,6 +254,102 @@ export class ReviewsService {
     }
   }
 
+  private resolveStatsWindow(input: ReviewStatsQuery) {
+    const rangeDays = input.range === '30d' ? 30 : 7;
+    const endDate = input.endDate ?? new Date().toISOString().slice(0, 10);
+    const toLocal = new Date(`${endDate}T00:00:00.000Z`);
+    toLocal.setUTCDate(toLocal.getUTCDate() + 1);
+    toLocal.setUTCMilliseconds(toLocal.getUTCMilliseconds() - 1);
+
+    const fromLocal = new Date(`${endDate}T00:00:00.000Z`);
+    fromLocal.setUTCDate(fromLocal.getUTCDate() - rangeDays + 1);
+
+    const offsetMs = input.timezoneOffsetMinutes * 60 * 1000;
+
+    return {
+      rangeDays,
+      fromDate: this.formatDateKey(fromLocal),
+      toDate: endDate,
+      fromUtc: new Date(fromLocal.getTime() + offsetMs),
+      toUtc: new Date(toLocal.getTime() + offsetMs),
+      timezoneOffsetMinutes: input.timezoneOffsetMinutes,
+    };
+  }
+
+  private toDailyReviewCounts(
+    logs: Array<{ reviewedAt: Date }>,
+    window: ReviewStatsWindow,
+  ) {
+    const counts = new Map<string, number>();
+    for (let index = 0; index < window.rangeDays; index += 1) {
+      const date = new Date(`${window.fromDate}T00:00:00.000Z`);
+      date.setUTCDate(date.getUTCDate() + index);
+      counts.set(this.formatDateKey(date), 0);
+    }
+
+    for (const log of logs) {
+      const localTime = new Date(
+        log.reviewedAt.getTime() - window.timezoneOffsetMinutes * 60 * 1000,
+      );
+      const key = this.formatDateKey(localTime);
+      if (counts.has(key)) {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries()).map(([date, count]) => ({
+      date,
+      count,
+    }));
+  }
+
+  private calculateStreakDays(
+    logs: Array<{ reviewedAt: Date }>,
+    window: ReviewStatsWindow,
+  ) {
+    const reviewedDates = new Set(
+      logs.map((log) =>
+        this.formatDateKey(
+          new Date(
+            log.reviewedAt.getTime() - window.timezoneOffsetMinutes * 60 * 1000,
+          ),
+        ),
+      ),
+    );
+    let streak = 0;
+    const cursor = new Date(`${window.toDate}T00:00:00.000Z`);
+    for (let index = 0; index < window.rangeDays; index += 1) {
+      const key = this.formatDateKey(cursor);
+      if (!reviewedDates.has(key)) break;
+      streak += 1;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    }
+    return streak;
+  }
+
+  private toStateCounts(
+    groups: Array<{ state: string; _count: { _all: number } }>,
+  ) {
+    const counts = {
+      NEW: 0,
+      LEARNING: 0,
+      REVIEW: 0,
+      RELEARNING: 0,
+    };
+
+    for (const group of groups) {
+      if (group.state in counts) {
+        counts[group.state as keyof typeof counts] = group._count._all;
+      }
+    }
+
+    return counts;
+  }
+
+  private formatDateKey(date: Date) {
+    return date.toISOString().slice(0, 10);
+  }
+
   private resolveDateWindow(date?: string) {
     const dateKey = date ?? new Date().toISOString().slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
@@ -240,6 +427,29 @@ export class ReviewsService {
     };
   }
 
+  private toLogListItemResponse(log: ReviewLogListRecord) {
+    return {
+      id: log.id,
+      cardId: log.cardId,
+      rating: log.rating as 1 | 2 | 3 | 4,
+      scheduledDays: log.scheduledDays,
+      elapsedDays: log.elapsedDays,
+      reviewDurationMs: log.reviewDurationMs,
+      reviewedAt: log.reviewedAt.toISOString(),
+      nextReview: log.card.nextReview.toISOString(),
+      currentCardState: log.card.state,
+      wrongQuestion: log.card.wrongQuestion
+        ? {
+            id: log.card.wrongQuestion.id,
+            questionText: log.card.wrongQuestion.questionText,
+            subject: log.card.wrongQuestion.subject,
+            knowledgePoints: log.card.wrongQuestion.knowledgePoints,
+            status: log.card.wrongQuestion.status,
+          }
+        : undefined,
+    };
+  }
+
   private cardNotFound() {
     return new AppError(
       'REVIEW_CARD_NOT_FOUND',
@@ -249,8 +459,28 @@ export class ReviewsService {
   }
 }
 
+function roundRatio(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+type ReviewStatsWindow = {
+  rangeDays: number;
+  fromDate: string;
+  toDate: string;
+  fromUtc: Date;
+  toUtc: Date;
+  timezoneOffsetMinutes: number;
+};
+
 type CardRecord = Prisma.CardGetPayload<object>;
 type ReviewLogRecord = Prisma.ReviewLogGetPayload<object>;
 type ReviewTaskRecord = Prisma.CardGetPayload<{
   include: { wrongQuestion: true };
+}>;
+type ReviewLogListRecord = Prisma.ReviewLogGetPayload<{
+  include: {
+    card: {
+      include: { wrongQuestion: true };
+    };
+  };
 }>;
