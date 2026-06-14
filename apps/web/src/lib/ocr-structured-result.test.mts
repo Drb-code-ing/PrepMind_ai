@@ -161,6 +161,31 @@ test('not_savable structured question is blocked before wrong-question mapping i
   assert.equal(canSaveStructuredQuestion(question), false);
 });
 
+test('multi-question mapping creates unique sourceGroupId for each question', () => {
+  const q1 = createQuestion();
+  const q2 = { ...createQuestion(), id: 'q2', index: 2, questionText: '第二题' };
+
+  const first = mapOcrQuestionToWrongQuestionRecord(q1, {
+    id: 'local-1',
+    userId: 'user-1',
+    sourceRecordId: 'ocr-record-1',
+    sourceGroupId: 'ocr-1',
+    now: 1,
+    rawContent: 'raw',
+  });
+  const second = mapOcrQuestionToWrongQuestionRecord(q2, {
+    id: 'local-2',
+    userId: 'user-1',
+    sourceRecordId: 'ocr-record-1',
+    sourceGroupId: 'ocr-1',
+    now: 2,
+    rawContent: 'raw',
+  });
+
+  assert.equal(first.sourceGroupId, 'ocr-1:q1');
+  assert.equal(second.sourceGroupId, 'ocr-1:q2');
+});
+
 function createStructuredResult() {
   return {
     recognitionType: 'question',

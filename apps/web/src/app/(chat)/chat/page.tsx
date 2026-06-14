@@ -9,6 +9,7 @@ import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
 import type { SelectedImage } from '@/components/chat/chat-input-bar';
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
+import { OcrQuestionList } from '@/components/ocr/ocr-question-list';
 import StreamingMarkdownRenderer from '@/components/markdown/streaming-markdown-renderer';
 import { useChatRuntime } from '@/components/providers/chat-runtime-provider';
 import { useOcrRuntime } from '@/components/providers/ocr-runtime-provider';
@@ -103,6 +104,20 @@ function getQuestionSaveSourceGroupId(sourceGroupId: string | undefined, questio
   return sourceGroupId ? `${sourceGroupId}:${questionId}` : questionId;
 }
 
+function getSavedQuestionIdsForGroup(
+  sourceGroupId: string | undefined,
+  questions: OcrQuestionResult[],
+  savedSourceGroupIds: Set<string>,
+) {
+  return new Set(
+    questions
+      .filter((question) =>
+        savedSourceGroupIds.has(getQuestionSaveSourceGroupId(sourceGroupId, question.id)),
+      )
+      .map((question) => question.id),
+  );
+}
+
 // ─── Parent: gate by current user, runtime providers hydrate data ───
 
 export default function ChatPage() {
@@ -158,6 +173,12 @@ function ChatView({ userId }: { userId: string }) {
   const [saveWrongErrors, setSaveWrongErrors] = useState<Record<string, string>>({});
   const [pendingWrongQuestion, setPendingWrongQuestion] =
     useState<PendingWrongQuestionSave | null>(null);
+  const [selectedOcrQuestionByGroup, setSelectedOcrQuestionByGroup] = useState<
+    Record<string, string>
+  >({});
+  const [batchSelectedOcrQuestionsByGroup, setBatchSelectedOcrQuestionsByGroup] = useState<
+    Record<string, Set<string>>
+  >({});
   const [confirmSaving, setConfirmSaving] = useState(false);
   const createWrongQuestion = useCreateWrongQuestion();
 
@@ -319,6 +340,82 @@ function ChatView({ userId }: { userId: string }) {
     [ocrMessages, ocrResultStatuses, userId],
   );
 
+  const persistWrongQuestionRecord = useCallback(
+    async (record: WrongQuestionRecord, ownerId: string) => {
+      const savedSourceGroupId = record.sourceGroupId;
+
+      try {
+        const savedRecord = await createWrongQuestion.mutateAsync(record);
+        await db.wrongQuestions.put({
+          ...savedRecord,
+          imageUrl: savedRecord.imageUrl ?? record.imageUrl,
+          syncStatus: 'synced',
+          syncError: undefined,
+          pendingOperation: undefined,
+        });
+        if (savedSourceGroupId) {
+          setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
+          setSavedWrongQuestionIdsByGroup((prev) => ({
+            ...prev,
+            [savedSourceGroupId]: savedRecord.id,
+          }));
+          setSaveWrongErrors((prev) => {
+            const next = { ...prev };
+            delete next[savedSourceGroupId];
+            return next;
+          });
+        }
+        return savedRecord;
+      } catch (error) {
+        if (error instanceof ApiClientError && error.code === 'WRONG_QUESTION_DUPLICATED') {
+          if (savedSourceGroupId) {
+            setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
+            setSaveWrongErrors((prev) => {
+              const next = { ...prev };
+              delete next[savedSourceGroupId];
+              return next;
+            });
+          }
+          return null;
+        }
+
+        const errorMessage = getMutationErrorMessage(error);
+        const localRecord: WrongQuestionRecord = {
+          ...record,
+          syncStatus: 'failed',
+          syncError: errorMessage,
+          pendingOperation: 'create',
+        };
+
+        await db.wrongQuestions.put(localRecord);
+        await enqueueMutationQueueItem(
+          createMutationQueueItem({
+            userId: ownerId,
+            entity: 'wrongQuestion',
+            operation: 'create',
+            entityId: record.id,
+            payload: { record },
+          }),
+        );
+
+        if (savedSourceGroupId) {
+          setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
+          setSavedWrongQuestionIdsByGroup((prev) => ({
+            ...prev,
+            [savedSourceGroupId]: record.id,
+          }));
+          setSaveWrongErrors((prev) => ({
+            ...prev,
+            [savedSourceGroupId]: '网络异常，错题已暂存，稍后自动同步',
+          }));
+        }
+
+        return localRecord;
+      }
+    },
+    [createWrongQuestion],
+  );
+
   const confirmWrongQuestionSave = useCallback(async () => {
     if (!pendingWrongQuestion || confirmSaving) return;
 
@@ -334,81 +431,56 @@ function ChatView({ userId }: { userId: string }) {
       now,
       rawContent: structuredResult.rawText || question.displayMarkdown || result.content,
     });
-    const savedSourceGroupId = record.sourceGroupId;
 
     setConfirmSaving(true);
     try {
-      const savedRecord = await createWrongQuestion.mutateAsync(record);
-      await db.wrongQuestions.put({
-        ...savedRecord,
-        imageUrl: savedRecord.imageUrl ?? record.imageUrl,
-        syncStatus: 'synced',
-        syncError: undefined,
-        pendingOperation: undefined,
-      });
-      if (savedSourceGroupId) {
-        setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
-        setSavedWrongQuestionIdsByGroup((prev) => ({
-          ...prev,
-          [savedSourceGroupId]: savedRecord.id,
-        }));
-        setSaveWrongErrors((prev) => {
-          const next = { ...prev };
-          delete next[savedSourceGroupId];
-          return next;
-        });
-      }
-      setPendingWrongQuestion(null);
-    } catch (error) {
-      if (error instanceof ApiClientError && error.code === 'WRONG_QUESTION_DUPLICATED') {
-        if (savedSourceGroupId) {
-          setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
-          setSaveWrongErrors((prev) => {
-            const next = { ...prev };
-            delete next[savedSourceGroupId];
-            return next;
-          });
-        }
-        setPendingWrongQuestion(null);
-        return;
-      }
-
-      const errorMessage = getMutationErrorMessage(error);
-      const localRecord: WrongQuestionRecord = {
-        ...record,
-        syncStatus: 'failed',
-        syncError: errorMessage,
-        pendingOperation: 'create',
-      };
-
-      await db.wrongQuestions.put(localRecord);
-      await enqueueMutationQueueItem(
-        createMutationQueueItem({
-          userId: ownerId,
-          entity: 'wrongQuestion',
-          operation: 'create',
-          entityId: record.id,
-          payload: { record },
-        }),
-      );
-
-      if (savedSourceGroupId) {
-        setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
-        setSavedWrongQuestionIdsByGroup((prev) => ({
-          ...prev,
-          [savedSourceGroupId]: record.id,
-        }));
-        setSaveWrongErrors((prev) => ({
-          ...prev,
-          [savedSourceGroupId]: '网络异常，错题已暂存，稍后自动同步',
-        }));
-      }
+      await persistWrongQuestionRecord(record, ownerId);
       setPendingWrongQuestion(null);
       return;
     } finally {
       setConfirmSaving(false);
     }
-  }, [confirmSaving, createWrongQuestion, pendingWrongQuestion, userId]);
+  }, [confirmSaving, pendingWrongQuestion, persistWrongQuestionRecord, userId]);
+
+  const handleBatchQuestionSave = useCallback(
+    async (result: OcrRecord, questionIds: string[]) => {
+      if (!questionIds.length) return;
+
+      const ownerId = getScopedUserId({ id: userId });
+      const structuredResult = getStructuredResultFromOcrRecord(result);
+      const sourceGroupId = result.groupId;
+      const relatedUser = sourceGroupId
+        ? ocrMessages.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
+        : [...ocrMessages]
+            .reverse()
+            .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
+
+      for (const questionId of questionIds) {
+        const question = structuredResult.questions.find((item) => item.id === questionId);
+        if (!question || !canSaveStructuredQuestion(question)) continue;
+
+        const now = Date.now();
+        const record = mapOcrQuestionToWrongQuestionRecord(question, {
+          id: crypto.randomUUID(),
+          userId: ownerId,
+          sourceRecordId: result.id,
+          sourceGroupId,
+          imageUrl: result.imageUrl ?? relatedUser?.imageUrl,
+          now,
+          rawContent: structuredResult.rawText || question.displayMarkdown || result.content,
+        });
+
+        await persistWrongQuestionRecord(record, ownerId);
+      }
+
+      const groupKey = sourceGroupId ?? result.id;
+      setBatchSelectedOcrQuestionsByGroup((prev) => ({
+        ...prev,
+        [groupKey]: new Set<string>(),
+      }));
+    },
+    [ocrMessages, persistWrongQuestionRecord, userId],
+  );
 
   // ── Unified message timeline (chat + OCR interleaved by time) ──
   const unifiedMessages = useMemo<UnifiedMsg[]>(() => {
@@ -525,6 +597,26 @@ function ChatView({ userId }: { userId: string }) {
               const saveError =
                 (saveSourceGroupId ? saveWrongErrors[saveSourceGroupId] : undefined) ??
                 (msg.groupId ? saveWrongErrors[msg.groupId] : undefined);
+              const groupKey = msg.groupId ?? msg.id;
+              const selectedForBatch =
+                batchSelectedOcrQuestionsByGroup[groupKey] ?? new Set<string>();
+              const savedQuestionIds = structuredResult
+                ? getSavedQuestionIdsForGroup(
+                    msg.groupId,
+                    structuredResult.questions,
+                    savedWrongGroupIds,
+                  )
+                : new Set<string>();
+              const ocrRecordForSave: OcrRecord = {
+                id: msg.id,
+                userId,
+                type: 'ocr-result',
+                groupId: msg.groupId,
+                content: msg.content,
+                parsedJson: msg.parsedJson,
+                imageUrl: msg.imageUrl,
+                createdAt: msg.time,
+              };
 
               return (
                 <OcrBubble
@@ -538,17 +630,38 @@ function ChatView({ userId }: { userId: string }) {
                   isSaved={isSaved}
                   savedWrongQuestionId={savedWrongQuestionId}
                   saveError={saveError}
+                  questions={structuredResult?.questions ?? []}
+                  selectedQuestionId={selectedOcrQuestionByGroup[groupKey]}
+                  selectedForBatch={selectedForBatch}
+                  savedQuestionIds={savedQuestionIds}
+                  onSelectQuestion={(questionId) =>
+                    setSelectedOcrQuestionByGroup((prev) => ({
+                      ...prev,
+                      [groupKey]: questionId,
+                    }))
+                  }
+                  onToggleBatch={(questionId) =>
+                    setBatchSelectedOcrQuestionsByGroup((prev) => {
+                      const nextSet = new Set(prev[groupKey] ?? []);
+                      if (nextSet.has(questionId)) {
+                        nextSet.delete(questionId);
+                      } else {
+                        nextSet.add(questionId);
+                      }
+                      return {
+                        ...prev,
+                        [groupKey]: nextSet,
+                      };
+                    })
+                  }
+                  onSaveQuestion={(questionId) =>
+                    prepareWrongQuestionSave(ocrRecordForSave, questionId)
+                  }
+                  onSaveSelected={() =>
+                    handleBatchQuestionSave(ocrRecordForSave, Array.from(selectedForBatch))
+                  }
                   onSave={() =>
-                    prepareWrongQuestionSave({
-                      id: msg.id,
-                      userId,
-                      type: 'ocr-result',
-                      groupId: msg.groupId,
-                      content: msg.content,
-                      parsedJson: msg.parsedJson,
-                      imageUrl: msg.imageUrl,
-                      createdAt: msg.time,
-                    }).catch((error) => {
+                    prepareWrongQuestionSave(ocrRecordForSave, primaryQuestion?.id).catch((error) => {
                       const errorKey = saveSourceGroupId ?? msg.groupId;
                       if (!errorKey) return;
                       setSaveWrongErrors((prev) => ({
@@ -745,6 +858,14 @@ const OcrBubble = memo(function OcrBubble({
   username,
   onImageClick,
   onSave,
+  questions = [],
+  selectedQuestionId,
+  selectedForBatch,
+  savedQuestionIds,
+  onSelectQuestion,
+  onToggleBatch,
+  onSaveQuestion,
+  onSaveSelected,
   ocrStatus = 'done',
   isSaved,
   savedWrongQuestionId,
@@ -757,6 +878,14 @@ const OcrBubble = memo(function OcrBubble({
   username: string;
   onImageClick?: (url: string) => void;
   onSave?: () => Promise<void>;
+  questions?: OcrQuestionResult[];
+  selectedQuestionId?: string;
+  selectedForBatch?: Set<string>;
+  savedQuestionIds?: Set<string>;
+  onSelectQuestion?: (questionId: string) => void;
+  onToggleBatch?: (questionId: string) => void;
+  onSaveQuestion?: (questionId: string) => void;
+  onSaveSelected?: () => void;
   ocrStatus?: OcrResultStatus;
   isSaved?: boolean;
   savedWrongQuestionId?: string;
@@ -787,6 +916,7 @@ const OcrBubble = memo(function OcrBubble({
   const canSave =
     ocrStatus === 'done' && primaryQuestion ? canSaveStructuredQuestion(primaryQuestion) : false;
   const missingFields = primaryQuestion?.warnings ?? [];
+  const showQuestionList = ocrStatus === 'done' && questions.length > 1;
 
   const handleSave = async () => {
     if (!onSave || saving || isSaved || !canSave) return;
@@ -842,6 +972,24 @@ const OcrBubble = memo(function OcrBubble({
               <StreamingMarkdownRenderer content={displayContent} />
             ) : (
               <MarkdownRenderer content={displayContent} />
+            )}
+            {showQuestionList &&
+              selectedForBatch &&
+              savedQuestionIds &&
+              onSelectQuestion &&
+              onToggleBatch &&
+              onSaveQuestion &&
+              onSaveSelected && (
+              <OcrQuestionList
+                questions={questions}
+                selectedQuestionId={selectedQuestionId}
+                selectedForBatch={selectedForBatch}
+                savedQuestionIds={savedQuestionIds}
+                onSelectQuestion={onSelectQuestion}
+                onToggleBatch={onToggleBatch}
+                onSaveQuestion={onSaveQuestion}
+                onSaveSelected={onSaveSelected}
+              />
             )}
             {(canSave || isSaved) && (
               <button
