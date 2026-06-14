@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 3 已完成，下一步进入 Phase 4。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-14。Phase 4.1 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -9,6 +9,7 @@
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
+- 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog 以 PostgreSQL 为权威来源。
 - 本地轻状态：今日任务和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -145,7 +146,38 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - 访问不存在或不属于当前用户的数据，返回业务级 not found。
 - 同一用户重复提交相同 `sourceGroupId`，返回 `WRONG_QUESTION_DUPLICATED`。
 
-## 5. Dexie 与离线补偿
+## 5. FSRS 复习
+
+```text
+错题详情
+  -> POST /reviews/cards/from-wrong-question
+  -> Card(wrongQuestionId) 写入 PostgreSQL
+  -> 今日任务读取 /reviews/tasks/today
+  -> 用户查看答案并选择 Again / Hard / Good / Easy
+  -> POST /reviews/cards/:cardId/rating
+  -> @repo/fsrs 计算下一次复习时间
+  -> 更新 Card + 写入 ReviewLog
+```
+
+关键约定：
+
+- Phase 4.1 使用 WrongQuestion-first 复习模型，不强制先迁移到 Question。
+- `@repo/fsrs` 是纯调度算法包，不依赖 Prisma、NestJS、浏览器或系统时间副作用。
+- `ReviewTask` 当前是 `/reviews/tasks/today` 的 API 派生视图，不单独建表。
+- Card / ReviewLog 均按当前 `userId` 隔离，所有 Review API 经过 `JwtAuthGuard`。
+- 复习评分第一轮在线写入 PostgreSQL，不进入 Dexie mutationQueue；失败时提示用户重试。
+- 今日任务页读取到期复习卡，评分后通过 TanStack Query 失效重新读取。
+
+服务端 Review API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/reviews/cards/from-wrong-question` | 将当前用户错题加入复习计划，重复加入返回已有卡片 |
+| `GET` | `/reviews/cards/by-wrong-question/:wrongQuestionId` | 读取错题对应复习卡状态 |
+| `GET` | `/reviews/tasks/today` | 读取当前用户今日到期复习卡，支持 `date=YYYY-MM-DD` |
+| `POST` | `/reviews/cards/:cardId/rating` | 提交 Again / Hard / Good / Easy 评分，更新 Card 并写 ReviewLog |
+
+## 6. Dexie 与离线补偿
 
 Dexie 当前职责：
 
@@ -176,6 +208,7 @@ WrongQuestion / OCRRecord 写操作
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
+- Review rating：Phase 4.1 在线写入 PostgreSQL，暂不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务和学习偏好：仍是 localStorage 本地轻状态。
 
@@ -186,7 +219,7 @@ WrongQuestion / OCRRecord 写操作
 - 401 / 403 不重试；网络错误和 5xx 按退避策略重试。
 - 服务端列表仍是已同步数据的权威来源；本地只保留未同步 mutation 记录作为补偿。
 
-## 6. localStorage
+## 7. localStorage
 
 | Key | 内容 | 说明 |
 | --- | --- | --- |
@@ -196,7 +229,7 @@ WrongQuestion / OCRRecord 写操作
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
-## 7. PostgreSQL / Prisma
+## 8. PostgreSQL / Prisma
 
 当前已落地的核心模型：
 
@@ -224,7 +257,7 @@ Prisma migration 状态期望：
 Database schema is up to date
 ```
 
-## 8. Phase 3 数据流改进
+## 9. Phase 3 数据流改进
 
 Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 

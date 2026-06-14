@@ -218,6 +218,34 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server build` 通过。
 - `bun --filter @repo/server test` 通过。
 
+**Phase 4.1 FSRS 复习闭环**
+
+- 完成 Phase 4 FSRS 设计 spec 与 Phase 4.1 implementation plan。
+- 实现 `@repo/fsrs` 纯调度器，支持 Again / Hard / Good / Easy 评分后的状态、间隔和日志字段计算。
+- 新增 `@repo/types/api/review`，统一 Review API contract。
+- 调整 Prisma `Card` / `ReviewLog`：`Card` 支持 `wrongQuestionId`，`ReviewLog` 记录 `elapsedDays` 与 `reviewDurationMs`。
+- 新增 NestJS Review API：错题加入复习、按错题读取卡片、今日到期卡片、提交评分。
+- 前端新增 Review API client 与 hooks。
+- 错题详情支持加入复习计划，加入后按钮显示复习状态和下次复习时间。
+- 今日任务接入到期复习卡，支持查看答案和四档评分；评分后卡片按服务端状态从今日待复习中移除。
+- 修复 server e2e 的 ts-jest rootDir 配置，避免 workspace package export map 在 e2e 编译阶段解析歧义。
+
+验证：
+
+- `bun --cwd packages/fsrs test` 通过。
+- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun run db:generate` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-api.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- 浏览器冒烟通过：注册测试账号、创建测试错题、错题详情加入复习、今日任务展开答案、提交“掌握”评分、卡片从今日到期列表移除。
+
 ---
 
 ## 当前状态
@@ -260,15 +288,24 @@ f5a2eb1 style: soften cartoon theme palette
 - 错题保存已优先使用结构化字段，多题支持单题保存和批量保存。
 - `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 已保留为 tool action proposal 边界。
 
+**Phase 4：进行中**
+
+- Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
+- 错题可加入复习卡，今日任务可读取到期复习卡并提交四档评分。
+- Card / ReviewLog 以 PostgreSQL 为权威来源，Review rating 暂不进入 Dexie mutationQueue。
+
 ---
 
 ## 待办与规划
 
 **Phase 4：FSRS 记忆系统**
 
-- [ ] Card / ReviewLog / ReviewTask 数据流。
-- [ ] Again / Hard / Good / Easy 评分。
-- [ ] 今日复习任务。
+- [x] WrongQuestion-first Card / ReviewLog 第一轮数据流。
+- [x] Again / Hard / Good / Easy 评分入口。
+- [x] 今日任务接入到期复习卡。
+- [ ] 复习历史与统计。
+- [ ] 更完整的 ReviewTask 数据流。
+- [ ] 离线评分队列与提醒策略。
 
 **后续方向**
 

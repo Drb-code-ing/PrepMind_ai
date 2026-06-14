@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前已完成 Phase 3，准备进入 Phase 4。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 4.1 已完成，Phase 4 继续推进。
 
 已完成主线：
 
@@ -14,12 +14,13 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前已完成
 - Phase 2.3：WrongQuestion / ChatMessage / OCRRecord API、MinIO 图片上传、Dexie mutationQueue。
 - Phase 2.5：Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨。
 - Phase 3：OCR structured output、结构化 activeStudyContext、多题保存策略和 tool action proposal 边界。
+- Phase 4.1：WrongQuestion-first FSRS 复习闭环、Review API、今日复习卡。
 
-下一步 Phase 4：
+下一步 Phase 4 后续：
 
-1. Card / ReviewLog / ReviewTask 数据流。
-2. FSRS 评分入口与复习状态流转。
-3. 今日复习任务与错题本联动。
+1. 复习历史与统计。
+2. 更完整的 ReviewTask 数据流。
+3. 离线评分队列与提醒策略。
 
 ## 常用命令
 
@@ -84,6 +85,7 @@ mcp -> ai, fsrs, rag, types
 - WrongQuestion：`/wrong-questions` 是服务端权威来源，Dexie 作为离线缓存和乐观更新层。
 - ChatMessage：`/chat-messages` 持久化聊天历史；`/chat-messages/sync` 使用会话快照幂等同步，不进入通用 mutation queue。
 - OCRRecord：`/ocr-records` 持久化 OCR 历史；有效题目 OCR 会生成 `activeStudyContext` 供后续追问承接。
+- Review：`/reviews` 已支持错题加入复习、今日到期复习卡和评分；Card / ReviewLog 以 PostgreSQL 为权威来源。
 - Upload：新 OCR 图片通过 `/uploads/images` 上传 MinIO，业务 API 不接收 `data:` base64 图片。
 - Offline：WrongQuestion / OCRRecord 写失败进入 Dexie `mutationQueue`，session 恢复、online、focus 时自动 flush。
 - AI：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
