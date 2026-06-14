@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { ocrStructuredResultSchema } from './ocr-question.ts';
+
 export const ocrRecordStatusSchema = z.enum([
   'PENDING',
   'PROCESSING',
@@ -7,7 +9,7 @@ export const ocrRecordStatusSchema = z.enum([
   'FAILED',
 ]);
 
-export const ocrParsedPayloadSchema = z
+export const legacyOcrParsedPayloadSchema = z
   .object({
     isQuestion: z.boolean(),
     nonQuestionSummary: z.string().max(5_000).optional(),
@@ -20,6 +22,11 @@ export const ocrParsedPayloadSchema = z
     errorSuggestion: z.string().max(100).optional(),
   })
   .passthrough();
+
+export const ocrParsedPayloadSchema = z.union([
+  ocrStructuredResultSchema,
+  legacyOcrParsedPayloadSchema,
+]);
 
 export const serverImageUrlSchema = z
   .string()
