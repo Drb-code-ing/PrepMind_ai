@@ -154,10 +154,14 @@ describe('ReviewTasksController (e2e)', () => {
     expect(pendingOnly.tasks).toHaveLength(0);
 
     const statsResponse = await request(server)
-      .get('/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480')
+      .get(
+        '/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480',
+      )
       .set('Authorization', `Bearer ${userA.accessToken}`)
       .expect(200);
-    const stats = reviewStatsResponseSchema.parse(getSuccessData(statsResponse));
+    const stats = reviewStatsResponseSchema.parse(
+      getSuccessData(statsResponse),
+    );
     expect(stats.totalReviews).toBe(1);
     expect(stats.ratingCounts.good).toBe(1);
   });

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 4.2 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-14。Phase 4.3 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -9,7 +9,7 @@
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
-- 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog 以 PostgreSQL 为权威来源。
+- 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源。
 - 本地轻状态：今日任务和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -152,11 +152,12 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 错题详情
   -> POST /reviews/cards/from-wrong-question
   -> Card(wrongQuestionId) 写入 PostgreSQL
-  -> 今日任务读取 /reviews/tasks/today
+  -> 今日任务读取 /review-tasks/today
+  -> 懒生成当日本地日期的 ReviewTask
   -> 用户查看答案并选择 Again / Hard / Good / Easy
-  -> POST /reviews/cards/:cardId/rating
+  -> POST /review-tasks/:taskId/rating
   -> @repo/fsrs 计算下一次复习时间
-  -> 更新 Card + 写入 ReviewLog
+  -> 事务内更新 Card + 写入 ReviewLog + 完成 ReviewTask
   -> /stats 读取 /reviews/stats 与 /reviews/logs
 ```
 
@@ -164,10 +165,13 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 - Phase 4.1 使用 WrongQuestion-first 复习模型，不强制先迁移到 Question。
 - `@repo/fsrs` 是纯调度算法包，不依赖 Prisma、NestJS、浏览器或系统时间副作用。
-- `ReviewTask` 当前是 `/reviews/tasks/today` 的 API 派生视图，不单独建表。
-- Card / ReviewLog 均按当前 `userId` 隔离，所有 Review API 经过 `JwtAuthGuard`。
+- `ReviewTask` 是 Phase 4.3 新增的持久化任务层，只记录 pending / completed / skipped / cancelled 生命周期。
+- Card / ReviewLog / ReviewTask 均按当前 `userId` 隔离，所有 Review API 经过 `JwtAuthGuard`。
 - 复习评分第一轮在线写入 PostgreSQL，不进入 Dexie mutationQueue；失败时提示用户重试。
-- 今日任务页读取到期复习卡，评分后通过 TanStack Query 失效重新读取。
+- `/review-tasks/today` 按当前用户本地日期懒生成到期任务，同一 `cardId + scheduledDate` 不重复创建。
+- `/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask，并关联 `reviewLogId`。
+- `/review-tasks/:taskId/skip` 与 `/review-tasks/:taskId/reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
+- 今日任务页读取 persisted ReviewTask，评分、跳过和恢复后通过 TanStack Query 失效重新读取。
 - 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。
 - `/reviews/logs` 返回当前用户最近复习记录和错题摘要，`ReviewLog` 通过关联 `card.userId` 隔离用户。
@@ -178,10 +182,20 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 | --- | --- | --- |
 | `POST` | `/reviews/cards/from-wrong-question` | 将当前用户错题加入复习计划，重复加入返回已有卡片 |
 | `GET` | `/reviews/cards/by-wrong-question/:wrongQuestionId` | 读取错题对应复习卡状态 |
-| `GET` | `/reviews/tasks/today` | 读取当前用户今日到期复习卡，支持 `date=YYYY-MM-DD` |
+| `GET` | `/reviews/tasks/today` | 旧派生视图；前端主链路已迁移到 `/review-tasks/today` |
 | `GET` | `/reviews/stats` | 读取 7 天 / 30 天复习统计，支持用户本地日期分桶 |
 | `GET` | `/reviews/logs` | 分页读取当前用户最近复习日志 |
 | `POST` | `/reviews/cards/:cardId/rating` | 提交 Again / Hard / Good / Easy 评分，更新 Card 并写 ReviewLog |
+
+服务端 ReviewTask API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/review-tasks/today` | 懒生成并读取当前用户本地日期的 ReviewTask，支持 `date`、`timezoneOffsetMinutes`、`includeCompleted` |
+| `GET` | `/review-tasks` | 分页读取 ReviewTask，支持 `date` 与 `status` 过滤 |
+| `POST` | `/review-tasks/:taskId/rating` | 提交评分，事务内更新 Card、写入 ReviewLog、完成 ReviewTask |
+| `POST` | `/review-tasks/:taskId/skip` | 跳过待复习任务，只更新 ReviewTask |
+| `POST` | `/review-tasks/:taskId/reopen` | 恢复已跳过任务到待复习，只更新 ReviewTask |
 
 ## 6. Dexie 与离线补偿
 
@@ -214,7 +228,7 @@ WrongQuestion / OCRRecord 写操作
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
-- Review rating：Phase 4.2 仍在线写入 PostgreSQL，暂不进入离线补偿队列。
+- Review rating：Phase 4.3 通过 `/review-tasks/:taskId/rating` 在线写入 PostgreSQL，暂不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务和学习偏好：仍是 localStorage 本地轻状态。
 
@@ -248,6 +262,7 @@ WrongQuestion / OCRRecord 写操作
 - `Question`
 - `Card`
 - `ReviewLog`
+- `ReviewTask`
 - `Document`
 - `Chunk`
 

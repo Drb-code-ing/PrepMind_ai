@@ -46,7 +46,10 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/skip')
-  skip(@CurrentUser() user: AuthenticatedUser, @Param('taskId') taskId: string) {
+  skip(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('taskId') taskId: string,
+  ) {
     return this.reviewTasksService.skip(user.id, taskId);
   }
 

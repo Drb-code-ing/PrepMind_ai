@@ -126,7 +126,9 @@ describe('ReviewTasksService', () => {
   });
 
   it('lists tasks with status and date filters for the current user', async () => {
-    prisma.reviewTask.findMany.mockResolvedValue([{ ...task, status: 'SKIPPED' }]);
+    prisma.reviewTask.findMany.mockResolvedValue([
+      { ...task, status: 'SKIPPED' },
+    ]);
     prisma.reviewTask.count.mockResolvedValue(1);
 
     const result = await createService().list('user_1', {
@@ -143,7 +145,11 @@ describe('ReviewTasksService', () => {
         status: 'SKIPPED',
       },
       include: { card: { include: { wrongQuestion: true } } },
-      orderBy: [{ scheduledDate: 'desc' }, { dueAt: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [
+        { scheduledDate: 'desc' },
+        { dueAt: 'asc' },
+        { createdAt: 'asc' },
+      ],
       skip: 10,
       take: 10,
     });

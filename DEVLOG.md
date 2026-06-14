@@ -268,6 +268,31 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
 
+**Phase 4.3 ReviewTask 数据流**
+
+- 新增 Prisma `ReviewTask`、`ReviewTaskStatus`、`ReviewTaskSource`，以 `cardId + scheduledDate` 防止同一复习卡当日重复生成任务。
+- 新增 `@repo/types/api/review-task`，统一 ReviewTask 今日任务、列表、评分、跳过和恢复 API contract。
+- 新增 NestJS `ReviewTasksModule`：`/review-tasks/today` 懒生成当日任务，`/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask。
+- 新增跳过与恢复：`skip` / `reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
+- 今日任务页从 `/reviews/tasks/today` 迁移到 `/review-tasks/today`，展示待复习、已完成和已跳过状态，并支持恢复已跳过任务。
+- `/stats` 继续以 ReviewLog 为统计事实来源，ReviewTask 只表示任务生命周期。
+- 浏览器验收通过：创建 smoke 账号和到期复习卡、打开 `/today`、跳过、恢复、展开答案、提交“掌握”评分、确认任务进入已完成摘要、打开 `/stats` 验证 ReviewLog 统计；验收后删除 smoke 账号。
+
+验证：
+
+- `node --experimental-strip-types packages/types/tests/review-task.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-task-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-task-view.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `git diff --check` 通过。
+
 ---
 
 ## 当前状态
@@ -314,9 +339,10 @@ f5a2eb1 style: soften cartoon theme palette
 
 - Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
 - Phase 4.2 学习统计页和 Review stats/logs API 已完成。
-- 错题可加入复习卡，今日任务可读取到期复习卡并提交四档评分。
+- Phase 4.3 ReviewTask 持久化任务流已完成。
+- 错题可加入复习卡，今日任务可读取持久化 ReviewTask 并提交四档评分、跳过和恢复。
 - `/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
-- Card / ReviewLog 以 PostgreSQL 为权威来源，Review rating 暂不进入 Dexie mutationQueue。
+- Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源，Review rating 暂不进入 Dexie mutationQueue。
 
 ---
 
@@ -328,7 +354,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Again / Hard / Good / Easy 评分入口。
 - [x] 今日任务接入到期复习卡。
 - [x] 复习历史与统计。
-- [ ] 更完整的 ReviewTask 数据流。
+- [x] 更完整的 ReviewTask 数据流。
 - [ ] 离线评分队列与提醒策略。
 
 **后续方向**

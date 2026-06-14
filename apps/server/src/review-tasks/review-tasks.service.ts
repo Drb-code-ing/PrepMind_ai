@@ -270,10 +270,7 @@ export class ReviewTasksService {
     };
   }
 
-  private countByStatus(
-    tasks: ReviewTaskWithCard[],
-    status: ReviewTaskStatus,
-  ) {
+  private countByStatus(tasks: ReviewTaskWithCard[], status: ReviewTaskStatus) {
     return tasks.filter((task) => task.status === status).length;
   }
 

@@ -80,10 +80,14 @@ describe('ReviewsController (e2e)', () => {
       .expect(201);
 
     const statsResponse = await request(server)
-      .get('/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480')
+      .get(
+        '/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480',
+      )
       .set('Authorization', `Bearer ${userA.accessToken}`)
       .expect(200);
-    const stats = reviewStatsResponseSchema.parse(getSuccessData(statsResponse));
+    const stats = reviewStatsResponseSchema.parse(
+      getSuccessData(statsResponse),
+    );
     expect(stats.totalReviews).toBe(1);
     expect(stats.ratingCounts.good).toBe(1);
     expect(stats.dailyReviews).toHaveLength(7);
@@ -92,12 +96,16 @@ describe('ReviewsController (e2e)', () => {
       .get('/reviews/logs?page=1&pageSize=20')
       .set('Authorization', `Bearer ${userA.accessToken}`)
       .expect(200);
-    const logs = reviewLogListResponseSchema.parse(getSuccessData(logsResponse));
+    const logs = reviewLogListResponseSchema.parse(
+      getSuccessData(logsResponse),
+    );
     expect(logs.total).toBe(1);
     expect(logs.items[0]?.wrongQuestion?.subject).toBe('数学');
 
     const otherStatsResponse = await request(server)
-      .get('/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480')
+      .get(
+        '/reviews/stats?range=7d&endDate=2026-06-14&timezoneOffsetMinutes=-480',
+      )
       .set('Authorization', `Bearer ${userB.accessToken}`)
       .expect(200);
     const otherStats = reviewStatsResponseSchema.parse(
