@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前已完成 Phase 2.5，准备进入 Phase 3：AI 讲题系统。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前已完成 Phase 3，准备进入 Phase 4：FSRS 记忆系统。
 
 ## 项目快照
 
@@ -12,7 +12,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 2.2 | 已完成 | 前端 Auth 接入后端，登录态由后端 session 权威控制 |
 | Phase 2.3 | 已完成 | WrongQuestion / ChatMessage / OCRRecord API、MinIO 图片链路、Dexie mutationQueue |
 | Phase 2.5 | 已完成 | Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨 |
-| Phase 3 | 下一步 | OCR structured output schema、AI 讲题 prompt、tool calling |
+| Phase 3 | 已完成 | OCR structured output、AI 讲题 prompt、多题保存、tool action proposal 边界 |
 
 ## 技术栈
 
@@ -124,8 +124,8 @@ mcp -> ai, fsrs, rag, types
 
 ## 下一步
 
-Phase 3 最优先：
+Phase 4 最优先：
 
-1. OCR structured output schema。
-2. AI 讲题 prompt 与 tool calling 边界。
-3. `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 工具规划。
+1. Card / ReviewLog / ReviewTask 数据流。
+2. FSRS 评分入口与复习状态流转。
+3. 今日复习任务与错题本联动。

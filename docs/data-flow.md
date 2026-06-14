@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 2.5 已完成，下一步进入 Phase 3。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-14。Phase 3 已完成，下一步进入 Phase 4。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -95,9 +95,10 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
       A. POST /api/ocr -> 外部 OCR 模型 SSE
       B. POST /uploads/images -> MinIO -> 服务端图片 URL
   -> OCR 输出完成
-  -> parseOcrResult()
+  -> 提取 OcrStructuredResult
+  -> 写入 OcrRecord.parsedJson
   -> POST /ocr-records
-  -> 若为有效题目：生成 activeStudyContext
+  -> 若为有效题目：从结构化题目生成 activeStudyContext
   -> 用户确认保存错题
   -> POST /wrong-questions
   -> 成功：PostgreSQL + Dexie 缓存
@@ -106,9 +107,13 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 关键约定：
 
-- 当前错题来源仍只有 OCR。
+- `/api/ocr` 输出 display Markdown + structured JSON envelope。
+- `OcrStructuredResult` 是 OCR 完成态的主要数据来源，旧 Markdown parser 仅作为历史记录和异常输出兜底。
+- 当前错题来源仍以 OCR 为主。
 - 非题目 OCR 不生成 `activeStudyContext`，不显示保存错题入口，也不套用题目分析框架。
 - 保存错题入口只在有效题目 OCR 输出结束后出现。
+- 多题 OCR 会拆成独立题目对象，错题防重 key 使用 `sourceGroupId:questionId`。
+- `activeStudyContext` 从结构化题目对象生成，包含题目 id、题型、难度和识别提醒。
 - `sourceRecordId` 指向服务端 `OcrRecord.id`。
 - `/ocr-records` 与 `/wrong-questions` 不接收 `data:` base64 图片；前端创建请求前会剥离本地 base64。
 - 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
@@ -189,7 +194,7 @@ WrongQuestion / OCRRecord 写操作
 | `prepmind-today:{userId}:{date}` | 今日任务完成状态 | 当前仍是本地轻学习手账 |
 | `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，暂不注入 prompt |
 
-学习偏好后续如果要影响 AI 讲解风格，需要在 Phase 3 单独设计 prompt 注入边界。
+学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
 ## 7. PostgreSQL / Prisma
 
@@ -219,11 +224,13 @@ Prisma migration 状态期望：
 Database schema is up to date
 ```
 
-## 8. Phase 3 数据流改进方向
+## 8. Phase 3 数据流改进
 
-Phase 3 需要重点解决当前 OCR Markdown 解析链路的脆弱性：
+Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 
-1. 用 structured output schema 承载题目字段，而不是依赖前端从 Markdown 中猜字段。
-2. 明确单题、多题、非题目输入的识别结果和保存策略。
-3. 让 `activeStudyContext` 来源于稳定结构化数据。
-4. 将 `createWrongQuestion`、`searchKnowledge`、`createReviewTask` 设计为可审计的 tool calling 边界。
+1. `/api/ocr` 要求模型同时输出可展示 Markdown 和结构化 JSON envelope。
+2. 前端完成阶段提取 `OcrStructuredResult`，并保存到 `OcrRecord.parsedJson`。
+3. `activeStudyContext` 从结构化题目对象生成，后续追问继续承接当前题目。
+4. 保存错题优先使用结构化字段，多题按 `sourceGroupId:questionId` 生成独立防重 key。
+5. 旧 OCR 历史继续通过 legacy adapter 和 `parseOcrResult()` 兜底。
+6. `createWrongQuestion`、`searchKnowledge`、`createReviewTask` 已保留为 tool action proposal 边界，暂不自动写库。

@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前已完成 Phase 2.5，准备进入 Phase 3。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前已完成 Phase 3，准备进入 Phase 4。
 
 已完成主线：
 
@@ -13,12 +13,13 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前已完成
 - Phase 2.2：前端 Auth 接入后端，登录态由 NestJS session 权威控制。
 - Phase 2.3：WrongQuestion / ChatMessage / OCRRecord API、MinIO 图片上传、Dexie mutationQueue。
 - Phase 2.5：Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨。
+- Phase 3：OCR structured output、结构化 activeStudyContext、多题保存策略和 tool action proposal 边界。
 
-下一步 Phase 3：
+下一步 Phase 4：
 
-1. OCR structured output schema。
-2. AI 讲题 prompt 与 tool calling 设计。
-3. `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 工具规划。
+1. Card / ReviewLog / ReviewTask 数据流。
+2. FSRS 评分入口与复习状态流转。
+3. 今日复习任务与错题本联动。
 
 ## 常用命令
 

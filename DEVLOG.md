@@ -190,6 +190,34 @@ f5a2eb1 style: soften cartoon theme palette
 - `git diff --check` 通过，仅有 Windows 换行提示。
 - 关键文档中的 Phase 3、`mutationQueue`、`5433`、`next/font` 等表述检查通过。
 
+**Phase 3 AI 讲题系统**
+
+- 新增 `@repo/types/api/ocr-question`，定义 OCR structured output、题目对象、保存状态和 tool action proposal schema。
+- `/api/ocr` 改为 display Markdown + structured JSON envelope 输出协议，并将 OCR prompt 抽到可测试模块。
+- 前端新增 structured OCR parser、legacy adapter、activeStudyContext 映射和 wrong-question 映射。
+- OCRRecord `parsedJson` 开始保存结构化题目结果，旧 OCR 历史继续兼容。
+- OCR runtime 在流结束后保存结构化结果，并从结构化主问题生成追问上下文。
+- 保存错题优先使用结构化字段，多题使用独立 `sourceGroupId:questionId` 防重。
+- 聊天页新增多题题目卡片，支持单题确认保存和所选题目批量保存。
+
+验证：
+
+- `node --experimental-strip-types packages/types/tests/ocr-question.test.mts` 通过。
+- `node --experimental-strip-types packages/types/tests/ocr-record.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `node --experimental-strip-types apps/web/src/lib/ocr-prompt.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/ocr-structured-result.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过；worktree 内存在额外 lockfile，Next.js 输出 root 推断 warning。
+- `bun run db:generate` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+
 ---
 
 ## 当前状态
@@ -225,17 +253,16 @@ f5a2eb1 style: soften cartoon theme palette
 - 错题本、聊天页、输入区、保存错题弹层和空状态体验已完成打磨。
 - 注册/登录页已统一到 Phase 2.5 视觉系统，Auth 数据流不变。
 
+**Phase 3：已完成**
+
+- OCR structured output schema、结构化 prompt、结构化 OCR 解析和 `OcrRecord.parsedJson` 已完成。
+- `activeStudyContext` 已从结构化题目生成，支持题目 id、题型、难度和识别提醒。
+- 错题保存已优先使用结构化字段，多题支持单题保存和批量保存。
+- `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 已保留为 tool action proposal 边界。
+
 ---
 
 ## 待办与规划
-
-**Phase 3：AI 讲题系统**
-
-- [ ] 设计 OCR structured output schema。
-- [ ] 标准化题目字段：题干、选项、答案、解析、知识点、难度、题型、可保存状态。
-- [ ] 设计 AI 讲题 prompt：分步讲解、公式规范、非题目输入门禁、多题输入处理。
-- [ ] 规划 tool calling 边界：`createWrongQuestion`、`searchKnowledge`、`createReviewTask`。
-- [ ] 明确前端保存错题策略：单题直接保存，多题让用户选择保存单题或批量保存。
 
 **Phase 4：FSRS 记忆系统**
 
