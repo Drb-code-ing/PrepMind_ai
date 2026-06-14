@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 
 export type LocalSyncStatus = 'synced' | 'pending' | 'failed';
 export type PendingOperation = 'create' | 'update' | 'delete';
@@ -43,6 +44,7 @@ export interface OcrRecord extends LocalSyncMetadata {
   type: 'user' | 'ocr-loading' | 'ocr-result';
   groupId?: string;
   content: string;
+  parsedJson?: OcrParsedPayload | null;
   imageUrl?: string;
   createdAt: number;
 }

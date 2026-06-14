@@ -10,6 +10,7 @@ import type { OcrRecord } from './db.ts';
 
 async function run() {
   testMapsServerResponseToLocalRecord();
+  testPreservesStructuredParsedJsonOnRoundTrip();
   testStripsBase64ImageFromCreateRequest();
   testKeepsServerImageUrlInCreateRequest();
   await testListsOcrRecords();
@@ -35,9 +36,28 @@ function testMapsServerResponseToLocalRecord() {
     type: 'ocr-result',
     groupId: 'group_1',
     content: 'raw',
+    parsedJson: { isQuestion: true, questionText: '题目' },
     imageUrl: 'https://cdn.example.com/ocr.png',
     createdAt: Date.parse('2026-06-12T00:00:00.000Z'),
   });
+}
+
+function testPreservesStructuredParsedJsonOnRoundTrip() {
+  const parsedJson = createStructuredParsedJson();
+  const localRecord = mapOcrRecordResponseToLocalRecord({
+    id: 'ocr_2',
+    userId: 'user_1',
+    groupId: 'group_2',
+    imageUrl: null,
+    rawText: 'raw',
+    parsedJson,
+    status: 'DONE',
+    createdAt: '2026-06-12T00:00:00.000Z',
+    updatedAt: '2026-06-12T00:00:01.000Z',
+  });
+
+  assert.deepEqual(localRecord.parsedJson, parsedJson);
+  assert.deepEqual(mapLocalOcrRecordToCreateRequest(localRecord, parsedJson).parsedJson, parsedJson);
 }
 
 function testStripsBase64ImageFromCreateRequest() {
@@ -175,6 +195,35 @@ async function testCreatesOcrRecord() {
     status: 'DONE',
   });
   assert.equal(result.id, 'ocr_1');
+}
+
+function createStructuredParsedJson() {
+  return {
+    recognitionType: 'question',
+    summary: '识别到 1 道题。',
+    questions: [
+      {
+        id: 'q1',
+        index: 1,
+        questionText: '求函数 f(x)=x^2 的导数。',
+        options: [],
+        subject: '数学',
+        questionType: 'calculation',
+        difficulty: 'easy',
+        knowledgePoints: ['导数'],
+        answer: '2x',
+        analysis: '使用幂函数求导公式。',
+        errorSuggestion: '公式记忆遗漏',
+        saveStatus: 'savable',
+        confidence: 0.95,
+        displayMarkdown: '## 题目\n求函数 f(x)=x^2 的导数。',
+        warnings: [],
+      },
+    ],
+    rawText: 'raw',
+    displayMarkdown: 'display',
+    modelVersion: 'mimo-v2.5',
+  } as const;
 }
 
 function jsonResponse(body: unknown) {

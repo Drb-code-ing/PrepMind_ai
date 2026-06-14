@@ -86,6 +86,7 @@ export function mapOcrRecordResponseToLocalRecord(
     type: 'ocr-result',
     groupId: response.groupId,
     content: response.rawText,
+    parsedJson: response.parsedJson,
     imageUrl: response.imageUrl ?? undefined,
     createdAt: Date.parse(response.createdAt),
   };
