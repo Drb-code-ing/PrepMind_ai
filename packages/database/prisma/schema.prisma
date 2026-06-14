@@ -31,6 +31,7 @@ model User {
   conversations  Conversation[]
   chatMessages   ChatMessage[]
   ocrRecords     OcrRecord[]
+  reviewTasks    ReviewTask[]
 }
 
 model Account {
@@ -176,6 +177,7 @@ model Card {
   question      Question?      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   wrongQuestion WrongQuestion? @relation(fields: [wrongQuestionId], references: [id], onDelete: Cascade)
   logs          ReviewLog[]
+  reviewTasks   ReviewTask[]
 
   @@index([userId, nextReview])
   @@index([userId, state])
@@ -201,10 +203,47 @@ model ReviewLog {
   difficultyAfter  Float
   reviewedAt       DateTime @default(now())
 
-  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card       Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  reviewTask ReviewTask?
 
   @@index([cardId])
   @@index([reviewedAt])
+}
+
+model ReviewTask {
+  id            String           @id @default(cuid())
+  userId        String
+  cardId        String
+  reviewLogId   String?          @unique
+  scheduledDate String           @db.VarChar(10)
+  dueAt         DateTime
+  status        ReviewTaskStatus @default(PENDING)
+  source        ReviewTaskSource @default(FSRS)
+  completedAt   DateTime?
+  skippedAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card      Card       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  reviewLog ReviewLog? @relation(fields: [reviewLogId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, scheduledDate])
+  @@index([userId, scheduledDate, status])
+  @@index([userId, status, dueAt])
+}
+
+enum ReviewTaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+
+enum ReviewTaskSource {
+  FSRS
+  MANUAL
+  PLANNER
 }
 
 // ---------- RAG 知识库 ----------
