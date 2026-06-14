@@ -10,12 +10,16 @@ export type ChatContextMessage = {
 export type ActiveStudyContext = {
   type: 'ocr-question';
   sourceGroupId?: string;
+  questionId?: string;
   questionText: string;
   subject?: string;
+  questionType?: string;
+  difficulty?: string;
   knowledgePoints?: string[];
   analysis?: string;
   answer?: string;
   rawContent?: string;
+  warnings?: string[];
   updatedAt?: number;
 };
 
@@ -88,8 +92,20 @@ function formatActiveStudyContext(activeContext: ActiveStudyContext) {
     `题目：${clampText(activeContext.questionText)}`,
   ];
 
+  if (activeContext.questionId?.trim()) {
+    lines.push(`题目ID：${activeContext.questionId.trim()}`);
+  }
+
   if (activeContext.subject?.trim()) {
     lines.push(`学科：${activeContext.subject.trim()}`);
+  }
+
+  if (activeContext.questionType?.trim()) {
+    lines.push(`题型：${activeContext.questionType.trim()}`);
+  }
+
+  if (activeContext.difficulty?.trim()) {
+    lines.push(`难度：${activeContext.difficulty.trim()}`);
   }
 
   if (activeContext.knowledgePoints?.length) {
@@ -102,6 +118,11 @@ function formatActiveStudyContext(activeContext: ActiveStudyContext) {
 
   if (activeContext.answer?.trim()) {
     lines.push(`参考答案：${clampText(activeContext.answer, 1200)}`);
+  }
+
+  const warnings = activeContext.warnings?.map((warning) => warning.trim()).filter(Boolean);
+  if (warnings?.length) {
+    lines.push(`识别提醒：${warnings.join('、')}`);
   }
 
   return lines.join('\n');

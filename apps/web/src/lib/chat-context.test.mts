@@ -52,11 +52,15 @@ test('injects active OCR question into the system prompt without relying on chat
   const activeContext: ActiveStudyContext = {
     type: 'ocr-question',
     sourceGroupId: 'ocr-1',
+    questionId: 'q1',
     questionText: '求函数 f(x)=x^2 的导数。',
     subject: '数学',
+    questionType: 'calculation',
+    difficulty: 'easy',
     knowledgePoints: ['导数'],
     analysis: '使用幂函数求导公式。',
     answer: '2x',
+    warnings: ['答案区域模糊'],
     updatedAt: 100,
   };
 
@@ -64,9 +68,13 @@ test('injects active OCR question into the system prompt without relying on chat
 
   assert.match(prompt, /基础系统提示/);
   assert.match(prompt, /当前正在讨论的题目/);
+  assert.match(prompt, /题目ID：q1/);
   assert.match(prompt, /求函数 f\(x\)=x\^2 的导数。/);
+  assert.match(prompt, /题型：calculation/);
+  assert.match(prompt, /难度：easy/);
   assert.match(prompt, /知识点：导数/);
   assert.match(prompt, /参考答案：2x/);
+  assert.match(prompt, /识别提醒：答案区域模糊/);
 });
 
 test('omits active context section when there is no OCR question context', () => {
