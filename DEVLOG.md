@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-按日期记录关键改动、验证结果和提交记录。所有待办和规划统一放在文末。
+按日期记录关键改动、验证结果和提交信息。所有待办与规划统一放在文末，避免散落在历史记录中。
 
 ---
 
@@ -11,8 +11,7 @@
 - 整理 Phase 0 ~ Phase 10 学习与开发路线。
 - 初始化 monorepo：`apps/web`、`apps/server`、`packages/*`。
 - 创建基础 packages：`types`、`database`、`ai`、`fsrs`、`rag`、`agent`、`mcp`、`ui`。
-- 创建 Prisma schema 初稿。
-- 配置 Docker Compose：PostgreSQL + pgvector、Redis、MinIO。
+- 创建 Prisma schema 初稿与 Docker Compose 基础设施。
 - 创建 `CLAUDE.md` 和 `DEVLOG.md`。
 
 ---
@@ -21,13 +20,11 @@
 
 **Phase 1 登录与聊天 MVP**
 
-- 完成登录/注册 UI、表单校验和固定短信验证码登录。
-- 创建 `userStore`，使用 zustand + localStorage 保存本地用户与登录态。
-- 接入 AuthGuard。
+- 完成登录/注册 UI、表单校验、本地模拟登录和 AuthGuard。
 - 完成移动端优先布局、PWA manifest、shadcn/ui 基础组件。
 - 接入 Vercel AI SDK + DeepSeek，通过 `/api/chat` 实现 SSE 流式聊天。
 - AI 回复支持 Markdown + GFM。
-- 创建 `chatStore` 保存输入框草稿。
+- 创建 `userStore` 和 `chatStore`，保存本地用户、登录态和输入草稿。
 
 ---
 
@@ -35,11 +32,9 @@
 
 **拍照识题与本地持久化**
 
-- 实现图片上传、相机唤起、图片预览、全屏预览。
-- 创建 `/api/ocr`，接入 OCR 多模态模型，支持 SSE 流式返回。
-- OCR 提示词要求输出题干、知识点、分析思路、参考答案等结构化 Markdown。
-- 引入 Dexie，创建 `prepmind-db`。
-- 将聊天消息和 OCR 记录迁移到 IndexedDB。
+- 实现图片上传、相机唤起、图片预览和全屏预览。
+- 创建 `/api/ocr`，接入多模态 OCR 模型，支持 SSE 流式返回。
+- 引入 Dexie，持久化聊天消息和 OCR 记录。
 - 修复多轮持久化问题：无限循环、TDZ、刷新丢消息、AI 最终回复未保存。
 - 创建 `docs/data-flow.md` 记录当时数据流。
 
@@ -49,16 +44,11 @@
 
 **Phase 1 收尾**
 
-- 移除 Phase 1 中不必要的 TanStack Query，明确 Phase 2 接入 HTTP API 后再恢复。
-- Dexie schema 升级到 v6。
-- `messages`、`ocrRecords`、`wrongQuestions` 增加 `userId`，实现本地账号隔离。
-- 聊天消息与 OCR 消息合并为统一时间线渲染。
-- 实现本地错题本 CRUD。
-- OCR 结果保存错题前增加字段预览和缺失字段提示。
-- 使用 `sourceGroupId` 防重复保存错题。
+- Dexie schema 升级到 v6，`messages`、`ocrRecords`、`wrongQuestions` 增加 `userId`。
+- 聊天消息与 OCR 消息合并为统一时间线。
+- 实现本地错题本 CRUD、`sourceGroupId` 防重复、保存预览和缺失字段提示。
 - 接入 `remark-math`、`rehype-katex`、`katex`，支持数学公式渲染。
-- 优化错题详情页交互和遮罩层。
-- 修复 hydration warning。
+- 优化错题详情页交互和遮罩层，修复 hydration warning。
 - 实现今日任务静态版。
 - 整理 Phase 1 数据流、开发文档和本地博客。
 
@@ -69,368 +59,94 @@
 **Phase 2.1 后端基础与鉴权**
 
 - 将 workspace 包管理迁移到 Bun。
-- 固定 Docker PostgreSQL 本机端口为 5433，避免 Windows 本地 PostgreSQL 干扰。
-- 新增 `docs/dev-start.md`，记录本地启动、迁移和验证命令。
+- 固定 Docker PostgreSQL 本机端口为 5433，新增 `docs/dev-start.md`。
 - 扩展 Prisma schema，落地 Auth 相关模型和后续业务模型。
-- 新增 migration：`20260609000000_phase_2_auth_foundation`。
-- 新增 Prisma Client 修复脚本，适配 Bun workspace 下的生成路径。
-- 新增 NestJS ConfigModule、DatabaseModule、HealthModule。
-- 新增统一响应 envelope、异常过滤器、requestId middleware。
+- 新增 NestJS Config / Database / Health 模块。
+- 新增统一响应 envelope、异常过滤器和 requestId middleware。
 - 新增 AuthModule：注册、登录、当前用户、refresh token 轮换、logout。
-- Refresh token 使用 httpOnly cookie，服务端只保存 hash。
 - 新增 UsersModule，支持读取和更新当前用户资料。
 - `@repo/types` 新增 Auth/Common API schemas。
 - 新增 AuthService 单元测试和 Auth e2e。
-- 修复 `/api/chat` 在 AI Key 缺失时只显示无响应的问题，改为明确错误提示。
-- 修复保存错题预览弹窗公式未渲染问题。
-- 修复 `packages/fsrs` 的 `test` 脚本，改为类型检查。
+- 修复 AI Key 缺失提示、保存错题预览公式渲染和 `packages/fsrs` 类型检查脚本。
 
 ---
 
 ## 2026-06-11（Day 6）
 
-**Phase 2.2 前端接入后端 Auth**
+**Phase 2.2 Auth 接入与 Phase 2.3 起步**
 
 - 完成 Phase 2.2 中文 spec 与 implementation plan。
-- 新增 `@tanstack/react-query`，恢复前端 server state 管理基础设施。
-- 新增 `QueryProvider` 与 `AuthSessionProvider`。
-- 新增 `apiClient`：
-  - 默认 `credentials: 'include'`。
-  - 解析后端统一 response envelope。
-  - 支持 access token 注入。
-  - 抛出结构化 `ApiClientError`。
-- 新增 `authApi` 和后端用户映射：
-  - `register`
-  - `login`
-  - `refresh`
-  - `me`
-  - `logout`
-- 简化 `userStore`，登录态改为运行态 session：`currentUser`、`accessToken`、`sessionHydrated`。
-- 新增 Auth hooks：
-  - `useMe`
-  - `useLogin`
-  - `useRegister`
-  - `useLogout`
-  - `useRefreshSession`
+- 接入 TanStack Query，新增 `QueryProvider` 与 `AuthSessionProvider`。
+- 新增 `apiClient`、`authApi` 和 Auth hooks。
 - 登录/注册页面迁移到 NestJS Auth API。
-- 手机号验证码登录暂未开放，页面明确提示使用邮箱登录。
-- AuthGuard 改为以后端 session 为权威来源。
-- 应用启动通过 `/auth/refresh` 恢复 session。
-- 侧边栏登出调用 `/auth/logout` 并清理前端 session cache。
-- 修复前端 build 中 `.next/dev` 本地缓存污染导致的类型检查问题。
-- 更新 `AGENTS.md`、`CLAUDE.md`、`docs/roadmap.md`、`docs/data-flow.md`。
+- `AuthGuard` 改为以后端 session 为权威来源，应用启动通过 `/auth/refresh` 恢复 session。
+- 增强 refresh token rotation：旧 RT 重放时返回 `AUTH_REFRESH_REUSED`，并撤销同 family 活跃 RT。
+- 新增 WrongQuestion 后端 CRUD API、共享 Zod schema、单测与 e2e。
+- 前端错题本和聊天页保存错题流程接入服务端 API。
+- 新增 ChatMessage API 与前端聊天历史同步。
+- 新增聊天上下文窗口和 `activeStudyContext` 注入，支持围绕 OCR 题目追问。
+- 优化非题目 OCR 门禁、流式停止按钮、保存错题入口出现时机和 CRUD 轻提示。
 
-**Auth 安全增强**
+验证：
 
-- 在 refresh token rotation 基础上增加 reuse detection。
-- 已轮换的旧 RT 再次被使用时，返回 `AUTH_REFRESH_REUSED`。
-- 当同 token family 仍存在活跃 RT 时，立即撤销整个 family 并清除 refresh cookie。
-- logout 后的旧 cookie 或已全量撤销的 family 继续按普通失效处理。
-- 当前 Auth 主链路仍使用 PostgreSQL 存储 refresh token 状态，不引入 Redis。
-
-**Phase 2.3 后端 WrongQuestion CRUD API**
-
-- 新增 `@repo/types/api/wrong-question`，提供错题 CRUD 的 Zod schema 与请求/响应类型。
-- 新增 `WrongQuestionsModule`、`WrongQuestionsController`、`WrongQuestionsService`。
-- 新增 `/wrong-questions` REST API：
-  - `GET /wrong-questions`
-  - `GET /wrong-questions/:id`
-  - `POST /wrong-questions`
-  - `PATCH /wrong-questions/:id`
-  - `DELETE /wrong-questions/:id`
-- 所有错题接口接入 `JwtAuthGuard`，Service 层按当前 `userId` 强制隔离。
-- `sourceGroupId` 用于同用户同 OCR 来源防重复保存，重复时返回 `WRONG_QUESTION_DUPLICATED`。
-- 访问不存在或非当前用户的错题统一返回 `WRONG_QUESTION_NOT_FOUND`。
-
-**Phase 2.3 前端错题本接入服务端**
-
-- 新增 `wrong-question-api`，封装本地错题记录与服务端 WrongQuestion schema 的双向映射。
-- 新增 `useWrongQuestions`、`useCreateWrongQuestion`、`useUpdateWrongQuestion`、`useDeleteWrongQuestion`。
-- 聊天页保存错题流程改为先调用 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie。
-- 错题本页面改为通过 TanStack Query 读取服务端错题列表。
-- 标记已掌握、保存备注、删除错题改为调用服务端 API，并同步 Dexie 缓存。
-- 服务端同步失败时，错题本页面继续展示 Dexie 本地缓存并提示用户。
-- 修复本地开发 CORS：开发环境允许 `localhost`、`127.0.0.1` 和私有局域网地址的动态端口，避免 Next.js 自动切到 `3002` 后注册/登录请求被浏览器拦截。
-- 修复保存错题时 OCR base64 图片导致请求体过大并返回 500 的问题：前端创建错题请求不再上传 `data:` 图片，Dexie 本地缓存继续保留图片；后端将 body parser 超大请求映射为 `PAYLOAD_TOO_LARGE`。
-
-**Phase 2.3 ChatMessage API 与前端聊天历史迁移**
-
-- 新增 `@repo/types/api/chat-message`，提供聊天消息 role、列表响应、批量同步请求等 Zod schema。
-- 新增 `ChatMessagesModule`、`ChatMessagesController`、`ChatMessagesService`。
-- 新增 `/chat-messages` REST API：
-  - `GET /chat-messages`
-  - `POST /chat-messages/sync`
-  - `DELETE /chat-messages`
-- 所有聊天历史接口接入 `JwtAuthGuard`，Service 层按当前 `userId` 强制隔离。
-- `POST /chat-messages/sync` 支持无 `conversationId` 时创建默认会话，并按当前消息数组替换会话消息。
-- 前端新增 `chat-message-api`、`useChatMessages`、`useSyncChatMessages`、`useClearChatMessages`。
-- 聊天页启动时先用 Dexie 快速恢复，再读取服务端聊天历史；服务端有记录时覆盖本地缓存，服务端无记录但本地有旧消息时自动迁移到服务端。
-- AI 聊天仍由 Next.js `/api/chat` 代理外部 AI SSE，回复完成后批量同步到 NestJS ChatMessage API。
-- 新增 ChatMessage service 单测与 e2e 测试。
-
-**Phase 2.3.2 聊天上下文与 OCR 交互收尾**
-
-- 修复聊天后台同步鉴权失败时触发 Next.js dev overlay 的问题，改为降级日志，不打断用户对话。
-- 新增聊天上下文窗口：单次 `/api/chat` 请求按估算 token budget 截断普通历史，完整历史仍保存在 Dexie / PostgreSQL。
-- OCR 识别出有效题目后生成 `activeStudyContext`，后续普通追问会把当前题目上下文注入 system prompt，支持“为什么这样做”等承接式对话。
-- 非题目图片不再套用学科、知识点、错因分析等题目框架，也不会显示保存错题入口。
-- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮，可中断当前输出。
-- 保存错题按钮只在有效题目识别完成后显示，避免解析过程中提前出现。
-- 优化保存错题、标记掌握、保存备注、删除等 CRUD 操作的轻提示与确认交互。
-- 优化聊天内容渲染：规范模型输出公式 delimiters，拆分紧凑步骤文本，提升公式和解题步骤可读性。
-- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`，准备进入 Phase 2.3 下一步。
-
-**验证**
-
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `node --experimental-strip-types apps/web/src/lib/api-client.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/auth-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/user-scope.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- Prisma migration status：`Database schema is up to date`。
-
-**提交记录**
-
-```text
-332a3a3 docs: plan Phase 2.2 frontend auth
-863d7f0 chore: add frontend query providers
-1dd95fb feat: add frontend api client
-afb2578 feat: add frontend auth session state
-9c27aaa feat: add auth query hooks
-19f54e1 feat: migrate frontend auth to backend
-37b7cf6 fix: stabilize frontend auth build
-65ad246 docs: update Phase 2.2 auth flow
-8ebc04f feat: detect refresh token reuse
-bc61a27 docs: complete Phase 2.2 devlog commits
-cc132b5 feat: add wrong question CRUD API
-d022234 feat: connect wrong question frontend to API
-6a68627 fix: allow dynamic dev cors origins
-73c5e05 fix: avoid uploading local wrong question images
-6da9d34 feat: improve wrong question save feedback
-c892796 feat: refine wrong question crud feedback
-fc88c46 fix: polish wrong question action feedback
-265ba42 feat: add chat message api sync
-049c9af fix: refine ocr streaming controls
-587e5e7 fix: simplify non-question ocr results
-a82f3a9 feat: add chat context window
-bee4789 fix: improve chat rendering
-```
+- 前端 lint/build 通过。
+- 后端 lint/build/test/e2e 通过。
+- 关键前端 API、上下文、渲染与解析脚本测试通过。
+- Prisma migration status 为 `Database schema is up to date`。
 
 ---
 
 ## 2026-06-12（Day 7）
 
-**Phase 2.3 OCRRecord API 与前端 OCR 历史迁移**
+**Phase 2.3 OCRRecord、MinIO 与流式体验**
 
-- 完成 OCRRecord API 中文设计与实现计划。
-- 新增 `@repo/types/api/ocr-record`，提供 OCRRecord status、parsed payload、创建请求、列表查询和响应 schema。
-- 新增后端 `OcrRecordsModule`、`OcrRecordsController`、`OcrRecordsService`。
-- 新增 `/ocr-records` REST API：
-  - `GET /ocr-records`
-  - `GET /ocr-records/:id`
-  - `POST /ocr-records`
-  - `DELETE /ocr-records/:id`
-- OCRRecord API 接入 `JwtAuthGuard`，所有读写按当前 `userId` 隔离。
-- `POST /ocr-records` 按 `userId + groupId` upsert，避免同一次 OCR 重复写入。
-- 服务端拒绝 `data:` base64 图片 URL，返回 `OCR_RECORD_IMAGE_NOT_SUPPORTED`。
-- 新增 OCRRecord service 单测与 e2e 测试，覆盖创建、upsert、列表过滤、详情读取、跨用户隔离、base64 拒绝和删除。
-- 前端新增 `ocr-record-api` 与 `useOcrRecords`、`useCreateOcrRecord`、`useDeleteOcrRecord`。
-- 前端创建 OCRRecord 请求前会剥离 base64 `imageUrl`，图片预览继续保存在 Dexie。
-- 聊天页 OCR 完成后先写入服务端 OCRRecord，再同步 Dexie 缓存。
-- 聊天页启动时先读取 Dexie 快速恢复，再用服务端 OCR 历史合并本地图片预览缓存。
-- 新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
-- 更新 `docs/data-flow.md`、`docs/roadmap.md`、`CLAUDE.md`、`AGENTS.md`。
+- 新增 OCRRecord API contract、后端模块、单测与 e2e。
+- 前端新增 OCRRecord API hooks，OCR 完成后先写服务端再同步 Dexie。
+- 修复 `/chat-messages/sync` 重复同步导致的唯一约束错误。
+- 新增服务端权威缓存合并 helper，服务端空列表会正确清理当前用户本地缓存。
+- 移除 `next/font/google`，改用系统字体栈，避免受限网络下生产构建失败。
+- 补齐 PWA 图标。
+- 新增 MinIO 图片上传链路：`POST /uploads/images`、服务端稳定图片 URL、前端 multipart 上传。
+- OCR 图片本地预览与 MinIO 上传并行；上传失败不阻塞 OCR。
+- 新增 `StreamingMarkdownRenderer`，流式阶段稳定段落实时进入 Markdown / KaTeX。
+- 修复新一轮生成时自动滚动意图没有恢复的问题。
 
-**验证**
+验证：
 
-- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-message-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过；首次受限网络下因 Google Fonts 拉取失败，联网重跑通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-
-**提交记录**
-
-```text
-6ad7d78 docs: design OCR record API
-a964bb0 docs: plan OCR record API implementation
-ab2a925 feat: add OCR record API contract
-40e615f feat: add OCR record backend API
-c3b708b test: cover OCR record API
-1228d01 feat: add OCR record frontend API
-84f8d39 feat: sync OCR records from chat
-```
-
-**Phase 2.3 Chat / OCR 流式体验与同步稳定性修复**
-
-- 修复 `/chat-messages/sync` 重复同步导致的 `DATABASE_UNIQUE_CONSTRAINT (409)` 控制台刷屏问题。
-- 后端 ChatMessage sync 增加幂等写入，重复快照不会因 message id 或 order 唯一约束失败。
-- 前端 Chat runtime 增加消息快照签名，已同步或正在同步的同一批消息不会重复提交到服务端。
-- Chat 和 OCR 流式阶段统一采用轻量文本渲染，输出完成后再进行 Markdown / KaTeX 完整渲染，降低长公式输出时的主线程压力。
-- OCR 展示层继续保留“答案 / 计算过程 / 公式”拆段优化，但不回写 OCR 原始内容和 `activeStudyContext`，不影响用户继续追问当前题目。
-- 修复自动滚动交互：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部后恢复。
-- 更新 `docs/data-flow.md`、`CLAUDE.md`、`AGENTS.md`，补充同步幂等、流式渲染和自动滚动约定。
-
-**验证**
-
-- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
-- `bun --cwd apps/server test chat-messages.service.spec.ts` 通过。
-
-**Phase 2.3 预检查问题修复**
-
-- 修复 OCR / 错题展示格式化误判 `f'(2)` 这类函数参数为小题编号的问题。
-- 新增服务端权威缓存合并 helper：WrongQuestion / OCRRecord 同步成功后按服务端列表替换当前用户 Dexie 缓存，同时保留本地图片预览。
-- 修复服务端返回空列表时 Dexie 旧错题或旧 OCR 历史不会被清理的问题。
-- 修复侧边栏关闭后内部链接仍可被聚焦或测试工具发现的问题。
-- 移除 `next/font/google` 依赖，改用系统字体栈，避免受限网络下前端生产构建失败。
-- 补齐 PWA `favicon.ico`、`icon-192.png` 和 `icon-512.png`。
-- `POST /auth/login`、`POST /auth/refresh`、`POST /auth/logout` 显式返回 200，注册继续返回 201。
-
-**验证**
-
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-
-**Phase 2.3.4 MinIO 图片存储迁移**
-
-- 完成 MinIO 图片存储中文设计与实现计划，采用后端代理上传方案，不在当前阶段引入前端直传 presigned URL。
-- 新增 `@repo/types/api/upload`，统一图片上传 purpose、mime type、表单字段和响应 schema。
-- 后端新增 `UploadsModule` 与 `StorageService`，提供 `POST /uploads/images` 和 `GET /uploads/images/users/...`。
-- 上传接口接入 `JwtAuthGuard`，对象 key 按 `users/{userId}/{purpose}/{groupId}/{uuid}.{ext}` 隔离。
-- 支持 `image/jpeg`、`image/png`、`image/webp`，通过 `UPLOAD_IMAGE_MAX_BYTES` 控制大小上限。
-- Docker 开发环境纳入 MinIO，后端首次上传时自动创建默认 bucket。
-- 前端新增 multipart `upload-api` 与 `useUploadImage`，不复用 JSON `apiClient`。
-- OCR 选择图片后本地即时预览，同时并行上传到 MinIO；OCRRecord 和 WrongQuestion 优先保存服务端图片 URL。
-- 上传失败不阻塞 OCR 识别，Dexie 继续保留当前设备本地预览作为兜底。
-- 保持 `/ocr-records` 与 `/wrong-questions` 拒绝 `data:` base64 的边界，前端请求前继续剥离本地 base64。
-
-**验证**
-
-- `bun --cwd apps/server test storage.service.spec.ts` 通过。
-- `bun --filter @repo/server test:e2e -- uploads.e2e-spec.ts` 通过。
-- `bun --filter @repo/server build` 通过。
-- `node --experimental-strip-types apps/web/src/lib/upload-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
-- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-- `bun --filter @repo/server start:dev` 短跑启动通过，确认 `/uploads/images` POST 与 `/uploads/images/*objectKey` GET 路由映射成功。
-- `bun --filter @repo/web dev` 短跑启动通过，Next.js dev server Ready。
-
-**提交记录**
-
-```text
-e2afd83 docs: design minio image storage migration
-c5d90b6 docs: plan minio image storage migration
-c275694 feat: add upload API contract
-c6859cb chore: configure minio upload environment
-dcc0fdd feat: add minio image upload backend
-7e7a797 test: cover image upload API
-f7da6e1 feat: add frontend image upload API
-023066b feat: upload OCR images during recognition
-```
-
-**Phase 2.3 流式 Markdown 渲染体验优化**
-
-- 新增流式 Markdown 切分 helper，将正在生成的内容拆为“稳定 Markdown 段落”和“尾部实时文本”。
-- 新增 `StreamingMarkdownRenderer`，Chat 与 OCR 流式阶段共用渐进渲染逻辑。
-- 已完成的段落在生成中即可使用 Markdown / KaTeX 渲染，最后一段保持轻量文本，减少输出结束后的整体格式跳变。
-- 保留完整输出完成后的 `MarkdownRenderer` 终态渲染，不影响 OCR 原始内容、错题解析和 `activeStudyContext`。
-- 修复用户主动暂停自动滚动后，新一轮普通文本对话不会恢复自动跟随的问题；新一轮生成开始会重置自动滚动意图，OCR 与普通聊天保持一致。
-
-**验证**
-
-- `node --experimental-strip-types apps/web/src/lib/streaming-markdown.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-
-**提交记录**
-
-```text
-816df7b feat: stream stable markdown while generating
-88d17d7 fix: resume auto scroll on new generation
-```
-
-**每日收尾**
-
-- 同步 `docs/roadmap.md`、`docs/data-flow.md`、`CLAUDE.md`、`AGENTS.md`、`docs/dev-start.md`，修正 MinIO 图片链路、渐进流式渲染、自动滚动恢复和下一步优先级表述。
-- `.gitignore` 增加 `.playwright-mcp/`，避免本地 Playwright MCP 日志污染工作区状态。
-- 补充 `Blog/2026-06-12-phase-2-3-minio-streaming-polish.md`；`Blog/` 继续保持不跟踪。
+- 前端 lint/build 通过。
+- 后端 lint/build/test/e2e 通过。
+- upload、OCRRecord、WrongQuestion、chat sync、streaming markdown、streaming scroll 等关键测试通过。
+- server / web dev 短跑启动通过。
 
 ---
 
 ## 2026-06-13（Day 8）
 
-**Phase 2.3 Final Stabilization**
+**Phase 2.3 Final Stabilization 与 Phase 2.5 Product Experience**
 
-- 完成 Phase 2.3 收尾中文设计与实现计划，明确 Dexie mutation queue、乐观更新、失败补偿、ChatMessage 边界和历史 base64 图片策略。
-- Dexie schema 升级到 v7，新增 `mutationQueue` 表；WrongQuestion / OCRRecord 本地记录新增 `syncStatus`、`syncError`、`pendingOperation`。
-- 新增 mutation queue helper，覆盖入队、dedupe key、update 合并、create 后 delete 抵消和 retry backoff。
-- 新增 mutation queue flush 逻辑，支持 WrongQuestion create/update/delete 与 OCRRecord create/delete；delete 404 视为成功，WrongQuestion 重复创建视为已存在，401/403 不重试，网络和 5xx 按退避重试。
-- `AuthSessionProvider` 接入 `useMutationQueueFlush`，session 恢复、online、focus 时自动尝试 flush 本地队列。
-- WrongQuestion 创建、更新、删除支持乐观写入和失败补偿同步；保存错题失败时本地暂存并禁用重复保存入口。
-- 错题本页面更新失败不再回滚用户备注或掌握状态，删除失败后列表继续隐藏记录并等待后续同步。
+- 完成 Phase 2.3 收尾设计与实现计划。
+- Dexie schema 升级到 v7，新增 `mutationQueue`。
+- 新增 mutation queue helper 与 flush 逻辑，支持 WrongQuestion / OCRRecord 失败写操作补偿同步。
+- `AuthSessionProvider` 在 session 恢复、online、focus 时自动尝试 flush。
+- WrongQuestion 创建、更新、删除支持乐观写入和失败补偿。
 - OCRRecord 创建失败时保留本地 OCR 历史并进入补偿队列。
-- 服务端列表同步时继续以服务端为权威，但保留未同步成功且不是待删除的本地 mutation 记录。
-- ChatMessage 继续使用 `/chat-messages/sync` 的会话快照幂等同步，不进入通用 CRUD mutation queue。
-- 历史 base64 图片不自动静默迁移，仅作为当前设备旧数据预览兜底；新图片继续走 MinIO URL。
+- ChatMessage 保持 `/chat-messages/sync` 幂等同步，不进入通用 CRUD mutation queue。
+- 完成 Phase 2.5 产品体验补全计划。
+- 新增学习偏好本地存储和个人中心。
+- 今日任务升级为轻学习手账。
+- 统一注册登录页、聊天页、错题本、今日任务、个人中心、侧边栏和输入区视觉系统。
+- 修复 OCR / 错题展示格式化中全角小题编号、函数参数和多题内容的可读性问题。
+- 修复切换页面再返回时聊天历史从顶部平滑滚到底部的问题。
 
-**验证**
+验证：
 
-- `node --experimental-strip-types apps/web/src/lib/db-schema.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/mutation-queue.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/mutation-queue-flush.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
-- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
+- 前端 lint/build 通过。
+- 后端 lint/build/test/e2e 通过。
+- database、types、fsrs 验证通过。
+- mutation queue、server cache sync、chat context、chat sync、streaming markdown、streaming scroll 等关键测试通过。
+- 浏览器抽样 `/chat`、`/today`、`/error-book`、`/profile`、`/login`、`/register` 通过。
 
-**提交记录**
+主要提交：
 
 ```text
 9309358 docs: design phase 2.3 final stabilization
@@ -443,52 +159,6 @@ d30682e feat: add mutation queue flush logic
 e296758 feat: queue failed wrong question saves
 82f1b7e feat: queue wrong question offline mutations
 c2c6bc5 feat: queue failed ocr record sync
-```
-
-**Phase 2.5 Product Experience**
-
-- 完成 Phase 2.5 产品体验补全计划，明确 Chat-first 主入口、侧边栏导航层和辅助学习页边界。
-- 新增学习偏好本地存储模块，按 `userId` 使用 `localStorage prepmind-preferences:{userId}` 隔离。
-- 新增个人中心：支持昵称更新、本地学习偏好保存、账号信息展示和轻提示反馈。
-- 新增 Phase 2.5 亮色软萌日漫风视觉 token、轻量动效和 reduced-motion 边界。
-- 重设侧边栏与顶部栏，保持 AI 对话为主入口。
-- 今日任务升级为轻学习手账，保留 `localStorage prepmind-today:{userId}:{date}` 本地完成状态。
-- 错题本完成视觉与交互打磨，继续保留服务端 CRUD、Dexie 缓存、乐观更新和 mutationQueue 逻辑。
-- 聊天页、输入区、OCR/AI 气泡、保存错题弹层和空状态完成学习搭子风格打磨。
-- 完成浏览器冒烟路径：注册、侧边栏导航、今日任务、个人中心、错题本空状态和聊天输入均可正常访问；无 API key 环境下 `/api/chat` 返回预期 503。
-- 修复 OCR / 错题展示格式化中全角小题编号、函数参数和多题内容的可读性问题。
-- 修复聊天页切换页面再返回时历史恢复从顶部平滑滚到底部的问题，恢复阶段使用即时滚动。
-- 将主应用视觉从偏粉色气泡调整为薄荷绿、奶油黄和柔和天蓝的轻漫画网点底风格。
-- 今日任务、错题本、个人中心、聊天页、侧边栏、顶部栏和输入区统一到新的柔和卡通配色。
-- 注册/登录页接入同一套视觉语言，保留后端 Auth API 行为，并补齐表单 `autocomplete` 以提升移动端填写体验。
-
-**Phase 2.5 验证**
-
-- `node --experimental-strip-types apps/web/src/lib/learning-preferences.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/auth-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/profile-feedback.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/today-tasks.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/crud-feedback.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/server-cache-sync.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/mutation-queue-flush.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-sync.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-content-formatter.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/streaming-markdown.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/streaming-scroll.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过，8 个 suite、34 个测试全部通过。
-- `bun --filter @repo/server test:e2e` 通过，6 个 suite、9 个测试全部通过。
-- `git diff --check` 通过，仅有 Windows 换行提示。
-- 浏览器抽样 `/chat`、`/today`、`/error-book`、`/profile`、`/login`、`/register` 通过。
-- 注册页实测提交后可进入 `/chat`，临时测试用户已清理。
-
-**Phase 2.5 提交记录**
-
-```text
 13f892a feat: add learning preferences storage
 af3a012 feat: add profile update client plumbing
 5544de0 style: add phase 2.5 visual tokens
@@ -505,15 +175,32 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-14（Day 9）
+
+**Phase 3 前文档精简**
+
+- 精简 `AGENTS.md` 与 `CLAUDE.md`，保留当前阶段、命令、模块边界、数据流和下一步。
+- 精简 `README.md`，改为 GitHub 项目入口，突出当前能力、架构、启动和 Phase 3 下一步。
+- 重写 `docs/roadmap.md`，保留阶段路线、已完成阶段摘要和 Phase 3 验收边界。
+- 重写 `docs/data-flow.md`，只描述当前仍有效的数据流，历史实现细节移交给开发日志。
+- 压缩 `DEVLOG.md` 历史条目，保持同一天改动合并记录，待办统一放文末。
+
+验证：
+
+- `git diff --check` 通过，仅有 Windows 换行提示。
+- 关键文档中的 Phase 3、`mutationQueue`、`5433`、`next/font` 等表述检查通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
 
-- Monorepo、设计文档、基础目录、初始数据库设计、基础设施配置。
+- Monorepo、设计文档、基础目录、初始数据库设计和基础设施配置。
 
 **Phase 1：已完成**
 
-- 前端 MVP、AI 聊天、OCR、Dexie 本地持久化、错题本 CRUD、今日任务静态版。
+- 前端 MVP、AI 聊天、OCR、Dexie 本地持久化、错题本 CRUD 和今日任务静态版。
 
 **Phase 2.1：已完成**
 
@@ -526,10 +213,10 @@ f5a2eb1 style: soften cartoon theme palette
 
 **Phase 2.3：已完成**
 
-- WrongQuestion CRUD API、前端错题本接入、ChatMessage API 与聊天历史迁移、OCRRecord API 与前端 OCR 历史迁移已完成。
-- 聊天上下文窗口、OCR 题目上下文注入、非题目 OCR 门禁和聊天渲染优化已完成。
-- 新 OCR 图片已接入 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL，Dexie 继续作为本地预览兜底。
-- Dexie mutationQueue 与乐观更新层已完成；WrongQuestion / OCRRecord 写失败时可本地暂存并后续补偿同步。
+- WrongQuestion / ChatMessage / OCRRecord API 已迁移到 PostgreSQL。
+- OCR 图片上传链路已接入 MinIO。
+- Dexie mutationQueue 与乐观更新层已完成。
+- Chat / OCR 上下文、流式渲染和自动滚动体验已稳定。
 
 **Phase 2.5：已完成**
 
@@ -542,25 +229,23 @@ f5a2eb1 style: soften cartoon theme palette
 
 ## 待办与规划
 
-**Phase 2.3：业务 API 迁移**
+**Phase 3：AI 讲题系统**
 
-- [x] WrongQuestion CRUD API + Prisma/PostgreSQL。
-- [x] 前端错题本接入 `apiClient` + TanStack Query。
-- [x] ChatMessage API。
-- [x] OCRRecord API。
-- [x] 图片从 base64 迁移到 MinIO/OSS URL。
-- [x] Dexie 离线 mutation 队列与乐观更新层。
+- [ ] 设计 OCR structured output schema。
+- [ ] 标准化题目字段：题干、选项、答案、解析、知识点、难度、题型、可保存状态。
+- [ ] 设计 AI 讲题 prompt：分步讲解、公式规范、非题目输入门禁、多题输入处理。
+- [ ] 规划 tool calling 边界：`createWrongQuestion`、`searchKnowledge`、`createReviewTask`。
+- [ ] 明确前端保存错题策略：单题直接保存，多题让用户选择保存单题或批量保存。
 
-**Phase 2.5：产品体验补全**
+**Phase 4：FSRS 记忆系统**
 
-- [x] Chat-first 视觉系统与全局动效 token。
-- [x] 侧边栏导航层升级。
-- [x] 个人中心与本地学习偏好。
-- [x] 今日任务轻学习手账。
-- [x] 错题本、聊天页、输入区和保存错题弹层体验打磨。
+- [ ] Card / ReviewLog / ReviewTask 数据流。
+- [ ] Again / Hard / Good / Easy 评分。
+- [ ] 今日复习任务。
 
-**Phase 3 准备**
+**后续方向**
 
-- [ ] OCR structured output schema。
-- [ ] AI 讲题 prompt 与 tool calling 设计。
-- [ ] createWrongQuestion / searchKnowledge / createReviewTask 工具规划。
+- [ ] RAG 知识库与 pgvector 检索。
+- [ ] LangGraph 多 Agent 系统。
+- [ ] MCP 工具体系。
+- [ ] BullMQ 后台任务与生产观测。

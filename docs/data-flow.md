@@ -1,381 +1,129 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-13。Phase 2.3 业务 API 迁移已完成，Phase 2.5 产品体验补全已完成；WrongQuestion、ChatMessage、OCRRecord、新图片上传链路与 Dexie mutationQueue 已接入，Dexie 继续作为本地缓存、乐观更新层和旧图片预览兜底。注册/登录页与主应用视觉已统一，但 Auth 数据流不变。
+> 当前版本：2026-06-14。Phase 2.5 已完成，下一步进入 Phase 3。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
-## 1. 总览
+## 1. 当前边界
 
-```text
-Phase 2.2 鉴权流
-用户操作
-  -> Next.js Client Component
-  -> TanStack Query mutation/query
-  -> apiClient
-  -> NestJS Auth API
-  -> Prisma
-  -> PostgreSQL
-  -> 统一响应 envelope
-  -> 前端 session store
-```
+- 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
+- 业务数据权威来源：WrongQuestion、ChatMessage、OCRRecord 均已迁移到 PostgreSQL。
+- 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
+- AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
+- 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
+- 本地轻状态：今日任务和学习偏好继续使用 userId scoped localStorage。
 
 ```text
-Phase 2.3 业务数据流
 用户操作
-  -> Next.js Client Component
+  -> Next.js Client
   -> TanStack Query / React state
   -> apiClient 或 Next.js API Route
   -> NestJS REST API / 外部 AI 服务
   -> PostgreSQL / MinIO
-  -> Dexie 本地缓存
+  -> Dexie / localStorage 本地兜底
 ```
 
-```text
-Phase 2.5 产品体验本地流
-用户操作
-  -> 个人中心 / 今日任务
-  -> localStorage(userId scoped)
-  -> 页面轻提示与本地状态恢复
-```
-
-当前阶段的关键边界：
-
-- 登录/注册/登出/会话恢复已由后端 Auth API 承担。
-- 注册/登录页在 Phase 2.5 只做视觉统一和表单体验补齐，不改变后端 Auth API、cookie 或 session 恢复流程。
-- refresh token 使用 httpOnly cookie，服务端只保存 hash。
-- 前端运行态保存 access token 和当前用户。
-- 后端 `/wrong-questions` 已提供错题 CRUD，并按当前 `userId` 隔离数据。
-- 前端错题本页面已接入 `/wrong-questions`，Dexie 作为本地缓存。
-- 后端 `/chat-messages` 已提供聊天历史同步、读取和清空能力；Dexie 作为聊天消息本地缓存。
-- 后端 `/ocr-records` 已提供 OCR 历史读取、创建 upsert 和删除能力；Dexie 作为 OCR 本地缓存。
-- WrongQuestion / OCRRecord 服务端列表同步成功后，前端以服务端返回列表作为当前权威快照替换 Dexie 缓存；Dexie 只补回旧数据、本地图片预览和尚未同步成功的本地 mutation 记录。
-- `/api/chat` 已加入上下文窗口，只把裁剪后的近期消息和当前活跃题目上下文发送给模型。
-- 有效题目 OCR 会生成 `activeStudyContext`，非题目 OCR 不进入题目上下文，也不显示保存错题入口。
-- ChatMessage 同步按消息快照去重，服务端 `/chat-messages/sync` 支持重复快照幂等写入，避免重复同步触发唯一约束错误。
-- ChatMessage 不进入通用 CRUD mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
-- Chat / OCR 流式输出期间前端使用渐进 Markdown 渲染：稳定段落实时进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
-- 聊天页面自动滚动遵循用户意图：模型输出时默认跟随到底部；用户触摸、滚轮或指针操作内容区后暂停跟随，用户回到底部或开始新一轮生成时恢复。
-- 新 OCR 图片会先本地预览，再通过 `POST /uploads/images` 上传到 MinIO；OCRRecord / WrongQuestion 优先保存服务端图片 URL。
-- WrongQuestion / OCRRecord 写操作失败时会写入 Dexie `mutationQueue`，并在 session 恢复、网络恢复或页面重新聚焦时自动补偿同步。
-- 今日任务仍是前端本地业务数据，使用 `localStorage prepmind-today:{userId}:{date}` 保存当日完成状态。
-- 学习偏好是 Phase 2.5 新增的前端本地数据，使用 `localStorage prepmind-preferences:{userId}` 保存，不进入 Dexie mutationQueue，也不注入 `/api/chat` prompt。
-- `/api/chat` 和 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
-
-## 2. Phase 2.2 前端 Auth 数据流
-
-### 2.1 注册
+## 2. Auth
 
 ```text
-RegisterPage
-  -> useRegister()
-  -> authApi.register()
-  -> apiClient.post('/auth/register')
-  -> NestJS AuthService.register()
-  -> prisma.user.create()
-  -> prisma.refreshToken.create()
+登录 / 注册
+  -> authApi
+  -> apiClient
+  -> NestJS Auth API
+  -> Prisma User + RefreshToken
   -> Set-Cookie: prepmind_refresh=httpOnly
   -> 返回 { user, accessToken }
-  -> userStore.setSession()
-  -> queryClient.setQueryData(['auth', 'me'])
-  -> router.replace('/chat')
+  -> userStore 运行态 session
 ```
 
-### 2.2 登录
-
 ```text
-LoginPage
-  -> useLogin()
-  -> authApi.login()
-  -> apiClient.post('/auth/login')
-  -> NestJS AuthService.login()
-  -> bcrypt verify password
-  -> prisma.refreshToken.create()
-  -> Set-Cookie: prepmind_refresh=httpOnly
-  -> 返回 { user, accessToken }
-  -> userStore.setSession()
-  -> queryClient.setQueryData(['auth', 'me'])
-  -> router.replace('/chat')
-```
-
-### 2.3 刷新页面恢复 session
-
-```text
-AuthSessionProvider
-  -> useRefreshSession()
-  -> authApi.refresh()
-  -> apiClient.post('/auth/refresh', credentials: include)
-  -> NestJS AuthService.refresh()
+刷新页面
+  -> AuthSessionProvider
+  -> POST /auth/refresh
   -> 校验 refresh cookie
-  -> 轮换 refresh token
+  -> refresh token rotation
   -> 返回新的 { user, accessToken }
-  -> userStore.setSession()
-  -> sessionHydrated = true
+  -> 恢复前端 session
 ```
 
-refresh 失败视为未登录，不弹全局错误。
+关键约定：
 
-Refresh token 已启用 rotation 与 reuse detection：
+- refresh token 只以 hash 形式保存在 PostgreSQL。
+- refresh token 已启用 rotation 与 reuse detection。
+- 旧 RT 重放时，服务端撤销同 family 活跃 token 并强制重新登录。
+- 当前 Auth 主链路不依赖 Redis。
+- refresh 失败视为未登录，不弹全局错误。
 
-```text
-旧 RT 首次用于 /auth/refresh
-  -> 标记旧 RT revokedAt
-  -> 签发同 familyId 的新 RT
-
-已轮换旧 RT 再次被使用
-  -> 判定为 AUTH_REFRESH_REUSED
-  -> 撤销同 familyId 下仍活跃的 RT
-  -> 清除 refresh cookie
-  -> 强制用户重新登录
-```
-
-当前 Auth 主链路不依赖 Redis。Refresh token family、撤销状态和审计字段继续存放在 PostgreSQL。
-
-### 2.4 受保护页面
-
-```text
-AuthGuard
-  -> 读取 userStore.currentUser / accessToken / sessionHydrated
-  -> useMe() 调用 /auth/me 校验 access token
-  -> 成功：渲染子页面
-  -> 失败：clearSession() + router.replace('/login')
-```
-
-### 2.5 登出
-
-```text
-ChatSidebar
-  -> useLogout()
-  -> authApi.logout()
-  -> apiClient.post('/auth/logout')
-  -> NestJS AuthService.logout()
-  -> revoke 当前 refresh token
-  -> clearCookie(prepmind_refresh)
-  -> userStore.clearSession()
-  -> queryClient.removeQueries(['auth', 'me'])
-  -> router.replace('/login')
-```
-
-## 3. apiClient 约定
-
-`apps/web/src/lib/api-client.ts` 负责：
-
-- 默认 baseURL：`NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001'`。
-- 默认 `credentials: 'include'`。
-- 自动 JSON 序列化 request body。
-- access token 注入 `Authorization: Bearer <token>`。
-- 解析成功 envelope：
-
-```json
-{
-  "success": true,
-  "data": {},
-  "requestId": "..."
-}
-```
-
-- 解析失败 envelope 并抛出 `ApiClientError`：
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "..."
-  },
-  "requestId": "..."
-}
-```
-
-## 4. Phase 1 本地业务数据
-
-| 存储 | Key / 表 | 内容 | 当前状态 |
-| --- | --- | --- | --- |
-| localStorage | `prepmind-chat` | `inputDraft` | 保留 |
-| localStorage | `prepmind-today:{userId}:{date}` | 当日任务完成状态 | 保留 |
-| localStorage | `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，按用户隔离 |
-| IndexedDB | `messages` | 聊天消息 | 本地缓存，服务端权威来源为 `/chat-messages` |
-| IndexedDB | `ocrRecords` | OCR 图片与识别结果 | 本地缓存；OCR 结果服务端权威来源为 `/ocr-records`，同步成功后替换当前用户缓存；服务端图片 URL 优先，本地预览仅作兜底 |
-| IndexedDB | `wrongQuestions` | 错题本记录 | 本地缓存；服务端权威来源为 `/wrong-questions`，同步成功后替换当前用户缓存 |
-
-Phase 2.3 后，`userId` 来自后端真实用户 id。Dexie 不再决定登录态，只消费当前 session 的 user id；已迁移的业务数据以服务端为权威来源。
-
-### 4.1 Learning Preferences
-
-```text
-ProfilePage
-  -> readLearningPreferences(userId)
-  -> localStorage prepmind-preferences:{userId}
-  -> writeLearningPreferences(userId, preferences)
-```
-
-学习偏好当前是前端本地数据，按 `userId` 隔离。它不参与 Phase 2.3 mutationQueue，也不影响 `/api/chat` prompt；后续如需让偏好影响 AI 讲解风格，需要在 Phase 3 单独设计 prompt 注入边界。
-
-## 5. Chat / OCR 数据流
-
-### 5.1 聊天
+## 3. AI 聊天
 
 ```text
 用户输入文本
   -> ChatInputBar
-  -> useChat input + chatStore.inputDraft
-  -> POST /api/chat(messages + activeContext)
-  -> buildChatContextMessages() 按 token 预算裁剪普通聊天历史
-  -> buildChatSystemPrompt() 注入当前活跃题目上下文
-  -> DeepSeek / OpenAI SSE
-  -> useChat messages[]
-  -> 流式阶段 StreamingMarkdownRenderer 渐进渲染稳定段落
-  -> 输出完成后 MarkdownRenderer 渲染终态 Markdown / GFM / 数学公式
+  -> /api/chat
+  -> buildChatContextMessages() 裁剪近期聊天历史
+  -> buildChatSystemPrompt() 注入 activeStudyContext
+  -> OpenAI / DeepSeek SSE
+  -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
-  -> useSyncChatMessages()
   -> POST /chat-messages/sync
-  -> Prisma ChatMessage
   -> PostgreSQL
 ```
 
-页面启动与历史迁移：
+关键约定：
 
-```text
-ChatPage
-  -> 先读取 Dexie messages 快速恢复界面
-  -> ChatView/useChatMessages()
-  -> GET /chat-messages
-  -> 服务端有记录：覆盖 useChat messages 与 Dexie 缓存
-  -> 服务端无记录但 Dexie 有旧消息：POST /chat-messages/sync 迁移本地历史
-```
-
-当前阶段仍由 Next.js `/api/chat` 代理外部 AI 服务并负责 SSE 流式输出；NestJS `/chat-messages` 只负责当前用户聊天历史的持久化、恢复和清空。
-
-同步策略：
-
-- 前端会根据 `conversationId + messages(id, role, order, createdAt, content)` 生成同步快照签名。
-- 同一快照已在同步中或已成功同步时，不再重复调用 `/chat-messages/sync`。
-- 服务端 `sync` 是幂等批量替换语义：同一批消息重复提交不会因为 message id 或 order 唯一约束返回 409。
-- `conversationId` 由服务端创建后回写到前端 runtime，后续同步使用服务端会话 id。
-
-模型上下文策略：
-
-- `/api/chat` 不再把完整聊天历史原样注入模型。
-- 普通聊天消息由 `buildChatContextMessages()` 按估算 token budget 保留最近上下文，并始终保留最新用户消息。
-- 聊天历史仍完整保存在 Dexie / PostgreSQL；截断只影响单次模型请求。
-- 当前活跃题目上下文通过 `activeContext` 注入 system prompt，不参与普通消息截断。
-- Chat / OCR 的展示格式化不会回写 `activeStudyContext`；追问上下文仍来自 OCR 原始识别内容解析结果。
-- system prompt 要求模型优先使用 Markdown 有序步骤，并使用 `$...$` / `$$...$$` 输出数学公式。
-- 前端会对常见公式 delimiters 和紧凑步骤文本做轻量格式化，再交给 MarkdownRenderer 渲染。
+- `/api/chat` 不注入完整历史，只注入裁剪后的近期上下文和当前活跃题目上下文。
+- 完整聊天历史仍保存于 PostgreSQL 与 Dexie。
+- `activeStudyContext` 来自有效 OCR 题目，用于承接“这一步为什么这样做”等追问。
+- Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
+- 流式输出使用渐进 Markdown 渲染：稳定段落进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
+- 自动滚动默认跟随输出；用户触摸、滚轮或指针操作内容区后暂停，新一轮生成或回到底部时恢复。
 
 服务端 ChatMessage API：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/chat-messages` | 读取当前用户默认会话消息，支持 `conversationId` |
-| `POST` | `/chat-messages/sync` | 批量同步当前会话消息；无 `conversationId` 时创建默认会话 |
+| `GET` | `/chat-messages` | 读取当前用户会话消息，支持 `conversationId` |
+| `POST` | `/chat-messages/sync` | 幂等同步当前会话快照，无 `conversationId` 时创建默认会话 |
 | `DELETE` | `/chat-messages` | 清空当前用户会话，支持 `conversationId` |
 
-### 5.2 OCR 与错题本
+ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等同步。
+
+## 4. OCR 与错题本
 
 ```text
 用户选择图片或拍照
   -> 本地 preview URL 即时展示
   -> 并行：
       A. POST /api/ocr -> 外部 OCR 模型 SSE
-      B. POST /uploads/images -> MinIO object -> /uploads/images/users/...
-  -> OCR 模型 SSE 返回固定 Markdown schema
-  -> 流式阶段 StreamingMarkdownRenderer 渐进渲染稳定段落
-  -> 输出完成后 parseOcrResult(content)
-  -> POST /ocr-records（携带 MinIO imageUrl，上传失败则不携带）
-  -> Prisma OcrRecord
-  -> PostgreSQL
-  -> 成功：Dexie ocrRecords 缓存服务端 URL；上传失败时继续保留本地预览兜底
-  -> 失败：Dexie ocrRecords 标记 syncStatus=failed，并写入 mutationQueue(create)
-  -> 若识别结果为题目：生成 activeStudyContext
-  -> 后续普通聊天请求携带 activeStudyContext，AI 可承接“这道题 / 刚才那一步”等追问
-  -> 用户点击“保存到错题本”
-  -> parseOcrResult(content)
-  -> 保存预览弹窗
-  -> POST /wrong-questions（优先使用 OcrRecord.imageUrl）
-  -> sourceRecordId 指向服务端 OcrRecord.id
-  -> Prisma WrongQuestion
-  -> PostgreSQL
-  -> 成功：db.wrongQuestions.put(record) 同步本地缓存
-  -> 失败：db.wrongQuestions.put(localRecord) 暂存本地记录，并写入 mutationQueue(create)
+      B. POST /uploads/images -> MinIO -> 服务端图片 URL
+  -> OCR 输出完成
+  -> parseOcrResult()
+  -> POST /ocr-records
+  -> 若为有效题目：生成 activeStudyContext
+  -> 用户确认保存错题
+  -> POST /wrong-questions
+  -> 成功：PostgreSQL + Dexie 缓存
+  -> 失败：Dexie mutationQueue 暂存，后续自动补偿同步
 ```
 
-错题来源当前仍只有 OCR。聊天页“保存到错题本”已改为先调用服务端 `POST /wrong-questions`，成功后把服务端返回记录写入 Dexie 缓存；如果服务端暂时不可用，则把错题本地暂存为 `syncStatus=failed` 并写入 `mutationQueue`，后续自动补偿同步。新保存的错题 `sourceRecordId` 指向服务端 `OcrRecord.id`。
+关键约定：
 
-非题目 OCR 不会写入 `activeStudyContext`，不会显示错题保存入口，也不会套用学科、知识点、错因分析等题目框架。
+- 当前错题来源仍只有 OCR。
+- 非题目 OCR 不生成 `activeStudyContext`，不显示保存错题入口，也不套用题目分析框架。
+- 保存错题入口只在有效题目 OCR 输出结束后出现。
+- `sourceRecordId` 指向服务端 `OcrRecord.id`。
+- `/ocr-records` 与 `/wrong-questions` 不接收 `data:` base64 图片；前端创建请求前会剥离本地 base64。
+- 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
+- 上传失败不阻塞 OCR，当前设备 Dexie 继续保留本地预览作为兜底。
 
 服务端 OCRRecord API：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/ocr-records` | 读取当前用户 OCR 历史，支持 `page`、`pageSize`、`status`、`keyword`、`isQuestion` |
-| `GET` | `/ocr-records/:id` | 当前用户 OCR 详情 |
+| `GET` | `/ocr-records` | 读取当前用户 OCR 历史，支持分页、状态、关键词和 `isQuestion` |
+| `GET` | `/ocr-records/:id` | 读取当前用户 OCR 详情 |
 | `POST` | `/ocr-records` | 创建或按 `userId + groupId` upsert OCR 结果 |
 | `DELETE` | `/ocr-records/:id` | 删除当前用户 OCR 记录 |
 
-图片策略：
-
-- `/uploads/images` 接收登录用户的 multipart 图片，后端写入 MinIO 并返回稳定的 `/uploads/images/users/...` URL。
-- 当前支持 `image/jpeg`、`image/png`、`image/webp`，默认大小上限由 `UPLOAD_IMAGE_MAX_BYTES` 控制。
-- `/ocr-records` 与 `/wrong-questions` 仍拒绝 `data:` base64 图片；前端创建请求前会剥离 base64 `imageUrl`。
-- 新 OCR 图片上传成功后，`OcrRecord.imageUrl` 与后续 `WrongQuestion.imageUrl` 都优先保存服务端 URL。
-- 上传失败不阻塞 OCR 识别；当前设备 Dexie 继续保留本地预览作为兜底。
-- OCR 历史启动时先读取 Dexie 快速恢复；服务端 `/ocr-records` 同步成功后，以服务端列表替换当前用户 Dexie 缓存。
-- 服务端历史缺少图片 URL 时，前端会按 `groupId` 补回本地 user/result 图片预览；服务端返回空列表时清空当前用户已同步 OCR Dexie 缓存，但保留 `syncStatus !== synced` 且不是 `pendingOperation=delete` 的本地待同步记录。
-
-OCR / 聊天交互门禁：
-
-- OCR 流式输出期间禁用继续发送新消息，发送按钮切换为停止按钮。
-- 用户点击停止时会中断当前 OCR 请求，不再继续追加输出。
-- 保存错题入口只在有效题目 OCR 输出结束后出现。
-- OCR 展示层会把密集的“答案 / 计算过程 / 公式”文本拆段提升可读性；持久化和 `activeStudyContext` 仍使用原始模型输出解析，避免影响后续追问。
-
-### 5.3 Dexie mutationQueue
-
-```text
-WrongQuestion / OCRRecord 写操作
-  -> 乐观更新 TanStack Query / Dexie
-  -> 调用 NestJS API
-  -> 成功：服务端返回覆盖本地缓存，syncStatus=synced
-  -> 失败：写入 Dexie mutationQueue，业务记录标记 syncStatus=failed
-  -> session 恢复 / online / focus 时 flushMutationQueue
-  -> 成功后清理 mutationQueue，服务端仍是最终权威来源
-```
-
-当前进入队列的操作：
-
-- WrongQuestion：create / update / delete。
-- OCRRecord：create；delete 已预留在 flush 逻辑中，当前页面暂无主要手动删除入口。
-
-不进入队列的操作：
-
-- ChatMessage：继续使用 `/chat-messages/sync` 的会话快照幂等同步。
-- 图片上传：上传失败不阻塞 OCR，图片仍保留在当前设备 Dexie 本地预览中，不自动静默迁移历史 base64。
-
-重试触发：
-
-- 登录态恢复后。
-- 浏览器 online 事件。
-- 页面重新 focus。
-
-冲突边界：
-
-- 删除操作服务端返回 404 视为成功。
-- WrongQuestion 重复创建返回 `WRONG_QUESTION_DUPLICATED` 视为已存在，不再重复保存。
-- 服务端列表仍是已同步数据的权威来源；本地仅保留未同步 mutation 记录作为补偿。
-
-### 5.4 服务端 WrongQuestion API
-
-```text
-HTTP Client
-  -> Authorization: Bearer accessToken
-  -> JwtAuthGuard
-  -> WrongQuestionsController
-  -> Zod request schema
-  -> WrongQuestionsService
-  -> Prisma WrongQuestion
-  -> PostgreSQL
-  -> 统一响应 envelope
-```
-
-当前路由：
+服务端 WrongQuestion API：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -387,85 +135,77 @@ HTTP Client
 
 权限边界：
 
-- 所有接口都必须经过 `JwtAuthGuard`。
-- Service 层所有读写都带 `userId` 条件。
-- 访问不存在或不属于当前用户的错题，统一返回 `WRONG_QUESTION_NOT_FOUND`。
+- 所有业务 API 均经过 `JwtAuthGuard`。
+- Service 层读写必须带当前 `userId` 条件。
+- 访问不存在或不属于当前用户的数据，返回业务级 not found。
 - 同一用户重复提交相同 `sourceGroupId`，返回 `WRONG_QUESTION_DUPLICATED`。
 
-### 5.5 前端错题本页面
+## 5. Dexie 与离线补偿
+
+Dexie 当前职责：
+
+| 表 | 作用 | 权威来源 |
+| --- | --- | --- |
+| `messages` | 聊天消息本地缓存 | `/chat-messages` |
+| `ocrRecords` | OCR 历史本地缓存、本地图片预览兜底 | `/ocr-records` |
+| `wrongQuestions` | 错题本本地缓存、乐观更新 | `/wrong-questions` |
+| `mutationQueue` | WrongQuestion / OCRRecord 失败写操作补偿队列 | 本地暂存，最终以服务端为准 |
+
+mutation queue 流程：
 
 ```text
-ErrorBookPage
-  -> useWrongQuestions({ pageSize: 50 })
-  -> wrongQuestionApi.list()
-  -> apiClient.get('/wrong-questions')
-  -> 服务端返回 items
-  -> 与本地缓存按 id 合并图片预览
-  -> 页面渲染服务端权威快照
-  -> 清空当前用户 db.wrongQuestions 后写入合并结果
+WrongQuestion / OCRRecord 写操作
+  -> 乐观更新 TanStack Query / Dexie
+  -> 调用 NestJS API
+  -> 成功：服务端返回覆盖本地缓存，syncStatus=synced
+  -> 失败：写入 mutationQueue，业务记录标记 syncStatus=failed
+  -> session 恢复 / online / focus 时 flushMutationQueue
+  -> 成功后清理 mutationQueue
 ```
 
-更新与删除：
+进入队列的操作：
 
-```text
-标记掌握 / 保存备注 / 删除
-  -> useUpdateWrongQuestion() / useDeleteWrongQuestion()
-  -> PATCH / DELETE /wrong-questions/:id
-  -> 成功后更新页面状态
-  -> 同步 Dexie 缓存
-```
+- WrongQuestion：create / update / delete。
+- OCRRecord：create；delete 已预留在 flush 逻辑中。
 
-离线与失败策略：
+不进入队列的操作：
 
-- 页面首次进入会先读取 Dexie 中当前用户缓存。
-- 服务端同步成功后，以服务端返回为准覆盖页面列表和当前用户 Dexie 缓存；服务端返回空列表时本地缓存也会清空。
-- 如果服务端错题暂未保存图片 URL，前端会按错题 id 保留本机 Dexie 中的图片预览。
-- 服务端同步失败时，页面继续展示本地缓存并显示提示。
-- 当前阶段已接入 Dexie `mutationQueue`；WrongQuestion 更新、删除失败时会保留本地状态并等待后续补偿同步。
+- ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
+- 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
+- 今日任务和学习偏好：仍是 localStorage 本地轻状态。
 
-## 6. Dexie Schema
+冲突处理：
 
-| 版本 | messages | ocrRecords | wrongQuestions | 说明 |
-| --- | --- | --- | --- | --- |
-| v1 | `id, role` | `id, type, createdAt` | - | 初始本地消息/OCR |
-| v2 | `id, role, order` | `id, type, createdAt` | - | 增加消息顺序 |
-| v3 | `id, role, order, createdAt` | `id, type, createdAt` | - | 增加消息时间戳 |
-| v4 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, subject, category, errorType, status, createdAt, updatedAt` | 增加错题本 |
-| v5 | `id, role, order, createdAt` | `id, type, groupId, createdAt` | `id, source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加 `sourceGroupId` 索引 |
-| v6 | `id, userId, [userId+order], role, order, createdAt` | `id, userId, [userId+createdAt], type, groupId, createdAt` | `id, userId, [userId+sourceGroupId], [userId+createdAt], source, sourceGroupId, subject, category, errorType, status, createdAt, updatedAt` | 增加本地账号隔离 |
+- 删除操作服务端返回 404 视为成功。
+- WrongQuestion 重复创建返回 `WRONG_QUESTION_DUPLICATED` 视为已存在。
+- 401 / 403 不重试；网络错误和 5xx 按退避策略重试。
+- 服务端列表仍是已同步数据的权威来源；本地只保留未同步 mutation 记录作为补偿。
 
-## 7. 后端 Auth 数据流
+## 6. localStorage
 
-```text
-HTTP Request
-  -> cookie-parser
-  -> CORS(credentials: true)
-  -> RequestIdMiddleware
-  -> Controller
-  -> Service
-  -> PrismaService
-  -> PostgreSQL
-  -> ResponseEnvelopeInterceptor
-  -> HTTP Response
-```
+| Key | 内容 | 说明 |
+| --- | --- | --- |
+| `prepmind-chat` | 输入框草稿 | 本地体验状态 |
+| `prepmind-today:{userId}:{date}` | 今日任务完成状态 | 当前仍是本地轻学习手账 |
+| `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，暂不注入 prompt |
 
-## 8. PostgreSQL / Prisma
+学习偏好后续如果要影响 AI 讲解风格，需要在 Phase 3 单独设计 prompt 注入边界。
 
-当前 Phase 2 已落地 migration：
+## 7. PostgreSQL / Prisma
+
+当前已落地的核心模型：
 
 - `User`
 - `RefreshToken`
-- `Account`
-- `Session`
-- `Question`
+- `Conversation`
+- `ChatMessage`
+- `OcrRecord`
 - `WrongQuestion`
+- `Question`
 - `Card`
 - `ReviewLog`
 - `Document`
 - `Chunk`
-- `Conversation`
-- `ChatMessage`
-- `OcrRecord`
 
 本机 Docker PostgreSQL 映射：
 
@@ -473,28 +213,17 @@ HTTP Request
 localhost:5433 -> container:5432
 ```
 
-Prisma migration 状态应为：
+Prisma migration 状态期望：
 
 ```text
 Database schema is up to date
 ```
 
-## 9. Phase 2.5 后续迁移目标
+## 8. Phase 3 数据流改进方向
 
-```text
-WrongQuestion / Chat / OCR UI
-  -> TanStack Query
-  -> apiClient
-  -> NestJS REST API
-  -> Prisma
-  -> PostgreSQL / MinIO
-  -> Dexie 离线缓存和乐观更新
-```
+Phase 3 需要重点解决当前 OCR Markdown 解析链路的脆弱性：
 
-Phase 2.5 已完成边界：
-
-1. Dexie 离线 mutation 队列与乐观更新层已接入 WrongQuestion / OCRRecord。
-2. 历史 base64 图片暂不静默自动迁移；服务端列表同步时保留当前设备本地预览兜底，后续如需跨设备补图再单独做显式迁移入口。
-3. Chat-first 产品体验壳层已补齐；注册/登录页、聊天页、错题本、今日任务和个人中心已统一视觉系统。
-4. 个人中心学习偏好和今日任务继续作为本地前端数据。
-5. Phase 3 继续推进 OCR structured output schema 与 tool calling 设计。
+1. 用 structured output schema 承载题目字段，而不是依赖前端从 Markdown 中猜字段。
+2. 明确单题、多题、非题目输入的识别结果和保存策略。
+3. 让 `activeStudyContext` 来源于稳定结构化数据。
+4. 将 `createWrongQuestion`、`searchKnowledge`、`createReviewTask` 设计为可审计的 tool calling 边界。
