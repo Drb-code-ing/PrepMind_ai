@@ -7,6 +7,7 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
+import { ReviewTasksModule } from './review-tasks/review-tasks.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
@@ -23,6 +24,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ChatMessagesModule,
     OcrRecordsModule,
     ReviewsModule,
+    ReviewTasksModule,
     UploadsModule,
   ],
 })
