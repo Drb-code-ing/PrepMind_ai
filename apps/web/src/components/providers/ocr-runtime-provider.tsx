@@ -11,7 +11,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 
 import { useCreateOcrRecord, useOcrRecords } from '@/hooks/use-ocr-records';
 import { useUploadImage } from '@/hooks/use-upload-image';
@@ -23,12 +22,14 @@ import {
   enqueueMutationQueueItem,
   getMutationErrorMessage,
 } from '@/lib/mutation-queue';
-import { mergeOcrRecordsFromServer } from '@/lib/server-cache-sync';
 import {
-  parseOcrResult,
-  type OcrResultStatus,
-  type ParsedWrongQuestion,
-} from '@/lib/wrong-question-parser';
+  buildActiveStudyContextFromOcrQuestion,
+  getPrimaryOcrQuestion,
+  normalizeOcrParsedPayload,
+  toOcrStructuredResult,
+} from '@/lib/ocr-structured-result';
+import { mergeOcrRecordsFromServer } from '@/lib/server-cache-sync';
+import { type OcrResultStatus } from '@/lib/wrong-question-parser';
 import { useUserStore } from '@/stores/userStore';
 import { useChatRuntime } from './chat-runtime-provider';
 
@@ -63,20 +64,17 @@ function createActiveStudyContextFromOcr(record: OcrRecord): ActiveStudyContext 
   if (record.type !== 'ocr-result' || !record.content.trim()) return null;
   if (/^(已停止识别|识别失败)/.test(record.content.trim())) return null;
 
-  const parsed = parseOcrResult(record.content);
-  if (!parsed.isQuestion) return null;
+  const structuredResult = record.parsedJson
+    ? normalizeOcrParsedPayload(record.parsedJson, record.content)
+    : toOcrStructuredResult(record.content);
+  const primaryQuestion = getPrimaryOcrQuestion(structuredResult);
+  if (!primaryQuestion) return null;
 
-  return {
-    type: 'ocr-question',
+  return buildActiveStudyContextFromOcrQuestion(primaryQuestion, {
     sourceGroupId: record.groupId,
-    questionText: parsed.questionText,
-    subject: parsed.subject,
-    knowledgePoints: parsed.knowledgePoints,
-    analysis: parsed.analysis,
-    answer: parsed.answer,
-    rawContent: parsed.rawContent,
+    rawContent: structuredResult.rawText || record.content,
     updatedAt: record.createdAt,
-  };
+  });
 }
 
 function getLatestActiveStudyContext(records: OcrRecord[]) {
@@ -85,20 +83,6 @@ function getLatestActiveStudyContext(records: OcrRecord[]) {
     if (context) return context;
   }
   return null;
-}
-
-function toOcrParsedPayload(parsed: ParsedWrongQuestion): OcrParsedPayload {
-  return {
-    isQuestion: parsed.isQuestion,
-    nonQuestionSummary: parsed.nonQuestionSummary || undefined,
-    subject: parsed.subject || undefined,
-    questionText: parsed.questionText || undefined,
-    category: parsed.category || undefined,
-    knowledgePoints: parsed.knowledgePoints,
-    analysis: parsed.analysis || undefined,
-    answer: parsed.answer || undefined,
-    errorSuggestion: parsed.errorType || undefined,
-  };
 }
 
 export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
@@ -331,25 +315,25 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
         ocrContentPublisher.flush();
         await uploadPromise;
 
+        const structuredResult = toOcrStructuredResult(fullContent, 'mimo-v2.5');
         const finalResultRecord: OcrRecord = {
           id: resultMsgId,
           userId,
           type: 'ocr-result',
           groupId,
           content: fullContent,
+          parsedJson: structuredResult,
           imageUrl: uploadedImageUrl,
           createdAt: Date.now() + 1,
         };
-        const parsed = parseOcrResult(fullContent);
         let persistedResultRecord = finalResultRecord;
         try {
           persistedResultRecord = await createOcrRecord.mutateAsync({
             record: finalResultRecord,
-            parsedJson: toOcrParsedPayload(parsed),
+            parsedJson: structuredResult,
           });
         } catch (error) {
           const errorMessage = getMutationErrorMessage(error);
-          const parsedJson = toOcrParsedPayload(parsed);
           persistedResultRecord = {
             ...finalResultRecord,
             syncStatus: 'failed',
@@ -364,7 +348,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
               entityId: finalResultRecord.id,
               payload: {
                 record: finalResultRecord,
-                parsedJson,
+                parsedJson: structuredResult,
               },
             }),
           );
@@ -378,6 +362,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
               ...message,
               id: persistedResultRecord.id,
               content: fullContent,
+              parsedJson: persistedResultRecord.parsedJson ?? structuredResult,
               imageUrl:
                 persistedResultRecord.imageUrl ?? uploadedImageUrl ?? message.imageUrl,
               syncStatus: persistedResultRecord.syncStatus,
@@ -396,6 +381,7 @@ export function OcrRuntimeProvider({ children }: { children: ReactNode }) {
           createActiveStudyContextFromOcr({
             ...persistedResultRecord,
             content: fullContent,
+            parsedJson: persistedResultRecord.parsedJson ?? structuredResult,
             createdAt: finalResultRecord.createdAt,
           }),
         );
