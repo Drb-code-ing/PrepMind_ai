@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 4.3 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-14。Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,7 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源。
-- 本地轻状态：今日任务和学习偏好继续使用 userId scoped localStorage。
+- 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
 用户操作
@@ -228,9 +228,9 @@ WrongQuestion / OCRRecord 写操作
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
-- Review rating：Phase 4.3 通过 `/review-tasks/:taskId/rating` 在线写入 PostgreSQL，暂不进入离线补偿队列。
+- Review rating：Phase 4.3 通过 `/review-tasks/:taskId/rating` 在线写入 PostgreSQL，暂不进入离线补偿队列；Phase 4.4 将单独设计离线评分队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
-- 今日任务和学习偏好：仍是 localStorage 本地轻状态。
+- 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
 
 冲突处理：
 
@@ -244,7 +244,7 @@ WrongQuestion / OCRRecord 写操作
 | Key | 内容 | 说明 |
 | --- | --- | --- |
 | `prepmind-chat` | 输入框草稿 | 本地体验状态 |
-| `prepmind-today:{userId}:{date}` | 今日任务完成状态 | 当前仍是本地轻学习手账 |
+| `prepmind-today:{userId}:{date}` | 轻手账 checklist 完成状态 | 当前不承载 ReviewTask 复习任务 |
 | `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，暂不注入 prompt |
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。

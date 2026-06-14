@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前日期：2026-06-14。项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 4.3 已完成，Phase 4 继续推进。
+> 当前日期：2026-06-14。项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。
 
 ## 项目目标
 
@@ -116,10 +116,12 @@ Phase 4.3 已完成 ReviewTask 数据流：
 - 新增 `/review-tasks/today`、列表、评分、跳过和恢复 API。
 - 今日任务页已迁移到 persisted ReviewTask，评分会完成任务并关联 ReviewLog。
 - 跳过和恢复只改变 ReviewTask 状态，`/stats` 仍以 ReviewLog 为统计事实来源。
+- `/stats` 复习趋势图已从密集柱状图收敛为稀疏刻度的轻量面积折线图。
 
 Phase 4 后续继续补齐：
 
-- 离线评分队列与提醒策略。
+- Phase 4.4：离线评分队列与提醒策略。
+- Phase 4.5：复习提醒与长期计划策略。
 
 ### Phase 5 — RAG 知识库
 

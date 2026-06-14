@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 4.3 已完成，Phase 4 继续推进。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。
 
 已完成主线：
 
@@ -20,8 +20,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 4.
 
 下一步 Phase 4 后续：
 
-1. 离线评分队列与提醒策略。
-2. 复习提醒与长期计划策略。
+1. Phase 4.4：离线评分队列与提醒策略。
+2. Phase 4.5：复习提醒与长期计划策略。
 
 ## 常用命令
 

@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.3 已完成，Phase 4 继续推进。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。
 
 ## 项目快照
 
@@ -131,5 +131,5 @@ mcp -> ai, fsrs, rag, types
 
 Phase 4 后续最优先：
 
-1. 离线评分队列与提醒策略。
-2. 复习提醒与长期计划策略。
+1. Phase 4.4：离线评分队列与提醒策略。
+2. Phase 4.5：复习提醒与长期计划策略。
