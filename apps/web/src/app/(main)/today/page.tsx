@@ -33,6 +33,7 @@ import {
   TODAY_TASKS,
   createEmptyTodayState,
   getLocalDateKey,
+  getTodayTaskToggleFeedback,
   getTodayNextAction,
   getTodayProgress,
   readTodayTaskState,
@@ -43,6 +44,8 @@ import {
 } from '@/lib/today-tasks';
 import { formatWrongQuestionFieldForDisplay } from '@/lib/wrong-question-parser';
 import { useUserStore } from '@/stores/userStore';
+
+type NoticeTone = 'success' | 'neutral';
 
 const taskIcons: Record<TodayTaskKind, typeof BookOpen> = {
   review: BookOpen,
@@ -67,13 +70,26 @@ function formatTodayLabel(dateKey: string) {
   }).format(date);
 }
 
+const noticeStyles: Record<NoticeTone, { icon: typeof Check; className: string }> = {
+  success: {
+    icon: Check,
+    className:
+      'border-emerald-100 bg-white/95 text-emerald-700 shadow-[0_18px_45px_rgba(40,120,96,0.18)]',
+  },
+  neutral: {
+    icon: RotateCcw,
+    className:
+      'border-slate-200 bg-white/95 text-slate-600 shadow-[0_18px_45px_rgba(50,45,60,0.14)]',
+  },
+};
+
 export default function TodayPage() {
   const currentUser = useUserStore((state) => state.currentUser);
   const userId = currentUser?.id ?? '';
   const dateKey = useMemo(() => getLocalDateKey(), []);
   const [taskState, setTaskState] = useState(() => createEmptyTodayState(dateKey));
   const [unresolvedCount, setUnresolvedCount] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ message: string; tone: NoticeTone } | null>(null);
   const [revealedCardIds, setRevealedCardIds] = useState<Set<string>>(new Set());
   const [reviewFeedbacks, setReviewFeedbacks] = useState<Record<string, ReviewRatingFeedback>>({});
   const noticeTimerRef = useRef<number | null>(null);
@@ -109,11 +125,11 @@ export default function TodayPage() {
   const nextAction = getTodayNextAction(taskState, unresolvedCount);
   const totalMinutes = TODAY_TASKS.reduce((sum, task) => sum + task.estimateMinutes, 0);
 
-  const showNotice = useCallback((message: string) => {
+  const showNotice = useCallback((message: string, tone: NoticeTone = 'success') => {
     if (noticeTimerRef.current) {
       window.clearTimeout(noticeTimerRef.current);
     }
-    setNotice(message);
+    setNotice({ message, tone });
     noticeTimerRef.current = window.setTimeout(() => {
       setNotice(null);
       noticeTimerRef.current = null;
@@ -165,7 +181,7 @@ export default function TodayPage() {
         });
         showNotice(`${feedback.title}，${feedback.description}`);
       } catch (error) {
-        showNotice(getMutationErrorMessage(error));
+        showNotice(getMutationErrorMessage(error), 'neutral');
       }
     },
     [showNotice, submitReviewRating],
@@ -174,15 +190,17 @@ export default function TodayPage() {
   const toggleTask = useCallback(
     (taskId: string) => {
       if (!userId) return;
-      setTaskState((prev) => {
-        const next = toggleTaskCompletion(prev, taskId);
-        writeTodayTaskState(userId, next);
-        showNotice(next.completedTaskIds.includes(taskId) ? '任务已完成' : '已标记为待完成');
-        return next;
-      });
+      const next = toggleTaskCompletion(taskState, taskId);
+      const feedback = getTodayTaskToggleFeedback(next.completedTaskIds.includes(taskId));
+
+      setTaskState(next);
+      writeTodayTaskState(userId, next);
+      showNotice(feedback.message, feedback.tone);
     },
-    [showNotice, userId],
+    [showNotice, taskState, userId],
   );
+
+  const NoticeIcon = notice ? noticeStyles[notice.tone].icon : Check;
 
   return (
     <div className="pm-anime-bg min-h-[100dvh] text-[var(--pm-ink)]">
@@ -210,10 +228,10 @@ export default function TodayPage() {
         <div
           aria-live="polite"
           role="status"
-          className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-emerald-100 bg-white/95 px-3 py-2 text-sm font-semibold text-emerald-700 shadow-[0_18px_45px_rgba(40,120,96,0.18)] backdrop-blur-xl"
+          className={`fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold backdrop-blur-xl ${noticeStyles[notice.tone].className}`}
         >
-          <Check className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 flex-1">{notice}</span>
+          <NoticeIcon className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1">{notice.message}</span>
         </div>
       ) : null}
 

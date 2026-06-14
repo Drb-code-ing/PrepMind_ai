@@ -7,6 +7,7 @@ import {
   getTodayNextAction,
   getTodayProgress,
   getTodayStorageKey,
+  getTodayTaskToggleFeedback,
   toggleTaskCompletion,
 } from './today-tasks.ts';
 
@@ -37,6 +38,17 @@ test('calculates task progress from completed ids', () => {
     completed: 2,
     total: TODAY_TASKS.length,
     percent: Math.round((2 / TODAY_TASKS.length) * 100),
+  });
+});
+
+test('returns distinct feedback for completing and uncompleting a task', () => {
+  assert.deepEqual(getTodayTaskToggleFeedback(true), {
+    message: '任务已完成',
+    tone: 'success',
+  });
+  assert.deepEqual(getTodayTaskToggleFeedback(false), {
+    message: '已取消完成',
+    tone: 'neutral',
   });
 });
 

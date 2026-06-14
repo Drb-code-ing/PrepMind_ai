@@ -22,6 +22,11 @@ export interface TodayNextAction {
   href: string;
 }
 
+export interface TodayTaskToggleFeedback {
+  message: string;
+  tone: 'success' | 'neutral';
+}
+
 export const TODAY_TASKS: TodayTaskTemplate[] = [
   {
     id: 'knowledge-review',
@@ -99,6 +104,18 @@ export function getTodayProgress(state: TodayTaskState) {
     total,
     percent: total === 0 ? 0 : Math.round((completed / total) * 100),
   };
+}
+
+export function getTodayTaskToggleFeedback(completed: boolean): TodayTaskToggleFeedback {
+  return completed
+    ? {
+        message: '任务已完成',
+        tone: 'success',
+      }
+    : {
+        message: '已取消完成',
+        tone: 'neutral',
+      };
 }
 
 export function getTodayNextAction(
