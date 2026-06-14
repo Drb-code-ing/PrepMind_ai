@@ -2,7 +2,7 @@
   "name": "@repo/fsrs",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./src/fsrs.ts",
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint src/",
