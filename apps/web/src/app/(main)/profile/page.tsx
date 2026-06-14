@@ -271,8 +271,8 @@ export default function ProfilePage() {
         </section>
 
         <section className="rounded-[1.35rem] border border-[var(--pm-line)] bg-white/55 p-4 text-sm leading-6 text-[var(--pm-muted)]">
-          账号资料以服务器为准；学习偏好暂时只保存在本机浏览器，并按当前账号隔离。进入 Phase 3
-          后，如果要让 AI 固定采用这些偏好，需要单独设计 prompt 注入边界。
+          账号资料以服务器为准；学习偏好暂时只保存在本机浏览器，并按当前账号隔离。后续如果要让
+          AI 固定采用这些偏好，需要单独设计 prompt 注入边界。
         </section>
       </main>
     </div>

@@ -76,7 +76,7 @@ export default function RegisterPage() {
           <div>
             <p className="text-sm font-semibold text-[#247269]">先建档，再开始备考</p>
             <p className="mt-1 text-xs leading-5 text-[#6f6750]">
-              Phase 2 已接入后端 Auth，注册后会直接进入学习流。
+              注册后会直接进入学习流，聊天、OCR 和错题记录会按账号保存。
             </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/78 text-sm font-black text-[#247269] ring-1 ring-[#f3e6a8]">

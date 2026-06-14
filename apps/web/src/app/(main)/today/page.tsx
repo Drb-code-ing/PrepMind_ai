@@ -211,8 +211,7 @@ export default function TodayPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">数据说明</p>
               <p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">
-                今日任务仍是 Phase 1 静态模板，状态保存在本机浏览器。Phase 3 之后再接入 AI
-                动态规划和服务端任务表。
+                今日任务当前是本地轻学习手账，状态保存在本机浏览器。后续会接入 AI 动态规划和服务端任务表。
               </p>
             </div>
           </div>
