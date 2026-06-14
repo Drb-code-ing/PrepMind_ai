@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { ReviewRating, ReviewTaskResponse } from '@repo/types/api/review';
 import {
   ArrowLeft,
+  BarChart3,
   BookOpen,
   Brain,
   Camera,
@@ -371,7 +372,7 @@ export default function TodayPage() {
           </div>
         </section>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <Link
             href="/chat"
             className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.98]"
@@ -385,6 +386,13 @@ export default function TodayPage() {
           >
             <BookOpen className="h-4 w-4" />
             错题本
+          </Link>
+          <Link
+            href="/stats"
+            className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 text-sm font-semibold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98]"
+          >
+            <BarChart3 className="h-4 w-4" />
+            学习统计
           </Link>
         </div>
       </main>

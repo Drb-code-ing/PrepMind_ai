@@ -2,7 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BookOpen, CalendarDays, LogOut, MessageCircle, Sparkles, UserRound, X } from 'lucide-react';
+import {
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  LogOut,
+  MessageCircle,
+  Sparkles,
+  UserRound,
+  X,
+} from 'lucide-react';
 
 import { useLogout } from '@/hooks/use-auth';
 import { useUserStore } from '@/stores/userStore';
@@ -15,6 +24,7 @@ interface ChatSidebarProps {
 const navItems = [
   { href: '/chat', label: 'AI 对话', hint: '拍照识题与追问', icon: MessageCircle },
   { href: '/today', label: '今日任务', hint: '轻学习手账', icon: CalendarDays },
+  { href: '/stats', label: '学习统计', hint: '复习趋势与记录', icon: BarChart3 },
   { href: '/error-book', label: '错题本', hint: '复盘和标记掌握', icon: BookOpen },
   { href: '/profile', label: '我的档案', hint: '偏好与账号资料', icon: UserRound },
 ];
