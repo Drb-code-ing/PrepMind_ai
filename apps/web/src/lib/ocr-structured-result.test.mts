@@ -132,6 +132,35 @@ test('returns the first savable structured question as primary question', () => 
   assert.equal(getPrimaryOcrQuestion(result)?.id, 'q2');
 });
 
+test('needs_review structured question remains user-confirmable for saving', () => {
+  const question = {
+    ...createQuestion(),
+    saveStatus: 'needs_review',
+    warnings: ['答案不完整'],
+  };
+
+  const record = mapOcrQuestionToWrongQuestionRecord(question, {
+    id: 'local-2',
+    userId: 'user-1',
+    sourceRecordId: 'ocr-record-1',
+    sourceGroupId: 'ocr-1',
+    now: 123,
+    rawContent: question.displayMarkdown,
+  });
+
+  assert.equal(canSaveStructuredQuestion(question), true);
+  assert.equal(record.errorType, '公式记忆遗漏');
+});
+
+test('not_savable structured question is blocked before wrong-question mapping is used', () => {
+  const question = {
+    ...createQuestion(),
+    saveStatus: 'not_savable',
+  };
+
+  assert.equal(canSaveStructuredQuestion(question), false);
+});
+
 function createStructuredResult() {
   return {
     recognitionType: 'question',

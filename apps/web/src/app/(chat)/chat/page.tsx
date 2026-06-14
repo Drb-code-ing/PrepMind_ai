@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useDeferredValue, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { OcrQuestionResult, OcrStructuredResult } from '@repo/types/api/ocr-question';
 import ChatTopBar from '@/components/chat/chat-top-bar';
 import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatInputBar from '@/components/chat/chat-input-bar';
@@ -25,15 +26,18 @@ import {
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
-  canSaveOcrResult,
-  formatOcrContentForDisplay,
   formatStreamingOcrContent,
   formatWrongQuestionFieldForDisplay,
-  getMissingWrongQuestionFields,
-  parseOcrResult,
   type OcrResultStatus,
-  type ParsedWrongQuestion,
 } from '@/lib/wrong-question-parser';
+import {
+  canSaveStructuredQuestion,
+  getDisplayMarkdownFromOcrContent,
+  getPrimaryOcrQuestion,
+  mapOcrQuestionToWrongQuestionRecord,
+  normalizeOcrParsedPayload,
+  toOcrStructuredResult,
+} from '@/lib/ocr-structured-result';
 import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
 import { ArrowRight, Bot, Check, CheckCircle2, Loader2, X } from 'lucide-react';
 
@@ -63,13 +67,16 @@ type UnifiedMsg =
       type: 'ocr-result';
       groupId?: string;
       content: string;
+      parsedJson?: OcrRecord['parsedJson'];
+      imageUrl?: string;
       time: number;
       ocrStatus: OcrResultStatus;
     };
 
 type PendingWrongQuestionSave = {
   result: OcrRecord;
-  parsed: ParsedWrongQuestion;
+  structuredResult: OcrStructuredResult;
+  question: OcrQuestionResult;
   imageUrl?: string;
   sourceGroupId?: string;
   missingFields: string[];
@@ -84,6 +91,16 @@ const WRONG_QUESTION_FIELD_LABELS: Record<string, string> = {
 
 function formatMissingWrongQuestionFields(fields: string[]) {
   return fields.map((field) => WRONG_QUESTION_FIELD_LABELS[field] ?? field).join('、');
+}
+
+function getStructuredResultFromOcrRecord(record: Pick<OcrRecord, 'content' | 'parsedJson'>) {
+  return record.parsedJson
+    ? normalizeOcrParsedPayload(record.parsedJson, record.content)
+    : toOcrStructuredResult(record.content);
+}
+
+function getQuestionSaveSourceGroupId(sourceGroupId: string | undefined, questionId: string) {
+  return sourceGroupId ? `${sourceGroupId}:${questionId}` : questionId;
 }
 
 // ─── Parent: gate by current user, runtime providers hydrate data ───
@@ -232,89 +249,92 @@ function ChatView({ userId }: { userId: string }) {
     [isGenerating, setInput, scrollToBottom],
   );
 
-  const prepareWrongQuestionSave = useCallback(async (result: OcrRecord) => {
-    const ownerId = getScopedUserId({ id: userId });
-    if (!result.content.trim()) return;
+  const prepareWrongQuestionSave = useCallback(
+    async (result: OcrRecord, preferredQuestionId?: string) => {
+      const ownerId = getScopedUserId({ id: userId });
+      if (!result.content.trim()) return;
 
-    const sourceGroupId = result.groupId;
-    if (sourceGroupId) {
-      const existing = await db.wrongQuestions
-        .where('[userId+sourceGroupId]')
-        .equals([ownerId, sourceGroupId])
-        .first();
-      if (existing) {
-        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
-        setSavedWrongQuestionIdsByGroup((prev) => ({
-          ...prev,
-          [sourceGroupId]: existing.id,
-        }));
-        setSaveWrongErrors((prev) => {
-          const next = { ...prev };
-          delete next[sourceGroupId];
-          return next;
-        });
+      const sourceGroupId = result.groupId;
+      const structuredResult = getStructuredResultFromOcrRecord(result);
+      const question =
+        structuredResult.questions.find((item) => item.id === preferredQuestionId) ??
+        getPrimaryOcrQuestion(structuredResult);
+      const ocrStatus = sourceGroupId ? (ocrResultStatuses[sourceGroupId] ?? 'done') : 'done';
+      const saveSourceGroupId = question
+        ? getQuestionSaveSourceGroupId(sourceGroupId, question.id)
+        : sourceGroupId;
+
+      if (!question || ocrStatus !== 'done' || !canSaveStructuredQuestion(question)) {
+        if (saveSourceGroupId) {
+          setSaveWrongErrors((prev) => ({
+            ...prev,
+            [saveSourceGroupId]: !question
+              ? '未识别到可保存的题目'
+              : ocrStatus !== 'done'
+                ? '识别完成后才能保存到错题本'
+                : '这条识别结果暂不适合保存到错题本',
+          }));
+        }
         return;
       }
-    }
 
-    const relatedUser = sourceGroupId
-      ? ocrMessages.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
-      : [...ocrMessages]
-          .reverse()
-          .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
-    const parsed = parseOcrResult(result.content);
-    const ocrStatus = sourceGroupId ? (ocrResultStatuses[sourceGroupId] ?? 'done') : 'done';
-    const missingFields = getMissingWrongQuestionFields(parsed);
-
-    if (!canSaveOcrResult(parsed, ocrStatus)) {
-      if (sourceGroupId) {
-        setSaveWrongErrors((prev) => ({
-          ...prev,
-          [sourceGroupId]: !parsed.isQuestion
-            ? '未识别到题目，不能保存到错题本'
-            : ocrStatus !== 'done'
-              ? '识别完成后才能保存到错题本'
-              : `识别结果缺少：${formatMissingWrongQuestionFields(missingFields)}，请重新识别后再保存`,
-        }));
+      const duplicateKeys = Array.from(
+        new Set([saveSourceGroupId, sourceGroupId].filter(Boolean) as string[]),
+      );
+      for (const key of duplicateKeys) {
+        const existing = await db.wrongQuestions
+          .where('[userId+sourceGroupId]')
+          .equals([ownerId, key])
+          .first();
+        if (existing) {
+          setSavedWrongGroupIds((prev) => new Set(prev).add(key));
+          setSavedWrongQuestionIdsByGroup((prev) => ({
+            ...prev,
+            [key]: existing.id,
+          }));
+          setSaveWrongErrors((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+          return;
+        }
       }
-      return;
-    }
 
-    setPendingWrongQuestion({
-      result,
-      parsed,
-      imageUrl: result.imageUrl ?? relatedUser?.imageUrl,
-      sourceGroupId,
-      missingFields,
-    });
-  }, [ocrMessages, ocrResultStatuses, userId]);
+      const relatedUser = sourceGroupId
+        ? ocrMessages.find((msg) => msg.type === 'user' && msg.groupId === sourceGroupId)
+        : [...ocrMessages]
+            .reverse()
+            .find((msg) => msg.type === 'user' && msg.createdAt <= result.createdAt);
+
+      setPendingWrongQuestion({
+        result,
+        structuredResult,
+        question,
+        imageUrl: result.imageUrl ?? relatedUser?.imageUrl,
+        sourceGroupId,
+        missingFields: question.warnings,
+      });
+    },
+    [ocrMessages, ocrResultStatuses, userId],
+  );
 
   const confirmWrongQuestionSave = useCallback(async () => {
     if (!pendingWrongQuestion || confirmSaving) return;
 
     const ownerId = getScopedUserId({ id: userId });
-    const { result, parsed, imageUrl, sourceGroupId } = pendingWrongQuestion;
+    const { result, structuredResult, question, imageUrl, sourceGroupId } = pendingWrongQuestion;
     const now = Date.now();
-    const record: WrongQuestionRecord = {
+    const record = mapOcrQuestionToWrongQuestionRecord(question, {
       id: crypto.randomUUID(),
       userId: ownerId,
-      source: 'ocr',
       sourceRecordId: result.id,
       sourceGroupId,
       imageUrl,
-      questionText: parsed.questionText,
-      subject: parsed.subject,
-      category: parsed.category,
-      knowledgePoints: parsed.knowledgePoints,
-      analysis: parsed.analysis,
-      answer: parsed.answer,
-      errorType: parsed.errorType,
-      userNote: '',
-      rawContent: parsed.rawContent,
-      status: 'unresolved',
-      createdAt: now,
-      updatedAt: now,
-    };
+      now,
+      rawContent: structuredResult.rawText || question.displayMarkdown || result.content,
+    });
+    const savedSourceGroupId = record.sourceGroupId;
 
     setConfirmSaving(true);
     try {
@@ -326,26 +346,26 @@ function ChatView({ userId }: { userId: string }) {
         syncError: undefined,
         pendingOperation: undefined,
       });
-      if (sourceGroupId) {
-        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+      if (savedSourceGroupId) {
+        setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
         setSavedWrongQuestionIdsByGroup((prev) => ({
           ...prev,
-          [sourceGroupId]: savedRecord.id,
+          [savedSourceGroupId]: savedRecord.id,
         }));
         setSaveWrongErrors((prev) => {
           const next = { ...prev };
-          delete next[sourceGroupId];
+          delete next[savedSourceGroupId];
           return next;
         });
       }
       setPendingWrongQuestion(null);
     } catch (error) {
       if (error instanceof ApiClientError && error.code === 'WRONG_QUESTION_DUPLICATED') {
-        if (sourceGroupId) {
-          setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+        if (savedSourceGroupId) {
+          setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
           setSaveWrongErrors((prev) => {
             const next = { ...prev };
-            delete next[sourceGroupId];
+            delete next[savedSourceGroupId];
             return next;
           });
         }
@@ -372,15 +392,15 @@ function ChatView({ userId }: { userId: string }) {
         }),
       );
 
-      if (sourceGroupId) {
-        setSavedWrongGroupIds((prev) => new Set(prev).add(sourceGroupId));
+      if (savedSourceGroupId) {
+        setSavedWrongGroupIds((prev) => new Set(prev).add(savedSourceGroupId));
         setSavedWrongQuestionIdsByGroup((prev) => ({
           ...prev,
-          [sourceGroupId]: record.id,
+          [savedSourceGroupId]: record.id,
         }));
         setSaveWrongErrors((prev) => ({
           ...prev,
-          [sourceGroupId]: '网络异常，错题已暂存，稍后自动同步',
+          [savedSourceGroupId]: '网络异常，错题已暂存，稍后自动同步',
         }));
       }
       setPendingWrongQuestion(null);
@@ -423,6 +443,8 @@ function ChatView({ userId }: { userId: string }) {
             type: 'ocr-result',
             groupId: msg.groupId,
             content: msg.content,
+            parsedJson: msg.parsedJson,
+            imageUrl: msg.imageUrl,
             time: msg.createdAt,
             ocrStatus: msg.groupId ? (ocrResultStatuses[msg.groupId] ?? 'done') : 'done',
           },
@@ -479,19 +501,43 @@ function ChatView({ userId }: { userId: string }) {
                   />
                 );
               }
+              const structuredResult =
+                msg.content && msg.ocrStatus !== 'streaming'
+                  ? getStructuredResultFromOcrRecord({
+                      content: msg.content,
+                      parsedJson: msg.parsedJson,
+                    })
+                  : null;
+              const primaryQuestion = structuredResult
+                ? getPrimaryOcrQuestion(structuredResult)
+                : null;
+              const saveSourceGroupId =
+                primaryQuestion
+                  ? getQuestionSaveSourceGroupId(msg.groupId, primaryQuestion.id)
+                  : msg.groupId;
+              const savedWrongQuestionId =
+                (saveSourceGroupId ? savedWrongQuestionIdsByGroup[saveSourceGroupId] : undefined) ??
+                (msg.groupId ? savedWrongQuestionIdsByGroup[msg.groupId] : undefined);
+              const isSaved = Boolean(
+                (saveSourceGroupId && savedWrongGroupIds.has(saveSourceGroupId)) ||
+                  (msg.groupId && savedWrongGroupIds.has(msg.groupId)),
+              );
+              const saveError =
+                (saveSourceGroupId ? saveWrongErrors[saveSourceGroupId] : undefined) ??
+                (msg.groupId ? saveWrongErrors[msg.groupId] : undefined);
+
               return (
                 <OcrBubble
                   key={msg.id}
                   type="ocr-result"
                   content={msg.content}
+                  parsedJson={msg.parsedJson}
                   username={currentUser?.username || '我'}
                   onImageClick={(url) => setPreviewImage(url)}
                   ocrStatus={msg.ocrStatus}
-                  isSaved={Boolean(msg.groupId && savedWrongGroupIds.has(msg.groupId))}
-                  savedWrongQuestionId={
-                    msg.groupId ? savedWrongQuestionIdsByGroup[msg.groupId] : undefined
-                  }
-                  saveError={msg.groupId ? saveWrongErrors[msg.groupId] : undefined}
+                  isSaved={isSaved}
+                  savedWrongQuestionId={savedWrongQuestionId}
+                  saveError={saveError}
                   onSave={() =>
                     prepareWrongQuestionSave({
                       id: msg.id,
@@ -499,12 +545,15 @@ function ChatView({ userId }: { userId: string }) {
                       type: 'ocr-result',
                       groupId: msg.groupId,
                       content: msg.content,
+                      parsedJson: msg.parsedJson,
+                      imageUrl: msg.imageUrl,
                       createdAt: msg.time,
                     }).catch((error) => {
-                      if (!msg.groupId) return;
+                      const errorKey = saveSourceGroupId ?? msg.groupId;
+                      if (!errorKey) return;
                       setSaveWrongErrors((prev) => ({
                         ...prev,
-                        [msg.groupId as string]:
+                        [errorKey]:
                           error instanceof Error ? error.message : '保存失败，请稍后重试',
                       }));
                     })
@@ -691,6 +740,7 @@ function ChatErrorNotice({ message }: { message: string }) {
 const OcrBubble = memo(function OcrBubble({
   type,
   content,
+  parsedJson,
   imageUrl,
   username,
   onImageClick,
@@ -702,6 +752,7 @@ const OcrBubble = memo(function OcrBubble({
 }: {
   type: 'user' | 'ocr-loading' | 'ocr-result';
   content: string;
+  parsedJson?: OcrRecord['parsedJson'];
   imageUrl?: string;
   username: string;
   onImageClick?: (url: string) => void;
@@ -715,19 +766,27 @@ const OcrBubble = memo(function OcrBubble({
   const isStreaming = ocrStatus === 'streaming';
   const deferredContent = useDeferredValue(content);
   const renderContent = isStreaming ? deferredContent : content;
-  const parsedOcr = useMemo(
-    () => (type === 'ocr-result' && content && !isStreaming ? parseOcrResult(content) : null),
-    [content, isStreaming, type],
+  const structuredOcr = useMemo(
+    () =>
+      type === 'ocr-result' && content && !isStreaming
+        ? getStructuredResultFromOcrRecord({ content, parsedJson })
+        : null,
+    [content, isStreaming, parsedJson, type],
+  );
+  const primaryQuestion = useMemo(
+    () => (structuredOcr ? getPrimaryOcrQuestion(structuredOcr) : null),
+    [structuredOcr],
   );
   const displayContent = useMemo(
     () =>
       isStreaming
         ? formatStreamingOcrContent(renderContent)
-        : formatOcrContentForDisplay(renderContent),
+        : getDisplayMarkdownFromOcrContent(renderContent),
     [isStreaming, renderContent],
   );
-  const canSave = parsedOcr ? canSaveOcrResult(parsedOcr, ocrStatus) : false;
-  const missingFields = parsedOcr ? getMissingWrongQuestionFields(parsedOcr) : [];
+  const canSave =
+    ocrStatus === 'done' && primaryQuestion ? canSaveStructuredQuestion(primaryQuestion) : false;
+  const missingFields = primaryQuestion?.warnings ?? [];
 
   const handleSave = async () => {
     if (!onSave || saving || isSaved || !canSave) return;
@@ -811,7 +870,7 @@ const OcrBubble = memo(function OcrBubble({
                 正在识别图片内容...
               </p>
             )}
-            {ocrStatus === 'done' && parsedOcr?.isQuestion && !canSave && missingFields.length > 0 && (
+            {ocrStatus === 'done' && primaryQuestion && !canSave && missingFields.length > 0 && (
               <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                 识别结果缺少：{formatMissingWrongQuestionFields(missingFields)}，暂不能保存到错题本。
                 建议重新识别或补充更清晰的图片。
@@ -895,7 +954,7 @@ function WrongQuestionSaveDialog({
 
         {pending.missingFields.length > 0 && (
           <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-            AI 输出缺少：
+            AI 识别提醒：
             {pending.missingFields.map((field) => missingLabels[field] ?? field).join('、')}。
             仍可保存，但建议稍后补充。
           </div>
@@ -913,16 +972,16 @@ function WrongQuestionSaveDialog({
         )}
 
         <div className="mt-3 space-y-3">
-          <PreviewField label="题目" value={pending.parsed.questionText} renderMarkdown />
+          <PreviewField label="题目" value={pending.question.questionText} renderMarkdown />
           <div className="grid grid-cols-2 gap-2">
-            <PreviewPill label="学科" value={pending.parsed.subject} />
-            <PreviewPill label="错因" value={pending.parsed.errorType} />
+            <PreviewPill label="学科" value={pending.question.subject} />
+            <PreviewPill label="错因" value={pending.question.errorSuggestion} />
           </div>
-          {pending.parsed.knowledgePoints.length > 0 && (
+          {pending.question.knowledgePoints.length > 0 && (
             <div>
               <p className="text-xs font-medium text-muted-foreground">知识点</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {pending.parsed.knowledgePoints.map((point) => (
+                {pending.question.knowledgePoints.map((point) => (
                   <span
                     key={point}
                     className="pm-soft-chip rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -933,7 +992,7 @@ function WrongQuestionSaveDialog({
               </div>
             </div>
           )}
-          <PreviewField label="参考答案" value={pending.parsed.answer} renderMarkdown />
+          <PreviewField label="参考答案" value={pending.question.answer} renderMarkdown />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
