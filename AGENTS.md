@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.1 已完成，Phase 4 继续推进。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.2 已完成，Phase 4 继续推进。
 
 ## 项目快照
 
@@ -14,6 +14,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 2.5 | 已完成 | Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨 |
 | Phase 3 | 已完成 | OCR structured output、AI 讲题 prompt、多题保存、tool action proposal 边界 |
 | Phase 4.1 | 已完成 | WrongQuestion-first FSRS 复习闭环、Review API、今日复习卡 |
+| Phase 4.2 | 已完成 | 学习统计页、Review stats/logs API、复习趋势与最近记录 |
 
 ## 技术栈
 
@@ -103,7 +104,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
-- Review：`/reviews` 已支持错题加入复习、今日到期复习卡和评分；Card / ReviewLog 以 PostgreSQL 为权威来源。
+- Review：`/reviews` 已支持错题加入复习、今日到期复习卡、评分、学习统计和最近复习日志；Card / ReviewLog 以 PostgreSQL 为权威来源。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
 - WrongQuestion / OCRRecord 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
 - ChatMessage 不进入通用 mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
@@ -129,6 +130,6 @@ mcp -> ai, fsrs, rag, types
 
 Phase 4 后续最优先：
 
-1. 复习历史与统计。
-2. 更完整的 ReviewTask 数据流。
-3. 离线评分队列与提醒策略。
+1. 更完整的 ReviewTask 数据流。
+2. 离线评分队列与提醒策略。
+3. 复习提醒与长期计划策略。

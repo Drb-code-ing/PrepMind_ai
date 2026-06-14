@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 4.1 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-14。Phase 4.2 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -157,6 +157,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
   -> POST /reviews/cards/:cardId/rating
   -> @repo/fsrs 计算下一次复习时间
   -> 更新 Card + 写入 ReviewLog
+  -> /stats 读取 /reviews/stats 与 /reviews/logs
 ```
 
 关键约定：
@@ -167,6 +168,9 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - Card / ReviewLog 均按当前 `userId` 隔离，所有 Review API 经过 `JwtAuthGuard`。
 - 复习评分第一轮在线写入 PostgreSQL，不进入 Dexie mutationQueue；失败时提示用户重试。
 - 今日任务页读取到期复习卡，评分后通过 TanStack Query 失效重新读取。
+- 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs。
+- `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。
+- `/reviews/logs` 返回当前用户最近复习记录和错题摘要，`ReviewLog` 通过关联 `card.userId` 隔离用户。
 
 服务端 Review API：
 
@@ -175,6 +179,8 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 | `POST` | `/reviews/cards/from-wrong-question` | 将当前用户错题加入复习计划，重复加入返回已有卡片 |
 | `GET` | `/reviews/cards/by-wrong-question/:wrongQuestionId` | 读取错题对应复习卡状态 |
 | `GET` | `/reviews/tasks/today` | 读取当前用户今日到期复习卡，支持 `date=YYYY-MM-DD` |
+| `GET` | `/reviews/stats` | 读取 7 天 / 30 天复习统计，支持用户本地日期分桶 |
+| `GET` | `/reviews/logs` | 分页读取当前用户最近复习日志 |
 | `POST` | `/reviews/cards/:cardId/rating` | 提交 Again / Hard / Good / Easy 评分，更新 Card 并写 ReviewLog |
 
 ## 6. Dexie 与离线补偿
@@ -208,7 +214,7 @@ WrongQuestion / OCRRecord 写操作
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
-- Review rating：Phase 4.1 在线写入 PostgreSQL，暂不进入离线补偿队列。
+- Review rating：Phase 4.2 仍在线写入 PostgreSQL，暂不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务和学习偏好：仍是 localStorage 本地轻状态。
 

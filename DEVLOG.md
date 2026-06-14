@@ -246,6 +246,28 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/web build` 通过。
 - 浏览器冒烟通过：注册测试账号、创建测试错题、错题详情加入复习、今日任务展开答案、提交“掌握”评分、卡片从今日到期列表移除。
 
+**Phase 4.2 学习统计**
+
+- 新增 Review stats/logs API，基于 `Card` / `ReviewLog` / `WrongQuestion` 聚合复习数据。
+- 新增 `/stats` 学习统计页，展示复习总览、趋势、评分分布、卡片状态和最近复习记录。
+- 侧边栏和今日任务页新增学习统计入口。
+- 统计和日志按当前 `userId` 隔离，不新增 `ReviewTask` 表。
+- 浏览器验收通过：注册 smoke 账号、创建错题、加入复习计划、提交“掌握”评分、打开 `/stats` 验证 7 天 / 30 天统计、侧边栏入口和今日任务入口；验收后删除 smoke 账号。
+
+验证：
+
+- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --filter @repo/server test -- reviews.service.spec.ts` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand reviews.e2e-spec.ts` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-stats-view.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+
 ---
 
 ## 当前状态
@@ -291,7 +313,9 @@ f5a2eb1 style: soften cartoon theme palette
 **Phase 4：进行中**
 
 - Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
+- Phase 4.2 学习统计页和 Review stats/logs API 已完成。
 - 错题可加入复习卡，今日任务可读取到期复习卡并提交四档评分。
+- `/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
 - Card / ReviewLog 以 PostgreSQL 为权威来源，Review rating 暂不进入 Dexie mutationQueue。
 
 ---
@@ -303,7 +327,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] WrongQuestion-first Card / ReviewLog 第一轮数据流。
 - [x] Again / Hard / Good / Easy 评分入口。
 - [x] 今日任务接入到期复习卡。
-- [ ] 复习历史与统计。
+- [x] 复习历史与统计。
 - [ ] 更完整的 ReviewTask 数据流。
 - [ ] 离线评分队列与提醒策略。
 
