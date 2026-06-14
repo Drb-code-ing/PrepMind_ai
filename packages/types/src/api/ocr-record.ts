@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ocrStructuredResultSchema } from './ocr-question.ts';
+import { ocrStructuredResultSchema } from '@repo/types/api/ocr-question';
 
 export const ocrRecordStatusSchema = z.enum([
   'PENDING',

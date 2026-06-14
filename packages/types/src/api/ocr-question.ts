@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { createWrongQuestionRequestSchema } from './wrong-question.ts';
+import { createWrongQuestionRequestSchema } from '@repo/types/api/wrong-question';
 
 const subjectEnumSchema = z.enum(['数学', '英语', '物理', '化学', '生物', '计算机', '其他']);
 const questionTypeEnumSchema = z.enum([
