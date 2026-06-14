@@ -1,7 +1,11 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ReviewRatingRequest } from '@repo/types/api/review';
+import type {
+  ReviewLogListQuery,
+  ReviewRatingRequest,
+  ReviewStatsQuery,
+} from '@repo/types/api/review';
 
 import { apiClient } from '@/lib/api-client';
 import { createReviewApi } from '@/lib/review-api';
@@ -15,6 +19,8 @@ export const reviewQueryKeys = {
   today: (date?: string) => [...reviewQueryKeys.all, 'today', date ?? 'server-date'] as const,
   byWrongQuestion: (wrongQuestionId: string) =>
     [...reviewQueryKeys.all, 'by-wrong-question', wrongQuestionId] as const,
+  stats: (query: ReviewStatsQuery) => [...reviewQueryKeys.all, 'stats', query] as const,
+  logs: (query: ReviewLogListQuery) => [...reviewQueryKeys.all, 'logs', query] as const,
 };
 
 export function useTodayReviewTasks(date?: string) {
@@ -50,6 +56,40 @@ export function useWrongQuestionReviewCard(wrongQuestionId: string | null | unde
       return reviewApi.getByWrongQuestion(accessToken, wrongQuestionId);
     },
     enabled: sessionHydrated && !!accessToken && !!wrongQuestionId,
+    retry: false,
+  });
+}
+
+export function useReviewStats(query: ReviewStatsQuery) {
+  const accessToken = useUserStore((state) => state.accessToken);
+  const sessionHydrated = useUserStore((state) => state.sessionHydrated);
+
+  return useQuery({
+    queryKey: reviewQueryKeys.stats(query),
+    queryFn: async () => {
+      if (!accessToken) {
+        throw new Error('Missing access token');
+      }
+      return reviewApi.getStats(accessToken, query);
+    },
+    enabled: sessionHydrated && !!accessToken,
+    retry: false,
+  });
+}
+
+export function useReviewLogs(query: ReviewLogListQuery) {
+  const accessToken = useUserStore((state) => state.accessToken);
+  const sessionHydrated = useUserStore((state) => state.sessionHydrated);
+
+  return useQuery({
+    queryKey: reviewQueryKeys.logs(query),
+    queryFn: async () => {
+      if (!accessToken) {
+        throw new Error('Missing access token');
+      }
+      return reviewApi.getLogs(accessToken, query);
+    },
+    enabled: sessionHydrated && !!accessToken,
     retry: false,
   });
 }

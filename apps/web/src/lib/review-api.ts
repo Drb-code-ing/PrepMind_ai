@@ -1,9 +1,13 @@
 import {
   createReviewCardResponseSchema,
   reviewCardByWrongQuestionResponseSchema,
+  reviewLogListResponseSchema,
   reviewRatingResponseSchema,
+  reviewStatsResponseSchema,
   reviewTodayTasksResponseSchema,
+  type ReviewLogListQuery,
   type ReviewRatingRequest,
+  type ReviewStatsQuery,
 } from '@repo/types/api/review';
 
 type ApiClient = {
@@ -39,6 +43,29 @@ export function createReviewApi(client: ApiClient) {
       const query = date ? `?date=${encodeURIComponent(date)}` : '';
       return reviewTodayTasksResponseSchema.parse(
         await client.get<unknown>(`/reviews/tasks/today${query}`, { accessToken }),
+      );
+    },
+
+    async getStats(accessToken: string, query: ReviewStatsQuery) {
+      const params = new URLSearchParams();
+      params.set('range', query.range);
+      if (query.endDate) {
+        params.set('endDate', query.endDate);
+      }
+      params.set('timezoneOffsetMinutes', String(query.timezoneOffsetMinutes));
+
+      return reviewStatsResponseSchema.parse(
+        await client.get<unknown>(`/reviews/stats?${params.toString()}`, { accessToken }),
+      );
+    },
+
+    async getLogs(accessToken: string, query: ReviewLogListQuery) {
+      const params = new URLSearchParams();
+      params.set('page', String(query.page));
+      params.set('pageSize', String(query.pageSize));
+
+      return reviewLogListResponseSchema.parse(
+        await client.get<unknown>(`/reviews/logs?${params.toString()}`, { accessToken }),
       );
     },
 
