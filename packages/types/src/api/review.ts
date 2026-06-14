@@ -82,6 +82,83 @@ export const reviewTodayTasksResponseSchema = z.object({
   tasks: z.array(reviewTaskSchema),
 });
 
+export const reviewStatsRangeSchema = z.enum(['7d', '30d']);
+
+export const reviewStatsQuerySchema = z.object({
+  range: reviewStatsRangeSchema.default('7d'),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  timezoneOffsetMinutes: z.coerce.number().int().min(-840).max(840).default(0),
+});
+
+export const reviewRatingCountsSchema = z.object({
+  again: z.number().int().nonnegative(),
+  hard: z.number().int().nonnegative(),
+  good: z.number().int().nonnegative(),
+  easy: z.number().int().nonnegative(),
+});
+
+export const reviewCardStateCountsSchema = z.object({
+  NEW: z.number().int().nonnegative(),
+  LEARNING: z.number().int().nonnegative(),
+  REVIEW: z.number().int().nonnegative(),
+  RELEARNING: z.number().int().nonnegative(),
+});
+
+export const reviewDailyCountSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  count: z.number().int().nonnegative(),
+});
+
+export const reviewStatsResponseSchema = z.object({
+  range: reviewStatsRangeSchema,
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  totalReviews: z.number().int().nonnegative(),
+  reviewedCards: z.number().int().nonnegative(),
+  dueCards: z.number().int().nonnegative(),
+  accuracyLikeRate: z.number().min(0).max(1),
+  streakDays: z.number().int().nonnegative(),
+  ratingCounts: reviewRatingCountsSchema,
+  stateCounts: reviewCardStateCountsSchema,
+  dailyReviews: z.array(reviewDailyCountSchema),
+});
+
+export const reviewLogWrongQuestionSchema = z.object({
+  id: z.string().min(1),
+  questionText: z.string(),
+  subject: z.string(),
+  knowledgePoints: z.array(z.string()),
+  status: reviewWrongQuestionStatusSchema,
+});
+
+export const reviewLogListItemSchema = z.object({
+  id: z.string().min(1),
+  cardId: z.string().min(1),
+  rating: reviewRatingSchema,
+  scheduledDays: z.number().int().nonnegative(),
+  elapsedDays: z.number().int().nonnegative(),
+  reviewDurationMs: z.number().int().nonnegative().nullable(),
+  reviewedAt: z.string().datetime(),
+  nextReview: z.string().datetime(),
+  currentCardState: reviewCardStateSchema,
+  wrongQuestion: reviewLogWrongQuestionSchema.optional(),
+});
+
+export const reviewLogListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const reviewLogListResponseSchema = z.object({
+  items: z.array(reviewLogListItemSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+});
+
 export const reviewRatingRequestSchema = z.object({
   rating: reviewRatingSchema,
   reviewedAt: z.string().datetime().optional(),
@@ -109,6 +186,15 @@ export type CreateReviewCardResponse = z.infer<typeof createReviewCardResponseSc
 export type ReviewWrongQuestionTaskResponse = z.infer<typeof reviewWrongQuestionTaskSchema>;
 export type ReviewTaskResponse = z.infer<typeof reviewTaskSchema>;
 export type ReviewTodayTasksResponse = z.infer<typeof reviewTodayTasksResponseSchema>;
+export type ReviewStatsRange = z.infer<typeof reviewStatsRangeSchema>;
+export type ReviewStatsQuery = z.infer<typeof reviewStatsQuerySchema>;
+export type ReviewStatsResponse = z.infer<typeof reviewStatsResponseSchema>;
+export type ReviewRatingCounts = z.infer<typeof reviewRatingCountsSchema>;
+export type ReviewCardStateCounts = z.infer<typeof reviewCardStateCountsSchema>;
+export type ReviewDailyCount = z.infer<typeof reviewDailyCountSchema>;
+export type ReviewLogListItemResponse = z.infer<typeof reviewLogListItemSchema>;
+export type ReviewLogListQuery = z.infer<typeof reviewLogListQuerySchema>;
+export type ReviewLogListResponse = z.infer<typeof reviewLogListResponseSchema>;
 export type ReviewRatingRequest = z.infer<typeof reviewRatingRequestSchema>;
 export type ReviewRatingResponse = z.infer<typeof reviewRatingResponseSchema>;
 export type ReviewCardByWrongQuestionResponse = z.infer<
