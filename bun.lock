@@ -16,6 +16,7 @@
         "@nestjs/platform-express": "^11.0.1",
         "@prisma/client": "^6.6.0",
         "@repo/database": "*",
+        "@repo/fsrs": "*",
         "@repo/types": "*",
         "argon2": "^0.44.0",
         "cookie-parser": "^1.4.7",
