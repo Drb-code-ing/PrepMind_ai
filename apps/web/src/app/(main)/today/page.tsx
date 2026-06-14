@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { ReviewRating, ReviewTaskResponse } from '@repo/types/api/review';
+import type { ReviewRating } from '@repo/types/api/review';
+import type { ReviewTaskItemResponse } from '@repo/types/api/review-task';
 import {
   ArrowLeft,
   BarChart3,
@@ -22,7 +23,12 @@ import {
 } from 'lucide-react';
 
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
-import { useSubmitReviewRating, useTodayReviewTasks } from '@/hooks/use-reviews';
+import {
+  useReopenReviewTask,
+  useSkipReviewTask,
+  useSubmitReviewTaskRating,
+  useTodayReviewTaskList,
+} from '@/hooks/use-review-tasks';
 import { db } from '@/lib/db';
 import { getMutationErrorMessage } from '@/lib/mutation-queue';
 import {
@@ -30,6 +36,10 @@ import {
   getReviewRatingOptions,
   type ReviewRatingFeedback,
 } from '@/lib/review-feedback';
+import {
+  getReviewTaskStatusFeedback,
+  groupReviewTasksByStatus,
+} from '@/lib/review-task-view';
 import {
   TODAY_TASKS,
   createEmptyTodayState,
@@ -91,11 +101,19 @@ export default function TodayPage() {
   const [taskState, setTaskState] = useState(() => createEmptyTodayState(dateKey));
   const [unresolvedCount, setUnresolvedCount] = useState(0);
   const [notice, setNotice] = useState<{ message: string; tone: NoticeTone } | null>(null);
-  const [revealedCardIds, setRevealedCardIds] = useState<Set<string>>(new Set());
+  const [revealedTaskIds, setRevealedTaskIds] = useState<Set<string>>(new Set());
   const [reviewFeedbacks, setReviewFeedbacks] = useState<Record<string, ReviewRatingFeedback>>({});
   const noticeTimerRef = useRef<number | null>(null);
-  const todayReviewTasks = useTodayReviewTasks(dateKey);
-  const submitReviewRating = useSubmitReviewRating();
+  const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
+  const todayReviewTasks = useTodayReviewTaskList({
+    date: dateKey,
+    timezoneOffsetMinutes,
+    includeCompleted: true,
+  });
+  const groupedReviewTasks = groupReviewTasksByStatus(todayReviewTasks.data?.tasks ?? []);
+  const submitReviewRating = useSubmitReviewTaskRating();
+  const skipReviewTask = useSkipReviewTask();
+  const reopenReviewTask = useReopenReviewTask();
 
   useEffect(() => {
     if (!userId) return;
@@ -145,23 +163,23 @@ export default function TodayPage() {
     };
   }, []);
 
-  const toggleAnswer = useCallback((cardId: string) => {
-    setRevealedCardIds((prev) => {
+  const toggleAnswer = useCallback((taskId: string) => {
+    setRevealedTaskIds((prev) => {
       const next = new Set(prev);
-      if (next.has(cardId)) {
-        next.delete(cardId);
+      if (next.has(taskId)) {
+        next.delete(taskId);
       } else {
-        next.add(cardId);
+        next.add(taskId);
       }
       return next;
     });
   }, []);
 
-  const rateCard = useCallback(
-    async (cardId: string, rating: ReviewRating) => {
+  const rateTask = useCallback(
+    async (taskId: string, rating: ReviewRating) => {
       try {
         const result = await submitReviewRating.mutateAsync({
-          cardId,
+          taskId,
           request: {
             rating,
             reviewedAt: new Date().toISOString(),
@@ -173,11 +191,11 @@ export default function TodayPage() {
         });
         setReviewFeedbacks((prev) => ({
           ...prev,
-          [cardId]: feedback,
+          [taskId]: feedback,
         }));
-        setRevealedCardIds((prev) => {
+        setRevealedTaskIds((prev) => {
           const next = new Set(prev);
-          next.delete(cardId);
+          next.delete(taskId);
           return next;
         });
         showNotice(`${feedback.title}，${feedback.description}`);
@@ -186,6 +204,32 @@ export default function TodayPage() {
       }
     },
     [showNotice, submitReviewRating],
+  );
+
+  const skipTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await skipReviewTask.mutateAsync(taskId);
+        const feedback = getReviewTaskStatusFeedback('skip');
+        showNotice(feedback.message, feedback.tone);
+      } catch (error) {
+        showNotice(getMutationErrorMessage(error), 'neutral');
+      }
+    },
+    [showNotice, skipReviewTask],
+  );
+
+  const reopenTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await reopenReviewTask.mutateAsync(taskId);
+        const feedback = getReviewTaskStatusFeedback('reopen');
+        showNotice(feedback.message, feedback.tone);
+      } catch (error) {
+        showNotice(getMutationErrorMessage(error), 'neutral');
+      }
+    },
+    [reopenReviewTask, showNotice],
   );
 
   const toggleTask = useCallback(
@@ -283,9 +327,9 @@ export default function TodayPage() {
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
-            <MiniStat label="待复习" value={`${todayReviewTasks.data?.dueCount ?? 0} 张`} />
-            <MiniStat label="新卡" value={`${todayReviewTasks.data?.newCount ?? 0} 张`} />
-            <MiniStat label="复习卡" value={`${todayReviewTasks.data?.reviewCount ?? 0} 张`} />
+            <MiniStat label="待复习" value={`${todayReviewTasks.data?.pendingCount ?? 0} 张`} />
+            <MiniStat label="已完成" value={`${todayReviewTasks.data?.completedCount ?? 0} 张`} />
+            <MiniStat label="已跳过" value={`${todayReviewTasks.data?.skippedCount ?? 0} 张`} />
           </div>
         </section>
 
@@ -305,7 +349,7 @@ export default function TodayPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#315f86] ring-1 ring-[var(--pm-line)]">
-              {todayReviewTasks.data?.dueCount ?? 0} 张
+              {todayReviewTasks.data?.pendingCount ?? 0} 张
             </span>
           </div>
 
@@ -319,16 +363,18 @@ export default function TodayPage() {
               <p className="rounded-2xl bg-red-50/80 px-3 py-3 text-sm text-red-600 ring-1 ring-red-100">
                 复习任务读取失败，稍后再试。
               </p>
-            ) : todayReviewTasks.data?.tasks.length ? (
-              todayReviewTasks.data.tasks.map((task) => (
+            ) : groupedReviewTasks.pending.length ? (
+              groupedReviewTasks.pending.map((task) => (
                 <ReviewTaskCard
-                  key={task.cardId}
+                  key={task.id}
                   task={task}
-                  revealed={revealedCardIds.has(task.cardId)}
-                  feedback={reviewFeedbacks[task.cardId] ?? null}
+                  revealed={revealedTaskIds.has(task.id)}
+                  feedback={reviewFeedbacks[task.id] ?? null}
                   ratingPending={submitReviewRating.isPending}
-                  onToggleAnswer={() => toggleAnswer(task.cardId)}
-                  onRate={(rating) => void rateCard(task.cardId, rating)}
+                  actionPending={skipReviewTask.isPending || reopenReviewTask.isPending}
+                  onToggleAnswer={() => toggleAnswer(task.id)}
+                  onRate={(rating) => void rateTask(task.id, rating)}
+                  onSkip={() => void skipTask(task.id)}
                 />
               ))
             ) : (
@@ -336,6 +382,20 @@ export default function TodayPage() {
                 今天没有到期复习卡。可以从错题详情里把重要题目加入复习计划。
               </p>
             )}
+
+            {groupedReviewTasks.completed.length ? (
+              <ReviewTaskSummary title="今日已完成" tasks={groupedReviewTasks.completed} />
+            ) : null}
+
+            {groupedReviewTasks.skipped.length ? (
+              <ReviewTaskSummary
+                title="已跳过"
+                tasks={groupedReviewTasks.skipped}
+                actionLabel="恢复"
+                actionPending={reopenReviewTask.isPending}
+                onAction={(taskId) => void reopenTask(taskId)}
+              />
+            ) : null}
           </div>
         </section>
 
@@ -366,7 +426,7 @@ export default function TodayPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">数据说明</p>
               <p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">
-                今日任务当前是本地轻学习手账，状态保存在本机浏览器。后续会接入 AI 动态规划和服务端任务表。
+                轻学习手账状态保存在本机浏览器；复习卡任务已接入服务端 ReviewTask，评分后会同步更新复习统计。
               </p>
             </div>
           </div>
@@ -490,15 +550,19 @@ function ReviewTaskCard({
   revealed,
   feedback,
   ratingPending,
+  actionPending,
   onToggleAnswer,
   onRate,
+  onSkip,
 }: {
-  task: ReviewTaskResponse;
+  task: ReviewTaskItemResponse;
   revealed: boolean;
   feedback: ReviewRatingFeedback | null;
   ratingPending: boolean;
+  actionPending: boolean;
   onToggleAnswer: () => void;
   onRate: (rating: ReviewRating) => void;
+  onSkip: () => void;
 }) {
   const wrongQuestion = task.wrongQuestion;
   const ratingOptions = getReviewRatingOptions();
@@ -515,7 +579,7 @@ function ReviewTaskCard({
               {wrongQuestion?.subject ?? '复习卡'}
             </span>
             <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
-              {task.state}
+              {task.card.state}
             </span>
           </div>
           <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-[var(--pm-ink)]">
@@ -576,6 +640,20 @@ function ReviewTaskCard({
         {revealed ? '收起答案' : '查看答案'}
       </button>
 
+      <button
+        type="button"
+        disabled={actionPending || ratingPending}
+        onClick={onSkip}
+        className="tap-target mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white/65 text-sm font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98] disabled:opacity-60"
+      >
+        {actionPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <RotateCcw className="h-4 w-4" />
+        )}
+        今天先跳过
+      </button>
+
       {revealed ? (
         <div className="mt-2 grid grid-cols-2 gap-2">
           {ratingOptions.map((option) => (
@@ -601,5 +679,50 @@ function ReviewTaskCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+function ReviewTaskSummary({
+  title,
+  tasks,
+  actionLabel,
+  actionPending,
+  onAction,
+}: {
+  title: string;
+  tasks: ReviewTaskItemResponse[];
+  actionLabel?: string;
+  actionPending?: boolean;
+  onAction?: (taskId: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--pm-line)]">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-bold text-[var(--pm-muted)]">{title}</p>
+        <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-[var(--pm-muted)]">
+          {tasks.length} 张
+        </span>
+      </div>
+      <div className="mt-2 space-y-2">
+        {tasks.map((task) => (
+          <div key={task.id} className="flex items-center gap-2 rounded-xl bg-white/65 px-2 py-2">
+            <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-[#6f5212]" />
+            <p className="min-w-0 flex-1 truncate text-xs font-semibold">
+              {task.wrongQuestion?.questionText ?? '复习卡'}
+            </p>
+            {actionLabel && onAction ? (
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => onAction(task.id)}
+                className="tap-target min-h-8 rounded-xl px-2 text-xs font-bold text-[#247269] transition-all hover:bg-[#eafff9] disabled:opacity-60"
+              >
+                {actionPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : actionLabel}
+              </button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
