@@ -145,7 +145,8 @@ model WrongQuestion {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards Card[]
 
   @@unique([userId, sourceGroupId])
   @@index([userId, createdAt])
@@ -155,23 +156,26 @@ model WrongQuestion {
 
 // ---------- FSRS 记忆系统 ----------
 model Card {
-  id             String    @id @default(cuid())
-  userId         String
-  questionId     String    @unique
-  difficulty     Float     @default(5.0)
-  stability      Float     @default(0.0)
-  retrievability Float     @default(1.0)
-  lastReview     DateTime  @default(now())
-  nextReview     DateTime  @default(now())
-  reviewCount    Int       @default(0)
-  lapses         Int       @default(0)
-  state          CardState @default(NEW)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  userId          String
+  questionId      String?   @unique
+  wrongQuestionId String?   @unique
+  difficulty      Float     @default(5.0)
+  stability       Float     @default(0.0)
+  retrievability  Float     @default(1.0)
+  lastReview      DateTime?
+  nextReview      DateTime  @default(now())
+  reviewCount     Int       @default(0)
+  lapses          Int       @default(0)
+  state           CardState @default(NEW)
+  suspendedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  user     User        @relation(fields: [userId], references: [id])
-  question Question    @relation(fields: [questionId], references: [id])
-  logs     ReviewLog[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question      Question?      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  wrongQuestion WrongQuestion? @relation(fields: [wrongQuestionId], references: [id], onDelete: Cascade)
+  logs          ReviewLog[]
 
   @@index([userId, nextReview])
   @@index([userId, state])
@@ -189,13 +193,15 @@ model ReviewLog {
   cardId           String
   rating           Int
   scheduledDays    Int
+  elapsedDays      Int      @default(0)
+  reviewDurationMs Int?
   stabilityBefore  Float
   stabilityAfter   Float
   difficultyBefore Float
   difficultyAfter  Float
   reviewedAt       DateTime @default(now())
 
-  card Card @relation(fields: [cardId], references: [id])
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
   @@index([reviewedAt])
