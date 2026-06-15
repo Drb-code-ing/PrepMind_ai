@@ -13,6 +13,8 @@ import {
   createWrongQuestionApi,
   type UpdateLocalWrongQuestionRequest,
 } from './wrong-question-api.ts';
+import { createReviewTaskApi } from './review-task-api.ts';
+import { readReviewTaskRatingPayload } from './review-task-offline.ts';
 
 type WrongQuestionCreatePayload = { record: WrongQuestionRecord };
 type WrongQuestionUpdatePayload = { patch: UpdateLocalWrongQuestionRequest };
@@ -26,6 +28,14 @@ type MutationApis = {
     'create' | 'update' | 'delete'
   >;
   ocrRecords: Pick<ReturnType<typeof createOcrRecordApi>, 'create' | 'delete'>;
+  reviewTasks: Pick<ReturnType<typeof createReviewTaskApi>, 'submitRating'>;
+};
+
+export type FlushMutationQueueSummary = {
+  successCount: number;
+  retryCount: number;
+  terminalCount: number;
+  reviewRatingSuccessCount: number;
 };
 
 type FlushResult =
@@ -36,6 +46,7 @@ type FlushResult =
 const defaultApis: MutationApis = {
   wrongQuestions: createWrongQuestionApi(apiClient),
   ocrRecords: createOcrRecordApi(apiClient),
+  reviewTasks: createReviewTaskApi(apiClient),
 };
 
 export async function flushMutationItem(
@@ -46,6 +57,11 @@ export async function flushMutationItem(
   try {
     if (item.entity === 'wrongQuestion') {
       const record = await flushWrongQuestionItem(item, accessToken, apis);
+      return { outcome: 'success', record };
+    }
+
+    if (item.entity === 'reviewTask') {
+      const record = await flushReviewTaskItem(item, accessToken, apis);
       return { outcome: 'success', record };
     }
 
@@ -102,7 +118,13 @@ export async function flushMutationQueue({
   accessToken: string;
   now?: Date;
   maxItems?: number;
-}) {
+}): Promise<FlushMutationQueueSummary> {
+  const summary: FlushMutationQueueSummary = {
+    successCount: 0,
+    retryCount: 0,
+    terminalCount: 0,
+    reviewRatingSuccessCount: 0,
+  };
   const pending = await db.mutationQueue.where('userId').equals(userId).toArray();
   const dueItems = pending
     .filter((item) => item.status !== 'syncing' && shouldAttemptMutation(item, now))
@@ -118,12 +140,22 @@ export async function flushMutationQueue({
     const result = await flushMutationItem(item, accessToken);
     if (result.outcome === 'success') {
       await applyFlushSuccess(item, result.record);
+      summary.successCount += 1;
+      if (item.entity === 'reviewTask' && item.operation === 'rating') {
+        summary.reviewRatingSuccessCount += 1;
+      }
       continue;
     }
 
     const retryCount = item.retryCount + 1;
     const nextRetryAt =
       result.outcome === 'retry' ? getNextRetryAt(retryCount, new Date()) : undefined;
+
+    if (result.outcome === 'retry') {
+      summary.retryCount += 1;
+    } else {
+      summary.terminalCount += 1;
+    }
 
     await db.mutationQueue.update(item.id, {
       status: 'failed',
@@ -133,6 +165,8 @@ export async function flushMutationQueue({
       updatedAt: new Date().toISOString(),
     });
   }
+
+  return summary;
 }
 
 async function flushWrongQuestionItem(
@@ -170,8 +204,28 @@ async function flushOcrRecordItem(
   return undefined;
 }
 
+async function flushReviewTaskItem(
+  item: MutationQueueItem,
+  accessToken: string,
+  apis: MutationApis,
+) {
+  if (item.operation !== 'rating') {
+    throw new ApiClientError('Unsupported review task mutation operation', {
+      status: 400,
+      code: 'UNSUPPORTED_REVIEW_TASK_MUTATION',
+    });
+  }
+
+  const payload = readReviewTaskRatingPayload(item.payload);
+  return apis.reviewTasks.submitRating(accessToken, payload.taskId, payload.request);
+}
+
 async function applyFlushSuccess(item: MutationQueueItem, record?: unknown) {
   await db.mutationQueue.delete(item.id);
+
+  if (item.entity === 'reviewTask') {
+    return;
+  }
 
   if (item.entity === 'wrongQuestion') {
     if (item.operation === 'delete') {

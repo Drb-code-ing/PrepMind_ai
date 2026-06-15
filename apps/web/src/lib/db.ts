@@ -3,8 +3,8 @@ import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
 
 export type LocalSyncStatus = 'synced' | 'pending' | 'failed';
 export type PendingOperation = 'create' | 'update' | 'delete';
-export type MutationEntity = 'wrongQuestion' | 'ocrRecord';
-export type MutationOperation = 'create' | 'update' | 'delete';
+export type MutationEntity = 'wrongQuestion' | 'ocrRecord' | 'reviewTask';
+export type MutationOperation = 'create' | 'update' | 'delete' | 'rating';
 export type MutationStatus = 'pending' | 'syncing' | 'failed';
 
 export interface LocalSyncMetadata {
@@ -172,4 +172,14 @@ db.version(7).stores({
     'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
   mutationQueue:
     '&id, userId, [userId+status], [userId+entity], dedupeKey, nextRetryAt, updatedAt',
+});
+
+db.version(8).stores({
+  messages: 'id, userId, [userId+order], role, order, createdAt',
+  ocrRecords:
+    'id, userId, [userId+createdAt], [userId+pendingOperation], type, groupId, createdAt, syncStatus',
+  wrongQuestions:
+    'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
+  mutationQueue:
+    '&id, userId, [userId+status], [userId+entity], [userId+entity+operation], dedupeKey, nextRetryAt, updatedAt',
 });

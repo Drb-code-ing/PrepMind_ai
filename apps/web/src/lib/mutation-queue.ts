@@ -63,6 +63,23 @@ export function mergeMutationQueueItems(
   existing: MutationQueueItem,
   incoming: MutationQueueItem,
 ): MutationQueueItem | null {
+  if (
+    existing.entity === 'reviewTask' &&
+    existing.operation === 'rating' &&
+    incoming.entity === 'reviewTask' &&
+    incoming.operation === 'rating'
+  ) {
+    return {
+      ...incoming,
+      id: existing.id,
+      status: 'pending',
+      retryCount: 0,
+      lastError: undefined,
+      createdAt: existing.createdAt,
+      nextRetryAt: undefined,
+    };
+  }
+
   if (existing.operation === 'create' && incoming.operation === 'delete') {
     return null;
   }
