@@ -132,6 +132,37 @@ export class ReviewTasksService {
           reviewedAt,
         });
 
+        const updatedCardResult = await tx.card.updateMany({
+          where: {
+            id: card.id,
+            userId,
+            updatedAt: card.updatedAt,
+            nextReview: card.nextReview,
+          },
+          data: {
+            difficulty: scheduled.card.difficulty,
+            stability: scheduled.card.stability,
+            retrievability: scheduled.card.retrievability,
+            lastReview: scheduled.card.lastReview,
+            nextReview: scheduled.card.nextReview,
+            reviewCount: scheduled.card.reviewCount,
+            lapses: scheduled.card.lapses,
+            state: scheduled.card.state,
+          },
+        });
+        if (updatedCardResult.count !== 1) {
+          if (input.clientMutationId) {
+            const existing = await this.findExistingRatingLog(
+              input.clientMutationId,
+              tx,
+            );
+            if (existing) {
+              return this.returnExistingRatingResult(userId, taskId, existing);
+            }
+          }
+          throw this.taskNotPending();
+        }
+
         const log = await tx.reviewLog.create({
           data: {
             cardId: card.id,
@@ -161,35 +192,6 @@ export class ReviewTasksService {
           throw this.taskNotPending();
         }
 
-        const updatedCardResult = await tx.card.updateMany({
-          where: {
-            id: card.id,
-            userId,
-            updatedAt: card.updatedAt,
-            nextReview: card.nextReview,
-          },
-          data: {
-            difficulty: scheduled.card.difficulty,
-            stability: scheduled.card.stability,
-            retrievability: scheduled.card.retrievability,
-            lastReview: scheduled.card.lastReview,
-            nextReview: scheduled.card.nextReview,
-            reviewCount: scheduled.card.reviewCount,
-            lapses: scheduled.card.lapses,
-            state: scheduled.card.state,
-          },
-        });
-        if (updatedCardResult.count !== 1) {
-          throw this.taskNotPending();
-        }
-
-        const updatedCard = await tx.card.findFirst({
-          where: { id: card.id, userId },
-        });
-        if (!updatedCard) {
-          throw this.taskNotFound();
-        }
-
         await tx.reviewTask.updateMany({
           where: {
             userId,
@@ -199,6 +201,13 @@ export class ReviewTasksService {
           },
           data: { status: 'CANCELLED', skippedAt: null },
         });
+
+        const updatedCard = await tx.card.findFirst({
+          where: { id: card.id, userId },
+        });
+        if (!updatedCard) {
+          throw this.taskNotFound();
+        }
 
         const completedTask = await tx.reviewTask.findFirst({
           where: { id: task.id, userId },
@@ -245,11 +254,10 @@ export class ReviewTasksService {
       if (task.status === 'CANCELLED') {
         throw this.taskNotPending();
       }
+      this.ensureCurrentDueTask(task);
       if (task.status === 'SKIPPED') {
         return { task: this.toTaskResponse(task) };
       }
-
-      this.ensureCurrentDueTask(task);
 
       const skipped = await tx.reviewTask.updateMany({
         where: { id: task.id, userId, status: 'PENDING' },
