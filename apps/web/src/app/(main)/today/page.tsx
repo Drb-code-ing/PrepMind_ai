@@ -38,6 +38,7 @@ import {
   getReviewRatingOptions,
   type ReviewRatingFeedback,
 } from '@/lib/review-feedback';
+import { buildReviewReminderSummary } from '@/lib/review-reminder';
 import {
   createReviewTaskRatingQueueItem,
   isRetryableReviewTaskRatingError,
@@ -146,6 +147,11 @@ export default function TodayPage() {
     () => mergeLocalPendingRatings(todayReviewTaskItems ?? [], mergedPendingRatingsByTaskId),
     [mergedPendingRatingsByTaskId, todayReviewTaskItems],
   );
+  const reviewReminderSummary = buildReviewReminderSummary({
+    tasks: reviewTasksWithPendingRatings,
+    pendingCount: todayReviewTasks.data?.pendingCount ?? 0,
+    pendingSyncCount: pendingRatingSyncCount,
+  });
   const groupedReviewTasks = groupReviewTasksByStatus(reviewTasksWithPendingRatings);
   const submitReviewRating = useSubmitReviewTaskRating();
   const skipReviewTask = useSkipReviewTask();
@@ -441,10 +447,11 @@ export default function TodayPage() {
             <span>{unresolvedCount} 道未掌握错题</span>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <MiniStat label="待复习" value={`${todayReviewTasks.data?.pendingCount ?? 0} 张`} />
-            <MiniStat label="已完成" value={`${todayReviewTasks.data?.completedCount ?? 0} 张`} />
-            <MiniStat label="已跳过" value={`${todayReviewTasks.data?.skippedCount ?? 0} 张`} />
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <MiniStat label="今日待复习" value={`${reviewReminderSummary.todayDueCount} 张`} />
+            <MiniStat label="已逾期" value={`${reviewReminderSummary.overdueCount} 张`} />
+            <MiniStat label="下一张" value={reviewReminderSummary.nextDueLabel} />
+            <MiniStat label="待同步评分" value={`${reviewReminderSummary.pendingSyncCount} 条`} />
           </div>
         </section>
 
