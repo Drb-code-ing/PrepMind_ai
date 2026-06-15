@@ -381,6 +381,60 @@ describe('ReviewTasksService', () => {
     expect(prisma.reviewTask.update).not.toHaveBeenCalled();
   });
 
+  it('returns the existing rating result when a same clientMutationId race hits P2002', async () => {
+    const reviewedCard = {
+      ...card,
+      difficulty: 4.85,
+      stability: 1,
+      retrievability: 0.9,
+      lastReview: now,
+      nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      reviewCount: 1,
+      state: 'REVIEW' as const,
+    };
+    const completedTask = {
+      ...task,
+      status: 'COMPLETED' as const,
+      reviewLogId: 'log_1',
+      completedAt: now,
+      card: reviewedCard,
+    };
+    prisma.$transaction.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`clientMutationId`)',
+        {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['clientMutationId'] },
+        },
+      ),
+    );
+    prisma.reviewLog.findUnique.mockResolvedValue({
+      ...reviewLog,
+      clientMutationId: mutationId,
+      card: reviewedCard,
+      reviewTask: completedTask,
+    });
+
+    const result = await createService().submitRating('user_1', 'task_1', {
+      rating: 3,
+      reviewedAt: now.toISOString(),
+      reviewDurationMs: 12000,
+      clientMutationId: mutationId,
+    });
+
+    expect(result.task.status).toBe('COMPLETED');
+    expect(result.card.reviewCount).toBe(1);
+    expect(result.log.clientMutationId).toBe(mutationId);
+    expect(prisma.reviewLog.findUnique).toHaveBeenCalledWith({
+      where: { clientMutationId: mutationId },
+      include: {
+        card: true,
+        reviewTask: { include: { card: { include: { wrongQuestion: true } } } },
+      },
+    });
+  });
+
   it('rejects reusing the same clientMutationId for a different task', async () => {
     prisma.reviewLog.findUnique.mockResolvedValue({
       ...reviewLog,
@@ -536,20 +590,9 @@ describe('ReviewTasksService', () => {
     expect(prisma.reviewLog.create).not.toHaveBeenCalled();
   });
 
-  it('converts clientMutationId unique conflicts into idempotency conflict errors', async () => {
-    const updatedCard = {
-      ...card,
-      difficulty: 4.85,
-      stability: 1,
-      retrievability: 0.9,
-      lastReview: now,
-      nextReview: new Date('2026-06-15T08:00:00.000Z'),
-      reviewCount: 1,
-      state: 'REVIEW' as const,
-    };
+  it('returns idempotency conflict when clientMutationId unique conflict cannot be replayed', async () => {
     prisma.reviewLog.findUnique.mockResolvedValue(null);
     prisma.reviewTask.findFirst.mockResolvedValue(task);
-    prisma.card.update.mockResolvedValue(updatedCard);
     prisma.reviewLog.create.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError(
         'Unique constraint failed on the fields: (`clientMutationId`)',
@@ -571,6 +614,7 @@ describe('ReviewTasksService', () => {
       code: 'REVIEW_RATING_IDEMPOTENCY_CONFLICT',
       statusCode: 409,
     });
+    expect(prisma.reviewLog.findUnique).toHaveBeenCalledTimes(2);
   });
 
   it('rethrows unique conflicts that do not target clientMutationId', async () => {
@@ -701,6 +745,36 @@ describe('ReviewTasksService', () => {
       data: { status: 'PENDING', skippedAt: null },
       include: { card: { include: { wrongQuestion: true } } },
     });
+  });
+
+  it('rejects skipping a cancelled task', async () => {
+    prisma.reviewTask.findFirst.mockResolvedValue({
+      ...task,
+      status: 'CANCELLED',
+    });
+
+    await expect(
+      createService().skip('user_1', 'task_1', now),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects reopening a cancelled task', async () => {
+    prisma.reviewTask.findFirst.mockResolvedValue({
+      ...task,
+      status: 'CANCELLED',
+    });
+
+    await expect(
+      createService().reopen('user_1', 'task_1'),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
   });
 
   it('rejects rating a task owned by another user', async () => {

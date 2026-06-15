@@ -91,13 +91,10 @@ export class ReviewTasksService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         if (input.clientMutationId) {
-          const existing = await tx.reviewLog.findUnique({
-            where: { clientMutationId: input.clientMutationId },
-            include: {
-              card: true,
-              reviewTask: { include: taskInclude },
-            },
-          });
+          const existing = await this.findExistingRatingLog(
+            input.clientMutationId,
+            tx,
+          );
           if (existing) {
             return this.returnExistingRatingResult(userId, taskId, existing);
           }
@@ -216,6 +213,14 @@ export class ReviewTasksService {
       });
     } catch (error) {
       if (this.isClientMutationIdUniqueConflict(error)) {
+        if (input.clientMutationId) {
+          const existing = await this.findExistingRatingLog(
+            input.clientMutationId,
+          );
+          if (existing) {
+            return this.returnExistingRatingResult(userId, taskId, existing);
+          }
+        }
         throw this.idempotencyConflict();
       }
       throw error;
@@ -232,6 +237,9 @@ export class ReviewTasksService {
     }
     if (task.status === 'COMPLETED') {
       throw this.taskAlreadyCompleted();
+    }
+    if (task.status === 'CANCELLED') {
+      throw this.taskNotPending();
     }
     if (task.status === 'SKIPPED') {
       return { task: this.toTaskResponse(task) };
@@ -259,6 +267,9 @@ export class ReviewTasksService {
     }
     if (task.status === 'COMPLETED') {
       throw this.taskAlreadyCompleted();
+    }
+    if (task.status === 'CANCELLED') {
+      throw this.taskNotPending();
     }
     if (task.status === 'PENDING') {
       return { task: this.toTaskResponse(task) };
@@ -374,6 +385,19 @@ export class ReviewTasksService {
       card: this.toCardResponse(existing.card),
       log: this.toLogResponse(existing),
     };
+  }
+
+  private findExistingRatingLog(
+    clientMutationId: string,
+    client: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    return client.reviewLog.findUnique({
+      where: { clientMutationId },
+      include: {
+        card: true,
+        reviewTask: { include: taskInclude },
+      },
+    });
   }
 
   private isClientMutationIdUniqueConflict(error: unknown) {
