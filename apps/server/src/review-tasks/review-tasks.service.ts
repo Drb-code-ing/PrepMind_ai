@@ -271,6 +271,7 @@ export class ReviewTasksService {
     if (task.status === 'CANCELLED') {
       throw this.taskNotPending();
     }
+    this.ensureCurrentDueTask(task);
     if (task.status === 'PENDING') {
       return { task: this.toTaskResponse(task) };
     }

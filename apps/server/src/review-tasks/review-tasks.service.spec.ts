@@ -747,6 +747,28 @@ describe('ReviewTasksService', () => {
     });
   });
 
+  it('rejects reopening a skipped stale task after the card advances', async () => {
+    const staleSkippedTask = {
+      ...task,
+      status: 'SKIPPED' as const,
+      skippedAt: now,
+      card: {
+        ...card,
+        nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      },
+    };
+    prisma.reviewTask.findFirst.mockResolvedValue(staleSkippedTask);
+    prisma.reviewTask.update.mockResolvedValue({ ...task, status: 'PENDING' });
+
+    await expect(
+      createService().reopen('user_1', 'task_1'),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
+  });
+
   it('rejects skipping a cancelled task', async () => {
     prisma.reviewTask.findFirst.mockResolvedValue({
       ...task,
