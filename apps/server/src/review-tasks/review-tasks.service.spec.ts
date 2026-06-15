@@ -87,6 +87,7 @@ describe('ReviewTasksService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.reviewLog.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
