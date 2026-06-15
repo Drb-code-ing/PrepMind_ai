@@ -1,3 +1,4 @@
+import { reviewRatingRequestSchema } from '@repo/types/api/review';
 import {
   reviewTaskItemSchema,
   type ReviewTaskItemResponse,
@@ -53,8 +54,8 @@ export function readReviewTaskRatingPayload(payload: unknown): ReviewTaskRatingP
     throw new Error('Invalid review task rating payload');
   }
 
-  const request = payload.request;
-  if (!isRecord(request) || !isReviewTaskRatingRequest(request)) {
+  const request = reviewRatingRequestSchema.safeParse(payload.request);
+  if (!request.success || !request.data.clientMutationId || !request.data.reviewedAt) {
     throw new Error('Invalid review task rating payload');
   }
 
@@ -65,7 +66,11 @@ export function readReviewTaskRatingPayload(payload: unknown): ReviewTaskRatingP
 
   return {
     taskId: payload.taskId,
-    request,
+    request: {
+      ...request.data,
+      clientMutationId: request.data.clientMutationId,
+      reviewedAt: request.data.reviewedAt,
+    },
     taskSnapshot: taskSnapshot.data,
   };
 }
@@ -80,29 +85,6 @@ export function isRetryableReviewTaskRatingError(error: unknown) {
   }
 
   return false;
-}
-
-function isReviewTaskRatingRequest(
-  request: Record<string, unknown>,
-): request is ReviewTaskRatingPayload['request'] {
-  if (![1, 2, 3, 4].includes(request.rating as number)) {
-    return false;
-  }
-
-  if (typeof request.reviewedAt !== 'string' || Number.isNaN(Date.parse(request.reviewedAt))) {
-    return false;
-  }
-
-  if (typeof request.clientMutationId !== 'string' || !request.clientMutationId) {
-    return false;
-  }
-
-  return (
-    request.reviewDurationMs === undefined ||
-    (typeof request.reviewDurationMs === 'number' &&
-      Number.isInteger(request.reviewDurationMs) &&
-      request.reviewDurationMs >= 0)
-  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

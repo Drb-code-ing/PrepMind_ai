@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ApiClientError } from './api-client.ts';
-import type { MutationQueueItem } from './db.ts';
+import { ApiClientError, apiClient } from './api-client.ts';
+import { db, type MutationQueueItem } from './db.ts';
 import {
   classifyMutationFlushError,
   flushMutationItem,
+  flushMutationQueue,
 } from './mutation-queue-flush.ts';
 
 const baseItem: MutationQueueItem = {
@@ -198,6 +199,92 @@ test('flushes wrong question update through provided API', async () => {
   assert.deepEqual(calls, [{ id: 'wrong_1', patch: { userNote: 'saved later' } }]);
 });
 
+test('treats unsupported wrong question rating as terminal without deleting', async () => {
+  let deleteCalls = 0;
+  const item: MutationQueueItem = {
+    ...baseItem,
+    operation: 'rating',
+    payload: { id: 'wrong_1' },
+  };
+
+  const result = await flushMutationItem(item, 'access-token', {
+    wrongQuestions: {
+      create: async () => {
+        throw new Error('unexpected create');
+      },
+      update: async () => {
+        throw new Error('unexpected update');
+      },
+      delete: async () => {
+        deleteCalls += 1;
+      },
+    },
+    ocrRecords: {
+      create: async () => {
+        throw new Error('unexpected ocr create');
+      },
+      delete: async () => {
+        throw new Error('unexpected ocr delete');
+      },
+    },
+    reviewTasks: {
+      submitRating: async () => {
+        throw new Error('unexpected review task rating');
+      },
+    },
+  });
+
+  assert.equal(result.outcome, 'terminal');
+  if (result.outcome === 'terminal') {
+    assert.equal(result.reason, 'UNSUPPORTED_WRONG_QUESTION_MUTATION');
+  }
+  assert.equal(deleteCalls, 0);
+});
+
+test('treats unsupported ocr record rating as terminal without deleting', async () => {
+  let deleteCalls = 0;
+  const item: MutationQueueItem = {
+    ...baseItem,
+    entity: 'ocrRecord',
+    operation: 'rating',
+    entityId: 'ocr_1',
+    payload: { id: 'ocr_1' },
+  };
+
+  const result = await flushMutationItem(item, 'access-token', {
+    wrongQuestions: {
+      create: async () => {
+        throw new Error('unexpected wrong question create');
+      },
+      update: async () => {
+        throw new Error('unexpected wrong question update');
+      },
+      delete: async () => {
+        throw new Error('unexpected wrong question delete');
+      },
+    },
+    ocrRecords: {
+      create: async () => {
+        throw new Error('unexpected ocr create');
+      },
+      delete: async () => {
+        deleteCalls += 1;
+      },
+    },
+    reviewTasks: {
+      submitRating: async () => {
+        throw new Error('unexpected review task rating');
+      },
+    },
+  });
+
+  assert.equal(result.outcome, 'terminal');
+  if (result.outcome === 'terminal') {
+    assert.equal(result.reason, 'UNSUPPORTED_OCR_RECORD_MUTATION');
+  }
+  assert.equal(deleteCalls, 0);
+});
+
 test('flushes review task rating through provided API', async () => {
   const calls: unknown[] = [];
 
@@ -242,4 +329,113 @@ test('flushes review task rating through provided API', async () => {
       },
     },
   ]);
+});
+
+test('flushes due review task rating and only removes the queue item locally', async () => {
+  const item: MutationQueueItem = {
+    ...reviewTaskRatingItem,
+    id: 'queue_review_summary_1',
+  };
+  const queueItems = new Map<string, MutationQueueItem>([[item.id, { ...item }]]);
+  const deletedIds: string[] = [];
+  let localWrongQuestionWriteCount = 0;
+  let localOcrWriteCount = 0;
+  const originalMutationQueue = db.mutationQueue;
+  const originalWrongQuestions = db.wrongQuestions;
+  const originalOcrRecords = db.ocrRecords;
+  const originalPost = apiClient.post;
+
+  db.mutationQueue = {
+    where: (field: keyof MutationQueueItem) => ({
+      equals: (value: unknown) => ({
+        toArray: async () =>
+          Array.from(queueItems.values()).filter((queueItem) => queueItem[field] === value),
+      }),
+    }),
+    update: async (id: string, patch: Partial<MutationQueueItem>) => {
+      const existing = queueItems.get(id);
+      if (existing) {
+        queueItems.set(id, { ...existing, ...patch });
+      }
+      return 1;
+    },
+    delete: async (id: string) => {
+      deletedIds.push(id);
+      queueItems.delete(id);
+    },
+  } as unknown as typeof db.mutationQueue;
+  db.wrongQuestions = {
+    put: async () => {
+      localWrongQuestionWriteCount += 1;
+      throw new Error('unexpected wrong question write');
+    },
+    delete: async () => {
+      localWrongQuestionWriteCount += 1;
+      throw new Error('unexpected wrong question delete');
+    },
+  } as unknown as typeof db.wrongQuestions;
+  db.ocrRecords = {
+    put: async () => {
+      localOcrWriteCount += 1;
+      throw new Error('unexpected ocr write');
+    },
+    delete: async () => {
+      localOcrWriteCount += 1;
+      throw new Error('unexpected ocr delete');
+    },
+  } as unknown as typeof db.ocrRecords;
+
+  const taskSnapshot = (
+    reviewTaskRatingItem.payload as {
+      taskSnapshot: { card: unknown };
+    }
+  ).taskSnapshot;
+  apiClient.post = async () => ({
+    task: {
+      ...taskSnapshot,
+      status: 'COMPLETED',
+      reviewLogId: 'log_1',
+      completedAt: '2026-06-14T08:00:00.000Z',
+      updatedAt: '2026-06-14T08:00:00.000Z',
+    },
+    card: taskSnapshot.card,
+    log: {
+      id: 'log_1',
+      cardId: 'card_1',
+      rating: 3,
+      clientMutationId: '11111111-1111-4111-8111-111111111111',
+      scheduledDays: 0,
+      elapsedDays: 0,
+      reviewDurationMs: 12_000,
+      stabilityBefore: 0,
+      stabilityAfter: 1,
+      difficultyBefore: 5,
+      difficultyAfter: 4.8,
+      reviewedAt: '2026-06-14T08:00:00.000Z',
+    },
+  });
+
+  try {
+    const summary = await flushMutationQueue({
+      userId: 'user_1',
+      accessToken: 'access-token',
+      now: new Date('2026-06-14T08:01:00.000Z'),
+    });
+
+    assert.deepEqual(summary, {
+      successCount: 1,
+      retryCount: 0,
+      terminalCount: 0,
+      reviewRatingSuccessCount: 1,
+    });
+    assert.deepEqual(deletedIds, [item.id]);
+    assert.equal(queueItems.has(item.id), false);
+    assert.equal(localWrongQuestionWriteCount, 0);
+    assert.equal(localOcrWriteCount, 0);
+  } finally {
+    db.mutationQueue = originalMutationQueue;
+    db.wrongQuestions = originalWrongQuestions;
+    db.ocrRecords = originalOcrRecords;
+    apiClient.post = originalPost;
+  }
 });

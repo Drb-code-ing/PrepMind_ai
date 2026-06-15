@@ -184,6 +184,13 @@ async function flushWrongQuestionItem(
     return apis.wrongQuestions.update(accessToken, item.entityId ?? '', payload.patch);
   }
 
+  if (item.operation !== 'delete') {
+    throw new ApiClientError('Unsupported wrong question mutation operation', {
+      status: 400,
+      code: 'UNSUPPORTED_WRONG_QUESTION_MUTATION',
+    });
+  }
+
   const payload = item.payload as WrongQuestionDeletePayload;
   await apis.wrongQuestions.delete(accessToken, payload.id);
   return undefined;
@@ -197,6 +204,13 @@ async function flushOcrRecordItem(
   if (item.operation === 'create') {
     const payload = item.payload as OcrRecordCreatePayload;
     return apis.ocrRecords.create(accessToken, payload.record, payload.parsedJson);
+  }
+
+  if (item.operation !== 'delete') {
+    throw new ApiClientError('Unsupported OCR record mutation operation', {
+      status: 400,
+      code: 'UNSUPPORTED_OCR_RECORD_MUTATION',
+    });
   }
 
   const payload = item.payload as OcrRecordDeletePayload;

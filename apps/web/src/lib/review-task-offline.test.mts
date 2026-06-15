@@ -75,6 +75,38 @@ test('reads and rejects review task rating payloads at runtime', () => {
   );
 });
 
+test('rejects review task rating payload with invalid client mutation id', () => {
+  assert.throws(
+    () =>
+      readReviewTaskRatingPayload({
+        taskId: 'task_1',
+        request: {
+          rating: 4,
+          reviewedAt,
+          clientMutationId: 'not-a-uuid',
+        },
+        taskSnapshot: createTaskPayload(),
+      }),
+    /Invalid review task rating payload/,
+  );
+});
+
+test('rejects review task rating payload with invalid reviewed at datetime', () => {
+  assert.throws(
+    () =>
+      readReviewTaskRatingPayload({
+        taskId: 'task_1',
+        request: {
+          rating: 4,
+          reviewedAt: 'not-a-date',
+          clientMutationId,
+        },
+        taskSnapshot: createTaskPayload(),
+      }),
+    /Invalid review task rating payload/,
+  );
+});
+
 test('classifies review task rating retryability', () => {
   assert.equal(
     isRetryableReviewTaskRatingError(
