@@ -32,6 +32,7 @@ import {
 } from '@/lib/crud-feedback';
 import { db } from '@/lib/db';
 import type { WrongQuestionRecord, WrongQuestionStatus } from '@/lib/db';
+import { getDisplayKnowledgePoints } from '@/lib/knowledge-points';
 import {
   createMutationQueueItem,
   enqueueMutationQueueItem,
@@ -733,6 +734,7 @@ function WrongQuestionDetail({
   const reviewCardQuery = useWrongQuestionReviewCard(item.id);
   const createReviewCard = useCreateReviewCardFromWrongQuestion();
   const reviewCard = reviewCardQuery.data?.card ?? null;
+  const displayKnowledgePoints = getDisplayKnowledgePoints(item.knowledgePoints);
 
   const showDetailNotice = (message: string, type: ActionNotice['type'] = 'success') => {
     if (detailNoticeTimerRef.current) {
@@ -867,11 +869,11 @@ function WrongQuestionDetail({
           ) : null}
 
           <DetailSection title="题目" content={item.questionText} />
-          {item.knowledgePoints.length > 0 ? (
+          {displayKnowledgePoints.length > 0 ? (
             <section className="pm-glass-card mt-4 rounded-[1.35rem] p-3">
               <h3 className="text-sm font-semibold">知识点</h3>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {item.knowledgePoints.map((point) => (
+                {displayKnowledgePoints.map((point) => (
                   <Badge key={point} subtle>
                     {point}
                   </Badge>

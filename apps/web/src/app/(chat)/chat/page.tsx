@@ -24,6 +24,7 @@ import {
   enqueueMutationQueueItem,
   getMutationErrorMessage,
 } from '@/lib/mutation-queue';
+import { getDisplayKnowledgePoints } from '@/lib/knowledge-points';
 import { useCreateWrongQuestion } from '@/hooks/use-wrong-questions';
 import { useStreamingAutoScroll } from '@/hooks/use-streaming-auto-scroll';
 import {
@@ -1081,6 +1082,7 @@ function WrongQuestionSaveDialog({
     analysis: '分析思路',
     answer: '参考答案',
   };
+  const displayKnowledgePoints = getDisplayKnowledgePoints(pending.question.knowledgePoints);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-[#2b2335]/30 backdrop-blur-[2px] sm:items-center sm:justify-center">
@@ -1125,11 +1127,11 @@ function WrongQuestionSaveDialog({
             <PreviewPill label="学科" value={pending.question.subject} />
             <PreviewPill label="错因" value={pending.question.errorSuggestion} />
           </div>
-          {pending.question.knowledgePoints.length > 0 && (
+          {displayKnowledgePoints.length > 0 && (
             <div>
               <p className="text-xs font-medium text-muted-foreground">知识点</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {pending.question.knowledgePoints.map((point) => (
+                {displayKnowledgePoints.map((point) => (
                   <span
                     key={point}
                     className="pm-soft-chip rounded-full px-2 py-0.5 text-[11px] font-semibold"

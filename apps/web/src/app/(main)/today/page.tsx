@@ -32,6 +32,7 @@ import {
 import { useMutationQueueFlush } from '@/hooks/use-mutation-queue-flush';
 import { useReviewTaskPendingRatings } from '@/hooks/use-review-task-pending-ratings';
 import { db } from '@/lib/db';
+import { getDisplayKnowledgePoints } from '@/lib/knowledge-points';
 import { enqueueMutationQueueItem, getMutationErrorMessage } from '@/lib/mutation-queue';
 import {
   buildReviewRatingFeedback,
@@ -699,6 +700,7 @@ function ReviewTaskCard({
   const wrongQuestion = task.wrongQuestion;
   const ratingOptions = getReviewRatingOptions();
   const isLocalRatingPending = task.localStatus === 'LOCAL_RATING_PENDING';
+  const displayKnowledgePoints = getDisplayKnowledgePoints(wrongQuestion?.knowledgePoints ?? [], 3);
 
   return (
     <article className="rounded-[1.25rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -718,9 +720,9 @@ function ReviewTaskCard({
           <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-[var(--pm-ink)]">
             {wrongQuestion?.questionText ?? '这张复习卡暂时没有题干'}
           </p>
-          {wrongQuestion?.knowledgePoints.length ? (
+          {displayKnowledgePoints.length ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {wrongQuestion.knowledgePoints.slice(0, 3).map((point) => (
+              {displayKnowledgePoints.map((point) => (
                 <span
                   key={point}
                   className="rounded-full bg-[#eafff9] px-2 py-0.5 text-[11px] font-semibold text-[#247269]"
