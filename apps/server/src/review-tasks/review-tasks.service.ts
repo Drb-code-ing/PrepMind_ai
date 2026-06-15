@@ -131,19 +131,6 @@ export class ReviewTasksService {
           reviewedAt,
         });
 
-        const updatedCard = await tx.card.update({
-          where: { id: card.id },
-          data: {
-            difficulty: scheduled.card.difficulty,
-            stability: scheduled.card.stability,
-            retrievability: scheduled.card.retrievability,
-            lastReview: scheduled.card.lastReview,
-            nextReview: scheduled.card.nextReview,
-            reviewCount: scheduled.card.reviewCount,
-            lapses: scheduled.card.lapses,
-            state: scheduled.card.state,
-          },
-        });
         const log = await tx.reviewLog.create({
           data: {
             cardId: card.id,
@@ -159,16 +146,40 @@ export class ReviewTasksService {
             reviewedAt,
           },
         });
-        const completedTask = await tx.reviewTask.update({
-          where: { id: task.id },
+
+        const completed = await tx.reviewTask.updateMany({
+          where: { id: task.id, userId, status: 'PENDING' },
           data: {
             status: 'COMPLETED',
             reviewLogId: log.id,
             completedAt: reviewedAt,
             skippedAt: null,
           },
+        });
+        if (completed.count !== 1) {
+          throw this.taskNotPending();
+        }
+
+        const updatedCard = await tx.card.update({
+          where: { id: card.id },
+          data: {
+            difficulty: scheduled.card.difficulty,
+            stability: scheduled.card.stability,
+            retrievability: scheduled.card.retrievability,
+            lastReview: scheduled.card.lastReview,
+            nextReview: scheduled.card.nextReview,
+            reviewCount: scheduled.card.reviewCount,
+            lapses: scheduled.card.lapses,
+            state: scheduled.card.state,
+          },
+        });
+        const completedTask = await tx.reviewTask.findFirst({
+          where: { id: task.id, userId },
           include: taskInclude,
         });
+        if (!completedTask) {
+          throw this.taskNotFound();
+        }
 
         return {
           task: this.toTaskResponse(completedTask),
@@ -298,6 +309,10 @@ export class ReviewTasksService {
   private ensurePendingTask(task: ReviewTaskWithCard) {
     if (task.status === 'PENDING') return;
 
+    throw this.taskNotPending();
+  }
+
+  private taskNotPending() {
     throw new AppError(
       'REVIEW_TASK_NOT_PENDING',
       '只能对待复习任务评分',
@@ -312,6 +327,12 @@ export class ReviewTasksService {
   ) {
     if (existing.card.userId !== userId) throw this.idempotencyConflict();
     if (!existing.reviewTask || existing.reviewTask.id !== taskId) {
+      throw this.idempotencyConflict();
+    }
+    if (existing.reviewTask.userId !== userId) {
+      throw this.idempotencyConflict();
+    }
+    if (existing.reviewTask.cardId !== existing.cardId) {
       throw this.idempotencyConflict();
     }
 
