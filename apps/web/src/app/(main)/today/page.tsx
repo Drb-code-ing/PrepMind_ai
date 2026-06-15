@@ -113,6 +113,9 @@ export default function TodayPage() {
   const [notice, setNotice] = useState<{ message: string; tone: NoticeTone } | null>(null);
   const [revealedTaskIds, setRevealedTaskIds] = useState<Set<string>>(new Set());
   const [reviewFeedbacks, setReviewFeedbacks] = useState<Record<string, ReviewRatingFeedback>>({});
+  const [optimisticPendingRatingsByTaskId, setOptimisticPendingRatingsByTaskId] = useState<
+    Record<string, { rating: ReviewRating }>
+  >({});
   const noticeTimerRef = useRef<number | null>(null);
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
   const todayReviewTasks = useTodayReviewTaskList({
@@ -123,9 +126,17 @@ export default function TodayPage() {
   const { pendingByTaskId, pendingCount: pendingRatingSyncCount } =
     useReviewTaskPendingRatings(userId);
   const { flush } = useMutationQueueFlush();
+  const todayReviewTaskItems = todayReviewTasks.data?.tasks;
+  const mergedPendingRatingsByTaskId = useMemo(
+    () => ({
+      ...optimisticPendingRatingsByTaskId,
+      ...pendingByTaskId,
+    }),
+    [optimisticPendingRatingsByTaskId, pendingByTaskId],
+  );
   const reviewTasksWithPendingRatings = useMemo(
-    () => mergeLocalPendingRatings(todayReviewTasks.data?.tasks ?? [], pendingByTaskId),
-    [pendingByTaskId, todayReviewTasks.data?.tasks],
+    () => mergeLocalPendingRatings(todayReviewTaskItems ?? [], mergedPendingRatingsByTaskId),
+    [mergedPendingRatingsByTaskId, todayReviewTaskItems],
   );
   const groupedReviewTasks = groupReviewTasksByStatus(reviewTasksWithPendingRatings);
   const submitReviewRating = useSubmitReviewTaskRating();
@@ -156,6 +167,31 @@ export default function TodayPage() {
       cancelled = true;
     };
   }, [dateKey, userId]);
+
+  useEffect(() => {
+    const cleanupTimer = window.setTimeout(() => {
+      setOptimisticPendingRatingsByTaskId((prev) => {
+        let changed = false;
+        const next = { ...prev };
+
+        for (const taskId of Object.keys(prev)) {
+          const isPersistedPending = Boolean(pendingByTaskId[taskId]);
+          const isNoLongerServerPending =
+            todayReviewTaskItems !== undefined &&
+            !todayReviewTaskItems.some((task) => task.id === taskId && task.status === 'PENDING');
+
+          if (isPersistedPending || isNoLongerServerPending) {
+            delete next[taskId];
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    }, 0);
+
+    return () => window.clearTimeout(cleanupTimer);
+  }, [pendingByTaskId, todayReviewTaskItems]);
 
   const progress = getTodayProgress(taskState);
   const nextAction = getTodayNextAction(taskState, unresolvedCount);
@@ -229,6 +265,10 @@ export default function TodayPage() {
                 request,
               }),
             );
+            setOptimisticPendingRatingsByTaskId((prev) => ({
+              ...prev,
+              [task.id]: { rating },
+            }));
             showNotice(`已选择：${getReviewRatingLabel(rating)}，等待同步`, 'neutral');
           } catch (queueError) {
             showNotice(getMutationErrorMessage(queueError), 'neutral');
