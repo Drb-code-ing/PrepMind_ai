@@ -88,79 +88,100 @@ export class ReviewTasksService {
     taskId: string,
     input: ReviewRatingRequest,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.reviewTask.findFirst({
-        where: { id: taskId, userId },
-        include: taskInclude,
-      });
-      if (!task) {
-        throw this.taskNotFound();
-      }
-      this.ensurePendingTask(task);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        if (input.clientMutationId) {
+          const existing = await tx.reviewLog.findUnique({
+            where: { clientMutationId: input.clientMutationId },
+            include: {
+              card: true,
+              reviewTask: { include: taskInclude },
+            },
+          });
+          if (existing) {
+            return this.returnExistingRatingResult(userId, taskId, existing);
+          }
+        }
 
-      const card = task.card;
-      const reviewedAt = input.reviewedAt
-        ? new Date(input.reviewedAt)
-        : new Date();
-      const scheduled = scheduleReview({
-        card: {
-          difficulty: card.difficulty,
-          stability: card.stability,
-          retrievability: card.retrievability,
-          lastReview: card.lastReview,
-          nextReview: card.nextReview,
-          reviewCount: card.reviewCount,
-          lapses: card.lapses,
-          state: card.state,
-        },
-        rating: input.rating,
-        reviewedAt,
-      });
+        const task = await tx.reviewTask.findFirst({
+          where: { id: taskId, userId },
+          include: taskInclude,
+        });
+        if (!task) {
+          throw this.taskNotFound();
+        }
+        this.ensurePendingTask(task);
 
-      const updatedCard = await tx.card.update({
-        where: { id: card.id },
-        data: {
-          difficulty: scheduled.card.difficulty,
-          stability: scheduled.card.stability,
-          retrievability: scheduled.card.retrievability,
-          lastReview: scheduled.card.lastReview,
-          nextReview: scheduled.card.nextReview,
-          reviewCount: scheduled.card.reviewCount,
-          lapses: scheduled.card.lapses,
-          state: scheduled.card.state,
-        },
-      });
-      const log = await tx.reviewLog.create({
-        data: {
-          cardId: card.id,
+        const card = task.card;
+        const reviewedAt = input.reviewedAt
+          ? new Date(input.reviewedAt)
+          : new Date();
+        const scheduled = scheduleReview({
+          card: {
+            difficulty: card.difficulty,
+            stability: card.stability,
+            retrievability: card.retrievability,
+            lastReview: card.lastReview,
+            nextReview: card.nextReview,
+            reviewCount: card.reviewCount,
+            lapses: card.lapses,
+            state: card.state,
+          },
           rating: input.rating,
-          scheduledDays: scheduled.log.scheduledDays,
-          elapsedDays: scheduled.log.elapsedDays,
-          reviewDurationMs: input.reviewDurationMs,
-          stabilityBefore: scheduled.log.stabilityBefore,
-          stabilityAfter: scheduled.log.stabilityAfter,
-          difficultyBefore: scheduled.log.difficultyBefore,
-          difficultyAfter: scheduled.log.difficultyAfter,
           reviewedAt,
-        },
-      });
-      const completedTask = await tx.reviewTask.update({
-        where: { id: task.id },
-        data: {
-          status: 'COMPLETED',
-          reviewLogId: log.id,
-          completedAt: reviewedAt,
-          skippedAt: null,
-        },
-        include: taskInclude,
-      });
+        });
 
-      return {
-        task: this.toTaskResponse(completedTask),
-        card: this.toCardResponse(updatedCard),
-        log: this.toLogResponse(log),
-      };
-    });
+        const updatedCard = await tx.card.update({
+          where: { id: card.id },
+          data: {
+            difficulty: scheduled.card.difficulty,
+            stability: scheduled.card.stability,
+            retrievability: scheduled.card.retrievability,
+            lastReview: scheduled.card.lastReview,
+            nextReview: scheduled.card.nextReview,
+            reviewCount: scheduled.card.reviewCount,
+            lapses: scheduled.card.lapses,
+            state: scheduled.card.state,
+          },
+        });
+        const log = await tx.reviewLog.create({
+          data: {
+            cardId: card.id,
+            clientMutationId: input.clientMutationId ?? null,
+            rating: input.rating,
+            scheduledDays: scheduled.log.scheduledDays,
+            elapsedDays: scheduled.log.elapsedDays,
+            reviewDurationMs: input.reviewDurationMs,
+            stabilityBefore: scheduled.log.stabilityBefore,
+            stabilityAfter: scheduled.log.stabilityAfter,
+            difficultyBefore: scheduled.log.difficultyBefore,
+            difficultyAfter: scheduled.log.difficultyAfter,
+            reviewedAt,
+          },
+        });
+        const completedTask = await tx.reviewTask.update({
+          where: { id: task.id },
+          data: {
+            status: 'COMPLETED',
+            reviewLogId: log.id,
+            completedAt: reviewedAt,
+            skippedAt: null,
+          },
+          include: taskInclude,
+        });
+
+        return {
+          task: this.toTaskResponse(completedTask),
+          card: this.toCardResponse(updatedCard),
+          log: this.toLogResponse(log),
+        };
+      });
+    } catch (error) {
+      if (this.isClientMutationIdUniqueConflict(error)) {
+        throw this.idempotencyConflict();
+      }
+      throw error;
+    }
   }
 
   async skip(userId: string, taskId: string, skippedAt = new Date()) {
@@ -284,6 +305,42 @@ export class ReviewTasksService {
     );
   }
 
+  private returnExistingRatingResult(
+    userId: string,
+    taskId: string,
+    existing: ReviewLogWithTask,
+  ) {
+    if (existing.card.userId !== userId) throw this.idempotencyConflict();
+    if (!existing.reviewTask || existing.reviewTask.id !== taskId) {
+      throw this.idempotencyConflict();
+    }
+
+    return {
+      task: this.toTaskResponse(existing.reviewTask),
+      card: this.toCardResponse(existing.card),
+      log: this.toLogResponse(existing),
+    };
+  }
+
+  private isClientMutationIdUniqueConflict(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+    if (error.code !== 'P2002') return false;
+
+    const target = error.meta?.target;
+    if (Array.isArray(target)) return target.includes('clientMutationId');
+    return typeof target === 'string' && target.includes('clientMutationId');
+  }
+
+  private idempotencyConflict() {
+    return new AppError(
+      'REVIEW_RATING_IDEMPOTENCY_CONFLICT',
+      '这次复习评分命令已经被其他任务使用，请刷新后重试',
+      HttpStatus.CONFLICT,
+    );
+  }
+
   private toTaskResponse(task: ReviewTaskWithCard) {
     return {
       id: task.id,
@@ -338,6 +395,7 @@ export class ReviewTasksService {
     return {
       id: log.id,
       cardId: log.cardId,
+      clientMutationId: log.clientMutationId,
       rating: log.rating as 1 | 2 | 3 | 4,
       scheduledDays: log.scheduledDays,
       elapsedDays: log.elapsedDays,
@@ -376,6 +434,12 @@ type ReviewDateWindow = {
 
 type ReviewTaskWithCard = Prisma.ReviewTaskGetPayload<{
   include: typeof taskInclude;
+}>;
+type ReviewLogWithTask = Prisma.ReviewLogGetPayload<{
+  include: {
+    card: true;
+    reviewTask: { include: typeof taskInclude };
+  };
 }>;
 type CardRecord = Prisma.CardGetPayload<object>;
 type ReviewLogRecord = Prisma.ReviewLogGetPayload<object>;

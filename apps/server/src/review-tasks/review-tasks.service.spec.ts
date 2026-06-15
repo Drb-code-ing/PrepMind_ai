@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../database/prisma.service';
 import { ReviewTasksService } from './review-tasks.service';
 
@@ -48,6 +50,7 @@ describe('ReviewTasksService', () => {
   const reviewLog = {
     id: 'log_1',
     cardId: 'card_1',
+    clientMutationId: null,
     rating: 3,
     scheduledDays: 1,
     elapsedDays: 0,
@@ -72,12 +75,13 @@ describe('ReviewTasksService', () => {
       update: jest.fn(),
     },
     reviewLog: {
+      findUnique: jest.fn(),
       create: jest.fn(),
     },
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
@@ -203,6 +207,214 @@ describe('ReviewTasksService', () => {
     expect(result.task.status).toBe('COMPLETED');
     expect(result.card.state).toBe('REVIEW');
     expect(result.log.rating).toBe(3);
+  });
+
+  it('writes and echoes clientMutationId on first rating submit', async () => {
+    const updatedCard = {
+      ...card,
+      difficulty: 4.85,
+      stability: 1,
+      retrievability: 0.9,
+      lastReview: now,
+      nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      reviewCount: 1,
+      state: 'REVIEW' as const,
+    };
+    const logWithMutation = {
+      ...reviewLog,
+      clientMutationId: 'mutation_1',
+    };
+    const completedTask = {
+      ...task,
+      status: 'COMPLETED' as const,
+      reviewLogId: 'log_1',
+      completedAt: now,
+      card: updatedCard,
+    };
+    prisma.reviewLog.findUnique.mockResolvedValue(null);
+    prisma.reviewTask.findFirst.mockResolvedValue(task);
+    prisma.card.update.mockResolvedValue(updatedCard);
+    prisma.reviewLog.create.mockResolvedValue(logWithMutation);
+    prisma.reviewTask.update.mockResolvedValue(completedTask);
+
+    const result = await createService().submitRating('user_1', 'task_1', {
+      rating: 3,
+      reviewedAt: now.toISOString(),
+      reviewDurationMs: 12000,
+      clientMutationId: 'mutation_1',
+    });
+
+    expect(prisma.reviewLog.findUnique).toHaveBeenCalledWith({
+      where: { clientMutationId: 'mutation_1' },
+      include: {
+        card: true,
+        reviewTask: { include: { card: { include: { wrongQuestion: true } } } },
+      },
+    });
+    expect(prisma.reviewLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        cardId: 'card_1',
+        clientMutationId: 'mutation_1',
+      }),
+    });
+    expect(result.log.clientMutationId).toBe('mutation_1');
+  });
+
+  it('returns the existing rating result for a repeated clientMutationId without mutating again', async () => {
+    const reviewedCard = {
+      ...card,
+      difficulty: 4.85,
+      stability: 1,
+      retrievability: 0.9,
+      lastReview: now,
+      nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      reviewCount: 1,
+      state: 'REVIEW' as const,
+    };
+    const completedTask = {
+      ...task,
+      status: 'COMPLETED' as const,
+      reviewLogId: 'log_1',
+      completedAt: now,
+      card: reviewedCard,
+    };
+    prisma.reviewLog.findUnique.mockResolvedValue({
+      ...reviewLog,
+      clientMutationId: 'mutation_1',
+      card: reviewedCard,
+      reviewTask: completedTask,
+    });
+
+    const result = await createService().submitRating('user_1', 'task_1', {
+      rating: 3,
+      reviewedAt: now.toISOString(),
+      reviewDurationMs: 12000,
+      clientMutationId: 'mutation_1',
+    });
+
+    expect(result.task.status).toBe('COMPLETED');
+    expect(result.card.reviewCount).toBe(1);
+    expect(result.log.clientMutationId).toBe('mutation_1');
+    expect(prisma.reviewTask.findFirst).not.toHaveBeenCalled();
+    expect(prisma.card.update).not.toHaveBeenCalled();
+    expect(prisma.reviewLog.create).not.toHaveBeenCalled();
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects reusing the same clientMutationId for a different task', async () => {
+    prisma.reviewLog.findUnique.mockResolvedValue({
+      ...reviewLog,
+      clientMutationId: 'mutation_1',
+      card,
+      reviewTask: {
+        ...task,
+        id: 'task_2',
+      },
+    });
+
+    await expect(
+      createService().submitRating('user_1', 'task_1', {
+        rating: 3,
+        reviewedAt: now.toISOString(),
+        clientMutationId: 'mutation_1',
+      }),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_RATING_IDEMPOTENCY_CONFLICT',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.findFirst).not.toHaveBeenCalled();
+    expect(prisma.reviewLog.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps REVIEW_TASK_NOT_PENDING for a completed task with a different clientMutationId', async () => {
+    prisma.reviewLog.findUnique.mockResolvedValue(null);
+    prisma.reviewTask.findFirst.mockResolvedValue({
+      ...task,
+      status: 'COMPLETED',
+      reviewLogId: 'log_1',
+      completedAt: now,
+    });
+
+    await expect(
+      createService().submitRating('user_1', 'task_1', {
+        rating: 3,
+        reviewedAt: now.toISOString(),
+        clientMutationId: 'mutation_2',
+      }),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewLog.findUnique).toHaveBeenCalledWith({
+      where: { clientMutationId: 'mutation_2' },
+      include: {
+        card: true,
+        reviewTask: { include: { card: { include: { wrongQuestion: true } } } },
+      },
+    });
+    expect(prisma.reviewLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects another user's matching clientMutationId without exposing the result", async () => {
+    prisma.reviewLog.findUnique.mockResolvedValue({
+      ...reviewLog,
+      clientMutationId: 'mutation_1',
+      card: {
+        ...card,
+        userId: 'user_2',
+      },
+      reviewTask: task,
+    });
+
+    await expect(
+      createService().submitRating('user_1', 'task_1', {
+        rating: 3,
+        reviewedAt: now.toISOString(),
+        clientMutationId: 'mutation_1',
+      }),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_RATING_IDEMPOTENCY_CONFLICT',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.findFirst).not.toHaveBeenCalled();
+    expect(prisma.reviewLog.create).not.toHaveBeenCalled();
+  });
+
+  it('converts clientMutationId unique conflicts into idempotency conflict errors', async () => {
+    const updatedCard = {
+      ...card,
+      difficulty: 4.85,
+      stability: 1,
+      retrievability: 0.9,
+      lastReview: now,
+      nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      reviewCount: 1,
+      state: 'REVIEW' as const,
+    };
+    prisma.reviewLog.findUnique.mockResolvedValue(null);
+    prisma.reviewTask.findFirst.mockResolvedValue(task);
+    prisma.card.update.mockResolvedValue(updatedCard);
+    prisma.reviewLog.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`clientMutationId`)',
+        {
+          code: 'P2002',
+          clientVersion: 'test',
+          meta: { target: ['clientMutationId'] },
+        },
+      ),
+    );
+
+    await expect(
+      createService().submitRating('user_1', 'task_1', {
+        rating: 3,
+        reviewedAt: now.toISOString(),
+        clientMutationId: 'mutation_1',
+      }),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_RATING_IDEMPOTENCY_CONFLICT',
+      statusCode: 409,
+    });
   });
 
   it('skips and reopens a pending task', async () => {
