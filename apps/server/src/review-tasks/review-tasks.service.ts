@@ -111,6 +111,7 @@ export class ReviewTasksService {
           throw this.taskNotFound();
         }
         this.ensurePendingTask(task);
+        this.ensureCurrentDueTask(task);
 
         const card = task.card;
         const reviewedAt = input.reviewedAt
@@ -160,8 +161,13 @@ export class ReviewTasksService {
           throw this.taskNotPending();
         }
 
-        const updatedCard = await tx.card.update({
-          where: { id: card.id },
+        const updatedCardResult = await tx.card.updateMany({
+          where: {
+            id: card.id,
+            userId,
+            updatedAt: card.updatedAt,
+            nextReview: card.nextReview,
+          },
           data: {
             difficulty: scheduled.card.difficulty,
             stability: scheduled.card.stability,
@@ -173,6 +179,27 @@ export class ReviewTasksService {
             state: scheduled.card.state,
           },
         });
+        if (updatedCardResult.count !== 1) {
+          throw this.taskNotPending();
+        }
+
+        const updatedCard = await tx.card.findFirst({
+          where: { id: card.id, userId },
+        });
+        if (!updatedCard) {
+          throw this.taskNotFound();
+        }
+
+        await tx.reviewTask.updateMany({
+          where: {
+            userId,
+            cardId: card.id,
+            status: 'PENDING',
+            id: { not: task.id },
+          },
+          data: { status: 'CANCELLED', skippedAt: null },
+        });
+
         const completedTask = await tx.reviewTask.findFirst({
           where: { id: task.id, userId },
           include: taskInclude,
@@ -308,6 +335,12 @@ export class ReviewTasksService {
 
   private ensurePendingTask(task: ReviewTaskWithCard) {
     if (task.status === 'PENDING') return;
+
+    throw this.taskNotPending();
+  }
+
+  private ensureCurrentDueTask(task: ReviewTaskWithCard) {
+    if (task.dueAt.getTime() === task.card.nextReview.getTime()) return;
 
     throw this.taskNotPending();
   }
