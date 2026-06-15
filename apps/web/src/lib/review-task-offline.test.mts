@@ -107,6 +107,21 @@ test('rejects review task rating payload with invalid reviewed at datetime', () 
   );
 });
 
+test('rejects review task rating payload without reviewed at', () => {
+  assert.throws(
+    () =>
+      readReviewTaskRatingPayload({
+        taskId: 'task_1',
+        request: {
+          rating: 4,
+          clientMutationId,
+        },
+        taskSnapshot: createTaskPayload(),
+      }),
+    /Invalid review task rating payload/,
+  );
+});
+
 test('classifies review task rating retryability', () => {
   assert.equal(
     isRetryableReviewTaskRatingError(

@@ -4,6 +4,7 @@ import { ApiClientError, apiClient } from './api-client.ts';
 import type { MutationQueueItem, OcrRecord, WrongQuestionRecord } from './db.ts';
 import { db } from './db.ts';
 import {
+  TERMINAL_RETRY_AT,
   getMutationErrorMessage,
   getNextRetryAt,
   shouldAttemptMutation,
@@ -149,7 +150,9 @@ export async function flushMutationQueue({
 
     const retryCount = item.retryCount + 1;
     const nextRetryAt =
-      result.outcome === 'retry' ? getNextRetryAt(retryCount, new Date()) : undefined;
+      result.outcome === 'retry'
+        ? getNextRetryAt(retryCount, new Date())
+        : TERMINAL_RETRY_AT;
 
     if (result.outcome === 'retry') {
       summary.retryCount += 1;

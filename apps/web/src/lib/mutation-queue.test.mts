@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  TERMINAL_RETRY_AT,
   createMutationQueueItem,
   enqueueMutationQueueItem,
   getNextRetryAt,
@@ -129,6 +130,19 @@ test('skips future retry items and allows due items', () => {
     shouldAttemptMutation({ ...item, nextRetryAt: '2026-06-12T23:59:59.000Z' }, now),
     true,
   );
+});
+
+test('skips terminal retry sentinel items', () => {
+  const now = new Date('2026-06-13T00:00:00.000Z');
+  const item = createMutationQueueItem({
+    userId: 'user_1',
+    entity: 'wrongQuestion',
+    operation: 'delete',
+    entityId: 'wrong_1',
+    payload: { id: 'wrong_1' },
+  });
+
+  assert.equal(shouldAttemptMutation({ ...item, nextRetryAt: TERMINAL_RETRY_AT }, now), false);
 });
 
 test('enqueue merges with an existing item through a provided store', async () => {

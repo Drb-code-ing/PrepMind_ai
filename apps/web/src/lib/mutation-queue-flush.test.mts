@@ -8,6 +8,7 @@ import {
   flushMutationItem,
   flushMutationQueue,
 } from './mutation-queue-flush.ts';
+import { TERMINAL_RETRY_AT } from './mutation-queue.ts';
 
 const baseItem: MutationQueueItem = {
   id: 'queue_1',
@@ -345,77 +346,77 @@ test('flushes due review task rating and only removes the queue item locally', a
   const originalOcrRecords = db.ocrRecords;
   const originalPost = apiClient.post;
 
-  db.mutationQueue = {
-    where: (field: keyof MutationQueueItem) => ({
-      equals: (value: unknown) => ({
-        toArray: async () =>
-          Array.from(queueItems.values()).filter((queueItem) => queueItem[field] === value),
-      }),
-    }),
-    update: async (id: string, patch: Partial<MutationQueueItem>) => {
-      const existing = queueItems.get(id);
-      if (existing) {
-        queueItems.set(id, { ...existing, ...patch });
-      }
-      return 1;
-    },
-    delete: async (id: string) => {
-      deletedIds.push(id);
-      queueItems.delete(id);
-    },
-  } as unknown as typeof db.mutationQueue;
-  db.wrongQuestions = {
-    put: async () => {
-      localWrongQuestionWriteCount += 1;
-      throw new Error('unexpected wrong question write');
-    },
-    delete: async () => {
-      localWrongQuestionWriteCount += 1;
-      throw new Error('unexpected wrong question delete');
-    },
-  } as unknown as typeof db.wrongQuestions;
-  db.ocrRecords = {
-    put: async () => {
-      localOcrWriteCount += 1;
-      throw new Error('unexpected ocr write');
-    },
-    delete: async () => {
-      localOcrWriteCount += 1;
-      throw new Error('unexpected ocr delete');
-    },
-  } as unknown as typeof db.ocrRecords;
-
   const taskSnapshot = (
     reviewTaskRatingItem.payload as {
       taskSnapshot: { card: unknown };
     }
   ).taskSnapshot;
-  apiClient.post = async () => ({
-    task: {
-      ...taskSnapshot,
-      status: 'COMPLETED',
-      reviewLogId: 'log_1',
-      completedAt: '2026-06-14T08:00:00.000Z',
-      updatedAt: '2026-06-14T08:00:00.000Z',
-    },
-    card: taskSnapshot.card,
-    log: {
-      id: 'log_1',
-      cardId: 'card_1',
-      rating: 3,
-      clientMutationId: '11111111-1111-4111-8111-111111111111',
-      scheduledDays: 0,
-      elapsedDays: 0,
-      reviewDurationMs: 12_000,
-      stabilityBefore: 0,
-      stabilityAfter: 1,
-      difficultyBefore: 5,
-      difficultyAfter: 4.8,
-      reviewedAt: '2026-06-14T08:00:00.000Z',
-    },
-  });
 
   try {
+    db.mutationQueue = {
+      where: (field: keyof MutationQueueItem) => ({
+        equals: (value: unknown) => ({
+          toArray: async () =>
+            Array.from(queueItems.values()).filter((queueItem) => queueItem[field] === value),
+        }),
+      }),
+      update: async (id: string, patch: Partial<MutationQueueItem>) => {
+        const existing = queueItems.get(id);
+        if (existing) {
+          queueItems.set(id, { ...existing, ...patch });
+        }
+        return 1;
+      },
+      delete: async (id: string) => {
+        deletedIds.push(id);
+        queueItems.delete(id);
+      },
+    } as unknown as typeof db.mutationQueue;
+    db.wrongQuestions = {
+      put: async () => {
+        localWrongQuestionWriteCount += 1;
+        throw new Error('unexpected wrong question write');
+      },
+      delete: async () => {
+        localWrongQuestionWriteCount += 1;
+        throw new Error('unexpected wrong question delete');
+      },
+    } as unknown as typeof db.wrongQuestions;
+    db.ocrRecords = {
+      put: async () => {
+        localOcrWriteCount += 1;
+        throw new Error('unexpected ocr write');
+      },
+      delete: async () => {
+        localOcrWriteCount += 1;
+        throw new Error('unexpected ocr delete');
+      },
+    } as unknown as typeof db.ocrRecords;
+    apiClient.post = async () => ({
+      task: {
+        ...taskSnapshot,
+        status: 'COMPLETED',
+        reviewLogId: 'log_1',
+        completedAt: '2026-06-14T08:00:00.000Z',
+        updatedAt: '2026-06-14T08:00:00.000Z',
+      },
+      card: taskSnapshot.card,
+      log: {
+        id: 'log_1',
+        cardId: 'card_1',
+        rating: 3,
+        clientMutationId: '11111111-1111-4111-8111-111111111111',
+        scheduledDays: 0,
+        elapsedDays: 0,
+        reviewDurationMs: 12_000,
+        stabilityBefore: 0,
+        stabilityAfter: 1,
+        difficultyBefore: 5,
+        difficultyAfter: 4.8,
+        reviewedAt: '2026-06-14T08:00:00.000Z',
+      },
+    });
+
     const summary = await flushMutationQueue({
       userId: 'user_1',
       accessToken: 'access-token',
@@ -437,5 +438,92 @@ test('flushes due review task rating and only removes the queue item locally', a
     db.wrongQuestions = originalWrongQuestions;
     db.ocrRecords = originalOcrRecords;
     apiClient.post = originalPost;
+  }
+});
+
+test('marks terminal queue items with sentinel retry time and does not retry them', async () => {
+  const item: MutationQueueItem = {
+    ...baseItem,
+    id: 'queue_terminal_1',
+    operation: 'delete',
+    entityId: 'wrong_terminal_1',
+    payload: { id: 'wrong_terminal_1' },
+  };
+  const queueItems = new Map<string, MutationQueueItem>([[item.id, { ...item }]]);
+  const apiDeleteCalls: string[] = [];
+  const queueDeletedIds: string[] = [];
+  const queueUpdates: Array<{ id: string; patch: Partial<MutationQueueItem> }> = [];
+  const originalMutationQueue = db.mutationQueue;
+  const originalDelete = apiClient.delete;
+
+  try {
+    db.mutationQueue = {
+      where: (field: keyof MutationQueueItem) => ({
+        equals: (value: unknown) => ({
+          toArray: async () =>
+            Array.from(queueItems.values()).filter((queueItem) => queueItem[field] === value),
+        }),
+      }),
+      update: async (id: string, patch: Partial<MutationQueueItem>) => {
+        queueUpdates.push({ id, patch });
+        const existing = queueItems.get(id);
+        if (existing) {
+          queueItems.set(id, { ...existing, ...patch });
+        }
+        return 1;
+      },
+      delete: async (id: string) => {
+        queueDeletedIds.push(id);
+        queueItems.delete(id);
+      },
+    } as unknown as typeof db.mutationQueue;
+    apiClient.delete = async (path: string) => {
+      apiDeleteCalls.push(path);
+      throw new ApiClientError('bad request', {
+        status: 400,
+        code: 'BAD_REQUEST',
+      });
+    };
+
+    const firstSummary = await flushMutationQueue({
+      userId: 'user_1',
+      accessToken: 'access-token',
+      now: new Date('2026-06-14T08:01:00.000Z'),
+    });
+
+    assert.deepEqual(firstSummary, {
+      successCount: 0,
+      retryCount: 0,
+      terminalCount: 1,
+      reviewRatingSuccessCount: 0,
+    });
+    assert.deepEqual(apiDeleteCalls, ['/wrong-questions/wrong_terminal_1']);
+    assert.deepEqual(queueDeletedIds, []);
+
+    const terminalItem = queueItems.get(item.id);
+    assert.ok(terminalItem);
+    assert.equal(terminalItem.status, 'failed');
+    assert.equal(terminalItem.retryCount, 1);
+    assert.equal(terminalItem.nextRetryAt, TERMINAL_RETRY_AT);
+
+    const updateCountAfterTerminal = queueUpdates.length;
+    const secondSummary = await flushMutationQueue({
+      userId: 'user_1',
+      accessToken: 'access-token',
+      now: new Date('2026-06-14T08:02:00.000Z'),
+    });
+
+    assert.deepEqual(secondSummary, {
+      successCount: 0,
+      retryCount: 0,
+      terminalCount: 0,
+      reviewRatingSuccessCount: 0,
+    });
+    assert.deepEqual(apiDeleteCalls, ['/wrong-questions/wrong_terminal_1']);
+    assert.deepEqual(queueDeletedIds, []);
+    assert.equal(queueUpdates.length, updateCountAfterTerminal);
+  } finally {
+    db.mutationQueue = originalMutationQueue;
+    apiClient.delete = originalDelete;
   }
 });

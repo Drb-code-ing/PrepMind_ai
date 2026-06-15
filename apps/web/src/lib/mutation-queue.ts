@@ -22,6 +22,8 @@ type MutationQueueStore = {
 
 const RETRY_DELAYS_MS = [10_000, 30_000, 120_000] as const;
 
+export const TERMINAL_RETRY_AT = '9999-12-31T23:59:59.999Z';
+
 const dexieMutationQueueStore: MutationQueueStore = {
   findByDedupeKey: (dedupeKey) => db.mutationQueue.where('dedupeKey').equals(dedupeKey).first(),
   put: (item) => db.mutationQueue.put(item),
