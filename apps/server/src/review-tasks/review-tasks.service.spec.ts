@@ -3,6 +3,9 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { ReviewTasksService } from './review-tasks.service';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+
 describe('ReviewTasksService', () => {
   const now = new Date('2026-06-14T08:00:00.000Z');
   const mutationId = '11111111-1111-4111-8111-111111111111';
@@ -251,7 +254,7 @@ describe('ReviewTasksService', () => {
         updatedAt: card.updatedAt,
         nextReview: card.nextReview,
       },
-      data: expect.objectContaining({
+      data: objectContaining({
         difficulty: 4.85,
         stability: 1,
         retrievability: 0.9,
@@ -304,7 +307,8 @@ describe('ReviewTasksService', () => {
 
     const cardClaimOrder = prisma.card.updateMany.mock.invocationCallOrder[0];
     const logCreateOrder = prisma.reviewLog.create.mock.invocationCallOrder[0];
-    const taskUpdateOrders = prisma.reviewTask.updateMany.mock.invocationCallOrder;
+    const taskUpdateOrders =
+      prisma.reviewTask.updateMany.mock.invocationCallOrder;
 
     expect(cardClaimOrder).toBeLessThan(logCreateOrder);
     for (const taskUpdateOrder of taskUpdateOrders) {
@@ -405,7 +409,7 @@ describe('ReviewTasksService', () => {
       },
     });
     expect(prisma.reviewLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: objectContaining({
         cardId: 'card_1',
         clientMutationId: mutationId,
       }),
@@ -795,7 +799,7 @@ describe('ReviewTasksService', () => {
         updatedAt: card.updatedAt,
         nextReview: card.nextReview,
       },
-      data: expect.objectContaining({
+      data: objectContaining({
         difficulty: 4.85,
         stability: 1,
         retrievability: 0.9,
@@ -805,7 +809,7 @@ describe('ReviewTasksService', () => {
       }),
     });
     expect(prisma.reviewLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: objectContaining({
         cardId: 'card_1',
         clientMutationId: mutationId,
       }),
@@ -851,7 +855,7 @@ describe('ReviewTasksService', () => {
         updatedAt: card.updatedAt,
         nextReview: card.nextReview,
       },
-      data: expect.objectContaining({
+      data: objectContaining({
         difficulty: 4.85,
         stability: 1,
         retrievability: 0.9,
@@ -1018,7 +1022,9 @@ describe('ReviewTasksService', () => {
       .mockResolvedValueOnce(reopenedStaleTask);
     prisma.reviewTask.updateMany.mockResolvedValue({ count: 1 });
 
-    await expect(createService().reopen('user_1', 'task_1')).rejects.toMatchObject({
+    await expect(
+      createService().reopen('user_1', 'task_1'),
+    ).rejects.toMatchObject({
       code: 'REVIEW_TASK_NOT_PENDING',
       statusCode: 409,
     });
@@ -1039,7 +1045,9 @@ describe('ReviewTasksService', () => {
     };
     prisma.reviewTask.findFirst.mockResolvedValue(stalePendingTask);
 
-    await expect(createService().reopen('user_1', 'task_1')).rejects.toMatchObject({
+    await expect(
+      createService().reopen('user_1', 'task_1'),
+    ).rejects.toMatchObject({
       code: 'REVIEW_TASK_NOT_PENDING',
       statusCode: 409,
     });

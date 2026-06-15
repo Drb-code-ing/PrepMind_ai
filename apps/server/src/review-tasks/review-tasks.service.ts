@@ -42,8 +42,7 @@ export class ReviewTasksService {
     const visibleTasks = input.includeCompleted
       ? tasks
       : tasks.filter(
-          (task) =>
-            task.status !== 'COMPLETED' && task.status !== 'CANCELLED',
+          (task) => task.status !== 'COMPLETED' && task.status !== 'CANCELLED',
         );
 
     return {
@@ -399,7 +398,7 @@ export class ReviewTasksService {
   }
 
   private taskNotPending() {
-    throw new AppError(
+    return new AppError(
       'REVIEW_TASK_NOT_PENDING',
       '只能对待复习任务评分',
       HttpStatus.CONFLICT,
