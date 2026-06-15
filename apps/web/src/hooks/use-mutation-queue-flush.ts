@@ -8,7 +8,8 @@ import { useUserStore } from '@/stores/userStore';
 import { reviewTaskQueryKeys } from './use-review-tasks';
 import { reviewQueryKeys } from './use-reviews';
 
-export function useMutationQueueFlush() {
+export function useMutationQueueFlush(options: { auto?: boolean } = {}) {
+  const auto = options.auto ?? true;
   const queryClient = useQueryClient();
   const accessToken = useUserStore((state) => state.accessToken);
   const currentUser = useUserStore((state) => state.currentUser);
@@ -40,10 +41,14 @@ export function useMutationQueueFlush() {
   }, [accessToken, currentUserId, queryClient, sessionHydrated]);
 
   useEffect(() => {
+    if (!auto) return;
+
     void flush();
-  }, [flush]);
+  }, [auto, flush]);
 
   useEffect(() => {
+    if (!auto) return;
+
     const onOnline = () => void flush();
     const onFocus = () => void flush();
 
@@ -53,7 +58,7 @@ export function useMutationQueueFlush() {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('focus', onFocus);
     };
-  }, [flush]);
+  }, [auto, flush]);
 
   return { flush };
 }

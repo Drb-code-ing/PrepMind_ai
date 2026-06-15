@@ -126,7 +126,7 @@ export default function TodayPage() {
   });
   const { pendingByTaskId, pendingCount: pendingRatingSyncCount } =
     useReviewTaskPendingRatings(userId);
-  const { flush } = useMutationQueueFlush();
+  const { flush } = useMutationQueueFlush({ auto: false });
   const todayReviewTaskItems = todayReviewTasks.data?.tasks;
   const optimisticPendingRatingsByTaskId = useMemo<Record<string, { rating: ReviewRating }>>(
     () =>
