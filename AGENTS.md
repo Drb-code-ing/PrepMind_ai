@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 4.4 已完成，Phase 4 继续推进。
 
 ## 项目快照
 
@@ -16,6 +16,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 4.1 | 已完成 | WrongQuestion-first FSRS 复习闭环、Review API、今日复习卡 |
 | Phase 4.2 | 已完成 | 学习统计页、Review stats/logs API、复习趋势与最近记录 |
 | Phase 4.3 | 已完成 | ReviewTask 持久化任务流、今日任务迁移、评分完成、跳过和恢复 |
+| Phase 4.4 | 已完成 | 离线评分队列、服务端幂等评分、今日复习待同步状态和 in-app 提醒摘要 |
 
 ## 技术栈
 
@@ -47,6 +48,7 @@ bun --filter @repo/web dev
 
 ```powershell
 bun --filter @repo/web lint
+bun --filter @repo/web test
 bun --filter @repo/web build
 bun --filter @repo/server lint
 bun --filter @repo/server build
@@ -106,8 +108,10 @@ mcp -> ai, fsrs, rag, types
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过和恢复；Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源。
+- ReviewTask 评分支持 `clientMutationId` 幂等；重复提交同一评分命令不会重复写入 `ReviewLog`。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
-- WrongQuestion / OCRRecord 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
+- WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
+- 今日任务页会展示本地待同步评分；离线评分不本地推进 FSRS、ReviewLog 或统计，仍以服务端同步成功为准。
 - ChatMessage 不进入通用 mutation queue，继续使用 `/chat-messages/sync` 的会话快照幂等同步。
 - 新 OCR 图片通过 `/uploads/images` 上传到 MinIO；`/ocr-records` 与 `/wrong-questions` 不接收 `data:` base64 图片。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
@@ -131,5 +135,5 @@ mcp -> ai, fsrs, rag, types
 
 Phase 4 后续最优先：
 
-1. Phase 4.4：离线评分队列与提醒策略。
-2. Phase 4.5：复习提醒与长期计划策略。
+1. Phase 4.5：复习提醒与长期计划策略。
+2. Phase 5：RAG 知识库与 pgvector 检索。

@@ -300,6 +300,34 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-15（Day 10）
+
+**Phase 4.4 离线评分队列与提醒摘要**
+
+- ReviewTask 评分加入 `clientMutationId` 幂等链路，服务端通过 `ReviewLog.clientMutationId` 避免弱网重试重复写入复习日志。
+- Prisma 新增 `ReviewLog.clientMutationId` nullable unique 字段，并补齐 ReviewTask rating 单测与 e2e 幂等覆盖。
+- Dexie `mutationQueue` 扩展 `reviewTask/rating`，离线或可重试失败的评分会进入待同步队列。
+- 今日任务页新增本地待同步评分状态、手动重试入口和 in-app 复习提醒摘要；离线评分不本地推进 FSRS、ReviewLog 或统计。
+- 新增 `@repo/web test` 脚本，统一运行前端 Node `.test.mts` 测试。
+
+验证：
+
+- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
+- `node --experimental-strip-types packages/types/tests/review-task.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/database prisma migrate deploy` 通过；无待应用 migration。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test -- review-tasks.service.spec.ts` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand review-tasks.e2e-spec.ts` 通过。
+- `bun --filter @repo/web test` 通过，127 个测试全部通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `git diff --check` 通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -345,9 +373,10 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
 - Phase 4.2 学习统计页和 Review stats/logs API 已完成。
 - Phase 4.3 ReviewTask 持久化任务流已完成并合并到 `main`。
+- Phase 4.4 离线评分队列、服务端幂等评分和 in-app 提醒摘要已完成。
 - 错题可加入复习卡，今日任务可读取持久化 ReviewTask 并提交四档评分、跳过和恢复。
 - `/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
-- Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源，Review rating 暂不进入 Dexie mutationQueue。
+- Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
 
 ---
 
@@ -360,7 +389,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] 今日任务接入到期复习卡。
 - [x] 复习历史与统计。
 - [x] 更完整的 ReviewTask 数据流。
-- [ ] Phase 4.4：离线评分队列与提醒策略。
+- [x] Phase 4.4：离线评分队列与提醒策略。
 - [ ] Phase 4.5：复习提醒与长期计划策略。
 
 **后续方向**

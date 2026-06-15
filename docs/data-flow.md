@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-14。Phase 4.3 已完成并合并到 `main`，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-15。Phase 4.4 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,7 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源。
-- 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
+- 本地轻状态：今日任务轻手账 checklist、学习偏好和 in-app 复习提醒偏好继续使用 userId scoped localStorage。
 
 ```text
 用户操作
@@ -155,9 +155,9 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
   -> 今日任务读取 /review-tasks/today
   -> 懒生成当日本地日期的 ReviewTask
   -> 用户查看答案并选择 Again / Hard / Good / Easy
-  -> POST /review-tasks/:taskId/rating
+  -> POST /review-tasks/:taskId/rating + clientMutationId
   -> @repo/fsrs 计算下一次复习时间
-  -> 事务内更新 Card + 写入 ReviewLog + 完成 ReviewTask
+  -> 事务内更新 Card + 写入 ReviewLog(clientMutationId) + 完成 ReviewTask
   -> /stats 读取 /reviews/stats 与 /reviews/logs
 ```
 
@@ -167,7 +167,9 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - `@repo/fsrs` 是纯调度算法包，不依赖 Prisma、NestJS、浏览器或系统时间副作用。
 - `ReviewTask` 是 Phase 4.3 新增的持久化任务层，只记录 pending / completed / skipped / cancelled 生命周期。
 - Card / ReviewLog / ReviewTask 均按当前 `userId` 隔离，所有 Review API 经过 `JwtAuthGuard`。
-- 复习评分第一轮在线写入 PostgreSQL，不进入 Dexie mutationQueue；失败时提示用户重试。
+- ReviewTask 评分使用前端生成的 `clientMutationId` 幂等提交；服务端写入 `ReviewLog.clientMutationId`，同一评分命令重试不会重复写 `ReviewLog`。
+- 复习评分在线成功时写入 PostgreSQL；离线或可重试失败时进入 Dexie `mutationQueue` 的 `reviewTask/rating`。
+- 离线评分不会本地推进 FSRS、Card、ReviewLog 或统计；今日任务页只展示待同步状态，服务端同步成功后刷新 ReviewTask 和 Review stats 查询。
 - `/review-tasks/today` 按当前用户本地日期懒生成到期任务，同一 `cardId + scheduledDate` 不重复创建。
 - `/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask，并关联 `reviewLogId`。
 - `/review-tasks/:taskId/skip` 与 `/review-tasks/:taskId/reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
@@ -193,7 +195,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 | --- | --- | --- |
 | `GET` | `/review-tasks/today` | 懒生成并读取当前用户本地日期的 ReviewTask，支持 `date`、`timezoneOffsetMinutes`、`includeCompleted` |
 | `GET` | `/review-tasks` | 分页读取 ReviewTask，支持 `date` 与 `status` 过滤 |
-| `POST` | `/review-tasks/:taskId/rating` | 提交评分，事务内更新 Card、写入 ReviewLog、完成 ReviewTask |
+| `POST` | `/review-tasks/:taskId/rating` | 提交评分，支持 `clientMutationId` 幂等，事务内更新 Card、写入 ReviewLog、完成 ReviewTask |
 | `POST` | `/review-tasks/:taskId/skip` | 跳过待复习任务，只更新 ReviewTask |
 | `POST` | `/review-tasks/:taskId/reopen` | 恢复已跳过任务到待复习，只更新 ReviewTask |
 
@@ -206,29 +208,30 @@ Dexie 当前职责：
 | `messages` | 聊天消息本地缓存 | `/chat-messages` |
 | `ocrRecords` | OCR 历史本地缓存、本地图片预览兜底 | `/ocr-records` |
 | `wrongQuestions` | 错题本本地缓存、乐观更新 | `/wrong-questions` |
-| `mutationQueue` | WrongQuestion / OCRRecord 失败写操作补偿队列 | 本地暂存，最终以服务端为准 |
+| `mutationQueue` | WrongQuestion / OCRRecord / ReviewTask rating 失败写操作补偿队列 | 本地暂存，最终以服务端为准 |
 
 mutation queue 流程：
 
 ```text
-WrongQuestion / OCRRecord 写操作
+WrongQuestion / OCRRecord / ReviewTask rating 写操作
   -> 乐观更新 TanStack Query / Dexie
   -> 调用 NestJS API
   -> 成功：服务端返回覆盖本地缓存，syncStatus=synced
-  -> 失败：写入 mutationQueue，业务记录标记 syncStatus=failed
+  -> 失败：写入 mutationQueue，业务记录标记 syncStatus=failed；ReviewTask rating 只展示待同步状态
   -> session 恢复 / online / focus 时 flushMutationQueue
-  -> 成功后清理 mutationQueue
+  -> 成功后清理 mutationQueue，并刷新 ReviewTask / Review stats 查询
 ```
 
 进入队列的操作：
 
 - WrongQuestion：create / update / delete。
 - OCRRecord：create；delete 已预留在 flush 逻辑中。
+- ReviewTask：rating。
 
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
-- Review rating：Phase 4.3 通过 `/review-tasks/:taskId/rating` 在线写入 PostgreSQL，暂不进入离线补偿队列；Phase 4.4 将单独设计离线评分队列。
+- ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
 
@@ -246,6 +249,7 @@ WrongQuestion / OCRRecord 写操作
 | `prepmind-chat` | 输入框草稿 | 本地体验状态 |
 | `prepmind-today:{userId}:{date}` | 轻手账 checklist 完成状态 | 当前不承载 ReviewTask 复习任务 |
 | `prepmind-preferences:{userId}` | 学习目标、讲解偏好、每日强度 | Phase 2.5 本地偏好，暂不注入 prompt |
+| `prepmind-review-reminder:{userId}` | in-app 复习提醒偏好 | Phase 4.4 本地偏好，当前仅用于页面内摘要 |
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
@@ -261,7 +265,7 @@ WrongQuestion / OCRRecord 写操作
 - `WrongQuestion`
 - `Question`
 - `Card`
-- `ReviewLog`
+- `ReviewLog`（`clientMutationId` 用于 ReviewTask rating 幂等）
 - `ReviewTask`
 - `Document`
 - `Chunk`
