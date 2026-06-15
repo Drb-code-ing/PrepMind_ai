@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createReviewCardFromWrongQuestionRequestSchema,
+  reviewLogSchema,
   reviewLogListResponseSchema,
   reviewRatingRequestSchema,
   reviewStatsQuerySchema,
@@ -14,6 +15,8 @@ function run() {
   testRatingRequest();
   testRatingRequestWithClientMutationId();
   testRatingRequestRejectsInvalidClientMutationId();
+  testReviewLogWithNullClientMutationId();
+  testReviewLogWithOmittedClientMutationId();
   testTodayTasksResponse();
   testStatsQuery();
   testStatsResponse();
@@ -57,6 +60,21 @@ function testRatingRequestRejectsInvalidClientMutationId() {
       clientMutationId: 'not-a-uuid',
     }),
   );
+}
+
+function testReviewLogWithNullClientMutationId() {
+  const result = reviewLogSchema.parse(createReviewLogPayload({ clientMutationId: null }));
+
+  assert.equal(result.clientMutationId, null);
+}
+
+function testReviewLogWithOmittedClientMutationId() {
+  const payload = createReviewLogPayload();
+  delete payload.clientMutationId;
+
+  const result = reviewLogSchema.parse(payload);
+
+  assert.equal(result.clientMutationId, null);
 }
 
 function testTodayTasksResponse() {
@@ -171,6 +189,24 @@ function testReviewLogListResponse() {
 
   assert.equal(result.items[0]?.wrongQuestion?.subject, '数学');
   assert.equal(result.items[0]?.currentCardState, 'REVIEW');
+}
+
+function createReviewLogPayload(input: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'log_1',
+    cardId: 'card_1',
+    rating: 3,
+    clientMutationId: '550e8400-e29b-41d4-a716-446655440000',
+    scheduledDays: 1,
+    elapsedDays: 0,
+    reviewDurationMs: 12000,
+    stabilityBefore: 0,
+    stabilityAfter: 1,
+    difficultyBefore: 5,
+    difficultyAfter: 4.85,
+    reviewedAt: '2026-06-14T08:00:00.000Z',
+    ...input,
+  };
 }
 
 run();

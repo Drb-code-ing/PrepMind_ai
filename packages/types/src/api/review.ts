@@ -38,7 +38,7 @@ export const reviewLogSchema = z.object({
   id: z.string().min(1),
   cardId: z.string().min(1),
   rating: reviewRatingSchema,
-  clientMutationId: clientMutationIdSchema.nullable(),
+  clientMutationId: clientMutationIdSchema.nullish().transform((value) => value ?? null),
   scheduledDays: z.number().int().nonnegative(),
   elapsedDays: z.number().int().nonnegative(),
   reviewDurationMs: z.number().int().nonnegative().nullable(),

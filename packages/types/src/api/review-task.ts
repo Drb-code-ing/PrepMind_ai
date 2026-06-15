@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-// @ts-expect-error TS extension imports are required by the direct Node schema tests.
-import { reviewLogSchema } from './review.ts';
+import { reviewLogSchema } from '@repo/types/api/review';
 
 const reviewCardStateSchema = z.enum(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 const reviewWrongQuestionStatusSchema = z.enum(['UNRESOLVED', 'RESOLVED']);
