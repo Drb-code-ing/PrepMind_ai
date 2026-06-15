@@ -37,3 +37,36 @@ test('uses default reminder preference when storage is empty or invalid', () => 
   assert.deepEqual(readReviewReminderPreference(null), getDefaultReviewReminderPreference());
   assert.deepEqual(readReviewReminderPreference('{bad json'), getDefaultReviewReminderPreference());
 });
+
+test('uses valid stored reminder preference fields over defaults', () => {
+  assert.deepEqual(
+    readReviewReminderPreference('{"quietHoursStart":"21:00","inAppEnabled":false}'),
+    {
+      inAppEnabled: false,
+      quietHoursStart: '21:00',
+      quietHoursEnd: '07:30',
+    },
+  );
+});
+
+test('falls back to default quiet hours when stored values are invalid', () => {
+  assert.deepEqual(
+    readReviewReminderPreference('{"quietHoursStart":"99:99","quietHoursEnd":"abc"}'),
+    getDefaultReviewReminderPreference(),
+  );
+});
+
+test('ignores non-pending tasks for overdue and next due reminders', () => {
+  const summary = buildReviewReminderSummary({
+    tasks: [
+      { status: 'COMPLETED', dueAt: '2026-06-15T07:00:00.000Z' },
+      { status: 'SKIPPED', dueAt: '2026-06-15T09:00:00.000Z' },
+    ],
+    pendingCount: 0,
+    pendingSyncCount: 0,
+    now: new Date('2026-06-15T08:00:00.000Z'),
+  });
+
+  assert.equal(summary.overdueCount, 0);
+  assert.equal(summary.nextDueLabel, '暂无');
+});

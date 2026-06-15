@@ -49,18 +49,20 @@ export function readReviewReminderPreference(raw: string | null): ReviewReminder
         typeof preference.inAppEnabled === 'boolean'
           ? preference.inAppEnabled
           : defaults.inAppEnabled,
-      quietHoursStart:
-        typeof preference.quietHoursStart === 'string'
-          ? preference.quietHoursStart
-          : defaults.quietHoursStart,
-      quietHoursEnd:
-        typeof preference.quietHoursEnd === 'string'
-          ? preference.quietHoursEnd
-          : defaults.quietHoursEnd,
+      quietHoursStart: isValidQuietHour(preference.quietHoursStart)
+        ? preference.quietHoursStart
+        : defaults.quietHoursStart,
+      quietHoursEnd: isValidQuietHour(preference.quietHoursEnd)
+        ? preference.quietHoursEnd
+        : defaults.quietHoursEnd,
     };
   } catch {
     return defaults;
   }
+}
+
+function isValidQuietHour(value: unknown): value is string {
+  return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 export function buildReviewReminderSummary({
