@@ -1,11 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { flushMutationQueue } from '@/lib/mutation-queue-flush';
 import { useUserStore } from '@/stores/userStore';
+import { reviewTaskQueryKeys } from './use-review-tasks';
+import { reviewQueryKeys } from './use-reviews';
 
 export function useMutationQueueFlush() {
+  const queryClient = useQueryClient();
   const accessToken = useUserStore((state) => state.accessToken);
   const currentUser = useUserStore((state) => state.currentUser);
   const sessionHydrated = useUserStore((state) => state.sessionHydrated);
@@ -17,10 +21,15 @@ export function useMutationQueueFlush() {
 
     flushingRef.current = true;
     try {
-      await flushMutationQueue({
+      const summary = await flushMutationQueue({
         userId: currentUserId,
         accessToken,
       });
+      if (summary.reviewRatingSuccessCount > 0) {
+        void queryClient.invalidateQueries({ queryKey: reviewTaskQueryKeys.all });
+        void queryClient.invalidateQueries({ queryKey: reviewQueryKeys.all });
+      }
+      return summary;
     } catch (error) {
       console.warn(
         `[MutationQueue flush]: ${error instanceof Error ? error.message : 'unknown error'}`,
@@ -28,7 +37,7 @@ export function useMutationQueueFlush() {
     } finally {
       flushingRef.current = false;
     }
-  }, [accessToken, currentUserId, sessionHydrated]);
+  }, [accessToken, currentUserId, queryClient, sessionHydrated]);
 
   useEffect(() => {
     void flush();

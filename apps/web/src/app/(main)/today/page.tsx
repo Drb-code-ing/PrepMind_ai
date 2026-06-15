@@ -29,16 +29,25 @@ import {
   useSubmitReviewTaskRating,
   useTodayReviewTaskList,
 } from '@/hooks/use-review-tasks';
+import { useMutationQueueFlush } from '@/hooks/use-mutation-queue-flush';
+import { useReviewTaskPendingRatings } from '@/hooks/use-review-task-pending-ratings';
 import { db } from '@/lib/db';
-import { getMutationErrorMessage } from '@/lib/mutation-queue';
+import { enqueueMutationQueueItem, getMutationErrorMessage } from '@/lib/mutation-queue';
 import {
   buildReviewRatingFeedback,
   getReviewRatingOptions,
   type ReviewRatingFeedback,
 } from '@/lib/review-feedback';
 import {
+  createReviewTaskRatingQueueItem,
+  isRetryableReviewTaskRatingError,
+} from '@/lib/review-task-offline';
+import {
+  getReviewRatingLabel,
   getReviewTaskStatusFeedback,
   groupReviewTasksByStatus,
+  mergeLocalPendingRatings,
+  type LocalPendingRatingFields,
 } from '@/lib/review-task-view';
 import {
   TODAY_TASKS,
@@ -57,6 +66,7 @@ import { formatWrongQuestionFieldForDisplay } from '@/lib/wrong-question-parser'
 import { useUserStore } from '@/stores/userStore';
 
 type NoticeTone = 'success' | 'neutral';
+type ReviewTaskDisplayItem = ReviewTaskItemResponse & Partial<LocalPendingRatingFields>;
 
 const taskIcons: Record<TodayTaskKind, typeof BookOpen> = {
   review: BookOpen,
@@ -110,7 +120,14 @@ export default function TodayPage() {
     timezoneOffsetMinutes,
     includeCompleted: true,
   });
-  const groupedReviewTasks = groupReviewTasksByStatus(todayReviewTasks.data?.tasks ?? []);
+  const { pendingByTaskId, pendingCount: pendingRatingSyncCount } =
+    useReviewTaskPendingRatings(userId);
+  const { flush } = useMutationQueueFlush();
+  const reviewTasksWithPendingRatings = useMemo(
+    () => mergeLocalPendingRatings(todayReviewTasks.data?.tasks ?? [], pendingByTaskId),
+    [pendingByTaskId, todayReviewTasks.data?.tasks],
+  );
+  const groupedReviewTasks = groupReviewTasksByStatus(reviewTasksWithPendingRatings);
   const submitReviewRating = useSubmitReviewTaskRating();
   const skipReviewTask = useSkipReviewTask();
   const reopenReviewTask = useReopenReviewTask();
@@ -176,14 +193,17 @@ export default function TodayPage() {
   }, []);
 
   const rateTask = useCallback(
-    async (taskId: string, rating: ReviewRating) => {
+    async (task: ReviewTaskItemResponse, rating: ReviewRating) => {
+      const request = {
+        rating,
+        reviewedAt: new Date().toISOString(),
+        clientMutationId: crypto.randomUUID(),
+      };
+
       try {
         const result = await submitReviewRating.mutateAsync({
-          taskId,
-          request: {
-            rating,
-            reviewedAt: new Date().toISOString(),
-          },
+          taskId: task.id,
+          request,
         });
         const feedback = buildReviewRatingFeedback({
           rating,
@@ -191,19 +211,35 @@ export default function TodayPage() {
         });
         setReviewFeedbacks((prev) => ({
           ...prev,
-          [taskId]: feedback,
+          [task.id]: feedback,
         }));
         setRevealedTaskIds((prev) => {
           const next = new Set(prev);
-          next.delete(taskId);
+          next.delete(task.id);
           return next;
         });
         showNotice(`${feedback.title}，${feedback.description}`);
       } catch (error) {
+        if (userId && isRetryableReviewTaskRatingError(error)) {
+          try {
+            await enqueueMutationQueueItem(
+              createReviewTaskRatingQueueItem({
+                userId,
+                task,
+                request,
+              }),
+            );
+            showNotice(`已选择：${getReviewRatingLabel(rating)}，等待同步`, 'neutral');
+          } catch (queueError) {
+            showNotice(getMutationErrorMessage(queueError), 'neutral');
+          }
+          return;
+        }
+
         showNotice(getMutationErrorMessage(error), 'neutral');
       }
     },
-    [showNotice, submitReviewRating],
+    [showNotice, submitReviewRating, userId],
   );
 
   const skipTask = useCallback(
@@ -348,9 +384,19 @@ export default function TodayPage() {
                 </div>
               </div>
             </div>
-            <span className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#315f86] ring-1 ring-[var(--pm-line)]">
-              {todayReviewTasks.data?.pendingCount ?? 0} 张
-            </span>
+            {pendingRatingSyncCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => void flush()}
+                className="tap-target shrink-0 rounded-full bg-[#fff7df] px-3 py-1 text-xs font-semibold text-[#9a6a18] ring-1 ring-amber-100 transition-all hover:bg-[#ffefbf] active:scale-95"
+              >
+                {pendingRatingSyncCount} 条待同步，重试
+              </button>
+            ) : (
+              <span className="shrink-0 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#315f86] ring-1 ring-[var(--pm-line)]">
+                {todayReviewTasks.data?.pendingCount ?? 0} 张
+              </span>
+            )}
           </div>
 
           <div className="mt-3 space-y-3">
@@ -373,7 +419,7 @@ export default function TodayPage() {
                   ratingPending={submitReviewRating.isPending}
                   actionPending={skipReviewTask.isPending || reopenReviewTask.isPending}
                   onToggleAnswer={() => toggleAnswer(task.id)}
-                  onRate={(rating) => void rateTask(task.id, rating)}
+                  onRate={(rating) => void rateTask(task, rating)}
                   onSkip={() => void skipTask(task.id)}
                 />
               ))
@@ -555,7 +601,7 @@ function ReviewTaskCard({
   onRate,
   onSkip,
 }: {
-  task: ReviewTaskItemResponse;
+  task: ReviewTaskDisplayItem;
   revealed: boolean;
   feedback: ReviewRatingFeedback | null;
   ratingPending: boolean;
@@ -566,6 +612,7 @@ function ReviewTaskCard({
 }) {
   const wrongQuestion = task.wrongQuestion;
   const ratingOptions = getReviewRatingOptions();
+  const isLocalRatingPending = task.localStatus === 'LOCAL_RATING_PENDING';
 
   return (
     <article className="rounded-[1.25rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -631,6 +678,13 @@ function ReviewTaskCard({
         </div>
       ) : null}
 
+      {isLocalRatingPending && task.pendingRatingLabel ? (
+        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-[#fff7df] px-3 py-2 text-sm text-[#9a6a18] ring-1 ring-amber-100">
+          <RotateCcw className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="font-semibold">已选择：{task.pendingRatingLabel}，等待同步</p>
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={onToggleAnswer}
@@ -642,7 +696,7 @@ function ReviewTaskCard({
 
       <button
         type="button"
-        disabled={actionPending || ratingPending}
+        disabled={actionPending || ratingPending || isLocalRatingPending}
         onClick={onSkip}
         className="tap-target mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white/65 text-sm font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98] disabled:opacity-60"
       >
@@ -660,7 +714,7 @@ function ReviewTaskCard({
             <button
               key={option.rating}
               type="button"
-              disabled={ratingPending}
+              disabled={ratingPending || isLocalRatingPending}
               onClick={() => onRate(option.rating)}
               className={`tap-target min-h-14 rounded-2xl px-2 text-left ring-1 transition-all active:scale-[0.96] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-[var(--pm-line)] ${option.className}`}
             >
@@ -690,7 +744,7 @@ function ReviewTaskSummary({
   onAction,
 }: {
   title: string;
-  tasks: ReviewTaskItemResponse[];
+  tasks: ReviewTaskDisplayItem[];
   actionLabel?: string;
   actionPending?: boolean;
   onAction?: (taskId: string) => void;

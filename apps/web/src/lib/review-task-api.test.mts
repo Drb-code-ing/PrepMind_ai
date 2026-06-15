@@ -76,6 +76,7 @@ async function testSubmitsRating() {
     rating: 3,
     reviewedAt: '2026-06-14T08:00:00.000Z',
     reviewDurationMs: 12000,
+    clientMutationId: '11111111-1111-4111-8111-111111111111',
   });
 
   assert.equal(requests[0].input, 'http://localhost:3001/review-tasks/task_1/rating');
@@ -84,9 +85,11 @@ async function testSubmitsRating() {
     rating: 3,
     reviewedAt: '2026-06-14T08:00:00.000Z',
     reviewDurationMs: 12000,
+    clientMutationId: '11111111-1111-4111-8111-111111111111',
   });
   assert.equal(result.task.status, 'COMPLETED');
   assert.equal(result.log.rating, 3);
+  assert.equal(result.log.clientMutationId, '11111111-1111-4111-8111-111111111111');
 }
 
 async function testSkipsAndReopensTask() {
@@ -192,6 +195,7 @@ function createLogPayload() {
     id: 'log_1',
     cardId: 'card_1',
     rating: 3,
+    clientMutationId: '11111111-1111-4111-8111-111111111111',
     scheduledDays: 1,
     elapsedDays: 0,
     reviewDurationMs: 12000,
