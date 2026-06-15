@@ -257,6 +257,11 @@ export default function TodayPage() {
         showNotice(`${feedback.title}，${feedback.description}`);
       } catch (error) {
         if (userId && isRetryableReviewTaskRatingError(error)) {
+          setOptimisticPendingRatingsByTaskId((prev) => ({
+            ...prev,
+            [task.id]: { rating },
+          }));
+
           try {
             await enqueueMutationQueueItem(
               createReviewTaskRatingQueueItem({
@@ -265,12 +270,13 @@ export default function TodayPage() {
                 request,
               }),
             );
-            setOptimisticPendingRatingsByTaskId((prev) => ({
-              ...prev,
-              [task.id]: { rating },
-            }));
             showNotice(`已选择：${getReviewRatingLabel(rating)}，等待同步`, 'neutral');
           } catch (queueError) {
+            setOptimisticPendingRatingsByTaskId((prev) => {
+              const next = { ...prev };
+              delete next[task.id];
+              return next;
+            });
             showNotice(getMutationErrorMessage(queueError), 'neutral');
           }
           return;
