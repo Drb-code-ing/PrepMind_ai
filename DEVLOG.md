@@ -309,6 +309,7 @@ f5a2eb1 style: soften cartoon theme palette
 - Dexie `mutationQueue` 扩展 `reviewTask/rating`，离线或可重试失败的评分会进入待同步队列。
 - 今日任务页新增本地待同步评分状态、手动重试入口和 in-app 复习提醒摘要；离线评分不本地推进 FSRS、ReviewLog 或统计。
 - 新增 `@repo/web test` 脚本，统一运行前端 Node `.test.mts` 测试。
+- 浏览器验收中修复重复知识点展示导致的 React duplicate key 警告，新增展示层知识点去空、去重和数量限制。
 
 验证：
 
@@ -321,9 +322,10 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server build` 通过。
 - `bun --filter @repo/server test -- review-tasks.service.spec.ts` 通过。
 - `bun --filter @repo/server test:e2e -- --runInBand review-tasks.e2e-spec.ts` 通过。
-- `bun --filter @repo/web test` 通过，127 个测试全部通过。
+- `bun --filter @repo/web test` 通过，128 个测试全部通过。
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
+- 浏览器验收通过：注册 smoke 账号、创建错题和 ReviewTask、打开 `/today`、展开答案、模拟后端断开提交离线评分、恢复后端并手动重试同步；待同步状态、按钮禁用、完成摘要和 console 恢复后无错误均符合预期。
 - `git diff --check` 通过。
 
 ---
