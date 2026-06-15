@@ -125,21 +125,58 @@ describe('ReviewTasksController (e2e)', () => {
     );
     expect(reopened.task.status).toBe('PENDING');
 
+    const clientMutationId = '11111111-1111-4111-8111-111111111111';
+    const ratingRequest = {
+      rating: 3,
+      reviewedAt: '2026-06-14T08:00:00.000Z',
+      reviewDurationMs: 12000,
+      clientMutationId,
+    };
+
     const ratingResponse = await request(server)
       .post(`/review-tasks/${task?.id}/rating`)
       .set('Authorization', `Bearer ${userA.accessToken}`)
-      .send({
-        rating: 3,
-        reviewedAt: '2026-06-14T08:00:00.000Z',
-        reviewDurationMs: 12000,
-      })
+      .send(ratingRequest)
       .expect(201);
     const rating = reviewTaskRatingResponseSchema.parse(
       getSuccessData(ratingResponse),
     );
     expect(rating.task.status).toBe('COMPLETED');
     expect(rating.task.reviewLogId).toBe(rating.log.id);
+    expect(rating.log.clientMutationId).toBe(clientMutationId);
     expect(rating.card.state).toBe('REVIEW');
+
+    const replayResponse = await request(server)
+      .post(`/review-tasks/${task?.id}/rating`)
+      .set('Authorization', `Bearer ${userA.accessToken}`)
+      .send(ratingRequest)
+      .expect(201);
+    const replay = reviewTaskRatingResponseSchema.parse(
+      getSuccessData(replayResponse),
+    );
+    expect(replay.log.id).toBe(rating.log.id);
+    expect(replay.task.id).toBe(rating.task.id);
+    expect(replay.task.reviewLogId).toBe(rating.task.reviewLogId);
+    expect(replay.log.clientMutationId).toBe(clientMutationId);
+
+    const logCount = await prisma.reviewLog.count({
+      where: { clientMutationId },
+    });
+    expect(logCount).toBe(1);
+
+    await request(server)
+      .post(`/review-tasks/${task?.id}/rating`)
+      .set('Authorization', `Bearer ${userA.accessToken}`)
+      .send({
+        ...ratingRequest,
+        clientMutationId: '22222222-2222-4222-8222-222222222222',
+      })
+      .expect(409)
+      .expect((response) => {
+        expect(getErrorBody(response).error.code).toBe(
+          'REVIEW_TASK_NOT_PENDING',
+        );
+      });
 
     const pendingOnlyResponse = await request(server)
       .get(
@@ -219,9 +256,26 @@ function getSuccessData<T = unknown>(response: SupertestResponse): T {
   return body.data;
 }
 
+function getErrorBody(response: SupertestResponse): ErrorEnvelope {
+  const body = response.body as ErrorEnvelope;
+
+  expect(body.success).toBe(false);
+  expect(typeof body.requestId).toBe('string');
+  return body;
+}
+
 type SuccessEnvelope<T> = {
   success: true;
   data: T;
+  requestId: string;
+};
+
+type ErrorEnvelope = {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+  };
   requestId: string;
 };
 
