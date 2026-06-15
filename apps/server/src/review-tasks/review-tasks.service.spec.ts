@@ -268,7 +268,7 @@ describe('ReviewTasksService', () => {
     expect(result.log.rating).toBe(3);
   });
 
-  it('cancels other pending tasks for the same card after a successful rating', async () => {
+  it('cancels other pending and skipped tasks for the same card after a successful rating', async () => {
     const updatedCard = {
       ...card,
       difficulty: 4.85,
@@ -306,7 +306,7 @@ describe('ReviewTasksService', () => {
       where: {
         userId: 'user_1',
         cardId: 'card_1',
-        status: 'PENDING',
+        status: { in: ['PENDING', 'SKIPPED'] },
         id: { not: 'task_1' },
       },
       data: { status: 'CANCELLED', skippedAt: null },
@@ -747,22 +747,21 @@ describe('ReviewTasksService', () => {
     expect(prisma.reviewTask.updateMany).toHaveBeenCalledTimes(1);
   });
 
-  it('skips and reopens a pending task', async () => {
+  it('skips a pending task in a transaction and verifies the claimed task is current', async () => {
     const skippedTask = { ...task, status: 'SKIPPED' as const, skippedAt: now };
     prisma.reviewTask.findFirst
       .mockResolvedValueOnce(task)
-      .mockResolvedValueOnce(skippedTask)
-      .mockResolvedValueOnce(skippedTask)
-      .mockResolvedValueOnce(task);
-    prisma.reviewTask.updateMany
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 1 });
+      .mockResolvedValueOnce(skippedTask);
+    prisma.reviewTask.updateMany.mockResolvedValueOnce({ count: 1 });
 
     const skipped = await createService().skip('user_1', 'task_1', now);
-    const reopened = await createService().reopen('user_1', 'task_1');
 
     expect(skipped.task.status).toBe('SKIPPED');
-    expect(reopened.task.status).toBe('PENDING');
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.reviewTask.findFirst).toHaveBeenNthCalledWith(1, {
+      where: { id: 'task_1', userId: 'user_1' },
+      include: { card: { include: { wrongQuestion: true } } },
+    });
     expect(prisma.reviewTask.updateMany).toHaveBeenNthCalledWith(1, {
       where: { id: 'task_1', userId: 'user_1', status: 'PENDING' },
       data: { status: 'SKIPPED', skippedAt: now },
@@ -771,11 +770,29 @@ describe('ReviewTasksService', () => {
       where: { id: 'task_1', userId: 'user_1' },
       include: { card: { include: { wrongQuestion: true } } },
     });
-    expect(prisma.reviewTask.updateMany).toHaveBeenNthCalledWith(2, {
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
+  });
+
+  it('reopens a skipped task in a transaction and verifies the claimed task is current', async () => {
+    const skippedTask = { ...task, status: 'SKIPPED' as const, skippedAt: now };
+    prisma.reviewTask.findFirst
+      .mockResolvedValueOnce(skippedTask)
+      .mockResolvedValueOnce(task);
+    prisma.reviewTask.updateMany.mockResolvedValueOnce({ count: 1 });
+
+    const reopened = await createService().reopen('user_1', 'task_1');
+
+    expect(reopened.task.status).toBe('PENDING');
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.reviewTask.findFirst).toHaveBeenNthCalledWith(1, {
+      where: { id: 'task_1', userId: 'user_1' },
+      include: { card: { include: { wrongQuestion: true } } },
+    });
+    expect(prisma.reviewTask.updateMany).toHaveBeenNthCalledWith(1, {
       where: { id: 'task_1', userId: 'user_1', status: 'SKIPPED' },
       data: { status: 'PENDING', skippedAt: null },
     });
-    expect(prisma.reviewTask.findFirst).toHaveBeenNthCalledWith(4, {
+    expect(prisma.reviewTask.findFirst).toHaveBeenNthCalledWith(2, {
       where: { id: 'task_1', userId: 'user_1' },
       include: { card: { include: { wrongQuestion: true } } },
     });
@@ -814,6 +831,77 @@ describe('ReviewTasksService', () => {
       where: { id: 'task_1', userId: 'user_1', status: 'SKIPPED' },
       data: { status: 'PENDING', skippedAt: null },
     });
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects skipping when the claimed task becomes stale after the conditional update', async () => {
+    const skippedStaleTask = {
+      ...task,
+      status: 'SKIPPED' as const,
+      skippedAt: now,
+      card: {
+        ...card,
+        nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      },
+    };
+    prisma.reviewTask.findFirst
+      .mockResolvedValueOnce(task)
+      .mockResolvedValueOnce(skippedStaleTask);
+    prisma.reviewTask.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      createService().skip('user_1', 'task_1', now),
+    ).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.updateMany).toHaveBeenCalledWith({
+      where: { id: 'task_1', userId: 'user_1', status: 'PENDING' },
+      data: { status: 'SKIPPED', skippedAt: now },
+    });
+    expect(prisma.reviewTask.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects reopening when the claimed task becomes stale after the conditional update', async () => {
+    const skippedTask = { ...task, status: 'SKIPPED' as const, skippedAt: now };
+    const reopenedStaleTask = {
+      ...task,
+      card: {
+        ...card,
+        nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      },
+    };
+    prisma.reviewTask.findFirst
+      .mockResolvedValueOnce(skippedTask)
+      .mockResolvedValueOnce(reopenedStaleTask);
+    prisma.reviewTask.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(createService().reopen('user_1', 'task_1')).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.updateMany).toHaveBeenCalledWith({
+      where: { id: 'task_1', userId: 'user_1', status: 'SKIPPED' },
+      data: { status: 'PENDING', skippedAt: null },
+    });
+    expect(prisma.reviewTask.findFirst).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects reopening a stale pending task without pretending it is already open', async () => {
+    const stalePendingTask = {
+      ...task,
+      card: {
+        ...card,
+        nextReview: new Date('2026-06-15T08:00:00.000Z'),
+      },
+    };
+    prisma.reviewTask.findFirst.mockResolvedValue(stalePendingTask);
+
+    await expect(createService().reopen('user_1', 'task_1')).rejects.toMatchObject({
+      code: 'REVIEW_TASK_NOT_PENDING',
+      statusCode: 409,
+    });
+    expect(prisma.reviewTask.updateMany).not.toHaveBeenCalled();
     expect(prisma.reviewTask.update).not.toHaveBeenCalled();
   });
 

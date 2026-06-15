@@ -194,7 +194,7 @@ export class ReviewTasksService {
           where: {
             userId,
             cardId: card.id,
-            status: 'PENDING',
+            status: { in: ['PENDING', 'SKIPPED'] },
             id: { not: task.id },
           },
           data: { status: 'CANCELLED', skippedAt: null },
@@ -231,84 +231,94 @@ export class ReviewTasksService {
   }
 
   async skip(userId: string, taskId: string, skippedAt = new Date()) {
-    const task = await this.prisma.reviewTask.findFirst({
-      where: { id: taskId, userId },
-      include: taskInclude,
-    });
-    if (!task) {
-      throw this.taskNotFound();
-    }
-    if (task.status === 'COMPLETED') {
-      throw this.taskAlreadyCompleted();
-    }
-    if (task.status === 'CANCELLED') {
-      throw this.taskNotPending();
-    }
-    if (task.status === 'SKIPPED') {
-      return { task: this.toTaskResponse(task) };
-    }
+    return await this.prisma.$transaction(async (tx) => {
+      const task = await tx.reviewTask.findFirst({
+        where: { id: taskId, userId },
+        include: taskInclude,
+      });
+      if (!task) {
+        throw this.taskNotFound();
+      }
+      if (task.status === 'COMPLETED') {
+        throw this.taskAlreadyCompleted();
+      }
+      if (task.status === 'CANCELLED') {
+        throw this.taskNotPending();
+      }
+      if (task.status === 'SKIPPED') {
+        return { task: this.toTaskResponse(task) };
+      }
 
-    const skipped = await this.prisma.reviewTask.updateMany({
-      where: { id: task.id, userId, status: 'PENDING' },
-      data: {
-        status: 'SKIPPED',
-        skippedAt,
-      },
-    });
-    if (skipped.count !== 1) {
-      throw this.taskNotPending();
-    }
+      this.ensureCurrentDueTask(task);
 
-    const skippedTask = await this.prisma.reviewTask.findFirst({
-      where: { id: task.id, userId },
-      include: taskInclude,
-    });
-    if (!skippedTask) {
-      throw this.taskNotFound();
-    }
+      const skipped = await tx.reviewTask.updateMany({
+        where: { id: task.id, userId, status: 'PENDING' },
+        data: {
+          status: 'SKIPPED',
+          skippedAt,
+        },
+      });
+      if (skipped.count !== 1) {
+        throw this.taskNotPending();
+      }
 
-    return { task: this.toTaskResponse(skippedTask) };
+      const skippedTask = await tx.reviewTask.findFirst({
+        where: { id: task.id, userId },
+        include: taskInclude,
+      });
+      if (!skippedTask) {
+        throw this.taskNotFound();
+      }
+      this.ensureCurrentDueTask(skippedTask);
+
+      return { task: this.toTaskResponse(skippedTask) };
+    });
   }
 
   async reopen(userId: string, taskId: string) {
-    const task = await this.prisma.reviewTask.findFirst({
-      where: { id: taskId, userId },
-      include: taskInclude,
-    });
-    if (!task) {
-      throw this.taskNotFound();
-    }
-    if (task.status === 'COMPLETED') {
-      throw this.taskAlreadyCompleted();
-    }
-    if (task.status === 'CANCELLED') {
-      throw this.taskNotPending();
-    }
-    if (task.status === 'PENDING') {
-      return { task: this.toTaskResponse(task) };
-    }
-    this.ensureCurrentDueTask(task);
+    return await this.prisma.$transaction(async (tx) => {
+      const task = await tx.reviewTask.findFirst({
+        where: { id: taskId, userId },
+        include: taskInclude,
+      });
+      if (!task) {
+        throw this.taskNotFound();
+      }
+      if (task.status === 'COMPLETED') {
+        throw this.taskAlreadyCompleted();
+      }
+      if (task.status === 'CANCELLED') {
+        throw this.taskNotPending();
+      }
 
-    const reopened = await this.prisma.reviewTask.updateMany({
-      where: { id: task.id, userId, status: 'SKIPPED' },
-      data: {
-        status: 'PENDING',
-        skippedAt: null,
-      },
-    });
-    if (reopened.count !== 1) {
-      throw this.taskNotPending();
-    }
+      this.ensureCurrentDueTask(task);
 
-    const reopenedTask = await this.prisma.reviewTask.findFirst({
-      where: { id: task.id, userId },
-      include: taskInclude,
-    });
-    if (!reopenedTask) {
-      throw this.taskNotFound();
-    }
+      if (task.status === 'PENDING') {
+        return { task: this.toTaskResponse(task) };
+      }
 
-    return { task: this.toTaskResponse(reopenedTask) };
+      const reopened = await tx.reviewTask.updateMany({
+        where: { id: task.id, userId, status: 'SKIPPED' },
+        data: {
+          status: 'PENDING',
+          skippedAt: null,
+        },
+      });
+      if (reopened.count !== 1) {
+        throw this.taskNotPending();
+      }
+
+      const reopenedTask = await tx.reviewTask.findFirst({
+        where: { id: task.id, userId },
+        include: taskInclude,
+      });
+      if (!reopenedTask) {
+        throw this.taskNotFound();
+      }
+      this.ensureCurrentDueTask(reopenedTask);
+
+      return { task: this.toTaskResponse(reopenedTask) };
+    });
   }
 
   private async generateDueTasks(userId: string, window: ReviewDateWindow) {
