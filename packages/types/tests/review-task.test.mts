@@ -81,6 +81,7 @@ function testRatingResponse() {
       id: 'log_1',
       cardId: 'card_1',
       rating: 3,
+      clientMutationId: '550e8400-e29b-41d4-a716-446655440000',
       scheduledDays: 1,
       elapsedDays: 0,
       reviewDurationMs: 12000,
@@ -94,6 +95,7 @@ function testRatingResponse() {
 
   assert.equal(result.task.status, 'COMPLETED');
   assert.equal(result.log.rating, 3);
+  assert.equal(result.log.clientMutationId, '550e8400-e29b-41d4-a716-446655440000');
 }
 
 function testActionResponse() {

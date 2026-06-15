@@ -6,6 +6,7 @@ export const reviewRatingSchema = z.union([
   z.literal(3),
   z.literal(4),
 ]);
+export const clientMutationIdSchema = z.string().uuid();
 
 export const reviewCardStateSchema = z.enum(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 export const reviewSourceSchema = z.enum(['wrongQuestion', 'question']);
@@ -37,6 +38,7 @@ export const reviewLogSchema = z.object({
   id: z.string().min(1),
   cardId: z.string().min(1),
   rating: reviewRatingSchema,
+  clientMutationId: clientMutationIdSchema.nullable(),
   scheduledDays: z.number().int().nonnegative(),
   elapsedDays: z.number().int().nonnegative(),
   reviewDurationMs: z.number().int().nonnegative().nullable(),
@@ -161,6 +163,7 @@ export const reviewLogListResponseSchema = z.object({
 
 export const reviewRatingRequestSchema = z.object({
   rating: reviewRatingSchema,
+  clientMutationId: clientMutationIdSchema.optional(),
   reviewedAt: z.string().datetime().optional(),
   reviewDurationMs: z.number().int().nonnegative().optional(),
 });

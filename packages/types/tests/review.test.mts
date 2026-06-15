@@ -12,6 +12,8 @@ import {
 function run() {
   testCreateCardRequest();
   testRatingRequest();
+  testRatingRequestWithClientMutationId();
+  testRatingRequestRejectsInvalidClientMutationId();
   testTodayTasksResponse();
   testStatsQuery();
   testStatsResponse();
@@ -34,6 +36,27 @@ function testRatingRequest() {
   });
 
   assert.equal(result.rating, 4);
+  assert.equal(result.clientMutationId, undefined);
+}
+
+function testRatingRequestWithClientMutationId() {
+  const result = reviewRatingRequestSchema.parse({
+    rating: 4,
+    reviewedAt: '2026-06-14T08:00:00.000Z',
+    reviewDurationMs: 12000,
+    clientMutationId: '550e8400-e29b-41d4-a716-446655440000',
+  });
+
+  assert.equal(result.clientMutationId, '550e8400-e29b-41d4-a716-446655440000');
+}
+
+function testRatingRequestRejectsInvalidClientMutationId() {
+  assert.throws(() =>
+    reviewRatingRequestSchema.parse({
+      rating: 4,
+      clientMutationId: 'not-a-uuid',
+    }),
+  );
 }
 
 function testTodayTasksResponse() {

@@ -1,11 +1,7 @@
 import { z } from 'zod';
 
-const reviewRatingSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-]);
+// @ts-expect-error TS extension imports are required by the direct Node schema tests.
+import { reviewLogSchema } from './review.ts';
 
 const reviewCardStateSchema = z.enum(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 const reviewWrongQuestionStatusSchema = z.enum(['UNRESOLVED', 'RESOLVED']);
@@ -26,20 +22,6 @@ const reviewCardSchema = z.object({
   suspendedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-});
-
-const reviewLogSchema = z.object({
-  id: z.string().min(1),
-  cardId: z.string().min(1),
-  rating: reviewRatingSchema,
-  scheduledDays: z.number().int().nonnegative(),
-  elapsedDays: z.number().int().nonnegative(),
-  reviewDurationMs: z.number().int().nonnegative().nullable(),
-  stabilityBefore: z.number(),
-  stabilityAfter: z.number(),
-  difficultyBefore: z.number(),
-  difficultyAfter: z.number(),
-  reviewedAt: z.string().datetime(),
 });
 
 export const reviewTaskStatusSchema = z.enum([
