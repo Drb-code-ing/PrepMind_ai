@@ -41,7 +41,10 @@ export class ReviewTasksService {
     });
     const visibleTasks = input.includeCompleted
       ? tasks
-      : tasks.filter((task) => task.status !== 'COMPLETED');
+      : tasks.filter(
+          (task) =>
+            task.status !== 'COMPLETED' && task.status !== 'CANCELLED',
+        );
 
     return {
       date: window.dateKey,
@@ -245,14 +248,24 @@ export class ReviewTasksService {
       return { task: this.toTaskResponse(task) };
     }
 
-    const skippedTask = await this.prisma.reviewTask.update({
-      where: { id: task.id },
+    const skipped = await this.prisma.reviewTask.updateMany({
+      where: { id: task.id, userId, status: 'PENDING' },
       data: {
         status: 'SKIPPED',
         skippedAt,
       },
+    });
+    if (skipped.count !== 1) {
+      throw this.taskNotPending();
+    }
+
+    const skippedTask = await this.prisma.reviewTask.findFirst({
+      where: { id: task.id, userId },
       include: taskInclude,
     });
+    if (!skippedTask) {
+      throw this.taskNotFound();
+    }
 
     return { task: this.toTaskResponse(skippedTask) };
   }
@@ -271,19 +284,29 @@ export class ReviewTasksService {
     if (task.status === 'CANCELLED') {
       throw this.taskNotPending();
     }
-    this.ensureCurrentDueTask(task);
     if (task.status === 'PENDING') {
       return { task: this.toTaskResponse(task) };
     }
+    this.ensureCurrentDueTask(task);
 
-    const reopenedTask = await this.prisma.reviewTask.update({
-      where: { id: task.id },
+    const reopened = await this.prisma.reviewTask.updateMany({
+      where: { id: task.id, userId, status: 'SKIPPED' },
       data: {
         status: 'PENDING',
         skippedAt: null,
       },
+    });
+    if (reopened.count !== 1) {
+      throw this.taskNotPending();
+    }
+
+    const reopenedTask = await this.prisma.reviewTask.findFirst({
+      where: { id: task.id, userId },
       include: taskInclude,
     });
+    if (!reopenedTask) {
+      throw this.taskNotFound();
+    }
 
     return { task: this.toTaskResponse(reopenedTask) };
   }
