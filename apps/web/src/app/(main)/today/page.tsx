@@ -113,9 +113,10 @@ export default function TodayPage() {
   const [notice, setNotice] = useState<{ message: string; tone: NoticeTone } | null>(null);
   const [revealedTaskIds, setRevealedTaskIds] = useState<Set<string>>(new Set());
   const [reviewFeedbacks, setReviewFeedbacks] = useState<Record<string, ReviewRatingFeedback>>({});
-  const [optimisticPendingRatingsByTaskId, setOptimisticPendingRatingsByTaskId] = useState<
-    Record<string, { rating: ReviewRating }>
-  >({});
+  const [optimisticPendingRatings, setOptimisticPendingRatings] = useState<{
+    ownerId: string;
+    pendingByTaskId: Record<string, { rating: ReviewRating }>;
+  } | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
   const todayReviewTasks = useTodayReviewTaskList({
@@ -127,6 +128,13 @@ export default function TodayPage() {
     useReviewTaskPendingRatings(userId);
   const { flush } = useMutationQueueFlush();
   const todayReviewTaskItems = todayReviewTasks.data?.tasks;
+  const optimisticPendingRatingsByTaskId = useMemo<Record<string, { rating: ReviewRating }>>(
+    () =>
+      optimisticPendingRatings?.ownerId === userId
+        ? optimisticPendingRatings.pendingByTaskId
+        : {},
+    [optimisticPendingRatings, userId],
+  );
   const mergedPendingRatingsByTaskId = useMemo(
     () => ({
       ...optimisticPendingRatingsByTaskId,
@@ -170,28 +178,38 @@ export default function TodayPage() {
 
   useEffect(() => {
     const cleanupTimer = window.setTimeout(() => {
-      setOptimisticPendingRatingsByTaskId((prev) => {
-        let changed = false;
-        const next = { ...prev };
+      setOptimisticPendingRatings((prev) => {
+        if (!prev || prev.ownerId !== userId) {
+          return prev;
+        }
 
-        for (const taskId of Object.keys(prev)) {
+        let changed = false;
+        const nextPendingByTaskId = { ...prev.pendingByTaskId };
+
+        for (const taskId of Object.keys(prev.pendingByTaskId)) {
           const isPersistedPending = Boolean(pendingByTaskId[taskId]);
           const isNoLongerServerPending =
             todayReviewTaskItems !== undefined &&
             !todayReviewTaskItems.some((task) => task.id === taskId && task.status === 'PENDING');
 
           if (isPersistedPending || isNoLongerServerPending) {
-            delete next[taskId];
+            delete nextPendingByTaskId[taskId];
             changed = true;
           }
         }
 
-        return changed ? next : prev;
+        if (!changed) {
+          return prev;
+        }
+
+        return Object.keys(nextPendingByTaskId).length
+          ? { ownerId: prev.ownerId, pendingByTaskId: nextPendingByTaskId }
+          : null;
       });
     }, 0);
 
     return () => window.clearTimeout(cleanupTimer);
-  }, [pendingByTaskId, todayReviewTaskItems]);
+  }, [pendingByTaskId, todayReviewTaskItems, userId]);
 
   const progress = getTodayProgress(taskState);
   const nextAction = getTodayNextAction(taskState, unresolvedCount);
@@ -257,10 +275,18 @@ export default function TodayPage() {
         showNotice(`${feedback.title}，${feedback.description}`);
       } catch (error) {
         if (userId && isRetryableReviewTaskRatingError(error)) {
-          setOptimisticPendingRatingsByTaskId((prev) => ({
-            ...prev,
-            [task.id]: { rating },
-          }));
+          const ownerId = userId;
+          setOptimisticPendingRatings((prev) => {
+            const pendingByTaskId = prev?.ownerId === ownerId ? prev.pendingByTaskId : {};
+
+            return {
+              ownerId,
+              pendingByTaskId: {
+                ...pendingByTaskId,
+                [task.id]: { rating },
+              },
+            };
+          });
 
           try {
             await enqueueMutationQueueItem(
@@ -272,10 +298,17 @@ export default function TodayPage() {
             );
             showNotice(`已选择：${getReviewRatingLabel(rating)}，等待同步`, 'neutral');
           } catch (queueError) {
-            setOptimisticPendingRatingsByTaskId((prev) => {
-              const next = { ...prev };
-              delete next[task.id];
-              return next;
+            setOptimisticPendingRatings((prev) => {
+              if (!prev || prev.ownerId !== ownerId || !prev.pendingByTaskId[task.id]) {
+                return prev;
+              }
+
+              const nextPendingByTaskId = { ...prev.pendingByTaskId };
+              delete nextPendingByTaskId[task.id];
+
+              return Object.keys(nextPendingByTaskId).length
+                ? { ownerId: prev.ownerId, pendingByTaskId: nextPendingByTaskId }
+                : null;
             });
             showNotice(getMutationErrorMessage(queueError), 'neutral');
           }
