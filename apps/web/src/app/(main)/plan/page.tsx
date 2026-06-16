@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ReviewTaskPlanDayResponse, ReviewTaskPlanResponse } from '@repo/types/api/review-task';
 import {
@@ -26,10 +26,70 @@ import {
 import { getLocalDateKey } from '@/lib/today-tasks';
 import { useUserStore } from '@/stores/userStore';
 
+const midnightRefreshBufferMs = 1_500;
+
+function getDelayUntilNextLocalDateRefresh(now = new Date()) {
+  const nextLocalMidnight = new Date(now);
+  nextLocalMidnight.setHours(24, 0, 0, 0);
+
+  return Math.max(1_000, nextLocalMidnight.getTime() - now.getTime() + midnightRefreshBufferMs);
+}
+
+function useCurrentLocalDateKey() {
+  const [dateKey, setDateKey] = useState(() => getLocalDateKey());
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+
+    const refreshDateKey = () => {
+      setDateKey((current) => {
+        const nextDateKey = getLocalDateKey();
+        return current === nextDateKey ? current : nextDateKey;
+      });
+    };
+
+    const scheduleNextRefresh = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      timeoutId = window.setTimeout(() => {
+        refreshDateKey();
+        scheduleNextRefresh();
+      }, getDelayUntilNextLocalDateRefresh());
+    };
+
+    const refreshAndReschedule = () => {
+      refreshDateKey();
+      scheduleNextRefresh();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAndReschedule();
+      }
+    };
+
+    scheduleNextRefresh();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', refreshAndReschedule);
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', refreshAndReschedule);
+    };
+  }, []);
+
+  return dateKey;
+}
+
 export default function PlanPage() {
   const currentUser = useUserStore((state) => state.currentUser);
   const userId = currentUser?.id ?? '';
-  const startDate = useMemo(() => getLocalDateKey(), []);
+  const startDate = useCurrentLocalDateKey();
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
   const planQuery = useReviewTaskPlan({ startDate, days: 7, timezoneOffsetMinutes });
   const { pendingCount: pendingRatingSyncCount } = useReviewTaskPendingRatings(userId);
