@@ -120,6 +120,55 @@ export const reviewTaskListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 });
 
+export const reviewTaskPlanIntensitySchema = z.enum(['light', 'normal', 'heavy']);
+
+export const reviewTaskPlanQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(14).default(7),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  timezoneOffsetMinutes: z.coerce.number().int().min(-840).max(840).default(0),
+});
+
+export const reviewTaskPlanDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  label: z.string(),
+  dueCount: z.number().int().nonnegative(),
+  overdueCount: z.number().int().nonnegative(),
+  pendingCount: z.number().int().nonnegative(),
+  completedCount: z.number().int().nonnegative(),
+  skippedCount: z.number().int().nonnegative(),
+  estimatedMinutes: z.number().int().nonnegative(),
+  intensity: reviewTaskPlanIntensitySchema,
+});
+
+export const reviewTaskPlanResponseSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  generatedThroughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  summary: z.object({
+    overdueCount: z.number().int().nonnegative(),
+    todayDueCount: z.number().int().nonnegative(),
+    upcomingDueCount: z.number().int().nonnegative(),
+    estimatedTotalMinutes: z.number().int().nonnegative(),
+    peakDay: z
+      .object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        count: z.number().int().nonnegative(),
+      })
+      .nullable(),
+    intensity: reviewTaskPlanIntensitySchema,
+  }),
+  days: z.array(reviewTaskPlanDaySchema),
+  suggestion: z.object({
+    title: z.string(),
+    description: z.string(),
+    actionLabel: z.string(),
+    actionHref: z.string(),
+  }),
+});
+
 export const reviewTaskRatingResponseSchema = z.object({
   task: reviewTaskItemSchema,
   card: reviewCardSchema,
@@ -142,5 +191,9 @@ export type ReviewTaskTodayQuery = z.infer<typeof reviewTaskTodayQuerySchema>;
 export type ReviewTaskTodayResponse = z.infer<typeof reviewTaskTodayResponseSchema>;
 export type ReviewTaskListQuery = z.infer<typeof reviewTaskListQuerySchema>;
 export type ReviewTaskListResponse = z.infer<typeof reviewTaskListResponseSchema>;
+export type ReviewTaskPlanIntensity = z.infer<typeof reviewTaskPlanIntensitySchema>;
+export type ReviewTaskPlanQuery = z.infer<typeof reviewTaskPlanQuerySchema>;
+export type ReviewTaskPlanDayResponse = z.infer<typeof reviewTaskPlanDaySchema>;
+export type ReviewTaskPlanResponse = z.infer<typeof reviewTaskPlanResponseSchema>;
 export type ReviewTaskRatingResponse = z.infer<typeof reviewTaskRatingResponseSchema>;
 export type ReviewTaskActionResponse = z.infer<typeof reviewTaskActionResponseSchema>;

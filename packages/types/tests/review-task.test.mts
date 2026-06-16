@@ -4,6 +4,8 @@ import {
   reviewTaskActionResponseSchema,
   reviewTaskListQuerySchema,
   reviewTaskListResponseSchema,
+  reviewTaskPlanQuerySchema,
+  reviewTaskPlanResponseSchema,
   reviewTaskRatingResponseSchema,
   reviewTaskStatusSchema,
   reviewTaskTodayQuerySchema,
@@ -17,6 +19,8 @@ function run() {
   testListQueryAndResponse();
   testRatingResponse();
   testActionResponse();
+  testPlanQuery();
+  testPlanResponse();
 }
 
 function testStatus() {
@@ -104,6 +108,65 @@ function testActionResponse() {
   });
 
   assert.equal(result.task.status, 'SKIPPED');
+}
+
+function testPlanQuery() {
+  const defaultQuery = reviewTaskPlanQuerySchema.parse({
+    timezoneOffsetMinutes: '-480',
+  });
+  assert.equal(defaultQuery.days, 7);
+  assert.equal(defaultQuery.timezoneOffsetMinutes, -480);
+  assert.equal(defaultQuery.startDate, undefined);
+
+  const explicitQuery = reviewTaskPlanQuerySchema.parse({
+    days: '14',
+    startDate: '2026-06-16',
+    timezoneOffsetMinutes: '0',
+  });
+  assert.equal(explicitQuery.days, 14);
+  assert.equal(explicitQuery.startDate, '2026-06-16');
+
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ days: '0' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ days: '15' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ startDate: '2026/06/16' }));
+}
+
+function testPlanResponse() {
+  const result = reviewTaskPlanResponseSchema.parse({
+    startDate: '2026-06-16',
+    endDate: '2026-06-22',
+    generatedThroughDate: '2026-06-22',
+    summary: {
+      overdueCount: 1,
+      todayDueCount: 2,
+      upcomingDueCount: 3,
+      estimatedTotalMinutes: 12,
+      peakDay: { date: '2026-06-18', count: 3 },
+      intensity: 'normal',
+    },
+    days: [
+      {
+        date: '2026-06-16',
+        label: '浠婂ぉ',
+        dueCount: 2,
+        overdueCount: 1,
+        pendingCount: 1,
+        completedCount: 0,
+        skippedCount: 0,
+        estimatedMinutes: 4,
+        intensity: 'light',
+      },
+    ],
+    suggestion: {
+      title: '鍏堝鐞嗛€炬湡鍗?',
+      description: '浠婂ぉ鍏堝畬鎴?1 寮犻€炬湡鍗★紝鍐嶈繘鍏ユ甯稿涔犺妭濂忋€?',
+      actionLabel: '鍘讳粖鏃ヤ换鍔?',
+      actionHref: '/today',
+    },
+  });
+
+  assert.equal(result.summary.peakDay?.date, '2026-06-18');
+  assert.equal(result.days[0]?.intensity, 'light');
 }
 
 function createTaskPayload(input: Partial<Record<string, unknown>> = {}) {
