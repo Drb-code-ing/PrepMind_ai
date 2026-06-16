@@ -1,10 +1,14 @@
-import { Prisma } from '@prisma/client';
-
 import { PrismaService } from '../database/prisma.service';
 import { ReviewTasksService } from './review-tasks.service';
 
 const objectContaining = <T extends object>(value: T) =>
   expect.objectContaining(value) as unknown as T;
+
+const createPrismaKnownRequestError = (code: string, target: string[]) => ({
+  code,
+  clientVersion: 'test',
+  meta: { target },
+});
 
 describe('ReviewTasksService', () => {
   const now = new Date('2026-06-14T08:00:00.000Z');
@@ -479,14 +483,7 @@ describe('ReviewTasksService', () => {
       card: reviewedCard,
     };
     prisma.$transaction.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError(
-        'Unique constraint failed on the fields: (`clientMutationId`)',
-        {
-          code: 'P2002',
-          clientVersion: 'test',
-          meta: { target: ['clientMutationId'] },
-        },
-      ),
+      createPrismaKnownRequestError('P2002', ['clientMutationId']),
     );
     prisma.reviewLog.findUnique.mockResolvedValue({
       ...reviewLog,
@@ -724,14 +721,7 @@ describe('ReviewTasksService', () => {
     prisma.reviewTask.findFirst.mockResolvedValue(task);
     prisma.card.updateMany.mockResolvedValue({ count: 1 });
     prisma.reviewLog.create.mockRejectedValue(
-      new Prisma.PrismaClientKnownRequestError(
-        'Unique constraint failed on the fields: (`clientMutationId`)',
-        {
-          code: 'P2002',
-          clientVersion: 'test',
-          meta: { target: ['clientMutationId'] },
-        },
-      ),
+      createPrismaKnownRequestError('P2002', ['clientMutationId']),
     );
 
     await expect(
@@ -748,14 +738,26 @@ describe('ReviewTasksService', () => {
   });
 
   it('rethrows unique conflicts that do not target clientMutationId', async () => {
-    const error = new Prisma.PrismaClientKnownRequestError(
-      'Unique constraint failed on the fields: (`cardId`)',
-      {
-        code: 'P2002',
-        clientVersion: 'test',
-        meta: { target: ['cardId'] },
-      },
-    );
+    const error = createPrismaKnownRequestError('P2002', ['cardId']);
+    prisma.reviewLog.findUnique.mockResolvedValue(null);
+    prisma.reviewTask.findFirst.mockResolvedValue(task);
+    prisma.card.updateMany.mockResolvedValue({ count: 1 });
+    prisma.reviewLog.create.mockRejectedValue(error);
+
+    await expect(
+      createService().submitRating('user_1', 'task_1', {
+        rating: 3,
+        reviewedAt: now.toISOString(),
+        clientMutationId: mutationId,
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it('rethrows non-Prisma errors without treating them as idempotency conflicts', async () => {
+    const error = {
+      code: 'P2002',
+      meta: { target: ['clientMutationId'] },
+    };
     prisma.reviewLog.findUnique.mockResolvedValue(null);
     prisma.reviewTask.findFirst.mockResolvedValue(task);
     prisma.card.updateMany.mockResolvedValue({ count: 1 });

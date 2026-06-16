@@ -442,7 +442,7 @@ export class ReviewTasksService {
   }
 
   private isClientMutationIdUniqueConflict(error: unknown) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    if (!this.isPrismaKnownRequestError(error)) {
       return false;
     }
     if (error.code !== 'P2002') return false;
@@ -450,6 +450,18 @@ export class ReviewTasksService {
     const target = error.meta?.target;
     if (Array.isArray(target)) return target.includes('clientMutationId');
     return typeof target === 'string' && target.includes('clientMutationId');
+  }
+
+  private isPrismaKnownRequestError(
+    error: unknown,
+  ): error is PrismaKnownRequestErrorLike {
+    if (!error || typeof error !== 'object') return false;
+
+    const candidate = error as Partial<PrismaKnownRequestErrorLike>;
+    return (
+      typeof candidate.code === 'string' &&
+      typeof candidate.clientVersion === 'string'
+    );
   }
 
   private idempotencyConflict() {
@@ -562,3 +574,11 @@ type ReviewLogWithTask = Prisma.ReviewLogGetPayload<{
 }>;
 type CardRecord = Prisma.CardGetPayload<object>;
 type ReviewLogRecord = Prisma.ReviewLogGetPayload<object>;
+
+type PrismaKnownRequestErrorLike = {
+  code: string;
+  clientVersion: string;
+  meta?: {
+    target?: unknown;
+  };
+};
