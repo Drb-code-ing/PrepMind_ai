@@ -2,9 +2,11 @@ import { reviewRatingRequestSchema, type ReviewRatingRequest } from '@repo/types
 import {
   reviewTaskActionResponseSchema,
   reviewTaskListResponseSchema,
+  reviewTaskPlanResponseSchema,
   reviewTaskRatingResponseSchema,
   reviewTaskTodayResponseSchema,
   type ReviewTaskListQuery,
+  type ReviewTaskPlanQuery,
   type ReviewTaskTodayQuery,
 } from '@repo/types/api/review-task';
 
@@ -47,6 +49,21 @@ export function createReviewTaskApi(client: ApiClient) {
 
       return reviewTaskListResponseSchema.parse(
         await client.get<unknown>(`/review-tasks?${params.toString()}`, {
+          accessToken,
+        }),
+      );
+    },
+
+    async getPlan(accessToken: string, query: ReviewTaskPlanQuery) {
+      const params = new URLSearchParams();
+      params.set('days', String(query.days));
+      if (query.startDate) {
+        params.set('startDate', query.startDate);
+      }
+      params.set('timezoneOffsetMinutes', String(query.timezoneOffsetMinutes));
+
+      return reviewTaskPlanResponseSchema.parse(
+        await client.get<unknown>(`/review-tasks/plan?${params.toString()}`, {
           accessToken,
         }),
       );

@@ -1,0 +1,127 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import type {
+  ReviewTaskPlanDayResponse,
+  ReviewTaskPlanResponse,
+} from '@repo/types/api/review-task';
+
+import {
+  buildPlanBarOption,
+  getPlanIntensityClassName,
+  getPlanIntensityLabel,
+  shouldShowPlanEmptyState,
+} from './review-plan-view.ts';
+
+test('maps plan intensity labels and badge classes', () => {
+  assert.equal(getPlanIntensityLabel('light'), '轻松');
+  assert.equal(getPlanIntensityLabel('normal'), '正常');
+  assert.equal(getPlanIntensityLabel('heavy'), '偏重');
+
+  const lightClassName = getPlanIntensityClassName('light');
+  const normalClassName = getPlanIntensityClassName('normal');
+  const heavyClassName = getPlanIntensityClassName('heavy');
+
+  assert.ok(lightClassName.includes('bg-'));
+  assert.ok(lightClassName.includes('text-'));
+  assert.ok(lightClassName.includes('ring-'));
+  assert.notEqual(lightClassName, normalClassName);
+  assert.notEqual(normalClassName, heavyClassName);
+});
+
+test('detects plan empty state only when all counts are zero', () => {
+  assert.equal(shouldShowPlanEmptyState(createPlanResponse()), true);
+  assert.equal(
+    shouldShowPlanEmptyState(
+      createPlanResponse({
+        summary: {
+          overdueCount: 0,
+          todayDueCount: 1,
+          upcomingDueCount: 0,
+          estimatedTotalMinutes: 6,
+          peakDay: { date: '2026-06-16', count: 1 },
+          intensity: 'light',
+        },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    shouldShowPlanEmptyState(
+      createPlanResponse({
+        days: [createPlanDay({ dueCount: 0, overdueCount: 1 })],
+      }),
+    ),
+    false,
+  );
+});
+
+test('builds plan bar option with labels, totals, colors, and tooltip content', () => {
+  const option = buildPlanBarOption([
+    createPlanDay({ label: '今天', dueCount: 2, overdueCount: 1, intensity: 'normal' }),
+    createPlanDay({ label: '明天', dueCount: 0, overdueCount: 4, intensity: 'heavy' }),
+  ]);
+
+  assert.deepEqual(option.xAxis.data, ['今天', '明天']);
+  assert.deepEqual(
+    option.series[0].data.map((item) => item.value),
+    [3, 4],
+  );
+  assert.notEqual(
+    option.series[0].data[0].itemStyle.color,
+    option.series[0].data[1].itemStyle.color,
+  );
+  assert.equal(typeof option.tooltip.formatter, 'function');
+
+  const tooltipText = option.tooltip.formatter({ dataIndex: 0 });
+  assert.ok(tooltipText.includes('应复习 2'));
+  assert.ok(tooltipText.includes('逾期 1'));
+  assert.ok(tooltipText.includes('待完成 0'));
+  assert.ok(tooltipText.includes('预计 0 分钟'));
+});
+
+test('builds a stable empty chart option for no days', () => {
+  const option = buildPlanBarOption([]);
+
+  assert.deepEqual(option.xAxis.data, []);
+  assert.deepEqual(option.series[0].data, []);
+});
+
+function createPlanResponse(input: Partial<ReviewTaskPlanResponse> = {}): ReviewTaskPlanResponse {
+  return {
+    startDate: '2026-06-16',
+    endDate: '2026-06-22',
+    generatedThroughDate: '2026-06-16',
+    summary: {
+      overdueCount: 0,
+      todayDueCount: 0,
+      upcomingDueCount: 0,
+      estimatedTotalMinutes: 0,
+      peakDay: null,
+      intensity: 'light',
+    },
+    days: [createPlanDay()],
+    suggestion: {
+      title: '暂无复习压力',
+      description: '未来计划很轻松。',
+      actionLabel: '返回今日任务',
+      actionHref: '/today',
+    },
+    ...input,
+  };
+}
+
+function createPlanDay(input: Partial<ReviewTaskPlanDayResponse> = {}): ReviewTaskPlanDayResponse {
+  return {
+    date: '2026-06-16',
+    label: '今天',
+    dueCount: 0,
+    overdueCount: 0,
+    pendingCount: 0,
+    completedCount: 0,
+    skippedCount: 0,
+    estimatedMinutes: 0,
+    intensity: 'light',
+    ...input,
+  };
+}

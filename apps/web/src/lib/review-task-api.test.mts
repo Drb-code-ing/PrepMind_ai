@@ -6,6 +6,7 @@ import { createReviewTaskApi } from './review-task-api.ts';
 async function run() {
   await testReadsTodayTasks();
   await testListsTasks();
+  await testReadsPlan();
   await testSubmitsRating();
   await testSkipsAndReopensTask();
 }
@@ -60,6 +61,26 @@ async function testListsTasks() {
     'http://localhost:3001/review-tasks?page=2&pageSize=10&date=2026-06-14&status=SKIPPED',
   );
   assert.equal(result.items[0]?.status, 'SKIPPED');
+}
+
+async function testReadsPlan() {
+  const requests: CapturedRequest[] = [];
+  const reviewTaskApi = createReviewTaskApi(createTestClient(requests, createPlanPayload()));
+
+  const result = await reviewTaskApi.getPlan('token_1', {
+    days: 7,
+    startDate: '2026-06-16',
+    timezoneOffsetMinutes: -480,
+  });
+
+  assert.equal(
+    requests[0].input,
+    'http://localhost:3001/review-tasks/plan?days=7&startDate=2026-06-16&timezoneOffsetMinutes=-480',
+  );
+  assert.equal(requests[0].method, 'GET');
+  assert.equal(requests[0].authorization, 'Bearer token_1');
+  assert.equal(result.summary.intensity, 'normal');
+  assert.equal(result.days.length, 2);
 }
 
 async function testSubmitsRating() {
@@ -204,6 +225,55 @@ function createLogPayload() {
     difficultyBefore: 5,
     difficultyAfter: 4.85,
     reviewedAt: '2026-06-14T08:00:00.000Z',
+  };
+}
+
+function createPlanPayload() {
+  return {
+    startDate: '2026-06-16',
+    endDate: '2026-06-22',
+    generatedThroughDate: '2026-06-16',
+    summary: {
+      overdueCount: 1,
+      todayDueCount: 2,
+      upcomingDueCount: 3,
+      estimatedTotalMinutes: 36,
+      peakDay: {
+        date: '2026-06-17',
+        count: 4,
+      },
+      intensity: 'normal',
+    },
+    days: [
+      {
+        date: '2026-06-16',
+        label: '今天',
+        dueCount: 2,
+        overdueCount: 1,
+        pendingCount: 3,
+        completedCount: 0,
+        skippedCount: 0,
+        estimatedMinutes: 18,
+        intensity: 'normal',
+      },
+      {
+        date: '2026-06-17',
+        label: '周三',
+        dueCount: 4,
+        overdueCount: 0,
+        pendingCount: 2,
+        completedCount: 1,
+        skippedCount: 1,
+        estimatedMinutes: 24,
+        intensity: 'heavy',
+      },
+    ],
+    suggestion: {
+      title: '保持节奏',
+      description: '未来 7 天复习压力正常。',
+      actionLabel: '查看今日任务',
+      actionHref: '/today',
+    },
   };
 }
 

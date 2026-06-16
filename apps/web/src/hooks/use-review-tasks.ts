@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReviewRatingRequest } from '@repo/types/api/review';
 import type {
   ReviewTaskListQuery,
+  ReviewTaskPlanQuery,
   ReviewTaskTodayQuery,
 } from '@repo/types/api/review-task';
 
@@ -20,6 +21,8 @@ export const reviewTaskQueryKeys = {
     [...reviewTaskQueryKeys.all, 'today', query] as const,
   list: (query: ReviewTaskListQuery) =>
     [...reviewTaskQueryKeys.all, 'list', query] as const,
+  plan: (query: ReviewTaskPlanQuery) =>
+    [...reviewTaskQueryKeys.all, 'plan', query] as const,
 };
 
 export function useTodayReviewTaskList(query: ReviewTaskTodayQuery) {
@@ -50,6 +53,23 @@ export function useReviewTaskList(query: ReviewTaskListQuery) {
         throw new Error('Missing access token');
       }
       return reviewTaskApi.list(accessToken, query);
+    },
+    enabled: sessionHydrated && !!accessToken,
+    retry: false,
+  });
+}
+
+export function useReviewTaskPlan(query: ReviewTaskPlanQuery) {
+  const accessToken = useUserStore((state) => state.accessToken);
+  const sessionHydrated = useUserStore((state) => state.sessionHydrated);
+
+  return useQuery({
+    queryKey: reviewTaskQueryKeys.plan(query),
+    queryFn: async () => {
+      if (!accessToken) {
+        throw new Error('Missing access token');
+      }
+      return reviewTaskApi.getPlan(accessToken, query);
     },
     enabled: sessionHydrated && !!accessToken,
     retry: false,
