@@ -132,6 +132,10 @@ function testPlanQuery() {
   assert.throws(() => reviewTaskPlanQuerySchema.parse({ days: '0' }));
   assert.throws(() => reviewTaskPlanQuerySchema.parse({ days: '15' }));
   assert.throws(() => reviewTaskPlanQuerySchema.parse({ startDate: '2026/06/16' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ startDate: '2026-13-01' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ startDate: '2026-02-31' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ timezoneOffsetMinutes: '-841' }));
+  assert.throws(() => reviewTaskPlanQuerySchema.parse({ timezoneOffsetMinutes: '841' }));
 }
 
 function testPlanResponse() {
@@ -170,6 +174,51 @@ function testPlanResponse() {
 
   assert.equal(result.summary.peakDay?.date, '2026-06-18');
   assert.equal(result.days[0]?.intensity, 'light');
+
+  const nullablePeakDayResult = reviewTaskPlanResponseSchema.parse(
+    createPlanResponseEdgePayload({ peakDay: null }),
+  );
+  assert.equal(nullablePeakDayResult.summary.peakDay, null);
+
+  assert.throws(() =>
+    reviewTaskPlanResponseSchema.parse(createPlanResponseEdgePayload({ intensity: 'extreme' })),
+  );
+}
+
+function createPlanResponseEdgePayload(summary: Partial<Record<string, unknown>> = {}) {
+  return {
+    startDate: '2026-06-16',
+    endDate: '2026-06-22',
+    generatedThroughDate: '2026-06-22',
+    summary: {
+      overdueCount: 1,
+      todayDueCount: 2,
+      upcomingDueCount: 3,
+      estimatedTotalMinutes: 12,
+      peakDay: { date: '2026-06-18', count: 3 },
+      intensity: 'normal',
+      ...summary,
+    },
+    days: [
+      {
+        date: '2026-06-16',
+        label: 'Today',
+        dueCount: 2,
+        overdueCount: 1,
+        pendingCount: 1,
+        completedCount: 0,
+        skippedCount: 0,
+        estimatedMinutes: 4,
+        intensity: 'light',
+      },
+    ],
+    suggestion: {
+      title: 'Start with overdue cards',
+      description: 'Clear overdue review cards first.',
+      actionLabel: 'Go to today',
+      actionHref: '/today',
+    },
+  };
 }
 
 function createTaskPayload(input: Partial<Record<string, unknown>> = {}) {

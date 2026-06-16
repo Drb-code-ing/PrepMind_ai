@@ -120,19 +120,49 @@ export const reviewTaskListResponseSchema = z.object({
   pageSize: z.number().int().min(1),
 });
 
+function isValidDateKey(value: string) {
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false;
+  }
+
+  const daysInMonth = [
+    31,
+    year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1]!;
+}
+
+const dateKeySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(isValidDateKey, 'Invalid date');
+
 export const reviewTaskPlanIntensitySchema = z.enum(['light', 'normal', 'heavy']);
 
 export const reviewTaskPlanQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(14).default(7),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  startDate: dateKeySchema.optional(),
   timezoneOffsetMinutes: z.coerce.number().int().min(-840).max(840).default(0),
 });
 
 export const reviewTaskPlanDaySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateKeySchema,
   label: z.string(),
   dueCount: z.number().int().nonnegative(),
   overdueCount: z.number().int().nonnegative(),
@@ -144,9 +174,9 @@ export const reviewTaskPlanDaySchema = z.object({
 });
 
 export const reviewTaskPlanResponseSchema = z.object({
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  generatedThroughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startDate: dateKeySchema,
+  endDate: dateKeySchema,
+  generatedThroughDate: dateKeySchema,
   summary: z.object({
     overdueCount: z.number().int().nonnegative(),
     todayDueCount: z.number().int().nonnegative(),
@@ -154,7 +184,7 @@ export const reviewTaskPlanResponseSchema = z.object({
     estimatedTotalMinutes: z.number().int().nonnegative(),
     peakDay: z
       .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        date: dateKeySchema,
         count: z.number().int().nonnegative(),
       })
       .nullable(),
