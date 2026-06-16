@@ -34,6 +34,7 @@ import {
 import { getLocalDateKey } from '@/lib/today-tasks';
 
 const pageSize = 20;
+const emptyDailyReviews: Array<{ date: string; count: number }> = [];
 const emptyRatingCounts = { again: 0, hard: 0, good: 0, easy: 0 };
 const emptyStateCounts = { NEW: 0, LEARNING: 0, REVIEW: 0, RELEARNING: 0 };
 
@@ -46,10 +47,21 @@ export default function StatsPage() {
   const logsQuery = useReviewLogs({ page, pageSize });
   const stats = statsQuery.data;
   const logs = logsQuery.data;
-  const dailyReviews = stats?.dailyReviews ?? [];
+  const dailyReviews = stats?.dailyReviews ?? emptyDailyReviews;
+  const ratingCounts = stats?.ratingCounts ?? emptyRatingCounts;
+  const stateCounts = stats?.stateCounts ?? emptyStateCounts;
   const dailySummary = getDailyReviewActivitySummary(dailyReviews);
   const empty = shouldShowStatsEmptyState(stats?.totalReviews ?? 0, logs?.total ?? 0);
   const hasNextPage = logs ? page * logs.pageSize < logs.total : false;
+  const trendOption = useMemo(() => buildReviewTrendOption(dailyReviews), [dailyReviews]);
+  const ratingDistributionOption = useMemo(
+    () => buildRatingDistributionOption(ratingCounts),
+    [ratingCounts],
+  );
+  const stateDistributionOption = useMemo(
+    () => buildStateDistributionOption(stateCounts),
+    [stateCounts],
+  );
 
   return (
     <div className="pm-anime-bg min-h-[100dvh] text-[var(--pm-ink)]">
@@ -149,7 +161,7 @@ export default function StatsPage() {
                 <TrendPill label="峰值" value={`${dailySummary.maxCount} 次`} />
               </div>
               <BaseEChart
-                option={buildReviewTrendOption(dailyReviews)}
+                option={trendOption}
                 className="mt-4 h-56 w-full"
                 ariaLabel="复习趋势折线图"
               />
@@ -162,16 +174,26 @@ export default function StatsPage() {
                 subtitle="四档反馈会影响下次复习时间"
               />
               <BaseEChart
-                option={buildRatingDistributionOption(stats?.ratingCounts ?? emptyRatingCounts)}
+                option={ratingDistributionOption}
                 className="mt-3 h-64 w-full"
                 ariaLabel="评分分布环形图"
               />
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {([
+                  [1, ratingCounts.again],
+                  [2, ratingCounts.hard],
+                  [3, ratingCounts.good],
+                  [4, ratingCounts.easy],
+                ] as const).map(([rating, count]) => (
+                  <MiniStat key={rating} label={getRatingLabel(rating)} value={`${count} 次`} />
+                ))}
+              </div>
             </section>
 
             <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
               <SectionTitle icon={BookOpen} title="卡片状态" subtitle="当前复习卡分布" />
               <BaseEChart
-                option={buildStateDistributionOption(stats?.stateCounts ?? emptyStateCounts)}
+                option={stateDistributionOption}
                 className="mt-3 h-64 w-full"
                 ariaLabel="卡片状态分布环形图"
               />
@@ -180,7 +202,7 @@ export default function StatsPage() {
                   <MiniStat
                     key={state}
                     label={getStateLabel(state)}
-                    value={`${stats?.stateCounts[state] ?? 0} 张`}
+                    value={`${stateCounts[state]} 张`}
                   />
                 ))}
               </div>
