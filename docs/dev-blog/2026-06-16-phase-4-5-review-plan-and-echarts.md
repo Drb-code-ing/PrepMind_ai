@@ -61,6 +61,8 @@ GET /review-tasks/plan?days=7&startDate=2026-06-16&timezoneOffsetMinutes=-480
 
 ECharts 是浏览器图表库，不能直接参与 SSR。为避免 Next.js hydration 问题，项目新增了 `BaseEChart` 客户端组件，只在 `useEffect` 中动态 `import('echarts')`，并在组件卸载时 dispose 实例。
 
+后续体验检查里发现 canvas 图表在浏览器缩放、非整数 DPR 和半透明卡片背景下文字与细线会显得偏软。这里改为 SVG renderer：数据量很小，性能压力不高，但文字、坐标轴和线条会更锐利，也更适合当前这种轻量统计面板。
+
 这次还保留了评分分布的文本网格。图表负责视觉表达，文本负责移动端和空数据时的明确读数。
 
 ## 一个审查中发现的小问题

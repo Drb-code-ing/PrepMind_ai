@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { buildEChartInitOptions, type EChartInitOptions } from '@/lib/echart-rendering';
+
 type BaseEChartProps = {
   option: object;
   className?: string;
@@ -15,7 +17,11 @@ type EChartsInstance = {
 };
 
 type EChartsModule = {
-  init: (container: HTMLElement) => EChartsInstance;
+  init: (
+    container: HTMLElement,
+    theme?: string | null,
+    options?: EChartInitOptions,
+  ) => EChartsInstance;
 };
 
 export function BaseEChart({ option, className, ariaLabel }: BaseEChartProps) {
@@ -42,7 +48,11 @@ export function BaseEChart({ option, className, ariaLabel }: BaseEChartProps) {
           return;
         }
 
-        const initializedChart = echarts.init(containerRef.current);
+        const initializedChart = echarts.init(
+          containerRef.current,
+          null,
+          buildEChartInitOptions(window.devicePixelRatio),
+        );
         chart = initializedChart;
         chartRef.current = initializedChart;
         initializedChart.setOption(latestOptionRef.current, { notMerge: true });

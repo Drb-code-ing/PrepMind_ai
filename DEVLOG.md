@@ -342,13 +342,14 @@ f5a2eb1 style: soften cartoon theme palette
 - 新增客户端 `BaseEChart`，通过 `useEffect` 动态加载 ECharts，避免 SSR / hydration 风险。
 - `/stats` 升级为 ECharts 趋势图、评分分布图和卡片状态图，保留评分 fallback 文本网格，移动端无横向溢出。
 - 修复 `/stats` 空态判断：图表空态只看当前统计窗口 `totalReviews`，历史最近记录不再阻止当前窗口空态。
+- 修复 ECharts 图表在浏览器缩放和半透明背景下偏糊的问题：统一使用 SVG renderer，提升文字、坐标轴和细线清晰度。
 - `/plan` 使用本地日期刷新 hook，在 focus、visibilitychange 和跨日时刷新计划窗口。
 - 浏览器验收通过：注册 QA 账号、创建错题、加入复习卡、提交评分，验证 `/plan` 非空计划、`/stats` 三个 canvas 非空、7 天 / 30 天切换、`/today` 入口和移动端布局。
 
 验证：
 
 - `node --experimental-strip-types apps/web/src/lib/review-stats-view.test.mts` 通过。
-- `bun --filter @repo/web test` 通过，134 个测试全部通过。
+- `bun --filter @repo/web test` 通过，136 个测试全部通过。
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
 - `bun --filter @repo/server test` 通过，80 个测试全部通过。
