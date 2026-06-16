@@ -158,7 +158,7 @@ function PlanContent({
         </div>
         <div className="space-y-3">
           {plan.days.map((day) => (
-            <PlanDayItem key={day.date} day={day} />
+            <PlanDayItem key={day.date} day={day} startDate={plan.startDate} />
           ))}
         </div>
       </section>
@@ -187,8 +187,14 @@ function PlanContent({
   );
 }
 
-function PlanDayItem({ day }: { day: ReviewTaskPlanDayResponse }) {
-  const pressureCount = day.dueCount + day.overdueCount;
+function PlanDayItem({
+  day,
+  startDate,
+}: {
+  day: ReviewTaskPlanDayResponse;
+  startDate: string;
+}) {
+  const isToday = day.date === startDate;
 
   return (
     <article className="pm-enter rounded-[1.35rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -221,13 +227,22 @@ function PlanDayItem({ day }: { day: ReviewTaskPlanDayResponse }) {
             </span>
           </div>
         </div>
-        <Link
-          href="/today"
-          className="tap-target flex min-h-11 shrink-0 items-center justify-center rounded-2xl bg-[#eafff9] px-3 text-xs font-bold text-[#247269] ring-1 ring-[#bdeee5] transition-all hover:bg-[#d8fbf3] active:scale-[0.98]"
-          aria-label={`${day.label}查看今日任务入口`}
-        >
-          {pressureCount > 0 ? '去处理' : '看今日'}
-        </Link>
+        {isToday ? (
+          <Link
+            href="/today"
+            className="tap-target flex min-h-11 shrink-0 items-center justify-center rounded-2xl bg-[#eafff9] px-3 text-xs font-bold text-[#247269] ring-1 ring-[#bdeee5] transition-all hover:bg-[#d8fbf3] active:scale-[0.98]"
+            aria-label={`${day.label}，去今日任务处理到期复习`}
+          >
+            去今日任务
+          </Link>
+        ) : (
+          <span
+            className="flex min-h-11 shrink-0 items-center justify-center rounded-2xl bg-white/70 px-3 text-xs font-bold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]"
+            aria-label={`${day.label}，未来复习计划预览，到期后在今日任务处理`}
+          >
+            到期后处理
+          </span>
+        )}
       </div>
     </article>
   );
