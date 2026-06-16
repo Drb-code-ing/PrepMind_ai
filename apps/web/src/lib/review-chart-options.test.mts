@@ -42,7 +42,7 @@ function testBuildsRatingDistributionOption() {
   assert.equal(option.series[0]?.data.length, 4);
   assert.deepEqual(
     option.series[0]?.data.map((item) => item.name),
-    ['重来', '吃力', '掌握', '轻松'],
+    ['忘了', '吃力', '掌握', '轻松'],
   );
 }
 

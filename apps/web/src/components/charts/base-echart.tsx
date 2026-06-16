@@ -33,6 +33,8 @@ export function BaseEChart({ option, className, ariaLabel }: BaseEChartProps) {
         return;
       }
 
+      let chart: EChartsInstance | null = null;
+
       try {
         const echarts = (await import('echarts')) as EChartsModule;
 
@@ -40,15 +42,25 @@ export function BaseEChart({ option, className, ariaLabel }: BaseEChartProps) {
           return;
         }
 
-        const chart = echarts.init(containerRef.current);
-        chartRef.current = chart;
-        chart.setOption(latestOptionRef.current, { notMerge: true });
+        const initializedChart = echarts.init(containerRef.current);
+        chart = initializedChart;
+        chartRef.current = initializedChart;
+        initializedChart.setOption(latestOptionRef.current, { notMerge: true });
 
         resizeObserver = new ResizeObserver(() => {
-          chart.resize();
+          initializedChart.resize();
         });
         resizeObserver.observe(containerRef.current);
       } catch {
+        resizeObserver?.disconnect();
+        resizeObserver = null;
+        if (chartRef.current) {
+          chartRef.current.dispose();
+        } else {
+          chart?.dispose();
+        }
+        chartRef.current = null;
+
         if (isMounted) {
           setHasLoadError(true);
         }

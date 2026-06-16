@@ -159,7 +159,7 @@ export function buildRatingDistributionOption(
   ratingCounts: ReviewStatsResponse['ratingCounts'],
 ): PieDistributionOption {
   return buildPieDistributionOption('评分分布', [
-    { name: '重来', value: ratingCounts.again },
+    { name: '忘了', value: ratingCounts.again },
     { name: '吃力', value: ratingCounts.hard },
     { name: '掌握', value: ratingCounts.good },
     { name: '轻松', value: ratingCounts.easy },
