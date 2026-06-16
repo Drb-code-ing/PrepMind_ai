@@ -74,10 +74,13 @@ test('builds plan bar option with labels, totals, colors, and tooltip content', 
   assert.equal(typeof option.tooltip.formatter, 'function');
 
   const tooltipText = option.tooltip.formatter({ dataIndex: 0 });
-  assert.ok(tooltipText.includes('应复习 2'));
-  assert.ok(tooltipText.includes('逾期 1'));
-  assert.ok(tooltipText.includes('待完成 0'));
-  assert.ok(tooltipText.includes('预计 0 分钟'));
+  assert.equal(option.series[0].name, '复习压力');
+  assert.equal(
+    tooltipText,
+    ['今天 · 正常', '应复习 2', '逾期 1', '待完成 0', '已完成 0', '已跳过 0', '预计 0 分钟'].join(
+      '<br/>',
+    ),
+  );
 });
 
 test('builds a stable empty chart option for no days', () => {

@@ -99,6 +99,17 @@ const intensityBarColors: Record<ReviewTaskPlanIntensity, string> = {
   heavy: '#fbbf24',
 };
 
+const planTooltipLabels = {
+  due: '应复习',
+  overdue: '逾期',
+  pending: '待完成',
+  completed: '已完成',
+  skipped: '已跳过',
+  estimated: '预计',
+};
+
+const planSeriesName = '复习压力';
+
 export function getPlanIntensityLabel(intensity: ReviewTaskPlanIntensity): string {
   return intensityLabels[intensity];
 }
@@ -163,12 +174,12 @@ export function buildPlanBarOption(days: ReviewTaskPlanDayResponse[]): PlanBarOp
 
         return [
           `${day.label} · ${getPlanIntensityLabel(day.intensity)}`,
-          `应复习 ${day.dueCount}`,
-          `逾期 ${day.overdueCount}`,
-          `待完成 ${day.pendingCount}`,
-          `已完成 ${day.completedCount}`,
-          `已跳过 ${day.skippedCount}`,
-          `预计 ${day.estimatedMinutes} 分钟`,
+          `${planTooltipLabels.due} ${day.dueCount}`,
+          `${planTooltipLabels.overdue} ${day.overdueCount}`,
+          `${planTooltipLabels.pending} ${day.pendingCount}`,
+          `${planTooltipLabels.completed} ${day.completedCount}`,
+          `${planTooltipLabels.skipped} ${day.skippedCount}`,
+          `${planTooltipLabels.estimated} ${day.estimatedMinutes} 分钟`,
         ].join('<br/>');
       },
     },
@@ -205,7 +216,7 @@ export function buildPlanBarOption(days: ReviewTaskPlanDayResponse[]): PlanBarOp
     series: [
       {
         type: 'bar',
-        name: '复习压力',
+        name: planSeriesName,
         barMaxWidth: 28,
         data,
       },
