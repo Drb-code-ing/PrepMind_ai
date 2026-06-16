@@ -100,6 +100,10 @@ describe('ReviewTasksService', () => {
     );
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   function createService() {
     return new ReviewTasksService(prisma as unknown as PrismaService);
   }
@@ -202,6 +206,163 @@ describe('ReviewTasksService', () => {
     });
     expect(result.total).toBe(1);
     expect(result.items[0]?.status).toBe('SKIPPED');
+  });
+
+  it('previews a 7-day plan from card.nextReview without creating future tasks', async () => {
+    prisma.card.findMany.mockResolvedValue([
+      {
+        ...card,
+        id: 'card_overdue',
+        nextReview: new Date('2026-06-15T15:00:00.000Z'),
+      },
+      {
+        ...card,
+        id: 'card_today_1',
+        nextReview: new Date('2026-06-15T16:30:00.000Z'),
+      },
+      {
+        ...card,
+        id: 'card_today_2',
+        nextReview: new Date('2026-06-16T10:00:00.000Z'),
+      },
+      {
+        ...card,
+        id: 'card_upcoming_1',
+        nextReview: new Date('2026-06-17T01:00:00.000Z'),
+      },
+      {
+        ...card,
+        id: 'card_upcoming_2',
+        nextReview: new Date('2026-06-22T15:00:00.000Z'),
+      },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 7,
+      timezoneOffsetMinutes: -480,
+    });
+
+    expect(prisma.card.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        suspendedAt: null,
+        nextReview: { lte: new Date('2026-06-22T15:59:59.999Z') },
+      },
+      select: { id: true, nextReview: true },
+      orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
+    });
+    expect(prisma.reviewTask.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        scheduledDate: { gte: '2026-06-16', lte: '2026-06-22' },
+        status: { in: ['PENDING', 'COMPLETED', 'SKIPPED'] },
+      },
+      select: { scheduledDate: true, status: true },
+    });
+    expect(prisma.reviewTask.createMany).not.toHaveBeenCalled();
+    expect(result.startDate).toBe('2026-06-16');
+    expect(result.endDate).toBe('2026-06-22');
+    expect(result.summary).toMatchObject({
+      overdueCount: 1,
+      todayDueCount: 2,
+      upcomingDueCount: 2,
+      estimatedTotalMinutes: 10,
+      peakDay: { date: '2026-06-16', count: 3 },
+      intensity: 'light',
+    });
+    expect(result.days.map((day) => day.dueCount)).toEqual([
+      2, 1, 0, 0, 0, 0, 1,
+    ]);
+    expect(result.days[0]).toMatchObject({
+      overdueCount: 1,
+      estimatedMinutes: 6,
+      intensity: 'light',
+    });
+    expect(result.suggestion).toMatchObject({
+      title: '先处理逾期卡',
+      actionHref: '/today',
+    });
+  });
+
+  it('returns an empty light plan with no peak day and error-book suggestion', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-16T04:00:00.000Z'));
+    prisma.card.findMany.mockResolvedValue([]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      days: 7,
+      timezoneOffsetMinutes: -480,
+    });
+
+    expect(result.startDate).toBe('2026-06-16');
+    expect(result.endDate).toBe('2026-06-22');
+    expect(result.summary).toMatchObject({
+      overdueCount: 0,
+      todayDueCount: 0,
+      upcomingDueCount: 0,
+      estimatedTotalMinutes: 0,
+      peakDay: null,
+      intensity: 'light',
+    });
+    expect(result.days).toHaveLength(7);
+    expect(result.days.every((day) => day.estimatedMinutes === 0)).toBe(true);
+    expect(result.suggestion).toMatchObject({
+      title: '当前复习压力很轻',
+      actionHref: '/error-book',
+    });
+    expect(prisma.reviewTask.createMany).not.toHaveBeenCalled();
+  });
+
+  it('excludes suspended cards via the Prisma card query', async () => {
+    prisma.card.findMany.mockResolvedValue([]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 3,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(prisma.card.findMany).toHaveBeenCalledWith(
+      objectContaining({
+        where: objectContaining({
+          userId: 'user_1',
+          suspendedAt: null,
+          nextReview: { lte: new Date('2026-06-18T23:59:59.999Z') },
+        }),
+      }),
+    );
+  });
+
+  it('counts existing ReviewTask rows by scheduledDate and status', async () => {
+    prisma.card.findMany.mockResolvedValue([]);
+    prisma.reviewTask.findMany.mockResolvedValue([
+      { scheduledDate: '2026-06-16', status: 'PENDING' },
+      { scheduledDate: '2026-06-16', status: 'COMPLETED' },
+      { scheduledDate: '2026-06-17', status: 'SKIPPED' },
+      { scheduledDate: '2026-06-17', status: 'SKIPPED' },
+    ]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 2,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(result.days[0]).toMatchObject({
+      date: '2026-06-16',
+      pendingCount: 1,
+      completedCount: 1,
+      skippedCount: 0,
+    });
+    expect(result.days[1]).toMatchObject({
+      date: '2026-06-17',
+      pendingCount: 0,
+      completedCount: 0,
+      skippedCount: 2,
+    });
   });
 
   it('submits rating by completing the task and writing a review log', async () => {

@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { scheduleReview } from '@repo/fsrs';
 import type {
   ReviewTaskListQuery,
+  ReviewTaskPlanIntensity,
+  ReviewTaskPlanQuery,
   ReviewTaskStatus,
   ReviewTaskTodayQuery,
 } from '@repo/types/api/review-task';
@@ -51,6 +53,132 @@ export class ReviewTasksService {
       completedCount: this.countByStatus(tasks, 'COMPLETED'),
       skippedCount: this.countByStatus(tasks, 'SKIPPED'),
       tasks: visibleTasks.map((task) => this.toTaskResponse(task)),
+    };
+  }
+
+  async getPlan(userId: string, input: ReviewTaskPlanQuery) {
+    const startWindow = this.resolveDateWindow(
+      input.startDate,
+      input.timezoneOffsetMinutes,
+    );
+    const dates = Array.from({ length: input.days }, (_, index) =>
+      this.addDaysToDateKey(startWindow.dateKey, index),
+    );
+    const endDate = dates[dates.length - 1] ?? startWindow.dateKey;
+    const endWindow = this.resolveDateWindow(
+      endDate,
+      input.timezoneOffsetMinutes,
+    );
+    const planCounts = new Map(
+      dates.map((date) => [
+        date,
+        {
+          dueCount: 0,
+          pendingCount: 0,
+          completedCount: 0,
+          skippedCount: 0,
+        },
+      ]),
+    );
+
+    const [cards, tasks] = await Promise.all([
+      this.prisma.card.findMany({
+        where: {
+          userId,
+          suspendedAt: null,
+          nextReview: { lte: endWindow.endUtc },
+        },
+        select: { id: true, nextReview: true },
+        orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
+      }),
+      this.prisma.reviewTask.findMany({
+        where: {
+          userId,
+          scheduledDate: { gte: startWindow.dateKey, lte: endDate },
+          status: { in: ['PENDING', 'COMPLETED', 'SKIPPED'] },
+        },
+        select: { scheduledDate: true, status: true },
+      }),
+    ]);
+
+    let overdueCount = 0;
+    for (const card of cards) {
+      if (card.nextReview.getTime() < startWindow.startUtc.getTime()) {
+        overdueCount += 1;
+        continue;
+      }
+
+      const dateKey = this.toDateKey(
+        card.nextReview,
+        input.timezoneOffsetMinutes,
+      );
+      const counts = planCounts.get(dateKey);
+      if (counts) counts.dueCount += 1;
+    }
+
+    for (const task of tasks) {
+      const counts = planCounts.get(task.scheduledDate);
+      if (!counts) continue;
+
+      if (task.status === 'PENDING') counts.pendingCount += 1;
+      if (task.status === 'COMPLETED') counts.completedCount += 1;
+      if (task.status === 'SKIPPED') counts.skippedCount += 1;
+    }
+
+    const days = dates.map((date, index) => {
+      const counts = planCounts.get(date);
+      const dayOverdueCount = index === 0 ? overdueCount : 0;
+      const reviewCount = (counts?.dueCount ?? 0) + dayOverdueCount;
+
+      return {
+        date,
+        label: this.toPlanDayLabel(index),
+        dueCount: counts?.dueCount ?? 0,
+        overdueCount: dayOverdueCount,
+        pendingCount: counts?.pendingCount ?? 0,
+        completedCount: counts?.completedCount ?? 0,
+        skippedCount: counts?.skippedCount ?? 0,
+        estimatedMinutes: reviewCount * 2,
+        intensity: this.toPlanIntensity(reviewCount),
+      };
+    });
+    const todayDueCount = days[0]?.dueCount ?? 0;
+    const upcomingDueCount = days
+      .slice(1)
+      .reduce((total, day) => total + day.dueCount, 0);
+    const estimatedTotalMinutes = days.reduce(
+      (total, day) => total + day.estimatedMinutes,
+      0,
+    );
+    const peakDay = days.reduce<null | { date: string; count: number }>(
+      (peak, day) => {
+        const count = day.dueCount + day.overdueCount;
+        if (count === 0) return peak;
+        if (!peak || count > peak.count) return { date: day.date, count };
+        return peak;
+      },
+      null,
+    );
+
+    return {
+      startDate: startWindow.dateKey,
+      endDate,
+      generatedThroughDate: endDate,
+      summary: {
+        overdueCount,
+        todayDueCount,
+        upcomingDueCount,
+        estimatedTotalMinutes,
+        peakDay,
+        intensity: this.toPlanIntensity(peakDay?.count ?? 0),
+      },
+      days,
+      suggestion: this.toPlanSuggestion(
+        overdueCount,
+        todayDueCount,
+        upcomingDueCount,
+        peakDay,
+      ),
     };
   }
 
@@ -383,6 +511,70 @@ export class ReviewTasksService {
 
   private countByStatus(tasks: ReviewTaskWithCard[], status: ReviewTaskStatus) {
     return tasks.filter((task) => task.status === status).length;
+  }
+
+  private addDaysToDateKey(dateKey: string, days: number) {
+    const year = Number(dateKey.slice(0, 4));
+    const month = Number(dateKey.slice(5, 7));
+    const day = Number(dateKey.slice(8, 10));
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+    return date.toISOString().slice(0, 10);
+  }
+
+  private toDateKey(date: Date, timezoneOffsetMinutes: number) {
+    const offsetMs = timezoneOffsetMinutes * 60 * 1000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
+  }
+
+  private toPlanDayLabel(index: number) {
+    if (index === 0) return 'Today';
+    if (index === 1) return 'Tomorrow';
+    return `Day ${index + 1}`;
+  }
+
+  private toPlanIntensity(count: number): ReviewTaskPlanIntensity {
+    if (count <= 5) return 'light';
+    if (count <= 15) return 'normal';
+    return 'heavy';
+  }
+
+  private toPlanSuggestion(
+    overdueCount: number,
+    todayDueCount: number,
+    upcomingDueCount: number,
+    peakDay: null | { date: string; count: number },
+  ) {
+    if (overdueCount > 0) {
+      return {
+        title: '先处理逾期卡',
+        description: `有 ${overdueCount} 张卡已逾期，优先回到今日任务清掉压力。`,
+        actionLabel: '去今日任务',
+        actionHref: '/today',
+      };
+    }
+    if (todayDueCount > 0) {
+      return {
+        title: '今天保持节奏',
+        description: `今天有 ${todayDueCount} 张卡到期，按当前节奏完成即可。`,
+        actionLabel: '去今日任务',
+        actionHref: '/today',
+      };
+    }
+    if (upcomingDueCount > 0 && peakDay) {
+      return {
+        title: '提前看一下高峰日',
+        description: `${peakDay.date} 预计有 ${peakDay.count} 张卡到期，可以提前回顾相关错题。`,
+        actionLabel: '查看错题本',
+        actionHref: '/error-book',
+      };
+    }
+
+    return {
+      title: '当前复习压力很轻',
+      description: '未来几天暂无明显复习高峰，可以继续整理错题和补齐薄弱点。',
+      actionLabel: '查看错题本',
+      actionHref: '/error-book',
+    };
   }
 
   private ensurePendingTask(task: ReviewTaskWithCard) {

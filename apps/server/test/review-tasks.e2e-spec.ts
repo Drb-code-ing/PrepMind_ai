@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   reviewTaskActionResponseSchema,
+  reviewTaskPlanResponseSchema,
   reviewTaskRatingResponseSchema,
   reviewTaskTodayResponseSchema,
 } from '@repo/types/api/review-task';
@@ -12,7 +13,6 @@ import request from 'supertest';
 import type { Response as SupertestResponse } from 'supertest';
 import type { App } from 'supertest/types';
 
-import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { PrismaService } from '../src/database/prisma.service';
@@ -29,6 +29,10 @@ describe('ReviewTasksController (e2e)', () => {
     process.env.DATABASE_URL ??=
       'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
 
+    const { AppModule } =
+      jest.requireActual<typeof import('../src/app.module')>(
+        '../src/app.module',
+      );
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -50,7 +54,87 @@ describe('ReviewTasksController (e2e)', () => {
       });
     }
 
-    await app.close();
+    if (app) {
+      await app.close();
+    }
+  });
+
+  it('returns the current user review task plan without creating tasks', async () => {
+    const userA = await registerAndLogin('review-task-plan-a');
+    const userB = await registerAndLogin('review-task-plan-b');
+    const wrongQuestion = await createWrongQuestion(userA.accessToken, {
+      questionText: 'Preview 3 x 7.',
+      subject: '数学',
+      category: '乘法',
+      knowledgePoints: ['乘法'],
+      answer: '21',
+      analysis: '3 x 7 = 21.',
+    });
+    const cardResponse = await request(server)
+      .post('/reviews/cards/from-wrong-question')
+      .set('Authorization', `Bearer ${userA.accessToken}`)
+      .send({ wrongQuestionId: wrongQuestion.id })
+      .expect(201);
+    const card = getSuccessData<CreateReviewCardResponse>(cardResponse).card;
+    await prisma.card.update({
+      where: { id: card.id },
+      data: { nextReview: new Date('2026-06-16T08:00:00.000Z') },
+    });
+
+    const planResponse = await request(server)
+      .get(
+        '/review-tasks/plan?startDate=2026-06-16&days=7&timezoneOffsetMinutes=-480',
+      )
+      .set('Authorization', `Bearer ${userA.accessToken}`)
+      .expect(200);
+    const plan = reviewTaskPlanResponseSchema.parse(
+      getSuccessData(planResponse),
+    );
+
+    expect(plan.startDate).toBe('2026-06-16');
+    expect(plan.endDate).toBe('2026-06-22');
+    expect(plan.summary.todayDueCount).toBe(1);
+    expect(plan.summary.overdueCount).toBe(0);
+    expect(plan.summary.upcomingDueCount).toBe(0);
+    expect(plan.summary.peakDay).toEqual({ date: '2026-06-16', count: 1 });
+    expect(plan.days[0]).toMatchObject({
+      date: '2026-06-16',
+      dueCount: 1,
+      overdueCount: 0,
+      estimatedMinutes: 2,
+    });
+    expect(plan.suggestion).toMatchObject({
+      title: '今天保持节奏',
+      actionHref: '/today',
+    });
+
+    const taskCount = await prisma.reviewTask.count({
+      where: { userId: userA.userId, cardId: card.id },
+    });
+    expect(taskCount).toBe(0);
+
+    const otherPlanResponse = await request(server)
+      .get(
+        '/review-tasks/plan?startDate=2026-06-16&days=7&timezoneOffsetMinutes=-480',
+      )
+      .set('Authorization', `Bearer ${userB.accessToken}`)
+      .expect(200);
+    const otherPlan = reviewTaskPlanResponseSchema.parse(
+      getSuccessData(otherPlanResponse),
+    );
+    expect(otherPlan.summary.todayDueCount).toBe(0);
+    expect(otherPlan.summary.peakDay).toBeNull();
+  });
+
+  it('rejects review task plan windows longer than 14 days', async () => {
+    const user = await registerAndLogin('review-task-plan-invalid');
+
+    await request(server)
+      .get(
+        '/review-tasks/plan?startDate=2026-06-16&days=15&timezoneOffsetMinutes=-480',
+      )
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(400);
   });
 
   it('runs the persisted review task lifecycle for the current user only', async () => {

@@ -10,6 +10,7 @@ import {
 import { reviewRatingRequestSchema } from '@repo/types/api/review';
 import {
   reviewTaskListQuerySchema,
+  reviewTaskPlanQuerySchema,
   reviewTaskTodayQuerySchema,
 } from '@repo/types/api/review-task';
 
@@ -27,6 +28,12 @@ export class ReviewTasksController {
   getToday(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskTodayQuerySchema.parse(query);
     return this.reviewTasksService.getToday(user.id, input);
+  }
+
+  @Get('plan')
+  getPlan(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
+    const input = reviewTaskPlanQuerySchema.parse(query);
+    return this.reviewTasksService.getPlan(user.id, input);
   }
 
   @Get()
