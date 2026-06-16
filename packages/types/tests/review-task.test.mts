@@ -111,12 +111,15 @@ function testActionResponse() {
 }
 
 function testPlanQuery() {
-  const defaultQuery = reviewTaskPlanQuerySchema.parse({
+  const defaultQuery = reviewTaskPlanQuerySchema.parse({});
+  assert.equal(defaultQuery.days, 7);
+  assert.equal(defaultQuery.timezoneOffsetMinutes, 0);
+  assert.equal(defaultQuery.startDate, undefined);
+
+  const timezoneQuery = reviewTaskPlanQuerySchema.parse({
     timezoneOffsetMinutes: '-480',
   });
-  assert.equal(defaultQuery.days, 7);
-  assert.equal(defaultQuery.timezoneOffsetMinutes, -480);
-  assert.equal(defaultQuery.startDate, undefined);
+  assert.equal(timezoneQuery.timezoneOffsetMinutes, -480);
 
   const explicitQuery = reviewTaskPlanQuerySchema.parse({
     days: '14',
