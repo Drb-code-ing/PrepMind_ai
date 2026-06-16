@@ -10,6 +10,7 @@ import {
   BookOpen,
   Brain,
   Camera,
+  CalendarClock,
   CalendarCheck,
   Check,
   CheckCircle2,
@@ -565,7 +566,7 @@ export default function TodayPage() {
           </div>
         </section>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-4">
           <Link
             href="/chat"
             className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.98]"
@@ -586,6 +587,13 @@ export default function TodayPage() {
           >
             <BarChart3 className="h-4 w-4" />
             学习统计
+          </Link>
+          <Link
+            href="/plan"
+            className="tap-target flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 text-sm font-semibold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98]"
+          >
+            <CalendarClock className="h-4 w-4" />
+            复习计划
           </Link>
         </div>
       </main>
