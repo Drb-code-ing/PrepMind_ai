@@ -52,6 +52,6 @@ export function getStateLabel(state: ReviewCardState) {
   return labels[state];
 }
 
-export function shouldShowStatsEmptyState(totalReviews: number, logTotal: number) {
-  return totalReviews === 0 && logTotal === 0;
+export function shouldShowStatsEmptyState(totalReviewsInRange: number) {
+  return totalReviewsInRange === 0;
 }

@@ -51,7 +51,7 @@ export default function StatsPage() {
   const ratingCounts = stats?.ratingCounts ?? emptyRatingCounts;
   const stateCounts = stats?.stateCounts ?? emptyStateCounts;
   const dailySummary = getDailyReviewActivitySummary(dailyReviews);
-  const empty = shouldShowStatsEmptyState(stats?.totalReviews ?? 0, logs?.total ?? 0);
+  const empty = shouldShowStatsEmptyState(stats?.totalReviews ?? 0);
   const hasNextPage = logs ? page * logs.pageSize < logs.total : false;
   const trendOption = useMemo(() => buildReviewTrendOption(dailyReviews), [dailyReviews]);
   const ratingDistributionOption = useMemo(

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-15。Phase 4.4 已完成，Phase 4 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-16。Phase 4.5.1 已完成，Phase 4.5 继续推进。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -158,6 +158,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
   -> POST /review-tasks/:taskId/rating + clientMutationId
   -> @repo/fsrs 计算下一次复习时间
   -> 事务内更新 Card + 写入 ReviewLog(clientMutationId) + 完成 ReviewTask
+  -> /plan 只读预览未来 Card.nextReview 压力
   -> /stats 读取 /reviews/stats 与 /reviews/logs
 ```
 
@@ -171,10 +172,12 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - 复习评分在线成功时写入 PostgreSQL；离线或可重试失败时进入 Dexie `mutationQueue` 的 `reviewTask/rating`。
 - 离线评分不会本地推进 FSRS、Card、ReviewLog 或统计；今日任务页只展示待同步状态，服务端同步成功后刷新 ReviewTask 和 Review stats 查询。
 - `/review-tasks/today` 按当前用户本地日期懒生成到期任务，同一 `cardId + scheduledDate` 不重复创建。
+- `/review-tasks/plan` 是只读未来计划预览，只读取 `Card.nextReview` 计算未来压力，不创建未来 `ReviewTask`。
 - `/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask，并关联 `reviewLogId`。
 - `/review-tasks/:taskId/skip` 与 `/review-tasks/:taskId/reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
 - 今日任务页读取 persisted ReviewTask，评分、跳过和恢复后通过 TanStack Query 失效重新读取。
-- 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs。
+- 复习计划页 `/plan` 不执行评分和任务生成，只展示未来 7 天计划预览；今日任务仍是复习执行入口。
+- 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs，并用客户端 ECharts 渲染趋势、评分分布和卡片状态。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。
 - `/reviews/logs` 返回当前用户最近复习记录和错题摘要，`ReviewLog` 通过关联 `card.userId` 隔离用户。
 
@@ -194,6 +197,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/review-tasks/today` | 懒生成并读取当前用户本地日期的 ReviewTask，支持 `date`、`timezoneOffsetMinutes`、`includeCompleted` |
+| `GET` | `/review-tasks/plan` | 只读预览未来复习压力，支持 `days`、`startDate`、`timezoneOffsetMinutes` |
 | `GET` | `/review-tasks` | 分页读取 ReviewTask，支持 `date` 与 `status` 过滤 |
 | `POST` | `/review-tasks/:taskId/rating` | 提交评分，支持 `clientMutationId` 幂等，事务内更新 Card、写入 ReviewLog、完成 ReviewTask |
 | `POST` | `/review-tasks/:taskId/skip` | 跳过待复习任务，只更新 ReviewTask |

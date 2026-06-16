@@ -50,7 +50,14 @@ test('maps rating and card state labels', () => {
   assert.equal(getStateLabel('RELEARNING'), '重学中');
 });
 
-test('shows empty state when there are no reviews and no logs', () => {
-  assert.equal(shouldShowStatsEmptyState(0, 0), true);
-  assert.equal(shouldShowStatsEmptyState(1, 0), false);
+test('shows empty state when there are no reviews in the current range', () => {
+  assert.equal(shouldShowStatsEmptyState(0), true);
+  assert.equal(shouldShowStatsEmptyState(1), false);
+});
+
+test('shows empty state for the current range even when older logs exist', () => {
+  const olderLogsOutsideRange = 12;
+
+  assert.equal(olderLogsOutsideRange > 0, true);
+  assert.equal(shouldShowStatsEmptyState(0), true);
 });
