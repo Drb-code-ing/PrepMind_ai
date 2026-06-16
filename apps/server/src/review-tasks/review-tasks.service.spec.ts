@@ -73,6 +73,7 @@ describe('ReviewTasksService', () => {
   const prisma = {
     $transaction: jest.fn(),
     card: {
+      count: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
       updateMany: jest.fn(),
@@ -94,6 +95,7 @@ describe('ReviewTasksService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.card.count.mockResolvedValue(0);
     prisma.reviewLog.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
@@ -209,12 +211,8 @@ describe('ReviewTasksService', () => {
   });
 
   it('previews a 7-day plan from card.nextReview without creating future tasks', async () => {
+    prisma.card.count.mockResolvedValue(1);
     prisma.card.findMany.mockResolvedValue([
-      {
-        ...card,
-        id: 'card_overdue',
-        nextReview: new Date('2026-06-15T15:00:00.000Z'),
-      },
       {
         ...card,
         id: 'card_today_1',
@@ -244,13 +242,23 @@ describe('ReviewTasksService', () => {
       timezoneOffsetMinutes: -480,
     });
 
+    expect(prisma.card.count).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        suspendedAt: null,
+        nextReview: { lt: new Date('2026-06-15T16:00:00.000Z') },
+      },
+    });
     expect(prisma.card.findMany).toHaveBeenCalledWith({
       where: {
         userId: 'user_1',
         suspendedAt: null,
-        nextReview: { lte: new Date('2026-06-22T15:59:59.999Z') },
+        nextReview: {
+          gte: new Date('2026-06-15T16:00:00.000Z'),
+          lte: new Date('2026-06-22T15:59:59.999Z'),
+        },
       },
-      select: { id: true, nextReview: true },
+      select: { nextReview: true },
       orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
     });
     expect(prisma.reviewTask.findMany).toHaveBeenCalledWith({
@@ -284,6 +292,76 @@ describe('ReviewTasksService', () => {
       title: '先处理逾期卡',
       actionHref: '/today',
     });
+  });
+
+  it('counts start and end boundary due cards inside the plan window', async () => {
+    prisma.card.count.mockResolvedValue(1);
+    prisma.card.findMany.mockResolvedValue([
+      { nextReview: new Date('2026-06-15T16:00:00.000Z') },
+      { nextReview: new Date('2026-06-17T15:59:59.999Z') },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 2,
+      timezoneOffsetMinutes: -480,
+    });
+
+    expect(prisma.card.count).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        suspendedAt: null,
+        nextReview: { lt: new Date('2026-06-15T16:00:00.000Z') },
+      },
+    });
+    expect(prisma.card.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        suspendedAt: null,
+        nextReview: {
+          gte: new Date('2026-06-15T16:00:00.000Z'),
+          lte: new Date('2026-06-17T15:59:59.999Z'),
+        },
+      },
+      select: { nextReview: true },
+      orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
+    });
+    expect(result.summary).toMatchObject({
+      overdueCount: 1,
+      todayDueCount: 1,
+      upcomingDueCount: 1,
+    });
+    expect(result.days.map((day) => day.dueCount)).toEqual([1, 1]);
+    expect(result.days[0]?.overdueCount).toBe(1);
+    expect(prisma.reviewTask.createMany).not.toHaveBeenCalled();
+  });
+
+  it('excludes cards just after the plan end through the Prisma query boundary', async () => {
+    prisma.card.count.mockResolvedValue(0);
+    prisma.card.findMany.mockResolvedValue([
+      { nextReview: new Date('2026-06-18T23:59:59.999Z') },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 3,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(prisma.card.findMany).toHaveBeenCalledWith(
+      objectContaining({
+        where: objectContaining({
+          nextReview: {
+            gte: new Date('2026-06-16T00:00:00.000Z'),
+            lte: new Date('2026-06-18T23:59:59.999Z'),
+          },
+        }),
+      }),
+    );
+    expect(result.summary.upcomingDueCount).toBe(1);
+    expect(result.days.map((day) => day.dueCount)).toEqual([0, 0, 1]);
   });
 
   it('returns an empty light plan with no peak day and error-book suggestion', async () => {
@@ -330,7 +408,10 @@ describe('ReviewTasksService', () => {
         where: objectContaining({
           userId: 'user_1',
           suspendedAt: null,
-          nextReview: { lte: new Date('2026-06-18T23:59:59.999Z') },
+          nextReview: {
+            gte: new Date('2026-06-16T00:00:00.000Z'),
+            lte: new Date('2026-06-18T23:59:59.999Z'),
+          },
         }),
       }),
     );

@@ -5,6 +5,7 @@ import type {
   ReviewTaskListQuery,
   ReviewTaskPlanIntensity,
   ReviewTaskPlanQuery,
+  ReviewTaskPlanResponse,
   ReviewTaskStatus,
   ReviewTaskTodayQuery,
 } from '@repo/types/api/review-task';
@@ -56,7 +57,10 @@ export class ReviewTasksService {
     };
   }
 
-  async getPlan(userId: string, input: ReviewTaskPlanQuery) {
+  async getPlan(
+    userId: string,
+    input: ReviewTaskPlanQuery,
+  ): Promise<ReviewTaskPlanResponse> {
     const startWindow = this.resolveDateWindow(
       input.startDate,
       input.timezoneOffsetMinutes,
@@ -81,14 +85,24 @@ export class ReviewTasksService {
       ]),
     );
 
-    const [cards, tasks] = await Promise.all([
+    const [overdueCount, cards, tasks] = await Promise.all([
+      this.prisma.card.count({
+        where: {
+          userId,
+          suspendedAt: null,
+          nextReview: { lt: startWindow.startUtc },
+        },
+      }),
       this.prisma.card.findMany({
         where: {
           userId,
           suspendedAt: null,
-          nextReview: { lte: endWindow.endUtc },
+          nextReview: {
+            gte: startWindow.startUtc,
+            lte: endWindow.endUtc,
+          },
         },
-        select: { id: true, nextReview: true },
+        select: { nextReview: true },
         orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.reviewTask.findMany({
@@ -101,13 +115,7 @@ export class ReviewTasksService {
       }),
     ]);
 
-    let overdueCount = 0;
     for (const card of cards) {
-      if (card.nextReview.getTime() < startWindow.startUtc.getTime()) {
-        overdueCount += 1;
-        continue;
-      }
-
       const dateKey = this.toDateKey(
         card.nextReview,
         input.timezoneOffsetMinutes,
