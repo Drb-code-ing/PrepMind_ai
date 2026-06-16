@@ -1,4 +1,4 @@
-import type { ReviewStatsResponse } from '@repo/types';
+import type { ReviewStatsResponse } from '@repo/types/api/review';
 
 type ReviewTrendItem = {
   date: string;
