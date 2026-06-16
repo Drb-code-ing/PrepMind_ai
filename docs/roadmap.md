@@ -136,6 +136,10 @@ Phase 4.5.1 已完成复习计划预览与统计图表升级：
 Phase 4 后续继续补齐：
 
 - Phase 4.5.2：复习提醒策略与更长期计划设置。
+- Phase 4.5.2：复习压力模型升级。当前模型为 `pressure = dueCount + overdueCount`；
+  后续规划升级为 `到期数量 + 逾期惩罚 + 难度权重 + 预计耗时修正 + 用户每日容量约束`。
+  其中到期数量来自 `Card.nextReview`，难度和稳定性来自 `Card.difficulty` / `Card.stability`，
+  预计耗时可结合 `ReviewLog.reviewDurationMs`，用户每日容量来自学习偏好或长期计划设置。
 
 ### Phase 5 — RAG 知识库
 

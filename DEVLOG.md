@@ -344,6 +344,7 @@ f5a2eb1 style: soften cartoon theme palette
 - 修复 `/stats` 空态判断：图表空态只看当前统计窗口 `totalReviews`，历史最近记录不再阻止当前窗口空态。
 - 修复 ECharts 图表在浏览器缩放和半透明背景下偏糊的问题：统一使用 SVG renderer，提升文字、坐标轴和细线清晰度。
 - `/plan` 使用本地日期刷新 hook，在 focus、visibilitychange 和跨日时刷新计划窗口。
+- 讨论并记录复习压力模型升级方向：当前为 `dueCount + overdueCount` 简化模型，后续规划加入逾期惩罚、难度权重、预计耗时和用户每日容量。
 - 浏览器验收通过：注册 QA 账号、创建错题、加入复习卡、提交评分，验证 `/plan` 非空计划、`/stats` 三个 canvas 非空、7 天 / 30 天切换、`/today` 入口和移动端布局。
 
 验证：
@@ -429,6 +430,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 4.4：离线评分队列与提醒策略。
 - [x] Phase 4.5.1：复习计划预览与统计图表升级。
 - [ ] Phase 4.5.2：复习提醒策略与更长期计划设置。
+- [ ] Phase 4.5.2：复习压力模型升级，从 `dueCount + overdueCount` 扩展为逾期、难度、耗时和每日容量加权模型。
 
 **后续方向**
 

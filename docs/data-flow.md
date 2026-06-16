@@ -173,6 +173,9 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - 离线评分不会本地推进 FSRS、Card、ReviewLog 或统计；今日任务页只展示待同步状态，服务端同步成功后刷新 ReviewTask 和 Review stats 查询。
 - `/review-tasks/today` 按当前用户本地日期懒生成到期任务，同一 `cardId + scheduledDate` 不重复创建。
 - `/review-tasks/plan` 是只读未来计划预览，只读取 `Card.nextReview` 计算未来压力，不创建未来 `ReviewTask`。
+- 当前复习压力模型是简化模型：`pressure = dueCount + overdueCount`，`estimatedMinutes = pressure * 2`。
+  后续规划升级为加权模型：`到期数量 + 逾期惩罚 + 难度权重 + 预计耗时修正 + 用户每日容量约束`；
+  该规划尚未落地，当前 `/plan` 与 `/review-tasks/plan` 仍以简化模型为准。
 - `/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask，并关联 `reviewLogId`。
 - `/review-tasks/:taskId/skip` 与 `/review-tasks/:taskId/reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
 - 今日任务页读取 persisted ReviewTask，评分、跳过和恢复后通过 TanStack Query 失效重新读取。
