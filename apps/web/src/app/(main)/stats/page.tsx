@@ -17,19 +17,25 @@ import {
 } from 'lucide-react';
 import type { ReviewStatsRange } from '@repo/types/api/review';
 
+import { BaseEChart } from '@/components/charts/base-echart';
 import { useReviewLogs, useReviewStats } from '@/hooks/use-reviews';
+import {
+  buildRatingDistributionOption,
+  buildReviewTrendOption,
+  buildStateDistributionOption,
+} from '@/lib/review-chart-options';
 import {
   formatPercent,
   getDailyReviewActivitySummary,
-  getMaxDailyReviewCount,
   getRatingLabel,
   getStateLabel,
-  shouldShowDailyReviewTick,
   shouldShowStatsEmptyState,
 } from '@/lib/review-stats-view';
 import { getLocalDateKey } from '@/lib/today-tasks';
 
 const pageSize = 20;
+const emptyRatingCounts = { again: 0, hard: 0, good: 0, easy: 0 };
+const emptyStateCounts = { NEW: 0, LEARNING: 0, REVIEW: 0, RELEARNING: 0 };
 
 export default function StatsPage() {
   const [range, setRange] = useState<ReviewStatsRange>('7d');
@@ -142,7 +148,11 @@ export default function StatsPage() {
                 <TrendPill label="合计" value={`${dailySummary.totalCount} 次`} />
                 <TrendPill label="峰值" value={`${dailySummary.maxCount} 次`} />
               </div>
-              <ReviewTrendChart items={dailyReviews} />
+              <BaseEChart
+                option={buildReviewTrendOption(dailyReviews)}
+                className="mt-4 h-56 w-full"
+                ariaLabel="复习趋势折线图"
+              />
             </section>
 
             <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
@@ -151,25 +161,20 @@ export default function StatsPage() {
                 title="评分分布"
                 subtitle="四档反馈会影响下次复习时间"
               />
-              <div className="mt-3 space-y-2">
-                {([
-                  [1, stats?.ratingCounts.again ?? 0],
-                  [2, stats?.ratingCounts.hard ?? 0],
-                  [3, stats?.ratingCounts.good ?? 0],
-                  [4, stats?.ratingCounts.easy ?? 0],
-                ] as const).map(([rating, count]) => (
-                  <DistributionRow
-                    key={rating}
-                    label={getRatingLabel(rating)}
-                    value={count}
-                    total={stats?.totalReviews ?? 0}
-                  />
-                ))}
-              </div>
+              <BaseEChart
+                option={buildRatingDistributionOption(stats?.ratingCounts ?? emptyRatingCounts)}
+                className="mt-3 h-64 w-full"
+                ariaLabel="评分分布环形图"
+              />
             </section>
 
             <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
               <SectionTitle icon={BookOpen} title="卡片状态" subtitle="当前复习卡分布" />
+              <BaseEChart
+                option={buildStateDistributionOption(stats?.stateCounts ?? emptyStateCounts)}
+                className="mt-3 h-64 w-full"
+                ariaLabel="卡片状态分布环形图"
+              />
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING'] as const).map((state) => (
                   <MiniStat
@@ -255,117 +260,6 @@ function TrendPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReviewTrendChart({ items }: { items: Array<{ date: string; count: number }> }) {
-  const maxDailyCount = getMaxDailyReviewCount(items);
-  const chartWidth = 320;
-  const chartHeight = 132;
-  const paddingX = 12;
-  const paddingTop = 14;
-  const paddingBottom = 22;
-  const baseY = chartHeight - paddingBottom;
-  const usableHeight = chartHeight - paddingTop - paddingBottom;
-  const points = items.map((item, index) => {
-    const x =
-      items.length <= 1
-        ? chartWidth / 2
-        : paddingX + (index / (items.length - 1)) * (chartWidth - paddingX * 2);
-    const y = baseY - (item.count / maxDailyCount) * usableHeight;
-    return { ...item, x, y };
-  });
-  const linePath = buildSmoothPath(points);
-  const areaPath = `${linePath} L ${points.at(-1)?.x ?? paddingX} ${baseY} L ${
-    points[0]?.x ?? paddingX
-  } ${baseY} Z`;
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-[1.25rem] bg-gradient-to-b from-white/78 to-[#f3fffb]/70 px-3 pb-3 pt-2 ring-1 ring-[var(--pm-line)]">
-      <svg
-        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-        role="img"
-        aria-label="复习趋势折线图"
-        className="h-36 w-full overflow-visible"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="review-trend-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#d9f4ee" stopOpacity="0.58" />
-            <stop offset="62%" stopColor="#eaf4ff" stopOpacity="0.26" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
-          </linearGradient>
-          <linearGradient id="review-trend-line" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#78cfc4" />
-            <stop offset="100%" stopColor="#7aaedc" />
-          </linearGradient>
-        </defs>
-        {[0, 1, 2].map((line) => {
-          const y = paddingTop + (line / 2) * usableHeight;
-          return (
-            <line
-              key={line}
-              x1={paddingX}
-              x2={chartWidth - paddingX}
-              y1={y}
-              y2={y}
-              stroke="#e6eee9"
-              strokeDasharray="3 7"
-              strokeWidth="1"
-            />
-          );
-        })}
-        <path d={areaPath} fill="url(#review-trend-fill)" />
-        <path
-          d={linePath}
-          fill="none"
-          stroke="url(#review-trend-line)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2.25"
-          vectorEffect="non-scaling-stroke"
-        />
-        {points.map((point) => (
-          <circle
-            key={point.date}
-            cx={point.x}
-            cy={point.y}
-            r={point.count > 0 ? 4 : 2.25}
-            fill={point.count > 0 ? '#fbfffd' : '#d6eae5'}
-            stroke={point.count > 0 ? '#74c8bd' : '#b9d8d1'}
-            strokeWidth={point.count > 0 ? 1.5 : 1}
-            vectorEffect="non-scaling-stroke"
-          >
-            <title>{`${point.date}: ${point.count} 次`}</title>
-          </circle>
-        ))}
-      </svg>
-      <div className="relative h-6">
-        {items.map((item, index) =>
-          shouldShowDailyReviewTick(index, items.length) ? (
-            <span
-              key={item.date}
-              className="absolute top-0 block whitespace-nowrap text-[10px] font-bold text-[var(--pm-muted)]"
-              style={{
-                left:
-                  index === items.length - 1
-                    ? 'auto'
-                    : `${items.length <= 1 ? 50 : (index / (items.length - 1)) * 100}%`,
-                right: index === items.length - 1 ? 0 : 'auto',
-                transform:
-                  index === 0
-                    ? 'translateX(0)'
-                    : index === items.length - 1
-                      ? 'translateX(0)'
-                      : 'translateX(-50%)',
-              }}
-            >
-              {item.date.slice(5)}
-            </span>
-          ) : null,
-        )}
-      </div>
-    </div>
-  );
-}
-
 function SectionTitle({
   icon: Icon,
   title,
@@ -383,39 +277,6 @@ function SectionTitle({
       <div>
         <h2 className="text-sm font-semibold">{title}</h2>
         <p className="mt-0.5 text-xs text-[var(--pm-muted)]">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-function buildSmoothPath(points: Array<{ x: number; y: number }>) {
-  if (points.length === 0) return '';
-  const [first, ...rest] = points;
-  return rest.reduce((path, point, index) => {
-    const previous = points[index];
-    const midX = (previous.x + point.x) / 2;
-    return `${path} C ${midX} ${previous.y}, ${midX} ${point.y}, ${point.x} ${point.y}`;
-  }, `M ${first.x} ${first.y}`);
-}
-
-function DistributionRow({
-  label,
-  value,
-  total,
-}: {
-  label: string;
-  value: number;
-  total: number;
-}) {
-  const percent = total === 0 ? 0 : Math.round((value / total) * 100);
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs font-semibold">
-        <span>{label}</span>
-        <span className="text-[var(--pm-muted)]">{value} 次</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/70 ring-1 ring-[var(--pm-line)]">
-        <div className="h-full rounded-full bg-[#78d6c8]" style={{ width: `${percent}%` }} />
       </div>
     </div>
   );
