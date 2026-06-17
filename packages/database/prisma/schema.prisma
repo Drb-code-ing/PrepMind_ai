@@ -21,17 +21,18 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  accounts       Account[]
-  sessions       Session[]
-  refreshTokens  RefreshToken[]
-  questions      Question[]
-  wrongQuestions WrongQuestion[]
-  cards          Card[]
-  documents      Document[]
-  conversations  Conversation[]
-  chatMessages   ChatMessage[]
-  ocrRecords     OcrRecord[]
-  reviewTasks    ReviewTask[]
+  accounts         Account[]
+  sessions         Session[]
+  refreshTokens    RefreshToken[]
+  questions        Question[]
+  wrongQuestions   WrongQuestion[]
+  cards            Card[]
+  documents        Document[]
+  conversations    Conversation[]
+  chatMessages     ChatMessage[]
+  ocrRecords       OcrRecord[]
+  reviewTasks      ReviewTask[]
+  reviewPreference ReviewPreference?
 }
 
 model Account {
@@ -232,6 +233,22 @@ model ReviewTask {
   @@unique([cardId, scheduledDate])
   @@index([userId, scheduledDate, status])
   @@index([userId, status, dueAt])
+}
+
+model ReviewPreference {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  dailyMinutes        Int      @default(25)
+  dailyCardLimit      Int      @default(12)
+  preferredReviewTime String   @default("20:30") @db.VarChar(5)
+  reminderEnabled     Boolean  @default(true)
+  reminderLeadMinutes Int      @default(30)
+  weekendMode         String   @default("same") @db.VarChar(16)
+  planWindowDays      Int      @default(7)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum ReviewTaskStatus {
