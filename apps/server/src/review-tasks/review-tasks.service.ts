@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { scheduleReview } from '@repo/fsrs';
 import type {
   ReviewTaskListQuery,
+  ReviewTaskPlanCapacityStatus,
   ReviewTaskPlanIntensity,
   ReviewTaskPlanQuery,
   ReviewTaskPlanResponse,
@@ -13,6 +14,7 @@ import type { ReviewRatingRequest } from '@repo/types/api/review';
 
 import { AppError } from '../common/errors/app-error';
 import { PrismaService } from '../database/prisma.service';
+import { ReviewPreferencesService } from '../review-preferences/review-preferences.service';
 
 const taskInclude = {
   card: {
@@ -24,7 +26,10 @@ const taskInclude = {
 
 @Injectable()
 export class ReviewTasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reviewPreferencesService: ReviewPreferencesService,
+  ) {}
 
   async getToday(userId: string, input: ReviewTaskTodayQuery) {
     const window = this.resolveDateWindow(
@@ -81,11 +86,13 @@ export class ReviewTasksService {
           pendingCount: 0,
           completedCount: 0,
           skippedCount: 0,
+          cards: [] as ReviewPlanCard[],
         },
       ]),
     );
 
-    const [overdueCount, cards, tasks] = await Promise.all([
+    const [preferences, overdueCount, cards, tasks] = await Promise.all([
+      this.reviewPreferencesService.getByUserId(userId),
       this.prisma.card.count({
         where: {
           userId,
@@ -102,7 +109,7 @@ export class ReviewTasksService {
             lte: endWindow.endUtc,
           },
         },
-        select: { nextReview: true },
+        select: { nextReview: true, difficulty: true, stability: true },
         orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.reviewTask.findMany({
@@ -121,7 +128,10 @@ export class ReviewTasksService {
         input.timezoneOffsetMinutes,
       );
       const counts = planCounts.get(dateKey);
-      if (counts) counts.dueCount += 1;
+      if (counts) {
+        counts.dueCount += 1;
+        counts.cards.push(card);
+      }
     }
 
     for (const task of tasks) {
@@ -137,6 +147,29 @@ export class ReviewTasksService {
       const counts = planCounts.get(date);
       const dayOverdueCount = index === 0 ? overdueCount : 0;
       const reviewCount = (counts?.dueCount ?? 0) + dayOverdueCount;
+      const cardsDueToday = counts?.cards ?? [];
+      const difficultCount = cardsDueToday.filter(
+        (card) => card.difficulty >= 7,
+      ).length;
+      const unstableCount = cardsDueToday.filter(
+        (card) => card.stability > 0 && card.stability < 1.5,
+      ).length;
+      const pressureScore = this.calculatePressureScore({
+        dueCount: counts?.dueCount ?? 0,
+        overdueCount: dayOverdueCount,
+        difficultCount,
+        unstableCount,
+      });
+      const estimatedMinutes = Math.max(
+        reviewCount * 2,
+        Math.ceil(pressureScore * 2),
+      );
+      const capacityStatus = this.toCapacityStatus(
+        estimatedMinutes,
+        reviewCount,
+        preferences.dailyMinutes,
+        preferences.dailyCardLimit,
+      );
 
       return {
         date,
@@ -146,8 +179,16 @@ export class ReviewTasksService {
         pendingCount: counts?.pendingCount ?? 0,
         completedCount: counts?.completedCount ?? 0,
         skippedCount: counts?.skippedCount ?? 0,
-        estimatedMinutes: reviewCount * 2,
+        estimatedMinutes,
         intensity: this.toPlanIntensity(reviewCount),
+        pressureScore,
+        capacityStatus,
+        reasons: this.toPlanReasons({
+          overdueCount: dayOverdueCount,
+          difficultCount,
+          unstableCount,
+          capacityStatus,
+        }),
       };
     });
     const todayDueCount = days[0]?.dueCount ?? 0;
@@ -167,6 +208,9 @@ export class ReviewTasksService {
       },
       null,
     );
+    const capacityStatus = this.toSummaryCapacityStatus(
+      days.map((day) => day.capacityStatus),
+    );
 
     return {
       startDate: startWindow.dateKey,
@@ -179,6 +223,9 @@ export class ReviewTasksService {
         estimatedTotalMinutes,
         peakDay,
         intensity: this.toPlanIntensity(peakDay?.count ?? 0),
+        capacityStatus,
+        dailyMinutes: preferences.dailyMinutes,
+        dailyCardLimit: preferences.dailyCardLimit,
       },
       days,
       suggestion: this.toPlanSuggestion(
@@ -546,6 +593,76 @@ export class ReviewTasksService {
     return 'heavy';
   }
 
+  private calculatePressureScore(input: {
+    dueCount: number;
+    overdueCount: number;
+    difficultCount: number;
+    unstableCount: number;
+  }) {
+    const base = input.dueCount + input.overdueCount;
+    const overduePenalty = input.overdueCount * 1.5;
+    const difficultPenalty = input.difficultCount * 0.5;
+    const unstablePenalty = input.unstableCount * 0.35;
+
+    return this.roundToOne(
+      base + overduePenalty + difficultPenalty + unstablePenalty,
+    );
+  }
+
+  private roundToOne(value: number) {
+    return Math.round(value * 10) / 10;
+  }
+
+  private toCapacityStatus(
+    estimatedMinutes: number,
+    reviewCount: number,
+    dailyMinutes: number,
+    dailyCardLimit: number,
+  ): ReviewTaskPlanCapacityStatus {
+    if (estimatedMinutes > dailyMinutes || reviewCount > dailyCardLimit) {
+      return 'over';
+    }
+    if (
+      estimatedMinutes >= dailyMinutes * 0.8 ||
+      reviewCount >= dailyCardLimit * 0.8
+    ) {
+      return 'near';
+    }
+
+    return 'under';
+  }
+
+  private toSummaryCapacityStatus(
+    statuses: ReviewTaskPlanCapacityStatus[],
+  ): ReviewTaskPlanCapacityStatus {
+    if (statuses.includes('over')) return 'over';
+    if (statuses.includes('near')) return 'near';
+    return 'under';
+  }
+
+  private toPlanReasons(input: {
+    overdueCount: number;
+    difficultCount: number;
+    unstableCount: number;
+    capacityStatus: ReviewTaskPlanCapacityStatus;
+  }) {
+    const reasons: string[] = [];
+    if (input.overdueCount > 0) {
+      reasons.push('有逾期复习卡，建议优先处理');
+    }
+    if (input.difficultCount > 0) {
+      reasons.push('高难度卡片较多');
+    }
+    if (input.unstableCount > 0) {
+      reasons.push('低稳定性卡片较多');
+    }
+    if (input.capacityStatus === 'over') {
+      reasons.push('超过你的每日复习容量');
+    }
+
+    return reasons;
+  }
+
   private toPlanSuggestion(
     overdueCount: number,
     todayDueCount: number,
@@ -774,6 +891,11 @@ type ReviewLogWithTask = Prisma.ReviewLogGetPayload<{
 }>;
 type CardRecord = Prisma.CardGetPayload<object>;
 type ReviewLogRecord = Prisma.ReviewLogGetPayload<object>;
+type ReviewPlanCard = {
+  nextReview: Date;
+  difficulty: number;
+  stability: number;
+};
 
 type PrismaKnownRequestErrorLike = {
   code: string;

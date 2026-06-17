@@ -1,4 +1,5 @@
 import { PrismaService } from '../database/prisma.service';
+import { ReviewPreferencesService } from '../review-preferences/review-preferences.service';
 import { ReviewTasksService } from './review-tasks.service';
 
 const objectContaining = <T extends object>(value: T) =>
@@ -92,6 +93,9 @@ describe('ReviewTasksService', () => {
       create: jest.fn(),
     },
   };
+  const reviewPreferencesService = {
+    getByUserId: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -100,6 +104,16 @@ describe('ReviewTasksService', () => {
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
+    reviewPreferencesService.getByUserId.mockResolvedValue({
+      dailyMinutes: 25,
+      dailyCardLimit: 12,
+      preferredReviewTime: '20:30',
+      reminderEnabled: true,
+      reminderLeadMinutes: 30,
+      weekendMode: 'same',
+      planWindowDays: 7,
+      updatedAt: new Date(0).toISOString(),
+    });
   });
 
   afterEach(() => {
@@ -107,7 +121,10 @@ describe('ReviewTasksService', () => {
   });
 
   function createService() {
-    return new ReviewTasksService(prisma as unknown as PrismaService);
+    return new ReviewTasksService(
+      prisma as unknown as PrismaService,
+      reviewPreferencesService as unknown as ReviewPreferencesService,
+    );
   }
 
   it('generates today tasks idempotently for due cards', async () => {
@@ -258,7 +275,7 @@ describe('ReviewTasksService', () => {
           lte: new Date('2026-06-22T15:59:59.999Z'),
         },
       },
-      select: { nextReview: true },
+      select: { nextReview: true, difficulty: true, stability: true },
       orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
     });
     expect(prisma.reviewTask.findMany).toHaveBeenCalledWith({
@@ -276,17 +293,23 @@ describe('ReviewTasksService', () => {
       overdueCount: 1,
       todayDueCount: 2,
       upcomingDueCount: 2,
-      estimatedTotalMinutes: 10,
+      estimatedTotalMinutes: 13,
       peakDay: { date: '2026-06-16', count: 3 },
       intensity: 'light',
+      capacityStatus: 'under',
+      dailyMinutes: 25,
+      dailyCardLimit: 12,
     });
     expect(result.days.map((day) => day.dueCount)).toEqual([
       2, 1, 0, 0, 0, 0, 1,
     ]);
     expect(result.days[0]).toMatchObject({
       overdueCount: 1,
-      estimatedMinutes: 6,
+      estimatedMinutes: 9,
       intensity: 'light',
+      pressureScore: 4.5,
+      capacityStatus: 'under',
+      reasons: ['有逾期复习卡，建议优先处理'],
     });
     expect(result.suggestion).toMatchObject({
       title: '先处理逾期卡',
@@ -297,8 +320,16 @@ describe('ReviewTasksService', () => {
   it('counts start and end boundary due cards inside the plan window', async () => {
     prisma.card.count.mockResolvedValue(1);
     prisma.card.findMany.mockResolvedValue([
-      { nextReview: new Date('2026-06-15T16:00:00.000Z') },
-      { nextReview: new Date('2026-06-17T15:59:59.999Z') },
+      {
+        nextReview: new Date('2026-06-15T16:00:00.000Z'),
+        difficulty: 5,
+        stability: 3,
+      },
+      {
+        nextReview: new Date('2026-06-17T15:59:59.999Z'),
+        difficulty: 5,
+        stability: 3,
+      },
     ]);
     prisma.reviewTask.findMany.mockResolvedValue([]);
 
@@ -324,7 +355,7 @@ describe('ReviewTasksService', () => {
           lte: new Date('2026-06-17T15:59:59.999Z'),
         },
       },
-      select: { nextReview: true },
+      select: { nextReview: true, difficulty: true, stability: true },
       orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
     });
     expect(result.summary).toMatchObject({
@@ -340,7 +371,11 @@ describe('ReviewTasksService', () => {
   it('excludes cards just after the plan end through the Prisma query boundary', async () => {
     prisma.card.count.mockResolvedValue(0);
     prisma.card.findMany.mockResolvedValue([
-      { nextReview: new Date('2026-06-18T23:59:59.999Z') },
+      {
+        nextReview: new Date('2026-06-18T23:59:59.999Z'),
+        difficulty: 5,
+        stability: 3,
+      },
     ]);
     prisma.reviewTask.findMany.mockResolvedValue([]);
 
@@ -383,6 +418,9 @@ describe('ReviewTasksService', () => {
       estimatedTotalMinutes: 0,
       peakDay: null,
       intensity: 'light',
+      capacityStatus: 'under',
+      dailyMinutes: 25,
+      dailyCardLimit: 12,
     });
     expect(result.days).toHaveLength(7);
     expect(result.days.every((day) => day.estimatedMinutes === 0)).toBe(true);
@@ -444,6 +482,114 @@ describe('ReviewTasksService', () => {
       completedCount: 0,
       skippedCount: 2,
     });
+  });
+
+  it('uses review preferences to mark a day over capacity', async () => {
+    reviewPreferencesService.getByUserId.mockResolvedValue({
+      dailyMinutes: 3,
+      dailyCardLimit: 1,
+      preferredReviewTime: '20:30',
+      reminderEnabled: true,
+      reminderLeadMinutes: 30,
+      weekendMode: 'same',
+      planWindowDays: 7,
+      updatedAt: new Date(0).toISOString(),
+    });
+    prisma.card.findMany.mockResolvedValue([
+      {
+        difficulty: 8,
+        stability: 0.8,
+        nextReview: new Date('2026-06-16T08:00:00.000Z'),
+      },
+      {
+        difficulty: 5,
+        stability: 3,
+        nextReview: new Date('2026-06-17T08:00:00.000Z'),
+      },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 2,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(reviewPreferencesService.getByUserId).toHaveBeenCalledWith(
+      'user_1',
+    );
+    expect(result.days[0]).toMatchObject({
+      dueCount: 1,
+      overdueCount: 0,
+      pressureScore: 1.9,
+      estimatedMinutes: 4,
+      capacityStatus: 'over',
+    });
+    expect(result.summary).toMatchObject({
+      capacityStatus: 'over',
+      dailyMinutes: 3,
+      dailyCardLimit: 1,
+    });
+  });
+
+  it('adds pressure reasons for overdue and difficult cards', async () => {
+    prisma.card.count.mockResolvedValue(1);
+    prisma.card.findMany.mockResolvedValue([
+      {
+        difficulty: 8,
+        stability: 0.8,
+        nextReview: new Date('2026-06-16T08:00:00.000Z'),
+      },
+      {
+        difficulty: 5,
+        stability: 3,
+        nextReview: new Date('2026-06-17T08:00:00.000Z'),
+      },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    const result = await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 2,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(result.days[0]?.pressureScore).toBeGreaterThan(
+      result.days[0]!.dueCount + result.days[0]!.overdueCount,
+    );
+    expect(result.days[0]?.reasons).toEqual(
+      expect.arrayContaining([
+        '有逾期复习卡，建议优先处理',
+        '高难度卡片较多',
+        '低稳定性卡片较多',
+      ]),
+    );
+  });
+
+  it('keeps plan read-only and does not create future ReviewTask rows', async () => {
+    prisma.card.findMany.mockResolvedValue([
+      {
+        difficulty: 8,
+        stability: 0.8,
+        nextReview: new Date('2026-06-16T08:00:00.000Z'),
+      },
+      {
+        difficulty: 5,
+        stability: 3,
+        nextReview: new Date('2026-06-17T08:00:00.000Z'),
+      },
+    ]);
+    prisma.reviewTask.findMany.mockResolvedValue([]);
+
+    await createService().getPlan('user_1', {
+      startDate: '2026-06-16',
+      days: 2,
+      timezoneOffsetMinutes: 0,
+    });
+
+    expect(prisma.reviewTask.createMany).not.toHaveBeenCalled();
+    expect(prisma.reviewTask.updateMany).not.toHaveBeenCalled();
+    expect(prisma.reviewTask.update).not.toHaveBeenCalled();
   });
 
   it('submits rating by completing the task and writing a review log', async () => {
