@@ -117,4 +117,15 @@ describe('ReviewPreferencesService', () => {
       },
     });
   });
+
+  it('normalizes invalid persisted weekendMode to same', async () => {
+    prisma.reviewPreference.findUnique.mockResolvedValue({
+      ...row,
+      weekendMode: 'invalid',
+    });
+
+    const result = await createService().getByUserId('user_1');
+
+    expect(result.weekendMode).toBe('same');
+  });
 });

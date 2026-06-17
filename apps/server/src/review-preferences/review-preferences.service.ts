@@ -2,20 +2,13 @@ import { Injectable } from '@nestjs/common';
 import type {
   ReviewPreferencePatchRequest,
   ReviewPreferenceResponse,
-  ReviewWeekendMode,
 } from '@repo/types/api/review-preference';
 
 import { PrismaService } from '../database/prisma.service';
-
-const defaultReviewPreference = {
-  dailyMinutes: 25,
-  dailyCardLimit: 12,
-  preferredReviewTime: '20:30',
-  reminderEnabled: true,
-  reminderLeadMinutes: 30,
-  weekendMode: 'same' as const,
-  planWindowDays: 7,
-};
+import {
+  defaultReviewPreference,
+  normalizeReviewWeekendMode,
+} from './review-preference-defaults';
 
 @Injectable()
 export class ReviewPreferencesService {
@@ -62,7 +55,7 @@ export class ReviewPreferencesService {
       preferredReviewTime: preference.preferredReviewTime,
       reminderEnabled: preference.reminderEnabled,
       reminderLeadMinutes: preference.reminderLeadMinutes,
-      weekendMode: preference.weekendMode as ReviewWeekendMode,
+      weekendMode: normalizeReviewWeekendMode(preference.weekendMode),
       planWindowDays: preference.planWindowDays,
       updatedAt: preference.updatedAt.toISOString(),
     };

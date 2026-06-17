@@ -8,5 +8,6 @@ import { ReviewPreferencesService } from './review-preferences.service';
   imports: [AuthModule],
   controllers: [ReviewPreferencesController],
   providers: [ReviewPreferencesService],
+  exports: [ReviewPreferencesService],
 })
 export class ReviewPreferencesModule {}
