@@ -7,7 +7,7 @@ const capacityStatusLabels: Record<ReviewTaskPlanCapacityStatus, string> = {
   over: '超过容量',
 };
 
-const defaultPreferenceForm: ReviewPreferencePatchRequest = {
+const defaultPreferenceForm: Required<ReviewPreferencePatchRequest> = {
   dailyMinutes: 25,
   dailyCardLimit: 12,
   preferredReviewTime: '20:30',

@@ -8,8 +8,10 @@ import type {
 
 import {
   buildPlanBarOption,
+  getPlanCapacityStatusLabel,
   getPlanIntensityClassName,
   getPlanIntensityLabel,
+  getPlanReasonChips,
   shouldShowPlanEmptyState,
 } from './review-plan-view.ts';
 
@@ -61,14 +63,30 @@ test('detects plan empty state only when all counts are zero', () => {
 
 test('builds plan bar option with labels, totals, colors, and tooltip content', () => {
   const option = buildPlanBarOption([
-    createPlanDay({ label: '今天', dueCount: 2, overdueCount: 1, intensity: 'normal' }),
-    createPlanDay({ label: '明天', dueCount: 0, overdueCount: 4, intensity: 'heavy' }),
+    createPlanDay({
+      label: '今天',
+      dueCount: 2,
+      overdueCount: 1,
+      intensity: 'normal',
+      pressureScore: 42,
+      capacityStatus: 'near',
+      estimatedMinutes: 18,
+    }),
+    createPlanDay({
+      label: '明天',
+      dueCount: 0,
+      overdueCount: 4,
+      intensity: 'heavy',
+      pressureScore: 88,
+      capacityStatus: 'over',
+      estimatedMinutes: 34,
+    }),
   ]);
 
   assert.deepEqual(option.xAxis.data, ['今天', '明天']);
   assert.deepEqual(
     option.series[0].data.map((item) => item.value),
-    [3, 4],
+    [42, 88],
   );
   assert.notEqual(
     option.series[0].data[0].itemStyle.color,
@@ -80,10 +98,29 @@ test('builds plan bar option with labels, totals, colors, and tooltip content', 
   assert.equal(option.series[0].name, '复习压力');
   assert.equal(
     tooltipText,
-    ['今天 · 正常', '应复习 2', '逾期 1', '待完成 0', '已完成 0', '已跳过 0', '预计 0 分钟'].join(
-      '<br/>',
-    ),
+    [
+      '今天 · 正常',
+      '压力分 42',
+      '容量 接近上限',
+      '应复习 2',
+      '逾期 1',
+      '待完成 0',
+      '已完成 0',
+      '已跳过 0',
+      '预计 18 分钟',
+    ].join('<br/>'),
   );
+});
+
+test('maps capacity labels and filters reason chips', () => {
+  assert.equal(getPlanCapacityStatusLabel('under'), '容量充足');
+  assert.equal(getPlanCapacityStatusLabel('near'), '接近上限');
+  assert.equal(getPlanCapacityStatusLabel('over'), '超过容量');
+
+  assert.deepEqual(getPlanReasonChips([' 逾期积压 ', '', '  ', '卡片过多']), [
+    '逾期积压',
+    '卡片过多',
+  ]);
 });
 
 test('builds a stable empty chart option for no days', () => {

@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import type {
+  ReviewPreferencePatchRequest,
+  ReviewPreferenceResponse,
+} from '@repo/types/api/review-preference';
 import type { ReviewTaskPlanDayResponse, ReviewTaskPlanResponse } from '@repo/types/api/review-task';
 import {
   ArrowLeft,
@@ -17,16 +21,26 @@ import {
 import { BaseEChart } from '@/components/charts/base-echart';
 import { useReviewTaskPendingRatings } from '@/hooks/use-review-task-pending-ratings';
 import { useReviewTaskPlan } from '@/hooks/use-review-tasks';
+import { usePatchReviewPreferences, useReviewPreferences } from '@/hooks/use-review-preferences';
+import { normalizeReviewPreferenceForm } from '@/lib/review-preference-view';
 import {
   buildPlanBarOption,
+  getPlanCapacityStatusClassName,
+  getPlanCapacityStatusLabel,
   getPlanIntensityClassName,
   getPlanIntensityLabel,
+  getPlanReasonChips,
   shouldShowPlanEmptyState,
 } from '@/lib/review-plan-view';
 import { getLocalDateKey } from '@/lib/today-tasks';
 import { useUserStore } from '@/stores/userStore';
 
 const midnightRefreshBufferMs = 1_500;
+type ReviewPreferenceForm = Required<ReviewPreferencePatchRequest>;
+
+function createPreferenceForm(input: unknown): ReviewPreferenceForm {
+  return normalizeReviewPreferenceForm(input) as ReviewPreferenceForm;
+}
 
 function getDelayUntilNextLocalDateRefresh(now = new Date()) {
   const nextLocalMidnight = new Date(now);
@@ -91,7 +105,9 @@ export default function PlanPage() {
   const userId = currentUser?.id ?? '';
   const startDate = useCurrentLocalDateKey();
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
-  const planQuery = useReviewTaskPlan({ startDate, days: 7, timezoneOffsetMinutes });
+  const preferencesQuery = useReviewPreferences();
+  const planWindowDays = preferencesQuery.data?.planWindowDays ?? 7;
+  const planQuery = useReviewTaskPlan({ startDate, days: planWindowDays, timezoneOffsetMinutes });
   const { pendingCount: pendingRatingSyncCount } = useReviewTaskPendingRatings(userId);
   const plan = planQuery.data;
 
@@ -140,7 +156,13 @@ export default function PlanPage() {
         ) : plan && shouldShowPlanEmptyState(plan) ? (
           <EmptyPlan />
         ) : plan ? (
-          <PlanContent plan={plan} pendingRatingSyncCount={pendingRatingSyncCount} />
+          <PlanContent
+            plan={plan}
+            pendingRatingSyncCount={pendingRatingSyncCount}
+            preferences={preferencesQuery.data}
+            preferencesIsLoading={preferencesQuery.isLoading}
+            preferencesIsError={preferencesQuery.isError}
+          />
         ) : null}
       </main>
     </div>
@@ -150,9 +172,15 @@ export default function PlanPage() {
 function PlanContent({
   plan,
   pendingRatingSyncCount,
+  preferences,
+  preferencesIsLoading,
+  preferencesIsError,
 }: {
   plan: ReviewTaskPlanResponse;
   pendingRatingSyncCount: number;
+  preferences?: ReviewPreferenceResponse;
+  preferencesIsLoading: boolean;
+  preferencesIsError: boolean;
 }) {
   const totalPressure =
     plan.summary.overdueCount + plan.summary.todayDueCount + plan.summary.upcomingDueCount;
@@ -160,6 +188,12 @@ function PlanContent({
 
   return (
     <>
+      <ReviewPreferenceCard
+        preferences={preferences}
+        isLoading={preferencesIsLoading}
+        isError={preferencesIsError}
+      />
+
       <section className="pm-glass-card pm-enter rounded-[1.6rem] p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -171,13 +205,22 @@ function PlanContent({
               已逾期、今日到期与未来到期合计
             </p>
           </div>
-          <span
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${getPlanIntensityClassName(
-              plan.summary.intensity,
-            )}`}
-          >
-            {getPlanIntensityLabel(plan.summary.intensity)}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${getPlanIntensityClassName(
+                plan.summary.intensity,
+              )}`}
+            >
+              {getPlanIntensityLabel(plan.summary.intensity)}
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${getPlanCapacityStatusClassName(
+                plan.summary.capacityStatus,
+              )}`}
+            >
+              {getPlanCapacityStatusLabel(plan.summary.capacityStatus)}
+            </span>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -185,6 +228,8 @@ function PlanContent({
           <MiniStat label="今日到期" value={`${plan.summary.todayDueCount} 张`} />
           <MiniStat label="未来到期" value={`${plan.summary.upcomingDueCount} 张`} />
           <MiniStat label="待同步" value={`${pendingRatingSyncCount} 条`} />
+          <MiniStat label="每日分钟" value={`${plan.summary.dailyMinutes} 分钟`} />
+          <MiniStat label="每日上限" value={`${plan.summary.dailyCardLimit} 张`} />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[var(--pm-muted)]">
@@ -201,7 +246,7 @@ function PlanContent({
       <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
         <SectionTitle
           icon={CalendarClock}
-          title="未来 7 天"
+          title={`未来 ${plan.days.length} 天`}
           subtitle={`${plan.startDate} 到 ${plan.endDate}`}
         />
         <BaseEChart
@@ -247,6 +292,161 @@ function PlanContent({
   );
 }
 
+function ReviewPreferenceCard({
+  preferences,
+  isLoading,
+  isError,
+}: {
+  preferences?: ReviewPreferenceResponse;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isLoading && !preferences) {
+    return (
+      <section className="pm-glass-card pm-enter mb-4 rounded-[1.5rem] p-4">
+        <div className="flex min-h-11 items-center gap-2 text-sm text-[var(--pm-muted)]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          正在读取复习偏好...
+        </div>
+      </section>
+    );
+  }
+
+  const initialForm = createPreferenceForm(preferences);
+
+  return (
+    <ReviewPreferenceFormCard
+      key={preferences?.updatedAt ?? 'default-preferences'}
+      initialForm={initialForm}
+      isError={isError}
+    />
+  );
+}
+
+function ReviewPreferenceFormCard({
+  initialForm,
+  isError,
+}: {
+  initialForm: ReviewPreferenceForm;
+  isError: boolean;
+}) {
+  const patchPreferences = usePatchReviewPreferences();
+  const [form, setForm] = useState<ReviewPreferenceForm>(() => initialForm);
+
+  const commitPreference = <Key extends keyof ReviewPreferenceForm>(
+    key: Key,
+    value: ReviewPreferenceForm[Key],
+  ) => {
+    const nextForm = createPreferenceForm({ ...form, [key]: value });
+    setForm(nextForm);
+    patchPreferences.mutate({ [key]: nextForm[key] });
+  };
+
+  const updateDraft = <Key extends keyof ReviewPreferenceForm>(
+    key: Key,
+    value: ReviewPreferenceForm[Key],
+  ) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  return (
+    <section className="pm-glass-card pm-enter mb-4 rounded-[1.5rem] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-medium text-[var(--pm-muted)]">Capacity preferences</p>
+          <h2 className="mt-0.5 text-sm font-semibold">复习容量偏好</h2>
+        </div>
+        <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+          {patchPreferences.isPending ? '保存中' : patchPreferences.isError ? '保存失败' : '自动保存'}
+        </span>
+      </div>
+
+      {isError ? (
+        <p className="mt-2 text-xs leading-5 text-amber-700">偏好读取失败，当前计划仍会按默认窗口展示。</p>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <label className="min-w-0 text-[11px] font-semibold text-[var(--pm-muted)]">
+          每日分钟
+          <input
+            type="number"
+            min={5}
+            max={240}
+            step={5}
+            value={form.dailyMinutes}
+            onChange={(event) => updateDraft('dailyMinutes', Number(event.currentTarget.value))}
+            onBlur={(event) => commitPreference('dailyMinutes', Number(event.currentTarget.value))}
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+          />
+        </label>
+
+        <label className="min-w-0 text-[11px] font-semibold text-[var(--pm-muted)]">
+          每日卡片
+          <input
+            type="number"
+            min={1}
+            max={200}
+            step={1}
+            value={form.dailyCardLimit}
+            onChange={(event) => updateDraft('dailyCardLimit', Number(event.currentTarget.value))}
+            onBlur={(event) =>
+              commitPreference('dailyCardLimit', Number(event.currentTarget.value))
+            }
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+          />
+        </label>
+
+        <label className="min-w-0 text-[11px] font-semibold text-[var(--pm-muted)]">
+          提醒时间
+          <input
+            type="time"
+            value={form.preferredReviewTime}
+            onChange={(event) => updateDraft('preferredReviewTime', event.currentTarget.value)}
+            onBlur={(event) => commitPreference('preferredReviewTime', event.currentTarget.value)}
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+          />
+        </label>
+
+        <div className="min-w-0 text-[11px] font-semibold text-[var(--pm-muted)]">
+          提醒
+          <button
+            type="button"
+            onClick={() => commitPreference('reminderEnabled', !form.reminderEnabled)}
+            className={`mt-1 flex h-11 w-full items-center justify-center rounded-2xl px-3 text-sm font-bold ring-1 transition-all active:scale-[0.98] ${
+              form.reminderEnabled
+                ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
+                : 'bg-white/75 text-[var(--pm-muted)] ring-[var(--pm-line)]'
+            }`}
+            aria-pressed={form.reminderEnabled}
+          >
+            {form.reminderEnabled ? '开启' : '关闭'}
+          </button>
+        </div>
+
+        <div className="col-span-2 min-w-0 text-[11px] font-semibold text-[var(--pm-muted)] sm:col-span-1">
+          计划窗口
+          <div className="mt-1 grid h-11 grid-cols-2 rounded-2xl bg-white/70 p-1 ring-1 ring-[var(--pm-line)]">
+            {[7, 14].map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => commitPreference('planWindowDays', days)}
+                className={`min-h-9 rounded-[0.85rem] px-2 text-sm font-bold transition-all active:scale-[0.98] ${
+                  form.planWindowDays === days
+                    ? 'bg-[#2b2335] text-white'
+                    : 'text-[var(--pm-muted)]'
+                }`}
+              >
+                {days}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PlanDayItem({
   day,
   startDate,
@@ -255,6 +455,7 @@ function PlanDayItem({
   startDate: string;
 }) {
   const isToday = day.date === startDate;
+  const reasonChips = getPlanReasonChips(day.reasons);
 
   return (
     <article className="pm-enter rounded-[1.35rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -273,9 +474,19 @@ function PlanDayItem({
             >
               {getPlanIntensityLabel(day.intensity)}
             </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${getPlanCapacityStatusClassName(
+                day.capacityStatus,
+              )}`}
+            >
+              {getPlanCapacityStatusLabel(day.capacityStatus)}
+            </span>
           </div>
           <p className="mt-1 text-xs text-[var(--pm-muted)]">{day.date}</p>
           <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-[var(--pm-muted)]">
+            <span className="rounded-full bg-white/70 px-2 py-1 ring-1 ring-[var(--pm-line)]">
+              压力分 {day.pressureScore}
+            </span>
             <span className="rounded-full bg-white/70 px-2 py-1 ring-1 ring-[var(--pm-line)]">
               到期 {day.dueCount} 张
             </span>
@@ -286,6 +497,18 @@ function PlanDayItem({
               预计 {day.estimatedMinutes} 分钟
             </span>
           </div>
+          {reasonChips.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {reasonChips.map((reason) => (
+                <span
+                  key={reason}
+                  className="rounded-full bg-[#fff7d6] px-2 py-1 text-[11px] font-semibold text-[#7c5b10] ring-1 ring-[#f3e6a8]"
+                >
+                  {reason}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         {isToday ? (
           <Link

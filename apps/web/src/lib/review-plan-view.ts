@@ -1,4 +1,5 @@
 import type {
+  ReviewTaskPlanCapacityStatus,
   ReviewTaskPlanDayResponse,
   ReviewTaskPlanIntensity,
   ReviewTaskPlanResponse,
@@ -99,7 +100,21 @@ const intensityBarColors: Record<ReviewTaskPlanIntensity, string> = {
   heavy: '#fbbf24',
 };
 
+const capacityStatusLabels: Record<ReviewTaskPlanCapacityStatus, string> = {
+  under: '容量充足',
+  near: '接近上限',
+  over: '超过容量',
+};
+
+const capacityStatusClassNames: Record<ReviewTaskPlanCapacityStatus, string> = {
+  under: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
+  near: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
+  over: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',
+};
+
 const planTooltipLabels = {
+  pressure: '压力分',
+  capacity: '容量',
   due: '应复习',
   overdue: '逾期',
   pending: '待完成',
@@ -118,6 +133,18 @@ export function getPlanIntensityClassName(intensity: ReviewTaskPlanIntensity): s
   return intensityClassNames[intensity];
 }
 
+export function getPlanCapacityStatusLabel(status: ReviewTaskPlanCapacityStatus): string {
+  return capacityStatusLabels[status];
+}
+
+export function getPlanCapacityStatusClassName(status: ReviewTaskPlanCapacityStatus): string {
+  return capacityStatusClassNames[status];
+}
+
+export function getPlanReasonChips(reasons: string[]): string[] {
+  return reasons.map((reason) => reason.trim()).filter(Boolean);
+}
+
 export function shouldShowPlanEmptyState(plan: ReviewTaskPlanResponse): boolean {
   const summaryHasPressure =
     plan.summary.overdueCount > 0 ||
@@ -134,7 +161,7 @@ export function shouldShowPlanEmptyState(plan: ReviewTaskPlanResponse): boolean 
 export function buildPlanBarOption(days: ReviewTaskPlanDayResponse[]): PlanBarOption {
   const labels = days.map((day) => day.label);
   const data = days.map((day) => ({
-    value: day.dueCount + day.overdueCount,
+    value: day.pressureScore,
     itemStyle: {
       color: intensityBarColors[day.intensity],
       borderRadius: [8, 8, 3, 3],
@@ -174,6 +201,8 @@ export function buildPlanBarOption(days: ReviewTaskPlanDayResponse[]): PlanBarOp
 
         return [
           `${day.label} · ${getPlanIntensityLabel(day.intensity)}`,
+          `${planTooltipLabels.pressure} ${day.pressureScore}`,
+          `${planTooltipLabels.capacity} ${getPlanCapacityStatusLabel(day.capacityStatus)}`,
           `${planTooltipLabels.due} ${day.dueCount}`,
           `${planTooltipLabels.overdue} ${day.overdueCount}`,
           `${planTooltipLabels.pending} ${day.pendingCount}`,
