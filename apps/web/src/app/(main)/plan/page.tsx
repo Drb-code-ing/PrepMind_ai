@@ -30,6 +30,7 @@ import {
   getPlanIntensityClassName,
   getPlanIntensityLabel,
   getPlanReasonChips,
+  getPlanWindowLabel,
   shouldShowPlanEmptyState,
 } from '@/lib/review-plan-view';
 import { getLocalDateKey } from '@/lib/today-tasks';
@@ -107,6 +108,7 @@ export default function PlanPage() {
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
   const preferencesQuery = useReviewPreferences();
   const planWindowDays = preferencesQuery.data?.planWindowDays ?? 7;
+  const planWindowLabel = getPlanWindowLabel(planWindowDays);
   const planQuery = useReviewTaskPlan({ startDate, days: planWindowDays, timezoneOffsetMinutes });
   const { pendingCount: pendingRatingSyncCount } = useReviewTaskPendingRatings(userId);
   const plan = planQuery.data;
@@ -126,7 +128,7 @@ export default function PlanPage() {
             <p className="text-xs font-medium text-[var(--pm-muted)]">Review plan</p>
             <h1 className="text-lg font-semibold leading-tight">复习计划</h1>
             <p className="mt-0.5 text-xs text-[var(--pm-muted)]">
-              未来 7 天到期节奏与复习压力
+              {planWindowLabel}到期节奏与复习压力
             </p>
           </div>
           <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
@@ -136,10 +138,16 @@ export default function PlanPage() {
       </header>
 
       <main className="mx-auto px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-3xl">
+        <ReviewPreferenceCard
+          preferences={preferencesQuery.data}
+          isLoading={preferencesQuery.isLoading}
+          isError={preferencesQuery.isError}
+        />
+
         {planQuery.isLoading ? (
           <div className="flex min-h-20 items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-sm text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
             <Loader2 className="h-4 w-4 animate-spin" />
-            正在读取未来 7 天复习计划...
+            正在读取{planWindowLabel}复习计划...
           </div>
         ) : planQuery.isError ? (
           <section className="rounded-2xl bg-red-50/85 px-4 py-4 text-sm leading-6 text-red-600 ring-1 ring-red-100">
@@ -154,14 +162,11 @@ export default function PlanPage() {
             </button>
           </section>
         ) : plan && shouldShowPlanEmptyState(plan) ? (
-          <EmptyPlan />
+          <EmptyPlan windowDays={planWindowDays} />
         ) : plan ? (
           <PlanContent
             plan={plan}
             pendingRatingSyncCount={pendingRatingSyncCount}
-            preferences={preferencesQuery.data}
-            preferencesIsLoading={preferencesQuery.isLoading}
-            preferencesIsError={preferencesQuery.isError}
           />
         ) : null}
       </main>
@@ -172,28 +177,17 @@ export default function PlanPage() {
 function PlanContent({
   plan,
   pendingRatingSyncCount,
-  preferences,
-  preferencesIsLoading,
-  preferencesIsError,
 }: {
   plan: ReviewTaskPlanResponse;
   pendingRatingSyncCount: number;
-  preferences?: ReviewPreferenceResponse;
-  preferencesIsLoading: boolean;
-  preferencesIsError: boolean;
 }) {
   const totalPressure =
     plan.summary.overdueCount + plan.summary.todayDueCount + plan.summary.upcomingDueCount;
   const chartOption = useMemo(() => buildPlanBarOption(plan.days), [plan.days]);
+  const planWindowLabel = getPlanWindowLabel(plan.days.length);
 
   return (
     <>
-      <ReviewPreferenceCard
-        preferences={preferences}
-        isLoading={preferencesIsLoading}
-        isError={preferencesIsError}
-      />
-
       <section className="pm-glass-card pm-enter rounded-[1.6rem] p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -246,13 +240,13 @@ function PlanContent({
       <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
         <SectionTitle
           icon={CalendarClock}
-          title={`未来 ${plan.days.length} 天`}
+          title={planWindowLabel}
           subtitle={`${plan.startDate} 到 ${plan.endDate}`}
         />
         <BaseEChart
           option={chartOption}
           className="mt-3 h-56 w-full rounded-[1.25rem] bg-white/70 p-2 ring-1 ring-[var(--pm-line)]"
-          ariaLabel="未来 7 天复习压力柱状图"
+          ariaLabel={`${planWindowLabel}复习压力柱状图`}
         />
       </section>
 
@@ -332,11 +326,16 @@ function ReviewPreferenceFormCard({
 }) {
   const patchPreferences = usePatchReviewPreferences();
   const [form, setForm] = useState<ReviewPreferenceForm>(() => initialForm);
+  const controlsDisabled = patchPreferences.isPending;
 
   const commitPreference = <Key extends keyof ReviewPreferenceForm>(
     key: Key,
     value: ReviewPreferenceForm[Key],
   ) => {
+    if (controlsDisabled) {
+      return;
+    }
+
     const nextForm = createPreferenceForm({ ...form, [key]: value });
     setForm(nextForm);
     patchPreferences.mutate({ [key]: nextForm[key] });
@@ -357,7 +356,7 @@ function ReviewPreferenceFormCard({
           <h2 className="mt-0.5 text-sm font-semibold">复习容量偏好</h2>
         </div>
         <span className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
-          {patchPreferences.isPending ? '保存中' : patchPreferences.isError ? '保存失败' : '自动保存'}
+          {patchPreferences.isPending ? '正在保存...' : patchPreferences.isError ? '保存失败' : '自动保存'}
         </span>
       </div>
 
@@ -374,9 +373,10 @@ function ReviewPreferenceFormCard({
             max={240}
             step={5}
             value={form.dailyMinutes}
+            disabled={controlsDisabled}
             onChange={(event) => updateDraft('dailyMinutes', Number(event.currentTarget.value))}
             onBlur={(event) => commitPreference('dailyMinutes', Number(event.currentTarget.value))}
-            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd] disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
@@ -388,11 +388,12 @@ function ReviewPreferenceFormCard({
             max={200}
             step={1}
             value={form.dailyCardLimit}
+            disabled={controlsDisabled}
             onChange={(event) => updateDraft('dailyCardLimit', Number(event.currentTarget.value))}
             onBlur={(event) =>
               commitPreference('dailyCardLimit', Number(event.currentTarget.value))
             }
-            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd] disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
@@ -401,9 +402,10 @@ function ReviewPreferenceFormCard({
           <input
             type="time"
             value={form.preferredReviewTime}
+            disabled={controlsDisabled}
             onChange={(event) => updateDraft('preferredReviewTime', event.currentTarget.value)}
             onBlur={(event) => commitPreference('preferredReviewTime', event.currentTarget.value)}
-            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd]"
+            className="mt-1 h-11 w-full rounded-2xl bg-white/80 px-3 text-sm font-bold text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] focus:outline-none focus:ring-2 focus:ring-[#9ee8dd] disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
@@ -411,12 +413,13 @@ function ReviewPreferenceFormCard({
           提醒
           <button
             type="button"
+            disabled={controlsDisabled}
             onClick={() => commitPreference('reminderEnabled', !form.reminderEnabled)}
             className={`mt-1 flex h-11 w-full items-center justify-center rounded-2xl px-3 text-sm font-bold ring-1 transition-all active:scale-[0.98] ${
               form.reminderEnabled
                 ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
                 : 'bg-white/75 text-[var(--pm-muted)] ring-[var(--pm-line)]'
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
             aria-pressed={form.reminderEnabled}
           >
             {form.reminderEnabled ? '开启' : '关闭'}
@@ -430,12 +433,13 @@ function ReviewPreferenceFormCard({
               <button
                 key={days}
                 type="button"
+                disabled={controlsDisabled}
                 onClick={() => commitPreference('planWindowDays', days)}
                 className={`min-h-9 rounded-[0.85rem] px-2 text-sm font-bold transition-all active:scale-[0.98] ${
                   form.planWindowDays === days
                     ? 'bg-[#2b2335] text-white'
                     : 'text-[var(--pm-muted)]'
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 {days}
               </button>
@@ -562,13 +566,15 @@ function SectionTitle({
   );
 }
 
-function EmptyPlan() {
+function EmptyPlan({ windowDays }: { windowDays: number }) {
+  const planWindowLabel = getPlanWindowLabel(windowDays);
+
   return (
     <section className="pm-glass-card pm-enter rounded-[1.5rem] p-5 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-3xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
         <BookOpen className="h-5 w-5" />
       </div>
-      <h2 className="mt-3 text-base font-semibold">未来 7 天还没有复习压力</h2>
+      <h2 className="mt-3 text-base font-semibold">{planWindowLabel}还没有复习压力</h2>
       <p className="mt-2 text-sm leading-6 text-[var(--pm-muted)]">
         从错题本把重要题目加入复习，系统会按到期时间生成计划，并在今日任务里完成评分。
       </p>

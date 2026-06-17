@@ -145,6 +145,10 @@ export function getPlanReasonChips(reasons: string[]): string[] {
   return reasons.map((reason) => reason.trim()).filter(Boolean);
 }
 
+export function getPlanWindowLabel(days: number): string {
+  return `未来 ${days} 天`;
+}
+
 export function shouldShowPlanEmptyState(plan: ReviewTaskPlanResponse): boolean {
   const summaryHasPressure =
     plan.summary.overdueCount > 0 ||

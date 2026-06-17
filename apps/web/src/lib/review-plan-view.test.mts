@@ -12,6 +12,7 @@ import {
   getPlanIntensityClassName,
   getPlanIntensityLabel,
   getPlanReasonChips,
+  getPlanWindowLabel,
   shouldShowPlanEmptyState,
 } from './review-plan-view.ts';
 
@@ -121,6 +122,11 @@ test('maps capacity labels and filters reason chips', () => {
     '逾期积压',
     '卡片过多',
   ]);
+});
+
+test('builds dynamic plan window labels', () => {
+  assert.equal(getPlanWindowLabel(7), '未来 7 天');
+  assert.equal(getPlanWindowLabel(14), '未来 14 天');
 });
 
 test('builds a stable empty chart option for no days', () => {
