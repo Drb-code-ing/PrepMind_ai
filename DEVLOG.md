@@ -380,6 +380,14 @@ f5a2eb1 style: soften cartoon theme palette
 - `/today` 复习提醒摘要接入当天 plan，展示“今日预计 N 分钟”和容量状态，plan 查询失败不影响今日复习主列表。
 - 浏览器验收中修复 `/plan` 移动端 7 / 14 分段按钮触摸高度不足问题，保证 390px 视口无横向溢出且交互目标不小于 44px。
 
+**Phase 5.0 RAG 知识库规划**
+
+- 讨论并确认 RAG 在 PrepMind 中的定位：它是“学习资料记忆层”，用于把用户资料、错题复习和后续 Agent 规划连接起来。
+- 明确 RAG 是 Chat 的增强层，不是阻塞层；无资料、未命中或检索失败时，AI 仍按普通对话能力回答。
+- 确认第一版资料来源以用户上传 PDF / TXT / Markdown 为主，OCR、错题和聊天沉淀只预留 `sourceType`，不在第一版自动入库。
+- 新增 `docs/superpowers/specs/2026-06-17-phase-5-rag-knowledge-base-design.md`，记录 Document / Chunk、pgvector 检索、Chat 降级、引用展示、权限隔离和阶段拆分。
+- 新增 `docs/superpowers/plans/2026-06-17-phase-5-1-rag-data-model-contracts.md`，把明天的第一步收敛为数据模型、pgvector 索引预留和 `@repo/types` knowledge API contract。
+
 验证：
 
 - `bun --cwd packages/database test` 通过。
@@ -397,6 +405,7 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/web build` 通过。
 - `bun --cwd packages/fsrs test` 通过。
 - 浏览器验收通过：Docker PostgreSQL / Redis / MinIO 启动，迁移无待应用项；`/plan` 验证偏好卡、7 / 14 天切换、加权压力、超过容量状态和原因标签；`/today` 验证当天预计分钟与容量状态；桌面和 390px 移动端均无横向溢出，console 无错误。
+- Phase 5.0 设计文档和 Phase 5.1 实施计划完成占位扫描与 `git diff --check`。
 - `git diff --check` 通过。
 
 ---
@@ -441,7 +450,7 @@ f5a2eb1 style: soften cartoon theme palette
 - 错题保存已优先使用结构化字段，多题支持单题保存和批量保存。
 - `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 已保留为 tool action proposal 边界。
 
-**Phase 4：进行中**
+**Phase 4：已完成主线**
 
 - Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
 - Phase 4.2 学习统计页和 Review stats/logs API 已完成。
@@ -452,6 +461,12 @@ f5a2eb1 style: soften cartoon theme palette
 - 错题可加入复习卡，今日任务可读取持久化 ReviewTask 并提交四档评分、跳过和恢复。
 - `/plan` 可只读预览未来 7 / 14 天加权复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
 - Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
+
+**Phase 5：规划完成，待实现**
+
+- Phase 5.0 RAG 知识库设计已完成。
+- Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 实施计划已完成。
+- 当前尚未实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面。
 
 ---
 
@@ -471,7 +486,12 @@ f5a2eb1 style: soften cartoon theme palette
 
 **后续方向**
 
-- [ ] RAG 知识库与 pgvector 检索。
+- [ ] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
+- [ ] Phase 5.2：文档上传与状态 API。
+- [ ] Phase 5.3：解析、分块、embedding 入库。
+- [ ] Phase 5.4：检索 API。
+- [ ] Phase 5.5：Chat RAG 增强与引用展示。
+- [ ] Phase 5.6：知识库页面体验打磨。
 - [ ] LangGraph 多 Agent 系统。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。

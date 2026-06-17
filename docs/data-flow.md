@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-17。Phase 4.5.2 已完成，Phase 4 复习计划能力继续收敛。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-17。Phase 5.0 RAG 知识库设计已完成，Phase 5.1 尚未开始实现。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,6 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
+- RAG 知识库职责：Phase 5.0 已完成设计；后续 `Document` / `Chunk` 将以 PostgreSQL + pgvector 为权威来源，当前尚未接入上传、解析、embedding、检索和 Chat 注入。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -87,7 +88,44 @@
 
 ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等同步。
 
-## 4. OCR 与错题本
+## 4. RAG 知识库规划边界
+
+Phase 5.0 已完成 RAG 设计，运行链路从 Phase 5.1 开始逐步实现。当前约定先写入文档，避免后续实现时破坏现有 Chat / OCR 主链路。
+
+计划数据流：
+
+```text
+用户上传学习资料
+  -> POST /knowledge/documents
+  -> MinIO 保存原文件
+  -> Document(status=PENDING, sourceType=UPLOAD)
+  -> 解析文本
+  -> Chunk 分块
+  -> EmbeddingService 生成向量
+  -> Chunk.embedding 写入 pgvector
+  -> Document(status=DONE)
+```
+
+Chat 接入原则：
+
+```text
+用户提问
+  -> 判断是否启用知识库增强
+  -> 无资料 / 未命中 / 检索失败：普通 AI 回答
+  -> 命中知识库：注入 chunks 上下文
+  -> AI 回答并返回 citations
+```
+
+关键约定：
+
+- RAG 只增强回答，不阻断回答。
+- 第一版资料来源以用户上传 PDF / TXT / Markdown 为主。
+- OCR、错题和聊天沉淀只预留 `sourceType`，不在 Phase 5.1 自动入库。
+- 文件上传、解析、embedding 和知识库删除不进入 Dexie `mutationQueue`。
+- `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
+- 向量索引用 raw SQL 创建，Prisma schema 只表达 `Unsupported("vector")` 字段。
+
+## 5. OCR 与错题本
 
 ```text
 用户选择图片或拍照
@@ -146,7 +184,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 - 访问不存在或不属于当前用户的数据，返回业务级 not found。
 - 同一用户重复提交相同 `sourceGroupId`，返回 `WRONG_QUESTION_DUPLICATED`。
 
-## 5. FSRS 复习
+## 6. FSRS 复习
 
 ```text
 错题详情
@@ -215,7 +253,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 | `GET` | `/review-preferences` | 读取当前用户复习计划偏好；无记录时返回默认偏好 |
 | `PATCH` | `/review-preferences` | 更新当前用户复习计划偏好，只写入提交字段 |
 
-## 6. Dexie 与离线补偿
+## 7. Dexie 与离线补偿
 
 Dexie 当前职责：
 
@@ -258,7 +296,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - 401 / 403 不重试；网络错误和 5xx 按退避策略重试。
 - 服务端列表仍是已同步数据的权威来源；本地只保留未同步 mutation 记录作为补偿。
 
-## 7. localStorage
+## 8. localStorage
 
 | Key | 内容 | 说明 |
 | --- | --- | --- |
@@ -268,7 +306,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
-## 8. PostgreSQL / Prisma
+## 9. PostgreSQL / Prisma
 
 当前已落地的核心模型：
 
@@ -298,7 +336,7 @@ Prisma migration 状态期望：
 Database schema is up to date
 ```
 
-## 9. Phase 3 数据流改进
+## 10. Phase 3 数据流改进
 
 Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 
