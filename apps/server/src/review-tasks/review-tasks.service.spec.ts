@@ -515,9 +515,7 @@ describe('ReviewTasksService', () => {
       timezoneOffsetMinutes: 0,
     });
 
-    expect(reviewPreferencesService.getByUserId).toHaveBeenCalledWith(
-      'user_1',
-    );
+    expect(reviewPreferencesService.getByUserId).toHaveBeenCalledWith('user_1');
     expect(result.days[0]).toMatchObject({
       dueCount: 1,
       overdueCount: 0,
@@ -555,7 +553,7 @@ describe('ReviewTasksService', () => {
     });
 
     expect(result.days[0]?.pressureScore).toBeGreaterThan(
-      result.days[0]!.dueCount + result.days[0]!.overdueCount,
+      result.days[0].dueCount + result.days[0].overdueCount,
     );
     expect(result.days[0]?.reasons).toEqual(
       expect.arrayContaining([
