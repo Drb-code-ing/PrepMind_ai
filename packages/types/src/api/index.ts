@@ -34,3 +34,4 @@ export type ChatMessageInput = z.infer<typeof ChatMessageSchema>;
 export type RAGSearchInput = z.infer<typeof RAGSearchSchema>;
 
 export * from './review';
+export * from './review-preference';
