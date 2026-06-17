@@ -190,7 +190,7 @@ export const reviewPreferenceSchema = z.object({
   reminderEnabled: z.boolean(),
   reminderLeadMinutes: z.number().int().min(0).max(720),
   weekendMode: reviewWeekendModeSchema,
-  planWindowDays: z.number().int().min(7).max(14),
+  planWindowDays: z.union([z.literal(7), z.literal(14)]),
   updatedAt: z.string().datetime(),
 });
 
@@ -205,7 +205,7 @@ export const reviewPreferencePatchSchema = z
     reminderEnabled: z.boolean().optional(),
     reminderLeadMinutes: z.number().int().min(0).max(720).optional(),
     weekendMode: reviewWeekendModeSchema.optional(),
-    planWindowDays: z.number().int().min(7).max(14).optional(),
+    planWindowDays: z.union([z.literal(7), z.literal(14)]).optional(),
   })
   .strict();
 

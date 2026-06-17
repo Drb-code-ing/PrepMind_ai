@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type {
+import {
+  reviewPreferencePatchSchema,
+  type ReviewPlanWindowDays,
   ReviewPreferencePatchRequest,
   ReviewPreferenceResponse,
 } from '@repo/types/api/review-preference';
@@ -33,13 +35,14 @@ export class ReviewPreferencesService {
     userId: string,
     input: ReviewPreferencePatchRequest,
   ): Promise<ReviewPreferenceResponse> {
+    const patch = reviewPreferencePatchSchema.parse(input);
     const preference = await this.prisma.reviewPreference.upsert({
       where: { userId },
-      update: input,
+      update: patch,
       create: {
         userId,
         ...defaultReviewPreference,
-        ...input,
+        ...patch,
       },
     });
 
@@ -56,10 +59,14 @@ export class ReviewPreferencesService {
       reminderEnabled: preference.reminderEnabled,
       reminderLeadMinutes: preference.reminderLeadMinutes,
       weekendMode: normalizeReviewWeekendMode(preference.weekendMode),
-      planWindowDays: preference.planWindowDays,
+      planWindowDays: normalizePlanWindowDays(preference.planWindowDays),
       updatedAt: preference.updatedAt.toISOString(),
     };
   }
+}
+
+function normalizePlanWindowDays(value: number): ReviewPlanWindowDays {
+  return Math.abs(value - 14) < Math.abs(value - 7) ? 14 : 7;
 }
 
 type ReviewPreferenceRecord = {

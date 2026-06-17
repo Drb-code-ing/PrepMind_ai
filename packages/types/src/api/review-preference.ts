@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const reviewWeekendModeSchema = z.enum(['same', 'lighter', 'off']);
+export const reviewPlanWindowDaysSchema = z.union([z.literal(7), z.literal(14)]);
 
 export const reviewPreferenceSchema = z.object({
   dailyMinutes: z.number().int().min(5).max(240),
@@ -9,7 +10,7 @@ export const reviewPreferenceSchema = z.object({
   reminderEnabled: z.boolean(),
   reminderLeadMinutes: z.number().int().min(0).max(720),
   weekendMode: reviewWeekendModeSchema,
-  planWindowDays: z.number().int().min(7).max(14),
+  planWindowDays: reviewPlanWindowDaysSchema,
   updatedAt: z.string().datetime(),
 });
 
@@ -24,11 +25,12 @@ export const reviewPreferencePatchSchema = z
     reminderEnabled: z.boolean().optional(),
     reminderLeadMinutes: z.number().int().min(0).max(720).optional(),
     weekendMode: reviewWeekendModeSchema.optional(),
-    planWindowDays: z.number().int().min(7).max(14).optional(),
+    planWindowDays: reviewPlanWindowDaysSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'At least one preference field is required');
 
 export type ReviewWeekendMode = z.infer<typeof reviewWeekendModeSchema>;
+export type ReviewPlanWindowDays = z.infer<typeof reviewPlanWindowDaysSchema>;
 export type ReviewPreferenceResponse = z.infer<typeof reviewPreferenceSchema>;
 export type ReviewPreferencePatchRequest = z.infer<typeof reviewPreferencePatchSchema>;

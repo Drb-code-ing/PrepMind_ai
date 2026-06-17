@@ -22,7 +22,7 @@ describe('ReviewPreferencesService', () => {
     reminderEnabled: false,
     reminderLeadMinutes: 10,
     weekendMode: 'lighter',
-    planWindowDays: 10,
+    planWindowDays: 14,
     createdAt: updatedAt,
     updatedAt,
   };
@@ -88,9 +88,17 @@ describe('ReviewPreferencesService', () => {
       reminderEnabled: true,
       reminderLeadMinutes: 10,
       weekendMode: 'lighter',
-      planWindowDays: 10,
+      planWindowDays: 14,
       updatedAt: updatedAt.toISOString(),
     });
+  });
+
+  it('rejects unsupported planWindowDays before writing preferences', async () => {
+    await expect(
+      createService().patch('user_1', { planWindowDays: 10 } as never),
+    ).rejects.toThrow();
+
+    expect(prisma.reviewPreference.upsert).not.toHaveBeenCalled();
   });
 
   it('upserts by userId so each user has one preference row', async () => {
@@ -127,5 +135,16 @@ describe('ReviewPreferencesService', () => {
     const result = await createService().getByUserId('user_1');
 
     expect(result.weekendMode).toBe('same');
+  });
+
+  it('normalizes unsupported persisted planWindowDays to a supported option', async () => {
+    prisma.reviewPreference.findUnique.mockResolvedValue({
+      ...row,
+      planWindowDays: 10,
+    });
+
+    const result = await createService().getByUserId('user_1');
+
+    expect(result.planWindowDays).toBe(7);
   });
 });

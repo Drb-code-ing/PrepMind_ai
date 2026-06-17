@@ -44,7 +44,7 @@ async function testPatchesReviewPreferences() {
     reminderEnabled: false,
     reminderLeadMinutes: 60,
     weekendMode: 'lighter',
-    planWindowDays: 10,
+    planWindowDays: 14,
   });
 
   assert.equal(requests[0].input, 'http://localhost:3001/review-preferences');
@@ -57,7 +57,7 @@ async function testPatchesReviewPreferences() {
     reminderEnabled: false,
     reminderLeadMinutes: 60,
     weekendMode: 'lighter',
-    planWindowDays: 10,
+    planWindowDays: 14,
   });
   assert.equal(result.weekendMode, 'lighter');
 }
@@ -69,6 +69,9 @@ async function testRejectsInvalidPatchRequest() {
   );
 
   await assert.rejects(() => reviewPreferenceApi.patch('token_1', {}));
+  await assert.rejects(() =>
+    reviewPreferenceApi.patch('token_1', { planWindowDays: 10 } as never),
+  );
   assert.equal(requests.length, 0);
 }
 

@@ -1,4 +1,7 @@
-import type { ReviewPreferencePatchRequest } from '@repo/types/api/review-preference';
+import type {
+  ReviewPlanWindowDays,
+  ReviewPreferencePatchRequest,
+} from '@repo/types/api/review-preference';
 import type { ReviewTaskPlanCapacityStatus } from '@repo/types/api/review-task';
 
 const capacityStatusLabels: Record<ReviewTaskPlanCapacityStatus, string> = {
@@ -55,13 +58,18 @@ export function normalizeReviewPreferenceForm(input: unknown): ReviewPreferenceP
       values.weekendMode === 'off'
         ? values.weekendMode
         : defaultPreferenceForm.weekendMode,
-    planWindowDays: normalizeInteger(
-      values.planWindowDays,
-      7,
-      14,
-      defaultPreferenceForm.planWindowDays,
-    ),
+    planWindowDays: normalizePlanWindowDays(values.planWindowDays),
   };
+}
+
+function normalizePlanWindowDays(value: unknown): ReviewPlanWindowDays {
+  const numericValue =
+    typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+  const integerValue = Number.isFinite(numericValue)
+    ? Math.round(numericValue)
+    : defaultPreferenceForm.planWindowDays;
+
+  return Math.abs(integerValue - 14) < Math.abs(integerValue - 7) ? 14 : 7;
 }
 
 function normalizeInteger(

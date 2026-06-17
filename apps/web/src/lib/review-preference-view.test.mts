@@ -51,7 +51,7 @@ test('keeps valid preference form values', () => {
       reminderEnabled: false,
       reminderLeadMinutes: '120',
       weekendMode: 'lighter',
-      planWindowDays: '10',
+      planWindowDays: '14',
     }),
     {
       dailyMinutes: 45,
@@ -60,7 +60,18 @@ test('keeps valid preference form values', () => {
       reminderEnabled: false,
       reminderLeadMinutes: 120,
       weekendMode: 'lighter',
-      planWindowDays: 10,
+      planWindowDays: 14,
     },
+  );
+});
+
+test('normalizes unsupported plan window values to supported options', () => {
+  assert.equal(
+    normalizeReviewPreferenceForm({ planWindowDays: 10 }).planWindowDays,
+    7,
+  );
+  assert.equal(
+    normalizeReviewPreferenceForm({ planWindowDays: '13' }).planWindowDays,
+    14,
   );
 });
