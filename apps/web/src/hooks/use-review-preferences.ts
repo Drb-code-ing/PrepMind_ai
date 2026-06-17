@@ -31,7 +31,6 @@ export function useReviewPreferences() {
     retry: false,
   });
 }
-
 export function usePatchReviewPreferences() {
   const queryClient = useQueryClient();
   const accessToken = useUserStore((state) => state.accessToken);
@@ -49,4 +48,3 @@ export function usePatchReviewPreferences() {
     },
   });
 }
-
