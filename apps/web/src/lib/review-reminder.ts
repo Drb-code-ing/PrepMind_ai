@@ -9,11 +9,23 @@ export type ReviewReminderTask = {
   dueAt: string | Date;
 };
 
+export type ReviewReminderCapacityStatus = 'under' | 'near' | 'over';
+
+export type ReviewReminderCapacity = {
+  dailyMinutes: number;
+  estimatedMinutes: number;
+  capacityStatus: ReviewReminderCapacityStatus;
+};
+
 export type ReviewReminderSummary = {
   todayDueCount: number;
   overdueCount: number;
   nextDueLabel: string;
   pendingSyncCount: number;
+  dailyMinutes?: number;
+  estimatedMinutes?: number;
+  capacityStatus?: ReviewReminderCapacityStatus;
+  capacityLabel?: string;
 };
 
 export function getReviewReminderPreferenceKey(userId: string) {
@@ -69,11 +81,13 @@ export function buildReviewReminderSummary({
   tasks,
   pendingCount,
   pendingSyncCount,
+  capacity,
   now = new Date(),
 }: {
   tasks: readonly ReviewReminderTask[];
   pendingCount: number;
   pendingSyncCount: number;
+  capacity?: ReviewReminderCapacity;
   now?: Date;
 }): ReviewReminderSummary {
   const nowTime = now.getTime();
@@ -88,7 +102,25 @@ export function buildReviewReminderSummary({
     overdueCount,
     nextDueLabel: nextDueTask ? formatReviewReminderTime(nextDueTask.dueAt) : '暂无',
     pendingSyncCount,
+    ...(capacity
+      ? {
+          dailyMinutes: capacity.dailyMinutes,
+          estimatedMinutes: capacity.estimatedMinutes,
+          capacityStatus: capacity.capacityStatus,
+          capacityLabel: formatReviewReminderCapacityLabel(capacity),
+        }
+      : {}),
   };
+}
+
+function formatReviewReminderCapacityLabel(capacity: ReviewReminderCapacity) {
+  const statusLabels: Record<ReviewReminderCapacityStatus, string> = {
+    under: '容量充足',
+    near: '接近你的每日容量',
+    over: '已超过你的每日容量',
+  };
+
+  return `今日预计 ${capacity.estimatedMinutes} 分钟，${statusLabels[capacity.capacityStatus]}`;
 }
 
 function formatReviewReminderTime(dueAt: string | Date) {

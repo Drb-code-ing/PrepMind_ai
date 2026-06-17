@@ -27,6 +27,63 @@ test('builds in-app review reminder summary', () => {
   assert.equal(summary.pendingSyncCount, 1);
 });
 
+test('builds under-capacity review reminder summary', () => {
+  const summary = buildReviewReminderSummary({
+    tasks,
+    pendingCount: 2,
+    pendingSyncCount: 0,
+    capacity: {
+      dailyMinutes: 30,
+      estimatedMinutes: 18,
+      capacityStatus: 'under',
+    },
+    now: new Date('2026-06-15T08:00:00.000Z'),
+  });
+
+  assert.equal(summary.dailyMinutes, 30);
+  assert.equal(summary.estimatedMinutes, 18);
+  assert.equal(summary.capacityStatus, 'under');
+  assert.equal(summary.capacityLabel, '今日预计 18 分钟，容量充足');
+});
+
+test('builds near-capacity review reminder summary', () => {
+  const summary = buildReviewReminderSummary({
+    tasks,
+    pendingCount: 2,
+    pendingSyncCount: 0,
+    capacity: {
+      dailyMinutes: 30,
+      estimatedMinutes: 25,
+      capacityStatus: 'near',
+    },
+    now: new Date('2026-06-15T08:00:00.000Z'),
+  });
+
+  assert.equal(summary.dailyMinutes, 30);
+  assert.equal(summary.estimatedMinutes, 25);
+  assert.equal(summary.capacityStatus, 'near');
+  assert.equal(summary.capacityLabel, '今日预计 25 分钟，接近你的每日容量');
+});
+
+test('builds over-capacity review reminder summary', () => {
+  const summary = buildReviewReminderSummary({
+    tasks,
+    pendingCount: 2,
+    pendingSyncCount: 0,
+    capacity: {
+      dailyMinutes: 30,
+      estimatedMinutes: 42,
+      capacityStatus: 'over',
+    },
+    now: new Date('2026-06-15T08:00:00.000Z'),
+  });
+
+  assert.equal(summary.dailyMinutes, 30);
+  assert.equal(summary.estimatedMinutes, 42);
+  assert.equal(summary.capacityStatus, 'over');
+  assert.equal(summary.capacityLabel, '今日预计 42 分钟，已超过你的每日容量');
+});
+
 test('uses default reminder preference when storage is empty or invalid', () => {
   assert.deepEqual(getDefaultReviewReminderPreference(), {
     inAppEnabled: true,

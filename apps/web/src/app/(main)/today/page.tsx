@@ -26,6 +26,7 @@ import {
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
 import {
   useReopenReviewTask,
+  useReviewTaskPlan,
   useSkipReviewTask,
   useSubmitReviewTaskRating,
   useTodayReviewTaskList,
@@ -127,6 +128,11 @@ export default function TodayPage() {
     timezoneOffsetMinutes,
     includeCompleted: true,
   });
+  const todayReviewPlan = useReviewTaskPlan({
+    startDate: dateKey,
+    days: 1,
+    timezoneOffsetMinutes,
+  });
   const { pendingByTaskId, pendingCount: pendingRatingSyncCount } =
     useReviewTaskPendingRatings(userId);
   const { flush } = useMutationQueueFlush({ auto: false });
@@ -149,10 +155,22 @@ export default function TodayPage() {
     () => mergeLocalPendingRatings(todayReviewTaskItems ?? [], mergedPendingRatingsByTaskId),
     [mergedPendingRatingsByTaskId, todayReviewTaskItems],
   );
+  const todayReviewPlanDay = todayReviewPlan.data?.days.find((day) => day.date === dateKey);
+  const todayReviewCapacity = todayReviewPlan.data
+    ? {
+        dailyMinutes: todayReviewPlan.data.summary.dailyMinutes,
+        estimatedMinutes:
+          todayReviewPlanDay?.estimatedMinutes ??
+          todayReviewPlan.data.summary.estimatedTotalMinutes,
+        capacityStatus:
+          todayReviewPlanDay?.capacityStatus ?? todayReviewPlan.data.summary.capacityStatus,
+      }
+    : undefined;
   const reviewReminderSummary = buildReviewReminderSummary({
     tasks: reviewTasksWithPendingRatings,
     pendingCount: todayReviewTasks.data?.pendingCount ?? 0,
     pendingSyncCount: pendingRatingSyncCount,
+    capacity: todayReviewCapacity,
   });
   const groupedReviewTasks = groupReviewTasksByStatus(reviewTasksWithPendingRatings);
   const submitReviewRating = useSubmitReviewTaskRating();
@@ -455,6 +473,20 @@ export default function TodayPage() {
             <MiniStat label="下一张" value={reviewReminderSummary.nextDueLabel} />
             <MiniStat label="待同步评分" value={`${reviewReminderSummary.pendingSyncCount} 条`} />
           </div>
+
+          {reviewReminderSummary.capacityLabel ? (
+            <div
+              className={`mt-3 rounded-2xl px-3 py-2 text-xs font-semibold ring-1 ${
+                reviewReminderSummary.capacityStatus === 'over'
+                  ? 'bg-rose-50/80 text-rose-700 ring-rose-100'
+                  : reviewReminderSummary.capacityStatus === 'near'
+                    ? 'bg-amber-50/80 text-amber-700 ring-amber-100'
+                    : 'bg-emerald-50/80 text-emerald-700 ring-emerald-100'
+              }`}
+            >
+              {reviewReminderSummary.capacityLabel}
+            </div>
+          ) : null}
         </section>
 
         <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
