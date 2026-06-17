@@ -35,6 +35,13 @@ test('normalizes preference form values to schema bounds', () => {
   );
 });
 
+test('uses server-aligned defaults for missing numeric preference fields', () => {
+  const result = normalizeReviewPreferenceForm({});
+
+  assert.equal(result.dailyMinutes, 25);
+  assert.equal(result.dailyCardLimit, 12);
+});
+
 test('keeps valid preference form values', () => {
   assert.deepEqual(
     normalizeReviewPreferenceForm({
@@ -57,4 +64,3 @@ test('keeps valid preference form values', () => {
     },
   );
 });
-

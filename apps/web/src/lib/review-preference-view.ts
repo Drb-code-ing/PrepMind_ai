@@ -8,8 +8,8 @@ const capacityStatusLabels: Record<ReviewTaskPlanCapacityStatus, string> = {
 };
 
 const defaultPreferenceForm: ReviewPreferencePatchRequest = {
-  dailyMinutes: 30,
-  dailyCardLimit: 30,
+  dailyMinutes: 25,
+  dailyCardLimit: 12,
   preferredReviewTime: '20:30',
   reminderEnabled: true,
   reminderLeadMinutes: 30,
@@ -93,4 +93,3 @@ function normalizeBoolean(value: unknown, fallback: boolean): boolean {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
-
