@@ -41,6 +41,9 @@ test('detects plan empty state only when all counts are zero', () => {
           estimatedTotalMinutes: 6,
           peakDay: { date: '2026-06-16', count: 1 },
           intensity: 'light',
+          capacityStatus: 'under',
+          dailyMinutes: 30,
+          dailyCardLimit: 30,
         },
       }),
     ),
@@ -102,6 +105,9 @@ function createPlanResponse(input: Partial<ReviewTaskPlanResponse> = {}): Review
       estimatedTotalMinutes: 0,
       peakDay: null,
       intensity: 'light',
+      capacityStatus: 'under',
+      dailyMinutes: 30,
+      dailyCardLimit: 30,
     },
     days: [createPlanDay()],
     suggestion: {
@@ -125,6 +131,9 @@ function createPlanDay(input: Partial<ReviewTaskPlanDayResponse> = {}): ReviewTa
     skippedCount: 0,
     estimatedMinutes: 0,
     intensity: 'light',
+    pressureScore: 0,
+    capacityStatus: 'under',
+    reasons: [],
     ...input,
   };
 }

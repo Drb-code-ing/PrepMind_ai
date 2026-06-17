@@ -243,6 +243,9 @@ function createPlanPayload() {
         count: 4,
       },
       intensity: 'normal',
+      capacityStatus: 'near',
+      dailyMinutes: 30,
+      dailyCardLimit: 30,
     },
     days: [
       {
@@ -255,6 +258,9 @@ function createPlanPayload() {
         skippedCount: 0,
         estimatedMinutes: 18,
         intensity: 'normal',
+        pressureScore: 0.6,
+        capacityStatus: 'near',
+        reasons: ['复习量接近日容量'],
       },
       {
         date: '2026-06-17',
@@ -266,6 +272,9 @@ function createPlanPayload() {
         skippedCount: 1,
         estimatedMinutes: 24,
         intensity: 'heavy',
+        pressureScore: 0.8,
+        capacityStatus: 'over',
+        reasons: ['复习量超过日容量'],
       },
     ],
     suggestion: {
