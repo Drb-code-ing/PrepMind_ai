@@ -154,6 +154,7 @@ const dateKeySchema = z
   .refine(isValidDateKey, 'Invalid date');
 
 export const reviewTaskPlanIntensitySchema = z.enum(['light', 'normal', 'heavy']);
+export const reviewTaskPlanCapacityStatusSchema = z.enum(['under', 'near', 'over']);
 
 export const reviewTaskPlanQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(14).default(7),
@@ -171,6 +172,9 @@ export const reviewTaskPlanDaySchema = z.object({
   skippedCount: z.number().int().nonnegative(),
   estimatedMinutes: z.number().int().nonnegative(),
   intensity: reviewTaskPlanIntensitySchema,
+  pressureScore: z.number().nonnegative(),
+  capacityStatus: reviewTaskPlanCapacityStatusSchema,
+  reasons: z.array(z.string()),
 });
 
 export const reviewTaskPlanResponseSchema = z.object({
@@ -189,6 +193,9 @@ export const reviewTaskPlanResponseSchema = z.object({
       })
       .nullable(),
     intensity: reviewTaskPlanIntensitySchema,
+    capacityStatus: reviewTaskPlanCapacityStatusSchema,
+    dailyMinutes: z.number().int().positive(),
+    dailyCardLimit: z.number().int().positive(),
   }),
   days: z.array(reviewTaskPlanDaySchema),
   suggestion: z.object({
@@ -222,6 +229,9 @@ export type ReviewTaskTodayResponse = z.infer<typeof reviewTaskTodayResponseSche
 export type ReviewTaskListQuery = z.infer<typeof reviewTaskListQuerySchema>;
 export type ReviewTaskListResponse = z.infer<typeof reviewTaskListResponseSchema>;
 export type ReviewTaskPlanIntensity = z.infer<typeof reviewTaskPlanIntensitySchema>;
+export type ReviewTaskPlanCapacityStatus = z.infer<
+  typeof reviewTaskPlanCapacityStatusSchema
+>;
 export type ReviewTaskPlanQuery = z.infer<typeof reviewTaskPlanQuerySchema>;
 export type ReviewTaskPlanDayResponse = z.infer<typeof reviewTaskPlanDaySchema>;
 export type ReviewTaskPlanResponse = z.infer<typeof reviewTaskPlanResponseSchema>;
