@@ -429,7 +429,7 @@ function ReviewPreferenceFormCard({
         <div className="col-span-2 min-w-0 text-[11px] font-semibold text-[var(--pm-muted)] sm:col-span-1">
           计划窗口
           <div className="mt-1 grid min-h-[52px] grid-cols-2 rounded-2xl bg-white/70 p-1 ring-1 ring-[var(--pm-line)]">
-            {[7, 14].map((days) => (
+          {([7, 14] as const).map((days) => (
               <button
                 key={days}
                 type="button"
