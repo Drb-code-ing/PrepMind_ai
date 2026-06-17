@@ -26,7 +26,8 @@ export const reviewPreferencePatchSchema = z
     weekendMode: reviewWeekendModeSchema.optional(),
     planWindowDays: z.number().int().min(7).max(14).optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, 'At least one preference field is required');
 
 export type ReviewWeekendMode = z.infer<typeof reviewWeekendModeSchema>;
 export type ReviewPreferenceResponse = z.infer<typeof reviewPreferenceSchema>;
