@@ -365,6 +365,42 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-17（Day 12）
+
+**Phase 4.5.2 复习容量偏好与加权压力模型**
+
+- 新增 Prisma `ReviewPreference`，以 PostgreSQL 保存账号级复习计划偏好。
+- 新增 `@repo/types/api/review-preference`，统一偏好读取和 PATCH contract，并导出到 shared API 入口。
+- 新增 NestJS `ReviewPreferencesModule`：`GET /review-preferences` 返回默认或已保存偏好，`PATCH /review-preferences` 只更新提交字段。
+- `/review-tasks/plan` 从简化 `dueCount + overdueCount` 升级为加权压力模型，纳入逾期惩罚、高难度卡片、低稳定性卡片、预计分钟和每日容量。
+- plan response 新增 `pressureScore`、`capacityStatus`、`reasons`、`dailyMinutes` 和 `dailyCardLimit`。
+- 前端新增 review preference API client、TanStack Query hooks、偏好表单归一化 helper 和 API/helper 测试。
+- `/plan` 新增复习容量偏好卡，支持每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口自动保存。
+- `/plan` 图表改用 `pressureScore`，每日卡片展示容量状态、预计分钟和压力原因标签；空计划状态也保留偏好设置入口。
+- `/today` 复习提醒摘要接入当天 plan，展示“今日预计 N 分钟”和容量状态，plan 查询失败不影响今日复习主列表。
+- 浏览器验收中修复 `/plan` 移动端 7 / 14 分段按钮触摸高度不足问题，保证 390px 视口无横向溢出且交互目标不小于 44px。
+
+验证：
+
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test` 通过。
+- `bun --filter @repo/server test:e2e` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-preference-api.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-preference-view.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-plan-view.test.mts` 通过。
+- `node --experimental-strip-types apps/web/src/lib/review-reminder.test.mts` 通过。
+- `bun --filter @repo/web test` 通过，147 个测试全部通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --cwd packages/fsrs test` 通过。
+- 浏览器验收通过：Docker PostgreSQL / Redis / MinIO 启动，迁移无待应用项；`/plan` 验证偏好卡、7 / 14 天切换、加权压力、超过容量状态和原因标签；`/today` 验证当天预计分钟与容量状态；桌面和 390px 移动端均无横向溢出，console 无错误。
+- `git diff --check` 通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -412,9 +448,10 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 4.3 ReviewTask 持久化任务流已完成并合并到 `main`。
 - Phase 4.4 离线评分队列、服务端幂等评分和 in-app 提醒摘要已完成。
 - Phase 4.5.1 复习计划预览、`/plan` 页面和 `/stats` ECharts 图表升级已完成。
+- Phase 4.5.2 复习容量偏好、加权压力模型、7 / 14 天计划窗口和今日容量摘要已完成。
 - 错题可加入复习卡，今日任务可读取持久化 ReviewTask 并提交四档评分、跳过和恢复。
-- `/plan` 可只读预览未来复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
-- Card / ReviewLog / ReviewTask 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
+- `/plan` 可只读预览未来 7 / 14 天加权复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
+- Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
 
 ---
 
@@ -429,8 +466,8 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] 更完整的 ReviewTask 数据流。
 - [x] Phase 4.4：离线评分队列与提醒策略。
 - [x] Phase 4.5.1：复习计划预览与统计图表升级。
-- [ ] Phase 4.5.2：复习提醒策略与更长期计划设置。
-- [ ] Phase 4.5.2：复习压力模型升级，从 `dueCount + overdueCount` 扩展为逾期、难度、耗时和每日容量加权模型。
+- [x] Phase 4.5.2：复习容量偏好与更长期计划设置。
+- [x] Phase 4.5.2：复习压力模型升级，从 `dueCount + overdueCount` 扩展为逾期、难度、稳定性、预计耗时和每日容量加权模型。
 
 **后续方向**
 
