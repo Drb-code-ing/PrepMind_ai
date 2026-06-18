@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 
 import {
+  knowledgeDocumentDeleteResponseSchema,
   knowledgeDocumentListQuerySchema,
   knowledgeDocumentListResponseSchema,
+  knowledgeDocumentMimeTypeSchema,
   knowledgeDocumentResponseSchema,
   knowledgeDocumentSourceTypeSchema,
   knowledgeDocumentStatusSchema,
+  knowledgeDocumentUploadResponseSchema,
   knowledgeDocumentTypeSchema,
   knowledgeSearchRequestSchema,
   knowledgeSearchResponseSchema,
@@ -13,12 +16,15 @@ import {
 
 function run() {
   testEnums();
+  testDocumentMimeTypes();
   testDocumentResponse();
+  testUploadResponse();
   testFailedDocumentResponse();
   testListQuery();
   testListResponse();
   testSearchRequest();
   testSearchResponse();
+  testDeleteResponse();
 }
 
 function testEnums() {
@@ -31,6 +37,20 @@ function testEnums() {
   assert.throws(() => knowledgeDocumentSourceTypeSchema.parse('WEB'));
 }
 
+function testDocumentMimeTypes() {
+  assert.equal(knowledgeDocumentMimeTypeSchema.parse('application/pdf'), 'application/pdf');
+  assert.equal(knowledgeDocumentMimeTypeSchema.parse('text/plain'), 'text/plain');
+  assert.equal(
+    knowledgeDocumentMimeTypeSchema.parse(
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ),
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  );
+
+  assert.throws(() => knowledgeDocumentMimeTypeSchema.parse('image/png'));
+  assert.throws(() => knowledgeDocumentMimeTypeSchema.parse('application/zip'));
+}
+
 function testDocumentResponse() {
   const result = knowledgeDocumentResponseSchema.parse(createDocumentPayload());
 
@@ -38,6 +58,13 @@ function testDocumentResponse() {
   assert.equal(result.sourceType, 'UPLOAD');
   assert.equal(result.errorMessage, null);
   assert.equal(result.chunkCount, 3);
+}
+
+function testUploadResponse() {
+  const result = knowledgeDocumentUploadResponseSchema.parse(createDocumentPayload());
+
+  assert.equal(result.status, 'DONE');
+  assert.equal(result.contentHash, 'sha256:abc');
 }
 
 function testFailedDocumentResponse() {
@@ -139,6 +166,11 @@ function testSearchResponse() {
       hits: [{ chunkId: 'chunk_1', score: 1.2 }],
     }),
   );
+}
+
+function testDeleteResponse() {
+  assert.deepEqual(knowledgeDocumentDeleteResponseSchema.parse({ ok: true }), { ok: true });
+  assert.throws(() => knowledgeDocumentDeleteResponseSchema.parse({ ok: false }));
 }
 
 function createDocumentPayload(input: Partial<Record<string, unknown>> = {}) {

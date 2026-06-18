@@ -27,6 +27,13 @@ const floatQuerySchema = (defaultValue: number, min: number, max: number) =>
   }, z.number().min(min).max(max).default(defaultValue));
 
 export const knowledgeDocumentTypeSchema = z.enum(['PDF', 'DOCX', 'MD', 'TXT']);
+export const knowledgeDocumentMimeTypeSchema = z.enum([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/markdown',
+  'text/x-markdown',
+  'text/plain',
+]);
 export const knowledgeDocumentStatusSchema = z.enum(['PENDING', 'PROCESSING', 'DONE', 'FAILED']);
 export const knowledgeDocumentSourceTypeSchema = z.enum([
   'UPLOAD',
@@ -41,7 +48,7 @@ export const knowledgeDocumentResponseSchema = z.object({
   name: z.string(),
   type: knowledgeDocumentTypeSchema,
   size: z.number().int().nonnegative(),
-  mimeType: z.string(),
+  mimeType: knowledgeDocumentMimeTypeSchema,
   status: knowledgeDocumentStatusSchema,
   sourceType: knowledgeDocumentSourceTypeSchema,
   errorMessage: z.string().nullable(),
@@ -50,6 +57,14 @@ export const knowledgeDocumentResponseSchema = z.object({
   processedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+export const knowledgeDocumentUploadResponseSchema = knowledgeDocumentResponseSchema;
+
+export const knowledgeDocumentDetailResponseSchema = knowledgeDocumentResponseSchema;
+
+export const knowledgeDocumentDeleteResponseSchema = z.object({
+  ok: z.literal(true),
 });
 
 export const knowledgeDocumentListQuerySchema = z
@@ -88,9 +103,19 @@ export const knowledgeSearchResponseSchema = z.object({
 });
 
 export type KnowledgeDocumentType = z.infer<typeof knowledgeDocumentTypeSchema>;
+export type KnowledgeDocumentMimeType = z.infer<typeof knowledgeDocumentMimeTypeSchema>;
 export type KnowledgeDocumentStatus = z.infer<typeof knowledgeDocumentStatusSchema>;
 export type KnowledgeDocumentSourceType = z.infer<typeof knowledgeDocumentSourceTypeSchema>;
 export type KnowledgeDocumentResponse = z.infer<typeof knowledgeDocumentResponseSchema>;
+export type KnowledgeDocumentUploadResponse = z.infer<
+  typeof knowledgeDocumentUploadResponseSchema
+>;
+export type KnowledgeDocumentDetailResponse = z.infer<
+  typeof knowledgeDocumentDetailResponseSchema
+>;
+export type KnowledgeDocumentDeleteResponse = z.infer<
+  typeof knowledgeDocumentDeleteResponseSchema
+>;
 export type KnowledgeDocumentListQuery = z.infer<typeof knowledgeDocumentListQuerySchema>;
 export type KnowledgeDocumentListResponse = z.infer<typeof knowledgeDocumentListResponseSchema>;
 export type KnowledgeSearchRequest = z.infer<typeof knowledgeSearchRequestSchema>;
