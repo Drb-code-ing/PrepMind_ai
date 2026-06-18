@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-17。Phase 5.0 RAG 知识库设计已完成，Phase 5.1 尚未开始实现。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-18。Phase 5.1 已完成 RAG 数据模型与 shared contract 地基。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,7 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
-- RAG 知识库职责：Phase 5.0 已完成设计；后续 `Document` / `Chunk` 将以 PostgreSQL + pgvector 为权威来源，当前尚未接入上传、解析、embedding、检索和 Chat 注入。
+- RAG 知识库职责：Phase 5.1 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留和 knowledge API contract；当前尚未接入上传、解析、embedding、检索和 Chat 注入。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -90,7 +90,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 ## 4. RAG 知识库规划边界
 
-Phase 5.0 已完成 RAG 设计，运行链路从 Phase 5.1 开始逐步实现。当前约定先写入文档，避免后续实现时破坏现有 Chat / OCR 主链路。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基。当前仍未接入运行链路，避免在上传、解析和检索尚未落地前破坏现有 Chat / OCR 主链路。
 
 计划数据流：
 
@@ -120,10 +120,10 @@ Chat 接入原则：
 
 - RAG 只增强回答，不阻断回答。
 - 第一版资料来源以用户上传 PDF / TXT / Markdown 为主。
-- OCR、错题和聊天沉淀只预留 `sourceType`，不在 Phase 5.1 自动入库。
+- `Document.sourceType` 已预留 `UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR` 和 `CHAT`；OCR、错题和聊天沉淀不在 Phase 5.1 自动入库。
 - 文件上传、解析、embedding 和知识库删除不进入 Dexie `mutationQueue`。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
-- 向量索引用 raw SQL 创建，Prisma schema 只表达 `Unsupported("vector")` 字段。
+- `Chunk.embedding` 固定为 `Unsupported("vector(1536)")?`，向量索引用 raw SQL 创建。
 
 ## 5. OCR 与错题本
 

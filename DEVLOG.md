@@ -410,6 +410,30 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-18（Day 13）
+
+**Phase 5.1 RAG 数据模型与 contract 地基**
+
+- 新增 `@repo/types/api/knowledge`，定义 RAG 文档类型、处理状态、资料来源、文档响应、列表查询、列表响应、检索请求和检索响应 schema。
+- 新增 `packages/types/tests/knowledge.test.mts`，覆盖枚举边界、文档响应、失败文档、列表查询、列表响应、检索请求和检索响应。
+- 扩展 Prisma `Document`：新增 `sourceType`、`errorMessage`、`contentHash` 和 `processedAt`，并补充 `userId + status + updatedAt`、`userId + sourceType + updatedAt`、`contentHash` 索引。
+- 新增 `DocumentSourceType`：`UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR`、`CHAT`，第一版仍以 `UPLOAD` 为主。
+- 扩展 Prisma `Chunk`：新增 `tokenCount`，并将 `embedding` 从无维度 `vector` 固定为 `vector(1536)`。
+- 新增 pgvector ivfflat raw SQL migration：`Chunk_embedding_vector_cosine_idx`，为后续相似度检索预留。
+- 迁移验证中发现 ivfflat 无法创建在无维度 `vector` 列上，已通过 `vector(1536)` 修复，并用本地 PostgreSQL 验证 `atttypmod = 1536` 和索引存在。
+- 本阶段不实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面；这些进入 Phase 5.2 及后续阶段。
+
+验证：
+
+- `bun packages/types/tests/knowledge.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/database prisma migrate deploy` 通过，无待应用 migration。
+- `bun --cwd packages/database prisma:generate` 通过。
+- `bun --filter @repo/server build` 通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -462,11 +486,11 @@ f5a2eb1 style: soften cartoon theme palette
 - `/plan` 可只读预览未来 7 / 14 天加权复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
 - Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
 
-**Phase 5：规划完成，待实现**
+**Phase 5：进行中**
 
 - Phase 5.0 RAG 知识库设计已完成。
-- Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 实施计划已完成。
-- 当前尚未实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面。
+- Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
+- 当前尚未实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面，下一步进入 Phase 5.2。
 
 ---
 
@@ -486,7 +510,7 @@ f5a2eb1 style: soften cartoon theme palette
 
 **后续方向**
 
-- [ ] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
+- [x] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
 - [ ] Phase 5.2：文档上传与状态 API。
 - [ ] Phase 5.3：解析、分块、embedding 入库。
 - [ ] Phase 5.4：检索 API。
