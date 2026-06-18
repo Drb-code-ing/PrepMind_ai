@@ -124,23 +124,54 @@ function createTextUnits(text: string, maxTokens: number): TextUnit[] {
   let sectionTitle: string | undefined;
 
   for (const paragraph of paragraphs) {
-    const headingTitle = parseMarkdownHeading(paragraph);
+    const parsedParagraph = splitParagraphByHeadingLines(paragraph);
 
-    if (headingTitle) {
-      sectionTitle = headingTitle;
-      continue;
-    }
+    for (const part of parsedParagraph) {
+      if (part.type === 'heading') {
+        sectionTitle = part.title;
+        continue;
+      }
 
-    for (const unitText of splitOversizedText(paragraph, maxTokens)) {
-      const tokenCount = tokenizeApprox(unitText);
+      for (const unitText of splitOversizedText(part.text, maxTokens)) {
+        const tokenCount = tokenizeApprox(unitText);
 
-      if (tokenCount > 0) {
-        units.push({ text: unitText, tokenCount, sectionTitle });
+        if (tokenCount > 0) {
+          units.push({ text: unitText, tokenCount, sectionTitle });
+        }
       }
     }
   }
 
   return units;
+}
+
+function splitParagraphByHeadingLines(
+  paragraph: string,
+): Array<{ type: 'heading'; title: string } | { type: 'content'; text: string }> {
+  const parts: Array<{ type: 'heading'; title: string } | { type: 'content'; text: string }> = [];
+  let contentLines: string[] = [];
+
+  for (const line of paragraph.split('\n')) {
+    const headingTitle = parseMarkdownHeading(line);
+
+    if (headingTitle) {
+      if (contentLines.length > 0) {
+        parts.push({ type: 'content', text: contentLines.join('\n') });
+        contentLines = [];
+      }
+
+      parts.push({ type: 'heading', title: headingTitle });
+      continue;
+    }
+
+    contentLines.push(line);
+  }
+
+  if (contentLines.length > 0) {
+    parts.push({ type: 'content', text: contentLines.join('\n') });
+  }
+
+  return parts;
 }
 
 function normalizeParagraphs(text: string): string[] {

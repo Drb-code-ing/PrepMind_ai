@@ -71,6 +71,28 @@ describe('splitDocument', () => {
     expect(chunks[1]?.metadata.sectionTitle).toBe('B');
   });
 
+  it('detects markdown headings without requiring blank lines after headings', () => {
+    const chunks = splitDocument(
+      {
+        documentId: 'doc_inline_headings',
+        sourceName: 'inline-headings.md',
+        text: '# A\nA first paragraph.\n\n# B\nB first paragraph.',
+      },
+      { targetTokens: 100, overlapTokens: 10, maxTokens: 120 },
+    );
+
+    expect(chunks).toHaveLength(2);
+    expect(chunks[0]).toMatchObject({
+      content: 'A first paragraph.',
+      metadata: { sectionTitle: 'A' },
+    });
+    expect(chunks[1]).toMatchObject({
+      content: 'B first paragraph.',
+      metadata: { sectionTitle: 'B' },
+    });
+    expect(chunks.map((chunk) => chunk.content).join('\n')).not.toContain('# ');
+  });
+
   it('rejects unsafe overlap that is at least half the target size', () => {
     expect(() =>
       splitDocument(
