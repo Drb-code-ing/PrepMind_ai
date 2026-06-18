@@ -274,6 +274,69 @@ describe('DocumentProcessingService', () => {
     });
   });
 
+  it('marks failed with AppError message and rethrows parser failures after claim', async () => {
+    const failure = new AppError(
+      'KNOWLEDGE_DOCUMENT_PARSE_FAILED',
+      'Parser could not read document text',
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+    parser.parse.mockRejectedValue(failure);
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toBe(failure);
+
+    expect(prisma.document.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: { in: ['PENDING', 'FAILED'] },
+      },
+      data: { status: 'PROCESSING', errorMessage: null },
+    });
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc_1' },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Parser could not read document text',
+      },
+      include: { _count: { select: { chunks: true } } },
+    });
+    expect(embedding.embedChunks).not.toHaveBeenCalled();
+    expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
+  it('marks failed with AppError message and rethrows embedding failures after claim', async () => {
+    const failure = new AppError(
+      'KNOWLEDGE_EMBEDDING_FAILED',
+      'Embedding provider rejected the chunk batch',
+      HttpStatus.BAD_GATEWAY,
+    );
+    embedding.embedChunks.mockRejectedValue(failure);
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toBe(failure);
+
+    expect(prisma.document.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: { in: ['PENDING', 'FAILED'] },
+      },
+      data: { status: 'PROCESSING', errorMessage: null },
+    });
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc_1' },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Embedding provider rejected the chunk batch',
+      },
+      include: { _count: { select: { chunks: true } } },
+    });
+    expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
   it('marks failed with AppError message and rethrows storage read failures after claim', async () => {
     const failure = new AppError(
       'KNOWLEDGE_DOCUMENT_READ_FAILED',
