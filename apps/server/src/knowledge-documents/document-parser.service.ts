@@ -73,31 +73,55 @@ export class DocumentParserService {
   }
 
   private async createDocxDocument(input: ParseDocumentInput) {
-    const result = await mammoth.extractRawText({ buffer: input.buffer });
+    let result: Awaited<ReturnType<typeof mammoth.extractRawText>>;
+
+    try {
+      result = await mammoth.extractRawText({ buffer: input.buffer });
+    } catch (error) {
+      throw this.createParseFailedError(error);
+    }
+
     return this.createParsedDocument(input, result.value, 'docx-mammoth');
   }
 
   private async createPdfDocument(input: ParseDocumentInput) {
     const parser = new PDFParse({ data: input.buffer });
-    let parseError: unknown;
+    let primaryError: unknown;
 
     try {
-      const result = await parser.getText();
+      let result: Awaited<ReturnType<PDFParse['getText']>>;
+
+      try {
+        result = await parser.getText();
+      } catch (error) {
+        throw this.createParseFailedError(error);
+      }
+
       return this.createParsedDocument(input, result.text, 'pdf-basic', {
         pageCount: result.total,
       });
     } catch (error) {
-      parseError = error;
+      primaryError = error;
       throw error;
     } finally {
       try {
         await parser.destroy();
       } catch (error) {
-        if (!parseError) {
+        if (!primaryError) {
           throw error;
         }
       }
     }
+  }
+
+  private createParseFailedError(cause: unknown) {
+    const error = new AppError(
+      'KNOWLEDGE_DOCUMENT_PARSE_FAILED',
+      '资料解析失败，请稍后重试',
+      HttpStatus.UNPROCESSABLE_ENTITY,
+    );
+    (error as AppError & { cause?: unknown }).cause = cause;
+    return error;
   }
 
   private normalizeText(text: string) {
@@ -113,7 +137,10 @@ export class DocumentParserService {
   private extractMarkdownHeadings(text: string) {
     return text
       .split('\n')
-      .map((line) => line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/)?.[1]?.trim())
+      .map((line) => {
+        const heading = line.match(/^#{1,6}\s+(.+?)\s*$/)?.[1]?.trim();
+        return heading?.replace(/\s+#+$/, '').trim();
+      })
       .filter((heading): heading is string => Boolean(heading));
   }
 }

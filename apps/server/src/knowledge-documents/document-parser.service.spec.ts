@@ -48,16 +48,16 @@ describe('DocumentParserService', () => {
       name: 'green.md',
       type: 'MD',
       mimeType: 'text/markdown',
-      buffer: Buffer.from('# 第一章\n正文\n## 格林公式\n### 小节'),
+      buffer: Buffer.from('# 第一章\n正文\n## 格林公式\n### 小节\n# C#\n# Title #'),
     });
 
     expect(result).toEqual({
-      text: '# 第一章\n正文\n## 格林公式\n### 小节',
+      text: '# 第一章\n正文\n## 格林公式\n### 小节\n# C#\n# Title #',
       metadata: {
         sourceName: 'green.md',
         mimeType: 'text/markdown',
         parser: 'markdown-basic',
-        headings: ['第一章', '格林公式', '小节'],
+        headings: ['第一章', '格林公式', '小节', 'C#', 'Title'],
       },
     });
   });
@@ -83,6 +83,25 @@ describe('DocumentParserService', () => {
     });
   });
 
+  it('wraps docx parser failures with diagnostic cause', async () => {
+    const parseError = new Error('mammoth failed');
+    (mammoth.extractRawText as jest.Mock).mockRejectedValueOnce(parseError);
+
+    await expect(
+      createService().parse({
+        name: 'broken.docx',
+        type: 'DOCX',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        buffer: Buffer.from('docx bytes'),
+      }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PARSE_FAILED',
+      message: '资料解析失败，请稍后重试',
+      statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      cause: parseError,
+    });
+  });
+
   it('parses pdf text and page count', async () => {
     const buffer = Buffer.from('pdf bytes');
 
@@ -105,7 +124,7 @@ describe('DocumentParserService', () => {
     });
   });
 
-  it('preserves pdf parse error when cleanup also fails', async () => {
+  it('wraps pdf parser failures and preserves parse cause when cleanup also fails', async () => {
     const parseError = new Error('pdf parse failed');
     const destroyError = new Error('pdf destroy failed');
     (PDFParse as jest.Mock).mockImplementationOnce(() => ({
@@ -120,7 +139,12 @@ describe('DocumentParserService', () => {
         mimeType: 'application/pdf',
         buffer: Buffer.from('pdf bytes'),
       }),
-    ).rejects.toBe(parseError);
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PARSE_FAILED',
+      message: '资料解析失败，请稍后重试',
+      statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      cause: parseError,
+    });
   });
 
   it('throws app error for empty parsed text', async () => {
