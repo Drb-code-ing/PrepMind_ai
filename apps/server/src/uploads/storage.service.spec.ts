@@ -22,6 +22,7 @@ describe('StorageService', () => {
     MINIO_BUCKET: 'prepmind-dev',
     PUBLIC_API_BASE_URL: 'http://localhost:3001',
     UPLOAD_IMAGE_MAX_BYTES: 8 * 1024 * 1024,
+    UPLOAD_DOCUMENT_MAX_BYTES: 20 * 1024 * 1024,
   };
   const config = {
     get: jest.fn((key: keyof ServerEnv) => configValues[key]),
@@ -32,6 +33,7 @@ describe('StorageService', () => {
     putObject: jest.fn(),
     statObject: jest.fn(),
     getObject: jest.fn(),
+    removeObject: jest.fn(),
   };
 
   beforeEach(() => {
@@ -152,6 +154,64 @@ describe('StorageService', () => {
         groupId: 'ocr-1',
       }),
     ).rejects.toMatchObject({ code: 'UPLOAD_IMAGE_TOO_LARGE' });
+  });
+
+  it('uploads supported knowledge documents under a user scoped object key', async () => {
+    const result = await createService().uploadKnowledgeDocument('user_1', {
+      file: {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+        size: 3,
+        originalname: 'calculus.pdf',
+      } as Express.Multer.File,
+    });
+
+    expect(result.objectKey).toMatch(/^users\/user_1\/knowledge\/[a-f0-9-]+\.pdf$/);
+    expect(result.mimeType).toBe('application/pdf');
+    expect(result.type).toBe('PDF');
+    expect(result.originalName).toBe('calculus.pdf');
+    expect(minioClient.putObject).toHaveBeenCalledWith(
+      'prepmind-dev',
+      result.objectKey,
+      Buffer.from('pdf'),
+      3,
+      { 'Content-Type': 'application/pdf' },
+    );
+  });
+
+  it('rejects unsupported knowledge document types', async () => {
+    await expect(
+      createService().uploadKnowledgeDocument('user_1', {
+        file: {
+          buffer: Buffer.from('zip'),
+          mimetype: 'application/zip',
+          size: 3,
+          originalname: 'archive.zip',
+        } as Express.Multer.File,
+      }),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_INVALID_TYPE' });
+  });
+
+  it('rejects knowledge documents larger than the configured limit', async () => {
+    await expect(
+      createService().uploadKnowledgeDocument('user_1', {
+        file: {
+          buffer: Buffer.alloc(20 * 1024 * 1024 + 1),
+          mimetype: 'application/pdf',
+          size: 20 * 1024 * 1024 + 1,
+          originalname: 'large.pdf',
+        } as Express.Multer.File,
+      }),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_TOO_LARGE' });
+  });
+
+  it('deletes an uploaded object by key', async () => {
+    await createService().deleteObject('users/user_1/knowledge/doc.pdf');
+
+    expect(minioClient.removeObject).toHaveBeenCalledWith(
+      'prepmind-dev',
+      'users/user_1/knowledge/doc.pdf',
+    );
   });
 
   it('rejects unsafe object keys before reading', () => {

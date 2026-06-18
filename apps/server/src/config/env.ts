@@ -31,6 +31,11 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(8 * 1024 * 1024),
+  UPLOAD_DOCUMENT_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(20 * 1024 * 1024),
 });
 
 export type ServerEnv = z.infer<typeof envSchema>;
