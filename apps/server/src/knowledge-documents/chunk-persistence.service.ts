@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Prisma } from '@prisma/client';
 
 import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
@@ -44,22 +45,16 @@ export class ChunkPersistenceService {
     );
 
     await this.prisma.$transaction(async (transaction) => {
-      const document = await transaction.document.findFirst({
-        where: { id: input.documentId, userId: input.userId },
-        select: { id: true },
-      });
-
-      if (!document) {
-        throw new AppError(
-          'KNOWLEDGE_DOCUMENT_NOT_FOUND',
-          'Knowledge document not found',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      await transaction.chunk.deleteMany({
-        where: { documentId: input.documentId, userId: input.userId },
-      });
+      await this.assertDocumentOwned(
+        transaction,
+        input.documentId,
+        input.userId,
+      );
+      await this.deleteDocumentChunks(
+        transaction,
+        input.documentId,
+        input.userId,
+      );
 
       for (const row of rows) {
         await transaction.$executeRaw`
@@ -69,6 +64,13 @@ export class ChunkPersistenceService {
             (${row.id}, ${row.documentId}, ${row.content}, ${row.embedding}::vector, ${row.metadata}::jsonb, ${row.index}, ${row.tokenCount}, ${row.userId}, ${row.createdAt})
         `;
       }
+    });
+  }
+
+  async clearDocumentChunks(documentId: string, userId: string): Promise<void> {
+    await this.prisma.$transaction(async (transaction) => {
+      await this.assertDocumentOwned(transaction, documentId, userId);
+      await this.deleteDocumentChunks(transaction, documentId, userId);
     });
   }
 
@@ -103,6 +105,35 @@ export class ChunkPersistenceService {
       userId,
       createdAt: new Date(),
     };
+  }
+
+  private async assertDocumentOwned(
+    transaction: Prisma.TransactionClient,
+    documentId: string,
+    userId: string,
+  ) {
+    const document = await transaction.document.findFirst({
+      where: { id: documentId, userId },
+      select: { id: true },
+    });
+
+    if (!document) {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_NOT_FOUND',
+        'Knowledge document not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  private async deleteDocumentChunks(
+    transaction: Prisma.TransactionClient,
+    documentId: string,
+    userId: string,
+  ) {
+    await transaction.chunk.deleteMany({
+      where: { documentId, userId },
+    });
   }
 
   private toPgVectorLiteral(vector: number[], embeddingDimensions: number) {

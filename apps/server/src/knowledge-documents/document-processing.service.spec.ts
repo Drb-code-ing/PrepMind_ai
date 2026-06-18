@@ -50,21 +50,23 @@ describe('DocumentProcessingService', () => {
     embedChunks: jest.fn(),
   };
   const persistence = {
+    clearDocumentChunks: jest.fn(),
     replaceDocumentChunks: jest.fn(),
   };
+  const configGet = jest.fn((key: keyof ServerEnv) => {
+    const values = {
+      RAG_CHUNK_TARGET_TOKENS: 100,
+      RAG_CHUNK_OVERLAP_TOKENS: 0,
+      RAG_CHUNK_MAX_TOKENS: 200,
+    };
+    return values[key as keyof typeof values];
+  });
   const config = {
-    get: jest.fn((key: keyof ServerEnv) => {
-      const values = {
-        RAG_CHUNK_TARGET_TOKENS: 100,
-        RAG_CHUNK_OVERLAP_TOKENS: 0,
-        RAG_CHUNK_MAX_TOKENS: 200,
-      };
-      return values[key as keyof typeof values];
-    }),
+    get: configGet,
   } as unknown as ConfigService<ServerEnv, true>;
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
     jest.useFakeTimers().setSystemTime(processedAt);
     prisma.document.findFirst.mockResolvedValue(documentRow);
     prisma.document.updateMany.mockResolvedValue({ count: 1 });
@@ -91,6 +93,7 @@ describe('DocumentProcessingService', () => {
       },
     });
     embedding.embedChunks.mockResolvedValue([[0.1, 0.2, 0.3]]);
+    persistence.clearDocumentChunks.mockResolvedValue(undefined);
     persistence.replaceDocumentChunks.mockResolvedValue(undefined);
   });
 
@@ -123,6 +126,15 @@ describe('DocumentProcessingService', () => {
       type: 'TXT',
       mimeType: 'text/plain',
       buffer: Buffer.from('# Algebra\nlinear equations are useful.'),
+    });
+    expect(configGet).toHaveBeenCalledWith('RAG_CHUNK_TARGET_TOKENS', {
+      infer: true,
+    });
+    expect(configGet).toHaveBeenCalledWith('RAG_CHUNK_OVERLAP_TOKENS', {
+      infer: true,
+    });
+    expect(configGet).toHaveBeenCalledWith('RAG_CHUNK_MAX_TOKENS', {
+      infer: true,
     });
     expect(embedding.embedChunks).toHaveBeenCalledWith([
       'linear equations are useful.',
@@ -317,11 +329,13 @@ describe('DocumentProcessingService', () => {
       },
     });
 
-    await expect(
-      createService().processDocument('user_1', 'doc_1', { force: false }),
-    ).rejects.toMatchObject({
+    const result = createService().processDocument('user_1', 'doc_1', {
+      force: false,
+    });
+
+    await expect(result).rejects.toThrow('资料中没有可解析的文本');
+    await expect(result).rejects.toMatchObject({
       code: 'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
-      message: '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
       statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
     });
 
@@ -329,11 +343,47 @@ describe('DocumentProcessingService', () => {
       where: { id: 'doc_1' },
       data: {
         status: 'FAILED',
-        errorMessage: '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
+        errorMessage: '资料中没有可解析的文本',
       },
       include: { _count: { select: { chunks: true } } },
     });
     expect(embedding.embedChunks).not.toHaveBeenCalled();
+    expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
+  it('clears stale chunks after a forced done-document claim before embedding failures', async () => {
+    const failure = new AppError(
+      'KNOWLEDGE_EMBEDDING_FAILED',
+      'Embedding provider rejected the chunk batch',
+      HttpStatus.BAD_GATEWAY,
+    );
+    prisma.document.findFirst.mockResolvedValue({
+      ...documentRow,
+      status: 'DONE',
+      processedAt,
+      _count: { chunks: 2 },
+    });
+    embedding.embedChunks.mockRejectedValue(failure);
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: true }),
+    ).rejects.toBe(failure);
+
+    expect(persistence.clearDocumentChunks).toHaveBeenCalledWith(
+      'doc_1',
+      'user_1',
+    );
+    expect(
+      persistence.clearDocumentChunks.mock.invocationCallOrder[0],
+    ).toBeLessThan(embedding.embedChunks.mock.invocationCallOrder[0] ?? 0);
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc_1' },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Embedding provider rejected the chunk batch',
+      },
+      include: { _count: { select: { chunks: true } } },
+    });
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
   });
 

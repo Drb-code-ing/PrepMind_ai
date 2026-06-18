@@ -93,6 +93,20 @@ describe('ChunkPersistenceService', () => {
     });
   });
 
+  it('clears existing chunks scoped by document and user inside a transaction', async () => {
+    await createService().clearDocumentChunks('doc_1', 'user_1');
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.document.findFirst).toHaveBeenCalledWith({
+      where: { id: 'doc_1', userId: 'user_1' },
+      select: { id: true },
+    });
+    expect(tx.chunk.deleteMany).toHaveBeenCalledWith({
+      where: { documentId: 'doc_1', userId: 'user_1' },
+    });
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
   it('rejects document ownership mismatch before deleting or inserting chunks', async () => {
     tx.document.findFirst.mockResolvedValue(null);
 

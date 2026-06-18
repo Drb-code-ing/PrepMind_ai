@@ -39,6 +39,11 @@ export class DocumentProcessingService {
     await this.claimDocument(userId, documentId, options.force);
 
     try {
+      await this.chunkPersistenceService.clearDocumentChunks(
+        documentId,
+        userId,
+      );
+
       const object = await this.storageService.readKnowledgeDocumentObject(
         document.storageKey,
       );
@@ -71,7 +76,7 @@ export class DocumentProcessingService {
       if (chunks.length === 0) {
         throw new AppError(
           'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
-          '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
+          '资料中没有可解析的文本',
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
