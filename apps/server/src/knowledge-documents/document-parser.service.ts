@@ -183,7 +183,8 @@ export class DocumentParserService {
       if (
         (code >= 0 && code <= 8) ||
         (code >= 14 && code <= 27) ||
-        code === 127
+        code === 127 ||
+        (code >= 128 && code <= 159)
       ) {
         normalized.push(' ');
         continue;
