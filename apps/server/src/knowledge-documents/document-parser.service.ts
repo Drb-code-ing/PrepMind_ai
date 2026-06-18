@@ -104,7 +104,7 @@ export class DocumentParserService {
     try {
       result = await parser.getText();
     } catch (error) {
-      await this.destroyPdfParserAfterFailure(parser);
+      await this.destroyPdfParserBestEffort(parser);
       throw this.createParseFailedError(error);
     }
 
@@ -119,19 +119,19 @@ export class DocumentParserService {
         },
       );
     } catch (error) {
-      await this.destroyPdfParserAfterFailure(parser);
+      await this.destroyPdfParserBestEffort(parser);
       throw error;
     }
 
-    await parser.destroy();
+    await this.destroyPdfParserBestEffort(parser);
     return parsedDocument;
   }
 
-  private async destroyPdfParserAfterFailure(parser: PDFParse) {
+  private async destroyPdfParserBestEffort(parser: PDFParse) {
     try {
       await parser.destroy();
     } catch {
-      // Preserve the original parse or normalization error for diagnostics.
+      // Cleanup must not mask parsed output or the original parse/normalization error.
     }
   }
 
@@ -185,6 +185,7 @@ export class DocumentParserService {
         (code >= 14 && code <= 27) ||
         code === 127
       ) {
+        normalized.push(' ');
         continue;
       }
 

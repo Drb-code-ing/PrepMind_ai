@@ -35,12 +35,12 @@ describe('DocumentParserService', () => {
       type: 'TXT',
       mimeType: 'text/plain',
       buffer: Buffer.from(
-        '第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\u0000\u0007\r\n\r\n\r\n第三行',
+        '第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\r\nI\u0000J\r\nK\u0007L\r\n\r\n\r\n第三行',
       ),
     });
 
     expect(result).toEqual({
-      text: '第一行\nA B\nC\nD\nE\nF\nG\nH\n\n第三行',
+      text: '第一行\nA B\nC\nD\nE\nF\nG\nH\nI J\nK L\n\n第三行',
       metadata: {
         sourceName: 'notes.txt',
         mimeType: 'text/plain',
@@ -131,6 +131,31 @@ describe('DocumentParserService', () => {
         mimeType: 'application/pdf',
         parser: 'pdf-basic',
         pageCount: 2,
+      },
+    });
+  });
+
+  it('returns successful pdf parse result when cleanup fails', async () => {
+    const destroyError = new Error('pdf destroy failed');
+    (PDFParse as jest.Mock).mockImplementationOnce(() => ({
+      destroy: jest.fn().mockRejectedValue(destroyError),
+      getText: jest.fn().mockResolvedValue({ text: 'Pdf text', total: 1 }),
+    }));
+
+    const result = await createService().parse({
+      name: 'cleanup-fails.pdf',
+      type: 'PDF',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('pdf bytes'),
+    });
+
+    expect(result).toEqual({
+      text: 'Pdf text',
+      metadata: {
+        sourceName: 'cleanup-fails.pdf',
+        mimeType: 'application/pdf',
+        parser: 'pdf-basic',
+        pageCount: 1,
       },
     });
   });
