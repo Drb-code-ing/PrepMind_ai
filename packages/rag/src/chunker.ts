@@ -13,7 +13,7 @@ export type ChunkingOptions = {
 
 export type TextChunk = {
   index: number;
-  text: string;
+  content: string;
   tokenCount: number;
   metadata: Record<string, unknown> & {
     documentId: string;
@@ -28,6 +28,8 @@ type TextUnit = {
   tokenCount: number;
   sectionTitle?: string;
 };
+
+type NormalizedChunkingOptions = Required<ChunkingOptions>;
 
 const DEFAULT_TARGET_TOKENS = 650;
 const DEFAULT_OVERLAP_TOKENS = 80;
@@ -48,22 +50,20 @@ export function tokenizeApprox(text: string): number {
 }
 
 export function splitDocument(input: ChunkInput, options: ChunkingOptions = {}): TextChunk[] {
-  const targetTokens = Math.max(1, options.targetTokens ?? DEFAULT_TARGET_TOKENS);
-  const maxTokens = Math.max(targetTokens, options.maxTokens ?? DEFAULT_MAX_TOKENS);
-  const overlapTokens = Math.min(
-    Math.max(0, options.overlapTokens ?? DEFAULT_OVERLAP_TOKENS),
-    Math.max(0, maxTokens - 1),
-  );
+  const { targetTokens, overlapTokens, maxTokens } = normalizeOptions(options);
   const units = createTextUnits(input.text, maxTokens);
   const chunks: TextChunk[] = [];
   let currentUnits: TextUnit[] = [];
   let currentTokens = 0;
 
   for (const unit of units) {
-    const shouldFlush =
-      currentUnits.length > 0 && currentTokens + unit.tokenCount > targetTokens;
+    if (currentUnits.length > 0 && isSectionBoundary(currentUnits, unit)) {
+      chunks.push(createChunk(input, chunks.length, currentUnits, currentTokens));
+      currentUnits = [];
+      currentTokens = 0;
+    }
 
-    if (shouldFlush) {
+    if (currentUnits.length > 0 && currentTokens + unit.tokenCount > targetTokens) {
       chunks.push(createChunk(input, chunks.length, currentUnits, currentTokens));
       currentUnits = createOverlapUnits(currentUnits, overlapTokens, maxTokens - unit.tokenCount);
       currentTokens = sumTokens(currentUnits);
@@ -84,6 +84,38 @@ export function splitDocument(input: ChunkInput, options: ChunkingOptions = {}):
   }
 
   return chunks;
+}
+
+function normalizeOptions(options: ChunkingOptions): NormalizedChunkingOptions {
+  const targetTokens = options.targetTokens ?? DEFAULT_TARGET_TOKENS;
+  const overlapTokens = options.overlapTokens ?? DEFAULT_OVERLAP_TOKENS;
+  const configuredMaxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
+
+  assertPositiveInteger('targetTokens', targetTokens);
+  assertNonNegativeInteger('overlapTokens', overlapTokens);
+  assertPositiveInteger('maxTokens', configuredMaxTokens);
+
+  if (overlapTokens >= Math.floor(targetTokens / 2)) {
+    throw new Error('overlapTokens must be less than half of targetTokens');
+  }
+
+  return {
+    targetTokens,
+    overlapTokens,
+    maxTokens: Math.max(targetTokens, configuredMaxTokens),
+  };
+}
+
+function assertPositiveInteger(name: string, value: number) {
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+}
+
+function assertNonNegativeInteger(name: string, value: number) {
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
 }
 
 function createTextUnits(text: string, maxTokens: number): TextUnit[] {
@@ -137,7 +169,7 @@ function splitOversizedText(text: string, maxTokens: number): string[] {
   }
 
   const sentences = text
-    .split(/(?<=[。！？!?；;.!?])\s*/)
+    .split(/(?<=[\u3002\uff01\uff1f\uff1b;.!?])\s*/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
   const splitTexts = sentences.length > 1 ? sentences : [text];
@@ -205,6 +237,10 @@ function createOverlapUnits(
   return selected;
 }
 
+function isSectionBoundary(units: TextUnit[], nextUnit: TextUnit): boolean {
+  return units[units.length - 1]?.sectionTitle !== nextUnit.sectionTitle;
+}
+
 function createChunk(
   input: ChunkInput,
   index: number,
@@ -225,7 +261,7 @@ function createChunk(
 
   return {
     index,
-    text: units.map((unit) => unit.text).join('\n\n'),
+    content: units.map((unit) => unit.text).join('\n\n'),
     tokenCount,
     metadata,
   };

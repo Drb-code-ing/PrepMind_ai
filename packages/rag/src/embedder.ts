@@ -10,6 +10,12 @@ export function assertEmbeddingDimensions(vector: number[], dimensions: number) 
       `Expected embedding dimension ${dimensions} but received ${vector.length}`,
     );
   }
+
+  vector.forEach((value, index) => {
+    if (!Number.isFinite(value)) {
+      throw new Error(`Embedding vector contains a non-finite value at index ${index}`);
+    }
+  });
 }
 
 export function assertEmbeddingBatchDimensions(
