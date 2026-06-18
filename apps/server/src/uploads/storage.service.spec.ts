@@ -253,8 +253,29 @@ describe('StorageService', () => {
     ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND' });
   });
 
+  it('returns a knowledge document not found error for misplaced knowledge segments', async () => {
+    await expect(
+      createService().readKnowledgeDocumentObject(
+        'users/user_1/ocr/knowledge/foo.png',
+      ),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND' });
+  });
+
   it('returns a knowledge read failure when MinIO read fails', async () => {
     minioClient.statObject.mockRejectedValue(new Error('minio unavailable'));
+
+    await expect(
+      createService().readKnowledgeDocumentObject(
+        'users/user_1/knowledge/missing.txt',
+      ),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_READ_FAILED' });
+  });
+
+  it('returns a knowledge read failure when MinIO getObject fails', async () => {
+    minioClient.statObject.mockResolvedValue({
+      metaData: { 'content-type': 'text/plain' },
+    });
+    minioClient.getObject.mockRejectedValue(new Error('minio unavailable'));
 
     await expect(
       createService().readKnowledgeDocumentObject(

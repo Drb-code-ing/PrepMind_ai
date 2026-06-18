@@ -314,7 +314,14 @@ export class StorageService {
 
   private assertKnowledgeDocumentObjectKey(objectKey: string): string {
     const safeKey = this.assertStorageObjectKey(objectKey);
-    if (!safeKey.includes('/knowledge/')) {
+    const parts = safeKey.split('/');
+    if (
+      parts.length !== 4 ||
+      parts[0] !== 'users' ||
+      !parts[1] ||
+      parts[2] !== 'knowledge' ||
+      !parts[3]
+    ) {
       throw new AppError(
         'KNOWLEDGE_DOCUMENT_NOT_FOUND',
         '资料不存在',
