@@ -44,6 +44,19 @@ export class ChunkPersistenceService {
     );
 
     await this.prisma.$transaction(async (transaction) => {
+      const document = await transaction.document.findFirst({
+        where: { id: input.documentId, userId: input.userId },
+        select: { id: true },
+      });
+
+      if (!document) {
+        throw new AppError(
+          'KNOWLEDGE_DOCUMENT_NOT_FOUND',
+          'Knowledge document not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
       await transaction.chunk.deleteMany({
         where: { documentId: input.documentId, userId: input.userId },
       });

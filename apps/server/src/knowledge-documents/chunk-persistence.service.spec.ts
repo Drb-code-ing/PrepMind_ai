@@ -18,6 +18,14 @@ describe('ChunkPersistenceService', () => {
   } as unknown as ConfigService<ServerEnv, true>;
 
   const tx = {
+    document: {
+      findFirst: jest
+        .fn<
+          Promise<{ id: string } | null>,
+          [{ where: { id: string; userId: string }; select: { id: true } }]
+        >()
+        .mockResolvedValue({ id: 'doc_1' }),
+    },
     chunk: {
       deleteMany: jest
         .fn<
@@ -58,6 +66,7 @@ describe('ChunkPersistenceService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    tx.document.findFirst.mockResolvedValue({ id: 'doc_1' });
   });
 
   function createService() {
@@ -75,9 +84,36 @@ describe('ChunkPersistenceService', () => {
     });
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.document.findFirst).toHaveBeenCalledWith({
+      where: { id: 'doc_1', userId: 'user_1' },
+      select: { id: true },
+    });
     expect(tx.chunk.deleteMany).toHaveBeenCalledWith({
       where: { documentId: 'doc_1', userId: 'user_1' },
     });
+  });
+
+  it('rejects document ownership mismatch before deleting or inserting chunks', async () => {
+    tx.document.findFirst.mockResolvedValue(null);
+
+    await expect(
+      createService().replaceDocumentChunks({
+        documentId: 'doc_1',
+        userId: 'user_2',
+        chunks: [chunks[0]],
+      }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND',
+      statusCode: HttpStatus.NOT_FOUND,
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.document.findFirst).toHaveBeenCalledWith({
+      where: { id: 'doc_1', userId: 'user_2' },
+      select: { id: true },
+    });
+    expect(tx.chunk.deleteMany).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
   });
 
   it('inserts each chunk with raw sql and generated ids', async () => {
