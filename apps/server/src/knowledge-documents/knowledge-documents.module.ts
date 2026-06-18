@@ -9,6 +9,7 @@ import {
   EmbeddingService,
   type ServerEmbeddingProvider,
 } from './embedding.service';
+import { DocumentProcessingService } from './document-processing.service';
 import { KnowledgeDocumentsController } from './knowledge-documents.controller';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
@@ -17,6 +18,7 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
   controllers: [KnowledgeDocumentsController],
   providers: [
     KnowledgeDocumentsService,
+    DocumentProcessingService,
     DocumentParserService,
     EmbeddingService,
     ChunkPersistenceService,
@@ -25,6 +27,6 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
       useFactory: (): ServerEmbeddingProvider | undefined => undefined,
     },
   ],
-  exports: [KnowledgeDocumentsService],
+  exports: [KnowledgeDocumentsService, DocumentProcessingService],
 })
 export class KnowledgeDocumentsModule {}

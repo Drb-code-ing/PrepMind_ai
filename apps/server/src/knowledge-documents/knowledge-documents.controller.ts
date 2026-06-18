@@ -1,5 +1,6 @@
 import {
   CallHandler,
+  Body,
   Controller,
   Delete,
   ExecutionContext,
@@ -18,12 +19,16 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Observable } from 'rxjs';
-import { knowledgeDocumentListQuerySchema } from '@repo/types/api/knowledge';
+import {
+  knowledgeDocumentListQuerySchema,
+  knowledgeDocumentProcessRequestSchema,
+} from '@repo/types/api/knowledge';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import type { ServerEnv } from '../config/env';
+import { DocumentProcessingService } from './document-processing.service';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
 @Controller('knowledge/documents')
@@ -31,6 +36,7 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
 export class KnowledgeDocumentsController {
   constructor(
     private readonly knowledgeDocumentsService: KnowledgeDocumentsService,
+    private readonly documentProcessingService: DocumentProcessingService,
   ) {}
 
   @Post()
@@ -46,6 +52,16 @@ export class KnowledgeDocumentsController {
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = knowledgeDocumentListQuerySchema.parse(query);
     return this.knowledgeDocumentsService.list(user.id, input);
+  }
+
+  @Post(':id/process')
+  process(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const input = knowledgeDocumentProcessRequestSchema.parse(body ?? {});
+    return this.documentProcessingService.processDocument(user.id, id, input);
   }
 
   @Get(':id')
