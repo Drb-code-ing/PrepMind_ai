@@ -28,8 +28,19 @@ export class ChunkPersistenceService {
     chunks: PersistableChunk[];
   }): Promise<void> {
     this.assertChunkLimit(input.chunks.length);
+    const embeddingDimensions = this.configService.get(
+      'RAG_EMBEDDING_DIMENSIONS',
+      {
+        infer: true,
+      },
+    );
     const rows = input.chunks.map((chunk) =>
-      this.createChunkRow(input.documentId, input.userId, chunk),
+      this.createChunkRow(
+        input.documentId,
+        input.userId,
+        chunk,
+        embeddingDimensions,
+      ),
     );
 
     await this.prisma.$transaction(async (transaction) => {
@@ -66,12 +77,13 @@ export class ChunkPersistenceService {
     documentId: string,
     userId: string,
     chunk: PersistableChunk,
+    embeddingDimensions: number,
   ) {
     return {
       id: randomUUID(),
       documentId,
       content: chunk.content,
-      embedding: this.toPgVectorLiteral(chunk.embedding),
+      embedding: this.toPgVectorLiteral(chunk.embedding, embeddingDimensions),
       metadata: JSON.stringify(chunk.metadata),
       index: chunk.index,
       tokenCount: chunk.tokenCount,
@@ -80,7 +92,15 @@ export class ChunkPersistenceService {
     };
   }
 
-  private toPgVectorLiteral(vector: number[]) {
+  private toPgVectorLiteral(vector: number[], embeddingDimensions: number) {
+    if (vector.length !== embeddingDimensions) {
+      throw new AppError(
+        'KNOWLEDGE_EMBEDDING_FAILED',
+        `Expected embedding dimension ${embeddingDimensions} but received ${vector.length}`,
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+
     const values = vector.map((value, index) => {
       if (!Number.isFinite(value)) {
         throw new AppError(

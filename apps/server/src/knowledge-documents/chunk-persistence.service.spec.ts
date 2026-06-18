@@ -12,6 +12,7 @@ describe('ChunkPersistenceService', () => {
   const config = {
     get: jest.fn((key: keyof ServerEnv) => {
       if (key === 'RAG_MAX_CHUNKS_PER_DOCUMENT') return 2;
+      if (key === 'RAG_EMBEDDING_DIMENSIONS') return 3;
       return undefined;
     }),
   } as unknown as ConfigService<ServerEnv, true>;
@@ -133,5 +134,47 @@ describe('ChunkPersistenceService', () => {
     });
 
     expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('rejects wrong embedding vector dimensions before opening a transaction', async () => {
+    await expect(
+      createService().replaceDocumentChunks({
+        documentId: 'doc_1',
+        userId: 'user_1',
+        chunks: [
+          {
+            ...chunks[0],
+            embedding: [0.1, 0.2],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_EMBEDDING_FAILED',
+      statusCode: HttpStatus.BAD_GATEWAY,
+    });
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('accepts quote-like metadata through the raw sql parameter path', async () => {
+    await createService().replaceDocumentChunks({
+      documentId: 'doc_1',
+      userId: 'user_1',
+      chunks: [
+        {
+          ...chunks[0],
+          metadata: { title: 'a"b\'c', sourceName: 'notes.txt' },
+        },
+      ],
+    });
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    const values = tx.$executeRaw.mock.calls[0]?.slice(1);
+    expect(values).toEqual(
+      expect.arrayContaining([
+        JSON.stringify({ title: 'a"b\'c', sourceName: 'notes.txt' }),
+      ]),
+    );
   });
 });
