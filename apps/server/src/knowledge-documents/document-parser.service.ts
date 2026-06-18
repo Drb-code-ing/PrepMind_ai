@@ -104,7 +104,8 @@ export class DocumentParserService {
     return text
       .replace(/\r\n?/g, '\n')
       .replace(/\t/g, ' ')
-      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
+      .replace(/[\f\v\u001C-\u001F]/g, '\n')
+      .replace(/[\u0000-\u0008\u000E-\u001B\u007F]/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
