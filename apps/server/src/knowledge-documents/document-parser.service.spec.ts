@@ -35,12 +35,12 @@ describe('DocumentParserService', () => {
       type: 'TXT',
       mimeType: 'text/plain',
       buffer: Buffer.from(
-        '第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\r\nI\u0000J\r\nK\u0007L\r\nM\u0085N\r\n\r\n\r\n第三行',
+        '第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\r\nI\u0000J\r\nK\u0007L\r\nM\u0085N\r\n内容 with spaces\r\n   \r\n\t\r\n  \u0000  \r\n第三行',
       ),
     });
 
     expect(result).toEqual({
-      text: '第一行\nA B\nC\nD\nE\nF\nG\nH\nI J\nK L\nM N\n\n第三行',
+      text: '第一行\nA B\nC\nD\nE\nF\nG\nH\nI J\nK L\nM N\n内容 with spaces\n\n第三行',
       metadata: {
         sourceName: 'notes.txt',
         mimeType: 'text/plain',

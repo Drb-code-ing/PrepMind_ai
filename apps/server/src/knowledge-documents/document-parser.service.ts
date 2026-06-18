@@ -197,23 +197,22 @@ export class DocumentParserService {
   }
 
   private collapseExcessiveBlankLines(text: string) {
-    let normalized = '';
-    let newlineCount = 0;
+    const normalizedLines: string[] = [];
+    let blankLineCount = 0;
 
-    for (const character of text) {
-      if (character === '\n') {
-        newlineCount += 1;
-        if (newlineCount <= 2) {
-          normalized += character;
+    for (const line of text.split('\n')) {
+      if (line.trim() === '') {
+        blankLineCount += 1;
+        if (blankLineCount <= 1) {
+          normalizedLines.push('');
         }
-        continue;
+      } else {
+        blankLineCount = 0;
+        normalizedLines.push(line);
       }
-
-      newlineCount = 0;
-      normalized += character;
     }
 
-    return normalized;
+    return normalizedLines.join('\n');
   }
 
   private extractMarkdownHeadings(text: string) {
