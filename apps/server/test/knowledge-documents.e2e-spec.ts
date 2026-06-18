@@ -7,12 +7,14 @@ import type { App } from 'supertest/types';
 import {
   knowledgeDocumentDeleteResponseSchema,
   knowledgeDocumentListResponseSchema,
+  knowledgeDocumentProcessResponseSchema,
   knowledgeDocumentUploadResponseSchema,
 } from '@repo/types/api/knowledge';
 
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { PrismaService } from '../src/database/prisma.service';
+import { EMBEDDING_PROVIDER } from '../src/knowledge-documents/embedding.service';
 
 describe('KnowledgeDocumentsController (e2e)', () => {
   let app: INestApplication<App> | undefined;
@@ -40,7 +42,15 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       );
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(EMBEDDING_PROVIDER)
+      .useValue({
+        model: 'fake-e2e',
+        dimensions: 1536,
+        embedBatch: async (texts: string[]) =>
+          texts.map(() => Array(1536).fill(0.01)),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
@@ -172,6 +182,88 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       getSuccessData(listResponse),
     );
     expect(list.items.some((item) => item.id === uploaded.id)).toBe(false);
+  });
+
+  it('processes an uploaded text document into chunks', async () => {
+    const user = await registerUser('knowledge-process-success');
+
+    const uploadResponse = await request(server)
+      .post('/knowledge/documents')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach('file', Buffer.from('第一段内容\n\n第二段内容'), {
+        filename: 'notes.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const uploaded = knowledgeDocumentUploadResponseSchema.parse(
+      getSuccessData(uploadResponse),
+    );
+
+    const processResponse = await request(server)
+      .post(`/knowledge/documents/${uploaded.id}/process`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({})
+      .expect(201);
+    const processed = knowledgeDocumentProcessResponseSchema.parse(
+      getSuccessData(processResponse),
+    );
+
+    expect(processed.status).toBe('DONE');
+    expect(processed.chunkCount).toBeGreaterThan(0);
+    expect(processed.processedAt).not.toBeNull();
+
+    await request(server)
+      .get(`/knowledge/documents/${uploaded.id}`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200)
+      .expect((response) => {
+        const detail = knowledgeDocumentProcessResponseSchema.parse(
+          getSuccessData(response),
+        );
+        expect(detail.status).toBe('DONE');
+        expect(detail.chunkCount).toBeGreaterThan(0);
+      });
+  });
+
+  it('marks empty text documents as failed when processing', async () => {
+    const user = await registerUser('knowledge-process-empty');
+
+    const uploadResponse = await request(server)
+      .post('/knowledge/documents')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach('file', Buffer.from(' \n\t \n'), {
+        filename: 'empty.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const uploaded = knowledgeDocumentUploadResponseSchema.parse(
+      getSuccessData(uploadResponse),
+    );
+
+    await request(server)
+      .post(`/knowledge/documents/${uploaded.id}/process`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({})
+      .expect(422)
+      .expect((response) => {
+        expect(getErrorBody(response).error.code).toBe(
+          'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
+        );
+      });
+
+    await request(server)
+      .get(`/knowledge/documents/${uploaded.id}`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200)
+      .expect((response) => {
+        const detail = knowledgeDocumentProcessResponseSchema.parse(
+          getSuccessData(response),
+        );
+        expect(detail.status).toBe('FAILED');
+        expect(detail.chunkCount).toBe(0);
+        expect(detail.errorMessage).not.toBeNull();
+        expect(detail.errorMessage?.length).toBeGreaterThan(0);
+      });
   });
 
   async function registerUser(label: string) {
