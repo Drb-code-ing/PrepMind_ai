@@ -432,6 +432,14 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --cwd packages/database prisma:generate` 通过。
 - `bun --filter @repo/server build` 通过。
 
+**Phase 6 错题整理 Agent 规划补充**
+
+- 确认未来错题本首页不继续平铺所有错题，而是按学科卡片优先组织，例如“高等数学”“大学英语”。
+- 学科卡片内部再按 AI 归纳专题分化，例如“曲线积分与格林公式”“四级阅读长难句”。
+- Phase 6 预留 `WrongQuestionOrganizerAgent`：基于结构化错题字段、知识点、错因、题型、难度、用户备注和复习表现，推荐学科组与专题 deck。
+- 明确用户拥有最终组织权：可重命名卡片、移动错题、合并专题；用户修改后的名称不被 AI 自动覆盖。
+- 新增 `docs/superpowers/specs/2026-06-18-phase-6-wrong-question-organizer-agent-design.md` 记录该子规划。
+
 ---
 
 ## 当前状态
@@ -516,6 +524,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [ ] Phase 5.4：检索 API。
 - [ ] Phase 5.5：Chat RAG 增强与引用展示。
 - [ ] Phase 5.6：知识库页面体验打磨。
-- [ ] LangGraph 多 Agent 系统。
+- [ ] Phase 6：LangGraph 多 Agent 系统。
+- [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。

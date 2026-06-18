@@ -26,7 +26,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 5.
 下一步：
 
 1. Phase 5.2：文档上传与状态 API。
-2. Phase 6：LangGraph 多 Agent 系统。
+2. Phase 6：LangGraph 多 Agent 系统，其中 `WrongQuestionOrganizerAgent` 负责未来错题本学科卡片与专题 deck 归纳。
 
 ## 常用命令
 
@@ -85,6 +85,7 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
+- Phase 6 错题整理规划：错题首页按学科卡片优先展示，学科内部按 AI 归纳专题拆分；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
 
 ## 当前数据流
 

@@ -153,7 +153,7 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 5.2：文档上传与状态 API。
-2. Phase 6：LangGraph 多 Agent 系统。
+2. Phase 6：LangGraph 多 Agent 系统；其中错题本将规划为学科卡片优先、内部专题下钻，并由 `WrongQuestionOrganizerAgent` 做 AI 归纳建议。
 
 ## 文档入口
 
