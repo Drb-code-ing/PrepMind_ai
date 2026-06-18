@@ -29,7 +29,9 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
 @Controller('knowledge/documents')
 @UseGuards(JwtAuthGuard)
 export class KnowledgeDocumentsController {
-  constructor(private readonly knowledgeDocumentsService: KnowledgeDocumentsService) {}
+  constructor(
+    private readonly knowledgeDocumentsService: KnowledgeDocumentsService,
+  ) {}
 
   @Post()
   @UseInterceptors(createKnowledgeDocumentFileInterceptor())
@@ -65,9 +67,12 @@ function createKnowledgeDocumentFileInterceptor(): Type<NestInterceptor> {
       @Inject(ConfigService)
       private readonly configService: ConfigService<ServerEnv, true>,
     ) {
-      const maxDocumentBytes = this.configService.get('UPLOAD_DOCUMENT_MAX_BYTES', {
-        infer: true,
-      });
+      const maxDocumentBytes = this.configService.get(
+        'UPLOAD_DOCUMENT_MAX_BYTES',
+        {
+          infer: true,
+        },
+      );
       const Interceptor = FileInterceptor('file', {
         limits: {
           fileSize: maxDocumentBytes,

@@ -18,8 +18,13 @@ export class KnowledgeDocumentsService {
     private readonly storageService: StorageService,
   ) {}
 
-  async createUploadDocument(userId: string, file: Express.Multer.File | undefined) {
-    const uploaded = await this.storageService.uploadKnowledgeDocument(userId, { file });
+  async createUploadDocument(
+    userId: string,
+    file: Express.Multer.File | undefined,
+  ) {
+    const uploaded = await this.storageService.uploadKnowledgeDocument(userId, {
+      file,
+    });
 
     try {
       const document = await this.prisma.document.create({
@@ -57,7 +62,8 @@ export class KnowledgeDocumentsService {
       include: this.documentInclude,
     });
     const items = documents.slice(0, query.limit);
-    const nextCursor = documents.length > query.limit ? items.at(-1)?.id ?? null : null;
+    const nextCursor =
+      documents.length > query.limit ? (items.at(-1)?.id ?? null) : null;
 
     return {
       items: items.map((document) => this.toResponse(document)),

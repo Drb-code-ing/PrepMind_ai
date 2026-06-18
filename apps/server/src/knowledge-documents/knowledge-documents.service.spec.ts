@@ -101,7 +101,9 @@ describe('KnowledgeDocumentsService', () => {
         originalname: 'calculus.pdf',
       } as Express.Multer.File),
     ).rejects.toThrow('database down');
-    expect(storage.deleteObject).toHaveBeenCalledWith('users/user_1/knowledge/orphan.pdf');
+    expect(storage.deleteObject).toHaveBeenCalledWith(
+      'users/user_1/knowledge/orphan.pdf',
+    );
   });
 
   it('lists only current user documents with optional filters', async () => {
@@ -126,7 +128,9 @@ describe('KnowledgeDocumentsService', () => {
   it('throws not found for cross-user detail access', async () => {
     prisma.document.findFirst.mockResolvedValue(null);
 
-    await expect(createService().getById('user_2', 'doc_1')).rejects.toMatchObject({
+    await expect(
+      createService().getById('user_2', 'doc_1'),
+    ).rejects.toMatchObject({
       code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND',
       statusCode: HttpStatus.NOT_FOUND,
     });
@@ -138,8 +142,12 @@ describe('KnowledgeDocumentsService', () => {
 
     const result = await createService().delete('user_1', 'doc_1');
 
-    expect(storage.deleteObject).toHaveBeenCalledWith('users/user_1/knowledge/doc.pdf');
-    expect(prisma.document.delete).toHaveBeenCalledWith({ where: { id: 'doc_1' } });
+    expect(storage.deleteObject).toHaveBeenCalledWith(
+      'users/user_1/knowledge/doc.pdf',
+    );
+    expect(prisma.document.delete).toHaveBeenCalledWith({
+      where: { id: 'doc_1' },
+    });
     expect(result).toEqual({ ok: true });
   });
 });

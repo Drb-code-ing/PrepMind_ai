@@ -89,9 +89,12 @@ export class StorageService {
     this.maxImageBytes = this.configService.get('UPLOAD_IMAGE_MAX_BYTES', {
       infer: true,
     });
-    this.maxDocumentBytes = this.configService.get('UPLOAD_DOCUMENT_MAX_BYTES', {
-      infer: true,
-    });
+    this.maxDocumentBytes = this.configService.get(
+      'UPLOAD_DOCUMENT_MAX_BYTES',
+      {
+        infer: true,
+      },
+    );
   }
 
   async uploadImage(userId: string, input: UploadImageInput) {
@@ -262,7 +265,10 @@ export class StorageService {
     extension: string;
     type: KnowledgeDocumentType;
   } {
-    const mimeType = this.normalizeDocumentMimeType(file.mimetype, file.originalname);
+    const mimeType = this.normalizeDocumentMimeType(
+      file.mimetype,
+      file.originalname,
+    );
     const documentType = documentMimeTypes[mimeType];
     if (!documentType) {
       throw new AppError(

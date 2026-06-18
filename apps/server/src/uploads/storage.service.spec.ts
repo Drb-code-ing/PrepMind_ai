@@ -176,7 +176,9 @@ describe('StorageService', () => {
       } as Express.Multer.File,
     });
 
-    expect(result.objectKey).toMatch(/^users\/user_1\/knowledge\/[a-f0-9-]+\.pdf$/);
+    expect(result.objectKey).toMatch(
+      /^users\/user_1\/knowledge\/[a-f0-9-]+\.pdf$/,
+    );
     expect(result.mimeType).toBe('application/pdf');
     expect(result.type).toBe('PDF');
     expect(result.originalName).toBe('calculus.pdf');

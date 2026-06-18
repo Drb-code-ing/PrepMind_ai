@@ -53,11 +53,36 @@ const envSchema = z
       .int()
       .refine((value) => value === 1536)
       .default(1536),
-    RAG_EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(128).default(32),
-    RAG_CHUNK_TARGET_TOKENS: z.coerce.number().int().min(100).max(2000).default(650),
-    RAG_CHUNK_OVERLAP_TOKENS: z.coerce.number().int().min(0).max(500).default(80),
-    RAG_CHUNK_MAX_TOKENS: z.coerce.number().int().min(200).max(3000).default(900),
-    RAG_MAX_CHUNKS_PER_DOCUMENT: z.coerce.number().int().min(1).max(2000).default(500),
+    RAG_EMBEDDING_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(128)
+      .default(32),
+    RAG_CHUNK_TARGET_TOKENS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(2000)
+      .default(650),
+    RAG_CHUNK_OVERLAP_TOKENS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(500)
+      .default(80),
+    RAG_CHUNK_MAX_TOKENS: z.coerce
+      .number()
+      .int()
+      .min(200)
+      .max(3000)
+      .default(900),
+    RAG_MAX_CHUNKS_PER_DOCUMENT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(2000)
+      .default(500),
     OPENAI_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
@@ -65,7 +90,8 @@ const envSchema = z
       context.addIssue({
         code: 'custom',
         path: ['RAG_CHUNK_OVERLAP_TOKENS'],
-        message: 'RAG_CHUNK_OVERLAP_TOKENS must be less than RAG_CHUNK_TARGET_TOKENS',
+        message:
+          'RAG_CHUNK_OVERLAP_TOKENS must be less than RAG_CHUNK_TARGET_TOKENS',
       });
     }
 
@@ -73,7 +99,8 @@ const envSchema = z
       context.addIssue({
         code: 'custom',
         path: ['RAG_CHUNK_TARGET_TOKENS'],
-        message: 'RAG_CHUNK_TARGET_TOKENS must be less than or equal to RAG_CHUNK_MAX_TOKENS',
+        message:
+          'RAG_CHUNK_TARGET_TOKENS must be less than or equal to RAG_CHUNK_MAX_TOKENS',
       });
     }
   });

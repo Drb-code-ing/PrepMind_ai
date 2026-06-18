@@ -35,7 +35,9 @@ describe('KnowledgeDocumentsController (e2e)', () => {
     process.env.UPLOAD_DOCUMENT_MAX_BYTES = String(20 * 1024 * 1024);
 
     const { AppModule } =
-      jest.requireActual<typeof import('../src/app.module')>('../src/app.module');
+      jest.requireActual<typeof import('../src/app.module')>(
+        '../src/app.module',
+      );
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -130,7 +132,9 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
     expect(
-      knowledgeDocumentDeleteResponseSchema.parse(getSuccessData(deleteResponse)),
+      knowledgeDocumentDeleteResponseSchema.parse(
+        getSuccessData(deleteResponse),
+      ),
     ).toEqual({ ok: true });
 
     await request(server)
