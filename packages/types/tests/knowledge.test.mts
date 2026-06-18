@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   knowledgeDocumentListQuerySchema,
+  knowledgeDocumentListResponseSchema,
   knowledgeDocumentResponseSchema,
   knowledgeDocumentSourceTypeSchema,
   knowledgeDocumentStatusSchema,
@@ -13,7 +14,9 @@ import {
 function run() {
   testEnums();
   testDocumentResponse();
+  testFailedDocumentResponse();
   testListQuery();
+  testListResponse();
   testSearchRequest();
   testSearchResponse();
 }
@@ -37,6 +40,21 @@ function testDocumentResponse() {
   assert.equal(result.chunkCount, 3);
 }
 
+function testFailedDocumentResponse() {
+  const result = knowledgeDocumentResponseSchema.parse(
+    createDocumentPayload({
+      status: 'FAILED',
+      errorMessage: 'Embedding provider rejected the input.',
+      processedAt: null,
+      chunkCount: 0,
+    }),
+  );
+
+  assert.equal(result.status, 'FAILED');
+  assert.equal(result.errorMessage, 'Embedding provider rejected the input.');
+  assert.equal(result.processedAt, null);
+}
+
 function testListQuery() {
   const defaultQuery = knowledgeDocumentListQuerySchema.parse({});
   assert.equal(defaultQuery.limit, 20);
@@ -57,6 +75,22 @@ function testListQuery() {
   assert.throws(() => knowledgeDocumentListQuerySchema.parse({ limit: '0' }));
   assert.throws(() => knowledgeDocumentListQuerySchema.parse({ limit: '101' }));
   assert.throws(() => knowledgeDocumentListQuerySchema.parse({ status: 'READY' }));
+}
+
+function testListResponse() {
+  const result = knowledgeDocumentListResponseSchema.parse({
+    items: [createDocumentPayload()],
+    nextCursor: 'doc_2',
+  });
+
+  assert.equal(result.items.length, 1);
+  assert.equal(result.nextCursor, 'doc_2');
+
+  const empty = knowledgeDocumentListResponseSchema.parse({
+    items: [],
+    nextCursor: null,
+  });
+  assert.equal(empty.nextCursor, null);
 }
 
 function testSearchRequest() {
