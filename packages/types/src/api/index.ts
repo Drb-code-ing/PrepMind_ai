@@ -35,3 +35,4 @@ export type RAGSearchInput = z.infer<typeof RAGSearchSchema>;
 
 export * from './review';
 export * from './review-preference';
+export * from './knowledge';

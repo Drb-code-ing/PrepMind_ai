@@ -15,6 +15,7 @@
     "./api/review": "./src/api/review.ts",
     "./api/review-preference": "./src/api/review-preference.ts",
     "./api/review-task": "./src/api/review-task.ts",
+    "./api/knowledge": "./src/api/knowledge.ts",
     "./api/upload": "./src/api/upload.ts"
   },
   "scripts": {

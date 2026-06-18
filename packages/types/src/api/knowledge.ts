@@ -1,0 +1,98 @@
+import { z } from 'zod';
+
+const numericQuerySchema = (defaultValue: number, min: number, max: number) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue;
+    }
+
+    if (typeof value === 'string') {
+      return Number(value);
+    }
+
+    return value;
+  }, z.number().int().min(min).max(max).default(defaultValue));
+
+const floatQuerySchema = (defaultValue: number, min: number, max: number) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') {
+      return defaultValue;
+    }
+
+    if (typeof value === 'string') {
+      return Number(value);
+    }
+
+    return value;
+  }, z.number().min(min).max(max).default(defaultValue));
+
+export const knowledgeDocumentTypeSchema = z.enum(['PDF', 'DOCX', 'MD', 'TXT']);
+export const knowledgeDocumentStatusSchema = z.enum(['PENDING', 'PROCESSING', 'DONE', 'FAILED']);
+export const knowledgeDocumentSourceTypeSchema = z.enum([
+  'UPLOAD',
+  'NOTE',
+  'WRONG_QUESTION',
+  'OCR',
+  'CHAT',
+]);
+
+export const knowledgeDocumentResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: knowledgeDocumentTypeSchema,
+  size: z.number().int().nonnegative(),
+  mimeType: z.string(),
+  status: knowledgeDocumentStatusSchema,
+  sourceType: knowledgeDocumentSourceTypeSchema,
+  errorMessage: z.string().nullable(),
+  contentHash: z.string().nullable(),
+  chunkCount: z.number().int().nonnegative(),
+  processedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const knowledgeDocumentListQuerySchema = z
+  .object({
+    status: knowledgeDocumentStatusSchema.optional(),
+    sourceType: knowledgeDocumentSourceTypeSchema.optional(),
+    limit: numericQuerySchema(20, 1, 100),
+    cursor: z.string().optional(),
+  })
+  .strict();
+
+export const knowledgeDocumentListResponseSchema = z.object({
+  items: z.array(knowledgeDocumentResponseSchema),
+  nextCursor: z.string().nullable(),
+});
+
+export const knowledgeSearchRequestSchema = z
+  .object({
+    query: z.string().trim().min(1).max(2000),
+    topK: numericQuerySchema(5, 1, 20),
+    minScore: floatQuerySchema(0.7, 0, 1),
+  })
+  .strict();
+
+export const knowledgeSearchHitSchema = z.object({
+  chunkId: z.string(),
+  documentId: z.string(),
+  documentName: z.string(),
+  content: z.string(),
+  score: z.number().min(0).max(1),
+  metadata: z.record(z.unknown()),
+});
+
+export const knowledgeSearchResponseSchema = z.object({
+  hits: z.array(knowledgeSearchHitSchema),
+});
+
+export type KnowledgeDocumentType = z.infer<typeof knowledgeDocumentTypeSchema>;
+export type KnowledgeDocumentStatus = z.infer<typeof knowledgeDocumentStatusSchema>;
+export type KnowledgeDocumentSourceType = z.infer<typeof knowledgeDocumentSourceTypeSchema>;
+export type KnowledgeDocumentResponse = z.infer<typeof knowledgeDocumentResponseSchema>;
+export type KnowledgeDocumentListQuery = z.infer<typeof knowledgeDocumentListQuerySchema>;
+export type KnowledgeDocumentListResponse = z.infer<typeof knowledgeDocumentListResponseSchema>;
+export type KnowledgeSearchRequest = z.infer<typeof knowledgeSearchRequestSchema>;
+export type KnowledgeSearchHit = z.infer<typeof knowledgeSearchHitSchema>;
+export type KnowledgeSearchResponse = z.infer<typeof knowledgeSearchResponseSchema>;
