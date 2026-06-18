@@ -21,6 +21,9 @@ describe('KnowledgeDocumentsController (e2e)', () => {
   let server: App;
   let prisma: PrismaService | undefined;
   const emails: string[] = [];
+  const embedBatch = jest.fn(async (texts: string[]) =>
+    texts.map(() => Array(1536).fill(0.01)),
+  );
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
@@ -47,8 +50,7 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       .useValue({
         model: 'fake-e2e',
         dimensions: 1536,
-        embedBatch: async (texts: string[]) =>
-          texts.map(() => Array(1536).fill(0.01)),
+        embedBatch,
       })
       .compile();
 
@@ -184,6 +186,10 @@ describe('KnowledgeDocumentsController (e2e)', () => {
     expect(list.items.some((item) => item.id === uploaded.id)).toBe(false);
   });
 
+  beforeEach(() => {
+    embedBatch.mockClear();
+  });
+
   it('processes an uploaded text document into chunks', async () => {
     const user = await registerUser('knowledge-process-success');
 
@@ -211,6 +217,7 @@ describe('KnowledgeDocumentsController (e2e)', () => {
     expect(processed.status).toBe('DONE');
     expect(processed.chunkCount).toBeGreaterThan(0);
     expect(processed.processedAt).not.toBeNull();
+    expect(embedBatch).toHaveBeenCalled();
 
     await request(server)
       .get(`/knowledge/documents/${uploaded.id}`)
