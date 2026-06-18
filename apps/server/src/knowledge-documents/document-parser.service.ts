@@ -79,14 +79,24 @@ export class DocumentParserService {
 
   private async createPdfDocument(input: ParseDocumentInput) {
     const parser = new PDFParse({ data: input.buffer });
+    let parseError: unknown;
 
     try {
       const result = await parser.getText();
       return this.createParsedDocument(input, result.text, 'pdf-basic', {
         pageCount: result.total,
       });
+    } catch (error) {
+      parseError = error;
+      throw error;
     } finally {
-      await parser.destroy();
+      try {
+        await parser.destroy();
+      } catch (error) {
+        if (!parseError) {
+          throw error;
+        }
+      }
     }
   }
 

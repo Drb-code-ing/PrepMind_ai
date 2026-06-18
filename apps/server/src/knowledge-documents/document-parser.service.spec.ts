@@ -105,6 +105,24 @@ describe('DocumentParserService', () => {
     });
   });
 
+  it('preserves pdf parse error when cleanup also fails', async () => {
+    const parseError = new Error('pdf parse failed');
+    const destroyError = new Error('pdf destroy failed');
+    (PDFParse as jest.Mock).mockImplementationOnce(() => ({
+      destroy: jest.fn().mockRejectedValue(destroyError),
+      getText: jest.fn().mockRejectedValue(parseError),
+    }));
+
+    await expect(
+      createService().parse({
+        name: 'broken.pdf',
+        type: 'PDF',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('pdf bytes'),
+      }),
+    ).rejects.toBe(parseError);
+  });
+
   it('throws app error for empty parsed text', async () => {
     await expect(
       createService().parse({
