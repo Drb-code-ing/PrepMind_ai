@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import { ConfigService } from '@nestjs/config';
 
 import type { ServerEnv } from '../config/env';
@@ -227,6 +228,39 @@ describe('StorageService', () => {
     expectReadObjectKeyError('../secret');
     expectReadObjectKeyError('users\\user_1\\x.png');
     expectReadObjectKeyError('documents/file.png');
+  });
+
+  it('reads a knowledge document object with document errors', async () => {
+    minioClient.statObject.mockResolvedValue({
+      metaData: { 'content-type': 'text/plain' },
+    });
+    minioClient.getObject.mockResolvedValue(Readable.from(['hello']));
+
+    const result = await createService().readKnowledgeDocumentObject(
+      'users/user_1/knowledge/notes.txt',
+    );
+
+    expect(result.contentType).toBe('text/plain');
+    expect(minioClient.statObject).toHaveBeenCalledWith(
+      'prepmind-dev',
+      'users/user_1/knowledge/notes.txt',
+    );
+  });
+
+  it('returns a knowledge document not found error for unsafe document read keys', async () => {
+    await expect(
+      createService().readKnowledgeDocumentObject('../secret.txt'),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND' });
+  });
+
+  it('returns a knowledge read failure when MinIO read fails', async () => {
+    minioClient.statObject.mockRejectedValue(new Error('minio unavailable'));
+
+    await expect(
+      createService().readKnowledgeDocumentObject(
+        'users/user_1/knowledge/missing.txt',
+      ),
+    ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_READ_FAILED' });
   });
 
   it('accepts endpoint values that accidentally include a port', () => {

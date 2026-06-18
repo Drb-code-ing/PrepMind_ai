@@ -197,25 +197,28 @@ export class StorageService {
   }> {
     const safeKey = this.assertReadableObjectKey(objectKey);
     try {
-      const stat = await this.minioClient.statObject(this.bucket, safeKey);
-      const stream = await this.minioClient.getObject(this.bucket, safeKey);
-      const metadata =
-        typeof stat.metaData === 'object' && stat.metaData !== null
-          ? (stat.metaData as Record<string, string | undefined>)
-          : {};
-
-      return {
-        stream,
-        contentType:
-          metadata['content-type'] ??
-          metadata['Content-Type'] ??
-          'application/octet-stream',
-      };
+      return await this.readStoredObject(safeKey);
     } catch {
       throw new AppError(
         'UPLOAD_IMAGE_NOT_FOUND',
         '图片不存在',
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  async readKnowledgeDocumentObject(objectKey: string): Promise<{
+    stream: Readable;
+    contentType: string;
+  }> {
+    const safeKey = this.assertKnowledgeDocumentObjectKey(objectKey);
+    try {
+      return await this.readStoredObject(safeKey);
+    } catch {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_READ_FAILED',
+        '无法读取资料文件',
+        HttpStatus.BAD_GATEWAY,
       );
     }
   }
@@ -307,6 +310,38 @@ export class StorageService {
       );
     }
     return trimmed;
+  }
+
+  private assertKnowledgeDocumentObjectKey(objectKey: string): string {
+    const safeKey = this.assertStorageObjectKey(objectKey);
+    if (!safeKey.includes('/knowledge/')) {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_NOT_FOUND',
+        '资料不存在',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return safeKey;
+  }
+
+  private async readStoredObject(safeKey: string): Promise<{
+    stream: Readable;
+    contentType: string;
+  }> {
+    const stat = await this.minioClient.statObject(this.bucket, safeKey);
+    const stream = await this.minioClient.getObject(this.bucket, safeKey);
+    const metadata =
+      typeof stat.metaData === 'object' && stat.metaData !== null
+        ? (stat.metaData as Record<string, string | undefined>)
+        : {};
+
+    return {
+      stream,
+      contentType:
+        metadata['content-type'] ??
+        metadata['Content-Type'] ??
+        'application/octet-stream',
+    };
   }
 
   private async ensureBucket() {
