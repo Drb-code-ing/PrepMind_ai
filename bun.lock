@@ -17,6 +17,7 @@
         "@prisma/client": "^6.6.0",
         "@repo/database": "*",
         "@repo/fsrs": "*",
+        "@repo/rag": "*",
         "@repo/types": "*",
         "argon2": "^0.44.0",
         "cookie-parser": "^1.4.7",
