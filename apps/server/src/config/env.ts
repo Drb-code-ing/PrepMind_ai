@@ -36,6 +36,15 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(20 * 1024 * 1024),
+  RAG_EMBEDDING_PROVIDER: z.enum(['openai']).default('openai'),
+  RAG_EMBEDDING_MODEL: z.string().min(1).default('text-embedding-3-small'),
+  RAG_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+  RAG_EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(128).default(32),
+  RAG_CHUNK_TARGET_TOKENS: z.coerce.number().int().min(100).max(2000).default(650),
+  RAG_CHUNK_OVERLAP_TOKENS: z.coerce.number().int().min(0).max(500).default(80),
+  RAG_CHUNK_MAX_TOKENS: z.coerce.number().int().min(200).max(3000).default(900),
+  RAG_MAX_CHUNKS_PER_DOCUMENT: z.coerce.number().int().min(1).max(2000).default(500),
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof envSchema>;

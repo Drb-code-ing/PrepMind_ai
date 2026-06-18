@@ -67,6 +67,14 @@ export const knowledgeDocumentDeleteResponseSchema = z.object({
   ok: z.literal(true),
 });
 
+export const knowledgeDocumentProcessRequestSchema = z
+  .object({
+    force: z.boolean().default(false),
+  })
+  .strict();
+
+export const knowledgeDocumentProcessResponseSchema = knowledgeDocumentResponseSchema;
+
 export const knowledgeDocumentListQuerySchema = z
   .object({
     status: knowledgeDocumentStatusSchema.optional(),
@@ -115,6 +123,12 @@ export type KnowledgeDocumentDetailResponse = z.infer<
 >;
 export type KnowledgeDocumentDeleteResponse = z.infer<
   typeof knowledgeDocumentDeleteResponseSchema
+>;
+export type KnowledgeDocumentProcessRequest = z.infer<
+  typeof knowledgeDocumentProcessRequestSchema
+>;
+export type KnowledgeDocumentProcessResponse = z.infer<
+  typeof knowledgeDocumentProcessResponseSchema
 >;
 export type KnowledgeDocumentListQuery = z.infer<typeof knowledgeDocumentListQuerySchema>;
 export type KnowledgeDocumentListResponse = z.infer<typeof knowledgeDocumentListResponseSchema>;

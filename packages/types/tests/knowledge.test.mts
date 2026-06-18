@@ -5,6 +5,8 @@ import {
   knowledgeDocumentListQuerySchema,
   knowledgeDocumentListResponseSchema,
   knowledgeDocumentMimeTypeSchema,
+  knowledgeDocumentProcessRequestSchema,
+  knowledgeDocumentProcessResponseSchema,
   knowledgeDocumentResponseSchema,
   knowledgeDocumentSourceTypeSchema,
   knowledgeDocumentStatusSchema,
@@ -22,6 +24,7 @@ function run() {
   testFailedDocumentResponse();
   testListQuery();
   testListResponse();
+  testProcessRequest();
   testSearchRequest();
   testSearchResponse();
   testDeleteResponse();
@@ -118,6 +121,28 @@ function testListResponse() {
     nextCursor: null,
   });
   assert.equal(empty.nextCursor, null);
+}
+
+function testProcessRequest() {
+  assert.deepEqual(knowledgeDocumentProcessRequestSchema.parse({}), {
+    force: false,
+  });
+  assert.deepEqual(knowledgeDocumentProcessRequestSchema.parse({ force: true }), {
+    force: true,
+  });
+  assert.throws(() =>
+    knowledgeDocumentProcessRequestSchema.parse({ force: true, extra: true }),
+  );
+
+  const response = knowledgeDocumentProcessResponseSchema.parse(
+    createDocumentPayload({
+      status: 'DONE',
+      chunkCount: 2,
+      processedAt: '2026-06-18T10:00:00.000Z',
+    }),
+  );
+  assert.equal(response.status, 'DONE');
+  assert.equal(response.chunkCount, 2);
 }
 
 function testSearchRequest() {

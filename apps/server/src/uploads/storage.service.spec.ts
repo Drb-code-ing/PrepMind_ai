@@ -23,6 +23,15 @@ describe('StorageService', () => {
     PUBLIC_API_BASE_URL: 'http://localhost:3001',
     UPLOAD_IMAGE_MAX_BYTES: 8 * 1024 * 1024,
     UPLOAD_DOCUMENT_MAX_BYTES: 20 * 1024 * 1024,
+    RAG_EMBEDDING_PROVIDER: 'openai',
+    RAG_EMBEDDING_MODEL: 'text-embedding-3-small',
+    RAG_EMBEDDING_DIMENSIONS: 1536,
+    RAG_EMBEDDING_BATCH_SIZE: 32,
+    RAG_CHUNK_TARGET_TOKENS: 650,
+    RAG_CHUNK_OVERLAP_TOKENS: 80,
+    RAG_CHUNK_MAX_TOKENS: 900,
+    RAG_MAX_CHUNKS_PER_DOCUMENT: 500,
+    OPENAI_API_KEY: 'test-openai-key',
   };
   const config = {
     get: jest.fn((key: keyof ServerEnv) => configValues[key]),
