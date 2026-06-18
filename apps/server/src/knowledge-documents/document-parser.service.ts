@@ -28,7 +28,11 @@ export class DocumentParserService {
   async parse(input: ParseDocumentInput): Promise<ParsedDocument> {
     switch (input.type) {
       case 'TXT':
-        return this.createParsedDocument(input, input.buffer.toString('utf8'), 'txt-basic');
+        return this.createParsedDocument(
+          input,
+          input.buffer.toString('utf8'),
+          'txt-basic',
+        );
       case 'MD':
         return this.createMarkdownDocument(input);
       case 'DOCX':
@@ -69,7 +73,9 @@ export class DocumentParserService {
     const text = this.normalizeText(rawText);
     const headings = this.extractMarkdownHeadings(text);
 
-    return this.createParsedDocument(input, text, 'markdown-basic', { headings });
+    return this.createParsedDocument(input, text, 'markdown-basic', {
+      headings,
+    });
   }
 
   private async createDocxDocument(input: ParseDocumentInput) {
@@ -85,32 +91,47 @@ export class DocumentParserService {
   }
 
   private async createPdfDocument(input: ParseDocumentInput) {
-    const parser = new PDFParse({ data: input.buffer });
-    let primaryError: unknown;
+    let parser: PDFParse;
 
     try {
-      let result: Awaited<ReturnType<PDFParse['getText']>>;
-
-      try {
-        result = await parser.getText();
-      } catch (error) {
-        throw this.createParseFailedError(error);
-      }
-
-      return this.createParsedDocument(input, result.text, 'pdf-basic', {
-        pageCount: result.total,
-      });
+      parser = new PDFParse({ data: input.buffer });
     } catch (error) {
-      primaryError = error;
+      throw this.createParseFailedError(error);
+    }
+
+    let result: Awaited<ReturnType<PDFParse['getText']>>;
+
+    try {
+      result = await parser.getText();
+    } catch (error) {
+      await this.destroyPdfParserAfterFailure(parser);
+      throw this.createParseFailedError(error);
+    }
+
+    let parsedDocument: ParsedDocument;
+    try {
+      parsedDocument = this.createParsedDocument(
+        input,
+        result.text,
+        'pdf-basic',
+        {
+          pageCount: result.total,
+        },
+      );
+    } catch (error) {
+      await this.destroyPdfParserAfterFailure(parser);
       throw error;
-    } finally {
-      try {
-        await parser.destroy();
-      } catch (error) {
-        if (!primaryError) {
-          throw error;
-        }
-      }
+    }
+
+    await parser.destroy();
+    return parsedDocument;
+  }
+
+  private async destroyPdfParserAfterFailure(parser: PDFParse) {
+    try {
+      await parser.destroy();
+    } catch {
+      // Preserve the original parse or normalization error for diagnostics.
     }
   }
 
@@ -125,13 +146,72 @@ export class DocumentParserService {
   }
 
   private normalizeText(text: string) {
-    return text
-      .replace(/\r\n?/g, '\n')
-      .replace(/\t/g, ' ')
-      .replace(/[\f\v\u001C-\u001F]/g, '\n')
-      .replace(/[\u0000-\u0008\u000E-\u001B\u007F]/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+    return this.collapseExcessiveBlankLines(
+      this.normalizeCharacters(text),
+    ).trim();
+  }
+
+  private normalizeCharacters(text: string) {
+    const normalized: string[] = [];
+
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+
+      if (code === 13) {
+        if (text.charCodeAt(index + 1) === 10) {
+          index += 1;
+        }
+        normalized.push('\n');
+        continue;
+      }
+
+      if (code === 10) {
+        normalized.push('\n');
+        continue;
+      }
+
+      if (code === 9) {
+        normalized.push(' ');
+        continue;
+      }
+
+      if (code === 11 || code === 12 || (code >= 28 && code <= 31)) {
+        normalized.push('\n');
+        continue;
+      }
+
+      if (
+        (code >= 0 && code <= 8) ||
+        (code >= 14 && code <= 27) ||
+        code === 127
+      ) {
+        continue;
+      }
+
+      normalized.push(text[index]);
+    }
+
+    return normalized.join('');
+  }
+
+  private collapseExcessiveBlankLines(text: string) {
+    let normalized = '';
+    let newlineCount = 0;
+
+    for (const character of text) {
+      if (character === '\n') {
+        newlineCount += 1;
+        if (newlineCount <= 2) {
+          normalized += character;
+        }
+        continue;
+      }
+
+      newlineCount = 0;
+      normalized += character;
+    }
+
+    return normalized;
   }
 
   private extractMarkdownHeadings(text: string) {

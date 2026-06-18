@@ -8,7 +8,9 @@ import { DocumentParserService } from './document-parser.service';
 jest.mock('mammoth', () => ({
   __esModule: true,
   default: {
-    extractRawText: jest.fn().mockResolvedValue({ value: 'Docx text\n\n第二段' }),
+    extractRawText: jest
+      .fn()
+      .mockResolvedValue({ value: 'Docx text\n\n第二段' }),
   },
 }));
 
@@ -16,7 +18,9 @@ jest.mock('pdf-parse', () => ({
   __esModule: true,
   PDFParse: jest.fn().mockImplementation(() => ({
     destroy: jest.fn().mockResolvedValue(undefined),
-    getText: jest.fn().mockResolvedValue({ text: 'Pdf text\n\n第二页', total: 2 }),
+    getText: jest
+      .fn()
+      .mockResolvedValue({ text: 'Pdf text\n\n第二页', total: 2 }),
   })),
 }));
 
@@ -30,7 +34,9 @@ describe('DocumentParserService', () => {
       name: 'notes.txt',
       type: 'TXT',
       mimeType: 'text/plain',
-      buffer: Buffer.from('第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\u0000\u0007\r\n\r\n\r\n第三行'),
+      buffer: Buffer.from(
+        '第一行\r\nA\tB\r\nC\fD\r\nE\vF\r\nG\u001eH\u0000\u0007\r\n\r\n\r\n第三行',
+      ),
     });
 
     expect(result).toEqual({
@@ -48,7 +54,9 @@ describe('DocumentParserService', () => {
       name: 'green.md',
       type: 'MD',
       mimeType: 'text/markdown',
-      buffer: Buffer.from('# 第一章\n正文\n## 格林公式\n### 小节\n# C#\n# Title #'),
+      buffer: Buffer.from(
+        '# 第一章\n正文\n## 格林公式\n### 小节\n# C#\n# Title #',
+      ),
     });
 
     expect(result).toEqual({
@@ -68,7 +76,8 @@ describe('DocumentParserService', () => {
     const result = await createService().parse({
       name: 'chapter.docx',
       type: 'DOCX',
-      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      mimeType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       buffer,
     });
 
@@ -77,7 +86,8 @@ describe('DocumentParserService', () => {
       text: 'Docx text\n\n第二段',
       metadata: {
         sourceName: 'chapter.docx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        mimeType:
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         parser: 'docx-mammoth',
       },
     });
@@ -91,7 +101,8 @@ describe('DocumentParserService', () => {
       createService().parse({
         name: 'broken.docx',
         type: 'DOCX',
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        mimeType:
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         buffer: Buffer.from('docx bytes'),
       }),
     ).rejects.toMatchObject({
@@ -121,6 +132,27 @@ describe('DocumentParserService', () => {
         parser: 'pdf-basic',
         pageCount: 2,
       },
+    });
+  });
+
+  it('wraps pdf constructor failures with diagnostic cause', async () => {
+    const constructorError = new Error('pdf constructor failed');
+    (PDFParse as jest.Mock).mockImplementationOnce(() => {
+      throw constructorError;
+    });
+
+    await expect(
+      createService().parse({
+        name: 'broken.pdf',
+        type: 'PDF',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('pdf bytes'),
+      }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PARSE_FAILED',
+      message: '资料解析失败，请稍后重试',
+      statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      cause: constructorError,
     });
   });
 
