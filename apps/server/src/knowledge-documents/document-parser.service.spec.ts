@@ -30,11 +30,11 @@ describe('DocumentParserService', () => {
       name: 'notes.txt',
       type: 'TXT',
       mimeType: 'text/plain',
-      buffer: Buffer.from('第一行\r\n第二行\u0000\u0007\t\r\n\r\n\r\n第三行'),
+      buffer: Buffer.from('第一行\r\nA\tB\u0000\u0007\r\n\r\n\r\n第三行'),
     });
 
     expect(result).toEqual({
-      text: '第一行\n第二行\n\n第三行',
+      text: '第一行\nA B\n\n第三行',
       metadata: {
         sourceName: 'notes.txt',
         mimeType: 'text/plain',

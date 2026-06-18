@@ -103,7 +103,8 @@ export class DocumentParserService {
   private normalizeText(text: string) {
     return text
       .replace(/\r\n?/g, '\n')
-      .replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '')
+      .replace(/\t/g, ' ')
+      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
