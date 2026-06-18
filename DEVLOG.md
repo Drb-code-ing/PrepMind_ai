@@ -451,6 +451,17 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --cwd packages/database prisma migrate deploy` 通过，无待应用 migration。
 - `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
 
+**Phase 5.3 文档处理与 embedding 入库**
+
+- 新增 `POST /knowledge/documents/:id/process`，用于处理已上传文档。
+- 支持 TXT / Markdown / DOCX / PDF 基础文本解析。
+- 使用 `@repo/rag` 段落感知分块。
+- embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
+- `Chunk.embedding vector(1536)` 通过 raw SQL 持久化，写入前校验 document/user ownership。
+- `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析或 embedding 失败进入 `FAILED`。
+- forced reprocess 会先清旧 chunks，避免 stale retrieval。
+- 当前仍未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
+
 **Phase 6 错题整理 Agent 规划补充**
 
 - 确认未来错题本首页不继续平铺所有错题，而是按学科卡片优先组织，例如“高等数学”“大学英语”。
@@ -518,7 +529,8 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.0 RAG 知识库设计已完成。
 - Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
 - Phase 5.2 文档上传与状态 API 已完成。
-- 当前尚未实现解析、分块、embedding、检索 API、Chat RAG 注入和知识库页面，下一步进入 Phase 5.3。
+- Phase 5.3 文档处理与 embedding 入库已完成。
+- 当前尚未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面，下一步进入 Phase 5.4 检索 API。
 
 ---
 
@@ -540,7 +552,7 @@ f5a2eb1 style: soften cartoon theme palette
 
 - [x] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
 - [x] Phase 5.2：文档上传与状态 API。
-- [ ] Phase 5.3：解析、分块、embedding 入库。
+- [x] Phase 5.3：解析、分块、embedding 入库。
 - [ ] Phase 5.4：检索 API。
 - [ ] Phase 5.5：Chat RAG 增强与引用展示。
 - [ ] Phase 5.6：知识库页面体验打磨。
