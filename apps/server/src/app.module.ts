@@ -6,6 +6,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-documents.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
 import { ReviewPreferencesModule } from './review-preferences/review-preferences.module';
 import { ReviewTasksModule } from './review-tasks/review-tasks.module';
@@ -28,6 +29,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ReviewPreferencesModule,
     ReviewTasksModule,
     UploadsModule,
+    KnowledgeDocumentsModule,
   ],
 })
 export class AppModule implements NestModule {
