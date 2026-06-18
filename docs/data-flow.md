@@ -108,7 +108,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> Document(status=DONE / FAILED)
 ```
 
-Chat 接入原则：
+未来 Chat 接入原则（Phase 5.5 目标，当前未接入）：
 
 ```text
 用户提问

@@ -99,7 +99,11 @@ mcp -> ai, fsrs, rag, types
 - Plan：`/review-tasks/plan` 只读预览未来复习压力，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和账号级 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
 - Preference：`/review-preferences` 读写每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口。
 - Stats：`/stats` 使用客户端 ECharts 展示趋势、评分分布和卡片状态。
-- RAG：Phase 5.3 已完成后端文档处理地基，`/knowledge/documents` 支持上传、列表、详情和删除，`POST /knowledge/documents/:id/process` 支持处理上传文档；TXT / Markdown / DOCX / PDF 可做基础文本解析，`@repo/rag` 负责段落感知分块；embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider；`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)` 并通过 raw SQL 持久化；处理前校验 document/user ownership；`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval；当前仍未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面，Chat 未上传资料、未命中或检索失败时仍降级普通 AI 回答。
+- RAG 文档 API：`/knowledge/documents` 支持上传、列表、详情和删除，`POST /knowledge/documents/:id/process` 支持处理上传文档。
+- RAG 处理链路：TXT / Markdown / DOCX / PDF 可做基础文本解析，`@repo/rag` 负责段落感知分块；embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
+- RAG 持久化：`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)` 并通过 raw SQL 持久化；处理前校验 document/user ownership。
+- RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
+- RAG 当前未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 未上传资料、未命中或检索失败时仍降级普通 AI 回答。
 - ReviewTask rating：评分请求带 `clientMutationId`，服务端用 `ReviewLog.clientMutationId` 做幂等，重复提交同一命令不重复写日志。
 - Upload：新 OCR 图片通过 `/uploads/images` 上传 MinIO，业务 API 不接收 `data:` base64 图片。
 - Offline：WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，session 恢复、online、focus 时自动 flush。

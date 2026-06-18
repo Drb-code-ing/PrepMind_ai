@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前日期：2026-06-18。项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 5.3 已完成，后续进入 Phase 5.4 检索 API。
+> 当前状态：项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 5.3 已完成，后续进入 Phase 5.4 检索 API。
 
 ## 项目目标
 
