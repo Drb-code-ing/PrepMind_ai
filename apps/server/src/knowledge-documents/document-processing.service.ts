@@ -68,6 +68,14 @@ export class DocumentProcessingService {
           }),
         },
       );
+      if (chunks.length === 0) {
+        throw new AppError(
+          'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
+          '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+
       const vectors = await this.embeddingService.embedChunks(
         chunks.map((chunk) => chunk.content),
       );

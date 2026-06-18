@@ -306,6 +306,37 @@ describe('DocumentProcessingService', () => {
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
   });
 
+  it('rejects headings-only parsed text before embedding and marks the document failed', async () => {
+    parser.parse.mockResolvedValue({
+      text: '# Algebra\n## Linear Equations',
+      metadata: {
+        sourceName: 'notes.txt',
+        mimeType: 'text/plain',
+        parser: 'markdown-basic',
+        headings: ['Algebra', 'Linear Equations'],
+      },
+    });
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
+      message: '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
+      statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    });
+
+    expect(prisma.document.update).toHaveBeenCalledWith({
+      where: { id: 'doc_1' },
+      data: {
+        status: 'FAILED',
+        errorMessage: '璧勬枡涓病鏈夊彲瑙ｆ瀽鐨勬枃鏈?',
+      },
+      include: { _count: { select: { chunks: true } } },
+    });
+    expect(embedding.embedChunks).not.toHaveBeenCalled();
+    expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
   it('marks failed with AppError message and rethrows embedding failures after claim', async () => {
     const failure = new AppError(
       'KNOWLEDGE_EMBEDDING_FAILED',
