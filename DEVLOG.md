@@ -432,6 +432,25 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --cwd packages/database prisma:generate` 通过。
 - `bun --filter @repo/server build` 通过。
 
+**Phase 5.2 文档上传与状态 API**
+
+- `@repo/types/api/knowledge` 新增文档 MIME 白名单、上传响应、详情响应和删除响应 schema。
+- 扩展 `StorageService`，支持 PDF / DOCX / Markdown / TXT 上传到 MinIO，object key 固定为 `users/{userId}/knowledge/{uuid}.{ext}`。
+- 新增 `UPLOAD_DOCUMENT_MAX_BYTES`，默认 20MB，用于控制资料文件大小。
+- 新增 `KnowledgeDocumentsModule`：`POST /knowledge/documents`、`GET /knowledge/documents`、`GET /knowledge/documents/:id`、`DELETE /knowledge/documents/:id`。
+- 上传成功后创建 `Document(PENDING, sourceType=UPLOAD)`，以 PostgreSQL 为权威来源；数据库写入失败时尽力删除已上传 MinIO 对象。
+- 所有文档 API 按当前 `userId` 隔离；删除文档会级联未来 chunks，并尽力删除 MinIO 对象。
+- 本阶段仍不实现解析、分块、embedding、检索 API、Chat RAG 注入和知识库页面。
+
+验证：
+
+- `bun packages/types/tests/knowledge.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --filter @repo/server test -- storage.service.spec.ts knowledge-documents.service.spec.ts` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --cwd packages/database prisma migrate deploy` 通过，无待应用 migration。
+- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
+
 **Phase 6 错题整理 Agent 规划补充**
 
 - 确认未来错题本首页不继续平铺所有错题，而是按学科卡片优先组织，例如“高等数学”“大学英语”。
@@ -498,7 +517,8 @@ f5a2eb1 style: soften cartoon theme palette
 
 - Phase 5.0 RAG 知识库设计已完成。
 - Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
-- 当前尚未实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面，下一步进入 Phase 5.2。
+- Phase 5.2 文档上传与状态 API 已完成。
+- 当前尚未实现解析、分块、embedding、检索 API、Chat RAG 注入和知识库页面，下一步进入 Phase 5.3。
 
 ---
 
@@ -519,7 +539,7 @@ f5a2eb1 style: soften cartoon theme palette
 **后续方向**
 
 - [x] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
-- [ ] Phase 5.2：文档上传与状态 API。
+- [x] Phase 5.2：文档上传与状态 API。
 - [ ] Phase 5.3：解析、分块、embedding 入库。
 - [ ] Phase 5.4：检索 API。
 - [ ] Phase 5.5：Chat RAG 增强与引用展示。

@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 5.1 已完成，下一步进入 Phase 5.2。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 5.2 已完成，下一步进入 Phase 5.3。
 
 已完成主线：
 
@@ -22,10 +22,11 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 5.
 - Phase 4.5.2：`ReviewPreference`、加权压力模型、7 / 14 天计划窗口和今日容量摘要。
 - Phase 5.0：RAG 知识库设计、可降级 Chat 边界、Phase 5.1 数据模型与 contract 实施计划。
 - Phase 5.1：RAG 数据模型、`vector(1536)` 索引预留和 knowledge API contract。
+- Phase 5.2：文档上传、列表、详情、删除与状态 API。
 
 下一步：
 
-1. Phase 5.2：文档上传与状态 API。
+1. Phase 5.3：解析、分块、embedding 入库。
 2. Phase 6：LangGraph 多 Agent 系统，其中 `WrongQuestionOrganizerAgent` 负责未来错题本学科卡片与专题 deck 归纳。
 
 ## 常用命令
@@ -97,7 +98,7 @@ mcp -> ai, fsrs, rag, types
 - Plan：`/review-tasks/plan` 只读预览未来复习压力，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和账号级 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
 - Preference：`/review-preferences` 读写每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口。
 - Stats：`/stats` 使用客户端 ECharts 展示趋势、评分分布和卡片状态。
-- RAG：Phase 5.1 已完成数据模型与 contract 地基，`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)`；RAG 只作为 Chat 增强层，未上传资料、未命中或检索失败时降级普通 AI 回答。
+- RAG：Phase 5.2 已完成后端上传与状态 API 地基，`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)`；上传原文件保存到 MinIO，`Document(PENDING, sourceType=UPLOAD)` 保存到 PostgreSQL；RAG 只作为 Chat 增强层，未上传资料、未命中或检索失败时降级普通 AI 回答。
 - ReviewTask rating：评分请求带 `clientMutationId`，服务端用 `ReviewLog.clientMutationId` 做幂等，重复提交同一命令不重复写日志。
 - Upload：新 OCR 图片通过 `/uploads/images` 上传 MinIO，业务 API 不接收 `data:` base64 图片。
 - Offline：WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，session 恢复、online、focus 时自动 flush。
