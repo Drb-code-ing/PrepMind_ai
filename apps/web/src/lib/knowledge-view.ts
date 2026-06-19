@@ -47,9 +47,9 @@ const knowledgeDocumentActions: Record<KnowledgeDocumentStatus, KnowledgeDocumen
     disabled: true,
   },
   DONE: {
-    label: '重新处理',
-    force: true,
-    disabled: false,
+    label: '已入库',
+    force: false,
+    disabled: true,
   },
   FAILED: {
     label: '重新处理',

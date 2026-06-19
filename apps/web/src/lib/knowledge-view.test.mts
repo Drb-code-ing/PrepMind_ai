@@ -59,9 +59,9 @@ describe('getKnowledgeDocumentAction', () => {
       disabled: true,
     });
     assert.deepEqual(getKnowledgeDocumentAction('DONE'), {
-      label: '重新处理',
-      force: true,
-      disabled: false,
+      label: '已入库',
+      force: false,
+      disabled: true,
     });
     assert.deepEqual(getKnowledgeDocumentAction('FAILED'), {
       label: '重新处理',

@@ -22,11 +22,18 @@ export class KnowledgeDocumentsService {
     userId: string,
     file: Express.Multer.File | undefined,
   ) {
+    const contentHash = this.createContentHash(file?.buffer ?? Buffer.alloc(0));
     const uploaded = await this.storageService.uploadKnowledgeDocument(userId, {
       file,
     });
 
     try {
+      const duplicate = await this.findDuplicateUpload(userId, contentHash);
+      if (duplicate) {
+        await this.safeDeleteObject(uploaded.objectKey);
+        return this.toResponse(duplicate);
+      }
+
       const document = await this.prisma.document.create({
         data: {
           userId,
@@ -37,11 +44,70 @@ export class KnowledgeDocumentsService {
           storageKey: uploaded.objectKey,
           status: 'PENDING',
           sourceType: 'UPLOAD',
-          contentHash: this.createContentHash(file?.buffer ?? Buffer.alloc(0)),
+          contentHash,
         },
         include: this.documentInclude,
       });
 
+      return this.toResponse(document);
+    } catch (error) {
+      await this.safeDeleteObject(uploaded.objectKey);
+      throw error;
+    }
+  }
+
+  async replaceUploadDocument(
+    userId: string,
+    id: string,
+    file: Express.Multer.File | undefined,
+  ) {
+    const existing = await this.findOwned(userId, id);
+    if (existing.status === 'PROCESSING') {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_PROCESSING',
+        '资料正在处理中，请稍后再更新',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const contentHash = this.createContentHash(file?.buffer ?? Buffer.alloc(0));
+    const uploaded = await this.storageService.uploadKnowledgeDocument(userId, {
+      file,
+    });
+
+    try {
+      const duplicate = await this.findDuplicateUpload(userId, contentHash, id);
+      if (duplicate) {
+        throw new AppError(
+          'KNOWLEDGE_DOCUMENT_DUPLICATE',
+          '这份资料内容已经存在，请直接使用已有资料',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const document = await this.prisma.$transaction(async (transaction) => {
+        await transaction.chunk.deleteMany({
+          where: { documentId: id, userId },
+        });
+
+        return transaction.document.update({
+          where: { id },
+          data: {
+            name: uploaded.originalName,
+            type: uploaded.type,
+            size: uploaded.size,
+            mimeType: uploaded.mimeType,
+            storageKey: uploaded.objectKey,
+            status: 'PENDING',
+            errorMessage: null,
+            processedAt: null,
+            contentHash,
+          },
+          include: this.documentInclude,
+        });
+      });
+
+      await this.safeDeleteObject(existing.storageKey);
       return this.toResponse(document);
     } catch (error) {
       await this.safeDeleteObject(uploaded.objectKey);
@@ -98,6 +164,22 @@ export class KnowledgeDocumentsService {
     }
 
     return document;
+  }
+
+  private async findDuplicateUpload(
+    userId: string,
+    contentHash: string,
+    excludedDocumentId?: string,
+  ) {
+    return this.prisma.document.findFirst({
+      where: {
+        userId,
+        contentHash,
+        sourceType: 'UPLOAD',
+        ...(excludedDocumentId ? { NOT: { id: excludedDocumentId } } : {}),
+      },
+      include: this.documentInclude,
+    });
   }
 
   private createContentHash(buffer: Buffer) {

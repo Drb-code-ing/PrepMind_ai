@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
+  MoreHorizontal,
+  Pencil,
   RefreshCw,
   Search,
   Sparkles,
@@ -26,6 +28,7 @@ import {
   useDeleteKnowledgeDocument,
   useKnowledgeDocumentList,
   useProcessKnowledgeDocument,
+  useReplaceKnowledgeDocumentFile,
   useSearchKnowledge,
   useUploadKnowledgeDocument,
 } from '@/hooks/use-knowledge';
@@ -75,6 +78,7 @@ const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> 
 export default function KnowledgePage() {
   const documentsQuery = useKnowledgeDocumentList(knowledgeDocumentListQuery);
   const uploadDocument = useUploadKnowledgeDocument();
+  const replaceDocument = useReplaceKnowledgeDocumentFile();
   const processDocument = useProcessKnowledgeDocument();
   const deleteDocument = useDeleteKnowledgeDocument();
   const searchKnowledge = useSearchKnowledge();
@@ -84,15 +88,15 @@ export default function KnowledgePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(() => new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
+  const [replacingIds, setReplacingIds] = useState<Set<string>>(() => new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<KnowledgeSearchHit[] | null>(null);
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState('');
   const documentItems = documentsQuery.data?.items;
   const documents = useMemo(() => documentItems ?? [], [documentItems]);
   const summary = useMemo(() => getKnowledgeSummary(documents), [documents]);
-  const documentMutationPending = processDocument.isPending || deleteDocument.isPending;
 
   const showNotice = (message: string, tone: NoticeTone = 'success') => {
     if (noticeTimerRef.current !== null) {
@@ -122,8 +126,8 @@ export default function KnowledgePage() {
     }
 
     try {
-      await uploadDocument.mutateAsync(file);
-      showNotice(`已上传《${file.name}》，可以开始处理。`);
+      const uploaded = await uploadDocument.mutateAsync(file);
+      showNotice(getUploadSuccessMessage(uploaded));
       setSelectedFile((current) => (current === file ? null : current));
       if (fileInputRef.current?.files?.[0] === file) {
         fileInputRef.current.value = '';
@@ -137,14 +141,15 @@ export default function KnowledgePage() {
     const action = getKnowledgeDocumentAction(document.status);
     if (
       action.disabled ||
-      documentMutationPending ||
       pendingDeleteId === document.id ||
-      deletingId === document.id
+      processingIds.has(document.id) ||
+      deletingIds.has(document.id) ||
+      replacingIds.has(document.id)
     ) {
       return;
     }
 
-    setProcessingId(document.id);
+    setProcessingIds((current) => updateIdSet(current, document.id, true));
     try {
       const processed = await processDocument.mutateAsync({
         documentId: document.id,
@@ -154,16 +159,20 @@ export default function KnowledgePage() {
     } catch (error) {
       showNotice(getActionErrorMessage(error), 'danger');
     } finally {
-      setProcessingId(null);
+      setProcessingIds((current) => updateIdSet(current, document.id, false));
     }
   }
 
   async function handleDelete(document: KnowledgeDocumentResponse) {
-    if (documentMutationPending || processingId === document.id) {
+    if (
+      processingIds.has(document.id) ||
+      deletingIds.has(document.id) ||
+      replacingIds.has(document.id)
+    ) {
       return;
     }
 
-    setDeletingId(document.id);
+    setDeletingIds((current) => updateIdSet(current, document.id, true));
     try {
       await deleteDocument.mutateAsync(document.id);
       setPendingDeleteId(null);
@@ -174,7 +183,34 @@ export default function KnowledgePage() {
     } catch (error) {
       showNotice(getActionErrorMessage(error), 'danger');
     } finally {
-      setDeletingId(null);
+      setDeletingIds((current) => updateIdSet(current, document.id, false));
+    }
+  }
+
+  async function handleReplace(document: KnowledgeDocumentResponse, file: File) {
+    if (
+      processingIds.has(document.id) ||
+      deletingIds.has(document.id) ||
+      replacingIds.has(document.id)
+    ) {
+      return;
+    }
+
+    setReplacingIds((current) => updateIdSet(current, document.id, true));
+    try {
+      const replaced = await replaceDocument.mutateAsync({
+        documentId: document.id,
+        file,
+      });
+      setPendingDeleteId((current) => (current === document.id ? null : current));
+      setSearchHits((current) =>
+        current ? current.filter((hit) => hit.documentId !== document.id) : current,
+      );
+      showNotice(`已更新为《${replaced.name}》，请重新处理入库。`);
+    } catch (error) {
+      showNotice(getActionErrorMessage(error), 'danger');
+    } finally {
+      setReplacingIds((current) => updateIdSet(current, document.id, false));
     }
   }
 
@@ -322,10 +358,11 @@ export default function KnowledgePage() {
                   key={document.id}
                   document={document}
                   pendingDelete={pendingDeleteId === document.id}
-                  actionPending={processingId === document.id && processDocument.isPending}
-                  deletePending={deletingId === document.id && deleteDocument.isPending}
-                  documentMutationPending={documentMutationPending}
+                  actionPending={processingIds.has(document.id)}
+                  deletePending={deletingIds.has(document.id)}
+                  replacePending={replacingIds.has(document.id)}
                   onProcess={() => void handleProcess(document)}
+                  onReplaceFile={(file) => void handleReplace(document, file)}
                   onRequestDelete={() => setPendingDeleteId(document.id)}
                   onCancelDelete={() => setPendingDeleteId(null)}
                   onConfirmDelete={() => void handleDelete(document)}
@@ -390,6 +427,29 @@ function getKnowledgeSummary(documents: KnowledgeDocumentResponse[]) {
       pending: 0,
     },
   );
+}
+
+function updateIdSet(current: Set<string>, id: string, active: boolean) {
+  const next = new Set(current);
+  if (active) {
+    next.add(id);
+  } else {
+    next.delete(id);
+  }
+  return next;
+}
+
+function getUploadSuccessMessage(document: KnowledgeDocumentResponse) {
+  if (document.status === 'DONE') {
+    return `《${document.name}》已在知识库中，无需重复上传。`;
+  }
+  if (document.status === 'PROCESSING') {
+    return `《${document.name}》已在知识库中，正在处理。`;
+  }
+  if (document.status === 'FAILED') {
+    return `《${document.name}》已在知识库中，可以重新处理。`;
+  }
+  return `《${document.name}》已上传，可以开始处理。`;
 }
 
 function ActionNoticeBar({ notice }: { notice: ActionNotice }) {
@@ -524,8 +584,9 @@ function KnowledgeDocumentCard({
   pendingDelete,
   actionPending,
   deletePending,
-  documentMutationPending,
+  replacePending,
   onProcess,
+  onReplaceFile,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -534,20 +595,41 @@ function KnowledgeDocumentCard({
   pendingDelete: boolean;
   actionPending: boolean;
   deletePending: boolean;
-  documentMutationPending: boolean;
+  replacePending: boolean;
   onProcess: () => void;
+  onReplaceFile: (file: File) => void;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const statusMeta = getKnowledgeDocumentStatusMeta(document.status);
   const action = getKnowledgeDocumentAction(document.status);
-  const processDisabled = action.disabled || pendingDelete || documentMutationPending;
-  const confirmDeleteDisabled = documentMutationPending || actionPending;
-  const requestDeleteDisabled = documentMutationPending || actionPending || deletePending;
+  const statusLocked = document.status === 'PROCESSING';
+  const documentBusy = actionPending || deletePending || replacePending || statusLocked;
+  const showProcessAction = document.status === 'PENDING' || document.status === 'FAILED';
+  const processDisabled = action.disabled || pendingDelete || documentBusy;
+  const replaceDisabled = pendingDelete || documentBusy;
+  const confirmDeleteDisabled = actionPending || deletePending || replacePending;
+  const requestDeleteDisabled = pendingDelete || documentBusy;
 
   return (
-    <article className="rounded-[1.35rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
+    <article className="relative rounded-[1.35rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept={acceptedKnowledgeFileTypes}
+        disabled={replaceDisabled}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = '';
+          if (file) {
+            onReplaceFile(file);
+          }
+        }}
+      />
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff7d6] text-[#247269] ring-1 ring-[#f3e6a8]">
           <FileText className="h-5 w-5" />
@@ -555,11 +637,62 @@ function KnowledgeDocumentCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <h3 className="min-w-0 break-all text-sm font-semibold leading-6">{document.name}</h3>
-            <span
-              className={`w-fit shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusMeta.className}`}
-            >
-              {statusMeta.label}
-            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span
+                className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusMeta.className}`}
+              >
+                {statusMeta.label}
+              </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label={`打开《${document.name}》操作菜单`}
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((current) => !current)}
+                  className="tap-target flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eef7ff] hover:text-[#315f86] active:scale-95"
+                >
+                  {documentBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MoreHorizontal className="h-4 w-4" />
+                  )}
+                </button>
+                {menuOpen ? (
+                  <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-2xl border border-[var(--pm-line)] bg-white/95 p-1 shadow-xl backdrop-blur">
+                    {showProcessAction ? (
+                      <DocumentMenuButton
+                        icon={RefreshCw}
+                        label={actionPending ? '处理中...' : action.label}
+                        disabled={processDisabled}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onProcess();
+                        }}
+                      />
+                    ) : null}
+                    <DocumentMenuButton
+                      icon={Pencil}
+                      label={replacePending ? '更新中...' : '重新上传'}
+                      disabled={replaceDisabled}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        replaceInputRef.current?.click();
+                      }}
+                    />
+                    <DocumentMenuButton
+                      icon={Trash2}
+                      label="删除"
+                      danger
+                      disabled={requestDeleteDisabled}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onRequestDelete();
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
@@ -577,9 +710,12 @@ function KnowledgeDocumentCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        {pendingDelete ? (
-          <div className="grid w-full grid-cols-2 gap-2">
+      {pendingDelete ? (
+        <div className="mt-3 rounded-2xl bg-red-50/70 p-2 ring-1 ring-red-100">
+          <p className="px-1 pb-2 text-xs font-semibold leading-5 text-red-600">
+            删除后，这份资料的检索片段也会被移除。
+          </p>
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onConfirmDelete}
@@ -598,30 +734,39 @@ function KnowledgeDocumentCard({
               取消
             </button>
           </div>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={onProcess}
-              disabled={processDisabled}
-              className="tap-target inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)] disabled:active:scale-100"
-            >
-              {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {actionPending ? '处理中...' : action.label}
-            </button>
-            <button
-              type="button"
-              onClick={onRequestDelete}
-              disabled={requestDeleteDisabled}
-              className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 px-4 text-sm font-semibold text-red-600 ring-1 ring-red-100 transition-all hover:bg-red-50 active:scale-[0.98] disabled:opacity-60"
-            >
-              <Trash2 className="h-4 w-4" />
-              删除
-            </button>
-          </>
-        )}
-      </div>
+        </div>
+      ) : null}
     </article>
+  );
+}
+
+function DocumentMenuButton({
+  icon: Icon,
+  label,
+  danger = false,
+  disabled,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  danger?: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`tap-target flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-45 ${
+        danger
+          ? 'text-red-600 hover:bg-red-50'
+          : 'text-[var(--pm-ink)] hover:bg-[#eef7ff]'
+      }`}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 flex-1">{label}</span>
+    </button>
   );
 }
 

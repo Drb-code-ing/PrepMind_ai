@@ -101,8 +101,10 @@ export class EmbeddingService {
     return {
       model: `fake:${model}`,
       dimensions,
-      embedBatch: async (texts) =>
-        texts.map((text) => this.createFakeEmbedding(text, dimensions)),
+      embedBatch: (texts) =>
+        Promise.resolve(
+          texts.map((text) => this.createFakeEmbedding(text, dimensions)),
+        ),
     };
   }
 

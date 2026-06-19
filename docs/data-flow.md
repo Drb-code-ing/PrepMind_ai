@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-19。Phase 5.6 已完成 RAG 文档处理、embedding 入库、检索 API、Chat RAG 增强与 `/knowledge` 学习资料工作台；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-19。Phase 5.6 已完成 RAG 文档处理、embedding 入库、检索 API、Chat RAG 增强与 `/knowledge` 学习资料工作台，并补齐资料去重、替换上传和卡片操作菜单；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,7 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
-- RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
+- RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -101,6 +101,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 ```text
 用户上传学习资料
   -> POST /knowledge/documents
+  -> contentHash 检查同用户重复资料
   -> MinIO 保存原文件
   -> Document(status=PENDING, sourceType=UPLOAD)
   -> POST /knowledge/documents/:id/process
@@ -110,6 +111,20 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> Embedding provider 生成向量
   -> Chunk.embedding vector(1536) raw SQL 写入 pgvector
   -> Document(status=DONE / FAILED)
+```
+
+资料替换数据流：
+
+```text
+用户在资料卡片中选择重新上传
+  -> PUT /knowledge/documents/:id/file multipart
+  -> 校验 document/user ownership
+  -> contentHash 检查是否命中同用户其它资料
+  -> MinIO 保存新原文件
+  -> 事务内删除旧 chunks
+  -> 更新同一个 Document(id 不变, status=PENDING)
+  -> 尽力删除旧 MinIO 对象
+  -> 用户重新触发处理入库
 ```
 
 当前检索数据流：
@@ -146,10 +161,16 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 用户上传资料
   -> useUploadKnowledgeDocument()
   -> POST /knowledge/documents multipart
-  -> Document(status=PENDING)
+  -> 新资料 Document(status=PENDING) 或返回同 contentHash 的已有 Document
   -> 列表失效刷新
 
-用户点击处理 / 重新处理
+用户在资料卡片菜单中重新上传
+  -> useReplaceKnowledgeDocumentFile()
+  -> PUT /knowledge/documents/:id/file multipart
+  -> 同一个 Document 重置为 PENDING，旧 chunks 清空
+  -> 列表、详情和检索缓存失效刷新
+
+用户点击处理
   -> useProcessKnowledgeDocument()
   -> POST /knowledge/documents/:id/process
   -> Document(status=DONE / FAILED)
@@ -167,6 +188,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - 第一版资料来源以用户上传 PDF / DOCX / TXT / Markdown 为主。
 - `Document.sourceType` 已预留 `UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR` 和 `CHAT`；OCR、错题和聊天沉淀当前仍不自动入库。
 - Phase 5.3 文档 API 按当前 `userId` 隔离，上传原文件进入 MinIO，`Document(PENDING, sourceType=UPLOAD)` 进入 PostgreSQL。
+- `POST /knowledge/documents` 会按当前用户与 `contentHash` 做轻量去重；上传重复内容时返回已有 `Document`，并清理本次临时 MinIO 对象。
+- `PUT /knowledge/documents/:id/file` 用于更新同一资料卡片的原文件；替换后保留原 `Document.id`，清空旧 chunks，状态回到 `PENDING`，用户需要重新处理入库。
+- 替换上传如果命中当前用户其它资料的相同 `contentHash`，服务端返回 `KNOWLEDGE_DOCUMENT_DUPLICATE`，避免产生两个内容相同的资料卡片。
 - `POST /knowledge/documents/:id/process` 写入前校验 document/user ownership。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
 - forced reprocess 会先清旧 chunks，避免 stale retrieval。
@@ -175,7 +199,8 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
 - `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
 - citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
-- `/knowledge` 页面是在线资料管理入口，文件上传、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
+- `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
+- `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
 - 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider，真实 embedding 仍使用 OpenAI-compatible provider。

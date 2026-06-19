@@ -7,6 +7,7 @@ import {
   knowledgeDocumentMimeTypeSchema,
   knowledgeDocumentProcessRequestSchema,
   knowledgeDocumentProcessResponseSchema,
+  knowledgeDocumentReplaceResponseSchema,
   knowledgeDocumentResponseSchema,
   knowledgeDocumentSourceTypeSchema,
   knowledgeDocumentStatusSchema,
@@ -25,6 +26,7 @@ function run() {
   testListQuery();
   testListResponse();
   testProcessRequest();
+  testReplaceResponse();
   testSearchRequest();
   testSearchResponse();
   testDeleteResponse();
@@ -143,6 +145,22 @@ function testProcessRequest() {
   );
   assert.equal(response.status, 'DONE');
   assert.equal(response.chunkCount, 2);
+}
+
+function testReplaceResponse() {
+  const result = knowledgeDocumentReplaceResponseSchema.parse(
+    createDocumentPayload({
+      name: 'updated-notes.md',
+      status: 'PENDING',
+      chunkCount: 0,
+      processedAt: null,
+    }),
+  );
+
+  assert.equal(result.name, 'updated-notes.md');
+  assert.equal(result.status, 'PENDING');
+  assert.equal(result.chunkCount, 0);
+  assert.equal(result.processedAt, null);
 }
 
 function testSearchRequest() {

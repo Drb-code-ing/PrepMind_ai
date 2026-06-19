@@ -4,6 +4,7 @@ import {
   knowledgeDocumentListResponseSchema,
   knowledgeDocumentProcessRequestSchema,
   knowledgeDocumentProcessResponseSchema,
+  knowledgeDocumentReplaceResponseSchema,
   knowledgeDocumentUploadResponseSchema,
   knowledgeSearchRequestSchema,
   knowledgeSearchResponseSchema,
@@ -13,6 +14,7 @@ import {
   type KnowledgeDocumentListResponse,
   type KnowledgeDocumentProcessRequest,
   type KnowledgeDocumentProcessResponse,
+  type KnowledgeDocumentReplaceResponse,
   type KnowledgeDocumentUploadResponse,
   type KnowledgeSearchRequest,
   type KnowledgeSearchResponse,
@@ -63,42 +65,33 @@ export function createKnowledgeApi({
       accessToken: string,
       file: File,
     ): Promise<KnowledgeDocumentUploadResponse> {
-      const body = new FormData();
-      body.append('file', file);
-
-      let response: Response;
-      try {
-        response = await fetchImpl(toUrl(baseUrl, '/knowledge/documents'), {
+      return knowledgeDocumentUploadResponseSchema.parse(
+        await sendMultipartDocumentRequest({
+          accessToken,
+          baseUrl,
+          fetchImpl,
+          file,
           method: 'POST',
-          headers: {
-            authorization: `Bearer ${accessToken}`,
-          },
-          credentials: 'include',
-          body,
-        });
-      } catch {
-        throw new ApiClientError('网络连接失败，请稍后重试', {
-          status: 0,
-          code: 'NETWORK_ERROR',
-        });
-      }
+          path: '/knowledge/documents',
+        }),
+      );
+    },
 
-      const payload = await parseJson(response);
-      if (isApiSuccess<unknown>(payload)) {
-        return knowledgeDocumentUploadResponseSchema.parse(payload.data);
-      }
-      if (isApiFailure(payload)) {
-        throw new ApiClientError(payload.error.message, {
-          status: response.status,
-          code: payload.error.code,
-          requestId: payload.requestId,
-        });
-      }
-
-      throw new ApiClientError('服务响应格式异常', {
-        status: response.status,
-        code: 'INVALID_API_RESPONSE',
-      });
+    async replaceDocumentFile(
+      accessToken: string,
+      documentId: string,
+      file: File,
+    ): Promise<KnowledgeDocumentReplaceResponse> {
+      return knowledgeDocumentReplaceResponseSchema.parse(
+        await sendMultipartDocumentRequest({
+          accessToken,
+          baseUrl,
+          fetchImpl,
+          file,
+          method: 'PUT',
+          path: `/knowledge/documents/${documentId}/file`,
+        }),
+      );
     },
 
     async listDocuments(
@@ -165,6 +158,59 @@ export function createKnowledgeApi({
       );
     },
   };
+}
+
+async function sendMultipartDocumentRequest({
+  accessToken,
+  baseUrl,
+  fetchImpl,
+  file,
+  method,
+  path,
+}: {
+  accessToken: string;
+  baseUrl: string;
+  fetchImpl: FetchLike;
+  file: File;
+  method: 'POST' | 'PUT';
+  path: string;
+}) {
+  const body = new FormData();
+  body.append('file', file);
+
+  let response: Response;
+  try {
+    response = await fetchImpl(toUrl(baseUrl, path), {
+      method,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+      credentials: 'include',
+      body,
+    });
+  } catch {
+    throw new ApiClientError('网络连接失败，请稍后重试', {
+      status: 0,
+      code: 'NETWORK_ERROR',
+    });
+  }
+
+  const payload = await parseJson(response);
+  if (isApiSuccess<unknown>(payload)) {
+    return payload.data;
+  }
+  if (isApiFailure(payload)) {
+    throw new ApiClientError(payload.error.message, {
+      status: response.status,
+      code: payload.error.code,
+      requestId: payload.requestId,
+    });
+  }
+
+  throw new ApiClientError('服务响应格式异常', {
+    status: response.status,
+    code: 'INVALID_API_RESPONSE',
+  });
 }
 
 async function parseJson(response: Response) {

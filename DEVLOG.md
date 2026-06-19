@@ -577,6 +577,27 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server test -- env.spec.ts embedding.service.spec.ts` 通过，13/13。
 - 浏览器 smoke 已验证：未勾选协议点击登录会显示协议提示；注册登录成功；`/knowledge` 上传 Markdown 成功；`POST /knowledge/documents/:id/process` 在 fake embedding 下返回 201 且文档变为 `DONE`；短 query `green theorem smoke 20260619` 检索命中上传文档片段。
 
+**Phase 5.6 知识库资料卡片交互补强**
+
+- `/knowledge/documents` 普通上传加入同用户 `contentHash` 去重，重复内容直接返回已有资料，并清理本次临时 MinIO 对象，避免资料卡片重复。
+- 新增 `PUT /knowledge/documents/:id/file` 替换上传接口：保留同一 `Document.id`，清空旧 chunks，重置为 `PENDING`，并尽力删除旧 MinIO 对象。
+- 替换上传会拒绝替换为当前用户其它资料卡片已有的相同内容，返回 `KNOWLEDGE_DOCUMENT_DUPLICATE`。
+- 前端 knowledge API 与 TanStack Query hooks 补齐 `replaceDocumentFile` / `useReplaceKnowledgeDocumentFile`。
+- `/knowledge` 资料卡片改为右上角三点菜单，处理、重新上传和删除操作按卡片独立展开；`DONE` 资料不再展示主按钮式“重新处理”。
+- 删除确认继续使用卡片内联确认，不使用浏览器原生弹窗；替换上传成功后提示用户重新处理入库。
+- Phase 6 规划补充 `KnowledgeDedupAgent / KnowledgeOrganizerAgent`，用于后续判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
+
+验证：
+
+- `bun packages/types/tests/knowledge.test.mts` 通过。
+- `bun --filter @repo/server test -- knowledge-documents.service.spec.ts` 通过，8/8。
+- `node --experimental-strip-types --test apps/web/src/lib/knowledge-api.test.mts apps/web/src/lib/knowledge-view.test.mts` 通过，12/12。
+- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，11/11。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server lint` 通过。
+- `bun --filter @repo/web build` 通过。
+
 ---
 
 ## 当前状态
@@ -639,7 +660,7 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.3 文档处理与 embedding 入库已完成。
 - Phase 5.4 检索 API 已完成。
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
-- Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、删除和检索测试。
+- Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
 ---
 
@@ -665,8 +686,10 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 5.4：检索 API。
 - [x] Phase 5.5：Chat RAG 增强与引用展示。
 - [x] Phase 5.6：知识库页面体验打磨。
+- [x] Phase 5.6：知识库资料去重、替换上传和卡片三点菜单交互补强。
 - [ ] Phase 6：LangGraph 多 Agent 系统。
 - [ ] Phase 6：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
+- [ ] Phase 6：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
 - [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。

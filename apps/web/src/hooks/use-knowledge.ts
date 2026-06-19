@@ -71,6 +71,33 @@ export function useUploadKnowledgeDocument() {
   });
 }
 
+export function useReplaceKnowledgeDocumentFile() {
+  const queryClient = useQueryClient();
+  const accessToken = useUserStore((state) => state.accessToken);
+
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      file,
+    }: {
+      documentId: string;
+      file: File;
+    }) => {
+      if (!accessToken) {
+        throw new Error('Missing access token');
+      }
+      return knowledgeApi.replaceDocumentFile(accessToken, documentId, file);
+    },
+    onSuccess: (document) => {
+      void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.documents() });
+      void queryClient.invalidateQueries({
+        queryKey: knowledgeQueryKeys.documentDetail(document.id),
+      });
+      void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
+    },
+  });
+}
+
 export function useProcessKnowledgeDocument() {
   const queryClient = useQueryClient();
   const accessToken = useUserStore((state) => state.accessToken);

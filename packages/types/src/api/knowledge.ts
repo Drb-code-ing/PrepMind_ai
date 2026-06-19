@@ -61,6 +61,8 @@ export const knowledgeDocumentResponseSchema = z.object({
 
 export const knowledgeDocumentUploadResponseSchema = knowledgeDocumentResponseSchema;
 
+export const knowledgeDocumentReplaceResponseSchema = knowledgeDocumentResponseSchema;
+
 export const knowledgeDocumentDetailResponseSchema = knowledgeDocumentResponseSchema;
 
 export const knowledgeDocumentDeleteResponseSchema = z.object({
@@ -117,6 +119,9 @@ export type KnowledgeDocumentSourceType = z.infer<typeof knowledgeDocumentSource
 export type KnowledgeDocumentResponse = z.infer<typeof knowledgeDocumentResponseSchema>;
 export type KnowledgeDocumentUploadResponse = z.infer<
   typeof knowledgeDocumentUploadResponseSchema
+>;
+export type KnowledgeDocumentReplaceResponse = z.infer<
+  typeof knowledgeDocumentReplaceResponseSchema
 >;
 export type KnowledgeDocumentDetailResponse = z.infer<
   typeof knowledgeDocumentDetailResponseSchema

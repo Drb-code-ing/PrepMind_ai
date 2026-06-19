@@ -38,6 +38,50 @@ test('uploads a knowledge document with multipart form data and bearer token', a
   assert.equal(result.status, 'PENDING');
 });
 
+test('replaces a knowledge document file with multipart form data', async () => {
+  const requests: CapturedRequest[] = [];
+  const api = createKnowledgeApi({
+    client: createTestClient(requests, createDocumentPayload({ id: 'doc_replace' })),
+    baseUrl: 'http://localhost:3001',
+    fetchImpl: async (input, init) => {
+      requests.push({
+        input: String(input),
+        method: init?.method ?? 'GET',
+        authorization: new Headers(init?.headers).get('authorization'),
+        contentType: new Headers(init?.headers).get('content-type'),
+        body: init?.body,
+      });
+
+      return jsonResponse({
+        success: true,
+        data: createDocumentPayload({
+          id: 'doc_replace',
+          name: 'updated.md',
+          status: 'PENDING',
+          chunkCount: 0,
+          processedAt: null,
+        }),
+        requestId: 'req_1',
+      });
+    },
+  });
+
+  const file = new File(['# updated'], 'updated.md', { type: 'text/markdown' });
+  const result = await api.replaceDocumentFile('token_1', 'doc_replace', file);
+
+  assert.equal(
+    requests[0]?.input,
+    'http://localhost:3001/knowledge/documents/doc_replace/file',
+  );
+  assert.equal(requests[0]?.method, 'PUT');
+  assert.equal(requests[0]?.authorization, 'Bearer token_1');
+  assert.equal(requests[0]?.contentType, null);
+  assert.ok(requests[0]?.body instanceof FormData);
+  assert.equal(result.name, 'updated.md');
+  assert.equal(result.status, 'PENDING');
+  assert.equal(result.chunkCount, 0);
+});
+
 test('lists documents with filters and cursor', async () => {
   const requests: CapturedRequest[] = [];
   const api = createKnowledgeApi({

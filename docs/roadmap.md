@@ -197,7 +197,9 @@ Phase 5.6 已完成知识库页面体验打磨：
 
 - 新增 `/knowledge` 学习资料工作台。
 - 前端新增 knowledge API client、TanStack Query hooks 和展示 helper。
-- 页面支持资料上传、列表读取、处理/重新处理、删除内联确认、状态摘要和检索测试。
+- 页面支持资料上传、列表读取、处理、替换上传、删除内联确认、状态摘要和检索测试。
+- 服务端按同用户 `contentHash` 做轻量去重：重复上传返回已有资料；替换上传保留同一 `Document.id`、清空旧 chunks 并重置为 `PENDING`。
+- 资料卡片改为右上角三点菜单承载处理、重新上传和删除，已入库资料不再展示主按钮式重新处理。
 - 检索测试展示命中文档、片段序号、相似度和内容摘要；无命中时明确提示 Chat 仍可普通回答。
 - 侧边栏新增“知识库”入口，保持 Chat-first 主入口不变。
 - 页面在线直连 knowledge API，不进入 Dexie `mutationQueue`。
@@ -219,6 +221,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - 当用户上传资料可能有误时，AI 应优先给出更可靠的解法，并轻提示用户核对对应笔记片段，而不是盲从错误资料或直接宣称用户笔记错误。
 - 错题整理作为 Phase 6 的明确子模块推进：错题本首页按学科卡片优先展示，例如“高等数学”“大学英语”；学科内部再按 AI 归纳出的专题拆分，例如“曲线积分与格林公式”“四级阅读长难句”。
 - `WrongQuestionOrganizerAgent` 基于结构化 OCR、错题知识点、错因、题型、难度、用户备注和复习表现，推荐错题所属学科组与专题 deck，并在没有合适专题时生成默认专题名。
+- `KnowledgeDedupAgent / KnowledgeOrganizerAgent` 作为资料管理方向预留：后续可在用户更新资料或上传相似资料时评估是否属于同一份笔记的新版、重复资料或互补资料，并给出合并、替换或保留建议。
 - 用户拥有最终组织权：可重命名卡片、移动错题、合并专题；用户手动修改后的名称需要锁定，AI 后续只做建议，不自动覆盖。
 - 数据模型方向预留 `WrongQuestionSubjectGroup`、`WrongQuestionDeck` 和 `WrongQuestionDeckItem`，保持 WrongQuestion / Card / ReviewLog 作为事实来源，错题集只作为组织层。
 - Phase 6 总体设计见 `docs/superpowers/specs/2026-06-19-phase-6-multi-agent-collaboration-design.md`；错题整理详细设计见 `docs/superpowers/specs/2026-06-18-phase-6-wrong-question-organizer-agent-design.md`。

@@ -8,6 +8,7 @@ import {
   knowledgeDocumentDeleteResponseSchema,
   knowledgeDocumentListResponseSchema,
   knowledgeDocumentProcessResponseSchema,
+  knowledgeDocumentReplaceResponseSchema,
   knowledgeDocumentUploadResponseSchema,
   knowledgeSearchResponseSchema,
 } from '@repo/types/api/knowledge';
@@ -187,6 +188,49 @@ describe('KnowledgeDocumentsController (e2e)', () => {
     expect(list.items.some((item) => item.id === uploaded.id)).toBe(false);
   });
 
+  it('returns the existing document when uploading duplicate content', async () => {
+    const user = await registerUser('knowledge-duplicate-upload');
+    const content = Buffer.from('Duplicate calculus note');
+
+    const firstResponse = await request(server)
+      .post('/knowledge/documents')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach('file', content, {
+        filename: 'duplicate-a.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const first = knowledgeDocumentUploadResponseSchema.parse(
+      getSuccessData(firstResponse),
+    );
+
+    const secondResponse = await request(server)
+      .post('/knowledge/documents')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach('file', content, {
+        filename: 'duplicate-b.txt',
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const second = knowledgeDocumentUploadResponseSchema.parse(
+      getSuccessData(secondResponse),
+    );
+
+    expect(second.id).toBe(first.id);
+    expect(second.name).toBe(first.name);
+
+    const listResponse = await request(server)
+      .get('/knowledge/documents')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200);
+    const list = knowledgeDocumentListResponseSchema.parse(
+      getSuccessData(listResponse),
+    );
+    expect(
+      list.items.filter((item) => item.contentHash === first.contentHash),
+    ).toHaveLength(1);
+  });
+
   beforeEach(() => {
     embedBatch.mockClear();
   });
@@ -231,6 +275,68 @@ describe('KnowledgeDocumentsController (e2e)', () => {
         expect(detail.status).toBe('DONE');
         expect(detail.chunkCount).toBeGreaterThan(0);
       });
+  });
+
+  it('replaces an uploaded document file and reprocesses the same card', async () => {
+    const user = await registerUser('knowledge-replace-file');
+    const processed = await uploadAndProcessTextDocument(
+      user.accessToken,
+      'original-note.txt',
+      'Green theorem converts line integrals into double integrals.',
+    );
+
+    const replaceResponse = await request(server)
+      .put(`/knowledge/documents/${processed.id}/file`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .attach('file', Buffer.from('Derivative chain rule updated reference.'), {
+        filename: 'updated-note.txt',
+        contentType: 'text/plain',
+      })
+      .expect(200);
+    const replaced = knowledgeDocumentReplaceResponseSchema.parse(
+      getSuccessData(replaceResponse),
+    );
+
+    expect(replaced.id).toBe(processed.id);
+    expect(replaced.name).toBe('updated-note.txt');
+    expect(replaced.status).toBe('PENDING');
+    expect(replaced.chunkCount).toBe(0);
+    expect(replaced.processedAt).toBeNull();
+
+    const oldSearchResponse = await request(server)
+      .post('/knowledge/search')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ query: 'Green theorem', topK: 5, minScore: 0.5 })
+      .expect(201);
+    const oldSearch = knowledgeSearchResponseSchema.parse(
+      getSuccessData(oldSearchResponse),
+    );
+    expect(oldSearch.hits.some((hit) => hit.documentId === processed.id)).toBe(
+      false,
+    );
+
+    const processResponse = await request(server)
+      .post(`/knowledge/documents/${processed.id}/process`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({})
+      .expect(201);
+    const reprocessed = knowledgeDocumentProcessResponseSchema.parse(
+      getSuccessData(processResponse),
+    );
+    expect(reprocessed.status).toBe('DONE');
+    expect(reprocessed.chunkCount).toBeGreaterThan(0);
+
+    const newSearchResponse = await request(server)
+      .post('/knowledge/search')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ query: 'Derivative chain rule', topK: 5, minScore: 0.5 })
+      .expect(201);
+    const newSearch = knowledgeSearchResponseSchema.parse(
+      getSuccessData(newSearchResponse),
+    );
+    expect(newSearch.hits.some((hit) => hit.documentId === processed.id)).toBe(
+      true,
+    );
   });
 
   it('marks empty text documents as failed when processing', async () => {

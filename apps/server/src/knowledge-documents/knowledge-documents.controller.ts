@@ -8,6 +8,7 @@ import {
   Inject,
   Param,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -46,6 +47,20 @@ export class KnowledgeDocumentsController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
     return this.knowledgeDocumentsService.createUploadDocument(user.id, file);
+  }
+
+  @Put(':id/file')
+  @UseInterceptors(createKnowledgeDocumentFileInterceptor())
+  replaceFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
+    return this.knowledgeDocumentsService.replaceUploadDocument(
+      user.id,
+      id,
+      file,
+    );
   }
 
   @Get()

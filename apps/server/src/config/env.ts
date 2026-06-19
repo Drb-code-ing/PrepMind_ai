@@ -86,11 +86,15 @@ const envSchema = z
     OPENAI_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
-    if (env.NODE_ENV === 'production' && env.RAG_EMBEDDING_PROVIDER === 'fake') {
+    if (
+      env.NODE_ENV === 'production' &&
+      env.RAG_EMBEDDING_PROVIDER === 'fake'
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['RAG_EMBEDDING_PROVIDER'],
-        message: 'RAG_EMBEDDING_PROVIDER=fake is only allowed outside production',
+        message:
+          'RAG_EMBEDDING_PROVIDER=fake is only allowed outside production',
       });
     }
 
