@@ -77,7 +77,7 @@ export function createKnowledgeApi({
           body,
         });
       } catch {
-        throw new ApiClientError('缃戠粶杩炴帴澶辫触锛岃绋嶅悗閲嶈瘯', {
+        throw new ApiClientError('网络连接失败，请稍后重试', {
           status: 0,
           code: 'NETWORK_ERROR',
         });
@@ -95,7 +95,7 @@ export function createKnowledgeApi({
         });
       }
 
-      throw new ApiClientError('鏈嶅姟鍝嶅簲鏍煎紡寮傚父', {
+      throw new ApiClientError('服务响应格式异常', {
         status: response.status,
         code: 'INVALID_API_RESPONSE',
       });
@@ -171,7 +171,7 @@ async function parseJson(response: Response) {
   try {
     return (await response.json()) as unknown;
   } catch {
-    throw new ApiClientError('鏈嶅姟鍝嶅簲鏍煎紡寮傚父', {
+    throw new ApiClientError('服务响应格式异常', {
       status: response.status,
       code: 'INVALID_API_RESPONSE',
     });
