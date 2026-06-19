@@ -1,9 +1,7 @@
-import { streamText } from 'ai';
-import { aiProvider, DEFAULT_MODEL, getAiProviderStatus } from '@/lib/ai-provider';
+import { createDataStreamResponse, formatDataStreamPart, streamText } from 'ai';
+import { aiProvider, getAiProviderStatus } from '@/lib/ai-provider';
+import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
 import {
-  buildChatContextMessages,
-  buildChatSystemPrompt,
-  CHAT_CONTEXT_MAX_INPUT_TOKENS,
   type ActiveStudyContext,
   type ChatContextMessage,
 } from '@/lib/chat-context';
@@ -26,6 +24,43 @@ function isActiveStudyContext(value: unknown): value is ActiveStudyContext {
   return record.type === 'ocr-question' && typeof record.questionText === 'string';
 }
 
+function getLatestUserText(messages: ChatContextMessage[]) {
+  return [...messages].reverse().find((message) => message.role === 'user')?.content;
+}
+
+function splitMockText(text: string) {
+  const chunks: string[] = [];
+  const chunkSize = 18;
+
+  for (let index = 0; index < text.length; index += chunkSize) {
+    chunks.push(text.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function createMockChatResponse(input: {
+  messages: ChatContextMessage[];
+  activeContext: ActiveStudyContext | null;
+}) {
+  const mockText = createMockChatText({
+    hasActiveContext: Boolean(input.activeContext),
+    latestUserText: getLatestUserText(input.messages),
+  });
+
+  return createDataStreamResponse({
+    headers: {
+      'x-prepmind-ai-mode': 'mock',
+    },
+    execute: async (dataStream) => {
+      for (const chunk of splitMockText(mockText)) {
+        dataStream.write(formatDataStreamPart('text', chunk));
+        await new Promise((resolve) => setTimeout(resolve, 8));
+      }
+    },
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, activeContext } = await req.json();
@@ -40,25 +75,50 @@ export async function POST(req: Request) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
-    const modelMessages = buildChatContextMessages(messages as ChatContextMessage[], {
-      maxInputTokens: CHAT_CONTEXT_MAX_INPUT_TOKENS,
+    const normalizedActiveContext = isActiveStudyContext(activeContext) ? activeContext : null;
+    const budget = buildChatRequestBudget({
+      baseSystemPrompt: BASE_SYSTEM_PROMPT,
+      activeContext: normalizedActiveContext,
+      messages: messages as ChatContextMessage[],
+      maxInputTokens: providerStatus.maxInputTokens,
+      maxOutputTokens: providerStatus.maxOutputTokens,
     });
-    if (modelMessages.length === 0) {
+
+    if (budget.modelMessages.length === 0) {
       return Response.json({ error: '消息内容不能为空' }, { status: 400 });
     }
 
-    const systemPrompt = buildChatSystemPrompt(
-      BASE_SYSTEM_PROMPT,
-      isActiveStudyContext(activeContext) ? activeContext : null,
+    if (budget.exceedsInputLimit) {
+      return Response.json(
+        {
+          error: `本次输入上下文过长，估算 ${budget.estimatedInputTokens} tokens，超过当前上限 ${budget.maxInputTokens} tokens。请缩短问题或开启更高预算后重试。`,
+        },
+        { status: 413 },
+      );
+    }
+
+    if (providerStatus.mode === 'mock') {
+      return createMockChatResponse({
+        messages: budget.modelMessages,
+        activeContext: normalizedActiveContext,
+      });
+    }
+
+    console.info(
+      `[AI usage estimate] mode=live model=${providerStatus.model} input≈${budget.estimatedInputTokens}/${budget.maxInputTokens} maxOutput=${budget.maxOutputTokens} messages=${budget.modelMessages.length} activeContext=${Boolean(normalizedActiveContext)}`,
     );
 
     const result = streamText({
-      model: aiProvider(DEFAULT_MODEL),
-      system: systemPrompt,
-      messages: modelMessages,
+      model: aiProvider(providerStatus.model),
+      system: budget.systemPrompt,
+      messages: budget.modelMessages,
+      maxTokens: budget.maxOutputTokens,
     });
 
     return result.toDataStreamResponse({
+      headers: {
+        'x-prepmind-ai-mode': 'live',
+      },
       getErrorMessage: () => 'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。',
     });
   } catch (error) {

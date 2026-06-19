@@ -86,7 +86,30 @@ minioadmin / minioadmin
 prepmind-dev
 ```
 
-## 4. 常用验证
+## 4. AI 调用模式
+
+前端 `/api/chat` 开发默认走本地 mock 流式响应，不消耗 DeepSeek / OpenAI 额度。即使 `apps/web/.env.local` 里存在 API key，只要不显式开启 live，也不会调用真实模型。
+
+开发与自动化测试推荐：
+
+```powershell
+$env:AI_PROVIDER_MODE='mock'
+bun --filter @repo/web dev
+```
+
+真实模型验收时才开启：
+
+```powershell
+$env:AI_PROVIDER_MODE='live'
+$env:AI_ENABLE_LIVE_CALLS='true'
+$env:AI_MAX_INPUT_TOKENS='2500'
+$env:AI_MAX_OUTPUT_TOKENS='1200'
+bun --filter @repo/web dev
+```
+
+`AI_MAX_INPUT_TOKENS` 会同时约束 system prompt、`activeStudyContext` 和近期消息；超限会返回 413。live 模式会在服务端输出不含密钥的用量估算日志。
+
+## 5. 常用验证
 
 ```powershell
 bun --filter @repo/web lint
@@ -104,7 +127,7 @@ bun --cwd packages/fsrs test
 
 前端已移除 `next/font/google`，生产构建使用系统字体栈，受限网络下不应再因为 Google Fonts 拉取失败。
 
-## 5. Prisma
+## 6. Prisma
 
 生成 Prisma Client：
 
@@ -133,7 +156,7 @@ packages\database\node_modules\.bin\prisma.exe migrate status --schema packages/
 Database schema is up to date!
 ```
 
-## 6. Docker 常用命令
+## 7. Docker 常用命令
 
 查看容器：
 
@@ -153,7 +176,7 @@ docker compose -f docker/docker-compose.dev.yml stop postgres redis minio
 docker compose -f docker/docker-compose.dev.yml down
 ```
 
-## 7. 常见问题
+## 8. 常见问题
 
 ### Prisma Client 没初始化
 

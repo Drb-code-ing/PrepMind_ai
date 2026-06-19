@@ -1,6 +1,8 @@
-export const CHAT_CONTEXT_MAX_INPUT_TOKENS = 8000;
+export const CHAT_CONTEXT_MAX_INPUT_TOKENS = 2500;
 const MESSAGE_OVERHEAD_TOKENS = 4;
-const ACTIVE_CONTEXT_MAX_CHARS = 6000;
+const ACTIVE_CONTEXT_MAX_QUESTION_CHARS = 2400;
+const ACTIVE_CONTEXT_MAX_ANALYSIS_CHARS = 1000;
+const ACTIVE_CONTEXT_MAX_ANSWER_CHARS = 600;
 
 export type ChatContextMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -27,6 +29,16 @@ type BuildChatContextOptions = {
   maxInputTokens?: number;
 };
 
+export type ActiveStudyContextLimits = {
+  questionChars?: number;
+  analysisChars?: number;
+  answerChars?: number;
+};
+
+type BuildChatSystemPromptOptions = {
+  activeContextLimits?: ActiveStudyContextLimits;
+};
+
 export function estimateTextTokens(text: string) {
   const normalized = text.trim();
   if (!normalized) return 0;
@@ -39,6 +51,10 @@ export function estimateTextTokens(text: string) {
 
 function estimateMessageTokens(message: ChatContextMessage) {
   return MESSAGE_OVERHEAD_TOKENS + estimateTextTokens(message.content);
+}
+
+export function estimateChatContextTokens(messages: ChatContextMessage[]) {
+  return messages.reduce((total, message) => total + estimateMessageTokens(message), 0);
 }
 
 function normalizeMessages(messages: ChatContextMessage[]) {
@@ -79,17 +95,24 @@ export function buildChatContextMessages(
   return selected.reverse();
 }
 
-function clampText(text: string, maxChars = ACTIVE_CONTEXT_MAX_CHARS) {
+function clampText(text: string, maxChars: number) {
   const normalized = text.trim();
   if (normalized.length <= maxChars) return normalized;
   return `${normalized.slice(0, maxChars).trim()}...`;
 }
 
-function formatActiveStudyContext(activeContext: ActiveStudyContext) {
+function formatActiveStudyContext(
+  activeContext: ActiveStudyContext,
+  limits: ActiveStudyContextLimits = {},
+) {
+  const questionChars = limits.questionChars ?? ACTIVE_CONTEXT_MAX_QUESTION_CHARS;
+  const analysisChars = limits.analysisChars ?? ACTIVE_CONTEXT_MAX_ANALYSIS_CHARS;
+  const answerChars = limits.answerChars ?? ACTIVE_CONTEXT_MAX_ANSWER_CHARS;
+
   const lines = [
     '当前正在讨论的题目来自用户刚才的拍照识题结果。用户后续提到“这道题”“刚才那一步”“为什么这样做”时，优先指向下面这道题。',
     '',
-    `题目：${clampText(activeContext.questionText)}`,
+    `题目：${clampText(activeContext.questionText, questionChars)}`,
   ];
 
   if (activeContext.questionId?.trim()) {
@@ -113,11 +136,11 @@ function formatActiveStudyContext(activeContext: ActiveStudyContext) {
   }
 
   if (activeContext.analysis?.trim()) {
-    lines.push(`已有分析：${clampText(activeContext.analysis, 2000)}`);
+    lines.push(`已有分析：${clampText(activeContext.analysis, analysisChars)}`);
   }
 
   if (activeContext.answer?.trim()) {
-    lines.push(`参考答案：${clampText(activeContext.answer, 1200)}`);
+    lines.push(`参考答案：${clampText(activeContext.answer, answerChars)}`);
   }
 
   const warnings = activeContext.warnings?.map((warning) => warning.trim()).filter(Boolean);
@@ -128,7 +151,11 @@ function formatActiveStudyContext(activeContext: ActiveStudyContext) {
   return lines.join('\n');
 }
 
-export function buildChatSystemPrompt(basePrompt: string, activeContext?: ActiveStudyContext | null) {
+export function buildChatSystemPrompt(
+  basePrompt: string,
+  activeContext?: ActiveStudyContext | null,
+  options: BuildChatSystemPromptOptions = {},
+) {
   const normalizedBasePrompt = basePrompt.trim();
   if (!activeContext?.questionText.trim()) return normalizedBasePrompt;
 
@@ -136,5 +163,5 @@ export function buildChatSystemPrompt(basePrompt: string, activeContext?: Active
 
 ---
 
-${formatActiveStudyContext(activeContext)}`;
+${formatActiveStudyContext(activeContext, options.activeContextLimits)}`;
 }

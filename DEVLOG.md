@@ -483,6 +483,18 @@ f5a2eb1 style: soften cartoon theme palette
 - 重新确认 `WrongQuestionOrganizerAgent` 的职责：它不是讲题 Agent，而是错题整理 Agent，负责把错题本从平铺列表升级为“学科卡片 -> 专题 deck -> 错题”的组织方式。
 - `WrongQuestionOrganizerAgent` 基于结构化 OCR、错题知识点、错因、题型、难度、用户备注和复习表现，推荐学科组与专题 deck；用户重命名、移动和合并拥有最终优先级。
 - 新增 `docs/superpowers/specs/2026-06-19-phase-6-multi-agent-collaboration-design.md`，记录 Phase 6 总体 Agent 拆分、RAG + Verifier 工作流、错题整理工作流、数据边界和分阶段落地。
+- 新增 `/api/chat` AI 调用成本保护：开发默认 `AI_PROVIDER_MODE=mock`，即使存在 API key 也不会调用真实模型。
+- 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 模式会记录不含密钥的用量估算日志。
+- 新增 Chat 请求预算 helper，统一估算 system prompt、`activeStudyContext` 和近期消息，默认输入上限 2500 tokens、输出上限 1200 tokens，超限返回 413。
+- 收缩 `activeStudyContext` 默认注入长度，避免多题 OCR 上下文在追问时重复放大 token 消耗。
+- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/dev-start.md` 和 `docs/roadmap.md`，记录 mock / live 切换与预算边界。
+
+验证：
+
+- `bun --filter @repo/web test` 通过，154 个测试全部通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `git diff --check` 通过，仅有 Windows 换行提示。
 
 ---
 

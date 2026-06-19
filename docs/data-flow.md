@@ -1,13 +1,13 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-18。Phase 5.3 已完成 RAG 文档处理与 embedding 入库地基。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-19。Phase 5.3 已完成 RAG 文档处理与 embedding 入库地基；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - 业务数据权威来源：WrongQuestion、ChatMessage、OCRRecord 均已迁移到 PostgreSQL。
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
-- AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理外部 AI 服务。
+- AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - RAG 知识库职责：Phase 5.3 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除 API，以及 `POST /knowledge/documents/:id/process` 文档处理 API；当前尚未接入 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面。
@@ -60,9 +60,9 @@
 用户输入文本
   -> ChatInputBar
   -> /api/chat
-  -> buildChatContextMessages() 裁剪近期聊天历史
-  -> buildChatSystemPrompt() 注入 activeStudyContext
-  -> OpenAI / DeepSeek SSE
+  -> getAiProviderStatus() 判断 mock / live
+  -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
+  -> mock data stream 或 OpenAI / DeepSeek SSE
   -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
   -> POST /chat-messages/sync
@@ -72,6 +72,10 @@
 关键约定：
 
 - `/api/chat` 不注入完整历史，只注入裁剪后的近期上下文和当前活跃题目上下文。
+- `/api/chat` 默认 `AI_PROVIDER_MODE=mock`，不要求 API key，也不会调用真实模型；`.env.local` 里存在 key 不会自动启用 live。
+- 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`。
+- Chat 默认输入预算为 2500 tokens、输出上限为 1200 tokens，可通过 `AI_MAX_INPUT_TOKENS` 和 `AI_MAX_OUTPUT_TOKENS` 调整；超出输入预算会返回 413。
+- live 模式会在服务端打印不含密钥的用量估算日志，包含模式、模型、输入估算、输出上限、消息数量和是否带 active context。
 - 完整聊天历史仍保存于 PostgreSQL 与 Dexie。
 - `activeStudyContext` 来自有效 OCR 题目，用于承接“这一步为什么这样做”等追问。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。

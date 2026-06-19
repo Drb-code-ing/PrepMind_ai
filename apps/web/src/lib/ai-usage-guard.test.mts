@@ -1,0 +1,77 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildChatRequestBudget,
+  createMockChatText,
+  parseAiTokenLimit,
+} from './ai-usage-guard.ts';
+import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
+
+test('parses positive token limits and falls back for unsafe values', () => {
+  assert.equal(parseAiTokenLimit('1800', 2500, { min: 200, max: 12000 }), 1800);
+  assert.equal(parseAiTokenLimit('100000', 2500, { min: 200, max: 12000 }), 2500);
+  assert.equal(parseAiTokenLimit('0', 2500, { min: 200, max: 12000 }), 2500);
+  assert.equal(parseAiTokenLimit('abc', 2500, { min: 200, max: 12000 }), 2500);
+});
+
+test('budgets the system prompt, active OCR context, and recent messages together', () => {
+  const activeContext: ActiveStudyContext = {
+    type: 'ocr-question',
+    questionText: '题目内容'.repeat(500),
+    analysis: '分析内容'.repeat(500),
+    answer: '答案内容'.repeat(300),
+    knowledgePoints: ['导数', '极值'],
+  };
+  const messages: ChatContextMessage[] = [
+    { role: 'user', content: '旧问题'.repeat(200) },
+    { role: 'assistant', content: '旧回答'.repeat(200) },
+    { role: 'user', content: '为什么这一步可以这样做？' },
+  ];
+
+  const budget = buildChatRequestBudget({
+    baseSystemPrompt: '基础系统提示',
+    activeContext,
+    messages,
+    maxInputTokens: 700,
+    maxOutputTokens: 600,
+    activeContextLimits: {
+      questionChars: 160,
+      analysisChars: 120,
+      answerChars: 80,
+    },
+  });
+
+  assert.equal(budget.modelMessages.length, 1);
+  assert.equal(budget.modelMessages[0].content, '为什么这一步可以这样做？');
+  assert.equal(budget.exceedsInputLimit, false);
+  assert.ok(budget.estimatedInputTokens <= 700);
+  assert.equal(budget.maxOutputTokens, 600);
+  assert.match(budget.systemPrompt, /题目内容/);
+  assert.match(budget.systemPrompt, /\.{3}/);
+});
+
+test('marks a request as too large when the latest user message alone exceeds the input budget', () => {
+  const budget = buildChatRequestBudget({
+    baseSystemPrompt: '基础系统提示',
+    activeContext: null,
+    messages: [{ role: 'user', content: '超长输入'.repeat(1000) }],
+    maxInputTokens: 500,
+    maxOutputTokens: 600,
+  });
+
+  assert.equal(budget.modelMessages.length, 1);
+  assert.equal(budget.exceedsInputLimit, true);
+  assert.ok(budget.estimatedInputTokens > 500);
+});
+
+test('creates a visible mock answer that preserves streaming markdown and math render checks', () => {
+  const text = createMockChatText({
+    hasActiveContext: true,
+    latestUserText: '为什么这样做？',
+  });
+
+  assert.match(text, /本地 mock 模型/);
+  assert.match(text, /为什么这样做/);
+  assert.match(text, /\$\$f'\(x\)=2x\$\$/);
+});
