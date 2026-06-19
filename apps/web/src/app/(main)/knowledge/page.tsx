@@ -36,7 +36,6 @@ import {
   getKnowledgeDocumentStatusMeta,
   getKnowledgeSearchHitSummary,
 } from '@/lib/knowledge-view';
-import { getMutationErrorMessage } from '@/lib/mutation-queue';
 
 type NoticeTone = 'success' | 'danger' | 'neutral';
 type ActionNotice = { message: string; tone: NoticeTone };
@@ -129,7 +128,7 @@ export default function KnowledgePage() {
         fileInputRef.current.value = '';
       }
     } catch (error) {
-      showNotice(getMutationErrorMessage(error), 'danger');
+      showNotice(getActionErrorMessage(error), 'danger');
     }
   }
 
@@ -152,7 +151,7 @@ export default function KnowledgePage() {
       });
       showNotice(`《${document.name}》处理完成，当前 ${processed.chunkCount} 个片段。`);
     } catch (error) {
-      showNotice(getMutationErrorMessage(error), 'danger');
+      showNotice(getActionErrorMessage(error), 'danger');
     } finally {
       setProcessingId(null);
     }
@@ -172,7 +171,7 @@ export default function KnowledgePage() {
       );
       showNotice(`已删除《${document.name}》。`);
     } catch (error) {
-      showNotice(getMutationErrorMessage(error), 'danger');
+      showNotice(getActionErrorMessage(error), 'danger');
     } finally {
       setDeletingId(null);
     }
@@ -198,7 +197,7 @@ export default function KnowledgePage() {
     } catch (error) {
       if (searchRequestSeqRef.current === requestSeq) {
         setSearchHits(null);
-        showNotice(getMutationErrorMessage(error), 'danger');
+        showNotice(getActionErrorMessage(error), 'danger');
       }
     }
   }
@@ -628,6 +627,10 @@ function DocumentMeta({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-words text-xs font-bold text-[var(--pm-ink)]">{value}</p>
     </div>
   );
+}
+
+function getActionErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '操作失败，请稍后重试';
 }
 
 function formatDocumentErrorMessage(errorMessage: string) {
