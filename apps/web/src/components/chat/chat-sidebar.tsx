@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart3,
+  BookMarked,
   BookOpen,
   CalendarClock,
   CalendarDays,
@@ -24,6 +25,7 @@ interface ChatSidebarProps {
 
 const navItems = [
   { href: '/chat', label: 'AI 对话', hint: '拍照识题与追问', icon: MessageCircle },
+  { href: '/knowledge', label: '知识库', hint: '资料入库与检索测试', icon: BookMarked },
   { href: '/today', label: '今日任务', hint: '轻学习手账', icon: CalendarDays },
   { href: '/plan', label: '复习计划', hint: '未来到期与复习压力', icon: CalendarClock },
   { href: '/stats', label: '学习统计', hint: '复习趋势与记录', icon: BarChart3 },
