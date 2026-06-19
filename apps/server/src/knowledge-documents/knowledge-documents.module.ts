@@ -12,12 +12,15 @@ import {
 import { DocumentProcessingService } from './document-processing.service';
 import { KnowledgeDocumentsController } from './knowledge-documents.controller';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
+import { KnowledgeSearchController } from './knowledge-search.controller';
+import { KnowledgeSearchService } from './knowledge-search.service';
 
 @Module({
   imports: [AuthModule, UploadsModule],
-  controllers: [KnowledgeDocumentsController],
+  controllers: [KnowledgeDocumentsController, KnowledgeSearchController],
   providers: [
     KnowledgeDocumentsService,
+    KnowledgeSearchService,
     DocumentProcessingService,
     DocumentParserService,
     EmbeddingService,
@@ -27,6 +30,10 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
       useFactory: (): ServerEmbeddingProvider | undefined => undefined,
     },
   ],
-  exports: [KnowledgeDocumentsService, DocumentProcessingService],
+  exports: [
+    KnowledgeDocumentsService,
+    KnowledgeSearchService,
+    DocumentProcessingService,
+  ],
 })
 export class KnowledgeDocumentsModule {}

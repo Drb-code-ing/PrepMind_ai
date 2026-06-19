@@ -9,6 +9,7 @@ import {
   knowledgeDocumentListResponseSchema,
   knowledgeDocumentProcessResponseSchema,
   knowledgeDocumentUploadResponseSchema,
+  knowledgeSearchResponseSchema,
 } from '@repo/types/api/knowledge';
 
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
@@ -22,7 +23,7 @@ describe('KnowledgeDocumentsController (e2e)', () => {
   let prisma: PrismaService | undefined;
   const emails: string[] = [];
   const embedBatch = jest.fn(async (texts: string[]) =>
-    texts.map(() => Array(1536).fill(0.01)),
+    texts.map(createFakeEmbedding),
   );
 
   beforeAll(async () => {
@@ -273,6 +274,94 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       });
   });
 
+  it('requires authentication for knowledge search', async () => {
+    await request(server)
+      .post('/knowledge/search')
+      .send({ query: 'Green theorem' })
+      .expect(401);
+  });
+
+  it('searches processed chunks for the current user only', async () => {
+    const userA = await registerUser('knowledge-search-a');
+    const userB = await registerUser('knowledge-search-b');
+    const userADocument = await uploadAndProcessTextDocument(
+      userA.accessToken,
+      'green-a.txt',
+      'Green theorem converts line integrals into double integrals.',
+    );
+    const userBDocument = await uploadAndProcessTextDocument(
+      userB.accessToken,
+      'green-b.txt',
+      'Green theorem secret note from another user.',
+    );
+
+    const response = await request(server)
+      .post('/knowledge/search')
+      .set('Authorization', `Bearer ${userA.accessToken}`)
+      .send({ query: 'Green theorem', topK: 5, minScore: 0.5 })
+      .expect(201);
+    const result = knowledgeSearchResponseSchema.parse(
+      getSuccessData(response),
+    );
+
+    expect(result.hits.length).toBeGreaterThan(0);
+    expect(result.hits.some((hit) => hit.documentId === userADocument.id)).toBe(
+      true,
+    );
+    expect(result.hits.some((hit) => hit.documentId === userBDocument.id)).toBe(
+      false,
+    );
+    expect(result.hits[0]?.score).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it('returns empty hits when all results are below minScore', async () => {
+    const user = await registerUser('knowledge-search-empty');
+    await uploadAndProcessTextDocument(
+      user.accessToken,
+      'green-empty.txt',
+      'Green theorem converts line integrals into double integrals.',
+    );
+
+    const response = await request(server)
+      .post('/knowledge/search')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ query: 'unrelated biology notes', topK: 5, minScore: 0.5 })
+      .expect(201);
+    const result = knowledgeSearchResponseSchema.parse(
+      getSuccessData(response),
+    );
+
+    expect(result).toEqual({ hits: [] });
+  });
+
+  async function uploadAndProcessTextDocument(
+    accessToken: string,
+    filename: string,
+    content: string,
+  ) {
+    const uploadResponse = await request(server)
+      .post('/knowledge/documents')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .attach('file', Buffer.from(content), {
+        filename,
+        contentType: 'text/plain',
+      })
+      .expect(201);
+    const uploaded = knowledgeDocumentUploadResponseSchema.parse(
+      getSuccessData(uploadResponse),
+    );
+
+    const processResponse = await request(server)
+      .post(`/knowledge/documents/${uploaded.id}/process`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({})
+      .expect(201);
+
+    return knowledgeDocumentProcessResponseSchema.parse(
+      getSuccessData(processResponse),
+    );
+  }
+
   async function registerUser(label: string) {
     const email = `knowledge-${label}-${Date.now()}-${Math.random()
       .toString(16)
@@ -333,3 +422,14 @@ type AuthResponse = {
   };
   accessToken: string;
 };
+
+function createFakeEmbedding(text: string): number[] {
+  const vector = Array(1536).fill(0);
+  if (/green theorem|line integral/i.test(text)) {
+    vector[0] = 1;
+    return vector;
+  }
+
+  vector[1] = 1;
+  return vector;
+}
