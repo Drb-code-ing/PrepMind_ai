@@ -1,7 +1,7 @@
 import type { ActiveStudyContext } from './chat-context.ts';
 
 type BuildChatRuntimeRequestBodyInput = {
-  requestBody?: Record<string, unknown>;
+  requestBody?: object;
   messages: unknown[];
   activeContext: ActiveStudyContext | null;
   accessToken?: string | null;
