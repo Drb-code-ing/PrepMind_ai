@@ -598,6 +598,22 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/web build` 通过。
 
+**Phase 5 收官与知识库菜单体验修复**
+
+- 确认 Phase 5 RAG 知识库主线完成：数据模型、文档上传、解析分块、embedding 入库、检索 API、Chat RAG 注入与 `/knowledge` 前端闭环均已落地。
+- 修复 `/knowledge` 资料卡片三点菜单打开后点击页面其它区域不能关闭的问题。
+- 菜单关闭逻辑改为 document-level `pointerdown` 监听：点击菜单外部关闭，点击菜单内部保留原交互。
+- 修复实现过程中发现的 `document` 命名遮蔽问题，组件内显式使用 `globalThis.document` 访问浏览器全局对象。
+- 新增 `shouldCloseKnowledgeDocumentMenuOnPointerDown` helper 与测试，锁定菜单外部点击关闭的交互边界。
+
+验证：
+
+- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，8/8。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web test` 通过，181/181。
+- `bun --filter @repo/web build` 通过。
+- 浏览器验收通过：打开资料卡片菜单后点击页面其它区域，`aria-expanded=false`，菜单项消失，控制台无 warning/error。
+
 ---
 
 ## 当前状态

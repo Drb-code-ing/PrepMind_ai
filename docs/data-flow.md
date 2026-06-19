@@ -200,7 +200,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
 - citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
 - `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
-- `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
+- `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；点击页面其它区域会收起菜单；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
 - 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider，真实 embedding 仍使用 OpenAI-compatible provider。
