@@ -4,6 +4,21 @@ import { PrismaService } from '../database/prisma.service';
 import { StorageService } from '../uploads/storage.service';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
+type DocumentCreateArgs = {
+  data: {
+    userId: string;
+    name: string;
+    type: string;
+    size: number;
+    mimeType: string;
+    storageKey: string;
+    status: string;
+    sourceType: string;
+    contentHash: string;
+  };
+  include: { _count: { select: { chunks: boolean } } };
+};
+
 describe('KnowledgeDocumentsService', () => {
   const now = new Date('2026-06-18T10:00:00.000Z');
   const documentRow = {
@@ -25,7 +40,7 @@ describe('KnowledgeDocumentsService', () => {
   };
   const prisma = {
     document: {
-      create: jest.fn(),
+      create: jest.fn<Promise<typeof documentRow>, [DocumentCreateArgs]>(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
       delete: jest.fn(),
@@ -65,7 +80,13 @@ describe('KnowledgeDocumentsService', () => {
 
     const result = await createService().createUploadDocument('user_1', file);
 
-    expect(prisma.document.create).toHaveBeenCalledWith({
+    const createCall = prisma.document.create.mock.calls[0]?.[0];
+    expect(createCall).toBeDefined();
+    if (!createCall) {
+      throw new Error('Expected document.create to be called');
+    }
+    expect(createCall.data.contentHash).toMatch(/^sha256:/);
+    expect(createCall).toEqual({
       data: {
         userId: 'user_1',
         name: 'calculus.pdf',
@@ -75,7 +96,7 @@ describe('KnowledgeDocumentsService', () => {
         storageKey: 'users/user_1/knowledge/doc.pdf',
         status: 'PENDING',
         sourceType: 'UPLOAD',
-        contentHash: expect.stringMatching(/^sha256:/),
+        contentHash: createCall.data.contentHash,
       },
       include: { _count: { select: { chunks: true } } },
     });

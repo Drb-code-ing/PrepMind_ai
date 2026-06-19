@@ -33,7 +33,8 @@ describe('KnowledgeSearchService', () => {
         chunkId: 'chunk_1',
         documentId: 'doc_1',
         documentName: 'calculus.md',
-        content: 'Green theorem converts a line integral into a double integral.',
+        content:
+          'Green theorem converts a line integral into a double integral.',
         score: 0.91,
         metadata: { sectionTitle: 'Green theorem' },
       },
@@ -53,7 +54,8 @@ describe('KnowledgeSearchService', () => {
           chunkId: 'chunk_1',
           documentId: 'doc_1',
           documentName: 'calculus.md',
-          content: 'Green theorem converts a line integral into a double integral.',
+          content:
+            'Green theorem converts a line integral into a double integral.',
           score: 0.91,
           metadata: { sectionTitle: 'Green theorem' },
         },

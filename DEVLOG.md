@@ -490,12 +490,27 @@ f5a2eb1 style: soften cartoon theme palette
 - 收缩 `activeStudyContext` 默认注入长度，避免多题 OCR 上下文在追问时重复放大 token 消耗。
 - 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/dev-start.md` 和 `docs/roadmap.md`，记录 mock / live 切换与预算边界。
 
+**Phase 5.4 检索 API**
+
+- 修复 `@repo/rag` 在 server runtime 中的包入口加载问题，补充 CommonJS entry 与 package entry 测试。
+- 新增 Phase 5.4 检索 API 设计文档和实施计划，明确先落地后端搜索能力，Chat 注入和引用展示放入 Phase 5.5。
+- 新增 `KnowledgeSearchService`：使用 query embedding + pgvector cosine search 检索当前用户 `DONE` 文档 chunks。
+- 新增 `POST /knowledge/search`，受 `JwtAuthGuard` 保护，使用 `knowledgeSearchRequestSchema` 校验 `query`、`limit`、`minScore` 和 `documentId`。
+- 检索结果返回 score、chunk metadata 和 document metadata；跨用户文档、未处理文档、低分结果不会返回。
+- 收紧 knowledge documents 相关测试 mock 类型，修复 server lint 对 `any`、无效 async 和 fake embedding 向量类型的报错。
+- 当前仍未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
+
 验证：
 
 - `bun --filter @repo/web test` 通过，155 个测试全部通过。
 - `AI_PROVIDER_MODE=mock` 本地 HTTP 冒烟通过：`POST /api/chat` 返回 `x-prepmind-ai-mode=mock`，包含 mock 文本，服务端日志无 live 用量估算。
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
+- `bun packages/types/tests/knowledge.test.mts` 通过。
+- `bun --filter @repo/server test -- knowledge-search.service.spec.ts knowledge-documents/embedding.service.spec.ts knowledge-documents/document-processing.service.spec.ts knowledge-documents.service.spec.ts` 通过，30 个测试全部通过。
+- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，9 个测试全部通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server lint` 通过。
 - `git diff --check` 通过，仅有 Windows 换行提示。
 
 ---
@@ -558,7 +573,8 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
 - Phase 5.2 文档上传与状态 API 已完成。
 - Phase 5.3 文档处理与 embedding 入库已完成。
-- 当前尚未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面，下一步进入 Phase 5.4 检索 API。
+- Phase 5.4 检索 API 已完成。
+- 当前尚未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面，下一步进入 Phase 5.5。
 
 ---
 
@@ -581,7 +597,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
 - [x] Phase 5.2：文档上传与状态 API。
 - [x] Phase 5.3：解析、分块、embedding 入库。
-- [ ] Phase 5.4：检索 API。
+- [x] Phase 5.4：检索 API。
 - [ ] Phase 5.5：Chat RAG 增强与引用展示。
 - [ ] Phase 5.6：知识库页面体验打磨。
 - [ ] Phase 6：LangGraph 多 Agent 系统。

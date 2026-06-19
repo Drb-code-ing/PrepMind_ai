@@ -9,7 +9,9 @@ import { KnowledgeSearchService } from './knowledge-search.service';
 @Controller('knowledge')
 @UseGuards(JwtAuthGuard)
 export class KnowledgeSearchController {
-  constructor(private readonly knowledgeSearchService: KnowledgeSearchService) {}
+  constructor(
+    private readonly knowledgeSearchService: KnowledgeSearchService,
+  ) {}
 
   @Post('search')
   search(@CurrentUser() user: AuthenticatedUser, @Body() body: unknown) {

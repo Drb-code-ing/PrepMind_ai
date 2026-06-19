@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 5.3 已完成，后续进入 Phase 5.4。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 5.4 已完成，后续进入 Phase 5.5。
 
 ## 项目快照
 
@@ -23,6 +23,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 5.1 | 已完成 | RAG 数据模型、`vector(1536)` 索引预留、knowledge API contract |
 | Phase 5.2 | 已完成 | 文档上传、列表、详情、删除与状态 API |
 | Phase 5.3 | 已完成 | 文档解析、分块、embedding 入库、`POST /knowledge/documents/:id/process` |
+| Phase 5.4 | 已完成 | 检索 API、`POST /knowledge/search`、query embedding + pgvector 相似度搜索 |
 
 ## 技术栈
 
@@ -123,7 +124,8 @@ mcp -> ai, fsrs, rag, types
 - RAG 处理链路：支持 TXT / Markdown / DOCX / PDF 基础文本解析，使用 `@repo/rag` 段落感知分块；embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
 - RAG 持久化：`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)` 并通过 raw SQL 持久化；写入前校验 document/user ownership。
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
-- RAG 当前未接入 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面；RAG 只增强 Chat 回答，未上传资料、未命中或检索失败时必须降级为普通 AI 回答。
+- RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。
+- RAG 当前未接入 Chat RAG 注入、citations 和 `/knowledge` 前端页面；RAG 只增强 Chat 回答，未上传资料、未命中或检索失败时必须降级为普通 AI 回答。
 - ReviewTask 评分支持 `clientMutationId` 幂等；重复提交同一评分命令不会重复写入 `ReviewLog`。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
 - WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
@@ -151,5 +153,5 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 5.4：检索 API。
+1. Phase 5.5：Chat RAG 增强与引用展示。
 2. Phase 6：LangGraph 多 Agent 系统，其中 `KnowledgeVerifierAgent` 负责 RAG 资料可信度评估，`WrongQuestionOrganizerAgent` 采用“学科卡片优先、内部专题分化”的错题本组织方式。

@@ -22,8 +22,8 @@ describe('KnowledgeDocumentsController (e2e)', () => {
   let server: App;
   let prisma: PrismaService | undefined;
   const emails: string[] = [];
-  const embedBatch = jest.fn(async (texts: string[]) =>
-    texts.map(createFakeEmbedding),
+  const embedBatch = jest.fn<Promise<number[][]>, [string[]]>((texts) =>
+    Promise.resolve(texts.map(createFakeEmbedding)),
   );
 
   beforeAll(async () => {
@@ -424,7 +424,7 @@ type AuthResponse = {
 };
 
 function createFakeEmbedding(text: string): number[] {
-  const vector = Array(1536).fill(0);
+  const vector = Array.from({ length: 1536 }, () => 0);
   if (/green theorem|line integral/i.test(text)) {
     vector[0] = 1;
     return vector;
