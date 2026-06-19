@@ -29,6 +29,7 @@ export type ChatRequestBudget = {
 
 type BuildChatRequestBudgetInput = {
   baseSystemPrompt: string;
+  additionalSystemPrompt?: string;
   activeContext?: ActiveStudyContext | null;
   messages: ChatContextMessage[];
   maxInputTokens: number;
@@ -48,9 +49,13 @@ export function parseAiTokenLimit(
 }
 
 export function buildChatRequestBudget(input: BuildChatRequestBudgetInput): ChatRequestBudget {
-  const systemPrompt = buildChatSystemPrompt(input.baseSystemPrompt, input.activeContext, {
+  const baseSystemPrompt = buildChatSystemPrompt(input.baseSystemPrompt, input.activeContext, {
     activeContextLimits: input.activeContextLimits,
   });
+  const additionalSystemPrompt = input.additionalSystemPrompt?.trim();
+  const systemPrompt = additionalSystemPrompt
+    ? `${baseSystemPrompt}\n\n---\n\n${additionalSystemPrompt}`
+    : baseSystemPrompt;
   const systemTokens = estimateTextTokens(systemPrompt) + 4;
   const messageBudget = Math.max(1, input.maxInputTokens - systemTokens);
   const modelMessages = buildChatContextMessages(input.messages, {

@@ -65,6 +65,21 @@ test('marks a request as too large when the latest user message alone exceeds th
   assert.ok(budget.estimatedInputTokens > 500);
 });
 
+test('includes additional system prompt in the token budget', () => {
+  const budget = buildChatRequestBudget({
+    baseSystemPrompt: 'base prompt',
+    activeContext: null,
+    additionalSystemPrompt: 'knowledge context',
+    messages: [{ role: 'user', content: 'question' }],
+    maxInputTokens: 500,
+    maxOutputTokens: 600,
+  });
+
+  assert.match(budget.systemPrompt, /base prompt/);
+  assert.match(budget.systemPrompt, /knowledge context/);
+  assert.ok(budget.estimatedInputTokens > 0);
+});
+
 test('creates a visible mock answer that preserves streaming markdown and math render checks', () => {
   const text = createMockChatText({
     hasActiveContext: true,

@@ -18,6 +18,7 @@ import { useChat } from '@ai-sdk/react';
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { ApiClientError } from '@/lib/api-client';
 import type { ActiveStudyContext } from '@/lib/chat-context';
+import { buildChatRuntimeRequestBody } from '@/lib/chat-runtime-request';
 import { buildChatSyncSignature } from '@/lib/chat-sync';
 import { db, type StoredMessage } from '@/lib/db';
 import { useChatStore } from '@/stores/chatStore';
@@ -83,6 +84,7 @@ function toTimestampMap(messages: StoredMessage[]) {
 
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const currentUser = useUserStore((state) => state.currentUser);
+  const accessToken = useUserStore((state) => state.accessToken);
   const userId = currentUser?.id ?? null;
   const { inputDraft, setInputDraft, clearInputDraft } = useChatStore();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -100,6 +102,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
   const chatTimestampsRef = useRef(chatTimestamps);
   const activeStudyContextRef = useRef(activeStudyContext);
+  const accessTokenRef = useRef(accessToken);
 
   const {
     messages,
@@ -115,11 +118,13 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     experimental_throttle: STREAM_UI_THROTTLE_MS,
     initialInput: inputDraft,
     initialMessages: [],
-    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) => ({
-      ...requestBody,
-      messages: requestMessages,
-      activeContext: activeStudyContextRef.current,
-    }),
+    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) =>
+      buildChatRuntimeRequestBody({
+        requestBody,
+        messages: requestMessages,
+        activeContext: activeStudyContextRef.current,
+        accessToken: accessTokenRef.current,
+      }),
     keepLastMessageOnError: true,
     onError: (error) => {
       setChatError(getReadableChatError(error));
@@ -131,6 +136,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     messagesRef.current = messages;
     chatTimestampsRef.current = chatTimestamps;
     activeStudyContextRef.current = activeStudyContext;
+    accessTokenRef.current = accessToken;
   });
 
   const chatMessagesQuery = useChatMessages(conversationId ? { conversationId } : {});
