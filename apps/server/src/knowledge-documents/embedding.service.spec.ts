@@ -15,11 +15,13 @@ describe('EmbeddingService', () => {
     | 'RAG_EMBEDDING_DIMENSIONS'
     | 'RAG_EMBEDDING_BATCH_SIZE'
     | 'RAG_EMBEDDING_MODEL'
+    | 'RAG_EMBEDDING_PROVIDER'
     | 'OPENAI_API_KEY'
   > = {
     RAG_EMBEDDING_DIMENSIONS: 3,
     RAG_EMBEDDING_BATCH_SIZE: 2,
     RAG_EMBEDDING_MODEL: 'fake-model',
+    RAG_EMBEDDING_PROVIDER: 'openai',
     OPENAI_API_KEY: 'test-openai-key',
   };
 
@@ -146,5 +148,26 @@ describe('EmbeddingService', () => {
       code: 'KNOWLEDGE_EMBEDDING_FAILED',
       statusCode: HttpStatus.BAD_GATEWAY,
     });
+  });
+
+  it('generates deterministic fake embeddings without an OpenAI API key', async () => {
+    const service = new EmbeddingService(
+      createConfig({
+        OPENAI_API_KEY: undefined,
+        RAG_EMBEDDING_PROVIDER: 'fake',
+      }),
+      undefined,
+    );
+
+    const [first, second, different] = await service.embedChunks([
+      'green theorem smoke',
+      'green theorem smoke',
+      'linear algebra matrix',
+    ]);
+
+    expect(first).toHaveLength(3);
+    expect(first).toEqual(second);
+    expect(first).not.toEqual(different);
+    expect(first.every(Number.isFinite)).toBe(true);
   });
 });

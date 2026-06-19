@@ -14,6 +14,8 @@ type KnowledgeDocumentAction = {
   disabled: boolean;
 };
 
+export const KNOWLEDGE_PAGE_SEARCH_MIN_SCORE = 0.4;
+
 const knowledgeDocumentStatusMeta: Record<KnowledgeDocumentStatus, KnowledgeDocumentStatusMeta> = {
   PENDING: {
     label: '待处理',

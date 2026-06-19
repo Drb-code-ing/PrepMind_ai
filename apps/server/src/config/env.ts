@@ -46,7 +46,7 @@ const envSchema = z
       .int()
       .positive()
       .default(20 * 1024 * 1024),
-    RAG_EMBEDDING_PROVIDER: z.enum(['openai']).default('openai'),
+    RAG_EMBEDDING_PROVIDER: z.enum(['openai', 'fake']).default('openai'),
     RAG_EMBEDDING_MODEL: z.string().min(1).default('text-embedding-3-small'),
     RAG_EMBEDDING_DIMENSIONS: z.coerce
       .number()
@@ -86,6 +86,14 @@ const envSchema = z
     OPENAI_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
+    if (env.NODE_ENV === 'production' && env.RAG_EMBEDDING_PROVIDER === 'fake') {
+      context.addIssue({
+        code: 'custom',
+        path: ['RAG_EMBEDDING_PROVIDER'],
+        message: 'RAG_EMBEDDING_PROVIDER=fake is only allowed outside production',
+      });
+    }
+
     if (env.RAG_CHUNK_OVERLAP_TOKENS >= env.RAG_CHUNK_TARGET_TOKENS) {
       context.addIssue({
         code: 'custom',

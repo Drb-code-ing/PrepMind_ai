@@ -55,8 +55,11 @@ docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio
 ```powershell
 $env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
 $env:JWT_SECRET='dev-secret-change-me'
+$env:RAG_EMBEDDING_PROVIDER='fake'
 bun --filter @repo/server start:dev
 ```
+
+`RAG_EMBEDDING_PROVIDER='fake'` 只用于本地开发和浏览器 smoke，可在没有 `OPENAI_API_KEY` 的情况下完成知识库上传、处理和检索测试；真实 embedding 验收时改为 `openai` 并配置 `OPENAI_API_KEY`。
 
 启动前端：
 

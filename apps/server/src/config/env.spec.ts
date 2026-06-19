@@ -22,6 +22,26 @@ describe('parseEnv', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('accepts the fake embedding provider for local knowledge browser smoke tests', () => {
+    const env = parseEnv({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'fake',
+    });
+
+    expect(env.RAG_EMBEDDING_PROVIDER).toBe('fake');
+    expect(env.OPENAI_API_KEY).toBeUndefined();
+  });
+
+  it('rejects the fake embedding provider in production', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        RAG_EMBEDDING_PROVIDER: 'fake',
+      }),
+    ).toThrow();
+  });
+
   it('rejects embedding dimensions other than 1536', () => {
     expect(() =>
       parseEnv({

@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useLogin } from '@/hooks/use-auth';
+import {
+  getAuthAgreementError,
+  isAuthSubmitDisabled,
+} from '@/lib/auth-submit-state';
 
 type FieldError = string | null | undefined;
 
@@ -33,8 +37,9 @@ export default function LoginPage() {
     setErrors(nextErrors);
 
     if (nextErrors.email || nextErrors.password) return;
-    if (!agreed) {
-      setServerError('请先同意用户协议和隐私政策');
+    const agreementError = getAuthAgreementError(agreed);
+    if (agreementError) {
+      setServerError(agreementError);
       return;
     }
 
@@ -135,7 +140,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={!agreed || submitting}
+            disabled={isAuthSubmitDisabled({ submitting })}
             className="tap-target mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)] disabled:active:scale-100"
           >
             {submitting ? '登录中...' : '登录'}

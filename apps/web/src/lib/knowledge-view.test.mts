@@ -7,6 +7,7 @@ import type {
 } from '@repo/types/api/knowledge';
 
 import {
+  KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
   formatKnowledgeDateTime,
   formatKnowledgeFileSize,
   getKnowledgeDocumentAction,
@@ -20,6 +21,12 @@ describe('formatKnowledgeFileSize', () => {
     assert.equal(formatKnowledgeFileSize(512), '512 B');
     assert.equal(formatKnowledgeFileSize(2048), '2 KB');
     assert.equal(formatKnowledgeFileSize(2_621_440), '2.5 MB');
+  });
+});
+
+describe('KNOWLEDGE_PAGE_SEARCH_MIN_SCORE', () => {
+  it('keeps manual knowledge search preview more forgiving than Chat RAG injection', () => {
+    assert.equal(KNOWLEDGE_PAGE_SEARCH_MIN_SCORE, 0.4);
   });
 });
 

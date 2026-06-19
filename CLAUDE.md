@@ -41,6 +41,7 @@ bun install
 $env:POSTGRES_PORT='5433'
 docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio
 
+$env:RAG_EMBEDDING_PROVIDER='fake'
 bun --filter @repo/server start:dev
 bun --filter @repo/web dev
 ```
@@ -104,7 +105,7 @@ mcp -> ai, fsrs, rag, types
 - Preference：`/review-preferences` 读写每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口。
 - Stats：`/stats` 使用客户端 ECharts 展示趋势、评分分布和卡片状态。
 - RAG 文档 API：`/knowledge/documents` 支持上传、列表、详情和删除，`POST /knowledge/documents/:id/process` 支持处理上传文档。
-- RAG 处理链路：TXT / Markdown / DOCX / PDF 可做基础文本解析，`@repo/rag` 负责段落感知分块；embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
+- RAG 处理链路：TXT / Markdown / DOCX / PDF 可做基础文本解析，`@repo/rag` 负责段落感知分块；embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，本地开发和测试/e2e 可用 `RAG_EMBEDDING_PROVIDER=fake` 做无成本验收，production 禁止 fake provider。
 - RAG 持久化：`Document` / `Chunk` 以 PostgreSQL + pgvector 为权威来源，`Chunk.embedding` 固定为 `vector(1536)` 并通过 raw SQL 持久化；处理前校验 document/user ownership。
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。

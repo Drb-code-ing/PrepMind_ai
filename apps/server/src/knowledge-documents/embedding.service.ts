@@ -45,8 +45,7 @@ export class EmbeddingService {
   }
 
   private resolveProvider(dimensions: number): ServerEmbeddingProvider {
-    const provider =
-      this.injectedProvider ?? this.createOpenAiProvider(dimensions);
+    const provider = this.injectedProvider ?? this.createProvider(dimensions);
 
     if (provider.dimensions !== dimensions) {
       throw this.createEmbeddingError(
@@ -55,6 +54,18 @@ export class EmbeddingService {
     }
 
     return provider;
+  }
+
+  private createProvider(dimensions: number): ServerEmbeddingProvider {
+    const providerName = this.configService.get('RAG_EMBEDDING_PROVIDER', {
+      infer: true,
+    });
+
+    if (providerName === 'fake') {
+      return this.createFakeProvider(dimensions);
+    }
+
+    return this.createOpenAiProvider(dimensions);
   }
 
   private createOpenAiProvider(dimensions: number): ServerEmbeddingProvider {
@@ -80,6 +91,57 @@ export class EmbeddingService {
         return response.data.map((item) => item.embedding);
       },
     };
+  }
+
+  private createFakeProvider(dimensions: number): ServerEmbeddingProvider {
+    const model = this.configService.get('RAG_EMBEDDING_MODEL', {
+      infer: true,
+    });
+
+    return {
+      model: `fake:${model}`,
+      dimensions,
+      embedBatch: async (texts) =>
+        texts.map((text) => this.createFakeEmbedding(text, dimensions)),
+    };
+  }
+
+  private createFakeEmbedding(text: string, dimensions: number): number[] {
+    const vector = Array.from({ length: dimensions }, () => 0);
+    const tokens = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    const features = tokens.length > 0 ? tokens : Array.from(text);
+
+    if (features.length === 0) {
+      vector[0] = 1;
+      return vector;
+    }
+
+    for (const feature of features) {
+      const hash = this.hashFeature(feature);
+      const primaryIndex = hash % dimensions;
+      const secondaryIndex = (hash >>> 8) % dimensions;
+      const sign = (hash & 1) === 0 ? 1 : -1;
+
+      vector[primaryIndex] += sign;
+      vector[secondaryIndex] += sign * 0.5;
+    }
+
+    const magnitude = Math.hypot(...vector);
+    if (magnitude === 0) {
+      vector[0] = 1;
+      return vector;
+    }
+
+    return vector.map((value) => value / magnitude);
+  }
+
+  private hashFeature(feature: string): number {
+    let hash = 2166136261;
+    for (const char of feature) {
+      hash ^= char.codePointAt(0) ?? 0;
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
   }
 
   private async embedBatch(

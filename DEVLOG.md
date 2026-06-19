@@ -561,6 +561,22 @@ f5a2eb1 style: soften cartoon theme palette
 - 浏览器 smoke 已验证注册登录、侧边栏知识库入口、`/knowledge` 空状态、资料上传和列表刷新；真实 dev 环境未配置 `OPENAI_API_KEY`，因此处理和检索请求按预期返回 `KNOWLEDGE_EMBEDDING_FAILED`，完整处理/检索链路由后端 e2e 使用 fake embedding provider 覆盖。
 - `git diff --check` 通过，仅保留 Windows LF/CRLF 提示。
 
+**Phase 5.6 验收补强**
+
+- 修复登录/注册页协议校验体验：未勾选协议时提交按钮不再被禁用，点击提交会显示“请先同意用户协议和隐私政策”；请求提交中才禁用按钮。
+- 新增 `auth-submit-state` helper 和测试，锁住“协议校验由 submit 触发、按钮只在 pending 时禁用”的交互规则。
+- 后端新增 `RAG_EMBEDDING_PROVIDER=fake` 本地 embedding provider，可在没有 `OPENAI_API_KEY` 的情况下生成稳定伪向量，用于浏览器 smoke 验证知识库上传、处理和检索闭环。
+- `RAG_EMBEDDING_PROVIDER=fake` 仅允许非 production 环境，production 会拒绝启动，真实 embedding 仍使用 OpenAI-compatible provider。
+- 知识库页面检索测试阈值调整为 `0.4`，作为用户预览资料命中情况的宽松检索；Chat RAG 注入阈值仍保持保守，不随预览页变化。
+- 同步更新 `docs/dev-start.md`、`AGENTS.md`、`CLAUDE.md`、`README.md` 和 `docs/data-flow.md`，明确本地知识库验收命令和 fake provider 边界。
+
+验证：
+
+- `node --experimental-strip-types --test apps/web/src/lib/auth-submit-state.test.mts` 通过，3/3。
+- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，7/7。
+- `bun --filter @repo/server test -- env.spec.ts embedding.service.spec.ts` 通过，13/13。
+- 浏览器 smoke 已验证：未勾选协议点击登录会显示协议提示；注册登录成功；`/knowledge` 上传 Markdown 成功；`POST /knowledge/documents/:id/process` 在 fake embedding 下返回 201 且文档变为 `DONE`；短 query `green theorem smoke 20260619` 检索命中上传文档片段。
+
 ---
 
 ## 当前状态

@@ -178,6 +178,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `/knowledge` 页面是在线资料管理入口，文件上传、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
+- 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider，真实 embedding 仍使用 OpenAI-compatible provider。
 
 ## 5. OCR 与错题本
 

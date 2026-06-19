@@ -30,6 +30,7 @@ import {
   useUploadKnowledgeDocument,
 } from '@/hooks/use-knowledge';
 import {
+  KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
   formatKnowledgeDateTime,
   formatKnowledgeFileSize,
   getKnowledgeDocumentAction,
@@ -190,7 +191,11 @@ export default function KnowledgePage() {
     setSearchHits(null);
 
     try {
-      const result = await searchKnowledge.mutateAsync({ query, topK: 5, minScore: 0.7 });
+      const result = await searchKnowledge.mutateAsync({
+        query,
+        topK: 5,
+        minScore: KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
+      });
       if (searchRequestSeqRef.current === requestSeq) {
         setSearchHits(result.hits);
       }
@@ -331,7 +336,7 @@ export default function KnowledgePage() {
         </section>
 
         <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
-          <SectionTitle icon={Search} title="检索测试" subtitle="用同一套检索参数预览命中片段" />
+          <SectionTitle icon={Search} title="检索测试" subtitle="预览当前资料的命中片段" />
           <form
             className="mt-4 flex flex-col gap-2 sm:flex-row"
             onSubmit={(event) => {
