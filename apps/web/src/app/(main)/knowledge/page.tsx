@@ -39,6 +39,7 @@ import {
   getKnowledgeDocumentAction,
   getKnowledgeDocumentStatusMeta,
   getKnowledgeSearchHitSummary,
+  shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from '@/lib/knowledge-view';
 
 type NoticeTone = 'success' | 'danger' | 'neutral';
@@ -603,6 +604,7 @@ function KnowledgeDocumentCard({
   onConfirmDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const statusMeta = getKnowledgeDocumentStatusMeta(document.status);
   const action = getKnowledgeDocumentAction(document.status);
@@ -613,6 +615,32 @@ function KnowledgeDocumentCard({
   const replaceDisabled = pendingDelete || documentBusy;
   const confirmDeleteDisabled = actionPending || deletePending || replacePending;
   const requestDeleteDisabled = pendingDelete || documentBusy;
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const menuRoot = menuRootRef.current;
+      const pointerDownInsideMenuRoot =
+        event.target instanceof Node && menuRoot?.contains(event.target) === true;
+
+      if (
+        shouldCloseKnowledgeDocumentMenuOnPointerDown({
+          menuOpen,
+          pointerDownInsideMenuRoot,
+        })
+      ) {
+        setMenuOpen(false);
+      }
+    }
+
+    globalThis.document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => {
+      globalThis.document.removeEventListener('pointerdown', handlePointerDown, true);
+    };
+  }, [menuOpen]);
 
   return (
     <article className="relative rounded-[1.35rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
@@ -643,7 +671,7 @@ function KnowledgeDocumentCard({
               >
                 {statusMeta.label}
               </span>
-              <div className="relative">
+              <div ref={menuRootRef} className="relative">
                 <button
                   type="button"
                   aria-label={`打开《${document.name}》操作菜单`}

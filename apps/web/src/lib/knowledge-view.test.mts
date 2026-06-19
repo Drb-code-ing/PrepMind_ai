@@ -13,6 +13,7 @@ import {
   getKnowledgeDocumentAction,
   getKnowledgeDocumentStatusMeta,
   getKnowledgeSearchHitSummary,
+  shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from './knowledge-view.ts';
 
 describe('formatKnowledgeFileSize', () => {
@@ -68,6 +69,32 @@ describe('getKnowledgeDocumentAction', () => {
       force: true,
       disabled: false,
     });
+  });
+});
+
+describe('shouldCloseKnowledgeDocumentMenuOnPointerDown', () => {
+  it('closes only when an open document menu receives an outside pointer down', () => {
+    assert.equal(
+      shouldCloseKnowledgeDocumentMenuOnPointerDown({
+        menuOpen: true,
+        pointerDownInsideMenuRoot: false,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldCloseKnowledgeDocumentMenuOnPointerDown({
+        menuOpen: true,
+        pointerDownInsideMenuRoot: true,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldCloseKnowledgeDocumentMenuOnPointerDown({
+        menuOpen: false,
+        pointerDownInsideMenuRoot: false,
+      }),
+      false,
+    );
   });
 });
 

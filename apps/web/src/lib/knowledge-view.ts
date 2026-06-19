@@ -92,6 +92,16 @@ export function getKnowledgeDocumentAction(status: KnowledgeDocumentStatus) {
   return knowledgeDocumentActions[status];
 }
 
+export function shouldCloseKnowledgeDocumentMenuOnPointerDown({
+  menuOpen,
+  pointerDownInsideMenuRoot,
+}: {
+  menuOpen: boolean;
+  pointerDownInsideMenuRoot: boolean;
+}) {
+  return menuOpen && !pointerDownInsideMenuRoot;
+}
+
 export function getKnowledgeSearchHitSummary(hit: KnowledgeSearchHit) {
   const chunkIndex =
     typeof hit.metadata.chunkIndex === 'number' && Number.isFinite(hit.metadata.chunkIndex)
