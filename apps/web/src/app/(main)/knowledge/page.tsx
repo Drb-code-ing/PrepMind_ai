@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type {
+  KnowledgeDocumentListQuery,
   KnowledgeDocumentResponse,
   KnowledgeSearchHit,
 } from '@repo/types/api/knowledge';
@@ -53,6 +54,8 @@ const acceptedKnowledgeFileTypes = [
   'text/plain',
 ].join(',');
 const noticeDurationMs = 2200;
+const maxDocumentErrorLength = 160;
+const knowledgeDocumentListQuery = { limit: 50 } satisfies KnowledgeDocumentListQuery;
 
 const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> = {
   success: {
@@ -70,14 +73,14 @@ const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> 
 };
 
 export default function KnowledgePage() {
-  const listQueryInput = useMemo(() => ({ limit: 50 }), []);
-  const documentsQuery = useKnowledgeDocumentList(listQueryInput);
+  const documentsQuery = useKnowledgeDocumentList(knowledgeDocumentListQuery);
   const uploadDocument = useUploadKnowledgeDocument();
   const processDocument = useProcessKnowledgeDocument();
   const deleteDocument = useDeleteKnowledgeDocument();
   const searchKnowledge = useSearchKnowledge();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
+  const searchRequestSeqRef = useRef(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -85,14 +88,11 @@ export default function KnowledgePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<KnowledgeSearchHit[] | null>(null);
+  const [submittedSearchQuery, setSubmittedSearchQuery] = useState('');
   const documentItems = documentsQuery.data?.items;
   const documents = useMemo(() => documentItems ?? [], [documentItems]);
   const summary = useMemo(() => getKnowledgeSummary(documents), [documents]);
-  const globalMutationPending =
-    uploadDocument.isPending ||
-    processDocument.isPending ||
-    deleteDocument.isPending ||
-    searchKnowledge.isPending;
+  const documentMutationPending = processDocument.isPending || deleteDocument.isPending;
 
   const showNotice = (message: string, tone: NoticeTone = 'success') => {
     if (noticeTimerRef.current !== null) {
@@ -114,16 +114,18 @@ export default function KnowledgePage() {
   }, []);
 
   async function handleUpload() {
-    if (!selectedFile) {
+    const file = selectedFile;
+
+    if (!file) {
       showNotice('先选择一个 PDF、DOCX、Markdown 或 TXT 文件。', 'neutral');
       return;
     }
 
     try {
-      await uploadDocument.mutateAsync(selectedFile);
-      showNotice(`已上传《${selectedFile.name}》，可以开始处理。`);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
+      await uploadDocument.mutateAsync(file);
+      showNotice(`已上传《${file.name}》，可以开始处理。`);
+      setSelectedFile((current) => (current === file ? null : current));
+      if (fileInputRef.current?.files?.[0] === file) {
         fileInputRef.current.value = '';
       }
     } catch (error) {
@@ -133,7 +135,12 @@ export default function KnowledgePage() {
 
   async function handleProcess(document: KnowledgeDocumentResponse) {
     const action = getKnowledgeDocumentAction(document.status);
-    if (action.disabled || globalMutationPending) {
+    if (
+      action.disabled ||
+      documentMutationPending ||
+      pendingDeleteId === document.id ||
+      deletingId === document.id
+    ) {
       return;
     }
 
@@ -152,6 +159,10 @@ export default function KnowledgePage() {
   }
 
   async function handleDelete(document: KnowledgeDocumentResponse) {
+    if (documentMutationPending || processingId === document.id) {
+      return;
+    }
+
     setDeletingId(document.id);
     try {
       await deleteDocument.mutateAsync(document.id);
@@ -174,12 +185,30 @@ export default function KnowledgePage() {
       return;
     }
 
+    const requestSeq = searchRequestSeqRef.current + 1;
+    searchRequestSeqRef.current = requestSeq;
+    setSubmittedSearchQuery(query);
+    setSearchHits(null);
+
     try {
       const result = await searchKnowledge.mutateAsync({ query, topK: 5, minScore: 0.7 });
-      setSearchHits(result.hits);
+      if (searchRequestSeqRef.current === requestSeq) {
+        setSearchHits(result.hits);
+      }
     } catch (error) {
+      if (searchRequestSeqRef.current === requestSeq) {
+        setSearchHits(null);
+        showNotice(getMutationErrorMessage(error), 'danger');
+      }
+    }
+  }
+
+  function handleSearchQueryChange(value: string) {
+    setSearchQuery(value);
+    if (searchHits !== null || submittedSearchQuery) {
+      searchRequestSeqRef.current += 1;
       setSearchHits(null);
-      showNotice(getMutationErrorMessage(error), 'danger');
+      setSubmittedSearchQuery('');
     }
   }
 
@@ -224,16 +253,22 @@ export default function KnowledgePage() {
               id="knowledge-document-file"
               type="file"
               accept={acceptedKnowledgeFileTypes}
+              disabled={uploadDocument.isPending}
               className="sr-only"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
             />
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <label
                 htmlFor="knowledge-document-file"
-                className="tap-target inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#eafff9] px-4 text-sm font-semibold text-[#247269] ring-1 ring-[#bdeee5] transition-all hover:bg-[#d8fbf3] active:scale-[0.98]"
+                aria-disabled={uploadDocument.isPending}
+                className={`tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold ring-1 transition-all active:scale-[0.98] ${
+                  uploadDocument.isPending
+                    ? 'cursor-not-allowed bg-white/70 text-[var(--pm-muted)] opacity-65 ring-[var(--pm-line)]'
+                    : 'cursor-pointer bg-[#eafff9] text-[#247269] ring-[#bdeee5] hover:bg-[#d8fbf3]'
+                }`}
               >
                 <FileText className="h-4 w-4" />
-                选择文件
+                {uploadDocument.isPending ? '上传中' : '选择文件'}
               </label>
               <div className="min-w-0 flex-1">
                 {selectedFile ? (
@@ -285,7 +320,7 @@ export default function KnowledgePage() {
                   pendingDelete={pendingDeleteId === document.id}
                   actionPending={processingId === document.id && processDocument.isPending}
                   deletePending={deletingId === document.id && deleteDocument.isPending}
-                  globalMutationPending={globalMutationPending}
+                  documentMutationPending={documentMutationPending}
                   onProcess={() => void handleProcess(document)}
                   onRequestDelete={() => setPendingDeleteId(document.id)}
                   onCancelDelete={() => setPendingDeleteId(null)}
@@ -307,7 +342,7 @@ export default function KnowledgePage() {
           >
             <input
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => handleSearchQueryChange(event.target.value)}
               maxLength={2000}
               className="min-h-11 min-w-0 flex-1 rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-base outline-none transition-all placeholder:text-[var(--pm-muted)] focus:border-[#6fcbbf] focus:ring-4 focus:ring-[#d8f8f0]"
               placeholder="例如：这份资料里怎么解释导数？"
@@ -322,7 +357,11 @@ export default function KnowledgePage() {
             </button>
           </form>
 
-          <SearchResults hits={searchHits} loading={searchKnowledge.isPending} />
+          <SearchResults
+            hits={searchHits}
+            loading={searchKnowledge.isPending}
+            submittedQuery={submittedSearchQuery}
+          />
         </section>
       </main>
     </div>
@@ -431,9 +470,9 @@ function SectionTitle({
 
 function LoadingPanel({ message }: { message: string }) {
   return (
-    <div className="mt-4 flex min-h-24 items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-sm text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+    <div className="mt-4 flex min-h-24 min-w-0 items-center gap-2 break-words rounded-2xl bg-white/70 px-3 py-3 text-sm text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
       <Loader2 className="h-4 w-4 animate-spin" />
-      {message}
+      <span className="min-w-0 flex-1">{message}</span>
     </div>
   );
 }
@@ -481,7 +520,7 @@ function KnowledgeDocumentCard({
   pendingDelete,
   actionPending,
   deletePending,
-  globalMutationPending,
+  documentMutationPending,
   onProcess,
   onRequestDelete,
   onCancelDelete,
@@ -491,7 +530,7 @@ function KnowledgeDocumentCard({
   pendingDelete: boolean;
   actionPending: boolean;
   deletePending: boolean;
-  globalMutationPending: boolean;
+  documentMutationPending: boolean;
   onProcess: () => void;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
@@ -499,7 +538,9 @@ function KnowledgeDocumentCard({
 }) {
   const statusMeta = getKnowledgeDocumentStatusMeta(document.status);
   const action = getKnowledgeDocumentAction(document.status);
-  const processDisabled = action.disabled || globalMutationPending;
+  const processDisabled = action.disabled || pendingDelete || documentMutationPending;
+  const confirmDeleteDisabled = documentMutationPending || actionPending;
+  const requestDeleteDisabled = documentMutationPending || actionPending || deletePending;
 
   return (
     <article className="rounded-[1.35rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
@@ -525,30 +566,20 @@ function KnowledgeDocumentCard({
           </div>
 
           {document.errorMessage ? (
-            <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600 ring-1 ring-red-100">
-              {document.errorMessage}
+            <p className="mt-3 break-words rounded-2xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600 ring-1 ring-red-100">
+              {formatDocumentErrorMessage(document.errorMessage)}
             </p>
           ) : null}
         </div>
       </div>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={onProcess}
-          disabled={processDisabled}
-          className="tap-target inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)] disabled:active:scale-100"
-        >
-          {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {actionPending ? '处理中...' : action.label}
-        </button>
-
         {pendingDelete ? (
-          <div className="grid flex-1 grid-cols-2 gap-2">
+          <div className="grid w-full grid-cols-2 gap-2">
             <button
               type="button"
               onClick={onConfirmDelete}
-              disabled={deletePending}
+              disabled={confirmDeleteDisabled}
               className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-red-50 px-3 text-sm font-semibold text-red-600 ring-1 ring-red-100 transition-all hover:bg-red-100 active:scale-[0.98] disabled:opacity-60"
             >
               {deletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -564,15 +595,26 @@ function KnowledgeDocumentCard({
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={onRequestDelete}
-            disabled={globalMutationPending}
-            className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 px-4 text-sm font-semibold text-red-600 ring-1 ring-red-100 transition-all hover:bg-red-50 active:scale-[0.98] disabled:opacity-60"
-          >
-            <Trash2 className="h-4 w-4" />
-            删除
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={onProcess}
+              disabled={processDisabled}
+              className="tap-target inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)] disabled:active:scale-100"
+            >
+              {actionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {actionPending ? '处理中...' : action.label}
+            </button>
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              disabled={requestDeleteDisabled}
+              className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 px-4 text-sm font-semibold text-red-600 ring-1 ring-red-100 transition-all hover:bg-red-50 active:scale-[0.98] disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" />
+              删除
+            </button>
+          </>
         )}
       </div>
     </article>
@@ -588,15 +630,34 @@ function DocumentMeta({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatDocumentErrorMessage(errorMessage: string) {
+  const normalized = errorMessage.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '处理失败，请重新处理或换一份资料。';
+  }
+
+  if (normalized.length <= maxDocumentErrorLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxDocumentErrorLength)}...`;
+}
+
 function SearchResults({
   hits,
   loading,
+  submittedQuery,
 }: {
   hits: KnowledgeSearchHit[] | null;
   loading: boolean;
+  submittedQuery: string;
 }) {
   if (loading) {
-    return <LoadingPanel message="正在检索资料片段..." />;
+    return (
+      <LoadingPanel
+        message={submittedQuery ? `正在检索“${submittedQuery}”...` : '正在检索资料片段...'}
+      />
+    );
   }
 
   if (hits === null) {
@@ -610,6 +671,9 @@ function SearchResults({
   if (hits.length === 0) {
     return (
       <div className="mt-3 rounded-2xl bg-[#fff7df]/80 px-3 py-3 text-sm leading-6 text-[#8a641c] ring-1 ring-amber-100">
+        {submittedQuery ? (
+          <p className="mb-1 break-words text-xs font-bold">上次检索：{submittedQuery}</p>
+        ) : null}
         没有命中资料。Chat 仍会按普通 AI 能力回答。
       </div>
     );
@@ -617,6 +681,12 @@ function SearchResults({
 
   return (
     <div className="mt-4 space-y-3">
+      {submittedQuery ? (
+        <p className="rounded-2xl bg-white/55 px-3 py-2 text-xs font-bold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+          上次检索：
+          <span className="break-words text-[var(--pm-ink)]">{submittedQuery}</span>
+        </p>
+      ) : null}
       {hits.map((hit) => (
         <article key={hit.chunkId} className="rounded-[1.25rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
           <p className="break-words text-xs font-bold text-[#247269]">
