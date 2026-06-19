@@ -538,6 +538,29 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
 - `git diff --check` 通过。
 
+**Phase 5.6 知识库页面体验打磨**
+
+- 新增前端 knowledge API client，封装 `/knowledge/documents` 上传、列表、详情、处理、删除与 `/knowledge/search` 检索调用。
+- 新增知识库展示 helper，统一文档大小、处理时间、状态标签、处理动作和检索命中摘要。
+- 新增 TanStack Query hooks：资料列表、详情、上传、处理、删除和检索测试；知识库操作保持在线直连，不进入 Dexie `mutationQueue`。
+- 新增 `/knowledge` 学习资料工作台：支持资料上传、状态摘要、资料卡片列表、处理/重新处理、删除内联确认和检索测试。
+- 页面交互补齐轻提示、上传快照保护、同卡片 process/delete 互斥、检索请求过期保护、长错误文案截断和移动端长文本断行。
+- 侧边栏新增“知识库”入口，保持 Chat-first 主入口结构。
+- RAG 仍保持可降级边界：无资料、未命中或检索失败时，Chat 继续按普通 AI 回答；Phase 6 再接入 `KnowledgeVerifierAgent` 评估资料可信度。
+
+验证：
+
+- `node --experimental-strip-types --test apps/web/src/lib/knowledge-api.test.mts` 通过，4/4。
+- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，6/6。
+- `bun --filter @repo/web test` 通过，175/175。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --cwd packages/database prisma migrate deploy` 通过，当前无待执行迁移。
+- `bun --filter @repo/server test -- knowledge-search.service.spec.ts` 通过，6/6。
+- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，9/9。
+- 浏览器 smoke 已验证注册登录、侧边栏知识库入口、`/knowledge` 空状态、资料上传和列表刷新；真实 dev 环境未配置 `OPENAI_API_KEY`，因此处理和检索请求按预期返回 `KNOWLEDGE_EMBEDDING_FAILED`，完整处理/检索链路由后端 e2e 使用 fake embedding provider 覆盖。
+- `git diff --check` 通过，仅保留 Windows LF/CRLF 提示。
+
 ---
 
 ## 当前状态
@@ -592,7 +615,7 @@ f5a2eb1 style: soften cartoon theme palette
 - `/plan` 可只读预览未来 7 / 14 天加权复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
 - Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
 
-**Phase 5：进行中**
+**Phase 5：已完成主线**
 
 - Phase 5.0 RAG 知识库设计已完成。
 - Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
@@ -600,7 +623,7 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.3 文档处理与 embedding 入库已完成。
 - Phase 5.4 检索 API 已完成。
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
-- 当前尚未实现 `/knowledge` 前端页面，下一步进入 Phase 5.6。
+- Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、删除和检索测试。
 
 ---
 
@@ -625,7 +648,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 5.3：解析、分块、embedding 入库。
 - [x] Phase 5.4：检索 API。
 - [x] Phase 5.5：Chat RAG 增强与引用展示。
-- [ ] Phase 5.6：知识库页面体验打磨。
+- [x] Phase 5.6：知识库页面体验打磨。
 - [ ] Phase 6：LangGraph 多 Agent 系统。
 - [ ] Phase 6：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
 - [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。

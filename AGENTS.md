@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 5.5 已完成，后续进入 Phase 5.6。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 5.6 已完成，后续进入 Phase 6。
 
 ## 项目快照
 
@@ -25,6 +25,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 5.3 | 已完成 | 文档解析、分块、embedding 入库、`POST /knowledge/documents/:id/process` |
 | Phase 5.4 | 已完成 | 检索 API、`POST /knowledge/search`、query embedding + pgvector 相似度搜索 |
 | Phase 5.5 | 已完成 | Chat RAG 增强、知识库上下文注入、Markdown citations |
+| Phase 5.6 | 已完成 | `/knowledge` 学习资料工作台、上传/处理/删除/检索测试前端闭环 |
 
 ## 技术栈
 
@@ -127,7 +128,8 @@ mcp -> ai, fsrs, rag, types
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。
 - Chat RAG：`/api/chat` 已在有 access token 时调用 `/knowledge/search`，命中后把 chunks 注入 system prompt，并在助手消息末尾追加 Markdown “参考资料”；无 token、无命中或检索失败时降级普通 AI 回答。
-- RAG 当前未接入 `/knowledge` 前端页面；Phase 6 再接 `KnowledgeVerifierAgent` 评估资料可信度。
+- `/knowledge` 页面已接入 RAG 文档管理与检索测试：支持资料上传、列表、处理/重新处理、删除内联确认、状态摘要和手动检索预览；该页面为在线能力，不进入 Dexie `mutationQueue`。
+- Phase 6 再接 `KnowledgeVerifierAgent` 评估资料可信度。
 - ReviewTask 评分支持 `clientMutationId` 幂等；重复提交同一评分命令不会重复写入 `ReviewLog`。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
 - WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
@@ -155,5 +157,5 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 5.6：知识库页面体验打磨。
-2. Phase 6：LangGraph 多 Agent 系统，其中 `KnowledgeVerifierAgent` 负责 RAG 资料可信度评估，`WrongQuestionOrganizerAgent` 采用“学科卡片优先、内部专题分化”的错题本组织方式。
+1. Phase 6：LangGraph 多 Agent 系统，其中 `KnowledgeVerifierAgent` 负责 RAG 资料可信度评估，`WrongQuestionOrganizerAgent` 采用“学科卡片优先、内部专题分化”的错题本组织方式。
+2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
