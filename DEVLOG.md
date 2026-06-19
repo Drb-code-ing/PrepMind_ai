@@ -498,7 +498,7 @@ f5a2eb1 style: soften cartoon theme palette
 - 新增 `POST /knowledge/search`，受 `JwtAuthGuard` 保护，使用 `knowledgeSearchRequestSchema` 校验 `query`、`limit`、`minScore` 和 `documentId`。
 - 检索结果返回 score、chunk metadata 和 document metadata；跨用户文档、未处理文档、低分结果不会返回。
 - 收紧 knowledge documents 相关测试 mock 类型，修复 server lint 对 `any`、无效 async 和 fake embedding 向量类型的报错。
-- 当前仍未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
+- Phase 5.4 完成时仍未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
 
 验证：
 
@@ -512,6 +512,31 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/server build` 通过。
 - `bun --filter @repo/server lint` 通过。
 - `git diff --check` 通过，仅有 Windows 换行提示。
+
+**Phase 5.5 Chat RAG 增强与引用展示**
+
+- 新增 Phase 5.5 Chat RAG 设计文档和实施计划，明确 RAG 只作为 Chat 增强层，不作为阻塞层。
+- 新增 `apps/web/src/lib/chat-rag-context.ts`，封装最新用户问题提取、默认检索请求、知识库上下文 prompt、Markdown 引用追加和降级安全检索。
+- `/api/chat` 接入 `/knowledge/search`：有 access token 时使用最新用户消息检索当前用户知识库，命中后将 chunks 注入 system prompt。
+- `/api/chat` 保持成本保护边界：默认 mock，不触发真实模型；live 仍需 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关。
+- 当 RAG 上下文导致请求超过输入预算时，自动丢弃 RAG 增强并继续普通 Chat，避免知识库增强破坏主对话链路。
+- mock 与 live 输出链路都会在命中知识库时追加 Markdown “参考资料”，第一版不改动 ChatMessage schema。
+- `ChatRuntimeProvider` 将当前 access token 放入 `/api/chat` 请求体，只用于 Next.js 服务端代理检索，不写入 prompt、不保存到聊天消息。
+- 修复 `buildChatRuntimeRequestBody` 的 `requestBody` 类型边界，兼容 AI SDK 传入的 `object | undefined`，避免 Next.js build 类型检查失败。
+- `buildChatRequestBudget` 支持额外 system prompt，用于统一计算 RAG 注入后的 token 预算。
+- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md` 和 `docs/roadmap.md`，标记 Phase 5.5 完成，下一步进入 Phase 5.6 知识库页面体验打磨。
+
+验证：
+
+- `node --experimental-strip-types --test apps/web/src/lib/chat-rag-context.test.mts` 通过。
+- `node --experimental-strip-types --test apps/web/src/lib/chat-runtime-request.test.mts` 通过。
+- `node --experimental-strip-types --test apps/web/src/lib/ai-usage-guard.test.mts` 通过。
+- `bun --filter @repo/web test` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/server test -- knowledge-search.service.spec.ts` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
+- `git diff --check` 通过。
 
 ---
 
@@ -574,7 +599,8 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.2 文档上传与状态 API 已完成。
 - Phase 5.3 文档处理与 embedding 入库已完成。
 - Phase 5.4 检索 API 已完成。
-- 当前尚未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面，下一步进入 Phase 5.5。
+- Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
+- 当前尚未实现 `/knowledge` 前端页面，下一步进入 Phase 5.6。
 
 ---
 
@@ -598,7 +624,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 5.2：文档上传与状态 API。
 - [x] Phase 5.3：解析、分块、embedding 入库。
 - [x] Phase 5.4：检索 API。
-- [ ] Phase 5.5：Chat RAG 增强与引用展示。
+- [x] Phase 5.5：Chat RAG 增强与引用展示。
 - [ ] Phase 5.6：知识库页面体验打磨。
 - [ ] Phase 6：LangGraph 多 Agent 系统。
 - [ ] Phase 6：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。

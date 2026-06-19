@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-19。Phase 5.4 已完成 RAG 文档处理、embedding 入库与检索 API；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-19。Phase 5.5 已完成 RAG 文档处理、embedding 入库、检索 API 与 Chat RAG 增强；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -10,7 +10,7 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
-- RAG 知识库职责：Phase 5.4 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除 API、`POST /knowledge/documents/:id/process` 文档处理 API，以及 `POST /knowledge/search` 检索 API；当前尚未接入 Chat RAG 注入、citations 和 `/knowledge` 前端页面。
+- RAG 知识库职责：Phase 5.5 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API，以及 `/api/chat` 知识库上下文注入与 Markdown citations；当前尚未接入 `/knowledge` 前端页面。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -94,7 +94,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API。当前尚未接入 Chat RAG 注入、citations 和 `/knowledge` 前端页面，避免在 Chat 主链路改造前破坏现有 Chat / OCR 体验。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations。当前尚未接入 `/knowledge` 前端页面，Phase 6 再接入资料可信度评估 Agent。
 
 文档处理数据流：
 
@@ -124,14 +124,15 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 返回 KnowledgeSearchResponse(hits)
 ```
 
-未来 Chat 接入原则（Phase 5.5 目标，当前未接入）：
+当前 Chat RAG 数据流：
 
 ```text
 用户提问
-  -> 判断是否启用知识库增强
-  -> 无资料 / 未命中 / 检索失败：普通 AI 回答
-  -> 命中知识库：注入 chunks 上下文
-  -> AI 回答并返回 citations
+  -> ChatRuntimeProvider 将 accessToken 放入 /api/chat 请求体
+  -> /api/chat 使用最新用户消息调用 /knowledge/search
+  -> 无 token / 无资料 / 未命中 / 检索失败：普通 AI 回答
+  -> 命中知识库：注入 chunks 到 system prompt
+  -> AI 回答，并在助手消息末尾追加 Markdown 参考资料
 ```
 
 关键约定：
@@ -145,7 +146,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
 - `POST /knowledge/search` 只检索当前用户 `DONE` 文档 chunks，不跨用户、不检索未处理或失败文档。
-- 检索失败应作为 RAG 增强失败处理，后续 Chat 接入时必须降级为普通 AI 回答。
+- 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
+- `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
+- citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
 - 文件上传、解析、embedding 和知识库删除不进入 Dexie `mutationQueue`。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
