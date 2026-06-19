@@ -44,10 +44,7 @@ export function useKnowledgeDocumentDetail(documentId: string | null) {
   return useQuery({
     queryKey: knowledgeQueryKeys.documentDetail(documentId ?? ''),
     queryFn: async () => {
-      if (!accessToken) {
-        throw new Error('Missing access token');
-      }
-      if (!documentId) {
+      if (!accessToken || !documentId) {
         throw new Error('Missing knowledge document context');
       }
       return knowledgeApi.getDocument(accessToken, documentId);
