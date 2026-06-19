@@ -105,7 +105,7 @@ POST /knowledge/search
 在现有 `KnowledgeDocumentsModule` 中补充检索能力，避免新建过大的模块：
 
 ```text
-KnowledgeDocumentsController
+KnowledgeSearchController
   - POST /knowledge/search
 
 KnowledgeSearchService
