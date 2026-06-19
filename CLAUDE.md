@@ -64,7 +64,7 @@ bun --cwd packages/fsrs test
 - 根目录 `.env`：后端与 Prisma 使用。
 - `apps/server/.env`：server/e2e 在服务目录运行时读取。
 - `apps/web/.env.local`：Next.js API Route 使用。
-- Chat 开发默认走本地 mock：`AI_PROVIDER_MODE` 未设置或为 `mock` 时不调用真实模型；真实验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`。
+- Chat 开发默认走本地 mock：`AI_PROVIDER_MODE` 未设置或为 `mock` 时不调用真实模型；真实验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`，live 默认模型为 `deepseek-v4-flash`。
 
 推荐数据库连接：
 
@@ -109,7 +109,7 @@ mcp -> ai, fsrs, rag, types
 - Upload：新 OCR 图片通过 `/uploads/images` 上传 MinIO，业务 API 不接收 `data:` base64 图片。
 - Offline：WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，session 恢复、online、focus 时自动 flush。
 - Today：离线评分只展示本地待同步状态，不本地推进 FSRS、ReviewLog 或统计；同步成功后刷新今日复习和统计。
-- AI：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；Chat 默认 mock 流式响应，live 模式需要 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true` 双开关。
+- AI：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；Chat 默认 mock 流式响应，live 模式需要 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true` 双开关，默认使用 `deepseek-v4-flash`。
 - AI 成本保护：`/api/chat` 统一估算 system prompt、activeStudyContext 和近期消息 token，默认输入上限 2500、输出上限 1200，live 调用会打印用量估算日志。
 - UI：Chat / OCR 流式输出使用渐进 Markdown 渲染，自动滚动遵循用户滚动意图。
 

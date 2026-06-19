@@ -75,3 +75,18 @@ test('reports live provider runtime config only when live mode and guard are bot
     maxOutputTokens: 900,
   });
 });
+
+test('uses deepseek v4 flash as the default live model for cost control', () => {
+  const status = getAiProviderStatus({
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    DEEPSEEK_API_KEY: 'sk-test',
+    OPENAI_API_KEY: '',
+    AI_MODEL: '',
+  });
+
+  assert.equal(status.configured, true);
+  if (status.configured) {
+    assert.equal(status.model, 'deepseek-v4-flash');
+  }
+});

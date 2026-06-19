@@ -486,12 +486,14 @@ f5a2eb1 style: soften cartoon theme palette
 - 新增 `/api/chat` AI 调用成本保护：开发默认 `AI_PROVIDER_MODE=mock`，即使存在 API key 也不会调用真实模型。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 模式会记录不含密钥的用量估算日志。
 - 新增 Chat 请求预算 helper，统一估算 system prompt、`activeStudyContext` 和近期消息，默认输入上限 2500 tokens、输出上限 1200 tokens，超限返回 413。
+- Chat live 默认模型切换为更低成本的 `deepseek-v4-flash`，仍可通过 `AI_MODEL` 覆盖。
 - 收缩 `activeStudyContext` 默认注入长度，避免多题 OCR 上下文在追问时重复放大 token 消耗。
 - 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/dev-start.md` 和 `docs/roadmap.md`，记录 mock / live 切换与预算边界。
 
 验证：
 
-- `bun --filter @repo/web test` 通过，154 个测试全部通过。
+- `bun --filter @repo/web test` 通过，155 个测试全部通过。
+- `AI_PROVIDER_MODE=mock` 本地 HTTP 冒烟通过：`POST /api/chat` 返回 `x-prepmind-ai-mode=mock`，包含 mock 文本，服务端日志无 live 用量估算。
 - `bun --filter @repo/web lint` 通过。
 - `bun --filter @repo/web build` 通过。
 - `git diff --check` 通过，仅有 Windows 换行提示。

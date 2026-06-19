@@ -102,12 +102,13 @@ bun --filter @repo/web dev
 ```powershell
 $env:AI_PROVIDER_MODE='live'
 $env:AI_ENABLE_LIVE_CALLS='true'
+$env:AI_MODEL='deepseek-v4-flash'
 $env:AI_MAX_INPUT_TOKENS='2500'
 $env:AI_MAX_OUTPUT_TOKENS='1200'
 bun --filter @repo/web dev
 ```
 
-`AI_MAX_INPUT_TOKENS` 会同时约束 system prompt、`activeStudyContext` 和近期消息；超限会返回 413。live 模式会在服务端输出不含密钥的用量估算日志。
+`AI_MODEL` 未设置时默认使用更便宜的 `deepseek-v4-flash`。`AI_MAX_INPUT_TOKENS` 会同时约束 system prompt、`activeStudyContext` 和近期消息；超限会返回 413。live 模式会在服务端输出不含密钥的用量估算日志。
 
 ## 5. 常用验证
 

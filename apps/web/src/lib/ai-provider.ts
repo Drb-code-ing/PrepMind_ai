@@ -9,6 +9,7 @@ import {
 } from './ai-usage-guard.ts';
 
 const DEFAULT_BASE_URL = 'https://api.deepseek.com';
+const DEFAULT_LIVE_MODEL = 'deepseek-v4-flash';
 const MISSING_AI_KEY_MESSAGE =
   'AI API Key 未配置，请在 apps/web/.env.local 设置 DEEPSEEK_API_KEY 或 OPENAI_API_KEY 后重启前端服务。';
 const LIVE_CALL_GUARD_MESSAGE =
@@ -27,7 +28,7 @@ export const aiProvider = createOpenAI({
 });
 
 /** 默认模型 */
-export const DEFAULT_MODEL = process.env.AI_MODEL || 'deepseek-chat';
+export const DEFAULT_MODEL = process.env.AI_MODEL || DEFAULT_LIVE_MODEL;
 
 export type AiProviderStatus =
   | {
@@ -89,7 +90,7 @@ export function getAiProviderStatus(env: NodeJS.ProcessEnv = process.env): AiPro
   return {
     configured: true,
     mode: 'live',
-    model: env.AI_MODEL || 'deepseek-chat',
+    model: env.AI_MODEL || DEFAULT_LIVE_MODEL,
     baseURL: env.AI_BASE_URL || DEFAULT_BASE_URL,
     maxInputTokens,
     maxOutputTokens,
