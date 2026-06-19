@@ -35,7 +35,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Infra | Docker, MinIO, Sentry, OpenTelemetry, Prometheus, Grafana |
 
 Agent 框架使用 LangGraph，不使用 AutoGen。
-Phase 6 已补充 `WrongQuestionOrganizerAgent` 规划：错题本首页未来按学科卡片优先展示，学科内部再由 AI 归纳专题 deck；用户可重命名、移动和合并专题，用户修改不被 AI 自动覆盖。
+Phase 6 是多 Agent 协作亮点阶段：`KnowledgeVerifierAgent` 用于在 RAG 检索命中后、最终回答前评估资料片段和回答初稿，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 用于把错题本组织为学科卡片和专题 deck，用户可重命名、移动和合并专题，用户修改不被 AI 自动覆盖。
 
 ## 常用命令
 
@@ -151,4 +151,4 @@ mcp -> ai, fsrs, rag, types
 后续最优先：
 
 1. Phase 5.4：检索 API。
-2. Phase 6：LangGraph 多 Agent 系统，其中错题整理 Agent 采用“学科卡片优先、内部专题分化”的错题本组织方式。
+2. Phase 6：LangGraph 多 Agent 系统，其中 `KnowledgeVerifierAgent` 负责 RAG 资料可信度评估，`WrongQuestionOrganizerAgent` 采用“学科卡片优先、内部专题分化”的错题本组织方式。

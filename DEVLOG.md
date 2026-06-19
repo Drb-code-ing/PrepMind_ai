@@ -472,6 +472,20 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-19（Day 14）
+
+**Phase 6 多 Agent 协作规划补充**
+
+- 确认 Phase 6 是 PrepMind 的核心亮点阶段，使用 LangGraph 编排多 Agent，不使用 AutoGen。
+- 明确 RAG 资料不是绝对真理，只是用户私有上下文证据；用户上传笔记、资料摘抄和错题整理都可能存在错误。
+- 规划 `KnowledgeVerifierAgent`：在 RAG 检索命中后、最终回答前评估资料片段和回答初稿，识别 `trusted`、`suspicious`、`conflict`、`insufficient` 等状态。
+- 当用户资料可能有误时，AI 应优先给出更可靠的解法，并轻提示用户核对对应笔记片段，而不是盲从错误资料或直接宣称用户笔记错误。
+- 重新确认 `WrongQuestionOrganizerAgent` 的职责：它不是讲题 Agent，而是错题整理 Agent，负责把错题本从平铺列表升级为“学科卡片 -> 专题 deck -> 错题”的组织方式。
+- `WrongQuestionOrganizerAgent` 基于结构化 OCR、错题知识点、错因、题型、难度、用户备注和复习表现，推荐学科组与专题 deck；用户重命名、移动和合并拥有最终优先级。
+- 新增 `docs/superpowers/specs/2026-06-19-phase-6-multi-agent-collaboration-design.md`，记录 Phase 6 总体 Agent 拆分、RAG + Verifier 工作流、错题整理工作流、数据边界和分阶段落地。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -557,6 +571,7 @@ f5a2eb1 style: soften cartoon theme palette
 - [ ] Phase 5.5：Chat RAG 增强与引用展示。
 - [ ] Phase 5.6：知识库页面体验打磨。
 - [ ] Phase 6：LangGraph 多 Agent 系统。
+- [ ] Phase 6：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
 - [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。
