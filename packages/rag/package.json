@@ -2,7 +2,7 @@
   "name": "@repo/rag",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./index.cjs",
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint src/",
