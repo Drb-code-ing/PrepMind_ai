@@ -304,6 +304,15 @@ Phase 6.0 先定义边界，不要求完整长任务恢复：
 6. AgentRun 记录 token 和成本估算，方便发现异常调用。
 7. RAG 命中但资料很弱时，不强行调用 Verifier，可直接降级普通回答。
 
+验收阶段允许在必要时启用真实模型，但必须同时满足：
+
+- `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 显式开启。
+- 保留 `AI_MAX_INPUT_TOKENS=2500` 和 `AI_MAX_OUTPUT_TOKENS=1200` 或更低预算。
+- 优先使用低成本模型，例如 `deepseek-v4-flash`。
+- 每次 live 验收前明确测试用例数量，避免开放式手动长测。
+- AgentRun 必须记录模型、token 估算和成本估算。
+- live 验收只用于确认模型理解、讲题准确性、Verifier 判断质量和最终输出质量；普通回归测试继续使用 mock。
+
 ## 降级策略
 
 - Router 失败：按普通 Chat 处理。
