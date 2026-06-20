@@ -76,6 +76,16 @@ describe('buildTutorStrategy', () => {
     expect(strategy.answerStructure[0]).toBe('final_answer');
   });
 
+  it('classifies answer wording as answer_direct instead of concept_bridge', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'What is the answer?',
+      activeStudyContext: 'Find a limit.',
+    });
+
+    expect(strategy.intent).toBe('answer_direct');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+  });
+
   it('falls back to general_follow_up for unknown text', () => {
     const strategy = buildTutorStrategy({
       latestUserText: '',
@@ -143,6 +153,27 @@ describe('buildTutorStrategy', () => {
     expect(strategy.shouldAskGuidingQuestion).toBe(false);
     expect(strategy.shouldGiveFinalAnswer).toBe(true);
     expect(strategy.answerStructure[0]).toBe('final_answer');
+  });
+
+  it('classifies Chinese answer wording as answer_direct instead of concept_bridge', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '答案是什么？',
+      activeStudyContext: '求一个极限。',
+    });
+
+    expect(strategy.intent).toBe('answer_direct');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+  });
+
+  it('does not classify checklist planning as submitted-step verification', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Can you make a checklist for solving limits?',
+      activeStudyContext: 'Limit practice.',
+    });
+
+    expect(strategy.intent).not.toBe('step_check');
+    expect(['explain_solution', 'general_follow_up']).toContain(strategy.intent);
+    expect(strategy.shouldAskGuidingQuestion).toBe(false);
   });
 });
 

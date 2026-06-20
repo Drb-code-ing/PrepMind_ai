@@ -49,15 +49,29 @@ const intentRules: IntentRule[] = [
       'answer only',
       'just give me',
       'final answer',
+      'what is the answer',
+      "what's the answer",
       '直接给答案',
       '直接给我答案',
       '只要答案',
+      '答案是什么',
+      '最后答案是什么',
     ],
     reason: 'User explicitly asks for a direct answer.',
   },
   {
     intent: 'step_check',
-    signals: ['is it correct', 'am i right', 'check', 'this step', '哪里错', '对吗', '这一步'],
+    signals: [
+      'is it correct',
+      'am i right',
+      'check my',
+      'check this step',
+      'check my work',
+      'this step',
+      '哪里错',
+      '对吗',
+      '这一步',
+    ],
     reason: 'User asks to verify a submitted step.',
   },
   {
@@ -126,7 +140,7 @@ function findIntent(text: string): {
         return false;
       }
 
-      return text.includes(signal.toLowerCase());
+      return matchesSignal(text, signal);
     });
 
     if (matchedSignals.length > 0) {
@@ -147,7 +161,27 @@ function findIntent(text: string): {
 
 function hasSocraticSignal(text: string) {
   const rule = intentRules.find((intentRule) => intentRule.intent === 'socratic_hint');
-  return Boolean(rule?.signals.some((signal) => text.includes(signal.toLowerCase())));
+  return Boolean(rule?.signals.some((signal) => matchesSignal(text, signal)));
+}
+
+function matchesSignal(text: string, signal: string) {
+  const normalizedSignal = signal.toLowerCase();
+
+  if (!isAsciiSignal(normalizedSignal)) {
+    return text.includes(normalizedSignal);
+  }
+
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedSignal)}($|[^a-z0-9])`).test(
+    text,
+  );
+}
+
+function isAsciiSignal(signal: string) {
+  return /^[\x00-\x7F]+$/.test(signal);
+}
+
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function selectDepth(intent: TutorIntent, hasActiveStudyContext: boolean): TutorDepth {
