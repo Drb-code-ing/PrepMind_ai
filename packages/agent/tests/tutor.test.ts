@@ -1,0 +1,100 @@
+import { describe, expect, it } from 'bun:test';
+
+import { buildGenericTutorPrompt, buildTutorStrategy } from '../src/nodes/tutor';
+
+describe('buildTutorStrategy', () => {
+  it('classifies direct solving requests as explain_solution', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Please explain how to solve this derivative problem.',
+      activeStudyContext: 'Find the derivative of f(x)=x^2.',
+    });
+
+    expect(strategy.intent).toBe('explain_solution');
+    expect(strategy.depth).toBe('deep');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.shouldUseActiveStudyContext).toBe(true);
+    expect(strategy.answerStructure).toContain('known_conditions');
+    expect(strategy.answerStructure).toContain('reasoning_steps');
+    expect(strategy.answerStructure).toContain('final_answer');
+    expect(strategy.promptAddition).toContain('TutorAgent strategy: explain_solution');
+    expect(strategy.promptAddition).toContain('Answer in Chinese');
+  });
+
+  it('classifies why follow-ups as socratic_hint', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Why can this step be done like this?',
+      activeStudyContext: 'Use Green theorem to compute a line integral.',
+    });
+
+    expect(strategy.intent).toBe('socratic_hint');
+    expect(strategy.depth).toBe('standard');
+    expect(strategy.shouldAskGuidingQuestion).toBe(true);
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.answerStructure).toContain('guiding_question');
+    expect(strategy.debug.matchedSignals).toContain('why');
+  });
+
+  it('classifies user submitted steps as step_check', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'I wrote this step. Is it correct?',
+      activeStudyContext: 'Solve an integration problem.',
+    });
+
+    expect(strategy.intent).toBe('step_check');
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.answerStructure).toEqual([
+      'known_conditions',
+      'reasoning_steps',
+      'common_mistake',
+      'guiding_question',
+    ]);
+    expect(strategy.promptAddition).toContain('judge the submitted step first');
+  });
+
+  it('classifies concept questions as concept_bridge', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'What is the key theorem behind this formula?',
+      activeStudyContext: 'A line integral problem.',
+    });
+
+    expect(strategy.intent).toBe('concept_bridge');
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.answerStructure).toContain('concept');
+    expect(strategy.promptAddition).toContain('connect the concept back to the active problem');
+  });
+
+  it('classifies answer-only requests as answer_direct', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Just give me the final answer.',
+      activeStudyContext: 'Find a limit.',
+    });
+
+    expect(strategy.intent).toBe('answer_direct');
+    expect(strategy.depth).toBe('brief');
+    expect(strategy.shouldAskGuidingQuestion).toBe(false);
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.answerStructure[0]).toBe('final_answer');
+  });
+
+  it('falls back to general_follow_up for unknown text', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '',
+      activeStudyContext: undefined,
+    });
+
+    expect(strategy.intent).toBe('general_follow_up');
+    expect(strategy.depth).toBe('standard');
+    expect(strategy.shouldUseActiveStudyContext).toBe(false);
+    expect(strategy.promptAddition).toContain('TutorAgent strategy: general_follow_up');
+  });
+});
+
+describe('buildGenericTutorPrompt', () => {
+  it('returns a compact fallback prompt for policy degradation', () => {
+    const prompt = buildGenericTutorPrompt();
+
+    expect(prompt).toContain('TutorAgent generic fallback');
+    expect(prompt).toContain('Answer in Chinese');
+    expect(prompt.length).toBeLessThan(500);
+  });
+});
