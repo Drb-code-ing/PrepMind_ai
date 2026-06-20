@@ -1,7 +1,44 @@
-/**
- * Agent 状态定义
- * TODO: Phase 6 实现 — LangGraph Annotation
- */
-export const AgentState = {
-  // TODO: 使用 @langchain/langgraph 的 Annotation.Root
+import type { AgentState } from '@repo/types/api/agent';
+
+export type { AgentState } from '@repo/types/api/agent';
+
+export type CreateAgentStateInput = {
+  runId: string;
+  userId: string;
+  conversationId?: string;
+  text: string;
 };
+
+export function createInitialAgentState(input: CreateAgentStateInput): AgentState {
+  return {
+    runId: input.runId,
+    userId: input.userId,
+    conversationId: input.conversationId,
+    input: {
+      text: input.text,
+      attachments: [],
+    },
+    proposals: [],
+    errors: [],
+  };
+}
+
+export function appendRecoverableError(
+  state: AgentState,
+  node: string,
+  error: unknown,
+): AgentState {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return {
+    ...state,
+    errors: [
+      ...state.errors,
+      {
+        node,
+        message,
+        recoverable: true,
+      },
+    ],
+  };
+}
