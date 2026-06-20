@@ -87,6 +87,63 @@ describe('buildTutorStrategy', () => {
     expect(strategy.shouldUseActiveStudyContext).toBe(false);
     expect(strategy.promptAddition).toContain('TutorAgent strategy: general_follow_up');
   });
+
+  it('classifies Chinese direct solving requests as explain_solution', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '请讲一下这道导数题怎么做。',
+      activeStudyContext: '求 f(x)=x^2 的导数。',
+    });
+
+    expect(strategy.intent).toBe('explain_solution');
+    expect(strategy.depth).toBe('deep');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.shouldUseActiveStudyContext).toBe(true);
+    expect(strategy.answerStructure).toContain('known_conditions');
+    expect(strategy.answerStructure).toContain('reasoning_steps');
+    expect(strategy.answerStructure).toContain('final_answer');
+  });
+
+  it('classifies Chinese why follow-ups as socratic_hint', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '为什么这一步可以这样变形？',
+      activeStudyContext: '用格林公式计算曲线积分。',
+    });
+
+    expect(strategy.intent).toBe('socratic_hint');
+    expect(strategy.depth).toBe('standard');
+    expect(strategy.shouldAskGuidingQuestion).toBe(true);
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.answerStructure).toContain('guiding_question');
+  });
+
+  it('classifies Chinese submitted steps as step_check', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '我写的这一步对吗？',
+      activeStudyContext: '解一道积分题。',
+    });
+
+    expect(strategy.intent).toBe('step_check');
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.answerStructure).toEqual([
+      'known_conditions',
+      'reasoning_steps',
+      'common_mistake',
+      'guiding_question',
+    ]);
+  });
+
+  it('classifies Chinese answer-only requests as answer_direct', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '直接给我答案。',
+      activeStudyContext: '求一个极限。',
+    });
+
+    expect(strategy.intent).toBe('answer_direct');
+    expect(strategy.depth).toBe('brief');
+    expect(strategy.shouldAskGuidingQuestion).toBe(false);
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.answerStructure[0]).toBe('final_answer');
+  });
 });
 
 describe('buildGenericTutorPrompt', () => {

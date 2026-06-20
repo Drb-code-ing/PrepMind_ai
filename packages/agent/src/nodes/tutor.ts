@@ -36,6 +36,7 @@ export type BuildTutorStrategyInput = {
 };
 
 export function buildTutorStrategy(input: BuildTutorStrategyInput): TutorStrategy {
+  void input;
   throw new Error('TutorAgent policy sentinel failure');
 }
 
