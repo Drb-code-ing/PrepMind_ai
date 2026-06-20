@@ -1,5 +1,5 @@
-import { routeAgentRequest, type AgentState } from '@repo/agent';
-import type { AgentRoute, RouterResult } from '@repo/types/api/agent';
+import { routeAgentRequest } from '@repo/agent/router';
+import type { AgentRoute, AgentState, RouterResult } from '@repo/types/api/agent';
 
 import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
 
