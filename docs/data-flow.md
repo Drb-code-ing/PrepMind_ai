@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-19。Phase 5.6 已完成 RAG 文档处理、embedding 入库、检索 API、Chat RAG 增强与 `/knowledge` 学习资料工作台，并补齐资料去重、替换上传和卡片操作菜单；Chat 已加入默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-20。Phase 6.2 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入和 TutorAgent 策略层；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -11,6 +11,7 @@
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 和 TutorAgent policy；当前只在 Chat 链路中使用 RouterAgent 与 TutorAgent 策略，不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -60,6 +61,8 @@
 用户输入文本
   -> ChatInputBar
   -> /api/chat
+  -> chat-agent-runtime 调用 RouterAgent
+  -> tutor route 时调用 TutorAgent policy 生成讲题策略 prompt
   -> getAiProviderStatus() 判断 mock / live
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
   -> mock data stream 或 OpenAI / DeepSeek SSE
@@ -78,6 +81,11 @@
 - live 模式会在服务端打印不含密钥的用量估算日志，包含模式、模型、输入估算、输出上限、消息数量和是否带 active context。
 - 完整聊天历史仍保存于 PostgreSQL 与 Dexie。
 - `activeStudyContext` 来自有效 OCR 题目，用于承接“这一步为什么这样做”等追问。
+- RouterAgent 会为 Chat 请求生成 route metadata，当前主要用于区分 `chat`、`tutor`、`rag_answer`、`study_plan`、`review_analysis` 和 `wrong_question_organize` 等路线。
+- `tutor` route 会调用 TutorAgent policy，生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略。
+- Agent prompt 顺序为 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context`；当 RAG prompt 因 token 预算被丢弃时，短 Agent prompt 仍保留。
+- Chat 响应会带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`。
+- `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
 - 流式输出使用渐进 Markdown 渲染：稳定段落进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
 - 自动滚动默认跟随输出；用户触摸、滚轮或指针操作内容区后暂停，新一轮生成或回到底部时恢复。
@@ -94,7 +102,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6 再接入资料可信度评估 Agent。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 再接入资料可信度评估 Agent。
 
 文档处理数据流：
 

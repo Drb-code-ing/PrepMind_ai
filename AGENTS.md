@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 5.6 已完成，后续进入 Phase 6。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 6.2 已完成，后续进入 Phase 6.3。
 
 ## 项目快照
 
@@ -26,6 +26,9 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 5.4 | 已完成 | 检索 API、`POST /knowledge/search`、query embedding + pgvector 相似度搜索 |
 | Phase 5.5 | 已完成 | Chat RAG 增强、知识库上下文注入、Markdown citations |
 | Phase 5.6 | 已完成 | `/knowledge` 学习资料工作台、上传/处理/替换/删除/检索测试前端闭环 |
+| Phase 6.0 | 已完成 | Agent Runtime 地基、共享 Agent contract、RouterAgent、阈值 guard、recorder、graph descriptor |
+| Phase 6.1 | 已完成 | RouterAgent 接入 `/api/chat`、Agent route headers、route-aware prompt、mock route 展示 |
+| Phase 6.2 | 已完成 | TutorAgent 策略层、讲题意图分类、策略 prompt、mock strategy metadata |
 
 ## 技术栈
 
@@ -38,7 +41,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Infra | Docker, MinIO, Sentry, OpenTelemetry, Prometheus, Grafana |
 
 Agent 框架使用 LangGraph，不使用 AutoGen。
-Phase 6 是多 Agent 协作亮点阶段：`KnowledgeVerifierAgent` 用于在 RAG 检索命中后、最终回答前评估资料片段和回答初稿，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 用于把错题本组织为学科卡片和专题 deck，用户可重命名、移动和合并专题，用户修改不被 AI 自动覆盖；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 作为资料管理方向预留，用于判断上传资料是否是重复、更新版或互补资料。
+Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入和 TutorAgent 策略层。`TutorAgent` 当前是确定性 policy，不直接调用真实模型，只决定讲题意图、讲解深度和 prompt 结构；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 后续用于在 RAG 检索命中后、最终回答前评估资料片段和回答初稿，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 用于把错题本组织为学科卡片和专题 deck，用户可重命名、移动和合并专题，用户修改不被 AI 自动覆盖；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 作为资料管理方向预留，用于判断上传资料是否是重复、更新版或互补资料。
 
 ## 常用命令
 
@@ -130,8 +133,12 @@ mcp -> ai, fsrs, rag, types
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。
 - Chat RAG：`/api/chat` 已在有 access token 时调用 `/knowledge/search`，命中后把 chunks 注入 system prompt，并在助手消息末尾追加 Markdown “参考资料”；无 token、无命中或检索失败时降级普通 AI 回答。
+- Agent Chat：`/api/chat` 已接入 `chat-agent-runtime` adapter，每次请求会先通过 RouterAgent 生成 route metadata；`tutor` route 会调用 TutorAgent policy 生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略 prompt。
+- Agent headers：Chat 响应会带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`。
+- Agent prompt 顺序：`BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context`；RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留。
+- `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`，并受 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关保护。
 - `/knowledge` 页面已接入 RAG 文档管理与检索测试：支持资料上传、列表、处理、替换上传、删除内联确认、状态摘要和手动检索预览；资料卡片操作使用右上角三点菜单，点击页面其它区域可收起菜单，`DONE` 资料不再展示主按钮式重新处理；该页面为在线能力，不进入 Dexie `mutationQueue`。
-- Phase 6 再接 `KnowledgeVerifierAgent` 评估资料可信度。
+- Phase 6.3 再接 `KnowledgeVerifierAgent` 评估资料可信度。
 - ReviewTask 评分支持 `clientMutationId` 幂等；重复提交同一评分命令不会重复写入 `ReviewLog`。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
 - WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
@@ -159,5 +166,5 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 6：LangGraph 多 Agent 系统，其中 `KnowledgeVerifierAgent` 负责 RAG 资料可信度评估，`WrongQuestionOrganizerAgent` 采用“学科卡片优先、内部专题分化”的错题本组织方式，`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 负责资料重复、更新和组织建议。
+1. Phase 6.3：`KnowledgeVerifierAgent`，在 RAG 命中后评估资料片段与回答初稿可信度，并给出温和的资料核对提示。
 2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。

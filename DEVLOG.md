@@ -546,7 +546,7 @@ f5a2eb1 style: soften cartoon theme palette
 - 新增 `/knowledge` 学习资料工作台：支持资料上传、状态摘要、资料卡片列表、处理/重新处理、删除内联确认和检索测试。
 - 页面交互补齐轻提示、上传快照保护、同卡片 process/delete 互斥、检索请求过期保护、长错误文案截断和移动端长文本断行。
 - 侧边栏新增“知识库”入口，保持 Chat-first 主入口结构。
-- RAG 仍保持可降级边界：无资料、未命中或检索失败时，Chat 继续按普通 AI 回答；Phase 6 再接入 `KnowledgeVerifierAgent` 评估资料可信度。
+- RAG 仍保持可降级边界：无资料、未命中或检索失败时，Chat 继续按普通 AI 回答；Phase 6.3 再接入 `KnowledgeVerifierAgent` 评估资料可信度。
 
 验证：
 
@@ -616,6 +616,48 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-20（Day 15）
+
+**Phase 6.0 Agent Runtime 地基**
+
+- 新增 Phase 6.0 Agent Runtime 设计文档与实施计划，明确 LangGraph 多 Agent 阶段先落地可降级、可观测、可扩展的运行地基。
+- 新增 `@repo/types/api/agent`，定义 `AgentRoute`、`AgentState`、`ActionProposal`、`AgentRun`、`AgentStep`、Router 结果和 live 模型调用门禁 schema。
+- `@repo/agent` 新增 state helper、阈值 guard、确定性 RouterAgent、运行 recorder、runtime 降级链路和 graph descriptor。
+- 明确 ReviewAgent、MemoryAgent、PlannerAgent、WrongQuestionOrganizerAgent、KnowledgeDedupAgent 等分析型 Agent 只按阈值或用户主动触发，不在每次 Chat 中自动执行。
+- 保持写操作 Human-in-loop 边界：Agent 只能生成 `ActionProposal` 建议，不能静默修改错题、资料、复习任务或长期记忆。
+- 补充 live 验收策略：真实模型只能在 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关下启用，并受输入/输出 token 预算约束。
+
+**Phase 6.1 Router + Tutor Chat 接入**
+
+- 新增 Phase 6.1 设计文档与实施计划，明确 `/api/chat` 仍是流式输出、RAG、OCR 上下文、token 预算和 mock/live 成本保护的唯一执行入口。
+- `apps/web` 接入 `@repo/agent`，新增 `chat-agent-runtime` adapter，在 Chat 请求中构造轻量 Agent state 并调用 RouterAgent。
+- `/api/chat` 新增 Agent 路由调试头：`x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`。
+- Agent prompt 按 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent prompt -> RAG context` 顺序组合；当 RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留。
+- mock 输出展示 Agent route，便于本地无成本确认 `chat`、`tutor`、`rag_answer` 等路线，不引入真实模型调用。
+- `review_analysis`、`study_plan`、`wrong_question_organize` 等路线在 Phase 6.1 只作为普通建议提示，不执行对应业务 Agent、不写库。
+
+**Phase 6.2 TutorAgent 策略层**
+
+- 新增 Phase 6.2 TutorAgent policy 设计文档与实施计划，把 TutorAgent 从“提示词风格”升级为可测试的确定性讲题策略层。
+- `packages/agent/src/nodes/tutor.ts` 新增 `buildTutorStrategy` 与 `buildGenericTutorPrompt`，支持 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct`、`general_follow_up` 六类讲题意图。
+- Web Chat adapter 仅在 RouterAgent 判定为 `tutor` 时调用 TutorAgent policy，并把策略 prompt 插入现有 Chat prompt；非 tutor 路线不触发 TutorAgent。
+- `/api/chat` 继续保留现有 streaming、OCR activeStudyContext、RAG 检索、Markdown citations、mock/live 双开关和 token 预算行为。
+- mock 输出新增 TutorAgent strategy 元数据，方便本地验证讲题策略，不伪装真实模型能力。
+- 修复 TutorAgent 意图优先级：`Why can this step be done like this?`、`为什么这一步可以这样变形？` 等“为什么 + 这一步”请求归为 `socratic_hint`，而不是误判为 `step_check`。
+- 修复普通 Chat mock 输出中空 Tutor metadata 段落问题。
+
+验证：
+
+- `bun --cwd packages/agent test` 通过，30 个测试全部通过。
+- `bun --cwd packages/agent typecheck` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web test` 通过，192 个测试全部通过。
+- `bun --filter @repo/web build` 通过。
+- `rg "AI_ENABLE_LIVE_CALLS|AI_PROVIDER_MODE|streamText|aiProvider" packages/agent apps/web/src/lib apps/web/src/app/api/chat` 已确认 TutorAgent policy 不引入真实模型调用，live 调用仍只在 `/api/chat` 的既有双开关保护下发生。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -678,6 +720,13 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
 - Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
+**Phase 6：进行中，Phase 6.2 已完成**
+
+- Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
+- Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
+- Phase 6.2 TutorAgent 策略层已完成：Tutor 路线可生成结构化讲题策略、策略 prompt 和 mock 策略元数据。
+- 分析型 Agent 仍保持阈值或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / WrongQuestionOrganizer / KnowledgeDedup。
+
 ---
 
 ## 待办与规划
@@ -703,9 +752,12 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 5.5：Chat RAG 增强与引用展示。
 - [x] Phase 5.6：知识库页面体验打磨。
 - [x] Phase 5.6：知识库资料去重、替换上传和卡片三点菜单交互补强。
-- [ ] Phase 6：LangGraph 多 Agent 系统。
-- [ ] Phase 6：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
+- [x] Phase 6.0：Agent Runtime 地基、共享 contract、RouterAgent、阈值 guard、运行 recorder 与降级链路。
+- [x] Phase 6.1：RouterAgent 接入 `/api/chat`，保留现有 streaming、RAG、OCR 上下文和成本保护。
+- [x] Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt 和 mock 策略元数据。
+- [ ] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
 - [ ] Phase 6：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
 - [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
+- [ ] Phase 6：`ReviewAgent / PlannerAgent / MemoryAgent`，按阈值或用户主动触发，生成复习分析、学习计划建议和长期记忆候选。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。
