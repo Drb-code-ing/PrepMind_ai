@@ -1,4 +1,5 @@
 export * from './graph';
+export * from './nodes/tutor';
 export * from './recorder';
 export * from './router';
 export * from './runtime';
