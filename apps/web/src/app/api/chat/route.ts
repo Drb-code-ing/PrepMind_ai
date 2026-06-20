@@ -2,6 +2,10 @@ import { createDataStreamResponse, formatDataStreamPart, streamText } from 'ai';
 import { aiProvider, getAiProviderStatus } from '@/lib/ai-provider';
 import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
 import {
+  buildChatAgentDecision,
+  combineChatAdditionalPrompts,
+} from '@/lib/chat-agent-runtime';
+import {
   type ActiveStudyContext,
   type ChatContextMessage,
 } from '@/lib/chat-context';
@@ -56,10 +60,12 @@ function createMockChatResponse(input: {
   messages: ChatContextMessage[];
   activeContext: ActiveStudyContext | null;
   knowledgeHits: KnowledgeSearchHit[];
+  agentDecision: ReturnType<typeof buildChatAgentDecision>;
 }) {
   const mockText = createMockChatText({
     hasActiveContext: Boolean(input.activeContext),
     latestUserText: getLatestUserText(input.messages),
+    agentRoute: input.agentDecision.route,
   });
   const responseText = appendCitationMarkdown(mockText, input.knowledgeHits);
 
@@ -67,6 +73,7 @@ function createMockChatResponse(input: {
     headers: {
       'x-prepmind-ai-mode': 'mock',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
+      ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
       for (const chunk of splitMockText(responseText)) {
@@ -83,6 +90,7 @@ function createLiveChatResponse(input: {
   messages: ChatContextMessage[];
   maxOutputTokens: number;
   knowledgeHits: KnowledgeSearchHit[];
+  agentDecision: ReturnType<typeof buildChatAgentDecision>;
 }) {
   const result = streamText({
     model: aiProvider(input.model),
@@ -95,6 +103,7 @@ function createLiveChatResponse(input: {
     headers: {
       'x-prepmind-ai-mode': 'live',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
+      ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
       for await (const chunk of result.textStream) {
@@ -126,12 +135,22 @@ export async function POST(req: Request) {
 
     const normalizedMessages = messages as ChatContextMessage[];
     const normalizedActiveContext = isActiveStudyContext(activeContext) ? activeContext : null;
+    const agentDecision = buildChatAgentDecision({
+      messages: normalizedMessages,
+      activeContext: normalizedActiveContext,
+      runId: crypto.randomUUID(),
+      userId: 'web-chat-user',
+    });
     const knowledgeSearch = await searchKnowledgeForChat({
       accessToken: normalizeAccessToken(accessToken),
       messages: normalizedMessages,
       logger: console,
     });
     const knowledgeContextPrompt = buildKnowledgeContextPrompt(knowledgeSearch.hits);
+    const additionalSystemPrompt = combineChatAdditionalPrompts(
+      agentDecision.promptAddition,
+      knowledgeContextPrompt,
+    );
     const baseBudgetInput = {
       baseSystemPrompt: BASE_SYSTEM_PROMPT,
       activeContext: normalizedActiveContext,
@@ -141,12 +160,16 @@ export async function POST(req: Request) {
     };
     let budget = buildChatRequestBudget({
       ...baseBudgetInput,
-      additionalSystemPrompt: knowledgeContextPrompt || undefined,
+      additionalSystemPrompt: additionalSystemPrompt || undefined,
     });
     let citationHits = knowledgeSearch.hits;
 
     if (budget.exceedsInputLimit && knowledgeContextPrompt) {
-      const fallbackBudget = buildChatRequestBudget(baseBudgetInput);
+      const fallbackAgentPrompt = combineChatAdditionalPrompts(agentDecision.promptAddition, '');
+      const fallbackBudget = buildChatRequestBudget({
+        ...baseBudgetInput,
+        additionalSystemPrompt: fallbackAgentPrompt || undefined,
+      });
       if (!fallbackBudget.exceedsInputLimit) {
         budget = fallbackBudget;
         citationHits = [];
@@ -171,11 +194,12 @@ export async function POST(req: Request) {
         messages: budget.modelMessages,
         activeContext: normalizedActiveContext,
         knowledgeHits: citationHits,
+        agentDecision,
       });
     }
 
     console.info(
-      `[AI usage estimate] mode=live model=${providerStatus.model} input≈${budget.estimatedInputTokens}/${budget.maxInputTokens} maxOutput=${budget.maxOutputTokens} messages=${budget.modelMessages.length} activeContext=${Boolean(normalizedActiveContext)} ragHits=${citationHits.length}`,
+      `[AI usage estimate] mode=live model=${providerStatus.model} input=${budget.estimatedInputTokens}/${budget.maxInputTokens} maxOutput=${budget.maxOutputTokens} messages=${budget.modelMessages.length} activeContext=${Boolean(normalizedActiveContext)} ragHits=${citationHits.length} agentRoute=${agentDecision.route}`,
     );
 
     return createLiveChatResponse({
@@ -184,6 +208,7 @@ export async function POST(req: Request) {
       messages: budget.modelMessages,
       maxOutputTokens: budget.maxOutputTokens,
       knowledgeHits: citationHits,
+      agentDecision,
     });
   } catch (error) {
     console.error('[Chat API]', error);
