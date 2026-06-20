@@ -15,6 +15,18 @@ test('parses positive token limits and falls back for unsafe values', () => {
   assert.equal(parseAiTokenLimit('abc', 2500, { min: 200, max: 12000 }), 2500);
 });
 
+test('shows tutor route in mock output without breaking markdown and math checks', () => {
+  const text = createMockChatText({
+    hasActiveContext: true,
+    latestUserText: 'Why can this step be done like this?',
+    agentRoute: 'tutor',
+  });
+
+  assert.match(text, /TutorAgent/);
+  assert.match(text, /Why can this step/);
+  assert.match(text, /\$\$f'\(x\)=2x\$\$/);
+});
+
 test('budgets the system prompt, active OCR context, and recent messages together', () => {
   const activeContext: ActiveStudyContext = {
     type: 'ocr-question',

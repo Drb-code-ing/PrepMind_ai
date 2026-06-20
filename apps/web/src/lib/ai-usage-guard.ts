@@ -1,3 +1,5 @@
+import type { AgentRoute } from '@repo/types/api/agent';
+
 import {
   buildChatContextMessages,
   buildChatSystemPrompt,
@@ -76,6 +78,7 @@ export function buildChatRequestBudget(input: BuildChatRequestBudgetInput): Chat
 export function createMockChatText(input: {
   hasActiveContext: boolean;
   latestUserText?: string;
+  agentRoute?: AgentRoute;
 }) {
   const latestUserText = input.latestUserText?.trim();
   const visibleQuestion = latestUserText
@@ -91,6 +94,8 @@ ${visibleQuestion}
 
 ${contextLine}
 
+${formatMockAgentRoute(input.agentRoute)}
+
 1. 这里会模拟真实 AI 的 Markdown 流式输出，用来验证聊天 UI、自动滚动和公式渲染。
 
 2. 真实验收时再显式切换到 live 模式，避免开发调试反复消耗模型额度。
@@ -98,4 +103,26 @@ ${contextLine}
 公式渲染检查：
 
 $$f'(x)=2x$$`;
+}
+
+function formatMockAgentRoute(route?: AgentRoute) {
+  if (route === 'tutor') {
+    return 'Agent route: TutorAgent tutoring path. Mock mode only displays routing metadata and does not call a live model.';
+  }
+
+  if (route === 'rag_answer') {
+    return 'Agent route: RAG answer path. Retrieval and citations still use the existing knowledge search pipeline.';
+  }
+
+  if (
+    route === 'study_plan' ||
+    route === 'review_analysis' ||
+    route === 'wrong_question_organize' ||
+    route === 'memory_reflection' ||
+    route === 'knowledge_dedup'
+  ) {
+    return 'Agent route: advisory workflow path. Phase 6.1 does not write plans, memories, review analysis, or organization results.';
+  }
+
+  return 'Agent route: normal Chat path.';
 }
