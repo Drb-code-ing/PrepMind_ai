@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./api/common": "./src/api/common.ts",
+    "./api/agent": "./src/api/agent.ts",
     "./api/auth": "./src/api/auth.ts",
     "./api/wrong-question": "./src/api/wrong-question.ts",
     "./api/chat-message": "./src/api/chat-message.ts",
