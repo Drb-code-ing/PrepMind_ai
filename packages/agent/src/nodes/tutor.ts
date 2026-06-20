@@ -47,7 +47,9 @@ const intentRules: IntentRule[] = [
     signals: [
       'only answer',
       'answer only',
-      'just give me',
+      'just give me the answer',
+      'just give me the result',
+      'just give me result',
       'final answer',
       'what is the answer',
       "what's the answer",
@@ -86,7 +88,7 @@ const intentRules: IntentRule[] = [
   },
   {
     intent: 'explain_solution',
-    signals: ['how to solve', 'solve', 'explain', '讲一下', '解析', '怎么做'],
+    signals: ['how to solve', 'solve', 'explain', '讲一下', '解析', '解释', '怎么做'],
     reason: 'User asks for a full solution explanation.',
   },
 ];
@@ -135,7 +137,7 @@ function findIntent(text: string): {
       if (
         rule.intent === 'step_check' &&
         weakStepSignals.has(signal) &&
-        hasSocraticSignal(text)
+        hasGuidanceSignal(text)
       ) {
         return false;
       }
@@ -159,8 +161,12 @@ function findIntent(text: string): {
   };
 }
 
-function hasSocraticSignal(text: string) {
-  const rule = intentRules.find((intentRule) => intentRule.intent === 'socratic_hint');
+function hasGuidanceSignal(text: string) {
+  return hasIntentSignal(text, 'socratic_hint') || hasIntentSignal(text, 'explain_solution');
+}
+
+function hasIntentSignal(text: string, intent: TutorIntent) {
+  const rule = intentRules.find((intentRule) => intentRule.intent === intent);
   return Boolean(rule?.signals.some((signal) => matchesSignal(text, signal)));
 }
 

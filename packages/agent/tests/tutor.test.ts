@@ -86,6 +86,28 @@ describe('buildTutorStrategy', () => {
     expect(strategy.shouldGiveFinalAnswer).toBe(true);
   });
 
+  it('does not let direct-answer wording override an explicit hint request', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Just give me a hint for this step.',
+      activeStudyContext: 'Find a limit.',
+    });
+
+    expect(strategy.intent).toBe('socratic_hint');
+    expect(strategy.shouldAskGuidingQuestion).toBe(true);
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+  });
+
+  it('classifies explain-this-step requests as explanation instead of step checking', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: 'Can you explain this step?',
+      activeStudyContext: 'Solve an integration problem.',
+    });
+
+    expect(strategy.intent).toBe('explain_solution');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.promptAddition).not.toContain('judge the submitted step first');
+  });
+
   it('falls back to general_follow_up for unknown text', () => {
     const strategy = buildTutorStrategy({
       latestUserText: '',
@@ -163,6 +185,17 @@ describe('buildTutorStrategy', () => {
 
     expect(strategy.intent).toBe('answer_direct');
     expect(strategy.shouldGiveFinalAnswer).toBe(true);
+  });
+
+  it('classifies Chinese explain-this-step requests as explanation instead of step checking', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText: '能不能解释一下这一步？',
+      activeStudyContext: '解一道积分题。',
+    });
+
+    expect(strategy.intent).toBe('explain_solution');
+    expect(strategy.shouldGiveFinalAnswer).toBe(true);
+    expect(strategy.promptAddition).not.toContain('judge the submitted step first');
   });
 
   it('does not classify checklist planning as submitted-step verification', () => {
