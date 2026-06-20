@@ -5,9 +5,9 @@ import type {
   RouterResult,
 } from '@repo/types/api/agent';
 
-import type { AgentRunRecorder } from './recorder';
-import { routeAgentRequest } from './router';
-import { appendRecoverableError, createInitialAgentState } from './state';
+import type { AgentRunRecorder } from './recorder.ts';
+import { routeAgentRequest } from './router.ts';
+import { appendRecoverableError, createInitialAgentState } from './state.ts';
 
 export type RunAgentRuntimeInput = {
   runId: string;
