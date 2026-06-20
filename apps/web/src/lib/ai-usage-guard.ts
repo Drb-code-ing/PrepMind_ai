@@ -1,3 +1,4 @@
+import type { TutorIntent } from '@repo/agent/tutor';
 import type { AgentRoute } from '@repo/types/api/agent';
 
 import {
@@ -79,6 +80,7 @@ export function createMockChatText(input: {
   hasActiveContext: boolean;
   latestUserText?: string;
   agentRoute?: AgentRoute;
+  tutorIntent?: TutorIntent;
 }) {
   const latestUserText = input.latestUserText?.trim();
   const visibleQuestion = latestUserText
@@ -95,6 +97,8 @@ ${visibleQuestion}
 ${contextLine}
 
 ${formatMockAgentRoute(input.agentRoute)}
+
+${formatMockTutorStrategy(input.tutorIntent)}
 
 1. 这里会模拟真实 AI 的 Markdown 流式输出，用来验证聊天 UI、自动滚动和公式渲染。
 
@@ -125,4 +129,10 @@ function formatMockAgentRoute(route?: AgentRoute) {
   }
 
   return 'Agent route: normal Chat path.';
+}
+
+function formatMockTutorStrategy(intent?: TutorIntent) {
+  if (!intent) return '';
+
+  return `TutorAgent strategy: ${intent}. Mock mode shows strategy metadata only and does not call a live model.`;
 }

@@ -27,6 +27,30 @@ test('shows tutor route in mock output without breaking markdown and math checks
   assert.match(text, /\$\$f'\(x\)=2x\$\$/);
 });
 
+test('shows tutor strategy metadata in mock output when provided', () => {
+  const text = createMockChatText({
+    hasActiveContext: true,
+    latestUserText: 'Why can this step be done like this?',
+    agentRoute: 'tutor',
+    tutorIntent: 'socratic_hint',
+  });
+
+  assert.match(text, /TutorAgent/);
+  assert.match(text, /socratic_hint/);
+  assert.match(text, /\$\$f'\(x\)=2x\$\$/);
+});
+
+test('does not show tutor strategy metadata for normal chat mock output', () => {
+  const text = createMockChatText({
+    hasActiveContext: false,
+    latestUserText: 'hello',
+    agentRoute: 'chat',
+  });
+
+  assert.doesNotMatch(text, /socratic_hint/);
+  assert.match(text, /normal Chat path/);
+});
+
 test('budgets the system prompt, active OCR context, and recent messages together', () => {
   const activeContext: ActiveStudyContext = {
     type: 'ocr-question',

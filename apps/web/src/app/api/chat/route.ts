@@ -66,6 +66,7 @@ function createMockChatResponse(input: {
     hasActiveContext: Boolean(input.activeContext),
     latestUserText: getLatestUserText(input.messages),
     agentRoute: input.agentDecision.route,
+    tutorIntent: input.agentDecision.tutorStrategy?.intent,
   });
   const responseText = appendCitationMarkdown(mockText, input.knowledgeHits);
 
