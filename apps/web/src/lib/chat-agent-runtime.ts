@@ -1,4 +1,10 @@
 import { routeAgentRequest } from '@repo/agent/router';
+import {
+  buildGenericTutorPrompt,
+  buildTutorStrategy,
+  type BuildTutorStrategyInput,
+  type TutorStrategy,
+} from '@repo/agent/tutor';
 import type { AgentRoute, AgentState, RouterResult } from '@repo/types/api/agent';
 
 import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
@@ -9,6 +15,7 @@ export type ChatAgentDecision = {
   reason: string;
   requiresRag: boolean;
   requiresHumanApproval: boolean;
+  tutorStrategy?: TutorStrategy;
   promptAddition: string;
   debugHeaders: Record<string, string>;
   degraded: boolean;
@@ -21,16 +28,22 @@ export type BuildChatAgentDecisionInput = {
   userId: string;
   conversationId?: string;
   router?: (state: AgentState) => RouterResult;
+  tutorPolicy?: (input: BuildTutorStrategyInput) => TutorStrategy;
 };
 
 export function buildChatAgentDecision(
   input: BuildChatAgentDecisionInput,
 ): ChatAgentDecision {
   try {
-    const state = createChatAgentState(input);
+    const latestUserText = getLatestUserText(input.messages);
+    const state = createChatAgentState(input, latestUserText);
     const route = (input.router ?? routeAgentRequest)(state);
 
-    return toDecision(route, false);
+    return toDecision(route, false, {
+      latestUserText,
+      activeStudyContext: input.activeContext?.questionText,
+      tutorPolicy: input.tutorPolicy,
+    });
   } catch {
     return toDecision(
       {
@@ -50,13 +63,16 @@ export function combineChatAdditionalPrompts(agentPrompt: string, knowledgePromp
   return sections.join('\n\n---\n\n');
 }
 
-function createChatAgentState(input: BuildChatAgentDecisionInput): AgentState {
+function createChatAgentState(
+  input: BuildChatAgentDecisionInput,
+  latestUserText: string,
+): AgentState {
   return {
     runId: input.runId,
     userId: input.userId,
     conversationId: input.conversationId,
     input: {
-      text: getLatestUserText(input.messages),
+      text: latestUserText,
       attachments: [],
     },
     chatContext: {
@@ -77,14 +93,39 @@ function getLatestUserText(messages: ChatContextMessage[]) {
   );
 }
 
-function toDecision(route: RouterResult, degraded: boolean): ChatAgentDecision {
+function toDecision(
+  route: RouterResult,
+  degraded: boolean,
+  tutorInput?: BuildTutorStrategyInput & {
+    tutorPolicy?: (input: BuildTutorStrategyInput) => TutorStrategy;
+  },
+): ChatAgentDecision {
   const debugHeaders: Record<string, string> = {
     'x-prepmind-agent-route': route.name,
     'x-prepmind-agent-confidence': route.confidence.toFixed(2),
     'x-prepmind-agent-rag-required': String(route.requiresRag),
   };
 
-  if (degraded) {
+  let tutorStrategy: TutorStrategy | undefined;
+  let promptAddition = buildRoutePromptAddition(route.name);
+  let isDegraded = degraded;
+
+  if (route.name === 'tutor' && tutorInput) {
+    try {
+      tutorStrategy = (tutorInput.tutorPolicy ?? buildTutorStrategy)({
+        latestUserText: tutorInput.latestUserText,
+        activeStudyContext: tutorInput.activeStudyContext,
+      });
+      promptAddition = tutorStrategy.promptAddition;
+      debugHeaders['x-prepmind-tutor-intent'] = tutorStrategy.intent;
+      debugHeaders['x-prepmind-tutor-depth'] = tutorStrategy.depth;
+    } catch {
+      promptAddition = buildGenericTutorPrompt();
+      isDegraded = true;
+    }
+  }
+
+  if (isDegraded) {
     debugHeaders['x-prepmind-agent-degraded'] = 'true';
   }
 
@@ -94,9 +135,10 @@ function toDecision(route: RouterResult, degraded: boolean): ChatAgentDecision {
     reason: route.reason,
     requiresRag: route.requiresRag,
     requiresHumanApproval: route.requiresHumanApproval,
-    promptAddition: buildRoutePromptAddition(route.name),
+    tutorStrategy,
+    promptAddition,
     debugHeaders,
-    degraded,
+    degraded: isDegraded,
   };
 }
 

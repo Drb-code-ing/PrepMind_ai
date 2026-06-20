@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { TutorStrategy } from '@repo/agent/tutor';
+
 import {
   buildChatAgentDecision,
   combineChatAdditionalPrompts,
@@ -28,9 +30,12 @@ test('routes OCR follow-up requests to tutor and builds tutor prompt', () => {
 
   assert.equal(decision.route, 'tutor');
   assert.equal(decision.requiresRag, false);
-  assert.match(decision.promptAddition, /Socratic/);
+  assert.equal(decision.tutorStrategy?.intent, 'socratic_hint');
+  assert.match(decision.promptAddition, /TutorAgent strategy: socratic_hint/);
   assert.equal(decision.debugHeaders['x-prepmind-agent-route'], 'tutor');
   assert.equal(decision.debugHeaders['x-prepmind-agent-rag-required'], 'false');
+  assert.equal(decision.debugHeaders['x-prepmind-tutor-intent'], 'socratic_hint');
+  assert.equal(decision.debugHeaders['x-prepmind-tutor-depth'], 'standard');
 });
 
 test('keeps general messages on chat route', () => {
@@ -43,6 +48,72 @@ test('keeps general messages on chat route', () => {
 
   assert.equal(decision.route, 'chat');
   assert.equal(decision.promptAddition, '');
+});
+
+test('does not call TutorAgent policy for non-tutor routes', () => {
+  let called = false;
+  const decision = buildChatAgentDecision({
+    messages: [{ role: 'user', content: 'hello' }],
+    activeContext: null,
+    runId: 'run_non_tutor',
+    userId: 'user_1',
+    tutorPolicy: () => {
+      called = true;
+      throw new Error('should not be called');
+    },
+  });
+
+  assert.equal(decision.route, 'chat');
+  assert.equal(called, false);
+  assert.equal(decision.tutorStrategy, undefined);
+});
+
+test('keeps tutor route and generic tutor prompt when TutorAgent policy throws', () => {
+  const decision = buildChatAgentDecision({
+    messages: [{ role: 'user', content: 'Why can this step be done like this?' }],
+    activeContext,
+    runId: 'run_tutor_degraded',
+    userId: 'user_1',
+    tutorPolicy: () => {
+      throw new Error('tutor failed');
+    },
+  });
+
+  assert.equal(decision.route, 'tutor');
+  assert.equal(decision.degraded, true);
+  assert.equal(decision.tutorStrategy, undefined);
+  assert.match(decision.promptAddition, /TutorAgent generic fallback/);
+  assert.equal(decision.debugHeaders['x-prepmind-agent-degraded'], 'true');
+});
+
+test('uses injected TutorAgent policy result for tutor route metadata', () => {
+  const customStrategy: TutorStrategy = {
+    intent: 'answer_direct',
+    depth: 'brief',
+    shouldAskGuidingQuestion: false,
+    shouldGiveFinalAnswer: true,
+    shouldUseActiveStudyContext: true,
+    answerStructure: ['final_answer', 'reasoning_steps'],
+    promptAddition: 'custom tutor prompt',
+    debug: {
+      reason: 'test',
+      matchedSignals: ['answer only'],
+    },
+  };
+
+  const decision = buildChatAgentDecision({
+    messages: [{ role: 'user', content: 'Why can this step be done like this?' }],
+    activeContext,
+    runId: 'run_tutor_custom',
+    userId: 'user_1',
+    tutorPolicy: () => customStrategy,
+  });
+
+  assert.equal(decision.route, 'tutor');
+  assert.equal(decision.tutorStrategy, customStrategy);
+  assert.equal(decision.promptAddition, 'custom tutor prompt');
+  assert.equal(decision.debugHeaders['x-prepmind-tutor-intent'], 'answer_direct');
+  assert.equal(decision.debugHeaders['x-prepmind-tutor-depth'], 'brief');
 });
 
 test('uses injected router result for rag answer prompt without replacing RAG search', () => {
