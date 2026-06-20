@@ -158,6 +158,13 @@ Examples:
 | "是什么", "公式", "定理", "概念" | `concept_bridge` |
 | "只要答案", "直接给答案", "answer only" | `answer_direct` |
 
+Step-check priority only applies to strong validation signals such as "is it
+correct", "am I right", "check", "我这样对吗", and "哪里错". The weak step
+reference signals "this step" and "这一步" must not override a why/hint signal.
+For example, "Why can this step be done like this?" and "为什么这一步可以这样变形？"
+remain `socratic_hint`, because the user is asking for the basis of a step, not
+asking the assistant to verify a submitted solution step.
+
 Active OCR context should increase confidence for tutoring behavior, but it should not force every message into a heavy solution format. If the latest user message is clearly a casual message, TutorAgent can still use `general_follow_up`.
 
 ## Prompt Composition

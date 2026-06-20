@@ -286,6 +286,8 @@ const intentRules: IntentRule[] = [
   },
 ];
 
+const weakStepSignals = new Set(['this step', '这一步']);
+
 export function buildTutorStrategy(input: BuildTutorStrategyInput): TutorStrategy {
   const text = normalizeText(input.latestUserText);
   const match = findIntent(text);
@@ -330,9 +332,17 @@ function findIntent(text: string): {
   reason: string;
 } {
   for (const rule of intentRules) {
-    const matchedSignals = rule.signals.filter((signal) =>
-      text.includes(signal.toLowerCase()),
-    );
+    const matchedSignals = rule.signals.filter((signal) => {
+      if (
+        rule.intent === 'step_check' &&
+        weakStepSignals.has(signal) &&
+        hasSocraticSignal(text)
+      ) {
+        return false;
+      }
+
+      return text.includes(signal.toLowerCase());
+    });
 
     if (matchedSignals.length > 0) {
       return {
@@ -348,6 +358,11 @@ function findIntent(text: string): {
     matchedSignals: [],
     reason: 'No strong tutoring intent signal was matched.',
   };
+}
+
+function hasSocraticSignal(text: string) {
+  const rule = intentRules.find((intentRule) => intentRule.intent === 'socratic_hint');
+  return Boolean(rule?.signals.some((signal) => text.includes(signal.toLowerCase())));
 }
 
 function selectDepth(intent: TutorIntent, hasActiveStudyContext: boolean): TutorDepth {
