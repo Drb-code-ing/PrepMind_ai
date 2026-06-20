@@ -89,6 +89,12 @@ export function createMockChatText(input: {
   const contextLine = input.hasActiveContext
     ? '当前对话已带上拍照识题上下文，你可以继续追问“为什么这样做”或“这一步怎么来的”。'
     : '当前没有额外识题上下文，我会按普通学习问答方式回复。';
+  const metadataLines = [
+    formatMockAgentRoute(input.agentRoute),
+    formatMockTutorStrategy(input.tutorIntent),
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return `## 本地 mock 模型回复
 
@@ -96,9 +102,7 @@ ${visibleQuestion}
 
 ${contextLine}
 
-${formatMockAgentRoute(input.agentRoute)}
-
-${formatMockTutorStrategy(input.tutorIntent)}
+${metadataLines}
 
 1. 这里会模拟真实 AI 的 Markdown 流式输出，用来验证聊天 UI、自动滚动和公式渲染。
 

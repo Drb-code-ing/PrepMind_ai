@@ -49,6 +49,8 @@ test('does not show tutor strategy metadata for normal chat mock output', () => 
 
   assert.doesNotMatch(text, /socratic_hint/);
   assert.match(text, /normal Chat path/);
+  assert.doesNotMatch(text, /Agent route: normal Chat path\.\n{3,}1\./);
+  assert.match(text, /\$\$f'\(x\)=2x\$\$/);
 });
 
 test('budgets the system prompt, active OCR context, and recent messages together', () => {
