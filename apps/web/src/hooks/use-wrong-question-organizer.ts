@@ -26,7 +26,16 @@ export const wrongQuestionOrganizerQueryKeys = {
   deckQuestions: (
     deckId: string | null | undefined,
     query: WrongQuestionDeckQuestionListQueryInput,
-  ) => [...wrongQuestionOrganizerQueryKeys.all, 'deck-questions', deckId ?? '', query] as const,
+  ) => {
+    const normalized = normalizeDeckQuestionQuery(query);
+    return [
+      ...wrongQuestionOrganizerQueryKeys.all,
+      'deck-questions',
+      deckId ?? '',
+      normalized.page,
+      normalized.pageSize,
+    ] as const;
+  },
 };
 
 export function useWrongQuestionGroups() {
@@ -76,7 +85,11 @@ export function useWrongQuestionDeckQuestions(
       if (!accessToken || !deckId) {
         throw new Error('Missing wrong question deck context');
       }
-      return wrongQuestionOrganizerApi.listDeckQuestions(accessToken, deckId, query);
+      return wrongQuestionOrganizerApi.listDeckQuestions(
+        accessToken,
+        deckId,
+        normalizeDeckQuestionQuery(query),
+      );
     },
     enabled: sessionHydrated && !!accessToken && !!deckId,
     retry: false,
@@ -193,4 +206,11 @@ export function useRemoveWrongQuestionDeckItem() {
       void queryClient.invalidateQueries({ queryKey: wrongQuestionQueryKeys.all });
     },
   });
+}
+
+function normalizeDeckQuestionQuery(query: WrongQuestionDeckQuestionListQueryInput) {
+  return {
+    page: query.page ?? 1,
+    pageSize: query.pageSize ?? 20,
+  };
 }
