@@ -63,11 +63,63 @@ describe('WrongQuestionOrganizerService', () => {
     updatedAt: NOW,
   };
 
+  const organizeResponse = {
+    subjectGroup: {
+      id: subjectGroup.id,
+      userId: subjectGroup.userId,
+      subject: subjectGroup.subject,
+      displayName: subjectGroup.displayName,
+      sortOrder: subjectGroup.sortOrder,
+      totalCount: 1,
+      unresolvedCount: 1,
+      resolvedCount: 0,
+      deckCount: 1,
+      topKnowledgePoints: [KNOWLEDGE_POINT],
+      lastUpdatedAt: NOW.toISOString(),
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+    },
+    deck: {
+      id: deck.id,
+      userId: deck.userId,
+      subjectGroupId: deck.subjectGroupId,
+      name: deck.name,
+      description: deck.description,
+      source: deck.source,
+      nameLocked: deck.nameLocked,
+      confidence: deck.confidence,
+      totalCount: 1,
+      unresolvedCount: 1,
+      resolvedCount: 0,
+      topKnowledgePoints: [KNOWLEDGE_POINT],
+      lastUpdatedAt: NOW.toISOString(),
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+    },
+    item: {
+      id: item.id,
+      deckId: item.deckId,
+      wrongQuestionId: item.wrongQuestionId,
+      reason: item.reason,
+      confidence: item.confidence,
+      source: item.source,
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+    },
+    createdSubjectGroup: false,
+    createdDeck: false,
+    createdItem: false,
+    reason: item.reason,
+    confidence: item.confidence,
+  };
+
   const prisma = {
+    $transaction: jest.fn(),
     wrongQuestion: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+      delete: jest.fn(),
     },
     wrongQuestionSubjectGroup: {
       upsert: jest.fn(),
@@ -79,6 +131,7 @@ describe('WrongQuestionOrganizerService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     wrongQuestionDeckItem: {
       findFirst: jest.fn(),
@@ -90,7 +143,7 @@ describe('WrongQuestionOrganizerService', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   function createService() {
@@ -160,6 +213,7 @@ describe('WrongQuestionOrganizerService', () => {
       ...deck,
       name: '我的专题',
       nameLocked: true,
+      items: [{ wrongQuestion }],
     };
 
     prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
@@ -202,5 +256,211 @@ describe('WrongQuestionOrganizerService', () => {
       resolvedCount: 0,
       topKnowledgePoints: [],
     });
+  });
+
+  it('returns an empty group list when no organization data exists', async () => {
+    prisma.wrongQuestionSubjectGroup.findMany.mockResolvedValue([]);
+
+    const service = createService();
+    const result = await service.listGroups('user_1');
+
+    expect(result).toEqual({ items: [] });
+    expect(prisma.wrongQuestionSubjectGroup.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user_1' },
+      orderBy: [{ sortOrder: 'asc' }, { updatedAt: 'desc' }],
+    });
+    expect(prisma.wrongQuestionDeck.findMany).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.findMany).not.toHaveBeenCalled();
+  });
+
+  it('organizes only current user wrong questions without deck items up to the limit', async () => {
+    prisma.wrongQuestion.findMany.mockResolvedValue([{ id: 'wrong_1' }, { id: 'wrong_2' }]);
+    const service = createService();
+    const organizeOne = jest
+      .spyOn(service, 'organizeOne')
+      .mockResolvedValue(organizeResponse);
+
+    const result = await service.organizeBatch('user_1', { limit: 2 });
+
+    expect(prisma.wrongQuestion.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        deckItems: { none: {} },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+      select: { id: true },
+    });
+    expect(organizeOne).toHaveBeenCalledTimes(2);
+    expect(organizeOne).toHaveBeenNthCalledWith(1, 'user_1', 'wrong_1', { force: false });
+    expect(organizeOne).toHaveBeenNthCalledWith(2, 'user_1', 'wrong_2', { force: false });
+    expect(result).toMatchObject({
+      organizedCount: 2,
+      skippedCount: 0,
+      items: [organizeResponse, organizeResponse],
+    });
+  });
+
+  it('moves an owned wrong question to an owned deck', async () => {
+    prisma.wrongQuestionDeck.findFirst.mockResolvedValue({ id: 'deck_1' });
+    prisma.wrongQuestion.findFirst.mockResolvedValue({ id: 'wrong_1' });
+    prisma.wrongQuestionDeckItem.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue({
+      ...item,
+      source: 'USER',
+      confidence: 1,
+      reason: '用户手动归入专题。',
+    });
+
+    const service = createService();
+    const result = await service.moveToDeck('user_1', 'deck_1', {
+      wrongQuestionId: 'wrong_1',
+      source: 'USER',
+    });
+
+    expect(prisma.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
+      where: { id: 'deck_1', userId: 'user_1' },
+      select: { id: true },
+    });
+    expect(prisma.wrongQuestion.findFirst).toHaveBeenCalledWith({
+      where: { id: 'wrong_1', userId: 'user_1' },
+      select: { id: true },
+    });
+    expect(prisma.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        wrongQuestionId: 'wrong_1',
+        deckId: { not: 'deck_1' },
+      },
+    });
+    expect(prisma.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
+      where: {
+        deckId_wrongQuestionId: {
+          deckId: 'deck_1',
+          wrongQuestionId: 'wrong_1',
+        },
+      },
+      update: { source: 'USER' },
+      create: {
+        userId: 'user_1',
+        deckId: 'deck_1',
+        wrongQuestionId: 'wrong_1',
+        source: 'USER',
+        confidence: 1,
+        reason: '用户手动归入专题。',
+      },
+    });
+    expect(result).toMatchObject({
+      deckId: 'deck_1',
+      wrongQuestionId: 'wrong_1',
+      source: 'USER',
+    });
+  });
+
+  it('rejects moveToDeck when the target deck is not owned by the current user', async () => {
+    prisma.wrongQuestionDeck.findFirst.mockResolvedValue(null);
+
+    const service = createService();
+
+    await expect(
+      service.moveToDeck('user_2', 'deck_1', {
+        wrongQuestionId: 'wrong_1',
+        source: 'USER',
+      }),
+    ).rejects.toMatchObject({ code: 'WRONG_QUESTION_DECK_NOT_FOUND' });
+    expect(prisma.wrongQuestion.findFirst).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
+  });
+
+  it('removes only the deck item relation for the current user', async () => {
+    prisma.wrongQuestionDeck.findFirst.mockResolvedValue({ id: 'deck_1' });
+    prisma.wrongQuestionDeckItem.deleteMany.mockResolvedValue({ count: 1 });
+
+    const service = createService();
+    const result = await service.removeDeckItem('user_1', 'deck_1', 'wrong_1');
+
+    expect(prisma.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
+      where: { id: 'deck_1', userId: 'user_1' },
+      select: { id: true },
+    });
+    expect(prisma.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        deckId: 'deck_1',
+        wrongQuestionId: 'wrong_1',
+      },
+    });
+    expect(prisma.wrongQuestion.delete).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeck.delete).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('lists deck questions with pagination and deck statistics', async () => {
+    const newerDate = new Date('2026-06-22T00:00:00.000Z');
+    const resolvedWrongQuestion = {
+      ...wrongQuestion,
+      id: 'wrong_2',
+      status: 'RESOLVED' as const,
+      knowledgePoints: [KNOWLEDGE_POINT, 'Stokes'],
+      updatedAt: newerDate,
+    };
+    const secondItem = {
+      ...item,
+      id: 'deck_item_2',
+      wrongQuestionId: 'wrong_2',
+      wrongQuestion: resolvedWrongQuestion,
+    };
+
+    prisma.wrongQuestionDeck.findFirst.mockResolvedValue(deck);
+    prisma.wrongQuestionDeckItem.findMany
+      .mockImplementationOnce(() => 'deckQuestionsQuery')
+      .mockImplementationOnce(() =>
+        Promise.resolve([
+          { deck, deckId: deck.id, wrongQuestion },
+          { deck, deckId: deck.id, wrongQuestion: resolvedWrongQuestion },
+        ]),
+      );
+    prisma.wrongQuestionDeckItem.count.mockReturnValue('countQuery');
+    prisma.$transaction.mockResolvedValue([[secondItem], 2]);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+
+    const service = createService();
+    const result = await service.listDeckQuestions('user_1', 'deck_1', {
+      page: 2,
+      pageSize: 1,
+    });
+
+    expect(prisma.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
+      where: { id: 'deck_1', userId: 'user_1' },
+    });
+    expect(prisma.wrongQuestionDeckItem.findMany).toHaveBeenNthCalledWith(1, {
+      where: { userId: 'user_1', deckId: 'deck_1' },
+      include: { wrongQuestion: true },
+      orderBy: { createdAt: 'asc' },
+      skip: 1,
+      take: 1,
+    });
+    expect(prisma.wrongQuestionDeckItem.count).toHaveBeenCalledWith({
+      where: { userId: 'user_1', deckId: 'deck_1' },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith([
+      'deckQuestionsQuery',
+      'countQuery',
+    ]);
+    expect(result).toMatchObject({
+      total: 2,
+      page: 2,
+      pageSize: 1,
+      items: [{ id: 'wrong_2', status: 'RESOLVED' }],
+      deck: {
+        id: 'deck_1',
+        totalCount: 2,
+        unresolvedCount: 1,
+        resolvedCount: 1,
+        lastUpdatedAt: newerDate.toISOString(),
+      },
+    });
+    expect(result.deck.topKnowledgePoints).toContain(KNOWLEDGE_POINT);
   });
 });
