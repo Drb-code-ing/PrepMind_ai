@@ -8,10 +8,13 @@ import {
   type UpdateLocalWrongQuestionRequest,
   type WrongQuestionListFilters,
 } from '@/lib/wrong-question-api';
+import { createWrongQuestionOrganizerApi } from '@/lib/wrong-question-organizer-api';
 import type { WrongQuestionRecord } from '@/lib/db';
 import { useUserStore } from '@/stores/userStore';
 
 const wrongQuestionApi = createWrongQuestionApi(apiClient);
+const wrongQuestionOrganizerApi = createWrongQuestionOrganizerApi(apiClient);
+const wrongQuestionOrganizerAllQueryKey = ['wrong-question-organizer'] as const;
 
 export const wrongQuestionQueryKeys = {
   all: ['wrong-questions'] as const,
@@ -47,8 +50,22 @@ export function useCreateWrongQuestion() {
       }
       return wrongQuestionApi.create(accessToken, record);
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: wrongQuestionQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: wrongQuestionOrganizerAllQueryKey });
+
+      if (!accessToken) {
+        return;
+      }
+
+      void wrongQuestionOrganizerApi
+        .organizeOne(accessToken, created.id, { force: false })
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: wrongQuestionOrganizerAllQueryKey });
+        })
+        .catch((error: unknown) => {
+          console.warn('保存错题成功，但自动归类失败。', error);
+        });
     },
   });
 }
