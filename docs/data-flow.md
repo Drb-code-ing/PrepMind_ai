@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-20。Phase 6.2 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入和 TutorAgent 策略层；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-21。Phase 6.3 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层和 KnowledgeVerifierAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -11,7 +11,7 @@
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 和 TutorAgent policy；当前只在 Chat 链路中使用 RouterAgent 与 TutorAgent 策略，不直接写库、不直接调用真实模型。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy 和 KnowledgeVerifierAgent policy；当前只在 Chat 链路中使用 RouterAgent、TutorAgent 策略与 RAG verifier，不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -63,6 +63,7 @@
   -> /api/chat
   -> chat-agent-runtime 调用 RouterAgent
   -> tutor route 时调用 TutorAgent policy 生成讲题策略 prompt
+  -> 有 accessToken 时检索知识库，命中后调用 KnowledgeVerifierAgent 评估资料可信度
   -> getAiProviderStatus() 判断 mock / live
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
   -> mock data stream 或 OpenAI / DeepSeek SSE
@@ -86,6 +87,8 @@
 - `tutor` route 会调用 TutorAgent policy，生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略。
 - Agent prompt 顺序为 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context`；当 RAG prompt 因 token 预算被丢弃时，短 Agent prompt 仍保留。
 - Chat 响应会带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`。
+- RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
+- KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
 - 流式输出使用渐进 Markdown 渲染：稳定段落进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
@@ -114,7 +117,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 再接入资料可信度评估 Agent。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent。
 
 文档处理数据流：
 
@@ -166,8 +169,10 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> ChatRuntimeProvider 将 accessToken 放入 /api/chat 请求体
   -> /api/chat 使用最新用户消息调用 /knowledge/search
   -> 无 token / 无资料 / 未命中 / 检索失败：普通 AI 回答
-  -> 命中知识库：注入 chunks 到 system prompt
+  -> 命中知识库：调用 KnowledgeVerifierAgent 评估 retrieved chunks
+  -> 注入 chunks 与 verifier guidance 到 system prompt
   -> AI 回答，并在助手消息末尾追加 Markdown 参考资料
+  -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
 
 当前 `/knowledge` 页面数据流：
@@ -217,6 +222,8 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
 - `POST /knowledge/search` 只检索当前用户 `DONE` 文档 chunks，不跨用户、不检索未处理或失败文档。
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
+- KnowledgeVerifierAgent 只消费 `/knowledge/search` 的命中结果，不单独读取数据库；无命中返回 `skipped`，可信资料返回 `trusted`，低分或过短资料返回 `insufficient`，包含“可能有误 / 待核对 / 不确定 / wrong / contradict”等风险标记时返回 `suspicious`，多个片段出现互斥答案标记时返回 `conflict`。
+- verifier 结果只影响 prompt guidance、引用区提示和 debug headers，不修改 Document / Chunk，不自动纠错用户资料。
 - `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
 - citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
 - `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
