@@ -121,6 +121,7 @@ export default function ErrorBookPage() {
   const [subjectFilter, setSubjectFilter] = useState('全部');
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [editingDeckName, setEditingDeckName] = useState('');
+  const editingDeckIdRef = useRef<string | null>(null);
   const [selected, setSelected] = useState<WrongQuestionRecord | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -282,6 +283,8 @@ export default function ErrorBookPage() {
   const currentSubjectGroup = decksQuery.data?.subjectGroup ?? null;
   const decks = decksQuery.data?.items ?? [];
   const currentDeck = deckQuestionsQuery.data?.deck ?? null;
+  const deckQuestionTotal =
+    deckQuestionsQuery.data?.total ?? deckQuestionsQuery.data?.items.length ?? 0;
   const cachedItemsById = useMemo(() => {
     return new Map(items.map((item) => [item.id, item]));
   }, [items]);
@@ -461,11 +464,14 @@ export default function ErrorBookPage() {
   };
 
   const startRenameDeck = (deck: WrongQuestionDeckResponse) => {
+    if (updateDeck.isPending) return;
+    editingDeckIdRef.current = deck.id;
     setEditingDeckId(deck.id);
     setEditingDeckName(deck.name);
   };
 
   const cancelRenameDeck = () => {
+    editingDeckIdRef.current = null;
     setEditingDeckId(null);
     setEditingDeckName('');
   };
@@ -482,7 +488,9 @@ export default function ErrorBookPage() {
         deckId: deck.id,
         request: { name: nextName, nameLocked: true },
       });
-      cancelRenameDeck();
+      if (editingDeckIdRef.current === deck.id) {
+        cancelRenameDeck();
+      }
       showNotice('专题名称已保存');
     } catch (error) {
       showNotice(getMutationErrorMessage(error), 'danger');
@@ -653,7 +661,7 @@ export default function ErrorBookPage() {
         ) : viewMode === 'deck' ? (
           <WrongQuestionList
             items={flatListItems}
-            hasAny={items.length > 0}
+            hasAny={deckQuestionTotal > 0}
             highlightedId={highlightedId}
             pendingDeleteId={pendingDeleteId}
             deletingId={deletingId}

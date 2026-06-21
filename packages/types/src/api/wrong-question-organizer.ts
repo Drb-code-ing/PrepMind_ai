@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { wrongQuestionSchema } from './wrong-question';
+import { wrongQuestionSchema } from '@repo/types/api/wrong-question';
 
 export const wrongQuestionDeckSourceSchema = z.enum(['AI', 'USER', 'SYSTEM']);
 export const wrongQuestionDeckItemSourceSchema = z.enum(['AI', 'USER', 'SYSTEM']);

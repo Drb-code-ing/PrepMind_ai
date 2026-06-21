@@ -89,6 +89,7 @@ export function useUpdateWrongQuestion() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: wrongQuestionQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: wrongQuestionOrganizerAllQueryKey });
     },
   });
 }
@@ -107,6 +108,7 @@ export function useDeleteWrongQuestion() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: wrongQuestionQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: wrongQuestionOrganizerAllQueryKey });
     },
   });
 }
