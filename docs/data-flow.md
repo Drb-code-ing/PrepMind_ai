@@ -1,17 +1,18 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-21。Phase 6.3 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层和 KnowledgeVerifierAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-22。Phase 6.4 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - 业务数据权威来源：WrongQuestion、ChatMessage、OCRRecord 均已迁移到 PostgreSQL。
+- 错题组织层职责：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 只负责学科卡片、专题 deck 和错题归属视图，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy 和 KnowledgeVerifierAgent policy；当前只在 Chat 链路中使用 RouterAgent、TutorAgent 策略与 RAG verifier，不直接写库、不直接调用真实模型。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy 和 WrongQuestionOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -117,7 +118,7 @@ ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.4 已接入错题组织 Agent。
 
 文档处理数据流：
 
@@ -248,6 +249,8 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 用户确认保存错题
   -> POST /wrong-questions
   -> 成功：PostgreSQL + Dexie 缓存
+  -> 非阻塞触发 WrongQuestionOrganizerAgent
+  -> upsert WrongQuestionSubjectGroup / WrongQuestionDeck / WrongQuestionDeckItem
   -> 失败：Dexie mutationQueue 暂存，后续自动补偿同步
 ```
 
@@ -264,6 +267,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `/ocr-records` 与 `/wrong-questions` 不接收 `data:` base64 图片；前端创建请求前会剥离本地 base64。
 - 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
 - 上传失败不阻塞 OCR，当前设备 Dexie 继续保留本地预览作为兜底。
+- 创建错题后的自动整理是非阻塞流程，整理失败不影响错题保存结果。
+- WrongQuestionOrganizerAgent 是确定性 policy，不调用真实模型、不读取 API key，只根据错题结构化字段和已有 deck 摘要输出组织建议。
+- 一个错题同一时间只属于当前用户一个 organizer deck，服务端通过 `userId + wrongQuestionId` 唯一约束防止同一错题被重复归入多个专题。
 
 服务端 OCRRecord API：
 
@@ -283,6 +289,46 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 | `POST` | `/wrong-questions` | 创建错题，`sourceGroupId` 用于同用户防重复 |
 | `PATCH` | `/wrong-questions/:id` | 更新题目字段、备注、掌握状态 |
 | `DELETE` | `/wrong-questions/:id` | 删除当前用户错题 |
+
+错题组织层数据流：
+
+```text
+打开错题本首页
+  -> GET /wrong-question-groups
+  -> 展示学科卡片、错题数、未掌握数和已掌握数
+
+进入某个学科
+  -> GET /wrong-question-groups/:subjectGroupId/decks
+  -> 展示专题 deck、知识点、难度和掌握进度
+
+进入某个专题
+  -> GET /wrong-question-decks/:deckId/questions
+  -> 复用 WrongQuestion response 展示专题内错题
+
+用户重命名专题
+  -> PATCH /wrong-question-decks/:deckId
+  -> nameLocked=true，后续 AI 建议不覆盖用户命名
+```
+
+服务端 Organizer API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/wrong-question-groups` | 读取当前用户学科卡片摘要 |
+| `GET` | `/wrong-question-groups/:subjectGroupId/decks` | 读取当前用户某学科下专题 deck |
+| `GET` | `/wrong-question-decks/:deckId/questions` | 读取当前用户某专题下错题列表 |
+| `POST` | `/wrong-question-organizer/organize/:wrongQuestionId` | 整理单道错题，写入组织层 |
+| `POST` | `/wrong-question-organizer/organize-batch` | 批量整理当前用户未归类错题 |
+| `PATCH` | `/wrong-question-decks/:deckId` | 更新专题名称、描述和锁定状态 |
+| `POST` | `/wrong-question-decks/:deckId/items` | 手动把错题移动到专题 |
+| `DELETE` | `/wrong-question-decks/:deckId/items/:wrongQuestionId` | 只移除专题关联，不删除错题 |
+
+组织层边界：
+
+- `WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 只服务错题本展示和手动整理，不修改 WrongQuestion 正文、答案、错因或备注。
+- Organizer 不推进 FSRS，不写 Card / ReviewLog / ReviewTask。
+- Organizer API 在线直连服务端，不进入 Dexie `mutationQueue`。
+- `/error-book` 若 organizer API 不可用，会回退到原有平铺错题列表，避免错题本不可用。
 
 权限边界：
 
@@ -392,6 +438,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 不进入队列的操作：
 
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
+- WrongQuestionOrganizer：学科卡片、专题 deck、移动和重命名是在线组织能力，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
@@ -423,6 +470,9 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - `ChatMessage`
 - `OcrRecord`
 - `WrongQuestion`
+- `WrongQuestionSubjectGroup`
+- `WrongQuestionDeck`
+- `WrongQuestionDeckItem`
 - `Question`
 - `Card`
 - `ReviewLog`（`clientMutationId` 用于 ReviewTask rating 幂等）

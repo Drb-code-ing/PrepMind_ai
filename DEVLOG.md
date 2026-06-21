@@ -683,6 +683,33 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-22（Day 17）
+
+**Phase 6.4 WrongQuestionOrganizerAgent 收尾**
+
+- 完成 Phase 6.4 错题组织层收尾：`WrongQuestionOrganizerAgent` 作为确定性 policy 推荐学科组与专题 deck，不调用真实模型、不读取 API key。
+- 错题组织层以 `WrongQuestionSubjectGroup`、`WrongQuestionDeck`、`WrongQuestionDeckItem` 为独立视图，只负责学科卡片、专题 deck 和错题归属，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
+- `/error-book` 已升级为学科卡片 -> 专题 deck -> 错题列表的下钻结构，并保留错题详情、备注、掌握状态、删除确认和加入复习。
+- 补强错题更新/删除后的 organizer 查询失效，修复 deck 重命名竞态、空状态统计和 agent package 运行时导入问题。
+- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/roadmap.md`、`docs/architecture.md` 和 `docs/ai-behavior-acceptance.md`，标记 Phase 6.4 完成，下一步进入 Phase 6.5。
+
+验证：
+- Docker PostgreSQL / Redis / MinIO 均在线。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/agent test` 通过，43 个测试全部通过。
+- `bun --cwd packages/agent typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --filter @repo/server test` 通过，19 个测试套件、169 个测试全部通过。
+- `bun --filter @repo/server test:e2e` 通过，10 个测试套件、29 个测试全部通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web test` 通过，210 个测试全部通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --cwd packages/database prisma migrate status --schema prisma/schema.prisma` 显示数据库 schema up to date。
+- `git diff --check` 无空白错误，仅保留既有 CRLF 提示。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -745,12 +772,14 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
 - Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
-**Phase 6：进行中，Phase 6.2 已完成**
+**Phase 6：进行中，Phase 6.4 已完成**
 
 - Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
 - Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
 - Phase 6.2 TutorAgent 策略层已完成：Tutor 路线可生成结构化讲题策略、策略 prompt 和 mock 策略元数据。
-- 分析型 Agent 仍保持阈值或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / WrongQuestionOrganizer / KnowledgeDedup。
+- Phase 6.3 KnowledgeVerifierAgent 已完成：RAG 命中后可评估资料可信度，并注入保守使用规则和资料核对提示。
+- Phase 6.4 WrongQuestionOrganizerAgent 已完成：错题本已升级为学科卡片、专题 deck 和错题列表下钻，组织层独立于 WrongQuestion 与 FSRS 事实层。
+- 分析型 Agent 仍保持阈值或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup。
 
 ---
 
@@ -780,9 +809,9 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 6.0：Agent Runtime 地基、共享 contract、RouterAgent、阈值 guard、运行 recorder 与降级链路。
 - [x] Phase 6.1：RouterAgent 接入 `/api/chat`，保留现有 streaming、RAG、OCR 上下文和成本保护。
 - [x] Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt 和 mock 策略元数据。
-- [ ] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
+- [x] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
+- [x] Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [ ] Phase 6：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
-- [ ] Phase 6：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [ ] Phase 6：`ReviewAgent / PlannerAgent / MemoryAgent`，按阈值或用户主动触发，生成复习分析、学习计划建议和长期记忆候选。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。
