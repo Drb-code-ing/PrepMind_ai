@@ -1,4 +1,6 @@
 import { createDataStreamResponse, formatDataStreamPart, streamText } from 'ai';
+import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
+import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 import { aiProvider, getAiProviderStatus } from '@/lib/ai-provider';
 import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
 import {
@@ -14,7 +16,6 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
-import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 
 const CHAT_ERROR_MESSAGE =
   'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
@@ -60,6 +61,7 @@ function createMockChatResponse(input: {
   messages: ChatContextMessage[];
   activeContext: ActiveStudyContext | null;
   knowledgeHits: KnowledgeSearchHit[];
+  knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ReturnType<typeof buildChatAgentDecision>;
 }) {
   const mockText = createMockChatText({
@@ -67,13 +69,23 @@ function createMockChatResponse(input: {
     latestUserText: getLatestUserText(input.messages),
     agentRoute: input.agentDecision.route,
     tutorIntent: input.agentDecision.tutorStrategy?.intent,
+    verifierStatus: input.knowledgeVerifierResult?.status,
   });
-  const responseText = appendCitationMarkdown(mockText, input.knowledgeHits);
+  const responseText = appendCitationMarkdown(
+    mockText,
+    input.knowledgeHits,
+    input.knowledgeVerifierResult,
+  );
 
   return createDataStreamResponse({
     headers: {
       'x-prepmind-ai-mode': 'mock',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
+      'x-prepmind-knowledge-verifier-status':
+        input.knowledgeVerifierResult?.status ?? 'skipped',
+      'x-prepmind-knowledge-verifier-chunks': String(
+        input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
+      ),
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -91,6 +103,7 @@ function createLiveChatResponse(input: {
   messages: ChatContextMessage[];
   maxOutputTokens: number;
   knowledgeHits: KnowledgeSearchHit[];
+  knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ReturnType<typeof buildChatAgentDecision>;
 }) {
   const result = streamText({
@@ -104,6 +117,11 @@ function createLiveChatResponse(input: {
     headers: {
       'x-prepmind-ai-mode': 'live',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
+      'x-prepmind-knowledge-verifier-status':
+        input.knowledgeVerifierResult?.status ?? 'skipped',
+      'x-prepmind-knowledge-verifier-chunks': String(
+        input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
+      ),
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -111,7 +129,11 @@ function createLiveChatResponse(input: {
         dataStream.write(formatDataStreamPart('text', chunk));
       }
 
-      const citationMarkdown = appendCitationMarkdown('', input.knowledgeHits);
+      const citationMarkdown = appendCitationMarkdown(
+        '',
+        input.knowledgeHits,
+        input.knowledgeVerifierResult,
+      );
       if (citationMarkdown.trim()) {
         dataStream.write(formatDataStreamPart('text', citationMarkdown));
       }
@@ -147,7 +169,10 @@ export async function POST(req: Request) {
       messages: normalizedMessages,
       logger: console,
     });
-    const knowledgeContextPrompt = buildKnowledgeContextPrompt(knowledgeSearch.hits);
+    const knowledgeContextPrompt = buildKnowledgeContextPrompt(
+      knowledgeSearch.hits,
+      knowledgeSearch.verifierResult,
+    );
     const additionalSystemPrompt = combineChatAdditionalPrompts(
       agentDecision.promptAddition,
       knowledgeContextPrompt,
@@ -164,6 +189,7 @@ export async function POST(req: Request) {
       additionalSystemPrompt: additionalSystemPrompt || undefined,
     });
     let citationHits = knowledgeSearch.hits;
+    let citationVerifierResult = knowledgeSearch.verifierResult;
 
     if (budget.exceedsInputLimit && knowledgeContextPrompt) {
       const fallbackAgentPrompt = combineChatAdditionalPrompts(agentDecision.promptAddition, '');
@@ -174,6 +200,7 @@ export async function POST(req: Request) {
       if (!fallbackBudget.exceedsInputLimit) {
         budget = fallbackBudget;
         citationHits = [];
+        citationVerifierResult = undefined;
       }
     }
 
@@ -195,6 +222,7 @@ export async function POST(req: Request) {
         messages: budget.modelMessages,
         activeContext: normalizedActiveContext,
         knowledgeHits: citationHits,
+        knowledgeVerifierResult: citationVerifierResult,
         agentDecision,
       });
     }
@@ -209,6 +237,7 @@ export async function POST(req: Request) {
       messages: budget.modelMessages,
       maxOutputTokens: budget.maxOutputTokens,
       knowledgeHits: citationHits,
+      knowledgeVerifierResult: citationVerifierResult,
       agentDecision,
     });
   } catch (error) {

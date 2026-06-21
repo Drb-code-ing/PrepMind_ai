@@ -1,3 +1,4 @@
+import type { KnowledgeVerifierStatus } from '@repo/agent/knowledge-verifier';
 import type { TutorIntent } from '@repo/agent/tutor';
 import type { AgentRoute } from '@repo/types/api/agent';
 
@@ -81,6 +82,7 @@ export function createMockChatText(input: {
   latestUserText?: string;
   agentRoute?: AgentRoute;
   tutorIntent?: TutorIntent;
+  verifierStatus?: KnowledgeVerifierStatus;
 }) {
   const latestUserText = input.latestUserText?.trim();
   const visibleQuestion = latestUserText
@@ -92,6 +94,7 @@ export function createMockChatText(input: {
   const metadataLines = [
     formatMockAgentRoute(input.agentRoute),
     formatMockTutorStrategy(input.tutorIntent),
+    formatMockKnowledgeVerifier(input.verifierStatus),
   ]
     .filter(Boolean)
     .join('\n');
@@ -139,4 +142,10 @@ function formatMockTutorStrategy(intent?: TutorIntent) {
   if (!intent) return '';
 
   return `TutorAgent strategy: ${intent}. Mock mode shows strategy metadata only and does not call a live model.`;
+}
+
+function formatMockKnowledgeVerifier(status?: KnowledgeVerifierStatus) {
+  if (!status || status === 'skipped') return '';
+
+  return `KnowledgeVerifierAgent status: ${status}. Mock mode shows verifier metadata only and does not call a live model.`;
 }

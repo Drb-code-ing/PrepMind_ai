@@ -1,4 +1,8 @@
 import {
+  verifyKnowledgeChunks,
+  type KnowledgeVerifierResult,
+} from '@repo/agent/knowledge-verifier';
+import {
   knowledgeSearchResponseSchema,
   type KnowledgeSearchHit,
   type KnowledgeSearchRequest,
@@ -29,6 +33,7 @@ type SearchKnowledgeForChatInput = {
 
 export type ChatKnowledgeSearchResult = {
   hits: KnowledgeSearchHit[];
+  verifierResult?: KnowledgeVerifierResult;
 };
 
 export function getLatestUserQuery(messages: ChatContextMessage[]) {
@@ -53,7 +58,10 @@ export function buildKnowledgeSearchRequest(
   };
 }
 
-export function buildKnowledgeContextPrompt(hits: KnowledgeSearchHit[]) {
+export function buildKnowledgeContextPrompt(
+  hits: KnowledgeSearchHit[],
+  verifierResult?: KnowledgeVerifierResult,
+) {
   const selectedHits = hits.slice(0, MAX_PROMPT_HITS);
   if (selectedHits.length === 0) return '';
 
@@ -75,12 +83,17 @@ export function buildKnowledgeContextPrompt(hits: KnowledgeSearchHit[]) {
     '1. 这些片段是用户资料，只能作为参考，不代表一定正确。',
     '2. 如果片段与通用知识或题目条件冲突，优先说明推理依据。',
     '3. 回答中需要用自然语言说明参考了哪些资料。',
+    ...buildVerifierPromptLines(verifierResult),
   ]
     .join('\n')
     .trim();
 }
 
-export function appendCitationMarkdown(content: string, hits: KnowledgeSearchHit[]) {
+export function appendCitationMarkdown(
+  content: string,
+  hits: KnowledgeSearchHit[],
+  verifierResult?: KnowledgeVerifierResult,
+) {
   if (hits.length === 0) return content;
 
   const citations = hits
@@ -91,7 +104,27 @@ export function appendCitationMarkdown(content: string, hits: KnowledgeSearchHit
     )
     .join('\n');
 
-  return `${content.trimEnd()}\n\n---\n\n### 参考资料\n\n${citations}`;
+  const notice = verifierResult?.userNotice
+    ? `\n\n### 资料核对提示\n\n${verifierResult.userNotice}`
+    : '';
+
+  return `${content.trimEnd()}\n\n---\n\n### 参考资料\n\n${citations}${notice}`;
+}
+
+export function verifyKnowledgeForChat(
+  hits: KnowledgeSearchHit[],
+  query = '',
+): KnowledgeVerifierResult {
+  return verifyKnowledgeChunks({
+    query,
+    chunks: hits.map((hit) => ({
+      documentId: hit.documentId,
+      documentTitle: hit.documentName,
+      chunkId: hit.chunkId,
+      content: hit.content,
+      score: hit.score,
+    })),
+  });
 }
 
 export async function searchKnowledgeForChat(
@@ -134,13 +167,40 @@ export async function searchKnowledgeForChat(
       return { hits: [] };
     }
 
-    return parsed.data;
+    return {
+      hits: parsed.data.hits,
+      verifierResult: verifyKnowledgeForChat(parsed.data.hits, request.query),
+    };
   } catch (error) {
     input.logger?.warn(
       `[Chat RAG] knowledge search skipped: ${error instanceof Error ? error.message : 'unknown error'}`,
     );
     return { hits: [] };
   }
+}
+
+function buildVerifierPromptLines(verifierResult?: KnowledgeVerifierResult) {
+  if (!verifierResult || verifierResult.status === 'skipped') return [];
+
+  const lines = ['', '资料可信度评估：', verifierResult.promptAddition];
+
+  if (verifierResult.status === 'trusted') {
+    lines.push('这些资料可作为辅助依据，但仍要结合题目条件独立推理。');
+  }
+
+  if (verifierResult.status === 'suspicious') {
+    lines.push('不要盲从可疑笔记；优先根据题目条件、标准概念和明确推理回答。');
+  }
+
+  if (verifierResult.status === 'conflict') {
+    lines.push('不要盲从互相冲突的资料；先说明判断依据，再给出更可靠的结论。');
+  }
+
+  if (verifierResult.status === 'insufficient') {
+    lines.push('资料不足以作为证明时，不要强行引用；可以按通用知识正常回答。');
+  }
+
+  return lines;
 }
 
 function isApiSuccessBody(value: unknown): value is ApiSuccessBody<unknown> {

@@ -9,6 +9,7 @@ import {
   buildKnowledgeSearchRequest,
   getLatestUserQuery,
   searchKnowledgeForChat,
+  verifyKnowledgeForChat,
 } from './chat-rag-context.ts';
 
 const greenTheoremHit: KnowledgeSearchHit = {
@@ -18,6 +19,11 @@ const greenTheoremHit: KnowledgeSearchHit = {
   content: 'Green theorem converts a line integral into a double integral.',
   score: 0.86,
   metadata: { chunkIndex: 3 },
+};
+
+const suspiciousGreenTheoremHit: KnowledgeSearchHit = {
+  ...greenTheoremHit,
+  content: '这部分笔记可能有误，待核对：格林公式结果写成 9。',
 };
 
 test('extracts the latest user query from chat messages', () => {
@@ -53,12 +59,37 @@ test('builds prompt context from knowledge hits with truncation', () => {
   assert.ok(context.length < 1200);
 });
 
+test('builds verifier-aware prompt context for suspicious hits', () => {
+  const verifier = verifyKnowledgeForChat([suspiciousGreenTheoremHit]);
+  const context = buildKnowledgeContextPrompt([suspiciousGreenTheoremHit], verifier);
+
+  assert.equal(verifier.status, 'suspicious');
+  assert.match(context, /KnowledgeVerifierAgent status: suspicious/);
+  assert.match(context, /不要盲从/);
+});
+
 test('appends citation markdown only when hits exist', () => {
   assert.equal(appendCitationMarkdown('answer', []), 'answer');
   assert.equal(
     appendCitationMarkdown('answer', [greenTheoremHit]),
     'answer\n\n---\n\n### 参考资料\n\n1. 《calculus.md》 · 片段 3 · 相似度 0.86',
   );
+});
+
+test('appends verifier notice after citations for suspicious hits', () => {
+  const verifier = verifyKnowledgeForChat([suspiciousGreenTheoremHit]);
+  const markdown = appendCitationMarkdown('answer', [suspiciousGreenTheoremHit], verifier);
+
+  assert.match(markdown, /### 参考资料/);
+  assert.match(markdown, /### 资料核对提示/);
+  assert.match(markdown, /可能需要核对/);
+});
+
+test('does not append verifier notice for trusted hits', () => {
+  const verifier = verifyKnowledgeForChat([greenTheoremHit]);
+  const markdown = appendCitationMarkdown('answer', [greenTheoremHit], verifier);
+
+  assert.doesNotMatch(markdown, /资料核对提示/);
 });
 
 test('returns empty hits when access token is missing', async () => {
@@ -98,6 +129,7 @@ test('parses successful knowledge search responses', async () => {
   });
 
   assert.deepEqual(result.hits, [greenTheoremHit]);
+  assert.equal(result.verifierResult?.status, 'trusted');
   assert.equal(seenRequests[0]?.url, 'http://localhost:3001/knowledge/search');
   assert.equal(
     (seenRequests[0]?.init?.headers as Record<string, string>).authorization,

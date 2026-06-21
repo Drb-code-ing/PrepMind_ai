@@ -53,6 +53,18 @@ test('does not show tutor strategy metadata for normal chat mock output', () => 
   assert.match(text, /\$\$f'\(x\)=2x\$\$/);
 });
 
+test('shows knowledge verifier status in mock output when provided', () => {
+  const text = createMockChatText({
+    hasActiveContext: false,
+    latestUserText: '根据我的笔记回答',
+    agentRoute: 'rag_answer',
+    verifierStatus: 'suspicious',
+  });
+
+  assert.match(text, /KnowledgeVerifierAgent/);
+  assert.match(text, /suspicious/);
+});
+
 test('budgets the system prompt, active OCR context, and recent messages together', () => {
   const activeContext: ActiveStudyContext = {
     type: 'ocr-question',
