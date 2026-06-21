@@ -681,10 +681,6 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --filter @repo/web build` 通过。
 - `bun --filter @repo/web test` 通过，199 个测试全部通过。
 
----
-
-## 2026-06-22（Day 17）
-
 **Phase 6.4 WrongQuestionOrganizerAgent 收尾**
 
 - 完成 Phase 6.4 错题组织层收尾：`WrongQuestionOrganizerAgent` 作为确定性 policy 推荐学科组与专题 deck，不调用真实模型、不读取 API key。

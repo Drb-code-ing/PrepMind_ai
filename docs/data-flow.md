@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-22。Phase 6.4 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-21。Phase 6.4 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
