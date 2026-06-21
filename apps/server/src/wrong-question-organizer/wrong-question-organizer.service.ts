@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { organizeWrongQuestion } from '@repo/agent';
+import { organizeWrongQuestion } from '@repo/agent/wrong-question-organizer';
 import { Prisma } from '@prisma/client';
 import type {
   MoveWrongQuestionToDeckRequest,
