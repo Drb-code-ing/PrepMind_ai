@@ -33,6 +33,9 @@ model User {
   ocrRecords       OcrRecord[]
   reviewTasks      ReviewTask[]
   reviewPreference ReviewPreference?
+  wrongQuestionSubjectGroups WrongQuestionSubjectGroup[]
+  wrongQuestionDecks         WrongQuestionDeck[]
+  wrongQuestionDeckItems     WrongQuestionDeckItem[]
 }
 
 model Account {
@@ -147,13 +150,83 @@ model WrongQuestion {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cards Card[]
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards     Card[]
+  deckItems WrongQuestionDeckItem[]
 
   @@unique([userId, sourceGroupId])
   @@index([userId, createdAt])
   @@index([userId, status])
   @@index([userId, subject])
+}
+
+enum WrongQuestionDeckSource {
+  AI
+  USER
+  SYSTEM
+}
+
+enum WrongQuestionDeckItemSource {
+  AI
+  USER
+  SYSTEM
+}
+
+model WrongQuestionSubjectGroup {
+  id          String   @id @default(cuid())
+  userId      String
+  subject     String
+  displayName String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decks WrongQuestionDeck[]
+
+  @@unique([userId, subject])
+  @@index([userId, sortOrder])
+  @@index([userId, updatedAt])
+}
+
+model WrongQuestionDeck {
+  id             String                  @id @default(cuid())
+  userId         String
+  subjectGroupId String
+  name           String
+  description    String?                 @db.Text
+  source         WrongQuestionDeckSource @default(AI)
+  nameLocked     Boolean                 @default(false)
+  confidence     Float                   @default(0.5)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectGroup WrongQuestionSubjectGroup @relation(fields: [subjectGroupId], references: [id], onDelete: Cascade)
+  items        WrongQuestionDeckItem[]
+
+  @@index([userId, subjectGroupId, updatedAt])
+  @@index([userId, updatedAt])
+}
+
+model WrongQuestionDeckItem {
+  id              String                      @id @default(cuid())
+  userId          String
+  deckId          String
+  wrongQuestionId String
+  reason          String?                     @db.Text
+  confidence      Float                       @default(0.5)
+  source          WrongQuestionDeckItemSource @default(AI)
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck          WrongQuestionDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  wrongQuestion WrongQuestion     @relation(fields: [wrongQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([deckId, wrongQuestionId])
+  @@index([userId, wrongQuestionId])
+  @@index([userId, deckId])
 }
 
 // ---------- FSRS 记忆系统 ----------
