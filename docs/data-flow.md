@@ -79,6 +79,7 @@
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 默认模型为 `deepseek-v4-flash`，也可通过 `AI_MODEL` 覆盖。
 - Chat 默认输入预算为 2500 tokens、输出上限为 1200 tokens，可通过 `AI_MAX_INPUT_TOKENS` 和 `AI_MAX_OUTPUT_TOKENS` 调整；超出输入预算会返回 413。
 - live 模式会在服务端打印不含密钥的用量估算日志，包含模式、模型、输入估算、输出上限、消息数量和是否带 active context。
+- AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
 - 完整聊天历史仍保存于 PostgreSQL 与 Dexie。
 - `activeStudyContext` 来自有效 OCR 题目，用于承接“这一步为什么这样做”等追问。
 - RouterAgent 会为 Chat 请求生成 route metadata，当前主要用于区分 `chat`、`tutor`、`rag_answer`、`study_plan`、`review_analysis` 和 `wrong_question_organize` 等路线。
@@ -97,6 +98,14 @@
 | `GET` | `/chat-messages` | 读取当前用户会话消息，支持 `conversationId` |
 | `POST` | `/chat-messages/sync` | 幂等同步当前会话快照，无 `conversationId` 时创建默认会话 |
 | `DELETE` | `/chat-messages` | 清空当前用户会话，支持 `conversationId` |
+
+Chat 同步保护：
+
+- 流式生成中不写 Dexie、不同步 `/chat-messages/sync`。
+- 流式结束后等待短稳定窗口，避免 `useChat` 节流合并最后文本时提前同步半截 assistant 内容。
+- 流式结束后若最后一条仍是 user，视为 assistant 未成功生成，不写 Dexie、不同步服务端。
+- 流式结束后若 assistant 内容为空白，视为无效回复，不写 Dexie、不同步服务端。
+- UI 显示“本次回答没有成功生成，请重试”，并记录 debug 信息；后续正常 assistant 生成后清除该错误。
 
 ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等同步。
 

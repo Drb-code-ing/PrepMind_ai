@@ -17,6 +17,12 @@ import { useChat } from '@ai-sdk/react';
 
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { ApiClientError } from '@/lib/api-client';
+import {
+  buildChatCompletionSignature,
+  CHAT_EMPTY_ASSISTANT_MESSAGE,
+  getChatCompletionGuard,
+  getChatSyncSettleMs,
+} from '@/lib/chat-completion-guard';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { buildChatRuntimeRequestBody } from '@/lib/chat-runtime-request';
 import { buildChatSyncSignature } from '@/lib/chat-sync';
@@ -99,6 +105,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const inputDraftClearReadyRef = useRef(false);
   const lastServerSyncKeyRef = useRef('');
   const inFlightServerSyncKeyRef = useRef('');
+  const lastEmptyAssistantUserMessageIdRef = useRef('');
+  const streamStartedRef = useRef(false);
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
   const chatTimestampsRef = useRef(chatTimestamps);
   const activeStudyContextRef = useRef(activeStudyContext);
@@ -138,6 +146,11 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     activeStudyContextRef.current = activeStudyContext;
     accessTokenRef.current = accessToken;
   });
+
+  const messageSyncSignature = useMemo(
+    () => buildChatCompletionSignature(messages as RuntimeMessage[]),
+    [messages],
+  );
 
   const chatMessagesQuery = useChatMessages(conversationId ? { conversationId } : {});
   const syncChatMessages = useSyncChatMessages();
@@ -227,6 +240,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       inputDraftClearReadyRef.current = false;
       lastServerSyncKeyRef.current = '';
       inFlightServerSyncKeyRef.current = '';
+      lastEmptyAssistantUserMessageIdRef.current = '';
+      streamStartedRef.current = false;
       prevMsgIdsRef.current = new Set();
       queueMicrotask(() => {
         setMessages([]);
@@ -245,6 +260,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     inputDraftClearReadyRef.current = false;
     lastServerSyncKeyRef.current = '';
     inFlightServerSyncKeyRef.current = '';
+    lastEmptyAssistantUserMessageIdRef.current = '';
+    streamStartedRef.current = false;
     queueMicrotask(() => {
       if (cancelled) return;
       setIsHydrated(false);
@@ -341,24 +358,67 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const storedMessages = toStoredMessages(messagesRef.current as RuntimeMessage[]);
-    if (storedMessages.length === 0) return;
-
-    void saveChatToDb(storedMessages);
-
-    if (suppressNextServerSyncRef.current) {
-      suppressNextServerSyncRef.current = false;
+    if (isLoading) {
+      streamStartedRef.current = true;
       return;
     }
 
-    if (!isLoading) {
+    const settleMs = getChatSyncSettleMs({
+      streamStarted: streamStartedRef.current,
+      throttleMs: STREAM_UI_THROTTLE_MS,
+    });
+    const syncTimer = window.setTimeout(() => {
+      const runtimeMessages = messagesRef.current as RuntimeMessage[];
+      const completionGuard = getChatCompletionGuard({
+        messages: runtimeMessages,
+        isLoading: false,
+        streamStarted: streamStartedRef.current,
+      });
+      if (!completionGuard.canSync) {
+        if (
+          completionGuard.emptyAssistantReply &&
+          completionGuard.userMessageId &&
+          completionGuard.userMessageId !== lastEmptyAssistantUserMessageIdRef.current
+        ) {
+          lastEmptyAssistantUserMessageIdRef.current = completionGuard.userMessageId;
+          setChatError(completionGuard.message);
+          console.warn('[Chat completion guard] Empty assistant reply after stream completion', {
+            userMessageId: completionGuard.userMessageId,
+            messageCount: runtimeMessages.length,
+          });
+          streamStartedRef.current = false;
+        }
+        return;
+      }
+
+      if (chatError === CHAT_EMPTY_ASSISTANT_MESSAGE) {
+        setChatError(null);
+      }
+      lastEmptyAssistantUserMessageIdRef.current = '';
+      streamStartedRef.current = false;
+
+      const storedMessages = toStoredMessages(runtimeMessages);
+      if (storedMessages.length === 0) return;
+
+      void saveChatToDb(storedMessages);
+
+      if (suppressNextServerSyncRef.current) {
+        suppressNextServerSyncRef.current = false;
+        return;
+      }
+
       void syncStoredMessagesToServer(storedMessages, conversationId, '[ChatMessages sync]');
-    }
+    }, settleMs);
+
+    return () => {
+      window.clearTimeout(syncTimer);
+    };
   }, [
     conversationId,
+    chatError,
     isHydrated,
     isLoading,
-    messages.length,
+    messageSyncSignature,
     saveChatToDb,
     syncStoredMessagesToServer,
     toStoredMessages,

@@ -72,6 +72,7 @@ bun --cwd packages/fsrs test
 - `apps/server/.env`：server/e2e 在服务目录运行时读取。
 - `apps/web/.env.local`：Next.js API Route 使用。
 - Chat 开发默认走本地 mock：`AI_PROVIDER_MODE` 未设置或为 `mock` 时不调用真实模型；真实验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`，live 默认模型为 `deepseek-v4-flash`。
+- AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
 
 推荐数据库连接：
 
@@ -114,6 +115,7 @@ mcp -> ai, fsrs, rag, types
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。
 - Chat RAG：`/api/chat` 已在有 access token 时调用 `/knowledge/search`，命中后把 chunks 注入 system prompt，并在助手消息末尾追加 Markdown “参考资料”；未上传资料、未命中或检索失败时仍降级普通 AI 回答。
+- Chat live 流式结束后会等待短稳定窗口并校验 assistant 内容；若最后仍是 user 或 assistant 为空，不写 Dexie、不同步服务端，并提示“本次回答没有成功生成，请重试”。
 - Agent Chat：`/api/chat` 已接入 `chat-agent-runtime` adapter，每次请求会通过 RouterAgent 生成 route metadata；`tutor` route 会调用 TutorAgent policy，生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略。
 - Agent headers：Chat 响应带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`。
 - Agent prompt 顺序：`BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context`；RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留。

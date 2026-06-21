@@ -658,6 +658,26 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-21（Day 16）
+
+**Phase 6.3 前 AI 行为回归与 Chat 流式兜底补强**
+
+- 启动 Docker PostgreSQL / Redis / MinIO，确认 Prisma migration 状态为 up to date，前后端均可正常启动。
+- 切换 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`，使用 `deepseek-v4-flash` 完成小样本 live 回归验收。
+- 验证普通 Chat live 能正常返回并同步；TutorAgent live 能进入 `tutor` route 与 `socratic_hint` 策略。
+- 发现一次 Tutor live 流式结束后页面只保留用户消息、未落 assistant 的偶发现象；后续同类 UI 与直接 API 样本可正常返回，判断为流式完成/消息落库边界缺少兜底。
+- 新增 `chat-completion-guard`：流式生成中不写 Dexie、不同步服务端；流式结束后等待短稳定窗口，若最后仍是 user、assistant 为空或最后文本仍在节流合并中，阻止提前同步并提示“本次回答没有成功生成，请重试”。
+- 新增 `docs/ai-behavior-acceptance.md`，明确 mock 只证明工程链路，Chat / RAG / Agent 行为改动需要小样本 live smoke；`RAG_EMBEDDING_PROVIDER=fake` 不能证明 RAG 语义命中质量。
+- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md` 和 `docs/data-flow.md` 的 AI 验收与 Chat 同步保护边界。
+
+验证：
+- `node --experimental-strip-types --test apps/web/src/lib/chat-completion-guard.test.mts` 通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web build` 通过。
+- `bun --filter @repo/web test` 通过，199 个测试全部通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**

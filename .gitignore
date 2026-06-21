@@ -25,6 +25,7 @@ dist/
 
 # Local test artifacts
 .playwright-mcp/
+.logs/
 
 # OS
 .DS_Store
