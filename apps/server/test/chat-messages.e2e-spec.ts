@@ -138,6 +138,30 @@ describe('ChatMessagesController (e2e)', () => {
     });
   });
 
+  it('rejects incomplete chat snapshots before replacing server history', async () => {
+    const owner = await registerUser('chat-incomplete');
+
+    await request(server)
+      .post('/chat-messages/sync')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({
+        messages: [
+          {
+            id: `user-only-${Date.now()}`,
+            role: 'USER',
+            content: 'This request did not receive an assistant reply.',
+            order: 0,
+            createdAt: '2026-06-21T00:00:00.000Z',
+          },
+        ],
+      })
+      .expect(400)
+      .expect((response) => {
+        const body = getErrorBody(response);
+        expect(body.error.code).toBe('CHAT_SYNC_INCOMPLETE_ASSISTANT');
+      });
+  });
+
   async function registerUser(label: string) {
     const email = `chat-message-${label}-${Date.now()}-${Math.random()
       .toString(16)

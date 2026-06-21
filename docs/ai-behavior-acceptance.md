@@ -40,6 +40,8 @@ $env:AI_MAX_OUTPUT_TOKENS='1200'
 - 如果流式结束后最后一条仍是 user，前端不得把该会话快照同步为成功对话。
 - 如果流式结束后 assistant 内容为空白，前端不得同步该空回复。
 - 同步前必须等待短稳定窗口，避免前端节流合并最后 token 时把半截 assistant 内容落库。
+- 页面隐藏或关闭时不得把流式中的半截消息写入 Dexie。
+- 后端 `/chat-messages/sync` 必须拒绝非空但没有非空 assistant 收尾的快照。
 - UI 显示 `本次回答没有成功生成，请重试`，并记录 debug 信息。
 - 正常生成 assistant 内容后，兜底错误应自动清除。
 

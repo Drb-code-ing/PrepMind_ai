@@ -30,6 +30,24 @@ export function getChatSyncSettleMs(input: { streamStarted?: boolean; throttleMs
   return Math.max(input.throttleMs * 2 + 40, 120);
 }
 
+export function shouldPersistChatSnapshot(input: ChatCompletionGuardInput) {
+  return getChatCompletionGuard(input).canSync;
+}
+
+export function trimIncompleteChatTail<T extends ChatCompletionMessage>(messages: T[]): T[] {
+  let lastIndex = messages.length - 1;
+
+  while (lastIndex >= 0) {
+    const message = messages[lastIndex];
+    if (message.role === 'assistant' && message.content.trim()) {
+      return messages.slice(0, lastIndex + 1);
+    }
+    lastIndex -= 1;
+  }
+
+  return [];
+}
+
 export function getChatCompletionGuard(
   input: ChatCompletionGuardInput,
 ): ChatCompletionGuardResult {

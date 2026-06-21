@@ -34,6 +34,8 @@ export class ChatMessagesService {
   }
 
   async sync(userId: string, input: SyncChatMessagesRequest) {
+    this.assertCompleteSyncSnapshot(input);
+
     const conversation = await this.prisma.$transaction(async (tx) => {
       const conversation = await this.resolveConversationForSync(
         userId,
@@ -138,6 +140,25 @@ export class ChatMessagesService {
 
     const title = firstUserMessage.content.replace(/\s+/g, ' ').trim();
     return title ? title.slice(0, 40) : 'New chat';
+  }
+
+  private assertCompleteSyncSnapshot(input: SyncChatMessagesRequest) {
+    if (input.messages.length === 0) return;
+
+    const latestMessage = [...input.messages]
+      .sort((a, b) => a.order - b.order)
+      .at(-1);
+    if (
+      !latestMessage ||
+      latestMessage.role !== 'ASSISTANT' ||
+      !latestMessage.content.trim()
+    ) {
+      throw new AppError(
+        'CHAT_SYNC_INCOMPLETE_ASSISTANT',
+        '本次回答没有生成完成，请重试',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   private toResponse(message: ChatMessageRecord) {

@@ -22,6 +22,8 @@ import {
   CHAT_EMPTY_ASSISTANT_MESSAGE,
   getChatCompletionGuard,
   getChatSyncSettleMs,
+  shouldPersistChatSnapshot,
+  trimIncompleteChatTail,
 } from '@/lib/chat-completion-guard';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { buildChatRuntimeRequestBody } from '@/lib/chat-runtime-request';
@@ -107,6 +109,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const inFlightServerSyncKeyRef = useRef('');
   const lastEmptyAssistantUserMessageIdRef = useRef('');
   const streamStartedRef = useRef(false);
+  const isLoadingRef = useRef(false);
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
   const chatTimestampsRef = useRef(chatTimestamps);
   const activeStudyContextRef = useRef(activeStudyContext);
@@ -145,6 +148,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     chatTimestampsRef.current = chatTimestamps;
     activeStudyContextRef.current = activeStudyContext;
     accessTokenRef.current = accessToken;
+    isLoadingRef.current = isLoading;
   });
 
   const messageSyncSignature = useMemo(
@@ -174,6 +178,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     },
     [userId],
   );
+
+  const trimStoredMessages = useCallback((storedMessages: StoredMessage[]) => {
+    const runtimeMessages = trimIncompleteChatTail(toRuntimeMessages(storedMessages));
+    const validMessageIds = new Set(runtimeMessages.map((message) => message.id));
+    return storedMessages.filter((message) => validMessageIds.has(message.id));
+  }, []);
 
   const saveChatToDb = useCallback(
     async (storedMessages: StoredMessage[]) => {
@@ -276,16 +286,21 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       .then((localMessages) => {
         if (cancelled) return;
 
-        setMessages(toRuntimeMessages(localMessages));
-        setChatTimestamps(toTimestampMap(localMessages));
-        prevMsgIdsRef.current = new Set(localMessages.map((message) => message.id));
+        const validLocalMessages = trimStoredMessages(localMessages);
+        if (validLocalMessages.length !== localMessages.length) {
+          void saveChatToDb(validLocalMessages);
+        }
+
+        setMessages(toRuntimeMessages(validLocalMessages));
+        setChatTimestamps(toTimestampMap(validLocalMessages));
+        prevMsgIdsRef.current = new Set(validLocalMessages.map((message) => message.id));
         setIsHydrated(true);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [setMessages, userId]);
+  }, [saveChatToDb, setMessages, trimStoredMessages, userId]);
 
   useEffect(() => {
     const serverData = chatMessagesQuery.data;
@@ -299,16 +314,17 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       }
 
       if (serverData.messages.length > 0) {
-        const serverRuntimeMessages = toRuntimeMessages(serverData.messages);
+        const validServerMessages = trimStoredMessages(serverData.messages);
+        const serverRuntimeMessages = toRuntimeMessages(validServerMessages);
         suppressNextServerSyncRef.current = true;
-        setChatTimestamps(toTimestampMap(serverData.messages));
+        setChatTimestamps(toTimestampMap(validServerMessages));
         lastServerSyncKeyRef.current = buildChatSyncSignature(
-          serverData.messages,
+          validServerMessages,
           serverData.conversationId,
         );
-        prevMsgIdsRef.current = new Set(serverData.messages.map((message) => message.id));
+        prevMsgIdsRef.current = new Set(validServerMessages.map((message) => message.id));
         setMessages(serverRuntimeMessages);
-        void saveChatToDb(serverData.messages);
+        void saveChatToDb(validServerMessages);
         return;
       }
 
@@ -327,6 +343,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     saveChatToDb,
     setMessages,
     syncStoredMessagesToServer,
+    trimStoredMessages,
     toStoredMessages,
     userId,
   ]);
@@ -428,7 +445,18 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const flush = () => {
       if (!userId) return;
-      const storedMessages = toStoredMessages(messagesRef.current as RuntimeMessage[]);
+      const runtimeMessages = messagesRef.current as RuntimeMessage[];
+      if (
+        !shouldPersistChatSnapshot({
+          messages: runtimeMessages,
+          isLoading: isLoadingRef.current,
+          streamStarted: streamStartedRef.current,
+        })
+      ) {
+        return;
+      }
+
+      const storedMessages = toStoredMessages(runtimeMessages);
       if (storedMessages.length === 0) return;
 
       void db.transaction('rw', db.messages, async () => {

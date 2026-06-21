@@ -105,6 +105,9 @@ Chat 同步保护：
 - 流式结束后等待短稳定窗口，避免 `useChat` 节流合并最后文本时提前同步半截 assistant 内容。
 - 流式结束后若最后一条仍是 user，视为 assistant 未成功生成，不写 Dexie、不同步服务端。
 - 流式结束后若 assistant 内容为空白，视为无效回复，不写 Dexie、不同步服务端。
+- 页面隐藏或关闭时的 Dexie flush 也会复用同一完成态校验，不保存流式中的半截内容。
+- 本地或服务端历史恢复时，会裁掉尾部 user-only 或空 assistant 的不完整历史。
+- 后端 `/chat-messages/sync` 会拒绝非空但没有非空 `ASSISTANT` 收尾的快照，作为服务端最后防线。
 - UI 显示“本次回答没有成功生成，请重试”，并记录 debug 信息；后续正常 assistant 生成后清除该错误。
 
 ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等同步。

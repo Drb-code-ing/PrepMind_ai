@@ -6,6 +6,8 @@ import {
   CHAT_EMPTY_ASSISTANT_MESSAGE,
   getChatCompletionGuard,
   getChatSyncSettleMs,
+  shouldPersistChatSnapshot,
+  trimIncompleteChatTail,
 } from './chat-completion-guard.ts';
 
 const baseMessages = [
@@ -151,4 +153,53 @@ test('chat completion signature changes when assistant content changes without l
 test('waits longer than the stream UI throttle before syncing completed streams', () => {
   assert.equal(getChatSyncSettleMs({ streamStarted: false, throttleMs: 80 }), 0);
   assert.ok(getChatSyncSettleMs({ streamStarted: true, throttleMs: 80 }) > 80);
+});
+
+test('does not persist snapshots while a stream is still loading', () => {
+  assert.equal(
+    shouldPersistChatSnapshot({
+      isLoading: true,
+      streamStarted: true,
+      messages: [
+        baseMessages[0],
+        {
+          id: 'msg-2',
+          role: 'assistant' as const,
+          content: '$$f',
+        },
+      ],
+    }),
+    false,
+  );
+});
+
+test('trims incomplete user-only and blank assistant tails from hydrated history', () => {
+  const completeTurn = baseMessages;
+  assert.deepEqual(
+    trimIncompleteChatTail([
+      ...completeTurn,
+      {
+        id: 'msg-3',
+        role: 'user' as const,
+        content: 'Why did this fail?',
+      },
+    ]),
+    completeTurn,
+  );
+  assert.deepEqual(
+    trimIncompleteChatTail([
+      ...completeTurn,
+      {
+        id: 'msg-3',
+        role: 'user' as const,
+        content: 'Why did this fail?',
+      },
+      {
+        id: 'msg-4',
+        role: 'assistant' as const,
+        content: '   ',
+      },
+    ]),
+    completeTurn,
+  );
 });

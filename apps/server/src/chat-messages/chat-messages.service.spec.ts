@@ -96,6 +96,13 @@ describe('ChatMessagesService', () => {
           order: 0,
           createdAt: '2026-06-11T00:00:00.000Z',
         },
+        {
+          id: 'msg_2',
+          role: 'ASSISTANT',
+          content: 'hello',
+          order: 1,
+          createdAt: '2026-06-11T00:00:01.000Z',
+        },
       ],
     });
 
@@ -115,6 +122,15 @@ describe('ChatMessagesService', () => {
           content: 'hi',
           order: 0,
           createdAt: new Date('2026-06-11T00:00:00.000Z'),
+        },
+        {
+          id: 'msg_2',
+          userId: 'user_1',
+          conversationId: 'conv_1',
+          role: 'ASSISTANT',
+          content: 'hello',
+          order: 1,
+          createdAt: new Date('2026-06-11T00:00:01.000Z'),
         },
       ],
       skipDuplicates: true,
@@ -143,6 +159,13 @@ describe('ChatMessagesService', () => {
           order: 0,
           createdAt: '2026-06-11T00:00:00.000Z',
         },
+        {
+          id: 'msg_2',
+          role: 'ASSISTANT',
+          content: 'hello',
+          order: 1,
+          createdAt: '2026-06-11T00:00:01.000Z',
+        },
       ],
     });
 
@@ -151,6 +174,57 @@ describe('ChatMessagesService', () => {
         skipDuplicates: true,
       }),
     );
+  });
+
+  it('rejects syncing a completed snapshot whose latest message is still user-only', async () => {
+    const service = createService();
+
+    await expect(
+      service.sync('user_1', {
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'why no answer',
+            order: 0,
+            createdAt: '2026-06-11T00:00:00.000Z',
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'CHAT_SYNC_INCOMPLETE_ASSISTANT',
+      statusCode: 400,
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects syncing a completed snapshot with a blank assistant tail', async () => {
+    const service = createService();
+
+    await expect(
+      service.sync('user_1', {
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'why no answer',
+            order: 0,
+            createdAt: '2026-06-11T00:00:00.000Z',
+          },
+          {
+            id: 'msg_2',
+            role: 'ASSISTANT',
+            content: '   ',
+            order: 1,
+            createdAt: '2026-06-11T00:00:01.000Z',
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'CHAT_SYNC_INCOMPLETE_ASSISTANT',
+      statusCode: 400,
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects syncing into an unowned conversation', async () => {

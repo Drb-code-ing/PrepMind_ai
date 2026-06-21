@@ -667,12 +667,17 @@ f5a2eb1 style: soften cartoon theme palette
 - 验证普通 Chat live 能正常返回并同步；TutorAgent live 能进入 `tutor` route 与 `socratic_hint` 策略。
 - 发现一次 Tutor live 流式结束后页面只保留用户消息、未落 assistant 的偶发现象；后续同类 UI 与直接 API 样本可正常返回，判断为流式完成/消息落库边界缺少兜底。
 - 新增 `chat-completion-guard`：流式生成中不写 Dexie、不同步服务端；流式结束后等待短稳定窗口，若最后仍是 user、assistant 为空或最后文本仍在节流合并中，阻止提前同步并提示“本次回答没有成功生成，请重试”。
+- 补强 ChatMessage 服务端同步防线：`/chat-messages/sync` 拒绝没有非空 `ASSISTANT` 收尾的非空快照，防止前端兜底漏掉时污染 PostgreSQL。
+- 补强前端恢复与离开页面保护：历史恢复时裁掉尾部 user-only / 空 assistant，页面隐藏或关闭时不把流式中的半截内容写入 Dexie。
 - 新增 `docs/ai-behavior-acceptance.md`，明确 mock 只证明工程链路，Chat / RAG / Agent 行为改动需要小样本 live smoke；`RAG_EMBEDDING_PROVIDER=fake` 不能证明 RAG 语义命中质量。
 - 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md` 和 `docs/data-flow.md` 的 AI 验收与 Chat 同步保护边界。
 
 验证：
 - `node --experimental-strip-types --test apps/web/src/lib/chat-completion-guard.test.mts` 通过。
+- `bun --filter @repo/server test -- chat-messages.service.spec.ts` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand chat-messages.e2e-spec.ts` 通过。
 - `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/server lint` 通过。
 - `bun --filter @repo/web build` 通过。
 - `bun --filter @repo/web test` 通过，199 个测试全部通过。
 
