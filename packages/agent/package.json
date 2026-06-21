@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./knowledge-verifier": "./src/nodes/knowledge-verifier.ts",
     "./router": "./src/router.ts",
-    "./tutor": "./src/nodes/tutor.ts"
+    "./tutor": "./src/nodes/tutor.ts",
+    "./wrong-question-organizer": "./src/nodes/wrong-question-organizer.ts"
   },
   "scripts": {
     "lint": "eslint src/",
