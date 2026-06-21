@@ -103,7 +103,7 @@ export class WrongQuestionOrganizerService {
   async organizeOne(
     userId: string,
     wrongQuestionId: string,
-    _input: OrganizeWrongQuestionRequest,
+    input: OrganizeWrongQuestionRequest,
   ): Promise<OrganizeWrongQuestionResponse> {
     const wrongQuestion = await this.prisma.wrongQuestion.findFirst({
       where: { id: wrongQuestionId, userId },
@@ -111,6 +111,41 @@ export class WrongQuestionOrganizerService {
 
     if (!wrongQuestion) {
       throw this.wrongQuestionNotFound();
+    }
+
+    if (!input.force) {
+      const existingItem = await this.prisma.wrongQuestionDeckItem.findFirst({
+        where: { userId, wrongQuestionId },
+        include: {
+          deck: {
+            include: { subjectGroup: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (existingItem) {
+        const stats = await this.loadGroupStats(userId, [
+          existingItem.deck.subjectGroupId,
+        ]);
+
+        return {
+          subjectGroup: this.toSubjectGroupResponse(
+            existingItem.deck.subjectGroup,
+            stats.groups.get(existingItem.deck.subjectGroupId),
+          ),
+          deck: this.toDeckResponse(
+            existingItem.deck,
+            stats.decks.get(existingItem.deckId),
+          ),
+          item: this.toDeckItemResponse(existingItem),
+          createdSubjectGroup: false,
+          createdDeck: false,
+          createdItem: false,
+          reason: existingItem.reason ?? '',
+          confidence: existingItem.confidence,
+        };
+      }
     }
 
     const firstPass = organizeWrongQuestion({
@@ -177,7 +212,7 @@ export class WrongQuestionOrganizerService {
       where: { userId, deckId: deck.id, wrongQuestionId },
       select: { id: true },
     });
-    const item = await this.prisma.wrongQuestionDeckItem.upsert({
+    const upsertDeckItemArgs: Prisma.WrongQuestionDeckItemUpsertArgs = {
       where: {
         deckId_wrongQuestionId: {
           deckId: deck.id,
@@ -197,7 +232,20 @@ export class WrongQuestionOrganizerService {
         confidence: policy.confidence,
         source: 'AI',
       },
-    });
+    };
+    const item = input.force
+      ? await this.prisma.$transaction(async (tx) => {
+          await tx.wrongQuestionDeckItem.deleteMany({
+            where: {
+              userId,
+              wrongQuestionId,
+              deckId: { not: deck.id },
+            },
+          });
+
+          return tx.wrongQuestionDeckItem.upsert(upsertDeckItemArgs);
+        })
+      : await this.prisma.wrongQuestionDeckItem.upsert(upsertDeckItemArgs);
     const stats = await this.loadGroupStats(userId, [subjectGroup.id]);
 
     return {
@@ -286,31 +334,34 @@ export class WrongQuestionOrganizerService {
       throw this.wrongQuestionNotFound();
     }
 
-    await this.prisma.wrongQuestionDeckItem.deleteMany({
-      where: {
-        userId,
-        wrongQuestionId: input.wrongQuestionId,
-        deckId: { not: deckId },
-      },
-    });
-    const item = await this.prisma.wrongQuestionDeckItem.upsert({
-      where: {
-        deckId_wrongQuestionId: {
+    const item = await this.prisma.$transaction(async (tx) => {
+      await tx.wrongQuestionDeckItem.deleteMany({
+        where: {
+          userId,
+          wrongQuestionId: input.wrongQuestionId,
+          deckId: { not: deckId },
+        },
+      });
+
+      return tx.wrongQuestionDeckItem.upsert({
+        where: {
+          deckId_wrongQuestionId: {
+            deckId,
+            wrongQuestionId: input.wrongQuestionId,
+          },
+        },
+        update: {
+          source: input.source,
+        },
+        create: {
+          userId,
           deckId,
           wrongQuestionId: input.wrongQuestionId,
+          source: input.source,
+          confidence: 1,
+          reason: '用户手动归入专题。',
         },
-      },
-      update: {
-        source: input.source,
-      },
-      create: {
-        userId,
-        deckId,
-        wrongQuestionId: input.wrongQuestionId,
-        source: input.source,
-        confidence: 1,
-        reason: '用户手动归入专题。',
-      },
+      });
     });
 
     return this.toDeckItemResponse(item);
@@ -364,9 +415,22 @@ export class WrongQuestionOrganizerService {
           subjectGroupId: { in: subjectGroupIds },
         },
       },
-      include: {
-        deck: true,
-        wrongQuestion: true,
+      select: {
+        deckId: true,
+        wrongQuestionId: true,
+        deck: {
+          select: {
+            subjectGroupId: true,
+          },
+        },
+        wrongQuestion: {
+          select: {
+            id: true,
+            status: true,
+            knowledgePoints: true,
+            updatedAt: true,
+          },
+        },
       },
     });
 
@@ -383,7 +447,11 @@ export class WrongQuestionOrganizerService {
 
       groupStat.deckIds.add(item.deckId);
       deckStat.deckIds.add(item.deckId);
-      applyQuestionToStats(groupStat, item.wrongQuestion);
+      if (!groupStat.questionIds.has(item.wrongQuestionId)) {
+        groupStat.questionIds.add(item.wrongQuestionId);
+        applyQuestionToStats(groupStat, item.wrongQuestion);
+      }
+      deckStat.questionIds.add(item.wrongQuestionId);
       applyQuestionToStats(deckStat, item.wrongQuestion);
     }
 
@@ -517,7 +585,10 @@ function getOrCreateCountStats(map: Map<string, CountStats>, key: string): Count
   return created;
 }
 
-function applyQuestionToStats(stats: CountStats, wrongQuestion: WrongQuestionRecord): void {
+function applyQuestionToStats(
+  stats: CountStats,
+  wrongQuestion: StatsWrongQuestionRecord,
+): void {
   stats.totalCount += 1;
   if (wrongQuestion.status === 'RESOLVED') {
     stats.resolvedCount += 1;
@@ -543,6 +614,7 @@ function emptyStats(): CountStats {
     unresolvedCount: 0,
     resolvedCount: 0,
     deckIds: new Set(),
+    questionIds: new Set(),
     knowledgePoints: new Map(),
     lastUpdatedAt: null,
   };
@@ -568,6 +640,10 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 }
 
 type WrongQuestionRecord = Prisma.WrongQuestionGetPayload<object>;
+type StatsWrongQuestionRecord = Pick<
+  WrongQuestionRecord,
+  'id' | 'status' | 'knowledgePoints' | 'updatedAt'
+>;
 type WrongQuestionSubjectGroupRecord = Prisma.WrongQuestionSubjectGroupGetPayload<object>;
 type WrongQuestionDeckRecord = Prisma.WrongQuestionDeckGetPayload<object>;
 type WrongQuestionDeckItemRecord = Prisma.WrongQuestionDeckItemGetPayload<object>;
@@ -586,6 +662,7 @@ type CountStats = {
   unresolvedCount: number;
   resolvedCount: number;
   deckIds: Set<string>;
+  questionIds: Set<string>;
   knowledgePoints: Map<string, number>;
   lastUpdatedAt: Date | null;
 };

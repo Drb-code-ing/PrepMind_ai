@@ -220,7 +220,9 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
     prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
-    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue({ id: item.id });
+    prisma.wrongQuestionDeckItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: item.id });
     prisma.wrongQuestionDeckItem.upsert.mockResolvedValue({
       ...item,
       deckId: existingDeck.id,
@@ -301,7 +303,159 @@ describe('WrongQuestionOrganizerService', () => {
     });
   });
 
+  it('returns an existing organization without creating another item when force is false', async () => {
+    const existingDeck = {
+      ...deck,
+      id: 'deck_existing',
+      name: '用户整理专题',
+      subjectGroup,
+    };
+    const existingItem = {
+      ...item,
+      id: 'deck_item_existing',
+      deckId: existingDeck.id,
+      reason: '用户已经整理过。',
+      confidence: 0.42,
+      source: 'USER' as const,
+      deck: existingDeck,
+    };
+
+    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
+    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(existingItem);
+    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
+    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
+    prisma.wrongQuestionDeck.create.mockResolvedValue(deck);
+    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue(item);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      {
+        deck: existingDeck,
+        deckId: existingDeck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+
+    const service = createService();
+    const result = await service.organizeOne('user_1', 'wrong_1', { force: false });
+
+    expect(prisma.wrongQuestionDeckItem.findFirst).toHaveBeenCalledWith({
+      where: { userId: 'user_1', wrongQuestionId: 'wrong_1' },
+      include: {
+        deck: {
+          include: { subjectGroup: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(prisma.wrongQuestionSubjectGroup.upsert).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeck.create).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      createdSubjectGroup: false,
+      createdDeck: false,
+      createdItem: false,
+      reason: '用户已经整理过。',
+      confidence: 0.42,
+      item: {
+        id: 'deck_item_existing',
+        deckId: 'deck_existing',
+        source: 'USER',
+      },
+      deck: {
+        id: 'deck_existing',
+      },
+    });
+  });
+
+  it('force organizes by removing other deck relations and upserting the policy target item in a transaction', async () => {
+    const targetDeck = {
+      ...deck,
+      id: 'deck_target',
+      name: KNOWLEDGE_POINT,
+      items: [{ wrongQuestion }],
+    };
+    const targetItem = {
+      ...item,
+      id: 'deck_item_target',
+      deckId: targetDeck.id,
+    };
+    const tx = {
+      wrongQuestionDeckItem: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        upsert: jest.fn().mockResolvedValue(targetItem),
+      },
+    };
+
+    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
+    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
+    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
+    prisma.wrongQuestionDeck.findMany
+      .mockResolvedValueOnce([targetDeck])
+      .mockResolvedValueOnce([targetDeck]);
+    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(null);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      {
+        deck: targetDeck,
+        deckId: targetDeck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    const service = createService();
+    const result = await service.organizeOne('user_1', 'wrong_1', { force: true });
+
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
+    expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        wrongQuestionId: 'wrong_1',
+        deckId: { not: 'deck_target' },
+      },
+    });
+    expect(tx.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
+      where: {
+        deckId_wrongQuestionId: {
+          deckId: 'deck_target',
+          wrongQuestionId: 'wrong_1',
+        },
+      },
+      update: expect.objectContaining({
+        reason: expect.any(String),
+        confidence: expect.any(Number),
+        source: 'AI',
+      }),
+      create: expect.objectContaining({
+        userId: 'user_1',
+        deckId: 'deck_target',
+        wrongQuestionId: 'wrong_1',
+        source: 'AI',
+      }),
+    });
+    expect(prisma.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      createdItem: true,
+      item: { id: 'deck_item_target', deckId: 'deck_target' },
+      deck: { id: 'deck_target' },
+    });
+  });
+
   it('moves an owned wrong question to an owned deck', async () => {
+    const tx = {
+      wrongQuestionDeckItem: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+        upsert: jest.fn().mockResolvedValue({
+          ...item,
+          source: 'USER',
+          confidence: 1,
+          reason: '用户手动归入专题。',
+        }),
+      },
+    };
+
     prisma.wrongQuestionDeck.findFirst.mockResolvedValue({ id: 'deck_1' });
     prisma.wrongQuestion.findFirst.mockResolvedValue({ id: 'wrong_1' });
     prisma.wrongQuestionDeckItem.deleteMany.mockResolvedValue({ count: 1 });
@@ -311,6 +465,8 @@ describe('WrongQuestionOrganizerService', () => {
       confidence: 1,
       reason: '用户手动归入专题。',
     });
+
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     const service = createService();
     const result = await service.moveToDeck('user_1', 'deck_1', {
@@ -326,14 +482,15 @@ describe('WrongQuestionOrganizerService', () => {
       where: { id: 'wrong_1', userId: 'user_1' },
       select: { id: true },
     });
-    expect(prisma.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
+    expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
       where: {
         userId: 'user_1',
         wrongQuestionId: 'wrong_1',
         deckId: { not: 'deck_1' },
       },
     });
-    expect(prisma.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
+    expect(tx.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
       where: {
         deckId_wrongQuestionId: {
           deckId: 'deck_1',
@@ -350,6 +507,8 @@ describe('WrongQuestionOrganizerService', () => {
         reason: '用户手动归入专题。',
       },
     });
+    expect(prisma.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       deckId: 'deck_1',
       wrongQuestionId: 'wrong_1',
@@ -462,5 +621,69 @@ describe('WrongQuestionOrganizerService', () => {
       },
     });
     expect(result.deck.topKnowledgePoints).toContain(KNOWLEDGE_POINT);
+  });
+
+  it('uses compact stats selects and does not double count duplicate group questions', async () => {
+    const duplicateDeck = {
+      ...deck,
+      id: 'deck_2',
+    };
+
+    prisma.wrongQuestionSubjectGroup.findMany.mockResolvedValue([subjectGroup]);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck, duplicateDeck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      { deck, deckId: deck.id, wrongQuestionId: wrongQuestion.id, wrongQuestion },
+      {
+        deck: duplicateDeck,
+        deckId: duplicateDeck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+
+    const service = createService();
+    const result = await service.listGroups('user_1');
+
+    expect(prisma.wrongQuestionDeck.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        subjectGroupId: { in: [subjectGroup.id] },
+      },
+      select: {
+        id: true,
+        subjectGroupId: true,
+      },
+    });
+    expect(prisma.wrongQuestionDeckItem.findMany).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        deck: {
+          subjectGroupId: { in: [subjectGroup.id] },
+        },
+      },
+      select: {
+        deckId: true,
+        wrongQuestionId: true,
+        deck: {
+          select: {
+            subjectGroupId: true,
+          },
+        },
+        wrongQuestion: {
+          select: {
+            id: true,
+            status: true,
+            knowledgePoints: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+    expect(result.items[0]).toMatchObject({
+      deckCount: 2,
+      totalCount: 1,
+      unresolvedCount: 1,
+      resolvedCount: 0,
+    });
   });
 });

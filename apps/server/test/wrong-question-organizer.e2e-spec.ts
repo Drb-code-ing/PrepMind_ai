@@ -20,7 +20,7 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET ??= 'dev-secret-change-me';
     process.env.DATABASE_URL ??=
-      'postgresql://prepmind:devpass@localhost:5432/prepmind';
+      'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
