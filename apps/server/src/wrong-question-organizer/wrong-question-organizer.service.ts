@@ -214,12 +214,13 @@ export class WrongQuestionOrganizerService {
     });
     const upsertDeckItemArgs: Prisma.WrongQuestionDeckItemUpsertArgs = {
       where: {
-        deckId_wrongQuestionId: {
-          deckId: deck.id,
+        userId_wrongQuestionId: {
+          userId,
           wrongQuestionId,
         },
       },
       update: {
+        deckId: deck.id,
         reason: policy.reason,
         confidence: policy.confidence,
         source: 'AI',
@@ -345,12 +346,13 @@ export class WrongQuestionOrganizerService {
 
       return tx.wrongQuestionDeckItem.upsert({
         where: {
-          deckId_wrongQuestionId: {
-            deckId,
+          userId_wrongQuestionId: {
+            userId,
             wrongQuestionId: input.wrongQuestionId,
           },
         },
         update: {
+          deckId,
           source: input.source,
         },
         create: {

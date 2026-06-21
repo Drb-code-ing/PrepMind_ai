@@ -156,6 +156,54 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     });
   });
 
+  it('keeps one deck item relation when moving an organized wrong question', async () => {
+    const user = await registerUser('organizer-single-relation');
+    const first = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-single-relation-a-${Date.now()}`,
+      subject: 'Math',
+      category: 'line-integral',
+      knowledgePoints: ['green-theorem'],
+      questionText: 'Use Green theorem to compute a line integral.',
+      analysis: 'Convert the line integral to an area integral.',
+    });
+    const second = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-single-relation-b-${Date.now()}`,
+      subject: 'Math',
+      category: 'vector-calculus',
+      knowledgePoints: ['divergence-theorem'],
+      questionText: 'Use divergence theorem to compute flux.',
+      analysis: 'Convert flux to a volume integral.',
+    });
+
+    const firstOrganized = await organize(user.accessToken, first.id);
+    const secondOrganized = await organize(user.accessToken, second.id);
+    expect(secondOrganized.deck.id).not.toBe(firstOrganized.deck.id);
+
+    await request(server)
+      .post(`/wrong-question-decks/${secondOrganized.deck.id}/items`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ wrongQuestionId: first.id })
+      .expect(201);
+
+    const relations = await prisma.wrongQuestionDeckItem.findMany({
+      where: {
+        userId: user.userId,
+        wrongQuestionId: first.id,
+      },
+      select: {
+        deckId: true,
+        source: true,
+      },
+    });
+
+    expect(relations).toEqual([
+      {
+        deckId: secondOrganized.deck.id,
+        source: 'USER',
+      },
+    ]);
+  });
+
   async function registerUser(label: string) {
     const email = `wrong-question-organizer-${label}-${Date.now()}-${Math.random()
       .toString(16)

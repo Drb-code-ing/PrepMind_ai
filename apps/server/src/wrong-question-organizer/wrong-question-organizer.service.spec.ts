@@ -186,8 +186,8 @@ describe('WrongQuestionOrganizerService', () => {
     });
     expect(prisma.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
       where: {
-        deckId_wrongQuestionId: {
-          deckId: 'deck_1',
+        userId_wrongQuestionId: {
+          userId: 'user_1',
           wrongQuestionId: 'wrong_1',
         },
       },
@@ -417,8 +417,8 @@ describe('WrongQuestionOrganizerService', () => {
     });
     expect(tx.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
       where: {
-        deckId_wrongQuestionId: {
-          deckId: 'deck_target',
+        userId_wrongQuestionId: {
+          userId: 'user_1',
           wrongQuestionId: 'wrong_1',
         },
       },
@@ -492,12 +492,12 @@ describe('WrongQuestionOrganizerService', () => {
     });
     expect(tx.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
       where: {
-        deckId_wrongQuestionId: {
-          deckId: 'deck_1',
+        userId_wrongQuestionId: {
+          userId: 'user_1',
           wrongQuestionId: 'wrong_1',
         },
       },
-      update: { source: 'USER' },
+      update: { deckId: 'deck_1', source: 'USER' },
       create: {
         userId: 'user_1',
         deckId: 'deck_1',

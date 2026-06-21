@@ -229,6 +229,7 @@ model WrongQuestionDeckItem {
   wrongQuestion WrongQuestion     @relation(fields: [wrongQuestionId, userId], references: [id, userId], onDelete: Cascade)
 
   @@unique([deckId, wrongQuestionId])
+  @@unique([userId, wrongQuestionId])
   @@index([wrongQuestionId, userId])
   @@index([userId, wrongQuestionId])
   @@index([userId, deckId])
