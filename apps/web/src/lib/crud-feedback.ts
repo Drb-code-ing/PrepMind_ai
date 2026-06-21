@@ -30,7 +30,7 @@ export function getDeleteActionState({
 }
 
 export function getDeleteConfirmButtonClassName() {
-  return 'min-h-10 rounded-md bg-destructive text-xs font-medium text-white transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground';
+  return 'min-h-11 rounded-md bg-destructive text-xs font-medium text-white transition-colors active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground';
 }
 
 export function shouldForwardCrudNotice(scope: CrudNoticeScope) {

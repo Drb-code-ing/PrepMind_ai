@@ -1192,7 +1192,7 @@ function DeleteConfirmStrip({
           type="button"
           onClick={onCancel}
           disabled={deleting}
-          className="min-h-10 rounded-xl border border-[var(--pm-line)] bg-white/80 text-xs font-semibold text-[var(--pm-ink)] transition-all active:scale-[0.98] disabled:text-[var(--pm-muted)]"
+          className="tap-target min-h-11 rounded-xl border border-[var(--pm-line)] bg-white/80 text-xs font-semibold text-[var(--pm-ink)] transition-all active:scale-[0.98] disabled:text-[var(--pm-muted)]"
         >
           取消
         </button>
@@ -1404,7 +1404,7 @@ function WrongQuestionDetail({
                 type="button"
                 onClick={() => void saveNote()}
                 disabled={savingNote || !noteChanged}
-                className="min-h-9 rounded-xl bg-[#86dccf] px-3 text-xs font-semibold text-[#173b37] transition-all active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)]"
+                className="tap-target min-h-11 rounded-xl bg-[#86dccf] px-3 text-xs font-semibold text-[#173b37] transition-all active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)]"
               >
                 {savingNote
                   ? '保存中...'
