@@ -38,6 +38,26 @@ test('routes OCR follow-up requests to tutor and builds tutor prompt', () => {
   assert.equal(decision.debugHeaders['x-prepmind-tutor-depth'], 'standard');
 });
 
+test('uses latest Chinese hint request text for TutorAgent strategy metadata', () => {
+  const decision = buildChatAgentDecision({
+    messages: [
+      {
+        role: 'user',
+        content:
+          '题目：y=x^2 在 x=3 处求导。为什么这一步可以这样理解？请只给一句提示。',
+      },
+    ],
+    activeContext,
+    runId: 'run_chinese_hint',
+    userId: 'user_1',
+  });
+
+  assert.equal(decision.route, 'tutor');
+  assert.equal(decision.tutorStrategy?.intent, 'socratic_hint');
+  assert.equal(decision.debugHeaders['x-prepmind-tutor-intent'], 'socratic_hint');
+  assert.match(decision.promptAddition, /TutorAgent strategy: socratic_hint/);
+});
+
 test('keeps general messages on chat route', () => {
   const decision = buildChatAgentDecision({
     messages: [{ role: 'user', content: 'hello' }],

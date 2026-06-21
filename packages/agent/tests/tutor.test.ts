@@ -148,6 +148,19 @@ describe('buildTutorStrategy', () => {
     expect(strategy.answerStructure).toContain('guiding_question');
   });
 
+  it('classifies Chinese one-sentence hint requests as socratic_hint', () => {
+    const strategy = buildTutorStrategy({
+      latestUserText:
+        '题目：y=x^2 在 x=3 处求导。为什么这一步可以这样理解？请只给一句提示。',
+      activeStudyContext: '求函数 y=x^2 在 x=3 处的导数。',
+    });
+
+    expect(strategy.intent).toBe('socratic_hint');
+    expect(strategy.shouldAskGuidingQuestion).toBe(true);
+    expect(strategy.shouldGiveFinalAnswer).toBe(false);
+    expect(strategy.debug.matchedSignals).toContain('提示');
+  });
+
   it('classifies Chinese submitted steps as step_check', () => {
     const strategy = buildTutorStrategy({
       latestUserText: '我写的这一步对吗？',
