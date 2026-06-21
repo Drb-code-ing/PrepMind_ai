@@ -347,6 +347,16 @@ export class WrongQuestionOrganizerService {
       return stats;
     }
 
+    const decks = await this.prisma.wrongQuestionDeck.findMany({
+      where: {
+        userId,
+        subjectGroupId: { in: subjectGroupIds },
+      },
+      select: {
+        id: true,
+        subjectGroupId: true,
+      },
+    });
     const items = await this.prisma.wrongQuestionDeckItem.findMany({
       where: {
         userId,
@@ -359,6 +369,13 @@ export class WrongQuestionOrganizerService {
         wrongQuestion: true,
       },
     });
+
+    for (const deck of decks) {
+      const groupStat = getOrCreateCountStats(stats.groups, deck.subjectGroupId);
+
+      groupStat.deckIds.add(deck.id);
+      getOrCreateCountStats(stats.decks, deck.id);
+    }
 
     for (const item of items) {
       const groupStat = getOrCreateCountStats(stats.groups, item.deck.subjectGroupId);

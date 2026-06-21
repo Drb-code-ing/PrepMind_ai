@@ -184,4 +184,23 @@ describe('WrongQuestionOrganizerService', () => {
       }),
     );
   });
+
+  it('counts empty decks for subject groups without changing question totals', async () => {
+    prisma.wrongQuestionSubjectGroup.findMany.mockResolvedValue([subjectGroup]);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService();
+    const result = await service.listGroups('user_1');
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      id: subjectGroup.id,
+      deckCount: 1,
+      totalCount: 0,
+      unresolvedCount: 0,
+      resolvedCount: 0,
+      topKnowledgePoints: [],
+    });
+  });
 });
