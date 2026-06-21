@@ -49,6 +49,12 @@ CREATE TABLE "WrongQuestionDeckItem" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "WrongQuestion_id_userId_key" ON "WrongQuestion"("id", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WrongQuestionSubjectGroup_id_userId_key" ON "WrongQuestionSubjectGroup"("id", "userId");
+
+-- CreateIndex
 CREATE INDEX "WrongQuestionSubjectGroup_userId_sortOrder_idx" ON "WrongQuestionSubjectGroup"("userId", "sortOrder");
 
 -- CreateIndex
@@ -58,10 +64,19 @@ CREATE INDEX "WrongQuestionSubjectGroup_userId_updatedAt_idx" ON "WrongQuestionS
 CREATE UNIQUE INDEX "WrongQuestionSubjectGroup_userId_subject_key" ON "WrongQuestionSubjectGroup"("userId", "subject");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "WrongQuestionDeck_id_userId_key" ON "WrongQuestionDeck"("id", "userId");
+
+-- CreateIndex
+CREATE INDEX "WrongQuestionDeck_subjectGroupId_userId_idx" ON "WrongQuestionDeck"("subjectGroupId", "userId");
+
+-- CreateIndex
 CREATE INDEX "WrongQuestionDeck_userId_subjectGroupId_updatedAt_idx" ON "WrongQuestionDeck"("userId", "subjectGroupId", "updatedAt");
 
 -- CreateIndex
 CREATE INDEX "WrongQuestionDeck_userId_updatedAt_idx" ON "WrongQuestionDeck"("userId", "updatedAt");
+
+-- CreateIndex
+CREATE INDEX "WrongQuestionDeckItem_wrongQuestionId_userId_idx" ON "WrongQuestionDeckItem"("wrongQuestionId", "userId");
 
 -- CreateIndex
 CREATE INDEX "WrongQuestionDeckItem_userId_wrongQuestionId_idx" ON "WrongQuestionDeckItem"("userId", "wrongQuestionId");
@@ -79,13 +94,13 @@ ALTER TABLE "WrongQuestionSubjectGroup" ADD CONSTRAINT "WrongQuestionSubjectGrou
 ALTER TABLE "WrongQuestionDeck" ADD CONSTRAINT "WrongQuestionDeck_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WrongQuestionDeck" ADD CONSTRAINT "WrongQuestionDeck_subjectGroupId_fkey" FOREIGN KEY ("subjectGroupId") REFERENCES "WrongQuestionSubjectGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "WrongQuestionDeck" ADD CONSTRAINT "WrongQuestionDeck_subjectGroupId_userId_fkey" FOREIGN KEY ("subjectGroupId", "userId") REFERENCES "WrongQuestionSubjectGroup"("id", "userId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "WrongQuestionDeckItem" ADD CONSTRAINT "WrongQuestionDeckItem_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WrongQuestionDeckItem" ADD CONSTRAINT "WrongQuestionDeckItem_deckId_fkey" FOREIGN KEY ("deckId") REFERENCES "WrongQuestionDeck"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "WrongQuestionDeckItem" ADD CONSTRAINT "WrongQuestionDeckItem_deckId_userId_fkey" FOREIGN KEY ("deckId", "userId") REFERENCES "WrongQuestionDeck"("id", "userId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "WrongQuestionDeckItem" ADD CONSTRAINT "WrongQuestionDeckItem_wrongQuestionId_fkey" FOREIGN KEY ("wrongQuestionId") REFERENCES "WrongQuestion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "WrongQuestionDeckItem" ADD CONSTRAINT "WrongQuestionDeckItem_wrongQuestionId_userId_fkey" FOREIGN KEY ("wrongQuestionId", "userId") REFERENCES "WrongQuestion"("id", "userId") ON DELETE CASCADE ON UPDATE CASCADE;

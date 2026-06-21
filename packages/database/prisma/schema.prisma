@@ -21,18 +21,18 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  accounts         Account[]
-  sessions         Session[]
-  refreshTokens    RefreshToken[]
-  questions        Question[]
-  wrongQuestions   WrongQuestion[]
-  cards            Card[]
-  documents        Document[]
-  conversations    Conversation[]
-  chatMessages     ChatMessage[]
-  ocrRecords       OcrRecord[]
-  reviewTasks      ReviewTask[]
-  reviewPreference ReviewPreference?
+  accounts                   Account[]
+  sessions                   Session[]
+  refreshTokens              RefreshToken[]
+  questions                  Question[]
+  wrongQuestions             WrongQuestion[]
+  cards                      Card[]
+  documents                  Document[]
+  conversations              Conversation[]
+  chatMessages               ChatMessage[]
+  ocrRecords                 OcrRecord[]
+  reviewTasks                ReviewTask[]
+  reviewPreference           ReviewPreference?
   wrongQuestionSubjectGroups WrongQuestionSubjectGroup[]
   wrongQuestionDecks         WrongQuestionDeck[]
   wrongQuestionDeckItems     WrongQuestionDeckItem[]
@@ -154,6 +154,7 @@ model WrongQuestion {
   cards     Card[]
   deckItems WrongQuestionDeckItem[]
 
+  @@unique([id, userId])
   @@unique([userId, sourceGroupId])
   @@index([userId, createdAt])
   @@index([userId, status])
@@ -184,6 +185,7 @@ model WrongQuestionSubjectGroup {
   user  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   decks WrongQuestionDeck[]
 
+  @@unique([id, userId])
   @@unique([userId, subject])
   @@index([userId, sortOrder])
   @@index([userId, updatedAt])
@@ -202,9 +204,11 @@ model WrongQuestionDeck {
   updatedAt      DateTime                @updatedAt
 
   user         User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subjectGroup WrongQuestionSubjectGroup @relation(fields: [subjectGroupId], references: [id], onDelete: Cascade)
+  subjectGroup WrongQuestionSubjectGroup @relation(fields: [subjectGroupId, userId], references: [id, userId], onDelete: Cascade)
   items        WrongQuestionDeckItem[]
 
+  @@unique([id, userId])
+  @@index([subjectGroupId, userId])
   @@index([userId, subjectGroupId, updatedAt])
   @@index([userId, updatedAt])
 }
@@ -221,10 +225,11 @@ model WrongQuestionDeckItem {
   updatedAt       DateTime                    @updatedAt
 
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deck          WrongQuestionDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  wrongQuestion WrongQuestion     @relation(fields: [wrongQuestionId], references: [id], onDelete: Cascade)
+  deck          WrongQuestionDeck @relation(fields: [deckId, userId], references: [id, userId], onDelete: Cascade)
+  wrongQuestion WrongQuestion     @relation(fields: [wrongQuestionId, userId], references: [id, userId], onDelete: Cascade)
 
   @@unique([deckId, wrongQuestionId])
+  @@index([wrongQuestionId, userId])
   @@index([userId, wrongQuestionId])
   @@index([userId, deckId])
 }
@@ -385,15 +390,15 @@ enum ProcessStatus {
 }
 
 model Chunk {
-  id         String                 @id @default(cuid())
+  id         String                       @id @default(cuid())
   documentId String
-  content    String                 @db.Text
+  content    String                       @db.Text
   embedding  Unsupported("vector(1536)")?
   metadata   Json
   index      Int
   tokenCount Int?
   userId     String
-  createdAt  DateTime               @default(now())
+  createdAt  DateTime                     @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
