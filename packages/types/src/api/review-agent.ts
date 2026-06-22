@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-import { reviewPreferenceSchema } from './review-preference';
+import { reviewPreferenceSchema } from '@repo/types/api/review-preference';
 import {
   reviewTaskPlanCapacityStatusSchema,
   reviewTaskPlanIntensitySchema,
   reviewTaskPlanQuerySchema,
   reviewTaskPlanResponseSchema,
-} from './review-task';
+} from '@repo/types/api/review-task';
 
 export const reviewAgentPrioritySchema = z.enum(['low', 'medium', 'high']);
 
