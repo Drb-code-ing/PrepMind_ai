@@ -94,4 +94,74 @@ describe('analyzeReview', () => {
     ]);
     expect(result.signals).toContain('lowPressure');
   });
+
+  it('uses hidden high weak points outside the returned top five for overall priority', () => {
+    const result = analyzeReview({
+      now: '2026-06-22T08:00:00.000Z',
+      weakKnowledgePoints: [
+        {
+          label: 'medium-a',
+          wrongCount: 4,
+          recentAgainCount: 2,
+          averageDifficulty: 4.0,
+          averageStability: 3.2,
+        },
+        {
+          label: 'medium-b',
+          wrongCount: 4,
+          recentAgainCount: 2,
+          averageDifficulty: 3.9,
+          averageStability: 3.2,
+        },
+        {
+          label: 'medium-c',
+          wrongCount: 3,
+          recentAgainCount: 2,
+          averageDifficulty: 3.8,
+          averageStability: 3.3,
+        },
+        {
+          label: 'medium-d',
+          wrongCount: 3,
+          recentAgainCount: 1,
+          averageDifficulty: 4.0,
+          averageStability: 3.4,
+        },
+        {
+          label: 'medium-e',
+          wrongCount: 3,
+          recentAgainCount: 1,
+          averageDifficulty: 3.9,
+          averageStability: 3.5,
+        },
+        {
+          label: 'hidden-low-stability',
+          wrongCount: 0,
+          recentAgainCount: 0,
+          averageDifficulty: 1.5,
+          averageStability: 1.5,
+        },
+      ],
+      cardSummary: {
+        dueCount: 0,
+        overdueCount: 0,
+        highDifficultyCount: 0,
+        lowStabilityCount: 0,
+      },
+      recentReviewSummary: {
+        totalReviews: 6,
+        againCount: 0,
+        hardCount: 0,
+        goodCount: 6,
+        easyCount: 0,
+      },
+    });
+
+    expect(result.weakPoints).toHaveLength(5);
+    expect(result.weakPoints.map((point) => point.label)).not.toContain(
+      'hidden-low-stability',
+    );
+    expect(result.priority).toBe('high');
+    expect(result.signals).toContain('highWeakPoint');
+  });
 });

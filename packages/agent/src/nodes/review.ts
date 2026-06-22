@@ -10,13 +10,15 @@ import type {
 const MAX_WEAK_POINTS = 5;
 
 export function analyzeReview(input: ReviewAgentInput): ReviewAgentResult {
-  const weakPoints = input.weakKnowledgePoints
+  const sortedWeakPointInputs = input.weakKnowledgePoints
     .slice()
-    .sort(compareWeakKnowledgePoints)
+    .sort(compareWeakKnowledgePoints);
+  const weakPoints = sortedWeakPointInputs
     .slice(0, MAX_WEAK_POINTS)
     .map(toWeakPoint);
-  const signals = collectSignals(input, weakPoints);
-  const priority = determinePriority(input, weakPoints);
+  const allWeakPoints = sortedWeakPointInputs.map(toWeakPoint);
+  const signals = collectSignals(input, allWeakPoints);
+  const priority = determinePriority(input, allWeakPoints);
 
   if (priority === 'low' && weakPoints.length === 0) {
     return {
