@@ -23,6 +23,8 @@ export function planStudy(input: PlannerAgentInput): PlannerAgentResult {
   const dailyMinutes = preference.dailyMinutes;
   const isCapacityOver = capacityStatus === 'over';
   const hasDuePressure = overdueCount > 0 || todayDueCount > 0;
+  const isFutureCapacityPressure =
+    isCapacityOver && !hasDuePressure && upcomingDueCount > 0;
   const isHighPressure = review.priority === 'high' || isCapacityOver;
   const isLightPlan =
     review.priority === 'low' &&
@@ -32,6 +34,7 @@ export function planStudy(input: PlannerAgentInput): PlannerAgentResult {
   const signals = collectSignals(input, { isCapacityOver, isHighPressure, isLightPlan });
   const blocks = buildSuggestedBlocks(input, {
     isHighPressure,
+    isFutureCapacityPressure,
     isLightPlan,
   });
 
@@ -40,13 +43,16 @@ export function planStudy(input: PlannerAgentInput): PlannerAgentResult {
       overdueCount,
       todayDueCount,
       upcomingDueCount,
+      peakDay,
       isHighPressure,
+      isFutureCapacityPressure,
       isLightPlan,
     }),
     todayFocus: buildTodayFocus({
       overdueCount,
       todayDueCount,
       firstBlock: blocks[0],
+      isFutureCapacityPressure,
       isLightPlan,
     }),
     weekStrategy: buildWeekStrategy({
@@ -67,11 +73,12 @@ function buildSuggestedBlocks(
   input: PlannerAgentInput,
   options: {
     isHighPressure: boolean;
+    isFutureCapacityPressure: boolean;
     isLightPlan: boolean;
   },
 ) {
   const { review, plan, preference } = input;
-  const { overdueCount, todayDueCount, upcomingDueCount } = plan.summary;
+  const { overdueCount, todayDueCount, upcomingDueCount, peakDay } = plan.summary;
   const blocks: PlannerAgentBlock[] = [];
   let remainingMinutes = preference.dailyMinutes;
 
@@ -106,12 +113,19 @@ function buildSuggestedBlocks(
 
   if (options.isHighPressure) {
     addBlock({
-      title: overdueCount > 0 ? '先清理逾期复习' : '先完成今日复习',
+      title:
+        overdueCount > 0
+          ? '先清理逾期复习'
+          : todayDueCount > 0
+            ? '先完成今日复习'
+            : '先查看后续复习压力',
       preferredMinutes: Math.ceil(preference.dailyMinutes * 0.6),
       reason:
         overdueCount > 0
           ? `已有 ${overdueCount} 张逾期卡片，先止住复习积压。`
-          : `今日有 ${todayDueCount} 张到期卡片，先处理最紧急任务。`,
+          : todayDueCount > 0
+            ? `今日有 ${todayDueCount} 张到期卡片，先处理最紧急任务。`
+            : buildFuturePressureReason(upcomingDueCount, peakDay),
       targetHref: '/today',
     });
   } else if (todayDueCount > 0) {
@@ -156,11 +170,20 @@ function buildHeadline(options: {
   overdueCount: number;
   todayDueCount: number;
   upcomingDueCount: number;
+  peakDay: PlannerAgentInput['plan']['summary']['peakDay'];
   isHighPressure: boolean;
+  isFutureCapacityPressure: boolean;
   isLightPlan: boolean;
 }) {
   if (options.overdueCount > 0) {
     return `先处理 ${options.overdueCount} 张逾期卡片，再安排今日复习。`;
+  }
+
+  if (options.isFutureCapacityPressure) {
+    const peakText = options.peakDay
+      ? `，高峰日在 ${options.peakDay.date}`
+      : '';
+    return `未来窗口有 ${options.upcomingDueCount} 张待复习卡片${peakText}，先预防后续容量超载。`;
   }
 
   if (options.isHighPressure) {
@@ -178,6 +201,7 @@ function buildTodayFocus(options: {
   overdueCount: number;
   todayDueCount: number;
   firstBlock: PlannerAgentBlock | undefined;
+  isFutureCapacityPressure: boolean;
   isLightPlan: boolean;
 }) {
   if (options.isLightPlan) {
@@ -190,6 +214,10 @@ function buildTodayFocus(options: {
 
   if (options.todayDueCount > 0) {
     return `先完成今日 ${options.todayDueCount} 张到期卡片，避免进入逾期。`;
+  }
+
+  if (options.isFutureCapacityPressure) {
+    return `今天先检查「${options.firstBlock?.title ?? '后续复习压力'}」，为未来高峰预留容量。`;
   }
 
   return options.firstBlock?.reason ?? '保持现有复习节奏。';
@@ -219,9 +247,19 @@ function buildWeekStrategy(options: {
 function buildCapacityNotice(input: PlannerAgentInput, isCapacityOver: boolean) {
   if (!isCapacityOver) return undefined;
 
-  const { estimatedTotalMinutes, dailyMinutes } = input.plan.summary;
+  const { estimatedTotalMinutes } = input.plan.summary;
+  const { dailyMinutes } = input.preference;
 
   return `计划压力已超过每日 ${dailyMinutes} 分钟容量，建议先完成最紧急卡片，剩余任务分批处理。预计窗口总耗时约 ${estimatedTotalMinutes} 分钟。`;
+}
+
+function buildFuturePressureReason(
+  upcomingDueCount: number,
+  peakDay: PlannerAgentInput['plan']['summary']['peakDay'],
+) {
+  const peakText = peakDay ? `，高峰日在 ${peakDay.date}，预计 ${peakDay.count} 张` : '';
+
+  return `未来窗口内还有 ${upcomingDueCount} 张待复习卡片${peakText}，先确认今天是否需要提前分担。`;
 }
 
 function collectSignals(

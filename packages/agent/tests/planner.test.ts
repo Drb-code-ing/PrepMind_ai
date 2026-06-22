@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import { planStudy } from '../src/nodes/planner';
+import { planStudy as rootPlanStudy, plannerNode } from '../src/index';
 
 import type {
   PlannerAgentInput,
@@ -57,6 +58,61 @@ describe('planStudy', () => {
     expect(result.capacityNotice).toBeUndefined();
     expect(result.suggestedBlocks[0]?.targetHref).toBe('/error-book');
     expect(result.signals).toContain('lightPlan');
+  });
+
+  it('describes future capacity pressure without saying there are zero due cards today', () => {
+    const result = planStudy(
+      createPlannerInput({
+        reviewPriority: 'medium',
+        overdueCount: 0,
+        todayDueCount: 0,
+        upcomingDueCount: 24,
+        capacityStatus: 'over',
+        intensity: 'heavy',
+        dailyMinutes: 20,
+        peakDay: { date: '2026-06-25', count: 18 },
+      }),
+    );
+    const visibleCopy = [
+      result.headline,
+      result.todayFocus,
+      result.suggestedBlocks[0]?.title,
+      result.suggestedBlocks[0]?.reason,
+    ].join('\n');
+
+    expect(result.suggestedBlocks[0]?.targetHref).toBe('/today');
+    expect(visibleCopy).not.toContain('0 张到期');
+    expect(visibleCopy).toMatch(/未来|后续|高峰/);
+    expect(result.weekStrategy).toContain('2026-06-25');
+    expect(result.signals).toContain('capacityOver');
+  });
+
+  it('keeps every suggested block positive and within a very small daily budget', () => {
+    const result = planStudy(
+      createPlannerInput({
+        reviewPriority: 'high',
+        overdueCount: 0,
+        todayDueCount: 3,
+        upcomingDueCount: 8,
+        capacityStatus: 'over',
+        intensity: 'heavy',
+        dailyMinutes: 5,
+        peakDay: { date: '2026-06-26', count: 8 },
+      }),
+    );
+    const totalMinutes = result.suggestedBlocks.reduce(
+      (sum, block) => sum + block.minutes,
+      0,
+    );
+
+    expect(result.suggestedBlocks.length).toBeGreaterThan(1);
+    expect(totalMinutes).toBeLessThanOrEqual(5);
+    expect(result.suggestedBlocks.every((block) => block.minutes > 0)).toBe(true);
+  });
+
+  it('exports planner policy from the package root', () => {
+    expect(rootPlanStudy).toBe(planStudy);
+    expect(plannerNode).toBe(planStudy);
   });
 });
 
