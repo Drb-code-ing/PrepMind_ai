@@ -9,5 +9,6 @@ import { ReviewTasksService } from './review-tasks.service';
   imports: [AuthModule, ReviewPreferencesModule],
   controllers: [ReviewTasksController],
   providers: [ReviewTasksService],
+  exports: [ReviewTasksService],
 })
 export class ReviewTasksModule {}
