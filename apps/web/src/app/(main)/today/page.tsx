@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 
 import MarkdownRenderer from '@/components/markdown/markdown-renderer';
+import { ReviewAgentSuggestionCard } from '@/components/review-agent/review-agent-suggestion-card';
+import { useReviewAgentSuggestions } from '@/hooks/use-review-agent-suggestions';
 import {
   useReopenReviewTask,
   useReviewTaskPlan,
@@ -129,6 +131,11 @@ export default function TodayPage() {
     includeCompleted: true,
   });
   const todayReviewPlan = useReviewTaskPlan({
+    startDate: dateKey,
+    days: 1,
+    timezoneOffsetMinutes,
+  });
+  const reviewAgentSuggestions = useReviewAgentSuggestions({
     startDate: dateKey,
     days: 1,
     timezoneOffsetMinutes,
@@ -488,6 +495,12 @@ export default function TodayPage() {
             </div>
           ) : null}
         </section>
+
+        {reviewAgentSuggestions.data ? (
+          <div className="mt-4">
+            <ReviewAgentSuggestionCard suggestion={reviewAgentSuggestions.data} compact />
+          </div>
+        ) : null}
 
         <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
           <div className="flex items-center justify-between gap-3">

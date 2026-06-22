@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import type { ReviewAgentSuggestionResponse } from '@repo/types/api/review-agent';
 import type {
   ReviewPreferencePatchRequest,
   ReviewPreferenceResponse,
@@ -19,6 +20,8 @@ import {
 } from 'lucide-react';
 
 import { BaseEChart } from '@/components/charts/base-echart';
+import { ReviewAgentSuggestionCard } from '@/components/review-agent/review-agent-suggestion-card';
+import { useReviewAgentSuggestions } from '@/hooks/use-review-agent-suggestions';
 import { useReviewTaskPendingRatings } from '@/hooks/use-review-task-pending-ratings';
 import { useReviewTaskPlan } from '@/hooks/use-review-tasks';
 import { usePatchReviewPreferences, useReviewPreferences } from '@/hooks/use-review-preferences';
@@ -110,6 +113,11 @@ export default function PlanPage() {
   const planWindowDays = preferencesQuery.data?.planWindowDays ?? 7;
   const planWindowLabel = getPlanWindowLabel(planWindowDays);
   const planQuery = useReviewTaskPlan({ startDate, days: planWindowDays, timezoneOffsetMinutes });
+  const reviewAgentSuggestions = useReviewAgentSuggestions({
+    startDate,
+    days: planWindowDays,
+    timezoneOffsetMinutes,
+  });
   const { pendingCount: pendingRatingSyncCount } = useReviewTaskPendingRatings(userId);
   const plan = planQuery.data;
 
@@ -162,11 +170,19 @@ export default function PlanPage() {
             </button>
           </section>
         ) : plan && shouldShowPlanEmptyState(plan) ? (
-          <EmptyPlan windowDays={planWindowDays} />
+          <>
+            {reviewAgentSuggestions.data ? (
+              <div className="mb-4">
+                <ReviewAgentSuggestionCard suggestion={reviewAgentSuggestions.data} />
+              </div>
+            ) : null}
+            <EmptyPlan windowDays={planWindowDays} />
+          </>
         ) : plan ? (
           <PlanContent
             plan={plan}
             pendingRatingSyncCount={pendingRatingSyncCount}
+            agentSuggestion={reviewAgentSuggestions.data}
           />
         ) : null}
       </main>
@@ -177,9 +193,11 @@ export default function PlanPage() {
 function PlanContent({
   plan,
   pendingRatingSyncCount,
+  agentSuggestion,
 }: {
   plan: ReviewTaskPlanResponse;
   pendingRatingSyncCount: number;
+  agentSuggestion?: ReviewAgentSuggestionResponse;
 }) {
   const totalPressure =
     plan.summary.overdueCount + plan.summary.todayDueCount + plan.summary.upcomingDueCount;
@@ -236,6 +254,12 @@ function PlanContent({
           </span>
         </div>
       </section>
+
+      {agentSuggestion ? (
+        <div className="mt-4">
+          <ReviewAgentSuggestionCard suggestion={agentSuggestion} />
+        </div>
+      ) : null}
 
       <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
         <SectionTitle
