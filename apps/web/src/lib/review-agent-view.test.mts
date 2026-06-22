@@ -6,6 +6,7 @@ import {
 } from './review-agent-view.ts';
 
 assert.equal(getReviewAgentPriorityMeta('high').label, '高优先级');
+assert.equal(getReviewAgentPriorityMeta('low').label, '低优先级');
 assert.match(getReviewAgentPriorityMeta('low').className, /emerald/);
 assert.equal(
   getReviewAgentShortTodayText({

@@ -11,7 +11,7 @@ const priorityMeta: Record<
   }
 > = {
   low: {
-    label: '低压力',
+    label: '低优先级',
     className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   },
   medium: {
