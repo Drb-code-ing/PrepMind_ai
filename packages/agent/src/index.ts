@@ -1,5 +1,6 @@
 export * from './graph/index.ts';
 export * from './nodes/knowledge-verifier.ts';
+export * from './nodes/review.ts';
 export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
 export * from './recorder.ts';
