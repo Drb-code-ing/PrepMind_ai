@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.3 已完成，后续进入 Phase 6.4。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.4 已完成，后续进入 Phase 6.5。
 
 已完成主线：
 
@@ -31,10 +31,11 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.
 - Phase 6.1：RouterAgent 接入 `/api/chat`，保留原有 streaming、RAG、OCR activeStudyContext、mock/live 成本保护和 token 预算。
 - Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt、Tutor debug headers 和 mock strategy metadata。
 - Phase 6.3：KnowledgeVerifierAgent，支持 RAG 命中后的资料可信度评估、verifier prompt guidance、资料核对提示和 verifier debug headers。
+- Phase 6.4：WrongQuestionOrganizerAgent，支持错题学科卡片、专题 deck、组织层 API 和 `/error-book` 学科优先下钻。
 
 下一步：
 
-1. Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按专题 deck 下钻。
+1. Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成复习分析与学习计划建议。
 2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
 
 ## 常用命令
@@ -97,12 +98,13 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
-- Phase 6 多 Agent 规划：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层和 KnowledgeVerifierAgent。`TutorAgent` 与 `KnowledgeVerifierAgent` 当前都是确定性 policy，不直接调用真实模型；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 在 RAG 检索命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped`，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 让错题首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 后续用于判断资料重复、更新版或互补资料；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
+- Phase 6 多 Agent 规划：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent。`TutorAgent`、`KnowledgeVerifierAgent` 与 `WrongQuestionOrganizerAgent` 当前都是确定性 policy，不直接调用真实模型；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 在 RAG 检索命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped`，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 让错题首页按学科卡片优先展示，学科内部按专题 deck 下钻，并由 NestJS organizer API 写入独立组织层；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 后续用于判断资料重复、更新版或互补资料；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
 
 ## 当前数据流
 
 - Auth：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie；refresh token 已启用 rotation 与 reuse detection。
 - WrongQuestion：`/wrong-questions` 是服务端权威来源，Dexie 作为离线缓存和乐观更新层。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
 - ChatMessage：`/chat-messages` 持久化聊天历史；`/chat-messages/sync` 使用会话快照幂等同步，不进入通用 mutation queue。
 - OCRRecord：`/ocr-records` 持久化 OCR 历史；有效题目 OCR 会生成 `activeStudyContext` 供后续追问承接。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
@@ -124,6 +126,8 @@ mcp -> ai, fsrs, rag, types
 - Agent prompt 顺序：`BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context -> verifier guidance`；RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留，verifier notice 不追加。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`，并受 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关保护。
 - `/knowledge` 页面已接入 RAG 文档管理与检索测试：支持资料上传、列表、处理、替换上传、删除内联确认、状态摘要和手动检索预览；资料卡片操作使用右上角三点菜单，点击页面其它区域可收起菜单，`DONE` 资料不再展示主按钮式重新处理；该页面在线直连 knowledge API，不进入 Dexie `mutationQueue`。
+- `/error-book` 已升级为学科优先入口：错题首页展示学科卡片，学科内展示专题 deck，专题内展示错题列表；专题支持重命名，详情弹层、备注、掌握状态、删除确认和加入复习保持原有 CRUD 能力。
+- Organizer API：`GET /wrong-question-groups`、`GET /wrong-question-groups/:subjectGroupId/decks`、`GET /wrong-question-decks/:deckId/questions`、`POST /wrong-question-organizer/organize/:wrongQuestionId`、`POST /wrong-question-organizer/organize-batch`、`PATCH /wrong-question-decks/:deckId`、`POST /wrong-question-decks/:deckId/items`、`DELETE /wrong-question-decks/:deckId/items/:wrongQuestionId`；在线直连 organizer API，不进入 Dexie `mutationQueue`。
 - ReviewTask rating：评分请求带 `clientMutationId`，服务端用 `ReviewLog.clientMutationId` 做幂等，重复提交同一命令不重复写日志。
 - Upload：新 OCR 图片通过 `/uploads/images` 上传 MinIO，业务 API 不接收 `data:` base64 图片。
 - Offline：WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，session 恢复、online、focus 时自动 flush。

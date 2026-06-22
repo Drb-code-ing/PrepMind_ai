@@ -54,3 +54,15 @@ KnowledgeVerifierAgent 落地后必须覆盖：
 - 可疑资料命中：回答不盲从资料，并温和提示用户核对资料片段。
 - Tutor + RAG 混合：Tutor 讲题策略仍生效，Verifier 不破坏讲题体验。
 - mock 单测和 live 小样本 smoke 都通过。
+
+## 6. Phase 6.4 验收清单
+
+WrongQuestionOrganizerAgent 落地后必须覆盖：
+
+- 保存错题成功后，整理流程失败不得影响错题保存。
+- `/error-book` 首页优先展示学科卡片，学科内展示专题 deck，专题内展示错题列表。
+- 专题重命名有即时反馈，并设置 `nameLocked`，后续整理不覆盖用户命名。
+- 错题详情、备注、掌握状态、删除确认和加入复习仍可用。
+- 更新或删除错题后，organizer 查询缓存需要失效刷新，学科和专题统计不能 stale。
+- Organizer 不调用 live 模型，不读取 API key，不进入 Dexie `mutationQueue`。
+- 用户隔离必须通过 e2e 覆盖，不能跨用户读取学科、专题或错题关联。

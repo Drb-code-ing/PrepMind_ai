@@ -13,6 +13,7 @@ import { ReviewTasksModule } from './review-tasks/review-tasks.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
+import { WrongQuestionOrganizerModule } from './wrong-question-organizer/wrong-question-organizer.module';
 import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ReviewTasksModule,
     UploadsModule,
     KnowledgeDocumentsModule,
+    WrongQuestionOrganizerModule,
   ],
 })
 export class AppModule implements NestModule {

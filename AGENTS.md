@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 6.3 已完成，后续进入 Phase 6.4。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 6.4 已完成，后续进入 Phase 6.5。
 
 ## 项目快照
 
@@ -30,6 +30,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 6.1 | 已完成 | RouterAgent 接入 `/api/chat`、Agent route headers、route-aware prompt、mock route 展示 |
 | Phase 6.2 | 已完成 | TutorAgent 策略层、讲题意图分类、策略 prompt、mock strategy metadata |
 | Phase 6.3 | 已完成 | KnowledgeVerifierAgent、RAG 资料可信度评估、资料核对提示、verifier headers |
+| Phase 6.4 | 已完成 | WrongQuestionOrganizerAgent、错题学科卡片、专题 deck、错题组织层 API |
 
 ## 技术栈
 
@@ -42,7 +43,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Infra | Docker, MinIO, Sentry, OpenTelemetry, Prometheus, Grafana |
 
 Agent 框架使用 LangGraph，不使用 AutoGen。
-Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层和 KnowledgeVerifierAgent。`TutorAgent` 与 `KnowledgeVerifierAgent` 当前都是确定性 policy，不直接调用真实模型；前者决定讲题意图、讲解深度和 prompt 结构，后者只在 RAG 命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped` 并生成资料核对提示。最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`WrongQuestionOrganizerAgent` 用于把错题本组织为学科卡片和专题 deck，用户可重命名、移动和合并专题，用户修改不被 AI 自动覆盖；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 作为资料管理方向预留，用于判断上传资料是否是重复、更新版或互补资料。
+Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent。`TutorAgent`、`KnowledgeVerifierAgent` 与 `WrongQuestionOrganizerAgent` 当前都是确定性 policy，不直接调用真实模型；Tutor 负责讲题意图和 prompt 策略，Verifier 只在 RAG 命中后评估资料可信度，Organizer 只给错题学科组与专题 deck 建议。最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责；错题组织由 NestJS organizer API 写入独立组织层。`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 作为资料管理方向预留，用于判断上传资料是否是重复、更新版或互补资料。
 
 ## 常用命令
 
@@ -124,6 +125,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - `/review-preferences` 读写当前用户账号级复习计划偏好，包括每日分钟、每日卡片上限、提醒时间、提醒开关和计划窗口。
 - `/review-tasks/plan` 是只读预览接口，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
@@ -141,6 +143,9 @@ mcp -> ai, fsrs, rag, types
 - Agent prompt 顺序：`BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context -> verifier guidance`；RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留，verifier notice 不追加。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`，并受 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关保护。
 - `/knowledge` 页面已接入 RAG 文档管理与检索测试：支持资料上传、列表、处理、替换上传、删除内联确认、状态摘要和手动检索预览；资料卡片操作使用右上角三点菜单，点击页面其它区域可收起菜单，`DONE` 资料不再展示主按钮式重新处理；该页面为在线能力，不进入 Dexie `mutationQueue`。
+- `/error-book` 已升级为学科优先入口：错题首页展示学科卡片，学科内展示专题 deck，专题内展示错题列表；专题支持重命名，详情弹层、备注、掌握状态、删除确认和加入复习保持原有 CRUD 能力。
+- Organizer API：`GET /wrong-question-groups`、`GET /wrong-question-groups/:subjectGroupId/decks`、`GET /wrong-question-decks/:deckId/questions`、`POST /wrong-question-organizer/organize/:wrongQuestionId`、`POST /wrong-question-organizer/organize-batch`、`PATCH /wrong-question-decks/:deckId`、`POST /wrong-question-decks/:deckId/items`、`DELETE /wrong-question-decks/:deckId/items/:wrongQuestionId`。
+- Organizer API 是在线组织能力，不进入 Dexie `mutationQueue`；创建错题后的自动整理为非阻塞流程，整理失败不影响错题保存。
 - ReviewTask 评分支持 `clientMutationId` 幂等；重复提交同一评分命令不会重复写入 `ReviewLog`。
 - Dexie 继续作为本地快速恢复、离线兜底、乐观更新和旧图片预览层。
 - WrongQuestion / OCRRecord / ReviewTask rating 写失败进入 Dexie `mutationQueue`，在 session 恢复、online、focus 时自动补偿同步。
@@ -170,5 +175,5 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按专题 deck 下钻。
+1. Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成复习分析与学习计划建议。
 2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。

@@ -806,13 +806,13 @@ export const AgentState = Annotation.Root({
 });
 ```
 
-### 6.3 错题整理 Agent 规划
+### 6.3 错题整理 Agent
 
-`WrongQuestionOrganizerAgent` 是 Phase 6 的错题本组织节点，目标不是替代 WrongQuestion CRUD，而是在错题保存后给出“学科卡片 + 专题 deck”的整理建议。
+`WrongQuestionOrganizerAgent` 是 Phase 6.4 已落地的错题本组织节点，目标不是替代 WrongQuestion CRUD，而是在错题保存后给出“学科卡片 + 专题 deck”的整理建议。
 
 第一层按学科展示，例如“高等数学”“大学英语”；第二层在学科内部按知识点、题型、错因和复习表现生成专题，例如“曲线积分与格林公式”。AI 可生成默认专题名，但用户重命名、移动错题和合并专题拥有最高优先级，用户锁定后的名称不被自动覆盖。
 
-后续可预留模型：
+当前已落地模型：
 
 ```text
 WrongQuestionSubjectGroup
@@ -820,7 +820,7 @@ WrongQuestionDeck
 WrongQuestionDeckItem
 ```
 
-其中 WrongQuestion / Card / ReviewLog 仍是事实来源，deck 只是组织层。更完整设计见 `docs/superpowers/specs/2026-06-18-phase-6-wrong-question-organizer-agent-design.md`。
+其中 WrongQuestion / Card / ReviewLog / ReviewTask 仍是事实来源，deck 只是组织层。更完整设计见 `docs/superpowers/specs/2026-06-21-phase-6-4-wrong-question-organizer-design.md`。
 
 ### 6.4 节点实现示例（TutorAgent）
 
