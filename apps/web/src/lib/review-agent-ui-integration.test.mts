@@ -45,6 +45,8 @@ function testSuggestionCardExists() {
   assert.match(source, /getReviewAgentPriorityMeta/);
   assert.match(source, /suggestion\.planner\.headline/);
   assert.match(source, /suggestion\.review\.weakPoints\.slice\(0, 3\)/);
+  assert.match(source, /break-words/);
+  assert.match(source, /normalizeSuggestionHref/);
   assert.match(source, /min-h-11/);
 }
 

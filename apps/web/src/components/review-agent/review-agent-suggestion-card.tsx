@@ -20,6 +20,7 @@ export function ReviewAgentSuggestionCard({
 }: ReviewAgentSuggestionCardProps) {
   const priority = getReviewAgentPriorityMeta(suggestion.review.priority);
   const firstBlock = suggestion.planner.suggestedBlocks[0];
+  const actionHref = firstBlock ? normalizeSuggestionHref(firstBlock.targetHref) : '/today';
   const weakPoints = suggestion.review.weakPoints.slice(0, 3);
   const todayText = getReviewAgentShortTodayText(suggestion.planner);
 
@@ -40,21 +41,21 @@ export function ReviewAgentSuggestionCard({
             </span>
           </div>
 
-          <p className="mt-2 text-sm font-bold leading-6 text-[var(--pm-ink)]">
+          <p className="mt-2 break-words text-sm font-bold leading-6 text-[var(--pm-ink)]">
             {suggestion.planner.headline}
           </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">
+          <p className="mt-1 break-words text-xs leading-5 text-[var(--pm-muted)]">
             {compact ? todayText : suggestion.planner.todayFocus}
           </p>
 
           {!compact ? (
-            <p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">
+            <p className="mt-1 break-words text-xs leading-5 text-[var(--pm-muted)]">
               {suggestion.planner.weekStrategy}
             </p>
           ) : null}
 
           {suggestion.planner.capacityNotice ? (
-            <p className="mt-3 rounded-2xl bg-[#fff7df] px-3 py-2 text-xs font-semibold leading-5 text-[#8a6815] ring-1 ring-[#f3e6a8]">
+            <p className="mt-3 break-words rounded-2xl bg-[#fff7df] px-3 py-2 text-xs font-semibold leading-5 text-[#8a6815] ring-1 ring-[#f3e6a8]">
               {suggestion.planner.capacityNotice}
             </p>
           ) : null}
@@ -64,7 +65,7 @@ export function ReviewAgentSuggestionCard({
               {weakPoints.map((point) => (
                 <span
                   key={point.label}
-                  className="rounded-full bg-[#eafff9] px-2 py-1 text-[11px] font-semibold text-[#247269] ring-1 ring-[#bdeee5]"
+                  className="max-w-full break-words rounded-full bg-[#eafff9] px-2 py-1 text-[11px] font-semibold text-[#247269] ring-1 ring-[#bdeee5]"
                 >
                   {point.label}
                 </span>
@@ -74,11 +75,11 @@ export function ReviewAgentSuggestionCard({
 
           {firstBlock ? (
             <Link
-              href={firstBlock.targetHref}
-              className="tap-target mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98]"
+              href={actionHref}
+              className="tap-target mt-3 inline-flex min-h-11 max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98]"
             >
               <Sparkles className="h-4 w-4" />
-              {firstBlock.title}
+              <span className="break-words">{firstBlock.title}</span>
               <ChevronRight className="h-4 w-4" />
             </Link>
           ) : null}
@@ -86,4 +87,9 @@ export function ReviewAgentSuggestionCard({
       </div>
     </section>
   );
+}
+
+function normalizeSuggestionHref(href: string) {
+  const trimmed = href.trim();
+  return trimmed.startsWith('/') && !trimmed.startsWith('//') ? trimmed : '/today';
 }
