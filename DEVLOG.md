@@ -706,6 +706,36 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-22（Day 17）
+
+**Phase 6.5 ReviewAgent / PlannerAgent**
+
+- 完成 Phase 6.5 ReviewAgent / PlannerAgent 只读建议闭环。
+- 新增 `@repo/types/api/review-agent` contract，覆盖 ReviewAgent / PlannerAgent 输入输出、suggestions query 和 response schema。
+- `@repo/agent` 新增 `analyzeReview()` 与 `planStudy()` 确定性 policy，并通过 `@repo/agent/review`、`@repo/agent/planner` 导出。
+- 新增 NestJS `GET /review-agent/suggestions`，经过 `JwtAuthGuard`，按当前 `userId` 聚合 Card、ReviewLog、ReviewTask plan、ReviewPreference 和错题组织摘要。
+- 新增 web review-agent API client、query hook、query key、展示 helper 和共享建议卡片。
+- `/plan` 展示完整 Agent 学习建议，`/today` 展示紧凑建议；接口失败不隐藏原有计划、今日复习和任务内容。
+- 保持 FSRS / ReviewTask 权威边界：不自动创建 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck，不调用真实模型，不进入 Dexie `mutationQueue`。
+
+验证：
+
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/agent test` 通过，51 个测试全部通过。
+- `bun --cwd packages/agent typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --cwd packages/fsrs test` 通过。
+- `bun --filter @repo/server test` 通过，20 个测试套件、173 个测试全部通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/server test:e2e -- --runInBand` 通过，11 个测试套件、31 个测试全部通过。
+- `bun --filter @repo/web lint` 通过。
+- `bun --filter @repo/web test` 通过，214 个测试全部通过。
+- `bun --filter @repo/web build` 通过。
+- `rg -n "streamText|AI_PROVIDER_MODE|AI_ENABLE_LIVE_CALLS|OPENAI_API_KEY|DEEPSEEK_API_KEY" packages/agent/src/nodes/review.ts packages/agent/src/nodes/planner.ts apps/server/src/review-agent` 无命中。
+- `rg -n "\.(create|createMany|update|updateMany|delete|deleteMany|upsert)\(" apps/server/src/review-agent` 无命中。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -768,14 +798,15 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
 - Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
-**Phase 6：进行中，Phase 6.4 已完成**
+**Phase 6：进行中，Phase 6.5 已完成**
 
 - Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
 - Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
 - Phase 6.2 TutorAgent 策略层已完成：Tutor 路线可生成结构化讲题策略、策略 prompt 和 mock 策略元数据。
 - Phase 6.3 KnowledgeVerifierAgent 已完成：RAG 命中后可评估资料可信度，并注入保守使用规则和资料核对提示。
 - Phase 6.4 WrongQuestionOrganizerAgent 已完成：错题本已升级为学科卡片、专题 deck 和错题列表下钻，组织层独立于 WrongQuestion 与 FSRS 事实层。
-- 分析型 Agent 仍保持阈值或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup。
+- Phase 6.5 ReviewAgent / PlannerAgent 已完成：计划页和今日任务页可读取只读 suggestions API，展示复习诊断、今日重点和学习计划建议。
+- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup。
 
 ---
 
@@ -807,7 +838,8 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt 和 mock 策略元数据。
 - [x] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
 - [x] Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
+- [x] Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成只读复习分析与学习计划建议。
 - [ ] Phase 6：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
-- [ ] Phase 6：`ReviewAgent / PlannerAgent / MemoryAgent`，按阈值或用户主动触发，生成复习分析、学习计划建议和长期记忆候选。
+- [ ] Phase 6：`MemoryAgent`，按阈值或用户主动触发，生成长期记忆候选。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。

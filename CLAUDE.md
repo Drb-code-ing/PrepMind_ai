@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.4 已完成，后续进入 Phase 6.5。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.5 已完成，后续进入 Phase 6.6。
 
 已完成主线：
 
@@ -32,10 +32,11 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.
 - Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt、Tutor debug headers 和 mock strategy metadata。
 - Phase 6.3：KnowledgeVerifierAgent，支持 RAG 命中后的资料可信度评估、verifier prompt guidance、资料核对提示和 verifier debug headers。
 - Phase 6.4：WrongQuestionOrganizerAgent，支持错题学科卡片、专题 deck、组织层 API 和 `/error-book` 学科优先下钻。
+- Phase 6.5：ReviewAgent / PlannerAgent，只读生成复习分析、今日重点和学习计划建议，展示在 `/plan` 与 `/today`。
 
 下一步：
 
-1. Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成复习分析与学习计划建议。
+1. Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认和撤销。
 2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
 
 ## 常用命令
@@ -98,7 +99,7 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
-- Phase 6 多 Agent 规划：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent 和 WrongQuestionOrganizerAgent。`TutorAgent`、`KnowledgeVerifierAgent` 与 `WrongQuestionOrganizerAgent` 当前都是确定性 policy，不直接调用真实模型；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 在 RAG 检索命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped`，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 让错题首页按学科卡片优先展示，学科内部按专题 deck 下钻，并由 NestJS organizer API 写入独立组织层；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 后续用于判断资料重复、更新版或互补资料；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
+- Phase 6 多 Agent 规划：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent 和 PlannerAgent。`TutorAgent`、`KnowledgeVerifierAgent`、`WrongQuestionOrganizerAgent`、`ReviewAgent` 与 `PlannerAgent` 当前都是确定性 policy，不直接调用真实模型；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 在 RAG 检索命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped`，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 让错题首页按学科卡片优先展示，学科内部按专题 deck 下钻，并由 NestJS organizer API 写入独立组织层；`ReviewAgent / PlannerAgent` 通过只读 `/review-agent/suggestions` 基于当前用户复习事实生成建议，不创建未来任务、不写事实表；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 后续用于判断资料重复、更新版或互补资料；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
 
 ## 当前数据流
 
@@ -109,6 +110,7 @@ mcp -> ai, fsrs, rag, types
 - OCRRecord：`/ocr-records` 持久化 OCR 历史；有效题目 OCR 会生成 `activeStudyContext` 供后续追问承接。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - Plan：`/review-tasks/plan` 只读预览未来复习压力，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和账号级 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
+- ReviewAgent / PlannerAgent：`/review-agent/suggestions` 经过 `JwtAuthGuard`，按当前 `userId` 聚合 Card、ReviewLog、ReviewTask 计划、ReviewPreference 和错题组织摘要，返回只读复习诊断与计划建议；不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck，也不进入 Dexie `mutationQueue`。
 - Preference：`/review-preferences` 读写每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口。
 - Stats：`/stats` 使用客户端 ECharts 展示趋势、评分分布和卡片状态。
 - RAG 文档 API：`/knowledge/documents` 支持上传、列表、详情、删除和 `PUT /knowledge/documents/:id/file` 替换上传，`POST /knowledge/documents/:id/process` 支持处理上传文档。
