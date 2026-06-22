@@ -13,32 +13,47 @@ import { PrismaService } from '../database/prisma.service';
 import { ReviewPreferencesService } from '../review-preferences/review-preferences.service';
 import { ReviewTasksService } from '../review-tasks/review-tasks.service';
 
-const MAX_WEAK_KNOWLEDGE_POINTS = 20;
 const RECENT_REVIEW_DAYS = 14;
 
-const cardSignalInclude = {
+const cardSignalSelect = {
+  nextReview: true,
+  difficulty: true,
+  stability: true,
   wrongQuestion: {
-    include: {
+    select: {
+      subject: true,
+      knowledgePoints: true,
       deckItems: {
-        include: {
+        select: {
           deck: {
-            include: {
-              subjectGroup: true,
+            select: {
+              name: true,
+              subjectGroup: {
+                select: {
+                  displayName: true,
+                },
+              },
             },
           },
         },
       },
     },
   },
-} satisfies Prisma.CardInclude;
+} satisfies Prisma.CardSelect;
 
-const reviewLogSignalInclude = {
+const reviewLogSignalSelect = {
+  rating: true,
   card: {
-    include: {
-      wrongQuestion: true,
+    select: {
+      wrongQuestion: {
+        select: {
+          subject: true,
+          knowledgePoints: true,
+        },
+      },
     },
   },
-} satisfies Prisma.ReviewLogInclude;
+} satisfies Prisma.ReviewLogSelect;
 
 @Injectable()
 export class ReviewAgentService {
@@ -80,7 +95,7 @@ export class ReviewAgentService {
     const [cards, recentLogs] = await Promise.all([
       this.prisma.card.findMany({
         where: { userId, suspendedAt: null },
-        include: cardSignalInclude,
+        select: cardSignalSelect,
         orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
       }),
       this.prisma.reviewLog.findMany({
@@ -88,7 +103,7 @@ export class ReviewAgentService {
           reviewedAt: { gte: recentSince },
           card: { userId },
         },
-        include: reviewLogSignalInclude,
+        select: reviewLogSignalSelect,
         orderBy: { reviewedAt: 'desc' },
         take: 200,
       }),
@@ -112,7 +127,9 @@ export class ReviewAgentService {
       const wrongQuestion = card.wrongQuestion;
       if (!wrongQuestion) continue;
 
-      for (const label of wrongQuestion.knowledgePoints) {
+      for (const label of this.normalizeKnowledgeLabels(
+        wrongQuestion.knowledgePoints,
+      )) {
         const aggregate = this.getWeakPointAggregate(aggregates, label);
         aggregate.wrongCount += 1;
         aggregate.difficultyTotal += card.difficulty;
@@ -131,7 +148,9 @@ export class ReviewAgentService {
       const wrongQuestion = log.card.wrongQuestion;
       if (!wrongQuestion) continue;
 
-      for (const label of wrongQuestion.knowledgePoints) {
+      for (const label of this.normalizeKnowledgeLabels(
+        wrongQuestion.knowledgePoints,
+      )) {
         const aggregate = this.getWeakPointAggregate(aggregates, label);
         aggregate.recentAgainCount += 1;
         aggregate.subject ??= wrongQuestion.subject;
@@ -162,8 +181,7 @@ export class ReviewAgentService {
           right.wrongCount - left.wrongCount ||
           right.averageDifficulty - left.averageDifficulty ||
           left.label.localeCompare(right.label, 'zh-Hans-CN'),
-      )
-      .slice(0, MAX_WEAK_KNOWLEDGE_POINTS);
+      );
   }
 
   private buildCardSummary(
@@ -202,20 +220,29 @@ export class ReviewAgentService {
     aggregates: Map<string, WeakPointAggregate>,
     label: string,
   ) {
-    const normalizedLabel = label.trim();
-    const existing = aggregates.get(normalizedLabel);
+    const existing = aggregates.get(label);
     if (existing) return existing;
 
     const aggregate: WeakPointAggregate = {
-      label: normalizedLabel,
+      label,
       wrongCount: 0,
       recentAgainCount: 0,
       difficultyTotal: 0,
       stabilityTotal: 0,
       cardCount: 0,
     };
-    aggregates.set(normalizedLabel, aggregate);
+    aggregates.set(label, aggregate);
     return aggregate;
+  }
+
+  private normalizeKnowledgeLabels(labels: readonly string[]) {
+    return [
+      ...new Set(
+        labels
+          .map((label) => label.trim())
+          .filter((label): label is string => label.length > 0),
+      ),
+    ];
   }
 
   private resolveLocalTodayStartUtc(
@@ -236,11 +263,11 @@ export class ReviewAgentService {
 }
 
 type CardSignal = Prisma.CardGetPayload<{
-  include: typeof cardSignalInclude;
+  select: typeof cardSignalSelect;
 }>;
 
 type ReviewLogSignal = Prisma.ReviewLogGetPayload<{
-  include: typeof reviewLogSignalInclude;
+  select: typeof reviewLogSignalSelect;
 }>;
 
 type WeakPointAggregate = {

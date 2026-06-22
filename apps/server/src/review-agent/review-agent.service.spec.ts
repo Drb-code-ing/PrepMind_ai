@@ -198,14 +198,24 @@ describe('ReviewAgentService', () => {
     expect(reviewTasksService.getToday).not.toHaveBeenCalled();
     expect(prisma.card.findMany).toHaveBeenCalledWith({
       where: { userId: 'user_1', suspendedAt: null },
-      include: {
+      select: {
+        nextReview: true,
+        difficulty: true,
+        stability: true,
         wrongQuestion: {
-          include: {
+          select: {
+            subject: true,
+            knowledgePoints: true,
             deckItems: {
-              include: {
+              select: {
                 deck: {
-                  include: {
-                    subjectGroup: true,
+                  select: {
+                    name: true,
+                    subjectGroup: {
+                      select: {
+                        displayName: true,
+                      },
+                    },
                   },
                 },
               },
@@ -220,10 +230,16 @@ describe('ReviewAgentService', () => {
         reviewedAt: { gte: new Date('2026-06-08T08:30:00.000Z') },
         card: { userId: 'user_1' },
       },
-      include: {
+      select: {
+        rating: true,
         card: {
-          include: {
-            wrongQuestion: true,
+          select: {
+            wrongQuestion: {
+              select: {
+                subject: true,
+                knowledgePoints: true,
+              },
+            },
           },
         },
       },
@@ -234,6 +250,70 @@ describe('ReviewAgentService', () => {
     expect(result.review.weakPoints[0]?.label).toBe('格林公式');
     expect(result.planner.suggestedBlocks.length).toBeGreaterThan(0);
     expect(result.planSummary).toEqual(plan.summary);
+  });
+
+  it('ignores whitespace-only knowledge points from cards and recent logs', async () => {
+    prisma.card.findMany.mockResolvedValueOnce([
+      {
+        difficulty: 3,
+        stability: 5,
+        nextReview: new Date('2026-06-29T08:00:00.000Z'),
+        wrongQuestion: {
+          subject: '数学',
+          knowledgePoints: ['   ', '\t'],
+          deckItems: [],
+        },
+      },
+    ]);
+    prisma.reviewLog.findMany.mockResolvedValueOnce([
+      {
+        rating: 1,
+        reviewedAt: new Date('2026-06-21T10:00:00.000Z'),
+        card: {
+          wrongQuestion: {
+            subject: '数学',
+            knowledgePoints: ['  ', '\n'],
+          },
+        },
+      },
+    ]);
+
+    const result = await createService().getSuggestions('user_1', query);
+    const labels = result.review.weakPoints.map((point) => point.label);
+
+    expect(labels).not.toContain('');
+    expect(labels.map((label) => label.trim())).not.toContain('');
+  });
+
+  it('keeps low-stability high-risk weak points visible to ReviewAgent beyond the first 20 sorted points', async () => {
+    prisma.card.findMany.mockResolvedValueOnce([
+      ...Array.from({ length: 20 }, (_, index) => ({
+        difficulty: 3,
+        stability: 5,
+        nextReview: new Date('2026-06-29T08:00:00.000Z'),
+        wrongQuestion: {
+          subject: '数学',
+          knowledgePoints: [`普通知识点${index + 1}`],
+          deckItems: [],
+        },
+      })),
+      {
+        difficulty: 1,
+        stability: 1.2,
+        nextReview: new Date('2026-06-29T08:00:00.000Z'),
+        wrongQuestion: {
+          subject: '数学',
+          knowledgePoints: ['低稳定性专题'],
+          deckItems: [],
+        },
+      },
+    ]);
+    prisma.reviewLog.findMany.mockResolvedValueOnce([]);
+
+    const result = await createService().getSuggestions('user_1', query);
+
+    expect(result.review.priority).toBe('high');
+    expect(result.review.signals).toContain('highWeakPoint');
   });
 
   it('does not write review tasks, cards, logs, preferences, wrong questions, or organizer data', async () => {
