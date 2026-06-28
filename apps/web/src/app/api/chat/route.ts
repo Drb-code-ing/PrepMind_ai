@@ -1,11 +1,16 @@
 import { createDataStreamResponse, formatDataStreamPart, streamText } from 'ai';
 import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
+import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
 import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
+import { apiClient } from '@/lib/api-client';
 import { aiProvider, getAiProviderStatus } from '@/lib/ai-provider';
 import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
+import { createAgentTraceApi } from '@/lib/agent-trace-api';
+import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
 import {
   buildChatAgentDecision,
   combineChatAdditionalPrompts,
+  type ChatAgentDecision,
 } from '@/lib/chat-agent-runtime';
 import {
   type ActiveStudyContext,
@@ -16,6 +21,9 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
+
+const AGENT_TRACE_TIMEOUT_MS = 800;
+const agentTraceApi = createAgentTraceApi(apiClient);
 
 const CHAT_ERROR_MESSAGE =
   'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
@@ -36,6 +44,37 @@ function isActiveStudyContext(value: unknown): value is ActiveStudyContext {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
   return record.type === 'ocr-question' && typeof record.questionText === 'string';
+}
+
+async function recordAgentTraceSafely(
+  accessToken: string | null,
+  createPayload: () => AgentTraceCreateRequest,
+) {
+  if (!accessToken) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AGENT_TRACE_TIMEOUT_MS);
+
+  try {
+    await agentTraceApi.createTrace(accessToken, createPayload(), {
+      signal: controller.signal,
+    });
+    return true;
+  } catch (error) {
+    console.warn('[AgentTrace]', error);
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function resolveTraceModelProvider(mode: 'mock' | 'live', model: string, baseURL: string) {
+  if (mode === 'mock') return 'mock';
+
+  const marker = `${model} ${baseURL}`.toLowerCase();
+  if (marker.includes('deepseek')) return 'deepseek';
+  if (marker.includes('openai')) return 'openai';
+  return 'openai-compatible';
 }
 
 function getLatestUserText(messages: ChatContextMessage[]) {
@@ -62,7 +101,8 @@ function createMockChatResponse(input: {
   activeContext: ActiveStudyContext | null;
   knowledgeHits: KnowledgeSearchHit[];
   knowledgeVerifierResult?: KnowledgeVerifierResult;
-  agentDecision: ReturnType<typeof buildChatAgentDecision>;
+  agentDecision: ChatAgentDecision;
+  traceRecorded: boolean;
 }) {
   const mockText = createMockChatText({
     hasActiveContext: Boolean(input.activeContext),
@@ -86,6 +126,7 @@ function createMockChatResponse(input: {
       'x-prepmind-knowledge-verifier-chunks': String(
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
+      'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -104,7 +145,8 @@ function createLiveChatResponse(input: {
   maxOutputTokens: number;
   knowledgeHits: KnowledgeSearchHit[];
   knowledgeVerifierResult?: KnowledgeVerifierResult;
-  agentDecision: ReturnType<typeof buildChatAgentDecision>;
+  agentDecision: ChatAgentDecision;
+  traceRecorded: boolean;
 }) {
   const result = streamText({
     model: aiProvider(input.model),
@@ -122,6 +164,7 @@ function createLiveChatResponse(input: {
       'x-prepmind-knowledge-verifier-chunks': String(
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
+      'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -158,14 +201,17 @@ export async function POST(req: Request) {
 
     const normalizedMessages = messages as ChatContextMessage[];
     const normalizedActiveContext = isActiveStudyContext(activeContext) ? activeContext : null;
+    const normalizedAccessToken = normalizeAccessToken(accessToken);
+    const traceRunId = crypto.randomUUID();
+    const traceStartedAt = new Date();
     const agentDecision = buildChatAgentDecision({
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
-      runId: crypto.randomUUID(),
+      runId: traceRunId,
       userId: 'web-chat-user',
     });
     const knowledgeSearch = await searchKnowledgeForChat({
-      accessToken: normalizeAccessToken(accessToken),
+      accessToken: normalizedAccessToken,
       messages: normalizedMessages,
       logger: console,
     });
@@ -217,6 +263,27 @@ export async function POST(req: Request) {
       );
     }
 
+    const traceRecorded = await recordAgentTraceSafely(normalizedAccessToken, () =>
+      buildChatAgentTracePayload({
+        runId: traceRunId,
+        conversationId: null,
+        messages: normalizedMessages,
+        mode: providerStatus.mode,
+        modelProvider: resolveTraceModelProvider(
+          providerStatus.mode,
+          providerStatus.model,
+          providerStatus.baseURL,
+        ),
+        modelName: providerStatus.model,
+        budget,
+        agentDecision,
+        knowledgeHits: citationHits,
+        knowledgeVerifierResult: citationVerifierResult,
+        startedAt: traceStartedAt,
+        finishedAt: new Date(),
+      }),
+    );
+
     if (providerStatus.mode === 'mock') {
       return createMockChatResponse({
         messages: budget.modelMessages,
@@ -224,6 +291,7 @@ export async function POST(req: Request) {
         knowledgeHits: citationHits,
         knowledgeVerifierResult: citationVerifierResult,
         agentDecision,
+        traceRecorded,
       });
     }
 
@@ -239,6 +307,7 @@ export async function POST(req: Request) {
       knowledgeHits: citationHits,
       knowledgeVerifierResult: citationVerifierResult,
       agentDecision,
+      traceRecorded,
     });
   } catch (error) {
     console.error('[Chat API]', error);
