@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./api/common": "./src/api/common.ts",
     "./api/agent": "./src/api/agent.ts",
+    "./api/agent-trace": "./src/api/agent-trace.ts",
     "./api/auth": "./src/api/auth.ts",
     "./api/wrong-question": "./src/api/wrong-question.ts",
     "./api/wrong-question-organizer": "./src/api/wrong-question-organizer.ts",

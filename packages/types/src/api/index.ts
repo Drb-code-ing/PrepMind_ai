@@ -38,3 +38,4 @@ export * from './review-preference';
 export * from './review-agent';
 export * from './knowledge';
 export * from './memory-agent';
+export * from './agent-trace';
