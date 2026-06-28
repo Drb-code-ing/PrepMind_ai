@@ -764,6 +764,12 @@ f5a2eb1 style: soften cartoon theme palette
 - `rg -n "Phase 6\\.6|MemoryAgent|UserMemory|UserMemoryCandidate|Phase 6\\.7" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md` 通过。
 - `git diff --check` 通过。
 
+**Phase 6.7 Agent Trace / Eval 规划**
+
+- 新增 `docs/superpowers/specs/2026-06-28-phase-6-7-agent-trace-eval-design.md`，明确 Agent Trace UI、估算成本看板和固定 deterministic eval set 的目标、非目标、数据边界、API contract、隐私约束与验收标准。
+- 新增 `docs/superpowers/plans/2026-06-28-phase-6-7-agent-trace-eval.md`，按 types contract、Agent eval、server trace API、web trace capture、dashboard UI 和 docs closeout 拆分实施任务；每个任务保留独立验证和提交边界。
+- Phase 6.7 仍保持既有边界：不保存完整 prompt / full response / RAG chunk，不绕过 live 双开关，不把 MemoryAgent 自动注入每次 Chat，成本看板只展示估算值。
+
 ---
 
 ## 当前状态
