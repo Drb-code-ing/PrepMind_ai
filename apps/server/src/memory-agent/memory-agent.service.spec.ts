@@ -170,6 +170,21 @@ describe('MemoryAgentService', () => {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+    expect(prisma.card.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user_1', suspendedAt: null },
+      select: {
+        difficulty: true,
+        stability: true,
+        wrongQuestion: {
+          select: {
+            subject: true,
+            knowledgePoints: true,
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      take: 500,
+    });
     expect(prisma.userMemoryCandidate.createMany).toHaveBeenCalledWith({
       data: arrayContaining([
         objectContaining({

@@ -20,6 +20,7 @@ import { PrismaService } from '../database/prisma.service';
 
 const SIGNAL_WINDOW_DAYS = 60;
 const MAX_CREATED_CANDIDATES = 5;
+const MAX_MEMORY_AGENT_CARDS = 500;
 
 const candidateSelect = {
   id: true,
@@ -314,6 +315,8 @@ export class MemoryAgentService {
               },
             },
           },
+          orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+          take: MAX_MEMORY_AGENT_CARDS,
         }),
         this.prisma.reviewLog.findMany({
           where: {
