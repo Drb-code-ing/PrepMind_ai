@@ -7,6 +7,7 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-documents.module';
+import { MemoryAgentModule } from './memory-agent/memory-agent.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
 import { ReviewAgentModule } from './review-agent/review-agent.module';
 import { ReviewPreferencesModule } from './review-preferences/review-preferences.module';
@@ -31,6 +32,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ReviewAgentModule,
     ReviewPreferencesModule,
     ReviewTasksModule,
+    MemoryAgentModule,
     UploadsModule,
     KnowledgeDocumentsModule,
     WrongQuestionOrganizerModule,

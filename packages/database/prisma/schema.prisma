@@ -395,7 +395,7 @@ model UserMemory {
   title             String           @db.VarChar(80)
   content           String           @db.Text
   status            UserMemoryStatus @default(ACTIVE)
-  sourceCandidateId String?
+  sourceCandidateId String?          @unique
   confidence        Float            @default(0.5)
   lastUsedAt        DateTime?
   archivedAt        DateTime?

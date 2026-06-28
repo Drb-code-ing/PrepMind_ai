@@ -66,6 +66,9 @@ CREATE INDEX "UserMemory_userId_status_updatedAt_idx"
 CREATE INDEX "UserMemory_userId_type_updatedAt_idx"
   ON "UserMemory"("userId", "type", "updatedAt");
 
+CREATE UNIQUE INDEX "UserMemory_sourceCandidateId_key"
+  ON "UserMemory"("sourceCandidateId");
+
 ALTER TABLE "UserMemory"
   ADD CONSTRAINT "UserMemory_userId_fkey"
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
