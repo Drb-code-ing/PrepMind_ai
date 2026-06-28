@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-28。Phase 6.6 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且 Phase 6.6 不自动注入长期记忆。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-28。Phase 6.7 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace UI、估算成本看板和固定 deterministic eval set；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且长期记忆不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -12,6 +12,7 @@
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
+- Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy 和 MemoryAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
@@ -68,6 +69,7 @@
   -> 有 accessToken 时检索知识库，命中后调用 KnowledgeVerifierAgent 评估资料可信度
   -> getAiProviderStatus() 判断 mock / live
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
+  -> 有 accessToken 时 best-effort 写入 /agent-traces 脱敏观测元数据
   -> mock data stream 或 OpenAI / DeepSeek SSE
   -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
@@ -93,7 +95,10 @@
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
-- Phase 6.6 不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
+- 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
+- `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。
+- Agent Trace payload 在写入前会裁剪并脱敏用户输入预览、step summary 和错误信息；服务端也会再次裁剪和脱敏，防止保存 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...` 或 `Cookie: ...` 等敏感片段。
+- `/agent-trace` 的 token 与成本只做估算，用于调试 Agent 链路和观察趋势，不作为供应商真实账单或财务凭证。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
 - 流式输出使用渐进 Markdown 渲染：稳定段落进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
 - 自动滚动默认跟随输出；用户触摸、滚轮或指针操作内容区后暂停，新一轮生成或回到底部时恢复。
@@ -118,6 +123,23 @@ Chat 同步保护：
 - UI 显示“本次回答没有成功生成，请重试”，并记录 debug 信息；后续正常 assistant 生成后清除该错误。
 
 ChatMessage 不进入通用 CRUD mutation queue，继续使用会话快照幂等同步。
+
+服务端 Agent Trace API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/agent-traces` | 写入或替换当前用户一次 Agent Trace run 及 steps，写入内容必须是脱敏后的元数据 |
+| `GET` | `/agent-traces` | 分页读取当前用户最近 trace，可按 route、mode、status 过滤 |
+| `GET` | `/agent-traces/summary` | 读取近 1 到 30 天 trace 汇总、route 分布、verifier 分布和估算成本 |
+| `GET` | `/agent-traces/:id` | 读取当前用户单次 trace 详情与步骤 |
+
+Agent Trace 边界：
+
+- `/agent-traces` 经过 `JwtAuthGuard`，所有读写都按当前 `userId` 隔离。
+- Trace 是在线账号级观测能力，不进入 Dexie `mutationQueue`；离线或弱网时不补写历史 trace。
+- Trace 不保存完整 prompt、完整模型回答、完整 RAG chunk、access token、refresh token 或 API key。
+- `inputPreview`、`inputSummary`、`outputSummary` 和 `errorMessage` 只用于调试摘要，长度受 schema 与服务端双重限制。
+- fixed deterministic eval set 位于 `@repo/agent`，用于回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 行为，不替代 live 输出体验验收。
 
 ## 4. RAG 知识库数据流
 
@@ -452,7 +474,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 - `reject` 只更新候选状态，不创建正式记忆。
 - MemoryAgent 不写 ChatMessage、WrongQuestion、Card、ReviewLog、ReviewTask、ReviewPreference 或 organizer deck 数据。
 - 记忆管理是在线账号级能力，不进入 Dexie `mutationQueue`。
-- Phase 6.6 不在 `/api/chat` 自动读取或注入 `UserMemory`；后续若启用个性化回答，需要单独设计开关、预算和可见提示。
+- 当前不在 `/api/chat` 自动读取或注入 `UserMemory`；后续若启用个性化回答，需要单独设计开关、预算和可见提示。
 
 服务端 MemoryAgent API：
 
@@ -501,6 +523,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - WrongQuestionOrganizer：学科卡片、专题 deck、移动和重命名是在线组织能力，不进入通用 mutation queue。
 - ReviewAgent / PlannerAgent：复习诊断和学习计划建议是在线只读能力，不进入通用 mutation queue。
 - MemoryAgent：候选生成、确认、忽略和正式记忆管理是在线账号级能力，不进入通用 mutation queue。
+- Agent Trace：`/agent-traces` 是在线账号级观测能力，只记录脱敏元数据；trace 写入失败不需要离线补偿，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
@@ -542,6 +565,8 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - `ReviewPreference`
 - `UserMemoryCandidate`
 - `UserMemory`
+- `AgentTraceRun`
+- `AgentTraceStep`
 - `Document`
 - `Chunk`
 

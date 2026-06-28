@@ -66,3 +66,15 @@ WrongQuestionOrganizerAgent 落地后必须覆盖：
 - 更新或删除错题后，organizer 查询缓存需要失效刷新，学科和专题统计不能 stale。
 - Organizer 不调用 live 模型，不读取 API key，不进入 Dexie `mutationQueue`。
 - 用户隔离必须通过 e2e 覆盖，不能跨用户读取学科、专题或错题关联。
+
+## 7. Phase 6.7 Agent Trace / Eval 验收清单（已完成）
+
+Agent Trace 与固定评测集已落地，并必须持续覆盖：
+
+- fixed deterministic eval set 必须在 `@repo/agent` 中稳定回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 行为。
+- Mock 验收只证明 trace capture、headers、API、UI 和估算成本链路可用；如果改动 prompt 或 live 输出体验，仍需要按本文规则做小样本 live smoke。
+- `/api/chat` 只有在存在 access token 时 best-effort 写入 `/agent-traces`；trace 写入失败不得打断流式回答，只能通过 `x-prepmind-agent-trace-recorded=false` 或日志暴露。
+- Trace 只能保存脱敏元数据：route、confidence、step summary、token 估算、verifier 状态、模型名、模式和估算成本；不得保存完整 prompt、完整回答、完整 RAG chunk、access token、refresh token 或 API key。
+- 前端 payload builder 和后端 service 都必须裁剪并脱敏 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...`、`Cookie: ...` 等敏感片段。
+- `/agent-trace` 的成本看板只展示基于 token 估算和本地价格表的估算成本，不代表供应商真实账单，也不应用作财务对账。
+- `/agent-traces` 是在线账号级观测 API，不进入 Dexie `mutationQueue`；离线或弱网导致 trace 丢失是可接受降级。

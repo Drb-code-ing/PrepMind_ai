@@ -770,6 +770,31 @@ f5a2eb1 style: soften cartoon theme palette
 - 新增 `docs/superpowers/plans/2026-06-28-phase-6-7-agent-trace-eval.md`，按 types contract、Agent eval、server trace API、web trace capture、dashboard UI 和 docs closeout 拆分实施任务；每个任务保留独立验证和提交边界。
 - Phase 6.7 仍保持既有边界：不保存完整 prompt / full response / RAG chunk，不绕过 live 双开关，不把 MemoryAgent 自动注入每次 Chat，成本看板只展示估算值。
 
+**Phase 6.7 Agent Trace / Eval 交付**
+
+- 完成 Agent Trace contract：`@repo/types/api/agent-trace` 定义 trace run、step、create、list、detail 和 summary schema，并提供 runtime import guard。
+- 完成固定 deterministic eval set：覆盖 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 回归。
+- Prisma 新增 `AgentTraceRun`、`AgentTraceStep` 与枚举，NestJS 新增 `/agent-traces` API，支持写入、列表、详情和近 1 到 30 天 summary，所有读写按当前 `userId` 隔离。
+- `/api/chat` 新增 best-effort trace capture：有 access token 时写入脱敏 trace，失败不打断流式回答，只通过 `x-prepmind-agent-trace-recorded` 暴露写入结果。
+- Web 新增估算成本 helper、trace API client、payload builder、TanStack Query hooks 和 `/agent-trace` 调试台；个人中心新增 Agent 调试台入口。
+- 保持 Phase 6.7 隐私边界：Trace 只保存 route、confidence、step summary、token 估算、verifier 状态、模型名、模式和估算成本等脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
+- `/agent-trace` 的成本看板只展示基于本地价格表和 token 估算的估算成本，不替代模型供应商账单；`/agent-traces` 是在线账号级 API，不进入 Dexie `mutationQueue`。
+
+验证：
+
+- `bun test packages/types/tests/agent-trace.test.mts packages/types/tests/agent-trace-runtime-import.test.mts` 通过，0 fail。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/agent test` 通过，66 个测试全部通过。
+- `bun --cwd packages/agent typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --filter @repo/server test -- agent-traces.service.spec.ts` 通过，5 个测试全部通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/web test` 通过，223 个测试全部通过。
+- `bun --filter @repo/web build` 通过，`/agent-trace` 已出现在构建路由中。
+- 设置 `DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind`、`JWT_SECRET` 与 `RAG_EMBEDDING_PROVIDER=fake` 后，`bun --filter @repo/server test:e2e` 通过，12 个 suites、34 个 tests 全部通过。
+- `rg -n "Phase 6\\.7|Agent Trace|agent-traces|估算成本|fixed deterministic eval" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md docs/ai-behavior-acceptance.md` 通过。
+- `git diff --check` 通过，仅保留 Windows CRLF 提示。
+
 ---
 
 ## 当前状态
@@ -834,7 +859,7 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
 - Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
-**Phase 6：进行中，Phase 6.6 已完成**
+**Phase 6：已完成主线，Phase 6.7 已完成**
 
 - Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
 - Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
@@ -843,7 +868,8 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 6.4 WrongQuestionOrganizerAgent 已完成：错题本已升级为学科卡片、专题 deck 和错题列表下钻，组织层独立于 WrongQuestion 与 FSRS 事实层。
 - Phase 6.5 ReviewAgent / PlannerAgent 已完成：计划页和今日任务页可读取只读 suggestions API，展示复习诊断、今日重点和学习计划建议。
 - Phase 6.6 MemoryAgent 已完成：个人中心可生成长期记忆候选，用户确认后写入正式记忆，并支持停用、恢复和删除。
-- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup，也不会把长期记忆自动注入 `/api/chat`。
+- Phase 6.7 Agent Trace / Eval 已完成：`/api/chat` 可 best-effort 记录脱敏 trace，`/agent-traces` 提供账号级观测 API，`/agent-trace` 展示步骤、降级、token 和估算成本，固定 deterministic eval set 覆盖当前确定性 Agent policy。
+- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup，也不会把长期记忆自动注入 `/api/chat`；Agent Trace 只记录脱敏观测元数据，不改变 Chat 输出链路。
 
 ---
 
@@ -877,7 +903,8 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [x] Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成只读复习分析与学习计划建议。
 - [x] Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认、停用/恢复和删除。
-- [ ] Phase 6.7：Agent Trace UI、成本看板和固定评测集。
+- [x] Phase 6.7：Agent Trace UI、估算成本看板和固定评测集。
+- [ ] Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
 - [ ] Phase 6 后续资料管理：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
 - [ ] MCP 工具体系。
-- [ ] BullMQ 后台任务与生产观测。
+- [ ] 生产观测增强：OpenTelemetry、Sentry、Prometheus / Grafana 与 k6。
