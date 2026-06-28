@@ -63,7 +63,7 @@ export function useGenerateMemoryCandidates(userId: string) {
       return memoryAgentApi.generateCandidates(accessToken, input);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
+      return queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
     },
   });
 }
@@ -80,7 +80,7 @@ export function useAcceptMemoryCandidate(userId: string) {
       return memoryAgentApi.acceptCandidate(accessToken, candidateId);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
+      return queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
     },
   });
 }
@@ -97,7 +97,7 @@ export function useRejectMemoryCandidate(userId: string) {
       return memoryAgentApi.rejectCandidate(accessToken, candidateId);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
+      return queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
     },
   });
 }
@@ -120,7 +120,7 @@ export function useUpdateUserMemory(userId: string) {
       return memoryAgentApi.updateMemory(accessToken, memoryId, input);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
+      return queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
     },
   });
 }
@@ -137,7 +137,7 @@ export function useDeleteUserMemory(userId: string) {
       return memoryAgentApi.deleteMemory(accessToken, memoryId);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
+      return queryClient.invalidateQueries({ queryKey: memoryAgentQueryKeys.user(userId) });
     },
   });
 }

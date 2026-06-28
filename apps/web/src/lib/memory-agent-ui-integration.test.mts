@@ -58,6 +58,13 @@ function testMemoryAgentPanelExists() {
   assert.match(source, /useRejectMemoryCandidate/);
   assert.match(source, /useUpdateUserMemory/);
   assert.match(source, /useDeleteUserMemory/);
+  assert.match(source, /candidates\.isError/);
+  assert.match(source, /memories\.isError/);
+  assert.match(source, /候选加载失败/);
+  assert.match(source, /记忆加载失败/);
+  assert.match(source, /confirmDeleteMemoryId/);
+  assert.match(source, /确认删除/);
+  assert.match(source, /取消/);
   assert.match(source, /Sparkles/);
   assert.match(source, /Check/);
   assert.match(source, /X/);

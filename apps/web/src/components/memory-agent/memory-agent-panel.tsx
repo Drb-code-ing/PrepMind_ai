@@ -41,6 +41,7 @@ const memoryTypeLabels: Record<UserMemoryType, string> = {
 export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
   const [memoryStatusFilter, setMemoryStatusFilter] =
     useState<Extract<UserMemoryStatus, 'ACTIVE' | 'ARCHIVED'>>('ACTIVE');
+  const [confirmDeleteMemoryId, setConfirmDeleteMemoryId] = useState<string | null>(null);
   const candidates = useMemoryCandidates(userId, { status: 'PENDING', limit: 20 });
   const memories = useUserMemories(userId, { status: memoryStatusFilter });
   const generateCandidates = useGenerateMemoryCandidates(userId);
@@ -60,12 +61,18 @@ export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
   }
 
   async function handleArchive(memory: UserMemory) {
+    setConfirmDeleteMemoryId(null);
     await updateMemory.mutateAsync({
       memoryId: memory.id,
       input: {
         status: memory.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE',
       },
     });
+  }
+
+  async function handleDelete(memoryId: string) {
+    await deleteMemory.mutateAsync(memoryId);
+    setConfirmDeleteMemoryId(null);
   }
 
   return (
@@ -122,7 +129,10 @@ export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
 
           <div className="mt-3 space-y-3">
             {candidates.isLoading ? <MemorySkeleton /> : null}
-            {!candidates.isLoading && candidates.data?.items.length === 0 ? (
+            {candidates.isError ? (
+              <ErrorRow text="候选加载失败，请稍后重试" onRetry={() => void candidates.refetch()} />
+            ) : null}
+            {!candidates.isLoading && !candidates.isError && candidates.data?.items.length === 0 ? (
               <EmptyRow text="暂无新的记忆候选" />
             ) : null}
             {candidates.data?.items.map((candidate) => (
@@ -145,7 +155,10 @@ export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
                 <button
                   key={status}
                   type="button"
-                  onClick={() => setMemoryStatusFilter(status)}
+                  onClick={() => {
+                    setConfirmDeleteMemoryId(null);
+                    setMemoryStatusFilter(status);
+                  }}
                   className={`tap-target min-h-11 rounded-2xl px-3 text-xs font-semibold ring-1 transition-all active:scale-[0.99] ${
                     memoryStatusFilter === status
                       ? 'bg-[#fff7d6] text-[#725c24] ring-[#f3e6a8]'
@@ -163,7 +176,10 @@ export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
 
           <div className="mt-3 space-y-3">
             {memories.isLoading ? <MemorySkeleton /> : null}
-            {!memories.isLoading && memories.data?.items.length === 0 ? (
+            {memories.isError ? (
+              <ErrorRow text="记忆加载失败，请稍后重试" onRetry={() => void memories.refetch()} />
+            ) : null}
+            {!memories.isLoading && !memories.isError && memories.data?.items.length === 0 ? (
               <EmptyRow text="还没有确认的长期记忆" />
             ) : null}
             {memories.data?.items.map((memory) => (
@@ -171,8 +187,11 @@ export function MemoryAgentPanel({ userId }: MemoryAgentPanelProps) {
                 key={memory.id}
                 memory={memory}
                 disabled={busy}
+                confirmingDelete={confirmDeleteMemoryId === memory.id}
                 onToggle={() => handleArchive(memory)}
-                onDelete={() => deleteMemory.mutateAsync(memory.id)}
+                onRequestDelete={() => setConfirmDeleteMemoryId(memory.id)}
+                onCancelDelete={() => setConfirmDeleteMemoryId(null)}
+                onConfirmDelete={() => handleDelete(memory.id)}
               />
             ))}
           </div>
@@ -230,15 +249,54 @@ function CandidateRow({
 function MemoryRow({
   memory,
   disabled,
+  confirmingDelete,
   onToggle,
-  onDelete,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
 }: {
   memory: UserMemory;
   disabled: boolean;
+  confirmingDelete: boolean;
   onToggle: () => Promise<unknown>;
-  onDelete: () => Promise<unknown>;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => Promise<unknown>;
 }) {
   const archived = memory.status === 'ARCHIVED';
+
+  if (confirmingDelete) {
+    return (
+      <article className="rounded-2xl bg-white/75 p-3 ring-1 ring-red-100">
+        <MemoryMeta type={memory.type} confidence={memory.confidence} archived={archived} />
+        <h4 className="mt-2 break-words text-sm font-semibold text-[var(--pm-ink)]">
+          {memory.title}
+        </h4>
+        <p className="mt-1 break-words text-sm leading-6 text-[var(--pm-muted)]">
+          {memory.content}
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onCancelDelete}
+            className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/85 px-3 text-sm font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.99]"
+          >
+            <X className="h-4 w-4" />
+            取消
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onConfirmDelete}
+            className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-red-600 px-3 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.99] disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            确认删除
+          </button>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article className="rounded-2xl bg-white/75 p-3 ring-1 ring-[var(--pm-line)]">
@@ -262,7 +320,7 @@ function MemoryRow({
         <button
           type="button"
           disabled={disabled}
-          onClick={onDelete}
+          onClick={onRequestDelete}
           className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-100 transition-all hover:bg-red-100 active:scale-[0.99] disabled:opacity-50"
         >
           <Trash2 className="h-4 w-4" />
@@ -303,6 +361,21 @@ function MemorySkeleton() {
       <div className="h-4 w-24 animate-pulse rounded-full bg-slate-100" />
       <div className="mt-3 h-4 w-3/4 animate-pulse rounded-full bg-slate-100" />
       <div className="mt-2 h-4 w-full animate-pulse rounded-full bg-slate-100" />
+    </div>
+  );
+}
+
+function ErrorRow({ text, onRetry }: { text: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-2xl border border-red-100 bg-red-50/80 p-3 text-sm text-red-700">
+      <p className="font-medium">{text}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="tap-target mt-3 inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-3 text-sm font-semibold text-red-700 ring-1 ring-red-100 transition-all hover:bg-red-100 active:scale-[0.99]"
+      >
+        重试
+      </button>
     </div>
   );
 }
