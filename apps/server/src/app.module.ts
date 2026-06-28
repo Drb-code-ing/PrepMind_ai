@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 
 import { AuthModule } from './auth/auth.module';
+import { AgentTracesModule } from './agent-traces/agent-traces.module';
 import { ChatMessagesModule } from './chat-messages/chat-messages.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
@@ -24,6 +25,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     DatabaseModule,
     HealthModule,
     AuthModule,
+    AgentTracesModule,
     UsersModule,
     WrongQuestionsModule,
     ChatMessagesModule,

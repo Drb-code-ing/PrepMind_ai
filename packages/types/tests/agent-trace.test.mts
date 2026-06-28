@@ -126,15 +126,41 @@ function testCreateRequestSanity() {
   assert.equal(parsed.steps.length, 1);
   assert.equal(parsed.verifierStatus, 'suspicious');
   assert.throws(() => agentTraceCreateRequestSchema.parse({ ...parsed, costEstimate: -1 }));
+  assert.doesNotThrow(() =>
+    agentTraceCreateRequestSchema.parse({
+      ...parsed,
+      inputPreview: 'x'.repeat(2000),
+      steps: [
+        {
+          ...parsed.steps[0]!,
+          inputSummary: 'x'.repeat(2000),
+        },
+      ],
+    }),
+  );
   assert.throws(() =>
     agentTraceCreateRequestSchema.parse({
       ...parsed,
       steps: [
         {
           ...parsed.steps[0]!,
-          inputSummary: 'x'.repeat(161),
+          inputSummary: 'x'.repeat(2001),
         },
       ],
+    }),
+  );
+  assert.throws(() =>
+    agentTraceStepSchema.parse({
+      id: 'step_too_long',
+      runId: 'run_1',
+      node: 'RouterAgent',
+      status: 'completed',
+      startedAt: '2026-06-28T00:00:00.000Z',
+      finishedAt: '2026-06-28T00:00:00.020Z',
+      durationMs: 20,
+      inputSummary: 'x'.repeat(161),
+      outputSummary: 'route=rag_answer',
+      errorMessage: null,
     }),
   );
 }

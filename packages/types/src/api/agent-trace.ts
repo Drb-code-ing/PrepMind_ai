@@ -28,6 +28,13 @@ export const agentTraceStepSchema = z.object({
 export const createAgentTraceStepRequestSchema = agentTraceStepSchema.omit({
   id: true,
   runId: true,
+  inputSummary: true,
+  outputSummary: true,
+  errorMessage: true,
+}).extend({
+  inputSummary: z.string().max(2000),
+  outputSummary: z.string().max(2000),
+  errorMessage: z.string().max(2000).nullable(),
 });
 
 export const agentTraceRunSchema = z.object({
@@ -71,6 +78,7 @@ export const agentTraceCreateRequestSchema = agentTraceRunSchema
   .extend({
     runId: z.string().min(1).optional(),
     route: agentRouteSchema.nullable().optional(),
+    inputPreview: z.string().max(2000).optional(),
     steps: z.array(createAgentTraceStepRequestSchema).max(20),
   });
 
