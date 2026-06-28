@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-22。Phase 6.5 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent 和 PlannerAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-28。Phase 6.6 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且 Phase 6.6 不自动注入长期记忆。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -11,8 +11,9 @@
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
+- 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy 和 PlannerAgent policy；Agent package 不直接写库、不直接调用真实模型。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy 和 MemoryAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -91,7 +92,8 @@
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
-- ReviewAgent / PlannerAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取。
+- ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
+- Phase 6.6 不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
 - 流式输出使用渐进 Markdown 渲染：稳定段落进入 Markdown / KaTeX，尾部未稳定内容保持轻量文本。
 - 自动滚动默认跟随输出；用户触摸、滚轮或指针操作内容区后暂停，新一轮生成或回到底部时恢复。
@@ -421,7 +423,50 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 | `GET` | `/review-preferences` | 读取当前用户复习计划偏好；无记录时返回默认偏好 |
 | `PATCH` | `/review-preferences` | 更新当前用户复习计划偏好，只写入提交字段 |
 
-## 7. Dexie 与离线补偿
+## 7. MemoryAgent 与长期记忆
+
+```text
+用户打开个人中心
+  -> MemoryAgentPanel
+  -> GET /memory-agent/candidates?status=PENDING
+  -> GET /user-memories?status=ACTIVE
+  -> 用户点击生成候选
+  -> POST /memory-agent/candidates/generate
+  -> MemoryAgentService 聚合当前用户学习信号
+  -> @repo/agent/memory deterministic policy
+  -> UserMemoryCandidate(PENDING)
+  -> 用户确认 / 忽略候选
+  -> UserMemory(ACTIVE) 或 UserMemoryCandidate(REJECTED)
+  -> 用户停用 / 恢复 / 删除正式记忆
+  -> PATCH /user-memories/:id 或 DELETE /user-memories/:id
+```
+
+关键约定：
+
+- `UserMemoryCandidate` 表示系统建议“是否记住这件事”，不是已经生效的长期记忆。
+- `UserMemory` 表示用户确认过的长期记忆，可以被停用、恢复或删除。
+- MemoryAgent 是确定性 policy，不读取 API key，不调用真实模型，不调用 `streamText`。
+- 候选生成只读取当前用户聊天偏好信号、错题薄弱点、复习日志、复习偏好和已有记忆摘要，所有查询必须带 `userId` 隔离。
+- `POST /memory-agent/candidates/generate` 使用 `sourceHash` 去重，避免相同用户重复刷出近似候选。
+- `accept` 必须由用户显式触发，并在事务内把 `PENDING` 候选转为 `ACCEPTED`，同时创建或返回关联的 `ACTIVE` 记忆。
+- `reject` 只更新候选状态，不创建正式记忆。
+- MemoryAgent 不写 ChatMessage、WrongQuestion、Card、ReviewLog、ReviewTask、ReviewPreference 或 organizer deck 数据。
+- 记忆管理是在线账号级能力，不进入 Dexie `mutationQueue`。
+- Phase 6.6 不在 `/api/chat` 自动读取或注入 `UserMemory`；后续若启用个性化回答，需要单独设计开关、预算和可见提示。
+
+服务端 MemoryAgent API：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/memory-agent/candidates` | 读取当前用户记忆候选，默认 `status=PENDING` |
+| `POST` | `/memory-agent/candidates/generate` | 聚合当前用户学习信号并生成去重候选 |
+| `POST` | `/memory-agent/candidates/:id/accept` | 确认候选并创建或返回正式记忆 |
+| `POST` | `/memory-agent/candidates/:id/reject` | 忽略候选，不创建正式记忆 |
+| `GET` | `/user-memories` | 读取当前用户正式记忆，默认 `status=ACTIVE` |
+| `PATCH` | `/user-memories/:id` | 更新标题、内容或 `ACTIVE / ARCHIVED` 状态 |
+| `DELETE` | `/user-memories/:id` | 删除当前用户正式记忆 |
+
+## 8. Dexie 与离线补偿
 
 Dexie 当前职责：
 
@@ -455,6 +500,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - ChatMessage：使用 `/chat-messages/sync` 会话快照幂等同步。
 - WrongQuestionOrganizer：学科卡片、专题 deck、移动和重命名是在线组织能力，不进入通用 mutation queue。
 - ReviewAgent / PlannerAgent：复习诊断和学习计划建议是在线只读能力，不进入通用 mutation queue。
+- MemoryAgent：候选生成、确认、忽略和正式记忆管理是在线账号级能力，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
@@ -466,7 +512,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - 401 / 403 不重试；网络错误和 5xx 按退避策略重试。
 - 服务端列表仍是已同步数据的权威来源；本地只保留未同步 mutation 记录作为补偿。
 
-## 8. localStorage
+## 9. localStorage
 
 | Key | 内容 | 说明 |
 | --- | --- | --- |
@@ -476,7 +522,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
-## 9. PostgreSQL / Prisma
+## 10. PostgreSQL / Prisma
 
 当前已落地的核心模型：
 
@@ -494,6 +540,8 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - `ReviewLog`（`clientMutationId` 用于 ReviewTask rating 幂等）
 - `ReviewTask`
 - `ReviewPreference`
+- `UserMemoryCandidate`
+- `UserMemory`
 - `Document`
 - `Chunk`
 
@@ -509,7 +557,7 @@ Prisma migration 状态期望：
 Database schema is up to date
 ```
 
-## 10. Phase 3 数据流改进
+## 11. Phase 3 数据流改进
 
 Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 

@@ -18,6 +18,7 @@
     "./api/review-preference": "./src/api/review-preference.ts",
     "./api/review-task": "./src/api/review-task.ts",
     "./api/review-agent": "./src/api/review-agent.ts",
+    "./api/memory-agent": "./src/api/memory-agent.ts",
     "./api/knowledge": "./src/api/knowledge.ts",
     "./api/upload": "./src/api/upload.ts"
   },

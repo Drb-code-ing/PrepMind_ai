@@ -736,6 +736,34 @@ f5a2eb1 style: soften cartoon theme palette
 
 ---
 
+## 2026-06-28（Day 18）
+
+**Phase 6.6 MemoryAgent**
+
+- 完成 Phase 6.6 MemoryAgent 长期记忆候选、人审确认和管理闭环。
+- 新增 `@repo/types/api/memory-agent` contract，覆盖候选、正式记忆、生成请求、列表查询、确认/忽略和更新/删除响应 schema。
+- `@repo/agent` 新增 `analyzeMemory()` 确定性 policy 与 `@repo/agent/memory` 导出；MemoryAgent 不调用真实模型、不读取 API key。
+- Prisma 新增 `UserMemoryCandidate`、`UserMemory` 与相关枚举、索引和唯一约束；长期记忆候选与正式记忆以 PostgreSQL 为权威来源。
+- 新增 NestJS `/memory-agent` 与 `/user-memories` API，支持候选列表、生成、确认、忽略、正式记忆列表、停用/恢复和删除；候选必须由用户确认后才成为 `ACTIVE` 记忆。
+- `/profile` 新增学习记忆管理面板，展示待确认候选和正式记忆，支持生成候选、确认、忽略、停用、恢复和删除。
+- 保持 Phase 6.6 边界：不把 `UserMemory` 自动注入 `/api/chat`，不在每次 Chat 中自动执行 MemoryAgent，不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`。
+
+验证：
+
+- `bun test packages/types/tests/memory-agent.test.mts packages/types/tests/memory-agent-runtime-import.test.mts` 通过。
+- `bun --cwd packages/types typecheck` 通过。
+- `bun --cwd packages/agent test` 通过。
+- `bun --cwd packages/agent typecheck` 通过。
+- `bun --cwd packages/database test` 通过。
+- `bun --filter @repo/server test -- memory-agent.service.spec.ts` 通过。
+- `bun --filter @repo/server build` 通过。
+- `bun --filter @repo/web test` 通过。
+- `bun --filter @repo/web build` 通过。
+- `rg -n "Phase 6\\.6|MemoryAgent|UserMemory|UserMemoryCandidate|Phase 6\\.7" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md` 通过。
+- `git diff --check` 通过。
+
+---
+
 ## 当前状态
 
 **Phase 0：已完成**
@@ -798,7 +826,7 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
 - Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
 
-**Phase 6：进行中，Phase 6.5 已完成**
+**Phase 6：进行中，Phase 6.6 已完成**
 
 - Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
 - Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
@@ -806,7 +834,8 @@ f5a2eb1 style: soften cartoon theme palette
 - Phase 6.3 KnowledgeVerifierAgent 已完成：RAG 命中后可评估资料可信度，并注入保守使用规则和资料核对提示。
 - Phase 6.4 WrongQuestionOrganizerAgent 已完成：错题本已升级为学科卡片、专题 deck 和错题列表下钻，组织层独立于 WrongQuestion 与 FSRS 事实层。
 - Phase 6.5 ReviewAgent / PlannerAgent 已完成：计划页和今日任务页可读取只读 suggestions API，展示复习诊断、今日重点和学习计划建议。
-- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup。
+- Phase 6.6 MemoryAgent 已完成：个人中心可生成长期记忆候选，用户确认后写入正式记忆，并支持停用、恢复和删除。
+- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup，也不会把长期记忆自动注入 `/api/chat`。
 
 ---
 
@@ -839,7 +868,8 @@ f5a2eb1 style: soften cartoon theme palette
 - [x] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
 - [x] Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
 - [x] Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成只读复习分析与学习计划建议。
-- [ ] Phase 6：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
-- [ ] Phase 6：`MemoryAgent`，按阈值或用户主动触发，生成长期记忆候选。
+- [x] Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认、停用/恢复和删除。
+- [ ] Phase 6.7：Agent Trace UI、成本看板和固定评测集。
+- [ ] Phase 6 后续资料管理：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
 - [ ] MCP 工具体系。
 - [ ] BullMQ 后台任务与生产观测。
