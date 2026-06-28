@@ -4,6 +4,16 @@ import { createAgentTraceApi } from './agent-trace-api.ts';
 
 const requests: CapturedRequest[] = [];
 const api = createAgentTraceApi({
+  get: async <T>(path: string, options?: RequestOptions) => {
+    requests.push({ path, accessToken: options?.accessToken });
+    if (path.startsWith('/agent-traces/summary')) {
+      return createTraceSummaryResponse() as T;
+    }
+    if (path === '/agent-traces/trace_run_1') {
+      return createTraceResponse() as T;
+    }
+    return createTraceListResponse() as T;
+  },
   post: async <T>(path: string, body?: unknown, options?: RequestOptions) => {
     requests.push({ path, body, accessToken: options?.accessToken });
     return createTraceResponse() as T;
@@ -17,6 +27,26 @@ assert.equal(requests[0]?.accessToken, 'token_1');
 assert.equal((requests[0]?.body as Record<string, unknown>).runId, 'trace_run_1');
 assert.equal(result.run.id, 'trace_run_1');
 assert.equal(result.steps[0]?.node, 'RouterAgent');
+
+requests.length = 0;
+
+const list = await api.listTraces('token_1', { limit: 10, mode: 'live' });
+assert.equal(requests[0]?.path, '/agent-traces?limit=10&mode=live');
+assert.equal(requests[0]?.accessToken, 'token_1');
+assert.equal(list.runs[0]?.id, 'trace_run_1');
+
+requests.length = 0;
+
+const summary = await api.getSummary('token_1', { days: 14 });
+assert.equal(requests[0]?.path, '/agent-traces/summary?days=14');
+assert.equal(summary.days, 14);
+assert.equal(summary.totalRuns, 1);
+
+requests.length = 0;
+
+const detail = await api.getTrace('token_1', 'trace_run_1');
+assert.equal(requests[0]?.path, '/agent-traces/trace_run_1');
+assert.equal(detail.run.id, 'trace_run_1');
 
 function createTracePayload() {
   return {
@@ -94,6 +124,29 @@ function createTraceResponse() {
         ...payload.steps[0],
       },
     ],
+  };
+}
+
+function createTraceListResponse() {
+  return {
+    runs: [createTraceResponse().run],
+  };
+}
+
+function createTraceSummaryResponse() {
+  return {
+    days: 14,
+    totalRuns: 1,
+    liveRuns: 1,
+    mockRuns: 0,
+    degradedRuns: 1,
+    failedRuns: 0,
+    totalInputTokens: 800,
+    totalOutputTokens: 1200,
+    totalCostEstimate: 0,
+    lastRunAt: '2026-06-28T08:00:02.000Z',
+    routeBreakdown: [{ route: 'rag_answer' as const, count: 1 }],
+    verifierBreakdown: [{ status: 'suspicious' as const, count: 1 }],
   };
 }
 

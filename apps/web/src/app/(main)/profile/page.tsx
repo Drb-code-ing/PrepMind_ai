@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpenCheck, Check, Clock3, Pencil, Sparkles, UserRound } from 'lucide-react';
+import {
+  Activity,
+  ArrowLeft,
+  BookOpenCheck,
+  Check,
+  ChevronRight,
+  Clock3,
+  Pencil,
+  Sparkles,
+  UserRound,
+} from 'lucide-react';
 
 import { MemoryAgentPanel } from '@/components/memory-agent/memory-agent-panel';
 import { useUpdateMe } from '@/hooks/use-auth';
@@ -179,6 +189,22 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <Link
+          href="/agent-trace"
+          className="pm-glass-card pm-enter tap-target flex min-h-20 items-center gap-3 rounded-[1.5rem] p-4 transition-all hover:bg-white/80 active:scale-[0.99]"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
+            <Activity className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Agent 调试台</span>
+            <span className="mt-1 block text-xs leading-5 text-[var(--pm-muted)]">
+              查看路由、降级和估算成本
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--pm-muted)]" />
+        </Link>
 
         <section className="pm-glass-card pm-enter rounded-[1.5rem] p-4">
           <div className="flex items-center gap-2">
