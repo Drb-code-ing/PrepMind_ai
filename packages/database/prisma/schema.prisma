@@ -36,6 +36,8 @@ model User {
   wrongQuestionSubjectGroups WrongQuestionSubjectGroup[]
   wrongQuestionDecks         WrongQuestionDeck[]
   wrongQuestionDeckItems     WrongQuestionDeckItem[]
+  memoryCandidates           UserMemoryCandidate[]
+  memories                   UserMemory[]
 }
 
 model Account {
@@ -341,6 +343,70 @@ enum ReviewTaskSource {
   FSRS
   MANUAL
   PLANNER
+}
+
+enum UserMemoryType {
+  LEARNING_GOAL
+  EXPLANATION_PREFERENCE
+  WEAK_POINT
+  STUDY_HABIT
+}
+
+enum UserMemoryCandidateStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum UserMemoryStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model UserMemoryCandidate {
+  id               String                    @id @default(cuid())
+  userId           String
+  type             UserMemoryType
+  title            String                    @db.VarChar(80)
+  content          String                    @db.Text
+  reason           String                    @db.Text
+  evidence         Json
+  confidence       Float                     @default(0.5)
+  status           UserMemoryCandidateStatus @default(PENDING)
+  sourceHash       String
+  acceptedMemoryId String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  decidedAt        DateTime?
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acceptedMemory UserMemory? @relation(fields: [acceptedMemoryId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, sourceHash])
+  @@index([userId, status, updatedAt])
+  @@index([userId, type, updatedAt])
+}
+
+model UserMemory {
+  id                String           @id @default(cuid())
+  userId            String
+  type              UserMemoryType
+  title             String           @db.VarChar(80)
+  content           String           @db.Text
+  status            UserMemoryStatus @default(ACTIVE)
+  sourceCandidateId String?
+  confidence        Float            @default(0.5)
+  lastUsedAt        DateTime?
+  archivedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidates UserMemoryCandidate[]
+
+  @@index([userId, status, updatedAt])
+  @@index([userId, type, updatedAt])
 }
 
 // ---------- RAG 知识库 ----------
