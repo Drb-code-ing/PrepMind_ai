@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpenCheck, Check, Clock3, Pencil, Sparkles, UserRound } from 'lucide-react';
 
+import { MemoryAgentPanel } from '@/components/memory-agent/memory-agent-panel';
 import { useUpdateMe } from '@/hooks/use-auth';
 import {
   DEFAULT_LEARNING_PREFERENCES,
@@ -269,6 +270,8 @@ export default function ProfilePage() {
             保存学习偏好
           </button>
         </section>
+
+        {userId ? <MemoryAgentPanel userId={userId} /> : null}
 
         <section className="rounded-[1.35rem] border border-[var(--pm-line)] bg-white/55 p-4 text-sm leading-6 text-[var(--pm-muted)]">
           账号资料以服务器为准；学习偏好暂时只保存在本机浏览器，并按当前账号隔离。后续如果要让
