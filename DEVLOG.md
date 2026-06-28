@@ -757,6 +757,8 @@ f5a2eb1 style: soften cartoon theme palette
 - `bun --cwd packages/database test` 通过。
 - `bun --filter @repo/server test -- memory-agent.service.spec.ts` 通过。
 - `bun --filter @repo/server build` 通过。
+- Docker PostgreSQL / Redis / MinIO 在线后，`bun --cwd packages/database prisma migrate deploy --schema prisma/schema.prisma` 通过，已应用 `20260628000000_add_user_memories`。
+- 设置 `DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind`、`JWT_SECRET` 与 `RAG_EMBEDDING_PROVIDER=fake` 后，`bun --filter @repo/server test:e2e` 通过，11 个 suites、31 个 tests 全部通过。
 - `bun --filter @repo/web test` 通过。
 - `bun --filter @repo/web build` 通过。
 - `rg -n "Phase 6\\.6|MemoryAgent|UserMemory|UserMemoryCandidate|Phase 6\\.7" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md` 通过。
