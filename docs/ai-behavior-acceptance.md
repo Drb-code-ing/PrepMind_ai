@@ -71,7 +71,7 @@ WrongQuestionOrganizerAgent 落地后必须覆盖：
 
 Agent Trace 与固定评测集已落地，并必须持续覆盖：
 
-- fixed deterministic eval set 必须在 `@repo/agent` 中稳定回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 行为。
+- fixed deterministic eval set 必须在 `@repo/agent` 中稳定回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent 和 KnowledgeOrganizerAgent 的确定性 policy 行为。
 - Mock 验收只证明 trace capture、headers、API、UI 和估算成本链路可用；如果改动 prompt 或 live 输出体验，仍需要按本文规则做小样本 live smoke。
 - `/api/chat` 只有在存在 access token 时 best-effort 写入 `/agent-traces`；trace 写入失败不得打断流式回答，只能通过 `x-prepmind-agent-trace-recorded=false` 或日志暴露。
 - Trace 只能保存脱敏元数据：route、confidence、step summary、token 估算、verifier 状态、模型名、模式和估算成本；不得保存完整 prompt、完整回答、完整 RAG chunk、access token、refresh token 或 API key。
