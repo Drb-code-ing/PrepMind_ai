@@ -132,6 +132,8 @@ describe('DocumentProcessingService', () => {
         id: 'doc_1',
         userId: 'user_1',
         status: { in: ['PENDING', 'FAILED'] },
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });
@@ -311,6 +313,8 @@ describe('DocumentProcessingService', () => {
         id: 'doc_1',
         userId: 'user_1',
         status: { in: ['PENDING', 'FAILED', 'DONE'] },
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });
@@ -343,6 +347,30 @@ describe('DocumentProcessingService', () => {
       statusCode: HttpStatus.CONFLICT,
     });
 
+    expect(storage.readKnowledgeDocumentObject).not.toHaveBeenCalled();
+  });
+
+  it('uses the initial document snapshot when claiming processing ownership', async () => {
+    prisma.document.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PROCESSING',
+      statusCode: HttpStatus.CONFLICT,
+    });
+
+    expect(prisma.document.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: { in: ['PENDING', 'FAILED'] },
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
+      data: { status: 'PROCESSING', errorMessage: null },
+    });
+    expect(persistence.clearDocumentChunks).not.toHaveBeenCalled();
     expect(storage.readKnowledgeDocumentObject).not.toHaveBeenCalled();
   });
 
@@ -386,6 +414,8 @@ describe('DocumentProcessingService', () => {
         id: 'doc_1',
         userId: 'user_1',
         status: { in: ['PENDING', 'FAILED'] },
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });
@@ -506,6 +536,8 @@ describe('DocumentProcessingService', () => {
         id: 'doc_1',
         userId: 'user_1',
         status: { in: ['PENDING', 'FAILED'] },
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });

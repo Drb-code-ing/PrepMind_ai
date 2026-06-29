@@ -36,7 +36,7 @@ export class DocumentProcessingService {
   ) {
     const document = await this.findOwned(userId, documentId);
     this.assertProcessable(document.status, options.force);
-    await this.claimDocument(userId, documentId, options.force);
+    await this.claimDocument(document, options.force);
 
     try {
       await this.chunkPersistenceService.clearDocumentChunks(
@@ -151,15 +151,20 @@ export class DocumentProcessingService {
   }
 
   private async claimDocument(
-    userId: string,
-    documentId: string,
+    document: KnowledgeDocumentRecord,
     force: boolean,
   ) {
     const statuses = force
       ? (['PENDING', 'FAILED', 'DONE'] as const)
       : (['PENDING', 'FAILED'] as const);
     const result = await this.prisma.document.updateMany({
-      where: { id: documentId, userId, status: { in: [...statuses] } },
+      where: {
+        id: document.id,
+        userId: document.userId,
+        status: { in: [...statuses] },
+        storageKey: document.storageKey,
+        contentHash: document.contentHash,
+      },
       data: { status: 'PROCESSING', errorMessage: null },
     });
 
