@@ -23,7 +23,12 @@ import type {
   KnowledgeDocumentResponse,
   KnowledgeSearchHit,
 } from '@repo/types/api/knowledge';
+import type {
+  KnowledgeAgentSuggestionResponse,
+  KnowledgeDedupItem,
+} from '@repo/types/api/knowledge-agent';
 
+import { useKnowledgeAgentSuggestions } from '@/hooks/use-knowledge-agent-suggestions';
 import {
   useDeleteKnowledgeDocument,
   useKnowledgeDocumentList,
@@ -41,6 +46,12 @@ import {
   getKnowledgeSearchHitSummary,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from '@/lib/knowledge-view';
+import {
+  getKnowledgeAgentEmptyMessage,
+  getKnowledgeDedupTone,
+  getKnowledgeOrganizerCollectionSummary,
+  hasKnowledgeAgentSuggestions,
+} from '@/lib/knowledge-agent-view';
 
 type NoticeTone = 'success' | 'danger' | 'neutral';
 type ActionNotice = { message: string; tone: NoticeTone };
@@ -60,6 +71,7 @@ const acceptedKnowledgeFileTypes = [
 const noticeDurationMs = 2200;
 const maxDocumentErrorLength = 160;
 const knowledgeDocumentListQuery = { limit: 50 } satisfies KnowledgeDocumentListQuery;
+const knowledgeAgentSuggestionQuery = { limit: 20 } as const;
 
 const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> = {
   success: {
@@ -78,6 +90,9 @@ const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> 
 
 export default function KnowledgePage() {
   const documentsQuery = useKnowledgeDocumentList(knowledgeDocumentListQuery);
+  const knowledgeAgentSuggestions = useKnowledgeAgentSuggestions(
+    knowledgeAgentSuggestionQuery,
+  );
   const uploadDocument = useUploadKnowledgeDocument();
   const replaceDocument = useReplaceKnowledgeDocumentFile();
   const processDocument = useProcessKnowledgeDocument();
@@ -281,6 +296,12 @@ export default function KnowledgePage() {
         {notice ? <ActionNoticeBar notice={notice} /> : null}
 
         <KnowledgeSummaryCard summary={summary} />
+
+        <KnowledgeAgentSuggestionsPanel
+          suggestions={knowledgeAgentSuggestions.data}
+          loading={knowledgeAgentSuggestions.isLoading}
+          error={knowledgeAgentSuggestions.isError}
+        />
 
         <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
           <SectionTitle
@@ -491,6 +512,120 @@ function KnowledgeSummaryCard({ summary }: { summary: ReturnType<typeof getKnowl
         <SummaryStat label="待处理" value={summary.pending} className="bg-amber-50/80 text-amber-700" />
       </div>
     </section>
+  );
+}
+
+function KnowledgeAgentSuggestionsPanel({
+  suggestions,
+  loading,
+  error,
+}: {
+  suggestions: KnowledgeAgentSuggestionResponse | undefined;
+  loading: boolean;
+  error: boolean;
+}) {
+  const dedupItems =
+    suggestions?.dedup.items.filter((item) => item.kind !== 'insufficient_signal') ?? [];
+  const collections = suggestions?.organizer.collections ?? [];
+  const tags = suggestions?.organizer.tags ?? [];
+
+  return (
+    <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
+      <SectionTitle icon={Sparkles} title="资料管理建议" subtitle="重复、版本与整理线索" />
+
+      {loading ? (
+        <LoadingPanel message="正在分析资料关系..." />
+      ) : error ? (
+        <p className="mt-4 rounded-2xl bg-[#fff7df]/80 px-3 py-3 text-sm leading-6 text-[#8a641c] ring-1 ring-amber-100">
+          资料管理建议暂时不可用，资料上传和检索不受影响。
+        </p>
+      ) : !suggestions || !hasKnowledgeAgentSuggestions(suggestions) ? (
+        <p className="mt-4 rounded-2xl bg-white/60 px-3 py-3 text-sm leading-6 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+          {getKnowledgeAgentEmptyMessage()}
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {dedupItems.length > 0 ? (
+            <div className="space-y-2">
+              {dedupItems.map((item) => (
+                <KnowledgeDedupSuggestionCard
+                  key={`${item.kind}-${item.documentIds.join('-')}`}
+                  item={item}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {collections.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {collections.map((collection) => (
+                <article
+                  key={`${collection.name}-${collection.documentIds.join('-')}`}
+                  className="min-w-0 rounded-2xl bg-white/70 p-3 ring-1 ring-[var(--pm-line)]"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
+                      <BookMarked className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-bold">
+                        {getKnowledgeOrganizerCollectionSummary(collection)}
+                      </p>
+                      <p className="mt-1 line-clamp-2 break-words text-xs leading-5 text-[var(--pm-muted)]">
+                        {collection.reason}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          {tags.length > 0 ? (
+            <div className="rounded-2xl bg-white/55 p-3 ring-1 ring-[var(--pm-line)]">
+              <p className="text-xs font-bold text-[var(--pm-muted)]">资料标签</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {tags.slice(0, 8).flatMap((tag) =>
+                  tag.labels.map((label, index) => (
+                    <span
+                      key={`${tag.documentId}-${label}-${index}`}
+                      className="max-w-full break-words rounded-full bg-[#eafff9] px-2.5 py-1 text-xs font-bold text-[#247269] ring-1 ring-[#bdeee5]"
+                    >
+                      {label}
+                    </span>
+                  )),
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function KnowledgeDedupSuggestionCard({ item }: { item: KnowledgeDedupItem }) {
+  const tone = getKnowledgeDedupTone(item);
+  const toneClassName =
+    tone === 'warning'
+      ? 'bg-amber-50/80 text-[#8a641c] ring-amber-100'
+      : 'bg-sky-50/80 text-sky-700 ring-sky-100';
+
+  return (
+    <article className={`min-w-0 rounded-2xl p-3 ring-1 ${toneClassName}`}>
+      <div className="flex items-start gap-2">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-white/80">
+          <FileText className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-bold">{item.title}</p>
+          <p className="mt-1 break-words text-xs leading-5">{item.reason}</p>
+          <p className="mt-2 text-[11px] font-bold opacity-80">
+            {item.documentIds.length} 份资料 · 置信度 {Math.round(item.confidence * 100)}%
+          </p>
+        </div>
+      </div>
+    </article>
   );
 }
 

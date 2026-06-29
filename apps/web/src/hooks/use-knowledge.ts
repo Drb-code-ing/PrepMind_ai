@@ -8,6 +8,7 @@ import type {
 } from '@repo/types/api/knowledge';
 
 import { knowledgeApi } from '@/lib/knowledge-api';
+import { knowledgeAgentQueryKeys } from '@/lib/knowledge-agent-query-keys';
 import { useUserStore } from '@/stores/userStore';
 
 export const knowledgeQueryKeys = {
@@ -67,6 +68,7 @@ export function useUploadKnowledgeDocument() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.documents() });
+      void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
     },
   });
 }
@@ -94,6 +96,7 @@ export function useReplaceKnowledgeDocumentFile() {
         queryKey: knowledgeQueryKeys.documentDetail(document.id),
       });
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
+      void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
     },
   });
 }
@@ -121,6 +124,7 @@ export function useProcessKnowledgeDocument() {
         queryKey: knowledgeQueryKeys.documentDetail(document.id),
       });
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
+      void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
     },
   });
 }
@@ -139,6 +143,7 @@ export function useDeleteKnowledgeDocument() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.documents() });
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
+      void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
     },
   });
 }
