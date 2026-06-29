@@ -92,12 +92,15 @@ export class KnowledgeDocumentsService {
       }
 
       const document = await this.prisma.$transaction(async (transaction) => {
-        await transaction.chunk.deleteMany({
-          where: { documentId: id, userId },
-        });
-
-        return transaction.document.update({
-          where: { id },
+        const result = await transaction.document.updateMany({
+          where: {
+            id,
+            userId,
+            status: existing.status,
+            updatedAt: existing.updatedAt,
+            storageKey: existing.storageKey,
+            contentHash: existing.contentHash,
+          },
           data: {
             name: uploaded.originalName,
             type: uploaded.type,
@@ -109,9 +112,33 @@ export class KnowledgeDocumentsService {
             processedAt: null,
             contentHash,
           },
+        });
+
+        if (result.count !== 1) {
+          throw new AppError(
+            'KNOWLEDGE_DOCUMENT_PROCESSING',
+            'Knowledge document changed while replacing upload',
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        await transaction.chunk.deleteMany({
+          where: { documentId: id, userId },
+        });
+
+        return transaction.document.findFirst({
+          where: { id, userId },
           include: this.documentInclude,
         });
       });
+
+      if (!document) {
+        throw new AppError(
+          'KNOWLEDGE_DOCUMENT_NOT_FOUND',
+          'Knowledge document not found',
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
       await this.safeDeleteObject(existing.storageKey);
       return this.toResponse(document);

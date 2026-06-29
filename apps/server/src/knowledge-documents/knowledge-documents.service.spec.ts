@@ -35,13 +35,34 @@ type DocumentUpdateArgs = {
   include: { _count: { select: { chunks: boolean } } };
 };
 
+type DocumentUpdateManyArgs = {
+  where: {
+    id: string;
+    userId: string;
+    status: string;
+    updatedAt: Date;
+    storageKey: string;
+    contentHash: string | null;
+  };
+  data: DocumentUpdateArgs['data'];
+};
+
+type DocumentFindFirstArgs = {
+  where: { id: string; userId: string };
+  include: { _count: { select: { chunks: boolean } } };
+};
+
 type DeleteManyArgs = {
   where: { documentId: string; userId: string };
 };
 
 type DocumentTransactionClient = {
   chunk: { deleteMany: (args: DeleteManyArgs) => Promise<unknown> };
-  document: { update: (args: DocumentUpdateArgs) => Promise<unknown> };
+  document: {
+    update: (args: DocumentUpdateArgs) => Promise<unknown>;
+    updateMany: (args: DocumentUpdateManyArgs) => Promise<{ count: number }>;
+    findFirst: (args: DocumentFindFirstArgs) => Promise<unknown>;
+  };
 };
 
 describe('KnowledgeDocumentsService', () => {
@@ -70,6 +91,10 @@ describe('KnowledgeDocumentsService', () => {
       findFirst: jest.fn(),
       findFirstOrThrow: jest.fn(),
       update: jest.fn<Promise<typeof documentRow>, [DocumentUpdateArgs]>(),
+      updateMany: jest.fn<
+        Promise<{ count: number }>,
+        [DocumentUpdateManyArgs]
+      >(),
       delete: jest.fn(),
     },
     chunk: {
@@ -235,15 +260,20 @@ describe('KnowledgeDocumentsService', () => {
     });
     prisma.document.findFirst
       .mockResolvedValueOnce(documentRow)
-      .mockResolvedValueOnce(null);
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(replacedRow);
     const transactionClient: DocumentTransactionClient = {
       chunk: { deleteMany: prisma.chunk.deleteMany },
-      document: { update: prisma.document.update },
+      document: {
+        update: prisma.document.update,
+        updateMany: prisma.document.updateMany,
+        findFirst: prisma.document.findFirst,
+      },
     };
     prisma.$transaction.mockImplementation((callback) =>
       callback(transactionClient),
     );
-    prisma.document.update.mockResolvedValue(replacedRow);
+    prisma.document.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createService().replaceUploadDocument(
       'user_1',
@@ -254,14 +284,21 @@ describe('KnowledgeDocumentsService', () => {
     expect(prisma.chunk.deleteMany).toHaveBeenCalledWith({
       where: { documentId: 'doc_1', userId: 'user_1' },
     });
-    const updateCall = prisma.document.update.mock.calls[0]?.[0];
+    const updateCall = prisma.document.updateMany.mock.calls[0]?.[0];
     expect(updateCall).toBeDefined();
     if (!updateCall) {
-      throw new Error('Expected document.update to be called');
+      throw new Error('Expected document.updateMany to be called');
     }
     expect(updateCall.data.contentHash).toMatch(/^sha256:/);
     expect(updateCall).toEqual({
-      where: { id: 'doc_1' },
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PENDING',
+        updatedAt: now,
+        storageKey: 'users/user_1/knowledge/doc.pdf',
+        contentHash: 'sha256:49f68a5c8493ec2c0bf489821c21fc3b',
+      },
       data: {
         name: 'updated-notes.txt',
         type: 'TXT',
@@ -273,14 +310,80 @@ describe('KnowledgeDocumentsService', () => {
         processedAt: null,
         contentHash: updateCall.data.contentHash,
       },
+    });
+    expect(prisma.document.findFirst).toHaveBeenLastCalledWith({
+      where: { id: 'doc_1', userId: 'user_1' },
       include: { _count: { select: { chunks: true } } },
     });
+    expect(prisma.document.update).not.toHaveBeenCalled();
     expect(storage.deleteObject).toHaveBeenCalledWith(
       'users/user_1/knowledge/doc.pdf',
     );
     expect(result.name).toBe('updated-notes.txt');
     expect(result.status).toBe('PENDING');
     expect(result.chunkCount).toBe(0);
+  });
+
+  it('rejects replacement when the document changes before the transactional update', async () => {
+    const replacementFile = {
+      buffer: Buffer.from('updated-notes'),
+      mimetype: 'text/plain',
+      size: 13,
+      originalname: 'updated-notes.txt',
+    } as Express.Multer.File;
+    storage.uploadKnowledgeDocument.mockResolvedValue({
+      objectKey: 'users/user_1/knowledge/racing-update.txt',
+      mimeType: 'text/plain',
+      type: 'TXT',
+      size: 13,
+      originalName: 'updated-notes.txt',
+    });
+    prisma.document.findFirst
+      .mockResolvedValueOnce(documentRow)
+      .mockResolvedValueOnce(null);
+    const transactionClient: DocumentTransactionClient = {
+      chunk: { deleteMany: prisma.chunk.deleteMany },
+      document: {
+        update: prisma.document.update,
+        updateMany: prisma.document.updateMany,
+        findFirst: prisma.document.findFirst,
+      },
+    };
+    prisma.$transaction.mockImplementation((callback) =>
+      callback(transactionClient),
+    );
+    prisma.document.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      createService().replaceUploadDocument('user_1', 'doc_1', replacementFile),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PROCESSING',
+      statusCode: HttpStatus.CONFLICT,
+    });
+
+    expect(prisma.document.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PENDING',
+        updatedAt: now,
+        storageKey: 'users/user_1/knowledge/doc.pdf',
+        contentHash: 'sha256:49f68a5c8493ec2c0bf489821c21fc3b',
+      },
+      data: expect.objectContaining({
+        name: 'updated-notes.txt',
+        status: 'PENDING',
+        storageKey: 'users/user_1/knowledge/racing-update.txt',
+      }),
+    });
+    expect(prisma.chunk.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.document.update).not.toHaveBeenCalled();
+    expect(storage.deleteObject).toHaveBeenCalledWith(
+      'users/user_1/knowledge/racing-update.txt',
+    );
+    expect(storage.deleteObject).not.toHaveBeenCalledWith(
+      'users/user_1/knowledge/doc.pdf',
+    );
   });
 
   it('rejects replacing a document with content that already exists on another card', async () => {
