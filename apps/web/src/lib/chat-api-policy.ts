@@ -79,26 +79,53 @@ export function parseChatApiRequestBody(
   };
 }
 
-export function validateChatLiveAccess(
+export async function validateChatLiveAccess(
   mode: 'mock' | 'live',
   accessToken: string | null,
-): PolicyOk | PolicyError {
-  if (mode === 'mock' || accessToken) {
+  verifyAccessToken: (accessToken: string) => Promise<boolean>,
+): Promise<PolicyOk | PolicyError> {
+  if (mode === 'mock') {
     return { ok: true };
   }
+
+  if (!accessToken) {
+    return {
+      ok: false,
+      status: 401,
+      error: 'Live AI chat requires login.',
+    };
+  }
+
+  const valid = await verifyAccessToken(accessToken);
+  if (valid) return { ok: true };
 
   return {
     ok: false,
     status: 401,
-    error: 'Live AI chat requires login.',
+    error: 'Live AI chat requires a valid login session.',
   };
 }
 
 export function shouldSearchKnowledgeForChat(input: {
   accessToken: string | null;
   requiresRag: boolean;
+  latestUserText?: string;
 }) {
-  return Boolean(input.accessToken && input.requiresRag);
+  if (!input.accessToken) return false;
+  return input.requiresRag || hasExplicitKnowledgeIntent(input.latestUserText ?? '');
+}
+
+function hasExplicitKnowledgeIntent(text: string) {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return [
+    'notes',
+    'knowledge base',
+    'my uploaded',
+    'uploaded document',
+    'reference material',
+  ].some((keyword) => normalized.includes(keyword));
 }
 
 function normalizeAccessToken(value: unknown) {

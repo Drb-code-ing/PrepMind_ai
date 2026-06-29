@@ -42,8 +42,8 @@ test('normalizes user and assistant messages while preserving a valid access tok
   }
 });
 
-test('requires an access token for live chat requests', () => {
-  const result = validateChatLiveAccess('live', null);
+test('requires an access token for live chat requests', async () => {
+  const result = await validateChatLiveAccess('live', null, async () => true);
 
   assert.equal(result.ok, false);
   if (!result.ok) {
@@ -51,8 +51,26 @@ test('requires an access token for live chat requests', () => {
   }
 });
 
-test('does not require an access token for mock chat requests', () => {
-  assert.deepEqual(validateChatLiveAccess('mock', null), { ok: true });
+test('does not require an access token for mock chat requests', async () => {
+  assert.deepEqual(await validateChatLiveAccess('mock', null, async () => false), { ok: true });
+});
+
+test('rejects live chat when the body token fails server-side validation', async () => {
+  const result = await validateChatLiveAccess('live', 'anything', async () => false);
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.status, 401);
+  }
+});
+
+test('allows live chat when the token passes server-side validation', async () => {
+  const result = await validateChatLiveAccess('live', 'valid-token', async (token) => {
+    assert.equal(token, 'valid-token');
+    return true;
+  });
+
+  assert.deepEqual(result, { ok: true });
 });
 
 test('only searches knowledge when the agent decision requires RAG and a token exists', () => {
@@ -60,6 +78,7 @@ test('only searches knowledge when the agent decision requires RAG and a token e
     shouldSearchKnowledgeForChat({
       accessToken: 'token',
       requiresRag: true,
+      latestUserText: 'hello',
     }),
     true,
   );
@@ -67,6 +86,7 @@ test('only searches knowledge when the agent decision requires RAG and a token e
     shouldSearchKnowledgeForChat({
       accessToken: 'token',
       requiresRag: false,
+      latestUserText: 'hello',
     }),
     false,
   );
@@ -74,7 +94,19 @@ test('only searches knowledge when the agent decision requires RAG and a token e
     shouldSearchKnowledgeForChat({
       accessToken: null,
       requiresRag: true,
+      latestUserText: 'answer from my notes',
     }),
     false,
+  );
+});
+
+test('searches knowledge for explicit notes intent even when RouterAgent does not require RAG', () => {
+  assert.equal(
+    shouldSearchKnowledgeForChat({
+      accessToken: 'token',
+      requiresRag: false,
+      latestUserText: 'Please answer from my notes.',
+    }),
+    true,
   );
 });

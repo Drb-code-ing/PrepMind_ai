@@ -73,6 +73,16 @@ async function recordAgentTraceSafely(
   }
 }
 
+async function verifyAccessTokenForLive(accessToken: string) {
+  try {
+    await apiClient.get<unknown>('/auth/me', { accessToken });
+    return true;
+  } catch (error) {
+    console.warn('[Chat Auth]', error);
+    return false;
+  }
+}
+
 function resolveTraceModelProvider(mode: 'mock' | 'live', model: string, baseURL: string) {
   if (mode === 'mock') return 'mock';
 
@@ -209,7 +219,11 @@ export async function POST(req: Request) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
-    const liveAccess = validateChatLiveAccess(providerStatus.mode, accessToken);
+    const liveAccess = await validateChatLiveAccess(
+      providerStatus.mode,
+      accessToken,
+      verifyAccessTokenForLive,
+    );
 
     if (!liveAccess.ok) {
       return Response.json({ error: liveAccess.error }, { status: liveAccess.status });
@@ -230,6 +244,7 @@ export async function POST(req: Request) {
       enabled: shouldSearchKnowledgeForChat({
         accessToken: normalizedAccessToken,
         requiresRag: agentDecision.requiresRag,
+        latestUserText: getLatestUserText(normalizedMessages),
       }),
       accessToken: normalizedAccessToken,
       messages: normalizedMessages,
