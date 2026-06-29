@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-28。Phase 6.7 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace UI、估算成本看板和固定 deterministic eval set；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且长期记忆不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-29。Phase 6.8 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace UI、估算成本看板、固定 deterministic eval set，以及 KnowledgeDedupAgent / KnowledgeOrganizerAgent 资料管理建议；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -14,7 +14,8 @@
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
 - Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy 和 MemoryAgent policy；Agent package 不直接写库、不直接调用真实模型。
+- 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -139,11 +140,11 @@ Agent Trace 边界：
 - Trace 是在线账号级观测能力，不进入 Dexie `mutationQueue`；离线或弱网时不补写历史 trace。
 - Trace 不保存完整 prompt、完整模型回答、完整 RAG chunk、access token、refresh token 或 API key。
 - `inputPreview`、`inputSummary`、`outputSummary` 和 `errorMessage` 只用于调试摘要，长度受 schema 与服务端双重限制。
-- fixed deterministic eval set 位于 `@repo/agent`，用于回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 行为，不替代 live 输出体验验收。
+- fixed deterministic eval set 位于 `@repo/agent`，用于回归 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent 和 KnowledgeOrganizerAgent 的确定性 policy 行为，不替代 live 输出体验验收。
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.4 已接入错题组织 Agent。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。
 
 文档处理数据流：
 
@@ -202,36 +203,57 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
 
+资料管理建议数据流：
+
+```text
+用户打开 /knowledge
+  -> useKnowledgeAgentSuggestions({ limit: 20 })
+  -> GET /knowledge-agent/suggestions
+  -> KnowledgeAgentService 使用 JwtAuthGuard 的当前 userId 查询 Document
+  -> 每份资料最多读取少量 Chunk 摘要并裁剪文本
+  -> @repo/agent analyzeKnowledgeDedup()
+  -> @repo/agent organizeKnowledgeDocuments()
+  -> 返回重复、新版、互补、集合和标签建议
+  -> /knowledge 只读展示建议，不提供自动合并/删除/分类按钮
+```
+
 当前 `/knowledge` 页面数据流：
 
 ```text
 用户打开知识库页面
   -> useKnowledgeDocumentList({ limit: 50 })
+  -> useKnowledgeAgentSuggestions({ limit: 20 })
   -> GET /knowledge/documents
+  -> GET /knowledge-agent/suggestions
   -> 展示资料状态摘要和卡片列表
+  -> 展示重复、可能新版、互补资料、集合和标签建议
 
 用户上传资料
   -> useUploadKnowledgeDocument()
   -> POST /knowledge/documents multipart
   -> 新资料 Document(status=PENDING) 或返回同 contentHash 的已有 Document
-  -> 列表失效刷新
+  -> 列表和资料管理建议失效刷新
 
 用户在资料卡片菜单中重新上传
   -> useReplaceKnowledgeDocumentFile()
   -> PUT /knowledge/documents/:id/file multipart
   -> 同一个 Document 重置为 PENDING，旧 chunks 清空
-  -> 列表、详情和检索缓存失效刷新
+  -> 列表、详情、检索缓存和资料管理建议失效刷新
 
 用户点击处理
   -> useProcessKnowledgeDocument()
   -> POST /knowledge/documents/:id/process
   -> Document(status=DONE / FAILED)
-  -> 列表、详情和检索缓存失效刷新
+  -> 列表、详情、检索缓存和资料管理建议失效刷新
 
 用户手动检索测试
   -> useSearchKnowledge()
   -> POST /knowledge/search
   -> 展示命中文档、片段序号、相似度和内容摘要
+
+用户删除资料
+  -> DELETE /knowledge/documents/:id
+  -> 列表、详情、检索缓存和资料管理建议失效刷新
 ```
 
 关键约定：
@@ -252,9 +274,13 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
 - KnowledgeVerifierAgent 只消费 `/knowledge/search` 的命中结果，不单独读取数据库；无命中返回 `skipped`，可信资料返回 `trusted`，低分或过短资料返回 `insufficient`，包含“可能有误 / 待核对 / 不确定 / wrong / contradict”等风险标记时返回 `suspicious`，多个片段出现互斥答案标记时返回 `conflict`。
 - verifier 结果只影响 prompt guidance、引用区提示和 debug headers，不修改 Document / Chunk，不自动纠错用户资料。
+- KnowledgeDedupAgent / KnowledgeOrganizerAgent 只消费当前用户 `Document` 元数据和裁剪后的少量 `Chunk` 摘要；`exact_duplicate` 主要解释同 `contentHash` 历史或异常数据，`possible_revision` 表示文件名高度相似但内容 hash 不同，`complementary` 表示同主题但更适合共存，`insufficient_signal` 表示资料太少或未处理不足以判断。
+- `/knowledge-agent/suggestions` 经过 `JwtAuthGuard`，Service 层先校验可选 `documentId` 归属，再按当前 `userId` 读取最近资料；如果目标资料不在 recent limit 中，会补入目标资料参与分析，避免 targeted 查询因为分页窗口漏掉目标。
+- KnowledgeAgent suggestions 只读，不写 Document / Chunk，不写资料集合或标签表，不自动清理 MinIO，不修改资料状态，不进入 Dexie `mutationQueue`，失败只影响建议面板。
 - `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
 - citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
 - `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
+- `/knowledge` 页面展示的资料管理建议是辅助判断，不是事实来源；用户仍然需要手动决定是否保留、替换或删除资料。
 - `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；点击页面其它区域会收起菜单；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
@@ -526,6 +552,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - ReviewAgent / PlannerAgent：复习诊断和学习计划建议是在线只读能力，不进入通用 mutation queue。
 - MemoryAgent：候选生成、确认、忽略和正式记忆管理是在线账号级能力，不进入通用 mutation queue。
 - Agent Trace：`/agent-traces` 是在线账号级观测能力，只记录脱敏元数据；trace 写入失败不需要离线补偿，不进入通用 mutation queue。
+- KnowledgeAgent suggestions：`/knowledge-agent/suggestions` 是在线只读资料管理建议，不写资料事实表，失败不需要离线补偿，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
 - 今日任务轻手账 checklist 和学习偏好：仍是 localStorage 本地轻状态。
