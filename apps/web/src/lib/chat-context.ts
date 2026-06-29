@@ -37,6 +37,7 @@ export type ActiveStudyContextLimits = {
 
 type BuildChatSystemPromptOptions = {
   activeContextLimits?: ActiveStudyContextLimits;
+  summaryBuffer?: string;
 };
 
 export function estimateTextTokens(text: string) {
@@ -157,11 +158,19 @@ export function buildChatSystemPrompt(
   options: BuildChatSystemPromptOptions = {},
 ) {
   const normalizedBasePrompt = basePrompt.trim();
-  if (!activeContext?.questionText.trim()) return normalizedBasePrompt;
+  const sections = [normalizedBasePrompt];
 
-  return `${normalizedBasePrompt}
+  if (options.summaryBuffer?.trim()) {
+    sections.push(formatSummaryBuffer(options.summaryBuffer));
+  }
 
----
+  if (!activeContext?.questionText.trim()) return sections.join('\n\n---\n\n');
 
-${formatActiveStudyContext(activeContext, options.activeContextLimits)}`;
+  sections.push(formatActiveStudyContext(activeContext, options.activeContextLimits));
+
+  return sections.join('\n\n---\n\n');
+}
+
+function formatSummaryBuffer(summaryBuffer: string) {
+  return `旧对话摘要：\n${clampText(summaryBuffer, 1200)}`;
 }

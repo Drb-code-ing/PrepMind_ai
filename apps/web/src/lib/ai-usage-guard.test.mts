@@ -99,6 +99,12 @@ test('budgets the system prompt, active OCR context, and recent messages togethe
   assert.equal(budget.maxOutputTokens, 600);
   assert.match(budget.systemPrompt, /题目内容/);
   assert.match(budget.systemPrompt, /\.{3}/);
+  assert.deepEqual(budget.contextPolicy, {
+    recentMessageCount: 1,
+    summaryIncluded: false,
+    droppedMessageCount: 2,
+    estimatedTokenCount: budget.estimatedInputTokens,
+  });
 });
 
 test('marks a request as too large when the latest user message alone exceeds the input budget', () => {
@@ -128,6 +134,27 @@ test('includes additional system prompt in the token budget', () => {
   assert.match(budget.systemPrompt, /base prompt/);
   assert.match(budget.systemPrompt, /knowledge context/);
   assert.ok(budget.estimatedInputTokens > 0);
+});
+
+test('includes precomputed summary buffer and exposes context policy metadata', () => {
+  const budget = buildChatRequestBudget({
+    baseSystemPrompt: 'base prompt',
+    activeContext: null,
+    summaryBuffer: 'Earlier summary: user missed the chain rule twice.',
+    messages: [
+      { role: 'user', content: 'old question' },
+      { role: 'assistant', content: 'old answer' },
+      { role: 'user', content: 'latest question' },
+    ],
+    maxInputTokens: 35,
+    maxOutputTokens: 600,
+  });
+
+  assert.match(budget.systemPrompt, /Earlier summary/);
+  assert.equal(budget.contextPolicy.summaryIncluded, true);
+  assert.equal(budget.contextPolicy.recentMessageCount, 1);
+  assert.equal(budget.contextPolicy.droppedMessageCount, 2);
+  assert.equal(budget.contextPolicy.estimatedTokenCount, budget.estimatedInputTokens);
 });
 
 test('creates a visible mock answer that preserves streaming markdown and math render checks', () => {

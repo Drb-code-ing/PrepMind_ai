@@ -34,6 +34,25 @@ describe('runAgentRuntime', () => {
     expect(result.state.finalResponse?.markdown).toContain('我们先看题目条件');
   });
 
+  it('uses the runtime start time for loop control metadata', async () => {
+    const startedAt = new Date('2026-06-29T00:00:00.000Z');
+    const finishedAt = new Date('2026-06-29T00:00:01.000Z');
+    const nowValues = [startedAt, finishedAt, finishedAt];
+
+    const result = await runAgentRuntime(
+      {
+        runId: 'run_time',
+        userId: 'user_1',
+        text: 'hello',
+      },
+      {
+        now: () => nowValues.shift() ?? finishedAt,
+      },
+    );
+
+    expect(result.state.loopControl?.startedAt).toBe('2026-06-29T00:00:00.000Z');
+  });
+
   it('degrades to chat when router throws', async () => {
     const result = await runAgentRuntime(
       {

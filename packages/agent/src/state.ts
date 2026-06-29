@@ -1,5 +1,7 @@
 import type { AgentState } from '@repo/types/api/agent';
 
+import { createAgentLoopControl } from './control-plane.ts';
+
 export type { AgentState } from '@repo/types/api/agent';
 
 export type CreateAgentStateInput = {
@@ -7,6 +9,7 @@ export type CreateAgentStateInput = {
   userId: string;
   conversationId?: string;
   text: string;
+  startedAt?: string;
 };
 
 export function createInitialAgentState(input: CreateAgentStateInput): AgentState {
@@ -18,6 +21,11 @@ export function createInitialAgentState(input: CreateAgentStateInput): AgentStat
       text: input.text,
       attachments: [],
     },
+    loopControl: createAgentLoopControl({
+      maxSteps: 6,
+      maxRepeatedTransition: 2,
+      startedAt: input.startedAt ?? new Date().toISOString(),
+    }),
     proposals: [],
     errors: [],
   };

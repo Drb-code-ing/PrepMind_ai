@@ -82,3 +82,12 @@ test('omits active context section when there is no OCR question context', () =>
 
   assert.equal(prompt, '基础系统提示');
 });
+
+test('adds only a caller-provided summary buffer to the system prompt', () => {
+  const prompt = buildChatSystemPrompt('base prompt', null, {
+    summaryBuffer: 'Earlier summary: the learner is reviewing derivatives.',
+  });
+
+  assert.match(prompt, /base prompt/);
+  assert.match(prompt, /Earlier summary/);
+});

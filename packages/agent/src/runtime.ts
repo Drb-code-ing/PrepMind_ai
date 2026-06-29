@@ -29,7 +29,10 @@ export async function runAgentRuntime(
   const now = options.now ?? (() => new Date());
   const startedAt = now();
   const recorder = options.recorder;
-  let state = createInitialAgentState(input);
+  let state = createInitialAgentState({
+    ...input,
+    startedAt: startedAt.toISOString(),
+  });
 
   recorder?.startRun(createRun(input, startedAt));
 

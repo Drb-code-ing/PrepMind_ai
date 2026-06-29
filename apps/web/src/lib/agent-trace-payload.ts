@@ -1,5 +1,5 @@
 import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
-import type { AgentRoute } from '@repo/types/api/agent';
+import type { AgentContextPolicy, AgentRoute } from '@repo/types/api/agent';
 import {
   agentTraceCreateRequestSchema,
   type AgentTraceCreateRequest,
@@ -19,6 +19,7 @@ type TraceMessage = {
 type TraceBudget = {
   estimatedInputTokens: number;
   maxOutputTokens: number;
+  contextPolicy?: AgentContextPolicy;
 };
 
 type TraceTutorStrategy = {
@@ -158,7 +159,10 @@ function buildTraceSteps(input: {
       status: input.input.agentDecision.degraded ? 'degraded' : 'completed',
       startedAt: input.startedAt,
       finishedAt: input.finishedAt,
-      inputSummary: `latestUserPreview=${input.inputPreview}`,
+      inputSummary: formatTraceInputSummary(
+        input.inputPreview,
+        input.input.budget.contextPolicy,
+      ),
       outputSummary: [
         `route=${input.input.agentDecision.route}`,
         `confidence=${clampProbability(input.input.agentDecision.confidence).toFixed(2)}`,
@@ -174,7 +178,10 @@ function buildTraceSteps(input: {
         status: input.input.agentDecision.degraded ? 'degraded' : 'completed',
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
-        inputSummary: `latestUserPreview=${input.inputPreview}`,
+        inputSummary: formatTraceInputSummary(
+          input.inputPreview,
+          input.input.budget.contextPolicy,
+        ),
         outputSummary: [
           `intent=${input.input.agentDecision.tutorStrategy.intent}`,
           `depth=${input.input.agentDecision.tutorStrategy.depth}`,
@@ -200,6 +207,18 @@ function buildTraceSteps(input: {
   }
 
   return steps;
+}
+
+function formatTraceInputSummary(inputPreview: string, contextPolicy?: AgentContextPolicy) {
+  const base = `latestUserPreview=${inputPreview}`;
+  if (!contextPolicy) return base;
+
+  return [
+    base,
+    `recentMessages=${contextPolicy.recentMessageCount}`,
+    `summary=${contextPolicy.summaryIncluded}`,
+    `droppedMessages=${contextPolicy.droppedMessageCount}`,
+  ].join(' ');
 }
 
 function createStep(input: {

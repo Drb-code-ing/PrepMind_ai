@@ -50,6 +50,22 @@ export const agentMessageSchema = z.object({
   content: z.string(),
 });
 
+export const agentContextPolicySchema = z.object({
+  recentMessageCount: z.number().int().min(0),
+  summaryIncluded: z.boolean(),
+  droppedMessageCount: z.number().int().min(0),
+  estimatedTokenCount: z.number().int().min(0),
+});
+
+export const agentLoopControlSchema = z.object({
+  stepCount: z.number().int().min(0),
+  maxSteps: z.number().int().min(1).max(20),
+  maxRepeatedTransition: z.number().int().min(1).max(5),
+  startedAt: z.string().datetime(),
+  deadlineAt: z.string().datetime().optional(),
+  transitions: z.array(z.string()),
+});
+
 export const routerResultSchema = z.object({
   name: agentRouteSchema,
   confidence: z.number().min(0).max(1),
@@ -95,9 +111,12 @@ export const agentStateSchema = z.object({
   chatContext: z
     .object({
       recentMessages: z.array(agentMessageSchema),
+      summaryBuffer: z.string().optional(),
       activeStudyContext: z.string().optional(),
+      contextPolicy: agentContextPolicySchema.optional(),
     })
     .optional(),
+  loopControl: agentLoopControlSchema.optional(),
   ragContext: ragContextSchema.optional(),
   verifierResult: verifierResultSchema.optional(),
   reviewContext: z
@@ -171,6 +190,8 @@ export type ActionProposalType = z.infer<typeof actionProposalTypeSchema>;
 export type ActionProposalStatus = z.infer<typeof actionProposalStatusSchema>;
 export type ActionProposal = z.infer<typeof actionProposalSchema>;
 export type RouterResult = z.infer<typeof routerResultSchema>;
+export type AgentContextPolicy = z.infer<typeof agentContextPolicySchema>;
+export type AgentLoopControl = z.infer<typeof agentLoopControlSchema>;
 export type AgentState = z.infer<typeof agentStateSchema>;
 export type AgentRunStatus = z.infer<typeof agentRunStatusSchema>;
 export type AgentRun = z.infer<typeof agentRunSchema>;

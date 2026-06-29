@@ -64,6 +64,41 @@ function testAgentState() {
   assert.equal(result.runId, 'run_1');
   assert.equal(result.input.text, '这道题为什么这样做？');
   assert.deepEqual(result.proposals, []);
+
+  const enriched = agentStateSchema.parse({
+    runId: 'run_2',
+    userId: 'user_1',
+    input: {
+      text: 'How should I solve this derivative problem?',
+      attachments: [],
+    },
+    chatContext: {
+      recentMessages: [{ role: 'user', content: 'How should I solve it?' }],
+      summaryBuffer: 'The learner has recently reviewed chain rule mistakes.',
+      contextPolicy: {
+        recentMessageCount: 1,
+        summaryIncluded: true,
+        droppedMessageCount: 4,
+        estimatedTokenCount: 320,
+      },
+    },
+    loopControl: {
+      stepCount: 1,
+      maxSteps: 6,
+      maxRepeatedTransition: 2,
+      startedAt: '2026-06-29T00:00:00.000Z',
+      transitions: ['RouterAgent->TutorAgent'],
+    },
+    proposals: [],
+    errors: [],
+  });
+
+  assert.equal(
+    enriched.chatContext?.summaryBuffer,
+    'The learner has recently reviewed chain rule mistakes.',
+  );
+  assert.equal(enriched.chatContext?.contextPolicy?.summaryIncluded, true);
+  assert.deepEqual(enriched.loopControl?.transitions, ['RouterAgent->TutorAgent']);
 }
 
 function testRouterResult() {

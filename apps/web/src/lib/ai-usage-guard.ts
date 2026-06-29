@@ -1,6 +1,6 @@
 import type { KnowledgeVerifierStatus } from '@repo/agent/knowledge-verifier';
 import type { TutorIntent } from '@repo/agent/tutor';
-import type { AgentRoute } from '@repo/types/api/agent';
+import type { AgentContextPolicy, AgentRoute } from '@repo/types/api/agent';
 
 import {
   buildChatContextMessages,
@@ -29,11 +29,13 @@ export type ChatRequestBudget = {
   maxInputTokens: number;
   maxOutputTokens: number;
   exceedsInputLimit: boolean;
+  contextPolicy: AgentContextPolicy;
 };
 
 type BuildChatRequestBudgetInput = {
   baseSystemPrompt: string;
   additionalSystemPrompt?: string;
+  summaryBuffer?: string;
   activeContext?: ActiveStudyContext | null;
   messages: ChatContextMessage[];
   maxInputTokens: number;
@@ -55,6 +57,7 @@ export function parseAiTokenLimit(
 export function buildChatRequestBudget(input: BuildChatRequestBudgetInput): ChatRequestBudget {
   const baseSystemPrompt = buildChatSystemPrompt(input.baseSystemPrompt, input.activeContext, {
     activeContextLimits: input.activeContextLimits,
+    summaryBuffer: input.summaryBuffer,
   });
   const additionalSystemPrompt = input.additionalSystemPrompt?.trim();
   const systemPrompt = additionalSystemPrompt
@@ -66,6 +69,15 @@ export function buildChatRequestBudget(input: BuildChatRequestBudgetInput): Chat
     maxInputTokens: messageBudget,
   });
   const estimatedInputTokens = systemTokens + estimateChatContextTokens(modelMessages);
+  const normalizedMessageCount = input.messages.filter(
+    (message) => message.content.trim().length > 0,
+  ).length;
+  const contextPolicy: AgentContextPolicy = {
+    recentMessageCount: modelMessages.length,
+    summaryIncluded: Boolean(input.summaryBuffer?.trim()),
+    droppedMessageCount: Math.max(0, normalizedMessageCount - modelMessages.length),
+    estimatedTokenCount: estimatedInputTokens,
+  };
 
   return {
     systemPrompt,
@@ -74,6 +86,7 @@ export function buildChatRequestBudget(input: BuildChatRequestBudgetInput): Chat
     maxInputTokens: input.maxInputTokens,
     maxOutputTokens: input.maxOutputTokens,
     exceedsInputLimit: estimatedInputTokens > input.maxInputTokens,
+    contextPolicy,
   };
 }
 

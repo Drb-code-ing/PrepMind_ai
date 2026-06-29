@@ -22,6 +22,12 @@ const payload = buildChatAgentTracePayload({
   budget: {
     estimatedInputTokens: 800,
     maxOutputTokens: 1200,
+    contextPolicy: {
+      recentMessageCount: 1,
+      summaryIncluded: true,
+      droppedMessageCount: 4,
+      estimatedTokenCount: 800,
+    },
   },
   agentDecision: {
     route: 'tutor',
@@ -71,6 +77,9 @@ assert.equal(payload.verifierChunkCount, 1);
 assert.equal(payload.tutorIntent, 'socratic_hint');
 assert.equal(payload.steps.map((step) => step.node).join(','), 'RouterAgent,TutorAgent,KnowledgeVerifierAgent');
 assert.ok(payload.steps.every((step) => step.inputSummary.length <= 160));
+assert.match(payload.steps[0]?.inputSummary ?? '', /recentMessages=1/);
+assert.match(payload.steps[0]?.inputSummary ?? '', /summary=true/);
+assert.match(payload.steps[0]?.inputSummary ?? '', /droppedMessages=4/);
 
 const sensitivePayload = buildChatAgentTracePayload({
   runId: 'trace_run_sensitive',
@@ -87,6 +96,12 @@ const sensitivePayload = buildChatAgentTracePayload({
   budget: {
     estimatedInputTokens: 100,
     maxOutputTokens: 200,
+    contextPolicy: {
+      recentMessageCount: 1,
+      summaryIncluded: false,
+      droppedMessageCount: 0,
+      estimatedTokenCount: 100,
+    },
   },
   agentDecision: {
     route: 'chat',
