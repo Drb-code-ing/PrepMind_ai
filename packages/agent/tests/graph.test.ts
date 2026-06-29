@@ -38,6 +38,8 @@ describe('@repo/agent public exports', () => {
     expect(graph.name).toBe('phase-6-agent-runtime');
     expect(graph.nodes).toContain('RouterAgent');
     expect(graph.nodes).toContain('FinalResponseAgent');
+    expect(graph.nodes).toContain('KnowledgeOrganizerAgent');
+    expect(graph.thresholdNodes).toContain('KnowledgeOrganizerAgent');
   });
 });
 

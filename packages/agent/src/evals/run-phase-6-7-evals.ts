@@ -2,6 +2,8 @@ import { analyzeMemory } from '../nodes/memory.ts';
 import { planStudy } from '../nodes/planner.ts';
 import { analyzeReview } from '../nodes/review.ts';
 import { buildTutorStrategy } from '../nodes/tutor.ts';
+import { analyzeKnowledgeDedup } from '../nodes/knowledge-dedup.ts';
+import { organizeKnowledgeDocuments } from '../nodes/knowledge-organizer.ts';
 import { verifyKnowledgeChunks } from '../nodes/knowledge-verifier.ts';
 import { organizeWrongQuestion } from '../nodes/wrong-question-organizer.ts';
 import { routeAgentRequest } from '../router.ts';
@@ -102,6 +104,50 @@ export function runPhase67EvalCase(testCase: Phase67EvalCase): Phase67EvalResult
     };
   }
 
+  if (testCase.kind === 'knowledge_dedup') {
+    const result = analyzeKnowledgeDedup({
+      now: '2026-06-29T00:00:00.000Z',
+      documents: [
+        knowledgeDocument('doc_1', '链式法则 v1.pdf', 'sha256:old', [
+          '链式法则 导数',
+        ]),
+        knowledgeDocument('doc_2', '链式法则 v2.pdf', 'sha256:new', [
+          '链式法则 导数 新版',
+        ]),
+      ],
+    });
+
+    return {
+      name: testCase.name,
+      passed: result.items.some((item) => item.kind === testCase.expectedKind),
+      detail: `items=${result.items.map((item) => item.kind).join(',')}`,
+    };
+  }
+
+  if (testCase.kind === 'knowledge_organizer') {
+    const result = organizeKnowledgeDocuments({
+      now: '2026-06-29T00:00:00.000Z',
+      documents: [
+        knowledgeDocument('doc_1', '高等数学 导数讲义.pdf', 'sha256:a', [
+          '导数 极限 函数',
+        ]),
+        knowledgeDocument('doc_2', '高等数学 导数练习.pdf', 'sha256:b', [
+          '导数应用题',
+        ]),
+      ],
+    });
+
+    return {
+      name: testCase.name,
+      passed: result.collections.some(
+        (collection) => collection.name === testCase.expectedCollectionName,
+      ),
+      detail: `collections=${result.collections
+        .map((collection) => collection.name)
+        .join(',')}`,
+    };
+  }
+
   const result = analyzeMemory({
     now: '2026-06-28T00:00:00.000Z',
     recentChatSignals: [
@@ -199,6 +245,28 @@ function createPlannerOverCapacityInput(): Parameters<typeof planStudy>[0] {
       planWindowDays: 7,
       updatedAt: '2026-06-28T00:00:00.000Z',
     },
+  };
+}
+
+function knowledgeDocument(
+  id: string,
+  name: string,
+  contentHash: string,
+  chunkSummaries: string[],
+) {
+  return {
+    id,
+    name,
+    type: 'PDF' as const,
+    size: 1024,
+    status: 'DONE' as const,
+    sourceType: 'UPLOAD' as const,
+    contentHash,
+    chunkCount: chunkSummaries.length,
+    processedAt: '2026-06-29T00:00:00.000Z',
+    createdAt: '2026-06-29T00:00:00.000Z',
+    updatedAt: '2026-06-29T00:00:00.000Z',
+    chunkSummaries,
   };
 }
 

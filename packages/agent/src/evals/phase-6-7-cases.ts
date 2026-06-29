@@ -60,6 +60,20 @@ export type Phase67EvalCase =
       name: string;
       expectedType: string;
       explicitPreferenceText: string;
+    }
+  | {
+      kind: 'knowledge_dedup';
+      name: string;
+      expectedKind:
+        | 'exact_duplicate'
+        | 'possible_revision'
+        | 'complementary'
+        | 'insufficient_signal';
+    }
+  | {
+      kind: 'knowledge_organizer';
+      name: string;
+      expectedCollectionName: string;
     };
 
 export const phase67EvalCases: Phase67EvalCase[] = [
@@ -168,5 +182,15 @@ export const phase67EvalCases: Phase67EvalCase[] = [
     name: 'extracts explanation preference',
     explicitPreferenceText: '以后讲题时请先给我提示，再给完整答案。',
     expectedType: 'EXPLANATION_PREFERENCE',
+  },
+  {
+    kind: 'knowledge_dedup',
+    name: 'detects possible revision documents',
+    expectedKind: 'possible_revision',
+  },
+  {
+    kind: 'knowledge_organizer',
+    name: 'groups math knowledge documents',
+    expectedCollectionName: '数学资料',
   },
 ];

@@ -19,6 +19,7 @@ export function createAgentGraph(): AgentGraphDescriptor {
       'PlannerAgent',
       'MemoryAgent',
       'KnowledgeDedupAgent',
+      'KnowledgeOrganizerAgent',
     ],
     realtimeNodes: [
       'RouterAgent',
@@ -33,6 +34,7 @@ export function createAgentGraph(): AgentGraphDescriptor {
       'PlannerAgent',
       'MemoryAgent',
       'KnowledgeDedupAgent',
+      'KnowledgeOrganizerAgent',
     ],
   };
 }
