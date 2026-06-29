@@ -7,6 +7,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { KnowledgeAgentModule } from './knowledge-agent/knowledge-agent.module';
 import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-documents.module';
 import { MemoryAgentModule } from './memory-agent/memory-agent.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
@@ -35,6 +36,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ReviewPreferencesModule,
     ReviewTasksModule,
     MemoryAgentModule,
+    KnowledgeAgentModule,
     UploadsModule,
     KnowledgeDocumentsModule,
     WrongQuestionOrganizerModule,
