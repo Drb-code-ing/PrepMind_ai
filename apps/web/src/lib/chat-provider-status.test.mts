@@ -10,15 +10,17 @@ test('uses dev ai mode override when the switch is enabled', () => {
     NODE_ENV: 'development',
     AI_DEV_MODE_SWITCH_ENABLED: 'true',
     AI_PROVIDER_MODE: 'mock',
-    AI_ENABLE_LIVE_CALLS: '',
+    AI_ENABLE_LIVE_CALLS: 'true',
     DEEPSEEK_API_KEY: 'sk-test',
   };
 
   assert.deepEqual(setDevAiMode('live', env), { ok: true });
   const status = resolveChatProviderStatus(env);
 
-  assert.equal(status.configured, false);
-  assert.equal(status.mode, 'live');
+  assert.equal(status.configured, true);
+  if (status.configured) {
+    assert.equal(status.mode, 'live');
+  }
 });
 
 test('falls back to env mode when the dev switch is disabled', () => {
@@ -26,6 +28,8 @@ test('falls back to env mode when the dev switch is disabled', () => {
   const enabledEnv = {
     NODE_ENV: 'development',
     AI_DEV_MODE_SWITCH_ENABLED: 'true',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    DEEPSEEK_API_KEY: 'sk-test',
   };
 
   assert.deepEqual(setDevAiMode('live', enabledEnv), { ok: true });

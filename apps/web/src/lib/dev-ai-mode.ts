@@ -17,7 +17,7 @@ type SetDevAiModeResult =
     }
   | {
       ok: false;
-      status: 400 | 404;
+      status: 400 | 404 | 409;
       error: string;
     };
 
@@ -45,7 +45,9 @@ export function isDevAiModeSwitchEnabled(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export function getDevAiModeOverride(env: NodeJS.ProcessEnv = process.env): DevAiMode | null {
-  return isDevAiModeSwitchEnabled(env) ? requestedMode : null;
+  if (!isDevAiModeSwitchEnabled(env)) return null;
+
+  return resolveActiveDevAiMode(env, getLiveAvailability(env));
 }
 
 export function buildDevAiModeStatus(
@@ -58,7 +60,7 @@ export function buildDevAiModeStatus(
   return {
     enabled,
     envMode,
-    activeMode: enabled ? requestedMode : envMode,
+    activeMode: enabled ? resolveActiveDevAiMode(env, liveAvailability) : envMode,
     requestedMode,
     liveAllowedByEnv: liveAvailability.allowed,
     message: liveAvailability.message,
@@ -85,10 +87,32 @@ export function setDevAiMode(
     };
   }
 
+  if (mode === 'live') {
+    const liveAvailability = getLiveAvailability(env);
+    if (!liveAvailability.allowed) {
+      return {
+        ok: false,
+        status: 409,
+        error: liveAvailability.message ?? 'Live mode is not available.',
+      };
+    }
+  }
+
   requestedMode = mode;
   return { ok: true };
 }
 
 export function resetDevAiModeForTest() {
   requestedMode = 'mock';
+}
+
+function resolveActiveDevAiMode(
+  env: NodeJS.ProcessEnv,
+  liveAvailability = getLiveAvailability(env),
+): DevAiMode {
+  if (requestedMode === 'live' && !liveAvailability.allowed) {
+    return 'mock';
+  }
+
+  return requestedMode;
 }

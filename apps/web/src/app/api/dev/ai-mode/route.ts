@@ -1,4 +1,15 @@
+import { apiClient } from '@/lib/api-client';
 import { buildDevAiModeStatus, isDevAiModeSwitchEnabled, setDevAiMode } from '@/lib/dev-ai-mode';
+import { validateDevAiModeMutationRequest } from '@/lib/dev-ai-mode-request-policy';
+
+async function verifyAccessToken(accessToken: string) {
+  try {
+    await apiClient.get<unknown>('/auth/me', { accessToken });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function GET() {
   if (!isDevAiModeSwitchEnabled()) {
@@ -21,7 +32,23 @@ export async function PUT(req: Request) {
     return Response.json({ error: 'Request body must be valid JSON.' }, { status: 400 });
   }
 
-  const mode = body && typeof body === 'object' ? (body as { mode?: unknown }).mode : undefined;
+  const requestBody =
+    body && typeof body === 'object'
+      ? (body as { accessToken?: unknown; mode?: unknown })
+      : {};
+  const accessToken =
+    typeof requestBody.accessToken === 'string' ? requestBody.accessToken : null;
+  const policy = await validateDevAiModeMutationRequest({
+    request: req,
+    accessToken,
+    validateAccessToken: verifyAccessToken,
+  });
+
+  if (!policy.ok) {
+    return Response.json({ error: policy.error }, { status: policy.status });
+  }
+
+  const mode = requestBody.mode;
   const result = setDevAiMode(mode);
 
   if (!result.ok) {

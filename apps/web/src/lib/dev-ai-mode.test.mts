@@ -49,6 +49,8 @@ test('updates requested mode only for mock or live', () => {
   const env = {
     NODE_ENV: 'development',
     AI_DEV_MODE_SWITCH_ENABLED: 'true',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    DEEPSEEK_API_KEY: 'sk-test',
   };
 
   assert.deepEqual(setDevAiMode('live', env), { ok: true });
@@ -61,6 +63,46 @@ test('updates requested mode only for mock or live', () => {
     assert.equal(invalidResult.status, 400);
   }
   assert.equal(buildDevAiModeStatus(env).requestedMode, 'live');
+});
+
+test('rejects live mode updates when live calls are not available', () => {
+  resetDevAiModeForTest();
+  const env = {
+    NODE_ENV: 'development',
+    AI_DEV_MODE_SWITCH_ENABLED: 'true',
+    AI_ENABLE_LIVE_CALLS: '',
+    DEEPSEEK_API_KEY: 'sk-test',
+  };
+
+  const result = setDevAiMode('live', env);
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.status, 409);
+    assert.match(result.error, /AI_ENABLE_LIVE_CALLS/);
+  }
+  assert.equal(buildDevAiModeStatus(env).requestedMode, 'mock');
+  assert.equal(getDevAiModeOverride(env), 'mock');
+});
+
+test('falls back to mock when a previously requested live mode becomes unavailable', () => {
+  resetDevAiModeForTest();
+  const liveReadyEnv = {
+    NODE_ENV: 'development',
+    AI_DEV_MODE_SWITCH_ENABLED: 'true',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    DEEPSEEK_API_KEY: 'sk-test',
+  };
+  const liveBlockedEnv = {
+    ...liveReadyEnv,
+    AI_ENABLE_LIVE_CALLS: '',
+  };
+
+  assert.deepEqual(setDevAiMode('live', liveReadyEnv), { ok: true });
+
+  assert.equal(buildDevAiModeStatus(liveBlockedEnv).requestedMode, 'live');
+  assert.equal(buildDevAiModeStatus(liveBlockedEnv).activeMode, 'mock');
+  assert.equal(getDevAiModeOverride(liveBlockedEnv), 'mock');
 });
 
 test('does not update mode while the switch is disabled', () => {

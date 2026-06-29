@@ -129,6 +129,9 @@ export default function AgentTracePage() {
           status={devAiModeQuery.data}
           loading={devAiModeQuery.isLoading}
           pending={setDevAiModeMutation.isPending}
+          statusError={
+            devAiModeQuery.error instanceof Error ? devAiModeQuery.error.message : null
+          }
           error={
             setDevAiModeMutation.error instanceof Error
               ? setDevAiModeMutation.error.message
@@ -188,6 +191,7 @@ function DevAiModeSwitch({
   status,
   loading,
   pending,
+  statusError,
   error,
   onSelect,
 }: {
@@ -199,10 +203,19 @@ function DevAiModeSwitch({
   };
   loading: boolean;
   pending: boolean;
+  statusError: string | null;
   error: string | null;
   onSelect: (mode: 'mock' | 'live') => void;
 }) {
-  if (loading || !status?.enabled) return null;
+  if (loading) return null;
+
+  if (!status?.enabled) {
+    return statusError ? (
+      <section className="pm-enter rounded-[1.35rem] bg-red-50/85 p-3 text-sm leading-6 text-red-600 ring-1 ring-red-100">
+        AI 模式状态读取失败：{statusError}
+      </section>
+    ) : null;
+  }
 
   const liveDisabled = pending || !status.liveAllowedByEnv;
   const mockActive = status.activeMode === 'mock';

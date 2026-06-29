@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DevAiMode, DevAiModeStatus } from '@/lib/dev-ai-mode';
+import { useUserStore } from '@/stores/userStore';
 
 export const devAiModeQueryKeys = {
   status: ['dev-ai-mode', 'status'] as const,
@@ -26,9 +27,16 @@ export function useDevAiModeStatus() {
 
 export function useSetDevAiMode() {
   const queryClient = useQueryClient();
+  const accessToken = useUserStore((state) => state.accessToken);
 
   return useMutation({
-    mutationFn: setDevAiMode,
+    mutationFn: async (mode: DevAiMode) => {
+      if (!accessToken) {
+        throw new Error('需要登录后切换 AI 模式。');
+      }
+
+      return setDevAiMode(mode, accessToken);
+    },
     onSuccess: (status) => {
       queryClient.setQueryData(devAiModeQueryKeys.status, status);
     },
@@ -51,13 +59,16 @@ async function fetchDevAiModeStatus(): Promise<DevAiModeStatus> {
   return (await response.json()) as DevAiModeStatus;
 }
 
-async function setDevAiMode(mode: DevAiMode): Promise<DevAiModeStatus> {
+async function setDevAiMode(
+  mode: DevAiMode,
+  accessToken: string,
+): Promise<DevAiModeStatus> {
   const response = await fetch('/api/dev/ai-mode', {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ mode }),
+    body: JSON.stringify({ accessToken, mode }),
   });
 
   if (!response.ok) {
