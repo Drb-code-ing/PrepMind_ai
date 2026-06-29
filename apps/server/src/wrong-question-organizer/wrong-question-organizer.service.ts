@@ -35,10 +35,15 @@ export class WrongQuestionOrganizerService {
       return { items: [] };
     }
 
-    const stats = await this.loadGroupStats(userId, groups.map((group) => group.id));
+    const stats = await this.loadGroupStats(
+      userId,
+      groups.map((group) => group.id),
+    );
 
     return {
-      items: groups.map((group) => this.toSubjectGroupResponse(group, stats.groups.get(group.id))),
+      items: groups.map((group) =>
+        this.toSubjectGroupResponse(group, stats.groups.get(group.id)),
+      ),
     };
   }
 
@@ -61,8 +66,13 @@ export class WrongQuestionOrganizerService {
     const stats = await this.loadGroupStats(userId, [subjectGroupId]);
 
     return {
-      subjectGroup: this.toSubjectGroupResponse(subjectGroup, stats.groups.get(subjectGroup.id)),
-      items: decks.map((deck) => this.toDeckResponse(deck, stats.decks.get(deck.id))),
+      subjectGroup: this.toSubjectGroupResponse(
+        subjectGroup,
+        stats.groups.get(subjectGroup.id),
+      ),
+      items: decks.map((deck) =>
+        this.toDeckResponse(deck, stats.decks.get(deck.id)),
+      ),
     };
   }
 
@@ -93,7 +103,9 @@ export class WrongQuestionOrganizerService {
 
     return {
       deck: this.toDeckResponse(deck, stats.decks.get(deck.id)),
-      items: items.map((item) => this.toWrongQuestionResponse(item.wrongQuestion)),
+      items: items.map((item) =>
+        this.toWrongQuestionResponse(item.wrongQuestion),
+      ),
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -250,7 +262,10 @@ export class WrongQuestionOrganizerService {
     const stats = await this.loadGroupStats(userId, [subjectGroup.id]);
 
     return {
-      subjectGroup: this.toSubjectGroupResponse(subjectGroup, stats.groups.get(subjectGroup.id)),
+      subjectGroup: this.toSubjectGroupResponse(
+        subjectGroup,
+        stats.groups.get(subjectGroup.id),
+      ),
       deck: this.toDeckResponse(deck, stats.decks.get(deck.id)),
       item: this.toDeckItemResponse(item),
       createdSubjectGroup: !existingSubjectGroup,
@@ -277,7 +292,9 @@ export class WrongQuestionOrganizerService {
     const items: OrganizeWrongQuestionResponse[] = [];
 
     for (const wrongQuestion of wrongQuestions) {
-      items.push(await this.organizeOne(userId, wrongQuestion.id, { force: false }));
+      items.push(
+        await this.organizeOne(userId, wrongQuestion.id, { force: false }),
+      );
     }
 
     return {
@@ -437,14 +454,20 @@ export class WrongQuestionOrganizerService {
     });
 
     for (const deck of decks) {
-      const groupStat = getOrCreateCountStats(stats.groups, deck.subjectGroupId);
+      const groupStat = getOrCreateCountStats(
+        stats.groups,
+        deck.subjectGroupId,
+      );
 
       groupStat.deckIds.add(deck.id);
       getOrCreateCountStats(stats.decks, deck.id);
     }
 
     for (const item of items) {
-      const groupStat = getOrCreateCountStats(stats.groups, item.deck.subjectGroupId);
+      const groupStat = getOrCreateCountStats(
+        stats.groups,
+        item.deck.subjectGroupId,
+      );
       const deckStat = getOrCreateCountStats(stats.decks, item.deckId);
 
       groupStat.deckIds.add(item.deckId);
@@ -514,7 +537,9 @@ export class WrongQuestionOrganizerService {
     };
   }
 
-  private toDeckItemResponse(item: WrongQuestionDeckItemRecord): WrongQuestionDeckItemResponse {
+  private toDeckItemResponse(
+    item: WrongQuestionDeckItemRecord,
+  ): WrongQuestionDeckItemResponse {
     return {
       id: item.id,
       deckId: item.deckId,
@@ -527,7 +552,9 @@ export class WrongQuestionOrganizerService {
     };
   }
 
-  private toWrongQuestionResponse(item: WrongQuestionRecord): WrongQuestionResponse {
+  private toWrongQuestionResponse(
+    item: WrongQuestionRecord,
+  ): WrongQuestionResponse {
     return {
       id: item.id,
       userId: item.userId,
@@ -575,7 +602,10 @@ export class WrongQuestionOrganizerService {
   }
 }
 
-function getOrCreateCountStats(map: Map<string, CountStats>, key: string): CountStats {
+function getOrCreateCountStats(
+  map: Map<string, CountStats>,
+  key: string,
+): CountStats {
   const existing = map.get(key);
 
   if (existing) {
@@ -632,13 +662,17 @@ function maxDate(left: Date | null, right: Date): Date {
 
 function topKnowledgePoints(points: Map<string, number>) {
   return [...points.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort(
+      (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+    )
     .slice(0, 5)
     .map(([point]) => point);
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.map((value) => value?.trim()).filter(Boolean))] as string[];
+  return [
+    ...new Set(values.map((value) => value?.trim()).filter(Boolean)),
+  ] as string[];
 }
 
 type WrongQuestionRecord = Prisma.WrongQuestionGetPayload<object>;
@@ -646,9 +680,11 @@ type StatsWrongQuestionRecord = Pick<
   WrongQuestionRecord,
   'id' | 'status' | 'knowledgePoints' | 'updatedAt'
 >;
-type WrongQuestionSubjectGroupRecord = Prisma.WrongQuestionSubjectGroupGetPayload<object>;
+type WrongQuestionSubjectGroupRecord =
+  Prisma.WrongQuestionSubjectGroupGetPayload<object>;
 type WrongQuestionDeckRecord = Prisma.WrongQuestionDeckGetPayload<object>;
-type WrongQuestionDeckItemRecord = Prisma.WrongQuestionDeckItemGetPayload<object>;
+type WrongQuestionDeckItemRecord =
+  Prisma.WrongQuestionDeckItemGetPayload<object>;
 type DeckWithQuestionItems = Prisma.WrongQuestionDeckGetPayload<{
   include: {
     items: {

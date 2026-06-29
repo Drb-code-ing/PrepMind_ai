@@ -12,6 +12,10 @@ import { DocumentParserService } from './document-parser.service';
 import { DocumentProcessingService } from './document-processing.service';
 import { EmbeddingService } from './embedding.service';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+const anyString = () => expect.any(String) as unknown as string;
+
 describe('DocumentProcessingService', () => {
   const now = new Date('2026-06-18T10:00:00.000Z');
   const processedAt = new Date('2026-06-18T10:01:00.000Z');
@@ -72,21 +76,23 @@ describe('DocumentProcessingService', () => {
     prisma.document.findFirst.mockImplementation(() =>
       Promise.resolve(currentDocument),
     );
-    prisma.document.updateMany.mockImplementation((args: DocumentUpdateArgs) => {
-      const data = args.data;
-      currentDocument = {
-        ...currentDocument,
-        ...data,
-        updatedAt: processedAt,
-        processedAt:
-          data.processedAt === undefined
-            ? currentDocument.processedAt
-            : data.processedAt,
-        _count: { chunks: data.status === 'DONE' ? 1 : 0 },
-      };
+    prisma.document.updateMany.mockImplementation(
+      (args: DocumentUpdateArgs) => {
+        const data = args.data;
+        currentDocument = {
+          ...currentDocument,
+          ...data,
+          updatedAt: processedAt,
+          processedAt:
+            data.processedAt === undefined
+              ? currentDocument.processedAt
+              : data.processedAt,
+          _count: { chunks: data.status === 'DONE' ? 1 : 0 },
+        };
 
-      return Promise.resolve({ count: 1 });
-    });
+        return Promise.resolve({ count: 1 });
+      },
+    );
     prisma.document.update.mockImplementation((args: DocumentUpdateArgs) => {
       const data = args.data;
       return Promise.resolve({
@@ -232,8 +238,8 @@ describe('DocumentProcessingService', () => {
 
     expect(persistence.replaceDocumentChunks).toHaveBeenCalled();
     expect(prisma.document.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: 'DONE' }),
+      objectContaining({
+        data: objectContaining({ status: 'DONE' }),
       }),
     );
     expect(prisma.document.updateMany).toHaveBeenNthCalledWith(2, {
@@ -260,7 +266,7 @@ describe('DocumentProcessingService', () => {
       },
       data: {
         status: 'FAILED',
-        errorMessage: expect.any(String),
+        errorMessage: anyString(),
       },
     });
   });
@@ -589,13 +595,15 @@ describe('DocumentProcessingService', () => {
     const failure = new Error('provider unavailable');
     const markFailedError = new Error('database unavailable');
     embedding.embedChunks.mockRejectedValue(failure);
-    prisma.document.updateMany.mockImplementation((args: DocumentUpdateArgs) => {
-      if (args.data.status === 'FAILED') {
-        return Promise.reject(markFailedError);
-      }
+    prisma.document.updateMany.mockImplementation(
+      (args: DocumentUpdateArgs) => {
+        if (args.data.status === 'FAILED') {
+          return Promise.reject(markFailedError);
+        }
 
-      return Promise.resolve({ count: 1 });
-    });
+        return Promise.resolve({ count: 1 });
+      },
+    );
 
     await expect(
       createService().processDocument('user_1', 'doc_1', { force: false }),

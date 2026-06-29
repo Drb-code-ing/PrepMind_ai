@@ -155,7 +155,10 @@ describe('AuthService', () => {
     };
 
     prisma.refreshToken.findUnique.mockResolvedValue(activeToken);
-    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = await createService();
     await service.refresh('active-refresh-token', response, {
@@ -204,7 +207,10 @@ describe('AuthService', () => {
     };
 
     prisma.refreshToken.findUnique.mockResolvedValue(activeToken);
-    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = await createService();
 

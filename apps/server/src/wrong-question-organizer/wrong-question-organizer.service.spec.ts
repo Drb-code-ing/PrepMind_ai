@@ -1,6 +1,11 @@
 import { WrongQuestionOrganizerService } from './wrong-question-organizer.service';
 import { PrismaService } from '../database/prisma.service';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+const anyString = () => expect.any(String) as unknown as string;
+const anyNumber = () => expect.any(Number) as unknown as number;
+
 const NOW = new Date('2026-06-21T00:00:00.000Z');
 const SUBJECT = '高等数学';
 const CATEGORY = '曲线积分';
@@ -147,7 +152,9 @@ describe('WrongQuestionOrganizerService', () => {
   });
 
   function createService() {
-    return new WrongQuestionOrganizerService(prisma as unknown as PrismaService);
+    return new WrongQuestionOrganizerService(
+      prisma as unknown as PrismaService,
+    );
   }
 
   it('creates subject group, deck, and item for an owned wrong question', async () => {
@@ -158,10 +165,14 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionDeck.create.mockResolvedValue(deck);
     prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(null);
     prisma.wrongQuestionDeckItem.upsert.mockResolvedValue(item);
-    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([{ deck, wrongQuestion }]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      { deck, wrongQuestion },
+    ]);
 
     const service = createService();
-    const result = await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(prisma.wrongQuestion.findFirst).toHaveBeenCalledWith({
       where: { id: 'wrong_1', userId: 'user_1' },
@@ -176,7 +187,7 @@ describe('WrongQuestionOrganizerService', () => {
       },
     });
     expect(prisma.wrongQuestionDeck.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: objectContaining({
         userId: 'user_1',
         subjectGroupId: 'subject_group_1',
         name: KNOWLEDGE_POINT,
@@ -191,12 +202,12 @@ describe('WrongQuestionOrganizerService', () => {
           wrongQuestionId: 'wrong_1',
         },
       },
-      update: expect.objectContaining({
-        reason: expect.any(String),
-        confidence: expect.any(Number),
+      update: objectContaining({
+        reason: anyString(),
+        confidence: anyNumber(),
         source: 'AI',
       }),
-      create: expect.objectContaining({
+      create: objectContaining({
         userId: 'user_1',
         deckId: 'deck_1',
         wrongQuestionId: 'wrong_1',
@@ -217,7 +228,9 @@ describe('WrongQuestionOrganizerService', () => {
     };
 
     prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
+    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
+      id: subjectGroup.id,
+    });
     prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
     prisma.wrongQuestionDeckItem.findFirst
@@ -235,8 +248,8 @@ describe('WrongQuestionOrganizerService', () => {
     await service.organizeOne('user_1', 'wrong_1', { force: false });
 
     expect(prisma.wrongQuestionDeck.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ name: KNOWLEDGE_POINT }),
+      objectContaining({
+        data: objectContaining({ name: KNOWLEDGE_POINT }),
       }),
     );
   });
@@ -276,7 +289,10 @@ describe('WrongQuestionOrganizerService', () => {
   });
 
   it('organizes only current user wrong questions without deck items up to the limit', async () => {
-    prisma.wrongQuestion.findMany.mockResolvedValue([{ id: 'wrong_1' }, { id: 'wrong_2' }]);
+    prisma.wrongQuestion.findMany.mockResolvedValue([
+      { id: 'wrong_1' },
+      { id: 'wrong_2' },
+    ]);
     const service = createService();
     const organizeOne = jest
       .spyOn(service, 'organizeOne')
@@ -294,8 +310,12 @@ describe('WrongQuestionOrganizerService', () => {
       select: { id: true },
     });
     expect(organizeOne).toHaveBeenCalledTimes(2);
-    expect(organizeOne).toHaveBeenNthCalledWith(1, 'user_1', 'wrong_1', { force: false });
-    expect(organizeOne).toHaveBeenNthCalledWith(2, 'user_1', 'wrong_2', { force: false });
+    expect(organizeOne).toHaveBeenNthCalledWith(1, 'user_1', 'wrong_1', {
+      force: false,
+    });
+    expect(organizeOne).toHaveBeenNthCalledWith(2, 'user_1', 'wrong_2', {
+      force: false,
+    });
     expect(result).toMatchObject({
       organizedCount: 2,
       skippedCount: 0,
@@ -322,7 +342,9 @@ describe('WrongQuestionOrganizerService', () => {
 
     prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
     prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(existingItem);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
+    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
+      id: subjectGroup.id,
+    });
     prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
     prisma.wrongQuestionDeck.create.mockResolvedValue(deck);
@@ -337,7 +359,9 @@ describe('WrongQuestionOrganizerService', () => {
     ]);
 
     const service = createService();
-    const result = await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(prisma.wrongQuestionDeckItem.findFirst).toHaveBeenCalledWith({
       where: { userId: 'user_1', wrongQuestionId: 'wrong_1' },
@@ -388,7 +412,9 @@ describe('WrongQuestionOrganizerService', () => {
     };
 
     prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({ id: subjectGroup.id });
+    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
+      id: subjectGroup.id,
+    });
     prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany
       .mockResolvedValueOnce([targetDeck])
@@ -402,10 +428,15 @@ describe('WrongQuestionOrganizerService', () => {
         wrongQuestion,
       },
     ]);
-    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = createService();
-    const result = await service.organizeOne('user_1', 'wrong_1', { force: true });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: true,
+    });
 
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
     expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
@@ -422,12 +453,12 @@ describe('WrongQuestionOrganizerService', () => {
           wrongQuestionId: 'wrong_1',
         },
       },
-      update: expect.objectContaining({
-        reason: expect.any(String),
-        confidence: expect.any(Number),
+      update: objectContaining({
+        reason: anyString(),
+        confidence: anyNumber(),
         source: 'AI',
       }),
-      create: expect.objectContaining({
+      create: objectContaining({
         userId: 'user_1',
         deckId: 'deck_target',
         wrongQuestionId: 'wrong_1',
@@ -466,7 +497,10 @@ describe('WrongQuestionOrganizerService', () => {
       reason: '用户手动归入专题。',
     });
 
-    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = createService();
     const result = await service.moveToDeck('user_1', 'deck_1', {
@@ -632,7 +666,12 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionSubjectGroup.findMany.mockResolvedValue([subjectGroup]);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck, duplicateDeck]);
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
-      { deck, deckId: deck.id, wrongQuestionId: wrongQuestion.id, wrongQuestion },
+      {
+        deck,
+        deckId: deck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
       {
         deck: duplicateDeck,
         deckId: duplicateDeck.id,

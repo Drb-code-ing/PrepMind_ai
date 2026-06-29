@@ -70,9 +70,12 @@ const stepSelect = {
   createdAt: true,
 } satisfies Prisma.AgentTraceStepSelect;
 
-type TracePrismaClient = Prisma.TransactionClient | PrismaService;
-type AgentTraceRunRecord = Prisma.AgentTraceRunGetPayload<{ select: typeof runSelect }>;
-type AgentTraceStepRecord = Prisma.AgentTraceStepGetPayload<{ select: typeof stepSelect }>;
+type AgentTraceRunRecord = Prisma.AgentTraceRunGetPayload<{
+  select: typeof runSelect;
+}>;
+type AgentTraceStepRecord = Prisma.AgentTraceStepGetPayload<{
+  select: typeof stepSelect;
+}>;
 type AgentTraceRunWriteData = {
   conversationId: string | null;
   route: AgentTraceRun['route'];
@@ -188,7 +191,10 @@ export class AgentTracesService {
     };
   }
 
-  async getTrace(userId: string, id: string): Promise<AgentTraceDetailResponse> {
+  async getTrace(
+    userId: string,
+    id: string,
+  ): Promise<AgentTraceDetailResponse> {
     const run = await this.prisma.agentTraceRun.findFirst({
       where: { id, userId },
       select: runSelect,
@@ -269,10 +275,12 @@ export class AgentTracesService {
         route,
         count,
       })),
-      verifierBreakdown: [...verifierCounts.entries()].map(([status, count]) => ({
-        status,
-        count,
-      })),
+      verifierBreakdown: [...verifierCounts.entries()].map(
+        ([status, count]) => ({
+          status,
+          count,
+        }),
+      ),
     };
   }
 
@@ -379,8 +387,14 @@ function fromDbMode(mode: PrismaAgentTraceMode): AgentTraceMode {
 
 function sanitizeSummary(value: string, maxLength: number) {
   const redacted = value
-    .replace(/\b(DEEPSEEK_API_KEY|OPENAI_API_KEY)\s*=\s*[^\s,;]+/gi, '$1=[redacted]')
-    .replace(/\bAuthorization\s*:\s*Bearer\s+[^\s,;]+/gi, 'Authorization: Bearer [redacted]')
+    .replace(
+      /\b(DEEPSEEK_API_KEY|OPENAI_API_KEY)\s*=\s*[^\s,;]+/gi,
+      '$1=[redacted]',
+    )
+    .replace(
+      /\bAuthorization\s*:\s*Bearer\s+[^\s,;]+/gi,
+      'Authorization: Bearer [redacted]',
+    )
     .replace(/\bCookie\s*:\s*[^\n\r]+/gi, 'Cookie: [redacted]');
 
   return truncateText(redacted.trim(), maxLength);
@@ -390,7 +404,9 @@ function truncateText(value: string, maxLength: number) {
   return Array.from(value).slice(0, maxLength).join('');
 }
 
-function decimalToNumber(value: Prisma.Decimal | number | { toNumber: () => number }) {
+function decimalToNumber(
+  value: Prisma.Decimal | number | { toNumber: () => number },
+) {
   if (typeof value === 'number') return value;
   return value.toNumber();
 }

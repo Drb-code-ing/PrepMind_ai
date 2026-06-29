@@ -8,6 +8,32 @@ const objectContaining = <T extends object>(value: T) =>
 
 const anySelect = () => expect.any(Object) as unknown as Record<string, true>;
 
+type MockWithFirstArg<T> = {
+  mock: {
+    calls: Array<[T, ...unknown[]]>;
+  };
+};
+
+type TraceRunUpsertInput = {
+  create: {
+    status: string;
+    mode: string;
+    inputPreview: string;
+  };
+};
+
+type TraceStepCreateManyInput = {
+  data: Array<{
+    inputSummary: string;
+    outputSummary: string;
+    errorMessage: string | null;
+  }>;
+};
+
+function firstMockArg<T>(mock: MockWithFirstArg<T>) {
+  return mock.mock.calls[0]?.[0];
+}
+
 describe('AgentTracesService', () => {
   const now = new Date('2026-06-28T08:00:00.000Z');
   const finishedAt = new Date('2026-06-28T08:00:02.000Z');
@@ -87,17 +113,23 @@ describe('AgentTracesService', () => {
         },
       ],
     });
-    const upsertInput = prisma.agentTraceRun.upsert.mock.calls[0]?.[0];
-    const createManyInput = prisma.agentTraceStep.createMany.mock.calls[0]?.[0];
-    const stepData = createManyInput.data[0];
+    const upsertInput = firstMockArg<TraceRunUpsertInput>(
+      prisma.agentTraceRun.upsert,
+    );
+    const createManyInput = firstMockArg<TraceStepCreateManyInput>(
+      prisma.agentTraceStep.createMany,
+    );
+    const stepData = createManyInput?.data[0];
 
-    expect(upsertInput.create.status).toBe('DEGRADED');
-    expect(upsertInput.create.mode).toBe('LIVE');
-    expect(upsertInput.create.inputPreview).toHaveLength(80);
-    expect(stepData.inputSummary).toHaveLength(160);
-    expect(stepData.inputSummary).not.toContain('sk-secret');
-    expect(stepData.outputSummary).toContain('Authorization: Bearer [redacted]');
-    expect(stepData.errorMessage).toContain('Cookie: [redacted]');
+    expect(upsertInput?.create.status).toBe('DEGRADED');
+    expect(upsertInput?.create.mode).toBe('LIVE');
+    expect(upsertInput?.create.inputPreview).toHaveLength(80);
+    expect(stepData?.inputSummary).toHaveLength(160);
+    expect(stepData?.inputSummary).not.toContain('sk-secret');
+    expect(stepData?.outputSummary).toContain(
+      'Authorization: Bearer [redacted]',
+    );
+    expect(stepData?.errorMessage).toContain('Cookie: [redacted]');
     expect(result.run.status).toBe('degraded');
     expect(result.run.mode).toBe('live');
     expect(result.run.costEstimate).toBe(0.0034);
@@ -195,9 +227,9 @@ describe('AgentTracesService', () => {
   it('rejects detail lookup for another user trace', async () => {
     prisma.agentTraceRun.findFirst.mockResolvedValueOnce(null);
 
-    await expect(createService().getTrace('user_2', 'trace_run_1')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      createService().getTrace('user_2', 'trace_run_1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.agentTraceRun.findFirst).toHaveBeenCalledWith({
       where: { id: 'trace_run_1', userId: 'user_2' },
       select: anySelect(),

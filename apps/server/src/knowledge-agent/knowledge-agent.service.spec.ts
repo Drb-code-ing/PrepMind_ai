@@ -57,7 +57,9 @@ describe('KnowledgeAgentService', () => {
   }
 
   it('builds read-only suggestions from current user documents and capped chunk summaries', async () => {
-    const result = await createService().getSuggestions('user_1', { limit: 20 });
+    const result = await createService().getSuggestions('user_1', {
+      limit: 20,
+    });
 
     expect(prisma.document.findFirst).not.toHaveBeenCalled();
     expect(prisma.document.findMany).toHaveBeenCalledWith({
@@ -87,9 +89,9 @@ describe('KnowledgeAgentService', () => {
     expect(result.generatedAt).toBe(now.toISOString());
     expect(result.organizer.collections[0]?.name).toBe('数学资料');
     expect(result.organizer.tags[0]?.labels).toContain('数学');
-    expect(result.dedup.items.some((item) => item.kind === 'complementary')).toBe(
-      true,
-    );
+    expect(
+      result.dedup.items.some((item) => item.kind === 'complementary'),
+    ).toBe(true);
     expect(result.dedup.items[0]?.reason.length).toBeGreaterThan(0);
   });
 

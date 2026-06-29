@@ -235,7 +235,10 @@ export class KnowledgeDocumentsService {
       clientVersion?: unknown;
       meta?: { target?: unknown };
     };
-    if (candidate.code !== 'P2002' || typeof candidate.clientVersion !== 'string') {
+    if (
+      candidate.code !== 'P2002' ||
+      typeof candidate.clientVersion !== 'string'
+    ) {
       return false;
     }
 

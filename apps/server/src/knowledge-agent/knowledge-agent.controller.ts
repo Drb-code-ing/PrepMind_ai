@@ -12,7 +12,10 @@ export class KnowledgeAgentController {
   constructor(private readonly knowledgeAgentService: KnowledgeAgentService) {}
 
   @Get('suggestions')
-  getSuggestions(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
+  getSuggestions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: unknown,
+  ) {
     return this.knowledgeAgentService.getSuggestions(
       user.id,
       knowledgeAgentSuggestionQuerySchema.parse(query),

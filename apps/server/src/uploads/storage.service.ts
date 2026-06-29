@@ -430,7 +430,9 @@ function isReadableImagePurpose(value: string | undefined) {
 }
 
 function isReadableImageExtension(value: string | undefined) {
-  return value === 'jpg' || value === 'jpeg' || value === 'png' || value === 'webp';
+  return (
+    value === 'jpg' || value === 'jpeg' || value === 'png' || value === 'webp'
+  );
 }
 
 export function parseMinioEndpoint(endpoint: string, configuredPort: number) {

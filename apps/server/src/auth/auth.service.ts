@@ -231,7 +231,11 @@ export class AuthService {
   ) {
     const session = await this.createSessionRecord(user, this.prisma, meta);
 
-    this.setRefreshCookie(response, session.refreshToken, session.refreshExpiresAt);
+    this.setRefreshCookie(
+      response,
+      session.refreshToken,
+      session.refreshExpiresAt,
+    );
 
     return {
       user: session.user,

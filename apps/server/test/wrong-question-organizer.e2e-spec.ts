@@ -64,7 +64,8 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
       .get('/wrong-question-groups')
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
-    const groups = getSuccessData<WrongQuestionGroupListResponse>(groupResponse);
+    const groups =
+      getSuccessData<WrongQuestionGroupListResponse>(groupResponse);
 
     expect(groups.items).toHaveLength(1);
     expect(groups.items[0]).toMatchObject({
@@ -92,7 +93,8 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
       .get(`/wrong-question-decks/${decks.items[0].id}/questions`)
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
-    const questions = getSuccessData<WrongQuestionDeckQuestionListResponse>(questionResponse);
+    const questions =
+      getSuccessData<WrongQuestionDeckQuestionListResponse>(questionResponse);
 
     expect(questions.total).toBe(2);
     expect(questions.items.map((item) => item.id).sort()).toEqual(

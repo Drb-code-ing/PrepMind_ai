@@ -245,10 +245,7 @@ export class ReviewAgentService {
     ];
   }
 
-  private resolveLocalTodayStartUtc(
-    now: Date,
-    timezoneOffsetMinutes: number,
-  ) {
+  private resolveLocalTodayStartUtc(now: Date, timezoneOffsetMinutes: number) {
     const offsetMs = timezoneOffsetMinutes * 60 * 1000;
     const dateKey = new Date(now.getTime() - offsetMs)
       .toISOString()

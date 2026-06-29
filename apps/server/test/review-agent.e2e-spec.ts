@@ -23,7 +23,9 @@ describe('ReviewAgentController (e2e)', () => {
       'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
 
     const { AppModule } =
-      jest.requireActual<typeof import('../src/app.module')>('../src/app.module');
+      jest.requireActual<typeof import('../src/app.module')>(
+        '../src/app.module',
+      );
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

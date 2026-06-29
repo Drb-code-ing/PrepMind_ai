@@ -12,7 +12,10 @@ export class ReviewAgentController {
   constructor(private readonly reviewAgentService: ReviewAgentService) {}
 
   @Get('suggestions')
-  getSuggestions(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
+  getSuggestions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: unknown,
+  ) {
     const input = reviewAgentSuggestionQuerySchema.parse(query);
     return this.reviewAgentService.getSuggestions(user.id, input);
   }

@@ -4,6 +4,9 @@ import { PrismaService } from '../database/prisma.service';
 import { StorageService } from '../uploads/storage.service';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+
 type DocumentCreateArgs = {
   data: {
     userId: string;
@@ -370,7 +373,7 @@ describe('KnowledgeDocumentsService', () => {
         storageKey: 'users/user_1/knowledge/doc.pdf',
         contentHash: 'sha256:49f68a5c8493ec2c0bf489821c21fc3b',
       },
-      data: expect.objectContaining({
+      data: objectContaining({
         name: 'updated-notes.txt',
         status: 'PENDING',
         storageKey: 'users/user_1/knowledge/racing-update.txt',

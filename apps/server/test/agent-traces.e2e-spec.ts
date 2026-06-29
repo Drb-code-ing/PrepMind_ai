@@ -27,7 +27,9 @@ describe('AgentTracesController (e2e)', () => {
       'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
 
     const { AppModule } =
-      jest.requireActual<typeof import('../src/app.module')>('../src/app.module');
+      jest.requireActual<typeof import('../src/app.module')>(
+        '../src/app.module',
+      );
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -71,13 +73,17 @@ describe('AgentTracesController (e2e)', () => {
     expect(created.run.userId).toBe(user.userId);
     expect(created.run.status).toBe('degraded');
     expect(created.run.inputPreview?.length).toBeLessThanOrEqual(80);
-    expect(created.steps[0]?.inputSummary).toContain('DEEPSEEK_API_KEY=[redacted]');
+    expect(created.steps[0]?.inputSummary).toContain(
+      'DEEPSEEK_API_KEY=[redacted]',
+    );
 
     const listResponse = await request(server)
       .get('/agent-traces?limit=5&mode=live&status=degraded')
       .set('Authorization', `Bearer ${user.accessToken}`)
       .expect(200);
-    const list = agentTraceListResponseSchema.parse(getSuccessData(listResponse));
+    const list = agentTraceListResponseSchema.parse(
+      getSuccessData(listResponse),
+    );
 
     expect(list.runs.some((run) => run.id === runId)).toBe(true);
 
@@ -91,9 +97,9 @@ describe('AgentTracesController (e2e)', () => {
 
     expect(summary.totalRuns).toBeGreaterThanOrEqual(1);
     expect(summary.liveRuns).toBeGreaterThanOrEqual(1);
-    expect(summary.routeBreakdown.some((item) => item.route === 'rag_answer')).toBe(
-      true,
-    );
+    expect(
+      summary.routeBreakdown.some((item) => item.route === 'rag_answer'),
+    ).toBe(true);
 
     const detailResponse = await request(server)
       .get(`/agent-traces/${runId}`)

@@ -98,7 +98,10 @@ export class KnowledgeAgentService {
     documents: KnowledgeAgentDocumentSignal[],
     select: ReturnType<typeof buildDocumentSignalSelect>,
   ) {
-    if (!documentId || documents.some((document) => document.id === documentId)) {
+    if (
+      !documentId ||
+      documents.some((document) => document.id === documentId)
+    ) {
       return documents;
     }
 
