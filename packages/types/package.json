@@ -21,6 +21,7 @@
     "./api/review-agent": "./src/api/review-agent.ts",
     "./api/memory-agent": "./src/api/memory-agent.ts",
     "./api/knowledge": "./src/api/knowledge.ts",
+    "./api/knowledge-agent": "./src/api/knowledge-agent.ts",
     "./api/upload": "./src/api/upload.ts"
   },
   "scripts": {
