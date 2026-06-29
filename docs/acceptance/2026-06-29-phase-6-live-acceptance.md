@@ -9,10 +9,11 @@
 这次验收不是只跑 mock 单测，而是用真实模型做一轮 Phase 6 小样本 smoke：
 
 - `/api/chat` 前端代理使用 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true`。
-- live 模型为 `deepseek-v4-flash`，输出预算 `AI_MAX_OUTPUT_TOKENS=900`。
+- live 模型为 `deepseek-v4-flash`；早期 API smoke 使用过 `AI_MAX_OUTPUT_TOKENS=900`，后续 Playwright 前端补充验收使用 `AI_MAX_OUTPUT_TOKENS=1200`。
 - Phase 6 的确定性 Agent 仍然不直接调模型，包括 RouterAgent、TutorAgent policy、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent 和 KnowledgeOrganizerAgent。
 - 真实模型只验证最终 Chat 流式输出是否真的受到 route prompt、Tutor strategy、RAG context、Verifier guidance 影响。
 - RAG 文档处理本轮使用 `RAG_EMBEDDING_PROVIDER=fake`，因为 server 侧本地环境没有配置 `OPENAI_API_KEY`。这能验工程链路，但不能证明真实 embedding 语义检索质量。
+- 2026-06-29 17:11 ~ 17:44 追加 Playwright 前端验收：真实打开注册页、Chat、知识库和 Agent Trace 页面，截图保存在本地 `logs/acceptance-screenshots/`。
 
 ## 环境
 
@@ -118,6 +119,42 @@ verifierBreakdown: trusted=1, suspicious=1, skipped=3
 
 `degradedRuns=1` 来自 advisory route 的保守状态，不代表请求失败。成本看板仍是本地估算值，不等于供应商账单。
 
+## 前端 Playwright 验收补充
+
+这轮补充验收不是只看接口状态码，而是通过浏览器完成用户路径：
+
+1. 打开 `/register`，注册临时账号 `phase6-ui-live-1782724273319@example.com`。
+2. 自动跳转 `/chat`，输入 Tutor 提示题。
+3. 捕获 `/api/chat` 响应头，确认 `x-prepmind-ai-mode=live`、`x-prepmind-agent-route=tutor`、`x-prepmind-tutor-intent=socratic_hint`、`x-prepmind-agent-trace-recorded=true`。
+4. 打开 `/agent-trace`，确认 Trace 摘要展示 `Live=1`，最近 Trace 中有 `Tutor / Live / 已完成`。
+5. 打开 `/knowledge`，上传并处理 `phase6-ui-rag-exact.txt`。
+6. 在知识库页面检索 `phase6 exact rag acceptance omega`，确认命中 `phase6-ui-rag-exact.txt`。
+7. 回到 `/chat`，输入“根据我上传的知识库资料回答：phase6 exact rag acceptance omega 说明了什么？请简短回答。”
+8. 捕获 `/api/chat` 响应头，确认 `x-prepmind-ai-mode=live`、`x-prepmind-agent-route=rag_answer`、`x-prepmind-rag-hit-count=1`、`x-prepmind-knowledge-verifier-status=trusted`、`x-prepmind-agent-trace-recorded=true`。
+9. 确认 Chat 页面最终回答包含“参考资料”和 `phase6-ui-rag-exact.txt`。
+10. 再次打开 `/agent-trace`，确认最近 Trace 中有 `RAG / Live / 已完成`。
+
+前端补充验收结果：
+
+```text
+Tutor UI smoke: live=true, route=tutor, tutorIntent=socratic_hint, traceRecorded=true
+Knowledge UI smoke: uploaded=true, processed DONE=true, search hit=true
+RAG Chat UI smoke: live=true, route=rag_answer, ragHits=1, verifier=trusted, references=true
+Trace UI smoke: Tutor 和 RAG live runs 均可见
+```
+
+本地截图证据：
+
+```text
+logs/acceptance-screenshots/01-register.png
+logs/acceptance-screenshots/03-chat-live-tutor.png
+logs/acceptance-screenshots/04-agent-trace.png
+logs/acceptance-screenshots/22-knowledge-exact-done.png
+logs/acceptance-screenshots/23-knowledge-exact-search.png
+logs/acceptance-screenshots/24-chat-live-rag-exact.png
+logs/acceptance-screenshots/25-agent-trace-rag-exact.png
+```
+
 ## 发现的问题和处理
 
 ### 1. 旧前端进程占用 3000
@@ -140,7 +177,25 @@ verifierBreakdown: trusted=1, suspicious=1, skipped=3
 - 将验收 query 调整为更接近 chunk 的固定句子，保证在 fake embedding 下稳定超过阈值。
 - 报告中明确：fake embedding 只能证明上传、解析、chunk、入库、检索 API、prompt 注入和 verifier 链路可用，不能证明真实语义召回质量。
 
-### 3. RouterAgent 的 `根据我` 关键词过宽
+前端补充验收时再次复现了这个限制：`phase6-ui-rag-notes.txt` 在知识库页面检索相似度为 `0.59`，页面检索能命中，但 Chat 默认阈值 `0.72` 下 `ragHitCount=0`。随后改用更短、更贴近 Chat query 的 `phase6-ui-rag-exact.txt`，Chat RAG 命中 `ragHits=1`，引用区正常追加。
+
+### 3. 后端未按本地 RAG smoke 配置启动
+
+前端补充验收第一次上传资料后，资料处理失败：
+
+```text
+OpenAI API key is not configured
+```
+
+根因是后端当时没有以 `RAG_EMBEDDING_PROVIDER=fake` 启动，导致本地验收环境尝试调用 OpenAI embedding。处理方式：
+
+- 保留前端 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true`，继续使用真实 Chat 模型。
+- 重启后端并设置 `RAG_EMBEDDING_PROVIDER=fake`。
+- 对失败资料执行“重新处理”，确认资料变成 `已入库`，chunk 数为 1。
+
+这个问题说明：真实模型验收时要区分两条链路，Chat LLM 可以 live，但本地 RAG embedding 如果没有真实 key，必须显式 fake，否则知识库前端链路会失败。
+
+### 4. RouterAgent 的 `根据我` 关键词过宽
 
 验收时发现一句很常见的表达会误路由：
 
@@ -161,7 +216,7 @@ verifierBreakdown: trusted=1, suspicious=1, skipped=3
 
 - 没有验证真实 embedding 语义质量。需要 server 侧配置 `OPENAI_API_KEY` 或接入生产 embedding provider 后再做一轮 RAG 语义验收。
 - 没有做高并发、长上下文、长文档、多用户并发上传的压力测试。
-- 没有用 Playwright 逐页验 UI，本轮重点是 API、Agent headers、live stream、trace 和文档处理链路。
+- 已补充 Playwright 前端 smoke，但仍不是完整 UI 回归；没有覆盖 OCR 图片上传、错题本编辑、复习评分、移动端截图矩阵等页面。
 - 真实模型输出质量只做 5 个固定小样本 smoke，不能替代系统性人工评测。
 
 ## 提交前验证
