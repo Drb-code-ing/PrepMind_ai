@@ -6,6 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./knowledge-dedup": "./src/nodes/knowledge-dedup.ts",
+    "./knowledge-organizer": "./src/nodes/knowledge-organizer.ts",
     "./knowledge-verifier": "./src/nodes/knowledge-verifier.ts",
     "./memory": "./src/nodes/memory.ts",
     "./planner": "./src/nodes/planner.ts",

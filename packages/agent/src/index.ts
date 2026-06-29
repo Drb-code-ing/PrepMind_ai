@@ -1,4 +1,6 @@
 export * from './graph/index.ts';
+export * from './nodes/knowledge-dedup.ts';
+export * from './nodes/knowledge-organizer.ts';
 export * from './nodes/knowledge-verifier.ts';
 export * from './nodes/memory.ts';
 export * from './nodes/planner.ts';
