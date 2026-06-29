@@ -90,6 +90,11 @@ describe('KnowledgeDocumentsService', () => {
     uploadKnowledgeDocument: jest.fn(),
     deleteObject: jest.fn(),
   };
+  const createPrismaKnownRequestError = (code: string, target: string[]) => ({
+    code,
+    clientVersion: 'test',
+    meta: { target },
+  });
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -167,6 +172,37 @@ describe('KnowledgeDocumentsService', () => {
     expect(prisma.document.create).not.toHaveBeenCalled();
     expect(storage.deleteObject).toHaveBeenCalledWith(
       'users/user_1/knowledge/copy.pdf',
+    );
+    expect(result.id).toBe(documentRow.id);
+  });
+
+  it('returns an existing document when concurrent duplicate upload hits the unique constraint', async () => {
+    const file = {
+      buffer: Buffer.from('pdf'),
+      mimetype: 'application/pdf',
+      size: 3,
+      originalname: 'calculus-copy.pdf',
+    } as Express.Multer.File;
+    storage.uploadKnowledgeDocument.mockResolvedValue({
+      objectKey: 'users/user_1/knowledge/concurrent-copy.pdf',
+      mimeType: 'application/pdf',
+      type: 'PDF',
+      size: 3,
+      originalName: 'calculus-copy.pdf',
+    });
+    prisma.document.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(documentRow);
+    prisma.document.create.mockRejectedValue(
+      createPrismaKnownRequestError('P2002', [
+        'Document_userId_sourceType_contentHash_upload_unique',
+      ]),
+    );
+
+    const result = await createService().createUploadDocument('user_1', file);
+
+    expect(storage.deleteObject).toHaveBeenCalledWith(
+      'users/user_1/knowledge/concurrent-copy.pdf',
     );
     expect(result.id).toBe(documentRow.id);
   });

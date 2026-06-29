@@ -52,6 +52,12 @@ export class KnowledgeDocumentsService {
       return this.toResponse(document);
     } catch (error) {
       await this.safeDeleteObject(uploaded.objectKey);
+      if (this.isContentHashUniqueConflict(error)) {
+        const duplicate = await this.findDuplicateUpload(userId, contentHash);
+        if (duplicate) {
+          return this.toResponse(duplicate);
+        }
+      }
       throw error;
     }
   }
@@ -192,6 +198,33 @@ export class KnowledgeDocumentsService {
     } catch {
       // Storage cleanup is best-effort; database ownership remains authoritative.
     }
+  }
+
+  private isContentHashUniqueConflict(error: unknown) {
+    if (!error || typeof error !== 'object') return false;
+
+    const candidate = error as {
+      code?: unknown;
+      clientVersion?: unknown;
+      meta?: { target?: unknown };
+    };
+    if (candidate.code !== 'P2002' || typeof candidate.clientVersion !== 'string') {
+      return false;
+    }
+
+    const target = candidate.meta?.target;
+    if (Array.isArray(target)) {
+      return target.some(
+        (item) =>
+          typeof item === 'string' &&
+          (item.includes('contentHash') || item.includes('content_hash')),
+      );
+    }
+
+    return (
+      typeof target === 'string' &&
+      (target.includes('contentHash') || target.includes('content_hash'))
+    );
   }
 
   private toResponse(document: KnowledgeDocumentRecord) {
