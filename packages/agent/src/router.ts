@@ -12,7 +12,7 @@ type RouteRule = {
 const routeRules: RouteRule[] = [
   {
     route: 'rag_answer',
-    keywords: ['上传', '资料', '笔记', '知识库', '根据我', '参考资料'],
+    keywords: ['上传', '资料', '笔记', '知识库', '参考资料'],
     confidence: 0.86,
     reason: '用户问题明确依赖个人资料或知识库。',
     requiresRag: true,

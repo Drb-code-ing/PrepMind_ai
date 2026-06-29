@@ -44,6 +44,20 @@ describe('routeAgentRequest', () => {
     expect(result.requiresHumanApproval).toBe(true);
   });
 
+  it('prioritizes planning intent over broad personal-context wording', () => {
+    const state = createInitialAgentState({
+      runId: 'run_5',
+      userId: 'user_1',
+      text: '请根据我最近的错题和复习情况，安排今天学习重点和下周计划。',
+    });
+
+    const result = routeAgentRequest(state);
+
+    expect(result.name).toBe('study_plan');
+    expect(result.requiresRag).toBe(false);
+    expect(result.requiresHumanApproval).toBe(true);
+  });
+
   it('falls back to chat for general messages', () => {
     const state = createInitialAgentState({
       runId: 'run_4',
