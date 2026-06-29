@@ -3,7 +3,7 @@ import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
 import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
 import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 import { apiClient } from '@/lib/api-client';
-import { aiProvider, getAiProviderStatus } from '@/lib/ai-provider';
+import { aiProvider } from '@/lib/ai-provider';
 import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
@@ -26,6 +26,7 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
+import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
 const AGENT_TRACE_TIMEOUT_MS = 800;
 const agentTraceApi = createAgentTraceApi(apiClient);
@@ -213,7 +214,7 @@ export async function POST(req: Request) {
       return Response.json({ error: '消息列表不能为空' }, { status: 400 });
     }
 
-    const providerStatus = getAiProviderStatus();
+    const providerStatus = resolveChatProviderStatus();
 
     if (!providerStatus.configured) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
