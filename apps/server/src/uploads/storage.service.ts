@@ -241,6 +241,25 @@ export class StorageService {
         HttpStatus.NOT_FOUND,
       );
     }
+    const parts = trimmed.split('/');
+    const fileName = parts.at(-1) ?? '';
+    const extension = fileName.split('.').at(-1)?.toLowerCase();
+    if (
+      parts.length !== 5 ||
+      parts[0] !== 'users' ||
+      !parts[1] ||
+      !isReadableImagePurpose(parts[2]) ||
+      !parts[3] ||
+      !fileName ||
+      !isReadableImageExtension(extension)
+    ) {
+      throw new AppError(
+        'UPLOAD_IMAGE_NOT_FOUND',
+        'Image not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
     return trimmed;
   }
 
@@ -404,6 +423,14 @@ export class StorageService {
 
 function sanitizeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 100) || 'unknown';
+}
+
+function isReadableImagePurpose(value: string | undefined) {
+  return value === 'ocr' || value === 'wrong-question' || value === 'profile';
+}
+
+function isReadableImageExtension(value: string | undefined) {
+  return value === 'jpg' || value === 'jpeg' || value === 'png' || value === 'webp';
 }
 
 export function parseMinioEndpoint(endpoint: string, configuredPort: number) {

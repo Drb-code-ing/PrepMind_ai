@@ -232,6 +232,12 @@ describe('StorageService', () => {
     expectReadObjectKeyError('documents/file.png');
   });
 
+  it('rejects knowledge document keys from the public image read path', () => {
+    expectReadObjectKeyError('users/user_1/knowledge/notes.txt');
+    expect(minioClient.statObject).not.toHaveBeenCalled();
+    expect(minioClient.getObject).not.toHaveBeenCalled();
+  });
+
   it('reads a knowledge document object with document errors', async () => {
     minioClient.statObject.mockResolvedValue({
       metaData: { 'content-type': 'text/plain' },
