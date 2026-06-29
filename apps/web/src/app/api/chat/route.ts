@@ -8,6 +8,11 @@ import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
 import {
+  parseChatApiRequestBody,
+  shouldSearchKnowledgeForChat,
+  validateChatLiveAccess,
+} from '@/lib/chat-api-policy';
+import {
   buildChatAgentDecision,
   combineChatAdditionalPrompts,
   type ChatAgentDecision,
@@ -90,10 +95,6 @@ function splitMockText(text: string) {
   }
 
   return chunks;
-}
-
-function normalizeAccessToken(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function createMockChatResponse(input: {
@@ -187,7 +188,16 @@ function createLiveChatResponse(input: {
 
 export async function POST(req: Request) {
   try {
-    const { messages, activeContext, accessToken } = await req.json();
+    const parsedRequest = parseChatApiRequestBody(await req.json());
+
+    if (!parsedRequest.ok) {
+      return Response.json(
+        { error: parsedRequest.error },
+        { status: parsedRequest.status },
+      );
+    }
+
+    const { messages, activeContext, accessToken } = parsedRequest.data;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: '消息列表不能为空' }, { status: 400 });
@@ -199,9 +209,15 @@ export async function POST(req: Request) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
+    const liveAccess = validateChatLiveAccess(providerStatus.mode, accessToken);
+
+    if (!liveAccess.ok) {
+      return Response.json({ error: liveAccess.error }, { status: liveAccess.status });
+    }
+
     const normalizedMessages = messages as ChatContextMessage[];
     const normalizedActiveContext = isActiveStudyContext(activeContext) ? activeContext : null;
-    const normalizedAccessToken = normalizeAccessToken(accessToken);
+    const normalizedAccessToken = accessToken;
     const traceRunId = crypto.randomUUID();
     const traceStartedAt = new Date();
     const agentDecision = buildChatAgentDecision({
@@ -211,6 +227,10 @@ export async function POST(req: Request) {
       userId: 'web-chat-user',
     });
     const knowledgeSearch = await searchKnowledgeForChat({
+      enabled: shouldSearchKnowledgeForChat({
+        accessToken: normalizedAccessToken,
+        requiresRag: agentDecision.requiresRag,
+      }),
       accessToken: normalizedAccessToken,
       messages: normalizedMessages,
       logger: console,

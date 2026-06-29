@@ -10,6 +10,8 @@ import {
 
 const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 const DEFAULT_LIVE_MODEL = 'deepseek-v4-flash';
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const MISSING_AI_KEY_MESSAGE =
   'AI API Key 未配置，请在 apps/web/.env.local 设置 DEEPSEEK_API_KEY 或 OPENAI_API_KEY 后重启前端服务。';
 const LIVE_CALL_GUARD_MESSAGE =
@@ -22,13 +24,44 @@ const LIVE_CALL_GUARD_MESSAGE =
  * DeepSeek / OpenAI 都兼容 OpenAI 协议，用同一个 provider
  * 切 OpenAI：baseURL 改为 https://api.openai.com/v1
  */
+export function resolveAiProviderRuntimeConfig(env: NodeJS.ProcessEnv = process.env) {
+  const deepseekKey = env.DEEPSEEK_API_KEY?.trim();
+  const openaiKey = env.OPENAI_API_KEY?.trim();
+  const explicitBaseURL = env.AI_BASE_URL?.trim();
+  const explicitModel = env.AI_MODEL?.trim();
+
+  if (deepseekKey) {
+    return {
+      apiKey: deepseekKey,
+      baseURL: explicitBaseURL || DEFAULT_BASE_URL,
+      model: explicitModel || DEFAULT_LIVE_MODEL,
+    };
+  }
+
+  if (openaiKey) {
+    return {
+      apiKey: openaiKey,
+      baseURL: explicitBaseURL || DEFAULT_OPENAI_BASE_URL,
+      model: explicitModel || DEFAULT_OPENAI_MODEL,
+    };
+  }
+
+  return {
+    apiKey: '',
+    baseURL: explicitBaseURL || DEFAULT_BASE_URL,
+    model: explicitModel || DEFAULT_LIVE_MODEL,
+  };
+}
+
+const runtimeConfig = resolveAiProviderRuntimeConfig();
+
 export const aiProvider = createOpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || '',
-  baseURL: process.env.AI_BASE_URL || DEFAULT_BASE_URL,
+  apiKey: runtimeConfig.apiKey,
+  baseURL: runtimeConfig.baseURL,
 });
 
 /** 默认模型 */
-export const DEFAULT_MODEL = process.env.AI_MODEL || DEFAULT_LIVE_MODEL;
+export const DEFAULT_MODEL = runtimeConfig.model;
 
 export type AiProviderStatus =
   | {
@@ -77,9 +110,9 @@ export function getAiProviderStatus(env: NodeJS.ProcessEnv = process.env): AiPro
     };
   }
 
-  const apiKey = env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
+  const runtime = resolveAiProviderRuntimeConfig(env);
 
-  if (!apiKey) {
+  if (!runtime.apiKey) {
     return {
       configured: false,
       mode: 'live',
@@ -90,8 +123,8 @@ export function getAiProviderStatus(env: NodeJS.ProcessEnv = process.env): AiPro
   return {
     configured: true,
     mode: 'live',
-    model: env.AI_MODEL || DEFAULT_LIVE_MODEL,
-    baseURL: env.AI_BASE_URL || DEFAULT_BASE_URL,
+    model: runtime.model,
+    baseURL: runtime.baseURL,
     maxInputTokens,
     maxOutputTokens,
   };

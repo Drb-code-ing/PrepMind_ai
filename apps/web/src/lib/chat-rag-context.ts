@@ -25,6 +25,7 @@ type ApiSuccessBody<T> = {
 
 type SearchKnowledgeForChatInput = {
   accessToken?: string | null;
+  enabled?: boolean;
   messages: ChatContextMessage[];
   fetchImpl?: FetchLike;
   apiBaseUrl?: string;
@@ -130,6 +131,7 @@ export function verifyKnowledgeForChat(
 export async function searchKnowledgeForChat(
   input: SearchKnowledgeForChatInput,
 ): Promise<ChatKnowledgeSearchResult> {
+  if (input.enabled === false) return { hits: [] };
   if (!input.accessToken) return { hits: [] };
 
   const request = buildKnowledgeSearchRequest(getLatestUserQuery(input.messages));

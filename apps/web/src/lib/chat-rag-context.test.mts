@@ -104,6 +104,22 @@ test('returns empty hits when access token is missing', async () => {
   assert.deepEqual(result.hits, []);
 });
 
+test('returns empty hits without fetching when knowledge search is disabled', async () => {
+  let fetchCalled = false;
+  const result = await searchKnowledgeForChat({
+    accessToken: 'token',
+    enabled: false,
+    messages: [{ role: 'user', content: 'Green theorem' }],
+    fetchImpl: async () => {
+      fetchCalled = true;
+      throw new Error('fetch should not be called');
+    },
+  });
+
+  assert.deepEqual(result.hits, []);
+  assert.equal(fetchCalled, false);
+});
+
 test('returns empty hits when search request fails', async () => {
   const result = await searchKnowledgeForChat({
     accessToken: 'token',

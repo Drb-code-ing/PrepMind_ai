@@ -90,3 +90,20 @@ test('uses deepseek v4 flash as the default live model for cost control', () => 
     assert.equal(status.model, 'deepseek-v4-flash');
   }
 });
+
+test('uses OpenAI defaults when only OPENAI_API_KEY is configured for live mode', () => {
+  const status = getAiProviderStatus({
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    DEEPSEEK_API_KEY: '',
+    OPENAI_API_KEY: 'sk-openai-test',
+    AI_MODEL: '',
+    AI_BASE_URL: '',
+  });
+
+  assert.equal(status.configured, true);
+  if (status.configured) {
+    assert.equal(status.baseURL, 'https://api.openai.com/v1');
+    assert.equal(status.model, 'gpt-4o-mini');
+  }
+});
