@@ -10,11 +10,13 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  Cpu,
   DatabaseZap,
   Loader2,
   RefreshCw,
   Route,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 
 import {
@@ -22,6 +24,7 @@ import {
   useAgentTraceRuns,
   useAgentTraceSummary,
 } from '@/hooks/use-agent-traces';
+import { useDevAiModeStatus, useSetDevAiMode } from '@/hooks/use-dev-ai-mode';
 import {
   formatAgentTraceCost,
   formatAgentTraceDateTime,
@@ -43,6 +46,8 @@ export default function AgentTracePage() {
   const summaryQuery = useAgentTraceSummary(summaryDays);
   const runsQuery = useAgentTraceRuns(runsLimit);
   const detailQuery = useAgentTraceDetail(selectedRunId);
+  const devAiModeQuery = useDevAiModeStatus();
+  const setDevAiModeMutation = useSetDevAiMode();
   const runs = runsQuery.data?.runs ?? [];
   const selectedDetail = detailQuery.data;
   const degradedOrFailed =
@@ -120,6 +125,18 @@ export default function AgentTracePage() {
           </div>
         </section>
 
+        <DevAiModeSwitch
+          status={devAiModeQuery.data}
+          loading={devAiModeQuery.isLoading}
+          pending={setDevAiModeMutation.isPending}
+          error={
+            setDevAiModeMutation.error instanceof Error
+              ? setDevAiModeMutation.error.message
+              : null
+          }
+          onSelect={(mode) => setDevAiModeMutation.mutate(mode)}
+        />
+
         {isInitialLoading ? (
           <LoadingSkeleton />
         ) : hasError ? (
@@ -164,6 +181,90 @@ export default function AgentTracePage() {
         )}
       </main>
     </div>
+  );
+}
+
+function DevAiModeSwitch({
+  status,
+  loading,
+  pending,
+  error,
+  onSelect,
+}: {
+  status?: {
+    enabled: boolean;
+    activeMode: 'mock' | 'live';
+    liveAllowedByEnv: boolean;
+    message: string | null;
+  };
+  loading: boolean;
+  pending: boolean;
+  error: string | null;
+  onSelect: (mode: 'mock' | 'live') => void;
+}) {
+  if (loading || !status?.enabled) return null;
+
+  const liveDisabled = pending || !status.liveAllowedByEnv;
+  const mockActive = status.activeMode === 'mock';
+  const liveActive = status.activeMode === 'live';
+
+  return (
+    <section className="pm-enter rounded-[1.35rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fff7df] text-[#86621f] ring-1 ring-[#f3dfaa]">
+            <Cpu className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">AI 模式</p>
+            <p className="mt-0.5 truncate text-xs text-[var(--pm-muted)]">
+              当前：{status.activeMode === 'live' ? 'Live' : 'Mock'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:w-56">
+          <button
+            type="button"
+            onClick={() => onSelect('mock')}
+            disabled={pending || mockActive}
+            className={`tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-bold ring-1 transition-all active:scale-[0.98] ${
+              mockActive
+                ? 'bg-[#2b2335] text-white ring-[#2b2335]'
+                : 'bg-white/80 text-[var(--pm-ink)] ring-[var(--pm-line)] hover:bg-white'
+            }`}
+          >
+            <Cpu className="h-4 w-4" />
+            Mock
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect('live')}
+            disabled={liveDisabled || liveActive}
+            className={`tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-bold ring-1 transition-all active:scale-[0.98] ${
+              liveActive
+                ? 'bg-[#1f6f62] text-white ring-[#1f6f62]'
+                : 'bg-white/80 text-[var(--pm-ink)] ring-[var(--pm-line)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-45'
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Live
+          </button>
+        </div>
+      </div>
+
+      {!status.liveAllowedByEnv && status.message ? (
+        <p className="mt-3 rounded-2xl bg-amber-50/85 px-3 py-2 text-xs leading-5 text-amber-700 ring-1 ring-amber-100">
+          {status.message}
+        </p>
+      ) : null}
+
+      {error ? (
+        <p className="mt-3 rounded-2xl bg-red-50/85 px-3 py-2 text-xs leading-5 text-red-600 ring-1 ring-red-100">
+          {error}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
