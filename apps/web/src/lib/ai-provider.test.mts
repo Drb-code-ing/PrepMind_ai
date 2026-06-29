@@ -107,3 +107,36 @@ test('uses OpenAI defaults when only OPENAI_API_KEY is configured for live mode'
     assert.equal(status.model, 'gpt-4o-mini');
   }
 });
+
+test('allows an explicit mock override even when env mode is live', () => {
+  const status = getAiProviderStatus(
+    {
+      AI_PROVIDER_MODE: 'live',
+      AI_ENABLE_LIVE_CALLS: 'true',
+      DEEPSEEK_API_KEY: 'sk-test',
+      OPENAI_API_KEY: '',
+    },
+    { modeOverride: 'mock' },
+  );
+
+  assert.equal(status.configured, true);
+  if (status.configured) {
+    assert.equal(status.mode, 'mock');
+    assert.equal(status.model, 'mock-prepmind-chat');
+  }
+});
+
+test('does not let a live override bypass the live-call guard', () => {
+  const status = getAiProviderStatus(
+    {
+      AI_PROVIDER_MODE: 'mock',
+      AI_ENABLE_LIVE_CALLS: '',
+      DEEPSEEK_API_KEY: 'sk-test',
+      OPENAI_API_KEY: '',
+    },
+    { modeOverride: 'live' },
+  );
+
+  assert.equal(status.configured, false);
+  assert.equal(status.mode, 'live');
+});

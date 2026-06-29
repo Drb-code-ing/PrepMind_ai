@@ -78,8 +78,11 @@ export type AiProviderStatus =
       message: string;
     };
 
-export function getAiProviderStatus(env: NodeJS.ProcessEnv = process.env): AiProviderStatus {
-  const mode = env.AI_PROVIDER_MODE === 'live' ? 'live' : 'mock';
+export function getAiProviderStatus(
+  env: NodeJS.ProcessEnv = process.env,
+  options: { modeOverride?: 'mock' | 'live' | null } = {},
+): AiProviderStatus {
+  const mode = options.modeOverride ?? (env.AI_PROVIDER_MODE === 'live' ? 'live' : 'mock');
   const maxInputTokens = parseAiTokenLimit(
     env.AI_MAX_INPUT_TOKENS,
     DEFAULT_AI_MAX_INPUT_TOKENS,
