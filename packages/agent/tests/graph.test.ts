@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   createAgentGraph,
   createGraph,
+  evaluateCriticRubric,
   routeAgentRequest,
   runAgentRuntime,
   shouldRunMemoryAgent,
@@ -30,6 +31,7 @@ describe('@repo/agent public exports', () => {
     expect(typeof runAgentRuntime).toBe('function');
     expect(typeof routeAgentRequest).toBe('function');
     expect(typeof shouldRunMemoryAgent).toBe('function');
+    expect(typeof evaluateCriticRubric).toBe('function');
   });
 
   it('creates a graph descriptor without executing business agents', () => {

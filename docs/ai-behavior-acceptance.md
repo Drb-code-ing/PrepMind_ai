@@ -78,3 +78,11 @@ Agent Trace 与固定评测集已落地，并必须持续覆盖：
 - 前端 payload builder 和后端 service 都必须裁剪并脱敏 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...`、`Cookie: ...` 等敏感片段。
 - `/agent-trace` 的成本看板只展示基于 token 估算和本地价格表的估算成本，不代表供应商真实账单，也不应用作财务对账。
 - `/agent-traces` 是在线账号级观测 API，不进入 Dexie `mutationQueue`；离线或弱网导致 trace 丢失是可接受降级。
+
+## 8. Reflexion / Critic 验收要求
+
+当改动 RouterAgent、TutorAgent prompt、RAG prompt、KnowledgeVerifierAgent 或 `/api/chat` 输出行为时，除了 mock 单测和必要的 live smoke，还要记录 critic/rubric 结论。
+
+Critic 不替代人工判断，也不负责生产环境自动重试；它先作为验收层，稳定发现明显错误：RAG 有命中但没有“参考资料”、可疑、冲突或不足资料没有“核对/谨慎”提示、提示式讲题直接给最终答案、建议型 route 谎称已经创建/保存/安排了数据。
+
+本地固定规则通过 `bun --filter @repo/agent test -- critic-rubric` 验证；当前 Bun 过滤会运行 `@repo/agent` 测试套件，并确保 critic-rubric 用例包含在内。真实模型验收记录使用 `docs/acceptance/phase-6-reflexion-smoke-template.md`。

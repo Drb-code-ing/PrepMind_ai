@@ -6,6 +6,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./critic-rubric": "./src/evals/critic-rubric.ts",
     "./knowledge-dedup": "./src/nodes/knowledge-dedup.ts",
     "./knowledge-organizer": "./src/nodes/knowledge-organizer.ts",
     "./knowledge-verifier": "./src/nodes/knowledge-verifier.ts",

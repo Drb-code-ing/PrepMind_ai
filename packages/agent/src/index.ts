@@ -1,5 +1,6 @@
 export * from './graph/index.ts';
 export * from './control-plane.ts';
+export * from './evals/critic-rubric.ts';
 export * from './nodes/knowledge-dedup.ts';
 export * from './nodes/knowledge-organizer.ts';
 export * from './nodes/knowledge-verifier.ts';
