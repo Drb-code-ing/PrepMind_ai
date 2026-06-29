@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
+import type { Prisma } from '@prisma/client';
 import type { LoginRequest, RegisterRequest } from '@repo/types/api/auth';
 
 import { AppError } from '../common/errors/app-error';
@@ -124,18 +125,71 @@ export class AuthService {
       );
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: tokenRecord.id },
-      data: {
-        revokedAt: new Date(),
-        lastUsedAt: new Date(),
-      },
+    const rotation = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const claim = await tx.refreshToken.updateMany({
+        where: {
+          id: tokenRecord.id,
+          tokenHash,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: now,
+          lastUsedAt: now,
+        },
+      });
+
+      if (claim.count !== 1) {
+        const revokedActiveTokens = await this.revokeRefreshTokenFamily(
+          tokenRecord.familyId,
+          tx,
+        );
+
+        return {
+          ok: false as const,
+          revokedActiveTokens,
+        };
+      }
+
+      const session = await this.createSessionRecord(tokenRecord.user, tx, {
+        ...meta,
+        familyId: tokenRecord.familyId,
+      });
+
+      return {
+        ok: true as const,
+        session,
+      };
     });
 
-    return this.issueSession(tokenRecord.user, response, {
-      ...meta,
-      familyId: tokenRecord.familyId,
-    });
+    if (!rotation.ok) {
+      this.clearRefreshCookie(response);
+
+      if (rotation.revokedActiveTokens === 0) {
+        throw new AppError(
+          'AUTH_REFRESH_INVALID',
+          '鐧诲綍鐘舵€佸凡澶辨晥',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      throw new AppError(
+        'AUTH_REFRESH_REUSED',
+        'Refresh session was reused. Please sign in again.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    this.setRefreshCookie(
+      response,
+      rotation.session.refreshToken,
+      rotation.session.refreshExpiresAt,
+    );
+
+    return {
+      user: rotation.session.user,
+      accessToken: rotation.session.accessToken,
+    };
   }
 
   async logout(
@@ -175,6 +229,21 @@ export class AuthService {
     response: Response,
     meta: RequestMeta,
   ) {
+    const session = await this.createSessionRecord(user, this.prisma, meta);
+
+    this.setRefreshCookie(response, session.refreshToken, session.refreshExpiresAt);
+
+    return {
+      user: session.user,
+      accessToken: session.accessToken,
+    };
+  }
+
+  private async createSessionRecord(
+    user: AuthUserRecord,
+    client: AuthPrismaClient,
+    meta: RequestMeta,
+  ) {
     const accessToken = await this.tokenService.signAccessToken({
       sub: user.id,
       email: user.email,
@@ -183,7 +252,7 @@ export class AuthService {
     const refresh = this.tokenService.createRefreshToken();
     const refreshExpiresAt = this.tokenService.getRefreshExpiresAt();
 
-    await this.prisma.refreshToken.create({
+    await client.refreshToken.create({
       data: {
         userId: user.id,
         tokenHash: refresh.tokenHash,
@@ -194,18 +263,26 @@ export class AuthService {
       },
     });
 
-    response.cookie(this.getRefreshCookieName(), refresh.token, {
+    return {
+      user: this.toAuthUser(user),
+      accessToken,
+      refreshToken: refresh.token,
+      refreshExpiresAt,
+    };
+  }
+
+  private setRefreshCookie(
+    response: Response,
+    refreshToken: string,
+    refreshExpiresAt: Date,
+  ): void {
+    response.cookie(this.getRefreshCookieName(), refreshToken, {
       httpOnly: true,
       sameSite: 'lax',
       secure: this.isProduction(),
       path: '/',
       expires: refreshExpiresAt,
     });
-
-    return {
-      user: this.toAuthUser(user),
-      accessToken,
-    };
   }
 
   private toAuthUser(user: AuthUserRecord) {
@@ -233,8 +310,11 @@ export class AuthService {
     return this.configService.get('REFRESH_COOKIE_NAME', { infer: true });
   }
 
-  private async revokeRefreshTokenFamily(familyId: string): Promise<number> {
-    const result = await this.prisma.refreshToken.updateMany({
+  private async revokeRefreshTokenFamily(
+    familyId: string,
+    client: AuthPrismaClient = this.prisma,
+  ): Promise<number> {
+    const result = await client.refreshToken.updateMany({
       where: {
         familyId,
         revokedAt: null,
@@ -272,6 +352,8 @@ type AuthUserRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+type AuthPrismaClient = Prisma.TransactionClient | PrismaService;
 
 export type RequestMeta = {
   userAgent?: string;

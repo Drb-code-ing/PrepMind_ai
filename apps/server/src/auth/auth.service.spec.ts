@@ -29,6 +29,7 @@ describe('AuthService', () => {
   };
 
   const prisma = {
+    $transaction: jest.fn(),
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
@@ -126,6 +127,105 @@ describe('AuthService', () => {
     await service.logout('refresh-token', response);
 
     expect(prisma.refreshToken.updateMany).toHaveBeenCalledTimes(1);
+    expect(clearCookieMock).toHaveBeenCalledWith(
+      'prepmind_refresh',
+      expect.objectContaining({ httpOnly: true }),
+    );
+  });
+
+  it('atomically claims an active refresh token before issuing a rotated session', async () => {
+    const activeToken = {
+      id: 'refresh_1',
+      userId: user.id,
+      tokenHash: 'hash',
+      familyId: 'family_1',
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      lastUsedAt: null,
+      userAgent: null,
+      ipAddress: null,
+      createdAt: new Date('2026-06-09T00:00:00.000Z'),
+      user,
+    };
+    const tx = {
+      refreshToken: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        create: jest.fn().mockResolvedValue({}),
+      },
+    };
+
+    prisma.refreshToken.findUnique.mockResolvedValue(activeToken);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    const service = await createService();
+    await service.refresh('active-refresh-token', response, {
+      userAgent: 'jest',
+      ipAddress: '127.0.0.1',
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'refresh_1',
+        tokenHash: expect.any(String) as string,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date) as Date,
+        lastUsedAt: expect.any(Date) as Date,
+      },
+    });
+    expect(tx.refreshToken.create).toHaveBeenCalledTimes(1);
+    expect(prisma.refreshToken.update).not.toHaveBeenCalled();
+  });
+
+  it('revokes the refresh token family when the active-token claim is lost', async () => {
+    const activeToken = {
+      id: 'refresh_1',
+      userId: user.id,
+      tokenHash: 'hash',
+      familyId: 'family_1',
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      lastUsedAt: null,
+      userAgent: null,
+      ipAddress: null,
+      createdAt: new Date('2026-06-09T00:00:00.000Z'),
+      user,
+    };
+    const tx = {
+      refreshToken: {
+        updateMany: jest
+          .fn()
+          .mockResolvedValueOnce({ count: 0 })
+          .mockResolvedValueOnce({ count: 1 }),
+        create: jest.fn().mockResolvedValue({}),
+      },
+    };
+
+    prisma.refreshToken.findUnique.mockResolvedValue(activeToken);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    const service = await createService();
+
+    await expect(
+      service.refresh('active-refresh-token', response, {
+        userAgent: 'jest',
+        ipAddress: '127.0.0.1',
+      }),
+    ).rejects.toMatchObject({ code: 'AUTH_REFRESH_REUSED' });
+
+    expect(tx.refreshToken.updateMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        familyId: 'family_1',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date) as Date,
+        lastUsedAt: expect.any(Date) as Date,
+      },
+    });
+    expect(tx.refreshToken.create).not.toHaveBeenCalled();
     expect(clearCookieMock).toHaveBeenCalledWith(
       'prepmind_refresh',
       expect.objectContaining({ httpOnly: true }),
