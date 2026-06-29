@@ -143,6 +143,12 @@ describe('ReviewTasksService', () => {
         userId: 'user_1',
         suspendedAt: null,
         nextReview: { lte: new Date('2026-06-14T15:59:59.999Z') },
+        reviewTasks: {
+          none: {
+            userId: 'user_1',
+            scheduledDate: '2026-06-14',
+          },
+        },
       },
       select: { id: true, nextReview: true },
       orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
@@ -163,6 +169,58 @@ describe('ReviewTasksService', () => {
     });
     expect(result.pendingCount).toBe(1);
     expect(result.tasks[0]?.wrongQuestion?.subject).toBe('数学');
+  });
+
+  it('excludes already scheduled cards before selecting due cards for today', async () => {
+    prisma.card.findMany.mockResolvedValue([
+      {
+        ...card,
+        id: 'card_101',
+        nextReview: new Date('2026-06-14T10:00:00.000Z'),
+      },
+    ]);
+    prisma.reviewTask.createMany.mockResolvedValue({ count: 1 });
+    prisma.reviewTask.findMany.mockResolvedValue([
+      {
+        ...task,
+        id: 'task_101',
+        cardId: 'card_101',
+        dueAt: new Date('2026-06-14T10:00:00.000Z'),
+        card: {
+          ...card,
+          id: 'card_101',
+          nextReview: new Date('2026-06-14T10:00:00.000Z'),
+        },
+      },
+    ]);
+
+    await createService().getToday('user_1', {
+      date: '2026-06-14',
+      timezoneOffsetMinutes: -480,
+      includeCompleted: true,
+    });
+
+    expect(prisma.card.findMany).toHaveBeenCalledWith(
+      objectContaining({
+        where: objectContaining({
+          reviewTasks: {
+            none: {
+              userId: 'user_1',
+              scheduledDate: '2026-06-14',
+            },
+          },
+        }),
+      }),
+    );
+    expect(prisma.reviewTask.createMany).toHaveBeenCalledWith(
+      objectContaining({
+        data: [
+          objectContaining({
+            cardId: 'card_101',
+          }),
+        ],
+      }),
+    );
   });
 
   it('hides terminal tasks from today tasks by default', async () => {

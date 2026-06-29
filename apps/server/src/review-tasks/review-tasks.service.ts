@@ -517,6 +517,12 @@ export class ReviewTasksService {
         userId,
         suspendedAt: null,
         nextReview: { lte: window.endUtc },
+        reviewTasks: {
+          none: {
+            userId,
+            scheduledDate: window.dateKey,
+          },
+        },
       },
       select: { id: true, nextReview: true },
       orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
