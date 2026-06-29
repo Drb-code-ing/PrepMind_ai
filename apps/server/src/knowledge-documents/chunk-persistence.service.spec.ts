@@ -48,6 +48,9 @@ describe('ChunkPersistenceService', () => {
     $executeRaw: jest
       .fn<Promise<number>, [TemplateStringsArray, ...unknown[]]>()
       .mockResolvedValue(1),
+    $queryRaw: jest
+      .fn<Promise<{ id: string }[]>, [TemplateStringsArray, ...unknown[]]>()
+      .mockResolvedValue([{ id: 'doc_1' }]),
   };
 
   type TransactionCallback = (transaction: typeof tx) => unknown;
@@ -78,6 +81,7 @@ describe('ChunkPersistenceService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     tx.document.findFirst.mockResolvedValue({ id: 'doc_1' });
+    tx.$queryRaw.mockResolvedValue([{ id: 'doc_1' }]);
   });
 
   function createService() {
@@ -142,7 +146,7 @@ describe('ChunkPersistenceService', () => {
   });
 
   it('rejects stale processing snapshots before deleting or inserting chunks', async () => {
-    tx.document.findFirst.mockResolvedValue(null);
+    tx.$queryRaw.mockResolvedValue([]);
 
     await expect(
       createService().replaceDocumentChunks({
@@ -159,18 +163,38 @@ describe('ChunkPersistenceService', () => {
       statusCode: HttpStatus.CONFLICT,
     });
 
-    expect(tx.document.findFirst).toHaveBeenCalledWith({
-      where: {
-        id: 'doc_1',
-        userId: 'user_1',
-        status: 'PROCESSING',
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.chunk.deleteMany).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('locks the processing document snapshot before replacing chunks', async () => {
+    await createService().replaceDocumentChunks({
+      documentId: 'doc_1',
+      userId: 'user_1',
+      chunks: [chunks[0]],
+      expectedDocument: {
         storageKey: 'users/user_1/knowledge/notes.txt',
         contentHash: 'sha256:abc',
       },
-      select: { id: true },
     });
-    expect(tx.chunk.deleteMany).not.toHaveBeenCalled();
-    expect(tx.$executeRaw).not.toHaveBeenCalled();
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    const [queryParts, ...values] = tx.$queryRaw.mock.calls[0] ?? [];
+    expect(String.raw({ raw: Array.from(queryParts ?? []) })).toContain(
+      'FOR UPDATE',
+    );
+    expect(values).toEqual(
+      expect.arrayContaining([
+        'doc_1',
+        'user_1',
+        'users/user_1/knowledge/notes.txt',
+        'sha256:abc',
+      ]),
+    );
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.chunk.deleteMany.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it('inserts each chunk with raw sql and generated ids', async () => {

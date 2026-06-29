@@ -129,34 +129,55 @@ export class ChunkPersistenceService {
     userId: string,
     expectedDocument?: ExpectedProcessingDocumentSnapshot,
   ) {
+    if (expectedDocument) {
+      await this.lockProcessingDocument(
+        transaction,
+        documentId,
+        userId,
+        expectedDocument,
+      );
+      return;
+    }
+
     const document = await transaction.document.findFirst({
       where: {
         id: documentId,
         userId,
-        ...(expectedDocument
-          ? {
-              status: 'PROCESSING' as const,
-              storageKey: expectedDocument.storageKey,
-              contentHash: expectedDocument.contentHash,
-            }
-          : {}),
       },
       select: { id: true },
     });
 
     if (!document) {
-      if (expectedDocument) {
-        throw new AppError(
-          'KNOWLEDGE_DOCUMENT_PROCESSING',
-          'Knowledge document changed while processing',
-          HttpStatus.CONFLICT,
-        );
-      }
-
       throw new AppError(
         'KNOWLEDGE_DOCUMENT_NOT_FOUND',
         'Knowledge document not found',
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  private async lockProcessingDocument(
+    transaction: Prisma.TransactionClient,
+    documentId: string,
+    userId: string,
+    expectedDocument: ExpectedProcessingDocumentSnapshot,
+  ) {
+    const rows = await transaction.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "Document"
+      WHERE "id" = ${documentId}
+        AND "userId" = ${userId}
+        AND "status" = 'PROCESSING'
+        AND "storageKey" = ${expectedDocument.storageKey}
+        AND "contentHash" IS NOT DISTINCT FROM ${expectedDocument.contentHash}
+      FOR UPDATE
+    `;
+
+    if (rows.length !== 1) {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_PROCESSING',
+        'Knowledge document changed while processing',
+        HttpStatus.CONFLICT,
       );
     }
   }
