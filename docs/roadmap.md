@@ -198,7 +198,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - 新增 `/knowledge` 学习资料工作台。
 - 前端新增 knowledge API client、TanStack Query hooks 和展示 helper。
 - 页面支持资料上传、列表读取、处理、替换上传、删除内联确认、状态摘要和检索测试。
-- 服务端按同用户 `contentHash` 做轻量去重：重复上传返回已有资料；替换上传保留同一 `Document.id`、清空旧 chunks 并重置为 `PENDING`。
+- 服务端按同用户 `contentHash` 做轻量去重：重复上传返回已有资料；替换上传保留同一 `Document.id` 并重置为 `PENDING`，并通过快照条件避免并发处理或并发替换覆盖当前资料。
+- 文档处理链路在 claim、清 chunk、写 chunk、标记完成/失败时持续校验 `status=PROCESSING + storageKey + contentHash`，chunk 替换事务使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行，避免旧处理流写入新资料 chunks。
 - 资料卡片改为右上角三点菜单承载处理、重新上传和删除，点击页面其它区域可收起菜单，已入库资料不再展示主按钮式重新处理。
 - 检索测试展示命中文档、片段序号、相似度和内容摘要；无命中时明确提示 Chat 仍可普通回答。
 - 侧边栏新增“知识库”入口，保持 Chat-first 主入口不变。

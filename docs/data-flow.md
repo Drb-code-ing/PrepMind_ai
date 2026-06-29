@@ -154,12 +154,13 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> MinIO 保存原文件
   -> Document(status=PENDING, sourceType=UPLOAD)
   -> POST /knowledge/documents/:id/process
-  -> Document(status=PROCESSING)
+  -> 使用 status + storageKey + contentHash 快照条件 claim Document(status=PROCESSING)
   -> TXT / Markdown / DOCX / PDF 基础文本解析
   -> @repo/rag 段落感知分块
   -> Embedding provider 生成向量
+  -> 事务内 SELECT ... FOR UPDATE 锁定同一 processing 快照
   -> Chunk.embedding vector(1536) raw SQL 写入 pgvector
-  -> Document(status=DONE / FAILED)
+  -> 使用同一快照条件标记 Document(status=DONE / FAILED)
 ```
 
 资料替换数据流：
@@ -170,9 +171,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 校验 document/user ownership
   -> contentHash 检查是否命中同用户其它资料
   -> MinIO 保存新原文件
-  -> 事务内删除旧 chunks
-  -> 更新同一个 Document(id 不变, status=PENDING)
-  -> 尽力删除旧 MinIO 对象
+  -> 事务内按 status + updatedAt + storageKey + contentHash 条件更新同一个 Document(id 不变, status=PENDING)
+  -> 条件更新成功后删除旧 chunks
+  -> 事务成功后尽力删除旧 MinIO 对象；事务失败只清理本次新上传对象
   -> 用户重新触发处理入库
 ```
 
@@ -242,9 +243,10 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `POST /knowledge/documents` 会按当前用户与 `contentHash` 做轻量去重；上传重复内容时返回已有 `Document`，并清理本次临时 MinIO 对象。
 - `PUT /knowledge/documents/:id/file` 用于更新同一资料卡片的原文件；替换后保留原 `Document.id`，清空旧 chunks，状态回到 `PENDING`，用户需要重新处理入库。
 - 替换上传如果命中当前用户其它资料的相同 `contentHash`，服务端返回 `KNOWLEDGE_DOCUMENT_DUPLICATE`，避免产生两个内容相同的资料卡片。
-- `POST /knowledge/documents/:id/process` 写入前校验 document/user ownership。
+- `PUT /knowledge/documents/:id/file` 在事务内使用 `status + updatedAt + storageKey + contentHash` 做 compare-and-swap；若资料已被处理或其它替换请求修改，返回 `KNOWLEDGE_DOCUMENT_PROCESSING`，并只清理本次新上传对象，不删除旧对象。
+- `POST /knowledge/documents/:id/process` 写入前校验 document/user ownership，并在 claim、清 chunk、写 chunk、标记 DONE / FAILED 时持续校验 `status=PROCESSING + storageKey + contentHash` 快照，避免旧处理流污染新上传资料。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
-- forced reprocess 会先清旧 chunks，避免 stale retrieval。
+- forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval；chunk 替换事务会使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行。
 - embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
 - `POST /knowledge/search` 只检索当前用户 `DONE` 文档 chunks，不跨用户、不检索未处理或失败文档。
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
