@@ -68,7 +68,7 @@
   -> chat-agent-runtime 调用 RouterAgent
   -> tutor route 时调用 TutorAgent policy 生成讲题策略 prompt
   -> 有 accessToken 时检索知识库，命中后调用 KnowledgeVerifierAgent 评估资料可信度
-  -> getAiProviderStatus() 判断 mock / live
+  -> resolveChatProviderStatus() 基于 env 与开发调试开关判断 mock / live
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
   -> 有 accessToken 时 best-effort 写入 /agent-traces 脱敏观测元数据
   -> mock data stream 或 OpenAI / DeepSeek SSE
@@ -83,6 +83,7 @@
 - `/api/chat` 不注入完整历史，只注入裁剪后的近期上下文和当前活跃题目上下文。
 - `/api/chat` 默认 `AI_PROVIDER_MODE=mock`，不要求 API key，也不会调用真实模型；`.env.local` 里存在 key 不会自动启用 live。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 默认模型为 `deepseek-v4-flash`，也可通过 `AI_MODEL` 覆盖。
+- 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 中使用开发调试开关切换 mock / live；该开关仅在非 production 可见，且不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
 - Chat 默认输入预算为 2500 tokens、输出上限为 1200 tokens，可通过 `AI_MAX_INPUT_TOKENS` 和 `AI_MAX_OUTPUT_TOKENS` 调整；超出输入预算会返回 413。
 - live 模式会在服务端打印不含密钥的用量估算日志，包含模式、模型、输入估算、输出上限、消息数量和是否带 active context。
 - AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。

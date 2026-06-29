@@ -113,6 +113,20 @@ bun --filter @repo/web dev
 
 `AI_MODEL` 未设置时默认使用更便宜的 `deepseek-v4-flash`。`AI_MAX_INPUT_TOKENS` 会同时约束 system prompt、`activeStudyContext` 和近期消息；超限会返回 413。live 模式会在服务端输出不含密钥的用量估算日志。
 
+如果需要在本地开发过程中从页面里随时切换 mock / live，可以启用开发调试开关：
+
+```powershell
+$env:AI_PROVIDER_MODE='mock'
+$env:AI_ENABLE_LIVE_CALLS='true'
+$env:AI_DEV_MODE_SWITCH_ENABLED='true'
+$env:AI_MODEL='deepseek-v4-flash'
+$env:AI_MAX_INPUT_TOKENS='2500'
+$env:AI_MAX_OUTPUT_TOKENS='1200'
+bun --filter @repo/web dev
+```
+
+打开 `/agent-trace` 后会看到 `AI 模式` 开关。该开关只在 `NODE_ENV != production` 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见；切到 Live 仍要求已配置 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`，并且真实 Chat 请求仍需要登录态通过 `/auth/me` 校验。未满足 live guard 或 API key 时，页面会禁用 Live 选项并展示原因。
+
 ## 5. 常用验证
 
 ```powershell

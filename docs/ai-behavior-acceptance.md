@@ -26,6 +26,19 @@ $env:AI_MAX_OUTPUT_TOKENS='1200'
 - `AI_MAX_OUTPUT_TOKENS=500` 只适合极短 smoke，不适合 Tutor 讲题或 RAG 答案质量验收。
 - live 验收结束后要切回 mock，避免用户继续操作时产生额外费用。
 
+开发环境可以用 `/agent-trace` 的 `AI 模式` 开关在 mock / live 之间切换，但它只是调试便利，不放宽成本与鉴权边界：
+
+```powershell
+$env:AI_PROVIDER_MODE='mock'
+$env:AI_ENABLE_LIVE_CALLS='true'
+$env:AI_DEV_MODE_SWITCH_ENABLED='true'
+```
+
+- 开关只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见。
+- Live 选项只有在 `AI_ENABLE_LIVE_CALLS=true` 且存在 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 时可用。
+- 即使通过开关切到 live，`/api/chat` 仍要求有效 access token，并会调用 `/auth/me` 校验。
+- 验收记录仍以 `/api/chat` 响应头 `x-prepmind-ai-mode=mock|live` 为准。
+
 ## 3. RAG 验收边界
 
 - `RAG_EMBEDDING_PROVIDER=fake` 只能证明上传、处理、分块、入库、检索 API 和前端页面链路可用。
