@@ -68,8 +68,25 @@ describe('DocumentProcessingService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers().setSystemTime(processedAt);
-    prisma.document.findFirst.mockResolvedValue(documentRow);
-    prisma.document.updateMany.mockResolvedValue({ count: 1 });
+    let currentDocument = documentRow;
+    prisma.document.findFirst.mockImplementation(() =>
+      Promise.resolve(currentDocument),
+    );
+    prisma.document.updateMany.mockImplementation((args: DocumentUpdateArgs) => {
+      const data = args.data;
+      currentDocument = {
+        ...currentDocument,
+        ...data,
+        updatedAt: processedAt,
+        processedAt:
+          data.processedAt === undefined
+            ? currentDocument.processedAt
+            : data.processedAt,
+        _count: { chunks: data.status === 'DONE' ? 1 : 0 },
+      };
+
+      return Promise.resolve({ count: 1 });
+    });
     prisma.document.update.mockImplementation((args: DocumentUpdateArgs) => {
       const data = args.data;
       return Promise.resolve({
@@ -142,6 +159,10 @@ describe('DocumentProcessingService', () => {
     expect(persistence.replaceDocumentChunks).toHaveBeenCalledWith({
       documentId: 'doc_1',
       userId: 'user_1',
+      expectedDocument: {
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       chunks: [
         {
           content: 'linear equations are useful.',
@@ -159,14 +180,19 @@ describe('DocumentProcessingService', () => {
         },
       ],
     });
-    expect(prisma.document.update).toHaveBeenLastCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'DONE',
         errorMessage: null,
         processedAt,
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(result).toEqual({
       id: 'doc_1',
@@ -182,6 +208,58 @@ describe('DocumentProcessingService', () => {
       processedAt: processedAt.toISOString(),
       createdAt: now.toISOString(),
       updatedAt: processedAt.toISOString(),
+    });
+  });
+
+  it('rejects completion when the processing document snapshot changed mid-flight', async () => {
+    prisma.document.updateMany.mockImplementation((args) => {
+      const status = (args as { data?: { status?: string } }).data?.status;
+      if (status === 'DONE' || status === 'FAILED') {
+        return Promise.resolve({ count: 0 });
+      }
+
+      return Promise.resolve({ count: 1 });
+    });
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PROCESSING',
+      statusCode: HttpStatus.CONFLICT,
+    });
+
+    expect(persistence.replaceDocumentChunks).toHaveBeenCalled();
+    expect(prisma.document.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'DONE' }),
+      }),
+    );
+    expect(prisma.document.updateMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
+      data: {
+        status: 'DONE',
+        errorMessage: null,
+        processedAt,
+      },
+    });
+    expect(prisma.document.updateMany).toHaveBeenNthCalledWith(3, {
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
+      data: {
+        status: 'FAILED',
+        errorMessage: expect.any(String),
+      },
     });
   });
 
@@ -276,13 +354,18 @@ describe('DocumentProcessingService', () => {
       createService().processDocument('user_1', 'doc_1', { force: false }),
     ).rejects.toBe(failure);
 
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: '资料处理失败，请稍后重试',
       },
-      include: { _count: { select: { chunks: true } } },
     });
   });
 
@@ -306,13 +389,18 @@ describe('DocumentProcessingService', () => {
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: 'Parser could not read document text',
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(embedding.embedChunks).not.toHaveBeenCalled();
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
@@ -339,13 +427,18 @@ describe('DocumentProcessingService', () => {
       statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
     });
 
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: '资料中没有可解析的文本',
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(embedding.embedChunks).not.toHaveBeenCalled();
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
@@ -372,17 +465,26 @@ describe('DocumentProcessingService', () => {
     expect(persistence.clearDocumentChunks).toHaveBeenCalledWith(
       'doc_1',
       'user_1',
+      {
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
     );
     expect(
       persistence.clearDocumentChunks.mock.invocationCallOrder[0],
     ).toBeLessThan(embedding.embedChunks.mock.invocationCallOrder[0] ?? 0);
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: 'Embedding provider rejected the chunk batch',
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
   });
@@ -407,13 +509,18 @@ describe('DocumentProcessingService', () => {
       },
       data: { status: 'PROCESSING', errorMessage: null },
     });
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: 'Embedding provider rejected the chunk batch',
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(persistence.replaceDocumentChunks).not.toHaveBeenCalled();
   });
@@ -430,13 +537,18 @@ describe('DocumentProcessingService', () => {
       createService().processDocument('user_1', 'doc_1', { force: false }),
     ).rejects.toBe(failure);
 
-    expect(prisma.document.update).toHaveBeenCalledWith({
-      where: { id: 'doc_1' },
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       data: {
         status: 'FAILED',
         errorMessage: '无法读取资料文件',
       },
-      include: { _count: { select: { chunks: true } } },
     });
     expect(parser.parse).not.toHaveBeenCalled();
   });
@@ -445,7 +557,13 @@ describe('DocumentProcessingService', () => {
     const failure = new Error('provider unavailable');
     const markFailedError = new Error('database unavailable');
     embedding.embedChunks.mockRejectedValue(failure);
-    prisma.document.update.mockRejectedValueOnce(markFailedError);
+    prisma.document.updateMany.mockImplementation((args: DocumentUpdateArgs) => {
+      if (args.data.status === 'FAILED') {
+        return Promise.reject(markFailedError);
+      }
+
+      return Promise.resolve({ count: 1 });
+    });
 
     await expect(
       createService().processDocument('user_1', 'doc_1', { force: false }),

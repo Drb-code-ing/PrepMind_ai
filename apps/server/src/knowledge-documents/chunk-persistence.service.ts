@@ -16,6 +16,11 @@ export type PersistableChunk = {
   tokenCount: number;
 };
 
+export type ExpectedProcessingDocumentSnapshot = {
+  storageKey: string;
+  contentHash: string | null;
+};
+
 @Injectable()
 export class ChunkPersistenceService {
   constructor(
@@ -27,6 +32,7 @@ export class ChunkPersistenceService {
     documentId: string;
     userId: string;
     chunks: PersistableChunk[];
+    expectedDocument?: ExpectedProcessingDocumentSnapshot;
   }): Promise<void> {
     this.assertChunkLimit(input.chunks.length);
     const embeddingDimensions = this.configService.get(
@@ -45,10 +51,11 @@ export class ChunkPersistenceService {
     );
 
     await this.prisma.$transaction(async (transaction) => {
-      await this.assertDocumentOwned(
+      await this.assertDocumentWritable(
         transaction,
         input.documentId,
         input.userId,
+        input.expectedDocument,
       );
       await this.deleteDocumentChunks(
         transaction,
@@ -67,9 +74,18 @@ export class ChunkPersistenceService {
     });
   }
 
-  async clearDocumentChunks(documentId: string, userId: string): Promise<void> {
+  async clearDocumentChunks(
+    documentId: string,
+    userId: string,
+    expectedDocument?: ExpectedProcessingDocumentSnapshot,
+  ): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
-      await this.assertDocumentOwned(transaction, documentId, userId);
+      await this.assertDocumentWritable(
+        transaction,
+        documentId,
+        userId,
+        expectedDocument,
+      );
       await this.deleteDocumentChunks(transaction, documentId, userId);
     });
   }
@@ -107,17 +123,36 @@ export class ChunkPersistenceService {
     };
   }
 
-  private async assertDocumentOwned(
+  private async assertDocumentWritable(
     transaction: Prisma.TransactionClient,
     documentId: string,
     userId: string,
+    expectedDocument?: ExpectedProcessingDocumentSnapshot,
   ) {
     const document = await transaction.document.findFirst({
-      where: { id: documentId, userId },
+      where: {
+        id: documentId,
+        userId,
+        ...(expectedDocument
+          ? {
+              status: 'PROCESSING' as const,
+              storageKey: expectedDocument.storageKey,
+              contentHash: expectedDocument.contentHash,
+            }
+          : {}),
+      },
       select: { id: true },
     });
 
     if (!document) {
+      if (expectedDocument) {
+        throw new AppError(
+          'KNOWLEDGE_DOCUMENT_PROCESSING',
+          'Knowledge document changed while processing',
+          HttpStatus.CONFLICT,
+        );
+      }
+
       throw new AppError(
         'KNOWLEDGE_DOCUMENT_NOT_FOUND',
         'Knowledge document not found',

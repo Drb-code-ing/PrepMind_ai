@@ -22,7 +22,18 @@ describe('ChunkPersistenceService', () => {
       findFirst: jest
         .fn<
           Promise<{ id: string } | null>,
-          [{ where: { id: string; userId: string }; select: { id: true } }]
+          [
+            {
+              where: {
+                id: string;
+                userId: string;
+                status?: string;
+                storageKey?: string;
+                contentHash?: string | null;
+              };
+              select: { id: true };
+            },
+          ]
         >()
         .mockResolvedValue({ id: 'doc_1' }),
     },
@@ -124,6 +135,38 @@ describe('ChunkPersistenceService', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.document.findFirst).toHaveBeenCalledWith({
       where: { id: 'doc_1', userId: 'user_2' },
+      select: { id: true },
+    });
+    expect(tx.chunk.deleteMany).not.toHaveBeenCalled();
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale processing snapshots before deleting or inserting chunks', async () => {
+    tx.document.findFirst.mockResolvedValue(null);
+
+    await expect(
+      createService().replaceDocumentChunks({
+        documentId: 'doc_1',
+        userId: 'user_1',
+        chunks: [chunks[0]],
+        expectedDocument: {
+          storageKey: 'users/user_1/knowledge/notes.txt',
+          contentHash: 'sha256:abc',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PROCESSING',
+      statusCode: HttpStatus.CONFLICT,
+    });
+
+    expect(tx.document.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
       select: { id: true },
     });
     expect(tx.chunk.deleteMany).not.toHaveBeenCalled();

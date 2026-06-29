@@ -42,6 +42,7 @@ export class DocumentProcessingService {
       await this.chunkPersistenceService.clearDocumentChunks(
         documentId,
         userId,
+        this.processingSnapshot(document),
       );
 
       const object = await this.storageService.readKnowledgeDocumentObject(
@@ -88,6 +89,7 @@ export class DocumentProcessingService {
       await this.chunkPersistenceService.replaceDocumentChunks({
         documentId,
         userId,
+        expectedDocument: this.processingSnapshot(document),
         chunks: chunks.map<PersistableChunk>((chunk, index) => ({
           content: chunk.content,
           embedding: vectors[index] ?? [],
@@ -97,20 +99,12 @@ export class DocumentProcessingService {
         })),
       });
 
-      const done = await this.prisma.document.update({
-        where: { id: documentId },
-        data: {
-          status: 'DONE',
-          errorMessage: null,
-          processedAt: new Date(),
-        },
-        include: this.documentInclude,
-      });
+      const done = await this.markDone(document);
 
       return this.toResponse(done);
     } catch (error) {
       try {
-        await this.markFailed(documentId, error);
+        await this.markFailed(document, error);
       } catch {
         // Preserve the parser/storage/embedding error that explains the processing failure.
       }
@@ -178,18 +172,55 @@ export class DocumentProcessingService {
     }
   }
 
-  private async markFailed(documentId: string, error: unknown) {
+  private async markDone(document: KnowledgeDocumentRecord) {
+    const result = await this.prisma.document.updateMany({
+      where: this.processingSnapshotWhere(document),
+      data: {
+        status: 'DONE',
+        errorMessage: null,
+        processedAt: new Date(),
+      },
+    });
+
+    if (result.count !== 1) {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_PROCESSING',
+        'Knowledge document changed while processing',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    return this.findOwned(document.userId, document.id);
+  }
+
+  private async markFailed(document: KnowledgeDocumentRecord, error: unknown) {
     const errorMessage =
       error instanceof AppError ? error.message : '资料处理失败，请稍后重试';
 
-    await this.prisma.document.update({
-      where: { id: documentId },
+    await this.prisma.document.updateMany({
+      where: this.processingSnapshotWhere(document),
       data: {
         status: 'FAILED',
         errorMessage,
       },
-      include: this.documentInclude,
     });
+  }
+
+  private processingSnapshotWhere(document: KnowledgeDocumentRecord) {
+    return {
+      id: document.id,
+      userId: document.userId,
+      status: 'PROCESSING' as const,
+      storageKey: document.storageKey,
+      contentHash: document.contentHash,
+    };
+  }
+
+  private processingSnapshot(document: KnowledgeDocumentRecord) {
+    return {
+      storageKey: document.storageKey,
+      contentHash: document.contentHash,
+    };
   }
 
   private toResponse(document: KnowledgeDocumentRecord) {
