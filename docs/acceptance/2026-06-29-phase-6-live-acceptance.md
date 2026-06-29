@@ -13,7 +13,7 @@
 - Phase 6 的确定性 Agent 仍然不直接调模型，包括 RouterAgent、TutorAgent policy、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent 和 KnowledgeOrganizerAgent。
 - 真实模型只验证最终 Chat 流式输出是否真的受到 route prompt、Tutor strategy、RAG context、Verifier guidance 影响。
 - RAG 文档处理本轮使用 `RAG_EMBEDDING_PROVIDER=fake`，因为 server 侧本地环境没有配置 `OPENAI_API_KEY`。这能验工程链路，但不能证明真实 embedding 语义检索质量。
-- 2026-06-29 17:11 ~ 17:44 追加 Playwright 前端验收：真实打开注册页、Chat、知识库和 Agent Trace 页面，截图保存在本地 `logs/acceptance-screenshots/`。
+- 2026-06-29 17:11 ~ 17:44 追加 Playwright 前端验收：真实打开注册页、Chat、知识库和 Agent Trace 页面；截图作为本地临时证据生成在 `logs/acceptance-screenshots/`，不纳入版本库。
 
 ## 环境
 
@@ -143,7 +143,7 @@ RAG Chat UI smoke: live=true, route=rag_answer, ragHits=1, verifier=trusted, ref
 Trace UI smoke: Tutor 和 RAG live runs 均可见
 ```
 
-本地截图证据：
+本地临时截图证据：
 
 ```text
 logs/acceptance-screenshots/01-register.png
