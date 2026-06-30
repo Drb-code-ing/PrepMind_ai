@@ -61,6 +61,25 @@ bun --filter @repo/server start:dev
 
 `RAG_EMBEDDING_PROVIDER='fake'` 只用于本地开发和浏览器 smoke，可在没有 `OPENAI_API_KEY` 的情况下完成知识库上传、处理和检索测试；真实 embedding 验收时改为 `openai` 并配置 `OPENAI_API_KEY`。
 
+默认文档处理模式是 `KNOWLEDGE_PROCESSING_MODE='inline'`，后端收到 `POST /knowledge/documents/:id/process` 后会在 API 进程内直接完成解析、分块、embedding 和入库，不投递 BullMQ。当前 NestJS 仍会初始化 BullMQ 模块，所以本地开发建议继续启动 redis；需要验证 Phase 7 BullMQ 队列链路时，使用 queue 模式启动：
+
+```powershell
+$env:POSTGRES_PORT='5433'
+docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio
+
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:RAG_EMBEDDING_PROVIDER='fake'
+$env:REDIS_URL='redis://127.0.0.1:6379'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+$env:SERVER_ROLE='both'
+bun --filter @repo/server start:dev
+```
+
+`SERVER_ROLE` 可选 `api | worker | both`。当前它只控制是否注册 worker processor：`api` 不注册 worker，`worker` / `both` 注册 worker；当前进程仍会启动 HTTP server，真正 worker-only 进程拆分属于后续生产化工作。本地最省事用 `both`；`inline` 仍是默认 fallback。
+
+queue 模式 smoke 建议在浏览器打开 `/knowledge`：上传 TXT / Markdown / PDF / DOCX，点击处理，观察资料状态进入 `PROCESSING`，页面展示后台任务状态，最终变为 `DONE` 或 `FAILED`。这只能证明 RAG 处理队列可靠，不证明 `/api/chat` 真实模型回答质量；Chat live 验收仍按本文 AI 调用模式和 `docs/ai-behavior-acceptance.md` 执行。
+
 启动前端：
 
 ```powershell

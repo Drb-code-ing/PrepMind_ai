@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-29。Phase 6.8 已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace UI、估算成本看板、固定 deterministic eval set，以及 KnowledgeDedupAgent / KnowledgeOrganizerAgent 资料管理建议；Chat 仍保留 Phase 5 RAG 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-30。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -13,6 +13,7 @@
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
 - Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
+- 后台任务职责：`BackgroundJob` 以 PostgreSQL 为权威来源；`/background-jobs` 提供账号级只读任务观测 API，当前服务知识库文档处理队列；job 只保存状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
@@ -145,7 +146,7 @@ Agent Trace 边界：
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。Phase 7.0 / 7.1 已把文档处理升级为可切换 inline / BullMQ queue 的后台任务链路。
 
 文档处理数据流：
 
@@ -163,6 +164,23 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 事务内 SELECT ... FOR UPDATE 锁定同一 processing 快照
   -> Chunk.embedding vector(1536) raw SQL 写入 pgvector
   -> 使用同一快照条件标记 Document(status=DONE / FAILED)
+```
+
+队列模式文档处理数据流：
+
+```text
+用户点击处理
+  -> POST /knowledge/documents/:id/process
+  -> KNOWLEDGE_PROCESSING_MODE=queue
+  -> 创建 BackgroundJob(resourceType=KNOWLEDGE_DOCUMENT, status=QUEUED)
+  -> 投递 BullMQ document-processing job
+  -> API 返回 Document(status=PROCESSING, processing.backgroundJobId, processing.mode=queue)
+  -> worker 根据 SERVER_ROLE=worker|both 注册 processor
+  -> 标记 BackgroundJob(ACTIVE)
+  -> 复用 DocumentProcessingService 解析、分块、embedding 和 chunk 写入
+  -> 成功：Document(DONE) + BackgroundJob(SUCCEEDED)
+  -> 失败：Document(FAILED) + BackgroundJob(FAILED)
+  -> 快照变化：不写 chunks，BackgroundJob(STALE_SKIPPED)
 ```
 
 资料替换数据流：
@@ -244,8 +262,10 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 用户点击处理
   -> useProcessKnowledgeDocument()
   -> POST /knowledge/documents/:id/process
-  -> Document(status=DONE / FAILED)
-  -> 列表、详情、检索缓存和资料管理建议失效刷新
+  -> inline: Document(status=DONE / FAILED)
+  -> queue: Document(status=PROCESSING) + BackgroundJob(status=QUEUED / ACTIVE / SUCCEEDED / FAILED / STALE_SKIPPED)
+  -> 处理中的资料和最新后台 job 短轮询刷新
+  -> 列表、详情、检索缓存、后台 job 和资料管理建议失效刷新
 
 用户手动检索测试
   -> useSearchKnowledge()
@@ -264,10 +284,13 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `Document.sourceType` 已预留 `UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR` 和 `CHAT`；OCR、错题和聊天沉淀当前仍不自动入库。
 - Phase 5.3 文档 API 按当前 `userId` 隔离，上传原文件进入 MinIO，`Document(PENDING, sourceType=UPLOAD)` 进入 PostgreSQL。
 - `POST /knowledge/documents` 会按当前用户与 `contentHash` 做轻量去重；上传重复内容时返回已有 `Document`，并清理本次临时 MinIO 对象。
-- `PUT /knowledge/documents/:id/file` 用于更新同一资料卡片的原文件；替换后保留原 `Document.id`，清空旧 chunks，状态回到 `PENDING`，用户需要重新处理入库。
+- `PUT /knowledge/documents/:id/file` 用于更新同一资料卡片的原文件；替换后保留原 `Document.id`，清空旧 chunks，状态回到 `PENDING`，用户需要重新处理入库；`PROCESSING` 中的资料禁止替换，避免旧 worker 与新文件交叉污染。
 - 替换上传如果命中当前用户其它资料的相同 `contentHash`，服务端返回 `KNOWLEDGE_DOCUMENT_DUPLICATE`，避免产生两个内容相同的资料卡片。
 - `PUT /knowledge/documents/:id/file` 在事务内使用 `status + updatedAt + storageKey + contentHash` 做 compare-and-swap；若资料已被处理或其它替换请求修改，返回 `KNOWLEDGE_DOCUMENT_PROCESSING`，并只清理本次新上传对象，不删除旧对象。
 - `POST /knowledge/documents/:id/process` 写入前校验 document/user ownership，并在 claim、清 chunk、写 chunk、标记 DONE / FAILED 时持续校验 `status=PROCESSING + storageKey + contentHash` 快照，避免旧处理流污染新上传资料。
+- `KNOWLEDGE_PROCESSING_MODE` 支持 `inline | queue`，默认 `inline`；`inline` 不投递 BullMQ，适合作为本地和降级 fallback；`queue` 需要 `REDIS_URL` 和已注册的 BullMQ worker。
+- `SERVER_ROLE` 支持 `api | worker | both`，当前语义是控制是否注册 worker processor：`api` 不注册 worker，`worker` / `both` 注册 worker；当前进程仍会启动 HTTP server，真正 worker-only 启动和部署拆分属于后续生产化工作。
+- Redis 是 queue 处理链路的必需依赖；当前 NestJS 会初始化 BullMQ 模块，本地开发建议继续随 postgres / minio 一起启动 redis。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
 - forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval；chunk 替换事务会使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行。
 - embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
@@ -278,9 +301,12 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - KnowledgeDedupAgent / KnowledgeOrganizerAgent 只消费当前用户 `Document` 元数据和裁剪后的少量 `Chunk` 摘要；`exact_duplicate` 主要解释同 `contentHash` 历史或异常数据，`possible_revision` 表示文件名高度相似但内容 hash 不同，`complementary` 表示同主题但更适合共存，`insufficient_signal` 表示资料太少或未处理不足以判断。
 - `/knowledge-agent/suggestions` 经过 `JwtAuthGuard`，Service 层先校验可选 `documentId` 归属，再按当前 `userId` 读取最近资料；如果目标资料不在 recent limit 中，会补入目标资料参与分析，避免 targeted 查询因为分页窗口漏掉目标。
 - KnowledgeAgent suggestions 只读，不写 Document / Chunk，不写资料集合或标签表，不自动清理 MinIO，不修改资料状态，不进入 Dexie `mutationQueue`，失败只影响建议面板。
+- `GET /background-jobs` 和 `GET /background-jobs/:id` 经过 `JwtAuthGuard`，所有查询都按当前 `userId` 隔离；当前 `/knowledge` 用它展示资料处理中的最近后台状态。
+- `BackgroundJob` 对外只暴露脱敏的 `payloadPreview` 与 `resultSummary`，例如 documentId、文件名预览、处理模式、chunk 数和耗时，不保存原文内容、完整 chunk、prompt、API key、access token 或 cookie。
 - `/api/chat` 只把 access token 用于服务端代理检索，不写入日志、不注入 prompt、不保存到 ChatMessage。
 - citations 第一版以 Markdown 追加到助手消息底部，不新增 ChatMessage schema 字段。
-- `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试和知识库删除不进入 Dexie `mutationQueue`。
+- `/knowledge` 页面是在线资料管理入口，文件上传、替换、解析、embedding、检索测试、后台 job 观测和知识库删除不进入 Dexie `mutationQueue`。
+- `/knowledge` 页面只在存在 `PROCESSING` 文档或本地刚触发处理时短轮询文档列表与后台 job；静态 `PENDING` 不触发无限轮询，避免空耗请求。
 - `/knowledge` 页面展示的资料管理建议是辅助判断，不是事实来源；用户仍然需要手动决定是否保留、替换或删除资料。
 - `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；点击页面其它区域会收起菜单；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
@@ -553,6 +579,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - ReviewAgent / PlannerAgent：复习诊断和学习计划建议是在线只读能力，不进入通用 mutation queue。
 - MemoryAgent：候选生成、确认、忽略和正式记忆管理是在线账号级能力，不进入通用 mutation queue。
 - Agent Trace：`/agent-traces` 是在线账号级观测能力，只记录脱敏元数据；trace 写入失败不需要离线补偿，不进入通用 mutation queue。
+- BackgroundJob：`/background-jobs` 是在线账号级只读观测能力，只记录后台任务脱敏元数据；任务状态不进入 Dexie `mutationQueue`。
 - KnowledgeAgent suggestions：`/knowledge-agent/suggestions` 是在线只读资料管理建议，不写资料事实表，失败不需要离线补偿，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
@@ -597,6 +624,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - `UserMemory`
 - `AgentTraceRun`
 - `AgentTraceStep`
+- `BackgroundJob`
 - `Document`
 - `Chunk`
 

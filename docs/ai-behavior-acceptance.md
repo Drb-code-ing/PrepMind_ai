@@ -45,6 +45,8 @@ $env:AI_DEV_MODE_SWITCH_ENABLED='true'
 - fake embedding 不能证明语义检索效果；即使资料含有关键词，也可能无法稳定命中。
 - RAG 语义效果验收必须使用真实 embedding，或使用专门设计的可控测试向量。
 - 没有资料、没有命中或检索失败时，Chat 必须继续普通回答。
+- `KNOWLEDGE_PROCESSING_MODE=queue` 的 smoke 只证明 BullMQ、Redis、worker、`BackgroundJob`、文档状态流和 chunk 入库可靠，不证明真实模型回答质量。
+- queue 模式不改变 `/api/chat` 的 live 边界；Chat 真实模型仍必须同时满足 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、有效 API key 和登录态校验。
 
 ## 4. Chat 空回复兜底
 
@@ -99,3 +101,14 @@ Agent Trace 与固定评测集已落地，并必须持续覆盖：
 Critic 不替代人工判断，也不负责生产环境自动重试；它先作为验收层，稳定发现明显错误：RAG 有命中但没有“参考资料”、可疑、冲突或不足资料没有“核对/谨慎”提示、提示式讲题直接给最终答案、建议型 route 谎称已经创建/保存/安排了数据。
 
 本地固定规则通过 `bun --filter @repo/agent test -- critic-rubric` 验证；当前 Bun 过滤会运行 `@repo/agent` 测试套件，并确保 critic-rubric 用例包含在内。真实模型验收记录使用 `docs/acceptance/phase-6-reflexion-smoke-template.md`。
+
+## 9. Phase 7.1 后台队列验收清单（已完成）
+
+知识库文档处理接入 BullMQ 后必须持续覆盖：
+
+- `KNOWLEDGE_PROCESSING_MODE=inline` 仍为默认 fallback，不投递 BullMQ，可同步完成文档处理；当前 NestJS 仍会初始化 BullMQ 模块，本地开发建议继续启动 redis。
+- `KNOWLEDGE_PROCESSING_MODE=queue` 会创建 `BackgroundJob`，投递 BullMQ，并由 `SERVER_ROLE=worker | both` 且注册了 worker processor 的进程处理。
+- `GET /background-jobs` 与 `GET /background-jobs/:id` 必须经过认证，按当前账号隔离，只返回脱敏任务元数据。
+- `PROCESSING` 中的资料禁止替换；worker 遇到 `status + storageKey + contentHash` 快照变化时必须跳过旧结果，不写 stale chunks。
+- `/knowledge` 页面需要展示后台处理状态，只在处理活跃时轮询；静态 `PENDING` 不应造成无限请求。
+- 队列 smoke 通过不代表 live Chat 通过；如果同时改动 Chat prompt、RAG 引用或 Tutor 输出，仍要做 3 到 5 个 live 小样本验收。
