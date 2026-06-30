@@ -29,7 +29,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import type { ServerEnv } from '../config/env';
-import { DocumentProcessingService } from './document-processing.service';
+import { DocumentProcessingJobService } from './jobs/document-processing-job.service';
 import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
 @Controller('knowledge/documents')
@@ -37,7 +37,7 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
 export class KnowledgeDocumentsController {
   constructor(
     private readonly knowledgeDocumentsService: KnowledgeDocumentsService,
-    private readonly documentProcessingService: DocumentProcessingService,
+    private readonly documentProcessingJobService: DocumentProcessingJobService,
   ) {}
 
   @Post()
@@ -76,7 +76,7 @@ export class KnowledgeDocumentsController {
     @Body() body: unknown,
   ) {
     const input = knowledgeDocumentProcessRequestSchema.parse(body ?? {});
-    return this.documentProcessingService.processDocument(user.id, id, input);
+    return this.documentProcessingJobService.enqueueOrRun(user.id, id, input);
   }
 
   @Get(':id')
