@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { backgroundJobStatusSchema } from '@repo/types/api/background-job';
-import { ragSafetyClassificationSchema } from './rag-safety';
+import { ragSafetyClassificationSchema } from '@repo/types/api/rag-safety';
 
 const numericQuerySchema = (defaultValue: number, min: number, max: number) =>
   z.preprocess((value) => {

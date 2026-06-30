@@ -26,6 +26,7 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
+import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
 const AGENT_TRACE_TIMEOUT_MS = 800;
@@ -112,6 +113,7 @@ function createMockChatResponse(input: {
   messages: ChatContextMessage[];
   activeContext: ActiveStudyContext | null;
   knowledgeHits: KnowledgeSearchHit[];
+  knowledgeSafetySummary: RagSafetySummary;
   knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
@@ -127,6 +129,7 @@ function createMockChatResponse(input: {
     mockText,
     input.knowledgeHits,
     input.knowledgeVerifierResult,
+    input.knowledgeSafetySummary,
   );
 
   return createDataStreamResponse({
@@ -156,6 +159,7 @@ function createLiveChatResponse(input: {
   messages: ChatContextMessage[];
   maxOutputTokens: number;
   knowledgeHits: KnowledgeSearchHit[];
+  knowledgeSafetySummary: RagSafetySummary;
   knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
@@ -188,6 +192,7 @@ function createLiveChatResponse(input: {
         '',
         input.knowledgeHits,
         input.knowledgeVerifierResult,
+        input.knowledgeSafetySummary,
       );
       if (citationMarkdown.trim()) {
         dataStream.write(formatDataStreamPart('text', citationMarkdown));
@@ -254,6 +259,7 @@ export async function POST(req: Request) {
     const knowledgeContextPrompt = buildKnowledgeContextPrompt(
       knowledgeSearch.hits,
       knowledgeSearch.verifierResult,
+      knowledgeSearch.safetySummary,
     );
     const additionalSystemPrompt = combineChatAdditionalPrompts(
       agentDecision.promptAddition,
@@ -272,6 +278,7 @@ export async function POST(req: Request) {
     });
     let citationHits = knowledgeSearch.hits;
     let citationVerifierResult = knowledgeSearch.verifierResult;
+    let citationSafetySummary = knowledgeSearch.safetySummary;
 
     if (budget.exceedsInputLimit && knowledgeContextPrompt) {
       const fallbackAgentPrompt = combineChatAdditionalPrompts(agentDecision.promptAddition, '');
@@ -283,6 +290,7 @@ export async function POST(req: Request) {
         budget = fallbackBudget;
         citationHits = [];
         citationVerifierResult = undefined;
+        citationSafetySummary = { blockedCount: 0, quotedOnlyCount: 0 };
       }
     }
 
@@ -325,6 +333,7 @@ export async function POST(req: Request) {
         messages: budget.modelMessages,
         activeContext: normalizedActiveContext,
         knowledgeHits: citationHits,
+        knowledgeSafetySummary: citationSafetySummary,
         knowledgeVerifierResult: citationVerifierResult,
         agentDecision,
         traceRecorded,
@@ -341,6 +350,7 @@ export async function POST(req: Request) {
       messages: budget.modelMessages,
       maxOutputTokens: budget.maxOutputTokens,
       knowledgeHits: citationHits,
+      knowledgeSafetySummary: citationSafetySummary,
       knowledgeVerifierResult: citationVerifierResult,
       agentDecision,
       traceRecorded,

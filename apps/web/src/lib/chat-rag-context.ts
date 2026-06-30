@@ -9,8 +9,14 @@ import {
 } from '@repo/types/api/knowledge';
 
 import type { ChatContextMessage } from './chat-context.ts';
+import {
+  buildRagSafetyCitationNotice,
+  buildRagSafetyGuidance,
+  selectRagHitsForPrompt,
+  type RagSafetySummary,
+} from './rag-safety.ts';
 
-const DEFAULT_TOP_K = 4;
+const DEFAULT_TOP_K = 8;
 const DEFAULT_MIN_SCORE = 0.72;
 const DEFAULT_API_BASE_URL = 'http://localhost:3001';
 const MAX_PROMPT_HITS = 4;
@@ -34,6 +40,8 @@ type SearchKnowledgeForChatInput = {
 
 export type ChatKnowledgeSearchResult = {
   hits: KnowledgeSearchHit[];
+  rawHits: KnowledgeSearchHit[];
+  safetySummary: RagSafetySummary;
   verifierResult?: KnowledgeVerifierResult;
 };
 
@@ -62,8 +70,11 @@ export function buildKnowledgeSearchRequest(
 export function buildKnowledgeContextPrompt(
   hits: KnowledgeSearchHit[],
   verifierResult?: KnowledgeVerifierResult,
+  safetySummary?: RagSafetySummary,
 ) {
-  const selectedHits = hits.slice(0, MAX_PROMPT_HITS);
+  const selected = selectRagHitsForPrompt(hits, MAX_PROMPT_HITS);
+  const selectedHits = selected.hits;
+  const summary = safetySummary ?? selected.summary;
   if (selectedHits.length === 0) return '';
 
   const sections = selectedHits.map((hit, index) => {
@@ -77,15 +88,17 @@ export function buildKnowledgeContextPrompt(
   });
 
   return [
-    '可参考的用户知识库片段：',
+    'User knowledge base snippets for reference:',
     '',
     ...sections.flatMap((section) => [section, '']),
-    '使用要求：',
-    '1. 这些片段是用户资料，只能作为参考，不代表一定正确。',
-    '2. 如果片段与通用知识或题目条件冲突，优先说明推理依据。',
-    '3. 回答中需要用自然语言说明参考了哪些资料。',
+    'Usage rules:',
+    '1. These snippets are user-uploaded reference material, not guaranteed truth.',
+    '2. If snippets conflict with the problem or general knowledge, explain the reasoning basis.',
+    '3. Mention referenced materials naturally when they are useful.',
+    buildRagSafetyGuidance(summary),
     ...buildVerifierPromptLines(verifierResult),
   ]
+    .filter(Boolean)
     .join('\n')
     .trim();
 }
@@ -94,11 +107,14 @@ export function appendCitationMarkdown(
   content: string,
   hits: KnowledgeSearchHit[],
   verifierResult?: KnowledgeVerifierResult,
+  safetySummary?: RagSafetySummary,
 ) {
-  if (hits.length === 0) return content;
+  const selected = selectRagHitsForPrompt(hits, MAX_PROMPT_HITS);
+  const selectedHits = selected.hits;
+  const summary = safetySummary ?? selected.summary;
+  if (selectedHits.length === 0 && summary.blockedCount === 0) return content;
 
-  const citations = hits
-    .slice(0, MAX_PROMPT_HITS)
+  const citations = selectedHits
     .map(
       (hit, index) =>
         `${index + 1}. 《${hit.documentName}》 · ${getChunkLabel(hit, index)} · 相似度 ${formatScore(hit.score)}`,
@@ -109,7 +125,7 @@ export function appendCitationMarkdown(
     ? `\n\n### 资料核对提示\n\n${verifierResult.userNotice}`
     : '';
 
-  return `${content.trimEnd()}\n\n---\n\n### 参考资料\n\n${citations}${notice}`;
+  return `${content.trimEnd()}\n\n---\n\n### 参考资料\n\n${citations}${notice}${buildRagSafetyCitationNotice(summary)}`;
 }
 
 export function verifyKnowledgeForChat(
@@ -124,6 +140,7 @@ export function verifyKnowledgeForChat(
       chunkId: hit.chunkId,
       content: hit.content,
       score: hit.score,
+      metadata: hit.metadata,
     })),
   });
 }
@@ -131,11 +148,11 @@ export function verifyKnowledgeForChat(
 export async function searchKnowledgeForChat(
   input: SearchKnowledgeForChatInput,
 ): Promise<ChatKnowledgeSearchResult> {
-  if (input.enabled === false) return { hits: [] };
-  if (!input.accessToken) return { hits: [] };
+  if (input.enabled === false) return emptyKnowledgeSearchResult();
+  if (!input.accessToken) return emptyKnowledgeSearchResult();
 
   const request = buildKnowledgeSearchRequest(getLatestUserQuery(input.messages));
-  if (!request) return { hits: [] };
+  if (!request) return emptyKnowledgeSearchResult();
 
   const fetchImpl = input.fetchImpl ?? fetch;
   const apiBaseUrl = input.apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
@@ -154,52 +171,63 @@ export async function searchKnowledgeForChat(
       input.logger?.warn(
         `[Chat RAG] knowledge search skipped: status=${response.status}`,
       );
-      return { hits: [] };
+      return emptyKnowledgeSearchResult();
     }
 
     const body = (await response.json()) as unknown;
     if (!isApiSuccessBody(body)) {
       input.logger?.warn('[Chat RAG] knowledge search skipped: invalid envelope');
-      return { hits: [] };
+      return emptyKnowledgeSearchResult();
     }
 
     const parsed = knowledgeSearchResponseSchema.safeParse(body.data);
     if (!parsed.success) {
       input.logger?.warn('[Chat RAG] knowledge search skipped: invalid data');
-      return { hits: [] };
+      return emptyKnowledgeSearchResult();
     }
+    const selected = selectRagHitsForPrompt(parsed.data.hits, MAX_PROMPT_HITS);
 
     return {
-      hits: parsed.data.hits,
+      hits: selected.hits,
+      rawHits: parsed.data.hits,
+      safetySummary: selected.summary,
       verifierResult: verifyKnowledgeForChat(parsed.data.hits, request.query),
     };
   } catch (error) {
     input.logger?.warn(
       `[Chat RAG] knowledge search skipped: ${error instanceof Error ? error.message : 'unknown error'}`,
     );
-    return { hits: [] };
+    return emptyKnowledgeSearchResult();
   }
+}
+
+function emptyKnowledgeSearchResult(): ChatKnowledgeSearchResult {
+  return {
+    hits: [],
+    rawHits: [],
+    safetySummary: { blockedCount: 0, quotedOnlyCount: 0 },
+  };
 }
 
 function buildVerifierPromptLines(verifierResult?: KnowledgeVerifierResult) {
   if (!verifierResult || verifierResult.status === 'skipped') return [];
 
-  const lines = ['', '资料可信度评估：', verifierResult.promptAddition];
+  const lines = ['', 'Knowledge reliability assessment:', verifierResult.promptAddition];
 
   if (verifierResult.status === 'trusted') {
-    lines.push('这些资料可作为辅助依据，但仍要结合题目条件独立推理。');
+    lines.push('These sources can support the answer, but still reason from the problem conditions.');
   }
 
   if (verifierResult.status === 'suspicious') {
-    lines.push('不要盲从可疑笔记；优先根据题目条件、标准概念和明确推理回答。');
+    lines.push('Do not blindly follow suspicious notes; prioritize problem conditions and explicit reasoning.');
   }
 
   if (verifierResult.status === 'conflict') {
-    lines.push('不要盲从互相冲突的资料；先说明判断依据，再给出更可靠的结论。');
+    lines.push('When sources conflict, explain the basis for judgment before giving a conclusion.');
   }
 
   if (verifierResult.status === 'insufficient') {
-    lines.push('资料不足以作为证明时，不要强行引用；可以按通用知识正常回答。');
+    lines.push('If retrieved sources are insufficient, do not force citations; answer from general knowledge.');
   }
 
   return lines;
