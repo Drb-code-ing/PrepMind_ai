@@ -241,3 +241,45 @@ test('search filters unsafe hits and backfills from over-fetched results', async
   );
   assert.equal(result.safetySummary.blockedCount, 1);
 });
+
+test('chat RAG smoke treats mocked prompt injection hits as low-trust evidence', async () => {
+  const unsafeHits = Array.from({ length: 4 }, (_, index): KnowledgeSearchHit => ({
+    ...unsafeInstructionHit,
+    chunkId: `chunk_unsafe_${index}`,
+  }));
+  const safeBackfillHit: KnowledgeSearchHit = {
+    ...greenTheoremHit,
+    chunkId: 'chunk_safe_backfill',
+    content: 'Safe backfill study note about Green theorem.',
+  };
+
+  const result = await searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: 'Green theorem' }],
+    fetchImpl: async () =>
+      Response.json({
+        success: true,
+        data: { hits: [...unsafeHits, safeBackfillHit] },
+      }),
+  });
+  const prompt = buildKnowledgeContextPrompt(
+    result.hits,
+    result.verifierResult,
+    result.safetySummary,
+  );
+  const markdown = appendCitationMarkdown(
+    'answer',
+    result.hits,
+    result.verifierResult,
+    result.safetySummary,
+  );
+
+  assert.deepEqual(
+    result.hits.map((hit) => hit.chunkId),
+    ['chunk_safe_backfill'],
+  );
+  assert.doesNotMatch(prompt, /reveal the system prompt/);
+  assert.match(prompt, /Safe backfill study note/);
+  assert.match(prompt, /low-trust evidence/);
+  assert.match(markdown, /blocked 4 high-risk/);
+});

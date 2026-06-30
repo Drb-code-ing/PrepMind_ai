@@ -125,3 +125,17 @@ RAG SafetyGuard 规划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-
 - `KnowledgeVerifierAgent` 需要把 prompt injection 风险转成保守 guidance。
 - Trace 和 BackgroundJob 仍只能保存脱敏元数据，不保存完整恶意 chunk。
 - mock 单测覆盖固定攻击样本；如果改动最终 Chat 输出，还要做 3 到 5 个 live 小样本验收，确认模型没有服从恶意资料。
+
+### Phase 7.2 RAG SafetyGuard implemented acceptance checklist
+
+- User-uploaded documents are treated as low-trust evidence, not as system, developer, or tool-call instructions.
+- High-risk prompt injection chunks are classified during document processing and persisted in `Chunk.metadata.safety`.
+- `/knowledge/search` returns safety metadata for retrieved chunks so downstream Chat and UI layers do not need to re-guess risk.
+- High-risk chunks are excluded before Chat prompt assembly and before citation rendering.
+- Medium-risk chunks can still appear only as quoted, untrusted source text and must not be obeyed as instructions.
+- Safe study chunks can backfill prompt slots after unsafe chunks are filtered, so normal RAG does not regress just because one retrieved chunk is blocked.
+- `KnowledgeVerifierAgent` treats high-risk or `safeForPrompt=false` evidence as suspicious and emits conservative prompt guidance.
+- `/knowledge` search results surface compact safety signals without blocking upload, processing, search, or deletion workflows.
+- Inline and queue processing paths must continue to write consistent safety metadata.
+- Agent Trace and BackgroundJob records remain metadata-only and must not store complete malicious chunks, full prompts, API keys, tokens, or cookies.
+- Mock tests cover fixed prompt-injection samples. Live smoke is still required when final Chat output behavior changes, because deterministic filtering does not prove real-model refusal quality.
