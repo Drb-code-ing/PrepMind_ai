@@ -2,6 +2,10 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { splitDocument } from '@repo/rag';
+import type {
+  KnowledgeDocumentMimeType,
+  KnowledgeDocumentResponse,
+} from '@repo/types/api/knowledge';
 
 import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
@@ -89,7 +93,7 @@ export class DocumentProcessingService {
     const parsed = await this.parserService.parse({
       name: document.name,
       type: document.type,
-      mimeType: document.mimeType,
+      mimeType: document.mimeType as KnowledgeDocumentMimeType,
       buffer,
     });
     const chunks = splitDocument(
@@ -263,13 +267,13 @@ export class DocumentProcessingService {
     };
   }
 
-  private toResponse(document: KnowledgeDocumentRecord) {
+  toResponse(document: KnowledgeDocumentRecord): KnowledgeDocumentResponse {
     return {
       id: document.id,
       name: document.name,
       type: document.type,
       size: document.size,
-      mimeType: document.mimeType,
+      mimeType: document.mimeType as KnowledgeDocumentMimeType,
       status: document.status,
       sourceType: document.sourceType,
       errorMessage: document.errorMessage,
