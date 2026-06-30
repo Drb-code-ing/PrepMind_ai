@@ -51,6 +51,7 @@ import {
   getKnowledgeDocumentStatusMeta,
   getKnowledgeProcessSuccessMessage,
   getKnowledgeSearchHitSummary,
+  getRagSafetyLabel,
   groupLatestKnowledgeJobsByDocumentId,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from '@/lib/knowledge-view';
@@ -1059,14 +1060,30 @@ function SearchResults({
       ) : null}
       {hits.map((hit) => (
         <article key={hit.chunkId} className="rounded-[1.25rem] bg-white/70 p-3 ring-1 ring-[var(--pm-line)]">
-          <p className="break-words text-xs font-bold text-[#247269]">
-            {getKnowledgeSearchHitSummary(hit)}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="min-w-0 flex-1 break-words text-xs font-bold text-[#247269]">
+              {getKnowledgeSearchHitSummary(hit)}
+            </p>
+            <RagSafetyBadge hit={hit} />
+          </div>
           <p className="mt-2 line-clamp-4 break-words text-sm leading-6 text-[var(--pm-ink)]">
             {hit.content}
           </p>
         </article>
       ))}
     </div>
+  );
+}
+
+function RagSafetyBadge({ hit }: { hit: KnowledgeSearchHit }) {
+  const label = getRagSafetyLabel(hit.metadata.safety);
+  if (!label) return null;
+
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ring-1 ${label.className}`}
+    >
+      {label.label}
+    </span>
   );
 }

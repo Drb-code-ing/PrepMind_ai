@@ -26,6 +26,12 @@ type KnowledgeBackgroundJobStatusMeta = {
   active: boolean;
 };
 
+type RagSafetyLabel = {
+  label: string;
+  tone: 'danger' | 'warning';
+  className: string;
+};
+
 export const KNOWLEDGE_PAGE_SEARCH_MIN_SCORE = 0.4;
 
 const knowledgeDocumentStatusMeta: Record<KnowledgeDocumentStatus, KnowledgeDocumentStatusMeta> = {
@@ -174,6 +180,28 @@ export function getKnowledgeSearchHitSummary(hit: KnowledgeSearchHit) {
       : '?';
 
   return `《${hit.documentName}》 · 片段 ${chunkIndex} · 相似度 ${hit.score.toFixed(2)}`;
+}
+
+export function getRagSafetyLabel(
+  safety: KnowledgeSearchHit['metadata']['safety'] | undefined,
+): RagSafetyLabel | null {
+  if (safety?.riskLevel === 'high' || safety?.safeForPrompt === false) {
+    return {
+      label: '疑似指令注入',
+      tone: 'danger',
+      className: 'bg-rose-50 text-rose-700 ring-rose-100',
+    };
+  }
+
+  if (safety?.riskLevel === 'medium') {
+    return {
+      label: '需谨慎引用',
+      tone: 'warning',
+      className: 'bg-amber-50 text-amber-700 ring-amber-100',
+    };
+  }
+
+  return null;
 }
 
 function formatCompactDecimal(value: number) {

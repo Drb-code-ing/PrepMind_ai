@@ -18,6 +18,7 @@ import {
   getKnowledgeDocumentStatusMeta,
   getKnowledgeProcessSuccessMessage,
   getKnowledgeSearchHitSummary,
+  getRagSafetyLabel,
   groupLatestKnowledgeJobsByDocumentId,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from './knowledge-view.ts';
@@ -193,6 +194,34 @@ describe('getKnowledgeSearchHitSummary', () => {
     assert.equal(
       getKnowledgeSearchHitSummary(hit),
       '《calculus.md》 · 片段 ? · 相似度 0.80',
+    );
+  });
+});
+
+describe('getRagSafetyLabel', () => {
+  it('maps high and medium RAG safety risk to compact UI labels', () => {
+    assert.deepEqual(getRagSafetyLabel({ riskLevel: 'high' }), {
+      label: '疑似指令注入',
+      tone: 'danger',
+      className: 'bg-rose-50 text-rose-700 ring-rose-100',
+    });
+
+    assert.deepEqual(getRagSafetyLabel({ riskLevel: 'medium' }), {
+      label: '需谨慎引用',
+      tone: 'warning',
+      className: 'bg-amber-50 text-amber-700 ring-amber-100',
+    });
+  });
+
+  it('hides low or missing RAG safety labels', () => {
+    assert.equal(getRagSafetyLabel({ riskLevel: 'low' }), null);
+    assert.equal(getRagSafetyLabel(undefined), null);
+  });
+
+  it('treats safeForPrompt=false as a danger label even without high risk', () => {
+    assert.equal(
+      getRagSafetyLabel({ riskLevel: 'medium', safeForPrompt: false })?.tone,
+      'danger',
     );
   });
 });
