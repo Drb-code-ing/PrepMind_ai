@@ -327,6 +327,28 @@ describe('KnowledgeDocumentsService', () => {
     expect(result.chunkCount).toBe(0);
   });
 
+  it('keeps replacement upload blocked while a document is processing', async () => {
+    const replacementFile = {
+      buffer: Buffer.from('updated notes'),
+      mimetype: 'text/plain',
+      size: 13,
+      originalname: 'updated-notes.txt',
+    } as Express.Multer.File;
+    prisma.document.findFirst.mockResolvedValueOnce({
+      ...documentRow,
+      status: 'PROCESSING',
+    });
+
+    await expect(
+      createService().replaceUploadDocument('user_1', 'doc_1', replacementFile),
+    ).rejects.toMatchObject({
+      code: 'KNOWLEDGE_DOCUMENT_PROCESSING',
+      statusCode: HttpStatus.CONFLICT,
+    });
+
+    expect(storage.uploadKnowledgeDocument).not.toHaveBeenCalled();
+  });
+
   it('rejects replacement when the document changes before the transactional update', async () => {
     const replacementFile = {
       buffer: Buffer.from('updated-notes'),

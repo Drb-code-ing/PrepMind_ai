@@ -258,10 +258,14 @@ describe('KnowledgeDocumentsController (e2e)', () => {
     const processed = knowledgeDocumentProcessResponseSchema.parse(
       getSuccessData(processResponse),
     );
+    const finalDocument =
+      processed.status === 'PROCESSING'
+        ? await waitForDocumentStatus(user.accessToken, uploaded.id, 'DONE')
+        : processed;
 
-    expect(processed.status).toBe('DONE');
-    expect(processed.chunkCount).toBeGreaterThan(0);
-    expect(processed.processedAt).not.toBeNull();
+    expect(finalDocument.status).toBe('DONE');
+    expect(finalDocument.chunkCount).toBeGreaterThan(0);
+    expect(finalDocument.processedAt).not.toBeNull();
     expect(embedBatch).toHaveBeenCalled();
 
     await request(server)
@@ -320,9 +324,13 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       .set('Authorization', `Bearer ${user.accessToken}`)
       .send({})
       .expect(201);
-    const reprocessed = knowledgeDocumentProcessResponseSchema.parse(
+    const processResult = knowledgeDocumentProcessResponseSchema.parse(
       getSuccessData(processResponse),
     );
+    const reprocessed =
+      processResult.status === 'PROCESSING'
+        ? await waitForDocumentStatus(user.accessToken, processed.id, 'DONE')
+        : processResult;
     expect(reprocessed.status).toBe('DONE');
     expect(reprocessed.chunkCount).toBeGreaterThan(0);
 
@@ -354,16 +362,29 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       getSuccessData(uploadResponse),
     );
 
-    await request(server)
-      .post(`/knowledge/documents/${uploaded.id}/process`)
-      .set('Authorization', `Bearer ${user.accessToken}`)
-      .send({})
-      .expect(422)
-      .expect((response) => {
-        expect(getErrorBody(response).error.code).toBe(
-          'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
-        );
-      });
+    if (process.env.KNOWLEDGE_PROCESSING_MODE === 'queue') {
+      const processResponse = await request(server)
+        .post(`/knowledge/documents/${uploaded.id}/process`)
+        .set('Authorization', `Bearer ${user.accessToken}`)
+        .send({})
+        .expect(201);
+      const processResult = knowledgeDocumentProcessResponseSchema.parse(
+        getSuccessData(processResponse),
+      );
+      expect(processResult.status).toBe('PROCESSING');
+      await waitForDocumentStatus(user.accessToken, uploaded.id, 'FAILED');
+    } else {
+      await request(server)
+        .post(`/knowledge/documents/${uploaded.id}/process`)
+        .set('Authorization', `Bearer ${user.accessToken}`)
+        .send({})
+        .expect(422)
+        .expect((response) => {
+          expect(getErrorBody(response).error.code).toBe(
+            'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
+          );
+        });
+    }
 
     await request(server)
       .get(`/knowledge/documents/${uploaded.id}`)
@@ -462,9 +483,42 @@ describe('KnowledgeDocumentsController (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({})
       .expect(201);
+    const processResult = knowledgeDocumentProcessResponseSchema.parse(
+      getSuccessData(processResponse),
+    );
+
+    if (processResult.status === 'PROCESSING') {
+      return waitForDocumentStatus(accessToken, uploaded.id, 'DONE');
+    }
+
+    return processResult;
+  }
+
+  async function waitForDocumentStatus(
+    accessToken: string,
+    documentId: string,
+    expectedStatus: 'DONE' | 'FAILED',
+  ) {
+    const deadline = Date.now() + 5000;
+    let latest = await readDocument(accessToken, documentId);
+
+    while (latest.status !== expectedStatus && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      latest = await readDocument(accessToken, documentId);
+    }
+
+    expect(latest.status).toBe(expectedStatus);
+    return latest;
+  }
+
+  async function readDocument(accessToken: string, documentId: string) {
+    const response = await request(server)
+      .get(`/knowledge/documents/${documentId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
 
     return knowledgeDocumentProcessResponseSchema.parse(
-      getSuccessData(processResponse),
+      getSuccessData(response),
     );
   }
 
