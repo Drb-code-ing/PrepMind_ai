@@ -36,6 +36,7 @@ export type RAGSearchInput = z.infer<typeof RAGSearchSchema>;
 export * from './review';
 export * from './review-preference';
 export * from './review-agent';
+export * from './background-job';
 export * from './knowledge';
 export * from './knowledge-agent';
 export * from './memory-agent';

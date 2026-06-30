@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { backgroundJobStatusSchema } from './background-job';
+
 const numericQuerySchema = (defaultValue: number, min: number, max: number) =>
   z.preprocess((value) => {
     if (value === undefined || value === null || value === '') {
@@ -75,7 +77,16 @@ export const knowledgeDocumentProcessRequestSchema = z
   })
   .strict();
 
-export const knowledgeDocumentProcessResponseSchema = knowledgeDocumentResponseSchema;
+export const knowledgeDocumentProcessingMetadataSchema = z.object({
+  mode: z.literal('queue'),
+  backgroundJobId: z.string().min(1),
+  status: backgroundJobStatusSchema,
+  queuedAt: z.string().datetime(),
+});
+
+export const knowledgeDocumentProcessResponseSchema = knowledgeDocumentResponseSchema.extend({
+  processing: knowledgeDocumentProcessingMetadataSchema.optional(),
+});
 
 export const knowledgeDocumentListQuerySchema = z
   .object({
@@ -131,6 +142,9 @@ export type KnowledgeDocumentDeleteResponse = z.infer<
 >;
 export type KnowledgeDocumentProcessRequest = z.infer<
   typeof knowledgeDocumentProcessRequestSchema
+>;
+export type KnowledgeDocumentProcessingMetadata = z.infer<
+  typeof knowledgeDocumentProcessingMetadataSchema
 >;
 export type KnowledgeDocumentProcessResponse = z.infer<
   typeof knowledgeDocumentProcessResponseSchema
