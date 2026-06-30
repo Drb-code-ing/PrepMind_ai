@@ -403,6 +403,51 @@ describe('DocumentProcessingService', () => {
     });
   });
 
+  it('runs a claimed processing pipeline without marking failed on retryable provider errors', async () => {
+    const failure = new Error('provider unavailable');
+    embedding.embedChunks.mockRejectedValue(failure);
+
+    await expect(
+      createService().runProcessingPipeline({
+        userId: 'user_1',
+        documentId: 'doc_1',
+        expectedDocument: {
+          storageKey: 'users/user_1/knowledge/notes.txt',
+          contentHash: 'sha256:abc',
+        },
+      }),
+    ).rejects.toBe(failure);
+
+    expect(prisma.document.updateMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
+  });
+
+  it('inline processDocument still marks failed for the existing synchronous contract', async () => {
+    const failure = new Error('provider unavailable');
+    embedding.embedChunks.mockRejectedValue(failure);
+
+    await expect(
+      createService().processDocument('user_1', 'doc_1', { force: false }),
+    ).rejects.toBe(failure);
+
+    expect(prisma.document.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'doc_1',
+        userId: 'user_1',
+        status: 'PROCESSING',
+        storageKey: 'users/user_1/knowledge/notes.txt',
+        contentHash: 'sha256:abc',
+      },
+      data: {
+        status: 'FAILED',
+        errorMessage: '资料处理失败，请稍后重试',
+      },
+    });
+  });
+
   it('marks failed with AppError message and rethrows parser failures after claim', async () => {
     const failure = new AppError(
       'KNOWLEDGE_DOCUMENT_PARSE_FAILED',

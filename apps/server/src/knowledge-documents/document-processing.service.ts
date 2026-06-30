@@ -34,74 +34,18 @@ export class DocumentProcessingService {
     documentId: string,
     options: { force: boolean },
   ) {
-    const document = await this.findOwned(userId, documentId);
-    this.assertProcessable(document.status, options.force);
-    await this.claimDocument(document, options.force);
+    const document = await this.claimDocumentForProcessing(
+      userId,
+      documentId,
+      options,
+    );
 
     try {
-      await this.chunkPersistenceService.clearDocumentChunks(
-        documentId,
+      return await this.runProcessingPipeline({
         userId,
-        this.processingSnapshot(document),
-      );
-
-      const object = await this.storageService.readKnowledgeDocumentObject(
-        document.storageKey,
-      );
-      const buffer = await streamToBuffer(object.stream);
-      const parsed = await this.parserService.parse({
-        name: document.name,
-        type: document.type,
-        mimeType: document.mimeType,
-        buffer,
-      });
-      const chunks = splitDocument(
-        {
-          documentId,
-          sourceName: document.name,
-          text: parsed.text,
-          metadata: parsed.metadata,
-        },
-        {
-          targetTokens: this.configService.get('RAG_CHUNK_TARGET_TOKENS', {
-            infer: true,
-          }),
-          overlapTokens: this.configService.get('RAG_CHUNK_OVERLAP_TOKENS', {
-            infer: true,
-          }),
-          maxTokens: this.configService.get('RAG_CHUNK_MAX_TOKENS', {
-            infer: true,
-          }),
-        },
-      );
-      if (chunks.length === 0) {
-        throw new AppError(
-          'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
-          '资料中没有可解析的文本',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      const vectors = await this.embeddingService.embedChunks(
-        chunks.map((chunk) => chunk.content),
-      );
-
-      await this.chunkPersistenceService.replaceDocumentChunks({
         documentId,
-        userId,
         expectedDocument: this.processingSnapshot(document),
-        chunks: chunks.map<PersistableChunk>((chunk, index) => ({
-          content: chunk.content,
-          embedding: vectors[index] ?? [],
-          metadata: chunk.metadata,
-          index: chunk.index,
-          tokenCount: chunk.tokenCount,
-        })),
       });
-
-      const done = await this.markDone(document);
-
-      return this.toResponse(done);
     } catch (error) {
       try {
         await this.markFailed(document, error);
@@ -110,6 +54,97 @@ export class DocumentProcessingService {
       }
       throw error;
     }
+  }
+
+  async claimDocumentForProcessing(
+    userId: string,
+    documentId: string,
+    options: { force: boolean },
+  ) {
+    const document = await this.findOwned(userId, documentId);
+    this.assertProcessable(document.status, options.force);
+    await this.claimDocument(document, options.force);
+
+    return document;
+  }
+
+  async runProcessingPipeline(input: {
+    userId: string;
+    documentId: string;
+    expectedDocument: { storageKey: string; contentHash: string | null };
+  }) {
+    const document = await this.findOwned(input.userId, input.documentId);
+    const expectedDocument = input.expectedDocument;
+
+    await this.chunkPersistenceService.clearDocumentChunks(
+      input.documentId,
+      input.userId,
+      expectedDocument,
+    );
+
+    const object = await this.storageService.readKnowledgeDocumentObject(
+      expectedDocument.storageKey,
+    );
+    const buffer = await streamToBuffer(object.stream);
+    const parsed = await this.parserService.parse({
+      name: document.name,
+      type: document.type,
+      mimeType: document.mimeType,
+      buffer,
+    });
+    const chunks = splitDocument(
+      {
+        documentId: input.documentId,
+        sourceName: document.name,
+        text: parsed.text,
+        metadata: parsed.metadata,
+      },
+      {
+        targetTokens: this.configService.get('RAG_CHUNK_TARGET_TOKENS', {
+          infer: true,
+        }),
+        overlapTokens: this.configService.get('RAG_CHUNK_OVERLAP_TOKENS', {
+          infer: true,
+        }),
+        maxTokens: this.configService.get('RAG_CHUNK_MAX_TOKENS', {
+          infer: true,
+        }),
+      },
+    );
+    if (chunks.length === 0) {
+      throw new AppError(
+        'KNOWLEDGE_DOCUMENT_EMPTY_TEXT',
+        '资料中没有可解析的文本',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const vectors = await this.embeddingService.embedChunks(
+      chunks.map((chunk) => chunk.content),
+    );
+
+    await this.chunkPersistenceService.replaceDocumentChunks({
+      documentId: input.documentId,
+      userId: input.userId,
+      expectedDocument,
+      chunks: chunks.map<PersistableChunk>((chunk, index) => ({
+        content: chunk.content,
+        embedding: vectors[index] ?? [],
+        metadata: chunk.metadata,
+        index: chunk.index,
+        tokenCount: chunk.tokenCount,
+      })),
+    });
+
+    const done = await this.markDone({
+      ...document,
+      id: input.documentId,
+      userId: input.userId,
+      storageKey: expectedDocument.storageKey,
+      contentHash: expectedDocument.contentHash,
+    });
+
+    return this.toResponse(done);
   }
 
   private async findOwned(userId: string, documentId: string) {
