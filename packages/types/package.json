@@ -21,6 +21,7 @@
     "./api/review-preference": "./src/api/review-preference.ts",
     "./api/review-task": "./src/api/review-task.ts",
     "./api/review-agent": "./src/api/review-agent.ts",
+    "./api/rag-safety": "./src/api/rag-safety.ts",
     "./api/memory-agent": "./src/api/memory-agent.ts",
     "./api/knowledge": "./src/api/knowledge.ts",
     "./api/knowledge-agent": "./src/api/knowledge-agent.ts",

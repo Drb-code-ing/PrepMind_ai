@@ -37,6 +37,7 @@ export * from './review';
 export * from './review-preference';
 export * from './review-agent';
 export * from './background-job';
+export * from './rag-safety';
 export * from './knowledge';
 export * from './knowledge-agent';
 export * from './memory-agent';
