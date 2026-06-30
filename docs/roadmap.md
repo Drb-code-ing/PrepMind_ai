@@ -275,6 +275,7 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 
 Phase 7 后续继续推进：
 
+- RAG SafetyGuard：把用户上传资料视为低信任证据，规划 chunk 级 prompt injection 检测、检索后过滤/降权、Verifier 联动和验收用例；执行计划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-guard.md`。
 - EventBus：把文档处理完成、错题整理、复习提醒等事件统一为可观测事件。
 - Swagger / OpenAPI：补齐核心 REST API contract 和调试文档。
 - Worker 部署：补齐真正 worker-only 启动方式，拆分 API / worker 进程，补充健康检查、重试策略、死信队列和生产监控。
