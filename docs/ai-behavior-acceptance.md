@@ -128,6 +128,7 @@ RAG SafetyGuard 规划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-
 
 ### Phase 7.2 RAG SafetyGuard implemented acceptance checklist
 
+- 详细实现计划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-guard.md`，面试复盘博客见 `docs/blogs/phase-7-rag-safety-guard.md`。
 - User-uploaded documents are treated as low-trust evidence, not as system, developer, or tool-call instructions.
 - High-risk prompt injection chunks are classified during document processing and persisted in `Chunk.metadata.safety`.
 - `/knowledge/search` returns safety metadata for retrieved chunks so downstream Chat and UI layers do not need to re-guess risk.

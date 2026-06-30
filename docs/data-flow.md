@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-06-30。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-06-30。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -14,7 +14,7 @@
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
 - Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 - 后台任务职责：`BackgroundJob` 以 PostgreSQL 为权威来源；`/background-jobs` 提供账号级只读任务观测 API，当前服务知识库文档处理队列；job 只保存状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata。
-- RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台。
+- RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
@@ -92,7 +92,7 @@
 - `activeStudyContext` 来自有效 OCR 题目，用于承接“这一步为什么这样做”等追问。
 - RouterAgent 会为 Chat 请求生成 route metadata，当前主要用于区分 `chat`、`tutor`、`rag_answer`、`study_plan`、`review_analysis` 和 `wrong_question_organize` 等路线。
 - `tutor` route 会调用 TutorAgent policy，生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略。
-- Agent prompt 顺序为 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context`；当 RAG prompt 因 token 预算被丢弃时，短 Agent prompt 仍保留。
+- Agent prompt 顺序为 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context -> verifier / safety guidance`；RAG knowledge context 只接收 SafetyGuard 过滤后的可用 chunk；当 RAG prompt 因 token 预算被丢弃时，短 Agent prompt 仍保留。
 - Chat 响应会带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`。
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
@@ -160,6 +160,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 使用 status + storageKey + contentHash 快照条件 claim Document(status=PROCESSING)
   -> TXT / Markdown / DOCX / PDF 基础文本解析
   -> @repo/rag 段落感知分块
+  -> @repo/rag classifyRagChunkSafety() 写入 Chunk.metadata.safety
   -> Embedding provider 生成向量
   -> 事务内 SELECT ... FOR UPDATE 锁定同一 processing 快照
   -> Chunk.embedding vector(1536) raw SQL 写入 pgvector
@@ -202,11 +203,11 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 ```text
 用户查询
   -> POST /knowledge/search
-  -> knowledgeSearchRequestSchema 校验 query / limit / minScore / documentId
+  -> knowledgeSearchRequestSchema 校验 query / topK / minScore
   -> EmbeddingService 生成 query embedding
   -> pgvector cosine search 当前用户 DONE 文档 chunks
   -> 过滤低于 minScore 的结果
-  -> 返回 KnowledgeSearchResponse(hits)
+  -> 返回 KnowledgeSearchResponse(hits)，包含 chunk metadata.safety
 ```
 
 当前 Chat RAG 数据流：
@@ -216,8 +217,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> ChatRuntimeProvider 将 accessToken 放入 /api/chat 请求体
   -> /api/chat 使用最新用户消息调用 /knowledge/search
   -> 无 token / 无资料 / 未命中 / 检索失败：普通 AI 回答
-  -> 命中知识库：调用 KnowledgeVerifierAgent 评估 retrieved chunks
-  -> 注入 chunks 与 verifier guidance 到 system prompt
+  -> 命中知识库：先过滤 high-risk chunks，medium-risk chunks 只作为可疑原文引用
+  -> 调用 KnowledgeVerifierAgent 评估 raw retrieved chunks 与 safety metadata
+  -> 注入过滤后的 chunks 与 verifier / safety guidance 到 system prompt
   -> AI 回答，并在助手消息末尾追加 Markdown 参考资料
   -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
@@ -280,6 +282,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 关键约定：
 
 - RAG 只增强回答，不阻断回答。
+- 用户上传资料是低信任证据，不是系统、开发者或工具调用指令。
+- `Chunk.metadata.safety` 是确定性安全分类元数据；它用于 prompt 过滤、Verifier guidance 和 UI 安全提示，不会自动删除、隔离、重写或替换用户资料。
+- high-risk chunk 不进入 Chat prompt 或 citations；medium-risk chunk 只能作为明确标记的可疑原文引用；low-risk / safe chunk 可正常参与 RAG。
 - 第一版资料来源以用户上传 PDF / DOCX / TXT / Markdown 为主。
 - `Document.sourceType` 已预留 `UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR` 和 `CHAT`；OCR、错题和聊天沉淀当前仍不自动入库。
 - Phase 5.3 文档 API 按当前 `userId` 隔离，上传原文件进入 MinIO，`Document(PENDING, sourceType=UPLOAD)` 进入 PostgreSQL。
