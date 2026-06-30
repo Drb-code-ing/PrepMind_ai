@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { backgroundJobStatusSchema } from '@repo/types/api/background-job';
+import { ragSafetyClassificationSchema } from './rag-safety';
 
 const numericQuerySchema = (defaultValue: number, min: number, max: number) =>
   z.preprocess((value) => {
@@ -110,13 +111,17 @@ export const knowledgeSearchRequestSchema = z
   })
   .strict();
 
+const knowledgeChunkMetadataSchema = z
+  .record(z.unknown())
+  .and(z.object({ safety: ragSafetyClassificationSchema.optional() }));
+
 export const knowledgeSearchHitSchema = z.object({
   chunkId: z.string(),
   documentId: z.string(),
   documentName: z.string(),
   content: z.string(),
   score: z.number().min(0).max(1),
-  metadata: z.record(z.unknown()),
+  metadata: knowledgeChunkMetadataSchema,
 });
 
 export const knowledgeSearchResponseSchema = z.object({

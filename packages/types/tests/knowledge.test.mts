@@ -185,6 +185,51 @@ function testSearchRequest() {
 }
 
 function testSearchResponse() {
+  const resultWithSafety = knowledgeSearchResponseSchema.parse({
+    hits: [
+      {
+        chunkId: 'chunk_safe_contract',
+        documentId: 'doc_1',
+        documentName: 'notes.txt',
+        content: 'unsafe source text',
+        score: 0.8,
+        metadata: {
+          safety: {
+            riskLevel: 'high',
+            categories: ['instruction_override'],
+            matchedPatterns: ['ignore_previous_instructions_zh'],
+            safeForPrompt: false,
+          },
+        },
+      },
+    ],
+  });
+  const safety = resultWithSafety.hits[0]?.metadata.safety as
+    | { riskLevel?: string }
+    | undefined;
+  assert.equal(safety?.riskLevel, 'high');
+  assert.throws(() =>
+    knowledgeSearchResponseSchema.parse({
+      hits: [
+        {
+          chunkId: 'chunk_1',
+          documentId: 'doc_1',
+          documentName: 'notes.txt',
+          content: 'unsafe',
+          score: 0.8,
+          metadata: {
+            safety: {
+              riskLevel: 'critical',
+              categories: ['instruction_override'],
+              matchedPatterns: ['ignore_previous_instructions_zh'],
+              safeForPrompt: false,
+            },
+          },
+        },
+      ],
+    }),
+  );
+
   const result = knowledgeSearchResponseSchema.parse({
     hits: [
       {
