@@ -15,4 +15,21 @@ describe('@repo/rag package entry', () => {
 
     expect(result.exitCode).toBe(0);
   });
+
+  it('exports the RAG safety classifier through the server runtime entry', () => {
+    const result = Bun.spawnSync(
+      [
+        'node',
+        '-e',
+        "const rag = require('@repo/rag'); if (typeof rag.classifyRagChunkSafety !== 'function') process.exit(2);",
+      ],
+      {
+        cwd: serverDir,
+        stderr: 'pipe',
+        stdout: 'pipe',
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+  });
 });
