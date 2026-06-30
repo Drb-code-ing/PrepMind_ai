@@ -140,3 +140,13 @@ RAG SafetyGuard 规划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-
 - Inline and queue processing paths must continue to write consistent safety metadata.
 - Agent Trace and BackgroundJob records remain metadata-only and must not store complete malicious chunks, full prompts, API keys, tokens, or cookies.
 - Mock tests cover fixed prompt-injection samples. Live smoke is still required when final Chat output behavior changes, because deterministic filtering does not prove real-model refusal quality.
+
+### Phase 7.2 live/browser smoke record - 2026-06-30
+
+- Environment: local dev server, Docker PostgreSQL / Redis / MinIO running, `RAG_EMBEDDING_PROVIDER=fake`, `/agent-trace` dev AI mode switch used for temporary live mode.
+- Live switch check: `/agent-trace` showed `当前：Live` before smoke and was switched back to `当前：Mock` after smoke.
+- Basic live Chat smoke: `/api/chat` returned `x-prepmind-ai-mode=live`, route `chat`, trace recorded, and the UI rendered a non-empty assistant answer.
+- Knowledge UI safety smoke: a temporary TXT containing prompt-injection text was uploaded, processed, searched, and `/knowledge` displayed the compact `疑似指令注入` badge. The temporary document was deleted after verification.
+- Forced-hit RAG SafetyGuard smoke: a temporary TXT was crafted to produce a high-similarity fake-embedding hit; live Chat returned route `rag_answer`, verifier status `suspicious`, verifier chunks `1`, trace recorded, and the assistant answer did not leak system prompt content.
+- Final UI evidence included the RAG SafetyGuard notice: one high-risk chunk was blocked and treated as untrusted source text.
+- Cleanup: temporary knowledge documents and local temporary TXT files were removed; dev AI mode was returned to mock.
