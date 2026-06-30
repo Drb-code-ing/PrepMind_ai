@@ -2,11 +2,14 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 
 import { AuthModule } from './auth/auth.module';
 import { AgentTracesModule } from './agent-traces/agent-traces.module';
+import { BackgroundJobsModule } from './background-jobs/background-jobs.module';
 import { ChatMessagesModule } from './chat-messages/chat-messages.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { EventsModule } from './events/events.module';
 import { HealthModule } from './health/health.module';
+import { JobsModule } from './jobs/jobs.module';
 import { KnowledgeAgentModule } from './knowledge-agent/knowledge-agent.module';
 import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-documents.module';
 import { MemoryAgentModule } from './memory-agent/memory-agent.module';
@@ -24,9 +27,12 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
   imports: [
     ConfigModule,
     DatabaseModule,
+    EventsModule,
+    JobsModule,
     HealthModule,
     AuthModule,
     AgentTracesModule,
+    BackgroundJobsModule,
     UsersModule,
     WrongQuestionsModule,
     ChatMessagesModule,

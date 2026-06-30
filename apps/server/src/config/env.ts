@@ -24,6 +24,8 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3001),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
+    SERVER_ROLE: z.enum(['api', 'worker', 'both']).default('both'),
+    BULLMQ_PREFIX: z.string().min(1).default('prepmind'),
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
@@ -83,6 +85,49 @@ const envSchema = z
       .min(1)
       .max(2000)
       .default(500),
+    KNOWLEDGE_PROCESSING_MODE: z.enum(['inline', 'queue']).default('inline'),
+    KNOWLEDGE_PROCESSING_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(8)
+      .default(2),
+    KNOWLEDGE_PROCESSING_ATTEMPTS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(5)
+      .default(3),
+    KNOWLEDGE_PROCESSING_JOB_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(600_000)
+      .default(120_000),
+    KNOWLEDGE_PROCESSING_LOCK_DURATION_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(300_000)
+      .default(60_000),
+    KNOWLEDGE_PROCESSING_GLOBAL_RATE_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(300)
+      .default(30),
+    KNOWLEDGE_PROCESSING_PER_USER_ACTIVE_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .default(2),
+    EMBEDDING_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(5_000)
+      .max(120_000)
+      .default(30_000),
     OPENAI_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
