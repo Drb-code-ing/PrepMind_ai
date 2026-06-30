@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
-import { splitDocument } from '@repo/rag';
+import { classifyRagChunkSafety, splitDocument } from '@repo/rag';
 import type {
   KnowledgeDocumentMimeType,
   KnowledgeDocumentResponse,
@@ -134,7 +134,10 @@ export class DocumentProcessingService {
       chunks: chunks.map<PersistableChunk>((chunk, index) => ({
         content: chunk.content,
         embedding: vectors[index] ?? [],
-        metadata: chunk.metadata,
+        metadata: {
+          ...chunk.metadata,
+          safety: classifyRagChunkSafety(chunk.content),
+        },
         index: chunk.index,
         tokenCount: chunk.tokenCount,
       })),
