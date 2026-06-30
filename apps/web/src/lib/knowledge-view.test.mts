@@ -2,17 +2,23 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type {
+  KnowledgeDocumentProcessResponse,
+  KnowledgeDocumentResponse,
   KnowledgeDocumentStatus,
   KnowledgeSearchHit,
 } from '@repo/types/api/knowledge';
+import type { BackgroundJobResponse } from '@repo/types/api/background-job';
 
 import {
   KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
   formatKnowledgeDateTime,
   formatKnowledgeFileSize,
+  getKnowledgeBackgroundJobStatusMeta,
   getKnowledgeDocumentAction,
   getKnowledgeDocumentStatusMeta,
+  getKnowledgeProcessSuccessMessage,
   getKnowledgeSearchHitSummary,
+  groupLatestKnowledgeJobsByDocumentId,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from './knowledge-view.ts';
 
@@ -69,6 +75,65 @@ describe('getKnowledgeDocumentAction', () => {
       force: true,
       disabled: false,
     });
+  });
+});
+
+describe('getKnowledgeBackgroundJobStatusMeta', () => {
+  it('returns compact labels for visible processing job statuses', () => {
+    assert.equal(getKnowledgeBackgroundJobStatusMeta('QUEUED')?.label, '排队中');
+    assert.equal(getKnowledgeBackgroundJobStatusMeta('ACTIVE')?.label, '处理中');
+    assert.equal(getKnowledgeBackgroundJobStatusMeta('FAILED')?.label, '处理失败');
+    assert.equal(getKnowledgeBackgroundJobStatusMeta('STALE_SKIPPED')?.label, '旧任务已跳过');
+    assert.equal(getKnowledgeBackgroundJobStatusMeta('SUCCEEDED'), null);
+  });
+});
+
+describe('getKnowledgeProcessSuccessMessage', () => {
+  it('describes queued processing without claiming completion', () => {
+    assert.equal(
+      getKnowledgeProcessSuccessMessage(
+        createDocument({ name: 'notes.md' }),
+        createProcessResponse({
+          status: 'PROCESSING',
+          processing: {
+            mode: 'queue',
+            backgroundJobId: 'job_1',
+            status: 'QUEUED',
+            queuedAt: '2026-06-29T00:00:00.000Z',
+          },
+        }),
+      ),
+      '《notes.md》已进入后台处理队列。',
+    );
+  });
+
+  it('describes inline completion with the chunk count', () => {
+    assert.equal(
+      getKnowledgeProcessSuccessMessage(
+        createDocument({ name: 'notes.md' }),
+        createProcessResponse({ status: 'DONE', chunkCount: 3 }),
+      ),
+      '《notes.md》处理完成，当前 3 个片段。',
+    );
+  });
+});
+
+describe('groupLatestKnowledgeJobsByDocumentId', () => {
+  it('keeps the newest job for each knowledge document', () => {
+    const grouped = groupLatestKnowledgeJobsByDocumentId([
+      createBackgroundJob({
+        id: 'older',
+        resourceId: 'doc_1',
+        updatedAt: '2026-06-29T00:00:00.000Z',
+      }),
+      createBackgroundJob({
+        id: 'newer',
+        resourceId: 'doc_1',
+        updatedAt: '2026-06-29T00:00:02.000Z',
+      }),
+    ]);
+
+    assert.equal(grouped.get('doc_1')?.id, 'newer');
   });
 });
 
@@ -138,3 +203,55 @@ describe('formatKnowledgeDateTime', () => {
     assert.match(formatKnowledgeDateTime('2026-06-19T08:30:00.000Z'), /\d{2}\/\d{2}/);
   });
 });
+
+function createDocument(input: Partial<KnowledgeDocumentResponse> = {}): KnowledgeDocumentResponse {
+  return {
+    id: 'doc_1',
+    name: 'calculus.md',
+    type: 'MD',
+    size: 1024,
+    mimeType: 'text/markdown',
+    status: 'PENDING',
+    sourceType: 'UPLOAD',
+    errorMessage: null,
+    contentHash: 'hash_1',
+    chunkCount: 0,
+    processedAt: null,
+    createdAt: '2026-06-19T08:00:00.000Z',
+    updatedAt: '2026-06-19T08:00:00.000Z',
+    ...input,
+  };
+}
+
+function createProcessResponse(
+  input: Partial<KnowledgeDocumentProcessResponse> = {},
+): KnowledgeDocumentProcessResponse {
+  return {
+    ...createDocument(),
+    ...input,
+  };
+}
+
+function createBackgroundJob(input: Partial<BackgroundJobResponse> = {}): BackgroundJobResponse {
+  return {
+    id: 'job_1',
+    queueName: 'knowledge-document-processing',
+    jobName: 'process-document',
+    status: 'ACTIVE',
+    resourceType: 'KNOWLEDGE_DOCUMENT',
+    resourceId: 'doc_1',
+    attempt: 1,
+    maxAttempts: 3,
+    progress: 0,
+    payloadPreview: { documentId: 'doc_1' },
+    resultSummary: null,
+    errorCode: null,
+    errorMessage: null,
+    requestedAt: '2026-06-29T00:00:00.000Z',
+    startedAt: '2026-06-29T00:00:01.000Z',
+    finishedAt: null,
+    createdAt: '2026-06-29T00:00:00.000Z',
+    updatedAt: '2026-06-29T00:00:01.000Z',
+    ...input,
+  };
+}

@@ -1,7 +1,13 @@
 import type {
+  KnowledgeDocumentProcessResponse,
+  KnowledgeDocumentResponse,
   KnowledgeDocumentStatus,
   KnowledgeSearchHit,
 } from '@repo/types/api/knowledge';
+import type {
+  BackgroundJobResponse,
+  BackgroundJobStatus,
+} from '@repo/types/api/background-job';
 
 type KnowledgeDocumentStatusMeta = {
   label: string;
@@ -12,6 +18,12 @@ type KnowledgeDocumentAction = {
   label: string;
   force: boolean;
   disabled: boolean;
+};
+
+type KnowledgeBackgroundJobStatusMeta = {
+  label: string;
+  className: string;
+  active: boolean;
 };
 
 export const KNOWLEDGE_PAGE_SEARCH_MIN_SCORE = 0.4;
@@ -58,6 +70,31 @@ const knowledgeDocumentActions: Record<KnowledgeDocumentStatus, KnowledgeDocumen
   },
 };
 
+const visibleBackgroundJobStatusMeta: Partial<
+  Record<BackgroundJobStatus, KnowledgeBackgroundJobStatusMeta>
+> = {
+  QUEUED: {
+    label: '排队中',
+    className: 'bg-amber-50/80 text-amber-700 ring-amber-100',
+    active: true,
+  },
+  ACTIVE: {
+    label: '处理中',
+    className: 'bg-sky-50/80 text-sky-700 ring-sky-100',
+    active: true,
+  },
+  FAILED: {
+    label: '处理失败',
+    className: 'bg-red-50/80 text-red-700 ring-red-100',
+    active: false,
+  },
+  STALE_SKIPPED: {
+    label: '旧任务已跳过',
+    className: 'bg-slate-50/80 text-slate-600 ring-slate-100',
+    active: false,
+  },
+};
+
 export function formatKnowledgeFileSize(size: number) {
   if (size < 1024) {
     return `${size} B`;
@@ -90,6 +127,34 @@ export function getKnowledgeDocumentStatusMeta(status: KnowledgeDocumentStatus) 
 
 export function getKnowledgeDocumentAction(status: KnowledgeDocumentStatus) {
   return knowledgeDocumentActions[status];
+}
+
+export function getKnowledgeBackgroundJobStatusMeta(status: BackgroundJobStatus) {
+  return visibleBackgroundJobStatusMeta[status] ?? null;
+}
+
+export function getKnowledgeProcessSuccessMessage(
+  document: KnowledgeDocumentResponse,
+  processed: KnowledgeDocumentProcessResponse,
+) {
+  if (processed.processing || processed.status === 'PROCESSING') {
+    return `《${document.name}》已进入后台处理队列。`;
+  }
+
+  return `《${document.name}》处理完成，当前 ${processed.chunkCount} 个片段。`;
+}
+
+export function groupLatestKnowledgeJobsByDocumentId(jobs: BackgroundJobResponse[]) {
+  const grouped = new Map<string, BackgroundJobResponse>();
+
+  for (const job of jobs) {
+    const previous = grouped.get(job.resourceId);
+    if (!previous || new Date(job.updatedAt).getTime() > new Date(previous.updatedAt).getTime()) {
+      grouped.set(job.resourceId, job);
+    }
+  }
+
+  return grouped;
 }
 
 export function shouldCloseKnowledgeDocumentMenuOnPointerDown({

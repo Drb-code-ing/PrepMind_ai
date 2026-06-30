@@ -3,13 +3,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   KnowledgeDocumentListQuery,
+  KnowledgeDocumentListResponse,
   KnowledgeDocumentProcessRequest,
   KnowledgeSearchRequest,
 } from '@repo/types/api/knowledge';
 
+import { backgroundJobQueryKeys } from '@/hooks/use-background-jobs';
 import { knowledgeApi } from '@/lib/knowledge-api';
 import { knowledgeAgentQueryKeys } from '@/lib/knowledge-agent-query-keys';
 import { useUserStore } from '@/stores/userStore';
+
+type KnowledgeDocumentListOptions = {
+  refetchInterval?:
+    | number
+    | false
+    | ((query: { state: { data?: KnowledgeDocumentListResponse } }) => number | false);
+};
 
 export const knowledgeQueryKeys = {
   all: ['knowledge'] as const,
@@ -21,7 +30,10 @@ export const knowledgeQueryKeys = {
   search: () => [...knowledgeQueryKeys.all, 'search'] as const,
 };
 
-export function useKnowledgeDocumentList(query: KnowledgeDocumentListQuery) {
+export function useKnowledgeDocumentList(
+  query: KnowledgeDocumentListQuery,
+  options: KnowledgeDocumentListOptions = {},
+) {
   const accessToken = useUserStore((state) => state.accessToken);
   const sessionHydrated = useUserStore((state) => state.sessionHydrated);
 
@@ -35,6 +47,7 @@ export function useKnowledgeDocumentList(query: KnowledgeDocumentListQuery) {
     },
     enabled: sessionHydrated && !!accessToken,
     retry: false,
+    refetchInterval: options.refetchInterval,
   });
 }
 
@@ -97,6 +110,7 @@ export function useReplaceKnowledgeDocumentFile() {
       });
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
       void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: backgroundJobQueryKeys.all });
     },
   });
 }
@@ -125,6 +139,7 @@ export function useProcessKnowledgeDocument() {
       });
       void queryClient.invalidateQueries({ queryKey: knowledgeQueryKeys.search() });
       void queryClient.invalidateQueries({ queryKey: knowledgeAgentQueryKeys.all });
+      void queryClient.invalidateQueries({ queryKey: backgroundJobQueryKeys.all });
     },
   });
 }

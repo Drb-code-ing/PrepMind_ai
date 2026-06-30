@@ -19,6 +19,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type {
+  BackgroundJobListQuery,
+  BackgroundJobResponse,
+} from '@repo/types/api/background-job';
+import type {
   KnowledgeDocumentListQuery,
   KnowledgeDocumentResponse,
   KnowledgeSearchHit,
@@ -28,6 +32,7 @@ import type {
   KnowledgeDedupItem,
 } from '@repo/types/api/knowledge-agent';
 
+import { useBackgroundJobList } from '@/hooks/use-background-jobs';
 import { useKnowledgeAgentSuggestions } from '@/hooks/use-knowledge-agent-suggestions';
 import {
   useDeleteKnowledgeDocument,
@@ -41,9 +46,12 @@ import {
   KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
   formatKnowledgeDateTime,
   formatKnowledgeFileSize,
+  getKnowledgeBackgroundJobStatusMeta,
   getKnowledgeDocumentAction,
   getKnowledgeDocumentStatusMeta,
+  getKnowledgeProcessSuccessMessage,
   getKnowledgeSearchHitSummary,
+  groupLatestKnowledgeJobsByDocumentId,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from '@/lib/knowledge-view';
 import {
@@ -72,6 +80,11 @@ const noticeDurationMs = 2200;
 const maxDocumentErrorLength = 160;
 const knowledgeDocumentListQuery = { limit: 50 } satisfies KnowledgeDocumentListQuery;
 const knowledgeAgentSuggestionQuery = { limit: 20 } as const;
+const knowledgeBackgroundJobQuery = {
+  resourceType: 'KNOWLEDGE_DOCUMENT',
+  limit: 50,
+} satisfies BackgroundJobListQuery;
+const processingPollIntervalMs = 2000;
 
 const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> = {
   success: {
@@ -89,15 +102,6 @@ const noticeStyles: Record<NoticeTone, { icon: LucideIcon; className: string }> 
 };
 
 export default function KnowledgePage() {
-  const documentsQuery = useKnowledgeDocumentList(knowledgeDocumentListQuery);
-  const knowledgeAgentSuggestions = useKnowledgeAgentSuggestions(
-    knowledgeAgentSuggestionQuery,
-  );
-  const uploadDocument = useUploadKnowledgeDocument();
-  const replaceDocument = useReplaceKnowledgeDocumentFile();
-  const processDocument = useProcessKnowledgeDocument();
-  const deleteDocument = useDeleteKnowledgeDocument();
-  const searchKnowledge = useSearchKnowledge();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const searchRequestSeqRef = useRef(0);
@@ -110,9 +114,37 @@ export default function KnowledgePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<KnowledgeSearchHit[] | null>(null);
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState('');
+  const documentsQuery = useKnowledgeDocumentList(knowledgeDocumentListQuery, {
+    refetchInterval: (query) =>
+      processingIds.size > 0 ||
+      (query.state.data?.items ?? []).some((document) => document.status === 'PROCESSING')
+        ? processingPollIntervalMs
+        : false,
+  });
+  const knowledgeAgentSuggestions = useKnowledgeAgentSuggestions(
+    knowledgeAgentSuggestionQuery,
+  );
+  const uploadDocument = useUploadKnowledgeDocument();
+  const replaceDocument = useReplaceKnowledgeDocumentFile();
+  const processDocument = useProcessKnowledgeDocument();
+  const deleteDocument = useDeleteKnowledgeDocument();
+  const searchKnowledge = useSearchKnowledge();
   const documentItems = documentsQuery.data?.items;
   const documents = useMemo(() => documentItems ?? [], [documentItems]);
   const summary = useMemo(() => getKnowledgeSummary(documents), [documents]);
+  const hasProcessingDocuments = useMemo(
+    () => documents.some((document) => document.status === 'PROCESSING'),
+    [documents],
+  );
+  const shouldPollProcessingState = hasProcessingDocuments || processingIds.size > 0;
+  const backgroundJobsQuery = useBackgroundJobList(knowledgeBackgroundJobQuery, {
+    enabled: documents.length > 0 || shouldPollProcessingState,
+    refetchInterval: shouldPollProcessingState ? processingPollIntervalMs : false,
+  });
+  const backgroundJobsByDocumentId = useMemo(
+    () => groupLatestKnowledgeJobsByDocumentId(backgroundJobsQuery.data?.items ?? []),
+    [backgroundJobsQuery.data?.items],
+  );
 
   const showNotice = (message: string, tone: NoticeTone = 'success') => {
     if (noticeTimerRef.current !== null) {
@@ -171,7 +203,7 @@ export default function KnowledgePage() {
         documentId: document.id,
         request: { force: action.force },
       });
-      showNotice(`《${document.name}》处理完成，当前 ${processed.chunkCount} 个片段。`);
+      showNotice(getKnowledgeProcessSuccessMessage(document, processed));
     } catch (error) {
       showNotice(getActionErrorMessage(error), 'danger');
     } finally {
@@ -383,6 +415,7 @@ export default function KnowledgePage() {
                   actionPending={processingIds.has(document.id)}
                   deletePending={deletingIds.has(document.id)}
                   replacePending={replacingIds.has(document.id)}
+                  backgroundJob={backgroundJobsByDocumentId.get(document.id) ?? null}
                   onProcess={() => void handleProcess(document)}
                   onReplaceFile={(file) => void handleReplace(document, file)}
                   onRequestDelete={() => setPendingDeleteId(document.id)}
@@ -717,6 +750,7 @@ function EmptyDocuments() {
 
 function KnowledgeDocumentCard({
   document,
+  backgroundJob,
   pendingDelete,
   actionPending,
   deletePending,
@@ -728,6 +762,7 @@ function KnowledgeDocumentCard({
   onConfirmDelete,
 }: {
   document: KnowledgeDocumentResponse;
+  backgroundJob: BackgroundJobResponse | null;
   pendingDelete: boolean;
   actionPending: boolean;
   deletePending: boolean;
@@ -742,6 +777,9 @@ function KnowledgeDocumentCard({
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
   const statusMeta = getKnowledgeDocumentStatusMeta(document.status);
+  const backgroundJobMeta = backgroundJob
+    ? getKnowledgeBackgroundJobStatusMeta(backgroundJob.status)
+    : null;
   const action = getKnowledgeDocumentAction(document.status);
   const statusLocked = document.status === 'PROCESSING';
   const documentBusy = actionPending || deletePending || replacePending || statusLocked;
@@ -869,6 +907,22 @@ function KnowledgeDocumentCard({
             <p className="mt-3 break-words rounded-2xl bg-red-50 px-3 py-2 text-xs leading-5 text-red-600 ring-1 ring-red-100">
               {formatDocumentErrorMessage(document.errorMessage)}
             </p>
+          ) : null}
+
+          {backgroundJob && backgroundJobMeta ? (
+            <div
+              className={`mt-3 flex min-h-10 items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ring-1 ${backgroundJobMeta.className}`}
+            >
+              {backgroundJobMeta.active ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 shrink-0" />
+              )}
+              <span className="min-w-0 flex-1 break-words">
+                后台任务：{backgroundJobMeta.label}
+                {backgroundJob.status === 'ACTIVE' ? ` · ${backgroundJob.progress}%` : ''}
+              </span>
+            </div>
           ) : null}
         </div>
       </div>

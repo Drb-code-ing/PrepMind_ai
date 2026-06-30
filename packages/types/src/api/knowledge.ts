@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { backgroundJobStatusSchema } from './background-job';
+import { backgroundJobStatusSchema } from '@repo/types/api/background-job';
 
 const numericQuerySchema = (defaultValue: number, min: number, max: number) =>
   z.preprocess((value) => {
