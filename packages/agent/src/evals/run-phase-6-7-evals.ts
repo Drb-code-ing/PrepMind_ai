@@ -59,8 +59,12 @@ export function runPhase67EvalCase(testCase: Phase67EvalCase): Phase67EvalResult
 
     return {
       name: testCase.name,
-      passed: result.status === testCase.expectedStatus,
-      detail: `status=${result.status} checked=${result.debug.checkedChunkCount}`,
+      passed:
+        result.status === testCase.expectedStatus &&
+        (testCase.expectedReasonIncludes
+          ? result.reason.includes(testCase.expectedReasonIncludes)
+          : true),
+      detail: `status=${result.status} reason=${result.reason} checked=${result.debug.checkedChunkCount}`,
     };
   }
 
