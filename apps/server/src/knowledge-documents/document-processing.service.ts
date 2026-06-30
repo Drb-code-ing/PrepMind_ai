@@ -151,6 +151,32 @@ export class DocumentProcessingService {
     return this.toResponse(done);
   }
 
+  async markFailedForSnapshot(input: {
+    userId: string;
+    documentId: string;
+    expectedDocument: { storageKey: string; contentHash: string | null };
+    error: unknown;
+  }) {
+    const errorMessage =
+      input.error instanceof AppError
+        ? input.error.message
+        : '资料处理失败，请稍后重试';
+
+    await this.prisma.document.updateMany({
+      where: {
+        id: input.documentId,
+        userId: input.userId,
+        status: 'PROCESSING',
+        storageKey: input.expectedDocument.storageKey,
+        contentHash: input.expectedDocument.contentHash,
+      },
+      data: {
+        status: 'FAILED',
+        errorMessage,
+      },
+    });
+  }
+
   private async findOwned(userId: string, documentId: string) {
     const document = await this.prisma.document.findFirst({
       where: { id: documentId, userId },
