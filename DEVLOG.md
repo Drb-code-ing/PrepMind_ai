@@ -1,910 +1,301 @@
 # PrepMind AI 开发日志
 
-按日期记录关键改动、验证结果和提交信息。所有待办与规划统一放在文末，避免散落在历史记录中。
+> 维护规则：`DEVLOG.md` 只记录阶段级里程碑、关键工程决策和验收结果，不再堆叠逐提交流水账。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
----
+## 当前快照
 
-## 2026-06-05（Day 1）
+更新时间：2026-07-02
 
-**项目规划与初始化**
+当前阶段：Phase 7.3 已完成，后续继续 Phase 7 工程化增强。
 
-- 整理 Phase 0 ~ Phase 10 学习与开发路线。
-- 初始化 monorepo：`apps/web`、`apps/server`、`packages/*`。
-- 创建基础 packages：`types`、`database`、`ai`、`fsrs`、`rag`、`agent`、`mcp`、`ui`。
-- 创建 Prisma schema 初稿与 Docker Compose 基础设施。
-- 创建 `CLAUDE.md` 和 `DEVLOG.md`。
+| 阶段 | 状态 | 关键词 |
+| --- | --- | --- |
+| Phase 0 | 已完成 | Monorepo、Prisma 初稿、Docker 基础设施 |
+| Phase 1 | 已完成 | 前端 MVP、AI 聊天、OCR、错题本、Dexie |
+| Phase 2 | 已完成 | NestJS、Auth、PostgreSQL、业务 API 迁移、MinIO |
+| Phase 3 | 已完成 | OCR structured output、讲题 prompt、多题保存 |
+| Phase 4 | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划 |
+| Phase 5 | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge` |
+| Phase 6 | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents |
+| Phase 7.0 | 已完成 | BackgroundJob 控制面 |
+| Phase 7.1 | 已完成 | BullMQ 文档处理队列、inline / queue 双模式 |
+| Phase 7.2 | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤 |
+| Phase 7.3 | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要 |
 
----
+## 近期关键记录
 
-## 2026-06-06（Day 2）
+### 2026-07-02 - Phase 7.3 Event Observability
 
-**Phase 1 登录与聊天 MVP**
+本轮目标：让后台任务不只是“扔进队列”，而是能被前端和开发者安全地看见。
 
-- 完成登录/注册 UI、表单校验、本地模拟登录和 AuthGuard。
-- 完成移动端优先布局、PWA manifest、shadcn/ui 基础组件。
-- 接入 Vercel AI SDK + DeepSeek，通过 `/api/chat` 实现 SSE 流式聊天。
-- AI 回复支持 Markdown + GFM。
-- 创建 `userStore` 和 `chatStore`，保存本地用户、登录态和输入草稿。
+完成内容：
 
----
+- `InProcessEventBus.publish()` 改为返回 `{ delivered, failed }`。
+- 单个 EventBus handler 抛错不会阻断后续 handler。
+- EventBus handler 失败会记录脱敏 warning，只包含事件类型与 delivered / failed 计数，不打印完整 payload。
+- 新增 `GET /background-jobs/summary`，经过 `JwtAuthGuard`，按当前 `userId` 隔离。
+- summary 中 `activeCount` 使用账号级真实 active count，避免旧的 active job 被最新 50 条窗口漏掉。
+- summary 中 `failedCount` / `staleSkippedCount` / `succeededCount` 仍表达最近 50 条任务窗口内的摘要。
+- `/knowledge` 新增后台任务摘要提示。
+- `/knowledge` 在处理中文档、本地刚触发处理或 summary 仍有 active job 时短轮询；静态 `PENDING` 或健康 recent jobs 不无限轮询。
+- 更新 `AGENTS.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/ai-behavior-acceptance.md`。
+- 新增面试复盘博客：`docs/blogs/phase-7-event-observability.md`。
 
-## 2026-06-07（Day 3）
+审核中发现并修复：
 
-**拍照识题与本地持久化**
+- 页面最初把 summary 固定传为 `undefined`，导致 active job 不能靠 summary 自身持续轮询。
+- `activeCount` 最初只基于最近 50 条计算，语义容易误导 UI，改为真实账号级 count。
+- EventBus 最初吞掉 handler 异常但没有可观测 warning，补充了脱敏日志。
+- 设计文档末尾多余空行导致 `git diff --check main...HEAD` 失败，已清理。
 
-- 实现图片上传、相机唤起、图片预览和全屏预览。
-- 创建 `/api/ocr`，接入多模态 OCR 模型，支持 SSE 流式返回。
-- 引入 Dexie，持久化聊天消息和 OCR 记录。
-- 修复多轮持久化问题：无限循环、TDZ、刷新丢消息、AI 最终回复未保存。
-- 创建 `docs/data-flow.md` 记录当时数据流。
+验证：以下命令已在 Phase 7.3 收尾时通过。
 
----
+- `bun --cwd packages/types typecheck`
+- `bun packages/types/tests/background-job.test.mts`
+- `bun --filter @repo/server test -- event-bus background-jobs`
+- `bun --filter @repo/web test -- background-job knowledge-view`
+- `bun --filter @repo/server build`
+- `bun --filter @repo/web build`
+- `git diff --check`
 
-## 2026-06-08（Day 4）
+边界：
 
-**Phase 1 收尾**
+- Phase 7.3 不改 Chat prompt、RAG citation、Tutor 输出或真实模型调用链路，因此不需要 live 模型 smoke。
+- EventBus 当前仍是 in-process 非持久事件总线，不是 durable outbox。
 
-- Dexie schema 升级到 v6，`messages`、`ocrRecords`、`wrongQuestions` 增加 `userId`。
-- 聊天消息与 OCR 消息合并为统一时间线。
-- 实现本地错题本 CRUD、`sourceGroupId` 防重复、保存预览和缺失字段提示。
-- 接入 `remark-math`、`rehype-katex`、`katex`，支持数学公式渲染。
-- 优化错题详情页交互和遮罩层，修复 hydration warning。
-- 实现今日任务静态版。
-- 整理 Phase 1 数据流、开发文档和本地博客。
+### 2026-06-30 - Phase 7.2 RAG SafetyGuard
 
----
+本轮目标：把用户上传资料视为低信任证据，避免 RAG 检索片段中的恶意指令影响模型。
 
-## 2026-06-09（Day 5）
+完成内容：
 
-**Phase 2.1 后端基础与鉴权**
+- `@repo/rag` 增加 deterministic chunk safety classifier。
+- 文档处理时把 `metadata.safety` 写入每个 chunk。
+- `/knowledge/search` 返回 safety metadata。
+- Chat RAG prompt 组装前过滤 high-risk chunk。
+- medium-risk chunk 只作为可疑原文引用，不作为可执行指令。
+- `KnowledgeVerifierAgent` 对高风险或 `safeForPrompt=false` 的资料输出保守 guidance。
+- `/knowledge` 检索结果展示安全标记。
+- 补充 `docs/ai-behavior-acceptance.md` 和面试复盘博客 `docs/blogs/phase-7-rag-safety-guard.md`。
 
-- 将 workspace 包管理迁移到 Bun。
-- 固定 Docker PostgreSQL 本机端口为 5433，新增 `docs/dev-start.md`。
-- 扩展 Prisma schema，落地 Auth 相关模型和后续业务模型。
-- 新增 NestJS Config / Database / Health 模块。
-- 新增统一响应 envelope、异常过滤器和 requestId middleware。
-- 新增 AuthModule：注册、登录、当前用户、refresh token 轮换、logout。
-- 新增 UsersModule，支持读取和更新当前用户资料。
-- `@repo/types` 新增 Auth/Common API schemas。
-- 新增 AuthService 单元测试和 Auth e2e。
-- 修复 AI Key 缺失提示、保存错题预览公式渲染和 `packages/fsrs` 类型检查脚本。
+验收要点：
 
----
+- mock / e2e 覆盖固定 prompt-injection 样本。
+- live/browser smoke 记录在 `docs/ai-behavior-acceptance.md`。
+- Trace 和 BackgroundJob 仍只保存脱敏元数据，不保存完整恶意 chunk、prompt、API key、token 或 cookie。
 
-## 2026-06-11（Day 6）
+### 2026-06-30 - Phase 7.0 / 7.1 Background Jobs
 
-**Phase 2.2 Auth 接入与 Phase 2.3 起步**
+本轮目标：把知识库文档处理从同步接口升级为可切换的后台任务链路。
 
-- 完成 Phase 2.2 中文 spec 与 implementation plan。
-- 接入 TanStack Query，新增 `QueryProvider` 与 `AuthSessionProvider`。
-- 新增 `apiClient`、`authApi` 和 Auth hooks。
-- 登录/注册页面迁移到 NestJS Auth API。
-- `AuthGuard` 改为以后端 session 为权威来源，应用启动通过 `/auth/refresh` 恢复 session。
-- 增强 refresh token rotation：旧 RT 重放时返回 `AUTH_REFRESH_REUSED`，并撤销同 family 活跃 RT。
-- 新增 WrongQuestion 后端 CRUD API、共享 Zod schema、单测与 e2e。
-- 前端错题本和聊天页保存错题流程接入服务端 API。
-- 新增 ChatMessage API 与前端聊天历史同步。
-- 新增聊天上下文窗口和 `activeStudyContext` 注入，支持围绕 OCR 题目追问。
-- 优化非题目 OCR 门禁、流式停止按钮、保存错题入口出现时机和 CRUD 轻提示。
+完成内容：
 
-验证：
+- 新增 `BackgroundJob` 数据模型和 `@repo/types/api/background-job` contract。
+- 新增 `GET /background-jobs` 与 `GET /background-jobs/:id`，均经过 `JwtAuthGuard`，按当前账号隔离。
+- 拆分 `DocumentProcessingService`，inline 和 worker 共用同一套解析、分块、embedding、snapshot 校验和 chunk 写入逻辑。
+- `KNOWLEDGE_PROCESSING_MODE=inline | queue` 控制处理模式。
+- queue 模式下创建 `BackgroundJob` 并投递 BullMQ。
+- `SERVER_ROLE=api | worker | both` 控制 worker processor 注册。
+- worker 处理时持续校验 `status + storageKey + contentHash` 快照，避免旧处理流污染新资料。
+- `/knowledge` 展示文档后台处理状态，并只在活跃处理时轮询。
 
-- 前端 lint/build 通过。
-- 后端 lint/build/test/e2e 通过。
-- 关键前端 API、上下文、渲染与解析脚本测试通过。
-- Prisma migration status 为 `Database schema is up to date`。
+边界：
 
----
+- Redis 是 queue 链路必需依赖。
+- BackgroundJob 只保存脱敏任务元数据，不保存完整文件、prompt、RAG chunk、API key 或 token。
+- queue smoke 证明后台任务链路可靠，不证明 Chat live 输出质量。
 
-## 2026-06-12（Day 7）
+### 2026-06-29 - Phase 6.8 Knowledge Agents
 
-**Phase 2.3 OCRRecord、MinIO 与流式体验**
+本轮目标：补齐资料管理方向的多 Agent 能力，让知识库不只会检索，也能给资料组织建议。
 
-- 新增 OCRRecord API contract、后端模块、单测与 e2e。
-- 前端新增 OCRRecord API hooks，OCR 完成后先写服务端再同步 Dexie。
-- 修复 `/chat-messages/sync` 重复同步导致的唯一约束错误。
-- 新增服务端权威缓存合并 helper，服务端空列表会正确清理当前用户本地缓存。
-- 移除 `next/font/google`，改用系统字体栈，避免受限网络下生产构建失败。
-- 补齐 PWA 图标。
-- 新增 MinIO 图片上传链路：`POST /uploads/images`、服务端稳定图片 URL、前端 multipart 上传。
-- OCR 图片本地预览与 MinIO 上传并行；上传失败不阻塞 OCR。
-- 新增 `StreamingMarkdownRenderer`，流式阶段稳定段落实时进入 Markdown / KaTeX。
-- 修复新一轮生成时自动滚动意图没有恢复的问题。
+完成内容：
 
-验证：
+- 新增 `KnowledgeDedupAgent` 与 `KnowledgeOrganizerAgent` deterministic policy。
+- 新增 `@repo/types/api/knowledge-agent` contract。
+- 新增 `GET /knowledge-agent/suggestions`，经过 `JwtAuthGuard`，按当前 `userId` 读取资料元数据和少量 chunk 摘要。
+- `/knowledge` 展示重复资料、疑似新版、互补资料、集合和标签建议。
+- 建议链路只读，不自动合并、删除、替换、重命名或分类资料。
+- fixed deterministic eval set 覆盖 KnowledgeDedup / KnowledgeOrganizer。
 
-- 前端 lint/build 通过。
-- 后端 lint/build/test/e2e 通过。
-- upload、OCRRecord、WrongQuestion、chat sync、streaming markdown、streaming scroll 等关键测试通过。
-- server / web dev 短跑启动通过。
+边界：
 
----
+- 不调用 live 模型。
+- 不写 Document / Chunk / 分类表。
+- 不进入 Dexie `mutationQueue`。
+- 建议失败不影响上传、处理、替换、删除和检索。
 
-## 2026-06-13（Day 8）
+### 2026-06-28 - Phase 6.6 / 6.7 Memory 与 Trace
 
-**Phase 2.3 Final Stabilization 与 Phase 2.5 Product Experience**
+Phase 6.6 完成：
 
-- 完成 Phase 2.3 收尾设计与实现计划。
-- Dexie schema 升级到 v7，新增 `mutationQueue`。
-- 新增 mutation queue helper 与 flush 逻辑，支持 WrongQuestion / OCRRecord 失败写操作补偿同步。
-- `AuthSessionProvider` 在 session 恢复、online、focus 时自动尝试 flush。
-- WrongQuestion 创建、更新、删除支持乐观写入和失败补偿。
-- OCRRecord 创建失败时保留本地 OCR 历史并进入补偿队列。
-- ChatMessage 保持 `/chat-messages/sync` 幂等同步，不进入通用 CRUD mutation queue。
-- 完成 Phase 2.5 产品体验补全计划。
-- 新增学习偏好本地存储和个人中心。
-- 今日任务升级为轻学习手账。
-- 统一注册登录页、聊天页、错题本、今日任务、个人中心、侧边栏和输入区视觉系统。
-- 修复 OCR / 错题展示格式化中全角小题编号、函数参数和多题内容的可读性问题。
-- 修复切换页面再返回时聊天历史从顶部平滑滚到底部的问题。
+- 新增 `UserMemoryCandidate` / `UserMemory` 数据模型。
+- 新增 `/memory-agent` 与 `/user-memories` API。
+- `/profile` 支持生成长期记忆候选、确认、忽略、停用、恢复和删除。
+- MemoryAgent 是确定性 policy，不调用真实模型。
+- `UserMemory` 当前不自动注入 `/api/chat`。
 
-验证：
+Phase 6.7 完成：
 
-- 前端 lint/build 通过。
-- 后端 lint/build/test/e2e 通过。
-- database、types、fsrs 验证通过。
-- mutation queue、server cache sync、chat context、chat sync、streaming markdown、streaming scroll 等关键测试通过。
-- 浏览器抽样 `/chat`、`/today`、`/error-book`、`/profile`、`/login`、`/register` 通过。
+- 新增 Agent Trace contract、Prisma 模型和 `/agent-traces` API。
+- `/api/chat` 在有 access token 时 best-effort 写入脱敏 trace。
+- `/agent-trace` 展示路由、步骤、降级、token 和估算成本。
+- fixed deterministic eval set 覆盖当前确定性 Agent policy。
+- Trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 
-主要提交：
+### 2026-06-22 - Phase 6.5 ReviewAgent / PlannerAgent
 
-```text
-9309358 docs: design phase 2.3 final stabilization
-7262d67 docs: plan phase 2.3 final stabilization
-eb2b2d0 feat: add local mutation queue schema
-18392df feat: add mutation queue helpers
-d30682e feat: add mutation queue flush logic
-7cb5043 feat: flush local mutation queue
-0b681a8 fix: preserve unsynced local cache items
-e296758 feat: queue failed wrong question saves
-82f1b7e feat: queue wrong question offline mutations
-c2c6bc5 feat: queue failed ocr record sync
-13f892a feat: add learning preferences storage
-af3a012 feat: add profile update client plumbing
-5544de0 style: add phase 2.5 visual tokens
-a43c25d feat: complete profile center
-c027233 style: redesign chat navigation drawer
-9ea86b5 feat: redesign today study notebook
-881140a style: polish error book experience
-ff746a6 style: refresh chat study buddy UI
-85d7c65 fix: polish chat empty state
-c67fda3 fix: stabilize ocr rendering and chat restore scroll
-f5a2eb1 style: soften cartoon theme palette
-0b07ef3 style: refresh auth pages theme
+完成内容：
+
+- 新增 `ReviewAgent` 与 `PlannerAgent` deterministic policy。
+- 新增 `GET /review-agent/suggestions`。
+- `/plan` 展示完整学习计划建议。
+- `/today` 展示紧急复习建议。
+- 建议只读，不创建未来 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck。
+
+### 2026-06-21 - Phase 6.3 / 6.4 Verifier 与错题组织
+
+Phase 6.3 完成：
+
+- `KnowledgeVerifierAgent` 在 RAG 命中后评估资料可信度。
+- 可疑、冲突或不足时向 prompt 注入保守使用规则，并在引用区追加资料核对提示。
+- 补齐 Chat live 小样本验收规范和空回答兜底。
+
+Phase 6.4 完成：
+
+- `WrongQuestionOrganizerAgent` 推荐学科组与专题 deck。
+- 新增 `WrongQuestionSubjectGroup`、`WrongQuestionDeck`、`WrongQuestionDeckItem` 组织层。
+- `/error-book` 升级为学科卡片 -> 专题 deck -> 错题列表下钻结构。
+- 组织层独立于 WrongQuestion / Card / ReviewLog / ReviewTask 事实层。
+
+### 2026-06-20 - Phase 6.0 / 6.1 / 6.2 Agent Runtime 与 Tutor
+
+完成内容：
+
+- 新增 Agent Runtime 基础 contract、`AgentState`、`ActionProposal`、RouterAgent、阈值 guard、recorder 和 graph descriptor。
+- `/api/chat` 接入 RouterAgent，响应头输出 route metadata。
+- Tutor route 调用 TutorAgent deterministic policy。
+- TutorAgent 支持 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct`、`general_follow_up` 策略。
+- Agent package 不直接调用 `streamText`，不读取 API key，不启用 live 模型。
+
+## 阶段摘要
+
+### Phase 0 - 项目初始化
+
+- 建立 Bun workspace / monorepo。
+- 初始化 `apps/web`、`apps/server` 和 `packages/*`。
+- 建立 Prisma schema、Docker Compose 基础设施和协作文档。
+
+### Phase 1 - 前端 MVP
+
+- 完成移动端优先 Web / PWA 壳层。
+- 完成 AI 聊天、OCR、错题本、今日任务和 Dexie 本地持久化。
+- 建立 Chat / OCR 统一时间线和 Markdown / KaTeX 渲染。
+
+### Phase 2 - 后端与业务数据迁移
+
+- 落地 NestJS 11、PostgreSQL、Auth / User API。
+- 登录态迁移为后端 session 权威控制。
+- WrongQuestion / ChatMessage / OCRRecord API 迁移到 PostgreSQL。
+- MinIO 接入新 OCR 图片链路。
+- Dexie 保留为本地快速恢复、离线兜底、乐观更新和 mutation queue。
+- Phase 2.5 完成 Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨。
+
+### Phase 3 - OCR 与讲题结构化
+
+- OCR 输出升级为 display Markdown + structured JSON envelope。
+- 保存错题优先使用结构化字段。
+- 多题图片支持单题保存和批量保存。
+- `activeStudyContext` 支持围绕当前题目追问。
+- tool action proposal 边界预留，但不自动执行。
+
+### Phase 4 - FSRS 复习系统
+
+- WrongQuestion-first FSRS 复习闭环完成。
+- `Card`、`ReviewLog`、`ReviewTask`、`ReviewPreference` 以 PostgreSQL 为权威来源。
+- 今日任务迁移到持久化 ReviewTask。
+- 评分支持 `clientMutationId` 幂等。
+- 离线评分进入 Dexie `mutationQueue`，但不本地推进 FSRS / ReviewLog / 统计。
+- `/plan` 支持未来 7 / 14 天加权复习压力预览。
+- `/stats` 使用 ECharts 展示复习趋势、评分分布和卡片状态。
+
+### Phase 5 - RAG 知识库
+
+- 完成 Document / Chunk 数据模型和 `vector(1536)` pgvector 预留。
+- 支持 TXT / Markdown / DOCX / PDF 基础解析。
+- 完成段落感知分块、embedding 入库和检索 API。
+- `/api/chat` 支持 RAG 上下文注入和 Markdown citations。
+- `/knowledge` 支持上传、处理、替换、删除、状态摘要和检索测试。
+- 文档去重、替换上传和处理快照保护已落地。
+
+### Phase 6 - 多 Agent 系统
+
+- 使用 LangGraph，不使用 AutoGen。
+- 已完成 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent、KnowledgeOrganizerAgent。
+- 当前列出的 Agent 均为确定性 policy，不直接调用真实模型。
+- Agent Trace 提供脱敏可观测闭环。
+- Review / Planner / Memory / Knowledge agents 都遵循“只读建议或人审确认”边界，不在每次 Chat 中自动写库或自动注入。
+
+### Phase 7 - 工程化增强
+
+- Phase 7.0：BackgroundJob 控制面完成。
+- Phase 7.1：BullMQ 知识库处理队列完成，支持 inline / queue 双模式和 worker role。
+- Phase 7.2：RAG SafetyGuard 完成，chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤和 UI 安全信号已落地。
+- Phase 7.3：Event Observability 完成，EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 任务摘要轮询兜底已落地。
+
+## 当前验证基线
+
+常用全量验证：
+
+```powershell
+bun --filter @repo/web lint
+bun --filter @repo/web test
+bun --filter @repo/web build
+bun --filter @repo/server lint
+bun --filter @repo/server build
+bun --filter @repo/server test
+bun --filter @repo/server test:e2e
+bun --cwd packages/types typecheck
+bun --cwd packages/database test
+bun --cwd packages/fsrs test
 ```
 
----
-
-## 2026-06-14（Day 9）
-
-**Phase 3 前文档精简**
-
-- 精简 `AGENTS.md` 与 `CLAUDE.md`，保留当前阶段、命令、模块边界、数据流和下一步。
-- 精简 `README.md`，改为 GitHub 项目入口，突出当前能力、架构、启动和 Phase 3 下一步。
-- 重写 `docs/roadmap.md`，保留阶段路线、已完成阶段摘要和 Phase 3 验收边界。
-- 重写 `docs/data-flow.md`，只描述当前仍有效的数据流，历史实现细节移交给开发日志。
-- 压缩 `DEVLOG.md` 历史条目，保持同一天改动合并记录，待办统一放文末。
-
-验证：
-
-- `git diff --check` 通过，仅有 Windows 换行提示。
-- 关键文档中的 Phase 3、`mutationQueue`、`5433`、`next/font` 等表述检查通过。
-
-**Phase 3 AI 讲题系统**
-
-- 新增 `@repo/types/api/ocr-question`，定义 OCR structured output、题目对象、保存状态和 tool action proposal schema。
-- `/api/ocr` 改为 display Markdown + structured JSON envelope 输出协议，并将 OCR prompt 抽到可测试模块。
-- 前端新增 structured OCR parser、legacy adapter、activeStudyContext 映射和 wrong-question 映射。
-- OCRRecord `parsedJson` 开始保存结构化题目结果，旧 OCR 历史继续兼容。
-- OCR runtime 在流结束后保存结构化结果，并从结构化主问题生成追问上下文。
-- 保存错题优先使用结构化字段，多题使用独立 `sourceGroupId:questionId` 防重。
-- 聊天页新增多题题目卡片，支持单题确认保存和所选题目批量保存。
-
-验证：
-
-- `node --experimental-strip-types packages/types/tests/ocr-question.test.mts` 通过。
-- `node --experimental-strip-types packages/types/tests/ocr-record.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `node --experimental-strip-types apps/web/src/lib/ocr-prompt.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/ocr-structured-result.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/ocr-record-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/chat-context.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/wrong-question-parser.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过；worktree 内存在额外 lockfile，Next.js 输出 root 推断 warning。
-- `bun run db:generate` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-
-**Phase 4.1 FSRS 复习闭环**
-
-- 完成 Phase 4 FSRS 设计 spec 与 Phase 4.1 implementation plan。
-- 实现 `@repo/fsrs` 纯调度器，支持 Again / Hard / Good / Easy 评分后的状态、间隔和日志字段计算。
-- 新增 `@repo/types/api/review`，统一 Review API contract。
-- 调整 Prisma `Card` / `ReviewLog`：`Card` 支持 `wrongQuestionId`，`ReviewLog` 记录 `elapsedDays` 与 `reviewDurationMs`。
-- 新增 NestJS Review API：错题加入复习、按错题读取卡片、今日到期卡片、提交评分。
-- 前端新增 Review API client 与 hooks。
-- 错题详情支持加入复习计划，加入后按钮显示复习状态和下次复习时间。
-- 今日任务接入到期复习卡，支持查看答案和四档评分；评分后卡片按服务端状态从今日待复习中移除。
-- 修复 server e2e 的 ts-jest rootDir 配置，避免 workspace package export map 在 e2e 编译阶段解析歧义。
-
-验证：
-
-- `bun --cwd packages/fsrs test` 通过。
-- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun run db:generate` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-api.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- 浏览器冒烟通过：注册测试账号、创建测试错题、错题详情加入复习、今日任务展开答案、提交“掌握”评分、卡片从今日到期列表移除。
-
-**Phase 4.2 学习统计**
-
-- 新增 Review stats/logs API，基于 `Card` / `ReviewLog` / `WrongQuestion` 聚合复习数据。
-- 新增 `/stats` 学习统计页，展示复习总览、趋势、评分分布、卡片状态和最近复习记录。
-- 侧边栏和今日任务页新增学习统计入口。
-- 统计和日志按当前 `userId` 隔离，不新增 `ReviewTask` 表。
-- 浏览器验收通过：注册 smoke 账号、创建错题、加入复习计划、提交“掌握”评分、打开 `/stats` 验证 7 天 / 30 天统计、侧边栏入口和今日任务入口；验收后删除 smoke 账号。
-
-验证：
-
-- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --filter @repo/server test -- reviews.service.spec.ts` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand reviews.e2e-spec.ts` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-stats-view.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-
-**Phase 4.3 ReviewTask 数据流**
-
-- 新增 Prisma `ReviewTask`、`ReviewTaskStatus`、`ReviewTaskSource`，以 `cardId + scheduledDate` 防止同一复习卡当日重复生成任务。
-- 新增 `@repo/types/api/review-task`，统一 ReviewTask 今日任务、列表、评分、跳过和恢复 API contract。
-- 新增 NestJS `ReviewTasksModule`：`/review-tasks/today` 懒生成当日任务，`/review-tasks/:taskId/rating` 在事务内更新 Card、写入 ReviewLog、完成 ReviewTask。
-- 新增跳过与恢复：`skip` / `reopen` 只改变 ReviewTask 状态，不更新 Card，也不写 ReviewLog。
-- 今日任务页从 `/reviews/tasks/today` 迁移到 `/review-tasks/today`，展示待复习、已完成和已跳过状态，并支持恢复已跳过任务。
-- `/stats` 继续以 ReviewLog 为统计事实来源，ReviewTask 只表示任务生命周期。
-- 打磨 `/stats` 复习趋势图：30 天模式改为稀疏刻度的 SVG 面积折线图，并收敛线宽、点位和配色。
-- 浏览器验收通过：创建 smoke 账号和到期复习卡、打开 `/today`、跳过、恢复、展开答案、提交“掌握”评分、确认任务进入已完成摘要、打开 `/stats` 验证 ReviewLog 统计；验收后删除 smoke 账号。
-- 本地已 fast-forward 合并 `codex/phase-4-3-review-task-flow` 到 `main`。
-
-验证：
-
-- `node --experimental-strip-types packages/types/tests/review-task.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-- `bun --cwd packages/database prisma migrate deploy` 通过；无待应用 migration。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-task-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-task-view.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-stats-view.test.mts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `git diff --check` 通过。
-
----
-
-## 2026-06-15（Day 10）
-
-**Phase 4.4 离线评分队列与提醒摘要**
-
-- ReviewTask 评分加入 `clientMutationId` 幂等链路，服务端通过 `ReviewLog.clientMutationId` 避免弱网重试重复写入复习日志。
-- Prisma 新增 `ReviewLog.clientMutationId` nullable unique 字段，并补齐 ReviewTask rating 单测与 e2e 幂等覆盖。
-- Dexie `mutationQueue` 扩展 `reviewTask/rating`，离线或可重试失败的评分会进入待同步队列。
-- 今日任务页新增本地待同步评分状态、手动重试入口和 in-app 复习提醒摘要；离线评分不本地推进 FSRS、ReviewLog 或统计。
-- 新增 `@repo/web test` 脚本，统一运行前端 Node `.test.mts` 测试。
-- 浏览器验收中修复重复知识点展示导致的 React duplicate key 警告，新增展示层知识点去空、去重和数量限制。
-
-验证：
-
-- `node --experimental-strip-types packages/types/tests/review.test.mts` 通过。
-- `node --experimental-strip-types packages/types/tests/review-task.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/database prisma migrate deploy` 通过；无待应用 migration。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test -- review-tasks.service.spec.ts` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand review-tasks.e2e-spec.ts` 通过。
-- `bun --filter @repo/web test` 通过，128 个测试全部通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- 浏览器验收通过：注册 smoke 账号、创建错题和 ReviewTask、打开 `/today`、展开答案、模拟后端断开提交离线评分、恢复后端并手动重试同步；待同步状态、按钮禁用、完成摘要和 console 恢复后无错误均符合预期。
-- `git diff --check` 通过。
-
----
-
-## 2026-06-16（Day 11）
-
-**Phase 4.5.1 复习计划预览与统计图表升级**
-
-- 新增 `@repo/types/api/review-task` 的 plan contract，限制 `days`、`startDate` 和 `timezoneOffsetMinutes` 查询边界。
-- 新增 `GET /review-tasks/plan`，基于 `Card.nextReview` 只读计算未来复习压力、逾期数量、待同步数量和预计用时，不创建未来 `ReviewTask`。
-- 后端补齐 plan query 默认值、用户隔离、日期边界、future task 不创建等单测与 e2e 覆盖。
-- 前端新增 `reviewTaskApi.getPlan`、`useReviewTaskPlan` 和 `/plan` 页面，展示未来 7 天复习压力、每日安排和高峰日提示。
-- 今日任务页新增复习计划入口；未来日期只展示“到期后处理”，今日行跳转 `/today`。
-- 新增客户端 `BaseEChart`，通过 `useEffect` 动态加载 ECharts，避免 SSR / hydration 风险。
-- `/stats` 升级为 ECharts 趋势图、评分分布图和卡片状态图，保留评分 fallback 文本网格，移动端无横向溢出。
-- 修复 `/stats` 空态判断：图表空态只看当前统计窗口 `totalReviews`，历史最近记录不再阻止当前窗口空态。
-- 修复 ECharts 图表在浏览器缩放和半透明背景下偏糊的问题：统一使用 SVG renderer，提升文字、坐标轴和细线清晰度。
-- `/plan` 使用本地日期刷新 hook，在 focus、visibilitychange 和跨日时刷新计划窗口。
-- 讨论并记录复习压力模型升级方向：当前为 `dueCount + overdueCount` 简化模型，后续规划加入逾期惩罚、难度权重、预计耗时和用户每日容量。
-- 浏览器验收通过：注册 QA 账号、创建错题、加入复习卡、提交评分，验证 `/plan` 非空计划、`/stats` 三个 canvas 非空、7 天 / 30 天切换、`/today` 入口和移动端布局。
-
-验证：
-
-- `node --experimental-strip-types apps/web/src/lib/review-stats-view.test.mts` 通过。
-- `bun --filter @repo/web test` 通过，136 个测试全部通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server test` 通过，80 个测试全部通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `node --experimental-strip-types packages/types/tests/review-task.test.mts` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-- `bun --filter @repo/server test:e2e` 通过，8 个 suites、13 个 tests 全部通过。
-- `git diff --check` 通过。
-
----
-
-## 2026-06-17（Day 12）
-
-**Phase 4.5.2 复习容量偏好与加权压力模型**
-
-- 新增 Prisma `ReviewPreference`，以 PostgreSQL 保存账号级复习计划偏好。
-- 新增 `@repo/types/api/review-preference`，统一偏好读取和 PATCH contract，并导出到 shared API 入口。
-- 新增 NestJS `ReviewPreferencesModule`：`GET /review-preferences` 返回默认或已保存偏好，`PATCH /review-preferences` 只更新提交字段。
-- `/review-tasks/plan` 从简化 `dueCount + overdueCount` 升级为加权压力模型，纳入逾期惩罚、高难度卡片、低稳定性卡片、预计分钟和每日容量。
-- plan response 新增 `pressureScore`、`capacityStatus`、`reasons`、`dailyMinutes` 和 `dailyCardLimit`。
-- 前端新增 review preference API client、TanStack Query hooks、偏好表单归一化 helper 和 API/helper 测试。
-- `/plan` 新增复习容量偏好卡，支持每日分钟、每日卡片上限、提醒时间、提醒开关和 7 / 14 天计划窗口自动保存。
-- `/plan` 图表改用 `pressureScore`，每日卡片展示容量状态、预计分钟和压力原因标签；空计划状态也保留偏好设置入口。
-- `/today` 复习提醒摘要接入当天 plan，展示“今日预计 N 分钟”和容量状态，plan 查询失败不影响今日复习主列表。
-- 浏览器验收中修复 `/plan` 移动端 7 / 14 分段按钮触摸高度不足问题，保证 390px 视口无横向溢出且交互目标不小于 44px。
-
-**Phase 5.0 RAG 知识库规划**
-
-- 讨论并确认 RAG 在 PrepMind 中的定位：它是“学习资料记忆层”，用于把用户资料、错题复习和后续 Agent 规划连接起来。
-- 明确 RAG 是 Chat 的增强层，不是阻塞层；无资料、未命中或检索失败时，AI 仍按普通对话能力回答。
-- 确认第一版资料来源以用户上传 PDF / TXT / Markdown 为主，OCR、错题和聊天沉淀只预留 `sourceType`，不在第一版自动入库。
-- 新增 `docs/superpowers/specs/2026-06-17-phase-5-rag-knowledge-base-design.md`，记录 Document / Chunk、pgvector 检索、Chat 降级、引用展示、权限隔离和阶段拆分。
-- 新增 `docs/superpowers/plans/2026-06-17-phase-5-1-rag-data-model-contracts.md`，把明天的第一步收敛为数据模型、pgvector 索引预留和 `@repo/types` knowledge API contract。
-
-验证：
-
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test` 通过。
-- `bun --filter @repo/server test:e2e` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-preference-api.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-preference-view.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-plan-view.test.mts` 通过。
-- `node --experimental-strip-types apps/web/src/lib/review-reminder.test.mts` 通过。
-- `bun --filter @repo/web test` 通过，147 个测试全部通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-- 浏览器验收通过：Docker PostgreSQL / Redis / MinIO 启动，迁移无待应用项；`/plan` 验证偏好卡、7 / 14 天切换、加权压力、超过容量状态和原因标签；`/today` 验证当天预计分钟与容量状态；桌面和 390px 移动端均无横向溢出，console 无错误。
-- Phase 5.0 设计文档和 Phase 5.1 实施计划完成占位扫描与 `git diff --check`。
-- `git diff --check` 通过。
-
----
-
-## 2026-06-18（Day 13）
-
-**Phase 5.1 RAG 数据模型与 contract 地基**
-
-- 新增 `@repo/types/api/knowledge`，定义 RAG 文档类型、处理状态、资料来源、文档响应、列表查询、列表响应、检索请求和检索响应 schema。
-- 新增 `packages/types/tests/knowledge.test.mts`，覆盖枚举边界、文档响应、失败文档、列表查询、列表响应、检索请求和检索响应。
-- 扩展 Prisma `Document`：新增 `sourceType`、`errorMessage`、`contentHash` 和 `processedAt`，并补充 `userId + status + updatedAt`、`userId + sourceType + updatedAt`、`contentHash` 索引。
-- 新增 `DocumentSourceType`：`UPLOAD`、`NOTE`、`WRONG_QUESTION`、`OCR`、`CHAT`，第一版仍以 `UPLOAD` 为主。
-- 扩展 Prisma `Chunk`：新增 `tokenCount`，并将 `embedding` 从无维度 `vector` 固定为 `vector(1536)`。
-- 新增 pgvector ivfflat raw SQL migration：`Chunk_embedding_vector_cosine_idx`，为后续相似度检索预留。
-- 迁移验证中发现 ivfflat 无法创建在无维度 `vector` 列上，已通过 `vector(1536)` 修复，并用本地 PostgreSQL 验证 `atttypmod = 1536` 和索引存在。
-- 本阶段不实现资料上传、解析、embedding、检索 API、Chat RAG 注入和知识库页面；这些进入 Phase 5.2 及后续阶段。
-
-验证：
-
-- `bun packages/types/tests/knowledge.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/database prisma migrate deploy` 通过，无待应用 migration。
-- `bun --cwd packages/database prisma:generate` 通过。
-- `bun --filter @repo/server build` 通过。
-
-**Phase 5.2 文档上传与状态 API**
-
-- `@repo/types/api/knowledge` 新增文档 MIME 白名单、上传响应、详情响应和删除响应 schema。
-- 扩展 `StorageService`，支持 PDF / DOCX / Markdown / TXT 上传到 MinIO，object key 固定为 `users/{userId}/knowledge/{uuid}.{ext}`。
-- 新增 `UPLOAD_DOCUMENT_MAX_BYTES`，默认 20MB，用于控制资料文件大小。
-- 新增 `KnowledgeDocumentsModule`：`POST /knowledge/documents`、`GET /knowledge/documents`、`GET /knowledge/documents/:id`、`DELETE /knowledge/documents/:id`。
-- 上传成功后创建 `Document(PENDING, sourceType=UPLOAD)`，以 PostgreSQL 为权威来源；数据库写入失败时尽力删除已上传 MinIO 对象。
-- 所有文档 API 按当前 `userId` 隔离；删除文档会级联未来 chunks，并尽力删除 MinIO 对象。
-- 本阶段仍不实现解析、分块、embedding、检索 API、Chat RAG 注入和知识库页面。
-
-验证：
-
-- `bun packages/types/tests/knowledge.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --filter @repo/server test -- storage.service.spec.ts knowledge-documents.service.spec.ts` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --cwd packages/database prisma migrate deploy` 通过，无待应用 migration。
-- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
-
-**Phase 5.3 文档处理与 embedding 入库**
-
-- 新增 `POST /knowledge/documents/:id/process`，用于处理已上传文档。
-- 支持 TXT / Markdown / DOCX / PDF 基础文本解析。
-- 使用 `@repo/rag` 段落感知分块。
-- embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
-- `Chunk.embedding vector(1536)` 通过 raw SQL 持久化，写入前校验 document/user ownership。
-- `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析或 embedding 失败进入 `FAILED`。
-- forced reprocess 会先清旧 chunks，避免 stale retrieval。
-- 当前仍未实现 search API、Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
-
-**Phase 6 错题整理 Agent 规划补充**
-
-- 确认未来错题本首页不继续平铺所有错题，而是按学科卡片优先组织，例如“高等数学”“大学英语”。
-- 学科卡片内部再按 AI 归纳专题分化，例如“曲线积分与格林公式”“四级阅读长难句”。
-- Phase 6 预留 `WrongQuestionOrganizerAgent`：基于结构化错题字段、知识点、错因、题型、难度、用户备注和复习表现，推荐学科组与专题 deck。
-- 明确用户拥有最终组织权：可重命名卡片、移动错题、合并专题；用户修改后的名称不被 AI 自动覆盖。
-- 新增 `docs/superpowers/specs/2026-06-18-phase-6-wrong-question-organizer-agent-design.md` 记录该子规划。
-
----
-
-## 2026-06-19（Day 14）
-
-**Phase 6 多 Agent 协作规划补充**
-
-- 确认 Phase 6 是 PrepMind 的核心亮点阶段，使用 LangGraph 编排多 Agent，不使用 AutoGen。
-- 明确 RAG 资料不是绝对真理，只是用户私有上下文证据；用户上传笔记、资料摘抄和错题整理都可能存在错误。
-- 规划 `KnowledgeVerifierAgent`：在 RAG 检索命中后、最终回答前评估资料片段和回答初稿，识别 `trusted`、`suspicious`、`conflict`、`insufficient` 等状态。
-- 当用户资料可能有误时，AI 应优先给出更可靠的解法，并轻提示用户核对对应笔记片段，而不是盲从错误资料或直接宣称用户笔记错误。
-- 重新确认 `WrongQuestionOrganizerAgent` 的职责：它不是讲题 Agent，而是错题整理 Agent，负责把错题本从平铺列表升级为“学科卡片 -> 专题 deck -> 错题”的组织方式。
-- `WrongQuestionOrganizerAgent` 基于结构化 OCR、错题知识点、错因、题型、难度、用户备注和复习表现，推荐学科组与专题 deck；用户重命名、移动和合并拥有最终优先级。
-- 新增 `docs/superpowers/specs/2026-06-19-phase-6-multi-agent-collaboration-design.md`，记录 Phase 6 总体 Agent 拆分、RAG + Verifier 工作流、错题整理工作流、数据边界和分阶段落地。
-- 新增 `/api/chat` AI 调用成本保护：开发默认 `AI_PROVIDER_MODE=mock`，即使存在 API key 也不会调用真实模型。
-- 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 模式会记录不含密钥的用量估算日志。
-- 新增 Chat 请求预算 helper，统一估算 system prompt、`activeStudyContext` 和近期消息，默认输入上限 2500 tokens、输出上限 1200 tokens，超限返回 413。
-- Chat live 默认模型切换为更低成本的 `deepseek-v4-flash`，仍可通过 `AI_MODEL` 覆盖。
-- 收缩 `activeStudyContext` 默认注入长度，避免多题 OCR 上下文在追问时重复放大 token 消耗。
-- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/dev-start.md` 和 `docs/roadmap.md`，记录 mock / live 切换与预算边界。
-
-**Phase 5.4 检索 API**
-
-- 修复 `@repo/rag` 在 server runtime 中的包入口加载问题，补充 CommonJS entry 与 package entry 测试。
-- 新增 Phase 5.4 检索 API 设计文档和实施计划，明确先落地后端搜索能力，Chat 注入和引用展示放入 Phase 5.5。
-- 新增 `KnowledgeSearchService`：使用 query embedding + pgvector cosine search 检索当前用户 `DONE` 文档 chunks。
-- 新增 `POST /knowledge/search`，受 `JwtAuthGuard` 保护，使用 `knowledgeSearchRequestSchema` 校验 `query`、`limit`、`minScore` 和 `documentId`。
-- 检索结果返回 score、chunk metadata 和 document metadata；跨用户文档、未处理文档、低分结果不会返回。
-- 收紧 knowledge documents 相关测试 mock 类型，修复 server lint 对 `any`、无效 async 和 fake embedding 向量类型的报错。
-- Phase 5.4 完成时仍未实现 Chat RAG 注入、citations 和 `/knowledge` 前端页面；Chat 无资料、无命中或检索失败时仍需普通回答。
-
-验证：
-
-- `bun --filter @repo/web test` 通过，155 个测试全部通过。
-- `AI_PROVIDER_MODE=mock` 本地 HTTP 冒烟通过：`POST /api/chat` 返回 `x-prepmind-ai-mode=mock`，包含 mock 文本，服务端日志无 live 用量估算。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun packages/types/tests/knowledge.test.mts` 通过。
-- `bun --filter @repo/server test -- knowledge-search.service.spec.ts knowledge-documents/embedding.service.spec.ts knowledge-documents/document-processing.service.spec.ts knowledge-documents.service.spec.ts` 通过，30 个测试全部通过。
-- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，9 个测试全部通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `git diff --check` 通过，仅有 Windows 换行提示。
-
-**Phase 5.5 Chat RAG 增强与引用展示**
-
-- 新增 Phase 5.5 Chat RAG 设计文档和实施计划，明确 RAG 只作为 Chat 增强层，不作为阻塞层。
-- 新增 `apps/web/src/lib/chat-rag-context.ts`，封装最新用户问题提取、默认检索请求、知识库上下文 prompt、Markdown 引用追加和降级安全检索。
-- `/api/chat` 接入 `/knowledge/search`：有 access token 时使用最新用户消息检索当前用户知识库，命中后将 chunks 注入 system prompt。
-- `/api/chat` 保持成本保护边界：默认 mock，不触发真实模型；live 仍需 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关。
-- 当 RAG 上下文导致请求超过输入预算时，自动丢弃 RAG 增强并继续普通 Chat，避免知识库增强破坏主对话链路。
-- mock 与 live 输出链路都会在命中知识库时追加 Markdown “参考资料”，第一版不改动 ChatMessage schema。
-- `ChatRuntimeProvider` 将当前 access token 放入 `/api/chat` 请求体，只用于 Next.js 服务端代理检索，不写入 prompt、不保存到聊天消息。
-- 修复 `buildChatRuntimeRequestBody` 的 `requestBody` 类型边界，兼容 AI SDK 传入的 `object | undefined`，避免 Next.js build 类型检查失败。
-- `buildChatRequestBudget` 支持额外 system prompt，用于统一计算 RAG 注入后的 token 预算。
-- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md` 和 `docs/roadmap.md`，标记 Phase 5.5 完成，下一步进入 Phase 5.6 知识库页面体验打磨。
-
-验证：
-
-- `node --experimental-strip-types --test apps/web/src/lib/chat-rag-context.test.mts` 通过。
-- `node --experimental-strip-types --test apps/web/src/lib/chat-runtime-request.test.mts` 通过。
-- `node --experimental-strip-types --test apps/web/src/lib/ai-usage-guard.test.mts` 通过。
-- `bun --filter @repo/web test` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/server test -- knowledge-search.service.spec.ts` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过。
-- `git diff --check` 通过。
-
-**Phase 5.6 知识库页面体验打磨**
-
-- 新增前端 knowledge API client，封装 `/knowledge/documents` 上传、列表、详情、处理、删除与 `/knowledge/search` 检索调用。
-- 新增知识库展示 helper，统一文档大小、处理时间、状态标签、处理动作和检索命中摘要。
-- 新增 TanStack Query hooks：资料列表、详情、上传、处理、删除和检索测试；知识库操作保持在线直连，不进入 Dexie `mutationQueue`。
-- 新增 `/knowledge` 学习资料工作台：支持资料上传、状态摘要、资料卡片列表、处理/重新处理、删除内联确认和检索测试。
-- 页面交互补齐轻提示、上传快照保护、同卡片 process/delete 互斥、检索请求过期保护、长错误文案截断和移动端长文本断行。
-- 侧边栏新增“知识库”入口，保持 Chat-first 主入口结构。
-- RAG 仍保持可降级边界：无资料、未命中或检索失败时，Chat 继续按普通 AI 回答；Phase 6.3 再接入 `KnowledgeVerifierAgent` 评估资料可信度。
-
-验证：
-
-- `node --experimental-strip-types --test apps/web/src/lib/knowledge-api.test.mts` 通过，4/4。
-- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，6/6。
-- `bun --filter @repo/web test` 通过，175/175。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --cwd packages/database prisma migrate deploy` 通过，当前无待执行迁移。
-- `bun --filter @repo/server test -- knowledge-search.service.spec.ts` 通过，6/6。
-- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，9/9。
-- 浏览器 smoke 已验证注册登录、侧边栏知识库入口、`/knowledge` 空状态、资料上传和列表刷新；真实 dev 环境未配置 `OPENAI_API_KEY`，因此处理和检索请求按预期返回 `KNOWLEDGE_EMBEDDING_FAILED`，完整处理/检索链路由后端 e2e 使用 fake embedding provider 覆盖。
-- `git diff --check` 通过，仅保留 Windows LF/CRLF 提示。
-
-**Phase 5.6 验收补强**
-
-- 修复登录/注册页协议校验体验：未勾选协议时提交按钮不再被禁用，点击提交会显示“请先同意用户协议和隐私政策”；请求提交中才禁用按钮。
-- 新增 `auth-submit-state` helper 和测试，锁住“协议校验由 submit 触发、按钮只在 pending 时禁用”的交互规则。
-- 后端新增 `RAG_EMBEDDING_PROVIDER=fake` 本地 embedding provider，可在没有 `OPENAI_API_KEY` 的情况下生成稳定伪向量，用于浏览器 smoke 验证知识库上传、处理和检索闭环。
-- `RAG_EMBEDDING_PROVIDER=fake` 仅允许非 production 环境，production 会拒绝启动，真实 embedding 仍使用 OpenAI-compatible provider。
-- 知识库页面检索测试阈值调整为 `0.4`，作为用户预览资料命中情况的宽松检索；Chat RAG 注入阈值仍保持保守，不随预览页变化。
-- 同步更新 `docs/dev-start.md`、`AGENTS.md`、`CLAUDE.md`、`README.md` 和 `docs/data-flow.md`，明确本地知识库验收命令和 fake provider 边界。
-
-验证：
-
-- `node --experimental-strip-types --test apps/web/src/lib/auth-submit-state.test.mts` 通过，3/3。
-- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，7/7。
-- `bun --filter @repo/server test -- env.spec.ts embedding.service.spec.ts` 通过，13/13。
-- 浏览器 smoke 已验证：未勾选协议点击登录会显示协议提示；注册登录成功；`/knowledge` 上传 Markdown 成功；`POST /knowledge/documents/:id/process` 在 fake embedding 下返回 201 且文档变为 `DONE`；短 query `green theorem smoke 20260619` 检索命中上传文档片段。
-
-**Phase 5.6 知识库资料卡片交互补强**
-
-- `/knowledge/documents` 普通上传加入同用户 `contentHash` 去重，重复内容直接返回已有资料，并清理本次临时 MinIO 对象，避免资料卡片重复。
-- 新增 `PUT /knowledge/documents/:id/file` 替换上传接口：保留同一 `Document.id`，清空旧 chunks，重置为 `PENDING`，并尽力删除旧 MinIO 对象。
-- 替换上传会拒绝替换为当前用户其它资料卡片已有的相同内容，返回 `KNOWLEDGE_DOCUMENT_DUPLICATE`。
-- 前端 knowledge API 与 TanStack Query hooks 补齐 `replaceDocumentFile` / `useReplaceKnowledgeDocumentFile`。
-- `/knowledge` 资料卡片改为右上角三点菜单，处理、重新上传和删除操作按卡片独立展开；`DONE` 资料不再展示主按钮式“重新处理”。
-- 删除确认继续使用卡片内联确认，不使用浏览器原生弹窗；替换上传成功后提示用户重新处理入库。
-- Phase 6 规划补充 `KnowledgeDedupAgent / KnowledgeOrganizerAgent`，用于后续判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
-
-验证：
-
-- `bun packages/types/tests/knowledge.test.mts` 通过。
-- `bun --filter @repo/server test -- knowledge-documents.service.spec.ts` 通过，8/8。
-- `node --experimental-strip-types --test apps/web/src/lib/knowledge-api.test.mts apps/web/src/lib/knowledge-view.test.mts` 通过，12/12。
-- `bun --filter @repo/server test:e2e -- --runInBand knowledge-documents.e2e-spec.ts` 通过，11/11。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/web build` 通过。
-
-**Phase 5 收官与知识库菜单体验修复**
-
-- 确认 Phase 5 RAG 知识库主线完成：数据模型、文档上传、解析分块、embedding 入库、检索 API、Chat RAG 注入与 `/knowledge` 前端闭环均已落地。
-- 修复 `/knowledge` 资料卡片三点菜单打开后点击页面其它区域不能关闭的问题。
-- 菜单关闭逻辑改为 document-level `pointerdown` 监听：点击菜单外部关闭，点击菜单内部保留原交互。
-- 修复实现过程中发现的 `document` 命名遮蔽问题，组件内显式使用 `globalThis.document` 访问浏览器全局对象。
-- 新增 `shouldCloseKnowledgeDocumentMenuOnPointerDown` helper 与测试，锁定菜单外部点击关闭的交互边界。
-
-验证：
-
-- `node --experimental-strip-types --test apps/web/src/lib/knowledge-view.test.mts` 通过，8/8。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web test` 通过，181/181。
-- `bun --filter @repo/web build` 通过。
-- 浏览器验收通过：打开资料卡片菜单后点击页面其它区域，`aria-expanded=false`，菜单项消失，控制台无 warning/error。
-
----
-
-## 2026-06-20（Day 15）
-
-**Phase 6.0 Agent Runtime 地基**
-
-- 新增 Phase 6.0 Agent Runtime 设计文档与实施计划，明确 LangGraph 多 Agent 阶段先落地可降级、可观测、可扩展的运行地基。
-- 新增 `@repo/types/api/agent`，定义 `AgentRoute`、`AgentState`、`ActionProposal`、`AgentRun`、`AgentStep`、Router 结果和 live 模型调用门禁 schema。
-- `@repo/agent` 新增 state helper、阈值 guard、确定性 RouterAgent、运行 recorder、runtime 降级链路和 graph descriptor。
-- 明确 ReviewAgent、MemoryAgent、PlannerAgent、WrongQuestionOrganizerAgent、KnowledgeDedupAgent 等分析型 Agent 只按阈值或用户主动触发，不在每次 Chat 中自动执行。
-- 保持写操作 Human-in-loop 边界：Agent 只能生成 `ActionProposal` 建议，不能静默修改错题、资料、复习任务或长期记忆。
-- 补充 live 验收策略：真实模型只能在 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关下启用，并受输入/输出 token 预算约束。
-
-**Phase 6.1 Router + Tutor Chat 接入**
-
-- 新增 Phase 6.1 设计文档与实施计划，明确 `/api/chat` 仍是流式输出、RAG、OCR 上下文、token 预算和 mock/live 成本保护的唯一执行入口。
-- `apps/web` 接入 `@repo/agent`，新增 `chat-agent-runtime` adapter，在 Chat 请求中构造轻量 Agent state 并调用 RouterAgent。
-- `/api/chat` 新增 Agent 路由调试头：`x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`。
-- Agent prompt 按 `BASE_SYSTEM_PROMPT -> activeStudyContext -> agent prompt -> RAG context` 顺序组合；当 RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留。
-- mock 输出展示 Agent route，便于本地无成本确认 `chat`、`tutor`、`rag_answer` 等路线，不引入真实模型调用。
-- `review_analysis`、`study_plan`、`wrong_question_organize` 等路线在 Phase 6.1 只作为普通建议提示，不执行对应业务 Agent、不写库。
-
-**Phase 6.2 TutorAgent 策略层**
-
-- 新增 Phase 6.2 TutorAgent policy 设计文档与实施计划，把 TutorAgent 从“提示词风格”升级为可测试的确定性讲题策略层。
-- `packages/agent/src/nodes/tutor.ts` 新增 `buildTutorStrategy` 与 `buildGenericTutorPrompt`，支持 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct`、`general_follow_up` 六类讲题意图。
-- Web Chat adapter 仅在 RouterAgent 判定为 `tutor` 时调用 TutorAgent policy，并把策略 prompt 插入现有 Chat prompt；非 tutor 路线不触发 TutorAgent。
-- `/api/chat` 继续保留现有 streaming、OCR activeStudyContext、RAG 检索、Markdown citations、mock/live 双开关和 token 预算行为。
-- mock 输出新增 TutorAgent strategy 元数据，方便本地验证讲题策略，不伪装真实模型能力。
-- 修复 TutorAgent 意图优先级：`Why can this step be done like this?`、`为什么这一步可以这样变形？` 等“为什么 + 这一步”请求归为 `socratic_hint`，而不是误判为 `step_check`。
-- 修复普通 Chat mock 输出中空 Tutor metadata 段落问题。
-
-验证：
-
-- `bun --cwd packages/agent test` 通过，30 个测试全部通过。
-- `bun --cwd packages/agent typecheck` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web test` 通过，192 个测试全部通过。
-- `bun --filter @repo/web build` 通过。
-- `rg "AI_ENABLE_LIVE_CALLS|AI_PROVIDER_MODE|streamText|aiProvider" packages/agent apps/web/src/lib apps/web/src/app/api/chat` 已确认 TutorAgent policy 不引入真实模型调用，live 调用仍只在 `/api/chat` 的既有双开关保护下发生。
-
----
-
-## 2026-06-21（Day 16）
-
-**Phase 6.3 前 AI 行为回归与 Chat 流式兜底补强**
-
-- 启动 Docker PostgreSQL / Redis / MinIO，确认 Prisma migration 状态为 up to date，前后端均可正常启动。
-- 切换 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`，使用 `deepseek-v4-flash` 完成小样本 live 回归验收。
-- 验证普通 Chat live 能正常返回并同步；TutorAgent live 能进入 `tutor` route 与 `socratic_hint` 策略。
-- 发现一次 Tutor live 流式结束后页面只保留用户消息、未落 assistant 的偶发现象；后续同类 UI 与直接 API 样本可正常返回，判断为流式完成/消息落库边界缺少兜底。
-- 新增 `chat-completion-guard`：流式生成中不写 Dexie、不同步服务端；流式结束后等待短稳定窗口，若最后仍是 user、assistant 为空或最后文本仍在节流合并中，阻止提前同步并提示“本次回答没有成功生成，请重试”。
-- 补强 ChatMessage 服务端同步防线：`/chat-messages/sync` 拒绝没有非空 `ASSISTANT` 收尾的非空快照，防止前端兜底漏掉时污染 PostgreSQL。
-- 补强前端恢复与离开页面保护：历史恢复时裁掉尾部 user-only / 空 assistant，页面隐藏或关闭时不把流式中的半截内容写入 Dexie。
-- 新增 `docs/ai-behavior-acceptance.md`，明确 mock 只证明工程链路，Chat / RAG / Agent 行为改动需要小样本 live smoke；`RAG_EMBEDDING_PROVIDER=fake` 不能证明 RAG 语义命中质量。
-- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md` 和 `docs/data-flow.md` 的 AI 验收与 Chat 同步保护边界。
-
-验证：
-- `node --experimental-strip-types --test apps/web/src/lib/chat-completion-guard.test.mts` 通过。
-- `bun --filter @repo/server test -- chat-messages.service.spec.ts` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand chat-messages.e2e-spec.ts` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/server lint` 通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --filter @repo/web test` 通过，199 个测试全部通过。
-
-**Phase 6.4 WrongQuestionOrganizerAgent 收尾**
-
-- 完成 Phase 6.4 错题组织层收尾：`WrongQuestionOrganizerAgent` 作为确定性 policy 推荐学科组与专题 deck，不调用真实模型、不读取 API key。
-- 错题组织层以 `WrongQuestionSubjectGroup`、`WrongQuestionDeck`、`WrongQuestionDeckItem` 为独立视图，只负责学科卡片、专题 deck 和错题归属，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
-- `/error-book` 已升级为学科卡片 -> 专题 deck -> 错题列表的下钻结构，并保留错题详情、备注、掌握状态、删除确认和加入复习。
-- 补强错题更新/删除后的 organizer 查询失效，修复 deck 重命名竞态、空状态统计和 agent package 运行时导入问题。
-- 同步更新 `AGENTS.md`、`CLAUDE.md`、`README.md`、`docs/data-flow.md`、`docs/roadmap.md`、`docs/architecture.md` 和 `docs/ai-behavior-acceptance.md`，标记 Phase 6.4 完成，下一步进入 Phase 6.5。
-
-验证：
-- Docker PostgreSQL / Redis / MinIO 均在线。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/agent test` 通过，43 个测试全部通过。
-- `bun --cwd packages/agent typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --filter @repo/server test` 通过，19 个测试套件、169 个测试全部通过。
-- `bun --filter @repo/server test:e2e` 通过，10 个测试套件、29 个测试全部通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web test` 通过，210 个测试全部通过。
-- `bun --filter @repo/web build` 通过。
-- `bun --cwd packages/database prisma migrate status --schema prisma/schema.prisma` 显示数据库 schema up to date。
-- `git diff --check` 无空白错误，仅保留既有 CRLF 提示。
-
----
-
-## 2026-06-22（Day 17）
-
-**Phase 6.5 ReviewAgent / PlannerAgent**
-
-- 完成 Phase 6.5 ReviewAgent / PlannerAgent 只读建议闭环。
-- 新增 `@repo/types/api/review-agent` contract，覆盖 ReviewAgent / PlannerAgent 输入输出、suggestions query 和 response schema。
-- `@repo/agent` 新增 `analyzeReview()` 与 `planStudy()` 确定性 policy，并通过 `@repo/agent/review`、`@repo/agent/planner` 导出。
-- 新增 NestJS `GET /review-agent/suggestions`，经过 `JwtAuthGuard`，按当前 `userId` 聚合 Card、ReviewLog、ReviewTask plan、ReviewPreference 和错题组织摘要。
-- 新增 web review-agent API client、query hook、query key、展示 helper 和共享建议卡片。
-- `/plan` 展示完整 Agent 学习建议，`/today` 展示紧凑建议；接口失败不隐藏原有计划、今日复习和任务内容。
-- 保持 FSRS / ReviewTask 权威边界：不自动创建 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck，不调用真实模型，不进入 Dexie `mutationQueue`。
-
-验证：
-
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/agent test` 通过，51 个测试全部通过。
-- `bun --cwd packages/agent typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --cwd packages/fsrs test` 通过。
-- `bun --filter @repo/server test` 通过，20 个测试套件、173 个测试全部通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/server test:e2e -- --runInBand` 通过，11 个测试套件、31 个测试全部通过。
-- `bun --filter @repo/web lint` 通过。
-- `bun --filter @repo/web test` 通过，214 个测试全部通过。
-- `bun --filter @repo/web build` 通过。
-- `rg -n "streamText|AI_PROVIDER_MODE|AI_ENABLE_LIVE_CALLS|OPENAI_API_KEY|DEEPSEEK_API_KEY" packages/agent/src/nodes/review.ts packages/agent/src/nodes/planner.ts apps/server/src/review-agent` 无命中。
-- `rg -n "\.(create|createMany|update|updateMany|delete|deleteMany|upsert)\(" apps/server/src/review-agent` 无命中。
-
----
-
-## 2026-06-28（Day 18）
-
-**Phase 6.6 MemoryAgent**
-
-- 完成 Phase 6.6 MemoryAgent 长期记忆候选、人审确认和管理闭环。
-- 新增 `@repo/types/api/memory-agent` contract，覆盖候选、正式记忆、生成请求、列表查询、确认/忽略和更新/删除响应 schema。
-- `@repo/agent` 新增 `analyzeMemory()` 确定性 policy 与 `@repo/agent/memory` 导出；MemoryAgent 不调用真实模型、不读取 API key。
-- Prisma 新增 `UserMemoryCandidate`、`UserMemory` 与相关枚举、索引和唯一约束；长期记忆候选与正式记忆以 PostgreSQL 为权威来源。
-- 新增 NestJS `/memory-agent` 与 `/user-memories` API，支持候选列表、生成、确认、忽略、正式记忆列表、停用/恢复和删除；候选必须由用户确认后才成为 `ACTIVE` 记忆。
-- `/profile` 新增学习记忆管理面板，展示待确认候选和正式记忆，支持生成候选、确认、忽略、停用、恢复和删除。
-- 保持 Phase 6.6 边界：不把 `UserMemory` 自动注入 `/api/chat`，不在每次 Chat 中自动执行 MemoryAgent，不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`。
-
-验证：
-
-- `bun test packages/types/tests/memory-agent.test.mts packages/types/tests/memory-agent-runtime-import.test.mts` 通过。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/agent test` 通过。
-- `bun --cwd packages/agent typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --filter @repo/server test -- memory-agent.service.spec.ts` 通过。
-- `bun --filter @repo/server build` 通过。
-- Docker PostgreSQL / Redis / MinIO 在线后，`bun --cwd packages/database prisma migrate deploy --schema prisma/schema.prisma` 通过，已应用 `20260628000000_add_user_memories`。
-- 设置 `DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind`、`JWT_SECRET` 与 `RAG_EMBEDDING_PROVIDER=fake` 后，`bun --filter @repo/server test:e2e` 通过，11 个 suites、31 个 tests 全部通过。
-- `bun --filter @repo/web test` 通过。
-- `bun --filter @repo/web build` 通过。
-- `rg -n "Phase 6\\.6|MemoryAgent|UserMemory|UserMemoryCandidate|Phase 6\\.7" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md` 通过。
-- `git diff --check` 通过。
-
-**Phase 6.7 Agent Trace / Eval 规划**
-
-- 新增 `docs/superpowers/specs/2026-06-28-phase-6-7-agent-trace-eval-design.md`，明确 Agent Trace UI、估算成本看板和固定 deterministic eval set 的目标、非目标、数据边界、API contract、隐私约束与验收标准。
-- 新增 `docs/superpowers/plans/2026-06-28-phase-6-7-agent-trace-eval.md`，按 types contract、Agent eval、server trace API、web trace capture、dashboard UI 和 docs closeout 拆分实施任务；每个任务保留独立验证和提交边界。
-- Phase 6.7 仍保持既有边界：不保存完整 prompt / full response / RAG chunk，不绕过 live 双开关，不把 MemoryAgent 自动注入每次 Chat，成本看板只展示估算值。
-
-**Phase 6.7 Agent Trace / Eval 交付**
-
-- 完成 Agent Trace contract：`@repo/types/api/agent-trace` 定义 trace run、step、create、list、detail 和 summary schema，并提供 runtime import guard。
-- 完成固定 deterministic eval set：覆盖 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent 和 MemoryAgent 的确定性 policy 回归。
-- Prisma 新增 `AgentTraceRun`、`AgentTraceStep` 与枚举，NestJS 新增 `/agent-traces` API，支持写入、列表、详情和近 1 到 30 天 summary，所有读写按当前 `userId` 隔离。
-- `/api/chat` 新增 best-effort trace capture：有 access token 时写入脱敏 trace，失败不打断流式回答，只通过 `x-prepmind-agent-trace-recorded` 暴露写入结果。
-- Web 新增估算成本 helper、trace API client、payload builder、TanStack Query hooks 和 `/agent-trace` 调试台；个人中心新增 Agent 调试台入口。
-- 保持 Phase 6.7 隐私边界：Trace 只保存 route、confidence、step summary、token 估算、verifier 状态、模型名、模式和估算成本等脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
-- `/agent-trace` 的成本看板只展示基于本地价格表和 token 估算的估算成本，不替代模型供应商账单；`/agent-traces` 是在线账号级 API，不进入 Dexie `mutationQueue`。
-
-验证：
-
-- `bun test packages/types/tests/agent-trace.test.mts packages/types/tests/agent-trace-runtime-import.test.mts` 通过，0 fail。
-- `bun --cwd packages/types typecheck` 通过。
-- `bun --cwd packages/agent test` 通过，66 个测试全部通过。
-- `bun --cwd packages/agent typecheck` 通过。
-- `bun --cwd packages/database test` 通过。
-- `bun --filter @repo/server test -- agent-traces.service.spec.ts` 通过，5 个测试全部通过。
-- `bun --filter @repo/server build` 通过。
-- `bun --filter @repo/web test` 通过，223 个测试全部通过。
-- `bun --filter @repo/web build` 通过，`/agent-trace` 已出现在构建路由中。
-- 设置 `DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind`、`JWT_SECRET` 与 `RAG_EMBEDDING_PROVIDER=fake` 后，`bun --filter @repo/server test:e2e` 通过，12 个 suites、34 个 tests 全部通过。
-- `rg -n "Phase 6\\.7|Agent Trace|agent-traces|估算成本|fixed deterministic eval" AGENTS.md README.md docs/data-flow.md docs/roadmap.md DEVLOG.md docs/ai-behavior-acceptance.md` 通过。
-- `git diff --check` 通过，仅保留 Windows CRLF 提示。
-
----
-
-## 当前状态
-
-**Phase 0：已完成**
-
-- Monorepo、设计文档、基础目录、初始数据库设计和基础设施配置。
-
-**Phase 1：已完成**
-
-- 前端 MVP、AI 聊天、OCR、Dexie 本地持久化、错题本 CRUD 和今日任务静态版。
-
-**Phase 2.1：已完成**
-
-- 后端基础、Prisma、PostgreSQL、Auth/User API、统一响应和测试覆盖。
-
-**Phase 2.2：已完成**
-
-- 前端 Auth 已接入后端，登录态权威来源迁移到 NestJS Auth API。
-- Dexie 继续作为离线业务数据缓存。
-
-**Phase 2.3：已完成**
-
-- WrongQuestion / ChatMessage / OCRRecord API 已迁移到 PostgreSQL。
-- OCR 图片上传链路已接入 MinIO。
-- Dexie mutationQueue 与乐观更新层已完成。
-- Chat / OCR 上下文、流式渲染和自动滚动体验已稳定。
-
-**Phase 2.5：已完成**
-
-- Chat-first 产品体验壳层、侧边栏导航、亮色软萌日漫风视觉系统已完成。
-- 个人中心、本地学习偏好、今日任务轻学习手账已完成。
-- 错题本、聊天页、输入区、保存错题弹层和空状态体验已完成打磨。
-- 注册/登录页已统一到 Phase 2.5 视觉系统，Auth 数据流不变。
-
-**Phase 3：已完成**
-
-- OCR structured output schema、结构化 prompt、结构化 OCR 解析和 `OcrRecord.parsedJson` 已完成。
-- `activeStudyContext` 已从结构化题目生成，支持题目 id、题型、难度和识别提醒。
-- 错题保存已优先使用结构化字段，多题支持单题保存和批量保存。
-- `createWrongQuestion` / `searchKnowledge` / `createReviewTask` 已保留为 tool action proposal 边界。
-
-**Phase 4：已完成主线**
-
-- Phase 4.1 WrongQuestion-first FSRS 复习闭环已完成。
-- Phase 4.2 学习统计页和 Review stats/logs API 已完成。
-- Phase 4.3 ReviewTask 持久化任务流已完成并合并到 `main`。
-- Phase 4.4 离线评分队列、服务端幂等评分和 in-app 提醒摘要已完成。
-- Phase 4.5.1 复习计划预览、`/plan` 页面和 `/stats` ECharts 图表升级已完成。
-- Phase 4.5.2 复习容量偏好、加权压力模型、7 / 14 天计划窗口和今日容量摘要已完成。
-- 错题可加入复习卡，今日任务可读取持久化 ReviewTask 并提交四档评分、跳过和恢复。
-- `/plan` 可只读预览未来 7 / 14 天加权复习压力；`/stats` 可读取复习趋势、评分分布、卡片状态和最近复习记录。
-- Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源；ReviewTask rating 离线失败可进入 Dexie mutationQueue，但 FSRS 和统计只在服务端同步成功后推进。
-
-**Phase 5：已完成主线**
-
-- Phase 5.0 RAG 知识库设计已完成。
-- Phase 5.1 数据模型、pgvector 索引预留和 knowledge API contract 已完成。
-- Phase 5.2 文档上传与状态 API 已完成。
-- Phase 5.3 文档处理与 embedding 入库已完成。
-- Phase 5.4 检索 API 已完成。
-- Phase 5.5 Chat RAG 增强、知识库上下文注入和 Markdown citations 已完成。
-- Phase 5.6 `/knowledge` 学习资料工作台已完成，支持上传、处理、替换上传、删除和检索测试。
-
-**Phase 6：已完成主线，Phase 6.7 已完成**
-
-- Phase 6.0 Agent Runtime 地基已完成：共享 contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor 与降级链路已落地。
-- Phase 6.1 Router + Tutor Chat 接入已完成：`/api/chat` 可获得 Agent 路由元数据，并保持原有流式输出、RAG、OCR 上下文和成本保护链路。
-- Phase 6.2 TutorAgent 策略层已完成：Tutor 路线可生成结构化讲题策略、策略 prompt 和 mock 策略元数据。
-- Phase 6.3 KnowledgeVerifierAgent 已完成：RAG 命中后可评估资料可信度，并注入保守使用规则和资料核对提示。
-- Phase 6.4 WrongQuestionOrganizerAgent 已完成：错题本已升级为学科卡片、专题 deck 和错题列表下钻，组织层独立于 WrongQuestion 与 FSRS 事实层。
-- Phase 6.5 ReviewAgent / PlannerAgent 已完成：计划页和今日任务页可读取只读 suggestions API，展示复习诊断、今日重点和学习计划建议。
-- Phase 6.6 MemoryAgent 已完成：个人中心可生成长期记忆候选，用户确认后写入正式记忆，并支持停用、恢复和删除。
-- Phase 6.7 Agent Trace / Eval 已完成：`/api/chat` 可 best-effort 记录脱敏 trace，`/agent-traces` 提供账号级观测 API，`/agent-trace` 展示步骤、降级、token 和估算成本，固定 deterministic eval set 覆盖当前确定性 Agent policy。
-- 分析型 Agent 仍保持阈值、界面读取或用户主动触发原则，当前不会在每次 Chat 中自动执行 Review / Memory / Planner / KnowledgeDedup，也不会把长期记忆自动注入 `/api/chat`；Agent Trace 只记录脱敏观测元数据，不改变 Chat 输出链路。
-
----
-
-## 待办与规划
-
-**Phase 4：FSRS 记忆系统**
-
-- [x] WrongQuestion-first Card / ReviewLog 第一轮数据流。
-- [x] Again / Hard / Good / Easy 评分入口。
-- [x] 今日任务接入到期复习卡。
-- [x] 复习历史与统计。
-- [x] 更完整的 ReviewTask 数据流。
-- [x] Phase 4.4：离线评分队列与提醒策略。
-- [x] Phase 4.5.1：复习计划预览与统计图表升级。
-- [x] Phase 4.5.2：复习容量偏好与更长期计划设置。
-- [x] Phase 4.5.2：复习压力模型升级，从 `dueCount + overdueCount` 扩展为逾期、难度、稳定性、预计耗时和每日容量加权模型。
-
-**后续方向**
-
-- [x] Phase 5.1：RAG 数据模型、pgvector 索引预留与 knowledge API contract。
-- [x] Phase 5.2：文档上传与状态 API。
-- [x] Phase 5.3：解析、分块、embedding 入库。
-- [x] Phase 5.4：检索 API。
-- [x] Phase 5.5：Chat RAG 增强与引用展示。
-- [x] Phase 5.6：知识库页面体验打磨。
-- [x] Phase 5.6：知识库资料去重、替换上传和卡片三点菜单交互补强。
-- [x] Phase 6.0：Agent Runtime 地基、共享 contract、RouterAgent、阈值 guard、运行 recorder 与降级链路。
-- [x] Phase 6.1：RouterAgent 接入 `/api/chat`，保留现有 streaming、RAG、OCR 上下文和成本保护。
-- [x] Phase 6.2：TutorAgent 策略层，支持讲题意图分类、策略 prompt 和 mock 策略元数据。
-- [x] Phase 6.3：`KnowledgeVerifierAgent`，RAG 命中后评估资料可信度，避免 AI 盲从错误笔记，并向用户提示可疑资料片段。
-- [x] Phase 6.4：`WrongQuestionOrganizerAgent`，错题本首页按学科卡片优先展示，学科内部按 AI 专题 deck 下钻。
-- [x] Phase 6.5：`ReviewAgent / PlannerAgent`，基于错题、复习日志和计划偏好生成只读复习分析与学习计划建议。
-- [x] Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认、停用/恢复和删除。
-- [x] Phase 6.7：Agent Trace UI、估算成本看板和固定评测集。
-- [ ] Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
-- [ ] Phase 6 后续资料管理：`KnowledgeDedupAgent / KnowledgeOrganizerAgent`，判断资料重复、更新版或互补资料，并给出替换、合并或保留建议。
-- [ ] MCP 工具体系。
-- [ ] 生产观测增强：OpenTelemetry、Sentry、Prometheus / Grafana 与 k6。
+Phase 7.3 最近验证：以下命令已在该阶段收尾时通过。
+
+```powershell
+bun --cwd packages/types typecheck
+bun packages/types/tests/background-job.test.mts
+bun --filter @repo/server test -- event-bus background-jobs
+bun --filter @repo/web test -- background-job knowledge-view
+bun --filter @repo/server build
+bun --filter @repo/web build
+git diff --check
+```
+
+AI 行为验收规则：
+
+- mock 验工程链路。
+- live 小样本验真实输出体验。
+- fake embedding 不证明 RAG 语义命中质量。
+- 改 Chat prompt、RAG prompt、Tutor 输出或真实模型策略时，必须按 `docs/ai-behavior-acceptance.md` 做 live smoke。
+- 纯后台任务、API contract、UI 状态和文档更新不需要 live 模型验收。
+
+## 下一步
+
+Phase 7 后续优先级：
+
+1. Swagger / OpenAPI：补齐核心 REST API contract 和调试文档。
+2. Worker 部署拆分：让 API / worker 进程边界更清晰，并补健康检查。
+3. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
+4. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+5. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+
+## 参考文档
+
+- `AGENTS.md`：当前协作规范和最新项目快照。
+- `README.md`：项目入口和启动说明。
+- `docs/roadmap.md`：完整 Phase 路线。
+- `docs/data-flow.md`：当前有效数据流和边界。
+- `docs/ai-behavior-acceptance.md`：mock / live / RAG / Agent 验收规范。
+- `docs/blogs/phase-7-rag-safety-guard.md`：RAG SafetyGuard 面试复盘。
+- `docs/blogs/phase-7-event-observability.md`：后台任务可观测面试复盘。
