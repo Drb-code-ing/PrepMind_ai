@@ -19,7 +19,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import {
   knowledgeDocumentListQuerySchema,
@@ -45,6 +51,11 @@ export class KnowledgeDocumentsController {
 
   @Post()
   @UseInterceptors(createKnowledgeDocumentFileInterceptor())
+  @ApiOperation({ summary: 'Upload a knowledge document for later processing' })
+  @ApiCreatedResponse({
+    description:
+      'Uploaded document metadata is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   upload(
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFile() file: Express.Multer.File | undefined,
@@ -54,6 +65,13 @@ export class KnowledgeDocumentsController {
 
   @Put(':id/file')
   @UseInterceptors(createKnowledgeDocumentFileInterceptor())
+  @ApiOperation({
+    summary: 'Replace the file for an existing knowledge document',
+  })
+  @ApiOkResponse({
+    description:
+      'Replacement document metadata is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   replaceFile(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -67,12 +85,24 @@ export class KnowledgeDocumentsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List the current user knowledge documents' })
+  @ApiOkResponse({
+    description:
+      'Document list data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = knowledgeDocumentListQuerySchema.parse(query);
     return this.knowledgeDocumentsService.list(user.id, input);
   }
 
   @Post(':id/process')
+  @ApiOperation({
+    summary: 'Process or enqueue processing for a knowledge document',
+  })
+  @ApiCreatedResponse({
+    description:
+      'Processing result or background job metadata is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   process(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -83,11 +113,25 @@ export class KnowledgeDocumentsController {
   }
 
   @Get(':id')
+  @ApiOperation({
+    summary: 'Read one knowledge document with processing metadata',
+  })
+  @ApiOkResponse({
+    description:
+      'Document detail data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.knowledgeDocumentsService.getById(user.id, id);
   }
 
   @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete a knowledge document owned by the current user',
+  })
+  @ApiOkResponse({
+    description:
+      'Deletion result is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   delete(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.knowledgeDocumentsService.delete(user.id, id);
   }

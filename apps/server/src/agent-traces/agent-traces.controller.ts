@@ -7,7 +7,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   agentTraceCreateRequestSchema,
   agentTraceListQuerySchema,
@@ -27,6 +33,11 @@ export class AgentTracesController {
   constructor(private readonly agentTracesService: AgentTracesService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Record a redacted agent trace run' })
+  @ApiCreatedResponse({
+    description:
+      'Created trace metadata is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   createTrace(@CurrentUser() user: AuthenticatedUser, @Body() body: unknown) {
     return this.agentTracesService.createTrace(
       user.id,
@@ -35,6 +46,13 @@ export class AgentTracesController {
   }
 
   @Get()
+  @ApiOperation({
+    summary: 'List redacted agent trace runs for the current user',
+  })
+  @ApiOkResponse({
+    description:
+      'Trace list data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   listTraces(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     return this.agentTracesService.listTraces(
       user.id,
@@ -43,6 +61,13 @@ export class AgentTracesController {
   }
 
   @Get('summary')
+  @ApiOperation({
+    summary: 'Summarize recent agent trace usage and estimated cost',
+  })
+  @ApiOkResponse({
+    description:
+      'Trace summary data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   getSummary(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     return this.agentTracesService.getSummary(
       user.id,
@@ -51,6 +76,11 @@ export class AgentTracesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Read one redacted agent trace run with steps' })
+  @ApiOkResponse({
+    description:
+      'Trace detail data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   getTrace(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.agentTracesService.getTrace(user.id, id);
   }

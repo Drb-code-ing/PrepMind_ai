@@ -45,8 +45,45 @@ const swaggerOperationKeys = [
 ] as const;
 
 type SwaggerPathItem = Partial<
-  Record<(typeof swaggerOperationKeys)[number], { tags?: string[] }>
+  Record<
+    (typeof swaggerOperationKeys)[number],
+    {
+      summary?: string;
+      tags?: string[];
+      responses?: Record<string, { description?: string }>;
+    }
+  >
 >;
+
+const coreApiControllers = [
+  AuthController,
+  UsersController,
+  ChatMessagesController,
+  OcrRecordsController,
+  WrongQuestionsController,
+  WrongQuestionOrganizerController,
+  ReviewsController,
+  ReviewTasksController,
+  ReviewPreferencesController,
+  ReviewAgentController,
+  KnowledgeDocumentsController,
+  KnowledgeSearchController,
+  KnowledgeAgentController,
+  MemoryAgentController,
+  AgentTracesController,
+  BackgroundJobsController,
+  UploadsController,
+];
+
+function useSwaggerTestingMocker(token: unknown) {
+  if (token === ConfigService) {
+    return {
+      get: () => 10_000_000,
+    };
+  }
+
+  return {};
+}
 
 function collectOperationTags(document: { paths?: Record<string, unknown> }) {
   return Object.values(document.paths ?? {}).flatMap((pathItem) =>
@@ -55,6 +92,14 @@ function collectOperationTags(document: { paths?: Record<string, unknown> }) {
       return Array.isArray(operation?.tags) ? operation.tags : [];
     }),
   );
+}
+
+function getSwaggerOperation(
+  document: { paths?: Record<string, unknown> },
+  path: string,
+  method: (typeof swaggerOperationKeys)[number],
+) {
+  return (document.paths?.[path] as SwaggerPathItem | undefined)?.[method];
 }
 
 describe('swagger config', () => {
@@ -97,35 +142,9 @@ describe('swagger config', () => {
 
   it('documents core API tags for current product flows', async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [
-        AuthController,
-        UsersController,
-        ChatMessagesController,
-        OcrRecordsController,
-        WrongQuestionsController,
-        WrongQuestionOrganizerController,
-        ReviewsController,
-        ReviewTasksController,
-        ReviewPreferencesController,
-        ReviewAgentController,
-        KnowledgeDocumentsController,
-        KnowledgeSearchController,
-        KnowledgeAgentController,
-        MemoryAgentController,
-        AgentTracesController,
-        BackgroundJobsController,
-        UploadsController,
-      ],
+      controllers: coreApiControllers,
     })
-      .useMocker((token) => {
-        if (token === ConfigService) {
-          return {
-            get: () => 10_000_000,
-          };
-        }
-
-        return {};
-      })
+      .useMocker(useSwaggerTestingMocker)
       .compile();
     const app: INestApplication = moduleRef.createNestApplication();
     await app.init();
@@ -160,6 +179,102 @@ describe('swagger config', () => {
           'Uploads',
         ]),
       );
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('keeps generated OpenAPI JSON free of sensitive examples and raw payload fields', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: coreApiControllers,
+    })
+      .useMocker(useSwaggerTestingMocker)
+      .compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    try {
+      const document = SwaggerModule.createDocument(
+        app,
+        buildSwaggerDocumentOptions(),
+      );
+      const text = JSON.stringify(document);
+
+      expect(text).toContain('response envelope');
+      expect(text).toContain('success');
+      expect(text).toContain('requestId');
+
+      for (const forbidden of [
+        'DEEPSEEK_API_KEY',
+        'OPENAI_API_KEY',
+        'Authorization: Bearer',
+        'Cookie:',
+        'refreshToken example',
+        'rawPayload',
+        'fullPrompt',
+        'fullChunk',
+        'complete prompt',
+        'complete RAG chunk',
+      ]) {
+        expect(text).not.toContain(forbidden);
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('documents selected high-value operations with summaries and response envelopes', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: coreApiControllers,
+    })
+      .useMocker(useSwaggerTestingMocker)
+      .compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    try {
+      const document = SwaggerModule.createDocument(
+        app,
+        buildSwaggerDocumentOptions(),
+      );
+      const operations = [
+        ['post', '/auth/register'],
+        ['post', '/auth/login'],
+        ['post', '/auth/refresh'],
+        ['post', '/auth/logout'],
+        ['get', '/auth/me'],
+        ['post', '/knowledge/documents'],
+        ['get', '/knowledge/documents'],
+        ['get', '/knowledge/documents/{id}'],
+        ['put', '/knowledge/documents/{id}/file'],
+        ['post', '/knowledge/documents/{id}/process'],
+        ['delete', '/knowledge/documents/{id}'],
+        ['post', '/knowledge/search'],
+        ['post', '/agent-traces'],
+        ['get', '/agent-traces'],
+        ['get', '/agent-traces/summary'],
+        ['get', '/agent-traces/{id}'],
+        ['get', '/review-tasks/today'],
+        ['post', '/review-tasks/{taskId}/rating'],
+        ['post', '/review-tasks/{taskId}/skip'],
+        ['post', '/review-tasks/{taskId}/reopen'],
+        ['get', '/review-tasks/plan'],
+        ['get', '/background-jobs'],
+        ['get', '/background-jobs/summary'],
+        ['get', '/background-jobs/{id}'],
+      ] as const;
+
+      for (const [method, path] of operations) {
+        const operation = getSwaggerOperation(document, path, method);
+        expect(operation?.summary).toEqual(expect.any(String));
+        expect(operation?.summary?.length).toBeGreaterThan(0);
+
+        const successResponseDescription = Object.entries(
+          operation?.responses ?? {},
+        ).find(([status]) => status.startsWith('2'))?.[1].description;
+        expect(successResponseDescription).toContain('response envelope');
+        expect(successResponseDescription).toContain('requestId');
+      }
     } finally {
       await app.close();
     }

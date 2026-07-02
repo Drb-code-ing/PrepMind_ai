@@ -7,7 +7,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { reviewRatingRequestSchema } from '@repo/types/api/review';
 import {
   reviewTaskListQuerySchema,
@@ -28,6 +34,11 @@ export class ReviewTasksController {
   constructor(private readonly reviewTasksService: ReviewTasksService) {}
 
   @Get('today')
+  @ApiOperation({ summary: 'Get today review tasks for the current user' })
+  @ApiOkResponse({
+    description:
+      'Today review tasks are returned in the global response envelope: { success: true, data, requestId }.',
+  })
   getToday(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskTodayQuerySchema.parse(query);
     return this.reviewTasksService.getToday(user.id, input);
@@ -37,6 +48,10 @@ export class ReviewTasksController {
   @ApiTags('Plan')
   @ApiOperation({
     summary: 'Preview future review pressure without creating tasks',
+  })
+  @ApiOkResponse({
+    description:
+      'Plan preview data is returned in the global response envelope: { success: true, data, requestId }.',
   })
   getPlan(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskPlanQuerySchema.parse(query);
@@ -50,6 +65,13 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/rating')
+  @ApiOperation({
+    summary: 'Submit an idempotent FSRS rating for a review task',
+  })
+  @ApiCreatedResponse({
+    description:
+      'Rating result is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   submitRating(
     @CurrentUser() user: AuthenticatedUser,
     @Param('taskId') taskId: string,
@@ -60,6 +82,11 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/skip')
+  @ApiOperation({ summary: 'Skip a review task without rating it' })
+  @ApiCreatedResponse({
+    description:
+      'Skipped task data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   skip(
     @CurrentUser() user: AuthenticatedUser,
     @Param('taskId') taskId: string,
@@ -68,6 +95,11 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/reopen')
+  @ApiOperation({ summary: 'Reopen a skipped or completed review task' })
+  @ApiCreatedResponse({
+    description:
+      'Reopened task data is returned in the global response envelope: { success: true, data, requestId }.',
+  })
   reopen(
     @CurrentUser() user: AuthenticatedUser,
     @Param('taskId') taskId: string,

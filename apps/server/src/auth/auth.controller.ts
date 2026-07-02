@@ -10,7 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import {
   loginRequestSchema,
@@ -27,6 +33,9 @@ type CookieRequest = Request & {
   cookies?: Record<string, string | undefined>;
 };
 
+const AUTH_RESPONSE_ENVELOPE =
+  'Auth response returned in the global response envelope: { success: true, data, requestId }.';
+
 @Controller('auth')
 @ApiTags('Auth')
 export class AuthController {
@@ -36,6 +45,10 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @ApiOperation({
+    summary: 'Register a new user and start an authenticated session',
+  })
+  @ApiCreatedResponse({ description: AUTH_RESPONSE_ENVELOPE })
   register(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
@@ -52,6 +65,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Log in with email and password' })
+  @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   login(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
@@ -68,6 +83,10 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Rotate the refresh cookie and issue a new access token',
+  })
+  @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   refresh(
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
@@ -81,6 +100,8 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Log out the current refresh-token session' })
+  @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   logout(
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: Response,
@@ -91,6 +112,8 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Read the current authenticated user profile' })
+  @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.id);
   }
