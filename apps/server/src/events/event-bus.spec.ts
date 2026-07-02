@@ -36,4 +36,29 @@ describe('InProcessEventBus', () => {
       },
     ]);
   });
+
+  it('continues publishing when one subscriber throws', () => {
+    const bus = new InProcessEventBus();
+    const received: string[] = [];
+
+    bus.subscribe('knowledge.document.processing.failed', () => {
+      throw new Error('subscriber failed');
+    });
+    bus.subscribe('knowledge.document.processing.failed', (event) => {
+      received.push(event.documentId);
+    });
+
+    const result = bus.publish({
+      type: 'knowledge.document.processing.failed',
+      userId: 'user_1',
+      documentId: 'doc_1',
+      backgroundJobId: 'job_1',
+      errorCode: 'PARSE_FAILED',
+      retryable: false,
+      finishedAt: '2026-07-02T00:00:00.000Z',
+    });
+
+    expect(received).toEqual(['doc_1']);
+    expect(result).toEqual({ delivered: 1, failed: 1 });
+  });
 });

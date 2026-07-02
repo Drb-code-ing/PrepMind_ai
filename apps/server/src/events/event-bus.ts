@@ -37,16 +37,30 @@ export type ServerEvent =
 
 type Handler<T extends ServerEvent> = (event: T) => void;
 
+export type EventPublishResult = {
+  delivered: number;
+  failed: number;
+};
+
 export class InProcessEventBus {
   private readonly handlers = new Map<ServerEvent['type'], Set<Handler<ServerEvent>>>();
 
-  publish(event: ServerEvent): void {
+  publish(event: ServerEvent): EventPublishResult {
     const handlers = this.handlers.get(event.type);
-    if (!handlers) return;
+    if (!handlers) return { delivered: 0, failed: 0 };
 
+    let delivered = 0;
+    let failed = 0;
     for (const handler of handlers) {
-      handler(event);
+      try {
+        handler(event);
+        delivered += 1;
+      } catch {
+        failed += 1;
+      }
     }
+
+    return { delivered, failed };
   }
 
   subscribe<T extends ServerEvent['type']>(
