@@ -1,5 +1,5 @@
 import cookieParser from 'cookie-parser';
-import type { INestApplication } from '@nestjs/common';
+import { Logger, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
@@ -23,7 +23,10 @@ type BootstrapServerDependencies = {
   serverRole?: ServerEnv['SERVER_ROLE'];
   createHttpApp?: () => Promise<HttpAppLike>;
   createApplicationContext?: () => Promise<unknown>;
+  logger?: Pick<Logger, 'log'>;
 };
+
+const defaultLogger = new Logger('Bootstrap');
 
 export function shouldListenHttp(role: ServerEnv['SERVER_ROLE']) {
   return role === 'api' || role === 'both';
@@ -58,6 +61,9 @@ function configureHttpApp(
 
 export async function bootstrapServer(deps: BootstrapServerDependencies = {}) {
   const serverRole = deps.serverRole ?? resolveServerRole(process.env.SERVER_ROLE);
+  const logger = deps.logger ?? defaultLogger;
+
+  logger.log(`Starting server role: ${serverRole}`);
 
   if (!shouldListenHttp(serverRole)) {
     await (
