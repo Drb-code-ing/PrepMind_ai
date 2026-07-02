@@ -76,7 +76,44 @@ $env:SERVER_ROLE='both'
 bun --filter @repo/server start:dev
 ```
 
-`SERVER_ROLE` 可选 `api | worker | both`。当前它只控制是否注册 worker processor：`api` 不注册 worker，`worker` / `both` 注册 worker；当前进程仍会启动 HTTP server，真正 worker-only 进程拆分属于后续生产化工作。本地最省事用 `both`；`inline` 仍是默认 fallback。
+`SERVER_ROLE` 可选 `api | worker | both`：
+
+- `api`：只启动 HTTP API，不注册 BullMQ worker processor，适合和独立 worker 进程搭配。
+- `worker`：只创建 Nest application context，不监听 HTTP 端口，只注册 worker processor。
+- `both`：本地一体化模式，同一个进程既提供 HTTP，也消费队列。
+
+本地最省事用 `both`；`inline` 仍是默认 fallback。需要验证真正 API / worker 拆分时，建议开两个终端：
+
+```powershell
+# 终端 A：API only
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:RAG_EMBEDDING_PROVIDER='fake'
+$env:REDIS_URL='redis://127.0.0.1:6379'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+$env:SERVER_ROLE='api'
+bun --filter @repo/server start:dev
+
+# 终端 B：worker only，不监听 3001
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:RAG_EMBEDDING_PROVIDER='fake'
+$env:REDIS_URL='redis://127.0.0.1:6379'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+$env:SERVER_ROLE='worker'
+bun --filter @repo/server start:dev
+```
+
+Docker Compose 也提供了 worker profile。默认 `server` 仍按 `SERVER_ROLE=${SERVER_ROLE:-both}`、`KNOWLEDGE_PROCESSING_MODE=${KNOWLEDGE_PROCESSING_MODE:-inline}` 启动；拆分验证时可以这样运行：
+
+```powershell
+$env:POSTGRES_PORT='5433'
+$env:SERVER_ROLE='api'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker
+```
+
+worker-only 进程第一版没有 HTTP `/health`，因为它不监听端口；观察它是否正常，主要看进程存活、日志、BullMQ 队列和 `/background-jobs` / `/background-jobs/summary` 状态。
 
 queue 模式 smoke 建议在浏览器打开 `/knowledge`：上传 TXT / Markdown / PDF / DOCX，点击处理，观察资料状态进入 `PROCESSING`，页面展示后台任务状态，最终变为 `DONE` 或 `FAILED`。这只能证明 RAG 处理队列可靠，不证明 `/api/chat` 真实模型回答质量；Chat live 验收仍按本文 AI 调用模式和 `docs/ai-behavior-acceptance.md` 执行。
 

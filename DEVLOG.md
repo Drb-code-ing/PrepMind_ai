@@ -6,7 +6,7 @@
 
 更新时间：2026-07-02
 
-当前阶段：Phase 7.5 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.6 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -23,8 +23,29 @@
 | Phase 7.3 | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要 |
 | Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope 说明 |
 | Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例 |
+| Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context、Docker worker profile |
 
 ## 近期关键记录
+
+### 2026-07-02 - Phase 7.6 Worker Split
+
+本轮目标：把 Phase 7.1 预留的 `SERVER_ROLE=api | worker | both` 从“是否注册 worker processor”推进到真正的进程启动边界，让 `worker` 不再占用 HTTP 端口。
+
+完成内容：
+
+- 新增 `apps/server/src/bootstrap/server-bootstrap.ts`，把 server bootstrap 从 `main.ts` 拆成可测试 helper。
+- `SERVER_ROLE=api`：创建 Nest HTTP app，提供 REST API、`/health` 和 Swagger，但不注册 BullMQ worker processor。
+- `SERVER_ROLE=worker`：使用 `NestFactory.createApplicationContext(AppModule)`，只初始化模块和 BullMQ processor，不调用 `listen()`，不占用 HTTP 端口。
+- `SERVER_ROLE=both`：保留本地开发一体化模式，HTTP API 和 worker processor 同进程。
+- `main.ts` 收敛为 `void bootstrapServer()`，减少启动入口里的不可测逻辑。
+- Docker Compose 增加 `worker` profile：默认开发仍是 `both + inline`，拆分验证时可用 server `api + queue` 搭配 worker service。
+- 新增执行计划：`docs/superpowers/plans/phase-7-worker-split.md`。从本阶段开始，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀。
+
+边界：
+
+- worker-only 第一版不提供 HTTP `/health`；它不监听端口，健康判断先依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
+- 本阶段不改文档处理业务语义、不改 BullMQ 重试策略、不引入 dead letter queue / durable outbox。
+- 本阶段不改 Chat prompt、RAG prompt、模型路由或真实模型调用链路，因此不需要 live 模型 smoke。
 
 ### 2026-07-02 - Phase 7.5 OpenAPI Request Bodies
 
@@ -287,6 +308,7 @@ Phase 6.4 完成：
 - Phase 7.3：Event Observability 完成，EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 任务摘要轮询兜底已落地。
 - Phase 7.4：Swagger / OpenAPI debug docs 完成，`/api-docs` 与 `/api-docs-json` 非 production 默认开启，production 默认关闭，并明确 response envelope、`@repo/types` contract 优先级和认证边界。
 - Phase 7.5：OpenAPI request body 示例完成，注册/登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入已补中文说明与安全示例。
+- Phase 7.6：API / worker 进程启动拆分完成，`worker` 角色不再监听 HTTP，Docker Compose 提供 worker profile。
 
 ## 当前验证基线
 
@@ -305,10 +327,10 @@ bun --cwd packages/database test
 bun --cwd packages/fsrs test
 ```
 
-Phase 7.5 OpenAPI 文档任务验证：本阶段文档收口需要至少运行以下命令。
+Phase 7.6 worker 拆分任务验证：本阶段文档收口需要至少运行以下命令。
 
 ```powershell
-bun --filter @repo/server test -- swagger
+bun --filter @repo/server test -- worker-role server-bootstrap
 bun --filter @repo/server build
 git diff --check
 ```
@@ -325,9 +347,9 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Worker 部署拆分：让 API / worker 进程边界更清晰，并补健康检查。
-2. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
-3. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+1. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
+2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+3. Worker 观测增强：后续按部署形态补 CLI health check、BullMQ metrics 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 
 ## 参考文档
@@ -340,3 +362,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-rag-safety-guard.md`：RAG SafetyGuard 面试复盘。
 - `docs/blogs/phase-7-event-observability.md`：后台任务可观测面试复盘。
 - `docs/blogs/phase-7-openapi-docs.md`：Swagger / OpenAPI debug docs 面试学习博客。
+- `docs/blogs/phase-7-worker-split.md`：API / worker 启动拆分面试学习博客。

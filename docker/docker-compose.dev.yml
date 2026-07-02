@@ -39,6 +39,8 @@ services:
       - redis
       - minio
     environment:
+      SERVER_ROLE: ${SERVER_ROLE:-both}
+      KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
@@ -48,6 +50,29 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: prepmind-dev
       PUBLIC_API_BASE_URL: http://localhost:3001
+
+  worker:
+    profiles:
+      - worker
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    environment:
+      SERVER_ROLE: worker
+      KNOWLEDGE_PROCESSING_MODE: queue
+      DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: prepmind-dev
+      PUBLIC_API_BASE_URL: http://server:3001
 
   web:
     build:
