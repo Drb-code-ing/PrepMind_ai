@@ -6,7 +6,7 @@ import type { ServerEnv } from './env';
 export const SWAGGER_UI_PATH = 'api-docs';
 export const SWAGGER_JSON_PATH = 'api-docs-json';
 
-type SwaggerEnv = Pick<ServerEnv, 'NODE_ENV' | 'SWAGGER_ENABLED'>;
+type SwaggerEnv = Pick<ServerEnv, 'SWAGGER_ENABLED'>;
 
 export function shouldEnableSwagger(env: SwaggerEnv): boolean {
   return env.SWAGGER_ENABLED;
@@ -41,7 +41,10 @@ export function buildSwaggerDocumentOptions() {
 export function setupSwagger(app: INestApplication, env: SwaggerEnv): boolean {
   if (!shouldEnableSwagger(env)) return false;
 
-  const document = SwaggerModule.createDocument(app, buildSwaggerDocumentOptions());
+  const document = SwaggerModule.createDocument(
+    app,
+    buildSwaggerDocumentOptions(),
+  );
   SwaggerModule.setup(SWAGGER_UI_PATH, app, document, {
     jsonDocumentUrl: SWAGGER_JSON_PATH,
   });
