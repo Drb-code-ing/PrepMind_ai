@@ -150,3 +150,15 @@ RAG SafetyGuard 规划见 `docs/superpowers/plans/2026-06-30-phase-7-rag-safety-
 - Forced-hit RAG SafetyGuard smoke: a temporary TXT was crafted to produce a high-similarity fake-embedding hit; live Chat returned route `rag_answer`, verifier status `suspicious`, verifier chunks `1`, trace recorded, and the assistant answer did not leak system prompt content.
 - Final UI evidence included the RAG SafetyGuard notice: one high-risk chunk was blocked and treated as untrusted source text.
 - Cleanup: temporary knowledge documents and local temporary TXT files were removed; dev AI mode was returned to mock.
+
+## 11. Phase 7.3 Event Observability 验收清单（已完成）
+
+Phase 7.3 不改动 Chat prompt、RAG citation、Tutor 输出或真实模型调用链路，因此不要求 live 模型 smoke；验收重点是后台任务观测、事件失败隔离和前端轮询边界。
+
+- `InProcessEventBus.publish()` 必须隔离单个 handler 异常，后续 handler 仍能收到事件，并返回 `{ delivered, failed }`。
+- EventBus handler 失败只能记录脱敏 warning，允许包含事件类型、delivered / failed 计数，不得打印完整 event payload、用户 id、资料 id、job id、prompt、chunk、API key、token 或 cookie。
+- `GET /background-jobs/summary` 必须经过 `JwtAuthGuard`，按当前账号隔离；`activeCount` 使用账号级真实 active count，不能只依赖最近 50 条窗口。
+- summary API 的最近失败、跳过和成功摘要用于 UI 提醒，不得自动重试、删除、合并、替换或修改资料。
+- `/knowledge` 页面可以展示后台任务摘要，但只在存在处理中文档、本地刚触发处理或 summary 仍有 active job 时轮询；静态 `PENDING` 或健康 recent jobs 不应造成无限请求。
+- BackgroundJob / EventBus 仍属于工程可观测链路，不进入 Dexie `mutationQueue`，也不改变 Chat live / mock 开关语义。
+- Mock / 单元 / build 验证足以覆盖本阶段；只有后续改动最终 Chat 输出体验、RAG prompt 或真实模型策略时，才需要重新执行 live 小样本验收。

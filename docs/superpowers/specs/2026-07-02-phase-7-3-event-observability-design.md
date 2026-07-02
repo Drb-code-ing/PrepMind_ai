@@ -97,4 +97,3 @@ backgroundJobSummaryResponseSchema = z.object({
 - `/knowledge` 在有活跃/失败/stale job 时显示稳定摘要文案。
 - 现有知识库处理、RAG SafetyGuard、Chat RAG 流程不回退。
 - 文档说明 Phase 7.3 是进程内事件和只读观测增强，不是持久化 outbox。
-
