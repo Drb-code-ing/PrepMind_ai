@@ -39,3 +39,15 @@ export function getBackgroundJobSummaryView(
 
   return null;
 }
+
+export function getBackgroundJobSummaryPollInterval({
+  summary,
+  shouldPollProcessingState,
+  pollIntervalMs,
+}: {
+  summary: BackgroundJobSummaryResponse | undefined;
+  shouldPollProcessingState: boolean;
+  pollIntervalMs: number;
+}) {
+  return shouldPollProcessingState || (summary?.activeCount ?? 0) > 0 ? pollIntervalMs : false;
+}

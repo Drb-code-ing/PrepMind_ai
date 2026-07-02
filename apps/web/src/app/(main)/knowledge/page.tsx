@@ -32,7 +32,7 @@ import type {
   KnowledgeDedupItem,
 } from '@repo/types/api/knowledge-agent';
 
-import { useBackgroundJobList } from '@/hooks/use-background-jobs';
+import { useBackgroundJobList, useBackgroundJobSummary } from '@/hooks/use-background-jobs';
 import { useKnowledgeAgentSuggestions } from '@/hooks/use-knowledge-agent-suggestions';
 import {
   useDeleteKnowledgeDocument,
@@ -55,6 +55,11 @@ import {
   groupLatestKnowledgeJobsByDocumentId,
   shouldCloseKnowledgeDocumentMenuOnPointerDown,
 } from '@/lib/knowledge-view';
+import {
+  getBackgroundJobSummaryPollInterval,
+  getBackgroundJobSummaryView,
+  type BackgroundJobSummaryView,
+} from '@/lib/background-job-view';
 import {
   getKnowledgeAgentEmptyMessage,
   getKnowledgeDedupTone,
@@ -142,6 +147,18 @@ export default function KnowledgePage() {
     enabled: documents.length > 0 || shouldPollProcessingState,
     refetchInterval: shouldPollProcessingState ? processingPollIntervalMs : false,
   });
+  const backgroundJobSummaryQuery = useBackgroundJobSummary({
+    enabled: documents.length > 0 || shouldPollProcessingState,
+    refetchInterval: getBackgroundJobSummaryPollInterval({
+      summary: undefined,
+      shouldPollProcessingState,
+      pollIntervalMs: processingPollIntervalMs,
+    }),
+  });
+  const backgroundJobSummaryView = useMemo(
+    () => getBackgroundJobSummaryView(backgroundJobSummaryQuery.data),
+    [backgroundJobSummaryQuery.data],
+  );
   const backgroundJobsByDocumentId = useMemo(
     () => groupLatestKnowledgeJobsByDocumentId(backgroundJobsQuery.data?.items ?? []),
     [backgroundJobsQuery.data?.items],
@@ -329,6 +346,8 @@ export default function KnowledgePage() {
         {notice ? <ActionNoticeBar notice={notice} /> : null}
 
         <KnowledgeSummaryCard summary={summary} />
+
+        <BackgroundJobSummaryNotice view={backgroundJobSummaryView} />
 
         <KnowledgeAgentSuggestionsPanel
           suggestions={knowledgeAgentSuggestions.data}
@@ -519,6 +538,29 @@ function ActionNoticeBar({ notice }: { notice: ActionNotice }) {
       <NoticeIcon className="h-4 w-4 shrink-0" />
       <span className="min-w-0 flex-1 break-words">{notice.message}</span>
     </div>
+  );
+}
+
+function BackgroundJobSummaryNotice({ view }: { view: BackgroundJobSummaryView | null }) {
+  if (!view) return null;
+
+  const className =
+    view.tone === 'danger'
+      ? 'border-red-100 bg-red-50/80 text-red-700'
+      : view.tone === 'info'
+        ? 'border-sky-100 bg-sky-50/80 text-sky-700'
+        : 'border-slate-100 bg-white/65 text-[var(--pm-muted)]';
+
+  return (
+    <section className={`pm-enter mt-4 rounded-[1.25rem] border px-3 py-3 ${className}`}>
+      <div className="flex items-start gap-2">
+        <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{view.title}</p>
+          <p className="mt-1 break-words text-xs leading-5">{view.description}</p>
+        </div>
+      </div>
+    </section>
   );
 }
 

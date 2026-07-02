@@ -3,7 +3,10 @@ import { describe, it } from 'node:test';
 
 import type { BackgroundJobSummaryResponse } from '@repo/types/api/background-job';
 
-import { getBackgroundJobSummaryView } from './background-job-view.ts';
+import {
+  getBackgroundJobSummaryPollInterval,
+  getBackgroundJobSummaryView,
+} from './background-job-view.ts';
 
 describe('getBackgroundJobSummaryView', () => {
   it('prioritizes active background jobs', () => {
@@ -46,6 +49,35 @@ describe('getBackgroundJobSummaryView', () => {
     );
     assert.equal(getBackgroundJobSummaryView(createSummary()), null);
     assert.equal(getBackgroundJobSummaryView(undefined), null);
+  });
+});
+
+describe('getBackgroundJobSummaryPollInterval', () => {
+  it('polls while summary has active jobs or the page is already polling processing state', () => {
+    assert.equal(
+      getBackgroundJobSummaryPollInterval({
+        summary: createSummary({ activeCount: 1, totalRecentCount: 1 }),
+        shouldPollProcessingState: false,
+        pollIntervalMs: 2000,
+      }),
+      2000,
+    );
+    assert.equal(
+      getBackgroundJobSummaryPollInterval({
+        summary: createSummary({ totalRecentCount: 0 }),
+        shouldPollProcessingState: true,
+        pollIntervalMs: 2000,
+      }),
+      2000,
+    );
+    assert.equal(
+      getBackgroundJobSummaryPollInterval({
+        summary: createSummary({ succeededCount: 2, totalRecentCount: 2 }),
+        shouldPollProcessingState: false,
+        pollIntervalMs: 2000,
+      }),
+      false,
+    );
   });
 });
 
