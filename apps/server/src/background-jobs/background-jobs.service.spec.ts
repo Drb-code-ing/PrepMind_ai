@@ -96,13 +96,62 @@ describe('BackgroundJobsService', () => {
     expect(result.items).toHaveLength(1);
   });
 
+  it('summarizes recent jobs for the current user', async () => {
+    prisma.backgroundJob.findMany.mockResolvedValue([
+      jobRow({
+        id: 'job_active',
+        status: 'ACTIVE',
+        updatedAt: new Date('2026-06-29T00:00:05.000Z'),
+      }),
+      jobRow({
+        id: 'job_queued',
+        status: 'QUEUED',
+        updatedAt: new Date('2026-06-29T00:00:04.000Z'),
+      }),
+      jobRow({
+        id: 'job_failed',
+        status: 'FAILED',
+        updatedAt: new Date('2026-06-29T00:00:03.000Z'),
+      }),
+      jobRow({
+        id: 'job_stale',
+        status: 'STALE_SKIPPED',
+        updatedAt: new Date('2026-06-29T00:00:02.000Z'),
+      }),
+      jobRow({
+        id: 'job_succeeded',
+        status: 'SUCCEEDED',
+        updatedAt: new Date('2026-06-29T00:00:01.000Z'),
+      }),
+    ]);
+
+    const result = await createService().getSummary('user_1');
+
+    expect(prisma.backgroundJob.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user_1' },
+        take: 50,
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        activeCount: 2,
+        failedCount: 1,
+        staleSkippedCount: 1,
+        succeededCount: 1,
+        totalRecentCount: 5,
+      }),
+    );
+    expect(result.latestJob?.id).toBe('job_active');
+  });
+
   function createService() {
     return new BackgroundJobsService(prisma as never);
   }
 
-  function jobRow(input: { status: string }) {
+  function jobRow(input: { status: string; id?: string; updatedAt?: Date }) {
     return {
-      id: 'job_1',
+      id: input.id ?? 'job_1',
       userId: 'user_1',
       queueName: 'knowledge-document-processing',
       jobName: 'process-document',
@@ -124,7 +173,7 @@ describe('BackgroundJobsService', () => {
       startedAt: now,
       finishedAt: null,
       createdAt: now,
-      updatedAt: now,
+      updatedAt: input.updatedAt ?? now,
     };
   }
 });

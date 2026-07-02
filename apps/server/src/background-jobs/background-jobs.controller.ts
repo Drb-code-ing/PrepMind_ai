@@ -18,6 +18,11 @@ export class BackgroundJobsController {
     return this.service.list(user.id, backgroundJobListQuerySchema.parse(query));
   }
 
+  @Get('summary')
+  summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getSummary(user.id);
+  }
+
   @Get(':id')
   getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.service.getById(user.id, id);

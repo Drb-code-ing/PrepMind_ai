@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   backgroundJobListQuerySchema,
   backgroundJobResponseSchema,
+  backgroundJobSummaryResponseSchema,
 } from '../src/api/background-job';
 
 assert.deepEqual(
@@ -41,3 +42,15 @@ const parsed = backgroundJobResponseSchema.parse({
 
 assert.equal(parsed.status, 'ACTIVE');
 assert.deepEqual(parsed.payloadPreview, { documentId: 'doc_1', force: false });
+
+const summary = backgroundJobSummaryResponseSchema.parse({
+  activeCount: 1,
+  failedCount: 2,
+  staleSkippedCount: 1,
+  succeededCount: 3,
+  totalRecentCount: 7,
+  latestJob: null,
+});
+
+assert.equal(summary.activeCount, 1);
+assert.equal(summary.latestJob, null);

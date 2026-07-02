@@ -5,6 +5,7 @@ import type {
   BackgroundJobListResponse,
   BackgroundJobResourceType,
   BackgroundJobResponse,
+  BackgroundJobSummaryResponse,
 } from '@repo/types/api/background-job';
 
 import { PrismaService } from '../database/prisma.service';
@@ -219,6 +220,26 @@ export class BackgroundJobsService {
 
     return {
       items: jobs.map(toResponse),
+    };
+  }
+
+  async getSummary(userId: string): Promise<BackgroundJobSummaryResponse> {
+    const jobs = await this.prisma.backgroundJob.findMany({
+      where: { userId },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      take: 50,
+      select: backgroundJobSelect,
+    });
+    const items = jobs.map(toResponse);
+
+    return {
+      activeCount: items.filter((job) => job.status === 'QUEUED' || job.status === 'ACTIVE')
+        .length,
+      failedCount: items.filter((job) => job.status === 'FAILED').length,
+      staleSkippedCount: items.filter((job) => job.status === 'STALE_SKIPPED').length,
+      succeededCount: items.filter((job) => job.status === 'SUCCEEDED').length,
+      totalRecentCount: items.length,
+      latestJob: items[0] ?? null,
     };
   }
 

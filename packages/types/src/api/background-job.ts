@@ -58,8 +58,18 @@ export const backgroundJobListResponseSchema = z.object({
   items: z.array(backgroundJobResponseSchema),
 });
 
+export const backgroundJobSummaryResponseSchema = z.object({
+  activeCount: z.number().int().min(0),
+  failedCount: z.number().int().min(0),
+  staleSkippedCount: z.number().int().min(0),
+  succeededCount: z.number().int().min(0),
+  totalRecentCount: z.number().int().min(0),
+  latestJob: backgroundJobResponseSchema.nullable(),
+});
+
 export type BackgroundJobStatus = z.infer<typeof backgroundJobStatusSchema>;
 export type BackgroundJobResourceType = z.infer<typeof backgroundJobResourceTypeSchema>;
 export type BackgroundJobResponse = z.infer<typeof backgroundJobResponseSchema>;
 export type BackgroundJobListQuery = z.infer<typeof backgroundJobListQuerySchema>;
 export type BackgroundJobListResponse = z.infer<typeof backgroundJobListResponseSchema>;
+export type BackgroundJobSummaryResponse = z.infer<typeof backgroundJobSummaryResponseSchema>;
