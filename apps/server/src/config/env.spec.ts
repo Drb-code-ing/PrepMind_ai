@@ -86,4 +86,42 @@ describe('parseEnv', () => {
       }).OPENAI_API_KEY,
     ).toBe('test-openai-key');
   });
+
+  it('enables Swagger by default outside production', () => {
+    expect(parseEnv(requiredEnv).SWAGGER_ENABLED).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'test',
+      }).SWAGGER_ENABLED,
+    ).toBe(true);
+  });
+
+  it('disables Swagger by default in production', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+      }).SWAGGER_ENABLED,
+    ).toBe(false);
+  });
+
+  it('allows explicit Swagger enablement overrides', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        SWAGGER_ENABLED: 'true',
+      }).SWAGGER_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        SWAGGER_ENABLED: 'false',
+      }).SWAGGER_ENABLED,
+    ).toBe(false);
+  });
 });

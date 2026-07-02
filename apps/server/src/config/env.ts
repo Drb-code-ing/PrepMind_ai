@@ -30,6 +30,7 @@ const envSchema = z
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
+    SWAGGER_ENABLED: booleanStringSchema.optional(),
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -162,8 +163,16 @@ const envSchema = z
     }
   });
 
-export type ServerEnv = z.infer<typeof envSchema>;
+type ParsedServerEnv = z.infer<typeof envSchema>;
+export type ServerEnv = Omit<ParsedServerEnv, 'SWAGGER_ENABLED'> & {
+  SWAGGER_ENABLED: boolean;
+};
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
-  return envSchema.parse(config);
+  const env = envSchema.parse(config);
+
+  return {
+    ...env,
+    SWAGGER_ENABLED: env.SWAGGER_ENABLED ?? env.NODE_ENV !== 'production',
+  };
 }
