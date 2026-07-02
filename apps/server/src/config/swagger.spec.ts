@@ -50,6 +50,7 @@ type SwaggerPathItem = Partial<
     {
       summary?: string;
       tags?: string[];
+      requestBody?: unknown;
       responses?: Record<string, { description?: string }>;
     }
   >
@@ -274,6 +275,55 @@ describe('swagger config', () => {
         ).find(([status]) => status.startsWith('2'))?.[1].description;
         expect(successResponseDescription).toContain('response envelope');
         expect(successResponseDescription).toContain('requestId');
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('documents request bodies for high-value debug operations', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: coreApiControllers,
+    })
+      .useMocker(useSwaggerTestingMocker)
+      .compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    try {
+      const document = SwaggerModule.createDocument(
+        app,
+        buildSwaggerDocumentOptions(),
+      );
+      const jsonBodyOperations = [
+        ['post', '/auth/register'],
+        ['post', '/auth/login'],
+        ['post', '/knowledge/documents/{id}/process'],
+        ['post', '/knowledge/search'],
+        ['post', '/review-tasks/{taskId}/rating'],
+        ['post', '/agent-traces'],
+      ] as const;
+      const multipartBodyOperations = [
+        ['post', '/knowledge/documents'],
+        ['put', '/knowledge/documents/{id}/file'],
+      ] as const;
+
+      for (const [method, path] of jsonBodyOperations) {
+        const operation = getSwaggerOperation(document, path, method);
+        const requestBodyText = JSON.stringify(operation?.requestBody);
+
+        expect(operation?.requestBody).toBeDefined();
+        expect(requestBodyText).toContain('application/json');
+        expect(requestBodyText).toContain('example');
+      }
+
+      for (const [method, path] of multipartBodyOperations) {
+        const operation = getSwaggerOperation(document, path, method);
+        const requestBodyText = JSON.stringify(operation?.requestBody);
+
+        expect(operation?.requestBody).toBeDefined();
+        expect(requestBodyText).toContain('multipart/form-data');
+        expect(requestBodyText).toContain('file');
       }
     } finally {
       await app.close();
