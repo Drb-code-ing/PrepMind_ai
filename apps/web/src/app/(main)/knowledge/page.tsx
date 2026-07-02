@@ -21,6 +21,7 @@ import {
 import type {
   BackgroundJobListQuery,
   BackgroundJobResponse,
+  BackgroundJobSummaryResponse,
 } from '@repo/types/api/background-job';
 import type {
   KnowledgeDocumentListQuery,
@@ -117,6 +118,8 @@ export default function KnowledgePage() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(() => new Set());
+  const [backgroundJobSummaryForPolling, setBackgroundJobSummaryForPolling] =
+    useState<BackgroundJobSummaryResponse>();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<KnowledgeSearchHit[] | null>(null);
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState('');
@@ -150,7 +153,7 @@ export default function KnowledgePage() {
   const backgroundJobSummaryQuery = useBackgroundJobSummary({
     enabled: documents.length > 0 || shouldPollProcessingState,
     refetchInterval: getBackgroundJobSummaryPollInterval({
-      summary: undefined,
+      summary: backgroundJobSummaryForPolling,
       shouldPollProcessingState,
       pollIntervalMs: processingPollIntervalMs,
     }),
@@ -182,6 +185,12 @@ export default function KnowledgePage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (backgroundJobSummaryQuery.data) {
+      setBackgroundJobSummaryForPolling(backgroundJobSummaryQuery.data);
+    }
+  }, [backgroundJobSummaryQuery.data]);
 
   async function handleUpload() {
     const file = selectedFile;
