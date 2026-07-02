@@ -133,4 +133,3 @@ Expected: all commands exit 0.
 git add DEVLOG.md docs/dev-start.md docs/blogs/phase-7-openapi-docs.md
 git commit -m "docs: document phase 7 openapi request bodies"
 ```
-
