@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -34,10 +35,13 @@ export class ReviewTasksController {
   constructor(private readonly reviewTasksService: ReviewTasksService) {}
 
   @Get('today')
-  @ApiOperation({ summary: 'Get today review tasks for the current user' })
+  @ApiOperation({
+    summary: '读取今日复习任务',
+    description: '按当前用户和日期返回今日到期、新卡、学习中和复习卡任务。',
+  })
   @ApiOkResponse({
     description:
-      'Today review tasks are returned in the global response envelope: { success: true, data, requestId }.',
+      '今日复习任务会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   getToday(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskTodayQuerySchema.parse(query);
@@ -47,11 +51,13 @@ export class ReviewTasksController {
   @Get('plan')
   @ApiTags('Plan')
   @ApiOperation({
-    summary: 'Preview future review pressure without creating tasks',
+    summary: '预览未来复习压力',
+    description:
+      '基于 FSRS 卡片状态和 ReviewPreference 只读计算 7 / 14 天复习压力，不创建未来 ReviewTask。',
   })
   @ApiOkResponse({
     description:
-      'Plan preview data is returned in the global response envelope: { success: true, data, requestId }.',
+      '计划预览数据会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   getPlan(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskPlanQuerySchema.parse(query);
@@ -66,11 +72,49 @@ export class ReviewTasksController {
 
   @Post(':taskId/rating')
   @ApiOperation({
-    summary: 'Submit an idempotent FSRS rating for a review task',
+    summary: '提交复习评分',
+    description:
+      '对某个 ReviewTask 提交 FSRS 评分；clientMutationId 用于离线队列补偿和重复提交幂等。',
+  })
+  @ApiBody({
+    description:
+      '复习评分请求。rating 取值 1=Again、2=Hard、3=Good、4=Easy。',
+    schema: {
+      type: 'object',
+      required: ['rating'],
+      properties: {
+        rating: {
+          type: 'integer',
+          enum: [1, 2, 3, 4],
+          example: 3,
+        },
+        clientMutationId: {
+          type: 'string',
+          format: 'uuid',
+          example: '11111111-1111-4111-8111-111111111111',
+        },
+        reviewedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-07-02T09:30:00.000Z',
+        },
+        reviewDurationMs: {
+          type: 'integer',
+          minimum: 0,
+          example: 45000,
+        },
+      },
+      example: {
+        rating: 3,
+        clientMutationId: '11111111-1111-4111-8111-111111111111',
+        reviewedAt: '2026-07-02T09:30:00.000Z',
+        reviewDurationMs: 45000,
+      },
+    },
   })
   @ApiCreatedResponse({
     description:
-      'Rating result is returned in the global response envelope: { success: true, data, requestId }.',
+      '评分结果会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   submitRating(
     @CurrentUser() user: AuthenticatedUser,
@@ -82,10 +126,13 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/skip')
-  @ApiOperation({ summary: 'Skip a review task without rating it' })
+  @ApiOperation({
+    summary: '跳过复习任务',
+    description: '暂时跳过任务，不写入 ReviewLog，也不推进 FSRS 卡片状态。',
+  })
   @ApiCreatedResponse({
     description:
-      'Skipped task data is returned in the global response envelope: { success: true, data, requestId }.',
+      '跳过后的任务数据会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   skip(
     @CurrentUser() user: AuthenticatedUser,
@@ -95,10 +142,13 @@ export class ReviewTasksController {
   }
 
   @Post(':taskId/reopen')
-  @ApiOperation({ summary: 'Reopen a skipped or completed review task' })
+  @ApiOperation({
+    summary: '恢复复习任务',
+    description: '把已跳过或已完成的任务恢复到可复习状态，用于用户撤销操作。',
+  })
   @ApiCreatedResponse({
     description:
-      'Reopened task data is returned in the global response envelope: { success: true, data, requestId }.',
+      '恢复后的任务数据会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   reopen(
     @CurrentUser() user: AuthenticatedUser,

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  ApiBody,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -34,7 +35,7 @@ type CookieRequest = Request & {
 };
 
 const AUTH_RESPONSE_ENVELOPE =
-  'Auth response returned in the global response envelope: { success: true, data, requestId }.';
+  '认证结果会包在全局 response envelope 中返回：{ success: true, data, requestId }。';
 
 @Controller('auth')
 @ApiTags('Auth')
@@ -46,7 +47,40 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({
-    summary: 'Register a new user and start an authenticated session',
+    summary: '注册新用户',
+    description:
+      '创建学生账号，登录成功后返回用户信息和 access token，并通过 httpOnly cookie 建立 refresh session。',
+  })
+  @ApiBody({
+    description: '注册表单。字段约束仍以 @repo/types 的 registerRequestSchema 为准。',
+    schema: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'student@example.com',
+        },
+        password: {
+          type: 'string',
+          minLength: 8,
+          maxLength: 128,
+          example: 'password123',
+        },
+        name: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 50,
+          example: '备考同学',
+        },
+      },
+      example: {
+        email: 'student@example.com',
+        password: 'password123',
+        name: '备考同学',
+      },
+    },
   })
   @ApiCreatedResponse({ description: AUTH_RESPONSE_ENVELOPE })
   register(
@@ -65,7 +99,34 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Log in with email and password' })
+  @ApiOperation({
+    summary: '邮箱密码登录',
+    description:
+      '校验账号密码，返回 access token，并轮换当前设备的 refresh session cookie。',
+  })
+  @ApiBody({
+    description: '登录表单。字段约束仍以 @repo/types 的 loginRequestSchema 为准。',
+    schema: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'student@example.com',
+        },
+        password: {
+          type: 'string',
+          maxLength: 128,
+          example: 'password123',
+        },
+      },
+      example: {
+        email: 'student@example.com',
+        password: 'password123',
+      },
+    },
+  })
   @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   login(
     @Body() body: unknown,
@@ -84,7 +145,9 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Rotate the refresh cookie and issue a new access token',
+    summary: '刷新 access token',
+    description:
+      '读取 httpOnly refresh cookie，执行 rotation 与 reuse detection，然后签发新的 access token。',
   })
   @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   refresh(
@@ -100,7 +163,10 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Log out the current refresh-token session' })
+  @ApiOperation({
+    summary: '退出当前会话',
+    description: '注销当前 refresh-token session，并清理浏览器侧 refresh cookie。',
+  })
   @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   logout(
     @Req() request: CookieRequest,
@@ -112,7 +178,10 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Read the current authenticated user profile' })
+  @ApiOperation({
+    summary: '读取当前用户资料',
+    description: '根据 access token 获取当前登录用户的账号资料。',
+  })
   @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.id);

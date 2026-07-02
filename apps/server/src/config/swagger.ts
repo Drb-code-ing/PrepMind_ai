@@ -24,7 +24,7 @@ export function buildSwaggerDocumentOptions() {
         'Production Swagger exposure requires an explicit SWAGGER_ENABLED=true override and should only be used in controlled environments.',
       ].join(' '),
     )
-    .setVersion('0.7.4')
+    .setVersion('0.7.5')
     .addBearerAuth(
       {
         type: 'http',
