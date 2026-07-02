@@ -130,6 +130,13 @@ describe('swagger config', () => {
 
       expect(document.info.title).toBe('PrepMind AI API');
       expect(document.info.version).toBe('0.7.5');
+      expect(document.info.description).toContain(
+        'PrepMind AI 后端 REST API',
+      );
+      expect(document.info.description).toContain('本地开发、接口联调和面试讲解');
+      expect(document.info.description).not.toContain(
+        'local development, integration debugging',
+      );
       expect(document.components?.securitySchemes).toHaveProperty(
         'access-token',
       );
@@ -220,6 +227,32 @@ describe('swagger config', () => {
       ]) {
         expect(text).not.toContain(forbidden);
       }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('uses reader-friendly Chinese wording for sensitive metadata docs', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: coreApiControllers,
+    })
+      .useMocker(useSwaggerTestingMocker)
+      .compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    try {
+      const document = SwaggerModule.createDocument(
+        app,
+        buildSwaggerDocumentOptions(),
+      );
+      const documentText = JSON.stringify(document);
+
+      expect(documentText).toContain('隐藏敏感内容');
+      expect(documentText).toContain('Agent 调试记录');
+      expect(documentText).not.toContain('脱敏 Agent Trace');
+      expect(documentText).not.toContain('List redacted');
+      expect(documentText).not.toContain('Read one redacted');
     } finally {
       await app.close();
     }
