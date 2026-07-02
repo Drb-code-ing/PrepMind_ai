@@ -5,6 +5,7 @@ describe('BackgroundJobsService', () => {
   const prisma = {
     backgroundJob: {
       create: jest.fn(),
+      count: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       updateMany: jest.fn(),
@@ -97,6 +98,7 @@ describe('BackgroundJobsService', () => {
   });
 
   it('summarizes recent jobs for the current user', async () => {
+    prisma.backgroundJob.count.mockResolvedValueOnce(2);
     prisma.backgroundJob.findMany.mockResolvedValue([
       jobRow({
         id: 'job_active',
@@ -127,6 +129,9 @@ describe('BackgroundJobsService', () => {
 
     const result = await createService().getSummary('user_1');
 
+    expect(prisma.backgroundJob.count).toHaveBeenNthCalledWith(1, {
+      where: { userId: 'user_1', status: { in: ['QUEUED', 'ACTIVE'] } },
+    });
     expect(prisma.backgroundJob.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'user_1' },

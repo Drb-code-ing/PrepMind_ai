@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 export type ServerEvent =
   | {
       type: 'knowledge.document.processing.requested';
@@ -37,6 +39,8 @@ export type ServerEvent =
 
 type Handler<T extends ServerEvent> = (event: T) => void;
 
+type EventBusLogger = Pick<Logger, 'warn'>;
+
 export type EventPublishResult = {
   delivered: number;
   failed: number;
@@ -44,6 +48,8 @@ export type EventPublishResult = {
 
 export class InProcessEventBus {
   private readonly handlers = new Map<ServerEvent['type'], Set<Handler<ServerEvent>>>();
+
+  constructor(private readonly logger: EventBusLogger = new Logger(InProcessEventBus.name)) {}
 
   publish(event: ServerEvent): EventPublishResult {
     const handlers = this.handlers.get(event.type);
@@ -58,6 +64,12 @@ export class InProcessEventBus {
       } catch {
         failed += 1;
       }
+    }
+
+    if (failed > 0) {
+      this.logger.warn(
+        `EventBus handler failure: type=${event.type} delivered=${delivered} failed=${failed}`,
+      );
     }
 
     return { delivered, failed };

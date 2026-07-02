@@ -38,7 +38,7 @@ describe('InProcessEventBus', () => {
   });
 
   it('continues publishing when one subscriber throws', () => {
-    const bus = new InProcessEventBus();
+    const bus = new InProcessEventBus({ warn: jest.fn() });
     const received: string[] = [];
 
     bus.subscribe('knowledge.document.processing.failed', () => {
@@ -60,5 +60,32 @@ describe('InProcessEventBus', () => {
 
     expect(received).toEqual(['doc_1']);
     expect(result).toEqual({ delivered: 1, failed: 1 });
+  });
+
+  it('logs handler failures without dumping event payloads', () => {
+    const logger = { warn: jest.fn() };
+    const bus = new InProcessEventBus(logger);
+
+    bus.subscribe('knowledge.document.processing.failed', () => {
+      throw new Error('subscriber failed');
+    });
+
+    bus.publish({
+      type: 'knowledge.document.processing.failed',
+      userId: 'secret_user',
+      documentId: 'secret_doc',
+      backgroundJobId: 'secret_job',
+      errorCode: 'PARSE_FAILED',
+      retryable: false,
+      finishedAt: '2026-07-02T00:00:00.000Z',
+    });
+
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    const message = logger.warn.mock.calls[0]?.[0] as string;
+    expect(message).toContain('knowledge.document.processing.failed');
+    expect(message).toContain('failed=1');
+    expect(message).not.toContain('secret_user');
+    expect(message).not.toContain('secret_doc');
+    expect(message).not.toContain('secret_job');
   });
 });

@@ -224,17 +224,21 @@ export class BackgroundJobsService {
   }
 
   async getSummary(userId: string): Promise<BackgroundJobSummaryResponse> {
-    const jobs = await this.prisma.backgroundJob.findMany({
-      where: { userId },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
-      take: 50,
-      select: backgroundJobSelect,
-    });
+    const [activeCount, jobs] = await Promise.all([
+      this.prisma.backgroundJob.count({
+        where: { userId, status: { in: ['QUEUED', 'ACTIVE'] } },
+      }),
+      this.prisma.backgroundJob.findMany({
+        where: { userId },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+        take: 50,
+        select: backgroundJobSelect,
+      }),
+    ]);
     const items = jobs.map(toResponse);
 
     return {
-      activeCount: items.filter((job) => job.status === 'QUEUED' || job.status === 'ACTIVE')
-        .length,
+      activeCount,
       failedCount: items.filter((job) => job.status === 'FAILED').length,
       staleSkippedCount: items.filter((job) => job.status === 'STALE_SKIPPED').length,
       succeededCount: items.filter((job) => job.status === 'SUCCEEDED').length,
