@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   clearChatMessagesQuerySchema,
   listChatMessagesQuerySchema,
@@ -20,6 +21,8 @@ import { ChatMessagesService } from './chat-messages.service';
 
 @Controller('chat-messages')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Chat Messages')
+@ApiBearerAuth('access-token')
 export class ChatMessagesController {
   constructor(private readonly chatMessagesService: ChatMessagesService) {}
 

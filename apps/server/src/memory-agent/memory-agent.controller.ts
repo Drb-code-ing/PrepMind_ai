@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   generateMemoryCandidatesRequestSchema,
   memoryCandidateListQuerySchema,
@@ -23,10 +24,12 @@ import { MemoryAgentService } from './memory-agent.service';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access-token')
 export class MemoryAgentController {
   constructor(private readonly memoryAgentService: MemoryAgentService) {}
 
   @Get('memory-agent/candidates')
+  @ApiTags('Memory Agent')
   listCandidates(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: unknown,
@@ -38,6 +41,7 @@ export class MemoryAgentController {
   }
 
   @Post('memory-agent/candidates/generate')
+  @ApiTags('Memory Agent')
   generateCandidates(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: unknown,
@@ -49,6 +53,7 @@ export class MemoryAgentController {
   }
 
   @Post('memory-agent/candidates/:id/accept')
+  @ApiTags('Memory Agent')
   acceptCandidate(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -57,6 +62,7 @@ export class MemoryAgentController {
   }
 
   @Post('memory-agent/candidates/:id/reject')
+  @ApiTags('Memory Agent')
   rejectCandidate(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -65,6 +71,7 @@ export class MemoryAgentController {
   }
 
   @Get('user-memories')
+  @ApiTags('User Memories')
   listMemories(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: unknown,
@@ -76,6 +83,7 @@ export class MemoryAgentController {
   }
 
   @Patch('user-memories/:id')
+  @ApiTags('User Memories')
   updateMemory(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
@@ -89,6 +97,7 @@ export class MemoryAgentController {
   }
 
   @Delete('user-memories/:id')
+  @ApiTags('User Memories')
   deleteMemory(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

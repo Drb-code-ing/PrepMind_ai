@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { reviewAgentSuggestionQuerySchema } from '@repo/types/api/review-agent';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { ReviewAgentService } from './review-agent.service';
 
 @Controller('review-agent')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Review Agent')
+@ApiBearerAuth('access-token')
 export class ReviewAgentController {
   constructor(private readonly reviewAgentService: ReviewAgentService) {}
 

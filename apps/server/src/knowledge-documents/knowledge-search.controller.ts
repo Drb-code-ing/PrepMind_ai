@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { knowledgeSearchRequestSchema } from '@repo/types/api/knowledge';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { KnowledgeSearchService } from './knowledge-search.service';
 
 @Controller('knowledge')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Knowledge Search')
+@ApiBearerAuth('access-token')
 export class KnowledgeSearchController {
   constructor(
     private readonly knowledgeSearchService: KnowledgeSearchService,

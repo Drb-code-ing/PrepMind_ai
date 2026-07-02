@@ -19,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import {
   knowledgeDocumentListQuerySchema,
@@ -34,6 +35,8 @@ import { KnowledgeDocumentsService } from './knowledge-documents.service';
 
 @Controller('knowledge/documents')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Knowledge Documents')
+@ApiBearerAuth('access-token')
 export class KnowledgeDocumentsController {
   constructor(
     private readonly knowledgeDocumentsService: KnowledgeDocumentsService,

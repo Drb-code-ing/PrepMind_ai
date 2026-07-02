@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { reviewPreferencePatchSchema } from '@repo/types/api/review-preference';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { ReviewPreferencesService } from './review-preferences.service';
 
 @Controller('review-preferences')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Review Preferences')
+@ApiBearerAuth('access-token')
 export class ReviewPreferencesController {
   constructor(
     private readonly reviewPreferencesService: ReviewPreferencesService,

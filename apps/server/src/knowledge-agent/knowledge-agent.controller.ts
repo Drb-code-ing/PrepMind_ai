@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { knowledgeAgentSuggestionQuerySchema } from '@repo/types/api/knowledge-agent';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +9,8 @@ import { KnowledgeAgentService } from './knowledge-agent.service';
 
 @Controller('knowledge-agent')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Knowledge Agent')
+@ApiBearerAuth('access-token')
 export class KnowledgeAgentController {
   constructor(private readonly knowledgeAgentService: KnowledgeAgentService) {}
 

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { backgroundJobListQuerySchema } from '@repo/types/api/background-job';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -10,6 +11,8 @@ import { BackgroundJobsService } from './background-jobs.service';
 
 @Controller('background-jobs')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Background Jobs')
+@ApiBearerAuth('access-token')
 export class BackgroundJobsController {
   constructor(private readonly service: BackgroundJobsService) {}
 

@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   createWrongQuestionRequestSchema,
   listWrongQuestionsQuerySchema,
@@ -22,6 +23,8 @@ import { WrongQuestionsService } from './wrong-questions.service';
 
 @Controller('wrong-questions')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Wrong Questions')
+@ApiBearerAuth('access-token')
 export class WrongQuestionsController {
   constructor(private readonly wrongQuestionsService: WrongQuestionsService) {}
 

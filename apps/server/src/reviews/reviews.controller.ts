@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   createReviewCardFromWrongQuestionRequestSchema,
   reviewLogListQuerySchema,
@@ -29,6 +30,8 @@ const todayTasksQuerySchema = z.object({
 
 @Controller('reviews')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Reviews')
+@ApiBearerAuth('access-token')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 

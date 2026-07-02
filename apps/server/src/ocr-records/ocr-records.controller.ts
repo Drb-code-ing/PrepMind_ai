@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   createOcrRecordRequestSchema,
   listOcrRecordsQuerySchema,
@@ -20,6 +21,8 @@ import { OcrRecordsService } from './ocr-records.service';
 
 @Controller('ocr-records')
 @UseGuards(JwtAuthGuard)
+@ApiTags('OCR Records')
+@ApiBearerAuth('access-token')
 export class OcrRecordsController {
   constructor(private readonly ocrRecordsService: OcrRecordsService) {}
 

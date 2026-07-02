@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   moveWrongQuestionToDeckRequestSchema,
   organizeWrongQuestionBatchRequestSchema,
@@ -24,6 +25,8 @@ import { WrongQuestionOrganizerService } from './wrong-question-organizer.servic
 
 @Controller()
 @UseGuards(JwtAuthGuard)
+@ApiTags('Wrong Question Organizer')
+@ApiBearerAuth('access-token')
 export class WrongQuestionOrganizerController {
   constructor(private readonly service: WrongQuestionOrganizerService) {}
 

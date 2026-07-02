@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   agentTraceCreateRequestSchema,
   agentTraceListQuerySchema,
@@ -20,6 +21,8 @@ import { AgentTracesService } from './agent-traces.service';
 
 @Controller('agent-traces')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Agent Traces')
+@ApiBearerAuth('access-token')
 export class AgentTracesController {
   constructor(private readonly agentTracesService: AgentTracesService) {}
 

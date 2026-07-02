@@ -18,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Observable } from 'rxjs';
 import { uploadImageFormSchema } from '@repo/types/api/upload';
 
@@ -28,11 +29,13 @@ import type { ServerEnv } from '../config/env';
 import { StorageService } from './storage.service';
 
 @Controller('uploads')
+@ApiTags('Uploads')
 export class UploadsController {
   constructor(private readonly storageService: StorageService) {}
 
   @Post('images')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @UseInterceptors(createImageFileInterceptor())
   uploadImage(
     @CurrentUser() user: AuthenticatedUser,

@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { reviewRatingRequestSchema } from '@repo/types/api/review';
 import {
   reviewTaskListQuerySchema,
@@ -21,6 +22,8 @@ import { ReviewTasksService } from './review-tasks.service';
 
 @Controller('review-tasks')
 @UseGuards(JwtAuthGuard)
+@ApiTags('Review Tasks')
+@ApiBearerAuth('access-token')
 export class ReviewTasksController {
   constructor(private readonly reviewTasksService: ReviewTasksService) {}
 
@@ -31,6 +34,10 @@ export class ReviewTasksController {
   }
 
   @Get('plan')
+  @ApiTags('Plan')
+  @ApiOperation({
+    summary: 'Preview future review pressure without creating tasks',
+  })
   getPlan(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     const input = reviewTaskPlanQuerySchema.parse(query);
     return this.reviewTasksService.getPlan(user.id, input);

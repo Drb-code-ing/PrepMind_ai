@@ -7,6 +7,7 @@ import {
   setupSwagger,
   shouldEnableSwagger,
 } from './swagger';
+import { AppModule } from '../app.module';
 
 @Module({})
 class EmptyTestModule {}
@@ -45,6 +46,58 @@ describe('swagger config', () => {
     expect(documentText).toContain('requestId');
 
     await app.close();
+  });
+
+  it('documents core API tags for current product flows', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    try {
+      const document = SwaggerModule.createDocument(
+        app,
+        buildSwaggerDocumentOptions(),
+      );
+      const operationTags = Object.values(document.paths ?? {}).flatMap(
+        (pathItem) =>
+          Object.values(pathItem ?? {}).flatMap((operation) => {
+            const tags = (operation as { tags?: string[] }).tags;
+            return Array.isArray(tags) ? tags : [];
+          }),
+      );
+      const tagNames = new Set([
+        ...(document.tags ?? []).map((tag) => tag.name),
+        ...operationTags,
+      ]);
+
+      expect([...tagNames]).toEqual(
+        expect.arrayContaining([
+          'Auth',
+          'Users',
+          'Chat Messages',
+          'OCR Records',
+          'Wrong Questions',
+          'Wrong Question Organizer',
+          'Reviews',
+          'Review Tasks',
+          'Plan',
+          'Review Preferences',
+          'Review Agent',
+          'Knowledge Documents',
+          'Knowledge Search',
+          'Knowledge Agent',
+          'Memory Agent',
+          'User Memories',
+          'Agent Traces',
+          'Background Jobs',
+          'Uploads',
+        ]),
+      );
+    } finally {
+      await app.close();
+    }
   });
 
   it('does not register Swagger routes when disabled', async () => {
