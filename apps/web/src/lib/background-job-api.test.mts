@@ -48,3 +48,26 @@ test('lists background jobs with resource filters', async () => {
   assert.equal(calls[0]?.accessToken, 'token');
   assert.equal(result.items[0]?.status, 'ACTIVE');
 });
+
+test('gets the background job summary for the current account', async () => {
+  const calls: Array<{ path: string; accessToken?: string | null }> = [];
+  const api = createBackgroundJobApi({
+    get: async (path, options) => {
+      calls.push({ path, accessToken: options?.accessToken });
+      return {
+        activeCount: 1,
+        failedCount: 0,
+        staleSkippedCount: 0,
+        succeededCount: 2,
+        totalRecentCount: 3,
+        latestJob: null,
+      };
+    },
+  });
+
+  const result = await api.getSummary('token');
+
+  assert.equal(calls[0]?.path, '/background-jobs/summary');
+  assert.equal(calls[0]?.accessToken, 'token');
+  assert.equal(result.activeCount, 1);
+});

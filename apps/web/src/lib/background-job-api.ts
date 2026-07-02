@@ -2,9 +2,11 @@ import {
   backgroundJobListQuerySchema,
   backgroundJobListResponseSchema,
   backgroundJobResponseSchema,
+  backgroundJobSummaryResponseSchema,
   type BackgroundJobListQuery,
   type BackgroundJobListResponse,
   type BackgroundJobResponse,
+  type BackgroundJobSummaryResponse,
 } from '@repo/types/api/background-job';
 
 import { apiClient } from './api-client.ts';
@@ -37,6 +39,14 @@ export function createBackgroundJobApi(client: ApiClient) {
     async getById(accessToken: string, id: string): Promise<BackgroundJobResponse> {
       return backgroundJobResponseSchema.parse(
         await client.get<unknown>(`/background-jobs/${encodeURIComponent(id)}`, {
+          accessToken,
+        }),
+      );
+    },
+
+    async getSummary(accessToken: string): Promise<BackgroundJobSummaryResponse> {
+      return backgroundJobSummaryResponseSchema.parse(
+        await client.get<unknown>('/background-jobs/summary', {
           accessToken,
         }),
       );
