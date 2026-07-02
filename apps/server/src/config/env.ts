@@ -30,7 +30,14 @@ const envSchema = z
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
-    SWAGGER_ENABLED: booleanStringSchema.optional(),
+    SWAGGER_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),

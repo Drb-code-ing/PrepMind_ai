@@ -124,4 +124,22 @@ describe('parseEnv', () => {
       }).SWAGGER_ENABLED,
     ).toBe(false);
   });
+
+  it('treats blank Swagger enablement as unset', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        SWAGGER_ENABLED: '   ',
+      }).SWAGGER_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        SWAGGER_ENABLED: '',
+      }).SWAGGER_ENABLED,
+    ).toBe(false);
+  });
 });
