@@ -129,6 +129,7 @@ describe('swagger config', () => {
       const documentText = JSON.stringify(document);
 
       expect(document.info.title).toBe('PrepMind AI API');
+      expect(document.info.version).toBe('0.7.5');
       expect(document.components?.securitySchemes).toHaveProperty(
         'access-token',
       );
