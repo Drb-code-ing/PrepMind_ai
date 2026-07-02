@@ -35,13 +35,13 @@ export class AgentTracesController {
 
   @Post()
   @ApiOperation({
-    summary: '记录脱敏 Agent Trace',
+    summary: '记录 Agent 调试记录',
     description:
-      '写入一次 Agent 运行观测记录，只保存 route、步骤摘要、token 估算和成本估算，不保存完整 prompt、完整回答或完整 RAG chunk。',
+      '写入一次 Agent 运行观测记录。这里只保存 route、步骤摘要、token 估算和成本估算，并隐藏敏感内容；不会保存完整 prompt、完整回答或完整 RAG chunk。',
   })
   @ApiBody({
     description:
-      'Agent Trace 写入请求。示例只展示脱敏摘要，真实链路也会在服务端截断过长字段。',
+      'Agent Trace 写入请求。示例只展示已经隐藏敏感内容的摘要，真实链路也会在服务端截断过长字段。',
     schema: {
       type: 'object',
       required: [
@@ -295,8 +295,9 @@ export class AgentTracesController {
 
   @Get()
   @ApiOperation({
-    summary: '列出脱敏 Agent Trace',
-    description: '按当前用户读取 trace 运行列表，可按 route、mode、status 筛选。',
+    summary: '列出 Agent 调试记录',
+    description:
+      '按当前用户读取隐私保护后的 trace 运行列表，可按 route、mode、status 筛选。',
   })
   @ApiOkResponse({
     description:
@@ -329,7 +330,8 @@ export class AgentTracesController {
   @Get(':id')
   @ApiOperation({
     summary: '读取单次 Agent Trace 详情',
-    description: '读取一次脱敏 trace run 及其步骤摘要，用于调试 Agent 路由和成本估算。',
+    description:
+      '读取一次已经隐藏敏感内容的 trace run 及其步骤摘要，用于调试 Agent 路由和成本估算。',
   })
   @ApiOkResponse({
     description:

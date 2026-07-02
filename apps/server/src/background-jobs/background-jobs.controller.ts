@@ -23,11 +23,13 @@ export class BackgroundJobsController {
 
   @Get()
   @ApiOperation({
-    summary: 'List redacted background jobs for the current user',
+    summary: '列出后台任务记录',
+    description:
+      '按当前用户读取后台任务列表。返回内容只包含任务状态和必要摘要，并隐藏敏感内容。',
   })
   @ApiOkResponse({
     description:
-      'Background job list data is returned in the global response envelope: { success: true, data, requestId }.',
+      '后台任务列表会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     return this.service.list(
@@ -38,21 +40,27 @@ export class BackgroundJobsController {
 
   @Get('summary')
   @ApiOperation({
-    summary: 'Summarize recent background job status for the current user',
+    summary: '汇总最近后台任务状态',
+    description:
+      '统计当前用户最近后台任务的活跃、成功、失败和跳过情况，用于页面状态提示。',
   })
   @ApiOkResponse({
     description:
-      'Background job summary data is returned in the global response envelope: { success: true, data, requestId }.',
+      '后台任务汇总会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   summary(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getSummary(user.id);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Read one redacted background job by id' })
+  @ApiOperation({
+    summary: '读取单个后台任务详情',
+    description:
+      '读取当前用户的一条后台任务记录，只返回状态、资源信息、时间戳和错误摘要等安全字段。',
+  })
   @ApiOkResponse({
     description:
-      'Background job detail data is returned in the global response envelope: { success: true, data, requestId }.',
+      '后台任务详情会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   getById(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.service.getById(user.id, id);
