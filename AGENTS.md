@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.4 已完成，后续继续 Phase 7 工程化增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.5 已完成，后续继续 Phase 7 工程化增强。
 
 ## 项目快照
 
@@ -40,6 +40,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.2 | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示 |
 | Phase 7.3 | 已完成 | in-process EventBus 失败隔离、后台任务 summary API、`/knowledge` 后台任务摘要与轮询兜底 |
 | Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、`/api-docs-json`、全局 response envelope 说明 |
+| Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例、multipart 上传文档说明 |
 
 ## 技术栈
 
@@ -96,7 +97,7 @@ bun --cwd packages/fsrs test
 - `apps/server/.env`：server/e2e 在服务目录运行时读取，保持和根 `.env` 一致。
 - `apps/web/.env.local`：Next.js API Route 使用；开发默认 `AI_PROVIDER_MODE=mock`，即使存在 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 也不会调用真实模型。
 - 知识库处理默认 `KNOWLEDGE_PROCESSING_MODE=inline`，业务处理不投递 BullMQ；需要验证 BullMQ 时设置 `KNOWLEDGE_PROCESSING_MODE=queue`、`REDIS_URL=redis://127.0.0.1:6379`，并用 `SERVER_ROLE=api | worker | both` 控制是否注册 worker，本地默认建议 `both`。当前 NestJS 仍会初始化 BullMQ 模块，本地开发建议继续启动 redis。
-- Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。
+- Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。Phase 7.5 起核心写接口补充中文说明和安全 request body 示例，便于本地调试与面试讲解。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；默认 live 模型为 `deepseek-v4-flash`，并建议保留 `AI_MAX_INPUT_TOKENS=2500`、`AI_MAX_OUTPUT_TOKENS=1200` 预算上限。
 - 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 调试台切换 mock / live；该开关仅非 production 可见，且不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
 - AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
@@ -150,7 +151,7 @@ mcp -> ai, fsrs, rag, types
 - MemoryAgent：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；`POST /memory-agent/candidates/generate` 基于当前用户聊天偏好信号、错题薄弱点、复习日志和偏好生成去重候选，候选必须由用户在 `/profile` 确认后才成为 `ACTIVE` 记忆；`GET /user-memories`、`PATCH /user-memories/:id`、`DELETE /user-memories/:id` 支持查看、停用、恢复和删除。MemoryAgent 不调用真实模型，不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`，当前不把记忆自动注入 `/api/chat`。
 - Agent Trace：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/api/chat` 在有 access token 时 best-effort 写入脱敏 trace，写入失败只影响 `x-prepmind-agent-trace-recorded=false`，不打断流式回答；`/agent-traces` 是在线账号级 API，不进入 Dexie `mutationQueue`，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key；`/agent-trace` 的成本看板只展示 token 与价格表推导出的估算成本。
 - BackgroundJob：`BackgroundJob` 以 PostgreSQL 为权威来源；`GET /background-jobs`、`GET /background-jobs/summary` 与 `GET /background-jobs/:id` 是经过 `JwtAuthGuard` 的账号级只读 API，只返回状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata，不保存完整文件内容、prompt、RAG chunk、API key 或 access token；summary 的 `activeCount` 使用账号级真实 active count，最近失败/跳过/成功摘要基于最新 50 条任务窗口。
-- OpenAPI 调试文档：Phase 7.4 新增 Swagger / OpenAPI debug docs，`/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭，显式 `SWAGGER_ENABLED=true` 只用于受控环境、内网或临时诊断。Swagger 只描述和展示 REST API，不改变认证、鉴权或业务 contract；受保护接口仍必须经过 `JwtAuthGuard`。全局响应 envelope 语义为成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`。
+- OpenAPI 调试文档：Phase 7.4 新增 Swagger / OpenAPI debug docs，`/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭，显式 `SWAGGER_ENABLED=true` 只用于受控环境、内网或临时诊断。Phase 7.5 为注册、登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入补充中文描述与安全 request body 示例。Swagger 只描述和展示 REST API，不改变认证、鉴权或业务 contract；受保护接口仍必须经过 `JwtAuthGuard`。全局响应 envelope 语义为成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`；字段约束仍以 `@repo/types` Zod schema 为准。
 - KnowledgeDedupAgent / KnowledgeOrganizerAgent：`GET /knowledge-agent/suggestions` 经过 `JwtAuthGuard`，按当前 `userId` 读取 `Document` 与每份资料最多少量 `Chunk` 摘要，生成重复资料、疑似新版、互补资料、集合和标签建议；该接口是在线只读建议，不写 Document / Chunk / 分类表，不自动合并、删除、替换、重命名或分类资料，不调用 live 模型，不进入 Dexie `mutationQueue`。
 - RAG 文档 API：`/knowledge/documents` 已支持上传、列表、详情、删除和 `PUT /knowledge/documents/:id/file` 替换上传，`POST /knowledge/documents/:id/process` 已支持处理上传文档。
 - RAG 文档去重与替换：普通上传会按当前用户 `contentHash` 返回已有同内容资料；替换上传会保留同一 `Document.id`、重置为 `PENDING`，并拒绝替换为其它资料卡片已有的相同内容。替换事务使用 `status + updatedAt + storageKey + contentHash` 做 compare-and-swap，成功后才删除旧 chunks；`PROCESSING` 中的资料禁止替换；并发处理或并发替换导致快照变化时返回 `KNOWLEDGE_DOCUMENT_PROCESSING`，只清理本次新上传对象，不删除旧对象。
@@ -191,7 +192,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环与 Swagger / OpenAPI debug docs；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / 事件总线。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环与 Swagger / OpenAPI debug docs，并补齐核心写接口中文说明和安全 request body 示例；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / 事件总线。
 - 向量索引用 raw SQL 创建，Prisma 不直接支持向量索引。
 
 ## 下一步
