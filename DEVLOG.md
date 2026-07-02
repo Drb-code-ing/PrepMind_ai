@@ -36,6 +36,7 @@
 - 为 `POST /knowledge/documents` 和 `PUT /knowledge/documents/:id/file` 补充 `multipart/form-data` 与 `file` 字段说明。
 - 为 `POST /knowledge/documents/:id/process`、`POST /knowledge/search`、`POST /review-tasks/:taskId/rating`、`POST /agent-traces` 补充安全 JSON 示例。
 - 高价值接口的 `summary`、`description`、成功响应说明改为中文描述，同时保留 `response envelope`、路径、字段名和 header 等英文契约标识。
+- Swagger 顶部说明已中文化；面向用户的接口标题不再使用“脱敏”这类工程黑话，改用“隐藏敏感内容”“Agent 调试记录”等更容易理解的说法。
 - 增加 OpenAPI JSON 回归测试，要求核心调试接口必须有 request body，并继续校验文档不泄露 API key、cookie、token、完整 prompt、完整回答、完整 RAG chunk 或原始 payload。
 - 新增设计与执行文档：`docs/superpowers/specs/2026-07-02-phase-7-5-openapi-request-bodies-design.md`、`docs/superpowers/plans/2026-07-02-phase-7-5-openapi-request-bodies.md`。
 
@@ -43,7 +44,7 @@
 
 - Phase 7.5 只改 Swagger / OpenAPI 元数据和文档，不改变接口运行时行为。
 - request body 示例只用于 Swagger UI 展示，不是新的事实源；字段约束仍以 `@repo/types` Zod schema 和服务端解析为准。
-- Agent Trace 示例只放脱敏摘要、token 估算和成本估算，不放完整 prompt、完整回答或完整 RAG chunk。
+- Agent Trace 示例只放已经隐藏敏感内容的摘要、token 估算和成本估算，不放完整 prompt、完整回答或完整 RAG chunk。
 - 本阶段不改 Chat prompt、RAG prompt、模型路由或流式输出，因此不需要 live 模型 smoke。
 
 ### 2026-07-02 - Phase 7.4 Swagger / OpenAPI Docs

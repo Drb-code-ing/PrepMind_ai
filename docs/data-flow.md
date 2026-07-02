@@ -340,7 +340,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - Swagger / OpenAPI 是调试和展示层，不是新的 contract 事实来源。
 - `@repo/types` Zod schemas remain source of truth；字段变更仍应先改共享 schema、服务端 DTO / pipe、前端调用和测试，再同步 Swagger 描述。
 - Swagger 不能反向驱动前端 contract，也不能替代 `@repo/types` 的 Zod runtime validation。
-- Phase 7.5 起，注册、登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入有中文说明与安全 request body 示例；这些示例只用于调试展示，不代表新的 schema 来源。
+- Phase 7.5 起，注册、登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入有中文说明与安全 request body 示例；这些示例只用于调试展示，不代表新的 schema 来源。Swagger UI 中优先使用“隐藏敏感内容”这类直观说法，避免把“脱敏”这类安全术语直接丢给读者。
 - 全局 response envelope 必须在文档中讲清：成功响应是 `{ success, data, requestId }`，错误响应是 `{ success, error, requestId }`；业务对象位于 `data` 中，错误详情位于 `error` 中。
 - `/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭。
 - production 中显式 `SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不应作为公开调试入口。
