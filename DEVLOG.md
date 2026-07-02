@@ -6,7 +6,7 @@
 
 更新时间：2026-07-02
 
-当前阶段：Phase 7.3 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.4 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -21,8 +21,29 @@
 | Phase 7.1 | 已完成 | BullMQ 文档处理队列、inline / queue 双模式 |
 | Phase 7.2 | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤 |
 | Phase 7.3 | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要 |
+| Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope 说明 |
 
 ## 近期关键记录
+
+### 2026-07-02 - Phase 7.4 Swagger / OpenAPI Docs
+
+本轮目标：给越来越多的 NestJS REST API 补一个可发现、可调试、适合面试展示的 Swagger / OpenAPI 入口，同时避免让 Swagger 变成第二套 contract 事实来源。
+
+完成内容：
+
+- 新增 Swagger / OpenAPI debug docs，入口为 `/api-docs` 和 `/api-docs-json`。
+- 文档默认在非 production 开启；production 默认关闭。
+- `SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不作为公开调试入口。
+- Swagger 接入不放宽 `JwtAuthGuard`，受保护接口仍按原有认证和 userId 隔离规则执行。
+- 明确 `@repo/types` Zod schemas remain source of truth；Swagger 是调试/展示层，不反向驱动前端 contract。
+- 文档补充全局 response envelope：成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`。
+- 新增面试学习博客：`docs/blogs/phase-7-openapi-docs.md`。
+
+边界：
+
+- Phase 7.4 不改 Chat prompt、RAG prompt、模型路由或流式输出，因此不需要 live 模型 smoke。
+- OpenAPI 文档不应包含 API key、cookie、token、完整 prompt、完整回答、完整 RAG chunk、后台任务原始 payload 或真实用户内容示例。
+- Swagger 只帮助接口发现和调试，不替代 `@repo/types`、服务端测试或前端调用层校验。
 
 ### 2026-07-02 - Phase 7.3 Event Observability
 
@@ -242,6 +263,7 @@ Phase 6.4 完成：
 - Phase 7.1：BullMQ 知识库处理队列完成，支持 inline / queue 双模式和 worker role。
 - Phase 7.2：RAG SafetyGuard 完成，chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤和 UI 安全信号已落地。
 - Phase 7.3：Event Observability 完成，EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 任务摘要轮询兜底已落地。
+- Phase 7.4：Swagger / OpenAPI debug docs 完成，`/api-docs` 与 `/api-docs-json` 非 production 默认开启，production 默认关闭，并明确 response envelope、`@repo/types` contract 优先级和认证边界。
 
 ## 当前验证基线
 
@@ -260,15 +282,10 @@ bun --cwd packages/database test
 bun --cwd packages/fsrs test
 ```
 
-Phase 7.3 最近验证：以下命令已在该阶段收尾时通过。
+Phase 7.4 文档任务验证：本阶段文档收口需要至少运行以下命令。
 
 ```powershell
-bun --cwd packages/types typecheck
-bun packages/types/tests/background-job.test.mts
-bun --filter @repo/server test -- event-bus background-jobs
-bun --filter @repo/web test -- background-job knowledge-view
-bun --filter @repo/server build
-bun --filter @repo/web build
+rg -n "Phase 7.4|Swagger|OpenAPI|SWAGGER_ENABLED|api-docs|response envelope|@repo/types" AGENTS.md DEVLOG.md docs
 git diff --check
 ```
 
@@ -284,11 +301,10 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Swagger / OpenAPI：补齐核心 REST API contract 和调试文档。
-2. Worker 部署拆分：让 API / worker 进程边界更清晰，并补健康检查。
-3. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
-4. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-5. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+1. Worker 部署拆分：让 API / worker 进程边界更清晰，并补健康检查。
+2. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
+3. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 
 ## 参考文档
 
@@ -299,3 +315,4 @@ Phase 7 后续优先级：
 - `docs/ai-behavior-acceptance.md`：mock / live / RAG / Agent 验收规范。
 - `docs/blogs/phase-7-rag-safety-guard.md`：RAG SafetyGuard 面试复盘。
 - `docs/blogs/phase-7-event-observability.md`：后台任务可观测面试复盘。
+- `docs/blogs/phase-7-openapi-docs.md`：Swagger / OpenAPI debug docs 面试学习博客。

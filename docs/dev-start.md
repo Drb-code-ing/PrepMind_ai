@@ -92,9 +92,20 @@ bun --filter @repo/web dev
 前端：http://localhost:3000
 后端：http://localhost:3001
 健康检查：http://localhost:3001/health
+Swagger UI：http://localhost:3001/api-docs
+OpenAPI JSON：http://localhost:3001/api-docs-json
 MinIO API：http://127.0.0.1:9000
 MinIO Console：http://127.0.0.1:9001
 ```
+
+Phase 7.4 adds Swagger / OpenAPI debug docs。`/api-docs` 和 `/api-docs-json` 默认在非 production 环境开启，方便本地联调、查看核心 REST API tags、认证标记和 response envelope 说明。production 默认关闭；如果临时诊断确实需要暴露文档，只能在受控环境或内网显式设置：
+
+```powershell
+$env:SWAGGER_ENABLED='true'
+bun --filter @repo/server start:dev
+```
+
+`SWAGGER_ENABLED=true` 不会放宽 `JwtAuthGuard`，受保护接口仍需要登录态和 access token。Swagger 只作为调试/展示层，`@repo/types` Zod schemas remain source of truth；前端 contract 不从 OpenAPI 反向生成或反向驱动。文档中的响应也遵循全局 response envelope：成功响应是 `{ success, data, requestId }`，错误响应是 `{ success, error, requestId }`。
 
 MinIO 默认登录：
 

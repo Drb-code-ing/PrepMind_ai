@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-02。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-07-02。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 已完成 Swagger / OpenAPI debug docs。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -14,6 +14,7 @@
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
 - Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 - 后台任务职责：`BackgroundJob` 以 PostgreSQL 为权威来源；`/background-jobs` 与 `/background-jobs/summary` 提供账号级只读任务观测 API，当前服务知识库文档处理队列；job 只保存状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata。
+- OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
@@ -321,7 +322,32 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
 - 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider，真实 embedding 仍使用 OpenAI-compatible provider。
 
-## 5. OCR 与错题本
+## 5. OpenAPI 调试文档
+
+```text
+开发者或面试展示
+  -> GET /api-docs
+  -> Swagger UI 浏览核心 REST API、tags、认证标记和响应说明
+
+自动化或工具检查
+  -> GET /api-docs-json
+  -> OpenAPI JSON
+  -> 校验核心 tags、response envelope 描述和敏感内容缺失
+```
+
+关键约定：
+
+- Swagger / OpenAPI 是调试和展示层，不是新的 contract 事实来源。
+- `@repo/types` Zod schemas remain source of truth；字段变更仍应先改共享 schema、服务端 DTO / pipe、前端调用和测试，再同步 Swagger 描述。
+- Swagger 不能反向驱动前端 contract，也不能替代 `@repo/types` 的 Zod runtime validation。
+- 全局 response envelope 必须在文档中讲清：成功响应是 `{ success, data, requestId }`，错误响应是 `{ success, error, requestId }`；业务对象位于 `data` 中，错误详情位于 `error` 中。
+- `/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭。
+- production 中显式 `SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不应作为公开调试入口。
+- 接入 Swagger 不放宽 `JwtAuthGuard`；受保护接口仍需要现有认证，并继续按当前 `userId` 隔离。
+- OpenAPI 文档不得写入 API key、cookie、access token、refresh token、完整 prompt、完整回答、完整 RAG chunk、后台任务原始 payload 或真实用户内容示例。
+- Phase 7.4 不改 Chat prompt、RAG prompt、模型路由或流式输出，因此不需要 live 模型 smoke。
+
+## 6. OCR 与错题本
 
 ```text
 用户选择图片或拍照
@@ -425,7 +451,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - 访问不存在或不属于当前用户的数据，返回业务级 not found。
 - 同一用户重复提交相同 `sourceGroupId`，返回 `WRONG_QUESTION_DUPLICATED`。
 
-## 6. FSRS 复习
+## 7. FSRS 复习
 
 ```text
 错题详情
@@ -508,7 +534,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 | `GET` | `/review-preferences` | 读取当前用户复习计划偏好；无记录时返回默认偏好 |
 | `PATCH` | `/review-preferences` | 更新当前用户复习计划偏好，只写入提交字段 |
 
-## 7. MemoryAgent 与长期记忆
+## 8. MemoryAgent 与长期记忆
 
 ```text
 用户打开个人中心
@@ -551,7 +577,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 | `PATCH` | `/user-memories/:id` | 更新标题、内容或 `ACTIVE / ARCHIVED` 状态 |
 | `DELETE` | `/user-memories/:id` | 删除当前用户正式记忆 |
 
-## 8. Dexie 与离线补偿
+## 9. Dexie 与离线补偿
 
 Dexie 当前职责：
 
@@ -600,7 +626,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - 401 / 403 不重试；网络错误和 5xx 按退避策略重试。
 - 服务端列表仍是已同步数据的权威来源；本地只保留未同步 mutation 记录作为补偿。
 
-## 9. localStorage
+## 10. localStorage
 
 | Key | 内容 | 说明 |
 | --- | --- | --- |
@@ -610,7 +636,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 
 学习偏好后续如果要影响 AI 讲解风格，需要在个性化讲解阶段单独设计 prompt 注入边界。
 
-## 10. PostgreSQL / Prisma
+## 11. PostgreSQL / Prisma
 
 当前已落地的核心模型：
 
@@ -648,7 +674,7 @@ Prisma migration 状态期望：
 Database schema is up to date
 ```
 
-## 11. Phase 3 数据流改进
+## 12. Phase 3 数据流改进
 
 Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 
