@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { backgroundJobSummaryResponseSchema } from './background-job';
+import { backgroundJobSummaryResponseSchema } from '@repo/types/api/background-job';
 
 export const workerObservabilityServerRoleSchema = z.enum([
   'api',

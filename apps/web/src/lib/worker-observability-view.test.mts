@@ -4,12 +4,17 @@ import {
   getWorkerObservabilityTone,
   getWorkerObservabilityUnavailableMessage,
   getWorkerObservabilityWorkerLabel,
-} from './worker-observability-view';
+  shouldShowWorkerObservabilityStrip,
+} from './worker-observability-view.ts';
 
 assert.equal(getWorkerObservabilityTone('healthy'), 'success');
 assert.equal(getWorkerObservabilityTone('attention'), 'warning');
 assert.equal(getWorkerObservabilityTone('degraded'), 'danger');
 assert.equal(getWorkerObservabilityTone('idle'), 'neutral');
+
+assert.equal(shouldShowWorkerObservabilityStrip(0, false), false);
+assert.equal(shouldShowWorkerObservabilityStrip(1, false), true);
+assert.equal(shouldShowWorkerObservabilityStrip(0, true), true);
 
 assert.equal(
   getWorkerObservabilityWorkerLabel({

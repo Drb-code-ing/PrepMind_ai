@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { createWorkerObservabilityApi } from './worker-observability-api';
+import { createWorkerObservabilityApi } from './worker-observability-api.ts';
 
 const api = createWorkerObservabilityApi({
   get: async (path, options) => {

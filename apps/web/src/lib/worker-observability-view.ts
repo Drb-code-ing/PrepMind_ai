@@ -28,6 +28,13 @@ export function getWorkerObservabilityUnavailableMessage() {
   return '后台健康状态暂不可用';
 }
 
+export function shouldShowWorkerObservabilityStrip(
+  documentCount: number,
+  isPollingProcessingState: boolean,
+) {
+  return documentCount > 0 || isPollingProcessingState;
+}
+
 export function getWorkerObservabilityCountLabel(
   counts: WorkerObservabilitySummaryResponse['queue']['counts'],
 ) {
