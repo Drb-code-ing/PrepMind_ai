@@ -130,6 +130,18 @@ const envSchema = z
       .min(1)
       .max(10)
       .default(2),
+    WORKER_HEARTBEAT_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(15_000),
+    WORKER_HEARTBEAT_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(5)
+      .max(600)
+      .default(45),
     EMBEDDING_REQUEST_TIMEOUT_MS: z.coerce
       .number()
       .int()
