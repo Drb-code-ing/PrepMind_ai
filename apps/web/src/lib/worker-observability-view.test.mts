@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  getWorkerObservabilityPollInterval,
   getWorkerObservabilityTone,
   getWorkerObservabilityUnavailableMessage,
   getWorkerObservabilityWorkerLabel,
@@ -15,6 +16,52 @@ assert.equal(getWorkerObservabilityTone('idle'), 'neutral');
 assert.equal(shouldShowWorkerObservabilityStrip(0, false), false);
 assert.equal(shouldShowWorkerObservabilityStrip(1, false), true);
 assert.equal(shouldShowWorkerObservabilityStrip(0, true), true);
+assert.equal(getWorkerObservabilityPollInterval(undefined, false, 5000), false);
+assert.equal(getWorkerObservabilityPollInterval(undefined, true, 5000), 5000);
+assert.equal(
+  getWorkerObservabilityPollInterval(
+    {
+      server: { role: 'api', knowledgeProcessingMode: 'queue' },
+      queue: {
+        name: 'document-processing',
+        counts: {
+          waiting: 2,
+          active: 0,
+          delayed: 0,
+          completed: 0,
+          failed: 0,
+          paused: 0,
+        },
+        isPaused: false,
+        hasBacklog: true,
+      },
+      workers: {
+        heartbeatTtlSeconds: 45,
+        onlineCount: 0,
+        latestHeartbeat: null,
+      },
+      backgroundJobs: {
+        activeCount: 0,
+        failedCount: 0,
+        staleSkippedCount: 0,
+        succeededCount: 0,
+        totalRecentCount: 0,
+        latestJob: null,
+      },
+      signals: {
+        status: 'attention',
+        hasWorkerHeartbeat: false,
+        queueModeWithoutWorker: true,
+        queueBacklogWithoutWorker: true,
+        hasRecentFailures: false,
+        message: '已有待处理任务，但暂未检测到 worker 在线。',
+      },
+    },
+    false,
+    5000,
+  ),
+  5000,
+);
 
 assert.equal(
   getWorkerObservabilityWorkerLabel({

@@ -35,6 +35,33 @@ export function shouldShowWorkerObservabilityStrip(
   return documentCount > 0 || isPollingProcessingState;
 }
 
+export function getWorkerObservabilityPollInterval(
+  summary: WorkerObservabilitySummaryResponse | undefined,
+  isPollingProcessingState: boolean,
+  pollIntervalMs: number,
+) {
+  if (isPollingProcessingState) return pollIntervalMs;
+  if (!summary) return false;
+
+  const hasQueueActivity =
+    summary.queue.counts.waiting > 0 ||
+    summary.queue.counts.active > 0 ||
+    summary.queue.counts.delayed > 0;
+
+  if (hasQueueActivity || summary.backgroundJobs.activeCount > 0) {
+    return pollIntervalMs;
+  }
+
+  if (
+    summary.signals.status === 'attention' ||
+    summary.signals.status === 'degraded'
+  ) {
+    return pollIntervalMs;
+  }
+
+  return false;
+}
+
 export function getWorkerObservabilityCountLabel(
   counts: WorkerObservabilitySummaryResponse['queue']['counts'],
 ) {

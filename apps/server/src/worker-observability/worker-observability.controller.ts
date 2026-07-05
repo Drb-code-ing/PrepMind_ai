@@ -1,4 +1,5 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, NotFoundException, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -11,6 +12,7 @@ import {
   CurrentUser,
   type AuthenticatedUser,
 } from '../common/decorators/current-user.decorator';
+import type { ServerEnv } from '../config/env';
 import { WorkerObservabilityService } from './worker-observability.service';
 
 @Controller('worker-observability')
@@ -18,7 +20,10 @@ import { WorkerObservabilityService } from './worker-observability.service';
 @ApiTags('Worker Observability')
 @ApiBearerAuth('access-token')
 export class WorkerObservabilityController {
-  constructor(private readonly service: WorkerObservabilityService) {}
+  constructor(
+    private readonly service: WorkerObservabilityService,
+    private readonly config: ConfigService<ServerEnv, true>,
+  ) {}
 
   @Get('summary')
   @ApiOperation({
@@ -30,7 +35,11 @@ export class WorkerObservabilityController {
     description:
       'worker 可观测摘要会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
-  summary(@CurrentUser() user: AuthenticatedUser) {
+  async summary(@CurrentUser() user: AuthenticatedUser) {
+    if (!this.config.get('WORKER_OBSERVABILITY_ENABLED', { infer: true })) {
+      throw new NotFoundException('Worker observability is disabled');
+    }
+
     return this.service.getSummary(user.id);
   }
 }

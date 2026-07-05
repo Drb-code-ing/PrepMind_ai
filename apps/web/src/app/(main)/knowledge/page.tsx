@@ -71,6 +71,7 @@ import {
 } from '@/lib/knowledge-agent-view';
 import {
   getWorkerObservabilityCountLabel,
+  getWorkerObservabilityPollInterval,
   getWorkerObservabilityTone,
   getWorkerObservabilityUnavailableMessage,
   getWorkerObservabilityWorkerLabel,
@@ -177,7 +178,12 @@ export default function KnowledgePage() {
   );
   const workerObservabilityQuery = useWorkerObservabilitySummary({
     enabled: showWorkerObservabilityStrip,
-    refetchInterval: shouldPollProcessingState ? processingPollIntervalMs : false,
+    refetchInterval: (query) =>
+      getWorkerObservabilityPollInterval(
+        query.state.data,
+        shouldPollProcessingState,
+        processingPollIntervalMs,
+      ),
   });
   const backgroundJobsByDocumentId = useMemo(
     () => groupLatestKnowledgeJobsByDocumentId(backgroundJobsQuery.data?.items ?? []),

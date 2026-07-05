@@ -1,13 +1,25 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import type { Query } from '@tanstack/react-query';
+import type { WorkerObservabilitySummaryResponse } from '@repo/types/api/worker-observability';
 
 import { workerObservabilityApi } from '@/lib/worker-observability-api';
 import { useUserStore } from '@/stores/userStore';
 
 type UseWorkerObservabilitySummaryOptions = {
   enabled?: boolean;
-  refetchInterval?: number | false;
+  refetchInterval?:
+    | number
+    | false
+    | ((
+        query: Query<
+          WorkerObservabilitySummaryResponse,
+          Error,
+          WorkerObservabilitySummaryResponse,
+          readonly unknown[]
+        >,
+      ) => number | false | undefined);
 };
 
 export const workerObservabilityQueryKeys = {
