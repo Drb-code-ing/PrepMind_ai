@@ -1,10 +1,10 @@
-# Phase 7.7 Worker Observability Implementation Plan
+﻿# Phase 7.7 Worker Observability Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**Goal:** Add a lightweight worker observability loop so `/knowledge` can show whether the document-processing queue has backlog, recent failures, and a recently online worker.
+**Goal:** Add a lightweight worker observability loop so `/knowledge` can show whether the knowledge-document-processing queue has backlog, recent failures, and a recently online worker.
 
-**Architecture:** Add a shared `@repo/types` contract, a NestJS `WorkerObservabilityModule` that combines BullMQ queue counts, Redis-backed worker heartbeat, and existing `BackgroundJobsService.getSummary()`, then surface the summary through a protected API and a small `/knowledge` status strip. Worker heartbeat uses the existing BullMQ Redis connection through the injected queue, avoiding a new Redis dependency.
+**Architecture:** Add a shared `@repo/types` contract, a NestJS `WorkerObservabilityModule` that combines BullMQ queue counts, Redis-backed worker heartbeat, and existing `BackgroundJobsService.getSummary()`, then surface the summary through a protected and environment-gated API plus a small `/knowledge` status strip. Worker heartbeat uses the existing BullMQ Redis connection through the injected queue, avoiding a new Redis dependency. Because queue counts and heartbeat are system-level observability signals, `WORKER_OBSERVABILITY_ENABLED` defaults to enabled outside production and disabled in production.
 
 **Tech Stack:** TypeScript, Zod, NestJS 11, BullMQ, Redis via BullMQ queue client, TanStack Query, Next.js 16, Bun workspace.
 
@@ -19,7 +19,7 @@
 - Create: `packages/types/tests/worker-observability.test.mts`
   - Contract tests for healthy, attention, degraded, and idle summaries.
 - Modify: `apps/server/src/config/env.ts`
-  - Add `WORKER_HEARTBEAT_INTERVAL_MS` and `WORKER_HEARTBEAT_TTL_SECONDS`.
+  - Add `WORKER_HEARTBEAT_INTERVAL_MS`, `WORKER_HEARTBEAT_TTL_SECONDS`, and `WORKER_OBSERVABILITY_ENABLED`.
 - Create: `apps/server/src/worker-observability/worker-observability.constants.ts`
   - Queue names, heartbeat key helpers, and defaults used by server tests and service code.
 - Create: `apps/server/src/worker-observability/worker-heartbeat.service.ts`
@@ -27,7 +27,7 @@
 - Create: `apps/server/src/worker-observability/worker-observability.service.ts`
   - Builds summary from queue counts, heartbeat, env, and BackgroundJob summary.
 - Create: `apps/server/src/worker-observability/worker-observability.controller.ts`
-  - Exposes `GET /worker-observability/summary` behind `JwtAuthGuard`.
+  - Exposes `GET /worker-observability/summary` behind `JwtAuthGuard` and `WORKER_OBSERVABILITY_ENABLED`.
 - Create: `apps/server/src/worker-observability/worker-observability.module.ts`
   - Wires queue, heartbeat service, summary service, controller, and `BackgroundJobsModule`.
 - Create: `apps/server/src/worker-observability/worker-heartbeat.service.spec.ts`
@@ -72,7 +72,7 @@
 - Modify: `packages/types/src/api/index.ts`
 - Create: `packages/types/tests/worker-observability.test.mts`
 
-- [ ] **Step 1: Write the failing contract test**
+- [x] **Step 1: Write the failing contract test**
 
 Create `packages/types/tests/worker-observability.test.mts`:
 
@@ -90,7 +90,7 @@ const baseSummary: WorkerObservabilitySummaryResponse = {
     knowledgeProcessingMode: 'queue',
   },
   queue: {
-    name: 'document-processing',
+    name: 'knowledge-document-processing',
     counts: {
       waiting: 2,
       active: 0,
@@ -137,7 +137,7 @@ const healthy = workerObservabilitySummaryResponseSchema.parse({
     latestHeartbeat: {
       workerId: 'worker-1',
       serverRole: 'worker',
-      queues: ['document-processing'],
+      queues: ['knowledge-document-processing'],
       startedAt: '2026-07-05T10:00:00.000Z',
       lastSeenAt: '2026-07-05T10:00:15.000Z',
     },
@@ -155,7 +155,7 @@ const healthy = workerObservabilitySummaryResponseSchema.parse({
 assert.equal(healthy.workers.onlineCount, 1);
 ```
 
-- [ ] **Step 2: Run the contract test to verify it fails**
+- [x] **Step 2: Run the contract test to verify it fails**
 
 Run:
 
@@ -165,7 +165,7 @@ bun packages/types/tests/worker-observability.test.mts
 
 Expected: FAIL because `../src/api/worker-observability` does not exist.
 
-- [ ] **Step 3: Implement the schema**
+- [x] **Step 3: Implement the schema**
 
 Create `packages/types/src/api/worker-observability.ts`:
 
@@ -206,7 +206,7 @@ export const workerObservabilitySummaryResponseSchema = z.object({
     knowledgeProcessingMode: workerObservabilityProcessingModeSchema,
   }),
   queue: z.object({
-    name: z.literal('document-processing'),
+    name: z.literal('knowledge-document-processing'),
     counts: workerObservabilityQueueCountsSchema,
     isPaused: z.boolean(),
     hasBacklog: z.boolean(),
@@ -240,7 +240,7 @@ Update `packages/types/src/api/index.ts`:
 export * from './worker-observability';
 ```
 
-- [ ] **Step 4: Run contract verification**
+- [x] **Step 4: Run contract verification**
 
 Run:
 
@@ -251,7 +251,7 @@ bun --cwd packages/types typecheck
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add packages/types/src/api/worker-observability.ts packages/types/src/api/index.ts packages/types/tests/worker-observability.test.mts
@@ -268,7 +268,7 @@ git commit -m "feat(types): add worker observability contract"
 - Create: `apps/server/src/worker-observability/worker-heartbeat.service.spec.ts`
 - Create: `apps/server/src/worker-observability/worker-observability.service.spec.ts`
 
-- [ ] **Step 1: Write heartbeat failing tests**
+- [x] **Step 1: Write heartbeat failing tests**
 
 Create `apps/server/src/worker-observability/worker-heartbeat.service.spec.ts`:
 
@@ -339,7 +339,7 @@ describe('WorkerHeartbeatService', () => {
 });
 ```
 
-- [ ] **Step 2: Run heartbeat tests to verify failure**
+- [x] **Step 2: Run heartbeat tests to verify failure**
 
 Run:
 
@@ -349,12 +349,12 @@ bun --filter @repo/server test -- worker-heartbeat
 
 Expected: FAIL because `WorkerHeartbeatService` does not exist.
 
-- [ ] **Step 3: Implement heartbeat constants and service**
+- [x] **Step 3: Implement heartbeat constants and service**
 
 Create `apps/server/src/worker-observability/worker-observability.constants.ts`:
 
 ```ts
-export const DOCUMENT_PROCESSING_QUEUE_NAME = 'document-processing';
+export const DOCUMENT_PROCESSING_QUEUE_NAME = PROCESS_KNOWLEDGE_DOCUMENT_QUEUE;
 export const WORKER_HEARTBEAT_QUEUE_NAMES = [DOCUMENT_PROCESSING_QUEUE_NAME] as const;
 
 export function createWorkerHeartbeatKey(prefix: string, workerId: string) {
@@ -480,7 +480,7 @@ export class WorkerHeartbeatService implements OnModuleInit, OnModuleDestroy {
 }
 ```
 
-- [ ] **Step 4: Write summary signal failing tests**
+- [x] **Step 4: Write summary signal failing tests**
 
 Create `apps/server/src/worker-observability/worker-observability.service.spec.ts`:
 
@@ -511,7 +511,7 @@ describe('WorkerObservabilityService', () => {
         {
           workerId: 'worker-1',
           serverRole: 'worker',
-          queues: ['document-processing'],
+          queues: ['knowledge-document-processing'],
           startedAt: '2026-07-05T10:00:00.000Z',
           lastSeenAt: '2026-07-05T10:00:15.000Z',
         },
@@ -528,7 +528,7 @@ describe('WorkerObservabilityService', () => {
 
 Use helper fakes for queue, heartbeat repository, config, and `BackgroundJobsService.getSummary()`.
 
-- [ ] **Step 5: Implement summary service**
+- [x] **Step 5: Implement summary service**
 
 Create `apps/server/src/worker-observability/worker-observability.service.ts` with:
 
@@ -539,7 +539,7 @@ Create `apps/server/src/worker-observability/worker-observability.service.ts` wi
 - `BackgroundJobsService.getSummary(userId)`.
 - signal priority: attention -> degraded -> healthy -> idle.
 
-- [ ] **Step 6: Add env vars**
+- [x] **Step 6: Add env vars**
 
 Modify `apps/server/src/config/env.ts`:
 
@@ -558,7 +558,7 @@ WORKER_HEARTBEAT_TTL_SECONDS: z.coerce
   .default(45),
 ```
 
-- [ ] **Step 7: Run server service tests**
+- [x] **Step 7: Run server service tests**
 
 Run:
 
@@ -568,7 +568,7 @@ bun --filter @repo/server test -- worker-heartbeat worker-observability.service
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```powershell
 git add apps/server/src/config/env.ts apps/server/src/worker-observability
@@ -584,7 +584,7 @@ git commit -m "feat(server): add worker heartbeat and queue summary"
 - Modify: `apps/server/src/app.module.ts`
 - Modify: `apps/server/src/config/swagger.spec.ts`
 
-- [ ] **Step 1: Write controller failing test**
+- [x] **Step 1: Write controller failing test**
 
 Create `apps/server/src/worker-observability/worker-observability.controller.spec.ts`:
 
@@ -614,7 +614,7 @@ describe('WorkerObservabilityController', () => {
 });
 ```
 
-- [ ] **Step 2: Run controller test to verify failure**
+- [x] **Step 2: Run controller test to verify failure**
 
 Run:
 
@@ -624,7 +624,7 @@ bun --filter @repo/server test -- worker-observability.controller
 
 Expected: FAIL because controller does not exist.
 
-- [ ] **Step 3: Implement controller and module**
+- [x] **Step 3: Implement controller and module**
 
 Create controller with:
 
@@ -646,7 +646,7 @@ Create module importing `JobsModule`, `BackgroundJobsModule`, and `BullModule.re
 
 Modify `apps/server/src/app.module.ts` to import `WorkerObservabilityModule`.
 
-- [ ] **Step 4: Extend Swagger test**
+- [x] **Step 4: Extend Swagger test**
 
 Update `apps/server/src/config/swagger.spec.ts` controller list and required operation list to include:
 
@@ -654,7 +654,7 @@ Update `apps/server/src/config/swagger.spec.ts` controller list and required ope
 ['get', '/worker-observability/summary']
 ```
 
-- [ ] **Step 5: Run API tests**
+- [x] **Step 5: Run API tests**
 
 Run:
 
@@ -664,7 +664,7 @@ bun --filter @repo/server test -- worker-observability swagger
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add apps/server/src/app.module.ts apps/server/src/worker-observability apps/server/src/config/swagger.spec.ts
@@ -680,7 +680,7 @@ git commit -m "feat(server): expose worker observability summary"
 - Create: `apps/web/src/lib/worker-observability-view.test.mts`
 - Create: `apps/web/src/hooks/use-worker-observability.ts`
 
-- [ ] **Step 1: Write failing web API test**
+- [x] **Step 1: Write failing web API test**
 
 Create `apps/web/src/lib/worker-observability-api.test.mts`:
 
@@ -696,7 +696,7 @@ const api = createWorkerObservabilityApi({
     return {
       server: { role: 'api', knowledgeProcessingMode: 'queue' },
       queue: {
-        name: 'document-processing',
+        name: 'knowledge-document-processing',
         counts: { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0, paused: 0 },
         isPaused: false,
         hasBacklog: false,
@@ -726,7 +726,7 @@ const result = await api.getSummary('token-1');
 assert.equal(result.signals.status, 'idle');
 ```
 
-- [ ] **Step 2: Run web API test to verify failure**
+- [x] **Step 2: Run web API test to verify failure**
 
 Run:
 
@@ -736,7 +736,7 @@ bun apps/web/src/lib/worker-observability-api.test.mts
 
 Expected: FAIL because API file does not exist.
 
-- [ ] **Step 3: Implement web API**
+- [x] **Step 3: Implement web API**
 
 Create `apps/web/src/lib/worker-observability-api.ts`:
 
@@ -765,7 +765,7 @@ export function createWorkerObservabilityApi(client: ApiClient) {
 export const workerObservabilityApi = createWorkerObservabilityApi(apiClient);
 ```
 
-- [ ] **Step 4: Write view helper tests**
+- [x] **Step 4: Write view helper tests**
 
 Create `apps/web/src/lib/worker-observability-view.test.mts` asserting:
 
@@ -774,7 +774,7 @@ Create `apps/web/src/lib/worker-observability-view.test.mts` asserting:
 - `degraded` maps to danger tone.
 - missing summary maps to `后台健康状态暂不可用`.
 
-- [ ] **Step 5: Implement view helper and hook**
+- [x] **Step 5: Implement view helper and hook**
 
 Create `apps/web/src/lib/worker-observability-view.ts` with `getWorkerObservabilityTone()`, `getWorkerObservabilityWorkerLabel()`, and `getWorkerObservabilityUnavailableMessage()`.
 
@@ -789,7 +789,7 @@ export const workerObservabilityQueryKeys = {
 
 and a `useWorkerObservabilitySummary()` query gated by `sessionHydrated && !!accessToken`.
 
-- [ ] **Step 6: Run web helper tests**
+- [x] **Step 6: Run web helper tests**
 
 Run:
 
@@ -800,7 +800,7 @@ bun apps/web/src/lib/worker-observability-view.test.mts
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add apps/web/src/lib/worker-observability-api.ts apps/web/src/lib/worker-observability-view.ts apps/web/src/lib/worker-observability-api.test.mts apps/web/src/lib/worker-observability-view.test.mts apps/web/src/hooks/use-worker-observability.ts
@@ -813,7 +813,7 @@ git commit -m "feat(web): add worker observability client"
 - Modify: `apps/web/src/app/(main)/knowledge/page.tsx`
 - Modify: `apps/web/src/lib/knowledge-view.test.mts` or create `apps/web/src/lib/worker-observability-ui-integration.test.mts`
 
-- [ ] **Step 1: Write failing UI helper integration test**
+- [x] **Step 1: Write failing UI helper integration test**
 
 Create `apps/web/src/lib/worker-observability-ui-integration.test.mts`:
 
@@ -836,7 +836,7 @@ assert.equal(
 );
 ```
 
-- [ ] **Step 2: Run the integration helper test**
+- [x] **Step 2: Run the integration helper test**
 
 Run:
 
@@ -846,7 +846,7 @@ bun apps/web/src/lib/worker-observability-ui-integration.test.mts
 
 Expected: PASS if Task 4 helpers are present; FAIL if labels need adjustment.
 
-- [ ] **Step 3: Integrate into page**
+- [x] **Step 3: Integrate into page**
 
 Modify `apps/web/src/app/(main)/knowledge/page.tsx`:
 
@@ -862,7 +862,7 @@ Component behavior:
 - Error: show `后台健康状态暂不可用`.
 - Data: show `signals.message`, worker label, and counts for waiting / active / failed.
 
-- [ ] **Step 4: Run web tests**
+- [x] **Step 4: Run web tests**
 
 Run:
 
@@ -872,7 +872,7 @@ bun --filter @repo/web test -- worker-observability knowledge-view
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add apps/web/src/app/(main)/knowledge/page.tsx apps/web/src/lib/worker-observability-ui-integration.test.mts
@@ -889,7 +889,7 @@ git commit -m "feat(web): show worker observability on knowledge page"
 - Modify: `docs/roadmap.md`
 - Create: `docs/blogs/phase-7-worker-observability.md`
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Document:
 
@@ -897,9 +897,10 @@ Document:
 - `GET /worker-observability/summary`.
 - Redis heartbeat and TTL.
 - Queue counts are system-level; BackgroundJob summary is account-level.
+- `WORKER_OBSERVABILITY_ENABLED` defaults to disabled in production.
 - No live model smoke needed.
 
-- [ ] **Step 2: Write interview blog**
+- [x] **Step 2: Write interview blog**
 
 Create `docs/blogs/phase-7-worker-observability.md` with sections:
 
@@ -909,7 +910,7 @@ Create `docs/blogs/phase-7-worker-observability.md` with sections:
 - “为什么 worker-only 仍然不做 HTTP health”
 - “面试怎么讲”
 
-- [ ] **Step 3: Run final verification**
+- [x] **Step 3: Run final verification**
 
 Run:
 
@@ -926,14 +927,14 @@ git diff --check
 
 Expected: all pass. Docker Compose may print the existing `version is obsolete` warning; it is acceptable if exit code is 0.
 
-- [ ] **Step 4: Commit docs**
+- [x] **Step 4: Commit docs**
 
 ```powershell
 git add AGENTS.md DEVLOG.md docs/data-flow.md docs/dev-start.md docs/roadmap.md docs/blogs/phase-7-worker-observability.md
 git commit -m "docs: explain phase 7 worker observability"
 ```
 
-- [ ] **Step 5: Merge and push**
+- [x] **Step 5: Merge and push**
 
 Run:
 

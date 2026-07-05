@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-02
+更新时间：2026-07-05
 
-当前阶段：Phase 7.6 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.7 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -24,8 +24,43 @@
 | Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope 说明 |
 | Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例 |
 | Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context、Docker worker profile |
+| Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
 
 ## 近期关键记录
+
+### 2026-07-05 - Phase 7.7 Worker Observability
+
+本轮目标：补上 Phase 7.6 拆出 worker 进程后的观测缺口，让开发和面试展示时能回答“任务是否在排队、worker 是否在线、最近是否失败”这三个问题，而不是只看 BackgroundJob 结果表。
+
+完成内容：
+
+- 新增 `@repo/types/api/worker-observability` contract，统一描述 server role、knowledge processing mode、BullMQ queue counts、worker heartbeat、BackgroundJob summary 和综合信号。
+- 新增 `WorkerHeartbeatService`：仅在 `SERVER_ROLE=worker | both` 写 Redis 短 TTL heartbeat，复用 BullMQ queue client，不引入第二套 Redis 客户端。
+- 新增 `WorkerObservabilityService`：聚合 `knowledge-document-processing` queue counts、worker heartbeat 和账号级 `BackgroundJobsService.getSummary()`。
+- 新增 `GET /worker-observability/summary`，经过 `JwtAuthGuard`，并受 `WORKER_OBSERVABILITY_ENABLED` 控制；默认非 production 开启、production 关闭，Swagger tag 为 `Worker Observability`。
+- `/knowledge` 页面新增紧凑健康状态条，展示 worker 在线状态、等待/处理中/失败数量，以及 `healthy / degraded / attention / idle` 对应提示；知识库为空且没有处理轮询时不显示该状态条，避免误报“暂不可用”。
+- 新增 `apps/web/src/lib/worker-observability-api.ts`、view helper、TanStack Query hook 和相关测试。
+- 新增设计与执行文档：`docs/superpowers/specs/phase-7-worker-observability-design.md`、`docs/superpowers/plans/phase-7-worker-observability.md`。
+- 新增面试学习博客：`docs/blogs/phase-7-worker-observability.md`。
+
+边界：
+
+- BackgroundJob 是账号级任务历史和状态，不等于 worker 在线；worker heartbeat 是进程最近活跃信号，不等于任务成功；queue counts 是系统级队列积压，不按用户隔离。三者组合展示，不能混成一个事实源。
+- Worker Observability 返回系统级 queue counts 和 worker heartbeat，因此 production 默认关闭；若生产临时开启，必须放在受控内网或诊断窗口里，不应作为面向普通用户的长期公开能力。
+- worker-only 仍不提供 HTTP `/health`；它不监听端口，健康判断继续依赖进程存活、日志、BullMQ、Redis heartbeat 和 BackgroundJob 状态。
+- heartbeat 只保存不含 hostname / pid 的 opaque worker id、role、队列名、startedAt 和 lastSeenAt，不保存文件内容、prompt、RAG chunk、API key、token 或用户输入。
+- 本阶段不改 Chat prompt、RAG prompt、模型路由或真实模型调用链路，因此不需要 live 模型 smoke。
+
+验证：以下命令已在 Phase 7.7 收尾时通过。
+
+- `bun --cwd packages/types typecheck`
+- `bun packages/types/tests/worker-observability.test.mts`
+- `bun --filter @repo/server test -- worker-observability`
+- `bun --filter @repo/web test -- worker-observability knowledge`
+- `bun --filter @repo/server build`
+- `bun --filter @repo/web build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker config`
+- `git diff --check`
 
 ### 2026-07-02 - Phase 7.6 Worker Split
 
@@ -309,6 +344,7 @@ Phase 6.4 完成：
 - Phase 7.4：Swagger / OpenAPI debug docs 完成，`/api-docs` 与 `/api-docs-json` 非 production 默认开启，production 默认关闭，并明确 response envelope、`@repo/types` contract 优先级和认证边界。
 - Phase 7.5：OpenAPI request body 示例完成，注册/登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入已补中文说明与安全示例。
 - Phase 7.6：API / worker 进程启动拆分完成，`worker` 角色不再监听 HTTP，Docker Compose 提供 worker profile。
+- Phase 7.7：Worker Observability 完成，Redis heartbeat、BullMQ queue counts、BackgroundJob summary 和 `/knowledge` 健康状态条已落地。
 
 ## 当前验证基线
 
@@ -327,11 +363,16 @@ bun --cwd packages/database test
 bun --cwd packages/fsrs test
 ```
 
-Phase 7.6 worker 拆分任务验证：本阶段文档收口需要至少运行以下命令。
+Phase 7.7 worker observability 任务验证：本阶段文档收口需要至少运行以下命令。
 
 ```powershell
-bun --filter @repo/server test -- worker-role server-bootstrap
+bun --cwd packages/types typecheck
+bun packages/types/tests/worker-observability.test.mts
+bun --filter @repo/server test -- worker-observability
+bun --filter @repo/web test -- worker-observability knowledge
 bun --filter @repo/server build
+bun --filter @repo/web build
+docker compose -f docker/docker-compose.dev.yml --profile worker config
 git diff --check
 ```
 
@@ -349,7 +390,7 @@ Phase 7 后续优先级：
 
 1. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-3. Worker 观测增强：后续按部署形态补 CLI health check、BullMQ metrics 或容器 readiness。
+3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 
 ## 参考文档
@@ -363,3 +404,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-event-observability.md`：后台任务可观测面试复盘。
 - `docs/blogs/phase-7-openapi-docs.md`：Swagger / OpenAPI debug docs 面试学习博客。
 - `docs/blogs/phase-7-worker-split.md`：API / worker 启动拆分面试学习博客。
+- `docs/blogs/phase-7-worker-observability.md`：Worker Observability 面试学习博客。
