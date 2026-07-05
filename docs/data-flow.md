@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-02。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 / 7.5 已完成 Swagger / OpenAPI debug docs、中文说明和核心写接口 request body 示例；Phase 7.6 已完成 API / worker 启动拆分，`SERVER_ROLE=worker` 不再监听 HTTP 端口。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-07-05。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 / 7.5 已完成 Swagger / OpenAPI debug docs、中文说明和核心写接口 request body 示例；Phase 7.6 已完成 API / worker 启动拆分，`SERVER_ROLE=worker` 不再监听 HTTP 端口；Phase 7.7 已完成 Worker Observability，通过 Redis heartbeat、BullMQ queue counts 和 BackgroundJob summary 展示后台处理健康状态。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -15,6 +15,7 @@
 - Agent Trace 职责：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/agent-traces` 提供账号级在线观测 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 只保存脱敏元数据，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 - 后台任务职责：`BackgroundJob` 以 PostgreSQL 为权威来源；`/background-jobs` 与 `/background-jobs/summary` 提供账号级只读任务观测 API，当前服务知识库文档处理队列；job 只保存状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata。
 - API / worker 职责：`SERVER_ROLE=api` 启动 Nest HTTP app，只提供 REST API、`/health` 和 Swagger，不消费 BullMQ；`SERVER_ROLE=worker` 启动 Nest application context，只注册 worker processor，不监听 HTTP 端口；`SERVER_ROLE=both` 保留本地一体化模式。worker-only 第一版没有 HTTP `/health`，健康判断依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
+- Worker Observability 职责：`/worker-observability/summary` 聚合系统级 `knowledge-document-processing` queue counts、Redis worker heartbeat 和当前账号 BackgroundJob summary；该接口经过 `JwtAuthGuard` 且受 `WORKER_OBSERVABILITY_ENABLED` 控制，默认非 production 开启、production 关闭。queue counts 不按用户隔离，heartbeat 只表达 worker 最近是否在线，BackgroundJob summary 才是账号级任务窗口；三者不能互相替代。
 - OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；Phase 7.5 为核心写接口补充中文说明和安全 request body 示例。`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
@@ -176,10 +177,11 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> POST /knowledge/documents/:id/process
   -> KNOWLEDGE_PROCESSING_MODE=queue
   -> 创建 BackgroundJob(resourceType=KNOWLEDGE_DOCUMENT, status=QUEUED)
-  -> 投递 BullMQ document-processing job
+  -> 投递 BullMQ knowledge-document-processing job
   -> API 返回 Document(status=PROCESSING, processing.backgroundJobId, processing.mode=queue)
   -> worker 根据 SERVER_ROLE=worker|both 注册 processor
   -> SERVER_ROLE=worker 时该进程只运行 application context，不监听 HTTP
+  -> worker / both 角色定期写入 Redis heartbeat
   -> 标记 BackgroundJob(ACTIVE)
   -> 复用 DocumentProcessingService 解析、分块、embedding 和 chunk 写入
   -> 成功：Document(DONE) + BackgroundJob(SUCCEEDED)
@@ -298,6 +300,8 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `POST /knowledge/documents/:id/process` 写入前校验 document/user ownership，并在 claim、清 chunk、写 chunk、标记 DONE / FAILED 时持续校验 `status=PROCESSING + storageKey + contentHash` 快照，避免旧处理流污染新上传资料。
 - `KNOWLEDGE_PROCESSING_MODE` 支持 `inline | queue`，默认 `inline`；`inline` 不投递 BullMQ，适合作为本地和降级 fallback；`queue` 需要 `REDIS_URL` 和已注册的 BullMQ worker。
 - `SERVER_ROLE` 支持 `api | worker | both`：`api` 提供 HTTP API 但不注册 worker；`worker` 只创建 Nest application context 并注册 worker，不监听 HTTP 端口；`both` 同时提供 HTTP 与 worker，主要用于本地一体化开发。
+- `WORKER_HEARTBEAT_INTERVAL_MS` 默认 15000，`WORKER_HEARTBEAT_TTL_SECONDS` 默认 45；heartbeat 通过 BullMQ Redis 连接写入，内容只包含不含 hostname / pid 的 opaque worker id、role、队列名、startedAt 和 lastSeenAt。
+- `/worker-observability/summary` 默认只在非 production 开启；production 若显式 `WORKER_OBSERVABILITY_ENABLED=true`，也应只用于受控内网或临时诊断。
 - Redis 是 queue 处理链路的必需依赖；当前 NestJS 会初始化 BullMQ 模块，本地开发建议继续随 postgres / minio 一起启动 redis。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
 - forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval；chunk 替换事务会使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行。
@@ -617,6 +621,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - MemoryAgent：候选生成、确认、忽略和正式记忆管理是在线账号级能力，不进入通用 mutation queue。
 - Agent Trace：`/agent-traces` 是在线账号级观测能力，只记录脱敏元数据；trace 写入失败不需要离线补偿，不进入通用 mutation queue。
 - BackgroundJob：`/background-jobs` 与 `/background-jobs/summary` 是在线账号级只读观测能力，只记录后台任务脱敏元数据；任务状态不进入 Dexie `mutationQueue`。
+- Worker Observability：`/worker-observability/summary` 是在线只读运维观测能力，默认 production 关闭；返回的 queue counts 是系统级信号，heartbeat 是 worker 在线信号，不进入 Dexie `mutationQueue`，也不保存用户内容。
 - KnowledgeAgent suggestions：`/knowledge-agent/suggestions` 是在线只读资料管理建议，不写资料事实表，失败不需要离线补偿，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。

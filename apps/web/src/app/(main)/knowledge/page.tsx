@@ -21,7 +21,6 @@ import {
 import type {
   BackgroundJobListQuery,
   BackgroundJobResponse,
-  BackgroundJobSummaryResponse,
 } from '@repo/types/api/background-job';
 import type {
   KnowledgeDocumentListQuery,
@@ -32,6 +31,7 @@ import type {
   KnowledgeAgentSuggestionResponse,
   KnowledgeDedupItem,
 } from '@repo/types/api/knowledge-agent';
+import type { WorkerObservabilitySummaryResponse } from '@repo/types/api/worker-observability';
 
 import { useBackgroundJobList, useBackgroundJobSummary } from '@/hooks/use-background-jobs';
 import { useKnowledgeAgentSuggestions } from '@/hooks/use-knowledge-agent-suggestions';
@@ -43,6 +43,7 @@ import {
   useSearchKnowledge,
   useUploadKnowledgeDocument,
 } from '@/hooks/use-knowledge';
+import { useWorkerObservabilitySummary } from '@/hooks/use-worker-observability';
 import {
   KNOWLEDGE_PAGE_SEARCH_MIN_SCORE,
   formatKnowledgeDateTime,
@@ -67,6 +68,14 @@ import {
   getKnowledgeOrganizerCollectionSummary,
   hasKnowledgeAgentSuggestions,
 } from '@/lib/knowledge-agent-view';
+import {
+  getWorkerObservabilityCountLabel,
+  getWorkerObservabilityPollInterval,
+  getWorkerObservabilityTone,
+  getWorkerObservabilityUnavailableMessage,
+  getWorkerObservabilityWorkerLabel,
+  shouldShowWorkerObservabilityStrip,
+} from '@/lib/worker-observability-view';
 
 type NoticeTone = 'success' | 'danger' | 'neutral';
 type ActionNotice = { message: string; tone: NoticeTone };
@@ -118,8 +127,6 @@ export default function KnowledgePage() {
   const [processingIds, setProcessingIds] = useState<Set<string>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
   const [replacingIds, setReplacingIds] = useState<Set<string>>(() => new Set());
-  const [backgroundJobSummaryForPolling, setBackgroundJobSummaryForPolling] =
-    useState<BackgroundJobSummaryResponse>();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHits, setSearchHits] = useState<KnowledgeSearchHit[] | null>(null);
   const [submittedSearchQuery, setSubmittedSearchQuery] = useState('');
@@ -152,16 +159,30 @@ export default function KnowledgePage() {
   });
   const backgroundJobSummaryQuery = useBackgroundJobSummary({
     enabled: documents.length > 0 || shouldPollProcessingState,
-    refetchInterval: getBackgroundJobSummaryPollInterval({
-      summary: backgroundJobSummaryForPolling,
-      shouldPollProcessingState,
-      pollIntervalMs: processingPollIntervalMs,
-    }),
+    refetchInterval: (query) =>
+      getBackgroundJobSummaryPollInterval({
+        summary: query.state.data,
+        shouldPollProcessingState,
+        pollIntervalMs: processingPollIntervalMs,
+      }),
   });
   const backgroundJobSummaryView = useMemo(
     () => getBackgroundJobSummaryView(backgroundJobSummaryQuery.data),
     [backgroundJobSummaryQuery.data],
   );
+  const showWorkerObservabilityStrip = shouldShowWorkerObservabilityStrip(
+    documents.length,
+    shouldPollProcessingState,
+  );
+  const workerObservabilityQuery = useWorkerObservabilitySummary({
+    enabled: showWorkerObservabilityStrip,
+    refetchInterval: (query) =>
+      getWorkerObservabilityPollInterval(
+        query.state.data,
+        shouldPollProcessingState,
+        processingPollIntervalMs,
+      ),
+  });
   const backgroundJobsByDocumentId = useMemo(
     () => groupLatestKnowledgeJobsByDocumentId(backgroundJobsQuery.data?.items ?? []),
     [backgroundJobsQuery.data?.items],
@@ -185,12 +206,6 @@ export default function KnowledgePage() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (backgroundJobSummaryQuery.data) {
-      setBackgroundJobSummaryForPolling(backgroundJobSummaryQuery.data);
-    }
-  }, [backgroundJobSummaryQuery.data]);
 
   async function handleUpload() {
     const file = selectedFile;
@@ -357,6 +372,14 @@ export default function KnowledgePage() {
         <KnowledgeSummaryCard summary={summary} />
 
         <BackgroundJobSummaryNotice view={backgroundJobSummaryView} />
+
+        {showWorkerObservabilityStrip ? (
+          <WorkerObservabilityStrip
+            summary={workerObservabilityQuery.data}
+            loading={workerObservabilityQuery.isLoading}
+            error={workerObservabilityQuery.isError}
+          />
+        ) : null}
 
         <KnowledgeAgentSuggestionsPanel
           suggestions={knowledgeAgentSuggestions.data}
@@ -568,6 +591,65 @@ function BackgroundJobSummaryNotice({ view }: { view: BackgroundJobSummaryView |
           <p className="text-sm font-bold">{view.title}</p>
           <p className="mt-1 break-words text-xs leading-5">{view.description}</p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function WorkerObservabilityStrip({
+  summary,
+  loading,
+  error,
+}: {
+  summary: WorkerObservabilitySummaryResponse | undefined;
+  loading: boolean;
+  error: boolean;
+}) {
+  if (loading && !summary) {
+    return (
+      <section className="pm-enter mt-3 rounded-[1.25rem] border border-slate-100 bg-white/65 px-3 py-3 text-[var(--pm-muted)]">
+        <div className="flex items-center gap-2 text-sm font-bold">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          后台健康状态检查中
+        </div>
+      </section>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <section className="pm-enter mt-3 rounded-[1.25rem] border border-amber-100 bg-[#fff7df]/80 px-3 py-3 text-[#8a641c]">
+        <div className="flex items-center gap-2 text-sm font-bold">
+          <RefreshCw className="h-4 w-4" />
+          {getWorkerObservabilityUnavailableMessage()}
+        </div>
+      </section>
+    );
+  }
+
+  const tone = getWorkerObservabilityTone(summary.signals.status);
+  const className =
+    tone === 'success'
+      ? 'border-emerald-100 bg-emerald-50/80 text-emerald-700'
+      : tone === 'warning'
+        ? 'border-amber-100 bg-[#fff7df]/80 text-[#8a641c]'
+        : tone === 'danger'
+          ? 'border-red-100 bg-red-50/80 text-red-700'
+          : 'border-slate-100 bg-white/65 text-[var(--pm-muted)]';
+
+  return (
+    <section className={`pm-enter mt-3 rounded-[1.25rem] border px-3 py-3 ${className}`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="break-words text-sm font-bold">{summary.signals.message}</p>
+          <p className="mt-1 text-xs leading-5">
+            {getWorkerObservabilityWorkerLabel(summary.workers)} ·{' '}
+            {getWorkerObservabilityCountLabel(summary.queue.counts)}
+          </p>
+        </div>
+        <span className="inline-flex w-fit shrink-0 items-center rounded-full bg-white/55 px-2.5 py-1 text-xs font-bold ring-1 ring-current/10">
+          {summary.server.knowledgeProcessingMode === 'queue' ? '队列模式' : '同步模式'}
+        </span>
       </div>
     </section>
   );

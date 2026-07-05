@@ -142,4 +142,33 @@ describe('parseEnv', () => {
       }).SWAGGER_ENABLED,
     ).toBe(false);
   });
+
+  it('enables worker observability by default only outside production', () => {
+    expect(parseEnv(requiredEnv).WORKER_OBSERVABILITY_ENABLED).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+      }).WORKER_OBSERVABILITY_ENABLED,
+    ).toBe(false);
+  });
+
+  it('allows explicit worker observability enablement overrides', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        WORKER_OBSERVABILITY_ENABLED: 'true',
+      }).WORKER_OBSERVABILITY_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        WORKER_OBSERVABILITY_ENABLED: 'false',
+      }).WORKER_OBSERVABILITY_ENABLED,
+    ).toBe(false);
+  });
 });

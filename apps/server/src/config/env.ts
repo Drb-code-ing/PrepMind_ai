@@ -38,6 +38,14 @@ const envSchema = z
 
       return value;
     }, booleanStringSchema.optional()),
+    WORKER_OBSERVABILITY_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -130,6 +138,18 @@ const envSchema = z
       .min(1)
       .max(10)
       .default(2),
+    WORKER_HEARTBEAT_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(15_000),
+    WORKER_HEARTBEAT_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(5)
+      .max(600)
+      .default(45),
     EMBEDDING_REQUEST_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -171,8 +191,12 @@ const envSchema = z
   });
 
 type ParsedServerEnv = z.infer<typeof envSchema>;
-export type ServerEnv = Omit<ParsedServerEnv, 'SWAGGER_ENABLED'> & {
+export type ServerEnv = Omit<
+  ParsedServerEnv,
+  'SWAGGER_ENABLED' | 'WORKER_OBSERVABILITY_ENABLED'
+> & {
   SWAGGER_ENABLED: boolean;
+  WORKER_OBSERVABILITY_ENABLED: boolean;
 };
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
@@ -181,5 +205,7 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
   return {
     ...env,
     SWAGGER_ENABLED: env.SWAGGER_ENABLED ?? env.NODE_ENV !== 'production',
+    WORKER_OBSERVABILITY_ENABLED:
+      env.WORKER_OBSERVABILITY_ENABLED ?? env.NODE_ENV !== 'production',
   };
 }
