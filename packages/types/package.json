@@ -12,6 +12,7 @@
     "./api/agent-tool": "./src/api/agent-tool.ts",
     "./api/auth": "./src/api/auth.ts",
     "./api/background-job": "./src/api/background-job.ts",
+    "./api/worker-observability": "./src/api/worker-observability.ts",
     "./api/wrong-question": "./src/api/wrong-question.ts",
     "./api/wrong-question-organizer": "./src/api/wrong-question-organizer.ts",
     "./api/chat-message": "./src/api/chat-message.ts",

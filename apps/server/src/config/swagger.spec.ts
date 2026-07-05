@@ -18,6 +18,7 @@ import { ReviewTasksController } from '../review-tasks/review-tasks.controller';
 import { ReviewsController } from '../reviews/reviews.controller';
 import { UploadsController } from '../uploads/uploads.controller';
 import { UsersController } from '../users/users.controller';
+import { WorkerObservabilityController } from '../worker-observability/worker-observability.controller';
 import { WrongQuestionOrganizerController } from '../wrong-question-organizer/wrong-question-organizer.controller';
 import { WrongQuestionsController } from '../wrong-questions/wrong-questions.controller';
 import {
@@ -73,6 +74,7 @@ const coreApiControllers = [
   MemoryAgentController,
   AgentTracesController,
   BackgroundJobsController,
+  WorkerObservabilityController,
   UploadsController,
 ];
 
@@ -185,6 +187,7 @@ describe('swagger config', () => {
           'User Memories',
           'Agent Traces',
           'Background Jobs',
+          'Worker Observability',
           'Uploads',
         ]),
       );
@@ -297,6 +300,7 @@ describe('swagger config', () => {
         ['get', '/background-jobs'],
         ['get', '/background-jobs/summary'],
         ['get', '/background-jobs/{id}'],
+        ['get', '/worker-observability/summary'],
       ] as const;
 
       for (const [method, path] of operations) {
