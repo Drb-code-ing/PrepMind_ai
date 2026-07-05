@@ -1,7 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import type { BackgroundJobListQuery } from '@repo/types/api/background-job';
+import { useQuery, type Query } from '@tanstack/react-query';
+import type {
+  BackgroundJobListQuery,
+  BackgroundJobSummaryResponse,
+} from '@repo/types/api/background-job';
 
 import { backgroundJobApi } from '@/lib/background-job-api';
 import { useUserStore } from '@/stores/userStore';
@@ -9,6 +12,16 @@ import { useUserStore } from '@/stores/userStore';
 type UseBackgroundJobListOptions = {
   enabled?: boolean;
   refetchInterval?: number | false;
+};
+
+type UseBackgroundJobSummaryOptions = {
+  enabled?: boolean;
+  refetchInterval?:
+    | number
+    | false
+    | ((
+        query: Query<BackgroundJobSummaryResponse, Error, BackgroundJobSummaryResponse>,
+      ) => number | false);
 };
 
 export const backgroundJobQueryKeys = {
@@ -40,7 +53,7 @@ export function useBackgroundJobList(
   });
 }
 
-export function useBackgroundJobSummary(options: UseBackgroundJobListOptions = {}) {
+export function useBackgroundJobSummary(options: UseBackgroundJobSummaryOptions = {}) {
   const accessToken = useUserStore((state) => state.accessToken);
   const sessionHydrated = useUserStore((state) => state.sessionHydrated);
 

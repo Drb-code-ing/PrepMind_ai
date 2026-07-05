@@ -23,10 +23,8 @@ import { WorkerObservabilityService } from './worker-observability.service';
     {
       provide: WorkerHeartbeatService,
       inject: [getQueueToken(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE), ConfigService],
-      useFactory: (
-        queue: Queue,
-        config: ConfigService<ServerEnv, true>,
-      ) => new WorkerHeartbeatService(queue, config),
+      useFactory: (queue: Queue, config: ConfigService<ServerEnv, true>) =>
+        new WorkerHeartbeatService(queue, config),
     },
     {
       provide: WorkerObservabilityService,

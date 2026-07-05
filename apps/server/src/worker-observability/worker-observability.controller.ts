@@ -29,7 +29,7 @@ export class WorkerObservabilityController {
   @ApiOperation({
     summary: '汇总后台 worker 与队列状态',
     description:
-      '读取当前后台处理模式、document-processing 队列计数、worker 心跳和当前账号后台任务摘要。队列计数是系统级信号，BackgroundJob 摘要按当前账号隔离。',
+      '读取当前后台处理模式、knowledge-document-processing 队列计数、worker 心跳和当前账号后台任务摘要。队列计数是系统级信号，BackgroundJob 摘要按当前账号隔离。',
   })
   @ApiOkResponse({
     description:

@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
-import os from 'node:os';
 
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
@@ -50,7 +49,8 @@ export class WorkerHeartbeatService implements OnModuleInit, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
-    @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE) private readonly queue: Queue,
+    @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
+    private readonly queue: Queue,
     optionsOrConfig: WorkerHeartbeatOptions | ConfigService<ServerEnv, true>,
   ) {
     const options =
@@ -73,8 +73,7 @@ export class WorkerHeartbeatService implements OnModuleInit, OnModuleDestroy {
     this.heartbeatIntervalMs = options.heartbeatIntervalMs;
     this.heartbeatTtlSeconds = options.heartbeatTtlSeconds;
     this.prefix = options.prefix;
-    this.workerId =
-      options.workerId ?? `${os.hostname()}-${process.pid}-${randomUUID().slice(0, 8)}`;
+    this.workerId = options.workerId ?? `worker-${randomUUID().slice(0, 12)}`;
     this.now = options.now ?? (() => new Date());
     this.startedAt = this.now().toISOString();
     this.logger = options.logger ?? new Logger(WorkerHeartbeatService.name);

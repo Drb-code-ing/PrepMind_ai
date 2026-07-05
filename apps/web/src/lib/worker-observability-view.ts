@@ -52,13 +52,6 @@ export function getWorkerObservabilityPollInterval(
     return pollIntervalMs;
   }
 
-  if (
-    summary.signals.status === 'attention' ||
-    summary.signals.status === 'degraded'
-  ) {
-    return pollIntervalMs;
-  }
-
   return false;
 }
 

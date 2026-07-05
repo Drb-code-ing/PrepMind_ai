@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   workerObservabilitySummaryResponseSchema,
   type WorkerObservabilitySummaryResponse,
-} from '../src/api/worker-observability';
+} from '../src/api/worker-observability.ts';
 
 const baseSummary: WorkerObservabilitySummaryResponse = {
   server: {
@@ -11,7 +11,7 @@ const baseSummary: WorkerObservabilitySummaryResponse = {
     knowledgeProcessingMode: 'queue',
   },
   queue: {
-    name: 'document-processing',
+    name: 'knowledge-document-processing',
     counts: {
       waiting: 2,
       active: 0,
@@ -58,7 +58,7 @@ const healthy = workerObservabilitySummaryResponseSchema.parse({
     latestHeartbeat: {
       workerId: 'worker-1',
       serverRole: 'worker',
-      queues: ['document-processing'],
+      queues: ['knowledge-document-processing'],
       startedAt: '2026-07-05T10:00:00.000Z',
       lastSeenAt: '2026-07-05T10:00:15.000Z',
     },

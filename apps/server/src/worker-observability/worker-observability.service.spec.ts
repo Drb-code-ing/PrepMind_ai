@@ -37,6 +37,58 @@ describe('WorkerObservabilityService', () => {
     );
   });
 
+  it('reports attention when an active job has no heartbeat', async () => {
+    const service = createService({
+      role: 'api',
+      mode: 'queue',
+      counts: {
+        waiting: 0,
+        active: 1,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+      },
+      heartbeats: [],
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.queue.hasBacklog).toBe(true);
+    expect(result.signals.status).toBe('attention');
+    expect(result.signals.queueBacklogWithoutWorker).toBe(true);
+  });
+
+  it('reports degraded when the queue is paused even with a heartbeat', async () => {
+    const service = createService({
+      role: 'api',
+      mode: 'queue',
+      counts: {
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+      },
+      isPaused: true,
+      heartbeats: [
+        {
+          workerId: 'worker-1',
+          serverRole: 'worker',
+          queues: ['knowledge-document-processing'],
+          startedAt: '2026-07-05T10:00:00.000Z',
+          lastSeenAt: '2026-07-05T10:00:15.000Z',
+        },
+      ],
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.queue.isPaused).toBe(true);
+    expect(result.signals.status).toBe('degraded');
+  });
+
   it('reports healthy when queue mode has a recent heartbeat and no failures', async () => {
     const service = createService({
       role: 'api',
@@ -53,7 +105,7 @@ describe('WorkerObservabilityService', () => {
         {
           workerId: 'worker-1',
           serverRole: 'worker',
-          queues: ['document-processing'],
+          queues: ['knowledge-document-processing'],
           startedAt: '2026-07-05T10:00:00.000Z',
           lastSeenAt: '2026-07-05T10:00:15.000Z',
         },
@@ -65,6 +117,7 @@ describe('WorkerObservabilityService', () => {
     expect(result.signals.status).toBe('healthy');
     expect(result.workers.onlineCount).toBe(1);
     expect(result.workers.latestHeartbeat?.workerId).toBe('worker-1');
+    expect(result.queue.name).toBe('knowledge-document-processing');
   });
 
   it('reports degraded when recent background jobs failed', async () => {
@@ -83,7 +136,7 @@ describe('WorkerObservabilityService', () => {
         {
           workerId: 'worker-1',
           serverRole: 'worker',
-          queues: ['document-processing'],
+          queues: ['knowledge-document-processing'],
           startedAt: '2026-07-05T10:00:00.000Z',
           lastSeenAt: '2026-07-05T10:00:15.000Z',
         },
@@ -115,7 +168,38 @@ describe('WorkerObservabilityService', () => {
     const result = await service.getSummary('user-1');
 
     expect(result.signals.status).toBe('idle');
-    expect(result.signals.message).toBe('当前为同步处理模式，队列 worker 不参与处理。');
+    expect(result.signals.message).toBe(
+      '当前为同步处理模式，队列 worker 不参与处理。',
+    );
+  });
+
+  it('ignores malformed heartbeat payloads', async () => {
+    const service = createService({
+      role: 'api',
+      mode: 'queue',
+      counts: {
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+      },
+      heartbeats: [
+        {
+          workerId: '',
+          serverRole: 'worker',
+          queues: ['knowledge-document-processing'],
+          startedAt: 'not-a-date',
+          lastSeenAt: '2026-07-05T10:00:15.000Z',
+        },
+      ],
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.workers.onlineCount).toBe(0);
+    expect(result.signals.hasWorkerHeartbeat).toBe(false);
   });
 });
 
@@ -123,17 +207,24 @@ function createService(input: {
   role: 'api' | 'worker' | 'both';
   mode: 'inline' | 'queue';
   counts: QueueCounts;
+  isPaused?: boolean;
   heartbeats: WorkerHeartbeatResponse[];
   backgroundJobs?: BackgroundJobSummaryResponse;
 }) {
-  const redisValues = input.heartbeats.map((heartbeat) => JSON.stringify(heartbeat));
+  const redisValues = input.heartbeats.map((heartbeat) =>
+    JSON.stringify(heartbeat),
+  );
   const redis = {
-    keys: jest.fn().mockResolvedValue(redisValues.map((_, index) => `key-${index}`)),
+    keys: jest
+      .fn()
+      .mockResolvedValue(redisValues.map((_, index) => `key-${index}`)),
     mget: jest.fn().mockResolvedValue(redisValues),
   };
   const queue = {
     getJobCounts: jest.fn().mockResolvedValue(input.counts),
-    isPaused: jest.fn().mockResolvedValue(input.counts.paused > 0),
+    isPaused: jest
+      .fn()
+      .mockResolvedValue(input.isPaused ?? input.counts.paused > 0),
     client: Promise.resolve(redis),
   };
   const backgroundJobs = {
@@ -142,12 +233,16 @@ function createService(input: {
       .mockResolvedValue(input.backgroundJobs ?? createBackgroundJobSummary()),
   };
 
-  return new WorkerObservabilityService(queue as never, backgroundJobs as never, {
-    role: input.role,
-    knowledgeProcessingMode: input.mode,
-    heartbeatTtlSeconds: 45,
-    prefix: 'prepmind',
-  });
+  return new WorkerObservabilityService(
+    queue as never,
+    backgroundJobs as never,
+    {
+      role: input.role,
+      knowledgeProcessingMode: input.mode,
+      heartbeatTtlSeconds: 45,
+      prefix: 'prepmind',
+    },
+  );
 }
 
 function createBackgroundJobSummary(): BackgroundJobSummaryResponse {

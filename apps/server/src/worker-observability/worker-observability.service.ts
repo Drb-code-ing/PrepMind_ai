@@ -6,10 +6,12 @@ import type {
   WorkerHeartbeatResponse,
   WorkerObservabilitySummaryResponse,
 } from '@repo/types/api/worker-observability';
+import { workerHeartbeatResponseSchema } from '@repo/types/api/worker-observability';
 
 import { BackgroundJobsService } from '../background-jobs/background-jobs.service';
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
+import { DOCUMENT_PROCESSING_QUEUE_NAME } from './worker-observability.constants';
 
 type QueueCounts = WorkerObservabilitySummaryResponse['queue']['counts'];
 
@@ -35,9 +37,12 @@ export class WorkerObservabilityService {
   private readonly logger: Pick<Logger, 'warn'>;
 
   constructor(
-    @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE) private readonly queue: Queue,
+    @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
+    private readonly queue: Queue,
     private readonly backgroundJobs: BackgroundJobsService,
-    optionsOrConfig: WorkerObservabilityOptions | ConfigService<ServerEnv, true>,
+    optionsOrConfig:
+      | WorkerObservabilityOptions
+      | ConfigService<ServerEnv, true>,
   ) {
     const options =
       optionsOrConfig instanceof ConfigService
@@ -62,7 +67,9 @@ export class WorkerObservabilityService {
     this.logger = options.logger ?? new Logger(WorkerObservabilityService.name);
   }
 
-  async getSummary(userId: string): Promise<WorkerObservabilitySummaryResponse> {
+  async getSummary(
+    userId: string,
+  ): Promise<WorkerObservabilitySummaryResponse> {
     const [counts, isPaused, heartbeats, backgroundJobs] = await Promise.all([
       this.getQueueCounts(),
       this.queue.isPaused(),
@@ -70,7 +77,9 @@ export class WorkerObservabilityService {
       this.backgroundJobs.getSummary(userId),
     ]);
 
-    const hasBacklog = counts.waiting + counts.delayed > 0;
+    const hasBacklog =
+      counts.waiting + counts.active + counts.delayed + counts.paused > 0;
+    const queuePaused = isPaused || counts.paused > 0;
     const hasWorkerHeartbeat = heartbeats.length > 0;
     const queueModeWithoutWorker =
       this.knowledgeProcessingMode === 'queue' && !hasWorkerHeartbeat;
@@ -80,6 +89,7 @@ export class WorkerObservabilityService {
     const latestHeartbeat = sortHeartbeats(heartbeats)[0] ?? null;
     const status = resolveStatus({
       queueBacklogWithoutWorker,
+      queuePaused,
       hasRecentFailures,
       knowledgeProcessingMode: this.knowledgeProcessingMode,
       hasWorkerHeartbeat,
@@ -91,7 +101,7 @@ export class WorkerObservabilityService {
         knowledgeProcessingMode: this.knowledgeProcessingMode,
       },
       queue: {
-        name: 'document-processing',
+        name: DOCUMENT_PROCESSING_QUEUE_NAME,
         counts,
         isPaused,
         hasBacklog,
@@ -142,7 +152,9 @@ export class WorkerObservabilityService {
       const values = await redis.mget(...keys);
       return values
         .map((value) => parseHeartbeat(value))
-        .filter((heartbeat): heartbeat is WorkerHeartbeatResponse => !!heartbeat);
+        .filter(
+          (heartbeat): heartbeat is WorkerHeartbeatResponse => !!heartbeat,
+        );
     } catch (error) {
       this.logger.warn(
         `Worker heartbeat read failed: ${
@@ -156,11 +168,13 @@ export class WorkerObservabilityService {
 
 function resolveStatus(input: {
   queueBacklogWithoutWorker: boolean;
+  queuePaused: boolean;
   hasRecentFailures: boolean;
   knowledgeProcessingMode: ServerEnv['KNOWLEDGE_PROCESSING_MODE'];
   hasWorkerHeartbeat: boolean;
 }): WorkerObservabilitySummaryResponse['signals']['status'] {
   if (input.queueBacklogWithoutWorker) return 'attention';
+  if (input.queuePaused) return 'degraded';
   if (input.hasRecentFailures) return 'degraded';
   if (input.knowledgeProcessingMode === 'queue' && input.hasWorkerHeartbeat) {
     return 'healthy';
@@ -191,9 +205,8 @@ function parseHeartbeat(value: string | null): WorkerHeartbeatResponse | null {
   if (!value) return null;
 
   try {
-    const parsed = JSON.parse(value) as WorkerHeartbeatResponse;
-    if (!parsed.workerId || !parsed.lastSeenAt) return null;
-    return parsed;
+    const parsed = workerHeartbeatResponseSchema.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
@@ -201,7 +214,6 @@ function parseHeartbeat(value: string | null): WorkerHeartbeatResponse | null {
 
 function sortHeartbeats(heartbeats: WorkerHeartbeatResponse[]) {
   return [...heartbeats].sort(
-    (left, right) =>
-      Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt),
+    (left, right) => Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt),
   );
 }

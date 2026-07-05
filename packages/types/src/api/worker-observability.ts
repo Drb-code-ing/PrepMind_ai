@@ -43,7 +43,7 @@ export const workerObservabilitySummaryResponseSchema = z.object({
     knowledgeProcessingMode: workerObservabilityProcessingModeSchema,
   }),
   queue: z.object({
-    name: z.literal('document-processing'),
+    name: z.literal('knowledge-document-processing'),
     counts: workerObservabilityQueueCountsSchema,
     isPaused: z.boolean(),
     hasBacklog: z.boolean(),

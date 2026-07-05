@@ -9,7 +9,7 @@ const api = createWorkerObservabilityApi({
     return {
       server: { role: 'api', knowledgeProcessingMode: 'queue' },
       queue: {
-        name: 'document-processing',
+        name: 'knowledge-document-processing',
         counts: {
           waiting: 0,
           active: 0,
