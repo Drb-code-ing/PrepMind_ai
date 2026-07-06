@@ -9,6 +9,20 @@ import {
 
 type EmbedBatchMock = jest.Mock<Promise<number[][]>, [string[]]>;
 
+var mockEmbeddingsCreate = jest.fn();
+var mockOpenAI = jest.fn(() => ({
+  embeddings: {
+    create: mockEmbeddingsCreate,
+  },
+}));
+
+jest.mock('openai', () => ({
+  __esModule: true,
+  default: function OpenAIConstructor(...args: unknown[]) {
+    return mockOpenAI(...args);
+  },
+}));
+
 describe('EmbeddingService', () => {
   const configValues: Pick<
     ServerEnv,
@@ -16,13 +30,17 @@ describe('EmbeddingService', () => {
     | 'RAG_EMBEDDING_BATCH_SIZE'
     | 'RAG_EMBEDDING_MODEL'
     | 'RAG_EMBEDDING_PROVIDER'
+    | 'RAG_EMBEDDING_BASE_URL'
     | 'OPENAI_API_KEY'
+    | 'Qwen_API_KEY'
   > = {
     RAG_EMBEDDING_DIMENSIONS: 3,
     RAG_EMBEDDING_BATCH_SIZE: 2,
     RAG_EMBEDDING_MODEL: 'fake-model',
     RAG_EMBEDDING_PROVIDER: 'openai',
+    RAG_EMBEDDING_BASE_URL: undefined,
     OPENAI_API_KEY: 'test-openai-key',
+    Qwen_API_KEY: undefined,
   };
 
   function createConfig(
@@ -44,6 +62,11 @@ describe('EmbeddingService', () => {
       embedBatch,
     };
   }
+
+  beforeEach(() => {
+    mockEmbeddingsCreate.mockReset();
+    mockOpenAI.mockClear();
+  });
 
   it('embeds chunks in configured batches with an injected provider', async () => {
     const embedBatch = jest
@@ -141,6 +164,54 @@ describe('EmbeddingService', () => {
   it('rejects missing api key when no provider is injected', async () => {
     const service = new EmbeddingService(
       createConfig({ OPENAI_API_KEY: undefined }),
+      undefined,
+    );
+
+    await expect(service.embedChunks(['a'])).rejects.toMatchObject({
+      code: 'KNOWLEDGE_EMBEDDING_FAILED',
+      statusCode: HttpStatus.BAD_GATEWAY,
+    });
+  });
+
+  it('uses Qwen API key and base URL for the qwen provider', async () => {
+    mockEmbeddingsCreate.mockResolvedValue({
+      data: [{ embedding: [1, 0, 0] }],
+    });
+    const service = new EmbeddingService(
+      createConfig({
+        RAG_EMBEDDING_PROVIDER: 'qwen',
+        RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+        RAG_EMBEDDING_BASE_URL:
+          'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+        OPENAI_API_KEY: undefined,
+        Qwen_API_KEY: 'test-qwen-key',
+      }),
+      undefined,
+    );
+
+    await expect(service.embedChunks(['a'])).resolves.toEqual([[1, 0, 0]]);
+    expect(mockOpenAI).toHaveBeenCalledWith({
+      apiKey: 'test-qwen-key',
+      baseURL:
+        'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+    });
+    expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+      model: 'text-embedding-v4',
+      input: ['a'],
+      dimensions: 3,
+    });
+  });
+
+  it('rejects missing Qwen API key for the qwen provider', async () => {
+    const service = new EmbeddingService(
+      createConfig({
+        RAG_EMBEDDING_PROVIDER: 'qwen',
+        RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+        RAG_EMBEDDING_BASE_URL:
+          'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+        OPENAI_API_KEY: undefined,
+        Qwen_API_KEY: undefined,
+      }),
       undefined,
     );
 

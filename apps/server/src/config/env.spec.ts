@@ -32,6 +32,24 @@ describe('parseEnv', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('accepts qwen embedding provider settings', () => {
+    const env = parseEnv({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'qwen',
+      RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+      RAG_EMBEDDING_BASE_URL:
+        'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+      Qwen_API_KEY: '  test-qwen-key  ',
+    });
+
+    expect(env.RAG_EMBEDDING_PROVIDER).toBe('qwen');
+    expect(env.RAG_EMBEDDING_MODEL).toBe('text-embedding-v4');
+    expect(env.RAG_EMBEDDING_BASE_URL).toBe(
+      'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+    );
+    expect(env.Qwen_API_KEY).toBe('test-qwen-key');
+  });
+
   it('rejects the fake embedding provider in production', () => {
     expect(() =>
       parseEnv({

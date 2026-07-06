@@ -64,8 +64,11 @@ const envSchema = z
       .int()
       .positive()
       .default(20 * 1024 * 1024),
-    RAG_EMBEDDING_PROVIDER: z.enum(['openai', 'fake']).default('openai'),
+    RAG_EMBEDDING_PROVIDER: z
+      .enum(['openai', 'qwen', 'fake'])
+      .default('openai'),
     RAG_EMBEDDING_MODEL: z.string().min(1).default('text-embedding-3-small'),
+    RAG_EMBEDDING_BASE_URL: optionalNonEmptyStringSchema,
     RAG_EMBEDDING_DIMENSIONS: z.coerce
       .number()
       .int()
@@ -157,6 +160,9 @@ const envSchema = z
       .max(120_000)
       .default(30_000),
     OPENAI_API_KEY: optionalNonEmptyStringSchema,
+    Qwen_API_KEY: optionalNonEmptyStringSchema,
+    QWEN_API_KEY: optionalNonEmptyStringSchema,
+    DASHSCOPE_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
     if (

@@ -173,7 +173,7 @@ Phase 5.3 已完成文档处理与 embedding 入库：
 - 新增 `POST /knowledge/documents/:id/process`。
 - 支持 TXT / Markdown / DOCX / PDF 基础文本解析。
 - 使用 `@repo/rag` 段落感知分块。
-- embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
+- embedding provider 已抽象，默认 OpenAI `text-embedding-3-small`，支持阿里云百炼 / DashScope OpenAI-compatible `qwen` provider（如 `text-embedding-v4`），测试/e2e 使用 fake provider。
 - `Chunk.embedding vector(1536)` 通过 raw SQL 持久化，写入前校验 document/user ownership。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析或 embedding 失败进入 `FAILED`。
 - forced reprocess 会先清旧 chunks，避免 stale retrieval。
