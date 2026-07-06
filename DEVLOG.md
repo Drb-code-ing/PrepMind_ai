@@ -6,7 +6,7 @@
 
 更新时间：2026-07-06
 
-当前阶段：Phase 7.8.1 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.8.2 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -26,8 +26,33 @@
 | Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context、Docker worker profile |
 | Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
 | Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
+| Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
 
 ## 近期关键记录
+
+### 2026-07-06 - Phase 7.8.2 Hybrid Retrieval
+
+本轮目标：在 Phase 7.8.1 RAG Eval 基线之后，把 `/knowledge/search` 从纯向量检索升级为第一版 Hybrid Retrieval，补强精确术语、专有名词和英文短语场景。
+
+完成内容：
+
+- 新增 `mergeHybridSearchRows()` 纯函数，合并 vector candidates 与 keyword candidates，按 `chunkId` 去重并输出 `0..1` final score。
+- `/knowledge/search` 现在执行两路候选召回：pgvector cosine vector SQL + PostgreSQL `websearch_to_tsquery('simple', query)` full-text keyword SQL。
+- 响应 contract 保持不变，`metadata` 中额外带轻量 `retrieval.mode/vectorScore/keywordScore`，用于调试和后续 eval。
+- 第一版不新增 GIN 索引、不引入 Elasticsearch / Meilisearch、不接 reranker，不改 Chat RAG prompt。
+
+验证：
+
+- `bun --filter @repo/server test -- hybrid-search`
+- `bun --filter @repo/server test -- knowledge-search.service`
+- `bun --filter @repo/server test -- rag-eval-runner`
+- `bun --filter @repo/server build`
+- `git diff --check`
+
+边界：
+
+- Hybrid Retrieval 改的是知识库检索排序，不改变最终 Chat 模型调用和引用格式，因此本轮不要求 live Chat smoke。
+- PostgreSQL inline full-text 第一版主要补强英文术语、专有名词和短语；中文分词与大规模性能优化留给后续 GIN index / reranker 阶段。
 
 ### 2026-07-06 - Phase 7.8.1 RAG Eval Baseline
 

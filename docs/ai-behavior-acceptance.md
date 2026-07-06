@@ -184,3 +184,13 @@ RAG Eval 用于衡量检索质量，不替代真实 Chat 体验验收。
 - 使用 Qwen / OpenAI 等真实 embedding 的 smoke 才能说明语义召回在真实模型下可用。
 - 修改 `/knowledge/search` 排序、Hybrid Retrieval、reranker、Query Rewrite 或 Chat RAG prompt 后，需要用同一套 eval case 对比前后指标。
 - Eval 文件不得包含真实用户资料、API key、access token、完整 prompt、完整模型回答或真实私有 RAG chunk。
+
+## 14. Phase 7.8.2 Hybrid Retrieval
+
+Hybrid Retrieval 改动的是 `/knowledge/search` 的候选召回和排序，不直接改变最终 Chat prompt 或模型输出。
+
+- `/knowledge/search` 同时召回 pgvector vector candidates 和 PostgreSQL full-text keyword candidates。
+- 服务层按 `chunkId` 去重融合，最终 `score` 仍保持在 `0..1`，响应 contract 不变。
+- `metadata.retrieval` 只保存 `mode`、`vectorScore` 和 `keywordScore`，不得保存 query、prompt、API key、access token 或完整私有上下文。
+- 第一版不新增 GIN index、不接外部搜索引擎、不接 reranker；中文分词和大规模性能优化留到后续阶段。
+- 本阶段不要求 live Chat smoke；但建议本地用真实 Qwen embedding 对 `/knowledge/search` 做精确术语与语义问题 smoke。
