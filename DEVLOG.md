@@ -4,7 +4,7 @@
 
 ## 当前快照
 
-更新时间：2026-07-05
+更新时间：2026-07-06
 
 当前阶段：Phase 7.7 已完成，后续继续 Phase 7 工程化增强。
 
@@ -27,6 +27,22 @@
 | Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
 
 ## 近期关键记录
+
+### 2026-07-06 - Qwen Embedding Provider
+
+本轮目标：让 RAG 真实 embedding 验收不再只能依赖 OpenAI key，支持使用阿里云百炼 / DashScope 的 OpenAI compatible embedding 服务。
+
+完成内容：
+
+- `RAG_EMBEDDING_PROVIDER` 新增 `qwen`。
+- `EmbeddingService` 支持 `RAG_EMBEDDING_BASE_URL`、`Qwen_API_KEY`、`QWEN_API_KEY`、`DASHSCOPE_API_KEY`。
+- 推荐本地真实 RAG 验收使用 `text-embedding-v4`、业务空间 `/compatible-mode/v1` base URL、`RAG_EMBEDDING_DIMENSIONS=1536` 和 `RAG_EMBEDDING_BATCH_SIZE=10`。
+
+边界：
+
+- 不提交真实 key，不在日志中打印 key。
+- 仍保持 pgvector `vector(1536)` 不变，避免本阶段引入向量维度 migration。
+- 旧 fake embedding chunk 不能用于真实语义召回判断；切换 qwen 后需要重新处理资料。
 
 ### 2026-07-05 - Phase 7.7 Worker Observability
 

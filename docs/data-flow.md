@@ -305,7 +305,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - Redis 是 queue 处理链路的必需依赖；当前 NestJS 会初始化 BullMQ 模块，本地开发建议继续随 postgres / minio 一起启动 redis。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
 - forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval；chunk 替换事务会使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行。
-- embedding provider 已抽象，默认 OpenAI-compatible `text-embedding-3-small`，测试/e2e 使用 fake provider。
+- embedding provider 已抽象，默认 OpenAI `text-embedding-3-small`，并支持阿里云百炼 / DashScope OpenAI-compatible `qwen` provider（例如 `text-embedding-v4`）；测试/e2e 使用 fake provider。
 - `POST /knowledge/search` 只检索当前用户 `DONE` 文档 chunks，不跨用户、不检索未处理或失败文档。
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
 - KnowledgeVerifierAgent 只消费 `/knowledge/search` 的命中结果，不单独读取数据库；无命中返回 `skipped`，可信资料返回 `trusted`，低分或过短资料返回 `insufficient`，包含“可能有误 / 待核对 / 不确定 / wrong / contradict”等风险标记时返回 `suspicious`，多个片段出现互斥答案标记时返回 `conflict`。
@@ -326,7 +326,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；点击页面其它区域会收起菜单；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
-- 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider，真实 embedding 仍使用 OpenAI-compatible provider。
+- 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider。真实 embedding 可使用 `RAG_EMBEDDING_PROVIDER=openai` + `OPENAI_API_KEY`，或 `RAG_EMBEDDING_PROVIDER=qwen` + `RAG_EMBEDDING_BASE_URL` + `Qwen_API_KEY` / `QWEN_API_KEY` / `DASHSCOPE_API_KEY`。
 
 ## 5. OpenAPI 调试文档
 

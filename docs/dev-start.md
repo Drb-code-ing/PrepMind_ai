@@ -59,7 +59,23 @@ $env:RAG_EMBEDDING_PROVIDER='fake'
 bun --filter @repo/server start:dev
 ```
 
-`RAG_EMBEDDING_PROVIDER='fake'` 只用于本地开发和浏览器 smoke，可在没有 `OPENAI_API_KEY` 的情况下完成知识库上传、处理和检索测试；真实 embedding 验收时改为 `openai` 并配置 `OPENAI_API_KEY`。
+`RAG_EMBEDDING_PROVIDER='fake'` 只用于本地开发和浏览器 smoke，可在没有 API key 的情况下完成知识库上传、处理和检索测试；真实 embedding 验收时改为 `openai` 或 `qwen` 并配置对应 API key。
+
+使用阿里云百炼 / DashScope 的 OpenAI compatible embedding 时，可按截图里的业务空间 base URL 配置：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:RAG_EMBEDDING_PROVIDER='qwen'
+$env:RAG_EMBEDDING_MODEL='text-embedding-v4'
+$env:RAG_EMBEDDING_BASE_URL='https://你的业务空间域名/compatible-mode/v1'
+$env:RAG_EMBEDDING_DIMENSIONS='1536'
+$env:RAG_EMBEDDING_BATCH_SIZE='10'
+$env:Qwen_API_KEY='你的 key'
+bun --filter @repo/server start:dev
+```
+
+`Qwen_API_KEY`、`QWEN_API_KEY`、`DASHSCOPE_API_KEY` 三个变量任选其一即可；不要把真实 key 写进 git。真实 embedding 验收要重新处理资料，旧的 fake embedding chunk 不能用于判断语义召回质量。
 
 默认文档处理模式是 `KNOWLEDGE_PROCESSING_MODE='inline'`，后端收到 `POST /knowledge/documents/:id/process` 后会在 API 进程内直接完成解析、分块、embedding 和入库，不投递 BullMQ。当前 NestJS 仍会初始化 BullMQ 模块，所以本地开发建议继续启动 redis；需要验证 Phase 7 BullMQ 队列链路时，使用 queue 模式启动：
 
