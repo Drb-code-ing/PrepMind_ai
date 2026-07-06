@@ -6,7 +6,7 @@
 
 更新时间：2026-07-06
 
-当前阶段：Phase 7.8.2 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.8.3 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -27,8 +27,33 @@
 | Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
 | Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
+| Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
 
 ## 近期关键记录
+
+### 2026-07-06 - Phase 7.8.3 RAG Eval Smoke
+
+本轮目标：在 RAG Eval baseline 和 Hybrid Retrieval 之后，补上一条本地 API 级真实链路 smoke，验证上传、处理、检索和 eval 指标能在运行中的服务上串起来。
+
+完成内容：
+
+- 新增 `formatRagEvalSmokeReport()` 纯函数，把 `RagEvalSummary` 和每个 case 的 hit 摘要格式化为可读终端报告。
+- 新增 `bun --filter @repo/server smoke:rag-eval`，脚本会注册临时账号、上传合成 TXT、触发处理、轮询 `DONE`、调用 `/knowledge/search`，再把真实 hits 喂给 `runRagEval()`。
+- smoke 默认只覆盖精确术语、语义改写和跨语言薄弱点 3 个正向 case；SafetyGuard 和无关查询边界继续由固定单测/后续专项 smoke 覆盖，避免把低分候选误判为链路失败。
+- 脚本只输出状态、指标、命中数、top score 和文档名，不打印 API key、access token、cookie、embedding 向量或完整 hit content。
+
+验证：
+
+- `bun --filter @repo/server test -- rag-eval-report`
+- `bun --filter @repo/server test -- rag-eval-runner`
+- `bun --filter @repo/server build`
+- `git diff --check`
+- `bun --filter @repo/server smoke:rag-eval`，结果 `Status: PASS`、`Passed: 3/3`、`Recall@K: 100.0%`、`Top1 Accuracy: 100.0%`
+
+边界：
+
+- 这是 RAG 检索链路 smoke，不是 Chat live 验收；本阶段不改 `/api/chat`、RAG prompt 或最终模型输出。
+- smoke 创建的测试资料是合成内容，脚本会 best-effort 删除临时文档；临时用户暂不清理，因为当前没有用户删除 API。
 
 ### 2026-07-06 - Phase 7.8.2 Hybrid Retrieval
 
@@ -414,6 +439,9 @@ Phase 6.4 完成：
 - Phase 7.5：OpenAPI request body 示例完成，注册/登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入已补中文说明与安全示例。
 - Phase 7.6：API / worker 进程启动拆分完成，`worker` 角色不再监听 HTTP，Docker Compose 提供 worker profile。
 - Phase 7.7：Worker Observability 完成，Redis heartbeat、BullMQ queue counts、BackgroundJob summary 和 `/knowledge` 健康状态条已落地。
+- Phase 7.8.1：RAG Eval Baseline 完成，固定检索评估集和 `recall@k` / `top1Accuracy` / `safetyPassRate` / `noHitPassRate` 指标已落地。
+- Phase 7.8.2：Hybrid Retrieval 完成，`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
+- Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
 
 ## 当前验证基线
 

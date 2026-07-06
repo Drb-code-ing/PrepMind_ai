@@ -194,3 +194,14 @@ Hybrid Retrieval 改动的是 `/knowledge/search` 的候选召回和排序，不
 - `metadata.retrieval` 只保存 `mode`、`vectorScore` 和 `keywordScore`，不得保存 query、prompt、API key、access token 或完整私有上下文。
 - 第一版不新增 GIN index、不接外部搜索引擎、不接 reranker；中文分词和大规模性能优化留到后续阶段。
 - 本阶段不要求 live Chat smoke；但建议本地用真实 Qwen embedding 对 `/knowledge/search` 做精确术语与语义问题 smoke。
+
+## 15. Phase 7.8.3 RAG Eval Smoke
+
+RAG Eval Smoke 用于验证真实 API 级检索链路，不替代 live Chat 输出体验验收。
+
+- `bun --filter @repo/server smoke:rag-eval` 会串联注册临时账号、上传合成 TXT、处理文档、轮询状态、调用 `/knowledge/search` 和 `runRagEval()`。
+- smoke 需要本地 API、PostgreSQL、MinIO、Redis 和可用 embedding provider 已启动；如果使用真实 Qwen / OpenAI embedding，它能证明真实模型下的检索链路可用。
+- smoke 默认不进入 CI，因为真实 embedding provider 依赖密钥、网络和供应商稳定性。
+- smoke 不调用 `/api/chat`，所以它不证明最终回答风格、引用自然度或 Tutor 讲题效果；改 Chat prompt / RAG prompt / Tutor 输出时仍要做 live 小样本验收。
+- smoke 报告只能输出状态、指标、命中数、top score、文档名和失败原因；不得输出 API key、access token、cookie、embedding 向量、完整 hit content、完整 prompt 或完整模型回答。
+- smoke 使用合成测试资料，不使用真实用户笔记；临时文档应 best-effort 删除，临时用户保留是当前缺少用户删除 API 的已知边界。
