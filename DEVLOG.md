@@ -44,6 +44,12 @@
 - 仍保持 pgvector `vector(1536)` 不变，避免本阶段引入向量维度 migration。
 - 旧 fake embedding chunk 不能用于真实语义召回判断；切换 qwen 后需要重新处理资料。
 
+验证：
+
+- `bun --filter @repo/server test -- embedding.service env`
+- `bun --filter @repo/server build`
+- `QWEN_EMBEDDING_SMOKE_OK dimension=1536 finite=true`，只确认返回维度和数值合法，不打印 key 或向量内容。
+
 ### 2026-07-05 - Phase 7.7 Worker Observability
 
 本轮目标：补上 Phase 7.6 拆出 worker 进程后的观测缺口，让开发和面试展示时能回答“任务是否在排队、worker 是否在线、最近是否失败”这三个问题，而不是只看 BackgroundJob 结果表。
