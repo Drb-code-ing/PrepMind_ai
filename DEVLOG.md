@@ -6,7 +6,7 @@
 
 更新时间：2026-07-06
 
-当前阶段：Phase 7.8.3 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.8.4 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -28,8 +28,34 @@
 | Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
+| Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
 
 ## 近期关键记录
+
+### 2026-07-06 - Phase 7.8.4 RAG Eval Hardening
+
+本轮目标：对 Phase 7.8.3 的 RAG Eval Smoke 做小收尾，避免未来评估 case 漂移时误报 PASS，并补一篇能用于面试复盘的学习博客。
+
+完成内容：
+
+- 新增 `selectRagEvalSmokeCases()`，固定 smoke 必需 case id，并在缺失时提前抛错，避免空跑或少跑后误报通过。
+- 新增 `shouldKeepRagEvalSmokeData()`，支持 `RAG_EVAL_SMOKE_KEEP_DATA=true | 1 | yes`。
+- `smoke:rag-eval` 默认仍 best-effort 删除临时文档；开启 keep-data 后保留合成 smoke 文档，方便在 `/knowledge` 页面复查。
+- 新增面试博客 `docs/blogs/rag-eval-and-hybrid-retrieval.md`，讲清 fake embedding、RAG Eval baseline、Hybrid Retrieval、真实 API smoke 和 Chat live 验收的分层边界。
+
+验证：
+
+- `bun --filter @repo/server test -- rag-eval-smoke-config`
+- `bun --filter @repo/server test -- rag-eval-report rag-eval-runner`
+- `bun --filter @repo/server build`
+- `git diff --check`
+- `bun --filter @repo/server smoke:rag-eval`
+
+边界：
+
+- keep-data 只用于本地复查，不进入默认 CI。
+- smoke 仍不调用 `/api/chat`，不证明最终模型回答质量。
+- 脚本不打印 API key、access token、cookie、embedding 向量或完整 hit content。
 
 ### 2026-07-06 - Phase 7.8.3 RAG Eval Smoke
 
@@ -442,6 +468,7 @@ Phase 6.4 完成：
 - Phase 7.8.1：RAG Eval Baseline 完成，固定检索评估集和 `recall@k` / `top1Accuracy` / `safetyPassRate` / `noHitPassRate` 指标已落地。
 - Phase 7.8.2：Hybrid Retrieval 完成，`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
 - Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
+- Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
 
 ## 当前验证基线
 
@@ -502,3 +529,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-openapi-docs.md`：Swagger / OpenAPI debug docs 面试学习博客。
 - `docs/blogs/phase-7-worker-split.md`：API / worker 启动拆分面试学习博客。
 - `docs/blogs/phase-7-worker-observability.md`：Worker Observability 面试学习博客。
+- `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
