@@ -6,7 +6,7 @@
 
 更新时间：2026-07-06
 
-当前阶段：Phase 7.7 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.8.1 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -25,8 +25,30 @@
 | Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例 |
 | Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context、Docker worker profile |
 | Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
+| Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
 
 ## 近期关键记录
+
+### 2026-07-06 - Phase 7.8.1 RAG Eval Baseline
+
+本轮目标：在改动 Hybrid Retrieval 之前，先建立稳定的 RAG 检索质量评估基线。
+
+完成内容：
+
+- 新增固定 RAG eval cases，覆盖精确术语、语义改写、跨语言、无关查询和 SafetyGuard 边界。
+- 新增纯函数 eval runner，输入检索 hits，输出 `recall@k`、`top1Accuracy`、`safetyPassRate` 和 `noHitPassRate`。
+- 第一版不改 `/knowledge/search` 线上行为，不改 Chat prompt，不调用真实模型。
+
+验证：
+
+- `bun --filter @repo/server test -- rag-eval-runner`
+- `bun --filter @repo/server build`
+- `git diff --check`
+
+边界：
+
+- fake eval 只证明工程回归，不证明真实语义质量。
+- Qwen embedding smoke 仍用于真实语义检索验收。
 
 ### 2026-07-06 - Qwen Embedding Provider
 

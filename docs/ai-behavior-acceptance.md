@@ -174,3 +174,13 @@ Phase 7.4 adds Swagger / OpenAPI debug docs。本阶段不改 Chat prompt、RAG 
 - OpenAPI 文档必须说明全局 response envelope：成功响应为 `{ success, data, requestId }`，错误响应为 `{ success, error, requestId }`。
 - OpenAPI JSON 不得包含 API key、Authorization / Cookie 示例、refresh token、完整 prompt、完整回答、完整 RAG chunk、后台任务原始 payload 或真实用户内容示例。
 - Mock / 单元 / build / OpenAPI JSON 生成检查足以覆盖本阶段；只有后续同时改动最终 Chat 输出体验、RAG prompt 或真实模型策略时，才需要重新执行 live 小样本验收。
+
+## 13. Phase 7.8.1 RAG Eval Baseline
+
+RAG Eval 用于衡量检索质量，不替代真实 Chat 体验验收。
+
+- 默认单元测试只验证 eval runner 和固定 case 的工程回归，不需要真实 API key。
+- `RAG_EMBEDDING_PROVIDER=fake` 可以验证上传、处理、检索和指标计算链路，但不能证明真实语义质量。
+- 使用 Qwen / OpenAI 等真实 embedding 的 smoke 才能说明语义召回在真实模型下可用。
+- 修改 `/knowledge/search` 排序、Hybrid Retrieval、reranker、Query Rewrite 或 Chat RAG prompt 后，需要用同一套 eval case 对比前后指标。
+- Eval 文件不得包含真实用户资料、API key、access token、完整 prompt、完整模型回答或真实私有 RAG chunk。
