@@ -65,6 +65,10 @@ export class EmbeddingService {
       return this.createFakeProvider(dimensions);
     }
 
+    if (providerName === 'qwen') {
+      return this.createQwenProvider(dimensions);
+    }
+
     return this.createOpenAiProvider(dimensions);
   }
 
@@ -91,6 +95,56 @@ export class EmbeddingService {
         return response.data.map((item) => item.embedding);
       },
     };
+  }
+
+  private createQwenProvider(dimensions: number): ServerEmbeddingProvider {
+    const apiKey = this.getQwenApiKey();
+    if (!apiKey) {
+      throw this.createEmbeddingError('Qwen API key is not configured');
+    }
+
+    const baseURL = this.configService.get('RAG_EMBEDDING_BASE_URL', {
+      infer: true,
+    });
+    if (typeof baseURL !== 'string' || baseURL.trim().length === 0) {
+      throw this.createEmbeddingError('Qwen embedding base URL is not configured');
+    }
+
+    const model = this.configService.get('RAG_EMBEDDING_MODEL', {
+      infer: true,
+    });
+    const client = new OpenAI({
+      apiKey,
+      baseURL: baseURL.trim(),
+    });
+
+    return {
+      model,
+      dimensions,
+      embedBatch: async (texts) => {
+        const response = await client.embeddings.create({
+          model,
+          input: texts,
+          dimensions,
+        });
+        return response.data.map((item) => item.embedding);
+      },
+    };
+  }
+
+  private getQwenApiKey() {
+    const candidates = [
+      this.configService.get('Qwen_API_KEY', { infer: true }),
+      this.configService.get('QWEN_API_KEY', { infer: true }),
+      this.configService.get('DASHSCOPE_API_KEY', { infer: true }),
+    ];
+
+    const apiKey = candidates.find(
+      (value): value is string =>
+        typeof value === 'string' && value.trim().length > 0,
+    );
+
+    return apiKey?.trim();
   }
 
   private createFakeProvider(dimensions: number): ServerEmbeddingProvider {
