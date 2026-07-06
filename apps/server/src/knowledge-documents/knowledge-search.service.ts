@@ -9,15 +9,10 @@ import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { EmbeddingService } from './embedding.service';
-
-type KnowledgeSearchRow = {
-  chunkId: string;
-  documentId: string;
-  documentName: string;
-  content: string;
-  score: number | string;
-  metadata: unknown;
-};
+import {
+  type HybridSearchRow,
+  mergeHybridSearchRows,
+} from './hybrid-search';
 
 @Injectable()
 export class KnowledgeSearchService {
@@ -44,14 +39,16 @@ export class KnowledgeSearchService {
     );
 
     try {
-      const rows = await this.prisma.$queryRaw<KnowledgeSearchRow[]>`
+      const candidateLimit = Math.min(input.topK * 4, 50);
+      const vectorRows = await this.prisma.$queryRaw<HybridSearchRow[]>`
         SELECT
           c.id AS "chunkId",
           c."documentId" AS "documentId",
           d.name AS "documentName",
           c.content AS content,
           c.metadata AS metadata,
-          (1 - (c.embedding <=> ${queryVector}::vector))::float AS score
+          (1 - (c.embedding <=> ${queryVector}::vector))::float AS "vectorScore",
+          0::float AS "keywordScore"
         FROM "Chunk" c
         JOIN "Document" d ON d.id = c."documentId"
         WHERE
@@ -59,20 +56,47 @@ export class KnowledgeSearchService {
           AND d."userId" = ${userId}
           AND d.status = 'DONE'
           AND c.embedding IS NOT NULL
-          AND (1 - (c.embedding <=> ${queryVector}::vector)) >= ${input.minScore}
         ORDER BY c.embedding <=> ${queryVector}::vector ASC
-        LIMIT ${input.topK}
+        LIMIT ${candidateLimit}
+      `;
+      const keywordRows = await this.prisma.$queryRaw<HybridSearchRow[]>`
+        WITH keyword_query AS (
+          SELECT websearch_to_tsquery('simple', ${input.query}) AS query
+        )
+        SELECT
+          c.id AS "chunkId",
+          c."documentId" AS "documentId",
+          d.name AS "documentName",
+          c.content AS content,
+          c.metadata AS metadata,
+          (1 - (c.embedding <=> ${queryVector}::vector))::float AS "vectorScore",
+          ts_rank_cd(
+            to_tsvector('simple', coalesce(d.name, '') || ' ' || coalesce(c.content, '')),
+            keyword_query.query
+          )::float AS "keywordScore"
+        FROM "Chunk" c
+        JOIN "Document" d ON d.id = c."documentId"
+        CROSS JOIN keyword_query
+        WHERE
+          c."userId" = ${userId}
+          AND d."userId" = ${userId}
+          AND d.status = 'DONE'
+          AND c.embedding IS NOT NULL
+          AND keyword_query.query @@ to_tsvector(
+            'simple',
+            coalesce(d.name, '') || ' ' || coalesce(c.content, '')
+          )
+        ORDER BY "keywordScore" DESC, "vectorScore" DESC
+        LIMIT ${candidateLimit}
       `;
 
       return {
-        hits: rows.map((row) => ({
-          chunkId: row.chunkId,
-          documentId: row.documentId,
-          documentName: row.documentName,
-          content: row.content,
-          score: Number(row.score),
-          metadata: this.toMetadataRecord(row.metadata),
-        })),
+        hits: mergeHybridSearchRows({
+          vectorRows,
+          keywordRows,
+          topK: input.topK,
+          minScore: input.minScore,
+        }),
       };
     } catch (error) {
       throw this.createSearchError(error);
@@ -101,18 +125,6 @@ export class KnowledgeSearchService {
     });
 
     return `[${values.join(',')}]`;
-  }
-
-  private toMetadataRecord(metadata: unknown): Record<string, unknown> {
-    if (
-      typeof metadata === 'object' &&
-      metadata !== null &&
-      !Array.isArray(metadata)
-    ) {
-      return metadata as Record<string, unknown>;
-    }
-
-    return {};
   }
 
   private createSearchError(cause: unknown) {
