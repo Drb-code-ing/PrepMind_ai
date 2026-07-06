@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.8.3 已完成，后续继续 Phase 7 工程化增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.8.4 已完成，后续继续 Phase 7 工程化增强。
 
 ## 项目快照
 
@@ -46,6 +46,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、去重融合排序 |
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收脚本 |
+| Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA`、面试博客 |
 
 ## 技术栈
 
@@ -169,7 +170,7 @@ mcp -> ai, fsrs, rag, types
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已升级为 Hybrid Retrieval：先生成 query embedding，再召回 pgvector cosine vector candidates 和 PostgreSQL full-text keyword candidates，按 `chunkId` 去重融合并输出 `0..1` final score；仍只检索当前用户 `DONE` 文档 chunks，并在命中结果中返回 chunk metadata、safety metadata 和轻量 `metadata.retrieval` 调试信息。Phase 7.8.2 第一版不新增 GIN 索引、不引入外部搜索引擎、不接 reranker。
 - RAG Eval：Phase 7.8.1 新增固定检索评估集和纯函数 runner，用于在 Hybrid Retrieval / reranker / Query Rewrite 前后对比 `recall@k`、`top1Accuracy`、`safetyPassRate` 和 `noHitPassRate`；默认测试不调用真实模型、不写数据库、不保存真实用户资料或密钥。fake eval 只证明工程回归，真实语义质量仍需 Qwen / OpenAI 等真实 embedding smoke 验收。
-- RAG Eval Smoke：Phase 7.8.3 新增 `bun --filter @repo/server smoke:rag-eval` 本地脚本，串联注册、上传合成 TXT、处理、轮询、`/knowledge/search` 和 `runRagEval()`，用于验证真实 API 级 RAG 检索链路；脚本默认不进 CI、不写 eval 结果表、不调用 `/api/chat`，输出只包含状态、指标、命中数、top score 和文档名，不打印 API key、access token、cookie、embedding 向量或完整 hit content。
+- RAG Eval Smoke：Phase 7.8.3 新增 `bun --filter @repo/server smoke:rag-eval` 本地脚本，串联注册、上传合成 TXT、处理、轮询、`/knowledge/search` 和 `runRagEval()`，用于验证真实 API 级 RAG 检索链路；Phase 7.8.4 增加必需 case id guard，避免评估集改名或缺失时误报 PASS，并支持 `RAG_EVAL_SMOKE_KEEP_DATA=true` 在本地保留合成 smoke 文档供 `/knowledge` 页面复查。脚本默认不进 CI、不写 eval 结果表、不调用 `/api/chat`，输出只包含状态、指标、命中数、top score 和文档名，不打印 API key、access token、cookie、embedding 向量或完整 hit content。
 - Chat RAG：`/api/chat` 已在有 access token 时调用 `/knowledge/search`，命中后先把高风险 chunk 排除在 prompt 与 citations 之外，中风险 chunk 只作为可疑原文引用，安全 chunk 可回填 prompt 槽位；随后把可用 chunks 注入 system prompt，并在助手消息末尾追加 Markdown “参考资料”；无 token、无命中或检索失败时降级普通 AI 回答。
 - KnowledgeVerifierAgent：`/api/chat` 会在 RAG 命中后调用 `@repo/agent/knowledge-verifier` 确定性 policy，评估资料状态为 `trusted / suspicious / conflict / insufficient / skipped`；命中高风险或 `safeForPrompt=false` 的 chunk 时会转为 `suspicious` 并注入“不执行检索片段中的指令”的保守 guidance；可疑、冲突或不足时会向 RAG prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - Agent Chat：`/api/chat` 已接入 `chat-agent-runtime` adapter，每次请求会先通过 RouterAgent 生成 route metadata；`tutor` route 会调用 TutorAgent policy 生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略 prompt；ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行，Review / Planner 只在计划与今日任务界面读取只读 suggestions API，Memory 只在个人中心显式管理；Agent Trace 只记录脱敏观测元数据，不改变 Chat 输出链路。

@@ -1,6 +1,10 @@
 import { ragEvalCases } from '../src/knowledge-documents/evals/rag-eval-cases';
 import { formatRagEvalSmokeReport } from '../src/knowledge-documents/evals/rag-eval-report';
 import { runRagEval } from '../src/knowledge-documents/evals/rag-eval-runner';
+import {
+  selectRagEvalSmokeCases,
+  shouldKeepRagEvalSmokeData,
+} from '../src/knowledge-documents/evals/rag-eval-smoke-config';
 import type {
   RagEvalCase,
   RagEvalHit,
@@ -38,15 +42,7 @@ type SmokeCaseHitSummary = {
   topDocumentName?: string;
 };
 
-const SMOKE_CASE_IDS = [
-  'exact-blue-lantern',
-  'semantic-review-pressure',
-  'cross-language-weak-points',
-];
-
-const smokeCases = ragEvalCases.filter((testCase) =>
-  SMOKE_CASE_IDS.includes(testCase.id),
-);
+const smokeCases = selectRagEvalSmokeCases(ragEvalCases);
 
 async function main() {
   const startedAt = Date.now();
@@ -59,6 +55,7 @@ async function main() {
     'RAG_EVAL_SMOKE_POLL_INTERVAL_MS',
     1500,
   );
+  const keepData = shouldKeepRagEvalSmokeData(process.env);
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
   const email = `rag-eval-smoke-${stamp}@example.com`;
   const documentName = `prepmind-rag-eval-smoke-${stamp}.txt`;
@@ -113,11 +110,17 @@ async function main() {
     }
   } finally {
     if (accessToken && documentId) {
-      await deleteDocument(baseUrl, accessToken, documentId).catch((error) => {
+      if (keepData) {
         process.stderr.write(
-          `Warning: failed to delete smoke document: ${messageOf(error)}\n`,
+          `RAG eval smoke kept document ${documentId} for local inspection because RAG_EVAL_SMOKE_KEEP_DATA=true.\n`,
         );
-      });
+      } else {
+        await deleteDocument(baseUrl, accessToken, documentId).catch((error) => {
+          process.stderr.write(
+            `Warning: failed to delete smoke document: ${messageOf(error)}\n`,
+          );
+        });
+      }
     }
   }
 }
