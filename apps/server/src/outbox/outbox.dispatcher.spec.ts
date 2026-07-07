@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 
+import { OutboxDispatcherRunnerService } from './outbox-dispatcher-runner.service';
 import { OutboxDispatcherService } from './outbox.dispatcher';
 import { OutboxHandlerError, type OutboxEventHandler } from './outbox.handlers';
 import { OutboxModule } from './outbox.module';
@@ -132,6 +133,17 @@ describe('OutboxDispatcherService', () => {
 
     expect(moduleRef.get(OutboxDispatcherService)).toBeInstanceOf(
       OutboxDispatcherService,
+    );
+    await moduleRef.close();
+  });
+
+  it('registers the outbox dispatcher runner provider', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [OutboxModule],
+    }).compile();
+
+    expect(moduleRef.get(OutboxDispatcherRunnerService)).toBeInstanceOf(
+      OutboxDispatcherRunnerService,
     );
     await moduleRef.close();
   });
