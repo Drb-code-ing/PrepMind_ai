@@ -2,7 +2,9 @@ import { KnowledgeDocumentsController } from './knowledge-documents.controller';
 
 describe('KnowledgeDocumentsController', () => {
   it('routes process requests through DocumentProcessingJobService', async () => {
-    const service = { enqueueOrRun: jest.fn().mockResolvedValue({ id: 'doc_1' }) };
+    const service = {
+      enqueueOrRun: jest.fn().mockResolvedValue({ id: 'doc_1' }),
+    };
     const controller = new KnowledgeDocumentsController(
       {} as never,
       service as never,

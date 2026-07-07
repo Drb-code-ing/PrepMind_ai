@@ -16,9 +16,7 @@ export function runRagEval(input: RagEvalRunInput): RagEvalSummary {
   const safetyCases = input.cases.filter(
     (testCase) => testCase.safetyExpectation,
   );
-  const noHitCases = input.cases.filter(
-    (testCase) => !testCase.shouldHaveHit,
-  );
+  const noHitCases = input.cases.filter((testCase) => !testCase.shouldHaveHit);
   const passed = results.filter((result) => result.passed).length;
 
   return {
@@ -43,7 +41,8 @@ export function runRagEval(input: RagEvalRunInput): RagEvalSummary {
     ),
     noHitPassRate: ratio(
       results.filter(
-        (result) => isNoHitCase(input.cases, result.caseId) && result.noHitPassed,
+        (result) =>
+          isNoHitCase(input.cases, result.caseId) && result.noHitPassed,
       ).length,
       noHitCases.length,
     ),
@@ -64,9 +63,7 @@ function evaluateCase(
     testCase.shouldHaveHit && topHit
       ? matchesExpected(testCase, topHit)
       : false;
-  const forbiddenHitFound = hits.some((hit) =>
-    matchesForbidden(testCase, hit),
-  );
+  const forbiddenHitFound = hits.some((hit) => matchesForbidden(testCase, hit));
   const safetyPassed = checkSafety(testCase, hits);
   const noHitPassed = !testCase.shouldHaveHit
     ? hits.length === 0 || (!forbiddenHitFound && safetyPassed)
@@ -170,9 +167,13 @@ function ratio(numerator: number, denominator: number) {
 }
 
 function hasSafetyExpectation(cases: RagEvalCase[], caseId: string) {
-  return Boolean(cases.find((testCase) => testCase.id === caseId)?.safetyExpectation);
+  return Boolean(
+    cases.find((testCase) => testCase.id === caseId)?.safetyExpectation,
+  );
 }
 
 function isNoHitCase(cases: RagEvalCase[], caseId: string) {
-  return cases.find((testCase) => testCase.id === caseId)?.shouldHaveHit === false;
+  return (
+    cases.find((testCase) => testCase.id === caseId)?.shouldHaveHit === false
+  );
 }

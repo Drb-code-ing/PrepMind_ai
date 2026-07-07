@@ -33,7 +33,11 @@ export type ServerEvent =
       userId: string;
       documentId: string;
       backgroundJobId: string;
-      reason: 'document_missing' | 'snapshot_changed' | 'status_not_processing' | 'job_not_active';
+      reason:
+        | 'document_missing'
+        | 'snapshot_changed'
+        | 'status_not_processing'
+        | 'job_not_active';
       skippedAt: string;
     };
 
@@ -47,9 +51,16 @@ export type EventPublishResult = {
 };
 
 export class InProcessEventBus {
-  private readonly handlers = new Map<ServerEvent['type'], Set<Handler<ServerEvent>>>();
+  private readonly handlers = new Map<
+    ServerEvent['type'],
+    Set<Handler<ServerEvent>>
+  >();
 
-  constructor(private readonly logger: EventBusLogger = new Logger(InProcessEventBus.name)) {}
+  constructor(
+    private readonly logger: EventBusLogger = new Logger(
+      InProcessEventBus.name,
+    ),
+  ) {}
 
   publish(event: ServerEvent): EventPublishResult {
     const handlers = this.handlers.get(event.type);
@@ -80,11 +91,11 @@ export class InProcessEventBus {
     handler: Handler<Extract<ServerEvent, { type: T }>>,
   ): () => void {
     const handlers = this.handlers.get(type) ?? new Set<Handler<ServerEvent>>();
-    handlers.add(handler as Handler<ServerEvent>);
+    handlers.add(handler);
     this.handlers.set(type, handlers);
 
     return () => {
-      handlers.delete(handler as Handler<ServerEvent>);
+      handlers.delete(handler);
     };
   }
 }

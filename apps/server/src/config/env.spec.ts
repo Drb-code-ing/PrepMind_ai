@@ -189,4 +189,53 @@ describe('parseEnv', () => {
       }).WORKER_OBSERVABILITY_ENABLED,
     ).toBe(false);
   });
+
+  it('enables outbox dispatcher by default outside production', () => {
+    const env = parseEnv(requiredEnv);
+
+    expect(env.OUTBOX_DISPATCHER_ENABLED).toBe(true);
+    expect(env.OUTBOX_DISPATCHER_INTERVAL_MS).toBe(5000);
+    expect(env.OUTBOX_DISPATCHER_BATCH_SIZE).toBe(20);
+    expect(env.OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS).toBe(300000);
+  });
+
+  it('disables outbox dispatcher by default in production', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+      }).OUTBOX_DISPATCHER_ENABLED,
+    ).toBe(false);
+  });
+
+  it('allows explicit outbox dispatcher enablement overrides', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OUTBOX_DISPATCHER_ENABLED: 'true',
+      }).OUTBOX_DISPATCHER_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        OUTBOX_DISPATCHER_ENABLED: 'false',
+      }).OUTBOX_DISPATCHER_ENABLED,
+    ).toBe(false);
+  });
+
+  it('parses outbox dispatcher numeric controls', () => {
+    const env = parseEnv({
+      ...requiredEnv,
+      OUTBOX_DISPATCHER_INTERVAL_MS: '1500',
+      OUTBOX_DISPATCHER_BATCH_SIZE: '7',
+      OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS: '45000',
+    });
+
+    expect(env.OUTBOX_DISPATCHER_INTERVAL_MS).toBe(1500);
+    expect(env.OUTBOX_DISPATCHER_BATCH_SIZE).toBe(7);
+    expect(env.OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS).toBe(45000);
+  });
 });

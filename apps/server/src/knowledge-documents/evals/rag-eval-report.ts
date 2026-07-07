@@ -16,9 +16,7 @@ export type FormatRagEvalSmokeReportInput = {
   summary: RagEvalSummary;
 };
 
-export function formatRagEvalSmokeReport(
-  input: FormatRagEvalSmokeReportInput,
-) {
+export function formatRagEvalSmokeReport(input: FormatRagEvalSmokeReportInput) {
   const lines = [
     input.title,
     '',

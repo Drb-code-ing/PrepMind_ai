@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-06
+更新时间：2026-07-07
 
-当前阶段：Phase 7.8.4 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.9.4 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -29,8 +29,147 @@
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
 | Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
+| Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
+| Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
+| Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
+| Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.9 收尾验收与 Review 修复
+
+本轮目标：对 Phase 7.9 durable outbox 收尾做代码 review 后修正可验证的问题，并把本地验收命令跑到可复现状态。
+
+完成内容：
+- 修复 knowledge document processing 相关 touched files 的 lint / 测试类型问题。
+- `DocumentProcessingJobService` 对 best-effort outbox enqueue 失败增加脱敏 warning 日志，避免后台事件写入失败被静默吞掉；日志只包含 documentId、backgroundJobId 和脱敏后的错误摘要。
+- `OutboxDispatcherService` 修正统计口径：只有 `markSucceeded()` / `markFailedOrRetry()` 真正完成数据库状态流转时，才计入 `succeeded` / `failed`，避免 worker 锁丢失时出现“指标看起来成功/失败，但数据库没变”的误报。
+- `bun --filter @repo/server lint` 会执行 `eslint --fix`，本轮清理了完整 server lint 暴露的测试类型和格式问题。
+- 补齐前端 `worker-observability-api` 测试 fixture 中 Phase 7.9 新增的 `outbox` 和 outbox signals 字段。
+- 稳定 `apps/server` 的 `test:e2e` 脚本：改为 `--runInBand --testTimeout=30000`，避免并发启动多个 Nest e2e app 时 beforeAll 偶发超时。
+
+验收结果：
+- `bun --filter @repo/server test`
+- `bun --filter @repo/server lint`
+- `bun --filter @repo/server build`
+- `bun --filter @repo/server test:e2e`
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/web test`
+- `bun --filter @repo/web build`
+- `bun --cwd packages/types typecheck`
+- `bun --cwd packages/database test`
+- `bun --cwd packages/fsrs test`
+
+边界：
+- 本轮没有新增业务功能、HTTP API、前端页面或模型调用链路。
+- 修复集中在 review 发现的问题、测试 fixture、lint 可复现性和 e2e 命令稳定性。
+- `test:e2e` 初次默认并发运行失败，原因是 e2e hook 默认 5 秒超时；脚本改成串行和 30 秒超时后，标准命令通过。
+
+### 2026-07-07 - Phase 7.9.4 Outbox Summary / Metrics
+
+本轮目标：给已经能落库、消费和自动 tick 的 outbox 补上只读观测面，让开发者能看到 outbox 是否积压、是否出现 dead-letter，以及最近失败错误码。
+
+完成内容：
+- `@repo/types` 的 `workerObservabilitySummaryResponseSchema` 新增 `outbox` summary 和 `hasOutboxBacklog` / `hasDeadOutboxEvents` signals。
+- 新增 `OutboxMetricsService`，统计 `PENDING / PROCESSING / SUCCEEDED / FAILED / DEAD` 数量、最老 pending 年龄和最近错误摘要。
+- `OutboxMetricsService` 只返回安全字段：`id`、`type`、`status`、`lastErrorCode`、attempts、maxAttempts、updatedAt；不返回 payload、完整 `lastError`、`aggregateId` 或用户内容。
+- `WorkerObservabilityService` 接入 outbox summary；`DEAD` outbox event 会让 status 进入 `degraded`，pending / processing backlog 作为独立信号展示。
+- `WorkerObservabilityModule` import `OutboxModule` 并通过 DI 注入 `OutboxMetricsService`。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-summary-metrics-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-summary-metrics.md`。
+- 新增完整面试学习博客 `docs/blogs/durable-outbox-worker-observability.md`，复盘 BullMQ、BackgroundJob、EventBus、Durable Outbox、Dispatcher Runner 和 Summary/Metrics 的分工。
+
+验证：
+- `bun --filter @repo/server test -- outbox-metrics`
+- `bun --filter @repo/server test -- outbox`
+- `bun --filter @repo/server test -- worker-observability`
+- `bun --cwd packages/types typecheck`
+- `bun --cwd apps/server eslint src/outbox src/worker-observability`
+- `bun --filter @repo/server build`
+
+边界：
+- Phase 7.9.4 不新增独立 outbox HTTP API、不新增前端页面、不新增 admin action、不接 Prometheus / Grafana。
+- Outbox summary 是系统级只读观测信号，仍通过现有 `/worker-observability/summary`、`JwtAuthGuard` 和 `WORKER_OBSERVABILITY_ENABLED` 边界暴露。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+
+### 2026-07-07 - Phase 7.9.3 Outbox Dispatcher Runner
+
+本轮目标：让 Phase 7.9.2 的 `OutboxDispatcherService.dispatchBatch()` 从“可手动调用”升级为 worker 进程中的受控自动消费入口，同时保持生产默认关闭和清晰的 worker/api 边界。
+
+完成内容：
+- 新增 outbox dispatcher env controls：`OUTBOX_DISPATCHER_ENABLED`、`OUTBOX_DISPATCHER_INTERVAL_MS`、`OUTBOX_DISPATCHER_BATCH_SIZE`、`OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS`。
+- 新增 `OutboxDispatcherRunnerService`，只在 `SERVER_ROLE=worker | both` 且开关开启时按固定间隔调用 dispatcher。
+- runner 启动时触发一次非阻塞 tick，随后按 interval tick；上一轮还在运行时跳过下一轮，避免单进程内重入。
+- tick 失败只记录脱敏 warning，不打断 worker 进程；`onModuleDestroy()` 会清理 timer。
+- `OutboxModule` 通过 factory 注册 runner，保持 ConfigService 注入和 Nest DI 编译可测。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-runner-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher-runner.md`。
+
+验证：
+- `bun --filter @repo/server test -- env`
+- `bun --filter @repo/server test -- outbox-dispatcher-runner`
+- `bun --filter @repo/server test -- outbox`
+- `bun --cwd apps/server eslint src/outbox`
+- `bun --filter @repo/server build`
+
+边界：
+- Phase 7.9.3 不新增 HTTP API、不新增前端页面、不接 Prometheus / Grafana、不新增 BullMQ repeatable job。
+- runner 不读取 outbox payload、不动态执行 handler、不绕过 Phase 7.9.2 的显式 handler registry。
+- production 默认关闭，避免部署后未经确认消费历史 outbox 事件。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+
+### 2026-07-07 - Phase 7.9.2 Outbox Dispatcher
+
+本轮目标：让 Phase 7.9.1 落库的 `OutboxEvent` 不只是“保存下来”，而是进入一个可测试的消费闭环：claim、分发 handler、成功标记、失败 retry / dead-letter。
+
+完成内容：
+
+- 新增 `outbox.handlers.ts`，用显式 registry 注册 `knowledge.document.processing.requested` handler，避免根据 payload 动态执行任意函数。
+- 新增 `OutboxDispatcherService`，批量 claim outbox events，逐条调用 handler，成功后 `markSucceeded()`，失败后 `markFailedOrRetry()`；单条失败不阻断同批次后续事件。
+- `knowledge.document.processing.requested` handler 第一版只做观测型 payload 校验，不重投 BullMQ、不改 `Document`、不改 `BackgroundJob`、不写用户内容。
+- `DocumentProcessingJobService` 在 BullMQ enqueue 成功后 best-effort 写入 requested outbox event；outbox 写入失败不影响原有 queue 主链路或 in-process EventBus 发布。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher.md`。
+
+验证：
+
+- `bun --filter @repo/server test -- outbox.handlers`
+- `bun --filter @repo/server test -- outbox.dispatcher outbox.handlers`
+- `bun --filter @repo/server test -- document-processing-job`
+- `bun --cwd apps/server eslint src/outbox`
+- `bun --filter @repo/server build`
+
+边界：
+
+- Phase 7.9.2 不新增自动 scheduler loop、不公开 HTTP API、不新增前端页面、不接 Prometheus / Grafana。
+- 本阶段不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`，只把知识库 requested 事件作为低风险真实接入点写入 outbox。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+- requested outbox payload 只能包含 `userId`、`documentId`、`backgroundJobId`、`force`，不保存文件内容、chunk、prompt、API key、access token、cookie 或模型回答。
+
+### 2026-07-07 - Phase 7.9.1 Durable Outbox
+
+本轮目标：补上跨进程可靠事件的持久化地基，避免后续继续依赖纯 in-process EventBus 时产生“看起来发布了，但进程重启就丢”的假可靠性。
+
+完成内容：
+
+- 新增 `OutboxEventStatus` 与 `OutboxEvent` Prisma 模型，保存事件类型、聚合对象、幂等键、脱敏 payload、payload hash、attempts、锁定信息、下次运行时间和 dead-letter 状态。
+- 新增数据库 migration `20260707000100_add_outbox_event`，包含 `status + nextRunAt + createdAt`、`lockedBy + lockedAt`、`aggregateType + aggregateId + createdAt` 和 `type + status + createdAt` 查询索引。
+- 新增 `OutboxService` 与 `OutboxModule`，提供 `enqueue()`、`claimPending()`、`markSucceeded()` 和 `markFailedOrRetry()`。
+- `claimPending()` 第一版使用 `findMany + conditional updateMany`，claim 时重新校验 due pending 或过期 processing 状态，避免并发 worker 返回未抢到的事件。
+- 失败事件按 attempts 指数退避重试，达到 `maxAttempts` 后进入 `DEAD`；错误信息复用 `sanitizeJobError()`，不写入 token、cookie 或 API key。
+
+验证：
+
+- `bun --cwd packages/database prisma:generate`
+- `bun --cwd packages/database test`
+- `bun --filter @repo/server test -- outbox`
+- `bun --filter @repo/server build`
+- 子代理规格审核：APPROVED。
+- 子代理代码质量审核：APPROVED；补充了错误脱敏断言和并发 claim loser 测试。
+
+边界：
+
+- Phase 7.9.1 只落地 durable outbox 地基，不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`。
+- 本阶段不迁移现有事件发布点，不新增 outbox dispatcher，不暴露 Prometheus / Grafana 指标。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+- `OutboxEvent.payload` 和 `lastError` 只能保存安全元数据或脱敏错误摘要，不得保存 API key、access token、refresh token、cookie、完整 prompt、完整 RAG chunk、完整模型回答或真实用户私有正文。
 
 ### 2026-07-06 - Phase 7.8.4 RAG Eval Hardening
 
@@ -469,6 +608,10 @@ Phase 6.4 完成：
 - Phase 7.8.2：Hybrid Retrieval 完成，`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
 - Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
 - Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
+- Phase 7.9.1：Durable Outbox 地基完成，`OutboxEvent`、claim / retry / dead-letter 状态机和服务层测试已落地。
+- Phase 7.9.2：Outbox Dispatcher 最小闭环完成，显式 handler registry、dispatcher service 和知识库 requested outbox 事件入库已落地。
+- Phase 7.9.3：Outbox Dispatcher Runner 完成，worker-only 受控 tick、生产默认关闭和防重入执行已落地。
+- Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
 
 ## 当前验证基线
 
@@ -512,10 +655,10 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
-2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
-4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+1. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+2. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
+3. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+4. Outbox 生产化：逐步接入 succeeded / failed / stale skipped 事件，并设计 admin-only dead-letter 修复能力。
 
 ## 参考文档
 
@@ -530,3 +673,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-worker-split.md`：API / worker 启动拆分面试学习博客。
 - `docs/blogs/phase-7-worker-observability.md`：Worker Observability 面试学习博客。
 - `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
+- `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。

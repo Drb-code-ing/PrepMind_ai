@@ -9,10 +9,7 @@ import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { EmbeddingService } from './embedding.service';
-import {
-  type HybridSearchRow,
-  mergeHybridSearchRows,
-} from './hybrid-search';
+import { type HybridSearchRow, mergeHybridSearchRows } from './hybrid-search';
 
 @Injectable()
 export class KnowledgeSearchService {

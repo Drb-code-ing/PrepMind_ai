@@ -52,7 +52,8 @@ export class AuthController {
       '创建学生账号，登录成功后返回用户信息和 access token，并通过 httpOnly cookie 建立 refresh session。',
   })
   @ApiBody({
-    description: '注册表单。字段约束仍以 @repo/types 的 registerRequestSchema 为准。',
+    description:
+      '注册表单。字段约束仍以 @repo/types 的 registerRequestSchema 为准。',
     schema: {
       type: 'object',
       required: ['email', 'password'],
@@ -105,7 +106,8 @@ export class AuthController {
       '校验账号密码，返回 access token，并轮换当前设备的 refresh session cookie。',
   })
   @ApiBody({
-    description: '登录表单。字段约束仍以 @repo/types 的 loginRequestSchema 为准。',
+    description:
+      '登录表单。字段约束仍以 @repo/types 的 loginRequestSchema 为准。',
     schema: {
       type: 'object',
       required: ['email', 'password'],
@@ -165,7 +167,8 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({
     summary: '退出当前会话',
-    description: '注销当前 refresh-token session，并清理浏览器侧 refresh cookie。',
+    description:
+      '注销当前 refresh-token session，并清理浏览器侧 refresh cookie。',
   })
   @ApiOkResponse({ description: AUTH_RESPONSE_ENVELOPE })
   logout(

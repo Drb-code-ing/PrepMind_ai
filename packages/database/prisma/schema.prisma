@@ -388,6 +388,14 @@ enum BackgroundJobStatus {
   STALE_SKIPPED
 }
 
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
 model UserMemoryCandidate {
   id               String                    @id @default(cuid())
   userId           String
@@ -523,6 +531,32 @@ model BackgroundJob {
   @@index([userId, resourceType, resourceId, createdAt])
   @@index([queueName, status, createdAt])
   @@index([dedupeKey])
+}
+
+model OutboxEvent {
+  id             String            @id @default(cuid())
+  type           String
+  status         OutboxEventStatus @default(PENDING)
+  aggregateType  String?
+  aggregateId    String?
+  idempotencyKey String?           @unique
+  payload        Json
+  payloadHash    String?
+  attempts       Int               @default(0)
+  maxAttempts    Int               @default(5)
+  nextRunAt      DateTime          @default(now())
+  lockedAt       DateTime?
+  lockedBy       String?
+  lastErrorCode  String?
+  lastError      String?           @db.Text
+  processedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, nextRunAt, createdAt])
+  @@index([lockedBy, lockedAt])
+  @@index([aggregateType, aggregateId, createdAt])
+  @@index([type, status, createdAt])
 }
 
 // ---------- RAG 知识库 ----------

@@ -125,7 +125,8 @@ export class KnowledgeDocumentsController {
   @Get()
   @ApiOperation({
     summary: '列出当前用户资料',
-    description: '按当前用户隔离返回知识库资料列表，可用状态、来源类型、分页参数做筛选。',
+    description:
+      '按当前用户隔离返回知识库资料列表，可用状态、来源类型、分页参数做筛选。',
   })
   @ApiOkResponse({
     description:

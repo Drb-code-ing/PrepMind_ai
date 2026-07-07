@@ -11,6 +11,7 @@ import { workerHeartbeatResponseSchema } from '@repo/types/api/worker-observabil
 import { BackgroundJobsService } from '../background-jobs/background-jobs.service';
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
+import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
 import { DOCUMENT_PROCESSING_QUEUE_NAME } from './worker-observability.constants';
 
 type QueueCounts = WorkerObservabilitySummaryResponse['queue']['counts'];
@@ -40,6 +41,7 @@ export class WorkerObservabilityService {
     @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
     private readonly queue: Queue,
     private readonly backgroundJobs: BackgroundJobsService,
+    private readonly outbox: OutboxMetricsService,
     optionsOrConfig:
       | WorkerObservabilityOptions
       | ConfigService<ServerEnv, true>,
@@ -70,12 +72,14 @@ export class WorkerObservabilityService {
   async getSummary(
     userId: string,
   ): Promise<WorkerObservabilitySummaryResponse> {
-    const [counts, isPaused, heartbeats, backgroundJobs] = await Promise.all([
-      this.getQueueCounts(),
-      this.queue.isPaused(),
-      this.getHeartbeats(),
-      this.backgroundJobs.getSummary(userId),
-    ]);
+    const [counts, isPaused, heartbeats, backgroundJobs, outbox] =
+      await Promise.all([
+        this.getQueueCounts(),
+        this.queue.isPaused(),
+        this.getHeartbeats(),
+        this.backgroundJobs.getSummary(userId),
+        this.outbox.getSummary(),
+      ]);
 
     const hasBacklog =
       counts.waiting + counts.active + counts.delayed + counts.paused > 0;
@@ -84,13 +88,18 @@ export class WorkerObservabilityService {
     const queueModeWithoutWorker =
       this.knowledgeProcessingMode === 'queue' && !hasWorkerHeartbeat;
     const queueBacklogWithoutWorker = hasBacklog && !hasWorkerHeartbeat;
+    const hasOutboxBacklog = outbox.hasBacklog;
+    const hasDeadOutboxEvents = outbox.counts.dead > 0;
     const hasRecentFailures =
-      backgroundJobs.failedCount > 0 || counts.failed > 0;
+      backgroundJobs.failedCount > 0 ||
+      counts.failed > 0 ||
+      hasDeadOutboxEvents;
     const latestHeartbeat = sortHeartbeats(heartbeats)[0] ?? null;
     const status = resolveStatus({
       queueBacklogWithoutWorker,
       queuePaused,
       hasRecentFailures,
+      hasDeadOutboxEvents,
       knowledgeProcessingMode: this.knowledgeProcessingMode,
       hasWorkerHeartbeat,
     });
@@ -112,12 +121,15 @@ export class WorkerObservabilityService {
         latestHeartbeat,
       },
       backgroundJobs,
+      outbox,
       signals: {
         status,
         hasWorkerHeartbeat,
         queueModeWithoutWorker,
         queueBacklogWithoutWorker,
         hasRecentFailures,
+        hasOutboxBacklog,
+        hasDeadOutboxEvents,
         message: getSignalMessage(status, this.knowledgeProcessingMode),
       },
     };
@@ -170,9 +182,11 @@ function resolveStatus(input: {
   queueBacklogWithoutWorker: boolean;
   queuePaused: boolean;
   hasRecentFailures: boolean;
+  hasDeadOutboxEvents: boolean;
   knowledgeProcessingMode: ServerEnv['KNOWLEDGE_PROCESSING_MODE'];
   hasWorkerHeartbeat: boolean;
 }): WorkerObservabilitySummaryResponse['signals']['status'] {
+  if (input.hasDeadOutboxEvents) return 'degraded';
   if (input.queueBacklogWithoutWorker) return 'attention';
   if (input.queuePaused) return 'degraded';
   if (input.hasRecentFailures) return 'degraded';

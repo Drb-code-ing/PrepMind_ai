@@ -5,12 +5,27 @@ const SECRET_PATTERNS = [
   /Cookie:\s*[^,\n]+/gi,
 ];
 
-export function sanitizeJobError(error: unknown, fallback = '后台任务执行失败') {
-  const raw = error instanceof Error ? error.message : String(error || fallback);
+export function sanitizeJobError(
+  error: unknown,
+  fallback = 'Background job failed',
+) {
+  const raw = toErrorMessage(error, fallback);
   const redacted = SECRET_PATTERNS.reduce(
     (value, pattern) => value.replace(pattern, '[redacted]'),
     raw,
   );
 
   return redacted.slice(0, 500) || fallback;
+}
+
+function toErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error || fallback;
+  if (error === null || error === undefined) return fallback;
+
+  try {
+    return JSON.stringify(error) ?? fallback;
+  } catch {
+    return fallback;
+  }
 }

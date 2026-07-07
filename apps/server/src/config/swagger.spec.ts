@@ -132,10 +132,10 @@ describe('swagger config', () => {
 
       expect(document.info.title).toBe('PrepMind AI API');
       expect(document.info.version).toBe('0.7.5');
+      expect(document.info.description).toContain('PrepMind AI 后端 REST API');
       expect(document.info.description).toContain(
-        'PrepMind AI 后端 REST API',
+        '本地开发、接口联调和面试讲解',
       );
-      expect(document.info.description).toContain('本地开发、接口联调和面试讲解');
       expect(document.info.description).not.toContain(
         'local development, integration debugging',
       );

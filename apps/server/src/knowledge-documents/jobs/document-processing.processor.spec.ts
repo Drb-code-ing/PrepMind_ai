@@ -3,6 +3,9 @@ import { HttpStatus } from '@nestjs/common';
 import { AppError } from '../../common/errors/app-error';
 import { DocumentProcessingProcessor } from './document-processing.processor';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+
 describe('DocumentProcessingProcessor', () => {
   const job = {
     id: 'job_1',
@@ -43,7 +46,10 @@ describe('DocumentProcessingProcessor', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers().setSystemTime(new Date('2026-06-29T00:00:10.000Z'));
-    backgroundJobs.markActive.mockResolvedValue({ id: 'job_1', status: 'ACTIVE' });
+    backgroundJobs.markActive.mockResolvedValue({
+      id: 'job_1',
+      status: 'ACTIVE',
+    });
     prisma.document.findFirst.mockResolvedValue({
       id: 'doc_1',
       userId: 'user_1',
@@ -80,13 +86,13 @@ describe('DocumentProcessingProcessor', () => {
       },
     });
     expect(backgroundJobs.markSucceeded).toHaveBeenCalledWith(
-      expect.objectContaining({
+      objectContaining({
         id: 'job_1',
-        resultSummary: expect.objectContaining({ chunkCount: 2 }),
+        resultSummary: objectContaining({ chunkCount: 2 }),
       }),
     );
     expect(eventBus.publish).toHaveBeenCalledWith(
-      expect.objectContaining({
+      objectContaining({
         type: 'knowledge.document.processing.succeeded',
         documentId: 'doc_1',
       }),
@@ -228,7 +234,9 @@ describe('DocumentProcessingProcessor', () => {
     );
     processing.runProcessingPipeline.mockRejectedValue(failure);
 
-    await expect(createProcessor().process(job as never)).resolves.toBeUndefined();
+    await expect(
+      createProcessor().process(job as never),
+    ).resolves.toBeUndefined();
 
     expect(backgroundJobs.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({

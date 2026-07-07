@@ -10,9 +10,9 @@ describe('queued document processing integration', () => {
   }> = [];
   const queue = {
     add: jest.fn(
-      async (name: string, payload: unknown, options: { jobId: string }) => {
+      (name: string, payload: unknown, options: { jobId: string }) => {
         enqueued.push({ name, payload, options });
-        return { id: options.jobId };
+        return Promise.resolve({ id: options.jobId });
       },
     ),
   };
@@ -105,6 +105,9 @@ describe('queued document processing integration', () => {
       processing as never,
       config as never,
       eventBus as never,
+      {
+        enqueue: () => Promise.resolve({ id: 'evt_1', status: 'PENDING' }),
+      } as never,
     );
     const processor = new DocumentProcessingProcessor(
       backgroundJobs as never,
@@ -132,12 +135,12 @@ describe('queued document processing integration', () => {
         contentHash: 'sha256:abc',
       },
     });
-    expect(backgroundJobs.markSucceeded).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'job_1',
-        resultSummary: expect.objectContaining({ chunkCount: 2 }),
-      }),
-    );
+    const markSucceededInput = firstMockArg<{
+      id: string;
+      resultSummary: { chunkCount: number };
+    }>(backgroundJobs.markSucceeded);
+    expect(markSucceededInput.id).toBe('job_1');
+    expect(markSucceededInput.resultSummary).toMatchObject({ chunkCount: 2 });
   });
 
   it('stale queued jobs do not write chunks when the document snapshot changed', async () => {
@@ -208,5 +211,10 @@ describe('queued document processing integration', () => {
       status: 'QUEUED',
       requestedAt: now,
     };
+  }
+
+  function firstMockArg<T>(mock: jest.Mock): T {
+    const calls = mock.mock.calls as unknown[][];
+    return calls[0]?.[0] as T;
   }
 });

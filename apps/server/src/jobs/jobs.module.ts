@@ -11,7 +11,9 @@ import { parseRedisUrl } from './redis-url';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService<ServerEnv, true>) => ({
-        connection: parseRedisUrl(configService.get('REDIS_URL', { infer: true })),
+        connection: parseRedisUrl(
+          configService.get('REDIS_URL', { infer: true }),
+        ),
         prefix: configService.get('BULLMQ_PREFIX', { infer: true }),
       }),
     }),

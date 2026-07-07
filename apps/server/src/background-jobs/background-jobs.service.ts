@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { BackgroundJobStatus as PrismaBackgroundJobStatus, Prisma } from '@prisma/client';
+import {
+  BackgroundJobStatus as PrismaBackgroundJobStatus,
+  Prisma,
+} from '@prisma/client';
 import type {
   BackgroundJobListQuery,
   BackgroundJobListResponse,
@@ -240,7 +243,8 @@ export class BackgroundJobsService {
     return {
       activeCount,
       failedCount: items.filter((job) => job.status === 'FAILED').length,
-      staleSkippedCount: items.filter((job) => job.status === 'STALE_SKIPPED').length,
+      staleSkippedCount: items.filter((job) => job.status === 'STALE_SKIPPED')
+        .length,
       succeededCount: items.filter((job) => job.status === 'SUCCEEDED').length,
       totalRecentCount: items.length,
       latestJob: items[0] ?? null,
@@ -269,7 +273,7 @@ export class BackgroundJobsService {
         resultSummary:
           input.resultSummary === undefined
             ? undefined
-            : input.resultSummary ?? Prisma.JsonNull,
+            : (input.resultSummary ?? Prisma.JsonNull),
         errorCode: input.errorCode,
         errorMessage: input.errorMessage,
         finishedAt: now,
@@ -319,5 +323,5 @@ function toJsonRecord(value: Prisma.JsonValue): Record<string, unknown> | null {
     return null;
   }
 
-  return value as Record<string, unknown>;
+  return value;
 }

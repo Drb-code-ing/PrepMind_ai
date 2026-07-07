@@ -77,8 +77,7 @@ export class ReviewTasksController {
       '对某个 ReviewTask 提交 FSRS 评分；clientMutationId 用于离线队列补偿和重复提交幂等。',
   })
   @ApiBody({
-    description:
-      '复习评分请求。rating 取值 1=Again、2=Hard、3=Good、4=Easy。',
+    description: '复习评分请求。rating 取值 1=Again、2=Hard、3=Good、4=Easy。',
     schema: {
       type: 'object',
       required: ['rating'],

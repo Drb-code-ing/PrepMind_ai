@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
@@ -12,6 +12,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { EVENT_BUS } from '../../events/events.module';
 import type { InProcessEventBus } from '../../events/event-bus';
 import { sanitizeJobError } from '../../jobs/job-error-sanitizer';
+import { OutboxService } from '../../outbox/outbox.service';
 import { DocumentProcessingService } from '../document-processing.service';
 import {
   PROCESS_KNOWLEDGE_DOCUMENT_JOB,
@@ -34,6 +35,8 @@ const documentInclude = {
 
 @Injectable()
 export class DocumentProcessingJobService {
+  private readonly logger = new Logger(DocumentProcessingJobService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
@@ -42,6 +45,7 @@ export class DocumentProcessingJobService {
     private readonly configService: ConfigService<ServerEnv, true>,
     @Inject(EVENT_BUS)
     private readonly eventBus: InProcessEventBus,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async enqueueOrRun(
@@ -64,7 +68,10 @@ export class DocumentProcessingJobService {
       if (isProcessingConflict(error)) {
         const existingJob = await this.findActiveJob(userId, documentId);
         if (existingJob) {
-          const document = await this.findProcessingDocument(userId, documentId);
+          const document = await this.findProcessingDocument(
+            userId,
+            documentId,
+          );
           return this.withProcessingMetadata(document, existingJob);
         }
       }
@@ -104,6 +111,26 @@ export class DocumentProcessingJobService {
     }
 
     try {
+      await this.outboxService.enqueue({
+        type: 'knowledge.document.processing.requested',
+        aggregateType: 'KnowledgeDocument',
+        aggregateId: claim.document.id,
+        idempotencyKey: `knowledge-document-processing-requested:${userId}:${claim.document.id}:${claim.job.id}`,
+        payload: {
+          userId,
+          documentId: claim.document.id,
+          backgroundJobId: claim.job.id,
+          force: input.force,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Outbox enqueue failed for knowledge document processing request: documentId=${claim.document.id} backgroundJobId=${claim.job.id} error=${sanitizeJobError(error)}`,
+      );
+      // Queue state is already durable; outbox observer failures must not fail the request.
+    }
+
+    try {
       this.eventBus.publish({
         type: 'knowledge.document.processing.requested',
         userId,
@@ -133,11 +160,7 @@ export class DocumentProcessingJobService {
         });
 
         if (!document) {
-          throw new AppError(
-            'KNOWLEDGE_DOCUMENT_NOT_FOUND',
-            '资料不存在',
-            404,
-          );
+          throw new AppError('KNOWLEDGE_DOCUMENT_NOT_FOUND', '资料不存在', 404);
         }
 
         if (document.status === 'PROCESSING') {
@@ -206,9 +229,12 @@ export class DocumentProcessingJobService {
             resourceType: 'KNOWLEDGE_DOCUMENT',
             resourceId: document.id,
             dedupeKey: `knowledge-process-active:${userId}:${document.id}`,
-            maxAttempts: this.configService.get('KNOWLEDGE_PROCESSING_ATTEMPTS', {
-              infer: true,
-            }),
+            maxAttempts: this.configService.get(
+              'KNOWLEDGE_PROCESSING_ATTEMPTS',
+              {
+                infer: true,
+              },
+            ),
             payloadPreview: {
               documentId: document.id,
               force: input.force,

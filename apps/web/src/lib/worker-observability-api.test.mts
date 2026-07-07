@@ -34,12 +34,27 @@ const api = createWorkerObservabilityApi({
         totalRecentCount: 0,
         latestJob: null,
       },
+      outbox: {
+        counts: {
+          pending: 0,
+          processing: 0,
+          succeeded: 0,
+          failed: 0,
+          dead: 0,
+          total: 0,
+        },
+        hasBacklog: false,
+        oldestPendingAgeMs: null,
+        recentErrors: [],
+      },
       signals: {
         status: 'idle',
         hasWorkerHeartbeat: false,
         queueModeWithoutWorker: true,
         queueBacklogWithoutWorker: false,
         hasRecentFailures: false,
+        hasOutboxBacklog: false,
+        hasDeadOutboxEvents: false,
         message: '后台处理空闲。',
       },
     };

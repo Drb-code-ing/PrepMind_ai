@@ -37,6 +37,39 @@ export const workerObservabilityQueueCountsSchema = z.object({
   paused: z.number().int().min(0),
 });
 
+export const workerObservabilityOutboxStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'FAILED',
+  'DEAD',
+]);
+
+export const workerObservabilityOutboxCountsSchema = z.object({
+  pending: z.number().int().min(0),
+  processing: z.number().int().min(0),
+  succeeded: z.number().int().min(0),
+  failed: z.number().int().min(0),
+  dead: z.number().int().min(0),
+  total: z.number().int().min(0),
+});
+
+export const workerObservabilityOutboxRecentErrorSchema = z.object({
+  id: z.string().min(1),
+  type: z.string().min(1),
+  status: workerObservabilityOutboxStatusSchema,
+  lastErrorCode: z.string().min(1).nullable(),
+  attempts: z.number().int().min(0),
+  maxAttempts: z.number().int().min(1),
+  updatedAt: z.string().datetime(),
+});
+
+export const workerObservabilityOutboxSummarySchema = z.object({
+  counts: workerObservabilityOutboxCountsSchema,
+  hasBacklog: z.boolean(),
+  oldestPendingAgeMs: z.number().int().min(0).nullable(),
+  recentErrors: z.array(workerObservabilityOutboxRecentErrorSchema),
+});
+
 export const workerObservabilitySummaryResponseSchema = z.object({
   server: z.object({
     role: workerObservabilityServerRoleSchema,
@@ -54,12 +87,15 @@ export const workerObservabilitySummaryResponseSchema = z.object({
     latestHeartbeat: workerHeartbeatResponseSchema.nullable(),
   }),
   backgroundJobs: backgroundJobSummaryResponseSchema,
+  outbox: workerObservabilityOutboxSummarySchema,
   signals: z.object({
     status: workerObservabilityStatusSchema,
     hasWorkerHeartbeat: z.boolean(),
     queueModeWithoutWorker: z.boolean(),
     queueBacklogWithoutWorker: z.boolean(),
     hasRecentFailures: z.boolean(),
+    hasOutboxBacklog: z.boolean(),
+    hasDeadOutboxEvents: z.boolean(),
     message: z.string().min(1),
   }),
 });
@@ -69,6 +105,9 @@ export type WorkerHeartbeatResponse = z.infer<
 >;
 export type WorkerObservabilitySummaryResponse = z.infer<
   typeof workerObservabilitySummaryResponseSchema
+>;
+export type WorkerObservabilityOutboxSummary = z.infer<
+  typeof workerObservabilityOutboxSummarySchema
 >;
 export type WorkerObservabilityStatus = z.infer<
   typeof workerObservabilityStatusSchema

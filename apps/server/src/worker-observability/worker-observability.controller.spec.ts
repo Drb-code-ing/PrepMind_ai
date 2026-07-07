@@ -6,8 +6,11 @@ import { WorkerObservabilityController } from './worker-observability.controller
 
 describe('WorkerObservabilityController', () => {
   it('uses JwtAuthGuard on the controller', () => {
-    const guards =
-      Reflect.getMetadata(GUARDS_METADATA, WorkerObservabilityController) ?? [];
+    const guardsMetadata = Reflect.getMetadata(
+      GUARDS_METADATA,
+      WorkerObservabilityController,
+    ) as unknown;
+    const guards = Array.isArray(guardsMetadata) ? guardsMetadata : [];
 
     expect(guards).toContain(JwtAuthGuard);
   });

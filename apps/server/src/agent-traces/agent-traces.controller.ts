@@ -134,7 +134,13 @@ export class AgentTracesController {
         },
         verifierStatus: {
           type: 'string',
-          enum: ['trusted', 'suspicious', 'conflict', 'insufficient', 'skipped'],
+          enum: [
+            'trusted',
+            'suspicious',
+            'conflict',
+            'insufficient',
+            'skipped',
+          ],
           example: 'trusted',
         },
         verifierChunkCount: {
