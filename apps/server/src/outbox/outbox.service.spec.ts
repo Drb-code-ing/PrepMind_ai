@@ -33,15 +33,16 @@ describe('OutboxService', () => {
       payload: { documentId: 'doc_1' },
     });
 
-    expect(prisma.outboxEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        type: 'knowledge.document.processing.requested',
-        status: 'PENDING',
-        aggregateType: 'Document',
-        aggregateId: 'doc_1',
-        payload: { documentId: 'doc_1' },
-        maxAttempts: 5,
-      }),
+    const createCall = firstMockArg<OutboxCreateCall>(
+      prisma.outboxEvent.create,
+    );
+    expect(createCall.data).toMatchObject({
+      type: 'knowledge.document.processing.requested',
+      status: 'PENDING',
+      aggregateType: 'Document',
+      aggregateId: 'doc_1',
+      payload: { documentId: 'doc_1' },
+      maxAttempts: 5,
     });
     expect(result.status).toBe('PENDING');
   });
@@ -72,7 +73,9 @@ describe('OutboxService', () => {
   it('claims due pending events and locks them for the worker', async () => {
     prisma.outboxEvent.findMany
       .mockResolvedValueOnce([row({ id: 'evt_1', status: 'PENDING' })])
-      .mockResolvedValueOnce([row({ id: 'evt_1', status: 'PROCESSING', lockedBy: 'worker_1' })]);
+      .mockResolvedValueOnce([
+        row({ id: 'evt_1', status: 'PROCESSING', lockedBy: 'worker_1' }),
+      ]);
     prisma.outboxEvent.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createService().claimPending({
@@ -94,20 +97,23 @@ describe('OutboxService', () => {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       take: 10,
     });
-    expect(prisma.outboxEvent.updateMany).toHaveBeenCalledWith({
-      where: expect.objectContaining({ id: 'evt_1' }),
-      data: expect.objectContaining({
-        status: 'PROCESSING',
-        lockedBy: 'worker_1',
-        lockedAt: now,
-        attempts: { increment: 1 },
-      }),
+    const updateCall = firstMockArg<OutboxUpdateCall>(
+      prisma.outboxEvent.updateMany,
+    );
+    expect(updateCall.where).toMatchObject({ id: 'evt_1' });
+    expect(updateCall.data).toMatchObject({
+      status: 'PROCESSING',
+      lockedBy: 'worker_1',
+      lockedAt: now,
+      attempts: { increment: 1 },
     });
     expect(result).toHaveLength(1);
   });
 
   it('does not return events lost to another concurrent claimer', async () => {
-    prisma.outboxEvent.findMany.mockResolvedValueOnce([row({ id: 'evt_1', status: 'PENDING' })]);
+    prisma.outboxEvent.findMany.mockResolvedValueOnce([
+      row({ id: 'evt_1', status: 'PENDING' }),
+    ]);
     prisma.outboxEvent.updateMany.mockResolvedValue({ count: 0 });
 
     const result = await createService().claimPending({
@@ -122,18 +128,25 @@ describe('OutboxService', () => {
 
   it('marks a worker-locked event as succeeded', async () => {
     prisma.outboxEvent.updateMany.mockResolvedValue({ count: 1 });
-    prisma.outboxEvent.findFirst.mockResolvedValue(row({ status: 'SUCCEEDED' }));
+    prisma.outboxEvent.findFirst.mockResolvedValue(
+      row({ status: 'SUCCEEDED' }),
+    );
 
     const result = await createService().markSucceeded('evt_1', 'worker_1');
 
-    expect(prisma.outboxEvent.updateMany).toHaveBeenCalledWith({
-      where: { id: 'evt_1', status: 'PROCESSING', lockedBy: 'worker_1' },
-      data: expect.objectContaining({
-        status: 'SUCCEEDED',
-        lockedAt: null,
-        lockedBy: null,
-        processedAt: now,
-      }),
+    const updateCall = firstMockArg<OutboxUpdateCall>(
+      prisma.outboxEvent.updateMany,
+    );
+    expect(updateCall.where).toEqual({
+      id: 'evt_1',
+      status: 'PROCESSING',
+      lockedBy: 'worker_1',
+    });
+    expect(updateCall.data).toMatchObject({
+      status: 'SUCCEEDED',
+      lockedAt: null,
+      lockedBy: null,
+      processedAt: now,
     });
     expect(result?.status).toBe('SUCCEEDED');
   });
@@ -143,7 +156,9 @@ describe('OutboxService', () => {
       row({ id: 'evt_1', status: 'PROCESSING', attempts: 1, maxAttempts: 3 }),
     );
     prisma.outboxEvent.updateMany.mockResolvedValue({ count: 1 });
-    prisma.outboxEvent.findFirst.mockResolvedValueOnce(row({ status: 'PENDING' }));
+    prisma.outboxEvent.findFirst.mockResolvedValueOnce(
+      row({ status: 'PENDING' }),
+    );
 
     const result = await createService().markFailedOrRetry({
       id: 'evt_1',
@@ -153,16 +168,21 @@ describe('OutboxService', () => {
       now,
     });
 
-    expect(prisma.outboxEvent.updateMany).toHaveBeenCalledWith({
-      where: { id: 'evt_1', status: 'PROCESSING', lockedBy: 'worker_1' },
-      data: expect.objectContaining({
-        status: 'PENDING',
-        lockedAt: null,
-        lockedBy: null,
-        lastErrorCode: 'HANDLER_FAILED',
-        lastError: 'boom with [redacted]',
-        nextRunAt: new Date('2026-07-07T00:00:01.000Z'),
-      }),
+    const updateCall = firstMockArg<OutboxUpdateCall>(
+      prisma.outboxEvent.updateMany,
+    );
+    expect(updateCall.where).toEqual({
+      id: 'evt_1',
+      status: 'PROCESSING',
+      lockedBy: 'worker_1',
+    });
+    expect(updateCall.data).toMatchObject({
+      status: 'PENDING',
+      lockedAt: null,
+      lockedBy: null,
+      lastErrorCode: 'HANDLER_FAILED',
+      lastError: 'boom with [redacted]',
+      nextRunAt: new Date('2026-07-07T00:00:01.000Z'),
     });
     expect(result?.status).toBe('PENDING');
   });
@@ -182,20 +202,39 @@ describe('OutboxService', () => {
       now,
     });
 
-    expect(prisma.outboxEvent.updateMany).toHaveBeenCalledWith({
-      where: { id: 'evt_1', status: 'PROCESSING', lockedBy: 'worker_1' },
-      data: expect.objectContaining({
-        status: 'DEAD',
-        lockedAt: null,
-        lockedBy: null,
-        processedAt: now,
-      }),
+    const updateCall = firstMockArg<OutboxUpdateCall>(
+      prisma.outboxEvent.updateMany,
+    );
+    expect(updateCall.where).toEqual({
+      id: 'evt_1',
+      status: 'PROCESSING',
+      lockedBy: 'worker_1',
+    });
+    expect(updateCall.data).toMatchObject({
+      status: 'DEAD',
+      lockedAt: null,
+      lockedBy: null,
+      processedAt: now,
     });
     expect(result?.status).toBe('DEAD');
   });
 
   function createService() {
     return new OutboxService(prisma as never);
+  }
+
+  type OutboxCreateCall = {
+    data: Record<string, unknown>;
+  };
+
+  type OutboxUpdateCall = {
+    where: Record<string, unknown>;
+    data: Record<string, unknown>;
+  };
+
+  function firstMockArg<T>(mock: jest.Mock): T {
+    const calls = mock.mock.calls as unknown[][];
+    return calls[0]?.[0] as T;
   }
 
   function row(input: {

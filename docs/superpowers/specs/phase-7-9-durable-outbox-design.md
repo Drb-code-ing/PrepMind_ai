@@ -18,7 +18,7 @@ Durable Outbox 的目标是把事件先作为数据库事实写下来，再由 w
 
 - 新增 `OutboxEvent` 数据模型，保存事件类型、状态、payload、重试信息、锁信息和错误摘要。
 - 新增 `OutboxService`，提供 `enqueue()`、`claimPending()`、`markSucceeded()`、`markFailedOrRetry()` 等最小能力。
-- 用数据库状态机表达事件流转：`PENDING -> PROCESSING -> SUCCEEDED / FAILED / DEAD`。
+- 用数据库状态机表达事件流转：`PENDING -> PROCESSING -> SUCCEEDED / PENDING retry / DEAD`；`FAILED` 枚举值作为后续 dispatcher 观测或中间失败态预留，Phase 7.9.1 当前服务不会落该状态。
 - 失败后按 `nextRunAt` 延迟重试，超过最大次数进入 `DEAD`。
 - claim 时支持 `lockedBy` / `lockedAt`，避免多个 worker 重复处理同一事件。
 - payload 必须是脱敏 JSON，不保存 API key、access token、cookie、完整 prompt、完整 RAG chunk 或真实模型回答。
@@ -60,7 +60,7 @@ enum OutboxEventStatus {
   PENDING
   PROCESSING
   SUCCEEDED
-  FAILED
+  FAILED // reserved for future dispatcher observability
   DEAD
 }
 ```
