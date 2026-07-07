@@ -65,7 +65,9 @@ export class OutboxService {
 
   async claimPending(input: ClaimOutboxEventsInput) {
     const now = input.now ?? new Date();
-    const lockExpiredBefore = new Date(now.getTime() - (input.lockTimeoutMs ?? 5 * 60_000));
+    const lockExpiredBefore = new Date(
+      now.getTime() - (input.lockTimeoutMs ?? 5 * 60_000),
+    );
     const claimableWhere = {
       OR: [
         { status: 'PENDING' as const, nextRunAt: { lte: now } },
@@ -173,5 +175,8 @@ function retryDelayMs(attempts: number) {
 }
 
 function isUniqueConstraintError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
 }
