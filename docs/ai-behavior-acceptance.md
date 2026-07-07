@@ -259,3 +259,14 @@ Phase 7.9.4 只增加后台 outbox 只读观测 summary，不改变 Chat、RAG p
 - `DEAD` outbox event 可以让 worker observability status 进入 `degraded`；pending / processing backlog 只能作为独立信号展示。
 - 本阶段不新增独立 outbox HTTP API、不新增前端页面、不新增 admin action、不接 Prometheus / Grafana。
 - 只有后续把 outbox 观测结果接入 Chat/RAG 输出链路、改变 prompt 或改变真实模型调用策略时，才需要重新执行 live 小样本验收。
+
+## 21. Phase 7.10 Outbox Ops
+
+Phase 7.10 只新增后端 outbox 诊断与 requeue 能力，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
+
+- 验收重点是 API 鉴权、`OUTBOX_OPS_ENABLED` feature gate、脱敏响应、cursor 分页和 `FAILED / DEAD -> PENDING` 状态流转。
+- `OUTBOX_OPS_ENABLED=false` 时接口必须在认证前隐藏为 404，避免生产默认暴露诊断面。
+- 列表和详情不得返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie 或供应商 key。
+- `lastErrorPreview` 必须复用脱敏逻辑并截断，覆盖 Bearer token、`access_token`、`refresh_token`、`api_key`、`x-api-key`、`Set-Cookie`、`sk-...` 和常见供应商 API key 形态。
+- requeue 只能通过 compare-and-swap 把 `FAILED / DEAD` 事件重置为 `PENDING`；不得直接执行 handler，不得修改 payload，不得支持删除、强制成功、跳过或直接 dispatch。
+- 本阶段的 e2e / 单元 / build 验证足以覆盖；只有后续把 Outbox Ops 接入前端操作台、生产 admin 权限或 Chat/RAG 输出链路时，才需要新增对应 UI / 权限 / live 验收。

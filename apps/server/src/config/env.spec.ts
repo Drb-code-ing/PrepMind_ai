@@ -238,4 +238,42 @@ describe('parseEnv', () => {
     expect(env.OUTBOX_DISPATCHER_BATCH_SIZE).toBe(7);
     expect(env.OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS).toBe(45000);
   });
+
+  it('enables outbox ops by default outside production', () => {
+    expect(parseEnv(requiredEnv).OUTBOX_OPS_ENABLED).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'test',
+      }).OUTBOX_OPS_ENABLED,
+    ).toBe(true);
+  });
+
+  it('disables outbox ops by default in production', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+      }).OUTBOX_OPS_ENABLED,
+    ).toBe(false);
+  });
+
+  it('allows explicit outbox ops enablement overrides', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OUTBOX_OPS_ENABLED: 'true',
+      }).OUTBOX_OPS_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        OUTBOX_OPS_ENABLED: 'false',
+      }).OUTBOX_OPS_ENABLED,
+    ).toBe(false);
+  });
 });
