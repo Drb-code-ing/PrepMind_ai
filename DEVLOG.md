@@ -6,7 +6,7 @@
 
 更新时间：2026-07-07
 
-当前阶段：Phase 7.9.2 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.9.3 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -31,8 +31,34 @@
 | Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
 | Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
 | Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
+| Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.9.3 Outbox Dispatcher Runner
+
+本轮目标：让 Phase 7.9.2 的 `OutboxDispatcherService.dispatchBatch()` 从“可手动调用”升级为 worker 进程中的受控自动消费入口，同时保持生产默认关闭和清晰的 worker/api 边界。
+
+完成内容：
+- 新增 outbox dispatcher env controls：`OUTBOX_DISPATCHER_ENABLED`、`OUTBOX_DISPATCHER_INTERVAL_MS`、`OUTBOX_DISPATCHER_BATCH_SIZE`、`OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS`。
+- 新增 `OutboxDispatcherRunnerService`，只在 `SERVER_ROLE=worker | both` 且开关开启时按固定间隔调用 dispatcher。
+- runner 启动时触发一次非阻塞 tick，随后按 interval tick；上一轮还在运行时跳过下一轮，避免单进程内重入。
+- tick 失败只记录脱敏 warning，不打断 worker 进程；`onModuleDestroy()` 会清理 timer。
+- `OutboxModule` 通过 factory 注册 runner，保持 ConfigService 注入和 Nest DI 编译可测。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-runner-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher-runner.md`。
+
+验证：
+- `bun --filter @repo/server test -- env`
+- `bun --filter @repo/server test -- outbox-dispatcher-runner`
+- `bun --filter @repo/server test -- outbox`
+- `bun --cwd apps/server eslint src/outbox`
+- `bun --filter @repo/server build`
+
+边界：
+- Phase 7.9.3 不新增 HTTP API、不新增前端页面、不接 Prometheus / Grafana、不新增 BullMQ repeatable job。
+- runner 不读取 outbox payload、不动态执行 handler、不绕过 Phase 7.9.2 的显式 handler registry。
+- production 默认关闭，避免部署后未经确认消费历史 outbox 事件。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
 
 ### 2026-07-07 - Phase 7.9.2 Outbox Dispatcher
 
@@ -571,7 +597,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Outbox 受控运行方式 / metrics：为 `OutboxDispatcherService` 增加 worker-only 定时 tick、Nest schedule 或 BullMQ repeatable job，并补失败观测和指标系统。
+1. Outbox summary / metrics：补 pending、processing、dead 数量和最近错误摘要，后续再评估 Prometheus / Grafana 接入。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
