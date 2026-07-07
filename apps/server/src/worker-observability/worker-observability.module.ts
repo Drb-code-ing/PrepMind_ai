@@ -8,6 +8,8 @@ import { BackgroundJobsModule } from '../background-jobs/background-jobs.module'
 import { BackgroundJobsService } from '../background-jobs/background-jobs.service';
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
+import { OutboxModule } from '../outbox/outbox.module';
+import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
 import { WorkerHeartbeatService } from './worker-heartbeat.service';
 import { WorkerObservabilityController } from './worker-observability.controller';
 import { WorkerObservabilityService } from './worker-observability.service';
@@ -16,6 +18,7 @@ import { WorkerObservabilityService } from './worker-observability.service';
   imports: [
     AuthModule,
     BackgroundJobsModule,
+    OutboxModule,
     BullModule.registerQueue({ name: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE }),
   ],
   controllers: [WorkerObservabilityController],
@@ -31,13 +34,16 @@ import { WorkerObservabilityService } from './worker-observability.service';
       inject: [
         getQueueToken(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE),
         BackgroundJobsService,
+        OutboxMetricsService,
         ConfigService,
       ],
       useFactory: (
         queue: Queue,
         backgroundJobs: BackgroundJobsService,
+        outbox: OutboxMetricsService,
         config: ConfigService<ServerEnv, true>,
-      ) => new WorkerObservabilityService(queue, backgroundJobs, config),
+      ) =>
+        new WorkerObservabilityService(queue, backgroundJobs, outbox, config),
     },
   ],
 })

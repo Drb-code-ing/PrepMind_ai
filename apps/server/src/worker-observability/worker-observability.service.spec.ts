@@ -1,5 +1,8 @@
 import type { BackgroundJobSummaryResponse } from '@repo/types/api/background-job';
-import type { WorkerHeartbeatResponse } from '@repo/types/api/worker-observability';
+import type {
+  WorkerHeartbeatResponse,
+  WorkerObservabilityOutboxSummary,
+} from '@repo/types/api/worker-observability';
 
 import { WorkerObservabilityService } from './worker-observability.service';
 
@@ -201,6 +204,79 @@ describe('WorkerObservabilityService', () => {
     expect(result.workers.onlineCount).toBe(0);
     expect(result.signals.hasWorkerHeartbeat).toBe(false);
   });
+
+  it('includes outbox summary in the worker observability response', async () => {
+    const service = createService({
+      role: 'worker',
+      mode: 'queue',
+      counts: emptyQueueCounts(),
+      heartbeats: [],
+      outbox: {
+        ...createOutboxSummary(),
+        counts: {
+          pending: 2,
+          processing: 1,
+          succeeded: 5,
+          failed: 0,
+          dead: 0,
+          total: 8,
+        },
+        hasBacklog: true,
+        oldestPendingAgeMs: 120000,
+      },
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.outbox.hasBacklog).toBe(true);
+    expect(result.outbox.oldestPendingAgeMs).toBe(120000);
+    expect(result.signals.hasOutboxBacklog).toBe(true);
+  });
+
+  it('reports degraded when outbox has dead events', async () => {
+    const service = createService({
+      role: 'worker',
+      mode: 'queue',
+      counts: emptyQueueCounts(),
+      heartbeats: [
+        {
+          workerId: 'worker-1',
+          serverRole: 'worker',
+          queues: ['knowledge-document-processing'],
+          startedAt: '2026-07-05T10:00:00.000Z',
+          lastSeenAt: '2026-07-05T10:00:15.000Z',
+        },
+      ],
+      outbox: {
+        ...createOutboxSummary(),
+        counts: {
+          pending: 0,
+          processing: 0,
+          succeeded: 1,
+          failed: 0,
+          dead: 1,
+          total: 2,
+        },
+        recentErrors: [
+          {
+            id: 'evt_1',
+            type: 'knowledge.document.processing.requested',
+            status: 'DEAD',
+            lastErrorCode: 'OUTBOX_INVALID_PAYLOAD',
+            attempts: 5,
+            maxAttempts: 5,
+            updatedAt: '2026-07-07T03:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.signals.status).toBe('degraded');
+    expect(result.signals.hasDeadOutboxEvents).toBe(true);
+    expect(result.signals.hasRecentFailures).toBe(true);
+  });
 });
 
 function createService(input: {
@@ -210,6 +286,7 @@ function createService(input: {
   isPaused?: boolean;
   heartbeats: WorkerHeartbeatResponse[];
   backgroundJobs?: BackgroundJobSummaryResponse;
+  outbox?: WorkerObservabilityOutboxSummary;
 }) {
   const redisValues = input.heartbeats.map((heartbeat) =>
     JSON.stringify(heartbeat),
@@ -232,10 +309,16 @@ function createService(input: {
       .fn()
       .mockResolvedValue(input.backgroundJobs ?? createBackgroundJobSummary()),
   };
+  const outbox = {
+    getSummary: jest
+      .fn()
+      .mockResolvedValue(input.outbox ?? createOutboxSummary()),
+  };
 
   return new WorkerObservabilityService(
     queue as never,
     backgroundJobs as never,
+    outbox as never,
     {
       role: input.role,
       knowledgeProcessingMode: input.mode,
@@ -253,5 +336,32 @@ function createBackgroundJobSummary(): BackgroundJobSummaryResponse {
     succeededCount: 0,
     totalRecentCount: 0,
     latestJob: null,
+  };
+}
+
+function createOutboxSummary(): WorkerObservabilityOutboxSummary {
+  return {
+    counts: {
+      pending: 0,
+      processing: 0,
+      succeeded: 0,
+      failed: 0,
+      dead: 0,
+      total: 0,
+    },
+    hasBacklog: false,
+    oldestPendingAgeMs: null,
+    recentErrors: [],
+  };
+}
+
+function emptyQueueCounts(): QueueCounts {
+  return {
+    waiting: 0,
+    active: 0,
+    delayed: 0,
+    completed: 0,
+    failed: 0,
+    paused: 0,
   };
 }

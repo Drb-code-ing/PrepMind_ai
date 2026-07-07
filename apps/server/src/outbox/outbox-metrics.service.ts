@@ -12,6 +12,9 @@ const outboxStatuses = [
   'DEAD',
 ] as const satisfies OutboxEventStatus[];
 
+type RecentErrorStatus =
+  WorkerObservabilityOutboxSummary['recentErrors'][number]['status'];
+
 @Injectable()
 export class OutboxMetricsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -66,7 +69,7 @@ export class OutboxMetricsService {
       recentErrors: recentErrors.map((event) => ({
         id: event.id,
         type: event.type,
-        status: event.status,
+        status: toRecentErrorStatus(event.status),
         lastErrorCode: event.lastErrorCode,
         attempts: event.attempts,
         maxAttempts: event.maxAttempts,
@@ -74,6 +77,14 @@ export class OutboxMetricsService {
       })),
     };
   }
+}
+
+function toRecentErrorStatus(status: OutboxEventStatus): RecentErrorStatus {
+  if (status === 'SUCCEEDED') {
+    throw new Error('Succeeded outbox events cannot be recent error rows');
+  }
+
+  return status;
 }
 
 function createEmptyCounts(): WorkerObservabilityOutboxSummary['counts'] {
