@@ -1,7 +1,10 @@
+const SECRET_KEY_PATTERN =
+  '(?:DEEPSEEK|OPENAI|QWEN|DASHSCOPE|GEMINI|GOOGLE)_API_KEY|api[_-]?key|x-api-key|access[_-]?token|refresh[_-]?token|id[_-]?token|cookie|set-cookie';
+
 const SECRET_PATTERNS = [
   /Bearer\s+[A-Za-z0-9._-]+/gi,
-  /\b(?:DEEPSEEK|OPENAI|QWEN|DASHSCOPE|GEMINI|GOOGLE)_API_KEY\s*[:=]\s*[^,\s;]+/gi,
-  /\b(?:api[_-]?key|x-api-key|access[_-]?token|refresh[_-]?token|id[_-]?token)\s*[:=]\s*[^,\s;]+/gi,
+  new RegExp(`["'](?:${SECRET_KEY_PATTERN})["']\\s*:\\s*["'][^"']*["']`, 'gi'),
+  new RegExp(`\\b(?:${SECRET_KEY_PATTERN})\\s*[:=]\\s*[^,\\s;}]+`, 'gi'),
   /\b(?:Set-Cookie|Cookie):\s*[^,\n]+/gi,
   /\bsk-[A-Za-z0-9._-]+/g,
 ];

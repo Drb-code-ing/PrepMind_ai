@@ -28,4 +28,22 @@ describe('sanitizeJobError', () => {
     expect(result).not.toContain('cookie-secret');
     expect(result).not.toContain('sk-live-secret');
   });
+
+  it('redacts JSON-shaped secrets from object errors', () => {
+    const result = sanitizeJobError({
+      access_token: 'json-access-secret',
+      refresh_token: 'json-refresh-secret',
+      api_key: 'json-api-secret',
+      cookie: 'session=json-cookie-secret',
+      nested: {
+        QWEN_API_KEY: 'json-qwen-secret',
+      },
+    });
+
+    expect(result).not.toContain('json-access-secret');
+    expect(result).not.toContain('json-refresh-secret');
+    expect(result).not.toContain('json-api-secret');
+    expect(result).not.toContain('json-cookie-secret');
+    expect(result).not.toContain('json-qwen-secret');
+  });
 });
