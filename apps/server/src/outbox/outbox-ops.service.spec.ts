@@ -49,6 +49,9 @@ describe('OutboxOpsService', () => {
   });
 
   it('applies status, type, and cursor filters', async () => {
+    prisma.outboxEvent.findFirst.mockResolvedValue(
+      row({ id: 'evt_9', updatedAt: new Date('2026-07-07T09:00:00.000Z') }),
+    );
     prisma.outboxEvent.findMany.mockResolvedValue([]);
 
     await createService().list({
@@ -58,14 +61,50 @@ describe('OutboxOpsService', () => {
       cursor: 'evt_9',
     });
 
+    expect(prisma.outboxEvent.findFirst).toHaveBeenCalledWith({
+      where: { id: 'evt_9' },
+      select: { id: true, updatedAt: true },
+    });
     expect(prisma.outboxEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           status: 'FAILED',
           type: 'knowledge.document.processing.requested',
-          id: { lt: 'evt_9' },
+          OR: [
+            { updatedAt: { lt: new Date('2026-07-07T09:00:00.000Z') } },
+            {
+              updatedAt: new Date('2026-07-07T09:00:00.000Z'),
+              id: { lt: 'evt_9' },
+            },
+          ],
         },
         take: 11,
+      }),
+    );
+  });
+
+  it('uses updatedAt before id for stable cursor paging', async () => {
+    const cursorUpdatedAt = new Date('2026-07-07T09:00:00.000Z');
+    prisma.outboxEvent.findFirst.mockResolvedValue(
+      row({ id: 'evt_1', updatedAt: cursorUpdatedAt }),
+    );
+    prisma.outboxEvent.findMany.mockResolvedValue([]);
+
+    await createService().list({ limit: 10, cursor: 'evt_1' });
+
+    expect(prisma.outboxEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { updatedAt: { lt: cursorUpdatedAt } },
+            { updatedAt: cursorUpdatedAt, id: { lt: 'evt_1' } },
+          ],
+        },
+      }),
+    );
+    expect(prisma.outboxEvent.findMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { lt: 'evt_1' } },
       }),
     );
   });
@@ -170,6 +209,7 @@ describe('OutboxOpsService', () => {
       status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'DEAD';
       attempts: number;
       lastError: string | null;
+      updatedAt: Date;
     }> = {},
   ) {
     return {
@@ -185,7 +225,7 @@ describe('OutboxOpsService', () => {
       lastErrorCode: 'OUTBOX_HANDLER_FAILED',
       lastError: overrides.lastError ?? 'provider failed',
       createdAt: now,
-      updatedAt: now,
+      updatedAt: overrides.updatedAt ?? now,
       payload: { documentId: 'doc_1' },
       payloadHash: 'sha256:payload',
     };

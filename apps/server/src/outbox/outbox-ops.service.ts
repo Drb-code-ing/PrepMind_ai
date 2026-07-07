@@ -54,7 +54,7 @@ export class OutboxOpsService {
   async list(query: OutboxEventListQuery): Promise<OutboxEventListResponse> {
     const limit = query.limit ?? 20;
     const rows = await this.prisma.outboxEvent.findMany({
-      where: this.buildListWhere(query),
+      where: await this.buildListWhere(query),
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       select: outboxOpsSelect,
@@ -136,13 +136,39 @@ export class OutboxOpsService {
     );
   }
 
-  private buildListWhere(
+  private async buildListWhere(
     query: OutboxEventListQuery,
-  ): Prisma.OutboxEventWhereInput {
+  ): Promise<Prisma.OutboxEventWhereInput> {
     return {
       ...(query.status ? { status: query.status } : {}),
       ...(query.type ? { type: query.type } : {}),
-      ...(query.cursor ? { id: { lt: query.cursor } } : {}),
+      ...(await this.buildCursorWhere(query.cursor)),
+    };
+  }
+
+  private async buildCursorWhere(
+    cursor?: string,
+  ): Promise<Prisma.OutboxEventWhereInput> {
+    if (!cursor) {
+      return {};
+    }
+
+    const cursorRow = await this.prisma.outboxEvent.findFirst({
+      where: { id: cursor },
+      select: { id: true, updatedAt: true },
+    });
+
+    if (!cursorRow) {
+      return {
+        AND: [{ id: cursor }, { id: { not: cursor } }],
+      };
+    }
+
+    return {
+      OR: [
+        { updatedAt: { lt: cursorRow.updatedAt } },
+        { updatedAt: cursorRow.updatedAt, id: { lt: cursorRow.id } },
+      ],
     };
   }
 
