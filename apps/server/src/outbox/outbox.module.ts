@@ -8,14 +8,18 @@ import { OutboxDispatcherRunnerService } from './outbox-dispatcher-runner.servic
 import { OutboxDispatcherService } from './outbox.dispatcher';
 import { OUTBOX_HANDLERS, outboxHandlers } from './outbox.handlers';
 import { OutboxMetricsService } from './outbox-metrics.service';
+import { OutboxOpsController } from './outbox-ops.controller';
+import { OutboxOpsService } from './outbox-ops.service';
 import { OutboxService } from './outbox.service';
 
 @Module({
   imports: [ConfigModule, DatabaseModule],
+  controllers: [OutboxOpsController],
   providers: [
     OutboxService,
     OutboxDispatcherService,
     OutboxMetricsService,
+    OutboxOpsService,
     {
       provide: OutboxDispatcherRunnerService,
       inject: [OutboxDispatcherService, ConfigService],
@@ -26,6 +30,11 @@ import { OutboxService } from './outbox.service';
     },
     { provide: OUTBOX_HANDLERS, useValue: outboxHandlers },
   ],
-  exports: [OutboxService, OutboxDispatcherService, OutboxMetricsService],
+  exports: [
+    OutboxService,
+    OutboxDispatcherService,
+    OutboxMetricsService,
+    OutboxOpsService,
+  ],
 })
 export class OutboxModule {}
