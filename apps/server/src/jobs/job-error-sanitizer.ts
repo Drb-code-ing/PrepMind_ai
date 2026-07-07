@@ -1,8 +1,9 @@
 const SECRET_PATTERNS = [
   /Bearer\s+[A-Za-z0-9._-]+/gi,
-  /DEEPSEEK_API_KEY\s*=\s*\S+/gi,
-  /OPENAI_API_KEY\s*=\s*\S+/gi,
-  /Cookie:\s*[^,\n]+/gi,
+  /\b(?:DEEPSEEK|OPENAI|QWEN|DASHSCOPE|GEMINI|GOOGLE)_API_KEY\s*[:=]\s*[^,\s;]+/gi,
+  /\b(?:api[_-]?key|x-api-key|access[_-]?token|refresh[_-]?token|id[_-]?token)\s*[:=]\s*[^,\s;]+/gi,
+  /\b(?:Set-Cookie|Cookie):\s*[^,\n]+/gi,
+  /\bsk-[A-Za-z0-9._-]+/g,
 ];
 
 export function sanitizeJobError(

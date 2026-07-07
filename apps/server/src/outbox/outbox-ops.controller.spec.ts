@@ -2,33 +2,34 @@ import { NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { OutboxOpsController } from './outbox-ops.controller';
+import {
+  OutboxOpsController,
+  OutboxOpsEnabledGuard,
+} from './outbox-ops.controller';
 
 describe('OutboxOpsController', () => {
-  it('uses JwtAuthGuard on the controller', () => {
+  it('checks the outbox ops gate before JwtAuthGuard', () => {
     const guardsMetadata = Reflect.getMetadata(
       GUARDS_METADATA,
       OutboxOpsController,
     ) as unknown;
     const guards = Array.isArray(guardsMetadata) ? guardsMetadata : [];
 
-    expect(guards).toContain(JwtAuthGuard);
+    expect(guards).toEqual([OutboxOpsEnabledGuard, JwtAuthGuard]);
   });
 
-  it('hides endpoints when outbox ops is disabled', async () => {
-    const service = {
-      list: jest.fn(),
-      getDetail: jest.fn(),
-      requeue: jest.fn(),
-    };
+  it('hides endpoints before authentication when outbox ops is disabled', () => {
     const config = { get: jest.fn().mockReturnValue(false) };
-    const controller = new OutboxOpsController(
-      service as never,
-      config as never,
-    );
+    const guard = new OutboxOpsEnabledGuard(config as never);
 
-    await expect(controller.list({})).rejects.toBeInstanceOf(NotFoundException);
-    expect(service.list).not.toHaveBeenCalled();
+    expect(() => guard.canActivate()).toThrow(NotFoundException);
+  });
+
+  it('allows requests through the feature gate when outbox ops is enabled', () => {
+    const config = { get: jest.fn().mockReturnValue(true) };
+    const guard = new OutboxOpsEnabledGuard(config as never);
+
+    expect(guard.canActivate()).toBe(true);
   });
 
   it('lists outbox events with parsed query defaults', async () => {
@@ -37,11 +38,7 @@ describe('OutboxOpsController', () => {
       getDetail: jest.fn(),
       requeue: jest.fn(),
     };
-    const config = { get: jest.fn().mockReturnValue(true) };
-    const controller = new OutboxOpsController(
-      service as never,
-      config as never,
-    );
+    const controller = new OutboxOpsController(service as never);
 
     await expect(controller.list({ status: 'DEAD' })).resolves.toEqual({
       items: [],
@@ -59,11 +56,7 @@ describe('OutboxOpsController', () => {
       getDetail: jest.fn().mockResolvedValue({ id: 'evt_1' }),
       requeue: jest.fn(),
     };
-    const config = { get: jest.fn().mockReturnValue(true) };
-    const controller = new OutboxOpsController(
-      service as never,
-      config as never,
-    );
+    const controller = new OutboxOpsController(service as never);
 
     await expect(controller.detail('evt_1')).resolves.toEqual({ id: 'evt_1' });
     expect(service.getDetail).toHaveBeenCalledWith('evt_1');
@@ -75,11 +68,7 @@ describe('OutboxOpsController', () => {
       getDetail: jest.fn(),
       requeue: jest.fn().mockResolvedValue({ id: 'evt_1', status: 'PENDING' }),
     };
-    const config = { get: jest.fn().mockReturnValue(true) };
-    const controller = new OutboxOpsController(
-      service as never,
-      config as never,
-    );
+    const controller = new OutboxOpsController(service as never);
 
     await expect(
       controller.requeue('evt_1', { reason: 'fixed provider config' }),

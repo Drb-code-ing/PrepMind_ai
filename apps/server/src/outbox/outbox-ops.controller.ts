@@ -1,7 +1,9 @@
 import {
   Body,
+  CanActivate,
   Controller,
   Get,
+  Injectable,
   NotFoundException,
   Param,
   Post,
@@ -27,15 +29,25 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { ServerEnv } from '../config/env';
 import { OutboxOpsService } from './outbox-ops.service';
 
+@Injectable()
+export class OutboxOpsEnabledGuard implements CanActivate {
+  constructor(private readonly config: ConfigService<ServerEnv, true>) {}
+
+  canActivate() {
+    if (!this.config.get('OUTBOX_OPS_ENABLED', { infer: true })) {
+      throw new NotFoundException('Outbox ops is disabled');
+    }
+
+    return true;
+  }
+}
+
 @Controller('outbox-events')
-@UseGuards(JwtAuthGuard)
+@UseGuards(OutboxOpsEnabledGuard, JwtAuthGuard)
 @ApiTags('Outbox Ops')
 @ApiBearerAuth('access-token')
 export class OutboxOpsController {
-  constructor(
-    private readonly service: OutboxOpsService,
-    private readonly config: ConfigService<ServerEnv, true>,
-  ) {}
+  constructor(private readonly service: OutboxOpsService) {}
 
   @Get()
   @ApiOperation({
@@ -49,7 +61,6 @@ export class OutboxOpsController {
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({ description: '脱敏 outbox 事件列表。' })
   async list(@Query() query: Record<string, unknown>) {
-    this.assertEnabled();
     return this.service.list(outboxEventListQuerySchema.parse(query));
   }
 
@@ -62,7 +73,6 @@ export class OutboxOpsController {
   @ApiParam({ name: 'id', description: 'Outbox event id' })
   @ApiOkResponse({ description: '脱敏 outbox 事件详情。' })
   async detail(@Param('id') id: string) {
-    this.assertEnabled();
     return this.service.getDetail(id);
   }
 
@@ -87,14 +97,7 @@ export class OutboxOpsController {
   })
   @ApiOkResponse({ description: '重新排队后的脱敏 outbox 事件详情。' })
   async requeue(@Param('id') id: string, @Body() body: unknown) {
-    this.assertEnabled();
     outboxEventRequeueRequestSchema.parse(body ?? {});
     return this.service.requeue(id, new Date());
-  }
-
-  private assertEnabled() {
-    if (!this.config.get('OUTBOX_OPS_ENABLED', { infer: true })) {
-      throw new NotFoundException('Outbox ops is disabled');
-    }
   }
 }

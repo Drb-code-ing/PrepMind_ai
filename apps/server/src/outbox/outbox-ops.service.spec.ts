@@ -127,7 +127,8 @@ describe('OutboxOpsService', () => {
       row({
         id: 'evt_1',
         status: 'DEAD',
-        lastError: 'provider failed with Bearer secret-token-value',
+        lastError:
+          'provider failed with Bearer secret-token-value QWEN_API_KEY=qwen-secret access_token=access-secret Set-Cookie: session=cookie-secret',
       }),
     );
 
@@ -136,11 +137,15 @@ describe('OutboxOpsService', () => {
     expect(result).toEqual(
       expect.objectContaining({
         id: 'evt_1',
-        lastErrorPreview: 'provider failed with [redacted]',
         payloadHash: 'sha256:payload',
       }),
     );
+    expect(result.lastErrorPreview).toContain('provider failed with');
+    expect(result.lastErrorPreview).toContain('[redacted]');
     expect(JSON.stringify(result)).not.toContain('secret-token-value');
+    expect(JSON.stringify(result)).not.toContain('qwen-secret');
+    expect(JSON.stringify(result)).not.toContain('access-secret');
+    expect(JSON.stringify(result)).not.toContain('cookie-secret');
   });
 
   it('throws not found when detail row is missing', async () => {
