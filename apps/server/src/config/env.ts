@@ -46,6 +46,14 @@ const envSchema = z
 
       return value;
     }, booleanStringSchema.optional()),
+    OUTBOX_DISPATCHER_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -153,6 +161,24 @@ const envSchema = z
       .min(5)
       .max(600)
       .default(45),
+    OUTBOX_DISPATCHER_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(300_000)
+      .default(5_000),
+    OUTBOX_DISPATCHER_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(20),
+    OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(3_600_000)
+      .default(300_000),
     EMBEDDING_REQUEST_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -199,10 +225,13 @@ const envSchema = z
 type ParsedServerEnv = z.infer<typeof envSchema>;
 export type ServerEnv = Omit<
   ParsedServerEnv,
-  'SWAGGER_ENABLED' | 'WORKER_OBSERVABILITY_ENABLED'
+  | 'SWAGGER_ENABLED'
+  | 'WORKER_OBSERVABILITY_ENABLED'
+  | 'OUTBOX_DISPATCHER_ENABLED'
 > & {
   SWAGGER_ENABLED: boolean;
   WORKER_OBSERVABILITY_ENABLED: boolean;
+  OUTBOX_DISPATCHER_ENABLED: boolean;
 };
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
@@ -213,5 +242,7 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
     SWAGGER_ENABLED: env.SWAGGER_ENABLED ?? env.NODE_ENV !== 'production',
     WORKER_OBSERVABILITY_ENABLED:
       env.WORKER_OBSERVABILITY_ENABLED ?? env.NODE_ENV !== 'production',
+    OUTBOX_DISPATCHER_ENABLED:
+      env.OUTBOX_DISPATCHER_ENABLED ?? env.NODE_ENV !== 'production',
   };
 }
