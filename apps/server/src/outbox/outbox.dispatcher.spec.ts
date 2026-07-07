@@ -20,6 +20,14 @@ describe('OutboxDispatcherService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     handler.mockResolvedValue(undefined);
+    outbox.markSucceeded.mockResolvedValue({
+      id: 'evt_1',
+      status: 'SUCCEEDED',
+    });
+    outbox.markFailedOrRetry.mockResolvedValue({
+      id: 'evt_1',
+      status: 'PENDING',
+    });
   });
 
   it('returns an empty result when no events are claimed', async () => {
@@ -59,6 +67,22 @@ describe('OutboxDispatcherService', () => {
     expect(result).toEqual({ claimed: 1, succeeded: 1, failed: 0 });
   });
 
+  it('does not count success when the success transition loses the worker lock', async () => {
+    outbox.claimPending.mockResolvedValue([event('evt_1', 'known.type')]);
+    outbox.markSucceeded.mockResolvedValue(null);
+
+    const result = await createService({ 'known.type': handler }).dispatchBatch(
+      {
+        workerId: 'worker_1',
+        now,
+      },
+    );
+
+    expect(handler).toHaveBeenCalledWith(event('evt_1', 'known.type'));
+    expect(outbox.markSucceeded).toHaveBeenCalledWith('evt_1', 'worker_1');
+    expect(result).toEqual({ claimed: 1, succeeded: 0, failed: 0 });
+  });
+
   it('marks an event failed or retry when its handler throws', async () => {
     const error = new Error('handler boom');
     handler.mockRejectedValue(error);
@@ -83,6 +107,29 @@ describe('OutboxDispatcherService', () => {
       now,
     });
     expect(result).toEqual({ claimed: 1, succeeded: 0, failed: 1 });
+  });
+
+  it('does not count failure when the retry transition loses the worker lock', async () => {
+    const error = new Error('handler boom');
+    handler.mockRejectedValue(error);
+    outbox.claimPending.mockResolvedValue([event('evt_1', 'known.type')]);
+    outbox.markFailedOrRetry.mockResolvedValue(null);
+
+    const result = await createService({ 'known.type': handler }).dispatchBatch(
+      {
+        workerId: 'worker_1',
+        now,
+      },
+    );
+
+    expect(outbox.markFailedOrRetry).toHaveBeenCalledWith({
+      id: 'evt_1',
+      workerId: 'worker_1',
+      errorCode: 'OUTBOX_HANDLER_FAILED',
+      error,
+      now,
+    });
+    expect(result).toEqual({ claimed: 1, succeeded: 0, failed: 0 });
   });
 
   it('marks an unknown event type failed or retry', async () => {

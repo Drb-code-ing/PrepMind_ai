@@ -45,17 +45,20 @@ export class OutboxDispatcherService {
     for (const event of events) {
       try {
         await this.dispatchOne(event);
-        await this.outboxService.markSucceeded(event.id, input.workerId);
-        succeeded += 1;
+        const transitioned = await this.outboxService.markSucceeded(
+          event.id,
+          input.workerId,
+        );
+        if (transitioned) succeeded += 1;
       } catch (error) {
-        await this.outboxService.markFailedOrRetry({
+        const transitioned = await this.outboxService.markFailedOrRetry({
           id: event.id,
           workerId: input.workerId,
           errorCode: getOutboxErrorCode(error),
           error,
           now,
         });
-        failed += 1;
+        if (transitioned) failed += 1;
       }
     }
 
