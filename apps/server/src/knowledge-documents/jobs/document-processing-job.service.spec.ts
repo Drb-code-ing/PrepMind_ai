@@ -23,6 +23,7 @@ describe('DocumentProcessingJobService', () => {
   };
   const config = { get: jest.fn() };
   const eventBus = { publish: jest.fn() };
+  const outbox = { enqueue: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,6 +38,7 @@ describe('DocumentProcessingJobService', () => {
       return values[key];
     });
     queue.add.mockResolvedValue({ id: 'job_1' });
+    outbox.enqueue.mockResolvedValue({ id: 'evt_1', status: 'PENDING' });
   });
 
   afterEach(() => jest.useRealTimers());
@@ -85,6 +87,18 @@ describe('DocumentProcessingJobService', () => {
       }),
     );
     expect(result.processing?.backgroundJobId).toBe('job_1');
+    expect(outbox.enqueue).toHaveBeenCalledWith({
+      type: 'knowledge.document.processing.requested',
+      aggregateType: 'KnowledgeDocument',
+      aggregateId: 'doc_1',
+      idempotencyKey: 'knowledge-document-processing-requested:user_1:doc_1:job_1',
+      payload: {
+        userId: 'user_1',
+        documentId: 'doc_1',
+        backgroundJobId: 'job_1',
+        force: false,
+      },
+    });
     expect(eventBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'knowledge.document.processing.requested',
@@ -113,6 +127,37 @@ describe('DocumentProcessingJobService', () => {
         requestedAt: '2026-06-29T00:00:00.000Z',
       }),
     ).toThrow();
+  });
+
+  it('does not fail the enqueue response when outbox enqueue fails', async () => {
+    const document = documentRow();
+    const job = jobRow();
+    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({
+        document: {
+          findFirst: jest.fn().mockResolvedValue(document),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+        backgroundJob: {
+          count: jest.fn().mockResolvedValue(0),
+          create: jest.fn().mockResolvedValue(job),
+        },
+      }),
+    );
+    processing.toResponse.mockReturnValue({
+      id: 'doc_1',
+      status: 'PROCESSING',
+    });
+    outbox.enqueue.mockRejectedValue(new Error('outbox unavailable'));
+
+    await expect(
+      createService().enqueueOrRun('user_1', 'doc_1', { force: false }),
+    ).resolves.toMatchObject({
+      processing: { backgroundJobId: 'job_1' },
+    });
+
+    expect(queue.add).toHaveBeenCalled();
+    expect(eventBus.publish).toHaveBeenCalled();
   });
 
   it('does not fail the enqueue response when event publication fails', async () => {
@@ -231,6 +276,7 @@ describe('DocumentProcessingJobService', () => {
       processing as never,
       config as never,
       eventBus as never,
+      outbox as never,
     );
   }
 

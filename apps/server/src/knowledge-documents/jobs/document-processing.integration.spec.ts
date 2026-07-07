@@ -105,6 +105,7 @@ describe('queued document processing integration', () => {
       processing as never,
       config as never,
       eventBus as never,
+      { enqueue: async () => ({ id: 'evt_1', status: 'PENDING' }) } as never,
     );
     const processor = new DocumentProcessingProcessor(
       backgroundJobs as never,

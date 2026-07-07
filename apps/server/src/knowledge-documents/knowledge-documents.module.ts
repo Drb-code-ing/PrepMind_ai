@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { AuthModule } from '../auth/auth.module';
 import { BackgroundJobsModule } from '../background-jobs/background-jobs.module';
 import { shouldRegisterWorkers } from '../jobs/worker-role';
+import { OutboxModule } from '../outbox/outbox.module';
 import { UploadsModule } from '../uploads/uploads.module';
 import { ChunkPersistenceService } from './chunk-persistence.service';
 import { DocumentParserService } from './document-parser.service';
@@ -31,6 +32,7 @@ const knowledgeDocumentProcessorProviders = shouldRegisterWorkers(
   imports: [
     AuthModule,
     BackgroundJobsModule,
+    OutboxModule,
     UploadsModule,
     BullModule.registerQueue({ name: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE }),
   ],

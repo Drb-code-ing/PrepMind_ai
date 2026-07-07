@@ -12,6 +12,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { EVENT_BUS } from '../../events/events.module';
 import type { InProcessEventBus } from '../../events/event-bus';
 import { sanitizeJobError } from '../../jobs/job-error-sanitizer';
+import { OutboxService } from '../../outbox/outbox.service';
 import { DocumentProcessingService } from '../document-processing.service';
 import {
   PROCESS_KNOWLEDGE_DOCUMENT_JOB,
@@ -42,6 +43,7 @@ export class DocumentProcessingJobService {
     private readonly configService: ConfigService<ServerEnv, true>,
     @Inject(EVENT_BUS)
     private readonly eventBus: InProcessEventBus,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async enqueueOrRun(
@@ -101,6 +103,23 @@ export class DocumentProcessingJobService {
         '资料处理任务排队失败，请稍后重试',
         503,
       );
+    }
+
+    try {
+      await this.outboxService.enqueue({
+        type: 'knowledge.document.processing.requested',
+        aggregateType: 'KnowledgeDocument',
+        aggregateId: claim.document.id,
+        idempotencyKey: `knowledge-document-processing-requested:${userId}:${claim.document.id}:${claim.job.id}`,
+        payload: {
+          userId,
+          documentId: claim.document.id,
+          backgroundJobId: claim.job.id,
+          force: input.force,
+        },
+      });
+    } catch {
+      // Queue state is already durable; outbox observer failures must not fail the request.
     }
 
     try {
