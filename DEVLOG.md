@@ -6,7 +6,7 @@
 
 更新时间：2026-07-07
 
-当前阶段：Phase 7.9.4 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.10 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -33,8 +33,35 @@
 | Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
 | Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
 | Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
+| Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.10 Outbox Ops
+
+本轮目标：给 Phase 7.9 durable outbox 补上安全的后端操作闭环，让开发者能在不暴露 payload 的前提下查看失败事件，并在修复根因后手动 requeue。
+
+完成内容：
+- 新增 `@repo/types/api/outbox` contract，统一列表、详情、requeue request / response 的 Zod schema。
+- 新增 `OUTBOX_OPS_ENABLED`，默认非 production 开启、production 关闭；关闭时通过 feature gate 在认证前返回 404，避免暴露诊断面。
+- 新增 `OutboxOpsService` 与 `OutboxOpsController`，支持脱敏列表、脱敏详情和 `FAILED / DEAD` requeue。
+- 列表分页按 `updatedAt desc, id desc` 使用复合 cursor，修复只按 id 翻页可能漏数据的问题。
+- `lastErrorPreview` 复用扩展后的 `sanitizeJobError()`，覆盖 Bearer、access / refresh token、cookie、`sk-...`、Qwen / DashScope / OpenAI 等常见 key 形态。
+- requeue 使用条件 `updateMany` 做 compare-and-swap，只把 `FAILED / DEAD` 重置为 `PENDING`，清理锁信息和 processedAt，重置 attempts 和 nextRunAt，不立即执行 handler。
+- 新增 e2e 覆盖认证、脱敏响应和 requeue 状态流转。
+
+验收结果：
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- outbox-ops env`
+- `bun --filter @repo/server test -- outbox-ops job-error-sanitizer`
+- `bun --cwd apps/server eslint src/outbox src/jobs/job-error-sanitizer.ts src/jobs/job-error-sanitizer.spec.ts`
+- `bun --filter @repo/server build`
+- `bun --cwd apps/server jest --config ./test/jest-e2e.json --runInBand --testTimeout=30000 --forceExit --verbose outbox-ops`
+
+边界：
+- 本轮不新增前端页面，不改变 Chat / RAG prompt / live model 调用链路，因此不需要真实模型 smoke。
+- Outbox Ops 不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- 不支持删除、强制成功、跳过、payload 编辑或直接 dispatch；生产环境仍需要后续 admin/operator 权限模型和操作审计后再考虑开放。
 
 ### 2026-07-07 - Phase 7.9 收尾验收与 Review 修复
 
@@ -612,6 +639,7 @@ Phase 6.4 完成：
 - Phase 7.9.2：Outbox Dispatcher 最小闭环完成，显式 handler registry、dispatcher service 和知识库 requested outbox 事件入库已落地。
 - Phase 7.9.3：Outbox Dispatcher Runner 完成，worker-only 受控 tick、生产默认关闭和防重入执行已落地。
 - Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
+- Phase 7.10：Outbox Ops 后端闭环完成，脱敏列表/详情、安全 requeue、feature gate 前置和 e2e 验收已落地。
 
 ## 当前验证基线
 
@@ -658,7 +686,7 @@ Phase 7 后续优先级：
 1. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 2. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 3. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
-4. Outbox 生产化：逐步接入 succeeded / failed / stale skipped 事件，并设计 admin-only dead-letter 修复能力。
+4. Outbox 生产化：补操作审计表、admin/operator 权限模型、dead-letter 修复工作流和更多业务事件接入。
 
 ## 参考文档
 
