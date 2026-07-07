@@ -220,4 +220,4 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7 后续：写 Phase 7.9 完整面试博客，然后继续更多后台任务生产化和 worker metrics / readiness 增强。
+1. Phase 7 后续：继续更多后台任务生产化和 worker metrics / readiness 增强。

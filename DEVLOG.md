@@ -47,6 +47,7 @@
 - `WorkerObservabilityService` 接入 outbox summary；`DEAD` outbox event 会让 status 进入 `degraded`，pending / processing backlog 作为独立信号展示。
 - `WorkerObservabilityModule` import `OutboxModule` 并通过 DI 注入 `OutboxMetricsService`。
 - 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-summary-metrics-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-summary-metrics.md`。
+- 新增完整面试学习博客 `docs/blogs/durable-outbox-worker-observability.md`，复盘 BullMQ、BackgroundJob、EventBus、Durable Outbox、Dispatcher Runner 和 Summary/Metrics 的分工。
 
 验证：
 - `bun --filter @repo/server test -- outbox-metrics`
@@ -580,6 +581,8 @@ Phase 6.4 完成：
 - Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
 - Phase 7.9.1：Durable Outbox 地基完成，`OutboxEvent`、claim / retry / dead-letter 状态机和服务层测试已落地。
 - Phase 7.9.2：Outbox Dispatcher 最小闭环完成，显式 handler registry、dispatcher service 和知识库 requested outbox 事件入库已落地。
+- Phase 7.9.3：Outbox Dispatcher Runner 完成，worker-only 受控 tick、生产默认关闭和防重入执行已落地。
+- Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
 
 ## 当前验证基线
 
@@ -623,10 +626,10 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Phase 7.9 完整面试博客：复盘 BullMQ、BackgroundJob、EventBus、Durable Outbox、Dispatcher Runner 和 Summary/Metrics 的分工。
-2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
-4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+1. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
+2. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
+3. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+4. Outbox 生产化：逐步接入 succeeded / failed / stale skipped 事件，并设计 admin-only dead-letter 修复能力。
 
 ## 参考文档
 
@@ -641,3 +644,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-worker-split.md`：API / worker 启动拆分面试学习博客。
 - `docs/blogs/phase-7-worker-observability.md`：Worker Observability 面试学习博客。
 - `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
+- `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
