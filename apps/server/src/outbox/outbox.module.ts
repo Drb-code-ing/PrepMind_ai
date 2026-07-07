@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import type { ServerEnv } from '../config/env';
 import { DatabaseModule } from '../database/database.module';
@@ -16,7 +17,7 @@ import { OutboxOpsService } from './outbox-ops.service';
 import { OutboxService } from './outbox.service';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule],
+  imports: [AuthModule, ConfigModule, DatabaseModule],
   controllers: [OutboxOpsController],
   providers: [
     OutboxService,
