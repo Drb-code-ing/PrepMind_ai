@@ -66,7 +66,10 @@ export class DocumentProcessingJobService {
       if (isProcessingConflict(error)) {
         const existingJob = await this.findActiveJob(userId, documentId);
         if (existingJob) {
-          const document = await this.findProcessingDocument(userId, documentId);
+          const document = await this.findProcessingDocument(
+            userId,
+            documentId,
+          );
           return this.withProcessingMetadata(document, existingJob);
         }
       }
@@ -152,11 +155,7 @@ export class DocumentProcessingJobService {
         });
 
         if (!document) {
-          throw new AppError(
-            'KNOWLEDGE_DOCUMENT_NOT_FOUND',
-            '资料不存在',
-            404,
-          );
+          throw new AppError('KNOWLEDGE_DOCUMENT_NOT_FOUND', '资料不存在', 404);
         }
 
         if (document.status === 'PROCESSING') {
@@ -225,9 +224,12 @@ export class DocumentProcessingJobService {
             resourceType: 'KNOWLEDGE_DOCUMENT',
             resourceId: document.id,
             dedupeKey: `knowledge-process-active:${userId}:${document.id}`,
-            maxAttempts: this.configService.get('KNOWLEDGE_PROCESSING_ATTEMPTS', {
-              infer: true,
-            }),
+            maxAttempts: this.configService.get(
+              'KNOWLEDGE_PROCESSING_ATTEMPTS',
+              {
+                infer: true,
+              },
+            ),
             payloadPreview: {
               documentId: document.id,
               force: input.force,

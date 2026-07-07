@@ -46,17 +46,18 @@ describe('DocumentProcessingJobService', () => {
   it('creates a background job and enqueues it after a processing claim', async () => {
     const document = documentRow();
     const job = jobRow();
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        document: {
-          findFirst: jest.fn().mockResolvedValue(document),
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-        backgroundJob: {
-          count: jest.fn().mockResolvedValue(0),
-          create: jest.fn().mockResolvedValue(job),
-        },
-      }),
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          document: {
+            findFirst: jest.fn().mockResolvedValue(document),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          backgroundJob: {
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn().mockResolvedValue(job),
+          },
+        }),
     );
     processing.toResponse.mockReturnValue({
       id: 'doc_1',
@@ -91,7 +92,8 @@ describe('DocumentProcessingJobService', () => {
       type: 'knowledge.document.processing.requested',
       aggregateType: 'KnowledgeDocument',
       aggregateId: 'doc_1',
-      idempotencyKey: 'knowledge-document-processing-requested:user_1:doc_1:job_1',
+      idempotencyKey:
+        'knowledge-document-processing-requested:user_1:doc_1:job_1',
       payload: {
         userId: 'user_1',
         documentId: 'doc_1',
@@ -132,17 +134,18 @@ describe('DocumentProcessingJobService', () => {
   it('does not fail the enqueue response when outbox enqueue fails', async () => {
     const document = documentRow();
     const job = jobRow();
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        document: {
-          findFirst: jest.fn().mockResolvedValue(document),
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-        backgroundJob: {
-          count: jest.fn().mockResolvedValue(0),
-          create: jest.fn().mockResolvedValue(job),
-        },
-      }),
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          document: {
+            findFirst: jest.fn().mockResolvedValue(document),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          backgroundJob: {
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn().mockResolvedValue(job),
+          },
+        }),
     );
     processing.toResponse.mockReturnValue({
       id: 'doc_1',
@@ -163,17 +166,18 @@ describe('DocumentProcessingJobService', () => {
   it('does not fail the enqueue response when event publication fails', async () => {
     const document = documentRow();
     const job = jobRow();
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        document: {
-          findFirst: jest.fn().mockResolvedValue(document),
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-        backgroundJob: {
-          count: jest.fn().mockResolvedValue(0),
-          create: jest.fn().mockResolvedValue(job),
-        },
-      }),
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          document: {
+            findFirst: jest.fn().mockResolvedValue(document),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          backgroundJob: {
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn().mockResolvedValue(job),
+          },
+        }),
     );
     processing.toResponse.mockReturnValue({
       id: 'doc_1',
@@ -194,7 +198,10 @@ describe('DocumentProcessingJobService', () => {
     config.get.mockImplementation((key: string) =>
       key === 'KNOWLEDGE_PROCESSING_MODE' ? 'inline' : 3,
     );
-    processing.processDocument.mockResolvedValue({ id: 'doc_1', status: 'DONE' });
+    processing.processDocument.mockResolvedValue({
+      id: 'doc_1',
+      status: 'DONE',
+    });
 
     await expect(
       createService().enqueueOrRun('user_1', 'doc_1', { force: false }),
@@ -203,7 +210,7 @@ describe('DocumentProcessingJobService', () => {
   });
 
   it('returns the existing active job when the document is already processing', async () => {
-    prisma.$transaction.mockImplementation(async () => {
+    prisma.$transaction.mockImplementation(() => {
       throw new AppError(
         'KNOWLEDGE_DOCUMENT_PROCESSING',
         '资料正在处理中',
@@ -215,7 +222,10 @@ describe('DocumentProcessingJobService', () => {
       ...documentRow(),
       status: 'PROCESSING',
     });
-    processing.toResponse.mockReturnValue({ id: 'doc_1', status: 'PROCESSING' });
+    processing.toResponse.mockReturnValue({
+      id: 'doc_1',
+      status: 'PROCESSING',
+    });
 
     const result = await createService().enqueueOrRun('user_1', 'doc_1', {
       force: false,
@@ -226,17 +236,18 @@ describe('DocumentProcessingJobService', () => {
 
   it('marks the job and document failed when enqueue fails after the claim transaction commits', async () => {
     const document = documentRow();
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        document: {
-          findFirst: jest.fn().mockResolvedValue(document),
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-        backgroundJob: {
-          count: jest.fn().mockResolvedValue(0),
-          create: jest.fn().mockResolvedValue(jobRow()),
-        },
-      }),
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          document: {
+            findFirst: jest.fn().mockResolvedValue(document),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          backgroundJob: {
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn().mockResolvedValue(jobRow()),
+          },
+        }),
     );
     queue.add.mockRejectedValue(new Error('redis unavailable'));
 
@@ -246,27 +257,29 @@ describe('DocumentProcessingJobService', () => {
       code: 'KNOWLEDGE_DOCUMENT_PROCESSING_QUEUE_FAILED',
     });
 
-    expect(prisma.backgroundJob.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ id: 'job_1', userId: 'user_1' }),
-        data: expect.objectContaining({
-          status: 'FAILED',
-          errorCode: 'ENQUEUE_FAILED',
-        }),
-      }),
+    const backgroundJobUpdate = firstMockArg<UpdateManyCall>(
+      prisma.backgroundJob.updateMany,
     );
-    expect(prisma.document.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: 'doc_1',
-          userId: 'user_1',
-          status: 'PROCESSING',
-          storageKey: 'users/user_1/knowledge/notes.txt',
-          contentHash: 'sha256:abc',
-        }),
-        data: expect.objectContaining({ status: 'FAILED' }),
-      }),
+    expect(backgroundJobUpdate.where).toMatchObject({
+      id: 'job_1',
+      userId: 'user_1',
+    });
+    expect(backgroundJobUpdate.data).toMatchObject({
+      status: 'FAILED',
+      errorCode: 'ENQUEUE_FAILED',
+    });
+
+    const documentUpdate = firstMockArg<UpdateManyCall>(
+      prisma.document.updateMany,
     );
+    expect(documentUpdate.where).toMatchObject({
+      id: 'doc_1',
+      userId: 'user_1',
+      status: 'PROCESSING',
+      storageKey: 'users/user_1/knowledge/notes.txt',
+      contentHash: 'sha256:abc',
+    });
+    expect(documentUpdate.data).toMatchObject({ status: 'FAILED' });
   });
 
   function createService() {
@@ -278,6 +291,16 @@ describe('DocumentProcessingJobService', () => {
       eventBus as never,
       outbox as never,
     );
+  }
+
+  type UpdateManyCall = {
+    where: Record<string, unknown>;
+    data: Record<string, unknown>;
+  };
+
+  function firstMockArg<T>(mock: jest.Mock): T {
+    const calls = mock.mock.calls as unknown[][];
+    return calls[0]?.[0] as T;
   }
 
   function documentRow() {
