@@ -6,7 +6,7 @@
 
 更新时间：2026-07-07
 
-当前阶段：Phase 7.9.3 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.9.4 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -32,8 +32,34 @@
 | Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
 | Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
 | Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
+| Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.9.4 Outbox Summary / Metrics
+
+本轮目标：给已经能落库、消费和自动 tick 的 outbox 补上只读观测面，让开发者能看到 outbox 是否积压、是否出现 dead-letter，以及最近失败错误码。
+
+完成内容：
+- `@repo/types` 的 `workerObservabilitySummaryResponseSchema` 新增 `outbox` summary 和 `hasOutboxBacklog` / `hasDeadOutboxEvents` signals。
+- 新增 `OutboxMetricsService`，统计 `PENDING / PROCESSING / SUCCEEDED / FAILED / DEAD` 数量、最老 pending 年龄和最近错误摘要。
+- `OutboxMetricsService` 只返回安全字段：`id`、`type`、`status`、`lastErrorCode`、attempts、maxAttempts、updatedAt；不返回 payload、完整 `lastError`、`aggregateId` 或用户内容。
+- `WorkerObservabilityService` 接入 outbox summary；`DEAD` outbox event 会让 status 进入 `degraded`，pending / processing backlog 作为独立信号展示。
+- `WorkerObservabilityModule` import `OutboxModule` 并通过 DI 注入 `OutboxMetricsService`。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-summary-metrics-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-summary-metrics.md`。
+
+验证：
+- `bun --filter @repo/server test -- outbox-metrics`
+- `bun --filter @repo/server test -- outbox`
+- `bun --filter @repo/server test -- worker-observability`
+- `bun --cwd packages/types typecheck`
+- `bun --cwd apps/server eslint src/outbox src/worker-observability`
+- `bun --filter @repo/server build`
+
+边界：
+- Phase 7.9.4 不新增独立 outbox HTTP API、不新增前端页面、不新增 admin action、不接 Prometheus / Grafana。
+- Outbox summary 是系统级只读观测信号，仍通过现有 `/worker-observability/summary`、`JwtAuthGuard` 和 `WORKER_OBSERVABILITY_ENABLED` 边界暴露。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
 
 ### 2026-07-07 - Phase 7.9.3 Outbox Dispatcher Runner
 
@@ -597,7 +623,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Outbox summary / metrics：补 pending、processing、dead 数量和最近错误摘要，后续再评估 Prometheus / Grafana 接入。
+1. Phase 7.9 完整面试博客：复盘 BullMQ、BackgroundJob、EventBus、Durable Outbox、Dispatcher Runner 和 Summary/Metrics 的分工。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。

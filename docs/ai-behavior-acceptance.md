@@ -249,3 +249,13 @@ Phase 7.9.3 只改变后台 outbox 消费方式，不改变 Chat、RAG prompt、
 - runner 只调用显式 dispatcher，不读取 payload、不绕过 handler registry。
 - dispatcher tick 失败只能记录脱敏 warning，不得打断 worker 进程。
 - 本阶段不新增 HTTP API、不新增前端页面、不接 Prometheus / Grafana、不新增 BullMQ repeatable job。
+
+## 20. Phase 7.9.4 Outbox Summary / Metrics
+
+Phase 7.9.4 只增加后台 outbox 只读观测 summary，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance 或前端页面行为，因此不要求 live 模型 smoke。
+
+- outbox summary 只能返回状态计数、backlog、最老 pending 年龄和最近错误摘要。
+- recent error 摘要不得返回 payload、完整 `lastError`、`aggregateId`、prompt、chunk、API key、access token、cookie 或用户内容。
+- `DEAD` outbox event 可以让 worker observability status 进入 `degraded`；pending / processing backlog 只能作为独立信号展示。
+- 本阶段不新增独立 outbox HTTP API、不新增前端页面、不新增 admin action、不接 Prometheus / Grafana。
+- 只有后续把 outbox 观测结果接入 Chat/RAG 输出链路、改变 prompt 或改变真实模型调用策略时，才需要重新执行 live 小样本验收。
