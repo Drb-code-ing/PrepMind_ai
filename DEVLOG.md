@@ -36,6 +36,35 @@
 
 ## 近期关键记录
 
+### 2026-07-07 - Phase 7.9 收尾验收与 Review 修复
+
+本轮目标：对 Phase 7.9 durable outbox 收尾做代码 review 后修正可验证的问题，并把本地验收命令跑到可复现状态。
+
+完成内容：
+- 修复 knowledge document processing 相关 touched files 的 lint / 测试类型问题。
+- `DocumentProcessingJobService` 对 best-effort outbox enqueue 失败增加脱敏 warning 日志，避免后台事件写入失败被静默吞掉；日志只包含 documentId、backgroundJobId 和脱敏后的错误摘要。
+- `OutboxDispatcherService` 修正统计口径：只有 `markSucceeded()` / `markFailedOrRetry()` 真正完成数据库状态流转时，才计入 `succeeded` / `failed`，避免 worker 锁丢失时出现“指标看起来成功/失败，但数据库没变”的误报。
+- `bun --filter @repo/server lint` 会执行 `eslint --fix`，本轮清理了完整 server lint 暴露的测试类型和格式问题。
+- 补齐前端 `worker-observability-api` 测试 fixture 中 Phase 7.9 新增的 `outbox` 和 outbox signals 字段。
+- 稳定 `apps/server` 的 `test:e2e` 脚本：改为 `--runInBand --testTimeout=30000`，避免并发启动多个 Nest e2e app 时 beforeAll 偶发超时。
+
+验收结果：
+- `bun --filter @repo/server test`
+- `bun --filter @repo/server lint`
+- `bun --filter @repo/server build`
+- `bun --filter @repo/server test:e2e`
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/web test`
+- `bun --filter @repo/web build`
+- `bun --cwd packages/types typecheck`
+- `bun --cwd packages/database test`
+- `bun --cwd packages/fsrs test`
+
+边界：
+- 本轮没有新增业务功能、HTTP API、前端页面或模型调用链路。
+- 修复集中在 review 发现的问题、测试 fixture、lint 可复现性和 e2e 命令稳定性。
+- `test:e2e` 初次默认并发运行失败，原因是 e2e hook 默认 5 秒超时；脚本改成串行和 30 秒超时后，标准命令通过。
+
 ### 2026-07-07 - Phase 7.9.4 Outbox Summary / Metrics
 
 本轮目标：给已经能落库、消费和自动 tick 的 outbox 补上只读观测面，让开发者能看到 outbox 是否积压、是否出现 dead-letter，以及最近失败错误码。
