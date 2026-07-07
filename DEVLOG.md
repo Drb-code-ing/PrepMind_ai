@@ -6,7 +6,7 @@
 
 更新时间：2026-07-07
 
-当前阶段：Phase 7.9.1 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.9.2 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -30,8 +30,36 @@
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
 | Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
 | Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
+| Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.9.2 Outbox Dispatcher
+
+本轮目标：让 Phase 7.9.1 落库的 `OutboxEvent` 不只是“保存下来”，而是进入一个可测试的消费闭环：claim、分发 handler、成功标记、失败 retry / dead-letter。
+
+完成内容：
+
+- 新增 `outbox.handlers.ts`，用显式 registry 注册 `knowledge.document.processing.requested` handler，避免根据 payload 动态执行任意函数。
+- 新增 `OutboxDispatcherService`，批量 claim outbox events，逐条调用 handler，成功后 `markSucceeded()`，失败后 `markFailedOrRetry()`；单条失败不阻断同批次后续事件。
+- `knowledge.document.processing.requested` handler 第一版只做观测型 payload 校验，不重投 BullMQ、不改 `Document`、不改 `BackgroundJob`、不写用户内容。
+- `DocumentProcessingJobService` 在 BullMQ enqueue 成功后 best-effort 写入 requested outbox event；outbox 写入失败不影响原有 queue 主链路或 in-process EventBus 发布。
+- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher.md`。
+
+验证：
+
+- `bun --filter @repo/server test -- outbox.handlers`
+- `bun --filter @repo/server test -- outbox.dispatcher outbox.handlers`
+- `bun --filter @repo/server test -- document-processing-job`
+- `bun --cwd apps/server eslint src/outbox`
+- `bun --filter @repo/server build`
+
+边界：
+
+- Phase 7.9.2 不新增自动 scheduler loop、不公开 HTTP API、不新增前端页面、不接 Prometheus / Grafana。
+- 本阶段不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`，只把知识库 requested 事件作为低风险真实接入点写入 outbox。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+- requested outbox payload 只能包含 `userId`、`documentId`、`backgroundJobId`、`force`，不保存文件内容、chunk、prompt、API key、access token、cookie 或模型回答。
 
 ### 2026-07-07 - Phase 7.9.1 Durable Outbox
 
@@ -499,6 +527,7 @@ Phase 6.4 完成：
 - Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
 - Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
 - Phase 7.9.1：Durable Outbox 地基完成，`OutboxEvent`、claim / retry / dead-letter 状态机和服务层测试已落地。
+- Phase 7.9.2：Outbox Dispatcher 最小闭环完成，显式 handler registry、dispatcher service 和知识库 requested outbox 事件入库已落地。
 
 ## 当前验证基线
 
@@ -542,7 +571,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Outbox dispatcher / metrics：把 `OutboxEvent` 接入 dispatcher、失败观测和指标系统，让需要跨进程可靠投递的事件逐步从 in-process EventBus 迁移出来。
+1. Outbox 受控运行方式 / metrics：为 `OutboxDispatcherService` 增加 worker-only 定时 tick、Nest schedule 或 BullMQ repeatable job，并补失败观测和指标系统。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
