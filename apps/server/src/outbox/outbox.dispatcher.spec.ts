@@ -1,5 +1,8 @@
+import { Test } from '@nestjs/testing';
+
 import { OutboxDispatcherService } from './outbox.dispatcher';
 import { OutboxHandlerError, type OutboxEventHandler } from './outbox.handlers';
+import { OutboxModule } from './outbox.module';
 
 describe('OutboxDispatcherService', () => {
   const now = new Date('2026-07-07T01:00:00.000Z');
@@ -120,6 +123,17 @@ describe('OutboxDispatcherService', () => {
     expect(outbox.markFailedOrRetry).toHaveBeenCalledTimes(1);
     expect(outbox.markSucceeded).toHaveBeenCalledWith('evt_2', 'worker_1');
     expect(result).toEqual({ claimed: 2, succeeded: 1, failed: 1 });
+  });
+
+  it('can be compiled by Nest dependency injection', async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [OutboxModule],
+    }).compile();
+
+    expect(moduleRef.get(OutboxDispatcherService)).toBeInstanceOf(
+      OutboxDispatcherService,
+    );
+    await moduleRef.close();
   });
 
   function createService(handlers: Record<string, OutboxEventHandler> = {}) {

@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import {
+  OUTBOX_HANDLERS,
   OutboxHandlerError,
-  outboxHandlers,
   type OutboxEventHandler,
   type OutboxEventLike,
 } from './outbox.handlers';
@@ -25,10 +25,8 @@ export type DispatchOutboxBatchResult = {
 export class OutboxDispatcherService {
   constructor(
     private readonly outboxService: OutboxService,
-    private readonly handlers: Record<
-      string,
-      OutboxEventHandler
-    > = outboxHandlers,
+    @Inject(OUTBOX_HANDLERS)
+    private readonly handlers: Record<string, OutboxEventHandler>,
   ) {}
 
   async dispatchBatch(

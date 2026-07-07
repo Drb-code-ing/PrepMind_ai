@@ -6,6 +6,8 @@ export type OutboxEventLike = {
 
 export type OutboxEventHandler = (event: OutboxEventLike) => Promise<void>;
 
+export const OUTBOX_HANDLERS = Symbol('OUTBOX_HANDLERS');
+
 export class OutboxHandlerError extends Error {
   constructor(
     readonly code:
