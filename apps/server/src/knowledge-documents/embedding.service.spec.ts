@@ -9,8 +9,8 @@ import {
 
 type EmbedBatchMock = jest.Mock<Promise<number[][]>, [string[]]>;
 
-var mockEmbeddingsCreate = jest.fn();
-var mockOpenAI = jest.fn(() => ({
+const mockEmbeddingsCreate = jest.fn();
+const mockOpenAI = jest.fn(() => ({
   embeddings: {
     create: mockEmbeddingsCreate,
   },

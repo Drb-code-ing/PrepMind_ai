@@ -32,7 +32,9 @@ export function shouldListenHttp(role: ServerEnv['SERVER_ROLE']) {
   return role === 'api' || role === 'both';
 }
 
-function resolveServerRole(rawRole: string | undefined): ServerEnv['SERVER_ROLE'] {
+function resolveServerRole(
+  rawRole: string | undefined,
+): ServerEnv['SERVER_ROLE'] {
   if (rawRole === 'api' || rawRole === 'worker' || rawRole === 'both') {
     return rawRole;
   }
@@ -60,7 +62,8 @@ function configureHttpApp(
 }
 
 export async function bootstrapServer(deps: BootstrapServerDependencies = {}) {
-  const serverRole = deps.serverRole ?? resolveServerRole(process.env.SERVER_ROLE);
+  const serverRole =
+    deps.serverRole ?? resolveServerRole(process.env.SERVER_ROLE);
   const logger = deps.logger ?? defaultLogger;
 
   logger.log(`Starting server role: ${serverRole}`);
@@ -73,7 +76,9 @@ export async function bootstrapServer(deps: BootstrapServerDependencies = {}) {
     return;
   }
 
-  const app = await (deps.createHttpApp ?? (() => NestFactory.create(AppModule)))();
+  const app = await (
+    deps.createHttpApp ?? (() => NestFactory.create(AppModule))
+  )();
   const config = app.get(ConfigService<ServerEnv, true>);
 
   configureHttpApp(app, config);

@@ -107,7 +107,9 @@ export class EmbeddingService {
       infer: true,
     });
     if (typeof baseURL !== 'string' || baseURL.trim().length === 0) {
-      throw this.createEmbeddingError('Qwen embedding base URL is not configured');
+      throw this.createEmbeddingError(
+        'Qwen embedding base URL is not configured',
+      );
     }
 
     const model = this.configService.get('RAG_EMBEDDING_MODEL', {

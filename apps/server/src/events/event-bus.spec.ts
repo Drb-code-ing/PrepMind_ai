@@ -5,9 +5,12 @@ describe('InProcessEventBus', () => {
     const bus = new InProcessEventBus();
     const received: Array<{ type: string; documentId: string }> = [];
 
-    const unsubscribe = bus.subscribe('knowledge.document.processing.succeeded', (event) => {
-      received.push({ type: event.type, documentId: event.documentId });
-    });
+    const unsubscribe = bus.subscribe(
+      'knowledge.document.processing.succeeded',
+      (event) => {
+        received.push({ type: event.type, documentId: event.documentId });
+      },
+    );
 
     bus.publish({
       type: 'knowledge.document.processing.succeeded',
@@ -63,7 +66,7 @@ describe('InProcessEventBus', () => {
   });
 
   it('logs handler failures without dumping event payloads', () => {
-    const logger = { warn: jest.fn() };
+    const logger = { warn: jest.fn<void, [string]>() };
     const bus = new InProcessEventBus(logger);
 
     bus.subscribe('knowledge.document.processing.failed', () => {
@@ -81,7 +84,7 @@ describe('InProcessEventBus', () => {
     });
 
     expect(logger.warn).toHaveBeenCalledTimes(1);
-    const message = logger.warn.mock.calls[0]?.[0] as string;
+    const message = logger.warn.mock.calls[0]?.[0] ?? '';
     expect(message).toContain('knowledge.document.processing.failed');
     expect(message).toContain('failed=1');
     expect(message).not.toContain('secret_user');

@@ -22,7 +22,9 @@ type StaleReason =
 
 @Processor(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE, {
   concurrency: Number(process.env.KNOWLEDGE_PROCESSING_CONCURRENCY || 2),
-  lockDuration: Number(process.env.KNOWLEDGE_PROCESSING_LOCK_DURATION_MS || 60000),
+  lockDuration: Number(
+    process.env.KNOWLEDGE_PROCESSING_LOCK_DURATION_MS || 60000,
+  ),
   limiter: {
     max: Number(process.env.KNOWLEDGE_PROCESSING_GLOBAL_RATE_LIMIT || 30),
     duration: 60000,
@@ -120,7 +122,10 @@ export class DocumentProcessingProcessor extends WorkerHost {
       return 'complete';
     }
 
-    if (isRetryableError(error) && job.attemptsMade + 1 < this.maxAttempts(job)) {
+    if (
+      isRetryableError(error) &&
+      job.attemptsMade + 1 < this.maxAttempts(job)
+    ) {
       await this.backgroundJobs.markRetryableFailure({
         id: payload.backgroundJobId,
         userId: payload.userId,
@@ -192,7 +197,9 @@ export class DocumentProcessingProcessor extends WorkerHost {
     return typeof job.opts.attempts === 'number' ? job.opts.attempts : 1;
   }
 
-  private publishBestEffort(event: Parameters<InProcessEventBus['publish']>[0]) {
+  private publishBestEffort(
+    event: Parameters<InProcessEventBus['publish']>[0],
+  ) {
     try {
       this.eventBus.publish(event);
     } catch {

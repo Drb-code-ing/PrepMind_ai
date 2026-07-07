@@ -93,7 +93,7 @@ export class DocumentProcessingService {
     const parsed = await this.parserService.parse({
       name: document.name,
       type: document.type,
-      mimeType: document.mimeType as KnowledgeDocumentMimeType,
+      mimeType: document.mimeType,
       buffer,
     });
     const chunks = splitDocument(

@@ -14,6 +14,8 @@ import { EmbeddingService } from './embedding.service';
 
 const objectContaining = <T extends object>(value: T) =>
   expect.objectContaining(value) as unknown as T;
+const arrayContaining = <T>(value: T[]) =>
+  expect.arrayContaining(value) as unknown as T[];
 const anyString = () => expect.any(String) as unknown as string;
 
 describe('DocumentProcessingService', () => {
@@ -240,14 +242,14 @@ describe('DocumentProcessingService', () => {
     });
 
     expect(persistence.replaceDocumentChunks).toHaveBeenCalledWith(
-      expect.objectContaining({
+      objectContaining({
         chunks: [
-          expect.objectContaining({
-            metadata: expect.objectContaining({
-              safety: expect.objectContaining({
+          objectContaining({
+            metadata: objectContaining({
+              safety: objectContaining({
                 riskLevel: 'high',
                 safeForPrompt: false,
-                categories: expect.arrayContaining([
+                categories: arrayContaining([
                   'instruction_override',
                   'secret_exfiltration',
                   'deception_or_hidden_behavior',
@@ -460,8 +462,8 @@ describe('DocumentProcessingService', () => {
     ).rejects.toBe(failure);
 
     expect(prisma.document.updateMany).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: 'FAILED' }),
+      objectContaining({
+        data: objectContaining({ status: 'FAILED' }),
       }),
     );
   });

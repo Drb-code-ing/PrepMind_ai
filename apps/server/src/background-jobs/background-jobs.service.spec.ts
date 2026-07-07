@@ -1,5 +1,8 @@
 import { BackgroundJobsService } from './background-jobs.service';
 
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+
 describe('BackgroundJobsService', () => {
   const now = new Date('2026-06-29T00:00:00.000Z');
   const prisma = {
@@ -37,7 +40,7 @@ describe('BackgroundJobsService', () => {
     });
 
     expect(prisma.backgroundJob.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: objectContaining({
         userId: 'user_1',
         status: 'QUEUED',
         payloadPreview: { documentId: 'doc_1', force: false },
@@ -48,7 +51,9 @@ describe('BackgroundJobsService', () => {
 
   it('marks a job active only when it belongs to the same user and resource', async () => {
     prisma.backgroundJob.updateMany.mockResolvedValue({ count: 1 });
-    prisma.backgroundJob.findFirst.mockResolvedValue(jobRow({ status: 'ACTIVE' }));
+    prisma.backgroundJob.findFirst.mockResolvedValue(
+      jobRow({ status: 'ACTIVE' }),
+    );
 
     const result = await createService().markActive({
       id: 'job_1',
@@ -66,7 +71,7 @@ describe('BackgroundJobsService', () => {
         resourceId: 'doc_1',
         status: { in: ['QUEUED', 'ACTIVE'] },
       },
-      data: expect.objectContaining({
+      data: objectContaining({
         status: 'ACTIVE',
         attempt: 1,
         startedAt: now,
@@ -76,7 +81,9 @@ describe('BackgroundJobsService', () => {
   });
 
   it('lists only current user jobs with resource filters', async () => {
-    prisma.backgroundJob.findMany.mockResolvedValue([jobRow({ status: 'SUCCEEDED' })]);
+    prisma.backgroundJob.findMany.mockResolvedValue([
+      jobRow({ status: 'SUCCEEDED' }),
+    ]);
 
     const result = await createService().list('user_1', {
       resourceType: 'KNOWLEDGE_DOCUMENT',

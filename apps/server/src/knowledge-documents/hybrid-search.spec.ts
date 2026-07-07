@@ -7,9 +7,7 @@ describe('mergeHybridSearchRows', () => {
         row('chunk_1', { vectorScore: 0.72, keywordScore: 0 }),
         row('chunk_2', { vectorScore: 0.8, keywordScore: 0 }),
       ],
-      keywordRows: [
-        row('chunk_1', { vectorScore: 0.7, keywordScore: 0.9 }),
-      ],
+      keywordRows: [row('chunk_1', { vectorScore: 0.7, keywordScore: 0.9 })],
       topK: 5,
       minScore: 0,
     });
@@ -49,9 +47,7 @@ describe('mergeHybridSearchRows', () => {
         row('chunk_a', { vectorScore: 0.7, keywordScore: 0 }),
         row('chunk_b', { vectorScore: 0.96, keywordScore: 0 }),
       ],
-      keywordRows: [
-        row('chunk_c', { vectorScore: 0.5, keywordScore: 1 }),
-      ],
+      keywordRows: [row('chunk_c', { vectorScore: 0.5, keywordScore: 1 })],
       topK: 2,
       minScore: 0,
     });
