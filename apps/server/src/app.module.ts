@@ -14,6 +14,7 @@ import { KnowledgeAgentModule } from './knowledge-agent/knowledge-agent.module';
 import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-documents.module';
 import { MemoryAgentModule } from './memory-agent/memory-agent.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
+import { OutboxModule } from './outbox/outbox.module';
 import { ReviewAgentModule } from './review-agent/review-agent.module';
 import { ReviewPreferencesModule } from './review-preferences/review-preferences.module';
 import { ReviewTasksModule } from './review-tasks/review-tasks.module';
@@ -29,6 +30,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ConfigModule,
     DatabaseModule,
     EventsModule,
+    OutboxModule,
     JobsModule,
     HealthModule,
     AuthModule,
