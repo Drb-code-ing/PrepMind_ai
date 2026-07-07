@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Prisma } from '@prisma/client';
@@ -35,6 +35,8 @@ const documentInclude = {
 
 @Injectable()
 export class DocumentProcessingJobService {
+  private readonly logger = new Logger(DocumentProcessingJobService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
@@ -121,7 +123,10 @@ export class DocumentProcessingJobService {
           force: input.force,
         },
       });
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Outbox enqueue failed for knowledge document processing request: documentId=${claim.document.id} backgroundJobId=${claim.job.id} error=${sanitizeJobError(error)}`,
+      );
       // Queue state is already durable; outbox observer failures must not fail the request.
     }
 

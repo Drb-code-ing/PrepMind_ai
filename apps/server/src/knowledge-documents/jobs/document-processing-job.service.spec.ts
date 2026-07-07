@@ -1,4 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, Logger } from '@nestjs/common';
 
 import { AppError } from '../../common/errors/app-error';
 import { DocumentProcessingJobService } from './document-processing-job.service';
@@ -24,6 +24,7 @@ describe('DocumentProcessingJobService', () => {
   const config = { get: jest.fn() };
   const eventBus = { publish: jest.fn() };
   const outbox = { enqueue: jest.fn() };
+  let warnSpy: jest.SpiedFunction<Logger['warn']>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,9 +40,15 @@ describe('DocumentProcessingJobService', () => {
     });
     queue.add.mockResolvedValue({ id: 'job_1' });
     outbox.enqueue.mockResolvedValue({ id: 'evt_1', status: 'PENDING' });
+    warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
   });
 
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => {
+    warnSpy.mockRestore();
+    jest.useRealTimers();
+  });
 
   it('creates a background job and enqueues it after a processing claim', async () => {
     const document = documentRow();
@@ -151,7 +158,9 @@ describe('DocumentProcessingJobService', () => {
       id: 'doc_1',
       status: 'PROCESSING',
     });
-    outbox.enqueue.mockRejectedValue(new Error('outbox unavailable'));
+    outbox.enqueue.mockRejectedValue(
+      new Error('outbox unavailable with Bearer secret-token-value'),
+    );
 
     await expect(
       createService().enqueueOrRun('user_1', 'doc_1', { force: false }),
@@ -161,6 +170,17 @@ describe('DocumentProcessingJobService', () => {
 
     expect(queue.add).toHaveBeenCalled();
     expect(eventBus.publish).toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'Outbox enqueue failed for knowledge document processing request',
+      ),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('doc_1'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('job_1'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[redacted]'));
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('secret-token-value'),
+    );
   });
 
   it('does not fail the enqueue response when event publication fails', async () => {
