@@ -277,6 +277,39 @@ describe('WorkerObservabilityService', () => {
     expect(result.signals.hasDeadOutboxEvents).toBe(true);
     expect(result.signals.hasRecentFailures).toBe(true);
   });
+
+  it('prioritizes degraded dead outbox events over queue backlog attention', async () => {
+    const service = createService({
+      role: 'worker',
+      mode: 'queue',
+      counts: {
+        waiting: 2,
+        active: 0,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+      },
+      heartbeats: [],
+      outbox: {
+        ...createOutboxSummary(),
+        counts: {
+          pending: 0,
+          processing: 0,
+          succeeded: 1,
+          failed: 0,
+          dead: 1,
+          total: 2,
+        },
+      },
+    });
+
+    const result = await service.getSummary('user-1');
+
+    expect(result.signals.queueBacklogWithoutWorker).toBe(true);
+    expect(result.signals.hasDeadOutboxEvents).toBe(true);
+    expect(result.signals.status).toBe('degraded');
+  });
 });
 
 function createService(input: {

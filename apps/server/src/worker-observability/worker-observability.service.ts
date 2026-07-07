@@ -186,9 +186,9 @@ function resolveStatus(input: {
   knowledgeProcessingMode: ServerEnv['KNOWLEDGE_PROCESSING_MODE'];
   hasWorkerHeartbeat: boolean;
 }): WorkerObservabilitySummaryResponse['signals']['status'] {
+  if (input.hasDeadOutboxEvents) return 'degraded';
   if (input.queueBacklogWithoutWorker) return 'attention';
   if (input.queuePaused) return 'degraded';
-  if (input.hasDeadOutboxEvents) return 'degraded';
   if (input.hasRecentFailures) return 'degraded';
   if (input.knowledgeProcessingMode === 'queue' && input.hasWorkerHeartbeat) {
     return 'healthy';
