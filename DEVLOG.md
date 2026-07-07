@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-06
+更新时间：2026-07-07
 
-当前阶段：Phase 7.8.4 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.9.1 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -29,8 +29,37 @@
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
 | Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
+| Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
 
 ## 近期关键记录
+
+### 2026-07-07 - Phase 7.9.1 Durable Outbox
+
+本轮目标：补上跨进程可靠事件的持久化地基，避免后续继续依赖纯 in-process EventBus 时产生“看起来发布了，但进程重启就丢”的假可靠性。
+
+完成内容：
+
+- 新增 `OutboxEventStatus` 与 `OutboxEvent` Prisma 模型，保存事件类型、聚合对象、幂等键、脱敏 payload、payload hash、attempts、锁定信息、下次运行时间和 dead-letter 状态。
+- 新增数据库 migration `20260707000100_add_outbox_event`，包含 `status + nextRunAt + createdAt`、`lockedBy + lockedAt`、`aggregateType + aggregateId + createdAt` 和 `type + status + createdAt` 查询索引。
+- 新增 `OutboxService` 与 `OutboxModule`，提供 `enqueue()`、`claimPending()`、`markSucceeded()` 和 `markFailedOrRetry()`。
+- `claimPending()` 第一版使用 `findMany + conditional updateMany`，claim 时重新校验 due pending 或过期 processing 状态，避免并发 worker 返回未抢到的事件。
+- 失败事件按 attempts 指数退避重试，达到 `maxAttempts` 后进入 `DEAD`；错误信息复用 `sanitizeJobError()`，不写入 token、cookie 或 API key。
+
+验证：
+
+- `bun --cwd packages/database prisma:generate`
+- `bun --cwd packages/database test`
+- `bun --filter @repo/server test -- outbox`
+- `bun --filter @repo/server build`
+- 子代理规格审核：APPROVED。
+- 子代理代码质量审核：APPROVED；补充了错误脱敏断言和并发 claim loser 测试。
+
+边界：
+
+- Phase 7.9.1 只落地 durable outbox 地基，不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`。
+- 本阶段不迁移现有事件发布点，不新增 outbox dispatcher，不暴露 Prometheus / Grafana 指标。
+- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+- `OutboxEvent.payload` 和 `lastError` 只能保存安全元数据或脱敏错误摘要，不得保存 API key、access token、refresh token、cookie、完整 prompt、完整 RAG chunk、完整模型回答或真实用户私有正文。
 
 ### 2026-07-06 - Phase 7.8.4 RAG Eval Hardening
 
@@ -469,6 +498,7 @@ Phase 6.4 完成：
 - Phase 7.8.2：Hybrid Retrieval 完成，`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
 - Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
 - Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
+- Phase 7.9.1：Durable Outbox 地基完成，`OutboxEvent`、claim / retry / dead-letter 状态机和服务层测试已落地。
 
 ## 当前验证基线
 
@@ -512,7 +542,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Durable outbox / metrics：当事件需要跨进程可靠投递时，把 in-process EventBus 升级为持久化 outbox 或指标系统接入。
+1. Outbox dispatcher / metrics：把 `OutboxEvent` 接入 dispatcher、失败观测和指标系统，让需要跨进程可靠投递的事件逐步从 in-process EventBus 迁移出来。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 3. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。

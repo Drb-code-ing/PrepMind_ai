@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.8.4 已完成，后续继续 Phase 7 工程化增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.9.1 已完成，后续继续 Phase 7 工程化增强。
 
 ## 项目快照
 
@@ -47,6 +47,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、去重融合排序 |
 | Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收脚本 |
 | Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA`、面试博客 |
+| Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
 
 ## 技术栈
 
@@ -158,6 +159,7 @@ mcp -> ai, fsrs, rag, types
 - MemoryAgent：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；`POST /memory-agent/candidates/generate` 基于当前用户聊天偏好信号、错题薄弱点、复习日志和偏好生成去重候选，候选必须由用户在 `/profile` 确认后才成为 `ACTIVE` 记忆；`GET /user-memories`、`PATCH /user-memories/:id`、`DELETE /user-memories/:id` 支持查看、停用、恢复和删除。MemoryAgent 不调用真实模型，不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`，当前不把记忆自动注入 `/api/chat`。
 - Agent Trace：`AgentTraceRun` / `AgentTraceStep` 以 PostgreSQL 为权威来源；`/api/chat` 在有 access token 时 best-effort 写入脱敏 trace，写入失败只影响 `x-prepmind-agent-trace-recorded=false`，不打断流式回答；`/agent-traces` 是在线账号级 API，不进入 Dexie `mutationQueue`，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key；`/agent-trace` 的成本看板只展示 token 与价格表推导出的估算成本。
 - BackgroundJob：`BackgroundJob` 以 PostgreSQL 为权威来源；`GET /background-jobs`、`GET /background-jobs/summary` 与 `GET /background-jobs/:id` 是经过 `JwtAuthGuard` 的账号级只读 API，只返回状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata，不保存完整文件内容、prompt、RAG chunk、API key 或 access token；summary 的 `activeCount` 使用账号级真实 active count，最近失败/跳过/成功摘要基于最新 50 条任务窗口。
+- Durable Outbox：`OutboxEvent` 以 PostgreSQL 为权威来源，用于持久化内部事件的脱敏 metadata、payload hash、幂等键、attempts、锁定信息和重试时间；`OutboxService` 提供 enqueue、claim、success、retry 和 dead-letter 状态机。Phase 7.9.1 只落地 outbox 地基，不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`，也不自动迁移现有事件发布点；payload 和 lastError 只能保存安全元数据或脱敏错误摘要，不得保存 API key、access token、refresh token、cookie、完整 prompt、完整 RAG chunk、完整模型回答或真实用户私有正文。
 - API / worker 进程边界：`SERVER_ROLE=api` 使用 Nest HTTP app，提供 REST API、`/health`、Swagger 和业务入口，但不消费 BullMQ；`SERVER_ROLE=worker` 使用 `NestFactory.createApplicationContext()`，只初始化模块和 BullMQ processor，不监听 HTTP 端口、不提供 `/health`；`SERVER_ROLE=both` 保留本地兼容模式。worker-only 的健康判断依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
 - Worker Observability：`GET /worker-observability/summary` 经过 `JwtAuthGuard` 且受 `WORKER_OBSERVABILITY_ENABLED` 控制，默认只在非 production 开启；production 默认隐藏该接口，避免普通登录用户看到系统级队列和 worker 拓扑信号。该接口组合系统级 BullMQ `knowledge-document-processing` queue counts、Redis worker heartbeat 和账号级 `BackgroundJob` summary，输出 `healthy / degraded / attention / idle` 信号；queue counts 是系统级队列状态，BackgroundJob summary 是当前账号最近任务状态，两者语义不同但互补。heartbeat 只保存不含 hostname / pid 的 opaque worker id、role、队列名和 startedAt / lastSeenAt，不保存文件内容、prompt、RAG chunk、API key、token 或用户输入。`/knowledge` 页面在有资料或处理轮询时展示紧凑健康状态条；该能力只读，不进入 Dexie `mutationQueue`。
 - OpenAPI 调试文档：Phase 7.4 新增 Swagger / OpenAPI debug docs，`/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭，显式 `SWAGGER_ENABLED=true` 只用于受控环境、内网或临时诊断。Phase 7.5 为注册、登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入补充中文描述与安全 request body 示例。Swagger 只描述和展示 REST API，不改变认证、鉴权或业务 contract；受保护接口仍必须经过 `JwtAuthGuard`。全局响应 envelope 语义为成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`；字段约束仍以 `@repo/types` Zod schema 为准。
@@ -203,7 +205,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分，以及 Worker Observability 健康摘要；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / 事件总线。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要，以及 Durable Outbox 持久事件地基；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
 - 从 Phase 7.6 起，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀；历史带日期文件暂不批量重命名，避免破坏已有引用。
 - 向量索引用 raw SQL 创建，Prisma 不直接支持向量索引。
 
@@ -211,4 +213,4 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7 后续：durable outbox / 指标接入、更多后台任务生产化和 worker metrics / readiness 增强。
+1. Phase 7 后续：outbox dispatcher / 指标接入、更多后台任务生产化和 worker metrics / readiness 增强。
