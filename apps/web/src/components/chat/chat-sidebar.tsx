@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { useLogout } from '@/hooks/use-auth';
+import { getLogoutConfirmationView } from '@/lib/logout-confirmation';
 import { useUserStore } from '@/stores/userStore';
 
 interface ChatSidebarProps {
@@ -38,6 +40,15 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const router = useRouter();
   const currentUser = useUserStore((state) => state.currentUser);
   const logout = useLogout();
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const logoutConfirmation = getLogoutConfirmationView({
+    confirming: logoutConfirmOpen,
+    pending: logout.isPending,
+  });
+  const handleClose = () => {
+    setLogoutConfirmOpen(false);
+    onClose();
+  };
 
   return (
     <>
@@ -45,7 +56,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
         <button
           type="button"
           className="fixed inset-0 z-50 cursor-default bg-[#2b2335]/25 backdrop-blur-[2px]"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="关闭导航遮罩"
         />
       ) : null}
@@ -75,7 +86,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
                   aria-label="关闭导航"
                 >
@@ -103,7 +114,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        onClick={onClose}
+                        onClick={handleClose}
                         className={`tap-target group flex items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm transition-all active:scale-[0.99] ${
                           isActive
                             ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-[#bdeee5]'
@@ -133,21 +144,54 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             </nav>
 
             <div className="border-t border-[var(--pm-line)] px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button
-                type="button"
-                disabled={logout.isPending}
-                onClick={async () => {
-                  await logout.mutateAsync().catch(() => undefined);
-                  onClose();
-                  router.replace('/login');
-                }}
-                className="tap-target flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.99] disabled:opacity-60"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
-                  <LogOut className="h-5 w-5" />
-                </span>
-                {logout.isPending ? '退出中...' : '退出登录'}
-              </button>
+              {logoutConfirmation.state === 'confirming' ? (
+                <div className="rounded-[1.15rem] bg-red-50/80 p-3 ring-1 ring-red-100">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-red-600 ring-1 ring-red-100">
+                      <LogOut className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-red-700">确认退出当前账号？</p>
+                      <p className="mt-1 text-xs leading-5 text-red-600">
+                        {logoutConfirmation.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLogoutConfirmOpen(false)}
+                      className="tap-target min-h-11 rounded-2xl bg-white text-sm font-semibold text-[var(--pm-ink)] ring-1 ring-red-100 transition-all hover:bg-red-50 active:scale-[0.98]"
+                    >
+                      {logoutConfirmation.secondaryLabel}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={logout.isPending}
+                      onClick={async () => {
+                        await logout.mutateAsync().catch(() => undefined);
+                        handleClose();
+                        router.replace('/login');
+                      }}
+                      className="tap-target min-h-11 rounded-2xl bg-red-600 text-sm font-semibold text-white ring-1 ring-red-600 transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      {logoutConfirmation.primaryLabel}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={logout.isPending}
+                  onClick={() => setLogoutConfirmOpen(true)}
+                  className="tap-target flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.99] disabled:opacity-60"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
+                    <LogOut className="h-5 w-5" />
+                  </span>
+                  {logoutConfirmation.primaryLabel}
+                </button>
+              )}
             </div>
           </>
         ) : null}
