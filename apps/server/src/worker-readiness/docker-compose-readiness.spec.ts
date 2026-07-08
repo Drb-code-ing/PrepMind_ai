@@ -6,6 +6,31 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
     expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
+    expect(dockerfile).toContain(
+      'COPY packages/agent/package.json ./packages/agent/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/ai/package.json ./packages/ai/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/database/package.json ./packages/database/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/fsrs/package.json ./packages/fsrs/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/mcp/package.json ./packages/mcp/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/rag/package.json ./packages/rag/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/types/package.json ./packages/types/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/ui/package.json ./packages/ui/',
+    );
     expect(dockerfile).not.toContain('pnpm-lock.yaml');
     expect(dockerfile).not.toContain('pnpm-workspace.yaml');
     expect(dockerfile).toContain('bun install --frozen-lockfile');
