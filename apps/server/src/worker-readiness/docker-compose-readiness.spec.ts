@@ -35,7 +35,19 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).not.toContain('pnpm-workspace.yaml');
     expect(dockerfile).toContain('bun install --frozen-lockfile');
     expect(dockerfile).toContain('bun --filter @repo/server build');
-    expect(dockerfile).toContain('CMD ["node", "dist/src/main.js"]');
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/node_modules ./node_modules',
+    );
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/apps/server/dist ./apps/server/dist',
+    );
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules',
+    );
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/packages ./packages',
+    );
+    expect(dockerfile).toContain('CMD ["bun", "apps/server/dist/src/main.js"]');
   });
 
   it('configures the worker service to run the readiness CLI', () => {
@@ -43,7 +55,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const workerService = extractYamlSection(compose, '  worker:', 2);
 
     expect(workerService).toContain('healthcheck:');
-    expect(workerService).toContain('node dist/scripts/worker-readiness.js');
+    expect(workerService).toContain(
+      'bun apps/server/dist/scripts/worker-readiness.js',
+    );
     expect(workerService).toContain('WORKER_READINESS_CLI_TIMEOUT_MS');
     expect(workerService).toContain('interval:');
     expect(workerService).toContain('timeout:');

@@ -45,9 +45,10 @@
 
 完成内容：
 - `docker/docker-compose.dev.yml` 的 `worker` service 新增 healthcheck。
-- 容器内 healthcheck 使用构建产物命令 `node dist/scripts/worker-readiness.js`，不依赖本机 Bun workspace。
+- 容器内 healthcheck 使用 runner 构建产物命令 `bun apps/server/dist/scripts/worker-readiness.js`，不依赖本机 Bun workspace CLI。
 - `worker` service 新增 `WORKER_READINESS_CLI_TIMEOUT_MS=${WORKER_READINESS_CLI_TIMEOUT_MS:-5000}`，healthcheck 默认 `interval=30s`、`timeout=10s`、`retries=3`、`start_period=30s`。
 - 新增 `docker-compose-readiness.spec.ts`，回归验证 worker service 必须配置 readiness healthcheck 和超时参数。
+- 修复 server Dockerfile 的 Bun workspace 镜像布局：deps 阶段复制完整 workspace package manifests，runner 阶段保留根 `node_modules`、`apps/server/node_modules` 和 `packages`，避免内部 `@repo/*` 包或 `.bun` store 链接在容器内解析失败。
 - 更新 `docs/dev-start.md` 和 `AGENTS.md`，说明本机 CLI 与容器 healthcheck 的命令区别，以及如何用 `docker compose ... ps` 查看健康状态。
 
 验收结果：
@@ -61,7 +62,7 @@
 边界：
 - 本轮不改 Chat / RAG prompt / Tutor 输出 / live model 调用链路，因此不需要真实模型 smoke。
 - 本轮只接入本地 Docker Compose worker healthcheck，不引入 Kubernetes readiness probe、Prometheus 指标或生产部署平台配置。
-- Docker 容器内使用 `node dist/scripts/worker-readiness.js`；本机开发仍使用 `bun --filter @repo/server readiness:worker`。
+- Docker 容器内使用 `bun apps/server/dist/scripts/worker-readiness.js`；本机开发仍使用 `bun --filter @repo/server readiness:worker`。
 
 ### 2026-07-08 - Phase 7.11 Worker Readiness
 
@@ -696,7 +697,7 @@ Phase 6.4 完成：
 - Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
 - Phase 7.10：Outbox Ops 后端闭环完成，脱敏列表/详情、安全 requeue、feature gate 前置和 e2e 验收已落地。
 - Phase 7.11：Worker Readiness 完成，`/worker-readiness` 和 `bun --filter @repo/server readiness:worker` 已落地，用于部署前机器检查，不替代 `/health` 或 `/worker-observability/summary`。
-- Phase 7.12：Docker Worker Healthcheck 完成，`worker` service 已接入容器内 `node dist/scripts/worker-readiness.js` readiness 检查，可通过 `docker compose ... ps` 查看 `healthy / unhealthy`。
+- Phase 7.12：Docker Worker Healthcheck 完成，`worker` service 已接入容器内 `bun apps/server/dist/scripts/worker-readiness.js` readiness 检查，可通过 `docker compose ... ps` 查看 `healthy / unhealthy`。
 
 ## 当前验证基线
 

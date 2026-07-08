@@ -287,7 +287,7 @@ Phase 7.11 只新增 worker readiness HTTP 入口和 CLI，不改变 Chat、RAG 
 
 Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker` service healthcheck，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
 
-- Docker healthcheck 在容器内运行 `node dist/scripts/worker-readiness.js`，不是本机 Bun workspace 命令。
+- Docker healthcheck 在容器内运行 `bun apps/server/dist/scripts/worker-readiness.js`，不是本机 Bun workspace script。
 - 本机开发仍使用 `bun --filter @repo/server readiness:worker`。
 - healthcheck 只能作为容器级 readiness 信号，不得消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
 - 验收重点是 compose 配置合法、worker service healthcheck 存在、命令指向构建产物、timeout / retries / start period 合理。

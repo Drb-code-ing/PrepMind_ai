@@ -27,10 +27,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 
-COPY --from=builder /app/apps/server/dist ./dist
-COPY --from=builder /app/apps/server/node_modules ./node_modules
-COPY --from=builder /app/apps/server/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages ./packages
 
 USER nestjs
 EXPOSE 3001
-CMD ["node", "dist/src/main.js"]
+CMD ["bun", "apps/server/dist/src/main.js"]

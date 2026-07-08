@@ -132,10 +132,10 @@ docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres 
 Phase 7.12 起，`worker` service 自带 Docker healthcheck。它在容器内运行的是构建产物：
 
 ```text
-node dist/scripts/worker-readiness.js
+bun apps/server/dist/scripts/worker-readiness.js
 ```
 
-不要把它和本机命令 `bun --filter @repo/server readiness:worker` 混在一起：本机开发用 Bun workspace，容器内 runner 镜像只保证有 Node 和已经构建好的 `dist`。
+不要把它和本机命令 `bun --filter @repo/server readiness:worker` 混在一起：本机开发命令会走 Bun workspace script，容器内 healthcheck 直接执行 runner 镜像里的构建产物。server 镜像会保留根 `node_modules`、`apps/server/node_modules` 和 `packages`，保证 Bun workspace 依赖与 `@repo/*` 包在容器运行时可解析。
 
 查看 worker 容器健康状态：
 
