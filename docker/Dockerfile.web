@@ -1,18 +1,28 @@
-FROM node:20-alpine AS base
-RUN corepack enable
+FROM oven/bun:1.3.14-alpine AS base
 
 FROM base AS deps
 WORKDIR /app
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY bun.lock package.json ./
+COPY apps/server/package.json ./apps/server/
 COPY apps/web/package.json ./apps/web/
-RUN pnpm install --frozen-lockfile
+COPY packages/agent/package.json ./packages/agent/
+COPY packages/ai/package.json ./packages/ai/
+COPY packages/database/package.json ./packages/database/
+COPY packages/fsrs/package.json ./packages/fsrs/
+COPY packages/mcp/package.json ./packages/mcp/
+COPY packages/rag/package.json ./packages/rag/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+RUN bun install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/apps ./apps
+COPY --from=deps /app/packages ./packages
 COPY . .
-RUN pnpm --filter @repo/web build
+RUN bun --cwd packages/database prisma:generate
+RUN bun --filter @repo/web build
 
 FROM base AS runner
 WORKDIR /app
@@ -26,4 +36,5 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "apps/web/server.js"]
+ENV HOSTNAME=0.0.0.0
+CMD ["bun", "apps/web/server.js"]

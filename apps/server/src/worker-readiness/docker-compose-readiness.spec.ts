@@ -81,6 +81,32 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(packageJson.scripts['start:prod']).toBe('bun dist/src/main.js');
   });
 
+  it('keeps the web Dockerfile aligned with the Bun workspace and Next standalone output', () => {
+    const dockerfile = readRepoFile('docker/Dockerfile.web');
+
+    expect(dockerfile).toContain('FROM oven/bun:1.3.14-alpine AS base');
+    expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
+    expect(dockerfile).toContain(
+      'COPY packages/agent/package.json ./packages/agent/',
+    );
+    expect(dockerfile).toContain(
+      'COPY packages/types/package.json ./packages/types/',
+    );
+    expect(dockerfile).not.toContain('pnpm-lock.yaml');
+    expect(dockerfile).not.toContain('pnpm-workspace.yaml');
+    expect(dockerfile).toContain('bun install --frozen-lockfile');
+    expect(dockerfile).toContain('bun --filter @repo/web build');
+    expect(dockerfile).toContain('COPY --from=builder /app/apps/web/.next/standalone ./');
+    expect(dockerfile).toContain('CMD ["bun", "apps/web/server.js"]');
+  });
+
+  it('configures Next to emit standalone assets for the web Docker image', () => {
+    const nextConfig = readRepoFile('apps/web/next.config.ts');
+
+    expect(nextConfig).toContain("output: 'standalone'");
+  });
+
   it('configures the worker service to run the readiness CLI', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const serverService = extractYamlSection(compose, '  server:', 2);
