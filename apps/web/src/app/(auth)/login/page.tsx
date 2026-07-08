@@ -1,21 +1,14 @@
 'use client';
 
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { useLogin } from '@/hooks/use-auth';
-import {
-  getAuthAgreementError,
-  isAuthSubmitDisabled,
-} from '@/lib/auth-submit-state';
-
-type FieldError = string | null | undefined;
-
-function FieldHint({ error }: { error: FieldError }) {
-  if (!error) return null;
-  return <p className="mt-1.5 text-xs font-medium text-red-500">{error}</p>;
-}
+import type { FieldError } from '@/lib/auth-form-validation';
+import { validateAuthEmail, validateLoginPassword } from '@/lib/auth-form-validation';
+import { getAuthAgreementError, isAuthSubmitDisabled } from '@/lib/auth-submit-state';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<{ email?: FieldError; password?: FieldError }>({});
+  const [agreementError, setAgreementError] = useState<FieldError>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,17 +25,14 @@ export default function LoginPage() {
     setServerError(null);
 
     const nextErrors = {
-      email: validateEmail(email),
+      email: validateAuthEmail(email),
       password: validateLoginPassword(password),
     };
+    const nextAgreementError = getAuthAgreementError(agreed);
     setErrors(nextErrors);
+    setAgreementError(nextAgreementError);
 
-    if (nextErrors.email || nextErrors.password) return;
-    const agreementError = getAuthAgreementError(agreed);
-    if (agreementError) {
-      setServerError(agreementError);
-      return;
-    }
+    if (nextErrors.email || nextErrors.password || nextAgreementError) return;
 
     try {
       await login.mutateAsync({
@@ -57,100 +48,77 @@ export default function LoginPage() {
   const submitting = login.isPending;
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-6 sm:flex-none">
-      <div className="pm-enter mb-6 text-center">
-        <div className="pm-mascot-float mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[#fff7d6] text-xl font-black text-[#247269] shadow-sm ring-1 ring-[#f3e6a8]">
-          PM
-        </div>
-        <p className="mt-4 text-xs font-semibold text-[var(--pm-muted)]">PrepMind AI</p>
-        <h1 className="mt-1 text-3xl font-black leading-tight text-[var(--pm-ink)]">
-          回到你的学习流
-        </h1>
-        <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[var(--pm-muted)]">
-          继续拍照识题、追问思路和整理错题卡。
-        </p>
-      </div>
+    <main className="mx-auto flex h-full w-full max-w-[27rem] flex-col justify-center">
+      <AuthHeader title="回到学习流" subtitle="继续聊天、识题和复盘错题。" />
 
-      <section className="pm-glass-card pm-enter rounded-[1.7rem] p-4">
-        <div className="mb-4 rounded-[1.25rem] bg-white/68 p-1 ring-1 ring-[var(--pm-line)]">
-          <div className="rounded-[1rem] bg-[#eafff9] py-2.5 text-center text-sm font-semibold text-[#247269] ring-1 ring-[#bdeee5]">
-            邮箱登录
-          </div>
-        </div>
-
-        <div className="mb-4 rounded-[1.25rem] border border-[#bdeee5] bg-[#eafff9]/72 px-4 py-3 text-xs leading-5 text-[#4f6f68]">
-          手机验证码登录暂未开放，请先使用邮箱登录。
-        </div>
-
-        {serverError && (
-          <div className="mb-4 rounded-[1.25rem] border border-red-100 bg-red-50/90 px-4 py-3 text-sm font-medium text-red-600">
-            {serverError}
-          </div>
-        )}
-
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <section className="pm-auth-panel pm-enter rounded-[1.35rem] p-[clamp(0.8rem,2dvh,1rem)]">
+        <div className="mb-3 flex items-center justify-between border-b border-[#232323]/10 pb-2.5">
           <div>
-            <div className={inputClass(errors.email)}>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="请输入邮箱"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setErrors((prev) => ({ ...prev, email: null }));
-                }}
-                className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--pm-muted)]"
-              />
-            </div>
-            <FieldHint error={errors.email} />
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#1d6e65]">
+              EMAIL ACCESS
+            </p>
+            <p className="mt-0.5 text-xs text-[#6e6678]">手机号登录暂未开放，请使用邮箱。</p>
           </div>
+          <ShieldCheck className="h-5 w-5 text-[#1d6e65]" aria-hidden="true" />
+        </div>
 
-          <div>
-            <div className={inputClass(errors.password)}>
-              <input
-                type="password"
-                autoComplete="current-password"
-                placeholder="请输入密码"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setErrors((prev) => ({ ...prev, password: null }));
-                }}
-                className="tap-target flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--pm-muted)]"
-              />
-            </div>
-            <FieldHint error={errors.password} />
-          </div>
+        <ErrorBanner message={serverError} />
 
-          <label className="mt-1 flex items-start gap-2 text-xs leading-5 text-[var(--pm-muted)]">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--pm-line)] accent-[#6fcbbf]"
-            />
-            <span>
-              登录即表示同意
-              <span className="font-semibold text-[#247269]">《用户协议》</span> 和{' '}
-              <span className="font-semibold text-[#247269]">《隐私政策》</span>
-            </span>
-          </label>
+        <form className="flex flex-col gap-2" noValidate onSubmit={handleSubmit}>
+          <AuthField
+            id="login-email"
+            error={errors.email}
+            icon={<Mail className="h-4 w-4" aria-hidden="true" />}
+            inputProps={{
+              type: 'email',
+              inputMode: 'email',
+              autoComplete: 'email',
+              placeholder: '邮箱地址',
+              value: email,
+              onChange: (e) => {
+                setEmail(e.target.value);
+                setErrors((prev) => ({ ...prev, email: null }));
+              },
+            }}
+          />
 
-          <button
-            type="submit"
-            disabled={isAuthSubmitDisabled({ submitting })}
-            className="tap-target mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-[#86dccf] text-sm font-semibold text-[#173b37] shadow-sm transition-all hover:bg-[#70cfc1] active:scale-[0.98] disabled:bg-white/70 disabled:text-[var(--pm-muted)] disabled:ring-1 disabled:ring-[var(--pm-line)] disabled:active:scale-100"
-          >
-            {submitting ? '登录中...' : '登录'}
-          </button>
+          <AuthField
+            id="login-password"
+            error={errors.password}
+            icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />}
+            inputProps={{
+              type: 'password',
+              autoComplete: 'current-password',
+              placeholder: '密码',
+              value: password,
+              onChange: (e) => {
+                setPassword(e.target.value);
+                setErrors((prev) => ({ ...prev, password: null }));
+              },
+            }}
+          />
+
+          <AgreementRow
+            checked={agreed}
+            error={agreementError}
+            actionText="登录"
+            onChange={(checked) => {
+              setAgreed(checked);
+              if (checked) setAgreementError(null);
+            }}
+          />
+
+          <SubmitButton submitting={submitting} text="登录" loadingText="登录中..." />
         </form>
 
-        <div className="mt-5 text-center">
-          <span className="text-sm text-[var(--pm-muted)]">没有账号？</span>
-          <Link href="/register" className="tap-target ml-1 text-sm font-semibold text-[#247269]">
+        <div className="mt-3 flex items-center justify-center text-sm">
+          <span className="text-[#756d82]">没有账号？</span>
+          <Link
+            href="/register"
+            className="tap-target ml-1 inline-flex items-center font-semibold text-[#165f58]"
+          >
             立即注册
+            <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </section>
@@ -158,21 +126,130 @@ export default function LoginPage() {
   );
 }
 
-function inputClass(error: FieldError) {
-  return `flex items-center rounded-2xl border bg-white/80 px-4 py-3 transition-all ${
+function AuthHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="pm-enter mb-[clamp(0.65rem,1.8dvh,1rem)] text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[1rem] border border-[#161616]/10 bg-[#fff4bc] text-base font-black text-[#165f58] shadow-[0_10px_28px_rgba(28,89,81,0.12)]">
+        PM
+      </div>
+      <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#756d82]">
+        PrepMind AI
+      </p>
+      <h1 className="mt-0.5 text-[clamp(1.55rem,6vw,2rem)] font-black leading-tight text-[#23192f]">
+        {title}
+      </h1>
+      <p className="mt-1 text-sm leading-5 text-[#756d82]">{subtitle}</p>
+    </div>
+  );
+}
+
+function AuthField({
+  id,
+  error,
+  icon,
+  inputProps,
+}: {
+  id: string;
+  error: FieldError | undefined;
+  icon: React.ReactNode;
+  inputProps: React.InputHTMLAttributes<HTMLInputElement>;
+}) {
+  const hintId = `${id}-hint`;
+
+  return (
+    <div>
+      <div className={inputClass(error)}>
+        <span className={error ? 'text-red-500' : 'text-[#1d6e65]'}>{icon}</span>
+        <input
+          id={id}
+          aria-invalid={!!error}
+          aria-describedby={hintId}
+          {...inputProps}
+          className="tap-target h-11 min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#251b30] outline-none placeholder:text-[#8a8095]"
+        />
+      </div>
+      <FieldHint id={hintId} error={error} />
+    </div>
+  );
+}
+
+function AgreementRow({
+  checked,
+  error,
+  actionText,
+  onChange,
+}: {
+  checked: boolean;
+  error: FieldError;
+  actionText: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div>
+      <label
+        className={`flex min-h-8 items-start gap-2 text-xs leading-5 ${
+          error ? 'text-red-600' : 'text-[#756d82]'
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#232323]/20 accent-[#17766b]"
+        />
+        <span>
+          {actionText}即表示同意
+          <span className="font-semibold text-[#165f58]">《用户协议》</span> 和{' '}
+          <span className="font-semibold text-[#165f58]">《隐私政策》</span>
+        </span>
+      </label>
+      <FieldHint id="login-agreement-hint" error={error} />
+    </div>
+  );
+}
+
+function SubmitButton({
+  submitting,
+  text,
+  loadingText,
+}: {
+  submitting: boolean;
+  text: string;
+  loadingText: string;
+}) {
+  return (
+    <button
+      type="submit"
+      disabled={isAuthSubmitDisabled({ submitting })}
+      className="tap-target mt-1 flex h-11 w-full items-center justify-center rounded-[1rem] bg-[#151515] text-sm font-bold text-white shadow-[0_14px_30px_rgba(21,21,21,0.16)] transition-all hover:bg-[#272727] active:translate-y-px disabled:bg-[#d7d2dc] disabled:text-[#756d82] disabled:shadow-none disabled:active:translate-y-0"
+    >
+      {submitting ? loadingText : text}
+    </button>
+  );
+}
+
+function ErrorBanner({ message }: { message: string | null }) {
+  if (!message) return null;
+
+  return (
+    <div className="mb-3 rounded-[1rem] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold leading-5 text-red-600">
+      {message}
+    </div>
+  );
+}
+
+function FieldHint({ id, error }: { id: string; error: FieldError | undefined }) {
+  return (
+    <p id={id} className="min-h-[1rem] pt-1 text-[11px] font-semibold leading-none text-red-500">
+      {error ?? ''}
+    </p>
+  );
+}
+
+function inputClass(error: FieldError | undefined) {
+  return `flex h-11 items-center gap-2 rounded-[1rem] border bg-white/88 px-3 transition-all ${
     error
-      ? 'border-red-300 ring-4 ring-red-50'
-      : 'border-[var(--pm-line)] focus-within:border-[#6fcbbf] focus-within:ring-4 focus-within:ring-[#d8f8f0]'
+      ? 'border-red-300 ring-2 ring-red-50'
+      : 'border-[#232323]/12 focus-within:border-[#17766b] focus-within:ring-2 focus-within:ring-[#d8f8f0]'
   }`;
-}
-
-function validateEmail(value: string): FieldError {
-  if (!value.trim()) return '请输入邮箱';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return '请输入正确的邮箱格式';
-  return null;
-}
-
-function validateLoginPassword(value: string): FieldError {
-  if (!value) return '请输入密码';
-  return null;
 }
