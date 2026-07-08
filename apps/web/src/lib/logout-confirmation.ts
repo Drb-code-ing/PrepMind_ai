@@ -9,6 +9,7 @@ export type LogoutConfirmationView = {
   state: LogoutConfirmationState;
   primaryLabel: string;
   secondaryLabel: string | null;
+  title: string | null;
   description: string | null;
 };
 
@@ -21,6 +22,7 @@ export function getLogoutConfirmationView({
       state: 'pending',
       primaryLabel: '退出中...',
       secondaryLabel: null,
+      title: '正在退出',
       description: '正在安全退出当前账号。',
     };
   }
@@ -28,9 +30,10 @@ export function getLogoutConfirmationView({
   if (confirming) {
     return {
       state: 'confirming',
-      primaryLabel: '确认退出',
-      secondaryLabel: '取消',
-      description: '退出后需要重新登录才能继续同步学习记录。',
+      primaryLabel: '退出登录',
+      secondaryLabel: '继续学习',
+      title: '退出当前账号？',
+      description: '本机登录状态会清除，学习记录仍会保存在账号中。',
     };
   }
 
@@ -38,6 +41,7 @@ export function getLogoutConfirmationView({
     state: 'idle',
     primaryLabel: '退出登录',
     secondaryLabel: null,
+    title: null,
     description: null,
   };
 }

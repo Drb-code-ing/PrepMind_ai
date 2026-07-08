@@ -144,58 +144,78 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
             </nav>
 
             <div className="border-t border-[var(--pm-line)] px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {logoutConfirmation.state === 'confirming' ? (
-                <div className="rounded-[1.15rem] bg-red-50/80 p-3 ring-1 ring-red-100">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-red-600 ring-1 ring-red-100">
-                      <LogOut className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-red-700">确认退出当前账号？</p>
-                      <p className="mt-1 text-xs leading-5 text-red-600">
-                        {logoutConfirmation.description}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setLogoutConfirmOpen(false)}
-                      className="tap-target min-h-11 rounded-2xl bg-white text-sm font-semibold text-[var(--pm-ink)] ring-1 ring-red-100 transition-all hover:bg-red-50 active:scale-[0.98]"
-                    >
-                      {logoutConfirmation.secondaryLabel}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={logout.isPending}
-                      onClick={async () => {
-                        await logout.mutateAsync().catch(() => undefined);
-                        handleClose();
-                        router.replace('/login');
-                      }}
-                      className="tap-target min-h-11 rounded-2xl bg-red-600 text-sm font-semibold text-white ring-1 ring-red-600 transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-60"
-                    >
-                      {logoutConfirmation.primaryLabel}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={logout.isPending}
-                  onClick={() => setLogoutConfirmOpen(true)}
-                  className="tap-target flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.99] disabled:opacity-60"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
-                    <LogOut className="h-5 w-5" />
-                  </span>
-                  {logoutConfirmation.primaryLabel}
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={logout.isPending}
+                onClick={() => setLogoutConfirmOpen(true)}
+                className="tap-target flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.99] disabled:opacity-60"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
+                  <LogOut className="h-5 w-5" />
+                </span>
+                {logout.isPending ? '退出中...' : '退出登录'}
+              </button>
             </div>
           </>
         ) : null}
       </aside>
+
+      {logoutConfirmation.state !== 'idle' ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-5">
+          <button
+            type="button"
+            aria-label="关闭退出确认"
+            className="absolute inset-0 cursor-default bg-[#221b2c]/35 backdrop-blur-[3px]"
+            onClick={() => {
+              if (!logout.isPending) setLogoutConfirmOpen(false);
+            }}
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+            className="relative w-full max-w-[20.5rem] overflow-hidden rounded-[1.75rem] border border-white/80 bg-[#fffdf8] p-4 text-center shadow-[0_26px_80px_rgba(43,35,53,0.28)]"
+          >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_50%_0%,rgba(134,220,207,0.22),transparent_62%)]" />
+            <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff3f1] text-[#c84840] ring-1 ring-[#ffd9d3]">
+              <LogOut className="h-6 w-6" />
+            </div>
+            <h2
+              id="logout-confirm-title"
+              className="relative mt-4 text-lg font-black leading-tight text-[var(--pm-ink)]"
+            >
+              {logoutConfirmation.title}
+            </h2>
+            <p className="relative mx-auto mt-2 max-w-[16.5rem] text-sm leading-6 text-[var(--pm-muted)]">
+              {logoutConfirmation.description}
+            </p>
+            <div className="relative mt-5 flex flex-col gap-2">
+              {logoutConfirmation.secondaryLabel ? (
+                <button
+                  type="button"
+                  disabled={logout.isPending}
+                  onClick={() => setLogoutConfirmOpen(false)}
+                  className="tap-target min-h-12 rounded-2xl bg-[#2b2335] px-4 text-sm font-bold text-white shadow-[0_10px_24px_rgba(43,35,53,0.18)] transition-all hover:bg-[#3a3045] active:scale-[0.98] disabled:opacity-60"
+                >
+                  {logoutConfirmation.secondaryLabel}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={logout.isPending}
+                onClick={async () => {
+                  await logout.mutateAsync().catch(() => undefined);
+                  handleClose();
+                  router.replace('/login');
+                }}
+                className="tap-target min-h-12 rounded-2xl bg-white px-4 text-sm font-bold text-[#c84840] ring-1 ring-[#ffd9d3] transition-all hover:bg-[#fff3f1] active:scale-[0.98] disabled:opacity-60"
+              >
+                {logoutConfirmation.primaryLabel}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }
