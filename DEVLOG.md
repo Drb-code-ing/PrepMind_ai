@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-07
+更新时间：2026-07-08
 
-当前阶段：Phase 7.10 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.11 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -34,8 +34,38 @@
 | Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
 | Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
 | Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue |
+| Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI readiness 命令 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.11 Worker Readiness
+
+本轮目标：在已有 `/health` 和 `/worker-observability/summary` 之外，补一个更适合机器和部署系统使用的 worker readiness 判断，回答“当前后台 worker 链路能不能接流量 / 能不能通过部署前检查”。
+
+完成内容：
+- 新增 `@repo/types/api/worker-readiness` contract，定义 `ready / degraded / not_ready`、各检查项状态、queue counts、worker heartbeat 摘要、outbox backlog 摘要和 issues。
+- 新增 `WORKER_READINESS_ENABLED`，默认非 production 开启、production 关闭；HTTP 入口 `GET /worker-readiness` 使用 feature gate + `JwtAuthGuard`，关闭时在认证前隐藏为 404。
+- 新增 `WorkerReadinessService`，组合 Redis / BullMQ queue counts、worker heartbeat 和 outbox summary，区分 queue 模式硬失败与 inline 模式 warning。
+- 新增 `WorkerReadinessModule`，通过显式 factory 注入 BullMQ queue、`OutboxMetricsService` 和 `ConfigService`，避免 Nest runtime DI 把泛型配置参数识别成 `Object`。
+- 新增 CLI：`bun --filter @repo/server readiness:worker`。CLI 使用最小只读 Nest module，不导入 `AppModule`，不启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher。
+- CLI 增加有界 timeout 和受控错误输出：ready 退出码 `0`，degraded / not ready 退出码 `1`，脚本异常、配置错误或超时退出码 `2`；输出不打印原始依赖错误、连接串、payload、prompt、chunk、API key、token 或 cookie。
+- 明确三类健康入口分工：`/health` 是 API liveness，`/worker-observability/summary` 是开发者调试观测面，`/worker-readiness` / CLI 是机器友好的部署前 readiness。
+
+验收结果：
+- `bun --filter @repo/server test -- env`
+- `bun --cwd packages/types typecheck`
+- `bun packages/types/tests/worker-readiness.test.mts`
+- `bun --filter @repo/server test -- worker-readiness`
+- `bun --cwd apps/server eslint src/worker-readiness scripts/worker-readiness.ts`
+- `bun --filter @repo/server build`
+- `git diff --check`
+- 手动 CLI smoke：Redis 未启动时 `bun --filter @repo/server readiness:worker` 返回退出码 `2`，只输出受控失败文案，不打印 raw `AggregateError`。
+
+边界：
+- 本轮不新增前端页面，不改变 Chat / RAG prompt / Tutor 输出 / live model 调用链路，因此不需要真实模型 smoke。
+- Readiness 不替代 `/worker-observability/summary` 的详细排障信息，也不替代 `/health` 的 API liveness。
+- CLI 只读检查，不消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
+- Readiness 输出只能包含安全状态摘要，不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie 或连接串。
 
 ### 2026-07-07 - Phase 7.10 Outbox Ops
 
@@ -640,6 +670,7 @@ Phase 6.4 完成：
 - Phase 7.9.3：Outbox Dispatcher Runner 完成，worker-only 受控 tick、生产默认关闭和防重入执行已落地。
 - Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
 - Phase 7.10：Outbox Ops 后端闭环完成，脱敏列表/详情、安全 requeue、feature gate 前置和 e2e 验收已落地。
+- Phase 7.11：Worker Readiness 完成，`/worker-readiness` 和 `bun --filter @repo/server readiness:worker` 已落地，用于部署前机器检查，不替代 `/health` 或 `/worker-observability/summary`。
 
 ## 当前验证基线
 
@@ -653,6 +684,7 @@ bun --filter @repo/server lint
 bun --filter @repo/server build
 bun --filter @repo/server test
 bun --filter @repo/server test:e2e
+bun --filter @repo/server readiness:worker
 bun --cwd packages/types typecheck
 bun --cwd packages/database test
 bun --cwd packages/fsrs test
@@ -684,7 +716,7 @@ AI 行为验收规则：
 Phase 7 后续优先级：
 
 1. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-2. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
+2. Worker 观测增强：后续按部署形态补 BullMQ metrics、Prometheus 指标和容器 readiness 接入。
 3. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 4. Outbox 生产化：补操作审计表、admin/operator 权限模型、dead-letter 修复工作流和更多业务事件接入。
 

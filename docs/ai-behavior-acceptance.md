@@ -270,3 +270,15 @@ Phase 7.10 只新增后端 outbox 诊断与 requeue 能力，不改变 Chat、RA
 - `lastErrorPreview` 必须复用脱敏逻辑并截断，覆盖 Bearer token、`access_token`、`refresh_token`、`api_key`、`x-api-key`、`Set-Cookie`、`sk-...` 和常见供应商 API key 形态。
 - requeue 只能通过 compare-and-swap 把 `FAILED / DEAD` 事件重置为 `PENDING`；不得直接执行 handler，不得修改 payload，不得支持删除、强制成功、跳过或直接 dispatch。
 - 本阶段的 e2e / 单元 / build 验证足以覆盖；只有后续把 Outbox Ops 接入前端操作台、生产 admin 权限或 Chat/RAG 输出链路时，才需要新增对应 UI / 权限 / live 验收。
+
+## 22. Phase 7.11 Worker Readiness
+
+Phase 7.11 只新增 worker readiness HTTP 入口和 CLI，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
+
+- `/health` 只用于 API liveness；`/worker-observability/summary` 用于开发者排障；`/worker-readiness` 和 `bun --filter @repo/server readiness:worker` 用于机器友好的部署前 readiness。
+- `WORKER_READINESS_ENABLED=false` 时 HTTP 入口必须在认证前隐藏为 404，避免生产默认暴露诊断面。
+- Readiness 只能返回 Redis、BullMQ queue、worker heartbeat 和 outbox 的安全摘要，不得返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie 或连接串。
+- CLI 必须使用最小只读 module，不得导入完整 `AppModule`，不得启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher。
+- CLI 必须有有界 timeout；ready 退出码为 `0`，degraded / not ready 退出码为 `1`，脚本异常、配置错误或超时退出码为 `2`。
+- CLI 输出必须使用受控安全文案，不得打印依赖库原始错误正文、Redis URL、DATABASE_URL、token、cookie、payload、prompt 或 chunk。
+- 本阶段的 contract / env / service / controller / CLI 单元测试、server build、eslint 和手动 CLI smoke 足以覆盖；只有后续把 readiness 结果接入前端 UI、容器编排策略或 Chat/RAG 输出链路时，才需要新增对应 UI / 部署 / live 验收。

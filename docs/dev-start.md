@@ -146,6 +146,44 @@ queue 模式 smoke 建议在浏览器打开 `/knowledge`：上传 TXT / Markdown
 
 如果启用了 Worker Observability，`/knowledge` 会在有资料或处理轮询时展示一个紧凑健康状态条：它会提示 worker 最近是否在线、队列是否有等待/处理中任务、最近任务是否失败。知识库为空且没有处理任务时不显示该状态条，避免把“没有可观测对象”误报成“后台不可用”。
 
+Phase 7.11 之后还可以用 Worker Readiness 做部署前机器检查。它和前面的两个入口分工不同：
+
+- `/health`：只回答 API 进程是否活着，适合 HTTP liveness。
+- `/worker-observability/summary`：给开发者看的详细观测面，适合手动排障。
+- `/worker-readiness` / CLI：给部署系统或本地验收用的 readiness 结论，适合判断 worker 链路现在能不能接任务。
+
+HTTP readiness 入口需要登录态，并受 `WORKER_READINESS_ENABLED` 控制；默认非 production 开启、production 关闭：
+
+```text
+GET http://localhost:3001/worker-readiness
+```
+
+部署前或本地终端可以直接跑 CLI：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:REDIS_URL='redis://127.0.0.1:6379'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+$env:SERVER_ROLE='worker'
+bun --filter @repo/server readiness:worker
+```
+
+退出码语义：
+
+- `0`：`ready`，可通过 readiness。
+- `1`：`degraded` 或 `not_ready`，依赖可读但存在队列、worker 或 outbox 风险。
+- `2`：脚本异常、配置错误或依赖超时。
+
+CLI 默认 10 秒超时，可临时调小方便验证失败路径：
+
+```powershell
+$env:WORKER_READINESS_CLI_TIMEOUT_MS='3000'
+bun --filter @repo/server readiness:worker
+```
+
+CLI 使用最小只读 Nest module，不导入完整 `AppModule`，不会启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher；输出也不会打印连接串、payload、prompt、chunk、API key、token 或 cookie。
+
 启动前端：
 
 ```powershell

@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.10 已完成，后续继续 Phase 7 工程化增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.11 已完成，后续继续 Phase 7 工程化增强。
 
 ## 项目快照
 
@@ -52,6 +52,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
 | Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
 | Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、`FAILED / DEAD -> PENDING` 安全 requeue |
+| Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI readiness 命令 |
 
 ## 技术栈
 
@@ -96,6 +97,7 @@ bun --filter @repo/server build
 bun --filter @repo/server test
 bun --filter @repo/server test:e2e
 bun --filter @repo/server smoke:rag-eval # 需本地 API 与真实或可用 embedding provider 已启动
+bun --filter @repo/server readiness:worker # 需本地 PostgreSQL / Redis 可连接，用于部署前 worker readiness 检查
 bun --cwd packages/types typecheck
 bun --cwd packages/database test
 bun --cwd packages/fsrs test
@@ -111,6 +113,7 @@ bun --cwd packages/fsrs test
 - 知识库处理默认 `KNOWLEDGE_PROCESSING_MODE=inline`，业务处理不投递 BullMQ；需要验证 BullMQ 时设置 `KNOWLEDGE_PROCESSING_MODE=queue`、`REDIS_URL=redis://127.0.0.1:6379`。`SERVER_ROLE=api` 只启动 HTTP API 且不注册 worker processor；`SERVER_ROLE=worker` 只创建 Nest application context、不监听 HTTP 端口并注册 worker processor；`SERVER_ROLE=both` 用于本地一体化开发，HTTP 与 worker 同进程。当前 NestJS 仍会初始化 BullMQ 模块，本地开发建议继续启动 redis。Phase 7.7 起 worker / both 角色会通过 BullMQ Redis 连接写入短 TTL heartbeat，默认 `WORKER_HEARTBEAT_INTERVAL_MS=15000`、`WORKER_HEARTBEAT_TTL_SECONDS=45`，用于 `/worker-observability/summary` 和 `/knowledge` 健康状态条判断 worker 最近是否在线。`WORKER_OBSERVABILITY_ENABLED` 默认非 production 开启、production 关闭；production 仅适合受控内网或临时诊断显式开启。
 - Phase 7.9.3 起 `OutboxDispatcherRunnerService` 会在 `SERVER_ROLE=worker | both` 且 `OUTBOX_DISPATCHER_ENABLED=true` 时按固定间隔调用 `OutboxDispatcherService.dispatchBatch()`；非 production 默认开启，production 默认关闭，生产环境需要显式设置 `OUTBOX_DISPATCHER_ENABLED=true`。可用 `OUTBOX_DISPATCHER_INTERVAL_MS`、`OUTBOX_DISPATCHER_BATCH_SIZE` 和 `OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS` 控制 tick 间隔、批大小和锁超时。runner 不读取 outbox payload、不绕过 handler registry、不新增 HTTP API 或前端 UI。
 - Phase 7.10 起 `OUTBOX_OPS_ENABLED` 控制后端 Outbox Ops 诊断入口；默认非 production 开启、production 关闭。`GET /outbox-events`、`GET /outbox-events/:id` 与 `POST /outbox-events/:id/requeue` 经过 feature gate 和 `JwtAuthGuard`，feature gate 排在认证前，关闭时隐藏为 404。接口只返回脱敏状态、attempts、时间戳、payloadHash、错误码和脱敏错误预览，不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。requeue 只允许 `FAILED / DEAD -> PENDING`，不直接执行 handler，不支持删除、强制成功、跳过、payload 编辑或直接 dispatch。
+- Phase 7.11 起 `WORKER_READINESS_ENABLED` 控制 worker readiness 诊断入口；默认非 production 开启、production 关闭。`GET /worker-readiness` 经过 feature gate 和 `JwtAuthGuard`，关闭时在认证前隐藏为 404。该接口面向机器和部署检查，只返回安全的 Redis / BullMQ queue / worker heartbeat / outbox readiness 摘要，不返回 payload、prompt、chunk、API key、token、cookie 或用户正文。CLI 命令为 `bun --filter @repo/server readiness:worker`，使用最小只读 Nest module，不导入 `AppModule`，不启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher；异常或超时退出码为 2，not ready / degraded 退出码为 1，ready 退出码为 0。
 - Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。Phase 7.5 起核心写接口补充中文说明和安全 request body 示例，便于本地调试与面试讲解。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；默认 live 模型为 `deepseek-v4-flash`，并建议保留 `AI_MAX_INPUT_TOKENS=2500`、`AI_MAX_OUTPUT_TOKENS=1200` 预算上限。
 - 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 调试台切换 mock / live；该开关仅非 production 可见，且不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
@@ -172,6 +175,7 @@ mcp -> ai, fsrs, rag, types
 - Outbox Ops：`GET /outbox-events`、`GET /outbox-events/:id` 和 `POST /outbox-events/:id/requeue` 是受 `OUTBOX_OPS_ENABLED` 与 `JwtAuthGuard` 保护的后端诊断入口，用于本地开发和受控排障。列表与详情只暴露脱敏 DTO；详情中的 `lastErrorPreview` 复用扩展后的 `sanitizeJobError()` 并截断，不泄露常见 API key、access token、refresh token、cookie、`sk-...` key 或供应商 key。分页按 `updatedAt desc, id desc` 使用复合 cursor，避免只按 id 翻页导致漏数据。requeue 使用 `updateMany` 条件更新实现 compare-and-swap，只把 `FAILED / DEAD` 事件重置为 `PENDING`，清理锁与 processedAt，重置 attempts 和 nextRunAt，但不修改 payload、不立即执行 handler。
 - API / worker 进程边界：`SERVER_ROLE=api` 使用 Nest HTTP app，提供 REST API、`/health`、Swagger 和业务入口，但不消费 BullMQ；`SERVER_ROLE=worker` 使用 `NestFactory.createApplicationContext()`，只初始化模块和 BullMQ processor，不监听 HTTP 端口、不提供 `/health`；`SERVER_ROLE=both` 保留本地兼容模式。worker-only 的健康判断依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
 - Worker Observability：`GET /worker-observability/summary` 经过 `JwtAuthGuard` 且受 `WORKER_OBSERVABILITY_ENABLED` 控制，默认只在非 production 开启；production 默认隐藏该接口，避免普通登录用户看到系统级队列和 worker 拓扑信号。该接口组合系统级 BullMQ `knowledge-document-processing` queue counts、Redis worker heartbeat 和账号级 `BackgroundJob` summary，输出 `healthy / degraded / attention / idle` 信号；queue counts 是系统级队列状态，BackgroundJob summary 是当前账号最近任务状态，两者语义不同但互补。heartbeat 只保存不含 hostname / pid 的 opaque worker id、role、队列名和 startedAt / lastSeenAt，不保存文件内容、prompt、RAG chunk、API key、token 或用户输入。`/knowledge` 页面在有资料或处理轮询时展示紧凑健康状态条；该能力只读，不进入 Dexie `mutationQueue`。
+- Worker Readiness：`GET /worker-readiness` 和 `bun --filter @repo/server readiness:worker` 用于回答“当前 worker 链路能不能接生产流量 / 能不能作为部署 readiness 通过”。它和 `/health`、`/worker-observability/summary` 分工不同：`/health` 是 API 进程 liveness；`/worker-observability/summary` 是给开发者看的详细观测面；readiness 是机器友好的部署前结论。readiness 组合 Redis / BullMQ queue counts、worker heartbeat 和 outbox summary，输出 `ready / degraded / not_ready`。CLI 使用最小只读 module，不导入 `AppModule`，避免启动普通应用副作用；输出只包含安全摘要与 issues，不打印原始依赖错误、连接串、payload、prompt、chunk、API key、token 或 cookie。
 - OpenAPI 调试文档：Phase 7.4 新增 Swagger / OpenAPI debug docs，`/api-docs` 和 `/api-docs-json` 默认在非 production 开启；production 默认关闭，显式 `SWAGGER_ENABLED=true` 只用于受控环境、内网或临时诊断。Phase 7.5 为注册、登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入补充中文描述与安全 request body 示例。Swagger 只描述和展示 REST API，不改变认证、鉴权或业务 contract；受保护接口仍必须经过 `JwtAuthGuard`。全局响应 envelope 语义为成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`；字段约束仍以 `@repo/types` Zod schema 为准。
 - KnowledgeDedupAgent / KnowledgeOrganizerAgent：`GET /knowledge-agent/suggestions` 经过 `JwtAuthGuard`，按当前 `userId` 读取 `Document` 与每份资料最多少量 `Chunk` 摘要，生成重复资料、疑似新版、互补资料、集合和标签建议；该接口是在线只读建议，不写 Document / Chunk / 分类表，不自动合并、删除、替换、重命名或分类资料，不调用 live 模型，不进入 Dexie `mutationQueue`。
 - RAG 文档 API：`/knowledge/documents` 已支持上传、列表、详情、删除和 `PUT /knowledge/documents/:id/file` 替换上传，`POST /knowledge/documents/:id/process` 已支持处理上传文档。
@@ -215,7 +219,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测，以及 Outbox Ops 后端脱敏排障与安全 requeue；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测、Outbox Ops 后端脱敏排障与安全 requeue，以及 Worker Readiness 部署前检查；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
 - 从 Phase 7.6 起，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀；历史带日期文件暂不批量重命名，避免破坏已有引用。
 - 向量索引用 raw SQL 创建，Prisma 不直接支持向量索引。
 
@@ -223,4 +227,4 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7 后续：继续更多后台任务生产化、outbox 操作审计、admin/operator 权限模型和 worker metrics / readiness 增强。
+1. Phase 7 后续：继续更多后台任务生产化、outbox 操作审计、admin/operator 权限模型、worker metrics 细化和容器级 readiness 接入。
