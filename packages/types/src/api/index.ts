@@ -45,3 +45,4 @@ export * from './knowledge-agent';
 export * from './memory-agent';
 export * from './agent-trace';
 export * from './agent-tool';
+export * from './operator-audit';
