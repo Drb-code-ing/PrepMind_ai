@@ -113,6 +113,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const workerService = extractYamlSection(compose, '  worker:', 2);
 
     expect(serverService).toContain('JWT_SECRET:');
+    expect(serverService).toContain(
+      'CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}',
+    );
     expect(workerService).toContain('JWT_SECRET:');
     expect(workerService).toContain('healthcheck:');
     expect(workerService).toContain(
