@@ -155,11 +155,11 @@ export default function RegisterPage() {
           <SubmitButton submitting={submitting} text="注册" loadingText="注册中..." />
         </form>
 
-        <div className="mt-2.5 flex items-center justify-center text-sm">
+        <div className="mt-1.5 flex min-h-9 items-center justify-center text-sm">
           <span className="text-[#756d82]">已有账号？</span>
           <Link
             href="/login"
-            className="tap-target ml-1 inline-flex items-center font-semibold text-[#165f58]"
+            className="ml-1 inline-flex items-center py-2 font-semibold text-[#165f58]"
           >
             去登录
             <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
@@ -232,7 +232,7 @@ function AgreementRow({
     <div>
       <label
         className={`flex min-h-8 items-start gap-2 text-xs leading-5 ${
-          error ? 'text-red-600' : 'text-[#756d82]'
+          error ? 'text-[#c43d3d]' : 'text-[#756d82]'
         }`}
       >
         <input
@@ -276,7 +276,7 @@ function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null;
 
   return (
-    <div className="mb-2.5 rounded-[1rem] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold leading-5 text-red-600">
+    <div className="mb-2.5 rounded-[1rem] border border-red-100 bg-red-50/80 px-3 py-2 text-xs font-medium leading-5 text-[#b53a3a]">
       {message}
     </div>
   );
@@ -284,7 +284,7 @@ function ErrorBanner({ message }: { message: string | null }) {
 
 function FieldHint({ id, error }: { id: string; error: FieldError | undefined }) {
   return (
-    <p id={id} className="min-h-[0.8rem] pt-0.5 text-[11px] font-semibold leading-none text-red-500">
+    <p id={id} className="min-h-[0.8rem] pt-0.5 text-[11px] font-medium leading-none text-[#d34a4a]">
       {error ?? ''}
     </p>
   );
@@ -293,7 +293,7 @@ function FieldHint({ id, error }: { id: string; error: FieldError | undefined })
 function inputClass(error: FieldError | undefined) {
   return `flex h-11 items-center gap-2 rounded-[1rem] border bg-white/88 px-3 transition-all ${
     error
-      ? 'border-red-300 ring-2 ring-red-50'
+      ? 'border-[#f0a5a5] ring-2 ring-[#fff1f1]'
       : 'border-[#232323]/12 focus-within:border-[#17766b] focus-within:ring-2 focus-within:ring-[#d8f8f0]'
   }`;
 }
