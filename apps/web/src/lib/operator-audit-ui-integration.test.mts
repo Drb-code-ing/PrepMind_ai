@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
 const pageSource = readFileSync(
-  join(process.cwd(), 'apps/web/src/app/(main)/operator-audit/page.tsx'),
+  join(currentDir, '../app/(main)/operator-audit/page.tsx'),
   'utf8',
 );
 
