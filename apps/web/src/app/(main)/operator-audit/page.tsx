@@ -9,7 +9,9 @@ import type {
 import {
   AlertTriangle,
   ArrowLeft,
+  Check,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Database,
   Filter,
@@ -42,6 +44,11 @@ type FilterFormState = {
   actorUserId: string;
 };
 
+type FilterSelectOption<T extends string> = {
+  value: T;
+  label: string;
+};
+
 const defaultFilters: FilterFormState = {
   action: '',
   status: '',
@@ -52,6 +59,17 @@ const defaultFilters: FilterFormState = {
 
 const pageLimit = 20;
 
+const actionFilterOptions: Array<FilterSelectOption<FilterFormState['action']>> = [
+  { value: '', label: '全部操作' },
+  { value: 'OUTBOX_REQUEUE', label: 'Outbox 重新入队' },
+];
+
+const statusFilterOptions: Array<FilterSelectOption<FilterFormState['status']>> = [
+  { value: '', label: '全部结果' },
+  { value: 'SUCCEEDED', label: '成功' },
+  { value: 'FAILED', label: '失败' },
+];
+
 export default function OperatorAuditPage() {
   const currentUser = useUserStore((state) => state.currentUser);
   const sessionHydrated = useUserStore((state) => state.sessionHydrated);
@@ -60,6 +78,7 @@ export default function OperatorAuditPage() {
   const [appliedFilters, setAppliedFilters] =
     useState<Partial<OperatorAuditLogListQuery>>({});
   const [cursor, setCursor] = useState<string | null>(null);
+  const [openFilter, setOpenFilter] = useState<'action' | 'status' | null>(null);
 
   const query = useMemo(
     () => ({
@@ -128,40 +147,25 @@ export default function OperatorAuditPage() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--pm-muted)]">操作类型</span>
-            <select
-              value={filters.action}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  action: event.target.value as FilterFormState['action'],
-                }))
-              }
-              className="mt-1 min-h-11 w-full rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-sm font-semibold outline-none transition-all focus:border-[#6fcbbf] focus:ring-4 focus:ring-[#d8f8f0]"
-            >
-              <option value="">全部操作</option>
-              <option value="OUTBOX_REQUEUE">Outbox 重新入队</option>
-            </select>
-          </label>
+          <FilterSelect
+            id="operator-audit-action-filter"
+            label="操作类型"
+            value={filters.action}
+            options={actionFilterOptions}
+            open={openFilter === 'action'}
+            onOpenChange={(open) => setOpenFilter(open ? 'action' : null)}
+            onChange={(action) => setFilters((current) => ({ ...current, action }))}
+          />
 
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--pm-muted)]">执行结果</span>
-            <select
-              value={filters.status}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  status: event.target.value as FilterFormState['status'],
-                }))
-              }
-              className="mt-1 min-h-11 w-full rounded-2xl border border-[var(--pm-line)] bg-white/80 px-3 text-sm font-semibold outline-none transition-all focus:border-[#6fcbbf] focus:ring-4 focus:ring-[#d8f8f0]"
-            >
-              <option value="">全部结果</option>
-              <option value="SUCCEEDED">成功</option>
-              <option value="FAILED">失败</option>
-            </select>
-          </label>
+          <FilterSelect
+            id="operator-audit-status-filter"
+            label="执行结果"
+            value={filters.status}
+            options={statusFilterOptions}
+            open={openFilter === 'status'}
+            onOpenChange={(open) => setOpenFilter(open ? 'status' : null)}
+            onChange={(status) => setFilters((current) => ({ ...current, status }))}
+          />
 
           <TextFilter
             label="目标类型"
@@ -306,6 +310,91 @@ function NoPermissionState() {
         </Link>
       </section>
     </Shell>
+  );
+}
+
+function FilterSelect<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  open,
+  onOpenChange,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: Array<FilterSelectOption<T>>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: T) => void;
+}) {
+  const selectedOption = options.find((option) => option.value === value) ?? options[0];
+  const listboxId = `${id}-listbox`;
+
+  function closeWhenFocusLeaves(event: React.FocusEvent<HTMLDivElement>) {
+    const nextTarget = event.relatedTarget;
+    if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+      onOpenChange(false);
+    }
+  }
+
+  return (
+    <div className="relative" onBlur={closeWhenFocusLeaves}>
+      <span id={`${id}-label`} className="text-xs font-semibold text-[var(--pm-muted)]">
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-labelledby={`${id}-label`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        onClick={() => onOpenChange(!open)}
+        className="tap-target mt-1 grid min-h-11 w-full grid-cols-[1fr_auto] items-center gap-3 rounded-2xl border border-white/70 bg-white/82 px-3 text-left text-sm font-semibold text-[var(--pm-ink)] shadow-[0_10px_28px_rgba(36,60,80,0.07)] outline-none ring-1 ring-[var(--pm-line)] transition-all hover:bg-white focus:border-[#66cfc1] focus:ring-4 focus:ring-[#d8f8f0] active:scale-[0.99]"
+      >
+        <span className="truncate">{selectedOption?.label}</span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f4fbf9] text-[#247269] ring-1 ring-[#d8eee9]">
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-labelledby={`${id}-label`}
+          className="absolute left-0 right-0 top-[calc(100%+0.45rem)] z-30 overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-[0_18px_50px_rgba(24,38,53,0.16)] ring-1 ring-[var(--pm-line)] backdrop-blur-xl"
+        >
+          {options.map((option) => {
+            const selected = option.value === value;
+
+            return (
+              <button
+                key={option.value || 'all'}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option.value);
+                  onOpenChange(false);
+                }}
+                className={`flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-sm transition-all ${
+                  selected
+                    ? 'bg-[#eafff9] font-semibold text-[#1f6f66]'
+                    : 'text-[var(--pm-ink)] hover:bg-[#f7faf9]'
+                }`}
+              >
+                <span className="truncate">{option.label}</span>
+                {selected ? <Check className="h-4 w-4 shrink-0" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -13,4 +13,7 @@ assert.match(pageSource, /currentUser\?\.role === 'ADMIN'/);
 assert.match(pageSource, /useOperatorAuditLogs/);
 assert.match(pageSource, /NoPermissionState/);
 assert.match(pageSource, /setCursor\(null\)/);
+assert.match(pageSource, /FilterSelect/);
+assert.match(pageSource, /role="listbox"/);
 assert.doesNotMatch(pageSource, /chat-sidebar/);
+assert.doesNotMatch(pageSource, /<select/);
