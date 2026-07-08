@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 主要内容 / 边界 / 验收”，方便接手、复盘和面试表达。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
+> 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
@@ -49,6 +49,11 @@
 
 目标：把已写入数据库的 operator 审计日志变成可受控查询的后端 API，回答“谁在什么时候做了什么、为什么做、结果如何”。
 
+为什么：
+- 高权限诊断写操作不能只靠“有权限”，还要能追踪、复盘和排障。
+- 只写审计日志但没有受控查询入口，事故时仍要手动连数据库查，不适合生产化。
+- 查询入口必须只返回脱敏字段，避免排障入口变成敏感数据泄露入口。
+
 主要内容：
 - 新增 `@repo/types/api/operator-audit` contract，包含 action/status、列表 query 和脱敏 response DTO。
 - `packages/types/package.json` 增加 `./api/operator-audit` 子路径导出，修复 NodeNext 下 server 无法解析新增 contract 的问题。
@@ -68,9 +73,20 @@
 - `bun --cwd apps/server eslint src/operator-audit src/config/env.ts src/config/env.spec.ts src/app.module.ts`
 - `bun --filter @repo/server build`
 
+回顾时可以问：
+- “Operator Audit 查询 API 为什么要单独加 feature gate？”
+- “`GET /operator-audit-logs` 返回哪些字段，为什么不返回 metadata？”
+- “这里的复合 cursor 是怎么避免翻页漏数据的？”
+- “为什么权限和审计是两层不同的生产安全能力？”
+
 ### 2026-07-08 - Phase 7.14.3 / 7.14.4 OperatorAuditLog + Outbox Requeue Audit
 
 目标：在 OperatorGuard 之后补上操作审计地基，并把 `POST /outbox-events/:id/requeue` 接入成功/失败留痕，避免审计 service 变成死码。
+
+为什么：
+- `requeue` 会改变后台事件状态，属于 operator 诊断写操作，需要留下可追责记录。
+- 审计写入要 best-effort，不能因为审计系统异常阻断原本的修复操作。
+- 审计日志要长期保留，即使 actor user 后续被删除，也不能丢失历史操作链路。
 
 主要内容：
 - Prisma 新增 `OperatorAuditAction`、`OperatorAuditStatus`、`OperatorAuditLog` 和 migration。
@@ -90,9 +106,20 @@
 - `bun --cwd packages/database test`
 - `bun run db:generate`
 
+回顾时可以问：
+- “OperatorAuditLog 为什么 actorUserId 要 nullable + SetNull？”
+- “审计 metadata 为什么用 allowlist，而不是黑名单过滤？”
+- “Outbox requeue 成功和失败分别怎么记录审计？”
+- “审计写入失败为什么不能影响 requeue 主流程？”
+
 ### 2026-07-08 - Phase 7.14.2 OperatorGuard
 
 目标：把 Outbox Ops、Worker Observability、HTTP Worker Readiness 从普通登录用户可访问的诊断入口升级为 admin/operator-only。
+
+为什么：
+- 这些接口暴露的是系统级队列、worker、readiness 或 outbox 状态，不是普通学生账号应看到的业务数据。
+- feature gate 只能控制入口是否开放，不能替代角色权限。
+- 后续 requeue、审计查询等高权限能力都需要统一 operator 权限地基。
 
 主要内容：
 - 新增 `OperatorGuard`，基于 `request.user.role === 'ADMIN'` 判断权限。
@@ -107,9 +134,20 @@
 验收：
 - `bun --filter @repo/server test -- operator.guard outbox-ops.controller worker-observability.controller worker-readiness.controller --runInBand`
 
+回顾时可以问：
+- “OperatorGuard 和 JwtAuthGuard 的职责有什么区别？”
+- “为什么 guard 顺序要 feature gate -> JWT -> Operator？”
+- “为什么关闭诊断入口时返回 404 而不是 403？”
+- “普通用户访问 worker observability 会有什么风险？”
+
 ### 2026-07-08 - Phase 7.13 Docker Web / Full Stack Compose
 
 目标：把 API / worker / readiness 容器链路扩展到 Web 容器，完成本地 Docker Compose 全栈启动与浏览器验收。
+
+为什么：
+- 之前只验证了 API / worker，不能证明用户从浏览器访问 Docker Web 容器的完整链路可用。
+- Next standalone 在 monorepo + Bun workspace 下容易出现依赖复制和 tracing root 问题，需要真实容器构建验证。
+- 本地 compose 全栈能让后续验收更接近部署形态。
 
 主要内容：
 - `docker/Dockerfile.web` 迁移到 Bun workspace + Next standalone。
@@ -129,9 +167,20 @@
 - HTTP smoke：`http://127.0.0.1:3000` 返回 200，`http://127.0.0.1:3001/health` 返回 `status=ok`。
 - Playwright 浏览器验收：注册临时账号后跳转 `/chat`，刷新后仍保持登录态。
 
+回顾时可以问：
+- “Docker Web 镜像为什么要用 Next standalone？”
+- “monorepo 下 Dockerfile.web 需要复制哪些 workspace 文件？”
+- “为什么本地 Web 容器也要支持 mock/live 开关展示？”
+- “这轮 Docker 全栈验收证明了什么，没证明什么？”
+
 ### 2026-07-08 - Phase 7.12 Docker Worker Healthcheck
 
 目标：把 worker readiness CLI 接入 Docker Compose worker service，让容器编排能看到 `healthy / unhealthy`。
+
+为什么：
+- worker-only 进程不监听 HTTP，不能靠 `/health` 判断它是否能处理后台任务。
+- 容器层 healthcheck 能让 Docker Compose 直接暴露 worker 健康状态，降低本地部署排障成本。
+- readiness CLI 已经存在，复用它比再写一套容器专用检查更一致。
 
 主要内容：
 - `docker/docker-compose.dev.yml` 的 `worker` service 新增 healthcheck。
@@ -151,9 +200,20 @@
 - `docker compose -f docker/docker-compose.dev.yml --profile worker config`
 - `git diff --check`
 
+回顾时可以问：
+- “worker-only 为什么没有 HTTP health endpoint？”
+- “Docker healthcheck 调的是本机 CLI 还是容器内构建产物？”
+- “`docker compose ps` 里的 healthy 到底代表什么？”
+- “readiness CLI 和容器 healthcheck 的区别是什么？”
+
 ### 2026-07-08 - Phase 7.11 Worker Readiness
 
 目标：在 `/health` 和 `/worker-observability/summary` 之外，补一个适合机器和部署系统使用的 worker readiness 判断。
+
+为什么：
+- `/health` 只能说明 API 进程活着，不能说明后台 worker 链路可接流量。
+- `/worker-observability/summary` 面向开发者排障，信息更细；readiness 要给机器一个明确可判断结论。
+- 部署前检查需要稳定退出码和安全摘要，不能打印连接串、payload 或原始依赖错误。
 
 主要内容：
 - 新增 `@repo/types/api/worker-readiness` contract。
@@ -175,9 +235,20 @@
 - `bun --filter @repo/server build`
 - `git diff --check`
 
+回顾时可以问：
+- “`/health`、worker observability、worker readiness 三者怎么分工？”
+- “readiness CLI 为什么不能导入 AppModule？”
+- “退出码 0 / 1 / 2 分别代表什么？”
+- “readiness 输出为什么不能打印原始错误？”
+
 ### 2026-07-07 - Phase 7.10 Outbox Ops
 
 目标：给 durable outbox 补上安全的后端操作闭环，让开发者能在不暴露 payload 的前提下查看失败事件，并在修复根因后手动 requeue。
+
+为什么：
+- durable outbox 有了持久事件和重试状态后，必须能安全查看失败事件，否则排障仍然只能查数据库。
+- dead / failed 事件需要可控 requeue，但 requeue 不能绕过状态机或直接执行 handler。
+- outbox payload 可能间接关联业务上下文，诊断 API 必须默认隐藏敏感内容。
 
 主要内容：
 - 新增 `@repo/types/api/outbox` contract。
@@ -199,9 +270,20 @@
 - `bun --filter @repo/server build`
 - `bun --cwd apps/server jest --config ./test/jest-e2e.json --runInBand --testTimeout=30000 --forceExit --verbose outbox-ops`
 
+回顾时可以问：
+- “Outbox Ops 为什么只返回脱敏列表和详情？”
+- “requeue 为什么用 updateMany 做 compare-and-swap？”
+- “FAILED / DEAD -> PENDING 为什么不直接执行 handler？”
+- “`sanitizeJobError()` 主要防什么泄露？”
+
 ### 2026-07-06 / 2026-07-07 - Phase 7.9 Durable Outbox
 
 目标：把关键内部事件从纯 in-process 链路推进到可重试、可观测、可受控消费的 durable outbox 地基。
+
+为什么：
+- in-process EventBus 失败后无法跨进程持久重试，适合轻量通知，不适合需要可靠投递的内部事件。
+- outbox 可以把“业务事务”和“异步事件”连接起来，为后续生产化 worker 链路打地基。
+- dispatcher runner 需要受控开启，避免生产部署后未经确认消费历史事件。
 
 主要内容：
 - Phase 7.9.1：新增 `OutboxEvent`、enqueue / claim / success / retry / dead-letter 状态机。
@@ -221,9 +303,20 @@
 - `bun --filter @repo/server test -- outbox-metrics worker-observability`
 - `bun --filter @repo/server build`
 
+回顾时可以问：
+- “Durable Outbox 和 EventBus / BullMQ 的区别是什么？”
+- “claim / retry / dead-letter 状态机怎么防重复消费？”
+- “为什么 dispatcher 要显式 handler registry？”
+- “为什么 production 默认不自动开启 dispatcher runner？”
+
 ### 2026-07-06 - Phase 7.8 RAG Eval / Hybrid Retrieval
 
 目标：给 RAG 检索质量建立可回归的评估基线，并把检索从单纯向量召回升级为 hybrid retrieval。
+
+为什么：
+- fake embedding 只能验证工程链路，不能证明真实语义检索质量。
+- 没有固定评估集时，每次改检索排序都很难判断是变好了还是变差了。
+- 纯向量召回容易漏掉关键词明确的问题，hybrid retrieval 能补充关键词候选。
 
 主要内容：
 - Phase 7.8.1：新增固定检索评估集和 `recall@k`、`top1Accuracy`、`safetyPassRate`、`noHitPassRate` 指标。
@@ -242,9 +335,20 @@
 - `bun --filter @repo/server smoke:rag-eval`
 - `bun --filter @repo/server build`
 
+回顾时可以问：
+- “RAG Eval 的 recall@k / top1 / safety / no-hit 指标分别看什么？”
+- “Hybrid Retrieval 怎么融合向量候选和关键词候选？”
+- “fake eval 和真实 embedding smoke 分别证明什么？”
+- “为什么要有 case id guard 防误报？”
+
 ### 2026-07-02 / 2026-07-05 - Phase 7.3 ~ 7.7 Observability / OpenAPI / Worker Split
 
 目标：把后台任务、接口文档和 worker 进程边界做成更可调试、更适合本地验收和面试讲解的工程化能力。
+
+为什么：
+- Phase 7 开始后，后台任务、worker、诊断 API 增多，如果没有观测和文档入口，开发者很难知道系统现在发生了什么。
+- Swagger 用来帮助本地调试和面试展示，但不能变成第二套 contract 来源。
+- API / worker 拆分能让后台任务进程独立部署和独立观测。
 
 主要内容：
 - Phase 7.3：EventBus handler 失败隔离，新增 `GET /background-jobs/summary` 和 `/knowledge` 后台任务摘要轮询兜底。
@@ -267,9 +371,20 @@
 - `docker compose -f docker/docker-compose.dev.yml --profile worker config`
 - `git diff --check`
 
+回顾时可以问：
+- “EventBus 失败隔离解决了什么问题？”
+- “Swagger 为什么只是展示层，不是 contract 事实源？”
+- “`SERVER_ROLE=api | worker | both` 分别适合什么场景？”
+- “Worker Observability 的 queue counts、heartbeat、BackgroundJob summary 各代表什么？”
+
 ### 2026-06-30 - Phase 7.0 / 7.1 / 7.2 Background Jobs + RAG SafetyGuard
 
 目标：把知识库文档处理从同步接口升级为可切换的后台任务链路，并把用户上传资料视为低信任 RAG 证据。
+
+为什么：
+- 文档解析、分块、embedding 可能耗时，同步接口会拖慢用户请求，也不利于失败重试。
+- 用户上传资料可能包含恶意 prompt injection，RAG 不能把检索片段当成可信指令。
+- inline / queue 双模式可以兼顾本地简单开发和后台任务生产化。
 
 主要内容：
 - 新增 `BackgroundJob` 数据模型和 `@repo/types/api/background-job` contract。
@@ -291,9 +406,20 @@
 - live/browser smoke 记录在 `docs/ai-behavior-acceptance.md`。
 - Trace 和 BackgroundJob 仍只保存脱敏元数据。
 
+回顾时可以问：
+- “为什么知识库处理要支持 inline / queue 双模式？”
+- “BullMQ 在文档处理链路里负责什么？”
+- “RAG SafetyGuard 怎么判断高风险 chunk？”
+- “Chat prompt 前为什么要过滤 high-risk chunk？”
+
 ### 2026-06-20 ~ 2026-06-29 - Phase 6 Multi-Agent
 
 目标：落地多 Agent 协作亮点，并保持确定性 policy、可观测和只读建议边界。
+
+为什么：
+- 单一 Chat 链路难以承载讲题、资料核对、错题组织、复习规划、长期记忆等多种职责。
+- 多 Agent 能把复杂任务拆成可解释的策略层，但当前阶段要先保证确定性和可验收。
+- 只读建议和人审确认能降低自动写库、自动误分类、自动污染记忆的风险。
 
 主要内容：
 - Phase 6.0 / 6.1 / 6.2：新增 Agent Runtime contract、RouterAgent、TutorAgent 策略层，`/api/chat` 输出 route headers。
@@ -313,26 +439,32 @@
 - fixed deterministic eval set 覆盖当前确定性 Agent policy。
 - mock 验证工程链路；涉及 Chat 输出体验时按 `docs/ai-behavior-acceptance.md` 做 live 小样本验收。
 
+回顾时可以问：
+- “Phase 6 每个 Agent 各自负责什么？”
+- “为什么这些 Agent 当前是 deterministic policy，不直接调用真实模型？”
+- “RouterAgent / TutorAgent / KnowledgeVerifierAgent 在 Chat 链路里的顺序是什么？”
+- “MemoryAgent 为什么必须用户确认后才成为长期记忆？”
+
 ## 早期里程碑索引
 
 > 说明：2026-06-05 ~ 2026-06-19 的早期 DEVLOG 曾经按日记录，后来在多轮文档清理中被压缩。这里按 `git log -- DEVLOG.md` 恢复成阶段索引，详细内容可用对应提交追溯。
 
-| 日期 | 阶段 | 主要进展 | 追溯线索 |
-| --- | --- | --- | --- |
-| 2026-06-05 | Phase 0 | 新增 DEVLOG，记录 pnpm / monorepo 恢复与项目初始化。 | `2f9c2cb`、`ef1a580` |
-| 2026-06-06 | Phase 1 | 登录模块、AI 聊天、上下文传递规划、开发博客更新。 | `2797be2`、`8311a6a`、`af62415` |
-| 2026-06-07 | Phase 1 | Day 3 开发日志，规划 Phase 1 -> Phase 2 存储迁移。 | `31b6649` |
-| 2026-06-08 | Phase 1 | Dexie 迁移、OCR 流式、错题本 CRUD、今日任务静态版、Phase 1 收官。 | `9f59fbf`、`4a92f87`、`b64b94d`、`a8d864f`、`375e2cb` |
-| 2026-06-09 | Phase 2.1 | 后端基础与 Auth/User API 收口，准备 Phase 2.2。 | `b2fb4b9` |
-| 2026-06-11 | Phase 2.2 | Auth flow、refresh token reuse detection、WrongQuestion API、前端接入和动态 CORS。 | `65ad246`、`8ebc04f`、`cc132b5`、`d022234`、`6a68627` |
-| 2026-06-12 | Phase 2.3 | OCRRecord、ChatMessage sync、MinIO 图片链路、chat streaming 稳定性和 Phase 2.3 handoff。 | `12614a4`、`265ba42`、`909260d`、`53802c9`、`3d6f99b` |
-| 2026-06-13 | Phase 2.3 / 2.5 | Phase 2.3 稳定化，Chat-first 产品壳层和体验打磨。 | `122aea2`、`537e458`、`c723e0b` |
-| 2026-06-14 | Phase 3 / 4.1 ~ 4.3 | AI 讲题结构化、FSRS 复习流、学习统计、ReviewTask 任务流。 | `7a1dc6e`、`34b779c`、`c2a57bc`、`f27f054` |
-| 2026-06-15 | Phase 4.4 | 离线评分队列、浏览器验证和复习评分流。 | `332ffa4`、`b15131e` |
-| 2026-06-16 | Phase 4.5.1 | 复习计划预览、统计图表、review pressure model 初步规划。 | `c08ed16`、`031fc90`、`ed55e12` |
-| 2026-06-17 | Phase 4.5.2 / 5.0 | ReviewPreference、加权压力模型、Phase 5 RAG 规划。 | `1c00f76`、`9294416` |
-| 2026-06-18 | Phase 5.1 / 5.2 | RAG 数据模型、知识库上传 API、wrong-question organizer 规划。 | `9d38faf`、`1031872`、`f844b3e` |
-| 2026-06-19 | Phase 5.3 ~ 5.6 | 文档处理、检索 API、Chat RAG、`/knowledge` 页面、live AI guard、Phase 6 多 Agent 规划。 | `1ec1644`、`2038e6a`、`ae97b49`、`542df8d`、`631c6c1` |
+| 日期 | 阶段 | 主要进展 | 回顾时可以问 | 追溯线索 |
+| --- | --- | --- | --- | --- |
+| 2026-06-05 | Phase 0 | 新增 DEVLOG，记录 pnpm / monorepo 恢复与项目初始化。 | “项目最初的 monorepo 和 Docker 基础怎么搭的？” | `2f9c2cb`、`ef1a580` |
+| 2026-06-06 | Phase 1 | 登录模块、AI 聊天、上下文传递规划、开发博客更新。 | “Phase 1 的登录和聊天 MVP 怎么组织状态？” | `2797be2`、`8311a6a`、`af62415` |
+| 2026-06-07 | Phase 1 | Day 3 开发日志，规划 Phase 1 -> Phase 2 存储迁移。 | “为什么从本地存储逐步迁移到后端权威数据？” | `31b6649` |
+| 2026-06-08 | Phase 1 | Dexie 迁移、OCR 流式、错题本 CRUD、今日任务静态版、Phase 1 收官。 | “Dexie 在 Phase 1 里承担了哪些离线和本地恢复职责？” | `9f59fbf`、`4a92f87`、`b64b94d`、`a8d864f`、`375e2cb` |
+| 2026-06-09 | Phase 2.1 | 后端基础与 Auth/User API 收口，准备 Phase 2.2。 | “NestJS 后端和 Auth/User API 是怎么作为后端地基落地的？” | `b2fb4b9` |
+| 2026-06-11 | Phase 2.2 | Auth flow、refresh token reuse detection、WrongQuestion API、前端接入和动态 CORS。 | “登录态为什么改成后端 session 权威控制？” | `65ad246`、`8ebc04f`、`cc132b5`、`d022234`、`6a68627` |
+| 2026-06-12 | Phase 2.3 | OCRRecord、ChatMessage sync、MinIO 图片链路、chat streaming 稳定性和 Phase 2.3 handoff。 | “WrongQuestion / ChatMessage / OCRRecord 如何迁移到 PostgreSQL？” | `12614a4`、`265ba42`、`909260d`、`53802c9`、`3d6f99b` |
+| 2026-06-13 | Phase 2.3 / 2.5 | Phase 2.3 稳定化，Chat-first 产品壳层和体验打磨。 | “为什么产品壳层改成 Chat-first？” | `122aea2`、`537e458`、`c723e0b` |
+| 2026-06-14 | Phase 3 / 4.1 ~ 4.3 | AI 讲题结构化、FSRS 复习流、学习统计、ReviewTask 任务流。 | “OCR structured output 和 FSRS 复习闭环是怎么连起来的？” | `7a1dc6e`、`34b779c`、`c2a57bc`、`f27f054` |
+| 2026-06-15 | Phase 4.4 | 离线评分队列、浏览器验证和复习评分流。 | “ReviewTask 评分为什么需要 clientMutationId 幂等？” | `332ffa4`、`b15131e` |
+| 2026-06-16 | Phase 4.5.1 | 复习计划预览、统计图表、review pressure model 初步规划。 | “复习计划预览和学习统计页面怎么计算压力？” | `c08ed16`、`031fc90`、`ed55e12` |
+| 2026-06-17 | Phase 4.5.2 / 5.0 | ReviewPreference、加权压力模型、Phase 5 RAG 规划。 | “ReviewPreference 如何影响 7/14 天复习计划？” | `1c00f76`、`9294416` |
+| 2026-06-18 | Phase 5.1 / 5.2 | RAG 数据模型、知识库上传 API、wrong-question organizer 规划。 | “RAG 的 Document / Chunk 模型和上传 API 怎么设计？” | `9d38faf`、`1031872`、`f844b3e` |
+| 2026-06-19 | Phase 5.3 ~ 5.6 | 文档处理、检索 API、Chat RAG、`/knowledge` 页面、live AI guard、Phase 6 多 Agent 规划。 | “文档解析、分块、embedding、检索和 Chat RAG 是怎么串起来的？” | `1ec1644`、`2038e6a`、`ae97b49`、`542df8d`、`631c6c1` |
 
 ## 当前验证基线
 
