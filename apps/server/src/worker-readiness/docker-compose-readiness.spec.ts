@@ -138,12 +138,17 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const webService = extractYamlSection(compose, '  web:', 2);
 
+    expect(webService).toContain('env_file:');
+    expect(webService).toContain('- ../.env');
+    expect(webService).toContain('PREPMIND_INTERNAL_API_BASE_URL: http://server:3001');
     expect(webService).toContain('PREPMIND_LOCAL_DEV_TOOLS_ENABLED:');
-    expect(webService).toContain('AI_DEV_MODE_SWITCH_ENABLED:');
-    expect(webService).toContain('AI_PROVIDER_MODE:');
-    expect(webService).toContain('AI_ENABLE_LIVE_CALLS:');
-    expect(webService).toContain('DEEPSEEK_API_KEY:');
-    expect(webService).toContain('OPENAI_API_KEY:');
+    expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
+    expect(webService).not.toContain('AI_PROVIDER_MODE: ${');
+    expect(webService).not.toContain('AI_ENABLE_LIVE_CALLS: ${');
+    expect(webService).not.toContain('AI_BASE_URL: ${');
+    expect(webService).not.toContain('AI_MODEL: ${');
+    expect(webService).not.toContain('DEEPSEEK_API_KEY: ${');
+    expect(webService).not.toContain('OPENAI_API_KEY: ${');
   });
 });
 

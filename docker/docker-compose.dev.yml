@@ -87,22 +87,16 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
+    env_file:
+      - ../.env
     ports:
       - "3000:3000"
     depends_on:
       - server
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:3001}
+      PREPMIND_INTERNAL_API_BASE_URL: http://server:3001
       PREPMIND_LOCAL_DEV_TOOLS_ENABLED: ${PREPMIND_LOCAL_DEV_TOOLS_ENABLED:-true}
-      AI_DEV_MODE_SWITCH_ENABLED: ${AI_DEV_MODE_SWITCH_ENABLED:-true}
-      AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}
-      AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}
-      AI_BASE_URL: ${AI_BASE_URL:-}
-      AI_MODEL: ${AI_MODEL:-}
-      AI_MAX_INPUT_TOKENS: ${AI_MAX_INPUT_TOKENS:-2500}
-      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-1200}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
 volumes:
   pgdata:

@@ -460,3 +460,23 @@ wsl --list --verbose
 ```
 
 `docker-desktop` 应为 `Running`，并且 `VERSION` 为 `2`。
+
+### Docker 前端真实模型配置补充
+
+Docker 前端通过 `docker/docker-compose.dev.yml` 的 `env_file: ../.env` 读取根目录 `.env`。因此 Docker 前端要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
+
+日常建议两边都保持：
+
+```env
+AI_PROVIDER_MODE=mock
+AI_DEV_MODE_SWITCH_ENABLED=true
+AI_ENABLE_LIVE_CALLS=false
+```
+
+需要在 `/agent-trace` 手动切到 Live 时，只把对应 env 文件里的 `AI_ENABLE_LIVE_CALLS` 改成 `true`，然后重启对应前端即可。Docker 前端重启命令：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
+```
+
+Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。

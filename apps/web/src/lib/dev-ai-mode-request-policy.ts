@@ -45,7 +45,7 @@ export async function validateDevAiModeMutationRequest(input: {
 }
 
 function isLocalDevRequest(request: Request) {
-  if (!isLocalHost(new URL(request.url).host)) return false;
+  if (!isLocalRequestUrlHost(new URL(request.url).host)) return false;
 
   const requestHost = request.headers.get('host');
   if (requestHost && !isLocalHost(requestHost)) return false;
@@ -58,6 +58,13 @@ function isLocalDevRequest(request: Request) {
   } catch {
     return false;
   }
+}
+
+function isLocalRequestUrlHost(hostWithPort: string) {
+  const parsed = parseHost(hostWithPort);
+  if (!parsed) return false;
+
+  return parsed.hostname === '0.0.0.0' || isLocalHost(hostWithPort);
 }
 
 function isLocalHost(hostWithPort: string) {

@@ -96,6 +96,14 @@ export function createApiClient({ baseUrl, fetchImpl = fetch }: CreateApiClientO
   };
 }
 
+export function resolveApiClientBaseUrl(env: NodeJS.ProcessEnv = process.env) {
+  return (
+    env.PREPMIND_INTERNAL_API_BASE_URL ??
+    env.NEXT_PUBLIC_API_BASE_URL ??
+    'http://localhost:3001'
+  );
+}
+
 async function parseJson(response: Response) {
   try {
     return (await response.json()) as unknown;
@@ -130,6 +138,5 @@ function toUrl(baseUrl: string, path: string) {
 }
 
 export const apiClient = createApiClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001',
+  baseUrl: resolveApiClientBaseUrl(),
 });
-
