@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-08
+更新时间：2026-07-09
 
-当前阶段：Phase 7.14.6 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
+当前阶段：Phase 7.15 已完成，后续继续 Phase 7 operator 审计产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -43,8 +43,43 @@
 | Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
 | Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
 | Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
+| Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.15 Operator Audit 真实运行验收与本地诊断收口
+
+目标：把管理员审计台从“代码和单元测试完成”推进到“真实前后端可以跑、管理员能用、普通用户被拦截、审计记录可查”的验收状态。
+
+为什么：
+- Phase 7.14 已经补齐 `OperatorGuard`、审计写入、审计查询 API 和前端页面，但真实运行时仍可能被环境、旧镜像、登录态或前端 hydration 问题挡住。
+- Docker server 镜像运行态是 `NODE_ENV=production`，而 Outbox Ops / Operator Audit / Worker Readiness / Worker Observability 默认 production 关闭；本地 dev compose 如果不显式打开，就会表现为管理员也访问 404。
+- Next dev server 在 `127.0.0.1` 下会阻止 dev resource；如果项目文档让用户访问 `127.0.0.1:3000`，就必须允许这个 dev origin，否则页面 SSR 能看见，但 React 事件不挂载，登录表单会像“点了没反应”。
+
+主要内容：
+- `docker/docker-compose.dev.yml` 为 server service 显式设置 `OUTBOX_OPS_ENABLED=true`、`OPERATOR_AUDIT_ENABLED=true`、`WORKER_READINESS_ENABLED=true`、`WORKER_OBSERVABILITY_ENABLED=true`，保证本地 Docker dev 栈的诊断入口可验收。
+- `apps/server/src/worker-readiness/docker-compose-readiness.spec.ts` 增加 compose 回归测试，防止本地诊断开关和 `127.0.0.1` dev origin 再被漏掉。
+- `apps/web/next.config.ts` 增加 `allowedDevOrigins: ['127.0.0.1']`，修复从 `127.0.0.1:3000` 打开 dev 前端时客户端 hydration 不完整的问题。
+- 创建本地验收账号：管理员 `phase715-admin-20260709000525@example.com`、普通用户 `phase715-student-20260709000525@example.com`；通过 Docker PostgreSQL 只把管理员测试账号升级为 `ADMIN`。
+- 通过真实 `POST /outbox-events/:id/requeue` 生成 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录，再用 `/operator-audit` 页面读取脱敏列表。
+
+边界：
+- 这次不新增审计详情页、导出、保留周期、批量操作或更细 operator role。
+- 前端“审计”入口只是体验层；真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 控制。
+- Docker build 在当前中文路径下触发 Docker gRPC header 非 ASCII 问题，未把 Docker server/web 镜像重建作为完成条件；改用本机前后端 + Docker PostgreSQL/Redis/MinIO 验证最新源码，数据仍使用同一个 Docker 数据库。
+- 浏览器登录态验收优先使用 `localhost:3000` 与 `localhost:3001` 保持 cookie host 一致；`127.0.0.1` 已单独验证 hydration 正常。
+
+验收：
+- `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
+- `GET /operator-audit-logs`：管理员返回 200，普通用户返回 403。
+- `POST /outbox-events/:id/requeue`：管理员返回 201，并写入一条脱敏 `OUTBOX_REQUEUE` 审计记录。
+- 浏览器验收：普通用户侧边栏不显示“审计”；普通用户直达 `/operator-audit` 显示无权限且不请求 `/operator-audit-logs`；管理员侧边栏显示“审计 管理员操作留痕”；管理员点击入口进入 `/operator-audit`，审计筛选和最近记录可见。
+
+回顾时可以问：
+- “为什么 Docker dev compose 里要显式打开诊断 feature gate，而不是依赖 `NODE_ENV` 默认值？”
+- “为什么普通用户访问审计页时前端不请求审计 API，但后端仍必须返回 403？”
+- “为什么 `127.0.0.1` 页面能看到 SSR 内容，却可能因为 dev origin 限制导致按钮事件不生效？”
+- “为什么本地验收账号改成 ADMIN 后必须重新登录？”
 
 ### 2026-07-08 - Phase 7.14.6 收尾：Prisma Studio 排障与 Admin 导航入口
 
