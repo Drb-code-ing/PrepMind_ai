@@ -152,7 +152,7 @@ describe('worker readiness CLI helpers', () => {
     }
   });
 
-  it('exits the real CLI process with code 2 when dependencies hang or fail', async () => {
+  it('exits the real CLI process with code 2 when dependencies fail', async () => {
     const result = await runReadinessCliSubprocess({
       DATABASE_URL: 'postgresql://prepmind:devpass@127.0.0.1:1/prepmind',
       REDIS_URL: 'redis://127.0.0.1:1',
