@@ -50,6 +50,16 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).toContain('CMD ["bun", "apps/server/dist/src/main.js"]');
   });
 
+  it('keeps the server production script aligned with the Nest build output', () => {
+    const packageJson = JSON.parse(
+      readRepoFile('apps/server/package.json'),
+    ) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(packageJson.scripts['start:prod']).toBe('bun dist/src/main.js');
+  });
+
   it('configures the worker service to run the readiness CLI', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const workerService = extractYamlSection(compose, '  worker:', 2);
