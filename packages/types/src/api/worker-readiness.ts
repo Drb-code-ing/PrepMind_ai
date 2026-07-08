@@ -6,6 +6,9 @@ export const workerReadinessOverallStatusSchema = z.enum([
   'not_ready',
 ]);
 
+export const workerReadinessStatusSchema =
+  workerReadinessOverallStatusSchema;
+
 export const workerReadinessCheckStatusSchema = z.enum([
   'pass',
   'warn',
@@ -28,9 +31,15 @@ export const workerReadinessQueueCountsSchema = z
     waiting: z.number().int().min(0),
     active: z.number().int().min(0),
     delayed: z.number().int().min(0),
-    completed: z.number().int().min(0),
     failed: z.number().int().min(0),
     paused: z.number().int().min(0),
+  })
+  .strict();
+
+const workerReadinessCheckBaseSchema = z
+  .object({
+    status: workerReadinessCheckStatusSchema,
+    message: z.string().min(1),
   })
   .strict();
 
@@ -47,29 +56,22 @@ export const workerReadinessResponseSchema = z
       .strict(),
     checks: z
       .object({
-        redis: z
-          .object({
-            status: workerReadinessCheckStatusSchema,
-          })
-          .strict(),
-        queue: z
-          .object({
-            status: workerReadinessCheckStatusSchema,
+        redis: workerReadinessCheckBaseSchema,
+        queue: workerReadinessCheckBaseSchema
+          .extend({
             counts: workerReadinessQueueCountsSchema,
             isPaused: z.boolean(),
             hasBacklog: z.boolean(),
           })
           .strict(),
-        workers: z
-          .object({
-            status: workerReadinessCheckStatusSchema,
+        workers: workerReadinessCheckBaseSchema
+          .extend({
             onlineCount: z.number().int().min(0),
             latestHeartbeatAt: z.string().datetime().nullable(),
           })
           .strict(),
-        outbox: z
-          .object({
-            status: workerReadinessCheckStatusSchema,
+        outbox: workerReadinessCheckBaseSchema
+          .extend({
             deadCount: z.number().int().min(0),
             hasBacklog: z.boolean(),
             oldestPendingAgeMs: z.number().int().min(0).nullable(),
@@ -84,6 +86,7 @@ export const workerReadinessResponseSchema = z
 export type WorkerReadinessOverallStatus = z.infer<
   typeof workerReadinessOverallStatusSchema
 >;
+export type WorkerReadinessStatus = WorkerReadinessOverallStatus;
 export type WorkerReadinessCheckStatus = z.infer<
   typeof workerReadinessCheckStatusSchema
 >;
