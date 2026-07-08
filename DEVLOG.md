@@ -6,7 +6,7 @@
 
 更新时间：2026-07-08
 
-当前阶段：Phase 7.14.4 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
+当前阶段：Phase 7.14.5 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -41,8 +41,40 @@
 | Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only 访问控制 |
 | Phase 7.14.3 | 已完成 | OperatorAuditLog、审计 service、脱敏 metadata 与来源 hash |
 | Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
+| Phase 7.14.5 | 已完成 | Operator Audit 脱敏查询 API、admin-only 受控审计复盘入口 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.14.5 Operator Audit Query API
+
+本轮目标：把 Phase 7.14.3 / 7.14.4 已经写入数据库的 operator 审计日志变成可受控查询的后端 API。原因是高权限诊断写操作不能只做到“有权限”和“有记录”，还要能在事故复盘、排障和面试讲解时回答“谁在什么时候做了什么、为什么做、结果如何”。
+
+为什么需要：
+- `POST /outbox-events/:id/requeue` 属于高权限诊断写操作，可能改变后台事件状态；如果只写日志不提供受控查询，排障时仍要手动连数据库查，不利于生产化。
+- 权限解决“能不能做”，审计查询解决“做了什么、是否成功、失败原因是什么”；这是 admin/operator 工具链的基本闭环。
+- 查询入口必须是脱敏和只读的，避免为了排障反而暴露 outbox payload、prompt、RAG chunk、token、cookie 或 API key。
+
+完成内容：
+- 新增 `@repo/types/api/operator-audit` contract，定义 `OperatorAuditAction`、`OperatorAuditStatus`、列表 query 和脱敏 response DTO。
+- `packages/types/package.json` 增加 `./api/operator-audit` 子路径导出，修复 server 在 NodeNext 模式下无法解析新增 contract 的问题。
+- `OperatorAuditService` 增加 `list()`，支持 `action`、`status`、`targetType`、`targetId`、`actorUserId`、`limit`、`cursor` 过滤。
+- 分页按 `createdAt desc, id desc` 使用复合 cursor，避免只按 id 翻页导致同时间戳数据漏查。
+- 新增 `OperatorAuditController` 和 `GET /operator-audit-logs`，通过 `OperatorAuditEnabledGuard -> JwtAuthGuard -> OperatorGuard` 顺序保护。
+- 新增 `OPERATOR_AUDIT_ENABLED`：默认非 production 开启、production 关闭，关闭时在认证前隐藏为 404。
+- `AppModule` 注册 `OperatorAuditModule`，`OperatorAuditModule` 导入 `AuthModule` / `ConfigModule` / `DatabaseModule`，让 guard、配置和 Prisma 依赖边界明确。
+
+边界：
+- 本轮不做前端页面、不做审计导出、不提供详情接口、不支持删除或编辑审计日志。
+- 查询结果不返回 `metadata`、outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie、原始 IP 或原始 User-Agent。
+- 这是运维诊断 API，不进入 Dexie `mutationQueue`，不改变 Chat、RAG、worker、outbox dispatcher 或真实模型链路。
+
+验收结果：
+- `bun test packages/types/tests/operator-audit.test.mts`
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- operator-audit.service --runInBand`
+- `bun --filter @repo/server test -- operator-audit.controller operator-audit.service env --runInBand`
+- `bun --cwd apps/server eslint src/operator-audit src/config/env.ts src/config/env.spec.ts src/app.module.ts`
+- `bun --filter @repo/server build`
 
 ### 2026-07-08 - Phase 7.14.3 / 7.14.4 OperatorAuditLog + Outbox Requeue Audit
 

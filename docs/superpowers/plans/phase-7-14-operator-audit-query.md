@@ -99,7 +99,7 @@ describe('operator audit api contract', () => {
 Run:
 
 ```powershell
-bun packages/types/tests/operator-audit.test.mts
+bun test packages/types/tests/operator-audit.test.mts
 ```
 
 Expected: fail because `../src/api/operator-audit` does not exist.
@@ -113,7 +113,7 @@ Add schemas for action/status enums, list query, list item, and list response. E
 Run:
 
 ```powershell
-bun packages/types/tests/operator-audit.test.mts
+bun test packages/types/tests/operator-audit.test.mts
 bun --cwd packages/types typecheck
 ```
 
