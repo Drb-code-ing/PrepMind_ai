@@ -73,6 +73,7 @@ export default function OperatorAuditPage() {
   const logsQuery = useOperatorAuditLogs(query, { enabled: isAdmin });
   const items = logsQuery.data?.items ?? [];
   const activeFilters = hasOperatorAuditFilters(appliedFilters);
+  const hasDraftFilters = hasOperatorAuditFilters(normalizeFilters(filters));
   const isFirstPageLoading = logsQuery.isLoading && !cursor;
 
   function applyFilters() {
@@ -193,7 +194,7 @@ export default function OperatorAuditPage() {
             <button
               type="button"
               onClick={clearFilters}
-              disabled={!activeFilters && !hasOperatorAuditFilters(filters)}
+              disabled={!activeFilters && !hasDraftFilters}
               className="tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/75 px-3 text-sm font-semibold text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-white active:scale-[0.98] disabled:opacity-45"
             >
               <X className="h-4 w-4" />
