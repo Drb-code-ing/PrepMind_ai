@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
 import { WorkerReadinessController } from './worker-readiness.controller';
 import { WorkerReadinessModule } from './worker-readiness.module';
+import { WorkerReadinessService } from './worker-readiness.service';
 
 describe('WorkerReadinessController', () => {
   it('uses JwtAuthGuard on the controller', () => {
@@ -77,6 +78,22 @@ describe('WorkerReadinessController', () => {
       expect.arrayContaining([
         expect.objectContaining({
           provide: expect.stringContaining(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE),
+        }),
+      ]),
+    );
+  });
+
+  it('registers WorkerReadinessService through an explicit factory provider', () => {
+    const providers = Reflect.getMetadata(
+      MODULE_METADATA.PROVIDERS,
+      WorkerReadinessModule,
+    ) as Array<unknown> | undefined;
+
+    expect(providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provide: WorkerReadinessService,
+          useFactory: expect.any(Function),
         }),
       ]),
     );
