@@ -1,4 +1,5 @@
 export type FieldError = string | null;
+export type AuthFieldValidator = (value: string) => FieldError;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,4 +34,16 @@ export function validateConfirmPassword(value: string, password: string): FieldE
   if (!value) return '请确认密码';
   if (value !== password) return '两次密码不一致';
   return null;
+}
+
+export function getAuthFieldChangeError({
+  feedbackActive,
+  value,
+  validate,
+}: {
+  feedbackActive: boolean;
+  value: string;
+  validate: AuthFieldValidator;
+}): FieldError {
+  return feedbackActive ? validate(value) : null;
 }

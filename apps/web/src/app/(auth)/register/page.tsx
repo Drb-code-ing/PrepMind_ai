@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useRegister } from '@/hooks/use-auth';
 import type { FieldError } from '@/lib/auth-form-validation';
 import {
+  getAuthFieldChangeError,
   validateAuthEmail,
   validateAuthUsername,
   validateConfirmPassword,
@@ -24,11 +25,14 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [agreementError, setAgreementError] = useState<FieldError>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
     setServerError(null);
 
     const nextErrors = {
@@ -88,8 +92,20 @@ export default function RegisterPage() {
               placeholder: '邮箱地址',
               value: email,
               onChange: (e) => {
-                setEmail(e.target.value);
-                setErrors((prev) => ({ ...prev, email: null }));
+                const nextValue = e.target.value;
+                setEmail(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  email: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.email,
+                    value: nextValue,
+                    validate: validateAuthEmail,
+                  }),
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, email: true }));
+                setErrors((prev) => ({ ...prev, email: validateAuthEmail(email) }));
               },
             }}
           />
@@ -104,8 +120,20 @@ export default function RegisterPage() {
               placeholder: '用户名',
               value: username,
               onChange: (e) => {
-                setUsername(e.target.value);
-                setErrors((prev) => ({ ...prev, username: null }));
+                const nextValue = e.target.value;
+                setUsername(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  username: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.username,
+                    value: nextValue,
+                    validate: validateAuthUsername,
+                  }),
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, username: true }));
+                setErrors((prev) => ({ ...prev, username: validateAuthUsername(username) }));
               },
             }}
           />
@@ -120,8 +148,31 @@ export default function RegisterPage() {
               placeholder: '设置密码，至少 8 位',
               value: password,
               onChange: (e) => {
-                setPassword(e.target.value);
-                setErrors((prev) => ({ ...prev, password: null }));
+                const nextValue = e.target.value;
+                setPassword(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  password: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.password,
+                    value: nextValue,
+                    validate: validateRegisterPassword,
+                  }),
+                  confirm:
+                    confirm && (submitted || !!touched.confirm)
+                      ? validateConfirmPassword(confirm, nextValue)
+                      : prev.confirm,
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, password: true }));
+                setErrors((prev) => ({
+                  ...prev,
+                  password: validateRegisterPassword(password),
+                  confirm:
+                    confirm && (submitted || !!touched.confirm)
+                      ? validateConfirmPassword(confirm, password)
+                      : prev.confirm,
+                }));
               },
             }}
           />
@@ -136,8 +187,23 @@ export default function RegisterPage() {
               placeholder: '确认密码',
               value: confirm,
               onChange: (e) => {
-                setConfirm(e.target.value);
-                setErrors((prev) => ({ ...prev, confirm: null }));
+                const nextValue = e.target.value;
+                setConfirm(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  confirm: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.confirm,
+                    value: nextValue,
+                    validate: (value) => validateConfirmPassword(value, password),
+                  }),
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, confirm: true }));
+                setErrors((prev) => ({
+                  ...prev,
+                  confirm: validateConfirmPassword(confirm, password),
+                }));
               },
             }}
           />
@@ -148,7 +214,7 @@ export default function RegisterPage() {
             actionText="注册"
             onChange={(checked) => {
               setAgreed(checked);
-              if (checked) setAgreementError(null);
+              setAgreementError(checked || !submitted ? null : getAuthAgreementError(false));
             }}
           />
 

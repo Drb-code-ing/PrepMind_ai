@@ -7,7 +7,11 @@ import { useState } from 'react';
 
 import { useLogin } from '@/hooks/use-auth';
 import type { FieldError } from '@/lib/auth-form-validation';
-import { validateAuthEmail, validateLoginPassword } from '@/lib/auth-form-validation';
+import {
+  getAuthFieldChangeError,
+  validateAuthEmail,
+  validateLoginPassword,
+} from '@/lib/auth-form-validation';
 import { getAuthAgreementError, isAuthSubmitDisabled } from '@/lib/auth-submit-state';
 
 export default function LoginPage() {
@@ -17,11 +21,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<{ email?: FieldError; password?: FieldError }>({});
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+  const [submitted, setSubmitted] = useState(false);
   const [agreementError, setAgreementError] = useState<FieldError>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitted(true);
     setServerError(null);
 
     const nextErrors = {
@@ -76,8 +83,20 @@ export default function LoginPage() {
               placeholder: '邮箱地址',
               value: email,
               onChange: (e) => {
-                setEmail(e.target.value);
-                setErrors((prev) => ({ ...prev, email: null }));
+                const nextValue = e.target.value;
+                setEmail(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  email: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.email,
+                    value: nextValue,
+                    validate: validateAuthEmail,
+                  }),
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, email: true }));
+                setErrors((prev) => ({ ...prev, email: validateAuthEmail(email) }));
               },
             }}
           />
@@ -92,8 +111,20 @@ export default function LoginPage() {
               placeholder: '密码',
               value: password,
               onChange: (e) => {
-                setPassword(e.target.value);
-                setErrors((prev) => ({ ...prev, password: null }));
+                const nextValue = e.target.value;
+                setPassword(nextValue);
+                setErrors((prev) => ({
+                  ...prev,
+                  password: getAuthFieldChangeError({
+                    feedbackActive: submitted || !!touched.password,
+                    value: nextValue,
+                    validate: validateLoginPassword,
+                  }),
+                }));
+              },
+              onBlur: () => {
+                setTouched((prev) => ({ ...prev, password: true }));
+                setErrors((prev) => ({ ...prev, password: validateLoginPassword(password) }));
               },
             }}
           />
@@ -104,7 +135,7 @@ export default function LoginPage() {
             actionText="登录"
             onChange={(checked) => {
               setAgreed(checked);
-              if (checked) setAgreementError(null);
+              setAgreementError(checked || !submitted ? null : getAuthAgreementError(false));
             }}
           />
 
