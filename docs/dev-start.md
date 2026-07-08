@@ -428,6 +428,58 @@ http://localhost:3000/operator-audit
 
 注意：前端页面只做体验拦截，真正的权限仍由后端 `JwtAuthGuard` 和 `OperatorGuard` 判断。
 
+### Outbox requeue 手动排障流程
+
+`requeue` 的意思是“重新入队”。在本项目里，它不是重新执行接口，也不是强制把失败任务改成成功，而是把一条已经 `FAILED` 或 `DEAD` 的 `OutboxEvent` 安全地重置为 `PENDING`，等待 worker 里的 outbox dispatcher 下一轮按正常状态机重新 claim 和执行。
+
+什么时候需要 requeue：
+
+- `/worker-readiness` 或 `bun --filter @repo/server readiness:worker` 提示 outbox 有 `DEAD` / `FAILED` 风险。
+- `/outbox-events?status=DEAD` 或 `/outbox-events?status=FAILED` 能看到失败事件。
+- 你已经确认根因修好了，例如 Redis / 数据库 / 外部 provider 恢复、代码 bug 已修、handler 已注册、配置已补齐。
+
+什么时候不要 requeue：
+
+- 错误是 `OUTBOX_HANDLER_NOT_FOUND`，说明事件类型没有注册 handler，直接 requeue 只会再次失败。
+- 错误是 payload 或 metadata 不合法，需要先修数据来源或代码。
+- 你还不知道这个事件为什么失败。
+- 你只是想“清掉红色状态”。这种情况应该先看详情和 readiness issues，而不是重试。
+
+管理员手动操作 API 示例：
+
+```powershell
+# 1. 先用管理员账号登录，拿到 accessToken。
+#    最简单方式：浏览器登录后用前端页面操作；如果走 API，则用登录接口返回的 accessToken。
+
+# 2. 查看 DEAD 事件列表
+$env:ACCESS_TOKEN='你的管理员 accessToken'
+Invoke-RestMethod `
+  -Method Get `
+  -Uri 'http://127.0.0.1:3001/outbox-events?status=DEAD&limit=20' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" }
+
+# 3. 查看某条事件详情，重点看 status、canRequeue、eventType、lastErrorCode、lastErrorPreview
+Invoke-RestMethod `
+  -Method Get `
+  -Uri 'http://127.0.0.1:3001/outbox-events/这里替换成事件ID' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" }
+
+# 4. 确认根因已修复后重新入队
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://127.0.0.1:3001/outbox-events/这里替换成事件ID/requeue' `
+  -ContentType 'application/json' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" } `
+  -Body '{"reason":"已修复失败根因，手动重新入队"}'
+```
+
+执行成功后：
+
+- 这条 event 会从 `FAILED / DEAD` 变回 `PENDING`，`attempts` 重置为 `0`，锁和 `processedAt` 会清空。
+- 它不会立刻在 HTTP 请求里执行 handler；真正执行仍由 worker 的 outbox dispatcher 负责。
+- `/operator-audit` 会出现一条 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录；如果 requeue 失败，也会尽量记录 `OUTBOX_REQUEUE / FAILED`。
+- 再看 `/worker-readiness`、`/worker-observability/summary` 或 worker 日志，确认状态是否恢复。
+
 ## 4. AI 调用模式
 
 前端 `/api/chat` 开发默认走本地 mock 流式响应，不消耗 DeepSeek / OpenAI 额度。即使 `apps/web/.env.local` 里存在 API key，只要不显式开启 live，也不会调用真实模型。
