@@ -6,7 +6,7 @@
 
 更新时间：2026-07-08
 
-当前阶段：Phase 7.13 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.14.2 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -37,8 +37,28 @@
 | Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI readiness 命令 |
 | Phase 7.12 | 已完成 | Docker worker healthcheck、容器级 readiness 状态接入 |
 | Phase 7.13 | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 启动与浏览器验收 |
+| Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档 |
+| Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only 访问控制 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.14.2 OperatorGuard
+
+本轮目标：把 Outbox Ops、Worker Observability 和 HTTP Worker Readiness 从“普通登录用户可访问的诊断入口”升级为 admin/operator-only 入口，为后续 outbox requeue 操作审计打地基。
+
+完成内容：
+- 新增 `OperatorGuard`，基于 `JwtAuthGuard` 写入的 `request.user.role` 判断 `ADMIN` 权限；普通 `STUDENT` 或未附加 user 的请求返回 403。
+- `AuthModule` 注册并导出 `OperatorGuard`，供 outbox、worker observability 和 worker readiness 模块复用。
+- `OutboxOpsController` guard 顺序升级为 `OutboxOpsEnabledGuard -> JwtAuthGuard -> OperatorGuard`，保留 feature gate 优先隐藏为 404 的边界。
+- `WorkerObservabilityController` guard 顺序升级为 `WorkerObservabilityEnabledGuard -> JwtAuthGuard -> OperatorGuard`，禁用时先隐藏为 404，开启后也避免普通登录用户看到系统级 queue counts / worker heartbeat。
+- `WorkerReadinessController` guard 顺序升级为 `WorkerReadinessEnabledGuard -> JwtAuthGuard -> OperatorGuard`，HTTP readiness 面向受控诊断；CLI readiness 不受影响，继续作为部署机器检查入口。
+
+验证结果：
+- `bun --filter @repo/server test -- operator.guard outbox-ops.controller worker-observability.controller worker-readiness.controller --runInBand`
+
+边界：
+- 本轮不新增 Prisma 审计表，不记录 requeue 操作日志；审计落地留给 Phase 7.14.3 / 7.14.4。
+- 本轮不改变 Worker Readiness CLI、Docker healthcheck、Chat、RAG、Agent Trace 写入或普通账号级业务 API。
 
 ### 2026-07-08 - Phase 7.13 Docker Web / Full Stack Compose
 

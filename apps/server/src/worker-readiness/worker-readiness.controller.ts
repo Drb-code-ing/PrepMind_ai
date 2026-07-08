@@ -16,6 +16,7 @@ import {
 import type { WorkerReadinessResponse } from '@repo/types/api/worker-readiness';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
 import type { ServerEnv } from '../config/env';
 import { WorkerReadinessService } from './worker-readiness.service';
 
@@ -33,7 +34,7 @@ export class WorkerReadinessEnabledGuard implements CanActivate {
 }
 
 @Controller('worker-readiness')
-@UseGuards(WorkerReadinessEnabledGuard, JwtAuthGuard)
+@UseGuards(WorkerReadinessEnabledGuard, JwtAuthGuard, OperatorGuard)
 @ApiTags('Worker Readiness')
 @ApiBearerAuth('access-token')
 export class WorkerReadinessController {

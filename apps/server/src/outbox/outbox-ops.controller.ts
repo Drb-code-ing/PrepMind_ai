@@ -26,6 +26,7 @@ import {
 } from '@repo/types/api/outbox';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
 import type { ServerEnv } from '../config/env';
 import { OutboxOpsService } from './outbox-ops.service';
 
@@ -43,7 +44,7 @@ export class OutboxOpsEnabledGuard implements CanActivate {
 }
 
 @Controller('outbox-events')
-@UseGuards(OutboxOpsEnabledGuard, JwtAuthGuard)
+@UseGuards(OutboxOpsEnabledGuard, JwtAuthGuard, OperatorGuard)
 @ApiTags('Outbox Ops')
 @ApiBearerAuth('access-token')
 export class OutboxOpsController {

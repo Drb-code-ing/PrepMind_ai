@@ -2,20 +2,25 @@ import { NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
 import {
   OutboxOpsController,
   OutboxOpsEnabledGuard,
 } from './outbox-ops.controller';
 
 describe('OutboxOpsController', () => {
-  it('checks the outbox ops gate before JwtAuthGuard', () => {
+  it('checks the outbox ops gate before JwtAuthGuard and OperatorGuard', () => {
     const guardsMetadata = Reflect.getMetadata(
       GUARDS_METADATA,
       OutboxOpsController,
     ) as unknown;
     const guards = Array.isArray(guardsMetadata) ? guardsMetadata : [];
 
-    expect(guards).toEqual([OutboxOpsEnabledGuard, JwtAuthGuard]);
+    expect(guards).toEqual([
+      OutboxOpsEnabledGuard,
+      JwtAuthGuard,
+      OperatorGuard,
+    ]);
   });
 
   it('hides endpoints before authentication when outbox ops is disabled', () => {

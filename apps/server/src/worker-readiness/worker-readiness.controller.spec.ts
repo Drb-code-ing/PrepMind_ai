@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA, MODULE_METADATA } from '@nestjs/common/constants';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
 import {
   WorkerReadinessController,
   WorkerReadinessEnabledGuard,
@@ -10,14 +11,18 @@ import { WorkerReadinessModule } from './worker-readiness.module';
 import { WorkerReadinessService } from './worker-readiness.service';
 
 describe('WorkerReadinessController', () => {
-  it('runs worker readiness feature gate before JwtAuthGuard', () => {
+  it('runs worker readiness feature gate before JwtAuthGuard and OperatorGuard', () => {
     const guardsMetadata = Reflect.getMetadata(
       GUARDS_METADATA,
       WorkerReadinessController,
     ) as unknown;
     const guards = Array.isArray(guardsMetadata) ? guardsMetadata : [];
 
-    expect(guards).toEqual([WorkerReadinessEnabledGuard, JwtAuthGuard]);
+    expect(guards).toEqual([
+      WorkerReadinessEnabledGuard,
+      JwtAuthGuard,
+      OperatorGuard,
+    ]);
   });
 
   it('returns service readiness when worker readiness is enabled', async () => {

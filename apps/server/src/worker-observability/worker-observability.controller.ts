@@ -1,4 +1,11 @@
-import { Controller, Get, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  CanActivate,
+  Controller,
+  Get,
+  Injectable,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
@@ -8,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
 import {
   CurrentUser,
   type AuthenticatedUser,
@@ -15,15 +23,25 @@ import {
 import type { ServerEnv } from '../config/env';
 import { WorkerObservabilityService } from './worker-observability.service';
 
+@Injectable()
+export class WorkerObservabilityEnabledGuard implements CanActivate {
+  constructor(private readonly config: ConfigService<ServerEnv, true>) {}
+
+  canActivate(): boolean {
+    if (!this.config.get('WORKER_OBSERVABILITY_ENABLED', { infer: true })) {
+      throw new NotFoundException('Worker observability is disabled');
+    }
+
+    return true;
+  }
+}
+
 @Controller('worker-observability')
-@UseGuards(JwtAuthGuard)
+@UseGuards(WorkerObservabilityEnabledGuard, JwtAuthGuard, OperatorGuard)
 @ApiTags('Worker Observability')
 @ApiBearerAuth('access-token')
 export class WorkerObservabilityController {
-  constructor(
-    private readonly service: WorkerObservabilityService,
-    private readonly config: ConfigService<ServerEnv, true>,
-  ) {}
+  constructor(private readonly service: WorkerObservabilityService) {}
 
   @Get('summary')
   @ApiOperation({
@@ -36,10 +54,6 @@ export class WorkerObservabilityController {
       'worker 可观测摘要会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   async summary(@CurrentUser() user: AuthenticatedUser) {
-    if (!this.config.get('WORKER_OBSERVABILITY_ENABLED', { infer: true })) {
-      throw new NotFoundException('Worker observability is disabled');
-    }
-
     return this.service.getSummary(user.id);
   }
 }
