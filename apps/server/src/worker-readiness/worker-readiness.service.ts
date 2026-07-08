@@ -97,7 +97,10 @@ export class WorkerReadinessService {
       queuePaused,
       hasBacklog,
     );
-    const workersCheck = this.resolveWorkersCheck(heartbeatSnapshot, hasBacklog);
+    const workersCheck = this.resolveWorkersCheck(
+      heartbeatSnapshot,
+      hasBacklog,
+    );
     const outboxCheck = outboxSnapshot.check;
     const checks = {
       redis: redisCheck,
@@ -114,12 +117,7 @@ export class WorkerReadinessService {
       },
       outbox: outboxCheck,
     };
-    const issues = [
-      checks.redis,
-      checks.queue,
-      checks.workers,
-      checks.outbox,
-    ]
+    const issues = [checks.redis, checks.queue, checks.workers, checks.outbox]
       .filter((check) => check.status !== 'pass')
       .map((check) => check.message);
     const status = resolveOverallStatus([
@@ -265,10 +263,7 @@ export class WorkerReadinessService {
     queueSnapshot: QueueSnapshot,
     queuePaused: boolean,
     hasBacklog: boolean,
-  ): Pick<
-    WorkerReadinessResponse['checks']['queue'],
-    'status' | 'message'
-  > {
+  ): Pick<WorkerReadinessResponse['checks']['queue'], 'status' | 'message'> {
     if (!queueSnapshot.ok) {
       return {
         status: this.knowledgeProcessingMode === 'queue' ? 'fail' : 'warn',
@@ -300,10 +295,7 @@ export class WorkerReadinessService {
   private resolveWorkersCheck(
     heartbeatSnapshot: HeartbeatSnapshot,
     hasBacklog: boolean,
-  ): Pick<
-    WorkerReadinessResponse['checks']['workers'],
-    'status' | 'message'
-  > {
+  ): Pick<WorkerReadinessResponse['checks']['workers'], 'status' | 'message'> {
     if (!heartbeatSnapshot.ok) {
       return {
         status: this.knowledgeProcessingMode === 'queue' ? 'fail' : 'warn',
@@ -360,8 +352,7 @@ function parseHeartbeat(value: string | null): WorkerHeartbeatResponse | null {
 
 function getLatestHeartbeatAt(heartbeats: WorkerHeartbeatResponse[]) {
   const latest = [...heartbeats].sort(
-    (left, right) =>
-      Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt),
+    (left, right) => Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt),
   )[0];
 
   return latest?.lastSeenAt ?? null;

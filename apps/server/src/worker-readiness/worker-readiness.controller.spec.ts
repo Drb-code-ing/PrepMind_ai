@@ -29,12 +29,7 @@ describe('WorkerReadinessController', () => {
     const service = {
       getReadiness: jest.fn().mockResolvedValue(readiness),
     };
-    const config = {
-      get: jest.fn().mockReturnValue(true),
-    };
-    const controller = new WorkerReadinessController(
-      service as never,
-    );
+    const controller = new WorkerReadinessController(service as never);
 
     await expect(controller.readiness()).resolves.toEqual(readiness);
     expect(service.getReadiness).toHaveBeenCalledTimes(1);
@@ -46,9 +41,7 @@ describe('WorkerReadinessController', () => {
     };
     const guard = new WorkerReadinessEnabledGuard(config as never);
 
-    expect(() => guard.canActivate()).toThrow(
-      NotFoundException,
-    );
+    expect(() => guard.canActivate()).toThrow(NotFoundException);
     expect(config.get).toHaveBeenCalledWith('WORKER_READINESS_ENABLED', {
       infer: true,
     });
@@ -64,18 +57,32 @@ describe('WorkerReadinessController', () => {
   });
 
   it('registers WorkerReadinessService through an explicit factory provider', () => {
-    const providers = Reflect.getMetadata(
+    const providersMetadata = Reflect.getMetadata(
       MODULE_METADATA.PROVIDERS,
       WorkerReadinessModule,
-    ) as Array<unknown> | undefined;
+    ) as unknown;
+    const providers = Array.isArray(providersMetadata) ? providersMetadata : [];
+    const readinessProvider = providers.find(isWorkerReadinessProvider);
 
-    expect(providers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          provide: WorkerReadinessService,
-          useFactory: expect.any(Function),
-        }),
-      ]),
-    );
+    expect(readinessProvider).toBeDefined();
   });
 });
+
+function isWorkerReadinessProvider(provider: unknown): provider is {
+  provide: typeof WorkerReadinessService;
+  useFactory: (...args: unknown[]) => WorkerReadinessService;
+} {
+  if (typeof provider !== 'object' || provider === null) {
+    return false;
+  }
+
+  const candidate = provider as {
+    provide?: unknown;
+    useFactory?: unknown;
+  };
+
+  return (
+    candidate.provide === WorkerReadinessService &&
+    typeof candidate.useFactory === 'function'
+  );
+}
