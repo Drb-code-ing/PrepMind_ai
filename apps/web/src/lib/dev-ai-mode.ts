@@ -41,7 +41,10 @@ function getLiveAvailability(env: NodeJS.ProcessEnv) {
 }
 
 export function isDevAiModeSwitchEnabled(env: NodeJS.ProcessEnv = process.env) {
-  return env.NODE_ENV !== 'production' && env.AI_DEV_MODE_SWITCH_ENABLED === 'true';
+  const isLocalDevRuntime =
+    env.NODE_ENV !== 'production' || env.PREPMIND_LOCAL_DEV_TOOLS_ENABLED === 'true';
+
+  return isLocalDevRuntime && env.AI_DEV_MODE_SWITCH_ENABLED === 'true';
 }
 
 export function getDevAiModeOverride(env: NodeJS.ProcessEnv = process.env): DevAiMode | null {

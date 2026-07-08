@@ -48,6 +48,7 @@
 - `docker/Dockerfile.web` 从旧 pnpm 写法迁移到 Bun workspace，复用完整 workspace manifests、`bun install --frozen-lockfile` 和 `bun --filter @repo/web build`。
 - `apps/web/next.config.ts` 开启 `output: 'standalone'` 并设置 monorepo tracing root，保证 Docker runner 能复制 Next standalone 产物。
 - Web 镜像构建阶段默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`，Compose server 默认允许 `http://localhost:3000,http://127.0.0.1:3000`，避免本机浏览器验收时 localhost / 127.0.0.1 混用导致 CORS 或 cookie 问题。
+- Compose dev 栈额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 与 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 Next standalone Web 容器即使 `NODE_ENV=production` 也能在 `/agent-trace` 展示本地 Mock / Live 开关；该能力只面向本地开发诊断，生产部署不得开启 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 - 延续 Phase 7.12 的 `.dockerignore`、Prisma Client generate 和 Bun workspace runtime 布局，保证 web / server 镜像都能在 Docker 内真实构建。
 
 验收结果：

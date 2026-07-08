@@ -133,6 +133,18 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(workerService).toContain('retries:');
     expect(workerService).toContain('start_period:');
   });
+
+  it('keeps the web service wired for local dev AI mode switching', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const webService = extractYamlSection(compose, '  web:', 2);
+
+    expect(webService).toContain('PREPMIND_LOCAL_DEV_TOOLS_ENABLED:');
+    expect(webService).toContain('AI_DEV_MODE_SWITCH_ENABLED:');
+    expect(webService).toContain('AI_PROVIDER_MODE:');
+    expect(webService).toContain('AI_ENABLE_LIVE_CALLS:');
+    expect(webService).toContain('DEEPSEEK_API_KEY:');
+    expect(webService).toContain('OPENAI_API_KEY:');
+  });
 });
 
 function readRepoFile(relativePath: string) {

@@ -34,7 +34,7 @@ $env:AI_ENABLE_LIVE_CALLS='true'
 $env:AI_DEV_MODE_SWITCH_ENABLED='true'
 ```
 
-- 开关只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见。
+- 开关默认只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见；Docker Compose dev 的 Next standalone 容器可额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 显示该本地诊断开关，生产部署不得开启。
 - Live 选项只有在 `AI_ENABLE_LIVE_CALLS=true` 且存在 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 时可用。
 - 即使通过开关切到 live，`/api/chat` 仍要求有效 access token，并会调用 `/auth/me` 校验。
 - 验收记录仍以 `/api/chat` 响应头 `x-prepmind-ai-mode=mock|live` 为准。
