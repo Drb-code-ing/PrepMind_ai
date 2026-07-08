@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "readiness:worker": "ts-node -r tsconfig-paths/register scripts/worker-readiness.ts",
     "smoke:rag-eval": "ts-node -r tsconfig-paths/register scripts/rag-eval-smoke.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
