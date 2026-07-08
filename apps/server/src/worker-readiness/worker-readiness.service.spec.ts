@@ -115,6 +115,46 @@ describe('WorkerReadinessService', () => {
     expect(result.checks.workers.onlineCount).toBe(0);
   });
 
+  it('reports degraded in inline mode when queue backlog exists', async () => {
+    const service = createService({
+      mode: 'inline',
+      counts: {
+        waiting: 2,
+        active: 0,
+        delayed: 0,
+        failed: 0,
+        paused: 0,
+      },
+      heartbeats: [],
+    });
+
+    const result = await service.getReadiness(now);
+
+    expect(result.ready).toBe(false);
+    expect(result.status).toBe('degraded');
+    expect(result.checks.queue.status).toBe('warn');
+    expect(result.checks.queue.hasBacklog).toBe(true);
+    expect(result.issues).toContain(
+      'Inline mode has queued jobs that may require cleanup.',
+    );
+  });
+
+  it('reports degraded in inline mode when queue is paused', async () => {
+    const service = createService({
+      mode: 'inline',
+      counts: emptyQueueCounts(),
+      isPaused: true,
+      heartbeats: [],
+    });
+
+    const result = await service.getReadiness(now);
+
+    expect(result.ready).toBe(false);
+    expect(result.status).toBe('degraded');
+    expect(result.checks.queue.status).toBe('warn');
+    expect(result.checks.queue.isPaused).toBe(true);
+  });
+
   it('reports not_ready when the queue is paused', async () => {
     const service = createService({
       mode: 'queue',

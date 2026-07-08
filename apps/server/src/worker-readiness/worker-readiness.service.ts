@@ -92,7 +92,11 @@ export class WorkerReadinessService {
     const queuePaused =
       queueSnapshot.isPaused || queueSnapshot.counts.paused > 0;
     const redisCheck = this.resolveRedisCheck(queueSnapshot, heartbeatSnapshot);
-    const queueCheck = this.resolveQueueCheck(queueSnapshot, queuePaused);
+    const queueCheck = this.resolveQueueCheck(
+      queueSnapshot,
+      queuePaused,
+      hasBacklog,
+    );
     const workersCheck = this.resolveWorkersCheck(heartbeatSnapshot, hasBacklog);
     const outboxCheck = outboxSnapshot.check;
     const checks = {
@@ -260,6 +264,7 @@ export class WorkerReadinessService {
   private resolveQueueCheck(
     queueSnapshot: QueueSnapshot,
     queuePaused: boolean,
+    hasBacklog: boolean,
   ): Pick<
     WorkerReadinessResponse['checks']['queue'],
     'status' | 'message'
@@ -272,11 +277,21 @@ export class WorkerReadinessService {
     }
 
     if (queuePaused) {
-      return { status: 'fail', message: 'Queue is paused.' };
+      return {
+        status: this.knowledgeProcessingMode === 'queue' ? 'fail' : 'warn',
+        message: 'Queue is paused.',
+      };
     }
 
     if (queueSnapshot.counts.failed > 0) {
       return { status: 'warn', message: 'Queue has failed jobs.' };
+    }
+
+    if (this.knowledgeProcessingMode === 'inline' && hasBacklog) {
+      return {
+        status: 'warn',
+        message: 'Inline mode has queued jobs that may require cleanup.',
+      };
     }
 
     return { status: 'pass', message: 'Queue is readable.' };
