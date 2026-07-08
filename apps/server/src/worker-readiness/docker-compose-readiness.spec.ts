@@ -111,6 +111,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const nextConfig = readRepoFile('apps/web/next.config.ts');
 
     expect(nextConfig).toContain("output: 'standalone'");
+    expect(nextConfig).toContain("allowedDevOrigins: ['127.0.0.1']");
   });
 
   it('configures the worker service to run the readiness CLI', () => {
