@@ -143,6 +143,49 @@ API:    http://127.0.0.1:3001/health
 Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
 ```
 
+### 本机前端和 Docker 前端怎么选
+
+项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
+
+| 方式 | 启动命令 | 适合场景 | 前端 env 改哪里 |
+| --- | --- | --- | --- |
+| 本机前端 | `bun --filter @repo/web dev` | 日常改 UI、调页面、热更新最快 | `apps/web/.env.local` |
+| Docker 前端 | `docker compose -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env` |
+
+如果你看到 Docker Desktop 里有 `docker-web-1`，或者你是用 `docker compose ... web` 启动页面，那就是 Docker 前端。Docker Compose 会把根目录 `.env` 里的变量传给 `web` service；这时只改 `apps/web/.env.local` 不会影响容器里的前端。
+
+如果你是在终端直接跑 `bun --filter @repo/web dev`，那就是本机前端。它读取 `apps/web/.env.local`，改完后重启这个前端 dev server 即可。
+
+启用 `/agent-trace` 里的 Mock / Live 手动切换，推荐保持默认 Mock，只打开 live guard：
+
+```env
+AI_PROVIDER_MODE=mock
+AI_ENABLE_LIVE_CALLS=true
+AI_DEV_MODE_SWITCH_ENABLED=true
+DEEPSEEK_API_KEY=你的 key
+# 或者使用 OPENAI_API_KEY=你的 key
+```
+
+这样页面默认仍是 Mock，只有你在 `/agent-trace` 手动点 Live 后才会走真实模型。若希望启动后默认就是 Live，把 `AI_PROVIDER_MODE` 改成：
+
+```env
+AI_PROVIDER_MODE=live
+```
+
+修改 Docker 前端 env 后，重启 `web` 容器即可：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
+```
+
+这只会重启前端容器，不会清 PostgreSQL、MinIO 或 Redis 数据。普通 `up -d`、`--force-recreate web`、重启前端都不会删数据。不要执行下面这类会删除卷或清理工作区的命令，除非你明确知道后果：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml down -v
+docker volume rm ...
+git clean -fdx
+```
+
 `docker/Dockerfile.web` 使用 Bun workspace 和 Next standalone 输出；`apps/web/next.config.ts` 设置了 `output: 'standalone'`。Compose 默认把 server CORS 配成 `http://localhost:3000,http://127.0.0.1:3000`，并把 Web 镜像默认 API 地址设为 `http://127.0.0.1:3001`，避免浏览器验收时混用 `localhost` 和 `127.0.0.1` 造成 cookie / CORS 问题。由于 standalone 容器内 `NODE_ENV=production`，Compose dev 栈会额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 `/agent-trace` 仍可展示本地 Mock / Live 调试开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 
 Phase 7.12 起，`worker` service 自带 Docker healthcheck。它在容器内运行的是构建产物：
