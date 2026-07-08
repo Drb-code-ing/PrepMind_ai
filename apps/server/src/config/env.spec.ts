@@ -330,4 +330,58 @@ describe('parseEnv', () => {
       }).WORKER_READINESS_ENABLED,
     ).toBe(false);
   });
+
+  it('enables operator audit by default outside production', () => {
+    expect(parseEnv(requiredEnv).OPERATOR_AUDIT_ENABLED).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'test',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(true);
+  });
+
+  it('disables operator audit by default in production', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(false);
+  });
+
+  it('allows explicit operator audit overrides and treats blanks as unset', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OPERATOR_AUDIT_ENABLED: 'true',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        OPERATOR_AUDIT_ENABLED: 'false',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(false);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'development',
+        OPERATOR_AUDIT_ENABLED: '   ',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(true);
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OPERATOR_AUDIT_ENABLED: '',
+      }).OPERATOR_AUDIT_ENABLED,
+    ).toBe(false);
+  });
 });

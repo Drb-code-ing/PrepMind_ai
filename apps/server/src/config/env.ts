@@ -70,6 +70,14 @@ const envSchema = z
 
       return value;
     }, booleanStringSchema.optional()),
+    OPERATOR_AUDIT_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -246,12 +254,14 @@ export type ServerEnv = Omit<
   | 'WORKER_READINESS_ENABLED'
   | 'OUTBOX_DISPATCHER_ENABLED'
   | 'OUTBOX_OPS_ENABLED'
+  | 'OPERATOR_AUDIT_ENABLED'
 > & {
   SWAGGER_ENABLED: boolean;
   WORKER_OBSERVABILITY_ENABLED: boolean;
   WORKER_READINESS_ENABLED: boolean;
   OUTBOX_DISPATCHER_ENABLED: boolean;
   OUTBOX_OPS_ENABLED: boolean;
+  OPERATOR_AUDIT_ENABLED: boolean;
 };
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
@@ -267,5 +277,7 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
     OUTBOX_DISPATCHER_ENABLED:
       env.OUTBOX_DISPATCHER_ENABLED ?? env.NODE_ENV !== 'production',
     OUTBOX_OPS_ENABLED: env.OUTBOX_OPS_ENABLED ?? env.NODE_ENV !== 'production',
+    OPERATOR_AUDIT_ENABLED:
+      env.OPERATOR_AUDIT_ENABLED ?? env.NODE_ENV !== 'production',
   };
 }
