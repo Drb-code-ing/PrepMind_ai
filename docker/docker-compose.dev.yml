@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: prepmind
       POSTGRES_PASSWORD: devpass
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -40,6 +40,7 @@ services:
     environment:
       SERVER_ROLE: ${SERVER_ROLE:-both}
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
@@ -63,6 +64,7 @@ services:
     environment:
       SERVER_ROLE: worker
       KNOWLEDGE_PROCESSING_MODE: queue
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio

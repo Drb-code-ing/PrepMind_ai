@@ -13,6 +13,13 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerignore).toContain('apps/web/.next');
   });
 
+  it('keeps the local PostgreSQL host port aligned with development docs', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const postgresService = extractYamlSection(compose, '  postgres:', 2);
+
+    expect(postgresService).toContain('${POSTGRES_PORT:-5433}:5432');
+  });
+
   it('keeps the server Dockerfile aligned with the Bun workspace and build output', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
@@ -76,8 +83,11 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
   it('configures the worker service to run the readiness CLI', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
     const workerService = extractYamlSection(compose, '  worker:', 2);
 
+    expect(serverService).toContain('JWT_SECRET:');
+    expect(workerService).toContain('JWT_SECRET:');
     expect(workerService).toContain('healthcheck:');
     expect(workerService).toContain(
       'bun apps/server/dist/scripts/worker-readiness.js',
