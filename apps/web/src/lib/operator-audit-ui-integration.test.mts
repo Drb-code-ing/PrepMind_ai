@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const pageSource = readFileSync(
+  join(process.cwd(), 'apps/web/src/app/(main)/operator-audit/page.tsx'),
+  'utf8',
+);
+
+assert.match(pageSource, /currentUser\?\.role === 'ADMIN'/);
+assert.match(pageSource, /useOperatorAuditLogs/);
+assert.match(pageSource, /NoPermissionState/);
+assert.match(pageSource, /setCursor\(null\)/);
+assert.doesNotMatch(pageSource, /chat-sidebar/);
