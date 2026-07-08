@@ -17,6 +17,8 @@ postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
 bun run db:studio
 ```
 
+这条命令会走仓库脚本，自动读取根目录 `.env` 里的 `DATABASE_URL`。
+
 如果你想先确认 Prisma 连接的是不是同一个库，运行：
 
 ```powershell
@@ -31,7 +33,28 @@ bun run db:status
 bun --cwd packages/database prisma studio
 ```
 
-它是“直接从 database package 目录启动 Prisma CLI”。这个命令本身没有问题，但如果当前 PowerShell 没有提前设置 `$env:DATABASE_URL`，Prisma CLI 可能读不到根目录 `.env`，Studio 就会弹 `Prisma Client Error / Unable to run script`，看起来像没有数据。现在仓库脚本已经包装成会自动读取根目录 `.env`，所以优先用 `bun run db:studio`。
+它是“直接从 database package 目录启动 Prisma CLI”的裸命令。这个命令本身没有问题，但它不会自动帮你读取根目录 `.env`；如果当前 PowerShell 没有提前设置 `$env:DATABASE_URL`，Studio 就会弹 `Prisma Client Error / Unable to run script`，看起来像没有数据。
+
+如果你一定要用这条裸命令，先设置连接串：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+bun --cwd packages/database prisma studio
+```
+
+也可以使用 database package 里的脚本命令，它同样会自动读取根目录 `.env`：
+
+```powershell
+bun --cwd packages/database prisma:studio
+```
+
+三种打开方式的区别：
+
+| 命令 | 是否自动读取根 `.env` | 推荐程度 | 说明 |
+| --- | --- | --- | --- |
+| `bun run db:studio` | 是 | 推荐 | 在项目根目录执行，最不容易连错库 |
+| `bun --cwd packages/database prisma:studio` | 是 | 可用 | 直接调用 database package 的脚本 |
+| `bun --cwd packages/database prisma studio` | 否 | 不推荐裸用 | 必须先手动设置 `$env:DATABASE_URL` |
 
 如果你要把某个本地账号升级为管理员，推荐直接在 Docker PostgreSQL 容器里执行 SQL：
 
@@ -40,6 +63,21 @@ docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -
 ```
 
 这条命令和 Prisma Studio 不是一类东西：Prisma Studio 是浏览器里的数据库查看/编辑工具；`docker compose exec postgres psql ...` 是直接进入 PostgreSQL 容器执行 SQL，更适合快速改角色。改完后需要退出登录再重新登录，让新的 access token 带上 `ADMIN` 角色。
+
+判断“Docker psql”和“本机 psql”的方法很简单：
+
+| 命令长相 | psql 运行在哪里 | 是否需要本机安装 psql | 连接到哪里 |
+| --- | --- | --- | --- |
+| `docker compose ... exec postgres psql ...` | Docker 的 `postgres` 容器里 | 不需要 | Compose 里的 PostgreSQL |
+| `psql "postgresql://..." ...` | Windows 本机 | 需要 | 由连接串决定；本项目 `127.0.0.1:5433` 通常映射到 Docker PostgreSQL |
+
+可以用下面命令确认 Docker PostgreSQL 是否把端口暴露到了本机：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml ps
+```
+
+如果看到 `postgres` 行里有 `5433->5432`，那 `postgresql://prepmind:devpass@127.0.0.1:5433/prepmind` 连接的就是 Docker 里的数据库。
 
 管理员重新登录后，侧边栏会显示“审计”入口；普通用户不会看到该入口。真正的安全边界仍然是后端 `JwtAuthGuard + OperatorGuard`，前端入口只负责体验分流。
 
