@@ -134,6 +134,22 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(workerService).toContain('start_period:');
   });
 
+  it('keeps local Docker server diagnostics explicitly enabled despite production runtime', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+
+    expect(serverService).toContain('OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}');
+    expect(serverService).toContain(
+      'OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}',
+    );
+    expect(serverService).toContain(
+      'WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}',
+    );
+    expect(serverService).toContain(
+      'WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}',
+    );
+  });
+
   it('keeps the web service wired for local dev AI mode switching', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const webService = extractYamlSection(compose, '  web:', 2);

@@ -42,6 +42,10 @@ services:
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}
+      OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}
+      OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}
+      WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}
+      WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
