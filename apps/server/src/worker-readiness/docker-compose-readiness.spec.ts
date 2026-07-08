@@ -96,6 +96,12 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).not.toContain('pnpm-lock.yaml');
     expect(dockerfile).not.toContain('pnpm-workspace.yaml');
     expect(dockerfile).toContain('bun install --frozen-lockfile');
+    expect(dockerfile).toContain(
+      'ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
+    );
+    expect(dockerfile).toContain(
+      'ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL',
+    );
     expect(dockerfile).toContain('bun --filter @repo/web build');
     expect(dockerfile).toContain('COPY --from=builder /app/apps/web/.next/standalone ./');
     expect(dockerfile).toContain('CMD ["bun", "apps/web/server.js"]');
