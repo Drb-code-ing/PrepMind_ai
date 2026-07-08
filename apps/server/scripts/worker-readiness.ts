@@ -1,9 +1,62 @@
+import { BullModule, getQueueToken } from '@nestjs/bullmq';
+import { Module } from '@nestjs/common';
 import type { INestApplicationContext } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { WorkerReadinessResponse } from '@repo/types/api/worker-readiness';
+import type { Queue } from 'bullmq';
 
-import { AppModule } from '../src/app.module';
+import type { ServerEnv } from '../src/config/env';
+import { ConfigModule } from '../src/config/config.module';
+import { DatabaseModule } from '../src/database/database.module';
+import { JobsModule } from '../src/jobs/jobs.module';
+import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../src/knowledge-documents/jobs/process-document.job';
+import { OutboxMetricsService } from '../src/outbox/outbox-metrics.service';
 import { WorkerReadinessService } from '../src/worker-readiness/worker-readiness.service';
+
+const DEFAULT_WORKER_READINESS_CLI_TIMEOUT_MS = 10_000;
+
+type CliExitCode = 0 | 1 | 2;
+
+type CliWritable = {
+  write: (message: string) => unknown;
+};
+
+type RunWorkerReadinessCliOptions = {
+  createApplicationContext?: (
+    module: typeof WorkerReadinessCliModule,
+  ) => Promise<INestApplicationContext>;
+  stdout?: CliWritable;
+  stderr?: CliWritable;
+  timeoutMs?: number;
+};
+
+@Module({
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    JobsModule,
+    BullModule.registerQueue({ name: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE }),
+  ],
+  providers: [
+    OutboxMetricsService,
+    {
+      provide: WorkerReadinessService,
+      inject: [
+        getQueueToken(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE),
+        OutboxMetricsService,
+        ConfigService,
+      ],
+      useFactory: (
+        queue: Queue,
+        outbox: OutboxMetricsService,
+        config: ConfigService<ServerEnv, true>,
+      ) => new WorkerReadinessService(queue, outbox, config),
+    },
+  ],
+  exports: [WorkerReadinessService],
+})
+export class WorkerReadinessCliModule {}
 
 export function getWorkerReadinessExitCode(
   readiness: WorkerReadinessResponse,
@@ -44,33 +97,97 @@ export function formatWorkerReadiness(readiness: WorkerReadinessResponse) {
   ].join('\n');
 }
 
-export async function main() {
-  let app: INestApplicationContext | undefined;
+export async function withWorkerReadinessTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = DEFAULT_WORKER_READINESS_CLI_TIMEOUT_MS,
+): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error('Worker readiness timed out.'));
+    }, timeoutMs);
+  });
 
   try {
-    app = await NestFactory.createApplicationContext(AppModule, {
-      logger: false,
-    });
-    const readiness = await app.get(WorkerReadinessService).getReadiness();
-    process.stdout.write(`${formatWorkerReadiness(readiness)}\n`);
-    process.exitCode = getWorkerReadinessExitCode(readiness);
-  } catch {
-    process.stderr.write(
-      'Worker readiness CLI failed: unexpected script/config failure.\n',
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
+export async function runWorkerReadinessCli(
+  options: RunWorkerReadinessCliOptions = {},
+): Promise<CliExitCode> {
+  const createApplicationContext =
+    options.createApplicationContext ??
+    ((module: typeof WorkerReadinessCliModule) =>
+      NestFactory.createApplicationContext(module, { logger: false }));
+  const stdout = options.stdout ?? process.stdout;
+  const stderr = options.stderr ?? process.stderr;
+  const timeoutMs = options.timeoutMs ?? getCliTimeoutMs();
+  let app: INestApplicationContext | undefined;
+  let exitCode: CliExitCode = 2;
+  const restoreConsole = suppressDependencyConsoleErrors();
+
+  try {
+    app = await withWorkerReadinessTimeout(
+      createApplicationContext(WorkerReadinessCliModule),
+      timeoutMs,
     );
-    process.exitCode = 2;
+    const readiness = await withWorkerReadinessTimeout(
+      app.get(WorkerReadinessService).getReadiness(),
+      timeoutMs,
+    );
+    stdout.write(`${formatWorkerReadiness(readiness)}\n`);
+    exitCode = getWorkerReadinessExitCode(readiness);
+  } catch {
+    stderr.write(
+      'Worker readiness CLI failed: unexpected script/config/timeout failure.\n',
+    );
+    exitCode = 2;
   } finally {
     if (app) {
       try {
         await app.close();
       } catch {
-        process.stderr.write('Worker readiness CLI cleanup failed.\n');
-        process.exitCode = 2;
+        stderr.write('Worker readiness CLI cleanup failed.\n');
+        exitCode = 2;
       }
     }
+    restoreConsole();
   }
+
+  return exitCode;
+}
+
+export async function main() {
+  process.exitCode = await runWorkerReadinessCli();
 }
 
 if (require.main === module) {
   void main();
+}
+
+function getCliTimeoutMs() {
+  const raw = process.env.WORKER_READINESS_CLI_TIMEOUT_MS;
+  if (!raw) return DEFAULT_WORKER_READINESS_CLI_TIMEOUT_MS;
+
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_WORKER_READINESS_CLI_TIMEOUT_MS;
+}
+
+function suppressDependencyConsoleErrors() {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  console.error = () => undefined;
+  console.warn = () => undefined;
+
+  return () => {
+    console.error = originalError;
+    console.warn = originalWarn;
+  };
 }

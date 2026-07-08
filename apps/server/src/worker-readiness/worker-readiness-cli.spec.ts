@@ -1,8 +1,14 @@
 import type { WorkerReadinessResponse } from '@repo/types/api/worker-readiness';
+import { MODULE_METADATA } from '@nestjs/common/constants';
 
+import { AppModule } from '../app.module';
+import { OutboxModule } from '../outbox/outbox.module';
 import {
   formatWorkerReadiness,
   getWorkerReadinessExitCode,
+  runWorkerReadinessCli,
+  withWorkerReadinessTimeout,
+  WorkerReadinessCliModule,
 } from '../../scripts/worker-readiness';
 
 describe('worker readiness CLI helpers', () => {
@@ -59,6 +65,89 @@ describe('worker readiness CLI helpers', () => {
     expect(result).not.toContain('raw-cookie-value');
     expect(result).not.toContain('raw-api-key-value');
     expect(result).not.toContain('raw-last-error-value');
+  });
+
+  it('uses a minimal read-only module instead of the full application module', () => {
+    const imports =
+      (Reflect.getMetadata(
+        MODULE_METADATA.IMPORTS,
+        WorkerReadinessCliModule,
+      ) as unknown[]) ?? [];
+    const controllers =
+      (Reflect.getMetadata(
+        MODULE_METADATA.CONTROLLERS,
+        WorkerReadinessCliModule,
+      ) as unknown[]) ?? [];
+
+    expect(imports).not.toContain(AppModule);
+    expect(imports).not.toContain(OutboxModule);
+    expect(controllers).toEqual([]);
+  });
+
+  it('fails readiness checks with a bounded timeout', async () => {
+    await expect(
+      withWorkerReadinessTimeout(new Promise(() => undefined), 1),
+    ).rejects.toThrow('Worker readiness timed out.');
+  });
+
+  it('maps CLI timeout failures to exit code 2 without printing raw errors', async () => {
+    const stdout = { write: jest.fn() };
+    const stderr = { write: jest.fn() };
+    const close = jest.fn().mockResolvedValue(undefined);
+
+    const exitCode = await runWorkerReadinessCli({
+      createApplicationContext: jest.fn().mockResolvedValue({
+        close,
+        get: () => ({
+          getReadiness: () => new Promise(() => undefined),
+        }),
+      }),
+      stdout,
+      stderr,
+      timeoutMs: 1,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(stdout.write).not.toHaveBeenCalled();
+    expect(stderr.write).toHaveBeenCalledWith(
+      'Worker readiness CLI failed: unexpected script/config/timeout failure.\n',
+    );
+    expect(stderr.write).not.toHaveBeenCalledWith(
+      expect.stringContaining('REDIS_URL'),
+    );
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('suppresses dependency console errors and only prints controlled CLI output', async () => {
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const stdout = { write: jest.fn() };
+    const stderr = { write: jest.fn() };
+
+    try {
+      const exitCode = await runWorkerReadinessCli({
+        createApplicationContext: jest.fn().mockImplementation(() => {
+          console.error('raw dependency AggregateError with REDIS_URL');
+          return Promise.reject(new Error('raw failure with REDIS_URL'));
+        }),
+        stdout,
+        stderr,
+        timeoutMs: 50,
+      });
+
+      expect(exitCode).toBe(2);
+      expect(stdout.write).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+      expect(stderr.write).toHaveBeenCalledWith(
+        'Worker readiness CLI failed: unexpected script/config/timeout failure.\n',
+      );
+      expect(stderr.write).not.toHaveBeenCalledWith(
+        expect.stringContaining('REDIS_URL'),
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
 
