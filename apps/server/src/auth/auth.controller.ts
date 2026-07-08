@@ -119,6 +119,7 @@ export class AuthController {
         },
         password: {
           type: 'string',
+          minLength: 8,
           maxLength: 128,
           example: 'password123',
         },

@@ -29,8 +29,9 @@ test('validates register name and password fields against backend contract', () 
 
 test('validates login password and register confirmation fields', () => {
   assert.equal(validateLoginPassword(''), '请输入密码');
+  assert.equal(validateLoginPassword('1234'), '密码至少 8 位');
   assert.equal(validateLoginPassword('a'.repeat(129)), '密码最多 128 位');
-  assert.equal(validateLoginPassword('secret'), null);
+  assert.equal(validateLoginPassword('password123'), null);
 
   assert.equal(validateConfirmPassword('', 'password123'), '请确认密码');
   assert.equal(validateConfirmPassword('password124', 'password123'), '两次密码不一致');

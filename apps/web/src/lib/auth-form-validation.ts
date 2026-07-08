@@ -19,6 +19,7 @@ export function validateAuthUsername(value: string): FieldError {
 
 export function validateLoginPassword(value: string): FieldError {
   if (!value) return '请输入密码';
+  if (value.length < 8) return '密码至少 8 位';
   if (value.length > 128) return '密码最多 128 位';
   return null;
 }
