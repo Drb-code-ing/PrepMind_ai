@@ -1,3 +1,5 @@
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 import type { WorkerReadinessResponse } from '@repo/types/api/worker-readiness';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 
@@ -149,6 +151,25 @@ describe('worker readiness CLI helpers', () => {
       consoleError.mockRestore();
     }
   });
+
+  it('exits the real CLI process with code 2 when dependencies hang or fail', async () => {
+    const result = await runReadinessCliSubprocess({
+      DATABASE_URL: 'postgresql://prepmind:devpass@127.0.0.1:1/prepmind',
+      REDIS_URL: 'redis://127.0.0.1:1',
+      WORKER_READINESS_CLI_TIMEOUT_MS: '1000',
+    });
+
+    expect(result.timedOut).toBe(false);
+    expect(result.exitCode).toBe(2);
+    expect(result.output).toContain(
+      'Worker readiness CLI failed: unexpected script/config/timeout failure.',
+    );
+    expect(result.output).not.toContain('REDIS_URL');
+    expect(result.output).not.toContain('DATABASE_URL');
+    expect(result.output).not.toContain('postgresql://');
+    expect(result.output).not.toContain('redis://');
+    expect(result.output).not.toContain('AggregateError');
+  }, 20_000);
 });
 
 function createReadiness(): WorkerReadinessResponse {
@@ -194,4 +215,63 @@ function createReadiness(): WorkerReadinessResponse {
     },
     issues: ['Queue has failed jobs.'],
   };
+}
+
+function runReadinessCliSubprocess(
+  env: Record<string, string>,
+): Promise<{ exitCode: number | null; output: string; timedOut: boolean }> {
+  const repoRoot = path.resolve(__dirname, '../../../..');
+
+  return new Promise((resolve) => {
+    const child = spawn(
+      process.env.BUN_EXE ?? 'bun',
+      ['--filter', '@repo/server', 'readiness:worker'],
+      {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          JWT_SECRET: 'dev-secret-change-me',
+          NODE_ENV: 'development',
+          KNOWLEDGE_PROCESSING_MODE: 'queue',
+          SERVER_ROLE: 'worker',
+          ...env,
+        },
+        windowsHide: true,
+      },
+    );
+    let output = '';
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      killProcessTree(child.pid);
+    }, 15_000);
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      output += chunk.toString('utf8');
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      output += chunk.toString('utf8');
+    });
+    child.on('close', (exitCode) => {
+      clearTimeout(timeout);
+      resolve({ exitCode, output, timedOut });
+    });
+  });
+}
+
+function killProcessTree(pid: number | undefined) {
+  if (!pid) return;
+
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/pid', String(pid), '/t', '/f'], {
+      windowsHide: true,
+    });
+    return;
+  }
+
+  try {
+    process.kill(pid, 'SIGKILL');
+  } catch {
+    // The process may already have exited.
+  }
 }

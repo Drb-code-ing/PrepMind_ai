@@ -31,6 +31,10 @@ type RunWorkerReadinessCliOptions = {
   timeoutMs?: number;
 };
 
+type MainOptions = {
+  exitProcess?: boolean;
+};
+
 @Module({
   imports: [
     ConfigModule,
@@ -150,7 +154,7 @@ export async function runWorkerReadinessCli(
   } finally {
     if (app) {
       try {
-        await app.close();
+        await withWorkerReadinessTimeout(app.close(), timeoutMs);
       } catch {
         stderr.write('Worker readiness CLI cleanup failed.\n');
         exitCode = 2;
@@ -162,8 +166,13 @@ export async function runWorkerReadinessCli(
   return exitCode;
 }
 
-export async function main() {
-  process.exitCode = await runWorkerReadinessCli();
+export async function main(options: MainOptions = {}) {
+  const exitCode = await runWorkerReadinessCli();
+  if (options.exitProcess ?? true) {
+    process.exit(exitCode);
+  }
+
+  process.exitCode = exitCode;
 }
 
 if (require.main === module) {
