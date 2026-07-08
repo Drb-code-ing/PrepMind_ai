@@ -59,6 +59,7 @@
 - `/operator-audit` 的 action / status 筛选从原生 `<select>` 改为自定义 `FilterSelect`，使用 button + listbox + check icon，保留 44px 触控目标、焦点样式和 `aria-haspopup/listbox/option` 语义。
 - `apps/web/src/lib/operator-audit-ui-integration.test.mts` 增加防回归断言：页面必须包含 `FilterSelect` 和 `role="listbox"`，且不能再出现原生 `<select>`。
 - `docs/dev-start.md` 增加 Outbox requeue 手动排障流程，明确 `FAILED / DEAD -> PENDING`、需要先修根因、不要对 unknown handler / invalid payload 盲目 requeue，并给出 PowerShell API 调试示例。
+- `docs/dev-start.md` 增加中文路径下 Docker build 的 `subst P:` 规避方案；直接在中文路径 build 仍会触发 Docker gRPC non-printable ASCII，但通过 ASCII 映射路径加 `--project-name docker` 可成功重建 server/web 镜像。
 
 边界：
 - 本次不新增前端 outbox 列表页或一键 requeue 按钮；当前 requeue 仍是 admin-only 后端诊断 API，审计台负责查看 requeue 审计记录。
@@ -69,11 +70,15 @@
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-ui-integration.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
 - `bun --filter @repo/web lint`
+- `bun --filter @repo/web build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker exec -T worker sh -lc "bun apps/server/dist/scripts/worker-readiness.js"`
+- `docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web`
 
 回顾时可以问：
 - “为什么 requeue 不是直接执行 handler，而是回到 PENDING 等 worker 正常消费？”
 - “为什么 unknown handler 的 DEAD event 不能靠 requeue 解决？”
 - “审计筛选控件为什么要用自定义 listbox，而不是浏览器原生 select？”
+- “为什么中文路径下 Docker compose build 会失败，而 `subst P:` 后可以成功？”
 
 ### 2026-07-09 - Phase 7.15 Operator Audit 真实运行验收与本地诊断收口
 

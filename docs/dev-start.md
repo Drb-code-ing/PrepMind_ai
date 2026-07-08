@@ -629,6 +629,34 @@ wsl --list --verbose
 
 `docker-desktop` 应为 `Running`，并且 `VERSION` 为 `2`。
 
+### 中文路径下 Docker build 报 non-printable ASCII
+
+如果项目放在中文路径下，直接运行下面命令可能失败：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker build server web
+```
+
+典型错误是：
+
+```text
+failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains value with non-printable ASCII characters
+```
+
+这不是 server 或 web 代码坏了，而是 Docker Desktop build session 对当前工作路径里的非 ASCII 字符不稳定。解决方式是给项目映射一个纯 ASCII 盘符，然后从这个盘符执行 build：
+
+```powershell
+subst P: "E:\PrepMind_ai智能备考助手"
+$env:COMPOSE_BAKE='false'
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web
+```
+
+注意：
+
+- `--project-name docker` 不能省略，否则 Compose 可能因为 `P:\` 根路径没有目录名而提示 `project name must not be empty`。
+- 这只是路径映射，不会复制项目，也不会影响 PostgreSQL / Redis / MinIO 数据。
+- 构建完成后，仍然可以回到原项目目录运行普通命令；如果想取消映射，用 `subst P: /D`。
+
 ### Docker 前端真实模型配置补充
 
 Docker 前端通过 `docker/docker-compose.dev.yml` 的 `env_file: ../.env` 读取根目录 `.env`。因此 Docker 前端要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
