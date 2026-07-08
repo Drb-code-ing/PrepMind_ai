@@ -2,6 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('Docker Compose worker readiness healthcheck', () => {
+  it('keeps Docker build context small and free of local-only artifacts', () => {
+    const dockerignore = readRepoFile('.dockerignore');
+
+    expect(dockerignore).toContain('node_modules');
+    expect(dockerignore).toContain('.git');
+    expect(dockerignore).toContain('.worktrees');
+    expect(dockerignore).toContain('.env');
+    expect(dockerignore).toContain('apps/server/dist');
+    expect(dockerignore).toContain('apps/web/.next');
+  });
+
   it('keeps the server Dockerfile aligned with the Bun workspace and build output', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
@@ -34,6 +45,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).not.toContain('pnpm-lock.yaml');
     expect(dockerfile).not.toContain('pnpm-workspace.yaml');
     expect(dockerfile).toContain('bun install --frozen-lockfile');
+    expect(dockerfile).toContain('COPY --from=deps /app/apps ./apps');
+    expect(dockerfile).toContain('COPY --from=deps /app/packages ./packages');
+    expect(dockerfile).toContain('bun --cwd packages/database prisma:generate');
     expect(dockerfile).toContain('bun --filter @repo/server build');
     expect(dockerfile).toContain(
       'COPY --from=builder /app/node_modules ./node_modules',
