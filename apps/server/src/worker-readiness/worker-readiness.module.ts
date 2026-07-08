@@ -8,7 +8,10 @@ import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
 import { OutboxModule } from '../outbox/outbox.module';
 import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
-import { WorkerReadinessController } from './worker-readiness.controller';
+import {
+  WorkerReadinessController,
+  WorkerReadinessEnabledGuard,
+} from './worker-readiness.controller';
 import { WorkerReadinessService } from './worker-readiness.service';
 
 @Module({
@@ -19,6 +22,7 @@ import { WorkerReadinessService } from './worker-readiness.service';
   ],
   controllers: [WorkerReadinessController],
   providers: [
+    WorkerReadinessEnabledGuard,
     {
       provide: WorkerReadinessService,
       inject: [

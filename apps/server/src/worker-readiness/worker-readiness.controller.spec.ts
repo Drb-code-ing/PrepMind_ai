@@ -2,20 +2,22 @@ import { NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA, MODULE_METADATA } from '@nestjs/common/constants';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
-import { WorkerReadinessController } from './worker-readiness.controller';
+import {
+  WorkerReadinessController,
+  WorkerReadinessEnabledGuard,
+} from './worker-readiness.controller';
 import { WorkerReadinessModule } from './worker-readiness.module';
 import { WorkerReadinessService } from './worker-readiness.service';
 
 describe('WorkerReadinessController', () => {
-  it('uses JwtAuthGuard on the controller', () => {
+  it('runs worker readiness feature gate before JwtAuthGuard', () => {
     const guardsMetadata = Reflect.getMetadata(
       GUARDS_METADATA,
       WorkerReadinessController,
     ) as unknown;
     const guards = Array.isArray(guardsMetadata) ? guardsMetadata : [];
 
-    expect(guards).toContain(JwtAuthGuard);
+    expect(guards).toEqual([WorkerReadinessEnabledGuard, JwtAuthGuard]);
   });
 
   it('returns service readiness when worker readiness is enabled', async () => {
@@ -32,55 +34,33 @@ describe('WorkerReadinessController', () => {
     };
     const controller = new WorkerReadinessController(
       service as never,
-      config as never,
     );
 
     await expect(controller.readiness()).resolves.toEqual(readiness);
-    expect(config.get).toHaveBeenCalledWith('WORKER_READINESS_ENABLED', {
-      infer: true,
-    });
     expect(service.getReadiness).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the endpoint when worker readiness is disabled', async () => {
-    const service = {
-      getReadiness: jest.fn(),
-    };
+  it('hides the endpoint from the feature gate guard when disabled', () => {
     const config = {
       get: jest.fn().mockReturnValue(false),
     };
-    const controller = new WorkerReadinessController(
-      service as never,
-      config as never,
-    );
+    const guard = new WorkerReadinessEnabledGuard(config as never);
 
-    await expect(controller.readiness()).rejects.toBeInstanceOf(
+    expect(() => guard.canActivate()).toThrow(
       NotFoundException,
     );
     expect(config.get).toHaveBeenCalledWith('WORKER_READINESS_ENABLED', {
       infer: true,
     });
-    expect(service.getReadiness).not.toHaveBeenCalled();
   });
 
-  it('registers the knowledge document queue provider in the module', () => {
-    const imports = Reflect.getMetadata(
-      MODULE_METADATA.IMPORTS,
-      WorkerReadinessModule,
-    ) as Array<{ providers?: Array<{ provide?: unknown }> }> | undefined;
-    const providers = imports?.flatMap((moduleImport) => {
-      return Array.isArray(moduleImport.providers)
-        ? moduleImport.providers
-        : [];
-    });
+  it('allows the request through the feature gate guard when enabled', () => {
+    const config = {
+      get: jest.fn().mockReturnValue(true),
+    };
+    const guard = new WorkerReadinessEnabledGuard(config as never);
 
-    expect(providers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          provide: expect.stringContaining(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE),
-        }),
-      ]),
-    );
+    expect(guard.canActivate()).toBe(true);
   });
 
   it('registers WorkerReadinessService through an explicit factory provider', () => {

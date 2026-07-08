@@ -1,4 +1,11 @@
-import { Controller, Get, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  CanActivate,
+  Controller,
+  Get,
+  Injectable,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiBearerAuth,
@@ -12,15 +19,25 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { ServerEnv } from '../config/env';
 import { WorkerReadinessService } from './worker-readiness.service';
 
+@Injectable()
+export class WorkerReadinessEnabledGuard implements CanActivate {
+  constructor(private readonly config: ConfigService<ServerEnv, true>) {}
+
+  canActivate() {
+    if (!this.config.get('WORKER_READINESS_ENABLED', { infer: true })) {
+      throw new NotFoundException('Worker readiness is disabled');
+    }
+
+    return true;
+  }
+}
+
 @Controller('worker-readiness')
-@UseGuards(JwtAuthGuard)
+@UseGuards(WorkerReadinessEnabledGuard, JwtAuthGuard)
 @ApiTags('Worker Readiness')
 @ApiBearerAuth('access-token')
 export class WorkerReadinessController {
-  constructor(
-    private readonly service: WorkerReadinessService,
-    private readonly config: ConfigService<ServerEnv, true>,
-  ) {}
+  constructor(private readonly service: WorkerReadinessService) {}
 
   @Get()
   @ApiOperation({
@@ -33,10 +50,6 @@ export class WorkerReadinessController {
       'readiness 摘要会包在全局 response envelope 中返回：{ success: true, data, requestId }。',
   })
   async readiness(): Promise<WorkerReadinessResponse> {
-    if (!this.config.get('WORKER_READINESS_ENABLED', { infer: true })) {
-      throw new NotFoundException('Worker readiness is disabled');
-    }
-
     return this.service.getReadiness();
   }
 }
