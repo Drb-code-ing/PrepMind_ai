@@ -6,7 +6,7 @@
 
 更新时间：2026-07-08
 
-当前阶段：Phase 7.14.2 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
+当前阶段：Phase 7.14.4 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -39,8 +39,35 @@
 | Phase 7.13 | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 启动与浏览器验收 |
 | Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档 |
 | Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only 访问控制 |
+| Phase 7.14.3 | 已完成 | OperatorAuditLog、审计 service、脱敏 metadata 与来源 hash |
+| Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.14.3 / 7.14.4 OperatorAuditLog + Outbox Requeue Audit
+
+本轮目标：在 OperatorGuard 之后补上操作审计地基，并把 `POST /outbox-events/:id/requeue` 接入成功/失败留痕，避免审计 service 变成未接主链路的死码。
+
+完成内容：
+- Prisma schema 新增 `OperatorAuditAction`、`OperatorAuditStatus` 和 `OperatorAuditLog`，并补充迁移文件。
+- `User` 增加 `operatorAuditLogs` 关系，审计日志按 actor、action、target、status 建索引。
+- 新增 `OperatorAuditService` 和 `OperatorAuditModule`，支持 `recordSuccess()` / `recordFailure()`。
+- 审计记录只保存 actor、action、status、target、reason、requestId、IP/User-Agent hash、错误 code 和截断后的脱敏错误预览。
+- metadata 改为 allowlist，只允许 `previousStatus`、`nextStatus`、`attemptsBefore`、`attemptsAfter`、`payloadHash`、`lastErrorCode`、`source` 等安全字段；reason / requestId / errorCode / errorPreview 均做脱敏和截断。
+- 审计日志外键使用 `onDelete: SetNull`，actor user 删除后保留审计记录。
+- `OutboxOpsController.requeue()` 成功时记录 `OUTBOX_REQUEUE / SUCCEEDED`，失败时记录 `OUTBOX_REQUEUE / FAILED` 后继续抛出原错误。
+- `OutboxModule` 导入 `OperatorAuditModule`；审计写入失败只记录脱敏 warning，不影响 requeue 主操作。
+
+验证结果：
+- `bun --filter @repo/server test -- operator-audit.service --runInBand`
+- `bun --filter @repo/server test -- outbox-ops.controller --runInBand`
+- `bun --cwd apps/server eslint src/operator-audit`
+- `bun --filter @repo/server build`
+- `bun --cwd packages/database test`
+- `bun run db:generate`
+
+边界：
+- 本轮不新增前端页面、不开放审计日志查询接口、不保存 payload、prompt、chunk、API key、token、cookie 或原始 IP/User-Agent。
 
 ### 2026-07-08 - Unified Acceptance Checklist
 

@@ -41,6 +41,7 @@ model User {
   agentTraceRuns             AgentTraceRun[]
   agentTraceSteps            AgentTraceStep[]
   backgroundJobs             BackgroundJob[]
+  operatorAuditLogs          OperatorAuditLog[]
 }
 
 model Account {
@@ -396,6 +397,15 @@ enum OutboxEventStatus {
   DEAD
 }
 
+enum OperatorAuditAction {
+  OUTBOX_REQUEUE
+}
+
+enum OperatorAuditStatus {
+  SUCCEEDED
+  FAILED
+}
+
 model UserMemoryCandidate {
   id               String                    @id @default(cuid())
   userId           String
@@ -557,6 +567,30 @@ model OutboxEvent {
   @@index([lockedBy, lockedAt])
   @@index([aggregateType, aggregateId, createdAt])
   @@index([type, status, createdAt])
+}
+
+model OperatorAuditLog {
+  id             String              @id @default(cuid())
+  actorUserId    String?
+  action         OperatorAuditAction
+  status         OperatorAuditStatus
+  targetType     String
+  targetId       String?
+  reason         String?             @db.VarChar(240)
+  metadata       Json?
+  errorCode      String?
+  errorPreview   String?             @db.VarChar(240)
+  requestId      String?             @db.VarChar(80)
+  ipAddressHash  String?             @db.VarChar(80)
+  userAgentHash  String?             @db.VarChar(80)
+  createdAt      DateTime            @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([status, createdAt])
 }
 
 // ---------- RAG 知识库 ----------
