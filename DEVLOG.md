@@ -6,7 +6,7 @@
 
 更新时间：2026-07-08
 
-当前阶段：Phase 7.14.5 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
+当前阶段：Phase 7.14.6 已完成，后续继续 Phase 7 operator 审计与运维诊断生产化。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -42,8 +42,44 @@
 | Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash |
 | Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
 | Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
+| Phase 7.14.6 | 已完成 | `/operator-audit` 隐藏管理员审计台、前端 ADMIN 体验拦截、脱敏列表筛选 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.14.6 Operator Audit Hidden Admin Page
+
+目标：给已经完成的 Operator Audit 查询 API 补一个受控的前端查看入口，让管理员不用直接连数据库或手写请求，也能在产品里查看脱敏审计记录。
+
+为什么：
+- 只有后端 API 时，排障仍然需要 Swagger、curl 或数据库查询，对本地验收和面试展示都不够直观。
+- 审计页面不能出现在普通学习用户导航里，否则会让用户误以为这是普通功能，也会暴露不必要的运维入口。
+- 前端可以做体验拦截和空状态提示，但真正权限必须继续由后端 `OperatorAuditEnabledGuard -> JwtAuthGuard -> OperatorGuard` 控制。
+
+主要内容：
+- 新增 `apps/web/src/lib/operator-audit-api.ts`，复用 `@repo/types/api/operator-audit` Zod schema 解析 `/operator-audit-logs` 响应。
+- 新增 `operatorAuditQueryKeys` 与 `useOperatorAuditLogs()`，只有当前会话 `currentUser.role === 'ADMIN'` 时才启用请求。
+- 新增隐藏页面 `/operator-audit`，不加入普通侧边栏或个人中心主导航；管理员可手动访问。
+- 页面支持按 `action`、`status`、`targetType`、`targetId`、`actorUserId` 筛选，展示审计时间、操作者、目标、原因、requestId、错误码、脱敏错误预览和 IP/User-Agent hash。
+- 普通用户访问时展示无权限说明，不主动请求审计 API；未登录仍由 `(main)` layout 的 `AuthGuard` 处理。
+- 页面只展示脱敏字段，不展示 payload、metadata、aggregateId、prompt、RAG chunk、模型回答、API key、token、cookie 或用户正文。
+
+边界：
+- 前端页面不是安全边界，只是体验层；不能用它替代后端 OperatorGuard。
+- 本轮不做审计详情页、不做导出、不做审计删除/编辑、不做保留周期策略、不新增更细的 operator role。
+- 当前分页使用“下一页”读取下一批结果，不做复杂无限列表缓存，避免 React effect 合并分页带来的状态副作用。
+
+验收：
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-api.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-query-keys.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-ui-integration.test.mts`
+- `bun --filter @repo/web lint`
+
+回顾时可以问：
+- “为什么 `/operator-audit` 不放进普通导航？”
+- “前端 ADMIN 拦截和后端 OperatorGuard 的职责有什么区别？”
+- “这个页面为什么只展示脱敏 DTO，不展示 metadata 或 payload？”
+- “为什么第一版选择隐藏页面和筛选列表，而不是完整管理后台？”
 
 ### 2026-07-08 - Phase 7.14.5 Operator Audit Query API
 
@@ -506,7 +542,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Operator Audit 产品化边界：是否需要前端受控提示、只读详情、导出策略和保留周期。
+1. Operator Audit 产品化边界：是否需要只读详情、导出策略、保留周期和更细 operator role。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
 3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标和容器 readiness。
 4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。

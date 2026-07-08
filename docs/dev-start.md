@@ -313,6 +313,30 @@ minioadmin / minioadmin
 prepmind-dev
 ```
 
+### 本地管理员账号
+
+`/operator-audit`、`/outbox-events`、`/worker-readiness` 等 operator 诊断入口要求当前登录用户的 `role=ADMIN`。本地开发最简单的方式是先在前端正常注册一个账号，然后把这个账号升级为管理员。
+
+如果数据库跑在 Docker Compose 里：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -d prepmind -c "UPDATE \"User\" SET role='ADMIN' WHERE email='your-email@example.com';"
+```
+
+如果直接用本机 PostgreSQL：
+
+```powershell
+psql "postgresql://prepmind:devpass@127.0.0.1:5433/prepmind" -c "UPDATE \"User\" SET role='ADMIN' WHERE email='your-email@example.com';"
+```
+
+然后退出登录并重新登录，让新的 access token 带上 `ADMIN` 角色。第一版管理员入口不放到普通导航里，需要手动访问：
+
+```text
+http://localhost:3000/operator-audit
+```
+
+注意：前端页面只做体验拦截，真正的权限仍由后端 `JwtAuthGuard` 和 `OperatorGuard` 判断。
+
 ## 4. AI 调用模式
 
 前端 `/api/chat` 开发默认走本地 mock 流式响应，不消耗 DeepSeek / OpenAI 额度。即使 `apps/web/.env.local` 里存在 API key，只要不显式开启 live，也不会调用真实模型。
