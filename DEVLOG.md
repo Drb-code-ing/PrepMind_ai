@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 维护规则：`DEVLOG.md` 只记录阶段级里程碑、关键工程决策和验收结果，不再堆叠逐提交流水账。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
+> 维护规则：`DEVLOG.md` 只记录阶段级里程碑、关键工程决策和验收结果，不堆叠逐提交流水账。每个关键阶段必须写清“为什么做、做了什么、边界是什么、怎么验收”，方便后续接手、复盘和面试表达。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
