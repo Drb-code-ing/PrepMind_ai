@@ -22,6 +22,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WorkerObservabilityModule } from './worker-observability/worker-observability.module';
+import { WorkerReadinessModule } from './worker-readiness/worker-readiness.module';
 import { WrongQuestionOrganizerModule } from './wrong-question-organizer/wrong-question-organizer.module';
 import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
 
@@ -49,6 +50,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     UploadsModule,
     KnowledgeDocumentsModule,
     WorkerObservabilityModule,
+    WorkerReadinessModule,
     WrongQuestionOrganizerModule,
   ],
 })
