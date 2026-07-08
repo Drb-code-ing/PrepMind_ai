@@ -20,15 +20,32 @@ type OperatorAuditLogCreateArgs = {
   data: OperatorAuditLogCreateData;
 };
 
+type OperatorAuditLogFindManyArgs = {
+  where: unknown;
+  orderBy: unknown;
+  take: number;
+  select: unknown;
+};
+
+const objectContaining = <T extends object>(value: T) =>
+  expect.objectContaining(value) as unknown as T;
+
 describe('OperatorAuditService', () => {
   const now = new Date('2026-07-08T10:00:00.000Z');
   const createAuditLog = jest.fn<
     Promise<unknown>,
     [OperatorAuditLogCreateArgs]
   >();
+  const findManyAuditLogs = jest.fn<
+    Promise<unknown[]>,
+    [OperatorAuditLogFindManyArgs]
+  >();
+  const findFirstAuditLog = jest.fn();
   const prisma = {
     operatorAuditLog: {
       create: createAuditLog,
+      findMany: findManyAuditLogs,
+      findFirst: findFirstAuditLog,
     },
   };
   const logger = {
@@ -196,6 +213,87 @@ describe('OperatorAuditService', () => {
     );
   });
 
+  it('lists redacted audit logs without metadata', async () => {
+    findManyAuditLogs.mockResolvedValue([
+      row({ id: 'audit_2', metadata: { payload: 'secret' } }),
+    ]);
+
+    const result = await createService().list({ limit: 20 });
+
+    expect(findManyAuditLogs).toHaveBeenCalledWith({
+      where: {},
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 21,
+      select: objectContaining({
+        metadata: false,
+      }),
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: 'audit_2',
+        action: 'OUTBOX_REQUEUE',
+        status: 'SUCCEEDED',
+        targetType: 'OutboxEvent',
+        targetId: 'evt_1',
+      }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it('applies filters and stable cursor pagination', async () => {
+    const cursorCreatedAt = new Date('2026-07-08T09:00:00.000Z');
+    findFirstAuditLog.mockResolvedValue({
+      id: 'audit_cursor',
+      createdAt: cursorCreatedAt,
+    });
+    findManyAuditLogs.mockResolvedValue([]);
+
+    await createService().list({
+      action: 'OUTBOX_REQUEUE',
+      status: 'FAILED',
+      targetType: 'OutboxEvent',
+      targetId: 'evt_1',
+      actorUserId: 'user_admin',
+      limit: 10,
+      cursor: 'audit_cursor',
+    });
+
+    expect(findFirstAuditLog).toHaveBeenCalledWith({
+      where: { id: 'audit_cursor' },
+      select: { id: true, createdAt: true },
+    });
+    expect(findManyAuditLogs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          action: 'OUTBOX_REQUEUE',
+          status: 'FAILED',
+          targetType: 'OutboxEvent',
+          targetId: 'evt_1',
+          actorUserId: 'user_admin',
+          OR: [
+            { createdAt: { lt: cursorCreatedAt } },
+            { createdAt: cursorCreatedAt, id: { lt: 'audit_cursor' } },
+          ],
+        },
+        take: 11,
+      }),
+    );
+  });
+
+  it('returns nextCursor when audit rows exceed requested limit', async () => {
+    findManyAuditLogs.mockResolvedValue([
+      row({ id: 'audit_3' }),
+      row({ id: 'audit_2' }),
+      row({ id: 'audit_1' }),
+    ]);
+
+    const result = await createService().list({ limit: 2 });
+
+    expect(result.items.map((item) => item.id)).toEqual(['audit_3', 'audit_2']);
+    expect(result.nextCursor).toBe('audit_2');
+  });
+
   function createService() {
     return new OperatorAuditService(prisma as never, logger);
   }
@@ -216,6 +314,42 @@ describe('OperatorAuditService', () => {
         'user-agent': 'Playwright',
         'x-request-id': 'req_1',
       },
+    };
+  }
+
+  function row(
+    overrides: Partial<{
+      id: string;
+      actorUserId: string | null;
+      action: 'OUTBOX_REQUEUE';
+      status: 'SUCCEEDED' | 'FAILED';
+      targetType: string;
+      targetId: string | null;
+      reason: string | null;
+      requestId: string | null;
+      ipAddressHash: string | null;
+      userAgentHash: string | null;
+      errorCode: string | null;
+      errorPreview: string | null;
+      createdAt: Date;
+      metadata: unknown;
+    }> = {},
+  ) {
+    return {
+      id: overrides.id ?? 'audit_1',
+      actorUserId: overrides.actorUserId ?? 'user_admin',
+      action: overrides.action ?? 'OUTBOX_REQUEUE',
+      status: overrides.status ?? 'SUCCEEDED',
+      targetType: overrides.targetType ?? 'OutboxEvent',
+      targetId: overrides.targetId ?? 'evt_1',
+      reason: overrides.reason ?? 'fixed provider config',
+      requestId: overrides.requestId ?? 'req_1',
+      ipAddressHash: overrides.ipAddressHash ?? 'sha256:ip',
+      userAgentHash: overrides.userAgentHash ?? 'sha256:ua',
+      errorCode: overrides.errorCode ?? null,
+      errorPreview: overrides.errorPreview ?? null,
+      createdAt: overrides.createdAt ?? now,
+      metadata: overrides.metadata,
     };
   }
 });

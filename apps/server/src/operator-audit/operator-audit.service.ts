@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma } from '@repo/database';
+import type {
+  OperatorAuditLogListQuery,
+  OperatorAuditLogListResponse,
+} from '@repo/types/api/operator-audit';
 
 import { PrismaService } from '../database/prisma.service';
 import { sanitizeJobError } from '../jobs/job-error-sanitizer';
@@ -46,6 +50,22 @@ type OperatorAuditCreateData = {
   createdAt?: Date;
 };
 
+type OperatorAuditLogRow = {
+  id: string;
+  actorUserId: string | null;
+  action: OperatorAuditAction;
+  status: OperatorAuditStatus;
+  targetType: string;
+  targetId: string | null;
+  reason: string | null;
+  requestId: string | null;
+  ipAddressHash: string | null;
+  userAgentHash: string | null;
+  errorCode: string | null;
+  errorPreview: string | null;
+  createdAt: Date;
+};
+
 const MAX_REASON_LENGTH = 240;
 const MAX_ERROR_PREVIEW_LENGTH = 240;
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -58,6 +78,23 @@ const ALLOWED_METADATA_KEYS = new Set([
   'previousStatus',
   'source',
 ]);
+
+const operatorAuditLogSelect = {
+  id: true,
+  actorUserId: true,
+  action: true,
+  status: true,
+  targetType: true,
+  targetId: true,
+  reason: true,
+  requestId: true,
+  ipAddressHash: true,
+  userAgentHash: true,
+  errorCode: true,
+  errorPreview: true,
+  createdAt: true,
+  metadata: false,
+} satisfies Prisma.OperatorAuditLogSelect;
 
 @Injectable()
 export class OperatorAuditService {
@@ -88,6 +125,28 @@ export class OperatorAuditService {
         'Operator action failed',
       ).slice(0, MAX_ERROR_PREVIEW_LENGTH),
     });
+  }
+
+  async list(
+    query: OperatorAuditLogListQuery,
+  ): Promise<OperatorAuditLogListResponse> {
+    const limit = query.limit ?? 20;
+    const rows = await this.prisma.operatorAuditLog.findMany({
+      where: await this.buildListWhere(query),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      select: operatorAuditLogSelect,
+    });
+
+    const visibleRows = rows.slice(0, limit);
+
+    return {
+      items: visibleRows.map((row) => this.toListItem(row)),
+      nextCursor:
+        rows.length > limit
+          ? (visibleRows[visibleRows.length - 1]?.id ?? null)
+          : null,
+    };
   }
 
   private async record(data: OperatorAuditCreateData) {
@@ -121,6 +180,63 @@ export class OperatorAuditService {
       ipAddressHash: hashValue(input.request?.ip),
       userAgentHash: hashValue(readHeader(input.request, 'user-agent')),
       createdAt: input.now,
+    };
+  }
+
+  private async buildListWhere(
+    query: OperatorAuditLogListQuery,
+  ): Promise<Prisma.OperatorAuditLogWhereInput> {
+    return {
+      ...(query.action ? { action: query.action } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.targetType ? { targetType: query.targetType } : {}),
+      ...(query.targetId ? { targetId: query.targetId } : {}),
+      ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}),
+      ...(await this.buildCursorWhere(query.cursor)),
+    };
+  }
+
+  private async buildCursorWhere(
+    cursor?: string,
+  ): Promise<Prisma.OperatorAuditLogWhereInput> {
+    if (!cursor) {
+      return {};
+    }
+
+    const cursorRow = await this.prisma.operatorAuditLog.findFirst({
+      where: { id: cursor },
+      select: { id: true, createdAt: true },
+    });
+
+    if (!cursorRow) {
+      return {
+        AND: [{ id: cursor }, { id: { not: cursor } }],
+      };
+    }
+
+    return {
+      OR: [
+        { createdAt: { lt: cursorRow.createdAt } },
+        { createdAt: cursorRow.createdAt, id: { lt: cursorRow.id } },
+      ],
+    };
+  }
+
+  private toListItem(row: OperatorAuditLogRow) {
+    return {
+      id: row.id,
+      actorUserId: row.actorUserId,
+      action: row.action,
+      status: row.status,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      reason: row.reason,
+      requestId: row.requestId,
+      ipAddressHash: row.ipAddressHash,
+      userAgentHash: row.userAgentHash,
+      errorCode: row.errorCode,
+      errorPreview: row.errorPreview,
+      createdAt: row.createdAt.toISOString(),
     };
   }
 }
