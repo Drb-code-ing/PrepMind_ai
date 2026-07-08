@@ -42,6 +42,19 @@
 
 ## 近期关键记录
 
+### 2026-07-08 - Unified Acceptance Checklist
+
+本轮目标：把本机启动、Docker 全栈、mock/live AI、RAG、worker readiness、Outbox Ops、Swagger 和核心产品页面验收整理成统一入口，避免命令散落在多篇设计文档和博客里。
+
+完成内容：
+- 新增 `docs/acceptance-checklist.md`，按验收场景说明应该启动什么、看什么页面、跑什么命令，以及 mock / fake / live / Docker 分别能证明什么。
+- 在 `docs/dev-start.md` 和 `AGENTS.md` 增加统一验收入口链接。
+- 将阶段收尾的 Docker 全栈验收命令统一为带 `--build`，避免复用旧镜像导致误判。
+- 补齐 `/today`、`/plan`、`/stats`、`/error-book`、`/profile` 等核心产品页面验收点。
+
+验证结果：
+- `git diff --check`
+
 ### 2026-07-08 - Phase 7.14.2 OperatorGuard
 
 本轮目标：把 Outbox Ops、Worker Observability 和 HTTP Worker Readiness 从“普通登录用户可访问的诊断入口”升级为 admin/operator-only 入口，为后续 outbox requeue 操作审计打地基。
@@ -76,7 +89,7 @@
 - `bun --filter @repo/web test`
 - `bun --filter @repo/web build`
 - `docker compose -f docker/docker-compose.dev.yml --profile worker build web`
-- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker web`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web`
 - `docker compose -f docker/docker-compose.dev.yml --profile worker ps`：`web` / `server` up，`worker` healthy。
 - HTTP smoke：`http://127.0.0.1:3000` 返回 200，`http://127.0.0.1:3001/health` 返回 `status=ok`。
 - Playwright 浏览器验收：注册临时账号后跳转 `/chat`，刷新后仍保持聊天页；登录后刷新期间未捕获到新增 console error。未登录时 `/auth/refresh` 返回 401 属于匿名刷新探测，不影响登录注册链路。

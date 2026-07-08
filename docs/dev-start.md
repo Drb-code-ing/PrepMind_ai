@@ -1,6 +1,7 @@
 # PrepMind 本地启动命令
 
-> 适用于 Windows PowerShell。Phase 2 开发数据库使用 Docker PostgreSQL + pgvector。
+> 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
+> 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
 ## 1. 端口约定
 
@@ -132,7 +133,7 @@ docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres 
 Phase 7.13 起，Docker Compose 也可以直接拉起完整 Web + API + Worker 本地栈：
 
 ```powershell
-docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker web
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web
 ```
 
 验收入口：
@@ -244,7 +245,7 @@ Phase 7.11 之后还可以用 Worker Readiness 做部署前机器检查。它和
 HTTP readiness 入口需要登录态，并受 `WORKER_READINESS_ENABLED` 控制；默认非 production 开启、production 关闭：
 
 ```text
-GET http://localhost:3001/worker-readiness
+GET http://127.0.0.1:3001/worker-readiness
 ```
 
 部署前或本地终端可以直接跑 CLI：
@@ -282,11 +283,11 @@ bun --filter @repo/web dev
 访问地址：
 
 ```text
-前端：http://localhost:3000
-后端：http://localhost:3001
-健康检查：http://localhost:3001/health
-Swagger UI：http://localhost:3001/api-docs
-OpenAPI JSON：http://localhost:3001/api-docs-json
+前端：http://127.0.0.1:3000
+后端：http://127.0.0.1:3001
+健康检查：http://127.0.0.1:3001/health
+Swagger UI：http://127.0.0.1:3001/api-docs
+OpenAPI JSON：http://127.0.0.1:3001/api-docs-json
 MinIO API：http://127.0.0.1:9000
 MinIO Console：http://127.0.0.1:9001
 ```
