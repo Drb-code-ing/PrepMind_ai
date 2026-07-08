@@ -393,7 +393,7 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 - Phase 7.14.3 新增 `OperatorAuditLog`、`OperatorAuditService` 和 `OperatorAuditModule`，审计记录只保存 actor、action、status、target、reason、requestId、IP/User-Agent hash、错误 code 和脱敏错误预览。
 - Phase 7.14.4 把 `POST /outbox-events/:id/requeue` 接入 `OUTBOX_REQUEUE` 成功/失败审计；审计写入失败只记录脱敏 warning，不影响 requeue 主操作。
 - Phase 7.14.5 新增 `GET /operator-audit-logs` admin-only 脱敏查询 API，并新增 `OPERATOR_AUDIT_ENABLED`，默认非 production 开启、production 关闭。
-- Phase 7.14.6 新增隐藏前端页面 `/operator-audit`，不加入普通导航；管理员可手动访问并按 action、status、targetType、targetId、actorUserId 筛选脱敏审计记录，普通用户只看到无权限说明且不会主动请求审计 API。
+- Phase 7.14.6 新增前端页面 `/operator-audit`；管理员侧边栏显示“审计”入口，可按 action、status、targetType、targetId、actorUserId 筛选脱敏审计记录，普通用户不显示入口且页面不会主动请求审计 API。
 - Operator Audit 不返回 `metadata`、payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie、原始 IP 或原始 User-Agent。
 - 设计与执行计划见 `docs/superpowers/specs/phase-7-14-operator-access-audit-design.md` 和 `docs/superpowers/plans/phase-7-14-operator-audit-query.md`。
 

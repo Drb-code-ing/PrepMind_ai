@@ -3,6 +3,46 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 0. 先看这里：Prisma Studio、数据库和管理员账号
+
+本项目本地开发默认使用 Docker PostgreSQL，宿主机访问端口是 `5433`：
+
+```text
+postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
+```
+
+如果你只是想打开 Prisma Studio 看数据，推荐在项目根目录运行：
+
+```powershell
+bun run db:studio
+```
+
+如果你想先确认 Prisma 连接的是不是同一个库，运行：
+
+```powershell
+bun run db:status
+```
+
+看到 `Database schema is up to date!`，说明 schema 和数据库已经对齐。不要执行 `prisma migrate reset`、`docker compose down -v` 这类会清空数据的命令。
+
+你之前运行的：
+
+```powershell
+bun --cwd packages/database prisma studio
+```
+
+它是“直接从 database package 目录启动 Prisma CLI”。这个命令本身没有问题，但如果当前 PowerShell 没有提前设置 `$env:DATABASE_URL`，Prisma CLI 可能读不到根目录 `.env`，Studio 就会弹 `Prisma Client Error / Unable to run script`，看起来像没有数据。现在仓库脚本已经包装成会自动读取根目录 `.env`，所以优先用 `bun run db:studio`。
+
+如果你要把某个本地账号升级为管理员，推荐直接在 Docker PostgreSQL 容器里执行 SQL：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -d prepmind -c "UPDATE \"User\" SET role='ADMIN' WHERE email='你的邮箱@example.com';"
+```
+
+这条命令和 Prisma Studio 不是一类东西：Prisma Studio 是浏览器里的数据库查看/编辑工具；`docker compose exec postgres psql ...` 是直接进入 PostgreSQL 容器执行 SQL，更适合快速改角色。改完后需要退出登录再重新登录，让新的 access token 带上 `ADMIN` 角色。
+
+管理员重新登录后，侧边栏会显示“审计”入口；普通用户不会看到该入口。真正的安全边界仍然是后端 `JwtAuthGuard + OperatorGuard`，前端入口只负责体验分流。
+
 ## 1. 端口约定
 
 Docker 容器内 PostgreSQL 仍是 `5432`，本机宿主端口固定为 `5433`：
@@ -329,7 +369,7 @@ docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -
 psql "postgresql://prepmind:devpass@127.0.0.1:5433/prepmind" -c "UPDATE \"User\" SET role='ADMIN' WHERE email='your-email@example.com';"
 ```
 
-然后退出登录并重新登录，让新的 access token 带上 `ADMIN` 角色。第一版管理员入口不放到普通导航里，需要手动访问：
+然后退出登录并重新登录，让新的 access token 带上 `ADMIN` 角色。管理员账号会在侧边栏看到“审计”入口，普通用户不会看到；也可以直接访问：
 
 ```text
 http://localhost:3000/operator-audit

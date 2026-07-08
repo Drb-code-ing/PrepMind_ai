@@ -42,9 +42,41 @@
 | Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash |
 | Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
 | Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
-| Phase 7.14.6 | 已完成 | `/operator-audit` 隐藏管理员审计台、前端 ADMIN 体验拦截、脱敏列表筛选 |
+| Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.14.6 收尾：Prisma Studio 排障与 Admin 导航入口
+
+目标：把本地查看数据库和管理员审计入口从“知道内部命令的人才能用”调整为更接近真实开发者体验。
+
+为什么：
+- 用户用 `bun --cwd packages/database prisma studio` 打开 Studio 时，Prisma CLI 可能读不到根目录 `.env`，从而报 `DATABASE_URL` 缺失或在 Studio 里弹 `Prisma Client Error`，容易误判为“数据库没有数据”。
+- 本地数据库当前确实有 `User` 数据；问题核心是命令运行目录、环境变量读取和 migration 状态，而不是账号数据丢失。
+- `/operator-audit` 已经具备 admin-only 页面和后端 guard，管理员仍要手动输入地址不符合产品使用习惯；但普通用户不能看到这个入口。
+
+主要内容：
+- 新增 Prisma CLI 包装脚本，`db:studio` / `db:status` / `db:generate` / `db:migrate` 会优先读取根目录 `.env`，减少 `DATABASE_URL` 因工作目录不同丢失的问题。
+- 新增 `bun run db:status`，用于快速确认当前 Prisma 连接的数据库和 migration 状态。
+- 对当前 Docker PostgreSQL 执行安全 migration deploy，补上 `OperatorAuditLog` migration；没有执行 reset，没有清库。
+- `/operator-audit` 从“隐藏手动地址”调整为“管理员侧边栏可见入口”；普通用户和未登录用户不展示该按钮，页面本身仍保留前端 ADMIN 拦截，后端 `JwtAuthGuard + OperatorGuard` 仍是真正安全边界。
+- `docs/dev-start.md` 顶部补充 Prisma Studio、psql 改 admin、命令差异和侧边栏入口说明。
+
+边界：
+- 前端导航只负责体验分流，不替代后端权限。
+- `migrate dev` 如果提示 reset，不能为了省事清库；本地已有数据时优先分析 drift，必要时只用 deploy 应用未执行 migration。
+- Prisma Studio 是数据库查看/编辑工具，不是升级管理员账号的唯一方式；快速改角色更适合用容器内 psql。
+
+验收：
+- `bun run db:status`
+- Docker PostgreSQL `User` 表确认有 45 条账号记录。
+- `bun apps/web/src/lib/sidebar-nav.test.mts`
+
+回顾时可以问：
+- “为什么同一个数据库，用 Prisma Studio 看不到数据不一定代表数据丢了？”
+- “`bun run db:studio` 和 `docker compose exec postgres psql ...` 分别解决什么问题？”
+- “为什么 admin 导航可以前端隐藏，但真正鉴权必须在后端？”
+- “为什么看到 Prisma 要 reset 时不能直接照做？”
 
 ### 2026-07-08 - Phase 7.14.6 Operator Audit Hidden Admin Page
 

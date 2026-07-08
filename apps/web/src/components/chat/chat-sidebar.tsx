@@ -20,6 +20,7 @@ import {
 
 import { useLogout } from '@/hooks/use-auth';
 import { getLogoutConfirmationView } from '@/lib/logout-confirmation';
+import { getSidebarNavItems, type SidebarNavIconKey } from '@/lib/sidebar-nav';
 import { useUserStore } from '@/stores/userStore';
 
 interface ChatSidebarProps {
@@ -27,20 +28,25 @@ interface ChatSidebarProps {
   onClose: () => void;
 }
 
-const navItems = [
-  { href: '/chat', label: 'AI 对话', hint: '拍照识题与追问', icon: MessageCircle },
-  { href: '/knowledge', label: '知识库', hint: '资料入库与检索测试', icon: BookMarked },
-  { href: '/today', label: '今日任务', hint: '轻学习手账', icon: CalendarDays },
-  { href: '/plan', label: '复习计划', hint: '未来到期与复习压力', icon: CalendarClock },
-  { href: '/stats', label: '学习统计', hint: '复习趋势与记录', icon: BarChart3 },
-  { href: '/error-book', label: '错题本', hint: '复盘和标记掌握', icon: BookOpen },
-  { href: '/profile', label: '我的档案', hint: '偏好与账号资料', icon: UserRound },
-];
+const navIconMap: Record<SidebarNavIconKey, typeof MessageCircle> = {
+  chat: MessageCircle,
+  knowledge: BookMarked,
+  today: CalendarDays,
+  plan: CalendarClock,
+  stats: BarChart3,
+  errorBook: BookOpen,
+  profile: UserRound,
+  audit: ShieldCheck,
+};
 
 export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const currentUser = useUserStore((state) => state.currentUser);
+  const visibleNavItems = getSidebarNavItems(currentUser?.role).map((item) => ({
+    ...item,
+    icon: navIconMap[item.iconKey],
+  }));
   const logout = useLogout();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const logoutDialogRootRef = useRef<HTMLDivElement>(null);
@@ -167,7 +173,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
 
             <nav className="flex-1 px-3 py-2">
               <ul className="space-y-2">
-                {navItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const isActive =
                     item.href === '/chat' ? pathname === '/chat' : pathname.startsWith(item.href);
                   return (
