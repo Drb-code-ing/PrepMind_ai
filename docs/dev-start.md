@@ -129,6 +129,36 @@ $env:KNOWLEDGE_PROCESSING_MODE='queue'
 docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker
 ```
 
+Phase 7.12 起，`worker` service 自带 Docker healthcheck。它在容器内运行的是构建产物：
+
+```text
+node dist/scripts/worker-readiness.js
+```
+
+不要把它和本机命令 `bun --filter @repo/server readiness:worker` 混在一起：本机开发用 Bun workspace，容器内 runner 镜像只保证有 Node 和已经构建好的 `dist`。
+
+查看 worker 容器健康状态：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+如果 worker readiness 通过，`worker` 行会显示 `healthy`；如果 Redis、数据库、队列、heartbeat 或 outbox readiness 不满足条件，会变成 `unhealthy`。排查时先看 worker 日志：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker logs -f worker
+```
+
+默认 healthcheck 参数：
+
+```text
+interval: 30s
+timeout: 10s
+retries: 3
+start_period: 30s
+WORKER_READINESS_CLI_TIMEOUT_MS: 5000
+```
+
 worker-only 进程第一版没有 HTTP `/health`，因为它不监听端口；观察它是否正常，主要看进程存活、日志、BullMQ 队列和 `/background-jobs` / `/background-jobs/summary` 状态。
 
 Phase 7.7 之后还可以用 Worker Observability 看后台处理健康状态。非 production 默认开启；production 默认关闭，避免普通登录用户看到系统级队列和 worker 拓扑信号。相关环境变量：

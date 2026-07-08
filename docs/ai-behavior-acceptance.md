@@ -282,3 +282,13 @@ Phase 7.11 只新增 worker readiness HTTP 入口和 CLI，不改变 Chat、RAG 
 - CLI 必须有有界 timeout；ready 退出码为 `0`，degraded / not ready 退出码为 `1`，脚本异常、配置错误或超时退出码为 `2`。
 - CLI 输出必须使用受控安全文案，不得打印依赖库原始错误正文、Redis URL、DATABASE_URL、token、cookie、payload、prompt 或 chunk。
 - 本阶段的 contract / env / service / controller / CLI 单元测试、server build、eslint 和手动 CLI smoke 足以覆盖；只有后续把 readiness 结果接入前端 UI、容器编排策略或 Chat/RAG 输出链路时，才需要新增对应 UI / 部署 / live 验收。
+
+## 23. Phase 7.12 Docker Worker Healthcheck
+
+Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker` service healthcheck，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
+
+- Docker healthcheck 在容器内运行 `node dist/scripts/worker-readiness.js`，不是本机 Bun workspace 命令。
+- 本机开发仍使用 `bun --filter @repo/server readiness:worker`。
+- healthcheck 只能作为容器级 readiness 信号，不得消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
+- 验收重点是 compose 配置合法、worker service healthcheck 存在、命令指向构建产物、timeout / retries / start period 合理。
+- 本阶段的 compose config、单元测试、build、eslint 和 `git diff --check` 足以覆盖；只有后续把该信号接入真实生产编排平台或前端 UI 时，才需要新增对应部署或 UI 验收。
