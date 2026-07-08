@@ -129,6 +129,22 @@ $env:KNOWLEDGE_PROCESSING_MODE='queue'
 docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker
 ```
 
+Phase 7.13 起，Docker Compose 也可以直接拉起完整 Web + API + Worker 本地栈：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker web
+```
+
+验收入口：
+
+```text
+Web:    http://127.0.0.1:3000
+API:    http://127.0.0.1:3001/health
+Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+`docker/Dockerfile.web` 使用 Bun workspace 和 Next standalone 输出；`apps/web/next.config.ts` 设置了 `output: 'standalone'`。Compose 默认把 server CORS 配成 `http://localhost:3000,http://127.0.0.1:3000`，并把 Web 镜像默认 API 地址设为 `http://127.0.0.1:3001`，避免浏览器验收时混用 `localhost` 和 `127.0.0.1` 造成 cookie / CORS 问题。
+
 Phase 7.12 起，`worker` service 自带 Docker healthcheck。它在容器内运行的是构建产物：
 
 ```text

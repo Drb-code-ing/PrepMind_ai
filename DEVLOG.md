@@ -6,7 +6,7 @@
 
 更新时间：2026-07-08
 
-当前阶段：Phase 7.12 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.13 已完成，后续继续 Phase 7 工程化增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -36,8 +36,33 @@
 | Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue |
 | Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI readiness 命令 |
 | Phase 7.12 | 已完成 | Docker worker healthcheck、容器级 readiness 状态接入 |
+| Phase 7.13 | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 启动与浏览器验收 |
 
 ## 近期关键记录
+
+### 2026-07-08 - Phase 7.13 Docker Web / Full Stack Compose
+
+本轮目标：把 Phase 7.12 已跑通的 API / worker / readiness 容器链路扩展到 Web 容器，完成本地 Docker Compose 全栈启动与浏览器验收。
+
+完成内容：
+- `docker/Dockerfile.web` 从旧 pnpm 写法迁移到 Bun workspace，复用完整 workspace manifests、`bun install --frozen-lockfile` 和 `bun --filter @repo/web build`。
+- `apps/web/next.config.ts` 开启 `output: 'standalone'` 并设置 monorepo tracing root，保证 Docker runner 能复制 Next standalone 产物。
+- Web 镜像构建阶段默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`，Compose server 默认允许 `http://localhost:3000,http://127.0.0.1:3000`，避免本机浏览器验收时 localhost / 127.0.0.1 混用导致 CORS 或 cookie 问题。
+- 延续 Phase 7.12 的 `.dockerignore`、Prisma Client generate 和 Bun workspace runtime 布局，保证 web / server 镜像都能在 Docker 内真实构建。
+
+验收结果：
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/web test`
+- `bun --filter @repo/web build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build web`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker web`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker ps`：`web` / `server` up，`worker` healthy。
+- HTTP smoke：`http://127.0.0.1:3000` 返回 200，`http://127.0.0.1:3001/health` 返回 `status=ok`。
+- Playwright 浏览器验收：注册临时账号后跳转 `/chat`，刷新后仍保持聊天页；登录后刷新期间未捕获到新增 console error。未登录时 `/auth/refresh` 返回 401 属于匿名刷新探测，不影响登录注册链路。
+
+边界：
+- 本轮是本地 Docker Compose 全栈验收，不引入 Kubernetes、生产域名、TLS、CI 镜像推送或云部署。
+- Web 容器默认 API 地址面向本机验收；后续生产部署仍应通过构建参数或环境配置传入真实 API origin。
 
 ### 2026-07-08 - Phase 7.12 Docker Worker Healthcheck
 
@@ -698,6 +723,7 @@ Phase 6.4 完成：
 - Phase 7.10：Outbox Ops 后端闭环完成，脱敏列表/详情、安全 requeue、feature gate 前置和 e2e 验收已落地。
 - Phase 7.11：Worker Readiness 完成，`/worker-readiness` 和 `bun --filter @repo/server readiness:worker` 已落地，用于部署前机器检查，不替代 `/health` 或 `/worker-observability/summary`。
 - Phase 7.12：Docker Worker Healthcheck 完成，`worker` service 已接入容器内 `bun apps/server/dist/scripts/worker-readiness.js` readiness 检查，可通过 `docker compose ... ps` 查看 `healthy / unhealthy`。
+- Phase 7.13：Docker Web / Full Stack Compose 完成，`web` 镜像已迁移 Bun + Next standalone，Compose 可拉起 `postgres / redis / minio / server / worker / web`，浏览器注册到 `/chat` 链路已验收。
 
 ## 当前验证基线
 
