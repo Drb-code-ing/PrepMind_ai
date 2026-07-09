@@ -86,6 +86,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(dockerfile).toContain('FROM oven/bun:1.3.14-alpine AS base');
     expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
     expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
     expect(dockerfile).toContain(
       'COPY packages/agent/package.json ./packages/agent/',
