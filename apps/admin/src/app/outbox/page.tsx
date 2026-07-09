@@ -14,7 +14,9 @@ import { ApiClientError } from '@/lib/api-client';
 import { outboxApi } from '@/lib/outbox-api';
 import {
   formatOutboxTime,
+  getOutboxAftercare,
   getOutboxErrorGuidance,
+  getOutboxReadOnlyReason,
   getOutboxStatusTone,
   isOutboxEventRequeueable,
   normalizeOutboxReason,
@@ -60,6 +62,7 @@ function OutboxOpsPanel() {
   const [reason, setReason] = useState('');
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [lastRequeued, setLastRequeued] = useState<OutboxEventDetailResponse | null>(null);
 
   const listQuery = useQuery({
     queryKey: ['outbox-events', status, type, accessToken],
@@ -94,6 +97,7 @@ function OutboxOpsPanel() {
       outboxApi.requeue(event.id, normalizeOutboxReason(reason), accessToken ?? ''),
     onSuccess: async (nextDetail) => {
       setNotice(`已重新入队：${nextDetail.id}`);
+      setLastRequeued(nextDetail);
       setReason('');
       setConfirmChecked(false);
       await queryClient.invalidateQueries({ queryKey: ['outbox-events'] });
@@ -106,6 +110,12 @@ function OutboxOpsPanel() {
 
   const canRequeue =
     detail && isOutboxEventRequeueable(detail.status) && detail.canRequeue && confirmChecked;
+  const readOnlyReason = detail ? getOutboxReadOnlyReason(detail.status) : null;
+  const aftercare = getOutboxAftercare({
+    eventId: lastRequeued?.id ?? detail?.id ?? '',
+    status: lastRequeued?.status ?? detail?.status ?? 'PENDING',
+    requeued: Boolean(lastRequeued),
+  });
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_24rem] gap-5">
@@ -160,6 +170,7 @@ function OutboxOpsPanel() {
               onClick={() => {
                 setSelectedId(item.id);
                 setConfirmChecked(false);
+                setLastRequeued(null);
                 setNotice(null);
               }}
               className={[
@@ -193,53 +204,82 @@ function OutboxOpsPanel() {
           </p>
         ) : (
           <div className="mt-4 space-y-4 text-sm">
-            <StatusBadge status={detail.status} />
-            <KeyValue label="事件 ID" value={detail.id} />
-            <KeyValue label="事件类型" value={detail.type} />
-            <KeyValue label="更新时间" value={formatOutboxTime(detail.updatedAt)} />
-            <KeyValue label="下次运行" value={formatOutboxTime(detail.nextRunAt)} />
-            {detailResponse ? (
-              <>
+            <DetailSection title="生命周期">
+              <StatusBadge status={detail.status} />
+              <div className="grid grid-cols-2 gap-3">
+                <KeyValue label="状态" value={detail.status} />
+                <KeyValue label="尝试次数" value={`${detail.attempts}/${detail.maxAttempts}`} />
+                <KeyValue label="创建时间" value={formatOutboxTime(detail.createdAt)} />
+                <KeyValue label="更新时间" value={formatOutboxTime(detail.updatedAt)} />
+                <KeyValue label="下次运行" value={formatOutboxTime(detail.nextRunAt)} />
+                <KeyValue label="处理时间" value={formatOutboxTime(detail.processedAt)} />
+              </div>
+            </DetailSection>
+
+            <DetailSection title="事件身份">
+              <KeyValue label="事件 ID" value={detail.id} />
+              <KeyValue label="事件类型" value={detail.type} />
+              {detailResponse ? (
                 <KeyValue label="Payload Hash" value={detailResponse.payloadHash} />
+              ) : null}
+            </DetailSection>
+
+            {detailResponse ? (
+              <DetailSection title="诊断建议">
                 <GuidanceBox detail={detailResponse} />
-              </>
+                {readOnlyReason ? (
+                  <p className="rounded-md border border-[var(--admin-line)] bg-slate-50 px-3 py-2 text-xs leading-5 text-[var(--admin-muted)]">
+                    {readOnlyReason}
+                  </p>
+                ) : null}
+              </DetailSection>
             ) : null}
 
-            <label className="block">
-              <span className="font-semibold">操作原因</span>
-              <textarea
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                className="mt-2 min-h-24 w-full resize-none rounded-md border border-[var(--admin-line)] p-3"
-                maxLength={300}
-                placeholder="例如：已修复 handler 并确认依赖恢复。"
-              />
-            </label>
-
-            <label className="flex gap-3 rounded-md border border-[var(--admin-line)] bg-slate-50 p-3 text-xs leading-5">
-              <input
-                type="checkbox"
-                checked={confirmChecked}
-                onChange={(event) => setConfirmChecked(event.target.checked)}
-                className="mt-1 h-4 w-4"
-              />
-              我已确认失败原因已处理，重新入队不会导致重复写入、错误重试风暴或泄露敏感数据。
-            </label>
-
-            <button
-              type="button"
-              disabled={!canRequeue || requeueMutation.isPending}
-              onClick={() => detail && requeueMutation.mutate(detail)}
-              className="min-h-11 w-full rounded-md bg-[var(--admin-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[#0b6761] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {requeueMutation.isPending ? '正在重新入队...' : '重新入队'}
-            </button>
-
-            {notice ? (
-              <p className="rounded-md border border-[var(--admin-line)] bg-slate-50 px-3 py-2 text-sm">
-                {notice}
+            <DetailSection title="重新入队操作">
+              <p className="text-xs leading-5 text-[var(--admin-muted)]">
+                requeue 只会把 FAILED / DEAD 事件安全放回 PENDING，等待 worker dispatcher
+                后续 claim；它不会立刻执行 handler、不会改写事件数据、不会绕过状态机标记完成。
               </p>
-            ) : null}
+              <label className="block">
+                <span className="font-semibold">操作原因</span>
+                <textarea
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  className="mt-2 min-h-24 w-full resize-none rounded-md border border-[var(--admin-line)] p-3"
+                  maxLength={300}
+                  placeholder="例如：已修复 handler 并确认依赖恢复。"
+                />
+              </label>
+
+              <label className="flex gap-3 rounded-md border border-[var(--admin-line)] bg-slate-50 p-3 text-xs leading-5">
+                <input
+                  type="checkbox"
+                  checked={confirmChecked}
+                  onChange={(event) => setConfirmChecked(event.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+                我已确认失败原因已处理，重新入队不会导致重复写入、错误重试风暴或泄露敏感数据。
+              </label>
+
+              <button
+                type="button"
+                disabled={!canRequeue || requeueMutation.isPending}
+                onClick={() => detail && requeueMutation.mutate(detail)}
+                className="min-h-11 w-full rounded-md bg-[var(--admin-accent)] px-4 text-sm font-semibold text-white transition hover:bg-[#0b6761] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {requeueMutation.isPending ? '正在重新入队...' : '重新入队'}
+              </button>
+
+              {notice ? (
+                <p className="rounded-md border border-[var(--admin-line)] bg-slate-50 px-3 py-2 text-sm">
+                  {notice}
+                </p>
+              ) : null}
+            </DetailSection>
+
+            <DetailSection title="后续验证">
+              <AftercareBox aftercare={aftercare} />
+            </DetailSection>
           </div>
         )}
       </aside>
@@ -270,6 +310,38 @@ function KeyValue({ label, value }: { label: string; value: string | null }) {
     <div>
       <p className="text-xs font-semibold text-[var(--admin-muted)]">{label}</p>
       <p className="mt-1 break-all font-mono text-xs text-[var(--admin-ink)]">{value ?? '-'}</p>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border border-[var(--admin-line)] bg-white p-3">
+      <h4 className="text-sm font-semibold">{title}</h4>
+      <div className="mt-3 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function AftercareBox({ aftercare }: { aftercare: ReturnType<typeof getOutboxAftercare> }) {
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+      <p className="font-semibold">{aftercare.title}</p>
+      <p className="mt-1 leading-6">{aftercare.message}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <a
+          href={aftercare.links.worker.href}
+          className="inline-flex min-h-10 items-center rounded-md border border-sky-200 bg-white px-3 text-xs font-semibold"
+        >
+          {aftercare.links.worker.label}
+        </a>
+        <a
+          href={aftercare.links.audit.href}
+          className="inline-flex min-h-10 items-center rounded-md border border-sky-200 bg-white px-3 text-xs font-semibold"
+        >
+          {aftercare.links.audit.label}
+        </a>
+      </div>
     </div>
   );
 }
