@@ -29,7 +29,7 @@ export function getOutboxAftercare(input: OutboxAftercareInput) {
     return {
       title: '重新入队后如何验证',
       message:
-        'requeue 会把 FAILED / DEAD 事件放回 PENDING，等待 worker dispatcher 后续按状态机 claim；它不会立刻执行 handler，也不会修改 payload 或强制成功。',
+        'requeue 会把 FAILED / DEAD 事件放回 PENDING，等待 worker dispatcher 后续按状态机 claim；它不会立刻执行 handler，也不会改写事件数据或事件结果。',
       links: {
         worker: { href: '/worker', label: '查看 Worker Readiness' },
         audit: { href: '/audit', label: '查看操作审计' },

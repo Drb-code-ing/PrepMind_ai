@@ -79,8 +79,17 @@ test('aftercare explains requeue state-machine behavior and follow-up pages', ()
   assert.match(aftercare.title, /已重新入队/);
   assert.match(aftercare.message, /PENDING/);
   assert.match(aftercare.message, /不会立刻执行 handler/);
+  assert.doesNotMatch(aftercare.message, /强制成功|force success/i);
   assert.equal(aftercare.links.worker.href, '/worker');
   assert.equal(aftercare.links.audit.href, '/audit');
+
+  const defaultAftercare = getOutboxAftercare({
+    eventId: 'evt_123',
+    status: 'FAILED',
+    requeued: false,
+  });
+
+  assert.doesNotMatch(defaultAftercare.message, /强制成功|force success/i);
 });
 
 test('status tone highlights operator attention states', () => {
