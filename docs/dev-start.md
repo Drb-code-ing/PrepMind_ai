@@ -1,6 +1,85 @@
 # PrepMind 本地启动命令
 
-> 适用于 Windows PowerShell。Phase 2 开发数据库使用 Docker PostgreSQL + pgvector。
+> 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
+> 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
+
+## 0. 先看这里：Prisma Studio、数据库和管理员账号
+
+本项目本地开发默认使用 Docker PostgreSQL，宿主机访问端口是 `5433`：
+
+```text
+postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
+```
+
+如果你只是想打开 Prisma Studio 看数据，推荐在项目根目录运行：
+
+```powershell
+bun run db:studio
+```
+
+这条命令会走仓库脚本，自动读取根目录 `.env` 里的 `DATABASE_URL`。
+
+如果你想先确认 Prisma 连接的是不是同一个库，运行：
+
+```powershell
+bun run db:status
+```
+
+看到 `Database schema is up to date!`，说明 schema 和数据库已经对齐。不要执行 `prisma migrate reset`、`docker compose down -v` 这类会清空数据的命令。
+
+你之前运行的：
+
+```powershell
+bun --cwd packages/database prisma studio
+```
+
+它是“直接从 database package 目录启动 Prisma CLI”的裸命令。这个命令本身没有问题，但它不会自动帮你读取根目录 `.env`；如果当前 PowerShell 没有提前设置 `$env:DATABASE_URL`，Studio 就会弹 `Prisma Client Error / Unable to run script`，看起来像没有数据。
+
+如果你一定要用这条裸命令，先设置连接串：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+bun --cwd packages/database prisma studio
+```
+
+也可以使用 database package 里的脚本命令，它同样会自动读取根目录 `.env`：
+
+```powershell
+bun --cwd packages/database prisma:studio
+```
+
+三种打开方式的区别：
+
+| 命令 | 是否自动读取根 `.env` | 推荐程度 | 说明 |
+| --- | --- | --- | --- |
+| `bun run db:studio` | 是 | 推荐 | 在项目根目录执行，最不容易连错库 |
+| `bun --cwd packages/database prisma:studio` | 是 | 可用 | 直接调用 database package 的脚本 |
+| `bun --cwd packages/database prisma studio` | 否 | 不推荐裸用 | 必须先手动设置 `$env:DATABASE_URL` |
+
+如果你要把某个本地账号升级为管理员，推荐直接在 Docker PostgreSQL 容器里执行 SQL：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -d prepmind -c "UPDATE \"User\" SET role='ADMIN' WHERE email='你的邮箱@example.com';"
+```
+
+这条命令和 Prisma Studio 不是一类东西：Prisma Studio 是浏览器里的数据库查看/编辑工具；`docker compose exec postgres psql ...` 是直接进入 PostgreSQL 容器执行 SQL，更适合快速改角色。改完后需要退出登录再重新登录，让新的 access token 带上 `ADMIN` 角色。
+
+判断“Docker psql”和“本机 psql”的方法很简单：
+
+| 命令长相 | psql 运行在哪里 | 是否需要本机安装 psql | 连接到哪里 |
+| --- | --- | --- | --- |
+| `docker compose ... exec postgres psql ...` | Docker 的 `postgres` 容器里 | 不需要 | Compose 里的 PostgreSQL |
+| `psql "postgresql://..." ...` | Windows 本机 | 需要 | 由连接串决定；本项目 `127.0.0.1:5433` 通常映射到 Docker PostgreSQL |
+
+可以用下面命令确认 Docker PostgreSQL 是否把端口暴露到了本机：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml ps
+```
+
+如果看到 `postgres` 行里有 `5433->5432`，那 `postgresql://prepmind:devpass@127.0.0.1:5433/prepmind` 连接的就是 Docker 里的数据库。
+
+管理员重新登录后，侧边栏会显示“审计”入口；普通用户不会看到该入口。真正的安全边界仍然是后端 `JwtAuthGuard + OperatorGuard`，前端入口只负责体验分流。
 
 ## 1. 端口约定
 
@@ -129,6 +208,108 @@ $env:KNOWLEDGE_PROCESSING_MODE='queue'
 docker compose -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio server worker
 ```
 
+Phase 7.13 起，Docker Compose 也可以直接拉起完整 Web + API + Worker 本地栈：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web
+```
+
+验收入口：
+
+```text
+Web:    http://127.0.0.1:3000
+API:    http://127.0.0.1:3001/health
+Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+### 本机前端和 Docker 前端怎么选
+
+项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
+
+| 方式 | 启动命令 | 适合场景 | 前端 env 改哪里 |
+| --- | --- | --- | --- |
+| 本机前端 | `bun --filter @repo/web dev` | 日常改 UI、调页面、热更新最快 | `apps/web/.env.local` |
+| Docker 前端 | `docker compose -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env` |
+
+如果你看到 Docker Desktop 里有 `docker-web-1`，或者你是用 `docker compose ... web` 启动页面，那就是 Docker 前端。Docker Compose 会把根目录 `.env` 里的变量传给 `web` service；这时只改 `apps/web/.env.local` 不会影响容器里的前端。
+
+如果你是在终端直接跑 `bun --filter @repo/web dev`，那就是本机前端。它读取 `apps/web/.env.local`，改完后重启这个前端 dev server 即可。
+
+启用 `/agent-trace` 里的 Mock / Live 手动切换，推荐保持默认 Mock，只打开 live guard：
+
+```env
+AI_PROVIDER_MODE=mock
+AI_ENABLE_LIVE_CALLS=true
+AI_DEV_MODE_SWITCH_ENABLED=true
+DEEPSEEK_API_KEY=你的 key
+# 或者使用 OPENAI_API_KEY=你的 key
+```
+
+这样页面默认仍是 Mock，只有你在 `/agent-trace` 手动点 Live 后才会走真实模型。若希望启动后默认就是 Live，把 `AI_PROVIDER_MODE` 改成：
+
+```env
+AI_PROVIDER_MODE=live
+```
+
+修改 Docker 前端 env 后，重启 `web` 容器即可：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
+```
+
+这只会重启前端容器，不会清 PostgreSQL、MinIO 或 Redis 数据。普通 `up -d`、`--force-recreate web`、重启前端都不会删数据。不要执行下面这类会删除卷或清理工作区的命令，除非你明确知道后果：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml down -v
+docker volume rm ...
+git clean -fdx
+```
+
+`docker/Dockerfile.web` 使用 Bun workspace 和 Next standalone 输出；`apps/web/next.config.ts` 设置了 `output: 'standalone'`。Compose 默认把 server CORS 配成 `http://localhost:3000,http://127.0.0.1:3000`，并把 Web 镜像默认 API 地址设为 `http://127.0.0.1:3001`，避免浏览器验收时混用 `localhost` 和 `127.0.0.1` 造成 cookie / CORS 问题。由于 standalone 容器内 `NODE_ENV=production`，Compose dev 栈会额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 `/agent-trace` 仍可展示本地 Mock / Live 调试开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
+
+Phase 7.15 起，Compose dev 的 server service 也会显式设置这些本地诊断开关：
+
+```env
+OUTBOX_OPS_ENABLED=true
+OPERATOR_AUDIT_ENABLED=true
+WORKER_READINESS_ENABLED=true
+WORKER_OBSERVABILITY_ENABLED=true
+```
+
+原因是 server 镜像运行态是 `NODE_ENV=production`，这些诊断入口在 production 默认关闭；本地开发栈如果不显式打开，管理员访问 `/operator-audit` 或 `/outbox-events` 会看到 404。生产部署不要照搬这些本地开关，除非是在受控内网或临时诊断场景下明确开启。
+
+本机 `bun --filter @repo/web dev` 也可以访问 `http://127.0.0.1:3000`；`apps/web/next.config.ts` 已允许 `127.0.0.1` 作为 Next dev origin，避免页面 SSR 可见但按钮事件没有 hydration。做登录态验收时，推荐前端地址和 API 地址使用同一组 host，例如都用 `localhost`，或都用 `127.0.0.1`；不要一个用 `localhost`、另一个用 `127.0.0.1`，否则 refresh cookie 在全页刷新后可能不能稳定恢复。
+
+Phase 7.12 起，`worker` service 自带 Docker healthcheck。它在容器内运行的是构建产物：
+
+```text
+bun apps/server/dist/scripts/worker-readiness.js
+```
+
+不要把它和本机命令 `bun --filter @repo/server readiness:worker` 混在一起：本机开发命令会走 Bun workspace script，容器内 healthcheck 直接执行 runner 镜像里的构建产物。server 镜像会保留根 `node_modules`、`apps/server/node_modules` 和 `packages`，保证 Bun workspace 依赖与 `@repo/*` 包在容器运行时可解析。
+
+查看 worker 容器健康状态：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+如果 worker readiness 通过，`worker` 行会显示 `healthy`；如果 Redis、数据库、队列、heartbeat 或 outbox readiness 不满足条件，会变成 `unhealthy`。排查时先看 worker 日志：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker logs -f worker
+```
+
+默认 healthcheck 参数：
+
+```text
+interval: 30s
+timeout: 10s
+retries: 3
+start_period: 30s
+WORKER_READINESS_CLI_TIMEOUT_MS: 5000
+```
+
 worker-only 进程第一版没有 HTTP `/health`，因为它不监听端口；观察它是否正常，主要看进程存活、日志、BullMQ 队列和 `/background-jobs` / `/background-jobs/summary` 状态。
 
 Phase 7.7 之后还可以用 Worker Observability 看后台处理健康状态。非 production 默认开启；production 默认关闭，避免普通登录用户看到系统级队列和 worker 拓扑信号。相关环境变量：
@@ -146,6 +327,44 @@ queue 模式 smoke 建议在浏览器打开 `/knowledge`：上传 TXT / Markdown
 
 如果启用了 Worker Observability，`/knowledge` 会在有资料或处理轮询时展示一个紧凑健康状态条：它会提示 worker 最近是否在线、队列是否有等待/处理中任务、最近任务是否失败。知识库为空且没有处理任务时不显示该状态条，避免把“没有可观测对象”误报成“后台不可用”。
 
+Phase 7.11 之后还可以用 Worker Readiness 做部署前机器检查。它和前面的两个入口分工不同：
+
+- `/health`：只回答 API 进程是否活着，适合 HTTP liveness。
+- `/worker-observability/summary`：给开发者看的详细观测面，适合手动排障。
+- `/worker-readiness` / CLI：给部署系统或本地验收用的 readiness 结论，适合判断 worker 链路现在能不能接任务。
+
+HTTP readiness 入口需要登录态，并受 `WORKER_READINESS_ENABLED` 控制；默认非 production 开启、production 关闭：
+
+```text
+GET http://127.0.0.1:3001/worker-readiness
+```
+
+部署前或本地终端可以直接跑 CLI：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+$env:JWT_SECRET='dev-secret-change-me'
+$env:REDIS_URL='redis://127.0.0.1:6379'
+$env:KNOWLEDGE_PROCESSING_MODE='queue'
+$env:SERVER_ROLE='worker'
+bun --filter @repo/server readiness:worker
+```
+
+退出码语义：
+
+- `0`：`ready`，可通过 readiness。
+- `1`：`degraded` 或 `not_ready`，依赖可读但存在队列、worker 或 outbox 风险。
+- `2`：脚本异常、配置错误或依赖超时。
+
+CLI 默认 10 秒超时，可临时调小方便验证失败路径：
+
+```powershell
+$env:WORKER_READINESS_CLI_TIMEOUT_MS='3000'
+bun --filter @repo/server readiness:worker
+```
+
+CLI 使用最小只读 Nest module，不导入完整 `AppModule`，不会启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher；输出也不会打印连接串、payload、prompt、chunk、API key、token 或 cookie。
+
 启动前端：
 
 ```powershell
@@ -155,11 +374,11 @@ bun --filter @repo/web dev
 访问地址：
 
 ```text
-前端：http://localhost:3000
-后端：http://localhost:3001
-健康检查：http://localhost:3001/health
-Swagger UI：http://localhost:3001/api-docs
-OpenAPI JSON：http://localhost:3001/api-docs-json
+前端：http://127.0.0.1:3000
+后端：http://127.0.0.1:3001
+健康检查：http://127.0.0.1:3001/health
+Swagger UI：http://127.0.0.1:3001/api-docs
+OpenAPI JSON：http://127.0.0.1:3001/api-docs-json
 MinIO API：http://127.0.0.1:9000
 MinIO Console：http://127.0.0.1:9001
 ```
@@ -184,6 +403,82 @@ minioadmin / minioadmin
 ```text
 prepmind-dev
 ```
+
+### 本地管理员账号
+
+`/operator-audit`、`/outbox-events`、`/worker-readiness` 等 operator 诊断入口要求当前登录用户的 `role=ADMIN`。本地开发最简单的方式是先在前端正常注册一个账号，然后把这个账号升级为管理员。
+
+如果数据库跑在 Docker Compose 里：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -d prepmind -c "UPDATE \"User\" SET role='ADMIN' WHERE email='your-email@example.com';"
+```
+
+如果直接用本机 PostgreSQL：
+
+```powershell
+psql "postgresql://prepmind:devpass@127.0.0.1:5433/prepmind" -c "UPDATE \"User\" SET role='ADMIN' WHERE email='your-email@example.com';"
+```
+
+然后退出登录并重新登录，让新的 access token 带上 `ADMIN` 角色。管理员账号会在侧边栏看到“审计”入口，普通用户不会看到；也可以直接访问：
+
+```text
+http://localhost:3000/operator-audit
+```
+
+注意：前端页面只做体验拦截，真正的权限仍由后端 `JwtAuthGuard` 和 `OperatorGuard` 判断。
+
+### Outbox requeue 手动排障流程
+
+`requeue` 的意思是“重新入队”。在本项目里，它不是重新执行接口，也不是强制把失败任务改成成功，而是把一条已经 `FAILED` 或 `DEAD` 的 `OutboxEvent` 安全地重置为 `PENDING`，等待 worker 里的 outbox dispatcher 下一轮按正常状态机重新 claim 和执行。
+
+什么时候需要 requeue：
+
+- `/worker-readiness` 或 `bun --filter @repo/server readiness:worker` 提示 outbox 有 `DEAD` / `FAILED` 风险。
+- `/outbox-events?status=DEAD` 或 `/outbox-events?status=FAILED` 能看到失败事件。
+- 你已经确认根因修好了，例如 Redis / 数据库 / 外部 provider 恢复、代码 bug 已修、handler 已注册、配置已补齐。
+
+什么时候不要 requeue：
+
+- 错误是 `OUTBOX_HANDLER_NOT_FOUND`，说明事件类型没有注册 handler，直接 requeue 只会再次失败。
+- 错误是 payload 或 metadata 不合法，需要先修数据来源或代码。
+- 你还不知道这个事件为什么失败。
+- 你只是想“清掉红色状态”。这种情况应该先看详情和 readiness issues，而不是重试。
+
+管理员手动操作 API 示例：
+
+```powershell
+# 1. 先用管理员账号登录，拿到 accessToken。
+#    最简单方式：浏览器登录后用前端页面操作；如果走 API，则用登录接口返回的 accessToken。
+
+# 2. 查看 DEAD 事件列表
+$env:ACCESS_TOKEN='你的管理员 accessToken'
+Invoke-RestMethod `
+  -Method Get `
+  -Uri 'http://127.0.0.1:3001/outbox-events?status=DEAD&limit=20' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" }
+
+# 3. 查看某条事件详情，重点看 status、canRequeue、eventType、lastErrorCode、lastErrorPreview
+Invoke-RestMethod `
+  -Method Get `
+  -Uri 'http://127.0.0.1:3001/outbox-events/这里替换成事件ID' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" }
+
+# 4. 确认根因已修复后重新入队
+Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://127.0.0.1:3001/outbox-events/这里替换成事件ID/requeue' `
+  -ContentType 'application/json' `
+  -Headers @{ Authorization = "Bearer $env:ACCESS_TOKEN" } `
+  -Body '{"reason":"已修复失败根因，手动重新入队"}'
+```
+
+执行成功后：
+
+- 这条 event 会从 `FAILED / DEAD` 变回 `PENDING`，`attempts` 重置为 `0`，锁和 `processedAt` 会清空。
+- 它不会立刻在 HTTP 请求里执行 handler；真正执行仍由 worker 的 outbox dispatcher 负责。
+- `/operator-audit` 会出现一条 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录；如果 requeue 失败，也会尽量记录 `OUTBOX_REQUEUE / FAILED`。
+- 再看 `/worker-readiness`、`/worker-observability/summary` 或 worker 日志，确认状态是否恢复。
 
 ## 4. AI 调用模式
 
@@ -221,7 +516,7 @@ $env:AI_MAX_OUTPUT_TOKENS='1200'
 bun --filter @repo/web dev
 ```
 
-打开 `/agent-trace` 后会看到 `AI 模式` 开关。该开关只在 `NODE_ENV != production` 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见；切到 Live 仍要求已配置 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`，并且真实 Chat 请求仍需要登录态通过 `/auth/me` 校验。未满足 live guard 或 API key 时，页面会禁用 Live 选项并展示原因。
+打开 `/agent-trace` 后会看到 `AI 模式` 开关。该开关只在 `AI_DEV_MODE_SWITCH_ENABLED=true` 且处于非 production 运行时可见；Docker Compose dev 栈因为使用 Next standalone 产物，会通过 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 显式声明这是本地开发诊断容器，从而允许按钮在 `NODE_ENV=production` 的容器里显示。切到 Live 仍要求已配置 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`，并且真实 Chat 请求仍需要登录态通过 `/auth/me` 校验。未满足 live guard 或 API key 时，页面会禁用 Live 选项并展示原因。
 
 ## 5. 常用验证
 
@@ -333,3 +628,51 @@ wsl --list --verbose
 ```
 
 `docker-desktop` 应为 `Running`，并且 `VERSION` 为 `2`。
+
+### 中文路径下 Docker build 报 non-printable ASCII
+
+如果项目放在中文路径下，直接运行下面命令可能失败：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker build server web
+```
+
+典型错误是：
+
+```text
+failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains value with non-printable ASCII characters
+```
+
+这不是 server 或 web 代码坏了，而是 Docker Desktop build session 对当前工作路径里的非 ASCII 字符不稳定。解决方式是给项目映射一个纯 ASCII 盘符，然后从这个盘符执行 build：
+
+```powershell
+subst P: "E:\PrepMind_ai智能备考助手"
+$env:COMPOSE_BAKE='false'
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web
+```
+
+注意：
+
+- `--project-name docker` 不能省略，否则 Compose 可能因为 `P:\` 根路径没有目录名而提示 `project name must not be empty`。
+- 这只是路径映射，不会复制项目，也不会影响 PostgreSQL / Redis / MinIO 数据。
+- 构建完成后，仍然可以回到原项目目录运行普通命令；如果想取消映射，用 `subst P: /D`。
+
+### Docker 前端真实模型配置补充
+
+Docker 前端通过 `docker/docker-compose.dev.yml` 的 `env_file: ../.env` 读取根目录 `.env`。因此 Docker 前端要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
+
+日常建议两边都保持：
+
+```env
+AI_PROVIDER_MODE=mock
+AI_DEV_MODE_SWITCH_ENABLED=true
+AI_ENABLE_LIVE_CALLS=false
+```
+
+需要在 `/agent-trace` 手动切到 Live 时，只把对应 env 文件里的 `AI_ENABLE_LIVE_CALLS` 改成 `true`，然后重启对应前端即可。Docker 前端重启命令：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
+```
+
+Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。

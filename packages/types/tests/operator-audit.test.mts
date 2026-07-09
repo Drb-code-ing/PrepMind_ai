@@ -1,0 +1,43 @@
+import { describe, expect, it } from 'bun:test';
+
+import {
+  operatorAuditLogListQuerySchema,
+  operatorAuditLogListResponseSchema,
+} from '../src/api/operator-audit';
+
+describe('operator audit api contract', () => {
+  it('parses empty list query with safe defaults', () => {
+    expect(operatorAuditLogListQuerySchema.parse({})).toEqual({ limit: 20 });
+  });
+
+  it('caps list query limit at 100', () => {
+    expect(() =>
+      operatorAuditLogListQuerySchema.parse({ limit: '101' }),
+    ).toThrow();
+  });
+
+  it('validates redacted list response shape', () => {
+    const parsed = operatorAuditLogListResponseSchema.parse({
+      items: [
+        {
+          id: 'audit_1',
+          actorUserId: 'user_admin',
+          action: 'OUTBOX_REQUEUE',
+          status: 'SUCCEEDED',
+          targetType: 'OutboxEvent',
+          targetId: 'evt_1',
+          reason: 'fixed provider config',
+          requestId: 'req_1',
+          ipAddressHash: 'sha256:abc',
+          userAgentHash: 'sha256:def',
+          errorCode: null,
+          errorPreview: null,
+          createdAt: '2026-07-08T10:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    });
+
+    expect(parsed.items[0]?.action).toBe('OUTBOX_REQUEUE');
+  });
+});

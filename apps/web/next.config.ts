@@ -1,7 +1,11 @@
-import type { NextConfig } from "next";
+import path from 'node:path';
+
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../..'),
+  allowedDevOrigins: ['127.0.0.1'],
 };
 
 export default nextConfig;

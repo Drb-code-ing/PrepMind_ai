@@ -9,6 +9,7 @@
     "lint": "bun --filter @repo/web lint && bun --filter @repo/server lint",
     "test": "bun --filter @repo/server test",
     "db:migrate": "bun --filter @repo/database prisma:migrate",
+    "db:status": "bun --filter @repo/database prisma:status",
     "db:studio": "bun --filter @repo/database prisma:studio",
     "db:generate": "bun --filter @repo/database prisma:generate",
     "docker:up": "docker compose -f docker/docker-compose.dev.yml up -d",

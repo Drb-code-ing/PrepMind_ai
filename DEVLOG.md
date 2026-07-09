@@ -1,12 +1,12 @@
 # PrepMind AI 开发日志
 
-> 维护规则：`DEVLOG.md` 只记录阶段级里程碑、关键工程决策和验收结果，不再堆叠逐提交流水账。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
+> 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
-更新时间：2026-07-07
+更新时间：2026-07-09
 
-当前阶段：Phase 7.10 已完成，后续继续 Phase 7 工程化增强。
+当前阶段：Phase 7.15 已完成，后续继续 Phase 7 operator 审计产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -21,36 +21,384 @@
 | Phase 7.1 | 已完成 | BullMQ 文档处理队列、inline / queue 双模式 |
 | Phase 7.2 | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤 |
 | Phase 7.3 | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要 |
-| Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope 说明 |
+| Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope |
 | Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例 |
-| Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context、Docker worker profile |
-| Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog 与 `/knowledge` 健康状态条 |
-| Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定检索评估集、recall@k / top1 / safety / no-hit 指标 |
-| Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text keyword 候选、融合排序 |
-| Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联验收 |
-| Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关、面试博客 |
-| Phase 7.9.1 | 已完成 | Durable Outbox 地基、`OutboxEvent`、claim / retry / dead-letter 状态机 |
-| Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry、知识库 requested 事件入库 |
-| Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、生产默认关闭、防重入 tick |
-| Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 安全只读指标 |
+| Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context |
+| Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog |
+| Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定评估集、recall / top1 / safety 指标 |
+| Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text 融合排序 |
+| Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联 |
+| Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关 |
+| Phase 7.9.1 | 已完成 | Durable Outbox 地基、claim / retry / dead-letter 状态机 |
+| Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry |
+| Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、防重入 tick |
+| Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 只读指标 |
 | Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue |
+| Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI |
+| Phase 7.12 | 已完成 | Docker worker healthcheck、容器级 readiness |
+| Phase 7.13 | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 验收 |
+| Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档 |
+| Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only |
+| Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash |
+| Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
+| Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
+| Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
+| Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
 
 ## 近期关键记录
 
+### 2026-07-09 - Phase 7.15 收尾：审计筛选控件与 requeue 手动排障说明
+目标：把管理员审计台从“能用”继续推进到“手动排障时不容易误操作”，同时把用户反馈的原生下拉框视觉问题收掉。
+
+为什么：
+- `/operator-audit` 是移动端优先的管理诊断页，原生 `<select>` 在浏览器里会弹出系统样式蓝色选项框，视觉上割裂，也不像 App 内部控件。
+- requeue 是会改变 outbox 状态的高权限操作，必须让开发者知道什么时候该重试、什么时候不能重试，以及它不会绕过状态机直接执行 handler。
+- Phase 7.15 验收中出现过 `OUTBOX_HANDLER_NOT_FOUND` 类测试事件导致 worker readiness 降级，这正好说明“看到 DEAD 就盲目 requeue”是不对的，必须先判断根因。
+
+主要内容：
+- `/operator-audit` 的 action / status 筛选从原生 `<select>` 改为自定义 `FilterSelect`，使用 button + listbox + check icon，保留 44px 触控目标、焦点样式和 `aria-haspopup/listbox/option` 语义。
+- `apps/web/src/lib/operator-audit-ui-integration.test.mts` 增加防回归断言：页面必须包含 `FilterSelect` 和 `role="listbox"`，且不能再出现原生 `<select>`。
+- `docs/dev-start.md` 增加 Outbox requeue 手动排障流程，明确 `FAILED / DEAD -> PENDING`、需要先修根因、不要对 unknown handler / invalid payload 盲目 requeue，并给出 PowerShell API 调试示例。
+- `docs/dev-start.md` 增加中文路径下 Docker build 的 `subst P:` 规避方案；直接在中文路径 build 仍会触发 Docker gRPC non-printable ASCII，但通过 ASCII 映射路径加 `--project-name docker` 可成功重建 server/web 镜像。
+
+边界：
+- 本次不新增前端 outbox 列表页或一键 requeue 按钮；当前 requeue 仍是 admin-only 后端诊断 API，审计台负责查看 requeue 审计记录。
+- requeue 不编辑 payload、不直接执行 handler、不强制成功、不删除事件。
+- UI 只改善筛选控件，不改变 `/operator-audit-logs` 查询 contract 或后端鉴权。
+
+验收：
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-ui-integration.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/web build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker exec -T worker sh -lc "bun apps/server/dist/scripts/worker-readiness.js"`
+- `docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web`
+
+回顾时可以问：
+- “为什么 requeue 不是直接执行 handler，而是回到 PENDING 等 worker 正常消费？”
+- “为什么 unknown handler 的 DEAD event 不能靠 requeue 解决？”
+- “审计筛选控件为什么要用自定义 listbox，而不是浏览器原生 select？”
+- “为什么中文路径下 Docker compose build 会失败，而 `subst P:` 后可以成功？”
+
+### 2026-07-09 - Phase 7.15 Operator Audit 真实运行验收与本地诊断收口
+
+目标：把管理员审计台从“代码和单元测试完成”推进到“真实前后端可以跑、管理员能用、普通用户被拦截、审计记录可查”的验收状态。
+
+为什么：
+- Phase 7.14 已经补齐 `OperatorGuard`、审计写入、审计查询 API 和前端页面，但真实运行时仍可能被环境、旧镜像、登录态或前端 hydration 问题挡住。
+- Docker server 镜像运行态是 `NODE_ENV=production`，而 Outbox Ops / Operator Audit / Worker Readiness / Worker Observability 默认 production 关闭；本地 dev compose 如果不显式打开，就会表现为管理员也访问 404。
+- Next dev server 在 `127.0.0.1` 下会阻止 dev resource；如果项目文档让用户访问 `127.0.0.1:3000`，就必须允许这个 dev origin，否则页面 SSR 能看见，但 React 事件不挂载，登录表单会像“点了没反应”。
+
+主要内容：
+- `docker/docker-compose.dev.yml` 为 server service 显式设置 `OUTBOX_OPS_ENABLED=true`、`OPERATOR_AUDIT_ENABLED=true`、`WORKER_READINESS_ENABLED=true`、`WORKER_OBSERVABILITY_ENABLED=true`，保证本地 Docker dev 栈的诊断入口可验收。
+- `apps/server/src/worker-readiness/docker-compose-readiness.spec.ts` 增加 compose 回归测试，防止本地诊断开关和 `127.0.0.1` dev origin 再被漏掉。
+- `apps/web/next.config.ts` 增加 `allowedDevOrigins: ['127.0.0.1']`，修复从 `127.0.0.1:3000` 打开 dev 前端时客户端 hydration 不完整的问题。
+- 创建本地验收账号：管理员 `phase715-admin-20260709000525@example.com`、普通用户 `phase715-student-20260709000525@example.com`；通过 Docker PostgreSQL 只把管理员测试账号升级为 `ADMIN`。
+- 通过真实 `POST /outbox-events/:id/requeue` 生成 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录，再用 `/operator-audit` 页面读取脱敏列表。
+
+边界：
+- 这次不新增审计详情页、导出、保留周期、批量操作或更细 operator role。
+- 前端“审计”入口只是体验层；真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 控制。
+- Docker build 在当前中文路径下触发 Docker gRPC header 非 ASCII 问题，未把 Docker server/web 镜像重建作为完成条件；改用本机前后端 + Docker PostgreSQL/Redis/MinIO 验证最新源码，数据仍使用同一个 Docker 数据库。
+- 浏览器登录态验收优先使用 `localhost:3000` 与 `localhost:3001` 保持 cookie host 一致；`127.0.0.1` 已单独验证 hydration 正常。
+
+验收：
+- `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
+- `GET /operator-audit-logs`：管理员返回 200，普通用户返回 403。
+- `POST /outbox-events/:id/requeue`：管理员返回 201，并写入一条脱敏 `OUTBOX_REQUEUE` 审计记录。
+- 浏览器验收：普通用户侧边栏不显示“审计”；普通用户直达 `/operator-audit` 显示无权限且不请求 `/operator-audit-logs`；管理员侧边栏显示“审计 管理员操作留痕”；管理员点击入口进入 `/operator-audit`，审计筛选和最近记录可见。
+
+回顾时可以问：
+- “为什么 Docker dev compose 里要显式打开诊断 feature gate，而不是依赖 `NODE_ENV` 默认值？”
+- “为什么普通用户访问审计页时前端不请求审计 API，但后端仍必须返回 403？”
+- “为什么 `127.0.0.1` 页面能看到 SSR 内容，却可能因为 dev origin 限制导致按钮事件不生效？”
+- “为什么本地验收账号改成 ADMIN 后必须重新登录？”
+
+### 2026-07-08 - Phase 7.14.6 收尾：Prisma Studio 排障与 Admin 导航入口
+
+目标：把本地查看数据库和管理员审计入口从“知道内部命令的人才能用”调整为更接近真实开发者体验。
+
+为什么：
+- 用户用 `bun --cwd packages/database prisma studio` 打开 Studio 时，Prisma CLI 可能读不到根目录 `.env`，从而报 `DATABASE_URL` 缺失或在 Studio 里弹 `Prisma Client Error`，容易误判为“数据库没有数据”。
+- 本地数据库当前确实有 `User` 数据；问题核心是命令运行目录、环境变量读取和 migration 状态，而不是账号数据丢失。
+- `/operator-audit` 已经具备 admin-only 页面和后端 guard，管理员仍要手动输入地址不符合产品使用习惯；但普通用户不能看到这个入口。
+
+主要内容：
+- 新增 Prisma CLI 包装脚本，`db:studio` / `db:status` / `db:generate` / `db:migrate` 会优先读取根目录 `.env`，减少 `DATABASE_URL` 因工作目录不同丢失的问题。
+- 新增 `bun run db:status`，用于快速确认当前 Prisma 连接的数据库和 migration 状态。
+- 对当前 Docker PostgreSQL 执行安全 migration deploy，补上 `OperatorAuditLog` migration；没有执行 reset，没有清库。
+- `/operator-audit` 从“隐藏手动地址”调整为“管理员侧边栏可见入口”；普通用户和未登录用户不展示该按钮，页面本身仍保留前端 ADMIN 拦截，后端 `JwtAuthGuard + OperatorGuard` 仍是真正安全边界。
+- `docs/dev-start.md` 顶部补充 Prisma Studio、psql 改 admin、命令差异和侧边栏入口说明。
+
+边界：
+- 前端导航只负责体验分流，不替代后端权限。
+- `migrate dev` 如果提示 reset，不能为了省事清库；本地已有数据时优先分析 drift，必要时只用 deploy 应用未执行 migration。
+- Prisma Studio 是数据库查看/编辑工具，不是升级管理员账号的唯一方式；快速改角色更适合用容器内 psql。
+
+验收：
+- `bun run db:status`
+- Docker PostgreSQL `User` 表确认有 45 条账号记录。
+- `bun apps/web/src/lib/sidebar-nav.test.mts`
+
+回顾时可以问：
+- “为什么同一个数据库，用 Prisma Studio 看不到数据不一定代表数据丢了？”
+- “`bun run db:studio` 和 `docker compose exec postgres psql ...` 分别解决什么问题？”
+- “为什么 admin 导航可以前端隐藏，但真正鉴权必须在后端？”
+- “为什么看到 Prisma 要 reset 时不能直接照做？”
+
+### 2026-07-08 - Phase 7.14.6 Operator Audit Hidden Admin Page
+
+目标：给已经完成的 Operator Audit 查询 API 补一个受控的前端查看入口，让管理员不用直接连数据库或手写请求，也能在产品里查看脱敏审计记录。
+
+为什么：
+- 只有后端 API 时，排障仍然需要 Swagger、curl 或数据库查询，对本地验收和面试展示都不够直观。
+- 审计页面不能出现在普通学习用户导航里，否则会让用户误以为这是普通功能，也会暴露不必要的运维入口。
+- 前端可以做体验拦截和空状态提示，但真正权限必须继续由后端 `OperatorAuditEnabledGuard -> JwtAuthGuard -> OperatorGuard` 控制。
+
+主要内容：
+- 新增 `apps/web/src/lib/operator-audit-api.ts`，复用 `@repo/types/api/operator-audit` Zod schema 解析 `/operator-audit-logs` 响应。
+- 新增 `operatorAuditQueryKeys` 与 `useOperatorAuditLogs()`，只有当前会话 `currentUser.role === 'ADMIN'` 时才启用请求。
+- 新增隐藏页面 `/operator-audit`，不加入普通侧边栏或个人中心主导航；管理员可手动访问。
+- 页面支持按 `action`、`status`、`targetType`、`targetId`、`actorUserId` 筛选，展示审计时间、操作者、目标、原因、requestId、错误码、脱敏错误预览和 IP/User-Agent hash。
+- 普通用户访问时展示无权限说明，不主动请求审计 API；未登录仍由 `(main)` layout 的 `AuthGuard` 处理。
+- 页面只展示脱敏字段，不展示 payload、metadata、aggregateId、prompt、RAG chunk、模型回答、API key、token、cookie 或用户正文。
+
+边界：
+- 前端页面不是安全边界，只是体验层；不能用它替代后端 OperatorGuard。
+- 本轮不做审计详情页、不做导出、不做审计删除/编辑、不做保留周期策略、不新增更细的 operator role。
+- 当前分页使用“下一页”读取下一批结果，不做复杂无限列表缓存，避免 React effect 合并分页带来的状态副作用。
+
+验收：
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-api.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-query-keys.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/operator-audit-ui-integration.test.mts`
+- `bun --filter @repo/web lint`
+
+回顾时可以问：
+- “为什么 `/operator-audit` 不放进普通导航？”
+- “前端 ADMIN 拦截和后端 OperatorGuard 的职责有什么区别？”
+- “这个页面为什么只展示脱敏 DTO，不展示 metadata 或 payload？”
+- “为什么第一版选择隐藏页面和筛选列表，而不是完整管理后台？”
+
+### 2026-07-08 - Phase 7.14.5 Operator Audit Query API
+
+目标：把已写入数据库的 operator 审计日志变成可受控查询的后端 API，回答“谁在什么时候做了什么、为什么做、结果如何”。
+
+为什么：
+- 高权限诊断写操作不能只靠“有权限”，还要能追踪、复盘和排障。
+- 只写审计日志但没有受控查询入口，事故时仍要手动连数据库查，不适合生产化。
+- 查询入口必须只返回脱敏字段，避免排障入口变成敏感数据泄露入口。
+
+主要内容：
+- 新增 `@repo/types/api/operator-audit` contract，包含 action/status、列表 query 和脱敏 response DTO。
+- `packages/types/package.json` 增加 `./api/operator-audit` 子路径导出，修复 NodeNext 下 server 无法解析新增 contract 的问题。
+- `OperatorAuditService.list()` 支持 `action`、`status`、`targetType`、`targetId`、`actorUserId`、`limit`、`cursor` 过滤。
+- 分页按 `createdAt desc, id desc` 使用复合 cursor，避免同时间戳数据漏查。
+- 新增 `GET /operator-audit-logs`，guard 顺序为 `OperatorAuditEnabledGuard -> JwtAuthGuard -> OperatorGuard`。
+- 新增 `OPERATOR_AUDIT_ENABLED`：默认非 production 开启、production 关闭，关闭时在认证前隐藏为 404。
+
+边界：
+- 不做前端页面、不做审计导出、不提供详情接口、不支持删除或编辑审计日志。
+- 查询结果不返回 `metadata`、outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie、原始 IP 或原始 User-Agent。
+
+验收：
+- `bun test packages/types/tests/operator-audit.test.mts`
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- operator-audit.controller operator-audit.service env --runInBand`
+- `bun --cwd apps/server eslint src/operator-audit src/config/env.ts src/config/env.spec.ts src/app.module.ts`
+- `bun --filter @repo/server build`
+
+回顾时可以问：
+- “Operator Audit 查询 API 为什么要单独加 feature gate？”
+- “`GET /operator-audit-logs` 返回哪些字段，为什么不返回 metadata？”
+- “这里的复合 cursor 是怎么避免翻页漏数据的？”
+- “为什么权限和审计是两层不同的生产安全能力？”
+
+### 2026-07-08 - Phase 7.14.3 / 7.14.4 OperatorAuditLog + Outbox Requeue Audit
+
+目标：在 OperatorGuard 之后补上操作审计地基，并把 `POST /outbox-events/:id/requeue` 接入成功/失败留痕，避免审计 service 变成死码。
+
+为什么：
+- `requeue` 会改变后台事件状态，属于 operator 诊断写操作，需要留下可追责记录。
+- 审计写入要 best-effort，不能因为审计系统异常阻断原本的修复操作。
+- 审计日志要长期保留，即使 actor user 后续被删除，也不能丢失历史操作链路。
+
+主要内容：
+- Prisma 新增 `OperatorAuditAction`、`OperatorAuditStatus`、`OperatorAuditLog` 和 migration。
+- `OperatorAuditService` 支持 `recordSuccess()` / `recordFailure()`。
+- metadata 改为 allowlist，只允许 `previousStatus`、`nextStatus`、`attemptsBefore`、`attemptsAfter`、`payloadHash`、`lastErrorCode`、`source` 等安全字段。
+- reason / requestId / errorCode / errorPreview 均做脱敏和截断。
+- `OperatorAuditLog.actorUserId` 使用 nullable + `onDelete: SetNull`，actor 删除后审计记录保留。
+- `OutboxOpsController.requeue()` 成功记录 `OUTBOX_REQUEUE / SUCCEEDED`，失败记录 `OUTBOX_REQUEUE / FAILED` 后继续抛出原错误。
+
+边界：
+- 不新增前端页面，不开放审计查询接口，不保存 payload、prompt、chunk、API key、token、cookie 或原始 IP/User-Agent。
+
+验收：
+- `bun --filter @repo/server test -- operator-audit.service outbox-ops.controller --runInBand`
+- `bun --cwd apps/server eslint src/operator-audit src/outbox/outbox-ops.controller.ts src/outbox/outbox-ops.controller.spec.ts`
+- `bun --filter @repo/server build`
+- `bun --cwd packages/database test`
+- `bun run db:generate`
+
+回顾时可以问：
+- “OperatorAuditLog 为什么 actorUserId 要 nullable + SetNull？”
+- “审计 metadata 为什么用 allowlist，而不是黑名单过滤？”
+- “Outbox requeue 成功和失败分别怎么记录审计？”
+- “审计写入失败为什么不能影响 requeue 主流程？”
+
+### 2026-07-08 - Phase 7.14.2 OperatorGuard
+
+目标：把 Outbox Ops、Worker Observability、HTTP Worker Readiness 从普通登录用户可访问的诊断入口升级为 admin/operator-only。
+
+为什么：
+- 这些接口暴露的是系统级队列、worker、readiness 或 outbox 状态，不是普通学生账号应看到的业务数据。
+- feature gate 只能控制入口是否开放，不能替代角色权限。
+- 后续 requeue、审计查询等高权限能力都需要统一 operator 权限地基。
+
+主要内容：
+- 新增 `OperatorGuard`，基于 `request.user.role === 'ADMIN'` 判断权限。
+- `AuthModule` 注册并导出 `OperatorGuard`。
+- `OutboxOpsController`、`WorkerObservabilityController`、`WorkerReadinessController` 的 guard 顺序统一为 feature gate -> JWT -> operator。
+- feature gate 仍优先返回 404，避免关闭时暴露诊断面。
+
+边界：
+- 不新增审计表，不记录 requeue 操作日志；审计写入留给 Phase 7.14.3 / 7.14.4。
+- 不影响 Worker Readiness CLI、Docker healthcheck、Chat、RAG、Agent Trace 或普通业务 API。
+
+验收：
+- `bun --filter @repo/server test -- operator.guard outbox-ops.controller worker-observability.controller worker-readiness.controller --runInBand`
+
+回顾时可以问：
+- “OperatorGuard 和 JwtAuthGuard 的职责有什么区别？”
+- “为什么 guard 顺序要 feature gate -> JWT -> Operator？”
+- “为什么关闭诊断入口时返回 404 而不是 403？”
+- “普通用户访问 worker observability 会有什么风险？”
+
+### 2026-07-08 - Phase 7.13 Docker Web / Full Stack Compose
+
+目标：把 API / worker / readiness 容器链路扩展到 Web 容器，完成本地 Docker Compose 全栈启动与浏览器验收。
+
+为什么：
+- 之前只验证了 API / worker，不能证明用户从浏览器访问 Docker Web 容器的完整链路可用。
+- Next standalone 在 monorepo + Bun workspace 下容易出现依赖复制和 tracing root 问题，需要真实容器构建验证。
+- 本地 compose 全栈能让后续验收更接近部署形态。
+
+主要内容：
+- `docker/Dockerfile.web` 迁移到 Bun workspace + Next standalone。
+- `apps/web/next.config.ts` 开启 `output: 'standalone'` 并设置 monorepo tracing root。
+- Compose dev 栈拉起 `postgres / redis / minio / server / worker / web`。
+- Web 容器支持本地 dev AI mode switch 展示，受 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 约束。
+- 修复 server Dockerfile 的 Bun workspace runtime 布局，避免内部 `@repo/*` 包或 `.bun` store 链接在容器内解析失败。
+
+边界：
+- 本轮是本地 Docker Compose 验收，不引入 Kubernetes、生产域名、TLS、CI 镜像推送或云部署。
+
+验收：
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/web test`
+- `bun --filter @repo/web build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web`
+- HTTP smoke：`http://127.0.0.1:3000` 返回 200，`http://127.0.0.1:3001/health` 返回 `status=ok`。
+- Playwright 浏览器验收：注册临时账号后跳转 `/chat`，刷新后仍保持登录态。
+
+回顾时可以问：
+- “Docker Web 镜像为什么要用 Next standalone？”
+- “monorepo 下 Dockerfile.web 需要复制哪些 workspace 文件？”
+- “为什么本地 Web 容器也要支持 mock/live 开关展示？”
+- “这轮 Docker 全栈验收证明了什么，没证明什么？”
+
+### 2026-07-08 - Phase 7.12 Docker Worker Healthcheck
+
+目标：把 worker readiness CLI 接入 Docker Compose worker service，让容器编排能看到 `healthy / unhealthy`。
+
+为什么：
+- worker-only 进程不监听 HTTP，不能靠 `/health` 判断它是否能处理后台任务。
+- 容器层 healthcheck 能让 Docker Compose 直接暴露 worker 健康状态，降低本地部署排障成本。
+- readiness CLI 已经存在，复用它比再写一套容器专用检查更一致。
+
+主要内容：
+- `docker/docker-compose.dev.yml` 的 `worker` service 新增 healthcheck。
+- 容器内 healthcheck 使用 `bun apps/server/dist/scripts/worker-readiness.js`。
+- 新增 `WORKER_READINESS_CLI_TIMEOUT_MS` 和 healthcheck interval/timeout/retries/start_period。
+- 新增 docker compose readiness 回归测试。
+- 更新启动文档，区分本机 CLI 与容器 healthcheck。
+
+边界：
+- 不改 Chat、RAG prompt、Tutor 输出或 live model 链路，不需要真实模型 smoke。
+- 不引入 Kubernetes readiness probe、Prometheus 指标或生产部署平台配置。
+
+验收：
+- `bun --filter @repo/server test -- worker-readiness docker-compose-readiness`
+- `bun --cwd apps/server eslint src/worker-readiness`
+- `bun --filter @repo/server build`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker config`
+- `git diff --check`
+
+回顾时可以问：
+- “worker-only 为什么没有 HTTP health endpoint？”
+- “Docker healthcheck 调的是本机 CLI 还是容器内构建产物？”
+- “`docker compose ps` 里的 healthy 到底代表什么？”
+- “readiness CLI 和容器 healthcheck 的区别是什么？”
+
+### 2026-07-08 - Phase 7.11 Worker Readiness
+
+目标：在 `/health` 和 `/worker-observability/summary` 之外，补一个适合机器和部署系统使用的 worker readiness 判断。
+
+为什么：
+- `/health` 只能说明 API 进程活着，不能说明后台 worker 链路可接流量。
+- `/worker-observability/summary` 面向开发者排障，信息更细；readiness 要给机器一个明确可判断结论。
+- 部署前检查需要稳定退出码和安全摘要，不能打印连接串、payload 或原始依赖错误。
+
+主要内容：
+- 新增 `@repo/types/api/worker-readiness` contract。
+- 新增 `WORKER_READINESS_ENABLED`，默认非 production 开启、production 关闭。
+- 新增 `WorkerReadinessService`，组合 Redis、BullMQ queue counts、worker heartbeat 和 outbox summary。
+- 新增 HTTP 入口 `GET /worker-readiness` 和 CLI `bun --filter @repo/server readiness:worker`。
+- CLI 使用最小只读 Nest module，不导入 `AppModule`，不启动 HTTP、worker processor、heartbeat 或 outbox dispatcher。
+- readiness 输出区分 `ready / degraded / not_ready`，异常或超时退出码为 2。
+
+边界：
+- Readiness 不替代 `/worker-observability/summary` 的详细排障信息，也不替代 `/health` 的 API liveness。
+- CLI 只读检查，不消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
+
+验收：
+- `bun --filter @repo/server test -- env`
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- worker-readiness`
+- `bun --cwd apps/server eslint src/worker-readiness scripts/worker-readiness.ts`
+- `bun --filter @repo/server build`
+- `git diff --check`
+
+回顾时可以问：
+- “`/health`、worker observability、worker readiness 三者怎么分工？”
+- “readiness CLI 为什么不能导入 AppModule？”
+- “退出码 0 / 1 / 2 分别代表什么？”
+- “readiness 输出为什么不能打印原始错误？”
+
 ### 2026-07-07 - Phase 7.10 Outbox Ops
 
-本轮目标：给 Phase 7.9 durable outbox 补上安全的后端操作闭环，让开发者能在不暴露 payload 的前提下查看失败事件，并在修复根因后手动 requeue。
+目标：给 durable outbox 补上安全的后端操作闭环，让开发者能在不暴露 payload 的前提下查看失败事件，并在修复根因后手动 requeue。
 
-完成内容：
-- 新增 `@repo/types/api/outbox` contract，统一列表、详情、requeue request / response 的 Zod schema。
-- 新增 `OUTBOX_OPS_ENABLED`，默认非 production 开启、production 关闭；关闭时通过 feature gate 在认证前返回 404，避免暴露诊断面。
-- 新增 `OutboxOpsService` 与 `OutboxOpsController`，支持脱敏列表、脱敏详情和 `FAILED / DEAD` requeue。
-- 列表分页按 `updatedAt desc, id desc` 使用复合 cursor，修复只按 id 翻页可能漏数据的问题。
-- `lastErrorPreview` 复用扩展后的 `sanitizeJobError()`，覆盖 Bearer、access / refresh token、cookie、`sk-...`、Qwen / DashScope / OpenAI 等常见 key 形态。
-- requeue 使用条件 `updateMany` 做 compare-and-swap，只把 `FAILED / DEAD` 重置为 `PENDING`，清理锁信息和 processedAt，重置 attempts 和 nextRunAt，不立即执行 handler。
-- 新增 e2e 覆盖认证、脱敏响应和 requeue 状态流转。
+为什么：
+- durable outbox 有了持久事件和重试状态后，必须能安全查看失败事件，否则排障仍然只能查数据库。
+- dead / failed 事件需要可控 requeue，但 requeue 不能绕过状态机或直接执行 handler。
+- outbox payload 可能间接关联业务上下文，诊断 API 必须默认隐藏敏感内容。
 
-验收结果：
+主要内容：
+- 新增 `@repo/types/api/outbox` contract。
+- 新增 `OUTBOX_OPS_ENABLED`，默认非 production 开启、production 关闭。
+- 新增 `OutboxOpsService` / `OutboxOpsController`，支持脱敏列表、脱敏详情和 `FAILED / DEAD` requeue。
+- 列表分页按 `updatedAt desc, id desc` 使用复合 cursor。
+- `lastErrorPreview` 复用 `sanitizeJobError()`，覆盖 Bearer、access/refresh token、cookie、`sk-...`、Qwen/DashScope/OpenAI key 等形态。
+- requeue 使用条件 `updateMany` 做 compare-and-swap，只把 `FAILED / DEAD` 重置为 `PENDING`，不立即执行 handler。
+
+边界：
+- 不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- 不支持删除、强制成功、跳过、payload 编辑或直接 dispatch。
+
+验收：
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- outbox-ops env`
 - `bun --filter @repo/server test -- outbox-ops job-error-sanitizer`
@@ -58,588 +406,201 @@
 - `bun --filter @repo/server build`
 - `bun --cwd apps/server jest --config ./test/jest-e2e.json --runInBand --testTimeout=30000 --forceExit --verbose outbox-ops`
 
-边界：
-- 本轮不新增前端页面，不改变 Chat / RAG prompt / live model 调用链路，因此不需要真实模型 smoke。
-- Outbox Ops 不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
-- 不支持删除、强制成功、跳过、payload 编辑或直接 dispatch；生产环境仍需要后续 admin/operator 权限模型和操作审计后再考虑开放。
+回顾时可以问：
+- “Outbox Ops 为什么只返回脱敏列表和详情？”
+- “requeue 为什么用 updateMany 做 compare-and-swap？”
+- “FAILED / DEAD -> PENDING 为什么不直接执行 handler？”
+- “`sanitizeJobError()` 主要防什么泄露？”
 
-### 2026-07-07 - Phase 7.9 收尾验收与 Review 修复
+### 2026-07-06 / 2026-07-07 - Phase 7.9 Durable Outbox
 
-本轮目标：对 Phase 7.9 durable outbox 收尾做代码 review 后修正可验证的问题，并把本地验收命令跑到可复现状态。
+目标：把关键内部事件从纯 in-process 链路推进到可重试、可观测、可受控消费的 durable outbox 地基。
 
-完成内容：
-- 修复 knowledge document processing 相关 touched files 的 lint / 测试类型问题。
-- `DocumentProcessingJobService` 对 best-effort outbox enqueue 失败增加脱敏 warning 日志，避免后台事件写入失败被静默吞掉；日志只包含 documentId、backgroundJobId 和脱敏后的错误摘要。
-- `OutboxDispatcherService` 修正统计口径：只有 `markSucceeded()` / `markFailedOrRetry()` 真正完成数据库状态流转时，才计入 `succeeded` / `failed`，避免 worker 锁丢失时出现“指标看起来成功/失败，但数据库没变”的误报。
-- `bun --filter @repo/server lint` 会执行 `eslint --fix`，本轮清理了完整 server lint 暴露的测试类型和格式问题。
-- 补齐前端 `worker-observability-api` 测试 fixture 中 Phase 7.9 新增的 `outbox` 和 outbox signals 字段。
-- 稳定 `apps/server` 的 `test:e2e` 脚本：改为 `--runInBand --testTimeout=30000`，避免并发启动多个 Nest e2e app 时 beforeAll 偶发超时。
+为什么：
+- in-process EventBus 失败后无法跨进程持久重试，适合轻量通知，不适合需要可靠投递的内部事件。
+- outbox 可以把“业务事务”和“异步事件”连接起来，为后续生产化 worker 链路打地基。
+- dispatcher runner 需要受控开启，避免生产部署后未经确认消费历史事件。
 
-验收结果：
-- `bun --filter @repo/server test`
-- `bun --filter @repo/server lint`
-- `bun --filter @repo/server build`
-- `bun --filter @repo/server test:e2e`
-- `bun --filter @repo/web lint`
-- `bun --filter @repo/web test`
-- `bun --filter @repo/web build`
-- `bun --cwd packages/types typecheck`
-- `bun --cwd packages/database test`
-- `bun --cwd packages/fsrs test`
+主要内容：
+- Phase 7.9.1：新增 `OutboxEvent`、enqueue / claim / success / retry / dead-letter 状态机。
+- Phase 7.9.2：新增 dispatcher service 和显式 handler registry，先接入 `knowledge.document.processing.requested`。
+- Phase 7.9.3：新增 worker-only dispatcher runner，支持生产默认关闭、防重入 tick、batch size 和 lock timeout。
+- Phase 7.9.4：新增 outbox summary / metrics，接入 worker observability。
 
 边界：
-- 本轮没有新增业务功能、HTTP API、前端页面或模型调用链路。
-- 修复集中在 review 发现的问题、测试 fixture、lint 可复现性和 e2e 命令稳定性。
-- `test:e2e` 初次默认并发运行失败，原因是 e2e hook 默认 5 秒超时；脚本改成串行和 30 秒超时后，标准命令通过。
+- 不替换 BullMQ、`BackgroundJob` 或现有 in-process EventBus。
+- dispatcher handler 不保存用户正文、prompt、chunk、API key、token 或 cookie。
+- production 默认不自动消费历史 outbox，需要显式开启。
 
-### 2026-07-07 - Phase 7.9.4 Outbox Summary / Metrics
-
-本轮目标：给已经能落库、消费和自动 tick 的 outbox 补上只读观测面，让开发者能看到 outbox 是否积压、是否出现 dead-letter，以及最近失败错误码。
-
-完成内容：
-- `@repo/types` 的 `workerObservabilitySummaryResponseSchema` 新增 `outbox` summary 和 `hasOutboxBacklog` / `hasDeadOutboxEvents` signals。
-- 新增 `OutboxMetricsService`，统计 `PENDING / PROCESSING / SUCCEEDED / FAILED / DEAD` 数量、最老 pending 年龄和最近错误摘要。
-- `OutboxMetricsService` 只返回安全字段：`id`、`type`、`status`、`lastErrorCode`、attempts、maxAttempts、updatedAt；不返回 payload、完整 `lastError`、`aggregateId` 或用户内容。
-- `WorkerObservabilityService` 接入 outbox summary；`DEAD` outbox event 会让 status 进入 `degraded`，pending / processing backlog 作为独立信号展示。
-- `WorkerObservabilityModule` import `OutboxModule` 并通过 DI 注入 `OutboxMetricsService`。
-- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-summary-metrics-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-summary-metrics.md`。
-- 新增完整面试学习博客 `docs/blogs/durable-outbox-worker-observability.md`，复盘 BullMQ、BackgroundJob、EventBus、Durable Outbox、Dispatcher Runner 和 Summary/Metrics 的分工。
-
-验证：
-- `bun --filter @repo/server test -- outbox-metrics`
+验收：
 - `bun --filter @repo/server test -- outbox`
-- `bun --filter @repo/server test -- worker-observability`
-- `bun --cwd packages/types typecheck`
-- `bun --cwd apps/server eslint src/outbox src/worker-observability`
-- `bun --filter @repo/server build`
-
-边界：
-- Phase 7.9.4 不新增独立 outbox HTTP API、不新增前端页面、不新增 admin action、不接 Prometheus / Grafana。
-- Outbox summary 是系统级只读观测信号，仍通过现有 `/worker-observability/summary`、`JwtAuthGuard` 和 `WORKER_OBSERVABILITY_ENABLED` 边界暴露。
-- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
-
-### 2026-07-07 - Phase 7.9.3 Outbox Dispatcher Runner
-
-本轮目标：让 Phase 7.9.2 的 `OutboxDispatcherService.dispatchBatch()` 从“可手动调用”升级为 worker 进程中的受控自动消费入口，同时保持生产默认关闭和清晰的 worker/api 边界。
-
-完成内容：
-- 新增 outbox dispatcher env controls：`OUTBOX_DISPATCHER_ENABLED`、`OUTBOX_DISPATCHER_INTERVAL_MS`、`OUTBOX_DISPATCHER_BATCH_SIZE`、`OUTBOX_DISPATCHER_LOCK_TIMEOUT_MS`。
-- 新增 `OutboxDispatcherRunnerService`，只在 `SERVER_ROLE=worker | both` 且开关开启时按固定间隔调用 dispatcher。
-- runner 启动时触发一次非阻塞 tick，随后按 interval tick；上一轮还在运行时跳过下一轮，避免单进程内重入。
-- tick 失败只记录脱敏 warning，不打断 worker 进程；`onModuleDestroy()` 会清理 timer。
-- `OutboxModule` 通过 factory 注册 runner，保持 ConfigService 注入和 Nest DI 编译可测。
-- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-runner-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher-runner.md`。
-
-验证：
-- `bun --filter @repo/server test -- env`
+- `bun --filter @repo/server test -- outbox-dispatcher`
 - `bun --filter @repo/server test -- outbox-dispatcher-runner`
-- `bun --filter @repo/server test -- outbox`
-- `bun --cwd apps/server eslint src/outbox`
+- `bun --filter @repo/server test -- outbox-metrics worker-observability`
 - `bun --filter @repo/server build`
 
-边界：
-- Phase 7.9.3 不新增 HTTP API、不新增前端页面、不接 Prometheus / Grafana、不新增 BullMQ repeatable job。
-- runner 不读取 outbox payload、不动态执行 handler、不绕过 Phase 7.9.2 的显式 handler registry。
-- production 默认关闭，避免部署后未经确认消费历史 outbox 事件。
-- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
+回顾时可以问：
+- “Durable Outbox 和 EventBus / BullMQ 的区别是什么？”
+- “claim / retry / dead-letter 状态机怎么防重复消费？”
+- “为什么 dispatcher 要显式 handler registry？”
+- “为什么 production 默认不自动开启 dispatcher runner？”
 
-### 2026-07-07 - Phase 7.9.2 Outbox Dispatcher
+### 2026-07-06 - Phase 7.8 RAG Eval / Hybrid Retrieval
 
-本轮目标：让 Phase 7.9.1 落库的 `OutboxEvent` 不只是“保存下来”，而是进入一个可测试的消费闭环：claim、分发 handler、成功标记、失败 retry / dead-letter。
+目标：给 RAG 检索质量建立可回归的评估基线，并把检索从单纯向量召回升级为 hybrid retrieval。
 
-完成内容：
+为什么：
+- fake embedding 只能验证工程链路，不能证明真实语义检索质量。
+- 没有固定评估集时，每次改检索排序都很难判断是变好了还是变差了。
+- 纯向量召回容易漏掉关键词明确的问题，hybrid retrieval 能补充关键词候选。
 
-- 新增 `outbox.handlers.ts`，用显式 registry 注册 `knowledge.document.processing.requested` handler，避免根据 payload 动态执行任意函数。
-- 新增 `OutboxDispatcherService`，批量 claim outbox events，逐条调用 handler，成功后 `markSucceeded()`，失败后 `markFailedOrRetry()`；单条失败不阻断同批次后续事件。
-- `knowledge.document.processing.requested` handler 第一版只做观测型 payload 校验，不重投 BullMQ、不改 `Document`、不改 `BackgroundJob`、不写用户内容。
-- `DocumentProcessingJobService` 在 BullMQ enqueue 成功后 best-effort 写入 requested outbox event；outbox 写入失败不影响原有 queue 主链路或 in-process EventBus 发布。
-- 新增设计文档 `docs/superpowers/specs/phase-7-9-outbox-dispatcher-design.md` 和执行计划 `docs/superpowers/plans/phase-7-9-outbox-dispatcher.md`。
-
-验证：
-
-- `bun --filter @repo/server test -- outbox.handlers`
-- `bun --filter @repo/server test -- outbox.dispatcher outbox.handlers`
-- `bun --filter @repo/server test -- document-processing-job`
-- `bun --cwd apps/server eslint src/outbox`
-- `bun --filter @repo/server build`
+主要内容：
+- Phase 7.8.1：新增固定检索评估集和 `recall@k`、`top1Accuracy`、`safetyPassRate`、`noHitPassRate` 指标。
+- Phase 7.8.2：`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
+- Phase 7.8.3：新增 `bun --filter @repo/server smoke:rag-eval`，串联注册、上传、处理、检索和 eval。
+- Phase 7.8.4：新增必需 case id guard，避免评估集改名或缺失时误报 PASS；支持 `RAG_EVAL_SMOKE_KEEP_DATA=true`。
+- 补充 Qwen embedding 配置与真实检索 smoke 说明。
 
 边界：
-
-- Phase 7.9.2 不新增自动 scheduler loop、不公开 HTTP API、不新增前端页面、不接 Prometheus / Grafana。
-- 本阶段不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`，只把知识库 requested 事件作为低风险真实接入点写入 outbox。
-- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
-- requested outbox payload 只能包含 `userId`、`documentId`、`backgroundJobId`、`force`，不保存文件内容、chunk、prompt、API key、access token、cookie 或模型回答。
-
-### 2026-07-07 - Phase 7.9.1 Durable Outbox
-
-本轮目标：补上跨进程可靠事件的持久化地基，避免后续继续依赖纯 in-process EventBus 时产生“看起来发布了，但进程重启就丢”的假可靠性。
-
-完成内容：
-
-- 新增 `OutboxEventStatus` 与 `OutboxEvent` Prisma 模型，保存事件类型、聚合对象、幂等键、脱敏 payload、payload hash、attempts、锁定信息、下次运行时间和 dead-letter 状态。
-- 新增数据库 migration `20260707000100_add_outbox_event`，包含 `status + nextRunAt + createdAt`、`lockedBy + lockedAt`、`aggregateType + aggregateId + createdAt` 和 `type + status + createdAt` 查询索引。
-- 新增 `OutboxService` 与 `OutboxModule`，提供 `enqueue()`、`claimPending()`、`markSucceeded()` 和 `markFailedOrRetry()`。
-- `claimPending()` 第一版使用 `findMany + conditional updateMany`，claim 时重新校验 due pending 或过期 processing 状态，避免并发 worker 返回未抢到的事件。
-- 失败事件按 attempts 指数退避重试，达到 `maxAttempts` 后进入 `DEAD`；错误信息复用 `sanitizeJobError()`，不写入 token、cookie 或 API key。
-
-验证：
-
-- `bun --cwd packages/database prisma:generate`
-- `bun --cwd packages/database test`
-- `bun --filter @repo/server test -- outbox`
-- `bun --filter @repo/server build`
-- 子代理规格审核：APPROVED。
-- 子代理代码质量审核：APPROVED；补充了错误脱敏断言和并发 claim loser 测试。
-
-边界：
-
-- Phase 7.9.1 只落地 durable outbox 地基，不替换 BullMQ、`BackgroundJob` 或 in-process `EventBus`。
-- 本阶段不迁移现有事件发布点，不新增 outbox dispatcher，不暴露 Prometheus / Grafana 指标。
-- 本阶段不改变 Chat、RAG prompt、模型调用、前端页面或 `/api/chat` live / mock 行为，因此不需要 live 模型 smoke。
-- `OutboxEvent.payload` 和 `lastError` 只能保存安全元数据或脱敏错误摘要，不得保存 API key、access token、refresh token、cookie、完整 prompt、完整 RAG chunk、完整模型回答或真实用户私有正文。
-
-### 2026-07-06 - Phase 7.8.4 RAG Eval Hardening
-
-本轮目标：对 Phase 7.8.3 的 RAG Eval Smoke 做小收尾，避免未来评估 case 漂移时误报 PASS，并补一篇能用于面试复盘的学习博客。
-
-完成内容：
-
-- 新增 `selectRagEvalSmokeCases()`，固定 smoke 必需 case id，并在缺失时提前抛错，避免空跑或少跑后误报通过。
-- 新增 `shouldKeepRagEvalSmokeData()`，支持 `RAG_EVAL_SMOKE_KEEP_DATA=true | 1 | yes`。
-- `smoke:rag-eval` 默认仍 best-effort 删除临时文档；开启 keep-data 后保留合成 smoke 文档，方便在 `/knowledge` 页面复查。
-- 新增面试博客 `docs/blogs/rag-eval-and-hybrid-retrieval.md`，讲清 fake embedding、RAG Eval baseline、Hybrid Retrieval、真实 API smoke 和 Chat live 验收的分层边界。
-
-验证：
-
-- `bun --filter @repo/server test -- rag-eval-smoke-config`
-- `bun --filter @repo/server test -- rag-eval-report rag-eval-runner`
-- `bun --filter @repo/server build`
-- `git diff --check`
-- `bun --filter @repo/server smoke:rag-eval`
-
-边界：
-
-- keep-data 只用于本地复查，不进入默认 CI。
-- smoke 仍不调用 `/api/chat`，不证明最终模型回答质量。
-- 脚本不打印 API key、access token、cookie、embedding 向量或完整 hit content。
-
-### 2026-07-06 - Phase 7.8.3 RAG Eval Smoke
-
-本轮目标：在 RAG Eval baseline 和 Hybrid Retrieval 之后，补上一条本地 API 级真实链路 smoke，验证上传、处理、检索和 eval 指标能在运行中的服务上串起来。
-
-完成内容：
-
-- 新增 `formatRagEvalSmokeReport()` 纯函数，把 `RagEvalSummary` 和每个 case 的 hit 摘要格式化为可读终端报告。
-- 新增 `bun --filter @repo/server smoke:rag-eval`，脚本会注册临时账号、上传合成 TXT、触发处理、轮询 `DONE`、调用 `/knowledge/search`，再把真实 hits 喂给 `runRagEval()`。
-- smoke 默认只覆盖精确术语、语义改写和跨语言薄弱点 3 个正向 case；SafetyGuard 和无关查询边界继续由固定单测/后续专项 smoke 覆盖，避免把低分候选误判为链路失败。
-- 脚本只输出状态、指标、命中数、top score 和文档名，不打印 API key、access token、cookie、embedding 向量或完整 hit content。
-
-验证：
-
-- `bun --filter @repo/server test -- rag-eval-report`
-- `bun --filter @repo/server test -- rag-eval-runner`
-- `bun --filter @repo/server build`
-- `git diff --check`
-- `bun --filter @repo/server smoke:rag-eval`，结果 `Status: PASS`、`Passed: 3/3`、`Recall@K: 100.0%`、`Top1 Accuracy: 100.0%`
-
-边界：
-
-- 这是 RAG 检索链路 smoke，不是 Chat live 验收；本阶段不改 `/api/chat`、RAG prompt 或最终模型输出。
-- smoke 创建的测试资料是合成内容，脚本会 best-effort 删除临时文档；临时用户暂不清理，因为当前没有用户删除 API。
-
-### 2026-07-06 - Phase 7.8.2 Hybrid Retrieval
-
-本轮目标：在 Phase 7.8.1 RAG Eval 基线之后，把 `/knowledge/search` 从纯向量检索升级为第一版 Hybrid Retrieval，补强精确术语、专有名词和英文短语场景。
-
-完成内容：
-
-- 新增 `mergeHybridSearchRows()` 纯函数，合并 vector candidates 与 keyword candidates，按 `chunkId` 去重并输出 `0..1` final score。
-- `/knowledge/search` 现在执行两路候选召回：pgvector cosine vector SQL + PostgreSQL `websearch_to_tsquery('simple', query)` full-text keyword SQL。
-- 响应 contract 保持不变，`metadata` 中额外带轻量 `retrieval.mode/vectorScore/keywordScore`，用于调试和后续 eval。
-- 第一版不新增 GIN 索引、不引入 Elasticsearch / Meilisearch、不接 reranker，不改 Chat RAG prompt。
-
-验证：
-
-- `bun --filter @repo/server test -- hybrid-search`
-- `bun --filter @repo/server test -- knowledge-search.service`
-- `bun --filter @repo/server test -- rag-eval-runner`
-- `bun --filter @repo/server build`
-- `git diff --check`
-
-边界：
-
-- Hybrid Retrieval 改的是知识库检索排序，不改变最终 Chat 模型调用和引用格式，因此本轮不要求 live Chat smoke。
-- PostgreSQL inline full-text 第一版主要补强英文术语、专有名词和短语；中文分词与大规模性能优化留给后续 GIN index / reranker 阶段。
-
-### 2026-07-06 - Phase 7.8.1 RAG Eval Baseline
-
-本轮目标：在改动 Hybrid Retrieval 之前，先建立稳定的 RAG 检索质量评估基线。
-
-完成内容：
-
-- 新增固定 RAG eval cases，覆盖精确术语、语义改写、跨语言、无关查询和 SafetyGuard 边界。
-- 新增纯函数 eval runner，输入检索 hits，输出 `recall@k`、`top1Accuracy`、`safetyPassRate` 和 `noHitPassRate`。
-- 第一版不改 `/knowledge/search` 线上行为，不改 Chat prompt，不调用真实模型。
-
-验证：
-
-- `bun --filter @repo/server test -- rag-eval-runner`
-- `bun --filter @repo/server build`
-- `git diff --check`
-
-边界：
-
 - fake eval 只证明工程回归，不证明真实语义质量。
-- Qwen embedding smoke 仍用于真实语义检索验收。
+- smoke 默认不进 CI、不保存 API key、token、cookie、embedding 向量或完整 hit content。
 
-### 2026-07-06 - Qwen Embedding Provider
-
-本轮目标：让 RAG 真实 embedding 验收不再只能依赖 OpenAI key，支持使用阿里云百炼 / DashScope 的 OpenAI compatible embedding 服务。
-
-完成内容：
-
-- `RAG_EMBEDDING_PROVIDER` 新增 `qwen`。
-- `EmbeddingService` 支持 `RAG_EMBEDDING_BASE_URL`、`Qwen_API_KEY`、`QWEN_API_KEY`、`DASHSCOPE_API_KEY`。
-- 推荐本地真实 RAG 验收使用 `text-embedding-v4`、业务空间 `/compatible-mode/v1` base URL、`RAG_EMBEDDING_DIMENSIONS=1536` 和 `RAG_EMBEDDING_BATCH_SIZE=10`。
-
-边界：
-
-- 不提交真实 key，不在日志中打印 key。
-- 仍保持 pgvector `vector(1536)` 不变，避免本阶段引入向量维度 migration。
-- 旧 fake embedding chunk 不能用于真实语义召回判断；切换 qwen 后需要重新处理资料。
-
-验证：
-
-- `bun --filter @repo/server test -- embedding.service env`
-- `bun --filter @repo/server build`
-- `QWEN_EMBEDDING_SMOKE_OK dimension=1536 finite=true`，只确认返回维度和数值合法，不打印 key 或向量内容。
-
-### 2026-07-05 - Phase 7.7 Worker Observability
-
-本轮目标：补上 Phase 7.6 拆出 worker 进程后的观测缺口，让开发和面试展示时能回答“任务是否在排队、worker 是否在线、最近是否失败”这三个问题，而不是只看 BackgroundJob 结果表。
-
-完成内容：
-
-- 新增 `@repo/types/api/worker-observability` contract，统一描述 server role、knowledge processing mode、BullMQ queue counts、worker heartbeat、BackgroundJob summary 和综合信号。
-- 新增 `WorkerHeartbeatService`：仅在 `SERVER_ROLE=worker | both` 写 Redis 短 TTL heartbeat，复用 BullMQ queue client，不引入第二套 Redis 客户端。
-- 新增 `WorkerObservabilityService`：聚合 `knowledge-document-processing` queue counts、worker heartbeat 和账号级 `BackgroundJobsService.getSummary()`。
-- 新增 `GET /worker-observability/summary`，经过 `JwtAuthGuard`，并受 `WORKER_OBSERVABILITY_ENABLED` 控制；默认非 production 开启、production 关闭，Swagger tag 为 `Worker Observability`。
-- `/knowledge` 页面新增紧凑健康状态条，展示 worker 在线状态、等待/处理中/失败数量，以及 `healthy / degraded / attention / idle` 对应提示；知识库为空且没有处理轮询时不显示该状态条，避免误报“暂不可用”。
-- 新增 `apps/web/src/lib/worker-observability-api.ts`、view helper、TanStack Query hook 和相关测试。
-- 新增设计与执行文档：`docs/superpowers/specs/phase-7-worker-observability-design.md`、`docs/superpowers/plans/phase-7-worker-observability.md`。
-- 新增面试学习博客：`docs/blogs/phase-7-worker-observability.md`。
-
-边界：
-
-- BackgroundJob 是账号级任务历史和状态，不等于 worker 在线；worker heartbeat 是进程最近活跃信号，不等于任务成功；queue counts 是系统级队列积压，不按用户隔离。三者组合展示，不能混成一个事实源。
-- Worker Observability 返回系统级 queue counts 和 worker heartbeat，因此 production 默认关闭；若生产临时开启，必须放在受控内网或诊断窗口里，不应作为面向普通用户的长期公开能力。
-- worker-only 仍不提供 HTTP `/health`；它不监听端口，健康判断继续依赖进程存活、日志、BullMQ、Redis heartbeat 和 BackgroundJob 状态。
-- heartbeat 只保存不含 hostname / pid 的 opaque worker id、role、队列名、startedAt 和 lastSeenAt，不保存文件内容、prompt、RAG chunk、API key、token 或用户输入。
-- 本阶段不改 Chat prompt、RAG prompt、模型路由或真实模型调用链路，因此不需要 live 模型 smoke。
-
-验证：以下命令已在 Phase 7.7 收尾时通过。
-
+验收：
 - `bun --cwd packages/types typecheck`
-- `bun packages/types/tests/worker-observability.test.mts`
-- `bun --filter @repo/server test -- worker-observability`
-- `bun --filter @repo/web test -- worker-observability knowledge`
+- `bun --filter @repo/server test -- rag-eval`
+- `bun --filter @repo/server smoke:rag-eval`
+- `bun --filter @repo/server build`
+
+回顾时可以问：
+- “RAG Eval 的 recall@k / top1 / safety / no-hit 指标分别看什么？”
+- “Hybrid Retrieval 怎么融合向量候选和关键词候选？”
+- “fake eval 和真实 embedding smoke 分别证明什么？”
+- “为什么要有 case id guard 防误报？”
+
+### 2026-07-02 / 2026-07-05 - Phase 7.3 ~ 7.7 Observability / OpenAPI / Worker Split
+
+目标：把后台任务、接口文档和 worker 进程边界做成更可调试、更适合本地验收和面试讲解的工程化能力。
+
+为什么：
+- Phase 7 开始后，后台任务、worker、诊断 API 增多，如果没有观测和文档入口，开发者很难知道系统现在发生了什么。
+- Swagger 用来帮助本地调试和面试展示，但不能变成第二套 contract 来源。
+- API / worker 拆分能让后台任务进程独立部署和独立观测。
+
+主要内容：
+- Phase 7.3：EventBus handler 失败隔离，新增 `GET /background-jobs/summary` 和 `/knowledge` 后台任务摘要轮询兜底。
+- Phase 7.4：新增 Swagger / OpenAPI debug docs，入口 `/api-docs` 和 `/api-docs-json`。
+- Phase 7.5：核心写接口补中文 request body 示例，Swagger 顶部说明中文化。
+- Phase 7.6：拆分 `SERVER_ROLE=api | worker | both`，worker-only 不监听 HTTP。
+- Phase 7.7：新增 Redis heartbeat、BullMQ queue counts、worker observability summary 和 `/knowledge` 健康状态条。
+
+边界：
+- Swagger 是调试/展示层，不替代 `@repo/types` contract。
+- worker observability 默认 production 关闭，不返回 payload、prompt、chunk、API key、token 或 cookie。
+- 这组改动不改 Chat prompt / RAG prompt / live model 策略。
+
+验收：
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- event-bus background-jobs worker-observability`
+- `bun --filter @repo/web test -- background-job knowledge-view`
 - `bun --filter @repo/server build`
 - `bun --filter @repo/web build`
 - `docker compose -f docker/docker-compose.dev.yml --profile worker config`
 - `git diff --check`
 
-### 2026-07-02 - Phase 7.6 Worker Split
+回顾时可以问：
+- “EventBus 失败隔离解决了什么问题？”
+- “Swagger 为什么只是展示层，不是 contract 事实源？”
+- “`SERVER_ROLE=api | worker | both` 分别适合什么场景？”
+- “Worker Observability 的 queue counts、heartbeat、BackgroundJob summary 各代表什么？”
 
-本轮目标：把 Phase 7.1 预留的 `SERVER_ROLE=api | worker | both` 从“是否注册 worker processor”推进到真正的进程启动边界，让 `worker` 不再占用 HTTP 端口。
+### 2026-06-30 - Phase 7.0 / 7.1 / 7.2 Background Jobs + RAG SafetyGuard
 
-完成内容：
+目标：把知识库文档处理从同步接口升级为可切换的后台任务链路，并把用户上传资料视为低信任 RAG 证据。
 
-- 新增 `apps/server/src/bootstrap/server-bootstrap.ts`，把 server bootstrap 从 `main.ts` 拆成可测试 helper。
-- `SERVER_ROLE=api`：创建 Nest HTTP app，提供 REST API、`/health` 和 Swagger，但不注册 BullMQ worker processor。
-- `SERVER_ROLE=worker`：使用 `NestFactory.createApplicationContext(AppModule)`，只初始化模块和 BullMQ processor，不调用 `listen()`，不占用 HTTP 端口。
-- `SERVER_ROLE=both`：保留本地开发一体化模式，HTTP API 和 worker processor 同进程。
-- `main.ts` 收敛为 `void bootstrapServer()`，减少启动入口里的不可测逻辑。
-- Docker Compose 增加 `worker` profile：默认开发仍是 `both + inline`，拆分验证时可用 server `api + queue` 搭配 worker service。
-- 新增执行计划：`docs/superpowers/plans/phase-7-worker-split.md`。从本阶段开始，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀。
+为什么：
+- 文档解析、分块、embedding 可能耗时，同步接口会拖慢用户请求，也不利于失败重试。
+- 用户上传资料可能包含恶意 prompt injection，RAG 不能把检索片段当成可信指令。
+- inline / queue 双模式可以兼顾本地简单开发和后台任务生产化。
 
-边界：
-
-- worker-only 第一版不提供 HTTP `/health`；它不监听端口，健康判断先依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
-- 本阶段不改文档处理业务语义、不改 BullMQ 重试策略、不引入 dead letter queue / durable outbox。
-- 本阶段不改 Chat prompt、RAG prompt、模型路由或真实模型调用链路，因此不需要 live 模型 smoke。
-
-### 2026-07-02 - Phase 7.5 OpenAPI Request Bodies
-
-本轮目标：把 Phase 7.4 的 Swagger 从“接口地图”推进到“可读、可调试的中文接口文档”，让本地联调和面试讲解时能直接看到核心写接口应该怎么传参。
-
-完成内容：
-
-- 为 `POST /auth/register`、`POST /auth/login` 补充中文说明和 JSON request body 示例。
-- 为 `POST /knowledge/documents` 和 `PUT /knowledge/documents/:id/file` 补充 `multipart/form-data` 与 `file` 字段说明。
-- 为 `POST /knowledge/documents/:id/process`、`POST /knowledge/search`、`POST /review-tasks/:taskId/rating`、`POST /agent-traces` 补充安全 JSON 示例。
-- 高价值接口的 `summary`、`description`、成功响应说明改为中文描述，同时保留 `response envelope`、路径、字段名和 header 等英文契约标识。
-- Swagger 顶部说明已中文化；面向用户的接口标题不再使用“脱敏”这类工程黑话，改用“隐藏敏感内容”“Agent 调试记录”等更容易理解的说法。
-- 增加 OpenAPI JSON 回归测试，要求核心调试接口必须有 request body，并继续校验文档不泄露 API key、cookie、token、完整 prompt、完整回答、完整 RAG chunk 或原始 payload。
-- 新增设计与执行文档：`docs/superpowers/specs/2026-07-02-phase-7-5-openapi-request-bodies-design.md`、`docs/superpowers/plans/2026-07-02-phase-7-5-openapi-request-bodies.md`。
-
-边界：
-
-- Phase 7.5 只改 Swagger / OpenAPI 元数据和文档，不改变接口运行时行为。
-- request body 示例只用于 Swagger UI 展示，不是新的事实源；字段约束仍以 `@repo/types` Zod schema 和服务端解析为准。
-- Agent Trace 示例只放已经隐藏敏感内容的摘要、token 估算和成本估算，不放完整 prompt、完整回答或完整 RAG chunk。
-- 本阶段不改 Chat prompt、RAG prompt、模型路由或流式输出，因此不需要 live 模型 smoke。
-
-### 2026-07-02 - Phase 7.4 Swagger / OpenAPI Docs
-
-本轮目标：给越来越多的 NestJS REST API 补一个可发现、可调试、适合面试展示的 Swagger / OpenAPI 入口，同时避免让 Swagger 变成第二套 contract 事实来源。
-
-完成内容：
-
-- 新增 Swagger / OpenAPI debug docs，入口为 `/api-docs` 和 `/api-docs-json`。
-- 文档默认在非 production 开启；production 默认关闭。
-- `SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不作为公开调试入口。
-- Swagger 接入不放宽 `JwtAuthGuard`，受保护接口仍按原有认证和 userId 隔离规则执行。
-- 明确 `@repo/types` Zod schemas remain source of truth；Swagger 是调试/展示层，不反向驱动前端 contract。
-- 文档补充全局 response envelope：成功响应 `{ success, data, requestId }`，错误响应 `{ success, error, requestId }`。
-- 新增面试学习博客：`docs/blogs/phase-7-openapi-docs.md`。
-
-边界：
-
-- Phase 7.4 不改 Chat prompt、RAG prompt、模型路由或流式输出，因此不需要 live 模型 smoke。
-- OpenAPI 文档不应包含 API key、cookie、token、完整 prompt、完整回答、完整 RAG chunk、后台任务原始 payload 或真实用户内容示例。
-- Swagger 只帮助接口发现和调试，不替代 `@repo/types`、服务端测试或前端调用层校验。
-
-### 2026-07-02 - Phase 7.3 Event Observability
-
-本轮目标：让后台任务不只是“扔进队列”，而是能被前端和开发者安全地看见。
-
-完成内容：
-
-- `InProcessEventBus.publish()` 改为返回 `{ delivered, failed }`。
-- 单个 EventBus handler 抛错不会阻断后续 handler。
-- EventBus handler 失败会记录脱敏 warning，只包含事件类型与 delivered / failed 计数，不打印完整 payload。
-- 新增 `GET /background-jobs/summary`，经过 `JwtAuthGuard`，按当前 `userId` 隔离。
-- summary 中 `activeCount` 使用账号级真实 active count，避免旧的 active job 被最新 50 条窗口漏掉。
-- summary 中 `failedCount` / `staleSkippedCount` / `succeededCount` 仍表达最近 50 条任务窗口内的摘要。
-- `/knowledge` 新增后台任务摘要提示。
-- `/knowledge` 在处理中文档、本地刚触发处理或 summary 仍有 active job 时短轮询；静态 `PENDING` 或健康 recent jobs 不无限轮询。
-- 更新 `AGENTS.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/ai-behavior-acceptance.md`。
-- 新增面试复盘博客：`docs/blogs/phase-7-event-observability.md`。
-
-审核中发现并修复：
-
-- 页面最初把 summary 固定传为 `undefined`，导致 active job 不能靠 summary 自身持续轮询。
-- `activeCount` 最初只基于最近 50 条计算，语义容易误导 UI，改为真实账号级 count。
-- EventBus 最初吞掉 handler 异常但没有可观测 warning，补充了脱敏日志。
-- 设计文档末尾多余空行导致 `git diff --check main...HEAD` 失败，已清理。
-
-验证：以下命令已在 Phase 7.3 收尾时通过。
-
-- `bun --cwd packages/types typecheck`
-- `bun packages/types/tests/background-job.test.mts`
-- `bun --filter @repo/server test -- event-bus background-jobs`
-- `bun --filter @repo/web test -- background-job knowledge-view`
-- `bun --filter @repo/server build`
-- `bun --filter @repo/web build`
-- `git diff --check`
-
-边界：
-
-- Phase 7.3 不改 Chat prompt、RAG citation、Tutor 输出或真实模型调用链路，因此不需要 live 模型 smoke。
-- EventBus 当前仍是 in-process 非持久事件总线，不是 durable outbox。
-
-### 2026-06-30 - Phase 7.2 RAG SafetyGuard
-
-本轮目标：把用户上传资料视为低信任证据，避免 RAG 检索片段中的恶意指令影响模型。
-
-完成内容：
-
-- `@repo/rag` 增加 deterministic chunk safety classifier。
-- 文档处理时把 `metadata.safety` 写入每个 chunk。
-- `/knowledge/search` 返回 safety metadata。
-- Chat RAG prompt 组装前过滤 high-risk chunk。
-- medium-risk chunk 只作为可疑原文引用，不作为可执行指令。
-- `KnowledgeVerifierAgent` 对高风险或 `safeForPrompt=false` 的资料输出保守 guidance。
-- `/knowledge` 检索结果展示安全标记。
-- 补充 `docs/ai-behavior-acceptance.md` 和面试复盘博客 `docs/blogs/phase-7-rag-safety-guard.md`。
-
-验收要点：
-
-- mock / e2e 覆盖固定 prompt-injection 样本。
-- live/browser smoke 记录在 `docs/ai-behavior-acceptance.md`。
-- Trace 和 BackgroundJob 仍只保存脱敏元数据，不保存完整恶意 chunk、prompt、API key、token 或 cookie。
-
-### 2026-06-30 - Phase 7.0 / 7.1 Background Jobs
-
-本轮目标：把知识库文档处理从同步接口升级为可切换的后台任务链路。
-
-完成内容：
-
+主要内容：
 - 新增 `BackgroundJob` 数据模型和 `@repo/types/api/background-job` contract。
-- 新增 `GET /background-jobs` 与 `GET /background-jobs/:id`，均经过 `JwtAuthGuard`，按当前账号隔离。
-- 拆分 `DocumentProcessingService`，inline 和 worker 共用同一套解析、分块、embedding、snapshot 校验和 chunk 写入逻辑。
-- `KNOWLEDGE_PROCESSING_MODE=inline | queue` 控制处理模式。
-- queue 模式下创建 `BackgroundJob` 并投递 BullMQ。
-- `SERVER_ROLE=api | worker | both` 控制 worker processor 注册。
-- worker 处理时持续校验 `status + storageKey + contentHash` 快照，避免旧处理流污染新资料。
-- `/knowledge` 展示文档后台处理状态，并只在活跃处理时轮询。
+- `KNOWLEDGE_PROCESSING_MODE=inline | queue` 控制文档处理模式。
+- queue 模式创建 `BackgroundJob` 并投递 BullMQ；worker 处理时持续校验 `status + storageKey + contentHash` 快照。
+- `/knowledge` 展示文档后台处理状态，只在活跃处理时轮询。
+- `@repo/rag` 增加 deterministic chunk safety classifier。
+- 文档处理时写入 `metadata.safety`，检索 API 返回 safety metadata。
+- Chat RAG prompt 组装前过滤 high-risk chunk；medium-risk chunk 只作为可疑引用。
+- `KnowledgeVerifierAgent` 对高风险或 `safeForPrompt=false` 的资料输出保守 guidance。
 
 边界：
-
 - Redis 是 queue 链路必需依赖。
 - BackgroundJob 只保存脱敏任务元数据，不保存完整文件、prompt、RAG chunk、API key 或 token。
-- queue smoke 证明后台任务链路可靠，不证明 Chat live 输出质量。
+- SafetyGuard 不执行检索片段里的指令，只把资料当证据。
 
-### 2026-06-29 - Phase 6.8 Knowledge Agents
+验收：
+- mock / e2e 覆盖固定 prompt-injection 样本。
+- live/browser smoke 记录在 `docs/ai-behavior-acceptance.md`。
+- Trace 和 BackgroundJob 仍只保存脱敏元数据。
 
-本轮目标：补齐资料管理方向的多 Agent 能力，让知识库不只会检索，也能给资料组织建议。
+回顾时可以问：
+- “为什么知识库处理要支持 inline / queue 双模式？”
+- “BullMQ 在文档处理链路里负责什么？”
+- “RAG SafetyGuard 怎么判断高风险 chunk？”
+- “Chat prompt 前为什么要过滤 high-risk chunk？”
 
-完成内容：
+### 2026-06-20 ~ 2026-06-29 - Phase 6 Multi-Agent
 
-- 新增 `KnowledgeDedupAgent` 与 `KnowledgeOrganizerAgent` deterministic policy。
-- 新增 `@repo/types/api/knowledge-agent` contract。
-- 新增 `GET /knowledge-agent/suggestions`，经过 `JwtAuthGuard`，按当前 `userId` 读取资料元数据和少量 chunk 摘要。
-- `/knowledge` 展示重复资料、疑似新版、互补资料、集合和标签建议。
-- 建议链路只读，不自动合并、删除、替换、重命名或分类资料。
-- fixed deterministic eval set 覆盖 KnowledgeDedup / KnowledgeOrganizer。
+目标：落地多 Agent 协作亮点，并保持确定性 policy、可观测和只读建议边界。
+
+为什么：
+- 单一 Chat 链路难以承载讲题、资料核对、错题组织、复习规划、长期记忆等多种职责。
+- 多 Agent 能把复杂任务拆成可解释的策略层，但当前阶段要先保证确定性和可验收。
+- 只读建议和人审确认能降低自动写库、自动误分类、自动污染记忆的风险。
+
+主要内容：
+- Phase 6.0 / 6.1 / 6.2：新增 Agent Runtime contract、RouterAgent、TutorAgent 策略层，`/api/chat` 输出 route headers。
+- Phase 6.3：`KnowledgeVerifierAgent` 在 RAG 命中后评估资料可信度，并注入保守使用 guidance。
+- Phase 6.4：`WrongQuestionOrganizerAgent` 推荐学科组与专题 deck，`/error-book` 升级为学科 -> 专题 -> 错题下钻结构。
+- Phase 6.5：`ReviewAgent` / `PlannerAgent` 提供只读学习建议，不创建未来 `ReviewTask(source=PLANNER)`。
+- Phase 6.6：`MemoryAgent` 生成长期记忆候选，必须用户确认后才成为 active memory。
+- Phase 6.7：Agent Trace 持久化脱敏 route、step、token 和估算成本元数据。
+- Phase 6.8：`KnowledgeDedupAgent` / `KnowledgeOrganizerAgent` 提供资料重复、新版、互补、集合和标签建议。
 
 边界：
+- 当前 Phase 6 Agent 都是确定性 policy，不直接调用真实模型。
+- Review / Planner / Memory / Knowledge agents 都遵循“只读建议或人审确认”，不在每次 Chat 中自动写库或自动注入。
+- Agent Trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 
-- 不调用 live 模型。
-- 不写 Document / Chunk / 分类表。
-- 不进入 Dexie `mutationQueue`。
-- 建议失败不影响上传、处理、替换、删除和检索。
-
-### 2026-06-28 - Phase 6.6 / 6.7 Memory 与 Trace
-
-Phase 6.6 完成：
-
-- 新增 `UserMemoryCandidate` / `UserMemory` 数据模型。
-- 新增 `/memory-agent` 与 `/user-memories` API。
-- `/profile` 支持生成长期记忆候选、确认、忽略、停用、恢复和删除。
-- MemoryAgent 是确定性 policy，不调用真实模型。
-- `UserMemory` 当前不自动注入 `/api/chat`。
-
-Phase 6.7 完成：
-
-- 新增 Agent Trace contract、Prisma 模型和 `/agent-traces` API。
-- `/api/chat` 在有 access token 时 best-effort 写入脱敏 trace。
-- `/agent-trace` 展示路由、步骤、降级、token 和估算成本。
+验收：
 - fixed deterministic eval set 覆盖当前确定性 Agent policy。
-- Trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
+- mock 验证工程链路；涉及 Chat 输出体验时按 `docs/ai-behavior-acceptance.md` 做 live 小样本验收。
 
-### 2026-06-22 - Phase 6.5 ReviewAgent / PlannerAgent
+回顾时可以问：
+- “Phase 6 每个 Agent 各自负责什么？”
+- “为什么这些 Agent 当前是 deterministic policy，不直接调用真实模型？”
+- “RouterAgent / TutorAgent / KnowledgeVerifierAgent 在 Chat 链路里的顺序是什么？”
+- “MemoryAgent 为什么必须用户确认后才成为长期记忆？”
 
-完成内容：
+## 早期里程碑索引
 
-- 新增 `ReviewAgent` 与 `PlannerAgent` deterministic policy。
-- 新增 `GET /review-agent/suggestions`。
-- `/plan` 展示完整学习计划建议。
-- `/today` 展示紧急复习建议。
-- 建议只读，不创建未来 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck。
+> 说明：2026-06-05 ~ 2026-06-19 的早期 DEVLOG 曾经按日记录，后来在多轮文档清理中被压缩。这里按 `git log -- DEVLOG.md` 恢复成阶段索引，详细内容可用对应提交追溯。
 
-### 2026-06-21 - Phase 6.3 / 6.4 Verifier 与错题组织
-
-Phase 6.3 完成：
-
-- `KnowledgeVerifierAgent` 在 RAG 命中后评估资料可信度。
-- 可疑、冲突或不足时向 prompt 注入保守使用规则，并在引用区追加资料核对提示。
-- 补齐 Chat live 小样本验收规范和空回答兜底。
-
-Phase 6.4 完成：
-
-- `WrongQuestionOrganizerAgent` 推荐学科组与专题 deck。
-- 新增 `WrongQuestionSubjectGroup`、`WrongQuestionDeck`、`WrongQuestionDeckItem` 组织层。
-- `/error-book` 升级为学科卡片 -> 专题 deck -> 错题列表下钻结构。
-- 组织层独立于 WrongQuestion / Card / ReviewLog / ReviewTask 事实层。
-
-### 2026-06-20 - Phase 6.0 / 6.1 / 6.2 Agent Runtime 与 Tutor
-
-完成内容：
-
-- 新增 Agent Runtime 基础 contract、`AgentState`、`ActionProposal`、RouterAgent、阈值 guard、recorder 和 graph descriptor。
-- `/api/chat` 接入 RouterAgent，响应头输出 route metadata。
-- Tutor route 调用 TutorAgent deterministic policy。
-- TutorAgent 支持 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct`、`general_follow_up` 策略。
-- Agent package 不直接调用 `streamText`，不读取 API key，不启用 live 模型。
-
-## 阶段摘要
-
-### Phase 0 - 项目初始化
-
-- 建立 Bun workspace / monorepo。
-- 初始化 `apps/web`、`apps/server` 和 `packages/*`。
-- 建立 Prisma schema、Docker Compose 基础设施和协作文档。
-
-### Phase 1 - 前端 MVP
-
-- 完成移动端优先 Web / PWA 壳层。
-- 完成 AI 聊天、OCR、错题本、今日任务和 Dexie 本地持久化。
-- 建立 Chat / OCR 统一时间线和 Markdown / KaTeX 渲染。
-
-### Phase 2 - 后端与业务数据迁移
-
-- 落地 NestJS 11、PostgreSQL、Auth / User API。
-- 登录态迁移为后端 session 权威控制。
-- WrongQuestion / ChatMessage / OCRRecord API 迁移到 PostgreSQL。
-- MinIO 接入新 OCR 图片链路。
-- Dexie 保留为本地快速恢复、离线兜底、乐观更新和 mutation queue。
-- Phase 2.5 完成 Chat-first 产品壳层、注册登录页、个人中心、今日任务、错题本和聊天体验打磨。
-
-### Phase 3 - OCR 与讲题结构化
-
-- OCR 输出升级为 display Markdown + structured JSON envelope。
-- 保存错题优先使用结构化字段。
-- 多题图片支持单题保存和批量保存。
-- `activeStudyContext` 支持围绕当前题目追问。
-- tool action proposal 边界预留，但不自动执行。
-
-### Phase 4 - FSRS 复习系统
-
-- WrongQuestion-first FSRS 复习闭环完成。
-- `Card`、`ReviewLog`、`ReviewTask`、`ReviewPreference` 以 PostgreSQL 为权威来源。
-- 今日任务迁移到持久化 ReviewTask。
-- 评分支持 `clientMutationId` 幂等。
-- 离线评分进入 Dexie `mutationQueue`，但不本地推进 FSRS / ReviewLog / 统计。
-- `/plan` 支持未来 7 / 14 天加权复习压力预览。
-- `/stats` 使用 ECharts 展示复习趋势、评分分布和卡片状态。
-
-### Phase 5 - RAG 知识库
-
-- 完成 Document / Chunk 数据模型和 `vector(1536)` pgvector 预留。
-- 支持 TXT / Markdown / DOCX / PDF 基础解析。
-- 完成段落感知分块、embedding 入库和检索 API。
-- `/api/chat` 支持 RAG 上下文注入和 Markdown citations。
-- `/knowledge` 支持上传、处理、替换、删除、状态摘要和检索测试。
-- 文档去重、替换上传和处理快照保护已落地。
-
-### Phase 6 - 多 Agent 系统
-
-- 使用 LangGraph，不使用 AutoGen。
-- 已完成 RouterAgent、TutorAgent、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、KnowledgeDedupAgent、KnowledgeOrganizerAgent。
-- 当前列出的 Agent 均为确定性 policy，不直接调用真实模型。
-- Agent Trace 提供脱敏可观测闭环。
-- Review / Planner / Memory / Knowledge agents 都遵循“只读建议或人审确认”边界，不在每次 Chat 中自动写库或自动注入。
-
-### Phase 7 - 工程化增强
-
-- Phase 7.0：BackgroundJob 控制面完成。
-- Phase 7.1：BullMQ 知识库处理队列完成，支持 inline / queue 双模式和 worker role。
-- Phase 7.2：RAG SafetyGuard 完成，chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤和 UI 安全信号已落地。
-- Phase 7.3：Event Observability 完成，EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 任务摘要轮询兜底已落地。
-- Phase 7.4：Swagger / OpenAPI debug docs 完成，`/api-docs` 与 `/api-docs-json` 非 production 默认开启，production 默认关闭，并明确 response envelope、`@repo/types` contract 优先级和认证边界。
-- Phase 7.5：OpenAPI request body 示例完成，注册/登录、知识库上传/替换/处理/检索、复习评分和 Agent Trace 写入已补中文说明与安全示例。
-- Phase 7.6：API / worker 进程启动拆分完成，`worker` 角色不再监听 HTTP，Docker Compose 提供 worker profile。
-- Phase 7.7：Worker Observability 完成，Redis heartbeat、BullMQ queue counts、BackgroundJob summary 和 `/knowledge` 健康状态条已落地。
-- Phase 7.8.1：RAG Eval Baseline 完成，固定检索评估集和 `recall@k` / `top1Accuracy` / `safetyPassRate` / `noHitPassRate` 指标已落地。
-- Phase 7.8.2：Hybrid Retrieval 完成，`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
-- Phase 7.8.3：RAG Eval Smoke 完成，本地 API 级上传、处理、检索和 eval 串联验收脚本已落地。
-- Phase 7.8.4：RAG Eval Hardening 完成，smoke case 防误报 guard、`RAG_EVAL_SMOKE_KEEP_DATA` 本地复查开关和面试博客已落地。
-- Phase 7.9.1：Durable Outbox 地基完成，`OutboxEvent`、claim / retry / dead-letter 状态机和服务层测试已落地。
-- Phase 7.9.2：Outbox Dispatcher 最小闭环完成，显式 handler registry、dispatcher service 和知识库 requested outbox 事件入库已落地。
-- Phase 7.9.3：Outbox Dispatcher Runner 完成，worker-only 受控 tick、生产默认关闭和防重入执行已落地。
-- Phase 7.9.4：Outbox Summary / Metrics 完成，系统级 outbox 只读摘要接入 Worker Observability，Phase 7.9 面试博客已落地。
-- Phase 7.10：Outbox Ops 后端闭环完成，脱敏列表/详情、安全 requeue、feature gate 前置和 e2e 验收已落地。
+| 日期 | 阶段 | 主要进展 | 回顾时可以问 | 追溯线索 |
+| --- | --- | --- | --- | --- |
+| 2026-06-05 | Phase 0 | 新增 DEVLOG，记录 pnpm / monorepo 恢复与项目初始化。 | “项目最初的 monorepo 和 Docker 基础怎么搭的？” | `2f9c2cb`、`ef1a580` |
+| 2026-06-06 | Phase 1 | 登录模块、AI 聊天、上下文传递规划、开发博客更新。 | “Phase 1 的登录和聊天 MVP 怎么组织状态？” | `2797be2`、`8311a6a`、`af62415` |
+| 2026-06-07 | Phase 1 | Day 3 开发日志，规划 Phase 1 -> Phase 2 存储迁移。 | “为什么从本地存储逐步迁移到后端权威数据？” | `31b6649` |
+| 2026-06-08 | Phase 1 | Dexie 迁移、OCR 流式、错题本 CRUD、今日任务静态版、Phase 1 收官。 | “Dexie 在 Phase 1 里承担了哪些离线和本地恢复职责？” | `9f59fbf`、`4a92f87`、`b64b94d`、`a8d864f`、`375e2cb` |
+| 2026-06-09 | Phase 2.1 | 后端基础与 Auth/User API 收口，准备 Phase 2.2。 | “NestJS 后端和 Auth/User API 是怎么作为后端地基落地的？” | `b2fb4b9` |
+| 2026-06-11 | Phase 2.2 | Auth flow、refresh token reuse detection、WrongQuestion API、前端接入和动态 CORS。 | “登录态为什么改成后端 session 权威控制？” | `65ad246`、`8ebc04f`、`cc132b5`、`d022234`、`6a68627` |
+| 2026-06-12 | Phase 2.3 | OCRRecord、ChatMessage sync、MinIO 图片链路、chat streaming 稳定性和 Phase 2.3 handoff。 | “WrongQuestion / ChatMessage / OCRRecord 如何迁移到 PostgreSQL？” | `12614a4`、`265ba42`、`909260d`、`53802c9`、`3d6f99b` |
+| 2026-06-13 | Phase 2.3 / 2.5 | Phase 2.3 稳定化，Chat-first 产品壳层和体验打磨。 | “为什么产品壳层改成 Chat-first？” | `122aea2`、`537e458`、`c723e0b` |
+| 2026-06-14 | Phase 3 / 4.1 ~ 4.3 | AI 讲题结构化、FSRS 复习流、学习统计、ReviewTask 任务流。 | “OCR structured output 和 FSRS 复习闭环是怎么连起来的？” | `7a1dc6e`、`34b779c`、`c2a57bc`、`f27f054` |
+| 2026-06-15 | Phase 4.4 | 离线评分队列、浏览器验证和复习评分流。 | “ReviewTask 评分为什么需要 clientMutationId 幂等？” | `332ffa4`、`b15131e` |
+| 2026-06-16 | Phase 4.5.1 | 复习计划预览、统计图表、review pressure model 初步规划。 | “复习计划预览和学习统计页面怎么计算压力？” | `c08ed16`、`031fc90`、`ed55e12` |
+| 2026-06-17 | Phase 4.5.2 / 5.0 | ReviewPreference、加权压力模型、Phase 5 RAG 规划。 | “ReviewPreference 如何影响 7/14 天复习计划？” | `1c00f76`、`9294416` |
+| 2026-06-18 | Phase 5.1 / 5.2 | RAG 数据模型、知识库上传 API、wrong-question organizer 规划。 | “RAG 的 Document / Chunk 模型和上传 API 怎么设计？” | `9d38faf`、`1031872`、`f844b3e` |
+| 2026-06-19 | Phase 5.3 ~ 5.6 | 文档处理、检索 API、Chat RAG、`/knowledge` 页面、live AI guard、Phase 6 多 Agent 规划。 | “文档解析、分块、embedding、检索和 Chat RAG 是怎么串起来的？” | `1ec1644`、`2038e6a`、`ae97b49`、`542df8d`、`631c6c1` |
 
 ## 当前验证基线
 
@@ -653,26 +614,24 @@ bun --filter @repo/server lint
 bun --filter @repo/server build
 bun --filter @repo/server test
 bun --filter @repo/server test:e2e
+bun --filter @repo/server readiness:worker
 bun --cwd packages/types typecheck
 bun --cwd packages/database test
 bun --cwd packages/fsrs test
 ```
 
-Phase 7.7 worker observability 任务验证：本阶段文档收口需要至少运行以下命令。
+当前 Phase 7 operator / worker / outbox 方向常用定向验证：
 
 ```powershell
+bun test packages/types/tests/operator-audit.test.mts
 bun --cwd packages/types typecheck
-bun packages/types/tests/worker-observability.test.mts
-bun --filter @repo/server test -- worker-observability
-bun --filter @repo/web test -- worker-observability knowledge
+bun --filter @repo/server test -- operator-audit outbox-ops worker-readiness worker-observability env --runInBand
+bun --cwd apps/server eslint src/operator-audit src/outbox src/worker-readiness src/worker-observability src/config
 bun --filter @repo/server build
-bun --filter @repo/web build
-docker compose -f docker/docker-compose.dev.yml --profile worker config
 git diff --check
 ```
 
 AI 行为验收规则：
-
 - mock 验工程链路。
 - live 小样本验真实输出体验。
 - fake embedding 不证明 RAG 语义命中质量。
@@ -683,10 +642,11 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
-2. Worker 观测增强：后续按部署形态补 BullMQ metrics、CLI health check 或容器 readiness。
-3. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
-4. Outbox 生产化：补操作审计表、admin/operator 权限模型、dead-letter 修复工作流和更多业务事件接入。
+1. Operator Audit 产品化边界：是否需要只读详情、导出策略、保留周期和更细 operator role。
+2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
+3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标和容器 readiness。
+4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+5. Outbox 生产化：dead-letter 修复工作流、更多业务事件接入、生产开关流程。
 
 ## 参考文档
 
@@ -694,6 +654,7 @@ Phase 7 后续优先级：
 - `README.md`：项目入口和启动说明。
 - `docs/roadmap.md`：完整 Phase 路线。
 - `docs/data-flow.md`：当前有效数据流和边界。
+- `docs/acceptance-checklist.md`：统一验收入口。
 - `docs/ai-behavior-acceptance.md`：mock / live / RAG / Agent 验收规范。
 - `docs/blogs/phase-7-rag-safety-guard.md`：RAG SafetyGuard 面试复盘。
 - `docs/blogs/phase-7-event-observability.md`：后台任务可观测面试复盘。
@@ -702,3 +663,4 @@ Phase 7 后续优先级：
 - `docs/blogs/phase-7-worker-observability.md`：Worker Observability 面试学习博客。
 - `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
 - `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
+- `docs/blogs/worker-readiness-deployment-checks.md`：Worker Readiness、部署前检查和 CLI 退出码面试学习博客。

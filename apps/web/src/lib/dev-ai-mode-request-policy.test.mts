@@ -19,6 +19,41 @@ test('allows localhost dev mode mutations with a valid access token', async () =
   assert.deepEqual(result, { ok: true });
 });
 
+test('allows Docker standalone requests bound to 0.0.0.0 when host and origin are local', async () => {
+  const result = await validateDevAiModeMutationRequest({
+    request: new Request('http://0.0.0.0:3000/api/dev/ai-mode', {
+      method: 'PUT',
+      headers: {
+        host: 'localhost:3000',
+        origin: 'http://localhost:3000',
+      },
+    }),
+    accessToken: 'valid-token',
+    validateAccessToken: async (token) => token === 'valid-token',
+  });
+
+  assert.deepEqual(result, { ok: true });
+});
+
+test('does not allow 0.0.0.0 as the external host header', async () => {
+  const result = await validateDevAiModeMutationRequest({
+    request: new Request('http://0.0.0.0:3000/api/dev/ai-mode', {
+      method: 'PUT',
+      headers: {
+        host: '0.0.0.0:3000',
+        origin: 'http://localhost:3000',
+      },
+    }),
+    accessToken: 'valid-token',
+    validateAccessToken: async () => true,
+  });
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.status, 403);
+  }
+});
+
 test('rejects dev mode mutations without an access token', async () => {
   const result = await validateDevAiModeMutationRequest({
     request: new Request('http://localhost:3000/api/dev/ai-mode', {

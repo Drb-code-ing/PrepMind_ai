@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { gsap } from 'gsap';
 import {
   BarChart3,
   BookMarked,
@@ -10,12 +12,15 @@ import {
   CalendarDays,
   LogOut,
   MessageCircle,
+  ShieldCheck,
   Sparkles,
   UserRound,
   X,
 } from 'lucide-react';
 
 import { useLogout } from '@/hooks/use-auth';
+import { getLogoutConfirmationView } from '@/lib/logout-confirmation';
+import { getSidebarNavItems, type SidebarNavIconKey } from '@/lib/sidebar-nav';
 import { useUserStore } from '@/stores/userStore';
 
 interface ChatSidebarProps {
@@ -23,21 +28,93 @@ interface ChatSidebarProps {
   onClose: () => void;
 }
 
-const navItems = [
-  { href: '/chat', label: 'AI 对话', hint: '拍照识题与追问', icon: MessageCircle },
-  { href: '/knowledge', label: '知识库', hint: '资料入库与检索测试', icon: BookMarked },
-  { href: '/today', label: '今日任务', hint: '轻学习手账', icon: CalendarDays },
-  { href: '/plan', label: '复习计划', hint: '未来到期与复习压力', icon: CalendarClock },
-  { href: '/stats', label: '学习统计', hint: '复习趋势与记录', icon: BarChart3 },
-  { href: '/error-book', label: '错题本', hint: '复盘和标记掌握', icon: BookOpen },
-  { href: '/profile', label: '我的档案', hint: '偏好与账号资料', icon: UserRound },
-];
+const navIconMap: Record<SidebarNavIconKey, typeof MessageCircle> = {
+  chat: MessageCircle,
+  knowledge: BookMarked,
+  today: CalendarDays,
+  plan: CalendarClock,
+  stats: BarChart3,
+  errorBook: BookOpen,
+  profile: UserRound,
+  audit: ShieldCheck,
+};
 
 export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const currentUser = useUserStore((state) => state.currentUser);
+  const visibleNavItems = getSidebarNavItems(currentUser?.role).map((item) => ({
+    ...item,
+    icon: navIconMap[item.iconKey],
+  }));
   const logout = useLogout();
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const logoutDialogRootRef = useRef<HTMLDivElement>(null);
+  const logoutDialogPanelRef = useRef<HTMLElement>(null);
+  const logoutConfirmation = getLogoutConfirmationView({
+    confirming: logoutConfirmOpen,
+    pending: logout.isPending,
+  });
+  const handleClose = () => {
+    setLogoutConfirmOpen(false);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (
+      logoutConfirmation.state === 'idle' ||
+      !logoutDialogRootRef.current ||
+      !logoutDialogPanelRef.current
+    ) {
+      return;
+    }
+
+    const root = logoutDialogRootRef.current;
+    const panel = logoutDialogPanelRef.current;
+    const items = Array.from(root.querySelectorAll('[data-logout-dialog-item]'));
+    const mm = gsap.matchMedia();
+
+    mm.add(
+      { reduceMotion: '(prefers-reduced-motion: reduce)' },
+      (context) => {
+        const conditions = context.conditions as { reduceMotion?: boolean } | undefined;
+
+        if (conditions?.reduceMotion) {
+          gsap.set([panel, ...items], { autoAlpha: 1, scale: 1, y: 0 });
+          return;
+        }
+
+        gsap.fromTo(
+          panel,
+          { autoAlpha: 0, scale: 0.94, y: 10 },
+          {
+            autoAlpha: 1,
+            scale: 1,
+            y: 0,
+            duration: 0.26,
+            ease: 'power3.out',
+            clearProps: 'transform,visibility',
+          },
+        );
+        gsap.fromTo(
+          items,
+          { autoAlpha: 0, y: 6 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.22,
+            delay: 0.04,
+            ease: 'power2.out',
+            stagger: 0.035,
+            clearProps: 'transform,visibility',
+          },
+        );
+      },
+      root,
+    );
+
+    return () => mm.revert();
+  }, [logoutConfirmation.state]);
 
   return (
     <>
@@ -45,7 +122,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
         <button
           type="button"
           className="fixed inset-0 z-50 cursor-default bg-[#2b2335]/25 backdrop-blur-[2px]"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="关闭导航遮罩"
         />
       ) : null}
@@ -75,7 +152,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="tap-target flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-[var(--pm-ink)] ring-1 ring-[var(--pm-line)] transition-all hover:bg-[#eafff9] active:scale-95"
                   aria-label="关闭导航"
                 >
@@ -96,14 +173,14 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
 
             <nav className="flex-1 px-3 py-2">
               <ul className="space-y-2">
-                {navItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const isActive =
                     item.href === '/chat' ? pathname === '/chat' : pathname.startsWith(item.href);
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        onClick={onClose}
+                        onClick={handleClose}
                         className={`tap-target group flex items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm transition-all active:scale-[0.99] ${
                           isActive
                             ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-[#bdeee5]'
@@ -136,11 +213,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
               <button
                 type="button"
                 disabled={logout.isPending}
-                onClick={async () => {
-                  await logout.mutateAsync().catch(() => undefined);
-                  onClose();
-                  router.replace('/login');
-                }}
+                onClick={() => setLogoutConfirmOpen(true)}
                 className="tap-target flex w-full items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.99] disabled:opacity-60"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100">
@@ -152,6 +225,84 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
           </>
         ) : null}
       </aside>
+
+      {logoutConfirmation.state !== 'idle' ? (
+        <div
+          ref={logoutDialogRootRef}
+          className="fixed inset-0 z-[70] flex items-center justify-center px-5"
+        >
+          <button
+            type="button"
+            aria-label="关闭退出确认"
+            className="absolute inset-0 cursor-default bg-[linear-gradient(180deg,rgba(13,19,31,0.42),rgba(34,44,59,0.28))] backdrop-blur-[5px]"
+            onClick={() => {
+              if (!logout.isPending) setLogoutConfirmOpen(false);
+            }}
+          />
+          <section
+            ref={logoutDialogPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-confirm-title"
+            className="relative w-full max-w-[18.5rem] overflow-hidden rounded-[1.35rem] border border-white/70 bg-white/90 p-3.5 text-left shadow-[0_24px_70px_rgba(16,24,40,0.24)] ring-1 ring-[#d8eef1]/70 backdrop-blur-2xl"
+          >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/95" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(232,250,252,0.72),rgba(255,255,255,0)_42%,rgba(245,248,255,0.58))]" />
+
+            <div data-logout-dialog-item className="relative flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[#e7fbfb] text-[#08706c] ring-1 ring-[#bceff0] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+                <ShieldCheck className="h-5 w-5" strokeWidth={1.8} />
+              </span>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <h2
+                  id="logout-confirm-title"
+                  className="text-base font-black leading-6 text-[var(--pm-ink)]"
+                >
+                  {logoutConfirmation.title}
+                </h2>
+                <p className="mt-1 text-[0.8125rem] leading-5 text-[#667085]">
+                  {logoutConfirmation.description}
+                </p>
+              </div>
+            </div>
+
+            <div data-logout-dialog-item className="relative mt-4">
+              {logoutConfirmation.secondaryLabel ? (
+                <div className="grid grid-cols-[0.9fr_1.1fr] gap-2">
+                  <button
+                    type="button"
+                    disabled={logout.isPending}
+                    onClick={async () => {
+                      await logout.mutateAsync().catch(() => undefined);
+                      handleClose();
+                      router.replace('/login');
+                    }}
+                    className="tap-target min-h-11 rounded-[1rem] bg-white/72 px-3 text-sm font-bold text-[#d04a55] ring-1 ring-[#ffd8dc] transition-all hover:bg-[#fff1f3] active:translate-y-px disabled:opacity-60"
+                  >
+                    {logoutConfirmation.primaryLabel}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={logout.isPending}
+                    onClick={() => setLogoutConfirmOpen(false)}
+                    className="tap-target min-h-11 rounded-[1rem] bg-[#0f766e] px-3 text-sm font-black text-white shadow-[0_10px_22px_rgba(15,118,110,0.23)] transition-all hover:bg-[#0b6761] active:translate-y-px disabled:opacity-60"
+                  >
+                    {logoutConfirmation.secondaryLabel}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="tap-target min-h-11 w-full rounded-[1rem] bg-[#0f766e] px-3 text-sm font-black text-white opacity-80"
+                >
+                  {logoutConfirmation.primaryLabel}
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -34,7 +34,7 @@ $env:AI_ENABLE_LIVE_CALLS='true'
 $env:AI_DEV_MODE_SWITCH_ENABLED='true'
 ```
 
-- 开关只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见。
+- 开关默认只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见；Docker Compose dev 的 Next standalone 容器可额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 显示该本地诊断开关，生产部署不得开启。
 - Live 选项只有在 `AI_ENABLE_LIVE_CALLS=true` 且存在 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 时可用。
 - 即使通过开关切到 live，`/api/chat` 仍要求有效 access token，并会调用 `/auth/me` 校验。
 - 验收记录仍以 `/api/chat` 响应头 `x-prepmind-ai-mode=mock|live` 为准。
@@ -270,3 +270,25 @@ Phase 7.10 只新增后端 outbox 诊断与 requeue 能力，不改变 Chat、RA
 - `lastErrorPreview` 必须复用脱敏逻辑并截断，覆盖 Bearer token、`access_token`、`refresh_token`、`api_key`、`x-api-key`、`Set-Cookie`、`sk-...` 和常见供应商 API key 形态。
 - requeue 只能通过 compare-and-swap 把 `FAILED / DEAD` 事件重置为 `PENDING`；不得直接执行 handler，不得修改 payload，不得支持删除、强制成功、跳过或直接 dispatch。
 - 本阶段的 e2e / 单元 / build 验证足以覆盖；只有后续把 Outbox Ops 接入前端操作台、生产 admin 权限或 Chat/RAG 输出链路时，才需要新增对应 UI / 权限 / live 验收。
+
+## 22. Phase 7.11 Worker Readiness
+
+Phase 7.11 只新增 worker readiness HTTP 入口和 CLI，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
+
+- `/health` 只用于 API liveness；`/worker-observability/summary` 用于开发者排障；`/worker-readiness` 和 `bun --filter @repo/server readiness:worker` 用于机器友好的部署前 readiness。
+- `WORKER_READINESS_ENABLED=false` 时 HTTP 入口必须在认证前隐藏为 404，避免生产默认暴露诊断面。
+- Readiness 只能返回 Redis、BullMQ queue、worker heartbeat 和 outbox 的安全摘要，不得返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie 或连接串。
+- CLI 必须使用最小只读 module，不得导入完整 `AppModule`，不得启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher。
+- CLI 必须有有界 timeout；ready 退出码为 `0`，degraded / not ready 退出码为 `1`，脚本异常、配置错误或超时退出码为 `2`。
+- CLI 输出必须使用受控安全文案，不得打印依赖库原始错误正文、Redis URL、DATABASE_URL、token、cookie、payload、prompt 或 chunk。
+- 本阶段的 contract / env / service / controller / CLI 单元测试、server build、eslint 和手动 CLI smoke 足以覆盖；只有后续把 readiness 结果接入前端 UI、容器编排策略或 Chat/RAG 输出链路时，才需要新增对应 UI / 部署 / live 验收。
+
+## 23. Phase 7.12 Docker Worker Healthcheck
+
+Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker` service healthcheck，不改变 Chat、RAG prompt、模型路由、Tutor 输出、KnowledgeVerifierAgent guidance、前端页面或真实模型调用链路，因此不要求 live 模型 smoke。
+
+- Docker healthcheck 在容器内运行 `bun apps/server/dist/scripts/worker-readiness.js`，不是本机 Bun workspace script。
+- 本机开发仍使用 `bun --filter @repo/server readiness:worker`。
+- healthcheck 只能作为容器级 readiness 信号，不得消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
+- 验收重点是 compose 配置合法、worker service healthcheck 存在、命令指向构建产物、timeout / retries / start period 合理。
+- 本阶段的 compose config、单元测试、build、eslint 和 `git diff --check` 足以覆盖；只有后续把该信号接入真实生产编排平台或前端 UI 时，才需要新增对应部署或 UI 验收。

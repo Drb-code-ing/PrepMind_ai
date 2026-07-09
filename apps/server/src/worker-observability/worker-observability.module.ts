@@ -11,7 +11,10 @@ import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/pr
 import { OutboxModule } from '../outbox/outbox.module';
 import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
 import { WorkerHeartbeatService } from './worker-heartbeat.service';
-import { WorkerObservabilityController } from './worker-observability.controller';
+import {
+  WorkerObservabilityController,
+  WorkerObservabilityEnabledGuard,
+} from './worker-observability.controller';
 import { WorkerObservabilityService } from './worker-observability.service';
 
 @Module({
@@ -23,6 +26,7 @@ import { WorkerObservabilityService } from './worker-observability.service';
   ],
   controllers: [WorkerObservabilityController],
   providers: [
+    WorkerObservabilityEnabledGuard,
     {
       provide: WorkerHeartbeatService,
       inject: [getQueueToken(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE), ConfigService],

@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +27,14 @@ import {
 } from '@repo/types/api/outbox';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OperatorGuard } from '../auth/operator.guard';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../common/decorators/current-user.decorator';
+import type { RequestWithId } from '../common/middleware/request-id.middleware';
 import type { ServerEnv } from '../config/env';
+import { OperatorAuditService } from '../operator-audit/operator-audit.service';
 import { OutboxOpsService } from './outbox-ops.service';
 
 @Injectable()
@@ -43,11 +51,14 @@ export class OutboxOpsEnabledGuard implements CanActivate {
 }
 
 @Controller('outbox-events')
-@UseGuards(OutboxOpsEnabledGuard, JwtAuthGuard)
+@UseGuards(OutboxOpsEnabledGuard, JwtAuthGuard, OperatorGuard)
 @ApiTags('Outbox Ops')
 @ApiBearerAuth('access-token')
 export class OutboxOpsController {
-  constructor(private readonly service: OutboxOpsService) {}
+  constructor(
+    private readonly service: OutboxOpsService,
+    private readonly audit: OperatorAuditService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -96,8 +107,42 @@ export class OutboxOpsController {
     },
   })
   @ApiOkResponse({ description: '重新排队后的脱敏 outbox 事件详情。' })
-  async requeue(@Param('id') id: string, @Body() body: unknown) {
-    outboxEventRequeueRequestSchema.parse(body ?? {});
-    return this.service.requeue(id, new Date());
+  async requeue(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: RequestWithId,
+  ) {
+    const parsed = outboxEventRequeueRequestSchema.parse(body ?? {});
+
+    try {
+      const result = await this.service.requeue(id, new Date());
+      await this.audit.recordSuccess({
+        actorUserId: user.id,
+        action: 'OUTBOX_REQUEUE',
+        targetType: 'OutboxEvent',
+        targetId: id,
+        reason: parsed.reason,
+        request,
+        metadata: {
+          nextStatus: result.status,
+          payloadHash: result.payloadHash,
+          source: 'http',
+        },
+      });
+
+      return result;
+    } catch (error) {
+      await this.audit.recordFailure({
+        actorUserId: user.id,
+        action: 'OUTBOX_REQUEUE',
+        targetType: 'OutboxEvent',
+        targetId: id,
+        reason: parsed.reason,
+        request,
+        error,
+      });
+      throw error;
+    }
   }
 }

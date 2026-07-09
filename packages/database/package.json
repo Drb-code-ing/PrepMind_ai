@@ -5,9 +5,10 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "prisma:generate": "prisma generate && bun scripts/repair-prisma-client.mjs",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
+    "prisma:generate": "bun scripts/prisma-with-root-env.mjs generate && bun scripts/repair-prisma-client.mjs",
+    "prisma:migrate": "bun scripts/prisma-with-root-env.mjs migrate dev",
+    "prisma:studio": "bun scripts/prisma-with-root-env.mjs studio",
+    "prisma:status": "bun scripts/prisma-with-root-env.mjs migrate status",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit"

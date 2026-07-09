@@ -28,6 +28,21 @@ test('is disabled unless explicitly enabled outside production', () => {
   );
 });
 
+test('can be enabled in a local standalone dev container with an explicit dev tools guard', () => {
+  resetDevAiModeForTest();
+  const env = {
+    NODE_ENV: 'production',
+    PREPMIND_LOCAL_DEV_TOOLS_ENABLED: 'true',
+    AI_DEV_MODE_SWITCH_ENABLED: 'true',
+  };
+
+  const status = buildDevAiModeStatus(env);
+
+  assert.equal(status.enabled, true);
+  assert.equal(status.activeMode, 'mock');
+  assert.equal(getDevAiModeOverride(env), 'mock');
+});
+
 test('defaults to mock when enabled', () => {
   resetDevAiModeForTest();
   const env = {

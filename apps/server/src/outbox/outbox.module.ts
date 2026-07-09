@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import type { ServerEnv } from '../config/env';
 import { DatabaseModule } from '../database/database.module';
+import { OperatorAuditModule } from '../operator-audit/operator-audit.module';
 import { OutboxDispatcherRunnerService } from './outbox-dispatcher-runner.service';
 import { OutboxDispatcherService } from './outbox.dispatcher';
 import { OUTBOX_HANDLERS, outboxHandlers } from './outbox.handlers';
@@ -17,7 +18,7 @@ import { OutboxOpsService } from './outbox-ops.service';
 import { OutboxService } from './outbox.service';
 
 @Module({
-  imports: [AuthModule, ConfigModule, DatabaseModule],
+  imports: [AuthModule, ConfigModule, DatabaseModule, OperatorAuditModule],
   controllers: [OutboxOpsController],
   providers: [
     OutboxService,

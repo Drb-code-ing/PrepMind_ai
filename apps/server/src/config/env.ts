@@ -46,6 +46,14 @@ const envSchema = z
 
       return value;
     }, booleanStringSchema.optional()),
+    WORKER_READINESS_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
     OUTBOX_DISPATCHER_ENABLED: z.preprocess((value) => {
       if (value === undefined || value === null) return undefined;
       if (typeof value === 'string' && value.trim().length === 0) {
@@ -55,6 +63,14 @@ const envSchema = z
       return value;
     }, booleanStringSchema.optional()),
     OUTBOX_OPS_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
+    OPERATOR_AUDIT_ENABLED: z.preprocess((value) => {
       if (value === undefined || value === null) return undefined;
       if (typeof value === 'string' && value.trim().length === 0) {
         return undefined;
@@ -235,13 +251,17 @@ export type ServerEnv = Omit<
   ParsedServerEnv,
   | 'SWAGGER_ENABLED'
   | 'WORKER_OBSERVABILITY_ENABLED'
+  | 'WORKER_READINESS_ENABLED'
   | 'OUTBOX_DISPATCHER_ENABLED'
   | 'OUTBOX_OPS_ENABLED'
+  | 'OPERATOR_AUDIT_ENABLED'
 > & {
   SWAGGER_ENABLED: boolean;
   WORKER_OBSERVABILITY_ENABLED: boolean;
+  WORKER_READINESS_ENABLED: boolean;
   OUTBOX_DISPATCHER_ENABLED: boolean;
   OUTBOX_OPS_ENABLED: boolean;
+  OPERATOR_AUDIT_ENABLED: boolean;
 };
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
@@ -252,8 +272,12 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
     SWAGGER_ENABLED: env.SWAGGER_ENABLED ?? env.NODE_ENV !== 'production',
     WORKER_OBSERVABILITY_ENABLED:
       env.WORKER_OBSERVABILITY_ENABLED ?? env.NODE_ENV !== 'production',
+    WORKER_READINESS_ENABLED:
+      env.WORKER_READINESS_ENABLED ?? env.NODE_ENV !== 'production',
     OUTBOX_DISPATCHER_ENABLED:
       env.OUTBOX_DISPATCHER_ENABLED ?? env.NODE_ENV !== 'production',
     OUTBOX_OPS_ENABLED: env.OUTBOX_OPS_ENABLED ?? env.NODE_ENV !== 'production',
+    OPERATOR_AUDIT_ENABLED:
+      env.OPERATOR_AUDIT_ENABLED ?? env.NODE_ENV !== 'production',
   };
 }

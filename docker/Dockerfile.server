@@ -1,28 +1,40 @@
-FROM node:20-alpine AS base
-RUN corepack enable
+FROM oven/bun:1.3.14-alpine AS base
 
 FROM base AS deps
 WORKDIR /app
-COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY bun.lock package.json ./
 COPY apps/server/package.json ./apps/server/
-RUN pnpm install --frozen-lockfile
+COPY apps/web/package.json ./apps/web/
+COPY packages/agent/package.json ./packages/agent/
+COPY packages/ai/package.json ./packages/ai/
+COPY packages/database/package.json ./packages/database/
+COPY packages/fsrs/package.json ./packages/fsrs/
+COPY packages/mcp/package.json ./packages/mcp/
+COPY packages/rag/package.json ./packages/rag/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+RUN bun install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=deps /app/apps ./apps
+COPY --from=deps /app/packages ./packages
 COPY . .
-RUN pnpm --filter @repo/server build
+RUN bun --cwd packages/database prisma:generate
+RUN bun --filter @repo/server build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 
-COPY --from=builder /app/apps/server/dist ./dist
-COPY --from=builder /app/apps/server/node_modules ./node_modules
-COPY --from=builder /app/apps/server/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages ./packages
 
 USER nestjs
 EXPOSE 3001
-CMD ["node", "dist/main"]
+CMD ["bun", "apps/server/dist/src/main.js"]

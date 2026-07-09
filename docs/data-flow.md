@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-05。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 / 7.5 已完成 Swagger / OpenAPI debug docs、中文说明和核心写接口 request body 示例；Phase 7.6 已完成 API / worker 启动拆分，`SERVER_ROLE=worker` 不再监听 HTTP 端口；Phase 7.7 已完成 Worker Observability，通过 Redis heartbeat、BullMQ queue counts 和 BackgroundJob summary 展示后台处理健康状态。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-07-09。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 / 7.5 已完成 Swagger / OpenAPI debug docs、中文说明和核心写接口 request body 示例；Phase 7.6 已完成 API / worker 启动拆分，`SERVER_ROLE=worker` 不再监听 HTTP 端口；Phase 7.7 已完成 Worker Observability，通过 Redis heartbeat、BullMQ queue counts 和 BackgroundJob summary 展示后台处理健康状态；Phase 7.14 / 7.15 已补 operator 权限、审计写入、脱敏审计查询 API、管理员审计台和真实前后端验收。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
 
 ## 1. 当前边界
 
@@ -16,6 +16,7 @@
 - 后台任务职责：`BackgroundJob` 以 PostgreSQL 为权威来源；`/background-jobs` 与 `/background-jobs/summary` 提供账号级只读任务观测 API，当前服务知识库文档处理队列；job 只保存状态、资源类型、资源 id、时间戳、错误摘要和脱敏 metadata。
 - API / worker 职责：`SERVER_ROLE=api` 启动 Nest HTTP app，只提供 REST API、`/health` 和 Swagger，不消费 BullMQ；`SERVER_ROLE=worker` 启动 Nest application context，只注册 worker processor，不监听 HTTP 端口；`SERVER_ROLE=both` 保留本地一体化模式。worker-only 第一版没有 HTTP `/health`，健康判断依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
 - Worker Observability 职责：`/worker-observability/summary` 聚合系统级 `knowledge-document-processing` queue counts、Redis worker heartbeat 和当前账号 BackgroundJob summary；该接口经过 `JwtAuthGuard` 且受 `WORKER_OBSERVABILITY_ENABLED` 控制，默认非 production 开启、production 关闭。queue counts 不按用户隔离，heartbeat 只表达 worker 最近是否在线，BackgroundJob summary 才是账号级任务窗口；三者不能互相替代。
+- Operator Audit 职责：`OperatorAuditLog` 以 PostgreSQL 为权威来源，记录 operator/admin 诊断写操作的安全审计元数据。Phase 7.14.3 / 7.14.4 已落审计模型、`OperatorAuditService` 和 outbox requeue 成功/失败留痕；Phase 7.14.5 新增 `GET /operator-audit-logs` admin-only 脱敏查询 API，用于受控排障和事故复盘；Phase 7.14.6 新增前端页面 `/operator-audit`，管理员侧边栏显示“审计”入口，普通用户不显示入口；Phase 7.15 已完成真实管理员/普通用户前后端验收，并修复本地 Docker dev 诊断开关与 `127.0.0.1` dev hydration 问题。审计记录只保存 actor、action、status、target、reason、requestId、IP/User-Agent hash、错误 code 和截断后的脱敏错误预览，不保存 payload、aggregateId、prompt、RAG chunk、模型回答、API key、token、cookie 或原始 IP/User-Agent。查询 API 不返回 `metadata` 或业务 payload；actor user 删除时保留审计记录并把 `actorUserId` 置空。前端页面只有当前会话 `role=ADMIN` 时才请求审计 API，真正鉴权仍以后端 guard 为准。
 - OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；Phase 7.5 为核心写接口补充中文说明和安全 request body 示例。`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
@@ -622,6 +623,7 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - Agent Trace：`/agent-traces` 是在线账号级观测能力，只记录脱敏元数据；trace 写入失败不需要离线补偿，不进入通用 mutation queue。
 - BackgroundJob：`/background-jobs` 与 `/background-jobs/summary` 是在线账号级只读观测能力，只记录后台任务脱敏元数据；任务状态不进入 Dexie `mutationQueue`。
 - Worker Observability：`/worker-observability/summary` 是在线只读运维观测能力，默认 production 关闭；返回的 queue counts 是系统级信号，heartbeat 是 worker 在线信号，不进入 Dexie `mutationQueue`，也不保存用户内容。
+- Operator Audit：operator/admin 诊断写操作审计是在线运维留痕和只读复盘能力，不进入 Dexie `mutationQueue`；审计写入失败只记录脱敏 warning，不影响主操作，审计查询失败也不触发离线补偿。
 - KnowledgeAgent suggestions：`/knowledge-agent/suggestions` 是在线只读资料管理建议，不写资料事实表，失败不需要离线补偿，不进入通用 mutation queue。
 - ReviewTask skip / reopen：当前只在线更新 ReviewTask，不进入离线补偿队列。
 - 图片上传：上传失败不阻塞 OCR，不自动静默迁移历史 base64。
@@ -667,6 +669,8 @@ WrongQuestion / OCRRecord / ReviewTask rating 写操作
 - `AgentTraceRun`
 - `AgentTraceStep`
 - `BackgroundJob`
+- `OutboxEvent`
+- `OperatorAuditLog`
 - `Document`
 - `Chunk`
 

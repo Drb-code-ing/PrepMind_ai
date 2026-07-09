@@ -1,12 +1,34 @@
 import assert from 'node:assert/strict';
 
-import { ApiClientError, createApiClient } from './api-client.ts';
+import {
+  ApiClientError,
+  createApiClient,
+  resolveApiClientBaseUrl,
+} from './api-client.ts';
 
 async function run() {
+  testResolvesInternalApiBaseUrlBeforePublicUrl();
   await testParsesSuccessEnvelope();
   await testThrowsApiFailure();
   await testThrowsInvalidJson();
   await testThrowsNetworkFailure();
+}
+
+function testResolvesInternalApiBaseUrlBeforePublicUrl() {
+  assert.equal(
+    resolveApiClientBaseUrl({
+      PREPMIND_INTERNAL_API_BASE_URL: 'http://server:3001',
+      NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+    }),
+    'http://server:3001',
+  );
+
+  assert.equal(
+    resolveApiClientBaseUrl({
+      NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+    }),
+    'http://127.0.0.1:3001',
+  );
 }
 
 async function testParsesSuccessEnvelope() {
@@ -98,4 +120,3 @@ async function testThrowsNetworkFailure() {
 }
 
 await run();
-
