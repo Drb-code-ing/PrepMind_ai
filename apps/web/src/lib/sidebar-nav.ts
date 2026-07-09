@@ -43,7 +43,6 @@ function getAdminNavItems(adminConsoleUrl: string): SidebarNavItem[] {
       hint: '桌面端系统运维入口',
       iconKey: 'adminConsole',
       adminOnly: true,
-      desktopOnly: true,
       external: true,
     },
     {
