@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.17.1 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.18 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -47,8 +47,46 @@
 | Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
 | Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
 | Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录 |
+| Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.18 Admin Outbox Ops 产品化
+
+目标：把独立后台里的 `/outbox` 从“能查列表、能点 requeue”的工程调试页，升级成管理员能理解失败原因、判断是否适合重新入队、执行安全 requeue，并知道后续去哪里验证恢复的单事件操作工作流。
+
+为什么：
+- Outbox requeue 会改变系统级事件状态，如果页面只给一个按钮，管理员很容易把 handler missing、invalid payload 这类根因未修复的问题误当成“重试一下就好”。
+- Phase 7.15 ~ 7.17 已经把权限、审计、Worker Readiness 和独立 Admin Console 搭起来了，下一步需要把这些能力串成真正可操作、可解释、可复盘的后台流程。
+- 面试表达上，这一步能讲清楚“后台运维页面不是堆 API 返回值”，而是把状态机、错误分类、审计和后续观测做成产品化闭环。
+
+主要内容：
+- `apps/admin/src/lib/outbox-view.ts` 增加 Outbox 展示 helper：只允许 `FAILED / DEAD` 进入 requeue 流程；`PENDING / PROCESSING / SUCCEEDED` 给出只读原因；handler missing、invalid payload、Redis/数据库/超时和未知错误给出不同处理建议。
+- `/outbox` 详情页重构为五个分区：生命周期、事件身份、诊断建议、重新入队操作、后续验证。
+- 重新入队操作保留“操作原因 + 显式确认 + 按钮禁用”三段式保护；requeue 成功后刷新 outbox 列表、详情、operator audit 和 worker readiness 缓存，避免 20 秒 staleTime 内看到旧信号。
+- 后续验证区直接给出 `/worker` 和 `/audit` 入口，让管理员知道 requeue 后要看 Worker Readiness、Outbox backlog 和操作审计，而不是以为按钮点完就代表任务已经执行完成。
+- 列表选中态增加 `aria-pressed` 与左侧强调条，不再只依赖背景色判断当前选中事件。
+- 增加静态 contract test，防止页面暴露完整 payload 或增加批量 requeue、删除、跳过、立即 dispatch、payload 修改等危险入口；浏览器验收中发现 aftercare 文案容易暗示危险操作名后，补充测试并改成“不会改写事件数据或事件结果”。
+
+边界：
+- 本阶段不改后端 API contract，不新增权限模型，不绕过 `JwtAuthGuard + OperatorGuard`。
+- 页面仍只展示脱敏 DTO、`payloadHash`、错误 code / preview、状态和时间戳，不展示完整 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- requeue 仍只是安全状态流转：`FAILED / DEAD -> PENDING`，不立即执行 handler，不改写事件数据，不改写事件结果。
+- 不做批量操作、删除事件、跳过事件、立即 dispatch、payload 修改、审计导出或保留周期策略。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/outbox-page-contract.test.mts apps/admin/src/lib/outbox-view.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 使用 `subst P: "E:\PrepMind_ai智能备考助手"` 规避中文路径 BuildKit header bug 后，重建并启动 `admin`，浏览器访问 `http://localhost:3100/outbox`。
+- 浏览器验收覆盖：管理员登录态可进入 Outbox Ops；FAILED 事件详情展示五个分区；详情不展示完整 payload；invalid payload 提示先修生产方/数据契约；Redis timeout 事件提示依赖恢复后再 requeue；原因和确认未满足时按钮禁用；requeue 后事件回到 `PENDING`、attempts 重置、后续验证区更新；`/audit` 能看到脱敏 requeue 审计；清理测试数据后 `/worker` 回到 `Ready` 且 `backlog=false`。
+
+回顾时可以问：
+- “为什么 Outbox Ops 页面不能只做一个 requeue 按钮？”
+- “handler missing、invalid payload 和 Redis timeout 三类错误为什么要给不同操作建议？”
+- “requeue 为什么只是状态机里的 `FAILED / DEAD -> PENDING`，而不是立刻执行 handler？”
+- “为什么 requeue 成功后要同时刷新 outbox、audit 和 worker readiness？”
+- “前端页面隐藏危险入口和后端 `OperatorGuard` 的安全职责有什么区别？”
 
 ### 2026-07-09 - Phase 7.17.1 管理员后台返回学习端登录态修复
 
