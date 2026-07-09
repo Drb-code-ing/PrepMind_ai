@@ -1,5 +1,7 @@
 import {
+  operatorAuditLogDetailResponseSchema,
   operatorAuditLogListResponseSchema,
+  type OperatorAuditLogDetailResponse,
   type OperatorAuditLogListQuery,
   type OperatorAuditLogListResponse,
 } from '@repo/types/api/operator-audit';
@@ -22,6 +24,12 @@ export const operatorAuditApi = {
 
     return operatorAuditLogListResponseSchema.parse(
       await apiClient.get(`/operator-audit-logs?${params.toString()}`, { accessToken }),
+    );
+  },
+
+  async detail(id: string, accessToken: string): Promise<OperatorAuditLogDetailResponse> {
+    return operatorAuditLogDetailResponseSchema.parse(
+      await apiClient.get(`/operator-audit-logs/${encodeURIComponent(id)}`, { accessToken }),
     );
   },
 };
