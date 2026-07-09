@@ -120,9 +120,9 @@ function OutboxOpsPanel() {
   });
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_24rem] gap-5">
-      <section className="rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
-        <div className="border-b border-[var(--admin-line)] p-4">
+    <div className="grid gap-5 lg:h-[calc(100dvh-9rem)] lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
+        <div className="shrink-0 border-b border-[var(--admin-line)] p-4">
           <div className="grid grid-cols-[12rem_1fr_auto] gap-3">
             <label className="block text-sm">
               <span className="font-semibold">状态</span>
@@ -159,7 +159,10 @@ function OutboxOpsPanel() {
           </div>
         </div>
 
-        <div className="divide-y divide-[var(--admin-line)]">
+        <div
+          data-testid="outbox-list-scroll"
+          className="min-h-0 flex-1 divide-y divide-[var(--admin-line)] overflow-y-auto"
+        >
           {listQuery.isLoading ? <EmptyRow text="正在加载 Outbox 事件..." /> : null}
           {listQuery.isError ? <EmptyRow text="读取失败，请确认后端和诊断开关已开启。" /> : null}
           {!listQuery.isLoading && !listQuery.isError && items.length === 0 ? (
@@ -206,14 +209,22 @@ function OutboxOpsPanel() {
         </div>
       </section>
 
-      <aside className="rounded-lg border border-[var(--admin-line)] bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-semibold">事件详情</h3>
+      <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
+        <div className="shrink-0 border-b border-[var(--admin-line)] p-5">
+          <h3 className="text-lg font-semibold">事件详情</h3>
+        </div>
         {!detail ? (
-          <p className="mt-3 text-sm leading-6 text-[var(--admin-muted)]">
+          <p
+            data-testid="outbox-detail-scroll"
+            className="min-h-0 flex-1 overflow-y-auto p-5 text-sm leading-6 text-[var(--admin-muted)]"
+          >
             从左侧选择一条事件后，可以查看脱敏错误摘要和重新入队操作。
           </p>
         ) : (
-          <div className="mt-4 space-y-4 text-sm">
+          <div
+            data-testid="outbox-detail-scroll"
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-sm"
+          >
             <DetailSection title="生命周期">
               <StatusBadge status={detail.status} />
               <div className="grid grid-cols-2 gap-3">

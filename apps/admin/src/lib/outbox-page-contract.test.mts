@@ -39,3 +39,10 @@ test('outbox page exposes selected event state beyond color alone', () => {
   assert.match(pageSource, /aria-pressed=\{selectedId === item\.id\}/);
   assert.match(pageSource, /bg-\[var\(--admin-accent\)\]/);
 });
+
+test('outbox page keeps the event list and detail panel independently scrollable on desktop', () => {
+  assert.match(pageSource, /lg:h-\[calc\(100dvh-9rem\)\]/);
+  assert.match(pageSource, /data-testid="outbox-list-scroll"/);
+  assert.match(pageSource, /data-testid="outbox-detail-scroll"/);
+  assert.match(pageSource, /overflow-y-auto/);
+});
