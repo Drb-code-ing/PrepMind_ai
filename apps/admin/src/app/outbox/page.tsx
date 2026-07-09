@@ -87,7 +87,8 @@ function OutboxOpsPanel() {
     enabled: Boolean(accessToken && selectedId),
   });
 
-  const detail = detailQuery.data ?? selected;
+  const detailResponse = detailQuery.data ?? null;
+  const detail = detailResponse ?? selected;
   const requeueMutation = useMutation({
     mutationFn: (event: OutboxEventDetailResponse | OutboxEventListItem) =>
       outboxApi.requeue(event.id, normalizeOutboxReason(reason), accessToken ?? ''),
@@ -197,9 +198,11 @@ function OutboxOpsPanel() {
             <KeyValue label="事件类型" value={detail.type} />
             <KeyValue label="更新时间" value={formatOutboxTime(detail.updatedAt)} />
             <KeyValue label="下次运行" value={formatOutboxTime(detail.nextRunAt)} />
-            {'payloadHash' in detail ? <KeyValue label="Payload Hash" value={detail.payloadHash} /> : null}
-            {'lastErrorPreview' in detail ? (
-              <GuidanceBox detail={detail as OutboxEventDetailResponse} />
+            {detailResponse ? (
+              <>
+                <KeyValue label="Payload Hash" value={detailResponse.payloadHash} />
+                <GuidanceBox detail={detailResponse} />
+              </>
             ) : null}
 
             <label className="block">

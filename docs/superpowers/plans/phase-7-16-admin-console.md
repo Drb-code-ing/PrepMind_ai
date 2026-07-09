@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a desktop-only administrator console with Outbox Ops, operator audit, and worker readiness tools, while keeping the existing mobile `/operator-audit` page.
+**Goal:** Add a desktop-first administrator console with Outbox Ops, operator audit, and worker readiness tools, while keeping the existing mobile `/operator-audit` page.
 
 **Architecture:** Create a separate Next.js workspace app at `apps/admin` on port `3100`, sharing the existing NestJS API and `@repo/types` contracts. The student PWA keeps its mobile-first navigation, but ADMIN users on desktop see a single "后台管理" entry that opens the admin console. Backend security remains `JwtAuthGuard + OperatorGuard`; the admin frontend only improves workflow and does not become the security boundary.
 
@@ -214,9 +214,9 @@ Run: `node --experimental-strip-types --test apps/web/src/lib/sidebar-nav.test.m
 
 Expected: FAIL until nav metadata is updated.
 
-- [ ] **Step 3: Implement desktop-only entry**
+- [ ] **Step 3: Implement admin-only entry**
 
-Add a desktop-only "后台管理" item that links to `NEXT_PUBLIC_ADMIN_CONSOLE_URL || http://127.0.0.1:3100`, opens in the same tab or new tab with clear external semantics, and is hidden below desktop breakpoints. Keep the existing `/operator-audit` item for mobile/admin continuity.
+Add an ADMIN-only "后台管理" item that links to `NEXT_PUBLIC_ADMIN_CONSOLE_URL || http://127.0.0.1:3100`, opens with clear external semantics, and is visible on both mobile and desktop. Keep the existing `/operator-audit` item for mobile/admin continuity. The admin console app itself remains desktop-first in layout.
 
 - [ ] **Step 4: Verify GREEN**
 
@@ -282,4 +282,3 @@ git add docs DEVLOG.md AGENTS.md
 git commit -m "docs: document admin console operations"
 git push -u origin codex/phase-7-16-admin-console
 ```
-

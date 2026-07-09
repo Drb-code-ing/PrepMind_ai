@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.15 已完成，后续继续 Phase 7 operator 审计产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.16 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -44,8 +44,48 @@
 | Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
 | Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
 | Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
+| Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.16 桌面端 Admin Console 第一版
+
+目标：把管理员诊断能力从学习端移动页面里抽出来，形成独立的桌面端后台管理入口，让 Outbox requeue、审计查询和 worker readiness 更像企业项目里的运维后台。
+
+为什么：
+- 全部堆在学习端侧边栏会让普通学习产品变臃肿；管理员工具应该和学生学习路径分离。
+- `/operator-audit` 适合作为移动端/轻量审计入口，但 Outbox requeue 需要详情、确认、原因输入和错误建议，更适合电脑屏幕。
+- 后续如果继续加 operator 页面，例如 outbox 详情、任务重放、告警、导出、保留周期配置，独立 admin app 更容易扩展。
+
+主要内容：
+- 新增 `apps/admin` Next.js workspace，包名 `@repo/admin`，默认端口 `3100`，根命令 `bun run dev:admin`。
+- 新增后台登录、会话恢复和 `ADMIN` 前端门禁；真正安全边界仍由后端 `JwtAuthGuard + OperatorGuard` 保证。
+- 新增后台控制台、`/outbox`、`/audit`、`/worker` 页面。
+- `Outbox Ops` 复用 `GET /outbox-events`、`GET /outbox-events/:id` 和 `POST /outbox-events/:id/requeue`，支持筛选、脱敏详情、原因输入、显式确认和 requeue。
+- `Outbox Ops` 对 `OUTBOX_HANDLER_NOT_FOUND` / handler missing 类错误给出“先修复代码，不要盲目重新入队”的提示。
+- `操作审计` 复用 `GET /operator-audit-logs`，展示 `OUTBOX_REQUEUE` 的成功/失败、target、reason、actor、错误摘要。
+- `Worker Readiness` 复用 `GET /worker-readiness`，展示 Redis、BullMQ queue、worker heartbeat 和 outbox readiness。
+- 学习端保留 `/operator-audit`；ADMIN 用户在移动端和桌面端侧边栏都会看到“后台管理”入口，普通用户和匿名用户不显示；后台应用本身仍是桌面优先布局。
+
+边界：
+- 本阶段不新增独立 Docker `admin` service；本地用 `bun run dev:admin` 启动，后端仍可连接 Docker PostgreSQL / Redis / MinIO。
+- 不新增后端接口、不放宽鉴权、不做批量 requeue、不删除 outbox event、不编辑 payload、不直接执行 handler。
+- 前端隐藏入口只是体验层，不作为权限边界；所有系统级诊断仍以后端 guard 为准。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/sidebar-nav.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/server test -- outbox-ops.controller operator-audit.controller worker-readiness.controller --runInBand`
+- 浏览器验收：访问 `http://127.0.0.1:3100`，验证管理员登录、控制台、Outbox Ops、审计、Worker 页面；普通账号只能看到无权限状态。
+
+回顾时可以问：
+- “为什么这次选择独立 `apps/admin`，而不是继续往学习端侧边栏塞页面？”
+- “Outbox requeue 为什么必须有原因输入和确认框？”
+- “为什么 handler missing 的 DEAD event 不应该盲目 requeue？”
+- “后台管理前端和后端 OperatorGuard 的职责边界是什么？”
 
 ### 2026-07-09 - Phase 7.15 收尾：审计筛选控件与 requeue 手动排障说明
 目标：把管理员审计台从“能用”继续推进到“手动排障时不容易误操作”，同时把用户反馈的原生下拉框视觉问题收掉。
