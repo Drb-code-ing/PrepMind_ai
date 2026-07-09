@@ -41,7 +41,7 @@ services:
       SERVER_ROLE: ${SERVER_ROLE:-both}
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}
       OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}
       OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}
       WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}
@@ -99,8 +99,26 @@ services:
       - server
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:3001}
+      NEXT_PUBLIC_ADMIN_CONSOLE_URL: ${NEXT_PUBLIC_ADMIN_CONSOLE_URL:-http://127.0.0.1:3100}
       PREPMIND_INTERNAL_API_BASE_URL: http://server:3001
       PREPMIND_LOCAL_DEV_TOOLS_ENABLED: ${PREPMIND_LOCAL_DEV_TOOLS_ENABLED:-true}
+
+  admin:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_ADMIN_API_BASE_URL:-http://127.0.0.1:3001}
+        PREPMIND_INTERNAL_API_BASE_URL: http://server:3001
+    env_file:
+      - ../.env
+    ports:
+      - "3100:3100"
+    depends_on:
+      - server
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_ADMIN_API_BASE_URL:-http://127.0.0.1:3001}
+      PREPMIND_INTERNAL_API_BASE_URL: http://server:3001
 
 volumes:
   pgdata:

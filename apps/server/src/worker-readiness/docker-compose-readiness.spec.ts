@@ -121,7 +121,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(serverService).toContain('JWT_SECRET:');
     expect(serverService).toContain(
-      'CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}',
+      'CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}',
     );
     expect(workerService).toContain('JWT_SECRET:');
     expect(workerService).toContain('healthcheck:');
