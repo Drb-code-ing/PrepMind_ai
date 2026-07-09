@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { OperatorAuditStatus } from '@repo/types/api/operator-audit';
 
 import { AdminAuthGate } from '@/components/admin-auth-gate';
+import { AdminFilterSelect } from '@/components/admin-filter-select';
 import { AdminShell } from '@/components/admin-shell';
 import { operatorAuditApi } from '@/lib/operator-audit-api';
 import {
@@ -17,6 +18,17 @@ import {
 import { useAdminSessionStore } from '@/stores/admin-session-store';
 
 const statusOptions: Array<'ALL' | OperatorAuditStatus> = ['ALL', 'SUCCEEDED', 'FAILED'];
+
+const auditStatusOptions = statusOptions.map((status) => ({
+  value: status,
+  label: status === 'ALL' ? '全部' : getOperatorAuditStatusLabel(status),
+  description:
+    status === 'FAILED'
+      ? '需要复盘的操作'
+      : status === 'SUCCEEDED'
+        ? '已完成的操作'
+        : '查看全部结果',
+}));
 
 const toneClasses = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -73,23 +85,15 @@ function OperatorAuditPanel() {
     <div className="grid gap-5 lg:h-[calc(100dvh-9rem)] lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_25rem]">
       <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
         <div className="shrink-0 grid grid-cols-[12rem_1fr_1fr_auto] gap-3 border-b border-[var(--admin-line)] p-4">
-          <label className="block text-sm">
-            <span className="font-semibold">状态</span>
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as typeof status);
-                setSelectedId(null);
-              }}
-              className="mt-2 h-10 w-full rounded-md border border-[var(--admin-line)] bg-white px-3"
-            >
-              {statusOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item === 'ALL' ? '全部' : getOperatorAuditStatusLabel(item)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdminFilterSelect
+            label="状态"
+            value={status}
+            options={auditStatusOptions}
+            onChange={(nextStatus) => {
+              setStatus(nextStatus);
+              setSelectedId(null);
+            }}
+          />
 
           <TextFilter
             label="Outbox Event ID"

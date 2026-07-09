@@ -30,6 +30,8 @@ test('outbox page keeps dangerous operations out of the UI', () => {
 
 test('outbox page preserves requeue confirmation and follow-up cache invalidation', () => {
   assert.match(pageSource, /confirmChecked/);
+  assert.match(pageSource, /reasonRequired/);
+  assert.match(pageSource, /reason\.trim\(\)\.length > 0/);
   assert.match(pageSource, /disabled=\{!canRequeue \|\| requeueMutation\.isPending\}/);
   assert.match(pageSource, /\['operator-audit-logs'\]/);
   assert.match(pageSource, /\['worker-readiness'\]/);
@@ -45,4 +47,9 @@ test('outbox page keeps the event list and detail panel independently scrollable
   assert.match(pageSource, /data-testid="outbox-list-scroll"/);
   assert.match(pageSource, /data-testid="outbox-detail-scroll"/);
   assert.match(pageSource, /overflow-y-auto/);
+});
+
+test('outbox page uses the admin filter select instead of native browser select', () => {
+  assert.match(pageSource, /AdminFilterSelect/);
+  assert.doesNotMatch(pageSource, /<select/);
 });

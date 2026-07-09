@@ -10,6 +10,7 @@ import type {
 } from '@repo/types/api/outbox';
 
 import { AdminAuthGate } from '@/components/admin-auth-gate';
+import { AdminFilterSelect } from '@/components/admin-filter-select';
 import { AdminShell } from '@/components/admin-shell';
 import { ApiClientError } from '@/lib/api-client';
 import { outboxApi } from '@/lib/outbox-api';
@@ -32,6 +33,17 @@ const statuses: Array<'ALL' | OutboxEventStatus> = [
   'DEAD',
   'SUCCEEDED',
 ];
+
+const statusOptions = statuses.map((status) => ({
+  value: status,
+  label: status === 'ALL' ? '全部' : status,
+  description:
+    status === 'FAILED' || status === 'DEAD'
+      ? '需要管理员关注'
+      : status === 'ALL'
+        ? '查看全部状态'
+        : '只读排查状态',
+}));
 
 const toneClasses = {
   neutral: 'border-slate-200 bg-slate-50 text-slate-700',
@@ -93,6 +105,7 @@ function OutboxOpsPanel() {
 
   const detailResponse = detailQuery.data ?? null;
   const detail = detailResponse ?? selected;
+  const reasonRequired = reason.trim().length > 0;
   const requeueMutation = useMutation({
     mutationFn: (event: OutboxEventDetailResponse | OutboxEventListItem) =>
       outboxApi.requeue(event.id, normalizeOutboxReason(reason), accessToken ?? ''),
@@ -112,7 +125,11 @@ function OutboxOpsPanel() {
   });
 
   const canRequeue =
-    detail && isOutboxEventRequeueable(detail.status) && detail.canRequeue && confirmChecked;
+    detail &&
+    isOutboxEventRequeueable(detail.status) &&
+    detail.canRequeue &&
+    confirmChecked &&
+    reasonRequired;
   const readOnlyReason = detail ? getOutboxReadOnlyReason(detail.status) : null;
   const aftercare = getOutboxAftercare({
     eventId: lastRequeued?.id ?? detail?.id ?? '',
@@ -125,20 +142,15 @@ function OutboxOpsPanel() {
       <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
         <div className="shrink-0 border-b border-[var(--admin-line)] p-4">
           <div className="grid grid-cols-[12rem_1fr_auto] gap-3">
-            <label className="block text-sm">
-              <span className="font-semibold">状态</span>
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value as typeof status)}
-                className="mt-2 h-10 w-full rounded-md border border-[var(--admin-line)] bg-white px-3"
-              >
-                {statuses.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <AdminFilterSelect
+              label="状态"
+              value={status}
+              options={statusOptions}
+              onChange={(nextStatus) => {
+                setStatus(nextStatus);
+                setSelectedId(null);
+              }}
+            />
 
             <label className="block text-sm">
               <span className="font-semibold">事件类型</span>
@@ -271,6 +283,11 @@ function OutboxOpsPanel() {
                   maxLength={300}
                   placeholder="例如：已修复 handler 并确认依赖恢复。"
                 />
+                {!reasonRequired ? (
+                  <span className="mt-2 block text-xs text-[var(--admin-danger)]">
+                    请填写重新入队原因，方便后续在操作审计中追溯。
+                  </span>
+                ) : null}
               </label>
 
               <label className="flex gap-3 rounded-md border border-[var(--admin-line)] bg-slate-50 p-3 text-xs leading-5">
