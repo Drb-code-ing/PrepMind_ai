@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const pageSource = readFileSync(resolve(process.cwd(), 'apps/admin/src/app/page.tsx'), 'utf8');
-const adminCssSource = readFileSync(resolve(process.cwd(), 'apps/admin/src/app/globals.css'), 'utf8');
-const webCssSource = readFileSync(resolve(process.cwd(), 'apps/web/src/app/globals.css'), 'utf8');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const pageSource = readFileSync(resolve(__dirname, '../app/page.tsx'), 'utf8');
+const adminCssSource = readFileSync(resolve(__dirname, '../app/globals.css'), 'utf8');
+const webCssSource = readFileSync(resolve(__dirname, '../../../web/src/app/globals.css'), 'utf8');
 
 test('admin dashboard is an operational overview rather than a jump-card grid', () => {
   assert.match(pageSource, /Worker Readiness|后台任务链路|Outbox/);

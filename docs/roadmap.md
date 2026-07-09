@@ -465,8 +465,8 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 ### Phase 7.21 — Admin Ops 交互收口（已完成）
 
 - 新增 `AdminFilterSelect`，在 Admin Console `/outbox` 与 `/audit` 替代浏览器原生 `select`，避免系统蓝色高亮、粗边框和割裂的下拉体验。
-- 自定义筛选控件保留 `role="combobox"`、`role="listbox"`、`role="option"`、`aria-selected` 与可滚动列表，不把审美优化做成不可访问的假控件。
-- `/outbox` requeue 前端操作从“原因可选 + 确认”收紧为“原因必填 + 显式确认”，减少管理员事后无法复盘为什么重试的风险。
+- 自定义筛选控件保留 `role="combobox"`、`role="listbox"`、`role="option"`、label 关联、`aria-selected`、`aria-activedescendant`、上下键切换和可滚动列表，不把审美优化做成不可访问的假控件。
+- `/outbox` requeue 前端操作从“原因可选 + 确认”收紧为“原因必填 + 显式确认”，并在切换事件或筛选条件时清空 reason，减少管理员事后无法复盘为什么重试或 reason 跨事件残留的风险。
 - 继续保持边界：不新增后端 API、不新增批量 requeue、不允许删除 / 跳过 / 立即 dispatch / payload 编辑；真正安全边界仍是后端 feature gate、`JwtAuthGuard`、`OperatorGuard` 和服务层状态机。
 - 补充静态 contract test，防止 `/outbox` 和 `/audit` 回退到原生 `<select>`，并防止 requeue 操作绕过 reason guard。
 

@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const pageSource = readFileSync(resolve(process.cwd(), 'apps/admin/src/app/audit/page.tsx'), 'utf8');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const pageSource = readFileSync(resolve(__dirname, '../app/audit/page.tsx'), 'utf8');
 const apiSource = readFileSync(
-  resolve(process.cwd(), 'apps/admin/src/lib/operator-audit-api.ts'),
+  resolve(__dirname, './operator-audit-api.ts'),
   'utf8',
 );
 

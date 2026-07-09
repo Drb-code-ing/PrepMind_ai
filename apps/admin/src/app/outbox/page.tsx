@@ -137,6 +137,14 @@ function OutboxOpsPanel() {
     requeued: Boolean(lastRequeued),
   });
 
+  function resetSelectedEvent() {
+    setSelectedId(null);
+    setReason('');
+    setConfirmChecked(false);
+    setLastRequeued(null);
+    setNotice(null);
+  }
+
   return (
     <div className="grid gap-5 lg:h-[calc(100dvh-9rem)] lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
@@ -148,7 +156,7 @@ function OutboxOpsPanel() {
               options={statusOptions}
               onChange={(nextStatus) => {
                 setStatus(nextStatus);
-                setSelectedId(null);
+                resetSelectedEvent();
               }}
             />
 
@@ -156,7 +164,10 @@ function OutboxOpsPanel() {
               <span className="font-semibold">事件类型</span>
               <input
                 value={type}
-                onChange={(event) => setType(event.target.value)}
+                onChange={(event) => {
+                  setType(event.target.value);
+                  resetSelectedEvent();
+                }}
                 className="mt-2 h-10 w-full rounded-md border border-[var(--admin-line)] px-3"
                 placeholder="knowledge.document.processing.requested"
               />
@@ -188,6 +199,7 @@ function OutboxOpsPanel() {
               aria-pressed={selectedId === item.id}
               onClick={() => {
                 setSelectedId(item.id);
+                setReason('');
                 setConfirmChecked(false);
                 setLastRequeued(null);
                 setNotice(null);

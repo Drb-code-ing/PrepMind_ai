@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const pageSource = readFileSync(
-  resolve(process.cwd(), 'apps/admin/src/app/outbox/page.tsx'),
+  resolve(__dirname, '../app/outbox/page.tsx'),
   'utf8',
 );
 
@@ -32,6 +35,7 @@ test('outbox page preserves requeue confirmation and follow-up cache invalidatio
   assert.match(pageSource, /confirmChecked/);
   assert.match(pageSource, /reasonRequired/);
   assert.match(pageSource, /reason\.trim\(\)\.length > 0/);
+  assert.match(pageSource, /setReason\(''\)/);
   assert.match(pageSource, /disabled=\{!canRequeue \|\| requeueMutation\.isPending\}/);
   assert.match(pageSource, /\['operator-audit-logs'\]/);
   assert.match(pageSource, /\['worker-readiness'\]/);

@@ -64,9 +64,9 @@
 - requeue 会改变系统级 outbox 状态，即使后端允许 reason 可选，前端运维工作流也应该引导管理员填写原因，便于后续在 `/audit` 详情里解释这次操作。
 
 主要内容：
-- 新增 `apps/admin/src/components/admin-filter-select.tsx`，提供后台专用自定义筛选控件，支持 `combobox / listbox / option` 语义、`aria-selected`、外部点击关闭和低干扰滚动样式。
+- 新增 `apps/admin/src/components/admin-filter-select.tsx`，提供后台专用自定义筛选控件，支持 `combobox / listbox / option` 语义、label 关联、`aria-selected`、`aria-activedescendant`、上下键切换、Enter 选择、Escape 关闭、外部点击关闭和低干扰滚动样式。
 - `/outbox` 和 `/audit` 替换原生 `<select>`，状态筛选统一使用 Admin Console 的轻量 popover 风格。
-- `/outbox` requeue 前端增加 `reasonRequired` guard：必须填写 reason 并勾选确认后，按钮才可用；成功后仍刷新 outbox、audit 和 worker readiness。
+- `/outbox` requeue 前端增加 `reasonRequired` guard：必须填写 reason 并勾选确认后，按钮才可用；切换事件或筛选条件时清空 reason，避免把 A 事件的原因误带到 B 事件；成功后仍刷新 outbox、audit 和 worker readiness。
 - 新增静态 contract test，防止页面回退到原生 select，防止 requeue 操作绕过 reason guard。
 
 边界：
@@ -75,6 +75,7 @@
 - 前端 reason 必填是产品化防误操作，不替代后端 `JwtAuthGuard + OperatorGuard + OutboxOpsService` 的真实安全边界。
 
 验收：
+- `bun --filter @repo/admin test`
 - `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
 - `bun --filter @repo/admin lint`
 - `bun --filter @repo/admin build`

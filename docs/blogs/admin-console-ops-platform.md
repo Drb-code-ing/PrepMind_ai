@@ -381,7 +381,7 @@ Phase 7.21 做了一个看起来很小、但后台体验上很关键的收口：
 
 - 用后台统一的边框、阴影、圆角和强调色。
 - 选中项用浅底和左侧细强调条，不再使用系统蓝色高亮。
-- 保留 `role="combobox"`、`role="listbox"`、`role="option"` 和 `aria-selected`，不是只顾好看的假控件。
+- 保留 `role="combobox"`、`role="listbox"`、`role="option"`、label 关联、`aria-selected` 和 `aria-activedescendant`，并支持上下键切换、Enter 选择、Escape 关闭，不是只顾好看的假控件。
 - 下拉内容使用项目里的 `pm-scrollbar`，和页面其它滚动区域保持一致。
 
 这类细节面试时可以讲成“产品化收口”：后台页面不是把接口字段摆出来就结束了，还要让管理员稳定、高效、少误操作。
@@ -399,6 +399,8 @@ const canRequeue =
 ```
 
 为什么这么设计？因为 requeue 会改变系统级事件状态。管理员今天可能知道“我已经修了 Redis 超时”，但一周后复盘审计时，如果 reason 是空的，就很难解释当时为什么允许这条事件重新入队。前端必填 reason 是产品层的防误操作，后端状态机和 `OperatorGuard` 才是真正安全边界。
+
+还有一个容易忽略的小坑：reason 不能在事件之间残留。如果管理员先点了 A 事件并输入原因，再切到 B 事件，旧 reason 必须清空。否则 B 事件虽然也满足“有 reason”，但审计记录里的原因其实描述的是 A 事件。这类问题不是后端安全漏洞，却会让事故复盘变脏，所以我们在切换事件和筛选条件时都会重置 reason、确认框和提示状态。
 
 我们还给这件事加了静态 contract test，防止以后页面又退回原生 `<select>`，或者 requeue 按钮绕过 reason guard。这不是为了测试 CSS，而是为了锁住后台操作流程的关键约束。
 
