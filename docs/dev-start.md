@@ -480,6 +480,53 @@ Invoke-RestMethod `
 - `/operator-audit` 会出现一条 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录；如果 requeue 失败，也会尽量记录 `OUTBOX_REQUEUE / FAILED`。
 - 再看 `/worker-readiness`、`/worker-observability/summary` 或 worker 日志，确认状态是否恢复。
 
+### 管理员后台（桌面端）启动命令
+
+Phase 7.16 起，管理员不再只能在学习端侧边栏里看一个移动端审计页。项目新增独立后台管理应用 `@repo/admin`，适合电脑屏幕使用，默认端口是 `3100`。
+
+最常用启动方式：
+
+```powershell
+# 1. 先启动后端依赖
+docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio
+
+# 2. 启动后端 API
+$env:POSTGRES_PORT='5433'
+$env:OUTBOX_OPS_ENABLED='true'
+$env:OPERATOR_AUDIT_ENABLED='true'
+$env:WORKER_READINESS_ENABLED='true'
+bun --filter @repo/server start:dev
+
+# 3. 另开一个 PowerShell，启动管理员后台
+bun run dev:admin
+# 等价命令：
+# bun --filter @repo/admin dev
+```
+
+打开地址：
+
+```text
+http://127.0.0.1:3100
+```
+
+后台管理当前包含三个入口：
+
+- `Outbox Ops`：查看 `FAILED / DEAD` 等 Outbox 事件，确认根因修复后填写原因并重新入队。
+- `操作审计`：查看 `OUTBOX_REQUEUE` 等管理员诊断写操作的脱敏审计记录。
+- `Worker Readiness`：查看 Redis、BullMQ queue、worker heartbeat 和 outbox backlog 是否满足部署/接流量条件。
+
+注意边界：
+
+- 必须使用 `role=ADMIN` 的账号登录；普通账号会看到无权限状态，后端仍由 `JwtAuthGuard + OperatorGuard` 做最终鉴权。
+- 学习端已有的移动端 `/operator-audit` 不删除；管理员在学习端侧边栏会额外看到“后台管理”入口，移动端和桌面端都会显示，默认跳到 `http://127.0.0.1:3100`。后台应用当前仍是桌面优先布局，手机上主要用于临时进入和查看。
+- 如果想修改学习端侧边栏里的后台地址，设置 `apps/web/.env.local` 或 Docker 前端环境变量：
+
+```text
+NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100
+```
+
+Docker 全栈启动时当前 compose 还没有单独的 `admin` service；管理员后台推荐本机用 `bun run dev:admin` 启动，后端仍然可以连接 Docker PostgreSQL / Redis / MinIO。
+
 ## 4. AI 调用模式
 
 前端 `/api/chat` 开发默认走本地 mock 流式响应，不消耗 DeepSeek / OpenAI 额度。即使 `apps/web/.env.local` 里存在 API key，只要不显式开启 live，也不会调用真实模型。

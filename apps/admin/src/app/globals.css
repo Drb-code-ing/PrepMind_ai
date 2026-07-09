@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+:root {
+  --admin-bg: #f6f7f9;
+  --admin-panel: #ffffff;
+  --admin-ink: #151922;
+  --admin-muted: #667085;
+  --admin-line: rgba(22, 28, 38, 0.12);
+  --admin-line-strong: rgba(22, 28, 38, 0.2);
+  --admin-accent: #0f766e;
+  --admin-accent-soft: #e6f7f5;
+  --admin-danger: #c2410c;
+  --admin-danger-soft: #fff3ed;
+}
+
+@theme inline {
+  --font-sans: Arial, Helvetica, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 1024px;
+  margin: 0;
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+  font-family: var(--font-sans);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.admin-shell-grid {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  min-height: 100dvh;
+}

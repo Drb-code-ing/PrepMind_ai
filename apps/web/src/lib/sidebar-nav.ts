@@ -8,7 +8,8 @@ export type SidebarNavIconKey =
   | 'stats'
   | 'errorBook'
   | 'profile'
-  | 'audit';
+  | 'audit'
+  | 'adminConsole';
 
 export interface SidebarNavItem {
   href: string;
@@ -16,6 +17,12 @@ export interface SidebarNavItem {
   hint: string;
   iconKey: SidebarNavIconKey;
   adminOnly?: boolean;
+  desktopOnly?: boolean;
+  external?: boolean;
+}
+
+export interface SidebarNavOptions {
+  adminConsoleUrl?: string;
 }
 
 const baseNavItems: SidebarNavItem[] = [
@@ -28,20 +35,41 @@ const baseNavItems: SidebarNavItem[] = [
   { href: '/profile', label: '我的档案', hint: '偏好与账号资料', iconKey: 'profile' },
 ];
 
-const adminNavItems: SidebarNavItem[] = [
-  {
-    href: '/operator-audit',
-    label: '审计',
-    hint: '管理员操作留痕',
-    iconKey: 'audit',
-    adminOnly: true,
-  },
-];
+function getAdminNavItems(adminConsoleUrl: string): SidebarNavItem[] {
+  return [
+    {
+      href: adminConsoleUrl,
+      label: '后台管理',
+      hint: '桌面端系统运维入口',
+      iconKey: 'adminConsole',
+      adminOnly: true,
+      external: true,
+    },
+    {
+      href: '/operator-audit',
+      label: '审计',
+      hint: '管理员操作留痕',
+      iconKey: 'audit',
+      adminOnly: true,
+    },
+  ];
+}
 
-export function getSidebarNavItems(role: SidebarUserRole): SidebarNavItem[] {
+export function getSidebarNavItems(
+  role: SidebarUserRole,
+  options: SidebarNavOptions = {},
+): SidebarNavItem[] {
   if (role !== 'ADMIN') {
     return baseNavItems;
   }
 
-  return [...baseNavItems, ...adminNavItems];
+  return [...baseNavItems, ...getAdminNavItems(resolveAdminConsoleUrl(options))];
+}
+
+function resolveAdminConsoleUrl(options: SidebarNavOptions) {
+  return (
+    options.adminConsoleUrl ??
+    process.env.NEXT_PUBLIC_ADMIN_CONSOLE_URL ??
+    'http://127.0.0.1:3100'
+  );
 }
