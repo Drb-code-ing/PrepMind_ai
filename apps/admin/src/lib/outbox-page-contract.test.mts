@@ -27,3 +27,15 @@ test('outbox page keeps dangerous operations out of the UI', () => {
   assert.doesNotMatch(pageSource, /直接执行 handler|dispatch now/i);
   assert.doesNotMatch(pageSource, /编辑 payload|edit payload/i);
 });
+
+test('outbox page preserves requeue confirmation and follow-up cache invalidation', () => {
+  assert.match(pageSource, /confirmChecked/);
+  assert.match(pageSource, /disabled=\{!canRequeue \|\| requeueMutation\.isPending\}/);
+  assert.match(pageSource, /\['operator-audit-logs'\]/);
+  assert.match(pageSource, /\['worker-readiness'\]/);
+});
+
+test('outbox page exposes selected event state beyond color alone', () => {
+  assert.match(pageSource, /aria-pressed=\{selectedId === item\.id\}/);
+  assert.match(pageSource, /bg-\[var\(--admin-accent\)\]/);
+});

@@ -102,6 +102,8 @@ function OutboxOpsPanel() {
       setConfirmChecked(false);
       await queryClient.invalidateQueries({ queryKey: ['outbox-events'] });
       await queryClient.invalidateQueries({ queryKey: ['outbox-event-detail', nextDetail.id] });
+      await queryClient.invalidateQueries({ queryKey: ['operator-audit-logs'] });
+      await queryClient.invalidateQueries({ queryKey: ['worker-readiness'] });
     },
     onError: (error) => {
       setNotice(error instanceof ApiClientError ? error.message : '重新入队失败，请稍后重试。');
@@ -167,6 +169,7 @@ function OutboxOpsPanel() {
             <button
               key={item.id}
               type="button"
+              aria-pressed={selectedId === item.id}
               onClick={() => {
                 setSelectedId(item.id);
                 setConfirmChecked(false);
@@ -174,10 +177,17 @@ function OutboxOpsPanel() {
                 setNotice(null);
               }}
               className={[
-                'grid w-full grid-cols-[8rem_minmax(0,1fr)_8rem_7rem] gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50',
+                'relative grid w-full grid-cols-[8rem_minmax(0,1fr)_8rem_7rem] gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50',
                 selectedId === item.id ? 'bg-slate-50' : '',
               ].join(' ')}
             >
+              <span
+                aria-hidden="true"
+                className={[
+                  'absolute left-0 top-0 h-full w-1',
+                  selectedId === item.id ? 'bg-[var(--admin-accent)]' : 'bg-transparent',
+                ].join(' ')}
+              />
               <StatusBadge status={item.status} />
               <span className="min-w-0">
                 <span className="block truncate font-semibold">{item.type}</span>
