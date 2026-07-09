@@ -12,6 +12,7 @@ import {
   CalendarDays,
   LogOut,
   MessageCircle,
+  Settings,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -37,6 +38,7 @@ const navIconMap: Record<SidebarNavIconKey, typeof MessageCircle> = {
   errorBook: BookOpen,
   profile: UserRound,
   audit: ShieldCheck,
+  adminConsole: Settings,
 };
 
 export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
@@ -176,33 +178,48 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
                 {visibleNavItems.map((item) => {
                   const isActive =
                     item.href === '/chat' ? pathname === '/chat' : pathname.startsWith(item.href);
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={handleClose}
-                        className={`tap-target group flex items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm transition-all active:scale-[0.99] ${
+                  const itemClassName = `tap-target group items-center gap-3 rounded-[1.15rem] px-3 py-3 text-sm transition-all active:scale-[0.99] ${
+                    item.desktopOnly ? 'hidden lg:flex' : 'flex'
+                  } ${
+                    isActive
+                      ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-[#bdeee5]'
+                      : 'text-[var(--pm-muted)] hover:bg-white/70 hover:text-[var(--pm-ink)]'
+                  }`;
+                  const itemContent = (
+                    <>
+                      <span
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ring-1 transition-all ${
                           isActive
-                            ? 'bg-white text-[var(--pm-ink)] shadow-sm ring-1 ring-[#bdeee5]'
-                            : 'text-[var(--pm-muted)] hover:bg-white/70 hover:text-[var(--pm-ink)]'
+                            ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
+                            : 'bg-white/70 text-[var(--pm-muted)] ring-[var(--pm-line)] group-hover:bg-[#f8fbff]'
                         }`}
                       >
-                        <span
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ring-1 transition-all ${
-                            isActive
-                              ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
-                              : 'bg-white/70 text-[var(--pm-muted)] ring-[var(--pm-line)] group-hover:bg-[#f8fbff]'
-                          }`}
+                        <item.icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{item.label}</span>
+                        <span className="mt-0.5 block truncate text-xs text-[var(--pm-muted)]">
+                          {item.hint}
+                        </span>
+                      </span>
+                    </>
+                  );
+
+                  return (
+                    <li key={item.href}>
+                      {item.external ? (
+                        <a
+                          href={item.href}
+                          onClick={handleClose}
+                          className={itemClassName}
                         >
-                          <item.icon className="h-5 w-5" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-semibold">{item.label}</span>
-                          <span className="mt-0.5 block truncate text-xs text-[var(--pm-muted)]">
-                            {item.hint}
-                          </span>
-                        </span>
-                      </Link>
+                          {itemContent}
+                        </a>
+                      ) : (
+                        <Link href={item.href} onClick={handleClose} className={itemClassName}>
+                          {itemContent}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}
