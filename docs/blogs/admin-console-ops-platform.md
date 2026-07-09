@@ -357,6 +357,51 @@ if (readiness.status === 'ready') return '后台任务链路当前健康';
 
 所以最后做的是“保留滚动能力，优化滚动呈现”。
 
+## 为什么筛选控件也值得认真做
+
+Phase 7.21 做了一个看起来很小、但后台体验上很关键的收口：把 `/outbox` 和 `/audit` 里的原生下拉框换成 Admin Console 自己的筛选控件。
+
+这个点不是为了“炫 UI”。原生 `select` 在 Windows 浏览器里会弹出系统样式的下拉层：蓝色选中、高对比边框、字体和间距都跟页面不统一。普通页面里这可能只是不好看，但后台管理里会带来两个问题：
+
+1. 它让页面像临时拼出来的调试工具，而不是一个稳定的运维控制台。
+2. 它打断了管理员的操作节奏，尤其是在 Outbox / Audit 这种需要反复筛选、对照详情和复盘操作的页面里。
+
+所以我们新增了一个轻量的 `AdminFilterSelect`：
+
+```tsx
+<AdminFilterSelect
+  label="状态"
+  value={status}
+  options={statusOptions}
+  onChange={setStatus}
+/>
+```
+
+它做了几件事：
+
+- 用后台统一的边框、阴影、圆角和强调色。
+- 选中项用浅底和左侧细强调条，不再使用系统蓝色高亮。
+- 保留 `role="combobox"`、`role="listbox"`、`role="option"` 和 `aria-selected`，不是只顾好看的假控件。
+- 下拉内容使用项目里的 `pm-scrollbar`，和页面其它滚动区域保持一致。
+
+这类细节面试时可以讲成“产品化收口”：后台页面不是把接口字段摆出来就结束了，还要让管理员稳定、高效、少误操作。
+
+同时我们把 Outbox requeue 的前端流程也收紧了。后端 `reason` 仍然保持 contract 兼容，可以是可选字段；但前端管理员操作台要求必须填写原因并勾选确认，按钮才会可用：
+
+```ts
+const reasonRequired = reason.trim().length > 0;
+const canRequeue =
+  detail &&
+  isOutboxEventRequeueable(detail.status) &&
+  detail.canRequeue &&
+  confirmChecked &&
+  reasonRequired;
+```
+
+为什么这么设计？因为 requeue 会改变系统级事件状态。管理员今天可能知道“我已经修了 Redis 超时”，但一周后复盘审计时，如果 reason 是空的，就很难解释当时为什么允许这条事件重新入队。前端必填 reason 是产品层的防误操作，后端状态机和 `OperatorGuard` 才是真正安全边界。
+
+我们还给这件事加了静态 contract test，防止以后页面又退回原生 `<select>`，或者 requeue 按钮绕过 reason guard。这不是为了测试 CSS，而是为了锁住后台操作流程的关键约束。
+
 ## 安全边界在哪里
 
 这一点一定要讲清楚：Admin Console 前端不是安全边界。

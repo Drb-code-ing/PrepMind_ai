@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.20 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.21 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -50,8 +50,40 @@
 | Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
 | Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
 | Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
+| Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.21 Admin Ops 交互收口
+
+目标：把管理员后台的 Outbox / Audit 筛选和 requeue 操作体验再收紧一层，解决原生下拉框割裂、requeue 原因可省略导致复盘信息不足的问题。
+
+为什么：
+- 后台管理不只是“能调接口”，还要让管理员在高压排障时快速判断、谨慎操作、事后能复盘。
+- 浏览器原生 select 在 Windows 上会出现系统蓝色高亮和粗边框，和当前 Admin Console 的低干扰视觉语言割裂，显得像临时 demo。
+- requeue 会改变系统级 outbox 状态，即使后端允许 reason 可选，前端运维工作流也应该引导管理员填写原因，便于后续在 `/audit` 详情里解释这次操作。
+
+主要内容：
+- 新增 `apps/admin/src/components/admin-filter-select.tsx`，提供后台专用自定义筛选控件，支持 `combobox / listbox / option` 语义、`aria-selected`、外部点击关闭和低干扰滚动样式。
+- `/outbox` 和 `/audit` 替换原生 `<select>`，状态筛选统一使用 Admin Console 的轻量 popover 风格。
+- `/outbox` requeue 前端增加 `reasonRequired` guard：必须填写 reason 并勾选确认后，按钮才可用；成功后仍刷新 outbox、audit 和 worker readiness。
+- 新增静态 contract test，防止页面回退到原生 select，防止 requeue 操作绕过 reason guard。
+
+边界：
+- 不新增后端 API，不改变 `POST /outbox-events/:id/requeue` contract；后端仍只做安全状态机和审计。
+- 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 编辑。
+- 前端 reason 必填是产品化防误操作，不替代后端 `JwtAuthGuard + OperatorGuard + OutboxOpsService` 的真实安全边界。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+
+回顾时可以问：
+- “为什么后台管理页面不直接用浏览器原生 select？”
+- “为什么 requeue reason 在后端可选，但前端要做必填？”
+- “前端防误操作和后端状态机安全边界分别负责什么？”
+- “如何用静态 contract test 防止 UI 回退和危险入口回归？”
 
 ### 2026-07-09 - Phase 7.20 Operator Audit 详情闭环
 
