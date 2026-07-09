@@ -10,6 +10,10 @@ const webCssSource = readFileSync(resolve(process.cwd(), 'apps/web/src/app/globa
 test('admin dashboard is an operational overview rather than a jump-card grid', () => {
   assert.match(pageSource, /Worker Readiness|后台任务链路|Outbox/);
   assert.match(pageSource, /最近需要关注|处理队列|操作审计/);
+  assert.match(pageSource, /useQuery/);
+  assert.match(pageSource, /workerReadinessApi\.get/);
+  assert.match(pageSource, /outboxApi\.list/);
+  assert.match(pageSource, /operatorAuditApi\.list/);
   assert.match(pageSource, /<Link/);
   assert.doesNotMatch(pageSource, /getAdminNavItems\(\)\.map/);
   assert.doesNotMatch(pageSource, /<a\s+key=\{item\.href\}/);
