@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.18 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.19 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -48,8 +48,46 @@
 | Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
 | Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录 |
 | Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
+| Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.19 Admin Console 控制台数据化
+
+目标：把独立管理员后台首页从“能跳转到各个运维页面”的入口页，升级成管理员一打开就能看到系统当前状态的真实运维总览。
+
+为什么：
+- Phase 7.16 ~ 7.18 已经有独立 Admin Console、Docker admin service、Outbox Ops、操作审计和 Worker Readiness，但首页如果只是静态导航，就不像真正的企业后台。
+- 管理员进入后台时，第一眼应该知道“现在有没有需要处理的任务链路风险”，而不是先逐个页面点进去找。
+- 面试表达上，这一步能把后台管理讲成一套运维产品闭环：总览发现风险，Outbox 处理事件，Audit 复盘操作，Worker Readiness 验证恢复。
+
+主要内容：
+- `/` 控制台使用 TanStack Query 读取 `workerReadinessApi.get()`、`outboxApi.list(FAILED / DEAD)` 和 `operatorAuditApi.list(OUTBOX_REQUEUE)`。
+- 新增 `admin-dashboard-view.ts`，把 readiness、outbox 和 audit 信号聚合为顶部状态、关注项数量、FAILED / DEAD 数量和最近审计数量。
+- 顶部状态区根据 read error、`not_ready`、DEAD outbox、`degraded`、FAILED outbox 和审计失败生成不同严重度。
+- 中部三块信号继续对应 `/worker`、`/outbox`、`/audit`，但展示真实状态摘要，而不是静态说明。
+- 最近关注区按风险优先展示 DEAD / FAILED 事件、readiness issue 和最近审计结果。
+- 同步补了一篇面试学习博客 `docs/blogs/admin-console-ops-platform.md`，覆盖今天整个后台管理产品化链路，而不是只写控制台首页。
+
+边界：
+- 不新增后端 API，不改变权限模型，不放宽 CORS、feature gate、`JwtAuthGuard` 或 `OperatorGuard`。
+- 控制台只读取脱敏 DTO，不展示 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 修改。
+- 数据读取失败时显示异常状态，不使用假数据伪装健康。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 使用 `subst P: "E:\PrepMind_ai智能备考助手"` 映射路径后重建 `admin`，浏览器访问 `http://localhost:3100/`。
+- 浏览器验收确认控制台读取真实 Worker readiness、FAILED / DEAD Outbox 数量和最近审计记录；内部入口跳转到 `/worker` 正常。
+
+回顾时可以问：
+- “为什么后台首页不能只是导航页？”
+- “控制台如何聚合 Worker Readiness、Outbox 和 Operator Audit？”
+- “为什么读取失败要作为一个明确运维状态，而不是静默兜底？”
+- “Admin Console 前端总览和后端 OperatorGuard 的安全边界怎么分工？”
+- “今天的后台管理链路如何从发现问题、处理问题到复盘问题形成闭环？”
 
 ### 2026-07-09 - Phase 7.18 Admin Outbox Ops 产品化
 
@@ -796,11 +834,11 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Operator Audit 产品化边界：是否需要只读详情、导出策略、保留周期和更细 operator role。
+1. Operator Audit 产品化边界：是否需要审计详情、导出策略、保留周期和更细 operator role。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
-3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标和容器 readiness。
-4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
-5. Outbox 生产化：dead-letter 修复工作流、更多业务事件接入、生产开关流程。
+3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标、队列延迟和告警阈值。
+4. Outbox 生产化：更多业务事件接入、dead-letter 修复工作流、生产开关流程。
+5. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 
 ## 参考文档
 
@@ -818,3 +856,4 @@ Phase 7 后续优先级：
 - `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
 - `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
 - `docs/blogs/worker-readiness-deployment-checks.md`：Worker Readiness、部署前检查和 CLI 退出码面试学习博客。
+- `docs/blogs/admin-console-ops-platform.md`：后台管理、Admin Console、Outbox Ops、审计和控制台总览面试学习博客。
