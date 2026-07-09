@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --filter @repo/web dev",
+    "dev:admin": "bun --filter @repo/admin dev",
     "dev:server": "bun --filter @repo/server start:dev",
     "dev:all": "bun --filter '*' --parallel dev",
     "build": "bun --filter @repo/web build && bun --filter @repo/server build",
