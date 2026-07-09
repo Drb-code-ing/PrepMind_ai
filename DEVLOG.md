@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.16 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.17 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -45,8 +45,48 @@
 | Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
 | Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
 | Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
+| Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.17 Docker Admin Console Service
+
+目标：把 Phase 7.16 的独立管理员后台从“只能本机 `bun run dev:admin` 启动”推进到 Docker Compose 一等服务，让本地全栈部署形态和我们讲的架构边界一致。
+
+为什么：
+- Phase 7.16 已经把学习端和管理员后台拆成两个 Next app，但 Docker 里还只有 `web / server / worker`，部署拓扑不完整。
+- 管理员后台应该能像企业项目一样单独启动、单独暴露端口、单独验收，而不是永远依赖学习端 dev server。
+- 面试讲架构时可以清楚解释：`web` 是学生学习 PWA，`admin` 是 operator 控制台，`server` 是 API，`worker` 是后台任务进程。
+
+主要内容：
+- 新增 `docker/Dockerfile.admin`，用 Bun workspace + Next standalone 构建 `@repo/admin`，容器端口为 `3100`。
+- `docker/docker-compose.dev.yml` 新增 `admin` service，依赖 `server`，浏览器访问 `http://127.0.0.1:3100`。
+- Docker `web` service 增加 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，学习端 ADMIN 侧边栏“后台管理”默认跳转到管理员后台容器。
+- Docker `server` CORS 默认补充 `http://localhost:3100` 和 `http://127.0.0.1:3100`。
+- 修复 `Dockerfile.web` / `Dockerfile.server` 的 workspace manifest 缺口：根 workspace 是 `apps/*`，所以 deps 层必须复制 `apps/admin/package.json`，否则 `bun install --frozen-lockfile` 会失败。
+- 新增/扩展 Docker 静态契约测试，覆盖 admin Dockerfile、admin compose service、web 管理后台 URL 和 workspace manifest 完整性。
+
+边界：
+- 本阶段不新增新的后台业务页面，不新增新的后端 API 或权限模型。
+- 不做生产域名、TLS、反向代理、镜像推送或 Kubernetes 配置。
+- 管理员后台前端只是体验层，真正安全边界仍是后端 `JwtAuthGuard + OperatorGuard`。
+
+验收：
+- `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build admin`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build web`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build server`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build worker`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker ps`：`web` 暴露 `3000`，`admin` 暴露 `3100`，`server` 暴露 `3001`，`worker` 为 `healthy`。
+- 浏览器验收：`http://127.0.0.1:3000` 学习端可加载；`http://127.0.0.1:3100` 管理员后台可加载；管理员可看控制台、Outbox Ops、操作审计和 Worker Readiness；普通用户请求 `/operator-audit-logs`、`/worker-readiness`、`/outbox-events` 均返回 403。
+- 中文路径下 Docker Compose `--build` 仍可能触发 Docker Desktop gRPC non-printable ASCII，本次使用 `subst P: "E:\PrepMind_ai智能备考助手"` 映射 ASCII 路径完成全栈验收。
+
+回顾时可以问：
+- “为什么 `admin` 要做成独立 Docker service，而不是继续塞进 `web`？”
+- “Docker 里的 `web / admin / server / worker` 各自承担什么职责？”
+- “为什么 Dockerfile 的 deps 层必须复制所有 workspace package.json？”
+- “管理员后台前端门禁和后端 OperatorGuard 的安全边界有什么区别？”
 
 ### 2026-07-09 - Phase 7.16 桌面端 Admin Console 第一版
 

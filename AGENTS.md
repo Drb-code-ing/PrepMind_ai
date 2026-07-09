@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.16 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.17 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 ## 项目快照
 
@@ -63,6 +63,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
 | Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
 | Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
+| Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
 
 ## 技术栈
 
@@ -114,6 +115,20 @@ bun --cwd packages/database test
 bun --cwd packages/fsrs test
 ```
 
+Docker 全栈本地验收：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+```
+
+访问入口：
+
+```text
+学习端：http://127.0.0.1:3000
+管理员后台：http://127.0.0.1:3100
+API：http://127.0.0.1:3001
+```
+
 后端 e2e 需要 Docker PostgreSQL 正在运行。详细启动说明见 `docs/dev-start.md`。
 按功能做阶段验收、Docker 全栈验收、mock/live AI 验收和收尾提交时，优先看 `docs/acceptance-checklist.md`。
 
@@ -129,7 +144,7 @@ bun --cwd packages/fsrs test
 - Phase 7.15 起本地 Docker dev compose 会显式开启 `OUTBOX_OPS_ENABLED`、`OPERATOR_AUDIT_ENABLED`、`WORKER_READINESS_ENABLED` 和 `WORKER_OBSERVABILITY_ENABLED`，因为 server 镜像运行态是 `NODE_ENV=production`，不能依赖非 production 默认值来打开诊断入口。Next dev 配置允许 `127.0.0.1` 作为 dev origin，避免按本地文档访问 `127.0.0.1:3000` 时只看到 SSR 页面但 React 表单事件未 hydration。真实验收已覆盖管理员 / 普通用户前后端权限、`/operator-audit` 页面、审计 API 和 Outbox requeue 审计写入。
 - Phase 7.11 起 `WORKER_READINESS_ENABLED` 控制 worker readiness 诊断入口；默认非 production 开启、production 关闭。`GET /worker-readiness` 经过 feature gate 和 `JwtAuthGuard`，关闭时在认证前隐藏为 404。该接口面向机器和部署检查，只返回安全的 Redis / BullMQ queue / worker heartbeat / outbox readiness 摘要，不返回 payload、prompt、chunk、API key、token、cookie 或用户正文。CLI 命令为 `bun --filter @repo/server readiness:worker`，使用最小只读 Nest module，不导入 `AppModule`，不启动 HTTP API、worker processor、heartbeat 或 outbox dispatcher；异常或超时退出码为 2，not ready / degraded 退出码为 1，ready 退出码为 0。
 - Phase 7.12 起 Docker Compose `worker` service 接入容器级 healthcheck，容器内使用 runner 构建产物命令 `bun apps/server/dist/scripts/worker-readiness.js`，不依赖本机 Bun workspace CLI。server 镜像会保留根 `node_modules`、`apps/server/node_modules` 和 `packages`，保证 Bun workspace 依赖与 `@repo/*` 包在容器运行时可解析。`WORKER_READINESS_CLI_TIMEOUT_MS` 默认 `5000`，healthcheck 默认 `interval=30s`、`timeout=10s`、`retries=3`、`start_period=30s`。本地可用 `docker compose -f docker/docker-compose.dev.yml --profile worker ps` 查看 `healthy / unhealthy`。
-- Phase 7.13 起 `docker/Dockerfile.web` 已迁移到 Bun workspace + Next standalone 输出，`apps/web/next.config.ts` 使用 `output: 'standalone'` 和 monorepo tracing root。Docker Compose 全栈验收命令为 `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web`；本地浏览器访问 `http://127.0.0.1:3000`，API 访问 `http://127.0.0.1:3001`。Compose server 默认允许 `http://localhost:3000` 和 `http://127.0.0.1:3000` 两个本机 origin，web 镜像默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`，避免 Docker 本机验收时 localhost / 127.0.0.1 cookie 与 CORS 混用。Compose dev 栈会设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 standalone 容器内的 `/agent-trace` 仍可展示 Mock / Live 开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
+- Phase 7.13 起 `docker/Dockerfile.web` 已迁移到 Bun workspace + Next standalone 输出，`apps/web/next.config.ts` 使用 `output: 'standalone'` 和 monorepo tracing root。Phase 7.17 起 Docker Compose 全栈验收命令为 `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin`；本地浏览器访问学习端 `http://127.0.0.1:3000`，管理员后台 `http://127.0.0.1:3100`，API `http://127.0.0.1:3001`。Compose server 默认允许 `http://localhost:3000`、`http://127.0.0.1:3000`、`http://localhost:3100` 和 `http://127.0.0.1:3100`，web 镜像默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001` 且 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，避免 Docker 本机验收时 localhost / 127.0.0.1 cookie 与 CORS 混用。Compose dev 栈会设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 standalone 容器内的 `/agent-trace` 仍可展示 Mock / Live 开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 - Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。Phase 7.5 起核心写接口补充中文说明和安全 request body 示例，便于本地调试与面试讲解。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；默认 live 模型为 `deepseek-v4-flash`，并建议保留 `AI_MAX_INPUT_TOKENS=2500`、`AI_MAX_OUTPUT_TOKENS=1200` 预算上限。
 - 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 调试台切换 mock / live；该开关默认仅非 production 可见。Docker Compose dev 的 Next standalone 容器因运行时 `NODE_ENV=production`，需要同时设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 才显示；该本地诊断开关不能用于生产，也不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
@@ -190,7 +205,7 @@ mcp -> ai, fsrs, rag, types
 - Outbox Summary / Metrics：`OutboxMetricsService` 读取系统级 `OutboxEvent` 状态计数、backlog、最老 pending 年龄和最近错误摘要，并接入 `GET /worker-observability/summary`；该 summary 只读且不返回 payload、完整 `lastError`、`aggregateId`、prompt、chunk、API key、token、cookie 或用户内容。`DEAD` outbox event 会让 worker observability status 进入 `degraded`，pending / processing backlog 会作为独立信号展示。
 - Outbox Ops：`GET /outbox-events`、`GET /outbox-events/:id` 和 `POST /outbox-events/:id/requeue` 是受 `OUTBOX_OPS_ENABLED` 与 `JwtAuthGuard` 保护的后端诊断入口，用于本地开发和受控排障。列表与详情只暴露脱敏 DTO；详情中的 `lastErrorPreview` 复用扩展后的 `sanitizeJobError()` 并截断，不泄露常见 API key、access token、refresh token、cookie、`sk-...` key 或供应商 key。分页按 `updatedAt desc, id desc` 使用复合 cursor，避免只按 id 翻页导致漏数据。requeue 使用 `updateMany` 条件更新实现 compare-and-swap，只把 `FAILED / DEAD` 事件重置为 `PENDING`，清理锁与 processedAt，重置 attempts 和 nextRunAt，但不修改 payload、不立即执行 handler。
 - Operator Audit：`OperatorAuditLog` 以 PostgreSQL 为权威来源，用于记录 operator/admin 诊断写操作的安全审计元数据。Phase 7.14.3 新增 `OUTBOX_REQUEUE` action、`OperatorAuditService` 和脱敏写入能力；Phase 7.14.4 已把 `POST /outbox-events/:id/requeue` 接入成功/失败审计；Phase 7.14.5 新增 `GET /operator-audit-logs` admin-only 脱敏查询 API；Phase 7.14.6 新增 `/operator-audit` 管理员审计台，管理员侧边栏显示“审计”入口，用于手动筛选 action、status、targetType、targetId 和 actorUserId。审计记录包含 actor、action、status、target、reason、requestId、IP/User-Agent hash、错误 code 和截断后的脱敏错误预览，不保存 outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie 或原始 IP/User-Agent。审计查询只返回脱敏 DTO，不返回 `metadata` 或任何业务 payload；审计日志不会随 actor user 删除而级联删除，actor 删除后保留审计记录并把 `actorUserId` 置空；审计写入失败只记录脱敏 warning，不影响主操作。前端页面和导航只是运维体验层，不承担最终鉴权。
-- Admin Console：Phase 7.16 新增独立桌面端 `apps/admin` / `@repo/admin`，默认端口 `3100`，本地命令为 `bun run dev:admin` 或 `bun --filter @repo/admin dev`，浏览器访问 `http://127.0.0.1:3100`。第一版包含控制台、`/outbox`、`/audit` 和 `/worker` 页面，复用既有 admin-only API，不新增后端权限模型；学习端保留移动端 `/operator-audit`，ADMIN 用户在移动端和桌面端侧边栏都会显示“后台管理”入口，普通用户不可见；后台应用当前仍是桌面优先布局。后台前端只负责体验和引导，真正安全边界仍是后端 `JwtAuthGuard + OperatorGuard`。
+- Admin Console：Phase 7.16 新增独立桌面端 `apps/admin` / `@repo/admin`，默认端口 `3100`，本地命令为 `bun run dev:admin` 或 `bun --filter @repo/admin dev`；Phase 7.17 新增 Docker `admin` service，可通过 `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin` 启动完整栈。第一版包含控制台、`/outbox`、`/audit` 和 `/worker` 页面，复用既有 admin-only API，不新增后端权限模型；学习端保留移动端 `/operator-audit`，ADMIN 用户在移动端和桌面端侧边栏都会显示“后台管理”入口，默认跳到 `http://127.0.0.1:3100`，普通用户不可见；后台应用当前仍是桌面优先布局。后台前端只负责体验和引导，真正安全边界仍是后端 `JwtAuthGuard + OperatorGuard`。
 - API / worker 进程边界：`SERVER_ROLE=api` 使用 Nest HTTP app，提供 REST API、`/health`、Swagger 和业务入口，但不消费 BullMQ；`SERVER_ROLE=worker` 使用 `NestFactory.createApplicationContext()`，只初始化模块和 BullMQ processor，不监听 HTTP 端口、不提供 `/health`；`SERVER_ROLE=both` 保留本地兼容模式。worker-only 的健康判断依赖进程存活、日志、BullMQ 和 BackgroundJob 状态。
 - Worker Observability：`GET /worker-observability/summary` 经过 `JwtAuthGuard` 且受 `WORKER_OBSERVABILITY_ENABLED` 控制，默认只在非 production 开启；production 默认隐藏该接口，避免普通登录用户看到系统级队列和 worker 拓扑信号。该接口组合系统级 BullMQ `knowledge-document-processing` queue counts、Redis worker heartbeat 和账号级 `BackgroundJob` summary，输出 `healthy / degraded / attention / idle` 信号；queue counts 是系统级队列状态，BackgroundJob summary 是当前账号最近任务状态，两者语义不同但互补。heartbeat 只保存不含 hostname / pid 的 opaque worker id、role、队列名和 startedAt / lastSeenAt，不保存文件内容、prompt、RAG chunk、API key、token 或用户输入。`/knowledge` 页面在有资料或处理轮询时展示紧凑健康状态条；该能力只读，不进入 Dexie `mutationQueue`。
 - Worker Readiness：`GET /worker-readiness` 和 `bun --filter @repo/server readiness:worker` 用于回答“当前 worker 链路能不能接生产流量 / 能不能作为部署 readiness 通过”。它和 `/health`、`/worker-observability/summary` 分工不同：`/health` 是 API 进程 liveness；`/worker-observability/summary` 是给开发者看的详细观测面；readiness 是机器友好的部署前结论。readiness 组合 Redis / BullMQ queue counts、worker heartbeat 和 outbox summary，输出 `ready / degraded / not_ready`。CLI 使用最小只读 module，不导入 `AppModule`，避免启动普通应用副作用；输出只包含安全摘要与 issues，不打印原始依赖错误、连接串、payload、prompt、chunk、API key、token 或 cookie。
@@ -237,7 +252,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测、Outbox Ops 后端脱敏排障与安全 requeue、Worker Readiness 部署前检查、Docker worker healthcheck、Docker Web / API / Worker 全栈 Compose 验收、OperatorGuard、OperatorAuditLog 审计地基、Operator Audit 脱敏查询 API、管理员审计台、真实管理员/普通用户前后端验收，以及独立桌面端 Admin Console 第一版；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测、Outbox Ops 后端脱敏排障与安全 requeue、Worker Readiness 部署前检查、Docker worker healthcheck、Docker Web / API / Worker 全栈 Compose 验收、OperatorGuard、OperatorAuditLog 审计地基、Operator Audit 脱敏查询 API、管理员审计台、真实管理员/普通用户前后端验收、独立桌面端 Admin Console 第一版，以及 Docker Admin Console service；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
 - 从 Phase 7.6 起，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀；历史带日期文件暂不批量重命名，避免破坏已有引用。
 - 向量索引用 raw SQL 创建，Prisma 不直接支持向量索引。
 
@@ -245,4 +260,4 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7 后续：评估后台管理只读详情、导出策略、保留周期、更细 operator role、独立 Docker admin service，再继续更多后台任务生产化、worker metrics 细化和生产诊断边界收口。
+1. Phase 7 后续：评估后台管理只读详情、导出策略、保留周期、更细 operator role，再继续更多后台任务生产化、worker metrics 细化和生产诊断边界收口。

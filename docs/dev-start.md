@@ -222,6 +222,29 @@ API:    http://127.0.0.1:3001/health
 Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
 ```
 
+Phase 7.17 起，Docker Compose 也提供独立管理员后台 `admin` service。需要一次性启动学习端、管理员后台、API、worker 和基础设施时，使用：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+```
+
+对应入口：
+
+```text
+学习端：http://127.0.0.1:3000
+管理员后台：http://127.0.0.1:3100
+API：http://127.0.0.1:3001
+Worker 健康：docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+这些容器的职责分别是：
+
+- `web`：学生/学习端 PWA，默认端口 `3000`。
+- `admin`：管理员后台，默认端口 `3100`，包含控制台、Outbox Ops、操作审计和 Worker Readiness。
+- `server`：NestJS HTTP API，默认端口 `3001`。
+- `worker`：后台任务 worker，不对外暴露业务 HTTP 入口，健康状态看 Docker healthcheck。
+- `postgres` / `redis` / `minio`：本地数据库、队列和对象存储依赖。
+
 ### 本机前端和 Docker 前端怎么选
 
 项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
@@ -525,7 +548,13 @@ http://127.0.0.1:3100
 NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100
 ```
 
-Docker 全栈启动时当前 compose 还没有单独的 `admin` service；管理员后台推荐本机用 `bun run dev:admin` 启动，后端仍然可以连接 Docker PostgreSQL / Redis / MinIO。
+Phase 7.17 起 Docker 全栈启动已经包含单独的 `admin` service。日常改后台 UI 时仍推荐本机跑 `bun run dev:admin`，因为热更新最快；做部署形态或验收时使用 Docker：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+```
+
+Docker `web` service 会通过 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100` 把学习端 ADMIN 侧边栏的“后台管理”入口指向管理员后台。Docker `server` service 已允许 `http://localhost:3100` 和 `http://127.0.0.1:3100` 作为本地 CORS origin。真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 判断，不能只依赖前端隐藏入口。
 
 ## 4. AI 调用模式
 
@@ -681,7 +710,7 @@ wsl --list --verbose
 如果项目放在中文路径下，直接运行下面命令可能失败：
 
 ```powershell
-docker compose -f docker/docker-compose.dev.yml --profile worker build server web
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
 ```
 
 典型错误是：
@@ -695,7 +724,7 @@ failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains 
 ```powershell
 subst P: "E:\PrepMind_ai智能备考助手"
 $env:COMPOSE_BAKE='false'
-docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker up -d --build postgres redis minio server worker web admin
 ```
 
 注意：
