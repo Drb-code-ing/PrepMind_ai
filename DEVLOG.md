@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.19 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.20 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -49,8 +49,49 @@
 | Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录 |
 | Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
 | Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
+| Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.20 Operator Audit 详情闭环
+
+目标：把 Admin Console 的 `/audit` 从“能查审计列表”升级为“能追踪一次管理员诊断写操作全过程”的审计详情页，让 requeue 后的复盘更完整。
+
+为什么：
+- Phase 7.19 已经让控制台能发现风险，Phase 7.18 已经让 Outbox Ops 能处理风险，但 Audit 如果只有列表，管理员仍然很难看清一次操作的完整上下文。
+- 高权限诊断写操作需要可复盘：谁操作、操作了什么 target、为什么操作、请求指纹是什么、失败时错误摘要是什么。
+- 面试表达上，这一步能把后台管理闭环讲成“发现问题 -> 处理问题 -> 验证恢复 -> 审计复盘”，而不是只讲一个 requeue 按钮。
+
+主要内容：
+- `@repo/types/api/operator-audit` 新增 `operatorAuditLogDetailResponseSchema`，详情 DTO 复用脱敏列表 item 字段。
+- 后端新增 `GET /operator-audit-logs/:id`，经过 `OPERATOR_AUDIT_ENABLED` feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
+- `OperatorAuditService.getDetail()` 使用显式 `select`，继续排除 `metadata`，不存在时返回 `OPERATOR_AUDIT_LOG_NOT_FOUND`。
+- Admin Console `/audit` 改成列表 + 详情双栏；点击左侧记录后，右侧展示操作上下文、目标对象、来源指纹和错误摘要。
+- 列表选中态增加 `aria-pressed` 和左侧强调条；列表与详情区域都使用独立滚动。
+- `operator-audit-page-contract.test.mts` 增加静态契约，防止页面退回纯列表或展示 `metadata`、payload、原始 IP / User-Agent 等敏感内容。
+- `docs/blogs/admin-console-ops-platform.md` 补充“审计详情为什么重要”。
+
+边界：
+- 不新增审计导出、保留周期配置、更细 operator role、批量操作或审计删除。
+- 详情 API 不返回 `metadata`、payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。
+- 前端详情页只是运维体验层，不承担最终鉴权；真正安全边界仍是后端 feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
+
+验收：
+- `bun test packages/types/tests/operator-audit.test.mts`
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- operator-audit --runInBand`
+- `bun --filter @repo/server build`
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 重建 `server / admin` 后访问 `http://localhost:3100/audit`，点击审计记录，确认右侧详情展示操作上下文、目标对象、来源指纹和错误摘要，且不展示敏感原始字段。
+
+回顾时可以问：
+- “为什么审计列表不够，需要审计详情？”
+- “审计详情为什么复用脱敏 DTO，而不是把 metadata 也返回前端？”
+- “Operator Audit 如何记录 requestId、IP hash 和 User-Agent hash？”
+- “前端审计详情和后端 OperatorGuard 的安全职责怎么分工？”
+- “这一步如何补齐后台管理的复盘闭环？”
 
 ### 2026-07-09 - Phase 7.19 Admin Console 控制台数据化
 
@@ -834,7 +875,7 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Operator Audit 产品化边界：是否需要审计详情、导出策略、保留周期和更细 operator role。
+1. Operator Audit 产品化边界：是否需要审计导出策略、保留周期和更细 operator role。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
 3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标、队列延迟和告警阈值。
 4. Outbox 生产化：更多业务事件接入、dead-letter 修复工作流、生产开关流程。

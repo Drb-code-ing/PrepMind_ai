@@ -185,6 +185,60 @@ OperatorAuditLog
 
 > 管理员操作要可复盘，但复盘日志不能变成新的敏感数据泄露点。
 
+## 为什么审计还需要详情页
+
+一开始 `/audit` 只有列表。列表能回答“最近有哪些操作”，但很难回答“一次具体操作到底发生了什么”。
+
+比如管理员看到一条 requeue 记录时，真正想知道的是：
+
+- 这次操作是成功还是失败？
+- 操作的是哪个 `OutboxEvent`？
+- 管理员当时填写的 reason 是什么？
+- 这次请求的 requestId 是什么？
+- 来源指纹是什么？
+- 如果失败，错误 code 和错误摘要是什么？
+
+所以 Phase 7.20 补了审计详情闭环：
+
+```text
+GET /operator-audit-logs/:id
+```
+
+前端 `/audit` 也从纯列表升级为双栏结构：
+
+```text
+左侧：审计列表
+右侧：审计详情
+```
+
+详情分成四块：
+
+| 分区 | 展示内容 |
+| --- | --- |
+| 操作上下文 | 审计 ID、action、status、reason、createdAt |
+| 目标对象 | targetType、targetId |
+| 来源指纹 | actorUserId、requestId、IP hash、User-Agent hash |
+| 错误摘要 | errorCode、errorPreview |
+
+这里最重要的不是“多查一条数据”，而是继续坚持脱敏边界。
+
+详情接口复用脱敏 DTO，不返回：
+
+- `metadata`
+- outbox payload
+- aggregateId
+- 用户正文
+- prompt
+- RAG chunk
+- 模型回答
+- API key
+- access token / refresh token / cookie
+- 原始 IP / 原始 User-Agent
+
+也就是说，审计详情让管理员更容易复盘，但不会把后台页面变成敏感数据查看器。
+
+这个设计也让 Outbox Ops 的后续验证更顺：requeue 后去 `/audit`，点开记录，就能看到这次操作的 reason、target、requestId 和结果。后台闭环从“能看到列表”变成了“能解释一次操作”。
+
 ## Worker Readiness 在后台里的角色
 
 `/worker` 页面复用了 Phase 7.11 的 Worker Readiness。
@@ -343,7 +397,7 @@ feature gate -> JwtAuthGuard -> OperatorGuard -> service 状态机
   -> 输入 reason 并显式确认
   -> requeue 写入审计
   -> 去 Worker Readiness 看链路是否恢复
-  -> 去 Audit 复盘谁在什么时候做了什么
+  -> 去 Audit 点开详情，复盘谁在什么时候对哪个 target 做了什么
 ```
 
 这就是完整闭环。
@@ -364,7 +418,7 @@ feature gate -> JwtAuthGuard -> OperatorGuard -> service 状态机
 
 如果问“你怎么避免后台页面泄露敏感信息”，可以回答：
 
-> 后端 DTO 本身就脱敏，不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。审计里只存 IP/User-Agent hash 和截断后的 error preview。前端页面只消费这些脱敏 DTO。
+> 后端 DTO 本身就脱敏，不返回 metadata、payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。审计里只存 IP/User-Agent hash 和截断后的 error preview。列表和详情都复用这套脱敏 DTO，前端页面只消费这些字段。
 
 如果问“这和普通 CRUD 后台有什么区别”，可以回答：
 
@@ -392,6 +446,7 @@ Admin Console 把它们串起来了：
 - 首页发现风险。
 - Outbox 处理风险。
 - Audit 复盘操作。
+- Audit 详情解释单次操作。
 - Worker 验证恢复。
 - Docker 还原部署拓扑。
 
