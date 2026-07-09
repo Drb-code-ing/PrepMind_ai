@@ -89,4 +89,33 @@ describe('OperatorAuditController', () => {
     expect(JSON.stringify(response)).not.toContain('payload');
     expect(JSON.stringify(response)).not.toContain('metadata');
   });
+
+  it('returns one redacted audit log detail by id', async () => {
+    const response = {
+      id: 'audit_1',
+      actorUserId: 'user_admin',
+      action: 'OUTBOX_REQUEUE',
+      status: 'SUCCEEDED',
+      targetType: 'OutboxEvent',
+      targetId: 'evt_1',
+      reason: 'fixed provider config',
+      requestId: 'req_1',
+      ipAddressHash: 'sha256:ip',
+      userAgentHash: 'sha256:ua',
+      errorCode: null,
+      errorPreview: null,
+      createdAt: '2026-07-08T10:00:00.000Z',
+    };
+    const service = {
+      detail: jest.fn(),
+      getDetail: jest.fn().mockResolvedValue(response),
+      list: jest.fn(),
+    };
+    const controller = new OperatorAuditController(service as never);
+
+    await expect(controller.detail('audit_1')).resolves.toEqual(response);
+    expect(service.getDetail).toHaveBeenCalledWith('audit_1');
+    expect(JSON.stringify(response)).not.toContain('metadata');
+    expect(JSON.stringify(response)).not.toContain('payload');
+  });
 });
