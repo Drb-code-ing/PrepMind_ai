@@ -556,6 +556,36 @@ docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build p
 
 Docker `web` service 会通过 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100` 把学习端 ADMIN 侧边栏的“后台管理”入口指向管理员后台。Docker `server` service 已允许 `http://localhost:3100` 和 `http://127.0.0.1:3100` 作为本地 CORS origin。真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 判断，不能只依赖前端隐藏入口。
 
+### 后台返回学习端后又要登录怎么办
+
+优先检查你是不是混用了 `localhost` 和 `127.0.0.1`。这两个地址都指向本机，但在浏览器里属于不同 host，前端状态、refresh cookie 和 API 请求恢复链路不会天然共享。
+
+推荐做法是同一轮验收里统一使用一组地址：
+
+```text
+方案 A：
+学习端：http://localhost:3000
+管理员后台：http://localhost:3100
+API：http://localhost:3001
+
+方案 B：
+学习端：http://127.0.0.1:3000
+管理员后台：http://127.0.0.1:3100
+API：http://127.0.0.1:3001
+```
+
+不要这样混用：
+
+```text
+后台：http://localhost:3100
+学习端：http://127.0.0.1:3000
+API：http://127.0.0.1:3001
+```
+
+Phase 7.17.1 起，管理员后台的“返回学习端”会默认跟随当前 hostname：你用 `localhost:3100` 打开后台，它会回到 `localhost:3000`；你用 `127.0.0.1:3100` 打开后台，它会回到 `127.0.0.1:3000`。学习端和管理员后台的浏览器 API base 也会在本机 loopback 场景下自动对齐当前 hostname，减少因为 host 混用导致的 session recovery 问题。
+
+如果你显式配置了 `NEXT_PUBLIC_LEARNING_APP_URL`，后台会优先使用这个值。此时要确认它和你实际打开后台用的 host 是同一组；否则仍可能表现为“从后台回学习端后像是掉登录”。这类问题通常不是后端鉴权失效，而是本机浏览器 host 不一致导致登录态恢复不稳定。
+
 ## 4. AI 调用模式
 
 前端 `/api/chat` 开发默认走本地 mock 流式响应，不消耗 DeepSeek / OpenAI 额度。即使 `apps/web/.env.local` 里存在 API key，只要不显式开启 live，也不会调用真实模型。
