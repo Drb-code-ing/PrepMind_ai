@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.21 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.22 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -51,8 +51,41 @@
 | Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
 | Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
 | Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
+| Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.22 Docker Admin Ops 真实验收收口
+
+目标：在 Docker 全栈环境里用真实管理员账号完整跑一轮 Admin Console 运维闭环，确认 Phase 7.21 的筛选控件和 requeue guard 不只在 mock / 静态测试里成立，也能在真实容器、真实 API、真实 PostgreSQL 数据上工作。
+
+为什么：
+- Admin Console 是给管理员排障用的，不验 Docker 全栈就无法证明 `admin -> server -> postgres / redis / worker` 的真实链路可用。
+- Outbox requeue 是系统级状态变更，必须确认普通用户不能访问、管理员操作必须写审计、worker readiness 能反映 backlog 并在测试数据清理后恢复。
+- 本轮验收还发现后台缺少 favicon 会产生浏览器 404 噪声，因此顺手补齐后台图标，让调试控制台更干净。
+
+主要内容：
+- 使用 Docker Compose dev 栈启动 `postgres / redis / minio / server / worker / web / admin`，管理员后台访问 `http://127.0.0.1:3100`，API 访问 `http://127.0.0.1:3001`。
+- 创建临时 ADMIN 账号和临时普通账号；ADMIN 账号登录后台并完成 `/outbox -> requeue -> /audit -> /worker` 浏览器验收，普通账号直接请求 `/outbox-events` 返回 `403`。
+- 在数据库中插入安全的 `knowledge.document.processing.requested` 失败 outbox 事件，页面里确认自定义状态筛选是 `combobox`，没有回退到原生 `<select>`；requeue 按钮在填写 reason 和勾选确认前不可用。
+- requeue 成功后在 `/audit` 看到 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录，并能点开右侧详情；在 `/worker` 看到因为临时 pending outbox 导致的 degraded 信号，清理测试数据后容器内 readiness CLI 恢复 `ready`。
+- 新增 `apps/admin/public/favicon.svg` 并在后台 `metadata.icons` 中声明，减少后台浏览器调试时的 favicon 404 噪声。
+
+边界：
+- 本阶段不新增后端 API、不新增批量 requeue、不新增删除 / 跳过 / 立即 dispatch / payload 编辑。
+- 测试 outbox、审计记录和临时账号在验收后清理，不污染本地长期数据。
+- 前端 reason + confirm 仍是产品层防误操作；真正安全边界仍是后端 feature gate、`JwtAuthGuard`、`OperatorGuard` 和服务层状态机。
+
+验收：
+- Docker 浏览器验收：`http://127.0.0.1:3100/login` 登录 ADMIN，进入 `/outbox` 完成筛选、详情、reason + confirm requeue；进入 `/audit` 查看审计记录详情；进入 `/worker` 查看 readiness。
+- 普通用户 API 验收：临时普通账号携带 token 访问 `GET /outbox-events?status=FAILED` 返回 `403`。
+- 容器 readiness 验收：`docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ exec -T worker bun apps/server/dist/scripts/worker-readiness.js` 输出 `Worker readiness: ready`。
+
+回顾时可以问：
+- “为什么 Phase 7.21 做完后还要单独做 Docker 全栈验收？”
+- “Outbox requeue 后为什么 worker readiness 会短暂 degraded？”
+- “普通用户 403 和前端隐藏入口分别证明了什么？”
+- “为什么验收数据要清理，哪些数据可以清理，哪些生产审计不能随便清理？”
 
 ### 2026-07-09 - Phase 7.21 Admin Ops 交互收口
 

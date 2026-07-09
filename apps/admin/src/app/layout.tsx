@@ -8,6 +8,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'PrepMind Admin',
   description: 'PrepMind AI 管理员后台',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

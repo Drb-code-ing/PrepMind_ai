@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.21 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.22 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 ## 项目快照
 
@@ -69,6 +69,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
 | Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
 | Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
+| Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
 
 ## 技术栈
 

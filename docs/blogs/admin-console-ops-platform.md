@@ -404,6 +404,30 @@ const canRequeue =
 
 我们还给这件事加了静态 contract test，防止以后页面又退回原生 `<select>`，或者 requeue 按钮绕过 reason guard。这不是为了测试 CSS，而是为了锁住后台操作流程的关键约束。
 
+## 为什么还要做 Docker 全栈验收
+
+做到 Phase 7.21 时，静态测试、lint、build 和 mock 浏览器已经能证明页面逻辑是对的，但后台管理这种东西不能只看组件能不能渲染。它真正要证明的是：管理员在真实部署形态里，能不能从“发现问题”一路走到“处理问题”和“审计复盘”。
+
+这次验收用 Docker Compose dev 栈把 `postgres / redis / minio / server / worker / web / admin` 都跑起来，然后用真实 ADMIN 账号访问 `http://127.0.0.1:3100`。验收路径是：
+
+```text
+登录 Admin Console
+  -> /outbox 查看 FAILED 事件
+  -> 填写 reason + 勾选确认后 requeue
+  -> /audit 查看 OUTBOX_REQUEUE 审计详情
+  -> /worker 查看 readiness
+  -> 清理临时测试数据
+  -> worker readiness 恢复 ready
+```
+
+这里有两个很关键的点。
+
+第一，普通用户也要验。我们临时创建普通账号，用它的 token 请求 `GET /outbox-events?status=FAILED`，结果返回 `403`。这说明真正的边界在后端 `OperatorGuard`，不是因为前端没显示入口才安全。
+
+第二，requeue 后 worker readiness 短暂显示 degraded 是合理的。因为 requeue 的动作只是把事件从 `FAILED / DEAD` 安全放回 `PENDING`，它不立刻执行 handler。只要 outbox 里存在 pending backlog，readiness 就会提醒“还有事件没处理”。这不是坏事，反而说明 readiness 在真实反映系统状态。验收结束后清理临时 outbox、审计记录和测试账号，容器内 readiness CLI 输出 `Worker readiness: ready`，说明环境恢复干净。
+
+这轮还顺手补了 Admin Console 的 `favicon.svg`。这不是核心功能，但调试后台时浏览器反复报 `favicon.ico 404` 会制造噪声。后台运维页面应该尽量减少这种无意义干扰。
+
 ## 安全边界在哪里
 
 这一点一定要讲清楚：Admin Console 前端不是安全边界。

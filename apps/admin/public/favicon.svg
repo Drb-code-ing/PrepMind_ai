@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PrepMind Admin">
+  <rect width="64" height="64" rx="14" fill="#101828"/>
+  <path d="M18 20h19c7 0 11 4 11 10s-4 10-11 10H27v8h-9V20Z" fill="#f8fafc"/>
+  <path d="M27 28v4h10c1.6 0 2.5-.8 2.5-2s-.9-2-2.5-2H27Z" fill="#101828"/>
+  <path d="M42 17h8v8h-8v-8Zm0 22h8v8h-8v-8Z" fill="#38bdf8"/>
+</svg>
