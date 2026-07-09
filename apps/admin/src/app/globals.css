@@ -22,12 +22,15 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   min-width: 1024px;
   margin: 0;
   background: var(--admin-bg);
   color: var(--admin-ink);
   font-family: var(--font-sans);
+  scrollbar-color: rgba(102, 112, 133, 0.32) transparent;
+  scrollbar-width: thin;
 }
 
 button,
@@ -40,5 +43,56 @@ textarea {
 .admin-shell-grid {
   display: grid;
   grid-template-columns: 17rem minmax(0, 1fr);
+  height: 100dvh;
   min-height: 100dvh;
+  overflow: hidden;
+}
+
+.pm-scrollbar {
+  scrollbar-color: rgba(102, 112, 133, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.pm-scrollbar::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.pm-scrollbar::-webkit-scrollbar-track,
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pm-scrollbar::-webkit-scrollbar-thumb,
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(102, 112, 133, 0.28);
+  background-clip: padding-box;
+}
+
+.pm-scrollbar::-webkit-scrollbar-thumb:hover,
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 112, 133, 0.48);
+  background-clip: padding-box;
+}
+
+.pm-scrollbar::-webkit-scrollbar-button,
+html::-webkit-scrollbar-button,
+body::-webkit-scrollbar-button {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }

@@ -88,7 +88,7 @@ export function AdminShell({
         </div>
       </aside>
 
-      <main className="min-w-0 px-8 py-7">
+      <main className="hide-scrollbar min-w-0 overflow-y-auto px-8 py-7">
         <header className="flex items-start justify-between gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--admin-muted)]">

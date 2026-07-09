@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -161,7 +162,7 @@ function OutboxOpsPanel() {
 
         <div
           data-testid="outbox-list-scroll"
-          className="min-h-0 flex-1 divide-y divide-[var(--admin-line)] overflow-y-auto"
+          className="pm-scrollbar min-h-0 flex-1 divide-y divide-[var(--admin-line)] overflow-y-auto"
         >
           {listQuery.isLoading ? <EmptyRow text="正在加载 Outbox 事件..." /> : null}
           {listQuery.isError ? <EmptyRow text="读取失败，请确认后端和诊断开关已开启。" /> : null}
@@ -216,14 +217,14 @@ function OutboxOpsPanel() {
         {!detail ? (
           <p
             data-testid="outbox-detail-scroll"
-            className="min-h-0 flex-1 overflow-y-auto p-5 text-sm leading-6 text-[var(--admin-muted)]"
+            className="pm-scrollbar min-h-0 flex-1 overflow-y-auto p-5 text-sm leading-6 text-[var(--admin-muted)]"
           >
             从左侧选择一条事件后，可以查看脱敏错误摘要和重新入队操作。
           </p>
         ) : (
           <div
             data-testid="outbox-detail-scroll"
-            className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-sm"
+            className="pm-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-sm"
           >
             <DetailSection title="生命周期">
               <StatusBadge status={detail.status} />
@@ -350,18 +351,18 @@ function AftercareBox({ aftercare }: { aftercare: ReturnType<typeof getOutboxAft
       <p className="font-semibold">{aftercare.title}</p>
       <p className="mt-1 leading-6">{aftercare.message}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <a
+        <Link
           href={aftercare.links.worker.href}
           className="inline-flex min-h-10 items-center rounded-md border border-sky-200 bg-white px-3 text-xs font-semibold"
         >
           {aftercare.links.worker.label}
-        </a>
-        <a
+        </Link>
+        <Link
           href={aftercare.links.audit.href}
           className="inline-flex min-h-10 items-center rounded-md border border-sky-200 bg-white px-3 text-xs font-semibold"
         >
           {aftercare.links.audit.label}
-        </a>
+        </Link>
       </div>
     </div>
   );
