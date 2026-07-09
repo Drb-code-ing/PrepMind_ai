@@ -24,6 +24,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
     expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
     expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
     expect(dockerfile).toContain(
       'COPY packages/agent/package.json ./packages/agent/',
