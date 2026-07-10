@@ -12,6 +12,11 @@ import { DatabaseModule } from '../src/database/database.module';
 import { JobsModule } from '../src/jobs/jobs.module';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../src/knowledge-documents/jobs/process-document.job';
 import { OutboxMetricsService } from '../src/outbox/outbox-metrics.service';
+import { PrismaService } from '../src/database/prisma.service';
+import {
+  OPERATOR_AUDIT_EXPORT_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+} from '../src/operator-audit-exports/operator-audit-export.constants';
 import { WorkerReadinessService } from '../src/worker-readiness/worker-readiness.service';
 
 const DEFAULT_WORKER_READINESS_CLI_TIMEOUT_MS = 10_000;
@@ -40,7 +45,11 @@ type MainOptions = {
     ConfigModule,
     DatabaseModule,
     JobsModule,
-    BullModule.registerQueue({ name: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE }),
+    BullModule.registerQueue(
+      { name: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE },
+      { name: OPERATOR_AUDIT_EXPORT_QUEUE },
+      { name: OPERATOR_AUDIT_MAINTENANCE_QUEUE },
+    ),
   ],
   providers: [
     OutboxMetricsService,
@@ -48,14 +57,28 @@ type MainOptions = {
       provide: WorkerReadinessService,
       inject: [
         getQueueToken(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE),
+        getQueueToken(OPERATOR_AUDIT_EXPORT_QUEUE),
+        getQueueToken(OPERATOR_AUDIT_MAINTENANCE_QUEUE),
         OutboxMetricsService,
+        PrismaService,
         ConfigService,
       ],
       useFactory: (
         queue: Queue,
+        auditExportQueue: Queue,
+        auditMaintenanceQueue: Queue,
         outbox: OutboxMetricsService,
+        prisma: PrismaService,
         config: ConfigService<ServerEnv, true>,
-      ) => new WorkerReadinessService(queue, outbox, config),
+      ) =>
+        new WorkerReadinessService(
+          queue,
+          auditExportQueue,
+          auditMaintenanceQueue,
+          outbox,
+          prisma,
+          config,
+        ),
     },
   ],
   exports: [WorkerReadinessService],
@@ -86,6 +109,17 @@ export function formatWorkerReadiness(readiness: WorkerReadinessResponse) {
       `paused=${readiness.checks.queue.isPaused}`,
       `backlog=${readiness.checks.queue.hasBacklog}`,
     ].join(' '),
+    formatQueueCheck('Audit export queue', readiness.checks.auditExportQueue),
+    formatQueueCheck(
+      'Audit maintenance queue',
+      readiness.checks.auditMaintenanceQueue,
+    ),
+    [
+      `Audit maintenance: ${readiness.checks.auditMaintenance.status} - ${readiness.checks.auditMaintenance.message}`,
+      `enabled=${readiness.checks.auditMaintenance.enabled}`,
+      `lastSucceededAt=${readiness.checks.auditMaintenance.lastSucceededAt ?? 'none'}`,
+      `overdue=${readiness.checks.auditMaintenance.overdue}`,
+    ].join(' '),
     [
       `Workers: ${readiness.checks.workers.status} - ${readiness.checks.workers.message}`,
       `online=${readiness.checks.workers.onlineCount}`,
@@ -99,6 +133,19 @@ export function formatWorkerReadiness(readiness: WorkerReadinessResponse) {
     ].join(' '),
     ...issues,
   ].join('\n');
+}
+
+function formatQueueCheck(
+  label: string,
+  check: WorkerReadinessResponse['checks']['auditExportQueue'],
+) {
+  const counts = check.counts;
+  return [
+    `${label}: ${check.status} - ${check.message}`,
+    `counts(waiting=${counts.waiting} active=${counts.active} delayed=${counts.delayed} failed=${counts.failed} paused=${counts.paused})`,
+    `paused=${check.isPaused}`,
+    `backlog=${check.hasBacklog}`,
+  ].join(' ');
 }
 
 export async function withWorkerReadinessTimeout<T>(

@@ -6,7 +6,7 @@
 
 更新时间：2026-07-10
 
-当前阶段：Phase 7.23.4 审计证据包单并发 ZIP Worker、formula-safe CSV/manifest、processing-token lease fencing 与 attempt-fenced MinIO 存储已完成；Phase 7.23.5 保留维护尚未开始。
+当前阶段：Phase 7.23.5 审计保留维护、过期对象/元数据清理、僵尸任务修复、crash janitor 与三队列 readiness 已完成；Phase 7.23.6 查询/详情/下载 API 尚未开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -56,8 +56,49 @@
 | Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置 |
 | Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递 |
 | Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO |
+| Phase 7.23.5 | 已完成 | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23.5 Operator Audit Retention Maintenance
+
+目标：把 Phase 7.23.4 生成但尚未自动回收的证据包和审计历史接入可恢复、可观测的小时级维护闭环，同时保证 180 天清理不会踩到刚申请或长时间执行的导出。
+
+为什么：
+
+- `expiresAt` 只能表达 24 小时逻辑失效，不能代替 MinIO 物理删除、失败 attempt orphan 回收和终态 metadata 清理；维护暂时故障时还需要 48 小时 lifecycle 兜底。
+- 直接按 `now - 180 days` 删除会和导出申请/读取形成竞态。申请与维护必须共享 retention advisory lock，维护还要把最早 `QUEUED/PROCESSING.startAt` 纳入 active-export 水位。
+- 只按任务年龄修复僵尸状态会误杀仍在 BullMQ active 的 Worker；只按目录年龄清理明文则可能删除仍持有有效 processing token 的归档。
+
+主要内容与做法：
+
+- 新增每小时 `operator-audit-maintenance` scheduler，payload 严格固定为 `{schemaVersion:1}`，processor 本地 `concurrency=1` 且只调用 `maintenance.run()`；仅 `worker|both + maintenance gate` 注册，并在应用 bootstrap 把 maintenance queue 的 BullMQ global concurrency 固定为 1，使多个 worker replica 也只能串行维护。不接受 actor/user/filter，也不创建账号 BackgroundJob 或 OperatorAuditLog。
+- `run()` 全程以 database clock 为准并持久化 singleton `RUNNING -> SUCCEEDED/FAILED`。READY 到 24 小时后先删除 selected object、列举严格 export prefix 并清 orphan，成功后才 CAS 为 `EXPIRED/objectKey=null/expiredAt`；missing 幂等，MinIO unavailable 保留 DB 事实等待重试。FAILED/EXPIRED prefix 与 180 天前终态 metadata 同样遵循“对象先空、数据库后删”。
+- 审计日志每批最多 1,000、每次最多 20 批；每批使用新的短事务重新取得 retention advisory xact lock、DB clock 和 `effectiveCutoff=min(now-180d, oldestActive.startAt)`，再按 `(createdAt,id)` 删除。真实 PostgreSQL 交错测试证明 request 校验后、commit active watermark 前维护无法越过共享锁。
+- Outbox `DEAD` 保留 24 小时人工 requeue 窗口，超窗后同事务把 Export/SYSTEM job 标为 `FAILED/DELIVERY_ABANDONED`。PROCESSING 只有超过一小时、lease 已过期且 Bull job 非 active 时才以双表 CAS 修复；Redis active 时保持原状。
+- crash janitor 在 worker module init 及每次 maintenance 后运行，只接受严格 `prepmind-audit-export-<safeExportId>-<uuidToken>`，并同时验证 DB token/lease、Bull job state 和 realpath 仍在安全 temp root 下；绝不只按年龄删。默认明文根改为 `os.tmpdir()/prepmind-audit-exports`，POSIX 0700，Compose worker 用 192 MiB tmpfs 承载，为严格 `free > 2 * 64 MiB` preflight 留出余量。
+- Worker heartbeat 固定声明 knowledge、audit export、audit maintenance 三队列。Readiness/Observability/CLI/Admin Worker 页分别展示三队列和 maintenance freshness；启用后超过两小时未成功为 fail，paused queue not-ready，failed job degraded，关闭 export/maintenance 不拖垮健康的 knowledge worker。
+- Compose 新增 `minio-init` 导入 `operator-audit-exports/` 2 天 expiration、2 天 noncurrent、1 天 incomplete multipart 与 expired delete-marker 规则；这是 48 小时物理兜底。production 若启用 versioning，仍需在部署验收中确认 noncurrent/delete marker 真正清理。
+
+边界：
+
+- 本阶段没有实现 Phase 7.23.6 list/detail/download API 或 fail-closed 下载审计，也没有实现 Phase 7.23.7 证据包管理 UI；Admin 只扩展既有 Worker 健康页。
+- 24 小时是 API/领域逻辑过期，小时任务负责正常物理清理，48 小时 lifecycle 只是故障兜底，不能把 lifecycle 延迟描述成可继续下载的 TTL。
+- production gates 继续默认关闭；local Compose 显式开启只服务开发验证。维护失败仅持久化 `sanitizeJobError().slice(0,240)`，日志和 readiness 不输出路径、payload、用户内容或连接串。
+
+TDD 与验收：
+
+- 首批 maintenance/scheduler/processor/janitor RED 因模块不存在失败，GREEN 11/11；terminal selected object 回收用例先 RED 后修正，最终 maintenance 4 suites 13/13，含20批上限、terminal metadata、状态 counters 和真实 PostgreSQL 锁交错。
+- 追加质量复审先以启动契约 RED 证明 maintenance 缺少 global concurrency provider，再新增 bootstrap `setGlobalConcurrency(1)`；真实 Redis 双 Worker/双 job 阻塞验证 1/1 通过，第二个 job 在首个释放前保持 waiting，最大 active 始终为 1。既有 export queue 的 global concurrency=1 与 global-first paused Worker 启动顺序保持不变。
+- Readiness strict contract 先拒绝三个新字段；server readiness 首轮 11 failures、observability 首轮 11 failures、heartbeat queue list 1 failure 均按预期 RED，补三队列独立采集与 freshness 后 GREEN。Docker source contract 先因 lifecycle JSON 缺失 RED；archive bounded temp root 先因 helper 缺失 RED，随后归档/janitor/Docker 25/25。
+- 阶段聚焦验证 12 suites 71/71；Admin 34/34，Server/Admin build 与 Compose config 通过。完整 Server 为 66 suites / 578 tests 通过、1 个显式 opt-in integration 跳过，types/database/frozen-lock 均通过。
+
+回顾时可以问：
+
+- “活跃导出水位如何避免 180 天清理与长时间导出互相踩踏？”
+- “为什么 DEAD 事件要保留 24 小时恢复窗口，而 PROCESSING 又必须结合 lease 和 Bull job state？”
+- “24 小时逻辑过期、小时级物理清理和 48 小时 lifecycle 分别解决什么问题？”
+- “crash janitor 为什么不能只看目录年龄？”
 
 ### 2026-07-10 - Phase 7.23.4 Operator Audit Export Fenced ZIP Worker
 

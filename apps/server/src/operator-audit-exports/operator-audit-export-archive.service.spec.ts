@@ -10,6 +10,8 @@ import * as unzipper from 'unzipper';
 
 import type { PrismaService } from '../database/prisma.service';
 import {
+  getOperatorAuditExportTempRoot,
+  prepareOperatorAuditExportTempRoot,
   OperatorAuditExportArchiveError,
   OperatorAuditExportArchiveService,
 } from './operator-audit-export-archive.service';
@@ -18,6 +20,27 @@ const QUERY_STARTED = new Date('2026-07-10T00:00:01.000Z');
 const QUERY_FINISHED = new Date('2026-07-10T00:00:02.000Z');
 
 describe('OperatorAuditExportArchiveService', () => {
+  it('uses the bounded audit export temp root and prepares it with 0700 permissions', async () => {
+    expect(getOperatorAuditExportTempRoot()).toBe(
+      join(tmpdir(), 'prepmind-audit-exports'),
+    );
+    const root = join(tempRoot, 'bounded-root');
+    await prepareOperatorAuditExportTempRoot(root);
+    if (process.platform !== 'win32') {
+      expect((await stat(root)).mode & 0o777).toBe(0o700);
+    }
+  });
+
+  it('rejects a temp root that resolves outside os.tmpdir', async () => {
+    const outside = join(tmpdir(), '..', `prepmind-outside-${randomUUID()}`);
+    try {
+      await expect(prepareOperatorAuditExportTempRoot(outside)).rejects.toThrow(
+        'outside',
+      );
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
   let tempRoot: string;
 
   beforeEach(async () => {

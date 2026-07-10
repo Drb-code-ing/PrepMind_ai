@@ -1,8 +1,15 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream, type StatsFs } from 'node:fs';
-import { mkdir, rm, statfs as nodeStatfs, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  mkdir,
+  realpath,
+  rm,
+  statfs as nodeStatfs,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { once } from 'node:events';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -23,6 +30,31 @@ import {
 
 const TEMP_SEGMENT_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 const CSV_BOM = Buffer.from([0xef, 0xbb, 0xbf]);
+
+export function getOperatorAuditExportTempRoot() {
+  return join(tmpdir(), 'prepmind-audit-exports');
+}
+
+export async function prepareOperatorAuditExportTempRoot(root: string) {
+  const safeTmpRoot = await realpath(tmpdir());
+  const requestedRoot = resolve(root);
+  if (!isBeneathOrEqual(safeTmpRoot, requestedRoot)) {
+    throw new Error('Operator audit export temp root is outside os.tmpdir');
+  }
+  await mkdir(requestedRoot, { recursive: true, mode: 0o700 });
+  const resolvedRoot = await realpath(requestedRoot);
+  if (!isBeneathOrEqual(safeTmpRoot, resolvedRoot)) {
+    throw new Error(
+      'Operator audit export temp root resolves outside os.tmpdir',
+    );
+  }
+  if (process.platform !== 'win32') await chmod(resolvedRoot, 0o700);
+}
+
+function isBeneathOrEqual(root: string, target: string) {
+  const path = relative(root, target);
+  return path === '' || (!path.startsWith('..') && !isAbsolute(path));
+}
 const PAGE_SIZE = 1000;
 
 export const OPERATOR_AUDIT_ARCHIVE_RUNTIME = Symbol(
@@ -71,7 +103,7 @@ export class OperatorAuditExportArchiveService {
     runtime?: Partial<ArchiveRuntime>,
   ) {
     this.runtime = {
-      tempRoot: runtime?.tempRoot ?? tmpdir(),
+      tempRoot: runtime?.tempRoot ?? getOperatorAuditExportTempRoot(),
       statfs: runtime?.statfs ?? nodeStatfs,
       archiveFactory: runtime?.archiveFactory ?? archiver,
     };
@@ -87,6 +119,7 @@ export class OperatorAuditExportArchiveService {
     const maxArchiveBytes = this.positiveIntegerConfig(
       'OPERATOR_AUDIT_EXPORT_MAX_ARCHIVE_BYTES',
     );
+    await prepareOperatorAuditExportTempRoot(this.runtime.tempRoot);
     await this.assertTemporaryDisk(maxArchiveBytes);
 
     const tempDirectory = join(

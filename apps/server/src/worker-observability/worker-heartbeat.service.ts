@@ -115,12 +115,8 @@ export class WorkerHeartbeatService implements OnModuleInit, OnModuleDestroy {
         'EX',
         this.heartbeatTtlSeconds,
       );
-    } catch (error) {
-      this.logger.warn(
-        `Worker heartbeat write failed: ${
-          error instanceof Error ? error.message : 'unknown'
-        }`,
-      );
+    } catch {
+      this.logger.warn('Worker heartbeat write failed.');
     }
   }
 

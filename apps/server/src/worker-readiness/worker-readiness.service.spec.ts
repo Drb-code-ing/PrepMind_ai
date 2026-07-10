@@ -243,6 +243,53 @@ describe('WorkerReadinessService', () => {
     expect(JSON.stringify(result)).not.toContain('token');
     expect(JSON.stringify(result)).not.toContain('redis://');
   });
+
+  it('fails when enabled audit maintenance is over two hours stale', async () => {
+    const service = createService({
+      mode: 'inline',
+      maintenanceEnabled: true,
+      maintenanceState: {
+        lastSucceededAt: new Date(now.getTime() - 2 * 3_600_000 - 1),
+      },
+    });
+    const result = await service.getReadiness(now);
+    expect(result.checks.auditMaintenance).toEqual(
+      expect.objectContaining({ status: 'fail', enabled: true, overdue: true }),
+    );
+    expect(result.status).toBe('not_ready');
+  });
+
+  it('fails a paused enabled audit queue and degrades failed audit jobs', async () => {
+    const paused = await createService({
+      mode: 'inline',
+      exportEnabled: true,
+      auditExportPaused: true,
+    }).getReadiness(now);
+    expect(paused.checks.auditExportQueue.status).toBe('fail');
+    expect(paused.status).toBe('not_ready');
+
+    const failed = await createService({
+      mode: 'inline',
+      maintenanceEnabled: true,
+      maintenanceState: { lastSucceededAt: now },
+      auditMaintenanceCounts: { ...emptyQueueCounts(), failed: 1 },
+    }).getReadiness(now);
+    expect(failed.checks.auditMaintenanceQueue.status).toBe('warn');
+    expect(failed.status).toBe('degraded');
+  });
+
+  it('keeps a healthy knowledge worker ready when audit capabilities are disabled', async () => {
+    const result = await createService({
+      mode: 'inline',
+      auditQueueError: new Error('redis://secret'),
+    }).getReadiness(now);
+    expect(result.checks.auditExportQueue.status).toBe('warn');
+    expect(result.checks.auditMaintenanceQueue.status).toBe('warn');
+    expect(result.checks.auditMaintenance.enabled).toBe(false);
+    expect(result.status).toBe('ready');
+    expect(result.issues).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain('redis://');
+  });
 });
 
 function createService(input: {
@@ -253,6 +300,14 @@ function createService(input: {
   heartbeats?: Heartbeat[];
   outbox?: WorkerObservabilityOutboxSummary;
   queueError?: Error;
+  auditQueueError?: Error;
+  exportEnabled?: boolean;
+  maintenanceEnabled?: boolean;
+  auditExportCounts?: QueueCounts;
+  auditMaintenanceCounts?: QueueCounts;
+  auditExportPaused?: boolean;
+  auditMaintenancePaused?: boolean;
+  maintenanceState?: { lastSucceededAt: Date | null } | null;
 }) {
   const counts = input.counts ?? emptyQueueCounts();
   const heartbeats = input.heartbeats ?? [];
@@ -279,13 +334,43 @@ function createService(input: {
       .fn()
       .mockResolvedValue(input.outbox ?? createOutboxSummary()),
   };
+  const auditQueue = (counts: QueueCounts, paused: boolean) =>
+    input.auditQueueError
+      ? {
+          getJobCounts: jest.fn().mockRejectedValue(input.auditQueueError),
+          isPaused: jest.fn().mockRejectedValue(input.auditQueueError),
+        }
+      : {
+          getJobCounts: jest.fn().mockResolvedValue(counts),
+          isPaused: jest.fn().mockResolvedValue(paused),
+        };
+  const prisma = {
+    operatorAuditMaintenanceState: {
+      findUnique: jest.fn().mockResolvedValue(input.maintenanceState ?? null),
+    },
+  };
 
-  return new WorkerReadinessService(queue as never, outbox as never, {
-    role: input.role ?? 'api',
-    knowledgeProcessingMode: input.mode,
-    prefix: 'prepmind',
-    logger: { warn: jest.fn() },
-  });
+  return new WorkerReadinessService(
+    queue as never,
+    auditQueue(
+      input.auditExportCounts ?? emptyQueueCounts(),
+      input.auditExportPaused ?? false,
+    ) as never,
+    auditQueue(
+      input.auditMaintenanceCounts ?? emptyQueueCounts(),
+      input.auditMaintenancePaused ?? false,
+    ) as never,
+    outbox as never,
+    prisma as never,
+    {
+      role: input.role ?? 'api',
+      knowledgeProcessingMode: input.mode,
+      prefix: 'prepmind',
+      exportEnabled: input.exportEnabled ?? false,
+      maintenanceEnabled: input.maintenanceEnabled ?? false,
+      logger: { warn: jest.fn() },
+    },
+  );
 }
 
 function emptyQueueCounts(): QueueCounts {

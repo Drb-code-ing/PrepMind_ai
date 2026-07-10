@@ -27,6 +27,19 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
 
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc ready local &&
+      mc mb --ignore-existing local/prepmind-dev &&
+      mc ilm import local/prepmind-dev < /config/operator-audit-export-lifecycle.json
+    volumes:
+      - ./minio/operator-audit-export-lifecycle.json:/config/operator-audit-export-lifecycle.json:ro
+
   server:
     build:
       context: ..
@@ -34,9 +47,12 @@ services:
     ports:
       - "3001:3001"
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     environment:
       SERVER_ROLE: ${SERVER_ROLE:-both}
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
@@ -44,6 +60,9 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}
       OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}
       OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}
+      OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}
+      OPERATOR_AUDIT_MAINTENANCE_ENABLED: ${OPERATOR_AUDIT_MAINTENANCE_ENABLED:-true}
+      OUTBOX_DISPATCHER_ENABLED: ${OUTBOX_DISPATCHER_ENABLED:-true}
       OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}
       WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}
       WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}
@@ -64,13 +83,20 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.server
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
     environment:
       SERVER_ROLE: worker
       KNOWLEDGE_PROCESSING_MODE: queue
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      OUTBOX_DISPATCHER_ENABLED: ${OUTBOX_DISPATCHER_ENABLED:-true}
+      OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}
+      OPERATOR_AUDIT_MAINTENANCE_ENABLED: ${OPERATOR_AUDIT_MAINTENANCE_ENABLED:-true}
+      OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
@@ -87,6 +113,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    tmpfs:
+      - /tmp/prepmind-audit-exports:size=201326592,mode=0700
 
   web:
     build:

@@ -310,6 +310,44 @@ describe('WorkerObservabilityService', () => {
     expect(result.signals.hasDeadOutboxEvents).toBe(true);
     expect(result.signals.status).toBe('degraded');
   });
+
+  it('reports three queues and maintenance freshness without leaking queue errors', async () => {
+    const service = createService({
+      role: 'worker',
+      mode: 'queue',
+      counts: emptyQueueCounts(),
+      heartbeats: [],
+      maintenanceEnabled: true,
+      maintenanceState: {
+        lastSucceededAt: new Date('2026-07-05T10:00:00.000Z'),
+      },
+      auditExportCounts: { ...emptyQueueCounts(), failed: 1 },
+    });
+    const result = await service.getSummary('user-1');
+    expect(result.auditExportQueue.name).toBe('operator-audit-export');
+    expect(result.auditExportQueue.counts.failed).toBe(1);
+    expect(result.auditMaintenanceQueue.name).toBe(
+      'operator-audit-maintenance',
+    );
+    expect(result.auditMaintenance.enabled).toBe(true);
+    expect(result.signals.status).toBe('degraded');
+  });
+
+  it('logs a fixed safe heartbeat read failure without Redis credentials', async () => {
+    const logger = { warn: jest.fn() };
+    const service = createService({
+      role: 'worker',
+      mode: 'queue',
+      counts: emptyQueueCounts(),
+      heartbeats: [],
+      heartbeatError: new Error('redis://user:credential@redis.internal:6379'),
+      logger,
+    });
+    const result = await service.getSummary('user-1');
+    expect(logger.warn).toHaveBeenCalledWith('Worker heartbeat read failed.');
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('credential');
+    expect(JSON.stringify(result)).not.toContain('redis://');
+  });
 });
 
 function createService(input: {
@@ -320,6 +358,13 @@ function createService(input: {
   heartbeats: WorkerHeartbeatResponse[];
   backgroundJobs?: BackgroundJobSummaryResponse;
   outbox?: WorkerObservabilityOutboxSummary;
+  exportEnabled?: boolean;
+  maintenanceEnabled?: boolean;
+  auditExportCounts?: QueueCounts;
+  auditMaintenanceCounts?: QueueCounts;
+  maintenanceState?: { lastSucceededAt: Date | null } | null;
+  heartbeatError?: Error;
+  logger?: { warn: jest.Mock };
 }) {
   const redisValues = input.heartbeats.map((heartbeat) =>
     JSON.stringify(heartbeat),
@@ -335,7 +380,9 @@ function createService(input: {
     isPaused: jest
       .fn()
       .mockResolvedValue(input.isPaused ?? input.counts.paused > 0),
-    client: Promise.resolve(redis),
+    client: input.heartbeatError
+      ? Promise.reject(input.heartbeatError)
+      : Promise.resolve(redis),
   };
   const backgroundJobs = {
     getSummary: jest
@@ -347,16 +394,31 @@ function createService(input: {
       .fn()
       .mockResolvedValue(input.outbox ?? createOutboxSummary()),
   };
+  const auditQueue = (counts: QueueCounts) => ({
+    getJobCounts: jest.fn().mockResolvedValue(counts),
+    isPaused: jest.fn().mockResolvedValue(counts.paused > 0),
+  });
+  const prisma = {
+    operatorAuditMaintenanceState: {
+      findUnique: jest.fn().mockResolvedValue(input.maintenanceState ?? null),
+    },
+  };
 
   return new WorkerObservabilityService(
     queue as never,
+    auditQueue(input.auditExportCounts ?? emptyQueueCounts()) as never,
+    auditQueue(input.auditMaintenanceCounts ?? emptyQueueCounts()) as never,
     backgroundJobs as never,
     outbox as never,
+    prisma as never,
     {
       role: input.role,
       knowledgeProcessingMode: input.mode,
       heartbeatTtlSeconds: 45,
       prefix: 'prepmind',
+      exportEnabled: input.exportEnabled ?? false,
+      maintenanceEnabled: input.maintenanceEnabled ?? false,
+      logger: input.logger,
     },
   );
 }

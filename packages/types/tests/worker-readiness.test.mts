@@ -31,6 +31,27 @@ const readiness: WorkerReadinessResponse = {
       isPaused: false,
       hasBacklog: true,
     },
+    auditExportQueue: {
+      status: 'pass',
+      message: 'Audit export queue is readable.',
+      counts: { waiting: 0, active: 0, delayed: 0, failed: 0, paused: 0 },
+      isPaused: false,
+      hasBacklog: false,
+    },
+    auditMaintenanceQueue: {
+      status: 'pass',
+      message: 'Audit maintenance queue is readable.',
+      counts: { waiting: 0, active: 0, delayed: 0, failed: 0, paused: 0 },
+      isPaused: false,
+      hasBacklog: false,
+    },
+    auditMaintenance: {
+      status: 'pass',
+      message: 'Audit maintenance is current.',
+      enabled: true,
+      lastSucceededAt: '2026-07-08T00:00:00.000Z',
+      overdue: false,
+    },
     workers: {
       status: 'fail',
       message: 'Queue backlog exists but no worker heartbeat is online.',

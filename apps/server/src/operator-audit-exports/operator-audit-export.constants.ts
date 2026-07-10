@@ -10,6 +10,11 @@ export const OPERATOR_AUDIT_RETENTION_LOCK =
 export const OPERATOR_AUDIT_EXPORT_QUOTA_LOCK =
   'prepmind:operator-audit-export-quota';
 export const OPERATOR_AUDIT_EXPORT_RESOURCE_TYPE = 'OPERATOR_AUDIT_EXPORT';
+export const OPERATOR_AUDIT_MAINTENANCE_QUEUE = 'operator-audit-maintenance';
+export const OPERATOR_AUDIT_MAINTENANCE_SCHEDULER =
+  'operator-audit-maintenance-hourly';
+export const MAINTAIN_OPERATOR_AUDIT_JOB = 'maintain-operator-audit';
+export const OPERATOR_AUDIT_MAINTENANCE_STATE = 'operator-audit';
 
 export const operatorAuditExportRequestedPayloadSchema = z
   .object({

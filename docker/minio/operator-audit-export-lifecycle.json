@@ -1,0 +1,18 @@
+{
+  "Rules": [
+    {
+      "ID": "operator-audit-export-48h-backstop",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "operator-audit-exports/" },
+      "Expiration": { "Days": 2 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 2 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    },
+    {
+      "ID": "operator-audit-export-delete-markers",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "operator-audit-exports/" },
+      "Expiration": { "ExpiredObjectDeleteMarker": true }
+    }
+  ]
+}

@@ -12,6 +12,12 @@ import { BackgroundJobsService } from '../background-jobs/background-jobs.servic
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
 import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
+import { PrismaService } from '../database/prisma.service';
+import {
+  OPERATOR_AUDIT_EXPORT_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_STATE,
+} from '../operator-audit-exports/operator-audit-export.constants';
 import { DOCUMENT_PROCESSING_QUEUE_NAME } from './worker-observability.constants';
 
 type QueueCounts = WorkerObservabilitySummaryResponse['queue']['counts'];
@@ -27,6 +33,8 @@ type WorkerObservabilityOptions = {
   heartbeatTtlSeconds: number;
   prefix: string;
   logger?: Pick<Logger, 'warn'>;
+  exportEnabled: boolean;
+  maintenanceEnabled: boolean;
 };
 
 @Injectable()
@@ -36,12 +44,19 @@ export class WorkerObservabilityService {
   private readonly heartbeatTtlSeconds: number;
   private readonly prefix: string;
   private readonly logger: Pick<Logger, 'warn'>;
+  private readonly exportEnabled: boolean;
+  private readonly maintenanceEnabled: boolean;
 
   constructor(
     @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
     private readonly queue: Queue,
+    @InjectQueue(OPERATOR_AUDIT_EXPORT_QUEUE)
+    private readonly auditExportQueue: Queue,
+    @InjectQueue(OPERATOR_AUDIT_MAINTENANCE_QUEUE)
+    private readonly auditMaintenanceQueue: Queue,
     private readonly backgroundJobs: BackgroundJobsService,
     private readonly outbox: OutboxMetricsService,
+    private readonly prisma: PrismaService,
     optionsOrConfig:
       | WorkerObservabilityOptions
       | ConfigService<ServerEnv, true>,
@@ -59,6 +74,14 @@ export class WorkerObservabilityService {
               { infer: true },
             ),
             prefix: optionsOrConfig.get('BULLMQ_PREFIX', { infer: true }),
+            exportEnabled: optionsOrConfig.get(
+              'OPERATOR_AUDIT_EXPORT_ENABLED',
+              { infer: true },
+            ),
+            maintenanceEnabled: optionsOrConfig.get(
+              'OPERATOR_AUDIT_MAINTENANCE_ENABLED',
+              { infer: true },
+            ),
           }
         : optionsOrConfig;
 
@@ -66,24 +89,40 @@ export class WorkerObservabilityService {
     this.knowledgeProcessingMode = options.knowledgeProcessingMode;
     this.heartbeatTtlSeconds = options.heartbeatTtlSeconds;
     this.prefix = options.prefix;
+    this.exportEnabled = options.exportEnabled;
+    this.maintenanceEnabled = options.maintenanceEnabled;
     this.logger = options.logger ?? new Logger(WorkerObservabilityService.name);
   }
 
   async getSummary(
     userId: string,
   ): Promise<WorkerObservabilitySummaryResponse> {
-    const [counts, isPaused, heartbeats, backgroundJobs, outbox] =
-      await Promise.all([
-        this.getQueueCounts(),
-        this.queue.isPaused(),
-        this.getHeartbeats(),
-        this.backgroundJobs.getSummary(userId),
-        this.outbox.getSummary(),
-      ]);
+    const [
+      knowledgeQueue,
+      auditExportQueue,
+      auditMaintenanceQueue,
+      heartbeats,
+      backgroundJobs,
+      outbox,
+      auditMaintenance,
+    ] = await Promise.all([
+      this.getQueueSnapshot(this.queue, DOCUMENT_PROCESSING_QUEUE_NAME),
+      this.getQueueSnapshot(this.auditExportQueue, OPERATOR_AUDIT_EXPORT_QUEUE),
+      this.getQueueSnapshot(
+        this.auditMaintenanceQueue,
+        OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+      ),
+      this.getHeartbeats(),
+      this.backgroundJobs.getSummary(userId),
+      this.outbox.getSummary(),
+      this.getAuditMaintenance(),
+    ]);
+
+    const counts = knowledgeQueue.counts;
 
     const hasBacklog =
       counts.waiting + counts.active + counts.delayed + counts.paused > 0;
-    const queuePaused = isPaused || counts.paused > 0;
+    const queuePaused = knowledgeQueue.isPaused || counts.paused > 0;
     const hasWorkerHeartbeat = heartbeats.length > 0;
     const queueModeWithoutWorker =
       this.knowledgeProcessingMode === 'queue' && !hasWorkerHeartbeat;
@@ -93,6 +132,11 @@ export class WorkerObservabilityService {
     const hasRecentFailures =
       backgroundJobs.failedCount > 0 ||
       counts.failed > 0 ||
+      (this.exportEnabled && !auditExportQueue.ok) ||
+      (this.maintenanceEnabled && !auditMaintenanceQueue.ok) ||
+      (this.exportEnabled && auditExportQueue.counts.failed > 0) ||
+      (this.maintenanceEnabled && auditMaintenanceQueue.counts.failed > 0) ||
+      (this.maintenanceEnabled && auditMaintenance.status === 'fail') ||
       hasDeadOutboxEvents;
     const latestHeartbeat = sortHeartbeats(heartbeats)[0] ?? null;
     const status = resolveStatus({
@@ -112,9 +156,12 @@ export class WorkerObservabilityService {
       queue: {
         name: DOCUMENT_PROCESSING_QUEUE_NAME,
         counts,
-        isPaused,
+        isPaused: knowledgeQueue.isPaused,
         hasBacklog,
       },
+      auditExportQueue: publicQueueSnapshot(auditExportQueue),
+      auditMaintenanceQueue: publicQueueSnapshot(auditMaintenanceQueue),
+      auditMaintenance,
       workers: {
         heartbeatTtlSeconds: this.heartbeatTtlSeconds,
         onlineCount: heartbeats.length,
@@ -135,24 +182,96 @@ export class WorkerObservabilityService {
     };
   }
 
-  private async getQueueCounts(): Promise<QueueCounts> {
-    const counts = await this.queue.getJobCounts(
-      'waiting',
-      'active',
-      'delayed',
-      'completed',
-      'failed',
-      'paused',
-    );
+  private async getQueueSnapshot<
+    TName extends
+      | typeof DOCUMENT_PROCESSING_QUEUE_NAME
+      | typeof OPERATOR_AUDIT_EXPORT_QUEUE
+      | typeof OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+  >(queue: Queue, name: TName) {
+    try {
+      const [counts, isPaused] = await Promise.all([
+        queue.getJobCounts(
+          'waiting',
+          'active',
+          'delayed',
+          'completed',
+          'failed',
+          'paused',
+        ),
+        queue.isPaused(),
+      ]);
+      const normalized: QueueCounts = {
+        waiting: counts.waiting ?? 0,
+        active: counts.active ?? 0,
+        delayed: counts.delayed ?? 0,
+        completed: counts.completed ?? 0,
+        failed: counts.failed ?? 0,
+        paused: counts.paused ?? 0,
+      };
+      return {
+        ok: true,
+        name,
+        counts: normalized,
+        isPaused,
+        hasBacklog:
+          normalized.waiting +
+            normalized.active +
+            normalized.delayed +
+            normalized.paused >
+          0,
+      };
+    } catch {
+      this.logger.warn(`Worker observability ${name} queue check failed.`);
+      return {
+        ok: false,
+        name,
+        counts: emptyQueueCounts(),
+        isPaused: false,
+        hasBacklog: false,
+      };
+    }
+  }
 
-    return {
-      waiting: counts.waiting ?? 0,
-      active: counts.active ?? 0,
-      delayed: counts.delayed ?? 0,
-      completed: counts.completed ?? 0,
-      failed: counts.failed ?? 0,
-      paused: counts.paused ?? 0,
-    };
+  private async getAuditMaintenance(): Promise<
+    WorkerObservabilitySummaryResponse['auditMaintenance']
+  > {
+    if (!this.maintenanceEnabled) {
+      return {
+        status: 'warn',
+        message: 'Audit maintenance is disabled.',
+        enabled: false,
+        lastSucceededAt: null,
+        overdue: false,
+      };
+    }
+    try {
+      const state = await this.prisma.operatorAuditMaintenanceState.findUnique({
+        where: { name: OPERATOR_AUDIT_MAINTENANCE_STATE },
+        select: { lastSucceededAt: true },
+      });
+      const last = state?.lastSucceededAt ?? null;
+      const overdue = !last || Date.now() - last.getTime() > 2 * 3_600_000;
+      return {
+        status: overdue ? 'fail' : 'pass',
+        message: overdue
+          ? 'Audit maintenance has not succeeded within two hours.'
+          : 'Audit maintenance is current.',
+        enabled: true,
+        lastSucceededAt: last?.toISOString() ?? null,
+        overdue,
+      };
+    } catch {
+      this.logger.warn(
+        'Worker observability audit maintenance state check failed.',
+      );
+      return {
+        status: 'fail',
+        message: 'Audit maintenance state is not readable.',
+        enabled: true,
+        lastSucceededAt: null,
+        overdue: true,
+      };
+    }
   }
 
   private async getHeartbeats(): Promise<WorkerHeartbeatResponse[]> {
@@ -167,12 +286,8 @@ export class WorkerObservabilityService {
         .filter(
           (heartbeat): heartbeat is WorkerHeartbeatResponse => !!heartbeat,
         );
-    } catch (error) {
-      this.logger.warn(
-        `Worker heartbeat read failed: ${
-          error instanceof Error ? error.message : 'unknown'
-        }`,
-      );
+    } catch {
+      this.logger.warn('Worker heartbeat read failed.');
       return [];
     }
   }
@@ -230,4 +345,34 @@ function sortHeartbeats(heartbeats: WorkerHeartbeatResponse[]) {
   return [...heartbeats].sort(
     (left, right) => Date.parse(right.lastSeenAt) - Date.parse(left.lastSeenAt),
   );
+}
+
+function emptyQueueCounts(): QueueCounts {
+  return {
+    waiting: 0,
+    active: 0,
+    delayed: 0,
+    completed: 0,
+    failed: 0,
+    paused: 0,
+  };
+}
+
+function publicQueueSnapshot<TName extends string>(snapshot: {
+  name: TName;
+  counts: QueueCounts;
+  isPaused: boolean;
+  hasBacklog: boolean;
+}): {
+  name: TName;
+  counts: QueueCounts;
+  isPaused: boolean;
+  hasBacklog: boolean;
+} {
+  return {
+    name: snapshot.name,
+    counts: snapshot.counts,
+    isPaused: snapshot.isPaused,
+    hasBacklog: snapshot.hasBacklog,
+  };
 }
