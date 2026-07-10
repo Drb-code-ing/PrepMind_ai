@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.22 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.23.1 审计保留周期与证据包导出设计已完成、实现尚未开始，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 ## 项目快照
 
@@ -70,6 +70,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
 | Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
 | Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
+| Phase 7.23.1 | 已完成 | Operator Audit 180 天保留周期、异步 ZIP 证据包、事务型 Outbox 与 fail-closed 下载审计设计 |
 
 ## 技术栈
 
@@ -258,7 +259,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测、Outbox Ops 后端脱敏排障与安全 requeue、Worker Readiness 部署前检查、Docker worker healthcheck、Docker Web / API / Worker 全栈 Compose 验收、OperatorGuard、OperatorAuditLog 审计地基、Operator Audit 脱敏查询/详情 API、管理员审计台、真实管理员/普通用户前后端验收、独立桌面端 Admin Console 第一版、Docker Admin Console service、控制台真实运维总览、审计详情双栏和后台操作筛选体验收口；后续异步任务可继续把 OCR、Embedding、PDF 解析、提醒调度等接入 BullMQ / outbox dispatcher / 事件总线。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测小闭环、Swagger / OpenAPI debug docs、核心写接口中文说明、API / worker 进程启动拆分、Worker Observability 健康摘要、Durable Outbox 持久事件地基、Outbox Dispatcher 最小消费闭环、worker-only 受控运行入口、Outbox Summary / Metrics 只读观测、Outbox Ops 后端脱敏排障与安全 requeue、Worker Readiness 部署前检查、Docker worker healthcheck、Docker Web / API / Worker 全栈 Compose 验收、OperatorGuard、OperatorAuditLog 审计地基、Operator Audit 脱敏查询/详情 API、管理员审计台、真实管理员/普通用户前后端验收、独立桌面端 Admin Console 第一版、Docker Admin Console service、控制台真实运维总览、审计详情双栏和后台操作筛选体验收口；Phase 7.23.1 已完成审计保留周期与证据包导出设计，但 contract、数据模型、Worker、维护任务、API 和 Admin UI 尚未实现。
 - 从 Phase 7.6 起，新建 docs / blogs / plans / specs 文件名优先使用语义化名称，不再加日期前缀；历史带日期文件暂不批量重命名，避免破坏已有引用。
 - 向量索引用 raw SQL 创建，Prisma 不直接支持向量索引。
 
@@ -266,4 +267,4 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7 后续：评估后台管理只读详情、导出策略、保留周期、更细 operator role，再继续更多后台任务生产化、worker metrics 细化和生产诊断边界收口。
+1. Phase 7.23：审阅已确认的保留周期与证据包导出 spec，编写 implementation plan 后按 7.23.2 ~ 7.23.8 分任务、分提交实现；完成后再继续更细 operator role、更多后台任务生产化、worker metrics 细化和生产诊断边界收口。
