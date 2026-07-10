@@ -10,6 +10,12 @@ interface ApiRequestOptions extends Omit<RequestInit, 'body' | 'method'> {
   body?: unknown;
 }
 
+export interface ApiDownloadResult {
+  blob: Blob;
+  fileName: string;
+  sha256: string | null;
+}
+
 interface ApiFailureBody {
   success: false;
   error: {
@@ -69,18 +75,42 @@ export function createApiClient({ baseUrl, fetchImpl = fetch }: CreateApiClientO
     const body = await parseJson(response);
 
     if (isApiSuccess<T>(body)) return body.data;
-    if (isApiFailure(body)) {
-      throw new ApiClientError(body.error.message, {
-        status: response.status,
-        code: body.error.code,
-        requestId: body.requestId,
+    throw toApiClientError(body, response.status);
+  }
+
+  async function download(
+    path: string,
+    options: Omit<ApiRequestOptions, 'body'> = {},
+  ): Promise<ApiDownloadResult> {
+    const headers = new Headers(options.headers);
+    if (options.accessToken) {
+      headers.set('authorization', `Bearer ${options.accessToken}`);
+    }
+
+    let response: Response;
+    try {
+      response = await fetchImpl(toUrl(baseUrl, path), {
+        ...options,
+        method: 'POST',
+        headers,
+        credentials: options.credentials ?? 'include',
+      });
+    } catch {
+      throw new ApiClientError('网络连接失败，请确认后端服务已启动', {
+        status: 0,
+        code: 'NETWORK_ERROR',
       });
     }
 
-    throw new ApiClientError('服务响应格式异常', {
-      status: response.status,
-      code: 'INVALID_API_RESPONSE',
-    });
+    if (!response.ok) {
+      throw toApiClientError(await parseJson(response), response.status);
+    }
+
+    return {
+      blob: await response.blob(),
+      fileName: parseAttachmentFileName(response.headers.get('content-disposition')),
+      sha256: response.headers.get('x-content-sha256'),
+    };
   }
 
   return {
@@ -90,13 +120,15 @@ export function createApiClient({ baseUrl, fetchImpl = fetch }: CreateApiClientO
     patch: <T>(path: string, body?: unknown, options?: ApiRequestOptions) =>
       request<T>('PATCH', path, { ...options, body }),
     delete: <T>(path: string, options?: ApiRequestOptions) => request<T>('DELETE', path, options),
+    download,
   };
 }
 
 export function resolveApiClientBaseUrl(
   env: NodeJS.ProcessEnv = process.env,
-  location: Pick<Location, 'hostname'> | URL | undefined =
-    typeof window === 'undefined' ? undefined : window.location,
+  location: Pick<Location, 'hostname'> | URL | undefined = typeof window === 'undefined'
+    ? undefined
+    : window.location,
 ) {
   const baseUrl =
     env.PREPMIND_INTERNAL_API_BASE_URL ?? env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
@@ -104,7 +136,10 @@ export function resolveApiClientBaseUrl(
   return alignLoopbackHost(baseUrl, location);
 }
 
-function alignLoopbackHost(baseUrl: string, location: Pick<Location, 'hostname'> | URL | undefined) {
+function alignLoopbackHost(
+  baseUrl: string,
+  location: Pick<Location, 'hostname'> | URL | undefined,
+) {
   if (!location || !isLoopbackHost(location.hostname)) return baseUrl;
 
   try {
@@ -145,6 +180,31 @@ function isApiFailure(body: unknown): body is ApiFailureBody {
     typeof body.error.code === 'string' &&
     typeof body.error.message === 'string'
   );
+}
+
+export function toApiClientError(body: unknown, status: number) {
+  if (isApiFailure(body)) {
+    return new ApiClientError(body.error.message, {
+      status,
+      code: body.error.code,
+      requestId: body.requestId,
+    });
+  }
+
+  return new ApiClientError('服务响应格式异常', {
+    status,
+    code: 'INVALID_API_RESPONSE',
+  });
+}
+
+export function parseAttachmentFileName(contentDisposition: string | null) {
+  const fallback = 'prepmind-operator-audit-export.zip';
+  if (!contentDisposition) return fallback;
+
+  const match = /(?:^|;)\s*filename\s*=\s*"?([^";]+)"?(?:;|$)/i.exec(contentDisposition);
+  const candidate = match?.[1]?.trim();
+  if (!candidate || !/^[A-Za-z0-9._-]+$/.test(candidate)) return fallback;
+  return candidate;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

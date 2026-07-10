@@ -8,6 +8,8 @@ export type OperatorAuditTone = 'success' | 'danger';
 
 export function getOperatorAuditActionLabel(action: OperatorAuditAction) {
   if (action === 'OUTBOX_REQUEUE') return 'Outbox 重新入队';
+  if (action === 'AUDIT_EXPORT_REQUEST') return '申请审计证据包';
+  if (action === 'AUDIT_EXPORT_DOWNLOAD') return '下载审计证据包';
   return action;
 }
 
@@ -22,10 +24,10 @@ export function getOperatorAuditStatusTone(status: OperatorAuditStatus): Operato
 export function hasOperatorAuditFilters(query: Partial<OperatorAuditLogListQuery>) {
   return Boolean(
     query.action ||
-      query.status ||
-      query.targetType?.trim() ||
-      query.targetId?.trim() ||
-      query.actorUserId?.trim(),
+    query.status ||
+    query.targetType?.trim() ||
+    query.targetId?.trim() ||
+    query.actorUserId?.trim(),
   );
 }
 

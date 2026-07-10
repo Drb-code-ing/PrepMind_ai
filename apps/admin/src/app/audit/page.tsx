@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { OperatorAuditStatus } from '@repo/types/api/operator-audit';
+import type { OperatorAuditAction, OperatorAuditStatus } from '@repo/types/api/operator-audit';
 
 import { AdminAuthGate } from '@/components/admin-auth-gate';
 import { AdminFilterSelect } from '@/components/admin-filter-select';
 import { AdminShell } from '@/components/admin-shell';
+import { OperatorAuditExportPanel } from '@/components/operator-audit-export-panel';
+import { AuditWorkspaceTabs } from '@/components/operator-audit-workspace';
 import { operatorAuditApi } from '@/lib/operator-audit-api';
 import {
   formatOperatorAuditTime,
@@ -17,18 +19,46 @@ import {
 } from '@/lib/operator-audit-view';
 import { useAdminSessionStore } from '@/stores/admin-session-store';
 
-const statusOptions: Array<'ALL' | OperatorAuditStatus> = ['ALL', 'SUCCEEDED', 'FAILED'];
+export type AuditFilterState = {
+  action: OperatorAuditAction | 'ALL';
+  status: OperatorAuditStatus | 'ALL';
+  targetType: string;
+  targetId: string;
+  actorUserId: string;
+};
 
-const auditStatusOptions = statusOptions.map((status) => ({
-  value: status,
-  label: status === 'ALL' ? '全部' : getOperatorAuditStatusLabel(status),
-  description:
-    status === 'FAILED'
-      ? '需要复盘的操作'
-      : status === 'SUCCEEDED'
-        ? '已完成的操作'
-        : '查看全部结果',
-}));
+const auditActionOptions: Array<{
+  value: AuditFilterState['action'];
+  label: string;
+  description: string;
+}> = [
+  { value: 'ALL', label: '全部操作', description: '不限制审计动作' },
+  {
+    value: 'OUTBOX_REQUEUE',
+    label: getOperatorAuditActionLabel('OUTBOX_REQUEUE'),
+    description: 'Outbox 事件人工重新入队',
+  },
+  {
+    value: 'AUDIT_EXPORT_REQUEST',
+    label: getOperatorAuditActionLabel('AUDIT_EXPORT_REQUEST'),
+    description: '证据包申请留痕',
+  },
+  {
+    value: 'AUDIT_EXPORT_DOWNLOAD',
+    label: getOperatorAuditActionLabel('AUDIT_EXPORT_DOWNLOAD'),
+    description: '证据包下载授权留痕',
+  },
+];
+
+const auditStatusOptions: Array<{
+  value: AuditFilterState['status'];
+  label: string;
+  description: string;
+}> = [
+  { value: 'ALL', label: '全部结果', description: '查看成功与失败' },
+  { value: 'SUCCEEDED', label: '成功', description: '已授权或已完成的操作' },
+  { value: 'FAILED', label: '失败', description: '需要复盘的操作' },
+];
 
 const toneClasses = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -36,31 +66,46 @@ const toneClasses = {
 } as const;
 
 export default function AdminAuditPage() {
+  const [filters, setFilters] = useState<AuditFilterState>({
+    action: 'OUTBOX_REQUEUE',
+    status: 'ALL',
+    targetType: 'OutboxEvent',
+    targetId: '',
+    actorUserId: '',
+  });
   return (
     <AdminAuthGate>
       <AdminShell
         title="操作审计"
-        description="查看管理员诊断写操作的脱敏审计记录，重点追踪 Outbox requeue 的成功、失败和原因。"
+        description="查询管理员操作留痕，并按同一组脱敏筛选条件申请审计证据包。"
       >
-        <OperatorAuditPanel />
+        <AuditWorkspaceTabs
+          records={<OperatorAuditPanel filters={filters} onFiltersChange={setFilters} />}
+          exports={
+            <OperatorAuditExportPanel key={JSON.stringify(filters)} defaultFilters={filters} />
+          }
+        />
       </AdminShell>
     </AdminAuthGate>
   );
 }
 
-function OperatorAuditPanel() {
+function OperatorAuditPanel({
+  filters,
+  onFiltersChange,
+}: {
+  filters: AuditFilterState;
+  onFiltersChange: (filters: AuditFilterState) => void;
+}) {
   const accessToken = useAdminSessionStore((state) => state.accessToken);
-  const [status, setStatus] = useState<'ALL' | OperatorAuditStatus>('ALL');
-  const [targetId, setTargetId] = useState('');
-  const [actorUserId, setActorUserId] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const query = {
-    action: 'OUTBOX_REQUEUE' as const,
-    status: status === 'ALL' ? undefined : status,
-    targetType: 'OutboxEvent',
-    targetId: targetId.trim() || undefined,
-    actorUserId: actorUserId.trim() || undefined,
+    action: filters.action === 'ALL' ? undefined : filters.action,
+    status: filters.status === 'ALL' ? undefined : filters.status,
+    targetType: filters.targetType.trim() || undefined,
+    targetId: filters.targetId.trim() || undefined,
+    actorUserId: filters.actorUserId.trim() || undefined,
     limit: 40,
   };
 
@@ -72,7 +117,7 @@ function OperatorAuditPanel() {
 
   const items = logsQuery.data?.items ?? [];
   const selectedFromList = selectedId
-    ? items.find((item) => item.id === selectedId) ?? null
+    ? (items.find((item) => item.id === selectedId) ?? null)
     : null;
   const detailQuery = useQuery({
     queryKey: ['operator-audit-log-detail', selectedId, accessToken],
@@ -81,41 +126,46 @@ function OperatorAuditPanel() {
   });
   const detail = detailQuery.data ?? selectedFromList;
 
-  return (
-    <div className="grid gap-5 lg:h-[calc(100dvh-9rem)] lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_25rem]">
-      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
-        <div className="shrink-0 grid grid-cols-[12rem_1fr_1fr_auto] gap-3 border-b border-[var(--admin-line)] p-4">
-          <AdminFilterSelect
-            label="状态"
-            value={status}
-            options={auditStatusOptions}
-            onChange={(nextStatus) => {
-              setStatus(nextStatus);
-              setSelectedId(null);
-            }}
-          />
+  function updateFilters(patch: Partial<AuditFilterState>) {
+    onFiltersChange({ ...filters, ...patch });
+    setSelectedId(null);
+  }
 
+  return (
+    <div className="grid h-[calc(100dvh-12.5rem)] min-h-[34rem] grid-cols-[minmax(20rem,1fr)_20rem] gap-4">
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
+        <div className="grid shrink-0 grid-cols-2 gap-3 border-b border-[var(--admin-line)] p-4 xl:grid-cols-[minmax(10rem,0.8fr)_minmax(9rem,0.7fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_auto]">
+          <AdminFilterSelect
+            label="操作类型"
+            value={filters.action}
+            options={auditActionOptions}
+            onChange={(action) => updateFilters({ action })}
+          />
+          <AdminFilterSelect
+            label="结果"
+            value={filters.status}
+            options={auditStatusOptions}
+            onChange={(status) => updateFilters({ status })}
+          />
           <TextFilter
-            label="Outbox Event ID"
-            value={targetId}
-            onChange={(value) => {
-              setTargetId(value);
-              setSelectedId(null);
-            }}
+            label="Target Type"
+            value={filters.targetType}
+            onChange={(targetType) => updateFilters({ targetType })}
+          />
+          <TextFilter
+            label="Target / Event ID"
+            value={filters.targetId}
+            onChange={(targetId) => updateFilters({ targetId })}
           />
           <TextFilter
             label="Actor User ID"
-            value={actorUserId}
-            onChange={(value) => {
-              setActorUserId(value);
-              setSelectedId(null);
-            }}
+            value={filters.actorUserId}
+            onChange={(actorUserId) => updateFilters({ actorUserId })}
           />
-
           <button
             type="button"
             onClick={() => logsQuery.refetch()}
-            className="mt-7 h-10 rounded-md bg-[var(--admin-ink)] px-4 text-sm font-semibold text-white"
+            className="mt-7 h-10 rounded-md bg-[var(--admin-ink)] px-4 text-sm font-semibold text-white xl:col-auto"
           >
             刷新
           </button>
@@ -127,9 +177,7 @@ function OperatorAuditPanel() {
           {!logsQuery.isLoading && !logsQuery.isError && items.length === 0 ? (
             <EmptyRow
               text={
-                hasOperatorAuditFilters(query)
-                  ? '当前筛选下没有审计记录。'
-                  : '还没有管理员诊断写操作。'
+                hasOperatorAuditFilters(query) ? '当前筛选下没有审计记录。' : '还没有审计记录。'
               }
             />
           ) : null}
@@ -142,7 +190,7 @@ function OperatorAuditPanel() {
                 aria-pressed={selectedId === item.id}
                 onClick={() => setSelectedId(item.id)}
                 className={[
-                  'relative grid w-full grid-cols-[9rem_minmax(0,1fr)_11rem] gap-4 px-4 py-3 text-left transition hover:bg-slate-50',
+                  'relative grid w-full grid-cols-[7rem_minmax(0,1fr)] gap-3 px-4 py-3 text-left transition hover:bg-slate-50',
                   selectedId === item.id ? 'bg-slate-50' : '',
                 ].join(' ')}
               >
@@ -165,21 +213,17 @@ function OperatorAuditPanel() {
                   <span className="block font-semibold">
                     {getOperatorAuditActionLabel(item.action)}
                   </span>
-                  <span className="mt-1 block truncate text-xs text-[var(--admin-muted)]">
-                    target: {item.targetType} / {item.targetId ?? '-'}
+                  <span className="mt-1 block break-all text-xs text-[var(--admin-muted)]">
+                    {item.targetType} / {item.targetId ?? '-'}
                   </span>
-                  <span className="mt-1 block truncate text-xs text-[var(--admin-muted)]">
-                    reason: {item.reason ?? '-'}
+                  <span className="mt-1 block text-xs text-[var(--admin-muted)]">
+                    {formatOperatorAuditTime(item.createdAt)} · actor {item.actorUserId ?? '-'}
                   </span>
-                  {item.errorPreview ? (
-                    <span className="mt-2 block break-all rounded-md bg-red-50 p-2 font-mono text-xs text-red-700">
-                      {item.errorPreview}
+                  {item.reason ? (
+                    <span className="mt-1 block text-xs text-[var(--admin-muted)]">
+                      原因：{item.reason}
                     </span>
                   ) : null}
-                </span>
-                <span className="text-right text-xs text-[var(--admin-muted)]">
-                  <span className="block">{formatOperatorAuditTime(item.createdAt)}</span>
-                  <span className="mt-1 block truncate">actor: {item.actorUserId ?? '-'}</span>
                 </span>
               </button>
             );
@@ -187,7 +231,7 @@ function OperatorAuditPanel() {
         </div>
       </section>
 
-      <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
+      <aside className="flex min-h-0 w-80 flex-col overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white shadow-sm">
         <div className="shrink-0 border-b border-[var(--admin-line)] p-5">
           <h3 className="text-lg font-semibold">审计详情</h3>
         </div>
@@ -210,19 +254,16 @@ function OperatorAuditPanel() {
               <KeyValue label="操作原因" value={detail.reason} />
               <KeyValue label="创建时间" value={formatOperatorAuditTime(detail.createdAt)} />
             </DetailSection>
-
             <DetailSection title="目标对象">
               <KeyValue label="Target Type" value={detail.targetType} />
               <KeyValue label="Target ID" value={detail.targetId} />
             </DetailSection>
-
             <DetailSection title="来源指纹">
               <KeyValue label="Actor User ID" value={detail.actorUserId} />
               <KeyValue label="Request ID" value={detail.requestId} />
               <KeyValue label="IP Hash" value={detail.ipAddressHash} />
               <KeyValue label="User-Agent Hash" value={detail.userAgentHash} />
             </DetailSection>
-
             <DetailSection title="错误摘要">
               {detail.errorCode || detail.errorPreview ? (
                 <>
