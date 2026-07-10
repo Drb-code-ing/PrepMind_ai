@@ -1,4 +1,5 @@
 import {
+  createOutboxHandlers,
   OutboxHandlerError,
   handleKnowledgeDocumentProcessingRequested,
   outboxHandlers,
@@ -10,6 +11,17 @@ describe('outbox handlers', () => {
     expect(outboxHandlers['knowledge.document.processing.requested']).toBe(
       handleKnowledgeDocumentProcessingRequested,
     );
+  });
+
+  it('composes the existing knowledge handler with the export delivery handler', () => {
+    const exportHandler = jest.fn().mockResolvedValue(undefined);
+    const handlers = createOutboxHandlers(exportHandler);
+
+    expect(handlers).toEqual({
+      'knowledge.document.processing.requested':
+        handleKnowledgeDocumentProcessingRequested,
+      'operator.audit.export.requested': exportHandler,
+    });
   });
 
   it('accepts a safe knowledge requested payload', async () => {

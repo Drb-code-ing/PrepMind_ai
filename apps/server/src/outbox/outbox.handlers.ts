@@ -1,3 +1,5 @@
+import { OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT } from '../operator-audit-exports/operator-audit-export.constants';
+
 export type OutboxEventLike = {
   id: string;
   type: string;
@@ -25,6 +27,16 @@ export const outboxHandlers: Record<string, OutboxEventHandler> = {
   'knowledge.document.processing.requested':
     handleKnowledgeDocumentProcessingRequested,
 };
+
+export function createOutboxHandlers(
+  operatorAuditExportRequestedHandler: OutboxEventHandler,
+): Record<string, OutboxEventHandler> {
+  return {
+    ...outboxHandlers,
+    [OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT]:
+      operatorAuditExportRequestedHandler,
+  };
+}
 
 export async function handleKnowledgeDocumentProcessingRequested(
   event: OutboxEventLike,
