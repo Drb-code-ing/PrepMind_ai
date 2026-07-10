@@ -481,12 +481,13 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 ### Phase 7.23 — Operator Audit 保留周期与证据包导出（设计已完成，实现待开始）
 
 - Phase 7.23.1 已完成正式设计：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
+- Phase 7.23.2 ~ 7.23.8 已完成可执行计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`；每阶段从最新 `main` 独立开分支，完成一个实现提交、文档同步、分支验收、合并和主分支复验。
 - 默认保留 `OperatorAuditLog` 180 天；证据包定位为事故排障交接，最多覆盖 31 天和 50,000 条脱敏记录。
 - 采用 `OperatorAuditExport + BackgroundJob + OutboxEvent` 三层事实，导出申请在同一 PostgreSQL 事务内落库，由 Outbox Dispatcher 可靠投递 BullMQ。
 - ZIP 包含 `records.csv` 与 `manifest.json`，保存 CSV / archive SHA-256，MinIO 文件 24 小时后自动删除。
 - 导出申请和下载采用 fail-closed audit；CSV 必须防 formula injection，下载不暴露 MinIO object key。
 - 维护任务使用活跃导出水位保护临近 180 天边界的数据，并分批清理到期对象、历史审计和导出元数据。
-- 后续按 Phase 7.23.2 ~ 7.23.8 分别完成 contract/schema、事务型 Outbox、Worker、维护任务、API、Admin UI 和 Docker 验收/博客。
+- 后续按已确认计划依次完成 Phase 7.23.2 contract/schema、7.23.3 事务型 Outbox、7.23.4 Worker、7.23.5 维护任务、7.23.6 API、7.23.7 Admin UI 和 7.23.8 Docker 验收/博客；当前没有交付运行能力。
 
 ### Phase 7 后续方向
 

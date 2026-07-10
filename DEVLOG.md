@@ -6,7 +6,7 @@
 
 更新时间：2026-07-10
 
-当前阶段：Phase 7.23.1 审计保留周期与证据包导出设计已完成，尚未进入实现。
+当前阶段：Phase 7.23.1 设计与 Phase 7.23.2 ~ 7.23.8 实施计划已完成，运行能力尚未开始实现。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -55,6 +55,36 @@
 | Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23 实施计划就绪
+
+目标：把已审阅通过的审计保留与证据包设计拆成能够逐阶段 TDD、独立提交、合入 `main` 并再次验收的实施路线，避免把事务、Worker、维护任务、下载安全和 Admin UI 一次性堆进不可审查的大提交。
+
+为什么：
+- 这条链路跨 PostgreSQL、Outbox、Redis/BullMQ、MinIO、二进制 HTTP 和 Admin Console；只写功能清单无法约束双写窗口、僵尸 Worker、保留清理竞态和 fail-closed 审计。
+- 仓库要求一步一提交、任务后同步文档、合并 `main` 后复验，而且新任务必须从最新 `main` 开分支；计划需要把这些要求变成每阶段的执行门禁。
+- 设计中有 31 天、50,000 条、64 MiB、24/48 小时、180 天等相互关联的边界，必须提前固定类型名、队列名、测试命令和预期结果，避免实现时各模块自行解释。
+
+主要内容：
+- 正式计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`。
+- Phase 7.23.2 ~ 7.23.8 分别覆盖 contract/Prisma、事务型 Outbox、ZIP Worker、保留维护、查询下载 API、Admin 证据包 UI、Docker 验收与面试博客。
+- 每个阶段使用独立 `codex/phase-7-23-*` 分支和一个实现提交；阶段验收后 `--no-ff` 合入 `main`，在 `main` 重跑同一验证门禁后才能开下一分支。
+- 计划写明 RED/GREEN 命令、关键签名、数据库约束、BullMQ 5.79.2 delayed 行为验证、CSV 公式注入样本、MinIO lifecycle、二进制 envelope 旁路和普通用户 403 验收。
+
+边界：
+- 本次只新增实施计划和进度索引，没有修改 Prisma、API、Worker、MinIO、Admin UI 或运行时配置。
+- Phase 7.23.2 仍未开始，当前项目不具备证据包申请、生成、下载或自动保留清理能力。
+- 计划不改变现有 Outbox requeue 的 best-effort 审计，也不加入 legal hold、预签名下载、数字签名或全库导出。
+
+验收：
+- 已从最新 `main` 创建独立计划分支；计划包含 writing-plans 要求的 agentic-worker 说明、checkbox 步骤、精确路径、TDD 失败/通过预期和逐任务提交。
+- 已按设计逐项覆盖三份事实、SYSTEM job、事务型 Outbox、lease/token fencing、REPEATABLE READ、保留水位、fail-closed 下载、Admin Blob 下载和 Docker 主分支复验。
+- 已执行占位词、类型/名称一致性、路径引用和 `git diff --check` 自审；实现阶段仍必须以每个任务的新鲜测试输出为准。
+
+回顾时可以问：
+- “为什么 Phase 7.23 要拆成 7 个从 `main` 开始的阶段，而不是一个长期功能分支？”
+- “计划如何把双写、僵尸 Worker、保留清理和二进制下载分别放进可验证的任务？”
+- “实现时为什么每次合并 `main` 后还要重复验收？”
 
 ### 2026-07-10 - Phase 7.23.1 Operator Audit 保留周期与证据包导出设计
 
