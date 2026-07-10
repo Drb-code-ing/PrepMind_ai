@@ -478,9 +478,19 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 - 验收后清理临时 OutboxEvent、OperatorAuditLog、RefreshToken 和测试账号，容器内 `worker-readiness` CLI 恢复 `ready`，避免测试数据长期污染本地环境。
 - 新增 Admin Console `favicon.svg` 和 `metadata.icons`，减少后台浏览器调试时的 favicon 404 噪声。
 
+### Phase 7.23 — Operator Audit 保留周期与证据包导出（设计已完成，实现待开始）
+
+- Phase 7.23.1 已完成正式设计：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
+- 默认保留 `OperatorAuditLog` 180 天；证据包定位为事故排障交接，最多覆盖 31 天和 50,000 条脱敏记录。
+- 采用 `OperatorAuditExport + BackgroundJob + OutboxEvent` 三层事实，导出申请在同一 PostgreSQL 事务内落库，由 Outbox Dispatcher 可靠投递 BullMQ。
+- ZIP 包含 `records.csv` 与 `manifest.json`，保存 CSV / archive SHA-256，MinIO 文件 24 小时后自动删除。
+- 导出申请和下载采用 fail-closed audit；CSV 必须防 formula injection，下载不暴露 MinIO object key。
+- 维护任务使用活跃导出水位保护临近 180 天边界的数据，并分批清理到期对象、历史审计和导出元数据。
+- 后续按 Phase 7.23.2 ~ 7.23.8 分别完成 contract/schema、事务型 Outbox、Worker、维护任务、API、Admin UI 和 Docker 验收/博客。
+
 ### Phase 7 后续方向
 
-- 后台管理产品化边界：评估是否需要审计导出策略、保留周期、更细 operator role 和更多运维页面。
+- 后台管理产品化边界：先按 Phase 7.23 设计实现审计保留周期与证据包导出，再评估更细 operator role 和更多运维页面。
 - 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度等。
 - Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标、队列延迟和告警阈值。
 - Outbox 生产化：更多业务事件接入、dead-letter 修复工作流、生产开关流程和审计查询体验。

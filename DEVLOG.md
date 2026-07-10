@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-09
+更新时间：2026-07-10
 
-当前阶段：Phase 7.22 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.23.1 审计保留周期与证据包导出设计已完成，尚未进入实现。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -52,8 +52,48 @@
 | Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
 | Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
 | Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
+| Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23.1 Operator Audit 保留周期与证据包导出设计
+
+目标：为现有 `OperatorAuditLog` 补上明确的 180 天保留边界，并设计一条 ADMIN 可控、脱敏、可校验、24 小时过期的事故证据包导出链路。
+
+为什么：
+- 审计日志如果没有保留周期会持续增长，也无法解释数据为什么仍被保存。
+- 当前 Admin Console 只能在线查看审计记录，事故复盘时缺少安全交接方式；数据库裸导出会绕过 DTO 脱敏边界。
+- BackgroundJob 只能证明数据库里存在任务，不能消除 PostgreSQL commit 成功但 Redis enqueue 失败的双写窗口。
+- 导出文件本身也是敏感数据，必须有独立 TTL、下载审计和自动清理，不能把 MinIO 临时目录当长期档案库。
+
+主要内容：
+- 明确第一版定位为事故排障证据包，不做通用 BI、legal hold、WORM、数字签名或长期合规归档。
+- 默认保留 `OperatorAuditLog` 180 天；证据包最多覆盖 31 天、50,000 条记录，ZIP 在 MinIO 保留 24 小时。
+- 设计 `OperatorAuditExport` 领域模型，和 `BackgroundJob`、`OutboxEvent` 分别承担导出事实、执行事实和可靠投递事实。
+- 导出申请在同一 PostgreSQL 事务内创建 Export、BackgroundJob、OutboxEvent 和 `AUDIT_EXPORT_REQUEST` 审计；Outbox Dispatcher 是 BullMQ enqueue 的唯一桥接入口。
+- `BackgroundJob` 设计增加 `ACCOUNT / SYSTEM` scope 与 nullable user 关系，避免请求人删除时级联破坏系统级导出任务；Worker 使用 processing token + lease 恢复硬崩溃后的 stalled attempt。
+- ZIP 固定包含脱敏 `records.csv` 与 `manifest.json`，提供 CSV / archive SHA-256；CSV 需要防 formula injection，SHA-256 不宣传成数字签名。
+- 导出申请和下载使用 fail-closed audit；现有 Outbox requeue audit 继续保持 best-effort，不被本阶段意外改变。
+- 维护任务使用活跃导出水位保护 180 天边界数据，分批清理到期 ZIP、历史审计和导出元数据。
+- 导出申请与 retention batch 共享 PostgreSQL advisory lock，查询使用 REPEATABLE READ；MinIO prefix lifecycle、crash janitor 和持久 maintenance state 补齐物理清理与 readiness 兜底。
+- Admin Console `/audit` 规划“审计记录 / 证据包”标签页；实现拆为 Phase 7.23.2 ~ 7.23.8，每项单独提交并同步文档。
+
+边界：
+- 本提交只落设计，不修改 Prisma、contract、API、Worker、MinIO、Admin UI 或运行时配置。
+- 不导出 `metadata`、Outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。
+- 不提供全库导出、手动延期、恢复过期文件、删除审计记录、编辑 payload 或绕过 OperatorGuard 的入口。
+
+验收：
+- 开始新任务前先把 Phase 7.17 ~ 7.22 合入 `main`；合并后复验发现 5 处 Prettier 问题，修复提交后定向 Server lint 与 107 项相关测试通过，Web 294 项和 Admin 33 项测试、相关 build/typecheck/Compose config 也通过。
+- 设计按“背景 / 目标 / 非目标 / 数据模型 / 事务型 Outbox / Worker / 保留清理 / API / Admin / 测试 / 验收 / 实施拆分”完整记录。
+- 正式 spec：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
+
+回顾时可以问：
+- “为什么 BackgroundJob、OperatorAuditExport 和 OutboxEvent 不能互相替代？”
+- “当前知识库 requested outbox 为什么不能防止 BullMQ enqueue 丢失？”
+- “为什么审计导出要 fail-closed，而 Outbox requeue audit 仍然 best-effort？”
+- “维护任务如何避免删掉仍被活跃导出需要的 180 天边界数据？”
+- “CSV formula injection 和 SHA-256 的能力边界分别是什么？”
 
 ### 2026-07-09 - Phase 7.22 Docker Admin Ops 真实验收收口
 

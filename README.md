@@ -195,7 +195,7 @@ bun --cwd packages/fsrs test
 
 下一步主线：
 
-1. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
+1. Phase 7.23：按已确认的 [Operator Audit 保留周期与证据包导出设计](./docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md) 分阶段实现 contract、事务型 Outbox、导出 Worker、维护任务、API、Admin UI 和 Docker 验收；当前只完成设计，尚未交付运行能力。
 2. Agent 架构优化：按 [Agent Architecture Optimization Implementation Plan](./docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md) 补齐状态压缩、工具可靠性、RAG 冲突处理和 Reflexion 验收。
 
 ## 文档入口
