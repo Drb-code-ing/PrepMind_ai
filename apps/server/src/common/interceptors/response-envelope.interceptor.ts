@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  StreamableFile,
 } from '@nestjs/common';
 import { map, Observable } from 'rxjs';
 
@@ -16,11 +17,15 @@ export class ResponseEnvelopeInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<RequestWithId>();
 
     return next.handle().pipe(
-      map((data: unknown) => ({
-        success: true,
-        data,
-        requestId: request.requestId ?? 'unknown',
-      })),
+      map((data: unknown) => {
+        if (data instanceof StreamableFile) return data;
+
+        return {
+          success: true,
+          data,
+          requestId: request.requestId ?? 'unknown',
+        };
+      }),
     );
   }
 }

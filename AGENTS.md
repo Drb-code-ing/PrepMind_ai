@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.23.5 审计保留维护、过期对象清理、僵尸任务修复、crash janitor 与三队列 readiness 已完成；查询/下载 API、证据包 Admin UI 和 Docker 真实运行验收尚未实现，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，当前 Phase 7.23.6 审计证据包系统级查询、详情与 fail-closed ZIP 下载 API 已完成；证据包 Admin UI 和 Docker 真实运行验收尚未实现，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 ## 项目快照
 
@@ -75,7 +75,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 7.23.3 | 已完成 | Serializable 导出申请事务、strict audit、Outbox-only BullMQ 投递 |
 | Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、formula-safe CSV、REPEATABLE READ 快照、lease/CAS fencing、attempt-fenced MinIO |
 | Phase 7.23.5 | 已完成 | 小时级保留维护、24h 逻辑过期、180 天 active-export 水位、stale repair、crash janitor、三队列 readiness |
-| Phase 7.23.6 ~ 7.23.8 | 已计划 | 查询/下载 API、Admin UI、Docker 验收与面试博客 |
+| Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、fail-closed 审计 ZIP 下载 |
+| Phase 7.23.7 ~ 7.23.8 | 已计划 | 证据包 Admin UI、Docker 验收与面试博客 |
 
 ## 技术栈
 
@@ -170,6 +171,8 @@ DATABASE_URL=postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
 ```
 
 env 文件均被 git 忽略，不提交密钥。
+
+- Phase 7.23.6 起 `GET /operator-audit-exports` 与 `GET /operator-audit-exports/:id` 提供系统级 ADMIN 可见的证据包列表/详情，不按当前管理员过滤 requester；列表按 `createdAt desc, id desc` 使用复合稳定游标，并以每响应一次 `clock_timestamp()` 判断 `canDownload`。显式 mapper 与 shared strict response schema 保证 `objectKey`、`requestHash`、`processingToken`、`leaseExpiresAt`、payload、metadata、secret、token、cookie 等内部字段不会进入 DTO。`POST /operator-audit-exports/:id/download` 不使用 presigned URL；服务端生成安全文件名，返回 `application/zip`、`Cache-Control: no-store, private`、`Content-Disposition`、`Content-Length` 与 `X-Content-SHA256`，`StreamableFile` 是全局 JSON envelope 的明确例外。下载顺序固定为读取 export/数据库时间、打开 MinIO 流、核对 DB archiveSize 为正数且不超过配置上限并与 MinIO stat size 完全一致、strict 写入 `AUDIT_EXPORT_DOWNLOAD`、再返回流；size 不匹配或 strict 审计失败都会销毁已打开流，confirmed missing 才以 CAS 把 READY 标为 `FAILED/EXPORT_FILE_MISSING`。strict audit 失败、size mismatch 与 missing CAS 持久化失败只记录不含 raw error/objectKey/size 的固定 warning。成功下载审计只表示服务端已授权并准备流，不保证浏览器已经持久化全部字节。production gates 继续默认关闭。
 
 ## 模块边界
 
@@ -267,7 +270,7 @@ mcp -> ai, fsrs, rag, types
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
-- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测、Swagger、API/worker 拆分、Worker Observability、Durable Outbox、Outbox Ops、Worker Readiness、Docker 全栈、Operator Audit 和独立 Admin Console；Phase 7.23.5 已完成导出 contract/持久化地基、SYSTEM job、HMAC 来源指纹、事务型申请、Outbox-only 可靠投递、fenced ZIP Worker、保留维护、stale repair、crash janitor 与三队列 readiness，目前仅余 Phase 7.23.6+ 查询/下载 API、证据包 Admin UI 和真实 Docker 验收。
+- Phase 7 已落地知识库文档处理队列地基、RAG SafetyGuard、事件可观测、Swagger、API/worker 拆分、Worker Observability、Durable Outbox、Outbox Ops、Worker Readiness、Docker 全栈、Operator Audit 和独立 Admin Console；Phase 7.23.6 已完成导出 contract/持久化地基、SYSTEM job、HMAC 来源指纹、事务型申请、Outbox-only 可靠投递、fenced ZIP Worker、保留维护、stale repair、crash janitor、三队列 readiness，以及系统级查询/详情与 fail-closed 下载 API，目前仅余 Phase 7.23.7+ 证据包 Admin UI 和真实 Docker 验收。
 - Phase 7.23.4 的为什么 / 怎么做：BullMQ lock 只能约束 Redis delivery，不能阻止失去 lock/lease 的旧进程继续执行 PostgreSQL 或 MinIO 副作用；因此 Worker 对 Export 与 linked SYSTEM BackgroundJob 使用同一事务的 token CAS，上传对象也把 token 编入 attempt key，最终只由数据库当前 token 选择 object key。审计查询在只读 REPEATABLE READ 快照内先 count 再按复合 keyset 流式导出；CSV 先脱敏、在清理控制字符前检测公式前缀，再由成熟 CSV/ZIP 库完成 quoting 与归档。live lease 使用 `DelayedError` 延迟而不消耗失败 attempt，本地明文与未被选择的 attempt object 都在 best-effort cleanup 中收口。
 - 回顾时可以问：“processing token 如何阻止失去 lease 的旧 Worker 覆盖新证据包？”
 - Phase 7.23.3 的为什么 / 怎么做：若 API 同时 commit PostgreSQL 再直接 enqueue Redis，任一侧失败都会留下不可恢复的双写窗口；因此申请只在一个 Serializable 事务内写四份 PostgreSQL facts，Outbox Dispatcher 再以确定性 Bull job id 跨到 Redis。request audit fail-closed/strict，Outbox requeue audit 仍 best-effort。真实 PostgreSQL e2e 使用 blocker transaction 和 `pg_locks/pg_stat_activity` 条件轮询，覆盖同 hash 去重、不同请求双成功、只剩一个 active slot 时恰好一成一拒；三场景均实际捕获 Prisma P2034 且 bounded retry 后 facts/配额正确，无任意长 sleep。
@@ -279,4 +282,5 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 7.23.6：从最新 `main` 独立实现 list/detail/download API 与 fail-closed 下载审计；之后按 7.23.7 ~ 7.23.8 完成证据包 Admin UI 和 Docker 真实验收/面试博客。
+1. Phase 7.23.7：从最新 `main` 独立实现证据包 Admin UI；之后按 Phase 7.23.8 完成 Docker 真实验收与面试博客。
+2. 回顾时可以问：为什么下载必须在打开对象流之后、返回字节之前 fail-closed 写审计？

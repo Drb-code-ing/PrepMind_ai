@@ -2,30 +2,43 @@ import {
   Body,
   CanActivate,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Injectable,
   NotFoundException,
+  Param,
   Post,
+  Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiAcceptedResponse,
   ApiBadRequestResponse,
+  ApiBadGatewayResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConflictResponse,
+  ApiGoneResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
+  ApiProduces,
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiTooManyRequestsResponse,
 } from '@nestjs/swagger';
 import {
   operatorAuditExportCreateRequestSchema,
+  operatorAuditExportListQuerySchema,
   type OperatorAuditExportDetailResponse,
+  type OperatorAuditExportListResponse,
 } from '@repo/types/api/operator-audit-export';
+import type { Response } from 'express';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OperatorGuard } from '../auth/operator.guard';
@@ -38,6 +51,8 @@ import type { RequestWithId } from '../common/middleware/request-id.middleware';
 import type { ServerEnv } from '../config/env';
 import { OperatorAuditEnabledGuard } from '../operator-audit/operator-audit.controller';
 import { OperatorAuditExportRequestService } from './operator-audit-export-request.service';
+import { OperatorAuditExportDownloadService } from './operator-audit-export-download.service';
+import { OperatorAuditExportQueryService } from './operator-audit-export-query.service';
 
 @Injectable()
 export class OperatorAuditExportEnabledGuard implements CanActivate {
@@ -70,7 +85,39 @@ const safeErrorExample = (code: string) => ({
 export class OperatorAuditExportController {
   constructor(
     private readonly requestService: OperatorAuditExportRequestService,
+    private readonly queryService: OperatorAuditExportQueryService,
+    private readonly downloadService: OperatorAuditExportDownloadService,
   ) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'List Operator Audit evidence packages',
+    description:
+      'System-wide ADMIN view with stable cursor pagination. Internal storage and fencing fields are never returned.',
+  })
+  @ApiOkResponse({ description: 'Safe evidence-package list.' })
+  @ApiBadRequestResponse({
+    schema: {
+      example: safeErrorExample('OPERATOR_AUDIT_EXPORT_INVALID_REQUEST'),
+    },
+  })
+  async list(
+    @Query() query: unknown,
+  ): Promise<OperatorAuditExportListResponse> {
+    const parsed = operatorAuditExportListQuerySchema.safeParse(query);
+    if (!parsed.success) throw invalidRequest();
+    return this.queryService.list(parsed.data);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get an Operator Audit evidence package' })
+  @ApiOkResponse({ description: 'Safe evidence-package detail.' })
+  @ApiNotFoundResponse({
+    schema: { example: safeErrorExample('OPERATOR_AUDIT_EXPORT_NOT_FOUND') },
+  })
+  detail(@Param('id') id: string): Promise<OperatorAuditExportDetailResponse> {
+    return this.queryService.getDetail(id);
+  }
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
@@ -165,4 +212,70 @@ export class OperatorAuditExportController {
 
     return this.requestService.create(user.id, parsed.data, request);
   }
+
+  @Post(':id/download')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Download an Operator Audit ZIP evidence package',
+    description:
+      'Returns application/zip and is an explicit exception to the global JSON response envelope. Strict download audit is recorded before any bytes are returned.',
+  })
+  @ApiProduces('application/zip')
+  @ApiOkResponse({
+    description: 'ZIP binary stream without the global JSON response envelope.',
+    content: {
+      'application/zip': { schema: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiConflictResponse({
+    schema: { example: safeErrorExample('OPERATOR_AUDIT_EXPORT_NOT_READY') },
+  })
+  @ApiGoneResponse({
+    schema: { example: safeErrorExample('OPERATOR_AUDIT_EXPORT_EXPIRED') },
+  })
+  @ApiBadGatewayResponse({
+    schema: {
+      example: safeErrorExample('OPERATOR_AUDIT_EXPORT_FILE_UNAVAILABLE'),
+    },
+  })
+  @ApiServiceUnavailableResponse({
+    schema: {
+      example: safeErrorExample('OPERATOR_AUDIT_EXPORT_AUDIT_FAILED'),
+    },
+  })
+  async download(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Req() request: RequestWithId,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.downloadService.download(user.id, id, request);
+    response.setHeader('Content-Type', 'application/zip');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${sanitizeDownloadFileName(file.fileName)}"`,
+    );
+    response.setHeader('Cache-Control', 'no-store, private');
+    response.setHeader('X-Content-SHA256', file.archiveSha256);
+    response.setHeader('Content-Length', String(file.archiveSize));
+    return new StreamableFile(file.stream);
+  }
+}
+
+const FALLBACK_DOWNLOAD_FILE_NAME = 'prepmind-operator-audit-export.zip';
+
+function sanitizeDownloadFileName(value: string) {
+  const withoutLineBreaks = value.replace(/[\r\n]/g, '');
+  const safe = withoutLineBreaks
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .slice(0, 180);
+  return safe && /[A-Za-z0-9]/.test(safe) ? safe : FALLBACK_DOWNLOAD_FILE_NAME;
+}
+
+function invalidRequest() {
+  return new AppError(
+    'OPERATOR_AUDIT_EXPORT_INVALID_REQUEST',
+    'Invalid operator audit export request',
+    HttpStatus.BAD_REQUEST,
+  );
 }

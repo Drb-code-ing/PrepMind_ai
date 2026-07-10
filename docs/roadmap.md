@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 7.23.5 审计导出 contract/持久化、事务型可靠投递、fenced ZIP/MinIO Worker 与保留维护已完成；Phase 7.23.6 ~ 7.23.8 的查询下载、证据包 Admin 与 Docker 真实验收仍待实现。
+> 当前状态：项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 7.23.6 审计导出 contract/持久化、事务型可靠投递、fenced ZIP/MinIO Worker、保留维护与 fail-closed 查询下载 API 已完成；Phase 7.23.7 ~ 7.23.8 的证据包 Admin 与 Docker 真实验收仍待实现。
 
 ## 项目目标
 
@@ -478,7 +478,7 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 - 验收后清理临时 OutboxEvent、OperatorAuditLog、RefreshToken 和测试账号，容器内 `worker-readiness` CLI 恢复 `ready`，避免测试数据长期污染本地环境。
 - 新增 Admin Console `favicon.svg` 和 `metadata.icons`，减少后台浏览器调试时的 favicon 404 噪声。
 
-### Phase 7.23 — Operator Audit 保留周期与证据包导出（Phase 7.23.5 已完成）
+### Phase 7.23 — Operator Audit 保留周期与证据包导出（Phase 7.23.6 已完成）
 
 - Phase 7.23.1 已完成正式设计：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
 - Phase 7.23.2 ~ 7.23.8 已完成可执行计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`；Phase 7.23.2 contract/schema、Phase 7.23.3 事务投递、Phase 7.23.4 fenced ZIP Worker 与 Phase 7.23.5 retention maintenance 已按 TDD 完成，后续阶段仍从最新 `main` 独立开分支。
@@ -497,10 +497,12 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 - MinIO key 使用 `operator-audit-exports/<exportId>/attempts/<processingToken>.zip`；只有当前 token 的数据库 CAS 能选择 object key。`markReady` commit 后 ACK 丢失时会用 Export + SYSTEM BackgroundJob 双事实 reconciliation：已选择同 key 则保留并成功，明确未选择才删除；结果不确定时保留对象并 delayed，未选 orphan 留给 Phase 7.23.5 维护回收。`0700/0600` 仅在 POSIX/Linux 容器形成权限保证，Windows 本地沿用 temp ACL；`expiresAt` 固定为 ready 后 24 小时，但到期对象自动删除仍属于 Phase 7.23.5。
 - 导出申请和下载采用 fail-closed audit；CSV 必须防 formula injection，下载不暴露 MinIO object key。
 - 维护任务使用活跃导出水位保护临近 180 天边界的数据，并分批清理到期对象、历史审计和导出元数据。
-- 当前边界：事务型申请、BullMQ delivery、ZIP/MinIO Worker 与保留维护已完成，但还没有查询/下载 API、fail-closed 下载审计或证据包 Admin UI；production gates 仍关闭，当前没有受支持的 HTTP 下载入口。
+- Phase 7.23.6 已提供系统级 ADMIN list/detail 与 `POST /operator-audit-exports/:id/download`：列表使用 `(createdAt,id)` 稳定游标与每响应一次 DB clock，DTO 通过显式 mapper + strict schema 排除存储/fencing/internal 字段；下载使用服务端安全文件名、`no-store, private`、长度与 SHA-256 headers，Nest `StreamableFile` 绕过全局 JSON envelope。DB archiveSize 必须为正数且不超过配置上限，打开对象流后还必须与 MinIO stat size 完全一致；size mismatch 或 strict audit 失败都先销毁流，confirmed missing 才 CAS 为 `FAILED/EXPORT_FILE_MISSING`。相关异常只写固定安全 warning。成功下载审计只表示服务端已授权并准备流，不保证浏览器持久化全部字节。
+- 当前边界：事务型申请、BullMQ delivery、ZIP/MinIO Worker、保留维护与查询/下载 API 已完成，但还没有证据包 Admin UI；production gates 仍关闭，不使用 presigned URL。
 - Phase 7.23.5 已实现每小时 strict maintenance scheduler/processor：processor 本地 `concurrency=1`，worker/both 启动 bootstrap 再把 maintenance queue 的 BullMQ global concurrency 固定为 1，跨 worker replica 仍保持系统级单并发；真实 Redis 双 Worker/双 job 阻塞验证最大 active 为 1。24h READY 逻辑过期后先清 MinIO selected object 与严格 prefix，再 CAS EXPIRED；FAILED/EXPIRED orphan、DEAD 满 24h delivery、过期 lease 且 Bull job 非 active 的 stale PROCESSING、180 天审计和终态 export metadata 都进入有界修复/清理。每个 1,000 条审计批次在新短事务中重新取得 retention advisory lock、database clock 与 active-export 水位，单次最多 20 批；真实 PostgreSQL 交错验证 request commit watermark 前不会被删。
 - Phase 7.23.5 同时新增严格 crash janitor、`os.tmpdir()/prepmind-audit-exports` 0700/192MiB tmpfs 明文边界、三队列 heartbeat/readiness/observability/CLI/Admin Worker 卡片与两小时 maintenance freshness。192 MiB 为严格 `free > 2 * 64 MiB` preflight 留出余量；PROCESSING orphan 清理会保护当前 token exact key/objectKey，并在 list 后删除前复核 DB/Bull 状态，stale repair 最终 CAS 同时限定 token、startedAt 和 lease cutoff。Local Compose 的 `minio-init` 导入 2 天 expiration/noncurrent、1 天 incomplete multipart 和 delete-marker lifecycle；24h 是逻辑失效、小时任务是正常物理清理、48h 是异常兜底。production versioned bucket 仍需独立验证 delete-marker 清理。
-- 后续依次完成 Phase 7.23.6 查询/下载 API、7.23.7 证据包 Admin UI 和 7.23.8 Docker 真实验收/博客。
+- 后续依次完成 Phase 7.23.7 证据包 Admin UI 和 Phase 7.23.8 Docker 真实验收/博客。
+- 回顾时可以问：为什么下载必须在打开对象流之后、返回字节之前 fail-closed 写审计？
 
 回顾时可以问：
 

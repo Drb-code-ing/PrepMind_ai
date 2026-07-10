@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-10
+更新时间：2026-07-11
 
-当前阶段：Phase 7.23.5 审计保留维护、过期对象/元数据清理、僵尸任务修复、crash janitor 与三队列 readiness 已完成；Phase 7.23.6 查询/详情/下载 API 尚未开始。
+当前阶段：Phase 7.23.6 系统级 ADMIN 查询/详情、稳定游标与 fail-closed ZIP 下载 API 已完成；Phase 7.23.7 证据包 Admin UI 尚未开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -57,8 +57,44 @@
 | Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递 |
 | Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO |
 | Phase 7.23.5 | 已完成 | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness |
+| Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计 |
 
 ## 近期关键记录
+
+### 2026-07-11 - Phase 7.23.6 Operator Audit Query and Fail-Closed Download API
+
+目标：为 Phase 7.23.5 已生成并维护的审计证据包提供受支持的系统级 ADMIN 查询、详情与安全 ZIP 下载入口，同时保证内部 MinIO/fencing 字段不越过 API 边界，任何下载字节都不能绕过 strict operator audit。
+
+为什么：
+
+- 没有 list/detail API 时，管理员无法发现其他管理员申请的系统级证据包，也无法用稳定游标安全翻页；仅暴露对象 key 或 presigned URL 会把存储实现和凭据边界推给浏览器。
+- 下载审计如果写在打开 MinIO 流之前，会记录并未准备成功的下载；写在返回字节之后，又可能先泄露内容再发现审计失败。因此必须先确认对象流可读，再 fail-closed 写 strict audit，最后才交给 HTTP 响应。
+- 全局 response envelope 适合 JSON，但不能包装 ZIP；浏览器还需要明确的安全文件名、哈希、长度、缓存与 CORS exposed header 合约。
+
+主要内容与做法：
+
+- 新增 `OperatorAuditExportQueryService`：list/detail 都是经过既有 audit gate、export gate、JWT、OperatorGuard 的系统级 ADMIN 视图，不按 current admin 限定 `requestedByUserId`。列表按 `createdAt desc, id desc` 排序，cursor 先按 id 找回 createdAt，再使用 `(createdAt,id)` 复合小于谓词；未知 cursor 返回空页，不退化为不稳定 offset。
+- 每个 list/detail 响应只读取一次数据库 `clock_timestamp()`；`canDownload` 仅在 READY、`expiresAt > DB now` 且内部 objectKey/fileName/archiveSha256 完整时为 true。objectKey 仅以最小内部 select 参与布尔派生，显式 mapper 再经过 shared strict response schema，绝不进入 DTO；requestHash、processingToken、leaseExpiresAt、payload、metadata 等不 select/不返回。
+- 新增 `POST /operator-audit-exports/:id/download`，不使用 presigned URL。服务端净化文件名为 `[A-Za-z0-9._-]`，无安全字符时固定回退 `prepmind-operator-audit-export.zip`；响应为 `application/zip`、`Cache-Control: no-store, private`，并携带 `Content-Disposition`、`Content-Length` 与 `X-Content-SHA256`。全局 interceptor 对 Nest 同一运行时的 `StreamableFile` 原样旁路，普通 JSON 仍保持 envelope；CORS 只新增暴露文件名与 SHA-256 两个响应头。
+- 下载 service 严格按 load export → database now → 校验 DB archiveSize 为正数且不超过配置上限 → open MinIO stream → 核对 MinIO stat size 与 DB 完全一致 → strict `AUDIT_EXPORT_DOWNLOAD` → return stream 执行。size mismatch 与 strict audit 失败都会先销毁已经打开的 stream；对象 confirmed missing 会 best-effort 记录失败审计并用 `id + READY + exact objectKey` CAS 标记 `FAILED/EXPORT_FILE_MISSING`，MinIO 暂时不可用只返回安全 502、不错误降级数据库事实，也不泄露 raw storage error。size mismatch、strict audit failure 与 missing CAS persistence failure 只记录固定 warning，不拼接 raw error、objectKey、连接信息、用户正文或实际/预期 size。
+- 状态边界固定为 not found 404、QUEUED/PROCESSING/FAILED 409、EXPIRED 或 READY 已到期 410、文件不可用 502、strict audit 失败 503。成功下载审计表示服务端已经授权并准备好对象流，不表示浏览器一定持久化了全部字节。
+
+边界：
+
+- 本阶段未实现 Phase 7.23.7 Admin UI、Phase 7.23.8 Docker 全栈/博客，不启用 production gate，也不引入 presigned URL。
+- 下载是 POST，ZIP 是全局 JSON envelope 的唯一新增二进制例外；错误响应仍使用安全 JSON envelope。
+
+TDD 与验收：
+
+- query、download、storage、controller/module、response envelope 与 bootstrap 均先取得预期 RED 再实现 GREEN；focused 总集合 5 suites / 50 tests、最终 download 20/20，storage+download 合计 50 tests 通过。
+- 新增真实 PostgreSQL API e2e 1 suite / 9 tests，覆盖 gate-off 认证前 404、无 token 401、STUDENT 四入口 403、ADMIN B 下载 ADMIN A、ZIP signature/非 JSON、安全 headers、download audit actor、410/409/502/503、missing CAS、strict audit 流销毁、内部字段不泄露与 legacy/HMAC 指纹 opaque correlation。
+- Server full test 69 suites / 626 tests 通过，2 个 opt-in suites / tests 按预期跳过；Server build、changed-file ESLint/Prettier 与 `git diff --check` 通过。e2e 清理后测试用户、export 与 fingerprint audit 残留均为 0；测试使用 API role 与 StorageService override，未写入 MinIO、Redis 或明文 temp。
+
+回顾时可以问：
+
+- “为什么下载必须在打开对象流之后、返回字节之前 fail-closed 写审计？”
+- “为什么 objectKey 可以被 query service 最小读取来派生 canDownload，却绝不能进入 response mapper？”
+- “为什么 confirmed missing 要 CAS 标记 FAILED，而 MinIO unavailable 不能直接改写 READY？”
 
 ### 2026-07-10 - Phase 7.23.5 Operator Audit Retention Maintenance
 
