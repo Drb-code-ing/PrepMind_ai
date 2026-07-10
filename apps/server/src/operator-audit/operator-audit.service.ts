@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma } from '@repo/database';
 import type {
+  OperatorAuditAction,
   OperatorAuditLogDetailResponse,
   OperatorAuditLogListQuery,
   OperatorAuditLogListResponse,
@@ -12,7 +13,6 @@ import { AppError } from '../common/errors/app-error';
 import { PrismaService } from '../database/prisma.service';
 import { sanitizeJobError } from '../jobs/job-error-sanitizer';
 
-type OperatorAuditAction = 'OUTBOX_REQUEUE';
 type OperatorAuditStatus = 'SUCCEEDED' | 'FAILED';
 
 type AuditRequest = {

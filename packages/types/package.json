@@ -13,6 +13,7 @@
     "./api/auth": "./src/api/auth.ts",
     "./api/background-job": "./src/api/background-job.ts",
     "./api/operator-audit": "./src/api/operator-audit.ts",
+    "./api/operator-audit-export": "./src/api/operator-audit-export.ts",
     "./api/outbox": "./src/api/outbox.ts",
     "./api/worker-readiness": "./src/api/worker-readiness.ts",
     "./api/worker-observability": "./src/api/worker-observability.ts",

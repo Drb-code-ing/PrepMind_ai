@@ -60,6 +60,7 @@ export class BackgroundJobsService {
     const job = await this.prisma.backgroundJob.create({
       data: {
         userId: input.userId,
+        scope: 'ACCOUNT',
         queueName: input.queueName,
         jobName: input.jobName,
         status: PrismaBackgroundJobStatus.QUEUED,
@@ -84,6 +85,7 @@ export class BackgroundJobsService {
     const job = await this.prisma.backgroundJob.findFirst({
       where: {
         userId,
+        scope: 'ACCOUNT',
         resourceType,
         resourceId,
         status: { in: ['QUEUED', 'ACTIVE'] },
@@ -107,6 +109,7 @@ export class BackgroundJobsService {
       where: {
         id: input.id,
         userId: input.userId,
+        scope: 'ACCOUNT',
         resourceType: input.resourceType,
         resourceId: input.resourceId,
         status: { in: ['QUEUED', 'ACTIVE'] },
@@ -152,6 +155,7 @@ export class BackgroundJobsService {
       where: {
         id: input.id,
         userId: input.userId,
+        scope: 'ACCOUNT',
         status: PrismaBackgroundJobStatus.ACTIVE,
       },
       data: {
@@ -209,7 +213,7 @@ export class BackgroundJobsService {
     userId: string,
     query: BackgroundJobListQuery,
   ): Promise<BackgroundJobListResponse> {
-    const where: Prisma.BackgroundJobWhereInput = { userId };
+    const where: Prisma.BackgroundJobWhereInput = { userId, scope: 'ACCOUNT' };
     if (query.resourceType) where.resourceType = query.resourceType;
     if (query.resourceId) where.resourceId = query.resourceId;
     if (query.status) where.status = query.status;
@@ -229,10 +233,14 @@ export class BackgroundJobsService {
   async getSummary(userId: string): Promise<BackgroundJobSummaryResponse> {
     const [activeCount, jobs] = await Promise.all([
       this.prisma.backgroundJob.count({
-        where: { userId, status: { in: ['QUEUED', 'ACTIVE'] } },
+        where: {
+          userId,
+          scope: 'ACCOUNT',
+          status: { in: ['QUEUED', 'ACTIVE'] },
+        },
       }),
       this.prisma.backgroundJob.findMany({
-        where: { userId },
+        where: { userId, scope: 'ACCOUNT' },
         orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         take: 50,
         select: backgroundJobSelect,
@@ -265,6 +273,7 @@ export class BackgroundJobsService {
       where: {
         id: input.id,
         userId: input.userId,
+        scope: 'ACCOUNT',
         status: { in: ['QUEUED', 'ACTIVE'] },
       },
       data: {
@@ -287,7 +296,7 @@ export class BackgroundJobsService {
 
   private async findById(userId: string, id: string) {
     const job = await this.prisma.backgroundJob.findFirst({
-      where: { id, userId },
+      where: { id, userId, scope: 'ACCOUNT' },
       select: backgroundJobSelect,
     });
 

@@ -186,6 +186,7 @@ export class DocumentProcessingJobService {
         const activeCount = await transaction.backgroundJob.count({
           where: {
             userId,
+            scope: 'ACCOUNT',
             resourceType: 'KNOWLEDGE_DOCUMENT',
             status: { in: ['QUEUED', 'ACTIVE'] },
           },
@@ -223,6 +224,7 @@ export class DocumentProcessingJobService {
         const job = await transaction.backgroundJob.create({
           data: {
             userId,
+            scope: 'ACCOUNT',
             queueName: PROCESS_KNOWLEDGE_DOCUMENT_QUEUE,
             jobName: PROCESS_KNOWLEDGE_DOCUMENT_JOB,
             status: 'QUEUED',
@@ -260,6 +262,7 @@ export class DocumentProcessingJobService {
     return this.prisma.backgroundJob.findFirst({
       where: {
         userId,
+        scope: 'ACCOUNT',
         resourceType: 'KNOWLEDGE_DOCUMENT',
         resourceId: documentId,
         status: { in: ['QUEUED', 'ACTIVE'] },
@@ -287,6 +290,7 @@ export class DocumentProcessingJobService {
       where: {
         id: claim.job.id,
         userId: claim.document.userId,
+        scope: 'ACCOUNT',
         status: { in: ['QUEUED', 'ACTIVE'] },
       },
       data: {

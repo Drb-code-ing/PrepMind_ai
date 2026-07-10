@@ -42,6 +42,7 @@ model User {
   agentTraceSteps            AgentTraceStep[]
   backgroundJobs             BackgroundJob[]
   operatorAuditLogs          OperatorAuditLog[]
+  operatorAuditExports       OperatorAuditExport[]
 }
 
 model Account {
@@ -389,6 +390,11 @@ enum BackgroundJobStatus {
   STALE_SKIPPED
 }
 
+enum BackgroundJobScope {
+  ACCOUNT
+  SYSTEM
+}
+
 enum OutboxEventStatus {
   PENDING
   PROCESSING
@@ -399,9 +405,26 @@ enum OutboxEventStatus {
 
 enum OperatorAuditAction {
   OUTBOX_REQUEUE
+  AUDIT_EXPORT_REQUEST
+  AUDIT_EXPORT_DOWNLOAD
 }
 
 enum OperatorAuditStatus {
+  SUCCEEDED
+  FAILED
+}
+
+enum OperatorAuditExportStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+  EXPIRED
+}
+
+enum OperatorAuditMaintenanceStatus {
+  IDLE
+  RUNNING
   SUCCEEDED
   FAILED
 }
@@ -512,7 +535,8 @@ model AgentTraceStep {
 
 model BackgroundJob {
   id             String              @id @default(cuid())
-  userId         String
+  userId         String?
+  scope          BackgroundJobScope  @default(ACCOUNT)
   queueName      String
   jobName        String
   bullJobId      String?             @unique
@@ -535,11 +559,12 @@ model BackgroundJob {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status, createdAt])
   @@index([userId, resourceType, resourceId, createdAt])
   @@index([queueName, status, createdAt])
+  @@index([scope, status, createdAt])
   @@index([dedupeKey])
 }
 
@@ -591,6 +616,65 @@ model OperatorAuditLog {
   @@index([action, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([status, createdAt])
+  @@index([createdAt, id])
+}
+
+model OperatorAuditExport {
+  id                String                    @id @default(cuid())
+  requestedByUserId String?
+  clientRequestId   String                    @db.VarChar(80)
+  requestHash       String                    @db.VarChar(71)
+  backgroundJobId   String                    @unique
+  status            OperatorAuditExportStatus @default(QUEUED)
+  startAt           DateTime
+  endAt             DateTime
+  snapshotAt        DateTime
+  filterAction      OperatorAuditAction?
+  filterStatus      OperatorAuditStatus?
+  filterTargetType  String?                   @db.VarChar(120)
+  filterTargetId    String?                   @db.VarChar(200)
+  filterActorUserId String?
+  reason            String                    @db.VarChar(240)
+  objectKey         String?                   @unique @db.VarChar(500)
+  fileName          String?                   @db.VarChar(180)
+  archiveSize       Int?
+  recordCount       Int?
+  csvSha256         String?                   @db.VarChar(71)
+  archiveSha256     String?                   @db.VarChar(71)
+  schemaVersion     Int                       @default(1)
+  errorCode         String?                   @db.VarChar(120)
+  errorPreview      String?                   @db.VarChar(240)
+  processingToken   String?                   @db.VarChar(80)
+  leaseExpiresAt    DateTime?
+  requestedAt       DateTime                  @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  expiresAt         DateTime?
+  expiredAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  requestedBy User? @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([requestedByUserId, clientRequestId])
+  @@index([requestedByUserId, createdAt])
+  @@index([status, expiresAt])
+  @@index([status, startAt])
+  @@index([createdAt, id])
+}
+
+model OperatorAuditMaintenanceState {
+  name               String                         @id
+  lastStartedAt      DateTime?
+  lastSucceededAt    DateTime?
+  lastFinishedAt     DateTime?
+  status             OperatorAuditMaintenanceStatus @default(IDLE)
+  expiredExportCount Int                            @default(0)
+  deletedAuditCount  Int                            @default(0)
+  deletedExportCount Int                            @default(0)
+  errorCode          String?                        @db.VarChar(120)
+  errorPreview       String?                        @db.VarChar(240)
+  updatedAt          DateTime                       @updatedAt
 }
 
 // ---------- RAG 知识库 ----------
