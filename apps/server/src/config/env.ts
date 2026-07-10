@@ -155,7 +155,7 @@ const envSchema = z
       .number()
       .int()
       .min(1)
-      .max(16)
+      .max(1)
       .default(1),
     OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS: z.coerce
       .number()

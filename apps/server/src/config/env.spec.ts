@@ -507,6 +507,15 @@ describe('parseEnv', () => {
     ).toThrow();
   });
 
+  it('rejects audit export worker concurrency above the production invariant', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_EXPORT_WORKER_CONCURRENCY: 2,
+      }),
+    ).toThrow();
+  });
+
   it('requires dispatcher and maintenance for export-capable worker roles', () => {
     for (const SERVER_ROLE of ['worker', 'both'] as const) {
       expect(() =>

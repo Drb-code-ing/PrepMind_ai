@@ -6,7 +6,7 @@
 
 更新时间：2026-07-10
 
-当前阶段：Phase 7.23.3 审计证据包 Serializable 申请事务、strict 申请审计、HMAC 来源指纹与 Outbox-only BullMQ 投递已完成；Phase 7.23.4 ZIP Worker 尚未开始。
+当前阶段：Phase 7.23.4 审计证据包单并发 ZIP Worker、formula-safe CSV/manifest、processing-token lease fencing 与 attempt-fenced MinIO 存储已完成；Phase 7.23.5 保留维护尚未开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -55,8 +55,46 @@
 | Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
 | Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置 |
 | Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递 |
+| Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23.4 Operator Audit Export Fenced ZIP Worker
+
+目标：把 Phase 7.23.3 已可靠投递的 `operator-audit-export` BullMQ job 变成真正可执行的单并发证据包 Worker，在固定快照内生成脱敏 CSV + manifest ZIP，并保证失去 lease 的旧 Worker 无法覆盖新证据包。
+
+为什么：
+- BullMQ lock 只保护 Redis delivery；进程暂停、网络抖动或 lock/lease 丢失后，旧进程仍可能继续写 PostgreSQL 或 MinIO。仅靠 job id 幂等不能阻止“旧 attempt 最后完成并覆盖新 attempt”的僵尸写入。
+- 审计 CSV 会被 Excel 等表格软件打开；只做 RFC CSV quoting 不能阻止 `=`, `+`, `-`, `@` 公式注入，也不能防住 tab、CR、NBSP 或全角空格前缀绕过。
+- 证据包必须对应一个稳定的审计快照，且不能把 `metadata`、原始来源、secret 或任意用户正文带入归档；本地 plaintext 和未被数据库选中的对象也不能长期残留。
+
+主要内容与做法：
+- 新增 strict Bull payload，仅允许非空 `exportId/backgroundJobId`。状态仓库每次使用 `clock_timestamp()`，在同一事务内复核 Export 与 `scope=SYSTEM/userId=null` BackgroundJob 的 queue/job/resource 关联事实，并用随机 processing token、lease 和 `updateMany` CAS 同步执行 claim/renew/retry/fail/ready；任一事实 CAS 丢失都会回滚，旧 token 不能选择 object key。
+- Worker 仅在 `SERVER_ROLE=worker|both` 且 export、Outbox Dispatcher、maintenance 三个 gate 都显式为 `true` 时注册。BullMQ 本地 concurrency 固定为 1；processor 先以 `autorun=false` 注册，应用 bootstrap 再先写入 queue global concurrency=1、后启动 Worker，避免多副本突破生产单并发不变量。`worker.run()` 的 Promise 会立即绑定 rejection handler；若初始化或主循环退出，只记录不含 raw error/连接信息的固定 fatal 日志，设置 `exitCode=1` 并发送 `SIGTERM`，signal 失败则显式 `exit(1)`，让编排器重启而不是留下在线但不消费的进程。600 秒 Bull lock 不变；live lease 通过 `moveToDelayed(leaseExpiresAt + 1000)` + `DelayedError` 延迟，已用 BullMQ 5.79.2 + 真实 Redis 验证 delayed 状态 `attemptsMade=0`。处理中每 `lease/3` 由 interval 续租；归档完成后/上传前以及上传后分别同步 renew/recheck。失败状态 CAS 的数据库结果不确定时同样 delayed 到 lease 恢复窗口，不消耗当前或最后一个 Bull business attempt。
+- 归档查询使用 Prisma interactive transaction + `RepeatableRead`、`SET TRANSACTION READ ONLY` 和仅由已验证数字配置生成的 `SET LOCAL statement_timeout`。effective end 为 `min(endAt,snapshotAt)`；先 count，再按 `createdAt ASC,id ASC` 的复合 keyset 每页 1,000 条流式读取，pre-count 与 streamed count 都执行 50,000 条上限，select 明确排除 `metadata`。
+- CSV 固定 13 列、UTF-8 BOM、CRLF 和末尾 newline；先复用 secret sanitizer，再逐字符跳过 Unicode 空白与将被移除的非法 C0/DEL 控制字符，检查首个有效字符是否为公式前缀；之后规范 CRLF、移除非法控制字符并在必要时加单引号，由 `csv-stringify` 负责成熟 quoting。manifest v1 固定包含 range、null filters、query timestamps、record count 与 CSV SHA-256。
+- 使用 `archiver@7.0.1` level 9 只写 `records.csv/manifest.json`。最初安装的 archiver 8 是 ESM-only，与当前 CommonJS Jest/Nest 加载边界不兼容；固定成熟的 7.0.1 并对齐 `@types/archiver@7.0.0`，避免把 Jest VM 绕过逻辑带入生产代码。归档 byte-count transform 同时计算实际 archive SHA-256 并在超过 64 MiB 时安全终止。
+- plaintext temp 路径位于 `os.tmpdir()/prepmind-audit-export-<exportId>-<token>`；创建前要求可用空间严格大于 `2 * maxArchiveBytes`，内部失败自动清理，成功则由 processor `finally` 清理。`0700/0600` 只在 POSIX/Linux 容器形成明确权限保证；Windows 本地沿用临时目录继承 ACL，不能把 mode 数字等同于 Windows ACL，且 production export gate 默认关闭。
+- MinIO key 固定为 `operator-audit-exports/<exportId>/attempts/<processingToken>.zip`，id/token 和 read/delete/list 都重新执行严格 grammar。只有当前 token 的 `markReady` CAS 能把 attempt key 写成数据库权威 object key；若 PostgreSQL commit 已成功但 ACK 丢失，Worker 会读取 Export + SYSTEM BackgroundJob 双事实：`READY + SUCCEEDED + 同 objectKey` 视为已提交并保留对象；明确仍是当前 token、已由其它 token 接管或终态未选择该 key 时才允许删除。reconciliation 不可用或结果不确定时保留对象并 delayed，未被权威 key 选中的 orphan 由 Phase 7.23.5 维护回收。missing 白名单为 NoSuchKey/NoSuchObject/MinIO 8 bodyless NotFound/HTTP 404，其余统一为不复制 raw message 的 unavailable。
+
+边界：
+- 本阶段没有实现 Phase 7.23.5 保留维护、stale repair/readiness 指标、Phase 7.23.6 list/detail/download API、fail-closed 下载审计、Admin UI 或 Docker 运行验收；production gates 仍默认关闭。
+- safe DTO 仍不返回 object key、processing token、payload 或 metadata；MinIO export prefix 不进入既有公开图片/资料读写路径。下载前的对象存在性、range、响应头和下载审计属于后续阶段。
+
+TDD 与验收：
+- State RED 因 payload/repository 缺失失败，GREEN 11/11；CSV RED 因模块缺失失败，GREEN 5/5；Archive RED 因 service 缺失失败，首轮 GREEN 解决 ESM/CJS 依赖兼容后为 6/6，补充 1,001 行复合 keyset 后为 7/7。
+- Storage RED 为 6 个新行为失败、18 个既有行为通过，GREEN 24/24；Processor RED 因模块缺失失败后 GREEN 10/10，role-bound provider RED 为 1 failed + 10 passed，首轮 GREEN 11/11。
+- 交付前只读审查新增 RED 5 failed + 22 passed：精确复现 interval renew exception 静默完成、C0 清理后公式显露、MinIO ACK-lost orphan、manifest secret 与 archiver warning 缺口；修复后 CSV 5/5、Archive 9/9、Processor 13/13，共 27/27 GREEN。
+- 质量复审按 TDD 新增 12 个 RED：覆盖 READY commit-ACK ambiguity、reconciliation 不可用、retry/final 状态 CAS 数据库失败、三 gate 注册矩阵、MinIO 8 `NotFound` 与 concurrency>1 配置；首轮 GREEN 后 4 suites 93/93。随后为消除启动竞态再新增 lifecycle RED，确认缺少 `onApplicationBootstrap`，改为 paused Worker + global-first bootstrap 后 Processor 18/18 GREEN。
+- Worker run rejection 复审继续按 TDD：lifecycle RED 为 1 failed + 18 passed，证明 `run()` 未附加 catch；立即绑定 handler 后 19/19 GREEN。fatal service/process control RED 为 3 failed + 18 passed，接入固定日志与受控 SIGTERM 后 21/21 GREEN；最后用 signal-failure RED 证明原始错误会逃逸，补 `exit(1)` fallback 后 Processor 22/22 GREEN，测试全程 mock process control，未真实终止测试进程。
+- BullMQ delay integration 首次运行已经证明 delayed 时 attempt 不增加，同时纠正了“成功 delivery 完成后仍应为 0”的过严测试假设；最终真实 Redis 1/1 通过并清理唯一测试 queue、job、Worker、QueueEvents 与连接。该 spec 只在显式文件 pattern 或 `test:integration:audit-export-delay` opt-in 时连接 Redis；质量修复后的默认完整 unit suite 为 61 suites、552 tests 通过，仅该 1 suite/1 test 跳过；另用 BullMQ 正式 `setGlobalConcurrency/getGlobalConcurrency` 对真实 Redis 验证 queue global concurrency 为 1。
+- 聚焦 env/归档/状态/CSV/processor/storage 6 suites 共 112/112 通过；`main...HEAD` 全部 15 个 changed Server TS 定向 ESLint/Prettier 与 Server build 通过。依赖分类、temp/Redis cleanup、敏感串断言和 Phase 7.23.5+ 越界均已自审。
+
+回顾时可以问：
+- “processing token 如何阻止失去 lease 的旧 Worker 覆盖新证据包？”
+- “为什么 attempt-fenced key 还必须配合数据库选中的 object key，而不能只依赖 MinIO 覆盖写？”
+- “为什么公式检测必须早于 tab/CR 等控制字符清理？”
+- “为什么审计查询选择只读 REPEATABLE READ，而申请事务仍使用 Serializable？”
 
 ### 2026-07-10 - Phase 7.23.3 Operator Audit Export 事务型可靠投递
 
