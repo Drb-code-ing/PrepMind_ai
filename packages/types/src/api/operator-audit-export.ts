@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { operatorAuditActionSchema, operatorAuditStatusSchema } from './operator-audit';
+import {
+  operatorAuditActionSchema,
+  operatorAuditStatusSchema,
+} from '@repo/types/api/operator-audit';
 
 const sha256Schema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const nullableDateTimeSchema = z.string().datetime().nullable();

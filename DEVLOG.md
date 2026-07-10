@@ -6,7 +6,7 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7.23.6 系统级 ADMIN 查询/详情、稳定游标与 fail-closed ZIP 下载 API 已完成；Phase 7.23.7 证据包 Admin UI 尚未开始。
+当前阶段：Phase 7.23.7 证据包 Admin 工作台已完成；仅 Phase 7.23.8 Docker 真实运行、后端下载全链路验收与面试博客待开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -58,8 +58,35 @@
 | Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO |
 | Phase 7.23.5 | 已完成 | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness |
 | Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计 |
+| Phase 7.23.7 | 已完成 | `/audit` tabs、证据包申请/查询/详情、幂等重试、authenticated Blob 下载、a11y |
 
 ## 近期关键记录
+
+### 2026-07-11 - Phase 7.23.7 Admin Audit Evidence-Package Workspace
+
+目标：在独立 Admin Console `/audit` 内完成“审计记录 / 证据包”工作台，让管理员沿用同一组脱敏筛选申请证据包、观察异步状态、查看安全详情并下载 READY ZIP。
+
+为什么：
+- 网络或 5xx 可能发生在服务端已提交之后；每次点击生成新 UUID 会把重试变成重复申请，但表单变化后复用旧 UUID 又会造成同 id 不同 hash 冲突。
+- ZIP 不是 JSON envelope，下载仍需携带管理员 Bearer token，并显式约束文件名、哈希和 object URL 生命周期。
+- 五态异步任务需要非颜色状态解释、active-only polling 和合法的同级交互控件。
+
+主要内容与做法：
+- `/audit` 提升共享 `AuditFilterState`，用支持 ArrowLeft/ArrowRight/Home/End 的 `tablist/tab/tabpanel` 切换审计记录与证据包；证据包申请默认继承 action/status/target/actor filters。
+- create/list/detail 全部经过 `@repo/types` shared strict Zod schema；list 只序列化批准的 query。通用 API client 新增 authenticated POST Blob path，安全解析 attachment 文件名和 `X-Content-SHA256`；失败响应才解析 JSON envelope，普通 JSON 行为不回归。
+- 申请带明确 31 天/50,000 条边界与 reason/date `aria-describedby` 错误关联。pending request 保存 `clientRequestId` 与继承筛选签名：网络/5xx 且完整表单未变时重用，任一字段或父 filters 变化时清理，成功后清理并只说明排队中。
+- 列表支持稳定 cursor 加载并按 id 去重，只在存在 QUEUED/PROCESSING 时每 5 秒更新。固定 detail aside 展示筛选、reason、SYSTEM BackgroundJob id、记录数、文件大小、CSV/ZIP SHA-256、时间线与安全错误。
+- FAILED 提示缩小范围；EXPIRED 说明文件已删除且没有恢复/延长动作；仅 `READY && canDownload` 显示同级 Download/Copy icon buttons。Blob 下载用临时 `<a download>` 触发，`finally` 始终 remove anchor 并 revoke object URL。
+
+边界：
+- 不改后端 API/contract，不使用 presigned URL，不展示 objectKey、processingToken、requestHash、payload、metadata 或 lease，不提供延长、恢复文件或编辑对象。
+- 浏览器验收使用 Admin dev server + Playwright route interception + local ADMIN session，不代表真实 PostgreSQL/Redis/Worker/MinIO/下载审计全链路；Phase 7.23.8 继续真实 Docker 验收。
+
+验收：
+- TDD 将申请 pending/reuse/reset 决策与 cursor page merge 提取为纯函数，持久测试覆盖 network/5xx 同签名复用、reason/date/父 filters 变化清理且改回旧值不复活、成功/终态失败清理，以及重复 id 保留最新页版本和首次顺序。源码 contract 只负责静态安全/wiring 边界；jsdom + Testing Library 真实渲染生产共用 tabs/row，验证 ArrowLeft/Right/Home/End、焦点、单一可见 panel 和无嵌套 button。Admin 完整测试 56/56，ESLint、Next build、types typecheck、Server build 通过。
+- Headless Chromium 1440×900 与 1024×768 均完成 QUEUED→PROCESSING→READY、tabs 键盘、错误关联、长 id/hash、固定轨道及 download/copy；两尺寸 console error 0、page error 0、横向溢出 0。临时脚本、截图、dev server 与 next-env 已清理。
+
+回顾时可以问：前端为什么要在网络失败后复用 clientRequestId，而不是每次点击都生成新 UUID？
 
 ### 2026-07-11 - Phase 7.23.6 Operator Audit Query and Fail-Closed Download API
 
