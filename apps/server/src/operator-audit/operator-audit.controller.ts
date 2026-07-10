@@ -4,6 +4,7 @@ import {
   Get,
   Injectable,
   NotFoundException,
+  Param,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -12,11 +13,14 @@ import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import {
+  operatorAuditLogDetailResponseSchema,
   operatorAuditLogListQuerySchema,
+  type OperatorAuditLogDetailResponse,
   type OperatorAuditLogListResponse,
 } from '@repo/types/api/operator-audit';
 
@@ -63,5 +67,21 @@ export class OperatorAuditController {
     @Query() query: Record<string, unknown>,
   ): Promise<OperatorAuditLogListResponse> {
     return this.service.list(operatorAuditLogListQuerySchema.parse(query));
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: '查看单条脱敏 operator 操作审计日志',
+    description:
+      '仅用于本地开发和受控诊断。返回单条高权限诊断写操作的脱敏审计详情，不返回 metadata、payload、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。',
+  })
+  @ApiParam({ name: 'id', description: 'Operator audit log id' })
+  @ApiOkResponse({ description: '单条脱敏 operator 审计日志详情。' })
+  async detail(
+    @Param('id') id: string,
+  ): Promise<OperatorAuditLogDetailResponse> {
+    return operatorAuditLogDetailResponseSchema.parse(
+      await this.service.getDetail(id),
+    );
   }
 }

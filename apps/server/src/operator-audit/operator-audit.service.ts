@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto';
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma } from '@repo/database';
 import type {
+  OperatorAuditLogDetailResponse,
   OperatorAuditLogListQuery,
   OperatorAuditLogListResponse,
 } from '@repo/types/api/operator-audit';
 
+import { AppError } from '../common/errors/app-error';
 import { PrismaService } from '../database/prisma.service';
 import { sanitizeJobError } from '../jobs/job-error-sanitizer';
 
@@ -147,6 +149,23 @@ export class OperatorAuditService {
           ? (visibleRows[visibleRows.length - 1]?.id ?? null)
           : null,
     };
+  }
+
+  async getDetail(id: string): Promise<OperatorAuditLogDetailResponse> {
+    const row = await this.prisma.operatorAuditLog.findFirst({
+      where: { id },
+      select: operatorAuditLogSelect,
+    });
+
+    if (!row) {
+      throw new AppError(
+        'OPERATOR_AUDIT_LOG_NOT_FOUND',
+        'Operator audit log not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return this.toListItem(row);
   }
 
   private async record(data: OperatorAuditCreateData) {

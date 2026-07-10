@@ -222,6 +222,29 @@ API:    http://127.0.0.1:3001/health
 Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
 ```
 
+Phase 7.17 起，Docker Compose 也提供独立管理员后台 `admin` service。需要一次性启动学习端、管理员后台、API、worker 和基础设施时，使用：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+```
+
+对应入口：
+
+```text
+学习端：http://127.0.0.1:3000
+管理员后台：http://127.0.0.1:3100
+API：http://127.0.0.1:3001
+Worker 健康：docker compose -f docker/docker-compose.dev.yml --profile worker ps
+```
+
+这些容器的职责分别是：
+
+- `web`：学生/学习端 PWA，默认端口 `3000`。
+- `admin`：管理员后台，默认端口 `3100`，包含控制台、Outbox Ops、操作审计和 Worker Readiness。
+- `server`：NestJS HTTP API，默认端口 `3001`。
+- `worker`：后台任务 worker，不对外暴露业务 HTTP 入口，健康状态看 Docker healthcheck。
+- `postgres` / `redis` / `minio`：本地数据库、队列和对象存储依赖。
+
 ### 本机前端和 Docker 前端怎么选
 
 项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
@@ -525,7 +548,43 @@ http://127.0.0.1:3100
 NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100
 ```
 
-Docker 全栈启动时当前 compose 还没有单独的 `admin` service；管理员后台推荐本机用 `bun run dev:admin` 启动，后端仍然可以连接 Docker PostgreSQL / Redis / MinIO。
+Phase 7.17 起 Docker 全栈启动已经包含单独的 `admin` service。日常改后台 UI 时仍推荐本机跑 `bun run dev:admin`，因为热更新最快；做部署形态或验收时使用 Docker：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+```
+
+Docker `web` service 会通过 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100` 把学习端 ADMIN 侧边栏的“后台管理”入口指向管理员后台。Docker `server` service 已允许 `http://localhost:3100` 和 `http://127.0.0.1:3100` 作为本地 CORS origin。真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 判断，不能只依赖前端隐藏入口。
+
+### 后台返回学习端后又要登录怎么办
+
+优先检查你是不是混用了 `localhost` 和 `127.0.0.1`。这两个地址都指向本机，但在浏览器里属于不同 host，前端状态、refresh cookie 和 API 请求恢复链路不会天然共享。
+
+推荐做法是同一轮验收里统一使用一组地址：
+
+```text
+方案 A：
+学习端：http://localhost:3000
+管理员后台：http://localhost:3100
+API：http://localhost:3001
+
+方案 B：
+学习端：http://127.0.0.1:3000
+管理员后台：http://127.0.0.1:3100
+API：http://127.0.0.1:3001
+```
+
+不要这样混用：
+
+```text
+后台：http://localhost:3100
+学习端：http://127.0.0.1:3000
+API：http://127.0.0.1:3001
+```
+
+Phase 7.17.1 起，管理员后台的“返回学习端”会默认跟随当前 hostname：你用 `localhost:3100` 打开后台，它会回到 `localhost:3000`；你用 `127.0.0.1:3100` 打开后台，它会回到 `127.0.0.1:3000`。学习端和管理员后台的浏览器 API base 也会在本机 loopback 场景下自动对齐当前 hostname，减少因为 host 混用导致的 session recovery 问题。
+
+如果你显式配置了 `NEXT_PUBLIC_LEARNING_APP_URL`，后台会优先使用这个值。此时要确认它和你实际打开后台用的 host 是同一组；否则仍可能表现为“从后台回学习端后像是掉登录”。这类问题通常不是后端鉴权失效，而是本机浏览器 host 不一致导致登录态恢复不稳定。
 
 ## 4. AI 调用模式
 
@@ -681,7 +740,7 @@ wsl --list --verbose
 如果项目放在中文路径下，直接运行下面命令可能失败：
 
 ```powershell
-docker compose -f docker/docker-compose.dev.yml --profile worker build server web
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
 ```
 
 典型错误是：
@@ -695,7 +754,7 @@ failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains 
 ```powershell
 subst P: "E:\PrepMind_ai智能备考助手"
 $env:COMPOSE_BAKE='false'
-docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker up -d --build postgres redis minio server worker web admin
 ```
 
 注意：

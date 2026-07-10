@@ -6,7 +6,7 @@
 
 更新时间：2026-07-09
 
-当前阶段：Phase 7.16 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
+当前阶段：Phase 7.22 已完成，后续继续 Phase 7 后台管理产品化边界、更多后台任务生产化和生产观测增强。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -45,8 +45,267 @@
 | Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
 | Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
 | Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
+| Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
+| Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录 |
+| Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
+| Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
+| Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
+| Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
+| Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
 
 ## 近期关键记录
+
+### 2026-07-09 - Phase 7.22 Docker Admin Ops 真实验收收口
+
+目标：在 Docker 全栈环境里用真实管理员账号完整跑一轮 Admin Console 运维闭环，确认 Phase 7.21 的筛选控件和 requeue guard 不只在 mock / 静态测试里成立，也能在真实容器、真实 API、真实 PostgreSQL 数据上工作。
+
+为什么：
+- Admin Console 是给管理员排障用的，不验 Docker 全栈就无法证明 `admin -> server -> postgres / redis / worker` 的真实链路可用。
+- Outbox requeue 是系统级状态变更，必须确认普通用户不能访问、管理员操作必须写审计、worker readiness 能反映 backlog 并在测试数据清理后恢复。
+- 本轮验收还发现后台缺少 favicon 会产生浏览器 404 噪声，因此顺手补齐后台图标，让调试控制台更干净。
+
+主要内容：
+- 使用 Docker Compose dev 栈启动 `postgres / redis / minio / server / worker / web / admin`，管理员后台访问 `http://127.0.0.1:3100`，API 访问 `http://127.0.0.1:3001`。
+- 创建临时 ADMIN 账号和临时普通账号；ADMIN 账号登录后台并完成 `/outbox -> requeue -> /audit -> /worker` 浏览器验收，普通账号直接请求 `/outbox-events` 返回 `403`。
+- 在数据库中插入安全的 `knowledge.document.processing.requested` 失败 outbox 事件，页面里确认自定义状态筛选是 `combobox`，没有回退到原生 `<select>`；requeue 按钮在填写 reason 和勾选确认前不可用。
+- requeue 成功后在 `/audit` 看到 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录，并能点开右侧详情；在 `/worker` 看到因为临时 pending outbox 导致的 degraded 信号，清理测试数据后容器内 readiness CLI 恢复 `ready`。
+- 新增 `apps/admin/public/favicon.svg` 并在后台 `metadata.icons` 中声明，减少后台浏览器调试时的 favicon 404 噪声。
+
+边界：
+- 本阶段不新增后端 API、不新增批量 requeue、不新增删除 / 跳过 / 立即 dispatch / payload 编辑。
+- 测试 outbox、审计记录和临时账号在验收后清理，不污染本地长期数据。
+- 前端 reason + confirm 仍是产品层防误操作；真正安全边界仍是后端 feature gate、`JwtAuthGuard`、`OperatorGuard` 和服务层状态机。
+
+验收：
+- Docker 浏览器验收：`http://127.0.0.1:3100/login` 登录 ADMIN，进入 `/outbox` 完成筛选、详情、reason + confirm requeue；进入 `/audit` 查看审计记录详情；进入 `/worker` 查看 readiness。
+- 普通用户 API 验收：临时普通账号携带 token 访问 `GET /outbox-events?status=FAILED` 返回 `403`。
+- 容器 readiness 验收：`docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ exec -T worker bun apps/server/dist/scripts/worker-readiness.js` 输出 `Worker readiness: ready`。
+
+回顾时可以问：
+- “为什么 Phase 7.21 做完后还要单独做 Docker 全栈验收？”
+- “Outbox requeue 后为什么 worker readiness 会短暂 degraded？”
+- “普通用户 403 和前端隐藏入口分别证明了什么？”
+- “为什么验收数据要清理，哪些数据可以清理，哪些生产审计不能随便清理？”
+
+### 2026-07-09 - Phase 7.21 Admin Ops 交互收口
+
+目标：把管理员后台的 Outbox / Audit 筛选和 requeue 操作体验再收紧一层，解决原生下拉框割裂、requeue 原因可省略导致复盘信息不足的问题。
+
+为什么：
+- 后台管理不只是“能调接口”，还要让管理员在高压排障时快速判断、谨慎操作、事后能复盘。
+- 浏览器原生 select 在 Windows 上会出现系统蓝色高亮和粗边框，和当前 Admin Console 的低干扰视觉语言割裂，显得像临时 demo。
+- requeue 会改变系统级 outbox 状态，即使后端允许 reason 可选，前端运维工作流也应该引导管理员填写原因，便于后续在 `/audit` 详情里解释这次操作。
+
+主要内容：
+- 新增 `apps/admin/src/components/admin-filter-select.tsx`，提供后台专用自定义筛选控件，支持 `combobox / listbox / option` 语义、label 关联、`aria-selected`、`aria-activedescendant`、上下键切换、Enter 选择、Escape 关闭、外部点击关闭和低干扰滚动样式。
+- `/outbox` 和 `/audit` 替换原生 `<select>`，状态筛选统一使用 Admin Console 的轻量 popover 风格。
+- `/outbox` requeue 前端增加 `reasonRequired` guard：必须填写 reason 并勾选确认后，按钮才可用；切换事件或筛选条件时清空 reason，避免把 A 事件的原因误带到 B 事件；成功后仍刷新 outbox、audit 和 worker readiness。
+- 新增静态 contract test，防止页面回退到原生 select，防止 requeue 操作绕过 reason guard。
+
+边界：
+- 不新增后端 API，不改变 `POST /outbox-events/:id/requeue` contract；后端仍只做安全状态机和审计。
+- 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 编辑。
+- 前端 reason 必填是产品化防误操作，不替代后端 `JwtAuthGuard + OperatorGuard + OutboxOpsService` 的真实安全边界。
+
+验收：
+- `bun --filter @repo/admin test`
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+
+回顾时可以问：
+- “为什么后台管理页面不直接用浏览器原生 select？”
+- “为什么 requeue reason 在后端可选，但前端要做必填？”
+- “前端防误操作和后端状态机安全边界分别负责什么？”
+- “如何用静态 contract test 防止 UI 回退和危险入口回归？”
+
+### 2026-07-09 - Phase 7.20 Operator Audit 详情闭环
+
+目标：把 Admin Console 的 `/audit` 从“能查审计列表”升级为“能追踪一次管理员诊断写操作全过程”的审计详情页，让 requeue 后的复盘更完整。
+
+为什么：
+- Phase 7.19 已经让控制台能发现风险，Phase 7.18 已经让 Outbox Ops 能处理风险，但 Audit 如果只有列表，管理员仍然很难看清一次操作的完整上下文。
+- 高权限诊断写操作需要可复盘：谁操作、操作了什么 target、为什么操作、请求指纹是什么、失败时错误摘要是什么。
+- 面试表达上，这一步能把后台管理闭环讲成“发现问题 -> 处理问题 -> 验证恢复 -> 审计复盘”，而不是只讲一个 requeue 按钮。
+
+主要内容：
+- `@repo/types/api/operator-audit` 新增 `operatorAuditLogDetailResponseSchema`，详情 DTO 复用脱敏列表 item 字段。
+- 后端新增 `GET /operator-audit-logs/:id`，经过 `OPERATOR_AUDIT_ENABLED` feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
+- `OperatorAuditService.getDetail()` 使用显式 `select`，继续排除 `metadata`，不存在时返回 `OPERATOR_AUDIT_LOG_NOT_FOUND`。
+- Admin Console `/audit` 改成列表 + 详情双栏；点击左侧记录后，右侧展示操作上下文、目标对象、来源指纹和错误摘要。
+- 列表选中态增加 `aria-pressed` 和左侧强调条；列表与详情区域都使用独立滚动。
+- `operator-audit-page-contract.test.mts` 增加静态契约，防止页面退回纯列表或展示 `metadata`、payload、原始 IP / User-Agent 等敏感内容。
+- `docs/blogs/admin-console-ops-platform.md` 补充“审计详情为什么重要”。
+
+边界：
+- 不新增审计导出、保留周期配置、更细 operator role、批量操作或审计删除。
+- 详情 API 不返回 `metadata`、payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。
+- 前端详情页只是运维体验层，不承担最终鉴权；真正安全边界仍是后端 feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
+
+验收：
+- `bun test packages/types/tests/operator-audit.test.mts`
+- `bun --cwd packages/types typecheck`
+- `bun --filter @repo/server test -- operator-audit --runInBand`
+- `bun --filter @repo/server build`
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 重建 `server / admin` 后访问 `http://localhost:3100/audit`，点击审计记录，确认右侧详情展示操作上下文、目标对象、来源指纹和错误摘要，且不展示敏感原始字段。
+
+回顾时可以问：
+- “为什么审计列表不够，需要审计详情？”
+- “审计详情为什么复用脱敏 DTO，而不是把 metadata 也返回前端？”
+- “Operator Audit 如何记录 requestId、IP hash 和 User-Agent hash？”
+- “前端审计详情和后端 OperatorGuard 的安全职责怎么分工？”
+- “这一步如何补齐后台管理的复盘闭环？”
+
+### 2026-07-09 - Phase 7.19 Admin Console 控制台数据化
+
+目标：把独立管理员后台首页从“能跳转到各个运维页面”的入口页，升级成管理员一打开就能看到系统当前状态的真实运维总览。
+
+为什么：
+- Phase 7.16 ~ 7.18 已经有独立 Admin Console、Docker admin service、Outbox Ops、操作审计和 Worker Readiness，但首页如果只是静态导航，就不像真正的企业后台。
+- 管理员进入后台时，第一眼应该知道“现在有没有需要处理的任务链路风险”，而不是先逐个页面点进去找。
+- 面试表达上，这一步能把后台管理讲成一套运维产品闭环：总览发现风险，Outbox 处理事件，Audit 复盘操作，Worker Readiness 验证恢复。
+
+主要内容：
+- `/` 控制台使用 TanStack Query 读取 `workerReadinessApi.get()`、`outboxApi.list(FAILED / DEAD)` 和 `operatorAuditApi.list(OUTBOX_REQUEUE)`。
+- 新增 `admin-dashboard-view.ts`，把 readiness、outbox 和 audit 信号聚合为顶部状态、关注项数量、FAILED / DEAD 数量和最近审计数量。
+- 顶部状态区根据 read error、`not_ready`、DEAD outbox、`degraded`、FAILED outbox 和审计失败生成不同严重度。
+- 中部三块信号继续对应 `/worker`、`/outbox`、`/audit`，但展示真实状态摘要，而不是静态说明。
+- 最近关注区按风险优先展示 DEAD / FAILED 事件、readiness issue 和最近审计结果。
+- 同步补了一篇面试学习博客 `docs/blogs/admin-console-ops-platform.md`，覆盖今天整个后台管理产品化链路，而不是只写控制台首页。
+
+边界：
+- 不新增后端 API，不改变权限模型，不放宽 CORS、feature gate、`JwtAuthGuard` 或 `OperatorGuard`。
+- 控制台只读取脱敏 DTO，不展示 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 修改。
+- 数据读取失败时显示异常状态，不使用假数据伪装健康。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 使用 `subst P: "E:\PrepMind_ai智能备考助手"` 映射路径后重建 `admin`，浏览器访问 `http://localhost:3100/`。
+- 浏览器验收确认控制台读取真实 Worker readiness、FAILED / DEAD Outbox 数量和最近审计记录；内部入口跳转到 `/worker` 正常。
+
+回顾时可以问：
+- “为什么后台首页不能只是导航页？”
+- “控制台如何聚合 Worker Readiness、Outbox 和 Operator Audit？”
+- “为什么读取失败要作为一个明确运维状态，而不是静默兜底？”
+- “Admin Console 前端总览和后端 OperatorGuard 的安全边界怎么分工？”
+- “今天的后台管理链路如何从发现问题、处理问题到复盘问题形成闭环？”
+
+### 2026-07-09 - Phase 7.18 Admin Outbox Ops 产品化
+
+目标：把独立后台里的 `/outbox` 从“能查列表、能点 requeue”的工程调试页，升级成管理员能理解失败原因、判断是否适合重新入队、执行安全 requeue，并知道后续去哪里验证恢复的单事件操作工作流。
+
+为什么：
+- Outbox requeue 会改变系统级事件状态，如果页面只给一个按钮，管理员很容易把 handler missing、invalid payload 这类根因未修复的问题误当成“重试一下就好”。
+- Phase 7.15 ~ 7.17 已经把权限、审计、Worker Readiness 和独立 Admin Console 搭起来了，下一步需要把这些能力串成真正可操作、可解释、可复盘的后台流程。
+- 面试表达上，这一步能讲清楚“后台运维页面不是堆 API 返回值”，而是把状态机、错误分类、审计和后续观测做成产品化闭环。
+
+主要内容：
+- `apps/admin/src/lib/outbox-view.ts` 增加 Outbox 展示 helper：只允许 `FAILED / DEAD` 进入 requeue 流程；`PENDING / PROCESSING / SUCCEEDED` 给出只读原因；handler missing、invalid payload、Redis/数据库/超时和未知错误给出不同处理建议。
+- `/outbox` 详情页重构为五个分区：生命周期、事件身份、诊断建议、重新入队操作、后续验证。
+- 重新入队操作保留“操作原因 + 显式确认 + 按钮禁用”三段式保护；requeue 成功后刷新 outbox 列表、详情、operator audit 和 worker readiness 缓存，避免 20 秒 staleTime 内看到旧信号。
+- 后续验证区直接给出 `/worker` 和 `/audit` 入口，让管理员知道 requeue 后要看 Worker Readiness、Outbox backlog 和操作审计，而不是以为按钮点完就代表任务已经执行完成。
+- 列表选中态增加 `aria-pressed` 与左侧强调条，不再只依赖背景色判断当前选中事件。
+- 增加静态 contract test，防止页面暴露完整 payload 或增加批量 requeue、删除、跳过、立即 dispatch、payload 修改等危险入口；浏览器验收中发现 aftercare 文案容易暗示危险操作名后，补充测试并改成“不会改写事件数据或事件结果”。
+
+边界：
+- 本阶段不改后端 API contract，不新增权限模型，不绕过 `JwtAuthGuard + OperatorGuard`。
+- 页面仍只展示脱敏 DTO、`payloadHash`、错误 code / preview、状态和时间戳，不展示完整 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
+- requeue 仍只是安全状态流转：`FAILED / DEAD -> PENDING`，不立即执行 handler，不改写事件数据，不改写事件结果。
+- 不做批量操作、删除事件、跳过事件、立即 dispatch、payload 修改、审计导出或保留周期策略。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/outbox-page-contract.test.mts apps/admin/src/lib/outbox-view.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/admin build`
+- Docker 使用 `subst P: "E:\PrepMind_ai智能备考助手"` 规避中文路径 BuildKit header bug 后，重建并启动 `admin`，浏览器访问 `http://localhost:3100/outbox`。
+- 浏览器验收覆盖：管理员登录态可进入 Outbox Ops；FAILED 事件详情展示五个分区；详情不展示完整 payload；invalid payload 提示先修生产方/数据契约；Redis timeout 事件提示依赖恢复后再 requeue；原因和确认未满足时按钮禁用；requeue 后事件回到 `PENDING`、attempts 重置、后续验证区更新；`/audit` 能看到脱敏 requeue 审计；清理测试数据后 `/worker` 回到 `Ready` 且 `backlog=false`。
+
+回顾时可以问：
+- “为什么 Outbox Ops 页面不能只做一个 requeue 按钮？”
+- “handler missing、invalid payload 和 Redis timeout 三类错误为什么要给不同操作建议？”
+- “requeue 为什么只是状态机里的 `FAILED / DEAD -> PENDING`，而不是立刻执行 handler？”
+- “为什么 requeue 成功后要同时刷新 outbox、audit 和 worker readiness？”
+- “前端页面隐藏危险入口和后端 `OperatorGuard` 的安全职责有什么区别？”
+
+### 2026-07-09 - Phase 7.17.1 管理员后台返回学习端登录态修复
+
+目标：修复从独立管理员后台点击“返回学习端”后，学习端看起来又要求重新登录的问题，并把本机 `localhost` / `127.0.0.1` 混用导致的登录态排障经验沉淀到文档里。
+
+为什么：
+- Phase 7.16 / 7.17 已经把学习端和管理员后台拆成两个 Next app，用户会在 `3000` 和 `3100` 两个端口之间跳转。
+- 本机浏览器会把 `localhost` 和 `127.0.0.1` 当成不同 host；如果后台通过 `localhost:3100` 打开，却硬跳回 `127.0.0.1:3000`，前端状态、refresh cookie 和 API 请求 host 就可能不一致。
+- 这个问题表面像“鉴权失效”或“后台返回后掉登录”，但根因不是后端 `JwtAuthGuard` 坏了，而是本机 loopback host 混用让 session recovery 链路不稳定。
+
+主要内容：
+- 后台“返回学习端”不再硬编码 `http://127.0.0.1:3000`，而是优先使用 `NEXT_PUBLIC_LEARNING_APP_URL`，未配置时跟随当前页面的 `window.location.hostname` 跳回对应的 `3000`。
+- 学习端和管理员后台的 API client 在浏览器端会对齐 loopback host：当页面是 `localhost` 时，把本机 API base 也解析为 `localhost:3001`；当页面是 `127.0.0.1` 时，则解析为 `127.0.0.1:3001`。
+- 新增回归测试覆盖后台返回 URL、admin API base 和 web API base 的 loopback host 对齐规则。
+- `docs/dev-start.md` 补充管理员后台和学习端跳转时的 host 选择建议，避免后续手动验收再次踩坑。
+
+边界：
+- 这次不改变后端鉴权模型、不改变 cookie 策略、不放宽 CORS 和 `OperatorGuard`。
+- `NEXT_PUBLIC_LEARNING_APP_URL` 仍可用于显式覆盖学习端地址；自动对齐只处理本机 `localhost` / `127.0.0.1` 场景，不改外部域名。
+- 前端 host 对齐只是本地开发和 Docker dev 验收体验修复，真正权限仍由后端 session、access token、`JwtAuthGuard` 和 `OperatorGuard` 控制。
+
+验收：
+- `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
+- `node --experimental-strip-types --test apps/web/src/lib/api-client.test.mts apps/web/src/lib/sidebar-nav.test.mts`
+- `bun --filter @repo/admin lint`
+- `bun --filter @repo/web lint`
+- `bun --filter @repo/admin build`
+- `bun --filter @repo/web build`
+- Docker 重建并启动 `web / admin / server` 后，浏览器访问 `http://localhost:3100/worker`，确认“返回学习端”链接为 `http://localhost:3000`，点击后直接进入 `http://localhost:3000/chat`，没有回到登录页。
+
+回顾时可以问：
+- “为什么 `localhost` 和 `127.0.0.1` 在浏览器登录态里不能随便混用？”
+- “为什么这个问题看起来像鉴权失败，但根因其实是前端 host 和 refresh cookie 链路不一致？”
+- “后台返回学习端为什么要跟随当前 hostname，而不是固定写死 `127.0.0.1`？”
+- “Docker dev、本机 dev 和生产域名场景下，前端 API base 应该怎么区分？”
+
+### 2026-07-09 - Phase 7.17 Docker Admin Console Service
+
+目标：把 Phase 7.16 的独立管理员后台从“只能本机 `bun run dev:admin` 启动”推进到 Docker Compose 一等服务，让本地全栈部署形态和我们讲的架构边界一致。
+
+为什么：
+- Phase 7.16 已经把学习端和管理员后台拆成两个 Next app，但 Docker 里还只有 `web / server / worker`，部署拓扑不完整。
+- 管理员后台应该能像企业项目一样单独启动、单独暴露端口、单独验收，而不是永远依赖学习端 dev server。
+- 面试讲架构时可以清楚解释：`web` 是学生学习 PWA，`admin` 是 operator 控制台，`server` 是 API，`worker` 是后台任务进程。
+
+主要内容：
+- 新增 `docker/Dockerfile.admin`，用 Bun workspace + Next standalone 构建 `@repo/admin`，容器端口为 `3100`。
+- `docker/docker-compose.dev.yml` 新增 `admin` service，依赖 `server`，浏览器访问 `http://127.0.0.1:3100`。
+- Docker `web` service 增加 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，学习端 ADMIN 侧边栏“后台管理”默认跳转到管理员后台容器。
+- Docker `server` CORS 默认补充 `http://localhost:3100` 和 `http://127.0.0.1:3100`。
+- 修复 `Dockerfile.web` / `Dockerfile.server` 的 workspace manifest 缺口：根 workspace 是 `apps/*`，所以 deps 层必须复制 `apps/admin/package.json`，否则 `bun install --frozen-lockfile` 会失败。
+- 新增/扩展 Docker 静态契约测试，覆盖 admin Dockerfile、admin compose service、web 管理后台 URL 和 workspace manifest 完整性。
+
+边界：
+- 本阶段不新增新的后台业务页面，不新增新的后端 API 或权限模型。
+- 不做生产域名、TLS、反向代理、镜像推送或 Kubernetes 配置。
+- 管理员后台前端只是体验层，真正安全边界仍是后端 `JwtAuthGuard + OperatorGuard`。
+
+验收：
+- `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build admin`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build web`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build server`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker build worker`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin`
+- `docker compose -f docker/docker-compose.dev.yml --profile worker ps`：`web` 暴露 `3000`，`admin` 暴露 `3100`，`server` 暴露 `3001`，`worker` 为 `healthy`。
+- 浏览器验收：`http://127.0.0.1:3000` 学习端可加载；`http://127.0.0.1:3100` 管理员后台可加载；管理员可看控制台、Outbox Ops、操作审计和 Worker Readiness；普通用户请求 `/operator-audit-logs`、`/worker-readiness`、`/outbox-events` 均返回 403。
+- 中文路径下 Docker Compose `--build` 仍可能触发 Docker Desktop gRPC non-printable ASCII，本次使用 `subst P: "E:\PrepMind_ai智能备考助手"` 映射 ASCII 路径完成全栈验收。
+
+回顾时可以问：
+- “为什么 `admin` 要做成独立 Docker service，而不是继续塞进 `web`？”
+- “Docker 里的 `web / admin / server / worker` 各自承担什么职责？”
+- “为什么 Dockerfile 的 deps 层必须复制所有 workspace package.json？”
+- “管理员后台前端门禁和后端 OperatorGuard 的安全边界有什么区别？”
 
 ### 2026-07-09 - Phase 7.16 桌面端 Admin Console 第一版
 
@@ -682,11 +941,11 @@ AI 行为验收规则：
 
 Phase 7 后续优先级：
 
-1. Operator Audit 产品化边界：是否需要只读详情、导出策略、保留周期和更细 operator role。
+1. Operator Audit 产品化边界：是否需要审计导出策略、保留周期和更细 operator role。
 2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
-3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标和容器 readiness。
-4. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
-5. Outbox 生产化：dead-letter 修复工作流、更多业务事件接入、生产开关流程。
+3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标、队列延迟和告警阈值。
+4. Outbox 生产化：更多业务事件接入、dead-letter 修复工作流、生产开关流程。
+5. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
 
 ## 参考文档
 
@@ -704,3 +963,4 @@ Phase 7 后续优先级：
 - `docs/blogs/rag-eval-and-hybrid-retrieval.md`：RAG Eval、Hybrid Retrieval 和真实检索验收面试学习博客。
 - `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
 - `docs/blogs/worker-readiness-deployment-checks.md`：Worker Readiness、部署前检查和 CLI 退出码面试学习博客。
+- `docs/blogs/admin-console-ops-platform.md`：后台管理、Admin Console、Outbox Ops、审计和控制台总览面试学习博客。

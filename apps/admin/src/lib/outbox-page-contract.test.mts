@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const pageSource = readFileSync(
+  resolve(__dirname, '../app/outbox/page.tsx'),
+  'utf8',
+);
+
+test('outbox page exposes operator workflow sections without payload disclosure', () => {
+  assert.match(pageSource, /生命周期/);
+  assert.match(pageSource, /事件身份/);
+  assert.match(pageSource, /诊断建议/);
+  assert.match(pageSource, /重新入队操作/);
+  assert.match(pageSource, /后续验证/);
+  assert.match(pageSource, /getOutboxAftercare/);
+  assert.doesNotMatch(pageSource, />\s*Payload\s*</i);
+  assert.doesNotMatch(pageSource, /payload\s*内容|完整 payload|查看 payload/i);
+});
+
+test('outbox page keeps dangerous operations out of the UI', () => {
+  assert.doesNotMatch(pageSource, /批量重新入队|批量 requeue/i);
+  assert.doesNotMatch(pageSource, /删除事件|delete event/i);
+  assert.doesNotMatch(pageSource, /强制成功|force success/i);
+  assert.doesNotMatch(pageSource, /跳过事件|skip event/i);
+  assert.doesNotMatch(pageSource, /直接执行 handler|dispatch now/i);
+  assert.doesNotMatch(pageSource, /编辑 payload|edit payload/i);
+});
+
+test('outbox page preserves requeue confirmation and follow-up cache invalidation', () => {
+  assert.match(pageSource, /confirmChecked/);
+  assert.match(pageSource, /reasonRequired/);
+  assert.match(pageSource, /reason\.trim\(\)\.length > 0/);
+  assert.match(pageSource, /setReason\(''\)/);
+  assert.match(pageSource, /disabled=\{!canRequeue \|\| requeueMutation\.isPending\}/);
+  assert.match(pageSource, /\['operator-audit-logs'\]/);
+  assert.match(pageSource, /\['worker-readiness'\]/);
+});
+
+test('outbox page exposes selected event state beyond color alone', () => {
+  assert.match(pageSource, /aria-pressed=\{selectedId === item\.id\}/);
+  assert.match(pageSource, /bg-\[var\(--admin-accent\)\]/);
+});
+
+test('outbox page keeps the event list and detail panel independently scrollable on desktop', () => {
+  assert.match(pageSource, /lg:h-\[calc\(100dvh-9rem\)\]/);
+  assert.match(pageSource, /data-testid="outbox-list-scroll"/);
+  assert.match(pageSource, /data-testid="outbox-detail-scroll"/);
+  assert.match(pageSource, /overflow-y-auto/);
+});
+
+test('outbox page uses the admin filter select instead of native browser select', () => {
+  assert.match(pageSource, /AdminFilterSelect/);
+  assert.doesNotMatch(pageSource, /<select/);
+});

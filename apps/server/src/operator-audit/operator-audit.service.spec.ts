@@ -241,6 +241,39 @@ describe('OperatorAuditService', () => {
     expect(result.nextCursor).toBeNull();
   });
 
+  it('returns one redacted audit log detail without metadata', async () => {
+    findFirstAuditLog.mockResolvedValue(
+      row({ id: 'audit_2', metadata: { payload: 'secret' } }),
+    );
+
+    const result = await createService().getDetail('audit_2');
+
+    expect(findFirstAuditLog).toHaveBeenCalledWith({
+      where: { id: 'audit_2' },
+      select: objectContaining({
+        metadata: false,
+      }),
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'audit_2',
+        action: 'OUTBOX_REQUEUE',
+        targetType: 'OutboxEvent',
+      }),
+    );
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(JSON.stringify(result)).not.toContain('metadata');
+  });
+
+  it('throws not found when audit log detail does not exist', async () => {
+    findFirstAuditLog.mockResolvedValue(null);
+
+    await expect(createService().getDetail('missing_audit')).rejects.toMatchObject({
+      code: 'OPERATOR_AUDIT_LOG_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+
   it('applies filters and stable cursor pagination', async () => {
     const cursorCreatedAt = new Date('2026-07-08T09:00:00.000Z');
     findFirstAuditLog.mockResolvedValue({

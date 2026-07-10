@@ -39,6 +39,9 @@ export const operatorAuditLogListResponseSchema = z
   })
   .strict();
 
+export const operatorAuditLogDetailResponseSchema =
+  operatorAuditLogListItemSchema;
+
 export type OperatorAuditAction = z.infer<typeof operatorAuditActionSchema>;
 export type OperatorAuditStatus = z.infer<typeof operatorAuditStatusSchema>;
 export type OperatorAuditLogListQuery = z.infer<
@@ -49,4 +52,7 @@ export type OperatorAuditLogListItem = z.infer<
 >;
 export type OperatorAuditLogListResponse = z.infer<
   typeof operatorAuditLogListResponseSchema
+>;
+export type OperatorAuditLogDetailResponse = z.infer<
+  typeof operatorAuditLogDetailResponseSchema
 >;

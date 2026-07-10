@@ -93,12 +93,33 @@ export function createApiClient({ baseUrl, fetchImpl = fetch }: CreateApiClientO
   };
 }
 
-export function resolveApiClientBaseUrl(env: NodeJS.ProcessEnv = process.env) {
-  return (
-    env.PREPMIND_INTERNAL_API_BASE_URL ??
-    env.NEXT_PUBLIC_API_BASE_URL ??
-    'http://127.0.0.1:3001'
-  );
+export function resolveApiClientBaseUrl(
+  env: NodeJS.ProcessEnv = process.env,
+  location: Pick<Location, 'hostname'> | URL | undefined =
+    typeof window === 'undefined' ? undefined : window.location,
+) {
+  const baseUrl =
+    env.PREPMIND_INTERNAL_API_BASE_URL ?? env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
+
+  return alignLoopbackHost(baseUrl, location);
+}
+
+function alignLoopbackHost(baseUrl: string, location: Pick<Location, 'hostname'> | URL | undefined) {
+  if (!location || !isLoopbackHost(location.hostname)) return baseUrl;
+
+  try {
+    const url = new URL(baseUrl);
+    if (!isLoopbackHost(url.hostname)) return baseUrl;
+
+    url.hostname = location.hostname;
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return baseUrl;
+  }
+}
+
+function isLoopbackHost(hostname: string) {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
 async function parseJson(response: Response) {

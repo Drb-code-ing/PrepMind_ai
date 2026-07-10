@@ -29,6 +29,36 @@ function testResolvesInternalApiBaseUrlBeforePublicUrl() {
     }),
     'http://127.0.0.1:3001',
   );
+
+  assert.equal(
+    resolveApiClientBaseUrl(
+      {
+        NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+      },
+      new URL('http://localhost:3000/chat'),
+    ),
+    'http://localhost:3001',
+  );
+
+  assert.equal(
+    resolveApiClientBaseUrl(
+      {
+        NEXT_PUBLIC_API_BASE_URL: 'http://localhost:3001',
+      },
+      new URL('http://127.0.0.1:3000/chat'),
+    ),
+    'http://127.0.0.1:3001',
+  );
+
+  assert.equal(
+    resolveApiClientBaseUrl(
+      {
+        NEXT_PUBLIC_API_BASE_URL: 'https://api.example.com',
+      },
+      new URL('http://localhost:3000/chat'),
+    ),
+    'https://api.example.com',
+  );
 }
 
 async function testParsesSuccessEnvelope() {

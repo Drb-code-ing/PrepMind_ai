@@ -18,24 +18,32 @@ RUN bun install --frozen-lockfile
 
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001
+ARG PREPMIND_INTERNAL_API_BASE_URL=http://server:3001
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV PREPMIND_INTERNAL_API_BASE_URL=$PREPMIND_INTERNAL_API_BASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps ./apps
 COPY --from=deps /app/packages ./packages
 COPY . .
 RUN bun --cwd packages/database prisma:generate
-RUN bun --filter @repo/server build
+RUN bun --filter @repo/admin build
 
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
+ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001
+ARG PREPMIND_INTERNAL_API_BASE_URL=http://server:3001
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV PREPMIND_INTERNAL_API_BASE_URL=$PREPMIND_INTERNAL_API_BASE_URL
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/server/dist ./apps/server/dist
-COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
-COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
-COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/admin/.next/standalone ./
+COPY --from=builder /app/apps/admin/.next/static ./apps/admin/.next/static
+COPY --from=builder /app/apps/admin/public ./apps/admin/public
 
-USER nestjs
-EXPOSE 3001
-CMD ["bun", "apps/server/dist/src/main.js"]
+USER nextjs
+EXPOSE 3100
+ENV PORT=3100
+ENV HOSTNAME=0.0.0.0
+CMD ["bun", "apps/admin/server.js"]

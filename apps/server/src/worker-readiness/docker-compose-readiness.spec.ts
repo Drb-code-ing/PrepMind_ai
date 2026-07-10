@@ -24,6 +24,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
     expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
     expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
     expect(dockerfile).toContain(
       'COPY packages/agent/package.json ./packages/agent/',
@@ -86,6 +87,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(dockerfile).toContain('FROM oven/bun:1.3.14-alpine AS base');
     expect(dockerfile).toContain('COPY bun.lock package.json');
+    expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
     expect(dockerfile).toContain('COPY apps/web/package.json ./apps/web/');
     expect(dockerfile).toContain(
       'COPY packages/agent/package.json ./packages/agent/',
@@ -121,7 +123,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(serverService).toContain('JWT_SECRET:');
     expect(serverService).toContain(
-      'CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}',
+      'CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}',
     );
     expect(workerService).toContain('JWT_SECRET:');
     expect(workerService).toContain('healthcheck:');
@@ -166,6 +168,51 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(webService).not.toContain('AI_MODEL: ${');
     expect(webService).not.toContain('DEEPSEEK_API_KEY: ${');
     expect(webService).not.toContain('OPENAI_API_KEY: ${');
+  });
+
+  it('keeps the admin Dockerfile aligned with the Bun workspace and Next standalone output', () => {
+    const dockerfile = readRepoFile('docker/Dockerfile.admin');
+
+    expect(dockerfile).toContain('FROM oven/bun:1.3.14-alpine AS base');
+    expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
+    expect(dockerfile).toContain('COPY packages/types/package.json ./packages/types/');
+    expect(dockerfile).toContain('bun install --frozen-lockfile');
+    expect(dockerfile).toContain(
+      'ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
+    );
+    expect(dockerfile).toContain(
+      'ENV PREPMIND_INTERNAL_API_BASE_URL=$PREPMIND_INTERNAL_API_BASE_URL',
+    );
+    expect(dockerfile).toContain('bun --filter @repo/admin build');
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/apps/admin/.next/standalone ./',
+    );
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/apps/admin/.next/static ./apps/admin/.next/static',
+    );
+    expect(dockerfile).toContain('EXPOSE 3100');
+    expect(dockerfile).toContain('ENV PORT=3100');
+    expect(dockerfile).toContain('CMD ["bun", "apps/admin/server.js"]');
+  });
+
+  it('wires the admin Docker service and learning app admin console URL', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const adminService = extractYamlSection(compose, '  admin:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+
+    expect(adminService).toContain('dockerfile: docker/Dockerfile.admin');
+    expect(adminService).toContain('"3100:3100"');
+    expect(adminService).toContain('depends_on:');
+    expect(adminService).toContain('- server');
+    expect(adminService).toContain(
+      'NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_ADMIN_API_BASE_URL:-http://127.0.0.1:3001}',
+    );
+    expect(adminService).toContain(
+      'PREPMIND_INTERNAL_API_BASE_URL: http://server:3001',
+    );
+    expect(webService).toContain(
+      'NEXT_PUBLIC_ADMIN_CONSOLE_URL: ${NEXT_PUBLIC_ADMIN_CONSOLE_URL:-http://127.0.0.1:3100}',
+    );
   });
 });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  operatorAuditLogDetailResponseSchema,
   operatorAuditLogListQuerySchema,
   operatorAuditLogListResponseSchema,
 } from '../src/api/operator-audit';
@@ -39,5 +40,31 @@ describe('operator audit api contract', () => {
     });
 
     expect(parsed.items[0]?.action).toBe('OUTBOX_REQUEUE');
+  });
+
+  it('validates redacted detail response shape without raw metadata', () => {
+    const parsed = operatorAuditLogDetailResponseSchema.parse({
+      id: 'audit_1',
+      actorUserId: 'user_admin',
+      action: 'OUTBOX_REQUEUE',
+      status: 'FAILED',
+      targetType: 'OutboxEvent',
+      targetId: 'evt_1',
+      reason: 'retry after dependency recovery',
+      requestId: 'req_1',
+      ipAddressHash: 'sha256:abc',
+      userAgentHash: 'sha256:def',
+      errorCode: 'OUTBOX_EVENT_NOT_REQUEUEABLE',
+      errorPreview: 'Only failed or dead events can be requeued',
+      createdAt: '2026-07-08T10:00:00.000Z',
+    });
+
+    expect(parsed.id).toBe('audit_1');
+    expect(() =>
+      operatorAuditLogDetailResponseSchema.parse({
+        ...parsed,
+        metadata: { payload: 'secret' },
+      }),
+    ).toThrow();
   });
 });

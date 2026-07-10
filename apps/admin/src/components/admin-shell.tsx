@@ -6,6 +6,7 @@ import { Activity, ClipboardList, Gauge, LayoutDashboard, LogOut } from 'lucide-
 
 import { authApi } from '@/lib/auth-api';
 import { getAdminNavItems, type AdminNavIconKey } from '@/lib/admin-nav';
+import { resolveLearningAppUrl } from '@/lib/admin-return-url';
 import { useAdminSessionStore } from '@/stores/admin-session-store';
 
 const icons: Record<AdminNavIconKey, React.ComponentType<{ className?: string }>> = {
@@ -27,6 +28,10 @@ export function AdminShell({
   const pathname = usePathname();
   const currentUser = useAdminSessionStore((state) => state.currentUser);
   const clearSession = useAdminSessionStore((state) => state.clearSession);
+  const learningAppUrl = resolveLearningAppUrl({
+    explicitUrl: process.env.NEXT_PUBLIC_LEARNING_APP_URL,
+    location: typeof window === 'undefined' ? undefined : window.location,
+  });
 
   async function logout() {
     try {
@@ -83,7 +88,7 @@ export function AdminShell({
         </div>
       </aside>
 
-      <main className="min-w-0 px-8 py-7">
+      <main className="hide-scrollbar min-w-0 overflow-y-auto px-8 py-7">
         <header className="flex items-start justify-between gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--admin-muted)]">
@@ -95,7 +100,7 @@ export function AdminShell({
             </p>
           </div>
           <a
-            href="http://127.0.0.1:3000"
+            href={learningAppUrl}
             className="inline-flex min-h-10 items-center rounded-md border border-[var(--admin-line)] bg-white px-3 text-sm font-semibold text-[var(--admin-ink)]"
           >
             返回学习端
