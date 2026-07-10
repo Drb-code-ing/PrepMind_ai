@@ -65,6 +65,12 @@ describe('bootstrapServer', () => {
     expect(createApplicationContext).not.toHaveBeenCalled();
     expect(app.use).toHaveBeenCalledTimes(1);
     expect(app.enableCors).toHaveBeenCalledTimes(1);
+    expect(app.enableCors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: true,
+        exposedHeaders: ['Content-Disposition', 'X-Content-SHA256'],
+      }),
+    );
     expect(app.useGlobalFilters).toHaveBeenCalledTimes(1);
     expect(app.useGlobalInterceptors).toHaveBeenCalledTimes(1);
     expect(app.listen).toHaveBeenCalledWith(3001);

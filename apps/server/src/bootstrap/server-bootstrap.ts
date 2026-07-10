@@ -53,6 +53,7 @@ function configureHttpApp(
       nodeEnv: config.get('NODE_ENV', { infer: true }),
     }),
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'X-Content-SHA256'],
   });
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());

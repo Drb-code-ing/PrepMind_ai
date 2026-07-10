@@ -346,7 +346,7 @@ describe('StorageService', () => {
   });
 
   it('reads audit exports with a fixed ZIP content type', async () => {
-    minioClient.statObject.mockResolvedValue({ metaData: {} });
+    minioClient.statObject.mockResolvedValue({ metaData: {}, size: 3 });
     minioClient.getObject.mockResolvedValue(Readable.from(['zip']));
 
     const result = await createService().readOperatorAuditExport(
@@ -354,8 +354,23 @@ describe('StorageService', () => {
     );
 
     expect(result.contentType).toBe('application/zip');
+    expect(result.size).toBe(3);
     expect(result.stream).toBeInstanceOf(Readable);
   });
+
+  it.each([undefined, -1, 1.5, Number.NaN])(
+    'rejects invalid audit export stat size %s before opening the stream',
+    async (size) => {
+      minioClient.statObject.mockResolvedValue({ metaData: {}, size });
+
+      await expect(
+        createService().readOperatorAuditExport(
+          'operator-audit-exports/export_1/attempts/token_1.zip',
+        ),
+      ).rejects.toMatchObject({ kind: 'unavailable' });
+      expect(minioClient.getObject).not.toHaveBeenCalled();
+    },
+  );
 
   it('maps only missing-object shapes to missing without leaking raw messages', async () => {
     minioClient.statObject.mockRejectedValueOnce({ code: 'NoSuchKey' });

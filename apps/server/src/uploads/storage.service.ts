@@ -282,12 +282,16 @@ export class StorageService {
   async readOperatorAuditExport(objectKey: string): Promise<{
     stream: Readable;
     contentType: 'application/zip';
+    size: number;
   }> {
     const safeKey = assertOperatorAuditExportKey(objectKey);
     try {
-      await this.minioClient.statObject(this.bucket, safeKey);
+      const stat = await this.minioClient.statObject(this.bucket, safeKey);
+      if (!Number.isSafeInteger(stat.size) || stat.size < 0) {
+        throw new OperatorAuditExportStorageError('unavailable');
+      }
       const stream = await this.minioClient.getObject(this.bucket, safeKey);
-      return { stream, contentType: 'application/zip' };
+      return { stream, contentType: 'application/zip', size: stat.size };
     } catch (error) {
       throw storageErrorFor(error);
     }

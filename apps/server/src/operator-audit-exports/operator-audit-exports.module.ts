@@ -24,11 +24,13 @@ import {
   OperatorAuditExportEnabledGuard,
 } from './operator-audit-export.controller';
 import { OperatorAuditExportArchiveService } from './operator-audit-export-archive.service';
+import { OperatorAuditExportDownloadService } from './operator-audit-export-download.service';
 import {
   OPERATOR_AUDIT_EXPORT_QUEUE,
   OPERATOR_AUDIT_MAINTENANCE_QUEUE,
 } from './operator-audit-export.constants';
 import { OperatorAuditExportRequestService } from './operator-audit-export-request.service';
+import { OperatorAuditExportQueryService } from './operator-audit-export-query.service';
 import { OperatorAuditExportStateRepository } from './operator-audit-export-state.repository';
 import { OperatorAuditMaintenanceService } from './operator-audit-maintenance.service';
 import { OperatorAuditExportTempJanitorService } from './operator-audit-export-temp-janitor.service';
@@ -171,6 +173,8 @@ function isExplicitlyEnabled(value: string | undefined) {
   controllers: [OperatorAuditExportController],
   providers: [
     OperatorAuditExportRequestService,
+    OperatorAuditExportQueryService,
+    OperatorAuditExportDownloadService,
     OperatorAuditExportEnabledGuard,
     OperatorAuditExportStateRepository,
     OperatorAuditExportArchiveService,
