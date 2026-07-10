@@ -268,7 +268,9 @@ describe('OperatorAuditService', () => {
   it('throws not found when audit log detail does not exist', async () => {
     findFirstAuditLog.mockResolvedValue(null);
 
-    await expect(createService().getDetail('missing_audit')).rejects.toMatchObject({
+    await expect(
+      createService().getDetail('missing_audit'),
+    ).rejects.toMatchObject({
       code: 'OPERATOR_AUDIT_LOG_NOT_FOUND',
       statusCode: 404,
     });

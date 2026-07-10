@@ -105,7 +105,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL',
     );
     expect(dockerfile).toContain('bun --filter @repo/web build');
-    expect(dockerfile).toContain('COPY --from=builder /app/apps/web/.next/standalone ./');
+    expect(dockerfile).toContain(
+      'COPY --from=builder /app/apps/web/.next/standalone ./',
+    );
     expect(dockerfile).toContain('CMD ["bun", "apps/web/server.js"]');
   });
 
@@ -141,7 +143,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const serverService = extractYamlSection(compose, '  server:', 2);
 
-    expect(serverService).toContain('OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}');
+    expect(serverService).toContain(
+      'OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}',
+    );
     expect(serverService).toContain(
       'OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}',
     );
@@ -159,7 +163,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(webService).toContain('env_file:');
     expect(webService).toContain('- ../.env');
-    expect(webService).toContain('PREPMIND_INTERNAL_API_BASE_URL: http://server:3001');
+    expect(webService).toContain(
+      'PREPMIND_INTERNAL_API_BASE_URL: http://server:3001',
+    );
     expect(webService).toContain('PREPMIND_LOCAL_DEV_TOOLS_ENABLED:');
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
     expect(webService).not.toContain('AI_PROVIDER_MODE: ${');
@@ -175,7 +181,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
     expect(dockerfile).toContain('FROM oven/bun:1.3.14-alpine AS base');
     expect(dockerfile).toContain('COPY apps/admin/package.json ./apps/admin/');
-    expect(dockerfile).toContain('COPY packages/types/package.json ./packages/types/');
+    expect(dockerfile).toContain(
+      'COPY packages/types/package.json ./packages/types/',
+    );
     expect(dockerfile).toContain('bun install --frozen-lockfile');
     expect(dockerfile).toContain(
       'ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
