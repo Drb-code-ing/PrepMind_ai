@@ -1,8 +1,16 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { ConfigService } from '@nestjs/config';
 
 import type { ServerEnv } from '../config/env';
-import { parseMinioEndpoint, StorageService } from './storage.service';
+import {
+  OperatorAuditExportStorageError,
+  parseMinioEndpoint,
+  StorageService,
+} from './storage.service';
 
 describe('StorageService', () => {
   const configValues: ServerEnv = {
@@ -44,6 +52,7 @@ describe('StorageService', () => {
     statObject: jest.fn(),
     getObject: jest.fn(),
     removeObject: jest.fn(),
+    listObjectsV2: jest.fn(),
   };
 
   beforeEach(() => {
@@ -290,6 +299,159 @@ describe('StorageService', () => {
         'users/user_1/knowledge/missing.txt',
       ),
     ).rejects.toMatchObject({ code: 'KNOWLEDGE_DOCUMENT_READ_FAILED' });
+  });
+
+  it('writes an audit export stream to an attempt-fenced ZIP key', async () => {
+    const directory = join(tmpdir(), `prepmind-storage-spec-${randomUUID()}`);
+    const filePath = join(directory, 'evidence.zip');
+    await mkdir(directory, { recursive: true });
+    await writeFile(filePath, Buffer.from('zip-bytes'));
+
+    try {
+      await expect(
+        createService().writeOperatorAuditExport(
+          'export_1',
+          'token_1',
+          filePath,
+        ),
+      ).resolves.toBe('operator-audit-exports/export_1/attempts/token_1.zip');
+      expect(minioClient.putObject).toHaveBeenCalledWith(
+        'prepmind-dev',
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+        expect.any(Readable),
+        9,
+        { 'Content-Type': 'application/zip' },
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects invalid export ids, tokens, and keys before MinIO access', async () => {
+    const service = createService();
+
+    await expect(
+      service.writeOperatorAuditExport('../export', 'token', 'x.zip'),
+    ).rejects.toMatchObject({ kind: 'unavailable' });
+    await expect(
+      service.writeOperatorAuditExport('export', 'token/other', 'x.zip'),
+    ).rejects.toMatchObject({ kind: 'unavailable' });
+    await expect(
+      service.readOperatorAuditExport(
+        'operator-audit-exports/export/attempts/token.zip/other',
+      ),
+    ).rejects.toMatchObject({ kind: 'unavailable' });
+    expect(minioClient.putObject).not.toHaveBeenCalled();
+    expect(minioClient.statObject).not.toHaveBeenCalled();
+  });
+
+  it('reads audit exports with a fixed ZIP content type', async () => {
+    minioClient.statObject.mockResolvedValue({ metaData: {} });
+    minioClient.getObject.mockResolvedValue(Readable.from(['zip']));
+
+    const result = await createService().readOperatorAuditExport(
+      'operator-audit-exports/export_1/attempts/token_1.zip',
+    );
+
+    expect(result.contentType).toBe('application/zip');
+    expect(result.stream).toBeInstanceOf(Readable);
+  });
+
+  it('maps only missing-object shapes to missing without leaking raw messages', async () => {
+    minioClient.statObject.mockRejectedValueOnce({ code: 'NoSuchKey' });
+    await expect(
+      createService().readOperatorAuditExport(
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+      ),
+    ).rejects.toMatchObject({ kind: 'missing' });
+
+    minioClient.statObject.mockRejectedValueOnce(
+      new Error('MinIO failed with QWEN_API_KEY=secret'),
+    );
+    const unavailable = await createService()
+      .readOperatorAuditExport(
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+      )
+      .catch((error: unknown) => error);
+    expect(unavailable).toBeInstanceOf(OperatorAuditExportStorageError);
+    expect(unavailable).toMatchObject({ kind: 'unavailable' });
+    expect(String(unavailable)).not.toContain('secret');
+  });
+
+  it("maps MinIO 8's bodyless NotFound code to missing for reads", async () => {
+    minioClient.statObject.mockRejectedValueOnce({ code: 'NotFound' });
+
+    await expect(
+      createService().readOperatorAuditExport(
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+      ),
+    ).rejects.toMatchObject({ kind: 'missing' });
+  });
+
+  it('deletes missing audit export objects idempotently', async () => {
+    minioClient.removeObject.mockRejectedValueOnce({
+      code: 'NoSuchObject',
+    });
+
+    await expect(
+      createService().deleteOperatorAuditExport(
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("deletes MinIO 8's bodyless NotFound response idempotently", async () => {
+    minioClient.removeObject.mockRejectedValueOnce({ code: 'NotFound' });
+
+    await expect(
+      createService().deleteOperatorAuditExport(
+        'operator-audit-exports/export_1/attempts/token_1.zip',
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('lists only strictly valid attempt keys below the requested export', async () => {
+    minioClient.listObjectsV2.mockReturnValue(
+      Readable.from(
+        [
+          {
+            name: 'operator-audit-exports/export_1/attempts/token_1.zip',
+          },
+          {
+            name: 'operator-audit-exports/export_2/attempts/token_2.zip',
+          },
+          {
+            name: 'operator-audit-exports/export_1/attempts/bad/key.zip',
+          },
+          { name: undefined },
+        ],
+        { objectMode: true },
+      ),
+    );
+
+    await expect(
+      createService().listOperatorAuditExportObjects('export_1'),
+    ).resolves.toEqual([
+      'operator-audit-exports/export_1/attempts/token_1.zip',
+    ]);
+    expect(minioClient.listObjectsV2).toHaveBeenCalledWith(
+      'prepmind-dev',
+      'operator-audit-exports/export_1/attempts/',
+      true,
+    );
+  });
+
+  it('keeps export objects outside existing public read and delete surfaces', async () => {
+    const exportKey = 'operator-audit-exports/export_1/attempts/token_1.zip';
+
+    await expect(createService().readObject(exportKey)).rejects.toMatchObject({
+      code: 'UPLOAD_IMAGE_NOT_FOUND',
+    });
+    await expect(createService().deleteObject(exportKey)).rejects.toMatchObject(
+      { code: 'KNOWLEDGE_DOCUMENT_NOT_FOUND' },
+    );
+    expect(minioClient.getObject).not.toHaveBeenCalled();
+    expect(minioClient.removeObject).not.toHaveBeenCalled();
   });
 
   it('accepts endpoint values that accidentally include a port', () => {

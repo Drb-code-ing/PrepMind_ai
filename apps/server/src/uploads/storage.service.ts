@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 import { HttpStatus, Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +25,7 @@ type MinioClientLike = Pick<
   | 'statObject'
   | 'getObject'
   | 'removeObject'
+  | 'listObjectsV2'
 >;
 
 type UploadImageInput = {
@@ -54,6 +57,21 @@ const documentMimeTypes: Record<
   'text/x-markdown': { extension: 'md', type: 'MD' },
   'text/plain': { extension: 'txt', type: 'TXT' },
 };
+
+const OPERATOR_AUDIT_EXPORT_SEGMENT_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+const OPERATOR_AUDIT_EXPORT_KEY_PATTERN =
+  /^operator-audit-exports\/([A-Za-z0-9_-]{1,100})\/attempts\/([A-Za-z0-9_-]{1,100})\.zip$/;
+
+export class OperatorAuditExportStorageError extends Error {
+  constructor(readonly kind: 'missing' | 'unavailable') {
+    super(
+      kind === 'missing'
+        ? 'Operator audit export object is missing'
+        : 'Operator audit export storage is unavailable',
+    );
+    this.name = 'OperatorAuditExportStorageError';
+  }
+}
 
 @Injectable()
 export class StorageService {
@@ -223,6 +241,88 @@ export class StorageService {
         '无法读取资料文件',
         HttpStatus.BAD_GATEWAY,
       );
+    }
+  }
+
+  async writeOperatorAuditExport(
+    exportId: string,
+    processingToken: string,
+    filePath: string,
+  ): Promise<string> {
+    const safeExportId = assertOperatorAuditExportSegment(exportId);
+    const safeToken = assertOperatorAuditExportSegment(processingToken);
+    const objectKey = createOperatorAuditExportObjectKey(
+      safeExportId,
+      safeToken,
+    );
+
+    try {
+      await this.ensureBucket();
+      const file = await stat(filePath);
+      if (!file.isFile()) throw new Error('Audit export archive is not a file');
+      const stream = createReadStream(filePath);
+      try {
+        await this.minioClient.putObject(
+          this.bucket,
+          objectKey,
+          stream,
+          file.size,
+          { 'Content-Type': 'application/zip' },
+        );
+      } finally {
+        stream.destroy();
+      }
+      return objectKey;
+    } catch (error) {
+      if (error instanceof OperatorAuditExportStorageError) throw error;
+      throw new OperatorAuditExportStorageError('unavailable');
+    }
+  }
+
+  async readOperatorAuditExport(objectKey: string): Promise<{
+    stream: Readable;
+    contentType: 'application/zip';
+  }> {
+    const safeKey = assertOperatorAuditExportKey(objectKey);
+    try {
+      await this.minioClient.statObject(this.bucket, safeKey);
+      const stream = await this.minioClient.getObject(this.bucket, safeKey);
+      return { stream, contentType: 'application/zip' };
+    } catch (error) {
+      throw storageErrorFor(error);
+    }
+  }
+
+  async deleteOperatorAuditExport(objectKey: string): Promise<void> {
+    const safeKey = assertOperatorAuditExportKey(objectKey);
+    try {
+      await this.minioClient.removeObject(this.bucket, safeKey);
+    } catch (error) {
+      if (isMissingObjectError(error)) return;
+      throw new OperatorAuditExportStorageError('unavailable');
+    }
+  }
+
+  async listOperatorAuditExportObjects(exportId: string): Promise<string[]> {
+    const safeExportId = assertOperatorAuditExportSegment(exportId);
+    const prefix = `operator-audit-exports/${safeExportId}/attempts/`;
+
+    try {
+      const objects = this.minioClient.listObjectsV2(this.bucket, prefix, true);
+      const keys: string[] = [];
+      await new Promise<void>((resolve, reject) => {
+        objects.on('data', (entry) => {
+          const key = typeof entry.name === 'string' ? entry.name : '';
+          const parsed = parseOperatorAuditExportKey(key);
+          if (parsed?.exportId === safeExportId) keys.push(key);
+        });
+        objects.once('error', reject);
+        objects.once('end', resolve);
+      });
+      return keys;
+    } catch (error) {
+      if (error instanceof OperatorAuditExportStorageError) throw error;
+      throw new OperatorAuditExportStorageError('unavailable');
     }
   }
 
@@ -432,6 +532,57 @@ function isReadableImagePurpose(value: string | undefined) {
 function isReadableImageExtension(value: string | undefined) {
   return (
     value === 'jpg' || value === 'jpeg' || value === 'png' || value === 'webp'
+  );
+}
+
+function assertOperatorAuditExportSegment(value: string) {
+  if (!OPERATOR_AUDIT_EXPORT_SEGMENT_PATTERN.test(value)) {
+    throw new OperatorAuditExportStorageError('unavailable');
+  }
+  return value;
+}
+
+export function createOperatorAuditExportObjectKey(
+  exportId: string,
+  processingToken: string,
+) {
+  const safeExportId = assertOperatorAuditExportSegment(exportId);
+  const safeToken = assertOperatorAuditExportSegment(processingToken);
+  return `operator-audit-exports/${safeExportId}/attempts/${safeToken}.zip`;
+}
+
+function assertOperatorAuditExportKey(value: string) {
+  if (!parseOperatorAuditExportKey(value)) {
+    throw new OperatorAuditExportStorageError('unavailable');
+  }
+  return value;
+}
+
+function parseOperatorAuditExportKey(value: string) {
+  const match = OPERATOR_AUDIT_EXPORT_KEY_PATTERN.exec(value);
+  if (!match?.[1] || !match[2]) return null;
+  return { exportId: match[1], processingToken: match[2] };
+}
+
+function storageErrorFor(error: unknown) {
+  return new OperatorAuditExportStorageError(
+    isMissingObjectError(error) ? 'missing' : 'unavailable',
+  );
+}
+
+function isMissingObjectError(error: unknown) {
+  if (typeof error !== 'object' || error === null) return false;
+  const value = error as {
+    code?: unknown;
+    statusCode?: unknown;
+    status?: unknown;
+  };
+  return (
+    value.code === 'NoSuchKey' ||
+    value.code === 'NoSuchObject' ||
+    value.code === 'NotFound' ||
+    value.statusCode === 404 ||
+    value.status === 404
   );
 }
 
