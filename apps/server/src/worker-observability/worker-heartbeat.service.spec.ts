@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { WorkerHeartbeatService } from './worker-heartbeat.service';
 
 describe('WorkerHeartbeatService', () => {
@@ -59,6 +60,18 @@ describe('WorkerHeartbeatService', () => {
       expect.stringContaining('"serverRole":"worker"'),
       'EX',
       45,
+    );
+    const rawHeartbeat: unknown = redis.set.mock.calls[0]?.[1];
+    expect(typeof rawHeartbeat).toBe('string');
+    const heartbeat = JSON.parse(String(rawHeartbeat)) as unknown;
+    expect(heartbeat).toEqual(
+      expect.objectContaining({
+        queues: [
+          'knowledge-document-processing',
+          'operator-audit-export',
+          'operator-audit-maintenance',
+        ],
+      }),
     );
 
     await service.onModuleDestroy();

@@ -12,6 +12,12 @@ import type {
 import type { ServerEnv } from '../config/env';
 import { PROCESS_KNOWLEDGE_DOCUMENT_QUEUE } from '../knowledge-documents/jobs/process-document.job';
 import { OutboxMetricsService } from '../outbox/outbox-metrics.service';
+import { PrismaService } from '../database/prisma.service';
+import {
+  OPERATOR_AUDIT_EXPORT_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_STATE,
+} from '../operator-audit-exports/operator-audit-export.constants';
 
 type QueueCounts = WorkerReadinessResponse['checks']['queue']['counts'];
 
@@ -25,6 +31,8 @@ type WorkerReadinessOptions = {
   knowledgeProcessingMode: ServerEnv['KNOWLEDGE_PROCESSING_MODE'];
   prefix: string;
   logger?: Pick<Logger, 'warn'>;
+  exportEnabled: boolean;
+  maintenanceEnabled: boolean;
 };
 
 type QueueSnapshot =
@@ -55,11 +63,18 @@ export class WorkerReadinessService {
   private readonly knowledgeProcessingMode: ServerEnv['KNOWLEDGE_PROCESSING_MODE'];
   private readonly prefix: string;
   private readonly logger: Pick<Logger, 'warn'>;
+  private readonly exportEnabled: boolean;
+  private readonly maintenanceEnabled: boolean;
 
   constructor(
     @InjectQueue(PROCESS_KNOWLEDGE_DOCUMENT_QUEUE)
     private readonly queue: Queue,
+    @InjectQueue(OPERATOR_AUDIT_EXPORT_QUEUE)
+    private readonly auditExportQueue: Queue,
+    @InjectQueue(OPERATOR_AUDIT_MAINTENANCE_QUEUE)
+    private readonly auditMaintenanceQueue: Queue,
     private readonly outbox: OutboxMetricsService,
+    private readonly prisma: PrismaService,
     optionsOrConfig: WorkerReadinessOptions | ConfigService<ServerEnv, true>,
   ) {
     const options =
@@ -71,22 +86,41 @@ export class WorkerReadinessService {
               { infer: true },
             ),
             prefix: optionsOrConfig.get('BULLMQ_PREFIX', { infer: true }),
+            exportEnabled: optionsOrConfig.get(
+              'OPERATOR_AUDIT_EXPORT_ENABLED',
+              { infer: true },
+            ),
+            maintenanceEnabled: optionsOrConfig.get(
+              'OPERATOR_AUDIT_MAINTENANCE_ENABLED',
+              { infer: true },
+            ),
           }
         : optionsOrConfig;
 
     this.role = options.role;
     this.knowledgeProcessingMode = options.knowledgeProcessingMode;
     this.prefix = options.prefix;
+    this.exportEnabled = options.exportEnabled;
+    this.maintenanceEnabled = options.maintenanceEnabled;
     this.logger = options.logger ?? new Logger(WorkerReadinessService.name);
   }
 
   async getReadiness(now = new Date()): Promise<WorkerReadinessResponse> {
-    const [queueSnapshot, heartbeatSnapshot, outboxSnapshot] =
-      await Promise.all([
-        this.getQueueSnapshot(),
-        this.getHeartbeatSnapshot(),
-        this.getOutboxSnapshot(now),
-      ]);
+    const [
+      queueSnapshot,
+      auditExportSnapshot,
+      auditMaintenanceSnapshot,
+      heartbeatSnapshot,
+      outboxSnapshot,
+      maintenanceCheck,
+    ] = await Promise.all([
+      this.getQueueSnapshot(this.queue, 'knowledge'),
+      this.getQueueSnapshot(this.auditExportQueue, 'audit export'),
+      this.getQueueSnapshot(this.auditMaintenanceQueue, 'audit maintenance'),
+      this.getHeartbeatSnapshot(),
+      this.getOutboxSnapshot(now),
+      this.getAuditMaintenanceCheck(now),
+    ]);
 
     const hasBacklog = hasQueueBacklog(queueSnapshot.counts);
     const queuePaused =
@@ -102,6 +136,16 @@ export class WorkerReadinessService {
       hasBacklog,
     );
     const outboxCheck = outboxSnapshot.check;
+    const auditExportCheck = this.toAuditQueueCheck(
+      auditExportSnapshot,
+      this.exportEnabled,
+      'Audit export',
+    );
+    const auditMaintenanceQueueCheck = this.toAuditQueueCheck(
+      auditMaintenanceSnapshot,
+      this.maintenanceEnabled,
+      'Audit maintenance',
+    );
     const checks = {
       redis: redisCheck,
       queue: {
@@ -110,6 +154,9 @@ export class WorkerReadinessService {
         isPaused: queuePaused,
         hasBacklog,
       },
+      auditExportQueue: auditExportCheck,
+      auditMaintenanceQueue: auditMaintenanceQueueCheck,
+      auditMaintenance: maintenanceCheck,
       workers: {
         ...workersCheck,
         onlineCount: heartbeatSnapshot.heartbeats.length,
@@ -117,7 +164,16 @@ export class WorkerReadinessService {
       },
       outbox: outboxCheck,
     };
-    const issues = [checks.redis, checks.queue, checks.workers, checks.outbox]
+    const issues = [
+      checks.redis,
+      checks.queue,
+      checks.workers,
+      checks.outbox,
+      ...(this.exportEnabled ? [checks.auditExportQueue] : []),
+      ...(this.maintenanceEnabled
+        ? [checks.auditMaintenanceQueue, checks.auditMaintenance]
+        : []),
+    ]
       .filter((check) => check.status !== 'pass')
       .map((check) => check.message);
     const status = resolveOverallStatus([
@@ -125,6 +181,10 @@ export class WorkerReadinessService {
       checks.queue.status,
       checks.workers.status,
       checks.outbox.status,
+      ...(this.exportEnabled ? [checks.auditExportQueue.status] : []),
+      ...(this.maintenanceEnabled
+        ? [checks.auditMaintenanceQueue.status, checks.auditMaintenance.status]
+        : []),
     ]);
 
     return {
@@ -140,17 +200,14 @@ export class WorkerReadinessService {
     };
   }
 
-  private async getQueueSnapshot(): Promise<QueueSnapshot> {
+  private async getQueueSnapshot(
+    queue: Queue,
+    label: string,
+  ): Promise<QueueSnapshot> {
     try {
       const [counts, isPaused] = await Promise.all([
-        this.queue.getJobCounts(
-          'waiting',
-          'active',
-          'delayed',
-          'failed',
-          'paused',
-        ),
-        this.queue.isPaused(),
+        queue.getJobCounts('waiting', 'active', 'delayed', 'failed', 'paused'),
+        queue.isPaused(),
       ]);
 
       return {
@@ -165,8 +222,74 @@ export class WorkerReadinessService {
         isPaused,
       };
     } catch {
-      this.logger.warn('Worker readiness queue check failed.');
+      this.logger.warn(`Worker readiness ${label} queue check failed.`);
       return { ok: false, counts: emptyQueueCounts(), isPaused: false };
+    }
+  }
+
+  private toAuditQueueCheck(
+    snapshot: QueueSnapshot,
+    enabled: boolean,
+    label: string,
+  ): WorkerReadinessResponse['checks']['auditExportQueue'] {
+    const isPaused = snapshot.isPaused || snapshot.counts.paused > 0;
+    const hasBacklog = hasQueueBacklog(snapshot.counts);
+    let status: WorkerReadinessCheckStatus = 'pass';
+    let message = `${label} queue is readable.`;
+    if (!snapshot.ok) {
+      status = enabled ? 'fail' : 'warn';
+      message = `${label} queue is not readable.`;
+    } else if (isPaused) {
+      status = enabled ? 'fail' : 'warn';
+      message = `${label} queue is paused.`;
+    } else if (snapshot.counts.failed > 0) {
+      status = 'warn';
+      message = `${label} queue has failed jobs.`;
+    }
+    return { status, message, counts: snapshot.counts, isPaused, hasBacklog };
+  }
+
+  private async getAuditMaintenanceCheck(
+    now: Date,
+  ): Promise<WorkerReadinessResponse['checks']['auditMaintenance']> {
+    if (!this.maintenanceEnabled) {
+      return {
+        status: 'warn',
+        message: 'Audit maintenance is disabled.',
+        enabled: false,
+        lastSucceededAt: null,
+        overdue: false,
+      };
+    }
+    try {
+      const state = await this.prisma.operatorAuditMaintenanceState.findUnique({
+        where: { name: OPERATOR_AUDIT_MAINTENANCE_STATE },
+        select: { lastSucceededAt: true },
+      });
+      const lastSucceededAt = state?.lastSucceededAt ?? null;
+      const overdue =
+        !lastSucceededAt ||
+        now.getTime() - lastSucceededAt.getTime() > 2 * 3_600_000;
+      return {
+        status: overdue ? 'fail' : 'pass',
+        message: overdue
+          ? 'Audit maintenance has not succeeded within two hours.'
+          : 'Audit maintenance is current.',
+        enabled: true,
+        lastSucceededAt: lastSucceededAt?.toISOString() ?? null,
+        overdue,
+      };
+    } catch {
+      this.logger.warn(
+        'Worker readiness audit maintenance state check failed.',
+      );
+      return {
+        status: 'fail',
+        message: 'Audit maintenance state is not readable.',
+        enabled: true,
+        lastSucceededAt: null,
+        overdue: true,
+      };
     }
   }
 

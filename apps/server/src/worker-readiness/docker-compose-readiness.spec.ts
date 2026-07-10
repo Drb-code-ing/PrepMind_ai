@@ -139,6 +139,41 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(workerService).toContain('start_period:');
   });
 
+  it('bootstraps the audit export lifecycle and bounds plaintext worker temp storage', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const lifecycle = JSON.parse(
+      readRepoFile('docker/minio/operator-audit-export-lifecycle.json'),
+    ) as { Rules: Array<Record<string, unknown>> };
+    const init = extractYamlSection(compose, '  minio-init:', 2);
+    const server = extractYamlSection(compose, '  server:', 2);
+    const worker = extractYamlSection(compose, '  worker:', 2);
+    expect(lifecycle.Rules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          Filter: { Prefix: 'operator-audit-exports/' },
+          Expiration: { Days: 2 },
+          NoncurrentVersionExpiration: { NoncurrentDays: 2 },
+          AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+        }),
+        expect.objectContaining({
+          Expiration: { ExpiredObjectDeleteMarker: true },
+        }),
+      ]),
+    );
+    expect(init).toContain('minio/mc');
+    expect(init).toContain('mc ilm import local/prepmind-dev');
+    expect(init).toContain('/config/operator-audit-export-lifecycle.json:ro');
+    expect(server).toContain('minio-init:');
+    expect(server).toContain('condition: service_completed_successfully');
+    const defaultArchiveBytes = 67_108_864;
+    const tmpfsMatch = worker.match(
+      /\/tmp\/prepmind-audit-exports:size=(\d+),mode=0700/,
+    );
+    expect(tmpfsMatch).not.toBeNull();
+    const tmpfsCapacity = Number(tmpfsMatch?.[1]);
+    expect(tmpfsCapacity).toBeGreaterThan(2 * defaultArchiveBytes);
+  });
+
   it('keeps local Docker server diagnostics explicitly enabled despite production runtime', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const dockerfile = readRepoFile('docker/Dockerfile.server');

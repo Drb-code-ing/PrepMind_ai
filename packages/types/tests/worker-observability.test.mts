@@ -23,6 +23,25 @@ const baseSummary: WorkerObservabilitySummaryResponse = {
     isPaused: false,
     hasBacklog: true,
   },
+  auditExportQueue: {
+    name: 'operator-audit-export',
+    counts: { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0, paused: 0 },
+    isPaused: false,
+    hasBacklog: false,
+  },
+  auditMaintenanceQueue: {
+    name: 'operator-audit-maintenance',
+    counts: { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0, paused: 0 },
+    isPaused: false,
+    hasBacklog: false,
+  },
+  auditMaintenance: {
+    status: 'pass',
+    message: 'Audit maintenance is current.',
+    enabled: true,
+    lastSucceededAt: '2026-07-08T00:00:00.000Z',
+    overdue: false,
+  },
   workers: {
     heartbeatTtlSeconds: 45,
     onlineCount: 0,
@@ -36,12 +55,20 @@ const baseSummary: WorkerObservabilitySummaryResponse = {
     totalRecentCount: 6,
     latestJob: null,
   },
+  outbox: {
+    counts: { pending: 0, processing: 0, succeeded: 0, failed: 0, dead: 0, total: 0 },
+    hasBacklog: false,
+    oldestPendingAgeMs: null,
+    recentErrors: [],
+  },
   signals: {
     status: 'attention',
     hasWorkerHeartbeat: false,
     queueModeWithoutWorker: true,
     queueBacklogWithoutWorker: true,
     hasRecentFailures: false,
+    hasOutboxBacklog: false,
+    hasDeadOutboxEvents: false,
     message: '已有待处理任务，但暂未检测到 worker 在线。',
   },
 };

@@ -17,14 +17,21 @@ import { OperatorAuditModule } from '../operator-audit/operator-audit.module';
 import { OutboxModule } from '../outbox/outbox.module';
 import { UploadsModule } from '../uploads/uploads.module';
 import { OperatorAuditExportProcessor } from './jobs/operator-audit-export.processor';
+import { OperatorAuditMaintenanceProcessor } from './jobs/operator-audit-maintenance.processor';
+import { OperatorAuditMaintenanceScheduler } from './jobs/operator-audit-maintenance.scheduler';
 import {
   OperatorAuditExportController,
   OperatorAuditExportEnabledGuard,
 } from './operator-audit-export.controller';
 import { OperatorAuditExportArchiveService } from './operator-audit-export-archive.service';
-import { OPERATOR_AUDIT_EXPORT_QUEUE } from './operator-audit-export.constants';
+import {
+  OPERATOR_AUDIT_EXPORT_QUEUE,
+  OPERATOR_AUDIT_MAINTENANCE_QUEUE,
+} from './operator-audit-export.constants';
 import { OperatorAuditExportRequestService } from './operator-audit-export-request.service';
 import { OperatorAuditExportStateRepository } from './operator-audit-export-state.repository';
+import { OperatorAuditMaintenanceService } from './operator-audit-maintenance.service';
+import { OperatorAuditExportTempJanitorService } from './operator-audit-export-temp-janitor.service';
 
 export type OperatorAuditExportWorkerRegistration = {
   role: ServerEnv['SERVER_ROLE'];
@@ -80,6 +87,18 @@ export class OperatorAuditExportQueueConcurrencyService implements OnApplication
   }
 }
 
+@Injectable()
+export class OperatorAuditMaintenanceQueueConcurrencyService implements OnApplicationBootstrap {
+  constructor(
+    @InjectQueue(OPERATOR_AUDIT_MAINTENANCE_QUEUE)
+    private readonly queue: Queue,
+  ) {}
+
+  async onApplicationBootstrap() {
+    await this.queue.setGlobalConcurrency(1);
+  }
+}
+
 export function createOperatorAuditExportWorkerProviders(
   options: OperatorAuditExportWorkerRegistration,
 ): Provider[] {
@@ -92,6 +111,21 @@ export function createOperatorAuditExportWorkerProviders(
         OperatorAuditExportWorkerFatalExitService,
         OperatorAuditExportQueueConcurrencyService,
         OperatorAuditExportProcessor,
+      ]
+    : [];
+}
+
+export function createOperatorAuditMaintenanceWorkerProviders(options: {
+  role: ServerEnv['SERVER_ROLE'];
+  maintenanceEnabled: boolean;
+}): Provider[] {
+  return shouldRegisterWorkers(options.role) && options.maintenanceEnabled
+    ? [
+        OperatorAuditMaintenanceService,
+        OperatorAuditMaintenanceScheduler,
+        OperatorAuditMaintenanceProcessor,
+        OperatorAuditMaintenanceQueueConcurrencyService,
+        OperatorAuditExportTempJanitorService,
       ]
     : [];
 }
@@ -109,6 +143,13 @@ const operatorAuditExportWorkerProviders =
       process.env.OPERATOR_AUDIT_MAINTENANCE_ENABLED,
     ),
   });
+const operatorAuditMaintenanceWorkerProviders =
+  createOperatorAuditMaintenanceWorkerProviders({
+    role: (process.env.SERVER_ROLE ?? 'both') as ServerEnv['SERVER_ROLE'],
+    maintenanceEnabled: isExplicitlyEnabled(
+      process.env.OPERATOR_AUDIT_MAINTENANCE_ENABLED,
+    ),
+  });
 
 function isExplicitlyEnabled(value: string | undefined) {
   return value?.trim().toLowerCase() === 'true';
@@ -122,7 +163,10 @@ function isExplicitlyEnabled(value: string | undefined) {
     OperatorAuditModule,
     OutboxModule,
     UploadsModule,
-    BullModule.registerQueue({ name: OPERATOR_AUDIT_EXPORT_QUEUE }),
+    BullModule.registerQueue(
+      { name: OPERATOR_AUDIT_EXPORT_QUEUE },
+      { name: OPERATOR_AUDIT_MAINTENANCE_QUEUE },
+    ),
   ],
   controllers: [OperatorAuditExportController],
   providers: [
@@ -131,6 +175,7 @@ function isExplicitlyEnabled(value: string | undefined) {
     OperatorAuditExportStateRepository,
     OperatorAuditExportArchiveService,
     ...operatorAuditExportWorkerProviders,
+    ...operatorAuditMaintenanceWorkerProviders,
   ],
 })
 export class OperatorAuditExportsModule {}

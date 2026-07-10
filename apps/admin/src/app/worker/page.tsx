@@ -51,7 +51,9 @@ function WorkerReadinessPanel() {
     return <StatePanel text="读取失败，请确认后端服务、Redis、诊断开关和管理员权限。" />;
   }
 
-  return <WorkerReadinessContent readiness={readinessQuery.data} onRefresh={readinessQuery.refetch} />;
+  return (
+    <WorkerReadinessContent readiness={readinessQuery.data} onRefresh={readinessQuery.refetch} />
+  );
 }
 
 function WorkerReadinessContent({
@@ -101,13 +103,32 @@ function WorkerReadinessContent({
       <section className="grid grid-cols-2 gap-4">
         <CheckCard title="Redis" check={readiness.checks.redis} />
         <CheckCard
-          title="BullMQ Queue"
+          title="Knowledge Queue"
           check={readiness.checks.queue}
           extra={[
             `waiting=${readiness.checks.queue.counts.waiting}`,
             `active=${readiness.checks.queue.counts.active}`,
             `failed=${readiness.checks.queue.counts.failed}`,
             `paused=${readiness.checks.queue.isPaused}`,
+          ]}
+        />
+        <CheckCard
+          title="Audit Export Queue"
+          check={readiness.checks.auditExportQueue}
+          extra={queueDetails(readiness.checks.auditExportQueue)}
+        />
+        <CheckCard
+          title="Audit Maintenance Queue"
+          check={readiness.checks.auditMaintenanceQueue}
+          extra={queueDetails(readiness.checks.auditMaintenanceQueue)}
+        />
+        <CheckCard
+          title="Audit Maintenance Freshness"
+          check={readiness.checks.auditMaintenance}
+          extra={[
+            `enabled=${readiness.checks.auditMaintenance.enabled}`,
+            `lastSucceeded=${formatWorkerReadinessTime(readiness.checks.auditMaintenance.lastSucceededAt)}`,
+            `overdue=${readiness.checks.auditMaintenance.overdue}`,
           ]}
         />
         <CheckCard
@@ -147,6 +168,15 @@ function WorkerReadinessContent({
   );
 }
 
+function queueDetails(check: WorkerReadinessResponse['checks']['auditExportQueue']) {
+  return [
+    `waiting=${check.counts.waiting}`,
+    `active=${check.counts.active}`,
+    `failed=${check.counts.failed}`,
+    `paused=${check.isPaused}`,
+  ];
+}
+
 function CheckCard({
   title,
   check,
@@ -162,6 +192,7 @@ function CheckCard({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold">{title}</h3>
         <span
+          aria-label={`${title} status ${check.status}`}
           className={[
             'inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-semibold',
             toneClasses[tone],

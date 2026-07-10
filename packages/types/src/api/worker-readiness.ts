@@ -1,30 +1,14 @@
 import { z } from 'zod';
 
-export const workerReadinessOverallStatusSchema = z.enum([
-  'ready',
-  'degraded',
-  'not_ready',
-]);
+export const workerReadinessOverallStatusSchema = z.enum(['ready', 'degraded', 'not_ready']);
 
-export const workerReadinessStatusSchema =
-  workerReadinessOverallStatusSchema;
+export const workerReadinessStatusSchema = workerReadinessOverallStatusSchema;
 
-export const workerReadinessCheckStatusSchema = z.enum([
-  'pass',
-  'warn',
-  'fail',
-]);
+export const workerReadinessCheckStatusSchema = z.enum(['pass', 'warn', 'fail']);
 
-export const workerReadinessServerRoleSchema = z.enum([
-  'api',
-  'worker',
-  'both',
-]);
+export const workerReadinessServerRoleSchema = z.enum(['api', 'worker', 'both']);
 
-export const workerReadinessKnowledgeProcessingModeSchema = z.enum([
-  'inline',
-  'queue',
-]);
+export const workerReadinessKnowledgeProcessingModeSchema = z.enum(['inline', 'queue']);
 
 export const workerReadinessQueueCountsSchema = z
   .object({
@@ -33,6 +17,26 @@ export const workerReadinessQueueCountsSchema = z
     delayed: z.number().int().min(0),
     failed: z.number().int().min(0),
     paused: z.number().int().min(0),
+  })
+  .strict();
+
+export const workerReadinessQueueCheckSchema = z
+  .object({
+    status: workerReadinessCheckStatusSchema,
+    message: z.string().min(1),
+    counts: workerReadinessQueueCountsSchema,
+    isPaused: z.boolean(),
+    hasBacklog: z.boolean(),
+  })
+  .strict();
+
+export const workerAuditMaintenanceCheckSchema = z
+  .object({
+    status: workerReadinessCheckStatusSchema,
+    message: z.string().min(1),
+    enabled: z.boolean(),
+    lastSucceededAt: z.string().datetime().nullable(),
+    overdue: z.boolean(),
   })
   .strict();
 
@@ -57,13 +61,10 @@ export const workerReadinessResponseSchema = z
     checks: z
       .object({
         redis: workerReadinessCheckBaseSchema,
-        queue: workerReadinessCheckBaseSchema
-          .extend({
-            counts: workerReadinessQueueCountsSchema,
-            isPaused: z.boolean(),
-            hasBacklog: z.boolean(),
-          })
-          .strict(),
+        queue: workerReadinessQueueCheckSchema,
+        auditExportQueue: workerReadinessQueueCheckSchema,
+        auditMaintenanceQueue: workerReadinessQueueCheckSchema,
+        auditMaintenance: workerAuditMaintenanceCheckSchema,
         workers: workerReadinessCheckBaseSchema
           .extend({
             onlineCount: z.number().int().min(0),
@@ -83,13 +84,7 @@ export const workerReadinessResponseSchema = z
   })
   .strict();
 
-export type WorkerReadinessOverallStatus = z.infer<
-  typeof workerReadinessOverallStatusSchema
->;
+export type WorkerReadinessOverallStatus = z.infer<typeof workerReadinessOverallStatusSchema>;
 export type WorkerReadinessStatus = WorkerReadinessOverallStatus;
-export type WorkerReadinessCheckStatus = z.infer<
-  typeof workerReadinessCheckStatusSchema
->;
-export type WorkerReadinessResponse = z.infer<
-  typeof workerReadinessResponseSchema
->;
+export type WorkerReadinessCheckStatus = z.infer<typeof workerReadinessCheckStatusSchema>;
+export type WorkerReadinessResponse = z.infer<typeof workerReadinessResponseSchema>;
