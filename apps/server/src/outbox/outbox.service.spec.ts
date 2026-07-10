@@ -70,6 +70,36 @@ describe('OutboxService', () => {
     expect(result.idempotencyKey).toBe('idem_1');
   });
 
+  it('enqueues with only the provided transaction client and propagates failures', async () => {
+    const transaction = {
+      outboxEvent: {
+        create: jest.fn().mockResolvedValue(row({ status: 'PENDING' })),
+      },
+    };
+    const service = createService();
+    const input = {
+      type: 'operator.audit.export.requested',
+      aggregateType: 'OperatorAuditExport',
+      aggregateId: 'export_1',
+      idempotencyKey: 'operator-audit-export-requested:export_1',
+      payload: { exportId: 'export_1', backgroundJobId: 'job_1' },
+    };
+
+    await service.enqueueInTransaction(transaction as never, input);
+
+    expect(transaction.outboxEvent.create).toHaveBeenCalledTimes(1);
+    expect(prisma.outboxEvent.create).not.toHaveBeenCalled();
+    expect(prisma.outboxEvent.findUnique).not.toHaveBeenCalled();
+
+    const failure = new Error('transaction database down');
+    transaction.outboxEvent.create.mockRejectedValueOnce(failure);
+    await expect(
+      service.enqueueInTransaction(transaction as never, input),
+    ).rejects.toBe(failure);
+    expect(prisma.outboxEvent.create).not.toHaveBeenCalled();
+    expect(prisma.outboxEvent.findUnique).not.toHaveBeenCalled();
+  });
+
   it('claims due pending events and locks them for the worker', async () => {
     prisma.outboxEvent.findMany
       .mockResolvedValueOnce([row({ id: 'evt_1', status: 'PENDING' })])

@@ -6,7 +6,7 @@
 
 更新时间：2026-07-10
 
-当前阶段：Phase 7.23.2 审计证据包 contract、Prisma 持久化模型、SYSTEM 后台任务边界和 fail-safe 配置已完成；Phase 7.23.3 可靠投递尚未开始。
+当前阶段：Phase 7.23.3 审计证据包 Serializable 申请事务、strict 申请审计、HMAC 来源指纹与 Outbox-only BullMQ 投递已完成；Phase 7.23.4 ZIP Worker 尚未开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -54,8 +54,44 @@
 | Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
 | Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
 | Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置 |
+| Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递 |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23.3 Operator Audit Export 事务型可靠投递
+
+目标：让 PostgreSQL commit 成为审计证据包申请的唯一成功边界，并由 Outbox Dispatcher 独占 PostgreSQL -> Redis/BullMQ 桥接，消除“数据库成功但 Redis enqueue 失败”的双写窗口。
+
+为什么：
+- request path 若在数据库事务之外直接调用 `queue.add()`，PostgreSQL 与 Redis 任一侧失败都会留下“有任务无队列”或“有队列无事实”的不可原子恢复状态。
+- 证据包申请是高权限操作；Export、SYSTEM BackgroundJob、可靠投递事件和 `AUDIT_EXPORT_REQUEST` 必须同生共死，审计写失败不能像普通运维观测那样吞掉。
+- Dispatcher 面对 retry、进程崩溃和重复 claim 时，必须用 deterministic Bull job id 和数据库关联事实复核来保证重复投递安全。
+
+主要内容与做法：
+- 新增 `POST /operator-audit-exports`，guard 顺序为 Operator Audit gate、export gate、JWT、Operator；export gate 关闭时认证前返回 404。body 使用 strict shared schema，非法 UUID/reason/date/unknown field 转为安全领域 400，不暴露 Zod issues；strict request audit 写失败回滚并返回安全领域 503。Swagger 明确完整 body properties/formats/length/enums、`additionalProperties:false` 与安全 202/400/409/429/503 样例。
+- request service 在事务前生成 export/job UUID；Serializable 事务内依次以 `$executeRaw` 取得 retention/quota advisory locks，再用 database clock 校验 `start < end`、31 天上限、180 天下界、未来 end，并执行每管理员 active 2 / 每小时 10 / 全局 active 10 配额。Prisma 无法反序列化 advisory lock 的 `void` 返回，因此锁不能使用 `$queryRaw`。
+- 首条 advisory lock 等待会在释放前固定 Serializable snapshot；整个 interactive transaction 没有事务外副作用，因此事务任意阶段（包括 strict audit create）只有 P2034、raw PostgreSQL 40001、明确 target 为 `OperatorAuditExport.[requestedByUserId,clientRequestId]` 的 P2002 才最多重跑 5 次。normalized input 与预生成 export/job UUID 跨 attempts 复用，每次 attempt 重新取锁与 DB clock；其它唯一冲突/错误原样失败。
+- actor + clientRequestId + stable normalized request hash 支持幂等重放；lookup 先于滚动 retention/future 窗口校验，因此旧请求越过 180 天边界后同 hash 仍返回既有 DTO 且不重复写审计，不同 hash 仍优先返回 `OPERATOR_AUDIT_EXPORT_IDEMPOTENCY_CONFLICT`/409。只有 lookup 未命中的新申请才执行窗口、配额校验，并按 Export -> SYSTEM BackgroundJob -> OutboxEvent -> strict audit 顺序写入同一事务。
+- `OutboxService.enqueueInTransaction()` 只使用传入 transaction client 且不 catch/root fallback；既有 `enqueue()` unique-key recovery 不变。Outbox payload 严格只有 `exportId/backgroundJobId`。
+- `OperatorAuditService.recordSuccessStrict()` 可使用 transaction 或 root Prisma client 并传播错误；既有 success/failure 入口仍 warning-only，所以申请 audit 是 fail-closed/strict，Outbox requeue audit 仍 best-effort。来源指纹改为 `OPERATOR_AUDIT_FINGERPRINT_SECRET` 驱动的 `hmac-sha256:<64 hex>`。
+- 注册 `operator-audit-export` queue 和 injectable bound-arrow handler。handler 严格校验 payload、Export 与 linked SYSTEM BackgroundJob；FAILED/EXPIRED、已交付的 PROCESSING/READY + ACTIVE/SUCCEEDED、已有 Bull job 都 no-op，只有 QUEUED export + QUEUED BackgroundJob 才以 BackgroundJob id 作为 Bull job id 投递，其余未批准状态组合按 invalid payload 进入 retry/dead-letter；Redis 错误原样传播。
+
+边界：
+- 当前没有 ZIP processor、CSV/manifest、MinIO 上传、保留维护、list/detail/download API、fail-closed 下载审计或 Admin UI；queue 中的 generate job 还没有消费者，不能把可靠投递理解成证据包已经能生成。
+- export/maintenance production gates 继续默认关闭；本阶段没有新增 migration、没有改变知识库 queue-first + best-effort observer 语义，也没有让 API request path 直接接触 Queue。
+- DEAD 事件仍可通过既有受审计 requeue 在设计的 24 小时投递恢复窗口内恢复；申请审计严格失败关闭，但既有 Outbox requeue 审计继续 best-effort。
+
+验收：
+- RED：指定 service 命令 4 个 suite 失败，分别证明 request service/handler、transactional enqueue、strict audit 与 HMAC 能力缺失；既有 15 项仍通过。
+- GREEN：聚焦事务/handler/controller/audit/outbox 回归 11 个 suite、126 项通过；完整 Server 回归 57 个 suite、491 项通过；真实 PostgreSQL concurrency e2e 3/3 通过，三个场景均捕获 Prisma `P2034`、`target=undefined` 并由 bounded retry 恢复。定向 ESLint、changed-file Prettier 与 Server build 通过。
+- 覆盖精确七步事务顺序、rollback 传播、同 hash replay/异 hash conflict、四类时间边界、三类配额、无 Queue 依赖、guard 顺序、strict payload、linked SYSTEM facts、Bull job 幂等/no-op 和 Redis 失败传播。
+
+回顾时可以问：
+- “事务型 Outbox 如何消除 PostgreSQL 成功但 Redis enqueue 失败的双写窗口？”
+- “为什么 Serializable + advisory lock 需要 bounded whole-transaction retry，而不是改成 Read Committed？”
+- “为什么 request audit 要 fail-closed/strict，而 Outbox requeue audit 仍然 best-effort？”
+- “为什么 Dispatcher enqueue 前还要复核 Export 与 SYSTEM BackgroundJob，而不是只信 Outbox payload？”
+- “领域 400/503 如何避免 Zod issues 与原始数据库错误进入响应？”
 
 ### 2026-07-10 - Phase 7.23.2 Operator Audit Export Contract 与持久化地基
 

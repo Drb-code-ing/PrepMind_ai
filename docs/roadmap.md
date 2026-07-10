@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 7.23.2 审计导出 contract、持久化模型与 SYSTEM job 边界已完成；Phase 7.23.3 ~ 7.23.8 运行链路仍待实现。
+> 当前状态：项目按 Phase 0 ~ Phase 10 顺序推进，当前 Phase 7.23.3 审计导出 contract/持久化、Serializable 申请事务与 Outbox-only BullMQ 投递已完成；Phase 7.23.4 ~ 7.23.8 的 ZIP Worker、维护、查询下载、Admin 与 Docker 验收仍待实现。
 
 ## 项目目标
 
@@ -478,26 +478,35 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 - 验收后清理临时 OutboxEvent、OperatorAuditLog、RefreshToken 和测试账号，容器内 `worker-readiness` CLI 恢复 `ready`，避免测试数据长期污染本地环境。
 - 新增 Admin Console `favicon.svg` 和 `metadata.icons`，减少后台浏览器调试时的 favicon 404 噪声。
 
-### Phase 7.23 — Operator Audit 保留周期与证据包导出（Phase 7.23.2 已完成）
+### Phase 7.23 — Operator Audit 保留周期与证据包导出（Phase 7.23.3 已完成）
 
 - Phase 7.23.1 已完成正式设计：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
-- Phase 7.23.2 ~ 7.23.8 已完成可执行计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`；Phase 7.23.2 contract/schema 已按 TDD 完成，后续阶段仍从最新 `main` 独立开分支。
+- Phase 7.23.2 ~ 7.23.8 已完成可执行计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`；Phase 7.23.2 contract/schema 与 Phase 7.23.3 事务投递已按 TDD 完成，后续阶段仍从最新 `main` 独立开分支。
 - 默认保留 `OperatorAuditLog` 180 天；证据包定位为事故排障交接，最多覆盖 31 天和 50,000 条脱敏记录。
 - Phase 7.23.2 已固定 strict contract，以及 `OperatorAuditExport` / maintenance schema；safe DTO 严格排除 object key、request hash、processing token、payload 与 metadata。requester 删除时 `requestedByUserId` 置空，export 与唯一 `backgroundJobId` 保留。
 - `BackgroundJob` 通过数据库 CHECK 区分 ACCOUNT/SYSTEM：ACCOUNT 继续随 user 级联删除，SYSTEM 必须 `userId=null` 并独立存活；账号 service 所有 create/find/count/update/list/summary，以及知识库 direct count/create/find/failure-update 路径，都显式限制 `scope=ACCOUNT`。
 - 为什么 / 怎么做：导出执行跨越请求人生命周期，所以先用 FK/CHECK/唯一索引固定事实所有权，再用 strict contract 固定安全边界；contract、env/service 和真实 PostgreSQL e2e 分别执行 RED/GREEN。
-- 配置已固定 180 天、24 小时、31 天、50,000 条、64 MiB、配额/并发/lease/lock/stale/query timeout 默认值及相对约束；export 与 maintenance 在所有环境默认关闭，production 显式开启 Operator Audit、Outbox Ops 或 audit export 任一路径都必须提供 trim 后至少 32 字符的 fingerprint secret。本阶段不实现 HMAC hashing。
+- 配置已固定 180 天、24 小时、31 天、50,000 条、64 MiB、配额/并发/lease/lock/stale/query timeout 默认值及相对约束；export 与 maintenance 在所有环境默认关闭，production 显式开启 Operator Audit、Outbox Ops 或 audit export 任一路径都必须提供 trim 后至少 32 字符的 fingerprint secret。Phase 7.23.3 已使用该 secret 把来源指纹升级为 HMAC，不保存 secret 或原始 IP/User-Agent。
+- Phase 7.23.3 让 `POST /operator-audit-exports` 的 PostgreSQL commit 成为 202 成功边界：Serializable 事务先取得 retention/quota advisory locks 与 database clock，校验 range/retention/future/idempotency/quota，再原子写入 Export、SYSTEM BackgroundJob、OutboxEvent 与 strict `AUDIT_EXPORT_REQUEST`。首条 lock 等待会固定 Serializable snapshot，因此对 P2034/raw 40001/明确 export 幂等复合 P2002 做最多 5 次 whole-transaction retry，每次重新取锁/DB clock且不产生事务外副作用。
+- API request path 不直接调用 BullMQ；Outbox Dispatcher 是唯一 Redis bridge。`operator.audit.export.requested` payload 只有 export/job id，handler 复核 linked SYSTEM facts、用 BackgroundJob id 作为 Bull job id，并把 Redis 失败交回既有 retry/dead-letter 状态机。
+- Dispatcher 状态采用白名单：FAILED/EXPIRED 终态 no-op，PROCESSING/READY + ACTIVE/SUCCEEDED 视为已投递，只有 QUEUED+QUEUED 可投递，其余组合按 invalid payload 失败。
+- 申请审计 fail-closed/strict；既有 Outbox requeue audit 仍 best-effort。DEAD 在 24 小时设计恢复窗口内可经既有受审计 requeue 恢复，知识库 queue-first + best-effort observer 边界不变。
+- controller 将 shared Zod 失败转换为安全领域 400，将 strict request-audit 失败转换为回滚后的安全领域 503；Swagger 显式描述 strict body 并禁止 additional properties。真实 PostgreSQL 并发 e2e 通过 blocker lock + `pg_locks/pg_stat_activity` 条件轮询覆盖同 hash、不同请求与 quota 最后一槽，实际捕获 P2034 后均满足事实计数与配额。
 - ZIP 包含 `records.csv` 与 `manifest.json`，保存 CSV / archive SHA-256，MinIO 文件 24 小时后自动删除。
 - 导出申请和下载采用 fail-closed audit；CSV 必须防 formula injection，下载不暴露 MinIO object key。
 - 维护任务使用活跃导出水位保护临近 180 天边界的数据，并分批清理到期对象、历史审计和导出元数据。
-- 当前边界：没有事务型 Export/BackgroundJob/Outbox 创建服务，没有 BullMQ delivery、ZIP Worker、MinIO、保留维护、查询/下载 API、fail-closed 下载审计或 Admin UI；production gates 仍关闭，不能把数据表理解成已交付运行能力。
-- 后续依次完成 Phase 7.23.3 事务型 Outbox、7.23.4 Worker、7.23.5 维护任务、7.23.6 API、7.23.7 Admin UI 和 7.23.8 Docker 验收/博客。
+- 当前边界：事务型申请与 BullMQ delivery 已完成，但还没有 ZIP Worker/CSV/manifest、MinIO、保留维护、查询/下载 API、fail-closed 下载审计或 Admin UI；production gates 仍关闭，不能把已可靠投递理解成文件已经生成。
+- 后续依次完成 Phase 7.23.4 Worker、7.23.5 维护任务、7.23.6 查询/下载 API、7.23.7 Admin UI 和 7.23.8 Docker 验收/博客。
 
 回顾时可以问：
 - “为什么 ACCOUNT BackgroundJob 保留 `ON DELETE CASCADE`，SYSTEM job 却要求 `userId=null`？”
 - “为什么 export 与 background job 用唯一 id 关联但不建外键？”
 - “strict response schema 如何防止内部存储/投递字段被未来 API 意外暴露？”
 - “为什么 Phase 7.23.2 落了配置却仍让 export/maintenance 在所有环境默认关闭？”
+- “事务型 Outbox 如何消除 PostgreSQL 成功但 Redis enqueue 失败的双写窗口？”
+- “为什么 Serializable + advisory lock 仍需要 bounded whole-transaction retry？”
+- “为什么 request audit 必须 strict，而 Outbox requeue audit 仍保持 best-effort？”
+- “领域 400/503 如何避免验证细节和原始数据库错误泄露？”
 
 ### Phase 7 后续方向
 

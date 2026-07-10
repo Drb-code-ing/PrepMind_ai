@@ -1,6 +1,7 @@
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 import { HttpStatus, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Prisma } from '@repo/database';
 import type {
   OperatorAuditAction,
@@ -10,12 +11,13 @@ import type {
 } from '@repo/types/api/operator-audit';
 
 import { AppError } from '../common/errors/app-error';
+import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { sanitizeJobError } from '../jobs/job-error-sanitizer';
 
 type OperatorAuditStatus = 'SUCCEEDED' | 'FAILED';
 
-type AuditRequest = {
+export type AuditRequest = {
   ip?: string;
   requestId?: string;
   headers?: Record<string, string | string[] | undefined>;
@@ -102,6 +104,7 @@ const operatorAuditLogSelect = {
 export class OperatorAuditService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService<ServerEnv, true>,
     @Optional()
     private readonly logger: Pick<Logger, 'warn'> = new Logger(
       OperatorAuditService.name,
@@ -109,9 +112,22 @@ export class OperatorAuditService {
   ) {}
 
   async recordSuccess(input: AuditInput): Promise<void> {
-    await this.record({
-      ...this.createBaseData(input, 'SUCCEEDED'),
-      metadata: sanitizeMetadata(input.metadata),
+    try {
+      await this.recordSuccessStrict(this.prisma, input);
+    } catch {
+      this.logger.warn('Failed to record operator audit log');
+    }
+  }
+
+  async recordSuccessStrict(
+    client: PrismaService | Prisma.TransactionClient,
+    input: AuditInput,
+  ): Promise<void> {
+    await client.operatorAuditLog.create({
+      data: {
+        ...this.createBaseData(input, 'SUCCEEDED'),
+        metadata: sanitizeMetadata(input.metadata),
+      },
     });
   }
 
@@ -196,8 +212,14 @@ export class OperatorAuditService {
         ),
         MAX_REQUEST_ID_LENGTH,
       ),
-      ipAddressHash: hashValue(input.request?.ip),
-      userAgentHash: hashValue(readHeader(input.request, 'user-agent')),
+      ipAddressHash: hmacValue(
+        input.request?.ip,
+        this.config.get('OPERATOR_AUDIT_FINGERPRINT_SECRET', { infer: true }),
+      ),
+      userAgentHash: hmacValue(
+        readHeader(input.request, 'user-agent'),
+        this.config.get('OPERATOR_AUDIT_FINGERPRINT_SECRET', { infer: true }),
+      ),
       createdAt: input.now,
     };
   }
@@ -299,9 +321,9 @@ function readHeader(request: AuditRequest | undefined, name: string) {
   return value;
 }
 
-function hashValue(value: string | undefined) {
-  if (!value) return undefined;
-  return `sha256:${createHash('sha256').update(value).digest('hex')}`;
+function hmacValue(value: string | undefined, secret: string | undefined) {
+  if (!value || !secret) return undefined;
+  return `hmac-sha256:${createHmac('sha256', secret).update(value).digest('hex')}`;
 }
 
 function truncate(value: string | undefined, maxLength: number) {

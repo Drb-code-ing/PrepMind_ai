@@ -15,6 +15,7 @@ import { KnowledgeDocumentsModule } from './knowledge-documents/knowledge-docume
 import { MemoryAgentModule } from './memory-agent/memory-agent.module';
 import { OcrRecordsModule } from './ocr-records/ocr-records.module';
 import { OperatorAuditModule } from './operator-audit/operator-audit.module';
+import { OperatorAuditExportsModule } from './operator-audit-exports/operator-audit-exports.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { ReviewAgentModule } from './review-agent/review-agent.module';
 import { ReviewPreferencesModule } from './review-preferences/review-preferences.module';
@@ -43,6 +44,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     ChatMessagesModule,
     OcrRecordsModule,
     OperatorAuditModule,
+    OperatorAuditExportsModule,
     ReviewsModule,
     ReviewAgentModule,
     ReviewPreferencesModule,

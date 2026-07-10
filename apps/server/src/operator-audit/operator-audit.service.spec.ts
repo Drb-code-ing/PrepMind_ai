@@ -51,6 +51,9 @@ describe('OperatorAuditService', () => {
   const logger = {
     warn: jest.fn(),
   };
+  const config = {
+    get: jest.fn().mockReturnValue('test-operator-audit-fingerprint-secret'),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -83,8 +86,8 @@ describe('OperatorAuditService', () => {
     expect(data.targetId).toBe('evt_1');
     expect(data.reason).toBe('fixed provider config');
     expect(data.requestId).toBe('req_1');
-    expect(data.ipAddressHash).toMatch(/^sha256:/);
-    expect(data.userAgentHash).toMatch(/^sha256:/);
+    expect(data.ipAddressHash).toMatch(/^hmac-sha256:[a-f0-9]{64}$/);
+    expect(data.userAgentHash).toMatch(/^hmac-sha256:[a-f0-9]{64}$/);
     expect(data.createdAt).toBe(now);
     expect(data.metadata).toEqual({
       previousStatus: 'DEAD',
@@ -213,6 +216,50 @@ describe('OperatorAuditService', () => {
     );
   });
 
+  it('strictly writes with the provided client and propagates persistence failure', async () => {
+    const strictCreateAuditLog = jest.fn<
+      Promise<unknown>,
+      [OperatorAuditLogCreateArgs]
+    >();
+    strictCreateAuditLog.mockResolvedValue({ id: 'audit_1' });
+    const transaction = {
+      operatorAuditLog: {
+        create: strictCreateAuditLog,
+      },
+    };
+    const service = createService();
+    const input = {
+      actorUserId: 'user_admin',
+      action: 'AUDIT_EXPORT_REQUEST' as const,
+      targetType: 'OperatorAuditExport',
+      targetId: 'export_1',
+      reason: 'INC-2026-0710 evidence review',
+      request: createRequest(),
+      now,
+    };
+
+    await service.recordSuccessStrict(transaction as never, input);
+
+    const strictData = strictCreateAuditLog.mock.calls[0]?.[0].data;
+    expect(strictData).toEqual(
+      objectContaining({
+        action: 'AUDIT_EXPORT_REQUEST',
+        status: 'SUCCEEDED',
+        targetId: 'export_1',
+      }),
+    );
+    expect(strictData.ipAddressHash).toMatch(/^hmac-sha256:[a-f0-9]{64}$/);
+    expect(strictData.userAgentHash).toMatch(/^hmac-sha256:[a-f0-9]{64}$/);
+    expect(createAuditLog).not.toHaveBeenCalled();
+
+    const failure = new Error('database down');
+    strictCreateAuditLog.mockRejectedValueOnce(failure);
+    await expect(
+      service.recordSuccessStrict(transaction as never, input),
+    ).rejects.toBe(failure);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it('lists redacted audit logs without metadata', async () => {
     findManyAuditLogs.mockResolvedValue([
       row({ id: 'audit_2', metadata: { payload: 'secret' } }),
@@ -330,7 +377,7 @@ describe('OperatorAuditService', () => {
   });
 
   function createService() {
-    return new OperatorAuditService(prisma as never, logger);
+    return new OperatorAuditService(prisma as never, config as never, logger);
   }
 
   function getLastCreateData() {
@@ -379,8 +426,8 @@ describe('OperatorAuditService', () => {
       targetId: overrides.targetId ?? 'evt_1',
       reason: overrides.reason ?? 'fixed provider config',
       requestId: overrides.requestId ?? 'req_1',
-      ipAddressHash: overrides.ipAddressHash ?? 'sha256:ip',
-      userAgentHash: overrides.userAgentHash ?? 'sha256:ua',
+      ipAddressHash: overrides.ipAddressHash ?? 'hmac-sha256:ip',
+      userAgentHash: overrides.userAgentHash ?? 'hmac-sha256:ua',
       errorCode: overrides.errorCode ?? null,
       errorPreview: overrides.errorPreview ?? null,
       createdAt: overrides.createdAt ?? now,

@@ -38,19 +38,7 @@ export class OutboxService {
 
   async enqueue(input: EnqueueOutboxEventInput) {
     try {
-      return await this.prisma.outboxEvent.create({
-        data: {
-          type: input.type,
-          status: 'PENDING',
-          aggregateType: input.aggregateType ?? null,
-          aggregateId: input.aggregateId ?? null,
-          idempotencyKey: input.idempotencyKey ?? null,
-          payload: input.payload,
-          payloadHash: input.payloadHash ?? null,
-          maxAttempts: input.maxAttempts ?? 5,
-          nextRunAt: input.nextRunAt,
-        },
-      });
+      return await this.createWithClient(this.prisma, input);
     } catch (error) {
       if (isUniqueConstraintError(error) && input.idempotencyKey) {
         const existing = await this.prisma.outboxEvent.findUnique({
@@ -61,6 +49,13 @@ export class OutboxService {
 
       throw error;
     }
+  }
+
+  async enqueueInTransaction(
+    transaction: Prisma.TransactionClient,
+    input: EnqueueOutboxEventInput,
+  ) {
+    return this.createWithClient(transaction, input);
   }
 
   async claimPending(input: ClaimOutboxEventsInput) {
@@ -167,6 +162,25 @@ export class OutboxService {
 
   private findById(id: string) {
     return this.prisma.outboxEvent.findFirst({ where: { id } });
+  }
+
+  private createWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    input: EnqueueOutboxEventInput,
+  ) {
+    return client.outboxEvent.create({
+      data: {
+        type: input.type,
+        status: 'PENDING',
+        aggregateType: input.aggregateType ?? null,
+        aggregateId: input.aggregateId ?? null,
+        idempotencyKey: input.idempotencyKey ?? null,
+        payload: input.payload,
+        payloadHash: input.payloadHash ?? null,
+        maxAttempts: input.maxAttempts ?? 5,
+        nextRunAt: input.nextRunAt,
+      },
+    });
   }
 }
 
