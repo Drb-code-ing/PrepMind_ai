@@ -53,6 +53,8 @@ describe('DocumentProcessingJobService', () => {
   it('creates a background job and enqueues it after a processing claim', async () => {
     const document = documentRow();
     const job = jobRow();
+    const countBackgroundJobs = jest.fn().mockResolvedValue(0);
+    const createBackgroundJob = jest.fn().mockResolvedValue(job);
     prisma.$transaction.mockImplementation(
       async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
@@ -61,8 +63,8 @@ describe('DocumentProcessingJobService', () => {
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           },
           backgroundJob: {
-            count: jest.fn().mockResolvedValue(0),
-            create: jest.fn().mockResolvedValue(job),
+            count: countBackgroundJobs,
+            create: createBackgroundJob,
           },
         }),
     );
@@ -119,6 +121,21 @@ describe('DocumentProcessingJobService', () => {
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'Serializable' }),
     );
+    const createCall = firstMockArg<CreateCall>(createBackgroundJob);
+    expect(createCall.data).toMatchObject({
+      userId: 'user_1',
+      scope: 'ACCOUNT',
+      resourceType: 'KNOWLEDGE_DOCUMENT',
+      resourceId: 'doc_1',
+    });
+    expect(countBackgroundJobs).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        scope: 'ACCOUNT',
+        resourceType: 'KNOWLEDGE_DOCUMENT',
+        status: { in: ['QUEUED', 'ACTIVE'] },
+      },
+    });
   });
 
   it('rejects extra keys inside the snapshot payload', () => {
@@ -252,6 +269,16 @@ describe('DocumentProcessingJobService', () => {
     });
 
     expect(result.processing?.backgroundJobId).toBe('job_1');
+    expect(prisma.backgroundJob.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: 'user_1',
+        scope: 'ACCOUNT',
+        resourceType: 'KNOWLEDGE_DOCUMENT',
+        resourceId: 'doc_1',
+        status: { in: ['QUEUED', 'ACTIVE'] },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
   });
 
   it('marks the job and document failed when enqueue fails after the claim transaction commits', async () => {
@@ -280,9 +307,11 @@ describe('DocumentProcessingJobService', () => {
     const backgroundJobUpdate = firstMockArg<UpdateManyCall>(
       prisma.backgroundJob.updateMany,
     );
-    expect(backgroundJobUpdate.where).toMatchObject({
+    expect(backgroundJobUpdate.where).toEqual({
       id: 'job_1',
       userId: 'user_1',
+      scope: 'ACCOUNT',
+      status: { in: ['QUEUED', 'ACTIVE'] },
     });
     expect(backgroundJobUpdate.data).toMatchObject({
       status: 'FAILED',
@@ -315,6 +344,10 @@ describe('DocumentProcessingJobService', () => {
 
   type UpdateManyCall = {
     where: Record<string, unknown>;
+    data: Record<string, unknown>;
+  };
+
+  type CreateCall = {
     data: Record<string, unknown>;
   };
 

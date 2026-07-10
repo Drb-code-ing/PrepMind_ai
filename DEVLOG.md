@@ -6,7 +6,7 @@
 
 更新时间：2026-07-10
 
-当前阶段：Phase 7.23.1 设计与 Phase 7.23.2 ~ 7.23.8 实施计划已完成，运行能力尚未开始实现。
+当前阶段：Phase 7.23.2 审计证据包 contract、Prisma 持久化模型、SYSTEM 后台任务边界和 fail-safe 配置已完成；Phase 7.23.3 可靠投递尚未开始。
 
 | 阶段 | 状态 | 关键词 |
 | --- | --- | --- |
@@ -53,8 +53,44 @@
 | Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
 | Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
 | Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
+| Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置 |
 
 ## 近期关键记录
+
+### 2026-07-10 - Phase 7.23.2 Operator Audit Export Contract 与持久化地基
+
+目标：先固定证据包申请/查询的安全 contract、可恢复的导出领域事实和跨用户生命周期的 SYSTEM 后台任务语义，让后续可靠投递、Worker、维护任务和 API 建立在同一组数据库不变量上。
+
+为什么：
+- 账号级 `BackgroundJob` 原本通过 `userId` 外键级联删除，若直接承载审计导出，请求人删除会同时破坏仍需保留的导出事实与执行事实。
+- 导出 DTO 必须在 API 实现前严格排除 object key、request hash、processing token、payload 与 metadata，避免内部投递/存储字段进入公共 contract。
+- lease、BullMQ lock、stale repair 与 query timeout 有顺序约束；production 任一审计查询、Outbox 操作或导出路径开启后都必须具备至少 32 字符的 fingerprint secret，因此错误组合要在 bootstrap 时 fail fast。
+
+主要内容与做法：
+- 新增 `@repo/types/api/operator-audit-export` strict Zod contract：五种状态、UUID 幂等键、递增 ISO range、3~240 字符 reason、nullable filters、安全 detail/list 与稳定 cursor；`OperatorAuditAction` 增加 request/download actions。
+- Prisma 新增 `OperatorAuditExport` 与 singleton maintenance state；`backgroundJobId` 唯一但无外键，`requestedByUserId` 删除时 `SET NULL`。`BackgroundJob` 增加 ACCOUNT/SYSTEM scope，数据库 CHECK 强制 ACCOUNT 有 user、SYSTEM 无 user，既有用户外键继续 `ON DELETE CASCADE`。
+- 账号 `BackgroundJobsService` 的 create/find/count/update/list/summary，以及知识库 direct active count、create、active find、enqueue-failure update 全部显式带 `scope=ACCOUNT`，required `userId` 签名和 DTO 不变。数据库 e2e 使用隔离用户与定向清理，真实验证 FK、CHECK、`SET NULL` 和 service scope。
+- export/maintenance gates 在所有环境默认关闭；worker/both 开启 export 时必须同时开启 Dispatcher 与 maintenance。配置层约束 `lease < Bull lock < stale` 且 `query timeout < stale`；production 显式开启 Operator Audit、Outbox Ops 或 audit export 任一路径都必须提供 trim 后至少 32 字符的 secret，非 production fallback 也满足长度要求。本阶段只做配置门禁，不实现 HMAC hashing。
+- export list query 拒绝 `createdFrom > createdTo` 并允许相等边界；strict nested filters characterization 证明内部 `objectKey` 不能藏进 filters。
+- Docker server 镜像以 `NODE_ENV=production` 运行，而 dev Compose 显式开启 Outbox Ops 与 Operator Audit；因此只在 `docker-compose.dev.yml` server environment 提供可覆盖的 `local-dev-audit-fingerprint-change-me` fallback。`Dockerfile.server` 不烘焙该 secret，真实 production 必须提供独立值并禁止复用本地 fallback。
+
+边界：
+- 没有实现导出申请事务、Outbox 可靠投递、BullMQ queue/handler、ZIP Worker、MinIO、180 天保留清理、HTTP API、下载审计或 Admin UI。
+- request/download actions 只是 contract/enum 预留，export/maintenance 表没有运行时写入者；两项 production gate 保持关闭，不能把 schema 落库理解成已交付运行能力。
+
+验收：
+- RED：contract 因缺失模块/actions 失败；env/account-scope 定向测试 13 项按缺失 key/scope 失败；数据库 e2e 3 项按 Prisma 不认识 scope、SYSTEM 仍要求 user 失败；首次 Server build 发现旧审计 row type 仍只接受 `OUTBOX_REQUEUE`。
+- Quality review RED：env 定向测试分别暴露 production Outbox Ops、API-role export 与短 secret 未拒绝；list query reversed window 未拒绝；知识库 direct BackgroundJob count/create/find/update 都缺少 ACCOUNT scope。
+- Characterization：nested filters strict test 首次即通过；两条数据库负例首次运行时 PostgreSQL 已通过 `BackgroundJob_scope_user_check` 拒绝，只需把断言从不存在的 Prisma `P2004` code 改为匹配真实 constraint wrapper。
+- Spec re-review RED：`docker-compose-readiness` 10 项通过、1 项失败，定位到 dev Compose 在 production runtime 下开启审计 gates 却没有提供新要求的 fingerprint secret；修复后 suite 11 项通过，并确认 secret 只属于 server service、未写进 production Dockerfile。
+- GREEN：contract 14 项与 types typecheck 通过；required Server focused gate 64 项通过；migration 在本地 `5433` PostgreSQL 成功部署；database typecheck、background-job-scope e2e 5 项与 Server build 通过。
+- e2e 证明两种非法 scope/user 组合都被数据库拒绝、ACCOUNT job 随 user 删除、SYSTEM job 与 export 在 requester 删除后保留、`requestedByUserId` 置空且 `backgroundJobId` 不变，并证明账号 service 不能读取 SYSTEM job。
+
+回顾时可以问：
+- “为什么 `OperatorAuditExport.backgroundJobId` 唯一但不建立外键？”
+- “ACCOUNT job 的 `userId + scope` 双重过滤和数据库 CHECK 分别防什么？”
+- “为什么 export/maintenance 在所有环境默认关闭？”
+- “lease、BullMQ lock、stale repair 和 query timeout 为什么必须有严格相对顺序？”
 
 ### 2026-07-10 - Phase 7.23 实施计划就绪
 

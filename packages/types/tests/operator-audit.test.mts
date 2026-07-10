@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  operatorAuditActionSchema,
   operatorAuditLogDetailResponseSchema,
   operatorAuditLogListQuerySchema,
   operatorAuditLogListResponseSchema,
 } from '../src/api/operator-audit';
 
 describe('operator audit api contract', () => {
+  it('accepts export request and download audit actions', () => {
+    expect(operatorAuditActionSchema.options).toEqual([
+      'OUTBOX_REQUEUE',
+      'AUDIT_EXPORT_REQUEST',
+      'AUDIT_EXPORT_DOWNLOAD',
+    ]);
+  });
+
   it('parses empty list query with safe defaults', () => {
     expect(operatorAuditLogListQuerySchema.parse({})).toEqual({ limit: 20 });
   });

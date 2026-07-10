@@ -16,6 +16,15 @@ const optionalNonEmptyStringSchema = z.preprocess((value) => {
   return trimmed.length > 0 ? trimmed : undefined;
 }, z.string().min(1).optional());
 
+const operatorAuditFingerprintSecretSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}, z.string().min(32).optional());
+
 const envSchema = z
   .object({
     NODE_ENV: z
@@ -78,6 +87,107 @@ const envSchema = z
 
       return value;
     }, booleanStringSchema.optional()),
+    OPERATOR_AUDIT_EXPORT_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
+    OPERATOR_AUDIT_MAINTENANCE_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === null) return undefined;
+      if (typeof value === 'string' && value.trim().length === 0) {
+        return undefined;
+      }
+
+      return value;
+    }, booleanStringSchema.optional()),
+    OPERATOR_AUDIT_RETENTION_DAYS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(3650)
+      .default(180),
+    OPERATOR_AUDIT_EXPORT_TTL_HOURS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(168)
+      .default(24),
+    OPERATOR_AUDIT_EXPORT_MAX_RANGE_DAYS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(366)
+      .default(31),
+    OPERATOR_AUDIT_EXPORT_MAX_RECORDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1_000_000)
+      .default(50_000),
+    OPERATOR_AUDIT_EXPORT_MAX_ARCHIVE_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_048_576)
+      .max(1_073_741_824)
+      .default(67_108_864),
+    OPERATOR_AUDIT_EXPORT_PER_ADMIN_ACTIVE_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(2),
+    OPERATOR_AUDIT_EXPORT_PER_ADMIN_HOURLY_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .default(10),
+    OPERATOR_AUDIT_EXPORT_GLOBAL_ACTIVE_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .default(10),
+    OPERATOR_AUDIT_EXPORT_WORKER_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(16)
+      .default(1),
+    OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(3_600_000)
+      .default(600_000),
+    OPERATOR_AUDIT_EXPORT_LEASE_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(3_600_000)
+      .default(300_000),
+    OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(86_400_000)
+      .default(3_600_000),
+    OPERATOR_AUDIT_EXPORT_DELIVERY_RECOVERY_HOURS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(168)
+      .default(24),
+    OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(3_600_000)
+      .default(120_000),
+    OPERATOR_AUDIT_FINGERPRINT_SECRET: operatorAuditFingerprintSecretSchema,
     REFRESH_COOKIE_NAME: z.string().default('prepmind_refresh'),
     MINIO_ENDPOINT: z.string().min(1).default('127.0.0.1'),
     MINIO_PORT: z.coerce.number().int().positive().default(9000),
@@ -244,6 +354,67 @@ const envSchema = z
           'RAG_CHUNK_TARGET_TOKENS must be less than or equal to RAG_CHUNK_MAX_TOKENS',
       });
     }
+
+    if (
+      env.OPERATOR_AUDIT_EXPORT_LEASE_MS >=
+      env.OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPERATOR_AUDIT_EXPORT_LEASE_MS'],
+        message: 'export lease must be shorter than BullMQ lock',
+      });
+    }
+
+    if (
+      env.OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS <=
+      env.OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS'],
+        message: 'stale repair must be longer than BullMQ lock',
+      });
+    }
+
+    if (
+      env.OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS >=
+      env.OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS'],
+        message: 'query timeout must be shorter than stale repair threshold',
+      });
+    }
+
+    if (
+      env.OPERATOR_AUDIT_EXPORT_ENABLED === true &&
+      env.SERVER_ROLE !== 'api' &&
+      (!env.OUTBOX_DISPATCHER_ENABLED ||
+        env.OPERATOR_AUDIT_MAINTENANCE_ENABLED !== true)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPERATOR_AUDIT_EXPORT_ENABLED'],
+        message:
+          'worker export requires outbox dispatcher and audit maintenance',
+      });
+    }
+
+    if (
+      env.NODE_ENV === 'production' &&
+      (env.OPERATOR_AUDIT_ENABLED === true ||
+        env.OUTBOX_OPS_ENABLED === true ||
+        env.OPERATOR_AUDIT_EXPORT_ENABLED === true) &&
+      !env.OPERATOR_AUDIT_FINGERPRINT_SECRET
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPERATOR_AUDIT_FINGERPRINT_SECRET'],
+        message: 'production audit data paths require an HMAC secret',
+      });
+    }
   });
 
 type ParsedServerEnv = z.infer<typeof envSchema>;
@@ -255,6 +426,8 @@ export type ServerEnv = Omit<
   | 'OUTBOX_DISPATCHER_ENABLED'
   | 'OUTBOX_OPS_ENABLED'
   | 'OPERATOR_AUDIT_ENABLED'
+  | 'OPERATOR_AUDIT_EXPORT_ENABLED'
+  | 'OPERATOR_AUDIT_MAINTENANCE_ENABLED'
 > & {
   SWAGGER_ENABLED: boolean;
   WORKER_OBSERVABILITY_ENABLED: boolean;
@@ -262,6 +435,8 @@ export type ServerEnv = Omit<
   OUTBOX_DISPATCHER_ENABLED: boolean;
   OUTBOX_OPS_ENABLED: boolean;
   OPERATOR_AUDIT_ENABLED: boolean;
+  OPERATOR_AUDIT_EXPORT_ENABLED: boolean;
+  OPERATOR_AUDIT_MAINTENANCE_ENABLED: boolean;
 };
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
@@ -279,5 +454,13 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
     OUTBOX_OPS_ENABLED: env.OUTBOX_OPS_ENABLED ?? env.NODE_ENV !== 'production',
     OPERATOR_AUDIT_ENABLED:
       env.OPERATOR_AUDIT_ENABLED ?? env.NODE_ENV !== 'production',
+    OPERATOR_AUDIT_EXPORT_ENABLED: env.OPERATOR_AUDIT_EXPORT_ENABLED ?? false,
+    OPERATOR_AUDIT_MAINTENANCE_ENABLED:
+      env.OPERATOR_AUDIT_MAINTENANCE_ENABLED ?? false,
+    OPERATOR_AUDIT_FINGERPRINT_SECRET:
+      env.OPERATOR_AUDIT_FINGERPRINT_SECRET ??
+      (env.NODE_ENV === 'production'
+        ? undefined
+        : 'local-dev-audit-fingerprint-change-me'),
   };
 }

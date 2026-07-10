@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const operatorAuditActionSchema = z.enum(['OUTBOX_REQUEUE']);
+export const operatorAuditActionSchema = z.enum([
+  'OUTBOX_REQUEUE',
+  'AUDIT_EXPORT_REQUEST',
+  'AUDIT_EXPORT_DOWNLOAD',
+]);
 
 export const operatorAuditStatusSchema = z.enum(['SUCCEEDED', 'FAILED']);
 

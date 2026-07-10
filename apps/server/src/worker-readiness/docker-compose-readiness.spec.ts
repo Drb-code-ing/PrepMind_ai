@@ -141,6 +141,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
 
   it('keeps local Docker server diagnostics explicitly enabled despite production runtime', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const dockerfile = readRepoFile('docker/Dockerfile.server');
     const serverService = extractYamlSection(compose, '  server:', 2);
 
     expect(serverService).toContain(
@@ -150,11 +151,16 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}',
     );
     expect(serverService).toContain(
+      'OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}',
+    );
+    expect(serverService).toContain(
       'WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}',
     );
     expect(serverService).toContain(
       'WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}',
     );
+    expect(dockerfile).not.toContain('ARG OPERATOR_AUDIT_FINGERPRINT_SECRET');
+    expect(dockerfile).not.toContain('ENV OPERATOR_AUDIT_FINGERPRINT_SECRET');
   });
 
   it('keeps the web service wired for local dev AI mode switching', () => {

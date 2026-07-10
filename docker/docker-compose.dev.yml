@@ -44,6 +44,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}
       OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}
       OPERATOR_AUDIT_ENABLED: ${OPERATOR_AUDIT_ENABLED:-true}
+      OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}
       WORKER_READINESS_ENABLED: ${WORKER_READINESS_ENABLED:-true}
       WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}
       DATABASE_URL: postgresql://prepmind:devpass@postgres:5432/prepmind

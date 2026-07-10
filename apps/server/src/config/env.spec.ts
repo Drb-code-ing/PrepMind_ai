@@ -265,6 +265,8 @@ describe('parseEnv', () => {
         ...requiredEnv,
         NODE_ENV: 'production',
         OUTBOX_OPS_ENABLED: 'true',
+        OPERATOR_AUDIT_FINGERPRINT_SECRET:
+          'production-outbox-fingerprint-secret-32',
       }).OUTBOX_OPS_ENABLED,
     ).toBe(true);
 
@@ -357,6 +359,8 @@ describe('parseEnv', () => {
         ...requiredEnv,
         NODE_ENV: 'production',
         OPERATOR_AUDIT_ENABLED: 'true',
+        OPERATOR_AUDIT_FINGERPRINT_SECRET:
+          'production-operator-fingerprint-secret-32',
       }).OPERATOR_AUDIT_ENABLED,
     ).toBe(true);
 
@@ -383,5 +387,157 @@ describe('parseEnv', () => {
         OPERATOR_AUDIT_ENABLED: '',
       }).OPERATOR_AUDIT_ENABLED,
     ).toBe(false);
+  });
+
+  it('parses bounded operator audit export defaults with local-only fingerprinting', () => {
+    expect(parseEnv(requiredEnv)).toMatchObject({
+      OPERATOR_AUDIT_EXPORT_ENABLED: false,
+      OPERATOR_AUDIT_MAINTENANCE_ENABLED: false,
+      OPERATOR_AUDIT_RETENTION_DAYS: 180,
+      OPERATOR_AUDIT_EXPORT_TTL_HOURS: 24,
+      OPERATOR_AUDIT_EXPORT_MAX_RANGE_DAYS: 31,
+      OPERATOR_AUDIT_EXPORT_MAX_RECORDS: 50000,
+      OPERATOR_AUDIT_EXPORT_MAX_ARCHIVE_BYTES: 67108864,
+      OPERATOR_AUDIT_EXPORT_PER_ADMIN_ACTIVE_LIMIT: 2,
+      OPERATOR_AUDIT_EXPORT_PER_ADMIN_HOURLY_LIMIT: 10,
+      OPERATOR_AUDIT_EXPORT_GLOBAL_ACTIVE_LIMIT: 10,
+      OPERATOR_AUDIT_EXPORT_WORKER_CONCURRENCY: 1,
+      OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS: 600000,
+      OPERATOR_AUDIT_EXPORT_LEASE_MS: 300000,
+      OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS: 3600000,
+      OPERATOR_AUDIT_EXPORT_DELIVERY_RECOVERY_HOURS: 24,
+      OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS: 120000,
+      OPERATOR_AUDIT_FINGERPRINT_SECRET:
+        'local-dev-audit-fingerprint-change-me',
+    });
+  });
+
+  it('keeps export and maintenance gates disabled by default in every environment', () => {
+    for (const NODE_ENV of ['development', 'test', 'production'] as const) {
+      const env = parseEnv({ ...requiredEnv, NODE_ENV });
+      expect(env.OPERATOR_AUDIT_EXPORT_ENABLED).toBe(false);
+      expect(env.OPERATOR_AUDIT_MAINTENANCE_ENABLED).toBe(false);
+    }
+  });
+
+  it('requires a fingerprint secret for production operator audit queries', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OPERATOR_AUDIT_ENABLED: 'true',
+      }),
+    ).toThrow();
+  });
+
+  it('requires a fingerprint secret for production outbox operations', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OUTBOX_OPS_ENABLED: 'true',
+      }),
+    ).toThrow();
+  });
+
+  it('requires a fingerprint secret for production audit export API', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        SERVER_ROLE: 'api',
+        OPERATOR_AUDIT_EXPORT_ENABLED: 'true',
+      }),
+    ).toThrow();
+  });
+
+  it('requires at least 32 trimmed characters for the fingerprint secret', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_FINGERPRINT_SECRET: 'x',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_FINGERPRINT_SECRET: 'short-production-secret',
+      }),
+    ).toThrow();
+
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        NODE_ENV: 'production',
+        OPERATOR_AUDIT_ENABLED: 'true',
+        OPERATOR_AUDIT_FINGERPRINT_SECRET:
+          '  production-hmac-secret-at-least-32  ',
+      }).OPERATOR_AUDIT_FINGERPRINT_SECRET,
+    ).toBe('production-hmac-secret-at-least-32');
+
+    expect(
+      parseEnv(requiredEnv).OPERATOR_AUDIT_FINGERPRINT_SECRET?.length,
+    ).toBeGreaterThanOrEqual(32);
+  });
+
+  it('rejects unsafe relative export timing thresholds', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_EXPORT_LEASE_MS: 600000,
+        OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS: 600000,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS: 600000,
+        OPERATOR_AUDIT_EXPORT_BULL_LOCK_MS: 600000,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS: 3600000,
+        OPERATOR_AUDIT_EXPORT_STALE_AFTER_MS: 3600000,
+      }),
+    ).toThrow();
+  });
+
+  it('requires dispatcher and maintenance for export-capable worker roles', () => {
+    for (const SERVER_ROLE of ['worker', 'both'] as const) {
+      expect(() =>
+        parseEnv({
+          ...requiredEnv,
+          SERVER_ROLE,
+          OPERATOR_AUDIT_EXPORT_ENABLED: 'true',
+          OUTBOX_DISPATCHER_ENABLED: 'false',
+          OPERATOR_AUDIT_MAINTENANCE_ENABLED: 'true',
+        }),
+      ).toThrow();
+
+      expect(() =>
+        parseEnv({
+          ...requiredEnv,
+          SERVER_ROLE,
+          OPERATOR_AUDIT_EXPORT_ENABLED: 'true',
+          OUTBOX_DISPATCHER_ENABLED: 'true',
+          OPERATOR_AUDIT_MAINTENANCE_ENABLED: 'false',
+        }),
+      ).toThrow();
+
+      expect(
+        parseEnv({
+          ...requiredEnv,
+          SERVER_ROLE,
+          OPERATOR_AUDIT_EXPORT_ENABLED: 'true',
+          OUTBOX_DISPATCHER_ENABLED: 'true',
+          OPERATOR_AUDIT_MAINTENANCE_ENABLED: 'true',
+        }).OPERATOR_AUDIT_EXPORT_ENABLED,
+      ).toBe(true);
+    }
   });
 });
