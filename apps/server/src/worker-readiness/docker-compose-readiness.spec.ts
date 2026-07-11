@@ -58,6 +58,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).toContain('bun --cwd packages/database prisma:generate');
     expect(dockerfile).toContain('bun --filter @repo/server build');
     expect(dockerfile).toContain(
+      'adduser --system --uid 1001 --ingroup nodejs nestjs',
+    );
+    expect(dockerfile).toContain(
       'COPY --from=builder /app/node_modules ./node_modules',
     );
     expect(dockerfile).toContain(
@@ -161,6 +164,13 @@ describe('Docker Compose worker readiness healthcheck', () => {
       ]),
     );
     expect(init).toContain('minio/mc');
+    expect(init).toContain('- /bin/sh');
+    expect(init).toContain('- -c');
+    expect(init).toContain('- |');
+    expect(init).not.toContain('command: >-');
+    expect(init).toContain('mc alias set local');
+    expect(init).toContain('mc ready local');
+    expect(init).toContain('mc mb --ignore-existing local/prepmind-dev');
     expect(init).toContain('mc ilm import local/prepmind-dev');
     expect(init).toContain('/config/operator-audit-export-lifecycle.json:ro');
     expect(server).toContain('minio-init:');
@@ -194,8 +204,49 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(serverService).toContain(
       'WORKER_OBSERVABILITY_ENABLED: ${WORKER_OBSERVABILITY_ENABLED:-true}',
     );
+    const localFallback = 'local-dev-audit-fingerprint-change-me';
+    for (const productionDockerArtifact of [
+      dockerfile,
+      readRepoFile('docker/Dockerfile.admin'),
+      readRepoFile('docker/Dockerfile.web'),
+      readRepoFile('docker/.env.example'),
+    ]) {
+      expect(productionDockerArtifact).not.toContain(localFallback);
+    }
     expect(dockerfile).not.toContain('ARG OPERATOR_AUDIT_FINGERPRINT_SECRET');
     expect(dockerfile).not.toContain('ENV OPERATOR_AUDIT_FINGERPRINT_SECRET');
+  });
+
+  it('keeps audit export processing on the dedicated local Docker worker', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+
+    expect(serverService).toContain('SERVER_ROLE: api');
+    expect(serverService).not.toContain('SERVER_ROLE: ${SERVER_ROLE');
+    expect(serverService).toContain(
+      'OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}',
+    );
+    expect(serverService).not.toContain('OUTBOX_DISPATCHER_ENABLED:');
+    expect(serverService).not.toContain('OPERATOR_AUDIT_MAINTENANCE_ENABLED:');
+
+    expect(workerService).toContain('SERVER_ROLE: worker');
+    expect(workerService).toContain(
+      'OUTBOX_DISPATCHER_ENABLED: ${OUTBOX_DISPATCHER_ENABLED:-true}',
+    );
+    expect(workerService).toContain(
+      'OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}',
+    );
+    expect(workerService).toContain(
+      'OPERATOR_AUDIT_MAINTENANCE_ENABLED: ${OPERATOR_AUDIT_MAINTENANCE_ENABLED:-true}',
+    );
+    expect(workerService).toContain(
+      'OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}',
+    );
+    expect(workerService).toContain(
+      '/tmp/prepmind-audit-exports:size=201326592,mode=0700,uid=1001,gid=1001',
+    );
+    expect(compose).toContain('  minio-init:');
   });
 
   it('keeps the web service wired for local dev AI mode switching', () => {

@@ -50,11 +50,11 @@ bun --cwd packages/database prisma:studio
 
 三种打开方式的区别：
 
-| 命令 | 是否自动读取根 `.env` | 推荐程度 | 说明 |
-| --- | --- | --- | --- |
-| `bun run db:studio` | 是 | 推荐 | 在项目根目录执行，最不容易连错库 |
-| `bun --cwd packages/database prisma:studio` | 是 | 可用 | 直接调用 database package 的脚本 |
-| `bun --cwd packages/database prisma studio` | 否 | 不推荐裸用 | 必须先手动设置 `$env:DATABASE_URL` |
+| 命令                                        | 是否自动读取根 `.env` | 推荐程度   | 说明                               |
+| ------------------------------------------- | --------------------- | ---------- | ---------------------------------- |
+| `bun run db:studio`                         | 是                    | 推荐       | 在项目根目录执行，最不容易连错库   |
+| `bun --cwd packages/database prisma:studio` | 是                    | 可用       | 直接调用 database package 的脚本   |
+| `bun --cwd packages/database prisma studio` | 否                    | 不推荐裸用 | 必须先手动设置 `$env:DATABASE_URL` |
 
 如果你要把某个本地账号升级为管理员，推荐直接在 Docker PostgreSQL 容器里执行 SQL：
 
@@ -66,10 +66,10 @@ docker compose -f docker/docker-compose.dev.yml exec postgres psql -U prepmind -
 
 判断“Docker psql”和“本机 psql”的方法很简单：
 
-| 命令长相 | psql 运行在哪里 | 是否需要本机安装 psql | 连接到哪里 |
-| --- | --- | --- | --- |
-| `docker compose ... exec postgres psql ...` | Docker 的 `postgres` 容器里 | 不需要 | Compose 里的 PostgreSQL |
-| `psql "postgresql://..." ...` | Windows 本机 | 需要 | 由连接串决定；本项目 `127.0.0.1:5433` 通常映射到 Docker PostgreSQL |
+| 命令长相                                    | psql 运行在哪里             | 是否需要本机安装 psql | 连接到哪里                                                         |
+| ------------------------------------------- | --------------------------- | --------------------- | ------------------------------------------------------------------ |
+| `docker compose ... exec postgres psql ...` | Docker 的 `postgres` 容器里 | 不需要                | Compose 里的 PostgreSQL                                            |
+| `psql "postgresql://..." ...`               | Windows 本机                | 需要                  | 由连接串决定；本项目 `127.0.0.1:5433` 通常映射到 Docker PostgreSQL |
 
 可以用下面命令确认 Docker PostgreSQL 是否把端口暴露到了本机：
 
@@ -199,7 +199,10 @@ $env:SERVER_ROLE='worker'
 bun --filter @repo/server start:dev
 ```
 
-Docker Compose 也提供了 worker profile。默认 `server` 仍按 `SERVER_ROLE=${SERVER_ROLE:-both}`、`KNOWLEDGE_PROCESSING_MODE=${KNOWLEDGE_PROCESSING_MODE:-inline}` 启动；拆分验证时可以这样运行：
+Docker Compose 也提供了 worker profile。Phase 7.23.8 起，Compose 的 `server` 固定为
+`SERVER_ROLE=api`，不允许宿主环境把完整栈的 API 容器覆盖成 `both`；否则 API 会写 worker heartbeat，
+在独立 worker 宕机时造成在线/readiness 假阳性。完整栈中的 Dispatcher、审计导出 processor 和维护 processor
+只由独立 `worker` 承担，避免 API 容器与 worker 容器重复消费。拆分验证时可以这样运行：
 
 ```powershell
 $env:POSTGRES_PORT='5433'
@@ -225,7 +228,7 @@ Worker: docker compose -f docker/docker-compose.dev.yml --profile worker ps
 Phase 7.17 起，Docker Compose 也提供独立管理员后台 `admin` service。需要一次性启动学习端、管理员后台、API、worker 和基础设施时，使用：
 
 ```powershell
-docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio minio-init server worker web admin
 ```
 
 对应入口：
@@ -245,14 +248,70 @@ Worker 健康：docker compose -f docker/docker-compose.dev.yml --profile worker
 - `worker`：后台任务 worker，不对外暴露业务 HTTP 入口，健康状态看 Docker healthcheck。
 - `postgres` / `redis` / `minio`：本地数据库、队列和对象存储依赖。
 
+### 审计证据包 Docker 验收
+
+本地 Compose 会显式打开审计读取、导出、维护和 Outbox Dispatcher；应用代码中的 production
+默认值仍全部关闭。必须先部署 migration，再启动包含 `minio-init` 的完整栈：
+
+```powershell
+$env:DATABASE_URL='postgresql://prepmind:devpass@127.0.0.1:5433/prepmind'
+bun packages/database/scripts/prisma-with-root-env.mjs migrate deploy
+docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio minio-init server worker web admin
+docker compose -f docker/docker-compose.dev.yml --profile worker ps
+docker compose -f docker/docker-compose.dev.yml --profile worker logs --tail 120 server worker minio-init
+```
+
+`minio-init` 应退出 0，并为 `operator-audit-exports/` 写入 2 天 expiration/noncurrent、
+delete-marker 与 1 天 incomplete multipart 规则。应用层 READY 到期后立即返回 410，小时维护负责正常
+物理删除，MinIO lifecycle 只是约 48 小时的异常兜底；对象存储按天计算和扫描，不承诺恰好在
+READY+48:00 删除。worker 的明文临时目录挂载为 192 MiB tmpfs，
+`mode=0700,uid=1001,gid=1001`；镜像运行用户同为 `1001:1001`，否则 crash janitor 会因 EPERM
+无法访问目录。
+
+证据包链路观测三个队列：`operator-audit-export`、`operator-audit-maintenance` 和既有
+`knowledge-document-processing`；BullMQ key prefix 默认是 `prepmind`。申请 API 只提交 PostgreSQL facts，必须由
+worker 内的 Outbox Dispatcher 把事件投递到 export queue，所以不要只启动 `server` 后期待证据包完成。
+
+准备专用 ADMIN/STUDENT token 后运行确定性 smoke：
+
+```powershell
+$env:OPERATOR_AUDIT_EXPORT_SMOKE_ADMIN_TOKEN='<临时 ADMIN access token>'
+$env:OPERATOR_AUDIT_EXPORT_SMOKE_STUDENT_TOKEN='<临时 STUDENT access token>'
+$env:OPERATOR_AUDIT_EXPORT_SMOKE_BASE_URL='http://127.0.0.1:3001'
+$env:OPERATOR_AUDIT_EXPORT_SMOKE_TIMEOUT_MS='120000'
+$env:OPERATOR_AUDIT_EXPORT_SMOKE_KEEP_DATA='false'
+# 仅在部署修改过默认前缀时设置，并与 worker 保持一致
+$env:BULLMQ_PREFIX='prepmind'
+bun --filter @repo/server smoke:operator-audit-export
+```
+
+两个 token 应来自本轮专用临时账号：先通过 `/auth/register` 创建 ADMIN 候选和 STUDENT，再按本文
+“本地管理员账号准备”只提升候选账号，重新登录以取得带 ADMIN role 的新 access token。不要复用
+长期真实账号；验收结束后删除这两个测试账号及其 refresh token。若 KEEP_DATA=true，先按终端输出的
+安全 export id 检查，再通过 Prisma/数据库按 `clientRequestId + reason + export id` 精确删除该轮 facts，
+严禁按时间范围或整个 prefix 批量清空共享环境。
+
+期望输出只有安全摘要：
+
+```text
+Operator audit export smoke: PASS
+export=<id> records=<count> requestAudit=1 downloadAudit=1 expired=true objectDeleted=true
+```
+
+脚本会验证 STUDENT list/create/download 均为 403、ADMIN 申请到 READY、ZIP 头和响应头、
+`records.csv`/`manifest.json`、CSV/ZIP SHA-256、申请/下载审计、到期 410 与 MinIO 删除；默认
+`finally` 精确清理本次 export/audit/outbox/SYSTEM job、Bull jobs 和对象。ADMIN/STUDENT 测试账号
+由验收人员预先准备，不属于脚本 cleanup，验收结束后要另行删除。只有排障时才把 KEEP_DATA 设为
+true，并在检查后人工清理。token、ZIP 内容、object key、payload 和 metadata 都不应写进日志或文档。
+
 ### 本机前端和 Docker 前端怎么选
 
 项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
 
-| 方式 | 启动命令 | 适合场景 | 前端 env 改哪里 |
-| --- | --- | --- | --- |
-| 本机前端 | `bun --filter @repo/web dev` | 日常改 UI、调页面、热更新最快 | `apps/web/.env.local` |
-| Docker 前端 | `docker compose -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env` |
+| 方式        | 启动命令                                                                     | 适合场景                                                 | 前端 env 改哪里       |
+| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------- |
+| 本机前端    | `bun --filter @repo/web dev`                                                 | 日常改 UI、调页面、热更新最快                            | `apps/web/.env.local` |
+| Docker 前端 | `docker compose -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env`     |
 
 如果你看到 Docker Desktop 里有 `docker-web-1`，或者你是用 `docker compose ... web` 启动页面，那就是 Docker 前端。Docker Compose 会把根目录 `.env` 里的变量传给 `web` service；这时只改 `apps/web/.env.local` 不会影响容器里的前端。
 
@@ -754,14 +813,26 @@ failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains 
 ```powershell
 subst P: "E:\PrepMind_ai智能备考助手"
 $env:COMPOSE_BAKE='false'
-docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker up -d --build postgres redis minio server worker web admin
+Set-Location P:\
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build server worker web admin
+Set-Location 'E:\PrepMind_ai智能备考助手'
+docker compose --project-name docker -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio minio-init server worker web admin
 ```
 
 注意：
 
 - `--project-name docker` 不能省略，否则 Compose 可能因为 `P:\` 根路径没有目录名而提示 `project name must not be empty`。
+- 只从 `P:` 执行 build，不要传 `--project-directory P:\`；该参数会把生命周期文件 bind mount
+  错误解析到 `P:\minio`。容器启动回到原始 `E:` 工作区执行，让相对挂载继续以仓库目录为准。
 - 这只是路径映射，不会复制项目，也不会影响 PostgreSQL / Redis / MinIO 数据。
 - 构建完成后，仍然可以回到原项目目录运行普通命令；如果想取消映射，用 `subst P: /D`。
+
+### `minio/mc` 无法拉取
+
+先确认 Docker Hub 或公司镜像源是否可达。Phase 7.23.8 的离线验收曾因外网不可用，临时使用本机
+兼容镜像实现 Compose 所需的四条 `mc` 命令，并用真实 MinIO SDK 核对 lifecycle；这只是未提交的
+本地 workaround，不是官方镜像拉取成功，也不是生产部署方案。恢复网络后应重新拉取并使用官方
+`minio/mc`，生产还要单独验证 versioned bucket 的 delete-marker 清理行为。
 
 ### Docker 前端真实模型配置补充
 

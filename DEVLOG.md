@@ -6,72 +6,145 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7.23.7 证据包 Admin 工作台已完成；仅 Phase 7.23.8 Docker 真实运行、后端下载全链路验收与面试博客待开始。
+当前阶段：Phase 7.23 审计保留与证据包导出已经完成设计、实现、Admin 工作台和 Docker 真实全链路验收；下一主线进入 Phase 8。
 
-| 阶段 | 状态 | 关键词 |
-| --- | --- | --- |
-| Phase 0 | 已完成 | Monorepo、Prisma 初稿、Docker 基础设施 |
-| Phase 1 | 已完成 | 前端 MVP、AI 聊天、OCR、错题本、Dexie |
-| Phase 2 | 已完成 | NestJS、Auth、PostgreSQL、业务 API 迁移、MinIO |
-| Phase 3 | 已完成 | OCR structured output、讲题 prompt、多题保存 |
-| Phase 4 | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划 |
-| Phase 5 | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge` |
-| Phase 6 | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents |
-| Phase 7.0 | 已完成 | BackgroundJob 控制面 |
-| Phase 7.1 | 已完成 | BullMQ 文档处理队列、inline / queue 双模式 |
-| Phase 7.2 | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤 |
-| Phase 7.3 | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要 |
-| Phase 7.4 | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope |
-| Phase 7.5 | 已完成 | Swagger 中文说明、核心写接口 request body 示例 |
-| Phase 7.6 | 已完成 | API / worker 启动拆分、worker-only application context |
-| Phase 7.7 | 已完成 | Worker Observability、Redis heartbeat、队列 backlog |
-| Phase 7.8.1 | 已完成 | RAG Eval Baseline、固定评估集、recall / top1 / safety 指标 |
-| Phase 7.8.2 | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text 融合排序 |
-| Phase 7.8.3 | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联 |
-| Phase 7.8.4 | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关 |
-| Phase 7.9.1 | 已完成 | Durable Outbox 地基、claim / retry / dead-letter 状态机 |
-| Phase 7.9.2 | 已完成 | Outbox Dispatcher 最小闭环、handler registry |
-| Phase 7.9.3 | 已完成 | Outbox Dispatcher worker-only 受控运行、防重入 tick |
-| Phase 7.9.4 | 已完成 | Outbox Summary / Metrics、worker observability 只读指标 |
-| Phase 7.10 | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue |
-| Phase 7.11 | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI |
-| Phase 7.12 | 已完成 | Docker worker healthcheck、容器级 readiness |
-| Phase 7.13 | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 验收 |
-| Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档 |
-| Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only |
-| Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash |
-| Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入 |
-| Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API |
-| Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选 |
-| Phase 7.15 | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复 |
-| Phase 7.16 | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口 |
-| Phase 7.17 | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收 |
-| Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录 |
-| Phase 7.18 | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证 |
-| Phase 7.19 | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客 |
-| Phase 7.20 | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API |
-| Phase 7.21 | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填 |
-| Phase 7.22 | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口 |
-| Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计 |
-| Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置 |
-| Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递 |
-| Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO |
+| 阶段         | 状态   | 关键词                                                                                       |
+| ------------ | ------ | -------------------------------------------------------------------------------------------- |
+| Phase 0      | 已完成 | Monorepo、Prisma 初稿、Docker 基础设施                                                       |
+| Phase 1      | 已完成 | 前端 MVP、AI 聊天、OCR、错题本、Dexie                                                        |
+| Phase 2      | 已完成 | NestJS、Auth、PostgreSQL、业务 API 迁移、MinIO                                               |
+| Phase 3      | 已完成 | OCR structured output、讲题 prompt、多题保存                                                 |
+| Phase 4      | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划                                               |
+| Phase 5      | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge`                                         |
+| Phase 6      | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents                                    |
+| Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
+| Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
+| Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
+| Phase 7.3    | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要                                   |
+| Phase 7.4    | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope                                 |
+| Phase 7.5    | 已完成 | Swagger 中文说明、核心写接口 request body 示例                                               |
+| Phase 7.6    | 已完成 | API / worker 启动拆分、worker-only application context                                       |
+| Phase 7.7    | 已完成 | Worker Observability、Redis heartbeat、队列 backlog                                          |
+| Phase 7.8.1  | 已完成 | RAG Eval Baseline、固定评估集、recall / top1 / safety 指标                                   |
+| Phase 7.8.2  | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text 融合排序                                   |
+| Phase 7.8.3  | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联                                          |
+| Phase 7.8.4  | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关                                          |
+| Phase 7.9.1  | 已完成 | Durable Outbox 地基、claim / retry / dead-letter 状态机                                      |
+| Phase 7.9.2  | 已完成 | Outbox Dispatcher 最小闭环、handler registry                                                 |
+| Phase 7.9.3  | 已完成 | Outbox Dispatcher worker-only 受控运行、防重入 tick                                          |
+| Phase 7.9.4  | 已完成 | Outbox Summary / Metrics、worker observability 只读指标                                      |
+| Phase 7.10   | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue                                             |
+| Phase 7.11   | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI                                            |
+| Phase 7.12   | 已完成 | Docker worker healthcheck、容器级 readiness                                                  |
+| Phase 7.13   | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 验收                                          |
+| Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档                                                              |
+| Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only                                                     |
+| Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash                                  |
+| Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入                                                             |
+| Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API                                      |
+| Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选                               |
+| Phase 7.15   | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复                    |
+| Phase 7.16   | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口                |
+| Phase 7.17   | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收                             |
+| Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录                                      |
+| Phase 7.18   | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证                                      |
+| Phase 7.19   | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客                                   |
+| Phase 7.20   | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API                                          |
+| Phase 7.21   | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填                                  |
+| Phase 7.22   | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口                |
+| Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计                     |
+| Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置     |
+| Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递                      |
+| Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO        |
 | Phase 7.23.5 | 已完成 | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness |
-| Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计 |
-| Phase 7.23.7 | 已完成 | `/audit` tabs、证据包申请/查询/详情、幂等重试、authenticated Blob 下载、a11y |
+| Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计                    |
+| Phase 7.23.7 | 已完成 | `/audit` tabs、证据包申请/查询/详情、幂等重试、authenticated Blob 下载、a11y                 |
+| Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-11 - Phase 7.23.8 Audit Evidence Export Delivery Closure
+
+目标：在真实 Docker PostgreSQL、Redis、MinIO、API、Worker、Web 和 Admin Console 上完成审计
+证据包从申请、可靠投递、ZIP 生成、下载审计到过期删除的最终验收，并留下可重复运行的安全 smoke
+和面试复盘文档。
+
+为什么：
+
+- 申请返回 202 只证明 PostgreSQL facts 已提交，READY 也不足以证明下载 headers/字节、strict audit、
+  MinIO 删除和浏览器 Blob 行为正确；最终阶段必须验证跨进程、跨存储真实链路。
+- 完整 Compose 同时启动 `server` 与 `worker` 时，如果 API 容器仍用 `both`，会重复注册 processor；
+  worker 镜像用户与 tmpfs owner 不一致还会让 crash janitor 因 EPERM 失效。
+- 手工验收难以稳定覆盖 STUDENT 403、ZIP 精确内容、manifest/hash、24 小时逻辑过期与 cleanup，
+  因此需要确定性脚本锁住最终交付边界。
+
+主要内容与做法：
+
+- Compose 的 `server` 默认改为纯 `api`，Dispatcher/export/maintenance gates 只交给独立 worker；
+  worker 运行用户收口为 `1001:1001`，192 MiB tmpfs 同步设置 `0700,uid=1001,gid=1001`。
+- 修复 `minio-init` 的 shell argv 结构，让完整 lifecycle script 成为 `/bin/sh -c` 第三个参数；真实 MinIO
+  核对到 2 条规则，包含 2 天 expiration/noncurrent、delete-marker 与 incomplete multipart 边界。
+- 新增 `smoke:operator-audit-export`：只接收环境变量中的临时 ADMIN/STUDENT token，支持正确的
+  `BULLMQ_PREFIX`（默认 `prepmind`），串联申请、轮询、下载、ZIP/CSV/manifest/SHA、审计、维护、
+  410 和对象删除；失败只输出安全 stage/code，`finally` 默认精确清理本次合成 facts 和对象。
+- Outbox Ops e2e 修正过期 fixture：STUDENT 明确断言 403，后续 200 路径使用已提升的 ADMIN token。
+- 中文路径构建流程拆为从 `P:` 只执行 build、从原始 `E:` 工作区执行 runtime Compose；不再使用
+  `--project-directory P:\`，避免 lifecycle bind mount 被错误解析到 `P:\minio`。
+
+边界：
+
+- Docker Hub/镜像源无法拉取 `minio/mc` 时，本次只在本机创建未提交的兼容镜像，以真实 MinIO SDK
+  执行 Compose 所需四条命令并核对 lifecycle。它不是官方镜像拉取成功，也不是生产方案。
+- production 的 export/maintenance/diagnostic gates 仍默认关闭；本地 fallback HMAC secret 不可复用。
+- SHA-256 是完整性校验，不是数字签名或不可抵赖；HMAC 来源指纹仍是可关联数据，不是匿名数据；
+  证据包是工程上一致的观察结果，不是法律级数据库快照、WORM 或 legal hold。
+
+验收：
+
+- 合同/类型共 14/14；focused Server 35 suites、371 passed、2 个明确 integration skip；完整 e2e
+  16 suites、56/56；smoke/config 26/26；Compose contract 13/13；Admin 56/56。database test、
+  targeted ESLint、Server/Admin build 与 Admin lint 均通过，migration 无待部署项。
+- 配额、幂等与恢复边界用以下聚焦门禁复核：
+
+  ```powershell
+  bun --filter @repo/server test -- operator-audit-export-request operator-audit-export-archive operator-audit-maintenance operator-audit-export-requested operator-audit-export-temp-janitor worker-readiness --runInBand
+  ```
+
+  结果为 12 suites、130 tests 通过，1 个需显式 Redis integration flag 的 suite/test 跳过。用例明确覆盖
+  same actor/clientRequestId 同 hash 只产生一份 facts/一条 request audit、不同 hash 409、每管理员
+  active=2/小时=10/全局 active=10 时 429；Redis enqueue failure 回到 Dispatcher retry/dead-letter；
+  DEAD 24 小时内保留、超过窗口转 `DELIVERY_ABANDONED`；pre-count=50,001、archive byte limit=64 MiB、
+  temp disk 不满足严格余量时均 fail-safe；janitor 只清安全失效 token 且不碰 active Bull job。
+
+- 真实 API/queue/storage smoke 输出 `Operator audit export smoke: PASS`，记录数 1，request/download
+  audit 各 1，EXPIRED=true、objectDeleted=true。浏览器在 Docker Admin Console 完成真实申请、下载、
+  审计、过期与普通用户拦截：ZIP 777 bytes，console/page error 0，body 横向溢出 0；匿名 refresh
+  401 是预期登录探测，不计为页面错误。
+- 清理后合成 exports 7、audits 13、outbox 7、SYSTEM jobs 7、users 2 均删除，MinIO objects 0；
+  worker `healthy`、failing streak 0，maintenance state 为 `SUCCEEDED`。未停止用户现有 Docker 基础设施。
+  这组清理计数来自真实验收 helper，不是 smoke 单独负责删除用户；smoke 只精确清本轮 export facts、
+  Bull jobs 与对象，预先准备的 ADMIN/STUDENT 账号在整轮浏览器验收后另行删除。
+- 功能分支在 cleanup/固定 API role 修复后 smoke 记录数 4；再补 maintenance terminal wait 后最终
+  smoke 记录数 5。两次均 request/download audit 各 1、EXPIRED=true、objectDeleted=true；按 export id
+  查询 users/export/outbox/audits 为 `0|0|0|0`。容器内 readiness 为 `ready`：knowledge/export queue 均 waiting/active/delayed/failed=0，
+  maintenance queue 仅保留 1 个预期 repeatable delayed job，maintenance current、online worker=1、
+  outbox dead=0/backlog=false、issues=none。
+
+回顾时可以问：为什么证据包真实验收必须同时覆盖 API/Worker 拓扑、ZIP 字节、下载审计、
+维护删除和 cleanup，而不能把 202 或 READY 当成完成？
 
 ### 2026-07-11 - Phase 7.23.7 Admin Audit Evidence-Package Workspace
 
 目标：在独立 Admin Console `/audit` 内完成“审计记录 / 证据包”工作台，让管理员沿用同一组脱敏筛选申请证据包、观察异步状态、查看安全详情并下载 READY ZIP。
 
 为什么：
+
 - 网络或 5xx 可能发生在服务端已提交之后；每次点击生成新 UUID 会把重试变成重复申请，但表单变化后复用旧 UUID 又会造成同 id 不同 hash 冲突。
 - ZIP 不是 JSON envelope，下载仍需携带管理员 Bearer token，并显式约束文件名、哈希和 object URL 生命周期。
 - 五态异步任务需要非颜色状态解释、active-only polling 和合法的同级交互控件。
 
 主要内容与做法：
+
 - `/audit` 提升共享 `AuditFilterState`，用支持 ArrowLeft/ArrowRight/Home/End 的 `tablist/tab/tabpanel` 切换审计记录与证据包；证据包申请默认继承 action/status/target/actor filters。
 - create/list/detail 全部经过 `@repo/types` shared strict Zod schema；list 只序列化批准的 query。通用 API client 新增 authenticated POST Blob path，安全解析 attachment 文件名和 `X-Content-SHA256`；失败响应才解析 JSON envelope，普通 JSON 行为不回归。
 - 申请带明确 31 天/50,000 条边界与 reason/date `aria-describedby` 错误关联。pending request 保存 `clientRequestId` 与继承筛选签名：网络/5xx 且完整表单未变时重用，任一字段或父 filters 变化时清理，成功后清理并只说明排队中。
@@ -79,10 +152,12 @@
 - FAILED 提示缩小范围；EXPIRED 说明文件已删除且没有恢复/延长动作；仅 `READY && canDownload` 显示同级 Download/Copy icon buttons。Blob 下载用临时 `<a download>` 触发，`finally` 始终 remove anchor 并 revoke object URL。
 
 边界：
+
 - 不改后端 API/contract，不使用 presigned URL，不展示 objectKey、processingToken、requestHash、payload、metadata 或 lease，不提供延长、恢复文件或编辑对象。
 - 浏览器验收使用 Admin dev server + Playwright route interception + local ADMIN session，不代表真实 PostgreSQL/Redis/Worker/MinIO/下载审计全链路；Phase 7.23.8 继续真实 Docker 验收。
 
 验收：
+
 - TDD 将申请 pending/reuse/reset 决策与 cursor page merge 提取为纯函数，持久测试覆盖 network/5xx 同签名复用、reason/date/父 filters 变化清理且改回旧值不复活、成功/终态失败清理，以及重复 id 保留最新页版本和首次顺序。源码 contract 只负责静态安全/wiring 边界；jsdom + Testing Library 真实渲染生产共用 tabs/row，验证 ArrowLeft/Right/Home/End、焦点、单一可见 panel 和无嵌套 button。Admin 完整测试 56/56，ESLint、Next build、types typecheck、Server build 通过。
 - Headless Chromium 1440×900 与 1024×768 均完成 QUEUED→PROCESSING→READY、tabs 键盘、错误关联、长 id/hash、固定轨道及 download/copy；两尺寸 console error 0、page error 0、横向溢出 0。临时脚本、截图、dev server 与 next-env 已清理。
 
@@ -168,11 +243,13 @@ TDD 与验收：
 目标：把 Phase 7.23.3 已可靠投递的 `operator-audit-export` BullMQ job 变成真正可执行的单并发证据包 Worker，在固定快照内生成脱敏 CSV + manifest ZIP，并保证失去 lease 的旧 Worker 无法覆盖新证据包。
 
 为什么：
+
 - BullMQ lock 只保护 Redis delivery；进程暂停、网络抖动或 lock/lease 丢失后，旧进程仍可能继续写 PostgreSQL 或 MinIO。仅靠 job id 幂等不能阻止“旧 attempt 最后完成并覆盖新 attempt”的僵尸写入。
 - 审计 CSV 会被 Excel 等表格软件打开；只做 RFC CSV quoting 不能阻止 `=`, `+`, `-`, `@` 公式注入，也不能防住 tab、CR、NBSP 或全角空格前缀绕过。
 - 证据包必须对应一个稳定的审计快照，且不能把 `metadata`、原始来源、secret 或任意用户正文带入归档；本地 plaintext 和未被数据库选中的对象也不能长期残留。
 
 主要内容与做法：
+
 - 新增 strict Bull payload，仅允许非空 `exportId/backgroundJobId`。状态仓库每次使用 `clock_timestamp()`，在同一事务内复核 Export 与 `scope=SYSTEM/userId=null` BackgroundJob 的 queue/job/resource 关联事实，并用随机 processing token、lease 和 `updateMany` CAS 同步执行 claim/renew/retry/fail/ready；任一事实 CAS 丢失都会回滚，旧 token 不能选择 object key。
 - Worker 仅在 `SERVER_ROLE=worker|both` 且 export、Outbox Dispatcher、maintenance 三个 gate 都显式为 `true` 时注册。BullMQ 本地 concurrency 固定为 1；processor 先以 `autorun=false` 注册，应用 bootstrap 再先写入 queue global concurrency=1、后启动 Worker，避免多副本突破生产单并发不变量。`worker.run()` 的 Promise 会立即绑定 rejection handler；若初始化或主循环退出，只记录不含 raw error/连接信息的固定 fatal 日志，设置 `exitCode=1` 并发送 `SIGTERM`，signal 失败则显式 `exit(1)`，让编排器重启而不是留下在线但不消费的进程。600 秒 Bull lock 不变；live lease 通过 `moveToDelayed(leaseExpiresAt + 1000)` + `DelayedError` 延迟，已用 BullMQ 5.79.2 + 真实 Redis 验证 delayed 状态 `attemptsMade=0`。处理中每 `lease/3` 由 interval 续租；归档完成后/上传前以及上传后分别同步 renew/recheck。失败状态 CAS 的数据库结果不确定时同样 delayed 到 lease 恢复窗口，不消耗当前或最后一个 Bull business attempt。
 - 归档查询使用 Prisma interactive transaction + `RepeatableRead`、`SET TRANSACTION READ ONLY` 和仅由已验证数字配置生成的 `SET LOCAL statement_timeout`。effective end 为 `min(endAt,snapshotAt)`；先 count，再按 `createdAt ASC,id ASC` 的复合 keyset 每页 1,000 条流式读取，pre-count 与 streamed count 都执行 50,000 条上限，select 明确排除 `metadata`。
@@ -182,10 +259,12 @@ TDD 与验收：
 - MinIO key 固定为 `operator-audit-exports/<exportId>/attempts/<processingToken>.zip`，id/token 和 read/delete/list 都重新执行严格 grammar。只有当前 token 的 `markReady` CAS 能把 attempt key 写成数据库权威 object key；若 PostgreSQL commit 已成功但 ACK 丢失，Worker 会读取 Export + SYSTEM BackgroundJob 双事实：`READY + SUCCEEDED + 同 objectKey` 视为已提交并保留对象；明确仍是当前 token、已由其它 token 接管或终态未选择该 key 时才允许删除。reconciliation 不可用或结果不确定时保留对象并 delayed，未被权威 key 选中的 orphan 由 Phase 7.23.5 维护回收。missing 白名单为 NoSuchKey/NoSuchObject/MinIO 8 bodyless NotFound/HTTP 404，其余统一为不复制 raw message 的 unavailable。
 
 边界：
+
 - 本阶段没有实现 Phase 7.23.5 保留维护、stale repair/readiness 指标、Phase 7.23.6 list/detail/download API、fail-closed 下载审计、Admin UI 或 Docker 运行验收；production gates 仍默认关闭。
 - safe DTO 仍不返回 object key、processing token、payload 或 metadata；MinIO export prefix 不进入既有公开图片/资料读写路径。下载前的对象存在性、range、响应头和下载审计属于后续阶段。
 
 TDD 与验收：
+
 - State RED 因 payload/repository 缺失失败，GREEN 11/11；CSV RED 因模块缺失失败，GREEN 5/5；Archive RED 因 service 缺失失败，首轮 GREEN 解决 ESM/CJS 依赖兼容后为 6/6，补充 1,001 行复合 keyset 后为 7/7。
 - Storage RED 为 6 个新行为失败、18 个既有行为通过，GREEN 24/24；Processor RED 因模块缺失失败后 GREEN 10/10，role-bound provider RED 为 1 failed + 10 passed，首轮 GREEN 11/11。
 - 交付前只读审查新增 RED 5 failed + 22 passed：精确复现 interval renew exception 静默完成、C0 清理后公式显露、MinIO ACK-lost orphan、manifest secret 与 archiver warning 缺口；修复后 CSV 5/5、Archive 9/9、Processor 13/13，共 27/27 GREEN。
@@ -195,6 +274,7 @@ TDD 与验收：
 - 聚焦 env/归档/状态/CSV/processor/storage 6 suites 共 112/112 通过；`main...HEAD` 全部 15 个 changed Server TS 定向 ESLint/Prettier 与 Server build 通过。依赖分类、temp/Redis cleanup、敏感串断言和 Phase 7.23.5+ 越界均已自审。
 
 回顾时可以问：
+
 - “processing token 如何阻止失去 lease 的旧 Worker 覆盖新证据包？”
 - “为什么 attempt-fenced key 还必须配合数据库选中的 object key，而不能只依赖 MinIO 覆盖写？”
 - “为什么公式检测必须早于 tab/CR 等控制字符清理？”
@@ -205,11 +285,13 @@ TDD 与验收：
 目标：让 PostgreSQL commit 成为审计证据包申请的唯一成功边界，并由 Outbox Dispatcher 独占 PostgreSQL -> Redis/BullMQ 桥接，消除“数据库成功但 Redis enqueue 失败”的双写窗口。
 
 为什么：
+
 - request path 若在数据库事务之外直接调用 `queue.add()`，PostgreSQL 与 Redis 任一侧失败都会留下“有任务无队列”或“有队列无事实”的不可原子恢复状态。
 - 证据包申请是高权限操作；Export、SYSTEM BackgroundJob、可靠投递事件和 `AUDIT_EXPORT_REQUEST` 必须同生共死，审计写失败不能像普通运维观测那样吞掉。
 - Dispatcher 面对 retry、进程崩溃和重复 claim 时，必须用 deterministic Bull job id 和数据库关联事实复核来保证重复投递安全。
 
 主要内容与做法：
+
 - 新增 `POST /operator-audit-exports`，guard 顺序为 Operator Audit gate、export gate、JWT、Operator；export gate 关闭时认证前返回 404。body 使用 strict shared schema，非法 UUID/reason/date/unknown field 转为安全领域 400，不暴露 Zod issues；strict request audit 写失败回滚并返回安全领域 503。Swagger 明确完整 body properties/formats/length/enums、`additionalProperties:false` 与安全 202/400/409/429/503 样例。
 - request service 在事务前生成 export/job UUID；Serializable 事务内依次以 `$executeRaw` 取得 retention/quota advisory locks，再用 database clock 校验 `start < end`、31 天上限、180 天下界、未来 end，并执行每管理员 active 2 / 每小时 10 / 全局 active 10 配额。Prisma 无法反序列化 advisory lock 的 `void` 返回，因此锁不能使用 `$queryRaw`。
 - 首条 advisory lock 等待会在释放前固定 Serializable snapshot；整个 interactive transaction 没有事务外副作用，因此事务任意阶段（包括 strict audit create）只有 P2034、raw PostgreSQL 40001、明确 target 为 `OperatorAuditExport.[requestedByUserId,clientRequestId]` 的 P2002 才最多重跑 5 次。normalized input 与预生成 export/job UUID 跨 attempts 复用，每次 attempt 重新取锁与 DB clock；其它唯一冲突/错误原样失败。
@@ -219,16 +301,19 @@ TDD 与验收：
 - 注册 `operator-audit-export` queue 和 injectable bound-arrow handler。handler 严格校验 payload、Export 与 linked SYSTEM BackgroundJob；FAILED/EXPIRED、已交付的 PROCESSING/READY + ACTIVE/SUCCEEDED、已有 Bull job 都 no-op，只有 QUEUED export + QUEUED BackgroundJob 才以 BackgroundJob id 作为 Bull job id 投递，其余未批准状态组合按 invalid payload 进入 retry/dead-letter；Redis 错误原样传播。
 
 边界：
+
 - 当前没有 ZIP processor、CSV/manifest、MinIO 上传、保留维护、list/detail/download API、fail-closed 下载审计或 Admin UI；queue 中的 generate job 还没有消费者，不能把可靠投递理解成证据包已经能生成。
 - export/maintenance production gates 继续默认关闭；本阶段没有新增 migration、没有改变知识库 queue-first + best-effort observer 语义，也没有让 API request path 直接接触 Queue。
 - DEAD 事件仍可通过既有受审计 requeue 在设计的 24 小时投递恢复窗口内恢复；申请审计严格失败关闭，但既有 Outbox requeue 审计继续 best-effort。
 
 验收：
+
 - RED：指定 service 命令 4 个 suite 失败，分别证明 request service/handler、transactional enqueue、strict audit 与 HMAC 能力缺失；既有 15 项仍通过。
 - GREEN：聚焦事务/handler/controller/audit/outbox 回归 11 个 suite、126 项通过；完整 Server 回归 57 个 suite、491 项通过；真实 PostgreSQL concurrency e2e 3/3 通过，三个场景均捕获 Prisma `P2034`、`target=undefined` 并由 bounded retry 恢复。定向 ESLint、changed-file Prettier 与 Server build 通过。
 - 覆盖精确七步事务顺序、rollback 传播、同 hash replay/异 hash conflict、四类时间边界、三类配额、无 Queue 依赖、guard 顺序、strict payload、linked SYSTEM facts、Bull job 幂等/no-op 和 Redis 失败传播。
 
 回顾时可以问：
+
 - “事务型 Outbox 如何消除 PostgreSQL 成功但 Redis enqueue 失败的双写窗口？”
 - “为什么 Serializable + advisory lock 需要 bounded whole-transaction retry，而不是改成 Read Committed？”
 - “为什么 request audit 要 fail-closed/strict，而 Outbox requeue audit 仍然 best-effort？”
@@ -240,11 +325,13 @@ TDD 与验收：
 目标：先固定证据包申请/查询的安全 contract、可恢复的导出领域事实和跨用户生命周期的 SYSTEM 后台任务语义，让后续可靠投递、Worker、维护任务和 API 建立在同一组数据库不变量上。
 
 为什么：
+
 - 账号级 `BackgroundJob` 原本通过 `userId` 外键级联删除，若直接承载审计导出，请求人删除会同时破坏仍需保留的导出事实与执行事实。
 - 导出 DTO 必须在 API 实现前严格排除 object key、request hash、processing token、payload 与 metadata，避免内部投递/存储字段进入公共 contract。
 - lease、BullMQ lock、stale repair 与 query timeout 有顺序约束；production 任一审计查询、Outbox 操作或导出路径开启后都必须具备至少 32 字符的 fingerprint secret，因此错误组合要在 bootstrap 时 fail fast。
 
 主要内容与做法：
+
 - 新增 `@repo/types/api/operator-audit-export` strict Zod contract：五种状态、UUID 幂等键、递增 ISO range、3~240 字符 reason、nullable filters、安全 detail/list 与稳定 cursor；`OperatorAuditAction` 增加 request/download actions。
 - Prisma 新增 `OperatorAuditExport` 与 singleton maintenance state；`backgroundJobId` 唯一但无外键，`requestedByUserId` 删除时 `SET NULL`。`BackgroundJob` 增加 ACCOUNT/SYSTEM scope，数据库 CHECK 强制 ACCOUNT 有 user、SYSTEM 无 user，既有用户外键继续 `ON DELETE CASCADE`。
 - 账号 `BackgroundJobsService` 的 create/find/count/update/list/summary，以及知识库 direct active count、create、active find、enqueue-failure update 全部显式带 `scope=ACCOUNT`，required `userId` 签名和 DTO 不变。数据库 e2e 使用隔离用户与定向清理，真实验证 FK、CHECK、`SET NULL` 和 service scope。
@@ -253,10 +340,12 @@ TDD 与验收：
 - Docker server 镜像以 `NODE_ENV=production` 运行，而 dev Compose 显式开启 Outbox Ops 与 Operator Audit；因此只在 `docker-compose.dev.yml` server environment 提供可覆盖的 `local-dev-audit-fingerprint-change-me` fallback。`Dockerfile.server` 不烘焙该 secret，真实 production 必须提供独立值并禁止复用本地 fallback。
 
 边界：
+
 - 没有实现导出申请事务、Outbox 可靠投递、BullMQ queue/handler、ZIP Worker、MinIO、180 天保留清理、HTTP API、下载审计或 Admin UI。
 - request/download actions 只是 contract/enum 预留，export/maintenance 表没有运行时写入者；两项 production gate 保持关闭，不能把 schema 落库理解成已交付运行能力。
 
 验收：
+
 - RED：contract 因缺失模块/actions 失败；env/account-scope 定向测试 13 项按缺失 key/scope 失败；数据库 e2e 3 项按 Prisma 不认识 scope、SYSTEM 仍要求 user 失败；首次 Server build 发现旧审计 row type 仍只接受 `OUTBOX_REQUEUE`。
 - Quality review RED：env 定向测试分别暴露 production Outbox Ops、API-role export 与短 secret 未拒绝；list query reversed window 未拒绝；知识库 direct BackgroundJob count/create/find/update 都缺少 ACCOUNT scope。
 - Characterization：nested filters strict test 首次即通过；两条数据库负例首次运行时 PostgreSQL 已通过 `BackgroundJob_scope_user_check` 拒绝，只需把断言从不存在的 Prisma `P2004` code 改为匹配真实 constraint wrapper。
@@ -265,6 +354,7 @@ TDD 与验收：
 - e2e 证明两种非法 scope/user 组合都被数据库拒绝、ACCOUNT job 随 user 删除、SYSTEM job 与 export 在 requester 删除后保留、`requestedByUserId` 置空且 `backgroundJobId` 不变，并证明账号 service 不能读取 SYSTEM job。
 
 回顾时可以问：
+
 - “为什么 `OperatorAuditExport.backgroundJobId` 唯一但不建立外键？”
 - “ACCOUNT job 的 `userId + scope` 双重过滤和数据库 CHECK 分别防什么？”
 - “为什么 export/maintenance 在所有环境默认关闭？”
@@ -275,27 +365,32 @@ TDD 与验收：
 目标：把已审阅通过的审计保留与证据包设计拆成能够逐阶段 TDD、独立提交、合入 `main` 并再次验收的实施路线，避免把事务、Worker、维护任务、下载安全和 Admin UI 一次性堆进不可审查的大提交。
 
 为什么：
+
 - 这条链路跨 PostgreSQL、Outbox、Redis/BullMQ、MinIO、二进制 HTTP 和 Admin Console；只写功能清单无法约束双写窗口、僵尸 Worker、保留清理竞态和 fail-closed 审计。
 - 仓库要求一步一提交、任务后同步文档、合并 `main` 后复验，而且新任务必须从最新 `main` 开分支；计划需要把这些要求变成每阶段的执行门禁。
 - 设计中有 31 天、50,000 条、64 MiB、24/48 小时、180 天等相互关联的边界，必须提前固定类型名、队列名、测试命令和预期结果，避免实现时各模块自行解释。
 
 主要内容：
+
 - 正式计划：`docs/superpowers/plans/phase-7-23-operator-audit-retention-export.md`。
 - Phase 7.23.2 ~ 7.23.8 分别覆盖 contract/Prisma、事务型 Outbox、ZIP Worker、保留维护、查询下载 API、Admin 证据包 UI、Docker 验收与面试博客。
 - 每个阶段使用独立 `codex/phase-7-23-*` 分支和一个实现提交；阶段验收后 `--no-ff` 合入 `main`，在 `main` 重跑同一验证门禁后才能开下一分支。
 - 计划写明 RED/GREEN 命令、关键签名、数据库约束、BullMQ 5.79.2 delayed 行为验证、CSV 公式注入样本、MinIO lifecycle、二进制 envelope 旁路和普通用户 403 验收。
 
 边界：
+
 - 本次只新增实施计划和进度索引，没有修改 Prisma、API、Worker、MinIO、Admin UI 或运行时配置。
 - Phase 7.23.2 仍未开始，当前项目不具备证据包申请、生成、下载或自动保留清理能力。
 - 计划不改变现有 Outbox requeue 的 best-effort 审计，也不加入 legal hold、预签名下载、数字签名或全库导出。
 
 验收：
+
 - 已从最新 `main` 创建独立计划分支；计划包含 writing-plans 要求的 agentic-worker 说明、checkbox 步骤、精确路径、TDD 失败/通过预期和逐任务提交。
 - 已按设计逐项覆盖三份事实、SYSTEM job、事务型 Outbox、lease/token fencing、REPEATABLE READ、保留水位、fail-closed 下载、Admin Blob 下载和 Docker 主分支复验。
 - 已执行占位词、类型/名称一致性、路径引用和 `git diff --check` 自审；实现阶段仍必须以每个任务的新鲜测试输出为准。
 
 回顾时可以问：
+
 - “为什么 Phase 7.23 要拆成 7 个从 `main` 开始的阶段，而不是一个长期功能分支？”
 - “计划如何把双写、僵尸 Worker、保留清理和二进制下载分别放进可验证的任务？”
 - “实现时为什么每次合并 `main` 后还要重复验收？”
@@ -305,12 +400,14 @@ TDD 与验收：
 目标：为现有 `OperatorAuditLog` 补上明确的 180 天保留边界，并设计一条 ADMIN 可控、脱敏、可校验、24 小时过期的事故证据包导出链路。
 
 为什么：
+
 - 审计日志如果没有保留周期会持续增长，也无法解释数据为什么仍被保存。
 - 当前 Admin Console 只能在线查看审计记录，事故复盘时缺少安全交接方式；数据库裸导出会绕过 DTO 脱敏边界。
 - BackgroundJob 只能证明数据库里存在任务，不能消除 PostgreSQL commit 成功但 Redis enqueue 失败的双写窗口。
 - 导出文件本身也是敏感数据，必须有独立 TTL、下载审计和自动清理，不能把 MinIO 临时目录当长期档案库。
 
 主要内容：
+
 - 明确第一版定位为事故排障证据包，不做通用 BI、legal hold、WORM、数字签名或长期合规归档。
 - 默认保留 `OperatorAuditLog` 180 天；证据包最多覆盖 31 天、50,000 条记录，ZIP 在 MinIO 保留 24 小时。
 - 设计 `OperatorAuditExport` 领域模型，和 `BackgroundJob`、`OutboxEvent` 分别承担导出事实、执行事实和可靠投递事实。
@@ -323,16 +420,19 @@ TDD 与验收：
 - Admin Console `/audit` 规划“审计记录 / 证据包”标签页；实现拆为 Phase 7.23.2 ~ 7.23.8，每项单独提交并同步文档。
 
 边界：
+
 - 本提交只落设计，不修改 Prisma、contract、API、Worker、MinIO、Admin UI 或运行时配置。
 - 不导出 `metadata`、Outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。
 - 不提供全库导出、手动延期、恢复过期文件、删除审计记录、编辑 payload 或绕过 OperatorGuard 的入口。
 
 验收：
+
 - 开始新任务前先把 Phase 7.17 ~ 7.22 合入 `main`；合并后复验发现 5 处 Prettier 问题，修复提交后定向 Server lint 与 107 项相关测试通过，Web 294 项和 Admin 33 项测试、相关 build/typecheck/Compose config 也通过。
 - 设计按“背景 / 目标 / 非目标 / 数据模型 / 事务型 Outbox / Worker / 保留清理 / API / Admin / 测试 / 验收 / 实施拆分”完整记录。
 - 正式 spec：`docs/superpowers/specs/phase-7-23-operator-audit-retention-export-design.md`。
 
 回顾时可以问：
+
 - “为什么 BackgroundJob、OperatorAuditExport 和 OutboxEvent 不能互相替代？”
 - “当前知识库 requested outbox 为什么不能防止 BullMQ enqueue 丢失？”
 - “为什么审计导出要 fail-closed，而 Outbox requeue audit 仍然 best-effort？”
@@ -344,11 +444,13 @@ TDD 与验收：
 目标：在 Docker 全栈环境里用真实管理员账号完整跑一轮 Admin Console 运维闭环，确认 Phase 7.21 的筛选控件和 requeue guard 不只在 mock / 静态测试里成立，也能在真实容器、真实 API、真实 PostgreSQL 数据上工作。
 
 为什么：
+
 - Admin Console 是给管理员排障用的，不验 Docker 全栈就无法证明 `admin -> server -> postgres / redis / worker` 的真实链路可用。
 - Outbox requeue 是系统级状态变更，必须确认普通用户不能访问、管理员操作必须写审计、worker readiness 能反映 backlog 并在测试数据清理后恢复。
 - 本轮验收还发现后台缺少 favicon 会产生浏览器 404 噪声，因此顺手补齐后台图标，让调试控制台更干净。
 
 主要内容：
+
 - 使用 Docker Compose dev 栈启动 `postgres / redis / minio / server / worker / web / admin`，管理员后台访问 `http://127.0.0.1:3100`，API 访问 `http://127.0.0.1:3001`。
 - 创建临时 ADMIN 账号和临时普通账号；ADMIN 账号登录后台并完成 `/outbox -> requeue -> /audit -> /worker` 浏览器验收，普通账号直接请求 `/outbox-events` 返回 `403`。
 - 在数据库中插入安全的 `knowledge.document.processing.requested` 失败 outbox 事件，页面里确认自定义状态筛选是 `combobox`，没有回退到原生 `<select>`；requeue 按钮在填写 reason 和勾选确认前不可用。
@@ -356,16 +458,19 @@ TDD 与验收：
 - 新增 `apps/admin/public/favicon.svg` 并在后台 `metadata.icons` 中声明，减少后台浏览器调试时的 favicon 404 噪声。
 
 边界：
+
 - 本阶段不新增后端 API、不新增批量 requeue、不新增删除 / 跳过 / 立即 dispatch / payload 编辑。
 - 测试 outbox、审计记录和临时账号在验收后清理，不污染本地长期数据。
 - 前端 reason + confirm 仍是产品层防误操作；真正安全边界仍是后端 feature gate、`JwtAuthGuard`、`OperatorGuard` 和服务层状态机。
 
 验收：
+
 - Docker 浏览器验收：`http://127.0.0.1:3100/login` 登录 ADMIN，进入 `/outbox` 完成筛选、详情、reason + confirm requeue；进入 `/audit` 查看审计记录详情；进入 `/worker` 查看 readiness。
 - 普通用户 API 验收：临时普通账号携带 token 访问 `GET /outbox-events?status=FAILED` 返回 `403`。
 - 容器 readiness 验收：`docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ exec -T worker bun apps/server/dist/scripts/worker-readiness.js` 输出 `Worker readiness: ready`。
 
 回顾时可以问：
+
 - “为什么 Phase 7.21 做完后还要单独做 Docker 全栈验收？”
 - “Outbox requeue 后为什么 worker readiness 会短暂 degraded？”
 - “普通用户 403 和前端隐藏入口分别证明了什么？”
@@ -376,28 +481,33 @@ TDD 与验收：
 目标：把管理员后台的 Outbox / Audit 筛选和 requeue 操作体验再收紧一层，解决原生下拉框割裂、requeue 原因可省略导致复盘信息不足的问题。
 
 为什么：
+
 - 后台管理不只是“能调接口”，还要让管理员在高压排障时快速判断、谨慎操作、事后能复盘。
 - 浏览器原生 select 在 Windows 上会出现系统蓝色高亮和粗边框，和当前 Admin Console 的低干扰视觉语言割裂，显得像临时 demo。
 - requeue 会改变系统级 outbox 状态，即使后端允许 reason 可选，前端运维工作流也应该引导管理员填写原因，便于后续在 `/audit` 详情里解释这次操作。
 
 主要内容：
+
 - 新增 `apps/admin/src/components/admin-filter-select.tsx`，提供后台专用自定义筛选控件，支持 `combobox / listbox / option` 语义、label 关联、`aria-selected`、`aria-activedescendant`、上下键切换、Enter 选择、Escape 关闭、外部点击关闭和低干扰滚动样式。
 - `/outbox` 和 `/audit` 替换原生 `<select>`，状态筛选统一使用 Admin Console 的轻量 popover 风格。
 - `/outbox` requeue 前端增加 `reasonRequired` guard：必须填写 reason 并勾选确认后，按钮才可用；切换事件或筛选条件时清空 reason，避免把 A 事件的原因误带到 B 事件；成功后仍刷新 outbox、audit 和 worker readiness。
 - 新增静态 contract test，防止页面回退到原生 select，防止 requeue 操作绕过 reason guard。
 
 边界：
+
 - 不新增后端 API，不改变 `POST /outbox-events/:id/requeue` contract；后端仍只做安全状态机和审计。
 - 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 编辑。
 - 前端 reason 必填是产品化防误操作，不替代后端 `JwtAuthGuard + OperatorGuard + OutboxOpsService` 的真实安全边界。
 
 验收：
+
 - `bun --filter @repo/admin test`
 - `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
 - `bun --filter @repo/admin lint`
 - `bun --filter @repo/admin build`
 
 回顾时可以问：
+
 - “为什么后台管理页面不直接用浏览器原生 select？”
 - “为什么 requeue reason 在后端可选，但前端要做必填？”
 - “前端防误操作和后端状态机安全边界分别负责什么？”
@@ -408,11 +518,13 @@ TDD 与验收：
 目标：把 Admin Console 的 `/audit` 从“能查审计列表”升级为“能追踪一次管理员诊断写操作全过程”的审计详情页，让 requeue 后的复盘更完整。
 
 为什么：
+
 - Phase 7.19 已经让控制台能发现风险，Phase 7.18 已经让 Outbox Ops 能处理风险，但 Audit 如果只有列表，管理员仍然很难看清一次操作的完整上下文。
 - 高权限诊断写操作需要可复盘：谁操作、操作了什么 target、为什么操作、请求指纹是什么、失败时错误摘要是什么。
 - 面试表达上，这一步能把后台管理闭环讲成“发现问题 -> 处理问题 -> 验证恢复 -> 审计复盘”，而不是只讲一个 requeue 按钮。
 
 主要内容：
+
 - `@repo/types/api/operator-audit` 新增 `operatorAuditLogDetailResponseSchema`，详情 DTO 复用脱敏列表 item 字段。
 - 后端新增 `GET /operator-audit-logs/:id`，经过 `OPERATOR_AUDIT_ENABLED` feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
 - `OperatorAuditService.getDetail()` 使用显式 `select`，继续排除 `metadata`，不存在时返回 `OPERATOR_AUDIT_LOG_NOT_FOUND`。
@@ -422,11 +534,13 @@ TDD 与验收：
 - `docs/blogs/admin-console-ops-platform.md` 补充“审计详情为什么重要”。
 
 边界：
+
 - 不新增审计导出、保留周期配置、更细 operator role、批量操作或审计删除。
 - 详情 API 不返回 `metadata`、payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token、cookie、原始 IP 或原始 User-Agent。
 - 前端详情页只是运维体验层，不承担最终鉴权；真正安全边界仍是后端 feature gate、`JwtAuthGuard` 和 `OperatorGuard`。
 
 验收：
+
 - `bun test packages/types/tests/operator-audit.test.mts`
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- operator-audit --runInBand`
@@ -437,6 +551,7 @@ TDD 与验收：
 - Docker 重建 `server / admin` 后访问 `http://localhost:3100/audit`，点击审计记录，确认右侧详情展示操作上下文、目标对象、来源指纹和错误摘要，且不展示敏感原始字段。
 
 回顾时可以问：
+
 - “为什么审计列表不够，需要审计详情？”
 - “审计详情为什么复用脱敏 DTO，而不是把 metadata 也返回前端？”
 - “Operator Audit 如何记录 requestId、IP hash 和 User-Agent hash？”
@@ -448,11 +563,13 @@ TDD 与验收：
 目标：把独立管理员后台首页从“能跳转到各个运维页面”的入口页，升级成管理员一打开就能看到系统当前状态的真实运维总览。
 
 为什么：
+
 - Phase 7.16 ~ 7.18 已经有独立 Admin Console、Docker admin service、Outbox Ops、操作审计和 Worker Readiness，但首页如果只是静态导航，就不像真正的企业后台。
 - 管理员进入后台时，第一眼应该知道“现在有没有需要处理的任务链路风险”，而不是先逐个页面点进去找。
 - 面试表达上，这一步能把后台管理讲成一套运维产品闭环：总览发现风险，Outbox 处理事件，Audit 复盘操作，Worker Readiness 验证恢复。
 
 主要内容：
+
 - `/` 控制台使用 TanStack Query 读取 `workerReadinessApi.get()`、`outboxApi.list(FAILED / DEAD)` 和 `operatorAuditApi.list(OUTBOX_REQUEUE)`。
 - 新增 `admin-dashboard-view.ts`，把 readiness、outbox 和 audit 信号聚合为顶部状态、关注项数量、FAILED / DEAD 数量和最近审计数量。
 - 顶部状态区根据 read error、`not_ready`、DEAD outbox、`degraded`、FAILED outbox 和审计失败生成不同严重度。
@@ -461,12 +578,14 @@ TDD 与验收：
 - 同步补了一篇面试学习博客 `docs/blogs/admin-console-ops-platform.md`，覆盖今天整个后台管理产品化链路，而不是只写控制台首页。
 
 边界：
+
 - 不新增后端 API，不改变权限模型，不放宽 CORS、feature gate、`JwtAuthGuard` 或 `OperatorGuard`。
 - 控制台只读取脱敏 DTO，不展示 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
 - 不新增批量 requeue、删除事件、跳过事件、立即 dispatch 或 payload 修改。
 - 数据读取失败时显示异常状态，不使用假数据伪装健康。
 
 验收：
+
 - `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
 - `bun --filter @repo/admin lint`
 - `bun --filter @repo/admin build`
@@ -474,6 +593,7 @@ TDD 与验收：
 - 浏览器验收确认控制台读取真实 Worker readiness、FAILED / DEAD Outbox 数量和最近审计记录；内部入口跳转到 `/worker` 正常。
 
 回顾时可以问：
+
 - “为什么后台首页不能只是导航页？”
 - “控制台如何聚合 Worker Readiness、Outbox 和 Operator Audit？”
 - “为什么读取失败要作为一个明确运维状态，而不是静默兜底？”
@@ -485,11 +605,13 @@ TDD 与验收：
 目标：把独立后台里的 `/outbox` 从“能查列表、能点 requeue”的工程调试页，升级成管理员能理解失败原因、判断是否适合重新入队、执行安全 requeue，并知道后续去哪里验证恢复的单事件操作工作流。
 
 为什么：
+
 - Outbox requeue 会改变系统级事件状态，如果页面只给一个按钮，管理员很容易把 handler missing、invalid payload 这类根因未修复的问题误当成“重试一下就好”。
 - Phase 7.15 ~ 7.17 已经把权限、审计、Worker Readiness 和独立 Admin Console 搭起来了，下一步需要把这些能力串成真正可操作、可解释、可复盘的后台流程。
 - 面试表达上，这一步能讲清楚“后台运维页面不是堆 API 返回值”，而是把状态机、错误分类、审计和后续观测做成产品化闭环。
 
 主要内容：
+
 - `apps/admin/src/lib/outbox-view.ts` 增加 Outbox 展示 helper：只允许 `FAILED / DEAD` 进入 requeue 流程；`PENDING / PROCESSING / SUCCEEDED` 给出只读原因；handler missing、invalid payload、Redis/数据库/超时和未知错误给出不同处理建议。
 - `/outbox` 详情页重构为五个分区：生命周期、事件身份、诊断建议、重新入队操作、后续验证。
 - 重新入队操作保留“操作原因 + 显式确认 + 按钮禁用”三段式保护；requeue 成功后刷新 outbox 列表、详情、operator audit 和 worker readiness 缓存，避免 20 秒 staleTime 内看到旧信号。
@@ -498,12 +620,14 @@ TDD 与验收：
 - 增加静态 contract test，防止页面暴露完整 payload 或增加批量 requeue、删除、跳过、立即 dispatch、payload 修改等危险入口；浏览器验收中发现 aftercare 文案容易暗示危险操作名后，补充测试并改成“不会改写事件数据或事件结果”。
 
 边界：
+
 - 本阶段不改后端 API contract，不新增权限模型，不绕过 `JwtAuthGuard + OperatorGuard`。
 - 页面仍只展示脱敏 DTO、`payloadHash`、错误 code / preview、状态和时间戳，不展示完整 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
 - requeue 仍只是安全状态流转：`FAILED / DEAD -> PENDING`，不立即执行 handler，不改写事件数据，不改写事件结果。
 - 不做批量操作、删除事件、跳过事件、立即 dispatch、payload 修改、审计导出或保留周期策略。
 
 验收：
+
 - `node --experimental-strip-types --test apps/admin/src/lib/outbox-page-contract.test.mts apps/admin/src/lib/outbox-view.test.mts`
 - `bun --filter @repo/admin lint`
 - `bun --filter @repo/admin build`
@@ -511,6 +635,7 @@ TDD 与验收：
 - 浏览器验收覆盖：管理员登录态可进入 Outbox Ops；FAILED 事件详情展示五个分区；详情不展示完整 payload；invalid payload 提示先修生产方/数据契约；Redis timeout 事件提示依赖恢复后再 requeue；原因和确认未满足时按钮禁用；requeue 后事件回到 `PENDING`、attempts 重置、后续验证区更新；`/audit` 能看到脱敏 requeue 审计；清理测试数据后 `/worker` 回到 `Ready` 且 `backlog=false`。
 
 回顾时可以问：
+
 - “为什么 Outbox Ops 页面不能只做一个 requeue 按钮？”
 - “handler missing、invalid payload 和 Redis timeout 三类错误为什么要给不同操作建议？”
 - “requeue 为什么只是状态机里的 `FAILED / DEAD -> PENDING`，而不是立刻执行 handler？”
@@ -522,22 +647,26 @@ TDD 与验收：
 目标：修复从独立管理员后台点击“返回学习端”后，学习端看起来又要求重新登录的问题，并把本机 `localhost` / `127.0.0.1` 混用导致的登录态排障经验沉淀到文档里。
 
 为什么：
+
 - Phase 7.16 / 7.17 已经把学习端和管理员后台拆成两个 Next app，用户会在 `3000` 和 `3100` 两个端口之间跳转。
 - 本机浏览器会把 `localhost` 和 `127.0.0.1` 当成不同 host；如果后台通过 `localhost:3100` 打开，却硬跳回 `127.0.0.1:3000`，前端状态、refresh cookie 和 API 请求 host 就可能不一致。
 - 这个问题表面像“鉴权失效”或“后台返回后掉登录”，但根因不是后端 `JwtAuthGuard` 坏了，而是本机 loopback host 混用让 session recovery 链路不稳定。
 
 主要内容：
+
 - 后台“返回学习端”不再硬编码 `http://127.0.0.1:3000`，而是优先使用 `NEXT_PUBLIC_LEARNING_APP_URL`，未配置时跟随当前页面的 `window.location.hostname` 跳回对应的 `3000`。
 - 学习端和管理员后台的 API client 在浏览器端会对齐 loopback host：当页面是 `localhost` 时，把本机 API base 也解析为 `localhost:3001`；当页面是 `127.0.0.1` 时，则解析为 `127.0.0.1:3001`。
 - 新增回归测试覆盖后台返回 URL、admin API base 和 web API base 的 loopback host 对齐规则。
 - `docs/dev-start.md` 补充管理员后台和学习端跳转时的 host 选择建议，避免后续手动验收再次踩坑。
 
 边界：
+
 - 这次不改变后端鉴权模型、不改变 cookie 策略、不放宽 CORS 和 `OperatorGuard`。
 - `NEXT_PUBLIC_LEARNING_APP_URL` 仍可用于显式覆盖学习端地址；自动对齐只处理本机 `localhost` / `127.0.0.1` 场景，不改外部域名。
 - 前端 host 对齐只是本地开发和 Docker dev 验收体验修复，真正权限仍由后端 session、access token、`JwtAuthGuard` 和 `OperatorGuard` 控制。
 
 验收：
+
 - `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/api-client.test.mts apps/web/src/lib/sidebar-nav.test.mts`
 - `bun --filter @repo/admin lint`
@@ -547,6 +676,7 @@ TDD 与验收：
 - Docker 重建并启动 `web / admin / server` 后，浏览器访问 `http://localhost:3100/worker`，确认“返回学习端”链接为 `http://localhost:3000`，点击后直接进入 `http://localhost:3000/chat`，没有回到登录页。
 
 回顾时可以问：
+
 - “为什么 `localhost` 和 `127.0.0.1` 在浏览器登录态里不能随便混用？”
 - “为什么这个问题看起来像鉴权失败，但根因其实是前端 host 和 refresh cookie 链路不一致？”
 - “后台返回学习端为什么要跟随当前 hostname，而不是固定写死 `127.0.0.1`？”
@@ -557,11 +687,13 @@ TDD 与验收：
 目标：把 Phase 7.16 的独立管理员后台从“只能本机 `bun run dev:admin` 启动”推进到 Docker Compose 一等服务，让本地全栈部署形态和我们讲的架构边界一致。
 
 为什么：
+
 - Phase 7.16 已经把学习端和管理员后台拆成两个 Next app，但 Docker 里还只有 `web / server / worker`，部署拓扑不完整。
 - 管理员后台应该能像企业项目一样单独启动、单独暴露端口、单独验收，而不是永远依赖学习端 dev server。
 - 面试讲架构时可以清楚解释：`web` 是学生学习 PWA，`admin` 是 operator 控制台，`server` 是 API，`worker` 是后台任务进程。
 
 主要内容：
+
 - 新增 `docker/Dockerfile.admin`，用 Bun workspace + Next standalone 构建 `@repo/admin`，容器端口为 `3100`。
 - `docker/docker-compose.dev.yml` 新增 `admin` service，依赖 `server`，浏览器访问 `http://127.0.0.1:3100`。
 - Docker `web` service 增加 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，学习端 ADMIN 侧边栏“后台管理”默认跳转到管理员后台容器。
@@ -570,11 +702,13 @@ TDD 与验收：
 - 新增/扩展 Docker 静态契约测试，覆盖 admin Dockerfile、admin compose service、web 管理后台 URL 和 workspace manifest 完整性。
 
 边界：
+
 - 本阶段不新增新的后台业务页面，不新增新的后端 API 或权限模型。
 - 不做生产域名、TLS、反向代理、镜像推送或 Kubernetes 配置。
 - 管理员后台前端只是体验层，真正安全边界仍是后端 `JwtAuthGuard + OperatorGuard`。
 
 验收：
+
 - `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
 - `docker compose -f docker/docker-compose.dev.yml --profile worker build admin`
 - `docker compose -f docker/docker-compose.dev.yml --profile worker build web`
@@ -586,6 +720,7 @@ TDD 与验收：
 - 中文路径下 Docker Compose `--build` 仍可能触发 Docker Desktop gRPC non-printable ASCII，本次使用 `subst P: "E:\PrepMind_ai智能备考助手"` 映射 ASCII 路径完成全栈验收。
 
 回顾时可以问：
+
 - “为什么 `admin` 要做成独立 Docker service，而不是继续塞进 `web`？”
 - “Docker 里的 `web / admin / server / worker` 各自承担什么职责？”
 - “为什么 Dockerfile 的 deps 层必须复制所有 workspace package.json？”
@@ -596,11 +731,13 @@ TDD 与验收：
 目标：把管理员诊断能力从学习端移动页面里抽出来，形成独立的桌面端后台管理入口，让 Outbox requeue、审计查询和 worker readiness 更像企业项目里的运维后台。
 
 为什么：
+
 - 全部堆在学习端侧边栏会让普通学习产品变臃肿；管理员工具应该和学生学习路径分离。
 - `/operator-audit` 适合作为移动端/轻量审计入口，但 Outbox requeue 需要详情、确认、原因输入和错误建议，更适合电脑屏幕。
 - 后续如果继续加 operator 页面，例如 outbox 详情、任务重放、告警、导出、保留周期配置，独立 admin app 更容易扩展。
 
 主要内容：
+
 - 新增 `apps/admin` Next.js workspace，包名 `@repo/admin`，默认端口 `3100`，根命令 `bun run dev:admin`。
 - 新增后台登录、会话恢复和 `ADMIN` 前端门禁；真正安全边界仍由后端 `JwtAuthGuard + OperatorGuard` 保证。
 - 新增后台控制台、`/outbox`、`/audit`、`/worker` 页面。
@@ -611,11 +748,13 @@ TDD 与验收：
 - 学习端保留 `/operator-audit`；ADMIN 用户在移动端和桌面端侧边栏都会看到“后台管理”入口，普通用户和匿名用户不显示；后台应用本身仍是桌面优先布局。
 
 边界：
+
 - 本阶段不新增独立 Docker `admin` service；本地用 `bun run dev:admin` 启动，后端仍可连接 Docker PostgreSQL / Redis / MinIO。
 - 不新增后端接口、不放宽鉴权、不做批量 requeue、不删除 outbox event、不编辑 payload、不直接执行 handler。
 - 前端隐藏入口只是体验层，不作为权限边界；所有系统级诊断仍以后端 guard 为准。
 
 验收：
+
 - `node --experimental-strip-types --test apps/admin/src/lib/*.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/sidebar-nav.test.mts`
 - `bun --filter @repo/admin lint`
@@ -625,31 +764,37 @@ TDD 与验收：
 - 浏览器验收：访问 `http://127.0.0.1:3100`，验证管理员登录、控制台、Outbox Ops、审计、Worker 页面；普通账号只能看到无权限状态。
 
 回顾时可以问：
+
 - “为什么这次选择独立 `apps/admin`，而不是继续往学习端侧边栏塞页面？”
 - “Outbox requeue 为什么必须有原因输入和确认框？”
 - “为什么 handler missing 的 DEAD event 不应该盲目 requeue？”
 - “后台管理前端和后端 OperatorGuard 的职责边界是什么？”
 
 ### 2026-07-09 - Phase 7.15 收尾：审计筛选控件与 requeue 手动排障说明
+
 目标：把管理员审计台从“能用”继续推进到“手动排障时不容易误操作”，同时把用户反馈的原生下拉框视觉问题收掉。
 
 为什么：
+
 - `/operator-audit` 是移动端优先的管理诊断页，原生 `<select>` 在浏览器里会弹出系统样式蓝色选项框，视觉上割裂，也不像 App 内部控件。
 - requeue 是会改变 outbox 状态的高权限操作，必须让开发者知道什么时候该重试、什么时候不能重试，以及它不会绕过状态机直接执行 handler。
 - Phase 7.15 验收中出现过 `OUTBOX_HANDLER_NOT_FOUND` 类测试事件导致 worker readiness 降级，这正好说明“看到 DEAD 就盲目 requeue”是不对的，必须先判断根因。
 
 主要内容：
+
 - `/operator-audit` 的 action / status 筛选从原生 `<select>` 改为自定义 `FilterSelect`，使用 button + listbox + check icon，保留 44px 触控目标、焦点样式和 `aria-haspopup/listbox/option` 语义。
 - `apps/web/src/lib/operator-audit-ui-integration.test.mts` 增加防回归断言：页面必须包含 `FilterSelect` 和 `role="listbox"`，且不能再出现原生 `<select>`。
 - `docs/dev-start.md` 增加 Outbox requeue 手动排障流程，明确 `FAILED / DEAD -> PENDING`、需要先修根因、不要对 unknown handler / invalid payload 盲目 requeue，并给出 PowerShell API 调试示例。
 - `docs/dev-start.md` 增加中文路径下 Docker build 的 `subst P:` 规避方案；直接在中文路径 build 仍会触发 Docker gRPC non-printable ASCII，但通过 ASCII 映射路径加 `--project-name docker` 可成功重建 server/web 镜像。
 
 边界：
+
 - 本次不新增前端 outbox 列表页或一键 requeue 按钮；当前 requeue 仍是 admin-only 后端诊断 API，审计台负责查看 requeue 审计记录。
 - requeue 不编辑 payload、不直接执行 handler、不强制成功、不删除事件。
 - UI 只改善筛选控件，不改变 `/operator-audit-logs` 查询 contract 或后端鉴权。
 
 验收：
+
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-ui-integration.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
 - `bun --filter @repo/web lint`
@@ -658,6 +803,7 @@ TDD 与验收：
 - `docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --project-directory P:\ --profile worker build server web`
 
 回顾时可以问：
+
 - “为什么 requeue 不是直接执行 handler，而是回到 PENDING 等 worker 正常消费？”
 - “为什么 unknown handler 的 DEAD event 不能靠 requeue 解决？”
 - “审计筛选控件为什么要用自定义 listbox，而不是浏览器原生 select？”
@@ -668,11 +814,13 @@ TDD 与验收：
 目标：把管理员审计台从“代码和单元测试完成”推进到“真实前后端可以跑、管理员能用、普通用户被拦截、审计记录可查”的验收状态。
 
 为什么：
+
 - Phase 7.14 已经补齐 `OperatorGuard`、审计写入、审计查询 API 和前端页面，但真实运行时仍可能被环境、旧镜像、登录态或前端 hydration 问题挡住。
 - Docker server 镜像运行态是 `NODE_ENV=production`，而 Outbox Ops / Operator Audit / Worker Readiness / Worker Observability 默认 production 关闭；本地 dev compose 如果不显式打开，就会表现为管理员也访问 404。
 - Next dev server 在 `127.0.0.1` 下会阻止 dev resource；如果项目文档让用户访问 `127.0.0.1:3000`，就必须允许这个 dev origin，否则页面 SSR 能看见，但 React 事件不挂载，登录表单会像“点了没反应”。
 
 主要内容：
+
 - `docker/docker-compose.dev.yml` 为 server service 显式设置 `OUTBOX_OPS_ENABLED=true`、`OPERATOR_AUDIT_ENABLED=true`、`WORKER_READINESS_ENABLED=true`、`WORKER_OBSERVABILITY_ENABLED=true`，保证本地 Docker dev 栈的诊断入口可验收。
 - `apps/server/src/worker-readiness/docker-compose-readiness.spec.ts` 增加 compose 回归测试，防止本地诊断开关和 `127.0.0.1` dev origin 再被漏掉。
 - `apps/web/next.config.ts` 增加 `allowedDevOrigins: ['127.0.0.1']`，修复从 `127.0.0.1:3000` 打开 dev 前端时客户端 hydration 不完整的问题。
@@ -680,18 +828,21 @@ TDD 与验收：
 - 通过真实 `POST /outbox-events/:id/requeue` 生成 `OUTBOX_REQUEUE / SUCCEEDED` 审计记录，再用 `/operator-audit` 页面读取脱敏列表。
 
 边界：
+
 - 这次不新增审计详情页、导出、保留周期、批量操作或更细 operator role。
 - 前端“审计”入口只是体验层；真正权限仍由后端 `JwtAuthGuard + OperatorGuard` 控制。
 - Docker build 在当前中文路径下触发 Docker gRPC header 非 ASCII 问题，未把 Docker server/web 镜像重建作为完成条件；改用本机前后端 + Docker PostgreSQL/Redis/MinIO 验证最新源码，数据仍使用同一个 Docker 数据库。
 - 浏览器登录态验收优先使用 `localhost:3000` 与 `localhost:3001` 保持 cookie host 一致；`127.0.0.1` 已单独验证 hydration 正常。
 
 验收：
+
 - `bun --filter @repo/server test -- docker-compose-readiness --runInBand`
 - `GET /operator-audit-logs`：管理员返回 200，普通用户返回 403。
 - `POST /outbox-events/:id/requeue`：管理员返回 201，并写入一条脱敏 `OUTBOX_REQUEUE` 审计记录。
 - 浏览器验收：普通用户侧边栏不显示“审计”；普通用户直达 `/operator-audit` 显示无权限且不请求 `/operator-audit-logs`；管理员侧边栏显示“审计 管理员操作留痕”；管理员点击入口进入 `/operator-audit`，审计筛选和最近记录可见。
 
 回顾时可以问：
+
 - “为什么 Docker dev compose 里要显式打开诊断 feature gate，而不是依赖 `NODE_ENV` 默认值？”
 - “为什么普通用户访问审计页时前端不请求审计 API，但后端仍必须返回 403？”
 - “为什么 `127.0.0.1` 页面能看到 SSR 内容，却可能因为 dev origin 限制导致按钮事件不生效？”
@@ -702,11 +853,13 @@ TDD 与验收：
 目标：把本地查看数据库和管理员审计入口从“知道内部命令的人才能用”调整为更接近真实开发者体验。
 
 为什么：
+
 - 用户用 `bun --cwd packages/database prisma studio` 打开 Studio 时，Prisma CLI 可能读不到根目录 `.env`，从而报 `DATABASE_URL` 缺失或在 Studio 里弹 `Prisma Client Error`，容易误判为“数据库没有数据”。
 - 本地数据库当前确实有 `User` 数据；问题核心是命令运行目录、环境变量读取和 migration 状态，而不是账号数据丢失。
 - `/operator-audit` 已经具备 admin-only 页面和后端 guard，管理员仍要手动输入地址不符合产品使用习惯；但普通用户不能看到这个入口。
 
 主要内容：
+
 - 新增 Prisma CLI 包装脚本，`db:studio` / `db:status` / `db:generate` / `db:migrate` 会优先读取根目录 `.env`，减少 `DATABASE_URL` 因工作目录不同丢失的问题。
 - 新增 `bun run db:status`，用于快速确认当前 Prisma 连接的数据库和 migration 状态。
 - 对当前 Docker PostgreSQL 执行安全 migration deploy，补上 `OperatorAuditLog` migration；没有执行 reset，没有清库。
@@ -714,16 +867,19 @@ TDD 与验收：
 - `docs/dev-start.md` 顶部补充 Prisma Studio、psql 改 admin、命令差异和侧边栏入口说明。
 
 边界：
+
 - 前端导航只负责体验分流，不替代后端权限。
 - `migrate dev` 如果提示 reset，不能为了省事清库；本地已有数据时优先分析 drift，必要时只用 deploy 应用未执行 migration。
 - Prisma Studio 是数据库查看/编辑工具，不是升级管理员账号的唯一方式；快速改角色更适合用容器内 psql。
 
 验收：
+
 - `bun run db:status`
 - Docker PostgreSQL `User` 表确认有 45 条账号记录。
 - `bun apps/web/src/lib/sidebar-nav.test.mts`
 
 回顾时可以问：
+
 - “为什么同一个数据库，用 Prisma Studio 看不到数据不一定代表数据丢了？”
 - “`bun run db:studio` 和 `docker compose exec postgres psql ...` 分别解决什么问题？”
 - “为什么 admin 导航可以前端隐藏，但真正鉴权必须在后端？”
@@ -734,11 +890,13 @@ TDD 与验收：
 目标：给已经完成的 Operator Audit 查询 API 补一个受控的前端查看入口，让管理员不用直接连数据库或手写请求，也能在产品里查看脱敏审计记录。
 
 为什么：
+
 - 只有后端 API 时，排障仍然需要 Swagger、curl 或数据库查询，对本地验收和面试展示都不够直观。
 - 审计页面不能出现在普通学习用户导航里，否则会让用户误以为这是普通功能，也会暴露不必要的运维入口。
 - 前端可以做体验拦截和空状态提示，但真正权限必须继续由后端 `OperatorAuditEnabledGuard -> JwtAuthGuard -> OperatorGuard` 控制。
 
 主要内容：
+
 - 新增 `apps/web/src/lib/operator-audit-api.ts`，复用 `@repo/types/api/operator-audit` Zod schema 解析 `/operator-audit-logs` 响应。
 - 新增 `operatorAuditQueryKeys` 与 `useOperatorAuditLogs()`，只有当前会话 `currentUser.role === 'ADMIN'` 时才启用请求。
 - 新增隐藏页面 `/operator-audit`，不加入普通侧边栏或个人中心主导航；管理员可手动访问。
@@ -747,11 +905,13 @@ TDD 与验收：
 - 页面只展示脱敏字段，不展示 payload、metadata、aggregateId、prompt、RAG chunk、模型回答、API key、token、cookie 或用户正文。
 
 边界：
+
 - 前端页面不是安全边界，只是体验层；不能用它替代后端 OperatorGuard。
 - 本轮不做审计详情页、不做导出、不做审计删除/编辑、不做保留周期策略、不新增更细的 operator role。
 - 当前分页使用“下一页”读取下一批结果，不做复杂无限列表缓存，避免 React effect 合并分页带来的状态副作用。
 
 验收：
+
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-api.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-query-keys.test.mts`
 - `node --experimental-strip-types --test apps/web/src/lib/operator-audit-view.test.mts`
@@ -759,6 +919,7 @@ TDD 与验收：
 - `bun --filter @repo/web lint`
 
 回顾时可以问：
+
 - “为什么 `/operator-audit` 不放进普通导航？”
 - “前端 ADMIN 拦截和后端 OperatorGuard 的职责有什么区别？”
 - “这个页面为什么只展示脱敏 DTO，不展示 metadata 或 payload？”
@@ -769,11 +930,13 @@ TDD 与验收：
 目标：把已写入数据库的 operator 审计日志变成可受控查询的后端 API，回答“谁在什么时候做了什么、为什么做、结果如何”。
 
 为什么：
+
 - 高权限诊断写操作不能只靠“有权限”，还要能追踪、复盘和排障。
 - 只写审计日志但没有受控查询入口，事故时仍要手动连数据库查，不适合生产化。
 - 查询入口必须只返回脱敏字段，避免排障入口变成敏感数据泄露入口。
 
 主要内容：
+
 - 新增 `@repo/types/api/operator-audit` contract，包含 action/status、列表 query 和脱敏 response DTO。
 - `packages/types/package.json` 增加 `./api/operator-audit` 子路径导出，修复 NodeNext 下 server 无法解析新增 contract 的问题。
 - `OperatorAuditService.list()` 支持 `action`、`status`、`targetType`、`targetId`、`actorUserId`、`limit`、`cursor` 过滤。
@@ -782,10 +945,12 @@ TDD 与验收：
 - 新增 `OPERATOR_AUDIT_ENABLED`：默认非 production 开启、production 关闭，关闭时在认证前隐藏为 404。
 
 边界：
+
 - 不做前端页面、不做审计导出、不提供详情接口、不支持删除或编辑审计日志。
 - 查询结果不返回 `metadata`、outbox payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、access token、refresh token、cookie、原始 IP 或原始 User-Agent。
 
 验收：
+
 - `bun test packages/types/tests/operator-audit.test.mts`
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- operator-audit.controller operator-audit.service env --runInBand`
@@ -793,6 +958,7 @@ TDD 与验收：
 - `bun --filter @repo/server build`
 
 回顾时可以问：
+
 - “Operator Audit 查询 API 为什么要单独加 feature gate？”
 - “`GET /operator-audit-logs` 返回哪些字段，为什么不返回 metadata？”
 - “这里的复合 cursor 是怎么避免翻页漏数据的？”
@@ -803,11 +969,13 @@ TDD 与验收：
 目标：在 OperatorGuard 之后补上操作审计地基，并把 `POST /outbox-events/:id/requeue` 接入成功/失败留痕，避免审计 service 变成死码。
 
 为什么：
+
 - `requeue` 会改变后台事件状态，属于 operator 诊断写操作，需要留下可追责记录。
 - 审计写入要 best-effort，不能因为审计系统异常阻断原本的修复操作。
 - 审计日志要长期保留，即使 actor user 后续被删除，也不能丢失历史操作链路。
 
 主要内容：
+
 - Prisma 新增 `OperatorAuditAction`、`OperatorAuditStatus`、`OperatorAuditLog` 和 migration。
 - `OperatorAuditService` 支持 `recordSuccess()` / `recordFailure()`。
 - metadata 改为 allowlist，只允许 `previousStatus`、`nextStatus`、`attemptsBefore`、`attemptsAfter`、`payloadHash`、`lastErrorCode`、`source` 等安全字段。
@@ -816,9 +984,11 @@ TDD 与验收：
 - `OutboxOpsController.requeue()` 成功记录 `OUTBOX_REQUEUE / SUCCEEDED`，失败记录 `OUTBOX_REQUEUE / FAILED` 后继续抛出原错误。
 
 边界：
+
 - 不新增前端页面，不开放审计查询接口，不保存 payload、prompt、chunk、API key、token、cookie 或原始 IP/User-Agent。
 
 验收：
+
 - `bun --filter @repo/server test -- operator-audit.service outbox-ops.controller --runInBand`
 - `bun --cwd apps/server eslint src/operator-audit src/outbox/outbox-ops.controller.ts src/outbox/outbox-ops.controller.spec.ts`
 - `bun --filter @repo/server build`
@@ -826,6 +996,7 @@ TDD 与验收：
 - `bun run db:generate`
 
 回顾时可以问：
+
 - “OperatorAuditLog 为什么 actorUserId 要 nullable + SetNull？”
 - “审计 metadata 为什么用 allowlist，而不是黑名单过滤？”
 - “Outbox requeue 成功和失败分别怎么记录审计？”
@@ -836,24 +1007,29 @@ TDD 与验收：
 目标：把 Outbox Ops、Worker Observability、HTTP Worker Readiness 从普通登录用户可访问的诊断入口升级为 admin/operator-only。
 
 为什么：
+
 - 这些接口暴露的是系统级队列、worker、readiness 或 outbox 状态，不是普通学生账号应看到的业务数据。
 - feature gate 只能控制入口是否开放，不能替代角色权限。
 - 后续 requeue、审计查询等高权限能力都需要统一 operator 权限地基。
 
 主要内容：
+
 - 新增 `OperatorGuard`，基于 `request.user.role === 'ADMIN'` 判断权限。
 - `AuthModule` 注册并导出 `OperatorGuard`。
 - `OutboxOpsController`、`WorkerObservabilityController`、`WorkerReadinessController` 的 guard 顺序统一为 feature gate -> JWT -> operator。
 - feature gate 仍优先返回 404，避免关闭时暴露诊断面。
 
 边界：
+
 - 不新增审计表，不记录 requeue 操作日志；审计写入留给 Phase 7.14.3 / 7.14.4。
 - 不影响 Worker Readiness CLI、Docker healthcheck、Chat、RAG、Agent Trace 或普通业务 API。
 
 验收：
+
 - `bun --filter @repo/server test -- operator.guard outbox-ops.controller worker-observability.controller worker-readiness.controller --runInBand`
 
 回顾时可以问：
+
 - “OperatorGuard 和 JwtAuthGuard 的职责有什么区别？”
 - “为什么 guard 顺序要 feature gate -> JWT -> Operator？”
 - “为什么关闭诊断入口时返回 404 而不是 403？”
@@ -864,11 +1040,13 @@ TDD 与验收：
 目标：把 API / worker / readiness 容器链路扩展到 Web 容器，完成本地 Docker Compose 全栈启动与浏览器验收。
 
 为什么：
+
 - 之前只验证了 API / worker，不能证明用户从浏览器访问 Docker Web 容器的完整链路可用。
 - Next standalone 在 monorepo + Bun workspace 下容易出现依赖复制和 tracing root 问题，需要真实容器构建验证。
 - 本地 compose 全栈能让后续验收更接近部署形态。
 
 主要内容：
+
 - `docker/Dockerfile.web` 迁移到 Bun workspace + Next standalone。
 - `apps/web/next.config.ts` 开启 `output: 'standalone'` 并设置 monorepo tracing root。
 - Compose dev 栈拉起 `postgres / redis / minio / server / worker / web`。
@@ -876,9 +1054,11 @@ TDD 与验收：
 - 修复 server Dockerfile 的 Bun workspace runtime 布局，避免内部 `@repo/*` 包或 `.bun` store 链接在容器内解析失败。
 
 边界：
+
 - 本轮是本地 Docker Compose 验收，不引入 Kubernetes、生产域名、TLS、CI 镜像推送或云部署。
 
 验收：
+
 - `bun --filter @repo/web lint`
 - `bun --filter @repo/web test`
 - `bun --filter @repo/web build`
@@ -887,6 +1067,7 @@ TDD 与验收：
 - Playwright 浏览器验收：注册临时账号后跳转 `/chat`，刷新后仍保持登录态。
 
 回顾时可以问：
+
 - “Docker Web 镜像为什么要用 Next standalone？”
 - “monorepo 下 Dockerfile.web 需要复制哪些 workspace 文件？”
 - “为什么本地 Web 容器也要支持 mock/live 开关展示？”
@@ -897,11 +1078,13 @@ TDD 与验收：
 目标：把 worker readiness CLI 接入 Docker Compose worker service，让容器编排能看到 `healthy / unhealthy`。
 
 为什么：
+
 - worker-only 进程不监听 HTTP，不能靠 `/health` 判断它是否能处理后台任务。
 - 容器层 healthcheck 能让 Docker Compose 直接暴露 worker 健康状态，降低本地部署排障成本。
 - readiness CLI 已经存在，复用它比再写一套容器专用检查更一致。
 
 主要内容：
+
 - `docker/docker-compose.dev.yml` 的 `worker` service 新增 healthcheck。
 - 容器内 healthcheck 使用 `bun apps/server/dist/scripts/worker-readiness.js`。
 - 新增 `WORKER_READINESS_CLI_TIMEOUT_MS` 和 healthcheck interval/timeout/retries/start_period。
@@ -909,10 +1092,12 @@ TDD 与验收：
 - 更新启动文档，区分本机 CLI 与容器 healthcheck。
 
 边界：
+
 - 不改 Chat、RAG prompt、Tutor 输出或 live model 链路，不需要真实模型 smoke。
 - 不引入 Kubernetes readiness probe、Prometheus 指标或生产部署平台配置。
 
 验收：
+
 - `bun --filter @repo/server test -- worker-readiness docker-compose-readiness`
 - `bun --cwd apps/server eslint src/worker-readiness`
 - `bun --filter @repo/server build`
@@ -920,6 +1105,7 @@ TDD 与验收：
 - `git diff --check`
 
 回顾时可以问：
+
 - “worker-only 为什么没有 HTTP health endpoint？”
 - “Docker healthcheck 调的是本机 CLI 还是容器内构建产物？”
 - “`docker compose ps` 里的 healthy 到底代表什么？”
@@ -930,11 +1116,13 @@ TDD 与验收：
 目标：在 `/health` 和 `/worker-observability/summary` 之外，补一个适合机器和部署系统使用的 worker readiness 判断。
 
 为什么：
+
 - `/health` 只能说明 API 进程活着，不能说明后台 worker 链路可接流量。
 - `/worker-observability/summary` 面向开发者排障，信息更细；readiness 要给机器一个明确可判断结论。
 - 部署前检查需要稳定退出码和安全摘要，不能打印连接串、payload 或原始依赖错误。
 
 主要内容：
+
 - 新增 `@repo/types/api/worker-readiness` contract。
 - 新增 `WORKER_READINESS_ENABLED`，默认非 production 开启、production 关闭。
 - 新增 `WorkerReadinessService`，组合 Redis、BullMQ queue counts、worker heartbeat 和 outbox summary。
@@ -943,10 +1131,12 @@ TDD 与验收：
 - readiness 输出区分 `ready / degraded / not_ready`，异常或超时退出码为 2。
 
 边界：
+
 - Readiness 不替代 `/worker-observability/summary` 的详细排障信息，也不替代 `/health` 的 API liveness。
 - CLI 只读检查，不消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
 
 验收：
+
 - `bun --filter @repo/server test -- env`
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- worker-readiness`
@@ -955,6 +1145,7 @@ TDD 与验收：
 - `git diff --check`
 
 回顾时可以问：
+
 - “`/health`、worker observability、worker readiness 三者怎么分工？”
 - “readiness CLI 为什么不能导入 AppModule？”
 - “退出码 0 / 1 / 2 分别代表什么？”
@@ -965,11 +1156,13 @@ TDD 与验收：
 目标：给 durable outbox 补上安全的后端操作闭环，让开发者能在不暴露 payload 的前提下查看失败事件，并在修复根因后手动 requeue。
 
 为什么：
+
 - durable outbox 有了持久事件和重试状态后，必须能安全查看失败事件，否则排障仍然只能查数据库。
 - dead / failed 事件需要可控 requeue，但 requeue 不能绕过状态机或直接执行 handler。
 - outbox payload 可能间接关联业务上下文，诊断 API 必须默认隐藏敏感内容。
 
 主要内容：
+
 - 新增 `@repo/types/api/outbox` contract。
 - 新增 `OUTBOX_OPS_ENABLED`，默认非 production 开启、production 关闭。
 - 新增 `OutboxOpsService` / `OutboxOpsController`，支持脱敏列表、脱敏详情和 `FAILED / DEAD` requeue。
@@ -978,10 +1171,12 @@ TDD 与验收：
 - requeue 使用条件 `updateMany` 做 compare-and-swap，只把 `FAILED / DEAD` 重置为 `PENDING`，不立即执行 handler。
 
 边界：
+
 - 不返回 payload、aggregateId、用户正文、prompt、RAG chunk、模型回答、API key、token 或 cookie。
 - 不支持删除、强制成功、跳过、payload 编辑或直接 dispatch。
 
 验收：
+
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- outbox-ops env`
 - `bun --filter @repo/server test -- outbox-ops job-error-sanitizer`
@@ -990,6 +1185,7 @@ TDD 与验收：
 - `bun --cwd apps/server jest --config ./test/jest-e2e.json --runInBand --testTimeout=30000 --forceExit --verbose outbox-ops`
 
 回顾时可以问：
+
 - “Outbox Ops 为什么只返回脱敏列表和详情？”
 - “requeue 为什么用 updateMany 做 compare-and-swap？”
 - “FAILED / DEAD -> PENDING 为什么不直接执行 handler？”
@@ -1000,22 +1196,26 @@ TDD 与验收：
 目标：把关键内部事件从纯 in-process 链路推进到可重试、可观测、可受控消费的 durable outbox 地基。
 
 为什么：
+
 - in-process EventBus 失败后无法跨进程持久重试，适合轻量通知，不适合需要可靠投递的内部事件。
 - outbox 可以把“业务事务”和“异步事件”连接起来，为后续生产化 worker 链路打地基。
 - dispatcher runner 需要受控开启，避免生产部署后未经确认消费历史事件。
 
 主要内容：
+
 - Phase 7.9.1：新增 `OutboxEvent`、enqueue / claim / success / retry / dead-letter 状态机。
 - Phase 7.9.2：新增 dispatcher service 和显式 handler registry，先接入 `knowledge.document.processing.requested`。
 - Phase 7.9.3：新增 worker-only dispatcher runner，支持生产默认关闭、防重入 tick、batch size 和 lock timeout。
 - Phase 7.9.4：新增 outbox summary / metrics，接入 worker observability。
 
 边界：
+
 - 不替换 BullMQ、`BackgroundJob` 或现有 in-process EventBus。
 - dispatcher handler 不保存用户正文、prompt、chunk、API key、token 或 cookie。
 - production 默认不自动消费历史 outbox，需要显式开启。
 
 验收：
+
 - `bun --filter @repo/server test -- outbox`
 - `bun --filter @repo/server test -- outbox-dispatcher`
 - `bun --filter @repo/server test -- outbox-dispatcher-runner`
@@ -1023,6 +1223,7 @@ TDD 与验收：
 - `bun --filter @repo/server build`
 
 回顾时可以问：
+
 - “Durable Outbox 和 EventBus / BullMQ 的区别是什么？”
 - “claim / retry / dead-letter 状态机怎么防重复消费？”
 - “为什么 dispatcher 要显式 handler registry？”
@@ -1033,11 +1234,13 @@ TDD 与验收：
 目标：给 RAG 检索质量建立可回归的评估基线，并把检索从单纯向量召回升级为 hybrid retrieval。
 
 为什么：
+
 - fake embedding 只能验证工程链路，不能证明真实语义检索质量。
 - 没有固定评估集时，每次改检索排序都很难判断是变好了还是变差了。
 - 纯向量召回容易漏掉关键词明确的问题，hybrid retrieval 能补充关键词候选。
 
 主要内容：
+
 - Phase 7.8.1：新增固定检索评估集和 `recall@k`、`top1Accuracy`、`safetyPassRate`、`noHitPassRate` 指标。
 - Phase 7.8.2：`/knowledge/search` 支持 vector candidates + PostgreSQL full-text keyword candidates 融合排序。
 - Phase 7.8.3：新增 `bun --filter @repo/server smoke:rag-eval`，串联注册、上传、处理、检索和 eval。
@@ -1045,16 +1248,19 @@ TDD 与验收：
 - 补充 Qwen embedding 配置与真实检索 smoke 说明。
 
 边界：
+
 - fake eval 只证明工程回归，不证明真实语义质量。
 - smoke 默认不进 CI、不保存 API key、token、cookie、embedding 向量或完整 hit content。
 
 验收：
+
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- rag-eval`
 - `bun --filter @repo/server smoke:rag-eval`
 - `bun --filter @repo/server build`
 
 回顾时可以问：
+
 - “RAG Eval 的 recall@k / top1 / safety / no-hit 指标分别看什么？”
 - “Hybrid Retrieval 怎么融合向量候选和关键词候选？”
 - “fake eval 和真实 embedding smoke 分别证明什么？”
@@ -1065,11 +1271,13 @@ TDD 与验收：
 目标：把后台任务、接口文档和 worker 进程边界做成更可调试、更适合本地验收和面试讲解的工程化能力。
 
 为什么：
+
 - Phase 7 开始后，后台任务、worker、诊断 API 增多，如果没有观测和文档入口，开发者很难知道系统现在发生了什么。
 - Swagger 用来帮助本地调试和面试展示，但不能变成第二套 contract 来源。
 - API / worker 拆分能让后台任务进程独立部署和独立观测。
 
 主要内容：
+
 - Phase 7.3：EventBus handler 失败隔离，新增 `GET /background-jobs/summary` 和 `/knowledge` 后台任务摘要轮询兜底。
 - Phase 7.4：新增 Swagger / OpenAPI debug docs，入口 `/api-docs` 和 `/api-docs-json`。
 - Phase 7.5：核心写接口补中文 request body 示例，Swagger 顶部说明中文化。
@@ -1077,11 +1285,13 @@ TDD 与验收：
 - Phase 7.7：新增 Redis heartbeat、BullMQ queue counts、worker observability summary 和 `/knowledge` 健康状态条。
 
 边界：
+
 - Swagger 是调试/展示层，不替代 `@repo/types` contract。
 - worker observability 默认 production 关闭，不返回 payload、prompt、chunk、API key、token 或 cookie。
 - 这组改动不改 Chat prompt / RAG prompt / live model 策略。
 
 验收：
+
 - `bun --cwd packages/types typecheck`
 - `bun --filter @repo/server test -- event-bus background-jobs worker-observability`
 - `bun --filter @repo/web test -- background-job knowledge-view`
@@ -1091,6 +1301,7 @@ TDD 与验收：
 - `git diff --check`
 
 回顾时可以问：
+
 - “EventBus 失败隔离解决了什么问题？”
 - “Swagger 为什么只是展示层，不是 contract 事实源？”
 - “`SERVER_ROLE=api | worker | both` 分别适合什么场景？”
@@ -1101,11 +1312,13 @@ TDD 与验收：
 目标：把知识库文档处理从同步接口升级为可切换的后台任务链路，并把用户上传资料视为低信任 RAG 证据。
 
 为什么：
+
 - 文档解析、分块、embedding 可能耗时，同步接口会拖慢用户请求，也不利于失败重试。
 - 用户上传资料可能包含恶意 prompt injection，RAG 不能把检索片段当成可信指令。
 - inline / queue 双模式可以兼顾本地简单开发和后台任务生产化。
 
 主要内容：
+
 - 新增 `BackgroundJob` 数据模型和 `@repo/types/api/background-job` contract。
 - `KNOWLEDGE_PROCESSING_MODE=inline | queue` 控制文档处理模式。
 - queue 模式创建 `BackgroundJob` 并投递 BullMQ；worker 处理时持续校验 `status + storageKey + contentHash` 快照。
@@ -1116,16 +1329,19 @@ TDD 与验收：
 - `KnowledgeVerifierAgent` 对高风险或 `safeForPrompt=false` 的资料输出保守 guidance。
 
 边界：
+
 - Redis 是 queue 链路必需依赖。
 - BackgroundJob 只保存脱敏任务元数据，不保存完整文件、prompt、RAG chunk、API key 或 token。
 - SafetyGuard 不执行检索片段里的指令，只把资料当证据。
 
 验收：
+
 - mock / e2e 覆盖固定 prompt-injection 样本。
 - live/browser smoke 记录在 `docs/ai-behavior-acceptance.md`。
 - Trace 和 BackgroundJob 仍只保存脱敏元数据。
 
 回顾时可以问：
+
 - “为什么知识库处理要支持 inline / queue 双模式？”
 - “BullMQ 在文档处理链路里负责什么？”
 - “RAG SafetyGuard 怎么判断高风险 chunk？”
@@ -1136,11 +1352,13 @@ TDD 与验收：
 目标：落地多 Agent 协作亮点，并保持确定性 policy、可观测和只读建议边界。
 
 为什么：
+
 - 单一 Chat 链路难以承载讲题、资料核对、错题组织、复习规划、长期记忆等多种职责。
 - 多 Agent 能把复杂任务拆成可解释的策略层，但当前阶段要先保证确定性和可验收。
 - 只读建议和人审确认能降低自动写库、自动误分类、自动污染记忆的风险。
 
 主要内容：
+
 - Phase 6.0 / 6.1 / 6.2：新增 Agent Runtime contract、RouterAgent、TutorAgent 策略层，`/api/chat` 输出 route headers。
 - Phase 6.3：`KnowledgeVerifierAgent` 在 RAG 命中后评估资料可信度，并注入保守使用 guidance。
 - Phase 6.4：`WrongQuestionOrganizerAgent` 推荐学科组与专题 deck，`/error-book` 升级为学科 -> 专题 -> 错题下钻结构。
@@ -1150,15 +1368,18 @@ TDD 与验收：
 - Phase 6.8：`KnowledgeDedupAgent` / `KnowledgeOrganizerAgent` 提供资料重复、新版、互补、集合和标签建议。
 
 边界：
+
 - 当前 Phase 6 Agent 都是确定性 policy，不直接调用真实模型。
 - Review / Planner / Memory / Knowledge agents 都遵循“只读建议或人审确认”，不在每次 Chat 中自动写库或自动注入。
 - Agent Trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key。
 
 验收：
+
 - fixed deterministic eval set 覆盖当前确定性 Agent policy。
 - mock 验证工程链路；涉及 Chat 输出体验时按 `docs/ai-behavior-acceptance.md` 做 live 小样本验收。
 
 回顾时可以问：
+
 - “Phase 6 每个 Agent 各自负责什么？”
 - “为什么这些 Agent 当前是 deterministic policy，不直接调用真实模型？”
 - “RouterAgent / TutorAgent / KnowledgeVerifierAgent 在 Chat 链路里的顺序是什么？”
@@ -1168,22 +1389,22 @@ TDD 与验收：
 
 > 说明：2026-06-05 ~ 2026-06-19 的早期 DEVLOG 曾经按日记录，后来在多轮文档清理中被压缩。这里按 `git log -- DEVLOG.md` 恢复成阶段索引，详细内容可用对应提交追溯。
 
-| 日期 | 阶段 | 主要进展 | 回顾时可以问 | 追溯线索 |
-| --- | --- | --- | --- | --- |
-| 2026-06-05 | Phase 0 | 新增 DEVLOG，记录 pnpm / monorepo 恢复与项目初始化。 | “项目最初的 monorepo 和 Docker 基础怎么搭的？” | `2f9c2cb`、`ef1a580` |
-| 2026-06-06 | Phase 1 | 登录模块、AI 聊天、上下文传递规划、开发博客更新。 | “Phase 1 的登录和聊天 MVP 怎么组织状态？” | `2797be2`、`8311a6a`、`af62415` |
-| 2026-06-07 | Phase 1 | Day 3 开发日志，规划 Phase 1 -> Phase 2 存储迁移。 | “为什么从本地存储逐步迁移到后端权威数据？” | `31b6649` |
-| 2026-06-08 | Phase 1 | Dexie 迁移、OCR 流式、错题本 CRUD、今日任务静态版、Phase 1 收官。 | “Dexie 在 Phase 1 里承担了哪些离线和本地恢复职责？” | `9f59fbf`、`4a92f87`、`b64b94d`、`a8d864f`、`375e2cb` |
-| 2026-06-09 | Phase 2.1 | 后端基础与 Auth/User API 收口，准备 Phase 2.2。 | “NestJS 后端和 Auth/User API 是怎么作为后端地基落地的？” | `b2fb4b9` |
-| 2026-06-11 | Phase 2.2 | Auth flow、refresh token reuse detection、WrongQuestion API、前端接入和动态 CORS。 | “登录态为什么改成后端 session 权威控制？” | `65ad246`、`8ebc04f`、`cc132b5`、`d022234`、`6a68627` |
-| 2026-06-12 | Phase 2.3 | OCRRecord、ChatMessage sync、MinIO 图片链路、chat streaming 稳定性和 Phase 2.3 handoff。 | “WrongQuestion / ChatMessage / OCRRecord 如何迁移到 PostgreSQL？” | `12614a4`、`265ba42`、`909260d`、`53802c9`、`3d6f99b` |
-| 2026-06-13 | Phase 2.3 / 2.5 | Phase 2.3 稳定化，Chat-first 产品壳层和体验打磨。 | “为什么产品壳层改成 Chat-first？” | `122aea2`、`537e458`、`c723e0b` |
-| 2026-06-14 | Phase 3 / 4.1 ~ 4.3 | AI 讲题结构化、FSRS 复习流、学习统计、ReviewTask 任务流。 | “OCR structured output 和 FSRS 复习闭环是怎么连起来的？” | `7a1dc6e`、`34b779c`、`c2a57bc`、`f27f054` |
-| 2026-06-15 | Phase 4.4 | 离线评分队列、浏览器验证和复习评分流。 | “ReviewTask 评分为什么需要 clientMutationId 幂等？” | `332ffa4`、`b15131e` |
-| 2026-06-16 | Phase 4.5.1 | 复习计划预览、统计图表、review pressure model 初步规划。 | “复习计划预览和学习统计页面怎么计算压力？” | `c08ed16`、`031fc90`、`ed55e12` |
-| 2026-06-17 | Phase 4.5.2 / 5.0 | ReviewPreference、加权压力模型、Phase 5 RAG 规划。 | “ReviewPreference 如何影响 7/14 天复习计划？” | `1c00f76`、`9294416` |
-| 2026-06-18 | Phase 5.1 / 5.2 | RAG 数据模型、知识库上传 API、wrong-question organizer 规划。 | “RAG 的 Document / Chunk 模型和上传 API 怎么设计？” | `9d38faf`、`1031872`、`f844b3e` |
-| 2026-06-19 | Phase 5.3 ~ 5.6 | 文档处理、检索 API、Chat RAG、`/knowledge` 页面、live AI guard、Phase 6 多 Agent 规划。 | “文档解析、分块、embedding、检索和 Chat RAG 是怎么串起来的？” | `1ec1644`、`2038e6a`、`ae97b49`、`542df8d`、`631c6c1` |
+| 日期       | 阶段                | 主要进展                                                                                 | 回顾时可以问                                                      | 追溯线索                                              |
+| ---------- | ------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
+| 2026-06-05 | Phase 0             | 新增 DEVLOG，记录 pnpm / monorepo 恢复与项目初始化。                                     | “项目最初的 monorepo 和 Docker 基础怎么搭的？”                    | `2f9c2cb`、`ef1a580`                                  |
+| 2026-06-06 | Phase 1             | 登录模块、AI 聊天、上下文传递规划、开发博客更新。                                        | “Phase 1 的登录和聊天 MVP 怎么组织状态？”                         | `2797be2`、`8311a6a`、`af62415`                       |
+| 2026-06-07 | Phase 1             | Day 3 开发日志，规划 Phase 1 -> Phase 2 存储迁移。                                       | “为什么从本地存储逐步迁移到后端权威数据？”                        | `31b6649`                                             |
+| 2026-06-08 | Phase 1             | Dexie 迁移、OCR 流式、错题本 CRUD、今日任务静态版、Phase 1 收官。                        | “Dexie 在 Phase 1 里承担了哪些离线和本地恢复职责？”               | `9f59fbf`、`4a92f87`、`b64b94d`、`a8d864f`、`375e2cb` |
+| 2026-06-09 | Phase 2.1           | 后端基础与 Auth/User API 收口，准备 Phase 2.2。                                          | “NestJS 后端和 Auth/User API 是怎么作为后端地基落地的？”          | `b2fb4b9`                                             |
+| 2026-06-11 | Phase 2.2           | Auth flow、refresh token reuse detection、WrongQuestion API、前端接入和动态 CORS。       | “登录态为什么改成后端 session 权威控制？”                         | `65ad246`、`8ebc04f`、`cc132b5`、`d022234`、`6a68627` |
+| 2026-06-12 | Phase 2.3           | OCRRecord、ChatMessage sync、MinIO 图片链路、chat streaming 稳定性和 Phase 2.3 handoff。 | “WrongQuestion / ChatMessage / OCRRecord 如何迁移到 PostgreSQL？” | `12614a4`、`265ba42`、`909260d`、`53802c9`、`3d6f99b` |
+| 2026-06-13 | Phase 2.3 / 2.5     | Phase 2.3 稳定化，Chat-first 产品壳层和体验打磨。                                        | “为什么产品壳层改成 Chat-first？”                                 | `122aea2`、`537e458`、`c723e0b`                       |
+| 2026-06-14 | Phase 3 / 4.1 ~ 4.3 | AI 讲题结构化、FSRS 复习流、学习统计、ReviewTask 任务流。                                | “OCR structured output 和 FSRS 复习闭环是怎么连起来的？”          | `7a1dc6e`、`34b779c`、`c2a57bc`、`f27f054`            |
+| 2026-06-15 | Phase 4.4           | 离线评分队列、浏览器验证和复习评分流。                                                   | “ReviewTask 评分为什么需要 clientMutationId 幂等？”               | `332ffa4`、`b15131e`                                  |
+| 2026-06-16 | Phase 4.5.1         | 复习计划预览、统计图表、review pressure model 初步规划。                                 | “复习计划预览和学习统计页面怎么计算压力？”                        | `c08ed16`、`031fc90`、`ed55e12`                       |
+| 2026-06-17 | Phase 4.5.2 / 5.0   | ReviewPreference、加权压力模型、Phase 5 RAG 规划。                                       | “ReviewPreference 如何影响 7/14 天复习计划？”                     | `1c00f76`、`9294416`                                  |
+| 2026-06-18 | Phase 5.1 / 5.2     | RAG 数据模型、知识库上传 API、wrong-question organizer 规划。                            | “RAG 的 Document / Chunk 模型和上传 API 怎么设计？”               | `9d38faf`、`1031872`、`f844b3e`                       |
+| 2026-06-19 | Phase 5.3 ~ 5.6     | 文档处理、检索 API、Chat RAG、`/knowledge` 页面、live AI guard、Phase 6 多 Agent 规划。  | “文档解析、分块、embedding、检索和 Chat RAG 是怎么串起来的？”     | `1ec1644`、`2038e6a`、`ae97b49`、`542df8d`、`631c6c1` |
 
 ## 当前验证基线
 
@@ -1215,6 +1436,7 @@ git diff --check
 ```
 
 AI 行为验收规则：
+
 - mock 验工程链路。
 - live 小样本验真实输出体验。
 - fake embedding 不证明 RAG 语义命中质量。

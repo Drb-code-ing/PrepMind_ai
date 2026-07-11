@@ -27,20 +27,14 @@ Use these names consistently in every task:
 
 ```ts
 export const OPERATOR_AUDIT_EXPORT_QUEUE = 'operator-audit-export';
-export const GENERATE_OPERATOR_AUDIT_EXPORT_JOB =
-  'generate-operator-audit-export';
-export const OPERATOR_AUDIT_MAINTENANCE_QUEUE =
-  'operator-audit-maintenance';
+export const GENERATE_OPERATOR_AUDIT_EXPORT_JOB = 'generate-operator-audit-export';
+export const OPERATOR_AUDIT_MAINTENANCE_QUEUE = 'operator-audit-maintenance';
 export const MAINTAIN_OPERATOR_AUDIT_JOB = 'maintain-operator-audit';
-export const OPERATOR_AUDIT_MAINTENANCE_SCHEDULER =
-  'operator-audit-maintenance-hourly';
+export const OPERATOR_AUDIT_MAINTENANCE_SCHEDULER = 'operator-audit-maintenance-hourly';
 export const OPERATOR_AUDIT_MAINTENANCE_STATE = 'operator-audit';
-export const OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT =
-  'operator.audit.export.requested';
-export const OPERATOR_AUDIT_RETENTION_LOCK =
-  'prepmind:operator-audit-retention';
-export const OPERATOR_AUDIT_EXPORT_QUOTA_LOCK =
-  'prepmind:operator-audit-export-quota';
+export const OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT = 'operator.audit.export.requested';
+export const OPERATOR_AUDIT_RETENTION_LOCK = 'prepmind:operator-audit-retention';
+export const OPERATOR_AUDIT_EXPORT_QUOTA_LOCK = 'prepmind:operator-audit-export-quota';
 ```
 
 - `BackgroundJob.resourceType = 'OPERATOR_AUDIT_EXPORT'`.
@@ -129,6 +123,7 @@ export const OPERATOR_AUDIT_EXPORT_QUOTA_LOCK =
 **Branch:** `codex/phase-7-23-2-contract-schema`
 
 **Files:**
+
 - Create: `packages/types/src/api/operator-audit-export.ts`
 - Create: `packages/types/tests/operator-audit-export.test.mts`
 - Modify: `packages/types/tests/operator-audit.test.mts`
@@ -268,10 +263,7 @@ Create `packages/types/src/api/operator-audit-export.ts` with these exported sch
 ```ts
 import { z } from 'zod';
 
-import {
-  operatorAuditActionSchema,
-  operatorAuditStatusSchema,
-} from './operator-audit';
+import { operatorAuditActionSchema, operatorAuditStatusSchema } from './operator-audit';
 
 const sha256Schema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const nullableDateTimeSchema = z.string().datetime().nullable();
@@ -347,8 +339,7 @@ export const operatorAuditExportDetailResponseSchema = z
   })
   .strict();
 
-export const operatorAuditExportListItemSchema =
-  operatorAuditExportDetailResponseSchema;
+export const operatorAuditExportListItemSchema = operatorAuditExportDetailResponseSchema;
 
 export const operatorAuditExportListQuerySchema = z
   .object({
@@ -368,21 +359,15 @@ export const operatorAuditExportListResponseSchema = z
   })
   .strict();
 
-export type OperatorAuditExportStatus = z.infer<
-  typeof operatorAuditExportStatusSchema
->;
+export type OperatorAuditExportStatus = z.infer<typeof operatorAuditExportStatusSchema>;
 export type OperatorAuditExportCreateRequest = z.infer<
   typeof operatorAuditExportCreateRequestSchema
 >;
 export type OperatorAuditExportDetailResponse = z.infer<
   typeof operatorAuditExportDetailResponseSchema
 >;
-export type OperatorAuditExportListQuery = z.infer<
-  typeof operatorAuditExportListQuerySchema
->;
-export type OperatorAuditExportListResponse = z.infer<
-  typeof operatorAuditExportListResponseSchema
->;
+export type OperatorAuditExportListQuery = z.infer<typeof operatorAuditExportListQuerySchema>;
+export type OperatorAuditExportListResponse = z.infer<typeof operatorAuditExportListResponseSchema>;
 ```
 
 Extend `operatorAuditActionSchema` in `packages/types/src/api/operator-audit.ts` to:
@@ -593,14 +578,12 @@ if (env.OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS >= env.OPERATOR_AUDIT_EXPORT_STAL
 if (
   env.OPERATOR_AUDIT_EXPORT_ENABLED === true &&
   env.SERVER_ROLE !== 'api' &&
-  (!env.OUTBOX_DISPATCHER_ENABLED ||
-    env.OPERATOR_AUDIT_MAINTENANCE_ENABLED !== true)
+  (!env.OUTBOX_DISPATCHER_ENABLED || env.OPERATOR_AUDIT_MAINTENANCE_ENABLED !== true)
 ) {
   context.addIssue({
     code: 'custom',
     path: ['OPERATOR_AUDIT_EXPORT_ENABLED'],
-    message:
-      'worker export requires outbox dispatcher and audit maintenance',
+    message: 'worker export requires outbox dispatcher and audit maintenance',
   });
 }
 
@@ -683,6 +666,7 @@ Expected: one feature commit, one merge commit, and the same focused checks pass
 **Branch:** `codex/phase-7-23-3-transactional-delivery`
 
 **Files:**
+
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export.constants.ts`
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-request.service.ts`
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-request.service.spec.ts`
@@ -750,9 +734,9 @@ For same `clientRequestId`/same hash, return the existing DTO without a second a
 The new tests assert all of these concrete boundaries:
 
 ```ts
-await expect(
-  operatorAudit.recordSuccessStrict(transaction, input),
-).rejects.toThrow('database down');
+await expect(operatorAudit.recordSuccessStrict(transaction, input)).rejects.toThrow(
+  'database down',
+);
 
 await expect(operatorAudit.recordSuccess(input)).resolves.toBeUndefined();
 expect(saved.ipAddressHash).toMatch(/^hmac-sha256:[a-f0-9]{64}$/);
@@ -812,9 +796,7 @@ In `OperatorAuditService`, inject `ConfigService<ServerEnv, true>`, replace new-
 ```ts
 function hmacValue(value: string | undefined, secret: string) {
   if (!value) return undefined;
-  return `hmac-sha256:${createHmac('sha256', secret)
-    .update(value)
-    .digest('hex')}`;
+  return `hmac-sha256:${createHmac('sha256', secret).update(value).digest('hex')}`;
 }
 ```
 
@@ -928,9 +910,7 @@ export class OperatorAuditExportRequestedHandler {
   ) {}
 
   readonly handle: OutboxEventHandler = async (event) => {
-    const payload = operatorAuditExportRequestedPayloadSchema.parse(
-      event.payload,
-    );
+    const payload = operatorAuditExportRequestedPayloadSchema.parse(event.payload);
     const [auditExport, backgroundJob] = await Promise.all([
       this.prisma.operatorAuditExport.findUnique({
         where: { id: payload.exportId },
@@ -945,8 +925,7 @@ export class OperatorAuditExportRequestedHandler {
     }
     if (
       (auditExport.status === 'PROCESSING' || auditExport.status === 'READY') &&
-      (backgroundJob.status === 'ACTIVE' ||
-        backgroundJob.status === 'SUCCEEDED')
+      (backgroundJob.status === 'ACTIVE' || backgroundJob.status === 'SUCCEEDED')
     ) {
       return;
     }
@@ -996,6 +975,7 @@ git diff --check HEAD^1..HEAD
 **Branch:** `codex/phase-7-23-4-audit-export-worker`
 
 **Files:**
+
 - Modify: `apps/server/package.json`
 - Modify: `bun.lock`
 - Create: `apps/server/src/operator-audit-exports/jobs/generate-operator-audit-export.job.ts`
@@ -1070,17 +1050,19 @@ expect(await repository.claim(busyInput)).toEqual({
   leaseExpiresAt: new Date('2026-07-10T00:04:00.000Z'),
 });
 
-expect(await repository.markReady({
-  exportId: 'export_1',
-  backgroundJobId: 'job_1',
-  processingToken: 'old-token',
-  objectKey: 'operator-audit-exports/export_1/attempts/old-token.zip',
-  fileName: 'safe.zip',
-  archiveSize: 1024,
-  recordCount: 3,
-  csvSha256: `sha256:${'a'.repeat(64)}`,
-  archiveSha256: `sha256:${'b'.repeat(64)}`,
-})).resolves.toEqual({ kind: 'lost-lease' });
+expect(
+  await repository.markReady({
+    exportId: 'export_1',
+    backgroundJobId: 'job_1',
+    processingToken: 'old-token',
+    objectKey: 'operator-audit-exports/export_1/attempts/old-token.zip',
+    fileName: 'safe.zip',
+    archiveSize: 1024,
+    recordCount: 3,
+    csvSha256: `sha256:${'a'.repeat(64)}`,
+    archiveSha256: `sha256:${'b'.repeat(64)}`,
+  }),
+).resolves.toEqual({ kind: 'lost-lease' });
 ```
 
 Assert export and SYSTEM job updates occur inside the same transaction for every state transition.
@@ -1205,9 +1187,7 @@ The builder creates a `0700` directory and `0600` files below `os.tmpdir()`. Bef
 
 ```ts
 await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
-await tx.$executeRawUnsafe(
-  `SET LOCAL statement_timeout = ${validatedQueryTimeoutMs}`,
-);
+await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${validatedQueryTimeoutMs}`);
 ```
 
 The timeout value comes only from validated numeric config; never interpolate user input. Stream pages to `csv-stringify`, compute CSV SHA-256 over final bytes including BOM, write manifest with `JSON.stringify(manifest, null, 2) + '\n'`, and use `archiver('zip', { zlib: { level: 9 } })`. Pipe ZIP output through a byte-counting transform that throws `OPERATOR_AUDIT_EXPORT_ARCHIVE_TOO_LARGE` after the configured maximum while updating archive SHA-256.
@@ -1350,6 +1330,7 @@ Expected: focused worker/security checks pass again on `main`.
 **Branch:** `codex/phase-7-23-5-audit-retention-maintenance`
 
 **Files:**
+
 - Create: `apps/server/src/operator-audit-exports/jobs/operator-audit-maintenance.scheduler.ts`
 - Create: `apps/server/src/operator-audit-exports/jobs/operator-audit-maintenance.scheduler.spec.ts`
 - Create: `apps/server/src/operator-audit-exports/jobs/operator-audit-maintenance.processor.ts`
@@ -1463,9 +1444,7 @@ const oldestActive = await tx.operatorAuditExport.findFirst({
   select: { startAt: true },
 });
 const baseCutoff = subDays(clock.now, retentionDays);
-const effectiveCutoff = oldestActive
-  ? minDate(baseCutoff, oldestActive.startAt)
-  : baseCutoff;
+const effectiveCutoff = oldestActive ? minDate(baseCutoff, oldestActive.startAt) : baseCutoff;
 const ids = await tx.operatorAuditLog.findMany({
   where: { createdAt: { lt: effectiveCutoff } },
   orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -1628,6 +1607,7 @@ git diff --check HEAD^1..HEAD
 **Branch:** `codex/phase-7-23-6-audit-export-api`
 
 **Files:**
+
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-query.service.ts`
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-query.service.spec.ts`
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-download.service.ts`
@@ -1679,7 +1659,7 @@ Use cursor lookup by id to recover `createdAt`, then add the existing stable pre
 OR: [
   { createdAt: { lt: cursor.createdAt } },
   { createdAt: cursor.createdAt, id: { lt: cursor.id } },
-]
+];
 ```
 
 No query adds `requestedByUserId=currentAdmin`; any guarded ADMIN may inspect another ADMIN's export.
@@ -1765,11 +1745,13 @@ Create interceptor tests with RxJS `lastValueFrom`:
 ```ts
 const file = new StreamableFile(Readable.from(['zip']));
 await expect(lastValueFrom(interceptor.intercept(context, handler(file)))).resolves.toBe(file);
-await expect(lastValueFrom(interceptor.intercept(context, handler({ ok: true })))).resolves.toEqual({
-  success: true,
-  data: { ok: true },
-  requestId: 'req_1',
-});
+await expect(lastValueFrom(interceptor.intercept(context, handler({ ok: true })))).resolves.toEqual(
+  {
+    success: true,
+    data: { ok: true },
+    requestId: 'req_1',
+  },
+);
 ```
 
 Bootstrap tests must assert:
@@ -1795,7 +1777,7 @@ map((data: unknown) => {
     data,
     requestId: request.requestId ?? 'unknown',
   };
-})
+});
 ```
 
 Add only the two approved exposed headers to CORS. Do not use a presigned URL.
@@ -1887,6 +1869,7 @@ git diff --check HEAD^1..HEAD
 **Branch:** `codex/phase-7-23-7-admin-audit-evidence-ui`
 
 **Files:**
+
 - Modify: `apps/admin/src/lib/api-client.ts`
 - Modify: `apps/admin/src/lib/api-client.test.mts`
 - Create: `apps/admin/src/lib/operator-audit-export-api.ts`
@@ -1925,9 +1908,10 @@ assert.equal(fetchCall.init.method, 'POST');
 assert.equal(fetchCall.init.headers.get('authorization'), 'Bearer access-token');
 
 await assert.rejects(
-  () => failedClient.download('/operator-audit-exports/export_1/download', {
-    accessToken: 'access-token',
-  }),
+  () =>
+    failedClient.download('/operator-audit-exports/export_1/download', {
+      accessToken: 'access-token',
+    }),
   (error: ApiClientError) => error.code === 'OPERATOR_AUDIT_EXPORT_EXPIRED',
 );
 ```
@@ -1952,9 +1936,7 @@ async function download(path: string, options: ApiRequestOptions = {}) {
   }
   return {
     blob: await response.blob(),
-    fileName: parseAttachmentFileName(
-      response.headers.get('content-disposition'),
-    ),
+    fileName: parseAttachmentFileName(response.headers.get('content-disposition')),
     sha256: response.headers.get('x-content-sha256'),
   };
 }
@@ -2045,10 +2027,7 @@ Mutation idempotency rules:
 ```ts
 const requestId = pendingClientRequestId ?? crypto.randomUUID();
 setPendingClientRequestId(requestId);
-await operatorAuditExportApi.create(
-  { ...normalizedForm, clientRequestId: requestId },
-  accessToken,
-);
+await operatorAuditExportApi.create({ ...normalizedForm, clientRequestId: requestId }, accessToken);
 ```
 
 Keep the same id after network/5xx failure so retry is idempotent. Clear it when any form field changes or after confirmed success. Disable submit while pending. On success select the QUEUED export; never label it generated/ready.
@@ -2102,6 +2081,7 @@ git diff --check HEAD^1..HEAD
 **Branch:** `codex/phase-7-23-8-audit-export-acceptance`
 
 **Files:**
+
 - Modify: `apps/server/package.json`
 - Create: `apps/server/scripts/operator-audit-export-smoke.ts`
 - Create: `apps/server/src/operator-audit-exports/operator-audit-export-smoke.spec.ts`
@@ -2133,17 +2113,28 @@ Expected: clean branch base, Docker daemon responds, and Compose config exits 0.
 Extend `docker-compose-readiness.spec.ts` to assert:
 
 ```ts
-expect(serverService).toContain('SERVER_ROLE: ${SERVER_ROLE:-api}');
-expect(serverService).toContain('OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}');
+expect(serverService).toContain('SERVER_ROLE: api');
+expect(serverService).not.toContain('SERVER_ROLE: ${SERVER_ROLE');
+expect(serverService).toContain(
+  'OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}',
+);
 expect(workerService).toContain('OUTBOX_DISPATCHER_ENABLED: ${OUTBOX_DISPATCHER_ENABLED:-true}');
-expect(workerService).toContain('OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}');
-expect(workerService).toContain('OPERATOR_AUDIT_MAINTENANCE_ENABLED: ${OPERATOR_AUDIT_MAINTENANCE_ENABLED:-true}');
+expect(workerService).toContain(
+  'OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}',
+);
+expect(workerService).toContain(
+  'OPERATOR_AUDIT_MAINTENANCE_ENABLED: ${OPERATOR_AUDIT_MAINTENANCE_ENABLED:-true}',
+);
 expect(workerService).toContain('OPERATOR_AUDIT_FINGERPRINT_SECRET:');
 expect(compose).toContain('minio-init:');
-expect(workerService).toContain('/tmp/prepmind-audit-exports:size=134217728,mode=0700');
+expect(workerService).toContain(
+  '/tmp/prepmind-audit-exports:size=201326592,mode=0700,uid=1001,gid=1001',
+);
 ```
 
-Also assert production Docker docs never reuse the checked-in local development HMAC secret.
+The original 128 MiB sketch cannot satisfy the implemented strict `free > 2 * 64 MiB` preflight. Keep the
+Phase 7.23.5 192 MiB invariant and align the runtime UID/GID with the `0700` mount. Also assert production
+Docker artifacts never reuse the checked-in local development HMAC secret.
 
 - [ ] **Step 3: Finalize local Compose topology**
 
@@ -2152,7 +2143,7 @@ Set Docker `server` default role to `api`; the profile `worker` is the only proc
 ```yaml
 server:
   environment:
-    SERVER_ROLE: ${SERVER_ROLE:-api}
+    SERVER_ROLE: api
     OPERATOR_AUDIT_EXPORT_ENABLED: ${OPERATOR_AUDIT_EXPORT_ENABLED:-true}
     OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}
 
@@ -2165,7 +2156,9 @@ worker:
     OPERATOR_AUDIT_FINGERPRINT_SECRET: ${OPERATOR_AUDIT_FINGERPRINT_SECRET:-local-dev-audit-fingerprint-change-me}
 ```
 
-Keep export and maintenance production defaults false in code. Compose is explicitly local development. Preserve `minio-init`, 48h lifecycle, and tmpfs from Phase 7.23.5.
+Keep export and maintenance production defaults false in code. Compose is explicitly local development. The
+full-stack API role is intentionally not host-overridable: `both` would emit a false worker heartbeat beside the
+dedicated worker. Preserve `minio-init`, 48h lifecycle, and tmpfs from Phase 7.23.5.
 
 - [ ] **Step 4: Add a deterministic API/queue smoke script with RED tests**
 
@@ -2297,18 +2290,31 @@ Create `docs/blogs/operator-audit-retention-export.md` in conversational Chinese
 # 从审计日志到可下载证据包：事务型 Outbox、租约 fencing 与保留水位
 
 ## 这篇文章解决什么问题
+
 ## 为什么不能直接导出数据库
+
 ## 三份事实为什么缺一不可
+
 ## 事务型 Outbox 如何消除 PostgreSQL 与 Redis 双写窗口
+
 ## Worker 如何用 lease、processing token 和 delayed retry 防止僵尸覆盖
+
 ## REPEATABLE READ、稳定游标与 manifest 能证明什么
+
 ## CSV 公式注入和敏感字段泄漏怎么防
+
 ## 24 小时下载、48 小时 lifecycle 与 180 天保留如何配合
+
 ## 为什么申请和下载 fail-closed，但 Outbox requeue 仍 best-effort
+
 ## 一次真实故障怎样恢复
+
 ## 面试时怎么讲
+
 ## 常见追问
+
 ## 还可以继续优化什么
+
 ## 回顾时可以问
 ```
 
