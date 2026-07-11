@@ -269,6 +269,7 @@ mcp -> ai, fsrs, rag, types
 ## 当前注意事项
 
 - Docker PostgreSQL 使用 `5433 -> 5432` 映射，避免与 Windows 本地 PostgreSQL 冲突。
+- 启动项目做真实浏览器验收时，默认使用 headed 浏览器并把窗口保持可见，让用户可以同步观察；headless 只作为自动化补充，不能替代明确要求的可见验收。
 - 开发环境 CORS 允许 `localhost`、`127.0.0.1` 和私有局域网地址动态端口。
 - PostgreSQL 需要 pgvector：`CREATE EXTENSION IF NOT EXISTS vector;`。
 - `packages/fsrs` 保持纯算法包，不依赖数据库。
