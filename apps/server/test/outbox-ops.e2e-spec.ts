@@ -18,6 +18,7 @@ describe('OutboxOpsController (e2e)', () => {
   let server: App;
   let prisma: PrismaService;
   let token: string;
+  let studentToken: string;
   const email = `outbox-ops-${Date.now()}@example.com`;
   const testType = `test.outbox.ops.${Date.now()}`;
 
@@ -51,7 +52,13 @@ describe('OutboxOpsController (e2e)', () => {
       email,
       password: 'Password123!',
     });
-    token = getSuccessData<AuthResponse>(register).accessToken;
+    studentToken = getSuccessData<AuthResponse>(register).accessToken;
+    await prisma.user.update({ where: { email }, data: { role: 'ADMIN' } });
+    const login = await request(server).post('/auth/login').send({
+      email,
+      password: 'Password123!',
+    });
+    token = getSuccessData<AuthResponse>(login).accessToken;
   });
 
   afterAll(async () => {
@@ -63,6 +70,13 @@ describe('OutboxOpsController (e2e)', () => {
 
   it('requires authentication', async () => {
     await request(server).get('/outbox-events').expect(401);
+  });
+
+  it('rejects an authenticated non-admin', async () => {
+    await request(server)
+      .get('/outbox-events')
+      .set('Authorization', `Bearer ${studentToken}`)
+      .expect(403);
   });
 
   it('lists sanitized outbox events', async () => {
