@@ -9,6 +9,7 @@ import { AppError } from '../common/errors/app-error';
 import { PrismaService } from '../database/prisma.service';
 import type { ConversationStateCache } from './conversation-state-cache.service';
 import { ConversationStateCacheService } from './conversation-state-cache.service';
+import { ConversationSummaryService } from './conversation-summary.service';
 
 const STATE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -18,6 +19,7 @@ export class ConversationContextService {
     private readonly prisma: PrismaService,
     @Inject(ConversationStateCacheService)
     private readonly cache: ConversationStateCache,
+    private readonly summaryService: ConversationSummaryService,
   ) {}
 
   async prepare(userId: string, input: ConversationContextPrepareRequest) {
@@ -28,31 +30,24 @@ export class ConversationContextService {
     if (!conversation) throw this.conversationNotFound();
 
     const state = await this.resolveState(userId, input);
-    const summary = await this.prisma.conversationSummary.findFirst({
-      where: { conversationId: input.conversationId, userId },
-    });
-    const uncoveredMessageCount = await this.prisma.chatMessage.count({
-      where: {
-        userId,
-        conversationId: input.conversationId,
-        order: { gt: summary?.coveredThroughOrder ?? -1 },
-      },
-    });
+    const summary = await this.summaryService.prepare(
+      userId,
+      input.conversationId,
+      input.maxInputTokens,
+    );
 
     return {
       conversationId: input.conversationId,
-      summaryBuffer: summary?.summary ?? null,
-      coveredThroughOrder: summary?.coveredThroughOrder ?? null,
-      summaryVersion: summary?.summaryVersion ?? null,
-      summaryStatus: summary ? ('reused' as const) : ('not_needed' as const),
+      summaryBuffer: summary.summaryBuffer,
+      coveredThroughOrder: summary.coveredThroughOrder,
+      summaryVersion: summary.summaryVersion,
+      summaryStatus: summary.summaryStatus,
       state,
       debug: {
-        uncoveredMessageCount,
-        triggerReason: 'none' as const,
-        modelMode: summary
-          ? (summary.modelMode.toLowerCase() as 'mock' | 'live')
-          : ('none' as const),
-        errorCode: null,
+        uncoveredMessageCount: summary.uncoveredMessageCount,
+        triggerReason: summary.triggerReason,
+        modelMode: summary.modelMode,
+        errorCode: summary.errorCode,
       },
     };
   }

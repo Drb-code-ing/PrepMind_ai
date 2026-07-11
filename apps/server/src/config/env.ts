@@ -33,6 +33,35 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3001),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
+    AI_PROVIDER_MODE: z.enum(['mock', 'live']).default('mock'),
+    AI_ENABLE_LIVE_CALLS: booleanStringSchema.default(false),
+    AI_MODEL: z.string().trim().min(1).max(120).default('deepseek-v4-flash'),
+    AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
+    DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    CONVERSATION_SUMMARY_MAX_CALLS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1)
+      .default(1),
+    CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: z.coerce
+      .number()
+      .int()
+      .min(200)
+      .max(4000)
+      .default(1600),
+    CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: z.coerce
+      .number()
+      .int()
+      .min(50)
+      .max(800)
+      .default(400),
+    CONVERSATION_SUMMARY_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(15000)
+      .default(8000),
     SERVER_ROLE: z.enum(['api', 'worker', 'both']).default('both'),
     BULLMQ_PREFIX: z.string().min(1).default('prepmind'),
     JWT_SECRET: z.string().min(16),
@@ -325,6 +354,36 @@ const envSchema = z
     DASHSCOPE_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
+    if (env.AI_PROVIDER_MODE === 'live' && env.AI_ENABLE_LIVE_CALLS) {
+      if (!isSafeHttpsProviderUrl(env.AI_BASE_URL)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['AI_BASE_URL'],
+          message: 'live model calls require a credential-free HTTPS base URL',
+        });
+      }
+      if (!env.DEEPSEEK_API_KEY && !env.OPENAI_API_KEY) {
+        context.addIssue({
+          code: 'custom',
+          path: ['DEEPSEEK_API_KEY'],
+          message: 'live model calls require a supported provider API key',
+        });
+      }
+      if (
+        !resolveLiveModelProvider({
+          baseURL: env.AI_BASE_URL,
+          hasDeepseekKey: Boolean(env.DEEPSEEK_API_KEY),
+          hasOpenAIKey: Boolean(env.OPENAI_API_KEY),
+        })
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['AI_BASE_URL'],
+          message: 'live model provider and credential selection is ambiguous',
+        });
+      }
+    }
+
     if (
       env.NODE_ENV === 'production' &&
       env.RAG_EMBEDDING_PROVIDER === 'fake'
@@ -463,4 +522,44 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
         ? undefined
         : 'local-dev-audit-fingerprint-change-me'),
   };
+}
+
+function isSafeHttpsProviderUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      Boolean(url.hostname) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function resolveLiveModelProvider(input: {
+  baseURL: string;
+  hasDeepseekKey: boolean;
+  hasOpenAIKey: boolean;
+}) {
+  let hostname: string;
+  try {
+    hostname = new URL(input.baseURL).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (hostname === 'deepseek.com' || hostname.endsWith('.deepseek.com')) {
+    if (input.hasDeepseekKey) return 'deepseek' as const;
+    return input.hasOpenAIKey && input.baseURL === 'https://api.deepseek.com/v1'
+      ? ('openai' as const)
+      : null;
+  }
+  if (hostname === 'openai.com' || hostname.endsWith('.openai.com')) {
+    return input.hasOpenAIKey ? ('openai' as const) : null;
+  }
+  if (input.hasDeepseekKey === input.hasOpenAIKey) return null;
+  return input.hasDeepseekKey ? ('deepseek' as const) : ('openai' as const);
 }

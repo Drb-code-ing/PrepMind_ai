@@ -217,6 +217,20 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerfile).not.toContain('ENV OPERATOR_AUDIT_FINGERPRINT_SECRET');
   });
 
+  it('keeps conversation summary model calls safely Mock by default in Docker', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+
+    expect(serverService).toContain(
+      'AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}',
+    );
+    expect(serverService).toContain(
+      'AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}',
+    );
+    expect(serverService).not.toContain('DEEPSEEK_API_KEY:');
+    expect(serverService).not.toContain('OPENAI_API_KEY:');
+  });
+
   it('keeps audit export processing on the dedicated local Docker worker', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const serverService = extractYamlSection(compose, '  server:', 2);

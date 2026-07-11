@@ -3,6 +3,7 @@ import type { ConversationContextPrepareRequest } from '@repo/types/api/conversa
 import { PrismaService } from '../database/prisma.service';
 import { ConversationContextService } from './conversation-context.service';
 import type { ConversationStateCache } from './conversation-state-cache.service';
+import type { ConversationSummaryService } from './conversation-summary.service';
 
 describe('ConversationContextService', () => {
   const now = new Date('2026-07-11T00:00:00.000Z');
@@ -38,6 +39,11 @@ describe('ConversationContextService', () => {
     set: jest.fn(),
     delete: jest.fn(),
   };
+  const summaryService: jest.Mocked<
+    Pick<ConversationSummaryService, 'prepare'>
+  > = {
+    prepare: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -49,6 +55,16 @@ describe('ConversationContextService', () => {
     cache.get.mockResolvedValue(null);
     cache.set.mockResolvedValue(undefined);
     cache.delete.mockResolvedValue(undefined);
+    summaryService.prepare.mockResolvedValue({
+      summaryBuffer: null,
+      coveredThroughOrder: null,
+      summaryVersion: null,
+      summaryStatus: 'not_needed',
+      triggerReason: 'none',
+      modelMode: 'none',
+      errorCode: null,
+      uncoveredMessageCount: 2,
+    });
   });
 
   afterEach(() => jest.useRealTimers());
@@ -57,6 +73,7 @@ describe('ConversationContextService', () => {
     return new ConversationContextService(
       prisma as unknown as PrismaService,
       cache,
+      summaryService as ConversationSummaryService,
     );
   }
 
@@ -88,6 +105,38 @@ describe('ConversationContextService', () => {
       updatedAt: '2026-07-11T00:00:00.000Z',
     });
     expect(JSON.stringify(result)).not.toContain('raw redis credential text');
+  });
+
+  it('delegates rolling summary preparation after ownership and state resolution', async () => {
+    summaryService.prepare.mockResolvedValue({
+      summaryBuffer: 'generated summary',
+      coveredThroughOrder: 1,
+      summaryVersion: 1,
+      summaryStatus: 'generated',
+      triggerReason: 'message_count',
+      modelMode: 'mock',
+      errorCode: null,
+      uncoveredMessageCount: 12,
+    });
+
+    const result = await createService().prepare('user_1', request);
+
+    expect(summaryService.prepare).toHaveBeenCalledWith(
+      'user_1',
+      'conv_1',
+      2500,
+    );
+    expect(result).toMatchObject({
+      summaryBuffer: 'generated summary',
+      coveredThroughOrder: 1,
+      summaryVersion: 1,
+      summaryStatus: 'generated',
+      debug: {
+        uncoveredMessageCount: 12,
+        triggerReason: 'message_count',
+        modelMode: 'mock',
+      },
+    });
   });
 
   it('returns an existing unexpired cached state without changing the version', async () => {

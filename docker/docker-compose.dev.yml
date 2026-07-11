@@ -59,6 +59,8 @@ services:
     environment:
       SERVER_ROLE: api
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
+      AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}
+      AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}
       OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { ModelAgentError, ModelAgentErrorCode } from './model-agent-contract.ts';
+import type { ModelAgentError, ModelAgentErrorCode } from './model-agent-contract';
 
 const ERROR_MESSAGES: Record<ModelAgentErrorCode, string> = {
   INVALID_REQUEST: 'Model agent request is invalid.',
