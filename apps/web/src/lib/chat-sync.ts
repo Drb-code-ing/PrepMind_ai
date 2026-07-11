@@ -22,3 +22,32 @@ export function buildChatSyncSignature(
 
   return `${scope}\u001d${payload}`;
 }
+
+export function shouldSkipChatServerSync(input: {
+  syncKey: string;
+  lastServerSyncKey: string;
+  inFlightServerSyncKey: string;
+}) {
+  return (
+    input.syncKey === input.lastServerSyncKey ||
+    input.syncKey === input.inFlightServerSyncKey
+  );
+}
+
+export function beginChatServerSync(input: {
+  syncKey: string;
+  lastServerSyncKey: string;
+  inFlightServerSyncKey: string;
+}) {
+  if (shouldSkipChatServerSync(input)) {
+    return {
+      shouldSync: false as const,
+      nextInFlightServerSyncKey: input.inFlightServerSyncKey,
+    };
+  }
+
+  return {
+    shouldSync: true as const,
+    nextInFlightServerSyncKey: input.syncKey,
+  };
+}

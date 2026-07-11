@@ -312,6 +312,21 @@ Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 
 Phase 6.9.3.3 滚动摘要 Mock 验收还必须覆盖：12 条与 70% 两种触发、user-only tail 不推进、已覆盖原文不重复制造 pressure、输入凭据脱敏、输出凭据拒绝、模型失败不写库、目标范围变化 stale、更高 order 新消息不误判、first-create/update CAS 仅一次模型调用。Docker 默认必须是 Mock/Live false 且不得写入或透传真实 key；真实摘要体验留到 6.9.3.5 受控 Live 小样本。
 
+Phase 6.9.3.4 Web context Mock 工程验收必须覆盖：
+
+- request 携带 optional conversationId；首轮无 id 跳过 prepare，sync 获得 id 后第二轮才 prepare；
+- provider 配置与 live 401/403 在 prepare 前完成；prepare 只接受 token + id，默认 10 秒、限定 1~15 秒并传播 request abort；
+- prepare network/timeout/5xx/schema failure 返回固定 degraded，Mock Chat 仍可 streaming，日志不含 raw error、token 或 summary；
+- assembler 永不丢 base/latest user；agent/state guidance 独立记账且合计最多 10%，OCR 优先，recent 只保留完整轮次，RAG 不安全截断时整层 drop 并清引用，summary 只在 history dropped 时加入；
+- mandatory 超限才返回 413；任意 optional layer 都必须裁剪或 drop，不能制造 413；
+- summary status/version/dropped layers headers 与 Agent Trace 只含 bounded metadata，不含 summary/prompt/chunk/state 正文；
+- Dexie v9 只保存 sanitized state；版本倒退不覆盖、并发写/clear 串行、过期/跨用户/key mismatch 不恢复、logout/clear 删除，序列化结果不含 summary/tool/proposal/prompt/token；
+- Provider 恢复只设置安全 conversation state/conversationId，不依据 activeQuestionId 伪造 OCR 全文，unmount、身份变化或迟到旧请求不得 setState/复活旧用户 cache。
+
+本 slice 的单元测试、lint 与 build 只证明 Mock 工程边界，不证明真实摘要语义质量，也不等同于 headed 浏览器验收。Phase 6.9.3.5 仍需完成 Docker Mock、受控 Live 小样本、临时数据清理与阶段证据。
+
+Phase 6.9.3.4 本地 headed Mock 已补充完成：真实注册与首轮降级、sync 后 conversationId、Dexie sanitized state、消息数触发 `generated/version=1`、刷新后 `reused/version=1`、刷新后的首条新增消息继续 sync、console/page error 为 0、临时账号清理为 0 remaining。该证据不替代 Phase 6.9.3.5 的 Docker 全栈 Mock 与受控 Live。
+
 ### 4.3 知识库 / RAG
 
 页面：

@@ -109,23 +109,56 @@ function testAgentState() {
     layerTokenCounts: {
       mandatory: 120,
       agentGuidance: 20,
+      stateGuidance: 18,
       activeStudy: 80,
       recentMessages: 400,
       rag: 200,
       summary: 120,
     },
-    droppedLayers: ['rag'],
+    droppedLayers: ['rag', 'stateGuidance'],
     summaryVersion: 1,
     summaryStatus: 'generated',
   });
 
   assert.equal(contextPolicy.layerTokenCounts?.mandatory, 120);
-  assert.deepEqual(contextPolicy.droppedLayers, ['rag']);
+  assert.equal(contextPolicy.layerTokenCounts?.stateGuidance, 18);
+  assert.deepEqual(contextPolicy.droppedLayers, ['rag', 'stateGuidance']);
+  const legacyContextPolicy = agentContextPolicySchema.parse({
+    ...contextPolicy,
+    layerTokenCounts: {
+      mandatory: 120,
+      agentGuidance: 20,
+      activeStudy: 80,
+      recentMessages: 400,
+      rag: 200,
+      summary: 120,
+    },
+  });
+  assert.equal(legacyContextPolicy.layerTokenCounts?.stateGuidance, 0);
+  assert.throws(() =>
+    agentContextPolicySchema.parse({
+      ...legacyContextPolicy,
+      layerTokenCounts: { ...legacyContextPolicy.layerTokenCounts, rawSecret: 1 },
+    }),
+  );
   assert.throws(() =>
     agentContextPolicySchema.parse({ ...contextPolicy, droppedLayers: ['recentMessages'] }),
   );
   assert.throws(() =>
     agentContextPolicySchema.parse({ ...contextPolicy, droppedLayers: ['rag', 'rag'] }),
+  );
+  assert.equal(
+    agentContextPolicySchema.parse({
+      ...contextPolicy,
+      droppedLayers: [
+        'agentGuidance',
+        'stateGuidance',
+        'activeStudy',
+        'rag',
+        'summary',
+      ],
+    }).droppedLayers?.length,
+    5,
   );
   assert.throws(() =>
     agentContextPolicySchema.parse({

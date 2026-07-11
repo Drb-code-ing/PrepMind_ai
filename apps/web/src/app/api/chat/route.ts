@@ -4,7 +4,7 @@ import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
 import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 import { apiClient } from '@/lib/api-client';
 import { aiProvider } from '@/lib/ai-provider';
-import { buildChatRequestBudget, createMockChatText } from '@/lib/ai-usage-guard';
+import { createMockChatText } from '@/lib/ai-usage-guard';
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
 import {
@@ -12,15 +12,18 @@ import {
   shouldSearchKnowledgeForChat,
   validateChatLiveAccess,
 } from '@/lib/chat-api-policy';
-import {
-  buildChatAgentDecision,
-  combineChatAdditionalPrompts,
-  type ChatAgentDecision,
-} from '@/lib/chat-agent-runtime';
+import { buildChatAgentDecision, type ChatAgentDecision } from '@/lib/chat-agent-runtime';
 import {
   type ActiveStudyContext,
   type ChatContextMessage,
 } from '@/lib/chat-context';
+import {
+  assembleChatContextForRoute,
+  buildConversationContextHeaders,
+  filterKnowledgeForAssembledContext,
+  logChatRouteFailureSafely,
+  runChatAccessAndContextPreparation,
+} from '@/lib/chat-context-orchestration';
 import {
   appendCitationMarkdown,
   buildKnowledgeContextPrompt,
@@ -46,12 +49,6 @@ const BASE_SYSTEM_PROMPT = `你是 PrepMind AI，一个专业的智能备考助�
 - 行内公式使用 $...$，独立公式使用 $$...$$，不要使用 \\[...\\] 或裸方括号包裹公式。
 - 多行推导或积分公式必须使用独立公式块，公式前后保留空行。
 - 关键结论可以加粗，但不要整段加粗。`;
-
-function isActiveStudyContext(value: unknown): value is ActiveStudyContext {
-  if (!value || typeof value !== 'object') return false;
-  const record = value as Record<string, unknown>;
-  return record.type === 'ocr-question' && typeof record.questionText === 'string';
-}
 
 async function recordAgentTraceSafely(
   accessToken: string | null,
@@ -117,6 +114,7 @@ function createMockChatResponse(input: {
   knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
+  contextHeaders: Record<string, string>;
 }) {
   const mockText = createMockChatText({
     hasActiveContext: Boolean(input.activeContext),
@@ -142,6 +140,7 @@ function createMockChatResponse(input: {
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
       'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
+      ...input.contextHeaders,
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -163,6 +162,7 @@ function createLiveChatResponse(input: {
   knowledgeVerifierResult?: KnowledgeVerifierResult;
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
+  contextHeaders: Record<string, string>;
 }) {
   const result = streamText({
     model: aiProvider(input.model),
@@ -181,6 +181,7 @@ function createLiveChatResponse(input: {
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
       'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
+      ...input.contextHeaders,
       ...input.agentDecision.debugHeaders,
     },
     execute: async (dataStream) => {
@@ -213,7 +214,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, activeContext, accessToken } = parsedRequest.data;
+    const { messages, activeContext, accessToken, conversationId } = parsedRequest.data;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: '消息列表不能为空' }, { status: 400 });
@@ -225,18 +226,31 @@ export async function POST(req: Request) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
-    const liveAccess = await validateChatLiveAccess(
-      providerStatus.mode,
-      accessToken,
-      verifyAccessTokenForLive,
+    const accessAndContext = await runChatAccessAndContextPreparation(
+      {
+        mode: providerStatus.mode,
+        accessToken,
+        conversationId,
+        maxInputTokens: providerStatus.maxInputTokens,
+        requestSignal: req.signal,
+        timeoutValue: process.env.CONVERSATION_CONTEXT_PREPARE_TIMEOUT_MS,
+      },
+      {
+        validateAccess: (mode, token) =>
+          validateChatLiveAccess(mode, token, verifyAccessTokenForLive),
+      },
     );
 
-    if (!liveAccess.ok) {
-      return Response.json({ error: liveAccess.error }, { status: liveAccess.status });
+    if (!accessAndContext.ok) {
+      return Response.json(
+        { error: accessAndContext.error },
+        { status: accessAndContext.status },
+      );
     }
+    const conversationContext = accessAndContext.context;
 
     const normalizedMessages = messages as ChatContextMessage[];
-    const normalizedActiveContext = isActiveStudyContext(activeContext) ? activeContext : null;
+    const normalizedActiveContext = activeContext;
     const normalizedAccessToken = accessToken;
     const traceRunId = crypto.randomUUID();
     const traceStartedAt = new Date();
@@ -261,38 +275,32 @@ export async function POST(req: Request) {
       knowledgeSearch.verifierResult,
       knowledgeSearch.safetySummary,
     );
-    const additionalSystemPrompt = combineChatAdditionalPrompts(
-      agentDecision.promptAddition,
-      knowledgeContextPrompt,
-    );
-    const baseBudgetInput = {
+    const budget = assembleChatContextForRoute({
       baseSystemPrompt: BASE_SYSTEM_PROMPT,
-      activeContext: normalizedActiveContext,
-      messages: normalizedMessages,
+      agentGuidance: agentDecision.promptAddition,
+      activeStudyContext: normalizedActiveContext,
+      recentMessages: normalizedMessages,
+      safeRagContext: knowledgeContextPrompt || undefined,
+      preparedContext: conversationContext,
       maxInputTokens: providerStatus.maxInputTokens,
       maxOutputTokens: providerStatus.maxOutputTokens,
-    };
-    let budget = buildChatRequestBudget({
-      ...baseBudgetInput,
-      additionalSystemPrompt: additionalSystemPrompt || undefined,
     });
-    let citationHits = knowledgeSearch.hits;
-    let citationVerifierResult = knowledgeSearch.verifierResult;
-    let citationSafetySummary = knowledgeSearch.safetySummary;
-
-    if (budget.exceedsInputLimit && knowledgeContextPrompt) {
-      const fallbackAgentPrompt = combineChatAdditionalPrompts(agentDecision.promptAddition, '');
-      const fallbackBudget = buildChatRequestBudget({
-        ...baseBudgetInput,
-        additionalSystemPrompt: fallbackAgentPrompt || undefined,
-      });
-      if (!fallbackBudget.exceedsInputLimit) {
-        budget = fallbackBudget;
-        citationHits = [];
-        citationVerifierResult = undefined;
-        citationSafetySummary = { blockedCount: 0, quotedOnlyCount: 0 };
-      }
-    }
+    const filteredKnowledge = filterKnowledgeForAssembledContext(
+      {
+        hits: knowledgeSearch.hits,
+        verifierResult: knowledgeSearch.verifierResult,
+        safetySummary: knowledgeSearch.safetySummary,
+      },
+      budget.contextPolicy,
+    );
+    const citationHits = filteredKnowledge.hits;
+    const citationVerifierResult = filteredKnowledge.verifierResult;
+    const citationSafetySummary = filteredKnowledge.safetySummary;
+    const contextHeaders = buildConversationContextHeaders({
+      summaryStatus: conversationContext.summaryStatus,
+      summaryVersion: conversationContext.summaryVersion,
+      droppedLayers: budget.contextPolicy.droppedLayers,
+    });
 
     if (budget.modelMessages.length === 0) {
       return Response.json({ error: '消息内容不能为空' }, { status: 400 });
@@ -310,7 +318,7 @@ export async function POST(req: Request) {
     const traceRecorded = await recordAgentTraceSafely(normalizedAccessToken, () =>
       buildChatAgentTracePayload({
         runId: traceRunId,
-        conversationId: null,
+        conversationId,
         messages: normalizedMessages,
         mode: providerStatus.mode,
         modelProvider: resolveTraceModelProvider(
@@ -337,6 +345,7 @@ export async function POST(req: Request) {
         knowledgeVerifierResult: citationVerifierResult,
         agentDecision,
         traceRecorded,
+        contextHeaders,
       });
     }
 
@@ -354,9 +363,10 @@ export async function POST(req: Request) {
       knowledgeVerifierResult: citationVerifierResult,
       agentDecision,
       traceRecorded,
+      contextHeaders,
     });
-  } catch (error) {
-    console.error('[Chat API]', error);
+  } catch {
+    logChatRouteFailureSafely(console);
     return Response.json({ error: 'AI 服务暂时不可用，请稍后重试' }, { status: 500 });
   }
 }

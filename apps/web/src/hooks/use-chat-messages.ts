@@ -8,10 +8,12 @@ import {
   type ChatMessageListFilters,
   type LocalChatMessagesResult,
 } from '@/lib/chat-message-api';
-import type { StoredMessage } from '@/lib/db';
+import { createConversationStateCache } from '@/lib/conversation-state-cache';
+import { db, type StoredMessage } from '@/lib/db';
 import { useUserStore } from '@/stores/userStore';
 
 const chatMessageApi = createChatMessageApi(apiClient);
+const conversationStateCache = createConversationStateCache(db.conversationStates);
 
 export const chatMessageQueryKeys = {
   all: ['chat-messages'] as const,
@@ -62,6 +64,7 @@ export function useSyncChatMessages() {
 export function useClearChatMessages() {
   const queryClient = useQueryClient();
   const accessToken = useUserStore((state) => state.accessToken);
+  const userId = useUserStore((state) => state.currentUser?.id ?? null);
 
   return useMutation({
     mutationFn: async (conversationId?: string | null) => {
@@ -69,6 +72,10 @@ export function useClearChatMessages() {
         throw new Error('Missing access token');
       }
       await chatMessageApi.clear(accessToken, conversationId);
+      if (userId) {
+        if (conversationId) await conversationStateCache.clearConversation(userId, conversationId);
+        else await conversationStateCache.clearUser(userId);
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatMessageQueryKeys.all });

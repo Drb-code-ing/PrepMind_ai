@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-11
+更新时间：2026-07-12
 
-当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.3 rolling summary/CAS 已完成，下一任务是 Phase 6.9.3.4 Web assembler + Dexie。
+当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.4 Web assembler + Dexie sanitized state recovery 已完成，下一任务是 Phase 6.9.3.5 Docker Mock + 受控 Live + 清理/阶段证据。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -22,6 +22,7 @@
 | Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
 | Phase 6.9.3.2 | 已完成 | ConversationState、Redis 降级缓存、prepare API 与 Chat history state 恢复                 |
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
+| Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -1627,7 +1628,7 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 
 - 单测覆盖 12 条/70%、安全整数、完整轮次、稳定 hash、凭据双向防护、Mock/Live guard、预算、模型失败、stale、update CAS、first-create race、越界 usage 与 higher-order message。
 - PostgreSQL e2e 覆盖 12 条完整消息首次 `generated/version=1/watermark=11`、第二次 `reused`、状态路径、双账号隔离和级联清理；本 slice 不调用真实模型。
-- `/api/chat` 尚未消费 prepare 结果，summary 正文不会进入 Chat prompt、header 或 Agent Trace；该接入属于 6.9.3.4，受控 Live 摘要体验属于 6.9.3.5。
+- 截至 6.9.3.3，`/api/chat` 当时尚未消费 prepare 结果；该接入随后在 6.9.3.4 完成，受控 Live 摘要体验仍属于 6.9.3.5。
 
 ### 回顾时可以问
 
@@ -1637,9 +1638,52 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 - “first-create、stale snapshot 和 version CAS conflict 分别如何处理？”
 - “Zod 3 的 AI SDK schema 与 Zod 4 Nest server 如何跨 package 兼容？”
 
+## 2026-07-12 — Phase 6.9.3.4 Web Context Assembler + Dexie Recovery
+
+### 目标与为什么做
+
+Phase 6.9.3.3 已能在 Nest prepare 中安全生成并持久化滚动摘要，但 Web Chat 仍未消费它。直接把 summary、RAG、Agent prompt 和 OCR 拼成一个大 system prompt，会让低优先级资料挤掉当前问题，也无法解释是哪一层被裁。这个 slice 的目标是把 prepare 接入真实 `/api/chat` 编排，用可观测的分层预算保证 base/latest user 和当前 OCR 优先，同时给 24 小时会话状态增加不越权的本地恢复。
+
+### 主要内容与关键决策
+
+- Web request 携带 optional `conversationId`。首轮没有 id 时安全跳过 prepare；ChatMessage sync 返回 id 后，第二轮请求才调用 prepare。这是有意的首轮降级，而不是客户端伪造会话或阻塞首答。
+- 顺序固定为 request validate -> provider/live auth -> token+id prepare -> Router/RAG -> assembler -> mandatory 413 -> trace -> mock/live stream。live credential rejection 在 prepare 前完成；prepare 默认 10 秒、限定 1~15 秒并组合 request abort，任何 network/timeout/5xx/schema failure 只产生固定 degraded，不阻断 Mock Chat。
+- prepare 保持同步请求而不投 BullMQ，因为它位于单次 Chat 的读时上下文决策路径：调用方需要在本轮 prompt 装配前得到已有 summary/state 或明确 degraded。BullMQ 适合可延后后台任务，不适合让当前回答等待另一个异步任务状态机。
+- assembler 把 base/latest user 设为 mandatory；agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 分层装配。agent/state 合计最多 10% 且分别记录 token/drop；OCR 当前 question 优先，旧消息只保留完整 user/assistant turn；RAG 不能安全截断时整层 drop 并清空 citations/verifier/safety；summary 仅在确有 history dropped 时考虑。optional layer 只能裁剪或 drop，不能制造 413。
+- ConversationState 是短期、可过期、单会话的恢复上下文，不等于长期记忆。它只保存当前目标/题目 id，不代表稳定用户偏好，也不自动写入 `UserMemory`。
+- PostgreSQL 保持 state/summary 权威，Redis 只做服务端 public-state cache。Dexie v9 只保存 sanitized state、版本与有效期；不保存 summary，因为摘要有 CAS 水位、服务端凭据防护和跨设备一致性要求，把正文复制到浏览器会扩大泄露面并产生多权威冲突。
+- Dexie 写入/读取/clear 按 user 串行，serverVersion 不低于 local 才覆盖；过期、坏 schema、key/user mismatch、logout、unmount、身份变化和迟到旧请求都 fail-safe。activeQuestionId 不能被用来伪造 OCR 全文。
+- Mock/live response headers 与 Agent Trace 只包含 summary status/version、bounded dropped-layer codes、实际 conversationId 和 token 计数，不包含 summary、prompt、RAG chunk、state 正文或 raw error。
+
+### RED / GREEN 与审查修复
+
+- RED 先证明 conversationId 缺失、prepare client 缺失、assembler 不存在、Provider request 只靠源码断言、Dexie table/cache/state mapper 缺失；GREEN 后形成可执行 request preparer、authenticated prepare helper、纯 assembler、runtime bridge 和 strict shared contract。
+- 审查阶段修复了 optional layer 导致伪 413、OCR 未按实际 remaining 二次裁剪、超长 optional 源在 tokenize 前无硬字符界、`turns.flat()` 临时数组、agent/state guidance 混账、state separator 注入、legacy context policy 兼容、timeout timer/listener cleanup、outer catch raw error、activeContext 浅校验、Trace 空断言、Dexie 并发写/clear 复活、readLatest N+1/sort 与 Provider unmount restore。
+- 相关 contract/unit tests、Web lint 和 Next build 已通过；本 slice 没有调用真实模型。尚未完成 Docker 全栈 Mock、受控 Live 或 headed 可见浏览器验收，不能据此宣称真实摘要语义质量已经通过。
+
+### 回顾时可以问
+
+- “分层 context budget 如何保证 summary 或 RAG 不会挤掉 latest user 与当前 OCR？”
+- “为什么 prepare 是有界同步读路径，而不是 BullMQ 后台任务？”
+- “ConversationState 为什么不是长期记忆，activeQuestionId 为什么不能恢复 OCR 全文？”
+- “为什么 Dexie 只存 sanitized state 而不存 summary？”
+- “首轮没有 conversationId 时为何选择降级首答，第二轮如何进入 prepare？”
+
+### 可见浏览器 Mock 验收补充
+
+- 本地当前分支以 Web `3200`、API `3001` 运行，使用 headed Chrome 完成真实注册、首轮降级、conversationId 建立、sanitized state 写入、刷新恢复、多轮消息触发摘要与再次刷新复用；安全响应头依次观察到 `generated/version=1` 与 `reused/version=1`。
+- IndexedDB `conversationStates` 实际只包含 `id/userId/conversationId/activeGoal/activeQuestionId/stateVersion/expiresAt/updatedAt`；console error 与 page error 均为 0，摘要正文未进入 header、Trace 或结果文件。
+- 浏览器验收发现服务器历史回填时的重复 suppress 标志会吞掉刷新后的第一次新增消息 sync。回归测试先失败，再移除冗余 suppress；保留 `lastServerSyncKey/inFlightServerSyncKey` 去重后，原快照不重复上传，而变化后的首条消息可以正常持久化。
+- 共精确删除 8 个 `phase6934-* @example.com` 临时账号，清理后剩余 0。该验收仍是本地 Mock，不等同于 Docker 全栈或受控 Live；二者继续留给 Phase 6.9.3.5。
+
+### 回顾时还可以问
+
+- “为什么服务器历史回填的 suppress 标志会吞掉刷新后的第一条消息，signature 去重为何已经足够？”
+- “headed Mock 验收如何证明 generated/reused、Dexie 白名单与刷新后继续 sync？”
+
 ## 下一步
 
-1. Phase 6.9.3.4：Web prepare、分层 context budget assembler 与 Dexie sanitized state 恢复。
+1. Phase 6.9.3.5：Docker Mock、受控 Live 摘要小样本、临时数据清理与阶段证据。
 2. Phase 6.9.4 ~ 6.9.7：混合 Agent 路径、结构化/情景长期记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 

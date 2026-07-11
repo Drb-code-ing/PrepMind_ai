@@ -93,6 +93,14 @@ async function testListsChatMessages() {
         data: {
           conversationId: 'conv_1',
           messages: [],
+          state: {
+            conversationId: 'conv_1',
+            activeGoal: 'Review calculus',
+            activeQuestionId: null,
+            stateVersion: 1,
+            expiresAt: '2026-07-12T00:00:00.000Z',
+            updatedAt: '2026-07-11T00:00:00.000Z',
+          },
         },
         requestId: 'req_1',
       });
@@ -104,7 +112,7 @@ async function testListsChatMessages() {
 
   assert.equal(requests[0].input, 'http://localhost:3001/chat-messages?conversationId=conv_1');
   assert.equal(requests[0].authorization, 'Bearer token_1');
-  assert.deepEqual(result, { conversationId: 'conv_1', messages: [] });
+  assert.equal(result.state?.activeGoal, 'Review calculus');
 }
 
 async function testSyncsChatMessages() {
@@ -118,6 +126,7 @@ async function testSyncsChatMessages() {
         success: true,
         data: {
           conversationId: 'conv_1',
+          state: null,
           messages: [
             {
               id: 'msg_1',
@@ -161,6 +170,7 @@ async function testSyncsChatMessages() {
   });
   assert.equal(result.conversationId, 'conv_1');
   assert.equal(result.messages[0]?.role, 'user');
+  assert.equal(result.state, null);
 }
 
 function jsonResponse(body: unknown) {

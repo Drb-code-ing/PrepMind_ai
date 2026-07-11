@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { OcrParsedPayload } from '@repo/types/api/ocr-record';
+import type { ConversationStateResponse } from '@repo/types/api/conversation-context';
 
 export type LocalSyncStatus = 'synced' | 'pending' | 'failed';
 export type PendingOperation = 'create' | 'update' | 'delete';
@@ -36,6 +37,11 @@ export interface StoredMessage {
   content: string;
   order: number;
   createdAt: number;
+}
+
+export interface StoredConversationState extends ConversationStateResponse {
+  id: string;
+  userId: string;
 }
 
 export interface OcrRecord extends LocalSyncMetadata {
@@ -78,6 +84,7 @@ class PrepMindDB extends Dexie {
   ocrRecords!: Table<OcrRecord, string>;
   wrongQuestions!: Table<WrongQuestionRecord, string>;
   mutationQueue!: Table<MutationQueueItem, string>;
+  conversationStates!: Table<StoredConversationState, string>;
 }
 
 export const db = new PrepMindDB('prepmind-db');
@@ -182,4 +189,15 @@ db.version(8).stores({
     'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
   mutationQueue:
     '&id, userId, [userId+status], [userId+entity], [userId+entity+operation], dedupeKey, nextRetryAt, updatedAt',
+});
+
+db.version(9).stores({
+  messages: 'id, userId, [userId+order], role, order, createdAt',
+  ocrRecords:
+    'id, userId, [userId+createdAt], [userId+pendingOperation], type, groupId, createdAt, syncStatus',
+  wrongQuestions:
+    'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
+  mutationQueue:
+    '&id, userId, [userId+status], [userId+entity], [userId+entity+operation], dedupeKey, nextRetryAt, updatedAt',
+  conversationStates: '&id, userId, [userId+conversationId], expiresAt, updatedAt',
 });

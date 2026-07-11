@@ -5,30 +5,47 @@ import {
   createInputHash,
   createInputPreview,
 } from './agent-trace-payload.ts';
+import { assembleChatContextForRoute } from './chat-context-orchestration.ts';
 
 assert.equal(createInputPreview(` ${'题'.repeat(120)} `).length, 80);
 assert.equal(createInputHash('同一个问题'), createInputHash('同一个问题'));
 assert.notEqual(createInputHash('问题 A'), createInputHash('问题 B'));
 
+const traceSummarySecret = 'summary secret body must never enter trace';
+const assembledTraceBudget = assembleChatContextForRoute({
+  baseSystemPrompt: 'base',
+  agentGuidance: undefined,
+  activeStudyContext: null,
+  recentMessages: [
+    { role: 'user', content: 'old question '.repeat(500) },
+    { role: 'assistant', content: 'old answer '.repeat(500) },
+    { role: 'user', content: 'latest trace question' },
+  ],
+  safeRagContext: undefined,
+  preparedContext: {
+    conversationId: 'conv_actual_1',
+    summaryBuffer: traceSummarySecret,
+    coveredThroughOrder: 2,
+    summaryVersion: 3,
+    summaryStatus: 'reused',
+    state: null,
+    safeErrorCode: null,
+  },
+  maxInputTokens: 300,
+  maxOutputTokens: 1200,
+});
+assert.equal(assembledTraceBudget.contextPolicy.summaryIncluded, true);
+
 const payload = buildChatAgentTracePayload({
   runId: 'trace_run_1',
-  conversationId: null,
+  conversationId: 'conv_actual_1',
   messages: [
     { role: 'user', content: `根据我的资料回答 ${'题'.repeat(120)}` },
   ],
   mode: 'live',
   modelProvider: 'deepseek',
   modelName: 'deepseek-v4-flash',
-  budget: {
-    estimatedInputTokens: 800,
-    maxOutputTokens: 1200,
-    contextPolicy: {
-      recentMessageCount: 1,
-      summaryIncluded: true,
-      droppedMessageCount: 4,
-      estimatedTokenCount: 800,
-    },
-  },
+  budget: assembledTraceBudget,
   agentDecision: {
     route: 'tutor',
     confidence: 0.78,
@@ -66,6 +83,7 @@ const payload = buildChatAgentTracePayload({
 });
 
 assert.equal(payload.runId, 'trace_run_1');
+assert.equal(payload.conversationId, 'conv_actual_1');
 assert.equal(payload.status, 'completed');
 assert.equal(payload.route, 'tutor');
 assert.equal(payload.mode, 'live');
@@ -79,7 +97,8 @@ assert.equal(payload.steps.map((step) => step.node).join(','), 'RouterAgent,Tuto
 assert.ok(payload.steps.every((step) => step.inputSummary.length <= 160));
 assert.match(payload.steps[0]?.inputSummary ?? '', /recentMessages=1/);
 assert.match(payload.steps[0]?.inputSummary ?? '', /summary=true/);
-assert.match(payload.steps[0]?.inputSummary ?? '', /droppedMessages=4/);
+assert.match(payload.steps[0]?.inputSummary ?? '', /droppedMessages=2/);
+assert.doesNotMatch(JSON.stringify(payload), new RegExp(traceSummarySecret));
 
 const sensitivePayload = buildChatAgentTracePayload({
   runId: 'trace_run_sensitive',
