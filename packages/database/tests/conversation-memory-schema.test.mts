@@ -18,8 +18,14 @@ function prismaBlock(source: string, kind: 'enum' | 'model', name: string) {
 }
 
 function sqlStatement(source: string, marker: string) {
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, `missing SQL marker: ${marker}`);
+  const markerPattern = marker
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+');
+  const match = new RegExp(markerPattern).exec(source);
+  assert.ok(match, `missing SQL marker: ${marker}`);
+  const start = match.index;
   const end = source.indexOf(';', start);
   assert.notEqual(end, -1, `unterminated SQL statement: ${marker}`);
   return source.slice(start, end + 1);
@@ -204,11 +210,15 @@ test('defines tenant-owned conversation memory schema and exact SQL constraints'
   validateConversationMemory(schema, migration);
 });
 
+test('schema validator accepts CRLF migration input', () => {
+  validateConversationMemory(schema, migration.replace(/\r?\n/g, '\r\n'));
+});
+
 test('schema validator rejects removal of the parent composite unique', () => {
   const conversation = prismaBlock(schema, 'model', 'Conversation');
   const mutated = schema.replace(
     conversation,
-    conversation.replace('  @@unique([id, userId])\n', ''),
+    conversation.replace(/^\s*@@unique\(\[id, userId\]\)\r?$/m, ''),
   );
   assert.throws(() => validateConversationMemory(mutated, migration));
 });
