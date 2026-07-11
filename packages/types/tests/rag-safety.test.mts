@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'bun:test';
+import { describe, it } from 'node:test';
 
 import {
   ragSafetyClassificationSchema,
   ragSafetyRiskLevelSchema,
-} from '../src/api/rag-safety';
+} from '../src/api/rag-safety.ts';
 
 describe('rag safety schemas', () => {
   it('accepts a high-risk prompt injection classification', () => {

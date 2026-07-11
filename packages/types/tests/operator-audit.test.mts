@@ -1,15 +1,16 @@
-import { describe, expect, it } from 'bun:test';
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
 
 import {
   operatorAuditActionSchema,
   operatorAuditLogDetailResponseSchema,
   operatorAuditLogListQuerySchema,
   operatorAuditLogListResponseSchema,
-} from '../src/api/operator-audit';
+} from '../src/api/operator-audit.ts';
 
 describe('operator audit api contract', () => {
   it('accepts export request and download audit actions', () => {
-    expect(operatorAuditActionSchema.options).toEqual([
+    assert.deepEqual(operatorAuditActionSchema.options, [
       'OUTBOX_REQUEUE',
       'AUDIT_EXPORT_REQUEST',
       'AUDIT_EXPORT_DOWNLOAD',
@@ -17,13 +18,11 @@ describe('operator audit api contract', () => {
   });
 
   it('parses empty list query with safe defaults', () => {
-    expect(operatorAuditLogListQuerySchema.parse({})).toEqual({ limit: 20 });
+    assert.deepEqual(operatorAuditLogListQuerySchema.parse({}), { limit: 20 });
   });
 
   it('caps list query limit at 100', () => {
-    expect(() =>
-      operatorAuditLogListQuerySchema.parse({ limit: '101' }),
-    ).toThrow();
+    assert.throws(() => operatorAuditLogListQuerySchema.parse({ limit: '101' }));
   });
 
   it('validates redacted list response shape', () => {
@@ -48,7 +47,7 @@ describe('operator audit api contract', () => {
       nextCursor: null,
     });
 
-    expect(parsed.items[0]?.action).toBe('OUTBOX_REQUEUE');
+    assert.equal(parsed.items[0]?.action, 'OUTBOX_REQUEUE');
   });
 
   it('validates redacted detail response shape without raw metadata', () => {
@@ -68,12 +67,12 @@ describe('operator audit api contract', () => {
       createdAt: '2026-07-08T10:00:00.000Z',
     });
 
-    expect(parsed.id).toBe('audit_1');
-    expect(() =>
+    assert.equal(parsed.id, 'audit_1');
+    assert.throws(() =>
       operatorAuditLogDetailResponseSchema.parse({
         ...parsed,
         metadata: { payload: 'secret' },
       }),
-    ).toThrow();
+    );
   });
 });

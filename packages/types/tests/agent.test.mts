@@ -6,6 +6,7 @@ import {
   agentRunSchema,
   agentStateSchema,
   agentStepSchema,
+  agentContextPolicySchema,
   routerResultSchema,
   shouldUseLiveAgentModelSchema,
 } from '../src/api/agent.ts';
@@ -99,6 +100,39 @@ function testAgentState() {
   );
   assert.equal(enriched.chatContext?.contextPolicy?.summaryIncluded, true);
   assert.deepEqual(enriched.loopControl?.transitions, ['RouterAgent->TutorAgent']);
+
+  const contextPolicy = agentContextPolicySchema.parse({
+    recentMessageCount: 4,
+    summaryIncluded: true,
+    droppedMessageCount: 8,
+    estimatedTokenCount: 940,
+    layerTokenCounts: {
+      mandatory: 120,
+      agentGuidance: 20,
+      activeStudy: 80,
+      recentMessages: 400,
+      rag: 200,
+      summary: 120,
+    },
+    droppedLayers: ['rag'],
+    summaryVersion: 1,
+    summaryStatus: 'generated',
+  });
+
+  assert.equal(contextPolicy.layerTokenCounts?.mandatory, 120);
+  assert.deepEqual(contextPolicy.droppedLayers, ['rag']);
+  assert.throws(() =>
+    agentContextPolicySchema.parse({ ...contextPolicy, droppedLayers: ['recentMessages'] }),
+  );
+  assert.throws(() =>
+    agentContextPolicySchema.parse({ ...contextPolicy, droppedLayers: ['rag', 'rag'] }),
+  );
+  assert.throws(() =>
+    agentContextPolicySchema.parse({
+      ...contextPolicy,
+      recentMessageCount: Number.MAX_SAFE_INTEGER + 1,
+    }),
+  );
 }
 
 function testRouterResult() {

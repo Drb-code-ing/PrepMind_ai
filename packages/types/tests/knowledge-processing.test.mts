@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { knowledgeDocumentProcessResponseSchema } from '../src/api/knowledge';
+import { knowledgeDocumentProcessResponseSchema } from '../src/api/knowledge.ts';
 
 const parsed = knowledgeDocumentProcessResponseSchema.parse({
   id: 'doc_1',

@@ -6,7 +6,7 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.2 共享 Model Agent Runtime 已完成，下一任务是 Phase 6.9.3 ConversationSummary、ConversationState 与分层 context budget。
+当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.1 会话记忆 contract/database 已完成，下一任务是 Phase 6.9.3.2 state + prepare API。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -19,6 +19,7 @@
 | Phase 6      | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents                                    |
 | Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板              |
 | Phase 6.9.2  | 已完成 | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                |
+| Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -1567,9 +1568,28 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 - “Mock 和 Live 如何保证使用同一结构化 contract？”
 - “ModelAgentRuntime 如何避免 prompt、provider 错误和 API key 进入 Trace？”
 
+## 2026-07-11 — Phase 6.9.3.1 Conversation Memory Contracts
+
+### 目标与主要内容
+
+- 在 `@repo/types` 固定 strict prepare request/response/public state contract、summary status/trigger reason 与分层 token 观测字段。
+- 在 Prisma/PostgreSQL 增加单会话单行 `ConversationSummary` / `ConversationState`，用 `(conversationId, userId)` 复合外键锁定 ownership，并补齐索引、级联删除、summary/hash 上限和 `expiresAt > updatedAt` CHECK。
+- public state 不暴露 `pendingActionProposal`、`lastToolNames`、source hash、summary 或模型元数据。
+
+### 边界与验收
+
+- 本 slice 仅完成 contract/database；未实现 prepare API、Redis、摘要模型调用、CAS 或 Chat 注入。
+- TDD RED 覆盖缺少 contract module、agent policy 新字段被剔除、Prisma model/migration 缺失；GREEN 覆盖 runtime schema tests、typecheck、Prisma client 生成与 server build。
+- 下一 slice 是 Phase 6.9.3.2 ConversationState + prepare API。
+
+### 回顾时可以问
+
+- “为什么 public ConversationState 不能直接复用包含内部 action/tool 字段的 Prisma model？”
+- “为什么 summary watermark 和 state version/expiry 需要数据库 CHECK，不只依赖 TypeScript？”
+
 ## 下一步
 
-1. Phase 6.9.3：ConversationSummary、ConversationState 与分层 context budget。
+1. Phase 6.9.3.2：ConversationState、Redis 降级缓存与 prepare API。
 2. Phase 6.9.4 ~ 6.9.7：混合 Agent 路径、结构化/情景长期记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 

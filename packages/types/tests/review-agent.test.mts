@@ -4,7 +4,7 @@ import {
   reviewAgentPrioritySchema,
   reviewAgentSuggestionQuerySchema,
   reviewAgentSuggestionResponseSchema,
-} from '../src/api/review-agent';
+} from '../src/api/review-agent.ts';
 
 testQueryDefaults();
 testInvalidDaysRejected();

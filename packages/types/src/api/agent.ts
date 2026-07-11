@@ -51,10 +51,30 @@ export const agentMessageSchema = z.object({
 });
 
 export const agentContextPolicySchema = z.object({
-  recentMessageCount: z.number().int().min(0),
+  recentMessageCount: z.number().int().safe().min(0),
   summaryIncluded: z.boolean(),
-  droppedMessageCount: z.number().int().min(0),
-  estimatedTokenCount: z.number().int().min(0),
+  droppedMessageCount: z.number().int().safe().min(0),
+  estimatedTokenCount: z.number().int().safe().min(0),
+  layerTokenCounts: z
+    .object({
+      mandatory: z.number().int().safe().min(0),
+      agentGuidance: z.number().int().safe().min(0),
+      activeStudy: z.number().int().safe().min(0),
+      recentMessages: z.number().int().safe().min(0),
+      rag: z.number().int().safe().min(0),
+      summary: z.number().int().safe().min(0),
+    })
+    .strict()
+    .optional(),
+  droppedLayers: z
+    .array(z.enum(['agentGuidance', 'activeStudy', 'rag', 'summary']))
+    .max(4)
+    .refine((layers) => new Set(layers).size === layers.length, 'droppedLayers must be unique')
+    .optional(),
+  summaryVersion: z.number().int().safe().positive().optional(),
+  summaryStatus: z
+    .enum(['not_needed', 'reused', 'generated', 'degraded', 'stale_snapshot', 'cas_conflict'])
+    .optional(),
 });
 
 export const agentLoopControlSchema = z.object({

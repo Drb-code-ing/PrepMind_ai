@@ -43,6 +43,8 @@ model User {
   backgroundJobs             BackgroundJob[]
   operatorAuditLogs          OperatorAuditLog[]
   operatorAuditExports       OperatorAuditExport[]
+  conversationSummaries      ConversationSummary[]
+  conversationStates         ConversationState[]
 }
 
 model Account {
@@ -100,6 +102,11 @@ enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+enum ConversationSummaryMode {
+  MOCK
+  LIVE
 }
 
 enum OcrStatus {
@@ -749,10 +756,59 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages ChatMessage[]
+  summary  ConversationSummary?
+  state    ConversationState?
 
+  @@unique([id, userId])
   @@index([userId, updatedAt])
+}
+
+model ConversationSummary {
+  id                  String                  @id @default(cuid())
+  conversationId      String                  @unique
+  userId              String
+  summary             String                  @db.Text
+  coveredThroughOrder Int
+  sourceMessageCount  Int
+  sourceHash          String                  @db.VarChar(71)
+  summaryVersion      Int                     @default(1)
+  modelMode           ConversationSummaryMode
+  modelProvider       String                  @db.VarChar(80)
+  modelName           String                  @db.VarChar(120)
+  promptVersion       String                  @db.VarChar(80)
+  inputTokenCount     Int
+  outputTokenCount    Int
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId, userId], references: [id, userId], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, conversationId])
+}
+
+model ConversationState {
+  id                    String   @id @default(cuid())
+  conversationId        String   @unique
+  userId                String
+  activeGoal            String?  @db.VarChar(300)
+  activeQuestionId      String?  @db.VarChar(100)
+  pendingActionProposal Json?
+  lastToolNames         String[] @default([])
+  stateVersion          Int      @default(1)
+  expiresAt             DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId, userId], references: [id, userId], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, updatedAt])
+  @@index([expiresAt])
 }
 
 model ChatMessage {

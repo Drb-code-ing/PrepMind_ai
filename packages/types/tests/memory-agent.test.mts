@@ -8,7 +8,7 @@ import {
   userMemoryListQuerySchema,
   userMemorySchema,
   userMemoryTypeSchema,
-} from '../src/api/memory-agent';
+} from '../src/api/memory-agent.ts';
 
 testEnums();
 testQueryDefaults();
