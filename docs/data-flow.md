@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.3.1 已建立会话摘要/状态 strict contract 与 PostgreSQL/Prisma 地基。当前只有数据结构，尚无 prepare API、Redis、摘要模型调用或 Chat 注入；已有 Agent 仍是 deterministic policy，最终模型输出仍只由 `/api/chat` 的既有 mock/live streaming 链路负责。
+> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.3.2 已落地 PostgreSQL 权威 ConversationState、Redis 降级缓存与鉴权 prepare API。当前 prepare 不生成摘要、不调用模型，`/api/chat` 也尚未注入 summary/state；已有 Agent 仍是 deterministic policy，最终模型输出仍只由既有 mock/live streaming 链路负责。
 
 ## 1. 当前边界
 
@@ -23,7 +23,7 @@
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
 - Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
-- 会话记忆地基职责：PostgreSQL 已预留单会话单行 `ConversationSummary` 与 `ConversationState`；两个 child 都以 `(conversationId, userId)` 复合外键绑定会话 owner，state TTL 必须满足 `expiresAt > updatedAt`。公共 state contract 仅允许 `activeGoal`、`activeQuestionId`、版本与时间字段，内部 `pendingActionProposal`、`lastToolNames`、source hash 和模型元数据不进入公开响应。Phase 6.9.3.2 才实现读写与 prepare 数据流。
+- 会话状态职责：`POST /conversation-context/prepare` 固定执行 ownership -> state patch/cache/PG -> 已有 summary -> uncovered count。PostgreSQL 是 state 权威源；Redis key 是 user/conversation 的 SHA-256 组合且最长 TTL 24 小时，只保存 public state。客户端只能 patch active goal/question，内部 action/tool 字段不会进入 request/response/cache。缓存 miss、Redis error、坏 JSON、schema mismatch 或过期都会安全回源/返回 PG 结果。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -105,7 +105,7 @@
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
 - `@repo/ai` 的 `ModelAgentRuntime` 尚未替换 `/api/chat` 的流式 provider；它当前也未被 RouterAgent、KnowledgeVerifierAgent、MemoryAgent 或其他业务 Agent 调用。Phase 6.9.2 的测试只使用 Mock responder 与注入的 fake executor，没有真实模型请求。
-- `ConversationSummary` / `ConversationState` 目前没有业务服务读写；`/api/chat` 不会调用 prepare contract，也不会注入 summary/state。
+- `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在本 slice 仅可被 prepare 安全读取并映射公开 tuple，不会生成或推进水位。`/api/chat` 仍不会调用 prepare，也不会注入 summary/state。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
 - `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。

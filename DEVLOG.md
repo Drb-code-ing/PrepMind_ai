@@ -6,7 +6,7 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.1 会话记忆 contract/database 已完成，下一任务是 Phase 6.9.3.2 state + prepare API。
+当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.2 state/prepare/cache 已完成，下一任务是 Phase 6.9.3.3 rolling summary + CAS。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -20,6 +20,7 @@
 | Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板              |
 | Phase 6.9.2  | 已完成 | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                |
 | Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
+| Phase 6.9.3.2 | 已完成 | ConversationState、Redis 降级缓存、prepare API 与 Chat history state 恢复                 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -1588,9 +1589,31 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 - “为什么 public ConversationState 不能直接复用包含内部 action/tool 字段的 Prisma model？”
 - “为什么 summary watermark 和 state version/expiry 需要数据库 CHECK，不只依赖 TypeScript？”
 
+## 2026-07-11 — Phase 6.9.3.2 Conversation State + Prepare API
+
+### 做了什么
+
+- 新增鉴权 `POST /conversation-context/prepare`：先确认当前用户拥有 conversation，再处理 state/cache，避免用缓存或状态存在性泄露其他用户会话。
+- PostgreSQL 保持 `ConversationState` 权威；客户端只可 patch `activeGoal` / `activeQuestionId`，省略字段表示保留，显式 `null` 表示清空。更新只写显式字段并由数据库原子递增 `stateVersion`，避免并发 patch 用旧快照覆盖未提供字段；首次创建的 P2002 竞态只做一次有界重读，状态变化或过期恢复会把有效期续到 24 小时。
+- Redis 使用 `sha256(userId + NUL + conversationId)` key，缓存内容必须通过 strict public state schema，TTL 不超过 86,400 秒；读取、JSON/schema、写入或删除失败仅记录固定错误码并 fail-open 回源。
+- Chat history list/sync 增加 optional sanitized state；过期状态不返回，内部 `pendingActionProposal`、`lastToolNames`、summary hash、缓存 key 与 Redis 原始错误均不进入响应。删除会话后 PG state 级联清理，Redis best-effort 删除。
+
+### 验收与边界
+
+- TDD 覆盖 ownership-first、24 小时 TTL、版本变化/不变化、显式 null、Redis miss/error/坏 JSON、哈希 key、Chat history 脱敏恢复与缓存清理。
+- e2e 使用两个临时账号覆盖 owner 201、other user 404、内部 state 字段 400、Redis 故障回源与删除级联；全程 Mock，不调用网络模型。
+- 本 slice 不生成滚动摘要、不推进 summary 水位、不调用 `ModelAgentRuntime`，也不把 prepare 结果注入 `/api/chat`；这些分别属于 6.9.3.3 与 6.9.3.4。
+
+### 回顾时可以问
+
+- “为什么 prepare 必须先校验 conversation ownership，再读取 Redis 或 PostgreSQL state？”
+- “为什么 Redis 不能成为 ConversationState 权威源，缓存坏掉时如何降级？”
+- “如何区分 statePatch 字段省略与显式 null，为什么这会影响版本推进？”
+- “Chat history 为什么只返回 sanitized state，而不直接序列化 Prisma model？”
+
 ## 下一步
 
-1. Phase 6.9.3.2：ConversationState、Redis 降级缓存与 prepare API。
+1. Phase 6.9.3.3：滚动摘要、ModelAgentRuntime、source hash 与并发 CAS。
 2. Phase 6.9.4 ~ 6.9.7：混合 Agent 路径、结构化/情景长期记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 
