@@ -1580,6 +1580,7 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 
 - 本 slice 仅完成 contract/database；未实现 prepare API、Redis、摘要模型调用、CAS 或 Chat 注入。
 - TDD RED 覆盖缺少 contract module、agent policy 新字段被剔除、Prisma model/migration 缺失；GREEN 覆盖 runtime schema tests、typecheck、Prisma client 生成与 server build。
+- main 合并后门禁发现 Windows `core.autocrlf=true` 会把迁移检出为 CRLF；SQL 结构测试已改为按空白语义定位语句，并新增显式 CRLF 回归，避免跨平台误报及负向 mutation 假阳性。
 - 下一 slice 是 Phase 6.9.3.2 ConversationState + prepare API。
 
 ### 回顾时可以问
