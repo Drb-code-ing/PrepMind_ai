@@ -14,6 +14,7 @@
 | Docker 部署链路           | Docker Compose 全栈                                               | Web/API/Worker 容器能否一起启动，worker healthcheck 是否工作 | 本机热更新开发体验                |
 | Chat / Agent 工程链路     | Mock AI                                                           | route headers、prompt 拼接、trace、RAG 降级、UI 渲染         | 真实模型回答质量                  |
 | Chat / Agent 真实体验     | Live AI 小样本                                                    | Tutor 风格、RAG 引用自然度、真实模型是否遵守 guard           | 大规模稳定性和成本                |
+| Agent 模型路径决策        | deterministic baseline + Mock contract + Live paired eval        | 相同数据集上的质量、安全、延迟、token 与成本净收益           | 单次演示不能证明应启用模型        |
 | RAG 上传/处理/检索链路    | fake embedding 或 live embedding smoke                            | fake 证明工程链路，live embedding 证明语义召回               | fake embedding 不证明真实语义质量 |
 
 一句话规则：**mock / fake 验工程链路，live 验真实体验；Docker 验部署形态，本机 Bun 验开发效率。**
@@ -290,6 +291,15 @@ curl.exe -i http://127.0.0.1:3001/auth/me
   - `x-prepmind-agent-trace-recorded`
 
 mock 验收重点是工程链路；live 小样本才验真实输出质量。推荐 live 每轮只跑 3 到 5 个固定用例，结束后切回 mock。
+
+Phase 6.9 的 Agent 模型路径不得只凭主观体验开启。先运行 deterministic baseline，再用相同 case
+运行 Mock contract 和受控 Live candidate，按 `docs/acceptance/phase-6-9-agent-eval-template.md`
+记录质量、安全、p95 延迟、token 和估算成本。Critical failure 必须为 0；未达到 Agent 专属门槛时
+继续使用 deterministic。Phase 6.9.1 只有 seed baseline，不调用真实模型，也不证明 Orchestrator
+已经实现。
+
+评测 score、提升阈值或 critical failure count 非有限、越界、非整数或为负时，启用决策必须
+`invalid_metrics` fail-closed。评测 run 只保存受限结构码 outcome，不保存任意 detail 原文。
 
 ### 4.3 知识库 / RAG
 

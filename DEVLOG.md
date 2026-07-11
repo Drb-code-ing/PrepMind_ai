@@ -6,7 +6,7 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7.23 审计保留与证据包导出已经完成设计、实现、Admin 工作台和 Docker 真实全链路验收；下一主线进入 Phase 8。
+当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.1 Agent 评测基线已完成，下一任务是 Phase 6.9.2 共享 Model Agent Runtime。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -17,6 +17,7 @@
 | Phase 4      | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划                                               |
 | Phase 5      | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge`                                         |
 | Phase 6      | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents                                    |
+| Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板             |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -1470,15 +1471,52 @@ AI 行为验收规则：
 - 改 Chat prompt、RAG prompt、Tutor 输出或真实模型策略时，必须按 `docs/ai-behavior-acceptance.md` 做 live smoke。
 - 纯后台任务、API contract、UI 状态和文档更新不需要 live 模型验收。
 
+## 2026-07-11 — Phase 6.9.1 Agent Evaluation Baseline
+
+### 为什么做
+
+Phase 6.0 ~ 6.8 的 Agent 都是确定性 policy，只有 `/api/chat` 最终回答会调用真实模型。为了避免
+后续凭主观感受把所有 Agent 替换为 LLM，先固定统一评测 contract 和当前能力 baseline，让模型
+候选必须证明质量收益，同时满足安全、延迟和成本门槛。
+
+### 做了什么
+
+- 新增 deterministic/Mock/Live run、summary 和模型路径启用决策纯函数。
+- 新增 `phase-6.9-seed-v1`：Router、Verifier、Memory 各 8 个可执行 case，Orchestrator 8 个
+  expectation-only case。
+- 当前 deterministic 结果为 21/24，pass rate 87.5%，token/cost 为 0。
+- 如实保留 3 个失败：混合“笔记+讲题”路由歧义、短正确片段被判不足、含示例 API key 的
+  “以后请记住”被 MemoryAgent 误提取为偏好。其中最后一项是 critical failure。
+- 新增 paired eval 报告模板；明确最终 60/40/40/40 数据集在对应 Agent 实施阶段扩充。
+- 修复 `@repo/agent lint` 只有脚本却没有 workspace 级 ESLint 依赖和配置的问题，使 Agent 语义 lint 不再隐式借用 web/server 工具链；历史格式差异不在本任务批量重写，本次新增文件另做 Prettier check。
+- 独立审查后补 fail-closed：非法指标返回 `invalid_metrics`；baseline 测试锁定 21/24 与失败 case；任意 detail 改为受限结构码 outcome，疑似 prompt/provider 原文统一 redacted。
+- 同步 AGENTS、README、roadmap、data-flow 和统一 AI 验收入口。
+
+### 边界
+
+- 本阶段不调用真实模型、不改 Chat 输出、不实现 Orchestrator，也不修饰 baseline 失败结果。
+- Critical failure 不会被总体准确率抵消；MemoryAgent 接模型前必须先有确定性敏感信息 guard。
+- 后续候选未达到质量、安全、延迟或成本门槛时继续使用 deterministic。
+- Phase 6.9.7 收尾时写详细面试学习博客，汇总哪些 Agent 启用模型及其数据依据。
+
+### 验收
+
+- Phase 6.9 contract/baseline、原 Phase 6.7 eval、`@repo/agent` 全套测试、typecheck 和 lint。
+- 该任务无真实页面、数据库或模型调用，因此不启动 Docker、浏览器或 Live AI。
+- 详细基线：`docs/acceptance/2026-07-11-phase-6-9-1-deterministic-baseline.md`。
+
+### 回顾时可以问
+
+- “Phase 6.9.1 seed baseline 与最终 paired eval 有什么区别？”
+- “为什么 Orchestrator 目前只有 expectation-only cases？”
+- “为什么模型路径不能只看准确率决定？”
+- “MemoryAgent 的敏感凭据 case 为什么是 critical failure？”
+
 ## 下一步
 
-Phase 7 后续优先级：
-
-1. Operator Audit 产品化边界：是否需要审计导出策略、保留周期和更细 operator role。
-2. 更多后台任务生产化：OCR 批处理、批量 embedding、PDF 解析、复习提醒调度。
-3. Worker 观测增强：按部署形态补 BullMQ metrics、Prometheus 指标、队列延迟和告警阈值。
-4. Outbox 生产化：更多业务事件接入、dead-letter 修复工作流、生产开关流程。
-5. 生产观测：OpenTelemetry、Sentry、Prometheus / Grafana、k6。
+1. Phase 6.9.2：共享 Model Agent Runtime、Mock runtime、live 双开关、结构化输出、预算与脱敏错误。
+2. Phase 6.9.3 ~ 6.9.7：短期摘要、混合 Agent 路径、结构化/情景长期记忆、MCP-ready Orchestrator 与阶段验收。
+3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 
 ## 参考文档
 
