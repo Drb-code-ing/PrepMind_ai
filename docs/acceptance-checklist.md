@@ -14,7 +14,7 @@
 | Docker 部署链路           | Docker Compose 全栈                                               | Web/API/Worker 容器能否一起启动，worker healthcheck 是否工作 | 本机热更新开发体验                |
 | Chat / Agent 工程链路     | Mock AI                                                           | route headers、prompt 拼接、trace、RAG 降级、UI 渲染         | 真实模型回答质量                  |
 | Chat / Agent 真实体验     | Live AI 小样本                                                    | Tutor 风格、RAG 引用自然度、真实模型是否遵守 guard           | 大规模稳定性和成本                |
-| Agent 模型路径决策        | deterministic baseline + Mock contract + Live paired eval        | 相同数据集上的质量、安全、延迟、token 与成本净收益           | 单次演示不能证明应启用模型        |
+| Agent 模型路径决策        | deterministic baseline + Mock contract + Live paired eval         | 相同数据集上的质量、安全、延迟、token 与成本净收益           | 单次演示不能证明应启用模型        |
 | RAG 上传/处理/检索链路    | fake embedding 或 live embedding smoke                            | fake 证明工程链路，live embedding 证明语义召回               | fake embedding 不证明真实语义质量 |
 
 一句话规则：**mock / fake 验工程链路，live 验真实体验；Docker 验部署形态，本机 Bun 验开发效率。**
@@ -300,6 +300,15 @@ Phase 6.9 的 Agent 模型路径不得只凭主观体验开启。先运行 deter
 
 评测 score、提升阈值或 critical failure count 非有限、越界、非整数或为负时，启用决策必须
 `invalid_metrics` fail-closed。评测 run 只保存受限结构码 outcome，不保存任意 detail 原文。
+
+Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
+
+- Mock/Live 走同一 Zod schema、请求/结果、预算与 Trace contract；schema invalid 必须 fail-closed；
+- run budget 只接受有限非负整数，调用前按 `maxOutputTokens` 不可变预留，call/input/output 任一超限都不得执行 responder/executor；
+- live disabled、executor 缺失和请求已 abort 必须在预算预留前拒绝；timeout 与外部 abort 必须分类明确并清理 timer/listener；
+- `@repo/ai` 不读取 env，OpenAI-compatible executor 只接受安全 HTTPS URL，API key 只存在于 closure；
+- result/Trace 不得包含 system/user prompt、完整模型输出、provider 原始错误、API key、base URL、response headers 或 stack；
+- 本阶段只用 Mock 与注入 fake executor 验工程 contract，不调用真实模型，不证明 Agent 语义质量，也不证明 Router/Verifier/Memory 已模型化。
 
 ### 4.3 知识库 / RAG
 

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.1 已建立 Agent deterministic/Mock/Live 统一评测 contract 和 seed baseline。当前生产数据流仍保持 Phase 6.8 边界：已有 Agent 都是 deterministic policy，最终模型输出仍只由 `/api/chat` 的 mock/live 链路负责，长期记忆尚不自动注入 Chat。本文只描述当前有效边界，未来模型运行时和分层记忆只有实现并验收后才会写成现行数据流。
+> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.2 已建立共享结构化 `ModelAgentRuntime`。该 runtime 目前是可复用基础设施，尚未接入生产 Chat 或业务 Agent：已有 Agent 仍是 deterministic policy，最终模型输出仍只由 `/api/chat` 的既有 mock/live streaming 链路负责，长期记忆尚不自动注入 Chat。本文只描述当前有效边界，未来分层记忆与混合 Agent 路径只有实现并验收后才会写成现行数据流。
 
 ## 1. 当前边界
 
@@ -22,6 +22,7 @@
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
 - Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
+- Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text
@@ -102,6 +103,7 @@
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
+- `@repo/ai` 的 `ModelAgentRuntime` 尚未替换 `/api/chat` 的流式 provider；它当前也未被 RouterAgent、KnowledgeVerifierAgent、MemoryAgent 或其他业务 Agent 调用。Phase 6.9.2 的测试只使用 Mock responder 与注入的 fake executor，没有真实模型请求。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
 - `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。

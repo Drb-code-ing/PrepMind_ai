@@ -101,6 +101,11 @@ Phase 6.9.1 的 `phase-6.9-seed-v1` 只建立评测 contract 和 deterministic b
 真实模型。Router、Verifier、Memory 各有 8 个可执行 case；Orchestrator 尚未实现，因此 8 个
 case 只保存 expectation，不能写成“Orchestrator 已通过”。
 
+Phase 6.9.2 的 `ModelAgentRuntime` 只验证共享结构化调用 contract。验收使用 Mock responder 与
+注入的 fake executor，覆盖 Zod parse、预算、live guard、timeout、abort、usage 归一化和脱敏错误；
+不需要 API key，也不得发出真实模型请求。只有后续某个 Agent 接入 candidate 模型路径时，才按
+同一脱敏 case 执行受控 Live paired eval。`/api/chat` streaming 仍使用既有 provider 链路。
+
 后续 Agent 模型路径必须遵循：
 
 - 使用同一版本的合成或脱敏数据集比较 baseline 和 candidate；

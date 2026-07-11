@@ -1,0 +1,192 @@
+import { describe, expect, it } from 'bun:test';
+import { z } from 'zod';
+
+import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
+
+const schema = z.object({ route: z.enum(['chat', 'tutor']) }).strict();
+
+describe('OpenAI-compatible model agent executor', () => {
+  it('passes secrets only into provider closure and maps safe usage', async () => {
+    let providerConfig: unknown;
+    let invocation: Record<string, unknown> | undefined;
+    const modelHandle = { kind: 'fake-model' };
+    const executor = createOpenAICompatibleStructuredExecutor(
+      {
+        provider: 'deepseek',
+        apiKey: '  example-redacted-key  ',
+        baseURL: '  https://api.deepseek.com  ',
+        model: '  deepseek-test  ',
+      },
+      {
+        createProvider: (config) => {
+          providerConfig = config;
+          return (model) => {
+            expect(model).toBe('deepseek-test');
+            return modelHandle;
+          };
+        },
+        generateStructured: async (input) => {
+          invocation = input;
+          return {
+            object: { route: 'tutor' },
+            usage: { promptTokens: 21, completionTokens: 8 },
+            rawResponse: { privateHeader: 'must-not-return' },
+          };
+        },
+      },
+    );
+    const controller = new AbortController();
+    const result = await executor({
+      schema,
+      systemPrompt: 'system',
+      userPrompt: 'question',
+      maxOutputTokens: 40,
+      signal: controller.signal,
+    });
+
+    expect(providerConfig).toEqual({
+      apiKey: 'example-redacted-key',
+      baseURL: 'https://api.deepseek.com',
+    });
+    expect(invocation).toMatchObject({
+      model: modelHandle,
+      schema,
+      system: 'system',
+      prompt: 'question',
+      maxTokens: 40,
+      abortSignal: controller.signal,
+    });
+    expect(result).toEqual({
+      object: { route: 'tutor' },
+      usage: { inputTokens: 21, outputTokens: 8 },
+    });
+    expect(Object.keys(executor)).not.toContain('apiKey');
+    expect(JSON.stringify(result)).not.toContain('must-not-return');
+    expect(JSON.stringify(result)).not.toContain('example-redacted-key');
+  });
+
+  it.each([
+    { apiKey: '', baseURL: 'https://api.deepseek.com', model: 'deepseek-test' },
+    { apiKey: 'key', baseURL: 'http://api.example.com', model: 'model' },
+    { apiKey: 'key', baseURL: 'not-a-url', model: 'model' },
+    { apiKey: 'key', baseURL: 'https://user:pass@api.example.com', model: 'model' },
+    { apiKey: 'key', baseURL: 'https://api.example.com?secret=value', model: 'model' },
+    { apiKey: 'key', baseURL: 'https://api.example.com#private', model: 'model' },
+    { apiKey: 'key', baseURL: 'https://api.example.com', model: '' },
+  ])('rejects unsafe config before creating provider', (invalid) => {
+    let calls = 0;
+
+    expect(() =>
+      createOpenAICompatibleStructuredExecutor(
+        { provider: 'deepseek', ...invalid },
+        {
+          createProvider: () => {
+            calls += 1;
+            return () => ({});
+          },
+          generateStructured: async () => ({ object: {} }),
+        },
+      ),
+    ).toThrow('INVALID_MODEL_PROVIDER_CONFIG');
+    expect(calls).toBe(0);
+  });
+
+  it('sanitizes provider creation errors at the public adapter boundary', () => {
+    expect(() =>
+      createOpenAICompatibleStructuredExecutor(
+        {
+          provider: 'deepseek',
+          apiKey: 'example-redacted-key',
+          baseURL: 'https://api.deepseek.com',
+          model: 'deepseek-test',
+        },
+        {
+          createProvider: () => {
+            throw new Error('raw provider creation error with https://private.example');
+          },
+          generateStructured: async () => ({ object: {} }),
+        },
+      ),
+    ).toThrow(/^MODEL_AGENT_PROVIDER_INITIALIZATION_FAILED$/);
+  });
+
+  it('sanitizes invocation errors when the exported executor is called directly', async () => {
+    const executor = createOpenAICompatibleStructuredExecutor(
+      {
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.deepseek.com',
+        model: 'deepseek-test',
+      },
+      {
+        createProvider: () => () => ({}),
+        generateStructured: async () => {
+          throw new Error('raw response with https://private.example and secret header');
+        },
+      },
+    );
+
+    await expect(
+      executor({
+        schema,
+        systemPrompt: 'system',
+        userPrompt: 'question',
+        maxOutputTokens: 40,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/);
+  });
+
+  it.each([
+    null,
+    {
+      provider: 'deepseek',
+      apiKey: 123,
+      baseURL: 'https://api.deepseek.com',
+      model: 'deepseek-test',
+    },
+  ])('rejects malformed provider config with a fixed safe error', (config) => {
+    expect(() =>
+      createOpenAICompatibleStructuredExecutor(
+        config as unknown as Parameters<typeof createOpenAICompatibleStructuredExecutor>[0],
+      ),
+    ).toThrow(/^INVALID_MODEL_PROVIDER_CONFIG$/);
+  });
+
+  it.each([
+    null,
+    Object.defineProperty({}, 'object', {
+      get() {
+        throw new Error('raw sensitive getter error');
+      },
+    }),
+  ])('sanitizes malformed resolved provider results', async (providerResult) => {
+    const executor = createOpenAICompatibleStructuredExecutor(
+      {
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.deepseek.com',
+        model: 'deepseek-test',
+      },
+      {
+        createProvider: () => () => ({}),
+        generateStructured: async () =>
+          providerResult as unknown as Awaited<
+            ReturnType<
+              Parameters<typeof createOpenAICompatibleStructuredExecutor>[1]['generateStructured']
+            >
+          >,
+      },
+    );
+
+    await expect(
+      executor({
+        schema,
+        systemPrompt: 'system',
+        userPrompt: 'question',
+        maxOutputTokens: 40,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow(/^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/);
+  });
+});
