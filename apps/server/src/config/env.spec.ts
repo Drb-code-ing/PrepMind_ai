@@ -22,6 +22,95 @@ describe('parseEnv', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('applies safe conversation summary model defaults', () => {
+    expect(parseEnv(requiredEnv)).toMatchObject({
+      AI_PROVIDER_MODE: 'mock',
+      AI_ENABLE_LIVE_CALLS: false,
+      AI_MODEL: 'deepseek-v4-flash',
+      AI_BASE_URL: 'https://api.deepseek.com/v1',
+      CONVERSATION_SUMMARY_MAX_CALLS: 1,
+      CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: 1600,
+      CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: 400,
+      CONVERSATION_SUMMARY_TIMEOUT_MS: 8000,
+    });
+  });
+
+  it('requires an HTTPS provider and matching key only when summary live calls are enabled', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_BASE_URL: 'http://api.deepseek.com/v1',
+        DEEPSEEK_API_KEY: 'test-key',
+      }),
+    ).toThrow();
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        DEEPSEEK_API_KEY: '  test-key  ',
+      }).DEEPSEEK_API_KEY,
+    ).toBe('test-key');
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'false',
+      }).AI_PROVIDER_MODE,
+    ).toBe('live');
+  });
+
+  it('rejects mismatched or ambiguous live provider credentials', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_BASE_URL: 'https://api.openai.com/v1',
+        DEEPSEEK_API_KEY: 'wrong-provider-key',
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_BASE_URL: 'https://proxy.deepseek.com/custom/v1',
+        OPENAI_API_KEY: 'must-not-reach-deepseek',
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_BASE_URL: 'https://models.example.com/v1',
+        DEEPSEEK_API_KEY: 'deepseek-key',
+        OPENAI_API_KEY: 'openai-key',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects out-of-range conversation summary budgets', () => {
+    for (const invalid of [
+      { CONVERSATION_SUMMARY_MAX_CALLS: 2 },
+      { CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: 199 },
+      { CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: 801 },
+      { CONVERSATION_SUMMARY_TIMEOUT_MS: 999 },
+    ]) {
+      expect(() => parseEnv({ ...requiredEnv, ...invalid })).toThrow();
+    }
+  });
+
   it('accepts the fake embedding provider for local knowledge browser smoke tests', () => {
     const env = parseEnv({
       ...requiredEnv,

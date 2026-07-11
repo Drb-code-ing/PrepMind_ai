@@ -2,8 +2,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject, type LanguageModelV1 } from 'ai';
 import type { z } from 'zod';
 
-import type { StructuredModelExecutor } from './model-agent-contract.ts';
-import { isSafeModelName } from './model-agent-safety.ts';
+import type { StructuredModelExecutor } from './model-agent-contract';
+import { isSafeModelName } from './model-agent-safety';
 
 export type OpenAICompatibleExecutorConfig = {
   provider: 'deepseek' | 'openai';

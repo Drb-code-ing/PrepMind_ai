@@ -21,6 +21,8 @@ describe('ConversationContextController (e2e)', () => {
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET ??= 'dev-secret-change-me';
+    process.env.AI_PROVIDER_MODE = 'mock';
+    process.env.AI_ENABLE_LIVE_CALLS = 'false';
     process.env.DATABASE_URL =
       'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
 
@@ -133,6 +135,75 @@ describe('ConversationContextController (e2e)', () => {
       .expect(200);
     await expect(
       prisma.conversationState.findUnique({ where: { conversationId } }),
+    ).resolves.toBeNull();
+  });
+
+  it('generates and then reuses a Mock rolling summary after 12 complete messages', async () => {
+    const owner = await registerUser('summary-owner');
+    const localMessages = Array.from({ length: 6 }, (_, index) => [
+      {
+        id: `summary-u-${index}-${Date.now()}`,
+        role: 'USER',
+        content: `第 ${index + 1} 轮导数问题`,
+        order: index * 2,
+      },
+      {
+        id: `summary-a-${index}-${Date.now()}`,
+        role: 'ASSISTANT',
+        content: `第 ${index + 1} 轮回答`,
+        order: index * 2 + 1,
+      },
+    ]).flat();
+    const sync = await request(server)
+      .post('/chat-messages/sync')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({ messages: localMessages })
+      .expect(201);
+    const conversationId = getSuccessData<{ conversationId: string }>(
+      sync,
+    ).conversationId;
+
+    const firstResponse = await request(server)
+      .post('/conversation-context/prepare')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({ conversationId, maxInputTokens: 2500 })
+      .expect(201);
+    const first = conversationContextPrepareResponseSchema.parse(
+      getSuccessData(firstResponse),
+    );
+    expect(first).toMatchObject({
+      summaryStatus: 'generated',
+      summaryVersion: 1,
+      coveredThroughOrder: 11,
+      debug: {
+        uncoveredMessageCount: 12,
+        triggerReason: 'message_count',
+        modelMode: 'mock',
+      },
+    });
+    expect(first.summaryBuffer).toEqual(expect.any(String));
+
+    const secondResponse = await request(server)
+      .post('/conversation-context/prepare')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({ conversationId, maxInputTokens: 2500 })
+      .expect(201);
+    const second = conversationContextPrepareResponseSchema.parse(
+      getSuccessData(secondResponse),
+    );
+    expect(second).toMatchObject({
+      summaryStatus: 'reused',
+      summaryVersion: 1,
+      coveredThroughOrder: 11,
+      debug: { triggerReason: 'none', modelMode: 'mock' },
+    });
+
+    await request(server)
+      .delete(`/chat-messages?conversationId=${conversationId}`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .expect(200);
+    await expect(
+      prisma.conversationSummary.findUnique({ where: { conversationId } }),
     ).resolves.toBeNull();
   });
 

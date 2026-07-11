@@ -1,4 +1,4 @@
-import type { ModelAgentBudgetErrorCode, ModelAgentRunBudget } from './model-agent-contract.ts';
+import type { ModelAgentBudgetErrorCode, ModelAgentRunBudget } from './model-agent-contract';
 
 type ModelAgentBudgetLimits = {
   maxCalls: number;

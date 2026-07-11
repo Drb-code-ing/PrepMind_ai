@@ -6,7 +6,7 @@
 
 更新时间：2026-07-11
 
-当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.2 state/prepare/cache 已完成，下一任务是 Phase 6.9.3.3 rolling summary + CAS。
+当前阶段：Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强。Phase 6.9.3.3 rolling summary/CAS 已完成，下一任务是 Phase 6.9.3.4 Web assembler + Dexie。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -21,6 +21,7 @@
 | Phase 6.9.2  | 已完成 | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                |
 | Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
 | Phase 6.9.3.2 | 已完成 | ConversationState、Redis 降级缓存、prepare API 与 Chat history state 恢复                 |
+| Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -1611,9 +1612,34 @@ memory_candidate_extraction / tool_orchestration` 任务类型。
 - “如何区分 statePatch 字段省略与显式 null，为什么这会影响版本推进？”
 - “Chat history 为什么只返回 sanitized state，而不直接序列化 Prisma model？”
 
+## 2026-07-11 — Phase 6.9.3.3 Rolling Conversation Summary + CAS
+
+### 做了什么
+
+- prepare 按 12 条未覆盖消息优先、否则 summary + 未覆盖窗口达到输入预算 70% 触发；已覆盖原文不重复计入 pressure，水位只停在最新完整 assistant 消息。
+- `@repo/types` 提供 AI SDK 兼容的 strict summary schema；server composition root 解析 Mock/Live、双开关、provider/model、HTTPS base URL、key、单次调用和 token/timeout 预算。key/base URL 不进入 bundle、结果或 Trace。
+- 摘要源显式限定 USER/ASSISTANT；provider 输入先脱敏 bearer/cookie、裸 `sk-*`、client secret/password、AWS access key 与 PEM 私钥，输出再次扫描；credential-like 输出、schema/provider/timeout 错误或超出数据库 CHECK 的 usage 都降级且不推进摘要。
+- 模型调用位于 Prisma transaction 外；事务内使用 Serializable 复核目标范围 `sha256:` source hash，并以 summaryVersion + 旧 coveredThroughOrder CAS 写入。first-create P2002、serialization P2034、version/watermark update race 均返回有界状态，不在同一请求重复调用模型。
+- Live provider 解析拒绝把 OpenAI key 发送到自定义 DeepSeek 域名；仅保留默认 DeepSeek URL + OpenAI-only 配置到官方 OpenAI URL 的显式兼容改写。
+- `@repo/ai` 首次接入 Nest server 时修复内部 `.ts` import/export 的跨 package build 兼容；AI package 70 项回归保持通过。Docker server 明确默认 Mock/Live false，不透传 API key。
+
+### 验收与边界
+
+- 单测覆盖 12 条/70%、安全整数、完整轮次、稳定 hash、凭据双向防护、Mock/Live guard、预算、模型失败、stale、update CAS、first-create race、越界 usage 与 higher-order message。
+- PostgreSQL e2e 覆盖 12 条完整消息首次 `generated/version=1/watermark=11`、第二次 `reused`、状态路径、双账号隔离和级联清理；本 slice 不调用真实模型。
+- `/api/chat` 尚未消费 prepare 结果，summary 正文不会进入 Chat prompt、header 或 Agent Trace；该接入属于 6.9.3.4，受控 Live 摘要体验属于 6.9.3.5。
+
+### 回顾时可以问
+
+- “为什么模型调用不能放在 Prisma transaction 里？”
+- “source hash 为什么只复核目标水位范围，而允许更高 order 新消息出现？”
+- “为什么 token pressure 不能重复计算已经被摘要覆盖的原文？”
+- “first-create、stale snapshot 和 version CAS conflict 分别如何处理？”
+- “Zod 3 的 AI SDK schema 与 Zod 4 Nest server 如何跨 package 兼容？”
+
 ## 下一步
 
-1. Phase 6.9.3.3：滚动摘要、ModelAgentRuntime、source hash 与并发 CAS。
+1. Phase 6.9.3.4：Web prepare、分层 context budget assembler 与 Dexie sanitized state 恢复。
 2. Phase 6.9.4 ~ 6.9.7：混合 Agent 路径、结构化/情景长期记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 

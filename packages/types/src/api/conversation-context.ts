@@ -15,6 +15,12 @@ export const conversationSummaryTriggerReasonSchema = z.enum([
   'none',
 ]);
 
+export const conversationSummaryOutputSchema = z
+  .object({
+    summary: z.string().trim().min(1).max(4_000),
+  })
+  .strict();
+
 export const conversationStateSchema = z
   .object({
     conversationId: z.string().min(1).max(100),
@@ -112,3 +118,9 @@ export type ConversationContextPrepareResponse = z.infer<
 >;
 export type ConversationStateResponse = z.infer<typeof conversationStateSchema>;
 export type ConversationSummaryStatus = z.infer<typeof conversationSummaryStatusSchema>;
+export type ConversationSummaryTriggerReason = z.infer<
+  typeof conversationSummaryTriggerReasonSchema
+>;
+export type ConversationSummaryOutput = z.infer<
+  typeof conversationSummaryOutputSchema
+>;

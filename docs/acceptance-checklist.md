@@ -310,6 +310,8 @@ Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 - result/Trace 不得包含 system/user prompt、完整模型输出、provider 原始错误、API key、base URL、response headers 或 stack；
 - 本阶段只用 Mock 与注入 fake executor 验工程 contract，不调用真实模型，不证明 Agent 语义质量，也不证明 Router/Verifier/Memory 已模型化。
 
+Phase 6.9.3.3 滚动摘要 Mock 验收还必须覆盖：12 条与 70% 两种触发、user-only tail 不推进、已覆盖原文不重复制造 pressure、输入凭据脱敏、输出凭据拒绝、模型失败不写库、目标范围变化 stale、更高 order 新消息不误判、first-create/update CAS 仅一次模型调用。Docker 默认必须是 Mock/Live false 且不得写入或透传真实 key；真实摘要体验留到 6.9.3.5 受控 Live 小样本。
+
 ### 4.3 知识库 / RAG
 
 页面：

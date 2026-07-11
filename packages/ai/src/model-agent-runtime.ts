@@ -11,13 +11,13 @@ import type {
   ModelAgentTrace,
   ModelAgentUsage,
   StructuredModelExecutor,
-} from './model-agent-contract.ts';
-import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget.ts';
+} from './model-agent-contract';
+import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget';
 import {
   createSafeModelAgentError,
   hashModelAgentRunId,
   isSafeModelName,
-} from './model-agent-safety.ts';
+} from './model-agent-safety';
 
 export type CreateModelAgentRuntimeInput = {
   mode: ModelAgentMode;
