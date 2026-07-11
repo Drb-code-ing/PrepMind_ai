@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase 0 ~ Phase 10 推进，Phase 7.23 审计保留与证据包导出已经完成设计、实现、Admin 工作台及 Docker 真实全链路验收，下一主线进入 Phase 8 性能与 PWA 优化。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 工程化已经完成；当前进入 Phase 6.9 真实模型 Agent 与分层记忆补强，完成后再进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
 ## 项目快照
 
@@ -35,6 +35,7 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 | Phase 6.6    | 已完成 | MemoryAgent、长期记忆候选、人审确认、停用/恢复/删除管理                                                            |
 | Phase 6.7    | 已完成 | Agent Trace UI、估算成本看板、固定 deterministic eval set                                                          |
 | Phase 6.8    | 已完成 | KnowledgeDedupAgent / KnowledgeOrganizerAgent、资料重复/新版/互补判断、只读 suggestions API、`/knowledge` 建议面板 |
+| Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 报告模板                            |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -91,6 +92,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。项目按 Phase
 
 Agent 框架使用 LangGraph，不使用 AutoGen。
 Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace 可观测闭环，以及 KnowledgeDedupAgent / KnowledgeOrganizerAgent 资料管理建议。`TutorAgent`、`KnowledgeVerifierAgent`、`WrongQuestionOrganizerAgent`、`ReviewAgent`、`PlannerAgent`、`MemoryAgent`、`KnowledgeDedupAgent` 与 `KnowledgeOrganizerAgent` 当前都是确定性 policy，不直接调用真实模型；Tutor 负责讲题意图和 prompt 策略，Verifier 只在 RAG 命中后评估资料可信度，WrongQuestionOrganizer 只给错题学科组与专题 deck 建议，Review / Planner 只基于当前用户错题、复习日志、复习计划和偏好生成只读学习建议，Memory 只生成长期记忆候选并等待用户确认，KnowledgeDedup / KnowledgeOrganizer 只基于当前用户资料元数据和少量 chunk 摘要给出重复、新版、互补、集合与标签建议。最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责；错题组织由 NestJS organizer API 写入独立组织层；复习计划建议由 `/review-agent/suggestions` 读取并展示，不创建未来 `ReviewTask`；长期记忆由 `/memory-agent` 与 `/user-memories` API 管理，不自动注入每次 Chat；资料管理建议由 `/knowledge-agent/suggestions` 读取并在 `/knowledge` 展示，不自动合并、删除、替换、重命名或分类资料。Agent Trace 由 `/agent-traces` 在线账号级 API 持久化脱敏后的路由、步骤、token 和估算成本元数据，`/agent-trace` 提供调试台；它不保存完整 prompt、完整回答、完整 RAG chunk 或 API key，成本看板只展示估算值，不替代模型供应商账单。
+
+Phase 6.9.1 已建立统一评测 contract 和 `phase-6.9-seed-v1`：Router、Verifier、Memory 各 8 个可执行 deterministic case，Orchestrator 8 个 expectation-only case。当前 baseline 为 21/24，通过率 87.5%，并发现 MemoryAgent 会把含示例 API key 的“以后请记住”误提取为偏好候选这一 critical failure。该阶段不调用真实模型、不修饰 baseline 结果；后续 Router、Verifier、Memory、Orchestrator 必须扩充 paired eval，质量、安全、延迟和成本门槛全部通过后才能启用模型路径。
 
 ## 常用命令
 
@@ -287,5 +290,6 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. Phase 8：按路线图推进性能、离线与 PWA 完整体验，开工前从最新 `main` 新建独立分支。
-2. 回顾时可以问：为什么真实证据包验收必须覆盖 API/Worker 拓扑、ZIP 字节、下载审计和维护删除，而不能只看 202/READY 状态？
+1. Phase 6.9.2：从最新 `main` 开独立分支，实现共享 `ModelAgentRuntime`、Mock runtime、live 双开关、结构化输出、预算和脱敏错误边界。
+2. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
+3. 回顾时可以问：Phase 6.9.1 为什么保留 deterministic 失败样本，而不是先修改规则把 baseline 做到全绿？

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-09。Phase 7.0 / 7.1 已完成 BackgroundJob 控制面、BullMQ 知识库文档处理队列、inline / queue 双模式、worker role 和 `/knowledge` 后台处理状态；Phase 7.2 已完成 RAG SafetyGuard，把用户上传资料视为低信任证据并在 Chat prompt 前过滤高风险 chunk；Phase 7.3 已完成 in-process EventBus 失败隔离、后台任务 summary API 和 `/knowledge` 后台任务摘要轮询兜底；Phase 7.4 / 7.5 已完成 Swagger / OpenAPI debug docs、中文说明和核心写接口 request body 示例；Phase 7.6 已完成 API / worker 启动拆分，`SERVER_ROLE=worker` 不再监听 HTTP 端口；Phase 7.7 已完成 Worker Observability，通过 Redis heartbeat、BullMQ queue counts 和 BackgroundJob summary 展示后台处理健康状态；Phase 7.14 / 7.15 已补 operator 权限、审计写入、脱敏审计查询 API、管理员审计台和真实前后端验收。Chat 仍保留 Phase 5 RAG 增强、Phase 6 Agent 增强、默认 mock 与 live 调用成本保护，且长期记忆和资料管理建议都不自动注入 Chat。本文只描述当前仍然有效的数据流边界，历史实现细节见 `DEVLOG.md`。
+> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.1 已建立 Agent deterministic/Mock/Live 统一评测 contract 和 seed baseline。当前生产数据流仍保持 Phase 6.8 边界：已有 Agent 都是 deterministic policy，最终模型输出仍只由 `/api/chat` 的 mock/live 链路负责，长期记忆尚不自动注入 Chat。本文只描述当前有效边界，未来模型运行时和分层记忆只有实现并验收后才会写成现行数据流。
 
 ## 1. 当前边界
 
@@ -21,6 +21,7 @@
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、TutorAgent policy、KnowledgeVerifierAgent policy、WrongQuestionOrganizerAgent policy、ReviewAgent policy、PlannerAgent policy、MemoryAgent policy、KnowledgeDedupAgent policy 和 KnowledgeOrganizerAgent policy；Agent package 不直接写库、不直接调用真实模型。
+- Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
 ```text

@@ -8,6 +8,7 @@
 - Live 验收用于验证真实体验：回答质量、Tutor 讲题风格、RAG 引用是否自然、Agent prompt 是否真的影响输出。
 - 普通 CRUD、鉴权、FSRS、统计、资料上传和解析不要求 live 验收。
 - Chat RAG、TutorAgent、KnowledgeVerifierAgent、RouterAgent prompt 行为改动必须做小样本 live smoke。
+- Phase 6.9 的独立 Agent 模型路径还必须做 paired eval；同一脱敏 case 同时运行 deterministic baseline 与 candidate，不能用不同题目比较。
 
 ## 2. Live 验收成本边界
 
@@ -93,6 +94,27 @@ Agent Trace 与固定评测集已落地，并必须持续覆盖：
 - 前端 payload builder 和后端 service 都必须裁剪并脱敏 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...`、`Cookie: ...` 等敏感片段。
 - `/agent-trace` 的成本看板只展示基于 token 估算和本地价格表的估算成本，不代表供应商真实账单，也不应用作财务对账。
 - `/agent-traces` 是在线账号级观测 API，不进入 Dexie `mutationQueue`；离线或弱网导致 trace 丢失是可接受降级。
+
+## 7.1 Phase 6.9 Agent 模型路径评测
+
+Phase 6.9.1 的 `phase-6.9-seed-v1` 只建立评测 contract 和 deterministic baseline，不调用
+真实模型。Router、Verifier、Memory 各有 8 个可执行 case；Orchestrator 尚未实现，因此 8 个
+case 只保存 expectation，不能写成“Orchestrator 已通过”。
+
+后续 Agent 模型路径必须遵循：
+
+- 使用同一版本的合成或脱敏数据集比较 baseline 和 candidate；
+- Mock 验结构化输出、schema invalid、timeout、预算和降级，不证明语义质量；
+- Live 验质量净收益，同时记录 provider/model、promptVersion、token、p95 延迟和估算成本；
+- Critical failure 必须为 0；安全失败不能被 aggregate pass rate 抵消；
+- Router、Verifier、Memory、Orchestrator 分别使用设计文档中的专属质量门槛；
+- 未达到质量、安全、延迟或成本门槛时继续使用 deterministic；
+- 报告复用 `docs/acceptance/phase-6-9-agent-eval-template.md`，不得保存完整 prompt、完整输出、
+  API key 或真实用户数据；
+- Live 验收结束后恢复 Mock 并清理临时账号和测试数据。
+
+最终 60/40/40/40 paired eval 数据集由对应 Agent 实施阶段逐步扩充，不把 Phase 6.9.1 的
+32 个 seed cases 冒充最终质量结论。
 
 ## 8. Reflexion / Critic 验收要求
 

@@ -10,6 +10,18 @@
 
 ---
 
+## 提交前审查强化
+
+实现完成后的独立审查对本计划做出以下 fail-closed 强化；这些要求覆盖下文早期代码片段中相冲突的部分：
+
+- `AgentEvalRun` 不使用任意 `detail: string`，改用 `createAgentEvalOutcome()` 生成的结构化
+  `expectedCode / actualCode / errorCode`；code 最长 80 字符且只允许结构码字符，否则统一为
+  `redacted`，避免后续 Live runner 写入完整 prompt、输出或 provider 错误原文。
+- `decideAgentModelPath()` 对 score、minimum improvement 和 critical failure count 做 finite、范围、
+  整数与非负校验；非法指标统一返回 `enabled=false / invalid_metrics`。
+- Baseline 测试除数量和 Agent 集合外，还锁定 21/24、1 个 critical failure，以及三个稳定失败
+  case id；不锁定机器相关毫秒耗时。
+
 ## 文件结构
 
 - Create: `packages/agent/src/evals/phase-6-9-eval-contract.ts` — run、summary、启用决策类型和纯函数。
