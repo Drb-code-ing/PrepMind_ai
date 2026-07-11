@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-11。Phase 7 工程化已完成；Phase 6.9.3.3 已在鉴权 prepare API 中落地 PostgreSQL 权威滚动摘要、ModelAgentRuntime 与 source hash/CAS。`/api/chat` 尚未调用 prepare 或注入 summary/state；已有业务 Agent 仍是 deterministic policy，最终流式输出仍只由既有 mock/live 链路负责。
+> 当前版本：2026-07-12。Phase 7 工程化已完成；Phase 6.9.3.4 已把 authenticated prepare、分层 context assembler 与 Dexie v9 sanitized state recovery 接入 `/api/chat`。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；真实摘要语义质量与浏览器全链路证据留到 Phase 6.9.3.5。
 
 ## 1. 当前边界
 
@@ -105,7 +105,11 @@
 - KnowledgeVerifierAgent 是确定性 policy，不调用真实模型、不修改用户资料、不阻断 Chat；可疑、冲突或不足时只向 prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
 - `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`。
 - `@repo/ai` 的 `ModelAgentRuntime` 尚未替换 `/api/chat` 的流式 provider；它当前也未被 RouterAgent、KnowledgeVerifierAgent、MemoryAgent 或其他业务 Agent 调用。Phase 6.9.2 的测试只使用 Mock responder 与注入的 fake executor，没有真实模型请求。
-- `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。`/api/chat` 仍不会调用 prepare，也不会注入 summary/state。
+- `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
+- Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
+- Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
+- Mock/live response 只通过 `x-prepmind-conversation-summary-status`、`x-prepmind-conversation-summary-version` 和 `x-prepmind-context-dropped-layers` 暴露固定状态；Agent Trace 只记录实际 conversationId、计数、版本与 bounded codes，不保存 summary、prompt、RAG chunk 或 state 正文。
+- PostgreSQL 继续是 ConversationState/ConversationSummary 权威源，Redis 只做服务端 public-state cache，Dexie v9 `conversationStates` 只保存 `activeGoal`、`activeQuestionId`、stateVersion、expiresAt、updatedAt 与身份键。local write/clear 按 user 串行，serverVersion 不低于 local 才覆盖；过期、坏 schema、key/user mismatch、logout/clear 与迟到请求均 fail-safe。Dexie 不存 summary、pending proposal、tool names、prompt 或 token，也不根据 activeQuestionId 伪造 OCR 题面。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
 - `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。

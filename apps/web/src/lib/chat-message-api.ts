@@ -6,6 +6,7 @@ import {
   type ListChatMessagesQuery,
   type SyncChatMessagesRequest,
 } from '@repo/types/api/chat-message';
+import type { ConversationStateResponse } from '@repo/types/api/conversation-context';
 
 import type { StoredMessage } from './db';
 
@@ -26,6 +27,7 @@ export type ChatMessageListFilters = {
 export type LocalChatMessagesResult = {
   conversationId: string | null;
   messages: StoredMessage[];
+  state: ConversationStateResponse | null;
 };
 
 export function createChatMessageApi(client: ApiClient) {
@@ -43,6 +45,7 @@ export function createChatMessageApi(client: ApiClient) {
       return {
         conversationId: response.conversationId,
         messages: response.messages.map(mapChatMessageResponseToLocalRecord),
+        state: response.state ?? null,
       };
     },
 
@@ -61,6 +64,7 @@ export function createChatMessageApi(client: ApiClient) {
       return {
         conversationId: response.conversationId,
         messages: response.messages.map(mapChatMessageResponseToLocalRecord),
+        state: response.state ?? null,
       };
     },
 

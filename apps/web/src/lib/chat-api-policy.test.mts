@@ -30,6 +30,7 @@ test('normalizes user and assistant messages while preserving a valid access tok
       { role: 'assistant', content: ' hi ' },
     ],
     accessToken: ' token ',
+    conversationId: ' conv_1 ',
   });
 
   assert.equal(result.ok, true);
@@ -39,6 +40,85 @@ test('normalizes user and assistant messages while preserving a valid access tok
       { role: 'assistant', content: 'hi' },
     ]);
     assert.equal(result.data.accessToken, 'token');
+    assert.equal(result.data.conversationId, 'conv_1');
+  }
+});
+
+test('allows missing or null conversation ids for a first chat turn', () => {
+  for (const conversationId of [undefined, null]) {
+    const result = parseChatApiRequestBody({
+      messages: [{ role: 'user', content: 'hello' }],
+      conversationId,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.data.conversationId, null);
+  }
+});
+
+test('rejects invalid conversation ids', () => {
+  for (const conversationId of [42, '', '   ', 'x'.repeat(101)]) {
+    const result = parseChatApiRequestBody({
+      messages: [{ role: 'user', content: 'hello' }],
+      conversationId,
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.status, 400);
+  }
+});
+
+test('normalizes a complete valid active OCR context through an allowlist', () => {
+  const activeContext = {
+    type: 'ocr-question',
+    sourceGroupId: 'group_1',
+    questionId: 'q_1',
+    questionText: 'question',
+    subject: 'math',
+    questionType: 'calculation',
+    difficulty: 'medium',
+    knowledgePoints: ['derivative'],
+    analysis: 'analysis',
+    answer: 'answer',
+    rawContent: 'raw',
+    warnings: ['warning'],
+    updatedAt: 123,
+  };
+  const result = parseChatApiRequestBody({
+    messages: [{ role: 'user', content: 'hello' }],
+    activeContext,
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.data.activeContext, activeContext);
+});
+
+test('normalizes active context with malformed optional fields to null', () => {
+  const result = parseChatApiRequestBody({
+    messages: [{ role: 'user', content: 'hello' }],
+    activeContext: {
+      type: 'ocr-question',
+      questionText: 'question',
+      knowledgePoints: ['valid', 42],
+    },
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.data.activeContext, null);
+});
+
+test('strips unknown active context fields at the request boundary', () => {
+  const result = parseChatApiRequestBody({
+    messages: [{ role: 'user', content: 'hello' }],
+    activeContext: {
+      type: 'ocr-question',
+      questionText: 'question',
+      secretPrompt: 'SECRET_MUST_NOT_PASS',
+    },
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.data.activeContext, {
+      type: 'ocr-question',
+      questionText: 'question',
+    });
+    assert.doesNotMatch(JSON.stringify(result.data.activeContext), /SECRET_MUST_NOT_PASS/);
   }
 });
 

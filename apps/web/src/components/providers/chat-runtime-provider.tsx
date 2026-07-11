@@ -26,13 +26,21 @@ import {
   trimIncompleteChatTail,
 } from '@/lib/chat-completion-guard';
 import type { ActiveStudyContext } from '@/lib/chat-context';
-import { buildChatRuntimeRequestBody } from '@/lib/chat-runtime-request';
-import { buildChatSyncSignature } from '@/lib/chat-sync';
+import { createChatRuntimeRequestBodyPreparer } from '@/lib/chat-runtime-request';
+import { beginChatServerSync, buildChatSyncSignature } from '@/lib/chat-sync';
+import {
+  createConversationStateCache,
+  createConversationStateRuntimeBridge,
+  shouldApplyConversationStateRestore,
+} from '@/lib/conversation-state-cache';
 import { db, type StoredMessage } from '@/lib/db';
 import { useChatStore } from '@/stores/chatStore';
 import { useUserStore } from '@/stores/userStore';
 
 const STREAM_UI_THROTTLE_MS = 80;
+const conversationStateRuntimeBridge = createConversationStateRuntimeBridge(
+  createConversationStateCache(db.conversationStates),
+);
 
 type RuntimeMessage = {
   id: string;
@@ -102,7 +110,6 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
 
   const serverMessagesHydratedRef = useRef(false);
-  const suppressNextServerSyncRef = useRef(false);
   const messagesSavedRef = useRef(false);
   const inputDraftClearReadyRef = useRef(false);
   const lastServerSyncKeyRef = useRef('');
@@ -112,6 +119,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const isLoadingRef = useRef(false);
   const prevMsgIdsRef = useRef<Set<string>>(new Set());
   const chatTimestampsRef = useRef(chatTimestamps);
+  const conversationIdRef = useRef(conversationId);
+  const userIdRef = useRef(userId);
   const activeStudyContextRef = useRef(activeStudyContext);
   const accessTokenRef = useRef(accessToken);
 
@@ -129,13 +138,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     experimental_throttle: STREAM_UI_THROTTLE_MS,
     initialInput: inputDraft,
     initialMessages: [],
-    experimental_prepareRequestBody: ({ messages: requestMessages, requestBody }) =>
-      buildChatRuntimeRequestBody({
-        requestBody,
-        messages: requestMessages,
-        activeContext: activeStudyContextRef.current,
-        accessToken: accessTokenRef.current,
-      }),
+    experimental_prepareRequestBody: (input) =>
+      createChatRuntimeRequestBodyPreparer({
+        getActiveContext: () => activeStudyContextRef.current,
+        getAccessToken: () => accessTokenRef.current,
+        getConversationId: () => conversationIdRef.current,
+      })(input),
     keepLastMessageOnError: true,
     onError: (error) => {
       setChatError(getReadableChatError(error));
@@ -146,6 +154,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     messagesRef.current = messages;
     chatTimestampsRef.current = chatTimestamps;
+    conversationIdRef.current = conversationId;
+    userIdRef.current = userId;
     activeStudyContextRef.current = activeStudyContext;
     accessTokenRef.current = accessToken;
     isLoadingRef.current = isLoading;
@@ -208,14 +218,14 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       if (storedMessages.length === 0) return;
 
       const syncKey = buildChatSyncSignature(storedMessages, targetConversationId);
-      if (
-        syncKey === lastServerSyncKeyRef.current ||
-        syncKey === inFlightServerSyncKeyRef.current
-      ) {
-        return;
-      }
+      const syncDecision = beginChatServerSync({
+        syncKey,
+        lastServerSyncKey: lastServerSyncKeyRef.current,
+        inFlightServerSyncKey: inFlightServerSyncKeyRef.current,
+      });
+      if (!syncDecision.shouldSync) return;
 
-      inFlightServerSyncKeyRef.current = syncKey;
+      inFlightServerSyncKeyRef.current = syncDecision.nextInFlightServerSyncKey;
 
       try {
         const result = await syncChatMessagesMutateAsyncRef.current({
@@ -231,6 +241,9 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         if (result.conversationId) {
           setConversationId(result.conversationId);
         }
+        if (userId) {
+          await conversationStateRuntimeBridge.acceptServerResult(userId, result);
+        }
       } catch (error) {
         logBackgroundSyncError(scope, error);
       } finally {
@@ -239,13 +252,31 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [],
+    [userId],
   );
 
   useEffect(() => {
+    let cancelled = false;
+    const expectedUserId = userId;
+    void conversationStateRuntimeBridge
+      .changeIdentity(userId)
+      .then((restoredState) => {
+        if (
+          !restoredState ||
+          !shouldApplyConversationStateRestore({
+            cancelled,
+            expectedUserId,
+            currentUserId: userIdRef.current,
+            restored: restoredState,
+          })
+        ) {
+          return;
+        }
+        setConversationId(restoredState.conversationId);
+      });
+
     if (!userId) {
       serverMessagesHydratedRef.current = false;
-      suppressNextServerSyncRef.current = false;
       messagesSavedRef.current = false;
       inputDraftClearReadyRef.current = false;
       lastServerSyncKeyRef.current = '';
@@ -254,18 +285,19 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       streamStartedRef.current = false;
       prevMsgIdsRef.current = new Set();
       queueMicrotask(() => {
+        if (cancelled) return;
         setMessages([]);
         setChatTimestamps({});
         setConversationId(null);
         setActiveStudyContext(null);
         setIsHydrated(false);
       });
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
     serverMessagesHydratedRef.current = false;
-    suppressNextServerSyncRef.current = false;
     messagesSavedRef.current = false;
     inputDraftClearReadyRef.current = false;
     lastServerSyncKeyRef.current = '';
@@ -307,6 +339,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     if (!userId || !isHydrated || !serverData || serverMessagesHydratedRef.current) return;
 
     serverMessagesHydratedRef.current = true;
+    void conversationStateRuntimeBridge.acceptServerResult(userId, serverData);
 
     queueMicrotask(() => {
       if (serverData.conversationId) {
@@ -316,7 +349,6 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       if (serverData.messages.length > 0) {
         const validServerMessages = trimStoredMessages(serverData.messages);
         const serverRuntimeMessages = toRuntimeMessages(validServerMessages);
-        suppressNextServerSyncRef.current = true;
         setChatTimestamps(toTimestampMap(validServerMessages));
         lastServerSyncKeyRef.current = buildChatSyncSignature(
           validServerMessages,
@@ -418,11 +450,6 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       if (storedMessages.length === 0) return;
 
       void saveChatToDb(storedMessages);
-
-      if (suppressNextServerSyncRef.current) {
-        suppressNextServerSyncRef.current = false;
-        return;
-      }
 
       void syncStoredMessagesToServer(storedMessages, conversationId, '[ChatMessages sync]');
     }, settleMs);

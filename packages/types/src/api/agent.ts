@@ -59,6 +59,7 @@ export const agentContextPolicySchema = z.object({
     .object({
       mandatory: z.number().int().safe().min(0),
       agentGuidance: z.number().int().safe().min(0),
+      stateGuidance: z.number().int().safe().min(0).default(0),
       activeStudy: z.number().int().safe().min(0),
       recentMessages: z.number().int().safe().min(0),
       rag: z.number().int().safe().min(0),
@@ -67,8 +68,10 @@ export const agentContextPolicySchema = z.object({
     .strict()
     .optional(),
   droppedLayers: z
-    .array(z.enum(['agentGuidance', 'activeStudy', 'rag', 'summary']))
-    .max(4)
+    .array(
+      z.enum(['agentGuidance', 'stateGuidance', 'activeStudy', 'rag', 'summary']),
+    )
+    .max(5)
     .refine((layers) => new Set(layers).size === layers.length, 'droppedLayers must be unique')
     .optional(),
   summaryVersion: z.number().int().safe().positive().optional(),

@@ -12,6 +12,7 @@ test('builds chat request body with active context and access token', () => {
       questionText: 'question from OCR',
     },
     accessToken: 'token',
+    conversationId: 'conv_1',
   });
 
   assert.deepEqual(body, {
@@ -22,6 +23,7 @@ test('builds chat request body with active context and access token', () => {
       questionText: 'question from OCR',
     },
     accessToken: 'token',
+    conversationId: 'conv_1',
   });
 });
 
@@ -30,7 +32,9 @@ test('normalizes missing access token to null', () => {
     messages: [{ role: 'user', content: 'question' }],
     activeContext: null,
     accessToken: undefined,
+    conversationId: null,
   });
 
   assert.equal(body.accessToken, null);
+  assert.equal(body.conversationId, null);
 });

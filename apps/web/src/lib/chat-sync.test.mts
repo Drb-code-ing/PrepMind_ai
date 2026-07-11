@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildChatSyncSignature } from './chat-sync.ts';
+import { beginChatServerSync, buildChatSyncSignature } from './chat-sync.ts';
 
 const baseMessages = [
   {
@@ -45,4 +45,48 @@ test('uses server conversation id in chat sync signature after creation', () => 
     buildChatSyncSignature(baseMessages, null),
     buildChatSyncSignature(baseMessages, 'conv-1'),
   );
+});
+
+test('starts exactly one sync for the first completed change after server hydration', () => {
+  const hydratedSignature = buildChatSyncSignature(baseMessages, 'conv-1');
+  const changedMessages = [
+    ...baseMessages,
+    {
+      id: 'msg-3',
+      userId: 'user-1',
+      role: 'user' as const,
+      content: 'Continue after refresh',
+      order: 2,
+      createdAt: 1_718_169_602_000,
+    },
+    {
+      id: 'msg-4',
+      userId: 'user-1',
+      role: 'assistant' as const,
+      content: 'Continue with the derivative example.',
+      order: 3,
+      createdAt: 1_718_169_603_000,
+    },
+  ];
+  const changedSignature = buildChatSyncSignature(changedMessages, 'conv-1');
+  const unchanged = beginChatServerSync({
+    syncKey: hydratedSignature,
+    lastServerSyncKey: hydratedSignature,
+    inFlightServerSyncKey: '',
+  });
+  const firstChanged = beginChatServerSync({
+    syncKey: changedSignature,
+    lastServerSyncKey: hydratedSignature,
+    inFlightServerSyncKey: '',
+  });
+  const duplicateChanged = beginChatServerSync({
+    syncKey: changedSignature,
+    lastServerSyncKey: hydratedSignature,
+    inFlightServerSyncKey: firstChanged.nextInFlightServerSyncKey,
+  });
+
+  assert.equal(unchanged.shouldSync, false);
+  assert.equal(firstChanged.shouldSync, true);
+  assert.equal(firstChanged.nextInFlightServerSyncKey, changedSignature);
+  assert.equal(duplicateChanged.shouldSync, false);
 });
