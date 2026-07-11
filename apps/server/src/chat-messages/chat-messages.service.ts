@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   ClearChatMessagesQuery,
@@ -7,11 +7,19 @@ import type {
 } from '@repo/types/api/chat-message';
 
 import { AppError } from '../common/errors/app-error';
+import {
+  ConversationStateCacheService,
+  type ConversationStateCache,
+} from '../conversation-context/conversation-state-cache.service';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ChatMessagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(ConversationStateCacheService)
+    private readonly stateCache: ConversationStateCache,
+  ) {}
 
   async list(userId: string, query: ListChatMessagesQuery) {
     const conversation = await this.findConversation(
@@ -30,6 +38,7 @@ export class ChatMessagesService {
     return {
       conversationId: conversation.id,
       messages: messages.map((message) => this.toResponse(message)),
+      state: await this.findState(userId, conversation.id),
     };
   }
 
@@ -76,6 +85,7 @@ export class ChatMessagesService {
     return {
       conversationId: conversation.id,
       messages: messages.map((message) => this.toResponse(message)),
+      state: await this.findState(userId, conversation.id),
     };
   }
 
@@ -91,6 +101,11 @@ export class ChatMessagesService {
     await this.prisma.conversation.delete({
       where: { id: conversation.id },
     });
+    try {
+      await this.stateCache.delete(userId, conversation.id);
+    } catch {
+      // PostgreSQL deletion is authoritative; cache cleanup is best effort.
+    }
 
     return { ok: true };
   }
@@ -171,6 +186,26 @@ export class ChatMessagesService {
       order: message.order,
       metadata: message.metadata,
       createdAt: message.createdAt.toISOString(),
+    };
+  }
+
+  private async findState(userId: string, conversationId: string) {
+    const state = await this.prisma.conversationState.findFirst({
+      where: {
+        userId,
+        conversationId,
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (!state) return null;
+
+    return {
+      conversationId: state.conversationId,
+      activeGoal: state.activeGoal,
+      activeQuestionId: state.activeQuestionId,
+      stateVersion: state.stateVersion,
+      expiresAt: state.expiresAt.toISOString(),
+      updatedAt: state.updatedAt.toISOString(),
     };
   }
 

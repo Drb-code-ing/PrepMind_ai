@@ -6,6 +6,7 @@ import { BackgroundJobsModule } from './background-jobs/background-jobs.module';
 import { ChatMessagesModule } from './chat-messages/chat-messages.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
+import { ConversationContextModule } from './conversation-context/conversation-context.module';
 import { DatabaseModule } from './database/database.module';
 import { EventsModule } from './events/events.module';
 import { HealthModule } from './health/health.module';
@@ -42,6 +43,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     UsersModule,
     WrongQuestionsModule,
     ChatMessagesModule,
+    ConversationContextModule,
     OcrRecordsModule,
     OperatorAuditModule,
     OperatorAuditExportsModule,

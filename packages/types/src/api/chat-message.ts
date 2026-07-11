@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { conversationStateSchema } from '@repo/types/api/conversation-context';
+
 export const chatMessageRoleSchema = z.enum(['USER', 'ASSISTANT', 'SYSTEM']);
 
 export const chatMessageSchema = z.object({
@@ -31,10 +33,22 @@ export const syncChatMessagesRequestSchema = z.object({
   messages: z.array(syncChatMessageItemSchema).max(500),
 });
 
-export const chatMessagesResponseSchema = z.object({
-  conversationId: z.string().nullable(),
-  messages: z.array(chatMessageSchema),
-});
+export const chatMessagesResponseSchema = z
+  .object({
+    conversationId: z.string().nullable(),
+    messages: z.array(chatMessageSchema),
+    state: conversationStateSchema.nullable().optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.state && value.state.conversationId !== value.conversationId) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['state', 'conversationId'],
+        message: 'state conversationId must match the response conversationId',
+      });
+    }
+  });
 
 export const clearChatMessagesQuerySchema = z.object({
   conversationId: z.string().min(1).optional(),
