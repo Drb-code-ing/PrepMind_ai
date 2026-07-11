@@ -12,6 +12,7 @@ import {
   cleanupSmokeRun,
   formatOperatorAuditExportSmokeFailure,
   parseOperatorAuditExportSmokeConfig,
+  selectSmokeFailureAfterClose,
   verifyOperatorAuditExportArchive,
 } from '../../scripts/operator-audit-export-smoke';
 
@@ -136,6 +137,51 @@ describe('operator audit export smoke configuration', () => {
       stage: 'cleanup',
       code: 'CLEANUP_FAILED',
     });
+  });
+
+  it('reports resource close failure only when no earlier smoke failure exists', () => {
+    const rawCloseError = new Error('raw close failure admin-secret-token');
+    const closeResults: PromiseSettledResult<unknown>[] = [
+      { status: 'fulfilled', value: undefined },
+      { status: 'rejected', reason: rawCloseError },
+    ];
+
+    const closeFailure = selectSmokeFailureAfterClose(
+      undefined,
+      false,
+      closeResults,
+    );
+    expect(closeFailure).toMatchObject({
+      hasFailure: true,
+      failure: {
+        stage: 'close',
+        code: 'RESOURCE_CLOSE_FAILED',
+      },
+    });
+    if (closeFailure.hasFailure) {
+      expect(
+        formatOperatorAuditExportSmokeFailure(closeFailure.failure),
+      ).not.toContain('admin-secret-token');
+    }
+
+    const earlierFailure = new OperatorAuditExportSmokeError(
+      'download',
+      'ARCHIVE_HASH_MISMATCH',
+      'safe',
+    );
+    expect(
+      selectSmokeFailureAfterClose(earlierFailure, true, closeResults),
+    ).toEqual({ hasFailure: true, failure: earlierFailure });
+    const falsyFailure = selectSmokeFailureAfterClose('', true, closeResults);
+    expect(falsyFailure).toMatchObject({
+      hasFailure: true,
+      failure: { stage: 'unknown', code: 'UNEXPECTED_ERROR' },
+    });
+    expect(
+      selectSmokeFailureAfterClose(undefined, false, [
+        { status: 'fulfilled', value: undefined },
+      ]),
+    ).toEqual({ hasFailure: false });
   });
 
   it('routes both success and failure cleanup through the safe cleanup boundary', () => {

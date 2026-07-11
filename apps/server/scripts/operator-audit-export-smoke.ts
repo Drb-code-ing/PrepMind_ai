@@ -219,7 +219,8 @@ export async function runOperatorAuditExportSmoke(
   };
   let succeeded = false;
   let result: SmokeResult | undefined;
-  let failure: unknown;
+  let hasFailure = false;
+  let failure: Error | undefined;
 
   try {
     const admin = await readCurrentUser(
@@ -428,7 +429,8 @@ export async function runOperatorAuditExportSmoke(
       objectDeleted: true,
     };
   } catch (error) {
-    failure = error;
+    failure = normalizeThrownError(error);
+    hasFailure = true;
   } finally {
     if (!succeeded && !config.keepData) {
       try {
@@ -436,16 +438,24 @@ export async function runOperatorAuditExportSmoke(
           cleanupSmokeRun(config, runtime, run),
         );
       } catch (error) {
-        failure = error;
+        failure = normalizeThrownError(error);
+        hasFailure = true;
       }
     }
-    await Promise.allSettled([
+    const closeResults = await Promise.allSettled([
       runtime.exportQueue.close(),
       runtime.maintenanceQueue.close(),
       runtime.prisma.$disconnect(),
     ]);
+    const closeSelection = selectSmokeFailureAfterClose(
+      failure,
+      hasFailure,
+      closeResults,
+    );
+    hasFailure = closeSelection.hasFailure;
+    failure = closeSelection.hasFailure ? closeSelection.failure : undefined;
   }
-  if (failure) throw normalizeThrownError(failure);
+  if (hasFailure && failure) throw failure;
   if (!result) throw smokeError('unknown', 'RESULT_MISSING');
   return result;
 }
@@ -456,6 +466,22 @@ export async function cleanupFailedSmokeRun(cleanup: () => Promise<void>) {
   } catch {
     throw smokeError('cleanup', 'CLEANUP_FAILED');
   }
+}
+
+export function selectSmokeFailureAfterClose(
+  currentFailure: unknown,
+  hasCurrentFailure: boolean,
+  closeResults: PromiseSettledResult<unknown>[],
+): { hasFailure: false } | { hasFailure: true; failure: Error } {
+  if (hasCurrentFailure) {
+    return { hasFailure: true, failure: normalizeThrownError(currentFailure) };
+  }
+  return closeResults.some((result) => result.status === 'rejected')
+    ? {
+        hasFailure: true,
+        failure: smokeError('close', 'RESOURCE_CLOSE_FAILED'),
+      }
+    : { hasFailure: false };
 }
 
 function requiredSecret(env: SmokeEnvironment, key: string) {

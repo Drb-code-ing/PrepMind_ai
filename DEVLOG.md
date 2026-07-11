@@ -63,6 +63,33 @@
 
 ## 近期关键记录
 
+### 2026-07-11 - Phase 7 Maintenance：Smoke 资源关闭与可见浏览器验收规范
+
+目标：收掉 Phase 7.23.8 质量审查留下的非阻塞技术债，让审计证据包 smoke 在 Queue/Prisma 资源
+关闭失败时给出安全、可判断的失败结果，并把真实浏览器验收默认使用可见窗口写入仓库规范。
+
+为什么：业务链路即使已经 PASS，`Queue.close()` 或 `Prisma.$disconnect()` 失败仍说明进程资源没有
+正常收口；完全吞掉 rejected result 会让脚本误报成功。但 close failure 不能覆盖更早的下载、清理
+等主要错误。另一方面，headless 自动化便于回归，却不能让协作者同步观察真实页面操作。
+
+主要内容与做法：
+
+- `Promise.allSettled()` 结果进入显式 failure selection：使用 `hasFailure` 而不是 truthy 判断，任意
+  falsy Promise rejection 也会先规范化为安全 Error。没有更早错误且任一 close rejected 时返回
+  `stage=close/code=RESOURCE_CLOSE_FAILED`；已有主链路或 cleanup 错误时保留原错误，不复制 raw close
+  reason、token 或依赖消息。
+- 新增 RED/GREEN 单测覆盖 close rejected、安全输出、既有错误优先和全部 fulfilled；聚焦 smoke
+  27/27 与定向 ESLint 通过。
+- 真实 Docker API/Worker/MinIO smoke 再次 PASS：records=4、request/download audit 各 1、
+  EXPIRED=true、objectDeleted=true；本轮 ADMIN/STUDENT 临时账号已删除。
+- `AGENTS.md` 与验收清单新增 headed 约定：真实页面验收默认把浏览器窗口保持可见；headless 只做
+  自动化补充，必须明确标注，不能替代用户要求的可见验收。
+
+边界：本次不新增 Phase 7 能力、不改变证据包业务状态机、API、数据库或 Docker 拓扑；纯 CLI
+资源关闭路径没有新增必须通过浏览器操作的页面。
+
+回顾时可以问：为什么资源关闭错误不能被静默吞掉，又为什么不能覆盖更早的业务/cleanup 错误？
+
 ### 2026-07-11 - Phase 7.23.8 Audit Evidence Export Delivery Closure
 
 目标：在真实 Docker PostgreSQL、Redis、MinIO、API、Worker、Web 和 Admin Console 上完成审计
