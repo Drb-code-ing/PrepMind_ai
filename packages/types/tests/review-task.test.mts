@@ -150,6 +150,9 @@ function testPlanResponse() {
       estimatedTotalMinutes: 12,
       peakDay: { date: '2026-06-18', count: 3 },
       intensity: 'normal',
+      capacityStatus: 'under',
+      dailyMinutes: 25,
+      dailyCardLimit: 12,
     },
     days: [
       {
@@ -162,6 +165,9 @@ function testPlanResponse() {
         skippedCount: 0,
         estimatedMinutes: 4,
         intensity: 'light',
+        pressureScore: 2,
+        capacityStatus: 'under',
+        reasons: [],
       },
     ],
     suggestion: {
@@ -197,6 +203,9 @@ function createPlanResponseEdgePayload(summary: Partial<Record<string, unknown>>
       estimatedTotalMinutes: 12,
       peakDay: { date: '2026-06-18', count: 3 },
       intensity: 'normal',
+      capacityStatus: 'under',
+      dailyMinutes: 25,
+      dailyCardLimit: 12,
       ...summary,
     },
     days: [
@@ -210,6 +219,9 @@ function createPlanResponseEdgePayload(summary: Partial<Record<string, unknown>>
         skippedCount: 0,
         estimatedMinutes: 4,
         intensity: 'light',
+        pressureScore: 2,
+        capacityStatus: 'under',
+        reasons: [],
       },
     ],
     suggestion: {

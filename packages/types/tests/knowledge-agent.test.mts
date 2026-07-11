@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   knowledgeAgentSuggestionQuerySchema,
   knowledgeAgentSuggestionResponseSchema,
-} from '../src/api/knowledge-agent';
+} from '../src/api/knowledge-agent.ts';
 
 testQueryDefaults();
 testValidSuggestionResponse();

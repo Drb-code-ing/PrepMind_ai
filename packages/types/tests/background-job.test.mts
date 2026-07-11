@@ -4,7 +4,7 @@ import {
   backgroundJobListQuerySchema,
   backgroundJobResponseSchema,
   backgroundJobSummaryResponseSchema,
-} from '../src/api/background-job';
+} from '../src/api/background-job.ts';
 
 assert.deepEqual(
   backgroundJobListQuerySchema.parse({

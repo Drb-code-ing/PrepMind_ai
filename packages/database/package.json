@@ -11,7 +11,7 @@
     "prisma:status": "bun scripts/prisma-with-root-env.mjs migrate status",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit"
+    "test": "node --experimental-strip-types --test tests/*.test.mts && tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",

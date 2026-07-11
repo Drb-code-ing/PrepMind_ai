@@ -20,6 +20,7 @@
     "./api/wrong-question": "./src/api/wrong-question.ts",
     "./api/wrong-question-organizer": "./src/api/wrong-question-organizer.ts",
     "./api/chat-message": "./src/api/chat-message.ts",
+    "./api/conversation-context": "./src/api/conversation-context.ts",
     "./api/ocr-question": "./src/api/ocr-question.ts",
     "./api/ocr-record": "./src/api/ocr-record.ts",
     "./api/review": "./src/api/review.ts",
@@ -34,6 +35,7 @@
   },
   "scripts": {
     "lint": "eslint src/",
+    "test": "node --experimental-strip-types --test tests/*.test.mts && tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
