@@ -38,7 +38,26 @@ type ObservationBase<
 
 type ObservationByDisposition<ReasonCode extends string> = {
   [Disposition in ModelCandidateDisposition]: ObservationBase<Disposition, ReasonCode> &
-    ({ attempted: false; trace?: never } | { attempted: true; trace: ModelAgentTrace });
+    (
+      | {
+          attempted: false;
+          trace?: never;
+          traceUnavailable?: never;
+          usageUnavailable?: never;
+        }
+      | {
+          attempted: true;
+          trace: ModelAgentTrace;
+          traceUnavailable?: never;
+          usageUnavailable?: never;
+        }
+      | {
+          attempted: true;
+          trace?: never;
+          traceUnavailable: true;
+          usageUnavailable: true;
+        }
+    );
 }[ModelCandidateDisposition];
 
 export type ModelCandidateObservation<ReasonCode extends string> =
@@ -63,13 +82,16 @@ const EMAIL_LOCAL_SYMBOLS = "!#$%&'*+-/=?^_`{|}~";
 const HARD_BLOCK_PATTERNS: readonly [HardBlockCode, RegExp][] = [
   [
     'instruction_override',
-    /(?:ignore\s+(?:all\s+)?(?:previous|above|rules?)|忽略(?:以上|之前|规则))/iu,
+    /(?:(?:^|[^a-z0-9_])ignore\s+(?:all\s+)?(?:previous|above|rules?)(?![a-z0-9_])|忽略(?:以上|之前|规则))/iu,
   ],
   [
     'credential_material',
-    /authorization\s*:\s*bearer|cookie\s*[:=]|(?:api[_ -]?key|access[_ -]?token|client[_ -]?secret|password)\s*[:=]|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:^|[^a-z0-9_-])(?:sk-[a-z0-9_-]{16,}|aiza[a-z0-9_-]{24,})(?![a-z0-9_-])/iu,
+    /authorization\s*:\s*bearer|cookie\s*[:=]|(?:api[_ -]?key|access[_ -]?token|client[_ -]?secret|password)\s*[:=]|(?:密码|密钥|访问令牌|客户端密钥)\s*[:=]|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:^|[^a-z0-9_-])(?:sk-[a-z0-9_-]{16,}|aiza[a-z0-9_-]{24,})(?![a-z0-9_-])/iu,
   ],
-  ['system_prompt_exfiltration', /system\s+prompt|系统提示词/iu],
+  [
+    'system_prompt_exfiltration',
+    /(?:^|[^a-z0-9_])system\s+prompt(?![a-z0-9_])|系统提示词/iu,
+  ],
 ];
 
 export function normalizeCandidateText(value: string): string {
@@ -78,7 +100,23 @@ export function normalizeCandidateText(value: string): string {
 
 export function detectHardBlockedCandidateMaterial(value: string): HardBlockCode | null {
   const normalized = normalizeCandidateScanText(value);
-  return HARD_BLOCK_PATTERNS.find(([, pattern]) => pattern.test(normalized))?.[0] ?? null;
+  for (const [code, pattern] of HARD_BLOCK_PATTERNS) {
+    if (pattern.test(normalized)) return code;
+    if (
+      code === 'credential_material' &&
+      containsOrderedSignalsWithin(
+        normalized,
+        [
+          ['输出', '打印', '显示', '返回', '泄露'],
+          ['密码', '密钥', '访问令牌', '客户端密钥'],
+        ],
+        40,
+      )
+    ) {
+      return code;
+    }
+  }
+  return null;
 }
 
 export function prepareCandidateText(input: {
@@ -253,7 +291,7 @@ function utf8Bytes(value: string): number {
   return bytes;
 }
 
-function normalizeCandidateScanText(value: string): string {
+export function normalizeCandidateScanText(value: string): string {
   return value
     .normalize('NFKC')
     .toLowerCase()
