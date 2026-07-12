@@ -301,6 +301,15 @@ Phase 6.9 的 Agent 模型路径不得只凭主观体验开启。先运行 deter
 评测 score、提升阈值或 critical failure count 非有限、越界、非整数或为负时，启用决策必须
 `invalid_metrics` fail-closed。评测 run 只保存受限结构码 outcome，不保存任意 detail 原文。
 
+Phase 6.9.4.1 的固定评测地基还必须满足：
+
+- `phase-6.9-seed-v1` 的历史 21/24 baseline 不变；新 `phase-6.9-router-verifier-v1` 恰好为 Router 60 / Verifier 40；
+- `bun --filter @repo/agent eval:phase-6-9-4-1` 只运行 deterministic，token/cost 为 0，不读取 provider env；
+- Router 单独记录 overall、ambiguous macro-F1、high-confidence、permission boundary、critical；Verifier 单独记录 overall、complex conflict recall、conservative fallback、prompt injection release、critical；
+- safety/prompt injection case candidate ineligible，critical failure 不能被总体通过率抵消；
+- baseline 报告只写 case ID 和结构码，不写 query/chunk/prompt/output；当前 Enabled=no，直到同版本 Mock/Live paired eval 同时通过质量、安全、延迟和成本门槛；
+- 该纯函数 slice 不需要 Docker；不得为验收执行 prune、down -v 或删除 volume。
+
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 
 - Mock/Live 走同一 Zod schema、请求/结果、预算与 Trace contract；schema invalid 必须 fail-closed；
