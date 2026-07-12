@@ -310,6 +310,12 @@ Phase 6.9.4.1 的固定评测地基还必须满足：
 - baseline 报告只写 case ID 和结构码，不写 query/chunk/prompt/output；当前 Enabled=no，直到同版本 Mock/Live paired eval 同时通过质量、安全、延迟和成本门槛；
 - 该纯函数 slice 不需要 Docker；不得为验收执行 prune、down -v 或删除 volume。
 
+Phase 6.9.4.2 Mock candidate 的执行入口如下；行为 contract 只以 `docs/ai-behavior-acceptance.md` 的 Phase 6.9.4.2 段为 canonical source：
+
+- 运行 Router candidate、Verifier candidate、共享 policy 定向测试，以及 `bun --filter @repo/agent test` 全量回归和 `bun --filter @repo/agent eval:phase-6-9-4-1` baseline；
+- 对阶段 acceptance 执行 placeholder/乱码与 credential-value 隐私扫描，并核对报告仍为 `Enabled=no`、`Reason=paired_candidate_not_run`；
+- 阶段 acceptance 只记录本次证据，不复制或替代 canonical behavior contract。
+
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 
 - Mock/Live 走同一 Zod schema、请求/结果、预算与 Trace contract；schema invalid 必须 fail-closed；
