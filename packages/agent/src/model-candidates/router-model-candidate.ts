@@ -4,7 +4,6 @@ import {
   isModelAgentRunBudget,
   reserveModelAgentBudget,
   type ModelAgentErrorCode,
-  type ModelAgentResult,
   type ModelAgentRunBudget,
   type ModelAgentRuntime,
 } from '@repo/ai';
@@ -25,6 +24,7 @@ import {
   type ModelCandidateEnvelope,
   type ModelCandidateObservation,
 } from './model-candidate-policy.ts';
+import { sanitizeModelCandidateRuntimeResult } from './model-candidate-runtime-result.ts';
 
 export const ROUTER_MODEL_CANDIDATE_SCHEMA = z
   .object({
@@ -89,87 +89,21 @@ const MAX_INPUT_TOKENS = 800;
 const MAX_OUTPUT_TOKENS = 120;
 const MAX_SIGNAL_GAP = 40;
 
-const MODEL_AGENT_ERROR_CODE_SCHEMA = z.enum([
-  'INVALID_REQUEST',
-  'INVALID_RUNTIME_CONFIG',
-  'LIVE_CALLS_DISABLED',
-  'EXECUTOR_UNAVAILABLE',
-  'CALL_BUDGET_EXCEEDED',
-  'INPUT_BUDGET_EXCEEDED',
-  'OUTPUT_BUDGET_EXCEEDED',
-  'SCHEMA_INVALID',
-  'TIMEOUT',
-  'ABORTED',
-  'PROVIDER_ERROR',
-]);
-
-const RUNTIME_BUDGET_SCHEMA = z
-  .object({
-    maxCalls: z.number().int().safe().positive(),
-    usedCalls: z.number().int().safe().min(0),
-    maxInputTokens: z.number().int().safe().positive(),
-    usedInputTokens: z.number().int().safe().min(0),
-    maxOutputTokens: z.number().int().safe().positive(),
-    usedOutputTokens: z.number().int().safe().min(0),
-  })
-  .strict();
-
-const RUNTIME_USAGE_SCHEMA = z
-  .object({
-    inputTokens: z.number().int().safe().min(0),
-    outputTokens: z.number().int().safe().min(0),
-  })
-  .strict();
-
-const RUNTIME_TRACE_SCHEMA = z
-  .object({
-    runIdHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-    task: z.literal('router_fallback'),
-    mode: z.enum(['mock', 'live']),
-    provider: z.enum(['mock', 'deepseek', 'openai']),
-    model: z.string().regex(/^[A-Za-z0-9._:/-]{1,120}$/),
-    status: z.enum(['succeeded', 'failed']),
-    inputTokens: z.number().int().safe().min(0),
-    outputTokens: z.number().int().safe().min(0),
-    maxOutputTokens: z.literal(MAX_OUTPUT_TOKENS),
-    durationMs: z.number().int().safe().min(0),
-    degraded: z.boolean(),
-    errorCode: MODEL_AGENT_ERROR_CODE_SCHEMA.optional(),
-  })
-  .strict();
-
-const RUNTIME_SUCCESS_SCHEMA = z
-  .object({
-    ok: z.literal(true),
-    data: ROUTER_MODEL_CANDIDATE_SCHEMA,
-    budget: RUNTIME_BUDGET_SCHEMA,
-    usage: RUNTIME_USAGE_SCHEMA,
-    trace: RUNTIME_TRACE_SCHEMA,
-  })
-  .strict();
-
-const RUNTIME_FAILURE_SCHEMA = z
-  .object({
-    ok: z.literal(false),
-    error: z
-      .object({
-        code: MODEL_AGENT_ERROR_CODE_SCHEMA,
-        message: z.string(),
-        retryable: z.boolean(),
-      })
-      .strict(),
-    budget: RUNTIME_BUDGET_SCHEMA,
-    usage: RUNTIME_USAGE_SCHEMA,
-    trace: RUNTIME_TRACE_SCHEMA,
-  })
-  .strict();
-
 const SAFE_INVALID_RESULT: RouterResult = Object.freeze({
   name: 'chat',
   confidence: 1,
   reason: 'router_candidate_invalid_input',
   requiresRag: false,
   requiresHumanApproval: false,
+});
+
+const SAFE_INVALID_BUDGET: ModelAgentRunBudget = Object.freeze({
+  maxCalls: 1,
+  usedCalls: 0,
+  maxInputTokens: 1,
+  usedInputTokens: 0,
+  maxOutputTokens: 1,
+  usedOutputTokens: 0,
 });
 
 const ROUTER_SYSTEM_PROMPT = `你是 PrepMind Router 模型候选，只做路由分类，不执行工具、权限或写操作。
@@ -326,7 +260,7 @@ export async function runRouterModelCandidate(
   const validation = validateInput(input);
   if (!validation.ok) {
     return localEnvelope(
-      safeDeterministicResult(validation.deterministic),
+      validation.deterministic ?? { ...SAFE_INVALID_RESULT },
       'fallback_invalid_input',
       validation.budget,
       [],
@@ -349,7 +283,17 @@ export async function runRouterModelCandidate(
     );
   }
 
-  if (validation.input.signal?.aborted) {
+  const abortState = readRouterAbortSignalState(validation.input.signal);
+  if (!abortState.ok) {
+    return localEnvelope(
+      { ...SAFE_INVALID_RESULT },
+      'fallback_invalid_input',
+      SAFE_INVALID_BUDGET,
+      [],
+    );
+  }
+
+  if (abortState.aborted) {
     return localEnvelope(
       validation.input.deterministic,
       'fallback_aborted',
@@ -443,8 +387,8 @@ export async function runRouterModelCandidate(
       userPrompt,
       estimatedInputTokens,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-      budget: validation.input.budget,
-      ...(validation.input.signal ? { signal: validation.input.signal } : {}),
+      budget: safeCandidateBudgetSnapshot(validation.input.budget),
+      ...(abortState.signal ? { signal: abortState.signal } : {}),
     });
   } catch {
     return runtimeContractRejectionWithUnavailableTelemetry(
@@ -453,11 +397,14 @@ export async function runRouterModelCandidate(
     );
   }
 
-  const runtimeResult = sanitizeRouterRuntimeResult(
-    rawRuntimeResult,
-    validation.input.budget,
-    reservation.budget,
-  );
+  const runtimeResult = sanitizeModelCandidateRuntimeResult({
+    value: rawRuntimeResult,
+    dataSchema: ROUTER_MODEL_CANDIDATE_SCHEMA,
+    task: 'router_fallback',
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    callerBudget: validation.input.budget,
+    previewBudget: reservation.budget,
+  });
   if (!runtimeResult) {
     return runtimeContractRejectionWithUnavailableTelemetry(
       validation.input.deterministic,
@@ -501,63 +448,104 @@ export async function runRouterModelCandidate(
   };
 }
 
-function validateInput(input: unknown):
+type RouterInputValidation =
   | { ok: true; input: RouterModelCandidateInput }
-  | { ok: false; deterministic: unknown; budget: unknown } {
+  | {
+      ok: false;
+      deterministic?: RouterResult;
+      budget: ModelAgentRunBudget;
+    };
+
+function readRouterAbortSignalState(
+  signal: AbortSignal | undefined,
+):
+  | { ok: true; aborted: boolean; signal?: AbortSignal }
+  | { ok: false } {
+  if (signal === undefined) return { ok: true, aborted: false };
+  try {
+    const aborted: unknown = signal.aborted;
+    if (typeof aborted !== 'boolean') return { ok: false };
+    return { ok: true, aborted, signal };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function validateInput(input: unknown): RouterInputValidation {
   if (typeof input !== 'object' || input === null) {
-    return { ok: false, deterministic: undefined, budget: undefined };
+    return { ok: false, budget: SAFE_INVALID_BUDGET };
   }
 
-  const candidateInput = input as Record<string, unknown>;
-  const deterministic = candidateInput.deterministic;
-  const budget = candidateInput.budget;
   try {
-    const deterministicResult = routerResultSchema.safeParse(deterministic);
+    const candidateInput = input as Record<string, unknown>;
+    const runId = candidateInput.runId;
+    const text = candidateInput.text;
+    const activeStudyContext = candidateInput.activeStudyContext;
+    const deterministic = candidateInput.deterministic;
+    const candidateEligible = candidateInput.candidateEligible;
+    const budget = candidateInput.budget;
+    const signal = candidateInput.signal;
     const runtime = candidateInput.runtime;
+    const deterministicResult = routerResultSchema.safeParse(deterministic);
+    const safeBudget = readValidatedRouterBudget(budget);
     if (
-      typeof candidateInput.runId !== 'string' ||
-      !candidateInput.runId.trim() ||
-      typeof candidateInput.text !== 'string' ||
-      !candidateInput.text.trim() ||
-      utf8Bytes(candidateInput.text) > MAX_RAW_BYTES ||
-      (candidateInput.activeStudyContext !== undefined &&
-        (typeof candidateInput.activeStudyContext !== 'string' ||
-          utf8Bytes(candidateInput.activeStudyContext) > MAX_RAW_BYTES)) ||
+      typeof runId !== 'string' ||
+      !runId.trim() ||
+      typeof text !== 'string' ||
+      !text.trim() ||
+      utf8Bytes(text) > MAX_RAW_BYTES ||
+      (activeStudyContext !== undefined &&
+        (typeof activeStudyContext !== 'string' ||
+          utf8Bytes(activeStudyContext) > MAX_RAW_BYTES)) ||
       !deterministicResult.success ||
-      typeof candidateInput.candidateEligible !== 'boolean' ||
-      !isModelAgentRunBudget(budget) ||
-      (candidateInput.signal !== undefined && !(candidateInput.signal instanceof AbortSignal)) ||
+      typeof candidateEligible !== 'boolean' ||
+      safeBudget === null ||
+      (signal !== undefined && !(signal instanceof AbortSignal)) ||
       typeof runtime !== 'object' ||
       runtime === null ||
       typeof (runtime as Record<string, unknown>).invokeStructured !== 'function'
     ) {
-      return { ok: false, deterministic, budget };
+      return {
+        ok: false,
+        ...(deterministicResult.success
+          ? { deterministic: deterministicResult.data }
+          : {}),
+        budget: safeBudget ?? SAFE_INVALID_BUDGET,
+      };
     }
     return {
       ok: true,
       input: {
-        runId: candidateInput.runId,
-        text: candidateInput.text,
-        ...(candidateInput.activeStudyContext !== undefined
-          ? { activeStudyContext: candidateInput.activeStudyContext }
+        runId,
+        text,
+        ...(activeStudyContext !== undefined
+          ? { activeStudyContext }
           : {}),
         deterministic: deterministicResult.data,
-        candidateEligible: candidateInput.candidateEligible,
-        budget,
-        ...(candidateInput.signal !== undefined
-          ? { signal: candidateInput.signal }
+        candidateEligible,
+        budget: safeBudget,
+        ...(signal !== undefined
+          ? { signal }
           : {}),
-        runtime: candidateInput.runtime as Pick<ModelAgentRuntime, 'invokeStructured'>,
+        runtime: runtime as Pick<ModelAgentRuntime, 'invokeStructured'>,
       },
     };
   } catch {
-    return { ok: false, deterministic, budget };
+    return { ok: false, budget: SAFE_INVALID_BUDGET };
   }
 }
 
-function safeDeterministicResult(value: unknown): RouterResult {
-  const parsed = routerResultSchema.safeParse(value);
-  return parsed.success ? parsed.data : { ...SAFE_INVALID_RESULT };
+function readValidatedRouterBudget(value: unknown): ModelAgentRunBudget | null {
+  if (!isModelAgentRunBudget(value)) return null;
+  const snapshot: ModelAgentRunBudget = {
+    maxCalls: value.maxCalls,
+    usedCalls: value.usedCalls,
+    maxInputTokens: value.maxInputTokens,
+    usedInputTokens: value.usedInputTokens,
+    maxOutputTokens: value.maxOutputTokens,
+    usedOutputTokens: value.usedOutputTokens,
+  };
+  return isModelAgentRunBudget(snapshot) ? snapshot : null;
 }
 
 function localEnvelope(
@@ -700,100 +688,5 @@ function isAsciiWordCodePoint(value: string | undefined): boolean {
     (code >= 65 && code <= 90) ||
     (code >= 97 && code <= 122) ||
     code === 95
-  );
-}
-
-function sanitizeRouterRuntimeResult(
-  value: unknown,
-  callerBudget: ModelAgentRunBudget,
-  previewBudget: ModelAgentRunBudget,
-): ModelAgentResult<z.infer<typeof ROUTER_MODEL_CANDIDATE_SCHEMA>> | null {
-  const success = RUNTIME_SUCCESS_SCHEMA.safeParse(value);
-  if (success.success) {
-    const candidate = success.data;
-    if (
-      !isModelAgentRunBudget(candidate.budget) ||
-      !budgetsEqual(candidate.budget, previewBudget) ||
-      !isConsistentRuntimeTrace(candidate.trace, candidate.usage) ||
-      candidate.trace.status !== 'succeeded' ||
-      candidate.trace.degraded ||
-      candidate.trace.errorCode !== undefined
-    ) {
-      return null;
-    }
-    return candidate;
-  }
-
-  const failure = RUNTIME_FAILURE_SCHEMA.safeParse(value);
-  if (!failure.success) return null;
-  const candidate = failure.data;
-  if (
-    !isModelAgentRunBudget(candidate.budget) ||
-    !hasExpectedFailureBudget(
-      candidate.error.code,
-      candidate.budget,
-      callerBudget,
-      previewBudget,
-    ) ||
-    !isConsistentRuntimeTrace(candidate.trace, candidate.usage) ||
-    candidate.trace.status !== 'failed' ||
-    !candidate.trace.degraded ||
-    candidate.trace.errorCode !== candidate.error.code
-  ) {
-    return null;
-  }
-  return candidate;
-}
-
-function hasExpectedFailureBudget(
-  errorCode: ModelAgentErrorCode,
-  actualBudget: ModelAgentRunBudget,
-  callerBudget: ModelAgentRunBudget,
-  previewBudget: ModelAgentRunBudget,
-): boolean {
-  switch (errorCode) {
-    case 'SCHEMA_INVALID':
-    case 'TIMEOUT':
-    case 'PROVIDER_ERROR':
-      return budgetsEqual(actualBudget, previewBudget);
-    case 'ABORTED':
-      return (
-        budgetsEqual(actualBudget, callerBudget) ||
-        budgetsEqual(actualBudget, previewBudget)
-      );
-    case 'INVALID_REQUEST':
-    case 'LIVE_CALLS_DISABLED':
-    case 'EXECUTOR_UNAVAILABLE':
-    case 'CALL_BUDGET_EXCEEDED':
-    case 'INPUT_BUDGET_EXCEEDED':
-    case 'OUTPUT_BUDGET_EXCEEDED':
-    case 'INVALID_RUNTIME_CONFIG':
-      return budgetsEqual(actualBudget, callerBudget);
-  }
-}
-
-function budgetsEqual(
-  left: ModelAgentRunBudget,
-  right: ModelAgentRunBudget,
-): boolean {
-  return (
-    left.maxCalls === right.maxCalls &&
-    left.usedCalls === right.usedCalls &&
-    left.maxInputTokens === right.maxInputTokens &&
-    left.usedInputTokens === right.usedInputTokens &&
-    left.maxOutputTokens === right.maxOutputTokens &&
-    left.usedOutputTokens === right.usedOutputTokens
-  );
-}
-
-function isConsistentRuntimeTrace(
-  trace: z.infer<typeof RUNTIME_TRACE_SCHEMA>,
-  usage: z.infer<typeof RUNTIME_USAGE_SCHEMA>,
-): boolean {
-  return (
-    trace.inputTokens === usage.inputTokens &&
-    trace.outputTokens === usage.outputTokens &&
-    ((trace.mode === 'mock' && trace.provider === 'mock') ||
-      (trace.mode === 'live' && trace.provider !== 'mock'))
   );
 }
