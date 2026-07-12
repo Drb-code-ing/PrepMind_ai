@@ -2,9 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **历史执行状态（2026-07-12）：已完成。** 本文件记录当时的实施顺序和脚手架，不是持续行为 contract 的最终事实源。最终 contract 以 current code、`docs/ai-behavior-acceptance.md` 的 canonical Phase 6.9.4.2 段和 `docs/acceptance/phase-6-9-4-2-router-verifier-mock-candidate.md` 的 fresh 证据为准。下方长代码示例仅是实施脚手架；final review hardening 之后不得把旧 snippet 当作当前实现事实。
+
+最终 review hardening 已补齐：Router / Verifier 共享 strict runtime result sanitizer；runtime throw/malformed/hostile telemetry 使用 `traceUnavailable/usageUnavailable` 三态 observation；telemetry 不可验证时推进 preview budget 防超卖；caller、runtime 与 preview budget 隔离 clone；hostile getters/Proxy/AbortSignal accessor containment；允许真实 provider input usage 高于工程估算但继续约束 output cap；ineligible 的 Router 保留 strict schema 重建后的 deterministic 结果并剥离额外字段，Verifier 保留 status/限制性语义并用本地固定模板安全重建正文，两者都不产生 candidate provenance。
+
 **Goal:** 建立 Router / Verifier 专属 Mock candidate adapter，以 strict schema、确定性 safety gate、不可变预算和 fail-closed 降级为后续 same-case paired eval 提供工程 contract。
 
-**Architecture:** 保留 `routeAgentRequest()` 和 `verifyKnowledgeChunks()` 不变，在 `packages/agent/src/model-candidates/` 中新增共享安全 policy 与两个 Agent 专属 adapter。adapter 通过依赖注入使用 `ModelAgentRuntime`；ineligible/安全请求零调用，Router 失败回退 deterministic，Verifier 失败保守收紧。
+**Architecture:** 保留 `routeAgentRequest()` 和 `verifyKnowledgeChunks()` 不变，在 `packages/agent/src/model-candidates/` 中新增共享安全 policy、共享 strict runtime result sanitizer 与两个 Agent 专属 adapter。adapter 通过依赖注入使用 `ModelAgentRuntime`；ineligible/安全请求零调用，Router 保留 strict schema 重建后的 deterministic 结果，Verifier 保留 status/限制性语义并安全重建正文，其他 Verifier 失败继续保守收紧。
 
 **Tech Stack:** TypeScript、Zod 3、Bun test、`@repo/agent`、`@repo/ai` ModelAgentRuntime、现有 Phase 6.9.4.1 eval dataset/baseline。
 
@@ -36,10 +40,11 @@
 ## 文件边界
 
 - Create: `packages/agent/src/model-candidates/model-candidate-policy.ts`
+- Create: `packages/agent/src/model-candidates/model-candidate-runtime-result.ts`
 - Create: `packages/agent/src/model-candidates/router-model-candidate.ts`
 - Create: `packages/agent/src/model-candidates/knowledge-verifier-model-candidate.ts`
 - Create: `packages/agent/tests/model-candidate-policy.test.ts`
-- Create: `packages/agent/tests/router-model-candidate.test.ts`
+- Create, then modify during final review: `packages/agent/tests/router-model-candidate.test.ts`
 - Create: `packages/agent/tests/knowledge-verifier-model-candidate.test.ts`
 - Modify: `packages/agent/package.json`
 - Modify when dependency metadata changes: `bun.lock`
@@ -52,6 +57,8 @@
 本阶段不修改 `packages/agent/src/router.ts`、`packages/agent/src/nodes/knowledge-verifier.ts`、
 Phase 6.9.4.1 case/metrics/baseline runner，也不从 `@repo/agent` package root 导出新 adapter。
 
+以上文件动作以最终仓库历史为准：共享 sanitizer 与 Router 测试 hardening 是初始脚手架之后的实际补强。
+
 ---
 
 ### Task 1: 共享 Model Candidate Safety Policy
@@ -61,7 +68,7 @@ Phase 6.9.4.1 case/metrics/baseline runner，也不从 `@repo/agent` package roo
 - Create: `packages/agent/src/model-candidates/model-candidate-policy.ts`
 - Create: `packages/agent/tests/model-candidate-policy.test.ts`
 
-- [ ] **Step 1: 从最新 main 创建 policy 分支**
+- [x] **Step 1: 从最新 main 创建 policy 分支**
 
 ```powershell
 git switch main
@@ -72,7 +79,7 @@ git switch -c codex/phase-6-9-4-2-candidate-policy
 
 Expected：`main` 干净且与 `origin/main` 一致；新分支直接基于该 SHA。
 
-- [ ] **Step 2: 写失败测试固定共享 contract**
+- [x] **Step 2: 写失败测试固定共享 contract**
 
 创建 `packages/agent/tests/model-candidate-policy.test.ts`，使用以下导入和固定用例：
 
@@ -165,7 +172,7 @@ describe('model candidate policy', () => {
 });
 ```
 
-- [ ] **Step 3: 运行测试确认缺少模块**
+- [x] **Step 3: 运行测试确认缺少模块**
 
 ```powershell
 bun --filter @repo/agent test -- model-candidate-policy
@@ -173,7 +180,7 @@ bun --filter @repo/agent test -- model-candidate-policy
 
 Expected：FAIL，原因是 `../src/model-candidates/model-candidate-policy` 不存在。
 
-- [ ] **Step 4: 实现共享类型、脱敏、距离和预算 helper**
+- [x] **Step 4: 实现共享类型、脱敏、距离和预算 helper**
 
 创建 `packages/agent/src/model-candidates/model-candidate-policy.ts`，实现以下完整 public contract：
 
@@ -214,7 +221,11 @@ type ObservationBase<ReasonCode extends string> = {
 
 export type ModelCandidateObservation<ReasonCode extends string> =
   ObservationBase<ReasonCode> &
-    ({ attempted: false; trace?: never } | { attempted: true; trace: ModelAgentTrace });
+    (
+      | { attempted: false; trace?: never; traceUnavailable?: never; usageUnavailable?: never }
+      | { attempted: true; trace: ModelAgentTrace; traceUnavailable?: never; usageUnavailable?: never }
+      | { attempted: true; trace?: never; traceUnavailable: true; usageUnavailable: true }
+    );
 
 export type ModelCandidateEnvelope<Result, ReasonCode extends string> = {
   result: Result;
@@ -359,7 +370,7 @@ function utf8Bytes(value: string) {
 }
 ```
 
-- [ ] **Step 5: 运行 policy 定向与 package 门禁**
+- [x] **Step 5: 运行 policy 定向与 package 门禁**
 
 ```powershell
 bun --filter @repo/agent test -- model-candidate-policy
@@ -371,7 +382,7 @@ git diff --check
 
 Expected：policy 定向测试与 Agent 全量测试全部通过，typecheck/lint/diff check 退出 0。
 
-- [ ] **Step 6: 提交、合并 main、main 复验并推送**
+- [x] **Step 6: 提交、合并 main、main 复验并推送**
 
 ```powershell
 git add packages/agent/src/model-candidates/model-candidate-policy.ts `
@@ -400,7 +411,7 @@ git push origin main
 - Modify: `packages/agent/package.json`
 - Modify when changed: `bun.lock`
 
-- [ ] **Step 1: 从已推送的最新 main 创建 Router 分支**
+- [x] **Step 1: 从已推送的最新 main 创建 Router 分支**
 
 ```powershell
 git switch main
@@ -409,7 +420,7 @@ git status --short --branch
 git switch -c codex/phase-6-9-4-2-router-candidate
 ```
 
-- [ ] **Step 2: 显式声明 Zod 直接依赖**
+- [x] **Step 2: 显式声明 Zod 直接依赖**
 
 使用 `apply_patch` 在 `packages/agent/package.json` 的 `dependencies` 中增加：
 
@@ -425,7 +436,7 @@ bun install
 
 Expected：`packages/agent/package.json` 显式声明 Zod；`bun.lock` 只在 importer metadata 确有变化时跟随修改。
 
-- [ ] **Step 3: 写失败测试固定 Router schema、gate、merge 和 fallback**
+- [x] **Step 3: 写失败测试固定 Router schema、gate、merge 和 fallback**
 
 创建 `packages/agent/tests/router-model-candidate.test.ts`，必须包含以下核心断言：
 
@@ -687,7 +698,7 @@ describe('router model candidate', () => {
 });
 ```
 
-- [ ] **Step 4: 运行失败测试**
+- [x] **Step 4: 运行失败测试**
 
 ```powershell
 bun --filter @repo/agent test -- router-model-candidate
@@ -695,7 +706,7 @@ bun --filter @repo/agent test -- router-model-candidate
 
 Expected：FAIL，原因是 Router candidate 模块尚未存在。
 
-- [ ] **Step 5: 实现 Router schema、detector、canonical map 和 adapter**
+- [x] **Step 5: 实现 Router schema、detector、canonical map 和 adapter**
 
 创建 `packages/agent/src/model-candidates/router-model-candidate.ts`，使用以下固定 contract：
 
@@ -1047,7 +1058,7 @@ function utf8Bytes(value: string) {
 }
 ```
 
-- [ ] **Step 6: 运行 Router 定向、全量、类型和安全门禁**
+- [x] **Step 6: 运行 Router 定向、全量、类型和安全门禁**
 
 ```powershell
 bun --filter @repo/agent test -- router-model-candidate
@@ -1062,7 +1073,7 @@ git diff --check
 
 Expected：8 个 safety case 均零调用且对应固定 code；全量 Agent 测试通过；旧 baseline 仍为 100/74/26、critical=2。
 
-- [ ] **Step 7: 提交、合并、main 复验并推送**
+- [x] **Step 7: 提交、合并、main 复验并推送**
 
 ```powershell
 git add packages/agent/src/model-candidates/router-model-candidate.ts `
@@ -1092,7 +1103,7 @@ git push origin main
 - Create: `packages/agent/src/model-candidates/knowledge-verifier-model-candidate.ts`
 - Create: `packages/agent/tests/knowledge-verifier-model-candidate.test.ts`
 
-- [ ] **Step 1: 从已推送的最新 main 创建 Verifier 分支**
+- [x] **Step 1: 从已推送的最新 main 创建 Verifier 分支**
 
 ```powershell
 git switch main
@@ -1101,7 +1112,7 @@ git status --short --branch
 git switch -c codex/phase-6-9-4-2-verifier-candidate
 ```
 
-- [ ] **Step 2: 写失败测试固定 Verifier input、schema、gate、排序和降级**
+- [x] **Step 2: 写失败测试固定 Verifier input、schema、gate、排序和降级**
 
 创建 `packages/agent/tests/knowledge-verifier-model-candidate.test.ts`，核心测试代码必须包含：
 
@@ -1580,7 +1591,7 @@ describe('knowledge verifier model candidate', () => {
 });
 ```
 
-- [ ] **Step 3: 运行失败测试**
+- [x] **Step 3: 运行失败测试**
 
 ```powershell
 bun --filter @repo/agent test -- knowledge-verifier-model-candidate
@@ -1588,7 +1599,7 @@ bun --filter @repo/agent test -- knowledge-verifier-model-candidate
 
 Expected：FAIL，原因是 Verifier candidate 模块尚未存在。
 
-- [ ] **Step 4: 实现 Verifier strict union、输入校验、安全摘要和保守降级**
+- [x] **Step 4: 实现 Verifier strict union、输入校验、安全摘要和保守降级**
 
 创建 `packages/agent/src/model-candidates/knowledge-verifier-model-candidate.ts`，固定以下类型与 schema：
 
@@ -2046,7 +2057,7 @@ function utf8Bytes(value: string) {
 }
 ```
 
-- [ ] **Step 5: 运行 Verifier 定向、全量、AI runtime 和 baseline 门禁**
+- [x] **Step 5: 运行 Verifier 定向、全量、AI runtime 和 baseline 门禁**
 
 ```powershell
 bun --filter @repo/agent test -- knowledge-verifier-model-candidate
@@ -2065,7 +2076,7 @@ git diff --check
 
 Expected：Agent/AI 全量通过；prompt injection 全部零调用；duplicate evidence 为 schema invalid；旧 baseline 不变。
 
-- [ ] **Step 6: 提交、合并、main 复验并推送**
+- [x] **Step 6: 提交、合并、main 复验并推送**
 
 ```powershell
 git add packages/agent/src/model-candidates/knowledge-verifier-model-candidate.ts `
@@ -2099,7 +2110,7 @@ git push origin main
 - Modify: `docs/ai-behavior-acceptance.md`
 - Modify conditionally: `docs/acceptance-checklist.md`
 
-- [ ] **Step 1: 从已推送的最新 main 创建收尾分支**
+- [x] **Step 1: 从已推送的最新 main 创建收尾分支**
 
 ```powershell
 git switch main
@@ -2108,7 +2119,7 @@ git status --short --branch
 git switch -c codex/phase-6-9-4-2-mock-candidate-docs
 ```
 
-- [ ] **Step 2: 采集可重现的真实结果**
+- [x] **Step 2: 采集可重现的真实结果**
 
 ```powershell
 bun --filter @repo/agent test
@@ -2124,7 +2135,7 @@ git rev-parse HEAD
 
 从真实输出记录测试数、baseline、Git SHA 和门禁结果，不预填数字。
 
-- [ ] **Step 3: 写 acceptance report**
+- [x] **Step 3: 写 acceptance report**
 
 `docs/acceptance/phase-6-9-4-2-router-verifier-mock-candidate.md` 必须包含：
 
@@ -2142,7 +2153,7 @@ git rev-parse HEAD
 
 报告禁止包含完整 input、active context、query、chunk、prompt、provider output、key、cookie、token 值或 raw error。
 
-- [ ] **Step 4: 同步项目文档**
+- [x] **Step 4: 同步项目文档**
 
 - `AGENTS.md`：新增 Phase 6.9.4.2 已完成行、Mock contract 边界、零调用安全 gate、降级结论和下一任务。
 - `docs/roadmap.md`：6.9.4.2 已完成，6.9.4 仍进行中，6.9.4.3 为下一任务。
@@ -2150,7 +2161,7 @@ git rev-parse HEAD
 - `docs/acceptance-checklist.md`：只在已有 Agent eval 区域追加必要条目，不新建重复章节。
 - `README.md`：用户能力和启动命令未变，不修改。
 
-- [ ] **Step 5: 运行最终门禁、提交、合并 main、main 复验并推送**
+- [x] **Step 5: 运行最终门禁、提交、合并 main、main 复验并推送**
 
 ```powershell
 rg -n "T[B]D|T[O]DO|待[补]|待[定]|\x{FFFD}" `
@@ -2189,14 +2200,14 @@ git push origin main
 
 ## 最终交付检查
 
-- [ ] 共享 policy 有穷尽 error 映射、hard-block/email 边界、Unicode/code-point 距离和不变预算 preflight。
-- [ ] Router 八个 safety case 零调用、八个固定 code、本地 safe chat，权限位只来自 canonical map。
-- [ ] Verifier 高风险零调用，status/evidence 组合 strict，duplicate 拒绝，chunk 排序可重现。
-- [ ] Router 所有 candidate failure 原样回退 deterministic；Verifier 所有 fallback 保守，trusted 收紧 suspicious。
-- [ ] pre-abort 零 invoke 且无 trace；runtime abort 为 attempted 且有 trace；reasonCodes 对齐。
-- [ ] envelope/Trace 不保存 input/query/chunk/prompt/provider output/raw error/secret。
-- [ ] `phase-6.9-router-verifier-v1` 与 100/74/26、critical=2 保持不变。
-- [ ] Mock 只证明 contract，Enabled 仍为 no，没有业务链路或 Live 调用。
-- [ ] 四个任务各自唯一提交，各自合并 main 复验、推送并删除分支。
-- [ ] Docker 容器、镜像、volume、PostgreSQL 和 MinIO 未被启动、清空或删除。
-- [ ] 下一任务为 Phase 6.9.4.3 same-case Mock/controlled-Live paired eval。
+- [x] 共享 policy 有穷尽 error 映射、hard-block/email 边界、Unicode/code-point 距离和不变预算 preflight。
+- [x] Router 八个 safety case 零调用、八个固定 code、本地 safe chat，权限位只来自 canonical map。
+- [x] Verifier 高风险零调用，status/evidence 组合 strict，duplicate 拒绝，chunk 排序可重现。
+- [x] Router candidate failure 保留 strict schema 重建后的 deterministic 结果并剥离额外字段；Verifier fallback 保守，trusted 收紧 suspicious。
+- [x] pre-abort 零 invoke 且无 trace；runtime abort/失败为 attempted：telemetry valid 时有 trace，不可验证时显式 unavailable 且使用 preview budget；reasonCodes 对齐。
+- [x] envelope/Trace 不保存 input/query/chunk/prompt/provider output/raw error/secret。
+- [x] `phase-6.9-router-verifier-v1` 与 100/74/26、critical=2 保持不变。
+- [x] Mock 只证明 contract，Enabled 仍为 no，没有业务链路或 Live 调用。
+- [x] 四个任务各自唯一提交，各自合并 main 复验、推送并删除分支。
+- [x] Docker 容器、镜像、volume、PostgreSQL 和 MinIO 未被启动、清空或删除。
+- [x] 下一任务为 Phase 6.9.4.3 same-case Mock/controlled-Live paired eval。
