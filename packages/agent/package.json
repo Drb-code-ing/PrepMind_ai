@@ -19,6 +19,7 @@
     "./wrong-question-organizer": "./src/nodes/wrong-question-organizer.ts"
   },
   "scripts": {
+    "eval:phase-6-9-4-1": "bun scripts/run-phase-6-9-4-1-baseline.ts",
     "lint": "eslint src/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"
