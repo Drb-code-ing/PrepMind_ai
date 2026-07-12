@@ -347,6 +347,8 @@ docker volume rm ...
 git clean -fdx
 ```
 
+当前 Compose 为 PostgreSQL 和 MinIO 分别使用 `docker_pgdata` 与 `docker_miniodata` 命名卷。普通 `docker compose down` 会删除容器但保留这两个卷；`down -v` 才会连卷一起删除。Phase 6.9.3.5 之前的 MinIO service 没有挂载命名卷，因此那次旧容器被删除后，旧对象不能承诺恢复；从当前版本起普通容器重建不会再连带删除 `/data`。Redis 仍没有持久卷，只承担可降级 cache/queue，本地重建后应允许从 PostgreSQL 权威数据恢复。
+
 `docker/Dockerfile.web` 使用 Bun workspace 和 Next standalone 输出；`apps/web/next.config.ts` 设置了 `output: 'standalone'`。Compose 默认把 server CORS 配成 `http://localhost:3000,http://127.0.0.1:3000`，并把 Web 镜像默认 API 地址设为 `http://127.0.0.1:3001`，避免浏览器验收时混用 `localhost` 和 `127.0.0.1` 造成 cookie / CORS 问题。由于 standalone 容器内 `NODE_ENV=production`，Compose dev 栈会额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 `/agent-trace` 仍可展示本地 Mock / Live 调试开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 
 Phase 7.15 起，Compose dev 的 server service 也会显式设置这些本地诊断开关：
@@ -794,7 +796,11 @@ wsl --list --verbose
 
 `docker-desktop` 应为 `Running`，并且 `VERSION` 为 `2`。
 
-### 中文路径下 Docker build 报 non-printable ASCII
+### Docker Desktop 打开后只看到 Gordon
+
+Docker Desktop 4.81 默认可能停在左侧 `Gordon` AI 页面；它不是容器列表，也不表示服务消失。点击左侧 `Containers` 查看 Compose services，`Images` 查看镜像，`Volumes` 查看 `docker_pgdata` / `docker_miniodata`。如果刚执行过普通 `docker compose down`，容器会被删除，因此 `Containers` 可能暂时为空；命名卷仍可在 `Volumes` 看到。重新运行本页的全栈 `up -d` 命令即可创建容器，不要为了“找回服务”执行 `down -v` 或删除卷。
+
+### Docker Desktop 4.81 / 中文路径 build 报 non-printable ASCII
 
 如果项目放在中文路径下，直接运行下面命令可能失败：
 
@@ -808,20 +814,25 @@ docker compose -f docker/docker-compose.dev.yml --profile worker up -d --build p
 failed to dial gRPC ... header key "x-docker-expose-session-sharedkey" contains value with non-printable ASCII characters
 ```
 
-这不是 server 或 web 代码坏了，而是 Docker Desktop build session 对当前工作路径里的非 ASCII 字符不稳定。解决方式是给项目映射一个纯 ASCII 盘符，然后从这个盘符执行 build：
+这不是 server 或 web 代码坏了，而是 Docker Desktop 4.81 的 BuildKit/Compose session 在当前工作路径和多服务并行 build 下不稳定。解决方式是给项目映射一个纯 ASCII 盘符，并关闭 Compose Bake 后顺序构建每个镜像：
 
 ```powershell
 subst P: "E:\PrepMind_ai智能备考助手"
 $env:COMPOSE_BAKE='false'
 Set-Location P:\
-docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build server worker web admin
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build server
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build worker
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build web
+docker compose --project-name docker -f P:\docker\docker-compose.dev.yml --profile worker build admin
 Set-Location 'E:\PrepMind_ai智能备考助手'
-docker compose --project-name docker -f docker/docker-compose.dev.yml --profile worker up -d postgres redis minio minio-init server worker web admin
+docker compose --project-name docker -f docker/docker-compose.dev.yml --profile worker up -d --no-build postgres redis minio minio-init server worker web admin
 ```
 
 注意：
 
 - `--project-name docker` 不能省略，否则 Compose 可能因为 `P:\` 根路径没有目录名而提示 `project name must not be empty`。
+- 不要把 `COMPOSE_BAKE=false` 写进仓库或生产配置；它只是当前 Docker Desktop 版本的本机诊断绕行。Docker Desktop 修复后应先去掉该变量复测。
+- 四个镜像使用四条独立 `build` 命令。把它们重新合并成一个多服务 build，仍可能复现同一 session header 错误。
 - 只从 `P:` 执行 build，不要传 `--project-directory P:\`；该参数会把生命周期文件 bind mount
   错误解析到 `P:\minio`。容器启动回到原始 `E:` 工作区执行，让相对挂载继续以仓库目录为准。
 - 这只是路径映射，不会复制项目，也不会影响 PostgreSQL / Redis / MinIO 数据。
@@ -834,9 +845,9 @@ docker compose --project-name docker -f docker/docker-compose.dev.yml --profile 
 本地 workaround，不是官方镜像拉取成功，也不是生产部署方案。恢复网络后应重新拉取并使用官方
 `minio/mc`，生产还要单独验证 versioned bucket 的 delete-marker 清理行为。
 
-### Docker 前端真实模型配置补充
+### Docker server / web 真实模型配置补充
 
-Docker 前端通过 `docker/docker-compose.dev.yml` 的 `env_file: ../.env` 读取根目录 `.env`。因此 Docker 前端要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
+Docker Compose 自动读取被 git 忽略的根 `.env` 做 `${VAR:-default}` 替换。web 仍通过 `env_file: ../.env` 读取其 Chat 运行配置；server 不导入整个文件，只 allowlist `AI_PROVIDER_MODE`、`AI_ENABLE_LIVE_CALLS`、`AI_MODEL`、`AI_BASE_URL`、DeepSeek/OpenAI key 与四个摘要预算变量，并显式设置 `NODE_ENV=production`。这样根 `.env` 里的 `RAG_EMBEDDING_PROVIDER=fake`、开发态 `NODE_ENV` 或其他无关凭据不会污染 production-mode server 容器。仓库只提交变量名和空/default 引用，不提交值；不要把 `docker compose config` 的完整解析结果贴到日志或文档，校验请使用 `docker compose ... config --quiet`。Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
 
 日常建议两边都保持：
 

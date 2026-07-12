@@ -210,15 +210,23 @@ function buildTraceSteps(input: {
 }
 
 function formatTraceInputSummary(inputPreview: string, contextPolicy?: AgentContextPolicy) {
-  const base = `latestUserPreview=${inputPreview}`;
-  if (!contextPolicy) return base;
+  const preview = `latestUserPreview=${inputPreview}`;
+  if (!contextPolicy) return preview;
+
+  const layers = contextPolicy.layerTokenCounts;
+  const layerSummary = layers
+    ? `layerTokens=m:${layers.mandatory},a:${layers.agentGuidance},s:${layers.stateGuidance},o:${layers.activeStudy},r:${layers.recentMessages},k:${layers.rag},y:${layers.summary}`
+    : null;
 
   return [
-    base,
     `recentMessages=${contextPolicy.recentMessageCount}`,
     `summary=${contextPolicy.summaryIncluded}`,
     `droppedMessages=${contextPolicy.droppedMessageCount}`,
-  ].join(' ');
+    layerSummary,
+    preview,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(' ');
 }
 
 function createStep(input: {

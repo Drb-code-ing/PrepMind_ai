@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-12。Phase 7 工程化已完成；Phase 6.9.3.4 已把 authenticated prepare、分层 context assembler 与 Dexie v9 sanitized state recovery 接入 `/api/chat`。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；真实摘要语义质量与浏览器全链路证据留到 Phase 6.9.3.5。
+> 当前版本：2026-07-12。Phase 7 工程化已完成；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
 
 ## 1. 当前边界
 
@@ -110,6 +110,7 @@
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
 - Mock/live response 只通过 `x-prepmind-conversation-summary-status`、`x-prepmind-conversation-summary-version` 和 `x-prepmind-context-dropped-layers` 暴露固定状态；Agent Trace 只记录实际 conversationId、计数、版本与 bounded codes，不保存 summary、prompt、RAG chunk 或 state 正文。
 - PostgreSQL 继续是 ConversationState/ConversationSummary 权威源，Redis 只做服务端 public-state cache，Dexie v9 `conversationStates` 只保存 `activeGoal`、`activeQuestionId`、stateVersion、expiresAt、updatedAt 与身份键。local write/clear 按 user 串行，serverVersion 不低于 local 才覆盖；过期、坏 schema、key/user mismatch、logout/clear 与迟到请求均 fail-safe。Dexie 不存 summary、pending proposal、tool names、prompt 或 token，也不根据 activeQuestionId 伪造 OCR 题面。
+- Phase 6.9.3.5 已验证真实 OpenAI-compatible structured output 边界：共享 executor 对 strict object generation 固定使用 JSON mode，再交给 Zod schema、不可变预算、超时和 live 双开关；provider 原始错误、key 和 base URL 仍不出 adapter。DeepSeek Live summary 成功后，Web 只把安全 summary buffer 交给 assembler；Trace 记录 `summary=true` 与 `layerTokens=m/a/s/o/r/k/y`，不复制 summary/prompt/chunk。Mock/Live 验收结束后 server/web 恢复 Mock，合成用户、权威数据、Redis cache 与浏览器站点数据均清理。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
 - `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。

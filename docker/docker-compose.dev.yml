@@ -26,6 +26,8 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - miniodata:/data
 
   minio-init:
     image: minio/mc
@@ -36,7 +38,12 @@ services:
       - -c
       - |
         set -eu
-        mc alias set local http://minio:9000 minioadmin minioadmin
+        attempt=0
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+          attempt=$$((attempt + 1))
+          [ "$$attempt" -ge 30 ] && exit 1
+          sleep 1
+        done
         mc ready local
         mc mb --ignore-existing local/prepmind-dev
         mc ilm import local/prepmind-dev < /config/operator-audit-export-lifecycle.json
@@ -57,10 +64,19 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
+      NODE_ENV: production
       SERVER_ROLE: api
       KNOWLEDGE_PROCESSING_MODE: ${KNOWLEDGE_PROCESSING_MODE:-inline}
       AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}
       AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}
+      AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CONVERSATION_SUMMARY_MAX_CALLS: ${CONVERSATION_SUMMARY_MAX_CALLS:-1}
+      CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: ${CONVERSATION_SUMMARY_MAX_INPUT_TOKENS:-1600}
+      CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: ${CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS:-400}
+      CONVERSATION_SUMMARY_TIMEOUT_MS: ${CONVERSATION_SUMMARY_TIMEOUT_MS:-8000}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100}
       OUTBOX_OPS_ENABLED: ${OUTBOX_OPS_ENABLED:-true}
@@ -154,3 +170,4 @@ services:
 
 volumes:
   pgdata:
+  miniodata:

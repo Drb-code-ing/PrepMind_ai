@@ -310,7 +310,7 @@ Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 - result/Trace 不得包含 system/user prompt、完整模型输出、provider 原始错误、API key、base URL、response headers 或 stack；
 - 本阶段只用 Mock 与注入 fake executor 验工程 contract，不调用真实模型，不证明 Agent 语义质量，也不证明 Router/Verifier/Memory 已模型化。
 
-Phase 6.9.3.3 滚动摘要 Mock 验收还必须覆盖：12 条与 70% 两种触发、user-only tail 不推进、已覆盖原文不重复制造 pressure、输入凭据脱敏、输出凭据拒绝、模型失败不写库、目标范围变化 stale、更高 order 新消息不误判、first-create/update CAS 仅一次模型调用。Docker 默认必须是 Mock/Live false 且不得写入或透传真实 key；真实摘要体验留到 6.9.3.5 受控 Live 小样本。
+Phase 6.9.3.3 滚动摘要 Mock 验收还必须覆盖：12 条与 70% 两种触发、user-only tail 不推进、已覆盖原文不重复制造 pressure、输入凭据脱敏、输出凭据拒绝、模型失败不写库、目标范围变化 stale、更高 order 新消息不误判、first-create/update CAS 仅一次模型调用。Docker 默认必须是 Mock/Live false 且不得写入或透传真实 key；真实摘要体验已在 6.9.3.5 以受控 Live 小样本补齐。
 
 Phase 6.9.3.4 Web context Mock 工程验收必须覆盖：
 
@@ -323,9 +323,20 @@ Phase 6.9.3.4 Web context Mock 工程验收必须覆盖：
 - Dexie v9 只保存 sanitized state；版本倒退不覆盖、并发写/clear 串行、过期/跨用户/key mismatch 不恢复、logout/clear 删除，序列化结果不含 summary/tool/proposal/prompt/token；
 - Provider 恢复只设置安全 conversation state/conversationId，不依据 activeQuestionId 伪造 OCR 全文，unmount、身份变化或迟到旧请求不得 setState/复活旧用户 cache。
 
-本 slice 的单元测试、lint 与 build 只证明 Mock 工程边界，不证明真实摘要语义质量，也不等同于 headed 浏览器验收。Phase 6.9.3.5 仍需完成 Docker Mock、受控 Live 小样本、临时数据清理与阶段证据。
+本 slice 的单元测试、lint 与 build 只证明 Mock 工程边界，不证明真实摘要语义质量，也不等同于 headed 浏览器验收。Docker Mock、受控 Live 小样本、临时数据清理与阶段证据已由 Phase 6.9.3.5 完成。
 
 Phase 6.9.3.4 本地 headed Mock 已补充完成：真实注册与首轮降级、sync 后 conversationId、Dexie sanitized state、消息数触发 `generated/version=1`、刷新后 `reused/version=1`、刷新后的首条新增消息继续 sync、console/page error 为 0、临时账号清理为 0 remaining。该证据不替代 Phase 6.9.3.5 的 Docker 全栈 Mock 与受控 Live。
+
+Phase 6.9.3.5 Docker/Live 收口必须且已经覆盖：
+
+- 全栈 `postgres/redis/minio/server/worker/web/admin` 使用当前分支产物启动，worker healthy；
+- Mock API 覆盖 `generated -> reused`、跨用户 404、CAS/stale 和 credential rejection；headed Mock 覆盖 Trace layer token、Dexie 白名单、console/page error 0 与无横向溢出；
+- Live 必须同时开启 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`，使用固定小样本和单次摘要预算，不输出 key/base URL/摘要正文；
+- OpenAI-compatible structured output 仍经过 JSON mode、strict Zod schema、预算、超时和错误脱敏，不允许因 provider 兼容性绕过 contract；
+- 记录 provider/model/promptVersion、summary version/watermark、provider-reported summary usage/耗时，以及最终回答是否保留目标和纠正；本地估算预留、provider usage 和 Chat Trace 估算都不能冒充 provider 账单；
+- 可见浏览器保留 Chat/Trace 页面供共同观察，Trace 只显示 `summary=true` 与 `layerTokens=m/a/s/o/r/k/y` 等 bounded metadata；
+- 结束后恢复 Mock，只按严格合成账号前缀清理 User/Conversation/ChatMessage/Summary/State、Redis cache 和隔离浏览器 storage，不 reset 数据库；
+- 完整证据见 `docs/acceptance/2026-07-11-phase-6-9-3-conversation-memory.md`。
 
 ### 4.3 知识库 / RAG
 
