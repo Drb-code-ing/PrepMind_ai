@@ -451,6 +451,85 @@ describe('knowledge verifier model candidate gates and input validation', () => 
     expect(recordedSignal).toBe(signal);
   });
 
+  test('returns sanitized local deterministic provenance for every ineligible status', async () => {
+    const statuses = [
+      'trusted',
+      'conflict',
+      'suspicious',
+      'insufficient',
+      'skipped',
+    ] as const;
+
+    for (const status of statuses) {
+      let invokes = 0;
+      const budget = validBudget();
+      const budgetBefore = structuredClone(budget);
+      const canaries = {
+        reason: `privacy_${status}_reason_canary`,
+        userNotice: `privacy_${status}_notice_canary`,
+        promptAddition: `privacy_${status}_prompt_canary`,
+        conflictSignal: `privacy_${status}_conflict_canary`,
+        suspiciousSignal: `privacy_${status}_suspicious_canary`,
+      };
+      const deterministic: KnowledgeVerifierResult = {
+        status,
+        reason: canaries.reason,
+        userNotice: canaries.userNotice,
+        promptAddition: canaries.promptAddition,
+        debug: {
+          checkedChunkCount: 77,
+          lowScoreChunkCount: 66,
+          conflictSignals: [canaries.conflictSignal],
+          suspiciousSignals: [canaries.suspiciousSignal],
+        },
+      };
+
+      const envelope = await runKnowledgeVerifierModelCandidate({
+        ...validInput(
+          recordingRuntime(() => {
+            invokes += 1;
+            return trustedCandidate;
+          }),
+        ),
+        deterministic,
+        candidateEligible: false,
+        budget,
+      });
+
+      expect(envelope.result.status).toBe(status);
+      expect(envelope.observation).toMatchObject({
+        attempted: false,
+        disposition: 'not_eligible',
+        budget: budgetBefore,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        reasonCodes: ['not_eligible'],
+      });
+      expect('trace' in envelope.observation).toBe(false);
+      expect(budget).toEqual(budgetBefore);
+      expect(invokes).toBe(0);
+
+      const provenanceFields = [
+        envelope.result.reason,
+        envelope.result.promptAddition,
+        JSON.stringify(envelope.result.debug),
+      ].join('\n');
+      expect(provenanceFields.toLowerCase()).not.toMatch(
+        /model candidate|model_candidate/,
+      );
+      expect(envelope.result.reason.toLowerCase()).toContain(
+        'local deterministic policy',
+      );
+      expect(envelope.result.promptAddition.toLowerCase()).toContain(
+        'local deterministic policy',
+      );
+
+      const serialized = JSON.stringify(envelope);
+      for (const canary of Object.values(canaries)) {
+        expect(serialized).not.toContain(canary);
+      }
+    }
+  });
+
   test('runs safety before eligibility, eligibility before abort, and abort before budget', async () => {
     const controller = new AbortController();
     controller.abort();
