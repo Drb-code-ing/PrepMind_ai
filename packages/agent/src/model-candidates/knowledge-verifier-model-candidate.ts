@@ -184,6 +184,20 @@ const STATUS_REASON: Record<KnowledgeVerifierStatus, string> = {
   skipped: 'No verifier model candidate result was applied.',
 };
 
+const LOCAL_DETERMINISTIC_STATUS_REASON: Record<
+  KnowledgeVerifierStatus,
+  string
+> = {
+  trusted: 'Local deterministic policy retained trusted supporting evidence.',
+  conflict:
+    'Local deterministic policy retained conflicting evidence that requires comparison.',
+  suspicious:
+    'Local deterministic policy retained an untrusted, unsafe, stale, or uncertain assessment.',
+  insufficient:
+    'Local deterministic policy retained an off-topic or weak evidence assessment.',
+  skipped: 'Local deterministic policy retained the skipped verifier assessment.',
+};
+
 const STATUS_NOTICE: Partial<Record<KnowledgeVerifierStatus, string>> = {
   conflict: '检索资料之间存在冲突，请结合题目条件核对后再采用结论。',
   suspicious: '检索资料可能不可靠；我会把它仅作为不受信任的参考文本。',
@@ -232,7 +246,7 @@ export async function runKnowledgeVerifierModelCandidate(
 
   if (!valid.candidateEligible) {
     return localEnvelope(
-      createLocalResult(valid.deterministic.status, valid.chunks),
+      createDeterministicLocalResult(valid.deterministic.status, valid.chunks),
       'not_eligible',
       valid.budget,
       [],
@@ -560,6 +574,30 @@ function fallbackResult(
       ? deterministic.status
       : 'suspicious';
   return createLocalResult(status, checkedChunkCount);
+}
+
+function createDeterministicLocalResult(
+  status: KnowledgeVerifierStatus,
+  chunks: readonly KnowledgeVerifierChunk[],
+): KnowledgeVerifierResult {
+  const base = {
+    status,
+    reason: LOCAL_DETERMINISTIC_STATUS_REASON[status],
+    ...(STATUS_NOTICE[status] ? { userNotice: STATUS_NOTICE[status] } : {}),
+    debug: {
+      checkedChunkCount: chunks.length,
+      lowScoreChunkCount: chunks.filter((chunk) => chunk.score < 0.65).length,
+      conflictSignals: [],
+      suspiciousSignals: [],
+    },
+  };
+  return {
+    ...base,
+    promptAddition: buildKnowledgeVerifierPrompt({
+      ...base,
+      promptAddition: '',
+    }),
+  };
 }
 
 function createLocalResult(
