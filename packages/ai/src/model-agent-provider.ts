@@ -16,6 +16,7 @@ type ProviderFactory = (config: { apiKey: string; baseURL: string }) => (model: 
 
 type GenerateStructuredInput = {
   model: unknown;
+  mode: 'json';
   schema: z.ZodTypeAny;
   system: string;
   prompt: string;
@@ -41,6 +42,7 @@ const defaultDependencies: ModelAgentProviderDependencies = {
   generateStructured: async (input) => {
     const result = await generateObject({
       model: input.model as LanguageModelV1,
+      mode: input.mode,
       schema: input.schema,
       system: input.system,
       prompt: input.prompt,
@@ -74,6 +76,7 @@ export function createOpenAICompatibleStructuredExecutor(
     try {
       const result = await dependencies.generateStructured({
         model,
+        mode: 'json',
         schema: input.schema,
         system: input.systemPrompt,
         prompt: input.userPrompt,

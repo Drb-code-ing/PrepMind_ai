@@ -50,6 +50,7 @@ describe('OpenAI-compatible model agent executor', () => {
     });
     expect(invocation).toMatchObject({
       model: modelHandle,
+      mode: 'json',
       schema,
       system: 'system',
       prompt: 'question',
@@ -63,6 +64,69 @@ describe('OpenAI-compatible model agent executor', () => {
     expect(Object.keys(executor)).not.toContain('apiKey');
     expect(JSON.stringify(result)).not.toContain('must-not-return');
     expect(JSON.stringify(result)).not.toContain('example-redacted-key');
+  });
+
+  it('uses the real AI SDK JSON wire mode and rejects invalid structured output', async () => {
+    const originalFetch = globalThis.fetch;
+    const requestBodies: Array<Record<string, unknown>> = [];
+    let responseIndex = 0;
+    globalThis.fetch = (async (_input, init) => {
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      const content = responseIndex++ === 0 ? '{"route":"tutor"}' : '{"route":"unsafe"}';
+      return new Response(
+        JSON.stringify({
+          id: `chatcmpl-${responseIndex}`,
+          object: 'chat.completion',
+          created: 1,
+          model: 'deepseek-test',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 21,
+            completion_tokens: 8,
+            total_tokens: 29,
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const executor = createOpenAICompatibleStructuredExecutor({
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.example.com/v1',
+        model: 'deepseek-test',
+      });
+      const request = {
+        schema,
+        systemPrompt: 'system',
+        userPrompt: 'question',
+        maxOutputTokens: 40,
+        signal: new AbortController().signal,
+      };
+
+      await expect(executor(request)).resolves.toMatchObject({
+        object: { route: 'tutor' },
+        usage: { inputTokens: 21, outputTokens: 8 },
+      });
+      expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
+      expect(requestBodies[0]?.tools).toBeUndefined();
+      const messages = requestBodies[0]?.messages as Array<{ content?: string }>;
+      expect(messages[0]?.content).toContain('"route"');
+
+      await expect(executor(request)).rejects.toThrow(
+        /^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/,
+      );
+      expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it.each([

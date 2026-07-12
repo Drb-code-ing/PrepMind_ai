@@ -20,6 +20,15 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(postgresService).toContain('${POSTGRES_PORT:-5433}:5432');
   });
 
+  it('persists local MinIO objects across normal Compose down and up cycles', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const minioService = extractYamlSection(compose, '  minio:', 2);
+
+    expect(minioService).toContain('volumes:');
+    expect(minioService).toContain('- miniodata:/data');
+    expect(compose).toContain('  miniodata:');
+  });
+
   it('keeps the server Dockerfile aligned with the Bun workspace and build output', () => {
     const dockerfile = readRepoFile('docker/Dockerfile.server');
 
@@ -169,6 +178,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(init).toContain('- |');
     expect(init).not.toContain('command: >-');
     expect(init).toContain('mc alias set local');
+    expect(init).toContain('until mc alias set local');
+    expect(init).toContain('attempt=$$((attempt + 1))');
+    expect(init).toContain('[ "$$attempt" -ge 30 ] && exit 1');
     expect(init).toContain('mc ready local');
     expect(init).toContain('mc mb --ignore-existing local/prepmind-dev');
     expect(init).toContain('mc ilm import local/prepmind-dev');
@@ -227,8 +239,26 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(serverService).toContain(
       'AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}',
     );
-    expect(serverService).not.toContain('DEEPSEEK_API_KEY:');
-    expect(serverService).not.toContain('OPENAI_API_KEY:');
+    expect(serverService).not.toContain('env_file:');
+    expect(serverService).toContain('NODE_ENV: production');
+    expect(serverService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
+    expect(serverService).toContain(
+      'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
+    );
+    expect(serverService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
+    expect(serverService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
+    expect(serverService).toContain(
+      'CONVERSATION_SUMMARY_MAX_CALLS: ${CONVERSATION_SUMMARY_MAX_CALLS:-1}',
+    );
+    expect(serverService).toContain(
+      'CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: ${CONVERSATION_SUMMARY_MAX_INPUT_TOKENS:-1600}',
+    );
+    expect(serverService).toContain(
+      'CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: ${CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS:-400}',
+    );
+    expect(serverService).toContain(
+      'CONVERSATION_SUMMARY_TIMEOUT_MS: ${CONVERSATION_SUMMARY_TIMEOUT_MS:-8000}',
+    );
   });
 
   it('keeps audit export processing on the dedicated local Docker worker', () => {

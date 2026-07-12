@@ -98,6 +98,14 @@ assert.ok(payload.steps.every((step) => step.inputSummary.length <= 160));
 assert.match(payload.steps[0]?.inputSummary ?? '', /recentMessages=1/);
 assert.match(payload.steps[0]?.inputSummary ?? '', /summary=true/);
 assert.match(payload.steps[0]?.inputSummary ?? '', /droppedMessages=2/);
+assert.match(
+  payload.steps[0]?.inputSummary ?? '',
+  /layerTokens=m:\d+,a:\d+,s:\d+,o:\d+,r:\d+,k:\d+,y:\d+/,
+);
+assert.ok(
+  (payload.steps[0]?.inputSummary.indexOf('layerTokens=') ?? -1) <
+    (payload.steps[0]?.inputSummary.indexOf('latestUserPreview=') ?? -1),
+);
 assert.doesNotMatch(JSON.stringify(payload), new RegExp(traceSummarySecret));
 
 const sensitivePayload = buildChatAgentTracePayload({
