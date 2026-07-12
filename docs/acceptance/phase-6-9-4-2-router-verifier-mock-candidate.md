@@ -13,14 +13,14 @@ Phase 6.9.4.2 已完成 Router 与 Knowledge Verifier 的 Mock candidate 工程 
 | 项目 | 结果 |
 | --- | --- |
 | 验收日期 | 2026-07-12 |
-| 验收基线 Git SHA | `7958065821143f9a578b92770211b97c1079ef67` |
+| 验收基线 Git SHA | `d3839b491dcf8a13e119fea44cdff1683fd35c86` |
 | baseline 数据集 | `phase-6.9-router-verifier-v1` |
 | candidate 运行方式 | Mock runtime / 注入 fake executor 的本地单元测试 |
 | Live provider / model | 未使用 |
 | 账号、数据库、Docker、浏览器 | 均未操作 |
 | 模型网络请求 | 0 |
 
-`git rev-parse HEAD` 在文档修改前返回上述 SHA；它是本次 fresh 证据所对应的实现基线。验收没有读取 API key，没有启动服务，没有创建测试账号或业务数据，也没有操作 PostgreSQL、Redis、MinIO、Docker 或浏览器。
+`git rev-parse HEAD` 在文档修改前返回上述 SHA；它是 final review code remediation 合并后、本次 fresh 证据所对应的实现基线。验收没有读取 API key，没有启动服务，没有创建测试账号或业务数据，也没有操作 PostgreSQL、Redis、MinIO、Docker 或浏览器。
 
 ## 3. Candidate 前置边界
 
@@ -28,7 +28,7 @@ ineligible 表示 deterministic selector 没有授权进入 candidate 路径；s
 
 ### 3.1 Router
 
-- `candidateEligible=false` 时直接保留本地 deterministic Router 结果，`attempted=false`，runtime invoke 为 0。
+- `candidateEligible=false` 时保留 strict schema 已验证并重建的本地 deterministic Router 结果（route、confidence、reason 与本地权限位）；它不是对原始对象的字节级透传，额外字段会被剥离。此时 `attempted=false`、runtime invoke 为 0，也不产生 model candidate provenance。
 - safety gate 在 eligibility、abort、预算和 runtime 之前扫描用户文本与 active study context；命中指令覆盖、凭据/系统提示词外泄、跨用户访问、虚假写入声明、系统工具、未确认长期记忆或破坏性资料写入时，runtime invoke 为 0。
 - safety 结果固定为本地 safe chat：`name=chat`、`confidence=1`、`requiresRag=false`、`requiresHumanApproval=false`，模型不能借 route 输出扩大能力。
 - candidate 只返回六种 route、`0..1` confidence 和四种固定 reason code。`requiresRag` / `requiresHumanApproval` 不接收 provider 值，而是由本地 `ROUTE_PERMISSIONS` canonical map 根据 route 重建。
@@ -39,6 +39,7 @@ ineligible 表示 deterministic selector 没有授权进入 candidate 路径；s
 - candidate schema 是以 `status` 为判别字段的 strict discriminated union。`trusted`、`suspicious`、`insufficient` 只能携带各自唯一 literal `evidenceCodes`；`conflict` 只能携带 1 到 4 个不重复的固定 conflict code；`skipped`、旧 `evidence` 字段、矛盾 code、重复值和额外字段全部拒绝。
 - chunk 先按 score 降序、再按 `chunkId` code-unit 升序稳定排序；最多选择 4 个，发送合成 `chunk_1..4` label、score 与受限 excerpt，不发送 document/chunk 标识或 metadata。超过输入估算预算时整块丢弃尾部 chunk，不做不安全的半结构截断。
 - runtime 失败不会放宽资料结论：已有 `conflict` / `suspicious` / `insufficient` 保持限制性状态，deterministic `trusted` 会收紧为 `suspicious`。只有 strict candidate success 才应用候选状态。
+- `candidateEligible=false` 时保留已验证 deterministic status（包括 `trusted`）及其限制性语义，但 reason、notice、debug 与 promptAddition 都由本地 deterministic policy 固定模板安全重建；不传播 raw deterministic 正文，也不声称 candidate 曾运行。
 
 ## 4. Schema、预算、取消与降级矩阵
 
@@ -46,7 +47,7 @@ ineligible 表示 deterministic selector 没有授权进入 candidate 路径；s
 | --- | ---: | --- | --- |
 | 输入结构、raw cap、预算对象或 runtime 入口非法 | 0 | `fallback_invalid_input` | Router 使用本地 deterministic 或 safe chat；Verifier 保留限制性状态并把 trusted 收紧为 suspicious；usage 为 0 |
 | safety / high-risk / prompt injection 命中 | 0 | `safety_blocked` | Router 固定 safe chat；Verifier 固定 suspicious；预算不消耗 |
-| `candidateEligible=false` | 0 | `not_eligible` | 保留本地 deterministic 结果；预算不消耗 |
+| `candidateEligible=false` | 0 | `not_eligible` | Router 保留 strict schema 重建后的 deterministic 结果；Verifier 保留已验证 status/限制性语义并用本地固定模板重建 reason/notice/debug/promptAddition，不传播 raw deterministic 正文；均不产生 candidate provenance，预算不消耗 |
 | 调用前 signal 已 abort | 0 | `fallback_aborted` | 使用本地保守结果；预算不消耗 |
 | call / input / output 预算不足 | 0 | `fallback_budget_exceeded` | 使用本地保守结果；调用方预算不变 |
 | strict output schema 拒绝 | 1 | `fallback_schema_invalid` | 使用本地保守结果；保留安全 runtime Trace 与已预留预算 |
@@ -73,11 +74,11 @@ Trace 允许的 `model` 是 composition root 提供的受控 identifier，当前
 
 ## 6. Fresh 自动化证据
 
-以下命令均在 `7958065821143f9a578b92770211b97c1079ef67` 上 fresh 执行，退出码均为 0：
+以下命令均在 `d3839b491dcf8a13e119fea44cdff1683fd35c86` 上 fresh 执行，退出码均为 0；这是 final review code remediation 合并后的证据基线：
 
 | 命令 | 真实结果 |
 | --- | --- |
-| `bun --filter @repo/agent test` | 226 pass / 0 fail，24 files，2281 expect calls |
+| `bun --filter @repo/agent test` | 227 pass / 0 fail，24 files，2346 expect calls |
 | `bun --filter @repo/agent typecheck` | 通过，exit 0 |
 | `bun --filter @repo/agent lint` | 通过，exit 0 |
 | `bun --filter @repo/agent eval:phase-6-9-4-1` | 100 total / 74 pass / 26 fail / critical 2；input/output tokens 0/0；estimated cost 0 |
@@ -85,9 +86,9 @@ Trace 允许的 `model` 是 composition root 提供的受控 identifier，当前
 | `bun --filter @repo/ai typecheck` | 通过，exit 0 |
 | `bun --filter @repo/ai lint` | 通过，exit 0 |
 | `bun --cwd packages/types typecheck` | 通过，exit 0 |
-| `git rev-parse HEAD` | `7958065821143f9a578b92770211b97c1079ef67` |
+| `git rev-parse HEAD` | `d3839b491dcf8a13e119fea44cdff1683fd35c86` |
 
-补充定向证据：Router candidate 47/47、Verifier candidate 39/39、共享 candidate policy 15/15。定向计数包含在 `@repo/agent` 全量 226 条测试中，不能重复相加成新的总数。
+补充定向证据：Router candidate 47/47（443 expect）、Verifier candidate 40/40（406 expect）、共享 candidate policy 15/15（84 expect）。定向计数包含在 `@repo/agent` 全量 227 条测试中，不能重复相加成新的总数。
 
 deterministic baseline 保持原样：Router 60 + Verifier 40，共 100 条；74 pass、26 fail、critical failure 2、p95 0ms、token/cost 0。Phase 6.9.4.2 没有改 baseline policy、expected 或数据集，也没有生成 candidate score。
 
@@ -117,6 +118,8 @@ Mock 全绿不能替代 same-case Live paired eval。只有 candidate 在同一 
 - “stable chunk sort、synthetic label 与整块 drop 分别解决了哪些复现性和数据最小化问题？”
 - “为什么 provider-reported input usage 高于工程估算可以接受，但 output usage 超过 request cap 必须拒绝？”
 - “runtime telemetry 不可用时为什么要推进 preview budget，这怎样阻止无证据重试超卖？”
+- “ineligible 到底保留什么：Router 为什么保留 strict schema 重建后的 deterministic 结果，而 Verifier 只保留 status/限制性语义并安全重建 reason/notice/debug/promptAddition？”
+- “为什么 `attempted=true` 仍可能没有 Trace，`traceUnavailable/usageUnavailable` 与 preview budget 分别表达什么？”
 - “hostile getter、Proxy、AbortSignal 和 runtime 原地预算污染分别试图跨越哪一层信任边界？”
-- “226/226 与 71/71 证明了什么，为什么仍然必须保持 `Enabled=no`？”
+- “227/227 与 71/71 证明了什么，为什么仍然必须保持 `Enabled=no`？”
 - “Phase 6.9.4.3 为什么必须在同一 case 上做 deterministic / Mock / controlled-Live paired eval？”
