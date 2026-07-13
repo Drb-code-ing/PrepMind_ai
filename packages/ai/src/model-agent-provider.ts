@@ -21,6 +21,7 @@ type GenerateStructuredInput = {
   system: string;
   prompt: string;
   maxTokens: number;
+  maxRetries: 0;
   abortSignal: AbortSignal;
 };
 
@@ -47,6 +48,7 @@ const defaultDependencies: ModelAgentProviderDependencies = {
       system: input.system,
       prompt: input.prompt,
       maxTokens: input.maxTokens,
+      maxRetries: input.maxRetries,
       abortSignal: input.abortSignal,
     });
     return {
@@ -81,6 +83,7 @@ export function createOpenAICompatibleStructuredExecutor(
         system: input.systemPrompt,
         prompt: input.userPrompt,
         maxTokens: input.maxOutputTokens,
+        maxRetries: 0,
         abortSignal: input.signal,
       });
 

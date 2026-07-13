@@ -55,6 +55,7 @@ describe('OpenAI-compatible model agent executor', () => {
       system: 'system',
       prompt: 'question',
       maxTokens: 40,
+      maxRetries: 0,
       abortSignal: controller.signal,
     });
     expect(result).toEqual({
@@ -124,6 +125,45 @@ describe('OpenAI-compatible model agent executor', () => {
         /^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/,
       );
       expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('does not retry retryable provider failures inside one executor invocation', async () => {
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response(
+        JSON.stringify({
+          error: {
+            message: 'temporary provider failure',
+            type: 'server_error',
+          },
+        }),
+        { status: 500, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const executor = createOpenAICompatibleStructuredExecutor({
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.example.com/v1',
+        model: 'deepseek-test',
+      });
+
+      await expect(
+        executor({
+          schema,
+          systemPrompt: 'system',
+          userPrompt: 'question',
+          maxOutputTokens: 40,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow(/^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/);
+      expect(fetchCalls).toBe(1);
     } finally {
       globalThis.fetch = originalFetch;
     }
