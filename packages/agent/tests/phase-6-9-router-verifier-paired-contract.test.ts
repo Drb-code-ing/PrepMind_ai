@@ -14,6 +14,7 @@ import {
   PHASE_6943_PROMPT_VERSION,
   PHASE_6943_REPORT_SCHEMA_VERSION,
   PHASE_6943_RUNNER_VERSION,
+  PHASE_6943_ENTRY_SCHEMA,
   buildPhase6943RouterLaneMetrics,
   buildPhase6943VerifierLaneMetrics,
   calculatePhase6943DatasetDigest,
@@ -77,6 +78,113 @@ describe('Phase 6.9.4.3 paired contract', () => {
       buildInvalidRun(),
     ];
     for (const variant of variants) expect(parsePhase6943Output(variant).ok).toBe(true);
+  });
+
+  test('accepts an optional provider failure category only on attempted Live provider failures', () => {
+    const historical = structuredClone(buildReport('live', 'incomplete'));
+    if (historical.kind !== 'report' || historical.runKind !== 'live') {
+      throw new Error('expected incomplete live report');
+    }
+    const historicalFailure = historical.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    if (!historicalFailure || historicalFailure.entryStatus !== 'observed' ||
+        historicalFailure.lane !== 'live') {
+      throw new Error('expected live provider failure');
+    }
+    expect('providerFailureCategory' in historicalFailure).toBe(false);
+    expect(parsePhase6943Output(historical).ok).toBe(true);
+
+    const categorized = structuredClone(historical);
+    const categorizedFailure = categorized.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    if (!categorizedFailure || categorizedFailure.entryStatus !== 'observed' ||
+        categorizedFailure.lane !== 'live') {
+      throw new Error('expected live provider failure');
+    }
+    (categorizedFailure as typeof categorizedFailure & { providerFailureCategory: string })
+      .providerFailureCategory = 'http_rate_limit';
+    expect(parsePhase6943Output(categorized).ok).toBe(true);
+
+    const invalidCategory = structuredClone(categorized);
+    const invalidFailure = invalidCategory.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    if (!invalidFailure || invalidFailure.entryStatus !== 'observed' ||
+        invalidFailure.lane !== 'live') {
+      throw new Error('expected live provider failure');
+    }
+    (invalidFailure as typeof invalidFailure & { providerFailureCategory: string })
+      .providerFailureCategory = 'raw_http_429';
+    expect(parsePhase6943Output(invalidCategory).ok).toBe(false);
+
+    const complete = structuredClone(buildReport('live', 'complete'));
+    if (complete.kind !== 'report' || complete.runKind !== 'live') {
+      throw new Error('expected complete live report');
+    }
+    const success = complete.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.strictSuccess,
+    );
+    if (!success || success.entryStatus !== 'observed' || success.lane !== 'live') {
+      throw new Error('expected live strict success');
+    }
+    (success as typeof success & { providerFailureCategory: string })
+      .providerFailureCategory = 'transport';
+    expect(parsePhase6943Output(complete).ok).toBe(false);
+  });
+
+  test('rejects provider failure categories outside the exact Live failure position', () => {
+    const incompleteLive = buildReport('live', 'incomplete');
+    const incompleteMock = buildReport('mock', 'incomplete');
+    if (incompleteLive.kind !== 'report' || incompleteLive.runKind !== 'live' ||
+        incompleteMock.kind !== 'report') {
+      throw new Error('expected candidate reports');
+    }
+    const liveFailure = incompleteLive.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    const mockFailure = incompleteMock.lanes.mock.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'mock' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    const noRuntime = incompleteLive.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        !entry.runtimeInvoked,
+    );
+    const notRun = buildCanonicalPartialLiveReport();
+    if (!liveFailure || liveFailure.entryStatus !== 'observed' || liveFailure.lane !== 'live' ||
+        !mockFailure || mockFailure.entryStatus !== 'observed' || mockFailure.lane !== 'mock' ||
+        !noRuntime || noRuntime.entryStatus !== 'observed' || noRuntime.lane !== 'live' ||
+        notRun.kind !== 'report' || notRun.runKind !== 'live') {
+      throw new Error('missing category position fixtures');
+    }
+    const notRunEntry = notRun.lanes.live.entries.find((entry) => entry.entryStatus === 'not_run');
+    if (!notRunEntry || notRunEntry.entryStatus !== 'not_run') {
+      throw new Error('missing not-run entry');
+    }
+
+    const illegalEntries = [
+      { ...mockFailure, providerFailureCategory: 'unknown' },
+      { ...noRuntime, providerFailureCategory: 'unknown' },
+      { ...notRunEntry, providerFailureCategory: 'unknown' },
+      { ...liveFailure, providerAttempted: false, providerFailureCategory: 'unknown' },
+      { ...liveFailure, runtimeErrorCode: 'TIMEOUT', providerFailureCategory: 'unknown' },
+      {
+        ...liveFailure,
+        strictSuccess: true,
+        runtimeErrorCode: undefined,
+        providerFailureCategory: 'unknown',
+      },
+    ];
+    for (const entry of illegalEntries) {
+      expect(PHASE_6943_ENTRY_SCHEMA.safeParse(entry).success).toBe(false);
+    }
   });
 
   test('rejects duplicate, missing, cross-lane and illegal numeric fields', () => {
