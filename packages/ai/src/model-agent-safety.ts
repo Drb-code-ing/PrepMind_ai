@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import type { ModelAgentError, ModelAgentErrorCode } from './model-agent-contract';
+import type {
+  ModelAgentError,
+  ModelAgentErrorCode,
+  ModelAgentProviderFailureCategory,
+} from './model-agent-contract';
 
 const ERROR_MESSAGES: Record<ModelAgentErrorCode, string> = {
   INVALID_REQUEST: 'Model agent request is invalid.',
@@ -16,11 +20,27 @@ const ERROR_MESSAGES: Record<ModelAgentErrorCode, string> = {
   PROVIDER_ERROR: 'Model provider request failed.',
 };
 
-export function createSafeModelAgentError(code: ModelAgentErrorCode): ModelAgentError {
+export function createSafeModelAgentError(
+  code: ModelAgentErrorCode,
+  providerFailureCategory?: ModelAgentProviderFailureCategory,
+): ModelAgentError {
+  if (code === 'PROVIDER_ERROR') {
+    const category = providerFailureCategory ?? 'unknown';
+    return {
+      code,
+      message: ERROR_MESSAGES[code],
+      retryable:
+        category === 'http_rate_limit' ||
+        category === 'http_server' ||
+        category === 'transport',
+      providerFailureCategory: category,
+    };
+  }
+
   return {
     code,
     message: ERROR_MESSAGES[code],
-    retryable: code === 'TIMEOUT' || code === 'PROVIDER_ERROR',
+    retryable: code === 'TIMEOUT',
   };
 }
 

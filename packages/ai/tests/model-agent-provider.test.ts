@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'bun:test';
+import { APICallError } from 'ai';
 import { z } from 'zod';
 
+import { takeModelAgentProviderFailureCategory } from '../src/model-agent-provider-failure';
 import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
 
 const schema = z.object({ route: z.enum(['chat', 'tutor']) }).strict();
+const CANARY = 'provider-adapter-raw-canary-must-not-leak';
 
 describe('OpenAI-compatible model agent executor', () => {
   it('passes secrets only into provider closure and maps safe usage', async () => {
@@ -121,9 +124,8 @@ describe('OpenAI-compatible model agent executor', () => {
       const messages = requestBodies[0]?.messages as Array<{ content?: string }>;
       expect(messages[0]?.content).toContain('"route"');
 
-      await expect(executor(request)).rejects.toThrow(
-        /^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/,
-      );
+      const error = await captureRejection(executor(request));
+      expectSafeProviderSignal(error, 'structured_output', request.signal);
       expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
     } finally {
       globalThis.fetch = originalFetch;
@@ -154,15 +156,17 @@ describe('OpenAI-compatible model agent executor', () => {
         model: 'deepseek-test',
       });
 
-      await expect(
+      const invocationScope = new AbortController().signal;
+      const error = await captureRejection(
         executor({
           schema,
           systemPrompt: 'system',
           userPrompt: 'question',
           maxOutputTokens: 40,
-          signal: new AbortController().signal,
+          signal: invocationScope,
         }),
-      ).rejects.toThrow(/^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/);
+      );
+      expectSafeProviderSignal(error, 'http_server', invocationScope);
       expect(fetchCalls).toBe(1);
     } finally {
       globalThis.fetch = originalFetch;
@@ -242,6 +246,119 @@ describe('OpenAI-compatible model agent executor', () => {
   });
 
   it.each([
+    {
+      label: 'real AI SDK API call error',
+      createError: () => apiCallError(429),
+    },
+    {
+      label: 'forged official AI SDK marker',
+      createError: () =>
+        Object.assign(new Error(CANARY), {
+          [Symbol.for('vercel.ai.error.AI_APICallError')]: true,
+          statusCode: 401,
+          rawBody: CANARY,
+        }),
+    },
+    {
+      label: 'plain error',
+      createError: () => new Error(`${CANARY} https://private.example`),
+    },
+  ])('downgrades an injected $label to an untrusted unknown signal', async ({ createError }) => {
+    const executor = createOpenAICompatibleStructuredExecutor(
+      {
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.deepseek.com',
+        model: 'deepseek-test',
+      },
+      {
+        createProvider: () => () => ({}),
+        generateStructured: async () => {
+          throw createError();
+        },
+      },
+    );
+
+    const invocationScope = new AbortController().signal;
+    const error = await captureRejection(
+      executor({
+        schema,
+        systemPrompt: 'system',
+        userPrompt: 'question',
+        maxOutputTokens: 40,
+        signal: invocationScope,
+      }),
+    );
+
+    expectSafeProviderSignal(error, 'unknown', invocationScope);
+  });
+
+  it('does not trust a default executor signal replayed by injected dependencies', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            message: CANARY,
+            type: 'server_error',
+          },
+        }),
+        { status: 500, headers: { 'content-type': 'application/json' } },
+      )) as typeof fetch;
+
+    try {
+      const trustedExecutor = createOpenAICompatibleStructuredExecutor({
+        provider: 'deepseek',
+        apiKey: 'example-redacted-key',
+        baseURL: 'https://api.example.com/v1',
+        model: 'deepseek-test',
+      });
+      const trustedScope = new AbortController().signal;
+      const replayedSignal = await captureRejection(
+        trustedExecutor({
+          schema,
+          systemPrompt: 'system',
+          userPrompt: 'question',
+          maxOutputTokens: 40,
+          signal: trustedScope,
+        }),
+      );
+
+      const injectedExecutor = createOpenAICompatibleStructuredExecutor(
+        {
+          provider: 'deepseek',
+          apiKey: 'example-redacted-key',
+          baseURL: 'https://api.deepseek.com',
+          model: 'deepseek-test',
+        },
+        {
+          createProvider: () => () => ({}),
+          generateStructured: async () => {
+            throw replayedSignal;
+          },
+        },
+      );
+      const injectedScope = new AbortController().signal;
+      const replayResult = await captureRejection(
+        injectedExecutor({
+          schema,
+          systemPrompt: 'system',
+          userPrompt: 'question',
+          maxOutputTokens: 40,
+          signal: injectedScope,
+        }),
+      );
+
+      expect(replayResult).not.toBe(replayedSignal);
+      expectSafeProviderSignal(replayResult, 'unknown', injectedScope);
+      expectSafeProviderSignal(replayedSignal, 'http_server', trustedScope);
+      expect(JSON.stringify(replayResult)).not.toContain(CANARY);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it.each([
     null,
     {
       provider: 'deepseek',
@@ -294,3 +411,42 @@ describe('OpenAI-compatible model agent executor', () => {
     ).rejects.toThrow(/^MODEL_AGENT_PROVIDER_REQUEST_FAILED$/);
   });
 });
+
+async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  throw new Error('expected provider rejection');
+}
+
+function apiCallError(statusCode: number): APICallError {
+  return new APICallError({
+    message: CANARY,
+    url: `https://example.invalid/${CANARY}`,
+    requestBodyValues: { request: CANARY },
+    statusCode,
+    responseHeaders: { [CANARY]: CANARY },
+    responseBody: JSON.stringify({ body: CANARY }),
+    data: { raw: CANARY },
+    cause: new Error(CANARY),
+    isRetryable: true,
+  });
+}
+
+function expectSafeProviderSignal(
+  error: unknown,
+  expectedCategory: string,
+  expectedScope: AbortSignal,
+): void {
+  expect(error).toBeInstanceOf(Error);
+  if (!(error instanceof Error)) throw new Error('expected safe provider signal');
+  expect(error.name).toBe('ModelAgentProviderFailure');
+  expect(error.message).toBe('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
+  expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
+  expect(takeModelAgentProviderFailureCategory(error, expectedScope)).toBe(expectedCategory);
+  expect(JSON.stringify(error)).not.toContain(CANARY);
+  expect(error.message).not.toContain(CANARY);
+  expect(error.stack).not.toContain(CANARY);
+}

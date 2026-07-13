@@ -9,40 +9,53 @@ import {
 
 import type { ModelAgentProviderFailureCategory } from './model-agent-contract';
 
-const providerFailureCategories = new WeakMap<object, ModelAgentProviderFailureCategory>();
+type ProviderFailureEntry = {
+  category: ModelAgentProviderFailureCategory;
+  scope: AbortSignal;
+};
+
+const providerFailureCategories = new WeakMap<object, ProviderFailureEntry>();
 
 /**
- * Only call this from the private catch boundary around the real AI SDK generateObject call.
- * Official SDK markers preserve cross-package compatibility; the adapter boundary, not the
- * marker, establishes that the caught value has trusted provenance.
+ * Only call this from the private adapter catch boundary for the default AI SDK dependencies.
+ * Official SDK markers preserve cross-package compatibility; the dependency identity and
+ * invocation scope at that boundary, not the marker, establish trusted provenance.
  */
-export function createTrustedModelAgentProviderFailureSignal(error: unknown): Error {
-  return createSignal(classifyProviderFailure(error));
+export function createTrustedModelAgentProviderFailureSignal(
+  error: unknown,
+  scope: AbortSignal,
+): Error {
+  return createSignal(classifyProviderFailure(error), scope);
 }
 
 /**
  * Use this for injected/custom dependencies and outer catches whose provenance is untrusted.
  * It intentionally accepts no error and cannot inspect or retain provider-controlled data.
  */
-export function createUntrustedModelAgentProviderFailureSignal(): Error {
-  return createSignal('unknown');
+export function createUntrustedModelAgentProviderFailureSignal(scope: AbortSignal): Error {
+  return createSignal('unknown', scope);
 }
 
-function createSignal(category: ModelAgentProviderFailureCategory): Error {
+function createSignal(category: ModelAgentProviderFailureCategory, scope: AbortSignal): Error {
   const signal = new Error('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
   signal.name = 'ModelAgentProviderFailure';
-  providerFailureCategories.set(signal, category);
+  providerFailureCategories.set(signal, { category, scope });
   return signal;
 }
 
-export function readModelAgentProviderFailureCategory(
+export function takeModelAgentProviderFailureCategory(
   value: unknown,
+  expectedScope: AbortSignal,
 ): ModelAgentProviderFailureCategory | undefined {
   if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
     return undefined;
   }
 
-  return providerFailureCategories.get(value);
+  const entry = providerFailureCategories.get(value);
+  if (!entry || entry.scope !== expectedScope) return undefined;
+
+  providerFailureCategories.delete(value);
+  return entry.category;
 }
 
 function classifyProviderFailure(error: unknown): ModelAgentProviderFailureCategory {
