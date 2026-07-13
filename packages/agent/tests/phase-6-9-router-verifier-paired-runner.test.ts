@@ -5,6 +5,7 @@ import {
   createModelAgentRuntime,
   hashModelAgentRunId,
   reserveModelAgentBudget,
+  type ModelAgentProviderFailureCategory,
   type ModelAgentRequest,
   type ModelAgentResult,
   type ModelAgentRuntime,
@@ -586,12 +587,21 @@ describe('Phase 6.9.4.3 paired runner', () => {
         entry.runtimeInvoked && !entry.strictSuccess,
     );
     expect(failureIndex).toBeGreaterThanOrEqual(0);
+    expect(output.lanes.live.entries[failureIndex]).toMatchObject({
+      entryStatus: 'observed',
+      lane: 'live',
+      providerAttempted: true,
+      strictSuccess: false,
+      runtimeErrorCode: 'PROVIDER_ERROR',
+      providerFailureCategory: 'http_rate_limit',
+    });
     expect(output.lanes.live.entries.slice(failureIndex + 1).every(
       (entry) => entry.entryStatus === 'not_run' && entry.reason === 'prior_live_failure',
     )).toBe(true);
     expect(output.decisions.every((item) => item.reason === 'usage_unverifiable')).toBe(true);
     expect(output.stopEvidence).toBeUndefined();
     expect(JSON.stringify(output)).not.toContain('RAW_USAGE_COST_CANARY');
+    expect(JSON.stringify(output)).not.toContain('RAW_PROVIDER_SECRET_CANARY');
   });
 
   test('classifies a provenance-valid per-case token overage as token_budget_exceeded', async () => {
@@ -677,10 +687,10 @@ describe('Phase 6.9.4.3 paired runner', () => {
 
   test('distinguishes preflight, pre-provider, provider failure, and strict success boundaries', async () => {
     const scenarios = [
-      { kind: 'preflight', runtime: () => ({ invokeStructured() { throw new Error('must not run'); } }), signal: abortedSignal(), expected: [0, 0, 0] },
-      { kind: 'pre_provider', runtime: () => ({ invokeStructured(request: ModelAgentRequest<unknown>) { return Promise.resolve(structuredFailure(request, 'EXECUTOR_UNAVAILABLE', false)); } }), expected: [1, 0, 0] },
-      { kind: 'provider_failure', runtime: counterRuntime('failure'), expected: [1, 1, 0] },
-      { kind: 'success', runtime: counterRuntime('success'), expected: [1, 1, 1] },
+      { kind: 'preflight', runtime: () => ({ invokeStructured() { throw new Error('must not run'); } }), signal: abortedSignal(), expected: [0, 0, 0], category: undefined },
+      { kind: 'pre_provider', runtime: () => ({ invokeStructured(request: ModelAgentRequest<unknown>) { return Promise.resolve(structuredFailure(request, 'EXECUTOR_UNAVAILABLE', false)); } }), expected: [1, 0, 0], category: undefined },
+      { kind: 'provider_failure', runtime: counterRuntime('failure'), expected: [1, 1, 0], category: 'transport' },
+      { kind: 'success', runtime: counterRuntime('success'), expected: [1, 1, 1], category: undefined },
     ] as const;
     for (const scenario of scenarios) {
       let runtimeCalls = 0;
@@ -709,11 +719,85 @@ describe('Phase 6.9.4.3 paired runner', () => {
         ? [Number(firstEligible.runtimeInvoked), Number(firstEligible.providerAttempted), Number(firstEligible.strictSuccess)]
         : [0, 0, 0];
       expect(observed).toEqual(scenario.expected);
+      if (firstEligible?.entryStatus === 'observed' && firstEligible.lane === 'live') {
+        if (scenario.category) {
+          expect(firstEligible).toMatchObject({ providerFailureCategory: scenario.category });
+        } else {
+          expect('providerFailureCategory' in firstEligible).toBe(false);
+        }
+      }
       expect(runtimeCalls).toBe(scenario.kind === 'success' ? 28 : scenario.expected[0]);
       if (scenario.kind === 'preflight') {
         expect(output.decisions.every((item) => item.reason === 'run_incomplete')).toBe(true);
       }
     }
+  });
+
+  test('removes provider failure categories at invalid boundaries and from Mock and tail entries', async () => {
+    const mismatch = successfulLiveDependencies({
+      failAt: 1,
+      failureCategory: 'http_server',
+    });
+    const counterMismatch = await runPhase6943PairedEval({
+      runId: 'category-counter-mismatch',
+      runKind: 'live',
+      clocks: fakeClocks(),
+      createMockRuntime: createTestMockRuntime,
+      live: { ...mismatch.dependencies, readProviderAttempts: () => 0 },
+    });
+    expect(counterMismatch.kind).toBe('report');
+    if (counterMismatch.kind !== 'report' || counterMismatch.runKind !== 'live') {
+      throw new Error('expected live counter mismatch');
+    }
+    expect(counterMismatch.lanes.live.entries.every(
+      (entry) => !('providerFailureCategory' in entry),
+    )).toBe(true);
+
+    const invalidTrace = successfulLiveDependencies({
+      failAt: 1,
+      failureCategory: 'transport',
+      traceRunIdHash: `sha256:${'f'.repeat(64)}`,
+    });
+    const invalidSummary = await runPhase6943PairedEval({
+      runId: 'category-invalid-summary',
+      runKind: 'live',
+      clocks: fakeClocks(),
+      createMockRuntime: createTestMockRuntime,
+      live: invalidTrace.dependencies,
+    });
+    expect(invalidSummary.kind).toBe('report');
+    if (invalidSummary.kind !== 'report' || invalidSummary.runKind !== 'live') {
+      throw new Error('expected invalid summary report');
+    }
+    expect(invalidSummary.lanes.live.entries.every(
+      (entry) => !('providerFailureCategory' in entry),
+    )).toBe(true);
+
+    let firstMockFailure = true;
+    const mock = await runPhase6943PairedEval({
+      runId: 'category-mock-strip',
+      runKind: 'mock',
+      clocks: fakeClocks(),
+      createMockRuntime(input) {
+        if (!firstMockFailure) return createTestMockRuntime(input);
+        firstMockFailure = false;
+        return {
+          invokeStructured(request) {
+            return Promise.resolve(
+              structuredFailure(request, 'PROVIDER_ERROR', true, 'http_rate_limit'),
+            ) as never;
+          },
+        };
+      },
+    });
+    expect(mock.kind).toBe('report');
+    if (mock.kind !== 'report') throw new Error('expected mock report');
+    expect(mock.lanes.mock.entries.every(
+      (entry) => !('providerFailureCategory' in entry),
+    )).toBe(true);
+    expect(JSON.stringify(counterMismatch)).not.toContain('RAW_PROVIDER_SECRET_CANARY');
+    expect(JSON.stringify(invalidSummary)).not.toContain('RAW_PROVIDER_SECRET_CANARY');
+    expect(JSON.stringify(mock)).not.toContain('RAW_PROVIDER_SECRET_CANARY');
   });
 
   test('allows exact admission equality and rejects one representable step above', () => {
@@ -1088,6 +1172,7 @@ function structuredFailure(
   request: ModelAgentRequest<unknown>,
   code: 'TIMEOUT' | 'ABORTED' | 'CALL_BUDGET_EXCEEDED' | 'EXECUTOR_UNAVAILABLE' | 'PROVIDER_ERROR',
   reserved: boolean,
+  providerFailureCategory?: ModelAgentProviderFailureCategory,
 ): ModelAgentResult<never> {
   const reservation = reserveModelAgentBudget(request.budget, {
     inputTokens: request.estimatedInputTokens,
@@ -1097,19 +1182,32 @@ function structuredFailure(
   const budget = reserved ? reservation.budget : request.budget;
   return {
     ok: false,
-    error: { code, message: 'sanitized failure', retryable: code === 'TIMEOUT' || code === 'PROVIDER_ERROR' },
+    error: {
+      code,
+      message: providerFailureCategory
+        ? 'RAW_PROVIDER_SECRET_CANARY'
+        : 'sanitized failure',
+      retryable: code === 'TIMEOUT' || code === 'PROVIDER_ERROR',
+      ...(code === 'PROVIDER_ERROR' && providerFailureCategory
+        ? { providerFailureCategory }
+        : {}),
+    },
     budget,
     usage: { inputTokens: 0, outputTokens: 0 },
     trace: {
       runIdHash: hashModelAgentRunId(request.runId), task: request.task, mode: 'mock', provider: 'mock',
       model: 'phase-6-9-4-3-test-fixture-v1', status: 'failed', inputTokens: 0, outputTokens: 0,
       maxOutputTokens: request.maxOutputTokens, durationMs: 0, degraded: true, errorCode: code,
+      ...(code === 'PROVIDER_ERROR' && providerFailureCategory
+        ? { providerFailureCategory }
+        : {}),
     },
   };
 }
 
 function successfulLiveDependencies(options: {
   failAt?: number;
+  failureCategory?: ModelAgentProviderFailureCategory;
   budgetState?: Phase6943LiveDependencies['budgetState'];
   mutateRequestBudget?: boolean;
   traceRunIdHash?: string;
@@ -1145,9 +1243,18 @@ function successfulLiveDependencies(options: {
             if (ordinal === options.failAt) {
               const failure = structuredFailure(
                 { ...request, budget: options.mutateRequestBudget ? { ...request.budget, usedCalls: 0 } : request.budget },
-                'PROVIDER_ERROR', true,
+                'PROVIDER_ERROR', true, options.failureCategory ?? 'http_rate_limit',
               );
-              return { ...failure, trace: { ...failure.trace, mode: 'live', provider: 'deepseek', model: 'deepseek-v4-flash' } } as never;
+              return {
+                ...failure,
+                trace: {
+                  ...failure.trace,
+                  ...(options.traceRunIdHash ? { runIdHash: options.traceRunIdHash } : {}),
+                  mode: 'live',
+                  provider: 'deepseek',
+                  model: 'deepseek-v4-flash',
+                },
+              } as never;
             }
             const usage = options.usageForCase?.({
               caseId: input.caseId,
@@ -1232,7 +1339,7 @@ function counterRuntime(mode: 'success' | 'failure') {
       });
       if (!reservation.ok) throw new Error('expected reservation');
       if (mode === 'failure') {
-        const failure = structuredFailure(request, 'PROVIDER_ERROR', true);
+        const failure = structuredFailure(request, 'PROVIDER_ERROR', true, 'transport');
         return Promise.resolve({
           ...failure,
           trace: { ...failure.trace, mode: 'live', provider: 'deepseek', model: 'deepseek-v4-flash' },

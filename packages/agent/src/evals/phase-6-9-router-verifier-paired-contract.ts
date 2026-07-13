@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES } from '@repo/ai';
+
 import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 import {
   PHASE_6941_ROUTER_VERIFIER_DATASET_VERSION,
@@ -91,6 +93,9 @@ const ERROR_CODE_SCHEMA = z.enum([
   'ABORTED',
   'PROVIDER_ERROR',
 ]);
+const PROVIDER_FAILURE_CATEGORY_SCHEMA = z.enum(
+  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
+);
 const DECISION_REASON_SCHEMA = z.enum([
   'quality_gate_passed',
   'paired_candidate_not_run',
@@ -165,6 +170,7 @@ const CANDIDATE_ROUTER_ENTRY_SCHEMA = ENTRY_IDENTITY_SCHEMA.extend({
   providerAttempted: z.boolean(),
   strictSuccess: z.boolean(),
   runtimeErrorCode: ERROR_CODE_SCHEMA.optional(),
+  providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
   durationMs: SAFE_INT_SCHEMA,
   additionalLatencyMs: SAFE_INT_SCHEMA,
   inputTokens: SAFE_INT_SCHEMA,
@@ -186,6 +192,7 @@ const CANDIDATE_VERIFIER_ENTRY_SCHEMA = ENTRY_IDENTITY_SCHEMA.extend({
   providerAttempted: z.boolean(),
   strictSuccess: z.boolean(),
   runtimeErrorCode: ERROR_CODE_SCHEMA.optional(),
+  providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
   durationMs: SAFE_INT_SCHEMA,
   additionalLatencyMs: SAFE_INT_SCHEMA,
   inputTokens: SAFE_INT_SCHEMA,
@@ -208,6 +215,9 @@ export const PHASE_6943_ENTRY_SCHEMA = z.union([
   const noRuntime = !entry.runtimeInvoked;
   const hasRuntimeFailure =
     entry.runtimeInvoked && !entry.strictSuccess && entry.runtimeErrorCode !== undefined;
+  const legalProviderFailureCategory =
+    entry.lane === 'live' && entry.providerAttempted && !entry.strictSuccess &&
+    entry.runtimeErrorCode === 'PROVIDER_ERROR';
 
   if (
     (isMock &&
@@ -229,6 +239,7 @@ export const PHASE_6943_ENTRY_SCHEMA = z.union([
     (entry.providerReported &&
       (isMock || !entry.providerAttempted || !entry.strictSuccess)) ||
     (entry.runtimeErrorCode !== undefined && !hasRuntimeFailure) ||
+    (entry.providerFailureCategory !== undefined && !legalProviderFailureCategory) ||
     (entry.runtimeInvoked && !entry.strictSuccess && entry.runtimeErrorCode === undefined) ||
     (candidateApplied && !entry.strictSuccess) ||
     ((entry.disposition === 'not_eligible' ||

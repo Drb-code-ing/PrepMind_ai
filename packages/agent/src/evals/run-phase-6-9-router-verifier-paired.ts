@@ -1,6 +1,7 @@
 import {
   hashModelAgentRunId,
   type ModelAgentErrorCode,
+  type ModelAgentProviderFailureCategory,
   type ModelAgentRunBudget,
   type ModelAgentRuntime,
 } from '@repo/ai';
@@ -154,6 +155,7 @@ type CandidateSummary = {
   runtimeInvoked: boolean;
   strictSuccess: boolean;
   runtimeErrorCode?: ModelAgentErrorCode;
+  providerFailureCategory?: ModelAgentProviderFailureCategory;
   inputTokens: number;
   outputTokens: number;
   traceValid: boolean;
@@ -756,12 +758,16 @@ function summarizeCandidateEnvelope(
     disposition = 'fallback_runtime_error';
     runtimeErrorCode = 'INVALID_RUNTIME_CONFIG';
   }
+  const providerFailureCategory = traceValid && runtimeErrorCode === 'PROVIDER_ERROR'
+    ? trace?.providerFailureCategory
+    : undefined;
   return {
     actualCode: 'name' in envelope.result ? envelope.result.name : envelope.result.status,
     disposition,
     runtimeInvoked,
     strictSuccess,
     ...(runtimeErrorCode ? { runtimeErrorCode } : {}),
+    ...(providerFailureCategory ? { providerFailureCategory } : {}),
     inputTokens: runtimeInvoked && traceValid ? usage.inputTokens : 0,
     outputTokens: runtimeInvoked && traceValid ? usage.outputTokens : 0,
     traceValid,
@@ -770,6 +776,10 @@ function summarizeCandidateEnvelope(
 
 function applyLiveBoundary(entry: Phase6943Entry, providerDelta: number): Phase6943Entry {
   if (entry.entryStatus !== 'observed' || entry.lane !== 'live') return entry;
+  const {
+    providerFailureCategory: candidateProviderFailureCategory,
+    ...entryWithoutProviderFailureCategory
+  } = entry;
   const expectedDelta = entry.runtimeInvoked ? 1 : 0;
   const providerAttempted = providerDelta === 1;
   const strictSuccess = entry.strictSuccess && providerDelta === expectedDelta &&
@@ -782,13 +792,18 @@ function applyLiveBoundary(entry: Phase6943Entry, providerDelta: number): Phase6
   const runtimeErrorCode = entry.runtimeInvoked && !strictSuccess
     ? entry.runtimeErrorCode ?? 'INVALID_RUNTIME_CONFIG'
     : undefined;
+  const providerFailureCategory = providerAttempted && !strictSuccess &&
+      runtimeErrorCode === 'PROVIDER_ERROR'
+    ? candidateProviderFailureCategory
+    : undefined;
   return {
-    ...entry,
+    ...entryWithoutProviderFailureCategory,
     disposition,
     providerAttempted,
     strictSuccess,
     ...(runtimeErrorCode ? { runtimeErrorCode } : {}),
     ...(!runtimeErrorCode ? { runtimeErrorCode: undefined } : {}),
+    ...(providerFailureCategory ? { providerFailureCategory } : {}),
     providerReported: strictSuccess,
   };
 }
@@ -1056,6 +1071,10 @@ function candidateFields<T extends object>(
     providerAttempted: false,
     strictSuccess: candidate.strictSuccess,
     ...(candidate.runtimeErrorCode ? { runtimeErrorCode: candidate.runtimeErrorCode } : {}),
+    ...(lane === 'live' && candidate.runtimeErrorCode === 'PROVIDER_ERROR' &&
+        candidate.providerFailureCategory
+      ? { providerFailureCategory: candidate.providerFailureCategory }
+      : {}),
     additionalLatencyMs: candidate.additionalLatencyMs,
     inputTokens: candidate.runtimeInvoked ? candidate.inputTokens : 0,
     outputTokens: candidate.runtimeInvoked ? candidate.outputTokens : 0,

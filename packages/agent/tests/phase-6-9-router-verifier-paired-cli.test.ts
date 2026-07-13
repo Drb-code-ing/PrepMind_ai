@@ -557,6 +557,39 @@ describe('Phase 6.9.4.3 evidence validator', () => {
     expect(validatePhase6943Evidence({ profile: 'live', file: liveReportPath(incomplete), raw: JSON.stringify(incomplete) })).toEqual({ ok: true, profile: 'live', runStatus: 'incomplete' });
     expect(validatePhase6943Evidence({ profile: 'live', file: livePath(), raw: JSON.stringify(invalid) })).toEqual({ ok: true, profile: 'live', runStatus: 'invalid' });
     expect(validatePhase6943Evidence({ profile: 'live', file: livePath(), raw: JSON.stringify(buildPhase6943InvalidRun('live', 'live_config_invalid')) }).ok).toBe(false);
+
+    if (incomplete.kind !== 'report' || incomplete.runKind !== 'live') {
+      throw new Error('expected incomplete live report');
+    }
+    const providerFailure = incomplete.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    expect(providerFailure).toMatchObject({
+      providerAttempted: true,
+      strictSuccess: false,
+      runtimeErrorCode: 'PROVIDER_ERROR',
+      providerFailureCategory: 'unknown',
+    });
+    expect(JSON.stringify(incomplete)).not.toContain('SYNTHETIC_FAILURE');
+
+    const historical = structuredClone(incomplete);
+    const historicalFailure = historical.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.runtimeErrorCode === 'PROVIDER_ERROR',
+    );
+    if (!historicalFailure || historicalFailure.entryStatus !== 'observed' ||
+        historicalFailure.lane !== 'live') {
+      throw new Error('expected historical provider failure');
+    }
+    delete (historicalFailure as typeof historicalFailure & {
+      providerFailureCategory?: string;
+    }).providerFailureCategory;
+    expect(validatePhase6943Evidence({
+      profile: 'live',
+      file: liveReportPath(historical),
+      raw: JSON.stringify(historical),
+    })).toEqual({ ok: true, profile: 'live', runStatus: 'incomplete' });
   });
 
   test('binds Live report evidence filenames to startedAt and runIdHash', async () => {
