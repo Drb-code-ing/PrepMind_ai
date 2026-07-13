@@ -10,6 +10,20 @@ export type ModelAgentTask =
 export type ModelAgentMode = 'mock' | 'live';
 export type ModelAgentProvider = 'mock' | 'deepseek' | 'openai';
 
+export const MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES = Object.freeze([
+  'http_auth',
+  'http_rate_limit',
+  'http_client',
+  'http_server',
+  'transport',
+  'structured_output',
+  'invalid_response',
+  'unknown',
+] as const);
+
+export type ModelAgentProviderFailureCategory =
+  (typeof MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES)[number];
+
 export type ModelAgentRunBudget = {
   maxCalls: number;
   usedCalls: number;
@@ -68,6 +82,7 @@ export type ModelAgentError = {
   code: ModelAgentErrorCode;
   message: string;
   retryable: boolean;
+  providerFailureCategory?: ModelAgentProviderFailureCategory;
 };
 
 export type ModelAgentUsage = {
@@ -86,6 +101,7 @@ export type ModelAgentTrace = ModelAgentUsage & {
   durationMs: number;
   degraded: boolean;
   errorCode?: ModelAgentErrorCode;
+  providerFailureCategory?: ModelAgentProviderFailureCategory;
 };
 
 export type ModelAgentResult<T> =
