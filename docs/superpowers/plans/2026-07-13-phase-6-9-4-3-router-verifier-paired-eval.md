@@ -40,11 +40,13 @@
 | 2. Paired runner | `codex/phase-6-9-4-3-paired-runner` | `feat(agent): add router verifier paired runner` |
 | 3. Mock/Live CLI | `codex/phase-6-9-4-3-paired-cli` | `feat(agent): add controlled paired eval cli` |
 | 4. Mock acceptance | `codex/phase-6-9-4-3-mock-acceptance` | `docs(agent): accept phase 6.9.4.3 mock run` |
-| 5. Controlled-Live acceptance | `codex/phase-6-9-4-3-live-acceptance` | `docs(agent): complete phase 6.9.4.3 paired eval` |
+| 5. Controlled-Live acceptance | `codex/phase-6-9-4-3-live-acceptance` | complete 时 `docs(agent): complete phase 6.9.4.3 paired eval`；当前 incomplete checkpoint 为 `docs(agent): record phase 6.9.4.3 incomplete live eval` |
 
 每个 Task 完成后必须依次：定向测试 → agent 全量 test/typecheck/lint → 独立规格审查 → 独立质量审查 → 唯一提交 → `--no-ff` 合并 main → main 重跑门禁 → 推送 main → 核对 local/origin/remote SHA → 删除分支。下一 Task 只能从已推送的新 main 创建，禁止从前一功能分支派生。
 
 若 Task 4/5 验收暴露实现缺陷，停止验收，不把修复混入 docs commit：从当时最新 main 新开 `codex/phase-6-9-4-3-acceptance-fix`，以 TDD 创建一个语义 fix commit、合并/复验/推送/删分支后，从头重跑完整 Mock 或 Live run。Live 不拼接两次报告，也不自动重试单 case。
+
+> Task 5 结果分支：只有 canonical Live 为 complete、28 次 provider attempt 均 strict success 且设计第 14 节全部门槛满足时，才使用 `complete phase` 提交并把 Phase 6.9.4.3 标完成。若 canonical Live 为 incomplete / attempted-invalid，只提交 failure-evidence checkpoint，阶段保持验收未完成，下一任务继续属于 Phase 6.9.4.3。2026-07-13 的实际结果属于后者。pre-fix attempted artifact 为在切换独立 fix 分支前保证不可丢失而单独以 `ecbbba3` 保存；最终 checkpoint commit 不覆盖或重写该 artifact。
 
 ## 2. 文件职责
 
@@ -909,6 +911,8 @@ $maxCost='0.10'
 
 不要回显、读取文件中的 key或把价格猜成默认值。preflight必须证明 96,000/4,080 worst-case cost `<= effectiveMaxCostUsd`。
 
+> 执行偏差记录（2026-07-13，操作者明确批准）：操作者在 Live 执行前明确授权只从仓库根 `.env` 读取 `DEEPSEEK_API_KEY`，覆盖本 Step 的 `Read-Host` / 禁止文件读取输入方式。执行只读取这一项并注入单次 Live 命令进程，不回显、不写入 evidence/日志/文档/Git，且在 `finally` 中清除；pricing 仍由操作者截图与国家外汇管理局当日中间价确认。该授权不放宽双开关、固定 provider/model、预算、无重试、隐私或证据保留要求。
+
 - [ ] **Step 4: 单次串行运行全部 100 case / 28 provider attempts**
 
 ```powershell
@@ -987,7 +991,7 @@ if ($LASTEXITCODE -ne 1) { throw "MOCK_RESTORE_EXIT:$LASTEXITCODE" }
 同步规则：
 
 - `AGENTS.md`：新增 Phase 6.9.4.3 状态行与事实段；只按实际 decision描述是否可进入后续 enablement，不宣称已接 Chat
-- `docs/roadmap.md`：Phase 6.9.4.3 标完成并写实际结论；下一任务按结果设为 enablement接入或失败分析，不越过 paired evidence
+- `docs/roadmap.md`：complete Live 满足第 14 节时才把 Phase 6.9.4.3 标完成；incomplete 时必须标“验收未完成”并把下一任务留在 Phase 6.9.4.3 failure analysis，不越过 paired evidence
 - `docs/ai-behavior-acceptance.md`：新增唯一 canonical Phase 6.9.4.3 持续 contract和本次 decision/evidence链接
 - `docs/acceptance-checklist.md`：新增 Mock/Live exact commands、exit code、28/72、usage/cost/privacy检查
 - `README.md`：更新项目当前 Phase 6.9.4.3结果与下一步，不写秘密或 provider账单断言
@@ -1013,13 +1017,13 @@ git diff --check
 - [ ] **Step 10: 提交、合并 main、main 复验、推送并清理分支**
 
 ```powershell
-git add -- AGENTS.md README.md docs/roadmap.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md 'docs/acceptance/evidence/phase-6-9-4-3/live-*.json'
+git add -- AGENTS.md README.md docs/roadmap.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md docs/superpowers/plans/2026-07-13-phase-6-9-4-3-router-verifier-paired-eval.md 'docs/acceptance/evidence/phase-6-9-4-3/live-*.json'
 git diff --cached --check
 git diff --cached --name-only
-git commit -m "docs(agent): complete phase 6.9.4.3 paired eval"
+git commit -m "docs(agent): record phase 6.9.4.3 incomplete live eval"
 git switch main
 git pull --ff-only origin main
-git merge --no-ff codex/phase-6-9-4-3-live-acceptance -m "merge: phase 6.9.4.3 paired eval evidence"
+git merge --no-ff codex/phase-6-9-4-3-live-acceptance -m "merge: phase 6.9.4.3 incomplete live evidence"
 bun --cwd packages/agent test
 bun --cwd packages/agent run typecheck
 bun --cwd packages/agent run lint
@@ -1034,7 +1038,7 @@ if ($local -ne $tracking -or $local -ne $remote) { throw 'MAIN_SHA_MISMATCH' }
 git branch -d codex/phase-6-9-4-3-live-acceptance
 ```
 
-Expected：main clean、三方 SHA一致、分支删除、默认 Mock。此时才可把 Phase 6.9.4.3 标记完成。
+Expected：main clean、三方 SHA一致、分支删除、默认 Mock。当前 canonical Live 为 incomplete，因此合并后 Phase 6.9.4.3 仍标记“验收未完成”；只有后续新 run 满足第 14 节全部完成标准时才可标记完成。
 
 ---
 

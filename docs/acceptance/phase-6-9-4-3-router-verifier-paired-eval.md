@@ -1,73 +1,41 @@
-# Phase 6.9.4.3 Router / Verifier Paired Eval（Mock 中间验收）
+# Phase 6.9.4.3 Router / Verifier Paired Eval 验收记录
 
-## 1. 定位与结论
+## 1. 阶段结论
 
-本文件记录 Phase 6.9.4.3 的 **Fresh Mock 中间验收**。它已经完成固定数据集上的 deterministic / Mock 双 lane contract run，但 controlled-Live 尚未执行，因此 **Phase 6.9.4.3 尚未完成**。
+Phase 6.9.4.3 的评测工程、Mock 验收与两次受控 Live 尝试已经形成可复核证据，但本轮**没有得到 complete Live 质量证据，阶段验收仍未完成**。Router / Verifier 模型候选均不得启用，生产 Chat 行为保持不变。
 
-本次 strict evidence 的结论是：
+本阶段得到的结论是：
 
-- run 为 `mock / complete`，deterministic 与 Mock lane 各覆盖 100 条 case，Live lane 为 `not_applicable`；
-- deterministic baseline 保持 74/100，critical failure 为 2；
-- Mock lane 的 100 条 case 全部经过 adapter，其中 28 条 eligible case 调用本地 Mock runtime 并全部 strict success，72 条 ineligible / safety case 保持 zero-call；
-- provider attempt 与估算成本均为 0；input/output aggregate 为 0/0 且 `providerReported=false`，即没有 provider-reported usage；
-- Router 与 Verifier 都维持 `enabled=false / paired_candidate_not_run`；
-- `qualityEvidence=false`。Mock fixture 能证明工程 contract、eligibility、zero-call、安全 schema、计数与报告链路可执行，不能证明真实模型的语义质量、延迟或成本，也不能据此启用模型路径。
+- 同一 `phase-6.9-router-verifier-v1` 数据集已经完成 fresh deterministic、Mock 与 controlled-Live 尝试；canonical Live run 明确为 incomplete，dataset digest 始终为 `sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019`。
+- deterministic baseline 仍为 74/100、critical failure 2；Mock contract run 为 complete，28 条 eligible case 全部 strict success，72 条 ineligible / safety case 保持零 provider 调用。
+- controlled-Live 使用 `deepseek-v4-flash`、固定 JSON structured output、单 case 10 秒、串行执行、无自动重试。
+- 两次已越过 provider boundary 的运行均原样保留。第一次在 3 次 provider attempt 后因固定 `PROVIDER_ERROR` 停止；第二次在第 1 次 provider attempt 后因同一固定错误码停止。
+- 第二次运行是唯一通过 strict identity/schema/privacy validator 的 canonical Live evidence，但状态为 `incomplete`，因此 Router / Verifier 都是 `enabled=false / usage_unverifiable`。
+- 本次交付完成的是“评测工程与失败证据检查点”，不是 Phase 6.9.4.3 完成或模型路径 enablement。阶段仍须满足 28 次 Live strict success 的既定完成标准；下一任务必须先分析 provider failure，不能直接接入生产 Chat。
 
-## 2. 执行环境与命令
+## 2. 数据集与调用边界
 
-| 项目 | 实际值 |
-| --- | --- |
-| 验收日期 | 2026-07-13 |
-| 工作分支 | `codex/phase-6-9-4-3-mock-acceptance` |
-| 实现基线 Git SHA | `5f89db65ef5fe76160dfa9c552804e59588053a1` |
-| runner | `phase-6.9.4.3-runner-v1` |
-| prompt version | `phase-6.9.4.2-candidate-v1` |
-| profile / provider | `mock / mock` |
-| model fixture | `phase-6-9-4-3-test-fixture-v1` |
-| run status | `complete` |
-| run duration | 35 ms |
-| safe run id hash | `sha256:bade883031624c30ed2c63048382217c07df9910dcb97ac05446e47fd2477da5` |
-
-实际执行命令与退出码：
-
-| 命令 | 退出码 | 解释 |
-| --- | ---: | --- |
-| `bun run --cwd packages/agent eval:phase-6-9-4-3:accept-mock` | 1 | 按 Mock contract 预期退出；首次通过 no-overwrite writer 生成 evidence。complete 但两个 agent 仍 disabled，因此不是 exit 0。 |
-| `bun run --cwd packages/agent eval:phase-6-9-4-3:validate -- --profile mock --file docs/acceptance/evidence/phase-6-9-4-3/mock.json` | 0 | strict schema、profile、digest、cardinality、counter、decision、usage provenance 与 canary 校验通过。 |
-
-开始执行前两个目标文件均不存在；本次只运行了一次 evidence acceptance writer，没有覆盖或美化 CLI 生成的 JSON。证据见 [mock.json](./evidence/phase-6-9-4-3/mock.json)。
-
-## 3. 固定数据集与可比性
-
-| 字段 | 值 |
+| 项目 | 固定值 |
 | --- | --- |
 | dataset version | `phase-6.9-router-verifier-v1` |
-| dataset digest | `sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019` |
-| Router cases | 60 |
-| Verifier cases | 40 |
+| Router cases | 60（36 high-confidence / 16 ambiguous / 8 safety boundary） |
+| Verifier cases | 40（12 trusted / 8 insufficient / 8 complex conflict / 4 uncertain-or-stale / 8 prompt injection） |
 | total cases | 100 |
-| candidate eligible | 28 |
-| zero-call | 72 |
+| Router candidate eligible | ambiguous 16 |
+| Verifier candidate eligible | complex-conflict 8 + uncertain-or-stale 4 = 12 |
+| candidate eligible total | 16 + 8 + 4 = 28 |
+| deterministic ineligible | Router high-confidence 36 + Verifier trusted 12 + insufficient 8 = 56 |
+| safety blocked | Router safety-boundary 8 + Verifier prompt-injection 8 = 16 |
+| design-time zero-call | 56 + 16 = 72 |
+| runner / prompt | `phase-6.9.4.3-runner-v1` / `phase-6.9.4.2-candidate-v1` |
 
-digest 由 strict contract 固定并在 evidence validation 中重新校验。Mock 与后续 controlled-Live 必须复用同一批 28 条 eligible case，不能更换 expected、挑选有利样本或把多次 run 拼成一个报告。
+28 条 eligible 只覆盖 deterministic policy 的薄弱/歧义区：Router ambiguous 16 条，以及 Verifier complex-conflict 8 条和 uncertain-or-stale 4 条。72 条 design-time zero-call 的含义不是“Live 失败后剩余的所有未调用 case”；它只指 56 条 deterministic ineligible 与 16 条 safety blocked case。若 Live 在中途失败，尚未执行的 eligible case 会记为 `notRun`，不能伪装成已通过的 zero-call safety 证据。
 
-100/28/72 的严格构成如下：
+## 3. 三条 lane 的固定结果
 
-| 边界 | Router | Verifier | 合计 | Mock disposition |
-| --- | ---: | ---: | ---: | --- |
-| 全量数据集 | 60 | 40 | 100 | 全部形成 adapter observation |
-| candidate eligible | ambiguous 16 | complex-conflict 8 + uncertain/stale 4 | 28 | `candidate_applied=28` |
-| deterministic ineligible | high-confidence 36 | trusted 12 + insufficient 8 | 56 | `not_eligible=56` |
-| safety blocked | safety-boundary 8 | prompt-injection 8 | 16 | `safety_blocked=16` |
-| zero-call 合计 | 44 | 28 | 72 | `not_eligible 56 + safety_blocked 16` |
+### 3.1 Deterministic baseline
 
-Router high-confidence case 已由本地 deterministic policy 给出高置信结果，不需要让模型重复判别，也不能为追求 candidate 分数扩大调用面；Verifier trusted / insufficient case 同理不属于本轮 semantic candidate 的授权范围。Router safety-boundary 与 Verifier prompt-injection case 则必须在 runtime 前阻断，避免模型扩大权限、越过数据最小化边界或释放不安全证据。因此这 72 条都保留本地 deterministic / safety 结果并保持零调用。
-
-## 4. Deterministic baseline
-
-deterministic lane 是同一份 100-case 数据集上的新鲜观测，结果仍为 **74/100，critical failure=2**。这里的总通过数按 case 的 expected/actual code 与 Router permission 一致性从 strict evidence 机械计算。
-
-| Agent | 指标 | 实际值 |
+| Agent | 指标 | 结果 |
 | --- | --- | ---: |
 | Router | overall accuracy | 75.00% |
 | Router | ambiguous macro-F1 | 52.4675% |
@@ -80,112 +48,159 @@ deterministic lane 是同一份 100-case 数据集上的新鲜观测，结果仍
 | Verifier | prompt-injection release count | 0 |
 | Verifier | critical failures | 0 |
 
-deterministic lane 不执行 candidate runtime，所以其 latency 字段为 `null`，不应被写成真实模型的 0 ms 延迟。
+### 3.2 Mock contract run
 
-## 5. Mock candidate 结果
+Mock evidence 为 `mock / complete / qualityEvidence=false`。它证明 schema、eligibility、fallback、计数和证据链路可执行，不证明真实模型质量。
 
-### 5.1 质量指标
+| Agent | overall | 专项指标 | critical |
+| --- | ---: | ---: | ---: |
+| Router | 55/60 = 91.6667% | ambiguous macro-F1 100%；high-confidence 86.1111%；permission boundary 93.3333% | 0 |
+| Verifier | 38/40 = 95.00% | complex-conflict recall 100%；conservative fallback 100%；injection release 0 | 0 |
 
-| Agent | 指标 | Mock 实际值 |
-| --- | --- | ---: |
-| Router | overall accuracy | 91.6667% |
-| Router | ambiguous macro-F1 | 100.00% |
-| Router | high-confidence accuracy | 86.1111% |
-| Router | permission-boundary pass rate | 93.3333% |
-| Router | critical failures | 0 |
-| Verifier | overall accuracy | 95.00% |
-| Verifier | complex-conflict recall | 100.00% |
-| Verifier | conservative-fallback pass rate | 100.00% |
-| Verifier | prompt-injection release count | 0 |
-| Verifier | critical failures | 0 |
+Mock counters 为：`caseEntries=100`、`adapterExecutions=100`、`runtimeInvocations=28`、`providerAttempts=0`、`strictSuccesses=28`、`zeroCallCases=72`。`runtimeInvocations=28` 与 `providerAttempts=0` 不矛盾：这 28 次只调用本地固定 Mock runtime。
 
-Router overall accuracy 91.6667% 的分母是全部 60 条最终 adapter observation（55/60），Verifier overall accuracy 95.00% 的分母是全部 40 条最终 adapter observation（38/40）。其中 72 条 zero-call case 的本地 deterministic / safety 最终结果同样进入指标；这两个 overall 值不是 28 条 fixture 的“模型准确率”。
+## 4. Controlled-Live 执行记录
 
-因此，这些值只是在全量 100-case adapter contract 上合并本地结果与固定 Mock fixture 后的观测。28 条 eligible case 的 Mock 输出由受控 fixture 固定，无法回答真实 provider 是否能稳定得到相同语义结果，也不构成 controlled-Live 质量证据。
+### 4.1 零调用 preflight
 
-### 5.2 Latency
+在每次真实运行前都先清除进程 key，并设置 Mock/Live false 后执行同一 Live CLI。两次 preflight 均得到：
 
-| Agent | total p50 | total p95 | additional p50 | additional p95 |
-| --- | ---: | ---: | ---: | ---: |
-| Router | 0 ms | 2 ms | 0 ms | 2 ms |
-| Verifier | 0 ms | 2 ms | 0 ms | 2 ms |
+- exit code `3`；
+- `invalid_run / live_config_invalid`；
+- Live evidence 文件数不变；
+- provider attempt 为 0。
 
-这是本地 Mock runtime 的进程内耗时，只验证 latency 字段、聚合和阈值输入链路；它不是 provider 网络延迟，也不能外推 controlled-Live p50/p95。
+这只证明配置失败会在 provider boundary 前停止，不是模型质量验收。
 
-### 5.3 Coverage、counters、usage 与 cost
+### 4.2 Attempt A：pre-fix incomplete artifact
 
-| 类别 | 字段 | 实际值 |
-| --- | --- | ---: |
-| coverage | observed / not run | 100 / 0 |
-| coverage | runtime invocation / provider attempt | 28 / 0 |
-| coverage | strict success / runtime failure | 28 / 0 |
-| counters | case entries | 100 |
-| counters | adapter executions | 100 |
-| counters | runtime invocations | 28 |
-| counters | provider attempts | 0 |
-| counters | strict successes | 28 |
-| counters | zero-call cases | 72 |
-| aggregate usage | input / output tokens | 0 / 0 |
-| aggregate usage | provider reported | `false` |
-| cost | estimated cost | USD 0 |
+第一次已尝试运行从 2026-07-13T12:27:43.770Z 开始，持续 4693ms：
 
-`100 / 28 / 72` 的含义是：全部 100 条 case 都形成 adapter observation；只有标记为 candidate eligible 的 28 条进入本地 Mock runtime；其余 72 条在 eligibility 或 safety 边界内保持 zero-call。`providerAttempts=0` 进一步说明这 28 次 runtime invocation 没有跨过 provider boundary。Mock entry 内的工程输入估算不等于 provider usage；input/output aggregate 为 0/0 且 `providerReported=false`，即没有 provider-reported usage，不能把它包装成供应商 token 或账单证据。
+| 字段 | 结果 |
+| --- | ---: |
+| observed / notRun | 39 / 61 |
+| adapter executions | 39 |
+| runtime invocations / provider attempts | 3 / 3 |
+| strict successes / runtime failures | 2 / 1 |
+| observed zero-call cases | 36 |
+| provider-reported successful entries | 2 |
+| aggregate usage | 589 input / 169 output，run-level `providerReported=false` |
+| partial auditable estimated cost | USD 0.000136379686412，仅覆盖两条 usage 可验证的成功 entry |
+| stop reason | `PROVIDER_ERROR` -> `usage_unverifiable` |
 
-## 6. Decision 与启用边界
+前两个 Router eligible case strict success，且各自 entry-level `providerReported=true`；第三个 Router eligible case 返回固定 `PROVIDER_ERROR`，usage 不可验证，runner 按合同停止后续 Live 调用。因为整轮包含一次无法验证 usage 的 provider attempt，所以 run-level aggregate 必须是 `providerReported=false`；这与前两条成功 entry 的 provider provenance 不矛盾。
 
-| Agent | enabled | reason |
-| --- | --- | --- |
-| Router | `false` | `paired_candidate_not_run` |
-| Verifier | `false` | `paired_candidate_not_run` |
+该 artifact 还暴露了一个独立的证据身份缺陷：writer 在 12:27:43.752Z 预留文件名，runner 正文在 12:27:43.770Z 记录 `startedAt`，相差 18ms。内容本身通过安全 JSON parse 与隐私扫描，但文件名无法通过 strict profile identity 校验，因此它只作为**不可覆盖的 attempted artifact**保留，不能作为 canonical Live evidence。
 
-这里的 `paired_candidate_not_run` 表示 **controlled-Live paired 质量证据尚未运行**，不表示 Mock runtime 没有运行；本次 evidence 已明确记录 `runtimeInvocations=28`，但这些调用全部是本地 Mock runtime，`providerAttempts=0`。
+缺陷随后在从最新 main 创建的独立分支中按 TDD 修复：单一预捕获 `startedAtMs` 同时绑定 reservation 与 report；原始 runner epoch 仍在 provider 前读取并校验，hostile clock 继续保持 zero-attempt。修复提交为 `e18c1da02c375c1b7310d62e47f7d28f71980277`，合并并推送后的 main 为 `c4d0b392cecba7e75433c8e39513e2c51a1ed687`；修复经 309 个 Agent 测试、类型检查、lint、规格审查、质量审查和 main 复验。
 
-当前 production 行为继续使用 deterministic Router / Verifier。本次没有把 candidate 接入生产 Chat，也没有修改 enablement。Mock 指标即使优于 deterministic baseline，仍不能改变 decision，因为：
+### 4.3 Attempt B：canonical incomplete evidence
 
-1. `qualityEvidence=false` 是本次 evidence 的显式事实；
-2. Mock fixture 不具备真实模型的语义不确定性，无法证明同 case 的 Live 质量；
-3. 本地 0/2 ms 延迟和 USD 0 成本不代表真实 provider 延迟、token 或成本；
-4. paired gate 要求同一数据集上的 controlled-Live 质量、安全、延迟和成本证据，缺一不可。
+修复后的整轮运行从新的 run ID 和第 1 条 case 重新开始，没有复用 Attempt A 的成功结果，也没有重试单个 case。
 
-因此，不能宣称 Router 或 Verifier 的模型路径已启用，也不能宣称 Phase 6.9.4.3 已完成。
+| 字段 | 结果 |
+| --- | ---: |
+| run status / qualityEvidence | `incomplete` / `true` |
+| started / finished / duration | 2026-07-13T12:44:35.253Z / 2026-07-13T12:44:37.215Z / 1951ms |
+| observed / notRun | 37 / 63 |
+| case entries / adapter executions | 100 / 37 |
+| runtime invocations / provider attempts | 1 / 1 |
+| strict successes / runtime failures | 0 / 1 |
+| observed zero-call cases | 36 |
+| aggregate provider usage | 0 / 0，`providerReported=false` |
+| estimated cost | USD 0 |
+| Live metrics status | `partial` |
+| Router decision | `enabled=false / usage_unverifiable` |
+| Verifier decision | `enabled=false / usage_unverifiable` |
 
-## 7. 安全与隐私边界
+第一个 eligible case `router_ambiguous_notes_tutor_01` 已越过 provider boundary，但以固定 `PROVIDER_ERROR` 结束，usage 不可验证。runner 随即停止，后续 63 条记为 `notRun`；这正是 fail-closed 行为，不能把 partial Router 指标或未运行的 Verifier 指标用于 enablement。
 
-对 CLI 原样生成的 evidence 执行了 strict JSON parse、contract parser 与两层隐私检查：
+canonical Live 的 partial metrics 与 latency 必须原样记录，但不能与 complete lane 的门槛做通过比较：
 
-- exact forbidden key 扫描：`query`、`chunk`、`prompt`、`providerOutput`、`rawError`、`apiKey`、`authorization`、`cookie`，命中 0；
-- credential-like value、bearer、`sk-` token 与 PEM private-key pattern 扫描，命中 0；
-- query/chunk/prompt/provider output/raw error/provider/key/base URL/cookie/token/email/private-key canary 扫描，命中 0；
-- evidence 中 `providerAttempts=0`，Live lane 为 `not_applicable`；
-- evidence 只保留 case id、固定 code、布尔状态、计数、聚合指标、受控 provider/model identifier 与 hash 等 allowlist 字段，不复制 case 正文、完整 prompt、RAG chunk、provider output、raw error 或 credential。
+| Agent | partial metrics | total p50 / p95 | additional p50 / p95 |
+| --- | --- | ---: | ---: |
+| Router | overall 83.7838%；ambiguous macro-F1 0%；high-confidence 86.1111%；permission boundary 86.4865%；critical 0 | 1910 / 1910 ms | 1910 / 1910 ms |
+| Verifier | overall/complex-conflict recall/conservative fallback/injection release/critical 均为 0；没有 observed Verifier sample | `null / null` | `null / null` |
 
-这些检查是针对本次 strict evidence 与已知 forbidden pattern 的有界证据，不是通用 secret scanner 的无限保证。
+Router 数值只覆盖停止前观察到的 37 条 Router case；Verifier 的 0 与 `null` 表示没有可用样本，不表示 Verifier 质量为 0% 或延迟为 0ms。两者都不能用于 enablement。
 
-## 8. 明确未执行事项与下一步
+`36/37/63/72` 的精确关系是：固定 case 顺序先观察 36 条 Router high-confidence zero-call，再运行第一个 Router ambiguous eligible case并失败，因此 `observed=36+1=37`、`zeroCallCases=36`。剩余 `notRun=63` 由 27 条尚未运行的 eligible case 与 36 条尚未观察到的 design-time zero-call case 构成，即 `63=27+36`；完整设计仍是 `72=36 observed + 36 notRun`，但未运行的后 36 条不能提前记为本次 zero-call 通过。
 
-本次没有设置 Live 环境变量，没有读取或调用真实 provider，没有启动 Docker、浏览器或服务，没有创建账号、会话或业务数据，也没有访问数据库、Redis、MinIO。因而没有账号、数据库、容器或浏览器 storage 清理项。
+canonical evidence 的文件名由正文 `startedAt + runIdHash` 机械推导，strict validator 返回 `ok=true / live / incomplete`。它是本阶段的权威 Live 运行事实，但不是 complete 质量通过证明。
 
-下一步的唯一可执行导航是[实施计划 Task 5 的 Step 2–4](../superpowers/plans/2026-07-13-phase-6-9-4-3-router-verifier-paired-eval.md)：
+`qualityEvidence=true` 只表示该报告包含真实 controlled-Live lane，而不是 Mock fixture；它是“证据来源”标记，不是“质量通过”标记。必须与 `runStatus`、metrics completeness、usage provenance 和两项 decision 联合读取。本次同时为 `runStatus=incomplete`、`metricsStatus=partial`、`usage.providerReported=false`、两项 decision disabled，因此不得 enable。
 
-1. Step 2 先做 0-call Live preflight rehearsal，必须证明配置失败时 `providerAttempts=0` 且不生成 Live evidence；
-2. Step 3 由操作者确认本次 pricing snapshot、最大成本与临时凭据输入，禁止猜测价格、回显凭据或把它们写入仓库；
-3. Step 4 再复用同一 dataset digest 与同一批 **28 条 eligible case**，执行 **单模型、单次、串行、无自动重试的 controlled-Live run**。
+## 5. Pricing 与成本上限
 
-该 run 要保留所有已跨过 provider boundary 的 complete / incomplete / attempted-invalid 安全 evidence，再由 strict JSON 机械提取真实质量、p50/p95、provider-reported usage、pricing snapshot、估算成本和最终 decision。只有该证据完成后，才能判断 Phase 6.9.4.3 是否通过以及是否允许进入后续 enablement。本文不设置或执行 Live，不记录凭据，也不猜测价格。
+操作者提供的 `deepseek-v4-flash` 价格截图显示：缓存未命中输入 1 元/百万 tokens、输出 2 元/百万 tokens。2026-07-13 [国家外汇管理局人民币汇率中间价](https://www.safe.gov.cn/AppStructured/hlw/RMBQuery.do)为 100 美元 = 679.72 元；按 9 位小数向上取整后，本次 CLI snapshot 为：
+
+| 字段 | 数值 |
+| --- | ---: |
+| input | USD 0.147119403 / 1M tokens |
+| output | USD 0.294238805 / 1M tokens |
+| CLI / effective max cost | USD 0.10 / USD 0.10 |
+| worst-case 96,000 input + 4,080 output | USD 0.0153239570124 |
+
+worst-case admission 明显低于 USD 0.10。Attempt B 因首个 provider failure 没有可验证 usage，所以 evidence 的估算成本为 0；这不代表供应商账单一定为 0，只表示本地合同没有可审计 token 用量可用于估算。
+
+## 6. 为什么停止且不继续自动重跑
+
+Attempt A 与 Attempt B 都出现 `PROVIDER_ERROR`，而运行器只暴露固定错误码，不保留 provider raw error。这是有意的隐私边界，但也意味着当前证据无法确认是网络、限流、provider structured-output 兼容性还是其他外部原因。
+
+因此本阶段不再执行第三轮 Live，也不发起绕过 runner 的额外探测调用：
+
+1. 设计禁止单 case 自动重试和多 run 拼接；
+2. 两次 provider failure 已不满足“已确认一次性网络抖动”的重跑条件；
+3. 继续盲目调用只会增加成本，不能提高证据可解释性；
+4. 下一任务应先设计安全、固定码、无正文的 provider failure 诊断证据，再决定是否进行新的整轮 paired eval。
+
+## 7. 安全、隐私与生产边界
+
+- 原实施计划 Step 3 默认要求 `Read-Host` 且禁止读文件；2026-07-13 操作者在本任务中明确授权覆盖该输入方式，允许只从根 `.env` 读取 `DEEPSEEK_API_KEY` 这一项。执行仅把该值注入单次 Live 命令进程，未读取其他配置值；命令结束后在 `finally` 中清除并恢复 Mock。该 operator-approved deviation 已回写实施计划，key 值未进入日志、evidence、文档或 Git。
+- stdout、evidence、Git diff 和文档均不包含 key、provider raw error、完整 prompt、query、chunk、provider output、Authorization、Cookie、base URL 或 stack。
+- canonical Live evidence 已通过 strict schema、dataset identity、filename identity、usage/cost、decision 和 privacy validator。
+- pre-fix artifact 的内容隐私扫描命中 0，但因 filename identity mismatch 不能升级为 canonical evidence。
+- 本任务没有启动或清理 Docker、数据库、Redis、MinIO、volume、浏览器或测试账号；用户迁移 Docker 数据盘不影响该纯 CLI 评测。
+- Router / Verifier candidate 尚未接入生产 `/api/chat`；生产继续使用 deterministic policy。
+
+## 8. 验证命令与结果
+
+| 验证 | 结果 |
+| --- | --- |
+| `bun run --cwd packages/agent test` | 309 passed，0 failed |
+| `bun run --cwd packages/agent typecheck` | exit 0 |
+| `bun run --cwd packages/agent lint` | exit 0 |
+| Mock paired CLI | exit 1，`mock / complete`，两项 decision disabled |
+| Mock strict validator | exit 0 |
+| canonical Live CLI | exit 2，`live / incomplete` |
+| canonical Live strict validator | exit 0，`ok=true / live / incomplete` |
+| `git diff --check` | exit 0 |
+
+Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mock exit 1 表示报告完整但至少一个 decision disabled，同样是该 CLI 的预期语义。
+
+本阶段不提交 raw stdout/stderr 或 provider debug log artifact，因为它们不属于安全 evidence contract，且可能扩大 provider 错误、环境与凭据暴露面；可复核证据是 strict JSON、validator 结果、Git 提交和本文机械提取的固定字段。
 
 ## 9. 证据链
 
 - [设计：Phase 6.9.4.3 Router / Verifier Paired Eval](../superpowers/specs/phase-6-9-4-3-router-verifier-paired-eval-design.md)
 - [实施计划：2026-07-13 Phase 6.9.4.3](../superpowers/plans/2026-07-13-phase-6-9-4-3-router-verifier-paired-eval.md)
 - [Fresh Mock strict evidence](./evidence/phase-6-9-4-3/mock.json)
+- [Attempt A：pre-fix incomplete artifact](./evidence/phase-6-9-4-3/live-20260713T122743752Z-46b0f4785861.json)
+- [Attempt B：canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260713T124435253Z-4d37573c86dc.json)
 
-## 10. 回顾时可以问
+canonical 选择理由：Attempt B 是修复后从头执行的新 run，并且正文身份、文件名、strict schema、隐私、usage/cost 与 decision 校验全部通过；Attempt A 只作为不利失败事实和修复来源保留。Attempt B 仍是 incomplete，因此“canonical”不等于“质量通过”。
 
-- 为什么总共有 100 条 case，但只有 28 次 runtime invocation，另外 72 条具体代表什么边界？
-- `runtimeInvocations=28` 与 `providerAttempts=0` 为什么不矛盾？
-- 为什么 Mock Router 91.6667%、Verifier 95.00% 仍然不能作为启用质量证据？
-- 当前 Router / Verifier 的 decision 与 reason 分别是什么，production 行为是否改变？
-- deterministic baseline 的 74/100、critical=2 与 Mock candidate 指标分别在证明什么？
-- 本次明确没有执行哪些环境、账号、数据与真实模型操作？
-- 下一步为什么必须复用同一 28 条 eligible case，并且只做单次、无自动重试的 controlled-Live run？
-- controlled-Live 完成前，为什么不能宣称 Phase 6.9.4.3 已完成？
+## 10. 下一任务与回顾问题
+
+下一任务仍属于 Phase 6.9.4.3：provider failure diagnosis。在不保存 raw error、正文或凭据的前提下，区分安全固定的 HTTP/transport/rate-limit/structured-output 类别，先用 Mock/fake executor 建立 contract，再决定是否重新执行整轮 controlled-Live。只有新 run 达到 28 次 strict success 并满足既定质量、安全、延迟与成本标准后，Phase 6.9.4.3 才能标记完成；诊断完成前不得进入 Router / Verifier enablement。
+
+回顾时可以问：
+
+- 为什么 100 条 case 只有 28 条 eligible，而不是全部调用模型？
+- 为什么 canonical Live 的 `zeroCallCases=36`、`notRun=63`，而设计仍写 72 条 zero-call？
+- Attempt A 为什么有 2 次 strict success 仍不能与 Attempt B 拼成完整报告？
+- pre-fix evidence 为什么保留但不能作为 canonical evidence？
+- `qualityEvidence=true` 为什么仍然不能启用模型路径？
+- `providerReported=false` 与 estimated cost 0 能否代表供应商没有计费？
+- Router / Verifier 当前 decision/reason 是什么，生产 Chat 是否改变？
+- 下一任务为什么先做安全失败分类，而不是继续盲目重跑 Live？
