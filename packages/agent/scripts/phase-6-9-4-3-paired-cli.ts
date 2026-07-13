@@ -495,7 +495,27 @@ export async function executePhase6943Cli(
   let reservation: Awaited<ReturnType<typeof reservePhase6943Evidence>> | null = null;
   try {
     const runId = input.randomUUID();
-    const startedAt = new Date(input.epochMs()).toISOString();
+    const startedAtMs = input.epochMs();
+    const startedAt = new Date(startedAtMs).toISOString();
+    let reportStartPending = true;
+    const reportClocks: Phase6943Clocks = {
+      epochMs: () => {
+        if (reportStartPending) {
+          reportStartPending = false;
+          const runnerStartedAtMs = input.clocks.epochMs();
+          if (
+            !Number.isSafeInteger(runnerStartedAtMs) ||
+            runnerStartedAtMs < 0 ||
+            runnerStartedAtMs > 8_640_000_000_000_000
+          ) {
+            throw new Error('PHASE_6943_REPORT_CLOCK_INVALID');
+          }
+          return startedAtMs;
+        }
+        return input.clocks.epochMs();
+      },
+      monotonicMs: () => input.clocks.monotonicMs(),
+    };
     const runIdHash = parsePhase6943RunIdHash(hashModelAgentRunId(runId));
     if (runIdHash === null) {
       const output = buildPhase6943InvalidRun(
@@ -528,7 +548,7 @@ export async function executePhase6943Cli(
     const output = await input.dependencies.runPairedEval({
       runId,
       runKind: parsed.config.command,
-      clocks: input.clocks,
+      clocks: reportClocks,
       calculateDatasetDigest: input.dependencies.calculateDatasetDigest,
       validateDataset: input.dependencies.validateDataset,
       createMockRuntime: input.dependencies.createMockRuntime,
