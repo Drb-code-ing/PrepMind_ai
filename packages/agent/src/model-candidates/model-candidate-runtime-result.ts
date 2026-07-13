@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 import {
+  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
   isModelAgentRunBudget,
   type ModelAgentErrorCode,
+  type ModelAgentProviderFailureCategory,
   type ModelAgentResult,
   type ModelAgentRunBudget,
   type ModelAgentTask,
@@ -23,6 +25,10 @@ const MODEL_AGENT_ERROR_CODE_SCHEMA = z.enum([
   'ABORTED',
   'PROVIDER_ERROR',
 ]);
+
+const PROVIDER_FAILURE_CATEGORY_SCHEMA = z.enum(
+  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
+);
 
 const RUNTIME_BUDGET_SCHEMA = z
   .object({
@@ -86,6 +92,7 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
           code: MODEL_AGENT_ERROR_CODE_SCHEMA,
           message: z.string(),
           retryable: z.boolean(),
+          providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
         })
         .strict(),
       budget: RUNTIME_BUDGET_SCHEMA,
@@ -110,7 +117,8 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
       !isConsistentRuntimeTrace(candidate.trace, candidate.usage) ||
       candidate.trace.status !== 'succeeded' ||
       candidate.trace.degraded ||
-      candidate.trace.errorCode !== undefined
+      candidate.trace.errorCode !== undefined ||
+      candidate.trace.providerFailureCategory !== undefined
     ) {
       return null;
     }
@@ -144,7 +152,12 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
     !isConsistentRuntimeTrace(candidate.trace, candidate.usage) ||
     candidate.trace.status !== 'failed' ||
     !candidate.trace.degraded ||
-    candidate.trace.errorCode !== candidate.error.code
+    candidate.trace.errorCode !== candidate.error.code ||
+    !hasConsistentProviderFailureCategory(
+      candidate.error.code,
+      candidate.error.providerFailureCategory,
+      candidate.trace.providerFailureCategory,
+    )
   ) {
     return null;
   }
@@ -154,6 +167,11 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
       code: candidate.error.code,
       message: 'Model agent runtime returned a structured failure.',
       retryable: candidate.error.retryable,
+      ...(candidate.error.providerFailureCategory
+        ? {
+            providerFailureCategory: candidate.error.providerFailureCategory,
+          }
+        : {}),
     },
     budget: rebuildBudget(candidate.budget),
     usage: rebuildUsage(candidate.usage),
@@ -176,8 +194,24 @@ function createRuntimeTraceSchema(task: ModelAgentTask, maxOutputTokens: number)
       durationMs: z.number().int().safe().min(0),
       degraded: z.boolean(),
       errorCode: MODEL_AGENT_ERROR_CODE_SCHEMA.optional(),
+      providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
     })
     .strict();
+}
+
+function hasConsistentProviderFailureCategory(
+  errorCode: ModelAgentErrorCode,
+  errorCategory: ModelAgentProviderFailureCategory | undefined,
+  traceCategory: ModelAgentProviderFailureCategory | undefined,
+): boolean {
+  if (errorCode !== 'PROVIDER_ERROR') {
+    return errorCategory === undefined && traceCategory === undefined;
+  }
+
+  return (
+    (errorCategory === undefined && traceCategory === undefined) ||
+    (errorCategory !== undefined && errorCategory === traceCategory)
+  );
 }
 
 function hasExpectedFailureBudget(
@@ -291,5 +325,8 @@ function rebuildTrace(value: ModelAgentTrace): ModelAgentTrace {
     durationMs: value.durationMs,
     degraded: value.degraded,
     ...(value.errorCode ? { errorCode: value.errorCode } : {}),
+    ...(value.providerFailureCategory
+      ? { providerFailureCategory: value.providerFailureCategory }
+      : {}),
   };
 }
