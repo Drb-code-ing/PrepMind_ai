@@ -14,6 +14,8 @@ import {
   PHASE_6943_PROMPT_VERSION,
   PHASE_6943_REPORT_SCHEMA_VERSION,
   PHASE_6943_RUNNER_VERSION,
+  buildPhase6943RouterLaneMetrics,
+  buildPhase6943VerifierLaneMetrics,
   calculatePhase6943DatasetDigest,
   getPhase6943Dataset,
   nearestRank,
@@ -396,6 +398,238 @@ describe('Phase 6.9.4.3 paired contract', () => {
     ).toBe(false);
   });
 
+  test('accepts mechanically verifiable Live cost stop evidence', () => {
+    const report = buildCostBudgetStoppedReport();
+    const parsed = parsePhase6943Output(report);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok || parsed.output.kind !== 'report') return;
+    expect(parsed.output.decisions.map((decision) => decision.reason)).toEqual([
+      'cost_budget_exceeded',
+      'cost_budget_exceeded',
+    ]);
+  });
+
+  test('reprices a Router pre-admission stop with the canonical 2400/120 ceiling', () => {
+    const report = buildCostBudgetStoppedReport(13);
+    if (report.kind !== 'report' || report.runKind !== 'live' ||
+        report.runStatus !== 'incomplete' ||
+        report.stopEvidence?.code !== 'cost_budget_exceeded') {
+      throw new Error('expected Router cost stop evidence');
+    }
+
+    const routerReservationCostUsd =
+      (2_400 / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
+      (120 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
+    const firstNotRun = report.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'not_run',
+    );
+    const lastRouterEligible = [...phase6941RouterCases]
+      .reverse()
+      .find((testCase) => testCase.candidateEligible);
+    expect(firstNotRun?.caseId).toBe(lastRouterEligible?.id);
+    expect(firstNotRun?.agent).toBe('router');
+    expect(report.stopEvidence.reservationCostUsd).toBe(routerReservationCostUsd);
+    expect(parsePhase6943Output(report).ok).toBe(true);
+
+    const wrongCeiling = structuredClone(report);
+    wrongCeiling.stopEvidence.reservationCostUsd =
+      (4_800 / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
+      (180 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
+    expect(parsePhase6943Output(wrongCeiling).ok).toBe(false);
+  });
+
+  test('accepts fixed Live cost-unverifiable stop evidence', () => {
+    const report = buildCostUnverifiableStoppedReport();
+    const parsed = parsePhase6943Output(report);
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok || parsed.output.kind !== 'report') return;
+    expect(parsed.output.decisions.map((decision) => decision.reason)).toEqual([
+      'cost_unverifiable',
+      'cost_unverifiable',
+    ]);
+  });
+
+  test('rejects cost-unverifiable evidence separated from the provider attempt by zero-call cases', () => {
+    const forged = buildCostUnverifiableGapForgeryReport();
+    const liveEntries = forged.kind === 'report' && forged.runKind === 'live'
+      ? forged.lanes.live.entries
+      : [];
+    const firstNotRunIndex = liveEntries.findIndex(
+      (entry) => entry.entryStatus === 'not_run',
+    );
+    const predecessor = liveEntries[firstNotRunIndex - 1];
+
+    expect(firstNotRunIndex).toBe(60);
+    expect(predecessor?.entryStatus).toBe('observed');
+    if (predecessor?.entryStatus === 'observed' && predecessor.lane === 'live') {
+      expect(predecessor.providerAttempted).toBe(false);
+    }
+    expect(liveEntries.slice(0, firstNotRunIndex - 1).some(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.providerAttempted,
+    )).toBe(true);
+    expect(parsePhase6943Output(forged).ok).toBe(false);
+  });
+
+  test('rejects forged Live cost stop values, ceilings and tail evidence', () => {
+    const mutations: ((report: Phase6943Output & { stopEvidence?: Record<string, unknown> }) => void)[] = [
+      (report) => { report.stopEvidence!.currentCostUsd = 0.000_001; },
+      (report) => { report.stopEvidence!.reservationCostUsd = 0.002_52; },
+      (report) => { report.stopEvidence!.effectiveCapUsd = 0.000_999; },
+      (report) => {
+        if (report.kind !== 'report' || report.runKind !== 'live') throw new Error('expected live');
+        report.pricingSnapshot.cliMaxCostUsd = 0.1;
+        report.pricingSnapshot.effectiveMaxCostUsd = 0.1;
+        report.stopEvidence!.effectiveCapUsd = 0.1;
+      },
+      (report) => {
+        if (report.kind !== 'report' || report.runKind !== 'live') throw new Error('expected live');
+        report.lanes.live.entries = report.lanes.live.entries.map((entry) =>
+          entry.entryStatus === 'not_run'
+            ? { ...entry, reason: 'runner_stopped' as const }
+            : entry,
+        );
+        refreshIncompleteLiveReport(report);
+      },
+      (report) => { report.stopEvidence!.rawReason = 'RAW_ERROR_CANARY'; },
+    ];
+
+    for (const mutate of mutations) {
+      const report = buildCostBudgetStoppedReport() as Phase6943Output & {
+        stopEvidence?: Record<string, unknown>;
+      };
+      mutate(report);
+      expect(parsePhase6943Output(report)).toEqual({
+        ok: false,
+        errorCode: 'report_contract_invalid',
+      });
+    }
+  });
+
+  test('rejects cost-unverifiable evidence without provider attempt or prior-failure tail', () => {
+    const noAttempt = buildCostUnverifiableStoppedReport() as Phase6943Output & {
+      stopEvidence?: Record<string, unknown>;
+    };
+    if (noAttempt.kind !== 'report' || noAttempt.runKind !== 'live') {
+      throw new Error('expected live report');
+    }
+    noAttempt.lanes.live.entries = noAttempt.lanes.live.entries.map((entry) => {
+      if (entry.entryStatus !== 'observed' || entry.lane !== 'live' ||
+          !entry.providerAttempted) return entry;
+      return {
+        ...entry,
+        disposition: 'fallback_runtime_error' as const,
+        runtimeInvoked: false,
+        providerAttempted: false,
+        strictSuccess: false,
+        inputTokens: 0,
+        outputTokens: 0,
+        providerReported: false,
+      };
+    });
+    refreshIncompleteLiveReport(noAttempt);
+    noAttempt.stopEvidence = { code: 'cost_unverifiable', costVerified: false };
+    noAttempt.decisions = [
+      { agent: 'router', enabled: false, reason: 'call_boundary_failed' },
+      { agent: 'verifier', enabled: false, reason: 'call_boundary_failed' },
+    ];
+    expect(parsePhase6943Output(noAttempt).ok).toBe(false);
+
+    const wrongTail = buildCostUnverifiableStoppedReport();
+    if (wrongTail.kind !== 'report' || wrongTail.runKind !== 'live') {
+      throw new Error('expected live report');
+    }
+    wrongTail.lanes.live.entries = wrongTail.lanes.live.entries.map((entry) =>
+      entry.entryStatus === 'not_run'
+        ? { ...entry, reason: 'budget_exceeded' as const }
+        : entry,
+    );
+    refreshIncompleteLiveReport(wrongTail);
+    expect(parsePhase6943Output(wrongTail).ok).toBe(false);
+  });
+
+  test('keeps token and runtime failure precedence over stop evidence', () => {
+    const token = buildCostBudgetStoppedReport(2);
+    if (token.kind !== 'report' || token.runKind !== 'live') {
+      throw new Error('expected live report');
+    }
+    const overCeiling = token.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.strictSuccess,
+    );
+    if (!overCeiling || overCeiling.entryStatus !== 'observed' ||
+        overCeiling.lane !== 'live') {
+      throw new Error('missing observed provider attempt');
+    }
+    overCeiling.inputTokens = 100_000;
+    token.pricingSnapshot.inputUsdPerMillion = 0.1;
+    token.pricingSnapshot.outputUsdPerMillion = 0.1;
+    refreshIncompleteLiveReport(token);
+    token.pricingSnapshot.cliMaxCostUsd = token.estimatedCostUsd;
+    token.pricingSnapshot.effectiveMaxCostUsd = token.estimatedCostUsd;
+    setCostBudgetStopEvidence(token);
+    token.decisions = [
+      { agent: 'router', enabled: false, reason: 'token_budget_exceeded' },
+      { agent: 'verifier', enabled: false, reason: 'token_budget_exceeded' },
+    ];
+    expect(parsePhase6943Output(token).ok).toBe(true);
+
+    const runtime = buildCostUnverifiableStoppedReport();
+    if (runtime.kind !== 'report' || runtime.runKind !== 'live') {
+      throw new Error('expected live report');
+    }
+    const failed = runtime.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+        entry.providerAttempted,
+    );
+    if (!failed || failed.entryStatus !== 'observed' || failed.lane !== 'live') {
+      throw new Error('missing provider attempt');
+    }
+    failed.disposition = 'fallback_runtime_error';
+    failed.strictSuccess = false;
+    failed.runtimeErrorCode = 'PROVIDER_ERROR';
+    failed.providerReported = false;
+    failed.inputTokens = 0;
+    failed.outputTokens = 0;
+    refreshIncompleteLiveReport(runtime);
+    runtime.decisions = [
+      { agent: 'router', enabled: false, reason: 'usage_unverifiable' },
+      { agent: 'verifier', enabled: false, reason: 'usage_unverifiable' },
+    ];
+    expect(parsePhase6943Output(runtime).ok).toBe(true);
+  });
+
+  test('permits stopEvidence only on incomplete Live reports without mutation or leakage', () => {
+    const evidence = {
+      code: 'cost_unverifiable',
+      costVerified: false,
+    };
+    const forbidden = [
+      buildReport('mock', 'complete'),
+      buildReport('mock', 'incomplete'),
+      buildReport('live', 'complete'),
+      buildInvalidRun(),
+    ];
+    for (const output of forbidden) {
+      const withEvidence = structuredClone(output) as Phase6943Output & {
+        stopEvidence?: typeof evidence;
+      };
+      withEvidence.stopEvidence = evidence;
+      expect(parsePhase6943Output(withEvidence).ok).toBe(false);
+    }
+
+    const legal = buildCostUnverifiableStoppedReport();
+    const before = JSON.stringify(legal);
+    Object.freeze(legal);
+    expect(parsePhase6943Output(legal).ok).toBe(true);
+    expect(JSON.stringify(legal)).toBe(before);
+    expect(before).not.toContain('RAW_ERROR_CANARY');
+    expect(before).not.toContain('PROMPT_CANARY');
+    expect(before).not.toContain('API_KEY_CANARY');
+  });
+
   test('rejects zero Live usage and pricing or cost cap tampering', () => {
     const zeroUsage = structuredClone(buildReport('live', 'complete'));
     if (zeroUsage.kind !== 'report' || zeroUsage.runKind !== 'live') throw new Error('expected live');
@@ -563,6 +797,121 @@ function withIncompleteReason(
   report.decisions = [
     { agent: 'router', enabled: false, reason },
     { agent: 'verifier', enabled: false, reason },
+  ];
+  return report;
+}
+
+function buildCostBudgetStoppedReport(unobservedEligibleCount = 1): Phase6943Output {
+  const report = structuredClone(buildReport('live', 'complete'));
+  if (report.kind !== 'report' || report.runKind !== 'live') {
+    throw new Error('expected complete live report');
+  }
+  const canonicalCases = [...phase6941RouterCases, ...phase6941VerifierCases];
+  const eligibleIndexes = canonicalCases.flatMap((testCase, index) =>
+    testCase.candidateEligible ? [index] : [],
+  );
+  const firstNotRunIndex = eligibleIndexes[eligibleIndexes.length - unobservedEligibleCount];
+  if (firstNotRunIndex === undefined) throw new Error('missing eligible cost stop');
+
+  report.lanes.live.entries = report.lanes.live.entries.map((entry, index) => {
+    if (index < firstNotRunIndex) return entry;
+    const testCase = canonicalCases[index];
+    if (!testCase) throw new Error('missing canonical case');
+    return {
+      caseId: testCase.id,
+      agent: testCase.agent,
+      subset: testCase.subset,
+      lane: 'live',
+      entryStatus: 'not_run',
+      reason: 'budget_exceeded',
+    };
+  });
+  report.pricingSnapshot.cliMaxCostUsd = 0.001;
+  report.pricingSnapshot.effectiveMaxCostUsd = 0.001;
+  refreshIncompleteLiveReport(report);
+  setCostBudgetStopEvidence(report);
+  report.decisions = [
+    { agent: 'router', enabled: false, reason: 'cost_budget_exceeded' },
+    { agent: 'verifier', enabled: false, reason: 'cost_budget_exceeded' },
+  ];
+  return report;
+}
+
+function setCostBudgetStopEvidence(
+  report: Extract<Phase6943Output, { kind: 'report'; runKind: 'live' }>,
+) {
+  const canonicalCases = [...phase6941RouterCases, ...phase6941VerifierCases];
+  const firstNotRunEligible = report.lanes.live.entries.findIndex(
+    (entry, index) => entry.entryStatus === 'not_run' &&
+      canonicalCases[index]?.candidateEligible,
+  );
+  const nextCase = canonicalCases[firstNotRunEligible];
+  if (firstNotRunEligible < 0 || !nextCase) throw new Error('missing next eligible case');
+  const inputCeiling = nextCase.agent === 'router' ? 2_400 : 4_800;
+  const outputCeiling = nextCase.agent === 'router' ? 120 : 180;
+  const reservationCostUsd =
+    (inputCeiling / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
+    (outputCeiling / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
+  const mutable = report as typeof report & { stopEvidence?: Record<string, unknown> };
+  mutable.stopEvidence = {
+    code: 'cost_budget_exceeded',
+    currentCostUsd: report.estimatedCostUsd,
+    reservationCostUsd,
+    effectiveCapUsd: report.pricingSnapshot.effectiveMaxCostUsd,
+  };
+}
+
+function buildCostUnverifiableStoppedReport(): Phase6943Output {
+  const report = structuredClone(buildCanonicalPartialLiveReport());
+  if (report.kind !== 'report' || report.runKind !== 'live') {
+    throw new Error('expected partial live report');
+  }
+  const providerAttemptIndex = report.lanes.live.entries.findIndex(
+    (entry) => entry.entryStatus === 'observed' && entry.lane === 'live' &&
+      entry.providerAttempted,
+  );
+  if (providerAttemptIndex < 0) {
+    throw new Error('missing provider-attempt tail');
+  }
+  report.lanes.live.entries = report.lanes.live.entries.map((entry) =>
+    entry.entryStatus === 'not_run'
+      ? { ...entry, reason: 'prior_live_failure' as const }
+      : entry,
+  );
+  refreshIncompleteLiveReport(report);
+  const mutable = report as typeof report & { stopEvidence?: Record<string, unknown> };
+  mutable.stopEvidence = { code: 'cost_unverifiable', costVerified: false };
+  report.decisions = [
+    { agent: 'router', enabled: false, reason: 'cost_unverifiable' },
+    { agent: 'verifier', enabled: false, reason: 'cost_unverifiable' },
+  ];
+  return report;
+}
+
+function buildCostUnverifiableGapForgeryReport(): Phase6943Output {
+  const report = structuredClone(buildReport('live', 'complete'));
+  if (report.kind !== 'report' || report.runKind !== 'live') {
+    throw new Error('expected complete live report');
+  }
+  const canonicalCases = [...phase6941RouterCases, ...phase6941VerifierCases];
+  report.lanes.live.entries = report.lanes.live.entries.map((entry, index) => {
+    if (index < 60) return entry;
+    const testCase = canonicalCases[index];
+    if (!testCase) throw new Error('missing canonical case');
+    return {
+      caseId: testCase.id,
+      agent: testCase.agent,
+      subset: testCase.subset,
+      lane: 'live',
+      entryStatus: 'not_run',
+      reason: 'prior_live_failure',
+    };
+  });
+  refreshIncompleteLiveReport(report);
+  report.stopEvidence = { code: 'cost_unverifiable', costVerified: false };
+  report.decisions = [
+    { agent: 'router', enabled: false, reason: 'cost_unverifiable' },
+    { agent: 'verifier', enabled: false, reason: 'cost_unverifiable' },
   ];
   return report;
 }
@@ -793,7 +1142,12 @@ function buildTestLane(laneEntries: Phase6943Entry[], candidate: boolean) {
     if (!entry || entry.entryStatus !== 'observed' || entry.agent !== 'verifier') return [];
     return [{ caseId: testCase.id, subset: testCase.subset, expectedStatus: testCase.expectedStatus, actualStatus: entry.actualCode, criticalSafetyCase: testCase.criticalSafetyCase, candidateAttempted: entry.lane === 'live' && entry.runtimeInvoked, runtimeFailed: entry.lane !== 'deterministic' && entry.runtimeInvoked && !entry.strictSuccess }];
   }));
-  if (!router.ok || !verifier.ok) throw new Error('metrics failure');
+  const routerMetrics = router.ok
+    ? router.metrics
+    : buildPhase6943RouterLaneMetrics(laneEntries);
+  const verifierMetrics = verifier.ok
+    ? verifier.metrics
+    : buildPhase6943VerifierLaneMetrics(laneEntries);
   const latency = (agent: 'router' | 'verifier') => {
     const samples = runtimeEntries.filter((entry) => entry.agent === agent);
     const rank = (field: 'durationMs' | 'additionalLatencyMs', percentile: 0.5 | 0.95) => {
@@ -817,7 +1171,7 @@ function buildTestLane(laneEntries: Phase6943Entry[], candidate: boolean) {
     entries: laneEntries,
     counters: { caseEntries: 100, adapterExecutions: candidate ? observed.length : 0, runtimeInvocations: runtimeEntries.length, providerAttempts: candidateEntries.filter((entry) => entry.providerAttempted).length, strictSuccesses, zeroCallCases: candidate ? zeroCallCases : 0 },
     coverage: { observedCount: observed.length, notRunCount: laneEntries.length - observed.length, runtimeInvocationCount: runtimeEntries.length, providerAttemptCount: candidateEntries.filter((entry) => entry.providerAttempted).length, strictSuccessCount: strictSuccesses, runtimeFailureCount: failures.length },
-    metrics: { router: router.metrics, verifier: verifier.metrics },
+    metrics: { router: routerMetrics, verifier: verifierMetrics },
     latency: { router: latency('router'), verifier: latency('verifier') },
   };
 }

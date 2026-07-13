@@ -43,6 +43,11 @@ const RUN_ID_HASH_SCHEMA = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const UTC_SCHEMA = z.string().datetime({ offset: false });
 const SAFE_INT_SCHEMA = z.number().int().safe().min(0);
 const FINITE_NON_NEGATIVE_SCHEMA = z.number().finite().min(0);
+const LIVE_PROVIDER_CEILINGS = {
+  router: { inputTokens: 2_400, outputTokens: 120 },
+  verifier: { inputTokens: 4_800, outputTokens: 180 },
+} as const;
+const MAX_LIVE_RESERVATION_COST_USD = 4_980;
 const ROUTE_SCHEMA = z.enum([
   'chat',
   'tutor',
@@ -341,6 +346,22 @@ const USAGE_SCHEMA = z
     providerReported: z.boolean(),
   })
   .strict();
+const LIVE_STOP_EVIDENCE_SCHEMA = z.discriminatedUnion('code', [
+  z
+    .object({
+      code: z.literal('cost_budget_exceeded'),
+      currentCostUsd: z.number().finite().min(0).max(0.1),
+      reservationCostUsd: z.number().finite().positive().max(MAX_LIVE_RESERVATION_COST_USD),
+      effectiveCapUsd: z.number().finite().positive().max(0.1),
+    })
+    .strict(),
+  z
+    .object({
+      code: z.literal('cost_unverifiable'),
+      costVerified: z.literal(false),
+    })
+    .strict(),
+]);
 const REPORT_BASE_SCHEMA = z
   .object({
     kind: z.literal('report'),
@@ -406,6 +427,7 @@ const LIVE_COMPLETE_SCHEMA = REPORT_BASE_SCHEMA.extend({
 const LIVE_INCOMPLETE_SCHEMA = REPORT_BASE_SCHEMA.extend({
   ...LIVE_REPORT_FIELDS,
   runStatus: z.literal('incomplete'),
+  stopEvidence: LIVE_STOP_EVIDENCE_SCHEMA.optional(),
 }).strict();
 const INVALID_RUN_SCHEMA = z
   .object({
@@ -536,6 +558,9 @@ export const PHASE_6943_OUTPUT_SCHEMA = z
       addContractIssue(context, 'invalid live usage or cost');
     }
     if (output.runStatus === 'incomplete') {
+      if (!hasValidLiveStopEvidence(output)) {
+        addContractIssue(context, 'invalid live stop evidence');
+      }
       const reason = deriveCanonicalIncompleteLiveReason(output);
       if (!hasCanonicalDecisions(output.decisions, false, reason)) {
         addContractIssue(context, 'invalid incomplete live decisions');
@@ -834,10 +859,95 @@ function deriveCanonicalIncompleteLiveReason(
   ) {
     return 'token_budget_exceeded';
   }
+  if (output.stopEvidence?.code === 'cost_unverifiable') {
+    return 'cost_unverifiable';
+  }
+  if (output.stopEvidence?.code === 'cost_budget_exceeded') {
+    return 'cost_budget_exceeded';
+  }
   if (output.estimatedCostUsd > output.pricingSnapshot.effectiveMaxCostUsd) {
     return 'cost_budget_exceeded';
   }
   return 'run_incomplete';
+}
+
+function hasValidLiveStopEvidence(
+  output: z.infer<typeof LIVE_INCOMPLETE_SCHEMA>,
+) {
+  const evidence = output.stopEvidence;
+  if (evidence === undefined) return true;
+  const entries = output.lanes.live.entries;
+  const canonicalCases = [...phase6941RouterCases, ...phase6941VerifierCases];
+  const firstNotRunIndex = entries.findIndex((entry) => entry.entryStatus === 'not_run');
+  if (firstNotRunIndex < 0) return false;
+
+  if (evidence.code === 'cost_unverifiable') {
+    const precedingEntry = entries[firstNotRunIndex - 1];
+    return entries
+      .slice(firstNotRunIndex)
+      .every(
+        (entry) =>
+          entry.entryStatus === 'not_run' && entry.reason === 'prior_live_failure',
+      ) && precedingEntry !== undefined &&
+      isLiveObservedEntry(precedingEntry) &&
+      precedingEntry.providerAttempted &&
+      precedingEntry.runtimeInvoked &&
+      precedingEntry.strictSuccess &&
+      precedingEntry.providerReported;
+  }
+
+  const firstNotRunEligibleIndex = canonicalCases.findIndex(
+    (testCase, index) =>
+      testCase.candidateEligible && entries[index]?.entryStatus === 'not_run',
+  );
+  const nextCase = canonicalCases[firstNotRunEligibleIndex];
+  if (
+    firstNotRunEligibleIndex < 0 ||
+    firstNotRunEligibleIndex !== firstNotRunIndex ||
+    nextCase === undefined ||
+    !entries
+      .slice(firstNotRunIndex)
+      .every(
+        (entry) =>
+          entry.entryStatus === 'not_run' && entry.reason === 'budget_exceeded',
+      )
+  ) {
+    return false;
+  }
+  const reservationCostUsd = calculateLiveProviderCeilingCost(
+    nextCase.agent,
+    output.pricingSnapshot,
+  );
+  const reservedTotalUsd = evidence.currentCostUsd + evidence.reservationCostUsd;
+  return (
+    reservationCostUsd !== null &&
+    Number.isFinite(reservedTotalUsd) &&
+    evidence.currentCostUsd === output.estimatedCostUsd &&
+    evidence.effectiveCapUsd === output.pricingSnapshot.effectiveMaxCostUsd &&
+    evidence.currentCostUsd <= evidence.effectiveCapUsd &&
+    reservedTotalUsd > evidence.effectiveCapUsd &&
+    evidence.reservationCostUsd === reservationCostUsd
+  );
+}
+
+function calculateLiveProviderCeilingCost(
+  agent: 'router' | 'verifier',
+  pricing: Phase6943PricingSnapshot,
+): number | null {
+  const ceiling = LIVE_PROVIDER_CEILINGS[agent];
+  const inputUnits = ceiling.inputTokens / 1_000_000;
+  const outputUnits = ceiling.outputTokens / 1_000_000;
+  const inputCostUsd = inputUnits * pricing.inputUsdPerMillion;
+  const outputCostUsd = outputUnits * pricing.outputUsdPerMillion;
+  const totalCostUsd = inputCostUsd + outputCostUsd;
+  return Number.isFinite(inputUnits) &&
+    Number.isFinite(outputUnits) &&
+    Number.isFinite(inputCostUsd) &&
+    Number.isFinite(outputCostUsd) &&
+    Number.isFinite(totalCostUsd) &&
+    totalCostUsd > 0
+    ? totalCostUsd
+    : null;
 }
 
 function sameDecisions(
@@ -1048,8 +1158,8 @@ function validateLaneMetricsAndLatency(
 
 function withinLiveCaseCeiling(entry: Phase6943Entry) {
   if (entry.entryStatus !== 'observed' || entry.lane !== 'live') return true;
-  const inputCeiling = entry.agent === 'router' ? 2_400 : 4_800;
-  const outputCeiling = entry.agent === 'router' ? 120 : 180;
+  const { inputTokens: inputCeiling, outputTokens: outputCeiling } =
+    LIVE_PROVIDER_CEILINGS[entry.agent];
   return (!entry.strictSuccess || (entry.inputTokens > 0 && entry.outputTokens > 0)) &&
     entry.inputTokens <= inputCeiling && entry.outputTokens <= outputCeiling;
 }
