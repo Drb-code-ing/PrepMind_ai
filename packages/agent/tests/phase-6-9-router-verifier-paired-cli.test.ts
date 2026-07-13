@@ -408,6 +408,85 @@ describe('Phase 6.9.4.3 evidence writer', () => {
     expect(result.evidencePath).toMatch(/^docs\/acceptance\/evidence\/phase-6-9-4-3\/live-/);
   });
 
+  test('binds the reserved Live path to the report startedAt when clocks differ', async () => {
+    const memory = createMemoryFs();
+    const reservedAt = Date.parse('2026-07-13T00:00:00.000Z');
+    let runnerEpoch = reservedAt + 18;
+    let monotonic = 0;
+    const dependencies: Phase6943CompositionDependencies = {
+      runPairedEval: runPhase6943PairedEval,
+      createMockRuntime: createPhase6943MockRuntime,
+      createLiveDependencies: (_config, onAttempt) =>
+        fakeAttemptingLive(onAttempt, memory.events),
+      calculateDatasetDigest: calculatePhase6943DatasetDigest,
+      validateDataset: validatePhase6943Dataset,
+    };
+
+    const result = await executePhase6943Cli({
+      command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+      randomUUID: () => '00000000-0000-4000-8000-000000000004',
+      epochMs: () => reservedAt,
+      clocks: {
+        epochMs: () => runnerEpoch++,
+        monotonicMs: () => monotonic++,
+      },
+      fs: memory.fs, dependencies,
+    });
+
+    if (result.output.kind !== 'report') throw new Error('expected report');
+    const canonical = buildPhase6943LiveEvidencePath(
+      result.output.startedAt,
+      result.output.runIdHash,
+    );
+    expect(result.evidencePath).toBe(canonical);
+    expect(
+      validatePhase6943Evidence({
+        profile: 'live',
+        file: canonical,
+        raw: memory.read(`E:/repo/${result.evidencePath}`),
+      }),
+    ).toEqual({ ok: true, profile: 'live', runStatus: 'incomplete' });
+  });
+
+  test('keeps a hostile runner start clock before the provider boundary', async () => {
+    const memory = createMemoryFs();
+    const dependencies: Phase6943CompositionDependencies = {
+      runPairedEval: runPhase6943PairedEval,
+      createMockRuntime: createPhase6943MockRuntime,
+      createLiveDependencies: (_config, onAttempt) =>
+        fakeAttemptingLive(onAttempt, memory.events),
+      calculateDatasetDigest: calculatePhase6943DatasetDigest,
+      validateDataset: validatePhase6943Dataset,
+    };
+
+    const result = await executePhase6943Cli({
+      command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+      randomUUID: () => '00000000-0000-4000-8000-000000000005',
+      epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+      clocks: {
+        epochMs: () => { throw new Error('RAW_RUNNER_CLOCK_CANARY'); },
+        monotonicMs: () => 0,
+      },
+      fs: memory.fs, dependencies,
+    });
+
+    expect(result).toMatchObject({
+      exitCode: 3,
+      evidencePath: null,
+      output: {
+        kind: 'invalid_run',
+        runKind: 'live',
+        errorCode: 'report_contract_invalid',
+      },
+    });
+    expect(memory.events).not.toContain('provider');
+    expect(
+      memory.keys().some((key) =>
+        key.endsWith('.json') || key.endsWith('.reserve') || key.includes('.tmp-')),
+    ).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('RAW_RUNNER_CLOCK_CANARY');
+  });
+
   test('releases a zero-attempt Live invalid reservation without evidence', async () => {
     const memory = createMemoryFs();
     const dependencies: Phase6943CompositionDependencies = {
