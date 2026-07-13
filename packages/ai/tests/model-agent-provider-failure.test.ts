@@ -16,10 +16,11 @@ import {
 import {
   createTrustedModelAgentProviderFailureSignal,
   createUntrustedModelAgentProviderFailureSignal,
-  readModelAgentProviderFailureCategory,
+  takeModelAgentProviderFailureCategory,
 } from '../src/model-agent-provider-failure';
 
 const CANARY = 'provider-failure-canary-must-not-leak';
+const TEST_SCOPE = new AbortController().signal;
 
 describe('model agent provider failure contract', () => {
   it('defines the only allowed provider failure categories in stable order', () => {
@@ -104,8 +105,11 @@ describe('model agent provider failure signal', () => {
       // Official Symbol.for markers provide cross-bundle compatibility, not cryptographic identity.
       // Only a private adapter catch boundary can establish trusted provenance.
       expect(officialGuard(error)).toBe(true);
-      expectSanitizedSignal(createTrustedModelAgentProviderFailureSignal(error), expected);
-      expectSanitizedSignal(createUntrustedModelAgentProviderFailureSignal(), 'unknown');
+      expectSanitizedSignal(
+        createTrustedModelAgentProviderFailureSignal(error, TEST_SCOPE),
+        expected,
+      );
+      expectSanitizedSignal(createUntrustedModelAgentProviderFailureSignal(TEST_SCOPE), 'unknown');
     },
   );
 
@@ -130,7 +134,7 @@ describe('model agent provider failure signal', () => {
     'classifies an API call with status $statusCode as $expected without leaking provider fields',
     ({ statusCode, expected }) => {
       const providerError = apiCallError(statusCode);
-      const signal = createTrustedModelAgentProviderFailureSignal(providerError);
+      const signal = createTrustedModelAgentProviderFailureSignal(providerError, TEST_SCOPE);
 
       expectSanitizedSignal(signal, expected);
       expect(signal).not.toBe(providerError);
@@ -146,7 +150,10 @@ describe('model agent provider failure signal', () => {
       },
     });
 
-    expectSanitizedSignal(createTrustedModelAgentProviderFailureSignal(providerError), 'unknown');
+    expectSanitizedSignal(
+      createTrustedModelAgentProviderFailureSignal(providerError, TEST_SCOPE),
+      'unknown',
+    );
   });
 
   it.each([
@@ -181,7 +188,7 @@ describe('model agent provider failure signal', () => {
     },
   ])('classifies $label errors as structured output failures', ({ error }) => {
     expectSanitizedSignal(
-      createTrustedModelAgentProviderFailureSignal(error()),
+      createTrustedModelAgentProviderFailureSignal(error(), TEST_SCOPE),
       'structured_output',
     );
   });
@@ -196,7 +203,7 @@ describe('model agent provider failure signal', () => {
     });
 
     expectSanitizedSignal(
-      createTrustedModelAgentProviderFailureSignal(structuredError),
+      createTrustedModelAgentProviderFailureSignal(structuredError, TEST_SCOPE),
       'structured_output',
     );
   });
@@ -216,7 +223,7 @@ describe('model agent provider failure signal', () => {
     },
   ])('classifies $label errors as invalid responses', ({ error }) => {
     expectSanitizedSignal(
-      createTrustedModelAgentProviderFailureSignal(error()),
+      createTrustedModelAgentProviderFailureSignal(error(), TEST_SCOPE),
       'invalid_response',
     );
   });
@@ -224,7 +231,10 @@ describe('model agent provider failure signal', () => {
   it('only classifies the outermost error and never follows cause', () => {
     const outerError = new Error(CANARY, { cause: apiCallError(401) });
 
-    expectSanitizedSignal(createTrustedModelAgentProviderFailureSignal(outerError), 'unknown');
+    expectSanitizedSignal(
+      createTrustedModelAgentProviderFailureSignal(outerError, TEST_SCOPE),
+      'unknown',
+    );
   });
 
   it('contains hostile guard inputs and treats them as unknown', () => {
@@ -247,29 +257,37 @@ describe('model agent provider failure signal', () => {
     );
 
     expect(() => {
-      createTrustedModelAgentProviderFailureSignal(hostile);
+      createTrustedModelAgentProviderFailureSignal(hostile, TEST_SCOPE);
     }).not.toThrow();
-    expectSanitizedSignal(createTrustedModelAgentProviderFailureSignal(hostile), 'unknown');
-    expect(() => readModelAgentProviderFailureCategory(hostile)).not.toThrow();
-    expect(readModelAgentProviderFailureCategory(hostile)).toBeUndefined();
+    expectSanitizedSignal(
+      createTrustedModelAgentProviderFailureSignal(hostile, TEST_SCOPE),
+      'unknown',
+    );
+    expect(() => takeModelAgentProviderFailureCategory(hostile, TEST_SCOPE)).not.toThrow();
+    expect(takeModelAgentProviderFailureCategory(hostile, TEST_SCOPE)).toBeUndefined();
   });
 
-  it('only recognizes exact signals registered by this module', () => {
-    const signal = createTrustedModelAgentProviderFailureSignal(apiCallError(401));
-    const untrustedSignal = createUntrustedModelAgentProviderFailureSignal();
+  it('only consumes exact signals in the matching invocation scope once', () => {
+    const scope = new AbortController().signal;
+    const wrongScope = new AbortController().signal;
+    const signal = createTrustedModelAgentProviderFailureSignal(apiCallError(401), scope);
+    const untrustedSignal = createUntrustedModelAgentProviderFailureSignal(scope);
     const forgedPublicObject = { category: 'http_auth' };
     const inheritedSignal = Object.create(signal) as Error;
 
-    expect(readModelAgentProviderFailureCategory(signal)).toBe('http_auth');
-    expect(readModelAgentProviderFailureCategory(untrustedSignal)).toBe('unknown');
-    expect(readModelAgentProviderFailureCategory(forgedPublicObject)).toBeUndefined();
-    expect(readModelAgentProviderFailureCategory(inheritedSignal)).toBeUndefined();
+    expect(takeModelAgentProviderFailureCategory(signal, wrongScope)).toBeUndefined();
+    expect(takeModelAgentProviderFailureCategory(forgedPublicObject, scope)).toBeUndefined();
+    expect(takeModelAgentProviderFailureCategory(inheritedSignal, scope)).toBeUndefined();
+    expect(takeModelAgentProviderFailureCategory(signal, scope)).toBe('http_auth');
+    expect(takeModelAgentProviderFailureCategory(signal, scope)).toBeUndefined();
+    expect(takeModelAgentProviderFailureCategory(untrustedSignal, scope)).toBe('unknown');
+    expect(takeModelAgentProviderFailureCategory(untrustedSignal, scope)).toBeUndefined();
   });
 
   it('stores neither the original error nor canary data in trusted or untrusted signals', () => {
     const providerError = apiCallError(401);
-    const trustedSignal = createTrustedModelAgentProviderFailureSignal(providerError);
-    const untrustedSignal = createUntrustedModelAgentProviderFailureSignal();
+    const trustedSignal = createTrustedModelAgentProviderFailureSignal(providerError, TEST_SCOPE);
+    const untrustedSignal = createUntrustedModelAgentProviderFailureSignal(TEST_SCOPE);
 
     expectSignalOwnPropertiesToBeSafe(trustedSignal, providerError);
     expectSignalOwnPropertiesToBeSafe(untrustedSignal, providerError);
@@ -280,7 +298,10 @@ describe('model agent provider failure signal', () => {
 
     expect('createTrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
     expect('createUntrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
-    expect('readModelAgentProviderFailureCategory' in packageRoot).toBe(false);
+    expect('takeModelAgentProviderFailureCategory' in packageRoot).toBe(false);
+
+    const internalContract = await import('../src/model-agent-provider-failure');
+    expect('readModelAgentProviderFailureCategory' in internalContract).toBe(false);
   });
 });
 
@@ -305,7 +326,7 @@ function expectSanitizedSignal(signal: Error, expectedCategory: string): void {
   expect(signal.name).not.toContain(CANARY);
   expect(signal.message).not.toContain(CANARY);
   expect(JSON.stringify(signal)).not.toContain(CANARY);
-  expect(readModelAgentProviderFailureCategory(signal)).toBe(expectedCategory);
+  expect(takeModelAgentProviderFailureCategory(signal, TEST_SCOPE)).toBe(expectedCategory);
 }
 
 const ALLOWED_SIGNAL_OWN_KEYS = [

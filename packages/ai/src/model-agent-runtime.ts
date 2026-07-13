@@ -4,6 +4,7 @@ import type {
   ModelAgentErrorCode,
   ModelAgentMode,
   ModelAgentProvider,
+  ModelAgentProviderFailureCategory,
   ModelAgentRequest,
   ModelAgentResult,
   ModelAgentRunBudget,
@@ -13,6 +14,7 @@ import type {
   StructuredModelExecutor,
 } from './model-agent-contract';
 import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget';
+import { takeModelAgentProviderFailureCategory } from './model-agent-provider-failure';
 import {
   createSafeModelAgentError,
   hashModelAgentRunId,
@@ -85,13 +87,32 @@ export function createModelAgentRuntime(input: CreateModelAgentRuntimeInput): Mo
             outputTokens: 0,
           };
         } else {
-          const liveResult = await executeLive(input, request);
-          output = liveResult.object;
-          usage = normalizeUsage(liveResult.usage);
+          const liveExecution = await executeLive(input, request);
+          if (!liveExecution.ok) {
+            return failure(
+              input,
+              request,
+              reservation.budget,
+              liveExecution.code,
+              startedAt,
+              now,
+              liveExecution.providerFailureCategory,
+            );
+          }
+          output = liveExecution.result.object;
+          usage = normalizeUsage(liveExecution.result.usage);
         }
-      } catch (error) {
-        const code = classifyExecutionError(error);
-        return failure(input, request, reservation.budget, code, startedAt, now);
+      } catch {
+        const classification = classifyExecutionError();
+        return failure(
+          input,
+          request,
+          reservation.budget,
+          classification.code,
+          startedAt,
+          now,
+          classification.providerFailureCategory,
+        );
       }
 
       let data: T;
@@ -119,10 +140,21 @@ export function createModelAgentRuntime(input: CreateModelAgentRuntimeInput): Mo
 const TIMEOUT_ERROR = Symbol('MODEL_AGENT_TIMEOUT');
 const ABORTED_ERROR = Symbol('MODEL_AGENT_ABORTED');
 
+type LiveExecutionResult =
+  | {
+      ok: true;
+      result: Awaited<ReturnType<StructuredModelExecutor>>;
+    }
+  | {
+      ok: false;
+      code: 'TIMEOUT' | 'ABORTED' | 'PROVIDER_ERROR';
+      providerFailureCategory?: ModelAgentProviderFailureCategory;
+    };
+
 async function executeLive<T>(
   runtime: CreateModelAgentRuntimeInput,
   request: ModelAgentRequest<T>,
-) {
+): Promise<LiveExecutionResult> {
   const controller = new AbortController();
   let cancellationCode: typeof TIMEOUT_ERROR | typeof ABORTED_ERROR | null = null;
   let cancellationReject: (reason: symbol) => void = () => undefined;
@@ -141,7 +173,7 @@ async function executeLive<T>(
 
   try {
     try {
-      return await Promise.race([
+      const result = await Promise.race([
         runtime.executor!({
           schema: request.schema,
           systemPrompt: request.systemPrompt,
@@ -151,8 +183,16 @@ async function executeLive<T>(
         }),
         cancellation,
       ]);
+      return { ok: true, result };
     } catch (error) {
-      throw cancellationCode ?? error;
+      if (cancellationCode === TIMEOUT_ERROR) return { ok: false, code: 'TIMEOUT' };
+      if (cancellationCode === ABORTED_ERROR) return { ok: false, code: 'ABORTED' };
+      return {
+        ok: false,
+        code: 'PROVIDER_ERROR',
+        providerFailureCategory:
+          takeModelAgentProviderFailureCategory(error, controller.signal) ?? 'unknown',
+      };
     }
   } finally {
     clearTimeout(timeout);
@@ -160,10 +200,14 @@ async function executeLive<T>(
   }
 }
 
-function classifyExecutionError(error: unknown): ModelAgentErrorCode {
-  if (error === TIMEOUT_ERROR) return 'TIMEOUT';
-  if (error === ABORTED_ERROR) return 'ABORTED';
-  return 'PROVIDER_ERROR';
+function classifyExecutionError(): {
+  code: ModelAgentErrorCode;
+  providerFailureCategory?: ModelAgentProviderFailureCategory;
+} {
+  return {
+    code: 'PROVIDER_ERROR',
+    providerFailureCategory: 'unknown',
+  };
 }
 
 function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number }): ModelAgentUsage {
@@ -235,14 +279,25 @@ function failure<T>(
   code: ModelAgentErrorCode,
   startedAt: number | null,
   now: () => number,
+  providerFailureCategory?: ModelAgentProviderFailureCategory,
 ): ModelAgentResult<T> {
   const usage = { inputTokens: 0, outputTokens: 0 };
+  const error = createSafeModelAgentError(code, providerFailureCategory);
   return {
     ok: false,
-    error: createSafeModelAgentError(code),
+    error,
     budget: safeBudgetSnapshot(budget),
     usage,
-    trace: trace(runtime, request, usage, 'failed', startedAt, now, code),
+    trace: trace(
+      runtime,
+      request,
+      usage,
+      'failed',
+      startedAt,
+      now,
+      code,
+      error.providerFailureCategory,
+    ),
   };
 }
 
@@ -254,6 +309,7 @@ function trace(
   startedAt: number | null,
   now: () => number,
   errorCode?: ModelAgentErrorCode,
+  providerFailureCategory?: ModelAgentProviderFailureCategory,
 ): ModelAgentTrace {
   const safeRequest = safeTraceRequest(request);
   return {
@@ -269,6 +325,7 @@ function trace(
     durationMs: calculateDuration(startedAt, now),
     degraded: status === 'failed',
     ...(errorCode ? { errorCode } : {}),
+    ...(providerFailureCategory ? { providerFailureCategory } : {}),
   };
 }
 

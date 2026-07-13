@@ -1,10 +1,60 @@
 import { describe, expect, it } from 'bun:test';
+import { APICallError } from 'ai';
 import { z } from 'zod';
 
 import { createModelAgentBudget } from '../src/model-agent-budget';
+import type { ModelAgentProviderFailureCategory } from '../src/model-agent-contract';
+import { createTrustedModelAgentProviderFailureSignal } from '../src/model-agent-provider-failure';
+import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
 import { createModelAgentRuntime } from '../src/model-agent-runtime';
+import { createSafeModelAgentError } from '../src/model-agent-safety';
 
 const routeSchema = z.object({ route: z.enum(['chat', 'tutor']) }).strict();
+const CANARY = 'runtime-provider-raw-canary-must-not-leak';
+const PROVIDER_FAILURE_RETRYABILITY = [
+  { category: 'http_auth', retryable: false },
+  { category: 'http_rate_limit', retryable: true },
+  { category: 'http_client', retryable: false },
+  { category: 'http_server', retryable: true },
+  { category: 'transport', retryable: true },
+  { category: 'structured_output', retryable: false },
+  { category: 'invalid_response', retryable: false },
+  { category: 'unknown', retryable: false },
+] as const satisfies ReadonlyArray<{
+  category: ModelAgentProviderFailureCategory;
+  retryable: boolean;
+}>;
+
+describe('safe model agent errors', () => {
+  it.each(PROVIDER_FAILURE_RETRYABILITY)(
+    'maps provider category $category to retryable=$retryable',
+    ({ category, retryable }) => {
+      expect(createSafeModelAgentError('PROVIDER_ERROR', category)).toEqual({
+        code: 'PROVIDER_ERROR',
+        message: 'Model provider request failed.',
+        retryable,
+        providerFailureCategory: category,
+      });
+    },
+  );
+
+  it('defaults a category-less provider failure to unknown', () => {
+    expect(createSafeModelAgentError('PROVIDER_ERROR')).toEqual({
+      code: 'PROVIDER_ERROR',
+      message: 'Model provider request failed.',
+      retryable: false,
+      providerFailureCategory: 'unknown',
+    });
+  });
+
+  it('never attaches provider failure categories to non-provider errors', () => {
+    expect(createSafeModelAgentError('TIMEOUT', 'http_server')).toEqual({
+      code: 'TIMEOUT',
+      message: 'Model agent call timed out.',
+      retryable: true,
+    });
+  });
+});
 
 describe('model agent runtime mock mode', () => {
   it('parses mock output through the shared schema without a live executor', async () => {
@@ -36,6 +86,7 @@ describe('model agent runtime mock mode', () => {
       maxOutputTokens: 30,
       degraded: false,
     });
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(result.trace.runIdHash).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(JSON.stringify(result)).not.toContain('private system prompt');
     expect(JSON.stringify(result)).not.toContain('private user question');
@@ -61,6 +112,8 @@ describe('model agent runtime mock mode', () => {
     });
     expect(result.budget.usedCalls).toBe(1);
     expect(result.trace.errorCode).toBe('SCHEMA_INVALID');
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(JSON.stringify(result)).not.toContain('unknown');
   });
 
@@ -111,6 +164,8 @@ describe('model agent runtime mock mode', () => {
     if (result.ok) throw new Error('expected request failure');
     expect(result.error.code).toBe(override.expectedCode);
     expect(result.budget.usedCalls).toBe(0);
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(calls).toBe(0);
   });
 });
@@ -132,6 +187,8 @@ describe('model agent runtime live mode', () => {
     if (result.ok) throw new Error('expected live guard failure');
     expect(result.error.code).toBe('LIVE_CALLS_DISABLED');
     expect(result.budget.usedCalls).toBe(0);
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(calls).toBe(0);
   });
 
@@ -142,6 +199,8 @@ describe('model agent runtime live mode', () => {
     if (result.ok) throw new Error('expected executor failure');
     expect(result.error.code).toBe('EXECUTOR_UNAVAILABLE');
     expect(result.budget.usedCalls).toBe(0);
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
   });
 
   it('returns parsed live data and normalized provider usage', async () => {
@@ -169,6 +228,7 @@ describe('model agent runtime live mode', () => {
       inputTokens: 22,
       outputTokens: 7,
     });
+    expect('providerFailureCategory' in result.trace).toBe(false);
   });
 
   it('sanitizes provider errors without returning raw provider text', async () => {
@@ -185,11 +245,157 @@ describe('model agent runtime live mode', () => {
     expect(result.error).toEqual({
       code: 'PROVIDER_ERROR',
       message: 'Model provider request failed.',
-      retryable: true,
+      retryable: false,
+      providerFailureCategory: 'unknown',
     });
-    expect(result.budget.usedCalls).toBe(1);
+    expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+    expect(result.trace.providerFailureCategory).toBe('unknown');
+    expect(result.budget).toMatchObject({
+      usedCalls: 1,
+      usedInputTokens: 20,
+      usedOutputTokens: 30,
+    });
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
     expect(JSON.stringify(result)).not.toContain('private provider response');
     expect(JSON.stringify(result)).not.toContain('credential material');
+  });
+
+  it('propagates a trusted provider category identically to the error and trace', async () => {
+    const runtime = liveRuntime({
+      executor: async ({ signal }) => {
+        throw createTrustedModelAgentProviderFailureSignal(apiCallError(429), signal);
+      },
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected provider failure');
+    expect(result.error).toEqual({
+      code: 'PROVIDER_ERROR',
+      message: 'Model provider request failed.',
+      retryable: true,
+      providerFailureCategory: 'http_rate_limit',
+    });
+    expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+    expect(result.trace.errorCode).toBe(result.error.code);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+    expect(JSON.stringify(result)).not.toContain(CANARY);
+  });
+
+  it('downgrades a trusted signal replayed in a different runtime invocation', async () => {
+    const originalScope = new AbortController().signal;
+    const replayedSignal = createTrustedModelAgentProviderFailureSignal(
+      apiCallError(500),
+      originalScope,
+    );
+    const runtime = liveRuntime({
+      executor: async () => {
+        throw replayedSignal;
+      },
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected replayed provider failure');
+    expect(result.error).toEqual({
+      code: 'PROVIDER_ERROR',
+      message: 'Model provider request failed.',
+      retryable: false,
+      providerFailureCategory: 'unknown',
+    });
+    expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+    expect(JSON.stringify(result)).not.toContain(CANARY);
+  });
+
+  it('preserves http_server from the default provider through the runtime', async () => {
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response(
+        JSON.stringify({
+          error: {
+            message: CANARY,
+            type: 'server_error',
+          },
+        }),
+        { status: 500, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const result = await liveRuntime({
+        executor: defaultProviderExecutor(),
+      }).invokeStructured(request());
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected default provider failure');
+      expect(result.error).toEqual({
+        code: 'PROVIDER_ERROR',
+        message: 'Model provider request failed.',
+        retryable: true,
+        providerFailureCategory: 'http_server',
+      });
+      expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+      expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+      expect(fetchCalls).toBe(1);
+      expect(JSON.stringify(result)).not.toContain(CANARY);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('preserves structured_output from the default provider through the runtime', async () => {
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      return new Response(
+        JSON.stringify({
+          id: 'chatcmpl-structured-output',
+          object: 'chat.completion',
+          created: 1,
+          model: 'deepseek-test',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: '{"route":"unsafe"}' },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 21,
+            completion_tokens: 8,
+            total_tokens: 29,
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const result = await liveRuntime({
+        executor: defaultProviderExecutor(),
+      }).invokeStructured(request());
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected structured output failure');
+      expect(result.error).toEqual({
+        code: 'PROVIDER_ERROR',
+        message: 'Model provider request failed.',
+        retryable: false,
+        providerFailureCategory: 'structured_output',
+      });
+      expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+      expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+      expect(fetchCalls).toBe(1);
+      expect(JSON.stringify(result)).not.toContain('unsafe');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it('aborts a timed-out executor and classifies it separately', async () => {
@@ -202,7 +408,7 @@ describe('model agent runtime live mode', () => {
             'abort',
             () => {
               observedAbort = true;
-              reject(new Error('raw timeout provider error'));
+              reject(createTrustedModelAgentProviderFailureSignal(apiCallError(500), signal));
             },
             { once: true },
           );
@@ -214,6 +420,9 @@ describe('model agent runtime live mode', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected timeout');
     expect(result.error.code).toBe('TIMEOUT');
+    expect(result.error.retryable).toBe(true);
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(result.budget.usedCalls).toBe(1);
     expect(observedAbort).toBe(true);
     expect(JSON.stringify(result)).not.toContain('raw timeout');
@@ -238,8 +447,42 @@ describe('model agent runtime live mode', () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected abort');
     expect(result.error.code).toBe('ABORTED');
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
     expect(result.budget.usedCalls).toBe(0);
     expect(calls).toBe(0);
+  });
+
+  it('keeps an active external abort ahead of a provider failure signal', async () => {
+    const external = new AbortController();
+    let observedAbort = false;
+    const runtime = liveRuntime({
+      executor: ({ signal }) =>
+        new Promise((_, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => {
+              observedAbort = true;
+              reject(createTrustedModelAgentProviderFailureSignal(apiCallError(500), signal));
+            },
+            { once: true },
+          );
+        }),
+    });
+
+    const invocation = runtime.invokeStructured({ ...request(), signal: external.signal });
+    external.abort();
+    const result = await invocation;
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected active abort');
+    expect(result.error.code).toBe('ABORTED');
+    expect(result.error.retryable).toBe(false);
+    expect('providerFailureCategory' in result.error).toBe(false);
+    expect('providerFailureCategory' in result.trace).toBe(false);
+    expect(result.budget.usedCalls).toBe(1);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+    expect(observedAbort).toBe(true);
   });
 
   it('normalizes invalid provider usage to zero', async () => {
@@ -408,5 +651,28 @@ function liveRuntime(overrides: Partial<Parameters<typeof createModelAgentRuntim
     timeoutMs: 100,
     executor: async () => ({ object: { route: 'chat' } }),
     ...overrides,
+  });
+}
+
+function apiCallError(statusCode: number): APICallError {
+  return new APICallError({
+    message: CANARY,
+    url: `https://example.invalid/${CANARY}`,
+    requestBodyValues: { request: CANARY },
+    statusCode,
+    responseHeaders: { [CANARY]: CANARY },
+    responseBody: JSON.stringify({ body: CANARY }),
+    data: { raw: CANARY },
+    cause: new Error(CANARY),
+    isRetryable: true,
+  });
+}
+
+function defaultProviderExecutor() {
+  return createOpenAICompatibleStructuredExecutor({
+    provider: 'deepseek',
+    apiKey: 'example-redacted-key',
+    baseURL: 'https://api.example.com/v1',
+    model: 'deepseek-test',
   });
 }

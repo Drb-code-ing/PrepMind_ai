@@ -3,6 +3,10 @@ import { generateObject, type LanguageModelV1 } from 'ai';
 import type { z } from 'zod';
 
 import type { StructuredModelExecutor } from './model-agent-contract';
+import {
+  createTrustedModelAgentProviderFailureSignal,
+  createUntrustedModelAgentProviderFailureSignal,
+} from './model-agent-provider-failure';
 import { isSafeModelName } from './model-agent-safety';
 
 export type OpenAICompatibleExecutorConfig = {
@@ -62,6 +66,7 @@ export function createOpenAICompatibleStructuredExecutor(
   config: OpenAICompatibleExecutorConfig,
   dependencies: ModelAgentProviderDependencies = defaultDependencies,
 ): StructuredModelExecutor {
+  const trustedDependencies = dependencies === defaultDependencies;
   const normalized = normalizeProviderConfig(config);
   let model: unknown;
   try {
@@ -94,8 +99,11 @@ export function createOpenAICompatibleStructuredExecutor(
           outputTokens: result.usage?.completionTokens,
         },
       };
-    } catch {
-      throw new Error('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
+    } catch (error) {
+      if (trustedDependencies) {
+        throw createTrustedModelAgentProviderFailureSignal(error, input.signal);
+      }
+      throw createUntrustedModelAgentProviderFailureSignal(input.signal);
     }
   };
 }
