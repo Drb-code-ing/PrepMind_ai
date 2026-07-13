@@ -337,7 +337,12 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 - 检查 provider-reported per-case usage、aggregate usage、p50/p95、pricing snapshot、estimated cost、10 秒 timeout metadata，以及 Router / Verifier 两项独立 decision/reason；
 - 扫描 JSON/Markdown 中的 forbidden key、credential value、prompt/query/chunk/output/raw-error canary；验证结束后清除进程 key、恢复 Mock，不清理 Docker、数据库、Redis、MinIO 或 volume；
 - 本次 canonical Live 为 exit 2 / incomplete：`observed/notRun=37/63`、`providerAttempts/strictSuccesses=1/0`、固定 `PROVIDER_ERROR`、两项 decision 均为 `usage_unverifiable`；strict validator exit 0 只证明 incomplete evidence 合法，不代表模型质量通过；
-- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。当前 Phase 6.9.4.3 验收未完成；在该阶段后续任务完成安全 provider failure diagnosis，且新的整轮 Live 达到 28 次 strict success 并通过全部门槛前，不得标记阶段完成或启用 Router / Verifier candidate。
+- 新 controlled-Live 前必须通过共享 diagnostics 测试：八类枚举只从 `@repo/ai` 读取，attempted Live `PROVIDER_ERROR` failure 的 Error / Trace 分类必须存在且一致，evidence 必须携带八类之一；custom / injected executor 只能为 `unknown`；
+- timeout、abort、`SCHEMA_INVALID`、budget、config、success、pre-provider、Mock、deterministic、zero-call 与 `not_run` 均不得携带分类；provider counter mismatch 时必须在最终 Live 边界剥离分类；
+- candidate sanitizer 只接受 Error / Trace 双边一致的白名单枚举。历史 Attempt A / B 允许分类字段双边缺失，但不得改写：A 仍为 filename identity mismatch，B 仍为 `live / incomplete`；
+- `providerFailureCategory` 不改变 `usage_unverifiable`、`incomplete` 或 enablement 的 fail-closed 结论，也不授权自动重试；不得保存 raw HTTP status、URL、request/response body、headers、message、stack、cause、prompt、output 或 credentials；
+- 若新的 controlled-Live 再失败，只记录固定分类和既有安全计数：`http_auth` 先核对授权配置，`http_rate_limit` 服从 provider 窗口，`structured_output` 核对兼容性，`http_client/http_server/transport/invalid_response/unknown` 按各自边界诊断；任何类别都不得盲目重跑或绕过 runner 探测；
+- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。共享 diagnostics 合同已完成零网络验收，但 Phase 6.9.4.3 仍未完成；新的整轮 Live 达到 28 次 strict success 并通过质量、安全、延迟与成本门槛前，不得标记阶段完成或启用 Router / Verifier candidate。
 
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 
