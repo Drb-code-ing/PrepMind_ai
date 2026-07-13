@@ -1,30 +1,30 @@
 # Phase 6.9.4.3 共享 Provider 失败诊断设计
 
 > 日期：2026-07-13
-> 状态：方案已确认，待书面规范审阅
+> 状态：已实施并完成 Mock/fake executor 验收，待新的 controlled-Live paired eval
 > 关联阶段：Phase 6.9.4.3 Router / Verifier paired eval 受控 Live 验收
 > 前置证据：`docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`
 
 ## 1. 结论
 
-在共享 `@repo/ai` Provider / `ModelAgentRuntime` 边界增加固定、脱敏的 Provider 失败分类，并让 Router / Verifier paired eval 原样消费该分类。顶层错误码继续保持 `PROVIDER_ERROR`，不新增自动重试，不在本任务扩展数据库、生产 Trace API 或 UI。
+共享 `@repo/ai` Provider / `ModelAgentRuntime` 边界现已增加固定、脱敏的 Provider 失败分类，Router / Verifier paired eval 也已按严格位置合同消费该分类。顶层错误码继续保持 `PROVIDER_ERROR`，没有新增自动重试，也没有扩展数据库、生产 Trace API 或 UI。
 
 该设计解决的是共享基础设施缺口，而不是只为 Phase 6.9.4.3 写一次性诊断脚本。完成后，当前 Router / Verifier、既有 ConversationSummary 以及未来 Memory、Orchestrator、MCP Agent 等所有复用 `ModelAgentRuntime` 的模型路径，都可以得到同一套安全故障语义。
 
-在本设计完成实施、测试、审查、合并并推送 `main` 前，禁止再次发起受控 Live paired eval。旧的两次 Live 失败证据必须保留，不覆盖、不改写。
+共享诊断代码已完成测试、审查并合并至 `main`；本次文档收口没有新增真实模型调用。旧的两次 Live 失败证据继续原样保留，不覆盖、不改写。下一步不是启用候选，而是从最新已推送 `main` 发起一轮新的 controlled-Live paired eval。
 
 ## 2. 背景与问题
 
-Phase 6.9.4.3 已完成 deterministic 和 Mock paired eval，但两次受控 Live 均在已越过 provider boundary 后停止：
+Phase 6.9.4.3 的 deterministic 和 Mock paired eval 已完成，但两次受控 Live 均在已越过 provider boundary 后停止：
 
 - Attempt A：3 次 provider attempt，其中 2 次 strict success，第 3 次得到 `PROVIDER_ERROR`；
 - Attempt B：1 次 provider attempt，0 次 strict success，随后得到 `PROVIDER_ERROR`；
 - 两次运行都按 `usage_unverifiable` fail-closed，Router / Verifier 保持 `enabled=false`；
 - 生产 Chat 继续使用 deterministic 路径，没有接入候选模型。
 
-当前 `packages/ai/src/model-agent-provider.ts` 捕获所有 provider 调用异常后只抛出 `MODEL_AGENT_PROVIDER_REQUEST_FAILED`，`packages/ai/src/model-agent-runtime.ts` 又将所有非超时、非取消异常映射为 `PROVIDER_ERROR`。因此现有证据无法区分鉴权、限流、HTTP 客户端错误、服务端错误、网络传输问题、structured output 失败、无效响应和未知异常。
+实施前，`packages/ai/src/model-agent-provider.ts` 捕获所有 provider 调用异常后只抛出 `MODEL_AGENT_PROVIDER_REQUEST_FAILED`，`packages/ai/src/model-agent-runtime.ts` 又将所有非超时、非取消异常映射为 `PROVIDER_ERROR`。因此既有 A/B 证据无法区分鉴权、限流、HTTP 客户端错误、服务端错误、网络传输问题、structured output 失败、无效响应和未知异常。
 
-这是刻意的隐私边界带来的可观测性缺口：原始异常没有泄露，但安全分类也被一起丢失。目标是在不放松隐私边界的前提下补回最小、稳定、可复用的诊断信息。
+这是刻意的隐私边界带来的可观测性缺口：原始异常没有泄露，但安全分类也被一起丢失。本次实施在不放松隐私边界的前提下补回了最小、稳定、可复用的诊断信息；它只说明失败落在哪个安全类别，不声称给出供应商根因。
 
 ## 3. 方案选择
 
@@ -120,6 +120,10 @@ providerFailureCategory?: ModelAgentProviderFailureCategory;
 5. 字段在 TypeScript 公共类型中保持 optional，以兼容历史 evidence、已有测试 fixture 和外部构造的旧结果；Runtime 自身的行为由测试收紧为“Provider 失败必有分类”。
 6. 顶层 `code/errorCode` 仍是 `PROVIDER_ERROR`，现有调用方不需要分支处理八个新错误码。
 
+保留顶层 `PROVIDER_ERROR` 是为了维持调用方的稳定失败语义和 fail-closed 分支；八类低基数值只承担诊断职责，不能升级成新的控制流、重试策略或 enablement 旁路。字段的合法位置只有两处：共享 Runtime 失败结果的 `error.providerFailureCategory` 与 `trace.providerFailureCategory`，以及第 9.1 节限定的 paired Live observed entry。生产 Trace API / UI 当前没有接入该字段。
+
+`structured_output` 与 Runtime 的 `SCHEMA_INVALID` 不能混用：前者表示默认 AI SDK dependency 在 provider adapter 内生成或解析 structured output 时失败，尚未向 Runtime 返回可供共享 schema 校验的对象，因此仍是 `PROVIDER_ERROR + structured_output`；后者表示 executor 已成功返回对象，但 Runtime 随后的共享 Zod schema 校验失败，是非 Provider 错误，不得携带分类。
+
 `ModelAgentError.retryable` 保留现有字段，但由本地固定规则生成，不触发实际重试：
 
 | 分类 | `retryable` |
@@ -153,11 +157,11 @@ adapter 明确禁止读取或传播以下字段：
 
 ### 6.2 内部安全信号
 
-adapter 不再抛出只含字符串的 `MODEL_AGENT_PROVIDER_REQUEST_FAILED`，而是创建内部 Provider failure signal。该信号只携带枚举分类，不保留原始异常引用，也不设置原始异常为 `cause`。
+adapter 不再把 AI SDK raw error 带出边界，而是创建内部 Provider failure signal。该信号只携带枚举分类和当前 invocation 的 `AbortSignal` scope，不保留原始异常引用，也不设置原始异常为 `cause`；URL、请求/响应、headers、message、stack 与 cause 在 adapter catch 边界即被丢弃。
 
-实现应使用模块私有 `WeakMap<object, ModelAgentProviderFailureCategory>`（或等价的不可伪造私有注册表）创建和识别信号，而不是信任普通对象上的公开 `category` 字段。这样 hostile executor 不能通过 `{ category: 'http_auth' }`、自定义原型或 getter 伪造可信诊断。
+实现使用模块私有 `WeakMap<object, { category, scope }>` 创建和识别信号，而不是信任普通对象上的公开 `category` 字段。可信 provenance 同时要求创建 executor 时使用默认 dependency 对象 identity、信号属于当前 Runtime invocation 的 `AbortSignal` scope，并且只允许成功消费一次。wrong-scope 读取不会删除信号，same-scope 第一次读取后即删除；因此跨 invocation / executor replay 不能复用分类。
 
-信号的 `name` 和 `message` 必须是固定常量；Runtime 只通过私有读取函数取得分类。该内部机制不从 `@repo/ai` 根导出，不成为业务调用方 API。
+信号的 `name` 和 `message` 是固定常量；Runtime 只通过私有读取函数取得分类。该内部机制不从 `@repo/ai` 根导出，不成为业务调用方 API。任何 custom / injected dependency 即使抛出真实或伪造的 AI SDK error，也只能建立 `unknown` 信号；公开 SDK marker 只用于分类，不建立可信 provenance。
 
 Provider 初始化阶段继续使用现有安全配置校验和固定初始化错误。本任务只诊断实际 `generateObject` 请求边界，不把配置或 composition root 失败伪装成一次 provider attempt。
 
@@ -189,7 +193,7 @@ type ExecutionFailure = {
 1. 外部 `AbortSignal` 已取消或执行中取消，结果必须为 `ABORTED`；
 2. Runtime timeout 触发，结果必须为 `TIMEOUT`；
 3. 只有未被上述取消覆盖的 executor 异常才能成为 `PROVIDER_ERROR`；
-4. 未经共享 adapter 包装的普通 executor 异常成为 `PROVIDER_ERROR + unknown`。
+4. 未经共享 adapter 包装的普通 executor 异常，以及 custom / injected dependency 的失败，均成为 `PROVIDER_ERROR + unknown`。
 
 因此 provider 在收到内部 abort 后抛出的网络异常不能覆盖 Runtime 已确定的 timeout / abort，也不能附带 Provider 分类。
 
@@ -208,7 +212,7 @@ type ExecutionFailure = {
 7. 继续用固定错误文案替换 Runtime message；
 8. 对 hostile getter、proxy、未知枚举、分类不一致和非法组合返回 `null`，触发现有 fail-closed candidate fallback。
 
-“同时缺失”仅用于兼容旧 fixture 或旧调用方；共享 Runtime 新生成的 Provider 失败必须始终有分类。这样既不破坏历史证据，又不允许下一次受控 Live 悄悄退回无诊断状态。
+“同时缺失”仅用于兼容旧 fixture、旧调用方和历史 A/B evidence；它不会新增 schema failure。共享 Runtime 新生成的 Provider 失败必须始终有分类。这样既不改变历史 artifact 的原 strict validator 判定，又不允许下一次受控 Live 悄悄退回无诊断状态。
 
 ## 9. Paired eval 与 evidence
 
@@ -226,9 +230,10 @@ Phase 6.9.4.3 candidate observed entry 增加可选 `providerFailureCategory`。
 
 ### 9.2 向后兼容
 
-现有 Attempt A / B evidence 没有分类，必须继续通过 validator。为此字段保持 optional，不修改或重写历史 JSON。新增测试保证：
+现有 Attempt A / B evidence 没有分类；字段保持 optional，且不修改或重写历史 JSON。兼容性的准确含义是“缺失字段不会新增 schema failure”，不是把旧 evidence 的其他缺陷转绿：
 
-- 历史无分类 evidence 仍合法；
+- Attempt A 仍因 filename identity mismatch 返回 exit `3 / profile_mismatch`，不能成为 canonical evidence；
+- Attempt B 仍返回 exit `0 / ok=true / live / incomplete`，不是 complete Live 质量证据；
 - 新 runner 遇到共享 Runtime `PROVIDER_ERROR` 时必须把分类写入 entry；
 - 非法位置、未知值、Error / Trace 不一致和泄漏 canary 均被拒绝。
 
@@ -296,7 +301,7 @@ Phase 6.9.4.3 candidate observed entry 增加可选 `providerFailureCategory`。
 
 ## 12. 验证命令
 
-实施阶段至少运行：
+本次零网络实施验收实际运行：
 
 ```powershell
 bun --cwd packages/ai test
@@ -307,48 +312,43 @@ bun --cwd packages/agent typecheck
 bun --cwd packages/agent lint
 ```
 
-如果仓库脚本名称与上述不同，实施计划必须先读取对应 `package.json` 并使用真实脚本，不得静默跳过。合并回 `main` 后重复与改动风险相称的验证，并核对本地 `main`、`origin/main` 与远程 SHA 一致。
+结果为 `@repo/ai` 125 passed / 0 failed、`@repo/agent` 333 passed / 0 failed，两个包的 typecheck 与 lint 均 exit 0。Attempt A strict validator 为 exit `3 / profile_mismatch`；Attempt B strict validator 为 exit `0 / ok=true / live / incomplete`。两份 artifact 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6` 与 `dd6cb8f2e543c4b89c009d9198b3d89f344ce594`。
 
-以上验证全部为零网络调用。真正的下一次受控 Live paired eval 是独立验收任务，只有在本设计的实现已通过代码审查、合并并推送后才允许开始。
+以上验证全部使用 Mock、fake executor 或历史只读 evidence，没有新的真实模型调用，也没有启动或操作 Docker、PostgreSQL、Redis、MinIO。真正的下一次 controlled-Live paired eval 是独立验收任务。
 
-## 13. 实施边界与预期文件
+## 13. 实施结果与提交证据
 
-预期实现集中在：
+实现按四个语义任务进入 `main`：
 
-- `packages/ai/src/model-agent-contract.ts`；
-- `packages/ai/src/model-agent-provider.ts`；
-- `packages/ai/src/model-agent-runtime.ts`；
-- `packages/ai/src/model-agent-safety.ts`；
-- 新的内部 Provider failure signal / classifier 文件；
-- `packages/ai/tests/model-agent-provider.test.ts`；
-- `packages/ai/tests/model-agent-runtime.test.ts`；
-- `packages/agent/src/model-candidates/model-candidate-runtime-result.ts`；
-- Phase 6.9.4.3 paired runner、contract 及对应测试；
-- 完成后的 acceptance、roadmap 和项目协作文档增量。
+- Task 1：`40fe48c` / merge `4581287`，建立 `@repo/ai` 唯一八类合同与私有 signal；
+- Task 2：`49a4a6e` / merge `578539e`，接通 Provider / Runtime，并封闭跨 invocation / executor replay；
+- Task 3：`d4658d2` / merge `c55f8f2`，完成 candidate strict 双边 sanitizer 与历史双缺失兼容；
+- Task 4：`dc10b01` / merge `c920673`，把分类限制在 attempted Live `PROVIDER_ERROR` failure evidence，counter mismatch、pre-provider、success、Mock 与 not-run 均剥离。
 
-实现计划可以按共享合同、Provider/Runtime、sanitizer、eval evidence、阶段文档五个语义任务拆分；每个任务单独从最新已推送 `main` 开分支、单独提交、合并后复验并推送。不得从功能分支继续开子分支。
+共享诊断分类已接通 Error、Trace、sanitizer 和 paired evidence，但没有接入生产 Agent Trace API / UI。Router / Verifier candidate 仍未接入生产 Chat，生产继续 deterministic。
 
 ## 14. 完成标准
 
-本诊断增强只有同时满足以下条件才算完成：
+共享诊断增强的 Mock/fake executor 实施结果满足：
 
 1. 八类固定分类在共享 `@repo/ai` 合同中只有一个权威定义；
 2. Provider adapter 不读取或保留原始敏感字段；
 3. Runtime Error / Trace 分类一致，取消、预算和 usage 语义无回归；
 4. candidate sanitizer 对合法分类白名单重建，对非法组合 fail-closed；
-5. paired eval 能在下一次 attempted Live Provider 失败时写入固定分类；
-6. 历史 Attempt A / B evidence 不修改且仍可验证；
+5. paired eval 只在 attempted Live `PROVIDER_ERROR` failure 的合法最终边界保留固定分类；
+6. 历史 Attempt A / B evidence 未修改，缺失分类字段不会改变各自原 strict validator 结论；
 7. `@repo/ai` 与 `@repo/agent` 相关 test、typecheck、lint 全部通过；
-8. 代码和阶段文档完成审查、`--no-ff` 合并、main 复验与远程推送；
-9. 在上述条件完成前没有新增真实模型调用；
+8. Task 1–4 代码已经审查、合并并推送至 `main`；
+9. 本诊断实施与文档验收没有新增真实模型调用；
 10. Router / Verifier 仍保持 disabled，直到后续完整 controlled-Live paired eval 的全部 enablement 门槛通过。
+
+这只表示诊断合同及其零网络工程验收完成，不表示 Phase 6.9.4.3 或 controlled-Live 质量验收完成。
 
 ## 15. 后续任务
 
-1. 用户审阅本设计规范；
-2. 使用 `writing-plans` 写 TDD 实施计划；
-3. 按“一步一提交”实施、审查、合并、main 复验并推送；
-4. 单独发起下一次受控 Live paired eval；
-5. 根据安全分类定位外部故障并决定是配置修复、兼容性修复还是等待 provider 恢复；
-6. Live 合同稳定后，再单独评估是否把分类接入生产 Trace API / UI；
-7. Phase 6.9 全部完成后，将该故障边界纳入《多 Agent 架构—记忆系统》面试学习博客。
+1. 从最新已推送 `main` 单独发起新的 controlled-Live paired eval，先核对 diagnostics 合同与 Live 双开关；
+2. 若 attempted Provider 失败，只记录 `providerFailureCategory`，不记录 raw status、URL、request/response、headers、message、stack、cause、prompt、output 或 credentials；
+3. 根据固定分类决定是处理鉴权/配置、限流、structured-output 兼容性，还是等待 provider 恢复，不盲目重试；
+4. 只有 28 次 strict success 与质量、安全、延迟、成本门槛全部通过，Phase 6.9.4.3 才能完成并讨论 enablement；
+5. Live 合同稳定后，再单独评估是否把分类接入生产 Trace API / UI；
+6. Phase 6.9 及整个真实模型/记忆阶段完成后，再编写《多 Agent 架构—记忆系统》面试学习博客。
