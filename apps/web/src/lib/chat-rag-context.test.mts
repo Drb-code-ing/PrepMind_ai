@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+  createModelAgentBudget,
+  createModelAgentRuntime,
+  type ModelAgentRunBudget,
+  type ModelAgentRuntime,
+} from '@repo/ai';
 import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 
 import {
@@ -283,3 +289,561 @@ test('chat RAG smoke treats mocked prompt injection hits as low-trust evidence',
   assert.match(prompt, /low-trust evidence/);
   assert.match(markdown, /blocked 4 high-risk/);
 });
+
+test('applies one strict verifier model candidate after safe conflict retrieval and continues the Router budget', async () => {
+  const query = '机会成本的定义是什么？';
+  const hits = verifierConflictHits();
+  const budget: ModelAgentRunBudget = {
+    maxCalls: 2,
+    usedCalls: 1,
+    maxInputTokens: 4_000,
+    usedInputTokens: 300,
+    maxOutputTokens: 1_200,
+    usedOutputTokens: 100,
+  };
+  let invokes = 0;
+  let propagatedSignal: AbortSignal | undefined;
+  const controller = new AbortController();
+  const realRuntime = createModelAgentRuntime({
+    mode: 'mock',
+    provider: 'mock',
+    model: 'chat-rag-verifier-conflict-test',
+    liveCallsEnabled: false,
+    timeoutMs: 100,
+    mockResponder: () => ({
+      status: 'conflict',
+      evidenceCodes: ['definition_conflict'],
+    }),
+  });
+  const runtime: ModelAgentRuntime = {
+    invokeStructured(request) {
+      invokes += 1;
+      propagatedSignal = request.signal;
+      return realRuntime.invokeStructured(request);
+    },
+  };
+
+  const result = await searchWithHits(query, hits, {
+    enabled: true,
+    runtime,
+    budget,
+    runId: 'run_rag_conflict',
+    signal: controller.signal,
+  });
+
+  assert.equal(invokes, 1);
+  assert.equal(propagatedSignal, controller.signal);
+  assert.equal(result.verifierResult?.status, 'conflict');
+  assert.equal(result.verifierObservation?.attempted, true);
+  assert.equal(result.verifierObservation?.disposition, 'candidate_applied');
+  assert.deepEqual(result.verifierObservation?.reasonCodes, [
+    'candidate_applied',
+    'definition_conflict',
+  ]);
+  assert.equal(result.modelBudget?.usedCalls, 2);
+  assert.equal(result.modelBudget?.maxCalls, 2);
+  assert.deepEqual(result.modelBudget, result.verifierObservation?.budget);
+  assert.deepEqual(budget, {
+    maxCalls: 2,
+    usedCalls: 1,
+    maxInputTokens: 4_000,
+    usedInputTokens: 300,
+    maxOutputTokens: 1_200,
+    usedOutputTokens: 100,
+  });
+});
+
+test('invokes the verifier model once for safe stale or uncertain evidence', async () => {
+  const query = '考试报名规定是否仍然有效，请核对是否可靠？';
+  const hit: KnowledgeSearchHit = {
+    ...greenTheoremHit,
+    chunkId: 'chunk_stale',
+    documentName: 'exam-policy.md',
+    content: '现行考试报名规定是旧版本，已经过期，当前有效性无法确认。',
+    score: 0.93,
+    metadata: {
+      safety: {
+        riskLevel: 'low',
+        categories: [],
+        matchedPatterns: [],
+        safeForPrompt: true,
+      },
+    },
+  };
+  let invokes = 0;
+  const runtime = createModelAgentRuntime({
+    mode: 'mock',
+    provider: 'mock',
+    model: 'chat-rag-verifier-stale-test',
+    liveCallsEnabled: false,
+    timeoutMs: 100,
+    mockResponder: () => {
+      invokes += 1;
+      return { status: 'suspicious', evidenceCodes: ['stale_or_uncertain'] };
+    },
+  });
+
+  const result = await searchWithHits(query, [hit], {
+    enabled: true,
+    runtime,
+    budget: freshVerifierBudget(),
+    runId: 'run_rag_stale',
+  });
+
+  assert.equal(invokes, 1);
+  assert.equal(result.verifierResult?.status, 'suspicious');
+  assert.equal(result.verifierObservation?.disposition, 'candidate_applied');
+});
+
+test('keeps verifier safety, local-confidence, disabled, and absent-model paths at zero runtime calls', async () => {
+  const consistentHit: KnowledgeSearchHit = {
+    ...greenTheoremHit,
+    content: '矩阵是按照长方阵列排列的复数或实数集合，也是线性代数中的基础对象。',
+    score: 0.94,
+  };
+  const weakHit: KnowledgeSearchHit = {
+    ...greenTheoremHit,
+    chunkId: 'chunk_weak',
+    content: 'weather',
+    score: 0.3,
+  };
+  const unsafeMetadataHit: KnowledgeSearchHit = {
+    ...greenTheoremHit,
+    chunkId: 'chunk_unsafe_metadata',
+    content: 'Harmless-looking source text that must remain blocked by metadata.',
+    score: 0.96,
+    metadata: {
+      safety: {
+        riskLevel: 'low',
+        categories: [],
+        matchedPatterns: [],
+        safeForPrompt: false,
+      },
+    },
+  };
+  const cases = [
+    {
+      name: 'prompt injection',
+      query: 'Green theorem',
+      hits: [unsafeInstructionHit],
+      enabled: true,
+      expectedDisposition: 'safety_blocked',
+      expectedStatus: 'suspicious',
+    },
+    {
+      name: 'high risk metadata',
+      query: 'Green theorem',
+      hits: [{
+        ...unsafeMetadataHit,
+        metadata: {
+          safety: {
+            riskLevel: 'high' as const,
+            categories: [],
+            matchedPatterns: [],
+            safeForPrompt: true,
+          },
+        },
+      }],
+      enabled: true,
+      expectedDisposition: 'safety_blocked',
+      expectedStatus: 'suspicious',
+    },
+    {
+      name: 'safeForPrompt false',
+      query: 'Green theorem',
+      hits: [unsafeMetadataHit],
+      enabled: true,
+      expectedDisposition: 'safety_blocked',
+      expectedStatus: 'suspicious',
+    },
+    {
+      name: 'consistent single hit',
+      query: '矩阵的定义是什么？',
+      hits: [consistentHit],
+      enabled: true,
+      expectedDisposition: 'not_eligible',
+      expectedStatus: 'trusted',
+    },
+    {
+      name: 'obvious weak off topic',
+      query: '矩阵的定义是什么？',
+      hits: [weakHit],
+      enabled: true,
+      expectedDisposition: 'not_eligible',
+      expectedStatus: 'insufficient',
+    },
+    {
+      name: 'disabled',
+      query: '机会成本的定义是什么？',
+      hits: verifierConflictHits(),
+      enabled: false,
+      expectedDisposition: 'not_eligible',
+      expectedStatus: 'trusted',
+    },
+  ] as const;
+
+  for (const item of cases) {
+    let invokes = 0;
+    const runtime: ModelAgentRuntime = {
+      async invokeStructured() {
+        invokes += 1;
+        throw new Error(`runtime must not be called: ${item.name}`);
+      },
+    };
+    const result = await searchWithHits(item.query, [...item.hits], {
+      enabled: item.enabled,
+      runtime,
+      budget: freshVerifierBudget(),
+      runId: `run_zero_call_${item.name}`,
+    });
+
+    assert.equal(invokes, 0, item.name);
+    assert.equal(result.verifierObservation?.attempted, false, item.name);
+    assert.equal(
+      result.verifierObservation?.disposition,
+      item.expectedDisposition,
+      item.name,
+    );
+    assert.equal(result.verifierResult?.status, item.expectedStatus, item.name);
+  }
+
+  const noModel = await searchWithHits(
+    '矩阵的定义是什么？',
+    [consistentHit],
+  );
+  assert.equal(noModel.verifierResult?.status, 'trusted');
+  assert.equal(noModel.verifierObservation?.attempted, false);
+  assert.equal(noModel.verifierObservation?.disposition, 'not_eligible');
+});
+
+test('does not read hostile verifier capabilities before disabled, ineligible, or safety gates', async () => {
+  const canary = 'Authorization: Bearer verifier-hostile-capability-canary';
+  const cases = [
+    {
+      name: 'disabled',
+      query: '机会成本的定义是什么？',
+      hits: verifierConflictHits(),
+      enabled: false,
+      expectedDisposition: 'not_eligible',
+    },
+    {
+      name: 'ineligible',
+      query: '矩阵的定义是什么？',
+      hits: [greenTheoremHit],
+      enabled: true,
+      expectedDisposition: 'not_eligible',
+    },
+    {
+      name: 'safety',
+      query: 'Green theorem',
+      hits: [unsafeInstructionHit],
+      enabled: true,
+      expectedDisposition: 'safety_blocked',
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const reads = { runtime: 0, budget: 0 };
+    const model = Object.defineProperties(
+      { enabled: item.enabled, runId: `run_hostile_${item.name}` },
+      {
+        runtime: {
+          enumerable: true,
+          get() {
+            reads.runtime += 1;
+            throw new Error(canary);
+          },
+        },
+        budget: {
+          enumerable: true,
+          get() {
+            reads.budget += 1;
+            throw new Error(canary);
+          },
+        },
+      },
+    ) as {
+      enabled: boolean;
+      runtime: ModelAgentRuntime;
+      budget: ModelAgentRunBudget;
+      runId: string;
+    };
+
+    const result = await searchWithHits(item.query, [...item.hits], model);
+
+    assert.deepEqual(reads, { runtime: 0, budget: 0 }, item.name);
+    assert.equal(
+      result.verifierObservation?.disposition,
+      item.expectedDisposition,
+      item.name,
+    );
+    assert.doesNotMatch(
+      JSON.stringify({
+        verifierResult: result.verifierResult,
+        verifierObservation: result.verifierObservation,
+        modelBudget: result.modelBudget,
+      }),
+      /verifier-hostile-capability-canary|Authorization|Bearer/,
+    );
+  }
+});
+
+test('preserves an own-data non-default budget through verifier zero-call gates', async () => {
+  const budget: ModelAgentRunBudget = {
+    maxCalls: 2,
+    usedCalls: 1,
+    maxInputTokens: 9_000,
+    usedInputTokens: 777,
+    maxOutputTokens: 2_000,
+    usedOutputTokens: 123,
+  };
+  const result = await searchWithHits(
+    '矩阵的定义是什么？',
+    [greenTheoremHit],
+    {
+      enabled: false,
+      runtime: {
+        async invokeStructured() {
+          throw new Error('disabled runtime must not be invoked');
+        },
+      },
+      budget,
+      runId: 'run_preserve_budget',
+    },
+  );
+
+  assert.deepEqual(result.modelBudget, budget);
+  assert.notEqual(result.modelBudget, budget);
+  assert.deepEqual(result.verifierObservation?.budget, budget);
+});
+
+test('fails verifier candidates closed without widening deterministic conflict, suspicious, or insufficient results', async () => {
+  const canary = 'https://provider.invalid/v1 key=verifier-provider-canary';
+  const aborted = new AbortController();
+  aborted.abort();
+  const schemaRuntime = createModelAgentRuntime({
+    mode: 'mock',
+    provider: 'mock',
+    model: 'chat-rag-schema-failure-test',
+    liveCallsEnabled: false,
+    timeoutMs: 100,
+    mockResponder: () => ({ status: 'trusted', evidenceCodes: ['wrong-code'] }),
+  });
+  const providerRuntime = createModelAgentRuntime({
+    mode: 'live',
+    provider: 'deepseek',
+    model: 'chat-rag-provider-failure-test',
+    liveCallsEnabled: true,
+    timeoutMs: 100,
+    executor: async () => {
+      throw new Error(canary);
+    },
+  });
+  const timeoutRuntime = createModelAgentRuntime({
+    mode: 'live',
+    provider: 'deepseek',
+    model: 'chat-rag-timeout-failure-test',
+    liveCallsEnabled: true,
+    timeoutMs: 50,
+    executor: ({ signal }) =>
+      new Promise((_, reject) => {
+        signal.addEventListener('abort', () => reject(new Error(canary)), {
+          once: true,
+        });
+      }),
+  });
+  const trustedEligible = verifierConflictHits();
+  const conflictEligible = verifierConflictHits().map((hit, index) => ({
+    ...hit,
+    content: `${hit.content} 答案: ${index + 1}`,
+  }));
+  const suspiciousEligible: KnowledgeSearchHit[] = [{
+    ...greenTheoremHit,
+    chunkId: 'stale_suspicious',
+    content: '现行考试报名规定可能有误，当前规定尚不确定，需要核对。',
+    score: 0.93,
+  }];
+  const insufficientEligible: KnowledgeSearchHit[] = [{
+    ...greenTheoremHit,
+    chunkId: 'stale_short',
+    content: '考试规定旧版本，已经过期。',
+    score: 0.93,
+  }];
+  const cases: readonly {
+    name: string;
+    query: string;
+    hits: KnowledgeSearchHit[];
+    runtime: ModelAgentRuntime;
+    budget?: ModelAgentRunBudget;
+    signal?: AbortSignal;
+    expectedStatus: string;
+    disposition: string;
+  }[] = [
+    {
+      name: 'schema tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: schemaRuntime,
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_schema_invalid',
+    },
+    {
+      name: 'provider tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: providerRuntime,
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_runtime_error',
+    },
+    {
+      name: 'timeout tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: timeoutRuntime,
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_timeout',
+    },
+    {
+      name: 'runtime contract tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: {
+        async invokeStructured() {
+          throw new Error(canary);
+        },
+      },
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_runtime_error',
+    },
+    {
+      name: 'abort tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: {
+        async invokeStructured() {
+          throw new Error('aborted runtime must not be invoked');
+        },
+      },
+      signal: aborted.signal,
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_aborted',
+    },
+    {
+      name: 'budget tightens trusted',
+      query: '机会成本的定义是什么？',
+      hits: trustedEligible,
+      runtime: {
+        async invokeStructured() {
+          throw new Error('exhausted runtime must not be invoked');
+        },
+      },
+      budget: {
+        ...freshVerifierBudget(),
+        usedCalls: 2,
+      },
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_budget_exceeded',
+    },
+    {
+      name: 'keeps conflict restrictive',
+      query: '机会成本的定义是什么？',
+      hits: conflictEligible,
+      runtime: providerRuntime,
+      expectedStatus: 'conflict',
+      disposition: 'fallback_runtime_error',
+    },
+    {
+      name: 'keeps suspicious restrictive',
+      query: '考试报名规定是否仍然有效，请核对是否可靠？',
+      hits: suspiciousEligible,
+      runtime: providerRuntime,
+      expectedStatus: 'suspicious',
+      disposition: 'fallback_runtime_error',
+    },
+    {
+      name: 'keeps insufficient restrictive',
+      query: '考试规定是否有效，请核对？',
+      hits: insufficientEligible,
+      runtime: providerRuntime,
+      expectedStatus: 'insufficient',
+      disposition: 'fallback_runtime_error',
+    },
+  ];
+
+  for (const item of cases) {
+    const result = await searchWithHits(item.query, item.hits, {
+      enabled: true,
+      runtime: item.runtime,
+      budget: item.budget ?? freshVerifierBudget(),
+      runId: `run_failure_${item.name}`,
+      ...(item.signal ? { signal: item.signal } : {}),
+    });
+
+    assert.equal(result.verifierResult?.status, item.expectedStatus, item.name);
+    assert.equal(
+      result.verifierObservation?.disposition,
+      item.disposition,
+      item.name,
+    );
+    assert.ok((result.modelBudget?.usedCalls ?? 0) <= 2, item.name);
+    assert.doesNotMatch(
+      JSON.stringify({
+        verifierResult: result.verifierResult,
+        verifierObservation: result.verifierObservation,
+        modelBudget: result.modelBudget,
+      }),
+      /provider\.invalid|verifier-provider-canary|key=|机会成本|考试报名|旧版本/,
+      item.name,
+    );
+  }
+});
+
+function verifierConflictHits(): KnowledgeSearchHit[] {
+  return [
+    {
+      ...greenTheoremHit,
+      chunkId: 'definition-a',
+      documentId: 'doc_definition_a',
+      content: '机会成本是选择某个方案时所放弃的其他方案中价值最高的收益。',
+      score: 0.95,
+    },
+    {
+      ...greenTheoremHit,
+      chunkId: 'definition-b',
+      documentId: 'doc_definition_b',
+      content: '机会成本不是放弃方案中的最高收益，而是当前方案实际支付的全部货币支出。',
+      score: 0.94,
+    },
+  ];
+}
+
+function freshVerifierBudget(): ModelAgentRunBudget {
+  return createModelAgentBudget({
+    maxCalls: 2,
+    maxInputTokens: 4_000,
+    maxOutputTokens: 1_200,
+  });
+}
+
+async function searchWithHits(
+  query: string,
+  hits: KnowledgeSearchHit[],
+  model?: {
+    enabled: boolean;
+    runtime: ModelAgentRuntime;
+    budget: ModelAgentRunBudget;
+    runId: string;
+    signal?: AbortSignal;
+  },
+) {
+  return searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: query }],
+    fetchImpl: async () =>
+      Response.json({
+        success: true,
+        data: { hits },
+      }),
+    ...(model ? { model } : {}),
+  });
+}
