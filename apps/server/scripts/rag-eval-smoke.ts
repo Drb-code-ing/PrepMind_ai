@@ -1,7 +1,15 @@
+import type { BackgroundJobResponse } from '@repo/types/api/background-job';
+import type {
+  KnowledgeDocumentProcessResponse,
+  KnowledgeDocumentProcessingMetadata,
+  KnowledgeDocumentResponse,
+} from '@repo/types/api/knowledge';
+
 import { ragEvalCases } from '../src/knowledge-documents/evals/rag-eval-cases';
 import { formatRagEvalSmokeReport } from '../src/knowledge-documents/evals/rag-eval-report';
 import { runRagEval } from '../src/knowledge-documents/evals/rag-eval-runner';
 import {
+  assertRagEvalSmokeEvidence,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
 } from '../src/knowledge-documents/evals/rag-eval-smoke-config';
@@ -24,17 +32,14 @@ type AuthResponse = {
   accessToken: string;
 };
 
-type KnowledgeDocument = {
-  id: string;
-  name: string;
-  status: 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
-  chunkCount?: number;
-  errorMessage?: string | null;
-};
-
 type KnowledgeSearchResponse = {
   hits: RagEvalHit[];
 };
+
+type QueuedKnowledgeDocumentProcessResponse =
+  KnowledgeDocumentProcessResponse & {
+    processing: KnowledgeDocumentProcessingMetadata;
+  };
 
 type SmokeCaseHitSummary = {
   hitCount: number;
@@ -66,14 +71,23 @@ async function main() {
     accessToken = await register(baseUrl, email, password);
     const document = await uploadDocument(baseUrl, accessToken, documentName);
     documentId = document.id;
-    await processDocument(baseUrl, accessToken, documentId);
-    const processedDocument = await waitForDocumentDone({
+    const processResponse = await processDocument(
       baseUrl,
       accessToken,
       documentId,
+    );
+    await waitForBackgroundJobSucceeded({
+      baseUrl,
+      accessToken,
+      backgroundJobId: processResponse.processing.backgroundJobId,
       timeoutMs,
       pollIntervalMs,
     });
+    const processedDocument = await getProcessedDocument(
+      baseUrl,
+      accessToken,
+      documentId,
+    );
 
     const hitsByCaseId: Record<string, RagEvalHit[]> = {};
     const caseHits: Record<string, SmokeCaseHitSummary> = {};
@@ -88,6 +102,8 @@ async function main() {
       };
     }
 
+    const runtimeEvidence = assertRagEvalSmokeEvidence(hitsByCaseId);
+
     const summary = runRagEval({
       cases: smokeCases,
       hitsByCaseId,
@@ -96,13 +112,16 @@ async function main() {
     process.stdout.write(
       formatRagEvalSmokeReport({
         title: 'PrepMind RAG Eval Smoke',
-        baseUrl,
+        baseUrl: '[redacted]',
         documentName: processedDocument.name,
         documentId: processedDocument.id,
         durationMs: Date.now() - startedAt,
         caseHits,
         summary,
       }),
+    );
+    process.stdout.write(
+      `Runtime evidence: mode=${runtimeEvidence.mode} checkedHits=${runtimeEvidence.checkedHitCount}\n`,
     );
 
     if (summary.failed > 0) {
@@ -115,11 +134,13 @@ async function main() {
           `RAG eval smoke kept document ${documentId} for local inspection because RAG_EVAL_SMOKE_KEEP_DATA=true.\n`,
         );
       } else {
-        await deleteDocument(baseUrl, accessToken, documentId).catch((error) => {
-          process.stderr.write(
-            `Warning: failed to delete smoke document: ${messageOf(error)}\n`,
-          );
-        });
+        await deleteDocument(baseUrl, accessToken, documentId).catch(
+          (error) => {
+            process.stderr.write(
+              `Warning: failed to delete smoke document: ${messageOf(error)}\n`,
+            );
+          },
+        );
       }
     }
   }
@@ -149,7 +170,7 @@ async function uploadDocument(
     documentName,
   );
 
-  return request<KnowledgeDocument>(baseUrl, '/knowledge/documents', {
+  return request<KnowledgeDocumentResponse>(baseUrl, '/knowledge/documents', {
     method: 'POST',
     body: form,
     headers: authorization(accessToken),
@@ -160,43 +181,80 @@ async function processDocument(
   baseUrl: string,
   accessToken: string,
   documentId: string,
-) {
-  await request<unknown>(baseUrl, `/knowledge/documents/${documentId}/process`, {
-    method: 'POST',
-    body: JSON.stringify({ force: true }),
-    headers: {
-      ...authorization(accessToken),
-      'content-type': 'application/json',
+): Promise<QueuedKnowledgeDocumentProcessResponse> {
+  const response = await request<KnowledgeDocumentProcessResponse>(
+    baseUrl,
+    `/knowledge/documents/${documentId}/process`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ force: true }),
+      headers: {
+        ...authorization(accessToken),
+        'content-type': 'application/json',
+      },
     },
-  });
+  );
+  if (
+    response.processing?.mode !== 'queue' ||
+    !response.processing.backgroundJobId
+  ) {
+    throw new Error('Document processing did not use the required queue mode.');
+  }
+  return response as QueuedKnowledgeDocumentProcessResponse;
 }
 
-async function waitForDocumentDone(input: {
+async function waitForBackgroundJobSucceeded(input: {
   baseUrl: string;
   accessToken: string;
-  documentId: string;
+  backgroundJobId: string;
   timeoutMs: number;
   pollIntervalMs: number;
 }) {
   const deadline = Date.now() + input.timeoutMs;
   while (Date.now() < deadline) {
-    const document = await request<KnowledgeDocument>(
+    const backgroundJob = await request<BackgroundJobResponse>(
       input.baseUrl,
-      `/knowledge/documents/${input.documentId}`,
+      `/background-jobs/${input.backgroundJobId}`,
       {
         method: 'GET',
         headers: authorization(input.accessToken),
       },
     );
-    if (document.status === 'DONE') return document;
-    if (document.status === 'FAILED') {
+    if (backgroundJob.status === 'SUCCEEDED') return backgroundJob;
+    if (
+      backgroundJob.status === 'FAILED' ||
+      backgroundJob.status === 'STALE_SKIPPED'
+    ) {
       throw new Error(
-        `Document processing failed: ${document.errorMessage ?? 'unknown error'}`,
+        `Document processing background job reached ${backgroundJob.status}.`,
       );
     }
     await sleep(input.pollIntervalMs);
   }
-  throw new Error(`Document processing timed out after ${input.timeoutMs}ms.`);
+  throw new Error(
+    `Document processing background job timed out after ${input.timeoutMs}ms.`,
+  );
+}
+
+async function getProcessedDocument(
+  baseUrl: string,
+  accessToken: string,
+  documentId: string,
+) {
+  const document = await request<KnowledgeDocumentResponse>(
+    baseUrl,
+    `/knowledge/documents/${documentId}`,
+    {
+      method: 'GET',
+      headers: authorization(accessToken),
+    },
+  );
+  if (document.status !== 'DONE') {
+    throw new Error(
+      'Document was not DONE after its background job succeeded.',
+    );
+  }
+  return document;
 }
 
 async function search(
@@ -243,7 +301,8 @@ async function request<T>(
   const text = await response.text();
   const parsed = parseJson<Envelope<T>>(text);
   if (!response.ok || !parsed.success) {
-    const detail = parsed.error?.message ?? response.statusText ?? 'request failed';
+    const detail =
+      parsed.error?.message ?? response.statusText ?? 'request failed';
     throw new Error(`${init.method ?? 'GET'} ${path} failed: ${detail}`);
   }
   if (parsed.data === undefined) {
