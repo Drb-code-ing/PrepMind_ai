@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-12。Phase 7 核心工程化已完成，Phase 7.8.5 RAG runtime parity 实施完成、待真实 Docker 验收；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
+> 当前版本：2026-07-14。Phase 7 核心工程化已完成，Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
 
 ## 1. 当前边界
 
@@ -160,7 +160,7 @@ Agent Trace 边界：
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。Phase 7.0 / 7.1 已把文档处理升级为可切换 inline / BullMQ queue 的后台任务链路；Phase 7.8.5 已完成 Qwen/1536 runtime parity 实施，尚待真实 Docker 验收。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。Phase 7.0 / 7.1 已把文档处理升级为可切换 inline / BullMQ queue 的后台任务链路；Phase 7.8.5 已完成 Qwen `text-embedding-v4` / 1536 runtime parity 真实 Docker 验收。official smoke 3/3，queue `BackgroundJob=SUCCEEDED`，provider/key/base URL 缺失时在 provider 调用前 fail-closed；证据见 `docs/acceptance/2026-07-14-rag-runtime-parity.md`。
 
 文档处理数据流：
 
