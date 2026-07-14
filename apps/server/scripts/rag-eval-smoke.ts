@@ -15,6 +15,7 @@ import {
   createRagEvalSmokeFailureError,
   fetchRagEvalSmokeResponse,
   formatRagEvalSmokeFailure,
+  resolveRagEvalSmokeQuery,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
 } from '../src/knowledge-documents/evals/rag-eval-smoke-config';
@@ -337,7 +338,7 @@ async function search(
     {
       method: 'POST',
       body: JSON.stringify({
-        query: testCase.query,
+        query: resolveRagEvalSmokeQuery(testCase),
         topK: testCase.topK,
         minScore: 0,
       }),

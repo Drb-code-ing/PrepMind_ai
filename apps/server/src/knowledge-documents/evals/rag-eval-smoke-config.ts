@@ -35,7 +35,21 @@ export type RagEvalSmokeFailureStage =
   | 'JOB_POLL'
   | 'SEARCH'
   | 'DELETE'
+  | 'EVIDENCE'
   | 'SMOKE';
+
+type RagEvalSmokeEvidenceFailureReason =
+  | 'DUPLICATE_CHUNK_ID'
+  | 'EXACT_KEYWORD_SCORE_MISSING'
+  | 'SEMANTIC_VECTOR_SCORE_MISSING'
+  | 'CROSS_LANGUAGE_VECTOR_SCORE_MISSING'
+  | 'CASE_HITS_UNREADABLE'
+  | 'CASE_HITS_INVALID'
+  | 'HIT_INVALID'
+  | 'HIT_UNREADABLE'
+  | 'RETRIEVAL_METADATA_MISSING'
+  | 'RETRIEVAL_MODE_INVALID'
+  | 'RETRIEVAL_SCORE_INVALID';
 
 export type RagEvalSmokeFailureReason =
   | 'NETWORK'
@@ -46,7 +60,8 @@ export type RagEvalSmokeFailureReason =
   | 'INVALID_MODE'
   | 'TERMINAL_FAILED'
   | 'CANCELLED'
-  | 'UNEXPECTED';
+  | 'UNEXPECTED'
+  | RagEvalSmokeEvidenceFailureReason;
 
 type RagEvalSmokeFailureCode =
   `RAG_EVAL_SMOKE_${RagEvalSmokeFailureStage}_${RagEvalSmokeFailureReason}`;
@@ -101,6 +116,12 @@ export function selectRagEvalSmokeCases(
 export function shouldKeepRagEvalSmokeData(env: RagEvalSmokeEnv) {
   const value = env.RAG_EVAL_SMOKE_KEEP_DATA?.trim().toLowerCase();
   return value === 'true' || value === '1' || value === 'yes';
+}
+
+export function resolveRagEvalSmokeQuery(testCase: RagEvalCase) {
+  return testCase.id === 'exact-blue-lantern'
+    ? 'blue lantern theorem'
+    : testCase.query;
 }
 
 export function formatRagEvalSmokeFailure(
@@ -217,7 +238,7 @@ export function assertRagEvalSmokeEvidence(
     for (const hit of snapshotCaseHits(hitsByCaseId, caseId)) {
       const snapshot = snapshotEvidenceHit(hit);
       if (seenChunkIds.has(snapshot.chunkId)) {
-        failEvidence('duplicate_chunk_id');
+        failEvidence('DUPLICATE_CHUNK_ID');
       }
       seenChunkIds.add(snapshot.chunkId);
       retrievalEvidence.push(assertHybridRetrieval(snapshot));
@@ -232,7 +253,7 @@ export function assertRagEvalSmokeEvidence(
       .get('exact-blue-lantern')
       ?.some((retrieval) => retrieval.keywordScore > 0)
   ) {
-    failEvidence('exact_keyword_score_missing');
+    failEvidence('EXACT_KEYWORD_SCORE_MISSING');
   }
 
   if (
@@ -240,7 +261,7 @@ export function assertRagEvalSmokeEvidence(
       .get('semantic-review-pressure')
       ?.some((retrieval) => retrieval.vectorScore > 0)
   ) {
-    failEvidence('semantic_vector_score_missing');
+    failEvidence('SEMANTIC_VECTOR_SCORE_MISSING');
   }
 
   if (
@@ -248,7 +269,7 @@ export function assertRagEvalSmokeEvidence(
       .get('cross-language-weak-points')
       ?.some((retrieval) => retrieval.vectorScore > 0)
   ) {
-    failEvidence('cross_language_vector_score_missing');
+    failEvidence('CROSS_LANGUAGE_VECTOR_SCORE_MISSING');
   }
 
   return { mode: 'hybrid', checkedHitCount };
@@ -262,7 +283,7 @@ function snapshotCaseHits(
   try {
     candidate = hitsByCaseId[caseId];
   } catch {
-    failEvidence('case_hits_unreadable');
+    failEvidence('CASE_HITS_UNREADABLE');
   }
   if (candidate === undefined) return [];
 
@@ -270,9 +291,9 @@ function snapshotCaseHits(
   try {
     isArray = Array.isArray(candidate);
   } catch {
-    failEvidence('case_hits_unreadable');
+    failEvidence('CASE_HITS_UNREADABLE');
   }
-  if (!isArray) failEvidence('case_hits_invalid');
+  if (!isArray) failEvidence('CASE_HITS_INVALID');
 
   const snapshots: unknown[] = [];
   try {
@@ -281,7 +302,7 @@ function snapshotCaseHits(
       snapshots.push(hits[index]);
     }
   } catch {
-    failEvidence('case_hits_unreadable');
+    failEvidence('CASE_HITS_UNREADABLE');
   }
   return snapshots;
 }
@@ -290,7 +311,7 @@ function snapshotEvidenceHit(hit: unknown): EvidenceHitSnapshot & {
   chunkId: string;
 } {
   if (typeof hit !== 'object' || hit === null) {
-    failEvidence('hit_invalid');
+    failEvidence('HIT_INVALID');
   }
 
   let snapshot: EvidenceHitSnapshot;
@@ -314,11 +335,11 @@ function snapshotEvidenceHit(hit: unknown): EvidenceHitSnapshot & {
       keywordScore: retrievalRecord?.keywordScore,
     };
   } catch {
-    failEvidence('hit_unreadable');
+    failEvidence('HIT_UNREADABLE');
   }
 
   if (typeof snapshot.chunkId !== 'string') {
-    failEvidence('hit_invalid');
+    failEvidence('HIT_INVALID');
   }
   return snapshot as EvidenceHitSnapshot & { chunkId: string };
 }
@@ -327,10 +348,10 @@ function assertHybridRetrieval(
   snapshot: EvidenceHitSnapshot,
 ): RetrievalEvidence {
   if (!snapshot.metadataIsRecord || !snapshot.retrievalIsRecord) {
-    failEvidence('retrieval_metadata_missing');
+    failEvidence('RETRIEVAL_METADATA_MISSING');
   }
   if (snapshot.mode !== 'hybrid') {
-    failEvidence('retrieval_mode_invalid');
+    failEvidence('RETRIEVAL_MODE_INVALID');
   }
   if (
     typeof snapshot.vectorScore !== 'number' ||
@@ -338,7 +359,7 @@ function assertHybridRetrieval(
     typeof snapshot.keywordScore !== 'number' ||
     !Number.isFinite(snapshot.keywordScore)
   ) {
-    failEvidence('retrieval_score_invalid');
+    failEvidence('RETRIEVAL_SCORE_INVALID');
   }
 
   return snapshot as RetrievalEvidence;
@@ -348,6 +369,6 @@ function isRecord(value: unknown) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function failEvidence(code: string): never {
-  throw new Error(`RAG eval smoke evidence failed: ${code}.`);
+function failEvidence(reason: RagEvalSmokeEvidenceFailureReason): never {
+  throw createRagEvalSmokeFailureError('EVIDENCE', reason);
 }

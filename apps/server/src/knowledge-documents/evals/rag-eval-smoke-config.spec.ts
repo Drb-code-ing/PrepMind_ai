@@ -1,9 +1,11 @@
 import {
   RAG_EVAL_SMOKE_CASE_IDS,
+  RagEvalSmokeFailureError,
   assertRagEvalSmokeBackgroundJobStatus,
   assertRagEvalSmokeEvidence,
   fetchRagEvalSmokeResponse,
   formatRagEvalSmokeFailure,
+  resolveRagEvalSmokeQuery,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
 } from './rag-eval-smoke-config';
@@ -55,6 +57,23 @@ describe('shouldKeepRagEvalSmokeData', () => {
   );
 });
 
+describe('resolveRagEvalSmokeQuery', () => {
+  it('uses only the exact English term for the keyword smoke case', () => {
+    expect(
+      resolveRagEvalSmokeQuery(
+        testCase('exact-blue-lantern', 'blue lantern theorem 是什么？'),
+      ),
+    ).toBe('blue lantern theorem');
+  });
+
+  it.each([
+    ['semantic-review-pressure', '复习压力和每日卡片上限应该怎么安排？'],
+    ['cross-language-weak-points', '薄弱知识点复习顺序'],
+  ])('preserves the configured query for %s', (id, query) => {
+    expect(resolveRagEvalSmokeQuery(testCase(id, query))).toBe(query);
+  });
+});
+
 describe('assertRagEvalSmokeEvidence', () => {
   it('returns a safe hybrid evidence summary for valid smoke hits', () => {
     expect(
@@ -78,7 +97,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     ];
 
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: retrieval_metadata_missing.',
+      'RAG_EVAL_SMOKE_EVIDENCE_RETRIEVAL_METADATA_MISSING',
     );
     expect(errorMessage(() => assertRagEvalSmokeEvidence(hits))).not.toContain(
       'sensitive hit content',
@@ -94,7 +113,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     ];
 
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: retrieval_mode_invalid.',
+      'RAG_EVAL_SMOKE_EVIDENCE_RETRIEVAL_MODE_INVALID',
     );
   });
 
@@ -107,23 +126,41 @@ describe('assertRagEvalSmokeEvidence', () => {
       ];
 
       expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-        'RAG eval smoke evidence failed: retrieval_score_invalid.',
+        'RAG_EVAL_SMOKE_EVIDENCE_RETRIEVAL_SCORE_INVALID',
       );
     },
   );
 
-  it('requires positive keyword evidence for the exact-term case', () => {
+  it('returns a specific safe failure for missing exact keyword evidence', () => {
     const hits = validHits();
-    hits['exact-blue-lantern'] = [hybridHit('chunk_keyword_zero', 0.8, 0)];
+    hits['exact-blue-lantern'] = [
+      {
+        ...hybridHit('chunk_keyword_zero', 0.123456, 0),
+        content:
+          'private chunk content https://secret.example.com/key=canary sk-canary',
+      },
+    ];
 
-    expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: exact_keyword_score_missing.',
-    );
+    const error = capturedError(() => assertRagEvalSmokeEvidence(hits));
+    expect(error).toBeInstanceOf(RagEvalSmokeFailureError);
+    expect(error).toMatchObject({
+      failure: {
+        stage: 'EVIDENCE',
+        reason: 'EXACT_KEYWORD_SCORE_MISSING',
+        code: 'RAG_EVAL_SMOKE_EVIDENCE_EXACT_KEYWORD_SCORE_MISSING',
+        message: 'RAG_EVAL_SMOKE_EVIDENCE_EXACT_KEYWORD_SCORE_MISSING',
+      },
+    });
+    const serialized = JSON.stringify(error);
+    expect(serialized).not.toContain('private chunk content');
+    expect(serialized).not.toContain('https://secret.example.com/key=canary');
+    expect(serialized).not.toContain('sk-canary');
+    expect(serialized).not.toContain('0.123456');
   });
 
   it.each([
-    ['semantic-review-pressure', 'semantic_vector_score_missing'],
-    ['cross-language-weak-points', 'cross_language_vector_score_missing'],
+    ['semantic-review-pressure', 'SEMANTIC_VECTOR_SCORE_MISSING'],
+    ['cross-language-weak-points', 'CROSS_LANGUAGE_VECTOR_SCORE_MISSING'],
   ] as const)(
     'requires positive vector evidence for %s',
     (caseId, errorCode) => {
@@ -131,7 +168,7 @@ describe('assertRagEvalSmokeEvidence', () => {
       hits[caseId] = [hybridHit(`chunk_${caseId}`, 0, 0.5)];
 
       expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-        `RAG eval smoke evidence failed: ${errorCode}.`,
+        `RAG_EVAL_SMOKE_EVIDENCE_${errorCode}`,
       );
     },
   );
@@ -144,7 +181,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     ];
 
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: duplicate_chunk_id.',
+      'RAG_EVAL_SMOKE_EVIDENCE_DUPLICATE_CHUNK_ID',
     );
   });
 
@@ -161,7 +198,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     hits['semantic-review-pressure'] = [hostileHit];
 
     const message = errorMessage(() => assertRagEvalSmokeEvidence(hits));
-    expect(message).toBe('RAG eval smoke evidence failed: hit_unreadable.');
+    expect(message).toBe('RAG_EVAL_SMOKE_EVIDENCE_HIT_UNREADABLE');
     expect(message).not.toContain('private chunk content');
     expect(message).not.toContain('https://secret.example.com/key=canary');
     expect(message).not.toContain('sk-canary');
@@ -174,7 +211,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     hits['semantic-review-pressure'] = [revoked.proxy];
 
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: hit_unreadable.',
+      'RAG_EVAL_SMOKE_EVIDENCE_HIT_UNREADABLE',
     );
   });
 
@@ -183,7 +220,7 @@ describe('assertRagEvalSmokeEvidence', () => {
     hits['semantic-review-pressure'] = [undefined as unknown as RagEvalHit];
 
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
-      'RAG eval smoke evidence failed: hit_invalid.',
+      'RAG_EVAL_SMOKE_EVIDENCE_HIT_INVALID',
     );
   });
 });
@@ -316,11 +353,11 @@ describe('assertRagEvalSmokeBackgroundJobStatus', () => {
   });
 });
 
-function testCase(id: string): RagEvalCase {
+function testCase(id: string, query = id): RagEvalCase {
   return {
     id,
     name: id,
-    query: id,
+    query,
     topK: 5,
     shouldHaveHit: true,
   };
@@ -362,4 +399,13 @@ function errorMessage(run: () => unknown) {
     return error instanceof Error ? error.message : String(error);
   }
   return '';
+}
+
+function capturedError(run: () => unknown): Error {
+  try {
+    run();
+  } catch (error) {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+  throw new Error('Expected function to throw.');
 }
