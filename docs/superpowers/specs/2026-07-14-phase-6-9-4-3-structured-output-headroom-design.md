@@ -1,6 +1,6 @@
 # Phase 6.9.4.3 Structured Output Headroom 设计
 
-> 状态：已实施并完成 Mock/历史 evidence 验收；待新 controlled-Live
+> 状态：已实施并完成 Mock/历史 evidence 验收；后续 Attempt D 达到 Router 15/16 strict success 后仍 `structured_output`，阶段继续 fail-closed
 
 ## 1. 问题与证据
 
@@ -60,3 +60,7 @@
 - 为什么 Router 和 Verifier 要统一到 400，而不是只修第一个失败的 Router？
 - 11,200 global output cap 如何从 28 个 eligible case 推导？
 - 为什么提高最大输出量没有放宽 strict schema、安全 gate 或自动重试？
+
+## 7. 后续运行结论
+
+Attempt D 在本设计合并后的最新 main 上执行：16 次 Router provider attempt 中有 15 次 strict success，成功 output 为 59~341，最后 `router_ambiguous_mixed_chat_16` 仍为 `PROVIDER_ERROR / structured_output`。这证明 headroom 修复显著改善了真实成功深度，但成功 output 未触及 400，不能据此继续盲目提高 cap。下一任务转为零网络 prompt/schema/provider compatibility 韧性设计，不直接重跑 Live。

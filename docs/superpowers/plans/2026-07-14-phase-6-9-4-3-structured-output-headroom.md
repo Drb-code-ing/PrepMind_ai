@@ -191,3 +191,5 @@ merge: phase 6.9.4.3 structured output headroom
 ```
 
 按仓库规范执行独立规格/质量审查，修复 Critical/Important；`--no-ff` 合并 main 后重复适用门禁，推送远程，核对 local/origin/remote main SHA，删除任务分支。下一任务才允许新的 controlled-Live。
+
+> 后续执行结果（2026-07-14）：该 controlled-Live 已作为 Attempt D 从修复后的最新 main 独立执行，取得 Router 15/16 strict success，最后固定 case 仍为 `structured_output`。本计划的 400/11,200 修复保持有效，但下一步不再直接重跑或盲目提高 cap，转入零网络 prompt/schema/provider compatibility 韧性设计。
