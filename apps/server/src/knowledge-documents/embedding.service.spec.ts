@@ -31,16 +31,22 @@ describe('EmbeddingService', () => {
     | 'RAG_EMBEDDING_MODEL'
     | 'RAG_EMBEDDING_PROVIDER'
     | 'RAG_EMBEDDING_BASE_URL'
+    | 'EMBEDDING_REQUEST_TIMEOUT_MS'
     | 'OPENAI_API_KEY'
     | 'Qwen_API_KEY'
+    | 'QWEN_API_KEY'
+    | 'DASHSCOPE_API_KEY'
   > = {
     RAG_EMBEDDING_DIMENSIONS: 3,
     RAG_EMBEDDING_BATCH_SIZE: 2,
     RAG_EMBEDDING_MODEL: 'fake-model',
     RAG_EMBEDDING_PROVIDER: 'openai',
     RAG_EMBEDDING_BASE_URL: undefined,
+    EMBEDDING_REQUEST_TIMEOUT_MS: 12_345,
     OPENAI_API_KEY: 'test-openai-key',
     Qwen_API_KEY: undefined,
+    QWEN_API_KEY: undefined,
+    DASHSCOPE_API_KEY: undefined,
   };
 
   function createConfig(
@@ -173,6 +179,19 @@ describe('EmbeddingService', () => {
     });
   });
 
+  it('configures the OpenAI client with the embedding request timeout', async () => {
+    mockEmbeddingsCreate.mockResolvedValue({
+      data: [{ embedding: [1, 0, 0] }],
+    });
+    const service = new EmbeddingService(createConfig(), undefined);
+
+    await expect(service.embedChunks(['a'])).resolves.toEqual([[1, 0, 0]]);
+    expect(mockOpenAI).toHaveBeenCalledWith({
+      apiKey: 'test-openai-key',
+      timeout: 12_345,
+    });
+  });
+
   it('uses Qwen API key and base URL for the qwen provider', async () => {
     mockEmbeddingsCreate.mockResolvedValue({
       data: [{ embedding: [1, 0, 0] }],
@@ -194,6 +213,7 @@ describe('EmbeddingService', () => {
       apiKey: 'test-qwen-key',
       baseURL:
         'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+      timeout: 12_345,
     });
     expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
       model: 'text-embedding-v4',
@@ -219,6 +239,28 @@ describe('EmbeddingService', () => {
       code: 'KNOWLEDGE_EMBEDDING_FAILED',
       statusCode: HttpStatus.BAD_GATEWAY,
     });
+  });
+
+  it('does not fall back to OpenAI when all Qwen API keys are missing', async () => {
+    const service = new EmbeddingService(
+      createConfig({
+        RAG_EMBEDDING_PROVIDER: 'qwen',
+        RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+        RAG_EMBEDDING_BASE_URL:
+          'https://ws-example.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+        OPENAI_API_KEY: 'test-openai-key',
+        Qwen_API_KEY: undefined,
+        QWEN_API_KEY: undefined,
+        DASHSCOPE_API_KEY: undefined,
+      }),
+      undefined,
+    );
+
+    await expect(service.embedChunks(['a'])).rejects.toMatchObject({
+      code: 'KNOWLEDGE_EMBEDDING_FAILED',
+      statusCode: HttpStatus.BAD_GATEWAY,
+    });
+    expect(mockOpenAI).not.toHaveBeenCalled();
   });
 
   it('generates deterministic fake embeddings without an OpenAI API key', async () => {

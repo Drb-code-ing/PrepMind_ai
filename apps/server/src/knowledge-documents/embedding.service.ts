@@ -81,7 +81,10 @@ export class EmbeddingService {
     const model = this.configService.get('RAG_EMBEDDING_MODEL', {
       infer: true,
     });
-    const client = new OpenAI({ apiKey: apiKey.trim() });
+    const client = new OpenAI({
+      apiKey: apiKey.trim(),
+      timeout: this.getRequestTimeoutMs(),
+    });
 
     return {
       model,
@@ -118,6 +121,7 @@ export class EmbeddingService {
     const client = new OpenAI({
       apiKey,
       baseURL: baseURL.trim(),
+      timeout: this.getRequestTimeoutMs(),
     });
 
     return {
@@ -147,6 +151,12 @@ export class EmbeddingService {
     );
 
     return apiKey?.trim();
+  }
+
+  private getRequestTimeoutMs() {
+    return this.configService.get('EMBEDDING_REQUEST_TIMEOUT_MS', {
+      infer: true,
+    });
   }
 
   private createFakeProvider(dimensions: number): ServerEmbeddingProvider {
