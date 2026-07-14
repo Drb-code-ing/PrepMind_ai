@@ -1740,13 +1740,14 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 
 ### Task 3 — Paired CLI preflight 与 evidence（`2100e10`）
 
-- RED 先固定 preflight 必须早于 UUID、evidence fs/reservation、Provider factory 和 runner；返回 `false`、throw、非法注入值或 hostile property/getter/proxy 都必须为 0 side effects。
+- RED 先固定 schema 编译/校验必须早于 UUID、evidence fs/reservation、Provider factory 和 runner；返回 `false`、throw、非法注入值或 hostile property/getter/proxy 都必须为 0 side effects。
+- 最终审查进一步复现 dependencies/strict executor 本地初始化抛错、malformed/hostile return 与 arm 前同步 attempt callback 曾可在 UUID/evidence 之后落为 `unexpected_runner_error`，其中早期 callback + valid return 还会写入错误 evidence。修复后完整受控 preflight 顺序为 schema 校验 -> 安全 start timestamp -> 本地初始化与权威快照 -> arm callback -> UUID/evidence -> runner/Provider attempt；无效初始化固定 `live_config_invalid`，不泄漏原始异常。
 - GREEN 要求只有明确 `true` 继续，新 Live report 使用 `phase-6.9.4.3-runner-v2` + `deepseek_strict_tool_v1`；历史 runner v1 Live 只读兼容，Mock v1/v2 禁止携带 Live transport 字段。
 - 审查继续保持 100/28/72、Router 800/400、Verifier 1600/400、global 28 calls / 96,000 input / 11,200 output、单 case 10 秒和 `maxRetries=0`，与批准设计、实施计划和历史 contract 一致。
 
 ### 验收、边界与结论
 
-- Fresh gates：AI 151 passed，Agent 342 passed，typecheck/lint 均 exit 0；deterministic baseline 仍 74/100、critical=2；fresh Mock complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`。
+- Fresh gates：AI 151 passed，Agent 344 passed，typecheck/lint 均 exit 0；deterministic baseline 仍 74/100、critical=2；fresh Mock complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`。
 - zero-call Live config 为 exit 3，evidence 数量 `4 -> 4`。历史 validator 仍为 A exit 3 / `profile_mismatch`，B/C/D exit 0 / `incomplete`；A/B/C/D blob hash 均未改写。
 - 本 checkpoint 零网络、零真实模型调用，未读取真实 key，未操作 Docker。Router / Verifier 仍 `enabled=false`，生产继续 deterministic。
 - 下一步先将当前分支 `--no-ff` 合并 main，在 main 复验并推送；然后从新 main 开独立 controlled-Live 任务，完整重跑 100 cases。只有 28/28 strict success、72/72 zero-call 与所有质量/安全/权限/延迟/token/usage provenance/成本门槛同时通过，Phase 6.9.4.3 才能完成。
@@ -1756,8 +1757,8 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - “为什么普通 `json_object` 不等于 Provider 级 JSON Schema 保证？”
 - “`model_agent_result` 为什么不是业务 Tool，也不会进入 MCP？”
 - “为什么 strict tool 后仍要用 canonical Zod 二次校验？”
-- “为什么 preflight 必须早于 UUID、evidence、Provider 和 runner？”
-- “为什么 151/342 个零网络测试通过仍不能启用 Router / Verifier？”
+- “为什么 schema 校验和 strict executor 本地初始化都必须在 UUID/evidence 之前完成？”
+- “为什么 151/344 个零网络测试通过仍不能启用 Router / Verifier？”
 
 下一会话可以复制：“请先合并并在 main 复验 structured-output resilience checkpoint，推送后再从新 main 开独立 controlled-Live 任务，完整重跑 100 cases。”
 

@@ -72,7 +72,7 @@ Mock counters 为：`caseEntries=100`、`adapterExecutions=100`、`runtimeInvoca
 - Live evidence 文件数不变；
 - provider attempt 为 0。
 
-本次新 preflight 还在 UUID、evidence reservation / fs、Provider factory 和 runner 之前执行固定 Router / Verifier profile 编译；只有 dependency 明确返回 `true` 才继续。`false`、throw、非法注入值或 hostile property/getter/proxy 均必须 `0` side effects。fresh 负向验收为 exit 3，Live evidence 数量 `4 -> 4`。
+本次受控 preflight 先在 UUID、evidence reservation / fs、runner 和 Provider attempt 之前完成固定 Router / Verifier profile 编译、安全 start timestamp、dependencies/strict executor 本地初始化与 hostile-safe 权威快照；然后才 arm attempt callback、生成 UUID 并预留 evidence。schema 只有明确返回 `true` 才继续；schema 异常、初始化抛错、malformed/hostile dependencies 或 arm 前同步 attempt callback 均以 `live_config_invalid` 保持 UUID/evidence/Provider attempt/runner 全为 `0`。fresh 负向验收为 exit 3，Live evidence 数量 `4 -> 4`。
 
 这只证明配置失败会在 provider boundary 前停止，不是模型质量验收。
 
@@ -321,7 +321,7 @@ Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mo
 | 验证 | 结果 |
 | --- | --- |
 | AI 全量 test | 151 passed / 0 failed |
-| Agent 全量 test | 342 passed / 0 failed |
+| Agent 全量 test | 344 passed / 0 failed |
 | AI / Agent typecheck | exit 0 / exit 0 |
 | AI / Agent lint | exit 0 / exit 0 |
 | deterministic baseline | 74/100，critical=2 |
@@ -377,5 +377,5 @@ Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce
 - 普通 `json_object` 与 DeepSeek Beta strict Function Calling 分别保证什么？
 - `model_agent_result` 为什么不是业务 Tool，也不会进入 MCP 或产生副作用？
 - Provider schema 已经 `strict: true` 后，为什么 canonical Zod 仍是最终权威？
-- 为什么 preflight 必须早于 UUID、evidence reservation、Provider 和 runner？
-- 零网络验收已经 151/342 passed，为什么 Router / Verifier 仍必须 `enabled=false`？
+- 为什么 schema 校验和 strict executor 本地初始化都必须在 UUID/evidence 之前完成，而 evidence 又必须在真正 Provider attempt 之前预留？
+- 零网络验收已经 151/344 passed，为什么 Router / Verifier 仍必须 `enabled=false`？

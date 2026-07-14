@@ -376,7 +376,7 @@ Error、Trace、evidence、stdout、文档和 Git 禁止包含：
 
 - `303b88a feat(ai): compile strict tool schema profiles`：完成 identity-only profile registry、非原地兼容投影、深冻结与 hostile input fail-closed。Provider projection 只做审批过的删除/等价转换；完整长度、状态关联和自定义 refinement 仍由 canonical Zod 最终裁决。
 - `bdb7cb5 feat(ai): add DeepSeek strict tool transport`：保留默认 `json_object`，新增显式 `deepseek_strict_tool`。该模式只允许 `deepseek-v4-flash` 与精确 `https://api.deepseek.com/beta`，只发送唯一 forced synthetic function `model_agent_result`、`strict: true`，不带 `response_format/json_schema`。合成函数没有 handler、业务执行、副作用或 MCP 语义。
-- `2100e10 feat(agent): use strict tool paired profile`：Live preflight 提前到 UUID、evidence reservation、Provider factory 与 runner 之前；只有显式返回 `true` 才能继续。返回 `false`、抛错、非法注入值或 hostile property/getter/proxy 都以 `live_config_invalid` 零副作用结束。
+- `2100e10 feat(agent): use strict tool paired profile`：schema 编译/校验提前到 UUID、evidence reservation、Provider factory 与 runner 之前；只有显式返回 `true` 才能继续。最终审查又将 dependencies/strict executor 本地初始化及权威快照纳入 UUID/evidence 之前的受控 preflight；schema 返回非 `true`或抛错，以及初始化抛错、返回 malformed/hostile dependencies 或在 arm 前同步触发 attempt callback，都以 `live_config_invalid` 零 UUID、零 evidence、零 Provider attempt 结束。
 
 Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v1`。历史 runner v1 Live evidence 只读兼容，不改写；Mock v1/v2 都禁止携带 Live transport 字段，避免伪造真实 Provider lane。
 
@@ -386,7 +386,7 @@ Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v
 - Router 仍为 800 local input / 400 output，Verifier 仍为 1,600 local input / 400 output；
 - 全局仍为 28 calls / 96,000 provider input / 11,200 provider output，单 case timeout 仍为 10 秒，`maxRetries=0`；
 - deterministic baseline 仍为 74/100、critical=2；fresh Mock 为 complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`；
-- fresh gates：AI 151 passed，Agent 342 passed，AI/Agent typecheck 与 lint 均 exit 0；
+- fresh gates：AI 151 passed，Agent 344 passed，AI/Agent typecheck 与 lint 均 exit 0；
 - zero-call Live config 验收为 exit 3，Live evidence 数量 `4 -> 4`，证明配置失败没有预留证据或进入 Provider；
 - 历史 validator：Attempt A exit 3 / `profile_mismatch`，Attempt B/C/D 均 exit 0 / `incomplete`；Git blob hash 依次为 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6`、`dd6cb8f2e543c4b89c009d9198b3d89f344ce594`、`ede0a9f5576996a2bad7a9dfb60cd135047d4edf`、`bc9f4e2efc70d26723d56418bebf327e1e75383e`。
 
@@ -420,7 +420,7 @@ Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v
 - 新 controlled-Live 为什么必须从 100 条 case 开头重新运行，不能只补最后 13 条？
 - 哪些条件满足后 Phase 6.9.4.3 才能真正完成？
 - 零网络 checkpoint 已经证明了什么，又为什么不能宣布 controlled-Live 完成？
-- 为什么 preflight 必须放在 UUID、evidence、Provider 和 runner 前，并且只有明确 `true` 才能继续？
+- 为什么 schema 校验和 strict executor 本地初始化都必须在 UUID/evidence 前完成，且 schema 只有明确 `true` 才能继续？
 - runner v2 为什么要标记 `deepseek_strict_tool_v1`，而历史 v1 Live 只读兼容？
 
 下一会话可以直接问：

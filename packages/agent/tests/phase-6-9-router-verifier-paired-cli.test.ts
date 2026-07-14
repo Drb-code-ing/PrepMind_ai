@@ -550,6 +550,116 @@ describe('Phase 6.9.4.3 CLI', () => {
     }
   });
 
+  test('contains malformed or hostile Live dependency initialization before side effects', async () => {
+    const scenarios = [
+      {
+        name: 'undefined return',
+        create: (_onAttempt: () => void, _events: string[]) => undefined as never,
+      },
+      {
+        name: 'empty malformed object',
+        create: (_onAttempt: () => void, _events: string[]) => ({}) as never,
+      },
+      {
+        name: 'truthy scalar',
+        create: (_onAttempt: () => void, _events: string[]) => true as never,
+      },
+      {
+        name: 'hostile getter',
+        create: (_onAttempt: () => void, _events: string[]) =>
+          Object.defineProperty({}, 'pricing', {
+            get() { throw new Error('RAW_LIVE_DEPENDENCY_GETTER_CANARY'); },
+          }) as never,
+      },
+      {
+        name: 'hostile proxy',
+        create: (_onAttempt: () => void, _events: string[]) =>
+          new Proxy({}, {
+            get() { throw new Error('RAW_LIVE_DEPENDENCY_PROXY_CANARY'); },
+          }) as never,
+      },
+      {
+        name: 'synchronous attempt then throw',
+        create: (onAttempt: () => void, events: string[]) => {
+          events.push('early_attempt_signal');
+          onAttempt();
+          throw new Error('RAW_LIVE_DEPENDENCY_INIT_CANARY');
+        },
+      },
+      {
+        name: 'synchronous attempt then valid return',
+        create: (onAttempt: () => void, events: string[]) => {
+          events.push('early_attempt_signal');
+          onAttempt();
+          return fakeAttemptingLive(onAttempt, events);
+        },
+      },
+    ] as const;
+
+    const observations: Array<Record<string, unknown>> = [];
+    for (const scenario of scenarios) {
+      const memory = createMemoryFs();
+      let randomCalls = 0;
+      let runnerCalls = 0;
+      const dependencies: Phase6943CompositionDependencies = {
+        validateLiveStructuredSchemas() {
+          memory.events.push('validate');
+          return true;
+        },
+        runPairedEval: async () => {
+          runnerCalls += 1;
+          return buildPhase6943InvalidRun('live', 'unexpected_runner_error');
+        },
+        createMockRuntime: createPhase6943MockRuntime,
+        createLiveDependencies: (_config, onAttempt) => {
+          memory.events.push('provider_factory');
+          return scenario.create(onAttempt, memory.events);
+        },
+        calculateDatasetDigest: calculatePhase6943DatasetDigest,
+        validateDataset: validatePhase6943Dataset,
+      };
+
+      const result = await executePhase6943Cli({
+        command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+        randomUUID: () => {
+          randomCalls += 1;
+          return '00000000-0000-4000-8000-000000000009';
+        },
+        epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+        clocks: fakeClocks(), fs: memory.fs, dependencies,
+      });
+
+      observations.push({
+        scenario: scenario.name,
+        errorCode:
+          result.output.kind === 'invalid_run' ? result.output.errorCode : null,
+        runKind: result.output.runKind,
+        evidencePath: result.evidencePath,
+        exitCode: result.exitCode,
+        randomCalls,
+        runnerCalls,
+        providerAttempts: memory.events.filter((event) => event === 'provider').length,
+        evidenceSideEffects: memory.events.filter((event) =>
+          event.startsWith('open:') || ['write', 'sync', 'link'].includes(event)),
+        evidenceFiles: memory.keys(),
+      });
+      expect(JSON.stringify(result), scenario.name).not.toContain('RAW_LIVE_DEPENDENCY_');
+    }
+
+    expect(observations).toEqual(scenarios.map((scenario) => ({
+        scenario: scenario.name,
+        errorCode: 'live_config_invalid',
+        runKind: 'live',
+        evidencePath: null,
+        exitCode: 3,
+        randomCalls: 0,
+        runnerCalls: 0,
+        providerAttempts: 0,
+        evidenceSideEffects: [],
+        evidenceFiles: [],
+      })));
+  });
+
   test('runs successful Live schema preflight before identity and all side effects', async () => {
     const memory = createMemoryFs();
     const dependencies: Phase6943CompositionDependencies = {
@@ -579,7 +689,7 @@ describe('Phase 6.9.4.3 CLI', () => {
       clocks: fakeClocks(), fs: memory.fs, dependencies,
     });
     expect(memory.events.slice(0, 5)).toEqual([
-      'validate', 'uuid', 'open:reserve', 'provider_factory', 'runner',
+      'validate', 'provider_factory', 'uuid', 'open:reserve', 'runner',
     ]);
   });
 

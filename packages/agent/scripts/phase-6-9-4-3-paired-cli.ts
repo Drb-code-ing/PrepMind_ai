@@ -19,6 +19,7 @@ import {
 import { createPhase6943MockRuntime } from '../src/evals/phase-6-9-router-verifier-mock-fixtures.ts';
 import {
   runPhase6943PairedEval,
+  snapshotPhase6943LiveDependencies,
   type Phase6943Clocks,
   type Phase6943LiveDependencies,
 } from '../src/evals/run-phase-6-9-router-verifier-paired.ts';
@@ -519,6 +520,13 @@ export async function executePhase6943Cli(
     return { output: parsed.output, exitCode: 3, evidencePath: null };
   }
 
+  let providerAttempts = 0;
+  let providerAttemptArmed = false;
+  let providerAttemptedDuringInitialization = false;
+  let preparedLive: Phase6943LiveDependencies | undefined;
+  let preparedLiveStart:
+    | { readonly startedAtMs: number; readonly startedAt: string }
+    | undefined;
   if (parsed.config.command === 'live') {
     try {
       const validatorProperty = 'validateLiveStructuredSchemas';
@@ -540,6 +548,34 @@ export async function executePhase6943Cli(
           evidencePath: null,
         };
       }
+
+      const startedAtMs = input.epochMs();
+      if (
+        !Number.isSafeInteger(startedAtMs) ||
+        startedAtMs < 0 ||
+        startedAtMs > 8_640_000_000_000_000
+      ) {
+        throw new Error('PHASE_6943_START_CLOCK_INVALID');
+      }
+      const startedAt = new Date(startedAtMs).toISOString();
+      const rawLive = input.dependencies.createLiveDependencies(
+        parsed.config,
+        () => {
+          if (!providerAttemptArmed) {
+            providerAttemptedDuringInitialization = true;
+            return;
+          }
+          providerAttempts += 1;
+        },
+        startedAt,
+      );
+      const liveSnapshot = snapshotPhase6943LiveDependencies(rawLive);
+      if (!liveSnapshot || providerAttemptedDuringInitialization) {
+        throw new Error('PHASE_6943_LIVE_DEPENDENCIES_INVALID');
+      }
+      preparedLive = liveSnapshot;
+      preparedLiveStart = { startedAtMs, startedAt };
+      providerAttemptArmed = true;
     } catch {
       return {
         output: buildPhase6943InvalidRun('live', 'live_config_invalid'),
@@ -549,12 +585,12 @@ export async function executePhase6943Cli(
     }
   }
 
-  let providerAttempts = 0;
   let reservation: Awaited<ReturnType<typeof reservePhase6943Evidence>> | null = null;
   try {
     const runId = input.randomUUID();
-    const startedAtMs = input.epochMs();
-    const startedAt = new Date(startedAtMs).toISOString();
+    const startedAtMs = preparedLiveStart?.startedAtMs ?? input.epochMs();
+    const startedAt =
+      preparedLiveStart?.startedAt ?? new Date(startedAtMs).toISOString();
     let reportStartPending = true;
     const reportClocks: Phase6943Clocks = {
       epochMs: () => {
@@ -593,16 +629,6 @@ export async function executePhase6943Cli(
       });
     }
 
-    const live =
-      parsed.config.command === 'live'
-        ? input.dependencies.createLiveDependencies(
-            parsed.config,
-            () => {
-              providerAttempts += 1;
-            },
-            startedAt,
-          )
-        : undefined;
     const output = await input.dependencies.runPairedEval({
       runId,
       runKind: parsed.config.command,
@@ -610,7 +636,7 @@ export async function executePhase6943Cli(
       calculateDatasetDigest: input.dependencies.calculateDatasetDigest,
       validateDataset: input.dependencies.validateDataset,
       createMockRuntime: input.dependencies.createMockRuntime,
-      ...(live ? { live } : {}),
+      ...(preparedLive ? { live: preparedLive } : {}),
     });
 
     if (reservation) {

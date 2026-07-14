@@ -70,6 +70,13 @@ export type Phase6943LiveDependencies = {
   };
 };
 
+export type Phase6943LiveDependenciesSnapshot = Readonly<{
+  createRuntime: Phase6943LiveDependencies['createRuntime'];
+  readProviderAttempts: Phase6943LiveDependencies['readProviderAttempts'];
+  pricing: Readonly<Phase6943PricingSnapshot>;
+  budgetState: Readonly<Phase6943LiveDependencies['budgetState']>;
+}>;
+
 export type RunPhase6943PairedEvalInput = {
   runId: string;
   runKind: 'mock' | 'live';
@@ -406,33 +413,52 @@ function validateRunnerInput(raw: RunPhase6943PairedEvalInput): ValidatedRunnerI
 }
 
 function validateLiveDependencies(value: Phase6943LiveDependencies | undefined) {
-  if (!value || typeof value !== 'object') throw new RunnerInvalid('live_config_invalid');
+  const snapshot = snapshotPhase6943LiveDependencies(value);
+  if (!snapshot) throw new RunnerInvalid('live_config_invalid');
+  return snapshot;
+}
+
+export function snapshotPhase6943LiveDependencies(
+  value: unknown,
+): Phase6943LiveDependenciesSnapshot | null {
+  if (!value || typeof value !== 'object') return null;
   try {
-    const parsedPricing = PHASE_6943_PRICING_SCHEMA.safeParse(value.pricing);
-    const budgetState = snapshotZeroLiveBudgetState(value.budgetState);
+    const candidate = value as Record<string, unknown>;
+    const pricing = candidate.pricing;
+    const budget = candidate.budgetState;
+    const createRuntime = candidate.createRuntime;
+    const readProviderAttempts = candidate.readProviderAttempts;
+    const parsedPricing = PHASE_6943_PRICING_SCHEMA.safeParse(pricing);
+    const budgetState = snapshotZeroLiveBudgetState(budget);
     if (!parsedPricing.success ||
         parsedPricing.data.effectiveMaxCostUsd !==
           Math.min(parsedPricing.data.cliMaxCostUsd, GLOBAL_CAPS.engineeringCostUsd) ||
-        typeof value.createRuntime !== 'function' ||
-        typeof value.readProviderAttempts !== 'function' ||
+        typeof createRuntime !== 'function' ||
+        typeof readProviderAttempts !== 'function' ||
         !budgetState) {
-      throw new RunnerInvalid('live_config_invalid');
+      return null;
     }
-    if (tryReadProviderCounter(() => value.readProviderAttempts()) !== 0) {
-      throw new RunnerInvalid('live_config_invalid');
+    const createRuntimeMethod =
+      createRuntime as Phase6943LiveDependencies['createRuntime'];
+    const readProviderAttemptsMethod =
+      readProviderAttempts as Phase6943LiveDependencies['readProviderAttempts'];
+    if (tryReadProviderCounter(
+      () => readProviderAttemptsMethod.call(value),
+    ) !== 0) {
+      return null;
     }
-    return {
+    return Object.freeze({
       createRuntime: (runtimeInput: {
         caseId: string;
         agent: 'router' | 'verifier';
-      }) => value.createRuntime(runtimeInput),
-      readProviderAttempts: () => value.readProviderAttempts(),
+      }) => createRuntimeMethod.call(value, runtimeInput),
+      readProviderAttempts: () =>
+        readProviderAttemptsMethod.call(value),
       pricing: Object.freeze({ ...parsedPricing.data }),
       budgetState,
-    };
-  } catch (error) {
-    if (error instanceof RunnerInvalid) throw error;
-    throw new RunnerInvalid('live_config_invalid');
+    });
+  } catch {
+    return null;
   }
 }
 

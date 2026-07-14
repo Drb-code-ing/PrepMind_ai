@@ -979,6 +979,37 @@ describe('Phase 6.9.4.3 paired runner', () => {
     expect(nested.requested).toHaveLength(28);
   });
 
+  test('snapshots Live method identities without rereading hostile getters', async () => {
+    const live = successfulLiveDependencies();
+    const reads = { createRuntime: 0, readProviderAttempts: 0 };
+    const dependencies = {
+      pricing: live.dependencies.pricing,
+      budgetState: live.dependencies.budgetState,
+    } as Phase6943LiveDependencies;
+    for (const method of ['createRuntime', 'readProviderAttempts'] as const) {
+      Object.defineProperty(dependencies, method, {
+        enumerable: true,
+        get() {
+          reads[method] += 1;
+          if (reads[method] > 1) {
+            throw new Error(`RAW_LIVE_METHOD_${method.toUpperCase()}_CANARY`);
+          }
+          return live.dependencies[method];
+        },
+      });
+    }
+
+    const output = await runPhase6943PairedEval({
+      runId: 'stateful-live-methods', runKind: 'live', clocks: fakeClocks(),
+      createMockRuntime: createTestMockRuntime, live: dependencies,
+    });
+
+    expect(output).toMatchObject({ kind: 'report', runStatus: 'complete' });
+    expect(reads).toEqual({ createRuntime: 1, readProviderAttempts: 1 });
+    expect(live.requested).toHaveLength(28);
+    expect(JSON.stringify(output)).not.toContain('RAW_LIVE_METHOD_');
+  });
+
   test('fails closed for invalid clocks, live config, hostile factories, and raw run IDs', async () => {
     const invalidClock = await runPhase6943PairedEval({
       runId: 'clock-invalid', runKind: 'mock',
