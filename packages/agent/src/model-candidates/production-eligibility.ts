@@ -43,6 +43,24 @@ type VerifierEligibilitySnapshot = {
   deterministic: KnowledgeVerifierResult;
 };
 
+type ScalarClaimAnalysis = {
+  overflow: boolean;
+  valuesBySignature: ReadonlyMap<string, ReadonlySet<string>>;
+};
+
+type ClaimAnalysis = {
+  text: string;
+  topicTerms: ReadonlySet<string>;
+  normalizedSentences: readonly string[];
+  scalarClaims: ScalarClaimAnalysis;
+  polarityClaims: readonly PolarityClaim[];
+  exclusiveDefinition: ExclusiveDefinition | null;
+  positiveDefinition: PositiveDefinition | null;
+};
+
+type PolarityClaim = { negative: boolean; signature: string };
+type PositiveDefinition = { subject: string; claim: string };
+
 const MAX_ROUTER_TEXT_BYTES = 16_384;
 const MAX_ROUTER_CONTEXT_BYTES = 12_288;
 const MAX_QUERY_BYTES = 16_384;
@@ -52,6 +70,7 @@ const MAX_AGGREGATE_CHUNK_BYTES = 65_536;
 const MAX_EXCERPT_CODE_POINTS = 4_000;
 const MAX_CONTEXTUAL_MESSAGE_CODE_POINTS = 24;
 const MAX_TOPIC_TERMS = 512;
+const MAX_SCALAR_CLAIMS_PER_EXCERPT = 16;
 
 const INVALID_INPUT = Object.freeze({
   eligible: false,
@@ -124,7 +143,9 @@ const SCALAR_VALUE_PATTERN =
   /\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万亿]+(?:分之[零〇一二两三四五六七八九十百千万亿]+)?/gu;
 const CLAIM_SENTENCE_BOUNDARY = /[,，。；;!?！？]+/u;
 const CLAIM_DISCOURSE_MARKERS =
-  /(?:另一[份段]?|这一|这个|相同|同一|给定|所以|因此|根据|材料(?:记载|显示|说明)?|(?:监测|复核)?记录显示|重新计算|本次)/gu;
+  /(?:另一[份段]?|这一|这个|相同|同一|给定|该|所以|因此|根据|材料(?:记载|显示|说明)?|(?:监测|复核)?记录显示|重新计算|本次)/gu;
+const NEGATION_PATTERN =
+  /不再|并非|不是|不能|没有|未|无|不|(?:^|\s)(?:not|no|never)(?=\s|$)/giu;
 const ASCII_STOP_WORDS = new Set([
   'the',
   'this',
@@ -225,7 +246,9 @@ export function decideKnowledgeVerifierModelEligibility(
     if (relevant.some((chunk) => UNCERTAIN_OR_STALE.test(chunk.text))) {
       return STALE_OR_UNCERTAIN;
     }
-    if (hasSemanticConflict(query, relevant.map((chunk) => chunk.text))) {
+    const queryTerms = extractTopicTerms(query);
+    const claimAnalyses = relevant.map((chunk) => analyzeClaims(chunk.text));
+    if (hasSemanticConflict(queryTerms, claimAnalyses)) {
       return SEMANTIC_CONFLICT;
     }
 
@@ -446,23 +469,28 @@ function hasBlockedMaterial(value: string): boolean {
   );
 }
 
-function hasSemanticConflict(query: string, excerpts: readonly string[]): boolean {
-  if (excerpts.length < 2) return false;
+function hasSemanticConflict(
+  queryTerms: ReadonlySet<string>,
+  analyses: readonly ClaimAnalysis[],
+): boolean {
+  if (analyses.length < 2) return false;
 
-  for (let leftIndex = 0; leftIndex < excerpts.length - 1; leftIndex += 1) {
-    const left = excerpts[leftIndex] ?? '';
-    for (let rightIndex = leftIndex + 1; rightIndex < excerpts.length; rightIndex += 1) {
-      const right = excerpts[rightIndex] ?? '';
+  for (let leftIndex = 0; leftIndex < analyses.length - 1; leftIndex += 1) {
+    const left = analyses[leftIndex];
+    if (!left) continue;
+    for (let rightIndex = leftIndex + 1; rightIndex < analyses.length; rightIndex += 1) {
+      const right = analyses[rightIndex];
+      if (!right) continue;
       if (
-        shareClaimContext(query, left, right) &&
+        shareClaimContext(queryTerms, left.topicTerms, right.topicTerms) &&
         (OPPOSING_RELATIONS.some(
           ([first, second]) =>
-            (first.test(left) && second.test(right)) ||
-            (second.test(left) && first.test(right)),
+            (first.test(left.text) && second.test(right.text)) ||
+            (second.test(left.text) && first.test(right.text)),
         ) ||
           hasExclusiveDefinitionConflict(left, right) ||
-          hasNegatedSharedPredicate(left, right) ||
-          haveDifferentScalarClaims(left, right) ||
+          hasOppositePolarity(left, right) ||
+          haveDifferentScalarClaims(left.scalarClaims, right.scalarClaims) ||
           haveDifferentCategoryClaims(left, right))
       ) {
         return true;
@@ -472,59 +500,79 @@ function hasSemanticConflict(query: string, excerpts: readonly string[]): boolea
   return false;
 }
 
-function hasExclusiveDefinitionConflict(left: string, right: string): boolean {
+function hasExclusiveDefinitionConflict(
+  left: ClaimAnalysis,
+  right: ClaimAnalysis,
+): boolean {
+  const leftExclusive = left.exclusiveDefinition;
+  const rightExclusive = right.exclusiveDefinition;
+  if (leftExclusive && rightExclusive) {
+    return exclusionsCrossConflict(leftExclusive, rightExclusive);
+  }
   return (
-    exclusiveDefinitionOpposes(left, right) ||
-    exclusiveDefinitionOpposes(right, left)
+    exclusiveDefinitionOpposes(leftExclusive, right.positiveDefinition) ||
+    exclusiveDefinitionOpposes(rightExclusive, left.positiveDefinition)
   );
 }
 
-function exclusiveDefinitionOpposes(exclusive: string, other: string): boolean {
-  const match = exclusive.match(
+type ExclusiveDefinition = {
+  subject: string;
+  excluded: string;
+  asserted: string;
+};
+
+function extractExclusiveDefinition(value: string): ExclusiveDefinition | null {
+  const match = value.match(
     /^([\p{Script=Han}a-z0-9_-]{2,32}?)不是([^，。；;]{2,120})[，,]?而是([^。；;]{2,120})/u,
   );
   const subject = match?.[1];
   const excluded = match?.[2];
   const asserted = match?.[3];
-  if (subject === undefined || excluded === undefined || asserted === undefined) {
-    return false;
-  }
-  const otherDefinition = other.match(
+  return subject === undefined || excluded === undefined || asserted === undefined
+    ? null
+    : { subject, excluded, asserted };
+}
+
+function exclusionsCrossConflict(
+  left: ExclusiveDefinition,
+  right: ExclusiveDefinition,
+): boolean {
+  if (!isTopicRelevant(left.subject, right.subject)) return false;
+  const assertedOverlap = termOverlapRatio(left.asserted, right.asserted);
+  const crossOverlap = Math.max(
+    termOverlapRatio(left.asserted, right.excluded),
+    termOverlapRatio(right.asserted, left.excluded),
+  );
+  return crossOverlap >= 0.3 && crossOverlap > assertedOverlap + 0.1;
+}
+
+function extractPositiveDefinition(value: string): PositiveDefinition | null {
+  const match = value.match(
     /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:是指|是)([^。；;]{2,160})/u,
   );
-  const otherSubject = otherDefinition?.[1];
-  const otherClaim = otherDefinition?.[2];
+  const subject = match?.[1];
+  const claim = match?.[2];
+  if (subject === undefined || claim === undefined || subject.endsWith('不')) {
+    return null;
+  }
+  return { subject, claim };
+}
+
+function exclusiveDefinitionOpposes(
+  exclusive: ExclusiveDefinition | null,
+  positive: PositiveDefinition | null,
+): boolean {
   if (
-    otherSubject === undefined ||
-    otherClaim === undefined ||
-    !isTopicRelevant(subject, otherSubject)
+    !exclusive ||
+    !positive ||
+    !isTopicRelevant(exclusive.subject, positive.subject)
   ) {
     return false;
   }
 
-  const excludedOverlap = termOverlapRatio(excluded, otherClaim);
-  const assertedOverlap = termOverlapRatio(asserted, otherClaim);
+  const excludedOverlap = termOverlapRatio(exclusive.excluded, positive.claim);
+  const assertedOverlap = termOverlapRatio(exclusive.asserted, positive.claim);
   return excludedOverlap >= 0.3 && excludedOverlap > assertedOverlap + 0.1;
-}
-
-function hasNegatedSharedPredicate(left: string, right: string): boolean {
-  return (
-    containsNegatedPredicateFrom(left, right) ||
-    containsNegatedPredicateFrom(right, left)
-  );
-}
-
-function containsNegatedPredicateFrom(source: string, other: string): boolean {
-  for (const match of source.matchAll(/不再([\p{Script=Han}]{2,8})/gu)) {
-    const predicate = match[1];
-    if (predicate === undefined) continue;
-    for (let length = 2; length <= predicate.length; length += 1) {
-      const prefix = predicate.slice(0, length);
-      if (other.includes(`不再${prefix}`)) continue;
-      if (other.includes(prefix)) return true;
-    }
-  }
-  return false;
 }
 
 function isTopicRelevant(query: string, evidence: string): boolean {
@@ -537,10 +585,11 @@ function isTopicRelevant(query: string, evidence: string): boolean {
   return false;
 }
 
-function shareClaimContext(query: string, left: string, right: string): boolean {
-  const queryTerms = extractTopicTerms(query);
-  const leftTerms = extractTopicTerms(left);
-  const rightTerms = extractTopicTerms(right);
+function shareClaimContext(
+  queryTerms: ReadonlySet<string>,
+  leftTerms: ReadonlySet<string>,
+  rightTerms: ReadonlySet<string>,
+): boolean {
   for (const term of queryTerms) {
     if (leftTerms.has(term) && rightTerms.has(term)) return true;
   }
@@ -565,29 +614,63 @@ function extractTopicTerms(value: string): Set<string> {
   return terms;
 }
 
-function haveDifferentScalarClaims(left: string, right: string): boolean {
-  const leftClaims = extractScalarClaims(left);
-  const rightClaims = extractScalarClaims(right);
-  for (const leftClaim of leftClaims) {
-    for (const rightClaim of rightClaims) {
-      if (
-        leftClaim.value !== rightClaim.value &&
-        signatureSimilarity(leftClaim.signature, rightClaim.signature) >= 0.78
-      ) {
-        return true;
+function analyzeClaims(text: string): ClaimAnalysis {
+  const sentences = splitClaimSentences(text);
+  const normalizedSentences = sentences.map((sentence) =>
+    normalizeClaimSignature(sentence),
+  );
+  return {
+    text,
+    topicTerms: extractTopicTerms(text),
+    normalizedSentences,
+    scalarClaims: analyzeScalarClaims(sentences),
+    polarityClaims: analyzePolarity(sentences),
+    exclusiveDefinition: extractExclusiveDefinition(text),
+    positiveDefinition: extractPositiveDefinition(text),
+  };
+}
+
+function haveDifferentScalarClaims(
+  left: ScalarClaimAnalysis,
+  right: ScalarClaimAnalysis,
+): boolean {
+  if (left.overflow || right.overflow) return false;
+  const smaller =
+    left.valuesBySignature.size <= right.valuesBySignature.size
+      ? left.valuesBySignature
+      : right.valuesBySignature;
+  const larger = smaller === left.valuesBySignature
+    ? right.valuesBySignature
+    : left.valuesBySignature;
+
+  for (const [signature, smallerValues] of smaller) {
+    const largerValues = larger.get(signature);
+    if (!largerValues) continue;
+    let smallerHasUnique = false;
+    for (const value of smallerValues) {
+      if (!largerValues.has(value)) {
+        smallerHasUnique = true;
+        break;
       }
+    }
+    if (!smallerHasUnique) continue;
+    for (const value of largerValues) {
+      if (!smallerValues.has(value)) return true;
     }
   }
   return false;
 }
 
-function extractScalarClaims(
-  value: string,
-): { value: string; signature: string }[] {
-  const claims: { value: string; signature: string }[] = [];
-  for (const sentence of splitClaimSentences(value)) {
-    const matches = Array.from(sentence.matchAll(SCALAR_VALUE_PATTERN));
-    for (const match of matches) {
+function analyzeScalarClaims(sentences: readonly string[]): ScalarClaimAnalysis {
+  const valuesBySignature = new Map<string, Set<string>>();
+  let claimCount = 0;
+  for (const rawSentence of sentences) {
+    const sentence = rawSentence.replace(CLAIM_DISCOURSE_MARKERS, '');
+    for (const match of sentence.matchAll(SCALAR_VALUE_PATTERN)) {
+      claimCount += 1;
+      if (claimCount > MAX_SCALAR_CLAIMS_PER_EXCERPT) {
+        return { overflow: true, valuesBySignature: new Map() };
+      }
       const scalar = match[0];
       const start = match.index;
       if (start === undefined) continue;
@@ -597,17 +680,28 @@ function extractScalarClaims(
         normalizeClaimSignature(`${before}<value>${after}`),
       );
       if (extractTopicTerms(signature).size < 2) continue;
-      claims.push({ value: scalar, signature });
+      const canonicalValue = canonicalizeScalarValue(scalar);
+      const values = valuesBySignature.get(signature) ?? new Set<string>();
+      values.add(canonicalValue);
+      valuesBySignature.set(signature, values);
     }
   }
-  return claims;
+  return { overflow: false, valuesBySignature };
 }
 
-function haveDifferentCategoryClaims(left: string, right: string): boolean {
-  for (const leftSentence of splitClaimSentences(left)) {
-    const leftClaim = normalizeClaimSignature(leftSentence);
-    for (const rightSentence of splitClaimSentences(right)) {
-      const rightClaim = normalizeClaimSignature(rightSentence);
+function haveDifferentCategoryClaims(
+  left: ClaimAnalysis,
+  right: ClaimAnalysis,
+): boolean {
+  for (const leftClaim of left.normalizedSentences) {
+    for (const rightClaim of right.normalizedSentences) {
+      if (
+        (containsScalarValue(leftClaim) && containsScalarValue(rightClaim)) ||
+        containsNegation(leftClaim) ||
+        containsNegation(rightClaim)
+      ) {
+        continue;
+      }
       const commonPrefix = sharedPrefix(leftClaim, rightClaim);
       const leftValue = leftClaim.slice(commonPrefix.length);
       const rightValue = rightClaim.slice(commonPrefix.length);
@@ -625,6 +719,48 @@ function haveDifferentCategoryClaims(left: string, right: string): boolean {
     }
   }
   return false;
+}
+
+function hasOppositePolarity(left: ClaimAnalysis, right: ClaimAnalysis): boolean {
+  for (const leftClaim of left.polarityClaims) {
+    for (const rightClaim of right.polarityClaims) {
+      if (
+        leftClaim.negative !== rightClaim.negative &&
+        signatureSimilarity(leftClaim.signature, rightClaim.signature) >= 0.65
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function analyzePolarity(
+  sentences: readonly string[],
+): PolarityClaim[] {
+  return sentences.flatMap((sentence) => {
+    if (/不是[^。；;]{0,120}而是/u.test(sentence)) return [];
+    const negative = containsNegation(sentence);
+    NEGATION_PATTERN.lastIndex = 0;
+    const signature = normalizeClaimSignature(
+      sentence.replace(NEGATION_PATTERN, '').trim(),
+    );
+    return signature.length >= 4 ? [{ negative, signature }] : [];
+  });
+}
+
+function containsNegation(value: string): boolean {
+  NEGATION_PATTERN.lastIndex = 0;
+  const result = NEGATION_PATTERN.test(value);
+  NEGATION_PATTERN.lastIndex = 0;
+  return result;
+}
+
+function containsScalarValue(value: string): boolean {
+  SCALAR_VALUE_PATTERN.lastIndex = 0;
+  const result = SCALAR_VALUE_PATTERN.test(value);
+  SCALAR_VALUE_PATTERN.lastIndex = 0;
+  return result;
 }
 
 function splitClaimSentences(value: string): string[] {
@@ -645,6 +781,88 @@ function normalizeClaimSignature(value: string): string {
 
 function maskScalarValues(value: string): string {
   return value.replace(SCALAR_VALUE_PATTERN, '<number>');
+}
+
+function canonicalizeScalarValue(value: string): string {
+  if (/^\d+(?:\.\d+)?$/u.test(value)) {
+    const [integer = '0', fraction] = value.split('.');
+    const canonicalInteger = integer.replace(/^0+(?=\d)/u, '');
+    if (fraction === undefined) return canonicalInteger;
+    const canonicalFraction = fraction.replace(/0+$/u, '');
+    return canonicalFraction.length === 0
+      ? canonicalInteger
+      : `${canonicalInteger}.${canonicalFraction}`;
+  }
+
+  const fractionParts = value.split('分之');
+  if (fractionParts.length === 2) {
+    const denominator = parseChineseInteger(fractionParts[0] ?? '');
+    const numerator = parseChineseInteger(fractionParts[1] ?? '');
+    if (denominator !== null && numerator !== null && denominator !== 0) {
+      return `${numerator}/${denominator}`;
+    }
+  }
+
+  const integer = parseChineseInteger(value);
+  return integer === null ? value : String(integer);
+}
+
+function parseChineseInteger(value: string): number | null {
+  const digits: Record<string, number> = {
+    '零': 0,
+    '〇': 0,
+    '一': 1,
+    '二': 2,
+    '两': 2,
+    '三': 3,
+    '四': 4,
+    '五': 5,
+    '六': 6,
+    '七': 7,
+    '八': 8,
+    '九': 9,
+  };
+  const units: Record<string, number> = {
+    '十': 10,
+    '百': 100,
+    '千': 1_000,
+    '万': 10_000,
+    '亿': 100_000_000,
+  };
+  if (value.length === 0) return null;
+  if (!/[十百千万亿]/u.test(value)) {
+    let digitsOnly = '';
+    for (const character of value) {
+      const digit = digits[character];
+      if (digit === undefined) return null;
+      digitsOnly += String(digit);
+    }
+    const parsed = Number(digitsOnly);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+
+  let total = 0;
+  let section = 0;
+  let number = 0;
+  for (const character of value) {
+    const digit = digits[character];
+    if (digit !== undefined) {
+      number = digit;
+      continue;
+    }
+    const unit = units[character];
+    if (unit === undefined) return null;
+    if (unit < 10_000) {
+      section += (number === 0 ? 1 : number) * unit;
+    } else {
+      section += number;
+      total += (section === 0 ? 1 : section) * unit;
+      section = 0;
+    }
+    number = 0;
+  }
+  const parsed = total + section + number;
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
 function claimWindow(value: string): string {

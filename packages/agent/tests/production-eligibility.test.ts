@@ -404,6 +404,79 @@ describe('production model eligibility', () => {
     });
   });
 
+  test('canonicalizes equivalent scalar values before comparing same-signature claims', () => {
+    const query = '车辆甲在上午十点的速度是多少？';
+    const identical = verifierDecision(query, [
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'identical-a'),
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'identical-b'),
+    ]);
+    const equivalent = verifierDecision(query, [
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'equivalent-a'),
+      safeChunk('车辆甲在上午十点的速度为六十千米每小时。', 'equivalent-b'),
+    ]);
+    const conflicting = verifierDecision(query, [
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'conflicting-a'),
+      safeChunk('车辆甲在上午十点的速度为80千米每小时。', 'conflicting-b'),
+    ]);
+
+    expect(identical.eligible).toBe(false);
+    expect(equivalent.eligible).toBe(false);
+    expect(conflicting).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+  });
+
+  test('bounds numeric semantic work for twenty dense excerpts', () => {
+    const query = '车辆速度记录是否一致？';
+    const denseNumbers = Array.from({ length: 400 }, () => '60').join(' ');
+    const chunks = Array.from({ length: 20 }, (_, index) =>
+      safeChunk(`车辆速度 ${denseNumbers}`, `dense-${index}`),
+    );
+    const startedAt = performance.now();
+
+    const decision = verifierDecision(query, chunks);
+    const durationMs = performance.now() - startedAt;
+
+    expect(decision.eligible).toBe(false);
+    expect(decision.reason).not.toBe('invalid_input');
+    expect(durationMs).toBeLessThan(1_000);
+  });
+
+  test('compares generic claim polarity without a domain predicate list', () => {
+    const query = '这个命题是否成立？';
+    const conflicting = verifierDecision(query, [
+      safeChunk('完整证明表明这个命题成立，推导过程没有缺口。', 'polarity-positive'),
+      safeChunk('复核证明表明这个命题不成立，反例推翻了原结论。', 'polarity-negative'),
+    ]);
+    const agreeing = verifierDecision(query, [
+      safeChunk('第一份证明认为这个命题不成立，并给出了一个反例。', 'polarity-same-a'),
+      safeChunk('第二份证明同样认为这个命题不成立，也提供了反例。', 'polarity-same-b'),
+    ]);
+
+    expect(conflicting).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(agreeing.eligible).toBe(false);
+  });
+
+  test('keeps equivalent explicit exclusions local', () => {
+    const query = '机会成本的定义是什么？';
+    const decision = verifierDecision(query, [
+      safeChunk(
+        '机会成本不是实际货币支出，而是放弃方案中的最佳收益。',
+        'exclusive-equivalent-a',
+      ),
+      safeChunk(
+        '机会成本不是已经支付的货币费用，而是被放弃选择里的最高价值收益。',
+        'exclusive-equivalent-b',
+      ),
+    ]);
+
+    expect(decision.eligible).toBe(false);
+  });
+
   test('keeps compatible descriptions of the same concept local', () => {
     const query = '矩阵的定义是什么？';
     const chunks = [
@@ -499,6 +572,17 @@ function safeChunk(content: string, chunkId = 'chunk-safe', score = 0.9) {
       },
     },
   };
+}
+
+function verifierDecision(
+  query: string,
+  chunks: ReturnType<typeof safeChunk>[],
+) {
+  return decideKnowledgeVerifierModelEligibility({
+    query,
+    chunks,
+    deterministic: verifyKnowledgeChunks({ query, chunks }),
+  });
 }
 
 function expectClosed(action: () => ModelEligibilityDecision): ModelEligibilityDecision {
