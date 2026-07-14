@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-12。Phase 7 工程化已完成；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
+> 当前版本：2026-07-14。Phase 7 核心工程化已完成，Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
 
 ## 1. 当前边界
 
@@ -160,7 +160,7 @@ Agent Trace 边界：
 
 ## 4. RAG 知识库数据流
 
-Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。Phase 7.0 / 7.1 已把文档处理升级为可切换 inline / BullMQ queue 的后台任务链路。
+Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contract 地基，Phase 5.2 已完成文档上传与状态 API，Phase 5.3 已完成文档处理与 embedding 入库，Phase 5.4 已完成检索 API，Phase 5.5 已完成 Chat RAG 增强和 Markdown citations，Phase 5.6 已完成 `/knowledge` 前端资料工作台。Phase 6.3 已接入资料可信度评估 Agent，Phase 6.8 已接入资料管理建议 Agent。Phase 7.0 / 7.1 已把文档处理升级为可切换 inline / BullMQ queue 的后台任务链路；Phase 7.8.5 已完成 Qwen `text-embedding-v4` / 1536 runtime parity 真实 Docker 验收。official smoke 3/3，queue `BackgroundJob=SUCCEEDED`，provider/key/base URL 缺失时在 provider 调用前 fail-closed；证据见 `docs/acceptance/2026-07-14-rag-runtime-parity.md`。
 
 文档处理数据流：
 
@@ -175,7 +175,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> TXT / Markdown / DOCX / PDF 基础文本解析
   -> @repo/rag 段落感知分块
   -> @repo/rag classifyRagChunkSafety() 写入 Chunk.metadata.safety
-  -> Embedding provider 生成向量
+  -> 当前真实路径：Qwen text-embedding-v4 生成 1536 维向量
   -> 事务内 SELECT ... FOR UPDATE 锁定同一 processing 快照
   -> Chunk.embedding vector(1536) raw SQL 写入 pgvector
   -> 使用同一快照条件标记 Document(status=DONE / FAILED)
@@ -221,9 +221,11 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> POST /knowledge/search
   -> knowledgeSearchRequestSchema 校验 query / topK / minScore
   -> EmbeddingService 生成 query embedding
-  -> pgvector cosine search 当前用户 DONE 文档 chunks
-  -> 过滤低于 minScore 的结果
-  -> 返回 KnowledgeSearchResponse(hits)，包含 chunk metadata.safety
+  -> pgvector cosine 召回当前用户 DONE 文档 vector candidates
+  -> PostgreSQL full-text 召回当前用户 DONE 文档 keyword candidates
+  -> 按 chunkId 去重，融合 vectorScore / keywordScore 做 hybrid rank
+  -> 过滤低于 minScore 的结果（当前无 reranker）
+  -> 返回 KnowledgeSearchResponse(hits)，包含 metadata.safety 与 metadata.retrieval
 ```
 
 当前 Chat RAG 数据流：
@@ -316,8 +318,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - Redis 是 queue 处理链路的必需依赖；当前 NestJS 会初始化 BullMQ 模块，本地开发建议继续随 postgres / minio 一起启动 redis。
 - `Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`；空文本、零 chunk、解析失败或 embedding 失败进入 `FAILED`。
 - forced reprocess 会在同一 processing 快照下先清旧 chunks，避免 stale retrieval；chunk 替换事务会使用 `SELECT ... FOR UPDATE` 锁定当前 Document 行。
-- embedding provider 已抽象，默认 OpenAI `text-embedding-3-small`，并支持阿里云百炼 / DashScope OpenAI-compatible `qwen` provider（例如 `text-embedding-v4`）；测试/e2e 使用 fake provider。
+- 当前真实 embedding 标准路径是 Qwen `text-embedding-v4` / 1536。production 必须显式提供 provider/model，Qwen 还必须提供无凭据 HTTPS base URL 和规范 `QWEN_API_KEY`；缺失或不匹配即 fail-closed，无 provider fallback。`Qwen_API_KEY` / `DASHSCOPE_API_KEY` 仅是宿主兼容输入，Docker server/worker 内部规范化为 `QWEN_API_KEY` 并共用同一 RAG runtime allowlist；`fake` 仅用于非 production 测试。
 - `POST /knowledge/search` 只检索当前用户 `DONE` 文档 chunks，不跨用户、不检索未处理或失败文档。
+- `POST /knowledge/search` 使用 pgvector cosine + PostgreSQL full-text 两路候选，按 `chunkId` 去重后 hybrid rank；`metadata.retrieval` 记录 `vectorScore` / `keywordScore`，当前无 reranker。
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
 - KnowledgeVerifierAgent 只消费 `/knowledge/search` 的命中结果，不单独读取数据库；无命中返回 `skipped`，可信资料返回 `trusted`，低分或过短资料返回 `insufficient`，包含“可能有误 / 待核对 / 不确定 / wrong / contradict”等风险标记时返回 `suspicious`，多个片段出现互斥答案标记时返回 `conflict`。
 - verifier 结果只影响 prompt guidance、引用区提示和 debug headers，不修改 Document / Chunk，不自动纠错用户资料。
@@ -337,7 +340,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - `/knowledge` 资料卡片使用右上角三点菜单承载处理、重新上传和删除；点击页面其它区域会收起菜单；`DONE` 资料不再展示主按钮式“重新处理”，避免用户把已完成状态误解为必须再次处理。
 - `Document` / `Chunk` 查询必须按当前 `userId` 隔离，禁止跨用户检索。
 - `Chunk.embedding` 固定为 `vector(1536)`，向量索引和 embedding 持久化使用 raw SQL。
-- 本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，便于无 API key、无成本验证上传、处理和检索闭环；production 禁止 fake provider。真实 embedding 可使用 `RAG_EMBEDDING_PROVIDER=openai` + `OPENAI_API_KEY`，或 `RAG_EMBEDDING_PROVIDER=qwen` + `RAG_EMBEDDING_BASE_URL` + `Qwen_API_KEY` / `QWEN_API_KEY` / `DASHSCOPE_API_KEY`。
+- API 级 RAG smoke 必须显式运行 `KNOWLEDGE_PROCESSING_MODE=queue`，轮询到 `BackgroundJob=SUCCEEDED`，并验证 `mode=hybrid`、有限 `keywordScore` / `vectorScore` 与同 case 无重复 `chunkId`。本地开发和自动化验收可使用 `RAG_EMBEDDING_PROVIDER=fake` 生成稳定伪向量，但它不证明真实语义质量。
 
 ## 5. OpenAPI 调试文档
 

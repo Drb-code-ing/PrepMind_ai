@@ -1,3 +1,5 @@
+import { ZodError } from 'zod';
+
 import { parseEnv } from './env';
 
 describe('parseEnv', () => {
@@ -5,6 +7,24 @@ describe('parseEnv', () => {
     DATABASE_URL: 'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind',
     JWT_SECRET: 'dev-secret-change-me',
   };
+  const productionEnv = {
+    ...requiredEnv,
+    NODE_ENV: 'production' as const,
+    RAG_EMBEDDING_PROVIDER: 'openai' as const,
+    RAG_EMBEDDING_MODEL: 'text-embedding-3-small',
+    OPENAI_API_KEY: 'production-openai-key',
+  };
+
+  function captureZodError(config: Record<string, unknown>) {
+    try {
+      parseEnv(config);
+    } catch (error) {
+      expect(error).toBeInstanceOf(ZodError);
+      return error as ZodError;
+    }
+
+    throw new Error('Expected parseEnv to reject the configuration');
+  }
 
   it('applies RAG env defaults', () => {
     const env = parseEnv(requiredEnv);
@@ -121,6 +141,130 @@ describe('parseEnv', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('requires an explicit embedding provider and model in production', () => {
+    const error = captureZodError({
+      ...requiredEnv,
+      NODE_ENV: 'production',
+    });
+
+    expect(error.issues.map((issue) => issue.path)).toEqual(
+      expect.arrayContaining([
+        ['RAG_EMBEDDING_PROVIDER'],
+        ['RAG_EMBEDDING_MODEL'],
+      ]),
+    );
+  });
+
+  it.each(
+    (['development', 'test'] as const).flatMap((NODE_ENV) =>
+      (['openai', 'qwen'] as const).flatMap((provider) =>
+        [undefined, '   '].map((model) => [NODE_ENV, provider, model] as const),
+      ),
+    ),
+  )(
+    'requires an explicit non-empty model for explicit %s %s embedding provider config (model=%p)',
+    (NODE_ENV, provider, model) => {
+      const error = captureZodError({
+        ...requiredEnv,
+        NODE_ENV,
+        RAG_EMBEDDING_PROVIDER: provider,
+        RAG_EMBEDDING_MODEL: model,
+        RAG_EMBEDDING_BASE_URL: 'https://dashscope.example.com/compatible/v1',
+        OPENAI_API_KEY: 'openai-key',
+        QWEN_API_KEY: 'qwen-key',
+      });
+
+      expect(error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: ['RAG_EMBEDDING_MODEL'] }),
+        ]),
+      );
+    },
+  );
+
+  it('requires a supported qwen key for an explicitly selected qwen provider', () => {
+    const error = captureZodError({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'qwen',
+      RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+      RAG_EMBEDDING_BASE_URL: 'https://dashscope.example.com/compatible/v1',
+    });
+
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['QWEN_API_KEY'] }),
+      ]),
+    );
+  });
+
+  it.each([
+    ['QWEN_API_KEY', 'qwen-upper-key'],
+    ['Qwen_API_KEY', 'qwen-compatible-key'],
+    ['DASHSCOPE_API_KEY', 'dashscope-key'],
+  ])('accepts %s for an explicitly selected qwen provider', (keyName, key) => {
+    const env = parseEnv({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'qwen',
+      RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+      RAG_EMBEDDING_BASE_URL: 'https://dashscope.example.com/compatible/v1',
+      [keyName]: key,
+    });
+
+    expect(env.RAG_EMBEDDING_PROVIDER).toBe('qwen');
+  });
+
+  it.each([
+    undefined,
+    'http://dashscope.example.com/compatible/v1',
+    'https://user:secret@dashscope.example.com/compatible/v1',
+  ])(
+    'rejects a missing or unsafe qwen embedding base URL without exposing it',
+    (baseURL) => {
+      const error = captureZodError({
+        ...requiredEnv,
+        RAG_EMBEDDING_PROVIDER: 'qwen',
+        RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+        RAG_EMBEDDING_BASE_URL: baseURL,
+        QWEN_API_KEY: 'sensitive-qwen-key',
+      });
+
+      expect(error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: ['RAG_EMBEDDING_BASE_URL'] }),
+        ]),
+      );
+      expect(error.message).not.toContain('sensitive-qwen-key');
+      if (baseURL) expect(error.message).not.toContain(baseURL);
+    },
+  );
+
+  it('requires an OpenAI key for an explicitly selected OpenAI provider', () => {
+    const error = captureZodError({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'openai',
+      RAG_EMBEDDING_MODEL: 'text-embedding-3-small',
+    });
+
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ['OPENAI_API_KEY'] }),
+      ]),
+    );
+  });
+
+  it('keeps an explicitly selected qwen provider when OpenAI credentials also exist', () => {
+    const env = parseEnv({
+      ...requiredEnv,
+      RAG_EMBEDDING_PROVIDER: 'qwen',
+      RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+      RAG_EMBEDDING_BASE_URL: 'https://dashscope.example.com/compatible/v1',
+      QWEN_API_KEY: 'qwen-key',
+      OPENAI_API_KEY: 'openai-key',
+    });
+
+    expect(env.RAG_EMBEDDING_PROVIDER).toBe('qwen');
+  });
+
   it('accepts qwen embedding provider settings', () => {
     const env = parseEnv({
       ...requiredEnv,
@@ -142,8 +286,7 @@ describe('parseEnv', () => {
   it('rejects the fake embedding provider in production', () => {
     expect(() =>
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         RAG_EMBEDDING_PROVIDER: 'fake',
       }),
     ).toThrow();
@@ -208,8 +351,7 @@ describe('parseEnv', () => {
   it('disables Swagger by default in production', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).SWAGGER_ENABLED,
     ).toBe(false);
   });
@@ -217,8 +359,7 @@ describe('parseEnv', () => {
   it('allows explicit Swagger enablement overrides', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         SWAGGER_ENABLED: 'true',
       }).SWAGGER_ENABLED,
     ).toBe(true);
@@ -243,8 +384,7 @@ describe('parseEnv', () => {
 
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         SWAGGER_ENABLED: '',
       }).SWAGGER_ENABLED,
     ).toBe(false);
@@ -255,8 +395,7 @@ describe('parseEnv', () => {
 
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).WORKER_OBSERVABILITY_ENABLED,
     ).toBe(false);
   });
@@ -264,8 +403,7 @@ describe('parseEnv', () => {
   it('allows explicit worker observability enablement overrides', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         WORKER_OBSERVABILITY_ENABLED: 'true',
       }).WORKER_OBSERVABILITY_ENABLED,
     ).toBe(true);
@@ -291,8 +429,7 @@ describe('parseEnv', () => {
   it('disables outbox dispatcher by default in production', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).OUTBOX_DISPATCHER_ENABLED,
     ).toBe(false);
   });
@@ -300,8 +437,7 @@ describe('parseEnv', () => {
   it('allows explicit outbox dispatcher enablement overrides', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OUTBOX_DISPATCHER_ENABLED: 'true',
       }).OUTBOX_DISPATCHER_ENABLED,
     ).toBe(true);
@@ -342,8 +478,7 @@ describe('parseEnv', () => {
   it('disables outbox ops by default in production', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).OUTBOX_OPS_ENABLED,
     ).toBe(false);
   });
@@ -351,8 +486,7 @@ describe('parseEnv', () => {
   it('allows explicit outbox ops enablement overrides', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OUTBOX_OPS_ENABLED: 'true',
         OPERATOR_AUDIT_FINGERPRINT_SECRET:
           'production-outbox-fingerprint-secret-32',
@@ -382,8 +516,7 @@ describe('parseEnv', () => {
   it('disables worker readiness by default in production', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).WORKER_READINESS_ENABLED,
     ).toBe(false);
   });
@@ -391,8 +524,7 @@ describe('parseEnv', () => {
   it('allows explicit worker readiness overrides and treats blanks as unset', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         WORKER_READINESS_ENABLED: 'true',
       }).WORKER_READINESS_ENABLED,
     ).toBe(true);
@@ -415,8 +547,7 @@ describe('parseEnv', () => {
 
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         WORKER_READINESS_ENABLED: '',
       }).WORKER_READINESS_ENABLED,
     ).toBe(false);
@@ -436,8 +567,7 @@ describe('parseEnv', () => {
   it('disables operator audit by default in production', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
       }).OPERATOR_AUDIT_ENABLED,
     ).toBe(false);
   });
@@ -445,8 +575,7 @@ describe('parseEnv', () => {
   it('allows explicit operator audit overrides and treats blanks as unset', () => {
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OPERATOR_AUDIT_ENABLED: 'true',
         OPERATOR_AUDIT_FINGERPRINT_SECRET:
           'production-operator-fingerprint-secret-32',
@@ -471,8 +600,7 @@ describe('parseEnv', () => {
 
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OPERATOR_AUDIT_ENABLED: '',
       }).OPERATOR_AUDIT_ENABLED,
     ).toBe(false);
@@ -503,7 +631,10 @@ describe('parseEnv', () => {
 
   it('keeps export and maintenance gates disabled by default in every environment', () => {
     for (const NODE_ENV of ['development', 'test', 'production'] as const) {
-      const env = parseEnv({ ...requiredEnv, NODE_ENV });
+      const env = parseEnv({
+        ...(NODE_ENV === 'production' ? productionEnv : requiredEnv),
+        NODE_ENV,
+      });
       expect(env.OPERATOR_AUDIT_EXPORT_ENABLED).toBe(false);
       expect(env.OPERATOR_AUDIT_MAINTENANCE_ENABLED).toBe(false);
     }
@@ -512,8 +643,7 @@ describe('parseEnv', () => {
   it('requires a fingerprint secret for production operator audit queries', () => {
     expect(() =>
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OPERATOR_AUDIT_ENABLED: 'true',
       }),
     ).toThrow();
@@ -522,8 +652,7 @@ describe('parseEnv', () => {
   it('requires a fingerprint secret for production outbox operations', () => {
     expect(() =>
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OUTBOX_OPS_ENABLED: 'true',
       }),
     ).toThrow();
@@ -532,8 +661,7 @@ describe('parseEnv', () => {
   it('requires a fingerprint secret for production audit export API', () => {
     expect(() =>
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         SERVER_ROLE: 'api',
         OPERATOR_AUDIT_EXPORT_ENABLED: 'true',
       }),
@@ -557,8 +685,7 @@ describe('parseEnv', () => {
 
     expect(
       parseEnv({
-        ...requiredEnv,
-        NODE_ENV: 'production',
+        ...productionEnv,
         OPERATOR_AUDIT_ENABLED: 'true',
         OPERATOR_AUDIT_FINGERPRINT_SECRET:
           '  production-hmac-secret-at-least-32  ',

@@ -13,6 +13,49 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerignore).toContain('apps/web/.next');
   });
 
+  it('loads the root env file and worker profile for repository Docker commands', () => {
+    const packageJson = JSON.parse(readRepoFile('package.json')) as {
+      scripts: Record<string, string>;
+    };
+    const commands = [
+      ['docker:up', 'up'],
+      ['docker:up:worker', 'up'],
+      ['docker:down', 'down'],
+    ] as const;
+
+    for (const [scriptName, subcommand] of commands) {
+      const tokens = packageJson.scripts[scriptName].split(/\s+/);
+      const subcommandIndex = tokens.indexOf(subcommand);
+
+      expect(tokens.slice(0, 2)).toEqual(['docker', 'compose']);
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '--env-file',
+        '.env',
+        subcommandIndex,
+      );
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '-f',
+        'docker/docker-compose.dev.yml',
+        subcommandIndex,
+      );
+    }
+
+    for (const [scriptName, subcommand] of [
+      ['docker:up:worker', 'up'],
+      ['docker:down', 'down'],
+    ] as const) {
+      const tokens = packageJson.scripts[scriptName].split(/\s+/);
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '--profile',
+        'worker',
+        tokens.indexOf(subcommand),
+      );
+    }
+  });
+
   it('keeps the local PostgreSQL host port aligned with development docs', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const postgresService = extractYamlSection(compose, '  postgres:', 2);
@@ -261,6 +304,35 @@ describe('Docker Compose worker readiness healthcheck', () => {
     );
   });
 
+  it('keeps Docker API and worker on the same explicit Qwen RAG contract', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const server = extractYamlSection(compose, '  server:', 2);
+    const worker = extractYamlSection(compose, '  worker:', 2);
+    const entries = [
+      'RAG_EMBEDDING_PROVIDER: ${RAG_EMBEDDING_PROVIDER:-qwen}',
+      'RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-text-embedding-v4}',
+      'RAG_EMBEDDING_BASE_URL: ${RAG_EMBEDDING_BASE_URL:-}',
+      'RAG_EMBEDDING_DIMENSIONS: ${RAG_EMBEDDING_DIMENSIONS:-1536}',
+      'RAG_EMBEDDING_BATCH_SIZE: ${RAG_EMBEDDING_BATCH_SIZE:-32}',
+      'QWEN_API_KEY: ${QWEN_API_KEY:-${Qwen_API_KEY:-${DASHSCOPE_API_KEY:-}}}',
+      'OPENAI_API_KEY: ${OPENAI_API_KEY:-}',
+      'RAG_CHUNK_TARGET_TOKENS: ${RAG_CHUNK_TARGET_TOKENS:-650}',
+      'RAG_CHUNK_OVERLAP_TOKENS: ${RAG_CHUNK_OVERLAP_TOKENS:-80}',
+      'RAG_CHUNK_MAX_TOKENS: ${RAG_CHUNK_MAX_TOKENS:-900}',
+      'RAG_MAX_CHUNKS_PER_DOCUMENT: ${RAG_MAX_CHUNKS_PER_DOCUMENT:-500}',
+      'EMBEDDING_REQUEST_TIMEOUT_MS: ${EMBEDDING_REQUEST_TIMEOUT_MS:-30000}',
+    ];
+
+    for (const entry of entries) {
+      expect(server).toContain(entry);
+      expect(worker).toContain(entry);
+    }
+    expect(server).not.toContain('env_file:');
+    expect(worker).not.toContain('env_file:');
+    expect(server).toContain('NODE_ENV: production');
+    expect(worker).toContain('NODE_ENV: production');
+  });
+
   it('keeps audit export processing on the dedicated local Docker worker', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const serverService = extractYamlSection(compose, '  server:', 2);
@@ -376,4 +448,18 @@ function extractYamlSection(source: string, header: string, indent: number) {
   const nextSiblingPattern = new RegExp(`\\n {${indent}}[^\\s].*:`);
   const nextSibling = rest.search(nextSiblingPattern);
   return nextSibling >= 0 ? rest.slice(0, nextSibling) : rest;
+}
+
+function expectComposeOptionBeforeSubcommand(
+  tokens: string[],
+  option: string,
+  value: string,
+  subcommandIndex: number,
+) {
+  const optionIndex = tokens.indexOf(option);
+
+  expect(subcommandIndex).toBeGreaterThan(1);
+  expect(optionIndex).toBeGreaterThan(1);
+  expect(tokens[optionIndex + 1]).toBe(value);
+  expect(optionIndex).toBeLessThan(subcommandIndex);
 }
