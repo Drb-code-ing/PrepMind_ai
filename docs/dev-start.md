@@ -138,7 +138,7 @@ $env:RAG_EMBEDDING_PROVIDER='fake'
 bun --filter @repo/server start:dev
 ```
 
-`RAG_EMBEDDING_PROVIDER='fake'` 只用于本地开发和浏览器 smoke，可在没有 API key 的情况下完成知识库上传、处理和检索测试；真实 embedding 验收时改为 `openai` 或 `qwen` 并配置对应 API key。
+`RAG_EMBEDDING_PROVIDER='fake'` 只用于非 production 本地开发和自动测试，可在没有 API key 的情况下完成知识库上传、处理和检索工程回归；production 会拒绝 fake。当前真实 RAG embedding 标准路径是 Qwen `text-embedding-v4` / 1536。
 
 使用阿里云百炼 / DashScope 的 OpenAI compatible embedding 时，可按截图里的业务空间 base URL 配置：
 
@@ -149,12 +149,12 @@ $env:RAG_EMBEDDING_PROVIDER='qwen'
 $env:RAG_EMBEDDING_MODEL='text-embedding-v4'
 $env:RAG_EMBEDDING_BASE_URL='https://你的业务空间域名/compatible-mode/v1'
 $env:RAG_EMBEDDING_DIMENSIONS='1536'
-$env:RAG_EMBEDDING_BATCH_SIZE='10'
-$env:Qwen_API_KEY='你的 key'
+$env:RAG_EMBEDDING_BATCH_SIZE='32'
+$env:QWEN_API_KEY='你的 key'
 bun --filter @repo/server start:dev
 ```
 
-`Qwen_API_KEY`、`QWEN_API_KEY`、`DASHSCOPE_API_KEY` 三个变量任选其一即可；不要把真实 key 写进 git。真实 embedding 验收要重新处理资料，旧的 fake embedding chunk 不能用于判断语义召回质量。
+production 必须显式提供 `RAG_EMBEDDING_PROVIDER` 和 `RAG_EMBEDDING_MODEL`。Qwen 还必须提供不含 username/password/query/hash 的 HTTPS `RAG_EMBEDDING_BASE_URL` 与规范 `QWEN_API_KEY`；provider、model、base URL 或匹配凭据任一缺失即 fail-closed，不会从 Qwen 自动 fallback 到 OpenAI/fake，反之亦然。`Qwen_API_KEY` 和 `DASHSCOPE_API_KEY` 仅作为宿主兼容输入；Docker Compose 会在 server/worker 容器内统一规范化为 `QWEN_API_KEY`。不要把真实 key 写进 git。真实 embedding 验收要重新处理资料，旧的 fake embedding chunk 不能用于判断语义召回质量。
 
 默认文档处理模式是 `KNOWLEDGE_PROCESSING_MODE='inline'`，后端收到 `POST /knowledge/documents/:id/process` 后会在 API 进程内直接完成解析、分块、embedding 和入库，不投递 BullMQ。当前 NestJS 仍会初始化 BullMQ 模块，所以本地开发建议继续启动 redis；需要验证 Phase 7 BullMQ 队列链路时，使用 queue 模式启动：
 
@@ -202,7 +202,7 @@ bun --filter @repo/server start:dev
 Docker Compose 也提供了 worker profile。Phase 7.23.8 起，Compose 的 `server` 固定为
 `SERVER_ROLE=api`，不允许宿主环境把完整栈的 API 容器覆盖成 `both`；否则 API 会写 worker heartbeat，
 在独立 worker 宕机时造成在线/readiness 假阳性。完整栈中的 Dispatcher、审计导出 processor 和维护 processor
-只由独立 `worker` 承担，避免 API 容器与 worker 容器重复消费。拆分验证时可以这样运行：
+只由独立 `worker` 承担，避免 API 容器与 worker 容器重复消费。server/worker 的 RAG runtime allowlist 保持一致，包括 provider/model/base URL/dimensions/batch size/chunk 预算/timeout 与规范 Qwen key。拆分验证 queue 链路时必须在宿主显式设置 `KNOWLEDGE_PROCESSING_MODE=queue`，不依赖 Compose 或进程默认：
 
 ```powershell
 $env:POSTGRES_PORT='5433'
@@ -339,13 +339,7 @@ AI_PROVIDER_MODE=live
 docker compose -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
 
-这只会重启前端容器，不会清 PostgreSQL、MinIO 或 Redis 数据。普通 `up -d`、`--force-recreate web`、重启前端都不会删数据。不要执行下面这类会删除卷或清理工作区的命令，除非你明确知道后果：
-
-```powershell
-docker compose -f docker/docker-compose.dev.yml down -v
-docker volume rm ...
-git clean -fdx
-```
+这只会重启前端容器，不会清 PostgreSQL、MinIO 或 Redis 数据。普通 `up -d`、`--force-recreate web`、重启前端都不会删数据。验收和排障时明确禁止 `docker compose down -v`、删除 volume、Prisma/数据库 reset、Redis `FLUSHDB` / `FLUSHALL`、MinIO wipe 以及 `git clean -fdx`；不要把破坏性命令作为“恢复环境”步骤。
 
 当前 Compose 为 PostgreSQL 和 MinIO 分别使用 `docker_pgdata` 与 `docker_miniodata` 命名卷。普通 `docker compose down` 会删除容器但保留这两个卷；`down -v` 才会连卷一起删除。Phase 6.9.3.5 之前的 MinIO service 没有挂载命名卷，因此那次旧容器被删除后，旧对象不能承诺恢复；从当前版本起普通容器重建不会再连带删除 `/data`。Redis 仍没有持久卷，只承担可降级 cache/queue，本地重建后应允许从 PostgreSQL 权威数据恢复。
 
@@ -408,6 +402,8 @@ $env:WORKER_HEARTBEAT_TTL_SECONDS='45'
 `SERVER_ROLE=worker` 或 `both` 会通过 BullMQ Redis 连接写入短 TTL heartbeat；`GET /worker-observability/summary` 会组合系统级 queue counts、worker heartbeat 和当前账号 BackgroundJob summary。这个接口经过登录校验，但 queue counts 是系统级信号，因此不要把它当成面向普通用户的长期公开生产接口。
 
 queue 模式 smoke 建议在浏览器打开 `/knowledge`：上传 TXT / Markdown / PDF / DOCX，点击处理，观察资料状态进入 `PROCESSING`，页面展示后台任务状态，最终变为 `DONE` 或 `FAILED`。这只能证明 RAG 处理队列可靠，不证明 `/api/chat` 真实模型回答质量；Chat live 验收仍按本文 AI 调用模式和 `docs/ai-behavior-acceptance.md` 执行。
+
+API 级 RAG smoke 使用 `bun --filter @repo/server smoke:rag-eval`。脚本只接受 queue 模式，必须轮询到 `BackgroundJob=SUCCEEDED`，并校验命中的 `keywordScore`、`vectorScore`、`mode=hybrid` 与每个 case 无重复 `chunkId`；任一证据缺失都应失败。当前检索是 pgvector cosine + PostgreSQL full-text 两路候选、`chunkId` 去重 hybrid rank，没有 reranker。
 
 如果启用了 Worker Observability，`/knowledge` 会在有资料或处理轮询时展示一个紧凑健康状态条：它会提示 worker 最近是否在线、队列是否有等待/处理中任务、最近任务是否失败。知识库为空且没有处理任务时不显示该状态条，避免把“没有可观测对象”误报成“后台不可用”。
 
@@ -847,7 +843,15 @@ docker compose --project-name docker -f docker/docker-compose.dev.yml --profile 
 
 ### Docker server / web 真实模型配置补充
 
-Docker Compose 自动读取被 git 忽略的根 `.env` 做 `${VAR:-default}` 替换。web 仍通过 `env_file: ../.env` 读取其 Chat 运行配置；server 不导入整个文件，只 allowlist `AI_PROVIDER_MODE`、`AI_ENABLE_LIVE_CALLS`、`AI_MODEL`、`AI_BASE_URL`、DeepSeek/OpenAI key 与四个摘要预算变量，并显式设置 `NODE_ENV=production`。这样根 `.env` 里的 `RAG_EMBEDDING_PROVIDER=fake`、开发态 `NODE_ENV` 或其他无关凭据不会污染 production-mode server 容器。仓库只提交变量名和空/default 引用，不提交值；不要把 `docker compose config` 的完整解析结果贴到日志或文档，校验请使用 `docker compose ... config --quiet`。Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
+Docker Compose 自动读取被 git 忽略的根 `.env` 做 `${VAR:-default}` 替换。web 仍通过 `env_file: ../.env` 读取 Chat 运行配置；server/worker 不导入整个文件，而是显式列出各自的运行变量，并共用完全相同的 RAG runtime allowlist。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
+
+不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
+
+```powershell
+docker compose -f docker/docker-compose.dev.yml --profile worker config --quiet
+```
+
+Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
 
 日常建议两边都保持：
 
