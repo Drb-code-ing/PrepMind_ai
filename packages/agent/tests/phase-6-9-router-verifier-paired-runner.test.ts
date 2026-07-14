@@ -383,8 +383,8 @@ describe('Phase 6.9.4.3 paired runner', () => {
   test('admits the 28th exact global token boundary and rejects an additional call', async () => {
     const live = successfulLiveDependencies({
       usageForCase: ({ agent }) => agent === 'router'
-        ? { inputTokens: 2_400, outputTokens: 120 }
-        : { inputTokens: 4_800, outputTokens: 180 },
+        ? { inputTokens: 2_400, outputTokens: 400 }
+        : { inputTokens: 4_800, outputTokens: 400 },
     });
     const output = await runPhase6943PairedEval({
       runId: 'live-global-token-equality',
@@ -398,7 +398,7 @@ describe('Phase 6.9.4.3 paired runner', () => {
     expect(output.runStatus).toBe('complete');
     expect(output.usage).toEqual({
       inputTokens: 96_000,
-      outputTokens: 4_080,
+      outputTokens: 11_200,
       providerReported: true,
     });
     expect(live.requested).toHaveLength(28);
@@ -432,8 +432,8 @@ describe('Phase 6.9.4.3 paired runner', () => {
         code: 'cost_budget_exceeded',
         currentCostUsd: output.estimatedCostUsd,
         reservationCostUsd: scenario.agent === 'router'
-          ? estimateCost({ inputTokens: 2_400, outputTokens: 120 }, costPricing)
-          : estimateCost({ inputTokens: 4_800, outputTokens: 180 }, costPricing),
+          ? estimateCost({ inputTokens: 2_400, outputTokens: 400 }, costPricing)
+          : estimateCost({ inputTokens: 4_800, outputTokens: 400 }, costPricing),
         effectiveCapUsd: scenario.cap,
       });
       const firstNotRun = output.lanes.live.entries.find(
@@ -448,7 +448,7 @@ describe('Phase 6.9.4.3 paired runner', () => {
   }
 
   test('allows exact cost equality then blocks the next strict crossing without another provider call', async () => {
-    const reservation = estimateCost({ inputTokens: 2_400, outputTokens: 120 }, pricing);
+    const reservation = estimateCost({ inputTokens: 2_400, outputTokens: 400 }, pricing);
     const equalityPricing = {
       ...pricing,
       cliMaxCostUsd: reservation,
@@ -635,6 +635,39 @@ describe('Phase 6.9.4.3 paired runner', () => {
       (entry) => entry.entryStatus === 'not_run' && entry.reason === 'budget_exceeded',
     )).toBe(true);
     expect(JSON.stringify(output)).not.toContain('RAW_TOKEN_COST_CANARY');
+  });
+
+  test('fails closed when runtime telemetry reports output just above the 400-token ceiling', async () => {
+    const live = successfulLiveDependencies({
+      usageForCase: ({ ordinal }) => ordinal === 1
+        ? { inputTokens: 2_400, outputTokens: 401 }
+        : { inputTokens: 1_000, outputTokens: 10 },
+    });
+    const output = await runPhase6943PairedEval({
+      runId: 'live-output-token-overage',
+      runKind: 'live',
+      clocks: fakeClocks(),
+      createMockRuntime: createTestMockRuntime,
+      live: live.dependencies,
+      calculateCostUsd() {
+        throw new Error('RAW_OUTPUT_TOKEN_COST_CANARY');
+      },
+    });
+    expect(output.kind).toBe('report');
+    if (output.kind !== 'report' || output.runKind !== 'live') throw new Error('expected live');
+    expect(output.runStatus).toBe('incomplete');
+    expect(live.requested).toHaveLength(1);
+    expect(output.usage).toEqual({
+      inputTokens: 0,
+      outputTokens: 0,
+      providerReported: false,
+    });
+    expect(output.decisions.every((item) => item.reason === 'usage_unverifiable')).toBe(true);
+    expect(output.stopEvidence).toBeUndefined();
+    expect(output.lanes.live.entries.slice(37).every(
+      (entry) => entry.entryStatus === 'not_run' && entry.reason === 'prior_live_failure',
+    )).toBe(true);
+    expect(JSON.stringify(output)).not.toContain('RAW_OUTPUT_TOKEN_COST_CANARY');
   });
 
   test('rejects a strict Live success whose trace belongs to a different run', async () => {

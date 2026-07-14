@@ -404,11 +404,11 @@ describe('router model candidate gates and success', () => {
       trace: {
         task: 'router_fallback',
         status: 'succeeded',
-        maxOutputTokens: 120,
+        maxOutputTokens: 400,
       },
     });
     expect(envelope.observation.budget.usedCalls).toBe(1);
-    expect(envelope.observation.budget.usedOutputTokens).toBe(120);
+    expect(envelope.observation.budget.usedOutputTokens).toBe(400);
     expect('traceUnavailable' in envelope.observation).toBe(false);
     expect('usageUnavailable' in envelope.observation).toBe(false);
   });
@@ -488,7 +488,7 @@ describe('router model candidate gates and success', () => {
     expect(recorded).toBeDefined();
     if (!recorded) throw new Error('runtime request was not recorded');
     expect(recorded.task).toBe('router_fallback');
-    expect(recorded.maxOutputTokens).toBe(120);
+    expect(recorded.maxOutputTokens).toBe(400);
     expect(recorded.userPrompt).toContain('[redacted_email]');
     expect(recorded.userPrompt).toContain(successTextCanary.toLowerCase());
     expect(recorded.userPrompt).toContain(successContextCanary.toLowerCase());
@@ -532,7 +532,7 @@ describe('router model candidate gates and success', () => {
       budget: createModelAgentBudget({
         maxCalls: 1,
         maxInputTokens: 2_000,
-        maxOutputTokens: 119,
+        maxOutputTokens: 399,
       }),
     });
 
@@ -931,7 +931,7 @@ describe('router model candidate runtime fallback', () => {
             status: 'failed',
             inputTokens: 0,
             outputTokens: 0,
-            maxOutputTokens: 120,
+            maxOutputTokens: 400,
             durationMs: 1,
             degraded: true,
             errorCode: 'PROVIDER_ERROR',
@@ -1002,7 +1002,7 @@ describe('router model candidate runtime fallback', () => {
         ...validInput(runtime).budget,
         usedCalls: 1,
         usedInputTokens: estimatedInputTokens,
-        usedOutputTokens: 120,
+        usedOutputTokens: 400,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
       reasonCodes: ['fallback_runtime_error'],
@@ -1047,7 +1047,7 @@ describe('router model candidate runtime fallback', () => {
             status: 'succeeded',
             inputTokens: 0,
             outputTokens: 0,
-            maxOutputTokens: 120,
+            maxOutputTokens: 400,
             durationMs: 0,
             degraded: false,
           },
@@ -1069,7 +1069,7 @@ describe('router model candidate runtime fallback', () => {
         ...validInput(runtime).budget,
         usedCalls: 1,
         usedInputTokens: estimatedInputTokens,
-        usedOutputTokens: 120,
+        usedOutputTokens: 400,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
       reasonCodes: ['fallback_runtime_error'],
@@ -1093,7 +1093,7 @@ describe('router model candidate runtime fallback', () => {
       usedCalls: 1,
       maxInputTokens: 3_000,
       usedInputTokens: 100,
-      maxOutputTokens: 400,
+      maxOutputTokens: 800,
       usedOutputTokens: 20,
     };
     const before = structuredClone(callerBudget);
@@ -1122,7 +1122,7 @@ describe('router model candidate runtime fallback', () => {
       disposition: 'fallback_runtime_error',
       traceUnavailable: true,
       usageUnavailable: true,
-      budget: { usedCalls: 2, usedOutputTokens: 140 },
+      budget: { usedCalls: 2, usedOutputTokens: 420 },
     });
     expect(first.observation.budget.usedInputTokens).toBeGreaterThan(100);
 
@@ -1169,7 +1169,7 @@ describe('router model candidate runtime fallback', () => {
           ...validInput(runtime).budget,
           usedCalls: 1,
           usedInputTokens: estimatedInputTokens,
-          usedOutputTokens: 120,
+          usedOutputTokens: 400,
         },
         usage: { inputTokens: 0, outputTokens: 0 },
         reasonCodes: ['fallback_runtime_error'],
@@ -1314,7 +1314,7 @@ describe('router model candidate runtime fallback', () => {
             status: 'succeeded',
             inputTokens: 0,
             outputTokens: 0,
-            maxOutputTokens: 120,
+            maxOutputTokens: 400,
             durationMs: 0,
             degraded: false,
             rawTrace: 'RAW_TRACE_CANARY',
@@ -1348,7 +1348,7 @@ describe('router model candidate runtime fallback', () => {
         ...validInput(runtime).budget,
         usedCalls: 1,
         usedInputTokens: estimatedInputTokens,
-        usedOutputTokens: 120,
+        usedOutputTokens: 400,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
       reasonCodes: ['fallback_runtime_error'],
@@ -1445,7 +1445,7 @@ function validInput(
     budget: createModelAgentBudget({
       maxCalls: 1,
       maxInputTokens: 2_000,
-      maxOutputTokens: 200,
+      maxOutputTokens: 400,
     }),
     runtime,
   };

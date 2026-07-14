@@ -335,6 +335,7 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 - complete Live 的固定 counters 应为 `caseEntries=100`、`adapterExecutions=100`、`runtimeInvocations=28`、`providerAttempts=28`、`strictSuccesses=28`、`zeroCallCases=72`；incomplete 必须同时记录 observed/notRun、实际 counters 与停止原因，不能用完整目标值覆盖；
 - 文件名必须由 safe stdout 的 `startedAt + runIdHash` 机械推导并执行 `eval:phase-6-9-4-3:validate -- --profile live --file <canonical-path>`；不得按 mtime 猜测或覆盖旧文件；
 - 检查 provider-reported per-case usage、aggregate usage、p50/p95、pricing snapshot、estimated cost、10 秒 timeout metadata，以及 Router / Verifier 两项独立 decision/reason；
+- headroom contract 固定为 Router/Verifier 单次 local output `400/400`、provider ceiling `400/400`、28-call local/provider global output `11,200`；pricing preflight 必须用 `96,000 input + 11,200 output`，旧价格快照 worst-case 为 USD 0.017418937304；
 - 扫描 JSON/Markdown 中的 forbidden key、credential value、prompt/query/chunk/output/raw-error canary；验证结束后清除进程 key、恢复 Mock，不清理 Docker、数据库、Redis、MinIO 或 volume；
 - 当前 canonical Attempt C 为 exit 2 / incomplete：`observed/notRun=37/63`、`providerAttempts/strictSuccesses=1/0`、固定 `PROVIDER_ERROR / structured_output`、两项 decision 均为 `usage_unverifiable`；strict validator exit 0 只证明 incomplete evidence 合法，不代表模型质量通过；
 - 新 controlled-Live 前必须通过共享 diagnostics 测试：八类枚举只从 `@repo/ai` 读取，attempted Live `PROVIDER_ERROR` failure 的 Error / Trace 分类必须存在且一致，evidence 必须携带八类之一；custom / injected executor 只能为 `unknown`；
@@ -342,7 +343,7 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 - candidate sanitizer 只接受 Error / Trace 双边一致的白名单枚举。历史 Attempt A / B 允许分类字段双边缺失，但不得改写：A 仍为 filename identity mismatch，B 仍为 `live / incomplete`；
 - `providerFailureCategory` 不改变 `usage_unverifiable`、`incomplete` 或 enablement 的 fail-closed 结论，也不授权自动重试；不得保存 raw HTTP status、URL、request/response body、headers、message、stack、cause、prompt、output 或 credentials；
 - 若新的 controlled-Live 再失败，只记录固定分类和既有安全计数：`http_auth` 先核对授权配置，`http_rate_limit` 服从 provider 窗口，`structured_output` 核对 schema、prompt 与 token headroom，`http_client/http_server/transport/invalid_response/unknown` 按各自边界诊断；任何类别都不得盲目重跑或绕过 runner 探测；
-- Attempt C 的 `structured_output` 与历史 `61/120`、`108/120` output usage 已触发 headroom 修复门禁：下一次 Live 前必须通过 TDD 把 Router/Verifier 单次输出上限统一为 400，同步 local/provider/global output cap 与 worst-case pricing，确保 28 calls、72 zero-call、strict schema、无自动重试和 USD 0.10 上限均未放宽；
+- Attempt C 的 `structured_output` 与历史 `61/120`、`108/120` output usage 已触发并完成 headroom 修复：Router/Verifier 单次输出统一为 400，local/provider global output cap 为 11,200；28 calls、72 zero-call、strict schema、无自动重试和 USD 0.10 上限均未放宽；
 - 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。共享 diagnostics 合同已完成零网络验收，但 Phase 6.9.4.3 仍未完成；新的整轮 Live 达到 28 次 strict success 并通过质量、安全、延迟与成本门槛前，不得标记阶段完成或启用 Router / Verifier candidate。
 
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：

@@ -86,7 +86,7 @@ const MAX_RAW_BYTES = 16_384;
 const MAX_TEXT_CODE_POINTS = 1_600;
 const MAX_CONTEXT_CODE_POINTS = 1_200;
 const MAX_INPUT_TOKENS = 800;
-const MAX_OUTPUT_TOKENS = 120;
+const MAX_OUTPUT_TOKENS = 400;
 const MAX_SIGNAL_GAP = 40;
 
 const SAFE_INVALID_RESULT: RouterResult = Object.freeze({

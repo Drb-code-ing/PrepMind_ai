@@ -606,7 +606,7 @@ describe('knowledge verifier model candidate prompt and merge', () => {
       expect(request.userPrompt).not.toContain(forbidden);
     }
     expect(request.task).toBe('knowledge_verification');
-    expect(request.maxOutputTokens).toBe(180);
+    expect(request.maxOutputTokens).toBe(400);
     expect(request.estimatedInputTokens).toBeLessThanOrEqual(1_600);
     expect(request.budget).toEqual(validBudget());
 
@@ -780,7 +780,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
       attempted: true,
       disposition,
       reasonCodes: [disposition, code],
-      trace: { task: 'knowledge_verification', maxOutputTokens: 180 },
+      trace: { task: 'knowledge_verification', maxOutputTokens: 400 },
     });
   });
 
@@ -896,7 +896,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
       usedCalls: 1,
       maxInputTokens: 3_000,
       usedInputTokens: 100,
-      maxOutputTokens: 400,
+      maxOutputTokens: 800,
       usedOutputTokens: 20,
     };
     const before = structuredClone(callerBudget);
@@ -926,7 +926,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
       disposition: 'fallback_runtime_error',
       traceUnavailable: true,
       usageUnavailable: true,
-      budget: { usedCalls: 2, usedOutputTokens: 200 },
+      budget: { usedCalls: 2, usedOutputTokens: 420 },
     });
     expect(first.observation.budget.usedInputTokens).toBeGreaterThan(100);
 
@@ -1004,7 +1004,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
         traceUnavailable: true,
         usageUnavailable: true,
         usage: { inputTokens: 0, outputTokens: 0 },
-        budget: { usedCalls: 1, usedOutputTokens: 180 },
+        budget: { usedCalls: 1, usedOutputTokens: 400 },
       });
     }
   });
@@ -1018,7 +1018,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
         });
         expect(preview.ok).toBe(true);
         if (!preview.ok) throw new Error('expected preview reservation');
-        const usage = { inputTokens: 999_999, outputTokens: 180 };
+        const usage = { inputTokens: 999_999, outputTokens: 400 };
         return Promise.resolve({
           ok: true,
           data: trustedCandidate,
@@ -1045,7 +1045,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
     expect(envelope.observation).toMatchObject({
       attempted: true,
       disposition: 'candidate_applied',
-      usage: { inputTokens: 999_999, outputTokens: 180 },
+      usage: { inputTokens: 999_999, outputTokens: 400 },
     });
   });
 
@@ -1079,7 +1079,7 @@ describe('knowledge verifier model candidate fallback and telemetry', () => {
     expect(envelope.observation).toMatchObject({
       attempted: true,
       disposition: 'fallback_timeout',
-      usage: { outputTokens: 180 },
+      usage: { outputTokens: 400 },
       trace: { status: 'failed', errorCode: 'TIMEOUT' },
     });
     expect('traceUnavailable' in envelope.observation).toBe(false);
@@ -1151,7 +1151,7 @@ function validBudget() {
   return createModelAgentBudget({
     maxCalls: 1,
     maxInputTokens: 2_000,
-    maxOutputTokens: 200,
+    maxOutputTokens: 400,
   });
 }
 

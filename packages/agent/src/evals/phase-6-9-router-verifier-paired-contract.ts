@@ -46,10 +46,10 @@ const UTC_SCHEMA = z.string().datetime({ offset: false });
 const SAFE_INT_SCHEMA = z.number().int().safe().min(0);
 const FINITE_NON_NEGATIVE_SCHEMA = z.number().finite().min(0);
 const LIVE_PROVIDER_CEILINGS = {
-  router: { inputTokens: 2_400, outputTokens: 120 },
-  verifier: { inputTokens: 4_800, outputTokens: 180 },
+  router: { inputTokens: 2_400, outputTokens: 400 },
+  verifier: { inputTokens: 4_800, outputTokens: 400 },
 } as const;
-const MAX_LIVE_RESERVATION_COST_USD = 4_980;
+const MAX_LIVE_RESERVATION_COST_USD = 5_200;
 const ROUTE_SCHEMA = z.enum([
   'chat',
   'tutor',
@@ -560,7 +560,7 @@ export const PHASE_6943_OUTPUT_SCHEMA = z
       ) ||
       (output.runStatus === 'complete' &&
         (output.usage.inputTokens > 96_000 ||
-          output.usage.outputTokens > 4_080 ||
+          output.usage.outputTokens > 11_200 ||
           output.estimatedCostUsd > output.pricingSnapshot.effectiveMaxCostUsd ||
           liveEntries.some(
             (entry) => entry.strictSuccess && !withinLiveCaseCeiling(entry),
@@ -863,7 +863,7 @@ function deriveCanonicalIncompleteLiveReason(
   }
   if (
     output.usage.inputTokens > 96_000 ||
-    output.usage.outputTokens > 4_080 ||
+    output.usage.outputTokens > 11_200 ||
     observed.some(
       (entry) => entry.strictSuccess && !withinLiveCaseCeiling(entry),
     )
