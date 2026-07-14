@@ -96,6 +96,8 @@ describe('DeepSeek strict-tool schema profiles', () => {
     expect(router?.providerSchema.jsonSchema).not.toHaveProperty('$schema');
     expect(JSON.stringify(verifier?.providerSchema.jsonSchema)).not.toContain('"const"');
     expect(JSON.stringify(verifier?.providerSchema.jsonSchema)).not.toContain('"items":[');
+    expect(JSON.stringify(verifier?.providerSchema.jsonSchema)).not.toContain('"minItems"');
+    expect(JSON.stringify(verifier?.providerSchema.jsonSchema)).not.toContain('"maxItems"');
     expect(JSON.stringify(verifier?.providerSchema.jsonSchema)).toContain(
       '"enum":["consistent_support"]',
     );
@@ -208,7 +210,7 @@ export function compileDeepSeekStrictToolSchemaProfiles(
 }
 ```
 
-`projectStrictSchema()` 只允许当前实际需要的 `type/properties/required/additionalProperties/enum/anyOf/items/minItems/maxItems/minimum/maximum/description`：删除顶层 `$schema`，把 `const` 转为单值 `enum`，把长度为 1 的 tuple items 转为普通 items；递归要求 object 的 property keys 与 required 完全一致且 `additionalProperties === false`。所有复制都创建新对象，不修改 AI SDK 或 Zod 返回值。
+`projectStrictSchema()` 只向 Provider 保留当前实际需要的 `type/properties/required/additionalProperties/enum/anyOf/items/minimum/maximum/description`：删除顶层 `$schema` 和数组 `minItems/maxItems`，把 `const` 转为单值 `enum`，把长度为 1 的 tuple items 转为普通 items；递归要求 object 的 property keys 与 required 完全一致且 `additionalProperties === false`。数组长度、status/evidence 关联与自定义 refinement 继续由 canonical Zod 校验。所有复制都创建新对象，不修改 AI SDK 或 Zod 返回值。
 
 - [ ] **Step 4: 导出 compiler 并重跑 GREEN**
 

@@ -1,6 +1,7 @@
 import { dirname, resolve, sep } from 'node:path';
 
 import {
+  compileDeepSeekStrictToolSchemaProfiles,
   createModelAgentRuntime,
   createOpenAICompatibleStructuredExecutor,
   hashModelAgentRunId,
@@ -18,13 +19,26 @@ import {
 import { createPhase6943MockRuntime } from '../src/evals/phase-6-9-router-verifier-mock-fixtures.ts';
 import {
   runPhase6943PairedEval,
+  snapshotPhase6943LiveDependencies,
   type Phase6943Clocks,
   type Phase6943LiveDependencies,
 } from '../src/evals/run-phase-6-9-router-verifier-paired.ts';
+import { KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA } from '../src/model-candidates/knowledge-verifier-model-candidate.ts';
+import { ROUTER_MODEL_CANDIDATE_SCHEMA } from '../src/model-candidates/router-model-candidate.ts';
 
 export const LIVE_CASE_TIMEOUT_MS = 10_000;
 export const DEEPSEEK_MODEL = 'deepseek-v4-flash';
-export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
+export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/beta';
+export const PHASE_6943_LIVE_SCHEMA_PROFILES = Object.freeze([
+  Object.freeze({
+    name: 'router_candidate_v1',
+    schema: ROUTER_MODEL_CANDIDATE_SCHEMA,
+  }),
+  Object.freeze({
+    name: 'knowledge_verifier_candidate_v1',
+    schema: KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA,
+  }),
+] as const);
 const DECIMAL_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,9})?$/;
 const MAX_ENGINEERING_COST_USD = 0.1;
 const PROVIDER_INPUT_TOKEN_CAP = 96_000;
@@ -182,12 +196,11 @@ function parsePhase6943CliUnchecked(input: {
 
 function normalizeDeepSeekUrl(value: string | undefined): string | null {
   if (value === undefined) return null;
-  const trimmed = value.trim();
-  if (trimmed !== DEEPSEEK_BASE_URL && trimmed !== `${DEEPSEEK_BASE_URL}/`) {
+  if (value !== DEEPSEEK_BASE_URL) {
     return null;
   }
   try {
-    const url = new URL(trimmed);
+    const url = new URL(value);
     if (
       url.protocol !== 'https:' ||
       url.hostname !== 'api.deepseek.com' ||
@@ -199,12 +212,25 @@ function normalizeDeepSeekUrl(value: string | undefined): string | null {
     ) {
       return null;
     }
-    const pathname = url.pathname.endsWith('/')
-      ? url.pathname.slice(0, -1)
-      : url.pathname;
-    return pathname === '/v1' ? `${url.origin}${pathname}` : null;
+    return url.pathname === '/beta' ? `${url.origin}${url.pathname}` : null;
   } catch {
     return null;
+  }
+}
+
+export function validatePhase6943LiveStructuredSchemas(): boolean {
+  try {
+    const registry = compileDeepSeekStrictToolSchemaProfiles(
+      PHASE_6943_LIVE_SCHEMA_PROFILES,
+    );
+    return (
+      registry.resolve(ROUTER_MODEL_CANDIDATE_SCHEMA)?.name ===
+        'router_candidate_v1' &&
+      registry.resolve(KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA)?.name ===
+        'knowledge_verifier_candidate_v1'
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -412,6 +438,8 @@ export function createPhase6943LiveDependencies(
       apiKey: config.apiKey,
       baseURL: DEEPSEEK_BASE_URL,
       model: DEEPSEEK_MODEL,
+      structuredOutputMode: 'deepseek_strict_tool',
+      schemaProfiles: PHASE_6943_LIVE_SCHEMA_PROFILES,
     }),
     onProviderAttempt: () => {
       providerAttempts += 1;
@@ -450,6 +478,7 @@ export function createPhase6943LiveDependencies(
 }
 
 export type Phase6943CompositionDependencies = {
+  validateLiveStructuredSchemas?(): boolean;
   runPairedEval: typeof runPhase6943PairedEval;
   createMockRuntime: typeof createPhase6943MockRuntime;
   createLiveDependencies(
@@ -492,11 +521,76 @@ export async function executePhase6943Cli(
   }
 
   let providerAttempts = 0;
+  let providerAttemptArmed = false;
+  let providerAttemptedDuringInitialization = false;
+  let preparedLive: Phase6943LiveDependencies | undefined;
+  let preparedLiveStart:
+    | { readonly startedAtMs: number; readonly startedAt: string }
+    | undefined;
+  if (parsed.config.command === 'live') {
+    try {
+      const validatorProperty = 'validateLiveStructuredSchemas';
+      const hasInjectedValidator = Reflect.has(
+        input.dependencies,
+        validatorProperty,
+      );
+      const validator: unknown = hasInjectedValidator
+        ? Reflect.get(input.dependencies, validatorProperty)
+        : validatePhase6943LiveStructuredSchemas;
+      const validation: unknown =
+        typeof validator === 'function'
+          ? Reflect.apply(validator, input.dependencies, [])
+          : false;
+      if (validation !== true) {
+        return {
+          output: buildPhase6943InvalidRun('live', 'live_config_invalid'),
+          exitCode: 3,
+          evidencePath: null,
+        };
+      }
+
+      const startedAtMs = input.epochMs();
+      if (
+        !Number.isSafeInteger(startedAtMs) ||
+        startedAtMs < 0 ||
+        startedAtMs > 8_640_000_000_000_000
+      ) {
+        throw new Error('PHASE_6943_START_CLOCK_INVALID');
+      }
+      const startedAt = new Date(startedAtMs).toISOString();
+      const rawLive = input.dependencies.createLiveDependencies(
+        parsed.config,
+        () => {
+          if (!providerAttemptArmed) {
+            providerAttemptedDuringInitialization = true;
+            return;
+          }
+          providerAttempts += 1;
+        },
+        startedAt,
+      );
+      const liveSnapshot = snapshotPhase6943LiveDependencies(rawLive);
+      if (!liveSnapshot || providerAttemptedDuringInitialization) {
+        throw new Error('PHASE_6943_LIVE_DEPENDENCIES_INVALID');
+      }
+      preparedLive = liveSnapshot;
+      preparedLiveStart = { startedAtMs, startedAt };
+      providerAttemptArmed = true;
+    } catch {
+      return {
+        output: buildPhase6943InvalidRun('live', 'live_config_invalid'),
+        exitCode: 3,
+        evidencePath: null,
+      };
+    }
+  }
+
   let reservation: Awaited<ReturnType<typeof reservePhase6943Evidence>> | null = null;
   try {
     const runId = input.randomUUID();
-    const startedAtMs = input.epochMs();
-    const startedAt = new Date(startedAtMs).toISOString();
+    const startedAtMs = preparedLiveStart?.startedAtMs ?? input.epochMs();
+    const startedAt =
+      preparedLiveStart?.startedAt ?? new Date(startedAtMs).toISOString();
     let reportStartPending = true;
     const reportClocks: Phase6943Clocks = {
       epochMs: () => {
@@ -535,16 +629,6 @@ export async function executePhase6943Cli(
       });
     }
 
-    const live =
-      parsed.config.command === 'live'
-        ? input.dependencies.createLiveDependencies(
-            parsed.config,
-            () => {
-              providerAttempts += 1;
-            },
-            startedAt,
-          )
-        : undefined;
     const output = await input.dependencies.runPairedEval({
       runId,
       runKind: parsed.config.command,
@@ -552,7 +636,7 @@ export async function executePhase6943Cli(
       calculateDatasetDigest: input.dependencies.calculateDatasetDigest,
       validateDataset: input.dependencies.validateDataset,
       createMockRuntime: input.dependencies.createMockRuntime,
-      ...(live ? { live } : {}),
+      ...(preparedLive ? { live: preparedLive } : {}),
     });
 
     if (reservation) {

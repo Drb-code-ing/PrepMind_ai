@@ -33,8 +33,10 @@ import {
   buildPhase6943LiveEvidencePath,
   createPhase6943LiveDependencies,
   executePhase6943Cli,
+  PHASE_6943_LIVE_SCHEMA_PROFILES,
   parsePhase6943Cli,
   reservePhase6943Evidence,
+  validatePhase6943LiveStructuredSchemas,
   withPhase6943UsageProvenance,
   type Phase6943CompositionDependencies,
 } from '../scripts/phase-6-9-4-3-paired-cli.ts';
@@ -42,12 +44,14 @@ import {
   parseEvidenceValidatorArgs,
   validatePhase6943Evidence,
 } from '../scripts/validate-phase-6-9-4-3-evidence.ts';
+import { KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA } from '../src/model-candidates/knowledge-verifier-model-candidate.ts';
+import { ROUTER_MODEL_CANDIDATE_SCHEMA } from '../src/model-candidates/router-model-candidate.ts';
 
 const LIVE_ENV = {
   AI_PROVIDER_MODE: 'live',
   AI_ENABLE_LIVE_CALLS: 'true',
   AI_MODEL: 'deepseek-v4-flash',
-  AI_BASE_URL: 'https://api.deepseek.com/v1',
+  AI_BASE_URL: 'https://api.deepseek.com/beta',
   DEEPSEEK_API_KEY: 'test-only-key',
 } as const;
 const LIVE_ARGS = [
@@ -127,14 +131,21 @@ describe('Phase 6.9.4.3 CLI', () => {
       (env) => { env.DEEPSEEK_API_KEY = ''; },
       (env) => { env.DEEPSEEK_API_KEY = 'x\ny'; },
       (env) => { env.DEEPSEEK_API_KEY = 'x'.repeat(513); },
-      (env) => { env.AI_BASE_URL = 'http://api.deepseek.com/v1'; },
-      (env) => { env.AI_BASE_URL = 'https://example.com/v1'; },
-      (env) => { env.AI_BASE_URL = 'https://u:p@api.deepseek.com/v1'; },
-      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com:443/v1'; },
-      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/v1?x=1'; },
-      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/v1#x'; },
-      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/v1/extra'; },
-      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/%76%31'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/v1'; },
+      (env) => { env.AI_BASE_URL = 'http://api.deepseek.com/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://example.com/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://u:p@api.deepseek.com/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com:443/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/beta?x=1'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/beta#x'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/beta/'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/beta/extra'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/b%65ta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/%62eta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseｅk.com/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com.proxy.test/beta'; },
+      (env) => { env.AI_BASE_URL = ' https://api.deepseek.com/beta'; },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/beta '; },
     ];
     for (const mutate of mutations) {
       const env: Record<string, string | undefined> = { ...LIVE_ENV };
@@ -216,7 +227,7 @@ describe('Phase 6.9.4.3 CLI', () => {
     expect(captured).toMatchObject({ mode: 'json', schema, maxTokens: 7, abortSignal: signal });
   });
 
-  test('composes live dependencies with JSON executor and fixed timeout', async () => {
+  test('composes live dependencies with frozen strict-tool profiles and fixed timeout', async () => {
     let capturedConfig: Record<string, unknown> | null = null;
     let capturedRequest: Record<string, unknown> | null = null;
     const dependencies = createPhase6943LiveDependencies(
@@ -238,14 +249,448 @@ describe('Phase 6.9.4.3 CLI', () => {
     const runtime = dependencies.createRuntime({ caseId: 'synthetic', agent: 'router' });
     const result = await runtime.invokeStructured({
       runId: 'synthetic', task: 'router_fallback',
-      schema: z.object({ route: z.string(), confidence: z.number(), reasonCode: z.string() }),
+      schema: ROUTER_MODEL_CANDIDATE_SCHEMA,
       systemPrompt: 'safe', userPrompt: 'safe', estimatedInputTokens: 1, maxOutputTokens: 1,
       budget: { maxCalls: 1, usedCalls: 0, maxInputTokens: 1, usedInputTokens: 0, maxOutputTokens: 1, usedOutputTokens: 0 },
     });
-    expect(capturedConfig).toMatchObject({ provider: 'deepseek', baseURL: 'https://api.deepseek.com/v1', model: 'deepseek-v4-flash' });
+    expect(capturedConfig).toMatchObject({
+      provider: 'deepseek',
+      baseURL: 'https://api.deepseek.com/beta',
+      model: 'deepseek-v4-flash',
+      structuredOutputMode: 'deepseek_strict_tool',
+      schemaProfiles: PHASE_6943_LIVE_SCHEMA_PROFILES,
+    });
+    expect(Object.isFrozen(PHASE_6943_LIVE_SCHEMA_PROFILES)).toBe(true);
+    expect(PHASE_6943_LIVE_SCHEMA_PROFILES.every(Object.isFrozen)).toBe(true);
+    expect(PHASE_6943_LIVE_SCHEMA_PROFILES).toEqual([
+      { name: 'router_candidate_v1', schema: ROUTER_MODEL_CANDIDATE_SCHEMA },
+      {
+        name: 'knowledge_verifier_candidate_v1',
+        schema: KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA,
+      },
+    ]);
+    expect(validatePhase6943LiveStructuredSchemas()).toBe(true);
     expect(capturedRequest).toMatchObject({ maxOutputTokens: 1 });
     expect(result.trace.mode).toBe('live');
     expect(dependencies.readProviderAttempts()).toBe(1);
+  });
+
+  test('wires both canonical profiles through the real shared SDK executor without network', async () => {
+    const originalFetch = globalThis.fetch;
+    const requestBodies: Array<Record<string, unknown>> = [];
+    const candidates = [
+      {
+        route: 'chat',
+        confidence: 0.9,
+        reasonCode: 'ambiguous_intent_resolved',
+      },
+      { status: 'trusted', evidenceCodes: ['consistent_support'] },
+    ] as const;
+    let responseIndex = 0;
+    globalThis.fetch = (async (_input, init) => {
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      const candidate = candidates[responseIndex];
+      responseIndex += 1;
+      return new Response(JSON.stringify({
+        id: `chatcmpl-phase6943-${responseIndex}`,
+        object: 'chat.completion',
+        created: 1,
+        model: 'deepseek-v4-flash',
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [{
+              id: `call_${responseIndex}`,
+              type: 'function',
+              function: {
+                name: 'model_agent_result',
+                arguments: JSON.stringify(candidate),
+              },
+            }],
+          },
+          finish_reason: 'tool_calls',
+        }],
+        usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+
+    try {
+      const dependencies = createPhase6943LiveDependencies(
+        {
+          command: 'live', persist: true, apiKey: 'test-only-key',
+          inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.2,
+          cliMaxCostUsd: 0.1, effectiveMaxCostUsd: 0.1,
+        },
+        () => undefined,
+        '2026-07-13T00:00:00.000Z',
+      );
+      const runtime = dependencies.createRuntime({ caseId: 'synthetic', agent: 'router' });
+      const requests = [
+        { task: 'router_fallback' as const, schema: ROUTER_MODEL_CANDIDATE_SCHEMA },
+        {
+          task: 'knowledge_verification' as const,
+          schema: KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA,
+        },
+      ];
+      for (let index = 0; index < requests.length; index += 1) {
+        const request = requests[index]!;
+        const result = await runtime.invokeStructured({
+          runId: `synthetic-${index}`,
+          task: request.task,
+          schema: request.schema,
+          systemPrompt: 'safe',
+          userPrompt: 'safe',
+          estimatedInputTokens: 1,
+          maxOutputTokens: 400,
+          budget: {
+            maxCalls: 1, usedCalls: 0,
+            maxInputTokens: 1, usedInputTokens: 0,
+            maxOutputTokens: 400, usedOutputTokens: 0,
+          },
+        });
+        expect(result.ok).toBe(true);
+      }
+
+      expect(requestBodies).toHaveLength(2);
+      for (const body of requestBodies) {
+        expect(body.response_format).toBeUndefined();
+        expect(body.tool_choice).toEqual({
+          type: 'function',
+          function: { name: 'model_agent_result' },
+        });
+        const tool = (body.tools as Array<{
+          function: {
+            name: string;
+            strict: boolean;
+            parameters: Record<string, unknown>;
+          };
+        }>)[0];
+        expect(tool?.function.name).toBe('model_agent_result');
+        expect(tool?.function.strict).toBe(true);
+        expect(JSON.stringify(tool?.function.parameters)).not.toContain('"$schema"');
+        expect(JSON.stringify(tool?.function.parameters)).not.toContain('"const"');
+        expect(hasTupleItems(tool?.function.parameters)).toBe(false);
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('fails Live schema preflight before identity, evidence, provider construction, or runner', async () => {
+    for (const behavior of ['false', 'undefined', 'null', 'throw'] as const) {
+      const memory = createMemoryFs();
+      let randomCalls = 0;
+      let providerFactories = 0;
+      let runnerCalls = 0;
+      const dependencies: Phase6943CompositionDependencies = {
+        validateLiveStructuredSchemas() {
+          memory.events.push('validate');
+          if (behavior === 'throw') throw new Error('RAW_SCHEMA_CANARY');
+          if (behavior === 'undefined') return undefined as never;
+          if (behavior === 'null') return null as never;
+          return false;
+        },
+        runPairedEval: async () => {
+          runnerCalls += 1;
+          return buildPhase6943InvalidRun('live', 'unexpected_runner_error');
+        },
+        createMockRuntime: createPhase6943MockRuntime,
+        createLiveDependencies: (_config, onAttempt) => {
+          providerFactories += 1;
+          return fakeAttemptingLive(onAttempt, memory.events);
+        },
+        calculateDatasetDigest: calculatePhase6943DatasetDigest,
+        validateDataset: validatePhase6943Dataset,
+      };
+      const result = await executePhase6943Cli({
+        command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+        randomUUID: () => {
+          randomCalls += 1;
+          return '00000000-0000-4000-8000-000000000006';
+        },
+        epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+        clocks: fakeClocks(), fs: memory.fs, dependencies,
+      });
+
+      expect(result).toMatchObject({
+        exitCode: 3,
+        evidencePath: null,
+        output: {
+          kind: 'invalid_run',
+          runKind: 'live',
+          errorCode: 'live_config_invalid',
+        },
+      });
+      expect(memory.events).toEqual(['validate']);
+      expect(randomCalls).toBe(0);
+      expect(providerFactories).toBe(0);
+      expect(runnerCalls).toBe(0);
+      expect(memory.keys()).toEqual([]);
+      expect(JSON.stringify(result)).not.toContain('RAW_SCHEMA_CANARY');
+    }
+  });
+
+  test('fails closed when the injected validator property exists but is malformed or hostile', async () => {
+    const scenarios = [
+      {
+        name: 'explicit undefined',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return Object.defineProperty(dependencies, 'validateLiveStructuredSchemas', {
+            configurable: true,
+            enumerable: true,
+            value: undefined,
+          });
+        },
+      },
+      {
+        name: 'number',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return Object.defineProperty(dependencies, 'validateLiveStructuredSchemas', {
+            configurable: true,
+            enumerable: true,
+            value: 1,
+          });
+        },
+      },
+      {
+        name: 'object',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return Object.defineProperty(dependencies, 'validateLiveStructuredSchemas', {
+            configurable: true,
+            enumerable: true,
+            value: Object.freeze({}),
+          });
+        },
+      },
+      {
+        name: 'hostile own getter',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return Object.defineProperty(dependencies, 'validateLiveStructuredSchemas', {
+            configurable: true,
+            enumerable: true,
+            get() {
+              throw new Error('RAW_VALIDATOR_GETTER_CANARY');
+            },
+          });
+        },
+      },
+      {
+        name: 'hostile has trap',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return new Proxy(dependencies, {
+            has() {
+              throw new Error('RAW_VALIDATOR_HAS_CANARY');
+            },
+          });
+        },
+      },
+      {
+        name: 'hostile value trap',
+        wrap(dependencies: Phase6943CompositionDependencies) {
+          return new Proxy(dependencies, {
+            has(_target, property) {
+              return property === 'validateLiveStructuredSchemas';
+            },
+            get(target, property, receiver) {
+              if (property === 'validateLiveStructuredSchemas') {
+                throw new Error('RAW_VALIDATOR_VALUE_CANARY');
+              }
+              return Reflect.get(target, property, receiver);
+            },
+          });
+        },
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const memory = createMemoryFs();
+      let randomCalls = 0;
+      let providerFactories = 0;
+      let runnerCalls = 0;
+      const baseDependencies: Phase6943CompositionDependencies = {
+        runPairedEval: async () => {
+          runnerCalls += 1;
+          return buildPhase6943InvalidRun('live', 'unexpected_runner_error');
+        },
+        createMockRuntime: createPhase6943MockRuntime,
+        createLiveDependencies: (_config, onAttempt) => {
+          providerFactories += 1;
+          return fakeAttemptingLive(onAttempt, memory.events);
+        },
+        calculateDatasetDigest: calculatePhase6943DatasetDigest,
+        validateDataset: validatePhase6943Dataset,
+      };
+      const result = await executePhase6943Cli({
+        command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+        randomUUID: () => {
+          randomCalls += 1;
+          return '00000000-0000-4000-8000-000000000008';
+        },
+        epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+        clocks: fakeClocks(), fs: memory.fs,
+        dependencies: scenario.wrap(baseDependencies),
+      });
+
+      expect(result, scenario.name).toMatchObject({
+        exitCode: 3,
+        evidencePath: null,
+        output: {
+          kind: 'invalid_run',
+          runKind: 'live',
+          errorCode: 'live_config_invalid',
+        },
+      });
+      expect(randomCalls, scenario.name).toBe(0);
+      expect(providerFactories, scenario.name).toBe(0);
+      expect(runnerCalls, scenario.name).toBe(0);
+      expect(memory.keys(), scenario.name).toEqual([]);
+      expect(JSON.stringify(result), scenario.name).not.toContain('RAW_VALIDATOR_');
+    }
+  });
+
+  test('contains malformed or hostile Live dependency initialization before side effects', async () => {
+    const scenarios = [
+      {
+        name: 'undefined return',
+        create: (_onAttempt: () => void, _events: string[]) => undefined as never,
+      },
+      {
+        name: 'empty malformed object',
+        create: (_onAttempt: () => void, _events: string[]) => ({}) as never,
+      },
+      {
+        name: 'truthy scalar',
+        create: (_onAttempt: () => void, _events: string[]) => true as never,
+      },
+      {
+        name: 'hostile getter',
+        create: (_onAttempt: () => void, _events: string[]) =>
+          Object.defineProperty({}, 'pricing', {
+            get() { throw new Error('RAW_LIVE_DEPENDENCY_GETTER_CANARY'); },
+          }) as never,
+      },
+      {
+        name: 'hostile proxy',
+        create: (_onAttempt: () => void, _events: string[]) =>
+          new Proxy({}, {
+            get() { throw new Error('RAW_LIVE_DEPENDENCY_PROXY_CANARY'); },
+          }) as never,
+      },
+      {
+        name: 'synchronous attempt then throw',
+        create: (onAttempt: () => void, events: string[]) => {
+          events.push('early_attempt_signal');
+          onAttempt();
+          throw new Error('RAW_LIVE_DEPENDENCY_INIT_CANARY');
+        },
+      },
+      {
+        name: 'synchronous attempt then valid return',
+        create: (onAttempt: () => void, events: string[]) => {
+          events.push('early_attempt_signal');
+          onAttempt();
+          return fakeAttemptingLive(onAttempt, events);
+        },
+      },
+    ] as const;
+
+    const observations: Array<Record<string, unknown>> = [];
+    for (const scenario of scenarios) {
+      const memory = createMemoryFs();
+      let randomCalls = 0;
+      let runnerCalls = 0;
+      const dependencies: Phase6943CompositionDependencies = {
+        validateLiveStructuredSchemas() {
+          memory.events.push('validate');
+          return true;
+        },
+        runPairedEval: async () => {
+          runnerCalls += 1;
+          return buildPhase6943InvalidRun('live', 'unexpected_runner_error');
+        },
+        createMockRuntime: createPhase6943MockRuntime,
+        createLiveDependencies: (_config, onAttempt) => {
+          memory.events.push('provider_factory');
+          return scenario.create(onAttempt, memory.events);
+        },
+        calculateDatasetDigest: calculatePhase6943DatasetDigest,
+        validateDataset: validatePhase6943Dataset,
+      };
+
+      const result = await executePhase6943Cli({
+        command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+        randomUUID: () => {
+          randomCalls += 1;
+          return '00000000-0000-4000-8000-000000000009';
+        },
+        epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+        clocks: fakeClocks(), fs: memory.fs, dependencies,
+      });
+
+      observations.push({
+        scenario: scenario.name,
+        errorCode:
+          result.output.kind === 'invalid_run' ? result.output.errorCode : null,
+        runKind: result.output.runKind,
+        evidencePath: result.evidencePath,
+        exitCode: result.exitCode,
+        randomCalls,
+        runnerCalls,
+        providerAttempts: memory.events.filter((event) => event === 'provider').length,
+        evidenceSideEffects: memory.events.filter((event) =>
+          event.startsWith('open:') || ['write', 'sync', 'link'].includes(event)),
+        evidenceFiles: memory.keys(),
+      });
+      expect(JSON.stringify(result), scenario.name).not.toContain('RAW_LIVE_DEPENDENCY_');
+    }
+
+    expect(observations).toEqual(scenarios.map((scenario) => ({
+        scenario: scenario.name,
+        errorCode: 'live_config_invalid',
+        runKind: 'live',
+        evidencePath: null,
+        exitCode: 3,
+        randomCalls: 0,
+        runnerCalls: 0,
+        providerAttempts: 0,
+        evidenceSideEffects: [],
+        evidenceFiles: [],
+      })));
+  });
+
+  test('runs successful Live schema preflight before identity and all side effects', async () => {
+    const memory = createMemoryFs();
+    const dependencies: Phase6943CompositionDependencies = {
+      validateLiveStructuredSchemas: () => {
+        memory.events.push('validate');
+        return true;
+      },
+      runPairedEval: async () => {
+        memory.events.push('runner');
+        return buildPhase6943InvalidRun('live', 'dataset_mismatch');
+      },
+      createMockRuntime: createPhase6943MockRuntime,
+      createLiveDependencies: (_config, onAttempt) => {
+        memory.events.push('provider_factory');
+        return fakeAttemptingLive(onAttempt, memory.events);
+      },
+      calculateDatasetDigest: calculatePhase6943DatasetDigest,
+      validateDataset: validatePhase6943Dataset,
+    };
+    await executePhase6943Cli({
+      command: 'live', argv: LIVE_ARGS, env: LIVE_ENV, root: 'E:/repo',
+      randomUUID: () => {
+        memory.events.push('uuid');
+        return '00000000-0000-4000-8000-000000000007';
+      },
+      epochMs: () => Date.parse('2026-07-13T00:00:00.000Z'),
+      clocks: fakeClocks(), fs: memory.fs, dependencies,
+    });
+    expect(memory.events.slice(0, 5)).toEqual([
+      'validate', 'provider_factory', 'uuid', 'open:reserve', 'runner',
+    ]);
   });
 
   test('covers all 28 fixture IDs and rejects all 72 zero-call IDs', () => {
@@ -557,6 +1002,20 @@ describe('Phase 6.9.4.3 evidence writer', () => {
 });
 
 describe('Phase 6.9.4.3 evidence validator', () => {
+  test('preserves the validator conclusion for immutable Attempts A through D', async () => {
+    const files = [
+      ['live-20260713T122743752Z-46b0f4785861.json', { ok: false, errorCode: 'profile_mismatch' }],
+      ['live-20260713T124435253Z-4d37573c86dc.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
+      ['live-20260714T022627206Z-08bddedf3f64.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
+      ['live-20260714T032310330Z-991994cb5bb5.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
+    ] as const;
+    for (const [name, expected] of files) {
+      const file = `docs/acceptance/evidence/phase-6-9-4-3/${name}`;
+      const raw = await realFs.readFile(resolve(import.meta.dir, '../../..', file), 'utf8');
+      expect(validatePhase6943Evidence({ profile: 'live', file, raw })).toEqual(expected);
+    }
+  });
+
   test('accepts only exact profile/file arguments and safe repository paths', () => {
     expect(parseEvidenceValidatorArgs(['--profile', 'mock', '--file', 'docs/acceptance/evidence/phase-6-9-4-3/mock.json']).ok).toBe(true);
     expect(parseEvidenceValidatorArgs(['--profile', 'live', '--file', 'docs/acceptance/evidence/phase-6-9-4-3/live-20260713T000000000Z-aaaaaaaaaaaa.json']).ok).toBe(true);
@@ -785,4 +1244,11 @@ function liveReportPath(output: Phase6943Output) {
     throw new Error('expected live report');
   }
   return buildPhase6943LiveEvidencePath(output.startedAt, output.runIdHash);
+}
+
+function hasTupleItems(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasTupleItems);
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return Array.isArray(record.items) || Object.values(record).some(hasTupleItems);
 }

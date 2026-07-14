@@ -21,7 +21,11 @@ import {
 
 export const PHASE_6943_REPORT_SCHEMA_VERSION =
   'phase-6.9.4.3-report-v1' as const;
-export const PHASE_6943_RUNNER_VERSION = 'phase-6.9.4.3-runner-v1' as const;
+export const PHASE_6943_LEGACY_RUNNER_VERSION =
+  'phase-6.9.4.3-runner-v1' as const;
+export const PHASE_6943_RUNNER_VERSION = 'phase-6.9.4.3-runner-v2' as const;
+export const PHASE_6943_STRUCTURED_OUTPUT_MODE =
+  'deepseek_strict_tool_v1' as const;
 export const PHASE_6943_PROMPT_VERSION = 'phase-6.9.4.2-candidate-v1' as const;
 export const PHASE_6943_DATASET_DIGEST =
   'sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019' as const;
@@ -379,7 +383,13 @@ const REPORT_BASE_SCHEMA = z
     schemaVersion: z.literal(PHASE_6943_REPORT_SCHEMA_VERSION),
     datasetVersion: z.literal(PHASE_6941_ROUTER_VERIFIER_DATASET_VERSION),
     datasetDigest: z.literal(PHASE_6943_DATASET_DIGEST),
-    runnerVersion: z.literal(PHASE_6943_RUNNER_VERSION),
+    runnerVersion: z.union([
+      z.literal(PHASE_6943_LEGACY_RUNNER_VERSION),
+      z.literal(PHASE_6943_RUNNER_VERSION),
+    ]),
+    structuredOutputMode: z
+      .literal(PHASE_6943_STRUCTURED_OUTPUT_MODE)
+      .optional(),
     promptVersion: z.literal(PHASE_6943_PROMPT_VERSION),
     runIdHash: RUN_ID_HASH_SCHEMA,
     startedAt: UTC_SCHEMA,
@@ -474,6 +484,21 @@ export const PHASE_6943_OUTPUT_SCHEMA = z
         context.addIssue({ code: z.ZodIssueCode.custom, message: 'invalid decisions' });
       }
       return;
+    }
+    const hasCurrentLiveTransportIdentity =
+      output.runKind === 'live' &&
+      output.runnerVersion === PHASE_6943_RUNNER_VERSION &&
+      output.structuredOutputMode === PHASE_6943_STRUCTURED_OUTPUT_MODE;
+    const hasLegacyLiveTransportIdentity =
+      output.runKind === 'live' &&
+      output.runnerVersion === PHASE_6943_LEGACY_RUNNER_VERSION &&
+      output.structuredOutputMode === undefined;
+    if (
+      output.runKind === 'live'
+        ? !hasCurrentLiveTransportIdentity && !hasLegacyLiveTransportIdentity
+        : output.structuredOutputMode !== undefined
+    ) {
+      addContractIssue(context, 'invalid structured output transport identity');
     }
     const requiredLanes = [output.lanes.deterministic, output.lanes.mock];
     validateLane(output.lanes.deterministic, 'deterministic', context);

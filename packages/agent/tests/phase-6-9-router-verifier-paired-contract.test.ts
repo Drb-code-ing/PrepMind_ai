@@ -13,7 +13,9 @@ import {
   PHASE_6943_DATASET_DIGEST,
   PHASE_6943_PROMPT_VERSION,
   PHASE_6943_REPORT_SCHEMA_VERSION,
+  PHASE_6943_LEGACY_RUNNER_VERSION,
   PHASE_6943_RUNNER_VERSION,
+  PHASE_6943_STRUCTURED_OUTPUT_MODE,
   PHASE_6943_ENTRY_SCHEMA,
   buildPhase6943RouterLaneMetrics,
   buildPhase6943VerifierLaneMetrics,
@@ -78,6 +80,52 @@ describe('Phase 6.9.4.3 paired contract', () => {
       buildInvalidRun(),
     ];
     for (const variant of variants) expect(parsePhase6943Output(variant).ok).toBe(true);
+  });
+
+  test('binds strict-tool transport identity to v2 Live evidence only', () => {
+    expect(PHASE_6943_LEGACY_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v1');
+    expect(PHASE_6943_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v2');
+    expect(PHASE_6943_STRUCTURED_OUTPUT_MODE).toBe('deepseek_strict_tool_v1');
+
+    for (const runStatus of ['complete', 'incomplete'] as const) {
+      const currentLive = structuredClone(buildReport('live', runStatus));
+      expect(currentLive).toMatchObject({
+        runnerVersion: PHASE_6943_RUNNER_VERSION,
+        structuredOutputMode: PHASE_6943_STRUCTURED_OUTPUT_MODE,
+      });
+      expect(parsePhase6943Output(currentLive).ok).toBe(true);
+
+      const missing = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      delete missing.structuredOutputMode;
+      expect(parsePhase6943Output(missing).ok).toBe(false);
+
+      const wrong = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      wrong.structuredOutputMode = 'json_object';
+      expect(parsePhase6943Output(wrong).ok).toBe(false);
+
+      const extra = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      extra.transport = 'forged';
+      expect(parsePhase6943Output(extra).ok).toBe(false);
+
+      const legacyLive = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      legacyLive.runnerVersion = PHASE_6943_LEGACY_RUNNER_VERSION;
+      delete legacyLive.structuredOutputMode;
+      expect(parsePhase6943Output(legacyLive).ok).toBe(true);
+      legacyLive.structuredOutputMode = PHASE_6943_STRUCTURED_OUTPUT_MODE;
+      expect(parsePhase6943Output(legacyLive).ok).toBe(false);
+    }
+
+    for (const runnerVersion of [
+      PHASE_6943_LEGACY_RUNNER_VERSION,
+      PHASE_6943_RUNNER_VERSION,
+    ] as const) {
+      const mock = structuredClone(buildReport('mock', 'complete')) as unknown as Record<string, unknown>;
+      mock.runnerVersion = runnerVersion;
+      expect('structuredOutputMode' in mock).toBe(false);
+      expect(parsePhase6943Output(mock).ok).toBe(true);
+      mock.structuredOutputMode = PHASE_6943_STRUCTURED_OUTPUT_MODE;
+      expect(parsePhase6943Output(mock).ok).toBe(false);
+    }
   });
 
   test('accepts an optional provider failure category only on attempted Live provider failures', () => {
@@ -843,6 +891,7 @@ function buildReport(runKind: 'mock' | 'live', runStatus: 'complete' | 'incomple
   return {
     ...base,
     runKind,
+    structuredOutputMode: PHASE_6943_STRUCTURED_OUTPUT_MODE,
     qualityEvidence: true,
     provider: 'deepseek',
     model: 'deepseek-v4-flash',

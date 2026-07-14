@@ -343,8 +343,18 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 - candidate sanitizer 只接受 Error / Trace 双边一致的白名单枚举。历史 Attempt A / B 允许分类字段双边缺失，但不得改写：A 仍为 filename identity mismatch，B 仍为 `live / incomplete`；
 - `providerFailureCategory` 不改变 `usage_unverifiable`、`incomplete` 或 enablement 的 fail-closed 结论，也不授权自动重试；不得保存 raw HTTP status、URL、request/response body、headers、message、stack、cause、prompt、output 或 credentials；
 - 若新的 controlled-Live 再失败，只记录固定分类和既有安全计数：`http_auth` 先核对授权配置，`http_rate_limit` 服从 provider 窗口，`structured_output` 核对 schema、prompt 与 token headroom，`http_client/http_server/transport/invalid_response/unknown` 按各自边界诊断；任何类别都不得盲目重跑或绕过 runner 探测；
-- Attempt C 的 `structured_output` 与历史 `61/120`、`108/120` output usage 已触发并完成 headroom 修复；Attempt D 在 400-token 下取得连续 15 条 strict success，成功 output 为 59~341，但最后一条仍 `structured_output`。不得据此盲目继续抬高 cap；下一步先做固定失败 case 的零网络 prompt/schema/provider compatibility 分析；
-- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。共享 diagnostics 合同已完成零网络验收，但 Phase 6.9.4.3 仍未完成；新的整轮 Live 达到 28 次 strict success 并通过质量、安全、延迟与成本门槛前，不得标记阶段完成或启用 Router / Verifier candidate。
+- Attempt C 的 `structured_output` 与历史 `61/120`、`108/120` output usage 已触发并完成 headroom 修复；Attempt D 在 400-token 下取得连续 15 条 strict success，成功 output 为 59~341，但最后一条仍 `structured_output`。不得据此盲目继续抬高 cap；由此触发的零网络 prompt/schema/provider compatibility 韧性分析与实现现已完成；
+- structured-output resilience checkpoint 必须验证：默认 `json_object` 行为不变；strict tool 只允许精确 `https://api.deepseek.com/beta`、唯一 forced `model_agent_result`、`strict:true`，不得有 `response_format/json_schema`、handler、业务副作用或 MCP；
+- schema compiler 必须按 canonical schema object identity 查找已注册 Router/Verifier profile，只做审批过的非原地兼容投影并深冻结；canonical Zod 仍为最终权威，未注册/未支持/hostile input 必须在 fetch 前 fail-closed；
+- Live 受控 preflight 必须按 schema 编译/校验 -> 安全 start timestamp -> dependencies/strict executor 本地初始化与权威快照 -> arm attempt callback -> UUID/evidence fs/reservation -> runner/Provider attempt 执行；schema 只有明确 `true` 才继续，初始化抛错、malformed/hostile dependencies 或 arm 前同步 callback 必须为 `live_config_invalid`、0 UUID、0 evidence、0 Provider attempt 且不泄漏 canary；
+- 新 Live evidence 必须使用 runner v2 + `deepseek_strict_tool_v1`；历史 v1 Live 只读兼容，Mock v1/v2 禁止该字段。按 hash 复核 A/B/C/D 不变，validator 仍应为 A exit 3 `profile_mismatch`、B/C/D exit 0 `incomplete`；
+- fresh 零网络门禁应为 AI 151 passed、Agent 344 passed、typecheck/lint exit 0、baseline 74/100 critical=2；Mock complete 的 `caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`；负向 Live config exit 3 且 evidence `4 -> 4`。不读 key、不启用双开关、不调真实模型；
+- 不变运行边界必须是 Router 800/400、Verifier 1600/400、global 28 calls / 96,000 provider input / 11,200 provider output、单 case 10 秒、`maxRetries=0`；
+- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。共享 diagnostics 与 structured-output resilience 已完成零网络验收，但 Phase 6.9.4.3 仍未完成；先合并 main、main 复验并推送，再从新 main 开独立 Live 任务。新整轮必须完整跑 100 cases，在 28/28 strict success、72/72 zero-call 与质量/安全/权限/延迟/token/usage provenance/成本门槛全部通过前，不得标记阶段完成或启用 Router / Verifier candidate。
+
+回顾时可以问：“如何机械证明 hostile schema 或本地初始化失败没有创建 UUID/evidence、也没有进入 Provider attempt？”“为什么 Mock counters complete 仍不是 Live 质量证据？”
+
+下一会话可以复制：“按 Phase 6.9.4.3 checklist 先完成 main 复验与推送，再从新 main 创建独立 controlled-Live 任务。”
 
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 

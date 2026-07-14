@@ -13,6 +13,8 @@ import {
 
 import {
   PHASE_6943_DATASET_DIGEST,
+  PHASE_6943_RUNNER_VERSION,
+  PHASE_6943_STRUCTURED_OUTPUT_MODE,
   calculatePhase6943DatasetDigest,
   parsePhase6943Output,
   validatePhase6943Dataset,
@@ -367,6 +369,10 @@ describe('Phase 6.9.4.3 paired runner', () => {
     expect(output.kind).toBe('report');
     if (output.kind !== 'report' || output.runKind !== 'live') throw new Error('expected live');
     expect(output.runStatus).toBe('complete');
+    expect(output).toMatchObject({
+      runnerVersion: PHASE_6943_RUNNER_VERSION,
+      structuredOutputMode: PHASE_6943_STRUCTURED_OUTPUT_MODE,
+    });
     expect(output.lanes.live.counters).toEqual({
       caseEntries: 100, adapterExecutions: 100, runtimeInvocations: 28,
       providerAttempts: 28, strictSuccesses: 28, zeroCallCases: 72,
@@ -971,6 +977,37 @@ describe('Phase 6.9.4.3 paired runner', () => {
       calls: 1, inputTokens: 1, outputTokens: 1, estimatedCostUsd: 1,
     });
     expect(nested.requested).toHaveLength(28);
+  });
+
+  test('snapshots Live method identities without rereading hostile getters', async () => {
+    const live = successfulLiveDependencies();
+    const reads = { createRuntime: 0, readProviderAttempts: 0 };
+    const dependencies = {
+      pricing: live.dependencies.pricing,
+      budgetState: live.dependencies.budgetState,
+    } as Phase6943LiveDependencies;
+    for (const method of ['createRuntime', 'readProviderAttempts'] as const) {
+      Object.defineProperty(dependencies, method, {
+        enumerable: true,
+        get() {
+          reads[method] += 1;
+          if (reads[method] > 1) {
+            throw new Error(`RAW_LIVE_METHOD_${method.toUpperCase()}_CANARY`);
+          }
+          return live.dependencies[method];
+        },
+      });
+    }
+
+    const output = await runPhase6943PairedEval({
+      runId: 'stateful-live-methods', runKind: 'live', clocks: fakeClocks(),
+      createMockRuntime: createTestMockRuntime, live: dependencies,
+    });
+
+    expect(output).toMatchObject({ kind: 'report', runStatus: 'complete' });
+    expect(reads).toEqual({ createRuntime: 1, readProviderAttempts: 1 });
+    expect(live.requested).toHaveLength(28);
+    expect(JSON.stringify(output)).not.toContain('RAW_LIVE_METHOD_');
   });
 
   test('fails closed for invalid clocks, live config, hostile factories, and raw run IDs', async () => {
