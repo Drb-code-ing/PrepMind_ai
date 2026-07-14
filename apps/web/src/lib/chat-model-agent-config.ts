@@ -27,8 +27,8 @@ const DEFAULT_ROUTER_TIMEOUT_MS = 5_000;
 const DEFAULT_VERIFIER_TIMEOUT_MS = 4_000;
 const MIN_TIMEOUT_MS = 1_000;
 const MAX_TIMEOUT_MS = 10_000;
-const DEEPSEEK_HOST = 'api.deepseek.com';
-const OPENAI_HOST = 'api.openai.com';
+const DEEPSEEK_HOST_FAMILY = 'deepseek.com';
+const OPENAI_HOST_FAMILY = 'openai.com';
 
 const INVALID_CONFIG: ChatModelAgentConfig = Object.freeze({
   mode: 'mock',
@@ -171,21 +171,28 @@ function resolveProviderConfig(values: SafeEnvironmentSnapshot): {
 } | null {
   const deepseekKey = values.DEEPSEEK_API_KEY?.trim() ?? '';
   const openaiKey = values.OPENAI_API_KEY?.trim() ?? '';
-  if (Boolean(deepseekKey) === Boolean(openaiKey)) return null;
-
-  const credentialSource = deepseekKey ? 'deepseek' : 'openai';
-  const defaultBaseURL =
-    credentialSource === 'deepseek'
-      ? 'https://api.deepseek.com'
-      : 'https://api.openai.com/v1';
-  const baseURL = values.AI_BASE_URL?.trim() || defaultBaseURL;
+  const explicitBaseURL = values.AI_BASE_URL?.trim() ?? '';
+  const exactlyOneKey = Boolean(deepseekKey) !== Boolean(openaiKey);
+  const baseURL =
+    explicitBaseURL ||
+    (exactlyOneKey
+      ? deepseekKey
+        ? 'https://api.deepseek.com'
+        : 'https://api.openai.com/v1'
+      : '');
   const url = parseSafeHttpsUrl(baseURL);
   if (url === null) return null;
-  if (
-    (url.hostname === DEEPSEEK_HOST && credentialSource !== 'deepseek') ||
-    (url.hostname === OPENAI_HOST && credentialSource !== 'openai')
-  ) {
-    return null;
+
+  let credentialSource: 'deepseek' | 'openai';
+  if (isVendorHostname(url.hostname, DEEPSEEK_HOST_FAMILY)) {
+    if (!deepseekKey) return null;
+    credentialSource = 'deepseek';
+  } else if (isVendorHostname(url.hostname, OPENAI_HOST_FAMILY)) {
+    if (!openaiKey) return null;
+    credentialSource = 'openai';
+  } else {
+    if (!exactlyOneKey) return null;
+    credentialSource = deepseekKey ? 'deepseek' : 'openai';
   }
 
   const defaultModel =
@@ -198,6 +205,10 @@ function resolveProviderConfig(values: SafeEnvironmentSnapshot): {
     credentialSource,
     model,
   };
+}
+
+function isVendorHostname(hostname: string, family: string): boolean {
+  return hostname === family || hostname.endsWith(`.${family}`);
 }
 
 function parseSafeHttpsUrl(value: string): URL | null {

@@ -131,6 +131,87 @@ test('classifies official DeepSeek and OpenAI endpoints with matching credential
   assert.equal(openai.configured, true);
 });
 
+test('binds DeepSeek vendor-family hosts to the DeepSeek key even when both keys exist', () => {
+  for (const AI_BASE_URL of [
+    'https://deepseek.com',
+    'https://api.deepseek.com',
+    'https://proxy.deepseek.com/v1',
+  ]) {
+    const config = resolveChatModelAgentConfig({
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL,
+      DEEPSEEK_API_KEY: 'deepseek_matching_canary',
+      OPENAI_API_KEY: 'openai_nonmatching_canary',
+    });
+    assert.equal(config.configured, true);
+    assert.equal(config.provider, 'deepseek');
+    assert.equal(config.credentialSource, 'deepseek');
+    assert.equal(config.routerEnabled, true);
+    assert.equal(config.verifierEnabled, true);
+  }
+});
+
+test('binds OpenAI vendor-family hosts to the OpenAI key even when both keys exist', () => {
+  for (const AI_BASE_URL of [
+    'https://openai.com',
+    'https://api.openai.com/v1',
+    'https://platform.openai.com/v1',
+  ]) {
+    const config = resolveChatModelAgentConfig({
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL,
+      DEEPSEEK_API_KEY: 'deepseek_nonmatching_canary',
+      OPENAI_API_KEY: 'openai_matching_canary',
+    });
+    assert.equal(config.configured, true);
+    assert.equal(config.provider, 'openai');
+    assert.equal(config.credentialSource, 'openai');
+    assert.equal(config.routerEnabled, true);
+    assert.equal(config.verifierEnabled, true);
+  }
+});
+
+test('rejects vendor-family hosts when only the wrong provider key exists', () => {
+  for (const env of [
+    {
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL: 'https://proxy.deepseek.com/v1',
+      DEEPSEEK_API_KEY: '',
+      OPENAI_API_KEY: 'openai_wrong_canary',
+    },
+    {
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL: 'https://platform.openai.com/v1',
+      DEEPSEEK_API_KEY: 'deepseek_wrong_canary',
+      OPENAI_API_KEY: '',
+    },
+  ]) {
+    const config = resolveChatModelAgentConfig(env);
+    assert.equal(config.configured, false);
+    assert.equal(config.routerEnabled, false);
+    assert.equal(config.verifierEnabled, false);
+    assert.equal(config.disabledReason, 'invalid_provider_config');
+  }
+});
+
+test('treats suffix-spoof hosts as custom hosts with the single-key rule', () => {
+  const singleKey = resolveChatModelAgentConfig({
+    ...LIVE_DEEPSEEK_ENV,
+    AI_BASE_URL: 'https://evil-deepseek.com/v1',
+  });
+  assert.equal(singleKey.configured, true);
+  assert.equal(singleKey.provider, 'deepseek');
+  assert.equal(singleKey.credentialSource, 'deepseek');
+
+  const bothKeys = resolveChatModelAgentConfig({
+    ...LIVE_DEEPSEEK_ENV,
+    AI_BASE_URL: 'https://evil-deepseek.com/v1',
+    OPENAI_API_KEY: 'openai_custom_canary',
+  });
+  assert.equal(bothKeys.configured, false);
+  assert.equal(bothKeys.disabledReason, 'invalid_provider_config');
+});
+
 test('rejects official host and credential mismatches', () => {
   for (const env of [
     { ...LIVE_DEEPSEEK_ENV, DEEPSEEK_API_KEY: '', OPENAI_API_KEY: 'openai_canary' },
@@ -152,6 +233,8 @@ test('rejects unsafe URLs and ambiguous custom-host credentials', () => {
   const invalidBaseURLs = [
     'http://api.deepseek.com',
     'https://user:password@api.deepseek.com',
+    'https://api.deepseek.com/v1?credential=canary',
+    'https://api.deepseek.com/v1#canary',
     'not a url',
   ];
   for (const AI_BASE_URL of invalidBaseURLs) {
