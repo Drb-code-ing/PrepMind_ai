@@ -4,7 +4,7 @@ import type {
   ModelAgentError,
   ModelAgentErrorCode,
   ModelAgentProviderFailureCategory,
-} from './model-agent-contract';
+} from './model-agent-contract.ts';
 
 const ERROR_MESSAGES: Record<ModelAgentErrorCode, string> = {
   INVALID_REQUEST: 'Model agent request is invalid.',

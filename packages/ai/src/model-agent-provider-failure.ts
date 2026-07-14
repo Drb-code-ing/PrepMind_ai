@@ -7,7 +7,7 @@ import {
   TypeValidationError,
 } from 'ai';
 
-import type { ModelAgentProviderFailureCategory } from './model-agent-contract';
+import type { ModelAgentProviderFailureCategory } from './model-agent-contract.ts';
 
 type ProviderFailureEntry = {
   category: ModelAgentProviderFailureCategory;

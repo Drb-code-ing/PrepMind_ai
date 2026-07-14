@@ -12,14 +12,14 @@ import type {
   ModelAgentTrace,
   ModelAgentUsage,
   StructuredModelExecutor,
-} from './model-agent-contract';
-import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget';
-import { takeModelAgentProviderFailureCategory } from './model-agent-provider-failure';
+} from './model-agent-contract.ts';
+import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget.ts';
+import { takeModelAgentProviderFailureCategory } from './model-agent-provider-failure.ts';
 import {
   createSafeModelAgentError,
   hashModelAgentRunId,
   isSafeModelName,
-} from './model-agent-safety';
+} from './model-agent-safety.ts';
 
 export type CreateModelAgentRuntimeInput = {
   mode: ModelAgentMode;
