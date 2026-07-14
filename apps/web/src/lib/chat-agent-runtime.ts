@@ -108,7 +108,7 @@ export async function buildChatAgentExecution(
           budget: input.model.budget,
           runtime: input.model.runtime,
         }
-      : createIneligibleRouterCapabilities();
+      : createIneligibleRouterCapabilities(input.model);
 
     const envelope = await runRouterModelCandidate({
       runId: input.runId,
@@ -149,16 +149,20 @@ export async function buildChatAgentExecution(
   }
 }
 
-function createIneligibleRouterCapabilities(): {
+function createIneligibleRouterCapabilities(
+  model: BuildChatAgentExecutionInput['model'],
+): {
   budget: ModelAgentRunBudget;
   runtime: ModelAgentRuntime;
 } {
   return {
-    budget: createModelAgentBudget({
-      maxCalls: 2,
-      maxInputTokens: 2_400,
-      maxOutputTokens: 800,
-    }),
+    budget:
+      snapshotOwnDataBudget(model) ??
+      createModelAgentBudget({
+        maxCalls: 2,
+        maxInputTokens: 2_400,
+        maxOutputTokens: 800,
+      }),
     runtime: createModelAgentRuntime({
       mode: 'live',
       provider: 'deepseek',
@@ -167,6 +171,35 @@ function createIneligibleRouterCapabilities(): {
       timeoutMs: 50,
     }),
   };
+}
+
+const MODEL_AGENT_BUDGET_FIELDS = [
+  'maxCalls',
+  'usedCalls',
+  'maxInputTokens',
+  'usedInputTokens',
+  'maxOutputTokens',
+  'usedOutputTokens',
+] as const satisfies readonly (keyof ModelAgentRunBudget)[];
+
+function snapshotOwnDataBudget(
+  model: BuildChatAgentExecutionInput['model'],
+): ModelAgentRunBudget | null {
+  try {
+    const modelBudget = Object.getOwnPropertyDescriptor(model, 'budget');
+    if (!modelBudget || !('value' in modelBudget)) return null;
+
+    const values: Partial<ModelAgentRunBudget> = {};
+    for (const field of MODEL_AGENT_BUDGET_FIELDS) {
+      const descriptor = Object.getOwnPropertyDescriptor(modelBudget.value, field);
+      if (!descriptor || !('value' in descriptor)) return null;
+      values[field] = descriptor.value;
+    }
+    if (!isModelAgentRunBudget(values)) return null;
+    return Object.freeze({ ...values });
+  } catch {
+    return null;
+  }
 }
 
 export function combineChatAdditionalPrompts(agentPrompt: string, knowledgePrompt: string) {
