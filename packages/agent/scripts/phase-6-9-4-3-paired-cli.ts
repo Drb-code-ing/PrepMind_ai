@@ -1,7 +1,6 @@
 import { dirname, resolve, sep } from 'node:path';
 
 import {
-  compileDeepSeekStrictToolSchemaProfiles,
   createModelAgentRuntime,
   createOpenAICompatibleStructuredExecutor,
   hashModelAgentRunId,
@@ -28,17 +27,7 @@ import { ROUTER_MODEL_CANDIDATE_SCHEMA } from '../src/model-candidates/router-mo
 
 export const LIVE_CASE_TIMEOUT_MS = 10_000;
 export const DEEPSEEK_MODEL = 'deepseek-v4-flash';
-export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/beta';
-export const PHASE_6943_LIVE_SCHEMA_PROFILES = Object.freeze([
-  Object.freeze({
-    name: 'router_candidate_v1',
-    schema: ROUTER_MODEL_CANDIDATE_SCHEMA,
-  }),
-  Object.freeze({
-    name: 'knowledge_verifier_candidate_v1',
-    schema: KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA,
-  }),
-] as const);
+export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 const DECIMAL_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,9})?$/;
 const MAX_ENGINEERING_COST_USD = 0.1;
 const PROVIDER_INPUT_TOKEN_CAP = 96_000;
@@ -212,7 +201,9 @@ function normalizeDeepSeekUrl(value: string | undefined): string | null {
     ) {
       return null;
     }
-    return url.pathname === '/beta' ? `${url.origin}${url.pathname}` : null;
+    return url.pathname === '' || url.pathname === '/'
+      ? url.origin
+      : null;
   } catch {
     return null;
   }
@@ -220,14 +211,16 @@ function normalizeDeepSeekUrl(value: string | undefined): string | null {
 
 export function validatePhase6943LiveStructuredSchemas(): boolean {
   try {
-    const registry = compileDeepSeekStrictToolSchemaProfiles(
-      PHASE_6943_LIVE_SCHEMA_PROFILES,
-    );
     return (
-      registry.resolve(ROUTER_MODEL_CANDIDATE_SCHEMA)?.name ===
-        'router_candidate_v1' &&
-      registry.resolve(KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA)?.name ===
-        'knowledge_verifier_candidate_v1'
+      ROUTER_MODEL_CANDIDATE_SCHEMA.safeParse({
+        route: 'chat',
+        confidence: 1,
+        reasonCode: 'insufficient_context',
+      }).success &&
+      KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA.safeParse({
+        status: 'trusted',
+        evidenceCodes: ['consistent_support'],
+      }).success
     );
   } catch {
     return false;
@@ -438,8 +431,7 @@ export function createPhase6943LiveDependencies(
       apiKey: config.apiKey,
       baseURL: DEEPSEEK_BASE_URL,
       model: DEEPSEEK_MODEL,
-      structuredOutputMode: 'deepseek_strict_tool',
-      schemaProfiles: PHASE_6943_LIVE_SCHEMA_PROFILES,
+      structuredOutputMode: 'json_object',
     }),
     onProviderAttempt: () => {
       providerAttempts += 1;

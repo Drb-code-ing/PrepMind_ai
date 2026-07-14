@@ -23,10 +23,17 @@ export const PHASE_6943_REPORT_SCHEMA_VERSION =
   'phase-6.9.4.3-report-v1' as const;
 export const PHASE_6943_LEGACY_RUNNER_VERSION =
   'phase-6.9.4.3-runner-v1' as const;
-export const PHASE_6943_RUNNER_VERSION = 'phase-6.9.4.3-runner-v2' as const;
-export const PHASE_6943_STRUCTURED_OUTPUT_MODE =
+export const PHASE_6943_PREVIOUS_RUNNER_VERSION =
+  'phase-6.9.4.3-runner-v2' as const;
+export const PHASE_6943_RUNNER_VERSION = 'phase-6.9.4.3-runner-v3' as const;
+export const PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE =
   'deepseek_strict_tool_v1' as const;
-export const PHASE_6943_PROMPT_VERSION = 'phase-6.9.4.2-candidate-v1' as const;
+export const PHASE_6943_STRUCTURED_OUTPUT_MODE =
+  'deepseek_json_object_v1' as const;
+export const PHASE_6943_LEGACY_PROMPT_VERSION =
+  'phase-6.9.4.2-candidate-v1' as const;
+export const PHASE_6943_PROMPT_VERSION =
+  'phase-6.9.4.3-json-mode-v1' as const;
 export const PHASE_6943_DATASET_DIGEST =
   'sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019' as const;
 
@@ -100,6 +107,10 @@ const ERROR_CODE_SCHEMA = z.enum([
 const PROVIDER_FAILURE_CATEGORY_SCHEMA = z.enum(
   MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
 );
+const PROMPT_VERSION_SCHEMA = z.union([
+  z.literal(PHASE_6943_LEGACY_PROMPT_VERSION),
+  z.literal(PHASE_6943_PROMPT_VERSION),
+]);
 const DECISION_REASON_SCHEMA = z.enum([
   'quality_gate_passed',
   'paired_candidate_not_run',
@@ -182,7 +193,7 @@ const CANDIDATE_ROUTER_ENTRY_SCHEMA = ENTRY_IDENTITY_SCHEMA.extend({
   providerReported: z.boolean(),
   provider: z.enum(['mock', 'deepseek']),
   model: z.enum(['phase-6-9-4-3-test-fixture-v1', 'deepseek-v4-flash']),
-  promptVersion: z.literal(PHASE_6943_PROMPT_VERSION),
+  promptVersion: PROMPT_VERSION_SCHEMA,
 }).strict();
 const CANDIDATE_VERIFIER_ENTRY_SCHEMA = ENTRY_IDENTITY_SCHEMA.extend({
   agent: z.literal('verifier'),
@@ -204,7 +215,7 @@ const CANDIDATE_VERIFIER_ENTRY_SCHEMA = ENTRY_IDENTITY_SCHEMA.extend({
   providerReported: z.boolean(),
   provider: z.enum(['mock', 'deepseek']),
   model: z.enum(['phase-6-9-4-3-test-fixture-v1', 'deepseek-v4-flash']),
-  promptVersion: z.literal(PHASE_6943_PROMPT_VERSION),
+  promptVersion: PROMPT_VERSION_SCHEMA,
 }).strict();
 export const PHASE_6943_ENTRY_SCHEMA = z.union([
   NOT_RUN_ENTRY_SCHEMA,
@@ -385,12 +396,16 @@ const REPORT_BASE_SCHEMA = z
     datasetDigest: z.literal(PHASE_6943_DATASET_DIGEST),
     runnerVersion: z.union([
       z.literal(PHASE_6943_LEGACY_RUNNER_VERSION),
+      z.literal(PHASE_6943_PREVIOUS_RUNNER_VERSION),
       z.literal(PHASE_6943_RUNNER_VERSION),
     ]),
     structuredOutputMode: z
-      .literal(PHASE_6943_STRUCTURED_OUTPUT_MODE)
+      .union([
+        z.literal(PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE),
+        z.literal(PHASE_6943_STRUCTURED_OUTPUT_MODE),
+      ])
       .optional(),
-    promptVersion: z.literal(PHASE_6943_PROMPT_VERSION),
+    promptVersion: PROMPT_VERSION_SCHEMA,
     runIdHash: RUN_ID_HASH_SCHEMA,
     startedAt: UTC_SCHEMA,
     finishedAt: UTC_SCHEMA,
@@ -489,18 +504,32 @@ export const PHASE_6943_OUTPUT_SCHEMA = z
       output.runKind === 'live' &&
       output.runnerVersion === PHASE_6943_RUNNER_VERSION &&
       output.structuredOutputMode === PHASE_6943_STRUCTURED_OUTPUT_MODE;
+    const hasPreviousLiveTransportIdentity =
+      output.runKind === 'live' &&
+      output.runnerVersion === PHASE_6943_PREVIOUS_RUNNER_VERSION &&
+      output.structuredOutputMode === PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE;
     const hasLegacyLiveTransportIdentity =
       output.runKind === 'live' &&
       output.runnerVersion === PHASE_6943_LEGACY_RUNNER_VERSION &&
       output.structuredOutputMode === undefined;
+    const expectedPromptVersion =
+      output.runnerVersion === PHASE_6943_RUNNER_VERSION
+        ? PHASE_6943_PROMPT_VERSION
+        : PHASE_6943_LEGACY_PROMPT_VERSION;
     if (
       output.runKind === 'live'
-        ? !hasCurrentLiveTransportIdentity && !hasLegacyLiveTransportIdentity
+        ? !hasCurrentLiveTransportIdentity &&
+          !hasPreviousLiveTransportIdentity &&
+          !hasLegacyLiveTransportIdentity
         : output.structuredOutputMode !== undefined
     ) {
       addContractIssue(context, 'invalid structured output transport identity');
     }
+    if (output.promptVersion !== expectedPromptVersion) {
+      addContractIssue(context, 'invalid runner prompt identity');
+    }
     const requiredLanes = [output.lanes.deterministic, output.lanes.mock];
+    const candidateLanes = [output.lanes.mock];
     validateLane(output.lanes.deterministic, 'deterministic', context);
     validateLane(output.lanes.mock, 'mock', context);
     validateAdditionalLatency(
@@ -510,12 +539,25 @@ export const PHASE_6943_OUTPUT_SCHEMA = z
     );
     if (output.runKind === 'live') {
       requiredLanes.push(output.lanes.live);
+      candidateLanes.push(output.lanes.live);
       validateLane(output.lanes.live, 'live', context);
       validateAdditionalLatency(
         output.lanes.deterministic,
         output.lanes.live,
         context,
       );
+    }
+    if (
+      candidateLanes.some((lane) =>
+        lane.entries.some(
+          (entry) =>
+            entry.entryStatus === 'observed' &&
+            entry.lane !== 'deterministic' &&
+            entry.promptVersion !== output.promptVersion,
+        ),
+      )
+    ) {
+      addContractIssue(context, 'candidate prompt identity mismatch');
     }
     if (!hasCanonicalDecisionAgents(output.decisions)) {
       addContractIssue(context, 'invalid decision order');
