@@ -162,16 +162,19 @@ export function verifyKnowledgeForChat(
 export async function searchKnowledgeForChat(
   input: SearchKnowledgeForChatInput,
 ): Promise<ChatKnowledgeSearchResult> {
-  if (input.enabled === false) return emptyKnowledgeSearchResult();
-  if (!input.accessToken) return emptyKnowledgeSearchResult();
-
-  const request = buildKnowledgeSearchRequest(getLatestUserQuery(input.messages));
-  if (!request) return emptyKnowledgeSearchResult();
-
-  const fetchImpl = input.fetchImpl ?? fetch;
-  const apiBaseUrl = input.apiBaseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+  const fallbackBudget = snapshotOwnDataBudget(input.model);
+  if (input.enabled === false) return emptyKnowledgeSearchResult(fallbackBudget);
+  if (!input.accessToken) return emptyKnowledgeSearchResult(fallbackBudget);
 
   try {
+    const request = buildKnowledgeSearchRequest(getLatestUserQuery(input.messages));
+    if (!request) return emptyKnowledgeSearchResult(fallbackBudget);
+
+    const fetchImpl = input.fetchImpl ?? fetch;
+    const apiBaseUrl =
+      input.apiBaseUrl ??
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      DEFAULT_API_BASE_URL;
     const response = await fetchImpl(toUrl(apiBaseUrl, '/knowledge/search'), {
       method: 'POST',
       headers: {
@@ -182,35 +185,41 @@ export async function searchKnowledgeForChat(
     });
 
     if (!response.ok) {
-      input.logger?.warn(
-        `[Chat RAG] knowledge search skipped: status=${response.status}`,
-      );
-      return emptyKnowledgeSearchResult();
+      warnKnowledgeSearchSkipped(input.logger, 'http_error');
+      return emptyKnowledgeSearchResult(fallbackBudget);
     }
 
     const body = (await response.json()) as unknown;
     if (!isApiSuccessBody(body)) {
-      input.logger?.warn('[Chat RAG] knowledge search skipped: invalid envelope');
-      return emptyKnowledgeSearchResult();
+      warnKnowledgeSearchSkipped(input.logger, 'invalid_envelope');
+      return emptyKnowledgeSearchResult(fallbackBudget);
     }
 
     const parsed = knowledgeSearchResponseSchema.safeParse(body.data);
     if (!parsed.success) {
-      input.logger?.warn('[Chat RAG] knowledge search skipped: invalid data');
-      return emptyKnowledgeSearchResult();
+      warnKnowledgeSearchSkipped(input.logger, 'invalid_data');
+      return emptyKnowledgeSearchResult(fallbackBudget);
     }
     const chunks = toVerifierChunks(parsed.data.hits);
     const deterministic = verifyKnowledgeChunks({
       query: request.query,
       chunks,
     });
+    const selected = selectRagHitsForPrompt(parsed.data.hits, MAX_PROMPT_HITS);
+    if (input.model === undefined) {
+      return {
+        hits: selected.hits,
+        rawHits: parsed.data.hits,
+        safetySummary: selected.summary,
+        verifierResult: deterministic,
+      };
+    }
     const verifierEnvelope = await runVerifierCandidateForSearch({
       query: request.query,
       chunks,
       deterministic,
       model: input.model,
     });
-    const selected = selectRagHitsForPrompt(parsed.data.hits, MAX_PROMPT_HITS);
 
     return {
       hits: selected.hits,
@@ -220,11 +229,9 @@ export async function searchKnowledgeForChat(
       verifierObservation: verifierEnvelope.observation,
       modelBudget: safeRunBudgetSnapshot(verifierEnvelope.observation.budget),
     };
-  } catch (error) {
-    input.logger?.warn(
-      `[Chat RAG] knowledge search skipped: ${error instanceof Error ? error.message : 'unknown error'}`,
-    );
-    return emptyKnowledgeSearchResult();
+  } catch {
+    warnKnowledgeSearchSkipped(input.logger, 'request_failed');
+    return emptyKnowledgeSearchResult(fallbackBudget);
   }
 }
 
@@ -436,12 +443,26 @@ function toVerifierChunks(hits: KnowledgeSearchHit[]): KnowledgeVerifierChunk[] 
   }));
 }
 
-function emptyKnowledgeSearchResult(): ChatKnowledgeSearchResult {
+function emptyKnowledgeSearchResult(
+  budget?: ModelAgentRunBudget | null,
+): ChatKnowledgeSearchResult {
   return {
     hits: [],
     rawHits: [],
     safetySummary: { blockedCount: 0, quotedOnlyCount: 0 },
+    ...(budget ? { modelBudget: safeRunBudgetSnapshot(budget) } : {}),
   };
+}
+
+function warnKnowledgeSearchSkipped(
+  logger: Pick<Console, 'warn'> | undefined,
+  code: 'http_error' | 'invalid_envelope' | 'invalid_data' | 'request_failed',
+) {
+  try {
+    logger?.warn(`[Chat RAG] knowledge search skipped: ${code}`);
+  } catch {
+    // Diagnostics must never replace the safe fallback result.
+  }
 }
 
 function buildVerifierPromptLines(verifierResult?: KnowledgeVerifierResult) {

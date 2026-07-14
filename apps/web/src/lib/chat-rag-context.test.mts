@@ -511,9 +511,215 @@ test('keeps verifier safety, local-confidence, disabled, and absent-model paths 
     '矩阵的定义是什么？',
     [consistentHit],
   );
-  assert.equal(noModel.verifierResult?.status, 'trusted');
-  assert.equal(noModel.verifierObservation?.attempted, false);
-  assert.equal(noModel.verifierObservation?.disposition, 'not_eligible');
+  assert.deepEqual(
+    noModel.verifierResult,
+    verifyKnowledgeForChat([consistentHit], '矩阵的定义是什么？'),
+  );
+  assert.equal(Object.hasOwn(noModel, 'verifierObservation'), false);
+  assert.equal(Object.hasOwn(noModel, 'modelBudget'), false);
+});
+
+test('preserves a safe cloned model budget across every early and failed search path', async () => {
+  const budget: ModelAgentRunBudget = {
+    maxCalls: 2,
+    usedCalls: 1,
+    maxInputTokens: 8_888,
+    usedInputTokens: 432,
+    maxOutputTokens: 1_999,
+    usedOutputTokens: 87,
+  };
+  const runtime: ModelAgentRuntime = {
+    async invokeStructured() {
+      throw new Error('early search runtime must not be invoked');
+    },
+  };
+  const base = {
+    accessToken: 'token',
+    messages: [{ role: 'user' as const, content: 'Green theorem' }],
+    model: {
+      enabled: false,
+      runtime,
+      budget,
+      runId: 'run_early_budget',
+    },
+  };
+  const cases = [
+    {
+      name: 'disabled search',
+      input: {
+        ...base,
+        enabled: false,
+        fetchImpl: async () => {
+          throw new Error('disabled search must not fetch');
+        },
+      },
+    },
+    {
+      name: 'missing token',
+      input: {
+        ...base,
+        accessToken: null,
+        fetchImpl: async () => {
+          throw new Error('missing token must not fetch');
+        },
+      },
+    },
+    {
+      name: 'empty query',
+      input: {
+        ...base,
+        messages: [{ role: 'user' as const, content: '   ' }],
+        fetchImpl: async () => {
+          throw new Error('empty query must not fetch');
+        },
+      },
+    },
+    {
+      name: 'http non-ok',
+      input: {
+        ...base,
+        fetchImpl: async () => new Response('unavailable', { status: 503 }),
+      },
+    },
+    {
+      name: 'invalid envelope',
+      input: {
+        ...base,
+        fetchImpl: async () => Response.json({ success: false }),
+      },
+    },
+    {
+      name: 'invalid search schema',
+      input: {
+        ...base,
+        fetchImpl: async () =>
+          Response.json({ success: true, data: { hits: 'not-an-array' } }),
+      },
+    },
+    {
+      name: 'fetch throw',
+      input: {
+        ...base,
+        fetchImpl: async () => {
+          throw new Error('network unavailable');
+        },
+      },
+    },
+  ] satisfies readonly {
+    name: string;
+    input: Parameters<typeof searchKnowledgeForChat>[0];
+  }[];
+
+  for (const item of cases) {
+    const result = await searchKnowledgeForChat(item.input);
+    assert.deepEqual(result.modelBudget, budget, item.name);
+    assert.notEqual(result.modelBudget, budget, item.name);
+    assert.deepEqual(result.hits, [], item.name);
+  }
+
+  const outerFailureModel = Object.defineProperties(
+    {
+      enabled: true,
+      budget,
+      runId: 'run_outer_failure_budget',
+    },
+    {
+      runtime: {
+        enumerable: true,
+        get() {
+          throw new Error('Authorization: Bearer outer-runtime-canary');
+        },
+      },
+    },
+  ) as {
+    enabled: boolean;
+    runtime: ModelAgentRuntime;
+    budget: ModelAgentRunBudget;
+    runId: string;
+  };
+  const outerFailure = await searchWithHits(
+    '机会成本的定义是什么？',
+    verifierConflictHits(),
+    outerFailureModel,
+  );
+  assert.deepEqual(outerFailure.modelBudget, budget);
+  assert.notEqual(outerFailure.modelBudget, budget);
+  assert.equal(outerFailure.verifierResult?.status, 'suspicious');
+  assert.doesNotMatch(JSON.stringify(outerFailure.verifierObservation), /outer-runtime-canary|Bearer/);
+});
+
+test('does not invoke hostile budget or runtime accessors while snapshotting early fallback context', async () => {
+  const canary = 'Cookie: hostile-early-budget-canary';
+  const reads = { budget: 0, runtime: 0 };
+  const model = Object.defineProperties(
+    { enabled: true, runId: 'run_hostile_early' },
+    {
+      budget: {
+        enumerable: true,
+        get() {
+          reads.budget += 1;
+          throw new Error(canary);
+        },
+      },
+      runtime: {
+        enumerable: true,
+        get() {
+          reads.runtime += 1;
+          throw new Error(canary);
+        },
+      },
+    },
+  ) as {
+    enabled: boolean;
+    runtime: ModelAgentRuntime;
+    budget: ModelAgentRunBudget;
+    runId: string;
+  };
+
+  const result = await searchKnowledgeForChat({
+    accessToken: null,
+    messages: [{ role: 'user', content: canary }],
+    model,
+    fetchImpl: async () => {
+      throw new Error('missing token must not fetch');
+    },
+  });
+
+  assert.deepEqual(reads, { budget: 0, runtime: 0 });
+  assert.equal(result.modelBudget, undefined);
+  assert.doesNotMatch(JSON.stringify(result), /hostile-early-budget-canary|Cookie/);
+});
+
+test('logs only a fixed safe message when fetch throws raw authorization and query canaries', async () => {
+  const canary = 'Authorization: Bearer fetch-log-canary query=private-study-query';
+  const warnings: unknown[][] = [];
+  const budget = freshVerifierBudget();
+  const result = await searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: 'private-study-query' }],
+    model: {
+      enabled: false,
+      runtime: {
+        async invokeStructured() {
+          throw new Error('runtime must not be invoked');
+        },
+      },
+      budget,
+      runId: 'run_fetch_log_redaction',
+    },
+    logger: {
+      warn(...args: unknown[]) {
+        warnings.push(args);
+      },
+    },
+    fetchImpl: async () => {
+      throw new Error(canary);
+    },
+  });
+
+  assert.deepEqual(warnings, [['[Chat RAG] knowledge search skipped: request_failed']]);
+  assert.doesNotMatch(JSON.stringify(warnings), /fetch-log-canary|Authorization|Bearer|private-study-query/);
+  assert.deepEqual(result.modelBudget, budget);
 });
 
 test('does not read hostile verifier capabilities before disabled, ineligible, or safety gates', async () => {
