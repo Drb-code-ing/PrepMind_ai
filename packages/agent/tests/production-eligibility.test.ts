@@ -194,6 +194,159 @@ describe('production model eligibility', () => {
     expect(decision).toEqual({ eligible: false, reason: 'safety_blocked' });
   });
 
+  test('generalizes short contextual follow-ups without treating plain sequencing as mixed intent', () => {
+    const activeStudyContext = '正在讲解一道函数题的分步推导。';
+    const contextualInputs = ['第二步呢？', '这个呢？'];
+
+    for (const text of contextualInputs) {
+      const initial = createInitialAgentState({
+        runId: 'contextual-router',
+        userId: 'contextual-user',
+        text,
+      });
+      const state = {
+        ...initial,
+        chatContext: { recentMessages: [], activeStudyContext },
+      };
+      expect(
+        decideRouterModelEligibility({
+          text,
+          activeStudyContext,
+          deterministic: routeAgentRequest(state),
+        }),
+      ).toEqual({ eligible: true, reason: 'contextual_reference' });
+    }
+
+    const unrelatedText = '先休息一下，然后喝杯水。';
+    const unrelatedDeterministic = routeAgentRequest(
+      createInitialAgentState({
+        runId: 'unrelated-router',
+        userId: 'unrelated-user',
+        text: unrelatedText,
+      }),
+    );
+    expect(
+      decideRouterModelEligibility({
+        text: unrelatedText,
+        deterministic: unrelatedDeterministic,
+      }),
+    ).toEqual({ eligible: false, reason: 'not_semantic_needed' });
+  });
+
+  test('detects relevant mutually exclusive definitions but ignores unrelated numeric differences', () => {
+    const definitionQuery = '机会成本的定义是什么？';
+    const definitionChunks = [
+      safeChunk(
+        '机会成本是选择某个方案时所放弃的其他方案中价值最高的收益。',
+        'definition-a',
+      ),
+      safeChunk(
+        '机会成本不是放弃方案中的最高收益，而是当前方案实际支付的全部货币支出。',
+        'definition-b',
+      ),
+    ];
+    const definitionDecision = decideKnowledgeVerifierModelEligibility({
+      query: definitionQuery,
+      chunks: definitionChunks,
+      deterministic: verifyKnowledgeChunks({
+        query: definitionQuery,
+        chunks: definitionChunks,
+      }),
+    });
+
+    const unrelatedQuery = '这个矩阵的秩是多少？';
+    const unrelatedChunks = [
+      safeChunk('二零二四年的考试安排在五月，报名时间比往年更早。', 'year'),
+      safeChunk('实验记录显示水温为三十摄氏度，室温为二十二摄氏度。', 'water'),
+    ];
+    const unrelatedDecision = decideKnowledgeVerifierModelEligibility({
+      query: unrelatedQuery,
+      chunks: unrelatedChunks,
+      deterministic: verifyKnowledgeChunks({
+        query: unrelatedQuery,
+        chunks: unrelatedChunks,
+      }),
+    });
+
+    expect(definitionDecision).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(unrelatedDecision).toEqual({
+      eligible: false,
+      reason: 'not_semantic_needed',
+    });
+  });
+
+  test('keeps agreeing negated definitions and incidental topic numbers local', () => {
+    const definitionQuery = '机会成本的定义是什么？';
+    const agreeingDefinitions = [
+      safeChunk(
+        '机会成本不是实际支付的货币成本，而是放弃方案中价值最高的收益。',
+        'agreeing-definition-a',
+      ),
+      safeChunk(
+        '机会成本是放弃的其他方案中价值最高的收益，不等同于实际支出。',
+        'agreeing-definition-b',
+      ),
+    ];
+    const definitionDecision = decideKnowledgeVerifierModelEligibility({
+      query: definitionQuery,
+      chunks: agreeingDefinitions,
+      deterministic: verifyKnowledgeChunks({
+        query: definitionQuery,
+        chunks: agreeingDefinitions,
+      }),
+    });
+
+    const matrixQuery = '这个矩阵的秩是多少？';
+    const incidentalNumbers = [
+      safeChunk(
+        '二零二四年考试中的矩阵秩题难度较高，但资料没有给出矩阵的具体秩。',
+        'incidental-year-a',
+      ),
+      safeChunk(
+        '二零二五年考试继续考查矩阵秩，同样没有给出可计算的矩阵数值。',
+        'incidental-year-b',
+      ),
+    ];
+    const numberDecision = decideKnowledgeVerifierModelEligibility({
+      query: matrixQuery,
+      chunks: incidentalNumbers,
+      deterministic: verifyKnowledgeChunks({
+        query: matrixQuery,
+        chunks: incidentalNumbers,
+      }),
+    });
+
+    expect(definitionDecision).toEqual({
+      eligible: false,
+      reason: 'high_confidence_local',
+    });
+    expect(numberDecision).toEqual({
+      eligible: false,
+      reason: 'high_confidence_local',
+    });
+  });
+
+  test('ignores stale markers in weak off-topic evidence', () => {
+    const query = '这个矩阵的秩是多少？';
+    const chunks = [
+      safeChunk(
+        '这份旧版本旅行手册已经过期，里面的景区开放时间不再适用。',
+        'stale-travel',
+        0.2,
+      ),
+    ];
+    const decision = decideKnowledgeVerifierModelEligibility({
+      query,
+      chunks,
+      deterministic: verifyKnowledgeChunks({ query, chunks }),
+    });
+
+    expect(decision).toEqual({ eligible: false, reason: 'not_semantic_needed' });
+  });
+
   test('returns fixed JSON decisions without mutating caller objects', () => {
     const routerInput = {
       text: '先讲题还是先安排计划？',
