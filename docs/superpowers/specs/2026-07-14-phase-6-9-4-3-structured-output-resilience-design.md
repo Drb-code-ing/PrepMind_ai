@@ -224,7 +224,7 @@ Verifier 当前 Zod discriminated union 还会生成：
 - `minItems / maxItems`；
 - draft-07 `$schema` 标记。
 
-DeepSeek strict 文档明确展示了 object、array、number、enum、anyOf、`$ref` 等能力，但没有把 `const`、tuple `items` 或 draft 元数据列为稳定子集。为避免 Router 修好后在 Verifier 才暴露第二个兼容问题，不能把原始 SDK 生成 schema 不加检查地发送给 Provider。
+DeepSeek strict 文档明确展示了 object、array、number、enum、anyOf、`$ref` 等能力，但没有把 `const`、tuple `items`、`minItems / maxItems` 或 draft 元数据列为稳定子集。为避免 Router 修好后在 Verifier 才暴露第二个兼容问题，不能把原始 SDK 生成 schema 不加检查地发送给 Provider。
 
 ### 6.3 兼容投影
 
@@ -232,7 +232,7 @@ DeepSeek strict 文档明确展示了 object、array、number、enum、anyOf、`
 
 1. 删除仅用于声明 draft 的顶层 `$schema`；
 2. 把 `{ const: value }` 等价转换为 `{ enum: [value] }`；
-3. 把单元素 tuple `items: [schema]` 转换为同一元素 schema，并保留 `minItems=1 / maxItems=1`；
+3. 把单元素 tuple `items: [schema]` 转换为同一元素 schema，并从 Provider schema 删除 `minItems / maxItems`；数组长度仍由 canonical Zod 校验；
 4. 递归验证每个 object 的所有 properties 都位于 required，且 `additionalProperties === false`；
 5. 只接受当前 Router / Verifier 实际需要、且 DeepSeek strict 文档支持的低复杂度关键字；
 6. 遇到多元素 tuple、可选 object 字段、自由 additional properties、未知关键字或无法安全复制的值时，必须在 Provider 调用前拒绝；
@@ -337,7 +337,7 @@ Error、Trace、evidence、stdout、文档和 Git 禁止包含：
 1. 默认模式仍发送 `json_object`，现有 Conversation Summary contract 不变；
 2. strict tool 发送官方 Beta endpoint、唯一 forced tool、`strict: true`，且无 `response_format`；
 3. Router 实际 schema wire snapshot 符合批准子集；
-4. Verifier 实际 schema 完成 `const -> enum`、单元素 tuple 转换和 `$schema` 删除；
+4. Verifier 实际 schema 完成 `const -> enum`、单元素 tuple 转换以及 `$schema / minItems / maxItems` 删除；
 5. canonical Zod 仍拒绝错误 enum、extra field、重复 conflict evidence 和非法 status/evidence 组合；
 6. 不支持的 schema 在 fetch 前失败；
 7. invalid/missing tool call 安全归类且 raw content 不泄露；
