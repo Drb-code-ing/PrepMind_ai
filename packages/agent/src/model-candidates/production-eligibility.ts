@@ -54,12 +54,23 @@ type ClaimAnalysis = {
   normalizedSentences: readonly string[];
   scalarClaims: ScalarClaimAnalysis;
   polarityClaims: readonly PolarityClaim[];
-  exclusiveDefinition: ExclusiveDefinition | null;
-  positiveDefinition: PositiveDefinition | null;
+  definitions: DefinitionAnalysis;
 };
 
 type PolarityClaim = { negative: boolean; signature: string };
 type PositiveDefinition = { subject: string; claim: string };
+type ExclusiveDefinition = {
+  subject: string;
+  excluded: string;
+  asserted: string;
+};
+type DefinitionClaim =
+  | ({ kind: 'positive' } & PositiveDefinition)
+  | ({ kind: 'exclusive' } & ExclusiveDefinition);
+type DefinitionAnalysis = {
+  overflow: boolean;
+  claims: readonly DefinitionClaim[];
+};
 
 const MAX_ROUTER_TEXT_BYTES = 16_384;
 const MAX_ROUTER_CONTEXT_BYTES = 12_288;
@@ -71,6 +82,9 @@ const MAX_EXCERPT_CODE_POINTS = 4_000;
 const MAX_CONTEXTUAL_MESSAGE_CODE_POINTS = 24;
 const MAX_TOPIC_TERMS = 512;
 const MAX_SCALAR_CLAIMS_PER_EXCERPT = 16;
+const MAX_POLARITY_CLAIMS_PER_EXCERPT = 16;
+const MAX_DEFINITIONS_PER_EXCERPT = 8;
+const MAX_SCALAR_VALUE_CODE_POINTS = 128;
 
 const INVALID_INPUT = Object.freeze({
   eligible: false,
@@ -146,10 +160,14 @@ const CLAIM_DISCOURSE_MARKERS =
   /(?:另一[份段]?|这一|这个|相同|同一|给定|该|所以|因此|根据|材料(?:记载|显示|说明)?|(?:监测|复核)?记录显示|重新计算|本次)/gu;
 const NEGATION_TOKEN_PATTERN =
   /并非|不是|不能|没有|不再|未|无|不|\b(?:not|no|never)\b/giu;
-const TEMPORAL_QUERY_SIGNAL =
-  /日期|年份|时间|何时|什么时候|哪一年|版本|\b(?:date|year|time|version)\b/iu;
+const POLARITY_CLAUSE_BOUNDARY =
+  /并且|而且|但是|然而|不过|以及|且|但|\b(?:and|but|however)\b/giu;
+const TEMPORAL_ANSWER_SLOT =
+  /何时|什么时候|几点|哪(?:一)?年|哪些年份|什么(?:日期|时间)|(?:日期|年份|发生时间|版本(?:号)?)(?:是|为)?(?:多少|什么)?[？?]|\b(?:when|what\s+(?:date|year|time|version)|which\s+year)\b/iu;
 const TEMPORAL_UNIT_AFTER_SCALAR =
   /^(?:年|月|日|号|时|点|分|秒|季度|世纪)/u;
+const DEFINITION_PATTERN =
+  /(?:^|[，,。；;:：!?！？])\s*([\p{Script=Han}a-z0-9_-]{2,32}?)(?:不是([^，,。；;!?！？]{2,120})\s*[，,]?\s*而是([^，,。；;!?！？]{2,120})|(?:是指|是)([^，,。；;!?！？]{2,160}))/gu;
 const ASCII_STOP_WORDS = new Set([
   'the',
   'this',
@@ -251,9 +269,9 @@ export function decideKnowledgeVerifierModelEligibility(
       return STALE_OR_UNCERTAIN;
     }
     const queryTerms = extractTopicTerms(query);
-    const queryTargetsTemporal = TEMPORAL_QUERY_SIGNAL.test(query);
+    const queryTargetsTemporalAnswer = hasTemporalAnswerSlot(query);
     const claimAnalyses = relevant.map((chunk) =>
-      analyzeClaims(chunk.text, queryTargetsTemporal),
+      analyzeClaims(chunk.text, queryTargetsTemporalAnswer),
     );
     if (hasSemanticConflict(queryTerms, claimAnalyses)) {
       return SEMANTIC_CONFLICT;
@@ -501,6 +519,7 @@ function hasSemanticConflict(
     for (let rightIndex = leftIndex + 1; rightIndex < analyses.length; rightIndex += 1) {
       const right = analyses[rightIndex];
       if (!right) continue;
+      if (left.definitions.overflow || right.definitions.overflow) continue;
       if (
         shareClaimContext(queryTerms, left.topicTerms, right.topicTerms) &&
         (OPPOSING_RELATIONS.some(
@@ -508,7 +527,7 @@ function hasSemanticConflict(
             (first.test(left.text) && second.test(right.text)) ||
             (second.test(left.text) && first.test(right.text)),
         ) ||
-          hasExclusiveDefinitionConflict(left, right) ||
+          hasDefinitionConflict(left, right) ||
           hasOppositePolarity(left, right) ||
           haveDifferentScalarClaims(left.scalarClaims, right.scalarClaims) ||
           haveDifferentCategoryClaims(left, right))
@@ -520,42 +539,37 @@ function hasSemanticConflict(
   return false;
 }
 
-function hasExclusiveDefinitionConflict(
+function hasDefinitionConflict(
   left: ClaimAnalysis,
   right: ClaimAnalysis,
 ): boolean {
-  const leftExclusive = left.exclusiveDefinition;
-  const rightExclusive = right.exclusiveDefinition;
-  if (leftExclusive && rightExclusive) {
-    return exclusionsCrossConflict(leftExclusive, rightExclusive);
-  }
-  return (
-    exclusiveDefinitionOpposes(leftExclusive, right.positiveDefinition) ||
-    exclusiveDefinitionOpposes(rightExclusive, left.positiveDefinition)
-  );
-}
-
-type ExclusiveDefinition = {
-  subject: string;
-  excluded: string;
-  asserted: string;
-};
-
-function extractExclusiveDefinition(
-  sentences: readonly string[],
-): ExclusiveDefinition | null {
-  for (const sentence of sentences) {
-    const match = sentence.match(
-      /^([\p{Script=Han}a-z0-9_-]{2,32}?)不是([^，。；;]{2,120})[，,]?而是([^。；;]{2,120})/u,
-    );
-    const subject = match?.[1];
-    const excluded = match?.[2];
-    const asserted = match?.[3];
-    if (subject !== undefined && excluded !== undefined && asserted !== undefined) {
-      return { subject, excluded, asserted };
+  if (left.definitions.overflow || right.definitions.overflow) return false;
+  for (const leftDefinition of left.definitions.claims) {
+    for (const rightDefinition of right.definitions.claims) {
+      if (
+        leftDefinition.kind === 'exclusive' &&
+        rightDefinition.kind === 'exclusive' &&
+        exclusionsCrossConflict(leftDefinition, rightDefinition)
+      ) {
+        return true;
+      }
+      if (
+        leftDefinition.kind === 'exclusive' &&
+        rightDefinition.kind === 'positive' &&
+        exclusiveDefinitionOpposes(leftDefinition, rightDefinition)
+      ) {
+        return true;
+      }
+      if (
+        leftDefinition.kind === 'positive' &&
+        rightDefinition.kind === 'exclusive' &&
+        exclusiveDefinitionOpposes(rightDefinition, leftDefinition)
+      ) {
+        return true;
+      }
     }
   }
-  return null;
+  return false;
 }
 
 function exclusionsCrossConflict(
@@ -571,32 +585,11 @@ function exclusionsCrossConflict(
   return crossOverlap >= 0.3 && crossOverlap > assertedOverlap + 0.1;
 }
 
-function extractPositiveDefinition(
-  sentences: readonly string[],
-): PositiveDefinition | null {
-  for (const sentence of sentences) {
-    const match = sentence.match(
-      /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:是指|是)([^。；;]{2,160})/u,
-    );
-    const subject = match?.[1];
-    const claim = match?.[2];
-    if (subject === undefined || claim === undefined || subject.endsWith('不')) {
-      continue;
-    }
-    return { subject, claim };
-  }
-  return null;
-}
-
 function exclusiveDefinitionOpposes(
-  exclusive: ExclusiveDefinition | null,
-  positive: PositiveDefinition | null,
+  exclusive: ExclusiveDefinition,
+  positive: PositiveDefinition,
 ): boolean {
-  if (
-    !exclusive ||
-    !positive ||
-    !isTopicRelevant(exclusive.subject, positive.subject)
-  ) {
+  if (!isTopicRelevant(exclusive.subject, positive.subject)) {
     return false;
   }
 
@@ -646,10 +639,9 @@ function extractTopicTerms(value: string): Set<string> {
 
 function analyzeClaims(
   text: string,
-  queryTargetsTemporal: boolean,
+  queryTargetsTemporalAnswer: boolean,
 ): ClaimAnalysis {
   const sentences = splitClaimSentences(text);
-  const definitionSegments = splitDefinitionSegments(text);
   const normalizedSentences = sentences.map((sentence) =>
     normalizeClaimSignature(sentence),
   );
@@ -657,10 +649,9 @@ function analyzeClaims(
     text,
     topicTerms: extractTopicTerms(text),
     normalizedSentences,
-    scalarClaims: analyzeScalarClaims(sentences, queryTargetsTemporal),
+    scalarClaims: analyzeScalarClaims(sentences, queryTargetsTemporalAnswer),
     polarityClaims: analyzePolarity(sentences),
-    exclusiveDefinition: extractExclusiveDefinition(definitionSegments),
-    positiveDefinition: extractPositiveDefinition(definitionSegments),
+    definitions: scanDefinitions(text),
   };
 }
 
@@ -697,7 +688,7 @@ function haveDifferentScalarClaims(
 
 function analyzeScalarClaims(
   sentences: readonly string[],
-  queryTargetsTemporal: boolean,
+  queryTargetsTemporalAnswer: boolean,
 ): ScalarClaimAnalysis {
   const valuesBySignature = new Map<string, Set<string>>();
   let claimCount = 0;
@@ -712,7 +703,7 @@ function analyzeScalarClaims(
       const start = match.index;
       if (start === undefined) continue;
       if (
-        !queryTargetsTemporal &&
+        !queryTargetsTemporalAnswer &&
         TEMPORAL_UNIT_AFTER_SCALAR.test(sentence.slice(start + scalar.length))
       ) {
         continue;
@@ -788,32 +779,76 @@ function polaritySignaturesMatch(left: string, right: string): boolean {
 function analyzePolarity(
   sentences: readonly string[],
 ): PolarityClaim[] {
-  return sentences.flatMap((sentence) => {
-    if (/不是[^。；;]{0,120}而是/u.test(sentence)) return [];
-    const scanned = scanPolarity(sentence);
-    const negative = scanned.negationCount % 2 === 1;
-    const signature = normalizeClaimSignature(scanned.withoutNegation);
-    return signature.length >= 4 ? [{ negative, signature }] : [];
-  });
+  const claims: PolarityClaim[] = [];
+  let clauseCount = 0;
+  for (const sentence of sentences) {
+    if (/不是[^。；;]{0,120}而是/u.test(sentence)) continue;
+    const clauses = splitPolarityClauses(sentence);
+    if (clauses === null) return [];
+    for (const clause of clauses) {
+      clauseCount += 1;
+      if (clauseCount > MAX_POLARITY_CLAIMS_PER_EXCERPT) return [];
+      const scanned = scanPolarityClause(clause);
+      if (scanned === null) continue;
+      const signature = normalizeClaimSignature(scanned.withoutNegation);
+      if (signature.length >= 4) {
+        claims.push({
+          negative: scanned.negationCount % 2 === 1,
+          signature,
+        });
+      }
+    }
+  }
+  return claims;
 }
 
 function containsNegation(value: string): boolean {
-  return scanPolarity(value).negationCount > 0;
+  const bounded = Array.from(value).slice(0, 200).join('');
+  NEGATION_TOKEN_PATTERN.lastIndex = 0;
+  const result = NEGATION_TOKEN_PATTERN.test(bounded);
+  NEGATION_TOKEN_PATTERN.lastIndex = 0;
+  return result;
 }
 
-function scanPolarity(value: string): {
+function splitPolarityClauses(value: string): string[] | null {
+  const bounded = Array.from(value).slice(0, 200).join('');
+  const clauses: string[] = [];
+  let cursor = 0;
+  POLARITY_CLAUSE_BOUNDARY.lastIndex = 0;
+  for (const match of bounded.matchAll(POLARITY_CLAUSE_BOUNDARY)) {
+    const index = match.index;
+    if (index === undefined) continue;
+    const clause = bounded.slice(cursor, index).trim();
+    if (clause.length >= 2) clauses.push(clause);
+    if (clauses.length > MAX_POLARITY_CLAIMS_PER_EXCERPT) return null;
+    cursor = index + match[0].length;
+  }
+  const tail = bounded.slice(cursor).trim();
+  if (tail.length >= 2) clauses.push(tail);
+  return clauses.length > MAX_POLARITY_CLAIMS_PER_EXCERPT ? null : clauses;
+}
+
+function scanPolarityClause(value: string): {
   negationCount: number;
   withoutNegation: string;
-} {
+} | null {
   const bounded = Array.from(value).slice(0, 200).join('');
   const pieces: string[] = [];
   let negationCount = 0;
   let cursor = 0;
+  let previousNegationEnd = -1;
   for (const match of bounded.matchAll(NEGATION_TOKEN_PATTERN)) {
     const index = match.index;
     if (index === undefined) continue;
+    if (
+      previousNegationEnd >= 0 &&
+      bounded.slice(previousNegationEnd, index).trim().length > 0
+    ) {
+      return null;
+    }
     pieces.push(bounded.slice(cursor, index));
     cursor = index + match[0].length;
+    previousNegationEnd = cursor;
     negationCount += 1;
   }
   pieces.push(bounded.slice(cursor));
@@ -835,24 +870,32 @@ function splitClaimSentences(value: string): string[] {
     .slice(0, 12);
 }
 
-function splitDefinitionSegments(value: string): string[] {
-  const segments: string[] = [];
-  const hardSegments = value.split(/[。；;:：!?！？]+/u);
-  for (let hardIndex = 0; hardIndex < hardSegments.length; hardIndex += 1) {
-    const hardSegment = hardSegments[hardIndex]?.trim();
-    if (!hardSegment) continue;
-    segments.push(hardSegment);
-    if (segments.length >= 12) break;
-    const characters = Array.from(hardSegment);
-    for (let index = 0; index < characters.length; index += 1) {
-      if (characters[index] !== ',' && characters[index] !== '，') continue;
-      const suffix = characters.slice(index + 1).join('').trim();
-      if (suffix.length >= 4) segments.push(suffix);
-      if (segments.length >= 12) break;
+function scanDefinitions(value: string): DefinitionAnalysis {
+  const claims: DefinitionClaim[] = [];
+  DEFINITION_PATTERN.lastIndex = 0;
+  for (const match of value.matchAll(DEFINITION_PATTERN)) {
+    const subject = match[1];
+    const excluded = match[2];
+    const asserted = match[3];
+    const positive = match[4];
+    if (subject === undefined) continue;
+    if (excluded !== undefined && asserted !== undefined) {
+      claims.push({ kind: 'exclusive', subject, excluded, asserted });
+    } else if (positive !== undefined && !subject.endsWith('不')) {
+      claims.push({ kind: 'positive', subject, claim: positive });
+    } else {
+      continue;
     }
-    if (segments.length >= 12) break;
+    if (claims.length > MAX_DEFINITIONS_PER_EXCERPT) {
+      return { overflow: true, claims: [] };
+    }
   }
-  return segments;
+  return { overflow: false, claims };
+}
+
+function hasTemporalAnswerSlot(query: string): boolean {
+  const bounded = Array.from(query).slice(0, 200).join('');
+  return TEMPORAL_ANSWER_SLOT.test(bounded);
 }
 
 function normalizeClaimSignature(value: string): string {
@@ -868,9 +911,14 @@ function maskScalarValues(value: string): string {
 }
 
 function canonicalizeScalarValue(value: string): string | null {
-  const arabic = value.match(/^(\d+(?:\.\d+)?)(万亿|万|亿)?$/u);
+  if (codePointLength(value) > MAX_SCALAR_VALUE_CODE_POINTS) return null;
+  const arabic = value.match(/^(\d+)(?:\.(\d+))?(万亿|万|亿)?$/u);
   if (arabic?.[1]) {
-    return shiftDecimal(arabic[1], scalePower(arabic[2]));
+    return canonicalizeScaledDecimal(
+      BigInt(arabic[1]),
+      arabic[2] ?? '',
+      scalePower(arabic[3]),
+    );
   }
 
   const fractionParts = value.split('分之');
@@ -878,8 +926,7 @@ function canonicalizeScalarValue(value: string): string | null {
     const denominator = parseChineseInteger(fractionParts[0] ?? '');
     const numerator = parseChineseInteger(fractionParts[1] ?? '');
     if (denominator === null || numerator === null || denominator === 0n) return null;
-    const divisor = greatestCommonDivisor(denominator, numerator);
-    return `${numerator / divisor}/${denominator / divisor}`;
+    return canonicalizeRational(numerator, denominator);
   }
 
   const decimal = value.match(
@@ -889,14 +936,15 @@ function canonicalizeScalarValue(value: string): string | null {
     const integer = parseChineseInteger(decimal[1]);
     const fraction = parseChineseDigitSequence(decimal[2]);
     if (integer === null || fraction === null) return null;
-    return shiftDecimal(
-      `${integer}.${fraction}`,
+    return canonicalizeScaledDecimal(
+      integer,
+      fraction,
       scalePower(decimal[3]),
     );
   }
 
   const integer = parseChineseInteger(value);
-  return integer === null ? null : String(integer);
+  return integer === null ? null : canonicalizeRational(integer, 1n);
 }
 
 const CHINESE_DIGITS: Readonly<Record<string, number>> = Object.freeze({
@@ -979,19 +1027,28 @@ function scalePower(scale: string | undefined): number {
   return scale === '万亿' ? 12 : scale === '亿' ? 8 : scale === '万' ? 4 : 0;
 }
 
-function shiftDecimal(value: string, power: number): string | null {
-  const [integer = '0', fraction = ''] = value.split('.');
-  if (!/^\d+$/u.test(integer) || !/^\d*$/u.test(fraction)) return null;
-  const digits = `${integer}${fraction}`.replace(/^0+(?=\d)/u, '') || '0';
-  const shift = power - fraction.length;
-  if (shift >= 0) return `${digits}${'0'.repeat(shift)}`.replace(/^0+(?=\d)/u, '');
-  const point = digits.length + shift;
-  const padded = point > 0 ? digits : `${'0'.repeat(-point)}${digits}`;
-  const split = Math.max(0, point);
-  const result = `${padded.slice(0, split) || '0'}.${padded.slice(split)}`
-    .replace(/0+$/u, '')
-    .replace(/\.$/u, '');
-  return result;
+function canonicalizeScaledDecimal(
+  integer: bigint,
+  fraction: string,
+  scale: number,
+): string | null {
+  if (!/^\d*$/u.test(fraction)) return null;
+  const denominator = 10n ** BigInt(fraction.length);
+  const fractional = fraction.length === 0 ? 0n : BigInt(fraction);
+  const numerator =
+    (integer * denominator + fractional) * (10n ** BigInt(scale));
+  return canonicalizeRational(numerator, denominator);
+}
+
+function canonicalizeRational(numerator: bigint, denominator: bigint): string | null {
+  if (denominator === 0n) return null;
+  const normalizedNumerator = denominator < 0n ? -numerator : numerator;
+  const normalizedDenominator = denominator < 0n ? -denominator : denominator;
+  const divisor = greatestCommonDivisor(
+    normalizedNumerator,
+    normalizedDenominator,
+  );
+  return `${normalizedNumerator / divisor}/${normalizedDenominator / divisor}`;
 }
 
 function greatestCommonDivisor(left: bigint, right: bigint): bigint {

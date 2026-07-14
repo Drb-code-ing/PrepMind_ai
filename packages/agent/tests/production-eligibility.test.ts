@@ -568,6 +568,50 @@ describe('production model eligibility', () => {
     expect(differentPredicate.eligible).toBe(false);
   });
 
+  test('scopes negation parity to bounded predicate clauses', () => {
+    const chineseQuery = '这个命题是否成立？';
+    const chineseConflict = verifierDecision(chineseQuery, [
+      safeChunk(
+        '这个命题成立且证明过程完整有效。',
+        'scoped-chinese-positive',
+      ),
+      safeChunk(
+        '这个命题不成立且证明过程不完整。',
+        'scoped-chinese-negative',
+      ),
+    ]);
+    const doubleNegative = verifierDecision(chineseQuery, [
+      safeChunk('复核结论确认这个命题成立。', 'scoped-double-positive'),
+      safeChunk('复核结论确认这个命题并非不成立。', 'scoped-double-negative'),
+    ]);
+    const differentPredicate = verifierDecision(chineseQuery, [
+      safeChunk('复核结论确认这个命题成立。', 'scoped-predicate-positive'),
+      safeChunk('复核意见认为这个命题不够清晰。', 'scoped-predicate-other'),
+    ]);
+    const englishQuery = 'Is the proposition valid?';
+    const englishConflict = verifierDecision(englishQuery, [
+      safeChunk(
+        'The proposition is valid and the proof is complete.',
+        'scoped-english-positive',
+      ),
+      safeChunk(
+        'The proposition is not valid and the proof is not complete.',
+        'scoped-english-negative',
+      ),
+    ]);
+
+    expect(chineseConflict).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(doubleNegative.eligible).toBe(false);
+    expect(differentPredicate.eligible).toBe(false);
+    expect(englishConflict).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+  });
+
   test('keeps temporal qualifiers and cross-dimension scalars out of answer conflicts', () => {
     const speedQuery = '车辆在观测时的速度是多少？';
     const timeQualifier = verifierDecision(speedQuery, [
@@ -590,6 +634,32 @@ describe('production model eligibility', () => {
       reason: 'semantic_conflict',
     });
     expect(crossDimension.eligible).toBe(false);
+  });
+
+  test('opens temporal scalars only when time is the bounded answer slot', () => {
+    const qualifierQuery = '车辆在这个时间的速度是多少？';
+    const qualifierOnly = verifierDecision(qualifierQuery, [
+      safeChunk('车辆甲在上午10点的速度为60千米每小时。', 'slot-qualifier-10'),
+      safeChunk('车辆甲在上午11点的速度为60千米每小时。', 'slot-qualifier-11'),
+    ]);
+    const timeAnswer = verifierDecision('车辆何时达到最高速度？', [
+      safeChunk('车辆甲在上午10点达到最高速度。', 'slot-answer-10'),
+      safeChunk('车辆甲在上午11点达到最高速度。', 'slot-answer-11'),
+    ]);
+    const yearAnswer = verifierDecision('这次历史事件发生在哪一年？', [
+      safeChunk('这次历史事件发生在2024年。', 'slot-year-2024'),
+      safeChunk('这次历史事件发生在2025年。', 'slot-year-2025'),
+    ]);
+
+    expect(qualifierOnly.eligible).toBe(false);
+    expect(timeAnswer).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(yearAnswer).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
   });
 
   test('canonicalizes bounded Chinese sections and decimals without precision loss', () => {
@@ -618,6 +688,76 @@ describe('production model eligibility', () => {
     });
     expect(decimalEquivalent.eligible).toBe(false);
     expect(unsupported.eligible).toBe(false);
+  });
+
+  test('canonicalizes fractions and decimals in one exact rational domain', () => {
+    const query = '这个比例的数值是多少？';
+    const equivalentHalf = verifierDecision(query, [
+      safeChunk('这个比例的数值为二分之一。', 'rational-half-chinese'),
+      safeChunk('这个比例的数值为0.5。', 'rational-half-decimal'),
+    ]);
+    const equivalentDecimal = verifierDecision(query, [
+      safeChunk('这个比例的数值为一点五。', 'rational-decimal-chinese'),
+      safeChunk('这个比例的数值为1.5。', 'rational-decimal-arabic'),
+    ]);
+    const conflicting = verifierDecision(query, [
+      safeChunk('这个比例的数值为二分之一。', 'rational-conflict-half'),
+      safeChunk('这个比例的数值为0.6。', 'rational-conflict-decimal'),
+    ]);
+
+    expect(equivalentHalf.eligible).toBe(false);
+    expect(equivalentDecimal.eligible).toBe(false);
+    expect(conflicting).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+  });
+
+  test('finds bounded definitions after ordinary prefix clauses without spending their cap', () => {
+    const query = '机会成本的定义是什么？';
+    const commaPrefix = '背景说明，'.repeat(20);
+    const semicolonPrefix = '资料备注；'.repeat(12);
+    const conflict = verifierDecision(query, [
+      safeChunk(
+        `${commaPrefix}机会成本是放弃方案中价值最高的收益。`,
+        'definition-scan-positive',
+      ),
+      safeChunk(
+        `${semicolonPrefix}机会成本不是放弃方案中的最高收益，而是实际支付的货币支出。`,
+        'definition-scan-exclusive',
+      ),
+    ]);
+    const agreeing = verifierDecision(query, [
+      safeChunk(
+        `${commaPrefix}机会成本不是实际货币支出，而是放弃方案中的最佳收益。`,
+        'definition-scan-agree-a',
+      ),
+      safeChunk(
+        `${semicolonPrefix}机会成本不是已经支付的费用，而是放弃选择里的最高收益。`,
+        'definition-scan-agree-b',
+      ),
+    ]);
+    const actualDefinitionOverflow = Array.from(
+      { length: 9 },
+      () => '辅助概念是用于说明背景的普通定义；',
+    ).join('');
+    const overflow = verifierDecision(query, [
+      safeChunk(
+        `${actualDefinitionOverflow}机会成本是放弃方案中价值最高的收益。`,
+        'definition-scan-overflow',
+      ),
+      safeChunk(
+        '机会成本不是放弃方案中的最高收益，而是实际支付的货币支出。',
+        'definition-scan-overflow-conflict',
+      ),
+    ]);
+
+    expect(conflict).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(agreeing.eligible).toBe(false);
+    expect(overflow.eligible).toBe(false);
   });
 
   test('keeps equivalent explicit exclusions local', () => {
