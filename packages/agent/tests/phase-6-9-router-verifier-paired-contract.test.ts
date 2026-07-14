@@ -14,6 +14,9 @@ import {
   PHASE_6943_PROMPT_VERSION,
   PHASE_6943_REPORT_SCHEMA_VERSION,
   PHASE_6943_LEGACY_RUNNER_VERSION,
+  PHASE_6943_LEGACY_PROMPT_VERSION,
+  PHASE_6943_PREVIOUS_RUNNER_VERSION,
+  PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE,
   PHASE_6943_RUNNER_VERSION,
   PHASE_6943_STRUCTURED_OUTPUT_MODE,
   PHASE_6943_ENTRY_SCHEMA,
@@ -82,10 +85,12 @@ describe('Phase 6.9.4.3 paired contract', () => {
     for (const variant of variants) expect(parsePhase6943Output(variant).ok).toBe(true);
   });
 
-  test('binds strict-tool transport identity to v2 Live evidence only', () => {
+  test('binds JSON-mode transport identity to v3 Live evidence only', () => {
     expect(PHASE_6943_LEGACY_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v1');
-    expect(PHASE_6943_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v2');
-    expect(PHASE_6943_STRUCTURED_OUTPUT_MODE).toBe('deepseek_strict_tool_v1');
+    expect(PHASE_6943_PREVIOUS_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v2');
+    expect(PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE).toBe('deepseek_strict_tool_v1');
+    expect(PHASE_6943_RUNNER_VERSION).toBe('phase-6.9.4.3-runner-v3');
+    expect(PHASE_6943_STRUCTURED_OUTPUT_MODE).toBe('deepseek_json_object_v1');
 
     for (const runStatus of ['complete', 'incomplete'] as const) {
       const currentLive = structuredClone(buildReport('live', runStatus));
@@ -107,7 +112,14 @@ describe('Phase 6.9.4.3 paired contract', () => {
       extra.transport = 'forged';
       expect(parsePhase6943Output(extra).ok).toBe(false);
 
-      const legacyLive = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      const previousLive = structuredClone(currentLive) as unknown as Record<string, unknown>;
+      previousLive.runnerVersion = PHASE_6943_PREVIOUS_RUNNER_VERSION;
+      previousLive.structuredOutputMode = PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE;
+      previousLive.promptVersion = PHASE_6943_LEGACY_PROMPT_VERSION;
+      setCandidatePromptVersion(previousLive, PHASE_6943_LEGACY_PROMPT_VERSION);
+      expect(parsePhase6943Output(previousLive).ok).toBe(true);
+
+      const legacyLive = structuredClone(previousLive) as unknown as Record<string, unknown>;
       legacyLive.runnerVersion = PHASE_6943_LEGACY_RUNNER_VERSION;
       delete legacyLive.structuredOutputMode;
       expect(parsePhase6943Output(legacyLive).ok).toBe(true);
@@ -117,15 +129,55 @@ describe('Phase 6.9.4.3 paired contract', () => {
 
     for (const runnerVersion of [
       PHASE_6943_LEGACY_RUNNER_VERSION,
+      PHASE_6943_PREVIOUS_RUNNER_VERSION,
       PHASE_6943_RUNNER_VERSION,
     ] as const) {
       const mock = structuredClone(buildReport('mock', 'complete')) as unknown as Record<string, unknown>;
       mock.runnerVersion = runnerVersion;
+      const mockPrompt = runnerVersion === PHASE_6943_RUNNER_VERSION
+        ? PHASE_6943_PROMPT_VERSION
+        : PHASE_6943_LEGACY_PROMPT_VERSION;
+      mock.promptVersion = mockPrompt;
+      setCandidatePromptVersion(mock as Phase6943Output, mockPrompt);
       expect('structuredOutputMode' in mock).toBe(false);
       expect(parsePhase6943Output(mock).ok).toBe(true);
       mock.structuredOutputMode = PHASE_6943_STRUCTURED_OUTPUT_MODE;
       expect(parsePhase6943Output(mock).ok).toBe(false);
     }
+  });
+
+  test('binds each Live runner generation to its matching candidate prompt version', () => {
+    const currentLive = structuredClone(buildReport('live', 'complete'));
+    if (currentLive.kind !== 'report' || currentLive.runKind !== 'live') {
+      throw new Error('expected live report');
+    }
+    const currentCandidate = currentLive.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live',
+    );
+    if (!currentCandidate || currentCandidate.entryStatus !== 'observed' || currentCandidate.lane !== 'live') {
+      throw new Error('expected live candidate entry');
+    }
+    currentCandidate.promptVersion = PHASE_6943_LEGACY_PROMPT_VERSION;
+    expect(parsePhase6943Output(currentLive).ok).toBe(false);
+
+    const previousLive = structuredClone(buildReport('live', 'complete')) as Extract<
+      Phase6943Output,
+      { kind: 'report'; runKind: 'live' }
+    >;
+    previousLive.runnerVersion = PHASE_6943_PREVIOUS_RUNNER_VERSION;
+    previousLive.structuredOutputMode = PHASE_6943_PREVIOUS_STRUCTURED_OUTPUT_MODE;
+    previousLive.promptVersion = PHASE_6943_LEGACY_PROMPT_VERSION;
+    setCandidatePromptVersion(previousLive, PHASE_6943_LEGACY_PROMPT_VERSION);
+    expect(parsePhase6943Output(previousLive).ok).toBe(true);
+
+    const mismatchedPreviousEntry = previousLive.lanes.live.entries.find(
+      (entry) => entry.entryStatus === 'observed' && entry.lane === 'live',
+    );
+    if (!mismatchedPreviousEntry || mismatchedPreviousEntry.entryStatus !== 'observed' || mismatchedPreviousEntry.lane !== 'live') {
+      throw new Error('expected previous live candidate entry');
+    }
+    mismatchedPreviousEntry.promptVersion = PHASE_6943_PROMPT_VERSION;
+    expect(parsePhase6943Output(previousLive).ok).toBe(false);
   });
 
   test('accepts an optional provider failure category only on attempted Live provider failures', () => {
@@ -847,6 +899,23 @@ function buildInvalidRun(): Phase6943Output {
     ],
   };
 }
+
+function setCandidatePromptVersion(
+  report: Extract<Phase6943Output, { kind: 'report' }>,
+  promptVersion: typeof PHASE_6943_PROMPT_VERSION | typeof PHASE_6943_LEGACY_PROMPT_VERSION,
+) {
+  const lanes = report.runKind === 'live'
+    ? [report.lanes.mock, report.lanes.live]
+    : [report.lanes.mock];
+  for (const lane of lanes) {
+    for (const entry of lane.entries) {
+      if (entry.entryStatus === 'observed' && entry.lane !== 'deterministic') {
+        entry.promptVersion = promptVersion;
+      }
+    }
+  }
+}
+
 function buildReport(runKind: 'mock' | 'live', runStatus: 'complete' | 'incomplete'): Phase6943Output {
   const deterministicEntries = entries('deterministic', false);
   const mockEntries = entries('mock', runStatus === 'incomplete');

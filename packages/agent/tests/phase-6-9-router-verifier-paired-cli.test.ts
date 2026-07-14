@@ -33,7 +33,6 @@ import {
   buildPhase6943LiveEvidencePath,
   createPhase6943LiveDependencies,
   executePhase6943Cli,
-  PHASE_6943_LIVE_SCHEMA_PROFILES,
   parsePhase6943Cli,
   reservePhase6943Evidence,
   validatePhase6943LiveStructuredSchemas,
@@ -51,7 +50,7 @@ const LIVE_ENV = {
   AI_PROVIDER_MODE: 'live',
   AI_ENABLE_LIVE_CALLS: 'true',
   AI_MODEL: 'deepseek-v4-flash',
-  AI_BASE_URL: 'https://api.deepseek.com/beta',
+  AI_BASE_URL: 'https://api.deepseek.com',
   DEEPSEEK_API_KEY: 'test-only-key',
 } as const;
 const LIVE_ARGS = [
@@ -131,6 +130,7 @@ describe('Phase 6.9.4.3 CLI', () => {
       (env) => { env.DEEPSEEK_API_KEY = ''; },
       (env) => { env.DEEPSEEK_API_KEY = 'x\ny'; },
       (env) => { env.DEEPSEEK_API_KEY = 'x'.repeat(513); },
+      (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/'; },
       (env) => { env.AI_BASE_URL = 'https://api.deepseek.com/v1'; },
       (env) => { env.AI_BASE_URL = 'http://api.deepseek.com/beta'; },
       (env) => { env.AI_BASE_URL = 'https://example.com/beta'; },
@@ -227,7 +227,7 @@ describe('Phase 6.9.4.3 CLI', () => {
     expect(captured).toMatchObject({ mode: 'json', schema, maxTokens: 7, abortSignal: signal });
   });
 
-  test('composes live dependencies with frozen strict-tool profiles and fixed timeout', async () => {
+  test('composes live dependencies with JSON mode and fixed timeout', async () => {
     let capturedConfig: Record<string, unknown> | null = null;
     let capturedRequest: Record<string, unknown> | null = null;
     const dependencies = createPhase6943LiveDependencies(
@@ -255,27 +255,17 @@ describe('Phase 6.9.4.3 CLI', () => {
     });
     expect(capturedConfig).toMatchObject({
       provider: 'deepseek',
-      baseURL: 'https://api.deepseek.com/beta',
+      baseURL: 'https://api.deepseek.com',
       model: 'deepseek-v4-flash',
-      structuredOutputMode: 'deepseek_strict_tool',
-      schemaProfiles: PHASE_6943_LIVE_SCHEMA_PROFILES,
+      structuredOutputMode: 'json_object',
     });
-    expect(Object.isFrozen(PHASE_6943_LIVE_SCHEMA_PROFILES)).toBe(true);
-    expect(PHASE_6943_LIVE_SCHEMA_PROFILES.every(Object.isFrozen)).toBe(true);
-    expect(PHASE_6943_LIVE_SCHEMA_PROFILES).toEqual([
-      { name: 'router_candidate_v1', schema: ROUTER_MODEL_CANDIDATE_SCHEMA },
-      {
-        name: 'knowledge_verifier_candidate_v1',
-        schema: KNOWLEDGE_VERIFIER_MODEL_CANDIDATE_SCHEMA,
-      },
-    ]);
     expect(validatePhase6943LiveStructuredSchemas()).toBe(true);
     expect(capturedRequest).toMatchObject({ maxOutputTokens: 1 });
     expect(result.trace.mode).toBe('live');
     expect(dependencies.readProviderAttempts()).toBe(1);
   });
 
-  test('wires both canonical profiles through the real shared SDK executor without network', async () => {
+  test('wires both canonical JSON schemas through the real shared SDK executor without network', async () => {
     const originalFetch = globalThis.fetch;
     const requestBodies: Array<Record<string, unknown>> = [];
     const candidates = [
@@ -300,17 +290,9 @@ describe('Phase 6.9.4.3 CLI', () => {
           index: 0,
           message: {
             role: 'assistant',
-            content: null,
-            tool_calls: [{
-              id: `call_${responseIndex}`,
-              type: 'function',
-              function: {
-                name: 'model_agent_result',
-                arguments: JSON.stringify(candidate),
-              },
-            }],
+            content: JSON.stringify(candidate),
           },
-          finish_reason: 'tool_calls',
+          finish_reason: 'stop',
         }],
         usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 },
       }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -355,23 +337,9 @@ describe('Phase 6.9.4.3 CLI', () => {
 
       expect(requestBodies).toHaveLength(2);
       for (const body of requestBodies) {
-        expect(body.response_format).toBeUndefined();
-        expect(body.tool_choice).toEqual({
-          type: 'function',
-          function: { name: 'model_agent_result' },
-        });
-        const tool = (body.tools as Array<{
-          function: {
-            name: string;
-            strict: boolean;
-            parameters: Record<string, unknown>;
-          };
-        }>)[0];
-        expect(tool?.function.name).toBe('model_agent_result');
-        expect(tool?.function.strict).toBe(true);
-        expect(JSON.stringify(tool?.function.parameters)).not.toContain('"$schema"');
-        expect(JSON.stringify(tool?.function.parameters)).not.toContain('"const"');
-        expect(hasTupleItems(tool?.function.parameters)).toBe(false);
+        expect(body.response_format).toEqual({ type: 'json_object' });
+        expect(body.tools).toBeUndefined();
+        expect(body.tool_choice).toBeUndefined();
       }
     } finally {
       globalThis.fetch = originalFetch;
@@ -1002,12 +970,13 @@ describe('Phase 6.9.4.3 evidence writer', () => {
 });
 
 describe('Phase 6.9.4.3 evidence validator', () => {
-  test('preserves the validator conclusion for immutable Attempts A through D', async () => {
+  test('preserves the validator conclusion for immutable Attempts A through E', async () => {
     const files = [
       ['live-20260713T122743752Z-46b0f4785861.json', { ok: false, errorCode: 'profile_mismatch' }],
       ['live-20260713T124435253Z-4d37573c86dc.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
       ['live-20260714T022627206Z-08bddedf3f64.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
       ['live-20260714T032310330Z-991994cb5bb5.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
+      ['live-20260714T071444506Z-65042475cbaf.json', { ok: true, profile: 'live', runStatus: 'incomplete' }],
     ] as const;
     for (const [name, expected] of files) {
       const file = `docs/acceptance/evidence/phase-6-9-4-3/${name}`;
@@ -1244,11 +1213,4 @@ function liveReportPath(output: Phase6943Output) {
     throw new Error('expected live report');
   }
   return buildPhase6943LiveEvidencePath(output.startedAt, output.runIdHash);
-}
-
-function hasTupleItems(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(hasTupleItems);
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  return Array.isArray(record.items) || Object.values(record).some(hasTupleItems);
 }

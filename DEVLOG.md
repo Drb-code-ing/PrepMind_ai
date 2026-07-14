@@ -6,7 +6,7 @@
 
 更新时间：2026-07-14
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 Attempt E strict-tool controlled-Live 在首个 eligible case 得到 `http_client`，验收仍未完成。下一步先合并 main、在 main 复验并推送，再从新 main 创建零网络 Provider compatibility diagnostics 任务。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 JSON-mode resolution 零网络 checkpoint 已完成，验收仍未完成。下一步先合并 main、在 main 复验并推送，再从新 main 创建唯一一次完整 JSON-mode controlled-Live 任务；失败则记录终局 fallback，不再新增 transport。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -1783,9 +1783,28 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - `http_client` 为什么不能直接等同于 422 schema error 或 402 余额不足？
 - 为什么一次真实 Provider attempt 的 incomplete evidence 必须保留，却不能与历史 A~D 拼接成 complete？
 
+## 2026-07-14 — Phase 6.9.4.3 JSON-mode Resolution 零网络 Checkpoint
+
+### 做了什么
+
+- 按批准方案停止继续扩展 strict-tool，新的 controlled-Live composition 收敛到 DeepSeek 标准 `https://api.deepseek.com` 与 `response_format=json_object`；请求不携带 tools、tool_choice 或 json_schema，canonical Zod 继续做最终校验。
+- evidence identity 升级为 runner-v3 / `deepseek_json_object_v1` / `phase-6.9.4.3-json-mode-v1`，并新增 runner、顶层 promptVersion、candidate entry promptVersion 的一致性约束；历史 v1/v2 evidence 仍只读兼容。
+- 删除 paired CLI 不再使用的 strict-tool schema profile 常量，保留 `@repo/ai` strict-tool 能力作为历史/实验 transport，不影响其他调用方。
+
+### 验证结果
+
+- Agent：`345 pass / 0 fail / 3242 assertions`；AI：`151 pass / 0 fail / 817 assertions`。
+- Agent/AI typecheck 与 lint exit 0；deterministic baseline `74/100`、critical `2`。
+- fresh Mock 为 complete：`100/28/0/28/72`；CLI exit 1 仅表示 paired candidate 仍关闭。tracked 历史 Mock evidence validator exit 0。
+- 负 Live preflight 为 `live_config_invalid / exit 3`，没有真实调用或新 evidence。整个 checkpoint 没有读取真实 key、没有启动 Docker 或浏览器。
+
+### 为什么仍未完成
+
+零网络门禁只证明 JSON-mode wire、证据身份与安全边界可执行，不证明 100-case 真实语义质量。下一步必须先 `--no-ff` 合并 main、在 main 复验并推送，再从新 main 创建独立 controlled-Live 分支完整跑一次；如果仍失败，记录终局 fallback 并保持 deterministic，不再引入第三种 transport。
+
 ## 下一步
 
-1. Phase 6.9.4.3：合并并在 main 复验、推送 Attempt E evidence 与文档；然后从新 main 创建零网络 Provider compatibility diagnostics 任务，不重跑 Live。
+1. Phase 6.9.4.3：合并并在 main 复验、推送 JSON-mode resolution checkpoint；然后从新 main 创建唯一一次完整 JSON-mode controlled-Live 任务，失败则终局 fallback。
 2. Phase 6.9.5 ~ 6.9.7：结构化长期记忆、情景记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 

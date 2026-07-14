@@ -74,8 +74,10 @@ describe('OpenAI-compatible model agent executor', () => {
   it('uses the real AI SDK JSON wire mode and rejects invalid structured output', async () => {
     const originalFetch = globalThis.fetch;
     const requestBodies: Array<Record<string, unknown>> = [];
+    const requestUrls: string[] = [];
     let responseIndex = 0;
-    globalThis.fetch = (async (_input, init) => {
+    globalThis.fetch = (async (input, init) => {
+      requestUrls.push(String(input));
       requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
       const content = responseIndex++ === 0 ? '{"route":"tutor"}' : '{"route":"unsafe"}';
       return new Response(
@@ -105,7 +107,7 @@ describe('OpenAI-compatible model agent executor', () => {
       const executor = createOpenAICompatibleStructuredExecutor({
         provider: 'deepseek',
         apiKey: 'example-redacted-key',
-        baseURL: 'https://api.example.com/v1',
+        baseURL: 'https://api.deepseek.com',
         model: 'deepseek-test',
       });
       const request = {
@@ -122,6 +124,8 @@ describe('OpenAI-compatible model agent executor', () => {
       });
       expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
       expect(requestBodies[0]?.tools).toBeUndefined();
+      expect(requestBodies[0]?.tool_choice).toBeUndefined();
+      expect(requestUrls[0]).toBe('https://api.deepseek.com/chat/completions');
       const messages = requestBodies[0]?.messages as Array<{ content?: string }>;
       expect(messages[0]?.content).toContain('"route"');
 
