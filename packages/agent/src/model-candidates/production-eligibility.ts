@@ -925,7 +925,13 @@ function canonicalizeScalarValue(value: string): string | null {
   if (fractionParts.length === 2) {
     const denominator = parseChineseInteger(fractionParts[0] ?? '');
     const numerator = parseChineseInteger(fractionParts[1] ?? '');
-    if (denominator === null || numerator === null || denominator === 0n) return null;
+    if (
+      denominator === null ||
+      numerator === null ||
+      denominator === BigInt(0)
+    ) {
+      return null;
+    }
     return canonicalizeRational(numerator, denominator);
   }
 
@@ -944,7 +950,7 @@ function canonicalizeScalarValue(value: string): string | null {
   }
 
   const integer = parseChineseInteger(value);
-  return integer === null ? null : canonicalizeRational(integer, 1n);
+  return integer === null ? null : canonicalizeRational(integer, BigInt(1));
 }
 
 const CHINESE_DIGITS: Readonly<Record<string, number>> = Object.freeze({
@@ -969,16 +975,22 @@ function parseChineseInteger(value: string): bigint | null {
     if (billionIndex !== value.lastIndexOf('亿')) return null;
     const high = parseChineseInteger(value.slice(0, billionIndex));
     const lowText = value.slice(billionIndex + 1);
-    const low = lowText.length === 0 ? 0n : parseChineseInteger(lowText);
-    return high === null || low === null ? null : high * 100_000_000n + low;
+    const low = lowText.length === 0 ? BigInt(0) : parseChineseInteger(lowText);
+    return high === null || low === null
+      ? null
+      : high * BigInt(100_000_000) + low;
   }
   const tenThousandIndex = value.indexOf('万');
   if (tenThousandIndex >= 0) {
     if (tenThousandIndex !== value.lastIndexOf('万')) return null;
     const high = parseChineseUnderTenThousand(value.slice(0, tenThousandIndex));
     const lowText = value.slice(tenThousandIndex + 1);
-    const low = lowText.length === 0 ? 0n : parseChineseUnderTenThousand(lowText);
-    return high === null || low === null ? null : high * 10_000n + low;
+    const low = lowText.length === 0
+      ? BigInt(0)
+      : parseChineseUnderTenThousand(lowText);
+    return high === null || low === null
+      ? null
+      : high * BigInt(10_000) + low;
   }
   return parseChineseUnderTenThousand(value);
 }
@@ -990,13 +1002,13 @@ function parseChineseUnderTenThousand(value: string): bigint | null {
     return digits === null ? null : BigInt(digits);
   }
   const units: Readonly<Record<string, bigint>> = {
-    '十': 10n,
-    '百': 100n,
-    '千': 1_000n,
+    '十': BigInt(10),
+    '百': BigInt(100),
+    '千': BigInt(1_000),
   };
-  let total = 0n;
+  let total = BigInt(0);
   let pending: number | null = null;
-  let previousUnit = 10_000n;
+  let previousUnit = BigInt(10_000);
   for (const character of value) {
     const digit = CHINESE_DIGITS[character];
     if (digit !== undefined) {
@@ -1033,17 +1045,19 @@ function canonicalizeScaledDecimal(
   scale: number,
 ): string | null {
   if (!/^\d*$/u.test(fraction)) return null;
-  const denominator = 10n ** BigInt(fraction.length);
-  const fractional = fraction.length === 0 ? 0n : BigInt(fraction);
+  const denominator = BigInt(10) ** BigInt(fraction.length);
+  const fractional = fraction.length === 0 ? BigInt(0) : BigInt(fraction);
   const numerator =
-    (integer * denominator + fractional) * (10n ** BigInt(scale));
+    (integer * denominator + fractional) * (BigInt(10) ** BigInt(scale));
   return canonicalizeRational(numerator, denominator);
 }
 
 function canonicalizeRational(numerator: bigint, denominator: bigint): string | null {
-  if (denominator === 0n) return null;
-  const normalizedNumerator = denominator < 0n ? -numerator : numerator;
-  const normalizedDenominator = denominator < 0n ? -denominator : denominator;
+  if (denominator === BigInt(0)) return null;
+  const normalizedNumerator = denominator < BigInt(0) ? -numerator : numerator;
+  const normalizedDenominator = denominator < BigInt(0)
+    ? -denominator
+    : denominator;
   const divisor = greatestCommonDivisor(
     normalizedNumerator,
     normalizedDenominator,
@@ -1052,14 +1066,14 @@ function canonicalizeRational(numerator: bigint, denominator: bigint): string | 
 }
 
 function greatestCommonDivisor(left: bigint, right: bigint): bigint {
-  let first = left < 0n ? -left : left;
-  let second = right < 0n ? -right : right;
-  while (second !== 0n) {
+  let first = left < BigInt(0) ? -left : left;
+  let second = right < BigInt(0) ? -right : right;
+  while (second !== BigInt(0)) {
     const remainder = first % second;
     first = second;
     second = remainder;
   }
-  return first === 0n ? 1n : first;
+  return first === BigInt(0) ? BigInt(1) : first;
 }
 
 function claimWindow(value: string): string {
