@@ -120,12 +120,11 @@ const VERIFICATION_QUERY = /可靠|核对|验证|是否有效|能否支持|无�
 const OPPOSING_RELATIONS: readonly [RegExp, RegExp][] = [
   [/大于|高于|多于|超过|递增|增加|正值/u, /小于|低于|少于|不足|递减|减少|负值/u],
 ];
-const CLAIM_PATTERNS: readonly [string, RegExp][] = [
-  ['unit', /单位(?:写成|是|为)([^，。；;]+)/u],
-  ['time', /发生在([^，。；;]+)/u],
-  ['usage', /(?:要求)?使用([^，。；;]+)/u],
-  ['result', /(?:秩|概率|答案|结果)(?:计算)?(?:应)?(?:是|为)([^，。；;]+)/u],
-];
+const SCALAR_VALUE_PATTERN =
+  /\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万亿]+(?:分之[零〇一二两三四五六七八九十百千万亿]+)?/gu;
+const CLAIM_SENTENCE_BOUNDARY = /[,，。；;!?！？]+/u;
+const CLAIM_DISCOURSE_MARKERS =
+  /(?:另一[份段]?|这一|这个|相同|同一|给定|所以|因此|根据|材料(?:记载|显示|说明)?|(?:监测|复核)?记录显示|重新计算|本次)/gu;
 const ASCII_STOP_WORDS = new Set([
   'the',
   'this',
@@ -461,9 +460,10 @@ function hasSemanticConflict(query: string, excerpts: readonly string[]): boolea
             (first.test(left) && second.test(right)) ||
             (second.test(left) && first.test(right)),
         ) ||
-          haveContradictoryDefinitions(left, right) ||
+          hasExclusiveDefinitionConflict(left, right) ||
           hasNegatedSharedPredicate(left, right) ||
-          haveDifferentAnchoredClaims(left, right))
+          haveDifferentScalarClaims(left, right) ||
+          haveDifferentCategoryClaims(left, right))
       ) {
         return true;
       }
@@ -472,35 +472,39 @@ function hasSemanticConflict(query: string, excerpts: readonly string[]): boolea
   return false;
 }
 
-function haveContradictoryDefinitions(left: string, right: string): boolean {
-  const leftDefinition = extractDefinition(left);
-  const rightDefinition = extractDefinition(right);
-  if (!leftDefinition || !rightDefinition) return false;
-  if (!isTopicRelevant(leftDefinition.subject, rightDefinition.subject)) return false;
-
-  const leftTerms = extractTopicTerms(leftDefinition.claim);
-  const rightTerms = extractTopicTerms(rightDefinition.claim);
-  if (leftTerms.size === 0 || rightTerms.size === 0) return false;
-  let overlap = 0;
-  for (const term of leftTerms) {
-    if (rightTerms.has(term)) overlap += 1;
-  }
-  const smallerClaim = Math.min(leftTerms.size, rightTerms.size);
-  return overlap / smallerClaim < 0.35;
+function hasExclusiveDefinitionConflict(left: string, right: string): boolean {
+  return (
+    exclusiveDefinitionOpposes(left, right) ||
+    exclusiveDefinitionOpposes(right, left)
+  );
 }
 
-function extractDefinition(
-  value: string,
-): { subject: string; claim: string } | null {
-  const match = value.match(
-    /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:不是|是指|是)(.+)$/u,
+function exclusiveDefinitionOpposes(exclusive: string, other: string): boolean {
+  const match = exclusive.match(
+    /^([\p{Script=Han}a-z0-9_-]{2,32}?)不是([^，。；;]{2,120})[，,]?而是([^。；;]{2,120})/u,
   );
   const subject = match?.[1];
-  let claim = match?.[2];
-  if (subject === undefined || claim === undefined) return null;
-  const replacement = claim.match(/而是(.+)$/u)?.[1];
-  if (replacement !== undefined) claim = replacement;
-  return { subject, claim };
+  const excluded = match?.[2];
+  const asserted = match?.[3];
+  if (subject === undefined || excluded === undefined || asserted === undefined) {
+    return false;
+  }
+  const otherDefinition = other.match(
+    /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:是指|是)([^。；;]{2,160})/u,
+  );
+  const otherSubject = otherDefinition?.[1];
+  const otherClaim = otherDefinition?.[2];
+  if (
+    otherSubject === undefined ||
+    otherClaim === undefined ||
+    !isTopicRelevant(subject, otherSubject)
+  ) {
+    return false;
+  }
+
+  const excludedOverlap = termOverlapRatio(excluded, otherClaim);
+  const assertedOverlap = termOverlapRatio(asserted, otherClaim);
+  return excludedOverlap >= 0.3 && excludedOverlap > assertedOverlap + 0.1;
 }
 
 function hasNegatedSharedPredicate(left: string, right: string): boolean {
@@ -515,7 +519,9 @@ function containsNegatedPredicateFrom(source: string, other: string): boolean {
     const predicate = match[1];
     if (predicate === undefined) continue;
     for (let length = 2; length <= predicate.length; length += 1) {
-      if (other.includes(predicate.slice(0, length))) return true;
+      const prefix = predicate.slice(0, length);
+      if (other.includes(`不再${prefix}`)) continue;
+      if (other.includes(prefix)) return true;
     }
   }
   return false;
@@ -559,23 +565,129 @@ function extractTopicTerms(value: string): Set<string> {
   return terms;
 }
 
-function haveDifferentAnchoredClaims(left: string, right: string): boolean {
-  for (const [, pattern] of CLAIM_PATTERNS) {
-    const leftClaim = left.match(pattern)?.[1];
-    const rightClaim = right.match(pattern)?.[1];
-    if (
-      leftClaim !== undefined &&
-      rightClaim !== undefined &&
-      normalizeClaim(leftClaim) !== normalizeClaim(rightClaim)
-    ) {
-      return true;
+function haveDifferentScalarClaims(left: string, right: string): boolean {
+  const leftClaims = extractScalarClaims(left);
+  const rightClaims = extractScalarClaims(right);
+  for (const leftClaim of leftClaims) {
+    for (const rightClaim of rightClaims) {
+      if (
+        leftClaim.value !== rightClaim.value &&
+        signatureSimilarity(leftClaim.signature, rightClaim.signature) >= 0.78
+      ) {
+        return true;
+      }
     }
   }
   return false;
 }
 
-function normalizeClaim(value: string): string {
-  return value.replace(/[\s，。；;,.]/gu, '').slice(0, 120);
+function extractScalarClaims(
+  value: string,
+): { value: string; signature: string }[] {
+  const claims: { value: string; signature: string }[] = [];
+  for (const sentence of splitClaimSentences(value)) {
+    const matches = Array.from(sentence.matchAll(SCALAR_VALUE_PATTERN));
+    for (const match of matches) {
+      const scalar = match[0];
+      const start = match.index;
+      if (start === undefined) continue;
+      const before = maskScalarValues(sentence.slice(0, start));
+      const after = maskScalarValues(sentence.slice(start + scalar.length));
+      const signature = claimWindow(
+        normalizeClaimSignature(`${before}<value>${after}`),
+      );
+      if (extractTopicTerms(signature).size < 2) continue;
+      claims.push({ value: scalar, signature });
+    }
+  }
+  return claims;
+}
+
+function haveDifferentCategoryClaims(left: string, right: string): boolean {
+  for (const leftSentence of splitClaimSentences(left)) {
+    const leftClaim = normalizeClaimSignature(leftSentence);
+    for (const rightSentence of splitClaimSentences(right)) {
+      const rightClaim = normalizeClaimSignature(rightSentence);
+      const commonPrefix = sharedPrefix(leftClaim, rightClaim);
+      const leftValue = leftClaim.slice(commonPrefix.length);
+      const rightValue = rightClaim.slice(commonPrefix.length);
+      if (
+        codePointLength(commonPrefix) >= 6 &&
+        extractTopicTerms(commonPrefix).size >= 3 &&
+        codePointLength(leftValue) >= 1 &&
+        codePointLength(rightValue) >= 1 &&
+        codePointLength(leftValue) <= 12 &&
+        codePointLength(rightValue) <= 12 &&
+        leftValue !== rightValue
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function splitClaimSentences(value: string): string[] {
+  return value
+    .split(CLAIM_SENTENCE_BOUNDARY)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => codePointLength(sentence) >= 4)
+    .slice(0, 12);
+}
+
+function normalizeClaimSignature(value: string): string {
+  return value
+    .replace(CLAIM_DISCOURSE_MARKERS, '')
+    .replace(/(?:计算)?(?:应)?(?:是|为)|写成|等于/gu, '=')
+    .replace(/[\s，。；;,.]/gu, '')
+    .slice(0, 160);
+}
+
+function maskScalarValues(value: string): string {
+  return value.replace(SCALAR_VALUE_PATTERN, '<number>');
+}
+
+function claimWindow(value: string): string {
+  const characters = Array.from(value);
+  const marker = '<value>';
+  const index = value.indexOf(marker);
+  if (index < 0) return characters.slice(0, 48).join('');
+  const beforeLength = Array.from(value.slice(0, index)).length;
+  return characters
+    .slice(Math.max(0, beforeLength - 20), beforeLength + marker.length + 20)
+    .join('');
+}
+
+function signatureSimilarity(left: string, right: string): number {
+  const leftTerms = extractTopicTerms(left);
+  const rightTerms = extractTopicTerms(right);
+  if (leftTerms.size === 0 || rightTerms.size === 0) return 0;
+  let overlap = 0;
+  for (const term of leftTerms) {
+    if (rightTerms.has(term)) overlap += 1;
+  }
+  return overlap / Math.min(leftTerms.size, rightTerms.size);
+}
+
+function termOverlapRatio(left: string, right: string): number {
+  return signatureSimilarity(
+    normalizeClaimSignature(left),
+    normalizeClaimSignature(right),
+  );
+}
+
+function sharedPrefix(left: string, right: string): string {
+  const leftCharacters = Array.from(left);
+  const rightCharacters = Array.from(right);
+  const maxLength = Math.min(leftCharacters.length, rightCharacters.length);
+  let length = 0;
+  while (
+    length < maxLength &&
+    leftCharacters[length] === rightCharacters[length]
+  ) {
+    length += 1;
+  }
+  return leftCharacters.slice(0, length).join('');
 }
 
 function truncateCodePoints(value: string): string {

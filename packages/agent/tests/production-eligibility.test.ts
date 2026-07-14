@@ -329,6 +329,105 @@ describe('production model eligibility', () => {
     });
   });
 
+  test('keeps matching negative policy claims local', () => {
+    const query = '新版本中这条规定是否仍然适用？';
+    const chunks = [
+      safeChunk(
+        '新版本明确说明，该规定不再适用当前情形，需要按照修订内容处理。',
+        'negative-policy-a',
+      ),
+      safeChunk(
+        '修订后的新版本确认，该规定不再适用当前情形，旧规则已经停止使用。',
+        'negative-policy-b',
+      ),
+    ];
+    const decision = decideKnowledgeVerifierModelEligibility({
+      query,
+      chunks,
+      deterministic: verifyKnowledgeChunks({ query, chunks }),
+    });
+
+    expect(decision).toEqual({
+      eligible: false,
+      reason: 'high_confidence_local',
+    });
+  });
+
+  test('compares scalar values only when subject predicate and dimension align', () => {
+    const speedQuery = '同一辆车在上午十点的速度是多少？';
+    const speedChunks = [
+      safeChunk(
+        '监测记录显示，车辆甲在上午十点的速度为60千米每小时。',
+        'speed-60',
+      ),
+      safeChunk(
+        '复核记录显示，车辆甲在上午十点的速度为80千米每小时。',
+        'speed-80',
+      ),
+    ];
+    const speedDecision = decideKnowledgeVerifierModelEligibility({
+      query: speedQuery,
+      chunks: speedChunks,
+      deterministic: verifyKnowledgeChunks({
+        query: speedQuery,
+        chunks: speedChunks,
+      }),
+    });
+
+    const examQuery = '矩阵课程的考试发生在哪些年份？';
+    const examChunks = [
+      safeChunk(
+        '矩阵课程的第一次考试发生在2024年，考查基础概念。',
+        'first-exam',
+      ),
+      safeChunk(
+        '矩阵课程的补考发生在2025年，面向缺考学生。',
+        'makeup-exam',
+      ),
+    ];
+    const examDecision = decideKnowledgeVerifierModelEligibility({
+      query: examQuery,
+      chunks: examChunks,
+      deterministic: verifyKnowledgeChunks({
+        query: examQuery,
+        chunks: examChunks,
+      }),
+    });
+
+    expect(speedDecision).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(examDecision).toEqual({
+      eligible: false,
+      reason: 'high_confidence_local',
+    });
+  });
+
+  test('keeps compatible descriptions of the same concept local', () => {
+    const query = '矩阵的定义是什么？';
+    const chunks = [
+      safeChunk(
+        '矩阵是按照长方阵列排列的复数或实数集合。',
+        'matrix-description-a',
+      ),
+      safeChunk(
+        '矩阵是线性代数中表达线性变换关系的数学工具。',
+        'matrix-description-b',
+      ),
+    ];
+    const decision = decideKnowledgeVerifierModelEligibility({
+      query,
+      chunks,
+      deterministic: verifyKnowledgeChunks({ query, chunks }),
+    });
+
+    expect(decision).toEqual({
+      eligible: false,
+      reason: 'not_semantic_needed',
+    });
+  });
+
   test('ignores stale markers in weak off-topic evidence', () => {
     const query = '这个矩阵的秩是多少？';
     const chunks = [
