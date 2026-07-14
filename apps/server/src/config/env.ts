@@ -477,6 +477,58 @@ const envSchema = z
   });
 
 type ParsedServerEnv = z.infer<typeof envSchema>;
+const embeddingRuntimeConfigFactsSchema = z
+  .object({
+    isProduction: z.boolean(),
+    hasExplicitProvider: z.boolean(),
+    hasExplicitModel: z.boolean(),
+    provider: z.enum(['openai', 'qwen', 'fake']),
+    hasOpenAIKey: z.boolean(),
+    hasQwenKey: z.boolean(),
+    hasSafeQwenBaseUrl: z.boolean(),
+  })
+  .superRefine((facts, context) => {
+    if (facts.isProduction && !facts.hasExplicitProvider) {
+      context.addIssue({
+        code: 'custom',
+        path: ['RAG_EMBEDDING_PROVIDER'],
+        message: 'production requires an explicit embedding provider',
+      });
+    }
+    if (facts.isProduction && !facts.hasExplicitModel) {
+      context.addIssue({
+        code: 'custom',
+        path: ['RAG_EMBEDDING_MODEL'],
+        message: 'production requires an explicit embedding model',
+      });
+    }
+
+    if (!facts.hasExplicitProvider) return;
+
+    if (facts.provider === 'openai' && !facts.hasOpenAIKey) {
+      context.addIssue({
+        code: 'custom',
+        path: ['OPENAI_API_KEY'],
+        message: 'OpenAI embedding provider requires an API key',
+      });
+    }
+    if (facts.provider === 'qwen' && !facts.hasQwenKey) {
+      context.addIssue({
+        code: 'custom',
+        path: ['QWEN_API_KEY'],
+        message: 'Qwen embedding provider requires a supported API key',
+      });
+    }
+    if (facts.provider === 'qwen' && !facts.hasSafeQwenBaseUrl) {
+      context.addIssue({
+        code: 'custom',
+        path: ['RAG_EMBEDDING_BASE_URL'],
+        message:
+          'Qwen embedding provider requires a credential-free HTTPS base URL',
+      });
+    }
+  });
+
 export type ServerEnv = Omit<
   ParsedServerEnv,
   | 'SWAGGER_ENABLED'
@@ -500,6 +552,7 @@ export type ServerEnv = Omit<
 
 export function parseEnv(config: Record<string, unknown>): ServerEnv {
   const env = envSchema.parse(config);
+  assertEmbeddingRuntimeConfig(config, env);
 
   return {
     ...env,
@@ -522,6 +575,40 @@ export function parseEnv(config: Record<string, unknown>): ServerEnv {
         ? undefined
         : 'local-dev-audit-fingerprint-change-me'),
   };
+}
+
+function assertEmbeddingRuntimeConfig(
+  config: Record<string, unknown>,
+  env: ParsedServerEnv,
+) {
+  embeddingRuntimeConfigFactsSchema.parse({
+    isProduction: env.NODE_ENV === 'production',
+    hasExplicitProvider: hasExplicitNonEmptyString(
+      config,
+      'RAG_EMBEDDING_PROVIDER',
+    ),
+    hasExplicitModel: hasExplicitNonEmptyString(
+      config,
+      'RAG_EMBEDDING_MODEL',
+    ),
+    provider: env.RAG_EMBEDDING_PROVIDER,
+    hasOpenAIKey: Boolean(env.OPENAI_API_KEY),
+    hasQwenKey: Boolean(
+      env.QWEN_API_KEY || env.Qwen_API_KEY || env.DASHSCOPE_API_KEY,
+    ),
+    hasSafeQwenBaseUrl: Boolean(
+      env.RAG_EMBEDDING_BASE_URL &&
+        isSafeHttpsProviderUrl(env.RAG_EMBEDDING_BASE_URL),
+    ),
+  });
+}
+
+function hasExplicitNonEmptyString(
+  config: Record<string, unknown>,
+  field: string,
+) {
+  const value = config[field];
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function isSafeHttpsProviderUrl(value: string) {
