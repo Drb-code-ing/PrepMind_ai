@@ -13,8 +13,9 @@
     "db:status": "bun --filter @repo/database prisma:status",
     "db:studio": "bun --filter @repo/database prisma:studio",
     "db:generate": "bun --filter @repo/database prisma:generate",
-    "docker:up": "docker compose -f docker/docker-compose.dev.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.dev.yml down"
+    "docker:up": "docker compose --env-file .env -f docker/docker-compose.dev.yml up -d",
+    "docker:up:worker": "docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d",
+    "docker:down": "docker compose --env-file .env -f docker/docker-compose.dev.yml down"
   },
   "packageManager": "bun@1.3.14",
   "workspaces": [

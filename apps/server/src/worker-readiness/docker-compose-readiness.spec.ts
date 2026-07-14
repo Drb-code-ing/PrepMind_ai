@@ -13,6 +13,22 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerignore).toContain('apps/web/.next');
   });
 
+  it('loads the root env file for repository Docker commands', () => {
+    const packageJson = JSON.parse(readRepoFile('package.json')) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(packageJson.scripts['docker:up']).toBe(
+      'docker compose --env-file .env -f docker/docker-compose.dev.yml up -d',
+    );
+    expect(packageJson.scripts['docker:down']).toBe(
+      'docker compose --env-file .env -f docker/docker-compose.dev.yml down',
+    );
+    expect(packageJson.scripts['docker:up:worker']).toBe(
+      'docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d',
+    );
+  });
+
   it('keeps the local PostgreSQL host port aligned with development docs', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const postgresService = extractYamlSection(compose, '  postgres:', 2);
