@@ -46,7 +46,7 @@
 
 若 Task 4/5 验收暴露实现缺陷，停止验收，不把修复混入 docs commit：从当时最新 main 新开 `codex/phase-6-9-4-3-acceptance-fix`，以 TDD 创建一个语义 fix commit、合并/复验/推送/删分支后，从头重跑完整 Mock 或 Live run。Live 不拼接两次报告，也不自动重试单 case。
 
-> Task 5 结果分支：只有 canonical Live 为 complete、28 次 provider attempt 均 strict success 且设计第 14 节全部门槛满足时，才使用 `complete phase` 提交并把 Phase 6.9.4.3 标完成。若 canonical Live 为 incomplete / attempted-invalid，只提交 failure-evidence checkpoint，阶段保持验收未完成，下一任务继续属于 Phase 6.9.4.3。2026-07-13 的实际结果属于后者。pre-fix attempted artifact 为在切换独立 fix 分支前保证不可丢失而单独以 `ecbbba3` 保存；最终 checkpoint commit 不覆盖或重写该 artifact。
+> Task 5 结果分支：只有 canonical Live 为 complete、28 次 provider attempt 均 strict success 且设计第 14 节全部门槛满足时，才使用 `complete phase` 提交并把 Phase 6.9.4.3 标完成。若 canonical Live 为 incomplete / attempted-invalid，只提交 failure-evidence checkpoint，阶段保持验收未完成，下一任务继续属于 Phase 6.9.4.3。2026-07-13 的 Attempt A/B 与 2026-07-14 的 Attempt C 都属于后者。pre-fix attempted artifact 为在切换独立 fix 分支前保证不可丢失而单独以 `ecbbba3` 保存；所有后续 checkpoint 都不覆盖或重写历史 artifact。Attempt C 首次由已合并 diagnostics 把真实失败分类为 `structured_output`，下一任务先修复 structured-output token headroom，不直接重跑 Live。
 
 ## 2. 文件职责
 
@@ -912,6 +912,8 @@ $maxCost='0.10'
 不要回显、读取文件中的 key或把价格猜成默认值。preflight必须证明 96,000/4,080 worst-case cost `<= effectiveMaxCostUsd`。
 
 > 执行偏差记录（2026-07-13，操作者明确批准）：操作者在 Live 执行前明确授权只从仓库根 `.env` 读取 `DEEPSEEK_API_KEY`，覆盖本 Step 的 `Read-Host` / 禁止文件读取输入方式。执行只读取这一项并注入单次 Live 命令进程，不回显、不写入 evidence/日志/文档/Git，且在 `finally` 中清除；pricing 仍由操作者截图与国家外汇管理局当日中间价确认。该授权不放宽双开关、固定 provider/model、预算、无重试、隐私或证据保留要求。
+
+> 2026-07-14 执行检查点：从最新已推送 `main` 创建 `codex/phase-6-9-4-3-live-acceptance-c`，零调用 preflight 为 exit 3 / `live_config_invalid` 且 evidence 数量不变；diagnostics + paired 精确测试 193/193 通过。唯一 controlled-Live 在首个 eligible case 得到 `PROVIDER_ERROR / structured_output` 后 exit 2，Attempt C strict evidence 为 `observed/notRun=37/63`、`providerAttempts/strictSuccesses=1/0`，validator exit 0。历史成功 Router entry 的 output usage 为 `61/120` 与 `108/120`；因此本 checkpoint 只提交不可覆盖证据与文档，下一独立任务按 TDD 同步 Router/Verifier 400-token headroom 和全局成本合同，禁止直接盲目重跑。
 
 - [ ] **Step 4: 单次串行运行全部 100 case / 28 provider attempts**
 

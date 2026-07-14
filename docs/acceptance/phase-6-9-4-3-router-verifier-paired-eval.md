@@ -2,16 +2,16 @@
 
 ## 1. 阶段结论
 
-Phase 6.9.4.3 的评测工程、Mock 验收与两次受控 Live 尝试已经形成可复核证据，但本轮**没有得到 complete Live 质量证据，阶段验收仍未完成**。Router / Verifier 模型候选均不得启用，生产 Chat 行为保持不变。
+Phase 6.9.4.3 的评测工程、Mock 验收与三次受控 Live 尝试已经形成可复核证据，但仍**没有得到 complete Live 质量证据，阶段验收未完成**。Router / Verifier 模型候选均不得启用，生产 Chat 行为保持不变。
 
 本阶段得到的结论是：
 
 - 同一 `phase-6.9-router-verifier-v1` 数据集已经完成 fresh deterministic、Mock 与 controlled-Live 尝试；canonical Live run 明确为 incomplete，dataset digest 始终为 `sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019`。
 - deterministic baseline 仍为 74/100、critical failure 2；Mock contract run 为 complete，28 条 eligible case 全部 strict success，72 条 ineligible / safety case 保持零 provider 调用。
 - controlled-Live 使用 `deepseek-v4-flash`、固定 JSON structured output、单 case 10 秒、串行执行、无自动重试。
-- 两次已越过 provider boundary 的运行均原样保留。第一次在 3 次 provider attempt 后因固定 `PROVIDER_ERROR` 停止；第二次在第 1 次 provider attempt 后因同一固定错误码停止。
-- 第二次运行是唯一通过 strict identity/schema/privacy validator 的 canonical Live evidence，但状态为 `incomplete`，因此 Router / Verifier 都是 `enabled=false / usage_unverifiable`。
-- 本次交付完成了评测工程、失败证据检查点和共享安全诊断合同，不是 Phase 6.9.4.3 完成或模型路径 enablement。阶段仍须满足 28 次 Live strict success 的既定完成标准；下一任务是新的 controlled-Live paired eval，不能直接接入生产 Chat。
+- 三次已越过 provider boundary 的运行均原样保留。Attempt A 在第 3 次 provider attempt 停止；Attempt B 与 2026-07-14 的 Attempt C 都在第 1 次停止。
+- Attempt C 是当前 canonical Live evidence：identity/schema/privacy validator 全部通过，并首次由共享 diagnostics 把固定 `PROVIDER_ERROR` 安全分类为 `structured_output`；它仍为 `incomplete`，Router / Verifier 都是 `enabled=false / usage_unverifiable`。
+- 历史成功 Router entry 的 output usage 为 `61/120` 与 `108/120`，后者已占当前上限 90%。结合 Attempt C 的 `structured_output` 分类，下一任务先修正 Router / Verifier structured-output token headroom，再从头执行新 run；不得直接重跑或接入生产 Chat。
 
 ## 2. 数据集与调用边界
 
@@ -63,7 +63,7 @@ Mock counters 为：`caseEntries=100`、`adapterExecutions=100`、`runtimeInvoca
 
 ### 4.1 零调用 preflight
 
-在每次真实运行前都先清除进程 key，并设置 Mock/Live false 后执行同一 Live CLI。两次 preflight 均得到：
+在每次真实运行前都先清除进程 key，并设置 Mock/Live false 后执行同一 Live CLI。三次 preflight 均得到：
 
 - exit code `3`；
 - `invalid_run / live_config_invalid`；
@@ -94,7 +94,7 @@ Mock counters 为：`caseEntries=100`、`adapterExecutions=100`、`runtimeInvoca
 
 缺陷随后在从最新 main 创建的独立分支中按 TDD 修复：单一预捕获 `startedAtMs` 同时绑定 reservation 与 report；原始 runner epoch 仍在 provider 前读取并校验，hostile clock 继续保持 zero-attempt。修复提交为 `e18c1da02c375c1b7310d62e47f7d28f71980277`，合并并推送后的 main 为 `c4d0b392cecba7e75433c8e39513e2c51a1ed687`；修复经 309 个 Agent 测试、类型检查、lint、规格审查、质量审查和 main 复验。
 
-### 4.3 Attempt B：canonical incomplete evidence
+### 4.3 Attempt B：此前的 canonical incomplete evidence
 
 修复后的整轮运行从新的 run ID 和第 1 条 case 重新开始，没有复用 Attempt A 的成功结果，也没有重试单个 case。
 
@@ -130,6 +130,26 @@ canonical evidence 的文件名由正文 `startedAt + runIdHash` 机械推导，
 
 `qualityEvidence=true` 只表示该报告包含真实 controlled-Live lane，而不是 Mock fixture；它是“证据来源”标记，不是“质量通过”标记。必须与 `runStatus`、metrics completeness、usage provenance 和两项 decision 联合读取。本次同时为 `runStatus=incomplete`、`metricsStatus=partial`、`usage.providerReported=false`、两项 decision disabled，因此不得 enable。
 
+### 4.4 Attempt C：diagnostics 后的 canonical incomplete evidence
+
+2026-07-14 从最新已推送 `main` 创建独立分支；零调用 preflight 和 diagnostics/paired contract 精确测试通过后，使用同一 provider、model、dataset、prompt、pricing 与预算从第 1 条重新执行。API key 只从根 `.env` 读取这一项并注入单次 PowerShell 子进程，结束后立即清除；没有复用或拼接 Attempt A/B。
+
+| 字段 | 结果 |
+| --- | ---: |
+| run status / qualityEvidence | `incomplete` / `true` |
+| started / finished / duration | 2026-07-14T02:26:27.206Z / 2026-07-14T02:26:29.182Z / 1968ms |
+| observed / notRun | 37 / 63 |
+| case entries / adapter executions | 100 / 37 |
+| runtime invocations / provider attempts | 1 / 1 |
+| strict successes / runtime failures | 0 / 1 |
+| observed zero-call cases | 36 |
+| fixed failure | `PROVIDER_ERROR / structured_output` |
+| aggregate provider usage / estimated cost | 0 / 0，`providerReported=false` / USD 0 |
+| Router / Verifier decision | `enabled=false / usage_unverifiable` |
+| strict validator | exit 0，`ok=true / live / incomplete` |
+
+`structured_output` 表示失败发生在默认 AI SDK executor 返回合法对象之前的生成、JSON 解析或 schema validation 边界；它排除了本次故障属于鉴权、限流、HTTP、传输或普通 invalid-response 分类，但不保存或反查 provider 原始正文。历史 Attempt A 的两条 strict success 分别报告 `61/120` 与 `108/120` output tokens；第二条仅剩 12 tokens 余量。由此得到可复核的高置信假设：当前 Router `maxOutputTokens=120` 对真实模型 structured output 缺少稳定余量。该证据仍不能精确区分截断、JSON parse 或 schema validation，因此下一任务必须以 TDD 同步 output headroom 和预算合同，不能把假设写成已证明的 provider 原因，也不能直接盲目重跑。
+
 ## 5. Pricing 与成本上限
 
 操作者提供的 `deepseek-v4-flash` 价格截图显示：缓存未命中输入 1 元/百万 tokens、输出 2 元/百万 tokens。2026-07-13 [国家外汇管理局人民币汇率中间价](https://www.safe.gov.cn/AppStructured/hlw/RMBQuery.do)为 100 美元 = 679.72 元；按 9 位小数向上取整后，本次 CLI snapshot 为：
@@ -141,11 +161,11 @@ canonical evidence 的文件名由正文 `startedAt + runIdHash` 机械推导，
 | CLI / effective max cost | USD 0.10 / USD 0.10 |
 | worst-case 96,000 input + 4,080 output | USD 0.0153239570124 |
 
-worst-case admission 明显低于 USD 0.10。Attempt B 因首个 provider failure 没有可验证 usage，所以 evidence 的估算成本为 0；这不代表供应商账单一定为 0，只表示本地合同没有可审计 token 用量可用于估算。
+worst-case admission 明显低于 USD 0.10。Attempt B/C 都因首个 provider failure 没有可验证 usage，所以各自 evidence 的估算成本为 0；这不代表供应商账单一定为 0，只表示本地合同没有可审计 token 用量可用于估算。
 
 ## 6. 为什么停止且不继续自动重跑
 
-Attempt A 与 Attempt B 都出现 `PROVIDER_ERROR`，而运行器只暴露固定错误码，不保留 provider raw error。这是有意的隐私边界，但也意味着当前证据无法确认是网络、限流、provider structured-output 兼容性还是其他外部原因。
+Attempt A 与 Attempt B 都出现 `PROVIDER_ERROR`，而当时运行器只暴露固定错误码，不保留 provider raw error。这是有意的隐私边界，但也意味着当时证据无法确认是网络、限流、provider structured-output 兼容性还是其他外部原因。
 
 因此当时没有执行第三轮 Live，也没有发起绕过 runner 的额外探测调用：
 
@@ -167,11 +187,11 @@ Attempt A 与 Attempt B 都出现 `PROVIDER_ERROR`，而运行器只暴露固定
 - paired evidence 只允许 attempted Live observed entry 的 `PROVIDER_ERROR` failure 携带 `providerFailureCategory`；最终 provider counter mismatch 会剥离分类，pre-provider、success、Mock、deterministic、zero-call 与 `not_run` 同样禁止该字段。
 - `retryable` 仍由本地固定映射产生，executor 的 `maxRetries` 仍为 0；分类不是自动重试许可。
 
-Attempt A / B 的历史字段缺失不会新增 schema failure，两份文件也没有覆盖改写，但原判定保持不变：Attempt A 仍因 filename identity mismatch 为 exit `3 / profile_mismatch`；Attempt B 仍为 exit `0 / ok=true / live / incomplete`。这只是诊断合同与零网络工程验收，不是新的 Live 质量证据。
+Attempt A / B 的历史字段缺失不会新增 schema failure，两份文件也没有覆盖改写，但原判定保持不变：Attempt A 仍因 filename identity mismatch 为 exit `3 / profile_mismatch`；Attempt B 仍为 exit `0 / ok=true / live / incomplete`。Attempt C 首次在真实 evidence 中合法携带 `structured_output`，证明 diagnostics 跨 Provider/Runtime/candidate/evidence 的端到端位置合同有效；它仍不是 complete Live 质量证据。
 
 ## 7. 安全、隐私与生产边界
 
-- 原实施计划 Step 3 默认要求 `Read-Host` 且禁止读文件；2026-07-13 操作者在本任务中明确授权覆盖该输入方式，允许只从根 `.env` 读取 `DEEPSEEK_API_KEY` 这一项。执行仅把该值注入单次 Live 命令进程，未读取其他配置值；命令结束后在 `finally` 中清除并恢复 Mock。该 operator-approved deviation 已回写实施计划，key 值未进入日志、evidence、文档或 Git。
+- 原实施计划 Step 3 默认要求 `Read-Host` 且禁止读文件；操作者已明确授权覆盖该输入方式，允许只从根 `.env` 读取 `DEEPSEEK_API_KEY` 这一项。Attempt C 仅把该值注入单次 PowerShell 子进程，未输出该值；命令结束后在 `finally` 中清除。key 值未进入日志、evidence、文档或 Git。
 - stdout、evidence、Git diff 和文档均不包含 key、provider raw error、完整 prompt、query、chunk、provider output、Authorization、Cookie、base URL 或 stack。
 - canonical Live evidence 已通过 strict schema、dataset identity、filename identity、usage/cost、decision 和 privacy validator。
 - pre-fix artifact 的内容隐私扫描命中 0，但因 filename identity mismatch 不能升级为 canonical evidence。
@@ -190,8 +210,8 @@ Attempt A / B 的历史字段缺失不会新增 schema failure，两份文件也
 | `bun run --cwd packages/agent lint` | exit 0 |
 | Mock paired CLI | exit 1，`mock / complete`，两项 decision disabled |
 | Mock strict validator | exit 0 |
-| canonical Live CLI | exit 2，`live / incomplete` |
-| canonical Live strict validator | exit 0，`ok=true / live / incomplete` |
+| Attempt C canonical Live CLI | exit 2，`live / incomplete / structured_output` |
+| Attempt C strict validator | exit 0，`ok=true / live / incomplete` |
 | `git diff --check` | exit 0 |
 
 Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mock exit 1 表示报告完整但至少一个 decision disabled，同样是该 CLI 的预期语义。
@@ -208,6 +228,9 @@ Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mo
 | `bun --cwd packages/agent lint` | exit 0 |
 | Attempt A strict validator | exit 3，`profile_mismatch` |
 | Attempt B strict validator | exit 0，`ok=true / live / incomplete` |
+| Attempt C preflight | exit 3，`live_config_invalid`，0 provider attempt，evidence 数量不变 |
+| Attempt C diagnostics + paired 精确测试 | 193 passed，0 failed，1380 assertions |
+| Attempt C strict validator | exit 0，`ok=true / live / incomplete` |
 
 实现提交链为：Task 1 `40fe48c` / merge `4581287`，Task 2 `49a4a6e` / merge `578539e`，Task 3 `d4658d2` / merge `c55f8f2`，Task 4 `dc10b01` / merge `c920673`。这些命令没有调用真实模型，也没有启动或操作 Docker、PostgreSQL、Redis、MinIO。
 
@@ -219,27 +242,29 @@ Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mo
 - [实施计划：2026-07-13 Phase 6.9.4.3](../superpowers/plans/2026-07-13-phase-6-9-4-3-router-verifier-paired-eval.md)
 - [Fresh Mock strict evidence](./evidence/phase-6-9-4-3/mock.json)
 - [Attempt A：pre-fix incomplete artifact](./evidence/phase-6-9-4-3/live-20260713T122743752Z-46b0f4785861.json)
-- [Attempt B：canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260713T124435253Z-4d37573c86dc.json)
+- [Attempt B：此前的 canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260713T124435253Z-4d37573c86dc.json)
+- [Attempt C：structured-output canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260714T022627206Z-08bddedf3f64.json)
 - [设计：共享 Provider 失败诊断](../superpowers/specs/2026-07-13-phase-6-9-4-3-provider-failure-diagnostics-design.md)
 
-canonical 选择理由：Attempt B 是修复后从头执行的新 run，并且正文身份、文件名、strict schema、隐私、usage/cost 与 decision 校验全部通过；Attempt A 只作为不利失败事实和修复来源保留。Attempt B 仍是 incomplete，因此“canonical”不等于“质量通过”。
+canonical 选择理由：Attempt C 是 diagnostics 合并后从最新 main 发起的新 run，并且正文身份、文件名、strict schema、隐私、usage/cost 与 decision 校验全部通过；它首次提供合法 `structured_output` 固定分类。Attempt A/B 继续作为不利历史事实保留。Attempt C 仍是 incomplete，因此“canonical”不等于“质量通过”。
 
-本次诊断收口前后，Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6` 与 `dd6cb8f2e543c4b89c009d9198b3d89f344ce594`，证明历史文件未被覆盖改写。
+Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6` 与 `dd6cb8f2e543c4b89c009d9198b3d89f344ce594`，证明历史文件未被覆盖改写；Attempt C 的初始 Git blob hash 为 `ede0a9f5576996a2bad7a9dfb60cd135047d4edf`。
 
 ## 10. 下一任务与回顾问题
 
-下一任务仍属于 Phase 6.9.4.3：从最新已推送 `main` 发起新的 controlled-Live paired eval。运行前必须核对 diagnostics 合同、`AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关、pricing 和单次进程 key；若再次发生 attempted `PROVIDER_ERROR`，只记录八类之一的 `providerFailureCategory`，不记录 raw error，并按分类决定排查方向，不盲目重试。只有新 run 达到 28 次 strict success 并满足既定质量、安全、延迟与成本标准后，Phase 6.9.4.3 才能标记完成；Router / Verifier 当前仍为 `enabled=false`。
+下一任务仍属于 Phase 6.9.4.3，但不是直接重跑：从最新已推送 `main` 单独设计并实现 Router / Verifier structured-output headroom 修复。以历史 `108/120` output usage 与 Attempt C 的 `structured_output` 为回归依据，按 TDD 把两个 candidate 的单次输出上限统一提高到 400，并同步 per-agent budget、Live ceiling、global provider/local output cap、worst-case pricing、strict contract、Mock fixture 与文档；不增加调用次数、不自动重试、不放宽 schema、不接入生产 Chat。修复合并并复验后，才允许从新的 main 发起下一轮完整 controlled-Live。只有新 run 达到 28 次 strict success 并满足质量、安全、延迟与成本标准后，Phase 6.9.4.3 才能标记完成。
 
-下一会话可以直接问：`请从最新已推送 main 开始新的 Phase 6.9.4.3 controlled-Live paired eval；先核对 diagnostics 与双开关，若失败只记录 providerFailureCategory，不记录 raw error。`
+下一会话可以直接问：`请从最新 main 开始 Phase 6.9.4.3 structured-output headroom 修复；先按 TDD 同步 Router/Verifier 400-token 上限和全局成本合同，不要直接重跑 Live。`
 
 回顾时可以问：
 
 - 为什么 100 条 case 只有 28 条 eligible，而不是全部调用模型？
 - 为什么 canonical Live 的 `zeroCallCases=36`、`notRun=63`，而设计仍写 72 条 zero-call？
-- Attempt A 为什么有 2 次 strict success 仍不能与 Attempt B 拼成完整报告？
+- Attempt A 为什么有 2 次 strict success 仍不能与 Attempt B/C 拼成完整报告？
 - pre-fix evidence 为什么保留但不能作为 canonical evidence？
 - `qualityEvidence=true` 为什么仍然不能启用模型路径？
 - `providerReported=false` 与 estimated cost 0 能否代表供应商没有计费？
 - Router / Verifier 当前 decision/reason 是什么，生产 Chat 是否改变？
 - 为什么保留顶层 `PROVIDER_ERROR`，同时用八类低基数分类做诊断？
-- 新的 controlled-Live 若得到 `http_rate_limit`、`structured_output` 或 `unknown`，各自应如何安全决策而不盲目重试？
+- Attempt C 的 `structured_output` 如何排除鉴权/限流/网络问题，为什么仍不能读取 raw output？
+- 为什么 `108/120` 能支持 output headroom 假设，却不能单独证明一定发生了截断？
