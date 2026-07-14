@@ -6,7 +6,7 @@
 
 更新时间：2026-07-14
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 structured-output resilience 零网络 checkpoint 已完成，controlled-Live 验收仍未完成。下一步先合并 main、在 main 复验并推送，再从新 main 创建独立 controlled-Live 任务。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 Attempt E strict-tool controlled-Live 在首个 eligible case 得到 `http_client`，验收仍未完成。下一步先合并 main、在 main 复验并推送，再从新 main 创建零网络 Provider compatibility diagnostics 任务。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -1750,7 +1750,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Fresh gates：AI 151 passed，Agent 344 passed，typecheck/lint 均 exit 0；deterministic baseline 仍 74/100、critical=2；fresh Mock complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`。
 - zero-call Live config 为 exit 3，evidence 数量 `4 -> 4`。历史 validator 仍为 A exit 3 / `profile_mismatch`，B/C/D exit 0 / `incomplete`；A/B/C/D blob hash 均未改写。
 - 本 checkpoint 零网络、零真实模型调用，未读取真实 key，未操作 Docker。Router / Verifier 仍 `enabled=false`，生产继续 deterministic。
-- 下一步先将当前分支 `--no-ff` 合并 main，在 main 复验并推送；然后从新 main 开独立 controlled-Live 任务，完整重跑 100 cases。只有 28/28 strict success、72/72 zero-call 与所有质量/安全/权限/延迟/token/usage provenance/成本门槛同时通过，Phase 6.9.4.3 才能完成。
+- 该 checkpoint 当时的下一步是合并 main 后开独立 controlled-Live；该步骤随后已执行为 Attempt E，结果见下一节。只有 28/28 strict success、72/72 zero-call 与所有质量/安全/权限/延迟/token/usage provenance/成本门槛同时通过，Phase 6.9.4.3 才能完成。
 
 ### 回顾时可以问
 
@@ -1760,11 +1760,32 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - “为什么 schema 校验和 strict executor 本地初始化都必须在 UUID/evidence 之前完成？”
 - “为什么 151/344 个零网络测试通过仍不能启用 Router / Verifier？”
 
-下一会话可以复制：“请先合并并在 main 复验 structured-output resilience checkpoint，推送后再从新 main 开独立 controlled-Live 任务，完整重跑 100 cases。”
+该节原交接语已由下方 Attempt E 结果取代，不再作为当前下一任务。
+
+## 2026-07-14 — Phase 6.9.4.3 Attempt E Strict-tool Controlled-Live Checkpoint
+
+### 做了什么
+
+- 在 structured-output resilience 分支已合并并推送到 `main@5d964c51a948d4603a1fcff5c52dba66b0581725` 后，从新 main 创建独立 controlled-Live 任务；只在单次 PowerShell 子进程内读取根 `.env` 的 key，结束后恢复 Mock 并移除进程 key。
+- 先执行 96/96、845 assertions 的 paired 精确测试、Agent typecheck/lint 和负向 zero-call preflight；随后执行唯一一次 `deepseek_strict_tool_v1` Live。错误的 `bun --env-file=.env` 命令在配置 preflight 阶段被安全拒绝，未产生 UUID/evidence/provider attempt，不算 Live attempt。
+- Attempt E 从 100 条 case 开始，在 `router_ambiguous_notes_tutor_01` 首次 Provider attempt 收到 `http_client` 后停止：`observed/notRun=37/63`、`providerAttempts/strictSuccesses=1/0`、usage 0/0、report duration 204ms / failing case 157ms、validator exit 0（合法 incomplete）。完整 JSON 证据为 `docs/acceptance/evidence/phase-6-9-4-3/live-20260714T071444506Z-65042475cbaf.json`，blob hash `368c91f817ad76272a495f77ff1d4d6f90695429`。
+
+### 为什么没有继续调用
+
+- 官方 Chat Completion 文档列出 `deepseek-v4-flash`；独立的 Tool Calls 指南描述通用 strict Beta contract：精确 `https://api.deepseek.com/beta`、函数内 `strict:true`、object 的 properties 全部 required 且 `additionalProperties:false`。Tool Calls 指南没有明确声明该模型的 strict-tool compatibility。
+- 零网络 fake-fetch 捕获的实际 SDK wire 是 `POST https://api.deepseek.com/beta/chat/completions`，只含 `model/messages/max_tokens/temperature/tool_choice/tools`；唯一 forced `model_agent_result`、strict schema 和无 `response_format` 均与公开基础约束一致。这只能排除客户端 endpoint/基础字段构造错误，不能排除模型级 feature/provider compatibility。
+- 当前安全分类将 401/403 归为 `http_auth`、429 归为 `http_rate_limit`，其余 4xx 归为 `http_client`。Attempt E 只能排除鉴权/限流，不能区分 400、402、422 等具体原因；raw status/body/headers/message/stack 受隐私合同禁止保存，0/0 usage 与 USD 0 也不等于余额或账单结论。
+- 重跑不会增加根因信息，反而可能消耗外部配额；下一任务改为零网络 Provider compatibility diagnostics，先设计并验证固定的 4xx 分辨率（例如支付/参数类别）和 SDK wire contract，再申请新的完整 Live。
+
+### 回顾问题
+
+- 为什么本地 wire 符合官方公开基础约束，仍不能宣布模型级 strict-tool compatibility 通过？
+- `http_client` 为什么不能直接等同于 422 schema error 或 402 余额不足？
+- 为什么一次真实 Provider attempt 的 incomplete evidence 必须保留，却不能与历史 A~D 拼接成 complete？
 
 ## 下一步
 
-1. Phase 6.9.4.3：合并并在 main 复验、推送 structured-output resilience checkpoint；然后从新 main 创建独立 controlled-Live 任务。
+1. Phase 6.9.4.3：合并并在 main 复验、推送 Attempt E evidence 与文档；然后从新 main 创建零网络 Provider compatibility diagnostics 任务，不重跑 Live。
 2. Phase 6.9.5 ~ 6.9.7：结构化长期记忆、情景记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 
