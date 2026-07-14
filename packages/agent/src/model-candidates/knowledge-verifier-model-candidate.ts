@@ -113,7 +113,7 @@ const MAX_AGGREGATE_CONTENT_RAW_BYTES = 262_144;
 const MAX_EXCERPT_CODE_POINTS = 600;
 const MAX_SELECTED_CHUNKS = 4;
 const MAX_INPUT_TOKENS = 1_600;
-const MAX_OUTPUT_TOKENS = 180;
+const MAX_OUTPUT_TOKENS = 400;
 
 const SAFE_INVALID_BUDGET: ModelAgentRunBudget = Object.freeze({
   maxCalls: 1,

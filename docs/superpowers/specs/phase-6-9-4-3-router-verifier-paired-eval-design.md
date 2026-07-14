@@ -296,24 +296,24 @@ Mock complete 直接使用 `paired_candidate_not_run`，不进入 Live 质量 re
 ### 8.1 固定工程上限
 
 - Live 最大调用数：28。
-- Router 单 case 最大预留：800 input / 120 output tokens。
-- Verifier 单 case 最大预留：1600 input / 180 output tokens。
-- 本轮本地最大预留：32,000 input / 4,080 output tokens。
+- Router 单 case 最大预留：800 input / 400 output tokens。
+- Verifier 单 case 最大预留：1600 input / 400 output tokens。
+- 本轮本地最大预留：32,000 input / 11,200 output tokens。
 - provider input tolerance 固定为 `3`，命名并写入 report schema/version；它是相对 32,000 本地预留的 tokenizer
   容差，不是模型上下文窗口或账单承诺。
 - provider-reported input 运行上限：96,000 tokens；对应 Router 单 case admission ceiling 为 2,400 input、
   Verifier 为 4,800 input。
-- provider-reported output 运行上限：4,080 tokens。
+- provider-reported output 运行上限：11,200 tokens。
 - 工程最大估算成本：USD 0.10。
 
 Live CLI 必须显式提供当前模型的 input/output 每百万 token 单价和 `cliMaxCostUsd`；三者都必须通过 9.1 的
 decimal grammar，解析后 finite、严格大于 0 且不超过 `1_000_000`。`effectiveMaxCostUsd=min(cliMaxCostUsd, 0.10)`。
 input pricing 固定采用本次价格快照中非缓存、
 最高适用的 input 单价，禁止用 cache-hit/优惠单价低估；output 使用最高适用 output 单价。第一次 provider 调用前，
-必须以 96,000 input / 4,080 output 计算整轮 worst-case，若大于 effective cap 则 0 调用拒绝。
+必须以 96,000 input / 11,200 output 计算整轮 worst-case，若大于 effective cap 则 0 调用拒绝。
 
 每次调用前都用“已累计 provider usage/cost + 下一 case 的 provider admission ceiling”复核剩余 token 与
-`effectiveMaxCostUsd` 空间；Router ceiling 为 2,400 input / 120 output，Verifier 为 4,800 input / 180 output，
+`effectiveMaxCostUsd` 空间；Router ceiling 为 2,400 input / 400 output，Verifier 为 4,800 input / 400 output，
 空间不足则不启动该 case。每个 case 后累计合法的 provider-reported usage 和按固定价格快照
 计算的成本；单 case 或全局 usage 超过 ceiling，或下一次 admission 会超过调用/token/cost 上限时停止后续 Live，将剩余 eligible case 标为
 `not_run/budget_exceeded`，两个 Agent decision 均 fail-closed。provider usage 是调用后观测值，因此该机制是有 3x

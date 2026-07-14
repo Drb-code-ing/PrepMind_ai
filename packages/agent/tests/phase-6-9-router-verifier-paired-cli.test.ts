@@ -95,6 +95,29 @@ describe('Phase 6.9.4.3 CLI', () => {
     }
   });
 
+  test('prices the full 11,200 output-token cap before any provider call', () => {
+    const result = parsePhase6943Cli({
+      command: 'live',
+      argv: [
+        '--live',
+        '--input-price-usd-per-million', '0.1',
+        '--output-price-usd-per-million', '10',
+        '--max-cost-usd', '0.1',
+      ],
+      env: LIVE_ENV,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      exitCode: 3,
+      output: {
+        kind: 'invalid_run',
+        runKind: 'live',
+        errorCode: 'live_config_invalid',
+      },
+    });
+  });
+
   test('rejects every malformed Live env or URL without exposing values', () => {
     const mutations: ((env: Record<string, string | undefined>) => void)[] = [
       (env) => { delete env.AI_PROVIDER_MODE; },

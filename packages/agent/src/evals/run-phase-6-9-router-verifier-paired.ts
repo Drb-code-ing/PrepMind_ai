@@ -92,7 +92,7 @@ const ROUTER_BUDGET = Object.freeze({
   usedCalls: 0,
   maxInputTokens: 800,
   usedInputTokens: 0,
-  maxOutputTokens: 120,
+  maxOutputTokens: 400,
   usedOutputTokens: 0,
 });
 const VERIFIER_BUDGET = Object.freeze({
@@ -100,20 +100,20 @@ const VERIFIER_BUDGET = Object.freeze({
   usedCalls: 0,
   maxInputTokens: 1_600,
   usedInputTokens: 0,
-  maxOutputTokens: 180,
+  maxOutputTokens: 400,
   usedOutputTokens: 0,
 });
 const GLOBAL_CAPS = Object.freeze({
   calls: 28,
   localInputTokens: 32_000,
-  localOutputTokens: 4_080,
+  localOutputTokens: 11_200,
   providerInputTokens: 96_000,
-  providerOutputTokens: 4_080,
+  providerOutputTokens: 11_200,
   engineeringCostUsd: 0.1,
 });
 const LIVE_CASE_CEILINGS = Object.freeze({
-  router: Object.freeze({ inputTokens: 2_400, outputTokens: 120 }),
-  verifier: Object.freeze({ inputTokens: 4_800, outputTokens: 180 }),
+  router: Object.freeze({ inputTokens: 2_400, outputTokens: 400 }),
+  verifier: Object.freeze({ inputTokens: 4_800, outputTokens: 400 }),
 });
 const MODEL_ERRORS = new Set<ModelAgentErrorCode>([
   'INVALID_REQUEST',

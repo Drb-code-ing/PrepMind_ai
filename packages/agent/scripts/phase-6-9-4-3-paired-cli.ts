@@ -28,7 +28,7 @@ export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 const DECIMAL_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,9})?$/;
 const MAX_ENGINEERING_COST_USD = 0.1;
 const PROVIDER_INPUT_TOKEN_CAP = 96_000;
-const PROVIDER_OUTPUT_TOKEN_CAP = 4_080;
+const PROVIDER_OUTPUT_TOKEN_CAP = 11_200;
 
 export function parseBoundedDecimal(value: string): number | null {
   if (!DECIMAL_PATTERN.test(value)) return null;

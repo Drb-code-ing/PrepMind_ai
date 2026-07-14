@@ -518,7 +518,7 @@ describe('Phase 6.9.4.3 paired contract', () => {
     ]);
   });
 
-  test('reprices a Router pre-admission stop with the canonical 2400/120 ceiling', () => {
+  test('reprices a Router pre-admission stop with the canonical 2400/400 ceiling', () => {
     const report = buildCostBudgetStoppedReport(13);
     if (report.kind !== 'report' || report.runKind !== 'live' ||
         report.runStatus !== 'incomplete' ||
@@ -528,7 +528,7 @@ describe('Phase 6.9.4.3 paired contract', () => {
 
     const routerReservationCostUsd =
       (2_400 / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
-      (120 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
+      (400 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
     const firstNotRun = report.lanes.live.entries.find(
       (entry) => entry.entryStatus === 'not_run',
     );
@@ -543,7 +543,7 @@ describe('Phase 6.9.4.3 paired contract', () => {
     const wrongCeiling = structuredClone(report);
     wrongCeiling.stopEvidence.reservationCostUsd =
       (4_800 / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
-      (180 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
+      (400 / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
     expect(parsePhase6943Output(wrongCeiling).ok).toBe(false);
   });
 
@@ -765,6 +765,25 @@ describe('Phase 6.9.4.3 paired contract', () => {
     expect(costCap.estimatedCostUsd).toBeGreaterThan(costCap.pricingSnapshot.effectiveMaxCostUsd);
     expect(parsePhase6943Output(costCap).ok).toBe(false);
   });
+
+  test('rejects a strict Live entry one token above the 400-token output ceiling', () => {
+    const report = structuredClone(buildReport('live', 'complete'));
+    if (report.kind !== 'report' || report.runKind !== 'live') throw new Error('expected live');
+    const entry = report.lanes.live.entries.find(
+      (item) => item.entryStatus === 'observed' && item.lane === 'live' && item.strictSuccess,
+    );
+    if (!entry || entry.entryStatus !== 'observed' || entry.lane !== 'live') {
+      throw new Error('missing live entry');
+    }
+    const addedOutputTokens = 401 - entry.outputTokens;
+    entry.outputTokens = 401;
+    report.usage.outputTokens += addedOutputTokens;
+    report.estimatedCostUsd += addedOutputTokens / 1_000_000;
+
+    expect(report.usage.outputTokens).toBeLessThanOrEqual(11_200);
+    expect(report.estimatedCostUsd).toBeLessThan(report.pricingSnapshot.effectiveMaxCostUsd);
+    expect(parsePhase6943Output(report).ok).toBe(false);
+  });
 });
 
 function buildInvalidRun(): Phase6943Output {
@@ -956,7 +975,7 @@ function setCostBudgetStopEvidence(
   const nextCase = canonicalCases[firstNotRunEligible];
   if (firstNotRunEligible < 0 || !nextCase) throw new Error('missing next eligible case');
   const inputCeiling = nextCase.agent === 'router' ? 2_400 : 4_800;
-  const outputCeiling = nextCase.agent === 'router' ? 120 : 180;
+  const outputCeiling = 400;
   const reservationCostUsd =
     (inputCeiling / 1_000_000) * report.pricingSnapshot.inputUsdPerMillion +
     (outputCeiling / 1_000_000) * report.pricingSnapshot.outputUsdPerMillion;
