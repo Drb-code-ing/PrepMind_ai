@@ -13,20 +13,47 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(dockerignore).toContain('apps/web/.next');
   });
 
-  it('loads the root env file for repository Docker commands', () => {
+  it('loads the root env file and worker profile for repository Docker commands', () => {
     const packageJson = JSON.parse(readRepoFile('package.json')) as {
       scripts: Record<string, string>;
     };
+    const commands = [
+      ['docker:up', 'up'],
+      ['docker:up:worker', 'up'],
+      ['docker:down', 'down'],
+    ] as const;
 
-    expect(packageJson.scripts['docker:up']).toBe(
-      'docker compose --env-file .env -f docker/docker-compose.dev.yml up -d',
-    );
-    expect(packageJson.scripts['docker:down']).toBe(
-      'docker compose --env-file .env -f docker/docker-compose.dev.yml down',
-    );
-    expect(packageJson.scripts['docker:up:worker']).toBe(
-      'docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d',
-    );
+    for (const [scriptName, subcommand] of commands) {
+      const tokens = packageJson.scripts[scriptName].split(/\s+/);
+      const subcommandIndex = tokens.indexOf(subcommand);
+
+      expect(tokens.slice(0, 2)).toEqual(['docker', 'compose']);
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '--env-file',
+        '.env',
+        subcommandIndex,
+      );
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '-f',
+        'docker/docker-compose.dev.yml',
+        subcommandIndex,
+      );
+    }
+
+    for (const [scriptName, subcommand] of [
+      ['docker:up:worker', 'up'],
+      ['docker:down', 'down'],
+    ] as const) {
+      const tokens = packageJson.scripts[scriptName].split(/\s+/);
+      expectComposeOptionBeforeSubcommand(
+        tokens,
+        '--profile',
+        'worker',
+        tokens.indexOf(subcommand),
+      );
+    }
   });
 
   it('keeps the local PostgreSQL host port aligned with development docs', () => {
@@ -420,4 +447,18 @@ function extractYamlSection(source: string, header: string, indent: number) {
   const nextSiblingPattern = new RegExp(`\\n {${indent}}[^\\s].*:`);
   const nextSibling = rest.search(nextSiblingPattern);
   return nextSibling >= 0 ? rest.slice(0, nextSibling) : rest;
+}
+
+function expectComposeOptionBeforeSubcommand(
+  tokens: string[],
+  option: string,
+  value: string,
+  subcommandIndex: number,
+) {
+  const optionIndex = tokens.indexOf(option);
+
+  expect(subcommandIndex).toBeGreaterThan(1);
+  expect(optionIndex).toBeGreaterThan(1);
+  expect(tokens[optionIndex + 1]).toBe(value);
+  expect(optionIndex).toBeLessThan(subcommandIndex);
 }
