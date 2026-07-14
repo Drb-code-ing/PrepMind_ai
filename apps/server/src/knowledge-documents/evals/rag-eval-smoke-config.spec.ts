@@ -1,6 +1,7 @@
 import {
   RAG_EVAL_SMOKE_CASE_IDS,
   assertRagEvalSmokeEvidence,
+  formatRagEvalSmokeFailure,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
 } from './rag-eval-smoke-config';
@@ -143,6 +144,54 @@ describe('assertRagEvalSmokeEvidence', () => {
     expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
       'RAG eval smoke evidence failed: duplicate_chunk_id.',
     );
+  });
+});
+
+describe('formatRagEvalSmokeFailure', () => {
+  it('returns fixed safe codes and messages without unsafe error or API detail', () => {
+    const unsafeError = new Error(
+      'fetch https://secret.example.com/key=canary failed with sk-canary',
+    );
+    const unsafeApiDetail = {
+      message:
+        'private chunk content from https://secret.example.com/key=canary',
+      key: 'sk-canary',
+    };
+
+    const formatted = [
+      formatRagEvalSmokeFailure('FETCH_FAILED', unsafeError),
+      formatRagEvalSmokeFailure('API_REQUEST_FAILED', unsafeApiDetail),
+      formatRagEvalSmokeFailure('DOCUMENT_PROCESSING_FAILED', unsafeApiDetail),
+      formatRagEvalSmokeFailure('CLEANUP_FAILED', unsafeError),
+      formatRagEvalSmokeFailure('UNEXPECTED_FAILURE', unsafeError),
+    ];
+
+    expect(formatted).toEqual([
+      {
+        code: 'FETCH_FAILED',
+        message: 'RAG eval smoke request transport failed.',
+      },
+      {
+        code: 'API_REQUEST_FAILED',
+        message: 'RAG eval smoke API request failed.',
+      },
+      {
+        code: 'DOCUMENT_PROCESSING_FAILED',
+        message: 'RAG eval smoke document processing failed.',
+      },
+      {
+        code: 'CLEANUP_FAILED',
+        message: 'RAG eval smoke cleanup failed.',
+      },
+      {
+        code: 'UNEXPECTED_FAILURE',
+        message: 'RAG eval smoke failed.',
+      },
+    ]);
+    const serialized = JSON.stringify(formatted);
+    expect(serialized).not.toContain('https://secret.example.com/key=canary');
+    expect(serialized).not.toContain('sk-canary');
+    expect(serialized).not.toContain('private chunk content');
   });
 });
 

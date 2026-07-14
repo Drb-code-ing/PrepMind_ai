@@ -27,6 +27,16 @@ type RetrievalEvidence = {
   keywordScore: number;
 };
 
+const RAG_EVAL_SMOKE_FAILURE_MESSAGES = {
+  FETCH_FAILED: 'RAG eval smoke request transport failed.',
+  API_REQUEST_FAILED: 'RAG eval smoke API request failed.',
+  DOCUMENT_PROCESSING_FAILED: 'RAG eval smoke document processing failed.',
+  CLEANUP_FAILED: 'RAG eval smoke cleanup failed.',
+  UNEXPECTED_FAILURE: 'RAG eval smoke failed.',
+} as const;
+
+type RagEvalSmokeFailureCode = keyof typeof RAG_EVAL_SMOKE_FAILURE_MESSAGES;
+
 export function selectRagEvalSmokeCases(
   cases: RagEvalCase[],
 ): RagEvalCaseWithSmokeId[] {
@@ -50,6 +60,14 @@ export function selectRagEvalSmokeCases(
 export function shouldKeepRagEvalSmokeData(env: RagEvalSmokeEnv) {
   const value = env.RAG_EVAL_SMOKE_KEEP_DATA?.trim().toLowerCase();
   return value === 'true' || value === '1' || value === 'yes';
+}
+
+export function formatRagEvalSmokeFailure(
+  code: RagEvalSmokeFailureCode,
+  unsafeDetail?: unknown,
+) {
+  void unsafeDetail;
+  return { code, message: RAG_EVAL_SMOKE_FAILURE_MESSAGES[code] };
 }
 
 export function assertRagEvalSmokeEvidence(

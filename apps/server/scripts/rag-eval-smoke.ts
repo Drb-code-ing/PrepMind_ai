@@ -10,6 +10,7 @@ import { formatRagEvalSmokeReport } from '../src/knowledge-documents/evals/rag-e
 import { runRagEval } from '../src/knowledge-documents/evals/rag-eval-runner';
 import {
   assertRagEvalSmokeEvidence,
+  formatRagEvalSmokeFailure,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
 } from '../src/knowledge-documents/evals/rag-eval-smoke-config';
@@ -40,6 +41,8 @@ type QueuedKnowledgeDocumentProcessResponse =
   KnowledgeDocumentProcessResponse & {
     processing: KnowledgeDocumentProcessingMetadata;
   };
+
+type RagEvalSmokeFailure = ReturnType<typeof formatRagEvalSmokeFailure>;
 
 type SmokeCaseHitSummary = {
   hitCount: number;
@@ -136,9 +139,8 @@ async function main() {
       } else {
         await deleteDocument(baseUrl, accessToken, documentId).catch(
           (error) => {
-            process.stderr.write(
-              `Warning: failed to delete smoke document: ${messageOf(error)}\n`,
-            );
+            const failure = formatRagEvalSmokeFailure('CLEANUP_FAILED', error);
+            process.stderr.write(`Warning: ${formatFailureLine(failure)}\n`);
           },
         );
       }
@@ -198,7 +200,7 @@ async function processDocument(
     response.processing?.mode !== 'queue' ||
     !response.processing.backgroundJobId
   ) {
-    throw new Error('Document processing did not use the required queue mode.');
+    throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', response);
   }
   return response as QueuedKnowledgeDocumentProcessResponse;
 }
@@ -225,15 +227,11 @@ async function waitForBackgroundJobSucceeded(input: {
       backgroundJob.status === 'FAILED' ||
       backgroundJob.status === 'STALE_SKIPPED'
     ) {
-      throw new Error(
-        `Document processing background job reached ${backgroundJob.status}.`,
-      );
+      throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', backgroundJob);
     }
     await sleep(input.pollIntervalMs);
   }
-  throw new Error(
-    `Document processing background job timed out after ${input.timeoutMs}ms.`,
-  );
+  throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', input.timeoutMs);
 }
 
 async function getProcessedDocument(
@@ -250,9 +248,7 @@ async function getProcessedDocument(
     },
   );
   if (document.status !== 'DONE') {
-    throw new Error(
-      'Document was not DONE after its background job succeeded.',
-    );
+    throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', document);
   }
   return document;
 }
@@ -297,16 +293,30 @@ async function request<T>(
   path: string,
   init: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, init);
-  const text = await response.text();
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch(`${baseUrl}${path}`, init);
+    text = await response.text();
+  } catch (error) {
+    throw smokeFailureError('FETCH_FAILED', error);
+  }
   const parsed = parseJson<Envelope<T>>(text);
   if (!response.ok || !parsed.success) {
-    const detail =
-      parsed.error?.message ?? response.statusText ?? 'request failed';
-    throw new Error(`${init.method ?? 'GET'} ${path} failed: ${detail}`);
+    throw smokeFailureError('API_REQUEST_FAILED', {
+      apiDetail: parsed.error,
+      method: init.method,
+      path,
+      status: response.status,
+      statusText: response.statusText,
+    });
   }
   if (parsed.data === undefined) {
-    throw new Error(`${init.method ?? 'GET'} ${path} did not return data.`);
+    throw smokeFailureError('API_REQUEST_FAILED', {
+      method: init.method,
+      path,
+      reason: 'data_missing',
+    });
   }
   return parsed.data;
 }
@@ -314,8 +324,8 @@ async function request<T>(
 function parseJson<T>(text: string): T {
   try {
     return JSON.parse(text) as T;
-  } catch {
-    throw new Error('API returned non-JSON response.');
+  } catch (error) {
+    throw smokeFailureError('API_REQUEST_FAILED', { error, text });
   }
 }
 
@@ -355,11 +365,31 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+class RagEvalSmokeFailureError extends Error {
+  constructor(readonly failure: RagEvalSmokeFailure) {
+    super(failure.message);
+    this.name = 'RagEvalSmokeFailureError';
+  }
+}
+
+function smokeFailureError(
+  code: Parameters<typeof formatRagEvalSmokeFailure>[0],
+  unsafeDetail?: unknown,
+) {
+  return new RagEvalSmokeFailureError(
+    formatRagEvalSmokeFailure(code, unsafeDetail),
+  );
+}
+
+function formatFailureLine(failure: RagEvalSmokeFailure) {
+  return `[${failure.code}] ${failure.message}`;
 }
 
 main().catch((error) => {
-  process.stderr.write(`RAG eval smoke failed: ${messageOf(error)}\n`);
+  const failure =
+    error instanceof RagEvalSmokeFailureError
+      ? error.failure
+      : formatRagEvalSmokeFailure('UNEXPECTED_FAILURE', error);
+  process.stderr.write(`${formatFailureLine(failure)}\n`);
   process.exitCode = 1;
 });
