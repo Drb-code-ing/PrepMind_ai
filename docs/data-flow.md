@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-12。Phase 7 工程化已完成；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
+> 当前版本：2026-07-12。Phase 7 核心工程化已完成，Phase 7.8.5 RAG runtime parity 实施完成、待真实 Docker 验收；Phase 6.9.3 已完成短期会话记忆、分层 context assembler、Dexie v9 sanitized state recovery，以及 Docker Mock/受控 Live/清理证据。已有业务 Agent 仍是 deterministic policy，最终流式输出继续由既有 mock/live provider 链路负责；下一任务是 Phase 6.9.4 Router/Verifier 混合路径。
 
 ## 1. 当前边界
 
