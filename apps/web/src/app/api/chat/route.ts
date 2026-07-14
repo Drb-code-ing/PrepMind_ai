@@ -12,7 +12,7 @@ import {
   shouldSearchKnowledgeForChat,
   validateChatLiveAccess,
 } from '@/lib/chat-api-policy';
-import { buildChatAgentExecution, type ChatAgentDecision } from '@/lib/chat-agent-runtime';
+import type { ChatAgentDecision } from '@/lib/chat-agent-runtime';
 import {
   type ActiveStudyContext,
   type ChatContextMessage,
@@ -30,6 +30,7 @@ import {
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
 import { buildChatModelAgentObservationHeaders } from '@/lib/chat-model-agent-observation';
+import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
 import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
@@ -261,18 +262,13 @@ export async function POST(req: Request) {
     const traceRunId = crypto.randomUUID();
     const traceStartedAt = new Date();
     const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
-    const modelAgentBudget = modelAgentBundle.createBudget();
-    const agentExecution = await buildChatAgentExecution({
+    const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
+      bundle: modelAgentBundle,
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
       runId: traceRunId,
       userId: 'web-chat-user',
       signal: req.signal,
-      model: {
-        enabled: modelAgentBundle.routerEnabled,
-        runtime: modelAgentBundle.routerRuntime,
-        budget: modelAgentBudget,
-      },
     });
     const agentDecision = agentExecution.decision;
     const knowledgeSearch = await searchKnowledgeForChat({
@@ -284,13 +280,7 @@ export async function POST(req: Request) {
       accessToken: normalizedAccessToken,
       messages: normalizedMessages,
       logger: console,
-      model: {
-        enabled: modelAgentBundle.verifierEnabled,
-        runtime: modelAgentBundle.verifierRuntime,
-        budget: agentExecution.budget,
-        runId: traceRunId,
-        signal: req.signal,
-      },
+      model: verifierModel,
     });
     const modelAgentHeaders = buildChatModelAgentObservationHeaders({
       router: agentExecution.routerObservation,
