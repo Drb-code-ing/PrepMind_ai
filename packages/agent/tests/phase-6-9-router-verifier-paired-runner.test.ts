@@ -13,6 +13,8 @@ import {
 
 import {
   PHASE_6943_DATASET_DIGEST,
+  PHASE_6943_RUNNER_VERSION,
+  PHASE_6943_STRUCTURED_OUTPUT_MODE,
   calculatePhase6943DatasetDigest,
   parsePhase6943Output,
   validatePhase6943Dataset,
@@ -367,6 +369,10 @@ describe('Phase 6.9.4.3 paired runner', () => {
     expect(output.kind).toBe('report');
     if (output.kind !== 'report' || output.runKind !== 'live') throw new Error('expected live');
     expect(output.runStatus).toBe('complete');
+    expect(output).toMatchObject({
+      runnerVersion: PHASE_6943_RUNNER_VERSION,
+      structuredOutputMode: PHASE_6943_STRUCTURED_OUTPUT_MODE,
+    });
     expect(output.lanes.live.counters).toEqual({
       caseEntries: 100, adapterExecutions: 100, runtimeInvocations: 28,
       providerAttempts: 28, strictSuccesses: 28, zeroCallCases: 72,
