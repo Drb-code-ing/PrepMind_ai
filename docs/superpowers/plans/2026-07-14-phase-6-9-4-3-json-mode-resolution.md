@@ -51,11 +51,11 @@
 - [x] **Step 3: Implement the minimal CLI switch**: standard URL, JSON-mode executor, fixed prompt version/instruction, and v3 evidence identity; retain pricing, key shape, preflight, budget, timeout, cleanup and no-retry boundaries.
 - [x] **Step 4: Run full zero-network gates**: Agent tests, AI tests, typecheck/lint, deterministic baseline, Mock eval, strict validator, forbidden-field scan, and local-link scan.
 - [x] **Step 5: Commit** `feat(agent): resolve paired eval with JSON mode`.
-- [ ] **Step 6: Request review, then run one complete controlled-Live** only after the zero-network gates pass; stop on the first failure, preserve evidence, and never patch-run or concatenate history.
+- [x] **Step 6: Request review, then run one complete controlled-Live** only after the zero-network gates pass; result: 28/28 strict success and 72/72 zero-call, Verifier passed, Router failed the latency gate and entered terminal deterministic fallback.
 
 ### Task 4: Integration and final decision
 
-- [x] **Step 1: Update all stage docs with the JSON-mode implementation checkpoint and current result; defer real-model evidence to the next branch.**
+- [x] **Step 1: Update all stage docs with the JSON-mode implementation checkpoint and the canonical real-model evidence.**
 - [ ] **Step 2: Run main-branch verification after `--no-ff` merge.**
 - [ ] **Step 3: Push main and verify local/tracking/remote SHA equality.**
-- [ ] **Step 4: If complete, record enablement decision; if incomplete, record the terminal fallback decision and keep Router/Verifier disabled.**
+- [x] **Step 4: If complete, record enablement decision; if incomplete, record the terminal fallback decision.** Router remains deterministic because `latency_budget_exceeded`; Verifier paired decision passed but production integration remains unchanged.

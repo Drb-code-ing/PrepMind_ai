@@ -6,7 +6,7 @@
 
 更新时间：2026-07-14
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 JSON-mode resolution 零网络 checkpoint 已完成，验收仍未完成。下一步先合并 main、在 main 复验并推送，再从新 main 创建唯一一次完整 JSON-mode controlled-Live 任务；失败则记录终局 fallback，不再新增 transport。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 JSON-mode 唯一完整 Live 已完成：28/28 strict success、72/72 zero-call，Verifier paired gate 通过，Router additional P95 4264ms 超门槛并记录 terminal deterministic fallback。下一步收尾 evidence 文档、合并 main、复验推送，再从新 main 进入 Phase 6.9.5；不再重跑本阶段 Live 或新增 transport。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -1802,9 +1802,24 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 
 零网络门禁只证明 JSON-mode wire、证据身份与安全边界可执行，不证明 100-case 真实语义质量。下一步必须先 `--no-ff` 合并 main、在 main 复验并推送，再从新 main 创建独立 controlled-Live 分支完整跑一次；如果仍失败，记录终局 fallback 并保持 deterministic，不再引入第三种 transport。
 
+## 2026-07-14 — Phase 6.9.4.3 JSON-mode Controlled-Live Terminal Evidence
+
+### 运行结果
+
+- JSON-mode resolution 已合并到 `main@ec330ce1952ae058d92be941f800e9ae28791b91`，main 上 Agent 345、AI 151、typecheck/lint、baseline、Mock、validator 与负 Live preflight 全部复验后推送远程；local/tracking/remote SHA 相等。
+- 从新 main 创建 `codex/phase-6-9-4-3-controlled-live-json-mode`，读取根 `.env` 中的 key 到单次 PowerShell 进程内，显式设置标准 `https://api.deepseek.com` 与 Live 双开关；命令结束后在 finally 中恢复 Mock 并移除 key/base URL/model 变量。
+- 唯一完整 run 为 `live-20260714T084632914Z-4145ce0ffea0.json`：`runStatus=complete`、`providerAttempts/strictSuccesses=28/28`、`zeroCallCases=72`、usage `10677/4323`、estimated cost `$0.002842788219846`，strict validator exit 0。
+
+### 终局门槛结论
+
+- Verifier：`enabled=true / quality_gate_passed`，additional P95 `2872ms`。
+- Router：`enabled=false / latency_budget_exceeded`，additional P95 `4264ms`；质量、安全、权限、schema、usage 与成本链路没有失败，但固定延迟门槛未通过。
+- CLI exit 1 是 paired decision 的固定语义，不是 Provider 或 structured-output 失败。该 run 证明 JSON mode transport 可用，但不能把 Router 接入生产。
+- 按批准的终局规则，不重跑、不补 case、不提高 cap、不新增 transport。Router 保持 deterministic terminal fallback；Verifier 通过结论保留为 Phase 6.9.5 后续集成依据，当前生产 Chat 不改动。
+
 ## 下一步
 
-1. Phase 6.9.4.3：合并并在 main 复验、推送 JSON-mode resolution checkpoint；然后从新 main 创建唯一一次完整 JSON-mode controlled-Live 任务，失败则终局 fallback。
+1. Phase 6.9.4.3：提交本次 Live evidence 与终局结论，独立审查后合并 main、main 复验并推送；随后从新 main 进入 Phase 6.9.5。
 2. Phase 6.9.5 ~ 6.9.7：结构化长期记忆、情景记忆、MCP-ready Orchestrator 与阶段验收。
 3. Phase 6.9 完成后进入 Phase 8 性能/PWA，再进入 Phase 9 MCP Tool 体系。
 
