@@ -136,6 +136,8 @@ test('binds DeepSeek vendor-family hosts to the DeepSeek key even when both keys
     'https://deepseek.com',
     'https://api.deepseek.com',
     'https://proxy.deepseek.com/v1',
+    'https://api.deepseek.com./v1',
+    'https://api.deepseek.com%2e/v1',
   ]) {
     const config = resolveChatModelAgentConfig({
       ...LIVE_DEEPSEEK_ENV,
@@ -156,6 +158,7 @@ test('binds OpenAI vendor-family hosts to the OpenAI key even when both keys exi
     'https://openai.com',
     'https://api.openai.com/v1',
     'https://platform.openai.com/v1',
+    'https://platform.openai.com./v1',
   ]) {
     const config = resolveChatModelAgentConfig({
       ...LIVE_DEEPSEEK_ENV,
@@ -185,6 +188,24 @@ test('rejects vendor-family hosts when only the wrong provider key exists', () =
       DEEPSEEK_API_KEY: 'deepseek_wrong_canary',
       OPENAI_API_KEY: '',
     },
+    {
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL: 'https://api.deepseek.com./v1',
+      DEEPSEEK_API_KEY: '',
+      OPENAI_API_KEY: 'openai_wrong_root_dot_canary',
+    },
+    {
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL: 'https://api.deepseek.com%2e/v1',
+      DEEPSEEK_API_KEY: '',
+      OPENAI_API_KEY: 'openai_wrong_encoded_root_dot_canary',
+    },
+    {
+      ...LIVE_DEEPSEEK_ENV,
+      AI_BASE_URL: 'https://platform.openai.com./v1',
+      DEEPSEEK_API_KEY: 'deepseek_wrong_root_dot_canary',
+      OPENAI_API_KEY: '',
+    },
   ]) {
     const config = resolveChatModelAgentConfig(env);
     assert.equal(config.configured, false);
@@ -197,7 +218,7 @@ test('rejects vendor-family hosts when only the wrong provider key exists', () =
 test('treats suffix-spoof hosts as custom hosts with the single-key rule', () => {
   const singleKey = resolveChatModelAgentConfig({
     ...LIVE_DEEPSEEK_ENV,
-    AI_BASE_URL: 'https://evil-deepseek.com/v1',
+    AI_BASE_URL: 'https://evil-deepseek.com./v1',
   });
   assert.equal(singleKey.configured, true);
   assert.equal(singleKey.provider, 'deepseek');
@@ -205,7 +226,7 @@ test('treats suffix-spoof hosts as custom hosts with the single-key rule', () =>
 
   const bothKeys = resolveChatModelAgentConfig({
     ...LIVE_DEEPSEEK_ENV,
-    AI_BASE_URL: 'https://evil-deepseek.com/v1',
+    AI_BASE_URL: 'https://evil-deepseek.com./v1',
     OPENAI_API_KEY: 'openai_custom_canary',
   });
   assert.equal(bothKeys.configured, false);

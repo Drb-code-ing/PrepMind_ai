@@ -182,12 +182,13 @@ function resolveProviderConfig(values: SafeEnvironmentSnapshot): {
       : '');
   const url = parseSafeHttpsUrl(baseURL);
   if (url === null) return null;
+  const hostname = normalizeProviderHostname(url.hostname);
 
   let credentialSource: 'deepseek' | 'openai';
-  if (isVendorHostname(url.hostname, DEEPSEEK_HOST_FAMILY)) {
+  if (isVendorHostname(hostname, DEEPSEEK_HOST_FAMILY)) {
     if (!deepseekKey) return null;
     credentialSource = 'deepseek';
-  } else if (isVendorHostname(url.hostname, OPENAI_HOST_FAMILY)) {
+  } else if (isVendorHostname(hostname, OPENAI_HOST_FAMILY)) {
     if (!openaiKey) return null;
     credentialSource = 'openai';
   } else {
@@ -205,6 +206,10 @@ function resolveProviderConfig(values: SafeEnvironmentSnapshot): {
     credentialSource,
     model,
   };
+}
+
+function normalizeProviderHostname(hostname: string): string {
+  return hostname.endsWith('.') ? hostname.slice(0, -1) : hostname;
 }
 
 function isVendorHostname(hostname: string, family: string): boolean {
