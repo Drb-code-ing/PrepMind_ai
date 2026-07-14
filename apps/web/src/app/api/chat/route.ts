@@ -29,7 +29,10 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
-import { buildChatModelAgentObservationHeaders } from '@/lib/chat-model-agent-observation';
+import {
+  buildChatModelAgentObservationHeaders,
+  projectChatModelAgentObservation,
+} from '@/lib/chat-model-agent-observation';
 import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
 import type { RagSafetySummary } from '@/lib/rag-safety';
@@ -282,6 +285,15 @@ export async function POST(req: Request) {
       logger: console,
       model: verifierModel,
     });
+    const routerModelObservation = projectChatModelAgentObservation(
+      agentExecution.routerObservation,
+    );
+    const verifierModelObservation =
+      knowledgeSearch.verifierObservation === undefined
+        ? undefined
+        : projectChatModelAgentObservation(
+            knowledgeSearch.verifierObservation,
+          );
     const modelAgentHeaders = buildChatModelAgentObservationHeaders({
       router: agentExecution.routerObservation,
       ...(knowledgeSearch.verifierObservation === undefined
@@ -349,6 +361,12 @@ export async function POST(req: Request) {
         agentDecision,
         knowledgeHits: citationHits,
         knowledgeVerifierResult: citationVerifierResult,
+        modelAgentObservations: {
+          router: routerModelObservation,
+          ...(verifierModelObservation === undefined
+            ? {}
+            : { verifier: verifierModelObservation }),
+        },
         startedAt: traceStartedAt,
         finishedAt: new Date(),
       }),

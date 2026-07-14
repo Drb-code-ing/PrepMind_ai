@@ -6,6 +6,7 @@ import {
   createInputPreview,
 } from './agent-trace-payload.ts';
 import { assembleChatContextForRoute } from './chat-context-orchestration.ts';
+import type { SafeChatModelAgentObservation } from './chat-model-agent-observation.ts';
 
 assert.equal(createInputPreview(` ${'题'.repeat(120)} `).length, 80);
 assert.equal(createInputHash('同一个问题'), createInputHash('同一个问题'));
@@ -148,3 +149,139 @@ assert.ok(!sensitivePayload.inputPreview?.includes('secret_key'));
 assert.ok(sensitivePayload.inputPreview?.includes('[redacted]'));
 assert.ok(sensitivePayload.steps.every((step) => !step.inputSummary.includes('secret_token')));
 assert.ok(sensitivePayload.steps.every((step) => !step.inputSummary.includes('secret_key')));
+
+const routerModelObservation: SafeChatModelAgentObservation = {
+  attempted: true,
+  disposition: 'candidate_applied',
+  durationMs: 31,
+  inputTokens: 100,
+  outputTokens: 20,
+};
+const verifierModelObservation: SafeChatModelAgentObservation = {
+  attempted: true,
+  disposition: 'fallback_timeout',
+  durationMs: 45,
+  inputTokens: 60,
+  outputTokens: 10,
+  errorCode: 'TIMEOUT',
+  providerFailureCategory: 'transport',
+};
+const observedPayload = buildChatAgentTracePayload({
+  runId: 'trace_run_observed',
+  conversationId: 'conv_observed',
+  messages: [{ role: 'user', content: 'candidate trace usage' }],
+  mode: 'live',
+  modelProvider: 'deepseek',
+  modelName: 'deepseek-v4-flash',
+  budget: {
+    estimatedInputTokens: 500,
+    maxOutputTokens: 200,
+  },
+  agentDecision: {
+    route: 'rag_answer',
+    confidence: 0.9,
+    reason: 'fixed deterministic reason',
+    requiresRag: true,
+    requiresHumanApproval: false,
+  },
+  knowledgeHits: [],
+  knowledgeVerifierResult: {
+    status: 'insufficient',
+    reason: 'fixed verifier reason',
+    promptAddition: '',
+    debug: {
+      checkedChunkCount: 0,
+      lowScoreChunkCount: 0,
+      conflictSignals: [],
+      suspiciousSignals: [],
+    },
+  },
+  modelAgentObservations: {
+    router: routerModelObservation,
+    verifier: verifierModelObservation,
+  },
+  startedAt: new Date('2026-07-15T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-15T08:00:01.000Z'),
+});
+
+assert.equal(observedPayload.inputTokenEstimate, 660);
+assert.equal(observedPayload.outputTokenEstimate, 230);
+assert.equal(observedPayload.maxOutputTokens, 200);
+assert.equal(observedPayload.pricingKnown, false);
+assert.equal(observedPayload.costEstimate, 0);
+assert.equal(
+  observedPayload.steps.map((step) => step.node).join(','),
+  'RouterAgent,RouterModelCandidate,KnowledgeVerifierAgent,KnowledgeVerifierModelCandidate',
+);
+assert.equal(
+  observedPayload.steps.find((step) => step.node === 'RouterModelCandidate')
+    ?.outputSummary,
+  'attempted=true disposition=candidate_applied durationMs=31 inputTokens=100 outputTokens=20',
+);
+assert.equal(
+  observedPayload.steps.find(
+    (step) => step.node === 'KnowledgeVerifierModelCandidate',
+  )?.outputSummary,
+  'attempted=true disposition=fallback_timeout durationMs=45 inputTokens=60 outputTokens=10 error=TIMEOUT provider=transport',
+);
+
+const observationCanary = 'CANARY_reason_error_provider_raw_secret';
+const saturatedPayload = buildChatAgentTracePayload({
+  runId: 'trace_run_saturated',
+  conversationId: null,
+  messages: [{ role: 'user', content: 'safe arithmetic' }],
+  mode: 'mock',
+  modelProvider: 'mock',
+  modelName: 'mock-prepmind-chat',
+  budget: {
+    estimatedInputTokens: Number.MAX_SAFE_INTEGER - 5,
+    maxOutputTokens: Number.MAX_SAFE_INTEGER - 3,
+  },
+  agentDecision: {
+    route: 'chat',
+    confidence: 1,
+    reason: observationCanary,
+    requiresRag: false,
+    requiresHumanApproval: false,
+  },
+  modelAgentObservations: {
+    router: {
+      attempted: true,
+      disposition: 'candidate_applied',
+      durationMs: 7,
+      inputTokens: 10,
+      outputTokens: 9,
+      raw: { prompt: observationCanary },
+    },
+    verifier: {
+      attempted: true,
+      disposition: 'fallback_runtime_error',
+      durationMs: Number.NaN,
+      inputTokens: -4,
+      outputTokens: Number.NaN,
+      usageUnavailable: true,
+      errorCode: observationCanary,
+      providerFailureCategory: observationCanary,
+      rawError: observationCanary,
+    },
+  } as never,
+  startedAt: new Date('2026-07-15T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-15T08:00:01.000Z'),
+});
+
+assert.equal(saturatedPayload.inputTokenEstimate, Number.MAX_SAFE_INTEGER);
+assert.equal(saturatedPayload.outputTokenEstimate, Number.MAX_SAFE_INTEGER);
+assert.equal(saturatedPayload.maxOutputTokens, Number.MAX_SAFE_INTEGER - 3);
+assert.ok(
+  saturatedPayload.steps
+    .find((step) => step.node === 'KnowledgeVerifierModelCandidate')
+    ?.outputSummary.includes('durationMs=0 inputTokens=0 outputTokens=0'),
+);
+assert.ok(
+  saturatedPayload.steps
+    .find((step) => step.node === 'KnowledgeVerifierModelCandidate')
+    ?.outputSummary.includes(
+      'error=UNKNOWN provider=unknown usageUnavailable=true',
+    ),
+);
+assert.equal(JSON.stringify(saturatedPayload).includes(observationCanary), false);
