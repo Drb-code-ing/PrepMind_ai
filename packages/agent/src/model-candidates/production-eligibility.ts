@@ -140,12 +140,16 @@ const OPPOSING_RELATIONS: readonly [RegExp, RegExp][] = [
   [/大于|高于|多于|超过|递增|增加|正值/u, /小于|低于|少于|不足|递减|减少|负值/u],
 ];
 const SCALAR_VALUE_PATTERN =
-  /\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万亿]+(?:分之[零〇一二两三四五六七八九十百千万亿]+)?/gu;
-const CLAIM_SENTENCE_BOUNDARY = /[,，。；;!?！？]+/u;
+  /\d+(?:\.\d+)?(?:万亿|万|亿)?|[零〇一二两三四五六七八九十百千万亿]+分之[零〇一二两三四五六七八九十百千万亿]+|[零〇一二两三四五六七八九十百千万亿]+点[零〇一二两三四五六七八九]+(?:万亿|万|亿)?|[零〇一二两三四五六七八九十百千万亿]+/gu;
+const CLAIM_SENTENCE_BOUNDARY = /[,，。；;:：!?！？]+/u;
 const CLAIM_DISCOURSE_MARKERS =
   /(?:另一[份段]?|这一|这个|相同|同一|给定|该|所以|因此|根据|材料(?:记载|显示|说明)?|(?:监测|复核)?记录显示|重新计算|本次)/gu;
-const NEGATION_PATTERN =
-  /不再|并非|不是|不能|没有|未|无|不|(?:^|\s)(?:not|no|never)(?=\s|$)/giu;
+const NEGATION_TOKEN_PATTERN =
+  /并非|不是|不能|没有|不再|未|无|不|\b(?:not|no|never)\b/giu;
+const TEMPORAL_QUERY_SIGNAL =
+  /日期|年份|时间|何时|什么时候|哪一年|版本|\b(?:date|year|time|version)\b/iu;
+const TEMPORAL_UNIT_AFTER_SCALAR =
+  /^(?:年|月|日|号|时|点|分|秒|季度|世纪)/u;
 const ASCII_STOP_WORDS = new Set([
   'the',
   'this',
@@ -247,7 +251,10 @@ export function decideKnowledgeVerifierModelEligibility(
       return STALE_OR_UNCERTAIN;
     }
     const queryTerms = extractTopicTerms(query);
-    const claimAnalyses = relevant.map((chunk) => analyzeClaims(chunk.text));
+    const queryTargetsTemporal = TEMPORAL_QUERY_SIGNAL.test(query);
+    const claimAnalyses = relevant.map((chunk) =>
+      analyzeClaims(chunk.text, queryTargetsTemporal),
+    );
     if (hasSemanticConflict(queryTerms, claimAnalyses)) {
       return SEMANTIC_CONFLICT;
     }
@@ -321,10 +328,13 @@ function snapshotVerifierInput(input: unknown): VerifierEligibilitySnapshot | nu
   const query = input.query;
   const rawChunks = input.chunks;
   const rawDeterministic = input.deterministic;
+  const rawChunkCount = Array.isArray(rawChunks) ? rawChunks.length : -1;
   if (
     !isBoundedString(query, MAX_QUERY_BYTES, false) ||
     !Array.isArray(rawChunks) ||
-    rawChunks.length > MAX_CHUNK_COUNT
+    !Number.isSafeInteger(rawChunkCount) ||
+    rawChunkCount < 0 ||
+    rawChunkCount > MAX_CHUNK_COUNT
   ) {
     return null;
   }
@@ -332,7 +342,8 @@ function snapshotVerifierInput(input: unknown): VerifierEligibilitySnapshot | nu
   let aggregateBytes = 0;
   const chunks: VerifierChunkSnapshot[] = [];
   const ids = new Set<string>();
-  for (const rawChunk of rawChunks) {
+  for (let index = 0; index < rawChunkCount; index += 1) {
+    const rawChunk: unknown = rawChunks[index];
     const chunk = snapshotVerifierChunk(rawChunk);
     if (!chunk || ids.has(chunk.chunkId)) return null;
     ids.add(chunk.chunkId);
@@ -453,9 +464,18 @@ function snapshotVerifierResult(value: unknown): KnowledgeVerifierResult | null 
 }
 
 function snapshotStringArray(value: unknown): string[] | null {
-  if (!Array.isArray(value) || value.length > MAX_CHUNK_COUNT) return null;
+  if (!Array.isArray(value)) return null;
+  const length = value.length;
+  if (
+    !Number.isSafeInteger(length) ||
+    length < 0 ||
+    length > MAX_CHUNK_COUNT
+  ) {
+    return null;
+  }
   const result: string[] = [];
-  for (const item of value) {
+  for (let index = 0; index < length; index += 1) {
+    const item: unknown = value[index];
     if (!isBoundedString(item, 1_024, true)) return null;
     result.push(item);
   }
@@ -521,16 +541,21 @@ type ExclusiveDefinition = {
   asserted: string;
 };
 
-function extractExclusiveDefinition(value: string): ExclusiveDefinition | null {
-  const match = value.match(
-    /^([\p{Script=Han}a-z0-9_-]{2,32}?)不是([^，。；;]{2,120})[，,]?而是([^。；;]{2,120})/u,
-  );
-  const subject = match?.[1];
-  const excluded = match?.[2];
-  const asserted = match?.[3];
-  return subject === undefined || excluded === undefined || asserted === undefined
-    ? null
-    : { subject, excluded, asserted };
+function extractExclusiveDefinition(
+  sentences: readonly string[],
+): ExclusiveDefinition | null {
+  for (const sentence of sentences) {
+    const match = sentence.match(
+      /^([\p{Script=Han}a-z0-9_-]{2,32}?)不是([^，。；;]{2,120})[，,]?而是([^。；;]{2,120})/u,
+    );
+    const subject = match?.[1];
+    const excluded = match?.[2];
+    const asserted = match?.[3];
+    if (subject !== undefined && excluded !== undefined && asserted !== undefined) {
+      return { subject, excluded, asserted };
+    }
+  }
+  return null;
 }
 
 function exclusionsCrossConflict(
@@ -546,16 +571,21 @@ function exclusionsCrossConflict(
   return crossOverlap >= 0.3 && crossOverlap > assertedOverlap + 0.1;
 }
 
-function extractPositiveDefinition(value: string): PositiveDefinition | null {
-  const match = value.match(
-    /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:是指|是)([^。；;]{2,160})/u,
-  );
-  const subject = match?.[1];
-  const claim = match?.[2];
-  if (subject === undefined || claim === undefined || subject.endsWith('不')) {
-    return null;
+function extractPositiveDefinition(
+  sentences: readonly string[],
+): PositiveDefinition | null {
+  for (const sentence of sentences) {
+    const match = sentence.match(
+      /^([\p{Script=Han}a-z0-9_-]{2,32}?)(?:是指|是)([^。；;]{2,160})/u,
+    );
+    const subject = match?.[1];
+    const claim = match?.[2];
+    if (subject === undefined || claim === undefined || subject.endsWith('不')) {
+      continue;
+    }
+    return { subject, claim };
   }
-  return { subject, claim };
+  return null;
 }
 
 function exclusiveDefinitionOpposes(
@@ -614,8 +644,12 @@ function extractTopicTerms(value: string): Set<string> {
   return terms;
 }
 
-function analyzeClaims(text: string): ClaimAnalysis {
+function analyzeClaims(
+  text: string,
+  queryTargetsTemporal: boolean,
+): ClaimAnalysis {
   const sentences = splitClaimSentences(text);
+  const definitionSegments = splitDefinitionSegments(text);
   const normalizedSentences = sentences.map((sentence) =>
     normalizeClaimSignature(sentence),
   );
@@ -623,10 +657,10 @@ function analyzeClaims(text: string): ClaimAnalysis {
     text,
     topicTerms: extractTopicTerms(text),
     normalizedSentences,
-    scalarClaims: analyzeScalarClaims(sentences),
+    scalarClaims: analyzeScalarClaims(sentences, queryTargetsTemporal),
     polarityClaims: analyzePolarity(sentences),
-    exclusiveDefinition: extractExclusiveDefinition(text),
-    positiveDefinition: extractPositiveDefinition(text),
+    exclusiveDefinition: extractExclusiveDefinition(definitionSegments),
+    positiveDefinition: extractPositiveDefinition(definitionSegments),
   };
 }
 
@@ -661,7 +695,10 @@ function haveDifferentScalarClaims(
   return false;
 }
 
-function analyzeScalarClaims(sentences: readonly string[]): ScalarClaimAnalysis {
+function analyzeScalarClaims(
+  sentences: readonly string[],
+  queryTargetsTemporal: boolean,
+): ScalarClaimAnalysis {
   const valuesBySignature = new Map<string, Set<string>>();
   let claimCount = 0;
   for (const rawSentence of sentences) {
@@ -674,13 +711,20 @@ function analyzeScalarClaims(sentences: readonly string[]): ScalarClaimAnalysis 
       const scalar = match[0];
       const start = match.index;
       if (start === undefined) continue;
+      if (
+        !queryTargetsTemporal &&
+        TEMPORAL_UNIT_AFTER_SCALAR.test(sentence.slice(start + scalar.length))
+      ) {
+        continue;
+      }
       const before = maskScalarValues(sentence.slice(0, start));
       const after = maskScalarValues(sentence.slice(start + scalar.length));
-      const signature = claimWindow(
-        normalizeClaimSignature(`${before}<value>${after}`),
+      const signature = normalizeClaimSignature(
+        claimWindow(`${before}<value>${after}`),
       );
       if (extractTopicTerms(signature).size < 2) continue;
       const canonicalValue = canonicalizeScalarValue(scalar);
+      if (canonicalValue === null) continue;
       const values = valuesBySignature.get(signature) ?? new Set<string>();
       values.add(canonicalValue);
       valuesBySignature.set(signature, values);
@@ -726,7 +770,7 @@ function hasOppositePolarity(left: ClaimAnalysis, right: ClaimAnalysis): boolean
     for (const rightClaim of right.polarityClaims) {
       if (
         leftClaim.negative !== rightClaim.negative &&
-        signatureSimilarity(leftClaim.signature, rightClaim.signature) >= 0.65
+        polaritySignaturesMatch(leftClaim.signature, rightClaim.signature)
       ) {
         return true;
       }
@@ -735,25 +779,45 @@ function hasOppositePolarity(left: ClaimAnalysis, right: ClaimAnalysis): boolean
   return false;
 }
 
+function polaritySignaturesMatch(left: string, right: string): boolean {
+  if (signatureSimilarity(left, right) >= 0.65) return true;
+  const suffix = sharedSuffix(left, right);
+  return codePointLength(suffix) >= 4 && extractTopicTerms(suffix).size >= 2;
+}
+
 function analyzePolarity(
   sentences: readonly string[],
 ): PolarityClaim[] {
   return sentences.flatMap((sentence) => {
     if (/不是[^。；;]{0,120}而是/u.test(sentence)) return [];
-    const negative = containsNegation(sentence);
-    NEGATION_PATTERN.lastIndex = 0;
-    const signature = normalizeClaimSignature(
-      sentence.replace(NEGATION_PATTERN, '').trim(),
-    );
+    const scanned = scanPolarity(sentence);
+    const negative = scanned.negationCount % 2 === 1;
+    const signature = normalizeClaimSignature(scanned.withoutNegation);
     return signature.length >= 4 ? [{ negative, signature }] : [];
   });
 }
 
 function containsNegation(value: string): boolean {
-  NEGATION_PATTERN.lastIndex = 0;
-  const result = NEGATION_PATTERN.test(value);
-  NEGATION_PATTERN.lastIndex = 0;
-  return result;
+  return scanPolarity(value).negationCount > 0;
+}
+
+function scanPolarity(value: string): {
+  negationCount: number;
+  withoutNegation: string;
+} {
+  const bounded = Array.from(value).slice(0, 200).join('');
+  const pieces: string[] = [];
+  let negationCount = 0;
+  let cursor = 0;
+  for (const match of bounded.matchAll(NEGATION_TOKEN_PATTERN)) {
+    const index = match.index;
+    if (index === undefined) continue;
+    pieces.push(bounded.slice(cursor, index));
+    cursor = index + match[0].length;
+    negationCount += 1;
+  }
+  pieces.push(bounded.slice(cursor));
+  return { negationCount, withoutNegation: pieces.join('') };
 }
 
 function containsScalarValue(value: string): boolean {
@@ -771,6 +835,26 @@ function splitClaimSentences(value: string): string[] {
     .slice(0, 12);
 }
 
+function splitDefinitionSegments(value: string): string[] {
+  const segments: string[] = [];
+  const hardSegments = value.split(/[。；;:：!?！？]+/u);
+  for (let hardIndex = 0; hardIndex < hardSegments.length; hardIndex += 1) {
+    const hardSegment = hardSegments[hardIndex]?.trim();
+    if (!hardSegment) continue;
+    segments.push(hardSegment);
+    if (segments.length >= 12) break;
+    const characters = Array.from(hardSegment);
+    for (let index = 0; index < characters.length; index += 1) {
+      if (characters[index] !== ',' && characters[index] !== '，') continue;
+      const suffix = characters.slice(index + 1).join('').trim();
+      if (suffix.length >= 4) segments.push(suffix);
+      if (segments.length >= 12) break;
+    }
+    if (segments.length >= 12) break;
+  }
+  return segments;
+}
+
 function normalizeClaimSignature(value: string): string {
   return value
     .replace(CLAIM_DISCOURSE_MARKERS, '')
@@ -783,86 +867,142 @@ function maskScalarValues(value: string): string {
   return value.replace(SCALAR_VALUE_PATTERN, '<number>');
 }
 
-function canonicalizeScalarValue(value: string): string {
-  if (/^\d+(?:\.\d+)?$/u.test(value)) {
-    const [integer = '0', fraction] = value.split('.');
-    const canonicalInteger = integer.replace(/^0+(?=\d)/u, '');
-    if (fraction === undefined) return canonicalInteger;
-    const canonicalFraction = fraction.replace(/0+$/u, '');
-    return canonicalFraction.length === 0
-      ? canonicalInteger
-      : `${canonicalInteger}.${canonicalFraction}`;
+function canonicalizeScalarValue(value: string): string | null {
+  const arabic = value.match(/^(\d+(?:\.\d+)?)(万亿|万|亿)?$/u);
+  if (arabic?.[1]) {
+    return shiftDecimal(arabic[1], scalePower(arabic[2]));
   }
 
   const fractionParts = value.split('分之');
   if (fractionParts.length === 2) {
     const denominator = parseChineseInteger(fractionParts[0] ?? '');
     const numerator = parseChineseInteger(fractionParts[1] ?? '');
-    if (denominator !== null && numerator !== null && denominator !== 0) {
-      return `${numerator}/${denominator}`;
-    }
+    if (denominator === null || numerator === null || denominator === 0n) return null;
+    const divisor = greatestCommonDivisor(denominator, numerator);
+    return `${numerator / divisor}/${denominator / divisor}`;
+  }
+
+  const decimal = value.match(
+    /^([零〇一二两三四五六七八九十百千万亿]+)点([零〇一二两三四五六七八九]+)(万亿|万|亿)?$/u,
+  );
+  if (decimal?.[1] && decimal[2]) {
+    const integer = parseChineseInteger(decimal[1]);
+    const fraction = parseChineseDigitSequence(decimal[2]);
+    if (integer === null || fraction === null) return null;
+    return shiftDecimal(
+      `${integer}.${fraction}`,
+      scalePower(decimal[3]),
+    );
   }
 
   const integer = parseChineseInteger(value);
-  return integer === null ? value : String(integer);
+  return integer === null ? null : String(integer);
 }
 
-function parseChineseInteger(value: string): number | null {
-  const digits: Record<string, number> = {
-    '零': 0,
-    '〇': 0,
-    '一': 1,
-    '二': 2,
-    '两': 2,
-    '三': 3,
-    '四': 4,
-    '五': 5,
-    '六': 6,
-    '七': 7,
-    '八': 8,
-    '九': 9,
-  };
-  const units: Record<string, number> = {
-    '十': 10,
-    '百': 100,
-    '千': 1_000,
-    '万': 10_000,
-    '亿': 100_000_000,
-  };
-  if (value.length === 0) return null;
-  if (!/[十百千万亿]/u.test(value)) {
-    let digitsOnly = '';
-    for (const character of value) {
-      const digit = digits[character];
-      if (digit === undefined) return null;
-      digitsOnly += String(digit);
-    }
-    const parsed = Number(digitsOnly);
-    return Number.isSafeInteger(parsed) ? parsed : null;
-  }
+const CHINESE_DIGITS: Readonly<Record<string, number>> = Object.freeze({
+  '零': 0,
+  '〇': 0,
+  '一': 1,
+  '二': 2,
+  '两': 2,
+  '三': 3,
+  '四': 4,
+  '五': 5,
+  '六': 6,
+  '七': 7,
+  '八': 8,
+  '九': 9,
+});
 
-  let total = 0;
-  let section = 0;
-  let number = 0;
+function parseChineseInteger(value: string): bigint | null {
+  if (value.length === 0) return null;
+  const billionIndex = value.indexOf('亿');
+  if (billionIndex >= 0) {
+    if (billionIndex !== value.lastIndexOf('亿')) return null;
+    const high = parseChineseInteger(value.slice(0, billionIndex));
+    const lowText = value.slice(billionIndex + 1);
+    const low = lowText.length === 0 ? 0n : parseChineseInteger(lowText);
+    return high === null || low === null ? null : high * 100_000_000n + low;
+  }
+  const tenThousandIndex = value.indexOf('万');
+  if (tenThousandIndex >= 0) {
+    if (tenThousandIndex !== value.lastIndexOf('万')) return null;
+    const high = parseChineseUnderTenThousand(value.slice(0, tenThousandIndex));
+    const lowText = value.slice(tenThousandIndex + 1);
+    const low = lowText.length === 0 ? 0n : parseChineseUnderTenThousand(lowText);
+    return high === null || low === null ? null : high * 10_000n + low;
+  }
+  return parseChineseUnderTenThousand(value);
+}
+
+function parseChineseUnderTenThousand(value: string): bigint | null {
+  if (value.length === 0) return null;
+  if (!/[十百千]/u.test(value)) {
+    const digits = parseChineseDigitSequence(value);
+    return digits === null ? null : BigInt(digits);
+  }
+  const units: Readonly<Record<string, bigint>> = {
+    '十': 10n,
+    '百': 100n,
+    '千': 1_000n,
+  };
+  let total = 0n;
+  let pending: number | null = null;
+  let previousUnit = 10_000n;
   for (const character of value) {
-    const digit = digits[character];
+    const digit = CHINESE_DIGITS[character];
     if (digit !== undefined) {
-      number = digit;
+      if (pending !== null && pending !== 0) return null;
+      pending = digit;
       continue;
     }
     const unit = units[character];
-    if (unit === undefined) return null;
-    if (unit < 10_000) {
-      section += (number === 0 ? 1 : number) * unit;
-    } else {
-      section += number;
-      total += (section === 0 ? 1 : section) * unit;
-      section = 0;
-    }
-    number = 0;
+    if (unit === undefined || unit >= previousUnit) return null;
+    total += BigInt(pending === null || pending === 0 ? 1 : pending) * unit;
+    pending = null;
+    previousUnit = unit;
   }
-  const parsed = total + section + number;
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  return total + BigInt(pending ?? 0);
+}
+
+function parseChineseDigitSequence(value: string): string | null {
+  let output = '';
+  for (const character of value) {
+    const digit = CHINESE_DIGITS[character];
+    if (digit === undefined) return null;
+    output += String(digit);
+  }
+  return output.length === 0 ? null : output;
+}
+
+function scalePower(scale: string | undefined): number {
+  return scale === '万亿' ? 12 : scale === '亿' ? 8 : scale === '万' ? 4 : 0;
+}
+
+function shiftDecimal(value: string, power: number): string | null {
+  const [integer = '0', fraction = ''] = value.split('.');
+  if (!/^\d+$/u.test(integer) || !/^\d*$/u.test(fraction)) return null;
+  const digits = `${integer}${fraction}`.replace(/^0+(?=\d)/u, '') || '0';
+  const shift = power - fraction.length;
+  if (shift >= 0) return `${digits}${'0'.repeat(shift)}`.replace(/^0+(?=\d)/u, '');
+  const point = digits.length + shift;
+  const padded = point > 0 ? digits : `${'0'.repeat(-point)}${digits}`;
+  const split = Math.max(0, point);
+  const result = `${padded.slice(0, split) || '0'}.${padded.slice(split)}`
+    .replace(/0+$/u, '')
+    .replace(/\.$/u, '');
+  return result;
+}
+
+function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+  let first = left < 0n ? -left : left;
+  let second = right < 0n ? -right : right;
+  while (second !== 0n) {
+    const remainder = first % second;
+    first = second;
+    second = remainder;
+  }
+  return first === 0n ? 1n : first;
 }
 
 function claimWindow(value: string): string {
@@ -906,6 +1046,21 @@ function sharedPrefix(left: string, right: string): string {
     length += 1;
   }
   return leftCharacters.slice(0, length).join('');
+}
+
+function sharedSuffix(left: string, right: string): string {
+  const leftCharacters = Array.from(left);
+  const rightCharacters = Array.from(right);
+  const maxLength = Math.min(leftCharacters.length, rightCharacters.length);
+  let length = 0;
+  while (
+    length < maxLength &&
+    leftCharacters[leftCharacters.length - 1 - length] ===
+      rightCharacters[rightCharacters.length - 1 - length]
+  ) {
+    length += 1;
+  }
+  return leftCharacters.slice(leftCharacters.length - length).join('');
 }
 
 function truncateCodePoints(value: string): string {

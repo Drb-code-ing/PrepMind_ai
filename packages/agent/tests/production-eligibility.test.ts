@@ -146,6 +146,66 @@ describe('production model eligibility', () => {
     }
   });
 
+  test('never invokes caller-controlled Array iterators while snapshotting', () => {
+    const canary = 'Authorization: Bearer iterator-canary';
+    const deterministic = verifyKnowledgeChunks({ query: '矩阵定义？', chunks: [] });
+    let throwingCalls = 0;
+    const throwingChunks: ReturnType<typeof safeChunk>[] = [];
+    Object.defineProperty(throwingChunks, Symbol.iterator, {
+      value() {
+        throwingCalls += 1;
+        throw new Error(canary);
+      },
+    });
+    let yieldingCalls = 0;
+    const yieldingChunks: ReturnType<typeof safeChunk>[] = [];
+    Object.defineProperty(yieldingChunks, Symbol.iterator, {
+      *value() {
+        yieldingCalls += 1;
+        for (let index = 0; index < 21; index += 1) {
+          yield safeChunk('矩阵是按行列排列的数表。', `iterator-${index}`);
+        }
+      },
+    });
+    let signalCalls = 0;
+    const hostileSignals: string[] = [];
+    Object.defineProperty(hostileSignals, Symbol.iterator, {
+      value() {
+        signalCalls += 1;
+        throw new Error(canary);
+      },
+    });
+
+    const decisions = [
+      decideKnowledgeVerifierModelEligibility({
+        query: '矩阵定义？',
+        chunks: throwingChunks,
+        deterministic,
+      }),
+      decideKnowledgeVerifierModelEligibility({
+        query: '矩阵定义？',
+        chunks: yieldingChunks,
+        deterministic,
+      }),
+      decideKnowledgeVerifierModelEligibility({
+        query: '矩阵定义？',
+        chunks: [],
+        deterministic: {
+          ...deterministic,
+          debug: { ...deterministic.debug, conflictSignals: hostileSignals },
+        },
+      }),
+    ];
+
+    expect([throwingCalls, yieldingCalls, signalCalls]).toEqual([0, 0, 0]);
+    expect(decisions).toEqual([
+      { eligible: false, reason: 'not_semantic_needed' },
+      { eligible: false, reason: 'not_semantic_needed' },
+      { eligible: false, reason: 'not_semantic_needed' },
+    ]);
+    expect(JSON.stringify(decisions)).not.toContain(canary);
+  });
+
   test('blocks credential and instruction material before semantic eligibility', () => {
     const routerDeterministic = routeAgentRequest(
       createInitialAgentState({
@@ -276,6 +336,33 @@ describe('production model eligibility', () => {
       eligible: false,
       reason: 'not_semantic_needed',
     });
+  });
+
+  test('parses prefixed definition clauses without confusing positive and exclusive forms', () => {
+    const query = '机会成本的定义是什么？';
+    const conflict = verifierDecision(query, [
+      safeChunk(
+        '材料显示，机会成本是放弃方案中价值最高的收益。',
+        'prefixed-positive',
+      ),
+      safeChunk(
+        '资料记载：机会成本不是放弃方案中的最高收益，而是实际支付的货币支出。',
+        'prefixed-exclusive',
+      ),
+    ]);
+    const agreeing = verifierDecision(query, [
+      safeChunk(
+        '复核结果；机会成本不是实际货币支出，而是放弃方案中的最佳收益。',
+        'prefixed-agree-a',
+      ),
+      safeChunk(
+        '说明如下：机会成本不是已经支付的费用，而是放弃选择里的最高收益。',
+        'prefixed-agree-b',
+      ),
+    ]);
+
+    expect(conflict).toEqual({ eligible: true, reason: 'semantic_conflict' });
+    expect(agreeing.eligible).toBe(false);
   });
 
   test('keeps agreeing negated definitions and incidental topic numbers local', () => {
@@ -459,6 +546,78 @@ describe('production model eligibility', () => {
       reason: 'semantic_conflict',
     });
     expect(agreeing.eligible).toBe(false);
+  });
+
+  test('uses negation parity and keeps different predicates incomparable', () => {
+    const query = '这个命题是否成立？';
+    const doubleNegative = verifierDecision(query, [
+      safeChunk('完整证明表明这个命题成立，推导过程有效。', 'double-positive'),
+      safeChunk('复核结论认为这个命题并非不成立，尚未发现反例。', 'double-negative'),
+    ]);
+    const conflict = verifierDecision(query, [
+      safeChunk('完整证明表明这个命题成立，推导过程有效。', 'single-positive'),
+      safeChunk('复核结论认为这个命题不成立，存在明确反例。', 'single-negative'),
+    ]);
+    const differentPredicate = verifierDecision(query, [
+      safeChunk('完整证明表明这个命题成立，推导过程有效。', 'predicate-positive'),
+      safeChunk('复核意见认为这个命题不够清晰，需要补充条件。', 'predicate-other'),
+    ]);
+
+    expect(doubleNegative.eligible).toBe(false);
+    expect(conflict).toEqual({ eligible: true, reason: 'semantic_conflict' });
+    expect(differentPredicate.eligible).toBe(false);
+  });
+
+  test('keeps temporal qualifiers and cross-dimension scalars out of answer conflicts', () => {
+    const speedQuery = '车辆在观测时的速度是多少？';
+    const timeQualifier = verifierDecision(speedQuery, [
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'time-ten'),
+      safeChunk('车辆甲在上午十一点的速度为60千米每小时。', 'time-eleven'),
+    ]);
+    const sameTimeConflict = verifierDecision(speedQuery, [
+      safeChunk('车辆甲在上午十点的速度为60千米每小时。', 'same-time-60'),
+      safeChunk('车辆甲在上午十点的速度为80千米每小时。', 'same-time-80'),
+    ]);
+    const longPrefix = '实验温度记录用于校准仪器并保持测量条件一致。'.repeat(12);
+    const crossDimension = verifierDecision('实验记录中的温度是多少？', [
+      safeChunk(`${longPrefix}最终测量温度为30摄氏度。`, 'long-temperature'),
+      safeChunk(`${longPrefix}这份记录的归档年份为2024年。`, 'long-year'),
+    ]);
+
+    expect(timeQualifier.eligible).toBe(false);
+    expect(sameTimeConflict).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(crossDimension.eligible).toBe(false);
+  });
+
+  test('canonicalizes bounded Chinese sections and decimals without precision loss', () => {
+    const scaleQuery = '该项目的总规模是多少？';
+    const trillionEquivalent = verifierDecision(scaleQuery, [
+      safeChunk('该项目的总规模为一万亿个单位。', 'trillion-chinese'),
+      safeChunk('该项目的总规模为1000000000000个单位。', 'trillion-arabic'),
+    ]);
+    const decimalConflict = verifierDecision(scaleQuery, [
+      safeChunk('该项目的总规模为一点五亿个单位。', 'decimal-chinese'),
+      safeChunk('该项目的总规模为2亿个单位。', 'decimal-arabic'),
+    ]);
+    const decimalEquivalent = verifierDecision(scaleQuery, [
+      safeChunk('该项目的总规模为一点五个单位。', 'decimal-equivalent-chinese'),
+      safeChunk('该项目的总规模为1.5个单位。', 'decimal-equivalent-arabic'),
+    ]);
+    const unsupported = verifierDecision(scaleQuery, [
+      safeChunk('该项目的总规模写作十百个单位。', 'unsupported-a'),
+      safeChunk('该项目的总规模写作一百个单位。', 'unsupported-b'),
+    ]);
+
+    expect(trillionEquivalent.eligible).toBe(false);
+    expect(decimalConflict).toEqual({
+      eligible: true,
+      reason: 'semantic_conflict',
+    });
+    expect(decimalEquivalent.eligible).toBe(false);
+    expect(unsupported.eligible).toBe(false);
   });
 
   test('keeps equivalent explicit exclusions local', () => {
