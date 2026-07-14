@@ -222,6 +222,40 @@ test('parses successful knowledge search responses', async () => {
   assert.equal(seenRequests[0]?.init?.method, 'POST');
 });
 
+test('passes the model abort signal to knowledge fetch without exposing it in the result', async () => {
+  const controller = new AbortController();
+  let fetchSignal: AbortSignal | null | undefined;
+  let runtimeInvokes = 0;
+  const result = await searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: 'Green theorem' }],
+    fetchImpl: async (_input, init) => {
+      fetchSignal = init?.signal;
+      return Response.json({
+        success: true,
+        data: { hits: [greenTheoremHit] },
+      });
+    },
+    model: {
+      enabled: false,
+      runtime: {
+        async invokeStructured() {
+          runtimeInvokes += 1;
+          throw new Error('disabled verifier runtime must not run');
+        },
+      },
+      budget: freshVerifierBudget(),
+      runId: 'run_fetch_signal',
+      signal: controller.signal,
+    },
+  });
+
+  assert.equal(fetchSignal, controller.signal);
+  assert.equal(runtimeInvokes, 0);
+  assert.equal(Object.hasOwn(result, 'signal'), false);
+  assert.equal(JSON.stringify(result).includes('run_fetch_signal'), false);
+});
+
 test('search filters unsafe hits and backfills from over-fetched results', async () => {
   const safeHits = Array.from({ length: 4 }, (_, index): KnowledgeSearchHit => ({
     ...greenTheoremHit,

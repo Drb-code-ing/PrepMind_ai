@@ -175,6 +175,7 @@ export async function searchKnowledgeForChat(
       input.apiBaseUrl ??
       process.env.NEXT_PUBLIC_API_BASE_URL ??
       DEFAULT_API_BASE_URL;
+    const requestSignal = input.model?.signal;
     const response = await fetchImpl(toUrl(apiBaseUrl, '/knowledge/search'), {
       method: 'POST',
       headers: {
@@ -182,6 +183,7 @@ export async function searchKnowledgeForChat(
         authorization: `Bearer ${input.accessToken}`,
       },
       body: JSON.stringify(request),
+      ...(requestSignal ? { signal: requestSignal } : {}),
     });
 
     if (!response.ok) {

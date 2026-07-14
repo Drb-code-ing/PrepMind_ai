@@ -6,9 +6,12 @@ import test from 'node:test';
 import {
   createModelAgentBudget,
   createModelAgentRuntime,
+  type ModelAgentRunBudget,
   type ModelAgentRuntime,
 } from '@repo/ai';
+import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
 
+import { searchKnowledgeForChat } from './chat-rag-context.ts';
 import type { ChatModelAgentRuntimeBundle } from './chat-model-agent-runtime.ts';
 
 register(
@@ -29,6 +32,8 @@ const { orchestrateChatModelAgents } = await import(
 
 const ELIGIBLE_ROUTER_TEXT =
   '\u7ed3\u5408\u6211\u7684\u7b14\u8bb0\u8bb2\u4e00\u4e0b\u8fd9\u9053\u9898\u3002';
+const CONFLICT_QUERY =
+  '\u673a\u4f1a\u6210\u672c\u7684\u5b9a\u4e49\u662f\u4ec0\u4e48\uff1f';
 const CANARY = 'CANARY_RAW_ROUTER_FAILURE_prompt_key_url';
 
 test('orchestration helper is explicitly server-only', async () => {
@@ -39,7 +44,7 @@ test('orchestration helper is explicitly server-only', async () => {
   assert.equal(source.split(/\r?\n/u)[0], "import 'server-only';");
 });
 
-test('continues the exact Router budget and signal into the verifier model context', async () => {
+test('continues the exact Router budget and signal through an actual verifier search', async () => {
   const controller = new AbortController();
   const initialBudget = createModelAgentBudget({
     maxCalls: 2,
@@ -68,7 +73,28 @@ test('continues the exact Router budget and signal into the verifier model conte
       return realRuntime.invokeStructured(request);
     },
   };
-  const verifierRuntime = throwingRuntime('verifier must not run during orchestration');
+  let verifierInvokes = 0;
+  let seenVerifierSignal: AbortSignal | undefined;
+  let seenVerifierBudget: ModelAgentRunBudget | undefined;
+  const realVerifierRuntime = createModelAgentRuntime({
+    mode: 'mock',
+    provider: 'mock',
+    model: 'chat-orchestration-verifier-test',
+    liveCallsEnabled: false,
+    timeoutMs: 100,
+    mockResponder: () => ({
+      status: 'conflict',
+      evidenceCodes: ['definition_conflict'],
+    }),
+  });
+  const verifierRuntime: ModelAgentRuntime = {
+    invokeStructured(request) {
+      verifierInvokes += 1;
+      seenVerifierSignal = request.signal;
+      seenVerifierBudget = request.budget;
+      return realVerifierRuntime.invokeStructured(request);
+    },
+  };
   const bundle = makeBundle({
     routerEnabled: true,
     verifierEnabled: true,
@@ -101,6 +127,32 @@ test('continues the exact Router budget and signal into the verifier model conte
   assert.deepEqual(result.verifierModel.budget, result.agentExecution.budget);
   assert.equal(result.verifierModel.budget.usedCalls, 1);
   assert.equal(result.agentExecution.routerObservation.disposition, 'candidate_applied');
+  assert.equal(verifierInvokes, 0);
+
+  let fetchSignal: AbortSignal | null | undefined;
+  const searchResult = await searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: CONFLICT_QUERY }],
+    fetchImpl: async (_input, init) => {
+      fetchSignal = init?.signal;
+      return Response.json({
+        success: true,
+        data: { hits: verifierConflictHits() },
+      });
+    },
+    model: result.verifierModel,
+  });
+
+  assert.equal(fetchSignal, controller.signal);
+  assert.equal(verifierInvokes, 1);
+  assert.equal(seenVerifierSignal, controller.signal);
+  assert.deepEqual(seenVerifierBudget, result.agentExecution.budget);
+  assert.equal(seenVerifierBudget?.usedCalls, 1);
+  assert.equal(searchResult.verifierResult?.status, 'conflict');
+  assert.equal(searchResult.verifierObservation?.disposition, 'candidate_applied');
+  assert.equal(searchResult.modelBudget?.usedCalls, 2);
+  assert.equal(searchResult.modelBudget?.maxCalls, 2);
+  assert.ok((searchResult.modelBudget?.usedCalls ?? 3) <= 2);
 });
 
 test('disabled gates never touch hostile runtimes and preserve one continuous budget', async () => {
@@ -128,6 +180,7 @@ test('disabled gates never touch hostile runtimes and preserve one continuous bu
       return initialBudget;
     },
   });
+  const controller = new AbortController();
 
   const result = await orchestrateChatModelAgents({
     bundle,
@@ -135,7 +188,7 @@ test('disabled gates never touch hostile runtimes and preserve one continuous bu
     activeContext: null,
     runId: 'run_orchestration_disabled',
     userId: 'user_disabled',
-    signal: new AbortController().signal,
+    signal: controller.signal,
   });
 
   assert.equal(createBudgetCalls, 1);
@@ -148,6 +201,33 @@ test('disabled gates never touch hostile runtimes and preserve one continuous bu
   assert.equal(result.verifierModel.budget, result.agentExecution.budget);
   assert.deepEqual(result.verifierModel.budget, initialBudget);
   assert.equal(result.verifierModel.budget.usedCalls, 0);
+
+  let fetchSignal: AbortSignal | null | undefined;
+  const searchResult = await searchKnowledgeForChat({
+    accessToken: 'token',
+    messages: [{ role: 'user', content: 'Explain Green theorem' }],
+    fetchImpl: async (_input, init) => {
+      fetchSignal = init?.signal;
+      return Response.json({
+        success: true,
+        data: { hits: [safeGreenTheoremHit()] },
+      });
+    },
+    model: result.verifierModel,
+  });
+
+  assert.equal(fetchSignal, controller.signal);
+  assert.equal(routerRuntimeReads, 0);
+  assert.equal(verifierRuntimeReads, 0);
+  assert.deepEqual(searchResult.modelBudget, result.agentExecution.budget);
+  assert.equal(searchResult.modelBudget?.usedCalls, 0);
+  assert.equal(searchResult.verifierObservation?.attempted, false);
+  assert.equal(searchResult.verifierObservation?.disposition, 'not_eligible');
+  assert.equal(searchResult.verifierResult?.status, 'trusted');
+  assert.deepEqual(searchResult.safetySummary, {
+    blockedCount: 0,
+    quotedOnlyCount: 0,
+  });
 });
 
 test('returns a safe verifier context when the eligible Router runtime fails', async () => {
@@ -233,4 +313,51 @@ function hostileRuntime(onRead: () => void): ModelAgentRuntime {
       },
     },
   }) as ModelAgentRuntime;
+}
+
+function safeGreenTheoremHit(): KnowledgeSearchHit {
+  return {
+    chunkId: 'chunk_green',
+    documentId: 'doc_green',
+    documentName: 'calculus.md',
+    content: 'Green theorem converts a line integral into a double integral.',
+    score: 0.9,
+    metadata: {
+      safety: {
+        riskLevel: 'low',
+        categories: [],
+        matchedPatterns: [],
+        safeForPrompt: true,
+      },
+    },
+  };
+}
+
+function verifierConflictHits(): KnowledgeSearchHit[] {
+  const safety = {
+    riskLevel: 'low' as const,
+    categories: [],
+    matchedPatterns: [],
+    safeForPrompt: true,
+  };
+  return [
+    {
+      chunkId: 'definition-a',
+      documentId: 'doc-definition-a',
+      documentName: 'economics-a.md',
+      content:
+        '\u673a\u4f1a\u6210\u672c\u662f\u9009\u62e9\u67d0\u4e2a\u65b9\u6848\u65f6\u6240\u653e\u5f03\u7684\u5176\u4ed6\u65b9\u6848\u4e2d\u4ef7\u503c\u6700\u9ad8\u7684\u6536\u76ca\u3002',
+      score: 0.95,
+      metadata: { safety: { ...safety } },
+    },
+    {
+      chunkId: 'definition-b',
+      documentId: 'doc-definition-b',
+      documentName: 'economics-b.md',
+      content:
+        '\u673a\u4f1a\u6210\u672c\u4e0d\u662f\u653e\u5f03\u65b9\u6848\u4e2d\u7684\u6700\u9ad8\u6536\u76ca\uff0c\u800c\u662f\u5f53\u524d\u65b9\u6848\u5b9e\u9645\u652f\u4ed8\u7684\u5168\u90e8\u8d27\u5e01\u652f\u51fa\u3002',
+      score: 0.94,
+      metadata: { safety: { ...safety } },
+    },
+  ];
 }
