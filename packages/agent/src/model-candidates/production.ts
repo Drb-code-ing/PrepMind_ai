@@ -13,3 +13,10 @@ export {
   type ModelCandidateDisposition,
   type ModelCandidateObservation,
 } from './model-candidate-policy.ts';
+export {
+  decideKnowledgeVerifierModelEligibility,
+  decideRouterModelEligibility,
+  isKnowledgeVerifierModelEligible,
+  isRouterModelEligible,
+  type ModelEligibilityDecision,
+} from './production-eligibility.ts';
