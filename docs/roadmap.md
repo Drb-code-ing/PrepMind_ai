@@ -181,7 +181,7 @@ Phase 5.3 已完成文档处理与 embedding 入库：
 Phase 5.4 已完成检索 API：
 
 - 新增 `POST /knowledge/search`。
-- 当前检索并行召回 pgvector cosine 向量候选与 PostgreSQL full-text 关键词候选，按 `chunkId` 去重后 hybrid rank；无 reranker。
+- 当前检索先后召回 pgvector cosine 向量候选与 PostgreSQL full-text 关键词候选两路结果，按 `chunkId` 去重后 hybrid rank；无 reranker。
 - 支持 `limit`、`minScore` 和按 `documentId` 过滤。
 - 检索结果返回 score、chunk metadata 和 document metadata。
 
