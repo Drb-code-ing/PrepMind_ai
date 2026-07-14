@@ -1,6 +1,8 @@
 import {
   RAG_EVAL_SMOKE_CASE_IDS,
+  assertRagEvalSmokeBackgroundJobStatus,
   assertRagEvalSmokeEvidence,
+  fetchRagEvalSmokeResponse,
   formatRagEvalSmokeFailure,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
@@ -145,10 +147,49 @@ describe('assertRagEvalSmokeEvidence', () => {
       'RAG eval smoke evidence failed: duplicate_chunk_id.',
     );
   });
+
+  it('fails closed when a hit field getter throws', () => {
+    const hits = validHits();
+    const hostileHit = {} as RagEvalHit;
+    Object.defineProperty(hostileHit, 'chunkId', {
+      get() {
+        throw new Error(
+          'private chunk content https://secret.example.com/key=canary sk-canary',
+        );
+      },
+    });
+    hits['semantic-review-pressure'] = [hostileHit];
+
+    const message = errorMessage(() => assertRagEvalSmokeEvidence(hits));
+    expect(message).toBe('RAG eval smoke evidence failed: hit_unreadable.');
+    expect(message).not.toContain('private chunk content');
+    expect(message).not.toContain('https://secret.example.com/key=canary');
+    expect(message).not.toContain('sk-canary');
+  });
+
+  it('fails closed for a revoked hit proxy', () => {
+    const hits = validHits();
+    const revoked = Proxy.revocable(hybridHit('revoked_chunk', 0.7, 0), {});
+    revoked.revoke();
+    hits['semantic-review-pressure'] = [revoked.proxy];
+
+    expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
+      'RAG eval smoke evidence failed: hit_unreadable.',
+    );
+  });
+
+  it('fails closed for an undefined hit', () => {
+    const hits = validHits();
+    hits['semantic-review-pressure'] = [undefined as unknown as RagEvalHit];
+
+    expect(() => assertRagEvalSmokeEvidence(hits)).toThrow(
+      'RAG eval smoke evidence failed: hit_invalid.',
+    );
+  });
 });
 
 describe('formatRagEvalSmokeFailure', () => {
-  it('returns fixed safe codes and messages without unsafe error or API detail', () => {
+  it('distinguishes allowlisted stages and reasons without unsafe detail', () => {
     const unsafeError = new Error(
       'fetch https://secret.example.com/key=canary failed with sk-canary',
     );
@@ -159,39 +200,119 @@ describe('formatRagEvalSmokeFailure', () => {
     };
 
     const formatted = [
-      formatRagEvalSmokeFailure('FETCH_FAILED', unsafeError),
-      formatRagEvalSmokeFailure('API_REQUEST_FAILED', unsafeApiDetail),
-      formatRagEvalSmokeFailure('DOCUMENT_PROCESSING_FAILED', unsafeApiDetail),
-      formatRagEvalSmokeFailure('CLEANUP_FAILED', unsafeError),
-      formatRagEvalSmokeFailure('UNEXPECTED_FAILURE', unsafeError),
+      formatRagEvalSmokeFailure('REGISTER', 'HTTP', unsafeApiDetail),
+      formatRagEvalSmokeFailure('SEARCH', 'TIMEOUT', unsafeError),
+      formatRagEvalSmokeFailure('DELETE', 'NETWORK', unsafeError),
+      formatRagEvalSmokeFailure('PROCESS', 'INVALID_MODE', unsafeApiDetail),
     ];
 
     expect(formatted).toEqual([
       {
-        code: 'FETCH_FAILED',
-        message: 'RAG eval smoke request transport failed.',
+        stage: 'REGISTER',
+        reason: 'HTTP',
+        code: 'RAG_EVAL_SMOKE_REGISTER_HTTP',
+        message: 'RAG_EVAL_SMOKE_REGISTER_HTTP',
       },
       {
-        code: 'API_REQUEST_FAILED',
-        message: 'RAG eval smoke API request failed.',
+        stage: 'SEARCH',
+        reason: 'TIMEOUT',
+        code: 'RAG_EVAL_SMOKE_SEARCH_TIMEOUT',
+        message: 'RAG_EVAL_SMOKE_SEARCH_TIMEOUT',
       },
       {
-        code: 'DOCUMENT_PROCESSING_FAILED',
-        message: 'RAG eval smoke document processing failed.',
+        stage: 'DELETE',
+        reason: 'NETWORK',
+        code: 'RAG_EVAL_SMOKE_DELETE_NETWORK',
+        message: 'RAG_EVAL_SMOKE_DELETE_NETWORK',
       },
       {
-        code: 'CLEANUP_FAILED',
-        message: 'RAG eval smoke cleanup failed.',
-      },
-      {
-        code: 'UNEXPECTED_FAILURE',
-        message: 'RAG eval smoke failed.',
+        stage: 'PROCESS',
+        reason: 'INVALID_MODE',
+        code: 'RAG_EVAL_SMOKE_PROCESS_INVALID_MODE',
+        message: 'RAG_EVAL_SMOKE_PROCESS_INVALID_MODE',
       },
     ]);
     const serialized = JSON.stringify(formatted);
     expect(serialized).not.toContain('https://secret.example.com/key=canary');
     expect(serialized).not.toContain('sk-canary');
     expect(serialized).not.toContain('private chunk content');
+  });
+});
+
+describe('fetchRagEvalSmokeResponse', () => {
+  it('aborts hanging run and cleanup requests at their own bounded deadlines', async () => {
+    jest.useFakeTimers();
+    try {
+      const observedSignals: AbortSignal[] = [];
+      const fetchImpl = jest.fn((_url: unknown, init?: RequestInit) => {
+        const signal = init?.signal;
+        if (!(signal instanceof AbortSignal)) {
+          throw new Error('missing AbortSignal');
+        }
+        observedSignals.push(signal);
+        return new Promise<Response>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () =>
+              reject(
+                new Error(
+                  'https://secret.example.com/key=canary sk-canary private chunk content',
+                ),
+              ),
+            { once: true },
+          );
+        });
+      }) as unknown as typeof fetch;
+      const now = Date.now();
+      const runRequest = fetchRagEvalSmokeResponse({
+        stage: 'SEARCH',
+        url: 'https://secret.example.com/key=canary',
+        init: {},
+        deadlineAt: now + 1_000,
+        requestTimeoutMs: 50,
+        fetchImpl,
+      });
+      const cleanupRequest = fetchRagEvalSmokeResponse({
+        stage: 'DELETE',
+        url: 'https://secret.example.com/key=canary',
+        init: {},
+        deadlineAt: now + 25,
+        requestTimeoutMs: 100,
+        fetchImpl,
+      });
+      const runExpectation = expect(runRequest).rejects.toMatchObject({
+        failure: {
+          stage: 'SEARCH',
+          reason: 'TIMEOUT',
+          code: 'RAG_EVAL_SMOKE_SEARCH_TIMEOUT',
+        },
+      });
+      const cleanupExpectation = expect(cleanupRequest).rejects.toMatchObject({
+        failure: {
+          stage: 'DELETE',
+          reason: 'TIMEOUT',
+          code: 'RAG_EVAL_SMOKE_DELETE_TIMEOUT',
+        },
+      });
+
+      await jest.advanceTimersByTimeAsync(25);
+      await cleanupExpectation;
+      await jest.advanceTimersByTimeAsync(25);
+      await runExpectation;
+
+      expect(observedSignals).toHaveLength(2);
+      expect(observedSignals.every((signal) => signal.aborted)).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('assertRagEvalSmokeBackgroundJobStatus', () => {
+  it('fails fast with a fixed CANCELLED classification', () => {
+    expect(() => assertRagEvalSmokeBackgroundJobStatus('CANCELLED')).toThrow(
+      'RAG_EVAL_SMOKE_JOB_POLL_CANCELLED',
+    );
   });
 });
 

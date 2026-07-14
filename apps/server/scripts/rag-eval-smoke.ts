@@ -9,10 +9,18 @@ import { ragEvalCases } from '../src/knowledge-documents/evals/rag-eval-cases';
 import { formatRagEvalSmokeReport } from '../src/knowledge-documents/evals/rag-eval-report';
 import { runRagEval } from '../src/knowledge-documents/evals/rag-eval-runner';
 import {
+  RagEvalSmokeFailureError,
+  assertRagEvalSmokeBackgroundJobStatus,
   assertRagEvalSmokeEvidence,
+  createRagEvalSmokeFailureError,
+  fetchRagEvalSmokeResponse,
   formatRagEvalSmokeFailure,
   selectRagEvalSmokeCases,
   shouldKeepRagEvalSmokeData,
+} from '../src/knowledge-documents/evals/rag-eval-smoke-config';
+import type {
+  RagEvalSmokeFailure,
+  RagEvalSmokeFailureStage,
 } from '../src/knowledge-documents/evals/rag-eval-smoke-config';
 import type {
   RagEvalCase,
@@ -42,12 +50,16 @@ type QueuedKnowledgeDocumentProcessResponse =
     processing: KnowledgeDocumentProcessingMetadata;
   };
 
-type RagEvalSmokeFailure = ReturnType<typeof formatRagEvalSmokeFailure>;
-
 type SmokeCaseHitSummary = {
   hitCount: number;
   topScore?: number;
   topDocumentName?: string;
+};
+
+type SmokeRequestContext = {
+  deadlineAt: number;
+  requestTimeoutMs: number;
+  signal: AbortSignal;
 };
 
 const smokeCases = selectRagEvalSmokeCases(ragEvalCases);
@@ -59,6 +71,14 @@ async function main() {
   );
   const password = process.env.RAG_EVAL_SMOKE_PASSWORD ?? 'Password123!';
   const timeoutMs = readPositiveInteger('RAG_EVAL_SMOKE_TIMEOUT_MS', 120000);
+  const requestTimeoutMs = readPositiveInteger(
+    'RAG_EVAL_SMOKE_REQUEST_TIMEOUT_MS',
+    Math.min(timeoutMs, 15000),
+  );
+  const cleanupTimeoutMs = readPositiveInteger(
+    'RAG_EVAL_SMOKE_CLEANUP_TIMEOUT_MS',
+    10000,
+  );
   const pollIntervalMs = readPositiveInteger(
     'RAG_EVAL_SMOKE_POLL_INTERVAL_MS',
     1500,
@@ -69,34 +89,47 @@ async function main() {
   const documentName = `prepmind-rag-eval-smoke-${stamp}.txt`;
   let accessToken = '';
   let documentId = '';
+  const runController = new AbortController();
+  const runContext: SmokeRequestContext = {
+    deadlineAt: startedAt + timeoutMs,
+    requestTimeoutMs,
+    signal: runController.signal,
+  };
 
   try {
-    accessToken = await register(baseUrl, email, password);
-    const document = await uploadDocument(baseUrl, accessToken, documentName);
+    accessToken = await register(baseUrl, email, password, runContext);
+    const document = await uploadDocument(
+      baseUrl,
+      accessToken,
+      documentName,
+      runContext,
+    );
     documentId = document.id;
     const processResponse = await processDocument(
       baseUrl,
       accessToken,
       documentId,
+      runContext,
     );
     await waitForBackgroundJobSucceeded({
       baseUrl,
       accessToken,
       backgroundJobId: processResponse.processing.backgroundJobId,
-      timeoutMs,
       pollIntervalMs,
+      context: runContext,
     });
     const processedDocument = await getProcessedDocument(
       baseUrl,
       accessToken,
       documentId,
+      runContext,
     );
 
     const hitsByCaseId: Record<string, RagEvalHit[]> = {};
     const caseHits: Record<string, SmokeCaseHitSummary> = {};
 
     for (const testCase of smokeCases) {
-      const hits = await search(baseUrl, accessToken, testCase);
+      const hits = await search(baseUrl, accessToken, testCase, runContext);
       hitsByCaseId[testCase.id] = hits;
       caseHits[testCase.id] = {
         hitCount: hits.length,
@@ -137,25 +170,48 @@ async function main() {
           `RAG eval smoke kept document ${documentId} for local inspection because RAG_EVAL_SMOKE_KEEP_DATA=true.\n`,
         );
       } else {
-        await deleteDocument(baseUrl, accessToken, documentId).catch(
-          (error) => {
-            const failure = formatRagEvalSmokeFailure('CLEANUP_FAILED', error);
-            process.stderr.write(`Warning: ${formatFailureLine(failure)}\n`);
-          },
-        );
+        const cleanupController = new AbortController();
+        const cleanupContext: SmokeRequestContext = {
+          deadlineAt: Date.now() + cleanupTimeoutMs,
+          requestTimeoutMs: cleanupTimeoutMs,
+          signal: cleanupController.signal,
+        };
+        await deleteDocument(
+          baseUrl,
+          accessToken,
+          documentId,
+          cleanupContext,
+        ).catch((error) => {
+          const failure =
+            error instanceof RagEvalSmokeFailureError
+              ? error.failure
+              : formatRagEvalSmokeFailure('DELETE', 'UNEXPECTED', error);
+          process.stderr.write(`Warning: ${formatFailureLine(failure)}\n`);
+        });
       }
     }
   }
 }
 
-async function register(baseUrl: string, email: string, password: string) {
-  const response = await request<AuthResponse>(baseUrl, '/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, name: 'RAG Eval Smoke' }),
-    headers: { 'content-type': 'application/json' },
-  });
+async function register(
+  baseUrl: string,
+  email: string,
+  password: string,
+  context: SmokeRequestContext,
+) {
+  const response = await request<AuthResponse>(
+    baseUrl,
+    '/auth/register',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name: 'RAG Eval Smoke' }),
+      headers: { 'content-type': 'application/json' },
+    },
+    'REGISTER',
+    context,
+  );
   if (!response.accessToken) {
-    throw new Error('Register response did not include accessToken.');
+    throw createRagEvalSmokeFailureError('REGISTER', 'MISSING_DATA', response);
   }
   return response.accessToken;
 }
@@ -164,6 +220,7 @@ async function uploadDocument(
   baseUrl: string,
   accessToken: string,
   documentName: string,
+  context: SmokeRequestContext,
 ) {
   const form = new FormData();
   form.set(
@@ -172,17 +229,24 @@ async function uploadDocument(
     documentName,
   );
 
-  return request<KnowledgeDocumentResponse>(baseUrl, '/knowledge/documents', {
-    method: 'POST',
-    body: form,
-    headers: authorization(accessToken),
-  });
+  return request<KnowledgeDocumentResponse>(
+    baseUrl,
+    '/knowledge/documents',
+    {
+      method: 'POST',
+      body: form,
+      headers: authorization(accessToken),
+    },
+    'UPLOAD',
+    context,
+  );
 }
 
 async function processDocument(
   baseUrl: string,
   accessToken: string,
   documentId: string,
+  context: SmokeRequestContext,
 ): Promise<QueuedKnowledgeDocumentProcessResponse> {
   const response = await request<KnowledgeDocumentProcessResponse>(
     baseUrl,
@@ -195,12 +259,14 @@ async function processDocument(
         'content-type': 'application/json',
       },
     },
+    'PROCESS',
+    context,
   );
   if (
     response.processing?.mode !== 'queue' ||
     !response.processing.backgroundJobId
   ) {
-    throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', response);
+    throw createRagEvalSmokeFailureError('PROCESS', 'INVALID_MODE', response);
   }
   return response as QueuedKnowledgeDocumentProcessResponse;
 }
@@ -209,11 +275,10 @@ async function waitForBackgroundJobSucceeded(input: {
   baseUrl: string;
   accessToken: string;
   backgroundJobId: string;
-  timeoutMs: number;
   pollIntervalMs: number;
+  context: SmokeRequestContext;
 }) {
-  const deadline = Date.now() + input.timeoutMs;
-  while (Date.now() < deadline) {
+  while (true) {
     const backgroundJob = await request<BackgroundJobResponse>(
       input.baseUrl,
       `/background-jobs/${input.backgroundJobId}`,
@@ -221,23 +286,24 @@ async function waitForBackgroundJobSucceeded(input: {
         method: 'GET',
         headers: authorization(input.accessToken),
       },
+      'JOB_POLL',
+      input.context,
     );
-    if (backgroundJob.status === 'SUCCEEDED') return backgroundJob;
     if (
-      backgroundJob.status === 'FAILED' ||
-      backgroundJob.status === 'STALE_SKIPPED'
+      assertRagEvalSmokeBackgroundJobStatus(backgroundJob.status) ===
+      'succeeded'
     ) {
-      throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', backgroundJob);
+      return backgroundJob;
     }
-    await sleep(input.pollIntervalMs);
+    await sleepWithinDeadline(input.pollIntervalMs, input.context, 'JOB_POLL');
   }
-  throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', input.timeoutMs);
 }
 
 async function getProcessedDocument(
   baseUrl: string,
   accessToken: string,
   documentId: string,
+  context: SmokeRequestContext,
 ) {
   const document = await request<KnowledgeDocumentResponse>(
     baseUrl,
@@ -246,9 +312,15 @@ async function getProcessedDocument(
       method: 'GET',
       headers: authorization(accessToken),
     },
+    'DOCUMENT_POLL',
+    context,
   );
   if (document.status !== 'DONE') {
-    throw smokeFailureError('DOCUMENT_PROCESSING_FAILED', document);
+    throw createRagEvalSmokeFailureError(
+      'DOCUMENT_POLL',
+      'TERMINAL_FAILED',
+      document,
+    );
   }
   return document;
 }
@@ -257,6 +329,7 @@ async function search(
   baseUrl: string,
   accessToken: string,
   testCase: RagEvalCase,
+  context: SmokeRequestContext,
 ) {
   const response = await request<KnowledgeSearchResponse>(
     baseUrl,
@@ -273,6 +346,8 @@ async function search(
         'content-type': 'application/json',
       },
     },
+    'SEARCH',
+    context,
   );
   return response.hits;
 }
@@ -281,29 +356,38 @@ async function deleteDocument(
   baseUrl: string,
   accessToken: string,
   documentId: string,
+  context: SmokeRequestContext,
 ) {
-  await request<unknown>(baseUrl, `/knowledge/documents/${documentId}`, {
-    method: 'DELETE',
-    headers: authorization(accessToken),
-  });
+  await request<unknown>(
+    baseUrl,
+    `/knowledge/documents/${documentId}`,
+    {
+      method: 'DELETE',
+      headers: authorization(accessToken),
+    },
+    'DELETE',
+    context,
+  );
 }
 
 async function request<T>(
   baseUrl: string,
   path: string,
   init: RequestInit,
+  stage: RagEvalSmokeFailureStage,
+  context: SmokeRequestContext,
 ): Promise<T> {
-  let response: Response;
-  let text: string;
-  try {
-    response = await fetch(`${baseUrl}${path}`, init);
-    text = await response.text();
-  } catch (error) {
-    throw smokeFailureError('FETCH_FAILED', error);
-  }
-  const parsed = parseJson<Envelope<T>>(text);
+  const { response, text } = await fetchRagEvalSmokeResponse({
+    stage,
+    url: `${baseUrl}${path}`,
+    init,
+    deadlineAt: context.deadlineAt,
+    requestTimeoutMs: context.requestTimeoutMs,
+    signal: context.signal,
+  });
+  const parsed = parseJson<Envelope<T>>(text, stage);
   if (!response.ok || !parsed.success) {
-    throw smokeFailureError('API_REQUEST_FAILED', {
+    throw createRagEvalSmokeFailureError(stage, 'HTTP', {
       apiDetail: parsed.error,
       method: init.method,
       path,
@@ -312,7 +396,7 @@ async function request<T>(
     });
   }
   if (parsed.data === undefined) {
-    throw smokeFailureError('API_REQUEST_FAILED', {
+    throw createRagEvalSmokeFailureError(stage, 'MISSING_DATA', {
       method: init.method,
       path,
       reason: 'data_missing',
@@ -321,11 +405,11 @@ async function request<T>(
   return parsed.data;
 }
 
-function parseJson<T>(text: string): T {
+function parseJson<T>(text: string, stage: RagEvalSmokeFailureStage): T {
   try {
     return JSON.parse(text) as T;
   } catch (error) {
-    throw smokeFailureError('API_REQUEST_FAILED', { error, text });
+    throw createRagEvalSmokeFailureError(stage, 'NON_JSON', { error, text });
   }
 }
 
@@ -361,35 +445,50 @@ function stripTrailingSlash(value: string) {
   return value.replace(/\/+$/, '');
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+async function sleepWithinDeadline(
+  ms: number,
+  context: SmokeRequestContext,
+  stage: RagEvalSmokeFailureStage,
+) {
+  const remainingMs = Math.floor(context.deadlineAt - Date.now());
+  if (remainingMs <= 0) {
+    throw createRagEvalSmokeFailureError(stage, 'TIMEOUT');
+  }
+  if (context.signal.aborted) {
+    throw createRagEvalSmokeFailureError(stage, 'CANCELLED');
+  }
 
-class RagEvalSmokeFailureError extends Error {
-  constructor(readonly failure: RagEvalSmokeFailure) {
-    super(failure.message);
-    this.name = 'RagEvalSmokeFailureError';
+  await new Promise<void>((resolve, reject) => {
+    const delayMs = Math.min(ms, remainingMs);
+    let timeoutHandle: ReturnType<typeof setTimeout>;
+    const cleanup = () =>
+      context.signal.removeEventListener('abort', abortListener);
+    const abortListener = () => {
+      clearTimeout(timeoutHandle);
+      cleanup();
+      reject(createRagEvalSmokeFailureError(stage, 'CANCELLED'));
+    };
+    timeoutHandle = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, delayMs);
+    context.signal.addEventListener('abort', abortListener, { once: true });
+  });
+
+  if (Date.now() >= context.deadlineAt) {
+    throw createRagEvalSmokeFailureError(stage, 'TIMEOUT');
   }
 }
 
-function smokeFailureError(
-  code: Parameters<typeof formatRagEvalSmokeFailure>[0],
-  unsafeDetail?: unknown,
-) {
-  return new RagEvalSmokeFailureError(
-    formatRagEvalSmokeFailure(code, unsafeDetail),
-  );
-}
-
 function formatFailureLine(failure: RagEvalSmokeFailure) {
-  return `[${failure.code}] ${failure.message}`;
+  return failure.message;
 }
 
 main().catch((error) => {
   const failure =
     error instanceof RagEvalSmokeFailureError
       ? error.failure
-      : formatRagEvalSmokeFailure('UNEXPECTED_FAILURE', error);
+      : formatRagEvalSmokeFailure('SMOKE', 'UNEXPECTED', error);
   process.stderr.write(`${formatFailureLine(failure)}\n`);
   process.exitCode = 1;
 });
