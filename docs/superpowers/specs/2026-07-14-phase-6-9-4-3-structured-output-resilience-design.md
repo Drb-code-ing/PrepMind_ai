@@ -2,8 +2,8 @@
 
 > 日期：2026-07-14
 > 状态：设计已实施并完成零网络 checkpoint；Phase 6.9.4.3 controlled-Live 仍未完成
-> 关联证据：Attempt D `live-20260714T032310330Z-991994cb5bb5.json`
-> 固定失败 case：`router_ambiguous_mixed_chat_16`
+> 关联证据：Attempt E `live-20260714T071444506Z-65042475cbaf.json`（Attempt D 仍作为历史 headroom evidence）
+> 当前固定失败 case：`router_ambiguous_notes_tutor_01`
 
 ## 1. 结论
 
@@ -14,6 +14,8 @@ Attempt D 已把 Router 真实 strict success 推进到 15/16，但最后一个 
 普通 `json_object` 路径继续保留为默认兼容策略；DeepSeek strict tool 必须显式选择，只用于新的 Phase 6.9.4.3 controlled-Live paired eval。Conversation Summary、生产 Chat 和尚未启用的 Router / Verifier 生产候选路径不随本任务改变。
 
 2026-07-14 已完成上述设计的零网络实施与 Mock 验收。这个 checkpoint 证明的是 schema compatibility、strict-tool wire、Live preflight 和 evidence contract 的工程韧性，不是真实模型语义质量通过。Router / Verifier 仍为 `enabled=false`，生产继续使用 deterministic policy。
+
+随后从新 `main@5d964c51a948d4603a1fcff5c52dba66b0581725` 执行 Attempt E。官方 Chat Completion 文档列出 `deepseek-v4-flash`，独立的 Tool Calls 指南描述通用 Beta endpoint 与 strict schema 约束；本地 fake-fetch 捕获的 SDK wire 与这些公开基础约束一致：单一 forced `model_agent_result`、`strict:true`、全 object properties required、`additionalProperties:false`，且不含 `response_format`。Tool Calls 指南没有明确声明该模型的 strict-tool compatibility；Attempt E 又在首个 eligible case 得到 `PROVIDER_ERROR / http_client` 并 fail-closed，因此 Provider/模型级 compatibility 与语义质量仍未通过。
 
 ## 2. 问题与证据边界
 
@@ -388,13 +390,20 @@ Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v
 - deterministic baseline 仍为 74/100、critical=2；fresh Mock 为 complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`；
 - fresh gates：AI 151 passed，Agent 344 passed，AI/Agent typecheck 与 lint 均 exit 0；
 - zero-call Live config 验收为 exit 3，Live evidence 数量 `4 -> 4`，证明配置失败没有预留证据或进入 Provider；
-- 历史 validator：Attempt A exit 3 / `profile_mismatch`，Attempt B/C/D 均 exit 0 / `incomplete`；Git blob hash 依次为 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6`、`dd6cb8f2e543c4b89c009d9198b3d89f344ce594`、`ede0a9f5576996a2bad7a9dfb60cd135047d4edf`、`bc9f4e2efc70d26723d56418bebf327e1e75383e`。
+- 历史 validator：Attempt A exit 3 / `profile_mismatch`，Attempt B/C/D/E 均 exit 0 / `incomplete`；Git blob hash 依次为 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6`、`dd6cb8f2e543c4b89c009d9198b3d89f344ce594`、`ede0a9f5576996a2bad7a9dfb60cd135047d4edf`、`bc9f4e2efc70d26723d56418bebf327e1e75383e`、`368c91f817ad76272a495f77ff1d4d6f90695429`。
 
 实施与批准设计、实施计划及历史 paired contract 一致：单 case 10 秒，Router / Verifier 单次 output 400，全局 output cap 11,200。
 
-### 10.3 不是完成声明
+### 10.3 Attempt E 诊断边界
 
-本 checkpoint 没有读取真实 key，没有设置 Live 双开关，也没有调用真实模型。Attempt D 的 15/16 strict success、固定失败 case `router_ambiguous_mixed_chat_16` 与 `structured_output` 结论不变；它仍然禁止盲目重跑或继续加 token。
+- Attempt E 运行 100 条 case，`adapterExecutions/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 37/1/1/0/36`，`observed/notRun=37/63`，首个失败为 `router_ambiguous_notes_tutor_01`，report duration 204ms / failing case 157ms，usage 0/0，`providerReported=false`；
+- `http_client` 是当前安全低基数分类，已排除 401/403 (`http_auth`) 与 429 (`http_rate_limit`)，但仍包含 400、402、422 等 4xx；系统不保存 raw status、body、headers、message 或 stack，因此不能把它进一步猜成 schema、余额或 Provider 版本问题；
+- 官方文档与零网络 wire 对照只能排除“客户端使用未公开模型标识”“非 Beta endpoint”“缺失 strict/tool/schema 基础字段”等构造错误，不能排除模型级 feature/provider compatibility，不能证明服务端已接受请求，也不能证明账户余额或账单状态；
+- 因此不重试、不绕过 runner、不读取 raw provider error。下一任务先做零网络 diagnostics/compatibility 设计与 Mock 门禁，必要时增加固定的 `http_payment` / `http_invalid_request` 等安全分类，再申请新的完整 Live。
+
+### 10.4 不是完成声明
+
+零网络 checkpoint 本身没有读取真实 key、设置 Live 双开关或调用真实模型；Attempt E 是随后唯一一次受控真实调用，结束后已恢复 Mock 并清除进程 key。Attempt D 的 15/16 strict success 与 `router_ambiguous_mixed_chat_16 / structured_output` 仍是历史事实；Attempt E 的 `router_ambiguous_notes_tutor_01 / http_client` 不能与历史 run 拼接，也不代表 Phase 6.9.4.3 完成。
 
 ## 11. 文档与提交边界
 
@@ -422,10 +431,12 @@ Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v
 - 零网络 checkpoint 已经证明了什么，又为什么不能宣布 controlled-Live 完成？
 - 为什么 schema 校验和 strict executor 本地初始化都必须在 UUID/evidence 前完成，且 schema 只有明确 `true` 才能继续？
 - runner v2 为什么要标记 `deepseek_strict_tool_v1`，而历史 v1 Live 只读兼容？
+- Attempt E 的 `http_client` 为什么不能直接等同于 422 schema error 或 402 余额不足？
+- 本地 wire 符合官方公开基础约束，为什么仍需要模型级 Provider compatibility diagnostics？
 
 下一会话可以直接问：
 
-> 请检查 Phase 6.9.4.3 Structured Output 韧性零网络 checkpoint；从本分支合并 main、main 复验并推送后，再从新 main 开独立 controlled-Live 任务，完整重跑 100 cases，不拼接历史 evidence。
+> 请先检查 Phase 6.9.4.3 Attempt E evidence；将本分支合并 main、main 复验并推送后，从新 main 开零网络 Provider compatibility diagnostics 任务，先区分 402 与参数类 4xx，不要重跑 Live。
 
 ## 13. 关联文档
 
@@ -434,3 +445,7 @@ Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v
 - [Structured Output Headroom 设计](./2026-07-14-phase-6-9-4-3-structured-output-headroom-design.md)
 - [Phase 6.9.4.3 验收记录](../../acceptance/phase-6-9-4-3-router-verifier-paired-eval.md)
 - [Attempt D canonical incomplete evidence](../../acceptance/evidence/phase-6-9-4-3/live-20260714T032310330Z-991994cb5bb5.json)
+- [Attempt E strict-tool incomplete evidence](../../acceptance/evidence/phase-6-9-4-3/live-20260714T071444506Z-65042475cbaf.json)
+- [DeepSeek Tool Calls Guide](https://api-docs.deepseek.com/guides/tool_calls)
+- [DeepSeek Create Chat Completion](https://api-docs.deepseek.com/api/create-chat-completion)
+- [DeepSeek Error Codes](https://api-docs.deepseek.com/quick_start/error_codes)
