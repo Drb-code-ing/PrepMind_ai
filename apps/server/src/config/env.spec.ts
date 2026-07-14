@@ -169,8 +169,7 @@ describe('parseEnv', () => {
         NODE_ENV,
         RAG_EMBEDDING_PROVIDER: provider,
         RAG_EMBEDDING_MODEL: model,
-        RAG_EMBEDDING_BASE_URL:
-          'https://dashscope.example.com/compatible/v1',
+        RAG_EMBEDDING_BASE_URL: 'https://dashscope.example.com/compatible/v1',
         OPENAI_API_KEY: 'openai-key',
         QWEN_API_KEY: 'qwen-key',
       });

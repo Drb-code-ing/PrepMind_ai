@@ -591,10 +591,7 @@ function assertEmbeddingRuntimeConfig(
       config,
       'RAG_EMBEDDING_PROVIDER',
     ),
-    hasExplicitModel: hasExplicitNonEmptyString(
-      config,
-      'RAG_EMBEDDING_MODEL',
-    ),
+    hasExplicitModel: hasExplicitNonEmptyString(config, 'RAG_EMBEDDING_MODEL'),
     provider: env.RAG_EMBEDDING_PROVIDER,
     hasOpenAIKey: Boolean(env.OPENAI_API_KEY),
     hasQwenKey: Boolean(
@@ -602,7 +599,7 @@ function assertEmbeddingRuntimeConfig(
     ),
     hasSafeQwenBaseUrl: Boolean(
       env.RAG_EMBEDDING_BASE_URL &&
-        isSafeHttpsProviderUrl(env.RAG_EMBEDDING_BASE_URL),
+      isSafeHttpsProviderUrl(env.RAG_EMBEDDING_BASE_URL),
     ),
   });
 }
