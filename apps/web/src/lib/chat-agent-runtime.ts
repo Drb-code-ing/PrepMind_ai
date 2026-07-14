@@ -11,6 +11,8 @@ import {
   type TutorStrategy,
 } from '@repo/agent/tutor';
 import {
+  createModelAgentBudget,
+  createModelAgentRuntime,
   isModelAgentRunBudget,
   type ModelAgentRunBudget,
   type ModelAgentRuntime,
@@ -101,6 +103,12 @@ export async function buildChatAgentExecution(
         activeStudyContext: input.activeContext?.questionText,
         deterministic,
       });
+    const capabilities = candidateEligible
+      ? {
+          budget: input.model.budget,
+          runtime: input.model.runtime,
+        }
+      : createIneligibleRouterCapabilities();
 
     const envelope = await runRouterModelCandidate({
       runId: input.runId,
@@ -108,9 +116,9 @@ export async function buildChatAgentExecution(
       activeStudyContext: input.activeContext?.questionText,
       deterministic,
       candidateEligible,
-      budget: input.model.budget,
+      budget: capabilities.budget,
       signal: input.signal,
-      runtime: input.model.runtime,
+      runtime: capabilities.runtime,
     });
     const route =
       envelope.observation.disposition === 'candidate_applied'
@@ -139,6 +147,26 @@ export async function buildChatAgentExecution(
       ),
     );
   }
+}
+
+function createIneligibleRouterCapabilities(): {
+  budget: ModelAgentRunBudget;
+  runtime: ModelAgentRuntime;
+} {
+  return {
+    budget: createModelAgentBudget({
+      maxCalls: 2,
+      maxInputTokens: 2_400,
+      maxOutputTokens: 800,
+    }),
+    runtime: createModelAgentRuntime({
+      mode: 'live',
+      provider: 'deepseek',
+      model: 'router-ineligible-placeholder',
+      liveCallsEnabled: false,
+      timeoutMs: 50,
+    }),
+  };
 }
 
 export function combineChatAdditionalPrompts(agentPrompt: string, knowledgePrompt: string) {
