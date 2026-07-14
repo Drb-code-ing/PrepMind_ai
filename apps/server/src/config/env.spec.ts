@@ -155,6 +155,34 @@ describe('parseEnv', () => {
     );
   });
 
+  it.each(
+    (['development', 'test'] as const).flatMap((NODE_ENV) =>
+      (['openai', 'qwen'] as const).flatMap((provider) =>
+        [undefined, '   '].map((model) => [NODE_ENV, provider, model] as const),
+      ),
+    ),
+  )(
+    'requires an explicit non-empty model for explicit %s %s embedding provider config (model=%p)',
+    (NODE_ENV, provider, model) => {
+      const error = captureZodError({
+        ...requiredEnv,
+        NODE_ENV,
+        RAG_EMBEDDING_PROVIDER: provider,
+        RAG_EMBEDDING_MODEL: model,
+        RAG_EMBEDDING_BASE_URL:
+          'https://dashscope.example.com/compatible/v1',
+        OPENAI_API_KEY: 'openai-key',
+        QWEN_API_KEY: 'qwen-key',
+      });
+
+      expect(error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: ['RAG_EMBEDDING_MODEL'] }),
+        ]),
+      );
+    },
+  );
+
   it('requires a supported qwen key for an explicitly selected qwen provider', () => {
     const error = captureZodError({
       ...requiredEnv,

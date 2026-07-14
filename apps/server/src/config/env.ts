@@ -495,11 +495,15 @@ const embeddingRuntimeConfigFactsSchema = z
         message: 'production requires an explicit embedding provider',
       });
     }
-    if (facts.isProduction && !facts.hasExplicitModel) {
+    if (
+      (facts.isProduction ||
+        (facts.hasExplicitProvider && facts.provider !== 'fake')) &&
+      !facts.hasExplicitModel
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['RAG_EMBEDDING_MODEL'],
-        message: 'production requires an explicit embedding model',
+        message: 'embedding runtime requires an explicit model',
       });
     }
 
