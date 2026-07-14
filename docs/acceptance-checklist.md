@@ -351,11 +351,11 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 - 新 Live evidence 必须使用 runner-v3 + `deepseek_json_object_v1` + `phase-6.9.4.3-json-mode-v1`；runner、顶层 promptVersion 与 candidate entry promptVersion 必须一致。历史 v1/v2 Live 只读兼容，Mock 禁止 transport 字段；
 - fresh 零网络门禁应为 AI 151 passed、Agent 345 passed、typecheck/lint exit 0、baseline 74/100 critical=2；Mock complete 的 `caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`；负向 Live config exit 3 且不得新增 evidence。不读 key、不启用双开关、不调真实模型；
 - 不变运行边界必须是 Router 800/400、Verifier 1600/400、global 28 calls / 96,000 provider input / 11,200 provider output、单 case 10 秒、`maxRetries=0`；
-- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。JSON-mode resolution 已完成零网络验收，Phase 6.9.4.3 仍未完成；先合并 main、main 复验并推送，再从新 main 开唯一一次完整 JSON-mode controlled-Live。新整轮必须完整跑 100 cases，在 28/28 strict success、72/72 zero-call 与质量/安全/权限/延迟/token/usage provenance/成本门槛全部通过前，不得标记阶段完成或启用 Router / Verifier candidate；失败则记录终局 fallback，不再新增 transport。
+- 证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。唯一一次 JSON-mode controlled-Live 已完整跑 100 cases，28/28 strict success、72/72 zero-call，Verifier 通过；Router additional P95 `4264ms` 超门槛，故记录 terminal deterministic fallback，Phase 6.9.4.3 仍未全部通过。不得重跑或新增 transport；Verifier 结果只作为后续集成依据。
 
 回顾时可以问：“如何机械证明 hostile schema 或本地初始化失败没有创建 UUID/evidence、也没有进入 Provider attempt？”“为什么 Mock counters complete 仍不是 Live 质量证据？”
 
-下一会话可以复制：“按 Phase 6.9.4.3 checklist 先完成 JSON-mode resolution 的 main 复验与推送，再从新 main 创建唯一一次完整 JSON-mode controlled-Live；失败就终局 fallback，不要拼接历史 evidence。”
+下一会话可以复制：“按 Phase 6.9.4.3 checklist 收尾 JSON-mode Live evidence 与终局 fallback 文档，合并 main、复验并推送；然后从新 main 开 Phase 6.9.5。”
 
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 
