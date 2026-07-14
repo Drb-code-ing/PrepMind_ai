@@ -1,7 +1,7 @@
 # Phase 6.9.4.3 Structured Output 韧性设计
 
 > 日期：2026-07-14
-> 状态：设计已批准，尚未实施；本设计阶段不调用真实模型
+> 状态：设计已实施并完成零网络 checkpoint；Phase 6.9.4.3 controlled-Live 仍未完成
 > 关联证据：Attempt D `live-20260714T032310330Z-991994cb5bb5.json`
 > 固定失败 case：`router_ambiguous_mixed_chat_16`
 
@@ -12,6 +12,8 @@ Attempt D 已把 Router 真实 strict success 推进到 15/16，但最后一个 
 本设计采用 **DeepSeek strict Function Calling 作为受控 structured-output transport**：模型只允许调用一个不会执行任何业务逻辑的合成函数，并通过 `strict: true` 让 Provider 按 JSON Schema 生成参数；返回值仍必须经过现有本地 strict Zod 校验。每个 case 仍最多一次 Provider 调用，不自动重试，不读取或保存 raw output。
 
 普通 `json_object` 路径继续保留为默认兼容策略；DeepSeek strict tool 必须显式选择，只用于新的 Phase 6.9.4.3 controlled-Live paired eval。Conversation Summary、生产 Chat 和尚未启用的 Router / Verifier 生产候选路径不随本任务改变。
+
+2026-07-14 已完成上述设计的零网络实施与 Mock 验收。这个 checkpoint 证明的是 schema compatibility、strict-tool wire、Live preflight 和 evidence contract 的工程韧性，不是真实模型语义质量通过。Router / Verifier 仍为 `enabled=false`，生产继续使用 deterministic policy。
 
 ## 2. 问题与证据边界
 
@@ -368,7 +370,33 @@ Error、Trace、evidence、stdout、文档和 Git 禁止包含：
 
 任何一项不满足都继续 `enabled=false`，不得与历史 partial run 拼接，也不得通过重试某一个失败 case 补齐报告。
 
-## 10. 文档与提交边界
+## 10. 实施 checkpoint
+
+### 10.1 已完成的工程边界
+
+- `303b88a feat(ai): compile strict tool schema profiles`：完成 identity-only profile registry、非原地兼容投影、深冻结与 hostile input fail-closed。Provider projection 只做审批过的删除/等价转换；完整长度、状态关联和自定义 refinement 仍由 canonical Zod 最终裁决。
+- `bdb7cb5 feat(ai): add DeepSeek strict tool transport`：保留默认 `json_object`，新增显式 `deepseek_strict_tool`。该模式只允许 `deepseek-v4-flash` 与精确 `https://api.deepseek.com/beta`，只发送唯一 forced synthetic function `model_agent_result`、`strict: true`，不带 `response_format/json_schema`。合成函数没有 handler、业务执行、副作用或 MCP 语义。
+- `2100e10 feat(agent): use strict tool paired profile`：Live preflight 提前到 UUID、evidence reservation、Provider factory 与 runner 之前；只有显式返回 `true` 才能继续。返回 `false`、抛错、非法注入值或 hostile property/getter/proxy 都以 `live_config_invalid` 零副作用结束。
+
+Live evidence 从此使用 `phase-6.9.4.3-runner-v2` 和 `deepseek_strict_tool_v1`。历史 runner v1 Live evidence 只读兼容，不改写；Mock v1/v2 都禁止携带 Live transport 字段，避免伪造真实 Provider lane。
+
+### 10.2 不变合同与零网络证据
+
+- dataset 仍为 100 条；28 条 eligible、72 条 design-time zero-call；
+- Router 仍为 800 local input / 400 output，Verifier 仍为 1,600 local input / 400 output；
+- 全局仍为 28 calls / 96,000 provider input / 11,200 provider output，单 case timeout 仍为 10 秒，`maxRetries=0`；
+- deterministic baseline 仍为 74/100、critical=2；fresh Mock 为 complete，`caseEntries/runtimeInvocations/providerAttempts/strictSuccesses/zeroCallCases = 100/28/0/28/72`；
+- fresh gates：AI 151 passed，Agent 342 passed，AI/Agent typecheck 与 lint 均 exit 0；
+- zero-call Live config 验收为 exit 3，Live evidence 数量 `4 -> 4`，证明配置失败没有预留证据或进入 Provider；
+- 历史 validator：Attempt A exit 3 / `profile_mismatch`，Attempt B/C/D 均 exit 0 / `incomplete`；Git blob hash 依次为 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6`、`dd6cb8f2e543c4b89c009d9198b3d89f344ce594`、`ede0a9f5576996a2bad7a9dfb60cd135047d4edf`、`bc9f4e2efc70d26723d56418bebf327e1e75383e`。
+
+实施与批准设计、实施计划及历史 paired contract 一致：单 case 10 秒，Router / Verifier 单次 output 400，全局 output cap 11,200。
+
+### 10.3 不是完成声明
+
+本 checkpoint 没有读取真实 key，没有设置 Live 双开关，也没有调用真实模型。Attempt D 的 15/16 strict success、固定失败 case `router_ambiguous_mixed_chat_16` 与 `structured_output` 结论不变；它仍然禁止盲目重跑或继续加 token。
+
+## 11. 文档与提交边界
 
 本任务按以下提交粒度推进：
 
@@ -379,7 +407,7 @@ Error、Trace、evidence、stdout、文档和 Git 禁止包含：
 5. 每个任务分支合并 main 后在 main 再验收并推送远程，核对 local main / origin main / remote SHA；
 6. controlled-Live 必须是实现和 Mock 验收后的新独立任务，不与代码实现提交混在一起。
 
-## 11. 回顾时可以问
+## 12. 回顾时可以问
 
 - 为什么 Attempt D 不能继续通过增加 `maxOutputTokens` 解决？
 - 当前传给 `generateObject()` 的 Zod schema 为什么没有变成 DeepSeek Provider 级 schema？
@@ -391,12 +419,15 @@ Error、Trace、evidence、stdout、文档和 Git 禁止包含：
 - 为什么使用 Beta 能力仍不能直接启用 Router / Verifier？
 - 新 controlled-Live 为什么必须从 100 条 case 开头重新运行，不能只补最后 13 条？
 - 哪些条件满足后 Phase 6.9.4.3 才能真正完成？
+- 零网络 checkpoint 已经证明了什么，又为什么不能宣布 controlled-Live 完成？
+- 为什么 preflight 必须放在 UUID、evidence、Provider 和 runner 前，并且只有明确 `true` 才能继续？
+- runner v2 为什么要标记 `deepseek_strict_tool_v1`，而历史 v1 Live 只读兼容？
 
 下一会话可以直接问：
 
-> 请审阅 Phase 6.9.4.3 Structured Output 韧性设计；确认后按 TDD 编写实施计划，先做共享 executor 与 DeepSeek strict-tool schema compatibility 的零网络测试，不调用真实模型。
+> 请检查 Phase 6.9.4.3 Structured Output 韧性零网络 checkpoint；从本分支合并 main、main 复验并推送后，再从新 main 开独立 controlled-Live 任务，完整重跑 100 cases，不拼接历史 evidence。
 
-## 12. 关联文档
+## 13. 关联文档
 
 - [Phase 6.9.4.3 Paired Eval 设计](./phase-6-9-4-3-router-verifier-paired-eval-design.md)
 - [共享 Provider 失败诊断设计](./2026-07-13-phase-6-9-4-3-provider-failure-diagnostics-design.md)
