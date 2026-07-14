@@ -2,16 +2,16 @@
 
 ## 1. 阶段结论
 
-Phase 6.9.4.3 的评测工程、Mock 验收与三次受控 Live 尝试已经形成可复核证据，但仍**没有得到 complete Live 质量证据，阶段验收未完成**。Router / Verifier 模型候选均不得启用，生产 Chat 行为保持不变。
+Phase 6.9.4.3 的评测工程、Mock 验收与四次受控 Live 尝试已经形成可复核证据，但仍**没有得到 complete Live 质量证据，阶段验收未完成**。Router / Verifier 模型候选均不得启用，生产 Chat 行为保持不变。
 
 本阶段得到的结论是：
 
 - 同一 `phase-6.9-router-verifier-v1` 数据集已经完成 fresh deterministic、Mock 与 controlled-Live 尝试；canonical Live run 明确为 incomplete，dataset digest 始终为 `sha256:b21def37330d2da109901ff9e927a612dc62cdecf1cb9383c3b8bea08c7bb019`。
 - deterministic baseline 仍为 74/100、critical failure 2；Mock contract run 为 complete，28 条 eligible case 全部 strict success，72 条 ineligible / safety case 保持零 provider 调用。
 - controlled-Live 使用 `deepseek-v4-flash`、固定 JSON structured output、单 case 10 秒、串行执行、无自动重试。
-- 三次已越过 provider boundary 的运行均原样保留。Attempt A 在第 3 次 provider attempt 停止；Attempt B 与 2026-07-14 的 Attempt C 都在第 1 次停止。
-- Attempt C 是当前 canonical Live evidence：identity/schema/privacy validator 全部通过，并首次由共享 diagnostics 把固定 `PROVIDER_ERROR` 安全分类为 `structured_output`；它仍为 `incomplete`，Router / Verifier 都是 `enabled=false / usage_unverifiable`。
-- 历史成功 Router entry 的 output usage 为 `61/120` 与 `108/120`，后者占当时上限 90%。结合 Attempt C 的 `structured_output` 分类，Router / Verifier structured-output headroom 已独立按 TDD 修复为 400/400，global output cap 为 11,200；下一任务从修复后的 main 重新执行完整 Live，仍不得接入生产 Chat。
+- 四次已越过 provider boundary 的运行均原样保留。Attempt A 在第 3 次 provider attempt 停止；Attempt B/C 都在第 1 次停止；400-token headroom 后的 Attempt D 在第 16 次停止，之前已有 15 次 strict success。
+- Attempt D 是当前 canonical Live evidence：identity/schema/privacy validator 全部通过，固定失败 case `router_ambiguous_mixed_chat_16` 由共享 diagnostics 分类为 `PROVIDER_ERROR / structured_output`；它仍为 `incomplete`，Router / Verifier 都是 `enabled=false / usage_unverifiable`。
+- Attempt C 与历史 `61/120`、`108/120` output usage 触发了 400/400 headroom 和 11,200 global cap 修复；Attempt D 的 15 条成功 output 为 59~341，证明成功深度明显改善但不支持继续盲目抬高 cap。下一任务先做固定失败 case 的零网络 prompt/schema/provider compatibility 韧性设计，不直接重跑 Live，生产 Chat 仍不接入 candidate。
 
 ## 2. 数据集与调用边界
 
@@ -150,6 +150,30 @@ canonical evidence 的文件名由正文 `startedAt + runIdHash` 机械推导，
 
 `structured_output` 表示失败发生在默认 AI SDK executor 返回合法对象之前的生成、JSON 解析或 schema validation 边界；它排除了本次故障属于鉴权、限流、HTTP、传输或普通 invalid-response 分类，但不保存或反查 provider 原始正文。历史 Attempt A 的两条 strict success 分别报告 `61/120` 与 `108/120` output tokens；第二条仅剩 12 tokens 余量。由此得到可复核的高置信假设：当时 Router `maxOutputTokens=120` 对真实模型 structured output 缺少稳定余量。该证据仍不能精确区分截断、JSON parse 或 schema validation，因此修复增加 headroom 而不放宽 schema、不增加 retry，也不把假设写成已证明的 provider 原因。
 
+### 4.5 Attempt D：400-token headroom 后的 canonical incomplete evidence
+
+2026-07-14 从已推送 `main@c72a9f03a7709fce1aa1e0210a378f3c380b79fb` 创建独立分支。零调用 preflight 为 exit 3 / `live_config_invalid`，Live evidence 保持 3 份；随后 diagnostics/paired 精确测试为 250 passed / 0 failed / 2078 assertions。唯一一次 controlled-Live 从 100 条 case 开头串行执行，没有重试或拼接历史 run。
+
+| 字段 | 结果 |
+| --- | ---: |
+| run status / qualityEvidence | `incomplete` / `true` |
+| started / finished / duration | 2026-07-14T03:23:10.330Z / 2026-07-14T03:23:50.138Z / 39800ms |
+| observed / notRun | 52 / 48 |
+| case entries / adapter executions | 100 / 52 |
+| runtime invocations / provider attempts | 16 / 16 |
+| strict successes / runtime failures | 15 / 1 |
+| observed zero-call cases | 36 |
+| failing case | `router_ambiguous_mixed_chat_16` |
+| fixed failure | `PROVIDER_ERROR / structured_output` |
+| aggregate provider usage | 4446 input / 2185 output，run-level `providerReported=false` |
+| partial auditable estimated cost | USD 0.001297004654663，仅覆盖 15 条 usage 可验证的成功 entry |
+| Router / Verifier decision | `enabled=false / usage_unverifiable` |
+| strict validator | exit 0，`ok=true / live / incomplete` |
+
+15 条 strict success 的 provider-reported output 范围为 59~341 tokens，没有一条达到 400；第 16 条失败 entry 按安全合同只保留 0/0 usage，不能推断它是否触及 output cap。Router partial metrics 为 overall 76.9231%、ambiguous macro-F1 61.5152%、high-confidence 86.1111%、permission boundary 82.6923%、critical=0；Router additional p50/p95 为 1945/5619ms。由于最后一条是失败 sample 且 Verifier 尚未运行，这些 partial 指标不能用于 enablement；即使忽略 incomplete，5619ms 也超过 2500ms 延迟门槛。
+
+Attempt D 证明 400-token headroom 把真实 strict success 从此前最多 2 条推进到连续 15 条，但没有消除 `structured_output` 风险。成功 entry 的最大 output 为 341，现有证据不支持继续把根因简单归结为“400 仍太小”，也不支持盲目提高到更大 cap。下一步必须先对固定失败 case 的 prompt/schema/provider compatibility 做零网络设计与回归分析，再决定是否需要更紧凑输出合同、受控 repair 边界或其他方案；仍禁止自动重试和读取 raw provider 正文。
+
 ## 5. Pricing 与成本上限
 
 操作者提供的 `deepseek-v4-flash` 价格截图显示：缓存未命中输入 1 元/百万 tokens、输出 2 元/百万 tokens。2026-07-13 [国家外汇管理局人民币汇率中间价](https://www.safe.gov.cn/AppStructured/hlw/RMBQuery.do)为 100 美元 = 679.72 元；按 9 位小数向上取整后，本次 CLI snapshot 为：
@@ -162,7 +186,7 @@ canonical evidence 的文件名由正文 `startedAt + runIdHash` 机械推导，
 | Attempt A/B/C 当时 worst-case：96,000 input + 4,080 output | USD 0.0153239570124 |
 | headroom 修复后 worst-case：96,000 input + 11,200 output | USD 0.017418937304 |
 
-修复前后 worst-case admission 都明显低于 USD 0.10。Attempt B/C 都因首个 provider failure 没有可验证 usage，所以各自 evidence 的估算成本为 0；这不代表供应商账单一定为 0，只表示本地合同没有可审计 token 用量可用于估算。历史 evidence 保留当时 4,080 cap，不按新 11,200 cap 回算或改写。
+修复前后 worst-case admission 都明显低于 USD 0.10。Attempt B/C 都因首个 provider failure 没有可验证 usage，所以各自 evidence 的估算成本为 0；Attempt D 对 15 条 strict success 的部分可审计估算成本为 USD 0.001297004654663。上述数值都不冒充供应商最终账单；历史 evidence 保留运行时合同，不按新 11,200 cap 回算或改写。
 
 ## 6. 为什么停止且不继续自动重跑
 
@@ -174,6 +198,8 @@ Attempt A 与 Attempt B 都出现 `PROVIDER_ERROR`，而当时运行器只暴露
 2. 两次 provider failure 已不满足“已确认一次性网络抖动”的重跑条件；
 3. 继续盲目调用只会增加成本，不能提高证据可解释性；
 4. 应先建立安全、固定码、无正文的 provider failure 诊断证据，再进行新的整轮 paired eval。
+
+Attempt D 已在 diagnostics 与 400-token headroom 之后执行，连续得到 15 条 strict success，但最后一个 Router eligible case 仍为 `structured_output`。因此本轮同样不重试：它不是已确认的鉴权、限流或瞬时网络故障，且成功 output 最大值 341 不能证明继续抬高 cap 就能解决。后续先做零网络根因设计，不用更多 Provider 调用代替工程证据。
 
 ### 6.1 安全 Provider 失败诊断检查点
 
@@ -268,8 +294,12 @@ Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mo
 | deterministic baseline | 74/100，critical=2 |
 | Mock paired CLI | exit 1，`mock / complete / paired_candidate_not_run` |
 | Mock / Attempt C strict validator | exit 0 / exit 0 |
+| Attempt D zero-call preflight | exit 3，`live_config_invalid`，evidence 3 → 3 |
+| Attempt D diagnostics + paired 精确测试 | 250 passed / 0 failed / 2078 assertions |
+| Attempt D controlled-Live | exit 2，16 attempts / 15 strict success / `structured_output` |
+| Attempt D strict validator | exit 0，`ok=true / live / incomplete` |
 
-现有 `mock.json` 在新 strict contract 下继续合法，不需要为了改变不可见的 request reservation 而重写；历史 Attempt A/B/C blob 保持不变。该验收只使用 Mock/fake/历史只读 evidence，没有设置 Live 双开关或发起 Provider 请求。
+现有 `mock.json` 在新 strict contract 下继续合法，不需要为了改变不可见的 request reservation 而重写；历史 Attempt A/B/C blob 保持不变。表格中 candidate RED/GREEN、paired RED/GREEN、全量测试与 headroom contract 验收只使用 Mock/fake/历史只读 evidence，没有设置 Live 双开关或发起 Provider 请求；其后的 Attempt D 行是独立 controlled-Live 任务的真实运行结果，曾在单次子进程内显式开启双开关并调用 Provider，结束后已恢复 Mock、清除进程 key，且没有重试。
 
 本阶段不提交 raw stdout/stderr 或 provider debug log artifact，因为它们不属于安全 evidence contract，且可能扩大 provider 错误、环境与凭据暴露面；可复核证据是 strict JSON、validator 结果、Git 提交和本文机械提取的固定字段。
 
@@ -280,25 +310,26 @@ Live exit 2 表示运行不完整，不是 shell 或 validator 执行失败。Mo
 - [Fresh Mock strict evidence](./evidence/phase-6-9-4-3/mock.json)
 - [Attempt A：pre-fix incomplete artifact](./evidence/phase-6-9-4-3/live-20260713T122743752Z-46b0f4785861.json)
 - [Attempt B：此前的 canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260713T124435253Z-4d37573c86dc.json)
-- [Attempt C：structured-output canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260714T022627206Z-08bddedf3f64.json)
+- [Attempt C：diagnostics 后 structured-output incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260714T022627206Z-08bddedf3f64.json)
+- [Attempt D：400-token headroom 后 canonical incomplete Live evidence](./evidence/phase-6-9-4-3/live-20260714T032310330Z-991994cb5bb5.json)
 - [设计：共享 Provider 失败诊断](../superpowers/specs/2026-07-13-phase-6-9-4-3-provider-failure-diagnostics-design.md)
 - [设计：2026-07-14 Structured Output Headroom](../superpowers/specs/2026-07-14-phase-6-9-4-3-structured-output-headroom-design.md)
 - [实施计划：2026-07-14 Structured Output Headroom](../superpowers/plans/2026-07-14-phase-6-9-4-3-structured-output-headroom.md)
 
-canonical 选择理由：Attempt C 是 diagnostics 合并后从最新 main 发起的新 run，并且正文身份、文件名、strict schema、隐私、usage/cost 与 decision 校验全部通过；它首次提供合法 `structured_output` 固定分类。Attempt A/B 继续作为不利历史事实保留。Attempt C 仍是 incomplete，因此“canonical”不等于“质量通过”。
+canonical 选择理由：Attempt D 是 diagnostics 与 400-token headroom 合并后从最新 main 发起的新 run，并且正文身份、文件名、strict schema、隐私、usage/cost 与 decision 校验全部通过。它保留 Attempt C 首次建立的合法 `structured_output` 分类，同时把真实成功推进到 15/16 个 Router eligible case。Attempt A/B/C 继续作为不利历史事实保留。Attempt D 仍是 incomplete，因此“canonical”不等于“质量通过”。
 
-Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6` 与 `dd6cb8f2e543c4b89c009d9198b3d89f344ce594`，证明历史文件未被覆盖改写；Attempt C 的初始 Git blob hash 为 `ede0a9f5576996a2bad7a9dfb60cd135047d4edf`。
+Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce69b6c6` 与 `dd6cb8f2e543c4b89c009d9198b3d89f344ce594`，证明历史文件未被覆盖改写；Attempt C / D 的初始 Git blob hash 分别为 `ede0a9f5576996a2bad7a9dfb60cd135047d4edf` 与 `bc9f4e2efc70d26723d56418bebf327e1e75383e`。
 
 ## 10. 下一任务与回顾问题
 
-下一任务仍属于 Phase 6.9.4.3：从 headroom 修复合并并推送后的最新 `main` 发起下一轮完整 controlled-Live。运行前重新执行 zero-call preflight、diagnostics、400/11,200 budget 与 pricing 核对；整轮从 100 条 case 开头串行执行，不自动重试、不拼接历史 run。只有新 run 达到 28 次 strict success 并满足质量、安全、延迟、token 与成本标准后，Phase 6.9.4.3 才能标记完成。
+下一任务仍属于 Phase 6.9.4.3，但不再直接重跑 Live：先从 Attempt D 固定失败 case `router_ambiguous_mixed_chat_16` 出发，零网络分析 Router prompt/schema 与 DeepSeek structured-output compatibility，形成可测试的韧性设计。方案必须保留 strict schema、72 zero-call、无正文 diagnostics、成本与调用边界，不能用自动重试、读取 raw output 或继续抬高 token cap 掩盖原因。只有独立修复经 TDD、Mock 与新整轮 Live 达到 28 次 strict success，并满足质量、安全、延迟、token 与成本标准后，Phase 6.9.4.3 才能标记完成。
 
-下一会话可以直接问：`请从最新 main 开始新的 Phase 6.9.4.3 controlled-Live；先核对 400/11,200 headroom、diagnostics、双开关与 pricing，不自动重试。`
+下一会话可以直接问：`请从最新 main 分析 Attempt D 的 router_ambiguous_mixed_chat_16 structured_output；先做零网络 prompt/schema/provider compatibility 设计，不重跑 Live、不自动重试。`
 
 回顾时可以问：
 
 - 为什么 100 条 case 只有 28 条 eligible，而不是全部调用模型？
-- 为什么 canonical Live 的 `zeroCallCases=36`、`notRun=63`，而设计仍写 72 条 zero-call？
+- 为什么 Attempt D 的 `zeroCallCases=36`、`notRun=48`，而设计仍写 72 条 zero-call？
 - Attempt A 为什么有 2 次 strict success 仍不能与 Attempt B/C 拼成完整报告？
 - pre-fix evidence 为什么保留但不能作为 canonical evidence？
 - `qualityEvidence=true` 为什么仍然不能启用模型路径？
@@ -309,3 +340,5 @@ Attempt A / B 的 Git blob hash 分别保持 `330a5cfcfda64a4c90b60e0e711ee6f2ce
 - 为什么 `108/120` 能支持 output headroom 假设，却不能单独证明一定发生了截断？
 - 为什么 400-token 上限不会要求模型生成满 400，也不会放宽 strict schema？
 - 11,200 global output cap 与 USD 0.017418937304 worst-case 是怎样计算的？
+- 为什么 Attempt D 已有 15 条 strict success 仍不能与历史 run 拼成 28 条 complete evidence？
+- 为什么成功 output 最大只有 341，使“继续提高 400 cap”不再是充分证据支持的下一步？
