@@ -1,10 +1,22 @@
 import { routeAgentRequest } from '@repo/agent/router';
 import {
+  isRouterModelEligible,
+  runRouterModelCandidate,
+  type RouterModelCandidateEnvelope,
+} from '@repo/agent/model-candidates';
+import {
   buildGenericTutorPrompt,
   buildTutorStrategy,
   type BuildTutorStrategyInput,
   type TutorStrategy,
 } from '@repo/agent/tutor';
+import {
+  createModelAgentBudget,
+  createModelAgentRuntime,
+  isModelAgentRunBudget,
+  type ModelAgentRunBudget,
+  type ModelAgentRuntime,
+} from '@repo/ai';
 import type { AgentRoute, AgentState, RouterResult } from '@repo/types/api/agent';
 
 import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
@@ -31,6 +43,25 @@ export type BuildChatAgentDecisionInput = {
   tutorPolicy?: (input: BuildTutorStrategyInput) => TutorStrategy;
 };
 
+export type ChatAgentExecution = {
+  decision: ChatAgentDecision;
+  routerObservation: RouterModelCandidateEnvelope['observation'];
+  budget: ModelAgentRunBudget;
+};
+
+export type BuildChatAgentExecutionInput = {
+  messages: ChatContextMessage[];
+  activeContext: ActiveStudyContext | null;
+  runId: string;
+  userId: string;
+  signal?: AbortSignal;
+  model: {
+    enabled: boolean;
+    runtime: ModelAgentRuntime;
+    budget: ModelAgentRunBudget;
+  };
+};
+
 export function buildChatAgentDecision(
   input: BuildChatAgentDecisionInput,
 ): ChatAgentDecision {
@@ -55,6 +86,119 @@ export function buildChatAgentDecision(
       },
       true,
     );
+  }
+}
+
+export async function buildChatAgentExecution(
+  input: BuildChatAgentExecutionInput,
+): Promise<ChatAgentExecution> {
+  try {
+    const latestUserText = getLatestUserText(input.messages);
+    const state = createChatAgentState(input, latestUserText);
+    const deterministic = routeAgentRequest(state);
+    const candidateEligible =
+      input.model.enabled === true &&
+      isRouterModelEligible({
+        text: latestUserText,
+        activeStudyContext: input.activeContext?.questionText,
+        deterministic,
+      });
+    const capabilities = candidateEligible
+      ? {
+          budget: input.model.budget,
+          runtime: input.model.runtime,
+        }
+      : createIneligibleRouterCapabilities(input.model);
+
+    const envelope = await runRouterModelCandidate({
+      runId: input.runId,
+      text: latestUserText,
+      activeStudyContext: input.activeContext?.questionText,
+      deterministic,
+      candidateEligible,
+      budget: capabilities.budget,
+      signal: input.signal,
+      runtime: capabilities.runtime,
+    });
+    const route =
+      envelope.observation.disposition === 'candidate_applied'
+        ? withCanonicalRoutePermissions(envelope.result)
+        : envelope.result;
+
+    return {
+      decision: toDecision(route, false, {
+        latestUserText,
+        activeStudyContext: input.activeContext?.questionText,
+      }),
+      routerObservation: envelope.observation,
+      budget: safeRunBudgetSnapshot(envelope.observation.budget),
+    };
+  } catch {
+    return localChatAgentExecution(
+      toDecision(
+        {
+          name: 'chat',
+          confidence: 0.4,
+          reason: 'RouterAgent execution unavailable; degraded to normal chat.',
+          requiresRag: false,
+          requiresHumanApproval: false,
+        },
+        true,
+      ),
+    );
+  }
+}
+
+function createIneligibleRouterCapabilities(
+  model: BuildChatAgentExecutionInput['model'],
+): {
+  budget: ModelAgentRunBudget;
+  runtime: ModelAgentRuntime;
+} {
+  return {
+    budget:
+      snapshotOwnDataBudget(model) ??
+      createModelAgentBudget({
+        maxCalls: 2,
+        maxInputTokens: 2_400,
+        maxOutputTokens: 800,
+      }),
+    runtime: createModelAgentRuntime({
+      mode: 'live',
+      provider: 'deepseek',
+      model: 'router-ineligible-placeholder',
+      liveCallsEnabled: false,
+      timeoutMs: 50,
+    }),
+  };
+}
+
+const MODEL_AGENT_BUDGET_FIELDS = [
+  'maxCalls',
+  'usedCalls',
+  'maxInputTokens',
+  'usedInputTokens',
+  'maxOutputTokens',
+  'usedOutputTokens',
+] as const satisfies readonly (keyof ModelAgentRunBudget)[];
+
+function snapshotOwnDataBudget(
+  model: BuildChatAgentExecutionInput['model'],
+): ModelAgentRunBudget | null {
+  try {
+    const modelBudget = Object.getOwnPropertyDescriptor(model, 'budget');
+    if (!modelBudget || !('value' in modelBudget)) return null;
+
+    const values: Partial<ModelAgentRunBudget> = {};
+    for (const field of MODEL_AGENT_BUDGET_FIELDS) {
+      const descriptor = Object.getOwnPropertyDescriptor(modelBudget.value, field);
+      if (!descriptor || !('value' in descriptor)) return null;
+      values[field] = descriptor.value;
+    }
+    if (!isModelAgentRunBudget(values)) return null;
+    return Object.freeze({ ...values });
+  } catch {
+    return null;
   }
 }
 
@@ -140,6 +284,51 @@ function toDecision(
     debugHeaders,
     degraded: isDegraded,
   };
+}
+
+function withCanonicalRoutePermissions(route: RouterResult): RouterResult {
+  if (route.name === 'rag_answer') {
+    return { ...route, requiresRag: true, requiresHumanApproval: false };
+  }
+  if (
+    route.name === 'study_plan' ||
+    route.name === 'review_analysis' ||
+    route.name === 'wrong_question_organize'
+  ) {
+    return { ...route, requiresRag: false, requiresHumanApproval: true };
+  }
+  return { ...route, requiresRag: false, requiresHumanApproval: false };
+}
+
+function localChatAgentExecution(
+  decision: ChatAgentDecision,
+): ChatAgentExecution {
+  const budget = safeRunBudgetSnapshot(undefined);
+  const routerObservation: RouterModelCandidateEnvelope['observation'] = {
+    attempted: false,
+    disposition: 'fallback_invalid_input',
+    budget: { ...budget },
+    usage: { inputTokens: 0, outputTokens: 0 },
+    reasonCodes: ['fallback_invalid_input'],
+  };
+  return {
+    decision,
+    routerObservation,
+    budget,
+  };
+}
+
+function safeRunBudgetSnapshot(value: unknown): ModelAgentRunBudget {
+  return isModelAgentRunBudget(value)
+    ? { ...value }
+    : {
+        maxCalls: 1,
+        usedCalls: 0,
+        maxInputTokens: 1,
+        usedInputTokens: 0,
+        maxOutputTokens: 1,
+        usedOutputTokens: 0,
+      };
 }
 
 function buildRoutePromptAddition(route: AgentRoute) {

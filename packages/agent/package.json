@@ -11,6 +11,7 @@
     "./knowledge-organizer": "./src/nodes/knowledge-organizer.ts",
     "./knowledge-verifier": "./src/nodes/knowledge-verifier.ts",
     "./memory": "./src/nodes/memory.ts",
+    "./model-candidates": "./src/model-candidates/production.ts",
     "./phase-6-9-eval": "./src/evals/phase-6-9-eval-contract.ts",
     "./planner": "./src/nodes/planner.ts",
     "./review": "./src/nodes/review.ts",

@@ -853,12 +853,37 @@ Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `a
 AI_PROVIDER_MODE=mock
 AI_DEV_MODE_SWITCH_ENABLED=true
 AI_ENABLE_LIVE_CALLS=false
+ROUTER_MODEL_ENABLED=false
+KNOWLEDGE_VERIFIER_MODEL_ENABLED=false
+ROUTER_MODEL_TIMEOUT_MS=5000
+KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 ```
 
-需要在 `/agent-trace` 手动切到 Live 时，只把对应 env 文件里的 `AI_ENABLE_LIVE_CALLS` 改成 `true`，然后重启对应前端即可。Docker 前端重启命令：
+Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
+
+Task 8 只把这些变量显式传入 Docker `web` runtime；保留 `env_file: ../.env`，没有把凭据放进 build args 或 `NEXT_PUBLIC_*` 客户端变量。Phase 6.9.4.3 additional P95 `4264ms` 是当时的历史延迟 verdict，不是永久禁止 Router 模型的产品决定；当前混合路径仍须通过 Task 9 controlled-Live、Docker 和可见浏览器验收，因此两个 gate 继续默认关闭。权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这不代表 Memory、Orchestrator、其余 Agent 或 Phase 6 已完成。
+
+`/agent-trace` 的 `AI 模式` 开关只切换最终 Chat 流式回答的 Mock / Live 请求模式，不会替 Router/Verifier 打开 Agent runtime gate。仅设置 `AI_ENABLE_LIVE_CALLS=true` 时，若 `AI_PROVIDER_MODE` 仍为 `mock` 或两个组件 gate 仍为 `false`，Agent 候选路径仍不会调用真实模型。
+
+Phase 6.9.4.4 Task 9 的受控 Docker Live 必须在未跟踪的根 `.env` 中临时同时提供完整运行条件。下面只列非敏感值；还必须通过根 `.env` 或受控 secret 注入与所选 provider 匹配的有效 key，例如 DeepSeek 使用 `DEEPSEEK_API_KEY`、OpenAI 使用 `OPENAI_API_KEY`，但不要把 key 值复制到命令、终端输出、日志或文档：
+
+```env
+AI_PROVIDER_MODE=live
+AI_ENABLE_LIVE_CALLS=true
+AI_MODEL=deepseek-v4-flash
+AI_BASE_URL=https://api.deepseek.com
+ROUTER_MODEL_ENABLED=true
+KNOWLEDGE_VERIFIER_MODEL_ENABLED=true
+ROUTER_MODEL_TIMEOUT_MS=5000
+KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
+```
+
+只验收一个组件或独立 rollback 时，只把当前目标组件 gate 设为 `true`，另一个保持 `false`。`AI_MODEL`、HTTPS provider base URL 与安全注入的 key 必须互相匹配。根 `.env` 既是 Docker Web 的 service `env_file`，也是下列 Compose 命令的插值输入；修改后只重建精确的 `web` service：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
+
+验收结束后必须把根 `.env`、`apps/web/.env.local` 等本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`，保留 5000/4000 timeout，再用同一条精确 `web` 重建命令让 Mock/default-off 生效。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
 
 Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。

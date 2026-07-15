@@ -1,6 +1,6 @@
-# PrepMind AI — 完整架构设计文档
+# PrepMind AI — 初始完整架构设计文档
 
-> 基于 Phase 0 输出标准 · 可直接用于开发落地
+> 基于 Phase 0 输出标准。本文保留早期目标架构与示例，不应单独用于判断当前实现状态；当前阶段、真实数据流和 Agent 权威路线分别见 `docs/roadmap.md`、`docs/data-flow.md` 与 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
 
 ---
 
@@ -741,6 +741,8 @@ eventEmitter.emit(SystemEvents.QUESTION_CREATED, { questionId, userId });
 ---
 
 ## 6. Agent 系统设计（LangGraph）
+
+> 本节的状态图、`Annotation.Root` 和 Tutor `llm.generate()` 是早期目标示例，不是当前仓库实现。当前 `createAgentGraph()` 只返回 graph descriptor，生产 Chat 使用分散的 Web/Nest orchestration；Retriever 与 FinalResponse 职责隐含于 RAG/Chat 链路，Tool-Using Orchestrator 尚未实现。后续将先完成 11 个逻辑节点加 Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入分层记忆。
 
 ### 6.1 Agent 状态图
 

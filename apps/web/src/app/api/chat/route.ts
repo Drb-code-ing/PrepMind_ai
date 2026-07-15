@@ -12,7 +12,7 @@ import {
   shouldSearchKnowledgeForChat,
   validateChatLiveAccess,
 } from '@/lib/chat-api-policy';
-import { buildChatAgentDecision, type ChatAgentDecision } from '@/lib/chat-agent-runtime';
+import type { ChatAgentDecision } from '@/lib/chat-agent-runtime';
 import {
   type ActiveStudyContext,
   type ChatContextMessage,
@@ -29,6 +29,12 @@ import {
   buildKnowledgeContextPrompt,
   searchKnowledgeForChat,
 } from '@/lib/chat-rag-context';
+import {
+  buildChatModelAgentObservationHeaders,
+  projectChatModelAgentObservation,
+} from '@/lib/chat-model-agent-observation';
+import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
+import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
 import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
@@ -115,6 +121,7 @@ function createMockChatResponse(input: {
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
   contextHeaders: Record<string, string>;
+  modelAgentHeaders: Record<string, string>;
 }) {
   const mockText = createMockChatText({
     hasActiveContext: Boolean(input.activeContext),
@@ -142,6 +149,7 @@ function createMockChatResponse(input: {
       'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
       ...input.contextHeaders,
       ...input.agentDecision.debugHeaders,
+      ...input.modelAgentHeaders,
     },
     execute: async (dataStream) => {
       for (const chunk of splitMockText(responseText)) {
@@ -163,6 +171,7 @@ function createLiveChatResponse(input: {
   agentDecision: ChatAgentDecision;
   traceRecorded: boolean;
   contextHeaders: Record<string, string>;
+  modelAgentHeaders: Record<string, string>;
 }) {
   const result = streamText({
     model: aiProvider(input.model),
@@ -183,6 +192,7 @@ function createLiveChatResponse(input: {
       'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
       ...input.contextHeaders,
       ...input.agentDecision.debugHeaders,
+      ...input.modelAgentHeaders,
     },
     execute: async (dataStream) => {
       for await (const chunk of result.textStream) {
@@ -254,12 +264,16 @@ export async function POST(req: Request) {
     const normalizedAccessToken = accessToken;
     const traceRunId = crypto.randomUUID();
     const traceStartedAt = new Date();
-    const agentDecision = buildChatAgentDecision({
+    const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
+    const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
+      bundle: modelAgentBundle,
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
       runId: traceRunId,
       userId: 'web-chat-user',
+      signal: req.signal,
     });
+    const agentDecision = agentExecution.decision;
     const knowledgeSearch = await searchKnowledgeForChat({
       enabled: shouldSearchKnowledgeForChat({
         accessToken: normalizedAccessToken,
@@ -269,6 +283,22 @@ export async function POST(req: Request) {
       accessToken: normalizedAccessToken,
       messages: normalizedMessages,
       logger: console,
+      model: verifierModel,
+    });
+    const routerModelObservation = projectChatModelAgentObservation(
+      agentExecution.routerObservation,
+    );
+    const verifierModelObservation =
+      knowledgeSearch.verifierObservation === undefined
+        ? undefined
+        : projectChatModelAgentObservation(
+            knowledgeSearch.verifierObservation,
+          );
+    const modelAgentHeaders = buildChatModelAgentObservationHeaders({
+      router: agentExecution.routerObservation,
+      ...(knowledgeSearch.verifierObservation === undefined
+        ? {}
+        : { verifier: knowledgeSearch.verifierObservation }),
     });
     const knowledgeContextPrompt = buildKnowledgeContextPrompt(
       knowledgeSearch.hits,
@@ -331,6 +361,12 @@ export async function POST(req: Request) {
         agentDecision,
         knowledgeHits: citationHits,
         knowledgeVerifierResult: citationVerifierResult,
+        modelAgentObservations: {
+          router: routerModelObservation,
+          ...(verifierModelObservation === undefined
+            ? {}
+            : { verifier: verifierModelObservation }),
+        },
         startedAt: traceStartedAt,
         finishedAt: new Date(),
       }),
@@ -346,6 +382,7 @@ export async function POST(req: Request) {
         agentDecision,
         traceRecorded,
         contextHeaders,
+        modelAgentHeaders,
       });
     }
 
@@ -364,6 +401,7 @@ export async function POST(req: Request) {
       agentDecision,
       traceRecorded,
       contextHeaders,
+      modelAgentHeaders,
     });
   } catch {
     logChatRouteFailureSafely(console);

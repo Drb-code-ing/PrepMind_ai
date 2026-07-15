@@ -2,18 +2,18 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject, type LanguageModelV1, type Schema } from 'ai';
 import type { z } from 'zod';
 
-import type { StructuredModelExecutor } from './model-agent-contract';
+import type { StructuredModelExecutor } from './model-agent-contract.ts';
 import {
   createTrustedModelAgentProviderFailureSignal,
   createUntrustedModelAgentProviderFailureSignal,
-} from './model-agent-provider-failure';
-import { isSafeModelName } from './model-agent-safety';
+} from './model-agent-provider-failure.ts';
+import { isSafeModelName } from './model-agent-safety.ts';
 import {
   compileDeepSeekStrictToolSchemaProfiles,
   MODEL_AGENT_STRUCTURED_SCHEMA_UNSUPPORTED,
   type ModelAgentStructuredSchemaProfile,
   type ModelAgentStructuredSchemaRegistry,
-} from './model-agent-structured-schema';
+} from './model-agent-structured-schema.ts';
 
 type BaseExecutorConfig = {
   provider: 'deepseek' | 'openai';

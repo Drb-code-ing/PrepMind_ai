@@ -375,6 +375,18 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'PREPMIND_INTERNAL_API_BASE_URL: http://server:3001',
     );
     expect(webService).toContain('PREPMIND_LOCAL_DEV_TOOLS_ENABLED:');
+    expect(webService).toContain(
+      'ROUTER_MODEL_ENABLED: ${ROUTER_MODEL_ENABLED:-false}',
+    );
+    expect(webService).toContain(
+      'KNOWLEDGE_VERIFIER_MODEL_ENABLED: ${KNOWLEDGE_VERIFIER_MODEL_ENABLED:-false}',
+    );
+    expect(webService).toContain(
+      'ROUTER_MODEL_TIMEOUT_MS: ${ROUTER_MODEL_TIMEOUT_MS:-5000}',
+    );
+    expect(webService).toContain(
+      'KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS: ${KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS:-4000}',
+    );
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
     expect(webService).not.toContain('AI_PROVIDER_MODE: ${');
     expect(webService).not.toContain('AI_ENABLE_LIVE_CALLS: ${');

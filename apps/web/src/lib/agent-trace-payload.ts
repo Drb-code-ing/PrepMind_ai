@@ -1,4 +1,13 @@
 import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
+import {
+  MODEL_CANDIDATE_DISPOSITIONS,
+  type ModelCandidateDisposition,
+} from '@repo/agent/model-candidates';
+import {
+  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
+  type ModelAgentErrorCode,
+  type ModelAgentProviderFailureCategory,
+} from '@repo/ai';
 import type { AgentContextPolicy, AgentRoute } from '@repo/types/api/agent';
 import {
   agentTraceCreateRequestSchema,
@@ -10,6 +19,7 @@ import {
 } from '@repo/types/api/agent-trace';
 
 import { estimateAiCost } from './ai-cost-estimator.ts';
+import type { SafeChatModelAgentObservation } from './chat-model-agent-observation.ts';
 
 type TraceMessage = {
   role: string;
@@ -57,6 +67,10 @@ export type BuildChatAgentTracePayloadInput = {
   agentDecision: TraceAgentDecision;
   knowledgeHits?: TraceKnowledgeHit[];
   knowledgeVerifierResult?: KnowledgeVerifierResult;
+  modelAgentObservations?: {
+    router?: SafeChatModelAgentObservation;
+    verifier?: SafeChatModelAgentObservation;
+  };
   startedAt: Date;
   finishedAt: Date;
 };
@@ -64,6 +78,21 @@ export type BuildChatAgentTracePayloadInput = {
 const INPUT_PREVIEW_MAX = 80;
 const SUMMARY_MAX = 160;
 const ERROR_MAX = 240;
+const MAX_SAFE_COUNT = Number.MAX_SAFE_INTEGER;
+
+const MODEL_AGENT_ERROR_CODES = Object.freeze([
+  'INVALID_REQUEST',
+  'INVALID_RUNTIME_CONFIG',
+  'LIVE_CALLS_DISABLED',
+  'EXECUTOR_UNAVAILABLE',
+  'CALL_BUDGET_EXCEEDED',
+  'INPUT_BUDGET_EXCEEDED',
+  'OUTPUT_BUDGET_EXCEEDED',
+  'SCHEMA_INVALID',
+  'TIMEOUT',
+  'ABORTED',
+  'PROVIDER_ERROR',
+] as const satisfies readonly ModelAgentErrorCode[]);
 
 const SENSITIVE_PATTERNS: Array<[RegExp, string]> = [
   [/DEEPSEEK_API_KEY\s*=\s*[^\s;,)]+/gi, 'DEEPSEEK_API_KEY=[redacted]'],
@@ -96,10 +125,26 @@ export function buildChatAgentTracePayload(
   const degraded =
     Boolean(input.agentDecision.degraded) || isVerifierDegraded(verifierStatus);
   const status: AgentTraceStatus = degraded ? 'degraded' : 'completed';
+  const routerModelObservation = normalizeModelAgentObservation(
+    input.modelAgentObservations?.router,
+  );
+  const verifierModelObservation = normalizeModelAgentObservation(
+    input.modelAgentObservations?.verifier,
+  );
+  const inputTokenEstimate = saturatingSum([
+    input.budget.estimatedInputTokens,
+    routerModelObservation?.inputTokens ?? 0,
+    verifierModelObservation?.inputTokens ?? 0,
+  ]);
+  const outputTokenEstimate = saturatingSum([
+    input.budget.maxOutputTokens,
+    routerModelObservation?.outputTokens ?? 0,
+    verifierModelObservation?.outputTokens ?? 0,
+  ]);
   const cost = estimateAiCost({
     model: input.modelName,
-    inputTokens: input.budget.estimatedInputTokens,
-    outputTokens: input.budget.maxOutputTokens,
+    inputTokens: inputTokenEstimate,
+    outputTokens: outputTokenEstimate,
   });
   const startedAt = input.startedAt.toISOString();
   const finishedAt = input.finishedAt.toISOString();
@@ -114,6 +159,8 @@ export function buildChatAgentTracePayload(
     status,
     input,
     verifierStatus,
+    routerModelObservation,
+    verifierModelObservation,
   });
 
   return agentTraceCreateRequestSchema.parse({
@@ -125,8 +172,8 @@ export function buildChatAgentTracePayload(
     mode: input.mode,
     modelProvider: input.modelProvider,
     modelName: input.modelName,
-    inputTokenEstimate: normalizeCount(input.budget.estimatedInputTokens),
-    outputTokenEstimate: normalizeCount(input.budget.maxOutputTokens),
+    inputTokenEstimate,
+    outputTokenEstimate,
     maxOutputTokens: normalizeCount(input.budget.maxOutputTokens),
     pricingKnown: cost.pricingKnown,
     costEstimate: cost.totalCostEstimate,
@@ -152,6 +199,8 @@ function buildTraceSteps(input: {
   status: AgentTraceStatus;
   input: BuildChatAgentTracePayloadInput;
   verifierStatus: AgentTraceVerifierStatus;
+  routerModelObservation?: NormalizedModelAgentObservation;
+  verifierModelObservation?: NormalizedModelAgentObservation;
 }): CreateAgentTraceStepRequest[] {
   const steps: CreateAgentTraceStepRequest[] = [
     createStep({
@@ -170,6 +219,17 @@ function buildTraceSteps(input: {
       ].join(' '),
     }),
   ];
+
+  if (input.routerModelObservation) {
+    steps.push(
+      createModelCandidateStep({
+        node: 'RouterModelCandidate',
+        startedAt: input.startedAt,
+        finishedAt: input.finishedAt,
+        observation: input.routerModelObservation,
+      }),
+    );
+  }
 
   if (input.input.agentDecision.tutorStrategy) {
     steps.push(
@@ -206,7 +266,100 @@ function buildTraceSteps(input: {
     );
   }
 
+  if (input.verifierModelObservation) {
+    steps.push(
+      createModelCandidateStep({
+        node: 'KnowledgeVerifierModelCandidate',
+        startedAt: input.startedAt,
+        finishedAt: input.finishedAt,
+        observation: input.verifierModelObservation,
+      }),
+    );
+  }
+
   return steps;
+}
+
+type NormalizedModelAgentObservation = SafeChatModelAgentObservation & {
+  usageUnavailable: boolean;
+};
+
+function createModelCandidateStep(input: {
+  node: 'RouterModelCandidate' | 'KnowledgeVerifierModelCandidate';
+  startedAt: string;
+  finishedAt: string;
+  observation: NormalizedModelAgentObservation;
+}): CreateAgentTraceStepRequest {
+  return createStep({
+    node: input.node,
+    status: 'completed',
+    startedAt: input.startedAt,
+    finishedAt: input.finishedAt,
+    durationMs: input.observation.durationMs,
+    inputSummary: 'safeObservation=true',
+    outputSummary: formatModelAgentObservation(input.observation),
+  });
+}
+
+function normalizeModelAgentObservation(
+  value?: SafeChatModelAgentObservation,
+): NormalizedModelAgentObservation | undefined {
+  if (value === undefined) return undefined;
+
+  const usageUnavailable =
+    value.usageUnavailable === true ||
+    !isSafeCount(value.inputTokens) ||
+    !isSafeCount(value.outputTokens);
+  const inputTokens = usageUnavailable ? 0 : normalizeCount(value.inputTokens);
+  const outputTokens = usageUnavailable ? 0 : normalizeCount(value.outputTokens);
+  const errorCode = normalizeModelAgentErrorCode(value.errorCode);
+  const providerFailureCategory = normalizeProviderFailureCategory(
+    value.providerFailureCategory,
+  );
+
+  return {
+    attempted: value.attempted === true,
+    disposition: normalizeModelCandidateDisposition(value.disposition),
+    durationMs: normalizeCount(value.durationMs),
+    inputTokens,
+    outputTokens,
+    usageUnavailable,
+    ...(errorCode ? { errorCode } : {}),
+    ...(providerFailureCategory ? { providerFailureCategory } : {}),
+  };
+}
+
+function formatModelAgentObservation(
+  observation: NormalizedModelAgentObservation,
+): string {
+  const required = [
+    `attempted=${observation.attempted}`,
+    `disposition=${observation.disposition}`,
+    `durationMs=${observation.durationMs}`,
+    `inputTokens=${observation.inputTokens}`,
+    `outputTokens=${observation.outputTokens}`,
+  ].join(' ');
+  const usageMarker = observation.usageUnavailable
+    ? 'usageUnavailable=true'
+    : undefined;
+  const optional = [
+    observation.errorCode ? `error=${observation.errorCode}` : undefined,
+    observation.providerFailureCategory
+      ? `provider=${observation.providerFailureCategory}`
+      : undefined,
+  ];
+  const parts = [required];
+
+  for (const candidate of optional) {
+    if (!candidate) continue;
+    const withCandidate = [...parts, candidate, usageMarker]
+      .filter((part): part is string => part !== undefined)
+      .join(' ');
+    if (Array.from(withCandidate).length <= SUMMARY_MAX) parts.push(candidate);
+  }
+  if (usageMarker) parts.push(usageMarker);
+
+  return parts.join(' ');
 }
 
 function formatTraceInputSummary(inputPreview: string, contextPolicy?: AgentContextPolicy) {
@@ -237,13 +390,14 @@ function createStep(input: {
   inputSummary: string;
   outputSummary: string;
   errorMessage?: string | null;
+  durationMs?: number;
 }): CreateAgentTraceStepRequest {
   return {
     node: input.node,
     status: input.status,
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
-    durationMs: 0,
+    durationMs: input.durationMs ?? 0,
     inputSummary: sanitizeSummary(input.inputSummary, SUMMARY_MAX),
     outputSummary: sanitizeSummary(input.outputSummary, SUMMARY_MAX),
     errorMessage:
@@ -300,7 +454,49 @@ function truncateText(text: string, maxChars: number) {
 
 function normalizeCount(value: number) {
   if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.trunc(value));
+  return Math.min(MAX_SAFE_COUNT, Math.max(0, Math.trunc(value)));
+}
+
+function isSafeCount(value: number) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+function saturatingSum(values: readonly number[]) {
+  let total = 0;
+  for (const value of values) {
+    const normalized = normalizeCount(value);
+    if (total >= MAX_SAFE_COUNT - normalized) return MAX_SAFE_COUNT;
+    total += normalized;
+  }
+  return total;
+}
+
+function normalizeModelCandidateDisposition(
+  value: ModelCandidateDisposition,
+): ModelCandidateDisposition {
+  return (MODEL_CANDIDATE_DISPOSITIONS as readonly unknown[]).includes(value)
+    ? value
+    : 'fallback_invalid_input';
+}
+
+function normalizeModelAgentErrorCode(
+  value: SafeChatModelAgentObservation['errorCode'],
+): SafeChatModelAgentObservation['errorCode'] {
+  if (value === undefined) return undefined;
+  return (MODEL_AGENT_ERROR_CODES as readonly unknown[]).includes(value)
+    ? value
+    : 'UNKNOWN';
+}
+
+function normalizeProviderFailureCategory(
+  value: SafeChatModelAgentObservation['providerFailureCategory'],
+): ModelAgentProviderFailureCategory | undefined {
+  if (value === undefined) return undefined;
+  return (MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES as readonly unknown[]).includes(
+    value,
+  )
+    ? value
+    : 'unknown';
 }
 
 function clampProbability(value: number) {
