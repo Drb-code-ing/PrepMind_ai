@@ -222,6 +222,78 @@ test('parses successful knowledge search responses', async () => {
   assert.equal(seenRequests[0]?.init?.method, 'POST');
 });
 
+test('prefers the internal API base URL for server-side Docker RAG search', async () => {
+  const previousInternal = process.env.PREPMIND_INTERNAL_API_BASE_URL;
+  const previousPublic = process.env.NEXT_PUBLIC_API_BASE_URL;
+  process.env.PREPMIND_INTERNAL_API_BASE_URL = 'http://internal-api.invalid:3001';
+  process.env.NEXT_PUBLIC_API_BASE_URL = 'http://public-browser.invalid:3001';
+  let requestedUrl = '';
+
+  try {
+    await searchKnowledgeForChat({
+      accessToken: 'token',
+      messages: [{ role: 'user', content: 'Green theorem' }],
+      fetchImpl: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({ success: true, data: { hits: [] } });
+      },
+    });
+  } finally {
+    restoreEnv('PREPMIND_INTERNAL_API_BASE_URL', previousInternal);
+    restoreEnv('NEXT_PUBLIC_API_BASE_URL', previousPublic);
+  }
+
+  assert.equal(requestedUrl, 'http://internal-api.invalid:3001/knowledge/search');
+});
+
+test('falls back to the public API base URL when the internal URL is absent', async () => {
+  const previousInternal = process.env.PREPMIND_INTERNAL_API_BASE_URL;
+  const previousPublic = process.env.NEXT_PUBLIC_API_BASE_URL;
+  delete process.env.PREPMIND_INTERNAL_API_BASE_URL;
+  process.env.NEXT_PUBLIC_API_BASE_URL = 'http://public-browser.invalid:3001';
+  let requestedUrl = '';
+
+  try {
+    await searchKnowledgeForChat({
+      accessToken: 'token',
+      messages: [{ role: 'user', content: 'Green theorem' }],
+      fetchImpl: async (input) => {
+        requestedUrl = String(input);
+        return Response.json({ success: true, data: { hits: [] } });
+      },
+    });
+  } finally {
+    restoreEnv('PREPMIND_INTERNAL_API_BASE_URL', previousInternal);
+    restoreEnv('NEXT_PUBLIC_API_BASE_URL', previousPublic);
+  }
+
+  assert.equal(requestedUrl, 'http://public-browser.invalid:3001/knowledge/search');
+});
+
+test('does not expose an internal URL or credential when Docker RAG fetch fails', async () => {
+  const previousInternal = process.env.PREPMIND_INTERNAL_API_BASE_URL;
+  const canary = 'internal-api-canary.invalid credential-canary';
+  process.env.PREPMIND_INTERNAL_API_BASE_URL = `http://${canary}`;
+  const warnings: unknown[][] = [];
+
+  let result;
+  try {
+    result = await searchKnowledgeForChat({
+      accessToken: 'credential-canary',
+      messages: [{ role: 'user', content: 'Green theorem' }],
+      logger: { warn: (...args: unknown[]) => warnings.push(args) },
+      fetchImpl: async (input, init) => {
+        throw new Error(`${String(input)} ${(init?.headers as Record<string, string>).authorization}`);
+      },
+    });
+  } finally {
+    restoreEnv('PREPMIND_INTERNAL_API_BASE_URL', previousInternal);
+  }
+
+  assert.deepEqual(warnings, [['[Chat RAG] knowledge search skipped: request_failed']]);
+  assert.doesNotMatch(JSON.stringify({ result, warnings }), /internal-api-canary|credential-canary|Bearer/);
+});
+
 test('passes the model abort signal to knowledge fetch without exposing it in the result', async () => {
   const controller = new AbortController();
   let fetchSignal: AbortSignal | null | undefined;
@@ -1063,6 +1135,11 @@ function freshVerifierBudget(): ModelAgentRunBudget {
     maxInputTokens: 4_000,
     maxOutputTokens: 1_200,
   });
+}
+
+function restoreEnv(name: string, value: string | undefined) {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
 }
 
 async function searchWithHits(

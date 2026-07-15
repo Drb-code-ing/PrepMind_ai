@@ -21,6 +21,7 @@ import {
 } from '@repo/types/api/knowledge';
 
 import type { ChatContextMessage } from './chat-context.ts';
+import { resolveApiClientBaseUrl } from './api-client.ts';
 import {
   buildRagSafetyCitationNotice,
   buildRagSafetyGuidance,
@@ -30,7 +31,6 @@ import {
 
 const DEFAULT_TOP_K = 8;
 const DEFAULT_MIN_SCORE = 0.72;
-const DEFAULT_API_BASE_URL = 'http://localhost:3001';
 const MAX_PROMPT_HITS = 4;
 const MAX_HIT_CONTENT_CHARS = 700;
 
@@ -172,9 +172,7 @@ export async function searchKnowledgeForChat(
 
     const fetchImpl = input.fetchImpl ?? fetch;
     const apiBaseUrl =
-      input.apiBaseUrl ??
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      DEFAULT_API_BASE_URL;
+      input.apiBaseUrl ?? resolveApiClientBaseUrl(process.env, undefined);
     const requestSignal = input.model?.signal;
     const response = await fetchImpl(toUrl(apiBaseUrl, '/knowledge/search'), {
       method: 'POST',
