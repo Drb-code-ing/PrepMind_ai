@@ -6,7 +6,10 @@ import {
   createInputPreview,
 } from './agent-trace-payload.ts';
 import { assembleChatContextForRoute } from './chat-context-orchestration.ts';
-import type { SafeChatModelAgentObservation } from './chat-model-agent-observation.ts';
+import {
+  projectChatModelAgentObservation,
+  type SafeChatModelAgentObservation,
+} from './chat-model-agent-observation.ts';
 
 assert.equal(createInputPreview(` ${'题'.repeat(120)} `).length, 80);
 assert.equal(createInputHash('同一个问题'), createInputHash('同一个问题'));
@@ -285,3 +288,93 @@ assert.ok(
     ),
 );
 assert.equal(JSON.stringify(saturatedPayload).includes(observationCanary), false);
+
+const unavailableUsageCanary = 'CANARY_unavailable_usage_raw_secret';
+const projectedUnavailableUsage = projectChatModelAgentObservation({
+  attempted: true,
+  disposition: 'fallback_runtime_error',
+  usageUnavailable: true,
+  usage: { inputTokens: 987, outputTokens: 654 },
+  trace: {
+    durationMs: 23,
+    errorCode: 'PROVIDER_ERROR',
+    providerFailureCategory: 'provider',
+    rawError: unavailableUsageCanary,
+  },
+  raw: unavailableUsageCanary,
+});
+
+assert.equal(projectedUnavailableUsage.usageUnavailable, true);
+assert.equal(projectedUnavailableUsage.inputTokens, 0);
+assert.equal(projectedUnavailableUsage.outputTokens, 0);
+
+const unavailableUsagePayload = buildChatAgentTracePayload({
+  runId: 'trace_run_unavailable_usage',
+  conversationId: null,
+  messages: [{ role: 'user', content: 'safe projected observation' }],
+  mode: 'mock',
+  modelProvider: 'mock',
+  modelName: 'mock-prepmind-chat',
+  budget: {
+    estimatedInputTokens: 80,
+    maxOutputTokens: 40,
+  },
+  agentDecision: {
+    route: 'chat',
+    confidence: 1,
+    reason: 'fixed safe reason',
+    requiresRag: false,
+    requiresHumanApproval: false,
+  },
+  modelAgentObservations: {
+    router: projectedUnavailableUsage,
+  },
+  startedAt: new Date('2026-07-15T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-15T08:00:01.000Z'),
+});
+
+assert.equal(unavailableUsagePayload.inputTokenEstimate, 80);
+assert.equal(unavailableUsagePayload.outputTokenEstimate, 40);
+assert.equal(unavailableUsagePayload.costEstimate, 0);
+assert.match(
+  unavailableUsagePayload.steps.find(
+    (step) => step.node === 'RouterModelCandidate',
+  )?.outputSummary ?? '',
+  /inputTokens=0 outputTokens=0 .*usageUnavailable=true/,
+);
+assert.equal(
+  JSON.stringify(unavailableUsagePayload).includes(unavailableUsageCanary),
+  false,
+);
+
+const defensiveUnavailableUsagePayload = buildChatAgentTracePayload({
+  runId: 'trace_run_defensive_unavailable_usage',
+  conversationId: null,
+  messages: [{ role: 'user', content: 'safe observation invariant' }],
+  mode: 'mock',
+  modelProvider: 'mock',
+  modelName: 'mock-prepmind-chat',
+  budget: { estimatedInputTokens: 80, maxOutputTokens: 40 },
+  agentDecision: {
+    route: 'chat',
+    confidence: 1,
+    reason: 'fixed safe reason',
+    requiresRag: false,
+    requiresHumanApproval: false,
+  },
+  modelAgentObservations: {
+    router: {
+      attempted: true,
+      disposition: 'fallback_runtime_error',
+      durationMs: 23,
+      inputTokens: 987,
+      outputTokens: 654,
+      usageUnavailable: true,
+    },
+  },
+  startedAt: new Date('2026-07-15T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-15T08:00:01.000Z'),
+});
+
+assert.equal(defensiveUnavailableUsagePayload.inputTokenEstimate, 80);
+assert.equal(defensiveUnavailableUsagePayload.outputTokenEstimate, 40);

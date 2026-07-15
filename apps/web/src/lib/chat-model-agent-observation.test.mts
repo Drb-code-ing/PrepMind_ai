@@ -74,7 +74,76 @@ test('normalizes invalid numbers and free text to fixed safe fallbacks', () => {
       durationMs: 1,
       inputTokens: 0,
       outputTokens: 0,
+      usageUnavailable: true,
     },
+  );
+});
+
+test('preserves only a strict boolean unavailable usage marker', () => {
+  const markerGetter = Object.create(null, {
+    attempted: { enumerable: true, value: true },
+    disposition: { enumerable: true, value: 'candidate_applied' },
+    usageUnavailable: {
+      enumerable: true,
+      get() {
+        throw new Error(CANARY);
+      },
+    },
+    usage: {
+      enumerable: true,
+      value: { inputTokens: 19, outputTokens: 7 },
+    },
+  });
+  const markerProxy = new Proxy(
+    {
+      attempted: true,
+      disposition: 'candidate_applied',
+      usage: { inputTokens: 19, outputTokens: 7 },
+    },
+    {
+      getOwnPropertyDescriptor(target, key) {
+        if (key === 'usageUnavailable') throw new Error(CANARY);
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      },
+    },
+  );
+
+  for (const value of [
+    {
+      attempted: true,
+      disposition: 'candidate_applied',
+      usageUnavailable: 'true',
+      usage: { inputTokens: 19, outputTokens: 7 },
+    },
+    {
+      attempted: true,
+      disposition: 'candidate_applied',
+      usageUnavailable: 1,
+      usage: { inputTokens: 19, outputTokens: 7 },
+    },
+    markerGetter,
+    markerProxy,
+  ]) {
+    const projected = projectChatModelAgentObservation(value);
+    assert.equal(projected.usageUnavailable, undefined);
+    assert.equal(projected.inputTokens, 19);
+    assert.equal(projected.outputTokens, 7);
+    assert.equal(JSON.stringify(projected).includes(CANARY), false);
+  }
+
+  const unavailableHeaders = buildChatModelAgentObservationHeaders({
+    router: {
+      attempted: true,
+      disposition: 'candidate_applied',
+      usageUnavailable: true,
+      usage: { inputTokens: 19, outputTokens: 7 },
+    },
+  });
+  assert.equal(unavailableHeaders['x-prepmind-router-model-input-tokens'], '0');
+  assert.equal(unavailableHeaders['x-prepmind-router-model-output-tokens'], '0');
+  assert.equal(
+    Object.keys(unavailableHeaders).some((name) => name.includes('unavailable')),
+    false,
   );
 });
 

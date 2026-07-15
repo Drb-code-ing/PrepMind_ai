@@ -32,6 +32,7 @@ export type SafeChatModelAgentObservation = {
   durationMs: number;
   inputTokens: number;
   outputTokens: number;
+  usageUnavailable?: boolean;
   errorCode?: ModelAgentErrorCode | 'UNKNOWN';
   providerFailureCategory?: ModelAgentProviderFailureCategory;
 };
@@ -67,6 +68,7 @@ export function projectChatModelAgentObservation(
       outputTokens: usageUnavailable
         ? 0
         : toSafeCount(readOwnData(usage, 'outputTokens')),
+      ...(usageUnavailable ? { usageUnavailable: true } : {}),
       ...(errorCode ? { errorCode } : {}),
       ...(providerFailureCategory ? { providerFailureCategory } : {}),
     };

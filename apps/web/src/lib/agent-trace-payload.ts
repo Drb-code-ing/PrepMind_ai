@@ -56,10 +56,6 @@ type TraceKnowledgeHit = {
   title?: string;
 };
 
-export type SafeTraceModelAgentObservation = SafeChatModelAgentObservation & {
-  usageUnavailable?: boolean;
-};
-
 export type BuildChatAgentTracePayloadInput = {
   runId: string;
   conversationId?: string | null;
@@ -72,8 +68,8 @@ export type BuildChatAgentTracePayloadInput = {
   knowledgeHits?: TraceKnowledgeHit[];
   knowledgeVerifierResult?: KnowledgeVerifierResult;
   modelAgentObservations?: {
-    router?: SafeTraceModelAgentObservation;
-    verifier?: SafeTraceModelAgentObservation;
+    router?: SafeChatModelAgentObservation;
+    verifier?: SafeChatModelAgentObservation;
   };
   startedAt: Date;
   finishedAt: Date;
@@ -306,16 +302,16 @@ function createModelCandidateStep(input: {
 }
 
 function normalizeModelAgentObservation(
-  value?: SafeTraceModelAgentObservation,
+  value?: SafeChatModelAgentObservation,
 ): NormalizedModelAgentObservation | undefined {
   if (value === undefined) return undefined;
 
-  const inputTokens = normalizeCount(value.inputTokens);
-  const outputTokens = normalizeCount(value.outputTokens);
   const usageUnavailable =
     value.usageUnavailable === true ||
     !isSafeCount(value.inputTokens) ||
     !isSafeCount(value.outputTokens);
+  const inputTokens = usageUnavailable ? 0 : normalizeCount(value.inputTokens);
+  const outputTokens = usageUnavailable ? 0 : normalizeCount(value.outputTokens);
   const errorCode = normalizeModelAgentErrorCode(value.errorCode);
   const providerFailureCategory = normalizeProviderFailureCategory(
     value.providerFailureCategory,
@@ -484,7 +480,7 @@ function normalizeModelCandidateDisposition(
 }
 
 function normalizeModelAgentErrorCode(
-  value: SafeTraceModelAgentObservation['errorCode'],
+  value: SafeChatModelAgentObservation['errorCode'],
 ): SafeChatModelAgentObservation['errorCode'] {
   if (value === undefined) return undefined;
   return (MODEL_AGENT_ERROR_CODES as readonly unknown[]).includes(value)
@@ -493,7 +489,7 @@ function normalizeModelAgentErrorCode(
 }
 
 function normalizeProviderFailureCategory(
-  value: SafeTraceModelAgentObservation['providerFailureCategory'],
+  value: SafeChatModelAgentObservation['providerFailureCategory'],
 ): ModelAgentProviderFailureCategory | undefined {
   if (value === undefined) return undefined;
   return (MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES as readonly unknown[]).includes(
