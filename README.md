@@ -220,7 +220,7 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. 当前继续 Phase 6.9.4.4 Task 9：Router/Verifier Docker Web gates 已接线但默认关闭，下一步执行 controlled-Live、Docker 和可见浏览器验收。
-2. 阶段通过后 `--no-ff` 合并 main，在 main 重跑关键静态、Live、Docker 和浏览器验收，推送并核对远程 SHA。
+2. Phase 6.9.4.4 Task 10 只在 Task 9 的 evidence/current-doc 提交完成后开始：最终复核、`--no-ff` 合并 main，在 main 重跑关键静态、controlled-Live、Docker 和浏览器验收，推送并核对远程 SHA。
 3. 随后依次完成 Review/Planner、KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；全部 Agent 完成前不进入记忆注入与 Episodic Memory。
 4. 全部 Agent 完成后进入 Phase 6.10 分层记忆。未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 

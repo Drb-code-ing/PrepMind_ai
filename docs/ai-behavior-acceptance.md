@@ -158,7 +158,7 @@ Phase 6.9.4.4 的生产验收 contract 为：
 - provider 使用 JSON-object mode；它只保证合法 JSON，canonical Zod 继续校验结构、长度、关联约束与安全语义；
 - prompt injection、high-risk、`safeForPrompt=false` 或 credential material 必须在 provider 前零调用；provider failure、timeout、schema invalid、budget exhaustion 或 abort 只能回退到不宽于 deterministic policy 的限制性结果；
 - Trace / response headers 只允许固定 status、reason code、attempted/degraded、timeout、usage/cost provenance 等有界元数据，不得包含完整 prompt、query、chunk、provider output、raw error、credential、authorization、cookie、base URL 或 stack；
-- Task 8 只完成 Docker runtime 接线和文档，不是 enablement 证据。Task 9 必须完成 controlled-Live、Docker 与可见浏览器验收，随后还需 main 复验；在此之前两个 gate 保持默认关闭。
+- Task 8 只完成 Docker runtime 接线和文档，不是 enablement 证据。Task 9 必须完成分支 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理与 evidence/current-doc 提交，并到此结束；main 复验属于独立的 Task 10，不是 Task 9 的一部分。在 Task 9/10 对应门禁完成前，两个 gate 保持默认关闭。
 
 权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。本 contract 只覆盖 Router/Verifier 子阶段，不得据此声称 Memory、Orchestrator、全部 Agent 或 Phase 6 已完成。
 
