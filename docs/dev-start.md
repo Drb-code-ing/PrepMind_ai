@@ -853,7 +853,15 @@ Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `a
 AI_PROVIDER_MODE=mock
 AI_DEV_MODE_SWITCH_ENABLED=true
 AI_ENABLE_LIVE_CALLS=false
+ROUTER_MODEL_ENABLED=false
+KNOWLEDGE_VERIFIER_MODEL_ENABLED=false
+ROUTER_MODEL_TIMEOUT_MS=5000
+KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 ```
+
+Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
+
+Task 8 只把这些变量显式传入 Docker `web` runtime；保留 `env_file: ../.env`，没有把凭据放进 build args 或 `NEXT_PUBLIC_*` 客户端变量。Phase 6.9.4.3 additional P95 `4264ms` 是当时的历史延迟 verdict，不是永久禁止 Router 模型的产品决定；当前混合路径仍须通过 Task 9 controlled-Live、Docker 和可见浏览器验收，因此两个 gate 继续默认关闭。权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这不代表 Memory、Orchestrator、其余 Agent 或 Phase 6 已完成。
 
 需要在 `/agent-trace` 手动切到 Live 时，只把对应 env 文件里的 `AI_ENABLE_LIVE_CALLS` 改成 `true`，然后重启对应前端即可。Docker 前端重启命令：
 

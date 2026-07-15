@@ -237,6 +237,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.1 已固定 Router 60 / Verifier 40 的 `phase-6.9-router-verifier-v1`、专项 metrics 和 deterministic CLI。baseline 为 74/100、critical=2；Router 歧义 macro-F1 52.47%，Verifier 复杂冲突 recall 0%，prompt injection release 0。当前 Enabled=no，失败样本保留给后续同 case candidate 对照；证据见 `docs/acceptance/phase-6-9-4-1-router-verifier-baseline.md`。
 - Phase 6.9.4.2 已完成 Router / Verifier Mock candidate contract：candidate eligibility 与 safety gate 在 runtime 前零调用拦截，Router 权限只由 canonical map 重建，Verifier high-risk 整批阻断并使用 literal evidence code 的 strict discriminated union 与稳定 chunk 排序。schema、budget、timeout、abort、hostile accessor、runtime budget mutation 和 telemetry unavailable 均 fail-closed；真实 provider input usage 不会被工程估算误拒，无法验证 telemetry 时按 preview budget 记账防止重试超卖。Envelope/Trace 不含 prompt、chunk、output、raw error 或 credential 正文。当前 `Enabled=no`、`Reason=paired_candidate_not_run`；Mock 只证明工程 contract。证据见 `docs/acceptance/phase-6-9-4-2-router-verifier-mock-candidate.md`。
 - Phase 6.9.4.3 的 deterministic/Mock、五次不可拼接 Live、diagnostics、400-token headroom、strict-tool 历史实验、JSON-mode resolution 与唯一完整 controlled-Live 已完成。新 run 固定 runner-v3 + `deepseek_json_object_v1`，结果为 `28/28 strict success`、`72/72 zero-call`；Verifier 通过，Router additional P95 `4264ms` 超门槛。Fresh Agent/AI 为 345/151 passed，Mock 为 `100/28/0/28/72`。当时的生产决策是 Router 继续 deterministic；该延迟失败作为历史证据保留，不再解释为永久禁止 Router 模型。当前 Phase 6.9.4.4 以高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的混合路径继续受控生产接入。证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。
+- Phase 6.9.4.4 Task 8 已完成 Docker Web runtime 接线与默认关闭配置。Router 的安全/高置信请求保持 deterministic zero-call，歧义/上下文请求才允许真实模型；Verifier 仅在 RAG 证据通过 prompt injection、high-risk、credential material 等本地零调用安全门后，按 semantic-needed 调用模型。独立 gate、5 秒/4 秒 timeout、共享单请求 `2 calls / 2400 input / 800 output` 预算、JSON-object + canonical Zod、限制性 fallback 与安全 Trace/headers 均为生产边界。Task 9 controlled-Live、Docker、可见浏览器验收前 gate 继续默认关闭。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；Memory、Orchestrator、其余 Agent 与 Phase 6 尚未完成。
 - 后续 Agent 架构优化执行文档见 `docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md`，重点是状态控制面、工具可靠性、RAG 冲突处理、后台任务事件化和 Reflexion 验收，而不是立刻放开全自主写操作。
 - 当前实现事实：Tutor、WrongQuestionOrganizer、Review、Planner、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是 deterministic policy；Router/Verifier 模型生产接入正在 Phase 6.9.4.4 分支实施；FinalResponse 由既有 `/api/chat` mock/live 模型链路承担；Retriever 由 Qwen embedding + pgvector/关键词混合检索承担。后续目标不是继续维持这些 policy 纯 deterministic，而是按 Agent 职责建立受控模型路径。
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
@@ -287,7 +288,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.3 Attempt E：strict-tool 首个 eligible case 为 `http_client`；客户端 wire 符合公开基础约束，但模型级 compatibility 与具体 4xx 未知。（已完成证据检查点）
 - Phase 6.9.4.3 JSON-mode resolution：runner-v3 / `deepseek_json_object_v1`、标准 URL、prompt/evidence identity 与零网络门禁。（已完成 checkpoint）
 - Phase 6.9.4.3 controlled-Live：JSON mode 完整运行成功，Router latency gate 失败，terminal deterministic fallback。（已完成结论）
-- Phase 6.9.4.4：Router/Verifier 混合生产路径、Docker、controlled-Live、可见浏览器验收、main 复验和推送。（进行中）
+- Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
+- Phase 6.9.4.4 Task 9：Router/Verifier controlled-Live、Docker、可见浏览器验收、main 复验和推送。（下一步）
 - Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。（下一阶段）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
@@ -302,7 +304,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.4.4 Router/Verifier 混合生产接入，从 Task 8 Docker/文档开始，完成 controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
+下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
 
 ### Phase 7 — 工程化增强
 
