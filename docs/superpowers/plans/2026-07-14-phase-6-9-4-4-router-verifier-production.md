@@ -1,5 +1,7 @@
 # Phase 6.9.4.4 Router / Verifier Production Integration Implementation Plan
 
+> **2026-07-15 路线说明：** 本计划只完成 Router / Verifier 子阶段，不代表整个 Agent 架构或记忆系统完成。Task 8 同步文档时必须链接 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`，明确先完成全部 Agent、再进入 Phase 6.10 记忆，以及两篇独立博客的占位。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Put the evaluated Router and Knowledge Verifier structured-model adapters into the production `/api/chat` path while preserving zero-call safety/high-confidence paths, a two-call request budget, restrictive fallbacks, and safe observability.
@@ -726,10 +728,10 @@ Add the four values to Web environment and `docker/.env.example`. Do not add key
 
 - [ ] **Step 4: Update current-state docs**
 
-Document the exact production boundary, the two independent rollback gates, 5s/4s timeouts, two-call budget, JSON-object mode, zero-call scopes and safe Trace. Phase 6.9.4.4 remains “implementation in progress” until controlled Live and browser acceptance complete. Include the question for a future session:
+Document the exact production boundary, the two independent rollback gates, 5s/4s timeouts, two-call budget, JSON-object mode, zero-call scopes and safe Trace. Phase 6.9.4.4 remains “implementation in progress” until controlled Live and browser acceptance complete. Preserve Phase 6.9.4.3 as historical evidence, but do not describe Router as permanently deterministic. Link the Agent-first roadmap and do not imply that Memory, Orchestrator or all of Phase 6 is complete. Include the question for a future session:
 
 ```text
-请继续 Phase 6.9.4.4 controlled Live 与 Docker 浏览器验收，确认歧义 Router 和 semantic-needed Verifier 真实调用、zero-call 与失败降级后再合并 main。
+请继续 Phase 6.9.4.4 controlled Live、Docker 与可见浏览器验收，确认歧义 Router、semantic-needed Verifier、zero-call 和失败降级后再合并 main；不要提前进入记忆系统。
 ```
 
 - [ ] **Step 5: Verify and commit**

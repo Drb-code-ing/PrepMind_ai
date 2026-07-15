@@ -6,7 +6,7 @@
 - 基线：`main@e09ad437b695f11d60fbbc3caa045ec18cc10994`
 - 前置证据：Phase 6.9.4.3 JSON-mode controlled Live 为 28/28 structured success、72/72 zero-call；Verifier 质量门通过，Router 仅超过旧延迟门槛，用户已接受歧义路由额外约 2～4.5 秒、最长 5 秒的产品权衡。
 - 已批准方案：Verifier 接入真实模型；Router 使用“本地安全与高置信快速路径 + 歧义请求真实模型”的混合路由。
-- 本阶段完成后再逐个评估 Tutor、Planner、Memory、Organizer 等 Agent 是否需要模型化，不在本设计中顺带改造。
+- 本阶段仍只改造 Router / Verifier，不顺带实现其他 Agent。后续顺序已于 2026-07-15 确认：先完成全部 Agent 架构，再进入分层记忆；Review、Planner、KnowledgeDedup 与 KnowledgeOrganizer 必须有真实模型参与，其余 Agent 按职责采用真实模型或混合路径。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
 
 ## 为什么需要这一阶段
 
@@ -29,6 +29,7 @@
 - 不让模型决定账号权限、数据库写入、工具调用、记忆写入、资料删除/合并或 MCP 执行。
 - 不把所有 Router / Verifier 请求强制发送给模型。
 - 不在本阶段模型化其他 Agent。
+- 不改变后续 Agent-first 顺序、12 个组件边界或已确认的必选模型路径。
 - 不更换最终 `/api/chat` 的既有流式回答模型。
 - 不修改 RAG 召回算法、embedding provider 或混合排序。
 - 不把模型原始输出直接拼入最终 prompt。
@@ -220,4 +221,4 @@ Agent Trace 的 Router / Verifier step 记录 attempted、disposition、duration
 
 只有以下条件同时满足才标记 Phase 6.9.4.4 完成：生产 Chat 确实出现受控真实 Router / Verifier 调用；所有安全和高置信 case 保持 zero-call；失败降级不阻断 Chat；质量、延迟、预算、usage provenance 和成本边界通过；Docker / 浏览器验收通过；合并 main 后复验并推送远程。
 
-多 Agent + 分层记忆的面试学习博客仍在整个相关阶段全部完成后统一撰写，本任务只同步 Phase 6.9.4.4 的设计、计划、实现与验收证据。
+多 Agent 与分层记忆将分别编写两篇面试学习博客，具体题目和结构由用户届时确认。本任务只同步 Phase 6.9.4.4 的设计、计划、实现与验收证据，不提前收尾博客。

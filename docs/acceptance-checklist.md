@@ -378,7 +378,19 @@ Mock paired CLI 的预期退出码为 1：报告 complete，但 Router / Verifie
 
 回顾时可以问：“如何机械证明 hostile schema 或本地初始化失败没有创建 UUID/evidence、也没有进入 Provider attempt？”“为什么 Mock counters complete 仍不是 Live 质量证据？”
 
-下一会话可以复制：“按 Phase 6.9.4.3 checklist 收尾 JSON-mode Live evidence 与终局 fallback 文档，合并 main、复验并推送；然后从新 main 开 Phase 6.9.5。”
+以上 Phase 6.9.4.3 内容是历史 eval checklist 和当时结论，不改写、不重跑、不拼接；它不再表示 Router 永久禁止模型。
+
+Phase 6.9.4.4 Router/Verifier 混合生产接入还必须覆盖：
+
+- Docker Web 显式传入 `ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`ROUTER_MODEL_TIMEOUT_MS=5000`、`KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000`，默认关闭并支持两个组件独立回滚；
+- 高置信与安全 Router、prompt injection/high-risk Verifier 保持 zero-call；歧义 Router 与 semantic-needed Verifier 在 controlled-Live 中出现真实 `candidate_applied`；
+- Router 与 Verifier 共享单请求 `2 calls / 2400 input / 800 output` 预算，JSON-object output 仍由 canonical Zod、timeout、abort、无重试和安全 fallback 约束；
+- Trace/headers 只记录固定 attempted/disposition/duration/usage/error code，不包含 prompt、query、chunk、provider raw error、key、base URL、token 或 cookie；
+- 完整 branch gates、Mock、controlled-Live、Docker 全栈与可见浏览器通过；精确清理本轮合成数据，不清理 Docker、volume、数据库、Redis 或 MinIO；
+- `--no-ff` 合并 main 后重复静态、Live、Docker 与可见浏览器关键验收，推送并核对本地/远程 SHA；
+- 文档明确本阶段只完成 Router/Verifier，不代表 Memory、Orchestrator 或整个 Phase 6 完成；后续先完成全部 Agent，再进入 Phase 6.10 分层记忆。
+
+下一会话可以复制：“请继续 Phase 6.9.4.4 Router/Verifier 混合生产接入，从 Task 8 Docker/文档开始，完成 controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
 
 Phase 6.9.2 共享 Model Agent Runtime 还必须持续覆盖：
 

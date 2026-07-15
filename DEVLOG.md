@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-14
+更新时间：2026-07-15
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.3 JSON-mode 唯一完整 Live 已完成：28/28 strict success、72/72 zero-call，Verifier paired gate 通过，Router additional P95 4264ms 超门槛并记录 terminal deterministic fallback。下一步收尾 evidence 文档、合并 main、复验推送，再从新 main 进入 Phase 6.9.5；不再重跑本阶段 Live 或新增 transport。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 正在把 Router/Verifier 混合模型路径接入生产 Chat，代码任务 1～7 已完成，Docker/controlled-Live/可见浏览器/main 验收待推进。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -16,7 +16,7 @@
 | Phase 3      | 已完成 | OCR structured output、讲题 prompt、多题保存                                                 |
 | Phase 4      | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划                                               |
 | Phase 5      | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge`                                         |
-| Phase 6      | 已完成 | 多 Agent、Trace、Memory、Review/Planner、Knowledge agents                                    |
+| Phase 6      | 补强中 | 多 Agent 基础、Trace 与业务 policy 已落地；真实模型 Agent、通信、权限、Orchestrator 与可执行 LangGraph 继续推进 |
 | Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板              |
 | Phase 6.9.2  | 已完成 | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                |
 | Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
@@ -69,6 +69,26 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-15 - Agent-first 路线、12 组件边界与双博客决策
+
+目标：把“先完成全部 Agent 架构，再进入记忆系统”的顺序写成权威开发路线，并为 11 个当前逻辑节点加 Tool-Using Orchestrator 固定职责、通信、权限和初步模型路径。
+
+为什么：旧文档把 Agent 模型化、长期/情景记忆和 Orchestrator 交叉排在 Phase 6.9.5～6.9.7，容易误判 Router/Verifier 收尾等于整个多 Agent/记忆阶段结束；部分文档还把 Review/Planner、KnowledgeDedup/Organizer 的当前 deterministic baseline 写成长期目标，并把 Phase 6.9.4.3 的 Router 延迟失败写成永久结论。
+
+主要内容与做法：
+
+- 新增 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`，明确 12 个受治理组件、实时 Chat 主链、阈值/显式业务链、版本化通信 DTO、后端身份权威、按风险授权写操作和失败不扩大权限。
+- 确认 Router、Tutor、Verifier、WrongQuestionOrganizer、Retriever 使用模型/规则混合；Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与。
+- 记录当前工程事实：`createAgentGraph()` 仍只是 descriptor；Retriever/FinalResponse 隐含于 RAG/Chat 链路；Orchestrator 尚未实现。后续必须补成可执行、可恢复、可观测的 LangGraph。
+- 重排后续为 Phase 6.9.5～6.9.10 先完成全部 Agent，Phase 6.10 再做结构化长期记忆注入与 Episodic Memory。
+- 博客拆为《多 Agent 架构》和《记忆系统》两个独立交付物，题目与结构由用户届时确认，不提前收尾。
+
+边界：本次只修订路线与开发文档，不改变代码、数据库、Docker 状态或历史验收 evidence。Phase 6.9.4.4 仍需完成 Task 8～10 才能标记完成。
+
+验收：检查核心文档中的旧 handoff、永久 deterministic 和单篇合并博客措辞；执行 Markdown diff/空白检查，并由无上下文读者复核职责、阶段和权限是否可独立理解。
+
+回顾时可以问：为什么 Review/Planner 和 Knowledge Agent 需要模型参与但不能让模型掌握事实与写权限？为什么 MemoryAgent 候选提取属于 Agent 阶段，而记忆注入和 Episodic Memory 属于 Phase 6.10？
 
 ### 2026-07-11 - Phase 7 Maintenance：Smoke 资源关闭与可见浏览器验收规范
 
@@ -1817,7 +1837,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - CLI exit 1 是 paired decision 的固定语义，不是 Provider 或 structured-output 失败。该 run 证明 JSON mode transport 可用，但不能把 Router 接入生产。
 - 按批准的终局规则，不重跑、不补 case、不提高 cap、不新增 transport。Router 保持 deterministic terminal fallback；Verifier 通过结论保留为 Phase 6.9.5 后续集成依据，当前生产 Chat 不改动。
 
-## 下一步
+## 当时下一步（已由 2026-07-15 Agent-first 路线取代）
 
 1. Phase 6.9.4.3：提交本次 Live evidence 与终局结论，独立审查后合并 main、main 复验并推送；随后从新 main 进入 Phase 6.9.5。
 2. Phase 6.9.5 ~ 6.9.7：结构化长期记忆、情景记忆、MCP-ready Orchestrator 与阶段验收。
