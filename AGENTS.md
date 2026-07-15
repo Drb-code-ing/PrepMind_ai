@@ -130,6 +130,8 @@ Phase 6.9.4.4 Task 8 已补齐 Docker Web runtime 配置与运维文档：Router
 
 Phase 6.9.4.4 Task 9 分支验收已通过。Harness 的 Router/Verifier 5/5 均为 `candidate_applied`；可见 Docker 浏览器保留两次 `study_plan` Router 约 5 秒 timeout 的限制性 fallback，同时以不同类别 contextual-reference 样本取得 `candidate_applied / tutor / 3262ms / 289+177 tokens`。Verifier conflict 为 `candidate_applied / 1791ms / 568+85 tokens`，injection 为 provider 前 `safety_blocked`，`/agent-trace` 已实际核对 disposition/duration/token 与脱敏边界。期间发现并以 `de41de9` 修复 Docker Chat RAG 未优先使用 internal API 的真实缺陷；Web 407/407、lint/build 通过。Docker 已恢复 `AI_PROVIDER_MODE=mock`、全局 live 关闭、Router/Verifier gate 默认关闭；各轮 synthetic PostgreSQL/Redis/浏览器数据均清理为 0。成功与 timeout 必须并列保留。证据见 `docs/acceptance/2026-07-14-phase-6-9-4-4-router-verifier-production.md`。
 
+2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
+
 下一会话可以问：“请执行 Phase 6.9.4.4 Task 10：最终 spec/质量复核与完整分支门禁，通过后合并 main，在 main 复验 Docker、controlled-Live 与可见浏览器，推送远程并核对 SHA；不要提前进入 Phase 6.9.5 或记忆系统。”
 
 ## 常用命令

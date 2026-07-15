@@ -91,7 +91,7 @@ assert.equal(payload.conversationId, 'conv_actual_1');
 assert.equal(payload.status, 'completed');
 assert.equal(payload.route, 'tutor');
 assert.equal(payload.mode, 'live');
-assert.equal(payload.pricingKnown, false);
+assert.equal(payload.pricingKnown, true);
 assert.equal(payload.inputPreview?.length, 80);
 assert.equal(payload.ragHitCount, 1);
 assert.equal(payload.verifierStatus, 'trusted');
@@ -210,8 +210,8 @@ const observedPayload = buildChatAgentTracePayload({
 assert.equal(observedPayload.inputTokenEstimate, 660);
 assert.equal(observedPayload.outputTokenEstimate, 230);
 assert.equal(observedPayload.maxOutputTokens, 200);
-assert.equal(observedPayload.pricingKnown, false);
-assert.equal(observedPayload.costEstimate, 0);
+assert.equal(observedPayload.pricingKnown, true);
+assert.equal(observedPayload.costEstimate, 0.000165);
 assert.equal(
   observedPayload.steps.map((step) => step.node).join(','),
   'RouterAgent,RouterModelCandidate,KnowledgeVerifierAgent,KnowledgeVerifierModelCandidate',

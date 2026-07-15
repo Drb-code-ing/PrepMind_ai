@@ -227,7 +227,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.4 已完成 WrongQuestionOrganizerAgent：`@repo/agent/wrong-question-organizer` 作为确定性 policy，根据错题结构化字段和已有 deck 摘要推荐学科组与专题 deck。
 - Phase 6.5 已完成 ReviewAgent / PlannerAgent：`@repo/agent/review` 和 `@repo/agent/planner` 作为确定性 policy，基于当前用户错题、复习日志、ReviewTask 计划和偏好生成只读复习诊断与学习计划建议。
 - Phase 6.6 已完成 MemoryAgent：`@repo/agent/memory` 作为确定性 policy，基于当前用户学习信号生成长期记忆候选；`UserMemoryCandidate` 和 `UserMemory` 以 PostgreSQL 为权威来源，候选必须经用户确认后才成为正式记忆。
-- Phase 6.7 已完成 Agent Trace / Eval：新增固定 deterministic eval set、`/agent-traces` 在线账号级观测 API、`/api/chat` best-effort trace capture、估算成本看板和 `/agent-trace` 调试台；trace 写入失败不影响 streaming / 流式回答。
+- Phase 6.7 已完成 Agent Trace / Eval：新增固定 deterministic eval set、`/agent-traces` 在线账号级观测 API、`/api/chat` best-effort trace capture、估算成本看板和 `/agent-trace` 调试台；trace 写入失败不影响 streaming / 流式回答。2026-07-15 补齐默认 Live `deepseek-v4-flash` 的集中 USD 价格快照，新的 Trace 正确标记 `pricingKnown=true`；未知模型保持“未配置单价”，旧 Trace 不回填。
 - Phase 6.8 已完成 KnowledgeDedupAgent / KnowledgeOrganizerAgent：`@repo/agent/knowledge-dedup` 和 `@repo/agent/knowledge-organizer` 作为确定性 policy，基于当前用户资料元数据和少量 chunk 摘要判断重复资料、疑似新版、互补资料，并给出集合与标签建议；`GET /knowledge-agent/suggestions` 是认证、用户隔离、只读的在线建议 API，`/knowledge` 页面已展示资料管理建议面板。
 - Phase 6.9.1 已完成 Agent 评测基线：统一 deterministic/Mock/Live run、summary 和模型路径启用决策 contract；`phase-6.9-seed-v1` 包含 Router、Verifier、Memory 各 8 个可执行 case 和 Orchestrator 8 个 expectation-only case。当前 deterministic baseline 为 21/24，并记录 1 个 MemoryAgent 敏感凭据 critical failure，作为后续候选模型必须超越的证据。
 - Phase 6.9.2 已完成共享 Model Agent Runtime：`@repo/ai` 统一 Mock/Live Zod 结构化输出、不可变 run budget、live guard、超时/取消、安全错误与脱敏 Trace；OpenAI-compatible executor 由 composition root 注入，API key 不进入 package 配置、结果或 Trace。本阶段未迁移 Chat streaming、未模型化业务 Agent、未调用真实模型。

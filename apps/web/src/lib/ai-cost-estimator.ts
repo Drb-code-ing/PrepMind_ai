@@ -19,6 +19,11 @@ export type EstimateAiCostResult = {
 
 const MODEL_PRICING: Record<string, Omit<AiModelPricing, 'known'>> = {
   'mock-prepmind-chat': { inputPerMillion: 0, outputPerMillion: 0 },
+  // Non-cached USD snapshot captured for the controlled Live evaluation on 2026-07-13.
+  'deepseek-v4-flash': {
+    inputPerMillion: 0.147119403,
+    outputPerMillion: 0.294238805,
+  },
 };
 
 export function resolveModelPricing(model: string): AiModelPricing {

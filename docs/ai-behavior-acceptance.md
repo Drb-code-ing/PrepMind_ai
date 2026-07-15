@@ -93,7 +93,7 @@ Agent Trace 与固定评测集已落地，并必须持续覆盖：
 - `/api/chat` 只有在存在 access token 时 best-effort 写入 `/agent-traces`；trace 写入失败不得打断流式回答，只能通过 `x-prepmind-agent-trace-recorded=false` 或日志暴露。
 - Trace 只能保存脱敏元数据：route、confidence、step summary、token 估算、verifier 状态、模型名、模式和估算成本；不得保存完整 prompt、完整回答、完整 RAG chunk、access token、refresh token 或 API key。
 - 前端 payload builder 和后端 service 都必须裁剪并脱敏 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...`、`Cookie: ...` 等敏感片段。
-- `/agent-trace` 的成本看板只展示基于 token 估算和本地价格表的估算成本，不代表供应商真实账单，也不应用作财务对账。
+- `/agent-trace` 的成本看板只展示基于 token 估算和本地价格表的 USD 估算成本，不代表供应商真实账单，也不应用作财务对账。`deepseek-v4-flash` 使用受控 Live 评测已记录的非缓存价格快照；未知模型继续显示“未配置单价”。价格变化必须更新集中价格表、成本计算测试和本段说明。Trace 创建时写入按当时表计算出的估算值，历史 `pricingKnown=false` 记录不回填，避免用新价格伪造历史成本。
 - `/agent-traces` 是在线账号级观测 API，不进入 Dexie `mutationQueue`；离线或弱网导致 trace 丢失是可接受降级。
 
 ## 7.1 Phase 6.9 Agent 模型路径评测
