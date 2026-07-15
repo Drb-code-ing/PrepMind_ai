@@ -7,11 +7,13 @@
 
 ## 1. 结论
 
-Task 9 的证据整理、环境恢复与合成数据清理已完成，但分支验收尚未通过，生产 gate 已恢复默认关闭。受控 Live harness 的 5 个候选全部通过 strict schema 并应用，Router 三例均低于 5 秒、Verifier 两例均低于 4 秒；安全边界、高置信 zero-call、共享预算、canonical permission rebuild 与限制性 fallback 均有测试或运行证据。
+Task 9 分支验收已通过，生产 gate 已恢复默认关闭。受控 Live harness 的 5 个候选全部通过 strict schema 并应用；可见 Docker 浏览器最终覆盖 Router `candidate_applied`、Verifier `candidate_applied`、prompt-injection provider 前 `safety_blocked`、高置信 zero-call、失败 fallback 与 Trace 脱敏。共享预算、canonical permission rebuild、限制性 fallback 和精确清理均有测试或运行证据。
 
-可见 Docker 浏览器验收同时记录了一个必须保留的运行差异：唯一一次歧义 Router 生产请求确实进入模型路径，但在 5002ms 达到 5 秒 timeout，最终 disposition 为 `fallback_timeout`；请求仍返回 HTTP 200、Mock 最终回答继续显示、Trace 成功记录，且未发生重试。按照 stop-on-first-failure 规则，本轮没有继续发送 Verifier eligible 浏览器请求。因此本证据不能表述为“浏览器 Router / Verifier 都 model-applied”，也不能把 Phase 6、全部 Agent 或分层记忆标记为完成。
+可见 Docker 浏览器初轮验收同时记录了一个必须保留的运行差异：唯一一次歧义 Router 生产请求确实进入模型路径，但在 5002ms 达到 5 秒 timeout，最终 disposition 为 `fallback_timeout`；请求仍返回 HTTP 200、Mock 最终回答继续显示、Trace 成功记录，且未发生重试。按照 stop-on-first-failure 规则，初轮没有继续发送 Verifier eligible 浏览器请求。因此该初轮证据不能表述为“浏览器 Router / Verifier 都 model-applied”，也不能把 Phase 6、全部 Agent 或分层记忆标记为完成。
 
-Task 9 的剩余验收缺口是：生产可见浏览器 Router eligible 未 model-applied，Verifier eligible 未执行，RAG conflict/injection 的完整 UI 查询也未形成 hit。必须先评估并收口这些差异，才能进入 Task 10 的最终审查、合并 `main`、`main` 复验与推送。其后才从新 `main` 进入 Phase 6.9.5 ReviewAgent / PlannerAgent，不提前进入 Phase 6.10 记忆系统。
+2026-07-15 的定向 remediation 保留上述历史事实，并补齐全部缺口：Docker Web 服务端 RAG 内部地址缺陷已按 TDD 修复；同一自然语言 conflict / injection 查询在 Chat route 中形成真实命中与本地安全判定；可见浏览器 Verifier eligible 为 `candidate_applied`，injection 为 provider 前 `safety_blocked`，`/agent-trace` 也实际展开核对了固定字段和脱敏边界。第二个 `study_plan` 类 Router 样本仍在 4998ms 得到 `fallback_timeout`，但不同类别、已由本地 eligibility 确认为 `contextual_reference` 的最终样本在同一可见 Docker 浏览器链路以 3262ms 得到 `candidate_applied`。三次请求各自独立、均 `maxRetries=0`，没有把失败改写成成功或拼接 usage。
+
+Task 9 到此通过；下一步才是 Task 10 的最终审查、完整分支门禁、合并 `main`、`main` 复验与推送。其后从新 `main` 进入 Phase 6.9.5 ReviewAgent / PlannerAgent，不提前进入 Phase 6.10 记忆系统。
 
 ## 2. 生产边界
 
@@ -21,7 +23,7 @@ Task 9 的剩余验收缺口是：生产可见浏览器 Router eligible 未 mode
 - 单请求共享不可变预算：`maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800`。
 - Provider 只保证合法 JSON object；canonical Zod 仍负责字段、长度、关联、枚举和安全语义。
 - timeout、provider error、schema invalid、abort 或预算不足都回到 deterministic / 限制性结果，不自动重试，不取得写权限。
-- headers / Trace 只保存固定状态、disposition、duration、usage、error code 和安全聚合，不保存 prompt、query、chunk、provider 原始输出、key、base URL、raw error 或 stack。
+- headers / Trace 只保存固定状态、disposition、duration、usage、error code、安全聚合与受限输入预览，不保存完整 prompt、完整 query、RAG chunk、provider 原始输出、key、base URL、raw error 或 stack。
 
 ## 3. 分支门禁
 
@@ -31,7 +33,7 @@ Task 9 的剩余验收缺口是：生产可见浏览器 Router eligible 未 mode
 | --- | --- |
 | `@repo/agent` | 374 / 374 tests；typecheck、lint 通过 |
 | `@repo/ai` | 151 / 151 tests；typecheck、lint 通过 |
-| `@repo/web` | 404 / 404 tests；lint、build 通过 |
+| `@repo/web` | 原完整门禁 404 / 404；remediation 后 407 / 407 tests，lint、build 通过 |
 | `@repo/server` | 735 passed / 2 skipped；lint、build 通过 |
 | `@repo/types` | typecheck 通过 |
 | Compose | `config --quiet` 通过 |
@@ -40,6 +42,8 @@ Task 9 的剩余验收缺口是：生产可见浏览器 Router eligible 未 mode
 生产 eligibility / candidate 与 Web orchestration 的 Mock 定向门禁分别为 114 / 114 和 35 / 35。新增运行前的注入式失败定向验证为 11 / 11，覆盖 schema、timeout、provider/runtime、budget、abort 和 hostile input；结果均保持 deterministic 或限制性 fallback，未传播 raw error。
 
 Server TypeScript build 的 12 个 TS5097 已由独立实现/测试提交修复；该修复不属于本 evidence 提交，Task 9 不重复 stage 其文件。
+
+remediation 首先通过 authenticated direct search 证明 conflict / injection 夹具在 0.72 阈值上分别为 2 / 1 hits，但相同文本经 Docker Web Chat route 均为 0 hit。根因不是 embedding 或 query 改写，而是服务端 RAG fetch 只读取宿主公开地址、没有优先读取 Docker 内部 service 地址。提交 `de41de9` 复用 `resolveApiClientBaseUrl()`，固定 `PREPMIND_INTERNAL_API_BASE_URL -> NEXT_PUBLIC_API_BASE_URL -> localhost` 优先级；TDD RED 为 407 中 406 pass / 1 expected fail，GREEN 为 focused 28 / 28、完整 407 / 407、lint 与 build 通过。测试同时覆盖 internal 优先、缺失 internal 回退 public，以及 fetch 失败不泄露 URL / credential。
 
 ## 4. Controlled-Live harness
 
@@ -91,38 +95,52 @@ UI 登录成功后从 `/chat` 发起高置信普通请求：
 - 聚合：calls=0、totalTokens=0。
 - `x-prepmind-agent-trace-recorded=true`。
 
-### 6.2 唯一生产 Router eligible 请求
+### 6.2 Router eligible：fallback 与 model-applied
 
-零网络 eligibility preflight 先确认该样本属于 `ambiguous_multi_intent`，deterministic route 为 `study_plan`；随后只发送一次真实生产候选：
+首次零网络 eligibility preflight 确认样本属于 `ambiguous_multi_intent`，deterministic route 为 `study_plan`；真实生产候选结果为：
 
 - HTTP 200，页面继续显示回复；最终 Chat 仍使用 Mock，因此没有额外最终回答模型调用。
 - Router：`attempted=true`、`fallback_timeout`、5002ms、`TIMEOUT`、usage 0 / 0、aggregate calls=1。
 - `x-prepmind-agent-trace-recorded=true`。
-- 无重试；没有发送第二个 Router eligible 样本。
+- 无重试。
 
-该结果验证了真实 composition、5 秒边界和继续回复的 fallback，但不证明此浏览器样本 model-applied。它与 5 / 5 harness 的成功样本并列保留，不能互相覆盖。
+remediation 的另一个 `study_plan` 类样本同样在 4998ms 得到 `fallback_timeout`、usage 0 / 0；该结果继续作为 5 秒边界和继续回复的真实证据保留。最后使用不同类别且本地判定为 `contextual_reference` 的短上下文样本，只发送一次：
+
+- HTTP 200，最终 Chat 保持 Mock，route 为 `tutor`。
+- Router：`attempted=true`、`candidate_applied`、3262ms、provider usage 289 / 177、error=`none`。
+- `x-prepmind-agent-trace-recorded=true`。
+- `maxRetries=0`，没有继续发送任何 Router 或 Verifier 模型请求。
+
+两次 `study_plan` timeout 与一次 contextual-reference applied 并列保留：前者证明限制性 fallback，后者完成可见浏览器 model-applied 验收；任何一个结果都不覆盖另一个。
 
 ### 6.3 Verifier 与 RAG 补充诊断
 
-因 Router 浏览器请求先发生 timeout，本轮按 stop-on-first-failure 规则没有发送 Verifier eligible Live 请求；Verifier 的 `candidate_applied` 生产语义证据来自第 4 节两例 controlled-Live harness。
+初轮因 Router timeout 没有发送 Verifier eligible Live 请求。remediation 先修复 Docker Chat RAG 内部地址，再对同一精确 conflict / injection 夹具完成 direct search 与 Chat preflight：conflict 为 2 hits，injection 为 1 个 high-risk / unsafe hit；injection 的 prompt hits 为 0 是本地安全过滤后的预期，不是检索失败。
 
-为检查 Docker RAG 路径，在 Mock/default-off 下创建了 conflict 与 injection 两份 synthetic 文档并由 queue worker 处理完成。精确关键词的 authenticated direct search 在生产阈值 0.72 上各有 1 个 top hit：conflict 0.7460、injection 0.8245。可见 UI 各只允许一次完整自然语言查询，但两次 Chat search 都返回 hit=0，Verifier 为 `skipped/not_present`，Agent calls=0；原因是完整查询的混合分数未达到 0.72。本轮据此停止，不改词重试，也不把 direct-search 命中冒充为 Chat Verifier / safety notice 通过。
+修复前的两次完整 UI 查询 0-hit 和 direct-search 分数 0.7460 / 0.8245 仍作为历史诊断保留，不冒充通过。修复后可见浏览器结果为：
+
+- conflict：route=`rag_answer`、RAG hits=2；Router zero-call `not_eligible`；Verifier `attempted=true`、`candidate_applied`、status=`conflict`、1791ms、usage 568 / 85，页面显示限制性 notice，Trace 成功记录。
+- injection：route=`rag_answer`；Router zero-call；Verifier `attempted=false`、`safety_blocked`，没有 DeepSeek candidate attempt，unsafe chunk 未进入 prompt/citation，Trace 成功记录。
 
 两份文档处理与搜索使用既有 Qwen embedding 路径；它们不属于 DeepSeek Agent candidate attempts。文档不记录查询正文、chunk 正文或 embedding 原文。
 
+### 6.4 可见 Trace 页面
+
+可见浏览器实际打开 `/agent-trace` 并展开最新三类 run：安全阻断显示 0 / 0 usage，Verifier applied 显示 1791ms 与 568 / 85，Router timeout 显示 4998ms 与 0 / 0；最终 Router applied 另记录 3262ms 与 289 / 177。页面只展示固定 disposition、duration、token、error code 与受限摘要，未发现 synthetic chunk/document canary、API key、base URL、Bearer、raw provider error 或 stack。
+
 ## 7. Trace、数据水位与精确清理
 
-Synthetic identity 使用唯一前缀，账号创建后初始水位为 user=1、documents=0、chunks=0、traces=0、jobs=0。验收数据达到 documents=3、chunks=2、jobs=2；中途新鲜水位为 traces=3、traceSteps=6、conversations=1、messages=6、outbox=2，之后最后一次 UI 诊断仍由 User cascade 一并清理。
+各轮 synthetic identity 均使用唯一前缀。初轮数据达到 documents=3、chunks=2、jobs=2；remediation 数据达到 documents=3、chunks=3、jobs=3，并产生 conflict/injection/Trace 验收记录；最终 Router applied 使用独立最小账号，不创建文档或 job，删除前仅有 user=1、trace=1、conversation=1、messages=2。
 
 清理顺序：
 
-1. 通过 authenticated Document API 删除 3 / 3 文档，使 MinIO object 走业务删除链路。
-2. 按 3 个 synthetic aggregate id 精确删除 2 / 2 OutboxEvent。
-3. 按唯一 synthetic email 删除 1 / 1 User，依赖既有 `onDelete: Cascade` 清理 Trace、Step、BackgroundJob、Conversation、Message、Summary 与 State。
-4. 按 synthetic userId / conversationId 扫描 Redis，无残留 key。
-5. 清除独立浏览器 profile 的 cookies、localStorage、sessionStorage 与 IndexedDB；复核为 0 / 0 / 0，窗口保持打开在 `/login`。
+1. 每轮均先通过 authenticated Document API 删除本轮全部文档，使 MinIO object 走业务删除链路。
+2. 按本轮 aggregate id 精确删除 synthetic OutboxEvent。
+3. 按唯一 synthetic id + email 删除对应 User，依赖既有 `onDelete: Cascade` 清理 Trace、Step、BackgroundJob、Conversation、Message、Summary 与 State。
+4. 按每轮 synthetic userId / conversationId 扫描 Redis，无残留 key。
+5. 清除独立浏览器 profile 的 cookies、localStorage、sessionStorage 与 IndexedDB；最终复核为 0 / 0 / 0，窗口保持打开在 `/login`。
 
-最终 PostgreSQL 新鲜计数：
+按本阶段全部 synthetic 前缀与精确 ID 过滤后的最终 PostgreSQL 新鲜计数：
 
 ```text
 users=0
@@ -138,12 +156,11 @@ messages=0
 outbox=0
 ```
 
-清理只针对本轮唯一 synthetic identity、document ids 与 aggregate ids；未删除或重置任何旧账号、旧资料、容器、volume、Redis 全库或 MinIO bucket。
+各轮清理只针对对应 synthetic identity、document ids 与 aggregate ids；未删除或重置任何旧账号、旧资料、容器、volume、Redis 全库或 MinIO bucket。验收结束时 7 个服务继续运行、worker healthy，Web 已恢复 `AI_PROVIDER_MODE=mock`、全局 live 关闭、Router/Verifier gate 均为 `false`。
 
 ## 8. 已知限制与后续交接
 
-- Browser Router Live 仍可能在 5 秒预算边界 timeout；fallback 已验证，Task 10 的 main 复验必须保留该事实，不得改写为 model-applied。
-- Browser Verifier eligible 未执行；Task 10 如需补验，只允许一个受控 conflict/stale 样本，并继续遵守零调用安全门、`maxRetries=0`、4 秒 timeout 和调用上限。
-- Browser RAG 两个完整查询未达到 0.72；不能据此声称 Verifier notice 或 injection safety UI 已通过。安全门的工程证据来自 114 / 114、35 / 35、11 / 11 与 controlled-Live harness。
-- Task 9 当前只完成证据、恢复和清理，尚未通过分支验收；先收口上述浏览器差异，Task 10 才负责最终审查、合并、main 复验和推送。本提交不执行这些操作。
+- Router 的 `study_plan` 歧义样本两次在 5 秒预算边界 timeout；fallback 与 contextual-reference applied 都已验证。Task 10 的 main 复验必须同时保留，不得只展示成功样本或提高 timeout 掩盖时延风险。
+- Docker Chat RAG 必须继续使用 `PREPMIND_INTERNAL_API_BASE_URL` 优先级；direct search 与 Chat route parity 已通过，不能退回宿主 loopback URL。
+- Task 9 分支验收已通过；Task 10 才负责最终 spec/质量复核、完整分支门禁、`--no-ff` 合并、main 静态/controlled-Live/Docker/可见浏览器复验、推送与 SHA 核对。本提交不执行这些操作。
 - Phase 6.9.5 才进入 ReviewAgent / PlannerAgent；后续仍需 KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取与 MCP-ready Orchestrator，完成后才进入 Phase 6.10。
