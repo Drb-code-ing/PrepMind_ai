@@ -226,7 +226,7 @@ bun --cwd packages/fsrs test
 
 回顾时可以问：“为什么 JSON mode 仍需要 canonical Zod？”“Router 的历史 P95 失败为什么不等于永久禁止模型？”“Agent 之间如何通信，为什么模型不能决定权限和写操作？”
 
-下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
+下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
 
 ## 文档入口
 

@@ -166,7 +166,7 @@ Phase 6.9.4.4 的生产验收 contract 为：
 
 回顾时可以问：“为什么 `json_object` 仍不能取代 canonical Zod？”“为什么 runner/prompt/entry identity 必须绑定？”“什么证据才足以把 Router / Verifier 从 `enabled=false` 改为可启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
+下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
 
 后续 Agent 模型路径必须遵循：
 

@@ -128,7 +128,7 @@ Fresh gates 为 AI 151 passed、Agent 345 passed、typecheck/lint exit 0；deter
 
 Phase 6.9.4.4 Task 8 已补齐 Docker Web runtime 配置与运维文档：Router 对安全边界和高置信请求保持 deterministic zero-call，只对歧义、多意图或上下文指代请求调用真实模型；Verifier 只对已通过本地安全门、确需语义判断的 RAG 证据调用模型。两者 gate 可独立回滚，默认均为 `false`；Router / Verifier timeout 分别为 5 秒 / 4 秒，共享单请求预算固定 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800`。Provider 使用 JSON-object mode，但 canonical Zod 仍负责结构与安全语义；prompt injection、high-risk、credential material 在 provider 前零调用。失败、timeout、schema invalid 或预算耗尽只回退到限制性 deterministic 结果；Trace / headers 只暴露固定状态、reason code、usage 与降级元数据，不含 prompt、query、chunk、provider output、credential 或 raw error。Task 9 完成 controlled-Live、Docker、可见浏览器验收前，两条 gate 必须保持默认关闭。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这只完成 Router/Verifier 子阶段配置，不代表 Memory、Orchestrator、全部 Agent 或 Phase 6 已完成。
 
-下一会话可以问：“请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
+下一会话可以问：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
 
 ## 常用命令
 
@@ -331,9 +331,9 @@ mcp -> ai, fsrs, rag, types
 
 后续最优先：
 
-1. 当前分支下一步是 Phase 6.9.4.4 Task 9：在 Router/Verifier gate 仍默认关闭的前提下，执行 controlled-Live、Docker 与可见浏览器验收。
-2. Phase 6.9.4.4 通过后 `--no-ff` 合并 main，在 main 重跑静态、Live、Docker 和浏览器验收，推送远程并核对 SHA。
+1. 当前分支下一步是 Phase 6.9.4.4 Task 9：在 Router/Verifier gate 仍默认关闭的前提下，完成分支完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理，以及 evidence/current-doc 提交；到此结束 Task 9。
+2. Phase 6.9.4.4 Task 10 独立执行最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、推送远程和 SHA 核对。
 3. 后续按 Phase 6.9.5～6.9.10 依次完成 Review/Planner、KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；不得提前进入记忆注入或 Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话可直接问：`请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。`
+6. 下一会话可直接问：`请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。`

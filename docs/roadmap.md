@@ -289,7 +289,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.3 JSON-mode resolution：runner-v3 / `deepseek_json_object_v1`、标准 URL、prompt/evidence identity 与零网络门禁。（已完成 checkpoint）
 - Phase 6.9.4.3 controlled-Live：JSON mode 完整运行成功，Router latency gate 失败，terminal deterministic fallback。（已完成结论）
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
-- Phase 6.9.4.4 Task 9：Router/Verifier controlled-Live、Docker、可见浏览器验收、main 复验和推送。（下一步）
+- Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（下一步）
+- Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、推送和 SHA 核对。（待 Task 9 完成）
 - Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。（下一阶段）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
@@ -304,7 +305,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9，执行 Router/Verifier controlled-Live、Docker、可见浏览器验收、合并 main、main 复验和推送；不要提前进入记忆系统。”
+下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
 
 ### Phase 7 — 工程化增强
 
