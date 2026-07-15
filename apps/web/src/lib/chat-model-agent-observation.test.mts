@@ -121,8 +121,6 @@ test('preserves only a strict boolean unavailable usage marker', () => {
       usageUnavailable: 1,
       usage: { inputTokens: 19, outputTokens: 7 },
     },
-    markerGetter,
-    markerProxy,
   ]) {
     const projected = projectChatModelAgentObservation(value);
     assert.equal(projected.usageUnavailable, undefined);
@@ -130,6 +128,27 @@ test('preserves only a strict boolean unavailable usage marker', () => {
     assert.equal(projected.outputTokens, 7);
     assert.equal(JSON.stringify(projected).includes(CANARY), false);
   }
+
+  for (const hostileMarker of [markerGetter, markerProxy]) {
+    const projected = projectChatModelAgentObservation(hostileMarker);
+    assert.deepEqual(projected, {
+      attempted: true,
+      disposition: 'candidate_applied',
+      durationMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      usageUnavailable: true,
+    });
+    assert.equal(JSON.stringify(projected).includes(CANARY), false);
+  }
+
+  const proxyHeaders = buildChatModelAgentObservationHeaders({
+    router: markerProxy,
+  });
+  assert.equal(proxyHeaders['x-prepmind-router-model-input-tokens'], '0');
+  assert.equal(proxyHeaders['x-prepmind-router-model-output-tokens'], '0');
+  assert.equal(proxyHeaders['x-prepmind-model-agent-total-tokens'], '0');
+  assert.equal(JSON.stringify(proxyHeaders).includes(CANARY), false);
 
   const unavailableHeaders = buildChatModelAgentObservationHeaders({
     router: {
@@ -178,6 +197,7 @@ test('never throws for null, hostile getters, or hostile proxies', () => {
       durationMs: 0,
       inputTokens: 0,
       outputTokens: 0,
+      ...(value === proxy ? { usageUnavailable: true } : {}),
     });
     assert.equal(JSON.stringify(projected).includes(CANARY), false);
   }

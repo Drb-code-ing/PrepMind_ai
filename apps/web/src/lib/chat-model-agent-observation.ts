@@ -50,7 +50,11 @@ export function projectChatModelAgentObservation(
   try {
     const attempted = readOwnData(value, 'attempted') === true;
     const disposition = toDisposition(readOwnData(value, 'disposition'));
-    const usageUnavailable = readOwnData(value, 'usageUnavailable') === true;
+    const usageUnavailableState = readOwnDataState(value, 'usageUnavailable');
+    const usageUnavailable =
+      usageUnavailableState.kind === 'descriptor_error' ||
+      (usageUnavailableState.kind === 'data' &&
+        usageUnavailableState.value === true);
     const usage = readOwnData(value, 'usage');
     const trace = readOwnData(value, 'trace');
     const errorCode = toErrorCode(readOwnData(trace, 'errorCode'));
@@ -145,6 +149,26 @@ function observationHeaders(
     [`${prefix}-provider-failure`]:
       observation?.providerFailureCategory ?? 'none',
   };
+}
+
+type OwnDataState =
+  | { kind: 'missing' }
+  | { kind: 'data'; value: unknown }
+  | { kind: 'descriptor_error' };
+
+function readOwnDataState(value: unknown, key: string): OwnDataState {
+  try {
+    if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
+      return { kind: 'missing' };
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined) return { kind: 'missing' };
+    return 'value' in descriptor
+      ? { kind: 'data', value: descriptor.value }
+      : { kind: 'descriptor_error' };
+  } catch {
+    return { kind: 'descriptor_error' };
+  }
 }
 
 function readOwnData(value: unknown, key: string): unknown {

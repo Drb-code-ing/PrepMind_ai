@@ -378,3 +378,60 @@ const defensiveUnavailableUsagePayload = buildChatAgentTracePayload({
 
 assert.equal(defensiveUnavailableUsagePayload.inputTokenEstimate, 80);
 assert.equal(defensiveUnavailableUsagePayload.outputTokenEstimate, 40);
+
+const markerDescriptorCanary = 'CANARY_marker_descriptor_raw_secret';
+const markerDescriptorProxy = new Proxy(
+  {
+    attempted: true,
+    disposition: 'fallback_runtime_error',
+    usage: { inputTokens: 987, outputTokens: 654 },
+    trace: { durationMs: 23 },
+  },
+  {
+    getOwnPropertyDescriptor(target, key) {
+      if (key === 'usageUnavailable') {
+        throw new Error(markerDescriptorCanary);
+      }
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+  },
+);
+const markerDescriptorProjected = projectChatModelAgentObservation(
+  markerDescriptorProxy,
+);
+const markerDescriptorPayload = buildChatAgentTracePayload({
+  runId: 'trace_run_marker_descriptor_error',
+  conversationId: null,
+  messages: [{ role: 'user', content: 'safe marker descriptor error' }],
+  mode: 'mock',
+  modelProvider: 'mock',
+  modelName: 'mock-prepmind-chat',
+  budget: { estimatedInputTokens: 80, maxOutputTokens: 40 },
+  agentDecision: {
+    route: 'chat',
+    confidence: 1,
+    reason: 'fixed safe reason',
+    requiresRag: false,
+    requiresHumanApproval: false,
+  },
+  modelAgentObservations: { router: markerDescriptorProjected },
+  startedAt: new Date('2026-07-15T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-15T08:00:01.000Z'),
+});
+
+assert.equal(markerDescriptorProjected.usageUnavailable, true);
+assert.equal(markerDescriptorProjected.inputTokens, 0);
+assert.equal(markerDescriptorProjected.outputTokens, 0);
+assert.equal(markerDescriptorPayload.inputTokenEstimate, 80);
+assert.equal(markerDescriptorPayload.outputTokenEstimate, 40);
+assert.equal(markerDescriptorPayload.costEstimate, 0);
+assert.match(
+  markerDescriptorPayload.steps.find(
+    (step) => step.node === 'RouterModelCandidate',
+  )?.outputSummary ?? '',
+  /inputTokens=0 outputTokens=0 .*usageUnavailable=true/,
+);
+assert.equal(
+  JSON.stringify(markerDescriptorPayload).includes(markerDescriptorCanary),
+  false,
+);
