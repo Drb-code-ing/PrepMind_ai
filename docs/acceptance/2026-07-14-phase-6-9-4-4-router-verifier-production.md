@@ -15,6 +15,8 @@ Task 9 分支验收已通过，生产 gate 已恢复默认关闭。受控 Live h
 
 Task 9 到此通过；下一步才是 Task 10 的最终审查、完整分支门禁、合并 `main`、`main` 复验与推送。其后从新 `main` 进入 Phase 6.9.5 ReviewAgent / PlannerAgent，不提前进入 Phase 6.10 记忆系统。
 
+2026-07-15 的 Task 10 已在 `main` 的 merge commit `b58e8d5` 上完成独立复验。最终 spec review 与 quality review 均为 PASS；这确认的是 Router / Verifier 这一受控子阶段已经可交付，不把结论扩大为全部 Agent、Phase 6 或分层记忆已经完成。主分支运行时默认已恢复为 Mock 和双 gate 关闭；远程同步以本次验收提交后的 `main` SHA 校对为准。
+
 ## 2. 生产边界
 
 - Router：安全边界和高置信输入由 deterministic 路径零调用处理；仅歧义、多意图和上下文指代进入模型候选。模型只能建议 canonical route，`requiresRag` 与 `requiresHumanApproval` 始终由本地 route map 重建。
@@ -164,3 +166,32 @@ outbox=0
 - Docker Chat RAG 必须继续使用 `PREPMIND_INTERNAL_API_BASE_URL` 优先级；direct search 与 Chat route parity 已通过，不能退回宿主 loopback URL。
 - Task 9 分支验收已通过；Task 10 才负责最终 spec/质量复核、完整分支门禁、`--no-ff` 合并、main 静态/controlled-Live/Docker/可见浏览器复验、推送与 SHA 核对。本提交不执行这些操作。
 - Phase 6.9.5 才进入 ReviewAgent / PlannerAgent；后续仍需 KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取与 MCP-ready Orchestrator，完成后才进入 Phase 6.10。
+
+## 9. Task 10：`main` 合并后复验
+
+### 9.1 合并、审查与静态门禁
+
+- feature branch 以 `--no-ff` 合并到 `main`，主分支 merge commit 为 `b58e8d5`。
+- 最终规格审查与质量审查均为 PASS；审查覆盖混合模型边界、canonical 权限重建、零调用安全门、共享预算、超时/限制性 fallback、Trace 脱敏、Docker 内部 RAG 地址、价格快照与默认关闭 gate。
+- 在 `main` 上重新通过：`@repo/agent` test/typecheck/lint、`@repo/ai` 151 tests/typecheck/lint、Server 737 passed / 2 skipped + lint/build、Web 407/407 + lint/build、`@repo/types` typecheck 与 Compose `config --quiet`。
+- Server build 额外验证了 139 个 `dist/**/*.js` 产物不存在相对 `.ts/.tsx` 运行时引用；该回归由独立测试保护。
+
+### 9.2 主分支 Docker 与可见浏览器
+
+`postgres`、`redis`、`minio`、`server`、`worker`、`web`、`admin` 均保持运行，worker 为 healthy；Web 与 Admin 返回 200，未认证 `/worker-readiness` 返回预期 401。系统 Edge 独立可见窗口通过 CDP 完成验收，结束后仍保留在 `/login`。
+
+- Router contextual reference：最终 Chat 维持 Mock，真实 Router candidate `candidate_applied`，HTTP 200，`4048ms`，usage `295 / 240`，Trace 成功写入。
+- Verifier semantic conflict：RAG 命中 2，Router 为 `not_eligible` 零调用，真实 Verifier candidate `candidate_applied`，状态 `conflict`，HTTP 200，`2618ms`，usage `536 / 186`。
+- Injection：Router 与 Verifier 均在 provider 前 `safety_blocked`，两者 usage 都是 `0 / 0`，聚合模型调用为 0；没有把不安全资料放入 prompt 或 citation。
+- 价格回归：受控 Live final Chat 生成了新的 `deepseek / deepseek-v4-flash` Trace，`pricingKnown=true`，输入/最大输出 `244 / 1200`，成本估算 `0.000389 USD`。该值是集中价格快照按 token 上限估算，不是供应商最终账单。
+- `/agent-trace` 仅显示固定 disposition、duration、token、错误码和估算成本；检查中未出现 prompt、chunk 正文、凭据、base URL、provider raw error 或 stack。
+
+为避免 Docker Desktop Bake 的已知 gRPC shared-key 错误，Server、Worker、Web 使用直接 Docker build 成功重建。Admin 重建两次均在 Prisma 官方二进制下载阶段发生外部网络失败（一次请求失败、一次 `ECONNREFUSED`），未继续盲目重试；本次合并没有改动 `apps/admin` 源码或依赖，现有 Admin 镜像仍通过 HTTP 200 验证。该环境限制不影响 Router / Verifier 主分支交付，但后续若改动 Admin，必须在网络可用时重新构建其镜像。
+
+### 9.3 精确清理与默认恢复
+
+1. 先通过 authenticated Document API 删除本轮 5 份合成资料，使 MinIO 走业务删除路径。
+2. 精确检查对应 document aggregate 的 OutboxEvent 为 0；随后按唯一合成用户删除 User，并由既有 cascade 删除 7 个 Trace 与 21 个 TraceStep。
+3. PostgreSQL 复核 `user/documents/chunks/traces/traceSteps/jobs/conversations/summaries/states/messages/outbox` 全部为 0；Redis 只按该合成 user id 扫描，未发现残留 key，未执行 flush、prune、reset、`down -v` 或任何 volume 删除。
+4. 可见浏览器的 cookies、localStorage、sessionStorage、Cache Storage、IndexedDB 已清空，窗口保留在 `/login`。
+5. Web 已精确重建回 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`。Docker 数据服务与既有数据保持不变。
