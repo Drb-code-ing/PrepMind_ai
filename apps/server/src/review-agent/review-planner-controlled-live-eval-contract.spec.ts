@@ -12,7 +12,7 @@ describe('review planner controlled Live safe summary contract', () => {
       gate: 'closed' as const,
       providerAttemptCount: 1,
       usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.ProviderJsonParse,
+      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
     };
 
     expect(() =>
@@ -25,6 +25,12 @@ describe('review planner controlled Live safe summary contract', () => {
       safeReviewPlannerControlledLiveSummarySchema.parse({
         ...safeSummary,
         evidence: rawEvidence,
+      }),
+    ).toThrow();
+    expect(() =>
+      safeReviewPlannerControlledLiveSummarySchema.parse({
+        ...safeSummary,
+        diagnosticCode: 'provider_json_parse',
       }),
     ).toThrow();
 

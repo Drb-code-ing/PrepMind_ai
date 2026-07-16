@@ -5,7 +5,6 @@ import {
   type ModelAgentErrorCode,
   type ModelAgentProviderFailureCategory,
   type ModelAgentRuntime,
-  type ModelAgentStructuredOutputStage,
   type OpenAICompatibleExecutorConfig,
   type StructuredModelExecutor,
 } from '@repo/ai';
@@ -154,11 +153,10 @@ export function mapControlledLiveDiagnosticCode(
   input: Readonly<{
     errorCode: ModelAgentErrorCode;
     providerFailureCategory?: ModelAgentProviderFailureCategory;
-    structuredOutputStage?: ModelAgentStructuredOutputStage;
   }>,
 ): ReviewPlannerDiagnosticCode {
   if (input.errorCode === 'SCHEMA_INVALID') {
-    return ReviewPlannerDiagnosticCode.RuntimeSchemaInvalid;
+    return ReviewPlannerDiagnosticCode.StructuredOutput;
   }
   if (
     input.errorCode === 'INVALID_REQUEST' ||
@@ -177,7 +175,7 @@ export function mapControlledLiveDiagnosticCode(
       case 'http_server':
         return ReviewPlannerDiagnosticCode.HttpServer;
       case 'structured_output':
-        return mapStructuredOutputDiagnosticCode(input.structuredOutputStage);
+        return ReviewPlannerDiagnosticCode.StructuredOutput;
       case 'invalid_response':
         return ReviewPlannerDiagnosticCode.InvalidResponse;
       default:
@@ -187,21 +185,6 @@ export function mapControlledLiveDiagnosticCode(
   return input.errorCode === 'TIMEOUT' || input.errorCode === 'ABORTED'
     ? ReviewPlannerDiagnosticCode.Transport
     : ReviewPlannerDiagnosticCode.InvalidResponse;
-}
-
-function mapStructuredOutputDiagnosticCode(
-  stage: ModelAgentStructuredOutputStage | undefined,
-): ReviewPlannerDiagnosticCode {
-  switch (stage) {
-    case 'provider_json_parse':
-      return ReviewPlannerDiagnosticCode.ProviderJsonParse;
-    case 'provider_type_validation':
-      return ReviewPlannerDiagnosticCode.ProviderTypeValidation;
-    case 'provider_object_missing':
-      return ReviewPlannerDiagnosticCode.ProviderObjectMissing;
-    default:
-      return ReviewPlannerDiagnosticCode.StructuredOutput;
-  }
 }
 
 async function runSchemaCanary(
@@ -233,7 +216,6 @@ async function runSchemaCanary(
         diagnosticCode: mapControlledLiveDiagnosticCode({
           errorCode: result.error.code,
           providerFailureCategory: result.error.providerFailureCategory,
-          structuredOutputStage: result.trace.structuredOutputStage,
         }),
       };
     }

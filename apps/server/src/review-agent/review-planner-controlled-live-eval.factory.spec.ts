@@ -130,7 +130,7 @@ describe('review planner controlled Live evaluator factory', () => {
       },
     ],
   ])(
-    'maps legal but non-schema %s JSON to one closed runtime-schema-invalid attempt without retaining raw content',
+    'keeps v2 legal but non-schema %s JSON at the generic structured-output boundary without retaining raw content',
     async (_label, object) => {
       const executor: StructuredModelExecutor = jest.fn(() =>
         Promise.resolve({
@@ -152,7 +152,7 @@ describe('review planner controlled Live evaluator factory', () => {
         canContinue: false,
         providerAttemptCount: 1,
         usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.RuntimeSchemaInvalid,
+        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
       });
       expect(JSON.stringify(diagnostic)).not.toMatch(
         /CONTROLLED_LIVE_RAW_(SUMMARY|EVIDENCE)_CANARY/,
@@ -167,15 +167,6 @@ describe('review planner controlled Live evaluator factory', () => {
     ['http_client', ReviewPlannerDiagnosticCode.HttpClient],
     ['http_server', ReviewPlannerDiagnosticCode.HttpServer],
     ['structured_output', ReviewPlannerDiagnosticCode.StructuredOutput],
-    ['provider_json_parse', ReviewPlannerDiagnosticCode.ProviderJsonParse],
-    [
-      'provider_type_validation',
-      ReviewPlannerDiagnosticCode.ProviderTypeValidation,
-    ],
-    [
-      'provider_object_missing',
-      ReviewPlannerDiagnosticCode.ProviderObjectMissing,
-    ],
     ['invalid_response', ReviewPlannerDiagnosticCode.InvalidResponse],
     ['transport', ReviewPlannerDiagnosticCode.Transport],
     ['unknown', ReviewPlannerDiagnosticCode.Transport],
@@ -185,19 +176,19 @@ describe('review planner controlled Live evaluator factory', () => {
       expect(
         mapControlledLiveDiagnosticCode({
           errorCode: 'PROVIDER_ERROR',
-          providerFailureCategory:
-            category === 'provider_json_parse' ||
-            category === 'provider_type_validation' ||
-            category === 'provider_object_missing'
-              ? 'structured_output'
-              : category,
-          ...(category === 'provider_json_parse' ||
-          category === 'provider_type_validation' ||
-          category === 'provider_object_missing'
-            ? { structuredOutputStage: category }
-            : {}),
+          providerFailureCategory: category,
         }),
       ).toBe(expected);
     },
   );
+
+  it('keeps the v2 controlled diagnostic generic when the private runtime trace has a detailed stage', () => {
+    expect(
+      mapControlledLiveDiagnosticCode({
+        errorCode: 'PROVIDER_ERROR',
+        providerFailureCategory: 'structured_output',
+        structuredOutputStage: 'provider_type_validation',
+      } as never),
+    ).toBe(ReviewPlannerDiagnosticCode.StructuredOutput);
+  });
 });
