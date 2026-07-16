@@ -1,13 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  realpath,
-  rename,
-  unlink,
-} from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
@@ -91,12 +83,6 @@ export type ReviewPlannerControlledLiveV4EvidenceReservation = Readonly<{
 }>;
 
 type EvidenceState = 'reserved' | 'attempted' | 'finalized';
-type BoundParent = Readonly<{
-  root: string;
-  path: string;
-  realPath: string;
-  identity: string;
-}>;
 
 /**
  * Reserves a V4-only once marker and safe baseline before the executor is
@@ -105,16 +91,20 @@ type BoundParent = Readonly<{
 export async function reserveReviewPlannerControlledLiveV4Evidence(
   input: Readonly<{ root: string; startedAt: string; runId: string }>,
 ): Promise<ReviewPlannerControlledLiveV4EvidenceReservation> {
-  const root = await resolveRoot(input.root);
+  // This workflow writes evidence only through the Windows HANDLE-relative
+  // implementation. There is intentionally no path-based POSIX fallback:
+  // without a trusted dirfd/HANDLE, evidence must fail closed before mkdir or
+  // a marker write can occur.
+  if (process.platform !== 'win32' || !process.versions.bun) {
+    throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_TRUSTED_HANDLE_REQUIRED');
+  }
+  const root = resolve(input.root);
   const relativePath = buildEvidencePath(input.startedAt, input.runId);
   const leafName = relativePath.split('/').at(-1);
   if (!leafName)
     throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_IDENTITY_INVALID');
 
-  if (process.platform === 'win32') {
-    return reserveNativeV4Evidence(root, relativePath, leafName);
-  }
-  return reserveBoundV4Evidence(root, relativePath);
+  return reserveNativeV4Evidence(root, relativePath, leafName);
 }
 
 async function reserveNativeV4Evidence(
@@ -204,81 +194,6 @@ function nativeReservation(
   });
 }
 
-async function reserveBoundV4Evidence(
-  root: string,
-  relativePath: string,
-): Promise<ReviewPlannerControlledLiveV4EvidenceReservation> {
-  const directoryPath = await ensureDirectory(
-    root,
-    CONTROLLED_LIVE_V4_PROFILE.evidenceDirectory,
-  );
-  const parent = await bindParent(root, directoryPath);
-  const entries = await readdir(directoryPath);
-  if (entries.some((entry) => evidenceFileName.test(entry))) {
-    throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_ALREADY_CONSUMED');
-  }
-  const lockPath = resolveInsideRoot(
-    root,
-    `${CONTROLLED_LIVE_V4_PROFILE.evidenceDirectory}/${CONTROLLED_LIVE_V4_PROFILE.onceLockLeaf}`,
-  );
-  const target = resolveInsideRoot(root, relativePath);
-  try {
-    await writeExclusive(
-      parent,
-      lockPath,
-      'phase-6.9.5-review-planner-controlled-live-v4-consumed\n',
-    );
-    await writeExclusive(
-      parent,
-      target,
-      serializeEvidence('reserved', blockedSummary()),
-    );
-  } catch (error) {
-    if (isAlreadyExists(error)) {
-      throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_ALREADY_CONSUMED');
-    }
-    throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_RESERVATION_FAILED');
-  }
-
-  let state: EvidenceState = 'reserved';
-  let revision = 0;
-  const replace = async (
-    nextState: 'attempted' | 'finalized',
-    summary: SafeReviewPlannerControlledLiveV4Summary,
-  ) => {
-    let temporary = '';
-    try {
-      const serialized = serializeEvidence(nextState, summary);
-      if (forbiddenEvidenceText.test(serialized)) return false;
-      temporary = `${target}.tmp-${process.pid}-${revision++}`;
-      await writeExclusive(parent, temporary, serialized);
-      await assertBoundParent(parent);
-      await rename(temporary, target);
-      await assertBoundParent(parent);
-      return true;
-    } catch {
-      if (temporary && (await isBoundParent(parent)))
-        await unlink(temporary).catch(() => undefined);
-      return false;
-    }
-  };
-  return Object.freeze({
-    relativePath,
-    async markAttempted() {
-      if (state !== 'reserved') return false;
-      const changed = await replace('attempted', attemptedBaseline());
-      state = changed ? 'attempted' : 'finalized';
-      return changed;
-    },
-    async finalize(summary) {
-      if (state !== 'attempted') return false;
-      const changed = await replace('finalized', summary);
-      if (changed) state = 'finalized';
-      return changed;
-    },
-  });
-}
-
 function blockedSummary(): SafeReviewPlannerControlledLiveV4Summary {
   return safeReviewPlannerControlledLiveV4SummarySchema.parse({
     status: 'diagnostic_blocked',
@@ -307,16 +222,6 @@ function serializeEvidence(
   return `${JSON.stringify({ schemaVersion: CONTROLLED_LIVE_V4_PROFILE.evidenceSchemaVersion, state, ...parsed })}\n`;
 }
 
-async function resolveRoot(root: string) {
-  const resolved = resolve(root);
-  if (process.platform === 'win32') return resolved;
-  try {
-    return await realpath(resolved);
-  } catch {
-    throw new Error('CONTROLLED_LIVE_V4_ROOT_INVALID');
-  }
-}
-
 function buildEvidencePath(startedAt: string, runId: string) {
   const timestamp = new Date(startedAt)
     .toISOString()
@@ -340,133 +245,4 @@ function resolveInsideRoot(root: string, path: string) {
   if (!target.startsWith(`${root}${sep}`))
     throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_OUTSIDE_ROOT');
   return target;
-}
-
-async function ensureDirectory(root: string, relative: string) {
-  let directory = root;
-  for (const component of relative.split('/')) {
-    directory = resolve(directory, component);
-    await mkdir(directory).catch((error: unknown) => {
-      if (!isAlreadyExists(error)) throw error;
-    });
-  }
-  return directory;
-}
-
-async function bindParent(root: string, path: string): Promise<BoundParent> {
-  const metadata = await lstat(path);
-  const realPath = await realpath(path);
-  if (
-    !metadata.isDirectory() ||
-    metadata.isSymbolicLink() ||
-    !realPath.startsWith(`${root}${sep}`)
-  ) {
-    throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_OUTSIDE_ROOT');
-  }
-  return Object.freeze({
-    root,
-    path,
-    realPath,
-    identity: `${metadata.dev}:${metadata.ino}`,
-  });
-}
-
-async function assertBoundParent(parent: BoundParent) {
-  const current = await bindParent(parent.root, parent.path);
-  if (
-    current.realPath !== parent.realPath ||
-    current.identity !== parent.identity
-  ) {
-    throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_PARENT_DRIFT');
-  }
-}
-
-async function isBoundParent(parent: BoundParent) {
-  try {
-    await assertBoundParent(parent);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function writeExclusive(
-  parent: BoundParent,
-  path: string,
-  contents: string,
-) {
-  await assertBoundParent(parent);
-  const handle = await open(path, 'wx');
-  try {
-    // A path check before open is not enough: a junction/rename may land the
-    // new handle elsewhere. Verify both the still-bound parent and handle
-    // identity before a byte is written, then remove only an owned empty file.
-    if (
-      !(await isBoundParent(parent)) ||
-      !(await isOpenedHandleAtPath(handle, path))
-    ) {
-      await removeOwnedOpenedFile(path, handle);
-      throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_PARENT_DRIFT');
-    }
-    await handle.writeFile(contents, 'utf8');
-    await handle.sync();
-    if (
-      !(await isBoundParent(parent)) ||
-      !(await isOpenedHandleAtPath(handle, path))
-    ) {
-      throw new Error('CONTROLLED_LIVE_V4_EVIDENCE_PARENT_DRIFT');
-    }
-  } finally {
-    await handle.close().catch(() => undefined);
-  }
-}
-
-async function isOpenedHandleAtPath(
-  handle: Awaited<ReturnType<typeof open>>,
-  path: string,
-) {
-  try {
-    const opened = await handle.stat();
-    const current = await lstat(path);
-    return (
-      !current.isSymbolicLink() &&
-      `${opened.dev}:${opened.ino}` === `${current.dev}:${current.ino}`
-    );
-  } catch {
-    return false;
-  }
-}
-
-async function removeOwnedOpenedFile(
-  path: string,
-  handle: Awaited<ReturnType<typeof open>>,
-) {
-  let identity: string | null = null;
-  try {
-    const metadata = await handle.stat();
-    identity = `${metadata.dev}:${metadata.ino}`;
-  } catch {
-    return;
-  }
-  await handle.close().catch(() => undefined);
-  try {
-    const current = await lstat(path);
-    if (
-      !current.isSymbolicLink() &&
-      `${current.dev}:${current.ino}` === identity
-    ) {
-      await unlink(path);
-    }
-  } catch {
-    // A path we cannot prove we own is never removed.
-  }
-}
-
-function isAlreadyExists(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === 'EEXIST'
-  );
 }

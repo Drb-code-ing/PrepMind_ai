@@ -2,7 +2,6 @@ import type { StructuredModelExecutor } from '@repo/ai';
 
 const V4_DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 const V4_DEEPSEEK_MODEL = 'deepseek-v4-flash';
-const V4_INVALID_RESPONSE = 'MODEL_AGENT_V4_RESPONSE_INVALID';
 const V4_TRANSPORT_FAILURE = 'MODEL_AGENT_V4_TRANSPORT_FAILED';
 const EXACT_JSON_FENCE = /^```json\n([\s\S]*)\n```$/;
 
@@ -50,11 +49,12 @@ export function createReviewPlannerControlledLiveV4JsonExecutor(
       fetch: dependencies.fetch,
       input,
     });
-    const payload = await readJsonPayload(response);
-    const content = readOnlyCompletionContent(payload);
-    const parsed = parseExactJsonContent(content);
+    const payload = await readJsonPayload(input, response);
+    const content = readOnlyCompletionContent(input, payload);
+    const parsed = parseExactJsonContent(input, content);
     const schema = input.schema.safeParse(parsed);
-    if (!schema.success) throw invalidResponse();
+    if (!schema.success)
+      throwStructuredOutputFailure(input, 'provider_type_validation');
 
     return {
       object: schema.data,
@@ -122,16 +122,20 @@ async function fetchV4Completion(
 }
 
 async function readJsonPayload(
+  input: Parameters<StructuredModelExecutor>[0],
   response: Awaited<ReturnType<ReviewPlannerControlledLiveV4Fetch>>,
 ) {
   try {
     return await response.json();
   } catch {
-    throw invalidResponse();
+    throwStructuredOutputFailure(input, 'provider_json_parse');
   }
 }
 
-function readOnlyCompletionContent(payload: unknown): string {
+function readOnlyCompletionContent(
+  input: Parameters<StructuredModelExecutor>[0],
+  payload: unknown,
+): string {
   try {
     if (!isRecord(payload)) throw new Error();
     const choices: unknown = payload.choices;
@@ -150,24 +154,27 @@ function readOnlyCompletionContent(payload: unknown): string {
     // as a fallback. Only the one canonical content field is eligible.
     return choice.message.content;
   } catch {
-    throw invalidResponse();
+    throwStructuredOutputFailure(input, 'provider_object_missing');
   }
 }
 
-function parseExactJsonContent(content: string): unknown {
+function parseExactJsonContent(
+  input: Parameters<StructuredModelExecutor>[0],
+  content: string,
+): unknown {
   try {
     const candidate = content.startsWith('```')
       ? readExactFencedPayload(content)
       : content;
     return JSON.parse(candidate);
   } catch {
-    throw invalidResponse();
+    throwStructuredOutputFailure(input, 'provider_json_parse');
   }
 }
 
 function readExactFencedPayload(content: string): string {
   const matched = EXACT_JSON_FENCE.exec(content);
-  if (!matched || matched.length !== 2) throw invalidResponse();
+  if (!matched || matched.length !== 2) throw new Error();
   return matched[1];
 }
 
@@ -196,8 +203,27 @@ function isSafeTokenCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
-function invalidResponse() {
-  return new Error(V4_INVALID_RESPONSE);
+function throwStructuredOutputFailure(
+  input: Parameters<StructuredModelExecutor>[0],
+  stage:
+    | 'provider_json_parse'
+    | 'provider_type_validation'
+    | 'provider_object_missing',
+): never {
+  const createSignal = input.createTrustedStructuredOutputFailure;
+  if (typeof createSignal !== 'function') {
+    throw new Error('MODEL_AGENT_V4_STRUCTURED_OUTPUT_SIGNAL_UNAVAILABLE');
+  }
+  let signal: unknown;
+  try {
+    signal = createSignal(stage);
+  } catch {
+    throw new Error('MODEL_AGENT_V4_STRUCTURED_OUTPUT_SIGNAL_UNAVAILABLE');
+  }
+  if (!(signal instanceof Error)) {
+    throw new Error('MODEL_AGENT_V4_STRUCTURED_OUTPUT_SIGNAL_UNAVAILABLE');
+  }
+  throw signal;
 }
 
 function transportFailure() {

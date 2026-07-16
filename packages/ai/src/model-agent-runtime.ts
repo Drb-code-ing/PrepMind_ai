@@ -15,7 +15,10 @@ import type {
   StructuredModelExecutor,
 } from './model-agent-contract.ts';
 import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget.ts';
-import { takeModelAgentProviderFailure } from './model-agent-provider-failure.ts';
+import {
+  createTrustedModelAgentStructuredOutputFailureSignal,
+  takeModelAgentProviderFailure,
+} from './model-agent-provider-failure.ts';
 import {
   createSafeModelAgentError,
   hashModelAgentRunId,
@@ -183,6 +186,11 @@ async function executeLive<T>(
           userPrompt: request.userPrompt,
           maxOutputTokens: request.maxOutputTokens,
           signal: controller.signal,
+          createTrustedStructuredOutputFailure: (stage) =>
+            createTrustedModelAgentStructuredOutputFailureSignal(
+              controller.signal,
+              stage,
+            ),
         }),
         cancellation,
       ]);

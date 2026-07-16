@@ -7,6 +7,9 @@ import {
   TypeValidationError,
 } from 'ai';
 
+import {
+  MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
+} from './model-agent-contract.ts';
 import type {
   ModelAgentProviderFailureCategory,
   ModelAgentStructuredOutputStage,
@@ -43,6 +46,24 @@ export function createTrustedModelAgentProviderFailureSignal(
  */
 export function createUntrustedModelAgentProviderFailureSignal(scope: AbortSignal): Error {
   return createSignal({ category: 'unknown' }, scope);
+}
+
+/**
+ * Private runtime capability for a first-party direct adapter that has already
+ * reduced its own parser/type failure to a fixed stage. The signal retains no
+ * provider-controlled error or response. Unknown stage values fail closed as
+ * ordinary unknown provider failures.
+ */
+export function createTrustedModelAgentStructuredOutputFailureSignal(
+  scope: AbortSignal,
+  stage: unknown,
+): Error {
+  return createSignal(
+    isStructuredOutputStage(stage)
+      ? { category: 'structured_output', structuredOutputStage: stage }
+      : { category: 'unknown' },
+    scope,
+  );
 }
 
 function createSignal(
@@ -146,6 +167,17 @@ function readStructuredOutputCause(error: NoObjectGeneratedError): unknown {
   } catch {
     return undefined;
   }
+}
+
+function isStructuredOutputStage(
+  value: unknown,
+): value is ModelAgentStructuredOutputStage {
+  return (
+    typeof value === 'string' &&
+    MODEL_AGENT_STRUCTURED_OUTPUT_STAGES.includes(
+      value as ModelAgentStructuredOutputStage,
+    )
+  );
 }
 
 function classifyApiCallError(error: APICallError): ModelAgentProviderFailureCategory {

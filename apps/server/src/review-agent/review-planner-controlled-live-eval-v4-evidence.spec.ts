@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,10 +10,10 @@ import {
   safeReviewPlannerControlledLiveV4SummarySchema,
 } from './review-planner-controlled-live-eval-v4-evidence';
 
-const describeNodeEvidence =
-  process.platform === 'win32' ? describe.skip : describe;
+const hasTrustedWindowsDirectoryHandle =
+  process.platform === 'win32' && Boolean(process.versions.bun);
 
-describeNodeEvidence('review planner controlled Live v4 evidence', () => {
+describe('review planner controlled Live v4 evidence', () => {
   let root = '';
 
   beforeEach(async () => {
@@ -53,60 +53,16 @@ describeNodeEvidence('review planner controlled Live v4 evidence', () => {
     ).toThrow();
   });
 
-  it('reserves only the v4 lineage, preserving historical v1-v3 sentinels byte-for-byte', async () => {
-    const historicalFiles = [
-      'docs/acceptance/evidence/phase-6-9-5-controlled-live/v1.json',
-      'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/v2.json',
-      'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/v3.json',
-      '.review-planner-controlled-live.once',
-      '.review-planner-controlled-live-v2.once',
-      '.review-planner-controlled-live-v3.once',
-    ];
-    await Promise.all(
-      historicalFiles.map(async (relativePath) => {
-        const path = join(root, relativePath);
-        const parent = path.slice(
-          0,
-          Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/')),
-        );
-        await mkdir(parent, { recursive: true });
-        await writeFile(path, `historical:${relativePath}`, 'utf8');
-      }),
-    );
-    const before = await Promise.all(
-      historicalFiles.map((relativePath) =>
-        readFile(join(root, relativePath), 'utf8'),
-      ),
-    );
-
-    const reservation = await reserveReviewPlannerControlledLiveV4Evidence({
-      root,
-      startedAt: '2026-07-17T00:00:00.000Z',
-      runId: 'v4-independent-test-run',
-    });
-    await expect(reservation.markAttempted()).resolves.toBe(true);
-    await expect(
-      reservation.finalize({
-        status: 'invalid_attempted',
-        gate: 'closed',
-        providerAttemptCount: 1,
-        usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-        structuredOutputStage: 'provider_object_missing',
-      }),
-    ).resolves.toBe(true);
+  it('fails closed with no writes when the trusted Windows directory-handle boundary is unavailable', async () => {
+    if (hasTrustedWindowsDirectoryHandle) return;
 
     await expect(
-      readFile(join(root, reservation.relativePath), 'utf8'),
-    ).resolves.toContain(
-      'phase-6.9.5-review-planner-controlled-live-evidence-v4',
-    );
-    await expect(
-      Promise.all(
-        historicalFiles.map((relativePath) =>
-          readFile(join(root, relativePath), 'utf8'),
-        ),
-      ),
-    ).resolves.toEqual(before);
+      reserveReviewPlannerControlledLiveV4Evidence({
+        root,
+        startedAt: '2026-07-17T00:00:00.000Z',
+        runId: 'v4-no-dirfd-test-run',
+      }),
+    ).rejects.toThrow('CONTROLLED_LIVE_V4_EVIDENCE_TRUSTED_HANDLE_REQUIRED');
+    await expect(readdir(root)).resolves.toEqual([]);
   });
 });

@@ -6,6 +6,10 @@ import {
   mapV4ControlledLiveStructuredOutputStage,
   validateReviewPlannerControlledLiveV4Preflight,
 } from './review-planner-controlled-live-eval-v4.factory';
+import {
+  createReviewPlannerControlledLiveV4JsonExecutor,
+  type ReviewPlannerControlledLiveV4Fetch,
+} from './review-planner-controlled-live-eval-v4-json';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -75,6 +79,58 @@ describe('review planner controlled Live v4 evaluator', () => {
   });
 
   it.each([
+    {
+      label: 'malformed JSON',
+      content: '{"focusIndexes":[0],"diagnosis": RAW_V4_MALFORMED_JSON_CANARY',
+      structuredOutputStage: 'provider_json_parse' as const,
+    },
+    {
+      label: 'an invalid JSON fence',
+      content:
+        '```JSON\n{"focusIndexes":[0],"diagnosis":"review_pressure","raw":"RAW_V4_FENCE_CANARY"}\n```',
+      structuredOutputStage: 'provider_json_parse' as const,
+    },
+    {
+      label: 'a strict schema mismatch',
+      content: JSON.stringify({
+        focusIndexes: [0],
+        diagnosis: 'review_pressure',
+        raw: 'RAW_V4_SCHEMA_CANARY',
+      }),
+      structuredOutputStage: 'provider_type_validation' as const,
+    },
+  ])(
+    'routes direct JSON %s through the trusted structured-output signal without retaining raw content',
+    async ({ content, structuredOutputStage }) => {
+      const fetch = fakeJsonFetch({
+        choices: [{ message: { content } }],
+        usage: { prompt_tokens: 12, completion_tokens: 4 },
+      });
+      const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
+        createExecutor: (config) =>
+          createReviewPlannerControlledLiveV4JsonExecutor(config, { fetch }),
+        isPricingKnown: () => true,
+      });
+
+      expect(evaluator).toMatchObject({ ok: true });
+      if (!evaluator.ok) throw new Error('expected v4 evaluator');
+
+      const diagnostic = await evaluator.value.runDiagnostic();
+
+      expect(diagnostic).toEqual({
+        status: 'invalid_attempted',
+        canContinue: false,
+        providerAttemptCount: 1,
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+        structuredOutputStage,
+      });
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(diagnostic)).not.toContain('RAW_V4_');
+    },
+  );
+
+  it.each([
     { AI_PROVIDER_MODE: 'mock' },
     { REVIEW_AGENT_MODEL_ENABLED: 'true' },
     { AI_BASE_URL: 'https://api.deepseek.com' },
@@ -113,6 +169,18 @@ describe('review planner controlled Live v4 evaluator', () => {
     ).toBeUndefined();
   });
 });
+
+function fakeJsonFetch(
+  payload: unknown,
+): jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch> {
+  return jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(payload),
+    }),
+  );
+}
 
 function structuredOutputFailure(
   override: Readonly<{ traceCategory?: 'transport' }> = {},
