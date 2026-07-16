@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   lstat,
   mkdir,
@@ -17,7 +18,10 @@ import { join } from 'node:path';
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
 import { executeReviewPlannerControlledLiveCli } from './review-planner-controlled-live-eval-cli';
-import { reserveReviewPlannerControlledLiveEvidence } from './review-planner-controlled-live-eval-evidence';
+import {
+  reserveReviewPlannerControlledLiveEvidence,
+  reserveReviewPlannerControlledLiveV3Evidence,
+} from './review-planner-controlled-live-eval-evidence';
 
 const describeNativeWindows =
   process.platform === 'win32' && Boolean(process.versions.bun)
@@ -79,6 +83,89 @@ describeNativeWindows(
       );
       await expect(readFile(exhaustedV1Marker, 'utf8')).resolves.toBe(
         'phase-6.9.5-controlled-live-consumed\n',
+      );
+    });
+
+    it('binds v3 handle-relative evidence to its own lineage without mutating v1/v2 markers', async () => {
+      const historicalMarkers = [
+        [
+          join(
+            root,
+            'docs',
+            'acceptance',
+            'evidence',
+            'phase-6-9-5-controlled-live',
+            '.review-planner-controlled-live.once',
+          ),
+          'phase-6.9.5-controlled-live-consumed\n',
+        ],
+        [
+          join(
+            root,
+            'docs',
+            'acceptance',
+            'evidence',
+            'phase-6-9-5-controlled-live-v2',
+            '.review-planner-controlled-live-v2.once',
+          ),
+          'phase-6.9.5-controlled-live-v2-consumed\n',
+        ],
+      ] as const;
+      for (const [marker, value] of historicalMarkers) {
+        await mkdir(join(marker, '..'), { recursive: true });
+        await writeFile(marker, value, 'utf8');
+      }
+      const before = await Promise.all(
+        historicalMarkers.map(async ([marker]) =>
+          createHash('sha256')
+            .update(await readFile(marker, 'utf8'))
+            .digest('hex'),
+        ),
+      );
+      let nodePathOpenCalls = 0;
+
+      const reservation = await reserveReviewPlannerControlledLiveV3Evidence({
+        root,
+        startedAt: '2026-07-17T00:00:00.000Z',
+        runId: 'native-v3-isolated-profile-run',
+        fs: {
+          mkdir,
+          readdir,
+          rename,
+          unlink,
+          open(): Promise<never> {
+            nodePathOpenCalls += 1;
+            return Promise.reject(
+              new Error('NODE_PATH_OPEN_MUST_NOT_RUN_ON_WINDOWS'),
+            );
+          },
+        },
+      });
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      await expect(
+        reservation.finalize({
+          status: 'invalid_attempted',
+          gate: 'closed',
+          providerAttemptCount: 1,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+          structuredOutputStage: 'provider_type_validation',
+        }),
+      ).resolves.toBe(true);
+
+      const after = await Promise.all(
+        historicalMarkers.map(async ([marker]) =>
+          createHash('sha256')
+            .update(await readFile(marker, 'utf8'))
+            .digest('hex'),
+        ),
+      );
+      expect(after).toEqual(before);
+      expect(nodePathOpenCalls).toBe(0);
+      await expect(
+        readFile(join(root, reservation.relativePath), 'utf8'),
+      ).resolves.toContain(
+        '"structuredOutputStage":"provider_type_validation"',
       );
     });
 

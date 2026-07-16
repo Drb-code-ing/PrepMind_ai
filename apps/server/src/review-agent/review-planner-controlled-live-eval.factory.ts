@@ -2,9 +2,12 @@ import {
   createModelAgentBudget,
   createModelAgentRuntime,
   createOpenAICompatibleStructuredExecutor,
+  MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
   type ModelAgentErrorCode,
   type ModelAgentProviderFailureCategory,
+  type ModelAgentResult,
   type ModelAgentRuntime,
+  type ModelAgentStructuredOutputStage,
   type OpenAICompatibleExecutorConfig,
   type StructuredModelExecutor,
 } from '@repo/ai';
@@ -22,7 +25,10 @@ import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-c
 const CONTROLLED_LIVE_TIMEOUT_MS = 4_500;
 const CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS = 96;
 const CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS = 32;
-const CONTROLLED_LIVE_PROFILE = 'phase-6.9.5-review-planner-controlled-live-v2';
+const CONTROLLED_LIVE_V2_PROFILE =
+  'phase-6.9.5-review-planner-controlled-live-v2';
+const CONTROLLED_LIVE_V3_PROFILE =
+  'phase-6.9.5-review-planner-controlled-live-v3';
 const CONTROLLED_LIVE_REVIEW_SCHEMA_SYSTEM_PROMPT =
   'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0],"diagnosis":"review_pressure"}. Do not return an acknowledgement, prose, or extra fields.';
 const CONTROLLED_LIVE_REVIEW_SCHEMA_USER_PROMPT =
@@ -34,6 +40,8 @@ export type ControlledLiveDiagnosticResult = Readonly<{
   providerAttemptCount: number;
   usageKnown: boolean;
   diagnosticCode?: ReviewPlannerDiagnosticCode;
+  /** Only a v3 controlled diagnostic may populate this static subcategory. */
+  structuredOutputStage?: ModelAgentStructuredOutputStage;
 }>;
 
 export type ReviewPlannerControlledLiveEvaluator = Readonly<{
@@ -85,6 +93,51 @@ export function createReviewPlannerControlledLiveEvaluator(
   env: Record<string, unknown>,
   overrides: Partial<FactoryDependencies> = {},
 ): ReviewPlannerControlledLiveFactoryResult {
+  return createControlledLiveEvaluator(env, overrides, {
+    id: CONTROLLED_LIVE_V2_PROFILE,
+    exposeStructuredOutputStage: false,
+  });
+}
+
+/**
+ * V3 is a separately named diagnostic profile. It shares only the bounded
+ * executor construction; its stage projection stays within this factory.
+ */
+export function createReviewPlannerControlledLiveV3Evaluator(
+  env: Record<string, unknown>,
+  overrides: Partial<FactoryDependencies> = {},
+): ReviewPlannerControlledLiveFactoryResult {
+  return createControlledLiveEvaluator(env, overrides, {
+    id: CONTROLLED_LIVE_V3_PROFILE,
+    exposeStructuredOutputStage: true,
+  });
+}
+
+/** Checks v3-only configuration without constructing an executor or network lane. */
+export function validateReviewPlannerControlledLiveV3Preflight(
+  env: Record<string, unknown>,
+  overrides: Partial<Pick<FactoryDependencies, 'isPricingKnown'>> = {},
+):
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; diagnosticCode: ReviewPlannerDiagnosticCode }> {
+  const isPricingKnown =
+    overrides.isPricingKnown ?? defaultDependencies.isPricingKnown;
+  return resolveControlledLiveConfig(env, isPricingKnown)
+    ? { ok: true }
+    : {
+        ok: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+      };
+}
+
+function createControlledLiveEvaluator(
+  env: Record<string, unknown>,
+  overrides: Partial<FactoryDependencies>,
+  profile: Readonly<{
+    id: typeof CONTROLLED_LIVE_V2_PROFILE | typeof CONTROLLED_LIVE_V3_PROFILE;
+    exposeStructuredOutputStage: boolean;
+  }>,
+): ReviewPlannerControlledLiveFactoryResult {
   const dependencies = { ...defaultDependencies, ...overrides };
   const config = resolveControlledLiveConfig(env, dependencies.isPricingKnown);
   if (!config) {
@@ -124,13 +177,14 @@ export function createReviewPlannerControlledLiveEvaluator(
     ok: true,
     value: Object.freeze({
       runDiagnostic() {
-        diagnostic ??= runSchemaCanary(runtime, () => attempts);
+        diagnostic ??= runSchemaCanary(runtime, () => attempts, profile);
         return diagnostic;
       },
       async runPairedEvaluation() {
         const canary = await (diagnostic ??= runSchemaCanary(
           runtime,
           () => attempts,
+          profile,
         ));
         if (!canary.canContinue) {
           return {
@@ -190,10 +244,14 @@ export function mapControlledLiveDiagnosticCode(
 async function runSchemaCanary(
   runtime: ModelAgentRuntime,
   readAttempts: () => number,
+  profile: Readonly<{
+    id: typeof CONTROLLED_LIVE_V2_PROFILE | typeof CONTROLLED_LIVE_V3_PROFILE;
+    exposeStructuredOutputStage: boolean;
+  }>,
 ): Promise<ControlledLiveDiagnosticResult> {
   try {
     const result = await runtime.invokeStructured({
-      runId: `${CONTROLLED_LIVE_PROFILE}:review-schema-canary`,
+      runId: `${profile.id}:review-schema-canary`,
       task: 'review_suggestion',
       schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
       systemPrompt: CONTROLLED_LIVE_REVIEW_SCHEMA_SYSTEM_PROMPT,
@@ -208,6 +266,9 @@ async function runSchemaCanary(
     });
     const attemptCount = boundedAttempts(readAttempts());
     if (!result.ok) {
+      const structuredOutputStage = profile.exposeStructuredOutputStage
+        ? mapV3ControlledLiveStructuredOutputStage(result)
+        : undefined;
       return {
         status: 'invalid_attempted',
         canContinue: false,
@@ -217,6 +278,7 @@ async function runSchemaCanary(
           errorCode: result.error.code,
           providerFailureCategory: result.error.providerFailureCategory,
         }),
+        ...(structuredOutputStage ? { structuredOutputStage } : {}),
       };
     }
     const usageKnown = isPositiveUsage(result.usage);
@@ -242,6 +304,35 @@ async function runSchemaCanary(
       usageKnown: false,
       diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
     };
+  }
+}
+
+/**
+ * The only permitted v3 expansion: a fixed private trace stage becomes safe
+ * diagnostic evidence when, and only when, both runtime failure lanes agree.
+ * Production candidate sanitizers, observations, DTOs and traces do not call
+ * this mapper.
+ */
+export function mapV3ControlledLiveStructuredOutputStage(
+  result: ModelAgentResult<unknown>,
+): ModelAgentStructuredOutputStage | undefined {
+  try {
+    if (
+      result.ok ||
+      result.error.code !== 'PROVIDER_ERROR' ||
+      result.error.providerFailureCategory !== 'structured_output' ||
+      result.trace.providerFailureCategory !== 'structured_output'
+    ) {
+      return undefined;
+    }
+    const stage = result.trace.structuredOutputStage;
+    return MODEL_AGENT_STRUCTURED_OUTPUT_STAGES.includes(
+      stage as ModelAgentStructuredOutputStage,
+    )
+      ? stage
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
 

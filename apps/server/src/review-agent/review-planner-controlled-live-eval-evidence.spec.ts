@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   mkdir,
   mkdtemp,
@@ -8,13 +9,17 @@ import {
   rm,
   symlink,
   unlink,
+  writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
-import { reserveReviewPlannerControlledLiveEvidence } from './review-planner-controlled-live-eval-evidence';
+import {
+  reserveReviewPlannerControlledLiveEvidence,
+  reserveReviewPlannerControlledLiveV3Evidence,
+} from './review-planner-controlled-live-eval-evidence';
 
 const describeNodeEvidence =
   process.platform === 'win32' ? describe.skip : describe;
@@ -340,5 +345,76 @@ describeNodeEvidence('review planner controlled Live evidence', () => {
     await expect(
       readFile(join(root, reservation.relativePath), 'utf8'),
     ).resolves.not.toContain('RAW_PROMPT_CANARY');
+  });
+
+  it('reserves v3 below its own directory without changing terminal v1 or v2 artifacts', async () => {
+    const historicalArtifacts = [
+      [
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live/.review-planner-controlled-live.once',
+        'phase-6.9.5-controlled-live-consumed\n',
+      ],
+      [
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live/review-planner-live-20260716T140527344Z-6d06dde23c3c.json',
+        '{"schemaVersion":"phase-6.9.5-review-planner-controlled-live-evidence-v1","state":"finalized"}\n',
+      ],
+      [
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/.review-planner-controlled-live-v2.once',
+        'phase-6.9.5-controlled-live-v2-consumed\n',
+      ],
+      [
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/review-planner-live-20260716T144922378Z-451d4dc8c07a.json',
+        '{"schemaVersion":"phase-6.9.5-review-planner-controlled-live-evidence-v2","state":"finalized"}\n',
+      ],
+    ] as const;
+    const hashes = new Map<string, string>();
+    for (const [relativePath, contents] of historicalArtifacts) {
+      const path = join(root, relativePath);
+      await mkdir(join(path, '..'), { recursive: true });
+      await writeFile(path, contents, 'utf8');
+      hashes.set(
+        relativePath,
+        createHash('sha256').update(contents).digest('hex'),
+      );
+    }
+
+    const reservation = await reserveReviewPlannerControlledLiveV3Evidence({
+      root,
+      startedAt: '2026-07-17T00:00:00.000Z',
+      runId: 'v3-isolation-run',
+    });
+
+    expect(reservation.relativePath).toMatch(
+      /^docs\/acceptance\/evidence\/phase-6-9-5-controlled-live-v3\//,
+    );
+    await expect(reservation.markAttempted()).resolves.toBe(true);
+    await expect(
+      reservation.finalize({
+        status: 'invalid_attempted',
+        gate: 'closed',
+        providerAttemptCount: 1,
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+        structuredOutputStage: 'provider_json_parse',
+      }),
+    ).resolves.toBe(true);
+
+    for (const [relativePath] of historicalArtifacts) {
+      const actual = await readFile(join(root, relativePath), 'utf8');
+      expect(createHash('sha256').update(actual).digest('hex')).toBe(
+        hashes.get(relativePath),
+      );
+    }
+    await expect(
+      readFile(join(root, reservation.relativePath), 'utf8'),
+    ).resolves.toContain('"structuredOutputStage":"provider_json_parse"');
+    await expect(
+      readFile(
+        join(
+          root,
+          'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/.review-planner-controlled-live-v3.once',
+        ),
+        'utf8',
+      ),
+    ).resolves.toContain('v3-consumed');
   });
 });

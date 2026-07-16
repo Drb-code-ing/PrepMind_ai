@@ -1,4 +1,4 @@
-import type { StructuredModelExecutor } from '@repo/ai';
+import type { ModelAgentResult, StructuredModelExecutor } from '@repo/ai';
 
 import {
   REVIEW_MODEL_CANDIDATE_SCHEMA,
@@ -7,6 +7,7 @@ import {
 
 import {
   createReviewPlannerControlledLiveEvaluator,
+  mapV3ControlledLiveStructuredOutputStage,
   mapControlledLiveDiagnosticCode,
 } from './review-planner-controlled-live-eval.factory';
 
@@ -191,4 +192,106 @@ describe('review planner controlled Live evaluator factory', () => {
       } as never),
     ).toBe(ReviewPlannerDiagnosticCode.StructuredOutput);
   });
+
+  it.each([
+    'provider_json_parse',
+    'provider_type_validation',
+    'provider_object_missing',
+  ] as const)(
+    'retains only the trusted structured-output stage %s for the v3 diagnostic mapper',
+    (structuredOutputStage) => {
+      const result = structuredOutputFailure(structuredOutputStage);
+
+      expect(mapV3ControlledLiveStructuredOutputStage(result)).toBe(
+        structuredOutputStage,
+      );
+      expect(
+        JSON.stringify(mapV3ControlledLiveStructuredOutputStage(result)),
+      ).not.toMatch(
+        /RAW_PROVIDER_STAGE_CANARY|api[_-]?key|authorization|cookie|stack/i,
+      );
+    },
+  );
+
+  it.each([
+    [
+      'local schema failure',
+      structuredOutputFailure('provider_json_parse', {
+        errorCode: 'SCHEMA_INVALID',
+      }),
+    ],
+    ['missing trace stage', structuredOutputFailure(undefined)],
+    [
+      'mismatched trace category',
+      structuredOutputFailure('provider_json_parse', {
+        traceCategory: 'transport',
+      }),
+    ],
+    [
+      'mismatched error category',
+      structuredOutputFailure('provider_json_parse', {
+        errorCategory: 'transport',
+      }),
+    ],
+    [
+      'malformed stage',
+      structuredOutputFailure('provider_json_parse_canary' as never),
+    ],
+  ])('does not retain a forged v3 stage for %s', (_label, result) => {
+    expect(mapV3ControlledLiveStructuredOutputStage(result)).toBeUndefined();
+  });
 });
+
+function structuredOutputFailure(
+  stage:
+    | 'provider_json_parse'
+    | 'provider_type_validation'
+    | 'provider_object_missing'
+    | undefined,
+  override: Readonly<{
+    errorCode?: 'SCHEMA_INVALID';
+    errorCategory?: 'transport';
+    traceCategory?: 'transport';
+  }> = {},
+): ModelAgentResult<never> {
+  const errorCode = override.errorCode ?? 'PROVIDER_ERROR';
+  const errorCategory = override.errorCategory ?? 'structured_output';
+  const traceCategory = override.traceCategory ?? 'structured_output';
+  return {
+    ok: false,
+    error: {
+      code: errorCode,
+      message: 'fixed runtime failure',
+      retryable: false,
+      ...(errorCode === 'PROVIDER_ERROR'
+        ? { providerFailureCategory: errorCategory }
+        : {}),
+    },
+    budget: {
+      maxCalls: 1,
+      usedCalls: 1,
+      maxInputTokens: 96,
+      usedInputTokens: 96,
+      maxOutputTokens: 32,
+      usedOutputTokens: 32,
+    },
+    usage: { inputTokens: 0, outputTokens: 0 },
+    trace: {
+      runIdHash:
+        'sha256:0000000000000000000000000000000000000000000000000000000000000000',
+      task: 'review_suggestion',
+      mode: 'live',
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      status: 'failed',
+      inputTokens: 0,
+      outputTokens: 0,
+      maxOutputTokens: 32,
+      durationMs: 1,
+      degraded: true,
+      errorCode,
+      providerFailureCategory: traceCategory,
+      ...(stage ? { structuredOutputStage: stage } : {}),
+    },
+  };
+}

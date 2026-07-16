@@ -21,10 +21,39 @@ import {
 export const REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION =
   'phase-6.9.5-review-planner-controlled-live-evidence-v2' as const;
 
-const EVIDENCE_DIRECTORY =
-  'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2' as const;
-const PHASE_ONCE_LOCK =
-  `${EVIDENCE_DIRECTORY}/.review-planner-controlled-live-v2.once` as const;
+export type ControlledLiveEvidenceProfileDescriptor = Readonly<{
+  id: string;
+  evidenceSchemaVersion: string;
+  evidenceDirectory: string;
+  onceLockLeaf: string;
+}>;
+
+/** Historical terminal descriptor. It is never used as a v3 fallback. */
+export const CONTROLLED_LIVE_V1_PROFILE = Object.freeze({
+  id: 'phase-6.9.5-review-planner-controlled-live-v1',
+  evidenceSchemaVersion:
+    'phase-6.9.5-review-planner-controlled-live-evidence-v1',
+  evidenceDirectory: 'docs/acceptance/evidence/phase-6-9-5-controlled-live',
+  onceLockLeaf: '.review-planner-controlled-live.once',
+} satisfies ControlledLiveEvidenceProfileDescriptor);
+
+/** Historical terminal descriptor retained for the legacy CLI. */
+export const CONTROLLED_LIVE_V2_PROFILE = Object.freeze({
+  id: 'phase-6.9.5-review-planner-controlled-live-v2',
+  evidenceSchemaVersion: REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION,
+  evidenceDirectory: 'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2',
+  onceLockLeaf: '.review-planner-controlled-live-v2.once',
+} satisfies ControlledLiveEvidenceProfileDescriptor);
+
+/** A new one-time lineage; it never opens or resolves a v1/v2 path. */
+export const CONTROLLED_LIVE_V3_PROFILE = Object.freeze({
+  id: 'phase-6.9.5-review-planner-controlled-live-v3',
+  evidenceSchemaVersion:
+    'phase-6.9.5-review-planner-controlled-live-evidence-v3',
+  evidenceDirectory: 'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3',
+  onceLockLeaf: '.review-planner-controlled-live-v3.once',
+} satisfies ControlledLiveEvidenceProfileDescriptor);
+
 const EVIDENCE_FILE_NAME =
   /^review-planner-live-\d{8}T\d{9}Z-[a-f0-9]{12}\.json$/;
 const FORBIDDEN_EVIDENCE_TEXT =
@@ -43,7 +72,7 @@ const controlledDiagnosticCodeSchema = z.enum([
   ReviewPlannerDiagnosticCode.EvidenceIo,
 ]);
 
-export const safeReviewPlannerControlledLiveSummarySchema = z
+const safeControlledLiveSummaryBaseSchema = z
   .object({
     status: z.enum(['complete', 'invalid_attempted', 'diagnostic_blocked']),
     gate: z.enum(['open', 'closed']),
@@ -53,18 +82,84 @@ export const safeReviewPlannerControlledLiveSummarySchema = z
   })
   .strict();
 
-export type SafeReviewPlannerControlledLiveSummary = Readonly<
-  z.infer<typeof safeReviewPlannerControlledLiveSummarySchema>
+/** The v1/v2 contracts are strict and intentionally do not learn v3 fields. */
+export const safeReviewPlannerControlledLiveV1SummarySchema =
+  safeControlledLiveSummaryBaseSchema;
+export const safeReviewPlannerControlledLiveV2SummarySchema =
+  safeControlledLiveSummaryBaseSchema;
+/** Legacy v2 export kept stable for the original controlled-Live CLI. */
+export const safeReviewPlannerControlledLiveSummarySchema =
+  safeReviewPlannerControlledLiveV2SummarySchema;
+
+const controlledLiveV3StructuredOutputStageSchema = z.enum([
+  'provider_json_parse',
+  'provider_type_validation',
+  'provider_object_missing',
+]);
+
+export const safeReviewPlannerControlledLiveV3SummarySchema =
+  safeControlledLiveSummaryBaseSchema
+    .extend({
+      structuredOutputStage:
+        controlledLiveV3StructuredOutputStageSchema.optional(),
+    })
+    .strict()
+    .superRefine((value, context) => {
+      if (value.structuredOutputStage === undefined) return;
+      if (
+        value.status === 'invalid_attempted' &&
+        value.gate === 'closed' &&
+        value.providerAttemptCount === 1 &&
+        value.usageKnown === false &&
+        value.diagnosticCode === ReviewPlannerDiagnosticCode.StructuredOutput
+      ) {
+        return;
+      }
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CONTROLLED_LIVE_V3_STAGE_TUPLE_INVALID',
+      });
+    });
+
+export type SafeReviewPlannerControlledLiveV1Summary = Readonly<
+  z.infer<typeof safeReviewPlannerControlledLiveV1SummarySchema>
+>;
+export type SafeReviewPlannerControlledLiveV2Summary = Readonly<
+  z.infer<typeof safeReviewPlannerControlledLiveV2SummarySchema>
+>;
+export type SafeReviewPlannerControlledLiveV3Summary = Readonly<
+  z.infer<typeof safeReviewPlannerControlledLiveV3SummarySchema>
 >;
 
-const evidenceSchema = safeReviewPlannerControlledLiveSummarySchema
-  .extend({
-    schemaVersion: z.literal(
-      REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION,
-    ),
-    state: z.enum(['reserved', 'attempted', 'finalized']),
-  })
-  .strict();
+export type SafeReviewPlannerControlledLiveSummary = Readonly<
+  z.infer<typeof safeReviewPlannerControlledLiveV2SummarySchema>
+>;
+
+type AnyControlledLiveSummary =
+  | SafeReviewPlannerControlledLiveV1Summary
+  | SafeReviewPlannerControlledLiveV2Summary
+  | SafeReviewPlannerControlledLiveV3Summary;
+
+type ControlledLiveEvidenceProfile<Summary extends AnyControlledLiveSummary> =
+  Readonly<{
+    descriptor: ControlledLiveEvidenceProfileDescriptor;
+    summarySchema: z.ZodType<Summary>;
+    consumedMarkerContents: string;
+  }>;
+
+const CONTROLLED_LIVE_V2_EVIDENCE_PROFILE: ControlledLiveEvidenceProfile<SafeReviewPlannerControlledLiveV2Summary> =
+  Object.freeze({
+    descriptor: CONTROLLED_LIVE_V2_PROFILE,
+    summarySchema: safeReviewPlannerControlledLiveV2SummarySchema,
+    consumedMarkerContents: 'phase-6.9.5-controlled-live-v2-consumed\n',
+  });
+const CONTROLLED_LIVE_V3_EVIDENCE_PROFILE: ControlledLiveEvidenceProfile<SafeReviewPlannerControlledLiveV3Summary> =
+  Object.freeze({
+    descriptor: CONTROLLED_LIVE_V3_PROFILE,
+    summarySchema: safeReviewPlannerControlledLiveV3SummarySchema,
+    consumedMarkerContents:
+      'phase-6.9.5-review-planner-controlled-live-v3-consumed\n',
+  });
 
 type EvidenceState =
   | 'reserved'
@@ -73,10 +168,13 @@ type EvidenceState =
   | 'finalized'
   | 'discarding';
 
-export type ControlledLiveEvidenceReservation = Readonly<{
+export type ControlledLiveEvidenceReservation<
+  Summary extends AnyControlledLiveSummary =
+    SafeReviewPlannerControlledLiveSummary,
+> = Readonly<{
   relativePath: string;
   markAttempted(): Promise<boolean>;
-  finalize(summary: SafeReviewPlannerControlledLiveSummary): Promise<boolean>;
+  finalize(summary: Summary): Promise<boolean>;
   discard(): Promise<boolean>;
 }>;
 
@@ -94,7 +192,6 @@ type EvidenceFs = Readonly<{
 }>;
 
 const nodeFs: EvidenceFs = { mkdir, open, readdir, rename, unlink };
-const EVIDENCE_DIRECTORY_COMPONENTS = EVIDENCE_DIRECTORY.split('/');
 
 /**
  * Creates a single-use evidence record before the first provider boundary.
@@ -108,10 +205,47 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     runId: string;
     fs?: EvidenceFs;
   }>,
-): Promise<ControlledLiveEvidenceReservation> {
+): Promise<
+  ControlledLiveEvidenceReservation<SafeReviewPlannerControlledLiveV2Summary>
+> {
+  return reserveControlledLiveEvidence(
+    input,
+    CONTROLLED_LIVE_V2_EVIDENCE_PROFILE,
+  );
+}
+
+/** Reserves only the independent v3 evidence directory and once marker. */
+export async function reserveReviewPlannerControlledLiveV3Evidence(
+  input: Readonly<{
+    root: string;
+    startedAt: string;
+    runId: string;
+    fs?: EvidenceFs;
+  }>,
+): Promise<
+  ControlledLiveEvidenceReservation<SafeReviewPlannerControlledLiveV3Summary>
+> {
+  return reserveControlledLiveEvidence(
+    input,
+    CONTROLLED_LIVE_V3_EVIDENCE_PROFILE,
+  );
+}
+
+async function reserveControlledLiveEvidence<
+  Summary extends AnyControlledLiveSummary,
+>(
+  input: Readonly<{
+    root: string;
+    startedAt: string;
+    runId: string;
+    fs?: EvidenceFs;
+  }>,
+  profile: ControlledLiveEvidenceProfile<Summary>,
+): Promise<ControlledLiveEvidenceReservation<Summary>> {
   const fs = input.fs ?? nodeFs;
   const root = await resolveEvidenceRoot(input.root);
   const relativePath = buildControlledLiveEvidencePath(
+    profile.descriptor,
     input.startedAt,
     input.runId,
   );
@@ -120,7 +254,10 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     throw new Error('CONTROLLED_LIVE_EVIDENCE_IDENTITY_INVALID');
   }
   const target = resolveInsideRoot(root, relativePath);
-  const evidenceDirectory = resolveInsideRoot(root, EVIDENCE_DIRECTORY);
+  const evidenceDirectory = resolveInsideRoot(
+    root,
+    profile.descriptor.evidenceDirectory,
+  );
   let nativeDirectory: WindowsNoReparseChildDirectory | null = null;
   let parent: EvidenceParentBinding | null = null;
   let nativeClosed = false;
@@ -134,25 +271,33 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     if (isWindowsNativeEvidenceIo()) {
       nativeDirectory = await openWindowsNoReparseDirectory(
         root,
-        EVIDENCE_DIRECTORY_COMPONENTS,
+        profile.descriptor.evidenceDirectory.split('/'),
       );
       await rejectExistingPhaseEvidence(fs, evidenceDirectory);
       await writeNativeEvidenceFile(
         fs,
         nativeDirectory,
         'create',
-        phaseOnceLockLeafName(),
-        'phase-6.9.5-controlled-live-v2-consumed\n',
+        phaseOnceLockLeafName(profile),
+        profile.consumedMarkerContents,
       );
     } else {
-      const ensuredDirectory = await ensureEvidenceDirectory(root, fs);
+      const ensuredDirectory = await ensureEvidenceDirectory(
+        root,
+        fs,
+        profile.descriptor.evidenceDirectory,
+      );
       parent = await bindEvidenceParent(root, ensuredDirectory);
       await rejectExistingPhaseEvidence(fs, ensuredDirectory);
       await assertBoundEvidenceParent(parent);
       await acquirePhaseOnceLock(
         fs,
         parent,
-        resolveInsideRoot(root, PHASE_ONCE_LOCK),
+        resolveInsideRoot(
+          root,
+          `${profile.descriptor.evidenceDirectory}/${profile.descriptor.onceLockLeaf}`,
+        ),
+        profile.consumedMarkerContents,
       );
     }
   } catch (error) {
@@ -169,13 +314,17 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     throw new Error('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
   }
 
-  const initial = buildEvidence('reserved', {
-    status: 'diagnostic_blocked',
-    gate: 'closed',
-    providerAttemptCount: 0,
-    usageKnown: false,
-    diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
-  });
+  const initial = buildEvidence(
+    profile,
+    'reserved',
+    profile.summarySchema.parse({
+      status: 'diagnostic_blocked',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+    }),
+  );
 
   let initialHandle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
@@ -206,12 +355,12 @@ export async function reserveReviewPlannerControlledLiveEvidence(
 
   const replaceEvidence = async (
     nextState: 'attempted' | 'finalized',
-    summary: SafeReviewPlannerControlledLiveSummary,
+    summary: Summary,
   ): Promise<boolean> => {
     let temporary: string | null = null;
     let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
     try {
-      const evidence = buildEvidence(nextState, summary);
+      const evidence = buildEvidence(profile, nextState, summary);
       const serialized = serializeEvidence(evidence);
       if (FORBIDDEN_EVIDENCE_TEXT.test(serialized)) return false;
       const temporarySuffix = revision++;
@@ -260,13 +409,16 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     async markAttempted() {
       return serializeTransition(async () => {
         if (state !== 'reserved') return false;
-        const changed = await replaceEvidence('attempted', {
-          status: 'invalid_attempted',
-          gate: 'closed',
-          providerAttemptCount: 0,
-          usageKnown: false,
-          diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
-        });
+        const changed = await replaceEvidence(
+          'attempted',
+          profile.summarySchema.parse({
+            status: 'invalid_attempted',
+            gate: 'closed',
+            providerAttemptCount: 0,
+            usageKnown: false,
+            diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+          }),
+        );
         state = changed ? 'attempted' : 'discarding';
         if (!changed) closeNativeDirectory();
         return changed;
@@ -321,10 +473,10 @@ function isWindowsNativeEvidenceIo() {
   return process.platform === 'win32';
 }
 
-function phaseOnceLockLeafName() {
-  return (
-    PHASE_ONCE_LOCK.split('/').at(-1) ?? '.review-planner-controlled-live.once'
-  );
+function phaseOnceLockLeafName(
+  profile: ControlledLiveEvidenceProfile<AnyControlledLiveSummary>,
+) {
+  return profile.descriptor.onceLockLeaf;
 }
 
 async function writeNativeEvidenceFile(
@@ -502,9 +654,13 @@ async function removeOwnedOpenedFile(
   }
 }
 
-async function ensureEvidenceDirectory(root: string, fs: EvidenceFs) {
+async function ensureEvidenceDirectory(
+  root: string,
+  fs: EvidenceFs,
+  relativeDirectory: string,
+) {
   let directory = root;
-  for (const component of EVIDENCE_DIRECTORY.split('/')) {
+  for (const component of relativeDirectory.split('/')) {
     directory = resolve(directory, component);
     try {
       await fs.mkdir(directory);
@@ -539,11 +695,12 @@ async function acquirePhaseOnceLock(
   fs: EvidenceFs,
   parent: EvidenceParentBinding,
   lockPath: string,
+  contents: string,
 ) {
   let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
     handle = await openInBoundEvidenceParent(fs, parent, lockPath, 'wx');
-    await handle.writeFile('phase-6.9.5-controlled-live-v2-consumed\n', 'utf8');
+    await handle.writeFile(contents, 'utf8');
     await handle.sync();
   } catch (error) {
     if (handle) await closeQuietly(handle);
@@ -564,31 +721,70 @@ function isAlreadyExists(error: unknown) {
   );
 }
 
-function buildEvidence(
+function buildEvidence<Summary extends AnyControlledLiveSummary>(
+  profile: ControlledLiveEvidenceProfile<Summary>,
   state: 'reserved' | 'attempted' | 'finalized',
-  summary: SafeReviewPlannerControlledLiveSummary,
+  summary: Summary,
 ) {
-  const parsed =
-    safeReviewPlannerControlledLiveSummarySchema.safeParse(summary);
+  const parsed = profile.summarySchema.safeParse(summary);
   if (!parsed.success) throw new Error('CONTROLLED_LIVE_EVIDENCE_INVALID');
-  return evidenceSchema.parse({
-    schemaVersion: REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION,
+  return createEvidenceSchema(profile).parse({
+    schemaVersion: profile.descriptor.evidenceSchemaVersion,
     state,
-    status: parsed.data.status,
-    gate: parsed.data.gate,
-    providerAttemptCount: parsed.data.providerAttemptCount,
-    usageKnown: parsed.data.usageKnown,
-    ...(parsed.data.diagnosticCode
-      ? { diagnosticCode: parsed.data.diagnosticCode }
-      : {}),
+    ...parsed.data,
   });
 }
 
-function serializeEvidence(value: z.infer<typeof evidenceSchema>) {
+function createEvidenceSchema(
+  profile: ControlledLiveEvidenceProfile<AnyControlledLiveSummary>,
+) {
+  return z
+    .object({
+      schemaVersion: z.literal(profile.descriptor.evidenceSchemaVersion),
+      state: z.enum(['reserved', 'attempted', 'finalized']),
+      status: z.enum(['complete', 'invalid_attempted', 'diagnostic_blocked']),
+      gate: z.enum(['open', 'closed']),
+      providerAttemptCount: z.number().int().safe().min(0).max(48),
+      usageKnown: z.boolean(),
+      diagnosticCode: controlledDiagnosticCodeSchema.optional(),
+      ...(profile.descriptor.id === CONTROLLED_LIVE_V3_PROFILE.id
+        ? {
+            structuredOutputStage:
+              controlledLiveV3StructuredOutputStageSchema.optional(),
+          }
+        : {}),
+    })
+    .strict()
+    .superRefine((value, context) => {
+      const summary = {
+        status: value.status,
+        gate: value.gate,
+        providerAttemptCount: value.providerAttemptCount,
+        usageKnown: value.usageKnown,
+        ...(value.diagnosticCode
+          ? { diagnosticCode: value.diagnosticCode }
+          : {}),
+        ...('structuredOutputStage' in value && value.structuredOutputStage
+          ? { structuredOutputStage: value.structuredOutputStage }
+          : {}),
+      };
+      if (profile.summarySchema.safeParse(summary).success) return;
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CONTROLLED_LIVE_EVIDENCE_SUMMARY_INVALID',
+      });
+    });
+}
+
+function serializeEvidence(value: unknown) {
   return `${JSON.stringify(value)}\n`;
 }
 
-function buildControlledLiveEvidencePath(startedAt: string, runId: string) {
+function buildControlledLiveEvidencePath(
+  profile: ControlledLiveEvidenceProfileDescriptor,
+  startedAt: string,
+  runId: string,
+) {
   const timestamp = safeTimestamp(startedAt);
   if (!timestamp || !/^[A-Za-z0-9._:-]{1,120}$/.test(runId)) {
     throw new Error('CONTROLLED_LIVE_EVIDENCE_IDENTITY_INVALID');
@@ -597,7 +793,7 @@ function buildControlledLiveEvidencePath(startedAt: string, runId: string) {
     .update(runId, 'utf8')
     .digest('hex')
     .slice(0, 12);
-  return `${EVIDENCE_DIRECTORY}/review-planner-live-${timestamp}-${digest}.json`;
+  return `${profile.evidenceDirectory}/review-planner-live-${timestamp}-${digest}.json`;
 }
 
 function safeTimestamp(value: string) {
