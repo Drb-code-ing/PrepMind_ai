@@ -305,8 +305,13 @@ export async function reserveReviewPlannerControlledLiveEvidence(
 }
 
 async function resolveEvidenceRoot(root: string) {
+  const resolved = resolve(root);
+  // The Windows native writer binds `resolved` component-by-component from a
+  // drive-root HANDLE. Calling realpath here would silently follow a root or
+  // ancestor junction before that no-reparse boundary exists.
+  if (isWindowsNativeEvidenceIo()) return resolved;
   try {
-    return await realpath(resolve(root));
+    return await realpath(resolved);
   } catch {
     throw new Error('CONTROLLED_LIVE_EVIDENCE_ROOT_INVALID');
   }

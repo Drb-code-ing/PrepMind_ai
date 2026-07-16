@@ -1,4 +1,4 @@
-import { realpath } from 'node:fs/promises';
+import { win32 } from 'node:path';
 
 const BUN_FFI_MODULE = 'bun:ffi';
 const FILE_READ_ATTRIBUTES = 0x00000080;
@@ -76,7 +76,7 @@ export async function openWindowsNoReparseDirectory(
   }
 
   const ffi = await loadBunFfi();
-  let directory = openNativeRoot(ffi, await realpath(root));
+  let directory = openNativeRoot(ffi, root);
   try {
     for (const childName of childNames) {
       directory = openNativeDirectory(directory, childName);
@@ -138,6 +138,13 @@ async function loadBunFfi(): Promise<BunFfi> {
   }
 }
 
+/**
+ * Binds a filesystem path from the drive root downwards. `realpath()` is
+ * intentionally forbidden here: it resolves a root or one of its ancestors
+ * before `OBJ_DONT_REPARSE` can reject that junction. The drive root is the
+ * only trusted Win32 anchor; every user-controlled component is opened from
+ * the previous HANDLE with `OBJ_DONT_REPARSE`.
+ */
 function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
   const kernel = ffi.dlopen('kernel32.dll', {
     CreateFileW: {
@@ -209,7 +216,7 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
       returns: ffi.FFIType.i32,
     },
   });
-  const path = wideString(root);
+  const path = wideString(trustedVolumeAnchor(root));
   const handle = Number(
     kernel.symbols.CreateFileW(
       ffi.ptr(path),
@@ -226,9 +233,18 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
     closeLibraries(kernel, ntdll);
     throw new Error('WINDOWS_REPARSE_SAFE_IO_ROOT_INVALID');
   }
-  const directory = { handle, guardHandles: [], ffi, kernel, ntdll };
+  let directory: WindowsNativeDirectory = {
+    handle,
+    guardHandles: [],
+    ffi,
+    kernel,
+    ntdll,
+  };
   try {
     assertNotReparsePoint(directory);
+    for (const component of nativeRootComponents(root)) {
+      directory = openNativeDirectory(directory, component);
+    }
     return directory;
   } catch (error) {
     closeNativeDirectory(directory);
@@ -488,6 +504,36 @@ function assertNtSuccess(status: number, failureCode: string) {
 
 function isSafeRelativeName(value: string) {
   return /^[A-Za-z0-9._-]{1,240}$/.test(value);
+}
+
+function trustedVolumeAnchor(root: string) {
+  const normalized = win32.normalize(root);
+  const parsed = win32.parse(normalized);
+  if (!/^[A-Za-z]:\\$/.test(parsed.root)) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_ROOT_INVALID');
+  }
+  return parsed.root;
+}
+
+function nativeRootComponents(root: string) {
+  const normalized = win32.normalize(root);
+  const anchor = trustedVolumeAnchor(normalized);
+  const remainder = normalized.slice(anchor.length);
+  const components = remainder.split('\\').filter(Boolean);
+  if (!components.every(isSafeNativePathComponent)) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_ROOT_INVALID');
+  }
+  return components;
+}
+
+function isSafeNativePathComponent(value: string) {
+  return (
+    value.length > 0 &&
+    value.length <= 240 &&
+    value !== '.' &&
+    value !== '..' &&
+    !/[\\/\0]/.test(value)
+  );
 }
 
 function assertSafeLeafName(value: string) {

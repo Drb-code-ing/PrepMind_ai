@@ -23,13 +23,50 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
     await rm(outside, { recursive: true, force: true });
   });
 
-  it('does not create an external residue when docs is swapped for a junction before the relative open', async () => {
-    await rename(join(root, 'docs'), join(root, 'docs-detached'));
-    await symlink(outside, join(root, 'docs'), 'junction');
+  it('blocks a root swapped for a junction before the first handle-relative child open without creating outside files', async () => {
+    const detachedRoot = `${root}-detached`;
+    try {
+      await rename(root, detachedRoot);
+      await symlink(outside, root, 'junction');
 
-    await expect(
-      openWindowsNoReparseChildDirectory(root, 'docs'),
-    ).rejects.toThrow('WINDOWS_REPARSE_POINT_BLOCKED');
-    await expect(readdir(outside)).resolves.toEqual([]);
+      await expect(
+        openWindowsNoReparseChildDirectory(root, 'docs'),
+      ).rejects.toThrow('WINDOWS_REPARSE_POINT_BLOCKED');
+      await expect(readdir(outside)).resolves.toEqual([]);
+    } finally {
+      await rm(detachedRoot, { recursive: true, force: true });
+    }
   });
+
+  it.each(['first', 'second'] as const)(
+    'blocks a swapped %s ancestor while binding the root one HANDLE at a time',
+    async (swappedAncestor) => {
+      const anchor = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-native-anchor-'),
+      );
+      const external = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-native-ancestor-outside-'),
+      );
+      const rootPath = join(anchor, 'first', 'second', 'project');
+      const components = ['first', 'second', 'project'];
+      const swappedPath = join(
+        anchor,
+        ...components.slice(0, components.indexOf(swappedAncestor) + 1),
+      );
+
+      try {
+        await mkdir(join(rootPath, 'docs'), { recursive: true });
+        await rename(swappedPath, `${swappedPath}-detached`);
+        await symlink(external, swappedPath, 'junction');
+
+        await expect(
+          openWindowsNoReparseChildDirectory(rootPath, 'docs'),
+        ).rejects.toThrow('WINDOWS_REPARSE_POINT_BLOCKED');
+        await expect(readdir(external)).resolves.toEqual([]);
+      } finally {
+        await rm(anchor, { recursive: true, force: true });
+        await rm(external, { recursive: true, force: true });
+      }
+    },
+  );
 });

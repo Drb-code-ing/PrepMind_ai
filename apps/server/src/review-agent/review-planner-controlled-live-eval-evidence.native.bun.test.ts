@@ -47,6 +47,41 @@ describeNativeWindows(
       await rm(discardRoot, { recursive: true, force: true });
     });
 
+    it('blocks a root junction before native binding and leaves the outside evidence directory empty', async () => {
+      const swappedRoot = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-native-root-swap-'),
+      );
+      const detachedRoot = `${swappedRoot}-detached`;
+      const evidenceComponents = [
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-controlled-live',
+      ];
+      const outsideEvidence = join(outside, ...evidenceComponents);
+
+      try {
+        await mkdir(join(swappedRoot, ...evidenceComponents), {
+          recursive: true,
+        });
+        await mkdir(outsideEvidence, { recursive: true });
+        await rename(swappedRoot, detachedRoot);
+        await symlink(outside, swappedRoot, 'junction');
+
+        await expect(
+          reserveReviewPlannerControlledLiveEvidence({
+            root: swappedRoot,
+            startedAt: '2026-07-16T00:00:00.000Z',
+            runId: 'native-root-swap-blocked-run',
+          }),
+        ).rejects.toThrow('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
+        await expect(readdir(outsideEvidence)).resolves.toEqual([]);
+      } finally {
+        await rm(swappedRoot, { recursive: true, force: true });
+        await rm(detachedRoot, { recursive: true, force: true });
+      }
+    });
+
     it('keeps reserve, attempted, finalized, and discard writes handle-relative when a junction swap is attempted', async () => {
       const outsideEvidence = join(
         outside,
