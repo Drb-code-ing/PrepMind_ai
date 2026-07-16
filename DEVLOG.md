@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-15
+更新时间：2026-07-16
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 正在把 Router/Verifier 混合模型路径接入生产 Chat，代码任务 1～7 已完成，Docker/controlled-Live/可见浏览器/main 验收待推进。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程，但唯一 controlled-Live 在一次 provider 尝试后返回 `invalid_attempted / structured_output`，两条业务 gate 继续关闭且本阶段不得重试。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,6 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与唯一 controlled-Live；`invalid_attempted / structured_output`、gate 关闭、不得重试 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -69,6 +70,24 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-16 - Phase 6.9.5 Review / Planner 唯一 controlled-Live 终局记录
+
+目标：在不放开 ReviewAgent / PlannerAgent 的事实或写权限前，使用一次 server-only 受控诊断确认真实模型路径是否具备进入后续 48-case 与项目内验收的资格。
+
+为什么：受限 candidate、Mock 和静态门只能证明工程 contract，不能证明 provider 实际 structured output 可用；同时，已发生的 provider 尝试不能被错误记成 zero-call、零成本或模型质量通过。
+
+主要内容与做法：
+
+- 诊断只允许一次精确 `--confirm-controlled-live` 调用，业务 `REVIEW_AGENT_MODEL_ENABLED`、`PLANNER_AGENT_MODEL_ENABLED` 均保持 `false`；模型无权读写用户业务请求或改变本地 merger 的 facts、FSRS、分钟数、链接和任务。
+- 原生 evidence 使用受信目录约束与 once marker。最终文件只保留固定状态、`providerAttemptCount`、`usageKnown`、固定诊断码和 schema version；不写 prompt、用户学习事实、模型输出、API key、endpoint、HTTP metadata、raw error、stack 或 token/cost 数值。
+- 唯一尝试结果为 `invalid_attempted / structured_output`，`providerAttemptCount=1`、`usageKnown=false`、`gate=closed`。这说明存在一次 provider 尝试，但没有可验证 usage，也没有 quality pass 或生产启用结论。
+
+边界：本阶段不重跑诊断、不跑 48-case controlled-Live、不启动 Docker authenticated suggestions/plan 或可见浏览器；不创建合成账号/Trace，因此没有相应清理动作；不执行 main 复验或远程推送。不得删除、替换 once marker 或将失败 evidence 与任何历史 run 拼接。
+
+验收：检查 native evidence 与 marker 只包含允许字段；检查 Nest 默认 gate、Compose 默认投影和文档结论均为关闭。开发测试与 Mock 的既有通过结果仍只证明工程回归，不能覆盖本次 Live 失败。
+
+回顾时可以问：为什么一次 provider 尝试且 `usageKnown=false` 不能按 zero-call 或零成本处理？为什么 `invalid_attempted` 必须停止，而不是直接重试并把后续成功当作同一轮证据？
 
 ### 2026-07-15 - Agent-first 路线、12 组件边界与双博客决策
 

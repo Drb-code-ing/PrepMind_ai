@@ -40,15 +40,32 @@ Worker readiness 的子进程回归改为直接运行 Node + `ts-node` 的实际
 
 这里的 runtime invocation 是本地 Mock contract，不是 provider 调用。Mock 证明固定数据集、strict schema、预算、zero-call、安全降级和报告脱敏能够工作；它不证明真实模型语义质量，也不授权开启任一生产 gate。
 
+## Task 7 唯一 controlled-Live 诊断（终局记录）
+
+唯一一次精确确认的 server-only 诊断已在 2026-07-16 消耗。它不是 48-case 质量评测，也没有开启任一业务生产 gate。原生证据目录中的 once marker 固定为已消耗状态；不得删除、替换或重新运行该诊断来获得第二次尝试。
+
+| 脱敏字段 | 值 |
+| --- | --- |
+| `status` | `invalid_attempted` |
+| `gate` | `closed` |
+| `providerAttemptCount` | `1` |
+| `usageKnown` | `false` |
+| `diagnosticCode` | `structured_output` |
+| `state` | `finalized` |
+
+证据仅保存上述受控状态、schema version 与 once marker；不保存 prompt、用户学习事实、模型输出、API key、provider endpoint、HTTP status/header、原始错误、stack 或 token/cost 数值。`providerAttemptCount=1` 说明本次已发生一次 provider 尝试，`usageKnown=false` 说明不能把零 usage、零成本或任何账单结论伪造为可验证事实。
+
 ## 当前结论与未执行项
 
-- 已完成：无凭据静态门、Mock contract 和文档化的运行边界。
-- 未执行：server-only provider 诊断、唯一一次 controlled-Live、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
-- 当前没有真实模型验收通过结论，没有真实模型质量 decision，也没有项目内 `candidate_applied` 验收。
-- 下一步只能在独立确认进程中运行一次精确的 `--confirm-controlled-live` 诊断；若诊断为 `diagnostic_blocked` 或 `invalid_attempted`，保留固定诊断类别、保持 gate 关闭并停止，不重试。只有诊断可继续时，才可运行一次新的 48-case controlled-Live，并在全部质量、安全、权限、延迟、usage/cost 门通过后进行 Docker 和可见浏览器验收。
+- 已完成：无凭据静态门、Mock contract、受控诊断的原生脱敏 evidence 边界，以及唯一一次诊断尝试的终局留档。
+- 未执行且不得借用本次结果补做：48-case controlled-Live、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
+- 当前没有真实模型质量通过结论、没有项目内 `candidate_applied` 验收，也没有可开启任一 Review/Planner 业务 gate 的授权。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续保持默认 `false`。
+- 本阶段的 controlled-Live 不重试：`invalid_attempted / structured_output` 是固定失败类别，保留 `gate=closed`。任何后续排障都必须先形成新的、零网络的根因设计与评审，不得重跑本次诊断、48-case、Docker 或浏览器验收。
 
 ## 回顾入口
 
 - 为什么 Review/Planner 的模型只能选择索引和枚举，不能生成分钟数或写入任务？
 - 为什么 48/48 Mock strict success 仍然不能称为 Live passed？
 - 为什么 worker readiness 的 CLI 回归要绕开 Bun package-script wrapper？
+- 为什么一次 provider 尝试且 `usageKnown=false` 不能被记为 zero-call、零成本或模型验收通过？
+- 为什么 `invalid_attempted` 后必须保留 once marker 并停止，而不是立即重试？
