@@ -58,6 +58,7 @@ const caseEntrySchema = z.object({
   caseId: caseIdSchema,
   lane: z.enum(['review', 'planner']),
   executionKind: z.enum(['runtime', 'zero_call']),
+  zeroCallVerified: z.boolean(),
   runtimeInvocations: z.union([z.literal(0), z.literal(1)]),
   strictSuccess: z.boolean(),
   qualityPass: z.boolean(),
@@ -135,12 +136,17 @@ export const phase695ReportSchema = reportShapeSchema.superRefine((report, conte
     }
     seen.add(entry.caseId);
     const expectedZeroCall = entry.executionKind === 'zero_call';
-    if ((expectedZeroCall &&
-        (entry.runtimeInvocations !== 0 || !entry.strictSuccess || !entry.qualityPass ||
-         entry.criticalFailure || entry.durationMs !== 0 || entry.usage.inputTokens !== 0 ||
-         entry.usage.outputTokens !== 0 || entry.gate !== 'zero_call' || entry.diagnosticCode !== undefined)) ||
+    const validVerifiedZeroCall = entry.zeroCallVerified &&
+      entry.runtimeInvocations === 0 && entry.strictSuccess && entry.qualityPass &&
+      !entry.criticalFailure && entry.usage.inputTokens === 0 &&
+      entry.usage.outputTokens === 0 && entry.gate === 'zero_call' &&
+      entry.diagnosticCode === undefined;
+    const validRejectedZeroCall = !entry.zeroCallVerified &&
+      !entry.strictSuccess && !entry.qualityPass && !entry.criticalFailure &&
+      entry.gate === 'candidate_rejected' && entry.diagnosticCode !== undefined;
+    if ((expectedZeroCall && !(validVerifiedZeroCall || validRejectedZeroCall)) ||
       (!expectedZeroCall &&
-        (entry.runtimeInvocations > 1 ||
+        (entry.zeroCallVerified || entry.runtimeInvocations > 1 ||
          (entry.runtimeInvocations === 0 &&
           (entry.strictSuccess || entry.qualityPass || entry.gate !== 'candidate_rejected' ||
            entry.diagnosticCode === undefined || entry.usage.inputTokens !== 0 ||
@@ -188,7 +194,7 @@ export const phase695ReportSchema = reportShapeSchema.superRefine((report, conte
 
   if (report.productionDecision !== decideProductionDecision({
     mode: report.mode,
-    zeroCallCases,
+    zeroCallEntries: report.caseEntries.filter((entry) => entry.executionKind === 'zero_call'),
     runtimeEntries,
     metrics: { strictSchemaSuccessRate, semanticQualityRate, criticalFailures, p95DurationMs },
   })) {
@@ -198,12 +204,17 @@ export const phase695ReportSchema = reportShapeSchema.superRefine((report, conte
 
 export function decideProductionDecision(input: {
   mode: 'mock' | 'live';
-  zeroCallCases: number;
+  zeroCallEntries: readonly Pick<Phase695CaseEntry, 'zeroCallVerified'>[];
   runtimeEntries: readonly Pick<Phase695CaseEntry, 'budget' | 'usage'>[];
   metrics: Pick<Phase695Report['metrics'], 'strictSchemaSuccessRate' | 'semanticQualityRate' | 'criticalFailures' | 'p95DurationMs'>;
 }): Phase695ProductionDecision {
   if (input.mode === 'mock') return 'mock_quality_not_evidence';
-  if (input.zeroCallCases !== 26) return 'zero_call_boundary_failed';
+  if (
+    input.zeroCallEntries.length !== 26 ||
+    input.zeroCallEntries.some((entry) => !entry.zeroCallVerified)
+  ) {
+    return 'zero_call_boundary_failed';
+  }
   if (input.runtimeEntries.some((entry) =>
     entry.usage.inputTokens > entry.budget.maxInputTokens ||
     entry.usage.outputTokens > entry.budget.maxOutputTokens ||

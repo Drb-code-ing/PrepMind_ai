@@ -133,9 +133,11 @@ Phase 6.9.4.4 已完成。Task 9 的 Harness Router/Verifier 5/5 均为 `candida
 
 Phase 6.9.5 已完成 ReviewAgent / PlannerAgent 的受限只读候选、owner-scoped server composition、独立预算/超时/安全降级、固定 Mock、受控诊断、Docker 环境边界和前端安全状态的工程准备。本地 merger 始终重建用户 facts、FSRS、分钟数、链接和全部写权限；模型只能选择 snapshot 中的弱点索引、计划 block 排序和策略枚举。v1 暴露本地 probe 与 canonical Review candidate schema 不匹配后，只有在零网络 schema-contract 修复和复审后才创建独立 v2 profile；之后 v3 只在独立零网络设计与复审后，以新的 evidence/marker 安全记录运行时内部阶段；v4 仅在独立的零网络封闭式 JSON 归一化与 stage-provenance 边界复审后创建。v1/v2/v3/v4 均在各一次 provider 尝试后以 `invalid_attempted / structured_output` 终止：各自 `providerAttemptCount=1`、`usageKnown=false`、`gate=closed`，计数不可合并；仅 v3/v4 evidence 额外记录 `structuredOutputStage=provider_json_parse`，该字段不进入业务 API、Trace 或浏览器。原生 evidence 只保存受控摘要、schema version 和各自 once marker，不保存 prompt、用户事实、模型输出、凭据、endpoint、raw error、HTTP metadata 或成本；它们不构成 quality pass、zero-call、零成本或生产可用性证明。48-case Live、Docker authenticated suggestions/plan、可见浏览器、合成账号/Trace 清理、main 复验与远程推送均未执行；四个 once marker 已消耗，不得删除、替换或重跑任一 profile。`REVIEW_AGENT_MODEL_ENABLED=false` 与 `PLANNER_AGENT_MODEL_ENABLED=false` 继续是默认生产状态，项目仍返回确定性只读建议。任何后续根因排查必须先有新的零网络设计与复审，不能把当前失败转化为重试授权。证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`。
 
+2026-07-17 的离线可信度补强把评测数据集升级为 `phase-6.9-review-planner-v2`：26 条 zero-call 必须实际穿过 candidate 安全、资格、预算或 abort guard，runtime counter 为 0 才能标记 `zeroCallVerified=true`；22 条 runtime fixture 覆盖不同诊断、索引、策略和排序。live provider 只有同时返回正安全整数 input/output usage 才可成功；缺失、非法或 `0/0` usage 固定 fail-closed 为 `PROVIDER_ERROR / invalid_response`，保留预留预算并回退。Review/Planner Trace 仅在成功、usage 可验证、定价表完整时写已知估算成本，未知情况不得显示零成本成功。该补强未启动真实模型、Docker 或浏览器，也没有修改 v1--v4 evidence/marker。Qwen Chat v5 仅有独立设计，仍须先具备可审计价格 profile 和独立费用 cap；两个业务 gate 继续默认 `false`。
+
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请基于 Phase 6.9.5 v1/v2/v3/v4 的 `invalid_attempted / structured_output` 关闭证据（v3/v4 为 `provider_json_parse`），先做新的零网络根因设计与复审；不要重跑任一 controlled-Live profile、48-case、Docker 或浏览器验收，也不要提前进入分层记忆系统。”
+下一会话可以问：“请基于已通过静态验证的 `phase-6.9-review-planner-v2` zero-call/telemetry 补强与 Qwen Chat v5 设计，先核实可审计的 Qwen 价格 profile 和费用 cap；在这些前置条件齐备并完成独立复审前，不要启动 v5 Live、48-case、Docker 或浏览器验收，也不要提前进入分层记忆系统。”
 
 ## 常用命令
 

@@ -573,7 +573,7 @@ describe('model agent runtime live mode', () => {
     expect(observedAbort).toBe(true);
   });
 
-  it('normalizes invalid provider usage to zero', async () => {
+  it('fails closed when a live provider reports invalid usage instead of relabeling it as zero', async () => {
     const runtime = liveRuntime({
       executor: async () => ({
         object: { route: 'chat' },
@@ -583,10 +583,45 @@ describe('model agent runtime live mode', () => {
 
     const result = await runtime.invokeStructured(request());
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.error.code);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
     expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
     expect(result.budget.usedCalls).toBe(1);
+  });
+
+  it('fails closed when a live provider omits usage instead of treating it as a reported zero', async () => {
+    const runtime = liveRuntime({
+      executor: async () => ({ object: { route: 'chat' } }),
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
+    expect(result.budget.usedCalls).toBe(1);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it('fails closed when a live provider reports zero usage instead of treating it as metered telemetry', async () => {
+    const runtime = liveRuntime({
+      executor: async () => ({
+        object: { route: 'chat' },
+        usage: { inputTokens: 0, outputTokens: 0 },
+      }),
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
+    expect(result.budget.usedCalls).toBe(1);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
   });
 
   it('keeps the first cancellation reason when timeout and external abort race', async () => {
@@ -737,7 +772,10 @@ function liveRuntime(overrides: Partial<Parameters<typeof createModelAgentRuntim
     model: 'deepseek-test',
     liveCallsEnabled: true,
     timeoutMs: 100,
-    executor: async () => ({ object: { route: 'chat' } }),
+    executor: async () => ({
+      object: { route: 'chat' },
+      usage: { inputTokens: 20, outputTokens: 10 },
+    }),
     ...overrides,
   });
 }

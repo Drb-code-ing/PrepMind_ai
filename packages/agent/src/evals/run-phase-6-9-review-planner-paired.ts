@@ -20,6 +20,7 @@ import {
   PHASE_695_REPORT_SCHEMA_VERSION,
   PHASE_695_SHARED_BUDGET,
   ReviewPlannerDiagnosticCode,
+  decideProductionDecision,
   phase695ReportSchema,
   type Phase695CaseEntry,
   type Phase695Report,
@@ -70,7 +71,6 @@ async function runCase(
   testCase: Phase695ReviewPlannerCase,
   input: RunPhase695ReviewPlannerPairedInput,
 ): Promise<Phase695CaseEntry> {
-  if (testCase.executionKind === 'zero_call') return zeroCallEntry(testCase);
   const fixture = getPhase695CaseFixture(testCase.id);
   if (!fixture) return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
 
@@ -79,6 +79,9 @@ async function runCase(
     : completeLiveDependencies(input.live);
   if (!isSafeDependencies(dependencies)) {
     return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
+  }
+  if (testCase.executionKind === 'zero_call') {
+    return runZeroCallCase(testCase, fixture, dependencies);
   }
 
   const startedAt = readMonotonicNow(dependencies.now);
@@ -270,6 +273,7 @@ function deriveCandidateEntry(input: {
     caseId: input.testCase.id,
     lane: input.testCase.lane,
     executionKind: 'runtime',
+    zeroCallVerified: false,
     runtimeInvocations: provenance.runtimeInvocations,
     strictSuccess,
     qualityPass,
@@ -279,6 +283,54 @@ function deriveCandidateEntry(input: {
     budget: { ...PHASE_695_SHARED_BUDGET },
     gate: strictSuccess && qualityPass ? 'candidate_evaluated' : 'candidate_rejected',
     ...(diagnosticCode ? { diagnosticCode } : {}),
+  };
+}
+
+function deriveZeroCallEntry(input: {
+  testCase: Phase695ReviewPlannerCase;
+  observation: unknown;
+  durationMs: number;
+  runtimeCalls: number;
+}): Phase695CaseEntry {
+  const observation = asObservation(input.observation);
+  const expectedDisposition = expectedZeroCallDisposition(
+    input.testCase.zeroCallGuard,
+  );
+  const runtimeInvocations = boundedRuntimeInvocations(input.runtimeCalls);
+  const expectedBudget = expectedZeroCallBudget(input.testCase.zeroCallGuard);
+  const observedBudget = observation?.budget;
+  const observedUsage = isSafeUsage(observation?.usage)
+    ? observation.usage
+    : zeroUsage();
+  const verified = expectedDisposition !== null &&
+    runtimeInvocations === 0 &&
+    observation?.attempted === false &&
+    observation.disposition === expectedDisposition &&
+    observation.trace === undefined &&
+    observation.traceUnavailable === undefined &&
+    observation.usageUnavailable === undefined &&
+    isModelAgentRunBudget(observedBudget) &&
+    budgetsEqual(observedBudget, expectedBudget) &&
+    observedUsage.inputTokens === 0 &&
+    observedUsage.outputTokens === 0 &&
+    safeReasonCodes(observation.reasonCodes).includes(expectedDisposition);
+
+  return {
+    caseId: input.testCase.id,
+    lane: input.testCase.lane,
+    executionKind: 'zero_call',
+    zeroCallVerified: verified,
+    runtimeInvocations,
+    strictSuccess: verified,
+    qualityPass: verified,
+    criticalFailure: false,
+    durationMs: isSafeInteger(input.durationMs) ? input.durationMs : 0,
+    usage: verified ? zeroUsage() : observedUsage,
+    budget: { ...PHASE_695_SHARED_BUDGET },
+    gate: verified ? 'zero_call' : 'candidate_rejected',
+    ...(verified
+      ? {}
+      : { diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid }),
   };
 }
 
@@ -308,6 +360,7 @@ function deriveRuntimeProvenance(
     return invalidProvenance(ReviewPlannerDiagnosticCode.UsageUnverifiable, boundedCalls);
   }
   const runtimeInvocations = boundedCalls === 1 && budget.usedCalls >= 1 ? 1 : 0;
+  const usageUnavailable = isUsageUnavailableObservation(observation);
   const traceValid = isExpectedTrace(
     trace,
     usage,
@@ -331,10 +384,13 @@ function deriveRuntimeProvenance(
     reasonCodes: safeReasonCodes(observation.reasonCodes),
     diagnosticCode: successful
       ? ReviewPlannerDiagnosticCode.InvalidResponse
-      : !traceValid ? ReviewPlannerDiagnosticCode.StructuredOutput
-      : !usageProvenance ? ReviewPlannerDiagnosticCode.UsageUnverifiable
-        : usageWithinCap ? ReviewPlannerDiagnosticCode.StructuredOutput
-          : ReviewPlannerDiagnosticCode.PreflightInvalid,
+      : usageUnavailable
+        ? ReviewPlannerDiagnosticCode.UsageUnverifiable
+        : !traceValid ? ReviewPlannerDiagnosticCode.StructuredOutput
+          : !usageProvenance
+            ? ReviewPlannerDiagnosticCode.UsageUnverifiable
+            : usageWithinCap ? ReviewPlannerDiagnosticCode.StructuredOutput
+              : ReviewPlannerDiagnosticCode.PreflightInvalid,
   };
 }
 
@@ -406,6 +462,121 @@ function invalidProvenance(
   };
 }
 
+function createCaseBudget(
+  testCase: Phase695ReviewPlannerCase,
+): ModelAgentRunBudget {
+  const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
+  return testCase.zeroCallGuard === 'budget_exhausted'
+    ? { ...budget, usedCalls: budget.maxCalls }
+    : budget;
+}
+
+function expectedZeroCallDisposition(
+  guard: Phase695ReviewPlannerCase['zeroCallGuard'],
+) {
+  switch (guard) {
+    case 'not_eligible':
+      return 'not_eligible';
+    case 'safety_blocked':
+      return 'safety_blocked';
+    case 'budget_exhausted':
+      return 'fallback_budget_exceeded';
+    case 'aborted':
+      return 'fallback_aborted';
+    default:
+      return null;
+  }
+}
+
+async function runZeroCallCase(
+  testCase: Phase695ReviewPlannerCase,
+  fixture: Phase695CaseFixture,
+  dependencies: Required<Phase695LiveDependencies>,
+): Promise<Phase695CaseEntry> {
+  const startedAt = readMonotonicNow(dependencies.now);
+  if (startedAt === null) {
+    return rejectedZeroCallEntry(testCase, 0, ReviewPlannerDiagnosticCode.PreflightInvalid);
+  }
+  const controller = new AbortController();
+  if (testCase.zeroCallGuard === 'aborted') controller.abort();
+  let runtimeCalls = 0;
+  const trackingRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {
+    async invokeStructured(request) {
+      runtimeCalls += 1;
+      return dependencies.runtime.invokeStructured(request);
+    },
+  };
+  try {
+    const budget = createCaseBudget(testCase);
+    const candidate = fixture.lane === 'review'
+      ? await runReviewModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: cloneReviewFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        })
+      : await runPlannerModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: clonePlannerFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        });
+    const finishedAt = readMonotonicNow(dependencies.now);
+    if (finishedAt === null || finishedAt < startedAt) {
+      return rejectedZeroCallEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        ReviewPlannerDiagnosticCode.PreflightInvalid,
+      );
+    }
+    return deriveZeroCallEntry({
+      testCase,
+      observation: candidate.observation,
+      durationMs: finishedAt - startedAt,
+      runtimeCalls,
+    });
+  } catch {
+    return rejectedZeroCallEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      ReviewPlannerDiagnosticCode.Transport,
+    );
+  }
+}
+
+function expectedZeroCallBudget(
+  guard: Phase695ReviewPlannerCase['zeroCallGuard'],
+): ModelAgentRunBudget {
+  const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
+  return guard === 'budget_exhausted'
+    ? { ...budget, usedCalls: budget.maxCalls }
+    : budget;
+}
+
+function budgetsEqual(left: ModelAgentRunBudget, right: ModelAgentRunBudget) {
+  return left.maxCalls === right.maxCalls &&
+    left.usedCalls === right.usedCalls &&
+    left.maxInputTokens === right.maxInputTokens &&
+    left.usedInputTokens === right.usedInputTokens &&
+    left.maxOutputTokens === right.maxOutputTokens &&
+    left.usedOutputTokens === right.usedOutputTokens;
+}
+
+function isUsageUnavailableObservation(observation: CandidateObservation): boolean {
+  try {
+    const trace = observation.trace;
+    return observation.usageUnavailable === true ||
+      (typeof trace === 'object' && trace !== null &&
+        (trace as { errorCode?: unknown }).errorCode === 'PROVIDER_ERROR' &&
+        (trace as { providerFailureCategory?: unknown }).providerFailureCategory ===
+          'invalid_response');
+  } catch {
+    return true;
+  }
+}
+
 function boundedRuntimeInvocations(value: number): 0 | 1 {
   return Number.isSafeInteger(value) && value > 0 ? 1 : 0;
 }
@@ -420,6 +591,7 @@ function rejectedEntry(
     caseId: testCase.id,
     lane: testCase.lane,
     executionKind: 'runtime',
+    zeroCallVerified: false,
     runtimeInvocations,
     strictSuccess: false,
     qualityPass: false,
@@ -432,19 +604,25 @@ function rejectedEntry(
   };
 }
 
-function zeroCallEntry(testCase: Phase695ReviewPlannerCase): Phase695CaseEntry {
+function rejectedZeroCallEntry(
+  testCase: Phase695ReviewPlannerCase,
+  runtimeInvocations: 0 | 1,
+  diagnosticCode: ReviewPlannerDiagnosticCode,
+): Phase695CaseEntry {
   return {
     caseId: testCase.id,
     lane: testCase.lane,
     executionKind: 'zero_call',
-    runtimeInvocations: 0,
-    strictSuccess: true,
-    qualityPass: true,
+    zeroCallVerified: false,
+    runtimeInvocations,
+    strictSuccess: false,
+    qualityPass: false,
     criticalFailure: false,
     durationMs: 0,
     usage: zeroUsage(),
     budget: { ...PHASE_695_SHARED_BUDGET },
-    gate: 'zero_call',
+    gate: 'candidate_rejected',
+    diagnosticCode,
   };
 }
 
@@ -507,9 +685,10 @@ function isSafeInteger(value: unknown): value is number {
 
 function buildReport(mode: 'mock' | 'live', caseEntries: readonly Phase695CaseEntry[]): unknown {
   const runtimeEntries = caseEntries.filter((entry) => entry.executionKind === 'runtime');
+  const zeroCallEntries = caseEntries.filter((entry) => entry.executionKind === 'zero_call');
   const counters = {
     caseEntries: caseEntries.length,
-    zeroCallCases: caseEntries.filter((entry) => entry.executionKind === 'zero_call').length,
+    zeroCallCases: zeroCallEntries.length,
     runtimeInvocations: caseEntries.reduce((total, entry) => total + entry.runtimeInvocations, 0),
     strictSuccesses: caseEntries.filter((entry) => entry.strictSuccess).length,
     qualityPasses: caseEntries.filter((entry) => entry.qualityPass).length,
@@ -525,7 +704,7 @@ function buildReport(mode: 'mock' | 'live', caseEntries: readonly Phase695CaseEn
   } as const;
   const productionDecision = mode === 'mock'
     ? 'mock_quality_not_evidence' as const
-    : decideLiveDecision(counters.zeroCallCases, runtimeEntries, metrics);
+    : decideProductionDecision({ mode, zeroCallEntries, runtimeEntries, metrics });
 
   return {
     schemaVersion: PHASE_695_REPORT_SCHEMA_VERSION,
@@ -536,24 +715,6 @@ function buildReport(mode: 'mock' | 'live', caseEntries: readonly Phase695CaseEn
     metrics,
     productionDecision,
   };
-}
-
-function decideLiveDecision(
-  zeroCallCases: number,
-  runtimeEntries: readonly Phase695CaseEntry[],
-  metrics: Phase695Report['metrics'],
-): Phase695Report['productionDecision'] {
-  if (zeroCallCases !== 26) return 'zero_call_boundary_failed';
-  if (runtimeEntries.some((entry) =>
-    entry.runtimeInvocations > entry.budget.maxCalls ||
-    entry.usage.inputTokens > entry.budget.maxInputTokens ||
-    entry.usage.outputTokens > entry.budget.maxOutputTokens,
-  )) return 'budget_exceeded';
-  if (metrics.strictSchemaSuccessRate !== 1) return 'strict_schema_incomplete';
-  if (metrics.semanticQualityRate < 0.9) return 'semantic_quality_below_threshold';
-  if (metrics.criticalFailures !== 0) return 'critical_failure';
-  if (metrics.p95DurationMs > PHASE_695_CASE_TIMEOUT_MS) return 'latency_budget_exceeded';
-  return 'quality_gate_passed';
 }
 
 function ratio(numerator: number, denominator: number): number {

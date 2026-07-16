@@ -11,6 +11,7 @@ import {
   runPhase695ReviewPlannerPaired,
   type Phase695LiveDependencies,
 } from '../src/evals/run-phase-6-9-review-planner-paired.ts';
+import { getPhase695CaseFixture } from '../src/evals/phase-6-9-review-planner-cases.ts';
 
 describe('phase 6.9 review planner paired runner', () => {
   test('runs Mock without an executor and never presents it as quality evidence', async () => {
@@ -25,6 +26,15 @@ describe('phase 6.9 review planner paired runner', () => {
     });
     expect(report.caseEntries.every((entry) => entry.runtimeInvocations <= 1)).toBe(true);
     expect(report.caseEntries.every((entry) => entry.budget.maxCalls === 2 && entry.budget.maxInputTokens === 1950 && entry.budget.maxOutputTokens === 440)).toBe(true);
+    const zeroCallEntries = report.caseEntries.filter(
+      (entry) => entry.executionKind === 'zero_call',
+    );
+    expect(zeroCallEntries).toHaveLength(26);
+    expect(
+      zeroCallEntries.every(
+        (entry) => entry.zeroCallVerified === true,
+      ),
+    ).toBe(true);
   });
 
   test('derives semantic quality locally instead of trusting a runtime-provided pass flag', async () => {
@@ -46,7 +56,7 @@ describe('phase 6.9 review planner paired runner', () => {
     const report = await runPhase695ReviewPlannerPaired({
       mode: 'live',
       live: {
-        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0], matchFixtures: true }),
         now: () => (now += 4_501),
       },
     });
@@ -139,7 +149,7 @@ describe('phase 6.9 review planner paired runner', () => {
     const setupFailure = await runPhase695ReviewPlannerPaired({
       mode: 'live',
       live: {
-        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0], matchFixtures: true }),
         now: () => 0,
         setTimeout() { throw new Error('timer setup failure'); },
       },
@@ -164,7 +174,7 @@ describe('phase 6.9 review planner paired runner', () => {
     const report = await runPhase695ReviewPlannerPaired({
       mode: 'live',
       live: {
-        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0], matchFixtures: true }),
         now: () => 0,
         setTimeout() { return nextHandle++; },
         clearTimeout(handle) {
@@ -221,6 +231,7 @@ function controlledRuntime(input: {
   inputTokens?: number;
   omitUsage?: boolean;
   invalidObject?: boolean;
+  matchFixtures?: boolean;
 }): Pick<ModelAgentRuntime, 'invokeStructured'> {
   return createModelAgentRuntime({
     mode: 'live',
@@ -228,11 +239,22 @@ function controlledRuntime(input: {
     model: 'phase-695-test',
     liveCallsEnabled: true,
     timeoutMs: 4_500,
-    executor: async ({ schema }) => {
-      const review = { focusIndexes: input.reviewIndexes, diagnosis: 'review_pressure' };
-      const object = input.invalidObject ? { invalid: true } : schema.safeParse(review).success
-        ? review
+    executor: async ({ schema, userPrompt }) => {
+      const fixtureIdentity = /synthetic-(review|plan)-(\d+)-a/.exec(userPrompt);
+      const fixture = input.matchFixtures && fixtureIdentity
+        ? getPhase695CaseFixture(
+            `${fixtureIdentity[1] === 'plan' ? 'planner' : 'review'}_${fixtureIdentity[2]}`,
+          )
+        : null;
+      const review = fixture?.lane === 'review'
+        ? fixture.expected
+        : { focusIndexes: input.reviewIndexes, diagnosis: 'review_pressure' };
+      const planner = fixture?.lane === 'planner'
+        ? fixture.expected
         : { blockOrder: input.plannerIndexes, strategy: 'protect_overdue' };
+      const object = input.invalidObject
+        ? { invalid: true }
+        : fixture?.expected ?? (schema.safeParse(review).success ? review : planner);
       return input.omitUsage
         ? { object }
         : { object, usage: { inputTokens: input.inputTokens ?? 40, outputTokens: 12 } };

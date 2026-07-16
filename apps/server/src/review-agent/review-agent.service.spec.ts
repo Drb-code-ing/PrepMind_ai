@@ -409,6 +409,7 @@ describe('ReviewAgentService', () => {
     const executor: StructuredModelExecutor = () =>
       Promise.resolve({
         object: { unexpected: 'provider text is never returned' },
+        usage: { inputTokens: 20, outputTokens: 6 },
       });
 
     const result = await createService(

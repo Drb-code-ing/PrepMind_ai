@@ -1,4 +1,5 @@
 import type { ModelCandidateObservation } from '@repo/agent/model-candidates';
+import { estimateAiCost } from '@repo/ai';
 import type {
   AgentTraceCreateRequest,
   AgentTraceStatus,
@@ -30,6 +31,7 @@ export function createReviewPlannerTrace(input: {
     { inputTokens: 0, outputTokens: 0 },
   );
   const degraded = [input.review, input.planner].some(isFallback);
+  const cost = estimateTraceCost(traces);
 
   return {
     runId: input.runId,
@@ -43,8 +45,8 @@ export function createReviewPlannerTrace(input: {
     inputTokenEstimate: usage.inputTokens,
     outputTokenEstimate: usage.outputTokens,
     maxOutputTokens: 440,
-    pricingKnown: false,
-    costEstimate: 0,
+    pricingKnown: cost.pricingKnown,
+    costEstimate: cost.totalCostEstimate,
     ragHitCount: 0,
     verifierStatus: 'skipped',
     verifierChunkCount: 0,
@@ -54,6 +56,46 @@ export function createReviewPlannerTrace(input: {
     totalDurationMs: elapsed(input.startedAt, input.finishedAt),
     steps: sequentialSteps(input),
   };
+}
+
+function estimateTraceCost(
+  traces: readonly NonNullable<ReturnType<typeof getTrace>>[],
+) {
+  if (
+    traces.length === 0 ||
+    traces.some(
+      (trace) => trace.status !== 'succeeded' || !hasVerifiedTraceUsage(trace),
+    )
+  ) {
+    return { pricingKnown: false, totalCostEstimate: 0 };
+  }
+  let totalCostEstimate = 0;
+  for (const trace of traces) {
+    const estimate = estimateAiCost({
+      model: trace.model,
+      inputTokens: trace.inputTokens,
+      outputTokens: trace.outputTokens,
+    });
+    if (!estimate.pricingKnown) {
+      return { pricingKnown: false, totalCostEstimate: 0 };
+    }
+    totalCostEstimate += estimate.totalCostEstimate;
+  }
+  return {
+    pricingKnown: true,
+    totalCostEstimate: Math.round(totalCostEstimate * 1_000_000) / 1_000_000,
+  };
+}
+
+function hasVerifiedTraceUsage(
+  trace: NonNullable<ReturnType<typeof getTrace>>,
+) {
+  return (
+    Number.isSafeInteger(trace.inputTokens) &&
+    trace.inputTokens > 0 &&
+    Number.isSafeInteger(trace.outputTokens) &&
+    trace.outputTokens > 0
+  );
 }
 
 function sequentialSteps(

@@ -421,7 +421,18 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(webService).not.toContain('REVIEW_AGENT_MODEL_ENABLED: ${');
     expect(webService).not.toContain('PLANNER_AGENT_MODEL_ENABLED: ${');
 
-    const webEnvironment = resolveWebEnvironmentFromSafeRootFixture();
+    const originalQwenApiKey = process.env.QWEN_API_KEY;
+    process.env.QWEN_API_KEY = 'host_only_qwen_fixture_canary';
+    let environments: ReturnType<
+      typeof resolveWebEnvironmentFromSafeRootFixture
+    >;
+    try {
+      environments = resolveWebEnvironmentFromSafeRootFixture();
+    } finally {
+      if (originalQwenApiKey === undefined) delete process.env.QWEN_API_KEY;
+      else process.env.QWEN_API_KEY = originalQwenApiKey;
+    }
+    const webEnvironment = environments.web;
     for (const forbiddenVariable of [
       'REVIEW_AGENT_MODEL_ENABLED',
       'PLANNER_AGENT_MODEL_ENABLED',
@@ -442,6 +453,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
       NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
       PREPMIND_INTERNAL_API_BASE_URL: 'http://server:3001',
     });
+    expect(environments.server.QWEN_API_KEY).toBe('');
   });
 
   it('keeps the admin Dockerfile aligned with the Bun workspace and Next standalone output', () => {
@@ -569,6 +581,7 @@ function resolveWebEnvironmentFromSafeRootFixture() {
       ],
       {
         cwd: root,
+        env: composeFixtureEnvironment(),
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -577,8 +590,58 @@ function resolveWebEnvironmentFromSafeRootFixture() {
     const resolved = JSON.parse(output) as {
       services?: Record<string, { environment?: Record<string, string> }>;
     };
-    return resolved.services?.web?.environment ?? {};
+    return {
+      web: resolved.services?.web?.environment ?? {},
+      server: resolved.services?.server?.environment ?? {},
+    };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
+
+function composeFixtureEnvironment() {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const name of COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES) {
+    const value = process.env[name];
+    if (value !== undefined) environment[name] = value;
+  }
+  return environment;
+}
+
+const COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES = [
+  'ALLUSERSPROFILE',
+  'APPDATA',
+  'COMSPEC',
+  'ComSpec',
+  'CommonProgramFiles',
+  'CommonProgramFiles(x86)',
+  'CommonProgramW6432',
+  'DOCKER_CONFIG',
+  'HOME',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'LOCALAPPDATA',
+  'NUMBER_OF_PROCESSORS',
+  'OS',
+  'Path',
+  'PATH',
+  'PATHEXT',
+  'PROCESSOR_ARCHITECTURE',
+  'PROCESSOR_ARCHITEW6432',
+  'ProgramData',
+  'PROGRAMDATA',
+  'ProgramFiles',
+  'ProgramFiles(x86)',
+  'ProgramW6432',
+  'SystemDrive',
+  'SystemRoot',
+  'SYSTEMROOT',
+  'TEMP',
+  'TMP',
+  'USERDOMAIN',
+  'USERNAME',
+  'USERPROFILE',
+  'WINDIR',
+  'XDG_CONFIG_HOME',
+  'XDG_RUNTIME_DIR',
+] as const;

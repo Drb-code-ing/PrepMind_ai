@@ -102,7 +102,19 @@ export function createModelAgentRuntime(input: CreateModelAgentRuntimeInput): Mo
             );
           }
           output = liveExecution.result.object;
-          usage = normalizeUsage(liveExecution.result.usage);
+          const verifiedUsage = normalizeUsage(liveExecution.result.usage);
+          if (verifiedUsage === null) {
+            return failure(
+              input,
+              request,
+              reservation.budget,
+              'PROVIDER_ERROR',
+              startedAt,
+              now,
+              'invalid_response',
+            );
+          }
+          usage = verifiedUsage;
         }
       } catch {
         const classification = classifyExecutionError();
@@ -219,15 +231,27 @@ function classifyExecutionError(): {
   };
 }
 
-function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number }): ModelAgentUsage {
-  return {
-    inputTokens: normalizeTokenCount(usage?.inputTokens),
-    outputTokens: normalizeTokenCount(usage?.outputTokens),
-  };
+function normalizeUsage(
+  usage?: { inputTokens?: number; outputTokens?: number },
+): ModelAgentUsage | null {
+  const inputTokens = usage?.inputTokens;
+  const outputTokens = usage?.outputTokens;
+  if (!isVerifiedLiveTokenCount(inputTokens) || !isVerifiedLiveTokenCount(outputTokens)) {
+    return null;
+  }
+  return { inputTokens, outputTokens };
 }
 
-function normalizeTokenCount(value: number | undefined) {
-  return Number.isSafeInteger(value) && (value ?? -1) >= 0 ? (value ?? 0) : 0;
+function isVerifiedLiveTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+function isVerifiedTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function normalizeTokenCount(value: unknown): number {
+  return isVerifiedTokenCount(value) ? value : 0;
 }
 
 function validateRuntimeConfig(input: CreateModelAgentRuntimeInput) {

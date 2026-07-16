@@ -71,6 +71,22 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 离线评测与 telemetry 可信度补强
+
+目标：在不启动任何新的 provider 调用、不改变 Review/Planner 默认业务 gate 的前提下，让后续独立 profile 的 48-case 评测、zero-call 边界和成本 Trace 可以作为可审计证据，而不是由报告字段或 `0/0` usage 冒充成功。
+
+主要内容：
+
+- `phase-6.9-review-planner-v2` 保持 48 条 case（26 条 provider 前 zero-call、22 条 runtime）。26 条 zero-call 现在实际穿过 candidate 入口并覆盖 not-eligible、safety-blocked、budget-exhausted 与 aborted；只有 runtime 计数仍为 0、strict/rubric 均通过且 `zeroCallVerified=true` 才能通过 report contract。意外 runtime 调用固定产生 `zero_call_boundary_failed`，不能再由直接构造的成功记录掩盖。
+- 22 条 runtime fixture 扩展为不同的 Review diagnosis / focus 组合与 Planner strategy / block order，而不是重复同一个弱点或排序夹具。Mock 仍只证明 contract，固定决策仍为 `mock_quality_not_evidence`。
+- `ModelAgentRuntime` 的 live 成功路径现在要求 provider-reported input/output usage 都是正安全整数。缺失、非整数、负数或 `0/0` 统一成为 `PROVIDER_ERROR / invalid_response`，保留调用前已预留预算，并让 Review/Planner 回退本地只读建议；失败结果里的 `0/0` 是固定脱敏失败值，绝不表示已验证的 provider usage 或零费用。
+- Review/Planner Trace 复用集中定价表，但只有全部成功 Trace 具有正安全整数 usage 且每个模型都有已知单价时才标记 `pricingKnown=true` 并写入估算成本。未知单价、失败 Trace 或不可验证 usage 一律显示未知定价和成本 `0`，不回填历史 evidence，也不替代供应商账单。
+- Docker Compose fixture 改为最小 OS 运行环境白名单，而不是克隆再删除部分 `process.env`；host-only `QWEN_API_KEY` canary 证明 Compose 解析全部服务时不会把宿主 Qwen/RAG/JWT 等插值变量带入临时 config。该变更只修复测试隔离，未将 Review/Planner gate、timeout 或凭据投影到 Web/镜像。
+
+验收：未读取或调用任何新的真实模型。fresh Mock artifact 为 `.tmp/phase-6-9-5-v2-mock-20260717T080000Z.json`，结果为 48 entries / 26 verified zero-call / 22 Mock runtime / 48 strict / 48 quality / 0 critical，决策固定为 `mock_quality_not_evidence`。`bun --filter @repo/agent test`、`bun --filter @repo/ai test`、`bun --cwd packages/types typecheck`、`bun --filter @repo/server test -- --runInBand`（89 suites、826 passed、30 skipped）、`bun --filter @repo/server lint`、`bun --filter @repo/web test`（409 passed）、`bun --filter @repo/web lint`、server/web build 与 `git diff --check` 均通过。历史 v1--v4 controlled-Live evidence 和 once marker 完全未改写，两个业务 gate 继续默认 `false`。
+
+回顾时可以问：为什么 zero-call 必须实际穿过 candidate safety gate？为什么 provider 返回 `0/0` usage 不能被解释为零成本成功？为什么集中定价仍不能替代供应商账单？
+
 ### 2026-07-17 - Phase 6.9.5 Review / Planner v4 controlled-Live 关闭记录
 
 目标：在独立的零网络封闭式 JSON 归一化和 stage-provenance 边界复审后，以新的 v4 profile 确认 provider 结构化输出是否能取得进入 48-case 与项目内验收的资格；不扩大模型权限，也不复用任何历史 profile。

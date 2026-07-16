@@ -36,7 +36,16 @@ test('provider config resolution is explicitly server-only', async () => {
 });
 
 test('Docker Web resolved allowlist keeps the server-side live Router and Verifier route config', () => {
-  const env = resolveWebEnvironmentFromSafeRootFixture();
+  const originalQwenApiKey = process.env.QWEN_API_KEY;
+  process.env.QWEN_API_KEY = 'host_only_qwen_fixture_canary';
+  let environments: ReturnType<typeof resolveWebEnvironmentFromSafeRootFixture>;
+  try {
+    environments = resolveWebEnvironmentFromSafeRootFixture();
+  } finally {
+    if (originalQwenApiKey === undefined) delete process.env.QWEN_API_KEY;
+    else process.env.QWEN_API_KEY = originalQwenApiKey;
+  }
+  const env = environments.web;
   const config = resolveChatModelAgentConfig(env);
 
   assert.deepEqual(
@@ -69,6 +78,9 @@ test('Docker Web resolved allowlist keeps the server-side live Router and Verifi
   ]) {
     assert.equal(Object.hasOwn(env, forbiddenVariable), false);
   }
+  assert.equal(env.DEEPSEEK_API_KEY, 'safe_fixture_deepseek_key');
+  assert.equal(env.OPENAI_API_KEY, '');
+  assert.equal(environments.server.QWEN_API_KEY, '');
 });
 
 test('empty environment resolves to the exact safe disabled config', () => {
@@ -433,6 +445,7 @@ function resolveWebEnvironmentFromSafeRootFixture() {
       ['compose', '--env-file', envPath, '-f', composePath, 'config', '--format', 'json'],
       {
         cwd: root,
+        env: composeFixtureEnvironment(),
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -441,8 +454,30 @@ function resolveWebEnvironmentFromSafeRootFixture() {
     const resolved = JSON.parse(output) as {
       services?: Record<string, { environment?: Record<string, string> }>;
     };
-    return resolved.services?.web?.environment ?? {};
+    return {
+      web: resolved.services?.web?.environment ?? {},
+      server: resolved.services?.server?.environment ?? {},
+    };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
+
+function composeFixtureEnvironment() {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const name of COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES) {
+    const value = process.env[name];
+    if (value !== undefined) environment[name] = value;
+  }
+  return environment;
+}
+
+const COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES = [
+  'ALLUSERSPROFILE', 'APPDATA', 'COMSPEC', 'ComSpec', 'CommonProgramFiles',
+  'CommonProgramFiles(x86)', 'CommonProgramW6432', 'DOCKER_CONFIG', 'HOME',
+  'HOMEDRIVE', 'HOMEPATH', 'LOCALAPPDATA', 'NUMBER_OF_PROCESSORS', 'OS',
+  'Path', 'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'PROCESSOR_ARCHITEW6432',
+  'ProgramData', 'PROGRAMDATA', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramW6432',
+  'SystemDrive', 'SystemRoot', 'SYSTEMROOT', 'TEMP', 'TMP', 'USERDOMAIN', 'USERNAME',
+  'USERPROFILE', 'WINDIR', 'XDG_CONFIG_HOME', 'XDG_RUNTIME_DIR',
+] as const;

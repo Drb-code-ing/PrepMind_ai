@@ -198,6 +198,8 @@ ReviewAgent 与 PlannerAgent 的模型路径采用受限混合架构，不是让
 
 每个获批 controlled-Live profile 必须是 server-only、单诊断/单 run、零 retry、原子脱敏 evidence。任一 `diagnostic_blocked`、`invalid_attempted`、质量/安全/权限/延迟/usage/cost 门失败都会保持两个 gate 关闭；不得用 Docker HTTP 成功、浏览器文案或历史证据替代本次语义评测。新 profile 只能在新的零网络根因设计与复审后创建，且不得覆盖、复用或拼接既有 evidence、once marker 或计数。当前 Phase 6.9.5 v1/v2/v3/v4 profile 均为 `invalid_attempted / structured_output`、`gate=closed`、`providerAttemptCount=1`、`usageKnown=false`；v3/v4 仅在各自独立 evidence 记录受信内部阶段 `structuredOutputStage=provider_json_parse`，该字段不进入生产 API、Trace 或浏览器。v4 已在该阶段关闭，不能重试或替代 v1~v3；48-case、Docker 和浏览器验收未执行。两条业务 gate 继续默认 `false`。证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`，不声明真实模型通过。
 
+补充约束：`zero-call` 不是报告中的静态计数。每条 zero-call case 必须实际进入相应 candidate 入口，经过安全扫描、资格、预算或 abort gate，并由 runtime call counter 得到 `0` 才能写入 `zeroCallVerified=true`。任何意外 runtime 调用都必须令生产决策成为 `zero_call_boundary_failed`。Live success 还必须有 provider-reported 的正安全整数 input/output usage；缺失、非法或 `0/0` usage 是 `PROVIDER_ERROR / invalid_response`，保留预留预算并降级，不得标作 candidate applied、known pricing 或 zero cost。Review/Planner Trace 只有在成功 Trace 的 usage 可验证且集中价格表完整时才写入估算成本；这仍不是供应商账单。
+
 ## 8. Reflexion / Critic 验收要求
 
 当改动 RouterAgent、TutorAgent prompt、RAG prompt、KnowledgeVerifierAgent 或 `/api/chat` 输出行为时，除了 mock 单测和必要的 live smoke，还要记录 critic/rubric 结论。

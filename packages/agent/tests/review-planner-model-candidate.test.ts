@@ -418,6 +418,34 @@ describe('review planner model candidates', () => {
     );
   });
 
+  test('falls back when a live runtime omits provider usage instead of applying an unmetered candidate', async () => {
+    const runtime = createModelAgentRuntime({
+      mode: 'live',
+      provider: 'deepseek',
+      model: 'telemetry-required-test',
+      liveCallsEnabled: true,
+      timeoutMs: 500,
+      executor: async () => ({
+        object: { focusIndexes: [1], diagnosis: 'review_pressure' },
+      }),
+    });
+
+    const result = await runReviewModelCandidate({
+      runId: 'review-missing-provider-usage',
+      deterministic: deterministicReview,
+      runtime,
+      budget: sharedBudget(),
+    });
+
+    expect(result.value).toEqual(deterministicReview);
+    expect(result.observation).toMatchObject({
+      attempted: true,
+      disposition: 'fallback_runtime_error',
+      usage: { inputTokens: 0, outputTokens: 0 },
+    });
+    expect(result.observation.disposition).not.toBe('candidate_applied');
+  });
+
   test('isolates the private budget from a hostile runtime before planner reuse', async () => {
     const shared = sharedBudget();
     const hostileRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {

@@ -710,7 +710,11 @@ Review / Planner 的建议页不是 Chat 自动调用入口。先由 JWT owner-s
 1. 先跑 Agent、AI、Server、Web、types 的无凭据静态门；任一失败就停止，不进入诊断或 Live。
 2. 用唯一、尚不存在的 `.tmp/phase-6-9-5-live-diagnostic-mock-<utc>.json` 执行 `bun --filter @repo/agent eval:review-planner -- --mode mock --out <path>`。预期为 48 cases、26 zero-call、48 strict successes 和 `mock_quality_not_evidence`；Mock 不得打开 production gate。
 3. 复核 `main...HEAD`、server/web/worker 的环境 allowlist、owner isolation、zero-call safety、默认 `false` gate、每个批准 profile 的一次 attempt/零 retry 和 evidence 脱敏。不得把 prompt、用户 facts、provider 原文、base URL、key、header、cookie 或 stack 写进报告。
+   - 当前 `phase-6.9-review-planner-v2` 的 26 条 zero-call 不得由报告直接构造，必须实际执行 candidate safety/eligibility/budget/abort guard 并写入 `zeroCallVerified=true`；任一 runtime call 或不一致记录都必须得到 `zero_call_boundary_failed`。
+   - 22 条 runtime case 需要覆盖多个 Review diagnosis / focus 与 Planner strategy / block order。Mock 的 48/48 只证明结构、预算、降级与安全边界，不证明真实模型语义质量。
 4. 只有前三步全部通过，才可在独立进程中用精确确认参数执行一个已批准 profile 的 server-only controlled diagnostic。该 profile 诊断失败时保存固定类别、保持 gate 关闭并停止；禁止用历史 run、该 profile 的重试或 Docker 成功替代诊断结论。若要提出新 profile，必须先有新的零网络根因设计与复审，且 evidence/once marker/计数必须完全隔离。
 5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
 当前 v1/v2/v3/v4 profile 都以 `invalid_attempted / structured_output`、`gate=closed`、`providerAttemptCount=1`、`usageKnown=false` 关闭；v3/v4 的独立 evidence 记录受信内部阶段 `structuredOutputStage=provider_json_parse`。四条 once marker 已消耗，计数不得拼接；v4 不得重试。48-case、Docker 和浏览器验收均未执行且不得借任一 profile 继续；两条业务 gate 继续默认 `false`。本阶段的最新无凭据/Mock/关闭记录见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`；该记录不包含真实模型通过结论，main 合并、main 复验与远程推送仍属于后续收尾任务。
+
+任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。
