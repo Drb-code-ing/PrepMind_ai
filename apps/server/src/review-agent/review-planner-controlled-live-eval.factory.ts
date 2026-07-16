@@ -1,0 +1,276 @@
+import {
+  createModelAgentBudget,
+  createModelAgentRuntime,
+  createOpenAICompatibleStructuredExecutor,
+  type ModelAgentErrorCode,
+  type ModelAgentProviderFailureCategory,
+  type ModelAgentRuntime,
+  type OpenAICompatibleExecutorConfig,
+  type StructuredModelExecutor,
+} from '@repo/ai';
+import {
+  ReviewPlannerDiagnosticCode,
+  REVIEW_MODEL_CANDIDATE_SCHEMA,
+  runPhase695ReviewPlannerPaired,
+  type Phase695Report,
+  type Phase695LiveDependencies,
+} from '@repo/agent';
+
+import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
+
+const CONTROLLED_LIVE_TIMEOUT_MS = 4_500;
+const CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS = 96;
+const CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS = 32;
+
+export type ControlledLiveDiagnosticResult = Readonly<{
+  status: 'complete' | 'invalid_attempted';
+  canContinue: boolean;
+  providerAttemptCount: number;
+  usageKnown: boolean;
+  diagnosticCode?: ReviewPlannerDiagnosticCode;
+}>;
+
+export type ReviewPlannerControlledLiveEvaluator = Readonly<{
+  runDiagnostic(): Promise<ControlledLiveDiagnosticResult>;
+  runPairedEvaluation(): Promise<Phase695Report | null>;
+  providerAttemptCount(): number;
+}>;
+
+export type ReviewPlannerControlledLiveFactoryResult =
+  | Readonly<{
+      ok: true;
+      value: ReviewPlannerControlledLiveEvaluator;
+    }>
+  | Readonly<{
+      ok: false;
+      diagnosticCode: ReviewPlannerDiagnosticCode;
+    }>;
+
+type FactoryDependencies = Readonly<{
+  createExecutor(
+    config: OpenAICompatibleExecutorConfig,
+  ): StructuredModelExecutor;
+  isPricingKnown(model: string): boolean;
+  runPairedEvaluation(input: {
+    mode: 'live';
+    live: Phase695LiveDependencies;
+  }): Promise<Phase695Report>;
+}>;
+
+const defaultDependencies: FactoryDependencies = {
+  createExecutor: createOpenAICompatibleStructuredExecutor,
+  isPricingKnown: (model) => model === 'deepseek-v4-flash',
+  runPairedEvaluation: runPhase695ReviewPlannerPaired,
+};
+
+export function createReviewPlannerControlledLiveEvaluator(
+  env: Record<string, unknown>,
+  overrides: Partial<FactoryDependencies> = {},
+): ReviewPlannerControlledLiveFactoryResult {
+  const dependencies = { ...defaultDependencies, ...overrides };
+  const config = resolveControlledLiveConfig(env, dependencies.isPricingKnown);
+  if (!config) {
+    return {
+      ok: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+    };
+  }
+
+  let executor: StructuredModelExecutor;
+  try {
+    executor = dependencies.createExecutor(config);
+  } catch {
+    return {
+      ok: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.ExecutorInit,
+    };
+  }
+
+  let attempts = 0;
+  const countedExecutor: StructuredModelExecutor = async (input) => {
+    attempts += 1;
+    return executor(input);
+  };
+  const runtime = createModelAgentRuntime({
+    mode: 'live',
+    provider: config.provider,
+    model: config.model,
+    liveCallsEnabled: true,
+    timeoutMs: CONTROLLED_LIVE_TIMEOUT_MS,
+    executor: countedExecutor,
+  });
+  let diagnostic: Promise<ControlledLiveDiagnosticResult> | null = null;
+  let paired: Promise<Phase695Report | null> | null = null;
+
+  return {
+    ok: true,
+    value: Object.freeze({
+      runDiagnostic() {
+        diagnostic ??= runSchemaCanary(runtime, () => attempts);
+        return diagnostic;
+      },
+      async runPairedEvaluation() {
+        const canary = await (diagnostic ??= runSchemaCanary(
+          runtime,
+          () => attempts,
+        ));
+        if (!canary.canContinue) return null;
+        paired ??= runPairedEvaluationSafely(
+          dependencies.runPairedEvaluation,
+          runtime,
+        );
+        return paired;
+      },
+      providerAttemptCount: () => attempts,
+    }),
+  };
+}
+
+export function mapControlledLiveDiagnosticCode(
+  input: Readonly<{
+    errorCode: ModelAgentErrorCode;
+    providerFailureCategory?: ModelAgentProviderFailureCategory;
+  }>,
+): ReviewPlannerDiagnosticCode {
+  if (input.errorCode === 'SCHEMA_INVALID') {
+    return ReviewPlannerDiagnosticCode.StructuredOutput;
+  }
+  if (
+    input.errorCode === 'INVALID_REQUEST' ||
+    input.errorCode === 'INVALID_RUNTIME_CONFIG'
+  ) {
+    return ReviewPlannerDiagnosticCode.PreflightInvalid;
+  }
+  if (input.errorCode === 'PROVIDER_ERROR') {
+    switch (input.providerFailureCategory) {
+      case 'http_auth':
+        return ReviewPlannerDiagnosticCode.HttpAuth;
+      case 'http_rate_limit':
+        return ReviewPlannerDiagnosticCode.HttpRateLimit;
+      case 'http_client':
+        return ReviewPlannerDiagnosticCode.HttpClient;
+      case 'http_server':
+        return ReviewPlannerDiagnosticCode.HttpServer;
+      case 'structured_output':
+        return ReviewPlannerDiagnosticCode.StructuredOutput;
+      case 'invalid_response':
+        return ReviewPlannerDiagnosticCode.InvalidResponse;
+      default:
+        return ReviewPlannerDiagnosticCode.Transport;
+    }
+  }
+  return input.errorCode === 'TIMEOUT' || input.errorCode === 'ABORTED'
+    ? ReviewPlannerDiagnosticCode.Transport
+    : ReviewPlannerDiagnosticCode.InvalidResponse;
+}
+
+async function runSchemaCanary(
+  runtime: ModelAgentRuntime,
+  readAttempts: () => number,
+): Promise<ControlledLiveDiagnosticResult> {
+  try {
+    const result = await runtime.invokeStructured({
+      runId: 'phase-6.9.5-review-planner-schema-canary',
+      task: 'review_suggestion',
+      schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
+      systemPrompt:
+        'Return the fixed schema canary acknowledgement as strict JSON.',
+      userPrompt: '{"probe":"schema_canary_v1"}',
+      estimatedInputTokens: CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS,
+      maxOutputTokens: CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS,
+      budget: createModelAgentBudget({
+        maxCalls: 1,
+        maxInputTokens: CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS,
+        maxOutputTokens: CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS,
+      }),
+    });
+    const attemptCount = boundedAttempts(readAttempts());
+    if (!result.ok) {
+      return {
+        status: 'invalid_attempted',
+        canContinue: false,
+        providerAttemptCount: attemptCount,
+        usageKnown: false,
+        diagnosticCode: mapControlledLiveDiagnosticCode({
+          errorCode: result.error.code,
+          providerFailureCategory: result.error.providerFailureCategory,
+        }),
+      };
+    }
+    const usageKnown = isPositiveUsage(result.usage);
+    return usageKnown
+      ? {
+          status: 'complete',
+          canContinue: true,
+          providerAttemptCount: attemptCount,
+          usageKnown: true,
+        }
+      : {
+          status: 'invalid_attempted',
+          canContinue: false,
+          providerAttemptCount: attemptCount,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+        };
+  } catch {
+    return {
+      status: 'invalid_attempted',
+      canContinue: false,
+      providerAttemptCount: boundedAttempts(readAttempts()),
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+    };
+  }
+}
+
+async function runPairedEvaluationSafely(
+  runPairedEvaluation: FactoryDependencies['runPairedEvaluation'],
+  runtime: ModelAgentRuntime,
+) {
+  try {
+    return await runPairedEvaluation({ mode: 'live', live: { runtime } });
+  } catch {
+    return null;
+  }
+}
+
+function resolveControlledLiveConfig(
+  env: Record<string, unknown>,
+  isPricingKnown: (model: string) => boolean,
+): OpenAICompatibleExecutorConfig | null {
+  if (
+    asStrictBoolean(env.REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_ENABLED) !== true ||
+    asStrictBoolean(env.REVIEW_AGENT_MODEL_ENABLED) !== false ||
+    asStrictBoolean(env.PLANNER_AGENT_MODEL_ENABLED) !== false
+  ) {
+    return null;
+  }
+  const config = resolveReviewPlannerLiveExecutorConfig(env);
+  if (
+    !config ||
+    config.provider !== 'deepseek' ||
+    !isPricingKnown(config.model)
+  ) {
+    return null;
+  }
+  return config;
+}
+
+function asStrictBoolean(value: unknown): boolean | null {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return null;
+}
+
+function isPositiveUsage(value: { inputTokens: number; outputTokens: number }) {
+  return (
+    Number.isSafeInteger(value.inputTokens) &&
+    value.inputTokens > 0 &&
+    Number.isSafeInteger(value.outputTokens) &&
+    value.outputTokens > 0
+  );
+}
+
+function boundedAttempts(value: number) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= 48 ? value : 0;
+}

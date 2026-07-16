@@ -6,6 +6,8 @@ import * as productionModelCandidates from '@repo/agent/model-candidates';
 
 const EXPECTED_RUNTIME_EXPORTS = [
   'MODEL_CANDIDATE_DISPOSITIONS',
+  'PLANNER_MODEL_CANDIDATE_SCHEMA',
+  'REVIEW_MODEL_CANDIDATE_SCHEMA',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
   'isKnowledgeVerifierModelEligible',

@@ -9,6 +9,8 @@ export {
   type KnowledgeVerifierModelCandidateInput,
 } from './knowledge-verifier-model-candidate.ts';
 export {
+  PLANNER_MODEL_CANDIDATE_SCHEMA,
+  REVIEW_MODEL_CANDIDATE_SCHEMA,
   runPlannerModelCandidate,
   runReviewModelCandidate,
   type PlannerModelCandidateEnvelope,

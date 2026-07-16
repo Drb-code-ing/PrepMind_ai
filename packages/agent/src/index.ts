@@ -16,6 +16,8 @@ export * from './nodes/review.ts';
 export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
 export {
+  PLANNER_MODEL_CANDIDATE_SCHEMA,
+  REVIEW_MODEL_CANDIDATE_SCHEMA,
   runPlannerModelCandidate,
   runReviewModelCandidate,
   type PlannerModelCandidateEnvelope,
