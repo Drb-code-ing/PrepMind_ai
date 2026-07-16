@@ -1,6 +1,7 @@
 import {
   createModelAgentBudget,
   createModelAgentRuntime,
+  hashModelAgentRunId,
   isModelAgentRunBudget,
   type ModelAgentRunBudget,
   type ModelAgentRuntime,
@@ -85,43 +86,111 @@ async function runCase(
     return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
   }
   const controller = new AbortController();
-  const timeout = dependencies.setTimeout(
-    () => controller.abort(),
-    PHASE_695_CASE_TIMEOUT_MS,
-  );
+  let runtimeCalls = 0;
+  const trackingRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {
+    async invokeStructured(request) {
+      runtimeCalls += 1;
+      return dependencies.runtime.invokeStructured(request);
+    },
+  };
+  let timeout: unknown;
+  let clearTimer: (() => boolean) | null = null;
+  let timerCleared = false;
   try {
+    let resolveTimeout: ((value: 'timeout') => void) | null = null;
+    const timeoutReached = new Promise<'timeout'>((resolve) => {
+      resolveTimeout = resolve;
+    });
+    timeout = dependencies.setTimeout(() => {
+      try {
+        controller.abort();
+      } catch {
+        // Abort transport errors are collapsed into the fixed timeout outcome.
+      }
+      resolveTimeout?.('timeout');
+    }, PHASE_695_CASE_TIMEOUT_MS);
+    clearTimer = () => {
+      if (timerCleared) return true;
+      timerCleared = true;
+      try {
+        dependencies.clearTimeout(timeout);
+        return true;
+      } catch {
+        return false;
+      }
+    };
     const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
-    const envelope = fixture.lane === 'review'
-      ? await runReviewModelCandidate({
+    const candidate = fixture.lane === 'review'
+      ? runReviewModelCandidate({
           runId: `phase-695:${testCase.id}`,
           deterministic: cloneReviewFixture(fixture.deterministic),
-          runtime: dependencies.runtime,
+          runtime: trackingRuntime,
           budget,
           signal: controller.signal,
         })
-      : await runPlannerModelCandidate({
+      : runPlannerModelCandidate({
           runId: `phase-695:${testCase.id}`,
           deterministic: clonePlannerFixture(fixture.deterministic),
-          runtime: dependencies.runtime,
+          runtime: trackingRuntime,
           budget,
           signal: controller.signal,
         });
+    const envelope = await Promise.race([
+      Promise.resolve(candidate).then(
+        (value) => ({ kind: 'candidate' as const, value }),
+        () => ({ kind: 'candidate_rejected' as const }),
+      ),
+      timeoutReached.then(() => ({ kind: 'timeout' as const })),
+    ]);
+    if (envelope.kind === 'timeout') {
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.Transport,
+      );
+    }
+    if (envelope.kind === 'candidate_rejected') {
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.Transport,
+      );
+    }
     const finishedAt = readMonotonicNow(dependencies.now);
     if (finishedAt === null || finishedAt < startedAt) {
-      return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.PreflightInvalid,
+      );
     }
-    return deriveCandidateEntry({
+    const entry = deriveCandidateEntry({
       testCase,
       fixture,
-      value: envelope.value,
-      observation: envelope.observation,
+      value: envelope.value.value,
+      observation: envelope.value.observation,
       expectedMode: input.mode,
       durationMs: finishedAt - startedAt,
+      runtimeCalls,
     });
+    return clearTimer() ? entry : rejectedEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      zeroUsage(),
+      ReviewPlannerDiagnosticCode.PreflightInvalid,
+    );
   } catch {
-    return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.Transport);
+    return rejectedEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      zeroUsage(),
+      ReviewPlannerDiagnosticCode.Transport,
+    );
   } finally {
-    dependencies.clearTimeout(timeout);
+    if (clearTimer) clearTimer();
   }
 }
 
@@ -182,8 +251,15 @@ function deriveCandidateEntry(input: {
   observation: unknown;
   expectedMode: 'mock' | 'live';
   durationMs: number;
+  runtimeCalls: number;
 }): Phase695CaseEntry {
-  const provenance = deriveRuntimeProvenance(input.observation, input.expectedMode);
+  const provenance = deriveRuntimeProvenance(
+    input.observation,
+    input.expectedMode,
+    input.fixture.lane === 'review' ? 'review_suggestion' : 'planner_suggestion',
+    hashModelAgentRunId(`phase-695:${input.testCase.id}`),
+    input.runtimeCalls,
+  );
   const strictSuccess = provenance.ok && provenance.disposition === 'candidate_applied';
   const qualityPass = strictSuccess && passesLocalRubric(input.fixture, input.value, provenance.reasonCodes);
   const diagnosticCode = strictSuccess
@@ -209,6 +285,9 @@ function deriveCandidateEntry(input: {
 function deriveRuntimeProvenance(
   raw: unknown,
   expectedMode: 'mock' | 'live',
+  expectedTask: 'review_suggestion' | 'planner_suggestion',
+  expectedRunIdHash: string,
+  runtimeCalls: number,
 ): Readonly<{
   ok: boolean;
   disposition: string | null;
@@ -218,24 +297,32 @@ function deriveRuntimeProvenance(
   diagnosticCode: ReviewPlannerDiagnosticCode;
 }> {
   const observation = asObservation(raw);
+  const boundedCalls = boundedRuntimeInvocations(runtimeCalls);
   if (!observation || observation.attempted !== true) {
-    return invalidProvenance(ReviewPlannerDiagnosticCode.InvalidResponse);
+    return invalidProvenance(ReviewPlannerDiagnosticCode.InvalidResponse, boundedCalls);
   }
   const budget = observation.budget;
   const usage = observation.usage;
   const trace = observation.trace;
-  if (!isExpectedBudget(budget) || !isSafeUsage(usage) || !isExpectedTrace(trace, usage, expectedMode)) {
-    return invalidProvenance(ReviewPlannerDiagnosticCode.UsageUnverifiable);
+  if (!isTrackedBudget(budget) || !isSafeUsage(usage)) {
+    return invalidProvenance(ReviewPlannerDiagnosticCode.UsageUnverifiable, boundedCalls);
   }
-  const runtimeInvocations = budget.usedCalls === 1 ? 1 : 0;
+  const runtimeInvocations = boundedCalls === 1 && budget.usedCalls >= 1 ? 1 : 0;
+  const traceValid = isExpectedTrace(
+    trace,
+    usage,
+    expectedMode,
+    expectedTask,
+    expectedRunIdHash,
+  );
   const usageWithinCap = usage.inputTokens <= budget.maxInputTokens &&
     usage.outputTokens <= budget.maxOutputTokens;
   const usageProvenance = expectedMode === 'mock' ||
     usage.inputTokens > 0 || usage.outputTokens > 0;
   const successful = observation.disposition === 'candidate_applied' &&
-    trace.status === 'succeeded' && !trace.degraded &&
+    traceValid &&
     observation.traceUnavailable === undefined && observation.usageUnavailable === undefined &&
-    runtimeInvocations === 1 && usageWithinCap && usageProvenance;
+    runtimeInvocations === 1 && budget.usedCalls === 1 && usageWithinCap && usageProvenance;
   return {
     ok: successful,
     disposition: typeof observation.disposition === 'string' ? observation.disposition : null,
@@ -244,6 +331,7 @@ function deriveRuntimeProvenance(
     reasonCodes: safeReasonCodes(observation.reasonCodes),
     diagnosticCode: successful
       ? ReviewPlannerDiagnosticCode.InvalidResponse
+      : !traceValid ? ReviewPlannerDiagnosticCode.StructuredOutput
       : !usageProvenance ? ReviewPlannerDiagnosticCode.UsageUnverifiable
         : usageWithinCap ? ReviewPlannerDiagnosticCode.StructuredOutput
           : ReviewPlannerDiagnosticCode.PreflightInvalid,
@@ -271,12 +359,12 @@ function asObservation(value: unknown): CandidateObservation | null {
   return typeof value === 'object' && value !== null ? value : null;
 }
 
-function isExpectedBudget(value: unknown): value is ModelAgentRunBudget {
+function isTrackedBudget(value: unknown): value is ModelAgentRunBudget {
   return isModelAgentRunBudget(value) &&
     value.maxCalls === PHASE_695_SHARED_BUDGET.maxCalls &&
     value.maxInputTokens === PHASE_695_SHARED_BUDGET.maxInputTokens &&
     value.maxOutputTokens === PHASE_695_SHARED_BUDGET.maxOutputTokens &&
-    value.usedCalls === 1;
+    value.usedCalls <= 1;
 }
 
 function isSafeUsage(value: unknown): value is ModelAgentUsage {
@@ -289,10 +377,12 @@ function isExpectedTrace(
   value: unknown,
   usage: ModelAgentUsage,
   expectedMode: 'mock' | 'live',
+  expectedTask: 'review_suggestion' | 'planner_suggestion',
+  expectedRunIdHash: string,
 ): value is Readonly<{ task: 'review_suggestion' | 'planner_suggestion'; mode: 'mock' | 'live'; status: 'succeeded'; degraded: false; inputTokens: number; outputTokens: number; maxOutputTokens: number }> {
   if (typeof value !== 'object' || value === null) return false;
   const trace = value as Record<string, unknown>;
-  return (trace.task === 'review_suggestion' || trace.task === 'planner_suggestion') &&
+  return trace.task === expectedTask && trace.runIdHash === expectedRunIdHash &&
     trace.mode === expectedMode && trace.status === 'succeeded' && trace.degraded === false &&
     trace.inputTokens === usage.inputTokens && trace.outputTokens === usage.outputTokens &&
     isSafeInteger(trace.maxOutputTokens) && trace.maxOutputTokens <= PHASE_695_SHARED_BUDGET.maxOutputTokens;
@@ -302,15 +392,22 @@ function safeReasonCodes(value: unknown): readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string') ? [...value] : [];
 }
 
-function invalidProvenance(diagnosticCode: ReviewPlannerDiagnosticCode) {
+function invalidProvenance(
+  diagnosticCode: ReviewPlannerDiagnosticCode,
+  runtimeInvocations: 0 | 1 = 0,
+) {
   return {
     ok: false,
     disposition: null,
-    runtimeInvocations: 0 as const,
+    runtimeInvocations,
     usage: zeroUsage(),
     reasonCodes: [],
     diagnosticCode,
   };
+}
+
+function boundedRuntimeInvocations(value: number): 0 | 1 {
+  return Number.isSafeInteger(value) && value > 0 ? 1 : 0;
 }
 
 function rejectedEntry(

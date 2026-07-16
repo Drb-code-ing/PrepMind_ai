@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   createModelAgentRuntime,
+  reserveModelAgentBudget,
+  type ModelAgentRequest,
   type ModelAgentRuntime,
 } from '@repo/ai';
 
@@ -89,6 +91,108 @@ describe('phase 6.9 review planner paired runner', () => {
       .every((entry) => entry.diagnosticCode === 'usage_unverifiable')).toBe(true);
   });
 
+  test('records a schema-invalid attempted runtime call instead of recasting it as zero-call', async () => {
+    const report = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: { runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0], invalidObject: true }), now: () => 0 },
+    });
+
+    const runtimeEntries = report.caseEntries.filter((entry) => entry.executionKind === 'runtime');
+    expect(runtimeEntries.every((entry) => entry.runtimeInvocations === 1)).toBe(true);
+    expect(runtimeEntries.every((entry) => entry.strictSuccess === false)).toBe(true);
+    expect(runtimeEntries.every((entry) =>
+      entry.usage.inputTokens === 0 && entry.usage.outputTokens === 0 &&
+      entry.diagnosticCode === 'structured_output',
+    )).toBe(true);
+    expect(report.counters).toMatchObject({
+      runtimeInvocations: 22,
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+  });
+
+  test('forces an abort-ignoring runtime to settle at the 4500ms runner timeout', async () => {
+    let triggerTimeout: (() => void) | undefined;
+    const report = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: {
+        runtime: {
+          async invokeStructured() {
+            triggerTimeout?.();
+            return new Promise<never>(() => undefined);
+          },
+        },
+        now: () => 0,
+        setTimeout(callback) {
+          triggerTimeout = callback;
+          return 1;
+        },
+        clearTimeout() {},
+      },
+    });
+
+    expect(report.productionDecision).not.toBe('quality_gate_passed');
+    expect(report.counters.runtimeInvocations).toBe(22);
+  }, 1_000);
+
+  test('fails closed when timer setup or cleanup throws', async () => {
+    const setupFailure = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: {
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        now: () => 0,
+        setTimeout() { throw new Error('timer setup failure'); },
+      },
+    });
+    const cleanupFailure = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: {
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        now: () => 0,
+        clearTimeout() { throw new Error('timer cleanup failure'); },
+      },
+    });
+
+    expect(setupFailure.productionDecision).not.toBe('quality_gate_passed');
+    expect(cleanupFailure.productionDecision).not.toBe('quality_gate_passed');
+  });
+
+  test('cleans each completed runtime timer once without manufacturing a cleanup failure', async () => {
+    const clearedHandles = new Set<number>();
+    let nextHandle = 0;
+    let clearAttempts = 0;
+    const report = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: {
+        runtime: controlledRuntime({ reviewIndexes: [1], plannerIndexes: [1, 0] }),
+        now: () => 0,
+        setTimeout() { return nextHandle++; },
+        clearTimeout(handle) {
+          clearAttempts += 1;
+          if (typeof handle !== 'number' || clearedHandles.has(handle)) {
+            throw new Error('timer cleared more than once');
+          }
+          clearedHandles.add(handle);
+        },
+      },
+    });
+
+    expect(clearedHandles.size).toBe(22);
+    expect(clearAttempts).toBe(22);
+    expect(report.productionDecision).toBe('quality_gate_passed');
+  });
+
+  test('rejects a type-correct controlled runtime with a forged trace run identity', async () => {
+    const report = await runPhase695ReviewPlannerPaired({
+      mode: 'live',
+      live: { runtime: forgedButTypeCorrectRuntime(), now: () => 0 },
+    });
+
+    expect(report.productionDecision).not.toBe('quality_gate_passed');
+    expect(report.caseEntries.filter((entry) => entry.executionKind === 'runtime')
+      .every((entry) => entry.strictSuccess === false)).toBe(true);
+  });
+
   test('passes a 4500ms abort signal and closes when the timed candidate is aborted', async () => {
     let scheduledMs = 0;
     const report = await runPhase695ReviewPlannerPaired({
@@ -116,6 +220,7 @@ function controlledRuntime(input: {
   plannerIndexes: number[];
   inputTokens?: number;
   omitUsage?: boolean;
+  invalidObject?: boolean;
 }): Pick<ModelAgentRuntime, 'invokeStructured'> {
   return createModelAgentRuntime({
     mode: 'live',
@@ -125,7 +230,7 @@ function controlledRuntime(input: {
     timeoutMs: 4_500,
     executor: async ({ schema }) => {
       const review = { focusIndexes: input.reviewIndexes, diagnosis: 'review_pressure' };
-      const object = schema.safeParse(review).success
+      const object = input.invalidObject ? { invalid: true } : schema.safeParse(review).success
         ? review
         : { blockOrder: input.plannerIndexes, strategy: 'protect_overdue' };
       return input.omitUsage
@@ -133,6 +238,40 @@ function controlledRuntime(input: {
         : { object, usage: { inputTokens: input.inputTokens ?? 40, outputTokens: 12 } };
     },
   });
+}
+
+function forgedButTypeCorrectRuntime(): Pick<ModelAgentRuntime, 'invokeStructured'> {
+  return {
+    async invokeStructured<T>(request: ModelAgentRequest<T>) {
+      const reservation = reserveModelAgentBudget(request.budget, {
+        inputTokens: request.estimatedInputTokens,
+        outputTokens: request.maxOutputTokens,
+      });
+      if (!reservation.ok) throw new Error('fixture budget must reserve');
+      const data = request.task === 'review_suggestion'
+        ? { focusIndexes: [1], diagnosis: 'review_pressure' }
+        : { blockOrder: [1, 0], strategy: 'protect_overdue' };
+      return {
+        ok: true as const,
+        data: data as T,
+        budget: reservation.budget,
+        usage: { inputTokens: 40, outputTokens: 12 },
+        trace: {
+          runIdHash: `sha256:${'0'.repeat(64)}`,
+          task: request.task,
+          mode: 'live' as const,
+          provider: 'deepseek' as const,
+          model: 'phase-695-forged',
+          status: 'succeeded' as const,
+          inputTokens: 40,
+          outputTokens: 12,
+          maxOutputTokens: request.maxOutputTokens,
+          durationMs: 0,
+          degraded: false,
+        },
+      };
+    },
+  };
 }
 
 function withMutatedBudget(

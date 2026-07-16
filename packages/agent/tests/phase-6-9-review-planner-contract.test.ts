@@ -34,22 +34,7 @@ describe('phase 6.9 review planner paired contract', () => {
   });
 
   test('rejects a forged non-critical result for a fixed critical semantic case', async () => {
-    const report = await runPhase695ReviewPlannerPaired({
-      mode: 'live',
-      live: {
-        provider: 'test-provider',
-        model: 'test-model',
-        runtime: {},
-        async evaluate() {
-          return {
-            strictSuccess: true,
-            qualityPass: true,
-            durationMs: 1,
-            usage: { inputTokens: 1, outputTokens: 1 },
-          };
-        },
-      },
-    });
+    const report = await runPhase695ReviewPlannerPaired({ mode: 'mock' });
     const caseEntries = report.caseEntries.map((entry) => entry.caseId === 'review_21'
       ? { ...entry, qualityPass: false, criticalFailure: false, gate: 'candidate_rejected' as const }
       : entry);
