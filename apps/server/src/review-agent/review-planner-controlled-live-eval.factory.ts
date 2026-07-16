@@ -11,6 +11,7 @@ import {
 import {
   ReviewPlannerDiagnosticCode,
   REVIEW_MODEL_CANDIDATE_SCHEMA,
+  phase695ReportSchema,
   runPhase695ReviewPlannerPaired,
   type Phase695Report,
   type Phase695LiveDependencies,
@@ -32,9 +33,21 @@ export type ControlledLiveDiagnosticResult = Readonly<{
 
 export type ReviewPlannerControlledLiveEvaluator = Readonly<{
   runDiagnostic(): Promise<ControlledLiveDiagnosticResult>;
-  runPairedEvaluation(): Promise<Phase695Report | null>;
+  runPairedEvaluation(): Promise<ControlledLivePairedEvaluationResult>;
   providerAttemptCount(): number;
 }>;
+
+export type ControlledLivePairedEvaluationResult =
+  | Readonly<{
+      kind: 'report';
+      report: Phase695Report;
+    }>
+  | Readonly<{
+      kind: 'failed';
+      diagnosticCode:
+        | ReviewPlannerDiagnosticCode.Transport
+        | ReviewPlannerDiagnosticCode.InvalidResponse;
+    }>;
 
 export type ReviewPlannerControlledLiveFactoryResult =
   | Readonly<{
@@ -100,7 +113,7 @@ export function createReviewPlannerControlledLiveEvaluator(
     executor: countedExecutor,
   });
   let diagnostic: Promise<ControlledLiveDiagnosticResult> | null = null;
-  let paired: Promise<Phase695Report | null> | null = null;
+  let paired: Promise<ControlledLivePairedEvaluationResult> | null = null;
 
   return {
     ok: true,
@@ -114,7 +127,12 @@ export function createReviewPlannerControlledLiveEvaluator(
           runtime,
           () => attempts,
         ));
-        if (!canary.canContinue) return null;
+        if (!canary.canContinue) {
+          return {
+            kind: 'failed',
+            diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+          };
+        }
         paired ??= runPairedEvaluationSafely(
           dependencies.runPairedEvaluation,
           runtime,
@@ -226,11 +244,23 @@ async function runSchemaCanary(
 async function runPairedEvaluationSafely(
   runPairedEvaluation: FactoryDependencies['runPairedEvaluation'],
   runtime: ModelAgentRuntime,
-) {
+): Promise<ControlledLivePairedEvaluationResult> {
   try {
-    return await runPairedEvaluation({ mode: 'live', live: { runtime } });
+    const report = await runPairedEvaluation({
+      mode: 'live',
+      live: { runtime },
+    });
+    return !phase695ReportSchema.safeParse(report).success
+      ? {
+          kind: 'failed',
+          diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+        }
+      : { kind: 'report', report };
   } catch {
-    return null;
+    return {
+      kind: 'failed',
+      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+    };
   }
 }
 

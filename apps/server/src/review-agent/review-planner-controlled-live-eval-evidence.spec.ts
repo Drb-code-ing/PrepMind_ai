@@ -1,4 +1,14 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  open,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  unlink,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -89,6 +99,103 @@ describe('review planner controlled Live evidence', () => {
     await expect(
       readFile(join(root, reservation.relativePath), 'utf8'),
     ).resolves.toContain('"state":"finalized"');
+  });
+
+  it.each(['reserved', 'attempted', 'finalized'] as const)(
+    'consumes the phase-level controlled Live qualification at the %s state',
+    async (state) => {
+      const stateRoot = join(root, state);
+      await mkdir(stateRoot);
+      const reservation = await reserveReviewPlannerControlledLiveEvidence({
+        root: stateRoot,
+        startedAt: '2026-07-16T00:00:00.000Z',
+        runId: `first-${state}-run-id`,
+      });
+      if (state !== 'reserved') await reservation.markAttempted();
+      if (state === 'finalized') {
+        await reservation.finalize({
+          status: 'invalid_attempted',
+          gate: 'closed',
+          providerAttemptCount: 1,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+        });
+      }
+
+      await expect(
+        reserveReviewPlannerControlledLiveEvidence({
+          root: stateRoot,
+          startedAt: '2026-07-16T00:00:00.000Z',
+          runId: `second-${state}-run-id`,
+        }),
+      ).rejects.toThrow('CONTROLLED_LIVE_EVIDENCE_PHASE_ALREADY_CONSUMED');
+    },
+  );
+
+  it('serializes a delayed attempted write before a concurrent finalization', async () => {
+    let releaseFirstRename!: () => void;
+    const releaseRename = new Promise<void>((resolve) => {
+      releaseFirstRename = resolve;
+    });
+    let signalFirstRename!: () => void;
+    const firstRenameStarted = new Promise<void>((resolve) => {
+      signalFirstRename = resolve;
+    });
+    let delayFirstRename = true;
+    const reservation = await reserveReviewPlannerControlledLiveEvidence({
+      root,
+      startedAt: '2026-07-16T00:00:00.000Z',
+      runId: 'serialized-transition-run',
+      fs: {
+        mkdir,
+        open,
+        readdir,
+        unlink,
+        async rename(from, to) {
+          if (delayFirstRename) {
+            delayFirstRename = false;
+            signalFirstRename();
+            await releaseRename;
+          }
+          await rename(from, to);
+        },
+      },
+    });
+
+    const marking = reservation.markAttempted();
+    await firstRenameStarted;
+    const finalizing = reservation.finalize({
+      status: 'complete',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: true,
+    });
+    releaseFirstRename();
+
+    await expect(marking).resolves.toBe(true);
+    await expect(finalizing).resolves.toBe(true);
+    await expect(
+      readFile(join(root, reservation.relativePath), 'utf8'),
+    ).resolves.toContain('"state":"finalized"');
+  });
+
+  it('does not follow a phase evidence directory symlink outside the resolved root', async () => {
+    const outside = await mkdtemp(
+      join(tmpdir(), 'prepmind-phase-695-outside-'),
+    );
+    try {
+      await symlink(outside, join(root, 'docs'), 'junction');
+      await expect(
+        reserveReviewPlannerControlledLiveEvidence({
+          root,
+          startedAt: '2026-07-16T00:00:00.000Z',
+          runId: 'symlink-run',
+        }),
+      ).rejects.toThrow('CONTROLLED_LIVE_EVIDENCE_OUTSIDE_ROOT');
+      await expect(readdir(outside)).resolves.toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it('rejects unsafe summaries without writing their raw diagnostic text', async () => {

@@ -1,4 +1,13 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  open,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  unlink,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,6 +17,7 @@ import {
   executeReviewPlannerControlledLiveCli,
   serializeReviewPlannerControlledLiveSummary,
 } from './review-planner-controlled-live-eval-cli';
+import { reserveReviewPlannerControlledLiveEvidence } from './review-planner-controlled-live-eval-evidence';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -105,7 +115,9 @@ describe('review planner controlled Live CLI', () => {
       'evidence',
       'phase-6-9-5-controlled-live',
     );
-    const [file] = await readdir(evidenceDirectory);
+    const [file] = (await readdir(evidenceDirectory)).filter((entry) =>
+      entry.endsWith('.json'),
+    );
     const evidence = await readFile(join(evidenceDirectory, file), 'utf8');
     expect(evidence).not.toMatch(/RAW_PROVIDER|api_key|cli-private-canary/i);
   });
@@ -138,5 +150,193 @@ describe('review planner controlled Live CLI', () => {
       diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
     });
     expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('rejects a second exact confirmation with a distinct UUID before its provider boundary', async () => {
+    const executor = jest.fn(() =>
+      Promise.reject(new Error('RAW_PROVIDER_DIAGNOSTIC_CANARY')),
+    );
+    const input = {
+      argv: ['--confirm-controlled-live'] as const,
+      env,
+      root,
+      dependencies: { createExecutor: () => executor },
+      now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+    };
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        ...input,
+        randomUUID: () => 'first-confirmation-run',
+      }),
+    ).resolves.toMatchObject({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+    });
+    expect(executor).toHaveBeenCalledTimes(1);
+    executor.mockClear();
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        ...input,
+        randomUUID: () => 'second-confirmation-run',
+      }),
+    ).resolves.toEqual({
+      status: 'diagnostic_blocked',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    });
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('keeps the one-time qualification consumed after finalization I/O failure', async () => {
+    const executor = jest.fn(() =>
+      Promise.reject(new Error('RAW_PROVIDER_DIAGNOSTIC_CANARY')),
+    );
+    let renameCount = 0;
+    const failFinalizationFs = {
+      mkdir,
+      open,
+      readdir,
+      unlink,
+      async rename(from: string, to: string) {
+        renameCount += 1;
+        if (renameCount === 2)
+          throw new Error('simulated finalization failure');
+        await rename(from, to);
+      },
+    };
+    const input = {
+      argv: ['--confirm-controlled-live'] as const,
+      env,
+      root,
+      dependencies: { createExecutor: () => executor },
+      now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+    };
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        ...input,
+        randomUUID: () => 'io-failure-first-run',
+        reserveEvidence: (reservation) =>
+          reserveReviewPlannerControlledLiveEvidence({
+            ...reservation,
+            fs: failFinalizationFs,
+          }),
+      }),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    });
+    expect(executor).toHaveBeenCalledTimes(1);
+    executor.mockClear();
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        ...input,
+        randomUUID: () => 'io-failure-second-run',
+      }),
+    ).resolves.toEqual({
+      status: 'diagnostic_blocked',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    });
+    expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('records a paired runner exception as transport rather than evidence I/O', async () => {
+    const executor = jest.fn(() =>
+      Promise.resolve({
+        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        usage: { inputTokens: 10, outputTokens: 4 },
+      }),
+    );
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        argv: ['--confirm-controlled-live'],
+        env,
+        root,
+        dependencies: {
+          createExecutor: () => executor,
+          runPairedEvaluation: () =>
+            Promise.reject(new Error('RAW_PAIRED_RUNNER_FAILURE')),
+        },
+        now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+        randomUUID: () => 'paired-throws-run',
+      }),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+    });
+  });
+
+  it('records a null paired report as invalid response rather than evidence I/O', async () => {
+    const executor = jest.fn(() =>
+      Promise.resolve({
+        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        usage: { inputTokens: 10, outputTokens: 4 },
+      }),
+    );
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        argv: ['--confirm-controlled-live'],
+        env,
+        root,
+        dependencies: {
+          createExecutor: () => executor,
+          runPairedEvaluation: () => Promise.resolve(null as never),
+        },
+        now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+        randomUUID: () => 'paired-null-run',
+      }),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+    });
+  });
+
+  it('records a malformed paired report as invalid response and finalizes safely', async () => {
+    const executor = jest.fn(() =>
+      Promise.resolve({
+        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        usage: { inputTokens: 10, outputTokens: 4 },
+      }),
+    );
+
+    await expect(
+      executeReviewPlannerControlledLiveCli({
+        argv: ['--confirm-controlled-live'],
+        env,
+        root,
+        dependencies: {
+          createExecutor: () => executor,
+          runPairedEvaluation: () => Promise.resolve({} as never),
+        },
+        now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+        randomUUID: () => 'paired-malformed-run',
+      }),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+    });
   });
 });

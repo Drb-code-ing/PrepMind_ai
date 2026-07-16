@@ -21,6 +21,7 @@ export async function executeReviewPlannerControlledLiveCli(
     now?: () => number;
     randomUUID?: () => string;
     dependencies?: CliDependencies;
+    reserveEvidence?: typeof reserveReviewPlannerControlledLiveEvidence;
   }>,
 ): Promise<SafeReviewPlannerControlledLiveSummary> {
   if (!hasExactConfirmation(input.argv))
@@ -42,7 +43,9 @@ export async function executeReviewPlannerControlledLiveCli(
     ReturnType<typeof reserveReviewPlannerControlledLiveEvidence>
   >;
   try {
-    evidence = await reserveReviewPlannerControlledLiveEvidence({
+    evidence = await (
+      input.reserveEvidence ?? reserveReviewPlannerControlledLiveEvidence
+    )({
       root: input.root,
       startedAt: identity.startedAt,
       runId: identity.runId,
@@ -81,11 +84,17 @@ export async function executeReviewPlannerControlledLiveCli(
       : attemptedEvidenceFailure(diagnostic.providerAttemptCount);
   }
 
-  const report = await evaluator.value.runPairedEvaluation();
-  const summary = summarizePairedReport(
-    report,
-    evaluator.value.providerAttemptCount(),
-  );
+  const paired = await evaluator.value.runPairedEvaluation();
+  const summary =
+    paired.kind === 'report'
+      ? summarizePairedReport(
+          paired.report,
+          evaluator.value.providerAttemptCount(),
+        )
+      : attemptedModelFailure(
+          evaluator.value.providerAttemptCount(),
+          paired.diagnosticCode,
+        );
   return (await evidence.finalize(summary))
     ? summary
     : attemptedEvidenceFailure(evaluator.value.providerAttemptCount());
@@ -126,10 +135,9 @@ function createEvidenceIdentity(now: () => number, newUuid: () => string) {
 }
 
 function summarizePairedReport(
-  report: Phase695Report | null,
+  report: Phase695Report,
   providerAttemptCount: number,
 ): SafeReviewPlannerControlledLiveSummary {
-  if (report === null) return attemptedEvidenceFailure(providerAttemptCount);
   const passed = report.productionDecision === 'quality_gate_passed';
   const usageKnown =
     passed &&
@@ -165,6 +173,21 @@ function attemptedEvidenceFailure(
     providerAttemptCount: safeProviderAttempts(providerAttemptCount),
     usageKnown: false,
     diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+  };
+}
+
+function attemptedModelFailure(
+  providerAttemptCount: number,
+  diagnosticCode:
+    | ReviewPlannerDiagnosticCode.Transport
+    | ReviewPlannerDiagnosticCode.InvalidResponse,
+): SafeReviewPlannerControlledLiveSummary {
+  return {
+    status: 'invalid_attempted',
+    gate: 'closed',
+    providerAttemptCount: safeProviderAttempts(providerAttemptCount),
+    usageKnown: false,
+    diagnosticCode,
   };
 }
 
