@@ -71,15 +71,24 @@ describe('phase 6.9 review planner Mock-only CLI', () => {
         async lstat(path) {
           const normalized = path.replaceAll('\\', '/');
           if (normalized.endsWith('/.tmp')) {
-            return directoryExists ? { isFile: () => false, isSymbolicLink: () => false } : null;
+            return directoryExists
+              ? { isFile: () => false, isDirectory: () => true, isSymbolicLink: () => false }
+              : null;
           }
           return null;
         },
         async mkdir() {
           directoryExists = true;
         },
-        async writeFile() {
-          wrote = true;
+        async realpath(path) {
+          return path.replaceAll('\\', '/');
+        },
+        async openExclusive(path) {
+          return {
+            async realpath() { return path.replaceAll('\\', '/'); },
+            async write() { wrote = true; },
+            async close() {},
+          };
         },
       },
     });
@@ -87,5 +96,37 @@ describe('phase 6.9 review planner Mock-only CLI', () => {
     expect(result).toEqual({ ok: true, outputPath: '.tmp/review-planner.json' });
     expect(directoryExists).toBe(true);
     expect(wrote).toBe(true);
+  });
+
+  test('closes an exclusive handle without writing when the parent path is swapped after validation', async () => {
+    let wrote = false;
+    let closed = false;
+    const result = await executePhase695ReviewPlannerCli({
+      argv: ['--mode', 'mock', '--out', '.tmp/review-planner.json'],
+      fs: {
+        async lstat(path) {
+          return path.replaceAll('\\', '/').endsWith('/.tmp')
+            ? { isFile: () => false, isDirectory: () => true, isSymbolicLink: () => false }
+            : null;
+        },
+        async realpath(path) {
+          return path.replaceAll('\\', '/').endsWith('/.tmp')
+            ? '/repo/.tmp'
+            : '/outside/review-planner.json';
+        },
+        async openExclusive() {
+          return {
+            async realpath() { return '/outside/review-planner.json'; },
+            async write() { wrote = true; },
+            async close() { closed = true; },
+          };
+        },
+        async writeFile() { wrote = true; },
+      },
+    });
+
+    expect(result).toEqual({ ok: false, code: 'evidence_io' });
+    expect(wrote).toBe(false);
+    expect(closed).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
-import { lstat, mkdir as makeDirectory, writeFile } from 'node:fs/promises';
+import { lstat, mkdir as makeDirectory, open as openFile, realpath, } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ReviewPlannerDiagnosticCode } from '../src/evals/phase-6-9-review-planner-contract.ts';
@@ -14,10 +15,18 @@ export type Phase695CliParseResult =
 export type Phase695CliFs = Readonly<{
   lstat(path: string): Promise<{
     isFile(): boolean;
+    isDirectory?(): boolean;
     isSymbolicLink(): boolean;
   } | null>;
-  writeFile(path: string, contents: string, options?: unknown): Promise<void>;
   mkdir?(path: string): Promise<void>;
+  realpath?(path: string): Promise<string>;
+  openExclusive?(path: string): Promise<Phase695EvidenceHandle>;
+}>;
+
+export type Phase695EvidenceHandle = Readonly<{
+  realpath(): Promise<string>;
+  write(contents: string): Promise<void>;
+  close(): Promise<void>;
 }>;
 
 export function parsePhase695ReviewPlannerCli(argv: readonly string[]): Phase695CliParseResult {
@@ -46,31 +55,49 @@ export async function executePhase695ReviewPlannerCli(input: Readonly<{
   if (!parsed.ok) return parsed;
   const fs = input.fs ?? nodeFs;
   const outputPath = resolvePhase695EvidencePath(parsed.outputPath);
+  let handle: Phase695EvidenceHandle | null = null;
   try {
     const output = await fs.lstat(outputPath);
     if (output !== null) {
       return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
     }
-    const parent = await fs.lstat(REPOSITORY_TMP_DIRECTORY);
-    if (parent?.isSymbolicLink()) {
-      return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
-    }
+    let parent = await fs.lstat(REPOSITORY_TMP_DIRECTORY);
     if (parent === null) {
-      if (!fs.mkdir) return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
+      if (!fs.mkdir) return failure();
       await fs.mkdir(REPOSITORY_TMP_DIRECTORY);
-      const createdParent = await fs.lstat(REPOSITORY_TMP_DIRECTORY);
-      if (createdParent === null || createdParent.isSymbolicLink()) {
-        return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
-      }
+      parent = await fs.lstat(REPOSITORY_TMP_DIRECTORY);
     }
+    if (parent === null || parent.isSymbolicLink() || parent.isDirectory?.() !== true ||
+      !fs.realpath || !fs.openExclusive) {
+      return failure();
+    }
+    const parentRealpath = await fs.realpath(REPOSITORY_TMP_DIRECTORY);
+    handle = await fs.openExclusive(outputPath);
     const report = await runPhase695ReviewPlannerPaired({ mode: 'mock' });
-    await fs.writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    });
+    const openedFileRealpath = await handle.realpath();
+    if (dirname(openedFileRealpath) !== parentRealpath) return failure();
+    // The exclusive handle prevents later parent-component reparsing from redirecting this write.
+    // Same-OS races beyond this handle/realpath boundary remain a trusted-workspace limitation.
+    await handle.write(`${JSON.stringify(report, null, 2)}\n`);
+    await handle.close();
+    handle = null;
     return { ok: true, outputPath: parsed.outputPath };
   } catch {
-    return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
+    return failure();
+  } finally {
+    if (handle) await closeQuietly(handle);
+  }
+}
+
+function failure(): Readonly<{ ok: false; code: ReviewPlannerDiagnosticCode }> {
+  return { ok: false, code: ReviewPlannerDiagnosticCode.EvidenceIo };
+}
+
+async function closeQuietly(handle: Phase695EvidenceHandle): Promise<void> {
+  try {
+    await handle.close();
+  } catch {
+    // Evidence failures are intentionally collapsed to the fixed diagnostic code.
   }
 }
 
@@ -80,6 +107,7 @@ const nodeFs: Phase695CliFs = {
       const stats = await lstat(path);
       return {
         isFile: () => stats.isFile(),
+        isDirectory: () => stats.isDirectory(),
         isSymbolicLink: () => stats.isSymbolicLink(),
       };
     } catch (error) {
@@ -87,9 +115,23 @@ const nodeFs: Phase695CliFs = {
       throw error;
     }
   },
-  writeFile,
   async mkdir(path) {
     await makeDirectory(path);
+  },
+  realpath,
+  async openExclusive(path) {
+    const handle = await openFile(path, 'wx');
+    return {
+      async realpath() {
+        return realpath(path);
+      },
+      async write(contents) {
+        await handle.writeFile(contents, 'utf8');
+      },
+      async close() {
+        await handle.close();
+      },
+    };
   },
 };
 

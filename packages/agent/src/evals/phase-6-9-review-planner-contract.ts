@@ -140,7 +140,12 @@ export const phase695ReportSchema = reportShapeSchema.superRefine((report, conte
          entry.criticalFailure || entry.durationMs !== 0 || entry.usage.inputTokens !== 0 ||
          entry.usage.outputTokens !== 0 || entry.gate !== 'zero_call' || entry.diagnosticCode !== undefined)) ||
       (!expectedZeroCall &&
-        (entry.runtimeInvocations !== 1 || (entry.strictSuccess && entry.diagnosticCode !== undefined) ||
+        (entry.runtimeInvocations > 1 ||
+         (entry.runtimeInvocations === 0 &&
+          (entry.strictSuccess || entry.qualityPass || entry.gate !== 'candidate_rejected' ||
+           entry.diagnosticCode === undefined || entry.usage.inputTokens !== 0 ||
+           entry.usage.outputTokens !== 0)) ||
+         (entry.strictSuccess && entry.diagnosticCode !== undefined) ||
          (!entry.strictSuccess && entry.diagnosticCode === undefined) ||
          (entry.strictSuccess && entry.qualityPass && entry.gate !== 'candidate_evaluated') ||
          ((!entry.strictSuccess || !entry.qualityPass) && entry.gate !== 'candidate_rejected')))) {
