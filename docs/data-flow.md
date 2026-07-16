@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-17。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的受限只读候选路径仍在 Phase 6.9.5 验收未完成状态。隔离的 v1/v2/v3 controlled-Live profile 均为 `invalid_attempted / structured_output`，v3 的私有安全 evidence 阶段为 `provider_json_parse`；业务 gate 已关闭且不得重跑 profile、48-case、Docker 或浏览器验收。后续先完成全部 Agent 架构，再进入 Phase 6.10 分层记忆；权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
+> 当前版本：2026-07-17。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的受限只读候选路径仍在 Phase 6.9.5 验收未完成状态。隔离的 v1/v2/v3/v4 controlled-Live profile 均为 `invalid_attempted / structured_output`，v3/v4 的私有安全 evidence 阶段为 `provider_json_parse`；两条业务 gate 默认 `false`，且不得重跑 profile、48-case、Docker 或浏览器验收。后续先完成全部 Agent 架构，再进入 Phase 6.10 分层记忆；权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
 
 ## 1. 当前边界
 
@@ -105,7 +105,7 @@
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Review/Planner 已接入受限只读 candidate，但 v1/v2 controlled-Live 均未通过，当前业务 gate 保持关闭。Memory 与其他业务 Agent 尚未接入该 runtime。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Review/Planner 已接入受限只读 candidate，但 v1/v2/v3/v4 controlled-Live 均未通过，当前业务 gate 默认 `false`。Memory 与其他业务 Agent 尚未接入该 runtime。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
@@ -526,7 +526,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 - PlannerAgent 负责结合 ReviewAgent 输出、未来计划窗口和 `ReviewPreference` 生成今日重点、周计划节奏、容量提示和建议 block。
 - 该建议链路不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 的 candidate 即使启用也保持只读，FSRS 与容量事实由后端确定。
 - `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。
-- 2026-07-16~17 的 v1/v2/v3 server-only controlled-Live profile 各在 provider 尝试 1 次后得到 `invalid_attempted / structured_output`，各自 `usageKnown=false` 且 `gate=closed`；仅 v3 的独立 evidence 额外记录 `structuredOutputStage=provider_json_parse`。该私有阶段不进入用户建议、Trace、Docker 或浏览器数据流；三个原生 once marker 已消耗，计数不可合并，当前阶段不得重跑 profile 或执行 48-case/Docker/浏览器后续验收。
+- 2026-07-16~17 的 v1/v2/v3/v4 server-only controlled-Live profile 各在 provider 尝试 1 次后得到 `invalid_attempted / structured_output`，各自 `usageKnown=false` 且 `gate=closed`；v3/v4 的独立 evidence 额外记录受信内部阶段 `structuredOutputStage=provider_json_parse`。该私有阶段不进入用户建议、Trace、Docker 或浏览器数据流；四个原生 once marker 已消耗，计数不可合并，当前阶段不得重跑 profile 或执行 48-case/Docker/浏览器后续验收；两个业务 gate 继续默认 `false`。
 - 今日任务页读取当天 plan 摘要，展示“今日预计 N 分钟”和容量状态；plan 查询失败不影响今日复习主列表。
 - 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs，并用客户端 ECharts 渲染趋势、评分分布和卡片状态。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。
