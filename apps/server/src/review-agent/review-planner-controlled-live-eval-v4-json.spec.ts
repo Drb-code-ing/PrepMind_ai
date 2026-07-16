@@ -111,6 +111,24 @@ describe('review planner controlled Live v4 JSON executor', () => {
     expect(error.message).toBe('MODEL_AGENT_V4_RESPONSE_INVALID');
     expect(JSON.stringify(error)).not.toContain(validJson);
   });
+
+  it('normalizes a rejecting injected fetch without exposing its raw rejection canary', async () => {
+    const rawCanary = 'RAW_V4_FAKE_FETCH_REJECTION_CANARY';
+    const fetch = jest.fn(() =>
+      Promise.reject(new Error(rawCanary)),
+    ) as jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch>;
+    const executor = createReviewPlannerControlledLiveV4JsonExecutor(
+      validConfig(),
+      { fetch },
+    );
+
+    const error = await rejected(invoke(executor));
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(error.message).toBe('MODEL_AGENT_V4_TRANSPORT_FAILED');
+    expect(error.message).not.toContain(rawCanary);
+    expect(JSON.stringify(error)).not.toContain(rawCanary);
+  });
 });
 
 function validConfig() {
