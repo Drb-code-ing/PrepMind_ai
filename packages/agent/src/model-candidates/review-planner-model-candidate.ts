@@ -345,43 +345,38 @@ async function invokePlannerCandidate(
   );
 }
 
-type ValidReviewInput = {
-  value: ReviewAgentResult;
+type ValidInput<T> = {
+  ok: true;
+  value: T;
   runId: string;
   runtime: Pick<ModelAgentRuntime, 'invokeStructured'>;
   budget: ModelAgentRunBudget;
   signal?: AbortSignal;
 };
-type ValidPlannerInput = {
-  value: PlannerAgentResult;
-  runId: string;
-  runtime: Pick<ModelAgentRuntime, 'invokeStructured'>;
-  budget: ModelAgentRunBudget;
-  signal?: AbortSignal;
-};
+type ValidReviewInput = ValidInput<ReviewAgentResult>;
+type ValidPlannerInput = ValidInput<PlannerAgentResult>;
 type InvalidInput<T> = { ok: false; value?: T; budget: ModelAgentRunBudget };
-type ValidInput<T> = { ok: true } & T;
 
-function validateReviewInput(input: unknown): ValidInput<ValidReviewInput> | InvalidInput<ReviewAgentResult> {
-  return validateInput(input, reviewAgentResultSchema, SAFE_REVIEW_RESULT) as
-    | ValidInput<ValidReviewInput>
-    | InvalidInput<ReviewAgentResult>;
+function validateReviewInput(input: unknown): ValidReviewInput | InvalidInput<ReviewAgentResult> {
+  return validateInput(input, reviewAgentResultSchema, SAFE_REVIEW_RESULT);
 }
 
-function validatePlannerInput(input: unknown): ValidInput<ValidPlannerInput> | InvalidInput<PlannerAgentResult> {
-  return validateInput(input, plannerAgentResultSchema, SAFE_PLANNER_RESULT) as
-    | ValidInput<ValidPlannerInput>
-    | InvalidInput<PlannerAgentResult>;
+function validatePlannerInput(input: unknown): ValidPlannerInput | InvalidInput<PlannerAgentResult> {
+  return validateInput(input, plannerAgentResultSchema, SAFE_PLANNER_RESULT);
 }
 
 function validateInput<T>(
   input: unknown,
   schema: z.ZodType<T>,
   fallback: T,
-): ValidInput<{ value: T; runId: string; runtime: Pick<ModelAgentRuntime, 'invokeStructured'>; budget: ModelAgentRunBudget; signal?: AbortSignal }> | InvalidInput<T> {
+): ValidInput<T> | InvalidInput<T> {
   try {
+    const fallbackValue = cloneSchemaValue(schema, fallback);
+    if (fallbackValue === null) {
+      return { ok: false, budget: SAFE_INVALID_BUDGET };
+    }
     if (typeof input !== 'object' || input === null) {
-      return { ok: false, value: cloneSchemaValue(schema, fallback), budget: SAFE_INVALID_BUDGET };
+      return { ok: false, value: fallbackValue, budget: SAFE_INVALID_BUDGET };
     }
     const candidate = input as Record<string, unknown>;
     const value = cloneSchemaValue(schema, candidate.deterministic);
@@ -532,7 +527,7 @@ function mergeReviewDecision(
   if (!hasUniqueIndexes(decision.focusIndexes, deterministic.weakPoints.length)) return null;
   return {
     ...deterministic,
-    weakPoints: decision.focusIndexes.map((index) => deterministic.weakPoints[index]!),
+    weakPoints: decision.focusIndexes.map((index) => deterministic.weakPoints[index]),
   };
 }
 
@@ -549,7 +544,7 @@ function mergePlannerDecision(
   return {
     ...deterministic,
     suggestedBlocks: decision.blockOrder.map(
-      (index) => deterministic.suggestedBlocks[index]!,
+      (index) => deterministic.suggestedBlocks[index],
     ),
   };
 }
