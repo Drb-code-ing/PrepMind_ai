@@ -68,6 +68,18 @@ describe('ReviewAgentController (e2e)', () => {
     expect(typeof suggestions.review.summary).toBe('string');
     expect(typeof suggestions.planner.headline).toBe('string');
     expect(typeof suggestions.planSummary.dailyMinutes).toBe('number');
+    expect(suggestions.modelObservations?.version).toBe(1);
+    expect(suggestions.modelObservations?.review).toMatchObject({
+      attempted: false,
+      provenance: 'local_deterministic',
+    });
+    expect(suggestions.modelObservations?.planner).toMatchObject({
+      attempted: false,
+      provenance: 'local_deterministic',
+    });
+    expect(JSON.stringify(suggestions)).not.toMatch(
+      /api.?key|base.?url|prompt|raw.error/i,
+    );
   });
 
   it('rejects unauthenticated review agent suggestion requests', async () => {

@@ -52,6 +52,23 @@ describe('parseEnv', () => {
       CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: 1600,
       CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: 400,
       CONVERSATION_SUMMARY_TIMEOUT_MS: 8000,
+      REVIEW_AGENT_MODEL_ENABLED: false,
+      PLANNER_AGENT_MODEL_ENABLED: false,
+      REVIEW_AGENT_MODEL_TIMEOUT_MS: 4500,
+      PLANNER_AGENT_MODEL_TIMEOUT_MS: 4500,
+    });
+  });
+
+  it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {
+    expect(() =>
+      parseEnv({ ...requiredEnv, REVIEW_AGENT_MODEL_TIMEOUT_MS: 999 }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...requiredEnv, PLANNER_AGENT_MODEL_TIMEOUT_MS: 15001 }),
+    ).toThrow();
+    expect(parseEnv(requiredEnv)).toMatchObject({
+      REVIEW_AGENT_MODEL_ENABLED: false,
+      PLANNER_AGENT_MODEL_ENABLED: false,
     });
   });
 

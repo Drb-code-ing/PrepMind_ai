@@ -1,5 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { createModelAgentBudget } from '@repo/ai';
+import {
+  runPlannerModelCandidate,
+  runReviewModelCandidate,
+} from '@repo/agent/model-candidates';
 import { planStudy } from '@repo/agent/planner';
 import { analyzeReview } from '@repo/agent/review';
 import type {
@@ -10,8 +16,18 @@ import type {
 } from '@repo/types/api/review-agent';
 
 import { PrismaService } from '../database/prisma.service';
+import { AgentTracesService } from '../agent-traces/agent-traces.service';
 import { ReviewPreferencesService } from '../review-preferences/review-preferences.service';
 import { ReviewTasksService } from '../review-tasks/review-tasks.service';
+import {
+  createLocalReviewPlannerCandidateObservation,
+  toReviewPlannerModelObservations,
+} from './review-planner-model-observation';
+import {
+  REVIEW_PLANNER_MODEL_RUNTIMES,
+  type ReviewPlannerModelRuntimeBundle,
+} from './review-planner-model-runtime.factory';
+import { createReviewPlannerTrace } from './review-planner-trace';
 
 const RECENT_REVIEW_DAYS = 14;
 
@@ -61,6 +77,9 @@ export class ReviewAgentService {
     private readonly prisma: PrismaService,
     private readonly reviewTasksService: ReviewTasksService,
     private readonly reviewPreferencesService: ReviewPreferencesService,
+    @Inject(REVIEW_PLANNER_MODEL_RUNTIMES)
+    private readonly modelRuntimes: ReviewPlannerModelRuntimeBundle,
+    private readonly agentTracesService: AgentTracesService,
   ) {}
 
   async getSuggestions(
@@ -73,14 +92,75 @@ export class ReviewAgentService {
       this.reviewPreferencesService.getByUserId(userId),
       this.buildReviewInput(userId, input, now),
     ]);
-    const review = analyzeReview(reviewInput);
-    const planner = planStudy({ review, plan, preference });
+    const orchestrationStartedAt = new Date();
+    const runId = randomUUID();
+    const budget = createModelAgentBudget({
+      maxCalls: 2,
+      maxInputTokens: 1_950,
+      maxOutputTokens: 440,
+    });
+    const deterministicReviewStartedAt = Date.now();
+    const deterministicReview = analyzeReview(reviewInput);
+    const deterministicReviewDurationMs =
+      Date.now() - deterministicReviewStartedAt;
+    const reviewCandidate = this.modelRuntimes.config.reviewEnabled
+      ? await runReviewModelCandidate({
+          runId,
+          deterministic: deterministicReview,
+          budget,
+          runtime: this.modelRuntimes.reviewRuntime,
+        })
+      : {
+          value: deterministicReview,
+          observation: createLocalReviewPlannerCandidateObservation(),
+        };
+    const review = reviewCandidate.value;
+    const deterministicPlannerStartedAt = Date.now();
+    const deterministicPlanner = planStudy({ review, plan, preference });
+    const deterministicPlannerDurationMs =
+      Date.now() - deterministicPlannerStartedAt;
+    const plannerCandidate = this.modelRuntimes.config.plannerEnabled
+      ? await runPlannerModelCandidate({
+          runId,
+          deterministic: deterministicPlanner,
+          budget: reviewCandidate.observation.budget,
+          runtime: this.modelRuntimes.plannerRuntime,
+        })
+      : {
+          value: deterministicPlanner,
+          observation: createLocalReviewPlannerCandidateObservation(),
+        };
+    const planner = plannerCandidate.value;
+    const modelObservations = toReviewPlannerModelObservations({
+      review: reviewCandidate.observation,
+      planner: plannerCandidate.observation,
+    });
+
+    try {
+      void Promise.resolve(
+        this.agentTracesService.createTrace(
+          userId,
+          createReviewPlannerTrace({
+            runId,
+            startedAt: orchestrationStartedAt,
+            finishedAt: new Date(),
+            deterministicReviewDurationMs,
+            deterministicPlannerDurationMs,
+            review: reviewCandidate.observation,
+            planner: plannerCandidate.observation,
+          }),
+        ),
+      ).catch(() => undefined);
+    } catch {
+      // Trace persistence is observability-only and must not block suggestions.
+    }
 
     return {
       generatedAt: now.toISOString(),
       review,
       planner,
       planSummary: plan.summary,
+      modelObservations,
     };
   }
 

@@ -38,6 +38,20 @@ const envSchema = z
     AI_MODEL: z.string().trim().min(1).max(120).default('deepseek-v4-flash'),
     AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    REVIEW_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
+    PLANNER_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
     CONVERSATION_SUMMARY_MAX_CALLS: z.coerce
       .number()
       .int()
