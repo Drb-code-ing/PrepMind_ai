@@ -1,4 +1,11 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -64,6 +71,54 @@ describeNativeWindows(
           ),
         ),
       ).resolves.toHaveLength(2);
+    });
+
+    it('preserves all v1-v3 evidence and once markers byte-for-byte across the v4 lifecycle', async () => {
+      const historicalFiles = [
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live/v1.json',
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/v2.json',
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/v3.json',
+        '.review-planner-controlled-live.once',
+        '.review-planner-controlled-live-v2.once',
+        '.review-planner-controlled-live-v3.once',
+      ] as const;
+      await Promise.all(
+        historicalFiles.map(async (relativePath) => {
+          const path = join(root, relativePath);
+          await mkdir(parentPath(path), { recursive: true });
+          await writeFile(path, `historical:${relativePath}\n`, 'utf8');
+        }),
+      );
+      const before = await Promise.all(
+        historicalFiles.map((relativePath) =>
+          readFile(join(root, relativePath)),
+        ),
+      );
+
+      const reservation = await reserveReviewPlannerControlledLiveV4Evidence({
+        root,
+        startedAt: '2026-07-17T00:00:00.000Z',
+        runId: 'v4-native-historical-isolation',
+      });
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      await expect(
+        reservation.finalize({
+          status: 'invalid_attempted',
+          gate: 'closed',
+          providerAttemptCount: 1,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+          structuredOutputStage: 'provider_object_missing',
+        }),
+      ).resolves.toBe(true);
+
+      await expect(
+        Promise.all(
+          historicalFiles.map((relativePath) =>
+            readFile(join(root, relativePath)),
+          ),
+        ),
+      ).resolves.toEqual(before);
     });
 
     it('writes the trusted direct fake-fetch schema stage without raw provider content', async () => {
@@ -150,3 +205,8 @@ describeNativeWindows(
     });
   },
 );
+
+function parentPath(path: string) {
+  const separator = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+  return path.slice(0, separator);
+}
