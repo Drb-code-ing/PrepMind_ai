@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { ReviewPlannerDiagnosticCode, type Phase695Report } from '@repo/agent';
+import {
+  phase695ReportSchema,
+  ReviewPlannerDiagnosticCode,
+  type Phase695Report,
+} from '@repo/agent';
 
 import {
   reserveReviewPlannerControlledLiveEvidence,
@@ -303,22 +307,49 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       };
     }
-    let pairedAttemptCount: number | null = null;
     if (paired.kind === 'report') {
+      const pairedReport = phase695ReportSchema.safeParse(paired.report);
+      if (!pairedReport.success) {
+        const actualProviderAttemptCount = readProviderAttemptCount().value;
+        const summary = attemptedV3ModelFailure(
+          actualProviderAttemptCount,
+          ReviewPlannerDiagnosticCode.InvalidResponse,
+        );
+        return finalizeV3EvidenceOrConservativeFailure(
+          evidence,
+          summary,
+          actualProviderAttemptCount,
+        );
+      }
+      const validatedReport = pairedReport.data;
+      let pairedAttemptCount: number | null = null;
       try {
         if (
           isPairedProviderAttemptCount(
-            paired.report.counters.runtimeInvocations,
+            validatedReport.counters.runtimeInvocations,
           )
         ) {
-          pairedAttemptCount = paired.report.counters.runtimeInvocations;
+          pairedAttemptCount = validatedReport.counters.runtimeInvocations;
           observeProviderAttemptCount(pairedAttemptCount);
         }
       } catch {
         // Report fields are advisory for this safe count lower bound only.
       }
-    }
-    if (paired.kind === 'report') {
+      if (
+        validatedReport.productionDecision === 'quality_gate_passed' &&
+        pairedAttemptCount !== CONTROLLED_LIVE_PAIRED_RUNTIME_CASES
+      ) {
+        const actualProviderAttemptCount = readProviderAttemptCount().value;
+        const summary = attemptedV3ModelFailure(
+          actualProviderAttemptCount,
+          ReviewPlannerDiagnosticCode.InvalidResponse,
+        );
+        return finalizeV3EvidenceOrConservativeFailure(
+          evidence,
+          summary,
+          actualProviderAttemptCount,
+        );
+      }
       const lowerBound = combineKnownProviderAttemptLowerBound(
         diagnosticAttemptCount,
         pairedAttemptCount,
@@ -346,7 +377,7 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         );
       }
       const summary = summarizeV3PairedReport(
-        paired.report,
+        validatedReport,
         authoritativeTotal.value,
       );
       return finalizeV3EvidenceOrConservativeFailure(

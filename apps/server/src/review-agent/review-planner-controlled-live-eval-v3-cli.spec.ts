@@ -194,7 +194,7 @@ describe('review planner controlled Live v3 CLI', () => {
     });
   });
 
-  it('runs the fixed paired evaluator once after a complete v3 diagnostic and makes a second invocation before no additional executor call', async () => {
+  it('opens only after one canary plus the canonical 48-case paired report accounts for all 23 attempts', async () => {
     const events: string[] = [];
     const firstReservation = reservationFixture(events);
     const reserveEvidence = jest
@@ -207,19 +207,17 @@ describe('review planner controlled Live v3 CLI', () => {
       providerAttemptCount: 1,
       usageKnown: true,
     });
+    const validQualityReport = qualityGatePassedReport();
     const runPairedEvaluation = jest.fn().mockResolvedValue({
       kind: 'report',
-      report: {
-        productionDecision: 'quality_gate_passed',
-        counters: { runtimeInvocations: 1, inputTokens: 1, outputTokens: 1 },
-      },
+      report: validQualityReport,
     });
     const createEvaluator = jest.fn(() => ({
       ok: true,
       value: {
         runDiagnostic,
         runPairedEvaluation,
-        providerAttemptCount: () => 2,
+        providerAttemptCount: () => 23,
       },
     }));
     const input = {
@@ -240,12 +238,15 @@ describe('review planner controlled Live v3 CLI', () => {
     ).resolves.toEqual({
       status: 'complete',
       gate: 'open',
-      providerAttemptCount: 2,
+      providerAttemptCount: 23,
       usageKnown: true,
     });
     expect(runDiagnostic).toHaveBeenCalledTimes(1);
     expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
     expect(createEvaluator).toHaveBeenCalledTimes(1);
+    expect(phase695ReportSchema.parse(validQualityReport)).toEqual(
+      validQualityReport,
+    );
 
     await expect(
       executeReviewPlannerControlledLiveV3Cli(input),
@@ -259,6 +260,48 @@ describe('review planner controlled Live v3 CLI', () => {
     expect(runDiagnostic).toHaveBeenCalledTimes(1);
     expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
     expect(createEvaluator).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a forged incomplete paired report instead of treating one runtime entry as a canonical quality gate', async () => {
+    const events: string[] = [];
+    const reservation = reservationFixture(events);
+    const runPairedEvaluation = jest.fn().mockResolvedValue({
+      kind: 'report',
+      report: {
+        productionDecision: 'quality_gate_passed',
+        counters: { runtimeInvocations: 1, inputTokens: 1, outputTokens: 1 },
+      },
+    });
+    const createEvaluator = jest.fn(() => ({
+      ok: true,
+      value: {
+        runDiagnostic: jest.fn().mockResolvedValue({
+          status: 'complete',
+          canContinue: true,
+          providerAttemptCount: 1,
+          usageKnown: true,
+        }),
+        runPairedEvaluation,
+        providerAttemptCount: () => 2,
+      },
+    }));
+
+    await expect(
+      executeReviewPlannerControlledLiveV3Cli({
+        argv: ['--confirm-controlled-live-v3'],
+        env: liveV3Env,
+        root: 'injected-v3-safe-reservation',
+        reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+        createEvaluator,
+      } as never),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 2,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+    });
+    expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
   });
 
   it('closes before paired evaluation when a complete canary reports zero attempts, even with a valid 48-case quality report and total 22', async () => {
@@ -304,7 +347,7 @@ describe('review planner controlled Live v3 CLI', () => {
     expect(runPairedEvaluation).not.toHaveBeenCalled();
   });
 
-  it('fails closed rather than saturating an impossible diagnostic-plus-paired attempt aggregate', async () => {
+  it('fails closed rather than trusting an impossible diagnostic-plus-paired attempt aggregate', async () => {
     const events: string[] = [];
     const reservation = reservationFixture(events);
     const validQualityReport = qualityGatePassedReport();
@@ -346,7 +389,7 @@ describe('review planner controlled Live v3 CLI', () => {
       gate: 'closed',
       providerAttemptCount: 48,
       usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+      diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
     });
     expect(phase695ReportSchema.safeParse(overflowedPairedReport).success).toBe(
       false,
@@ -365,14 +408,7 @@ describe('review planner controlled Live v3 CLI', () => {
     });
     const runPairedEvaluation = jest.fn().mockResolvedValue({
       kind: 'report',
-      report: {
-        productionDecision: 'quality_gate_passed',
-        counters: {
-          runtimeInvocations: 22,
-          inputTokens: 1,
-          outputTokens: 1,
-        },
-      },
+      report: qualityGatePassedReport(),
     });
     const createEvaluator = jest.fn(() => ({
       ok: true,
