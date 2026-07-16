@@ -82,7 +82,9 @@ function resolveLiveExecutorConfig(
 
   const model = trim(env.AI_MODEL) ?? DEFAULT_MODEL;
   const baseURL = trim(env.AI_BASE_URL) ?? DEFAULT_BASE_URL;
-  if (!isSafeModelName(model) || !isSafeHttpsBaseUrl(baseURL)) return null;
+  if (!isSafeModelName(model) || !isAllowlistedSafeHttpsBaseUrl(baseURL)) {
+    return null;
+  }
   const provider = resolveProvider({
     baseURL,
     deepseekKey: trim(env.DEEPSEEK_API_KEY),
@@ -118,10 +120,7 @@ function resolveProvider(input: {
   if (hostname === 'openai.com' || hostname.endsWith('.openai.com')) {
     return input.openaiKey ? { name: 'openai', apiKey: input.openaiKey } : null;
   }
-  if (Boolean(input.deepseekKey) === Boolean(input.openaiKey)) return null;
-  return input.deepseekKey
-    ? { name: 'deepseek', apiKey: input.deepseekKey }
-    : { name: 'openai', apiKey: input.openaiKey! };
+  return null;
 }
 
 function resolveTimeout(value: unknown): number {
@@ -155,16 +154,21 @@ function isSafeModelName(value: string): boolean {
   return /^[A-Za-z0-9._:/-]{1,120}$/.test(value);
 }
 
-function isSafeHttpsBaseUrl(value: string): boolean {
+function isAllowlistedSafeHttpsBaseUrl(value: string): boolean {
   try {
     const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
     return (
       url.protocol === 'https:' &&
       Boolean(url.hostname) &&
       !url.username &&
       !url.password &&
       !url.search &&
-      !url.hash
+      !url.hash &&
+      (hostname === 'deepseek.com' ||
+        hostname.endsWith('.deepseek.com') ||
+        hostname === 'openai.com' ||
+        hostname.endsWith('.openai.com'))
     );
   } catch {
     return false;

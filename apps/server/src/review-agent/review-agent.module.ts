@@ -25,19 +25,20 @@ import {
     {
       provide: REVIEW_PLANNER_MODEL_RUNTIMES,
       inject: [ConfigService],
-      useFactory: (config: ConfigService<ServerEnv, true>) =>
-        createReviewPlannerModelRuntimes({
+      useFactory: (config: ConfigService<ServerEnv, true>) => {
+        const workerOnly =
+          config.get('SERVER_ROLE', { infer: true }) === 'worker';
+        return createReviewPlannerModelRuntimes({
           AI_PROVIDER_MODE: config.get('AI_PROVIDER_MODE', { infer: true }),
           AI_ENABLE_LIVE_CALLS: config.get('AI_ENABLE_LIVE_CALLS', {
             infer: true,
           }),
-          REVIEW_AGENT_MODEL_ENABLED: config.get('REVIEW_AGENT_MODEL_ENABLED', {
-            infer: true,
-          }),
-          PLANNER_AGENT_MODEL_ENABLED: config.get(
-            'PLANNER_AGENT_MODEL_ENABLED',
-            { infer: true },
-          ),
+          REVIEW_AGENT_MODEL_ENABLED: workerOnly
+            ? false
+            : config.get('REVIEW_AGENT_MODEL_ENABLED', { infer: true }),
+          PLANNER_AGENT_MODEL_ENABLED: workerOnly
+            ? false
+            : config.get('PLANNER_AGENT_MODEL_ENABLED', { infer: true }),
           AI_MODEL: config.get('AI_MODEL', { infer: true }),
           AI_BASE_URL: config.get('AI_BASE_URL', { infer: true }),
           DEEPSEEK_API_KEY: config.get('DEEPSEEK_API_KEY', { infer: true }),
@@ -50,7 +51,8 @@ import {
             'PLANNER_AGENT_MODEL_TIMEOUT_MS',
             { infer: true },
           ),
-        }),
+        });
+      },
     },
     ReviewAgentService,
   ],

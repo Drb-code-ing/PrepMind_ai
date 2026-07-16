@@ -68,4 +68,29 @@ describe('review planner model config', () => {
     expect(config.reviewEnabled).toBe(false);
     expect(config.mode).toBe('mock');
   });
+
+  it.each([
+    ['DeepSeek', { DEEPSEEK_API_KEY: 'only-deepseek-key' }],
+    ['OpenAI', { OPENAI_API_KEY: 'only-openai-key' }],
+  ])(
+    'fails closed for an unallowlisted HTTPS host with only a %s credential',
+    (_provider, credential) => {
+      const config = resolveReviewPlannerModelConfig({
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: true,
+        REVIEW_AGENT_MODEL_ENABLED: true,
+        PLANNER_AGENT_MODEL_ENABLED: true,
+        AI_MODEL: 'deepseek-v4-flash',
+        AI_BASE_URL: 'https://unexpected.example/v1',
+        ...credential,
+      });
+
+      expect(config).toMatchObject({
+        reviewEnabled: false,
+        plannerEnabled: false,
+        mode: 'mock',
+        provider: 'mock',
+      });
+    },
+  );
 });
