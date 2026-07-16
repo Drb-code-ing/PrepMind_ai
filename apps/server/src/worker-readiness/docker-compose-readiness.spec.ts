@@ -304,6 +304,25 @@ describe('Docker Compose worker readiness healthcheck', () => {
     );
   });
 
+  it('projects Review and Planner live controls only to the HTTP server', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+    const reviewPlannerControls = [
+      'REVIEW_AGENT_MODEL_ENABLED: ${REVIEW_AGENT_MODEL_ENABLED:-false}',
+      'PLANNER_AGENT_MODEL_ENABLED: ${PLANNER_AGENT_MODEL_ENABLED:-false}',
+      'REVIEW_AGENT_MODEL_TIMEOUT_MS: ${REVIEW_AGENT_MODEL_TIMEOUT_MS:-4500}',
+      'PLANNER_AGENT_MODEL_TIMEOUT_MS: ${PLANNER_AGENT_MODEL_TIMEOUT_MS:-4500}',
+    ];
+
+    for (const control of reviewPlannerControls) {
+      expect(serverService).toContain(control);
+      expect(workerService).not.toContain(control);
+      expect(webService).not.toContain(control);
+    }
+  });
+
   it('keeps Docker API and worker on the same explicit Qwen RAG contract', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const server = extractYamlSection(compose, '  server:', 2);

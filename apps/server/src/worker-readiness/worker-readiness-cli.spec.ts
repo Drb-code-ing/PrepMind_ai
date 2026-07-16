@@ -83,6 +83,11 @@ describe('worker readiness CLI helpers', () => {
 
     expect(imports).not.toContain(AppModule);
     expect(imports).not.toContain(OutboxModule);
+    expect(
+      imports.map((candidate) =>
+        typeof candidate === 'function' ? candidate.name : undefined,
+      ),
+    ).not.toContain('ReviewAgentModule');
     expect(controllers).toEqual([]);
   });
 

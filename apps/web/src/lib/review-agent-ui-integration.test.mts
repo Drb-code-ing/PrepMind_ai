@@ -48,6 +48,10 @@ function testSuggestionCardExists() {
   assert.match(source, /break-words/);
   assert.match(source, /normalizeSuggestionHref/);
   assert.match(source, /min-h-11/);
+  assert.match(source, /getReviewPlannerModelStatus/);
+  assert.match(source, /reviewPlannerModelStatusLabels/);
+  assert.match(source, /reviewPlannerModelStatusLabels\[modelStatus\]/);
+  assert.doesNotMatch(source, /deepseek|api[_ -]?key|token|provider|raw error/i);
 }
 
 function testPlanPageUsesReviewAgentSuggestion() {
