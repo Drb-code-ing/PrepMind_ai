@@ -6,7 +6,7 @@
 
 更新时间：2026-07-16
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程，但唯一 controlled-Live 在一次 provider 尝试后返回 `invalid_attempted / structured_output`，两条业务 gate 继续关闭且本阶段不得重试。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程；经过独立 v1/v2 profile 的各一次 provider 尝试后，均为 `invalid_attempted / structured_output`，两条业务 gate 继续默认关闭，不得重跑 v1/v2、48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与唯一 controlled-Live；`invalid_attempted / structured_output`、gate 关闭、不得重试 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与两个隔离的 controlled-Live profile；v1/v2 均为 `invalid_attempted / structured_output`、gate 关闭、不得重跑 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -71,7 +71,25 @@
 
 ## 近期关键记录
 
-### 2026-07-16 - Phase 6.9.5 Review / Planner 唯一 controlled-Live 终局记录
+### 2026-07-16 - Phase 6.9.5 Review / Planner v2 controlled-Live 关闭记录
+
+目标：在 v1 暴露本地 probe 与 canonical Review candidate schema 不匹配后，先完成零网络 schema-contract 修复与复审，再以完全隔离的 v2 profile 验证可满足 schema 的无事实诊断请求；不改变 ReviewAgent / PlannerAgent 的只读、权限和本地 facts 边界。
+
+为什么：v1 的 `structured_output` 不能被误写成 provider 语义质量失败，也不能靠覆盖 v1 evidence 或直接重试来消除。独立 v2 profile 让修复后的本地 contract 与旧证据可审计地分开，同时仍以 provider 实际结果决定是否允许继续。
+
+主要内容与做法：
+
+- v2 使用单独的 evidence schema、目录和 `.review-planner-controlled-live-v2.once` marker；v1 evidence 与 `.review-planner-controlled-live.once` 保持只读、不覆盖、不复用且不合并计数。
+- v2 仍固定单 provider attempt、零 retry、4500ms timeout、无用户事实和 JSON-object + canonical schema；业务 `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 始终为 `false`。
+- v2 最终结果仍是 `invalid_attempted / structured_output`，`providerAttemptCount=1`、`usageKnown=false`、`gate=closed`。只记录严格脱敏的状态摘要，不记录 prompt、candidate JSON、用户事实、模型输出、凭据、endpoint、HTTP metadata、raw error、stack、token 或成本。
+
+边界：v2 结果不与 v1 合并成质量、调用次数或成本结论；不得重跑任一 profile，也不得启动 48-case controlled-Live、Docker authenticated suggestions/plan 或可见浏览器。没有创建合成账号或 Trace，故没有相应清理动作；不执行 main 复验或远程推送。
+
+验收：v1/v2 evidence 与两个 marker 均存在且只含允许字段；v2 summary 为 `invalid_attempted / closed / 1 / false / structured_output`；Nest 默认业务 gate、Compose 默认投影和当前文档结论均为关闭。
+
+回顾时可以问：为什么修复 v1 的本地 schema-contract 后仍需要独立 v2 evidence？为什么两个失败 profile 不能相加后解释为质量、zero-call 或成本结果？
+
+### 2026-07-16 - Phase 6.9.5 Review / Planner v1 controlled-Live 历史记录
 
 目标：在不放开 ReviewAgent / PlannerAgent 的事实或写权限前，使用一次 server-only 受控诊断确认真实模型路径是否具备进入后续 48-case 与项目内验收的资格。
 
@@ -81,9 +99,9 @@
 
 - 诊断只允许一次精确 `--confirm-controlled-live` 调用，业务 `REVIEW_AGENT_MODEL_ENABLED`、`PLANNER_AGENT_MODEL_ENABLED` 均保持 `false`；模型无权读写用户业务请求或改变本地 merger 的 facts、FSRS、分钟数、链接和任务。
 - 原生 evidence 使用受信目录约束与 once marker。最终文件只保留固定状态、`providerAttemptCount`、`usageKnown`、固定诊断码和 schema version；不写 prompt、用户学习事实、模型输出、API key、endpoint、HTTP metadata、raw error、stack 或 token/cost 数值。
-- 唯一尝试结果为 `invalid_attempted / structured_output`，`providerAttemptCount=1`、`usageKnown=false`、`gate=closed`。这说明存在一次 provider 尝试，但没有可验证 usage，也没有 quality pass 或生产启用结论。
+- v1 尝试结果为 `invalid_attempted / structured_output`，`providerAttemptCount=1`、`usageKnown=false`、`gate=closed`。这说明存在一次 provider 尝试，但没有可验证 usage，也没有 quality pass 或生产启用结论。该历史 evidence 保持原样；后续 v2 在单独 profile 中记录，不能倒写或拼接。
 
-边界：本阶段不重跑诊断、不跑 48-case controlled-Live、不启动 Docker authenticated suggestions/plan 或可见浏览器；不创建合成账号/Trace，因此没有相应清理动作；不执行 main 复验或远程推送。不得删除、替换 once marker 或将失败 evidence 与任何历史 run 拼接。
+边界：v1 不重跑，不跑 48-case controlled-Live，不启动 Docker authenticated suggestions/plan 或可见浏览器；不创建合成账号/Trace，因此没有相应清理动作；不执行 main 复验或远程推送。不得删除、替换 v1 marker 或将 v1 evidence 与 v2 或任何历史 run 拼接。
 
 验收：检查 native evidence 与 marker 只包含允许字段；检查 Nest 默认 gate、Compose 默认投影和文档结论均为关闭。开发测试与 Mock 的既有通过结果仍只证明工程回归，不能覆盖本次 Live 失败。
 

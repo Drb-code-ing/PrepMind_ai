@@ -382,6 +382,8 @@
 
 ### Task 7: 单次诊断、单次 controlled-Live 与项目内真实模型验收
 
+> 2026-07-16 执行状态：v1 profile 发现本地 probe/schema 不匹配后，先经独立零网络 schema-contract 修复与复审才创建 v2 profile。v1/v2 各自一次 provider attempt 都以 `invalid_attempted / structured_output`、`gate=closed`、`usageKnown=false` 关闭。两个 once marker 与 evidence 必须保留且计数不可合并；不得重跑任一 profile，也不得继续 48-case、Docker 或浏览器验收。
+
 **Files:**
 - Create: `docs/acceptance/evidence/phase-6-9-5-live-diagnostic/` (runtime atomically creates one strictly sanitized JSON evidence file)
 - Modify: `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`
@@ -390,7 +392,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/data-flow.md`
 
-- [ ] **Step 1: 运行唯一诊断进程。**
+- [ ] **Step 1: 对一个新的、已批准 profile 运行一次诊断进程。**
 
   在单独 PowerShell 子进程加载未跟踪的根 `.env`，仅临时设置 Live 诊断变量，并保持两个 production gate 为 false：
 
