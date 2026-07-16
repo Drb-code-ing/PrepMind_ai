@@ -837,6 +837,8 @@ Remove-Item Env:COMPOSE_BAKE
 
 ### Docker server / web 真实模型配置补充
 
+> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`web` 不再使用根 `.env` 的 `env_file`，而是只接收明确列出的 Chat、Router、Verifier 服务端运行变量；`admin` 仍有自己的 `env_file`，但不执行 Chat provider。Review/Planner gate 和 timeout 只进入 `server`，不进入 `web` 或 `worker`。本节下方任何“web/admin 都使用 `env_file`”的历史表述均以本说明为准。
+
 Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`，也不会把整个文件注入所有容器。web/admin 仍有各自明确的 `env_file: ../.env`；server/worker 不导入整个文件，而是只接收 `environment` 中显式列出的运行变量，并共用完全相同的 RAG runtime allowlist。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
 
 不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
@@ -857,9 +859,28 @@ ROUTER_MODEL_ENABLED=false
 KNOWLEDGE_VERIFIER_MODEL_ENABLED=false
 ROUTER_MODEL_TIMEOUT_MS=5000
 KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
+REVIEW_AGENT_MODEL_ENABLED=false
+PLANNER_AGENT_MODEL_ENABLED=false
+REVIEW_AGENT_MODEL_TIMEOUT_MS=4500
+PLANNER_AGENT_MODEL_TIMEOUT_MS=4500
 ```
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
+
+### Phase 6.9.5 Review / Planner 模型建议配置
+
+Review / Planner 只在 Nest Server 的 suggestions 编排中使用模型，不能由浏览器参数、Chat 模式切换或 worker 启用。两个组件各自有独立 gate，日常开发和 Docker 默认均保持 `false`；只设置 `AI_PROVIDER_MODE=live` 或 `AI_ENABLE_LIVE_CALLS=true` 不会绕过它们。
+
+Docker `web` 继续显式接收 Chat、Router、Verifier 的服务端 provider allowlist，保证既有 `/api/chat` Live 验收不会因迁移而变为 503；但 Review/Planner 的 gate 与 timeout 只投影给 `server`，不会投影给 `web` 或 `worker`。因此不要把 Review/Planner 变量添加到 `NEXT_PUBLIC_*`、Docker build args、web environment 或 worker environment。
+
+在本机执行无凭据回归时，只设置数据库/JWT 等测试必需配置，并确保没有注入 `AI_PROVIDER_MODE`、`AI_ENABLE_LIVE_CALLS`、provider key、Review/Planner gate 或 timeout。通过静态门后可运行本地 Mock（不会创建 provider executor）：
+
+```powershell
+$stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
+bun --filter @repo/agent eval:review-planner -- --mode mock --out ".tmp/phase-6-9-5-live-diagnostic-mock-$stamp.json"
+```
+
+Mock 只能得到 `mock_quality_not_evidence`，不能开启 gate。controlled-Live 必须遵循 `docs/acceptance-checklist.md` 的单诊断、单次运行和证据规则；不要把 key 写进命令历史、文档、截图或 Git。
 
 Task 8 只把这些变量显式传入 Docker `web` runtime；保留 `env_file: ../.env`，没有把凭据放进 build args 或 `NEXT_PUBLIC_*` 客户端变量。Phase 6.9.4.3 additional P95 `4264ms` 是当时的历史延迟 verdict，不是永久禁止 Router 模型的产品决定；当前混合路径仍须通过 Task 9 controlled-Live、Docker 和可见浏览器验收，因此两个 gate 继续默认关闭。权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这不代表 Memory、Orchestrator、其余 Agent 或 Phase 6 已完成。
 

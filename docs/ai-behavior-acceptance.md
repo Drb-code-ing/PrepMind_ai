@@ -182,6 +182,22 @@ Phase 6.9.4.4 的生产验收 contract 为：
 
 最终评测集由对应 Agent 实施阶段逐步扩充，不把 Phase 6.9.1 的 32 个 seed cases 或 Router/Verifier 的 100-case 专项集冒充其余 Agent 的最终质量结论。
 
+## 7.2 Phase 6.9.5 Review / Planner 真实模型只读建议
+
+ReviewAgent 与 PlannerAgent 的模型路径采用受限混合架构，不是让模型接管学习业务：
+
+- 输入只能是当前 JWT owner 的确定性快照；模型包不读取数据库、环境变量或凭据。
+- Review candidate 最多选择三个现有弱点索引和一个固定 diagnosis；Planner candidate 只能重排现有计划块并选择固定 strategy。结果必须由本地数组和 schema 重新构建。
+- 分钟数、容量、FSRS、deadline、链接、任务写入以及所有权限判断始终由本地服务决定。两个 suggestions API 保持只读。
+- credential、instruction override、system-prompt material、空/低压力快照、pre-abort、预算不足与不安全输入必须在 runtime 前 zero-call。timeout、abort、provider/schema/telemetry 失败只能返回确定性 fallback。
+- 每个 suggestions 请求共享不可变 `2 calls / 1950 input / 440 output` budget；Review 与 Planner 默认 timeout 都是 `4500ms`，不得重试。
+- `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 server 的独立 rollback gate，默认都为 `false`。Web 可以保留 Chat、Router、Verifier 所需的 server-side provider allowlist，但不得接收 Review/Planner gate 或 timeout。
+- response/Trace/UI 只能传递版本化 `modelObservations` 和固定 applied/degraded 状态，不能传递 prompt、学习事实、provider output、raw error、base URL 或 credential。两个 candidate 都未尝试时 UI 不显示模型状态；任一 attempted fallback 时只能显示“模型建议已降级”。
+
+本阶段先通过 48-case Mock contract：24 Review、24 Planner，其中 26 条为 provider 前 zero-call。Mock 的 `mock_quality_not_evidence` 是固定结论；即使 strict schema 和 rubric 均通过，也不构成 Live 质量或生产启用结论。
+
+新的 controlled-Live 必须是 server-only、单诊断/单 run、零 retry、原子脱敏 evidence。任一 `diagnostic_blocked`、`invalid_attempted`、质量/安全/权限/延迟/usage/cost 门失败都会保持两个 gate 关闭；不得用 Docker HTTP 成功、浏览器文案或历史证据替代本次语义评测。当前阶段证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`，其中只记录无凭据和 Mock 结果，不声明真实模型通过。
+
 ## 8. Reflexion / Critic 验收要求
 
 当改动 RouterAgent、TutorAgent prompt、RAG prompt、KnowledgeVerifierAgent 或 `/api/chat` 输出行为时，除了 mock 单测和必要的 live smoke，还要记录 critic/rubric 结论。
