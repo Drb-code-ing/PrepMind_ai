@@ -20,6 +20,9 @@ type CliDependencies = NonNullable<
   Parameters<typeof createReviewPlannerControlledLiveEvaluator>[1]
 >;
 
+const CONTROLLED_LIVE_CANARY_PROVIDER_ATTEMPTS = 1;
+const CONTROLLED_LIVE_PAIRED_RUNTIME_CASES = 22;
+
 export async function executeReviewPlannerControlledLiveCli(
   input: Readonly<{
     argv: readonly string[];
@@ -239,11 +242,13 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       };
     }
-    let diagnosticAttemptCount = 0;
+    let diagnosticAttemptCount: 1 | null = null;
     try {
       if (isValidProviderAttemptCount(diagnostic.providerAttemptCount)) {
+        observeProviderAttemptCount(diagnostic.providerAttemptCount);
+      }
+      if (isCanaryProviderAttemptCount(diagnostic.providerAttemptCount)) {
         diagnosticAttemptCount = diagnostic.providerAttemptCount;
-        observeProviderAttemptCount(diagnosticAttemptCount);
       }
     } catch {
       // A hostile diagnostic getter cannot erase an earlier safe observation.
@@ -269,6 +274,26 @@ export async function executeReviewPlannerControlledLiveV3Cli(
       );
     }
 
+    // A completed canary represents exactly one bounded provider attempt. Do
+    // not infer it from the later paired total: that total cannot prove the
+    // canary itself ran, and must never unlock the paired evaluator.
+    if (
+      diagnostic.status !== 'complete' ||
+      diagnostic.usageKnown !== true ||
+      diagnosticAttemptCount === null
+    ) {
+      const actualProviderAttemptCount = readProviderAttemptCount().value;
+      const summary = attemptedV3ModelFailure(
+        actualProviderAttemptCount,
+        ReviewPlannerDiagnosticCode.UsageUnverifiable,
+      );
+      return finalizeV3EvidenceOrConservativeFailure(
+        evidence,
+        summary,
+        actualProviderAttemptCount,
+      );
+    }
+
     let paired;
     try {
       paired = await evaluator.value.runPairedEvaluation();
@@ -278,11 +303,13 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       };
     }
-    let pairedAttemptCount = 0;
+    let pairedAttemptCount: number | null = null;
     if (paired.kind === 'report') {
       try {
         if (
-          isValidProviderAttemptCount(paired.report.counters.runtimeInvocations)
+          isPairedProviderAttemptCount(
+            paired.report.counters.runtimeInvocations,
+          )
         ) {
           pairedAttemptCount = paired.report.counters.runtimeInvocations;
           observeProviderAttemptCount(pairedAttemptCount);
@@ -298,17 +325,24 @@ export async function executeReviewPlannerControlledLiveV3Cli(
       );
       const authoritativeTotal = readProviderAttemptCount();
       if (
+        lowerBound === null ||
         !authoritativeTotal.available ||
-        authoritativeTotal.value < lowerBound
+        authoritativeTotal.value !== lowerBound
       ) {
+        const conservativeAttemptCount =
+          lowerBound !== null &&
+          (!authoritativeTotal.available ||
+            authoritativeTotal.value < lowerBound)
+            ? lowerBound
+            : authoritativeTotal.value;
         const summary = attemptedV3ModelFailure(
-          lowerBound,
+          conservativeAttemptCount,
           ReviewPlannerDiagnosticCode.UsageUnverifiable,
         );
         return finalizeV3EvidenceOrConservativeFailure(
           evidence,
           summary,
-          lowerBound,
+          conservativeAttemptCount,
         );
       }
       const summary = summarizeV3PairedReport(
@@ -495,10 +529,34 @@ function isValidProviderAttemptCount(value: unknown): value is number {
   );
 }
 
+function isCanaryProviderAttemptCount(value: unknown): value is 1 {
+  return value === CONTROLLED_LIVE_CANARY_PROVIDER_ATTEMPTS;
+}
+
+function isPairedProviderAttemptCount(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= CONTROLLED_LIVE_PAIRED_RUNTIME_CASES
+  );
+}
+
 function combineKnownProviderAttemptLowerBound(
-  diagnosticAttemptCount: number,
-  pairedAttemptCount: number,
-) {
+  diagnosticAttemptCount: 1 | null,
+  pairedAttemptCount: number | null,
+): number | null {
+  if (
+    diagnosticAttemptCount === null ||
+    pairedAttemptCount === null ||
+    !isCanaryProviderAttemptCount(diagnosticAttemptCount) ||
+    !isPairedProviderAttemptCount(pairedAttemptCount)
+  ) {
+    return null;
+  }
   const combined = diagnosticAttemptCount + pairedAttemptCount;
-  return isValidProviderAttemptCount(combined) ? combined : 48;
+  // Source bounds make this at most 23. Keep the final guard explicit so a
+  // future dataset expansion cannot turn accounting overflow into a false
+  // saturating lower bound.
+  return isValidProviderAttemptCount(combined) ? combined : null;
 }

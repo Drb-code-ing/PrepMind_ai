@@ -1,4 +1,12 @@
-import { ReviewPlannerDiagnosticCode } from '@repo/agent';
+import {
+  PHASE_695_REPORT_SCHEMA_VERSION,
+  PHASE_695_REVIEW_PLANNER_DATASET_VERSION,
+  PHASE_695_SHARED_BUDGET,
+  phase695ReportSchema,
+  phase695ReviewPlannerCases,
+  ReviewPlannerDiagnosticCode,
+  type Phase695Report,
+} from '@repo/agent';
 
 import { executeReviewPlannerControlledLiveV3Cli } from './review-planner-controlled-live-eval-cli';
 
@@ -253,6 +261,99 @@ describe('review planner controlled Live v3 CLI', () => {
     expect(createEvaluator).toHaveBeenCalledTimes(1);
   });
 
+  it('closes before paired evaluation when a complete canary reports zero attempts, even with a valid 48-case quality report and total 22', async () => {
+    const events: string[] = [];
+    const reservation = reservationFixture(events);
+    const validQualityReport = qualityGatePassedReport();
+    const runPairedEvaluation = jest.fn().mockResolvedValue({
+      kind: 'report',
+      report: validQualityReport,
+    });
+    const createEvaluator = jest.fn(() => ({
+      ok: true,
+      value: {
+        runDiagnostic: jest.fn().mockResolvedValue({
+          status: 'complete',
+          canContinue: true,
+          providerAttemptCount: 0,
+          usageKnown: true,
+        }),
+        runPairedEvaluation,
+        providerAttemptCount: () => 22,
+      },
+    }));
+
+    await expect(
+      executeReviewPlannerControlledLiveV3Cli({
+        argv: ['--confirm-controlled-live-v3'],
+        env: liveV3Env,
+        root: 'injected-v3-safe-reservation',
+        reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+        createEvaluator,
+      } as never),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 22,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+    });
+    expect(phase695ReportSchema.parse(validQualityReport)).toEqual(
+      validQualityReport,
+    );
+    expect(runPairedEvaluation).not.toHaveBeenCalled();
+  });
+
+  it('fails closed rather than saturating an impossible diagnostic-plus-paired attempt aggregate', async () => {
+    const events: string[] = [];
+    const reservation = reservationFixture(events);
+    const validQualityReport = qualityGatePassedReport();
+    const overflowedPairedReport = {
+      ...validQualityReport,
+      counters: {
+        ...validQualityReport.counters,
+        runtimeInvocations: 48,
+      },
+    };
+    const runPairedEvaluation = jest.fn().mockResolvedValue({
+      kind: 'report',
+      report: overflowedPairedReport,
+    });
+    const createEvaluator = jest.fn(() => ({
+      ok: true,
+      value: {
+        runDiagnostic: jest.fn().mockResolvedValue({
+          status: 'complete',
+          canContinue: true,
+          providerAttemptCount: 1,
+          usageKnown: true,
+        }),
+        runPairedEvaluation,
+        providerAttemptCount: () => 48,
+      },
+    }));
+
+    await expect(
+      executeReviewPlannerControlledLiveV3Cli({
+        argv: ['--confirm-controlled-live-v3'],
+        env: liveV3Env,
+        root: 'injected-v3-safe-reservation',
+        reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+        createEvaluator,
+      } as never),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 48,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+    });
+    expect(phase695ReportSchema.safeParse(overflowedPairedReport).success).toBe(
+      false,
+    );
+    expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
+  });
+
   it('fails closed with the additive canary plus paired lower bound when the authoritative total getter fails after paired execution', async () => {
     const events: string[] = [];
     const reservation = reservationFixture(events);
@@ -371,4 +472,59 @@ function reservationFixture(events: string[]) {
     }),
     discard: jest.fn(),
   };
+}
+
+function qualityGatePassedReport(): Phase695Report {
+  const caseEntries = phase695ReviewPlannerCases.map((testCase) =>
+    testCase.executionKind === 'zero_call'
+      ? {
+          caseId: testCase.id,
+          lane: testCase.lane,
+          executionKind: 'zero_call' as const,
+          runtimeInvocations: 0 as const,
+          strictSuccess: true,
+          qualityPass: true,
+          criticalFailure: false,
+          durationMs: 0,
+          usage: { inputTokens: 0, outputTokens: 0 },
+          budget: { ...PHASE_695_SHARED_BUDGET },
+          gate: 'zero_call' as const,
+        }
+      : {
+          caseId: testCase.id,
+          lane: testCase.lane,
+          executionKind: 'runtime' as const,
+          runtimeInvocations: 1 as const,
+          strictSuccess: true,
+          qualityPass: true,
+          criticalFailure: false,
+          durationMs: 1,
+          usage: { inputTokens: 1, outputTokens: 1 },
+          budget: { ...PHASE_695_SHARED_BUDGET },
+          gate: 'candidate_evaluated' as const,
+        },
+  );
+  return phase695ReportSchema.parse({
+    schemaVersion: PHASE_695_REPORT_SCHEMA_VERSION,
+    datasetVersion: PHASE_695_REVIEW_PLANNER_DATASET_VERSION,
+    mode: 'live',
+    caseEntries,
+    counters: {
+      caseEntries: 48,
+      zeroCallCases: 26,
+      runtimeInvocations: 22,
+      strictSuccesses: 48,
+      qualityPasses: 48,
+      criticalFailures: 0,
+      inputTokens: 22,
+      outputTokens: 22,
+    },
+    metrics: {
+      strictSchemaSuccessRate: 1,
+      semanticQualityRate: 1,
+      criticalFailures: 0,
+      p95DurationMs: 1,
+    },
+    productionDecision: 'quality_gate_passed',
+  });
 }
