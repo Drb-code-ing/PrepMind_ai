@@ -264,6 +264,7 @@ describe('review planner controlled Live CLI', () => {
       'phase-6-9-5-controlled-live',
     );
     await mkdir(outsideEvidence, { recursive: true });
+    let restoredAfterExternalOpen = false;
     const executor = jest.fn(() =>
       Promise.resolve({
         object: { focusIndexes: [0], diagnosis: 'review_pressure' },
@@ -288,9 +289,18 @@ describe('review planner controlled Live CLI', () => {
                 rename,
                 unlink,
                 async open(path, flags) {
+                  if (restoredAfterExternalOpen) return open(path, flags);
+                  restoredAfterExternalOpen = true;
                   await rename(join(root, 'docs'), join(root, 'docs-detached'));
                   await symlink(outside, join(root, 'docs'), 'junction');
-                  return open(path, flags);
+                  const handle = await open(path, flags);
+                  await rename(path, join(root, 'opened-external-file'));
+                  await rm(join(root, 'docs'), {
+                    recursive: true,
+                    force: true,
+                  });
+                  await rename(join(root, 'docs-detached'), join(root, 'docs'));
+                  return handle;
                 },
               },
             }),
@@ -302,6 +312,7 @@ describe('review planner controlled Live CLI', () => {
         usageKnown: false,
         diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
       });
+      expect(restoredAfterExternalOpen).toBe(true);
       expect(executor).not.toHaveBeenCalled();
       await expect(readdir(outsideEvidence)).resolves.toEqual([]);
     } finally {

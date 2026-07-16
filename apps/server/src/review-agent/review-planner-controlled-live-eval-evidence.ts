@@ -299,9 +299,30 @@ async function openInBoundEvidenceParent(
   await fs.beforeOpen?.(path);
   await assertBoundEvidenceParent(parent);
   const handle = await fs.open(path, flags);
-  if (await isBoundEvidenceParent(parent)) return handle;
+  if (
+    (await isBoundEvidenceParent(parent)) &&
+    (await isOpenedHandleAtPath(handle, path))
+  ) {
+    return handle;
+  }
   await removeOwnedOpenedFile(fs, path, handle);
   throw new Error('CONTROLLED_LIVE_EVIDENCE_PARENT_DRIFT');
+}
+
+async function isOpenedHandleAtPath(
+  handle: Awaited<ReturnType<EvidenceFs['open']>>,
+  path: string,
+) {
+  try {
+    const opened = await handle.stat();
+    const current = await lstat(path);
+    return (
+      !current.isSymbolicLink() &&
+      `${opened.dev}:${opened.ino}` === `${current.dev}:${current.ino}`
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function renameInBoundEvidenceParent(
