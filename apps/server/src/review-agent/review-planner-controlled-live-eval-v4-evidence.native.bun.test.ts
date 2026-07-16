@@ -7,14 +7,13 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
 import { executeReviewPlannerControlledLiveV4Cli } from './review-planner-controlled-live-eval-v4-cli';
 import { reserveReviewPlannerControlledLiveV4Evidence } from './review-planner-controlled-live-eval-v4-evidence';
 import { createReviewPlannerControlledLiveV4Evaluator } from './review-planner-controlled-live-eval-v4.factory';
-import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const describeNativeWindows =
   process.platform === 'win32' && Boolean(process.versions.bun)
@@ -71,26 +70,24 @@ describeNativeWindows(
     });
 
     it('preserves all v1-v3 evidence and once markers byte-for-byte across the v4 lifecycle', async () => {
-      const historicalFiles = [
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live/v1.json',
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/v2.json',
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/v3.json',
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live/.review-planner-controlled-live.once',
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/.review-planner-controlled-live-v2.once',
-        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/.review-planner-controlled-live-v3.once',
-      ] as const;
+      const repositoryRoot = resolve(process.cwd());
+      const historicalManifest =
+        await readHistoricalEvidenceManifest(repositoryRoot);
+      expect(historicalManifest.map((entry) => entry.relativePath)).toEqual(
+        expect.arrayContaining([
+          'docs/acceptance/evidence/phase-6-9-5-controlled-live/.review-planner-controlled-live.once',
+          'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/.review-planner-controlled-live-v2.once',
+          'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/.review-planner-controlled-live-v3.once',
+        ]),
+      );
       await Promise.all(
-        historicalFiles.map(async (relativePath) => {
-          const path = join(root, relativePath);
+        historicalManifest.map(async (entry) => {
+          const path = join(root, entry.relativePath);
           await mkdir(parentPath(path), { recursive: true });
-          await writeFile(path, `historical:${relativePath}\n`, 'utf8');
+          await writeFile(path, entry.contents);
         }),
       );
-      const before = await Promise.all(
-        historicalFiles.map((relativePath) =>
-          readFile(join(root, relativePath)),
-        ),
-      );
+      const before = await readHistoricalEvidenceManifest(root);
 
       const reservation = await reserveReviewPlannerControlledLiveV4Evidence({
         root,
@@ -109,93 +106,59 @@ describeNativeWindows(
         }),
       ).resolves.toBe(true);
 
-      await expect(
-        Promise.all(
-          historicalFiles.map((relativePath) =>
-            readFile(join(root, relativePath)),
-          ),
-        ),
-      ).resolves.toEqual(before);
+      await expect(readHistoricalEvidenceManifest(root)).resolves.toEqual(
+        before,
+      );
     });
 
     it('writes the trusted direct fake-fetch schema stage without raw provider content', async () => {
       const rawCanary = 'RAW_V4_NATIVE_EVIDENCE_SCHEMA_CANARY';
-      let fetchCalls = 0;
-      const fetch: ReviewPlannerControlledLiveV4Fetch = () => {
-        fetchCalls += 1;
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              choices: [
-                {
-                  message: {
-                    content: JSON.stringify({
-                      focusIndexes: [0],
-                      diagnosis: 'review_pressure',
-                      raw: rawCanary,
-                    }),
-                  },
-                },
-              ],
-              usage: { prompt_tokens: 12, completion_tokens: 4 },
-            }),
-        });
-      };
-      const createEvaluator = (candidateEnv: Record<string, unknown>) =>
-        createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
-          fetch,
-          isPricingKnown: () => true,
-        });
-
-      const result = await executeReviewPlannerControlledLiveV4Cli({
-        argv: ['--confirm-controlled-live-v4'],
-        env: {
-          AI_PROVIDER_MODE: 'live',
-          AI_ENABLE_LIVE_CALLS: 'true',
-          REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_ENABLED: 'true',
-          REVIEW_AGENT_MODEL_ENABLED: 'false',
-          PLANNER_AGENT_MODEL_ENABLED: 'false',
-          AI_MODEL: 'deepseek-v4-flash',
-          AI_BASE_URL: 'https://api.deepseek.com/v1',
-          DEEPSEEK_API_KEY: 'v4-native-private-key',
+      await withFakeJsonFetch(
+        {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  focusIndexes: [0],
+                  diagnosis: 'review_pressure',
+                  raw: rawCanary,
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
         },
-        root,
-        createEvaluator,
-      });
+        async (fetchCalls) => {
+          const createEvaluator = (candidateEnv: Record<string, unknown>) =>
+            createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
+              isPricingKnown: () => true,
+            });
 
-      expect(result).toEqual({
-        status: 'invalid_attempted',
-        gate: 'closed',
-        providerAttemptCount: 1,
-        usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-        structuredOutputStage: 'provider_type_validation',
-      });
-      expect(fetchCalls).toBe(1);
+          const result = await executeReviewPlannerControlledLiveV4Cli({
+            argv: ['--confirm-controlled-live-v4'],
+            env: controlledLiveEnv(),
+            root,
+            createEvaluator,
+          });
 
-      const evidenceDirectory = join(
-        root,
-        'docs',
-        'acceptance',
-        'evidence',
-        'phase-6-9-5-controlled-live-v4',
+          expect(result).toEqual({
+            status: 'invalid_attempted',
+            gate: 'closed',
+            providerAttemptCount: 1,
+            usageKnown: false,
+            diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+            structuredOutputStage: 'provider_type_validation',
+          });
+          expect(fetchCalls.value).toBe(1);
+
+          const evidence = await readV4Evidence(root);
+          expect(evidence).toContain(
+            '"structuredOutputStage":"provider_type_validation"',
+          );
+          expect(evidence).not.toContain(rawCanary);
+          expect(evidence).not.toContain('v4-native-private-key');
+        },
       );
-      const evidenceLeaf = (await readdir(evidenceDirectory)).find((entry) =>
-        entry.endsWith('.json'),
-      );
-      expect(evidenceLeaf).toBeDefined();
-      if (!evidenceLeaf) throw new Error('expected v4 evidence leaf');
-      const evidence = await readFile(
-        join(evidenceDirectory, evidenceLeaf),
-        'utf8',
-      );
-      expect(evidence).toContain(
-        '"structuredOutputStage":"provider_type_validation"',
-      );
-      expect(evidence).not.toContain(rawCanary);
-      expect(evidence).not.toContain('v4-native-private-key');
     });
 
     it('writes provider_object_missing for a direct fake-fetch response without choices', async () => {
@@ -237,43 +200,57 @@ async function expectProviderObjectMissingEvidence(
     payload: unknown;
   }>,
 ) {
-  let fetchCalls = 0;
-  const fetch: ReviewPlannerControlledLiveV4Fetch = () => {
-    fetchCalls += 1;
+  await withFakeJsonFetch(input.payload, async (fetchCalls) => {
+    const createEvaluator = (candidateEnv: Record<string, unknown>) =>
+      createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
+        isPricingKnown: () => true,
+      });
+
+    const result = await executeReviewPlannerControlledLiveV4Cli({
+      argv: ['--confirm-controlled-live-v4'],
+      env: controlledLiveEnv(),
+      root: input.root,
+      createEvaluator,
+    });
+
+    expect(result).toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+      structuredOutputStage: 'provider_object_missing',
+    });
+    expect(fetchCalls.value).toBe(1);
+    const evidence = await readV4Evidence(input.root);
+    expect(evidence).toContain(
+      '"structuredOutputStage":"provider_object_missing"',
+    );
+    expect(evidence).not.toContain(input.rawCanary);
+    expect(evidence).not.toContain('v4-native-private-key');
+  });
+}
+
+async function withFakeJsonFetch<T>(
+  payload: unknown,
+  run: (fetchCalls: { value: number }) => Promise<T>,
+) {
+  const originalFetch = globalThis.fetch;
+  const fetchCalls = { value: 0 };
+  const fakeFetch: typeof globalThis.fetch = () => {
+    fetchCalls.value += 1;
     return Promise.resolve({
       ok: true,
       status: 200,
-      json: () => Promise.resolve(input.payload),
-    });
+      json: () => Promise.resolve(payload),
+    } as Response);
   };
-  const createEvaluator = (candidateEnv: Record<string, unknown>) =>
-    createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
-      fetch,
-      isPricingKnown: () => true,
-    });
-
-  const result = await executeReviewPlannerControlledLiveV4Cli({
-    argv: ['--confirm-controlled-live-v4'],
-    env: controlledLiveEnv(),
-    root: input.root,
-    createEvaluator,
-  });
-
-  expect(result).toEqual({
-    status: 'invalid_attempted',
-    gate: 'closed',
-    providerAttemptCount: 1,
-    usageKnown: false,
-    diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-    structuredOutputStage: 'provider_object_missing',
-  });
-  expect(fetchCalls).toBe(1);
-  const evidence = await readV4Evidence(input.root);
-  expect(evidence).toContain(
-    '"structuredOutputStage":"provider_object_missing"',
-  );
-  expect(evidence).not.toContain(input.rawCanary);
-  expect(evidence).not.toContain('v4-native-private-key');
+  globalThis.fetch = fakeFetch;
+  try {
+    return await run(fetchCalls);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 function controlledLiveEnv(): Record<string, string> {
@@ -303,6 +280,60 @@ async function readV4Evidence(root: string) {
   expect(evidenceLeaf).toBeDefined();
   if (!evidenceLeaf) throw new Error('expected v4 evidence leaf');
   return readFile(join(evidenceDirectory, evidenceLeaf), 'utf8');
+}
+
+const HISTORICAL_EVIDENCE_DIRECTORIES = [
+  'docs/acceptance/evidence/phase-6-9-5-controlled-live',
+  'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2',
+  'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3',
+] as const;
+
+type HistoricalEvidenceManifestEntry = Readonly<{
+  relativePath: string;
+  contents: Buffer;
+}>;
+
+async function readHistoricalEvidenceManifest(
+  manifestRoot: string,
+): Promise<readonly HistoricalEvidenceManifestEntry[]> {
+  const entries = await Promise.all(
+    HISTORICAL_EVIDENCE_DIRECTORIES.map((directory) =>
+      readEvidenceTree(manifestRoot, directory),
+    ),
+  );
+  return entries
+    .flat()
+    .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+}
+
+async function readEvidenceTree(
+  manifestRoot: string,
+  directory: string,
+): Promise<readonly HistoricalEvidenceManifestEntry[]> {
+  const absoluteDirectory = join(manifestRoot, directory);
+  const output: HistoricalEvidenceManifestEntry[] = [];
+  for (const entry of (
+    await readdir(absoluteDirectory, { withFileTypes: true })
+  ).sort((left, right) => left.name.localeCompare(right.name))) {
+    const absolutePath = join(absoluteDirectory, entry.name);
+    if (entry.isDirectory()) {
+      output.push(
+        ...(await readEvidenceTree(
+          manifestRoot,
+          relative(manifestRoot, absolutePath),
+        )),
+      );
+      continue;
+    }
+    if (!entry.isFile()) {
+      throw new Error('expected regular historical evidence file');
+    }
+    output.push({
+      relativePath: relative(manifestRoot, absolutePath).replaceAll('\\', '/'),
+      contents: await readFile(absolutePath),
+    });
+  }
+  return output;
 }
 
 function parentPath(path: string) {

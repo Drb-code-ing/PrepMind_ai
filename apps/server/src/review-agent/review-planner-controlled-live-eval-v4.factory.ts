@@ -1,11 +1,10 @@
 import {
+  createFirstPartyDeepSeekV4Runtime,
   createModelAgentBudget,
-  createModelAgentRuntime,
   MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
   type ModelAgentResult,
   type ModelAgentRuntime,
   type ModelAgentStructuredOutputStage,
-  type StructuredModelExecutor,
 } from '@repo/ai';
 import {
   phase695ReportSchema,
@@ -17,13 +16,8 @@ import {
 } from '@repo/agent';
 
 import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
-import {
-  createReviewPlannerControlledLiveV4JsonExecutor,
-  type ReviewPlannerControlledLiveV4Fetch,
-} from './review-planner-controlled-live-eval-v4-json';
 
 const V4_PROFILE_ID = 'phase-6.9.5-review-planner-controlled-live-v4';
-const V4_TIMEOUT_MS = 4_500;
 const V4_CANARY_INPUT_TOKENS = 96;
 const V4_CANARY_OUTPUT_TOKENS = 32;
 const V4_SYSTEM_PROMPT =
@@ -39,7 +33,6 @@ type V4ExecutorConfig = Readonly<{
 }>;
 
 type V4FactoryDependencies = Readonly<{
-  fetch: ReviewPlannerControlledLiveV4Fetch;
   isPricingKnown(model: string): boolean;
   runPairedEvaluation(input: {
     mode: 'live';
@@ -75,7 +68,6 @@ export type ReviewPlannerControlledLiveV4FactoryResult =
   | Readonly<{ ok: false; diagnosticCode: ReviewPlannerDiagnosticCode }>;
 
 const defaultDependencies: V4FactoryDependencies = {
-  fetch: (url, init) => globalThis.fetch(url, init),
   isPricingKnown: (model) => model === 'deepseek-v4-flash',
   runPairedEvaluation: runPhase695ReviewPlannerPaired,
 };
@@ -109,34 +101,16 @@ export function createReviewPlannerControlledLiveV4Evaluator(
   });
   if (!preflight.ok) return preflight;
 
-  let directFetchExecutor: StructuredModelExecutor;
+  let firstPartyRuntime: ReturnType<typeof createFirstPartyDeepSeekV4Runtime>;
   try {
-    directFetchExecutor = createReviewPlannerControlledLiveV4JsonExecutor(
-      preflight.config,
-      { fetch: dependencies.fetch },
-    );
+    firstPartyRuntime = createFirstPartyDeepSeekV4Runtime(preflight.config);
   } catch {
     return {
       ok: false,
       diagnosticCode: ReviewPlannerDiagnosticCode.ExecutorInit,
     };
   }
-
-  let attempts = 0;
-  const firstPartyDirectFetchExecutor: StructuredModelExecutor = async (
-    input,
-  ) => {
-    attempts += 1;
-    return directFetchExecutor(input);
-  };
-  const runtime = createModelAgentRuntime({
-    mode: 'live',
-    provider: 'deepseek',
-    model: preflight.config.model,
-    liveCallsEnabled: true,
-    timeoutMs: V4_TIMEOUT_MS,
-    executor: firstPartyDirectFetchExecutor,
-  });
+  const runtime = firstPartyRuntime.runtime;
   let diagnostic: Promise<ReviewPlannerControlledLiveV4Diagnostic> | null =
     null;
   let paired: ReturnType<
@@ -147,13 +121,16 @@ export function createReviewPlannerControlledLiveV4Evaluator(
     ok: true,
     value: Object.freeze({
       runDiagnostic() {
-        diagnostic ??= runV4Canary(runtime, () => attempts);
+        diagnostic ??= runV4Canary(
+          runtime,
+          firstPartyRuntime.providerAttemptCount,
+        );
         return diagnostic;
       },
       async runPairedEvaluation() {
         const result = await (diagnostic ??= runV4Canary(
           runtime,
-          () => attempts,
+          firstPartyRuntime.providerAttemptCount,
         ));
         if (!result.canContinue) {
           return {
@@ -164,7 +141,7 @@ export function createReviewPlannerControlledLiveV4Evaluator(
         paired ??= runPairedSafely(dependencies.runPairedEvaluation, runtime);
         return paired;
       },
-      providerAttemptCount: () => boundedAttempts(attempts),
+      providerAttemptCount: firstPartyRuntime.providerAttemptCount,
     }),
   };
 }

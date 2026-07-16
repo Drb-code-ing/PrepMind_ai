@@ -6,7 +6,6 @@ import {
   mapV4ControlledLiveStructuredOutputStage,
   validateReviewPlannerControlledLiveV4Preflight,
 } from './review-planner-controlled-live-eval-v4.factory';
-import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -21,59 +20,62 @@ const env = Object.freeze({
 
 describe('review planner controlled Live v4 evaluator', () => {
   it('constructs a private V4 executor only after the closed-gate preflight and accounts for a positive-usage canary once', async () => {
-    const fetch = fakeJsonFetch({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              focusIndexes: [0],
-              diagnosis: 'review_pressure',
-            }),
+    await withFakeJsonFetch(
+      {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                focusIndexes: [0],
+                diagnosis: 'review_pressure',
+              }),
+            },
           },
-        },
-      ],
-      usage: { prompt_tokens: 12, completion_tokens: 4 },
-    });
+        ],
+        usage: { prompt_tokens: 12, completion_tokens: 4 },
+      },
+      async (fetch) => {
+        const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
+          isPricingKnown: () => true,
+        });
 
-    const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-      fetch,
-      isPricingKnown: () => true,
-    });
-
-    expect(evaluator).toMatchObject({ ok: true });
-    if (!evaluator.ok) throw new Error('expected v4 evaluator');
-    await expect(evaluator.value.runDiagnostic()).resolves.toEqual({
-      status: 'complete',
-      canContinue: true,
-      providerAttemptCount: 1,
-      usageKnown: true,
-    });
-    expect(fetch).toHaveBeenCalledTimes(1);
+        expect(evaluator).toMatchObject({ ok: true });
+        if (!evaluator.ok) throw new Error('expected v4 evaluator');
+        await expect(evaluator.value.runDiagnostic()).resolves.toEqual({
+          status: 'complete',
+          canContinue: true,
+          providerAttemptCount: 1,
+          usageKnown: true,
+        });
+        expect(fetch).toHaveBeenCalledTimes(1);
+      },
+    );
   });
 
   it('turns a rejecting private fetch into one safe attempted transport closure without retaining the raw canary', async () => {
     const rawCanary = 'RAW_V4_PRIVATE_FETCH_REJECTION_CANARY';
-    const fetch = jest.fn(() =>
-      Promise.reject(new Error(rawCanary)),
-    ) as jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch>;
-    const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-      fetch,
-      isPricingKnown: () => true,
-    });
+    await withFakeFetch(
+      () => Promise.reject(new Error(rawCanary)),
+      async (fetch) => {
+        const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
+          isPricingKnown: () => true,
+        });
 
-    expect(evaluator).toMatchObject({ ok: true });
-    if (!evaluator.ok) throw new Error('expected v4 evaluator');
-    const diagnostic = await evaluator.value.runDiagnostic();
+        expect(evaluator).toMatchObject({ ok: true });
+        if (!evaluator.ok) throw new Error('expected v4 evaluator');
+        const diagnostic = await evaluator.value.runDiagnostic();
 
-    expect(diagnostic).toEqual({
-      status: 'invalid_attempted',
-      canContinue: false,
-      providerAttemptCount: 1,
-      usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
-    });
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(diagnostic)).not.toContain(rawCanary);
+        expect(diagnostic).toEqual({
+          status: 'invalid_attempted',
+          canContinue: false,
+          providerAttemptCount: 1,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+        });
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(diagnostic)).not.toContain(rawCanary);
+      },
+    );
   });
 
   it.each([
@@ -100,30 +102,33 @@ describe('review planner controlled Live v4 evaluator', () => {
   ])(
     'routes direct JSON %s through the trusted structured-output signal without retaining raw content',
     async ({ content, structuredOutputStage }) => {
-      const fetch = fakeJsonFetch({
-        choices: [{ message: { content } }],
-        usage: { prompt_tokens: 12, completion_tokens: 4 },
-      });
-      const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-        fetch,
-        isPricingKnown: () => true,
-      });
+      await withFakeJsonFetch(
+        {
+          choices: [{ message: { content } }],
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
+        },
+        async (fetch) => {
+          const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
+            isPricingKnown: () => true,
+          });
 
-      expect(evaluator).toMatchObject({ ok: true });
-      if (!evaluator.ok) throw new Error('expected v4 evaluator');
+          expect(evaluator).toMatchObject({ ok: true });
+          if (!evaluator.ok) throw new Error('expected v4 evaluator');
 
-      const diagnostic = await evaluator.value.runDiagnostic();
+          const diagnostic = await evaluator.value.runDiagnostic();
 
-      expect(diagnostic).toEqual({
-        status: 'invalid_attempted',
-        canContinue: false,
-        providerAttemptCount: 1,
-        usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-        structuredOutputStage,
-      });
-      expect(fetch).toHaveBeenCalledTimes(1);
-      expect(JSON.stringify(diagnostic)).not.toContain('RAW_V4_');
+          expect(diagnostic).toEqual({
+            status: 'invalid_attempted',
+            canContinue: false,
+            providerAttemptCount: 1,
+            usageKnown: false,
+            diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+            structuredOutputStage,
+          });
+          expect(fetch).toHaveBeenCalledTimes(1);
+          expect(JSON.stringify(diagnostic)).not.toContain('RAW_V4_');
+        },
+      );
     },
   );
 
@@ -133,18 +138,15 @@ describe('review planner controlled Live v4 evaluator', () => {
     { AI_BASE_URL: 'https://api.deepseek.com' },
     { AI_MODEL: 'other-model' },
   ])('fails v4 preflight before direct fetch for %o', (override) => {
-    const fetch =
-      jest.fn() as jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch>;
     expect(
       createReviewPlannerControlledLiveV4Evaluator(
         { ...env, ...override },
-        { fetch, isPricingKnown: () => true },
+        { isPricingKnown: () => true },
       ),
     ).toEqual({
       ok: false,
       diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
     });
-    expect(fetch).not.toHaveBeenCalled();
     expect(
       validateReviewPlannerControlledLiveV4Preflight(
         { ...env, ...override },
@@ -168,16 +170,35 @@ describe('review planner controlled Live v4 evaluator', () => {
   });
 });
 
-function fakeJsonFetch(
+async function withFakeJsonFetch<T>(
   payload: unknown,
-): jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch> {
-  return jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(payload),
-    }),
+  run: (fetch: jest.MockedFunction<typeof globalThis.fetch>) => Promise<T>,
+) {
+  return withFakeFetch(
+    () =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(payload),
+      } as Response),
+    run,
   );
+}
+
+async function withFakeFetch<T>(
+  implementation: () => Promise<Response>,
+  run: (fetch: jest.MockedFunction<typeof globalThis.fetch>) => Promise<T>,
+) {
+  const originalFetch = globalThis.fetch;
+  const fetch = jest.fn(implementation) as jest.MockedFunction<
+    typeof globalThis.fetch
+  >;
+  globalThis.fetch = fetch;
+  try {
+    return await run(fetch);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 function structuredOutputFailure(

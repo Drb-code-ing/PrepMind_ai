@@ -5,4 +5,4 @@ export * from './model-agent-provider.ts';
 export * from './model-agent-runtime.ts';
 export * from './model-agent-safety.ts';
 export * from './model-agent-structured-schema.ts';
-export * from './trusted-deepseek-v4-json-executor.ts';
+export * from './first-party-deepseek-v4-runtime.ts';

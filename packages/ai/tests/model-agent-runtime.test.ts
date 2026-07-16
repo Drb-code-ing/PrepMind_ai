@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { createModelAgentBudget } from '../src/model-agent-budget';
 import type { ModelAgentProviderFailureCategory } from '../src/model-agent-contract';
+import { createFirstPartyDeepSeekV4Runtime } from '../src/first-party-deepseek-v4-runtime';
 import { createTrustedModelAgentProviderFailureSignal } from '../src/model-agent-provider-failure';
 import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
 import { createModelAgentRuntime } from '../src/model-agent-runtime';
@@ -299,6 +300,48 @@ describe('model agent runtime live mode', () => {
     expect(result.error.providerFailureCategory).toBe('unknown');
     expect('structuredOutputStage' in result.trace).toBe(false);
     expect(JSON.stringify(result)).not.toContain(CANARY);
+  });
+
+  it('does not accept a structured stage reentered through the first-party V4 runtime', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: `{${CANARY}` } }],
+          }),
+      }) as Response) as typeof fetch;
+    try {
+      let innerResult: Awaited<
+        ReturnType<ReturnType<typeof createFirstPartyDeepSeekV4Runtime>['runtime']['invokeStructured']>
+      > | null = null;
+      const runtime = liveRuntime({
+        executor: async () => {
+          const firstParty = createFirstPartyDeepSeekV4Runtime({
+            provider: 'deepseek',
+            apiKey: 'test-only-key',
+            baseURL: 'https://api.deepseek.com/v1',
+            model: 'deepseek-v4-flash',
+          });
+          innerResult = await firstParty.runtime.invokeStructured(request());
+          throw innerResult;
+        },
+      });
+
+      const result = await runtime.invokeStructured(request());
+
+      expect(innerResult).not.toBeNull();
+      expect(innerResult?.ok).toBe(false);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected outer reentry failure');
+      expect(result.error.providerFailureCategory).toBe('unknown');
+      expect('structuredOutputStage' in result.trace).toBe(false);
+      expect(JSON.stringify(result)).not.toContain(CANARY);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it('propagates a trusted provider category identically to the error and trace', async () => {

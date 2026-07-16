@@ -13,7 +13,6 @@ import {
   serializeReviewPlannerControlledLiveV4Summary,
 } from './review-planner-controlled-live-eval-v4-cli';
 import { createReviewPlannerControlledLiveV4Evaluator } from './review-planner-controlled-live-eval-v4.factory';
-import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -165,55 +164,66 @@ describe('review planner controlled Live v4 CLI', () => {
     'records the trusted direct JSON %s stage in v4 evidence without raw provider content',
     async ({ content, structuredOutputStage }) => {
       const finalize = jest.fn(() => Promise.resolve(true));
-      const fetch = fakeJsonFetch({
-        choices: [{ message: { content } }],
-        usage: { prompt_tokens: 12, completion_tokens: 4 },
-      });
-      const createEvaluator = (candidateEnv: Record<string, unknown>) =>
-        createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
-          fetch,
-          isPricingKnown: () => true,
-        });
-      const result = await executeReviewPlannerControlledLiveV4Cli({
-        argv: ['--confirm-controlled-live-v4'],
-        env,
-        root: 'v4-evidence-stage-root',
-        reserveEvidence: jest.fn().mockResolvedValue({
-          relativePath:
-            'docs/acceptance/evidence/phase-6-9-5-controlled-live-v4/test.json',
-          markAttempted: jest.fn(() => Promise.resolve(true)),
-          finalize,
-        }) as never,
-        createEvaluator,
-      });
+      await withFakeJsonFetch(
+        {
+          choices: [{ message: { content } }],
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
+        },
+        async (fetch) => {
+          const createEvaluator = (candidateEnv: Record<string, unknown>) =>
+            createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
+              isPricingKnown: () => true,
+            });
+          const result = await executeReviewPlannerControlledLiveV4Cli({
+            argv: ['--confirm-controlled-live-v4'],
+            env,
+            root: 'v4-evidence-stage-root',
+            reserveEvidence: jest.fn().mockResolvedValue({
+              relativePath:
+                'docs/acceptance/evidence/phase-6-9-5-controlled-live-v4/test.json',
+              markAttempted: jest.fn(() => Promise.resolve(true)),
+              finalize,
+            }) as never,
+            createEvaluator,
+          });
 
-      expect(result).toEqual({
-        status: 'invalid_attempted',
-        gate: 'closed',
-        providerAttemptCount: 1,
-        usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-        structuredOutputStage,
-      });
-      expect(finalize).toHaveBeenLastCalledWith(result);
-      expect(fetch).toHaveBeenCalledTimes(1);
-      expect(
-        JSON.stringify({ result, calls: finalize.mock.calls }),
-      ).not.toContain('RAW_V4_CLI_');
+          expect(result).toEqual({
+            status: 'invalid_attempted',
+            gate: 'closed',
+            providerAttemptCount: 1,
+            usageKnown: false,
+            diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+            structuredOutputStage,
+          });
+          expect(finalize).toHaveBeenLastCalledWith(result);
+          expect(fetch).toHaveBeenCalledTimes(1);
+          expect(
+            JSON.stringify({ result, calls: finalize.mock.calls }),
+          ).not.toContain('RAW_V4_CLI_');
+        },
+      );
     },
   );
 });
 
-function fakeJsonFetch(
+async function withFakeJsonFetch<T>(
   payload: unknown,
-): jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch> {
-  return jest.fn(() =>
+  run: (fetch: jest.MockedFunction<typeof globalThis.fetch>) => Promise<T>,
+) {
+  const originalFetch = globalThis.fetch;
+  const fetch = jest.fn(() =>
     Promise.resolve({
       ok: true,
       status: 200,
       json: () => Promise.resolve(payload),
-    }),
+    } as Response),
   );
+  globalThis.fetch = fetch;
+  try {
+    return await run(fetch);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 function fixtureReservation(events: string[]) {

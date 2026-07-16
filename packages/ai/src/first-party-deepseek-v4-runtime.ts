@@ -1,69 +1,78 @@
 import type { StructuredModelExecutor } from './model-agent-contract.ts';
+import {
+  createModelAgentRuntime,
+  type ModelAgentRuntime,
+} from './model-agent-runtime.ts';
 import { createTrustedModelAgentStructuredOutputFailureSignal } from './model-agent-provider-failure.ts';
 
 const DEEPSEEK_V4_BASE_URL = 'https://api.deepseek.com/v1';
 const DEEPSEEK_V4_MODEL = 'deepseek-v4-flash';
+const DEEPSEEK_V4_TIMEOUT_MS = 4_500;
 const DIRECT_TRANSPORT_FAILURE = 'MODEL_AGENT_V4_TRANSPORT_FAILED';
 const EXACT_JSON_FENCE = /^```json\n([\s\S]*)\n```$/;
 
-export type TrustedDeepSeekV4JsonFetch = (
-  url: string,
-  init: Readonly<{
-    method: 'POST';
-    headers: Readonly<Record<string, string>>;
-    body: string;
-    signal: AbortSignal;
-  }>,
-) => Promise<
-  Readonly<{
-    ok: boolean;
-    status: number;
-    json(): Promise<unknown>;
-  }>
->;
-
-export type TrustedDeepSeekV4JsonConfig = Readonly<{
+export type FirstPartyDeepSeekV4RuntimeConfig = Readonly<{
   provider: 'deepseek';
   apiKey: string;
   baseURL: string;
   model: string;
 }>;
 
+export type FirstPartyDeepSeekV4Runtime = Readonly<{
+  runtime: ModelAgentRuntime;
+  providerAttemptCount(): number;
+}>;
+
 /**
- * The only direct-fetch adapter permitted to emit trusted structured-output
- * stage signals. Its parser reduces provider data to fixed enum stages before
- * calling the private @repo/ai signal boundary.
+ * Builds the V4-only runtime from a private direct-fetch adapter. The adapter
+ * is deliberately not returned or injected: only this first-party module can
+ * reduce provider data to a trusted fixed structured-output stage.
  */
-export function createTrustedDeepSeekV4JsonExecutor(
-  config: TrustedDeepSeekV4JsonConfig,
-  dependencies: Readonly<{ fetch: TrustedDeepSeekV4JsonFetch }>,
-): StructuredModelExecutor {
+export function createFirstPartyDeepSeekV4Runtime(
+  config: FirstPartyDeepSeekV4RuntimeConfig,
+): FirstPartyDeepSeekV4Runtime {
   const normalized = normalizeConfig(config);
+  let attempts = 0;
+  const executor: StructuredModelExecutor = async (input) => {
+    attempts += 1;
+    return executeTrustedDeepSeekV4Json(normalized, input);
+  };
 
-  return async (input) => {
-    const response = await fetchCompletion({
-      config: normalized,
-      fetch: dependencies.fetch,
-      input,
-    });
-    const payload = await readJsonPayload(input, response);
-    const content = readOnlyCompletionContent(input, payload);
-    const parsed = parseExactJsonContent(input, content);
-    const schema = input.schema.safeParse(parsed);
-    if (!schema.success) {
-      throwStructuredOutputFailure(input, 'provider_type_validation');
-    }
+  return Object.freeze({
+    runtime: createModelAgentRuntime({
+      mode: 'live',
+      provider: 'deepseek',
+      model: DEEPSEEK_V4_MODEL,
+      liveCallsEnabled: true,
+      timeoutMs: DEEPSEEK_V4_TIMEOUT_MS,
+      executor,
+    }),
+    providerAttemptCount: () => boundedAttempts(attempts),
+  });
+}
 
-    return {
-      object: schema.data,
-      ...readSafeUsage(payload),
-    };
+async function executeTrustedDeepSeekV4Json(
+  config: FirstPartyDeepSeekV4RuntimeConfig,
+  input: Parameters<StructuredModelExecutor>[0],
+) {
+  const response = await fetchCompletion(config, input);
+  const payload = await readJsonPayload(input, response);
+  const content = readOnlyCompletionContent(input, payload);
+  const parsed = parseExactJsonContent(input, content);
+  const schema = input.schema.safeParse(parsed);
+  if (!schema.success) {
+    throwStructuredOutputFailure(input, 'provider_type_validation');
+  }
+
+  return {
+    object: schema.data,
+    ...readSafeUsage(payload),
   };
 }
 
 function normalizeConfig(
-  config: TrustedDeepSeekV4JsonConfig,
-): TrustedDeepSeekV4JsonConfig {
+  config: FirstPartyDeepSeekV4RuntimeConfig,
+): FirstPartyDeepSeekV4RuntimeConfig {
   try {
     if (
       typeof config !== 'object' ||
@@ -88,31 +97,28 @@ function normalizeConfig(
 }
 
 async function fetchCompletion(
-  input: Readonly<{
-    config: TrustedDeepSeekV4JsonConfig;
-    fetch: TrustedDeepSeekV4JsonFetch;
-    input: Parameters<StructuredModelExecutor>[0];
-  }>,
+  config: FirstPartyDeepSeekV4RuntimeConfig,
+  input: Parameters<StructuredModelExecutor>[0],
 ) {
-  let response: Awaited<ReturnType<TrustedDeepSeekV4JsonFetch>>;
+  let response: Response;
   try {
-    response = await input.fetch(`${input.config.baseURL}/chat/completions`, {
+    response = await globalThis.fetch(`${config.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${input.config.apiKey}`,
+        authorization: `Bearer ${config.apiKey}`,
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: input.config.model,
+        model: config.model,
         response_format: { type: 'json_object' },
-        max_tokens: input.input.maxOutputTokens,
+        max_tokens: input.maxOutputTokens,
         stream: false,
         messages: [
-          { role: 'system', content: input.input.systemPrompt },
-          { role: 'user', content: input.input.userPrompt },
+          { role: 'system', content: input.systemPrompt },
+          { role: 'user', content: input.userPrompt },
         ],
       }),
-      signal: input.input.signal,
+      signal: input.signal,
     });
   } catch {
     throw new Error(DIRECT_TRANSPORT_FAILURE);
@@ -123,7 +129,7 @@ async function fetchCompletion(
 
 async function readJsonPayload(
   input: Parameters<StructuredModelExecutor>[0],
-  response: Awaited<ReturnType<TrustedDeepSeekV4JsonFetch>>,
+  response: Response,
 ) {
   try {
     return await response.json();
@@ -203,6 +209,10 @@ function throwStructuredOutputFailure(
     input.signal,
     stage,
   );
+}
+
+function boundedAttempts(value: number) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= 48 ? value : 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
