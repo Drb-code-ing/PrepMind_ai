@@ -102,6 +102,55 @@ describe('review planner controlled Live v3 CLI', () => {
     });
   });
 
+  it('preserves the diagnostic observed attempt and legal stage when the later evaluator count getter throws', async () => {
+    const events: string[] = [];
+    const reservation = reservationFixture(events);
+    const runPairedEvaluation = jest.fn();
+    const createEvaluator = jest.fn(() => ({
+      ok: true,
+      value: {
+        runDiagnostic: jest.fn().mockResolvedValue({
+          status: 'invalid_attempted',
+          canContinue: false,
+          providerAttemptCount: 1,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+          structuredOutputStage: 'provider_object_missing',
+        }),
+        runPairedEvaluation,
+        providerAttemptCount: () => {
+          throw new Error('POST_DIAGNOSTIC_COUNT_GETTER_FAILURE');
+        },
+      },
+    }));
+
+    await expect(
+      executeReviewPlannerControlledLiveV3Cli({
+        argv: ['--confirm-controlled-live-v3'],
+        env: liveV3Env,
+        root: 'injected-v3-safe-reservation',
+        reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+        createEvaluator,
+      } as never),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+      structuredOutputStage: 'provider_object_missing',
+    });
+    expect(runPairedEvaluation).not.toHaveBeenCalled();
+    expect(reservation.finalize).toHaveBeenCalledWith({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+      structuredOutputStage: 'provider_object_missing',
+    });
+  });
+
   it('keeps a post-reservation mark failure conservative and does not construct an evaluator', async () => {
     const events: string[] = [];
     const reservation = {

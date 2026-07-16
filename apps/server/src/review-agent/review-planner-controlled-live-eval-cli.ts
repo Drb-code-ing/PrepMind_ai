@@ -207,13 +207,22 @@ export async function executeReviewPlannerControlledLiveV3Cli(
       const summary = attemptedV3ModelFailure(0, evaluator.diagnosticCode);
       return finalizeV3EvidenceOrConservativeFailure(evidence, summary, 0);
     }
+    const observeProviderAttemptCount = (value: unknown) => {
+      if (
+        typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 0 &&
+        value <= 48
+      ) {
+        providerAttemptCount = Math.max(providerAttemptCount, value);
+      }
+      return providerAttemptCount;
+    };
     const readProviderAttemptCount = () => {
       try {
-        providerAttemptCount = safeProviderAttempts(
-          evaluator.value.providerAttemptCount(),
-        );
+        observeProviderAttemptCount(evaluator.value.providerAttemptCount());
       } catch {
-        // Keep the last bounded count; never invent a zero preflight result.
+        // Preserve the max valid count observed from diagnostic/paired output.
       }
       return providerAttemptCount;
     };
@@ -229,6 +238,11 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         usageKnown: false,
         diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       };
+    }
+    try {
+      observeProviderAttemptCount(diagnostic.providerAttemptCount);
+    } catch {
+      // A hostile diagnostic getter cannot erase an earlier safe observation.
     }
     if (!diagnostic.canContinue) {
       const actualProviderAttemptCount = readProviderAttemptCount();
@@ -259,6 +273,13 @@ export async function executeReviewPlannerControlledLiveV3Cli(
         kind: 'failed' as const,
         diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       };
+    }
+    if (paired.kind === 'report') {
+      try {
+        observeProviderAttemptCount(paired.report.counters.runtimeInvocations);
+      } catch {
+        // Report fields are advisory for this safe count lower bound only.
+      }
     }
     const summary =
       paired.kind === 'report'
