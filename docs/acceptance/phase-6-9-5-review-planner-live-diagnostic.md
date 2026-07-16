@@ -40,33 +40,37 @@ Worker readiness 的子进程回归改为直接运行 Node + `ts-node` 的实际
 
 这里的 runtime invocation 是本地 Mock contract，不是 provider 调用。Mock 证明固定数据集、strict schema、预算、zero-call、安全降级和报告脱敏能够工作；它不证明真实模型语义质量，也不授权开启任一生产 gate。
 
-## Task 7 两个隔离的 controlled-Live 诊断（均已关闭）
+## Task 7 三个隔离的 controlled-Live 诊断（均已关闭）
 
 2026-07-16 的 v1 诊断先发现本地 probe 与 canonical Review candidate schema 不匹配。其后，单独完成零网络 schema-contract 修复与复审，才创建了全新的 v2 profile；v2 使用可满足 canonical schema 的无事实 Review candidate 请求。v2 不修改、覆盖或解释 v1，也不把两条 profile 的计数拼接。
 
-两个 profile 都不是 48-case 质量评测，也没有开启任一业务生产 gate。它们各自的 once marker 已消耗，必须原样保留：
+v3 在完成独立的零网络 structured-output 阶段归因设计、实现与复审后才创建。它只把已经受信的运行时内部阶段安全地写入新的 v3 专用 evidence，不向 HTTP、Trace、浏览器或业务 DTO 暴露该字段；它不是 v1/v2 的重试，不能覆盖、解释或拼接两条历史 profile。
+
+三个 profile 都不是 48-case 质量评测，也没有开启任一业务生产 gate。它们各自的 once marker 已消耗，必须原样保留：
 
 - v1：`docs/acceptance/evidence/phase-6-9-5-controlled-live/.review-planner-controlled-live.once`
 - v2：`docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/.review-planner-controlled-live-v2.once`
+- v3：`docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/.review-planner-controlled-live-v3.once`
 
-| 脱敏字段 | v1 历史记录 | v2 当前关闭记录 |
-| --- | --- | --- |
-| evidence schema | `phase-6.9.5-review-planner-controlled-live-evidence-v1` | `phase-6.9.5-review-planner-controlled-live-evidence-v2` |
-| `status` | `invalid_attempted` | `invalid_attempted` |
-| `gate` | `closed` | `closed` |
-| `providerAttemptCount` | `1` | `1` |
-| `usageKnown` | `false` | `false` |
-| `diagnosticCode` | `structured_output` | `structured_output` |
-| `state` | `finalized` | `finalized` |
+| 脱敏字段 | v1 历史记录 | v2 关闭记录 | v3 关闭记录 |
+| --- | --- | --- | --- |
+| evidence schema | `phase-6.9.5-review-planner-controlled-live-evidence-v1` | `phase-6.9.5-review-planner-controlled-live-evidence-v2` | `phase-6.9.5-review-planner-controlled-live-evidence-v3` |
+| `status` | `invalid_attempted` | `invalid_attempted` | `invalid_attempted` |
+| `gate` | `closed` | `closed` | `closed` |
+| `providerAttemptCount` | `1` | `1` | `1` |
+| `usageKnown` | `false` | `false` | `false` |
+| `diagnosticCode` | `structured_output` | `structured_output` | `structured_output` |
+| `structuredOutputStage` | 不适用 | 不适用 | `provider_json_parse` |
+| `state` | `finalized` | `finalized` | `finalized` |
 
-v2 的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/review-planner-live-20260716T144922378Z-451d4dc8c07a.json`。两份 evidence 都只保存上述受控状态、schema version 与对应 once marker；不保存 prompt、用户学习事实、模型输出、API key、provider endpoint、HTTP status/header、原始错误、stack 或 token/cost 数值。每个 `providerAttemptCount=1` 只说明该独立 profile 已发生一次 provider 尝试；`usageKnown=false` 不能被改记为 zero-call、零成本、账单事实或模型质量通过。
+v2 的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/review-planner-live-20260716T144922378Z-451d4dc8c07a.json`；v3 的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/review-planner-live-20260716T175755421Z-84a2a9591afa.json`。三份 evidence 都只保存上述受控状态、schema version 与对应 once marker；不保存 prompt、用户学习事实、模型输出、API key、provider endpoint、HTTP status/header、原始错误、stack 或 token/cost 数值。v3 的 `structuredOutputStage=provider_json_parse` 仅是受信运行时内部分类，不等同于保存 provider 原文或精确诊断其根因。每个 `providerAttemptCount=1` 只说明该独立 profile 已发生一次 provider 尝试；`usageKnown=false` 不能被改记为 zero-call、零成本、账单事实或模型质量通过。
 
 ## 当前结论与未执行项
 
-- 已完成：无凭据静态门、Mock contract、受控诊断的原生脱敏 evidence 边界，以及 v1/v2 两个独立诊断 profile 的终局留档。
+- 已完成：无凭据静态门、Mock contract、受控诊断的原生脱敏 evidence 边界，以及 v1/v2/v3 三个独立诊断 profile 的终局留档。
 - 未执行且不得借用任一 profile 的结果补做：48-case controlled-Live、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
 - 当前没有真实模型质量通过结论、没有项目内 `candidate_applied` 验收，也没有可开启任一 Review/Planner 业务 gate 的授权。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续保持默认 `false`。
-- v2 当前不重试：`invalid_attempted / structured_output` 保持 `gate=closed`。不得重跑 v1 或 v2，也不得运行 48-case、Docker 或浏览器验收。任何后续排障必须先形成新的、零网络的根因设计与评审；在新的批准边界形成前，本阶段继续关闭。
+- v3 当前不重试：`invalid_attempted / structured_output / provider_json_parse` 保持 `gate=closed`。不得重跑 v1、v2 或 v3，也不得运行 48-case、Docker 或浏览器验收。任何后续排障必须先形成新的、零网络的根因设计与评审；在新的批准边界形成前，本阶段继续关闭。
 
 ## 回顾入口
 
@@ -74,4 +78,4 @@ v2 的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-
 - 为什么 48/48 Mock strict success 仍然不能称为 Live passed？
 - 为什么 worker readiness 的 CLI 回归要绕开 Bun package-script wrapper？
 - 为什么每个独立 profile 的一次 provider 尝试且 `usageKnown=false` 都不能被记为 zero-call、零成本或模型验收通过？
-- 为什么 v1/v2 once marker 必须同时保留，且 `invalid_attempted` 后不能直接重试？
+- 为什么 v1/v2/v3 once marker 必须同时保留，且 `invalid_attempted` 后不能直接重试？

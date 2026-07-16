@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-16。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的受限只读候选路径仍在 Phase 6.9.5 验收未完成状态。隔离的 v1/v2 controlled-Live profile 均为 `invalid_attempted / structured_output`，业务 gate 已关闭且不得重跑 profile、48-case、Docker 或浏览器验收。后续先完成全部 Agent 架构，再进入 Phase 6.10 分层记忆；权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
+> 当前版本：2026-07-17。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的受限只读候选路径仍在 Phase 6.9.5 验收未完成状态。隔离的 v1/v2/v3 controlled-Live profile 均为 `invalid_attempted / structured_output`，v3 的私有安全 evidence 阶段为 `provider_json_parse`；业务 gate 已关闭且不得重跑 profile、48-case、Docker 或浏览器验收。后续先完成全部 Agent 架构，再进入 Phase 6.10 分层记忆；权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
 
 ## 1. 当前边界
 
@@ -526,7 +526,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 - PlannerAgent 负责结合 ReviewAgent 输出、未来计划窗口和 `ReviewPreference` 生成今日重点、周计划节奏、容量提示和建议 block。
 - 该建议链路不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 的 candidate 即使启用也保持只读，FSRS 与容量事实由后端确定。
 - `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。
-- 2026-07-16 的 v1/v2 server-only controlled-Live profile 各在 provider 尝试 1 次后得到 `invalid_attempted / structured_output`，各自 `usageKnown=false` 且 `gate=closed`。它们不进入用户建议、Trace、Docker 或浏览器数据流；两个原生 once marker 已消耗，计数不可合并，当前阶段不得重跑 profile 或执行 48-case/Docker/浏览器后续验收。
+- 2026-07-16~17 的 v1/v2/v3 server-only controlled-Live profile 各在 provider 尝试 1 次后得到 `invalid_attempted / structured_output`，各自 `usageKnown=false` 且 `gate=closed`；仅 v3 的独立 evidence 额外记录 `structuredOutputStage=provider_json_parse`。该私有阶段不进入用户建议、Trace、Docker 或浏览器数据流；三个原生 once marker 已消耗，计数不可合并，当前阶段不得重跑 profile 或执行 48-case/Docker/浏览器后续验收。
 - 今日任务页读取当天 plan 摘要，展示“今日预计 N 分钟”和容量状态；plan 查询失败不影响今日复习主列表。
 - 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs，并用客户端 ECharts 渲染趋势、评分分布和卡片状态。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。

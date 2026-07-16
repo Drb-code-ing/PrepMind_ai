@@ -196,7 +196,7 @@ ReviewAgent 与 PlannerAgent 的模型路径采用受限混合架构，不是让
 
 本阶段先通过 48-case Mock contract：24 Review、24 Planner，其中 26 条为 provider 前 zero-call。Mock 的 `mock_quality_not_evidence` 是固定结论；即使 strict schema 和 rubric 均通过，也不构成 Live 质量或生产启用结论。
 
-每个获批 controlled-Live profile 必须是 server-only、单诊断/单 run、零 retry、原子脱敏 evidence。任一 `diagnostic_blocked`、`invalid_attempted`、质量/安全/权限/延迟/usage/cost 门失败都会保持两个 gate 关闭；不得用 Docker HTTP 成功、浏览器文案或历史证据替代本次语义评测。新 profile 只能在新的零网络根因设计与复审后创建，且不得覆盖、复用或拼接既有 evidence、once marker 或计数。当前 Phase 6.9.5 v1/v2 profile 均为 `invalid_attempted / structured_output`、`gate=closed`、`providerAttemptCount=1`、`usageKnown=false`；48-case、Docker 和浏览器验收未执行。证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`，不声明真实模型通过。
+每个获批 controlled-Live profile 必须是 server-only、单诊断/单 run、零 retry、原子脱敏 evidence。任一 `diagnostic_blocked`、`invalid_attempted`、质量/安全/权限/延迟/usage/cost 门失败都会保持两个 gate 关闭；不得用 Docker HTTP 成功、浏览器文案或历史证据替代本次语义评测。新 profile 只能在新的零网络根因设计与复审后创建，且不得覆盖、复用或拼接既有 evidence、once marker 或计数。当前 Phase 6.9.5 v1/v2/v3 profile 均为 `invalid_attempted / structured_output`、`gate=closed`、`providerAttemptCount=1`、`usageKnown=false`；v3 仅在独立 evidence 记录受信内部阶段 `structuredOutputStage=provider_json_parse`，该字段不进入生产 API、Trace 或浏览器。48-case、Docker 和浏览器验收未执行。证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`，不声明真实模型通过。
 
 ## 8. Reflexion / Critic 验收要求
 

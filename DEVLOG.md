@@ -4,9 +4,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-16
+更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程；经过独立 v1/v2 profile 的各一次 provider 尝试后，均为 `invalid_attempted / structured_output`，两条业务 gate 继续默认关闭，不得重跑 v1/v2、48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程；独立 v1/v2/v3 profile 各发生一次 provider 尝试，均为 `invalid_attempted / structured_output`，其中 v3 的安全内部阶段为 `provider_json_parse`。三条业务 gate 继续默认关闭，不得重跑 v1/v2/v3、48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与两个隔离的 controlled-Live profile；v1/v2 均为 `invalid_attempted / structured_output`、gate 关闭、不得重跑 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与三个隔离的 controlled-Live profile；v1/v2/v3 均为 `invalid_attempted / structured_output`、gate 关闭、不得重跑 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -70,6 +70,24 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 Review / Planner v3 controlled-Live 关闭记录
+
+目标：在不扩大模型权限、不读取或记录 provider 原文的前提下，验证 v3 专用受控诊断能否通过新的安全内部阶段分类，取得继续 48-case 与项目内验收的资格。
+
+为什么：v1/v2 的泛化 `structured_output` 已经安全地阻断后续验收，但不能区分运行时已知的结构化输出阶段。v3 通过独立 profile、evidence schema 和 once marker 保留一个最小、脱敏的阶段值，避免以重试、raw error 或模糊记录替代根因证据。
+
+主要内容与做法：
+
+- v3 以独立目录、`phase-6.9.5-review-planner-controlled-live-evidence-v3` schema 和 `.review-planner-controlled-live-v3.once` marker 运行；v1/v2 evidence 与 marker 均保持字节级历史记录，不覆盖、不复用、不拼接。
+- 唯一一次 v3 provider 尝试终态为 `invalid_attempted / closed / 1 / false / structured_output / provider_json_parse`。`provider_json_parse` 仅是受信 runtime 内部阶段，未进入业务 API、Trace、浏览器或 DTO。
+- evidence 只写严格白名单字段；不写 prompt、用户学习事实、candidate JSON、模型输出、凭据、endpoint、HTTP metadata、raw error、stack、token 或成本。默认 `REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false` 未改变。
+
+边界：v3 失败不是 48-case 质量结论，也不是 zero-call、零成本或账单结论；不重试 v3，不运行 48-case controlled-Live、Docker authenticated suggestions/plan 或可见浏览器验收。v1/v2 同样不重跑；没有创建项目内合成账号或 Trace，因此没有相应清理动作；main 复验和远程推送仍未开始。
+
+验收：v3 evidence 与 once marker 均存在，evidence 为 parseable 的白名单 JSON，保留 `invalid_attempted`、`closed`、`providerAttemptCount=1`、`usageKnown=false`、`structured_output` 与 `provider_json_parse`；v1/v2 没有改写；默认业务 gate 仍关闭。
+
+回顾时可以问：为什么只将 `provider_json_parse` 作为 v3 私有 evidence 字段，而不保存 provider 原文？为什么一次失败后仍必须保留 consumed marker 并停止 48-case、Docker 和浏览器验收？
 
 ### 2026-07-16 - Phase 6.9.5 Review / Planner v2 controlled-Live 关闭记录
 
