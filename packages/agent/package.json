@@ -25,6 +25,7 @@
     "eval:phase-6-9-4-3:accept-mock": "bun scripts/run-phase-6-9-4-3-paired-eval.ts mock-evidence",
     "eval:phase-6-9-4-3:live": "bun scripts/run-phase-6-9-4-3-paired-eval.ts live",
     "eval:phase-6-9-4-3:validate": "bun scripts/validate-phase-6-9-4-3-evidence.ts",
+    "eval:review-planner": "bun scripts/phase-6-9-review-planner-paired-cli.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"
