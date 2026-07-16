@@ -81,6 +81,8 @@ type EvidenceFs = Readonly<{
   readdir: typeof readdir;
   rename: typeof rename;
   unlink: typeof unlink;
+  beforeOpen?(path: string): void | Promise<void>;
+  beforeRename?(from: string, to: string): void | Promise<void>;
 }>;
 
 const nodeFs: EvidenceFs = { mkdir, open, readdir, rename, unlink };
@@ -101,9 +103,14 @@ export async function reserveReviewPlannerControlledLiveEvidence(
   const fs = input.fs ?? nodeFs;
   const root = await resolveEvidenceRoot(input.root);
   const evidenceDirectory = await ensureEvidenceDirectory(root, fs);
+  const parent = await bindEvidenceParent(root, evidenceDirectory);
   await rejectExistingPhaseEvidence(fs, evidenceDirectory);
-  await assertDirectoryInsideRoot(root, evidenceDirectory);
-  await acquirePhaseOnceLock(fs, resolveInsideRoot(root, PHASE_ONCE_LOCK));
+  await assertBoundEvidenceParent(parent);
+  await acquirePhaseOnceLock(
+    fs,
+    parent,
+    resolveInsideRoot(root, PHASE_ONCE_LOCK),
+  );
 
   const relativePath = buildControlledLiveEvidencePath(
     input.startedAt,
@@ -118,10 +125,10 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
   });
 
-  await assertDirectoryInsideRoot(root, evidenceDirectory);
+  await assertBoundEvidenceParent(parent);
   let initialHandle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
-    initialHandle = await fs.open(target, 'wx');
+    initialHandle = await openInBoundEvidenceParent(fs, parent, target, 'wx');
     await initialHandle.writeFile(serializeEvidence(initial), 'utf8');
     await initialHandle.sync();
   } catch {
@@ -140,21 +147,23 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     let temporary: string | null = null;
     let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
     try {
-      await assertDirectoryInsideRoot(root, evidenceDirectory);
+      await assertBoundEvidenceParent(parent);
       const evidence = buildEvidence(nextState, summary);
       const serialized = serializeEvidence(evidence);
       if (FORBIDDEN_EVIDENCE_TEXT.test(serialized)) return false;
       temporary = `${target}.tmp-${process.pid}-${revision++}`;
-      handle = await fs.open(temporary, 'wx');
+      handle = await openInBoundEvidenceParent(fs, parent, temporary, 'wx');
       await handle.writeFile(serialized, 'utf8');
       await handle.sync();
       await closeQuietly(handle);
       handle = null;
-      await fs.rename(temporary, target);
+      await renameInBoundEvidenceParent(fs, parent, temporary, target);
       return true;
     } catch {
       if (handle) await closeQuietly(handle);
-      if (temporary) await fs.unlink(temporary).catch(() => undefined);
+      if (temporary && (await isBoundEvidenceParent(parent))) {
+        await fs.unlink(temporary).catch(() => undefined);
+      }
       return false;
     }
   };
@@ -199,6 +208,7 @@ export async function reserveReviewPlannerControlledLiveEvidence(
         if (state !== 'reserved') return false;
         state = 'discarding';
         try {
+          if (!(await isBoundEvidenceParent(parent))) return false;
           await fs.unlink(target);
           return true;
         } catch {
@@ -218,6 +228,20 @@ async function resolveEvidenceRoot(root: string) {
 }
 
 async function assertDirectoryInsideRoot(root: string, directory: string) {
+  await bindEvidenceParent(root, directory);
+}
+
+type EvidenceParentBinding = Readonly<{
+  root: string;
+  directory: string;
+  realPath: string;
+  identity: string;
+}>;
+
+async function bindEvidenceParent(
+  root: string,
+  directory: string,
+): Promise<EvidenceParentBinding> {
   try {
     const metadata = await lstat(directory);
     if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
@@ -230,6 +254,12 @@ async function assertDirectoryInsideRoot(root: string, directory: string) {
     ) {
       throw new Error('CONTROLLED_LIVE_EVIDENCE_OUTSIDE_ROOT');
     }
+    return Object.freeze({
+      root,
+      directory,
+      realPath: resolvedDirectory,
+      identity: `${metadata.dev}:${metadata.ino}`,
+    });
   } catch (error) {
     if (
       error instanceof Error &&
@@ -238,6 +268,78 @@ async function assertDirectoryInsideRoot(root: string, directory: string) {
       throw error;
     }
     throw new Error('CONTROLLED_LIVE_EVIDENCE_DIRECTORY_INVALID');
+  }
+}
+
+async function assertBoundEvidenceParent(binding: EvidenceParentBinding) {
+  const current = await bindEvidenceParent(binding.root, binding.directory);
+  if (
+    current.realPath !== binding.realPath ||
+    current.identity !== binding.identity
+  ) {
+    throw new Error('CONTROLLED_LIVE_EVIDENCE_PARENT_DRIFT');
+  }
+}
+
+async function isBoundEvidenceParent(binding: EvidenceParentBinding) {
+  try {
+    await assertBoundEvidenceParent(binding);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function openInBoundEvidenceParent(
+  fs: EvidenceFs,
+  parent: EvidenceParentBinding,
+  path: string,
+  flags: 'wx',
+) {
+  await fs.beforeOpen?.(path);
+  await assertBoundEvidenceParent(parent);
+  const handle = await fs.open(path, flags);
+  if (await isBoundEvidenceParent(parent)) return handle;
+  await removeOwnedOpenedFile(fs, path, handle);
+  throw new Error('CONTROLLED_LIVE_EVIDENCE_PARENT_DRIFT');
+}
+
+async function renameInBoundEvidenceParent(
+  fs: EvidenceFs,
+  parent: EvidenceParentBinding,
+  from: string,
+  to: string,
+) {
+  await fs.beforeRename?.(from, to);
+  await assertBoundEvidenceParent(parent);
+  await fs.rename(from, to);
+  await assertBoundEvidenceParent(parent);
+}
+
+async function removeOwnedOpenedFile(
+  fs: EvidenceFs,
+  path: string,
+  handle: Awaited<ReturnType<EvidenceFs['open']>>,
+) {
+  let identity: string | null = null;
+  try {
+    const metadata = await handle.stat();
+    identity = `${metadata.dev}:${metadata.ino}`;
+  } catch {
+    // A failed identity read means this helper must not delete by pathname.
+  }
+  await closeQuietly(handle);
+  if (!identity) return;
+  try {
+    const current = await lstat(path);
+    if (
+      !current.isSymbolicLink() &&
+      `${current.dev}:${current.ino}` === identity
+    ) {
+      await fs.unlink(path);
+    }
+  } catch {
+    // The file is no longer safely attributable to this reservation.
   }
 }
 
@@ -274,10 +376,14 @@ async function rejectExistingPhaseEvidence(fs: EvidenceFs, directory: string) {
   }
 }
 
-async function acquirePhaseOnceLock(fs: EvidenceFs, lockPath: string) {
+async function acquirePhaseOnceLock(
+  fs: EvidenceFs,
+  parent: EvidenceParentBinding,
+  lockPath: string,
+) {
   let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
-    handle = await fs.open(lockPath, 'wx');
+    handle = await openInBoundEvidenceParent(fs, parent, lockPath, 'wx');
     await handle.writeFile('phase-6.9.5-controlled-live-consumed\n', 'utf8');
     await handle.sync();
   } catch (error) {

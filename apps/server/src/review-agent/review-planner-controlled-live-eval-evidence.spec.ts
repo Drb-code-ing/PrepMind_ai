@@ -198,6 +198,102 @@ describe('review planner controlled Live evidence', () => {
     }
   });
 
+  it('rejects a junction swap after binding and before the first evidence open', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'prepmind-phase-695-swap-'));
+    const outsideEvidence = join(
+      outside,
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-controlled-live',
+    );
+    await mkdir(outsideEvidence, { recursive: true });
+    let swapped = false;
+    try {
+      await expect(
+        reserveReviewPlannerControlledLiveEvidence({
+          root,
+          startedAt: '2026-07-16T00:00:00.000Z',
+          runId: 'before-open-swap-run',
+          fs: {
+            mkdir,
+            readdir,
+            rename,
+            unlink,
+            async open(path, flags) {
+              if (swapped) return open(path, flags);
+              swapped = true;
+              await rename(join(root, 'docs'), join(root, 'docs-detached'));
+              await symlink(outside, join(root, 'docs'), 'junction');
+              return open(path, flags);
+            },
+          },
+        }),
+      ).rejects.toThrow('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
+      expect(swapped).toBe(true);
+      await expect(readdir(outsideEvidence)).resolves.toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { name: 'attempted', swapOnOpen: 3 },
+    { name: 'finalized', swapOnOpen: 4 },
+  ] as const)(
+    'fails closed without a root-external write when the parent swaps before %s state write',
+    async ({ name, swapOnOpen }) => {
+      const outside = await mkdtemp(join(tmpdir(), 'prepmind-phase-695-swap-'));
+      const outsideEvidence = join(
+        outside,
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-controlled-live',
+      );
+      await mkdir(outsideEvidence, { recursive: true });
+      let opens = 0;
+      try {
+        const reservation = await reserveReviewPlannerControlledLiveEvidence({
+          root,
+          startedAt: '2026-07-16T00:00:00.000Z',
+          runId: `state-swap-${name}-run`,
+          fs: {
+            mkdir,
+            readdir,
+            rename,
+            unlink,
+            async open(path, flags) {
+              opens += 1;
+              if (opens === swapOnOpen) {
+                await rename(join(root, 'docs'), join(root, 'docs-detached'));
+                await symlink(outside, join(root, 'docs'), 'junction');
+              }
+              return open(path, flags);
+            },
+          },
+        });
+        if (name === 'finalized') {
+          await expect(reservation.markAttempted()).resolves.toBe(true);
+        }
+
+        const operation =
+          name === 'attempted'
+            ? reservation.markAttempted()
+            : reservation.finalize({
+                status: 'invalid_attempted',
+                gate: 'closed',
+                providerAttemptCount: 1,
+                usageKnown: false,
+                diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+              });
+        await expect(operation).resolves.toBe(false);
+        expect(opens).toBeGreaterThanOrEqual(swapOnOpen);
+        await expect(readdir(outsideEvidence)).resolves.toEqual([]);
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
+    },
+  );
+
   it('rejects unsafe summaries without writing their raw diagnostic text', async () => {
     const reservation = await reserveReviewPlannerControlledLiveEvidence({
       root,

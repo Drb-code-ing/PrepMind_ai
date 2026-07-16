@@ -6,6 +6,7 @@ import {
   readdir,
   rename,
   rm,
+  symlink,
   unlink,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -250,6 +251,62 @@ describe('review planner controlled Live CLI', () => {
       diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
     });
     expect(executor).not.toHaveBeenCalled();
+  });
+
+  it('blocks a post-binding junction swap before the provider boundary', async () => {
+    const outside = await mkdtemp(
+      join(tmpdir(), 'prepmind-phase-695-cli-swap-'),
+    );
+    const outsideEvidence = join(
+      outside,
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-controlled-live',
+    );
+    await mkdir(outsideEvidence, { recursive: true });
+    const executor = jest.fn(() =>
+      Promise.resolve({
+        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        usage: { inputTokens: 10, outputTokens: 4 },
+      }),
+    );
+    try {
+      await expect(
+        executeReviewPlannerControlledLiveCli({
+          argv: ['--confirm-controlled-live'],
+          env,
+          root,
+          dependencies: { createExecutor: () => executor },
+          now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+          randomUUID: () => 'cli-before-open-swap',
+          reserveEvidence: (reservation) =>
+            reserveReviewPlannerControlledLiveEvidence({
+              ...reservation,
+              fs: {
+                mkdir,
+                readdir,
+                rename,
+                unlink,
+                async open(path, flags) {
+                  await rename(join(root, 'docs'), join(root, 'docs-detached'));
+                  await symlink(outside, join(root, 'docs'), 'junction');
+                  return open(path, flags);
+                },
+              },
+            }),
+        }),
+      ).resolves.toEqual({
+        status: 'diagnostic_blocked',
+        gate: 'closed',
+        providerAttemptCount: 0,
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+      });
+      expect(executor).not.toHaveBeenCalled();
+      await expect(readdir(outsideEvidence)).resolves.toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 
   it('records a paired runner exception as transport rather than evidence I/O', async () => {
