@@ -508,7 +508,7 @@ async function invokeRuntime<T>(input: {
       userPrompt: input.userPrompt,
       estimatedInputTokens: input.estimatedInputTokens,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-      budget: input.input.budget,
+      budget: safeCandidateBudgetSnapshot(input.input.budget),
       ...(input.input.signal ? { signal: input.input.signal } : {}),
     };
     result = await input.input.runtime.invokeStructured(request);
