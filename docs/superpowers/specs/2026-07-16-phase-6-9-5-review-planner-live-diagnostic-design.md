@@ -1,5 +1,15 @@
 # Phase 6.9.5 Review / Planner 真实模型诊断与项目内启用设计
 
+> **2026-07-16 v3 continuation amendment:** The v1 and v2 controlled-Live
+> profiles are terminal historical records, each closed after one provider
+> attempt. Do not execute this document's original Task-7 command for either
+> profile. The only candidate continuation is the separately reviewed v3
+> profile in
+> [`2026-07-16-phase-6-9-5-controlled-live-v3-profile-design.md`](2026-07-16-phase-6-9-5-controlled-live-v3-profile-design.md).
+> It introduces a new one-time schema/lock/evidence lineage and permits a
+> fixed structured-output stage only in v3 controlled-diagnostic evidence; it
+> does not alter v1/v2 evidence or production Agent Trace exposure.
+
 ## 1. 决策与目标
 
 本设计从 fresh `main` 开始，不合并或重跑 `codex/phase-6-9-5-review-planner` 的终局 Live。目标是让 `ReviewAgent` 与 `PlannerAgent` 在 PrepMind 项目内以可证明的混合架构运行：真实模型负责有限的语义排序/策略判断，确定性代码继续掌握事实、权限、预算、安全和失败回退。

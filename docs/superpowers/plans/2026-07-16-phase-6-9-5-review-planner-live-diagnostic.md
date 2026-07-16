@@ -1,5 +1,14 @@
 # Phase 6.9.5 Review / Planner 真实模型诊断与项目内启用实施计划
 
+> **2026-07-16 execution amendment:** Tasks 1-6 remain historical engineering
+> work and Task 7's v1/v2 attempts are terminal. Its original exact-confirmation
+> command must not be run again. The only authorized continuation is the new
+> v3 plan
+> [`2026-07-16-phase-6-9-5-controlled-live-v3-profile.md`](2026-07-16-phase-6-9-5-controlled-live-v3-profile.md),
+> which requires fresh zero-network proof and independent review before its own
+> v3-only confirmation can create a new profile/evidence/lock lineage. Do not
+> use the original Task-7 text as v3 execution instructions.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在 fresh `main` 上让 ReviewAgent / PlannerAgent 以受控真实模型候选在项目内可验证运行，同时保持本地 facts、权限和回退权威，并在合并 `main` 后推送远程。
