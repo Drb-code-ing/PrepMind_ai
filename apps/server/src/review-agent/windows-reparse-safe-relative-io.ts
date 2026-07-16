@@ -79,7 +79,9 @@ export async function openWindowsNoReparseDirectory(
   let directory = openNativeRoot(ffi, root);
   try {
     for (const childName of childNames) {
-      directory = openNativeDirectory(directory, childName);
+      // Only evidence children beneath the already-bound root may be
+      // created. Root and ancestor components are always FILE_OPEN.
+      directory = openNativeDirectory(directory, childName, FILE_OPEN_IF);
     }
   } catch (error) {
     closeNativeDirectory(directory);
@@ -243,7 +245,7 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
   try {
     assertNotReparsePoint(directory);
     for (const component of nativeRootComponents(root)) {
-      directory = openNativeDirectory(directory, component);
+      directory = openNativeDirectory(directory, component, FILE_OPEN);
     }
     return directory;
   } catch (error) {
@@ -255,12 +257,13 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
 function openNativeDirectory(
   parent: WindowsNativeDirectory,
   childName: string,
+  createDisposition: typeof FILE_OPEN | typeof FILE_OPEN_IF,
 ): WindowsNativeDirectory {
   const handle = createRelativeHandle({
     parent,
     leafName: childName,
     desiredAccess: FILE_READ_ATTRIBUTES | SYNCHRONIZE,
-    createDisposition: FILE_OPEN_IF,
+    createDisposition,
     createOptions: FILE_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
   });
   const directory = {

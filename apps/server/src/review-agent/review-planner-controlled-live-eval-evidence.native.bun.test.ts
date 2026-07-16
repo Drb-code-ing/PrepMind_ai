@@ -1,4 +1,5 @@
 import {
+  lstat,
   mkdir,
   mkdtemp,
   open,
@@ -79,6 +80,142 @@ describeNativeWindows(
       } finally {
         await rm(swappedRoot, { recursive: true, force: true });
         await rm(detachedRoot, { recursive: true, force: true });
+      }
+    });
+
+    it('fails closed for a missing root without recreating locks or evidence before the provider boundary', async () => {
+      const detachedRoot = `${root}-detached`;
+      const detachedEvidence = join(
+        detachedRoot,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-controlled-live',
+      );
+      let providerAttempts = 0;
+
+      try {
+        await mkdir(
+          join(
+            root,
+            'docs',
+            'acceptance',
+            'evidence',
+            'phase-6-9-5-controlled-live',
+          ),
+          { recursive: true },
+        );
+        await rename(root, detachedRoot);
+
+        const result = await executeReviewPlannerControlledLiveCli({
+          argv: ['--confirm-controlled-live'],
+          root,
+          env: {
+            AI_PROVIDER_MODE: 'live',
+            AI_ENABLE_LIVE_CALLS: 'true',
+            REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_ENABLED: 'true',
+            REVIEW_AGENT_MODEL_ENABLED: 'false',
+            PLANNER_AGENT_MODEL_ENABLED: 'false',
+            AI_MODEL: 'deepseek-v4-flash',
+            AI_BASE_URL: 'https://api.deepseek.com/v1',
+            DEEPSEEK_API_KEY: 'native-test-private-canary',
+          },
+          now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+          randomUUID: () => 'native-missing-root-provider-zero-run',
+          dependencies: {
+            createExecutor: () => () => {
+              providerAttempts += 1;
+              return Promise.reject(
+                new Error('provider must remain unreachable'),
+              );
+            },
+          },
+        });
+
+        expect(result).toEqual({
+          status: 'diagnostic_blocked',
+          gate: 'closed',
+          providerAttemptCount: 0,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+        });
+        expect(providerAttempts).toBe(0);
+        await expect(lstat(root)).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(readdir(detachedEvidence)).resolves.toEqual([]);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+        await rm(detachedRoot, { recursive: true, force: true });
+      }
+    });
+
+    it('fails closed for a missing root ancestor without recreating locks or evidence before the provider boundary', async () => {
+      const anchor = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-native-missing-ancestor-'),
+      );
+      const ancestor = join(anchor, 'workspace');
+      const detachedAncestor = `${ancestor}-detached`;
+      const scopedRoot = join(ancestor, 'project');
+      const detachedEvidence = join(
+        detachedAncestor,
+        'project',
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-controlled-live',
+      );
+      let providerAttempts = 0;
+
+      try {
+        await mkdir(
+          join(
+            scopedRoot,
+            'docs',
+            'acceptance',
+            'evidence',
+            'phase-6-9-5-controlled-live',
+          ),
+          { recursive: true },
+        );
+        await rename(ancestor, detachedAncestor);
+
+        const result = await executeReviewPlannerControlledLiveCli({
+          argv: ['--confirm-controlled-live'],
+          root: scopedRoot,
+          env: {
+            AI_PROVIDER_MODE: 'live',
+            AI_ENABLE_LIVE_CALLS: 'true',
+            REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_ENABLED: 'true',
+            REVIEW_AGENT_MODEL_ENABLED: 'false',
+            PLANNER_AGENT_MODEL_ENABLED: 'false',
+            AI_MODEL: 'deepseek-v4-flash',
+            AI_BASE_URL: 'https://api.deepseek.com/v1',
+            DEEPSEEK_API_KEY: 'native-test-private-canary',
+          },
+          now: () => Date.parse('2026-07-16T00:00:00.000Z'),
+          randomUUID: () => 'native-missing-ancestor-provider-zero-run',
+          dependencies: {
+            createExecutor: () => () => {
+              providerAttempts += 1;
+              return Promise.reject(
+                new Error('provider must remain unreachable'),
+              );
+            },
+          },
+        });
+
+        expect(result).toEqual({
+          status: 'diagnostic_blocked',
+          gate: 'closed',
+          providerAttemptCount: 0,
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+        });
+        expect(providerAttempts).toBe(0);
+        await expect(lstat(ancestor)).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(readdir(detachedEvidence)).resolves.toEqual([]);
+      } finally {
+        await rm(anchor, { recursive: true, force: true });
+        await rm(detachedAncestor, { recursive: true, force: true });
       }
     });
 

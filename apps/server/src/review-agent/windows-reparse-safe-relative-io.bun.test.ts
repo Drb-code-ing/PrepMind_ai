@@ -1,4 +1,12 @@
-import { mkdir, mkdtemp, readdir, rename, rm, symlink } from 'node:fs/promises';
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  rename,
+  rm,
+  symlink,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -66,6 +74,37 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       } finally {
         await rm(anchor, { recursive: true, force: true });
         await rm(external, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(['first', 'second'] as const)(
+    'does not recreate a missing %s ancestor while binding the root',
+    async (missingAncestor) => {
+      const anchor = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-native-missing-anchor-'),
+      );
+      const rootPath = join(anchor, 'first', 'second', 'project');
+      const components = ['first', 'second', 'project'];
+      const missingPath = join(
+        anchor,
+        ...components.slice(0, components.indexOf(missingAncestor) + 1),
+      );
+      const detachedPath = `${missingPath}-detached`;
+
+      try {
+        await mkdir(join(rootPath, 'docs'), { recursive: true });
+        await rename(missingPath, detachedPath);
+
+        await expect(
+          openWindowsNoReparseChildDirectory(rootPath, 'docs'),
+        ).rejects.toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+        await expect(lstat(missingPath)).rejects.toMatchObject({
+          code: 'ENOENT',
+        });
+      } finally {
+        await rm(anchor, { recursive: true, force: true });
+        await rm(detachedPath, { recursive: true, force: true });
       }
     },
   );
