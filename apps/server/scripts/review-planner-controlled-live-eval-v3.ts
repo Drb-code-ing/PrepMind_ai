@@ -20,7 +20,7 @@ async function main() {
 
 void main().catch(() => {
   process.stdout.write(
-    '{"status":"diagnostic_blocked","gate":"closed","providerAttemptCount":0,"usageKnown":false,"diagnosticCode":"preflight_invalid"}\n',
+    '{"status":"invalid_attempted","gate":"closed","providerAttemptCount":0,"usageKnown":false,"diagnosticCode":"evidence_io"}\n',
   );
   process.exitCode = 1;
 });

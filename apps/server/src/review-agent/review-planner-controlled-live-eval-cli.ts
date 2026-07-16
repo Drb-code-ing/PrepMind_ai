@@ -150,6 +150,7 @@ export async function executeReviewPlannerControlledLiveV3Cli(
     randomUUID?: () => string;
     dependencies?: CliDependencies;
     reserveEvidence?: typeof reserveReviewPlannerControlledLiveV3Evidence;
+    createEvaluator?: typeof createReviewPlannerControlledLiveV3Evaluator;
   }>,
 ): Promise<SafeReviewPlannerControlledLiveV3Summary> {
   if (!hasExactV3Confirmation(input.argv)) {
@@ -181,65 +182,103 @@ export async function executeReviewPlannerControlledLiveV3Cli(
   } catch {
     return blockedV3(ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!(await evidence.markAttempted())) {
-    return blockedV3(ReviewPlannerDiagnosticCode.EvidenceIo);
-  }
-
-  const evaluator = createReviewPlannerControlledLiveV3Evaluator(
-    input.env,
-    input.dependencies,
-  );
-  if (!evaluator.ok) {
-    const summary = attemptedV3ModelFailure(0, evaluator.diagnosticCode);
-    return (await evidence.finalize(summary))
-      ? summary
-      : attemptedV3EvidenceFailure(0);
-  }
-
-  let diagnostic;
   try {
-    diagnostic = await evaluator.value.runDiagnostic();
+    if (!(await evidence.markAttempted())) {
+      return finalizeV3EvidenceOrConservativeFailure(
+        evidence,
+        attemptedV3EvidenceFailure(0),
+        0,
+      );
+    }
   } catch {
-    diagnostic = {
-      status: 'invalid_attempted' as const,
-      canContinue: false,
-      providerAttemptCount: evaluator.value.providerAttemptCount(),
-      usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
-    };
-  }
-  if (!diagnostic.canContinue) {
-    const summary = safeReviewPlannerControlledLiveV3SummarySchema.parse({
-      status: diagnostic.status,
-      gate: 'closed',
-      providerAttemptCount: diagnostic.providerAttemptCount,
-      usageKnown: diagnostic.usageKnown,
-      ...(diagnostic.diagnosticCode
-        ? { diagnosticCode: diagnostic.diagnosticCode }
-        : {}),
-      ...(diagnostic.structuredOutputStage
-        ? { structuredOutputStage: diagnostic.structuredOutputStage }
-        : {}),
-    });
-    return (await evidence.finalize(summary))
-      ? summary
-      : attemptedV3EvidenceFailure(diagnostic.providerAttemptCount);
+    return finalizeV3EvidenceOrConservativeFailure(
+      evidence,
+      attemptedV3EvidenceFailure(0),
+      0,
+    );
   }
 
-  const paired = await evaluator.value.runPairedEvaluation();
-  const summary =
-    paired.kind === 'report'
-      ? summarizeV3PairedReport(
-          paired.report,
+  let providerAttemptCount = 0;
+  try {
+    const evaluator = (
+      input.createEvaluator ?? createReviewPlannerControlledLiveV3Evaluator
+    )(input.env, input.dependencies);
+    if (!evaluator.ok) {
+      const summary = attemptedV3ModelFailure(0, evaluator.diagnosticCode);
+      return finalizeV3EvidenceOrConservativeFailure(evidence, summary, 0);
+    }
+    const readProviderAttemptCount = () => {
+      try {
+        providerAttemptCount = safeProviderAttempts(
           evaluator.value.providerAttemptCount(),
-        )
-      : attemptedV3ModelFailure(
-          evaluator.value.providerAttemptCount(),
-          paired.diagnosticCode,
         );
-  return (await evidence.finalize(summary))
-    ? summary
-    : attemptedV3EvidenceFailure(evaluator.value.providerAttemptCount());
+      } catch {
+        // Keep the last bounded count; never invent a zero preflight result.
+      }
+      return providerAttemptCount;
+    };
+
+    let diagnostic;
+    try {
+      diagnostic = await evaluator.value.runDiagnostic();
+    } catch {
+      diagnostic = {
+        status: 'invalid_attempted' as const,
+        canContinue: false,
+        providerAttemptCount: readProviderAttemptCount(),
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+      };
+    }
+    if (!diagnostic.canContinue) {
+      const actualProviderAttemptCount = readProviderAttemptCount();
+      const summary = safeReviewPlannerControlledLiveV3SummarySchema.parse({
+        status: diagnostic.status,
+        gate: 'closed',
+        providerAttemptCount: actualProviderAttemptCount,
+        usageKnown: diagnostic.usageKnown,
+        ...(diagnostic.diagnosticCode
+          ? { diagnosticCode: diagnostic.diagnosticCode }
+          : {}),
+        ...(diagnostic.structuredOutputStage
+          ? { structuredOutputStage: diagnostic.structuredOutputStage }
+          : {}),
+      });
+      return finalizeV3EvidenceOrConservativeFailure(
+        evidence,
+        summary,
+        actualProviderAttemptCount,
+      );
+    }
+
+    let paired;
+    try {
+      paired = await evaluator.value.runPairedEvaluation();
+    } catch {
+      paired = {
+        kind: 'failed' as const,
+        diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+      };
+    }
+    const summary =
+      paired.kind === 'report'
+        ? summarizeV3PairedReport(paired.report, readProviderAttemptCount())
+        : attemptedV3ModelFailure(
+            readProviderAttemptCount(),
+            paired.diagnosticCode,
+          );
+    return finalizeV3EvidenceOrConservativeFailure(
+      evidence,
+      summary,
+      readProviderAttemptCount(),
+    );
+  } catch {
+    return finalizeV3EvidenceOrConservativeFailure(
+      evidence,
+      attemptedV3EvidenceFailure(providerAttemptCount),
+      providerAttemptCount,
+    );
+  }
 }
 
 function hasExactConfirmation(argv: readonly string[]) {
@@ -367,6 +406,22 @@ function attemptedV3ModelFailure(
     usageKnown: false,
     diagnosticCode,
   };
+}
+
+async function finalizeV3EvidenceOrConservativeFailure(
+  evidence: Awaited<
+    ReturnType<typeof reserveReviewPlannerControlledLiveV3Evidence>
+  >,
+  summary: SafeReviewPlannerControlledLiveV3Summary,
+  providerAttemptCount: number,
+): Promise<SafeReviewPlannerControlledLiveV3Summary> {
+  try {
+    if (await evidence.finalize(summary)) return summary;
+  } catch {
+    // The v3 script must never convert a post-reservation I/O failure into
+    // a fabricated zero-call preflight result.
+  }
+  return attemptedV3EvidenceFailure(providerAttemptCount);
 }
 
 function safeProviderAttempts(value: number) {
