@@ -161,7 +161,7 @@ Remove-Item Env:COMPOSE_BAKE
 
 不要为该宿主工具异常清理 build cache、container 或 volume，也不要执行 `down -v`。
 
-RAG Docker 验收前在根 `.env` 或宿主环境明确配置 `RAG_EMBEDDING_PROVIDER=qwen`、`RAG_EMBEDDING_MODEL=text-embedding-v4`、`RAG_EMBEDDING_DIMENSIONS=1536`、无凭据 HTTPS `RAG_EMBEDDING_BASE_URL` 和 `QWEN_API_KEY`。`--env-file .env` 只是 Compose CLI 的 `${...}` 插值源，不会把整个文件自动注入每个 service；server/worker 仍只收到 `environment` 明列的共享 RAG runtime allowlist。宿主别名 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 仅用于兼容输入，容器内规范化为 `QWEN_API_KEY`。不允许 provider fallback，不允许 production fake。web/admin 的 service `env_file` 是另一层 Compose 配置，不要与 CLI `--env-file` 混淆。
+RAG Docker 验收前在根 `.env` 或宿主环境明确配置 `RAG_EMBEDDING_PROVIDER=qwen`、`RAG_EMBEDDING_MODEL=text-embedding-v4`、`RAG_EMBEDDING_DIMENSIONS=1536`、无凭据 HTTPS `RAG_EMBEDDING_BASE_URL` 和 `QWEN_API_KEY`。`--env-file .env` 只是 Compose CLI 的 `${...}` 插值源，不会把整个文件自动注入每个 service；server/worker 仍只收到 `environment` 明列的共享 RAG runtime allowlist。`web` 不使用根 `.env` 的 service `env_file`，只接收显式 Chat、Router、Verifier runtime allowlist；Review/Planner gate 与 timeout 只进入 `server`。`admin` 的独立 `env_file` 是另一层 Compose 配置，但不执行 Chat provider。宿主别名 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 仅用于兼容输入，容器内规范化为 `QWEN_API_KEY`。不允许 provider fallback，不允许 production fake。
 
 Compose 配置静态检查只运行不输出解析凭据的命令：
 
