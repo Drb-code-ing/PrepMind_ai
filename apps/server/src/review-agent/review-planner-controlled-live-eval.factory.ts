@@ -22,6 +22,11 @@ import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-c
 const CONTROLLED_LIVE_TIMEOUT_MS = 4_500;
 const CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS = 96;
 const CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS = 32;
+const CONTROLLED_LIVE_PROFILE = 'phase-6.9.5-review-planner-controlled-live-v2';
+const CONTROLLED_LIVE_REVIEW_SCHEMA_SYSTEM_PROMPT =
+  'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0],"diagnosis":"review_pressure"}. Do not return an acknowledgement, prose, or extra fields.';
+const CONTROLLED_LIVE_REVIEW_SCHEMA_USER_PROMPT =
+  'Return exactly {"focusIndexes":[0],"diagnosis":"review_pressure"}.';
 
 export type ControlledLiveDiagnosticResult = Readonly<{
   status: 'complete' | 'invalid_attempted';
@@ -188,12 +193,11 @@ async function runSchemaCanary(
 ): Promise<ControlledLiveDiagnosticResult> {
   try {
     const result = await runtime.invokeStructured({
-      runId: 'phase-6.9.5-review-planner-schema-canary',
+      runId: `${CONTROLLED_LIVE_PROFILE}:review-schema-canary`,
       task: 'review_suggestion',
       schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
-      systemPrompt:
-        'Return the fixed schema canary acknowledgement as strict JSON.',
-      userPrompt: '{"probe":"schema_canary_v1"}',
+      systemPrompt: CONTROLLED_LIVE_REVIEW_SCHEMA_SYSTEM_PROMPT,
+      userPrompt: CONTROLLED_LIVE_REVIEW_SCHEMA_USER_PROMPT,
       estimatedInputTokens: CONTROLLED_LIVE_CANARY_MAX_INPUT_TOKENS,
       maxOutputTokens: CONTROLLED_LIVE_CANARY_MAX_OUTPUT_TOKENS,
       budget: createModelAgentBudget({

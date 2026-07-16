@@ -9,6 +9,7 @@ import {
   rm,
   symlink,
   unlink,
+  writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -48,6 +49,39 @@ describeNativeWindows(
       await rm(discardRoot, { recursive: true, force: true });
     });
 
+    it('uses a fresh v2 evidence profile without changing an exhausted v1 marker', async () => {
+      const exhaustedV1Directory = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-controlled-live',
+      );
+      const exhaustedV1Marker = join(
+        exhaustedV1Directory,
+        '.review-planner-controlled-live.once',
+      );
+      await mkdir(exhaustedV1Directory, { recursive: true });
+      await writeFile(
+        exhaustedV1Marker,
+        'phase-6.9.5-controlled-live-consumed\n',
+        'utf8',
+      );
+
+      const reservation = await reserveReviewPlannerControlledLiveEvidence({
+        root,
+        startedAt: '2026-07-16T00:00:00.000Z',
+        runId: 'fresh-v2-profile-run',
+      });
+
+      expect(reservation.relativePath).toContain(
+        'phase-6-9-5-controlled-live-v2/',
+      );
+      await expect(readFile(exhaustedV1Marker, 'utf8')).resolves.toBe(
+        'phase-6.9.5-controlled-live-consumed\n',
+      );
+    });
+
     it('blocks a root junction before native binding and leaves the outside evidence directory empty', async () => {
       const swappedRoot = await mkdtemp(
         join(tmpdir(), 'prepmind-phase-695-native-root-swap-'),
@@ -57,7 +91,7 @@ describeNativeWindows(
         'docs',
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       ];
       const outsideEvidence = join(outside, ...evidenceComponents);
 
@@ -90,7 +124,7 @@ describeNativeWindows(
         'docs',
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       );
       let providerAttempts = 0;
 
@@ -101,7 +135,7 @@ describeNativeWindows(
             'docs',
             'acceptance',
             'evidence',
-            'phase-6-9-5-controlled-live',
+            'phase-6-9-5-controlled-live-v2',
           ),
           { recursive: true },
         );
@@ -161,7 +195,7 @@ describeNativeWindows(
         'docs',
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       );
       let providerAttempts = 0;
 
@@ -172,7 +206,7 @@ describeNativeWindows(
             'docs',
             'acceptance',
             'evidence',
-            'phase-6-9-5-controlled-live',
+            'phase-6-9-5-controlled-live-v2',
           ),
           { recursive: true },
         );
@@ -224,7 +258,7 @@ describeNativeWindows(
         outside,
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       );
       await mkdir(outsideEvidence, { recursive: true });
 
@@ -298,7 +332,7 @@ describeNativeWindows(
         outside,
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       );
       await mkdir(outsideEvidence, { recursive: true });
       let swapAttempted = false;

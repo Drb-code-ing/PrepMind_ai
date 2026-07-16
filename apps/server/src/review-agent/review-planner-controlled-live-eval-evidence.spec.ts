@@ -76,7 +76,7 @@ describeNodeEvidence('review planner controlled Live evidence', () => {
 
     const evidence = await readFile(evidencePath, 'utf8');
     expect(JSON.parse(evidence)).toEqual({
-      schemaVersion: 'phase-6.9.5-review-planner-controlled-live-evidence-v1',
+      schemaVersion: 'phase-6.9.5-review-planner-controlled-live-evidence-v2',
       state: 'finalized',
       status: 'invalid_attempted',
       gate: 'closed',
@@ -229,7 +229,7 @@ describeNodeEvidence('review planner controlled Live evidence', () => {
       outside,
       'acceptance',
       'evidence',
-      'phase-6-9-5-controlled-live',
+      'phase-6-9-5-controlled-live-v2',
     );
     await mkdir(outsideEvidence, { recursive: true });
     let swapped = false;
@@ -272,7 +272,7 @@ describeNodeEvidence('review planner controlled Live evidence', () => {
         outside,
         'acceptance',
         'evidence',
-        'phase-6-9-5-controlled-live',
+        'phase-6-9-5-controlled-live-v2',
       );
       await mkdir(outsideEvidence, { recursive: true });
       let opens = 0;

@@ -19,12 +19,12 @@ import {
 } from './windows-reparse-safe-relative-io';
 
 export const REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION =
-  'phase-6.9.5-review-planner-controlled-live-evidence-v1' as const;
+  'phase-6.9.5-review-planner-controlled-live-evidence-v2' as const;
 
 const EVIDENCE_DIRECTORY =
-  'docs/acceptance/evidence/phase-6-9-5-controlled-live' as const;
+  'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2' as const;
 const PHASE_ONCE_LOCK =
-  `${EVIDENCE_DIRECTORY}/.review-planner-controlled-live.once` as const;
+  `${EVIDENCE_DIRECTORY}/.review-planner-controlled-live-v2.once` as const;
 const EVIDENCE_FILE_NAME =
   /^review-planner-live-\d{8}T\d{9}Z-[a-f0-9]{12}\.json$/;
 const FORBIDDEN_EVIDENCE_TEXT =
@@ -142,7 +142,7 @@ export async function reserveReviewPlannerControlledLiveEvidence(
         nativeDirectory,
         'create',
         phaseOnceLockLeafName(),
-        'phase-6.9.5-controlled-live-consumed\n',
+        'phase-6.9.5-controlled-live-v2-consumed\n',
       );
     } else {
       const ensuredDirectory = await ensureEvidenceDirectory(root, fs);
@@ -543,7 +543,7 @@ async function acquirePhaseOnceLock(
   let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
     handle = await openInBoundEvidenceParent(fs, parent, lockPath, 'wx');
-    await handle.writeFile('phase-6.9.5-controlled-live-consumed\n', 'utf8');
+    await handle.writeFile('phase-6.9.5-controlled-live-v2-consumed\n', 'utf8');
     await handle.sync();
   } catch (error) {
     if (handle) await closeQuietly(handle);

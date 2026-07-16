@@ -120,7 +120,7 @@ describeCliWithEvidence('review planner controlled Live CLI', () => {
       'docs',
       'acceptance',
       'evidence',
-      'phase-6-9-5-controlled-live',
+      'phase-6-9-5-controlled-live-v2',
     );
     const [file] = (await readdir(evidenceDirectory)).filter((entry) =>
       entry.endsWith('.json'),
@@ -267,7 +267,7 @@ describeCliWithEvidence('review planner controlled Live CLI', () => {
       outside,
       'acceptance',
       'evidence',
-      'phase-6-9-5-controlled-live',
+      'phase-6-9-5-controlled-live-v2',
     );
     await mkdir(outsideEvidence, { recursive: true });
     let restoredAfterExternalOpen = false;

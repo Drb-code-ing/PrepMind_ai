@@ -1,6 +1,9 @@
 import type { StructuredModelExecutor } from '@repo/ai';
 
-import { ReviewPlannerDiagnosticCode } from '@repo/agent';
+import {
+  REVIEW_MODEL_CANDIDATE_SCHEMA,
+  ReviewPlannerDiagnosticCode,
+} from '@repo/agent';
 
 import {
   createReviewPlannerControlledLiveEvaluator,
@@ -18,13 +21,30 @@ const liveDiagnosticEnv = Object.freeze({
   DEEPSEEK_API_KEY: 'factory-private-canary',
 });
 
+const CONTROLLED_REVIEW_SCHEMA_CANARY = Object.freeze({
+  focusIndexes: [0],
+  diagnosis: 'review_pressure',
+});
+const CONTROLLED_REVIEW_SCHEMA_CANARY_JSON = JSON.stringify(
+  CONTROLLED_REVIEW_SCHEMA_CANARY,
+);
+const CONTROLLED_REVIEW_SCHEMA_CANARY_SYSTEM_PROMPT =
+  'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0],"diagnosis":"review_pressure"}. Do not return an acknowledgement, prose, or extra fields.';
+const CONTROLLED_REVIEW_SCHEMA_CANARY_USER_PROMPT = `Return exactly ${CONTROLLED_REVIEW_SCHEMA_CANARY_JSON}.`;
+
 describe('review planner controlled Live evaluator factory', () => {
-  it('creates one JSON-object executor and runs a fact-free schema canary once', async () => {
+  it('creates one JSON-object executor and runs an exact valid review-schema canary once', async () => {
     const executor: StructuredModelExecutor = jest.fn((input) => {
       expect(input.systemPrompt).not.toMatch(/factory-private-canary/i);
-      expect(input.userPrompt).toBe('{"probe":"schema_canary_v1"}');
+      expect(input.schema).toBe(REVIEW_MODEL_CANDIDATE_SCHEMA);
+      expect(input.systemPrompt).toBe(
+        CONTROLLED_REVIEW_SCHEMA_CANARY_SYSTEM_PROMPT,
+      );
+      expect(input.userPrompt).toBe(
+        CONTROLLED_REVIEW_SCHEMA_CANARY_USER_PROMPT,
+      );
       return Promise.resolve({
-        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        object: CONTROLLED_REVIEW_SCHEMA_CANARY,
         usage: { inputTokens: 12, outputTokens: 4 },
       });
     });
@@ -47,6 +67,10 @@ describe('review planner controlled Live evaluator factory', () => {
       model: 'deepseek-v4-flash',
       structuredOutputMode: 'json_object',
     });
+    expect(createExecutor.mock.calls[0]?.[0]).not.toHaveProperty(
+      'schemaProfiles',
+    );
+    expect(createExecutor.mock.calls[0]?.[0]).not.toHaveProperty('tools');
 
     const first = await evaluator.value.runDiagnostic();
     const second = await evaluator.value.runDiagnostic();
@@ -91,30 +115,51 @@ describe('review planner controlled Live evaluator factory', () => {
     expect(createExecutor).not.toHaveBeenCalled();
   });
 
-  it('maps an invalid schema canary to a closed attempted diagnostic without retrying', async () => {
-    const executor: StructuredModelExecutor = jest.fn(() =>
-      Promise.resolve({
-        object: { focusIndexes: ['wrong'], diagnosis: 'review_pressure' },
-        usage: { inputTokens: 12, outputTokens: 4 },
-      }),
-    );
-    const evaluator = createReviewPlannerControlledLiveEvaluator(
-      liveDiagnosticEnv,
-      { createExecutor: () => executor, isPricingKnown: () => true },
-    );
+  it.each([
+    ['acknowledgement', { acknowledged: 'CONTROLLED_LIVE_RAW_SUMMARY_CANARY' }],
+    ['missing required diagnosis', { focusIndexes: [0] }],
+    [
+      'wrong focus index type',
+      { focusIndexes: ['0'], diagnosis: 'review_pressure' },
+    ],
+    [
+      'extra acknowledgement field',
+      {
+        ...CONTROLLED_REVIEW_SCHEMA_CANARY,
+        acknowledgement: 'CONTROLLED_LIVE_RAW_EVIDENCE_CANARY',
+      },
+    ],
+  ])(
+    'maps legal but non-schema %s JSON to one closed structured-output attempt without retaining raw content',
+    async (_label, object) => {
+      const executor: StructuredModelExecutor = jest.fn(() =>
+        Promise.resolve({
+          object,
+          usage: { inputTokens: 12, outputTokens: 4 },
+        }),
+      );
+      const evaluator = createReviewPlannerControlledLiveEvaluator(
+        liveDiagnosticEnv,
+        { createExecutor: () => executor, isPricingKnown: () => true },
+      );
 
-    expect(evaluator).toMatchObject({ ok: true });
-    if (!evaluator.ok) throw new Error('expected enabled evaluator');
+      expect(evaluator).toMatchObject({ ok: true });
+      if (!evaluator.ok) throw new Error('expected enabled evaluator');
 
-    await expect(evaluator.value.runDiagnostic()).resolves.toEqual({
-      status: 'invalid_attempted',
-      canContinue: false,
-      providerAttemptCount: 1,
-      usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
-    });
-    expect(executor).toHaveBeenCalledTimes(1);
-  });
+      const diagnostic = await evaluator.value.runDiagnostic();
+      expect(diagnostic).toEqual({
+        status: 'invalid_attempted',
+        canContinue: false,
+        providerAttemptCount: 1,
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+      });
+      expect(JSON.stringify(diagnostic)).not.toMatch(
+        /CONTROLLED_LIVE_RAW_(SUMMARY|EVIDENCE)_CANARY/,
+      );
+      expect(executor).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it.each([
     ['http_auth', ReviewPlannerDiagnosticCode.HttpAuth],
