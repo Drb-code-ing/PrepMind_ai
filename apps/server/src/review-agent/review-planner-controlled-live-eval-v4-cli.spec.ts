@@ -13,10 +13,7 @@ import {
   serializeReviewPlannerControlledLiveV4Summary,
 } from './review-planner-controlled-live-eval-v4-cli';
 import { createReviewPlannerControlledLiveV4Evaluator } from './review-planner-controlled-live-eval-v4.factory';
-import {
-  createReviewPlannerControlledLiveV4JsonExecutor,
-  type ReviewPlannerControlledLiveV4Fetch,
-} from './review-planner-controlled-live-eval-v4-json';
+import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -174,10 +171,7 @@ describe('review planner controlled Live v4 CLI', () => {
       });
       const createEvaluator = (candidateEnv: Record<string, unknown>) =>
         createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
-          createExecutor: (config) =>
-            createReviewPlannerControlledLiveV4JsonExecutor(config, {
-              fetch,
-            }),
+          fetch,
           isPricingKnown: () => true,
         });
       const result = await executeReviewPlannerControlledLiveV4Cli({

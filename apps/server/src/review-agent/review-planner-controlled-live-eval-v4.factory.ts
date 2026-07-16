@@ -17,7 +17,10 @@ import {
 } from '@repo/agent';
 
 import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
-import { createReviewPlannerControlledLiveV4JsonExecutor } from './review-planner-controlled-live-eval-v4-json';
+import {
+  createReviewPlannerControlledLiveV4JsonExecutor,
+  type ReviewPlannerControlledLiveV4Fetch,
+} from './review-planner-controlled-live-eval-v4-json';
 
 const V4_PROFILE_ID = 'phase-6.9.5-review-planner-controlled-live-v4';
 const V4_TIMEOUT_MS = 4_500;
@@ -36,7 +39,7 @@ type V4ExecutorConfig = Readonly<{
 }>;
 
 type V4FactoryDependencies = Readonly<{
-  createExecutor(config: V4ExecutorConfig): StructuredModelExecutor;
+  fetch: ReviewPlannerControlledLiveV4Fetch;
   isPricingKnown(model: string): boolean;
   runPairedEvaluation(input: {
     mode: 'live';
@@ -72,11 +75,7 @@ export type ReviewPlannerControlledLiveV4FactoryResult =
   | Readonly<{ ok: false; diagnosticCode: ReviewPlannerDiagnosticCode }>;
 
 const defaultDependencies: V4FactoryDependencies = {
-  createExecutor(config) {
-    return createReviewPlannerControlledLiveV4JsonExecutor(config, {
-      fetch: (url, init) => globalThis.fetch(url, init),
-    });
-  },
+  fetch: (url, init) => globalThis.fetch(url, init),
   isPricingKnown: (model) => model === 'deepseek-v4-flash',
   runPairedEvaluation: runPhase695ReviewPlannerPaired,
 };
@@ -110,9 +109,12 @@ export function createReviewPlannerControlledLiveV4Evaluator(
   });
   if (!preflight.ok) return preflight;
 
-  let executor: StructuredModelExecutor;
+  let directFetchExecutor: StructuredModelExecutor;
   try {
-    executor = dependencies.createExecutor(preflight.config);
+    directFetchExecutor = createReviewPlannerControlledLiveV4JsonExecutor(
+      preflight.config,
+      { fetch: dependencies.fetch },
+    );
   } catch {
     return {
       ok: false,
@@ -121,16 +123,19 @@ export function createReviewPlannerControlledLiveV4Evaluator(
   }
 
   let attempts = 0;
+  const firstPartyDirectFetchExecutor: StructuredModelExecutor = async (
+    input,
+  ) => {
+    attempts += 1;
+    return directFetchExecutor(input);
+  };
   const runtime = createModelAgentRuntime({
     mode: 'live',
     provider: 'deepseek',
     model: preflight.config.model,
     liveCallsEnabled: true,
     timeoutMs: V4_TIMEOUT_MS,
-    executor: async (input) => {
-      attempts += 1;
-      return executor(input);
-    },
+    executor: firstPartyDirectFetchExecutor,
   });
   let diagnostic: Promise<ReviewPlannerControlledLiveV4Diagnostic> | null =
     null;

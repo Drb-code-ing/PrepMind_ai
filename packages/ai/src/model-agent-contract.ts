@@ -69,14 +69,6 @@ export type StructuredModelExecutor = <T>(input: {
   userPrompt: string;
   maxOutputTokens: number;
   signal: AbortSignal;
-  /**
-   * Runtime-owned opaque capability for a direct, trusted adapter to report a
-   * locally-detected structured-output stage. It carries only a fixed enum;
-   * it must never receive provider text, payloads, or errors.
-   */
-  createTrustedStructuredOutputFailure?: (
-    stage: ModelAgentStructuredOutputStage,
-  ) => Error;
 }) => Promise<{
   object: unknown;
   usage?: {

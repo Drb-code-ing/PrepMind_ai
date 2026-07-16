@@ -14,10 +14,7 @@ import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 import { executeReviewPlannerControlledLiveV4Cli } from './review-planner-controlled-live-eval-v4-cli';
 import { reserveReviewPlannerControlledLiveV4Evidence } from './review-planner-controlled-live-eval-v4-evidence';
 import { createReviewPlannerControlledLiveV4Evaluator } from './review-planner-controlled-live-eval-v4.factory';
-import {
-  createReviewPlannerControlledLiveV4JsonExecutor,
-  type ReviewPlannerControlledLiveV4Fetch,
-} from './review-planner-controlled-live-eval-v4-json';
+import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const describeNativeWindows =
   process.platform === 'win32' && Boolean(process.versions.bun)
@@ -78,9 +75,9 @@ describeNativeWindows(
         'docs/acceptance/evidence/phase-6-9-5-controlled-live/v1.json',
         'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/v2.json',
         'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/v3.json',
-        '.review-planner-controlled-live.once',
-        '.review-planner-controlled-live-v2.once',
-        '.review-planner-controlled-live-v3.once',
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live/.review-planner-controlled-live.once',
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v2/.review-planner-controlled-live-v2.once',
+        'docs/acceptance/evidence/phase-6-9-5-controlled-live-v3/.review-planner-controlled-live-v3.once',
       ] as const;
       await Promise.all(
         historicalFiles.map(async (relativePath) => {
@@ -148,10 +145,7 @@ describeNativeWindows(
       };
       const createEvaluator = (candidateEnv: Record<string, unknown>) =>
         createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
-          createExecutor: (config) =>
-            createReviewPlannerControlledLiveV4JsonExecutor(config, {
-              fetch,
-            }),
+          fetch,
           isPricingKnown: () => true,
         });
 
@@ -203,8 +197,113 @@ describeNativeWindows(
       expect(evidence).not.toContain(rawCanary);
       expect(evidence).not.toContain('v4-native-private-key');
     });
+
+    it('writes provider_object_missing for a direct fake-fetch response without choices', async () => {
+      const rawCanary = 'RAW_V4_NATIVE_EVIDENCE_MISSING_CHOICES_CANARY';
+      await expectProviderObjectMissingEvidence({
+        root,
+        rawCanary,
+        payload: {
+          raw: rawCanary,
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
+        },
+      });
+    });
+
+    it('writes provider_object_missing for a direct fake-fetch response without message content', async () => {
+      const rawCanary = 'RAW_V4_NATIVE_EVIDENCE_MISSING_CONTENT_CANARY';
+      await expectProviderObjectMissingEvidence({
+        root,
+        rawCanary,
+        payload: {
+          choices: [
+            {
+              message: {
+                reasoning_content: rawCanary,
+              },
+            },
+          ],
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
+        },
+      });
+    });
   },
 );
+
+async function expectProviderObjectMissingEvidence(
+  input: Readonly<{
+    root: string;
+    rawCanary: string;
+    payload: unknown;
+  }>,
+) {
+  let fetchCalls = 0;
+  const fetch: ReviewPlannerControlledLiveV4Fetch = () => {
+    fetchCalls += 1;
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(input.payload),
+    });
+  };
+  const createEvaluator = (candidateEnv: Record<string, unknown>) =>
+    createReviewPlannerControlledLiveV4Evaluator(candidateEnv, {
+      fetch,
+      isPricingKnown: () => true,
+    });
+
+  const result = await executeReviewPlannerControlledLiveV4Cli({
+    argv: ['--confirm-controlled-live-v4'],
+    env: controlledLiveEnv(),
+    root: input.root,
+    createEvaluator,
+  });
+
+  expect(result).toEqual({
+    status: 'invalid_attempted',
+    gate: 'closed',
+    providerAttemptCount: 1,
+    usageKnown: false,
+    diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+    structuredOutputStage: 'provider_object_missing',
+  });
+  expect(fetchCalls).toBe(1);
+  const evidence = await readV4Evidence(input.root);
+  expect(evidence).toContain(
+    '"structuredOutputStage":"provider_object_missing"',
+  );
+  expect(evidence).not.toContain(input.rawCanary);
+  expect(evidence).not.toContain('v4-native-private-key');
+}
+
+function controlledLiveEnv(): Record<string, string> {
+  return {
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_ENABLED: 'true',
+    REVIEW_AGENT_MODEL_ENABLED: 'false',
+    PLANNER_AGENT_MODEL_ENABLED: 'false',
+    AI_MODEL: 'deepseek-v4-flash',
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
+    DEEPSEEK_API_KEY: 'v4-native-private-key',
+  };
+}
+
+async function readV4Evidence(root: string) {
+  const evidenceDirectory = join(
+    root,
+    'docs',
+    'acceptance',
+    'evidence',
+    'phase-6-9-5-controlled-live-v4',
+  );
+  const evidenceLeaf = (await readdir(evidenceDirectory)).find((entry) =>
+    entry.endsWith('.json'),
+  );
+  expect(evidenceLeaf).toBeDefined();
+  if (!evidenceLeaf) throw new Error('expected v4 evidence leaf');
+  return readFile(join(evidenceDirectory, evidenceLeaf), 'utf8');
+}
 
 function parentPath(path: string) {
   const separator = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));

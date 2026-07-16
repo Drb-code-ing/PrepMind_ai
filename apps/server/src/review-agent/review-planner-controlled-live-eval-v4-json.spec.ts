@@ -90,7 +90,7 @@ describe('review planner controlled Live v4 JSON executor', () => {
 
       const error = await rejected(invoke(executor));
 
-      expect(error.message).toBe('MODEL_AGENT_V4_RESPONSE_INVALID');
+      expect(error.message).toBe('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
       expect(JSON.stringify(error)).not.toContain(rawCanary);
       expect(error.message).not.toContain(content);
     },
@@ -108,7 +108,7 @@ describe('review planner controlled Live v4 JSON executor', () => {
     );
 
     const error = await rejected(invoke(executor));
-    expect(error.message).toBe('MODEL_AGENT_V4_RESPONSE_INVALID');
+    expect(error.message).toBe('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
     expect(JSON.stringify(error)).not.toContain(validJson);
   });
 
@@ -175,11 +175,6 @@ function invoke(
     userPrompt: 'user prompt',
     maxOutputTokens: 32,
     signal: new AbortController().signal,
-    // Unit tests exercise the executor in isolation; production receives the
-    // opaque runtime-owned signal capability. The full factory/CLI tests cover
-    // that private handoff end to end.
-    createTrustedStructuredOutputFailure: () =>
-      new Error('MODEL_AGENT_V4_RESPONSE_INVALID'),
   });
 }
 

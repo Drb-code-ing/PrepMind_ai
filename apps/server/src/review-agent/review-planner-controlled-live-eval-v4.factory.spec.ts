@@ -1,4 +1,4 @@
-import type { ModelAgentResult, StructuredModelExecutor } from '@repo/ai';
+import type { ModelAgentResult } from '@repo/ai';
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
 import {
@@ -6,10 +6,7 @@ import {
   mapV4ControlledLiveStructuredOutputStage,
   validateReviewPlannerControlledLiveV4Preflight,
 } from './review-planner-controlled-live-eval-v4.factory';
-import {
-  createReviewPlannerControlledLiveV4JsonExecutor,
-  type ReviewPlannerControlledLiveV4Fetch,
-} from './review-planner-controlled-live-eval-v4-json';
+import type { ReviewPlannerControlledLiveV4Fetch } from './review-planner-controlled-live-eval-v4-json';
 
 const env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -24,43 +21,43 @@ const env = Object.freeze({
 
 describe('review planner controlled Live v4 evaluator', () => {
   it('constructs a private V4 executor only after the closed-gate preflight and accounts for a positive-usage canary once', async () => {
-    const executor: StructuredModelExecutor = jest.fn(() =>
-      Promise.resolve({
-        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
-        usage: { inputTokens: 12, outputTokens: 4 },
-      }),
-    );
-    const createExecutor = jest.fn(() => executor);
+    const fetch = fakeJsonFetch({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              focusIndexes: [0],
+              diagnosis: 'review_pressure',
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 12, completion_tokens: 4 },
+    });
 
     const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-      createExecutor,
+      fetch,
       isPricingKnown: () => true,
     });
 
     expect(evaluator).toMatchObject({ ok: true });
     if (!evaluator.ok) throw new Error('expected v4 evaluator');
-    expect(createExecutor).toHaveBeenCalledWith({
-      provider: 'deepseek',
-      apiKey: 'v4-factory-private-key',
-      baseURL: 'https://api.deepseek.com/v1',
-      model: 'deepseek-v4-flash',
-    });
     await expect(evaluator.value.runDiagnostic()).resolves.toEqual({
       status: 'complete',
       canContinue: true,
       providerAttemptCount: 1,
       usageKnown: true,
     });
-    expect(executor).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('turns a rejecting private fetch/executor into one safe attempted transport closure without retaining the raw canary', async () => {
+  it('turns a rejecting private fetch into one safe attempted transport closure without retaining the raw canary', async () => {
     const rawCanary = 'RAW_V4_PRIVATE_FETCH_REJECTION_CANARY';
-    const executor: StructuredModelExecutor = jest.fn(() =>
+    const fetch = jest.fn(() =>
       Promise.reject(new Error(rawCanary)),
-    );
+    ) as jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch>;
     const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-      createExecutor: () => executor,
+      fetch,
       isPricingKnown: () => true,
     });
 
@@ -75,6 +72,7 @@ describe('review planner controlled Live v4 evaluator', () => {
       usageKnown: false,
       diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
     });
+    expect(fetch).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(diagnostic)).not.toContain(rawCanary);
   });
 
@@ -107,8 +105,7 @@ describe('review planner controlled Live v4 evaluator', () => {
         usage: { prompt_tokens: 12, completion_tokens: 4 },
       });
       const evaluator = createReviewPlannerControlledLiveV4Evaluator(env, {
-        createExecutor: (config) =>
-          createReviewPlannerControlledLiveV4JsonExecutor(config, { fetch }),
+        fetch,
         isPricingKnown: () => true,
       });
 
@@ -135,18 +132,19 @@ describe('review planner controlled Live v4 evaluator', () => {
     { REVIEW_AGENT_MODEL_ENABLED: 'true' },
     { AI_BASE_URL: 'https://api.deepseek.com' },
     { AI_MODEL: 'other-model' },
-  ])('fails v4 preflight before executor construction for %o', (override) => {
-    const createExecutor = jest.fn();
+  ])('fails v4 preflight before direct fetch for %o', (override) => {
+    const fetch =
+      jest.fn() as jest.MockedFunction<ReviewPlannerControlledLiveV4Fetch>;
     expect(
       createReviewPlannerControlledLiveV4Evaluator(
         { ...env, ...override },
-        { createExecutor, isPricingKnown: () => true },
+        { fetch, isPricingKnown: () => true },
       ),
     ).toEqual({
       ok: false,
       diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
     });
-    expect(createExecutor).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
     expect(
       validateReviewPlannerControlledLiveV4Preflight(
         { ...env, ...override },

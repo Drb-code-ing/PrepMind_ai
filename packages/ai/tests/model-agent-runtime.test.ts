@@ -279,6 +279,28 @@ describe('model agent runtime live mode', () => {
     expect(JSON.stringify(result)).not.toContain('credential material');
   });
 
+  it('does not hand the trusted structured-output capability to an ordinary injected executor', async () => {
+    let receivedCapability: unknown = Symbol('not-called');
+    const runtime = liveRuntime({
+      executor: async ({ createTrustedStructuredOutputFailure }) => {
+        receivedCapability = createTrustedStructuredOutputFailure;
+        if (createTrustedStructuredOutputFailure) {
+          throw createTrustedStructuredOutputFailure('provider_json_parse');
+        }
+        throw new Error(CANARY);
+      },
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected untrusted executor failure');
+    expect(receivedCapability).toBeUndefined();
+    expect(result.error.providerFailureCategory).toBe('unknown');
+    expect('structuredOutputStage' in result.trace).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(CANARY);
+  });
+
   it('propagates a trusted provider category identically to the error and trace', async () => {
     const runtime = liveRuntime({
       executor: async ({ signal }) => {
