@@ -12,6 +12,14 @@ export * from './nodes/planner.ts';
 export * from './nodes/review.ts';
 export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
+export {
+  runPlannerModelCandidate,
+  runReviewModelCandidate,
+  type PlannerModelCandidateEnvelope,
+  type PlannerModelCandidateInput,
+  type ReviewModelCandidateEnvelope,
+  type ReviewModelCandidateInput,
+} from './model-candidates/review-planner-model-candidate.ts';
 export * from './recorder.ts';
 export * from './router.ts';
 export * from './runtime.ts';

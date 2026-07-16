@@ -57,6 +57,25 @@ describe('safe model agent errors', () => {
 });
 
 describe('model agent runtime mock mode', () => {
+  it.each(['review_suggestion', 'planner_suggestion'] as const)(
+    'accepts the bounded %s task',
+    async (task) => {
+      const runtime = createModelAgentRuntime({
+        mode: 'mock',
+        provider: 'mock',
+        model: 'mock-agent-runtime',
+        liveCallsEnabled: false,
+        timeoutMs: 100,
+        mockResponder: () => ({ route: 'chat' }),
+      });
+
+      const result = await runtime.invokeStructured({ ...request(), task });
+
+      expect(result.ok).toBe(true);
+      expect(result.trace.task).toBe(task);
+    },
+  );
+
   it('parses mock output through the shared schema without a live executor', async () => {
     const runtime = createModelAgentRuntime({
       mode: 'mock',

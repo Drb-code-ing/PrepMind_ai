@@ -9,6 +9,14 @@ export {
   type KnowledgeVerifierModelCandidateInput,
 } from './knowledge-verifier-model-candidate.ts';
 export {
+  runPlannerModelCandidate,
+  runReviewModelCandidate,
+  type PlannerModelCandidateEnvelope,
+  type PlannerModelCandidateInput,
+  type ReviewModelCandidateEnvelope,
+  type ReviewModelCandidateInput,
+} from './review-planner-model-candidate.ts';
+export {
   MODEL_CANDIDATE_DISPOSITIONS,
   type ModelCandidateDisposition,
   type ModelCandidateObservation,

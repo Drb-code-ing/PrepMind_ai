@@ -246,6 +246,8 @@ const MODEL_AGENT_TASKS = new Set<ModelAgentTask>([
   'conversation_summary',
   'router_fallback',
   'knowledge_verification',
+  'review_suggestion',
+  'planner_suggestion',
   'memory_candidate_extraction',
   'tool_orchestration',
 ]);

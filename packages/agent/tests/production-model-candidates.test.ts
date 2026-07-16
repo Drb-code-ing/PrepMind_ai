@@ -11,6 +11,8 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'isKnowledgeVerifierModelEligible',
   'isRouterModelEligible',
   'runKnowledgeVerifierModelCandidate',
+  'runPlannerModelCandidate',
+  'runReviewModelCandidate',
   'runRouterModelCandidate',
 ];
 
@@ -19,6 +21,8 @@ describe('production model candidate exports', () => {
     expect(Object.keys(productionModelCandidates).sort()).toEqual(EXPECTED_RUNTIME_EXPORTS);
     expect(productionModelCandidates.runRouterModelCandidate).toBeFunction();
     expect(productionModelCandidates.runKnowledgeVerifierModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
       'candidate_applied',
     );
