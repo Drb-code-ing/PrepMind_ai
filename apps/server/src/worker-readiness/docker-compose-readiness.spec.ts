@@ -1,4 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 describe('Docker Compose worker readiness healthcheck', () => {
@@ -384,12 +386,11 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(compose).toContain('  minio-init:');
   });
 
-  it('keeps the web service wired for local dev AI mode switching', () => {
+  it('uses an explicit Web environment allowlist when a safe root fixture carries model credentials', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const webService = extractYamlSection(compose, '  web:', 2);
 
-    expect(webService).toContain('env_file:');
-    expect(webService).toContain('- ../.env');
+    expect(webService).not.toContain('env_file:');
     expect(webService).toContain(
       'PREPMIND_INTERNAL_API_BASE_URL: http://server:3001',
     );
@@ -406,13 +407,39 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(webService).toContain(
       'KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS: ${KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS:-4000}',
     );
+    expect(webService).toContain('AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}');
+    expect(webService).toContain(
+      'AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}',
+    );
+    expect(webService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
-    expect(webService).not.toContain('AI_PROVIDER_MODE: ${');
-    expect(webService).not.toContain('AI_ENABLE_LIVE_CALLS: ${');
     expect(webService).not.toContain('AI_BASE_URL: ${');
-    expect(webService).not.toContain('AI_MODEL: ${');
     expect(webService).not.toContain('DEEPSEEK_API_KEY: ${');
     expect(webService).not.toContain('OPENAI_API_KEY: ${');
+    expect(webService).not.toContain('REVIEW_AGENT_MODEL_ENABLED: ${');
+    expect(webService).not.toContain('PLANNER_AGENT_MODEL_ENABLED: ${');
+
+    const webEnvironment = resolveWebEnvironmentFromSafeRootFixture();
+    for (const forbiddenVariable of [
+      'DEEPSEEK_API_KEY',
+      'OPENAI_API_KEY',
+      'AI_BASE_URL',
+      'REVIEW_AGENT_MODEL_ENABLED',
+      'PLANNER_AGENT_MODEL_ENABLED',
+      'REVIEW_AGENT_MODEL_TIMEOUT_MS',
+      'PLANNER_AGENT_MODEL_TIMEOUT_MS',
+    ]) {
+      expect(webEnvironment).not.toHaveProperty(forbiddenVariable);
+    }
+    expect(webEnvironment).toMatchObject({
+      AI_PROVIDER_MODE: 'live',
+      AI_ENABLE_LIVE_CALLS: 'true',
+      AI_MODEL: 'deepseek-v4-flash',
+      ROUTER_MODEL_ENABLED: 'true',
+      KNOWLEDGE_VERIFIER_MODEL_ENABLED: 'true',
+      NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+      PREPMIND_INTERNAL_API_BASE_URL: 'http://server:3001',
+    });
   });
 
   it('keeps the admin Dockerfile aligned with the Bun workspace and Next standalone output', () => {
@@ -493,4 +520,63 @@ function expectComposeOptionBeforeSubcommand(
   expect(optionIndex).toBeGreaterThan(1);
   expect(tokens[optionIndex + 1]).toBe(value);
   expect(optionIndex).toBeLessThan(subcommandIndex);
+}
+
+function resolveWebEnvironmentFromSafeRootFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'prepmind-compose-'));
+  const dockerDirectory = path.join(root, 'docker');
+  const composePath = path.join(dockerDirectory, 'docker-compose.dev.yml');
+  const envPath = path.join(root, '.env');
+
+  try {
+    fs.mkdirSync(dockerDirectory, { recursive: true });
+    fs.copyFileSync(
+      path.resolve(__dirname, '../../../../docker/docker-compose.dev.yml'),
+      composePath,
+    );
+    fs.writeFileSync(
+      envPath,
+      [
+        'NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
+        'AI_PROVIDER_MODE=live',
+        'AI_ENABLE_LIVE_CALLS=true',
+        'AI_MODEL=deepseek-v4-flash',
+        'ROUTER_MODEL_ENABLED=true',
+        'KNOWLEDGE_VERIFIER_MODEL_ENABLED=true',
+        'DEEPSEEK_API_KEY=safe_fixture_deepseek_key',
+        'OPENAI_API_KEY=safe_fixture_openai_key',
+        'AI_BASE_URL=https://fixture.invalid/v1',
+        'REVIEW_AGENT_MODEL_ENABLED=true',
+        'PLANNER_AGENT_MODEL_ENABLED=true',
+        'REVIEW_AGENT_MODEL_TIMEOUT_MS=4500',
+        'PLANNER_AGENT_MODEL_TIMEOUT_MS=4500',
+      ].join('\n'),
+      'utf8',
+    );
+    const output = execFileSync(
+      'docker',
+      [
+        'compose',
+        '--env-file',
+        envPath,
+        '-f',
+        composePath,
+        'config',
+        '--format',
+        'json',
+      ],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      },
+    );
+    const resolved = JSON.parse(output) as {
+      services?: Record<string, { environment?: Record<string, string> }>;
+    };
+    return resolved.services?.web?.environment ?? {};
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 }

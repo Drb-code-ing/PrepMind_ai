@@ -17,6 +17,44 @@ assert.equal(getReviewPlannerModelStatus(allApplied), 'applied');
 assert.equal(
   getReviewPlannerModelStatus(
     observations({
+      review: {
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'mock_candidate',
+        degraded: false,
+      },
+      planner: {
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'mock_candidate',
+        degraded: false,
+      },
+    }),
+  ),
+  'degraded',
+);
+assert.equal(
+  getReviewPlannerModelStatus(
+    observations({
+      review: {
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'live_candidate',
+        degraded: true,
+      },
+      planner: {
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'live_candidate',
+        degraded: false,
+      },
+    }),
+  ),
+  'degraded',
+);
+assert.equal(
+  getReviewPlannerModelStatus(
+    observations({
       review: { attempted: true, disposition: 'candidate_applied' },
       planner: { attempted: true, disposition: 'fallback_timeout' },
     }),
@@ -39,8 +77,8 @@ assert.equal(
 );
 
 function observations(input: {
-  review: { attempted: boolean; disposition: string };
-  planner: { attempted: boolean; disposition: string };
+  review: ModelObservationInput;
+  planner: ModelObservationInput;
 }): ReviewPlannerModelObservations {
   return {
     version: 1,
@@ -49,14 +87,23 @@ function observations(input: {
   };
 }
 
-function observation(input: { attempted: boolean; disposition: string }) {
+type ModelObservationInput = {
+  attempted: boolean;
+  disposition: string;
+  provenance?: 'local_deterministic' | 'mock_candidate' | 'live_candidate';
+  degraded?: boolean;
+};
+
+function observation(input: ModelObservationInput) {
   return {
     attempted: input.attempted,
     disposition: input.disposition,
     durationMs: 0,
     usage: { inputTokens: 0, outputTokens: 0 },
-    provenance: input.attempted ? 'live_candidate' : 'local_deterministic',
-    degraded: input.disposition !== 'candidate_applied',
+    provenance:
+      input.provenance ??
+      (input.attempted ? 'live_candidate' : 'local_deterministic'),
+    degraded: input.degraded ?? input.disposition !== 'candidate_applied',
     cached: false,
   } as ReviewPlannerModelObservations['review'];
 }

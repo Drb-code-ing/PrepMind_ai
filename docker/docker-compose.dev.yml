@@ -167,8 +167,6 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
-    env_file:
-      - ../.env
     ports:
       - "3000:3000"
     depends_on:
@@ -178,6 +176,9 @@ services:
       NEXT_PUBLIC_ADMIN_CONSOLE_URL: ${NEXT_PUBLIC_ADMIN_CONSOLE_URL:-http://127.0.0.1:3100}
       PREPMIND_INTERNAL_API_BASE_URL: http://server:3001
       PREPMIND_LOCAL_DEV_TOOLS_ENABLED: ${PREPMIND_LOCAL_DEV_TOOLS_ENABLED:-true}
+      AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}
+      AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}
+      AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}
       ROUTER_MODEL_ENABLED: ${ROUTER_MODEL_ENABLED:-false}
       KNOWLEDGE_VERIFIER_MODEL_ENABLED: ${KNOWLEDGE_VERIFIER_MODEL_ENABLED:-false}
       ROUTER_MODEL_TIMEOUT_MS: ${ROUTER_MODEL_TIMEOUT_MS:-5000}

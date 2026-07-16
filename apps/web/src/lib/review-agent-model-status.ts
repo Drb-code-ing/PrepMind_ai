@@ -23,15 +23,14 @@ export function getReviewPlannerModelStatus(
 function isAttemptedFallback(
   observation: ReviewPlannerModelObservations['review'],
 ) {
-  return (
-    observation.attempted === true &&
-    observation.disposition !== 'candidate_applied'
-  );
+  return observation.attempted === true && !isApplied(observation);
 }
 
 function isApplied(observation: ReviewPlannerModelObservations['review']) {
   return (
     observation.attempted === true &&
-    observation.disposition === 'candidate_applied'
+    observation.disposition === 'candidate_applied' &&
+    observation.provenance === 'live_candidate' &&
+    observation.degraded === false
   );
 }
