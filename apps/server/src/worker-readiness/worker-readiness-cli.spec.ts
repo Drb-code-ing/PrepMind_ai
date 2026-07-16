@@ -157,7 +157,7 @@ describe('worker readiness CLI helpers', () => {
     }
   });
 
-  it('exits the real CLI process with code 2 when dependencies fail', async () => {
+  it('exits the direct readiness CLI with code 2 when dependencies fail', async () => {
     const result = await runReadinessCliSubprocess({
       DATABASE_URL: 'postgresql://prepmind:devpass@127.0.0.1:1/prepmind',
       REDIS_URL: 'redis://127.0.0.1:1',
@@ -165,7 +165,7 @@ describe('worker readiness CLI helpers', () => {
     });
 
     expect(result.timedOut).toBe(false);
-    expect(result.exitCode).toBe(2);
+    expect(result.cliExitCode).toBe(2);
     expect(result.output).toContain(
       'Worker readiness CLI failed: unexpected script/config/timeout failure.',
     );
@@ -243,19 +243,30 @@ function createReadiness(): WorkerReadinessResponse {
   };
 }
 
-function runReadinessCliSubprocess(
-  env: Record<string, string>,
-): Promise<{ exitCode: number | null; output: string; timedOut: boolean }> {
-  const repoRoot = path.resolve(__dirname, '../../../..');
+function runReadinessCliSubprocess(env: Record<string, string>): Promise<{
+  cliExitCode: number | null;
+  output: string;
+  timedOut: boolean;
+}> {
+  const serverRoot = path.resolve(__dirname, '../..');
 
   return new Promise((resolve) => {
     const child = spawn(
-      process.env.BUN_EXE ?? 'bun',
-      ['--filter', '@repo/server', 'readiness:worker'],
+      'node',
+      [
+        '-r',
+        'tsconfig-paths/register',
+        '-r',
+        'ts-node/register',
+        'scripts/worker-readiness.ts',
+      ],
       {
-        cwd: repoRoot,
+        cwd: serverRoot,
         env: {
-          ...process.env,
+          PATH: process.env.PATH,
+          SystemRoot: process.env.SystemRoot,
+          TEMP: process.env.TEMP,
+          TMP: process.env.TMP,
           JWT_SECRET: 'dev-secret-change-me',
           NODE_ENV: 'development',
           KNOWLEDGE_PROCESSING_MODE: 'queue',
@@ -280,7 +291,11 @@ function runReadinessCliSubprocess(
     });
     child.on('close', (exitCode) => {
       clearTimeout(timeout);
-      resolve({ exitCode, output, timedOut });
+      resolve({
+        cliExitCode: exitCode,
+        output,
+        timedOut,
+      });
     });
   });
 }
