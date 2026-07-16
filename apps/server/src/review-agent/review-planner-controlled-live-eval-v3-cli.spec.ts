@@ -211,7 +211,7 @@ describe('review planner controlled Live v3 CLI', () => {
       value: {
         runDiagnostic,
         runPairedEvaluation,
-        providerAttemptCount: () => 1,
+        providerAttemptCount: () => 2,
       },
     }));
     const input = {
@@ -232,7 +232,7 @@ describe('review planner controlled Live v3 CLI', () => {
     ).resolves.toEqual({
       status: 'complete',
       gate: 'open',
-      providerAttemptCount: 1,
+      providerAttemptCount: 2,
       usageKnown: true,
     });
     expect(runDiagnostic).toHaveBeenCalledTimes(1);
@@ -251,6 +251,63 @@ describe('review planner controlled Live v3 CLI', () => {
     expect(runDiagnostic).toHaveBeenCalledTimes(1);
     expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
     expect(createEvaluator).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed with the additive canary plus paired lower bound when the authoritative total getter fails after paired execution', async () => {
+    const events: string[] = [];
+    const reservation = reservationFixture(events);
+    const runDiagnostic = jest.fn().mockResolvedValue({
+      status: 'complete',
+      canContinue: true,
+      providerAttemptCount: 1,
+      usageKnown: true,
+    });
+    const runPairedEvaluation = jest.fn().mockResolvedValue({
+      kind: 'report',
+      report: {
+        productionDecision: 'quality_gate_passed',
+        counters: {
+          runtimeInvocations: 22,
+          inputTokens: 1,
+          outputTokens: 1,
+        },
+      },
+    });
+    const createEvaluator = jest.fn(() => ({
+      ok: true,
+      value: {
+        runDiagnostic,
+        runPairedEvaluation,
+        providerAttemptCount: () => {
+          throw new Error('POST_PAIRED_TOTAL_GETTER_FAILURE');
+        },
+      },
+    }));
+
+    await expect(
+      executeReviewPlannerControlledLiveV3Cli({
+        argv: ['--confirm-controlled-live-v3'],
+        env: liveV3Env,
+        root: 'injected-v3-safe-reservation',
+        reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+        createEvaluator,
+      } as never),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 23,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+    });
+    expect(runDiagnostic).toHaveBeenCalledTimes(1);
+    expect(runPairedEvaluation).toHaveBeenCalledTimes(1);
+    expect(reservation.finalize).toHaveBeenCalledWith({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 23,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.UsageUnverifiable,
+    });
   });
 
   it('returns a conservative attempted evidence failure when finalization rejects after one diagnostic attempt', async () => {
