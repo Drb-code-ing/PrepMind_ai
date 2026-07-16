@@ -413,17 +413,16 @@ describe('Docker Compose worker readiness healthcheck', () => {
     );
     expect(webService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
-    expect(webService).not.toContain('AI_BASE_URL: ${');
-    expect(webService).not.toContain('DEEPSEEK_API_KEY: ${');
-    expect(webService).not.toContain('OPENAI_API_KEY: ${');
+    expect(webService).toContain(
+      'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
+    );
+    expect(webService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
+    expect(webService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
     expect(webService).not.toContain('REVIEW_AGENT_MODEL_ENABLED: ${');
     expect(webService).not.toContain('PLANNER_AGENT_MODEL_ENABLED: ${');
 
     const webEnvironment = resolveWebEnvironmentFromSafeRootFixture();
     for (const forbiddenVariable of [
-      'DEEPSEEK_API_KEY',
-      'OPENAI_API_KEY',
-      'AI_BASE_URL',
       'REVIEW_AGENT_MODEL_ENABLED',
       'PLANNER_AGENT_MODEL_ENABLED',
       'REVIEW_AGENT_MODEL_TIMEOUT_MS',
@@ -435,6 +434,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
       AI_PROVIDER_MODE: 'live',
       AI_ENABLE_LIVE_CALLS: 'true',
       AI_MODEL: 'deepseek-v4-flash',
+      AI_BASE_URL: 'https://fixture.invalid/v1',
+      DEEPSEEK_API_KEY: 'safe_fixture_deepseek_key',
+      OPENAI_API_KEY: 'safe_fixture_openai_key',
       ROUTER_MODEL_ENABLED: 'true',
       KNOWLEDGE_VERIFIER_MODEL_ENABLED: 'true',
       NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
