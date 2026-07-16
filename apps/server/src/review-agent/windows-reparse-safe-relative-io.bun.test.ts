@@ -12,7 +12,9 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'prepmind-phase-695-native-root-'));
-    outside = await mkdtemp(join(tmpdir(), 'prepmind-phase-695-native-outside-'));
+    outside = await mkdtemp(
+      join(tmpdir(), 'prepmind-phase-695-native-outside-'),
+    );
     await mkdir(join(root, 'docs'));
   });
 

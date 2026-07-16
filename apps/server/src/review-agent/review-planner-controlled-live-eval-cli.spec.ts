@@ -31,7 +31,13 @@ const env = Object.freeze({
   DEEPSEEK_API_KEY: 'cli-private-canary',
 });
 
-describe('review planner controlled Live CLI', () => {
+// The production command is deliberately Bun-only on Windows. Native Bun
+// coverage exercises the evidence boundary; Node/Jest must not regain a path
+// based write lane merely to run these orchestration fixtures.
+const describeCliWithEvidence =
+  process.platform === 'win32' ? describe.skip : describe;
+
+describeCliWithEvidence('review planner controlled Live CLI', () => {
   let root = '';
 
   beforeEach(async () => {

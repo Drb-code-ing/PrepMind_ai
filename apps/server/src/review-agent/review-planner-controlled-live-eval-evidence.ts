@@ -13,6 +13,11 @@ import { resolve, sep } from 'node:path';
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 import { z } from 'zod';
 
+import {
+  openWindowsNoReparseDirectory,
+  type WindowsNoReparseChildDirectory,
+} from './windows-reparse-safe-relative-io';
+
 export const REVIEW_PLANNER_CONTROLLED_LIVE_EVIDENCE_SCHEMA_VERSION =
   'phase-6.9.5-review-planner-controlled-live-evidence-v1' as const;
 
@@ -83,9 +88,13 @@ type EvidenceFs = Readonly<{
   unlink: typeof unlink;
   beforeOpen?(path: string): void | Promise<void>;
   beforeRename?(from: string, to: string): void | Promise<void>;
+  beforeNativeOperation?(
+    operation: 'create' | 'replace' | 'delete',
+  ): void | Promise<void>;
 }>;
 
 const nodeFs: EvidenceFs = { mkdir, open, readdir, rename, unlink };
+const EVIDENCE_DIRECTORY_COMPONENTS = EVIDENCE_DIRECTORY.split('/');
 
 /**
  * Creates a single-use evidence record before the first provider boundary.
@@ -102,21 +111,64 @@ export async function reserveReviewPlannerControlledLiveEvidence(
 ): Promise<ControlledLiveEvidenceReservation> {
   const fs = input.fs ?? nodeFs;
   const root = await resolveEvidenceRoot(input.root);
-  const evidenceDirectory = await ensureEvidenceDirectory(root, fs);
-  const parent = await bindEvidenceParent(root, evidenceDirectory);
-  await rejectExistingPhaseEvidence(fs, evidenceDirectory);
-  await assertBoundEvidenceParent(parent);
-  await acquirePhaseOnceLock(
-    fs,
-    parent,
-    resolveInsideRoot(root, PHASE_ONCE_LOCK),
-  );
-
   const relativePath = buildControlledLiveEvidencePath(
     input.startedAt,
     input.runId,
   );
+  const targetLeafName = relativePath.split('/').at(-1);
+  if (!targetLeafName) {
+    throw new Error('CONTROLLED_LIVE_EVIDENCE_IDENTITY_INVALID');
+  }
   const target = resolveInsideRoot(root, relativePath);
+  const evidenceDirectory = resolveInsideRoot(root, EVIDENCE_DIRECTORY);
+  let nativeDirectory: WindowsNoReparseChildDirectory | null = null;
+  let parent: EvidenceParentBinding | null = null;
+  let nativeClosed = false;
+  const closeNativeDirectory = () => {
+    if (!nativeDirectory || nativeClosed) return;
+    nativeClosed = true;
+    nativeDirectory.close();
+  };
+
+  try {
+    if (isWindowsNativeEvidenceIo()) {
+      nativeDirectory = await openWindowsNoReparseDirectory(
+        root,
+        EVIDENCE_DIRECTORY_COMPONENTS,
+      );
+      await rejectExistingPhaseEvidence(fs, evidenceDirectory);
+      await writeNativeEvidenceFile(
+        fs,
+        nativeDirectory,
+        'create',
+        phaseOnceLockLeafName(),
+        'phase-6.9.5-controlled-live-consumed\n',
+      );
+    } else {
+      const ensuredDirectory = await ensureEvidenceDirectory(root, fs);
+      parent = await bindEvidenceParent(root, ensuredDirectory);
+      await rejectExistingPhaseEvidence(fs, ensuredDirectory);
+      await assertBoundEvidenceParent(parent);
+      await acquirePhaseOnceLock(
+        fs,
+        parent,
+        resolveInsideRoot(root, PHASE_ONCE_LOCK),
+      );
+    }
+  } catch (error) {
+    closeNativeDirectory();
+    if (isWindowsAlreadyExists(error)) {
+      throw new Error('CONTROLLED_LIVE_EVIDENCE_PHASE_ALREADY_CONSUMED');
+    }
+    if (
+      error instanceof Error &&
+      error.message === 'CONTROLLED_LIVE_EVIDENCE_PHASE_ALREADY_CONSUMED'
+    ) {
+      throw error;
+    }
+    throw new Error('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
+  }
+
   const initial = buildEvidence('reserved', {
     status: 'diagnostic_blocked',
     gate: 'closed',
@@ -125,14 +177,26 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
   });
 
-  await assertBoundEvidenceParent(parent);
   let initialHandle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
   try {
-    initialHandle = await openInBoundEvidenceParent(fs, parent, target, 'wx');
-    await initialHandle.writeFile(serializeEvidence(initial), 'utf8');
-    await initialHandle.sync();
+    if (nativeDirectory) {
+      await writeNativeEvidenceFile(
+        fs,
+        nativeDirectory,
+        'create',
+        targetLeafName,
+        serializeEvidence(initial),
+      );
+    } else {
+      if (!parent) throw new Error('CONTROLLED_LIVE_EVIDENCE_PARENT_DRIFT');
+      await assertBoundEvidenceParent(parent);
+      initialHandle = await openInBoundEvidenceParent(fs, parent, target, 'wx');
+      await initialHandle.writeFile(serializeEvidence(initial), 'utf8');
+      await initialHandle.sync();
+    }
   } catch {
     if (initialHandle) await closeQuietly(initialHandle);
+    closeNativeDirectory();
     throw new Error('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
   }
   await closeQuietly(initialHandle);
@@ -147,21 +211,34 @@ export async function reserveReviewPlannerControlledLiveEvidence(
     let temporary: string | null = null;
     let handle: Awaited<ReturnType<EvidenceFs['open']>> | null = null;
     try {
-      await assertBoundEvidenceParent(parent);
       const evidence = buildEvidence(nextState, summary);
       const serialized = serializeEvidence(evidence);
       if (FORBIDDEN_EVIDENCE_TEXT.test(serialized)) return false;
-      temporary = `${target}.tmp-${process.pid}-${revision++}`;
-      handle = await openInBoundEvidenceParent(fs, parent, temporary, 'wx');
-      await handle.writeFile(serialized, 'utf8');
-      await handle.sync();
-      await closeQuietly(handle);
-      handle = null;
-      await renameInBoundEvidenceParent(fs, parent, temporary, target);
+      const temporarySuffix = revision++;
+      const temporaryLeafName = `${targetLeafName}.tmp-${process.pid}-${temporarySuffix}`;
+      if (nativeDirectory) {
+        await replaceNativeEvidenceFile(
+          fs,
+          nativeDirectory,
+          temporaryLeafName,
+          targetLeafName,
+          serialized,
+        );
+      } else {
+        if (!parent) throw new Error('CONTROLLED_LIVE_EVIDENCE_PARENT_DRIFT');
+        await assertBoundEvidenceParent(parent);
+        temporary = `${target}.tmp-${process.pid}-${temporarySuffix}`;
+        handle = await openInBoundEvidenceParent(fs, parent, temporary, 'wx');
+        await handle.writeFile(serialized, 'utf8');
+        await handle.sync();
+        await closeQuietly(handle);
+        handle = null;
+        await renameInBoundEvidenceParent(fs, parent, temporary, target);
+      }
       return true;
     } catch {
       if (handle) await closeQuietly(handle);
-      if (temporary && (await isBoundEvidenceParent(parent))) {
+      if (temporary && parent && (await isBoundEvidenceParent(parent))) {
         await fs.unlink(temporary).catch(() => undefined);
       }
       return false;
@@ -191,6 +268,7 @@ export async function reserveReviewPlannerControlledLiveEvidence(
           diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
         });
         state = changed ? 'attempted' : 'discarding';
+        if (!changed) closeNativeDirectory();
         return changed;
       });
     },
@@ -200,6 +278,7 @@ export async function reserveReviewPlannerControlledLiveEvidence(
         state = 'finalizing';
         const changed = await replaceEvidence('finalized', summary);
         state = changed ? 'finalized' : 'attempted';
+        closeNativeDirectory();
         return changed;
       });
     },
@@ -208,11 +287,17 @@ export async function reserveReviewPlannerControlledLiveEvidence(
         if (state !== 'reserved') return false;
         state = 'discarding';
         try {
-          if (!(await isBoundEvidenceParent(parent))) return false;
-          await fs.unlink(target);
+          if (nativeDirectory) {
+            await deleteNativeEvidenceFile(fs, nativeDirectory, targetLeafName);
+          } else {
+            if (!parent || !(await isBoundEvidenceParent(parent))) return false;
+            await fs.unlink(target);
+          }
           return true;
         } catch {
           return false;
+        } finally {
+          closeNativeDirectory();
         }
       });
     },
@@ -225,6 +310,54 @@ async function resolveEvidenceRoot(root: string) {
   } catch {
     throw new Error('CONTROLLED_LIVE_EVIDENCE_ROOT_INVALID');
   }
+}
+
+function isWindowsNativeEvidenceIo() {
+  return process.platform === 'win32';
+}
+
+function phaseOnceLockLeafName() {
+  return (
+    PHASE_ONCE_LOCK.split('/').at(-1) ?? '.review-planner-controlled-live.once'
+  );
+}
+
+async function writeNativeEvidenceFile(
+  fs: EvidenceFs,
+  directory: WindowsNoReparseChildDirectory,
+  operation: 'create',
+  leafName: string,
+  contents: string,
+) {
+  await fs.beforeNativeOperation?.(operation);
+  directory.createExclusiveFile(leafName, contents);
+}
+
+async function replaceNativeEvidenceFile(
+  fs: EvidenceFs,
+  directory: WindowsNoReparseChildDirectory,
+  temporaryLeafName: string,
+  targetLeafName: string,
+  contents: string,
+) {
+  await fs.beforeNativeOperation?.('replace');
+  directory.replaceFile(temporaryLeafName, targetLeafName, contents);
+}
+
+async function deleteNativeEvidenceFile(
+  fs: EvidenceFs,
+  directory: WindowsNoReparseChildDirectory,
+  leafName: string,
+) {
+  await fs.beforeNativeOperation?.('delete');
+  directory.deleteFile(leafName);
+}
+
+function isWindowsAlreadyExists(error: unknown) {
+  return (
+    error instanceof Error &&
+    error.message === 'WINDOWS_REPARSE_SAFE_IO_ALREADY_EXISTS'
+  );
 }
 
 async function assertDirectoryInsideRoot(root: string, directory: string) {

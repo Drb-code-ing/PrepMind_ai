@@ -16,7 +16,32 @@ import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
 import { reserveReviewPlannerControlledLiveEvidence } from './review-planner-controlled-live-eval-evidence';
 
-describe('review planner controlled Live evidence', () => {
+const describeNodeEvidence =
+  process.platform === 'win32' ? describe.skip : describe;
+const itWindowsNode =
+  process.platform === 'win32' && !process.versions.bun ? it : it.skip;
+
+itWindowsNode(
+  'fails closed under Node before any controlled Live evidence path write',
+  async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), 'prepmind-phase-695-node-closed-'),
+    );
+    try {
+      await expect(
+        reserveReviewPlannerControlledLiveEvidence({
+          root,
+          startedAt: '2026-07-16T00:00:00.000Z',
+          runId: 'node-fail-closed-run',
+        }),
+      ).rejects.toThrow('CONTROLLED_LIVE_EVIDENCE_RESERVATION_FAILED');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+);
+
+describeNodeEvidence('review planner controlled Live evidence', () => {
   let root = '';
 
   beforeEach(async () => {
