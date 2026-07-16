@@ -12,7 +12,7 @@ describe('review planner controlled Live safe summary contract', () => {
       gate: 'closed' as const,
       providerAttemptCount: 1,
       usageKnown: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+      diagnosticCode: ReviewPlannerDiagnosticCode.ProviderJsonParse,
     };
 
     expect(() =>

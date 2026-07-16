@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
+  MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
   isModelAgentRunBudget,
   type ModelAgentErrorCode,
   type ModelAgentProviderFailureCategory,
@@ -118,7 +119,8 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
       candidate.trace.status !== 'succeeded' ||
       candidate.trace.degraded ||
       candidate.trace.errorCode !== undefined ||
-      candidate.trace.providerFailureCategory !== undefined
+      candidate.trace.providerFailureCategory !== undefined ||
+      candidate.trace.structuredOutputStage !== undefined
     ) {
       return null;
     }
@@ -157,6 +159,11 @@ function sanitizeModelCandidateRuntimeResultUnchecked<T>(
       candidate.error.code,
       candidate.error.providerFailureCategory,
       candidate.trace.providerFailureCategory,
+    ) ||
+    !hasConsistentStructuredOutputStage(
+      candidate.error.code,
+      candidate.trace.providerFailureCategory,
+      candidate.trace.structuredOutputStage,
     )
   ) {
     return null;
@@ -195,6 +202,9 @@ function createRuntimeTraceSchema(task: ModelAgentTask, maxOutputTokens: number)
       degraded: z.boolean(),
       errorCode: MODEL_AGENT_ERROR_CODE_SCHEMA.optional(),
       providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
+      structuredOutputStage: z
+        .enum(MODEL_AGENT_STRUCTURED_OUTPUT_STAGES)
+        .optional(),
     })
     .strict();
 }
@@ -211,6 +221,18 @@ function hasConsistentProviderFailureCategory(
   return (
     (errorCategory === undefined && traceCategory === undefined) ||
     (errorCategory !== undefined && errorCategory === traceCategory)
+  );
+}
+
+function hasConsistentStructuredOutputStage(
+  errorCode: ModelAgentErrorCode,
+  providerFailureCategory: ModelAgentProviderFailureCategory | undefined,
+  structuredOutputStage: unknown,
+): boolean {
+  return (
+    structuredOutputStage === undefined ||
+    (errorCode === 'PROVIDER_ERROR' &&
+      providerFailureCategory === 'structured_output')
   );
 }
 

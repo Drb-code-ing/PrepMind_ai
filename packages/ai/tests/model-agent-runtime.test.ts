@@ -409,6 +409,10 @@ describe('model agent runtime live mode', () => {
         providerFailureCategory: 'structured_output',
       });
       expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+      expect(result.trace.structuredOutputStage).toBe(
+        'provider_type_validation',
+      );
+      expect('structuredOutputStage' in result.error).toBe(false);
       expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
       expect(fetchCalls).toBe(1);
       expect(JSON.stringify(result)).not.toContain('unsafe');

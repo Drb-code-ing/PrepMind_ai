@@ -2,7 +2,10 @@ import { describe, expect, it } from 'bun:test';
 import { APICallError } from 'ai';
 import { z } from 'zod';
 
-import { takeModelAgentProviderFailureCategory } from '../src/model-agent-provider-failure';
+import {
+  takeModelAgentProviderFailure,
+  takeModelAgentProviderFailureCategory,
+} from '../src/model-agent-provider-failure';
 import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
 import { MODEL_AGENT_STRUCTURED_SCHEMA_UNSUPPORTED } from '../src/model-agent-structured-schema';
 
@@ -71,7 +74,7 @@ describe('OpenAI-compatible model agent executor', () => {
     expect(JSON.stringify(result)).not.toContain('example-redacted-key');
   });
 
-  it('uses the real AI SDK JSON wire mode and rejects invalid structured output', async () => {
+  it('uses the real AI SDK JSON wire mode and classifies sanitized structured-output stages', async () => {
     const originalFetch = globalThis.fetch;
     const requestBodies: Array<Record<string, unknown>> = [];
     const requestUrls: string[] = [];
@@ -79,7 +82,12 @@ describe('OpenAI-compatible model agent executor', () => {
     globalThis.fetch = (async (input, init) => {
       requestUrls.push(String(input));
       requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
-      const content = responseIndex++ === 0 ? '{"route":"tutor"}' : '{"route":"unsafe"}';
+      const content = [
+        '{"route":"tutor"}',
+        `{"route":${CANARY}`,
+        `{"route":"${CANARY}"}`,
+        null,
+      ][responseIndex++];
       return new Response(
         JSON.stringify({
           id: `chatcmpl-${responseIndex}`,
@@ -129,9 +137,30 @@ describe('OpenAI-compatible model agent executor', () => {
       const messages = requestBodies[0]?.messages as Array<{ content?: string }>;
       expect(messages[0]?.content).toContain('"route"');
 
-      const error = await captureRejection(executor(request));
-      expectSafeProviderSignal(error, 'structured_output', request.signal);
+      const parseError = await captureRejection(executor(request));
+      expectSafeProviderSignal(
+        parseError,
+        'structured_output',
+        request.signal,
+        'provider_json_parse',
+      );
+      const typeError = await captureRejection(executor(request));
+      expectSafeProviderSignal(
+        typeError,
+        'structured_output',
+        request.signal,
+        'provider_type_validation',
+      );
+      const missingObjectError = await captureRejection(executor(request));
+      expectSafeProviderSignal(
+        missingObjectError,
+        'structured_output',
+        request.signal,
+        'provider_object_missing',
+      );
       expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
+      expect(requestBodies[2]?.response_format).toEqual({ type: 'json_object' });
+      expect(requestBodies[3]?.response_format).toEqual({ type: 'json_object' });
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -204,7 +233,12 @@ describe('OpenAI-compatible model agent executor', () => {
         usage: { inputTokens: 21, outputTokens: 8 },
       });
       const error = await captureRejection(executor(request));
-      expectSafeProviderSignal(error, 'structured_output', signal);
+      expectSafeProviderSignal(
+        error,
+        'structured_output',
+        signal,
+        'provider_type_validation',
+      );
 
       expect(requestBodies).toHaveLength(2);
       for (const body of requestBodies) {
@@ -802,13 +836,19 @@ function expectSafeProviderSignal(
   error: unknown,
   expectedCategory: string,
   expectedScope: AbortSignal,
+  expectedStructuredOutputStage?: string,
 ): void {
   expect(error).toBeInstanceOf(Error);
   if (!(error instanceof Error)) throw new Error('expected safe provider signal');
   expect(error.name).toBe('ModelAgentProviderFailure');
   expect(error.message).toBe('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
   expect((error as Error & { cause?: unknown }).cause).toBeUndefined();
-  expect(takeModelAgentProviderFailureCategory(error, expectedScope)).toBe(expectedCategory);
+  expect(takeModelAgentProviderFailure(error, expectedScope)).toEqual({
+    category: expectedCategory,
+    ...(expectedStructuredOutputStage
+      ? { structuredOutputStage: expectedStructuredOutputStage }
+      : {}),
+  });
   expect(JSON.stringify(error)).not.toContain(CANARY);
   expect(error.message).not.toContain(CANARY);
   expect(error.stack).not.toContain(CANARY);

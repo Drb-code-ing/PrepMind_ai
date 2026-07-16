@@ -130,7 +130,7 @@ describe('review planner controlled Live evaluator factory', () => {
       },
     ],
   ])(
-    'maps legal but non-schema %s JSON to one closed structured-output attempt without retaining raw content',
+    'maps legal but non-schema %s JSON to one closed runtime-schema-invalid attempt without retaining raw content',
     async (_label, object) => {
       const executor: StructuredModelExecutor = jest.fn(() =>
         Promise.resolve({
@@ -152,7 +152,7 @@ describe('review planner controlled Live evaluator factory', () => {
         canContinue: false,
         providerAttemptCount: 1,
         usageKnown: false,
-        diagnosticCode: ReviewPlannerDiagnosticCode.StructuredOutput,
+        diagnosticCode: ReviewPlannerDiagnosticCode.RuntimeSchemaInvalid,
       });
       expect(JSON.stringify(diagnostic)).not.toMatch(
         /CONTROLLED_LIVE_RAW_(SUMMARY|EVIDENCE)_CANARY/,
@@ -167,6 +167,15 @@ describe('review planner controlled Live evaluator factory', () => {
     ['http_client', ReviewPlannerDiagnosticCode.HttpClient],
     ['http_server', ReviewPlannerDiagnosticCode.HttpServer],
     ['structured_output', ReviewPlannerDiagnosticCode.StructuredOutput],
+    ['provider_json_parse', ReviewPlannerDiagnosticCode.ProviderJsonParse],
+    [
+      'provider_type_validation',
+      ReviewPlannerDiagnosticCode.ProviderTypeValidation,
+    ],
+    [
+      'provider_object_missing',
+      ReviewPlannerDiagnosticCode.ProviderObjectMissing,
+    ],
     ['invalid_response', ReviewPlannerDiagnosticCode.InvalidResponse],
     ['transport', ReviewPlannerDiagnosticCode.Transport],
     ['unknown', ReviewPlannerDiagnosticCode.Transport],
@@ -176,7 +185,17 @@ describe('review planner controlled Live evaluator factory', () => {
       expect(
         mapControlledLiveDiagnosticCode({
           errorCode: 'PROVIDER_ERROR',
-          providerFailureCategory: category,
+          providerFailureCategory:
+            category === 'provider_json_parse' ||
+            category === 'provider_type_validation' ||
+            category === 'provider_object_missing'
+              ? 'structured_output'
+              : category,
+          ...(category === 'provider_json_parse' ||
+          category === 'provider_type_validation' ||
+          category === 'provider_object_missing'
+            ? { structuredOutputStage: category }
+            : {}),
         }),
       ).toBe(expected);
     },
