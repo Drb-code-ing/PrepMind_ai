@@ -71,6 +71,16 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 证据隔离
+
+目标：为 DeepSeek V4 Pro v5 的一次性受控验收建立独立 evidence/once-marker 与历史完整性边界，保证 v1--v4 的目录树、marker 和字节内容不会被 v5 写入、覆盖或静默改写。
+
+主要内容与边界：v5 只可通过 Windows HANDLE-relative writer 创建 `phase-6-9-5-controlled-live-v5-deepseek-v4-pro` 目录及其专属 marker；evidence 是严格白名单 JSON。关闭结果只保留状态、gate、调用计数、usage 标记和受限诊断码；完整开放结果才可保留固定 CNY price profile、受限 token/CNY 聚合、硬上限和质量计数。它不保存 prompt、candidate、模型原文、凭据、endpoint、header、raw error 或 stack。v1--v4 在每次外部边界前后按目录项名称、类型、字节长度和 SHA-256 重新核对；缺失、追加、改写、普通文件外的节点或 reparse/junction/symlink 都 fail-closed。
+
+验收：先以缺少 v5 模块确认 RED；随后 focused Jest 3/3 与 Windows Bun native 5/5 通过，覆盖正常 reserve/mark/finalize、历史树字节哈希不变、历史改写/追加/reparse 和 v5 marker 冲突。此任务未读取凭据、未调用真实模型、未启动 Docker 或浏览器，也没有创建任何受控 Live evidence；Review/Planner 业务 gate 仍默认 `false`。
+
+回顾时可以问：为什么 v5 evidence 必须与 v1--v4 的 once marker 彻底分离？为什么历史验证既要比较 hash，也要拒绝 reparse point？为什么 CNY 聚合不能进入 USD Trace？
+
 ### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 受控评测工厂
 
 目标：为 ReviewAgent / PlannerAgent 建立一条与生产候选相同、但仍默认关闭且只读的 DeepSeek `deepseek-v4-pro` JSON-object 受控评测入口，避免把历史 v1--v4 的 direct-fetch 结构化输出失败误写成“DeepSeek Chat 不可用”。
@@ -82,6 +92,16 @@
 验收：红灯测试先证明 factory 缺失；实现后 `review-planner-controlled-live-eval-v5-deepseek.factory.spec.ts` 18/18 与 `bun --filter @repo/ai test` 161/161 通过，均未读取真实凭据或调用 provider。此记录只代表离线 factory；v5 evidence、CLI、Mock、唯一 Live、Docker、浏览器、main 复验和推送仍未发生。
 
 回顾时可以问：为什么 v5 必须复用 production JSON executor 而非第四次 direct-fetch adapter？为什么 CNY 价格不能直接写进 USD Trace？为什么第 24 次请求必须在 delegate 前被拒绝？
+
+### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 evidence 隔离
+
+目标：把即将发生的 v5 唯一真实调用和已消耗的 v1--v4 历史调用彻底隔离，使新证据既可审计，也不能覆写、拼接或误读旧证据。
+
+主要内容与边界：新增独立 profile、严格 safe-summary schema、专用 once marker 与 Windows HANDLE-relative writer。v5 只可写自己的 evidence 目录；complete evidence 只含 provider 尝试数、正 usage 状态、CNY price profile、聚合 token/CNY cap 与质量计数，closed evidence 不携带费用或质量字段。任何 prompt、candidate、key、endpoint、header、raw output/error 或 stack 都会被 schema/deny-list 拒绝。v5 在 provider 边界前后可对 v1--v4 的完整 evidence tree 与 marker 进行 SHA-256 清单验证；文件增删改、reparse point、缺 marker 或已存在 v5 marker 都 fail-closed。
+
+验收：evidence schema Jest 3/3、原生 Bun evidence 测试 5/5 与 Server lint 通过；原生测试覆盖历史 tree 字节级保持、内容/新增文件/reparse 篡改和 marker 冲突。没有运行 CLI、真实模型、Docker 或浏览器，业务 gate 继续关闭。
+
+回顾时可以问：为什么不只 hash 四个 marker，而要 hash 整个历史 evidence tree？为什么 complete 与 closed evidence 必须是不同的严格 schema？为什么 v5 writer 必须限制在 HANDLE-relative 的专属目录？
 
 ### 2026-07-17 - Phase 6.9.5 离线评测与 telemetry 可信度补强
 

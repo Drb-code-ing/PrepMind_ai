@@ -150,7 +150,9 @@ Run:
 
 ```powershell
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v5-deepseek.evidence.spec.ts
-bun --filter @repo/server exec bun test src/review-agent/review-planner-controlled-live-eval-v5-deepseek.evidence.native.bun.test.ts
+Push-Location apps/server
+bun test src/review-agent/review-planner-controlled-live-eval-v5-deepseek.evidence.native.bun.test.ts
+Pop-Location
 ```
 
 Expected: exit 0, including byte-preservation/race coverage on Windows.
