@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'bun:test';
 import { APICallError } from 'ai';
+import { generateObject } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 import {
   takeModelAgentProviderFailure,
   takeModelAgentProviderFailureCategory,
 } from '../src/model-agent-provider-failure';
-import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
+import {
+  createOpenAICompatibleStructuredExecutor,
+  type OpenAICompatibleExecutorConfig,
+} from '../src/model-agent-provider';
 import { MODEL_AGENT_STRUCTURED_SCHEMA_UNSUPPORTED } from '../src/model-agent-structured-schema';
 
 const schema = z.object({ route: z.enum(['chat', 'tutor']) }).strict();
@@ -164,6 +169,125 @@ describe('OpenAI-compatible model agent executor', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it('reserves the DeepSeek V4 Pro non-thinking JSON wire mode for the exact typed configuration', async () => {
+    const originalFetch = globalThis.fetch;
+    const requestBodies: Array<Record<string, unknown>> = [];
+    let requests = 0;
+    globalThis.fetch = (async (_input, init) => {
+      requests += 1;
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return new Response(
+        JSON.stringify({
+          id: 'chatcmpl-v6-nonthinking',
+          object: 'chat.completion',
+          created: 1,
+          model: 'deepseek-v4-pro',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: '{"route":"tutor"}' },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 21,
+            completion_tokens: 8,
+            total_tokens: 29,
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as typeof fetch;
+
+    try {
+      const config: OpenAICompatibleExecutorConfig = {
+        provider: 'deepseek',
+        apiKey: 'v6-private-test-key',
+        baseURL: 'https://api.deepseek.com/v1',
+        model: 'deepseek-v4-pro',
+        structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+      };
+      const executor = createOpenAICompatibleStructuredExecutor(config);
+      await expect(
+        executor({
+          schema,
+          systemPrompt: 'system',
+          userPrompt: 'question',
+          maxOutputTokens: 40,
+          signal: new AbortController().signal,
+        }),
+      ).resolves.toMatchObject({
+        object: { route: 'tutor' },
+        usage: { inputTokens: 21, outputTokens: 8 },
+      });
+
+      expect(requests).toBe(1);
+      expect(requestBodies[0]).toMatchObject({
+        model: 'deepseek-v4-pro',
+        response_format: { type: 'json_object' },
+        thinking: { type: 'disabled' },
+      });
+      expect(requestBodies[0]?.tools).toBeUndefined();
+      expect(requestBodies[0]?.tool_choice).toBeUndefined();
+      expect(requestBodies[0]?.functions).toBeUndefined();
+      expect(requestBodies[0]?.function_call).toBeUndefined();
+      expect(requestBodies[0]?.json_schema).toBeUndefined();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('does not mistake an unknown OpenAI provider option for a DeepSeek thinking control', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const provider = createOpenAI({
+      apiKey: 'provider-option-test-key',
+      baseURL: 'https://unit.invalid/v1',
+      fetch: (async (_input, init) => {
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response(
+          JSON.stringify({
+            id: 'chatcmpl-provider-option',
+            object: 'chat.completion',
+            created: 1,
+            model: 'deepseek-v4-pro',
+            choices: [
+              {
+                index: 0,
+                message: { role: 'assistant', content: '{"route":"tutor"}' },
+                finish_reason: 'stop',
+              },
+            ],
+            usage: {
+              prompt_tokens: 21,
+              completion_tokens: 8,
+              total_tokens: 29,
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }) as typeof fetch,
+    });
+
+    await expect(
+      generateObject({
+        model: provider('deepseek-v4-pro'),
+        mode: 'json',
+        schema,
+        system: 'system',
+        prompt: 'question',
+        maxRetries: 0,
+        providerOptions: {
+          openai: { thinking: { type: 'disabled' } },
+        },
+      }),
+    ).resolves.toMatchObject({ object: { route: 'tutor' } });
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]?.thinking).toBeUndefined();
+    expect(bodies[0]?.response_format).toEqual({ type: 'json_object' });
+    expect(bodies[0]?.tools).toBeUndefined();
+    expect(bodies[0]?.tool_choice).toBeUndefined();
   });
 
   it('uses one forced DeepSeek strict tool per invocation without json_schema response format', async () => {

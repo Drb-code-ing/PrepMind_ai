@@ -9,6 +9,12 @@ import {
 } from './model-agent-provider-failure.ts';
 import { isSafeModelName } from './model-agent-safety.ts';
 import {
+  createDeepSeekV4ProNonThinkingFetch,
+  DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL,
+  DEEPSEEK_V4_PRO_NONTHINKING_MODEL,
+  type DeepSeekV4ProNonThinkingAudit,
+} from './model-agent-deepseek-v4-pro-nonthinking.ts';
+import {
   compileDeepSeekStrictToolSchemaProfiles,
   MODEL_AGENT_STRUCTURED_SCHEMA_UNSUPPORTED,
   type ModelAgentStructuredSchemaProfile,
@@ -27,10 +33,17 @@ export type OpenAICompatibleExecutorConfig = BaseExecutorConfig &
     | {
         structuredOutputMode?: 'json_object';
         schemaProfiles?: never;
+        onNonThinkingAudit?: never;
       }
     | {
         structuredOutputMode: 'deepseek_strict_tool';
         schemaProfiles: readonly ModelAgentStructuredSchemaProfile[];
+        onNonThinkingAudit?: never;
+      }
+    | {
+        structuredOutputMode: 'deepseek_v4_pro_nonthinking_json';
+        schemaProfiles?: never;
+        onNonThinkingAudit?: (audit: DeepSeekV4ProNonThinkingAudit) => void;
       }
   );
 
@@ -44,6 +57,7 @@ type ProviderClient = ((model: string) => unknown) & {
 type ProviderFactory = (config: {
   apiKey: string;
   baseURL: string;
+  fetch?: typeof fetch;
 }) => ProviderClient;
 
 type GenerateStructuredBase = {
@@ -141,9 +155,17 @@ export function createOpenAICompatibleStructuredExecutor(
       : null;
   let model: unknown;
   try {
+    const nonThinkingFetch =
+      normalized.structuredOutputMode === 'deepseek_v4_pro_nonthinking_json'
+        ? createDeepSeekV4ProNonThinkingFetch(
+            globalThis.fetch,
+            normalized.onNonThinkingAudit,
+          )
+        : undefined;
     const provider = dependencies.createProvider({
       apiKey: normalized.apiKey,
       baseURL: normalized.baseURL,
+      ...(nonThinkingFetch ? { fetch: nonThinkingFetch } : {}),
     });
     if (normalized.structuredOutputMode === 'deepseek_strict_tool') {
       if (typeof provider.chat !== 'function') {
@@ -219,7 +241,8 @@ function normalizeProviderConfigUnchecked(config: OpenAICompatibleExecutorConfig
     !isSafeModelName(model) ||
     !isSafeHttpsUrl(baseURL) ||
     (structuredOutputMode !== 'json_object' &&
-      structuredOutputMode !== 'deepseek_strict_tool')
+      structuredOutputMode !== 'deepseek_strict_tool' &&
+      structuredOutputMode !== 'deepseek_v4_pro_nonthinking_json')
   ) {
     throw new Error('INVALID_MODEL_PROVIDER_CONFIG');
   }
@@ -230,7 +253,9 @@ function normalizeProviderConfigUnchecked(config: OpenAICompatibleExecutorConfig
       config.provider !== 'deepseek' ||
       model !== 'deepseek-v4-flash' ||
       strictBaseURL === null ||
-      !Array.isArray(config.schemaProfiles)
+      !Array.isArray(config.schemaProfiles) ||
+      ('onNonThinkingAudit' in config &&
+        config.onNonThinkingAudit !== undefined)
     ) {
       throw new Error('INVALID_MODEL_PROVIDER_CONFIG');
     }
@@ -244,7 +269,35 @@ function normalizeProviderConfigUnchecked(config: OpenAICompatibleExecutorConfig
     } as const;
   }
 
-  if ('schemaProfiles' in config && config.schemaProfiles !== undefined) {
+  if (structuredOutputMode === 'deepseek_v4_pro_nonthinking_json') {
+    if (
+      config.provider !== 'deepseek' ||
+      model !== DEEPSEEK_V4_PRO_NONTHINKING_MODEL ||
+      baseURL !== DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL ||
+      ('schemaProfiles' in config && config.schemaProfiles !== undefined) ||
+      ('onNonThinkingAudit' in config &&
+        config.onNonThinkingAudit !== undefined &&
+        typeof config.onNonThinkingAudit !== 'function')
+    ) {
+      throw new Error('INVALID_MODEL_PROVIDER_CONFIG');
+    }
+    return {
+      provider: 'deepseek' as const,
+      apiKey,
+      baseURL: DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL,
+      model: DEEPSEEK_V4_PRO_NONTHINKING_MODEL,
+      structuredOutputMode,
+      ...(typeof config.onNonThinkingAudit === 'function'
+        ? { onNonThinkingAudit: config.onNonThinkingAudit }
+        : {}),
+    } as const;
+  }
+
+  if (
+    ('schemaProfiles' in config && config.schemaProfiles !== undefined) ||
+    ('onNonThinkingAudit' in config &&
+      config.onNonThinkingAudit !== undefined)
+  ) {
     throw new Error('INVALID_MODEL_PROVIDER_CONFIG');
   }
   return {

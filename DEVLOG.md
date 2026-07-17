@@ -6,7 +6,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成 Review/Planner 受限只读候选和诊断工程；独立 v1/v2/v3/v4 profile 各发生一次 provider 尝试，均为 `invalid_attempted / structured_output`，其中 v3/v4 的安全内部阶段为 `provider_json_parse`。两条业务 gate 继续默认 `false`，不得重跑 v1/v2/v3/v4、48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计和 Task 1 的零网络 typed non-thinking transport：只有精确 DeepSeek V4 Pro `/v1` Review/Planner candidate executor 才可写固定 `thinking:{type:'disabled'}`，普通 Chat 不变。两条业务 gate 继续默认 `false`，不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选与四个隔离的 controlled-Live profile；v1/v2/v3/v4 均为 `invalid_attempted / structured_output`、gate 关闭、不得重跑 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 typed non-thinking transport 仅完成零网络 wire 证明，业务 gate 关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -70,6 +70,16 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V6 non-thinking typed transport（离线）
+
+目标：在 V5 的 `structured_output` 终态后先验证一个可证伪的 transport 根因假设：DeepSeek V4 Pro 默认 thinking 是否需要在真实 JSON candidate request 上显式关闭；本记录只确认本地 SDK wire 与权限边界，不声称真实模型已经通过。
+
+主要内容与边界：`@repo/ai` 新增封闭的 `deepseek_v4_pro_nonthinking_json` mode。它只接受 `provider=deepseek`、`model=deepseek-v4-pro` 与精确 `https://api.deepseek.com/v1`；通过 Vercel AI SDK 官方 custom `fetch` middleware，在 delegate 前验证 `POST /v1/chat/completions`、`response_format:{type:'json_object'}`、无 tools/tool_choice/functions/function_call/json_schema，拒绝预置 `thinking`，然后只写入固定 `thinking:{type:'disabled'}`。未知 `providerOptions.openai.thinking` 的零网络对照实验证实不会出现在 SDK wire，因而不能被当作关闭 thinking 的实现。middleware 对返回值只暂态归约 reasoning 是否出现和安全整数 detail；它不读取或保存 `message.content`，也不向 Trace/HTTP/文档投影 prompt、candidate、chain-of-thought、endpoint、header、凭据或原始错误。发现 reasoning content、正 reasoning token 或非法 detail 时在本地 fail-closed，现有 runtime 仍回落 deterministic suggestion。
+
+验收：先观察到 transport module/mode 缺失的 RED；实现后 direct transport 18/18、provider wire 33/33、完整 `bun --filter @repo/ai test` 181/181、`bun --filter @repo/ai typecheck`、`lint` 与 `bun --filter @repo/server build` 均通过。所有 provider responses 均由 fake fetch 构造；未读取 `.env`、未调用 DeepSeek、未创建 V6 evidence/once marker、未启动 Docker/浏览器，`REVIEW_AGENT_MODEL_ENABLED` 和 `PLANNER_AGENT_MODEL_ENABLED` 仍未改变。V6 的 factory、evidence、CLI、Mock、独立复审和用户明确的一次 Live 授权仍在后续任务。
+
+回顾时可以问：为什么通用 `providerOptions` 不能作为 DeepSeek thinking 开关？为什么 middleware 必须在 delegate 前验证完整 JSON request？为什么 response audit 只允许保留安全计数而不能记录 reasoning/content 原文？
 
 ### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 一次性 Live 关闭
 
