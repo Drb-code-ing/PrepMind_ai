@@ -12,11 +12,14 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { ReviewPlannerDiagnosticCode } from '@repo/agent';
+
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PRICE_PROFILE_ID,
   REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE,
   finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence,
   reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence,
+  safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema,
   snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence,
   verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence,
 } from './review-planner-controlled-live-eval-v6-deepseek-nonthinking.evidence';
@@ -24,6 +27,10 @@ import type {
   ReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidenceSnapshot,
   SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
 } from './review-planner-controlled-live-eval-v6-deepseek-nonthinking.evidence';
+import {
+  executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli,
+  serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
+} from './review-planner-controlled-live-eval-v6-deepseek-nonthinking.cli';
 
 const describeNativeWindows =
   process.platform === 'win32' && Boolean(process.versions.bun)
@@ -80,7 +87,10 @@ describeNativeWindows(
       ).resolves.toBe(true);
       await expect(verify(root, snapshot)).resolves.toEqual(snapshot);
 
-      const evidence = await readFile(join(root, reservation.relativePath), 'utf8');
+      const evidence = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
       expect(evidence).toContain('"reasoning":"not_reported"');
       expect(evidence).not.toContain('V6_PRIVATE_EVIDENCE_CANARY');
     });
@@ -98,7 +108,10 @@ describeNativeWindows(
           historicalSnapshot: snapshot,
         });
       await reservation.markAttempted();
-      const before = await readFile(join(root, reservation.relativePath), 'utf8');
+      const before = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
       const forged = { ...reservation };
 
       expect(Object.keys(reservation).sort()).toEqual([
@@ -115,9 +128,9 @@ describeNativeWindows(
           summary: completeSummary(),
         }),
       ).resolves.toBe(false);
-      await expect(readFile(join(root, reservation.relativePath), 'utf8')).resolves.toBe(
-        before,
-      );
+      await expect(
+        readFile(join(root, reservation.relativePath), 'utf8'),
+      ).resolves.toBe(before);
 
       await expect(
         finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
@@ -134,7 +147,11 @@ describeNativeWindows(
         label: 'changed',
         mutate: async () => {
           await writeFile(
-            join(root, historicalDirectories[0], '.review-planner-controlled-live.once'),
+            join(
+              root,
+              historicalDirectories[0],
+              '.review-planner-controlled-live.once',
+            ),
             'changed-history\n',
           );
         },
@@ -142,20 +159,33 @@ describeNativeWindows(
       {
         label: 'added',
         mutate: async () => {
-          await writeFile(join(root, historicalDirectories[1], 'added.json'), '{}\n');
+          await writeFile(
+            join(root, historicalDirectories[1], 'added.json'),
+            '{}\n',
+          );
         },
       },
       {
         label: 'removed',
         mutate: async () => {
-          await rm(join(root, historicalDirectories[2], '.review-planner-controlled-live-v3.once'));
+          await rm(
+            join(
+              root,
+              historicalDirectories[2],
+              '.review-planner-controlled-live-v3.once',
+            ),
+          );
         },
       },
       {
         label: 'renamed',
         mutate: async () => {
           await rename(
-            join(root, historicalDirectories[3], '.review-planner-controlled-live-v4.once'),
+            join(
+              root,
+              historicalDirectories[3],
+              '.review-planner-controlled-live-v4.once',
+            ),
             join(root, historicalDirectories[3], 'renamed.once'),
           );
         },
@@ -188,7 +218,9 @@ describeNativeWindows(
     });
 
     it('rejects a historical junction without following it', async () => {
-      const external = await mkdtemp(join(tmpdir(), 'prepmind-phase-695-v6-outside-'));
+      const external = await mkdtemp(
+        join(tmpdir(), 'prepmind-phase-695-v6-outside-'),
+      );
       try {
         await symlink(
           external,
@@ -232,7 +264,9 @@ describeNativeWindows(
           runId: 'v6-native-marker-conflict',
           historicalSnapshot: snapshot,
         }),
-      ).rejects.toThrow('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED');
+      ).rejects.toThrow(
+        'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED',
+      );
     });
 
     it('seals the safe attempted record when the native V6 writer is denied', async () => {
@@ -246,7 +280,7 @@ describeNativeWindows(
           startedAt: '2026-07-17T00:00:00.000Z',
           runId: 'v6-native-writer-failure',
           historicalSnapshot: snapshot,
-      });
+        });
       await reservation.markAttempted();
       await chmod(join(root, reservation.relativePath), 0o444);
       await expect(
@@ -258,7 +292,10 @@ describeNativeWindows(
         }),
       ).resolves.toBe(false);
       await chmod(join(root, reservation.relativePath), 0o666);
-      const evidence = await readFile(join(root, reservation.relativePath), 'utf8');
+      const evidence = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
       expect(evidence).toContain('"state":"attempted"');
       expect(evidence).not.toContain('"status":"complete"');
       await expect(
@@ -269,6 +306,67 @@ describeNativeWindows(
           summary: completeSummary(),
         }),
       ).resolves.toBe(false);
+    });
+
+    it('seals the reserved handle when both the attempt and first safe closure writes are denied', async () => {
+      const snapshot =
+        await snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+          root,
+        );
+      const reservation =
+        await reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          startedAt: '2026-07-17T00:00:00.000Z',
+          runId: 'v6-native-reserved-write-denied-seal',
+          historicalSnapshot: snapshot,
+        });
+      const evidencePath = join(root, reservation.relativePath);
+      await chmod(evidencePath, 0o444);
+      let evaluatorConstructed = false;
+
+      try {
+        const result =
+          await executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli({
+            argv: ['--confirm-controlled-live-v6-deepseek-v4-pro-nonthinking'],
+            env: {},
+            root,
+            validatePreflight: () => ({ ok: true }),
+            snapshotHistoricalEvidence: () => Promise.resolve(snapshot),
+            reserveEvidence: () => Promise.resolve(reservation),
+            verifyHistoricalEvidence: () => Promise.resolve(snapshot),
+            createEvaluator: () => {
+              evaluatorConstructed = true;
+              throw new Error('CLI_EVALUATOR_MUST_NOT_BE_CONSTRUCTED');
+            },
+          });
+
+        expect(result).toEqual(evidenceIoClosure());
+        expect(
+          serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary(
+            result,
+          ),
+        ).toBe(
+          '{"status":"invalid_attempted","gate":"closed","providerAttemptCount":0,"usageKnown":false,"diagnosticCode":"evidence_io"}',
+        );
+        expect(evaluatorConstructed).toBe(false);
+        const initialRecord = await readFile(evidencePath, 'utf8');
+        expect(initialRecord).toContain('"state":"reserved"');
+        expect(initialRecord).toContain('"status":"diagnostic_blocked"');
+        expect(initialRecord).toContain('"providerAttemptCount":0');
+        expect(initialRecord).not.toContain('"status":"complete"');
+      } finally {
+        await chmod(evidencePath, 0o666);
+      }
+
+      await expect(
+        finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          historicalSnapshot: snapshot,
+          reservation,
+          summary: evidenceIoClosure(),
+        }),
+      ).resolves.toBe(false);
+      await expect(reservation.markAttempted()).resolves.toBe(false);
     });
 
     it('seals closed evidence-io when history mismatches after the safe provisional write', async () => {
@@ -282,9 +380,12 @@ describeNativeWindows(
           startedAt: '2026-07-17T00:00:00.000Z',
           runId: 'v6-native-final-post-check',
           historicalSnapshot: snapshot,
-      });
+        });
       await reservation.markAttempted();
-      await writeFile(join(root, historicalDirectories[1], 'late-change.json'), '{}\n');
+      await writeFile(
+        join(root, historicalDirectories[1], 'late-change.json'),
+        '{}\n',
+      );
 
       await expect(
         finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
@@ -294,7 +395,10 @@ describeNativeWindows(
           summary: completeSummary(),
         }),
       ).resolves.toBe(false);
-      const evidence = await readFile(join(root, reservation.relativePath), 'utf8');
+      const evidence = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
       expect(evidence).toContain('"state":"finalized"');
       expect(evidence).toContain('"diagnosticCode":"evidence_io"');
       await expect(
@@ -306,6 +410,103 @@ describeNativeWindows(
         }),
       ).resolves.toBe(false);
     });
+
+    it('uses the private finalizer to seal a reserved record when the CLI pre-attempt history check fails', async () => {
+      const snapshot =
+        await snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+          root,
+        );
+      const reservation =
+        await reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          startedAt: '2026-07-17T00:00:00.000Z',
+          runId: 'v6-native-cli-pre-attempt-history-failure',
+          historicalSnapshot: snapshot,
+        });
+      const createEvaluator = () => {
+        throw new Error('CLI_EVALUATOR_MUST_NOT_BE_CONSTRUCTED');
+      };
+
+      const result =
+        await executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli({
+          argv: ['--confirm-controlled-live-v6-deepseek-v4-pro-nonthinking'],
+          env: {},
+          root,
+          validatePreflight: () => ({ ok: true }),
+          snapshotHistoricalEvidence: () => Promise.resolve(snapshot),
+          reserveEvidence: () => Promise.resolve(reservation),
+          verifyHistoricalEvidence: () =>
+            Promise.reject(new Error('CLI_PRE_ATTEMPT_HISTORY_MISMATCH')),
+          createEvaluator,
+        });
+
+      expect(result).toEqual(evidenceIoClosure());
+      expect(
+        serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary(
+          result,
+        ),
+      ).toBe(
+        '{"status":"invalid_attempted","gate":"closed","providerAttemptCount":0,"usageKnown":false,"diagnosticCode":"evidence_io"}',
+      );
+      const evidence = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
+      expect(evidence).toContain('"state":"finalized"');
+      expect(evidence).toContain('"providerAttemptCount":0');
+      expect(evidence).toContain('"diagnosticCode":"evidence_io"');
+      await expect(
+        finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          historicalSnapshot: snapshot,
+          reservation,
+          summary: evidenceIoClosure(),
+        }),
+      ).resolves.toBe(false);
+    });
+
+    it('uses the same private finalizer when markAttempted returns false and never constructs an evaluator', async () => {
+      const snapshot =
+        await snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+          root,
+        );
+      const reservation =
+        await reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          startedAt: '2026-07-17T00:00:00.000Z',
+          runId: 'v6-native-cli-mark-attempted-failure',
+          historicalSnapshot: snapshot,
+        });
+      // The first transition owns the reservation. The CLI's attempt transition
+      // then returns false, exercising the no-provider terminal branch.
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      let evaluatorConstructed = false;
+
+      const result =
+        await executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli({
+          argv: ['--confirm-controlled-live-v6-deepseek-v4-pro-nonthinking'],
+          env: {},
+          root,
+          validatePreflight: () => ({ ok: true }),
+          snapshotHistoricalEvidence: () => Promise.resolve(snapshot),
+          reserveEvidence: () => Promise.resolve(reservation),
+          verifyHistoricalEvidence: () => Promise.resolve(snapshot),
+          createEvaluator: () => {
+            evaluatorConstructed = true;
+            throw new Error('CLI_EVALUATOR_MUST_NOT_BE_CONSTRUCTED');
+          },
+        });
+
+      expect(result).toEqual(evidenceIoClosure());
+      expect(evaluatorConstructed).toBe(false);
+      const evidence = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
+      expect(evidence).toContain('"state":"finalized"');
+      expect(evidence).toContain('"providerAttemptCount":0');
+      expect(evidence).toContain('"diagnosticCode":"evidence_io"');
+    });
   },
 );
 
@@ -313,10 +514,12 @@ function verify(
   root: string,
   snapshot: ReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidenceSnapshot,
 ) {
-  return verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence({
-    root,
-    snapshot,
-  });
+  return verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+    {
+      root,
+      snapshot,
+    },
+  );
 }
 
 function completeSummary() {
@@ -348,6 +551,18 @@ function completeSummary() {
       reasoningContentPresent: false,
     },
   } satisfies SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary;
+}
+
+function evidenceIoClosure() {
+  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+    {
+      status: 'invalid_attempted' as const,
+      gate: 'closed' as const,
+      providerAttemptCount: 0,
+      usageKnown: false as const,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    },
+  );
 }
 
 async function copyHistoricalEvidenceTrees(root: string) {

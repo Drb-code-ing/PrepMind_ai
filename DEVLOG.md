@@ -1,5 +1,7 @@
 # PrepMind AI 开发日志
 
+> 2026-07-17 — Phase 6.9.5 V6 CLI/Mock-ready; no V6 controlled-Live attempt has occurred. Review/Planner product gates remain `false`; the once-only script must not run without a separate explicit Live approval. If native I/O denies both the attempt and safe-closure replacements, stdout remains the fixed `evidence_io` closure while the initial durable reserved record stays non-success/no-attempt and its consumed private handle is sealed; no durable result is fabricated.
+
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照

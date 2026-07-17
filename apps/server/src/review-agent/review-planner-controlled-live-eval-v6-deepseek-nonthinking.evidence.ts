@@ -351,7 +351,9 @@ export async function snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHi
       )
     )
       .flat()
-      .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+      .sort((left, right) =>
+        left.relativePath.localeCompare(right.relativePath),
+      );
     for (const tree of HISTORICAL_EVIDENCE_TREES) {
       const markerPath = `${tree.evidenceDirectory}/${tree.onceLockLeaf}`;
       if (
@@ -368,7 +370,9 @@ export async function snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHi
       entries: Object.freeze(entries.map((entry) => Object.freeze(entry))),
     });
   } catch {
-    throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_HISTORICAL_INTEGRITY_FAILED');
+    throw new Error(
+      'CONTROLLED_LIVE_V6_NONTHINKING_HISTORICAL_INTEGRITY_FAILED',
+    );
   }
 }
 
@@ -393,7 +397,9 @@ export async function verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHist
     }
     return input.snapshot;
   } catch {
-    throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_HISTORICAL_INTEGRITY_FAILED');
+    throw new Error(
+      'CONTROLLED_LIVE_V6_NONTHINKING_HISTORICAL_INTEGRITY_FAILED',
+    );
   }
 }
 
@@ -411,12 +417,16 @@ export async function reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvi
   }>,
 ): Promise<ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceReservation> {
   if (process.platform !== 'win32' || !process.versions.bun) {
-    throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_TRUSTED_HANDLE_REQUIRED');
+    throw new Error(
+      'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_TRUSTED_HANDLE_REQUIRED',
+    );
   }
-  await verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence({
-    root: input.root,
-    snapshot: input.historicalSnapshot,
-  });
+  await verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+    {
+      root: input.root,
+      snapshot: input.historicalSnapshot,
+    },
+  );
   const root = resolve(input.root);
   const relativePath = buildEvidencePath(input.startedAt, input.runId);
   const leafName = relativePath.split('/').at(-1);
@@ -443,18 +453,18 @@ export async function finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEv
 ): Promise<boolean> {
   const capability = reservationCapabilities.get(input.reservation);
   if (!capability) return false;
-  const safeWrite = await capability.finalize(
-    evidenceIoSummary(input.summary),
-  );
+  const safeWrite = await capability.finalize(evidenceIoSummary(input.summary));
   if (!safeWrite) {
     capability.seal();
     return false;
   }
   try {
-    await verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence({
-      root: input.root,
-      snapshot: input.historicalSnapshot,
-    });
+    await verifyReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+      {
+        root: input.root,
+        snapshot: input.historicalSnapshot,
+      },
+    );
   } catch {
     capability.seal();
     return false;
@@ -473,7 +483,9 @@ export function serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenc
   summary: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
 ): string {
   const parsed =
-    safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(summary);
+    safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+      summary,
+    );
   const record = {
     schemaVersion:
       REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE.evidenceSchemaVersion,
@@ -483,7 +495,9 @@ export function serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenc
   const evidence = parseRecord(state, record);
   const serialized = `${JSON.stringify(evidence)}\n`;
   if (forbiddenEvidenceText.test(serialized)) {
-    throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_SERIALIZATION_FAILED');
+    throw new Error(
+      'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_SERIALIZATION_FAILED',
+    );
   }
   return serialized;
 }
@@ -506,7 +520,9 @@ async function reserveNativeEvidence(
       REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE.evidenceDirectory,
     );
     if ((await readdir(evidenceDirectory)).length > 0) {
-      throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED');
+      throw new Error(
+        'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED',
+      );
     }
     directory.createExclusiveFile(
       REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE.onceLockLeaf,
@@ -526,9 +542,13 @@ async function reserveNativeEvidence(
       (exception.message.includes('ALREADY') ||
         exception.message.includes('WINDOWS_REPARSE_SAFE_IO_ALREADY_EXISTS'))
     ) {
-      throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED');
+      throw new Error(
+        'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_ALREADY_CONSUMED',
+      );
     }
-    throw new Error('CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_RESERVATION_FAILED');
+    throw new Error(
+      'CONTROLLED_LIVE_V6_NONTHINKING_EVIDENCE_RESERVATION_FAILED',
+    );
   }
   return nativeReservation(directory, relativePath, leafName);
 }
@@ -577,41 +597,57 @@ function nativeReservation(
   });
   const capability: ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceCapability =
     Object.freeze({
-    finalize(summary) {
-      if (state !== 'attempted' && state !== 'finalized') {
-        return Promise.resolve(false);
-      }
-      const changed = replace('finalized', summary);
-      if (changed) state = 'finalized';
-      return Promise.resolve(changed);
-    },
-    seal() {
-      if (state === 'reserved') return;
-      close();
-    },
-  });
+      finalize(summary) {
+        // A reservation has no public terminal writer. The controlled finalizer
+        // alone may close a reserved record, and only with its first fixed
+        // evidence-io record when no provider boundary has been reached.
+        if (state === 'reserved' && !isReservedEvidenceIoClosure(summary)) {
+          return Promise.resolve(false);
+        }
+        if (
+          state !== 'reserved' &&
+          state !== 'attempted' &&
+          state !== 'finalized'
+        ) {
+          return Promise.resolve(false);
+        }
+        const changed = replace('finalized', summary);
+        if (changed) state = 'finalized';
+        return Promise.resolve(changed);
+      },
+      seal() {
+        // Even when filesystem permissions deny both the attempt transition and
+        // the first safe closure replacement, the consumed reservation handle
+        // must never remain writable after the CLI returns its safe stdout.
+        close();
+      },
+    });
   reservationCapabilities.set(reservation, capability);
   return reservation;
 }
 
 function blockedSummary(): SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary {
-  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse({
-    status: 'diagnostic_blocked',
-    gate: 'closed',
-    providerAttemptCount: 0,
-    usageKnown: false,
-    diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
-  });
+  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+    {
+      status: 'diagnostic_blocked',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+    },
+  );
 }
 
 function attemptedSummary(): SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary {
-  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse({
-    status: 'invalid_attempted',
-    gate: 'closed',
-    providerAttemptCount: 0,
-    usageKnown: false,
-    diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
-  });
+  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+    {
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+    },
+  );
 }
 
 function evidenceIoSummary(
@@ -620,18 +656,34 @@ function evidenceIoSummary(
   let providerAttemptCount = 0;
   try {
     const parsed =
-      safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(value);
+      safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+        value,
+      );
     providerAttemptCount = parsed.providerAttemptCount;
   } catch {
     // The durable closure intentionally preserves no untrusted detail.
   }
-  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse({
-    status: 'invalid_attempted',
-    gate: 'closed',
-    providerAttemptCount,
-    usageKnown: false,
-    diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
-  });
+  return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
+    {
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    },
+  );
+}
+
+function isReservedEvidenceIoClosure(
+  value: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
+) {
+  return (
+    value.status === 'invalid_attempted' &&
+    value.gate === 'closed' &&
+    value.providerAttemptCount === 0 &&
+    value.usageKnown === false &&
+    value.diagnosticCode === ReviewPlannerDiagnosticCode.EvidenceIo
+  );
 }
 
 function parseRecord(state: EvidenceState, record: unknown) {
