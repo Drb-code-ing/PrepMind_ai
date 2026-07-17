@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--6 已完成离线工程、composition parity、不可变 evidence、one-shot CLI、全量门禁与权威文档同步。V7 offline engineering ready；controlled-Live 未运行且未授权，两个产品 gate 继续默认 `false`。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--7 已完成离线工程、composition parity、success seal、one-shot CLI、全量门禁、两轮独立复审与权威文档同步。V7 offline engineering ready；controlled-Live 未运行且未授权，两个产品 gate 继续默认 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V7 Task 1--6 已完成：raw response audit 只保留冻结的 `missing / invalid / positive` usage shape；evaluator 接受 actual input `97` 高于 preview `96` 并继续约束 output、aggregate reservation、23 attempts 与 CNY hard cap；V7 evidence 使用独立 strict lifecycle 和 V1--V6 existing-only/no-reparse snapshot；one-shot CLI 只接受 exact confirmation 并在每个 capability 边界 fail-closed；production parity 只暴露六字段 sanitized identity，V7 eval gate 不进入 Docker/Web/worker/config allowlist。直接 Mock report 为 `mock_quality_not_evidence`，strict-fake evaluator 回归另标 `mock_quality_not_live_evidence`，均为 `48/26/22/48/48/0` 离线证据。历史 snapshot 当前为 `treeHash=9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba` / 18 entries；V6 marker/JSON 固定哈希分别为 `ac04ea11c4e416e44bd870c158a6bff0d65db297262ab6610790cf355525ec31`、`4fb435824785af4b2601b83787b22a4b98de1ac47d222f2566e351960bfd1afb`。focused V7 为 AI 190、Server 86、native 9/40 assertions；全量离线门为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409，AI/types typecheck、AI/Server/Web lint、Server/Web build、Compose `config --quiet` 与 diff check 均通过。真实仓库没有 V7 marker/evidence；下一步是 Task 7 两轮最终离线复审，之后必须停止并申请新的单独 controlled-Live 授权。Review/Planner product path 仍 deterministic，因为两个 model gate 都是 `false`；不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认全部 Agent 架构完成后才进入 Phase 6.10 分层记忆。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V7 Task 1--7 已完成 preview/actual usage parity、无数值 raw usage audit、one-shot CLI、production parity、全量离线门禁、success seal 与两轮独立复审。成功必须由私有 `success_candidate` 与 exclusive、hash/history-bound seal 共同构成；任一 unsealed/mismatched candidate 只能由唯一公开 reader 投影为不含 token/cost 的 `evidence_io`。历史 snapshot 为 `treeHash=9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba` / 18 entries；focused V7 为 AI 190、Server 86、native 15/130 assertions；全量离线门为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409。两轮复审均 PASS，Critical/Important/Minor 均为 0。真实仓库没有 V7 marker/evidence；controlled-Live 未运行且未授权。Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。下一步只能在用户新的单独授权后执行唯一 V7 Live；全部 Agent 架构完成后才进入 Phase 6.10 分层记忆。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--6 离线完成，Task 7 与 controlled-Live 待执行 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--7 离线完成，controlled-Live 待单独授权 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V7 Task 7 独立复审与 success seal 收口
+
+目标：完成 contract/security 与 acceptance/operations 两轮独立离线复审，并关闭 terminal evidence replacement 后历史漂移可能留下假成功证据的 TOCTOU 窗口。
+
+为什么：旧顺序在写入 `complete` 后检测到 V1--V6 漂移时，若降级替换本身再失败，磁盘可能残留可被误读的 `complete` JSON。仅检查 boolean 无法解决，必须把“存在候选 JSON”与“证据已成功提交”分离。
+
+主要内容与边界：成功先写成公开 schema 不接受的私有 `success_candidate`，单次 25ms quiescence 后 fresh 复核 V1--V6，再 exclusive-create 与 evidence leaf、candidate SHA-256、历史 tree hash 和 nonce commitment 绑定的无数值 success seal。唯一公开 reader 只有在 once marker、candidate、seal、hash/commitment 与 fresh history 全部一致时才投影逻辑 `finalized/complete`；任一缺失、伪造、reparse、降级写失败或 seal 创建失败都固定返回不含 token/cost 的 `evidence_io`。无 provider/file retry loop，reservation 仍只公开 `relativePath/markAttempted`，产品 gate 未改变。
+
+验收：缺陷回归先观察到 RED；修复后 evidence Jest `5/5`、Windows native `15/15 / 130 assertions`、targeted ESLint、Server build 与 diff check 通过。contract/security 和 acceptance/operations 复审均为 PASS，Critical/Important/Minor 均为 0。未运行 V7 package script、controlled-Live、Docker 或浏览器，未创建真实 V7 marker/evidence，未开启业务 gate。
+
+回顾时可以问：为什么 standalone `complete` JSON 不再是成功证据？为什么 downgrade 写失败后没有 success seal 仍能 fail-closed？为什么 Task 7 全部通过仍必须重新申请唯一 V7 Live 授权？
 
 ### 2026-07-17 - Phase 6.9.5 V7 全量离线验收
 
