@@ -343,7 +343,21 @@ export async function reserveReviewPlannerControlledLiveV8Evidence(
   return reserveReviewPlannerControlledLiveV8EvidenceInternal(input, null);
 }
 
-type DurableFaultPhase = 'write' | 'flush' | 'close';
+type DurableFaultPhase =
+  | 'write'
+  | 'flush'
+  | 'close'
+  | 'prepare_create'
+  | 'prepare_write'
+  | 'prepare_flush'
+  | 'prepare_close'
+  | 'prepare_reopen'
+  | 'rename'
+  | 'post_commit_cleanup'
+  | 'volume_non_ntfs'
+  | 'volume_non_disk_device'
+  | 'volume_remote_characteristic'
+  | 'volume_removable_characteristic';
 
 /** Instance-scoped native fault facade; it owns no global mutable hook. */
 export function createReviewPlannerControlledLiveV8EvidenceTestHarness(
@@ -403,13 +417,19 @@ async function reserveReviewPlannerControlledLiveV8EvidenceInternal(
       root,
       REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
     );
+    directory.assertLocalFixedNtfsVolume();
     if ((await readdir(absoluteDirectory)).length !== 0) {
       throw new Error('already consumed');
     }
-    directory.createExclusiveDurableFile(
+    const oncePublication = publishV8Artifact(
+      directory,
       REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.onceLockLeaf,
       V8_CONSUMED_MARKER,
     );
+    cleanupInjectedHandles?.();
+    if (!oncePublication.committed) {
+      throw new Error('once publication failed');
+    }
     directory.createExclusiveDurableFile(
       leafName,
       serializeReviewPlannerControlledLiveV8Evidence({
@@ -421,10 +441,15 @@ async function reserveReviewPlannerControlledLiveV8EvidenceInternal(
         diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
       }),
     );
-    directory.createExclusiveDurableFile(
+    const reservedStagePublication = publishV8Artifact(
+      directory,
       REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[0],
       '',
     );
+    cleanupInjectedHandles?.();
+    if (!reservedStagePublication.committed) {
+      throw new Error('reserved stage publication failed');
+    }
   } catch (error) {
     try {
       cleanupInjectedHandles?.();
@@ -611,21 +636,17 @@ export async function finalizeReviewPlannerControlledLiveV8Evidence(
       onceMarkerSha256: capability.onceMarkerSha256,
       commitNonce: capability.nonce,
     });
-    capability.directory.createExclusiveDurableFile(
+    const sealPublication = publishV8Artifact(
+      capability.directory,
       REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
       `${JSON.stringify(seal)}\n`,
     );
+    cleanupFaultHandles(capability);
+    if (!sealPublication.committed) return stopCapability(capability);
     closeCapability(capability);
     return true;
   } catch {
     cleanupFaultHandles(capability);
-    try {
-      capability.directory.deleteFile(
-        REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
-      );
-    } catch {
-      // Missing or non-durable seal is intentionally projected as evidence_io.
-    }
     return stopCapability(capability);
   }
 }
@@ -656,16 +677,12 @@ export async function readReviewPlannerControlledLiveV8Evidence(
     const evidenceNames = names.filter((name) =>
       /^review-planner-live-[A-Za-z0-9._-]+\.json$/.test(name),
     );
-    if (
-      evidenceNames.length !== 1 ||
-      names.some(
-        (name) =>
-          !allowedFixed.has(name as ReviewPlannerControlledLiveV8Stage) &&
-          !evidenceNames.includes(name),
-      )
-    ) {
-      return fallback;
-    }
+    if (evidenceNames.length !== 1) return fallback;
+    const hasUnexpectedLeaf = names.some(
+      (name) =>
+        !allowedFixed.has(name as ReviewPlannerControlledLiveV8Stage) &&
+        !evidenceNames.includes(name),
+    );
     const requested =
       typeof input === 'string'
         ? undefined
@@ -678,6 +695,7 @@ export async function readReviewPlannerControlledLiveV8Evidence(
     if (once.toString('utf8') !== V8_CONSUMED_MARKER) return fallback;
     const lastStage = readStagePrefix(directory, names);
     if (lastStage === false) return fallback;
+    if (hasUnexpectedLeaf) return evidenceIoProjection(lastStage);
     const bytes = directory.readRegularFile(leafName);
     const decoded = JSON.parse(bytes.toString('utf8')) as unknown;
     const failure = failureRecordSchema.safeParse(decoded);
@@ -774,13 +792,34 @@ function createStage(
   index: number,
 ) {
   try {
-    capability.directory.createExclusiveDurableFile(stage, '');
+    const publication = publishV8Artifact(capability.directory, stage, '');
+    cleanupFaultHandles(capability);
+    if (!publication.committed) return stopCapability(capability);
     capability.stageIndex = index;
     return true;
   } catch {
     cleanupFaultHandles(capability);
     return stopCapability(capability);
   }
+}
+
+const V8_PUBLICATION_LEAVES = new Set<string>([
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.onceLockLeaf,
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
+  ...REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES,
+]);
+
+function publishV8Artifact(
+  directory: WindowsNoReparseChildDirectory,
+  committedLeaf: string,
+  contents: string,
+) {
+  if (!V8_PUBLICATION_LEAVES.has(committedLeaf)) {
+    throw new Error(
+      'CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PUBLICATION_LEAF_INVALID',
+    );
+  }
+  return directory.commitExclusiveDurableFileViaRename(committedLeaf, contents);
 }
 
 function cleanupFaultHandles(capability: Capability) {
