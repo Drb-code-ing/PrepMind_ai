@@ -8,6 +8,7 @@ const DELETE = 0x00010000;
 const SYNCHRONIZE = 0x00100000;
 const FILE_SHARE_READ = 0x00000001;
 const FILE_SHARE_WRITE = 0x00000002;
+const DRIVE_FIXED = 3;
 const OPEN_EXISTING = 3;
 const FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
 const FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
@@ -27,6 +28,8 @@ const FILE_STANDARD_INFORMATION = 5;
 const MAX_NATIVE_READ_BYTES = 1_048_576;
 const STATUS_REPARSE_POINT_ENCOUNTERED = -1073740533;
 const STATUS_OBJECT_NAME_COLLISION = -1073741771;
+const STATUS_OBJECT_NAME_NOT_FOUND = -1073741772;
+const STATUS_OBJECT_PATH_NOT_FOUND = -1073741766;
 
 type BunFfi = Readonly<{
   FFIType: Record<string, number>;
@@ -43,7 +46,19 @@ type BunFfi = Readonly<{
   ptr: (value: Uint8Array) => number;
 }>;
 
-type DurableFaultStage = 'write' | 'flush' | 'close';
+type DurableFaultStage =
+  | 'write'
+  | 'flush'
+  | 'close'
+  | 'prepare_create'
+  | 'prepare_write'
+  | 'prepare_flush'
+  | 'prepare_close'
+  | 'prepare_reopen'
+  | 'rename'
+  | 'post_commit_cleanup'
+  | 'volume_non_ntfs'
+  | 'volume_remote';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestCapability = Readonly<{
   injector: DurableFaultInjector;
@@ -57,10 +72,38 @@ type WindowsNativeDirectory = Readonly<{
   kernel: ReturnType<BunFfi['dlopen']>;
   ntdll: ReturnType<BunFfi['dlopen']>;
   durableFaultTestCapability: DurableFaultTestCapability | null;
+  volumeHandle: number;
+  trustedDriveRoot: string;
 }>;
+
+type RelativeHandleInput = Readonly<{
+  parent: WindowsNativeDirectory;
+  leafName: string;
+  desiredAccess: number;
+  createDisposition: number;
+  createOptions: number;
+  returnNullIfNotFound?: boolean;
+}>;
+
+type DurablePublicationResult =
+  | Readonly<{
+      committed: true;
+      cleanupStatus: 'closed' | 'close_unverified';
+    }>
+  | Readonly<{
+      committed: false;
+      stage:
+        | 'prepare_create'
+        | 'prepare_write'
+        | 'prepare_flush'
+        | 'prepare_close'
+        | 'prepare_reopen'
+        | 'rename';
+    }>;
 
 export type WindowsNoReparseChildDirectory = Readonly<{
   close(): void;
+  assertLocalFixedNtfsVolume(): void;
   createExclusiveFile(leafName: string, contents: string): void;
   createExclusiveDurableFile(leafName: string, contents: string): void;
   replaceFile(
@@ -73,6 +116,10 @@ export type WindowsNoReparseChildDirectory = Readonly<{
     targetLeafName: string,
     contents: string,
   ): void;
+  commitExclusiveDurableFileViaRename(
+    committedLeafName: string,
+    contents: string,
+  ): DurablePublicationResult;
   deleteFile(leafName: string): void;
   readRegularFile(leafName: string): Buffer;
 }>;
@@ -181,6 +228,10 @@ async function openWindowsNoReparseDirectoryWithDisposition(
       closed = true;
       closeNativeDirectory(boundDirectory);
     },
+    assertLocalFixedNtfsVolume() {
+      assertOpen();
+      assertLocalFixedNtfsVolume(boundDirectory);
+    },
     createExclusiveFile(leafName, contents) {
       assertOpen();
       assertSafeLeafName(leafName);
@@ -210,6 +261,14 @@ async function openWindowsNoReparseDirectoryWithDisposition(
         boundDirectory,
         temporaryLeafName,
         targetLeafName,
+        contents,
+      );
+    },
+    commitExclusiveDurableFileViaRename(committedLeafName, contents) {
+      assertOpen();
+      return commitExclusiveDurableFileViaRename(
+        boundDirectory,
+        committedLeafName,
         contents,
       );
     },
@@ -276,6 +335,23 @@ function openNativeRoot(
         ffi.FFIType.u32,
       ],
       returns: ffi.FFIType.bool,
+    },
+    GetVolumeInformationByHandleW: {
+      args: [
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+      ],
+      returns: ffi.FFIType.bool,
+    },
+    GetDriveTypeW: {
+      args: [ffi.FFIType.ptr],
+      returns: ffi.FFIType.u32,
     },
   });
   const ntdll = ffi.dlopen('ntdll.dll', {
@@ -348,7 +424,8 @@ function openNativeRoot(
       returns: ffi.FFIType.i32,
     },
   });
-  const path = wideString(trustedVolumeAnchor(root));
+  const driveRoot = trustedVolumeAnchor(root);
+  const path = wideString(driveRoot);
   const handle = Number(
     kernel.symbols.CreateFileW(
       ffi.ptr(path),
@@ -372,6 +449,8 @@ function openNativeRoot(
     kernel,
     ntdll,
     durableFaultTestCapability,
+    volumeHandle: handle,
+    trustedDriveRoot: driveRoot,
   };
   try {
     assertNotReparsePoint(directory);
@@ -483,53 +562,57 @@ function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
     createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
   });
   try {
-    const standardInformation = Buffer.alloc(24);
-    assertNtSuccess(
-      Number(
-        parent.ntdll.symbols.NtQueryInformationFile(
-          file,
-          parent.ffi.ptr(Buffer.alloc(16)),
-          parent.ffi.ptr(standardInformation),
-          standardInformation.byteLength,
-          FILE_STANDARD_INFORMATION,
-        ),
-      ),
-      'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
-    );
-    const length = Number(standardInformation.readBigInt64LE(8));
-    if (
-      !Number.isSafeInteger(length) ||
-      length < 0 ||
-      length > MAX_NATIVE_READ_BYTES
-    ) {
-      throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
-    }
-    if (length === 0) return Buffer.alloc(0);
-    const contents = Buffer.alloc(length);
-    const ioStatus = Buffer.alloc(16);
-    assertNtSuccess(
-      Number(
-        parent.ntdll.symbols.NtReadFile(
-          file,
-          0,
-          0,
-          0,
-          parent.ffi.ptr(ioStatus),
-          parent.ffi.ptr(contents),
-          contents.byteLength,
-          0,
-          0,
-        ),
-      ),
-      'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
-    );
-    if (ioStatus.readBigUInt64LE(8) !== BigInt(contents.byteLength)) {
-      throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
-    }
-    return contents;
+    return readNativeFileHandle(parent, file);
   } finally {
     closeNativeHandle({ ...parent, handle: file });
   }
+}
+
+function readNativeFileHandle(parent: WindowsNativeDirectory, file: number) {
+  const standardInformation = Buffer.alloc(24);
+  assertNtSuccess(
+    Number(
+      parent.ntdll.symbols.NtQueryInformationFile(
+        file,
+        parent.ffi.ptr(Buffer.alloc(16)),
+        parent.ffi.ptr(standardInformation),
+        standardInformation.byteLength,
+        FILE_STANDARD_INFORMATION,
+      ),
+    ),
+    'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
+  );
+  const length = Number(standardInformation.readBigInt64LE(8));
+  if (
+    !Number.isSafeInteger(length) ||
+    length < 0 ||
+    length > MAX_NATIVE_READ_BYTES
+  ) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
+  }
+  if (length === 0) return Buffer.alloc(0);
+  const contents = Buffer.alloc(length);
+  const ioStatus = Buffer.alloc(16);
+  assertNtSuccess(
+    Number(
+      parent.ntdll.symbols.NtReadFile(
+        file,
+        0,
+        0,
+        0,
+        parent.ffi.ptr(ioStatus),
+        parent.ffi.ptr(contents),
+        contents.byteLength,
+        0,
+        0,
+      ),
+    ),
+    'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
+  );
+  if (ioStatus.readBigUInt64LE(8) !== BigInt(contents.byteLength)) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
+  }
+  return contents;
 }
 
 function replaceNativeFile(
@@ -615,6 +698,182 @@ function replaceDurableNativeFile(
   }
 }
 
+function commitExclusiveDurableFileViaRename(
+  parent: WindowsNativeDirectory,
+  committedLeafName: string,
+  contents: string,
+): DurablePublicationResult {
+  assertSafeLeafName(committedLeafName);
+  if (committedLeafName.endsWith('.prepare')) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+  }
+  const prepareLeafName = `${committedLeafName}.prepare`;
+  assertSafeLeafName(prepareLeafName);
+  if (prepareLeafName === committedLeafName) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+  }
+  assertLocalFixedNtfsVolume(parent);
+  assertPublicationTargetAbsent(parent, committedLeafName);
+
+  let prepareHandle: number;
+  if (shouldInjectDurableFaultForTests(parent, 'prepare_create')) {
+    return { committed: false, stage: 'prepare_create' };
+  }
+  try {
+    prepareHandle = createRelativeHandle({
+      parent,
+      leafName: prepareLeafName,
+      desiredAccess: FILE_WRITE_DATA | DELETE | SYNCHRONIZE,
+      createDisposition: FILE_CREATE,
+      createOptions:
+        FILE_WRITE_THROUGH |
+        FILE_NON_DIRECTORY_FILE |
+        FILE_SYNCHRONOUS_IO_NONALERT,
+    });
+  } catch {
+    return { committed: false, stage: 'prepare_create' };
+  }
+
+  const bytes = Buffer.from(contents, 'utf8');
+  if (shouldInjectDurableFaultForTests(parent, 'prepare_write')) {
+    closeNativeHandle({ ...parent, handle: prepareHandle });
+    return { committed: false, stage: 'prepare_write' };
+  }
+  if (bytes.byteLength > 0) {
+    const ioStatus = Buffer.alloc(16);
+    try {
+      assertNtSuccess(
+        Number(
+          parent.ntdll.symbols.NtWriteFile(
+            prepareHandle,
+            0,
+            0,
+            0,
+            parent.ffi.ptr(ioStatus),
+            parent.ffi.ptr(bytes),
+            bytes.byteLength,
+            0,
+            0,
+          ),
+        ),
+        'WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED',
+      );
+      if (ioStatus.readBigUInt64LE(8) !== BigInt(bytes.byteLength)) {
+        throw new Error('WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED');
+      }
+    } catch {
+      closeNativeHandle({ ...parent, handle: prepareHandle });
+      return { committed: false, stage: 'prepare_write' };
+    }
+  }
+  if (shouldInjectDurableFaultForTests(parent, 'prepare_flush')) {
+    closeNativeHandle({ ...parent, handle: prepareHandle });
+    return { committed: false, stage: 'prepare_flush' };
+  }
+  try {
+    assertNtSuccess(
+      Number(
+        parent.ntdll.symbols.NtFlushBuffersFile(
+          prepareHandle,
+          parent.ffi.ptr(Buffer.alloc(16)),
+        ),
+      ),
+      'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
+    );
+  } catch {
+    closeNativeHandle({ ...parent, handle: prepareHandle });
+    return { committed: false, stage: 'prepare_flush' };
+  }
+  if (!closePublicationHandle(parent, prepareHandle, 'prepare_close')) {
+    return { committed: false, stage: 'prepare_close' };
+  }
+
+  if (shouldInjectDurableFaultForTests(parent, 'prepare_reopen')) {
+    return { committed: false, stage: 'prepare_reopen' };
+  }
+  let reopenedHandle: number | null = null;
+  try {
+    reopenedHandle = createRelativeHandle({
+      parent,
+      leafName: prepareLeafName,
+      desiredAccess: FILE_READ_DATA | DELETE | SYNCHRONIZE,
+      createDisposition: FILE_OPEN,
+      createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+    });
+    const reopenedBytes = readNativeFileHandle(parent, reopenedHandle);
+    if (!reopenedBytes.equals(bytes)) {
+      throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
+    }
+  } catch {
+    if (reopenedHandle !== null) {
+      closeNativeHandle({ ...parent, handle: reopenedHandle });
+    }
+    return { committed: false, stage: 'prepare_reopen' };
+  }
+
+  if (shouldInjectDurableFaultForTests(parent, 'rename')) {
+    closeNativeHandle({ ...parent, handle: reopenedHandle });
+    return { committed: false, stage: 'rename' };
+  }
+  try {
+    renameNativeFile(parent, reopenedHandle, committedLeafName, false);
+  } catch {
+    closeNativeHandle({ ...parent, handle: reopenedHandle });
+    return { committed: false, stage: 'rename' };
+  }
+  return {
+    committed: true,
+    cleanupStatus: closePublicationHandle(
+      parent,
+      reopenedHandle,
+      'post_commit_cleanup',
+    )
+      ? 'closed'
+      : 'close_unverified',
+  };
+}
+
+function assertPublicationTargetAbsent(
+  parent: WindowsNativeDirectory,
+  committedLeafName: string,
+) {
+  const existingHandle = createRelativeHandle({
+    parent,
+    leafName: committedLeafName,
+    desiredAccess: FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+    createDisposition: FILE_OPEN,
+    createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+    returnNullIfNotFound: true,
+  });
+  if (existingHandle === null) return;
+  if (!closePublicationHandle(parent, existingHandle)) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
+  throw new Error('WINDOWS_REPARSE_SAFE_IO_ALREADY_EXISTS');
+}
+
+function closePublicationHandle(
+  parent: WindowsNativeDirectory,
+  handle: number,
+  faultStage?: 'prepare_close' | 'post_commit_cleanup',
+) {
+  if (
+    faultStage !== undefined &&
+    shouldInjectDurableFaultForTests(parent, faultStage)
+  ) {
+    parent.durableFaultTestCapability?.pendingCloseHandles.set(
+      handle,
+      parent.kernel,
+    );
+    return false;
+  }
+  try {
+    return Boolean(parent.kernel.symbols.CloseHandle(handle));
+  } catch {
+    return false;
+  }
+}
+
 function deleteNativeFile(parent: WindowsNativeDirectory, leafName: string) {
   const file = createRelativeHandle({
     parent,
@@ -644,14 +903,10 @@ function deleteNativeFile(parent: WindowsNativeDirectory, leafName: string) {
 }
 
 function createRelativeHandle(
-  input: Readonly<{
-    parent: WindowsNativeDirectory;
-    leafName: string;
-    desiredAccess: number;
-    createDisposition: number;
-    createOptions: number;
-  }>,
-) {
+  input: RelativeHandleInput & Readonly<{ returnNullIfNotFound: true }>,
+): number | null;
+function createRelativeHandle(input: RelativeHandleInput): number;
+function createRelativeHandle(input: RelativeHandleInput) {
   const name = wideString(input.leafName);
   const unicodeName = Buffer.alloc(16);
   unicodeName.writeUInt16LE(name.byteLength - 2, 0);
@@ -680,6 +935,13 @@ function createRelativeHandle(
     ),
   );
   if (status !== 0) {
+    if (
+      input.returnNullIfNotFound === true &&
+      (status === STATUS_OBJECT_NAME_NOT_FOUND ||
+        status === STATUS_OBJECT_PATH_NOT_FOUND)
+    ) {
+      return null;
+    }
     if (status === STATUS_REPARSE_POINT_ENCOUNTERED) {
       throw new Error('WINDOWS_REPARSE_POINT_BLOCKED');
     }
@@ -736,11 +998,12 @@ function renameNativeFile(
   parent: WindowsNativeDirectory,
   file: number,
   targetLeafName: string,
+  replaceIfExists = true,
 ) {
   const targetName = wideString(targetLeafName);
   const targetBytes = targetName.byteLength - 2;
   const rename = Buffer.alloc(20 + targetBytes);
-  rename.writeUInt8(1, 0); // ReplaceIfExists
+  rename.writeUInt8(replaceIfExists ? 1 : 0, 0);
   rename.writeBigUInt64LE(BigInt(parent.handle), 8);
   rename.writeUInt32LE(targetBytes, 16);
   targetName.copy(rename, 20, 0, targetBytes);
@@ -773,6 +1036,42 @@ function assertNotReparsePoint(directory: WindowsNativeDirectory) {
     (attributeTag.readUInt32LE(0) & FILE_ATTRIBUTE_REPARSE_POINT) !== 0
   ) {
     throw new Error('WINDOWS_REPARSE_POINT_BLOCKED');
+  }
+}
+
+function assertLocalFixedNtfsVolume(directory: WindowsNativeDirectory) {
+  if (shouldInjectDurableFaultForTests(directory, 'volume_remote')) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED');
+  }
+  const driveType = Number(
+    directory.kernel.symbols.GetDriveTypeW(
+      directory.ffi.ptr(wideString(directory.trustedDriveRoot)),
+    ),
+  );
+  const fileSystemName = Buffer.alloc(64);
+  const volumeKnown = Boolean(
+    directory.kernel.symbols.GetVolumeInformationByHandleW(
+      directory.volumeHandle,
+      0,
+      0,
+      0,
+      0,
+      0,
+      directory.ffi.ptr(fileSystemName),
+      fileSystemName.byteLength / 2,
+    ),
+  );
+  const fileSystem = fileSystemName
+    .toString('utf16le')
+    .split('\0', 1)[0]
+    ?.toUpperCase();
+  if (
+    shouldInjectDurableFaultForTests(directory, 'volume_non_ntfs') ||
+    !volumeKnown ||
+    driveType !== DRIVE_FIXED ||
+    fileSystem !== 'NTFS'
+  ) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED');
   }
 }
 

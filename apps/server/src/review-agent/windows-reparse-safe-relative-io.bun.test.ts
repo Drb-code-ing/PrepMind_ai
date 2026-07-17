@@ -8,12 +8,25 @@ import {
   symlink,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import * as windowsReparseSafeIo from './windows-reparse-safe-relative-io';
 
 const { openWindowsNoReparseChildDirectory } = windowsReparseSafeIo;
-type DurableFaultStage = 'write' | 'flush' | 'close';
+type DurableFaultStage =
+  | 'write'
+  | 'flush'
+  | 'close'
+  | 'prepare_create'
+  | 'prepare_write'
+  | 'prepare_flush'
+  | 'prepare_close'
+  | 'prepare_reopen'
+  | 'rename'
+  | 'post_commit_cleanup'
+  | 'volume_non_ntfs'
+  | 'volume_remote';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestFacade = Readonly<{
   directory: windowsReparseSafeIo.WindowsNoReparseChildDirectory;
@@ -34,6 +47,49 @@ function requireDurableFaultTestFactory() {
   return factory!;
 }
 
+async function runPublicationHardExitChild(
+  root: string,
+  exitPhase: 'rename' | 'post_commit_cleanup',
+  committedLeafName: string,
+) {
+  const moduleUrl = pathToFileURL(
+    resolve(
+      'apps/server/src/review-agent/windows-reparse-safe-relative-io.ts',
+    ),
+  ).href;
+  const script = `
+const io = await import(process.env.TEST_MODULE_URL);
+const facade = await io.openWindowsNoReparseChildDirectoryForTests(
+  process.env.TEST_ROOT,
+  'docs',
+  (phase) => {
+    if (phase === process.env.TEST_EXIT_PHASE) process.exit(71);
+    return false;
+  },
+);
+facade.directory.commitExclusiveDurableFileViaRename(
+  process.env.TEST_COMMITTED_LEAF,
+  'child-value',
+);
+process.exit(72);
+`;
+  const child = Bun.spawn([process.execPath, '-e', script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      TEST_MODULE_URL: moduleUrl,
+      TEST_ROOT: root,
+      TEST_EXIT_PHASE: exitPhase,
+      TEST_COMMITTED_LEAF: committedLeafName,
+    },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const exitCode = await child.exited;
+  const stderr = await new Response(child.stderr).text();
+  return { exitCode, stderr };
+}
+
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
 
 describeWindows('Windows no-reparse relative evidence I/O', () => {
@@ -51,6 +107,214 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
   afterEach(async () => {
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
+  });
+
+  it('exposes local fixed NTFS preflight and handle-relative durable publication', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    try {
+      expect(typeof directory.assertLocalFixedNtfsVolume).toBe('function');
+      expect(typeof directory.commitExclusiveDurableFileViaRename).toBe(
+        'function',
+      );
+      directory.assertLocalFixedNtfsVolume();
+      expect(
+        directory.commitExclusiveDurableFileViaRename('published', 'value'),
+      ).toEqual({ committed: true, cleanupStatus: 'closed' });
+      expect(directory.readRegularFile('published')).toEqual(
+        Buffer.from('value'),
+      );
+    } finally {
+      directory.close();
+    }
+  });
+
+  it('rejects unsafe prepare derivation and an existing public target', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    try {
+      expect(() =>
+        directory.commitExclusiveDurableFileViaRename('../unsafe', 'x'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+      expect(() =>
+        directory.commitExclusiveDurableFileViaRename('owned.prepare', 'x'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+      expect(() =>
+        directory.commitExclusiveDurableFileViaRename('a'.repeat(240), 'x'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+
+      directory.createExclusiveFile('already-public', 'old');
+      expect(() =>
+        directory.commitExclusiveDurableFileViaRename('already-public', 'new'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_ALREADY_EXISTS');
+      expect(directory.readRegularFile('already-public')).toEqual(
+        Buffer.from('old'),
+      );
+      expect(() =>
+        directory.readRegularFile('already-public.prepare'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+    } finally {
+      directory.close();
+    }
+  });
+
+  it.each([
+    'volume_non_ntfs',
+    'volume_remote',
+  ] as const)('fails the local fixed NTFS preflight for injected %s', async (phase) => {
+    const facade = await requireDurableFaultTestFactory()(
+      root,
+      'docs',
+      (observed) => observed === phase,
+    );
+    try {
+      expect(() => facade.directory.assertLocalFixedNtfsVolume()).toThrow(
+        'WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED',
+      );
+    } finally {
+      facade.cleanupInjectedHandles();
+      facade.directory.close();
+    }
+  });
+
+  it.each([
+    'prepare_create',
+    'prepare_write',
+    'prepare_flush',
+    'prepare_close',
+    'prepare_reopen',
+    'rename',
+  ] as const)(
+    'retains only the private prepare leaf without retry when %s fails',
+    async (failedStage) => {
+      const calls: DurableFaultStage[] = [];
+      const facade = await requireDurableFaultTestFactory()(
+        root,
+        'docs',
+        (stage) => {
+          calls.push(stage);
+          return stage === failedStage;
+        },
+      );
+      const { directory } = facade;
+      try {
+        expect(
+          directory.commitExclusiveDurableFileViaRename(
+            `publication-${failedStage}`,
+            'private-value',
+          ),
+        ).toEqual({ committed: false, stage: failedStage });
+        expect(
+          calls.filter((stage) => stage === failedStage),
+        ).toHaveLength(1);
+
+        facade.cleanupInjectedHandles();
+        expect(() =>
+          directory.readRegularFile(`publication-${failedStage}`),
+        ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+        if (failedStage === 'prepare_create') {
+          expect(() =>
+            directory.readRegularFile(
+              `publication-${failedStage}.prepare`,
+            ),
+          ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+        } else {
+          expect(
+            directory.readRegularFile(
+              `publication-${failedStage}.prepare`,
+            ),
+          ).toEqual(
+            failedStage === 'prepare_write'
+              ? Buffer.alloc(0)
+              : Buffer.from('private-value'),
+          );
+        }
+      } finally {
+        facade.cleanupInjectedHandles();
+        directory.close();
+      }
+    },
+  );
+
+  it('treats rename as committed when post-commit cleanup close is unverified', async () => {
+    const calls: DurableFaultStage[] = [];
+    const facade = await requireDurableFaultTestFactory()(
+      root,
+      'docs',
+      (stage) => {
+        calls.push(stage);
+        return stage === 'post_commit_cleanup';
+      },
+    );
+    try {
+      expect(
+        facade.directory.commitExclusiveDurableFileViaRename(
+          'committed-close-unverified',
+          'public-value',
+        ),
+      ).toEqual({ committed: true, cleanupStatus: 'close_unverified' });
+      expect(
+        calls.filter((stage) => stage === 'post_commit_cleanup'),
+      ).toHaveLength(1);
+      facade.cleanupInjectedHandles();
+      expect(
+        facade.directory.readRegularFile('committed-close-unverified'),
+      ).toEqual(Buffer.from('public-value'));
+      expect(() =>
+        facade.directory.readRegularFile(
+          'committed-close-unverified.prepare',
+        ),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+    } finally {
+      facade.cleanupInjectedHandles();
+      facade.directory.close();
+    }
+  });
+
+  it('leaves only the private prepare leaf when a child hard-exits before rename', async () => {
+    const child = await runPublicationHardExitChild(
+      root,
+      'rename',
+      'child-before-rename',
+    );
+    expect(child).toEqual({ exitCode: 71, stderr: '' });
+
+    const freshDirectory = await openWindowsNoReparseChildDirectory(
+      root,
+      'docs',
+    );
+    try {
+      expect(() =>
+        freshDirectory.readRegularFile('child-before-rename'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+      expect(
+        freshDirectory.readRegularFile('child-before-rename.prepare'),
+      ).toEqual(Buffer.from('child-value'));
+    } finally {
+      freshDirectory.close();
+    }
+  });
+
+  it('lets a fresh reader observe publication after a child hard-exits post-rename', async () => {
+    const child = await runPublicationHardExitChild(
+      root,
+      'post_commit_cleanup',
+      'child-after-rename',
+    );
+    expect(child).toEqual({ exitCode: 71, stderr: '' });
+
+    const freshDirectory = await openWindowsNoReparseChildDirectory(
+      root,
+      'docs',
+    );
+    try {
+      expect(freshDirectory.readRegularFile('child-after-rename')).toEqual(
+        Buffer.from('child-value'),
+      );
+      expect(() =>
+        freshDirectory.readRegularFile('child-after-rename.prepare'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+    } finally {
+      freshDirectory.close();
+    }
   });
 
   it('durably creates an exclusive zero-byte file and rejects duplicates', async () => {
@@ -233,6 +497,28 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       directory.createExclusiveDurableFile('stage-020', '');
 
       expect(directory.readRegularFile('stage-020')).toEqual(Buffer.alloc(0));
+      await expect(readdir(outside)).resolves.toEqual([]);
+    } finally {
+      directory.close();
+    }
+  });
+
+  it('publishes through the bound directory HANDLE after its path becomes a junction', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    const detachedDocs = join(root, 'publication-docs-detached');
+    try {
+      await rename(join(root, 'docs'), detachedDocs);
+      await symlink(outside, join(root, 'docs'), 'junction');
+
+      expect(
+        directory.commitExclusiveDurableFileViaRename(
+          'bound-publication',
+          'bound-value',
+        ),
+      ).toEqual({ committed: true, cleanupStatus: 'closed' });
+      expect(directory.readRegularFile('bound-publication')).toEqual(
+        Buffer.from('bound-value'),
+      );
       await expect(readdir(outside)).resolves.toEqual([]);
     } finally {
       directory.close();
