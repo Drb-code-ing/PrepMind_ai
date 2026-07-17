@@ -71,6 +71,18 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 受控评测工厂
+
+目标：为 ReviewAgent / PlannerAgent 建立一条与生产候选相同、但仍默认关闭且只读的 DeepSeek `deepseek-v4-pro` JSON-object 受控评测入口，避免把历史 v1--v4 的 direct-fetch 结构化输出失败误写成“DeepSeek Chat 不可用”。
+
+主要内容与边界：v5 工厂只接受 `AI_PROVIDER_MODE=live`、全局 live gate、独立 v5 gate、精确的 `https://api.deepseek.com/v1` / `deepseek-v4-pro` 绑定，且两个业务 gate 必须显式为 `false`。它复用实际生产的 OpenAI-compatible `json_object` executor（无 tools、无 strict-tool、`maxRetries=0`），模型只产生 canonical Review/Planner candidate；本地 schema、facts merger、FSRS、任务、权限、持久化与失败 fallback 仍为权威。canary 与后续 22 个 runtime case 都必须具备正安全整数 provider usage；非法、零、缺失、超限或第 24 次请求均 fail-closed，绝不让额外 provider 调用穿透。
+
+成本：用户提供的 V4 Pro 价格快照为非缓存输入 CNY 3/百万、输出 CNY 6/百万。v5 预留 `42,996` 输入与 `9,712` 输出 token，最坏估算 CNY `0.18726`，低于批准上限 CNY `1.00`。该 CNY profile 仅供 v5 evidence 使用；在线 Agent Trace 的金额字段仍是 USD，故没有把 CNY 写入其中或编造汇率。
+
+验收：红灯测试先证明 factory 缺失；实现后 `review-planner-controlled-live-eval-v5-deepseek.factory.spec.ts` 18/18 与 `bun --filter @repo/ai test` 161/161 通过，均未读取真实凭据或调用 provider。此记录只代表离线 factory；v5 evidence、CLI、Mock、唯一 Live、Docker、浏览器、main 复验和推送仍未发生。
+
+回顾时可以问：为什么 v5 必须复用 production JSON executor 而非第四次 direct-fetch adapter？为什么 CNY 价格不能直接写进 USD Trace？为什么第 24 次请求必须在 delegate 前被拒绝？
+
 ### 2026-07-17 - Phase 6.9.5 离线评测与 telemetry 可信度补强
 
 目标：在不启动任何新的 provider 调用、不改变 Review/Planner 默认业务 gate 的前提下，让后续独立 profile 的 48-case 评测、zero-call 边界和成本 Trace 可以作为可审计证据，而不是由报告字段或 `0/0` usage 冒充成功。
