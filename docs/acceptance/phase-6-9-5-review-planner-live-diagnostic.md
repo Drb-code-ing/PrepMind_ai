@@ -8,7 +8,7 @@
 
 本记录不把 Mock、静态检查、Docker 配置解析或浏览器页面当作真实模型质量证据。
 
-## Task 6 无凭据门
+## 历史 2026-07-16 Task 6 无凭据门
 
 本轮在不注入 AI provider 配置、不开启全局 Live 或 Review/Planner gate 的前提下执行。后端全量测试只注入运行测试所需的数据库和 JWT 配置；没有执行受控诊断、Live、Docker 或浏览器。
 
@@ -24,7 +24,7 @@
 
 Worker readiness 的子进程回归改为直接运行 Node + `ts-node` 的实际 CLI。这样验证的是 CLI 约定的异常退出码 `2` 与脱敏输出，不会把 Bun workspace script runner 在 Windows 上返回的包装退出码 `1` 误判为功能失败；子进程环境只允许传递运行 Node 所需的路径/临时目录和该测试的显式 fixture 配置。
 
-## 新鲜 Mock 证据
+## 历史 2026-07-16 新鲜 Mock 证据
 
 本次 Mock 文件是不可覆盖的本地 `.tmp` 产物：`phase-6-9-5-live-diagnostic-mock-20260716T133731970Z.json`。它不提交到仓库，也不复用旧 Live 证据。
 
@@ -40,7 +40,7 @@ Worker readiness 的子进程回归改为直接运行 Node + `ts-node` 的实际
 
 这里的 runtime invocation 是本地 Mock contract，不是 provider 调用。Mock 证明固定数据集、strict schema、预算、zero-call、安全降级和报告脱敏能够工作；它不证明真实模型语义质量，也不授权开启任一生产 gate。
 
-## Task 7 四个隔离的 controlled-Live 诊断（均已关闭）
+## 历史 Task 7：四个隔离的 controlled-Live 诊断（均已关闭）
 
 2026-07-16 的 v1 诊断先发现本地 probe 与 canonical Review candidate schema 不匹配。其后，单独完成零网络 schema-contract 修复与复审，才创建了全新的 v2 profile；v2 使用可满足 canonical schema 的无事实 Review candidate 请求。v2 不修改、覆盖或解释 v1，也不把两条 profile 的计数拼接。
 
@@ -127,12 +127,52 @@ V6 是独立于 v1--v5 的 DeepSeek V4 Pro non-thinking lineage，不是 v5 retr
 - V6 不能重跑，不能进入 48-case quality decision、Docker authenticated suggestions/plan、可见浏览器、main 合并或远程推送。两个业务 gate 继续保持 `false`。
 - V1--V5 的 marker/evidence 未改写；本次 V6 evidence 也不保存 prompt、用户事实、模型输出、凭据、URL、HTTP 原文错误、stack、token 或成本数值。
 
+## 2026-07-17 V7 usage parity 全量离线验收
+
+V7 是独立 usage-parity recovery，不是 V6 retry，也没有改写 V6 的 `usage_unverifiable` 历史事实。Task 1--6 已在严格零网络边界内完成：
+
+- V6 把 `estimatedInputTokens=96` 误作 provider actual input 上限的问题由离线 `97/4` fixture 稳定复现并修复；V7 接受正安全 actual input `97`，仍限制单次 output、整轮 input/output reservation、最多 23 attempts 与 CNY 1.00 hard cap。
+- DeepSeek V4 Pro non-thinking raw response audit 在 callback 前 strict clone/freeze，只记录 `missing / invalid / positive` usage shape；不保存 token 数值、response、reasoning text、URL、header、credential 或 raw error。
+- V7 evidence 使用独立 `reserved / attempted / finalized` lifecycle。V1--V6 historical integrity-v3 snapshot 当前为 `18 entries`，aggregate tree hash `9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`；V6 marker SHA-256 为 `ac04ea11c4e416e44bd870c158a6bff0d65db297262ab6610790cf355525ec31`，V6 JSON SHA-256 为 `4fb435824785af4b2601b83787b22a4b98de1ac47d222f2566e351960bfd1afb`。
+- one-shot CLI 只接受 `--confirm-controlled-live-v7-deepseek-v4-pro-usage-parity`。确认、preflight、historical snapshot、reservation、mark attempted、executor、canary、paired eval 与 final seal 的顺序均有 injected-only 回归；本轮没有执行该 package script。
+- production parity 只公开冻结的 `provider/model/baseUrlIdentity/structuredOutputMode/timeoutMs/schemaId`，不公开实际 URL、key、pricing、executor 或写权限。V7 eval gate 未进入 Docker、Web、worker 或 server config allowlist；两个产品 gate 缺失或为 `false` 时 executor 构造为 0。
+- direct Mock report 固定为 `mock_quality_not_evidence`；strict-fake evaluator 的 live-shaped contract 外层固定为 `mock_quality_not_live_evidence`。两条离线证据均为 48 cases、26 verified zero-call、22 runtime、48 strict、48 quality、0 critical；任何一条都不是 provider quality evidence。
+
+| 离线 gate | 已观察结果 |
+| --- | --- |
+| focused AI transport | 190 passed / 0 failed |
+| focused Server V7 factory/evidence/CLI/config/runtime | 86 passed / 0 failed |
+| Windows native V7 evidence | 9 passed / 0 failed / 40 assertions |
+| full AI / Agent | 190 / 406 passed |
+| full Server | 980 passed / 30 skipped / 0 failed |
+| full Web | 409 passed / 0 failed |
+| typecheck / lint / build | AI、types、Server、Web 对应命令均 exit 0 |
+| Compose / diff | `docker compose ... config --quiet`、`git diff --check` 均 exit 0 |
+
+Compose 只执行静态 `config --quiet`，没有运行 `up`、`build`、`down`，也没有输出渲染后的配置。真实 V7 marker/evidence 仍不存在；未读取真实 key、未调用 provider、未启动 Docker 服务或浏览器、未生成合成账号/Trace、未改变两个产品 gate。
+
+当前唯一允许的结论是：`V7 offline engineering ready; controlled-Live not run and not authorized.` Review/Planner product path remains deterministic because both model gates are false。下一步先完成 Task 7 两轮最终离线复审；复审通过后必须停止，由用户重新明确授权精确 V7 confirmation。即使未来 V7 Live 成功，仍需 Docker/API/可见浏览器/Trace 验收、main 合并后复验和远程推送。
+
+### V7 Task 7 两轮离线复审与通过标准
+
+第一轮是 contract/security review：逐项检查 preview/actual 分离、raw/runtime usage 映射、不可变预算、单次 output/整轮 reservation/CNY cap、one-fetch/no-retry、凭据与正文不泄露、V1--V6 byte protection、marker race、只读权限和 default-off 产品 gate。发现任何 defect，必须先写失败回归，再修复并独立提交；存在未关闭的 Critical 或 Important 即不通过。
+
+第二轮是 acceptance/operations review：从精确 confirmation 开始独立追踪到 terminal seal，确认只有显式 V7 CLI 能触发；默认环境、普通 script、Docker service、Web、worker 和产品 API 都不能调用 V7。还要确认 `mock_quality_not_live_evidence` 不能被解释为 provider evidence，任一 failed evidence 都没有 token/cost 数值。两轮必须由独立审查视角完成，且最终无未关闭 Critical/Important。
+
+复审后固定运行 AI、Agent、五个 focused Server V7 specs、native evidence、`git diff --check` 和 `git status --short`。所有命令必须 exit 0；提交前 status 只能包含审查实际产生的 deliberate docs/回归修复。Task 7 只提交审查修复与 `DEVLOG.md` / 本记录，之后立即停止并请求新的单独 Live 授权。完整命令见 `docs/superpowers/plans/2026-07-17-phase-6-9-5-deepseek-v4-pro-usage-recovery-v7.md` Task 7。
+
+### 未来 Live 与产品验收门槛
+
+若用户之后明确授权唯一 V7 command，complete report 必须同时满足：48 cases、26 verified zero-call、22 runtime、48 strict success、48 quality pass、0 critical、semantic quality rate 至少 90%、P95 不高于 4500ms、provider attempts 恰好 23、正安全 usage 且总 input/output 不超过 `42_996 / 9_712` reservation、按固定价格计算的 observed cost 不高于 CNY 1.00；安全、权限、schema、history 或 terminal seal 任一失败都关闭。
+
+即使 complete，也不自动开启产品 gate。Docker/API/可见浏览器/Trace 验收必须覆盖 Review 与 Planner 两个组件，但 gate 独立且一次只临时开启一个：先验证对应 owner-scoped suggestions、candidate/fallback、Trace 和只读边界，随即恢复该 gate 为 `false`，再验另一个组件。任一组件未通过就保持该组件关闭。两者均通过并精确清理合成数据后，才可合并 main；main 仍需复验，再推送远程。
+
 ## 当前结论与未执行项
 
-- 已完成：v1--v5 独立关闭证据的留档，以及 V6 typed non-thinking transport、resolver/factory/evidence/CLI/Mock/复审和一次终态 Live evidence 的封存。
-- 未执行且不得借用任一 profile 的结果补做：V6 48-case quality decision、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
+- 已完成：v1--v6 独立关闭证据留档；V7 Task 1--6 的 usage parity、safe audit、factory、evidence、CLI、composition parity、全量离线 gate 与文档同步。
+- 未执行：V7 controlled-Live、真实 48-case provider quality decision、Docker authenticated suggestions/plan、可见浏览器、Trace、合成数据清理、main 复验和远程推送；不得借用任一历史 profile、direct Mock 或 strict fake 的结果替代。
 - 当前没有真实模型质量通过结论、没有项目内 `candidate_applied` 验收，也没有可开启任一 Review/Planner 业务 gate 的授权。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续保持默认 `false`。
-- v1--v6 都是独立且不可重跑的 terminal profile。若要继续，只能先基于 `usage_unverifiable` 做新的零网络根因设计与独立复审，再由用户决定是否批准一个全新的、隔离的 profile；不得把它称为 V6 retry，也不得拼接任何历史计数。任何后续 profile 在独立产品验收前都必须保持业务 gate 关闭。
+- v1--v6 都是独立且不可重跑的 terminal profile；V7 尚未消费 once marker。若要继续，先完成 Task 7 两轮最终离线复审，然后停下申请新的单独 V7 Live 授权。任何后续产品验收完成前都必须保持业务 gate 关闭。
 
 ## 回顾入口
 
@@ -142,3 +182,6 @@ V6 是独立于 v1--v5 的 DeepSeek V4 Pro non-thinking lineage，不是 v5 retr
 - 为什么每个独立 profile 的一次 provider 尝试且 `usageKnown=false` 都不能被记为 zero-call、零成本或模型验收通过？
 - 为什么 v1--v5 的不可变 snapshot 与 V6 私有 provisional/seal 都需要同时存在？
 - 为什么 V6 的一次 `usage_unverifiable` provider attempt 既不是 zero-call，也不能推导实际费用或模型质量？
+- 为什么 V7 的 `97/4` 离线通过只能修复 validator，不能改写 V6 历史 provider 事实？
+- 为什么 strict-fake evaluator 的 live-shaped report 必须再包一层 `mock_quality_not_live_evidence`？
+- 为什么 V7 offline engineering ready 后仍需新的 Live 授权和产品验收？

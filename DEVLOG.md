@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--5 已完成 usage audit、corrected evaluator、immutable evidence、one-shot CLI 与 production-composition parity。V7 只公开六字段 sanitized identity；直接 Mock report 标记 `mock_quality_not_evidence`，strict-fake evaluator 回归另标 `mock_quality_not_live_evidence`，两个产品 gate 继续默认 `false`。尚未创建真实 V7 marker/evidence、未运行 Live。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--6 已完成离线工程、composition parity、不可变 evidence、one-shot CLI、全量门禁与权威文档同步。V7 offline engineering ready；controlled-Live 未运行且未授权，两个产品 gate 继续默认 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在 cloned-response audit 中增加不含数值且 callback 前冻结的 `missing / invalid / positive` usage shape。Task 2 evaluator 允许 actual input `96 / 97 / 42_996`，并由真实 runner 穿过 `48 cases / 26 verified zero-call / 22 runtime / 23 total attempts`；冻结 reservation 最坏成本 `0.18726 < 1.00`。Task 3 建立独立 strict evidence 与 V1--V6 existing-only/no-reparse manifest；Task 4 增加 exact-confirmation one-shot CLI、capability 顺序复核与 terminal seal。Task 5 让 V7 preflight 只暴露 `provider/model/baseUrlIdentity/structuredOutputMode/timeoutMs/schemaId` 六字段冻结 identity，不返回 URL、key、pricing、executor 或写权限；production resolver 仍只读取两个业务 gate，V7 eval gate 即使为 true 也不能构造产品 executor，且不进入 Docker/Web/worker/config allowlist。直接 `mode=mock` 的 48-case report 固定为 `mock_quality_not_evidence`；另一个穿过 V7 evaluator 的 strict-fake 回归虽验证 live-shaped contract，但外层固定分类为 `mock_quality_not_live_evidence`。两者都得到 `26 zero-call / 22 runtime / 48 strict / 48 quality / 0 critical`，均不可写成 provider Live 通过。Focused parity 61/61、Agent 406/406、owner-scoped server 7/7 通过；模型只选择本地已有 index/order，FSRS、minutes、links、owner facts、持久化与写权限继续由本地权威控制。真实仓库没有 V7 marker/evidence；下一步是全量离线 gates 与权威文档同步，当前不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V7 Task 1--6 已完成：raw response audit 只保留冻结的 `missing / invalid / positive` usage shape；evaluator 接受 actual input `97` 高于 preview `96` 并继续约束 output、aggregate reservation、23 attempts 与 CNY hard cap；V7 evidence 使用独立 strict lifecycle 和 V1--V6 existing-only/no-reparse snapshot；one-shot CLI 只接受 exact confirmation 并在每个 capability 边界 fail-closed；production parity 只暴露六字段 sanitized identity，V7 eval gate 不进入 Docker/Web/worker/config allowlist。直接 Mock report 为 `mock_quality_not_evidence`，strict-fake evaluator 回归另标 `mock_quality_not_live_evidence`，均为 `48/26/22/48/48/0` 离线证据。历史 snapshot 当前为 `treeHash=9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba` / 18 entries；V6 marker/JSON 固定哈希分别为 `ac04ea11c4e416e44bd870c158a6bff0d65db297262ab6610790cf355525ec31`、`4fb435824785af4b2601b83787b22a4b98de1ac47d222f2566e351960bfd1afb`。focused V7 为 AI 190、Server 86、native 9/40 assertions；全量离线门为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409，AI/types typecheck、AI/Server/Web lint、Server/Web build、Compose `config --quiet` 与 diff check 均通过。真实仓库没有 V7 marker/evidence；下一步是 Task 7 两轮最终离线复审，之后必须停止并申请新的单独 controlled-Live 授权。Review/Planner product path 仍 deterministic，因为两个 model gate 都是 `false`；不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认全部 Agent 架构完成后才进入 Phase 6.10 分层记忆。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--5 离线完成，尚未运行或授权 V7 Live |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--6 离线完成，Task 7 与 controlled-Live 待执行 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -73,6 +73,18 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 V7 全量离线验收
+
+目标：在不接触 provider、Docker 运行态或浏览器的前提下，对 V7 transport、factory、evidence、CLI、composition、权限和项目构建做一次完整、可复核的离线收口。
+
+为什么：局部 97-token 回归或 48-case fake 成功只能证明一个 contract；只有把 AI/Agent/Server/Web/types、不可变历史、默认关闭 gate 和只读 merger 一起检查，才能在申请下一次 Live 前排除工程漂移，同时仍不把离线结果冒充 provider 证据。
+
+主要内容与边界：focused gate 为 AI 190、Server 86、Windows native evidence 9/40 assertions；V1--V6 snapshot 为 integrity-v3、18 entries、aggregate tree hash `9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`，并固定 V6 marker/JSON 哈希。全量 gate 为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409；AI/types typecheck、AI/Server/Web lint、Server/Web build、Compose 静态 `config --quiet` 与 diff check 均 exit 0。Compose 没有执行 `up/build/down` 或输出渲染配置。V7 package script、controlled-Live、Docker 服务、浏览器、真实 key、provider、真实 V7 evidence/marker 均未触达。
+
+结论：V7 offline engineering ready；controlled-Live not run and not authorized。Review/Planner product path remains deterministic because both model gates are false。即使未来 V7 Live 成功，仍需单独 Live 授权，然后完成 Docker/API/可见浏览器/Trace 验收、合并 main 后复验与远程推送，才能讨论 Phase 6.9.5 是否完成。
+
+回顾时可以问：为什么 190/86/9 的 focused gate 与 190/406/980/409 的全量 gate 都不能证明 provider 质量？为什么只读读取 V1--V6 tree hash 不会消费 V7 once marker？为什么 Compose `config --quiet` 不是 Docker 启动验收？
+
 ### 2026-07-17 - Phase 6.9.5 V7 Mock 与 production-composition parity（离线）
 
 目标：证明 V7 诊断使用的 DeepSeek V4 Pro non-thinking transport 与产品候选 composition 对齐，同时继续隔离评测 gate、产品 gate、模型输出和本地写权限。
@@ -107,7 +119,7 @@
 
 替代方案：只删除 96-token 检查虽然能修复复现，但下一次缺 usage 时仍无法定位来源；改用 direct-fetch 或 Qwen 会同时改变 transport/provider，扩大变量。采用“最小 parity 修复 + 安全 usage-shape audit”，既保持 production parity，也避免 generic terminal evidence。
 
-当前验收：已完成现有代码数据流复核与 97/4 离线复现；没有修改生产代码、创建 V7 evidence/marker、读取真实 key、调用 provider、启动 Docker/浏览器或开启产品 gate。用户审阅设计后才编写 TDD 实施计划；未来任何 V7 Live 仍需新的单独授权。
+设计当时验收：已完成代码数据流复核与 `97/4` 离线复现，当时尚未修改实现或创建 V7 evidence/marker。其后 Task 1--6 已按 TDD 计划完成，最新离线结论见上文“V7 全量离线验收”；未来任何 V7 Live 仍需新的单独授权。
 
 回顾时可以问：为什么 input preview 不能限制 provider actual usage？为什么 97/4 fixture 不能改写 V6 历史 provider 事实？为什么 V7 Live 通过仍不等于产品 gate 自动开启？
 
@@ -133,7 +145,7 @@
 
 验收：独立解析 V6 JSON，确认上述六个最终字段；检查 once marker 存在；扫描 evidence 禁止内容无命中；`git status` 显示 V1--V5 evidence 无改动。V6 的 48-case、Docker authenticated suggestions/plan、可见浏览器、main 合并、main 复验和远程推送均未执行。
 
-后续状态：V6 不能重跑。其后的零网络调查已形成上文 V7 preview/actual usage parity 设计；V7 仍需独立实施、复审与新的 Live 授权，两个业务 gate 在任何独立质量与产品验收完成前继续保持 `false`。
+后续状态：V6 不能重跑。其后的 V7 已完成 Task 1--6 离线实施，仍需 Task 7 两轮复审与新的单独 Live 授权；两个业务 gate 在任何独立质量与产品验收完成前继续保持 `false`。
 
 回顾时可以问：为什么 `usageKnown=false` 不能被记为零成本？为什么新的诊断必须拥有自己的 marker/evidence 而不是重跑 V6？
 
