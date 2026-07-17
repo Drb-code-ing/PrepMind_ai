@@ -15,17 +15,23 @@ import * as windowsReparseSafeIo from './windows-reparse-safe-relative-io';
 const { openWindowsNoReparseChildDirectory } = windowsReparseSafeIo;
 type DurableFaultStage = 'write' | 'flush' | 'close';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
+type DurableFaultTestFacade = Readonly<{
+  directory: windowsReparseSafeIo.WindowsNoReparseChildDirectory;
+  cleanupInjectedHandles(): void;
+}>;
 
-function requireDurableFaultInjectorForTests() {
-  const setter = (
+function requireDurableFaultTestFactory() {
+  const factory = (
     windowsReparseSafeIo as typeof windowsReparseSafeIo & {
-      __setDurableFaultInjectorForTests?: (
-        injector: DurableFaultInjector | null,
-      ) => void;
+      openWindowsNoReparseChildDirectoryForTests?: (
+        root: string,
+        childName: string,
+        injector: DurableFaultInjector,
+      ) => Promise<DurableFaultTestFacade>;
     }
-  ).__setDurableFaultInjectorForTests;
-  expect(typeof setter).toBe('function');
-  return setter!;
+  ).openWindowsNoReparseChildDirectoryForTests;
+  expect(typeof factory).toBe('function');
+  return factory!;
 }
 
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
@@ -43,13 +49,6 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
   });
 
   afterEach(async () => {
-    (
-      windowsReparseSafeIo as typeof windowsReparseSafeIo & {
-        __setDurableFaultInjectorForTests?: (
-          injector: DurableFaultInjector | null,
-        ) => void;
-      }
-    ).__setDurableFaultInjectorForTests?.(null);
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
   });
@@ -114,11 +113,15 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       artifactMustBeAbsent,
     }) => {
       const calls: DurableFaultStage[] = [];
-      requireDurableFaultInjectorForTests()((stage) => {
-        calls.push(stage);
-        return stage === failedStage;
-      });
-      const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+      const facade = await requireDurableFaultTestFactory()(
+        root,
+        'docs',
+        (stage) => {
+          calls.push(stage);
+          return stage === failedStage;
+        },
+      );
+      const { directory } = facade;
       const leafName = `private-${failedStage}-stage`;
       const contents = `private-${failedStage}-contents`;
       let continued = false;
@@ -142,10 +145,83 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
           );
         }
       } finally {
+        facade.cleanupInjectedHandles();
         directory.close();
       }
     },
   );
+
+  it('does not let one directory fault capability pollute a concurrent directory', async () => {
+    const failingFacade = await requireDurableFaultTestFactory()(
+      root,
+      'docs',
+      (stage) => stage === 'write',
+    );
+    const failingDirectory = failingFacade.directory;
+    const successfulDirectory = await openWindowsNoReparseChildDirectory(
+      root,
+      'docs',
+    );
+    try {
+      const results = await Promise.allSettled([
+        Promise.resolve().then(() =>
+          failingDirectory.createExclusiveDurableFile('isolated-failure', 'x'),
+        ),
+        Promise.resolve().then(() =>
+          successfulDirectory.createExclusiveDurableFile(
+            'isolated-success',
+            'x',
+          ),
+        ),
+      ]);
+
+      expect(results.map((result) => result.status)).toEqual([
+        'rejected',
+        'fulfilled',
+      ]);
+      expect(successfulDirectory.readRegularFile('isolated-success')).toEqual(
+        Buffer.from('x'),
+      );
+    } finally {
+      failingFacade.cleanupInjectedHandles();
+      failingDirectory.close();
+      successfulDirectory.close();
+    }
+  });
+
+  it('cleans up a test-only simulated CloseHandle failure without closing twice', async () => {
+    const calls: DurableFaultStage[] = [];
+    const facade = await requireDurableFaultTestFactory()(
+      root,
+      'docs',
+      (stage) => {
+        calls.push(stage);
+        return stage === 'close';
+      },
+    );
+    let directoryClosed = false;
+    try {
+      expect(() =>
+        facade.directory.createExclusiveDurableFile('close-failure', 'x'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+      expect(calls).toEqual(['write', 'flush', 'close']);
+
+      facade.cleanupInjectedHandles();
+      facade.cleanupInjectedHandles();
+      facade.directory.close();
+      directoryClosed = true;
+
+      await rm(join(root, 'docs'), { recursive: true });
+      await expect(lstat(join(root, 'docs'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+    } finally {
+      if (!directoryClosed) {
+        facade.cleanupInjectedHandles();
+        facade.directory.close();
+      }
+    }
+  });
 
   it('keeps durable creation on the bound directory after its path is replaced by a junction', async () => {
     const directory = await openWindowsNoReparseChildDirectory(root, 'docs');

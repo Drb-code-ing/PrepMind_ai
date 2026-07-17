@@ -45,14 +45,10 @@ type BunFfi = Readonly<{
 
 type DurableFaultStage = 'write' | 'flush' | 'close';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
-let durableFaultInjectorForTests: DurableFaultInjector | null = null;
-
-/** Test-only native fault seam. Production callers must leave this unset. */
-export function __setDurableFaultInjectorForTests(
-  injector: DurableFaultInjector | null,
-) {
-  durableFaultInjectorForTests = injector;
-}
+type DurableFaultTestCapability = Readonly<{
+  injector: DurableFaultInjector;
+  pendingCloseHandles: Map<number, ReturnType<BunFfi['dlopen']>>;
+}>;
 
 type WindowsNativeDirectory = Readonly<{
   handle: number;
@@ -60,6 +56,7 @@ type WindowsNativeDirectory = Readonly<{
   ffi: BunFfi;
   kernel: ReturnType<BunFfi['dlopen']>;
   ntdll: ReturnType<BunFfi['dlopen']>;
+  durableFaultTestCapability: DurableFaultTestCapability | null;
 }>;
 
 export type WindowsNoReparseChildDirectory = Readonly<{
@@ -94,6 +91,7 @@ export async function openWindowsNoReparseDirectory(
     root,
     childNames,
     FILE_OPEN_IF,
+    null,
   );
 }
 
@@ -106,13 +104,50 @@ export async function openWindowsNoReparseExistingDirectory(
     root,
     childNames,
     FILE_OPEN,
+    null,
   );
+}
+
+/** Creates an instance-scoped native fault facade for Windows-only tests. */
+export async function openWindowsNoReparseChildDirectoryForTests(
+  root: string,
+  childName: string,
+  injector: DurableFaultInjector,
+) {
+  const capability: DurableFaultTestCapability = {
+    injector,
+    pendingCloseHandles: new Map(),
+  };
+  const directory = await openWindowsNoReparseDirectoryWithDisposition(
+    root,
+    [childName],
+    FILE_OPEN_IF,
+    capability,
+  );
+  return Object.freeze({
+    directory,
+    cleanupInjectedHandles() {
+      for (const [handle, kernel] of capability.pendingCloseHandles) {
+        let closed = false;
+        try {
+          closed = Boolean(kernel.symbols.CloseHandle(handle));
+        } catch {
+          // Converted to the fixed test-cleanup failure below.
+        }
+        if (!closed) {
+          throw new Error('WINDOWS_REPARSE_SAFE_IO_TEST_CLEANUP_FAILED');
+        }
+        capability.pendingCloseHandles.delete(handle);
+      }
+    },
+  });
 }
 
 async function openWindowsNoReparseDirectoryWithDisposition(
   root: string,
   childNames: readonly string[],
   childDisposition: typeof FILE_OPEN | typeof FILE_OPEN_IF,
+  durableFaultTestCapability: DurableFaultTestCapability | null,
 ): Promise<WindowsNoReparseChildDirectory> {
   if (process.platform !== 'win32') {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_UNAVAILABLE');
@@ -122,7 +157,7 @@ async function openWindowsNoReparseDirectoryWithDisposition(
   }
 
   const ffi = await loadBunFfi();
-  let directory = openNativeRoot(ffi, root);
+  let directory = openNativeRoot(ffi, root, durableFaultTestCapability);
   try {
     for (const childName of childNames) {
       // Only evidence children beneath the already-bound root may be
@@ -214,7 +249,11 @@ async function loadBunFfi(): Promise<BunFfi> {
  * only trusted Win32 anchor; every user-controlled component is opened from
  * the previous HANDLE with `OBJ_DONT_REPARSE`.
  */
-function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
+function openNativeRoot(
+  ffi: BunFfi,
+  root: string,
+  durableFaultTestCapability: DurableFaultTestCapability | null,
+): WindowsNativeDirectory {
   const kernel = ffi.dlopen('kernel32.dll', {
     CreateFileW: {
       args: [
@@ -332,6 +371,7 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
     ffi,
     kernel,
     ntdll,
+    durableFaultTestCapability,
   };
   try {
     assertNotReparsePoint(directory);
@@ -747,6 +787,7 @@ function writeAndFlushDurableNativeFile(
 ) {
   const bytes = Buffer.from(contents, 'utf8');
   injectDurableFaultForTests(
+    parent,
     'write',
     'WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED',
   );
@@ -773,6 +814,7 @@ function writeAndFlushDurableNativeFile(
     }
   }
   injectDurableFaultForTests(
+    parent,
     'flush',
     'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
   );
@@ -788,16 +830,26 @@ function writeAndFlushDurableNativeFile(
 }
 
 function injectDurableFaultForTests(
+  parent: WindowsNativeDirectory,
   stage: DurableFaultStage,
   failureCode: string,
 ) {
-  let shouldFail = false;
-  try {
-    shouldFail = Boolean(durableFaultInjectorForTests?.(stage));
-  } catch {
-    shouldFail = true;
+  if (shouldInjectDurableFaultForTests(parent, stage)) {
+    throw new Error(failureCode);
   }
-  if (shouldFail) throw new Error(failureCode);
+}
+
+function shouldInjectDurableFaultForTests(
+  parent: WindowsNativeDirectory,
+  stage: DurableFaultStage,
+) {
+  const capability = parent.durableFaultTestCapability;
+  if (capability === null) return false;
+  try {
+    return Boolean(capability.injector(stage));
+  } catch {
+    return true;
+  }
 }
 
 function sanitizeDurableWriteError(error: unknown) {
@@ -862,16 +914,19 @@ function closeDurableNativeHandle(
   parent: WindowsNativeDirectory,
   handle: number,
 ) {
+  if (shouldInjectDurableFaultForTests(parent, 'close')) {
+    parent.durableFaultTestCapability?.pendingCloseHandles.set(
+      handle,
+      parent.kernel,
+    );
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
   let closed = false;
   try {
     closed = Boolean(parent.kernel.symbols.CloseHandle(handle));
   } catch {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
   }
-  injectDurableFaultForTests(
-    'close',
-    'WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED',
-  );
   if (!closed) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
   }
