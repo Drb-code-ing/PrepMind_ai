@@ -215,6 +215,9 @@ type ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceCapability =
     writeTerminalReplacement(
       summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
     ): Promise<boolean>;
+    writePostTerminalHistoryFailure(
+      summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
+    ): Promise<boolean>;
     verifyHistoricalEvidence(): Promise<boolean>;
     seal(): void;
   }>;
@@ -430,6 +433,16 @@ export async function finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEv
     capability.seal();
     return false;
   }
+  // Give same-turn filesystem writers one bounded quiescence window before
+  // the required post-terminal snapshot. This is not a provider/file retry.
+  await new Promise<void>((resolveWindow) => setTimeout(resolveWindow, 25));
+  if (!(await capability.verifyHistoricalEvidence())) {
+    await capability.writePostTerminalHistoryFailure(
+      evidenceIoSummary(summary),
+    );
+    capability.seal();
+    return false;
+  }
   capability.seal();
   return true;
 }
@@ -533,6 +546,7 @@ function nativeReservation(
   let closed = false;
   let finalizationClaimed = false;
   let safeProvisionalWritten = false;
+  let terminalReplacementWritten = false;
   const close = () => {
     if (closed) return;
     closed = true;
@@ -614,7 +628,22 @@ function nativeReservation(
           return Promise.resolve(false);
         }
         const changed = replace('finalized', summary);
-        if (changed) safeProvisionalWritten = false;
+        if (changed) {
+          safeProvisionalWritten = false;
+          terminalReplacementWritten = true;
+        }
+        return Promise.resolve(changed);
+      },
+      writePostTerminalHistoryFailure(summary) {
+        if (
+          !terminalReplacementWritten ||
+          state !== 'finalized' ||
+          !isEvidenceIoClosure(summary)
+        ) {
+          return Promise.resolve(false);
+        }
+        const changed = replace('finalized', summary);
+        if (changed) terminalReplacementWritten = false;
         return Promise.resolve(changed);
       },
       async verifyHistoricalEvidence() {

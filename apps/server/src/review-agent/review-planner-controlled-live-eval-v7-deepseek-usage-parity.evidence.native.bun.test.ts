@@ -1,3 +1,4 @@
+import { watch } from 'node:fs';
 import {
   cp,
   mkdtemp,
@@ -7,7 +8,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
 
@@ -182,6 +183,80 @@ describeNativeWindows(
       await expect(
         readFile(join(root, reservation.relativePath)),
       ).resolves.toEqual(finalized);
+    });
+
+    it('downgrades a terminal success when V1--V6 drift after replacement', async () => {
+      const snapshot = await snapshotHistory(root);
+      const reservation = await reserve(
+        root,
+        snapshot,
+        'post-terminal-history-drift',
+      );
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      const evidencePath = join(root, reservation.relativePath);
+      const v6MarkerPath = join(
+        root,
+        historicalDirectories[5],
+        '.review-planner-controlled-live-v6-deepseek-v4-pro-nonthinking.once',
+      );
+      let mutationStarted = false;
+      let resolveMutation!: () => void;
+      const mutationObserved = new Promise<void>((resolveMutationPromise) => {
+        resolveMutation = resolveMutationPromise;
+      });
+      const watcher = watch(dirname(evidencePath), (_event, leaf) => {
+        if (
+          mutationStarted ||
+          leaf?.toString() !== evidencePath.split('\\').at(-1)
+        ) {
+          return;
+        }
+        void (async () => {
+          try {
+            const record = JSON.parse(
+              await readFile(evidencePath, 'utf8'),
+            ) as Record<string, unknown>;
+            if (record.status !== 'complete') return;
+            mutationStarted = true;
+            await writeFile(v6MarkerPath, 'changed-after-terminal-write\n');
+            resolveMutation();
+          } catch {
+            // Replacement events can arrive before the destination is readable.
+          }
+        })();
+      });
+
+      try {
+        const finalized =
+          finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+            reservation,
+            summary: completeSummary(),
+          });
+        await Promise.race([
+          mutationObserved,
+          new Promise<never>((_resolve, reject) =>
+            setTimeout(
+              () => reject(new Error('terminal mutation was not observed')),
+              2_000,
+            ),
+          ),
+        ]);
+        await expect(finalized).resolves.toBe(false);
+        const stored = JSON.parse(
+          await readFile(evidencePath, 'utf8'),
+        ) as Record<string, unknown>;
+        expect(stored).toMatchObject({
+          state: 'finalized',
+          status: 'invalid_attempted',
+          gate: 'closed',
+          usageKnown: false,
+          diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+        });
+        expect(stored).not.toHaveProperty('aggregateInputTokens');
+        expect(stored).not.toHaveProperty('observedCostCny');
+      } finally {
+        watcher.close();
+      }
     });
 
     it('rejects lifecycle skips and attempted-to-blocked downgrades without rewriting bytes', async () => {
