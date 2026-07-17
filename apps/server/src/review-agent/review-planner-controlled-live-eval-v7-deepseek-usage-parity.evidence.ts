@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
@@ -26,6 +26,8 @@ export const REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE =
       'docs/acceptance/evidence/phase-6-9-5-controlled-live-v7-deepseek-v4-pro-usage-parity',
     onceLockLeaf:
       '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.once',
+    successCommitLeaf:
+      '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.success',
   } as const);
 
 const V7_CONSUMED_MARKER =
@@ -179,15 +181,31 @@ export const reviewPlannerControlledLiveV7DeepSeekUsageParityFinalizedRecordSche
         state: z.literal('finalized'),
       })
       .strict(),
-    completeSummarySchema
-      .extend({
-        schemaVersion: z.literal(
-          REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
-        ),
-        state: z.literal('finalized'),
-      })
-      .strict(),
   ]);
+
+const successCandidateRecordSchema = completeSummarySchema
+  .extend({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+    ),
+    state: z.literal('success_candidate'),
+    successCommitmentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+
+const successCommitMarkerSchema = z
+  .object({
+    schemaVersion: z.literal(
+      'phase-6.9.5-review-planner-controlled-live-v7-success-commit-v1',
+    ),
+    evidenceLeaf: z
+      .string()
+      .regex(/^review-planner-live-[A-Za-z0-9._-]+\.json$/),
+    candidateSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    historicalTreeHash: z.string().regex(/^[a-f0-9]{64}$/),
+    commitNonce: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
 
 export const safeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceSchema =
   z.union([
@@ -197,6 +215,7 @@ export const safeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceSchema 
   ]);
 
 type EvidenceState = 'reserved' | 'attempted' | 'finalized';
+type InternalEvidenceState = EvidenceState | 'success_candidate';
 
 export type ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceReservation =
   Readonly<{
@@ -218,6 +237,7 @@ type ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceCapability =
     writePostTerminalHistoryFailure(
       summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
     ): Promise<boolean>;
+    commitSuccess(): Promise<boolean>;
     verifyHistoricalEvidence(): Promise<boolean>;
     seal(): void;
   }>;
@@ -443,8 +463,101 @@ export async function finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEv
     capability.seal();
     return false;
   }
+  if (summary.status === 'complete' && !(await capability.commitSuccess())) {
+    capability.seal();
+    return false;
+  }
   capability.seal();
   return true;
+}
+
+const logicalFinalizedSuccessRecordSchema = completeSummarySchema
+  .extend({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+    ),
+    state: z.literal('finalized'),
+  })
+  .strict();
+
+export type ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceRead =
+  | z.infer<
+      typeof reviewPlannerControlledLiveV7DeepSeekUsageParityFinalizedRecordSchema
+    >
+  | z.infer<typeof logicalFinalizedSuccessRecordSchema>;
+
+/**
+ * The only public persisted-evidence reader. Success is a logical projection:
+ * candidate bytes alone are never success without the consumed marker, strict
+ * exclusive commit marker, matching bytes hash, and a fresh V1--V6 snapshot.
+ */
+export async function readReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
+  input: Readonly<{ root: string; relativePath: string }>,
+): Promise<ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceRead> {
+  const fallback = finalizedEvidenceIoRecord();
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  try {
+    const root = trustedSnapshotRoot(input.root);
+    const prefix = `${REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceDirectory}/`;
+    if (!input.relativePath.startsWith(prefix)) return fallback;
+    const leafName = input.relativePath.slice(prefix.length);
+    if (!/^[A-Za-z0-9._-]{1,240}$/.test(leafName)) return fallback;
+    directory = await openWindowsNoReparseExistingDirectory(
+      root,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceDirectory.split(
+        '/',
+      ),
+    );
+    if (
+      directory
+        .readRegularFile(
+          REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.onceLockLeaf,
+        )
+        .toString('utf8') !== V7_CONSUMED_MARKER
+    ) {
+      return fallback;
+    }
+    const candidateBytes = directory.readRegularFile(leafName);
+    const decoded = JSON.parse(candidateBytes.toString('utf8')) as unknown;
+    const finalized =
+      reviewPlannerControlledLiveV7DeepSeekUsageParityFinalizedRecordSchema.safeParse(
+        decoded,
+      );
+    if (finalized.success) return finalized.data;
+    const candidate = successCandidateRecordSchema.safeParse(decoded);
+    if (!candidate.success) return fallback;
+    const marker = successCommitMarkerSchema.safeParse(
+      JSON.parse(
+        directory
+          .readRegularFile(
+            REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+          )
+          .toString('utf8'),
+      ),
+    );
+    if (
+      !marker.success ||
+      marker.data.evidenceLeaf !== leafName ||
+      marker.data.candidateSha256 !== sha256(candidateBytes) ||
+      candidate.data.successCommitmentSha256 !==
+        sha256(Buffer.from(marker.data.commitNonce, 'utf8'))
+    ) {
+      return fallback;
+    }
+    const current =
+      await snapshotReviewPlannerControlledLiveV7DeepSeekUsageParityHistoricalEvidence(
+        root,
+      );
+    if (current.treeHash !== marker.data.historicalTreeHash) return fallback;
+    const logicalRecord: Record<string, unknown> = { ...candidate.data };
+    logicalRecord.state = 'finalized';
+    delete logicalRecord.successCommitmentSha256;
+    return logicalFinalizedSuccessRecordSchema.parse(logicalRecord);
+  } catch {
+    return fallback;
+  } finally {
+    directory?.close();
+  }
 }
 
 export function serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
@@ -469,6 +582,41 @@ export function serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenc
     );
   }
   return serialized;
+}
+
+function serializeSuccessCandidate(
+  summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
+  successCommitmentSha256: string,
+) {
+  const candidate = successCandidateRecordSchema.parse({
+    schemaVersion:
+      REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+    state: 'success_candidate',
+    successCommitmentSha256,
+    ...summary,
+  });
+  return `${JSON.stringify(candidate)}\n`;
+}
+
+function finalizedEvidenceIoRecord(): z.infer<
+  typeof reviewPlannerControlledLiveV7DeepSeekUsageParityFinalizedRecordSchema
+> {
+  return reviewPlannerControlledLiveV7DeepSeekUsageParityFinalizedRecordSchema.parse(
+    {
+      schemaVersion:
+        REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+      state: 'finalized',
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    },
+  );
+}
+
+function sha256(value: Uint8Array) {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 async function reserveNativeEvidence(
@@ -541,32 +689,42 @@ function nativeReservation(
   relativePath: string,
   leafName: string,
 ): ReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceReservation {
-  let state: EvidenceState = 'reserved';
+  let state: InternalEvidenceState = 'reserved';
   let revision = 0;
   let closed = false;
   let finalizationClaimed = false;
   let safeProvisionalWritten = false;
   let terminalReplacementWritten = false;
+  const successCommitNonce = randomBytes(32).toString('hex');
+  const successCommitmentSha256 = sha256(
+    Buffer.from(successCommitNonce, 'utf8'),
+  );
+  let successCandidateSha256: string | null = null;
   const close = () => {
     if (closed) return;
     closed = true;
     directory.close();
   };
   const replace = (
-    nextState: 'attempted' | 'finalized',
+    nextState: 'attempted' | 'finalized' | 'success_candidate',
     summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
   ) => {
     try {
       const serialized =
-        serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
-          nextState,
-          summary,
-        );
+        nextState === 'success_candidate'
+          ? serializeSuccessCandidate(summary, successCommitmentSha256)
+          : serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
+              nextState,
+              summary,
+            );
       directory.replaceFile(
         `${leafName}.tmp-${process.pid}-${revision++}`,
         leafName,
         serialized,
       );
+      if (nextState === 'success_candidate') {
+        successCandidateSha256 = sha256(Buffer.from(serialized, 'utf8'));
+      }
       return true;
     } catch {
       return false;
@@ -627,24 +785,64 @@ function nativeReservation(
         if (!safeProvisionalWritten || state !== 'finalized') {
           return Promise.resolve(false);
         }
-        const changed = replace('finalized', summary);
+        const nextState =
+          summary.status === 'complete' ? 'success_candidate' : 'finalized';
+        const changed = replace(nextState, summary);
         if (changed) {
           safeProvisionalWritten = false;
-          terminalReplacementWritten = true;
+          state = nextState;
+          terminalReplacementWritten = nextState === 'success_candidate';
         }
         return Promise.resolve(changed);
       },
       writePostTerminalHistoryFailure(summary) {
         if (
           !terminalReplacementWritten ||
-          state !== 'finalized' ||
+          state !== 'success_candidate' ||
           !isEvidenceIoClosure(summary)
         ) {
           return Promise.resolve(false);
         }
         const changed = replace('finalized', summary);
-        if (changed) terminalReplacementWritten = false;
+        if (changed) {
+          state = 'finalized';
+          terminalReplacementWritten = false;
+          successCandidateSha256 = null;
+        }
         return Promise.resolve(changed);
+      },
+      commitSuccess() {
+        if (!terminalReplacementWritten || state !== 'success_candidate') {
+          return Promise.resolve(false);
+        }
+        try {
+          const candidateBytes = directory.readRegularFile(leafName);
+          const candidate = successCandidateRecordSchema.parse(
+            JSON.parse(candidateBytes.toString('utf8')),
+          );
+          const currentCandidateSha256 = sha256(candidateBytes);
+          if (
+            currentCandidateSha256 !== successCandidateSha256 ||
+            candidate.successCommitmentSha256 !== successCommitmentSha256
+          ) {
+            return Promise.resolve(false);
+          }
+          const marker = successCommitMarkerSchema.parse({
+            schemaVersion:
+              'phase-6.9.5-review-planner-controlled-live-v7-success-commit-v1',
+            evidenceLeaf: leafName,
+            candidateSha256: currentCandidateSha256,
+            historicalTreeHash: historicalSnapshot.treeHash,
+            commitNonce: successCommitNonce,
+          });
+          directory.createExclusiveFile(
+            REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+            `${JSON.stringify(marker)}\n`,
+          );
+          return Promise.resolve(true);
+        } catch {
+          return Promise.resolve(false);
+        }
       },
       async verifyHistoricalEvidence() {
         try {
@@ -668,7 +866,7 @@ function nativeReservation(
 }
 
 function isTerminalAllowedForState(
-  state: EvidenceState,
+  state: InternalEvidenceState,
   summary: SafeReviewPlannerControlledLiveV7DeepSeekUsageParitySummary,
 ) {
   const parsed =

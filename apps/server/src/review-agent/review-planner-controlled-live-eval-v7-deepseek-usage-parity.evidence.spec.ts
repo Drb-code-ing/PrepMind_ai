@@ -26,6 +26,8 @@ describe('Review/Planner controlled Live V7 usage-parity evidence', () => {
         'docs/acceptance/evidence/phase-6-9-5-controlled-live-v7-deepseek-v4-pro-usage-parity',
       onceLockLeaf:
         '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.once',
+      successCommitLeaf:
+        '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.success',
     });
     expect(
       safeReviewPlannerControlledLiveV7DeepSeekUsageParitySummarySchema.parse(
@@ -82,7 +84,7 @@ describe('Review/Planner controlled Live V7 usage-parity evidence', () => {
     }
   });
 
-  it('serializes strict reserved, attempted, and finalized records', () => {
+  it('serializes strict reserved, attempted, and failure-finalized records', () => {
     const reserved =
       serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
         'reserved',
@@ -96,7 +98,7 @@ describe('Review/Planner controlled Live V7 usage-parity evidence', () => {
     const finalized =
       serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
         'finalized',
-        completeSummary(),
+        failedSummary(),
       );
 
     for (const value of [reserved, attempted, finalized]) {
@@ -108,9 +110,15 @@ describe('Review/Planner controlled Live V7 usage-parity evidence', () => {
     }
     expect(JSON.parse(finalized)).toMatchObject({
       state: 'finalized',
-      status: 'complete',
-      gate: 'eligible_for_separate_product_acceptance',
+      status: 'invalid_attempted',
+      gate: 'closed',
     });
+    expect(() =>
+      serializeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence(
+        'finalized',
+        completeSummary(),
+      ),
+    ).toThrow();
   });
 
   it('rejects sensitive or content-bearing fields from every strict record', () => {
@@ -142,6 +150,27 @@ describe('Review/Planner controlled Live V7 usage-parity evidence', () => {
     ).not.toMatch(
       /prompt|response|token.?detail|api.?key|url|header|stack|raw.?error|authorization|cookie|bearer|password|secret/i,
     );
+    for (const extra of [
+      { aggregateInputTokens: 1 },
+      { aggregateOutputTokens: 1 },
+      { observedCostCny: 0.01 },
+      {
+        priceProfileId:
+          REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PRICE_PROFILE_ID,
+      },
+    ]) {
+      expect(
+        safeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceSchema.safeParse(
+          {
+            schemaVersion:
+              REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+            state: 'finalized',
+            ...failedSummary(),
+            ...extra,
+          },
+        ).success,
+      ).toBe(false);
+    }
   });
 });
 

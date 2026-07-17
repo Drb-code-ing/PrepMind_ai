@@ -1,5 +1,7 @@
 import { watch } from 'node:fs';
+import { createHash } from 'node:crypto';
 import {
+  chmod,
   cp,
   mkdtemp,
   readFile,
@@ -16,7 +18,9 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PRICE_PROFILE_ID,
   REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE,
   finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence,
+  readReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence,
   reserveReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence,
+  safeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceSchema,
   snapshotReviewPlannerControlledLiveV7DeepSeekUsageParityHistoricalEvidence,
   verifyReviewPlannerControlledLiveV7DeepSeekUsageParityHistoricalEvidence,
 } from './review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence';
@@ -185,6 +189,156 @@ describeNativeWindows(
       ).resolves.toEqual(finalized);
     });
 
+    it('never treats standalone persisted complete bytes as committed success', () => {
+      const standaloneComplete = {
+        schemaVersion:
+          REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.evidenceSchemaVersion,
+        state: 'finalized',
+        ...completeSummary(),
+      };
+
+      expect(
+        safeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidenceSchema.safeParse(
+          standaloneComplete,
+        ).success,
+      ).toBe(false);
+    });
+
+    it('projects success only through the strict hash-bound commit marker', async () => {
+      const snapshot = await snapshotHistory(root);
+      const reservation = await reserve(root, snapshot, 'sealed-reader');
+      expect(Object.keys(reservation).sort()).toEqual([
+        'markAttempted',
+        'relativePath',
+      ]);
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      await expect(
+        finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+          reservation,
+          summary: completeSummary(),
+        }),
+      ).resolves.toBe(true);
+
+      const evidencePath = join(root, reservation.relativePath);
+      const directoryPath = dirname(evidencePath);
+      const markerPath = join(
+        directoryPath,
+        REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+      );
+      const oncePath = join(
+        directoryPath,
+        REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.onceLockLeaf,
+      );
+      const candidateBytes = await readFile(evidencePath);
+      const markerBytes = await readFile(markerPath, 'utf8');
+      const onceBytes = await readFile(oncePath, 'utf8');
+      const marker = JSON.parse(markerBytes) as Record<string, unknown>;
+
+      expect(JSON.parse(candidateBytes.toString('utf8'))).toMatchObject({
+        state: 'success_candidate',
+        status: 'complete',
+      });
+      expect(Object.keys(marker).sort()).toEqual([
+        'candidateSha256',
+        'commitNonce',
+        'evidenceLeaf',
+        'historicalTreeHash',
+        'schemaVersion',
+      ]);
+      expect(marker.evidenceLeaf).toBe(evidencePath.split('\\').at(-1));
+      expect(marker.candidateSha256).toBe(
+        createHash('sha256').update(candidateBytes).digest('hex'),
+      );
+      expect(marker.historicalTreeHash).toBe(snapshot.treeHash);
+      expect(marker).not.toHaveProperty('aggregateInputTokens');
+      expect(marker).not.toHaveProperty('observedCostCny');
+      await expect(
+        readEvidence(root, reservation.relativePath),
+      ).resolves.toMatchObject({ state: 'finalized', status: 'complete' });
+
+      for (const invalidMarker of [
+        'not-json\n',
+        `${JSON.stringify({ ...marker, candidateSha256: '0'.repeat(64) })}\n`,
+        `${JSON.stringify({ ...marker, evidenceLeaf: 'wrong.json' })}\n`,
+        `${JSON.stringify({ ...marker, historicalTreeHash: '0'.repeat(64) })}\n`,
+        `${JSON.stringify({ ...marker, commitNonce: '0'.repeat(64) })}\n`,
+        `${JSON.stringify({ ...marker, unknown: true })}\n`,
+      ]) {
+        await writeFile(markerPath, invalidMarker);
+        expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+      }
+
+      await rm(markerPath);
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+
+      await writeFile(markerPath, markerBytes);
+      await writeFile(oncePath, 'wrong-consumed-marker\n');
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+      await writeFile(oncePath, onceBytes);
+
+      await writeFile(evidencePath, `${candidateBytes.toString('utf8')} `);
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+      const nonStrictCandidate = Buffer.from(
+        `${JSON.stringify({
+          ...(JSON.parse(candidateBytes.toString('utf8')) as Record<
+            string,
+            unknown
+          >),
+          unknown: true,
+        })}\n`,
+      );
+      await writeFile(evidencePath, nonStrictCandidate);
+      await writeFile(
+        markerPath,
+        `${JSON.stringify({
+          ...marker,
+          candidateSha256: createHash('sha256')
+            .update(nonStrictCandidate)
+            .digest('hex'),
+        })}\n`,
+      );
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+      await writeFile(evidencePath, candidateBytes);
+      await writeFile(markerPath, markerBytes);
+
+      await writeFile(
+        join(
+          root,
+          historicalDirectories[0],
+          '.review-planner-controlled-live.once',
+        ),
+        'changed-after-success-marker\n',
+      );
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+
+      await rm(evidencePath);
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+    });
+
+    it('fails closed when exclusive success marker creation fails', async () => {
+      const snapshot = await snapshotHistory(root);
+      const reservation = await reserve(root, snapshot, 'marker-create-fails');
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      const markerPath = join(
+        dirname(join(root, reservation.relativePath)),
+        REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+      );
+      await writeFile(markerPath, 'preexisting-invalid-marker\n');
+
+      await expect(
+        finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+          reservation,
+          summary: completeSummary(),
+        }),
+      ).resolves.toBe(false);
+      expect(
+        JSON.parse(
+          await readFile(join(root, reservation.relativePath), 'utf8'),
+        ),
+      ).toMatchObject({ state: 'success_candidate', status: 'complete' });
+      expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+    });
+
     it('downgrades a terminal success when V1--V6 drift after replacement', async () => {
       const snapshot = await snapshotHistory(root);
       const reservation = await reserve(
@@ -254,6 +408,160 @@ describeNativeWindows(
         });
         expect(stored).not.toHaveProperty('aggregateInputTokens');
         expect(stored).not.toHaveProperty('observedCostCny');
+        await expect(
+          readFile(
+            join(
+              dirname(evidencePath),
+              REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+            ),
+          ),
+        ).rejects.toThrow();
+      } finally {
+        watcher.close();
+      }
+    });
+
+    it('keeps an uncommitted candidate fail-closed when the drift downgrade write fails', async () => {
+      const snapshot = await snapshotHistory(root);
+      const reservation = await reserve(
+        root,
+        snapshot,
+        'downgrade-write-fails',
+      );
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      const evidencePath = join(root, reservation.relativePath);
+      const v6MarkerPath = join(
+        root,
+        historicalDirectories[5],
+        '.review-planner-controlled-live-v6-deepseek-v4-pro-nonthinking.once',
+      );
+      let mutationStarted = false;
+      let resolveMutation!: () => void;
+      const mutationObserved = new Promise<void>((resolveMutationPromise) => {
+        resolveMutation = resolveMutationPromise;
+      });
+      const watcher = watch(dirname(evidencePath), (_event, leaf) => {
+        if (
+          mutationStarted ||
+          leaf?.toString() !== evidencePath.split('\\').at(-1)
+        ) {
+          return;
+        }
+        void (async () => {
+          try {
+            const record = JSON.parse(
+              await readFile(evidencePath, 'utf8'),
+            ) as Record<string, unknown>;
+            if (record.state !== 'success_candidate') return;
+            mutationStarted = true;
+            await chmod(evidencePath, 0o444);
+            await writeFile(v6MarkerPath, 'changed-before-downgrade\n');
+            resolveMutation();
+          } catch {
+            // Replacement events can arrive before the destination is readable.
+          }
+        })();
+      });
+
+      try {
+        const finalized =
+          finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+            reservation,
+            summary: completeSummary(),
+          });
+        await Promise.race([
+          mutationObserved,
+          new Promise<never>((_resolve, reject) =>
+            setTimeout(
+              () => reject(new Error('candidate mutation was not observed')),
+              2_000,
+            ),
+          ),
+        ]);
+        await expect(finalized).resolves.toBe(false);
+        expect(JSON.parse(await readFile(evidencePath, 'utf8'))).toMatchObject({
+          state: 'success_candidate',
+          status: 'complete',
+        });
+        expectEvidenceIo(await readEvidence(root, reservation.relativePath));
+        await expect(
+          readFile(
+            join(
+              dirname(evidencePath),
+              REVIEW_PLANNER_CONTROLLED_LIVE_V7_DEEPSEEK_USAGE_PARITY_PROFILE.successCommitLeaf,
+            ),
+          ),
+        ).rejects.toThrow();
+      } finally {
+        watcher.close();
+        await chmod(evidencePath, 0o666).catch(() => undefined);
+      }
+    });
+
+    it('never applies the success downgrade transition to a finalized failure', async () => {
+      const snapshot = await snapshotHistory(root);
+      const reservation = await reserve(root, snapshot, 'failure-no-downgrade');
+      await expect(reservation.markAttempted()).resolves.toBe(true);
+      const evidencePath = join(root, reservation.relativePath);
+      const v6MarkerPath = join(
+        root,
+        historicalDirectories[5],
+        '.review-planner-controlled-live-v6-deepseek-v4-pro-nonthinking.once',
+      );
+      let mutationStarted = false;
+      let resolveMutation!: () => void;
+      const mutationObserved = new Promise<void>((resolveMutationPromise) => {
+        resolveMutation = resolveMutationPromise;
+      });
+      const watcher = watch(dirname(evidencePath), (_event, leaf) => {
+        if (
+          mutationStarted ||
+          leaf?.toString() !== evidencePath.split('\\').at(-1)
+        ) {
+          return;
+        }
+        void (async () => {
+          try {
+            const record = JSON.parse(
+              await readFile(evidencePath, 'utf8'),
+            ) as Record<string, unknown>;
+            if (record.diagnosticCode !== 'provider_usage_missing') return;
+            mutationStarted = true;
+            await writeFile(v6MarkerPath, 'changed-after-failure-write\n');
+            resolveMutation();
+          } catch {
+            // Replacement events can arrive before the destination is readable.
+          }
+        })();
+      });
+
+      try {
+        const finalized =
+          finalizeReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+            reservation,
+            summary: {
+              status: 'invalid_attempted',
+              gate: 'closed',
+              providerAttemptCount: 1,
+              usageKnown: false,
+              diagnosticCode: 'provider_usage_missing',
+            },
+          });
+        await Promise.race([
+          mutationObserved,
+          new Promise<never>((_resolve, reject) =>
+            setTimeout(
+              () => reject(new Error('failure mutation was not observed')),
+              2_000,
+            ),
+          ),
+        ]);
+        await expect(finalized).resolves.toBe(false);
+        expect(JSON.parse(await readFile(evidencePath, 'utf8'))).toMatchObject({
+          state: 'finalized',
+          status: 'invalid_attempted',
+          diagnosticCode: 'provider_usage_missing',
+        });
       } finally {
         watcher.close();
       }
@@ -425,6 +733,27 @@ function reserve(
     runId,
     historicalSnapshot,
   });
+}
+
+function readEvidence(root: string, relativePath: string) {
+  return readReviewPlannerControlledLiveV7DeepSeekUsageParityEvidence({
+    root,
+    relativePath,
+  });
+}
+
+function expectEvidenceIo(value: Record<string, unknown>) {
+  expect(value).toMatchObject({
+    state: 'finalized',
+    status: 'invalid_attempted',
+    gate: 'closed',
+    providerAttemptCount: 0,
+    usageKnown: false,
+    diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+  });
+  expect(value).not.toHaveProperty('aggregateInputTokens');
+  expect(value).not.toHaveProperty('aggregateOutputTokens');
+  expect(value).not.toHaveProperty('observedCostCny');
 }
 
 function completeSummary() {
