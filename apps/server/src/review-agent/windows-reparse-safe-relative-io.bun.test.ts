@@ -26,7 +26,9 @@ type DurableFaultStage =
   | 'rename'
   | 'post_commit_cleanup'
   | 'volume_non_ntfs'
-  | 'volume_remote';
+  | 'volume_non_disk_device'
+  | 'volume_remote_characteristic'
+  | 'volume_removable_characteristic';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestFacade = Readonly<{
   directory: windowsReparseSafeIo.WindowsNoReparseChildDirectory;
@@ -138,6 +140,9 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
         directory.commitExclusiveDurableFileViaRename('owned.prepare', 'x'),
       ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
       expect(() =>
+        directory.commitExclusiveDurableFileViaRename('owned.PREPARE', 'x'),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
+      expect(() =>
         directory.commitExclusiveDurableFileViaRename('a'.repeat(240), 'x'),
       ).toThrow('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
 
@@ -158,7 +163,9 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
 
   it.each([
     'volume_non_ntfs',
-    'volume_remote',
+    'volume_non_disk_device',
+    'volume_remote_characteristic',
+    'volume_removable_characteristic',
   ] as const)('fails the local fixed NTFS preflight for injected %s', async (phase) => {
     const facade = await requireDurableFaultTestFactory()(
       root,

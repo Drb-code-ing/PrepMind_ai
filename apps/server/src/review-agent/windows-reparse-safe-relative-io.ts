@@ -8,7 +8,6 @@ const DELETE = 0x00010000;
 const SYNCHRONIZE = 0x00100000;
 const FILE_SHARE_READ = 0x00000001;
 const FILE_SHARE_WRITE = 0x00000002;
-const DRIVE_FIXED = 3;
 const OPEN_EXISTING = 3;
 const FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
 const FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
@@ -25,6 +24,10 @@ const FILE_OPEN_IF = 3;
 const FILE_RENAME_INFORMATION = 10;
 const FILE_DISPOSITION_INFORMATION = 13;
 const FILE_STANDARD_INFORMATION = 5;
+const FILE_FS_DEVICE_INFORMATION = 4;
+const FILE_DEVICE_DISK = 0x00000007;
+const FILE_REMOVABLE_MEDIA = 0x00000001;
+const FILE_REMOTE_DEVICE = 0x00000010;
 const MAX_NATIVE_READ_BYTES = 1_048_576;
 const STATUS_REPARSE_POINT_ENCOUNTERED = -1073740533;
 const STATUS_OBJECT_NAME_COLLISION = -1073741771;
@@ -58,7 +61,9 @@ type DurableFaultStage =
   | 'rename'
   | 'post_commit_cleanup'
   | 'volume_non_ntfs'
-  | 'volume_remote';
+  | 'volume_non_disk_device'
+  | 'volume_remote_characteristic'
+  | 'volume_removable_characteristic';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestCapability = Readonly<{
   injector: DurableFaultInjector;
@@ -72,8 +77,6 @@ type WindowsNativeDirectory = Readonly<{
   kernel: ReturnType<BunFfi['dlopen']>;
   ntdll: ReturnType<BunFfi['dlopen']>;
   durableFaultTestCapability: DurableFaultTestCapability | null;
-  volumeHandle: number;
-  trustedDriveRoot: string;
 }>;
 
 type RelativeHandleInput = Readonly<{
@@ -349,10 +352,6 @@ function openNativeRoot(
       ],
       returns: ffi.FFIType.bool,
     },
-    GetDriveTypeW: {
-      args: [ffi.FFIType.ptr],
-      returns: ffi.FFIType.u32,
-    },
   });
   const ntdll = ffi.dlopen('ntdll.dll', {
     NtCreateFile: {
@@ -409,6 +408,16 @@ function openNativeRoot(
       ],
       returns: ffi.FFIType.i32,
     },
+    NtQueryVolumeInformationFile: {
+      args: [
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+        ffi.FFIType.u32,
+      ],
+      returns: ffi.FFIType.i32,
+    },
     NtFlushBuffersFile: {
       args: [ffi.FFIType.ptr, ffi.FFIType.ptr],
       returns: ffi.FFIType.i32,
@@ -449,8 +458,6 @@ function openNativeRoot(
     kernel,
     ntdll,
     durableFaultTestCapability,
-    volumeHandle: handle,
-    trustedDriveRoot: driveRoot,
   };
   try {
     assertNotReparsePoint(directory);
@@ -704,7 +711,7 @@ function commitExclusiveDurableFileViaRename(
   contents: string,
 ): DurablePublicationResult {
   assertSafeLeafName(committedLeafName);
-  if (committedLeafName.endsWith('.prepare')) {
+  if (committedLeafName.toLowerCase().endsWith('.prepare')) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_INVALID_NAME');
   }
   const prepareLeafName = `${committedLeafName}.prepare`;
@@ -1040,18 +1047,44 @@ function assertNotReparsePoint(directory: WindowsNativeDirectory) {
 }
 
 function assertLocalFixedNtfsVolume(directory: WindowsNativeDirectory) {
-  if (shouldInjectDurableFaultForTests(directory, 'volume_remote')) {
-    throw new Error('WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED');
-  }
-  const driveType = Number(
-    directory.kernel.symbols.GetDriveTypeW(
-      directory.ffi.ptr(wideString(directory.trustedDriveRoot)),
+  const deviceInformation = Buffer.alloc(8);
+  assertNtSuccess(
+    Number(
+      directory.ntdll.symbols.NtQueryVolumeInformationFile(
+        directory.handle,
+        directory.ffi.ptr(Buffer.alloc(16)),
+        directory.ffi.ptr(deviceInformation),
+        deviceInformation.byteLength,
+        FILE_FS_DEVICE_INFORMATION,
+      ),
     ),
+    'WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED',
   );
+  let deviceType = deviceInformation.readUInt32LE(0);
+  let characteristics = deviceInformation.readUInt32LE(4);
+  if (shouldInjectDurableFaultForTests(directory, 'volume_non_disk_device')) {
+    deviceType = 0;
+  }
+  if (
+    shouldInjectDurableFaultForTests(
+      directory,
+      'volume_remote_characteristic',
+    )
+  ) {
+    characteristics |= FILE_REMOTE_DEVICE;
+  }
+  if (
+    shouldInjectDurableFaultForTests(
+      directory,
+      'volume_removable_characteristic',
+    )
+  ) {
+    characteristics |= FILE_REMOVABLE_MEDIA;
+  }
   const fileSystemName = Buffer.alloc(64);
   const volumeKnown = Boolean(
     directory.kernel.symbols.GetVolumeInformationByHandleW(
-      directory.volumeHandle,
+      directory.handle,
       0,
       0,
       0,
@@ -1068,7 +1101,8 @@ function assertLocalFixedNtfsVolume(directory: WindowsNativeDirectory) {
   if (
     shouldInjectDurableFaultForTests(directory, 'volume_non_ntfs') ||
     !volumeKnown ||
-    driveType !== DRIVE_FIXED ||
+    deviceType !== FILE_DEVICE_DISK ||
+    (characteristics & (FILE_REMOTE_DEVICE | FILE_REMOVABLE_MEDIA)) !== 0 ||
     fileSystem !== 'NTFS'
   ) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED');
