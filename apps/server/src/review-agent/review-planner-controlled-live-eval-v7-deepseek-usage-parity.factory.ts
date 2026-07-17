@@ -162,6 +162,23 @@ export function resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing(
   });
 }
 
+export function validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight(
+  env: Record<string, unknown>,
+  overrides: Partial<Pick<V7FactoryDependencies, 'pricing'>> = {},
+):
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; diagnosticCode: ReviewPlannerDiagnosticCode }> {
+  return resolveV7Preflight(
+    env,
+    overrides.pricing ?? defaultDependencies.pricing,
+  )
+    ? { ok: true }
+    : {
+        ok: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+      };
+}
+
 export function createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator(
   env: Record<string, unknown>,
   overrides: Partial<V7FactoryDependencies> = {},

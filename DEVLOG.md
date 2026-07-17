@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--3 已完成 value-free usage audit、corrected evaluator 与 immutable evidence。Evidence strict Jest 5/5、Windows native 9/9、Server build 通过；root/snapshot/summary 均绑定 fresh canonical snapshot，lifecycle 不允许跳过、倒退或异步篡改。尚未创建真实 V7 marker/evidence、未运行 Live，Review/Planner product gates 继续为 `false`。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--4 已完成 value-free usage audit、corrected evaluator、immutable evidence 与 one-shot CLI。CLI injected regression 20/20、factory 27/27、targeted ESLint 与 Server build 通过；preflight、evidence、executor、canary、paired eval 和 terminal seal 均 fail-closed。尚未创建真实 V7 marker/evidence、未运行 Live，Review/Planner product gates 继续为 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在 cloned-response audit 中增加不含数值且 callback 前冻结的 `missing / invalid / positive` usage shape。Task 2 evaluator 允许 actual input `96 / 97 / 42_996`，并由真实 runner 穿过 `48 cases / 26 verified zero-call / 22 runtime / 23 total attempts`；冻结 reservation 最坏成本 `0.18726 < 1.00`。Task 3 建立独立 strict `reserved / attempted / finalized` evidence、V1--V6 existing-only/no-reparse manifest 与 V6 固定哈希；mark-attempted 和 finalizer 都只使用 reserve 时绑定的 fresh canonical root/snapshot，terminal summary 在异步边界前 strict clone+freeze，阻断跨 root、mutable baseline、mutable summary、状态跳过与倒退。Jest evidence 5 passed、Windows native 9 passed / 40 assertions、targeted ESLint 与 Server build exit 0，所有写测试仅在临时目录；真实仓库没有 V7 marker/evidence。marker-first 的部分写入窗口被明确记录为不可重试的 fail-closed `evidence_io` 状态。下一步是 one-shot CLI；两条业务 gate 继续默认 `false`，项目只返回确定性只读建议，当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在 cloned-response audit 中增加不含数值且 callback 前冻结的 `missing / invalid / positive` usage shape。Task 2 evaluator 允许 actual input `96 / 97 / 42_996`，并由真实 runner 穿过 `48 cases / 26 verified zero-call / 22 runtime / 23 total attempts`；冻结 reservation 最坏成本 `0.18726 < 1.00`。Task 3 建立独立 strict `reserved / attempted / finalized` evidence、V1--V6 existing-only/no-reparse manifest 与 V6 固定哈希；mark-attempted 和 finalizer 都只使用 reserve 时绑定的 fresh canonical root/snapshot，terminal summary 在异步边界前 strict clone+freeze，阻断跨 root、mutable baseline、mutable summary、状态跳过与倒退。Task 4 增加只接受精确 V7 confirmation 的 one-shot CLI：在每个 capability 边界复核历史 evidence，reservation 后的异常只允许 terminal seal；preflight throw 固定阻断，evaluator construction throw 单独归类 `executor_init`，其余 evidence/orchestration 异常归类 `evidence_io`，failed canary 不进入 paired eval，thin process 只输出 strict safe summary。CLI injected regression 20/20、factory 27/27、targeted ESLint 与 Server build exit 0；所有写测试仅在临时目录，真实仓库没有 V7 marker/evidence。下一步是 Mock 与 production-composition parity；两条业务 gate 继续默认 `false`，当前不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 usage parity 缺陷复现与设计完成，尚未实施或授权 Live |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--4 离线完成，尚未运行或授权 V7 Live |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V7 one-shot CLI（离线）
+
+目标：为新的 V7 usage-parity profile 提供唯一、显式且可审计的 orchestration 入口，同时保证普通测试、构建、服务启动和业务请求都不会隐式触发真实模型。
+
+为什么：V7 evidence 是一次性 capability。若 CLI 对确认参数、历史完整性、attempt marker、evaluator 构造、canary、paired eval 或 finalizer 的顺序处理不严，可能造成 evidence 被重复消费、失败后继续调用 provider，或把不完整结果误记为质量通过。
+
+主要内容与边界：新增精确参数 `--confirm-controlled-live-v7-deepseek-v4-pro-usage-parity` 与显式 package script；CLI 依次执行 preflight、历史快照、reservation、历史复核、mark attempted、evaluator、canary、paired eval 和 final seal。preflight 异常在 reservation 前固定关闭；reservation 后任一失败最多 terminal finalize 一次。evaluator construction 异常保留为 `executor_init`，其余 evidence/orchestration 异常为 `evidence_io`；failed canary 永不进入 48-case paired eval。成功摘要必须同时满足 23 次 provider attempt、48 case、26 个 verified zero-call、22 个 runtime、48 strict/quality pass、0 critical、P95 与精确 CNY 记账约束。process wrapper 只序列化 strict safe projection，不输出 prompt、response、凭据、URL、header、raw error、stack 或失败 token 数值。
+
+验收：dependency-injected CLI regression 20/20、V7 factory 27/27、五个 Task 4 相关文件 targeted ESLint exit 0、Server build exit 0、`git diff --check` exit 0。测试覆盖错误 confirmation、credential-bearing preflight throw、snapshot/reserve/历史复核/mark/evaluator/paired/finalize 失败、精确成功顺序、failed canary 截止和非法 aggregate。没有执行 V7 package script，没有读取真实 key、调用 provider、创建真实 marker/evidence、启动 Docker/浏览器或开启产品 gate。
+
+回顾时可以问：为什么 evaluator construction 使用 `executor_init` 而不是通用 `evidence_io`？为什么 reservation 后所有失败都必须 terminal seal？为什么 CLI 文件存在不等于已经运行 V7 Live？
 
 ### 2026-07-17 - Phase 6.9.5 V7 preview/actual usage parity 设计
 

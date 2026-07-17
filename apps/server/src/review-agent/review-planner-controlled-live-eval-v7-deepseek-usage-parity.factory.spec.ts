@@ -16,6 +16,7 @@ import {
   DEEPSEEK_V4_PRO_V7_PRICING,
   createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator,
   resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing,
+  validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight,
 } from './review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory';
 
 const v7Env = Object.freeze({
@@ -30,6 +31,21 @@ const v7Env = Object.freeze({
 });
 
 describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
+  it('validates exact V7 preflight without constructing an executor', () => {
+    expect(
+      validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight(v7Env),
+    ).toEqual({ ok: true });
+    expect(
+      validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight({
+        ...v7Env,
+        REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V7_ENABLED: 'false',
+      }),
+    ).toEqual({
+      ok: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+    });
+  });
+
   it('accepts provider actual input 97 above the 96-token preview and accounts it unchanged', async () => {
     const harness = createExecutorHarness({
       usage: { inputTokens: 97, outputTokens: 4 },
