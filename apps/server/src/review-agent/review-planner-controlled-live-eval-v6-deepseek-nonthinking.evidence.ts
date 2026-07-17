@@ -280,7 +280,11 @@ export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceReservation 
 
 type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceCapability =
   Readonly<{
-    finalize(
+    beginFinalization(): boolean;
+    writeSafeProvisional(
+      summary: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
+    ): Promise<boolean>;
+    writeTerminalReplacement(
       summary: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
     ): Promise<boolean>;
     seal(): void;
@@ -452,8 +456,10 @@ export async function finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEv
   }>,
 ): Promise<boolean> {
   const capability = reservationCapabilities.get(input.reservation);
-  if (!capability) return false;
-  const safeWrite = await capability.finalize(evidenceIoSummary(input.summary));
+  if (!capability || !capability.beginFinalization()) return false;
+  const safeWrite = await capability.writeSafeProvisional(
+    evidenceIoSummary(input.summary),
+  );
   if (!safeWrite) {
     capability.seal();
     return false;
@@ -469,7 +475,9 @@ export async function finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEv
     capability.seal();
     return false;
   }
-  const terminalWrite = await capability.finalize(input.summary);
+  const terminalWrite = await capability.writeTerminalReplacement(
+    input.summary,
+  );
   if (!terminalWrite) {
     capability.seal();
     return false;
@@ -561,6 +569,8 @@ function nativeReservation(
   let state: EvidenceState = 'reserved';
   let revision = 0;
   let closed = false;
+  let finalizationClaimed = false;
+  let safeProvisionalWritten = false;
   const close = () => {
     if (closed) return;
     closed = true;
@@ -597,22 +607,38 @@ function nativeReservation(
   });
   const capability: ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceCapability =
     Object.freeze({
-      finalize(summary) {
-        // A reservation has no public terminal writer. The controlled finalizer
-        // alone may close a reserved record, and only with its first fixed
-        // evidence-io record when no provider boundary has been reached.
-        if (state === 'reserved' && !isReservedEvidenceIoClosure(summary)) {
-          return Promise.resolve(false);
-        }
+      beginFinalization() {
+        if (finalizationClaimed || closed) return false;
+        finalizationClaimed = true;
+        return true;
+      },
+      writeSafeProvisional(summary) {
+        // The owner may first write only the bounded evidence-io closure. A
+        // reserved record has never crossed a provider boundary, so its count
+        // must remain zero; an attempted record preserves its safe count.
         if (
-          state !== 'reserved' &&
-          state !== 'attempted' &&
-          state !== 'finalized'
+          !isEvidenceIoClosure(summary) ||
+          (state === 'reserved' && !isReservedEvidenceIoClosure(summary)) ||
+          (state !== 'reserved' && state !== 'attempted')
         ) {
           return Promise.resolve(false);
         }
         const changed = replace('finalized', summary);
-        if (changed) state = 'finalized';
+        if (changed) {
+          state = 'finalized';
+          safeProvisionalWritten = true;
+        }
+        return Promise.resolve(changed);
+      },
+      writeTerminalReplacement(summary) {
+        // Exactly one terminal replacement may follow the safe provisional
+        // record. Re-entering the public controlled finalizer cannot rewrite
+        // either provisional or terminal evidence.
+        if (!safeProvisionalWritten || state !== 'finalized') {
+          return Promise.resolve(false);
+        }
+        const changed = replace('finalized', summary);
+        if (changed) safeProvisionalWritten = false;
         return Promise.resolve(changed);
       },
       seal() {
@@ -677,10 +703,15 @@ function evidenceIoSummary(
 function isReservedEvidenceIoClosure(
   value: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
 ) {
+  return isEvidenceIoClosure(value) && value.providerAttemptCount === 0;
+}
+
+function isEvidenceIoClosure(
+  value: SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary,
+) {
   return (
     value.status === 'invalid_attempted' &&
     value.gate === 'closed' &&
-    value.providerAttemptCount === 0 &&
     value.usageKnown === false &&
     value.diagnosticCode === ReviewPlannerDiagnosticCode.EvidenceIo
   );

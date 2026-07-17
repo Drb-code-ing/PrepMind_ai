@@ -411,6 +411,57 @@ describeNativeWindows(
       ).resolves.toBe(false);
     });
 
+    it('rejects a concurrent and later second controlled finalizer without rewriting the terminal record', async () => {
+      const snapshot =
+        await snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(
+          root,
+        );
+      const reservation =
+        await reserveReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          startedAt: '2026-07-17T00:00:00.000Z',
+          runId: 'v6-native-one-time-controlled-finalizer',
+          historicalSnapshot: snapshot,
+        });
+      await reservation.markAttempted();
+
+      const first =
+        finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          historicalSnapshot: snapshot,
+          reservation,
+          summary: completeSummary(),
+        });
+      const competing =
+        finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          historicalSnapshot: snapshot,
+          reservation,
+          summary: evidenceIoClosure(),
+        });
+
+      await expect(first).resolves.toBe(true);
+      await expect(competing).resolves.toBe(false);
+      const terminal = await readFile(
+        join(root, reservation.relativePath),
+        'utf8',
+      );
+      expect(terminal).toContain('"state":"finalized"');
+      expect(terminal).toContain('"status":"complete"');
+
+      await expect(
+        finalizeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence({
+          root,
+          historicalSnapshot: snapshot,
+          reservation,
+          summary: evidenceIoClosure(),
+        }),
+      ).resolves.toBe(false);
+      await expect(
+        readFile(join(root, reservation.relativePath), 'utf8'),
+      ).resolves.toBe(terminal);
+    });
+
     it('uses the private finalizer to seal a reserved record when the CLI pre-attempt history check fails', async () => {
       const snapshot =
         await snapshotReviewPlannerControlledLiveV6DeepSeekNonThinkingHistoricalEvidence(

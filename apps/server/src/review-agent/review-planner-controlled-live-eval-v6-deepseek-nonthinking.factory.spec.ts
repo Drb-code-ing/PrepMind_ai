@@ -328,6 +328,34 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
     },
   );
 
+  it('exposes only the immutable compliant reported-zero audit aggregate for evidence', async () => {
+    const harness = createExecutorHarness({
+      reasoning: 'reported_zero',
+      reasoningContentPresent: false,
+      reportedReasoningTokens: 0,
+    });
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+        createExecutor: harness.createExecutor,
+      });
+
+    expect(evaluator).toMatchObject({ ok: true });
+    if (!evaluator.ok) throw new Error('expected V6 evaluator');
+    await expect(evaluator.value.runDiagnostic()).resolves.toMatchObject({
+      status: 'complete',
+      providerAttemptCount: 1,
+    });
+
+    const audit = evaluator.value.readEvidenceNonThinkingAudit();
+
+    expect(audit).toEqual({
+      reasoning: 'reported_zero',
+      reasoningContentPresent: false,
+      reportedReasoningTokens: 0,
+    });
+    expect(Object.isFrozen(audit)).toBe(true);
+  });
+
   it('accepts only the complete 48/26/22/22 report under the CNY cap', async () => {
     const harness = createExecutorHarness({
       reasoning: 'not_reported',

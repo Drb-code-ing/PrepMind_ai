@@ -22,6 +22,7 @@ import {
   validateReviewPlannerControlledLiveV6DeepSeekNonThinkingPreflight,
   type ReviewPlannerControlledLiveV6CnyCost,
   type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator,
+  type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit,
 } from './review-planner-controlled-live-eval-v6-deepseek-nonthinking.factory';
 
 const V6_CONFIRMATION =
@@ -265,7 +266,11 @@ export async function executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli
     const summary =
       parsedReport.success &&
       isOpenReport(parsedReport.data, totalAttempts, paired.cost)
-        ? openSummary(parsedReport.data, paired.cost)
+        ? openSummary(
+            parsedReport.data,
+            paired.cost,
+            evaluator.value.readEvidenceNonThinkingAudit(),
+          )
         : attempted(totalAttempts, ReviewPlannerDiagnosticCode.InvalidResponse);
     return close(summary);
   } catch {
@@ -404,6 +409,7 @@ function isOpenReport(
 function openSummary(
   report: Phase695Report,
   cost: ReviewPlannerControlledLiveV6CnyCost,
+  nonThinkingAudit: ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit,
 ): SafeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummary {
   return safeReviewPlannerControlledLiveV6DeepSeekNonThinkingSummarySchema.parse(
     {
@@ -429,10 +435,7 @@ function openSummary(
         p95DurationMs: report.metrics.p95DurationMs,
         productionDecision: report.productionDecision,
       },
-      nonThinkingAudit: {
-        reasoning: 'not_reported',
-        reasoningContentPresent: false,
-      },
+      nonThinkingAudit,
     },
   );
 }

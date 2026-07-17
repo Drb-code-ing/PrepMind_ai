@@ -459,6 +459,45 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking CLI', () => {
       expect(serialized).not.toContain(forbidden);
     }
   });
+
+  it('preserves a reported-zero audit in complete evidence without reducing CNY output accounting', async () => {
+    const reservation = fixtureReservation();
+    let attempts = 1;
+    const result =
+      await executeReviewPlannerControlledLiveV6DeepSeekNonThinkingCli(
+        baseInput({
+          reserveEvidence: jest.fn().mockResolvedValue(reservation) as never,
+          createEvaluator: evaluatorFactory({
+            diagnostic: successfulCanary(),
+            attempts: () => attempts,
+            nonThinkingAudit: {
+              reasoning: 'reported_zero',
+              reasoningContentPresent: false,
+              reportedReasoningTokens: 0,
+            },
+            runPairedEvaluation: jest.fn().mockImplementation(() => {
+              attempts = 23;
+              return Promise.resolve({
+                kind: 'report',
+                report: qualityReport(),
+                cost: qualityCost(),
+              });
+            }),
+          }) as never,
+        }),
+      );
+
+    expect(result).toMatchObject({
+      status: 'complete',
+      aggregateOutputTokens: 225,
+      observedCostCny: 0.00798,
+      nonThinkingAudit: {
+        reasoning: 'reported_zero',
+        reasoningContentPresent: false,
+        reportedReasoningTokens: 0,
+      },
+    });
+  });
 });
 
 function baseInput(overrides: Record<string, unknown>) {
@@ -495,6 +534,11 @@ function evaluatorFactory(input: Record<string, unknown>) {
       runDiagnostic: jest.fn().mockResolvedValue(input.diagnostic),
       runPairedEvaluation: input.runPairedEvaluation ?? jest.fn(),
       providerAttemptCount: input.attempts ?? (() => 0),
+      readEvidenceNonThinkingAudit: () =>
+        input.nonThinkingAudit ?? {
+          reasoning: 'not_reported' as const,
+          reasoningContentPresent: false,
+        },
     },
   }));
 }

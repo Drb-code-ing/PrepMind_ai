@@ -67,6 +67,22 @@ type V6SafeNonThinkingAudit =
 
 type V6DiagnosticCode = ReviewPlannerDiagnosticCode | 'thinking_not_disabled';
 
+/**
+ * The sole non-thinking audit projection permitted to leave the evaluator for
+ * evidence. It deliberately excludes raw provider response, content and all
+ * non-compliant detail.
+ */
+export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit =
+  | Readonly<{
+      reasoning: 'not_reported';
+      reasoningContentPresent: false;
+    }>
+  | Readonly<{
+      reasoning: 'reported_zero';
+      reasoningContentPresent: false;
+      reportedReasoningTokens: 0;
+    }>;
+
 export type DeepSeekV4ProV6Pricing = Readonly<{
   currency: 'CNY';
   nonCachedInputCnyPerMillionTokens: number;
@@ -137,6 +153,7 @@ export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator =
     runDiagnostic(): Promise<ReviewPlannerControlledLiveV6Diagnostic>;
     runPairedEvaluation(): Promise<ReviewPlannerControlledLiveV6DeepSeekNonThinkingPairedResult>;
     providerAttemptCount(): number;
+    readEvidenceNonThinkingAudit(): ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit;
   }>;
 
 export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingFactoryResult =
@@ -299,6 +316,7 @@ export function createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
         return paired;
       },
       providerAttemptCount: () => boundedAttempts(providerAttempts),
+      readEvidenceNonThinkingAudit: () => audit.readEvidenceAggregate(),
     }),
   };
 }
@@ -477,23 +495,42 @@ function resolveV6Preflight(
 
 function createV6AuditAggregate(): V6AuditAggregate {
   let violation = false;
-  let latest: V6SafeNonThinkingAudit | undefined;
+  let reportedZero = false;
   return Object.freeze({
     record(value: V6NonThinkingAudit) {
       const safe = reduceNonThinkingAudit(value);
-      latest = safe;
-      if (!isCompliantNonThinkingAudit(safe)) violation = true;
+      if (!isCompliantNonThinkingAudit(safe)) {
+        violation = true;
+        return;
+      }
+      if (safe.reasoning === 'reported_zero') reportedZero = true;
     },
     hasViolation: () => violation,
-    readLatest: () => latest,
+    readEvidenceAggregate: () => toEvidenceAuditAggregate(reportedZero),
+  });
+}
+
+function toEvidenceAuditAggregate(
+  reportedZero: boolean,
+): ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit {
+  if (reportedZero) {
+    return Object.freeze({
+      reasoning: 'reported_zero' as const,
+      reasoningContentPresent: false,
+      reportedReasoningTokens: 0,
+    });
+  }
+  return Object.freeze({
+    reasoning: 'not_reported' as const,
+    reasoningContentPresent: false,
   });
 }
 
 type V6AuditAggregate = Readonly<{
   record: (audit: V6NonThinkingAudit) => void;
   hasViolation: () => boolean;
-  /** Kept private to this evaluator closure; never emitted to Trace/evidence. */
-  readLatest: () => V6SafeNonThinkingAudit | undefined;
+  /** The only evaluator-to-evidence audit projection. */
+  readEvidenceAggregate: () => ReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceAudit;
 }>;
 
 function reduceNonThinkingAudit(value: unknown): V6SafeNonThinkingAudit {
