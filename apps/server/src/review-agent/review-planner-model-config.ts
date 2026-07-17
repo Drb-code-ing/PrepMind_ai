@@ -102,10 +102,7 @@ function resolveLiveExecutorConfig(
   if (!provider) return null;
 
   if (model === DEEPSEEK_V4_PRO_MODEL) {
-    if (
-      provider.name !== 'deepseek' ||
-      baseURL !== DEEPSEEK_V4_PRO_BASE_URL
-    ) {
+    if (provider.name !== 'deepseek' || baseURL !== DEEPSEEK_V4_PRO_BASE_URL) {
       return null;
     }
     return {
@@ -127,7 +124,9 @@ function resolveLiveExecutorConfig(
 }
 
 function hasForbiddenTransportInput(input: Record<string, unknown>): boolean {
-  return FORBIDDEN_TRANSPORT_INPUT_KEYS.some((key) => Object.hasOwn(input, key));
+  return FORBIDDEN_TRANSPORT_INPUT_KEYS.some((key) =>
+    Object.hasOwn(input, key),
+  );
 }
 
 function resolveProvider(input: {

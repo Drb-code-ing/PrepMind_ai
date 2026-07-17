@@ -74,26 +74,26 @@ export type DeepSeekV4ProV6Pricing = Readonly<{
   hardCapCny: number;
 }>;
 
-export const DEEPSEEK_V4_PRO_V6_PRICING: DeepSeekV4ProV6Pricing =
-  Object.freeze({
+export const DEEPSEEK_V4_PRO_V6_PRICING: DeepSeekV4ProV6Pricing = Object.freeze(
+  {
     currency: 'CNY',
     nonCachedInputCnyPerMillionTokens: V6_INPUT_CNY_PER_MILLION,
     outputCnyPerMillionTokens: V6_OUTPUT_CNY_PER_MILLION,
     hardCapCny: V6_HARD_CAP_CNY,
-  });
+  },
+);
 
-export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingPricing =
-  Readonly<{
-    currency: 'CNY';
-    nonCachedInputCnyPerMillionTokens: number;
-    outputCnyPerMillionTokens: number;
-    hardCapCny: number;
-    maxPairedProviderAttempts: number;
-    maxProviderAttempts: number;
-    reservedInputTokens: number;
-    reservedOutputTokens: number;
-    reservedCostCny: number;
-  }>;
+export type ReviewPlannerControlledLiveV6DeepSeekNonThinkingPricing = Readonly<{
+  currency: 'CNY';
+  nonCachedInputCnyPerMillionTokens: number;
+  outputCnyPerMillionTokens: number;
+  hardCapCny: number;
+  maxPairedProviderAttempts: number;
+  maxProviderAttempts: number;
+  reservedInputTokens: number;
+  reservedOutputTokens: number;
+  reservedCostCny: number;
+}>;
 
 export type ReviewPlannerControlledLiveV6CnyCost =
   ReviewPlannerControlledLiveV6DeepSeekNonThinkingPricing &
@@ -447,7 +447,9 @@ function resolveV6Preflight(
     return null;
   }
   const pricing =
-    resolveReviewPlannerControlledLiveV6DeepSeekNonThinkingPricing(pricingInput);
+    resolveReviewPlannerControlledLiveV6DeepSeekNonThinkingPricing(
+      pricingInput,
+    );
   if (!pricing) return null;
   const config = resolveReviewPlannerLiveExecutorConfig(env);
   if (
@@ -653,8 +655,7 @@ function isExactV6Pricing(value: unknown): value is DeepSeekV4ProV6Pricing {
   const candidate = value as Record<string, unknown>;
   return (
     candidate.currency === 'CNY' &&
-    candidate.nonCachedInputCnyPerMillionTokens ===
-      V6_INPUT_CNY_PER_MILLION &&
+    candidate.nonCachedInputCnyPerMillionTokens === V6_INPUT_CNY_PER_MILLION &&
     candidate.outputCnyPerMillionTokens === V6_OUTPUT_CNY_PER_MILLION &&
     candidate.hardCapCny === V6_HARD_CAP_CNY
   );
@@ -707,8 +708,5 @@ function boundedAttempts(value: number) {
 }
 
 function hasExactProviderAttempts(value: number) {
-  return (
-    Number.isSafeInteger(value) &&
-    value === V6_MAX_PROVIDER_ATTEMPTS
-  );
+  return Number.isSafeInteger(value) && value === V6_MAX_PROVIDER_ATTEMPTS;
 }

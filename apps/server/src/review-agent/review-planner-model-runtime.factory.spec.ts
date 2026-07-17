@@ -53,8 +53,8 @@ describe('review planner model runtime factory', () => {
     const createExecutor = jest.fn<
       StructuredModelExecutor,
       [OpenAICompatibleExecutorConfig]
-    >(() =>
-      () =>
+    >(
+      () => () =>
         Promise.resolve({
           object: { focusIndexes: [0], diagnosis: 'review_pressure' },
         }),
@@ -89,10 +89,20 @@ describe('review planner model runtime factory', () => {
     { label: 'trailing slash', AI_BASE_URL: 'https://api.deepseek.com/v1/' },
     { label: 'explicit port', AI_BASE_URL: 'https://api.deepseek.com:443/v1' },
     { label: 'query', AI_BASE_URL: 'https://api.deepseek.com/v1?source=test' },
-    { label: 'wrong DeepSeek host', AI_BASE_URL: 'https://beta.deepseek.com/v1' },
-    { label: 'wrong provider credential', DEEPSEEK_API_KEY: undefined, OPENAI_API_KEY: 'openai-key' },
+    {
+      label: 'wrong DeepSeek host',
+      AI_BASE_URL: 'https://beta.deepseek.com/v1',
+    },
+    {
+      label: 'wrong provider credential',
+      DEEPSEEK_API_KEY: undefined,
+      OPENAI_API_KEY: 'openai-key',
+    },
     { label: 'schema profiles', schemaProfiles: [] },
-    { label: 'non-thinking audit callback', onNonThinkingAudit: () => undefined },
+    {
+      label: 'non-thinking audit callback',
+      onNonThinkingAudit: () => undefined,
+    },
   ])('does not construct a V4 Pro executor for $label', (override) => {
     const createExecutor = jest.fn<
       StructuredModelExecutor,

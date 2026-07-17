@@ -11,10 +11,14 @@ import {
 
 describe('Review/Planner controlled Live V6 non-thinking evidence', () => {
   it('uses an isolated V6 profile and accepts only the fixed safe complete aggregate', () => {
-    expect(REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE_ID).toBe(
+    expect(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE_ID,
+    ).toBe(
       'phase-6.9.5-review-planner-controlled-live-v6-deepseek-v4-pro-nonthinking',
     );
-    expect(REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE).toEqual({
+    expect(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE,
+    ).toEqual({
       id: REVIEW_PLANNER_CONTROLLED_LIVE_V6_DEEPSEEK_NONTHINKING_PROFILE_ID,
       evidenceSchemaVersion:
         'phase-6.9.5-review-planner-controlled-live-evidence-v6-deepseek-v4-pro-nonthinking',
@@ -73,10 +77,11 @@ describe('Review/Planner controlled Live V6 non-thinking evidence', () => {
   });
 
   it('serializes strict reserved, attempted, and finalized records without legacy-sensitive text', () => {
-    const serialized = serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence(
-      'finalized',
-      completeSummary(),
-    );
+    const serialized =
+      serializeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidence(
+        'finalized',
+        completeSummary(),
+      );
     expect(
       safeReviewPlannerControlledLiveV6DeepSeekNonThinkingEvidenceSchema.parse(
         JSON.parse(serialized),
