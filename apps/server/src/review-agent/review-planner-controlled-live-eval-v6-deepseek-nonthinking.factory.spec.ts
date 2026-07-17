@@ -6,6 +6,7 @@ import {
   phase695ReportSchema,
   REVIEW_MODEL_CANDIDATE_SCHEMA,
   runPhase695ReviewPlannerPaired,
+  type Phase695LiveDependencies,
   type Phase695Report,
   ReviewPlannerDiagnosticCode,
 } from '@repo/agent';
@@ -34,21 +35,27 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
       reasoning: 'not_reported',
       reasoningContentPresent: false,
     });
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      { createExecutor: harness.createExecutor },
-    );
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+        createExecutor: harness.createExecutor,
+      });
 
     expect(evaluator).toMatchObject({ ok: true });
-    expect(harness.createExecutor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'deepseek',
-        baseURL: 'https://api.deepseek.com/v1',
-        model: 'deepseek-v4-pro',
-        structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
-        onNonThinkingAudit: expect.any(Function),
-      }),
-    );
+    expect(harness.createExecutor).toHaveBeenCalledTimes(1);
+    const executorConfig = harness.createExecutor.mock.calls[0]?.[0];
+    if (
+      !executorConfig ||
+      executorConfig.structuredOutputMode !== 'deepseek_v4_pro_nonthinking_json'
+    ) {
+      throw new Error('expected V6 non-thinking executor config');
+    }
+    expect(executorConfig).toMatchObject({
+      provider: 'deepseek',
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-pro',
+      structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+    });
+    expect(typeof executorConfig.onNonThinkingAudit).toBe('function');
     if (!evaluator.ok) throw new Error('expected V6 evaluator');
 
     await expect(evaluator.value.runDiagnostic()).resolves.toEqual({
@@ -85,10 +92,11 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
     async (usage) => {
       const harness = createExecutorHarness(undefined, usage);
       const runPairedEvaluation = jest.fn(async () => validLiveReport());
-      const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-        v6Env,
-        { createExecutor: harness.createExecutor, runPairedEvaluation },
-      );
+      const evaluator =
+        createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+          createExecutor: harness.createExecutor,
+          runPairedEvaluation,
+        });
 
       expect(evaluator).toMatchObject({ ok: true });
       if (!evaluator.ok) throw new Error('expected V6 evaluator');
@@ -131,10 +139,11 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
   ])('closes a V6 non-thinking audit violation: $label', async ({ audit }) => {
     const harness = createExecutorHarness(audit);
     const runPairedEvaluation = jest.fn(async () => validLiveReport());
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      { createExecutor: harness.createExecutor, runPairedEvaluation },
-    );
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+        createExecutor: harness.createExecutor,
+        runPairedEvaluation,
+      });
 
     expect(evaluator).toMatchObject({ ok: true });
     if (!evaluator.ok) throw new Error('expected V6 evaluator');
@@ -163,28 +172,32 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
     { PLANNER_AGENT_MODEL_ENABLED: 'true' },
     { AI_MODEL: 'deepseek-v4-flash' },
     { AI_BASE_URL: 'https://api.deepseek.com' },
-  ])('rejects a missing or closed gate, model, or base mismatch before executor construction: %o', (override) => {
-    const harness = createExecutorHarness();
-    const actual = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      { ...v6Env, ...override },
-      { createExecutor: harness.createExecutor },
-    );
+  ])(
+    'rejects a missing or closed gate, model, or base mismatch before executor construction: %o',
+    (override) => {
+      const harness = createExecutorHarness();
+      const actual =
+        createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
+          { ...v6Env, ...override },
+          { createExecutor: harness.createExecutor },
+        );
 
-    expect(actual).toEqual({
-      ok: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
-    });
-    expect(
-      validateReviewPlannerControlledLiveV6DeepSeekNonThinkingPreflight({
-        ...v6Env,
-        ...override,
-      }),
-    ).toEqual({
-      ok: false,
-      diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
-    });
-    expect(harness.createExecutor).not.toHaveBeenCalled();
-  });
+      expect(actual).toEqual({
+        ok: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+      });
+      expect(
+        validateReviewPlannerControlledLiveV6DeepSeekNonThinkingPreflight({
+          ...v6Env,
+          ...override,
+        }),
+      ).toEqual({
+        ok: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid,
+      });
+      expect(harness.createExecutor).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     {
@@ -214,16 +227,19 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
         reasoning: 'not_reported',
         reasoningContentPresent: false,
       };
-      const harness = createExecutorHarness(
-        undefined,
-        undefined,
-        [cleanAudit, audit],
-      );
+      const harness = createExecutorHarness(undefined, undefined, [
+        cleanAudit,
+        audit,
+      ]);
       const report = await validLiveReport();
-      const runPairedEvaluation = jest.fn(async ({ live }) => {
-        await live.runtime.invokeStructured(pairedRuntimeRequest('paired-audit'));
-        return report;
-      });
+      const runPairedEvaluation = jest.fn(
+        async ({ live }: { live: Phase695LiveDependencies }) => {
+          await live.runtime.invokeStructured(
+            pairedRuntimeRequest('paired-audit'),
+          );
+          return report;
+        },
+      );
       const evaluator =
         createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
           createExecutor: harness.createExecutor,
@@ -247,16 +263,14 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
 
   it('rejects a mismatched CNY price profile before executor construction', () => {
     const harness = createExecutorHarness();
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      {
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
         createExecutor: harness.createExecutor,
         pricing: {
           ...DEEPSEEK_V4_PRO_V6_PRICING,
           outputCnyPerMillionTokens: 7,
         },
-      },
-    );
+      });
 
     expect(evaluator).toEqual({
       ok: false,
@@ -278,40 +292,41 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
         reportedReasoningTokens: 0,
       },
     },
-  ])('$label retains all completion tokens in the private CNY aggregate', async ({ audit }) => {
-    const harness = createExecutorHarness(audit);
-    const report = await validLiveReport();
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      {
-        createExecutor: harness.createExecutor,
-        runPairedEvaluation: jest.fn(async ({ live }) => {
-          await invokePairedRuntimeCalls(live, 'cny-cost');
-          return report;
-        }),
-      },
-    );
+  ])(
+    '$label retains all completion tokens in the private CNY aggregate',
+    async ({ audit }) => {
+      const harness = createExecutorHarness(audit);
+      const report = await validLiveReport();
+      const evaluator =
+        createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+          createExecutor: harness.createExecutor,
+          runPairedEvaluation: jest.fn(async ({ live }) => {
+            await invokePairedRuntimeCalls(live, 'cny-cost');
+            return report;
+          }),
+        });
 
-    expect(evaluator).toMatchObject({ ok: true });
-    if (!evaluator.ok) throw new Error('expected V6 evaluator');
-    await expect(evaluator.value.runDiagnostic()).resolves.toMatchObject({
-      status: 'complete',
-      providerAttemptCount: 1,
-    });
-    const paired = await evaluator.value.runPairedEvaluation();
+      expect(evaluator).toMatchObject({ ok: true });
+      if (!evaluator.ok) throw new Error('expected V6 evaluator');
+      await expect(evaluator.value.runDiagnostic()).resolves.toMatchObject({
+        status: 'complete',
+        providerAttemptCount: 1,
+      });
+      const paired = await evaluator.value.runPairedEvaluation();
 
-    expect(paired).toMatchObject({ kind: 'report' });
-    if (paired.kind !== 'report') throw new Error('expected V6 report');
-    expect(paired.cost.observedOutputTokens).toBe(
-      report.counters.outputTokens + 4,
-    );
-    expect(paired.cost.observedCostCny).toBe(
-      calculateCnyCost(
-        report.counters.inputTokens + 12,
+      expect(paired).toMatchObject({ kind: 'report' });
+      if (paired.kind !== 'report') throw new Error('expected V6 report');
+      expect(paired.cost.observedOutputTokens).toBe(
         report.counters.outputTokens + 4,
-      ),
-    );
-  });
+      );
+      expect(paired.cost.observedCostCny).toBe(
+        calculateCnyCost(
+          report.counters.inputTokens + 12,
+          report.counters.outputTokens + 4,
+        ),
+      );
+    },
+  );
 
   it('accepts only the complete 48/26/22/22 report under the CNY cap', async () => {
     const harness = createExecutorHarness({
@@ -319,16 +334,14 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
       reasoningContentPresent: false,
     });
     const report = await validLiveReport();
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      {
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
         createExecutor: harness.createExecutor,
         runPairedEvaluation: jest.fn(async ({ live }) => {
           await invokePairedRuntimeCalls(live, 'complete-report');
           return report;
         }),
-      },
-    );
+      });
 
     expect(evaluator).toMatchObject({ ok: true });
     if (!evaluator.ok) throw new Error('expected V6 evaluator');
@@ -351,9 +364,9 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
     expect(
       report.counters.strictSuccesses - report.counters.zeroCallCases,
     ).toBe(22);
-    expect(report.counters.inputTokens + report.counters.outputTokens).toBeGreaterThan(
-      0,
-    );
+    expect(
+      report.counters.inputTokens + report.counters.outputTokens,
+    ).toBeGreaterThan(0);
   });
 
   it('rejects a schema-valid paired report that claims 22 runtime cases without invoking the paired runtime', async () => {
@@ -362,7 +375,7 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
       reasoningContentPresent: false,
     });
     const report = await validLiveReport();
-    const runPairedEvaluation = jest.fn(async () => report);
+    const runPairedEvaluation = jest.fn(() => Promise.resolve(report));
     const evaluator =
       createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
         createExecutor: harness.createExecutor,
@@ -387,32 +400,35 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
       reasoningContentPresent: false,
     });
     const report = await validLiveReport();
-    const runPairedEvaluation = jest.fn(async ({ live }) => {
-      for (let index = 0; index < 23; index += 1) {
-        await live.runtime.invokeStructured({
-          runId: `v6-limit-${index}`,
-          task: 'review_suggestion',
-          schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
-          systemPrompt: 'return JSON',
-          userPrompt: 'return JSON',
-          estimatedInputTokens: 12,
-          maxOutputTokens: 4,
-          budget: {
-            maxCalls: 1,
-            usedCalls: 0,
-            maxInputTokens: 12,
-            usedInputTokens: 0,
+    const runPairedEvaluation = jest.fn(
+      async ({ live }: { live: Phase695LiveDependencies }) => {
+        for (let index = 0; index < 23; index += 1) {
+          await live.runtime.invokeStructured({
+            runId: `v6-limit-${index}`,
+            task: 'review_suggestion',
+            schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
+            systemPrompt: 'return JSON',
+            userPrompt: 'return JSON',
+            estimatedInputTokens: 12,
             maxOutputTokens: 4,
-            usedOutputTokens: 0,
-          },
-        });
-      }
-      return report;
-    });
-    const evaluator = createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(
-      v6Env,
-      { createExecutor: harness.createExecutor, runPairedEvaluation },
+            budget: {
+              maxCalls: 1,
+              usedCalls: 0,
+              maxInputTokens: 12,
+              usedInputTokens: 0,
+              maxOutputTokens: 4,
+              usedOutputTokens: 0,
+            },
+          });
+        }
+        return report;
+      },
     );
+    const evaluator =
+      createReviewPlannerControlledLiveV6DeepSeekNonThinkingEvaluator(v6Env, {
+        createExecutor: harness.createExecutor,
+        runPairedEvaluation,
+      });
 
     expect(evaluator).toMatchObject({ ok: true });
     if (!evaluator.ok) throw new Error('expected V6 evaluator');
@@ -429,29 +445,31 @@ describe('Review/Planner controlled Live V6 DeepSeek non-thinking evaluator', ()
 
 function createExecutorHarness(
   audit?: unknown,
-  usage: Readonly<{ inputTokens?: number; outputTokens?: number }> | undefined = {
+  usage:
+    | Readonly<{ inputTokens?: number; outputTokens?: number }>
+    | undefined = {
     inputTokens: 12,
     outputTokens: 4,
   },
   auditSequence?: readonly unknown[],
 ) {
   let invocation = 0;
-  const executor = jest.fn(async () => {
+  const executor = jest.fn(() => {
     const currentAudit = auditSequence?.[invocation] ?? audit;
     invocation += 1;
     if (currentAudit !== undefined && typeof onAudit === 'function') {
-      onAudit(currentAudit as never);
+      onAudit(currentAudit);
     }
-    return {
+    return Promise.resolve({
       object: { focusIndexes: [0], diagnosis: 'review_pressure' },
       ...(usage === undefined ? {} : { usage }),
-    };
+    });
   }) as jest.MockedFunction<StructuredModelExecutor>;
   let onAudit: ((audit: unknown) => void) | undefined;
   const createExecutor = jest.fn((config: OpenAICompatibleExecutorConfig) => {
     onAudit =
       config.structuredOutputMode === 'deepseek_v4_pro_nonthinking_json'
-        ? (config.onNonThinkingAudit as ((audit: unknown) => void) | undefined)
+        ? config.onNonThinkingAudit
         : undefined;
     return executor;
   });
@@ -481,18 +499,25 @@ function pairedRuntimeRequest(runId: string) {
 async function invokePairedRuntimeCalls(
   live: Readonly<{
     runtime: Readonly<{
-      invokeStructured: (input: ReturnType<typeof pairedRuntimeRequest>) => Promise<unknown>;
+      invokeStructured: (
+        input: ReturnType<typeof pairedRuntimeRequest>,
+      ) => Promise<unknown>;
     }>;
   }>,
   prefix: string,
 ) {
   for (let index = 0; index < 22; index += 1) {
-    await live.runtime.invokeStructured(pairedRuntimeRequest(`${prefix}-${index}`));
+    await live.runtime.invokeStructured(
+      pairedRuntimeRequest(`${prefix}-${index}`),
+    );
   }
 }
 
 async function validLiveReport(): Promise<Phase695Report> {
-  const mock = await runPhase695ReviewPlannerPaired({ mode: 'mock', now: () => 0 });
+  const mock = await runPhase695ReviewPlannerPaired({
+    mode: 'mock',
+    now: () => 0,
+  });
   const caseEntries = mock.caseEntries.map((entry) =>
     entry.executionKind === 'runtime'
       ? { ...entry, usage: { ...entry.usage, outputTokens: 10 } }
