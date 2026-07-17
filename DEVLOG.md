@@ -1,14 +1,14 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--7 已完成离线工程、composition parity、success seal、one-shot CLI、全量门禁、两轮独立复审与权威文档同步。V7 offline engineering ready；controlled-Live 未运行且未授权，两个产品 gate 继续默认 `false`。
+> 2026-07-18 — Phase 6.9.5 V7 唯一 controlled-Live 已终态关闭：`invalid_attempted / closed / providerAttemptCount=23 / usageKnown=false / evidence_io`。once marker 已消费且不可重跑；无 success seal、无 token/cost 证据，不得声称质量通过、零成本或产品可用。两个产品 gate 继续默认 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
-更新时间：2026-07-17
+更新时间：2026-07-18
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V7 Task 1--7 已完成 preview/actual usage parity、无数值 raw usage audit、one-shot CLI、production parity、全量离线门禁、success seal 与两轮独立复审。成功必须由私有 `success_candidate` 与 exclusive、hash/history-bound seal 共同构成；任一 unsealed/mismatched candidate 只能由唯一公开 reader 投影为不含 token/cost 的 `evidence_io`。历史 snapshot 为 `treeHash=9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba` / 18 entries；focused V7 为 AI 190、Server 86、native 15/130 assertions；全量离线门为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409。两轮复审均 PASS，Critical/Important/Minor 均为 0。真实仓库没有 V7 marker/evidence；controlled-Live 未运行且未授权。Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。下一步只能在用户新的单独授权后执行唯一 V7 Live；全部 Agent 架构完成后才进入 Phase 6.10 分层记忆。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立且不可重跑的关闭 profile。V7 离线 Task 1--7 已完成，但用户授权的唯一 controlled-Live 已封存为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。目录只有 once marker 与不含 token/cost 的 245-byte JSON，无 success seal；V1--V6 仍为 `18 entries / 9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`。最窄可证边界是：全部 23 个允许的 provider attempts 被安全计数后，paired-result/orchestration failure 或 evidence finalization/history I/O failure 被折叠为 `evidence_io`；现有脱敏终态无法进一步区分。不得重跑 V7，不进入 Docker/浏览器/main/push，Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--7 离线完成，controlled-Live 待单独授权 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；V7 唯一 Live 为 `23 / false / evidence_io`，已关闭且不可重跑 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -73,6 +73,20 @@
 
 ## 近期关键记录
 
+### 2026-07-18 - Phase 6.9.5 V7 controlled-Live 终态关闭
+
+目标：在不启用产品 gate 的前提下，执行获批的唯一 V7 DeepSeek V4 Pro controlled-Live，最多一个 canary + 22 个 paired runtime。
+
+主要事实：根 Bun 进程仅对本轮显式设置 Live/eval gate，两个产品 gate 固定为 `false`。零网络 preflight 确认 `deepseek-v4-pro / deepseek-v1 / nonthinking JSON / 4500ms`、V1--V6 18-entry tree hash 与 CNY 1.00 hard cap。唯一运行耗时约 49.7s，终态 stdout 与 public reader 都为 `invalid_attempted / closed / providerAttemptCount=23 / usageKnown=false / evidence_io`。
+
+证据：once marker SHA-256 `1920c68d8fd10d77af1cf63731e46ed8e9c02270093a024302b24eb97fa85bda`；JSON `review-planner-live-20260717T161356046Z-e26f821fdc46.json`，245 bytes，SHA-256 `79c07fed05a011a6344e7df3aecd9c616824c6a7cd07873693f3ddfaab1a63ba`。无 success seal、无 aggregate token/cost，V1--V6 tree hash 运行后仍为 `9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`。
+
+根因边界：两个独立只读复核将问题收窄到“全部 23 个允许的 provider attempts 被安全计数后，paired-result/orchestration failure 或 evidence finalization/history I/O failure 被折叠为 `evidence_io`”。当前字节可以排除已 committed success、纯 seal-create failure、preflight/canary 前失败和 `success_candidate` 的 downgrade-write failure；但无法唯一区分 paired-result failure、CLI final history verify、finalizer internal verify/terminal replace、candidate 后瞬时 history failure + 成功 downgrade，也不能反推 provider 质量、usage 或账单。
+
+边界：V7 once marker 已消费，严禁重跑、删除或重建 evidence。任一门失败按设计停止 Docker/浏览器/main/push，两个产品 gate 保持 `false`。
+
+回顾时可以问：为什么 23 attempts 不等于 22 个 paired case 质量通过？为什么 `evidence_io` 的有损脱敏使得子阶段不可唯一恢复？为什么没有 success seal 必须停止产品验收？
+
 ### 2026-07-17 - Phase 6.9.5 V7 Task 7 独立复审与 success seal 收口
 
 目标：完成 contract/security 与 acceptance/operations 两轮独立离线复审，并关闭 terminal evidence replacement 后历史漂移可能留下假成功证据的 TOCTOU 窗口。
@@ -81,9 +95,9 @@
 
 主要内容与边界：成功先写成公开 schema 不接受的私有 `success_candidate`，单次 25ms quiescence 后 fresh 复核 V1--V6，再 exclusive-create 与 evidence leaf、candidate SHA-256、历史 tree hash 和 nonce commitment 绑定的无数值 success seal。唯一公开 reader 只有在 once marker、candidate、seal、hash/commitment 与 fresh history 全部一致时才投影逻辑 `finalized/complete`；任一缺失、伪造、reparse、降级写失败或 seal 创建失败都固定返回不含 token/cost 的 `evidence_io`。无 provider/file retry loop，reservation 仍只公开 `relativePath/markAttempted`，产品 gate 未改变。
 
-验收：缺陷回归先观察到 RED；修复后 evidence Jest `5/5`、Windows native `15/15 / 130 assertions`、targeted ESLint、Server build 与 diff check 通过。contract/security 和 acceptance/operations 复审均为 PASS，Critical/Important/Minor 均为 0。未运行 V7 package script、controlled-Live、Docker 或浏览器，未创建真实 V7 marker/evidence，未开启业务 gate。
+当时验收：缺陷回归先观察到 RED；修复后 evidence Jest `5/5`、Windows native `15/15 / 130 assertions`、targeted ESLint、Server build 与 diff check 通过。contract/security 和 acceptance/operations 复审均为 PASS，Critical/Important/Minor 均为 0。该离线复审时尚未运行 V7 package script、controlled-Live、Docker 或浏览器，未创建真实 V7 marker/evidence，未开启业务 gate；后续唯一 Live 终态见上文 2026-07-18 记录。
 
-回顾时可以问：为什么 standalone `complete` JSON 不再是成功证据？为什么 downgrade 写失败后没有 success seal 仍能 fail-closed？为什么 Task 7 全部通过仍必须重新申请唯一 V7 Live 授权？
+回顾时可以问：为什么 standalone `complete` JSON 不再是成功证据？为什么 downgrade 写失败后没有 success seal 仍能 fail-closed？为什么 Task 7 离线通过当时仍不构成 Live 授权，而该唯一授权在 2026-07-18 消耗后不得再次运行？
 
 ### 2026-07-17 - Phase 6.9.5 V7 全量离线验收
 
@@ -93,7 +107,7 @@
 
 主要内容与边界：focused gate 为 AI 190、Server 86、Windows native evidence 9/40 assertions；V1--V6 snapshot 为 integrity-v3、18 entries、aggregate tree hash `9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`，并固定 V6 marker/JSON 哈希。全量 gate 为 AI 190、Agent 406、Server 980 passed/30 skipped、Web 409；AI/types typecheck、AI/Server/Web lint、Server/Web build、Compose 静态 `config --quiet` 与 diff check 均 exit 0。Compose 没有执行 `up/build/down` 或输出渲染配置。V7 package script、controlled-Live、Docker 服务、浏览器、真实 key、provider、真实 V7 evidence/marker 均未触达。
 
-结论：V7 offline engineering ready；controlled-Live not run and not authorized。Review/Planner product path remains deterministic because both model gates are false。即使未来 V7 Live 成功，仍需单独 Live 授权，然后完成 Docker/API/可见浏览器/Trace 验收、合并 main 后复验与远程推送，才能讨论 Phase 6.9.5 是否完成。
+当时结论：V7 offline engineering ready；controlled-Live not run and not authorized。Review/Planner product path remains deterministic because both model gates are false。该结论只描述 2026-07-17 的离线收口；后续唯一 V7 Live 已于 2026-07-18 终态关闭，不能按当时设想继续产品验收。
 
 回顾时可以问：为什么 190/86/9 的 focused gate 与 190/406/980/409 的全量 gate 都不能证明 provider 质量？为什么只读读取 V1--V6 tree hash 不会消费 V7 once marker？为什么 Compose `config --quiet` 不是 Docker 启动验收？
 
@@ -105,7 +119,7 @@
 
 主要内容与边界：新增 sanitized composition identity，仅返回 `deepseek / deepseek-v4-pro / deepseek-v1 / deepseek_v4_pro_nonthinking_json / 4500ms / review-model-candidate-v1`，对象冻结且不含 URL、凭据、pricing 或 executor；同一测试把它与 production private/public resolver 逐字段 cross-compare，并把 schemaId 锚定到 canary 实际使用的 canonical schema。V7 eval gate 不在 production allowlist；业务 gate 缺失或均为 `false` 时，即使 eval gate 为 true 也不会构造 executor，只返回 deterministic Mock suggestions。直接 Mock runner 的 48-case 决定固定为 `mock_quality_not_evidence`；strict fake 穿过 V7 evaluator 的另一条回归仅用于 live-shaped engineering contract，外层固定标为 `mock_quality_not_live_evidence`。两条离线证据计数均为 `26` verified zero-call、`22` runtime、`48` strict、`48` quality pass、`0` critical，均不能充当 provider evidence。模型 schema 只允许选择本地 snapshot 的 index/order，不能生成或修改 FSRS、minutes、links、owner facts、persisted records 或 write permissions。
 
-验收：focused factory/config/runtime 61/61、`@repo/agent` 406/406、ReviewAgent owner-scope server 7/7；静态扫描确认 V7 eval gate 未进入 Docker、Web、worker 或 server config allowlist。没有运行 V7 package script、Live、Docker 或浏览器，没有创建真实 V7 marker/evidence，也没有开启 Review/Planner 产品 gate。
+当时验收：focused factory/config/runtime 61/61、`@repo/agent` 406/406、ReviewAgent owner-scope server 7/7；静态扫描确认 V7 eval gate 未进入 Docker、Web、worker 或 server config allowlist。该离线验收时没有运行 V7 package script、Live、Docker 或浏览器，没有创建真实 V7 marker/evidence，也没有开启 Review/Planner 产品 gate；后续唯一 Live 终态见上文 2026-07-18 记录。
 
 回顾时可以问：为什么 parity helper 使用 `deepseek-v1` identity 而不返回真实 URL？为什么 48/48 Mock 仍不能说明 provider 可用？为什么 eval gate 为 true 也不能开启产品 Review/Planner runtime？
 
@@ -117,7 +131,7 @@
 
 主要内容与边界：新增精确参数 `--confirm-controlled-live-v7-deepseek-v4-pro-usage-parity` 与显式 package script；CLI 依次执行 preflight、历史快照、reservation、历史复核、mark attempted、evaluator、canary、paired eval 和 final seal。preflight 异常在 reservation 前固定关闭；reservation 后任一失败最多 terminal finalize 一次。evaluator construction 异常保留为 `executor_init`，其余 evidence/orchestration 异常为 `evidence_io`；failed canary 永不进入 48-case paired eval。成功摘要必须同时满足 23 次 provider attempt、48 case、26 个 verified zero-call、22 个 runtime、48 strict/quality pass、0 critical、P95 与精确 CNY 记账约束。process wrapper 只序列化 strict safe projection，不输出 prompt、response、凭据、URL、header、raw error、stack 或失败 token 数值。
 
-验收：dependency-injected CLI regression 20/20、V7 factory 27/27、五个 Task 4 相关文件 targeted ESLint exit 0、Server build exit 0、`git diff --check` exit 0。测试覆盖错误 confirmation、credential-bearing preflight throw、snapshot/reserve/历史复核/mark/evaluator/paired/finalize 失败、精确成功顺序、failed canary 截止和非法 aggregate。没有执行 V7 package script，没有读取真实 key、调用 provider、创建真实 marker/evidence、启动 Docker/浏览器或开启产品 gate。
+当时验收：dependency-injected CLI regression 20/20、V7 factory 27/27、五个 Task 4 相关文件 targeted ESLint exit 0、Server build exit 0、`git diff --check` exit 0。测试覆盖错误 confirmation、credential-bearing preflight throw、snapshot/reserve/历史复核/mark/evaluator/paired/finalize 失败、精确成功顺序、failed canary 截止和非法 aggregate。该 CLI 离线验收时没有执行 V7 package script，没有读取真实 key、调用 provider、创建真实 marker/evidence、启动 Docker/浏览器或开启产品 gate；后续唯一 Live 终态见上文 2026-07-18 记录。
 
 回顾时可以问：为什么 evaluator construction 使用 `executor_init` 而不是通用 `evidence_io`？为什么 reservation 后所有失败都必须 terminal seal？为什么 CLI 文件存在不等于已经运行 V7 Live？
 
@@ -131,7 +145,7 @@
 
 替代方案：只删除 96-token 检查虽然能修复复现，但下一次缺 usage 时仍无法定位来源；改用 direct-fetch 或 Qwen 会同时改变 transport/provider，扩大变量。采用“最小 parity 修复 + 安全 usage-shape audit”，既保持 production parity，也避免 generic terminal evidence。
 
-设计当时验收：已完成代码数据流复核与 `97/4` 离线复现，当时尚未修改实现或创建 V7 evidence/marker。其后 Task 1--6 已按 TDD 计划完成，最新离线结论见上文“V7 全量离线验收”；未来任何 V7 Live 仍需新的单独授权。
+设计当时验收：已完成代码数据流复核与 `97/4` 离线复现，当时尚未修改实现或创建 V7 evidence/marker。其后 Task 1--6 已按 TDD 计划完成，离线结论见上文“V7 全量离线验收”；当时这些离线结果不构成 Live 授权，唯一 V7 授权已于 2026-07-18 消耗并终态关闭。
 
 回顾时可以问：为什么 input preview 不能限制 provider actual usage？为什么 97/4 fixture 不能改写 V6 历史 provider 事实？为什么 V7 Live 通过仍不等于产品 gate 自动开启？
 
@@ -157,7 +171,7 @@
 
 验收：独立解析 V6 JSON，确认上述六个最终字段；检查 once marker 存在；扫描 evidence 禁止内容无命中；`git status` 显示 V1--V5 evidence 无改动。V6 的 48-case、Docker authenticated suggestions/plan、可见浏览器、main 合并、main 复验和远程推送均未执行。
 
-后续状态：V6 不能重跑。其后的 V7 已完成 Task 1--6 离线实施，仍需 Task 7 两轮复审与新的单独 Live 授权；两个业务 gate 在任何独立质量与产品验收完成前继续保持 `false`。
+当时后续状态：V6 不能重跑；截至该记录写入时，V7 已完成 Task 1--6 离线实施，仍需 Task 7 两轮复审与新的单独 Live 授权。后续唯一 V7 Live 已于 2026-07-18 终态关闭，当前仍保持两个业务 gate 为 `false`，不得重跑 V7。
 
 回顾时可以问：为什么 `usageKnown=false` 不能被记为零成本？为什么新的诊断必须拥有自己的 marker/evidence 而不是重跑 V6？
 
