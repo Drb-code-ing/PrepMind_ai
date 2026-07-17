@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-18 — Phase 6.9.5 V7 唯一 controlled-Live 已终态关闭：`invalid_attempted / closed / providerAttemptCount=23 / usageKnown=false / evidence_io`。once marker 已消费且不可重跑；无 success seal、无 token/cost 证据，不得声称质量通过、零成本或产品可用。两个产品 gate 继续默认 `false`。
+> 2026-07-18 — Phase 6.9.5 V8 stage-diagnostics completion 设计已冻结：V7 继续只读且不可重跑；V8 使用独立零字节 append-only stage markers、one-shot Live、Review/Planner 分组件产品验收、main 安全复验与保留 Docker 资源的关机协议。两个产品 gate 继续默认 `false`，当前产品仍 deterministic。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-18
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立且不可重跑的关闭 profile。V7 离线 Task 1--7 已完成，但用户授权的唯一 controlled-Live 已封存为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。目录只有 once marker 与不含 token/cost 的 245-byte JSON，无 success seal；V1--V6 仍为 `18 entries / 9f8cc9a7d5ba83d630fa5806f19aaa74066352de92bb04631813c17feaa230ba`。最窄可证边界是：全部 23 个允许的 provider attempts 被安全计数后，paired-result/orchestration failure 或 evidence finalization/history I/O failure 被折叠为 `evidence_io`；现有脱敏终态无法进一步区分。不得重跑 V7，不进入 Docker/浏览器/main/push，Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v7 均为独立且不可重跑的关闭 profile；V7 终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`，只有 once marker 和不含 token/cost 的 245-byte JSON。最窄可证边界仍是：全部 23 个允许的 provider attempts 被安全计数后，paired-result/orchestration failure 或 evidence finalization/history I/O failure 被折叠为 `evidence_io`。新的 V8 completion 设计已冻结，使用完全隔离的零字节 append-only stage markers、V1--V7 snapshot、one-shot Live 与 Review/Planner 分组件产品验收；尚未实现或运行。当前 Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；V7 唯一 Live 为 `23 / false / evidence_io`，已关闭且不可重跑 |
+| Phase 6.9.5  | 验收未完成 | V7 已关闭；V8 stage-diagnostics、产品验收、main 复验和关机收口设计已冻结，待 TDD 实施 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,20 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-18 - Phase 6.9.5 V8 stage-diagnostics completion 设计
+
+目标：在不重跑或改写 V7 的前提下，为新的 one-shot lineage 建立可定位的 durable stage evidence，并把真实模型质量门、产品验收、main 复验、推送和安全关机串成完整完成条件。
+
+为什么：V7 的 `evidence_io` 同时覆盖 paired-result/orchestration 和 finalization/history 多个边界，23 attempts 不能证明 paired report 返回或质量通过；只给 terminal JSON 增加 stage 又无法覆盖 terminal write 自身失败。现有运维文档还把 Review/Planner 回滚错误地指向 `web`，且没有冻结 main 复验语义、精确产品 fixture 与关机前凭据/进程收口。
+
+主要设计：V8 使用 15 个固定文件名、零字节、append-only、exclusive-create stage markers；success seal 绑定完整 stage manifest、candidate、历史 tree 与 commitment。保留 DeepSeek V4 Pro non-thinking、48/26/22、23 attempts、4500ms、CNY 1.00 和两个产品 gate `false` 的质量边界。V8 complete 后按 Review-only -> 重建 default-off `server` -> Planner-only -> 再次 default-off 的顺序验收 API、`/plan`、`/today`、Trace、owner isolation 和只读事实；已消费 paired lineage 不在 main 重跑。
+
+安全边界：stage marker 无正文，不含 prompt、response、case id、token、cost、credential、URL 或 raw error；V1--V7 全部只读。最终只允许 `docker compose stop` 保留容器/镜像/volume/data，禁止 `down`、`down -v`、prune、reset、flush 或 wipe。
+
+验收：设计自检无 TBD/TODO/未定项；两条独立只读审计已分别覆盖 contract/security 与 acceptance/operations，发现的 server 回滚、main 复验、产品证据和关机协议缺口已写入设计与相关权威文档。尚未写生产代码、创建 V8 evidence、调用 provider、启动 Docker 或浏览器。
+
+回顾时可以问：为什么零字节 append-only markers 比 terminal `diagnosticStage` 更可靠？为什么 Review/Planner gate 恢复必须重建 `server` 而不是 `web`？为什么 main 不能重跑已经消费的 paired lineage？
 
 ### 2026-07-18 - Phase 6.9.5 V7 controlled-Live 终态关闭
 

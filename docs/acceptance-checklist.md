@@ -725,4 +725,21 @@ V7 不是 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live
 
 Task 7 contract/security 与 acceptance/operations 两轮离线复审已通过，但 V7 实际 Live terminal gate 未通过；原定的 `48/26/22/48/48/0`、P95、usage/cost 与 success seal 均不能从现有 `evidence_io` 反推。因此本轮不得开启任一 Review/Planner 产品 gate 或进入产品验收。
 
+V8 completion contract 已在 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagnostics-completion-design.md` 冻结。实施和验收必须额外满足：
+
+1. V8 使用独立 profile/eval gate/confirmation/evidence/once marker/success seal，V1--V7 继续只读；15 个 stage marker 必须是固定文件名、零字节、append-only、exclusive-create 的合法连续前缀。
+2. V8 Live 前完成 RED/GREEN、native race/reparse/write-denied、fake 48/26/22/48/48/0、完整静态门与两轮独立复审。paired Live 时 `REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`。
+3. 只有 V8 public reader 读取 committed success，且 stage manifest、candidate、success seal、V1--V7 tree、23 attempts、P95、positive usage、CNY cap 和全部质量计数匹配，才可进入产品验收。
+4. 产品验收使用两个 `phase695-v8-accept-<UTC>` 隔离账号和精确 id 清单：
+   - Review-only：`Review=true / Planner=false`，authenticated suggestions 的 Review observation 必须为 `attempted=true / candidate_applied / live_candidate / degraded=false / positive usage`，Planner 必须为 `not_eligible / local_deterministic`；headed `/plan` 与对应 Trace 必须通过。
+   - 立即恢复两 gate 为 `false`，`--force-recreate server`，探测 suggestions 回到 deterministic；不得只重建 `web`。
+   - Planner-only：`Review=false / Planner=true`，执行对称 API 断言、headed `/today` 与 Trace；随后再次恢复 default-off 并重建 `server`。
+   - Token A 不得读取 Token B 的 owner facts 或 Trace。模型调用前后 Card、ReviewLog、ReviewTask、ReviewPreference、WrongQuestion、deck 与计划事实必须一致。
+5. Trace 必须实际持久化，steps 为 `deterministic_review / review_candidate / deterministic_planner / planner_candidate`，目标 candidate 的 disposition 为 `candidate_applied`、usage 为正、pricing 状态与模型一致；不得包含 prompt、response、key、URL 或 raw error。
+6. 分支与 main 的产品验收各最多 4 次模型请求。runner 与 server 都为每组件持有 `remainingRequests=2` 原子 admission：runner 在任何 await/HTTP dispatch/`route.continue()` 前同步 check-and-decrement，server 在 `ModelAgentRuntime` 前以一次性 capability 再 claim；任一失败都 provider 前 abort。显式 API 消耗一次，Playwright route 只放行一个 suggestions network request并在浏览器侧阻断第二个，Trace 差值必须证明每组件恰好 2 次 live attempts；owner-isolation 只在 gate-off/default-off server 下做零 Live 读取。两轮总 reservation 不超过 `15_600 / 3_520`；价格 profile 固定为 `deepseek-v4-pro-cny-noncached-2026-07-18-v8-product-acceptance`，来源是用户提供的 2026-07-18 DeepSeek 官方价格截图，按非缓存 input CNY `3/1M`、output CNY `6/1M` 和 verified 整数 token 精确计算，未舍入值判 cap、evidence 8 位 `ROUND_HALF_UP`；worst case `0.06792000`，hard cap CNY `0.10000000`。超出 admission、usage 或费用立即关闭 gate，不刷新重试；V4 Pro 的现有 USD Trace 必须保持 `pricingKnown=false / costEstimate=0`，不得编造汇率。
+7. 合并 main 后不得重跑已消费的 V8 paired lineage。main 重新读取 committed evidence，运行完整静态门与 default-off Docker smoke，再按上述 hard cap 重放 Review-only/Planner-only 产品路径；它是产品 replay，不改写 paired evidence。
+8. 清理按记录的精确账号、refresh token、Card/log/task/preference、WrongQuestion/deck、Trace 与浏览器 storage 执行并断言零残留。禁止 reset、flush、wipe、`down`、`down -v`、prune 或 volume 删除。
+9. 推送后必须核对本地 main、`origin/main` 与 evidence SHA；关机前清除进程级 Live/eval/gate/key，重建 default-off `server`，关闭浏览器/Bun/辅助进程，并只用 `docker compose ... stop` 停止服务、保留全部 Docker 资源和数据。
+10. branch/main 证据必须分别写入 `docs/acceptance/evidence/phase-6-9-5-v8-product-acceptance/{branch,main}/acceptance.json`、`plan.png`、`today.png`。JSON 只保存安全 observation/Trace 汇总、哈希账号 id、commit SHA、`pairedEvidenceSha256 / planScreenshotSha256 / todayScreenshotSha256`、调用/usage/CNY cost 计数和验收布尔值；JSON 不自哈希，不得保存 email、token、cookie、prompt、response、用户事实、原始 Trace、key、URL、header、raw error 或 stack。
+
 任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。

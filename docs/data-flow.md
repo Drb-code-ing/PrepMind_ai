@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-18。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 仍在 Phase 6.9.5 验收未完成状态。V7 唯一 controlled-Live 已以 `23 / false / evidence_io` 关闭，无 success seal/token/cost，once marker 已消费且不可重跑。两条业务 gate 默认 `false`，当前产品路径仍 deterministic；下一步只能为新 lineage 设计受治理的 stage diagnostics。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-18。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 仍在 Phase 6.9.5 验收未完成状态。V7 唯一 controlled-Live 已以 `23 / false / evidence_io` 关闭且不可重跑；独立 V8 零正文 stage-diagnostics 与产品验收设计已冻结但尚未实现或运行。两条业务 gate 默认 `false`，当前产品路径仍 deterministic。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -528,6 +528,7 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 - `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。
 - 2026-07-16~17 的 v1--v6 server-only controlled-Live profile 均在独立 once marker 下终态关闭，计数不可合并；v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 表示 provider boundary 被触达一次但 usage 不可验证，不是 zero-call、零成本、账单或质量结论。私有 evidence 不进入用户建议、Trace、Docker 或浏览器数据流；六个 marker 均已消耗，当前阶段不得重跑 profile 或执行 V6 48-case/Docker/浏览器后续验收；两个业务 gate 继续默认 `false`。
 - V7 诊断工程不改变产品数据流。唯一 Live 已封存 once marker 与 `finalized evidence_io` JSON，无 success seal、token/cost、prompt、response、credential、raw error 或 quality counters。这些证据只允许推导 23 次 provider attempts 与 terminal gate 关闭，不允许把模型候选注入 `/review-agent/suggestions`。因此当前 suggestions 继续走 deterministic read-only path，V7 不得重跑或作为 Docker/Web/worker/API 入口。
+- V8 设计同样不改变当前产品数据流：它只为新的 server-only paired lineage 增加零字节、固定枚举、append-only stage markers 与独立 evidence。只有 V8 committed success 后才允许临时启用 Nest `server` 的单个 Review 或 Planner gate；Web/worker 不消费这些 gate，且每个组件验完必须重建 default-off `server`。
 - 今日任务页读取当天 plan 摘要，展示“今日预计 N 分钟”和容量状态；plan 查询失败不影响今日复习主列表。
 - 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs，并用客户端 ECharts 渲染趋势、评分分布和卡片状态。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。

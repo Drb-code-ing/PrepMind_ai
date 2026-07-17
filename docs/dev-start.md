@@ -905,6 +905,40 @@ KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
 
-验收结束后必须把根 `.env`、`apps/web/.env.local` 等本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`，保留 5000/4000 与 4500/4500 timeout，再用同一条精确 `web` 重建命令让 Mock/default-off 生效。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
+验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`，保留 5000/4000 与 4500/4500 timeout。Router/Verifier 属于 `web` runtime，恢复后精确重建 `web`；Review/Planner 只由 Nest `server` 消费，恢复后必须精确重建并探测 `server`，不能用重建 `web` 代替：
+
+```powershell
+docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web server
+```
+
+只验收 Review/Planner 时只需重建 `server`。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
 
 Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。
+
+### Phase 6.9.5 产品验收与关机收口
+
+V8 controlled-Live 质量门通过后，一次只开启一个 Review/Planner gate，并只重建 `server`：
+
+```powershell
+# Review-only：当前会话显式设置 Review=true、Planner=false 后执行
+docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate server
+
+# Review 验完后先把两个 gate 都恢复 false，再执行同一条 server 命令
+
+# Planner-only：当前会话显式设置 Review=false、Planner=true 后执行
+docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate server
+
+# Planner 验完后再次恢复两个 gate false，并执行同一条 server 命令
+```
+
+每次重建后都要读取 `/review-agent/suggestions` 的 `modelObservations`，确认目标组件与另一个组件的 disposition/provenance 符合验收表；恢复后两者必须回到 deterministic。不要把 gate 或 key 写入命令行、日志、文档或截图。
+
+合并 main 后不重跑已经消费的 paired lineage；只重新读取 committed success evidence，完成静态/构建、Docker default-off 和受独立费用上限约束的产品 API/可见浏览器/Trace replay。
+
+若用户要求验收后关机，必须先完成：精确删除本轮合成账号/业务记录/Trace 和浏览器 storage；清除当前 PowerShell 的 Live/eval/gate/key；重建 default-off `server`；关闭 headed 浏览器、Playwright、本地 Bun 与辅助进程；确认 Git clean 且本地/远程 main SHA 一致。最后只使用：
+
+```powershell
+docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker stop
+```
+
+`stop` 保留容器、镜像、network、PostgreSQL/MinIO volume 与所有数据。关机收口禁止 `down`、`down -v`、prune、container/image/volume 删除、数据库 reset、Redis flush 或 MinIO wipe。
