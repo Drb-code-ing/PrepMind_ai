@@ -81,9 +81,13 @@
 
 主要设计：V8 使用 15 个固定文件名、零字节、append-only、exclusive-create stage markers；success seal 绑定完整 stage manifest、candidate、历史 tree 与 commitment。保留 DeepSeek V4 Pro non-thinking、48/26/22、23 attempts、4500ms、CNY 1.00 和两个产品 gate `false` 的质量边界。V8 complete 后按 Review-only -> 重建 default-off `server` -> Planner-only -> 再次 default-off 的顺序验收 API、`/plan`、`/today`、Trace、owner isolation 和只读事实；已消费 paired lineage 不在 main 重跑。
 
+实现复审补强：native close-failure RED 证明“直接写公开 marker/seal，再把 close 成功作为 committed 条件”无法被跨进程 reader 从相同字节验证。V8 因此让 once、15 个 stage 与 seal 都先写 fixed private prepare leaf 并 durable-close，再在同一 no-reparse directory HANDLE 下 existing-only 重开并用 `NtSetInformationFile` exclusive rename 到各自 public leaf；rename 是唯一 commit 点，之后 handle close 仅是 cleanup，不删除或撤销已提交 leaf。路径型 `MoveFileExW`、rename 后新增成功门、失败删除/补偿与 provider 重跑均禁止。
+
+durability 口径同时收紧为 local fixed NTFS 上的 process crash/restart，不宣称物理断电或其他文件系统；实现必须有 volume preflight 与 rename 前/后 child hard-exit evidence。prepare leaf 由 committed leaf 内部唯一派生，V8 只允许 once/15-stage/success 固定目标。任一 prepare/public leaf 遗留都阻断后续 reservation；若失败发生在首个 prepare 创建前，只能证明本 invocation 零重试/零 provider，任何新 invocation 仍需用户重新授权。
+
 安全边界：stage marker 无正文，不含 prompt、response、case id、token、cost、credential、URL 或 raw error；V1--V7 全部只读。最终只允许 `docker compose stop` 保留容器/镜像/volume/data，禁止 `down`、`down -v`、prune、reset、flush 或 wipe。
 
-验收：设计自检无 TBD/TODO/未定项；两条独立只读审计已分别覆盖 contract/security 与 acceptance/operations，发现的 server 回滚、main 复验、产品证据和关机协议缺口已写入设计与相关权威文档。尚未写生产代码、创建 V8 evidence、调用 provider、启动 Docker 或浏览器。
+验收：设计自检无 TBD/TODO/未定项；两条独立只读审计已分别覆盖 contract/security 与 acceptance/operations。Task 1 durable I/O 与 Task 2 V8 evidence/state machine 已按 TDD 提交，但 native close-failure 复审又暴露 final publication 悖论，当前正在按本节 rename commit amendment 补 RED/GREEN；尚未创建真实 V8 evidence/once marker、调用 provider、启动 Docker 或浏览器。
 
 回顾时可以问：为什么零字节 append-only markers 比 terminal `diagnosticStage` 更可靠？为什么 Review/Planner gate 恢复必须重建 `server` 而不是 `web`？为什么 main 不能重跑已经消费的 paired lineage？
 

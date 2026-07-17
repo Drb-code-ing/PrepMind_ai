@@ -4,7 +4,7 @@
 
 **Goal:** 在不重跑或改写 V1--V7 的前提下，为 ReviewAgent / PlannerAgent 建立可定位、一次性、durable 的 V8 controlled-Live lineage，并完成默认关闭、只读、owner-scoped 的 Docker/API/可见浏览器/Trace 产品验收。
 
-**Architecture:** V8 复用现有 DeepSeek V4 Pro non-thinking evaluator 和 48-case paired contract，但使用全新 evidence profile、15 个零字节 stage markers、独立 once marker、strict candidate 与 hash-bound success seal。Windows evidence 写入通过 no-reparse HANDLE、write-through、`NtFlushBuffersFile` 与成功 close 形成 durability barrier；生产验收另加默认关闭、双层原子 admission，确保分支和 main 各最多 4 次产品 Live 请求。
+**Architecture:** V8 复用现有 DeepSeek V4 Pro non-thinking evaluator 和 48-case paired contract，但使用全新 evidence profile、15 个零字节 stage markers、独立 once marker、strict candidate 与 hash-bound success seal。普通 JSON evidence 通过 no-reparse HANDLE、write-through、`NtFlushBuffersFile` 与成功 close 形成 durability barrier；once、stage 与 final seal 的公开 leaf 都先 durable-close private prepare leaf，再以同一绑定目录下的 HANDLE-relative exclusive rename 作为唯一 commit 点。生产验收另加默认关闭、双层原子 admission，确保分支和 main 各最多 4 次产品 Live 请求。
 
 **Tech Stack:** Bun, TypeScript, NestJS 11, Jest, Bun native tests, Zod, Bun FFI/Windows NT API, Docker Compose, PostgreSQL, DeepSeek OpenAI-compatible API, headed browser acceptance.
 
@@ -62,15 +62,21 @@ replaceDurableFile(
   targetLeafName: string,
   contents: string,
 ): void;
+commitExclusiveDurableFileViaRename(
+  committedLeafName: string,
+  contents: string,
+):
+  | { committed: true; cleanupStatus: 'closed' | 'close_unverified' }
+  | { committed: false; stage: 'prepare_create' | 'prepare_write' | 'prepare_flush' | 'prepare_close' | 'prepare_reopen' | 'rename' };
 ```
 
-创建/替换的新 HANDLE 使用 `FILE_WRITE_THROUGH | FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE`，写完调用 `NtFlushBuffersFile`；只有 write、flush、close 全部成功才返回。任何一步失败只抛固定错误码，不重试、不回显路径或原始错误。
+创建/替换的新 HANDLE 使用 `FILE_WRITE_THROUGH | FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE`，写完调用 `NtFlushBuffersFile`；只有 write、flush、close 全部成功才返回。publication primitive 从 `committedLeafName` 内部唯一派生 `${committedLeafName}.prepare`，拒绝非 safe leaf、`.prepare` 输入、目标已存在或覆盖；先 durable-close prepare，再从同一绑定 directory HANDLE 重开、复核并用 `NtSetInformationFile` + `ReplaceIfExists=false` rename。rename 成功即 committed，之后 close 只返回 cleanup 状态。任何 commit 前失败只返回固定 stage，不重试、不删除、不回显路径或原始错误。
 
 - [ ] **Step 4: 增加 write/flush/close 故障注入与 reparse 测试并保持 GREEN**
 
 Run: `bun test apps/server/src/review-agent/windows-reparse-safe-relative-io.bun.test.ts`
 
-Expected: PASS；duplicate、junction/reparse、write denied、flush denied、close denied 均 fail-closed。
+Expected: PASS；duplicate、junction/reparse、write denied、flush denied、close denied 均 fail-closed；prepare/reopen/rename failure 不产生 public leaf，rename 后 close failure 返回 `committed:true/close_unverified` 且 fresh reader 可验证。额外 child-process tests 只在 local fixed NTFS 运行：rename 前 hard-exit 不得有 public leaf，rename 后 cleanup 前 hard-exit 必须被新进程 reader 识别为 committed；其他 volume preflight fail-closed。
 
 - [ ] **Step 5: 提交 durable I/O**
 
@@ -126,7 +132,7 @@ V8 snapshot 必须固定 V1--V7 tree，并 pin V7 marker SHA `1920c68d8fd10d77af
 
 - [ ] **Step 4: 实现 durable candidate/terminal/seal 与 public reader**
 
-`once marker`、safe provisional、candidate、terminal、seal 全部使用 Task 1 的 durable API。success seal strict 字段仅为：
+`once marker` 与 15 个 stage marker 使用 `commitExclusiveDurableFileViaRename` 发布零字节 public leaf；safe provisional、candidate、terminal 使用 checked-close durable replacement并由后继 committed stage 证明；seal 同样使用 rename commit，固定 private prepare leaf 不进入 public schema。success seal strict 字段仅为：
 
 ```ts
 schemaVersion, evidenceLeaf, candidateSha256, historicalTreeHash,
@@ -141,7 +147,7 @@ Run: `bun --filter @repo/server test -- review-planner-controlled-live-eval-v8-s
 
 Run: `bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v8-stage-diagnostics.evidence.native.bun.test.ts`
 
-Expected: PASS；seal 成功 close 前永不返回 committed success，15 个 stage 的任一 write/flush/close 失败均停在最后 durable 前缀且零重试。
+Expected: PASS；once/stage/seal 的 prepare/reopen/rename failure 不公开目标 leaf；rename 后 cleanup close failure 不撤销 committed。candidate/terminal replacement 的 write/flush/close 失败均停止且零重试，且无后继 committed stage 时 reader 只投影 `evidence_io`。
 
 - [ ] **Step 6: 提交 V8 evidence/state machine**
 
