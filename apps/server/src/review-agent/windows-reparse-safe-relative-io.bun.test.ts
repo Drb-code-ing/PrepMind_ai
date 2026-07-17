@@ -10,7 +10,23 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { openWindowsNoReparseChildDirectory } from './windows-reparse-safe-relative-io';
+import * as windowsReparseSafeIo from './windows-reparse-safe-relative-io';
+
+const { openWindowsNoReparseChildDirectory } = windowsReparseSafeIo;
+type DurableFaultStage = 'write' | 'flush' | 'close';
+type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
+
+function requireDurableFaultInjectorForTests() {
+  const setter = (
+    windowsReparseSafeIo as typeof windowsReparseSafeIo & {
+      __setDurableFaultInjectorForTests?: (
+        injector: DurableFaultInjector | null,
+      ) => void;
+    }
+  ).__setDurableFaultInjectorForTests;
+  expect(typeof setter).toBe('function');
+  return setter!;
+}
 
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
 
@@ -27,6 +43,13 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
   });
 
   afterEach(async () => {
+    (
+      windowsReparseSafeIo as typeof windowsReparseSafeIo & {
+        __setDurableFaultInjectorForTests?: (
+          injector: DurableFaultInjector | null,
+        ) => void;
+      }
+    ).__setDurableFaultInjectorForTests?.(null);
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
   });
@@ -58,6 +81,83 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       expect(directory.readRegularFile('terminal.json')).toEqual(
         Buffer.from('new'),
       );
+    } finally {
+      directory.close();
+    }
+  });
+
+  it.each([
+    {
+      failedStage: 'write' as const,
+      expectedError: 'WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED',
+      expectedCalls: ['write', 'close'] as const,
+      artifactMustBeAbsent: true,
+    },
+    {
+      failedStage: 'flush' as const,
+      expectedError: 'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
+      expectedCalls: ['write', 'flush', 'close'] as const,
+      artifactMustBeAbsent: true,
+    },
+    {
+      failedStage: 'close' as const,
+      expectedError: 'WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED',
+      expectedCalls: ['write', 'flush', 'close'] as const,
+      artifactMustBeAbsent: false,
+    },
+  ])(
+    'fails closed without retry or error leakage when durable $failedStage is denied',
+    async ({
+      failedStage,
+      expectedError,
+      expectedCalls,
+      artifactMustBeAbsent,
+    }) => {
+      const calls: DurableFaultStage[] = [];
+      requireDurableFaultInjectorForTests()((stage) => {
+        calls.push(stage);
+        return stage === failedStage;
+      });
+      const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+      const leafName = `private-${failedStage}-stage`;
+      const contents = `private-${failedStage}-contents`;
+      let continued = false;
+      let failure: unknown;
+      try {
+        directory.createExclusiveDurableFile(leafName, contents);
+        continued = true;
+      } catch (error) {
+        failure = error;
+      }
+      try {
+        expect(failure).toEqual(new Error(expectedError));
+        expect((failure as Error).message).not.toContain(leafName);
+        expect((failure as Error).message).not.toContain(contents);
+        expect(calls).toEqual(expectedCalls);
+        expect(calls.filter((stage) => stage === failedStage)).toHaveLength(1);
+        expect(continued).toBe(false);
+        if (artifactMustBeAbsent) {
+          expect(() => directory.readRegularFile(leafName)).toThrow(
+            'WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED',
+          );
+        }
+      } finally {
+        directory.close();
+      }
+    },
+  );
+
+  it('keeps durable creation on the bound directory after its path is replaced by a junction', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    const detachedDocs = join(root, 'docs-detached');
+    try {
+      await rename(join(root, 'docs'), detachedDocs);
+      await symlink(outside, join(root, 'docs'), 'junction');
+
+      directory.createExclusiveDurableFile('stage-020', '');
+
+      expect(directory.readRegularFile('stage-020')).toEqual(Buffer.alloc(0));
+      await expect(readdir(outside)).resolves.toEqual([]);
     } finally {
       directory.close();
     }

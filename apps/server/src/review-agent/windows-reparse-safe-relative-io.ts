@@ -43,6 +43,17 @@ type BunFfi = Readonly<{
   ptr: (value: Uint8Array) => number;
 }>;
 
+type DurableFaultStage = 'write' | 'flush' | 'close';
+type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
+let durableFaultInjectorForTests: DurableFaultInjector | null = null;
+
+/** Test-only native fault seam. Production callers must leave this unset. */
+export function __setDurableFaultInjectorForTests(
+  injector: DurableFaultInjector | null,
+) {
+  durableFaultInjectorForTests = injector;
+}
+
 type WindowsNativeDirectory = Readonly<{
   handle: number;
   guardHandles: readonly number[];
@@ -734,10 +745,37 @@ function writeAndFlushDurableNativeFile(
   file: number,
   contents: string,
 ) {
-  if (Buffer.byteLength(contents, 'utf8') > 0) {
-    writeAndFlushNativeFile(parent, file, contents);
-    return;
+  const bytes = Buffer.from(contents, 'utf8');
+  injectDurableFaultForTests(
+    'write',
+    'WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED',
+  );
+  if (bytes.byteLength > 0) {
+    const ioStatus = Buffer.alloc(16);
+    assertNtSuccess(
+      Number(
+        parent.ntdll.symbols.NtWriteFile(
+          file,
+          0,
+          0,
+          0,
+          parent.ffi.ptr(ioStatus),
+          parent.ffi.ptr(bytes),
+          bytes.byteLength,
+          0,
+          0,
+        ),
+      ),
+      'WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED',
+    );
+    if (ioStatus.readBigUInt64LE(8) !== BigInt(bytes.byteLength)) {
+      throw new Error('WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED');
+    }
   }
+  injectDurableFaultForTests(
+    'flush',
+    'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
+  );
   assertNtSuccess(
     Number(
       parent.ntdll.symbols.NtFlushBuffersFile(
@@ -747,6 +785,19 @@ function writeAndFlushDurableNativeFile(
     ),
     'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
   );
+}
+
+function injectDurableFaultForTests(
+  stage: DurableFaultStage,
+  failureCode: string,
+) {
+  let shouldFail = false;
+  try {
+    shouldFail = Boolean(durableFaultInjectorForTests?.(stage));
+  } catch {
+    shouldFail = true;
+  }
+  if (shouldFail) throw new Error(failureCode);
 }
 
 function sanitizeDurableWriteError(error: unknown) {
@@ -811,7 +862,17 @@ function closeDurableNativeHandle(
   parent: WindowsNativeDirectory,
   handle: number,
 ) {
-  if (!Boolean(parent.kernel.symbols.CloseHandle(handle))) {
+  let closed = false;
+  try {
+    closed = Boolean(parent.kernel.symbols.CloseHandle(handle));
+  } catch {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
+  injectDurableFaultForTests(
+    'close',
+    'WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED',
+  );
+  if (!closed) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
   }
 }
