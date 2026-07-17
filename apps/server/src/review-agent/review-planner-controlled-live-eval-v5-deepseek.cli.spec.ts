@@ -293,6 +293,7 @@ function fixtureReservation(input: { markAttempted?: boolean } = {}) {
       'docs/acceptance/evidence/phase-6-9-5-controlled-live-v5-deepseek-v4-pro/test.json',
     markAttempted: jest.fn().mockResolvedValue(input.markAttempted ?? true),
     finalize: jest.fn().mockResolvedValue(true),
+    seal: jest.fn(),
   };
 }
 

@@ -182,6 +182,7 @@ export type ReviewPlannerControlledLiveV5DeepSeekEvidenceReservation =
     finalize(
       summary: SafeReviewPlannerControlledLiveV5DeepSeekSummary,
     ): Promise<boolean>;
+    seal(): void;
   }>;
 
 const HISTORICAL_EVIDENCE_TREES = [
@@ -383,11 +384,15 @@ function nativeReservation(
       return Promise.resolve(changed);
     },
     finalize(summary) {
-      if (state !== 'attempted') return Promise.resolve(false);
+      if (state !== 'attempted' && state !== 'finalized')
+        return Promise.resolve(false);
       const changed = replace('finalized', summary);
       if (changed) state = 'finalized';
-      close();
       return Promise.resolve(changed);
+    },
+    seal() {
+      if (state !== 'finalized') return;
+      close();
     },
   });
 }

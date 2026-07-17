@@ -335,11 +335,28 @@ async function finish(
   try {
     await dependencies.verifyHistoricalEvidence({ root, snapshot });
   } catch {
-    return attempted(
+    safe = attempted(
       safe.providerAttemptCount,
       ReviewPlannerDiagnosticCode.EvidenceIo,
     );
+    try {
+      if (!(await evidence.finalize(safe))) {
+        return attempted(
+          safe.providerAttemptCount,
+          ReviewPlannerDiagnosticCode.EvidenceIo,
+        );
+      }
+    } catch {
+      return attempted(
+        safe.providerAttemptCount,
+        ReviewPlannerDiagnosticCode.EvidenceIo,
+      );
+    } finally {
+      evidence.seal();
+    }
+    return safe;
   }
+  evidence.seal();
   return safe;
 }
 

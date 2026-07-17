@@ -56,6 +56,7 @@ describeNativeWindows(
 
       await expect(reservation.markAttempted()).resolves.toBe(true);
       await expect(reservation.finalize(completeSummary())).resolves.toBe(true);
+      reservation.seal();
 
       const evidence = await readFile(
         join(root, reservation.relativePath),
@@ -84,6 +85,7 @@ describeNativeWindows(
         });
       await reservation.markAttempted();
       await reservation.finalize(completeSummary());
+      reservation.seal();
 
       await expect(
         verifyReviewPlannerControlledLiveV5HistoricalEvidence({
