@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 CLI/Mock-ready; no V6 controlled-Live attempt has occurred. Review/Planner product gates remain `false`; the once-only script must not run without a separate explicit Live approval. If native I/O denies both the attempt and safe-closure replacements, stdout remains the fixed `evidence_io` closure while the initial durable reserved record stays non-success/no-attempt and its consumed private handle is sealed; no durable result is fabricated.
+> 2026-07-17 — Phase 6.9.5 V6 的 Task 1--6 离线闭环已记录：typed non-thinking transport、resolver/factory、evidence/CLI、Mock 与独立复审均完成；未发生 V6 controlled-Live attempt，V6 evidence/marker 仍不存在。Review/Planner product gates 继续为 `false`；唯一脚本必须等用户另行明确授权。最大 reservation 为 CNY `0.18726 / 1.00`，不是实际账单、真实模型通过或生产启用结论。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计、Task 1 的零网络 typed non-thinking transport、Task 2 的 Review/Planner resolver 精确绑定和 Task 3 的离线受限 evaluator。它只允许精确 DeepSeek V4 Pro `https://api.deepseek.com/v1`、固定 `thinking:{type:'disabled'}` transport、一个 fact-free canary 与最多 22 个 paired runtime 尝试；V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，因此不会构造业务 executor；不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 的 Task 1--6 已完成离线闭环，但尚未创建 V6 runtime evidence 目录、marker 或真实调用。它只允许精确 DeepSeek V4 Pro `https://api.deepseek.com/v1`、固定 `thinking:{type:'disabled'}` transport、一个 fact-free canary 与最多 22 个 paired runtime 尝试；V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，因此不会构造业务 executor；未获新的用户授权不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 已完成 Task 1 零网络 typed non-thinking wire transport、Task 2 精确默认关闭 resolver 绑定与 Task 3 离线 evaluator；尚无 V6 provider/evidence/Live，业务 gate 关闭 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 Task 1--6 已完成离线 transport/resolver/factory/evidence/CLI/Mock/复审；尚无 V6 provider/evidence/Live，业务 gate 关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V6 离线验收与 Live 授权边界
+
+目标：把 V6 已完成的非网络工程事实、不可跨越的真实模型边界和下一次唯一授权动作统一写入项目记录，避免把 fake CLI、Mock、静态测试或历史 v1--v5 evidence 误称为真实模型通过。
+
+主要内容与做法：V6 仅让精确 `deepseek-v4-pro` + `https://api.deepseek.com/v1` 的 Review/Planner candidate 使用 typed non-thinking JSON transport；delegate 前固定写入 `thinking:{type:'disabled'}`，本地拒绝 tool/schema drift 与 reasoning-content response。业务 gate 继续默认关闭，普通 Chat 与 V4 Flash `json_object` 不变。factory audit 的 complete evidence 只接受 `not_reported` 或 `reported_zero` reasoning projection，并按完整 provider completion aggregate 计算 CNY，不从 output 中扣减 reasoning detail。V1--V5 evidence tree/marker 使用 immutable no-reparse snapshot；V6 reservation 是 private owner-bound one-time terminal capability，安全 provisional 写入后才可按 terminal outcome seal。离线 fake CLI 历史回归为 31/31；hardening 后 focused V6 suite 为 61/61、native evidence 为 15/15。一次 fresh Mock proof 为 48 cases / 26 verified zero-call / 22 Mock runtime / 48 strict / 0 critical，固定决定 `mock_quality_not_evidence`，临时 `.tmp` 输出已删除。
+
+边界：本次没有运行 V6 CLI、provider、Docker、浏览器或产品 API；当前 V6 evidence 目录和 once marker 均不存在。最多预算固定为 1 个 fact-free canary + 22 个 paired case，即 23 次，worst-case reservation CNY `0.18726`、hard cap CNY `1.00`；它不是实际费用、供应商账单、Live passed 或生产 enabled。两个业务 gate 始终保持 `false`，不自动回退 Qwen。
+
+验收：lint-style 修复提交后重新运行 AI、Agent、Server、shared types、Web 的测试/lint/build，`docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker config --quiet` 与 `git diff --check` 均 exit 0；无 V6 marker/evidence 产生。下一动作必须由用户单独明确授权一次且仅一次执行：`bun --filter @repo/server eval:review-planner:live:v6:deepseek-nonthinking -- --confirm-controlled-live-v6-deepseek-v4-pro-nonthinking`。在授权前停止于离线状态。
+
+回顾时可以问：为什么 V6 的 complete evidence 只允许两种 reasoning aggregate，却仍以完整 completion 记账？为什么 V6 private provisional/seal 能防止一次性 evidence 被伪造为成功？为什么 `48/48` Mock 和 CNY `0.18726` reservation 都不能说明项目已能使用真实 Review/Planner 模型？
 
 ### 2026-07-17 - Phase 6.9.5 V6 non-thinking evidence 隔离（离线）
 
