@@ -96,9 +96,9 @@ v5 使用与生产候选相同的 OpenAI-compatible JSON-object executor、`deep
 
 这只证明一次真实 provider 调用在结构化输出边界关闭；它不保存 provider 原文，也不证明普通 Chat 不可用、零成本、质量失败或模型通过。v5 marker 已消耗，严禁重跑。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续为 `false`。此前 workspace package-script 在本机返回 provider 前 `preflight_invalid`，没有创建 v5 evidence，也没有 provider 调用；最终 evidence 来自通过同一 preflight 的根 Bun 入口。后续只能先做新的零网络根因设计与独立复审。
 
-## 2026-07-17 V6 离线验收记录（尚未执行 controlled-Live）
+## 2026-07-17 V6 controlled-Live 终态诊断（已执行且关闭）
 
-V6 是独立于 v1--v5 的 DeepSeek V4 Pro non-thinking lineage，不是 v5 retry。Task 1--5 的离线工程与本节 Task 6 的事实记录均已完成，但没有创建 V6 evidence、once marker 或任何 provider attempt；V6 evidence 目录和 marker 当前均不存在。
+V6 是独立于 v1--v5 的 DeepSeek V4 Pro non-thinking lineage，不是 v5 retry。Task 1--6 的离线工程完成后，用户已明确授权并仅执行一次精确 V6 命令。运行只在子进程临时覆盖 Live 配置，根 `.env` 的默认 Mock 配置没有改写；未启动 Docker 或浏览器。
 
 ### 已完成的离线边界
 
@@ -111,30 +111,28 @@ V6 是独立于 v1--v5 的 DeepSeek V4 Pro non-thinking lineage，不是 v5 retr
 
 | 项目 | 已观察结果 | 不可推导的结论 |
 | --- | --- | --- |
-| CLI | CLI 只接受精确确认参数；本 Task 未执行 CLI、没有 provider 调用 | 不代表 canary、48-case 或真实模型通过 |
+| CLI / canary | 精确确认命令已执行一次；最终 runtime evidence 为一次 provider canary 尝试 | 不代表 48-case、真实模型通过或可开启 gate |
 | fake CLI 回归 | hardening 前的 fake CLI 为 `31/31` | 不是当前 V6 Live 证据 |
-| focused V6 suite / native evidence | hardening 后 focused suite `61/61`，native evidence `15/15` | 不代表 evidence 已在磁盘创建 |
+| focused V6 suite / native evidence | hardening 后 focused suite `61/61`，native evidence `15/15` | 不代表 provider 质量通过 |
 | fresh Mock | 一次离线 proof 为 48 cases / 26 verified zero-call / 22 Mock runtime / 48 strict / 0 critical，决定为 `mock_quality_not_evidence`；`.tmp` artifact 随后已删除 | Mock 不是 provider 调用、质量通过或 gate 启用授权 |
 | provider ceiling | 1 个 fact-free canary + 至多 22 个 paired runtime case，即最多 23 次；最坏 reservation 为 CNY `0.18726`，hard cap CNY `1.00` | 不等于实际账单、已发生费用或可自动开启 gate |
 
 完整离线验证在 lint-style 修复提交后重新执行：AI、Agent、Server、shared types、Web 的测试/lint/build，Compose `config --quiet` 与 `git diff --check` 均 exit 0。该记录只说明 V6 pre-Live 工程边界可复核，不声明 Live passed、production enabled 或真实模型已可在项目中使用。
 
-### 唯一允许的下一步
+### 唯一一次 V6 Live 的终态
 
-必须由用户在本记录之后单独、明确授权一次 V6 controlled-Live；不得从此前设计同意、v5 记录、Mock 或 Docker 成功推断授权。授权后只允许执行一次以下命令，期间两条业务 gate 仍保持 `false`：
-
-```powershell
-bun --filter @repo/server eval:review-planner:live:v6:deepseek-nonthinking -- --confirm-controlled-live-v6-deepseek-v4-pro-nonthinking
-```
-
-在获得该授权前，不运行该命令、不启动 Docker/浏览器、不进入产品 API 验收，也不创建 V6 evidence/marker。若想回顾，可问：“为什么 V6 只投影 `not_reported`/`reported_zero`，却仍按完整 completion 记账？”或“为什么 23 次 CNY `0.18726` reservation 仍不足以开启 Review/Planner gate？”
+- evidence：`docs/acceptance/evidence/phase-6-9-5-controlled-live-v6-deepseek-v4-pro-nonthinking/review-planner-live-20260717T111332841Z-9d02337a8c85.json`；同目录 once marker 已被消耗。
+- 可解析最终字段为 `state=finalized`、`status=invalid_attempted`、`gate=closed`、`providerAttemptCount=1`、`usageKnown=false`、`diagnosticCode=usage_unverifiable`。
+- 这表示 provider boundary 已被触达一次，但 usage 无法验证；运行时按 fail-closed 终止。它不能被解释为 zero-call、零成本、供应商账单、模型质量失败或模型质量通过。
+- V6 不能重跑，不能进入 48-case quality decision、Docker authenticated suggestions/plan、可见浏览器、main 合并或远程推送。两个业务 gate 继续保持 `false`。
+- V1--V5 的 marker/evidence 未改写；本次 V6 evidence 也不保存 prompt、用户事实、模型输出、凭据、URL、HTTP 原文错误、stack、token 或成本数值。
 
 ## 当前结论与未执行项
 
-- 已完成：v1--v5 独立关闭证据的留档，以及 V6 typed non-thinking transport、resolver/factory/evidence/CLI/Mock/复审和本次离线事实记录。V6 仍没有 marker、evidence 或 provider attempt。
-- 未执行且不得借用任一 profile 的结果补做：V6 controlled-Live、48-case quality decision、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
+- 已完成：v1--v5 独立关闭证据的留档，以及 V6 typed non-thinking transport、resolver/factory/evidence/CLI/Mock/复审和一次终态 Live evidence 的封存。
+- 未执行且不得借用任一 profile 的结果补做：V6 48-case quality decision、Docker authenticated suggestions/plan、可见浏览器状态、合成账号与 Trace 清理、main 复验和远程推送。
 - 当前没有真实模型质量通过结论、没有项目内 `candidate_applied` 验收，也没有可开启任一 Review/Planner 业务 gate 的授权。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续保持默认 `false`。
-- v1--v5 都不可重跑，V6 也只能在新的用户明确授权后执行一次；未获授权时不得创建它的 marker/evidence 或运行 48-case、Docker、浏览器验收。任何 V6 terminal outcome 都必须保持业务 gate 关闭，直到后续独立产品验收获得批准。
+- v1--v6 都是独立且不可重跑的 terminal profile。若要继续，只能先基于 `usage_unverifiable` 做新的零网络根因设计与独立复审，再由用户决定是否批准一个全新的、隔离的 profile；不得把它称为 V6 retry，也不得拼接任何历史计数。任何后续 profile 在独立产品验收前都必须保持业务 gate 关闭。
 
 ## 回顾入口
 
@@ -143,4 +141,4 @@ bun --filter @repo/server eval:review-planner:live:v6:deepseek-nonthinking -- --
 - 为什么 worker readiness 的 CLI 回归要绕开 Bun package-script wrapper？
 - 为什么每个独立 profile 的一次 provider 尝试且 `usageKnown=false` 都不能被记为 zero-call、零成本或模型验收通过？
 - 为什么 v1--v5 的不可变 snapshot 与 V6 私有 provisional/seal 都需要同时存在？
-- 为什么 V6 的 23-call CNY reservation、Mock `48/48` 和离线 `61/61` 都不能被说成真实模型可用？
+- 为什么 V6 的一次 `usage_unverifiable` provider attempt 既不是 zero-call，也不能推导实际费用或模型质量？
