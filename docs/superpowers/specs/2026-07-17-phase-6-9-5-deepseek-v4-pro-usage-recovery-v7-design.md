@@ -113,8 +113,9 @@ provider_usage_invalid
 sdk_usage_lost
 output_limit_exceeded
 usage_reservation_exceeded
-cost_limit_exceeded
 ```
+
+`cost_limit_exceeded` 不作为独立终态：冻结 reservation 与单价下的最坏成本为 `42,996 * 3 / 1M + 9,712 * 6 / 1M = CNY 0.18726`，严格小于 CNY `1.00` hard cap，因此任何 cost overflow 都必然先违反 token reservation。V7 在 preflight 固定验证 `reservedCostCny <= hardCapCny`；该不变量失败时 provider 前关闭，运行期则以 `usage_reservation_exceeded` 表示可达的费用边界。保留不可达的独立诊断会制造无法验收的伪 contract。
 
 失败 evidence 只保存 diagnostic，不保存 token/cost；complete evidence 才允许保存正 aggregate input/output tokens、冻结 price profile、CNY cost 与 quality counters。
 

@@ -54,8 +54,7 @@ export type ReviewPlannerControlledLiveV7DiagnosticCode =
   | 'provider_usage_invalid'
   | 'sdk_usage_lost'
   | 'output_limit_exceeded'
-  | 'usage_reservation_exceeded'
-  | 'cost_limit_exceeded';
+  | 'usage_reservation_exceeded';
 
 export type DeepSeekV4ProV7Pricing = Readonly<{
   currency: 'CNY';
@@ -369,7 +368,10 @@ async function runV7PairedSafely(input: {
       return { kind: 'failed', diagnosticCode: 'usage_reservation_exceeded' };
     }
     if (!cost.withinHardCap) {
-      return { kind: 'failed', diagnosticCode: 'cost_limit_exceeded' };
+      return {
+        kind: 'failed',
+        diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+      };
     }
     if (
       !hasExactProviderAttempts(input.readAttempts()) ||

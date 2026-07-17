@@ -4,6 +4,7 @@ import type {
 } from '@repo/ai';
 import {
   phase695ReportSchema,
+  PLANNER_MODEL_CANDIDATE_SCHEMA,
   REVIEW_MODEL_CANDIDATE_SCHEMA,
   runPhase695ReviewPlannerPaired,
   type Phase695LiveDependencies,
@@ -58,14 +59,18 @@ describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
       inputTokens: 97,
       outputTokens: 4,
     });
-    expect(
-      resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing(),
-    ).toMatchObject({
+    const pricing =
+      resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing();
+    expect(pricing).toMatchObject({
       maxProviderAttempts: 23,
       reservedInputTokens: 42_996,
       reservedOutputTokens: 9_712,
       hardCapCny: 1,
     });
+    expect(pricing?.reservedCostCny).toBe(0.18726);
+    expect(pricing?.reservedCostCny).toBeLessThanOrEqual(
+      pricing?.hardCapCny ?? 0,
+    );
   });
 
   it.each([
@@ -320,6 +325,44 @@ describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
     expect(evaluator.value.providerAttemptCount()).toBe(23);
   });
 
+  it('runs the canonical 48 cases through the real paired runner and V7 runtime', async () => {
+    const harness = createExecutorHarness({ dynamicFixtureCandidates: true });
+    const evaluator =
+      createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator(v7Env, {
+        createExecutor: harness.createExecutor,
+        runPairedEvaluation: runPhase695ReviewPlannerPaired,
+      });
+
+    expect(evaluator).toMatchObject({ ok: true });
+    if (!evaluator.ok) throw new Error('expected V7 evaluator');
+    await evaluator.value.runDiagnostic();
+    const paired = await evaluator.value.runPairedEvaluation();
+
+    expect(paired).toMatchObject({
+      kind: 'report',
+      report: {
+        mode: 'live',
+        counters: {
+          caseEntries: 48,
+          zeroCallCases: 26,
+          runtimeInvocations: 22,
+          strictSuccesses: 48,
+          qualityPasses: 48,
+          criticalFailures: 0,
+        },
+        productionDecision: 'quality_gate_passed',
+      },
+    });
+    if (paired.kind !== 'report') throw new Error('expected V7 paired report');
+    expect(
+      paired.report.caseEntries
+        .filter((entry) => entry.executionKind === 'zero_call')
+        .every((entry) => entry.zeroCallVerified),
+    ).toBe(true);
+    expect(harness.executor).toHaveBeenCalledTimes(23);
+    expect(evaluator.value.providerAttemptCount()).toBe(23);
+  });
+
   it('closes paired evaluation when a later raw response reports missing usage', async () => {
     const harness = createExecutorHarness({
       auditSequence: [{ usageState: 'positive' }, { usageState: 'missing' }],
@@ -423,11 +466,12 @@ function createExecutorHarness(
     object?: unknown;
     emitAudit?: boolean;
     executorError?: Error;
+    dynamicFixtureCandidates?: boolean;
   } = {},
 ) {
   let onAudit: ((audit: unknown) => void) | undefined;
   let invocation = 0;
-  const executor = jest.fn(() => {
+  const executor = jest.fn((request) => {
     const audit = input.auditSequence?.[invocation] ?? input.audit;
     invocation += 1;
     if (input.emitAudit !== false) {
@@ -441,10 +485,12 @@ function createExecutorHarness(
     }
     if (input.executorError) return Promise.reject(input.executorError);
     return Promise.resolve({
-      object: input.object ?? {
-        focusIndexes: [0],
-        diagnosis: 'review_pressure',
-      },
+      object: input.dynamicFixtureCandidates
+        ? fixtureCandidateFor(request.userPrompt, request.schema)
+        : (input.object ?? {
+            focusIndexes: [0],
+            diagnosis: 'review_pressure',
+          }),
       ...(Object.hasOwn(input, 'usage')
         ? input.usage === undefined
           ? {}
@@ -460,6 +506,71 @@ function createExecutorHarness(
     return executor;
   });
   return { createExecutor, executor };
+}
+
+const reviewRuntimeProfiles = [
+  { focusIndexes: [1], diagnosis: 'review_pressure' },
+  { focusIndexes: [0], diagnosis: 'stability_risk' },
+  { focusIndexes: [0, 1], diagnosis: 'knowledge_gap' },
+  { focusIndexes: [1], diagnosis: 'stability_risk' },
+  { focusIndexes: [0], diagnosis: 'review_pressure' },
+  { focusIndexes: [0, 1], diagnosis: 'review_pressure' },
+  { focusIndexes: [2], diagnosis: 'knowledge_gap' },
+  { focusIndexes: [0, 2], diagnosis: 'stability_risk' },
+  { focusIndexes: [0, 1, 2], diagnosis: 'knowledge_gap' },
+  { focusIndexes: [2, 1], diagnosis: 'review_pressure' },
+  { focusIndexes: [0], diagnosis: 'knowledge_gap' },
+] as const;
+
+const plannerRuntimeProfiles = [
+  { blockOrder: [1, 0], strategy: 'protect_overdue' },
+  { blockOrder: [0, 1], strategy: 'steady_progress' },
+  { blockOrder: [1, 0, 2], strategy: 'relieve_capacity' },
+  { blockOrder: [2, 0, 1], strategy: 'protect_overdue' },
+  { blockOrder: [0, 1, 2], strategy: 'steady_progress' },
+  { blockOrder: [2, 1, 0], strategy: 'relieve_capacity' },
+  { blockOrder: [1, 0], strategy: 'steady_progress' },
+  { blockOrder: [0, 1], strategy: 'protect_overdue' },
+  { blockOrder: [1, 2, 0], strategy: 'relieve_capacity' },
+  { blockOrder: [0, 2, 1], strategy: 'steady_progress' },
+  { blockOrder: [2, 1, 0], strategy: 'protect_overdue' },
+] as const;
+
+function fixtureCandidateFor(
+  userPrompt: string,
+  schema: Parameters<StructuredModelExecutor>[0]['schema'],
+) {
+  const reviewOrdinal = readSyntheticOrdinal(userPrompt, 'review');
+  if (reviewOrdinal !== null) {
+    return reviewRuntimeProfiles[reviewOrdinal - 14];
+  }
+  const plannerOrdinal = readSyntheticOrdinal(userPrompt, 'plan');
+  if (plannerOrdinal !== null) {
+    return plannerRuntimeProfiles[plannerOrdinal - 14];
+  }
+  const plannerCanary = {
+    blockOrder: [0],
+    strategy: 'steady_progress',
+  } as const;
+  if (
+    PLANNER_MODEL_CANDIDATE_SCHEMA.safeParse(plannerCanary).success &&
+    schema.safeParse(plannerCanary).success
+  ) {
+    return plannerCanary;
+  }
+  return { focusIndexes: [0], diagnosis: 'review_pressure' };
+}
+
+function readSyntheticOrdinal(
+  value: string,
+  lane: 'review' | 'plan',
+): number | null {
+  const match = value.match(new RegExp(`synthetic-${lane}-(\\d+)-a`, 'i'));
+  if (!match?.[1]) return null;
+  const ordinal = Number(match[1]);
+  return Number.isSafeInteger(ordinal) && ordinal >= 14 && ordinal <= 24
+    ? ordinal
+    : null;
 }
 
 function pairedRuntimeRequest(runId: string) {

@@ -1,7 +1,5 @@
-export const DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL =
-  'https://api.deepseek.com/v1' as const;
-export const DEEPSEEK_V4_PRO_NONTHINKING_MODEL =
-  'deepseek-v4-pro' as const;
+export const DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL = 'https://api.deepseek.com/v1' as const;
+export const DEEPSEEK_V4_PRO_NONTHINKING_MODEL = 'deepseek-v4-pro' as const;
 export const DEEPSEEK_V4_PRO_NONTHINKING_COMPLETIONS_URL =
   'https://api.deepseek.com/v1/chat/completions' as const;
 
@@ -66,7 +64,7 @@ export function createDeepSeekV4ProNonThinkingFetch(
         thinking: { type: 'disabled' },
       }),
     });
-    const audit = await auditResponse(response);
+    const audit = Object.freeze(await auditResponse(response));
     try {
       onAudit?.(audit);
     } catch {
@@ -83,10 +81,7 @@ export function createDeepSeekV4ProNonThinkingFetch(
   };
 }
 
-function parseRequest(
-  input: FetchInput,
-  init: FetchInit,
-): Record<string, unknown> {
+function parseRequest(input: FetchInput, init: FetchInit): Record<string, unknown> {
   try {
     if (!isExactCompletionsUrl(input) || init?.method !== 'POST') {
       throw new Error();
@@ -117,19 +112,14 @@ function isExactCompletionsUrl(input: FetchInput) {
 }
 
 function isExactJsonObjectResponseFormat(value: unknown) {
-  return (
-    isPlainRecord(value) &&
-    Object.keys(value).length === 1 &&
-    value.type === 'json_object'
-  );
+  return isPlainRecord(value) && Object.keys(value).length === 1 && value.type === 'json_object';
 }
 
 async function auditResponse(response: Response): Promise<DeepSeekV4ProNonThinkingAudit> {
   try {
     const payload: unknown = await response.clone().json();
     const message = readFirstMessage(payload);
-    const reasoningContentPresent =
-      message !== undefined && hasOwn(message, 'reasoning_content');
+    const reasoningContentPresent = message !== undefined && hasOwn(message, 'reasoning_content');
     const detail = readReasoningTokenDetail(payload);
     const usageState = readUsageState(payload);
     if (detail === undefined) {
@@ -163,9 +153,7 @@ async function auditResponse(response: Response): Promise<DeepSeekV4ProNonThinki
 function readFirstMessage(payload: unknown): Record<string, unknown> | undefined {
   if (!isPlainRecord(payload) || !Array.isArray(payload.choices)) return undefined;
   const first = payload.choices[0] as unknown;
-  return isPlainRecord(first) && isPlainRecord(first.message)
-    ? first.message
-    : undefined;
+  return isPlainRecord(first) && isPlainRecord(first.message) ? first.message : undefined;
 }
 
 function readReasoningTokenDetail(payload: unknown): unknown {
@@ -178,10 +166,7 @@ function readUsageState(payload: unknown): DeepSeekV4ProUsageState {
   if (!isPlainRecord(payload) || !isPlainRecord(payload.usage)) {
     return 'missing';
   }
-  if (
-    !hasOwn(payload.usage, 'prompt_tokens') ||
-    !hasOwn(payload.usage, 'completion_tokens')
-  ) {
+  if (!hasOwn(payload.usage, 'prompt_tokens') || !hasOwn(payload.usage, 'completion_tokens')) {
     return 'missing';
   }
   return isPositiveSafeInteger(payload.usage.prompt_tokens) &&

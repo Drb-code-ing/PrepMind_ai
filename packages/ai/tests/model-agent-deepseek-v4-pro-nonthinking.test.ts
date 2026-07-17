@@ -11,17 +11,12 @@ type Audit = {
   usageState: 'missing' | 'invalid' | 'positive';
 };
 
-type CreateTransport = (
-  delegate: typeof fetch,
-  onAudit?: (audit: Audit) => void,
-) => typeof fetch;
+type CreateTransport = (delegate: typeof fetch, onAudit?: (audit: Audit) => void) => typeof fetch;
 
 async function loadCreateTransport(): Promise<CreateTransport | null> {
   const loaded = await import(MODULE_PATH).catch(() => null);
   const createTransport = loaded?.createDeepSeekV4ProNonThinkingFetch;
-  return typeof createTransport === 'function'
-    ? (createTransport as CreateTransport)
-    : null;
+  return typeof createTransport === 'function' ? (createTransport as CreateTransport) : null;
 }
 
 function validRequestBody() {
@@ -127,14 +122,53 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
 
   it.each([
     { label: 'method', init: { method: 'GET', body: JSON.stringify(validRequestBody()) } },
-    { label: 'model', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), model: 'deepseek-v4-flash' }) } },
-    { label: 'schema', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), response_format: { type: 'json_schema' } }) } },
-    { label: 'thinking', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), thinking: { type: 'enabled' } }) } },
-    { label: 'tools', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), tools: [] }) } },
-    { label: 'tool choice', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), tool_choice: 'auto' }) } },
-    { label: 'functions', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), functions: [] }) } },
-    { label: 'function call', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), function_call: 'auto' }) } },
-    { label: 'top-level json schema', init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), json_schema: {} }) } },
+    {
+      label: 'model',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({ ...validRequestBody(), model: 'deepseek-v4-flash' }),
+      },
+    },
+    {
+      label: 'schema',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({ ...validRequestBody(), response_format: { type: 'json_schema' } }),
+      },
+    },
+    {
+      label: 'thinking',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({ ...validRequestBody(), thinking: { type: 'enabled' } }),
+      },
+    },
+    {
+      label: 'tools',
+      init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), tools: [] }) },
+    },
+    {
+      label: 'tool choice',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({ ...validRequestBody(), tool_choice: 'auto' }),
+      },
+    },
+    {
+      label: 'functions',
+      init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), functions: [] }) },
+    },
+    {
+      label: 'function call',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({ ...validRequestBody(), function_call: 'auto' }),
+      },
+    },
+    {
+      label: 'top-level json schema',
+      init: { method: 'POST', body: JSON.stringify({ ...validRequestBody(), json_schema: {} }) },
+    },
   ])('rejects a %s contract violation before delegate', async ({ init }) => {
     const createTransport = await loadCreateTransport();
     expect(createTransport).toBeTypeOf('function');
@@ -385,5 +419,54 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
     expect(JSON.stringify(audits)).not.toContain(RAW_RESPONSE_CANARY);
     expect(Object.keys(audits[0] ?? {})).not.toContain('prompt_tokens');
     expect(Object.keys(audits[0] ?? {})).not.toContain('completion_tokens');
+  });
+
+  it('prevents a hostile callback from mutating an audit violation into an allowed response', async () => {
+    const createTransport = await loadCreateTransport();
+    expect(createTransport).toBeTypeOf('function');
+    if (!createTransport) return;
+
+    let observedFrozen = false;
+    const transport = createTransport(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  role: 'assistant',
+                  content: RAW_RESPONSE_CANARY,
+                  reasoning_content: RAW_RESPONSE_CANARY,
+                },
+              },
+            ],
+            usage: {
+              prompt_tokens: 97,
+              completion_tokens: 4,
+              completion_tokens_details: { reasoning_tokens: 7 },
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      (audit) => {
+        observedFrozen = Object.isFrozen(audit);
+        const hostile = audit as unknown as Record<string, unknown>;
+        try {
+          hostile.reasoning = 'reported_zero';
+          hostile.reasoningContentPresent = false;
+          hostile.reportedReasoningTokens = 0;
+        } catch {
+          // A frozen audit may reject assignment in strict mode.
+        }
+      },
+    );
+
+    await expect(
+      transport(COMPLETIONS_URL, {
+        method: 'POST',
+        body: JSON.stringify(validRequestBody()),
+      }),
+    ).rejects.toThrow('DEEPSEEK_V4_PRO_NONTHINKING_RESPONSE_INVALID');
+    expect(observedFrozen).toBe(true);
   });
 });

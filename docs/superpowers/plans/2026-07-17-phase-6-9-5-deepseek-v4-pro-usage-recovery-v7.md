@@ -178,8 +178,7 @@ export type ReviewPlannerControlledLiveV7DiagnosticCode =
   | 'provider_usage_invalid'
   | 'sdk_usage_lost'
   | 'output_limit_exceeded'
-  | 'usage_reservation_exceeded'
-  | 'cost_limit_exceeded';
+  | 'usage_reservation_exceeded';
 
 function hasPositiveSafeCanaryUsage(usage: unknown): usage is {
   inputTokens: number;
@@ -200,16 +199,15 @@ Cover these exact mappings:
 
 ```ts
 raw positive + runtime success        -> continue
-raw positive + runtime invalid/error  -> sdk_usage_lost
+raw positive + runtime invalid_response -> sdk_usage_lost
 raw missing                           -> provider_usage_missing
 raw invalid                           -> provider_usage_invalid
 reasoning violation                   -> thinking_not_disabled
 valid output above 32                 -> output_limit_exceeded
 aggregate above reservation           -> usage_reservation_exceeded
-aggregate cost above CNY 1.00         -> cost_limit_exceeded
 ```
 
-Also cover timeout, abort, schema invalid, one fetch per attempt, zero retry, attempt 24 rejection, hostile callback data, and a fake executor throwing a credential-bearing error. The returned diagnostic may contain only the fixed code, status, booleans, and attempt count.
+The frozen reservation's maximum CNY cost is `0.18726`, below the `1.00` cap. Test that preflight fixes this invariant; do not invent an unreachable `cost_limit_exceeded` terminal state. Also cover timeout, abort, schema invalid, one fetch per attempt, zero retry, attempt 24 rejection, hostile callback data, and a fake executor throwing a credential-bearing error. The returned diagnostic may contain only the fixed code, status, booleans, and attempt count.
 
 - [ ] **Step 5: Prove 23-attempt paired accounting**
 
@@ -288,7 +286,7 @@ Verify the snapshot before reservation, before marking attempted, before any fut
 Use a temporary root containing copied fixture bytes. Prove existing-only reads, no-overwrite marker creation, reparse rejection, exact byte preservation after failed reserve/finalize, concurrent reservation single winner, and finalized record immutability.
 
 ```powershell
-bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 Expected: exit `0`; tests operate only under temporary directories.
@@ -297,7 +295,7 @@ Expected: exit `0`; tests operate only under temporary directories.
 
 ```powershell
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts
-bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 ```powershell
@@ -441,7 +439,7 @@ git commit -m "test(agent): verify V7 composition parity"
 ```powershell
 bun --cwd packages/ai test tests/model-agent-deepseek-v4-pro-nonthinking.test.ts
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.cli.spec.ts review-planner-model-config.spec.ts review-planner-model-runtime.factory.spec.ts
-bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 Expected: all exit `0`; record exact test counts from output.
@@ -512,7 +510,7 @@ Independently trace the only future execution path from exact confirmation to te
 bun --filter @repo/ai test
 bun --filter @repo/agent test
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.cli.spec.ts review-planner-model-config.spec.ts review-planner-model-runtime.factory.spec.ts
-bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 git diff --check
 git status --short
 ```
