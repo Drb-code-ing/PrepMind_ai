@@ -15,6 +15,7 @@ const FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400;
 const OBJ_CASE_INSENSITIVE = 0x00000040;
 const OBJ_DONT_REPARSE = 0x00001000;
 const FILE_DIRECTORY_FILE = 0x00000001;
+const FILE_WRITE_THROUGH = 0x00000002;
 const FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020;
 const FILE_NON_DIRECTORY_FILE = 0x00000040;
 const FILE_OPEN = 1;
@@ -53,7 +54,13 @@ type WindowsNativeDirectory = Readonly<{
 export type WindowsNoReparseChildDirectory = Readonly<{
   close(): void;
   createExclusiveFile(leafName: string, contents: string): void;
+  createExclusiveDurableFile(leafName: string, contents: string): void;
   replaceFile(
+    temporaryLeafName: string,
+    targetLeafName: string,
+    contents: string,
+  ): void;
+  replaceDurableFile(
     temporaryLeafName: string,
     targetLeafName: string,
     contents: string,
@@ -133,11 +140,27 @@ async function openWindowsNoReparseDirectoryWithDisposition(
       assertSafeLeafName(leafName);
       writeNewNativeFile(boundDirectory, leafName, contents);
     },
+    createExclusiveDurableFile(leafName, contents) {
+      assertOpen();
+      assertSafeLeafName(leafName);
+      writeNewDurableNativeFile(boundDirectory, leafName, contents);
+    },
     replaceFile(temporaryLeafName, targetLeafName, contents) {
       assertOpen();
       assertSafeLeafName(temporaryLeafName);
       assertSafeLeafName(targetLeafName);
       replaceNativeFile(
+        boundDirectory,
+        temporaryLeafName,
+        targetLeafName,
+        contents,
+      );
+    },
+    replaceDurableFile(temporaryLeafName, targetLeafName, contents) {
+      assertOpen();
+      assertSafeLeafName(temporaryLeafName);
+      assertSafeLeafName(targetLeafName);
+      replaceDurableNativeFile(
         boundDirectory,
         temporaryLeafName,
         targetLeafName,
@@ -363,6 +386,43 @@ function writeNewNativeFile(
   closeNativeHandle({ ...parent, handle: file });
 }
 
+function writeNewDurableNativeFile(
+  parent: WindowsNativeDirectory,
+  leafName: string,
+  contents: string,
+) {
+  const file = createRelativeHandle({
+    parent,
+    leafName,
+    desiredAccess: FILE_WRITE_DATA | DELETE | SYNCHRONIZE,
+    createDisposition: FILE_CREATE,
+    createOptions:
+      FILE_WRITE_THROUGH |
+      FILE_NON_DIRECTORY_FILE |
+      FILE_SYNCHRONOUS_IO_NONALERT,
+  });
+  try {
+    writeAndFlushDurableNativeFile(parent, file, contents);
+  } catch (error) {
+    try {
+      closeDurableNativeHandle(parent, file);
+    } catch {
+      // Preserve the first fixed write/flush failure.
+    }
+    try {
+      deleteNativeFile(parent, leafName);
+    } catch {
+      // The caller converts the failed secure operation to evidence_io.
+    }
+    throw sanitizeDurableWriteError(error);
+  }
+  try {
+    closeDurableNativeHandle(parent, file);
+  } catch {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
+}
+
 function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
   const file = createRelativeHandle({
     parent,
@@ -393,6 +453,7 @@ function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
     ) {
       throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
     }
+    if (length === 0) return Buffer.alloc(0);
     const contents = Buffer.alloc(length);
     const ioStatus = Buffer.alloc(16);
     assertNtSuccess(
@@ -452,6 +513,55 @@ function replaceNativeFile(
     throw error;
   }
   if (file !== null) closeNativeHandle({ ...parent, handle: file });
+}
+
+function replaceDurableNativeFile(
+  parent: WindowsNativeDirectory,
+  temporaryLeafName: string,
+  targetLeafName: string,
+  contents: string,
+) {
+  let temporaryCreated = false;
+  let file: number | null = null;
+  try {
+    file = createRelativeHandle({
+      parent,
+      leafName: temporaryLeafName,
+      desiredAccess: FILE_WRITE_DATA | DELETE | SYNCHRONIZE,
+      createDisposition: FILE_CREATE,
+      createOptions:
+        FILE_WRITE_THROUGH |
+        FILE_NON_DIRECTORY_FILE |
+        FILE_SYNCHRONOUS_IO_NONALERT,
+    });
+    temporaryCreated = true;
+    writeAndFlushDurableNativeFile(parent, file, contents);
+    renameNativeFile(parent, file, targetLeafName);
+    temporaryCreated = false;
+  } catch (error) {
+    if (file !== null) {
+      try {
+        closeDurableNativeHandle(parent, file);
+      } catch {
+        // Preserve the first fixed create/write/flush/rename failure.
+      }
+    }
+    if (temporaryCreated) {
+      try {
+        deleteNativeFile(parent, temporaryLeafName);
+      } catch {
+        // Preserve fail-closed behavior if an owned temporary cannot be removed.
+      }
+    }
+    throw sanitizeDurableWriteError(error);
+  }
+  if (file !== null) {
+    try {
+      closeDurableNativeHandle(parent, file);
+    } catch {
+      throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+    }
+  }
 }
 
 function deleteNativeFile(parent: WindowsNativeDirectory, leafName: string) {
@@ -619,6 +729,36 @@ function assertNtSuccess(status: number, failureCode: string) {
   if (status !== 0) throw new Error(failureCode);
 }
 
+function writeAndFlushDurableNativeFile(
+  parent: WindowsNativeDirectory,
+  file: number,
+  contents: string,
+) {
+  if (Buffer.byteLength(contents, 'utf8') > 0) {
+    writeAndFlushNativeFile(parent, file, contents);
+    return;
+  }
+  assertNtSuccess(
+    Number(
+      parent.ntdll.symbols.NtFlushBuffersFile(
+        file,
+        parent.ffi.ptr(Buffer.alloc(16)),
+      ),
+    ),
+    'WINDOWS_REPARSE_SAFE_IO_FLUSH_FAILED',
+  );
+}
+
+function sanitizeDurableWriteError(error: unknown) {
+  if (
+    error instanceof Error &&
+    /^WINDOWS_REPARSE(?:_POINT_BLOCKED|_SAFE_IO_[A-Z_]+)$/.test(error.message)
+  ) {
+    return error;
+  }
+  return new Error('WINDOWS_REPARSE_SAFE_IO_WRITE_FAILED');
+}
+
 function isSafeRelativeName(value: string) {
   return /^[A-Za-z0-9._-]{1,240}$/.test(value);
 }
@@ -665,6 +805,15 @@ function isNativeHandle(value: number) {
 
 function closeNativeHandle(directory: WindowsNativeDirectory) {
   directory.kernel.symbols.CloseHandle(directory.handle);
+}
+
+function closeDurableNativeHandle(
+  parent: WindowsNativeDirectory,
+  handle: number,
+) {
+  if (!Boolean(parent.kernel.symbols.CloseHandle(handle))) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
 }
 
 function closeNativeDirectory(directory: WindowsNativeDirectory) {

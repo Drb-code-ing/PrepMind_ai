@@ -31,6 +31,38 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
     await rm(outside, { recursive: true, force: true });
   });
 
+  it('durably creates an exclusive zero-byte file and rejects duplicates', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    try {
+      expect(typeof directory.createExclusiveDurableFile).toBe('function');
+      directory.createExclusiveDurableFile('stage-010', '');
+      expect(directory.readRegularFile('stage-010')).toEqual(Buffer.alloc(0));
+      expect(() =>
+        directory.createExclusiveDurableFile('stage-010', ''),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_ALREADY_EXISTS');
+    } finally {
+      directory.close();
+    }
+  });
+
+  it('durably replaces a file through an exclusive temporary leaf', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    try {
+      expect(typeof directory.replaceDurableFile).toBe('function');
+      directory.createExclusiveFile('terminal.json', 'old');
+      directory.replaceDurableFile(
+        'terminal.json.tmp',
+        'terminal.json',
+        'new',
+      );
+      expect(directory.readRegularFile('terminal.json')).toEqual(
+        Buffer.from('new'),
+      );
+    } finally {
+      directory.close();
+    }
+  });
+
   it('blocks a root swapped for a junction before the first handle-relative child open without creating outside files', async () => {
     const detachedRoot = `${root}-detached`;
     try {
