@@ -71,6 +71,14 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 一次性 Live 关闭
+
+目标：以与生产候选一致的 JSON-object executor 验证 Review/Planner 真实模型只读建议是否可进入 48-case 和项目验收。
+
+结果：离线全量验证后仅执行一次 `deepseek-v4-pro` provider 尝试，v5 独立 evidence 记录为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。48-case、Docker、浏览器、main 合并和推送均未执行；两个业务 gate 继续 `false`。证据不含 provider 原文、prompt、候选、凭据或 endpoint，不能被解释为普通 Chat 不可用、零成本、质量结论或阶段完成。
+
+回顾时可以问：为什么与生产 executor 对齐的 v5 仍须在 structured-output 关闭后停止？为什么 `providerAttemptCount=1` 不能让我们继续 48-case？为什么新的根因设计必须先于任何新 profile？
+
 ### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 once-only CLI 与 Mock 边界
 
 目标：把独立 v5 的真实模型入口约束为单一、可审计且不可重试的 server-only 命令，同时先用不触网的 Mock 再次证明冻结 48-case 数据集、zero-call 边界和安全汇总可运行；本条不记录任何 Live 成功结论。

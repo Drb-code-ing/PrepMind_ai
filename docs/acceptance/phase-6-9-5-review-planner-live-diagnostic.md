@@ -83,6 +83,19 @@ v2 的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-
 
 fresh Mock artifact 为 `.tmp/phase-6-9-5-v2-mock-20260717T080000Z.json`：48 entries、26 `zeroCallVerified`、22 Mock runtime invocations、48 strict successes、48 quality passes、0 critical failures，生产决策仍为 `mock_quality_not_evidence`。该本地 `.tmp` 文件是本轮可重跑的 Mock 输出，不是受控 Live evidence，未提交到仓库。
 
+## 2026-07-17 DeepSeek V4 Pro v5 终局记录
+
+v5 使用与生产候选相同的 OpenAI-compatible JSON-object executor、`deepseek-v4-pro`、独立 once marker、CNY 1.00 hard cap 与完整 v1--v4 历史树校验。离线验证通过后，唯一一次 provider 尝试的最终 evidence 为 `docs/acceptance/evidence/phase-6-9-5-controlled-live-v5-deepseek-v4-pro/review-planner-live-20260717T051002762Z-d44e06ef3e8c.json`。
+
+| 字段 | v5 结果 |
+| --- | --- |
+| `status` / `gate` | `invalid_attempted` / `closed` |
+| `providerAttemptCount` / `usageKnown` | `1` / `false` |
+| `diagnosticCode` | `structured_output` |
+| 48-case / Docker / 浏览器 | 未执行 |
+
+这只证明一次真实 provider 调用在结构化输出边界关闭；它不保存 provider 原文，也不证明普通 Chat 不可用、零成本、质量失败或模型通过。v5 marker 已消耗，严禁重跑。`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 继续为 `false`。此前 workspace package-script 在本机返回 provider 前 `preflight_invalid`，没有创建 v5 evidence，也没有 provider 调用；最终 evidence 来自通过同一 preflight 的根 Bun 入口。后续只能先做新的零网络根因设计与独立复审。
+
 ## 当前结论与未执行项
 
 - 已完成：无凭据静态门、Mock contract、受控诊断的原生脱敏 evidence 边界，以及 v1/v2/v3/v4 四个独立诊断 profile 的终局留档。
