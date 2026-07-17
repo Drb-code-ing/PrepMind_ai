@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 已零网络复现 96-token preview/actual validator 缺陷并完成 usage parity 设计，但尚未实现、Mock 或授权 Live。Review/Planner product gates 继续为 `false`。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 已零网络复现 96-token preview/actual validator 缺陷，完成 usage parity 设计与七任务 TDD 实施计划，但尚未实现、Mock 或授权 Live。Review/Planner product gates 继续为 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当 provider actual input usage 上限，合法 `97/4` fixture 被误关；该结果证明 validator 缺陷但不改写历史 Live 事实。V7 设计将保留生产 OpenAI-compatible non-thinking executor，修复 preview/actual parity 并加入无数值 usage-shape audit。两条业务 gate 继续默认 `false`，项目只返回确定性只读建议；当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当 provider actual input usage 上限，合法 `97/4` fixture 被误关；该结果证明 validator 缺陷但不改写历史 Live 事实。V7 设计与七任务 TDD 实施计划已完成，后续依次实现 value-free usage audit、corrected factory、immutable evidence、one-shot CLI、48-case composition parity、离线门禁和两轮复审。两条业务 gate 继续默认 `false`，项目只返回确定性只读建议；当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |

@@ -137,11 +137,11 @@ Phase 6.9.5 已完成 ReviewAgent / PlannerAgent 的受限只读候选、owner-s
 
 2026-07-17 的 DeepSeek V4 Pro v5 CLI 已执行其唯一一次 provider canary，证据封存为 `invalid_attempted / closed / 1 / false / structured_output`；因此 v5 48-case、Docker、浏览器、main 合并和推送均未执行，v5 marker 不得重跑。V6 是独立的 non-thinking lineage：Task 1--6 完成后已在用户明确授权下执行其唯一 canary，evidence/marker 已封存为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V1--V5 hash 已复核且没有改写；V6 也不得重跑，两个业务 gate 保持 `false`，且不得以 V5、Qwen、Mock 或 Docker 成功替代自己的质量结论。
 
-2026-07-17 的 V7 usage recovery 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当成 provider actual input usage 硬上限：合法 fixture `97/4` 被误关为 `usage_unverifiable`，违反仓库“input preview 只用于调用前预留”的既有 contract；该复现证明 validator 有缺陷，但不改写 V6 历史 provider 事实。V7 设计保留生产 OpenAI-compatible non-thinking executor，修复 preview/actual parity，并给 cloned-response audit 增加不含数值的 `missing/invalid/positive` usage shape，以区分 provider telemetry 与 SDK normalization。V7 必须拥有独立 profile/schema/marker/evidence/CLI，并在 provider 前复核 V1--V6 immutable tree。该设计不代表实现、Mock、Live 或生产启用，也不授权 provider 调用；两个业务 gate 继续默认 `false`。完整设计见 `docs/superpowers/specs/2026-07-17-phase-6-9-5-deepseek-v4-pro-usage-recovery-v7-design.md`。
+2026-07-17 的 V7 usage recovery 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当成 provider actual input usage 硬上限：合法 fixture `97/4` 被误关为 `usage_unverifiable`，违反仓库“input preview 只用于调用前预留”的既有 contract；该复现证明 validator 有缺陷，但不改写 V6 历史 provider 事实。V7 设计保留生产 OpenAI-compatible non-thinking executor，修复 preview/actual parity，并给 cloned-response audit 增加不含数值的 `missing/invalid/positive` usage shape，以区分 provider telemetry 与 SDK normalization。V7 必须拥有独立 profile/schema/marker/evidence/CLI，并在 provider 前复核 V1--V6 immutable tree。逐任务 TDD 实施计划已写入 `docs/superpowers/plans/2026-07-17-phase-6-9-5-deepseek-v4-pro-usage-recovery-v7.md`，固定为 transport audit、V7 factory、immutable evidence、one-shot CLI、48-case composition parity、全量离线门禁和两轮复审七个独立提交。设计与计划都不代表实现、Mock、Live 或生产启用，也不授权 provider 调用；两个业务 gate 继续默认 `false`。
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请审阅 V7 preview/actual usage parity 设计；确认后按 TDD 编写逐步实施计划，不运行 Live、Docker 或浏览器，并保持两个业务 gate 为 `false`。”
+下一会话可以问：“请按 V7 usage recovery 实施计划从 Task 1 开始离线 TDD；一步一提交，不运行 Live、Docker 或浏览器，并保持两个业务 gate 为 `false`。”
 
 ## 常用命令
 
