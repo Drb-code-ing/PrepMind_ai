@@ -403,7 +403,7 @@ function safeTraceRequest(request: unknown): {
   return {
     runId: typeof candidate.runId === 'string' ? candidate.runId : 'invalid-request',
     task,
-    maxOutputTokens: normalizeTokenCount(candidate.maxOutputTokens as number | undefined),
+    maxOutputTokens: normalizeTokenCount(candidate.maxOutputTokens),
   };
 }
 
