@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 已完成 usage parity 设计、七任务 TDD 计划与 Task 1 value-free raw usage audit，`missing / invalid / positive` 只记录形状、不记录 token 数值。AI fresh gate 为 189/189；尚未完成 V7 factory、Mock 或 Live，Review/Planner product gates 继续为 `false`。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--2 已完成 value-free raw usage audit 与 corrected evaluator。合法 actual input `97` 不再受 96-token preview 误拒，output/request、整轮 reservation、23 attempts 与 CNY cap 仍 fail-closed；V7 focused 25/25、V6+V7 54/54、Agent 406/406、Server build 通过。尚未创建 evidence/CLI 或运行 Live，Review/Planner product gates 继续为 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当 provider actual input usage 上限，合法 `97/4` fixture 被误关；该结果证明 validator 缺陷但不改写历史 Live 事实。V7 Task 1 已在现有 cloned-response audit 中增加不含数值的 `missing / invalid / positive` usage shape，覆盖缺字段、零值、负数、小数、unsafe integer 与正安全整数；raw token、响应正文和 provider 数据仍不离开临时审计边界。AI fresh gate 为 189 passed / 0 failed。下一步是 corrected V7 factory；两条业务 gate 继续默认 `false`，项目只返回确定性只读建议，当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在现有 cloned-response audit 中增加不含数值的 `missing / invalid / positive` usage shape；Task 2 新建独立 evaluator，允许 actual input `96 / 97 / 42_996`，在 `42_997`、output `33`、raw usage 缺失/非法、SDK usage 丢失、thinking 违规、schema 失败、24th attempt 与 aggregate reservation 越界时按固定诊断关闭。fake paired 路径已核对 `48 cases / 26 zero-call / 22 runtime / 23 total attempts`，失败诊断不含 token 或 credential；V7 focused 25 passed、V6+V7 54 passed、Agent 406 passed、Server build exit 0。下一步是独立 V7 immutable evidence；两条业务 gate 继续默认 `false`，项目只返回确定性只读建议，当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
