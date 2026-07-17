@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import {
   cp,
   mkdtemp,
@@ -314,6 +315,75 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
       ),
       'changed-after-failure-terminal',
     );
+    expectEvidenceIo(
+      await readReviewPlannerControlledLiveV8Evidence({
+        root,
+        relativePath: reservation.relativePath,
+      }),
+    );
+  });
+
+  it('preserves candidate bytes and stops after committed stage130 when post-terminal history drifts', async () => {
+    let publicationCount = 0;
+    let candidateAtStage130: Buffer | null = null;
+    const evidenceDirectory = join(
+      root,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
+    );
+    const runId = 'post-terminal-history-drift';
+    const evidenceLeaf = `review-planner-live-20260718T120000000Z-${runId}.json`;
+    const evidencePath = join(evidenceDirectory, evidenceLeaf);
+    const v7MarkerPath = join(
+      root,
+      historicalDirectories[6],
+      '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.once',
+    );
+    const harness = createReviewPlannerControlledLiveV8EvidenceTestHarness(
+      (stage) => {
+        if (stage !== 'post_commit_cleanup') return false;
+        publicationCount += 1;
+        if (publicationCount !== 14) return false;
+        candidateAtStage130 = readFileSync(evidencePath);
+        writeFileSync(v7MarkerPath, 'changed-at-committed-stage130');
+        return false;
+      },
+    );
+    const reservation = await harness.reserve({
+      root,
+      historicalSnapshot: await snapshot(root),
+      startedAt: '2026-07-18T12:00:00.000Z',
+      runId,
+    });
+    await reservation.markAttempted();
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+      expect(
+        advanceReviewPlannerControlledLiveV8Stage(reservation, stage),
+      ).toBe(true);
+    }
+
+    await expect(
+      finalizeReviewPlannerControlledLiveV8Evidence({
+        reservation,
+        summary: completeSummary(),
+      }),
+    ).resolves.toBe(false);
+    expect(candidateAtStage130).not.toBeNull();
+    const stored = await readFile(evidencePath);
+    expect(stored).toEqual(candidateAtStage130);
+    expect(createHash('sha256').update(stored).digest('hex')).toBe(
+      createHash('sha256')
+        .update(candidateAtStage130 ?? Buffer.alloc(0))
+        .digest('hex'),
+    );
+    expect(JSON.parse(stored.toString('utf8'))).toMatchObject({
+      state: 'success_candidate',
+      status: 'complete',
+    });
+    await expect(
+      readFile(
+        join(evidenceDirectory, REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[13]),
+      ),
+    ).rejects.toThrow();
     expectEvidenceIo(
       await readReviewPlannerControlledLiveV8Evidence({
         root,

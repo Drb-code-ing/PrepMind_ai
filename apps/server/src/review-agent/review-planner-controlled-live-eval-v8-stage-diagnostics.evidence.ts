@@ -609,8 +609,6 @@ export async function finalizeReviewPlannerControlledLiveV8Evidence(
       snapshot: capability.snapshot,
     });
   } catch {
-    replaceEvidence(capability, provisional);
-    capability.state = 'finalized';
     return stopCapability(capability);
   }
   if (!createInternalStage(capability, 13)) return false;
