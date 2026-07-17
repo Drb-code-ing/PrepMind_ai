@@ -1,4 +1,7 @@
-import type { StructuredModelExecutor } from '@repo/ai';
+import type {
+  OpenAICompatibleExecutorConfig,
+  StructuredModelExecutor,
+} from '@repo/ai';
 
 import { createReviewPlannerModelRuntimes } from './review-planner-model-runtime.factory';
 
@@ -44,6 +47,74 @@ describe('review planner model runtime factory', () => {
     expect(JSON.stringify(bundle)).not.toMatch(
       /private-review-key|api\.deepseek\.com/i,
     );
+  });
+
+  it('creates no executor when both V4 Pro business gates remain false', () => {
+    const createExecutor = jest.fn<
+      StructuredModelExecutor,
+      [OpenAICompatibleExecutorConfig]
+    >(() =>
+      () =>
+        Promise.resolve({
+          object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        }),
+    );
+
+    const bundle = createReviewPlannerModelRuntimes(
+      {
+        ...enabledEnv,
+        REVIEW_AGENT_MODEL_ENABLED: false,
+        PLANNER_AGENT_MODEL_ENABLED: false,
+        AI_MODEL: 'deepseek-v4-pro',
+      },
+      { createExecutor },
+    );
+
+    expect(createExecutor).not.toHaveBeenCalled();
+    expect(bundle.config).toEqual({
+      reviewEnabled: false,
+      plannerEnabled: false,
+      reviewTimeoutMs: 4100,
+      plannerTimeoutMs: 4300,
+      mode: 'mock',
+      provider: 'mock',
+      model: 'disabled-review-planner',
+    });
+    expect(JSON.stringify(bundle.config)).not.toMatch(
+      /private-review-key|api\.deepseek\.com/i,
+    );
+  });
+
+  it.each([
+    { label: 'trailing slash', AI_BASE_URL: 'https://api.deepseek.com/v1/' },
+    { label: 'explicit port', AI_BASE_URL: 'https://api.deepseek.com:443/v1' },
+    { label: 'query', AI_BASE_URL: 'https://api.deepseek.com/v1?source=test' },
+    { label: 'wrong DeepSeek host', AI_BASE_URL: 'https://beta.deepseek.com/v1' },
+    { label: 'wrong provider credential', DEEPSEEK_API_KEY: undefined, OPENAI_API_KEY: 'openai-key' },
+    { label: 'schema profiles', schemaProfiles: [] },
+    { label: 'non-thinking audit callback', onNonThinkingAudit: () => undefined },
+  ])('does not construct a V4 Pro executor for $label', (override) => {
+    const createExecutor = jest.fn<
+      StructuredModelExecutor,
+      [OpenAICompatibleExecutorConfig]
+    >();
+
+    const bundle = createReviewPlannerModelRuntimes(
+      {
+        ...enabledEnv,
+        AI_MODEL: 'deepseek-v4-pro',
+        ...override,
+      },
+      { createExecutor },
+    );
+
+    expect(createExecutor).not.toHaveBeenCalled();
+    expect(bundle.config).toMatchObject({
+      reviewEnabled: false,
+      plannerEnabled: false,
+      mode: 'mock',
+      provider: 'mock',
+    });
   });
 
   it('fails closed to disabled mock candidates when executor initialization fails', () => {

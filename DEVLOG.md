@@ -6,7 +6,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计和 Task 1 的零网络 typed non-thinking transport：只有精确 DeepSeek V4 Pro `/v1` Review/Planner candidate executor 才可写固定 `thinking:{type:'disabled'}`，普通 Chat 不变。两条业务 gate 继续默认 `false`，不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计、Task 1 的零网络 typed non-thinking transport，以及 Task 2 的 Review/Planner resolver 精确绑定：仅精确 DeepSeek V4 Pro `https://api.deepseek.com/v1` 选择固定 `thinking:{type:'disabled'}` transport，V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，因此不会构造业务 executor；不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 typed non-thinking transport 仅完成零网络 wire 证明，业务 gate 关闭 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 已完成 Task 1 零网络 typed non-thinking wire transport 与 Task 2 精确、默认关闭的 resolver 绑定；尚无 V6 provider/evidence/Live，业务 gate 关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -70,6 +70,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V6 Review/Planner resolver 精确绑定（离线）
+
+目标：让已封闭的 DeepSeek V4 Pro non-thinking transport 只能由 Review/Planner 的精确 production composition 选择，同时保持两个业务 gate 默认关闭。
+
+主要内容与边界：`resolveReviewPlannerLiveExecutorConfig` 仅在 `provider=deepseek`、`model=deepseek-v4-pro` 与 trim 后仍精确 `https://api.deepseek.com/v1` 同时成立时返回 `deepseek_v4_pro_nonthinking_json`；尾随斜杠、显式端口、query、其他 DeepSeek host、错误 provider credential 或输入 `schemaProfiles` / `onNonThinkingAudit` 一律 fail-closed。V4 Flash 仍使用通用 `json_object`。两条业务 gate 都是 `false` 时 factory 不构造 executor，公开 `ReviewPlannerModelConfig` 序列化不含 credential 或 base URL；没有新增环境变量、audit callback、普通 Chat 改动或 provider 调用。
+
+验收：先以 focused server Jest 观察到 V4 Pro 仍解析为 `json_object` 且 unsafe 变体仍构造 executor 的 RED；最小 resolver 修复后 config/factory 28/28 GREEN。V6 profile、marker、evidence、CLI、Docker、浏览器与 Live 均未创建或运行，后续仍须先完成 factory/evidence/CLI/Mock/独立复审并取得新的用户明确 Live 授权。
+
+更正：V5 是已封存的 `json_object` lineage；V6 transport 绑定后，exact old V5 env 在 preflight 立即返回 `PreflightInvalid`，旧的 mock diagnostic/paired-execution 断言已退役，且 `createExecutor` 必须保持零调用。这只更新离线测试边界，不改写 V5 evidence、marker 或一次性 provider 结论。
+
+回顾时可以问：为什么 V4 Pro transport 必须比较原始 canonical base URL，而不是仅按 host allowlist？为什么 `schemaProfiles` 必须在 Review/Planner composition boundary 直接 fail-closed？为什么 gate 关闭时甚至不应构造 executor？
 
 ### 2026-07-17 - Phase 6.9.5 V6 non-thinking typed transport（离线）
 

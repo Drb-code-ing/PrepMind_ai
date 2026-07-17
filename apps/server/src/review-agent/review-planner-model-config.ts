@@ -2,6 +2,12 @@ import type { OpenAICompatibleExecutorConfig } from '@repo/ai';
 
 const DEFAULT_MODEL = 'deepseek-v4-flash';
 const DEFAULT_BASE_URL = 'https://api.deepseek.com/v1';
+const DEEPSEEK_V4_PRO_MODEL = 'deepseek-v4-pro';
+const DEEPSEEK_V4_PRO_BASE_URL = 'https://api.deepseek.com/v1';
+const FORBIDDEN_TRANSPORT_INPUT_KEYS = [
+  'schemaProfiles',
+  'onNonThinkingAudit',
+] as const;
 const DEFAULT_TIMEOUT_MS = 4_500;
 const MIN_TIMEOUT_MS = 1_000;
 const MAX_TIMEOUT_MS = 15_000;
@@ -37,7 +43,9 @@ export function resolveReviewPlannerModelConfig(
   input: Record<string, unknown>,
 ): ReviewPlannerModelConfig {
   const env = readAllowlistedEnv(input);
-  const live = resolveLiveExecutorConfig(env);
+  const live = hasForbiddenTransportInput(input)
+    ? null
+    : resolveLiveExecutorConfig(env);
   const reviewEnabled =
     live !== null && asBoolean(env.REVIEW_AGENT_MODEL_ENABLED);
   const plannerEnabled =
@@ -59,6 +67,7 @@ export function resolveReviewPlannerModelConfig(
 export function resolveReviewPlannerLiveExecutorConfig(
   input: Record<string, unknown>,
 ): OpenAICompatibleExecutorConfig | null {
+  if (hasForbiddenTransportInput(input)) return null;
   return resolveLiveExecutorConfig(readAllowlistedEnv(input));
 }
 
@@ -92,6 +101,22 @@ function resolveLiveExecutorConfig(
   });
   if (!provider) return null;
 
+  if (model === DEEPSEEK_V4_PRO_MODEL) {
+    if (
+      provider.name !== 'deepseek' ||
+      baseURL !== DEEPSEEK_V4_PRO_BASE_URL
+    ) {
+      return null;
+    }
+    return {
+      provider: 'deepseek',
+      apiKey: provider.apiKey,
+      baseURL: DEEPSEEK_V4_PRO_BASE_URL,
+      model: DEEPSEEK_V4_PRO_MODEL,
+      structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+    };
+  }
+
   return {
     provider: provider.name,
     apiKey: provider.apiKey,
@@ -99,6 +124,10 @@ function resolveLiveExecutorConfig(
     model,
     structuredOutputMode: 'json_object',
   };
+}
+
+function hasForbiddenTransportInput(input: Record<string, unknown>): boolean {
+  return FORBIDDEN_TRANSPORT_INPUT_KEYS.some((key) => Object.hasOwn(input, key));
 }
 
 function resolveProvider(input: {
