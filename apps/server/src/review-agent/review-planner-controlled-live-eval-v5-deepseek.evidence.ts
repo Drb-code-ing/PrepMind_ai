@@ -561,14 +561,16 @@ function isHistoricalEntry(value: unknown): value is HistoricalEvidenceEntry {
     return false;
   }
   const entry = value as Record<string, unknown>;
+  const byteLength = entry.byteLength;
   return (
     typeof entry.relativePath === 'string' &&
     entry.relativePath.length > 0 &&
     (entry.type === 'directory' || entry.type === 'file') &&
     typeof entry.sha256 === 'string' &&
     /^[a-f0-9]{64}$/.test(entry.sha256) &&
-    Number.isSafeInteger(entry.byteLength) &&
-    entry.byteLength >= 0
+    Number.isSafeInteger(byteLength) &&
+    typeof byteLength === 'number' &&
+    byteLength >= 0
   );
 }
 

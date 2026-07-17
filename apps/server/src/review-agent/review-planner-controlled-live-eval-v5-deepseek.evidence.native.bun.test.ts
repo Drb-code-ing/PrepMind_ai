@@ -18,6 +18,7 @@ import {
   snapshotReviewPlannerControlledLiveV5HistoricalEvidence,
   verifyReviewPlannerControlledLiveV5HistoricalEvidence,
 } from './review-planner-controlled-live-eval-v5-deepseek.evidence';
+import type { SafeReviewPlannerControlledLiveV5DeepSeekSummary } from './review-planner-controlled-live-eval-v5-deepseek.evidence';
 
 const describeNativeWindows =
   process.platform === 'win32' && Boolean(process.versions.bun)
@@ -205,15 +206,11 @@ function completeSummary() {
       p95DurationMs: 4_500,
       productionDecision: 'quality_gate_passed' as const,
     },
-  };
+  } satisfies SafeReviewPlannerControlledLiveV5DeepSeekSummary;
 }
 
 async function copyHistoricalEvidenceTrees(root: string) {
-  const moduleDirectory: unknown = import.meta.dir;
-  if (typeof moduleDirectory !== 'string') {
-    throw new Error('NATIVE_TEST_MODULE_DIRECTORY_UNAVAILABLE');
-  }
-  const sourceRoot = resolve(moduleDirectory, '../../../..');
+  const sourceRoot = resolve(process.cwd(), '../..');
   await Promise.all(
     historicalDirectories.map((directory) =>
       cp(join(sourceRoot, directory), join(root, directory), {
