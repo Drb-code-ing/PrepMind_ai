@@ -7,6 +7,7 @@ import {
   rm,
   symlink,
 } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -75,7 +76,7 @@ facade.directory.commitExclusiveDurableFileViaRename(
 );
 process.exit(72);
 `;
-  const child = Bun.spawn([process.execPath, '-e', script], {
+  const child = spawnSync(process.execPath, ['-e', script], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -84,12 +85,9 @@ process.exit(72);
       TEST_EXIT_PHASE: exitPhase,
       TEST_COMMITTED_LEAF: committedLeafName,
     },
-    stdout: 'pipe',
-    stderr: 'pipe',
+    encoding: 'utf8',
   });
-  const exitCode = await child.exited;
-  const stderr = await new Response(child.stderr).text();
-  return { exitCode, stderr };
+  return { exitCode: child.status, stderr: child.stderr ?? '' };
 }
 
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
