@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 的 Task 1--6 离线闭环已记录，且唯一一次获批 V6 controlled-Live 已终态关闭：`invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V6 marker/evidence 已封存且不可重跑；Review/Planner product gates 继续为 `false`。这不是实际账单、真实模型通过或生产启用结论。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 已零网络复现 96-token preview/actual validator 缺陷并完成 usage parity 设计，但尚未实现、Mock 或授权 Live。Review/Planner product gates 继续为 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 的唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。它只允许精确 DeepSeek V4 Pro `https://api.deepseek.com/v1`、固定 `thinking:{type:'disabled'}` transport；V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，项目只返回确定性只读建议；不得运行 V6 48-case、Docker 或浏览器验收。后续必须先形成新的零网络根因设计并独立复审，不能把新 profile 伪装成 V6 retry。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 零网络复现确认 V6 把 `estimatedInputTokens=96` 错当 provider actual input usage 上限，合法 `97/4` fixture 被误关；该结果证明 validator 缺陷但不改写历史 Live 事实。V7 设计将保留生产 OpenAI-compatible non-thinking executor，修复 preview/actual parity 并加入无数值 usage-shape audit。两条业务 gate 继续默认 `false`，项目只返回确定性只读建议；当前不得运行 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态，V6 已发生一次 `usage_unverifiable` canary；业务 gate 关闭，必须先新根因设计/复审 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 usage parity 缺陷复现与设计完成，尚未实施或授权 Live |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -73,6 +73,20 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 V7 preview/actual usage parity 设计
+
+目标：停止继续更换 provider/transport 参数，修复 V6 把工程 input preview 错当 provider actual usage 上限的 contract 违例，并为下一次 profile 补充不含数值的 usage-shape 诊断。
+
+为什么：V6 evidence 为安全只保留最小终态，无法区分 provider 缺 usage、SDK 归一化丢失或更早的 response/schema 失败。继续原样发 canary 只会产生第七份同样模糊的 terminal evidence。
+
+主要内容与边界：代码追踪发现 canary 使用 `estimatedInputTokens=96`，随后又要求 `provider inputTokens <= 96`；离线 executor fixture 返回合法 `97/4` 时稳定复现 `usage_unverifiable`。V7 保留 exact DeepSeek V4 Pro non-thinking OpenAI-compatible executor，允许正安全 actual input 超过 preview、仍限制 output cap、整轮 aggregate reservation 与 CNY hard cap；cloned-response audit 只新增 `missing/invalid/positive` usage shape，用于区分 provider telemetry 与 SDK normalization。V7 使用独立 profile/schema/marker/evidence/CLI，并在 provider 前复核 V1--V6 immutable tree；Review/Planner 权限、facts、本地 merger、预算、超时、deterministic fallback 与默认关闭 gate 均不改变。
+
+替代方案：只删除 96-token 检查虽然能修复复现，但下一次缺 usage 时仍无法定位来源；改用 direct-fetch 或 Qwen 会同时改变 transport/provider，扩大变量。采用“最小 parity 修复 + 安全 usage-shape audit”，既保持 production parity，也避免 generic terminal evidence。
+
+当前验收：已完成现有代码数据流复核与 97/4 离线复现；没有修改生产代码、创建 V7 evidence/marker、读取真实 key、调用 provider、启动 Docker/浏览器或开启产品 gate。用户审阅设计后才编写 TDD 实施计划；未来任何 V7 Live 仍需新的单独授权。
+
+回顾时可以问：为什么 input preview 不能限制 provider actual usage？为什么 97/4 fixture 不能改写 V6 历史 provider 事实？为什么 V7 Live 通过仍不等于产品 gate 自动开启？
+
 ### 2026-07-17 - Phase 6.9.5 V6 离线验收与 Live 授权边界（历史记录，已由终态关闭替代）
 
 目标：把 V6 已完成的非网络工程事实、不可跨越的真实模型边界和下一次唯一授权动作统一写入项目记录，避免把 fake CLI、Mock、静态测试或历史 v1--v5 evidence 误称为真实模型通过。
@@ -95,7 +109,7 @@
 
 验收：独立解析 V6 JSON，确认上述六个最终字段；检查 once marker 存在；扫描 evidence 禁止内容无命中；`git status` 显示 V1--V5 evidence 无改动。V6 的 48-case、Docker authenticated suggestions/plan、可见浏览器、main 合并、main 复验和远程推送均未执行。
 
-后续：V6 不能重跑。若继续，必须先围绕 `usage_unverifiable` 形成新的零网络根因设计并通过独立复审，再由用户决定是否批准一个新的隔离 profile；两个业务 gate 在任何独立质量与产品验收完成前继续保持 `false`。
+后续状态：V6 不能重跑。其后的零网络调查已形成上文 V7 preview/actual usage parity 设计；V7 仍需独立实施、复审与新的 Live 授权，两个业务 gate 在任何独立质量与产品验收完成前继续保持 `false`。
 
 回顾时可以问：为什么 `usageKnown=false` 不能被记为零成本？为什么新的诊断必须拥有自己的 marker/evidence 而不是重跑 V6？
 

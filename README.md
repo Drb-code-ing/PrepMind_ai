@@ -219,13 +219,13 @@ bun --cwd packages/fsrs test
 
 下一步主线：
 
-1. Phase 6.9.5 的 V6 唯一 Live 已以 `usage_unverifiable` 终态关闭；不得重跑、不得进入 48-case、Docker、可见浏览器、main 合并或推送。下一步先做新的零网络根因设计与独立复审，之后再由用户决定是否批准一个全新的隔离 profile。
+1. Phase 6.9.5 的 V6 已以 `usage_unverifiable` 终态关闭且不可重跑。V7 已零网络复现 preview/actual usage validator 缺陷并完成 parity + safe usage-shape 设计；下一步是用户审阅后编写 TDD 实施计划，当前不运行 Live、Docker 或浏览器。
 2. 继续后续 Agent 路线时，依次完成 Review/Planner 的新 profile 决策、KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；全部 Agent 完成前不进入记忆注入与 Episodic Memory。
 3. 全部 Agent 完成后进入 Phase 6.10 分层记忆。未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 
 回顾时可以问：“为什么 `usage_unverifiable` 不能代表零成本或模型失败？”“为什么新 profile 不能重跑 V6？”“Agent 之间如何通信，为什么模型不能决定权限和写操作？”
 
-下一会话可以复制：“请先说明 Phase 6.9.5 V6 为什么以 `usage_unverifiable` 终态关闭，并基于现有证据设计新的零网络根因调查与独立复审；不要重跑 V6、不要启动 Docker 或浏览器、不要提前进入记忆系统。”
+下一会话可以复制：“请审阅 Phase 6.9.5 V7 preview/actual usage parity 设计；确认后按 TDD 编写实施计划，不运行 Live、Docker 或浏览器、不要提前进入记忆系统。”
 
 ## 文档入口
 
