@@ -49,41 +49,59 @@ describe('review planner model runtime factory', () => {
     );
   });
 
-  it('creates no executor when both V4 Pro business gates remain false', () => {
-    const createExecutor = jest.fn<
-      StructuredModelExecutor,
-      [OpenAICompatibleExecutorConfig]
-    >(
-      () => () =>
-        Promise.resolve({
-          object: { focusIndexes: [0], diagnosis: 'review_pressure' },
-        }),
-    );
-
-    const bundle = createReviewPlannerModelRuntimes(
-      {
-        ...enabledEnv,
+  it.each([
+    {
+      label: 'absent',
+      gates: {
+        REVIEW_AGENT_MODEL_ENABLED: undefined,
+        PLANNER_AGENT_MODEL_ENABLED: undefined,
+      },
+    },
+    {
+      label: 'false',
+      gates: {
         REVIEW_AGENT_MODEL_ENABLED: false,
         PLANNER_AGENT_MODEL_ENABLED: false,
-        AI_MODEL: 'deepseek-v4-pro',
       },
-      { createExecutor },
-    );
+    },
+  ])(
+    'creates no executor when both V4 Pro business gates are $label even if the V7 eval gate is true',
+    ({ gates }) => {
+      const createExecutor = jest.fn<
+        StructuredModelExecutor,
+        [OpenAICompatibleExecutorConfig]
+      >(
+        () => () =>
+          Promise.resolve({
+            object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+          }),
+      );
 
-    expect(createExecutor).not.toHaveBeenCalled();
-    expect(bundle.config).toEqual({
-      reviewEnabled: false,
-      plannerEnabled: false,
-      reviewTimeoutMs: 4100,
-      plannerTimeoutMs: 4300,
-      mode: 'mock',
-      provider: 'mock',
-      model: 'disabled-review-planner',
-    });
-    expect(JSON.stringify(bundle.config)).not.toMatch(
-      /private-review-key|api\.deepseek\.com/i,
-    );
-  });
+      const bundle = createReviewPlannerModelRuntimes(
+        {
+          ...enabledEnv,
+          ...gates,
+          REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V7_ENABLED: true,
+          AI_MODEL: 'deepseek-v4-pro',
+        },
+        { createExecutor },
+      );
+
+      expect(createExecutor).not.toHaveBeenCalled();
+      expect(bundle.config).toEqual({
+        reviewEnabled: false,
+        plannerEnabled: false,
+        reviewTimeoutMs: 4100,
+        plannerTimeoutMs: 4300,
+        mode: 'mock',
+        provider: 'mock',
+        model: 'disabled-review-planner',
+      });
+      expect(JSON.stringify(bundle.config)).not.toMatch(
+        /private-review-key|api\.deepseek\.com/i,
+      );
+    },
+  );
 
   it.each([
     { label: 'trailing slash', AI_BASE_URL: 'https://api.deepseek.com/v1/' },

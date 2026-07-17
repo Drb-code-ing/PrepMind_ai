@@ -35,6 +35,26 @@ describe('review planner model config', () => {
     );
   });
 
+  it('does not accept the V7 evaluation gate as a production business gate', () => {
+    const publicConfig = resolveReviewPlannerModelConfig({
+      ...v4ProEnv,
+      REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V7_ENABLED: true,
+    });
+
+    expect(publicConfig).toEqual({
+      reviewEnabled: false,
+      plannerEnabled: false,
+      reviewTimeoutMs: 4_500,
+      plannerTimeoutMs: 4_500,
+      mode: 'mock',
+      provider: 'mock',
+      model: 'disabled-review-planner',
+    });
+    expect(JSON.stringify(publicConfig)).not.toMatch(
+      /V7|private-v4-pro-key|api\.deepseek\.com/i,
+    );
+  });
+
   it('keeps V4 Flash on the generic JSON-object transport', () => {
     expect(
       resolveReviewPlannerLiveExecutorConfig({

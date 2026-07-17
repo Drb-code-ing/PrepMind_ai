@@ -15,9 +15,14 @@ import {
 import {
   DEEPSEEK_V4_PRO_V7_PRICING,
   createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator,
+  resolveReviewPlannerControlledLiveV7DeepSeekUsageParityCompositionIdentity,
   resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing,
   validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight,
 } from './review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory';
+import {
+  resolveReviewPlannerLiveExecutorConfig,
+  resolveReviewPlannerModelConfig,
+} from './review-planner-model-config';
 
 const v7Env = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -31,6 +36,50 @@ const v7Env = Object.freeze({
 });
 
 describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
+  it('exposes only the sanitized production-composition identity', async () => {
+    const identity =
+      resolveReviewPlannerControlledLiveV7DeepSeekUsageParityCompositionIdentity(
+        v7Env,
+      );
+    const productionExecutor = resolveReviewPlannerLiveExecutorConfig(v7Env);
+    const productionConfig = resolveReviewPlannerModelConfig(v7Env);
+    if (!productionExecutor) throw new Error('expected production config');
+
+    expect(identity).toEqual({
+      provider: productionExecutor.provider,
+      model: productionExecutor.model,
+      baseUrlIdentity: 'deepseek-v1',
+      structuredOutputMode: productionExecutor.structuredOutputMode,
+      timeoutMs: productionConfig.reviewTimeoutMs,
+      schemaId: 'review-model-candidate-v1',
+    });
+    expect(productionExecutor.baseURL).toBe('https://api.deepseek.com/v1');
+    expect(Object.isFrozen(identity)).toBe(true);
+    expect(JSON.stringify(identity)).not.toMatch(
+      /v7-private-test-key|api\.deepseek\.com|https?:\/\//i,
+    );
+    expect(
+      REVIEW_MODEL_CANDIDATE_SCHEMA.safeParse({
+        focusIndexes: [0],
+        diagnosis: 'review_pressure',
+        minutes: 30,
+        targetHref: '/today',
+        writePermission: true,
+      }).success,
+    ).toBe(false);
+
+    const harness = createExecutorHarness();
+    const evaluator =
+      createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator(v7Env, {
+        createExecutor: harness.createExecutor,
+      });
+    if (!evaluator.ok) throw new Error('expected V7 evaluator');
+    await evaluator.value.runDiagnostic();
+    expect(harness.executor.mock.calls[0]?.[0].schema).toBe(
+      REVIEW_MODEL_CANDIDATE_SCHEMA,
+    );
+  });
+
   it('validates exact V7 preflight without constructing an executor', () => {
     expect(
       validateReviewPlannerControlledLiveV7DeepSeekUsageParityPreflight(v7Env),
@@ -341,7 +390,7 @@ describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
     expect(evaluator.value.providerAttemptCount()).toBe(23);
   });
 
-  it('runs the canonical 48 cases through the real paired runner and V7 runtime', async () => {
+  it('binds the strict-fake V7 evaluator run to an offline-only acceptance label', async () => {
     const harness = createExecutorHarness({ dynamicFixtureCandidates: true });
     const evaluator =
       createReviewPlannerControlledLiveV7DeepSeekUsageParityEvaluator(v7Env, {
@@ -353,22 +402,31 @@ describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
     if (!evaluator.ok) throw new Error('expected V7 evaluator');
     await evaluator.value.runDiagnostic();
     const paired = await evaluator.value.runPairedEvaluation();
+    const acceptance = Object.freeze({
+      evidenceClassification: 'mock_quality_not_live_evidence' as const,
+      result: paired,
+    });
 
-    expect(paired).toMatchObject({
-      kind: 'report',
-      report: {
-        mode: 'live',
-        counters: {
-          caseEntries: 48,
-          zeroCallCases: 26,
-          runtimeInvocations: 22,
-          strictSuccesses: 48,
-          qualityPasses: 48,
-          criticalFailures: 0,
+    expect(acceptance).toMatchObject({
+      evidenceClassification: 'mock_quality_not_live_evidence',
+      result: {
+        kind: 'report',
+        report: {
+          mode: 'live',
+          counters: {
+            caseEntries: 48,
+            zeroCallCases: 26,
+            runtimeInvocations: 22,
+            strictSuccesses: 48,
+            qualityPasses: 48,
+            criticalFailures: 0,
+          },
+          productionDecision: 'quality_gate_passed',
         },
-        productionDecision: 'quality_gate_passed',
       },
     });
+    // The inner report is deliberately Live-shaped to exercise the evaluator
+    // contract; the outer label forbids treating injected calls as provider evidence.
     if (paired.kind !== 'report') throw new Error('expected V7 paired report');
     expect(
       paired.report.caseEntries
@@ -377,6 +435,31 @@ describe('Review/Planner controlled Live V7 usage parity evaluator', () => {
     ).toBe(true);
     expect(harness.executor).toHaveBeenCalledTimes(23);
     expect(evaluator.value.providerAttemptCount()).toBe(23);
+  });
+
+  it('labels the canonical 48-case fake-only acceptance as Mock, never Live evidence', async () => {
+    const report = await runPhase695ReviewPlannerPaired({
+      mode: 'mock',
+      now: () => 0,
+    });
+
+    expect(report).toMatchObject({
+      mode: 'mock',
+      counters: {
+        caseEntries: 48,
+        zeroCallCases: 26,
+        runtimeInvocations: 22,
+        strictSuccesses: 48,
+        qualityPasses: 48,
+        criticalFailures: 0,
+      },
+      productionDecision: 'mock_quality_not_evidence',
+    });
+    expect(
+      report.caseEntries
+        .filter((entry) => entry.executionKind === 'zero_call')
+        .every((entry) => entry.zeroCallVerified),
+    ).toBe(true);
   });
 
   it('closes paired evaluation when a later raw response reports missing usage', async () => {

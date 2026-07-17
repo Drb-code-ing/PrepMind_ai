@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--4 已完成 value-free usage audit、corrected evaluator、immutable evidence 与 one-shot CLI。CLI injected regression 20/20、factory 27/27、targeted ESLint 与 Server build 通过；preflight、evidence、executor、canary、paired eval 和 terminal seal 均 fail-closed。尚未创建真实 V7 marker/evidence、未运行 Live，Review/Planner product gates 继续为 `false`。
+> 2026-07-17 — Phase 6.9.5 V6 已以 `usage_unverifiable` 终态关闭且不可重跑；V7 Task 1--5 已完成 usage audit、corrected evaluator、immutable evidence、one-shot CLI 与 production-composition parity。V7 只公开六字段 sanitized identity；直接 Mock report 标记 `mock_quality_not_evidence`，strict-fake evaluator 回归另标 `mock_quality_not_live_evidence`，两个产品 gate 继续默认 `false`。尚未创建真实 V7 marker/evidence、未运行 Live。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在 cloned-response audit 中增加不含数值且 callback 前冻结的 `missing / invalid / positive` usage shape。Task 2 evaluator 允许 actual input `96 / 97 / 42_996`，并由真实 runner 穿过 `48 cases / 26 verified zero-call / 22 runtime / 23 total attempts`；冻结 reservation 最坏成本 `0.18726 < 1.00`。Task 3 建立独立 strict `reserved / attempted / finalized` evidence、V1--V6 existing-only/no-reparse manifest 与 V6 固定哈希；mark-attempted 和 finalizer 都只使用 reserve 时绑定的 fresh canonical root/snapshot，terminal summary 在异步边界前 strict clone+freeze，阻断跨 root、mutable baseline、mutable summary、状态跳过与倒退。Task 4 增加只接受精确 V7 confirmation 的 one-shot CLI：在每个 capability 边界复核历史 evidence，reservation 后的异常只允许 terminal seal；preflight throw 固定阻断，evaluator construction throw 单独归类 `executor_init`，其余 evidence/orchestration 异常归类 `evidence_io`，failed canary 不进入 paired eval，thin process 只输出 strict safe summary。CLI injected regression 20/20、factory 27/27、targeted ESLint 与 Server build exit 0；所有写测试仅在临时目录，真实仓库没有 V7 marker/evidence。下一步是 Mock 与 production-composition parity；两条业务 gate 继续默认 `false`，当前不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v6 均为独立、一次且不可重跑的受控 profile；V6 唯一 canary 已封存为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / usage_unverifiable`。V7 Task 1 在 cloned-response audit 中增加不含数值且 callback 前冻结的 `missing / invalid / positive` usage shape。Task 2 evaluator 允许 actual input `96 / 97 / 42_996`，并由真实 runner 穿过 `48 cases / 26 verified zero-call / 22 runtime / 23 total attempts`；冻结 reservation 最坏成本 `0.18726 < 1.00`。Task 3 建立独立 strict evidence 与 V1--V6 existing-only/no-reparse manifest；Task 4 增加 exact-confirmation one-shot CLI、capability 顺序复核与 terminal seal。Task 5 让 V7 preflight 只暴露 `provider/model/baseUrlIdentity/structuredOutputMode/timeoutMs/schemaId` 六字段冻结 identity，不返回 URL、key、pricing、executor 或写权限；production resolver 仍只读取两个业务 gate，V7 eval gate 即使为 true 也不能构造产品 executor，且不进入 Docker/Web/worker/config allowlist。直接 `mode=mock` 的 48-case report 固定为 `mock_quality_not_evidence`；另一个穿过 V7 evaluator 的 strict-fake 回归虽验证 live-shaped contract，但外层固定分类为 `mock_quality_not_live_evidence`。两者都得到 `26 zero-call / 22 runtime / 48 strict / 48 quality / 0 critical`，均不可写成 provider Live 通过。Focused parity 61/61、Agent 406/406、owner-scoped server 7/7 通过；模型只选择本地已有 index/order，FSRS、minutes、links、owner facts、持久化与写权限继续由本地权威控制。真实仓库没有 V7 marker/evidence；下一步是全量离线 gates 与权威文档同步，当前不得运行 V7 Live、Docker 或浏览器。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--4 离线完成，尚未运行或授权 V7 Live |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v6 均为独立终态；V7 Task 1--5 离线完成，尚未运行或授权 V7 Live |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V7 Mock 与 production-composition parity（离线）
+
+目标：证明 V7 诊断使用的 DeepSeek V4 Pro non-thinking transport 与产品候选 composition 对齐，同时继续隔离评测 gate、产品 gate、模型输出和本地写权限。
+
+为什么：仅在 evaluator 测试里看到相同 model 字符串不足以证明生产一致性；直接暴露 executor config 又会泄露 URL/key。另一方面，fake executor 的 48-case 成功如果被标成 Live，会把工程回归误写成 provider 质量证据。
+
+主要内容与边界：新增 sanitized composition identity，仅返回 `deepseek / deepseek-v4-pro / deepseek-v1 / deepseek_v4_pro_nonthinking_json / 4500ms / review-model-candidate-v1`，对象冻结且不含 URL、凭据、pricing 或 executor；同一测试把它与 production private/public resolver 逐字段 cross-compare，并把 schemaId 锚定到 canary 实际使用的 canonical schema。V7 eval gate 不在 production allowlist；业务 gate 缺失或均为 `false` 时，即使 eval gate 为 true 也不会构造 executor，只返回 deterministic Mock suggestions。直接 Mock runner 的 48-case 决定固定为 `mock_quality_not_evidence`；strict fake 穿过 V7 evaluator 的另一条回归仅用于 live-shaped engineering contract，外层固定标为 `mock_quality_not_live_evidence`。两条离线证据计数均为 `26` verified zero-call、`22` runtime、`48` strict、`48` quality pass、`0` critical，均不能充当 provider evidence。模型 schema 只允许选择本地 snapshot 的 index/order，不能生成或修改 FSRS、minutes、links、owner facts、persisted records 或 write permissions。
+
+验收：focused factory/config/runtime 61/61、`@repo/agent` 406/406、ReviewAgent owner-scope server 7/7；静态扫描确认 V7 eval gate 未进入 Docker、Web、worker 或 server config allowlist。没有运行 V7 package script、Live、Docker 或浏览器，没有创建真实 V7 marker/evidence，也没有开启 Review/Planner 产品 gate。
+
+回顾时可以问：为什么 parity helper 使用 `deepseek-v1` identity 而不返回真实 URL？为什么 48/48 Mock 仍不能说明 provider 可用？为什么 eval gate 为 true 也不能开启产品 Review/Planner runtime？
 
 ### 2026-07-17 - Phase 6.9.5 V7 one-shot CLI（离线）
 

@@ -126,6 +126,15 @@ export type ReviewPlannerControlledLiveV7FactoryResult =
   | Readonly<{ ok: true; value: ReviewPlannerControlledLiveV7Evaluator }>
   | Readonly<{ ok: false; diagnosticCode: ReviewPlannerDiagnosticCode }>;
 
+export type ReviewPlannerControlledLiveV7CompositionIdentity = Readonly<{
+  provider: 'deepseek';
+  model: 'deepseek-v4-pro';
+  baseUrlIdentity: 'deepseek-v1';
+  structuredOutputMode: 'deepseek_v4_pro_nonthinking_json';
+  timeoutMs: 4_500;
+  schemaId: 'review-model-candidate-v1';
+}>;
+
 type V7FactoryDependencies = Readonly<{
   createExecutor(
     config: OpenAICompatibleExecutorConfig,
@@ -159,6 +168,26 @@ export function resolveReviewPlannerControlledLiveV7DeepSeekUsageParityPricing(
     reservedInputTokens: V7_RESERVED_INPUT_TOKENS,
     reservedOutputTokens: V7_RESERVED_OUTPUT_TOKENS,
     reservedCostCny,
+  });
+}
+
+/** Safe parity projection. It intentionally omits the URL, key and executor. */
+export function resolveReviewPlannerControlledLiveV7DeepSeekUsageParityCompositionIdentity(
+  env: Record<string, unknown>,
+  overrides: Readonly<{ pricing?: DeepSeekV4ProV7Pricing }> = {},
+): ReviewPlannerControlledLiveV7CompositionIdentity | null {
+  if (
+    !resolveV7Preflight(env, overrides.pricing ?? defaultDependencies.pricing)
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
+    baseUrlIdentity: 'deepseek-v1',
+    structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+    timeoutMs: V7_TIMEOUT_MS,
+    schemaId: 'review-model-candidate-v1',
   });
 }
 
