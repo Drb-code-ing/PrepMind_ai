@@ -17,24 +17,30 @@ const FORBIDDEN_REQUEST_FIELDS = [
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
 
+export type DeepSeekV4ProUsageState = 'missing' | 'invalid' | 'positive';
+
 export type DeepSeekV4ProNonThinkingAudit =
   | Readonly<{
       reasoning: 'not_reported';
       reasoningContentPresent: boolean;
+      usageState: DeepSeekV4ProUsageState;
     }>
   | Readonly<{
       reasoning: 'reported_zero';
       reasoningContentPresent: boolean;
       reportedReasoningTokens: 0;
+      usageState: DeepSeekV4ProUsageState;
     }>
   | Readonly<{
       reasoning: 'reported_positive';
       reasoningContentPresent: boolean;
       reportedReasoningTokens: number;
+      usageState: DeepSeekV4ProUsageState;
     }>
   | Readonly<{
       reasoning: 'invalid_detail';
       reasoningContentPresent: boolean;
+      usageState: DeepSeekV4ProUsageState;
     }>;
 
 /**
@@ -125,25 +131,32 @@ async function auditResponse(response: Response): Promise<DeepSeekV4ProNonThinki
     const reasoningContentPresent =
       message !== undefined && hasOwn(message, 'reasoning_content');
     const detail = readReasoningTokenDetail(payload);
+    const usageState = readUsageState(payload);
     if (detail === undefined) {
-      return { reasoning: 'not_reported', reasoningContentPresent };
+      return { reasoning: 'not_reported', reasoningContentPresent, usageState };
     }
     if (!isSafeTokenCount(detail)) {
-      return { reasoning: 'invalid_detail', reasoningContentPresent };
+      return { reasoning: 'invalid_detail', reasoningContentPresent, usageState };
     }
     return detail === 0
       ? {
           reasoning: 'reported_zero',
           reasoningContentPresent,
           reportedReasoningTokens: 0,
+          usageState,
         }
       : {
           reasoning: 'reported_positive',
           reasoningContentPresent,
           reportedReasoningTokens: detail,
+          usageState,
         };
   } catch {
-    return { reasoning: 'not_reported', reasoningContentPresent: false };
+    return {
+      reasoning: 'not_reported',
+      reasoningContentPresent: false,
+      usageState: 'missing',
+    };
   }
 }
 
@@ -161,6 +174,22 @@ function readReasoningTokenDetail(payload: unknown): unknown {
   return isPlainRecord(detail) ? detail.reasoning_tokens : undefined;
 }
 
+function readUsageState(payload: unknown): DeepSeekV4ProUsageState {
+  if (!isPlainRecord(payload) || !isPlainRecord(payload.usage)) {
+    return 'missing';
+  }
+  if (
+    !hasOwn(payload.usage, 'prompt_tokens') ||
+    !hasOwn(payload.usage, 'completion_tokens')
+  ) {
+    return 'missing';
+  }
+  return isPositiveSafeInteger(payload.usage.prompt_tokens) &&
+    isPositiveSafeInteger(payload.usage.completion_tokens)
+    ? 'positive'
+    : 'invalid';
+}
+
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return (
     typeof value === 'object' &&
@@ -176,4 +205,8 @@ function hasOwn(value: Record<string, unknown>, key: string) {
 
 function isSafeTokenCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }

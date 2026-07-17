@@ -8,6 +8,7 @@ type Audit = {
   reasoning: string;
   reasoningContentPresent: boolean;
   reportedReasoningTokens?: number;
+  usageState: 'missing' | 'invalid' | 'positive';
 };
 
 type CreateTransport = (
@@ -45,6 +46,24 @@ function successfulResponse(input: unknown = {}) {
         },
       ],
       usage: { completion_tokens_details: {} },
+    }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+}
+
+function responseWithUsage(usage?: unknown) {
+  return new Response(
+    JSON.stringify({
+      id: 'unit-completion',
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: RAW_RESPONSE_CANARY,
+          },
+        },
+      ],
+      ...(usage === undefined ? {} : { usage }),
     }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
@@ -155,7 +174,11 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
       }),
     ).rejects.toThrow('DEEPSEEK_V4_PRO_NONTHINKING_RESPONSE_INVALID');
     expect(audits).toEqual([
-      { reasoning: 'not_reported', reasoningContentPresent: true },
+      {
+        reasoning: 'not_reported',
+        reasoningContentPresent: true,
+        usageState: 'missing',
+      },
     ]);
     expect(JSON.stringify(audits)).not.toContain(RAW_RESPONSE_CANARY);
   });
@@ -181,7 +204,11 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
       }),
     ).rejects.toThrow('DEEPSEEK_V4_PRO_NONTHINKING_RESPONSE_INVALID');
     expect(audits).toEqual([
-      { reasoning: 'not_reported', reasoningContentPresent: true },
+      {
+        reasoning: 'not_reported',
+        reasoningContentPresent: true,
+        usageState: 'missing',
+      },
     ]);
   });
 
@@ -224,6 +251,7 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
         reasoning: 'reported_zero',
         reasoningContentPresent: false,
         reportedReasoningTokens: 0,
+        usageState: 'missing',
       },
     ]);
     expect(JSON.stringify(audits)).not.toContain(RAW_RESPONSE_CANARY);
@@ -237,6 +265,7 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
         reasoning: 'reported_positive',
         reasoningContentPresent: false,
         reportedReasoningTokens: 7,
+        usageState: 'missing',
       },
     },
     {
@@ -245,6 +274,7 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
       expected: {
         reasoning: 'invalid_detail',
         reasoningContentPresent: false,
+        usageState: 'missing',
       },
     },
   ])('fails closed for $label without retaining response content', async ({ detail, expected }) => {
@@ -282,5 +312,78 @@ describe('DeepSeek V4 Pro non-thinking transport', () => {
     ).rejects.toThrow('DEEPSEEK_V4_PRO_NONTHINKING_RESPONSE_INVALID');
     expect(audits).toEqual([expected]);
     expect(JSON.stringify(audits)).not.toContain(RAW_RESPONSE_CANARY);
+  });
+
+  it.each([
+    {
+      label: 'missing usage object',
+      usage: undefined,
+      expected: 'missing' as const,
+    },
+    {
+      label: 'missing prompt token field',
+      usage: { completion_tokens: 4 },
+      expected: 'missing' as const,
+    },
+    {
+      label: 'missing completion token field',
+      usage: { prompt_tokens: 97 },
+      expected: 'missing' as const,
+    },
+    {
+      label: 'zero prompt tokens',
+      usage: { prompt_tokens: 0, completion_tokens: 4 },
+      expected: 'invalid' as const,
+    },
+    {
+      label: 'negative completion tokens',
+      usage: { prompt_tokens: 97, completion_tokens: -1 },
+      expected: 'invalid' as const,
+    },
+    {
+      label: 'fractional prompt tokens',
+      usage: { prompt_tokens: 97.5, completion_tokens: 4 },
+      expected: 'invalid' as const,
+    },
+    {
+      label: 'unsafe completion tokens',
+      usage: {
+        prompt_tokens: 97,
+        completion_tokens: Number.MAX_SAFE_INTEGER + 1,
+      },
+      expected: 'invalid' as const,
+    },
+    {
+      label: 'positive safe usage',
+      usage: { prompt_tokens: 731, completion_tokens: 19 },
+      expected: 'positive' as const,
+    },
+  ])('classifies $label without retaining token values', async ({ usage, expected }) => {
+    const createTransport = await loadCreateTransport();
+    expect(createTransport).toBeTypeOf('function');
+    if (!createTransport) return;
+
+    const audits: Audit[] = [];
+    const transport = createTransport(
+      async () => responseWithUsage(usage),
+      (audit) => audits.push(audit),
+    );
+
+    await expect(
+      transport(COMPLETIONS_URL, {
+        method: 'POST',
+        body: JSON.stringify(validRequestBody()),
+      }),
+    ).resolves.toBeInstanceOf(Response);
+    expect(audits).toEqual([
+      {
+        reasoning: 'not_reported',
+        reasoningContentPresent: false,
+        usageState: expected,
+      },
+    ]);
+    expect(JSON.stringify(audits)).not.toContain(RAW_RESPONSE_CANARY);
+    expect(Object.keys(audits[0] ?? {})).not.toContain('prompt_tokens');
+    expect(Object.keys(audits[0] ?? {})).not.toContain('completion_tokens');
   });
 });
