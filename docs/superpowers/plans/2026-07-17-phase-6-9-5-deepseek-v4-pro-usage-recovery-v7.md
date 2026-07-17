@@ -286,7 +286,7 @@ Verify the snapshot before reservation, before marking attempted, before any fut
 Use a temporary root containing copied fixture bytes. Prove existing-only reads, no-overwrite marker creation, reparse rejection, exact byte preservation after failed reserve/finalize, concurrent reservation single winner, and finalized record immutability.
 
 ```powershell
-bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 Expected: exit `0`; tests operate only under temporary directories.
@@ -295,7 +295,7 @@ Expected: exit `0`; tests operate only under temporary directories.
 
 ```powershell
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts
-bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 ```powershell
@@ -439,7 +439,7 @@ git commit -m "test(agent): verify V7 composition parity"
 ```powershell
 bun --cwd packages/ai test tests/model-agent-deepseek-v4-pro-nonthinking.test.ts
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.cli.spec.ts review-planner-model-config.spec.ts review-planner-model-runtime.factory.spec.ts
-bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 ```
 
 Expected: all exit `0`; record exact test counts from output.
@@ -510,7 +510,7 @@ Independently trace the only future execution path from exact confirmation to te
 bun --filter @repo/ai test
 bun --filter @repo/agent test
 bun --filter @repo/server test -- --runInBand review-planner-controlled-live-eval-v7-deepseek-usage-parity.factory.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.spec.ts review-planner-controlled-live-eval-v7-deepseek-usage-parity.cli.spec.ts review-planner-model-config.spec.ts review-planner-model-runtime.factory.spec.ts
-bun --cwd apps/server test src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
+bun test apps/server/src/review-agent/review-planner-controlled-live-eval-v7-deepseek-usage-parity.evidence.native.bun.test.ts
 git diff --check
 git status --short
 ```
