@@ -71,6 +71,16 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 once-only CLI 与 Mock 边界
+
+目标：把独立 v5 的真实模型入口约束为单一、可审计且不可重试的 server-only 命令，同时先用不触网的 Mock 再次证明冻结 48-case 数据集、zero-call 边界和安全汇总可运行；本条不记录任何 Live 成功结论。
+
+主要内容与做法：新增 `eval:review-planner:live:v5:deepseek` 与精确确认参数 `--confirm-controlled-live-v5-deepseek-v4-pro`。CLI 在 provider 边界前依序验证配置、快照并复核 v1--v4 历史 evidence、reserve 独立 v5 evidence/marker，再标记 attempted；它只执行一个 canary，且只有 `complete / usageKnown=true / providerAttemptCount=1` 时才允许 22 个 eligible runtime case 继续。最终状态必须同时满足 `quality_gate_passed`、48 entries、26 个实际 verified zero-call、22 runtime、23 total attempts、P95 不超过 4500ms、正数 provider usage，以及 DeepSeek V4 Pro 非缓存 CNY 聚合费用不超过 CNY 1；否则严格关闭。序列化与脚本 stdout 都只投影状态、计数、受限 CNY 聚合和质量摘要，不会写出 prompt、candidate、凭据、endpoint 或 raw provider 输出。
+
+离线证据：V5 CLI Jest 覆盖 confirmation/preflight、初始历史 hash、reservation、一次 marker、canary 失败、exact 48-case 开放条件、P95/费用关闭与安全序列化；`phase-6.9-review-planner-v2` Mock 运行得到 48 cases、26 verified zero-call、22 runtime、48 strict successes、0 critical failures、`mock_quality_not_evidence`。Mock 不会消费 v5 marker、不调用 provider，也不会改变 `REVIEW_AGENT_MODEL_ENABLED=false` 与 `PLANNER_AGENT_MODEL_ENABLED=false` 的默认业务状态。
+
+回顾时可以问：为什么 v5 必须先 reserve evidence 再创建 evaluator？为什么 canary 的正数 usage 和一次调用数是进入 48-case 的前置条件？为什么 v5 的 CNY price profile 不能写进现有 USD Trace？
+
 ### 2026-07-17 - Phase 6.9.5 DeepSeek V4 Pro v5 证据隔离
 
 目标：为 DeepSeek V4 Pro v5 的一次性受控验收建立独立 evidence/once-marker 与历史完整性边界，保证 v1--v4 的目录树、marker 和字节内容不会被 v5 写入、覆盖或静默改写。
