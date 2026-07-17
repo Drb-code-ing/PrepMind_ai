@@ -244,6 +244,120 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
     await expect(winner.value.markAttempted()).resolves.toBe(false);
   });
 
+  it('preserves a consumed lineage after leaf or first-stage durability fails', async () => {
+    for (const operation of [2, 3]) {
+      for (const faultPhase of ['write', 'flush', 'close'] as const) {
+        const caseRoot = await mkdtemp(join(tmpdir(), 'prepmind-v8-reserve-fault-'));
+        try {
+          await copyHistory(caseRoot);
+          let phaseCount = 0;
+          const harness = createReviewPlannerControlledLiveV8EvidenceTestHarness(
+            (phase) => {
+              if (phase !== faultPhase) return false;
+              phaseCount += 1;
+              return phaseCount === operation;
+            },
+          );
+          const historicalSnapshot = await snapshot(caseRoot);
+          await expect(
+            harness.reserve({
+              root: caseRoot,
+              historicalSnapshot,
+              startedAt: '2026-07-18T12:00:00.000Z',
+              runId: `reserve-${operation}-${faultPhase}`,
+            }),
+          ).rejects.toThrow(
+            'CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_EVIDENCE_RESERVATION_FAILED',
+          );
+          await expect(
+            reserve(caseRoot, historicalSnapshot, `retry-${operation}-${faultPhase}`),
+          ).rejects.toThrow(
+            'CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_EVIDENCE_ALREADY_CONSUMED',
+          );
+          const oncePath = join(
+            caseRoot,
+            REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
+            REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.onceLockLeaf,
+          );
+          expect(await readFile(oncePath)).not.toHaveLength(0);
+        } finally {
+          await rm(caseRoot, { recursive: true, force: true });
+        }
+      }
+    }
+  }, 30_000);
+
+  it('lets the concurrent winner finish after the loser observes the consumed lineage', async () => {
+    const historicalSnapshot = await snapshot(root);
+    const reservations = await Promise.allSettled([
+      reserve(root, historicalSnapshot, 'winner-complete-a'),
+      reserve(root, historicalSnapshot, 'winner-complete-b'),
+    ]);
+    const winners = reservations.filter((value) => value.status === 'fulfilled');
+    expect(winners).toHaveLength(1);
+    const winner = winners[0];
+    if (winner.status !== 'fulfilled') throw new Error('missing winner');
+    await expect(winner.value.markAttempted()).resolves.toBe(true);
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+      expect(advanceReviewPlannerControlledLiveV8Stage(winner.value, stage)).toBe(true);
+    }
+    await expect(
+      finalizeReviewPlannerControlledLiveV8Evidence({
+        reservation: winner.value,
+        summary: completeSummary(),
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      readReviewPlannerControlledLiveV8Evidence({
+        root,
+        relativePath: winner.value.relativePath,
+      }),
+    ).resolves.toMatchObject({ status: 'complete', state: 'finalized' });
+    const evidenceDirectory = dirname(join(root, winner.value.relativePath));
+    const once = await readFile(
+      join(
+        evidenceDirectory,
+        REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.onceLockLeaf,
+      ),
+    );
+    const seal = JSON.parse(
+      await readFile(
+        join(
+          evidenceDirectory,
+          REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
+        ),
+        'utf8',
+      ),
+    ) as Record<string, unknown>;
+    expect(seal.onceMarkerSha256).toBe(
+      createHash('sha256').update(once).digest('hex'),
+    );
+  });
+
+  it('rechecks pinned V1--V7 history before publishing a failure terminal', async () => {
+    const reservation = await preparedReservation(root, 'failure-history-reader');
+    await expect(
+      finalizeReviewPlannerControlledLiveV8Evidence({
+        reservation,
+        summary: failureSummary(),
+      }),
+    ).resolves.toBe(true);
+    await writeFile(
+      join(
+        root,
+        historicalDirectories[6],
+        '.review-planner-controlled-live-v7-deepseek-v4-pro-usage-parity.once',
+      ),
+      'changed-after-failure-terminal',
+    );
+    expectEvidenceIo(
+      await readReviewPlannerControlledLiveV8Evidence({
+        root,
+        relativePath: reservation.relativePath,
+      }),
+    );
+  });
+
   it('rejects forged reservations/finalizers and a reparse-swapped V8 tree', async () => {
     const reservation = await preparedReservation(root, 'forged-finalizer');
     await expect(
@@ -273,11 +387,16 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
     }
   });
 
-  it('stops at the last durable prefix for every stage write failure or thrown flush fault without retry', async () => {
+  it('stops at the last durable prefix for every stage write/flush/close fault without retry', async () => {
     const durableOperationByStage = [
       3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20,
     ];
-    for (const throws of [false, true]) {
+    const faultModes = [
+      { phase: 'write' as const, throws: false },
+      { phase: 'flush' as const, throws: true },
+      { phase: 'close' as const, throws: false },
+    ];
+    for (const mode of faultModes) {
       for (
         let stageIndex = 0;
         stageIndex < REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.length;
@@ -290,15 +409,14 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
           await copyHistory(caseRoot);
           let phaseCount = 0;
           let hits = 0;
-          const faultPhase = throws ? 'flush' : 'write';
           const harness =
             createReviewPlannerControlledLiveV8EvidenceTestHarness((phase) => {
-              if (phase !== faultPhase) return false;
+              if (phase !== mode.phase) return false;
               phaseCount += 1;
               if (phaseCount !== durableOperationByStage[stageIndex])
                 return false;
               hits += 1;
-              if (throws) throw new Error('injected');
+              if (mode.throws) throw new Error('injected');
               return true;
             });
           const historicalSnapshot = await snapshot(caseRoot);
@@ -310,7 +428,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
                 root: caseRoot,
                 historicalSnapshot,
                 startedAt: '2026-07-18T12:00:00.000Z',
-                runId: `stage-${stageIndex}-${throws}`,
+                runId: `stage-${stageIndex}-${mode.phase}`,
               }),
             ).rejects.toThrow();
           } else {
@@ -318,7 +436,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
               root: caseRoot,
               historicalSnapshot,
               startedAt: '2026-07-18T12:00:00.000Z',
-              runId: `stage-${stageIndex}-${throws}`,
+              runId: `stage-${stageIndex}-${mode.phase}`,
             });
             await reservation.markAttempted();
             if (stageIndex <= 8) {
@@ -350,11 +468,21 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
           const read =
             await readReviewPlannerControlledLiveV8Evidence(caseRoot);
           expect(read.status).toBe('invalid_attempted');
+          const expectedLastStageIndex =
+            mode.phase === 'close' ? stageIndex : stageIndex - 1;
           expect(read.lastStage).toBe(
-            stageIndex === 0
+            expectedLastStageIndex < 0
               ? null
-              : REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[stageIndex - 1],
+              : REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[expectedLastStageIndex],
           );
+          if (mode.phase === 'close' && stageIndex > 0) {
+            const marker = join(
+              caseRoot,
+              REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
+              REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[stageIndex],
+            );
+            expect(await readFile(marker)).toHaveLength(0);
+          }
         } finally {
           await rm(caseRoot, { recursive: true, force: true });
         }

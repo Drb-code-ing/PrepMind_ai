@@ -431,17 +431,6 @@ async function reserveReviewPlannerControlledLiveV8EvidenceInternal(
     } catch {
       // Converted to the fixed reservation failure below.
     }
-    for (const ownedLeaf of [
-      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[0],
-      leafName,
-      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.onceLockLeaf,
-    ]) {
-      try {
-        directory?.deleteFile(ownedLeaf);
-      } catch {
-        // A failed reservation remains consumed and cannot be retried.
-      }
-    }
     directory?.close();
     if (error instanceof Error && /already|ALREADY/i.test(error.message)) {
       throw new Error(
@@ -693,6 +682,7 @@ export async function readReviewPlannerControlledLiveV8Evidence(
     const decoded = JSON.parse(bytes.toString('utf8')) as unknown;
     const failure = failureRecordSchema.safeParse(decoded);
     if (failure.success && failure.data.state === 'finalized') {
+      await snapshotReviewPlannerControlledLiveV8HistoricalEvidence(root);
       const lastStageIndex = lastStage
         ? REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.indexOf(lastStage)
         : -1;
@@ -712,15 +702,20 @@ export async function readReviewPlannerControlledLiveV8Evidence(
     ) {
       return evidenceIoProjection(lastStage);
     }
-    const seal = successSealSchema.safeParse(
-      JSON.parse(
-        directory
-          .readRegularFile(
-            REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
-          )
-          .toString('utf8'),
-      ),
-    );
+    let seal: ReturnType<typeof successSealSchema.safeParse>;
+    try {
+      seal = successSealSchema.safeParse(
+        JSON.parse(
+          directory
+            .readRegularFile(
+              REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.successCommitLeaf,
+            )
+            .toString('utf8'),
+        ),
+      );
+    } catch {
+      return evidenceIoProjection(lastStage);
+    }
     const history =
       await snapshotReviewPlannerControlledLiveV8HistoricalEvidence(root);
     const manifestHash = canonicalStageManifestSha256();
@@ -784,11 +779,6 @@ function createStage(
     return true;
   } catch {
     cleanupFaultHandles(capability);
-    try {
-      capability.directory.deleteFile(stage);
-    } catch {
-      // A non-durable stage must never be accepted as the durable prefix.
-    }
     return stopCapability(capability);
   }
 }
