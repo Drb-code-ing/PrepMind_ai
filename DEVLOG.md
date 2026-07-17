@@ -71,6 +71,16 @@
 
 ## 近期关键记录
 
+### 2026-07-17 - Phase 6.9.5 V6 non-thinking evidence 隔离（离线）
+
+目标：为 V6 这条独立 DeepSeek V4 Pro non-thinking lineage 预先冻结一次性、安全且可审计的 evidence 边界，同时以字节级历史快照保护 v1--v5，避免新的受控实验覆盖、重用或误解释旧 evidence。
+
+主要内容与边界：新增独立 V6 profile/schema/once-lock 常量与严格 `reserved`、`attempted`、`finalized` records。完整记录只允许固定的 23 次尝试、CNY token/cost/cap、48/26/22/48 固定质量计数，以及 `not_reported` 或 `reported_zero` 的安全 non-thinking aggregate；关闭记录只保留有界诊断，`thinking_not_disabled` 也只能保留 reasoning 枚举、布尔值和非负安全 token 计数。V1--V5 的所有目录和 marker 都以 native HANDLE-relative、existing-only、no-reparse 清单 hash 在 reserve 前、executor 前、provider 前及 finalization 后复核；V6 writer 唯一可写范围是新的 runtime V6 tree、其 once marker 和安全 JSON。reservation 对调用方只暴露 `relativePath` 与 `markAttempted`；terminal `finalize/seal` capability 仅由模块私有 WeakMap 绑定给原始 object，伪造/clone handle 在任何写入前 fail-closed。finalization 的第一个 durable record 固定是 closed `evidence_io`，最后一次 history check 通过后才允许覆盖为请求的 terminal summary 并 seal；history mismatch 或任一 writer failure 都只 seal 已有的 safe attempted/finalized record，绝不留下 durable `complete`。这不是不可能的跨目录原子锁声明：枚举仅提供不可信 leaf names，已绑定目录及每个重新相对打开的 leaf 都禁止 reparse/DELETE，下一次 fresh snapshot 负责检测并发新增或变更。
+
+验收：先运行新增 evidence spec，因 V6 evidence module 不存在而得到 module-not-found RED；独立复审发现旧顺序在 final hash mismatch 且 corrective writer failure 时会遗留 `complete`，新增组合回归先 RED，再改为 safe-provisional ordering。第二次复审发现公开 reservation 可直接 terminal-write，新增 public-surface regression 先 RED，再将 capability 收进 WeakMap；clone 进入受控 finalizer 时不发生写入。修复后 focused Jest 4/4 和 Windows Bun native 11/11 通过。native tests 覆盖 V1--V5 历史的 added/changed/removed/renamed、late concurrent entry、junction/reparse、duplicate V6 marker、native writer denied、final history mismatch 的 sealed `evidence_io`、private capability 与 forged-handle fail-closed，以及四个边界的 hash 复核。旧的 call-count 注入式 terminal writer failure test 已移除，因为它需要重新暴露或伪造私有 writer capability；实际 native writer denied 与 sealed-record 可观察断言保留，不设置 test-only public write backdoor。所有 fixture 只位于 OS 临时目录；未创建仓库实际 V6 evidence 目录或 marker，未读取 `.env`、未调用 provider、未运行 V6 CLI、Docker 或浏览器。该离线 writer 不构成 Live、质量通过、费用结论或生产启用。
+
+回顾时可以问：为什么 V6 必须将 v1--v5 的完整目录和 once marker 都纳入 snapshot，而不能只保护 marker？为什么 post-finalization hash failure 必须覆盖为 `evidence_io` 才能 seal？为什么 V6 evidence 只保留 reasoning 的安全 aggregate，而不能保存 provider response 或调试文本？
+
 ### 2026-07-17 - Phase 6.9.5 V6 non-thinking evaluator（离线）
 
 目标：在不重跑 v1--v5、不创建 V6 profile/marker/evidence 且不接触 provider 的前提下，先冻结 V6 的一次 canary、22 个 paired runtime 尝试、非 thinking 审计和 CNY 费用上限。
