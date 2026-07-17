@@ -140,6 +140,20 @@ describeNativeWindows(
       }
     });
 
+    it('does not recreate a missing historical directory while rejecting the snapshot', async () => {
+      const missingRelativeDirectory = historicalDirectories[2];
+      const missingDirectory = join(root, missingRelativeDirectory);
+      const parentDirectory = join(root, 'docs/acceptance/evidence');
+      await rm(missingDirectory, { recursive: true, force: true });
+
+      await expect(
+        snapshotReviewPlannerControlledLiveV5HistoricalEvidence(root),
+      ).rejects.toThrow('CONTROLLED_LIVE_V5_HISTORICAL_INTEGRITY_FAILED');
+      await expect(readdir(parentDirectory)).resolves.not.toContain(
+        'phase-6-9-5-controlled-live-v3',
+      );
+    });
+
     it('fails closed without a second V5 write when its consumed marker already exists', async () => {
       const v5Directory = join(
         root,

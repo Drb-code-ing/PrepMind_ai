@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, readFile, readdir } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
 import { ReviewPlannerDiagnosticCode } from '@repo/agent';
@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { REVIEW_PLANNER_CONTROLLED_LIVE_V5_DEEPSEEK_PROFILE_ID as factoryProfileId } from './review-planner-controlled-live-eval-v5-deepseek.factory';
 import {
   openWindowsNoReparseDirectory,
+  openWindowsNoReparseExistingDirectory,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
 
@@ -107,7 +108,28 @@ const completeSummarySchema = z
     withinHardCap: z.literal(true),
     quality: qualitySchema,
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.aggregateInputTokens <= 0 || value.aggregateOutputTokens <= 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CONTROLLED_LIVE_V5_COMPLETE_USAGE_INVALID',
+      });
+      return;
+    }
+    if (
+      value.observedCostCny !==
+      calculateNonCachedCnyCost(
+        value.aggregateInputTokens,
+        value.aggregateOutputTokens,
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CONTROLLED_LIVE_V5_COMPLETE_COST_INVALID',
+      });
+    }
+  });
 
 /**
  * The persisted V5 payload is deliberately a discriminated, strict safe
@@ -205,7 +227,7 @@ export async function snapshotReviewPlannerControlledLiveV5HistoricalEvidence(
   rootInput: string,
 ): Promise<ReviewPlannerControlledLiveV5HistoricalEvidenceSnapshot> {
   try {
-    const root = await trustedSnapshotRoot(rootInput);
+    const root = trustedSnapshotRoot(rootInput);
     const entries = (
       await Promise.all(
         HISTORICAL_EVIDENCE_TREES.map((tree) =>
@@ -429,33 +451,28 @@ function buildEvidencePath(startedAt: string, runId: string) {
   return `${REVIEW_PLANNER_CONTROLLED_LIVE_V5_DEEPSEEK_PROFILE.evidenceDirectory}/review-planner-live-${timestamp}-${digest}.json`;
 }
 
-async function trustedSnapshotRoot(rootInput: string) {
-  const root = resolve(rootInput);
-  const metadata = await lstat(root);
-  if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
-    throw new Error('invalid root');
+function trustedSnapshotRoot(rootInput: string) {
+  if (process.platform !== 'win32' || !process.versions.bun) {
+    throw new Error('native historical reader required');
   }
-  return root;
+  return resolve(rootInput);
 }
 
 async function readHistoricalTree(root: string, directory: string) {
-  const absoluteDirectory = resolveInsideRoot(root, directory);
   const output: HistoricalEvidenceEntry[] = [];
-  await walkHistoricalTree(root, absoluteDirectory, output);
+  await walkHistoricalTree(root, directory.split('/'), output);
   return output;
 }
 
 async function walkHistoricalTree(
   root: string,
-  absolutePath: string,
+  segments: readonly string[],
   output: HistoricalEvidenceEntry[],
 ): Promise<void> {
-  const metadata = await lstat(absolutePath);
-  if (metadata.isSymbolicLink()) throw new Error('reparse point');
-  const relativePath = absolutePath
-    .slice(`${root}${sep}`.length)
-    .replaceAll('\\', '/');
-  if (metadata.isDirectory()) {
+  const relativePath = segments.join('/');
+  const absolutePath = resolveInsideRoot(root, relativePath);
+  const directory = await openWindowsNoReparseExistingDirectory(root, segments);
+  try {
     output.push({
       relativePath,
       type: 'directory',
@@ -466,22 +483,21 @@ async function walkHistoricalTree(
       left.localeCompare(right),
     );
     for (const entry of entries) {
-      await walkHistoricalTree(
-        root,
-        resolveInsideRoot(root, `${relativePath}/${entry}`),
-        output,
-      );
+      try {
+        const contents = directory.readRegularFile(entry);
+        output.push({
+          relativePath: `${relativePath}/${entry}`,
+          type: 'file',
+          sha256: createHash('sha256').update(contents).digest('hex'),
+          byteLength: contents.byteLength,
+        });
+      } catch {
+        await walkHistoricalTree(root, [...segments, entry], output);
+      }
     }
-    return;
+  } finally {
+    directory.close();
   }
-  if (!metadata.isFile()) throw new Error('historical entry is not regular');
-  const contents = await readFile(absolutePath);
-  output.push({
-    relativePath,
-    type: 'file',
-    sha256: createHash('sha256').update(contents).digest('hex'),
-    byteLength: contents.byteLength,
-  });
 }
 
 function hashHistoricalEntries(entries: readonly HistoricalEvidenceEntry[]) {
@@ -497,6 +513,14 @@ function hashHistoricalEntries(entries: readonly HistoricalEvidenceEntry[]) {
     hash.update('\n', 'utf8');
   }
   return hash.digest('hex');
+}
+
+function calculateNonCachedCnyCost(inputTokens: number, outputTokens: number) {
+  return (
+    Math.round(
+      ((inputTokens * 3 + outputTokens * 6) / 1_000_000) * 100_000_000,
+    ) / 100_000_000
+  );
 }
 
 function sameEntries(

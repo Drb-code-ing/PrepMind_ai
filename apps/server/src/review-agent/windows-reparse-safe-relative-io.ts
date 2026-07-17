@@ -2,6 +2,7 @@ import { win32 } from 'node:path';
 
 const BUN_FFI_MODULE = 'bun:ffi';
 const FILE_READ_ATTRIBUTES = 0x00000080;
+const FILE_READ_DATA = 0x00000001;
 const FILE_WRITE_DATA = 0x00000002;
 const DELETE = 0x00010000;
 const SYNCHRONIZE = 0x00100000;
@@ -21,6 +22,8 @@ const FILE_CREATE = 2;
 const FILE_OPEN_IF = 3;
 const FILE_RENAME_INFORMATION = 10;
 const FILE_DISPOSITION_INFORMATION = 13;
+const FILE_STANDARD_INFORMATION = 5;
+const MAX_NATIVE_READ_BYTES = 1_048_576;
 const STATUS_REPARSE_POINT_ENCOUNTERED = -1073740533;
 const STATUS_OBJECT_NAME_COLLISION = -1073741771;
 
@@ -56,6 +59,7 @@ export type WindowsNoReparseChildDirectory = Readonly<{
     contents: string,
   ): void;
   deleteFile(leafName: string): void;
+  readRegularFile(leafName: string): Buffer;
 }>;
 
 /**
@@ -67,6 +71,30 @@ export type WindowsNoReparseChildDirectory = Readonly<{
 export async function openWindowsNoReparseDirectory(
   root: string,
   childNames: readonly string[],
+): Promise<WindowsNoReparseChildDirectory> {
+  return openWindowsNoReparseDirectoryWithDisposition(
+    root,
+    childNames,
+    FILE_OPEN_IF,
+  );
+}
+
+/** Binds an existing immutable directory tree without ever creating a child. */
+export async function openWindowsNoReparseExistingDirectory(
+  root: string,
+  childNames: readonly string[],
+): Promise<WindowsNoReparseChildDirectory> {
+  return openWindowsNoReparseDirectoryWithDisposition(
+    root,
+    childNames,
+    FILE_OPEN,
+  );
+}
+
+async function openWindowsNoReparseDirectoryWithDisposition(
+  root: string,
+  childNames: readonly string[],
+  childDisposition: typeof FILE_OPEN | typeof FILE_OPEN_IF,
 ): Promise<WindowsNoReparseChildDirectory> {
   if (process.platform !== 'win32') {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_UNAVAILABLE');
@@ -81,7 +109,7 @@ export async function openWindowsNoReparseDirectory(
     for (const childName of childNames) {
       // Only evidence children beneath the already-bound root may be
       // created. Root and ancestor components are always FILE_OPEN.
-      directory = openNativeDirectory(directory, childName, FILE_OPEN_IF);
+      directory = openNativeDirectory(directory, childName, childDisposition);
     }
   } catch (error) {
     closeNativeDirectory(directory);
@@ -120,6 +148,11 @@ export async function openWindowsNoReparseDirectory(
       assertOpen();
       assertSafeLeafName(leafName);
       deleteNativeFile(boundDirectory, leafName);
+    },
+    readRegularFile(leafName) {
+      assertOpen();
+      assertSafeLeafName(leafName);
+      return readNativeFile(boundDirectory, leafName);
     },
   });
 }
@@ -200,6 +233,30 @@ function openNativeRoot(ffi: BunFfi, root: string): WindowsNativeDirectory {
         ffi.FFIType.u32,
         ffi.FFIType.ptr,
         ffi.FFIType.ptr,
+      ],
+      returns: ffi.FFIType.i32,
+    },
+    NtReadFile: {
+      args: [
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+      ],
+      returns: ffi.FFIType.i32,
+    },
+    NtQueryInformationFile: {
+      args: [
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+        ffi.FFIType.u32,
       ],
       returns: ffi.FFIType.i32,
     },
@@ -304,6 +361,63 @@ function writeNewNativeFile(
     throw error;
   }
   closeNativeHandle({ ...parent, handle: file });
+}
+
+function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
+  const file = createRelativeHandle({
+    parent,
+    leafName,
+    desiredAccess: FILE_READ_DATA | SYNCHRONIZE,
+    createDisposition: FILE_OPEN,
+    createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+  });
+  try {
+    const standardInformation = Buffer.alloc(24);
+    assertNtSuccess(
+      Number(
+        parent.ntdll.symbols.NtQueryInformationFile(
+          file,
+          parent.ffi.ptr(Buffer.alloc(16)),
+          parent.ffi.ptr(standardInformation),
+          standardInformation.byteLength,
+          FILE_STANDARD_INFORMATION,
+        ),
+      ),
+      'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
+    );
+    const length = Number(standardInformation.readBigInt64LE(8));
+    if (
+      !Number.isSafeInteger(length) ||
+      length < 0 ||
+      length > MAX_NATIVE_READ_BYTES
+    ) {
+      throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
+    }
+    const contents = Buffer.alloc(length);
+    const ioStatus = Buffer.alloc(16);
+    assertNtSuccess(
+      Number(
+        parent.ntdll.symbols.NtReadFile(
+          file,
+          0,
+          0,
+          0,
+          parent.ffi.ptr(ioStatus),
+          parent.ffi.ptr(contents),
+          contents.byteLength,
+          0,
+          0,
+        ),
+      ),
+      'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
+    );
+    if (ioStatus.readBigUInt64LE(8) !== BigInt(contents.byteLength)) {
+      throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
+    }
+    return contents;
+  } finally {
+    closeNativeHandle({ ...parent, handle: file });
+  }
 }
 
 function replaceNativeFile(

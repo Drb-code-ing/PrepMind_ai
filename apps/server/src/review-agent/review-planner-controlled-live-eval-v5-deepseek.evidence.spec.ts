@@ -94,5 +94,59 @@ describe('Review/Planner controlled Live V5 DeepSeek evidence', () => {
         },
       }),
     ).toThrow();
+
+    expect(() =>
+      safeReviewPlannerControlledLiveV5DeepSeekSummarySchema.parse({
+        status: 'complete',
+        gate: 'open',
+        providerAttemptCount: 23,
+        usageKnown: true,
+        priceProfileId:
+          REVIEW_PLANNER_CONTROLLED_LIVE_V5_DEEPSEEK_PRICE_PROFILE_ID,
+        currency: 'CNY',
+        aggregateInputTokens: 0,
+        aggregateOutputTokens: 0,
+        observedCostCny: 0,
+        hardCapCny: 1,
+        withinHardCap: true,
+        quality: {
+          caseEntries: 48,
+          zeroCallCases: 26,
+          runtimeInvocations: 22,
+          strictSuccesses: 22,
+          qualityPasses: 22,
+          criticalFailures: 0,
+          p95DurationMs: 4_500,
+          productionDecision: 'quality_gate_passed',
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      safeReviewPlannerControlledLiveV5DeepSeekSummarySchema.parse({
+        status: 'complete',
+        gate: 'open',
+        providerAttemptCount: 23,
+        usageKnown: true,
+        priceProfileId:
+          REVIEW_PLANNER_CONTROLLED_LIVE_V5_DEEPSEEK_PRICE_PROFILE_ID,
+        currency: 'CNY',
+        aggregateInputTokens: 42_996,
+        aggregateOutputTokens: 9_712,
+        observedCostCny: 0,
+        hardCapCny: 1,
+        withinHardCap: true,
+        quality: {
+          caseEntries: 48,
+          zeroCallCases: 26,
+          runtimeInvocations: 22,
+          strictSuccesses: 22,
+          qualityPasses: 22,
+          criticalFailures: 0,
+          p95DurationMs: 4_500,
+          productionDecision: 'quality_gate_passed',
+        },
+      }),
+    ).toThrow();
   });
 });

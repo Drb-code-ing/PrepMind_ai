@@ -97,7 +97,7 @@
 
 目标：把即将发生的 v5 唯一真实调用和已消耗的 v1--v4 历史调用彻底隔离，使新证据既可审计，也不能覆写、拼接或误读旧证据。
 
-主要内容与边界：新增独立 profile、严格 safe-summary schema、专用 once marker 与 Windows HANDLE-relative writer。v5 只可写自己的 evidence 目录；complete evidence 只含 provider 尝试数、正 usage 状态、CNY price profile、聚合 token/CNY cap 与质量计数，closed evidence 不携带费用或质量字段。任何 prompt、candidate、key、endpoint、header、raw output/error 或 stack 都会被 schema/deny-list 拒绝。v5 在 provider 边界前后可对 v1--v4 的完整 evidence tree 与 marker 进行 SHA-256 清单验证；文件增删改、reparse point、缺 marker 或已存在 v5 marker 都 fail-closed。
+主要内容与边界：新增独立 profile、严格 safe-summary schema、专用 once marker 与 Windows HANDLE-relative writer。v5 只可写自己的 evidence 目录；complete evidence 只含 provider 尝试数、正 usage 状态、CNY price profile、聚合 token/CNY cap 与质量计数，closed evidence 不携带费用或质量字段；成功 evidence 的 token 必须为正数且 CNY 必须精确匹配固定非缓存公式。任何 prompt、candidate、key、endpoint、header、raw output/error 或 stack 都会被 schema/deny-list 拒绝。v5 在 provider 边界前后通过 existing-only 的 native HANDLE-relative reader 对 v1--v4 完整 evidence tree 与 marker 做 SHA-256 清单验证；文件增删改、reparse point、缺 marker 或已存在 v5 marker 都 fail-closed，历史扫描绝不创建目录。
 
 验收：evidence schema Jest 3/3、原生 Bun evidence 测试 5/5 与 Server lint 通过；原生测试覆盖历史 tree 字节级保持、内容/新增文件/reparse 篡改和 marker 冲突。没有运行 CLI、真实模型、Docker 或浏览器，业务 gate 继续关闭。
 
