@@ -6,7 +6,7 @@
 
 更新时间：2026-07-17
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计、Task 1 的零网络 typed non-thinking transport，以及 Task 2 的 Review/Planner resolver 精确绑定：仅精确 DeepSeek V4 Pro `https://api.deepseek.com/v1` 选择固定 `thinking:{type:'disabled'}` transport，V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，因此不会构造业务 executor；不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v5 均是各自一次、不可重跑的受控 provider attempt；最新 v5 为 `invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。V6 尚未创建 profile、marker 或真实调用；已完成根因设计、Task 1 的零网络 typed non-thinking transport、Task 2 的 Review/Planner resolver 精确绑定和 Task 3 的离线受限 evaluator。它只允许精确 DeepSeek V4 Pro `https://api.deepseek.com/v1`、固定 `thinking:{type:'disabled'}` transport、一个 fact-free canary 与最多 22 个 paired runtime 尝试；V4 Flash 保持 `json_object`，普通 Chat 不变。两条业务 gate 继续默认 `false`，因此不会构造业务 executor；不得运行 V6 48-case、Docker 或浏览器验收。2026-07-15 已确认先完成 11 个逻辑 Agent 节点加 Tool-Using Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入 Phase 6.10 分层记忆。Phase 6.9.4.3 的 28/28、72/72 与 Router P95 4264ms 原样保留为历史证据，不再解释为永久禁止 Router 模型。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 已完成 Task 1 零网络 typed non-thinking wire transport 与 Task 2 精确、默认关闭的 resolver 绑定；尚无 V6 provider/evidence/Live，业务 gate 关闭 |
+| Phase 6.9.5  | 验收未完成 | Review/Planner 受限只读候选；v1--v5 均为独立终态，V6 已完成 Task 1 零网络 typed non-thinking wire transport、Task 2 精确默认关闭 resolver 绑定与 Task 3 离线 evaluator；尚无 V6 provider/evidence/Live，业务 gate 关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -70,6 +70,16 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-17 - Phase 6.9.5 V6 non-thinking evaluator（离线）
+
+目标：在不重跑 v1--v5、不创建 V6 profile/marker/evidence 且不接触 provider 的前提下，先冻结 V6 的一次 canary、22 个 paired runtime 尝试、非 thinking 审计和 CNY 费用上限。
+
+主要内容与边界：factory 只接受全局 live gate、独立 V6 gate、精确 DeepSeek V4 Pro `/v1` 与两个 Review/Planner 业务 gate 显式为 `false` 的测试配置。它把 `deepseek_v4_pro_nonthinking_json` config 与只在 evaluator 闭包中的 audit callback 交给 executor；callback 仅归约 reasoning 枚举、布尔值和安全 token 整数，绝不写入 Agent Trace、公开配置或原始 response。canary 必须是一次、正安全整数 usage 且无 audit 违规；缺失/零/小数/负 usage、reasoning content、正 reasoning tokens 或非法 detail 都立即以 V6 本地域 `thinking_not_disabled` 或受限诊断关闭，不能进入 paired。paired 仍使用原 48-case 的 zero-call guards，最多 22 个 runtime calls，且只有 canary 加 22 个 paired delegate attempts 恰好等于 23 时才可接受 report；全部运行时 strict success、26 个 verified zero-call、零 critical、P95 不超过 4500ms、语义质量不少于 90%、正 aggregate usage 与 CNY 不超过 1 仍缺一不可。CNY 始终按完整 completion tokens 计算，`reported_zero` 不扣减 output；它不进入现有 USD Trace。
+
+验收：先运行新增 factory spec，因 V6 factory 模块不存在而 RED（仅 module-not-found，0 tests executed）；最小实现后 V6 focused 18/18、V6+封存 V5 factory 27/27、`bun --filter @repo/agent test` 与 `bun --filter @repo/ai test` 181/181 均通过。全部 executor/provider 路径由注入 fake 覆盖；未读取 `.env`、未调用真实模型、未运行 V6 CLI、Docker 或浏览器，也未创建或修改 V1--V5/V6 evidence 或 marker。Task 3 只是离线 evaluator，不是 Live、质量通过或生产启用结论。
+
+回顾时可以问：为什么 V6 要把 48 个 contract strict successes 中的 26 个 zero-call 与 22 个 runtime strict successes 分开验证？为什么 non-thinking audit 只能留在 evaluator 闭包，且不允许从 completion token 中扣除 reasoning detail？为什么 24th delegate 必须在 provider 前被阻断？
 
 ### 2026-07-17 - Phase 6.9.5 V6 Review/Planner resolver 精确绑定（离线）
 
