@@ -1066,10 +1066,7 @@ function assertLocalFixedNtfsVolume(directory: WindowsNativeDirectory) {
     deviceType = 0;
   }
   if (
-    shouldInjectDurableFaultForTests(
-      directory,
-      'volume_remote_characteristic',
-    )
+    shouldInjectDurableFaultForTests(directory, 'volume_remote_characteristic')
   ) {
     characteristics |= FILE_REMOTE_DEVICE;
   }

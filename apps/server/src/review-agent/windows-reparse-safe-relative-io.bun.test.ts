@@ -56,9 +56,7 @@ async function runPublicationHardExitChild(
   committedLeafName: string,
 ) {
   const moduleUrl = pathToFileURL(
-    resolve(
-      'apps/server/src/review-agent/windows-reparse-safe-relative-io.ts',
-    ),
+    resolve('apps/server/src/review-agent/windows-reparse-safe-relative-io.ts'),
   ).href;
   const script = `
 const io = await import(process.env.TEST_MODULE_URL);
@@ -151,9 +149,9 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       expect(directory.readRegularFile('already-public')).toEqual(
         Buffer.from('old'),
       );
-      expect(() =>
-        directory.readRegularFile('already-public.prepare'),
-      ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
+      expect(() => directory.readRegularFile('already-public.prepare')).toThrow(
+        'WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED',
+      );
     } finally {
       directory.close();
     }
@@ -164,21 +162,24 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
     'volume_non_disk_device',
     'volume_remote_characteristic',
     'volume_removable_characteristic',
-  ] as const)('fails the local fixed NTFS preflight for injected %s', async (phase) => {
-    const facade = await requireDurableFaultTestFactory()(
-      root,
-      'docs',
-      (observed) => observed === phase,
-    );
-    try {
-      expect(() => facade.directory.assertLocalFixedNtfsVolume()).toThrow(
-        'WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED',
+  ] as const)(
+    'fails the local fixed NTFS preflight for injected %s',
+    async (phase) => {
+      const facade = await requireDurableFaultTestFactory()(
+        root,
+        'docs',
+        (observed) => observed === phase,
       );
-    } finally {
-      facade.cleanupInjectedHandles();
-      facade.directory.close();
-    }
-  });
+      try {
+        expect(() => facade.directory.assertLocalFixedNtfsVolume()).toThrow(
+          'WINDOWS_REPARSE_SAFE_IO_LOCAL_FIXED_NTFS_REQUIRED',
+        );
+      } finally {
+        facade.cleanupInjectedHandles();
+        facade.directory.close();
+      }
+    },
+  );
 
   it.each([
     'prepare_create',
@@ -207,9 +208,7 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
             'private-value',
           ),
         ).toEqual({ committed: false, stage: failedStage });
-        expect(
-          calls.filter((stage) => stage === failedStage),
-        ).toHaveLength(1);
+        expect(calls.filter((stage) => stage === failedStage)).toHaveLength(1);
 
         facade.cleanupInjectedHandles();
         expect(() =>
@@ -217,15 +216,11 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
         ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
         if (failedStage === 'prepare_create') {
           expect(() =>
-            directory.readRegularFile(
-              `publication-${failedStage}.prepare`,
-            ),
+            directory.readRegularFile(`publication-${failedStage}.prepare`),
           ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
         } else {
           expect(
-            directory.readRegularFile(
-              `publication-${failedStage}.prepare`,
-            ),
+            directory.readRegularFile(`publication-${failedStage}.prepare`),
           ).toEqual(
             failedStage === 'prepare_write'
               ? Buffer.alloc(0)
@@ -264,9 +259,7 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
         facade.directory.readRegularFile('committed-close-unverified'),
       ).toEqual(Buffer.from('public-value'));
       expect(() =>
-        facade.directory.readRegularFile(
-          'committed-close-unverified.prepare',
-        ),
+        facade.directory.readRegularFile('committed-close-unverified.prepare'),
       ).toThrow('WINDOWS_REPARSE_SAFE_IO_RELATIVE_OPEN_FAILED');
     } finally {
       facade.cleanupInjectedHandles();
@@ -341,11 +334,7 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
     try {
       expect(typeof directory.replaceDurableFile).toBe('function');
       directory.createExclusiveFile('terminal.json', 'old');
-      directory.replaceDurableFile(
-        'terminal.json.tmp',
-        'terminal.json',
-        'new',
-      );
+      directory.replaceDurableFile('terminal.json.tmp', 'terminal.json', 'new');
       expect(directory.readRegularFile('terminal.json')).toEqual(
         Buffer.from('new'),
       );
