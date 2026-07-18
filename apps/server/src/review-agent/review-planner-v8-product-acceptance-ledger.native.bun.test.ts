@@ -43,6 +43,9 @@ const TODAY_PNG = Buffer.from(
 );
 const PLAN_PNG_SHA = createHash('sha256').update(PLAN_PNG).digest('hex');
 const TODAY_PNG_SHA = createHash('sha256').update(TODAY_PNG).digest('hex');
+const RECOVERY_RESTORE_RECEIPT = {
+  ...restoreReceiptForRecovery(),
+} as const;
 
 function manifest(environment: 'branch' | 'main' = 'branch') {
   return {
@@ -153,6 +156,13 @@ function restoreReceipt(component: 'review' | 'planner') {
   } as const;
 }
 
+function restoreReceiptForRecovery() {
+  return {
+    ...restoreReceipt('review'),
+    component: 'recovery',
+  } as const;
+}
+
 async function createRoot() {
   const root = await mkdtemp(join(tmpdir(), 'prepmind-v8-ledger-'));
   await mkdir(join(root, 'docs', 'acceptance', 'evidence'), {
@@ -188,8 +198,8 @@ const ownerResult = await recoveryModule.acquireReviewPlannerV8ProductAcceptance
 if(ownerResult.status!=='acquired')process.exit(90);
 const ledger = await ledgerModule.reserveReviewPlannerV8ProductAcceptanceLedger({repoRoot:process.env.TEST_ROOT,environment:'branch',owner:ownerResult.owner});
 const stop=(name,code)=>{if(process.env.TEST_PHASE===name)process.exit(code)};
-stop('activation',71);
 const journal=await recoveryModule.prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({repoRoot:process.env.TEST_ROOT,environment:'branch',owner:ownerResult.owner,manifest:JSON.parse(process.env.TEST_RECOVERY_MANIFEST)});
+stop('activation',71);
 stop('fixture',72);
 journal.close();
 ledger.writeManifest(JSON.parse(process.env.TEST_MANIFEST));
@@ -250,6 +260,50 @@ process.exit(91);
         traces: 0,
         browserProfiles: 0,
         capabilities: 0,
+      }),
+    },
+    encoding: 'utf8',
+  });
+}
+
+function runRecoveryReplayChild(root: string) {
+  const recoveryUrl = pathToFileURL(
+    resolve(
+      'apps/server/src/review-agent/review-planner-v8-product-acceptance-recovery.ts',
+    ),
+  ).href;
+  const script = `
+const recoveryModule=await import(process.env.TEST_RECOVERY_URL);
+const counters={providerInvocations:0,acceptanceDispatches:0,browserContinues:0};
+const acquired=await recoveryModule.acquireReviewPlannerV8ProductAcceptanceOwner({repoRoot:process.env.TEST_ROOT,environment:'branch',role:'recovery'});
+if(acquired.status!=='acquired')process.exit(81);
+const journal=await recoveryModule.openReviewPlannerV8ProductAcceptanceRecoveryJournal({repoRoot:process.env.TEST_ROOT,environment:'branch',owner:acquired.owner});
+const authority=await journal.authorizeRecoveryOnly();
+authority.assertAuthorized();
+journal.appendStage('restore.claimed','');
+journal.appendStage('restore.verified.json',process.env.TEST_RESTORE_RECEIPT);
+journal.appendStage('cleanup.claimed','');
+journal.appendStage('cleanup.verified.json',process.env.TEST_CLEANUP_RECEIPT);
+await journal.finalizeRecoveryOnly();
+journal.close();
+acquired.owner.close();
+process.stdout.write(JSON.stringify(counters));
+`;
+  return spawnSync(process.execPath, ['-e', script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      TEST_RECOVERY_URL: recoveryUrl,
+      TEST_ROOT: root,
+      TEST_RESTORE_RECEIPT: JSON.stringify(RECOVERY_RESTORE_RECEIPT),
+      TEST_CLEANUP_RECEIPT: JSON.stringify({
+        schemaVersion: 'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1',
+        syntheticAccounts: 0,
+        fixtures: 0,
+        traces: 0,
+        browserProcesses: 0,
+        browserProfiles: 0,
+        probeAccounts: 0,
       }),
     },
     encoding: 'utf8',
@@ -466,13 +520,27 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
           environment: 'branch',
         }),
       ).resolves.toEqual({ status: 'incomplete' });
-      const recovery = await acquireReviewPlannerV8ProductAcceptanceOwner({
-        repoRoot: root,
-        environment: 'branch',
-        role: 'recovery',
+      const replay = runRecoveryReplayChild(root);
+      const counters: unknown = JSON.parse(replay.stdout);
+      expect({
+        status: replay.status,
+        stderr: replay.stderr,
+        counters,
+      }).toEqual({
+        status: 0,
+        stderr: '',
+        counters: {
+          providerInvocations: 0,
+          acceptanceDispatches: 0,
+          browserContinues: 0,
+        },
       });
-      expect(recovery.status).toBe('acquired');
-      if (recovery.status === 'acquired') recovery.owner.close();
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toEqual({ status: 'recovery_only' });
     },
   );
 
@@ -579,6 +647,25 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
     );
     await writeFile(join(ledgerPath, 'unknown.json'), '{}');
     await writeFile(join(ledgerPath, '.recovery-only.json'), '{}');
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('fails closed when a sealed claim marker becomes non-empty', async () => {
+    await finishBranch(root);
+    const ledgerPath = join(
+      root,
+      'docs',
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-v8-product-acceptance',
+      'branch',
+    );
+    await writeFile(join(ledgerPath, '.slot-03-planner-api'), 'tampered');
     await expect(
       readReviewPlannerV8ProductAcceptanceLedger({
         repoRoot: root,

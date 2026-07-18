@@ -97,6 +97,7 @@ type RelativeHandleInput = Readonly<{
 
 export type WindowsExclusiveLifetimeFile = Readonly<{
   assertHeld(): void;
+  readContents(): Buffer;
   close(): void;
 }>;
 
@@ -399,6 +400,13 @@ async function openWindowsNoReparseDirectoryWithDisposition(
             ),
             'WINDOWS_REPARSE_SAFE_IO_LIFETIME_FILE_INVALID',
           );
+        },
+        readContents() {
+          const state = lifetimeFileState.get(lifetimeFile);
+          if (!state || state.closed) {
+            throw new Error('WINDOWS_REPARSE_SAFE_IO_LIFETIME_FILE_CLOSED');
+          }
+          return readNativeFileHandle(state.parent, state.handle);
         },
         close() {
           const state = lifetimeFileState.get(lifetimeFile);

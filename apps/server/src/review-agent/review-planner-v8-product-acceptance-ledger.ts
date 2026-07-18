@@ -45,6 +45,10 @@ const SLOT_LEAVES: Readonly<Record<Slot, string>> = Object.freeze({
   'planner-api': '.slot-03-planner-api',
   'planner-browser': '.slot-04-planner-browser',
 });
+const SEALED_MARKER_LEAVES = Object.freeze([
+  '.acceptance-reserved',
+  ...SLOTS.map((slot) => SLOT_LEAVES[slot]),
+] as const);
 
 const PUBLIC_LEAVES = Object.freeze([
   '.acceptance-reserved',
@@ -255,6 +259,7 @@ const successSchema = z
     schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-success-v1'),
     environment: z.enum(['branch', 'main']),
     pairedEvidenceSha256: z.string().regex(SHA256),
+    markerSha256: z.array(z.string().regex(SHA256)).length(5),
     manifestSha256: z.string().regex(SHA256),
     resultSha256: z.array(z.string().regex(SHA256)).length(4),
     defaultOffSha256: z.array(z.string().regex(SHA256)).length(2),
@@ -719,7 +724,11 @@ function createLedger(
       }
       const manifest = assertManifest(current.directory, current.environment);
       const results = requireAllResults(current.directory);
-      assertAdmissionClaimsAndScreenshots(current.directory, results);
+      assertAdmissionClaimsAndScreenshots(
+        current.directory,
+        results,
+        current.reservationGuard,
+      );
       const defaultOff = (['review', 'planner'] as const).map((component) =>
         readDefaultOffReceipt(current.directory, component),
       );
@@ -764,6 +773,9 @@ function createLedger(
         schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',
         environment: current.environment,
         pairedEvidenceSha256: manifest.pairedEvidenceSha256,
+        markerSha256: SEALED_MARKER_LEAVES.map((leaf) =>
+          hashMarker(current.directory, leaf, current.reservationGuard),
+        ),
         manifestSha256: hashLeaf(current.directory, 'manifest.json'),
         resultSha256: SLOTS.map((slot) =>
           hashLeaf(current.directory, `${SLOT_LEAVES[slot]}.result.json`),
@@ -814,6 +826,10 @@ function verifyCompleteLedger(
     acceptance.environment !== environment ||
     success.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
     acceptance.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
+    !arraysEqual(
+      success.markerSha256,
+      SEALED_MARKER_LEAVES.map((leaf) => hashLeaf(directory, leaf)),
+    ) ||
     success.manifestSha256 !== hashLeaf(directory, 'manifest.json') ||
     !arraysEqual(
       success.resultSha256,
@@ -978,11 +994,18 @@ function requireAllResults(directory: WindowsNoReparseChildDirectory) {
 function assertAdmissionClaimsAndScreenshots(
   directory: WindowsNoReparseChildDirectory,
   results: readonly z.infer<typeof slotResultSchema>[],
+  reservationGuard?: WindowsExclusiveLifetimeFile,
 ) {
   const leaves = directory.listLeafNames();
   if (
-    !leaves.includes('.acceptance-reserved') ||
-    SLOTS.some((slot) => !leaves.includes(SLOT_LEAVES[slot])) ||
+    SEALED_MARKER_LEAVES.some(
+      (leaf) =>
+        !leaves.includes(leaf) ||
+        (leaf === '.acceptance-reserved' && reservationGuard !== undefined
+          ? reservationGuard.readContents()
+          : directory.readRegularFile(leaf)
+        ).byteLength !== 0,
+    ) ||
     readScreenshotSha256(directory, 'plan.png') !==
       screenshotFor(results, 'review-browser') ||
     readScreenshotSha256(directory, 'today.png') !==
@@ -990,6 +1013,18 @@ function assertAdmissionClaimsAndScreenshots(
   ) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
+}
+
+function hashMarker(
+  directory: WindowsNoReparseChildDirectory,
+  leaf: (typeof SEALED_MARKER_LEAVES)[number],
+  reservationGuard?: WindowsExclusiveLifetimeFile,
+) {
+  return sha256(
+    leaf === '.acceptance-reserved' && reservationGuard !== undefined
+      ? reservationGuard.readContents()
+      : directory.readRegularFile(leaf),
+  );
 }
 
 function screenshotFor(
