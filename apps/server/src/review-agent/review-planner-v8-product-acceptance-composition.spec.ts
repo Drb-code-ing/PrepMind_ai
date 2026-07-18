@@ -19,6 +19,8 @@ import {
   runReviewPlannerV8ProductAcceptanceRecoveryCli,
   serializeReviewPlannerV8ProductAcceptanceCliSummary,
   sha256ReviewPlannerV8CompositionValue,
+  selectReviewPlannerV8ExactBrowserProcesses,
+  terminateReviewPlannerV8ExactBrowser,
   waitForReviewPlannerV8ServerReadiness,
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
@@ -32,6 +34,9 @@ import {
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
 const CONTAINER_ID = 'c'.repeat(64);
+const CHROME_EXE = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const BROWSER_PROFILE =
+  'E:\\PrepMind_ai智能备考助手\\.tmp\\phase-6-9-5-v8-product-acceptance\\branch\\profile-v8';
 const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
   schemaVersion:
     REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceSchemaVersion,
@@ -57,6 +62,195 @@ const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
 const REPO_ROOT = 'E:\\PrepMind_ai智能备考助手';
 
 describe('V8 product acceptance executable composition', () => {
+  it('selects only the Chrome process with the exact normalized user-data-dir argument', () => {
+    const exact = {
+      processId: 101,
+      executablePath: CHROME_EXE,
+      commandLine: `"${CHROME_EXE}" --user-data-dir="${BROWSER_PROFILE}" --remote-debugging-port=0`,
+    };
+    const prefixCollision = {
+      ...exact,
+      processId: 102,
+      commandLine: `"${CHROME_EXE}" --user-data-dir="${BROWSER_PROFILE}-copy"`,
+    };
+    const substringCollision = {
+      ...exact,
+      processId: 103,
+      commandLine: `"${CHROME_EXE}" --note="${BROWSER_PROFILE}"`,
+    };
+
+    expect(
+      selectReviewPlannerV8ExactBrowserProcesses(
+        [exact, prefixCollision, substringCollision],
+        CHROME_EXE,
+        BROWSER_PROFILE,
+      ).map((process) => process.processId),
+    ).toEqual([101]);
+  });
+
+  it('terminates only exact browser identities and removes the profile after zero-process verification', async () => {
+    const exact = {
+      processId: 201,
+      executablePath: CHROME_EXE,
+      commandLine: `"${CHROME_EXE}" --user-data-dir=${BROWSER_PROFILE}`,
+    };
+    const similar = {
+      ...exact,
+      processId: 202,
+      commandLine: `"${CHROME_EXE}" --user-data-dir=${BROWSER_PROFILE}-copy`,
+    };
+    const listProcesses = jest
+      .fn()
+      .mockResolvedValueOnce([exact, similar])
+      .mockResolvedValueOnce([similar]);
+    const terminateProcess = jest.fn(async () => undefined);
+    const removeProfile = jest.fn(async () => undefined);
+
+    await expect(
+      terminateReviewPlannerV8ExactBrowser({
+        executablePath: CHROME_EXE,
+        profilePath: BROWSER_PROFILE,
+        listProcesses,
+        terminateProcess,
+        removeProfile,
+        profileExists: () => false,
+        timeoutMs: 100,
+        pollIntervalMs: 1,
+      }),
+    ).resolves.toEqual({ terminatedProcessIds: [201], remaining: 0 });
+    expect(terminateProcess).toHaveBeenCalledTimes(1);
+    expect(terminateProcess.mock.calls[0][0]).toEqual(exact);
+    expect(removeProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not remove a browser profile while an exact process still remains', async () => {
+    const exact = {
+      processId: 301,
+      executablePath: CHROME_EXE,
+      commandLine: `"${CHROME_EXE}" --user-data-dir=${BROWSER_PROFILE}`,
+    };
+    const removeProfile = jest.fn(async () => undefined);
+
+    await expect(
+      terminateReviewPlannerV8ExactBrowser({
+        executablePath: CHROME_EXE,
+        profilePath: BROWSER_PROFILE,
+        listProcesses: async () => [exact],
+        terminateProcess: async () => undefined,
+        removeProfile,
+        profileExists: () => true,
+        timeoutMs: 20,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+    expect(removeProfile).not.toHaveBeenCalled();
+  });
+
+  it('terminates an exact Chrome child discovered after the initial snapshot', async () => {
+    const late = {
+      processId: 351,
+      executablePath: CHROME_EXE,
+      commandLine: `"${CHROME_EXE}" --user-data-dir=${BROWSER_PROFILE} --type=renderer`,
+    };
+    let terminated = false;
+    let listCount = 0;
+    const terminateProcess = jest.fn(async () => {
+      terminated = true;
+    });
+
+    await expect(
+      terminateReviewPlannerV8ExactBrowser({
+        executablePath: CHROME_EXE,
+        profilePath: BROWSER_PROFILE,
+        listProcesses: async () => {
+          listCount += 1;
+          if (listCount === 1) return [];
+          return terminated ? [] : [late];
+        },
+        terminateProcess,
+        removeProfile: async () => undefined,
+        profileExists: () => false,
+        timeoutMs: 100,
+        pollIntervalMs: 1,
+      }),
+    ).resolves.toEqual({ terminatedProcessIds: [351], remaining: 0 });
+    expect(terminateProcess).toHaveBeenCalledTimes(1);
+    expect(terminateProcess.mock.calls[0][0]).toEqual(late);
+  });
+
+  it.each(['initial list', 'terminate', 'residual list'] as const)(
+    'bounds a hanging browser %s operation by the same drain deadline',
+    async (stage) => {
+      const exact = {
+        processId: 401,
+        executablePath: CHROME_EXE,
+        commandLine: `"${CHROME_EXE}" --user-data-dir=${BROWSER_PROFILE}`,
+      };
+      const hangUntilAbort = (signal: AbortSignal) =>
+        new Promise<never>((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('aborted')), {
+            once: true,
+          });
+        });
+      const listProcesses =
+        stage === 'initial list'
+          ? hangUntilAbort
+          : stage === 'residual list'
+            ? jest
+                .fn()
+                .mockResolvedValueOnce([exact])
+                .mockImplementationOnce(hangUntilAbort)
+            : async () => [exact];
+      const terminateProcess =
+        stage === 'terminate'
+          ? (_process: typeof exact, signal: AbortSignal) =>
+              hangUntilAbort(signal)
+          : async () => undefined;
+      const removeProfile = jest.fn(async () => undefined);
+      const startedAt = Date.now();
+
+      await expect(
+        terminateReviewPlannerV8ExactBrowser({
+          executablePath: CHROME_EXE,
+          profilePath: BROWSER_PROFILE,
+          listProcesses,
+          terminateProcess,
+          removeProfile,
+          profileExists: () => false,
+          timeoutMs: 25,
+          pollIntervalMs: 1,
+        }),
+      ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+      expect(Date.now() - startedAt).toBeLessThan(500);
+      expect(removeProfile).not.toHaveBeenCalled();
+    },
+  );
+
+  it('waits for a timed-out profile removal to settle before rejecting', async () => {
+    let removalSettled = false;
+    const profileExists = jest.fn(() => false);
+    const startedAt = Date.now();
+
+    await expect(
+      terminateReviewPlannerV8ExactBrowser({
+        executablePath: CHROME_EXE,
+        profilePath: BROWSER_PROFILE,
+        listProcesses: async () => [],
+        terminateProcess: async () => undefined,
+        removeProfile: async () => {
+          await new Promise((resolveDelay) => setTimeout(resolveDelay, 35));
+          removalSettled = true;
+        },
+        profileExists,
+        timeoutMs: 20,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+    expect(removalSettled).toBe(true);
+    expect(Date.now() - startedAt).toBeGreaterThanOrEqual(30);
+    expect(profileExists).not.toHaveBeenCalled();
+  });
+
   it('strictly attests the expected healthy Compose server identity and published port', () => {
     const inspection = JSON.stringify({
       id: CONTAINER_ID,

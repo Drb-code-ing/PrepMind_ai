@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { readdir, rm } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -1395,7 +1395,11 @@ function createDefaultRunnerDependencies(
         await context.close();
         contextClosed = true;
         await Promise.allSettled([...callbacks]);
-        await rm(profilePath, { recursive: true, force: true });
+        await terminateDefaultReviewPlannerV8ExactBrowser({
+          repoRoot: state.repoRoot,
+          executablePath: input.preflight.chromeExecutablePath,
+          profilePath,
+        });
         if (
           !responseResult ||
           continuedRequests !== 1 ||
@@ -1622,6 +1626,397 @@ export function mergeReviewPlannerV8AcceptanceHeaders(
     ...headers,
     'x-prepmind-review-planner-acceptance': capability,
   };
+}
+
+export type ReviewPlannerV8BrowserProcess = Readonly<{
+  processId: number;
+  executablePath: string;
+  commandLine: string;
+}>;
+
+export function selectReviewPlannerV8ExactBrowserProcesses(
+  processes: readonly ReviewPlannerV8BrowserProcess[],
+  executablePath: string,
+  profilePath: string,
+) {
+  const expectedExecutable = normalizeWindowsPath(executablePath);
+  const expectedProfile = normalizeWindowsPath(profilePath);
+  return Object.freeze(
+    processes
+      .filter((process) => {
+        if (
+          !Number.isSafeInteger(process.processId) ||
+          process.processId <= 0 ||
+          normalizeWindowsPath(process.executablePath) !== expectedExecutable
+        ) {
+          return false;
+        }
+        try {
+          const args = parseWindowsCommandLine(process.commandLine);
+          const profiles: string[] = [];
+          for (let index = 0; index < args.length; index += 1) {
+            const argument = args[index];
+            const lowered = argument.toLowerCase();
+            if (lowered === '--user-data-dir') {
+              if (index + 1 >= args.length) return false;
+              profiles.push(args[index + 1]);
+              index += 1;
+            } else if (lowered.startsWith('--user-data-dir=')) {
+              profiles.push(argument.slice('--user-data-dir='.length));
+            }
+          }
+          return (
+            profiles.length === 1 &&
+            normalizeWindowsPath(profiles[0]) === expectedProfile
+          );
+        } catch {
+          return false;
+        }
+      })
+      .sort((left, right) => left.processId - right.processId),
+  );
+}
+
+export async function terminateReviewPlannerV8ExactBrowser(input: {
+  executablePath: string;
+  profilePath: string;
+  listProcesses(
+    signal: AbortSignal,
+  ): Promise<readonly ReviewPlannerV8BrowserProcess[]>;
+  terminateProcess(
+    process: ReviewPlannerV8BrowserProcess,
+    signal: AbortSignal,
+  ): Promise<void>;
+  removeProfile(signal: AbortSignal): Promise<void>;
+  profileExists(signal: AbortSignal): boolean | Promise<boolean>;
+  timeoutMs: number;
+  pollIntervalMs: number;
+}) {
+  const deadline = Date.now() + input.timeoutMs;
+  const attemptedIdentities = new Set<string>();
+  const terminatedProcessIds = new Set<number>();
+  const terminateNewProcesses = async (
+    processes: readonly ReviewPlannerV8BrowserProcess[],
+  ) => {
+    const currentIdentities = new Set(processes.map(browserProcessIdentity));
+    for (const identity of attemptedIdentities) {
+      if (!currentIdentities.has(identity)) {
+        attemptedIdentities.delete(identity);
+      }
+    }
+    for (const process of processes) {
+      const identity = browserProcessIdentity(process);
+      if (attemptedIdentities.has(identity)) continue;
+      await runBrowserDrainOperation(
+        (signal) => input.terminateProcess(process, signal),
+        deadline,
+      );
+      attemptedIdentities.add(identity);
+      terminatedProcessIds.add(process.processId);
+    }
+  };
+  const initial = selectReviewPlannerV8ExactBrowserProcesses(
+    await runBrowserDrainOperation(
+      (signal) => input.listProcesses(signal),
+      deadline,
+    ),
+    input.executablePath,
+    input.profilePath,
+  );
+  await terminateNewProcesses(initial);
+  while (Date.now() <= deadline) {
+    const remaining = selectReviewPlannerV8ExactBrowserProcesses(
+      await runBrowserDrainOperation(
+        (signal) => input.listProcesses(signal),
+        deadline,
+      ),
+      input.executablePath,
+      input.profilePath,
+    );
+    await terminateNewProcesses(remaining);
+    if (remaining.length === 0) {
+      await runBrowserProfileRemoval(
+        (signal) => input.removeProfile(signal),
+        deadline,
+      );
+      if (
+        await runBrowserDrainOperation(
+          (signal) => Promise.resolve(input.profileExists(signal)),
+          deadline,
+        )
+      ) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PROFILE_REMAINS');
+      }
+      return Object.freeze({
+        terminatedProcessIds: Object.freeze(
+          [...terminatedProcessIds].sort((left, right) => left - right),
+        ),
+        remaining: 0 as const,
+      });
+    }
+    const delay = Math.min(input.pollIntervalMs, deadline - Date.now());
+    if (delay > 0) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+    }
+  }
+  throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+}
+
+async function runBrowserProfileRemoval(
+  operation: (signal: AbortSignal) => Promise<void>,
+  deadline: number,
+) {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+  }
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const removal = Promise.resolve().then(() => operation(controller.signal));
+  const outcome = await Promise.race([
+    removal.then(
+      () => ({ status: 'settled' as const }),
+      (error: unknown) => ({ status: 'failed' as const, error }),
+    ),
+    new Promise<Readonly<{ status: 'timed_out' }>>((resolveTimeout) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        resolveTimeout({ status: 'timed_out' });
+      }, remaining);
+    }),
+  ]);
+  if (timeout !== undefined) clearTimeout(timeout);
+  if (outcome.status === 'timed_out') {
+    await removal.catch(() => undefined);
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+  }
+  if (outcome.status === 'failed') {
+    if (controller.signal.aborted) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+    }
+    throw outcome.error;
+  }
+}
+
+function browserProcessIdentity(process: ReviewPlannerV8BrowserProcess) {
+  return `${process.processId}\u0000${process.executablePath}\u0000${process.commandLine}`;
+}
+
+async function runBrowserDrainOperation<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  deadline: number,
+) {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), remaining);
+  const aborted = new Promise<never>((_resolve, reject) => {
+    controller.signal.addEventListener(
+      'abort',
+      () => reject(new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT')),
+      { once: true },
+    );
+  });
+  try {
+    return await Promise.race([operation(controller.signal), aborted]);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_DRAIN_TIMEOUT');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseWindowsCommandLine(commandLine: string) {
+  const args: string[] = [];
+  let index = 0;
+  while (index < commandLine.length) {
+    while (/\s/.test(commandLine[index] ?? '')) index += 1;
+    if (index >= commandLine.length) break;
+    let argument = '';
+    let quoted = false;
+    while (index < commandLine.length) {
+      const character = commandLine[index];
+      if (!quoted && /\s/.test(character)) break;
+      if (character === '\\') {
+        let slashes = 0;
+        while (commandLine[index] === '\\') {
+          slashes += 1;
+          index += 1;
+        }
+        if (commandLine[index] === '"') {
+          argument += '\\'.repeat(Math.floor(slashes / 2));
+          if (slashes % 2 === 0) quoted = !quoted;
+          else argument += '"';
+          index += 1;
+        } else {
+          argument += '\\'.repeat(slashes);
+        }
+        continue;
+      }
+      if (character === '"') {
+        quoted = !quoted;
+        index += 1;
+        continue;
+      }
+      argument += character;
+      index += 1;
+    }
+    if (quoted) throw new Error('V8_PRODUCT_ACCEPTANCE_COMMAND_LINE_INVALID');
+    args.push(argument);
+    while (/\s/.test(commandLine[index] ?? '')) index += 1;
+  }
+  return args;
+}
+
+function normalizeWindowsPath(value: string) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PATH_INVALID');
+  }
+  const normalized = resolve(value)
+    .replace(/[\\/]+$/, '')
+    .toLowerCase();
+  if (!normalized) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PATH_INVALID');
+  }
+  return normalized;
+}
+
+async function listDefaultReviewPlannerV8BrowserProcesses(
+  executablePath: string,
+  signal?: AbortSignal,
+) {
+  const result = await execFileAsync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '$items=@(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.CommandLine -and $_.ExecutablePath -ieq $env:V8_EXEC } | ForEach-Object { [pscustomobject]@{ processId=[int]$_.ProcessId; executablePath=[string]$_.ExecutablePath; commandLine=[string]$_.CommandLine } }); ConvertTo-Json -InputObject $items -Compress',
+    ],
+    {
+      windowsHide: true,
+      timeout: 15_000,
+      maxBuffer: 1024 * 1024,
+      env: { ...process.env, V8_EXEC: resolve(executablePath) },
+      signal,
+    },
+  );
+  const decoded = JSON.parse(result.stdout || '[]') as unknown;
+  if (!Array.isArray(decoded)) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PROCESS_LIST_INVALID');
+  }
+  return Object.freeze(
+    decoded.map((value) => {
+      const record = asRecord(value);
+      if (
+        Object.keys(record).sort().join(',') !==
+          'commandLine,executablePath,processId' ||
+        !Number.isSafeInteger(record.processId) ||
+        Number(record.processId) <= 0
+      ) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PROCESS_LIST_INVALID');
+      }
+      return Object.freeze({
+        processId: Number(record.processId),
+        executablePath: requireString(record.executablePath),
+        commandLine: requireString(record.commandLine),
+      });
+    }),
+  );
+}
+
+async function terminateDefaultReviewPlannerV8BrowserProcess(
+  browserProcess: ReviewPlannerV8BrowserProcess,
+  signal?: AbortSignal,
+) {
+  await execFileAsync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "$target=Get-CimInstance Win32_Process -Filter ('ProcessId = '+$env:V8_PID); if ($null -eq $target -or $target.ExecutablePath -ine $env:V8_EXEC -or $target.CommandLine -cne $env:V8_COMMAND_LINE) { exit 41 }; $result=Invoke-CimMethod -InputObject $target -MethodName Terminate; if ($result.ReturnValue -ne 0) { exit 42 }",
+    ],
+    {
+      windowsHide: true,
+      timeout: 15_000,
+      maxBuffer: 1024 * 1024,
+      env: {
+        ...process.env,
+        V8_PID: String(browserProcess.processId),
+        V8_EXEC: browserProcess.executablePath,
+        V8_COMMAND_LINE: browserProcess.commandLine,
+      },
+      signal,
+    },
+  );
+}
+
+async function terminateDefaultReviewPlannerV8ExactBrowser(input: {
+  repoRoot: string;
+  executablePath: string;
+  profilePath: string;
+}) {
+  const repoRoot = resolve(input.repoRoot);
+  const profilePath = resolve(input.profilePath);
+  const allowedProfiles = new Set(
+    (['branch', 'main'] as const).map((environment) =>
+      normalizeWindowsPath(
+        resolve(
+          repoRoot,
+          '.tmp',
+          'phase-6-9-5-v8-product-acceptance',
+          environment,
+          'profile-v8',
+        ),
+      ),
+    ),
+  );
+  if (!allowedProfiles.has(normalizeWindowsPath(profilePath))) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PATH_INVALID');
+  }
+  return terminateReviewPlannerV8ExactBrowser({
+    executablePath: resolve(input.executablePath),
+    profilePath,
+    listProcesses: (signal) =>
+      listDefaultReviewPlannerV8BrowserProcesses(input.executablePath, signal),
+    terminateProcess: (browserProcess, signal) =>
+      terminateDefaultReviewPlannerV8BrowserProcess(browserProcess, signal),
+    removeProfile: (signal) =>
+      removeDefaultReviewPlannerV8BrowserProfile(repoRoot, profilePath, signal),
+    profileExists: () => existsSync(profilePath),
+    timeoutMs: 10_000,
+    pollIntervalMs: 100,
+  });
+}
+
+async function removeDefaultReviewPlannerV8BrowserProfile(
+  repoRoot: string,
+  profilePath: string,
+  signal: AbortSignal,
+) {
+  await execFileAsync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '$path=$env:V8_PROFILE; if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }; if (Test-Path -LiteralPath $path) { exit 43 }',
+    ],
+    {
+      cwd: repoRoot,
+      windowsHide: true,
+      timeout: 15_000,
+      maxBuffer: 1024 * 1024,
+      env: { ...process.env, V8_PROFILE: profilePath },
+      signal,
+    },
+  );
 }
 
 async function readServerContainerId(repoRoot: string, signal?: AbortSignal) {
@@ -2019,9 +2414,11 @@ async function cleanupDefaultState(state: DefaultRuntimeState) {
   });
   const profile = state.resources?.browserProfilePath;
   if (profile) {
-    await rm(resolve(state.repoRoot, profile), {
-      recursive: true,
-      force: true,
+    await terminateDefaultReviewPlannerV8ExactBrowser({
+      repoRoot: state.repoRoot,
+      executablePath:
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      profilePath: resolve(state.repoRoot, profile),
     });
   }
   const [users, fixtures, traces] = await Promise.all([
@@ -2376,21 +2773,11 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
       ) {
         throw new Error();
       }
-      await execFileAsync(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-Command',
-          "$p=$env:V8_PROFILE;$e=$env:V8_EXEC;Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $e -and $_.CommandLine -like '*--user-data-dir*' -and $_.CommandLine -like ('*'+$p+'*') } | ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate | Out-Null }",
-        ],
-        {
-          cwd: root,
-          windowsHide: true,
-          env: { ...process.env, V8_PROFILE: profile, V8_EXEC: executable },
-        },
-      );
-      await rm(profile, { recursive: true, force: true });
+      await terminateDefaultReviewPlannerV8ExactBrowser({
+        repoRoot: root,
+        executablePath: executable,
+        profilePath: profile,
+      });
     },
     async restoreDefaultOff({ journal }) {
       const previous = await readServerContainerId(root);
@@ -2479,10 +2866,9 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
           await tx.user.deleteMany({ where: { email } });
         }
       });
-      await rm(resolve(root, snapshot.manifest.browserProfilePath), {
-        recursive: true,
-        force: true,
-      });
+      if (existsSync(resolve(root, snapshot.manifest.browserProfilePath))) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PROFILE_REMAINS');
+      }
       const remaining = await prisma.user.count({
         where: {
           email: { in: Object.values(snapshot.manifest.syntheticEmails) },
