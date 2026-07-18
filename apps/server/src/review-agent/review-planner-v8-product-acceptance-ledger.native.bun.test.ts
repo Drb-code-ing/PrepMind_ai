@@ -21,6 +21,7 @@ import {
   reserveReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedgerForTests,
 } from './review-planner-v8-product-acceptance-ledger';
+import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
@@ -513,6 +514,30 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
 
   afterEach(async () => {
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('writes the finalized acceptance leaf with the official strict evidence schema', async () => {
+    await finishBranch(root);
+    const acceptance = JSON.parse(
+      await readFile(
+        join(
+          root,
+          'docs',
+          'acceptance',
+          'evidence',
+          'phase-6-9-5-v8-product-acceptance',
+          'branch',
+          'acceptance.json',
+        ),
+        'utf8',
+      ),
+    ) as unknown;
+
+    const parsed =
+      reviewPlannerV8ProductAcceptanceEvidenceSchema.parse(acceptance);
+    expect(parsed.schemaVersion).toBe(
+      'phase-6.9.5-review-planner-v8-product-acceptance-v1',
+    );
   });
 
   it('durably rejects duplicate and concurrent reservation', async () => {

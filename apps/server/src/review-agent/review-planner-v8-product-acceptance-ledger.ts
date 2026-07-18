@@ -7,6 +7,8 @@ import {
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION,
+  reviewPlannerV8ProductAcceptanceEvidenceSchema,
+  serializeReviewPlannerV8ProductAcceptanceEvidence,
 } from './review-planner-v8-product-acceptance-evidence';
 import {
   assertReviewPlannerV8ProductAcceptanceRecoveryClear,
@@ -285,25 +287,6 @@ const cleanupSchema = z
   })
   .strict();
 
-const acceptanceSchema = z
-  .object({
-    schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-aggregate-v1'),
-    environment: z.enum(['branch', 'main']),
-    pairedEvidenceSha256: z.string().regex(SHA256),
-    requestCount: z.literal(4),
-    inputTokens: z.number().int().positive().max(7_800),
-    outputTokens: z.number().int().positive().max(1_760),
-    costCny: z.string().regex(/^\d+\.\d{8}$/),
-    traceIdSha256: z.array(z.string().regex(SHA256)).length(4),
-    screenshots: z
-      .object({
-        plan: z.string().regex(SHA256),
-        today: z.string().regex(SHA256),
-      })
-      .strict(),
-  })
-  .strict();
-
 const successSchema = z
   .object({
     schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-success-v1'),
@@ -343,6 +326,114 @@ const recoveryTerminalSchema = z
     cleanupReceiptSha256: z.string().regex(SHA256),
   })
   .strict();
+
+type ManifestRecord = z.infer<typeof manifestSchema>;
+type SlotResultRecord = z.infer<typeof slotResultSchema>;
+type OwnerIsolationRecord = z.infer<typeof ownerIsolationSchema>;
+type CleanupRecord = z.infer<typeof cleanupSchema>;
+type DefaultOffRecord = z.infer<
+  typeof reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema
+>;
+
+function buildOfficialAcceptanceEvidence(input: {
+  manifest: ManifestRecord;
+  results: readonly SlotResultRecord[];
+  defaultOff: readonly DefaultOffRecord[];
+  ownerProof: OwnerIsolationRecord;
+  cleanup: CleanupRecord;
+  screenshots: Readonly<{ plan: string; today: string }>;
+}) {
+  const expectedTraceIds = input.results.map((result) => result.traceIdSha256);
+  if (
+    input.results.length !== 4 ||
+    !arraysEqual(input.ownerProof.traceIdSha256, expectedTraceIds) ||
+    input.defaultOff.length !== 2 ||
+    input.defaultOff[0]?.component !== 'review' ||
+    input.defaultOff[1]?.component !== 'planner' ||
+    input.cleanup.syntheticAccounts !== 0 ||
+    input.cleanup.fixtures !== 0 ||
+    input.cleanup.traces !== 0 ||
+    input.cleanup.browserProfiles !== 0 ||
+    input.cleanup.capabilities !== 0
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+  const reviewResults = input.results.slice(0, 2);
+  const plannerResults = input.results.slice(2, 4);
+  const component = (
+    name: 'review' | 'planner',
+    results: readonly SlotResultRecord[],
+  ) => ({
+    component: name,
+    observation: { attempted: true, degraded: false },
+    disposition: 'candidate_applied',
+    provenance: 'live_candidate',
+    durationMs: results.reduce((total, result) => total + result.durationMs, 0),
+    usage: {
+      inputTokens: results.reduce(
+        (total, result) => total + result.usage.inputTokens,
+        0,
+      ),
+      outputTokens: results.reduce(
+        (total, result) => total + result.usage.outputTokens,
+        0,
+      ),
+    },
+    requestCount: 2,
+  });
+  const review = component('review', reviewResults);
+  const planner = component('planner', plannerResults);
+  const inputTokens = review.usage.inputTokens + planner.usage.inputTokens;
+  const outputTokens = review.usage.outputTokens + planner.usage.outputTokens;
+  const cost = calculateReviewPlannerV8ProductAcceptanceCost(
+    inputTokens,
+    outputTokens,
+  );
+  const targetCandidateAttempts = input.results.reduce(
+    (total, result) =>
+      total + result.steps.filter((step) => step.attempted).length,
+    0,
+  );
+  return reviewPlannerV8ProductAcceptanceEvidenceSchema.parse({
+    schemaVersion: 'phase-6.9.5-review-planner-v8-product-acceptance-v1',
+    environment: input.manifest.environment,
+    commitSha: input.manifest.commitSha,
+    provider: input.manifest.provider,
+    model: input.manifest.model,
+    components: { review, planner },
+    trace: {
+      status: 'persisted',
+      steps: [
+        'deterministic_review',
+        'review_candidate',
+        'deterministic_planner',
+        'planner_candidate',
+      ],
+      pricingKnown: false,
+      costEstimateUsd: 0,
+      targetCandidateAttempts,
+    },
+    accountIdSha256: input.manifest.accountIdSha256,
+    ownerIsolation: input.ownerProof.crossAccountInvisible,
+    factsUnchanged:
+      input.ownerProof.reviewFactsBeforeSha256 ===
+        input.ownerProof.reviewFactsAfterSha256 &&
+      input.ownerProof.plannerFactsBeforeSha256 ===
+        input.ownerProof.plannerFactsAfterSha256,
+    gateRestored: true,
+    cleanup: true,
+    totals: {
+      requests: 4,
+      inputTokens,
+      outputTokens,
+      costCny: cost.costCny,
+    },
+    pricing: input.manifest.pricing,
+    pairedEvidenceSha256: input.manifest.pairedEvidenceSha256,
+    planScreenshotSha256: input.screenshots.plan,
+    todayScreenshotSha256: input.screenshots.today,
+  });
+}
 
 type LedgerState = {
   repoRoot: string;
@@ -639,41 +730,39 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
       '.owner-isolation-verified.json',
       ownerIsolationSchema,
     );
-    readStrict(directory, '.cleanup-verified.json', cleanupSchema);
+    const cleanup = readStrict(
+      directory,
+      '.cleanup-verified.json',
+      cleanupSchema,
+    );
     const acceptance = readStrict(
       directory,
       'acceptance.json',
-      acceptanceSchema,
-    );
-    const inputTokens = results.reduce(
-      (total, result) => total + result.usage.inputTokens,
-      0,
-    );
-    const outputTokens = results.reduce(
-      (total, result) => total + result.usage.outputTokens,
-      0,
-    );
-    const cost = calculateReviewPlannerV8ProductAcceptanceCost(
-      inputTokens,
-      outputTokens,
+      reviewPlannerV8ProductAcceptanceEvidenceSchema,
     );
     const screenshots = {
       plan: screenshotFor(results, 'review-browser'),
       today: screenshotFor(results, 'planner-browser'),
     };
+    let expectedAcceptance;
+    try {
+      expectedAcceptance = buildOfficialAcceptanceEvidence({
+        manifest,
+        results,
+        defaultOff,
+        ownerProof,
+        cleanup,
+        screenshots,
+      });
+    } catch {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
+    }
     const expectedTraceIds = results.map((result) => result.traceIdSha256);
     if (
-      !cost.withinHardCap ||
-      acceptance.environment !== input.environment ||
-      acceptance.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
-      acceptance.requestCount !== 4 ||
-      acceptance.inputTokens !== inputTokens ||
-      acceptance.outputTokens !== outputTokens ||
-      acceptance.costCny !== cost.costCny ||
-      !arraysEqual(acceptance.traceIdSha256, expectedTraceIds) ||
+      JSON.stringify(acceptance) !== JSON.stringify(expectedAcceptance) ||
       !arraysEqual(ownerProof.traceIdSha256, expectedTraceIds) ||
-      acceptance.screenshots.plan !== screenshots.plan ||
-      acceptance.screenshots.today !== screenshots.today
+      acceptance.planScreenshotSha256 !== screenshots.plan ||
+      acceptance.todayScreenshotSha256 !== screenshots.today
     ) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
     }
@@ -949,12 +1038,16 @@ function createLedger(
       const defaultOff = (['review', 'planner'] as const).map((component) =>
         readDefaultOffReceipt(current.directory, component),
       );
-      readStrict(
+      const ownerProof = readStrict(
         current.directory,
         '.owner-isolation-verified.json',
         ownerIsolationSchema,
       );
-      readStrict(current.directory, '.cleanup-verified.json', cleanupSchema);
+      const cleanup = readStrict(
+        current.directory,
+        '.cleanup-verified.json',
+        cleanupSchema,
+      );
       const inputTokens = results.reduce(
         (total, result) => total + result.usage.inputTokens,
         0,
@@ -974,18 +1067,19 @@ function createLedger(
         plan: screenshotFor(results, 'review-browser'),
         today: screenshotFor(results, 'planner-browser'),
       };
-      const acceptance = acceptanceSchema.parse({
-        schemaVersion: 'phase-6.9.5-v8-product-acceptance-aggregate-v1',
-        environment: current.environment,
-        pairedEvidenceSha256: manifest.pairedEvidenceSha256,
-        requestCount: 4,
-        inputTokens,
-        outputTokens,
-        costCny: cost.costCny,
-        traceIdSha256: results.map((result) => result.traceIdSha256),
+      const acceptance = buildOfficialAcceptanceEvidence({
+        manifest,
+        results,
+        defaultOff,
+        ownerProof,
+        cleanup,
         screenshots,
       });
-      publish(current.directory, 'acceptance.json', serialize(acceptance));
+      publish(
+        current.directory,
+        'acceptance.json',
+        serializeReviewPlannerV8ProductAcceptanceEvidence(acceptance),
+      );
       const success = successSchema.parse({
         schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',
         environment: current.environment,
@@ -1051,11 +1145,41 @@ function verifyCompleteLedger(
   const manifest = assertManifest(directory, environment);
   const results = requireAllResults(directory);
   assertAdmissionClaimsAndScreenshots(directory, results);
-  const acceptance = readStrict(directory, 'acceptance.json', acceptanceSchema);
+  const defaultOff = (['review', 'planner'] as const).map((component) =>
+    readDefaultOffReceipt(directory, component),
+  );
+  const ownerProof = readStrict(
+    directory,
+    '.owner-isolation-verified.json',
+    ownerIsolationSchema,
+  );
+  const cleanup = readStrict(
+    directory,
+    '.cleanup-verified.json',
+    cleanupSchema,
+  );
+  const screenshots = {
+    plan: screenshotFor(results, 'review-browser'),
+    today: screenshotFor(results, 'planner-browser'),
+  };
+  const acceptance = readStrict(
+    directory,
+    'acceptance.json',
+    reviewPlannerV8ProductAcceptanceEvidenceSchema,
+  );
+  const expectedAcceptance = buildOfficialAcceptanceEvidence({
+    manifest,
+    results,
+    defaultOff,
+    ownerProof,
+    cleanup,
+    screenshots,
+  });
   const success = readStrict(directory, '.acceptance-success', successSchema);
   if (
     success.environment !== environment ||
     acceptance.environment !== environment ||
+    JSON.stringify(acceptance) !== JSON.stringify(expectedAcceptance) ||
     localMode.stagesPresent ||
     (success.completion.mode === 'product'
       ? localMode.mode !== null || localMode.modeSha256 !== null
@@ -1085,29 +1209,13 @@ function verifyCompleteLedger(
     success.cleanupSha256 !== hashLeaf(directory, '.cleanup-verified.json') ||
     success.acceptanceSha256 !== hashLeaf(directory, 'acceptance.json') ||
     !arraysEqual(success.screenshotSha256, [
-      screenshotFor(results, 'review-browser'),
-      screenshotFor(results, 'planner-browser'),
+      screenshots.plan,
+      screenshots.today,
     ]) ||
-    !arraysEqual(
-      acceptance.traceIdSha256,
-      results.map((result) => result.traceIdSha256),
-    ) ||
     !arraysEqual(success.screenshotSha256, [
-      acceptance.screenshots.plan,
-      acceptance.screenshots.today,
-    ])
-  ) {
-    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
-  }
-  for (const component of ['review', 'planner'] as const) {
-    readDefaultOffReceipt(directory, component);
-  }
-  const ownerProof = readStrict(
-    directory,
-    '.owner-isolation-verified.json',
-    ownerIsolationSchema,
-  );
-  if (
+      acceptance.planScreenshotSha256,
+      acceptance.todayScreenshotSha256,
+    ]) ||
     !arraysEqual(
       ownerProof.traceIdSha256,
       results.map((result) => result.traceIdSha256),
@@ -1115,29 +1223,11 @@ function verifyCompleteLedger(
   ) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
-  readStrict(directory, '.cleanup-verified.json', cleanupSchema);
-  const inputTokens = results.reduce(
-    (total, result) => total + result.usage.inputTokens,
-    0,
-  );
-  const outputTokens = results.reduce(
-    (total, result) => total + result.usage.outputTokens,
-    0,
-  );
-  if (
-    acceptance.inputTokens !== inputTokens ||
-    acceptance.outputTokens !== outputTokens ||
-    acceptance.costCny !==
-      calculateReviewPlannerV8ProductAcceptanceCost(inputTokens, outputTokens)
-        .costCny
-  ) {
-    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
-  }
   return {
     pairedEvidenceSha256: manifest.pairedEvidenceSha256,
-    inputTokens,
-    outputTokens,
-    costCny: acceptance.costCny,
+    inputTokens: acceptance.totals.inputTokens,
+    outputTokens: acceptance.totals.outputTokens,
+    costCny: acceptance.totals.costCny,
   };
 }
 
