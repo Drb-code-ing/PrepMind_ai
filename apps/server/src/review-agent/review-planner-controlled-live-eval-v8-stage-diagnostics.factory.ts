@@ -193,9 +193,15 @@ export function createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(
   let canaryPromise: Promise<CanaryOutcome> | null = null;
   let pairedPromise: Promise<ReviewPlannerControlledLiveV8PairedResult> | null =
     null;
+  let pairedRuntimeAdmissions = 0;
   let pairedAttemptLimitExceeded = false;
   const pairedRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {
     invokeStructured<T>(request: ModelAgentRequest<T>) {
+      if (pairedRuntimeAdmissions >= MAX_PAIRED_PROVIDER_ATTEMPTS) {
+        pairedAttemptLimitExceeded = true;
+        return exhaustedRuntimeRequest(runtime, request);
+      }
+      pairedRuntimeAdmissions += 1;
       if (audit.readDiagnosticCode() !== null) {
         return exhaustedRuntimeRequest(runtime, request);
       }
@@ -232,6 +238,7 @@ export function createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(
         pricing: preflight.pricing,
         canaryUsage: canary.usage,
         readAttempts: () => providerAttempts,
+        readAdmissions: () => pairedRuntimeAdmissions,
         didExceedProviderAttemptLimit: () => pairedAttemptLimitExceeded,
         audit,
       });
@@ -306,6 +313,7 @@ async function runPairedSafely(input: {
   pricing: ReviewPlannerControlledLiveV8StageDiagnosticsPricing;
   canaryUsage: CanaryUsage;
   readAttempts: () => number;
+  readAdmissions: () => number;
   didExceedProviderAttemptLimit: () => boolean;
   audit: AuditAggregate;
 }): Promise<ReviewPlannerControlledLiveV8PairedResult> {
@@ -344,6 +352,7 @@ async function runPairedSafely(input: {
       };
     }
     if (
+      input.readAdmissions() !== MAX_PAIRED_PROVIDER_ATTEMPTS ||
       input.readAttempts() !== MAX_PROVIDER_ATTEMPTS ||
       input.didExceedProviderAttemptLimit()
     ) {

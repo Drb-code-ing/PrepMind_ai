@@ -285,6 +285,53 @@ describe('review planner controlled Live V8 stage diagnostics factory', () => {
     expect(evaluator.providerAttemptCount()).toBe(23);
   });
 
+  it('atomically rejects the 23rd concurrent paired admission even when an earlier admission stays local', async () => {
+    const harness = createExecutorHarness();
+    const report = await validLiveReport();
+    let concurrentResults: Awaited<
+      ReturnType<Phase695LiveDependencies['runtime']['invokeStructured']>
+    >[] = [];
+    const evaluator =
+      createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(readyEnv, {
+        createExecutor: harness.createExecutor,
+        runPairedEvaluation: async ({ live }) => {
+          concurrentResults = await Promise.all(
+            Array.from({ length: 23 }, (_, index) =>
+              live.runtime.invokeStructured(
+                index === 0
+                  ? {
+                      ...pairedRuntimeRequest('v8-concurrent-local'),
+                      budget: {
+                        ...pairedRuntimeRequest('v8-concurrent-local').budget,
+                        usedCalls: 1,
+                      },
+                    }
+                  : pairedRuntimeRequest(`v8-concurrent-${index}`),
+              ),
+            ),
+          );
+          return report;
+        },
+      });
+    if (evaluator.state !== 'ready') throw new Error('expected ready');
+    await evaluator.runCanary();
+    await expect(evaluator.runPaired()).resolves.toEqual({
+      kind: 'failed',
+      diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
+    });
+    expect(concurrentResults).toHaveLength(23);
+    expect(concurrentResults[0]).toMatchObject({
+      ok: false,
+      error: { code: 'CALL_BUDGET_EXCEEDED' },
+    });
+    expect(concurrentResults[22]).toMatchObject({
+      ok: false,
+      error: { code: 'CALL_BUDGET_EXCEEDED' },
+    });
+    expect(harness.executor).toHaveBeenCalledTimes(22);
+    expect(evaluator.providerAttemptCount()).toBe(22);
+  });
+
   it.each([
     {
       label: 'missing usage',
