@@ -21,6 +21,13 @@ export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION = Object.freeze({
   worstCaseCostCny: '0.06792000',
 } as const);
 
+export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT =
+  Object.freeze({
+    inputTokens: 7_800,
+    outputTokens: 1_760,
+    worstCaseCostCny: '0.03396000',
+  } as const);
+
 const SCHEMA_VERSION =
   'phase-6.9.5-review-planner-v8-product-acceptance-v1' as const;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -37,12 +44,16 @@ const usageSchema = z
       .number()
       .int()
       .positive()
-      .max(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.inputTokens),
+      .max(
+        REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT.inputTokens,
+      ),
     outputTokens: z
       .number()
       .int()
       .positive()
-      .max(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.outputTokens),
+      .max(
+        REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT.outputTokens,
+      ),
   })
   .strict();
 
@@ -123,12 +134,16 @@ export const reviewPlannerV8ProductAcceptanceEvidenceSchema = z
           .number()
           .int()
           .positive()
-          .max(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.inputTokens),
+          .max(
+            REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT.inputTokens,
+          ),
         outputTokens: z
           .number()
           .int()
           .positive()
-          .max(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.outputTokens),
+          .max(
+            REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT.outputTokens,
+          ),
         costCny: z.string().regex(/^\d+\.\d{8}$/),
       })
       .strict(),

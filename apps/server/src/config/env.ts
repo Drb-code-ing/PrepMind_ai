@@ -390,6 +390,16 @@ const envSchema = z
           : component === 'planner'
             ? env.PLANNER_AGENT_MODEL_ENABLED && !env.REVIEW_AGENT_MODEL_ENABLED
             : false;
+      const exactLiveRuntime =
+        env.AI_PROVIDER_MODE === 'live' &&
+        env.AI_ENABLE_LIVE_CALLS === true &&
+        env.AI_MODEL === 'deepseek-v4-pro' &&
+        env.AI_BASE_URL === 'https://api.deepseek.com/v1' &&
+        typeof env.DEEPSEEK_API_KEY === 'string' &&
+        env.DEEPSEEK_API_KEY.length > 0 &&
+        env.OPENAI_API_KEY === undefined &&
+        env.REVIEW_AGENT_MODEL_TIMEOUT_MS === 4_500 &&
+        env.PLANNER_AGENT_MODEL_TIMEOUT_MS === 4_500;
       if (env.SERVER_ROLE !== 'api') {
         context.addIssue({
           code: 'custom',
@@ -426,6 +436,14 @@ const envSchema = z
           path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT'],
           message:
             'enabled product acceptance requires exactly its matching business gate',
+        });
+      }
+      if (!exactLiveRuntime) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED'],
+          message:
+            'product acceptance requires exact DeepSeek V4 Pro live runtime configuration',
         });
       }
     }

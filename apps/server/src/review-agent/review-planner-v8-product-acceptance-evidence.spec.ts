@@ -1,5 +1,6 @@
 import {
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION,
   calculateReviewPlannerV8ProductAcceptanceCost,
   reviewPlannerV8ProductAcceptanceEvidenceSchema,
@@ -80,10 +81,78 @@ describe('Review Planner V8 product acceptance evidence', () => {
       outputTokens: 3520,
       worstCaseCostCny: '0.06792000',
     });
+    expect(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT).toEqual({
+      inputTokens: 7800,
+      outputTokens: 1760,
+      worstCaseCostCny: '0.03396000',
+    });
     expect(calculateReviewPlannerV8ProductAcceptanceCost(15600, 3520)).toEqual({
       costCny: '0.06792000',
       withinHardCap: true,
     });
+  });
+
+  it('makes two maximum branch/main records stay within the frozen total reservation', () => {
+    const maximumEnvironment = {
+      ...fixture,
+      components: {
+        review: {
+          ...fixture.components.review,
+          usage: { inputTokens: 3900, outputTokens: 880 },
+        },
+        planner: {
+          ...fixture.components.planner,
+          usage: { inputTokens: 3900, outputTokens: 880 },
+        },
+      },
+      totals: {
+        requests: 4,
+        inputTokens: 7800,
+        outputTokens: 1760,
+        costCny: '0.03396000',
+      },
+    };
+    const branch = reviewPlannerV8ProductAcceptanceEvidenceSchema.parse({
+      ...maximumEnvironment,
+      environment: 'branch',
+    });
+    const main = reviewPlannerV8ProductAcceptanceEvidenceSchema.parse({
+      ...maximumEnvironment,
+      environment: 'main',
+    });
+
+    expect(branch.totals.inputTokens + main.totals.inputTokens).toBe(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.inputTokens,
+    );
+    expect(branch.totals.outputTokens + main.totals.outputTokens).toBe(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION.outputTokens,
+    );
+    expect(
+      calculateReviewPlannerV8ProductAcceptanceCost(
+        branch.totals.inputTokens + main.totals.inputTokens,
+        branch.totals.outputTokens + main.totals.outputTokens,
+      ),
+    ).toEqual({ costCny: '0.06792000', withinHardCap: true });
+  });
+
+  it('rejects a single environment using any of the other environment reservation', () => {
+    expect(() =>
+      reviewPlannerV8ProductAcceptanceEvidenceSchema.parse({
+        ...fixture,
+        components: {
+          ...fixture.components,
+          review: {
+            ...fixture.components.review,
+            usage: { inputTokens: 3901, outputTokens: 800 },
+          },
+        },
+        totals: {
+          ...fixture.totals,
+          inputTokens: 7801,
+          costCny: '0.02820300',
+        },
+      }),
+    ).toThrow();
   });
 
   it('requires positive verified integer usage and exact rational totals', () => {

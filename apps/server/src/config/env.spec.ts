@@ -82,6 +82,11 @@ describe('parseEnv', () => {
       parseEnv({
         ...requiredEnv,
         SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        DEEPSEEK_API_KEY: 'acceptance-deepseek-key',
         REVIEW_AGENT_MODEL_ENABLED: 'true',
         PLANNER_AGENT_MODEL_ENABLED: 'false',
         REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
@@ -109,6 +114,14 @@ describe('parseEnv', () => {
     { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '3' },
     { REVIEW_AGENT_MODEL_ENABLED: 'false' },
     { PLANNER_AGENT_MODEL_ENABLED: 'true' },
+    { AI_PROVIDER_MODE: 'mock' },
+    { AI_ENABLE_LIVE_CALLS: 'false' },
+    { AI_MODEL: 'deepseek-v4-flash' },
+    { AI_BASE_URL: 'https://api.openai.com/v1' },
+    { DEEPSEEK_API_KEY: '' },
+    { OPENAI_API_KEY: 'acceptance-openai-key' },
+    { REVIEW_AGENT_MODEL_TIMEOUT_MS: '4499' },
+    { PLANNER_AGENT_MODEL_TIMEOUT_MS: '4501' },
   ])(
     'rejects invalid enabled product acceptance combination %#',
     (override) => {
@@ -116,6 +129,11 @@ describe('parseEnv', () => {
         parseEnv({
           ...requiredEnv,
           SERVER_ROLE: 'api',
+          AI_PROVIDER_MODE: 'live',
+          AI_ENABLE_LIVE_CALLS: 'true',
+          AI_MODEL: 'deepseek-v4-pro',
+          AI_BASE_URL: 'https://api.deepseek.com/v1',
+          DEEPSEEK_API_KEY: 'acceptance-deepseek-key',
           REVIEW_AGENT_MODEL_ENABLED: 'true',
           PLANNER_AGENT_MODEL_ENABLED: 'false',
           REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
