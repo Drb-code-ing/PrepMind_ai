@@ -205,6 +205,9 @@ type RecoveryJournalState = {
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   closed: boolean;
   authorized: boolean;
+  authority: ReviewPlannerV8RecoveryAuthority | null;
+  authorizationAttempt: object | null;
+  authorizationPromise: Promise<ReviewPlannerV8RecoveryAuthority> | null;
   publicDirectory: WindowsNoReparseChildDirectory | null;
 };
 
@@ -334,6 +337,9 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
       owner: input.owner,
       closed: false,
       authorized: false,
+      authority: null,
+      authorizationAttempt: null,
+      authorizationPromise: null,
       publicDirectory: null,
     });
   } catch (error) {
@@ -382,6 +388,9 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
       owner: input.owner,
       closed: false,
       authorized: false,
+      authority: null,
+      authorizationAttempt: null,
+      authorizationPromise: null,
       publicDirectory: null,
     });
   } catch {
@@ -504,56 +513,94 @@ function createRecoveryJournal(
 ): ReviewPlannerV8ProductAcceptanceRecoveryJournal {
   const journal: ReviewPlannerV8ProductAcceptanceRecoveryJournal =
     Object.freeze({
-      async authorizeRecoveryOnly() {
+      authorizeRecoveryOnly() {
         const state = requireJournalState(journal);
         assertReviewPlannerV8ProductAcceptanceOwner(
           state.owner,
           state.environment,
           ['recovery'],
         );
-        const publicDirectory =
-          await openWindowsNoReparseExistingFrozenDirectory(state.repoRoot, [
-            'docs',
-            'acceptance',
-            'evidence',
-            'phase-6-9-5-v8-product-acceptance',
-            state.environment,
-          ]);
-        try {
-          publicDirectory.assertLocalFixedNtfsVolume();
-          const leaves = publicDirectory.listLeafNames();
-          if (
-            !leaves.includes('.acceptance-reserved') ||
-            leaves.includes('.acceptance-success') ||
-            leaves.includes('.recovery-only.json') ||
-            leaves.some((leaf) => !isKnownPublicLeaf(leaf))
-          ) {
-            throw new Error(
-              'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
-            );
-          }
-          state.authorized = true;
-          state.publicDirectory = publicDirectory;
-          const authority: ReviewPlannerV8RecoveryAuthority = Object.freeze({
-            assertAuthorized() {
-              const current = requireJournalState(journal);
-              assertReviewPlannerV8ProductAcceptanceOwner(
-                current.owner,
-                current.environment,
-                ['recovery'],
-              );
-              if (!current.authorized) {
-                throw new Error(
-                  'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
-                );
-              }
-            },
-          });
-          return authority;
-        } catch (error) {
-          publicDirectory.close();
-          throw error;
+        if (state.authorized && state.authority !== null) {
+          return Promise.resolve(state.authority);
         }
+        if (state.authorizationPromise !== null) {
+          return state.authorizationPromise;
+        }
+        const authorizationAttempt = Object.freeze({});
+        state.authorizationAttempt = authorizationAttempt;
+        const pending = (async () => {
+          let publicDirectory: WindowsNoReparseChildDirectory | null = null;
+          try {
+            publicDirectory = await openWindowsNoReparseExistingFrozenDirectory(
+              state.repoRoot,
+              [
+                'docs',
+                'acceptance',
+                'evidence',
+                'phase-6-9-5-v8-product-acceptance',
+                state.environment,
+              ],
+            );
+            const current = requireJournalState(journal);
+            assertReviewPlannerV8ProductAcceptanceOwner(
+              current.owner,
+              current.environment,
+              ['recovery'],
+            );
+            if (
+              current.authorizationAttempt !== authorizationAttempt ||
+              current.authorized ||
+              current.publicDirectory !== null
+            ) {
+              throw new Error(
+                'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+              );
+            }
+            publicDirectory.assertLocalFixedNtfsVolume();
+            const leaves = publicDirectory.listLeafNames();
+            if (
+              !leaves.includes('.acceptance-reserved') ||
+              leaves.includes('.acceptance-success') ||
+              leaves.includes('.recovery-only.json') ||
+              leaves.some((leaf) => !isKnownPublicLeaf(leaf))
+            ) {
+              throw new Error(
+                'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+              );
+            }
+            const authority: ReviewPlannerV8RecoveryAuthority = Object.freeze({
+              assertAuthorized() {
+                const latest = requireJournalState(journal);
+                assertReviewPlannerV8ProductAcceptanceOwner(
+                  latest.owner,
+                  latest.environment,
+                  ['recovery'],
+                );
+                if (!latest.authorized || latest.authority !== authority) {
+                  throw new Error(
+                    'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+                  );
+                }
+              },
+            });
+            current.authorized = true;
+            current.authority = authority;
+            current.publicDirectory = publicDirectory;
+            publicDirectory = null;
+            return authority;
+          } catch (error) {
+            publicDirectory?.close();
+            throw error;
+          } finally {
+            const current = journalState.get(journal);
+            if (current?.authorizationAttempt === authorizationAttempt) {
+              current.authorizationAttempt = null;
+              current.authorizationPromise = null;
+            }
+          }
+        })();
+        state.authorizationPromise = pending;
+        return pending;
       },
       appendStage(leaf, contents) {
         const state = requireJournalState(journal);
@@ -691,6 +738,9 @@ function createRecoveryJournal(
         const state = journalState.get(journal);
         if (!state || state.closed) return;
         state.closed = true;
+        state.authorized = false;
+        state.authority = null;
+        state.authorizationAttempt = null;
         try {
           state.publicDirectory?.close();
         } finally {

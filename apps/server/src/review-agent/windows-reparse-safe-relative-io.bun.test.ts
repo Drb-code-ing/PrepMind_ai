@@ -6,6 +6,7 @@ import {
   rename,
   rm,
   symlink,
+  writeFile,
 } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -29,7 +30,9 @@ type DurableFaultStage =
   | 'volume_non_ntfs'
   | 'volume_non_disk_device'
   | 'volume_remote_characteristic'
-  | 'volume_removable_characteristic';
+  | 'volume_removable_characteristic'
+  | 'native_close_false'
+  | 'ntdll_load';
 type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestFacade = Readonly<{
   directory: windowsReparseSafeIo.WindowsNoReparseChildDirectory;
@@ -46,6 +49,23 @@ function requireDurableFaultTestFactory() {
       ) => Promise<DurableFaultTestFacade>;
     }
   ).openWindowsNoReparseChildDirectoryForTests;
+  expect(typeof factory).toBe('function');
+  if (typeof factory !== 'function') {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_TEST_FACTORY_UNAVAILABLE');
+  }
+  return factory;
+}
+
+function requireNestedDurableFaultTestFactory() {
+  const factory = (
+    windowsReparseSafeIo as typeof windowsReparseSafeIo & {
+      openWindowsNoReparseDirectoryForTests?: (
+        root: string,
+        childNames: readonly string[],
+        injector: DurableFaultInjector,
+      ) => Promise<DurableFaultTestFacade>;
+    }
+  ).openWindowsNoReparseDirectoryForTests;
   expect(typeof factory).toBe('function');
   if (typeof factory !== 'function') {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_TEST_FACTORY_UNAVAILABLE');
@@ -129,6 +149,25 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
     }
   });
 
+  it('keeps JSON reads capped while allowing an explicit bounded artifact read', async () => {
+    const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
+    const contents = 'x'.repeat(1_048_577);
+    try {
+      directory.createExclusiveFile('large-artifact', contents);
+      expect(() => directory.readRegularFile('large-artifact')).toThrow(
+        'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
+      );
+      expect(directory.readRegularFile('large-artifact', 2_000_000)).toEqual(
+        Buffer.from(contents),
+      );
+      expect(() =>
+        directory.readRegularFile('large-artifact', 64 * 1024 * 1024),
+      ).toThrow('WINDOWS_REPARSE_SAFE_IO_READ_LIMIT_INVALID');
+    } finally {
+      directory.close();
+    }
+  });
+
   it('rejects unsafe prepare derivation and an existing public target', async () => {
     const directory = await openWindowsNoReparseChildDirectory(root, 'docs');
     try {
@@ -199,6 +238,8 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
         root,
         'docs',
         (stage) => {
+          if (stage === 'ntdll_load' || stage === 'native_close_false')
+            return false;
           calls.push(stage);
           return stage === failedStage;
         },
@@ -243,6 +284,8 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       root,
       'docs',
       (stage) => {
+        if (stage === 'ntdll_load' || stage === 'native_close_false')
+          return false;
         calls.push(stage);
         return stage === 'post_commit_cleanup';
       },
@@ -378,6 +421,8 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
         root,
         'docs',
         (stage) => {
+          if (stage === 'ntdll_load' || stage === 'native_close_false')
+            return false;
           calls.push(stage);
           return stage === failedStage;
         },
@@ -456,6 +501,8 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       root,
       'docs',
       (stage) => {
+        if (stage === 'ntdll_load' || stage === 'native_close_false')
+          return false;
         calls.push(stage);
         return stage === 'close';
       },
@@ -599,4 +646,78 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
       }
     },
   );
+
+  it('closes every guard even when one CloseHandle reports false', async () => {
+    await mkdir(join(root, 'docs', 'nested'));
+    let closeAttempts = 0;
+    const facade = await requireNestedDurableFaultTestFactory()(
+      root,
+      ['docs', 'nested'],
+      (stage) => {
+        if (stage !== 'native_close_false') return false;
+        closeAttempts += 1;
+        return closeAttempts === 1;
+      },
+    );
+    expect(() => facade.directory.close()).toThrow(
+      'WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED',
+    );
+    expect(closeAttempts).toBeGreaterThanOrEqual(3);
+    await expect(
+      rm(join(root, 'docs'), { recursive: true }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('closes kernel32 when injected ntdll loading fails', async () => {
+    await expect(
+      requireNestedDurableFaultTestFactory()(
+        root,
+        ['docs'],
+        (stage) => stage === 'ntdll_load',
+      ),
+    ).rejects.toThrow('WINDOWS_REPARSE_SAFE_IO_NATIVE_LOAD_FAILED');
+    await expect(rename(root, `${root}-renamed`)).resolves.toBeUndefined();
+    await rename(`${root}-renamed`, root);
+  });
+
+  it('fails closed when directory entry or name-byte limits are exceeded', async () => {
+    await Promise.all(
+      Array.from({ length: 257 }, (_, index) =>
+        writeFile(
+          join(root, 'docs', `entry-${index.toString().padStart(3, '0')}`),
+          '',
+        ),
+      ),
+    );
+    const entryDirectory = await openWindowsNoReparseChildDirectory(
+      root,
+      'docs',
+    );
+    expect(() => entryDirectory.listLeafNames()).toThrow(
+      'WINDOWS_REPARSE_SAFE_IO_LIST_LIMIT_EXCEEDED',
+    );
+    entryDirectory.close();
+    await rm(join(root, 'docs'), { recursive: true });
+    await mkdir(join(root, 'docs'));
+    await Promise.all(
+      Array.from({ length: 200 }, (_, index) =>
+        writeFile(
+          join(
+            root,
+            'docs',
+            `${index.toString().padStart(3, '0')}-${'x'.repeat(197)}`,
+          ),
+          '',
+        ),
+      ),
+    );
+    const byteDirectory = await openWindowsNoReparseChildDirectory(
+      root,
+      'docs',
+    );
+    expect(() => byteDirectory.listLeafNames()).toThrow(
+      'WINDOWS_REPARSE_SAFE_IO_LIST_LIMIT_EXCEEDED',
+    );
+    byteDirectory.close();
+  });
 });

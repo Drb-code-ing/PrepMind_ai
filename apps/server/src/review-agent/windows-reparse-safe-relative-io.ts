@@ -30,7 +30,10 @@ const FILE_FS_DEVICE_INFORMATION = 4;
 const FILE_DEVICE_DISK = 0x00000007;
 const FILE_REMOVABLE_MEDIA = 0x00000001;
 const FILE_REMOTE_DEVICE = 0x00000010;
-const MAX_NATIVE_READ_BYTES = 1_048_576;
+const DEFAULT_MAX_NATIVE_READ_BYTES = 1_048_576;
+const HARD_MAX_NATIVE_READ_BYTES = 32 * 1024 * 1024;
+const MAX_DIRECTORY_ENTRIES = 256;
+const MAX_DIRECTORY_NAME_BYTES = 32 * 1024;
 const STATUS_REPARSE_POINT_ENCOUNTERED = -1073740533;
 const STATUS_OBJECT_NAME_COLLISION = -1073741771;
 const STATUS_OBJECT_NAME_NOT_FOUND = -1073741772;
@@ -68,7 +71,9 @@ export type DurableFaultStage =
   | 'volume_non_ntfs'
   | 'volume_non_disk_device'
   | 'volume_remote_characteristic'
-  | 'volume_removable_characteristic';
+  | 'volume_removable_characteristic'
+  | 'native_close_false'
+  | 'ntdll_load';
 export type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestCapability = Readonly<{
   injector: DurableFaultInjector;
@@ -148,7 +153,7 @@ export type WindowsNoReparseChildDirectory = Readonly<{
     contents: string | Uint8Array,
   ): DurablePublicationResult;
   deleteFile(leafName: string): void;
-  readRegularFile(leafName: string): Buffer;
+  readRegularFile(leafName: string, maxBytes?: number): Buffer;
   listLeafNames(): readonly string[];
   tryAcquireExclusiveLifetimeFile(
     leafName: string,
@@ -359,10 +364,10 @@ async function openWindowsNoReparseDirectoryWithDisposition(
       assertSafeLeafName(leafName);
       deleteNativeFile(boundDirectory, leafName);
     },
-    readRegularFile(leafName) {
+    readRegularFile(leafName, maxBytes = DEFAULT_MAX_NATIVE_READ_BYTES) {
       assertOpen();
       assertSafeLeafName(leafName);
-      return readNativeFile(boundDirectory, leafName);
+      return readNativeFile(boundDirectory, leafName, maxBytes);
     },
     listLeafNames() {
       assertOpen();
@@ -490,102 +495,112 @@ function openNativeRoot(
       returns: ffi.FFIType.bool,
     },
   });
-  const ntdll = ffi.dlopen('ntdll.dll', {
-    NtCreateFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtWriteFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtReadFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtQueryInformationFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtQueryDirectoryFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-        ffi.FFIType.bool,
-        ffi.FFIType.ptr,
-        ffi.FFIType.bool,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtQueryVolumeInformationFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-    NtFlushBuffersFile: {
-      args: [ffi.FFIType.ptr, ffi.FFIType.ptr],
-      returns: ffi.FFIType.i32,
-    },
-    NtSetInformationFile: {
-      args: [
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.ptr,
-        ffi.FFIType.u32,
-        ffi.FFIType.u32,
-      ],
-      returns: ffi.FFIType.i32,
-    },
-  });
+  if (shouldInjectCapabilityFault(durableFaultTestCapability, 'ntdll_load')) {
+    kernel.close();
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_NATIVE_LOAD_FAILED');
+  }
+  let ntdll: ReturnType<BunFfi['dlopen']>;
+  try {
+    ntdll = ffi.dlopen('ntdll.dll', {
+      NtCreateFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtWriteFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtReadFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtQueryInformationFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtQueryDirectoryFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+          ffi.FFIType.bool,
+          ffi.FFIType.ptr,
+          ffi.FFIType.bool,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtQueryVolumeInformationFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+      NtFlushBuffersFile: {
+        args: [ffi.FFIType.ptr, ffi.FFIType.ptr],
+        returns: ffi.FFIType.i32,
+      },
+      NtSetInformationFile: {
+        args: [
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.ptr,
+          ffi.FFIType.u32,
+          ffi.FFIType.u32,
+        ],
+        returns: ffi.FFIType.i32,
+      },
+    });
+  } catch {
+    kernel.close();
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_NATIVE_LOAD_FAILED');
+  }
   const driveRoot = trustedVolumeAnchor(root);
   const path = wideString(driveRoot);
   const handle = Number(
@@ -723,7 +738,12 @@ function writeNewDurableNativeFile(
   }
 }
 
-function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
+function readNativeFile(
+  parent: WindowsNativeDirectory,
+  leafName: string,
+  maxBytes = DEFAULT_MAX_NATIVE_READ_BYTES,
+) {
+  assertReadLimit(maxBytes);
   const file = createRelativeHandle({
     parent,
     leafName,
@@ -732,13 +752,18 @@ function readNativeFile(parent: WindowsNativeDirectory, leafName: string) {
     createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
   });
   try {
-    return readNativeFileHandle(parent, file);
+    return readNativeFileHandle(parent, file, maxBytes);
   } finally {
     closeNativeHandle({ ...parent, handle: file });
   }
 }
 
-function readNativeFileHandle(parent: WindowsNativeDirectory, file: number) {
+function readNativeFileHandle(
+  parent: WindowsNativeDirectory,
+  file: number,
+  maxBytes = DEFAULT_MAX_NATIVE_READ_BYTES,
+) {
+  assertReadLimit(maxBytes);
   const standardInformation = Buffer.alloc(24);
   assertNtSuccess(
     Number(
@@ -753,11 +778,7 @@ function readNativeFileHandle(parent: WindowsNativeDirectory, file: number) {
     'WINDOWS_REPARSE_SAFE_IO_READ_FAILED',
   );
   const length = Number(standardInformation.readBigInt64LE(8));
-  if (
-    !Number.isSafeInteger(length) ||
-    length < 0 ||
-    length > MAX_NATIVE_READ_BYTES
-  ) {
+  if (!Number.isSafeInteger(length) || length < 0 || length > maxBytes) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
   }
   if (length === 0) return Buffer.alloc(0);
@@ -787,6 +808,7 @@ function readNativeFileHandle(parent: WindowsNativeDirectory, file: number) {
 
 function listNativeLeafNames(parent: WindowsNativeDirectory) {
   const names: string[] = [];
+  let totalNameBytes = 0;
   let restartScan = true;
   while (true) {
     const contents = Buffer.alloc(65_536);
@@ -819,7 +841,16 @@ function listNativeLeafNames(parent: WindowsNativeDirectory) {
       const name = contents
         .subarray(offset + 12, offset + 12 + nameLength)
         .toString('utf16le');
-      if (name !== '.' && name !== '..') names.push(name);
+      if (name !== '.' && name !== '..') {
+        totalNameBytes += nameLength;
+        if (
+          names.length >= MAX_DIRECTORY_ENTRIES ||
+          totalNameBytes > MAX_DIRECTORY_NAME_BYTES
+        ) {
+          throw new Error('WINDOWS_REPARSE_SAFE_IO_LIST_LIMIT_EXCEEDED');
+        }
+        names.push(name);
+      }
       if (nextOffset === 0) break;
       offset += nextOffset;
     }
@@ -1015,7 +1046,11 @@ function commitExclusiveDurableFileViaRename(
       createDisposition: FILE_OPEN,
       createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
     });
-    const reopenedBytes = readNativeFileHandle(parent, reopenedHandle);
+    const reopenedBytes = readNativeFileHandle(
+      parent,
+      reopenedHandle,
+      Math.max(DEFAULT_MAX_NATIVE_READ_BYTES, bytes.byteLength),
+    );
     if (!reopenedBytes.equals(bytes)) {
       throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
     }
@@ -1327,6 +1362,16 @@ function assertNtSuccess(status: number, failureCode: string) {
   if (status !== 0) throw new Error(failureCode);
 }
 
+function assertReadLimit(maxBytes: number) {
+  if (
+    !Number.isSafeInteger(maxBytes) ||
+    maxBytes < 0 ||
+    maxBytes > HARD_MAX_NATIVE_READ_BYTES
+  ) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_LIMIT_INVALID');
+  }
+}
+
 function writeAndFlushDurableNativeFile(
   parent: WindowsNativeDirectory,
   file: number,
@@ -1399,6 +1444,18 @@ function shouldInjectDurableFaultForTests(
   }
 }
 
+function shouldInjectCapabilityFault(
+  capability: DurableFaultTestCapability | null,
+  stage: DurableFaultStage,
+) {
+  if (capability === null) return false;
+  try {
+    return Boolean(capability.injector(stage));
+  } catch {
+    return true;
+  }
+}
+
 function sanitizeDurableWriteError(error: unknown) {
   if (
     error instanceof Error &&
@@ -1454,7 +1511,18 @@ function isNativeHandle(value: number) {
 }
 
 function closeNativeHandle(directory: WindowsNativeDirectory) {
-  directory.kernel.symbols.CloseHandle(directory.handle);
+  let closed = false;
+  try {
+    closed = Boolean(directory.kernel.symbols.CloseHandle(directory.handle));
+  } catch {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
+  if (
+    !closed ||
+    shouldInjectDurableFaultForTests(directory, 'native_close_false')
+  ) {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
+  }
 }
 
 function closeDurableNativeHandle(
@@ -1480,14 +1548,22 @@ function closeDurableNativeHandle(
 }
 
 function closeNativeDirectory(directory: WindowsNativeDirectory) {
+  let closeFailed = false;
   try {
-    closeNativeHandle(directory);
-    for (const handle of [...directory.guardHandles].reverse()) {
-      directory.kernel.symbols.CloseHandle(handle);
+    for (const handle of [
+      directory.handle,
+      ...[...directory.guardHandles].reverse(),
+    ]) {
+      try {
+        closeNativeHandle({ ...directory, handle });
+      } catch {
+        closeFailed = true;
+      }
     }
   } finally {
     closeLibraries(directory.kernel, directory.ntdll);
   }
+  if (closeFailed) throw new Error('WINDOWS_REPARSE_SAFE_IO_CLOSE_FAILED');
 }
 
 function closeLibraries(

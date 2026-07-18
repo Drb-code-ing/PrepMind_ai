@@ -34,7 +34,7 @@ const SHA_C = 'c'.repeat(64);
 const SHA_D = 'd'.repeat(64);
 const COMMIT_A = 'a'.repeat(40);
 const PLAN_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nXcAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
   'base64',
 );
 const TODAY_PNG = Buffer.from(
@@ -46,6 +46,70 @@ const TODAY_PNG_SHA = createHash('sha256').update(TODAY_PNG).digest('hex');
 const RECOVERY_RESTORE_RECEIPT = {
   ...restoreReceiptForRecovery(),
 } as const;
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data: Uint8Array) {
+  const typeBytes = Buffer.from(type, 'ascii');
+  const payload = Buffer.from(data);
+  const chunk = Buffer.alloc(12 + payload.byteLength);
+  chunk.writeUInt32BE(payload.byteLength, 0);
+  typeBytes.copy(chunk, 4);
+  payload.copy(chunk, 8);
+  chunk.writeUInt32BE(
+    crc32(Buffer.concat([typeBytes, payload])),
+    8 + payload.byteLength,
+  );
+  return chunk;
+}
+
+function withChunkAfterIhdr(png: Buffer, chunk: Buffer) {
+  return Buffer.concat([png.subarray(0, 33), chunk, png.subarray(33)]);
+}
+
+function withoutChunk(png: Buffer, removedType: string) {
+  const parts = [png.subarray(0, 8)];
+  let offset = 8;
+  while (offset < png.byteLength) {
+    const length = png.readUInt32BE(offset);
+    const end = offset + 12 + length;
+    const type = png.subarray(offset + 4, offset + 8).toString('ascii');
+    if (type !== removedType) parts.push(png.subarray(offset, end));
+    offset = end;
+  }
+  return Buffer.concat(parts);
+}
+
+function withIhdrBitDepthAndColorType(
+  png: Buffer,
+  bitDepth: number,
+  colorType: number,
+) {
+  const ihdrData = Buffer.from(png.subarray(16, 29));
+  ihdrData[8] = bitDepth;
+  ihdrData[9] = colorType;
+  return Buffer.concat([
+    png.subarray(0, 8),
+    pngChunk('IHDR', ihdrData),
+    png.subarray(33),
+  ]);
+}
+
+function largeValidPng() {
+  return withChunkAfterIhdr(
+    PLAN_PNG,
+    pngChunk('tEXt', Buffer.alloc(1_100_000, 65)),
+  );
+}
 
 function manifest(environment: 'branch' | 'main' = 'branch') {
   return {
@@ -103,6 +167,7 @@ function slotResult(
   traceIdSha256: string,
   inputTokens = 100,
   outputTokens = 50,
+  screenshotSha256?: string,
 ) {
   const browser = slot.endsWith('browser');
   return {
@@ -118,7 +183,8 @@ function slotResult(
     ...(browser
       ? {
           screenshotSha256:
-            slot === 'review-browser' ? PLAN_PNG_SHA : TODAY_PNG_SHA,
+            screenshotSha256 ??
+            (slot === 'review-browser' ? PLAN_PNG_SHA : TODAY_PNG_SHA),
         }
       : {}),
   } as const;
@@ -346,6 +412,8 @@ async function finishBranch(
   root: string,
   inputTokens = 100,
   outputTokens = 50,
+  planPng = PLAN_PNG,
+  todayPng = TODAY_PNG,
 ) {
   const { owner, ledger } = await prepareReserved(root);
   ledger.claimSlot('review-api');
@@ -354,9 +422,15 @@ async function finishBranch(
   );
   ledger.claimSlot('review-browser');
   ledger.recordDefaultOff(restoreReceipt('review'));
-  ledger.recordScreenshot('review', PLAN_PNG);
+  ledger.recordScreenshot('review', planPng);
   ledger.recordSlotResult(
-    slotResult('review-browser', SHA_B, inputTokens, outputTokens),
+    slotResult(
+      'review-browser',
+      SHA_B,
+      inputTokens,
+      outputTokens,
+      createHash('sha256').update(planPng).digest('hex'),
+    ),
   );
   ledger.claimSlot('planner-api');
   ledger.recordSlotResult(
@@ -364,9 +438,15 @@ async function finishBranch(
   );
   ledger.claimSlot('planner-browser');
   ledger.recordDefaultOff(restoreReceipt('planner'));
-  ledger.recordScreenshot('planner', TODAY_PNG);
+  ledger.recordScreenshot('planner', todayPng);
   ledger.recordSlotResult(
-    slotResult('planner-browser', SHA_D, inputTokens, outputTokens),
+    slotResult(
+      'planner-browser',
+      SHA_D,
+      inputTokens,
+      outputTokens,
+      createHash('sha256').update(todayPng).digest('hex'),
+    ),
   );
   ledger.recordOwnerIsolation({
     schemaVersion: 'phase-6.9.5-v8-product-acceptance-owner-isolation-v1',
@@ -596,6 +676,31 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
     owner.close();
   });
 
+  it('releases the public directory when recovery directory open fails', async () => {
+    const owner = await acquire(root);
+    await expect(
+      reserveReviewPlannerV8ProductAcceptanceLedgerForTests({
+        repoRoot: root,
+        environment: 'branch',
+        owner,
+        injector: () => false,
+        failRecoveryOpenForTests: true,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    const publicPath = join(
+      root,
+      'docs',
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-v8-product-acceptance',
+      'branch',
+    );
+    await expect(
+      rename(publicPath, `${publicPath}-detached`),
+    ).resolves.toBeUndefined();
+    owner.close();
+  });
+
   it('requires complete sealed branch and aggregate budget before main reserve', async () => {
     const mainOwner = await acquire(root, 'main');
     await expect(
@@ -672,6 +777,47 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
         environment: 'branch',
       }),
     ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('publishes and verifies a structurally valid PNG larger than the JSON read cap', async () => {
+    const largePng = largeValidPng();
+    expect(largePng.byteLength).toBeGreaterThan(1_048_576);
+    await finishBranch(root, 100, 50, largePng);
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({ status: 'complete' });
+  });
+
+  it.each([
+    [
+      'bad CRC',
+      (() => {
+        const png = Buffer.from(PLAN_PNG);
+        png[png.byteLength - 1] ^= 1;
+        return png;
+      })(),
+    ],
+    ['missing IDAT', withoutChunk(PLAN_PNG, 'IDAT')],
+    ['duplicate IHDR', withChunkAfterIhdr(PLAN_PNG, PLAN_PNG.subarray(8, 33))],
+    [
+      'invalid bit-depth/color-type',
+      withIhdrBitDepthAndColorType(PLAN_PNG, 1, 6),
+    ],
+    ['trailing bytes', Buffer.concat([PLAN_PNG, Buffer.from('trailing')])],
+  ])('rejects a screenshot with %s', async (_name, invalidPng) => {
+    const { owner, ledger } = await prepareReserved(root);
+    ledger.claimSlot('review-api');
+    ledger.recordSlotResult(slotResult('review-api', SHA_A));
+    ledger.claimSlot('review-browser');
+    ledger.recordDefaultOff(restoreReceipt('review'));
+    expect(() => ledger.recordScreenshot('review', invalidPng)).toThrow(
+      'V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID',
+    );
+    ledger.close();
+    owner.close();
   });
 
   it('detects a valid-schema default-off receipt changed after success sealing', async () => {
@@ -799,7 +945,7 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
         environment: 'branch',
         owner,
       }),
-    ).rejects.toThrow('WINDOWS_REPARSE_POINT_BLOCKED');
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
     expect(await readdir(outside)).toEqual([]);
     owner.close();
     await rm(outside, { recursive: true, force: true });
@@ -914,6 +1060,102 @@ describeWindows(
       );
       journal.close();
       acquisition.owner.close();
+    });
+
+    it('returns one cached authority for repeated and concurrent authorization', async () => {
+      const productOwner = await acquire(root);
+      const ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: productOwner,
+      });
+      const prepared =
+        await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: productOwner,
+          manifest: recoveryManifest(),
+        });
+      prepared.close();
+      ledger.close();
+      productOwner.close();
+      const acquired = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquired.status).toBe('acquired');
+      if (acquired.status !== 'acquired') throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        { repoRoot: root, environment: 'branch', owner: acquired.owner },
+      );
+      const authorities = await Promise.all([
+        journal.authorizeRecoveryOnly(),
+        journal.authorizeRecoveryOnly(),
+        journal.authorizeRecoveryOnly(),
+      ]);
+      expect(authorities[0]).toBe(authorities[1]);
+      expect(authorities[1]).toBe(authorities[2]);
+      expect(await journal.authorizeRecoveryOnly()).toBe(authorities[0]);
+      journal.close();
+      acquired.owner.close();
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      await expect(
+        rename(publicPath, `${publicPath}-detached`),
+      ).resolves.toBeUndefined();
+    });
+
+    it('does not mount an authorization handle after journal close wins the await race', async () => {
+      const productOwner = await acquire(root);
+      const ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: productOwner,
+      });
+      const prepared =
+        await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: productOwner,
+          manifest: recoveryManifest(),
+        });
+      prepared.close();
+      ledger.close();
+      productOwner.close();
+      const acquired = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquired.status).toBe('acquired');
+      if (acquired.status !== 'acquired') throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        { repoRoot: root, environment: 'branch', owner: acquired.owner },
+      );
+      const pending = journal.authorizeRecoveryOnly();
+      journal.close();
+      await expect(pending).rejects.toThrow(
+        'V8_PRODUCT_ACCEPTANCE_RECOVERY_JOURNAL_CLOSED',
+      );
+      acquired.owner.close();
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      await expect(
+        rename(publicPath, `${publicPath}-detached`),
+      ).resolves.toBeUndefined();
     });
 
     it('releases the lifetime lock after a hard-exited child process', async () => {

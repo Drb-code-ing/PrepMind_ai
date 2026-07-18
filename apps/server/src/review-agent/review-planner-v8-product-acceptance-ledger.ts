@@ -323,11 +323,15 @@ type ReserveLedgerInput = {
 export async function reserveReviewPlannerV8ProductAcceptanceLedger(
   input: ReserveLedgerInput,
 ): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
-  return reserveLedger(input, null);
+  return reserveLedger(input, null, false);
 }
 
 export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
-  input: ReserveLedgerInput & Readonly<{ injector: DurableFaultInjector }>,
+  input: ReserveLedgerInput &
+    Readonly<{
+      injector: DurableFaultInjector;
+      failRecoveryOpenForTests?: boolean;
+    }>,
 ): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
   const facade = await openWindowsNoReparseDirectoryForTests(
     input.repoRoot,
@@ -342,7 +346,11 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
     true,
   );
   try {
-    return await reserveLedger(input, facade);
+    return await reserveLedger(
+      input,
+      facade,
+      input.failRecoveryOpenForTests === true,
+    );
   } catch (error) {
     facade.cleanupInjectedHandles();
     facade.directory.close();
@@ -356,6 +364,7 @@ async function reserveLedger(
     directory: WindowsNoReparseChildDirectory;
     cleanupInjectedHandles(): void;
   }> | null,
+  failRecoveryOpenForTests: boolean,
 ): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
   if (input.environment !== 'branch' && input.environment !== 'main') {
     throw new Error('V8_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
@@ -390,21 +399,25 @@ async function reserveLedger(
       throw new Error('V8_PRODUCT_ACCEPTANCE_COMBINED_BUDGET_EXCEEDED');
     }
   }
-  const directory =
-    testFacade?.directory ??
-    (await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+  let directory: WindowsNoReparseChildDirectory | null =
+    testFacade?.directory ?? null;
+  let recoveryDirectory: WindowsNoReparseChildDirectory | null = null;
+  let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
+  try {
+    directory ??= await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
       'docs',
       'acceptance',
       'evidence',
       'phase-6-9-5-v8-product-acceptance',
       input.environment,
-    ]));
-  const recoveryDirectory = await openWindowsNoReparseFrozenDirectory(
-    input.repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
-  );
-  let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
-  try {
+    ]);
+    if (failRecoveryOpenForTests) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
+    recoveryDirectory = await openWindowsNoReparseFrozenDirectory(
+      input.repoRoot,
+      ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+    );
     directory.assertLocalFixedNtfsVolume();
     recoveryDirectory.assertLocalFixedNtfsVolume();
     const existing = directory.listLeafNames();
@@ -430,8 +443,8 @@ async function reserveLedger(
     return ledger;
   } catch (error) {
     reservationGuard?.close();
-    if (testFacade === null) directory.close();
-    recoveryDirectory.close();
+    recoveryDirectory?.close();
+    if (testFacade === null) directory?.close();
     if (
       error instanceof Error &&
       /^V8_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
@@ -1042,7 +1055,7 @@ function readScreenshotSha256(
   directory: WindowsNoReparseChildDirectory,
   leaf: 'plan.png' | 'today.png',
 ) {
-  const bytes = directory.readRegularFile(leaf);
+  const bytes = directory.readRegularFile(leaf, MAX_SCREENSHOT_BYTES);
   if (!isReasonablePng(bytes)) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
   }
@@ -1059,6 +1072,8 @@ function isReasonablePng(bytes: Buffer) {
   }
   let offset = PNG_SIGNATURE.byteLength;
   let chunkIndex = 0;
+  let seenIdat = false;
+  let idatEnded = false;
   while (offset + 12 <= bytes.byteLength) {
     const dataLength = bytes.readUInt32BE(offset);
     const chunkEnd = offset + 12 + dataLength;
@@ -1066,21 +1081,78 @@ function isReasonablePng(bytes: Buffer) {
       return false;
     }
     const type = bytes.subarray(offset + 4, offset + 8).toString('ascii');
+    if (!/^[A-Za-z]{4}$/.test(type)) return false;
+    const data = bytes.subarray(offset + 8, offset + 8 + dataLength);
+    const expectedCrc = bytes.readUInt32BE(offset + 8 + dataLength);
+    if (
+      crc32(Buffer.concat([bytes.subarray(offset + 4, offset + 8), data])) !==
+      expectedCrc
+    ) {
+      return false;
+    }
     if (chunkIndex === 0) {
       if (type !== 'IHDR' || dataLength !== 13) return false;
-      const width = bytes.readUInt32BE(offset + 8);
-      const height = bytes.readUInt32BE(offset + 12);
-      if (width < 1 || height < 1 || width > 20_000 || height > 20_000) {
+      const width = data.readUInt32BE(0);
+      const height = data.readUInt32BE(4);
+      const bitDepth = data[8];
+      const colorType = data[9];
+      const compression = data[10];
+      const filter = data[11];
+      const interlace = data[12];
+      if (
+        width < 1 ||
+        height < 1 ||
+        width > 20_000 ||
+        height > 20_000 ||
+        !isValidPngBitDepth(bitDepth, colorType) ||
+        compression !== 0 ||
+        filter !== 0 ||
+        (interlace !== 0 && interlace !== 1)
+      ) {
         return false;
       }
+    } else if (type === 'IHDR') {
+      return false;
+    }
+    if (type === 'IDAT') {
+      if (idatEnded || dataLength === 0) return false;
+      seenIdat = true;
+    } else if (seenIdat && type !== 'IEND') {
+      idatEnded = true;
     }
     if (type === 'IEND') {
-      return dataLength === 0 && chunkEnd === bytes.byteLength;
+      return seenIdat && dataLength === 0 && chunkEnd === bytes.byteLength;
     }
     offset = chunkEnd;
     chunkIndex += 1;
   }
   return false;
+}
+
+function isValidPngBitDepth(
+  bitDepth: number | undefined,
+  colorType: number | undefined,
+) {
+  if (bitDepth === undefined || colorType === undefined) return false;
+  const allowed: Readonly<Record<number, readonly number[]>> = {
+    0: [1, 2, 4, 8, 16],
+    2: [8, 16],
+    3: [1, 2, 4, 8],
+    4: [8, 16],
+    6: [8, 16],
+  };
+  return allowed[colorType]?.includes(bitDepth) === true;
+}
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function readStrict<T>(
