@@ -71,15 +71,22 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
       'reserve',
       'markAttempted',
       'createEvaluator',
+      'providerAttemptCount',
       '.stage-030-evaluator-ready',
       'verifyHistory',
+      'providerAttemptCount',
       '.stage-040-provider-history-verified',
+      'providerAttemptCount',
       '.stage-050-canary-started',
       'runCanary',
+      'providerAttemptCount',
       '.stage-060-canary-returned',
+      'providerAttemptCount',
       '.stage-070-paired-started',
       'runPaired',
+      'providerAttemptCount',
       '.stage-080-paired-returned',
+      'providerAttemptCount',
       '.stage-090-report-validated',
       'finalize',
       'read',
@@ -151,6 +158,19 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
       expect(harness.readEvidence).not.toHaveBeenCalled();
     },
   );
+
+  it('stops safely when the attempt getter throws before a stage and calls nothing later', async () => {
+    const harness = createHarness({ getterThrowAt: 3 });
+
+    await expect(runCli(harness)).resolves.toEqual(
+      attempted(0, ReviewPlannerDiagnosticCode.EvidenceIo),
+    );
+    expect(harness.events.at(-1)).toBe('providerAttemptCount');
+    expect(harness.events).not.toContain('.stage-050-canary-started');
+    expect(harness.runCanary).not.toHaveBeenCalled();
+    expect(harness.runPaired).not.toHaveBeenCalled();
+    expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+  });
 
   it('stops history drift before stage 040 and provider work', async () => {
     const harness = createHarness({ historyFailure: true });
@@ -244,6 +264,53 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
     expect(harness.events).not.toContain('.stage-090-report-validated');
     expect(harness.finalizeEvidence).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      name: 'null cost',
+      report: qualityReport(),
+      cost: null,
+    },
+    {
+      name: 'throwing cost proxy',
+      report: qualityReport(),
+      cost: new Proxy(qualityCost(), {
+        get() {
+          throw new Error('PRIVATE_COST_GETTER');
+        },
+      }),
+    },
+    {
+      name: 'throwing report proxy',
+      report: new Proxy(
+        {},
+        {
+          get() {
+            throw new Error('PRIVATE_REPORT_GETTER');
+          },
+        },
+      ),
+      cost: qualityCost(),
+    },
+  ])(
+    'contains a hostile paired $name as safe invalid_response',
+    async ({ report, cost }) => {
+      const harness = createHarness({ report, rawCost: cost });
+
+      const summary = await runCli(harness);
+
+      expect(summary).toEqual(
+        attempted(23, ReviewPlannerDiagnosticCode.InvalidResponse),
+      );
+      expect(
+        serializeReviewPlannerControlledLiveV8StageDiagnosticsSummary(summary),
+      ).not.toMatch(
+        /PRIVATE_|"(?:prompt|response|rawError|stack|apiKey)"\s*:/i,
+      );
+      expect(harness.events).not.toContain('.stage-090-report-validated');
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     { name: 'attempts', attemptsAfterPaired: 22, cost: {} },
@@ -358,6 +425,8 @@ type HarnessOptions = Readonly<{
   report?: unknown;
   attemptsAfterPaired?: number;
   cost?: Readonly<Record<string, unknown>>;
+  rawCost?: unknown;
+  getterThrowAt?: number;
   finalizeFailure?: 'false' | 'throw';
   readFailure?: 'throw' | 'mismatch';
 }>;
@@ -365,6 +434,7 @@ type HarnessOptions = Readonly<{
 function createHarness(options: HarnessOptions = {}) {
   const events: string[] = [];
   let providerAttempts = 0;
+  let getterCalls = 0;
   let finalizedSummary: SafeReviewPlannerControlledLiveV8Summary | undefined;
   const reservation = {
     relativePath: 'docs/acceptance/evidence/v8/review-planner-live-run.json',
@@ -412,7 +482,10 @@ function createHarness(options: HarnessOptions = {}) {
     return Promise.resolve({
       kind: 'report' as const,
       report: options.report ?? qualityReport(),
-      cost: { ...qualityCost(), ...options.cost },
+      cost:
+        options.rawCost === undefined
+          ? { ...qualityCost(), ...options.cost }
+          : options.rawCost,
     });
   });
   const evaluator: ReviewPlannerControlledLiveV8EvaluatorPort = {
@@ -420,7 +493,14 @@ function createHarness(options: HarnessOptions = {}) {
     identity: evaluatorIdentity(),
     runCanary,
     runPaired,
-    providerAttemptCount: () => providerAttempts,
+    providerAttemptCount: () => {
+      events.push('providerAttemptCount');
+      getterCalls += 1;
+      if (getterCalls === options.getterThrowAt) {
+        throw new Error('PRIVATE_ATTEMPT_GETTER');
+      }
+      return providerAttempts;
+    },
   };
   const finalizeEvidence = jest.fn(
     (input: { summary: SafeReviewPlannerControlledLiveV8Summary }) => {

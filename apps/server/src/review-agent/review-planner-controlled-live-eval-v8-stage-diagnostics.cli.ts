@@ -3,6 +3,7 @@ import {
   phase695ReportSchema,
   type Phase695Report,
 } from '@repo/agent';
+import { z } from 'zod';
 
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
@@ -32,6 +33,38 @@ const MAX_INPUT_TOKENS = 42_996;
 const MAX_OUTPUT_TOKENS = 9_712;
 const MAX_P95_DURATION_MS = 4_500;
 const HARD_CAP_CNY = 1;
+
+const v8CnyCostSchema = z
+  .object({
+    currency: z.literal('CNY'),
+    nonCachedInputCnyPerMillionTokens: z.literal(3),
+    outputCnyPerMillionTokens: z.literal(6),
+    hardCapCny: z.literal(HARD_CAP_CNY),
+    maxPairedProviderAttempts: z.literal(PAIRED_RUNTIME_ATTEMPTS),
+    maxProviderAttempts: z.literal(TOTAL_PROVIDER_ATTEMPTS),
+    reservedInputTokens: z.literal(MAX_INPUT_TOKENS),
+    reservedOutputTokens: z.literal(MAX_OUTPUT_TOKENS),
+    reservedCostCny: z.literal(0.18726),
+    observedInputTokens: z.number().int().positive().max(MAX_INPUT_TOKENS),
+    observedOutputTokens: z.number().int().positive().max(MAX_OUTPUT_TOKENS),
+    observedCostCny: z.number().positive().max(HARD_CAP_CNY),
+    withinHardCap: z.literal(true),
+    priceProfileId: z.literal(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+    ),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.observedCostCny !==
+      calculateCnyCost(value.observedInputTokens, value.observedOutputTokens)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_COST_INVALID',
+      });
+    }
+  });
 
 export type ReviewPlannerControlledLiveV8DiagnosticCode = Extract<
   SafeReviewPlannerControlledLiveV8Summary,
@@ -209,38 +242,43 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
     return attempted(0, ReviewPlannerDiagnosticCode.ExecutorInit);
   }
   let observedAttempts = 0;
-  const readAttempts = () => {
+  const refreshAttempts = () => {
     try {
       const value = evaluator.providerAttemptCount();
-      if (isAttemptCount(value))
-        observedAttempts = Math.max(observedAttempts, value);
+      if (!isAttemptCount(value)) return false;
+      observedAttempts = Math.max(observedAttempts, value);
+      return true;
     } catch {
-      // Preserve the greatest already verified lower bound.
+      return false;
     }
-    return observedAttempts;
   };
   if (evaluator.state === 'closed') {
-    return attempted(readAttempts(), evaluator.diagnosticCode);
+    return refreshAttempts()
+      ? attempted(observedAttempts, evaluator.diagnosticCode)
+      : attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   if (!hasExactIdentity(evaluator.identity)) {
     return attempted(
-      readAttempts(),
+      observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (!advance(dependencies, reservation, STAGE_EVALUATOR_READY)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  const advanceWithFreshAttempts = (
+    stage: ReviewPlannerControlledLiveV8Stage,
+  ) => refreshAttempts() && advance(dependencies, reservation, stage);
+  if (!advanceWithFreshAttempts(STAGE_EVALUATOR_READY)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   try {
     await dependencies.verifyHistoricalEvidence({ root: input.root, snapshot });
   } catch {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advance(dependencies, reservation, STAGE_PROVIDER_HISTORY_VERIFIED)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_PROVIDER_HISTORY_VERIFIED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advance(dependencies, reservation, STAGE_CANARY_STARTED)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_CANARY_STARTED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
 
   let canary: ReviewPlannerControlledLiveV8CanaryResult;
@@ -248,33 +286,32 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
     const canaryPromise = evaluator.runCanary();
     canary = await canaryPromise;
   } catch {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advance(dependencies, reservation, STAGE_CANARY_RETURNED)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_CANARY_RETURNED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  const canaryAttempts = readAttempts();
   if (!isCanaryResult(canary)) {
     return attempted(
-      canaryAttempts,
+      observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
   if (canary.kind === 'failed') {
-    return attempted(canaryAttempts, canary.diagnosticCode);
+    return attempted(observedAttempts, canary.diagnosticCode);
   }
   if (
     canary.providerAttemptCount !== 1 ||
     canary.usageKnown !== true ||
-    canaryAttempts !== 1
+    observedAttempts !== 1
   ) {
     return attempted(
-      canaryAttempts,
+      observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (!advance(dependencies, reservation, STAGE_PAIRED_STARTED)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_PAIRED_STARTED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
 
   let paired: ReviewPlannerControlledLiveV8PairedResult;
@@ -282,42 +319,54 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
     const pairedPromise = evaluator.runPaired();
     paired = await pairedPromise;
   } catch {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advance(dependencies, reservation, STAGE_PAIRED_RETURNED)) {
-    return attempted(readAttempts(), ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_PAIRED_RETURNED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  const totalAttempts = readAttempts();
-  if (!isPairedResult(paired)) {
+  let complete: SafeReviewPlannerControlledLiveV8Summary | null = null;
+  try {
+    if (!isPairedResult(paired)) {
+      return attempted(
+        observedAttempts,
+        ReviewPlannerDiagnosticCode.InvalidResponse,
+      );
+    }
+    if (paired.kind === 'failed') {
+      return attempted(observedAttempts, paired.diagnosticCode);
+    }
+    const report = phase695ReportSchema.safeParse(paired.report);
+    const cost = v8CnyCostSchema.safeParse(paired.cost);
+    complete =
+      report.success && cost.success
+        ? buildCompleteSummary(report.data, cost.data, observedAttempts)
+        : null;
+  } catch {
     return attempted(
-      totalAttempts,
+      observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (paired.kind === 'failed') {
-    return attempted(totalAttempts, paired.diagnosticCode);
-  }
-  const report = phase695ReportSchema.safeParse(paired.report);
-  const complete = report.success
-    ? buildCompleteSummary(report.data, paired.cost, totalAttempts)
-    : null;
   if (!complete) {
     return attempted(
-      totalAttempts,
+      observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (!advance(dependencies, reservation, STAGE_REPORT_VALIDATED)) {
-    return attempted(totalAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
+  if (!advanceWithFreshAttempts(STAGE_REPORT_VALIDATED)) {
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   try {
     if (
       !(await dependencies.finalizeEvidence({ reservation, summary: complete }))
     ) {
-      return attempted(totalAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
+      return attempted(
+        observedAttempts,
+        ReviewPlannerDiagnosticCode.EvidenceIo,
+      );
     }
   } catch {
-    return attempted(totalAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
 
   let committed: Record<string, unknown>;
@@ -327,11 +376,11 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
       relativePath: reservation.relativePath,
     });
   } catch {
-    return attempted(totalAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   const committedSummary = projectCommittedSummary(committed);
   if (!committedSummary || !sameSummary(committedSummary, complete)) {
-    return attempted(totalAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
+    return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   return committedSummary;
 }
@@ -379,8 +428,7 @@ function buildCompleteSummary(
         entry.runtimeInvocations !== 1 ||
         !entry.strictSuccess ||
         !entry.qualityPass,
-    ) ||
-    !isValidCost(cost)
+    )
   ) {
     return null;
   }
@@ -402,34 +450,6 @@ function buildCompleteSummary(
     criticalFailures: report.counters.criticalFailures,
   });
   return parsed.success ? parsed.data : null;
-}
-
-function isValidCost(cost: ReviewPlannerControlledLiveV8CnyCost) {
-  return (
-    cost.currency === 'CNY' &&
-    cost.nonCachedInputCnyPerMillionTokens === 3 &&
-    cost.outputCnyPerMillionTokens === 6 &&
-    cost.hardCapCny === HARD_CAP_CNY &&
-    cost.maxPairedProviderAttempts === PAIRED_RUNTIME_ATTEMPTS &&
-    cost.maxProviderAttempts === TOTAL_PROVIDER_ATTEMPTS &&
-    cost.reservedInputTokens === MAX_INPUT_TOKENS &&
-    cost.reservedOutputTokens === MAX_OUTPUT_TOKENS &&
-    cost.reservedCostCny === 0.18726 &&
-    cost.priceProfileId ===
-      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID &&
-    Number.isSafeInteger(cost.observedInputTokens) &&
-    cost.observedInputTokens > 0 &&
-    cost.observedInputTokens <= MAX_INPUT_TOKENS &&
-    Number.isSafeInteger(cost.observedOutputTokens) &&
-    cost.observedOutputTokens > 0 &&
-    cost.observedOutputTokens <= MAX_OUTPUT_TOKENS &&
-    Number.isFinite(cost.observedCostCny) &&
-    cost.observedCostCny > 0 &&
-    cost.observedCostCny <= HARD_CAP_CNY &&
-    cost.observedCostCny ===
-      calculateCnyCost(cost.observedInputTokens, cost.observedOutputTokens) &&
-    cost.withinHardCap === true
-  );
 }
 
 function calculateCnyCost(inputTokens: number, outputTokens: number) {
