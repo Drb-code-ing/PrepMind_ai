@@ -49,6 +49,52 @@ export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION =
 
 type Component = 'review' | 'planner';
 type CliKind = 'product' | 'recovery';
+type FactsPhase = 'before' | 'after';
+
+const REVIEW_PLANNER_FACT_TABLES = [
+  'wrongQuestionSubjectGroup',
+  'wrongQuestionDeck',
+  'wrongQuestion',
+  'wrongQuestionDeckItem',
+  'card',
+  'reviewLog',
+  'reviewTask',
+  'reviewPreference',
+] as const;
+
+type ReviewPlannerFactsTable = (typeof REVIEW_PLANNER_FACT_TABLES)[number];
+type ReviewPlannerFactRow = Readonly<{ id: string }>;
+
+export type ReviewPlannerOwnerFactsSnapshot = Readonly<
+  Record<ReviewPlannerFactsTable, readonly ReviewPlannerFactRow[]>
+>;
+
+export interface ReviewPlannerFactsPrisma {
+  wrongQuestionSubjectGroup: Pick<
+    PrismaClient['wrongQuestionSubjectGroup'],
+    'findMany'
+  >;
+  wrongQuestionDeck: Pick<PrismaClient['wrongQuestionDeck'], 'findMany'>;
+  wrongQuestion: Pick<PrismaClient['wrongQuestion'], 'findMany'>;
+  wrongQuestionDeckItem: Pick<
+    PrismaClient['wrongQuestionDeckItem'],
+    'findMany'
+  >;
+  card: Pick<PrismaClient['card'], 'findMany'>;
+  reviewLog: Pick<PrismaClient['reviewLog'], 'findMany'>;
+  reviewTask: Pick<PrismaClient['reviewTask'], 'findMany'>;
+  reviewPreference: Pick<PrismaClient['reviewPreference'], 'findMany'>;
+}
+
+type ReviewPlannerFactsSnapshotState = Record<
+  Component,
+  Partial<Record<FactsPhase, ReviewPlannerOwnerFactsSnapshot>>
+>;
+
+type ReviewPlannerOwnerFactsAttestorPrisma = ReviewPlannerFactsPrisma & {
+  wrongQuestion: ReviewPlannerFactsPrisma['wrongQuestion'] &
+    Pick<PrismaClient['wrongQuestion'], 'count'>;
+};
 
 type ProductPreflight =
   | Readonly<{
@@ -639,6 +685,211 @@ export function sha256ReviewPlannerV8CompositionValue(value: string) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+export async function readReviewPlannerOwnerFactsSnapshot(
+  prisma: ReviewPlannerFactsPrisma,
+  userId: string,
+): Promise<ReviewPlannerOwnerFactsSnapshot> {
+  const [
+    wrongQuestionSubjectGroup,
+    wrongQuestionDeck,
+    wrongQuestion,
+    wrongQuestionDeckItem,
+    card,
+    reviewLog,
+    reviewTask,
+    reviewPreference,
+  ] = await Promise.all([
+    prisma.wrongQuestionSubjectGroup.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.wrongQuestionDeck.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.wrongQuestion.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.wrongQuestionDeckItem.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.card.findMany({ where: { userId }, orderBy: { id: 'asc' } }),
+    prisma.reviewLog.findMany({
+      where: { card: { userId } },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.reviewTask.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+    prisma.reviewPreference.findMany({
+      where: { userId },
+      orderBy: { id: 'asc' },
+    }),
+  ]);
+  return canonicalizeReviewPlannerFactsSnapshot({
+    wrongQuestionSubjectGroup,
+    wrongQuestionDeck,
+    wrongQuestion,
+    wrongQuestionDeckItem,
+    card,
+    reviewLog,
+    reviewTask,
+    reviewPreference,
+  });
+}
+
+export function hashReviewPlannerOwnerFactsSnapshot(
+  snapshot: ReviewPlannerOwnerFactsSnapshot,
+) {
+  return sha256ReviewPlannerV8CompositionValue(canonicalJson(snapshot));
+}
+
+export function countReviewPlannerOwnerFactsChanges(
+  before: ReviewPlannerOwnerFactsSnapshot,
+  after: ReviewPlannerOwnerFactsSnapshot,
+) {
+  return REVIEW_PLANNER_FACT_TABLES.reduce((total, table) => {
+    const beforeRows = indexFactsRows(before[table]);
+    const afterRows = indexFactsRows(after[table]);
+    const ids = new Set([...beforeRows.keys(), ...afterRows.keys()]);
+    for (const id of ids) {
+      if (beforeRows.get(id) !== afterRows.get(id)) total += 1;
+    }
+    return total;
+  }, 0);
+}
+
+export function createReviewPlannerV8OwnerFactsAttestor(input: {
+  prisma: ReviewPlannerOwnerFactsAttestorPrisma;
+  accountIds: Readonly<Record<Component, string>>;
+  fixtureIds: readonly string[];
+}) {
+  const snapshots = createEmptyFactsSnapshotState();
+  return {
+    async readFactsDigest(request: {
+      component: Component;
+      phase: FactsPhase;
+    }) {
+      const snapshot = await readReviewPlannerOwnerFactsSnapshot(
+        input.prisma,
+        input.accountIds[request.component],
+      );
+      snapshots[request.component][request.phase] = snapshot;
+      return hashReviewPlannerOwnerFactsSnapshot(snapshot);
+    },
+    async verifyOwnerIsolation() {
+      return verifyReviewPlannerOwnerFactsIsolation({
+        prisma: input.prisma,
+        accountIds: input.accountIds,
+        fixtureIds: input.fixtureIds,
+        snapshots,
+      });
+    },
+  };
+}
+
+function canonicalizeReviewPlannerFactsSnapshot(
+  snapshot: Record<ReviewPlannerFactsTable, readonly unknown[]>,
+): ReviewPlannerOwnerFactsSnapshot {
+  return Object.freeze(
+    Object.fromEntries(
+      REVIEW_PLANNER_FACT_TABLES.map((table) => [
+        table,
+        Object.freeze(
+          snapshot[table]
+            .map((row) => canonicalizeJsonValue(row) as ReviewPlannerFactRow)
+            .sort(compareFactRows),
+        ),
+      ]),
+    ) as Record<ReviewPlannerFactsTable, readonly ReviewPlannerFactRow[]>,
+  );
+}
+
+function compareFactRows(
+  left: ReviewPlannerFactRow,
+  right: ReviewPlannerFactRow,
+) {
+  return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+}
+
+function indexFactsRows(rows: readonly ReviewPlannerFactRow[]) {
+  const indexed = new Map<string, string>();
+  for (const row of rows) {
+    if (indexed.has(row.id)) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_FACTS_DUPLICATE_ID');
+    }
+    indexed.set(row.id, canonicalJson(row));
+  }
+  return indexed;
+}
+
+function canonicalJson(value: unknown) {
+  return JSON.stringify(canonicalizeJsonValue(value));
+}
+
+function canonicalizeJsonValue(value: unknown): unknown {
+  const serialized = JSON.stringify(value, (_key, current: unknown) =>
+    typeof current === 'bigint' ? current.toString() : current,
+  );
+  if (serialized === undefined) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_FACTS_NOT_SERIALIZABLE');
+  }
+  return sortCanonicalJsonValue(JSON.parse(serialized) as unknown);
+}
+
+function sortCanonicalJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortCanonicalJsonValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, sortCanonicalJsonValue(entry)]),
+  );
+}
+
+function createEmptyFactsSnapshotState(): ReviewPlannerFactsSnapshotState {
+  return { review: {}, planner: {} };
+}
+
+async function verifyReviewPlannerOwnerFactsIsolation(input: {
+  prisma: ReviewPlannerOwnerFactsAttestorPrisma;
+  accountIds: Readonly<Record<Component, string>>;
+  fixtureIds: readonly string[];
+  snapshots: ReviewPlannerFactsSnapshotState;
+}) {
+  const reviewBefore = input.snapshots.review.before;
+  const plannerBefore = input.snapshots.planner.before;
+  if (!reviewBefore || !plannerBefore) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_FACTS_SNAPSHOT_MISSING');
+  }
+  const [reviewFinal, plannerFinal, reviewSeesPlanner, plannerSeesReview] =
+    await Promise.all([
+      readReviewPlannerOwnerFactsSnapshot(
+        input.prisma,
+        input.accountIds.review,
+      ),
+      readReviewPlannerOwnerFactsSnapshot(
+        input.prisma,
+        input.accountIds.planner,
+      ),
+      input.prisma.wrongQuestion.count({
+        where: { id: input.fixtureIds[10], userId: input.accountIds.review },
+      }),
+      input.prisma.wrongQuestion.count({
+        where: { id: input.fixtureIds[2], userId: input.accountIds.planner },
+      }),
+    ]);
+  return {
+    crossAccountInvisible: reviewSeesPlanner === 0 && plannerSeesReview === 0,
+    businessWrites:
+      countReviewPlannerOwnerFactsChanges(reviewBefore, reviewFinal) +
+      countReviewPlannerOwnerFactsChanges(plannerBefore, plannerFinal),
+  };
+}
+
 type DefaultRuntimeState = {
   prisma: PrismaClient;
   repoRoot: string;
@@ -649,6 +900,7 @@ type DefaultRuntimeState = {
   traceIds: Set<string>;
   traceBaselines: Map<string, Set<string>>;
   liveContainerId: Partial<Record<Component, string>>;
+  factsSnapshots: ReviewPlannerFactsSnapshotState;
 };
 
 export function createDefaultReviewPlannerV8ProductAcceptancePorts(
@@ -669,6 +921,7 @@ export function createDefaultReviewPlannerV8ProductAcceptancePorts(
     traceIds: new Set(),
     traceBaselines: new Map(),
     liveContainerId: {},
+    factsSnapshots: createEmptyFactsSnapshotState(),
   };
   return {
     preflight: (input) => runDefaultProductPreflight(input),
@@ -956,7 +1209,8 @@ function createDefaultRunnerDependencies(
       state.liveContainerId[request.component] = current;
       await waitForHealth();
     },
-    readFactsDigest: ({ component }) => readFactsDigest(state, component),
+    readFactsDigest: ({ component, phase }) =>
+      readFactsDigest(state, component, phase),
     async dispatchApi({ component, acceptanceCapability }) {
       state.traceBaselines.set(
         `${component}:api`,
@@ -979,8 +1233,9 @@ function createDefaultRunnerDependencies(
       if (!account || !resources) throw new Error();
       const profilePath = resolve(state.repoRoot, resources.browserProfilePath);
       const callbacks = new Set<Promise<void>>();
-      // eslint-disable-next-line prettier/prettier -- local version skew disagrees on this union wrapping
-      let responseResult: ReviewPlannerV8ProductAcceptanceRequestResult | undefined;
+      let responseResult:
+        | ReviewPlannerV8ProductAcceptanceRequestResult
+        | undefined;
       let contextClosed = false;
       let continuedRequests = 0;
       const context = await chromium.launchPersistentContext(profilePath, {
@@ -1088,19 +1343,12 @@ function createDefaultRunnerDependencies(
       const review = state.accounts.review;
       const planner = state.accounts.planner;
       if (!review || !planner) throw new Error();
-      const [reviewSeesPlanner, plannerSeesReview] = await Promise.all([
-        state.prisma.wrongQuestion.count({
-          where: { id: state.fixtureIds[10], userId: review.id },
-        }),
-        state.prisma.wrongQuestion.count({
-          where: { id: state.fixtureIds[2], userId: planner.id },
-        }),
-      ]);
-      return {
-        crossAccountInvisible:
-          reviewSeesPlanner === 0 && plannerSeesReview === 0,
-        businessWrites: 0,
-      };
+      return verifyReviewPlannerOwnerFactsIsolation({
+        prisma: state.prisma,
+        accountIds: { review: review.id, planner: planner.id },
+        fixtureIds: state.fixtureIds,
+        snapshots: state.factsSnapshots,
+      });
     },
     async cleanup() {
       await cleanupDefaultState(state);
@@ -1120,36 +1368,16 @@ function createDefaultRunnerDependencies(
 async function readFactsDigest(
   state: DefaultRuntimeState,
   component: Component,
+  phase: FactsPhase,
 ) {
   const account = state.accounts[component];
-  const offset = component === 'review' ? 0 : 8;
   if (!account) throw new Error();
-  const ids = state.fixtureIds.slice(offset, offset + 8);
-  const counts = await Promise.all([
-    state.prisma.wrongQuestionSubjectGroup.count({
-      where: { id: ids[0], userId: account.id },
-    }),
-    state.prisma.wrongQuestionDeck.count({
-      where: { id: ids[1], userId: account.id },
-    }),
-    state.prisma.wrongQuestion.count({
-      where: { id: ids[2], userId: account.id },
-    }),
-    state.prisma.wrongQuestionDeckItem.count({
-      where: { id: ids[3], userId: account.id },
-    }),
-    state.prisma.card.count({ where: { id: ids[4], userId: account.id } }),
-    state.prisma.reviewLog.count({ where: { id: ids[5] } }),
-    state.prisma.reviewTask.count({
-      where: { id: ids[6], userId: account.id },
-    }),
-    state.prisma.reviewPreference.count({
-      where: { id: ids[7], userId: account.id },
-    }),
-  ]);
-  return sha256ReviewPlannerV8CompositionValue(
-    JSON.stringify({ version: 1, ids, counts }),
+  const snapshot = await readReviewPlannerOwnerFactsSnapshot(
+    state.prisma,
+    account.id,
   );
+  state.factsSnapshots[component][phase] = snapshot;
+  return hashReviewPlannerOwnerFactsSnapshot(snapshot);
 }
 
 async function restoreDefaultOff(
