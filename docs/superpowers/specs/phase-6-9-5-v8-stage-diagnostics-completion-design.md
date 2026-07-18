@@ -1,6 +1,6 @@
 # Phase 6.9.5 V8 Stage Diagnostics 与阶段完成设计
 
-> 状态：2026-07-18 已按用户对 Phase 6.9.5 后续工作的完整授权进入实施。本文只授权新的 V8 lineage；V1--V7 的 marker、evidence、confirmation 和计数继续只读且不可重跑、删除、重建或改写。
+> 状态：2026-07-18 V8 stage/evidence、CLI/factory、product admission、durable ledger、recovery 与 executable 产品验收 runner 已完成离线实现、最终静态门和双复审；真实 V8 evidence/once marker 与 provider 调用尚不存在。下一步只执行唯一 V8 controlled-Live。本文只授权新的 V8 lineage；V1--V7 的 marker、evidence、confirmation 和计数继续只读且不可重跑、删除、重建或改写。
 
 ## 1. 目标与完成定义
 

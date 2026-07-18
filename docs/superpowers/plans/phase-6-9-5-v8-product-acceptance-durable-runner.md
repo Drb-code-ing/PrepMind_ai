@@ -1,6 +1,8 @@
 # Phase 6.9.5 V8 Durable Product Acceptance Runner Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. 正文复选框保留为最初计划模板；当前进度只以紧随其后的“执行状态”为准，未勾选不表示任务尚未执行。
+
+> **执行状态（2026-07-18）：** Task 1--4 已完成离线实现、最终门和 contract/security + acceptance/operations 双复审；未运行 V8 Live、Docker 产品验收或浏览器。后续 branch/main 产品验收必须继续使用本 runner，不得回退为手工或纯内存流程。
 
 **Goal:** 为 V8 branch/main 产品验收补齐不可重跑的 durable slot/usage ledger、真实 executable composition、headed browser close/drain、verified default-off restore 与 Trace/cleanup 证据。
 

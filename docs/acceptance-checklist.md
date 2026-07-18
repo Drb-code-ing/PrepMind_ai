@@ -746,4 +746,6 @@ V8 completion contract 已在 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagn
 10. 推送后必须核对本地 main、`origin/main` 与 evidence SHA；关机前清除进程级 Live/eval/gate/key，重建 default-off `server`，关闭浏览器/Bun/辅助进程，并只用 `docker compose ... stop` 停止服务、保留全部 Docker 资源和数据。
 11. branch/main 证据必须分别写入 `docs/acceptance/evidence/phase-6-9-5-v8-product-acceptance/{branch,main}/acceptance.json`、`plan.png`、`today.png`。JSON 只保存安全 observation/Trace 汇总、哈希账号 id、commit SHA、`pairedEvidenceSha256 / planScreenshotSha256 / todayScreenshotSha256`、调用/usage/CNY cost 计数和验收布尔值；JSON 不自哈希，不得保存 email、token、cookie、prompt、response、用户事实、原始 Trace、key、URL、header、raw error 或 stack。
 
+2026-07-18 离线 checkpoint：上述 V8 stage evidence、CLI/factory、product admission、branch/main durable ledger、recovery 与 executable Docker/API/Prisma/headed-browser composition 已实现；Server `1265 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`，Windows native、Agent/AI/types、lint/build、Compose `config --quiet` 与 diff check 全部 exit 0，最终 contract/security 和 acceptance/operations 复审无未关闭 Critical/Important。此 checkpoint 仍不是 Live 或产品验收：V8 evidence/once marker 不存在，两个产品 gate 为 `false`，不得跳过唯一 V8 success gate 直接进入 Docker 产品路径。
+
 任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。

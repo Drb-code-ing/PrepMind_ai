@@ -8,6 +8,25 @@
 
 本记录不把 Mock、静态检查、Docker 配置解析或浏览器页面当作真实模型质量证据。
 
+## 2026-07-18 V8 最终离线 checkpoint
+
+V8 completion 与 durable product acceptance runner 已完成离线实现，当前实现 checkpoint 为 `faa97a8`。本轮没有读取或调用 provider，没有创建 V8 evidence/once marker，没有启动 Docker 产品验收或可见浏览器；`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false` 和 product acceptance 默认关闭保持不变。
+
+已实现的闭环包括：V1--V7 immutable snapshot、15-stage durable evidence、one-shot DeepSeek V4 Pro non-thinking CLI、server-only capability admission、branch/main durable slot/usage ledger、recovery owner lock、Docker server identity/health attestation、owner-scoped Prisma facts、authenticated API、headed Chrome 精确 profile、Trace/只读事实/owner isolation、default-off restore 与精确 cleanup。浏览器终止只匹配精确 executable、PID、完整 command line 和 branch/main `profile-v8`；删除超时会取消受控子进程并等待删除 promise settle，不会留下旧 `fs.rm` 在重试后继续删除新 profile。
+
+| 离线门 | 结果 |
+| --- | --- |
+| Server 全量 | `1265 passed / 30 skipped / 0 failed` |
+| Review E2E | `3/3 passed` |
+| Web | `409/409 passed` |
+| Windows durable I/O / V8 evidence / product ledger native | 全部 exit 0 |
+| Agent / AI / shared types | 测试或 typecheck 全部 exit 0 |
+| Server/Web lint 与 build | 全部 exit 0 |
+| Compose / diff | `config --quiet` 与 `git diff --check` exit 0 |
+| 独立复审 | contract/security 与 acceptance/operations 均无未关闭 Critical/Important |
+
+最终 operations 复审曾发现实际 `acceptance.json` 使用 ledger 私有简化 schema，正式 schema 只被单测引用。按 TDD 增加 fresh ledger 集成 RED 后，normal finalize、preseal 与 fresh complete reader 已统一为 exported official strict schema/serializer；修复后 product ledger native `55/55`、相关 Jest `138/138`、targeted lint、Server build 与 diff check 均通过。该 checkpoint 只证明工程入口、权限、预算、durability、失败关闭和产品 runner 可执行；不证明真实模型质量、实际 token/成本、`candidate_applied`、Docker 产品可用性或 Phase 6.9.5 已完成。下一步只能执行唯一 V8 controlled-Live；只有 public reader 返回完整 committed success，才可继续 branch 产品验收。
+
 ## 历史 2026-07-16 Task 6 无凭据门
 
 本轮在不注入 AI provider 配置、不开启全局 Live 或 Review/Planner gate 的前提下执行。后端全量测试只注入运行测试所需的数据库和 JWT 配置；没有执行受控诊断、Live、Docker 或浏览器。
