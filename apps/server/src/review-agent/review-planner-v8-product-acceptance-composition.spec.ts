@@ -6,6 +6,8 @@ import {
   buildReviewPlannerV8DefaultOffEnvironment,
   buildReviewPlannerV8ServerRecreateCommand,
   captureReviewPlannerV8RepositorySnapshot,
+  captureReviewPlannerV8RepositorySnapshotFromAuthority,
+  createReviewPlannerV9PairedEvidenceAuthority,
   assertReviewPlannerV8EvidenceIndexIsOrdinary,
   createDefaultReviewPlannerV8ProductAcceptanceComposition,
   createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition,
@@ -25,6 +27,11 @@ import {
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
+import * as legacyV8Evidence from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
+import {
+  REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE,
+  REVIEW_PLANNER_CONTROLLED_LIVE_V9_STAGES,
+} from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
 import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
@@ -35,6 +42,8 @@ const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
 const CONTAINER_ID = 'c'.repeat(64);
 const CHROME_EXE = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const V9_DIAGNOSTIC_SCHEMA_VERSION =
+  'phase-6.9.5-review-planner-v9-gate-diagnostic-v1';
 const BROWSER_PROFILE =
   'E:\\PrepMind_ai智能备考助手\\.tmp\\phase-6-9-5-v8-product-acceptance\\branch\\profile-v8';
 const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
@@ -62,6 +71,132 @@ const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
 const REPO_ROOT = 'E:\\PrepMind_ai智能备考助手';
 
 describe('V8 product acceptance executable composition', () => {
+  it('accepts only committed V9 success and never reads legacy V8 evidence', async () => {
+    const legacyReader = jest.spyOn(
+      legacyV8Evidence,
+      'readReviewPlannerControlledLiveV8Evidence',
+    );
+    const readEvidence = jest
+      .fn()
+      .mockResolvedValueOnce(v9Evidence('complete'))
+      .mockResolvedValueOnce(v9Evidence('diagnostic'));
+    const authority = createReviewPlannerV9PairedEvidenceAuthority({
+      readEvidence,
+    });
+
+    await expect(authority.readCommittedSuccess(REPO_ROOT)).resolves.toEqual({
+      providerAttemptCount: 23,
+      pairedAdmissionCount: 22,
+      evidenceSha256: SHA,
+    });
+    await expect(authority.readCommittedSuccess(REPO_ROOT)).resolves.toBeNull();
+    expect(authority.profile).toBe('v9');
+    expect(legacyReader).not.toHaveBeenCalled();
+    legacyReader.mockRestore();
+  });
+
+  it.each([
+    ['pending', { ...v9Evidence('diagnostic'), status: 'pending' }],
+    [
+      'evidence_io',
+      { status: 'invalid_attempted', diagnosticCode: 'evidence_io' },
+    ],
+    [
+      'unknown profile',
+      { ...v9Evidence('complete'), schemaVersion: 'unknown-v9' },
+    ],
+    ['bad hash', { ...v9Evidence('complete'), evidenceSha256: 'A'.repeat(64) }],
+    [
+      'hostile getter',
+      Object.defineProperty({}, 'status', {
+        get() {
+          throw new Error('PRIVATE_V9_EVIDENCE');
+        },
+      }),
+    ],
+  ] as const)('rejects %s V9 evidence safely', async (_name, evidence) => {
+    const authority = createReviewPlannerV9PairedEvidenceAuthority({
+      readEvidence: jest.fn(async () => evidence as Record<string, unknown>),
+    });
+
+    await expect(authority.readCommittedSuccess(REPO_ROOT)).resolves.toBeNull();
+  });
+
+  it('captures the stable Git snapshot with the V9 authority hash', async () => {
+    const status = `# branch.oid ${COMMIT}\n# branch.head codex/phase-6-9-5\n`;
+    const authority = createReviewPlannerV9PairedEvidenceAuthority({
+      readEvidence: jest.fn(async () => v9Evidence('complete')),
+    });
+    const readGitStatus = jest.fn(async () => status);
+    const listEvidencePaths = jest.fn(async () => V9_EVIDENCE_PATHS);
+    const readEvidenceIndex = jest.fn(async () =>
+      ordinaryEvidenceIndex(V9_EVIDENCE_PATHS),
+    );
+
+    await expect(
+      captureReviewPlannerV8RepositorySnapshotFromAuthority({
+        readGitStatus,
+        listEvidencePaths,
+        readEvidenceIndex,
+        authority,
+        repoRoot: REPO_ROOT,
+      }),
+    ).resolves.toEqual({
+      commitSha: COMMIT,
+      branchName: 'codex/phase-6-9-5',
+      clean: true,
+      pairedEvidenceSha256: SHA,
+    });
+    expect(listEvidencePaths).toHaveBeenCalledTimes(2);
+    expect(readEvidenceIndex).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['lowercase assume-unchanged', 'h'],
+    ['skip-worktree', 'S'],
+  ] as const)(
+    'rejects a %s V9 evidence index marker',
+    async (_name, marker) => {
+      const lines = ordinaryEvidenceIndex(V9_EVIDENCE_PATHS).split('\n');
+      lines[0] = `${marker} ${V9_EVIDENCE_PATHS[0]}`;
+
+      await expect(
+        captureAuthoritySnapshot({ indexes: [`${lines.join('\n')}\n`] }),
+      ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+    },
+  );
+
+  it('rejects a missing tracked V9 evidence leaf', async () => {
+    await expect(
+      captureAuthoritySnapshot({
+        indexes: [ordinaryEvidenceIndex(V9_EVIDENCE_PATHS.slice(1))],
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+  });
+
+  it('rejects an extra untracked V9 evidence leaf', async () => {
+    await expect(
+      captureAuthoritySnapshot({
+        paths: [[...V9_EVIDENCE_PATHS, `${V9_EVIDENCE_DIRECTORY}/extra`]],
+        indexes: [ordinaryEvidenceIndex(V9_EVIDENCE_PATHS)],
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+  });
+
+  it('rejects V9 evidence leaf drift across the authority read', async () => {
+    const drifted = [...V9_EVIDENCE_PATHS, `${V9_EVIDENCE_DIRECTORY}/extra`];
+
+    await expect(
+      captureAuthoritySnapshot({
+        paths: [V9_EVIDENCE_PATHS, drifted],
+        indexes: [
+          ordinaryEvidenceIndex(V9_EVIDENCE_PATHS),
+          ordinaryEvidenceIndex(drifted),
+        ],
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_REPOSITORY_DRIFTED');
+  });
+
   it('selects only the Chrome process with the exact normalized user-data-dir argument', () => {
     const exact = {
       processId: 101,
@@ -743,6 +878,61 @@ describe('V8 product acceptance executable composition', () => {
   });
 });
 
+function v9Evidence(mode: 'complete' | 'diagnostic') {
+  return {
+    schemaVersion: V9_DIAGNOSTIC_SCHEMA_VERSION,
+    state: 'finalized',
+    status: mode === 'complete' ? 'complete' : 'invalid_attempted',
+    gate: 'closed',
+    terminalReason: mode === 'complete' ? 'passed' : 'p95_exceeded',
+    attempts: {
+      providerCount: 23,
+      pairedAdmissionCount: 22,
+    },
+    ...(mode === 'complete' ? { evidenceSha256: SHA } : {}),
+  };
+}
+
+const V9_EVIDENCE_DIRECTORY =
+  REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE.evidenceDirectory;
+const V9_EVIDENCE_PATHS = Object.freeze(
+  [
+    REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE.onceLockLeaf,
+    REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE.successCommitLeaf,
+    ...REVIEW_PLANNER_CONTROLLED_LIVE_V9_STAGES,
+    'review-planner-live-20260719T000000000Z-success.json',
+  ]
+    .map((leaf) => `${V9_EVIDENCE_DIRECTORY}/${leaf}`)
+    .sort(),
+);
+
+function ordinaryEvidenceIndex(paths: readonly string[]) {
+  return `${paths.map((path) => `H ${path}`).join('\n')}\n`;
+}
+
+function captureAuthoritySnapshot(input: {
+  paths?: readonly (readonly string[])[];
+  indexes?: readonly string[];
+}) {
+  const status = `# branch.oid ${COMMIT}\n# branch.head codex/phase-6-9-5\n`;
+  const paths = input.paths ?? [V9_EVIDENCE_PATHS, V9_EVIDENCE_PATHS];
+  const indexes = input.indexes ?? [ordinaryEvidenceIndex(paths[0])];
+  const listEvidencePaths = jest.fn();
+  for (const value of paths) listEvidencePaths.mockResolvedValueOnce(value);
+  const readEvidenceIndex = jest.fn();
+  for (const value of indexes) readEvidenceIndex.mockResolvedValueOnce(value);
+  if (indexes.length === 1) readEvidenceIndex.mockResolvedValue(indexes[0]);
+  return captureReviewPlannerV8RepositorySnapshotFromAuthority({
+    readGitStatus: jest.fn(async () => status),
+    listEvidencePaths,
+    readEvidenceIndex,
+    authority: createReviewPlannerV9PairedEvidenceAuthority({
+      readEvidence: jest.fn(async () => v9Evidence('complete')),
+    }),
+    repoRoot: REPO_ROOT,
+  });
+}
+
 function healthyInspection() {
   return {
     id: CONTAINER_ID,
@@ -840,6 +1030,57 @@ describe('V8 recovery-only executable composition', () => {
 });
 
 describe('V8 default composition resource lifecycle', () => {
+  it('blocks default preflight before ledger, Prisma, fixtures, or Docker work', async () => {
+    const prismaAccess = jest.fn();
+    const disconnect = jest.fn(async () => undefined);
+    const prisma = new Proxy(
+      { $disconnect: disconnect },
+      {
+        get(target, property) {
+          if (property === '$disconnect') return target.$disconnect;
+          prismaAccess(property);
+          return undefined;
+        },
+      },
+    );
+    const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+      REPO_ROOT,
+      {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: prisma as never,
+        pairedEvidenceAuthority: createReviewPlannerV9PairedEvidenceAuthority({
+          readEvidence: jest.fn(async () => v9Evidence('diagnostic')),
+        }),
+      },
+    );
+    const reserveLedger = jest.spyOn(product.ports, 'reserveLedger');
+    const createFixtures = jest.spyOn(product.ports, 'createFixtures');
+    const createRunnerDependencies = jest.spyOn(
+      product.ports,
+      'createRunnerDependencies',
+    );
+    const runAcceptance = jest.spyOn(product.ports, 'runAcceptance');
+
+    await expect(
+      runReviewPlannerV8ProductAcceptanceProductCli({
+        argv: [
+          REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION,
+          '--environment=branch',
+        ],
+        repoRoot: REPO_ROOT,
+        ports: product.ports,
+      }),
+    ).resolves.toMatchObject({ stage: 'preflight', status: 'blocked' });
+
+    expect(reserveLedger).not.toHaveBeenCalled();
+    expect(prismaAccess).not.toHaveBeenCalled();
+    expect(createFixtures).not.toHaveBeenCalled();
+    expect(createRunnerDependencies).not.toHaveBeenCalled();
+    expect(runAcceptance).not.toHaveBeenCalled();
+    await product.dispose();
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('disconnects product and recovery Prisma clients exactly once', async () => {
     const productDisconnect = jest.fn(async () => undefined);
     const recoveryDisconnect = jest.fn(async () => undefined);

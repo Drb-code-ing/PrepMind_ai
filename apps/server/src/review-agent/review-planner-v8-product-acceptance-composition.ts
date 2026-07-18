@@ -8,11 +8,11 @@ import { promisify } from 'node:util';
 import { PrismaClient } from '@repo/database';
 import { chromium } from 'playwright-core';
 
+import { parseReviewPlannerControlledLiveV8CommittedCandidate } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 import {
-  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
-  parseReviewPlannerControlledLiveV8CommittedCandidate,
-  readReviewPlannerControlledLiveV8Evidence,
-} from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
+  REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE,
+  readReviewPlannerControlledLiveV9Evidence,
+} from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
 
 import {
   calculateReviewPlannerV8ProductAcceptanceCost,
@@ -306,7 +306,101 @@ export type ReviewPlannerV8DisposableComposition<Ports> = Readonly<{
 type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
   env?: Readonly<Record<string, string>>;
   prisma?: PrismaClient;
+  pairedEvidenceAuthority?: PairedEvidenceAuthority;
 }>;
+
+export type PairedEvidenceAuthority = Readonly<{
+  profile: 'v9';
+  readCommittedSuccess(repoRoot: string): Promise<Readonly<{
+    providerAttemptCount: 23;
+    pairedAdmissionCount: 22;
+    evidenceSha256: string;
+  }> | null>;
+}>;
+
+export function createReviewPlannerV9PairedEvidenceAuthority(
+  dependencies: Readonly<{
+    readEvidence?: (repoRoot: string) => Promise<Record<string, unknown>>;
+  }> = {},
+): PairedEvidenceAuthority {
+  const readEvidence =
+    dependencies.readEvidence ?? readReviewPlannerControlledLiveV9Evidence;
+  return Object.freeze({
+    profile: 'v9' as const,
+    async readCommittedSuccess(repoRoot: string) {
+      try {
+        const evidence = await readEvidence(repoRoot);
+        const attempts = evidence.attempts;
+        if (
+          evidence.schemaVersion !==
+            'phase-6.9.5-review-planner-v9-gate-diagnostic-v1' ||
+          evidence.state !== 'finalized' ||
+          evidence.status !== 'complete' ||
+          evidence.gate !== 'closed' ||
+          evidence.terminalReason !== 'passed' ||
+          !attempts ||
+          typeof attempts !== 'object' ||
+          (attempts as Record<string, unknown>).providerCount !== 23 ||
+          (attempts as Record<string, unknown>).pairedAdmissionCount !== 22 ||
+          typeof evidence.evidenceSha256 !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(evidence.evidenceSha256)
+        ) {
+          return null;
+        }
+        return Object.freeze({
+          providerAttemptCount: 23 as const,
+          pairedAdmissionCount: 22 as const,
+          evidenceSha256: evidence.evidenceSha256,
+        });
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
+export async function captureReviewPlannerV8RepositorySnapshotFromAuthority(
+  input: Readonly<{
+    readGitStatus(): Promise<string>;
+    listEvidencePaths(): Promise<readonly string[]>;
+    readEvidenceIndex(): Promise<string>;
+    authority: PairedEvidenceAuthority;
+    repoRoot: string;
+  }>,
+) {
+  const before = parseReviewPlannerV8GitPorcelainSnapshot(
+    await input.readGitStatus(),
+  );
+  if (input.authority.profile !== 'v9') return null;
+  const beforePaths = [...(await input.listEvidencePaths())].sort();
+  assertReviewPlannerV8EvidenceIndexIsOrdinary(
+    await input.readEvidenceIndex(),
+    beforePaths,
+  );
+  const evidence = await input.authority.readCommittedSuccess(input.repoRoot);
+  const afterPaths = [...(await input.listEvidencePaths())].sort();
+  assertReviewPlannerV8EvidenceIndexIsOrdinary(
+    await input.readEvidenceIndex(),
+    afterPaths,
+  );
+  const after = parseReviewPlannerV8GitPorcelainSnapshot(
+    await input.readGitStatus(),
+  );
+  if (
+    beforePaths.length !== afterPaths.length ||
+    beforePaths.some((path, index) => path !== afterPaths[index]) ||
+    before.commitSha !== after.commitSha ||
+    before.branchName !== after.branchName ||
+    before.clean !== after.clean
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_REPOSITORY_DRIFTED');
+  }
+  if (evidence === null) return null;
+  return Object.freeze({
+    ...after,
+    pairedEvidenceSha256: evidence.evidenceSha256,
+  });
+}
 
 export function parseReviewPlannerV8ProductAcceptanceArguments(
   argv: readonly string[],
@@ -996,12 +1090,16 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     liveContainerId: {},
     factsSnapshots: createEmptyFactsSnapshotState(),
   };
+  const pairedEvidenceAuthority =
+    options.pairedEvidenceAuthority ??
+    createReviewPlannerV9PairedEvidenceAuthority();
   const ports: ReviewPlannerV8ProductAcceptanceCompositionPorts = {
-    preflight: (input) => runDefaultProductPreflight(input),
+    preflight: (input) =>
+      runDefaultProductPreflight(input, pairedEvidenceAuthority),
     acquireOwner: (input) =>
       acquireReviewPlannerV8ProductAcceptanceOwner(input),
     revalidatePreflight: ({ preflight }) =>
-      revalidateDefaultProductPreflight(preflight),
+      revalidateDefaultProductPreflight(preflight, pairedEvidenceAuthority),
     reserveLedger: (input) =>
       reserveReviewPlannerV8ProductAcceptanceLedger(input),
     generateResources(preflight) {
@@ -1069,10 +1167,13 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   });
 }
 
-async function runDefaultProductPreflight(input: {
-  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
-  repoRoot: string;
-}): Promise<ProductPreflight> {
+async function runDefaultProductPreflight(
+  input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  },
+  pairedEvidenceAuthority: PairedEvidenceAuthority,
+): Promise<ProductPreflight> {
   try {
     const repoRoot = resolve(input.repoRoot);
     const expectedRoot = resolve(__dirname, '../../../..');
@@ -1083,7 +1184,10 @@ async function runDefaultProductPreflight(input: {
     ) {
       throw new Error();
     }
-    const repository = await readReviewPlannerV8RepositorySnapshot(repoRoot);
+    const repository = await readReviewPlannerV8RepositorySnapshot(
+      repoRoot,
+      pairedEvidenceAuthority,
+    );
     if (repository === null) {
       return { status: 'blocked', code: 'paired_evidence_incomplete' };
     }
@@ -1127,10 +1231,12 @@ async function runDefaultProductPreflight(input: {
 
 async function revalidateDefaultProductPreflight(
   preflight: Extract<ProductPreflight, { status: 'ready' }>,
+  pairedEvidenceAuthority: PairedEvidenceAuthority,
 ) {
   try {
     const current = await readReviewPlannerV8RepositorySnapshot(
       preflight.repoRoot,
+      pairedEvidenceAuthority,
     );
     return (
       current !== null &&
@@ -2462,50 +2568,6 @@ function requiredEnv(env: Readonly<Record<string, string>>, key: string) {
   return value;
 }
 
-async function readPairedEvidenceReference(repoRoot: string) {
-  const evidence = await readReviewPlannerControlledLiveV8Evidence(repoRoot);
-  if (
-    evidence.state !== 'finalized' ||
-    evidence.status !== 'complete' ||
-    evidence.gate !== 'closed' ||
-    evidence.caseEntries !== 48 ||
-    evidence.zeroCallCases !== 26 ||
-    evidence.runtimeInvocations !== 22 ||
-    evidence.strictSuccesses !== 48 ||
-    evidence.qualityPasses !== 48 ||
-    evidence.criticalFailures !== 0
-  ) {
-    return null;
-  }
-  const directory = resolve(
-    repoRoot,
-    REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
-  );
-  const names = (await readdir(directory)).filter((name) =>
-    /^review-planner-live-[A-Za-z0-9._-]+\.json$/.test(name),
-  );
-  if (names.length !== 1) return null;
-  const evidenceDirectory =
-    REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory;
-  const allNames = (await readdir(directory)).sort();
-  const expectedTrackedPaths = allNames.map(
-    (name) => `${evidenceDirectory}/${name}`,
-  );
-  assertReviewPlannerV8EvidenceIndexIsOrdinary(
-    await runReadOnlyProcess(repoRoot, 'git', [
-      'ls-files',
-      '-v',
-      '--full-name',
-      '--',
-      evidenceDirectory,
-    ]),
-    expectedTrackedPaths,
-  );
-  return Object.freeze({
-    relativePath: `${evidenceDirectory}/${names[0]}`.replaceAll('\\', '/'),
-  });
-}
-
 export function assertReviewPlannerV8EvidenceIndexIsOrdinary(
   output: string,
   expectedRelativePaths: readonly string[],
@@ -2593,7 +2655,12 @@ export async function captureReviewPlannerV8RepositorySnapshot(input: {
   });
 }
 
-async function readReviewPlannerV8RepositorySnapshot(repoRoot: string) {
+async function readReviewPlannerV8RepositorySnapshot(
+  repoRoot: string,
+  authority: PairedEvidenceAuthority,
+) {
+  const evidenceDirectory =
+    REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE.evidenceDirectory;
   const readGitStatus = () =>
     runReadOnlyProcess(repoRoot, 'git', [
       'status',
@@ -2601,14 +2668,24 @@ async function readReviewPlannerV8RepositorySnapshot(repoRoot: string) {
       '--branch',
       '--untracked-files=all',
     ]);
-  return captureReviewPlannerV8RepositorySnapshot({
+  const listEvidencePaths = async () =>
+    (await readdir(resolve(repoRoot, evidenceDirectory)))
+      .sort()
+      .map((name) => `${evidenceDirectory}/${name}`);
+  const readEvidenceIndex = () =>
+    runReadOnlyProcess(repoRoot, 'git', [
+      'ls-files',
+      '-v',
+      '--full-name',
+      '--',
+      evidenceDirectory,
+    ]);
+  return captureReviewPlannerV8RepositorySnapshotFromAuthority({
     readGitStatus,
-    readEvidenceReference: () => readPairedEvidenceReference(repoRoot),
-    readCommittedEvidence: (commitSha, relativePath) =>
-      runReadOnlyProcess(repoRoot, 'git', [
-        'show',
-        `${commitSha}:${relativePath}`,
-      ]),
+    listEvidencePaths,
+    readEvidenceIndex,
+    authority,
+    repoRoot,
   });
 }
 
