@@ -113,6 +113,19 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: prepmind-dev
       PUBLIC_API_BASE_URL: http://localhost:3001
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3001/health').then((response) => {
+            if (!response.ok) process.exit(1);
+          }).catch(() => process.exit(1));
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   worker:
     profiles:

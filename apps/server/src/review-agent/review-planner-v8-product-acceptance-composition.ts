@@ -1290,18 +1290,23 @@ function createDefaultRunnerDependencies(
   return {
     async activateComponent(request) {
       const previous = await readServerContainerId(state.repoRoot);
-      await recreateServer(
-        state,
-        buildReviewPlannerV8ActivationEnvironment(
-          request.component,
-          request.capabilitySha256,
-          requiredEnv(state.env, 'DEEPSEEK_API_KEY'),
-        ),
+      const activationEnvironment = buildReviewPlannerV8ActivationEnvironment(
+        request.component,
+        request.capabilitySha256,
+        requiredEnv(state.env, 'DEEPSEEK_API_KEY'),
       );
+      await recreateServer(state, activationEnvironment);
       const current = await readServerContainerId(state.repoRoot);
       if (!current || current === previous) throw new Error();
+      const inspected = await waitForDefaultServerReadiness(
+        state.repoRoot,
+        current,
+      );
+      assertExpectedServerEnvironment(
+        inspected.environment,
+        activationEnvironment,
+      );
       state.liveContainerId[request.component] = current;
-      await waitForHealth();
     },
     readFactsDigest: ({ component, phase }) =>
       readFactsDigest(state, component, phase),
@@ -1482,9 +1487,11 @@ async function restoreDefaultOff(
   await recreateServer(state, buildReviewPlannerV8DefaultOffEnvironment());
   const current = await readServerContainerId(state.repoRoot);
   if (!current || current === previous) throw new Error();
-  const inspected = await inspectServerContainer(current);
+  const inspected = await waitForDefaultServerReadiness(
+    state.repoRoot,
+    current,
+  );
   assertDefaultOffEnvironment(inspected.environment);
-  await waitForHealth();
   const account = state.accounts[component];
   if (!account) throw new Error();
   const probe = await fetchSuggestion(account.token, undefined, component);
@@ -1582,6 +1589,7 @@ async function recreateServer(
     windowsHide: true,
     env: { ...process.env, ...state.env, ...overrides },
     maxBuffer: 1024 * 1024,
+    timeout: 60_000,
   });
 }
 
@@ -1616,52 +1624,130 @@ export function mergeReviewPlannerV8AcceptanceHeaders(
   };
 }
 
-async function readServerContainerId(repoRoot: string) {
+async function readServerContainerId(repoRoot: string, signal?: AbortSignal) {
   return (
-    await runReadOnlyProcess(repoRoot, 'docker', [
-      'compose',
-      '--env-file',
-      '.env',
-      '-f',
-      'docker/docker-compose.dev.yml',
-      '--profile',
-      'worker',
-      'ps',
-      '-q',
-      'server',
-    ])
+    await runReadOnlyProcess(
+      repoRoot,
+      'docker',
+      [
+        'compose',
+        '--env-file',
+        '.env',
+        '-f',
+        'docker/docker-compose.dev.yml',
+        '--profile',
+        'worker',
+        'ps',
+        '-q',
+        'server',
+      ],
+      { signal },
+    )
   ).trim();
 }
 
-async function inspectServerContainer(containerId: string) {
-  const output = await runReadOnlyProcess(process.cwd(), 'docker', [
-    'inspect',
-    '--format',
-    '{{json .Config.Env}}|{{json .State.Health.Status}}',
-    containerId,
-  ]);
-  const separator = output.lastIndexOf('|');
-  if (separator < 0) throw new Error();
-  const environment = JSON.parse(output.slice(0, separator)) as unknown;
-  const health = JSON.parse(output.slice(separator + 1)) as unknown;
-  if (
-    !Array.isArray(environment) ||
-    !environment.every((value) => typeof value === 'string') ||
-    (health !== 'healthy' && health !== 'starting')
-  ) {
-    throw new Error();
+async function inspectServerContainer(
+  containerId: string,
+  signal?: AbortSignal,
+) {
+  const output = await runReadOnlyProcess(
+    process.cwd(),
+    'docker',
+    [
+      'inspect',
+      '--format',
+      '{"id":{{json .Id}},"environment":{{json .Config.Env}},"status":{{json .State.Status}},"health":{{json .State.Health.Status}},"labels":{{json .Config.Labels}},"ports":{{json .NetworkSettings.Ports}}}',
+      containerId,
+    ],
+    { signal },
+  );
+  return parseReviewPlannerV8ServerInspection(output, containerId);
+}
+
+export type ReviewPlannerV8ServerInspection = Readonly<{
+  id: string;
+  environment: readonly string[];
+  status: 'running';
+  health: 'starting' | 'healthy';
+  composeProject: 'docker';
+  composeService: 'server';
+  publishedPort: 3001;
+}>;
+
+export function parseReviewPlannerV8ServerInspection(
+  output: string,
+  expectedContainerId: string,
+): ReviewPlannerV8ServerInspection {
+  try {
+    const value = asRecord(JSON.parse(output) as unknown);
+    if (
+      Object.keys(value).sort().join(',') !==
+        'environment,health,id,labels,ports,status' ||
+      requireString(value.id) !== expectedContainerId ||
+      !/^[a-f0-9]{64}$/.test(expectedContainerId) ||
+      value.status !== 'running' ||
+      (value.health !== 'starting' && value.health !== 'healthy') ||
+      !Array.isArray(value.environment) ||
+      !value.environment.every((entry) => typeof entry === 'string')
+    ) {
+      throw new Error();
+    }
+    const labels = asRecord(value.labels);
+    if (
+      labels['com.docker.compose.project'] !== 'docker' ||
+      labels['com.docker.compose.service'] !== 'server'
+    ) {
+      throw new Error();
+    }
+    const ports = asRecord(value.ports);
+    if (Object.keys(ports).join(',') !== '3001/tcp') throw new Error();
+    const bindings = ports['3001/tcp'];
+    if (
+      !Array.isArray(bindings) ||
+      bindings.length === 0 ||
+      !bindings.every((binding) => {
+        const record = asRecord(binding);
+        return (
+          Object.keys(record).sort().join(',') === 'HostIp,HostPort' &&
+          typeof record.HostIp === 'string' &&
+          record.HostIp.length > 0 &&
+          record.HostPort === '3001'
+        );
+      })
+    ) {
+      throw new Error();
+    }
+    return Object.freeze({
+      id: expectedContainerId,
+      environment: Object.freeze([...value.environment]),
+      status: 'running',
+      health: value.health,
+      composeProject: 'docker',
+      composeService: 'server',
+      publishedPort: 3001,
+    });
+  } catch {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
   }
-  return { environment, health };
 }
 
 function assertDefaultOffEnvironment(entries: readonly string[]) {
+  assertExpectedServerEnvironment(
+    entries,
+    buildReviewPlannerV8DefaultOffEnvironment(),
+  );
+}
+
+function assertExpectedServerEnvironment(
+  entries: readonly string[],
+  expected: Readonly<Record<string, string>>,
+) {
   const env = new Map(
     entries.map((entry) => {
       const index = entry.indexOf('=');
       return [entry.slice(0, index), entry.slice(index + 1)] as const;
     }),
   );
-  const expected = buildReviewPlannerV8DefaultOffEnvironment();
   for (const [key, value] of Object.entries(expected)) {
     if (env.get(key) !== value) throw new Error();
   }
@@ -1670,21 +1756,133 @@ function assertDefaultOffEnvironment(entries: readonly string[]) {
 async function assertCurrentServerDefaultOff(repoRoot: string) {
   const id = await readServerContainerId(repoRoot);
   if (!id) throw new Error();
-  const inspected = await inspectServerContainer(id);
+  const inspected = await waitForDefaultServerReadiness(repoRoot, id);
   assertDefaultOffEnvironment(inspected.environment);
 }
 
-async function waitForHealth() {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+export async function waitForReviewPlannerV8ServerReadiness(input: {
+  expectedContainerId: string;
+  readCurrentContainerId(signal: AbortSignal): Promise<string>;
+  inspectContainer(
+    signal: AbortSignal,
+  ): Promise<ReviewPlannerV8ServerInspection>;
+  fetchHealth(signal: AbortSignal): Promise<boolean>;
+  totalTimeoutMs: number;
+  attemptTimeoutMs: number;
+  pollIntervalMs?: number;
+}) {
+  const deadline = Date.now() + input.totalTimeoutMs;
+  const pollIntervalMs = input.pollIntervalMs ?? 250;
+  while (Date.now() < deadline) {
     try {
-      const response = await fetch('http://127.0.0.1:3001/health');
-      if (response.ok) return;
-    } catch {
-      // bounded readiness polling
+      const current = await runReadinessOperation(
+        (signal) => input.readCurrentContainerId(signal),
+        deadline,
+        input.attemptTimeoutMs,
+      );
+      if (current !== input.expectedContainerId) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+      }
+      const inspected = await runReadinessOperation(
+        (signal) => input.inspectContainer(signal),
+        deadline,
+        input.attemptTimeoutMs,
+      );
+      if (inspected.id !== input.expectedContainerId) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+      }
+      if (inspected.health === 'healthy') {
+        const healthy = await runReadinessOperation(
+          (signal) => input.fetchHealth(signal),
+          deadline,
+          input.attemptTimeoutMs,
+        ).catch(() => false);
+        if (healthy) {
+          if (
+            (await runReadinessOperation(
+              (signal) => input.readCurrentContainerId(signal),
+              deadline,
+              input.attemptTimeoutMs,
+            )) !== input.expectedContainerId
+          ) {
+            throw new Error('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+          }
+          const finalInspection = await runReadinessOperation(
+            (signal) => input.inspectContainer(signal),
+            deadline,
+            input.attemptTimeoutMs,
+          );
+          if (
+            finalInspection.id !== input.expectedContainerId ||
+            finalInspection.health !== 'healthy'
+          ) {
+            throw new Error('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+          }
+          return finalInspection;
+        }
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === 'V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID'
+      ) {
+        throw error;
+      }
     }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+    const delay = Math.min(pollIntervalMs, deadline - Date.now());
+    if (delay > 0) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+    }
   }
   throw new Error('V8_PRODUCT_ACCEPTANCE_HEALTH_TIMEOUT');
+}
+
+async function runReadinessOperation<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  deadline: number,
+  attemptTimeoutMs: number,
+) {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_READINESS_ATTEMPT_TIMEOUT');
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Math.max(1, Math.min(attemptTimeoutMs, remaining)),
+  );
+  const aborted = new Promise<never>((_resolve, reject) => {
+    controller.signal.addEventListener(
+      'abort',
+      () =>
+        reject(new Error('V8_PRODUCT_ACCEPTANCE_READINESS_ATTEMPT_TIMEOUT')),
+      { once: true },
+    );
+  });
+  try {
+    return await Promise.race([operation(controller.signal), aborted]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function waitForDefaultServerReadiness(
+  repoRoot: string,
+  expectedContainerId: string,
+) {
+  return waitForReviewPlannerV8ServerReadiness({
+    expectedContainerId,
+    readCurrentContainerId: (signal) => readServerContainerId(repoRoot, signal),
+    inspectContainer: (signal) =>
+      inspectServerContainer(expectedContainerId, signal),
+    fetchHealth: async (signal) => {
+      const response = await fetch('http://127.0.0.1:3001/health', { signal });
+      return response.ok;
+    },
+    totalTimeoutMs: 45_000,
+    attemptTimeoutMs: 2_000,
+    pollIntervalMs: 250,
+  });
 }
 
 async function fetchSuggestion(
@@ -2021,11 +2219,14 @@ async function runReadOnlyProcess(
   cwd: string,
   file: string,
   args: readonly string[],
+  options: Readonly<{ signal?: AbortSignal; timeoutMs?: number }> = {},
 ) {
   const result = await execFileAsync(file, [...args], {
     cwd,
     windowsHide: true,
     maxBuffer: 1024 * 1024,
+    timeout: Math.min(options.timeoutMs ?? 15_000, 15_000),
+    signal: options.signal,
   });
   return result.stdout;
 }
@@ -2203,9 +2404,8 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
       );
       const current = await readServerContainerId(root);
       if (!current || current === previous) throw new Error();
-      const inspected = await inspectServerContainer(current);
+      const inspected = await waitForDefaultServerReadiness(root, current);
       assertDefaultOffEnvironment(inspected.environment);
-      await waitForHealth();
       const manifest = journal.snapshot().manifest;
       const password = randomBytes(24).toString('base64url');
       await prisma.user.deleteMany({

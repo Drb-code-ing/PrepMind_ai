@@ -13,11 +13,13 @@ import {
   executeReviewPlannerV8ProductAcceptanceRecoveryCli,
   mergeReviewPlannerV8AcceptanceHeaders,
   parseReviewPlannerV8GitPorcelainSnapshot,
+  parseReviewPlannerV8ServerInspection,
   parseReviewPlannerV8ProductAcceptanceArguments,
   runReviewPlannerV8ProductAcceptanceProductCli,
   runReviewPlannerV8ProductAcceptanceRecoveryCli,
   serializeReviewPlannerV8ProductAcceptanceCliSummary,
   sha256ReviewPlannerV8CompositionValue,
+  waitForReviewPlannerV8ServerReadiness,
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
@@ -29,6 +31,7 @@ import {
 
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
+const CONTAINER_ID = 'c'.repeat(64);
 const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
   schemaVersion:
     REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceSchemaVersion,
@@ -54,6 +57,136 @@ const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
 const REPO_ROOT = 'E:\\PrepMind_ai智能备考助手';
 
 describe('V8 product acceptance executable composition', () => {
+  it('strictly attests the expected healthy Compose server identity and published port', () => {
+    const inspection = JSON.stringify({
+      id: CONTAINER_ID,
+      environment: ['AI_PROVIDER_MODE=mock'],
+      status: 'running',
+      health: 'healthy',
+      labels: {
+        'com.docker.compose.project': 'docker',
+        'com.docker.compose.service': 'server',
+      },
+      ports: {
+        '3001/tcp': [
+          { HostIp: '0.0.0.0', HostPort: '3001' },
+          { HostIp: '::', HostPort: '3001' },
+        ],
+      },
+    });
+
+    expect(
+      parseReviewPlannerV8ServerInspection(inspection, CONTAINER_ID),
+    ).toMatchObject({
+      id: CONTAINER_ID,
+      status: 'running',
+      health: 'healthy',
+      composeProject: 'docker',
+      composeService: 'server',
+      publishedPort: 3001,
+    });
+    expect(() =>
+      parseReviewPlannerV8ServerInspection(inspection, 'd'.repeat(64)),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+    expect(() =>
+      parseReviewPlannerV8ServerInspection(
+        JSON.stringify({
+          ...JSON.parse(inspection),
+          ports: {
+            '3001/tcp': [{ HostIp: '0.0.0.0', HostPort: '3999' }],
+          },
+        }),
+        CONTAINER_ID,
+      ),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+  });
+
+  it('fails before health fetch when Compose points at a stale container id', async () => {
+    const fetchHealth = jest.fn(async () => true);
+
+    await expect(
+      waitForReviewPlannerV8ServerReadiness({
+        expectedContainerId: CONTAINER_ID,
+        readCurrentContainerId: async () => 'd'.repeat(64),
+        inspectContainer: async () => healthyInspection(),
+        fetchHealth,
+        totalTimeoutMs: 50,
+        attemptTimeoutMs: 10,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+    expect(fetchHealth).not.toHaveBeenCalled();
+  });
+
+  it('bounds a hanging health fetch and rechecks container identity after success', async () => {
+    const startedAt = Date.now();
+    await expect(
+      waitForReviewPlannerV8ServerReadiness({
+        expectedContainerId: CONTAINER_ID,
+        readCurrentContainerId: async () => CONTAINER_ID,
+        inspectContainer: async () => healthyInspection(),
+        fetchHealth: (signal) =>
+          new Promise<boolean>((_resolve, reject) => {
+            signal.addEventListener(
+              'abort',
+              () => reject(new Error('aborted')),
+              { once: true },
+            );
+          }),
+        totalTimeoutMs: 35,
+        attemptTimeoutMs: 10,
+        pollIntervalMs: 1,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_HEALTH_TIMEOUT');
+    expect(Date.now() - startedAt).toBeLessThan(500);
+
+    const readCurrentContainerId = jest
+      .fn<Promise<string>, []>()
+      .mockResolvedValueOnce(CONTAINER_ID)
+      .mockResolvedValueOnce('d'.repeat(64));
+    await expect(
+      waitForReviewPlannerV8ServerReadiness({
+        expectedContainerId: CONTAINER_ID,
+        readCurrentContainerId,
+        inspectContainer: async () => healthyInspection(),
+        fetchHealth: async () => true,
+        totalTimeoutMs: 50,
+        attemptTimeoutMs: 10,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_CONTAINER_IDENTITY_INVALID');
+  });
+
+  it.each(['container id', 'container inspect'] as const)(
+    'bounds a hanging %s read by the same total readiness deadline',
+    async (stage) => {
+      const hangUntilAbort = (signal: AbortSignal) =>
+        new Promise<never>((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(new Error('aborted')), {
+            once: true,
+          });
+        });
+      const startedAt = Date.now();
+
+      await expect(
+        waitForReviewPlannerV8ServerReadiness({
+          expectedContainerId: CONTAINER_ID,
+          readCurrentContainerId:
+            stage === 'container id'
+              ? hangUntilAbort
+              : async () => CONTAINER_ID,
+          inspectContainer:
+            stage === 'container inspect'
+              ? hangUntilAbort
+              : async () => healthyInspection(),
+          fetchHealth: async () => true,
+          totalTimeoutMs: 35,
+          attemptTimeoutMs: 10,
+          pollIntervalMs: 1,
+        }),
+      ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_HEALTH_TIMEOUT');
+      expect(Date.now() - startedAt).toBeLessThan(500);
+    },
+  );
+
   it('strictly parses one clean Git porcelain-v2 branch snapshot and detects worktree drift', () => {
     expect(
       parseReviewPlannerV8GitPorcelainSnapshot(
@@ -415,6 +548,18 @@ describe('V8 product acceptance executable composition', () => {
     );
   });
 });
+
+function healthyInspection() {
+  return {
+    id: CONTAINER_ID,
+    environment: ['AI_PROVIDER_MODE=mock'],
+    status: 'running' as const,
+    health: 'healthy' as const,
+    composeProject: 'docker' as const,
+    composeService: 'server' as const,
+    publishedPort: 3001 as const,
+  };
+}
 
 describe('V8 recovery-only executable composition', () => {
   it('does not acquire owner or open the journal when recovery preflight is blocked', async () => {

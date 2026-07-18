@@ -196,6 +196,18 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(workerService).toContain('start_period:');
   });
 
+  it('gives the HTTP server a bounded container healthcheck for identity-bound acceptance', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+
+    expect(serverService).toContain('healthcheck:');
+    expect(serverService).toContain("fetch('http://127.0.0.1:3001/health')");
+    expect(serverService).toContain('interval: 5s');
+    expect(serverService).toContain('timeout: 3s');
+    expect(serverService).toContain('retries: 12');
+    expect(serverService).toContain('start_period: 10s');
+  });
+
   it('bootstraps the audit export lifecycle and bounds plaintext worker temp storage', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const lifecycle = JSON.parse(
