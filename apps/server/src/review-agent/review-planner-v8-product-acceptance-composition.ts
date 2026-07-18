@@ -293,6 +293,16 @@ export type ReviewPlannerV8ProductAcceptanceCliSummary =
       browserContinues: 0;
     }>;
 
+export type ReviewPlannerV8DisposableComposition<Ports> = Readonly<{
+  ports: Ports;
+  dispose(): Promise<void>;
+}>;
+
+type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
+  env?: Readonly<Record<string, string>>;
+  prisma?: PrismaClient;
+}>;
+
 export function parseReviewPlannerV8ProductAcceptanceArguments(
   argv: readonly string[],
   kind: CliKind,
@@ -589,6 +599,58 @@ export async function runReviewPlannerV8ProductAcceptanceRecoveryCli(input: {
   } finally {
     journal?.close();
     owner?.close();
+  }
+}
+
+export async function executeReviewPlannerV8ProductAcceptanceProductCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts>;
+}) {
+  if (!input.composition) {
+    parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'product');
+  }
+  const composition =
+    input.composition ??
+    createDefaultReviewPlannerV8ProductAcceptanceComposition(input.repoRoot);
+  try {
+    if (input.composition) {
+      parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'product');
+    }
+    return await runReviewPlannerV8ProductAcceptanceProductCli({
+      argv: input.argv,
+      repoRoot: input.repoRoot,
+      ports: composition.ports,
+    });
+  } finally {
+    await composition.dispose();
+  }
+}
+
+export async function executeReviewPlannerV8ProductAcceptanceRecoveryCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts>;
+}) {
+  if (!input.composition) {
+    parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'recovery');
+  }
+  const composition =
+    input.composition ??
+    createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition(
+      input.repoRoot,
+    );
+  try {
+    if (input.composition) {
+      parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'recovery');
+    }
+    return await runReviewPlannerV8ProductAcceptanceRecoveryCli({
+      argv: input.argv,
+      repoRoot: input.repoRoot,
+      ports: composition.ports,
+    });
+  } finally {
+    await composition.dispose();
   }
 }
 
@@ -903,14 +965,17 @@ type DefaultRuntimeState = {
   factsSnapshots: ReviewPlannerFactsSnapshotState;
 };
 
-export function createDefaultReviewPlannerV8ProductAcceptancePorts(
+export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   repoRoot: string,
-): ReviewPlannerV8ProductAcceptanceCompositionPorts {
+  options: ReviewPlannerV8DefaultCompositionOptions = {},
+): ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts> {
   const root = resolve(repoRoot);
-  const env = readRootEnvironment(root);
-  const prisma = new PrismaClient({
-    datasources: { db: { url: requiredEnv(env, 'DATABASE_URL') } },
-  });
+  const env = options.env ?? readRootEnvironment(root);
+  const prisma =
+    options.prisma ??
+    new PrismaClient({
+      datasources: { db: { url: requiredEnv(env, 'DATABASE_URL') } },
+    });
   const state: DefaultRuntimeState = {
     prisma,
     repoRoot: root,
@@ -923,7 +988,7 @@ export function createDefaultReviewPlannerV8ProductAcceptancePorts(
     liveContainerId: {},
     factsSnapshots: createEmptyFactsSnapshotState(),
   };
-  return {
+  const ports: ReviewPlannerV8ProductAcceptanceCompositionPorts = {
     preflight: (input) => runDefaultProductPreflight(input),
     acquireOwner: (input) =>
       acquireReviewPlannerV8ProductAcceptanceOwner(input),
@@ -988,6 +1053,10 @@ export function createDefaultReviewPlannerV8ProductAcceptancePorts(
     },
     runAcceptance: (input) => runReviewPlannerV8ProductAcceptance(input),
   };
+  return Object.freeze({
+    ports,
+    dispose: createIdempotentPrismaDisposer(prisma),
+  });
 }
 
 async function runDefaultProductPreflight(input: {
@@ -1352,7 +1421,6 @@ function createDefaultRunnerDependencies(
     },
     async cleanup() {
       await cleanupDefaultState(state);
-      await state.prisma.$disconnect();
       return {
         schemaVersion: 'phase-6.9.5-v8-product-acceptance-cleanup-v1',
         syntheticAccounts: 0,
@@ -1870,16 +1938,19 @@ function requireNonNegativeInteger(value: unknown) {
   return value;
 }
 
-export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryPorts(
+export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition(
   repoRoot: string,
-): ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts {
+  options: ReviewPlannerV8DefaultCompositionOptions = {},
+): ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts> {
   const root = resolve(repoRoot);
-  const env = readRootEnvironment(root);
-  const prisma = new PrismaClient({
-    datasources: { db: { url: requiredEnv(env, 'DATABASE_URL') } },
-  });
+  const env = options.env ?? readRootEnvironment(root);
+  const prisma =
+    options.prisma ??
+    new PrismaClient({
+      datasources: { db: { url: requiredEnv(env, 'DATABASE_URL') } },
+    });
   let probeAccount: (RuntimeAccount & { email: string }) | null = null;
-  return {
+  const ports: ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts = {
     async preflightRecovery({ environment, repoRoot: requestedRoot }) {
       try {
         if (
@@ -2071,7 +2142,6 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryPorts(
         },
       });
       if (remaining !== 0) throw new Error();
-      await prisma.$disconnect();
       return {
         schemaVersion: 'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1',
         syntheticAccounts: 0,
@@ -2082,5 +2152,17 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryPorts(
         probeAccounts: 0,
       };
     },
+  };
+  return Object.freeze({
+    ports,
+    dispose: createIdempotentPrismaDisposer(prisma),
+  });
+}
+
+function createIdempotentPrismaDisposer(prisma: PrismaClient) {
+  let disposal: Promise<void> | undefined;
+  return () => {
+    disposal ??= prisma.$disconnect();
+    return disposal;
   };
 }

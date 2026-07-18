@@ -5,6 +5,10 @@ import {
   buildReviewPlannerV8ActivationEnvironment,
   buildReviewPlannerV8DefaultOffEnvironment,
   buildReviewPlannerV8ServerRecreateCommand,
+  createDefaultReviewPlannerV8ProductAcceptanceComposition,
+  createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition,
+  executeReviewPlannerV8ProductAcceptanceProductCli,
+  executeReviewPlannerV8ProductAcceptanceRecoveryCli,
   mergeReviewPlannerV8AcceptanceHeaders,
   parseReviewPlannerV8ProductAcceptanceArguments,
   runReviewPlannerV8ProductAcceptanceProductCli,
@@ -359,6 +363,107 @@ describe('V8 recovery-only executable composition', () => {
     expect(fixture.order).toContain('restore:default-off');
     expect(fixture.order).toContain('journal:restore.verified.json');
   });
+});
+
+describe('V8 default composition resource lifecycle', () => {
+  it('disconnects product and recovery Prisma clients exactly once', async () => {
+    const productDisconnect = jest.fn(async () => undefined);
+    const recoveryDisconnect = jest.fn(async () => undefined);
+    const env = {
+      DATABASE_URL: 'postgresql://acceptance.invalid/database',
+    };
+
+    const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+      REPO_ROOT,
+      {
+        env,
+        prisma: { $disconnect: productDisconnect } as never,
+      },
+    );
+    const recovery =
+      createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition(
+        REPO_ROOT,
+        {
+          env,
+          prisma: { $disconnect: recoveryDisconnect } as never,
+        },
+      );
+
+    await product.dispose();
+    await product.dispose();
+    await recovery.dispose();
+    await recovery.dispose();
+
+    expect(productDisconnect).toHaveBeenCalledTimes(1);
+    expect(recoveryDisconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes product resources when fixtures fail before runner construction', async () => {
+    const fixture = createPorts();
+    const dispose = jest.fn(async () => undefined);
+    fixture.ports.createFixtures.mockRejectedValueOnce(
+      new Error('fixture transaction failed'),
+    );
+
+    await expect(
+      executeReviewPlannerV8ProductAcceptanceProductCli({
+        argv: [
+          REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION,
+          '--environment=branch',
+        ],
+        repoRoot: REPO_ROOT,
+        composition: { ports: fixture.ports, dispose },
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes recovery resources when the default-off probe fails', async () => {
+    const fixture = createRecoveryPorts();
+    const dispose = jest.fn(async () => undefined);
+    fixture.ports.restoreDefaultOff.mockRejectedValueOnce(
+      new Error('probe failed'),
+    );
+
+    await expect(
+      executeReviewPlannerV8ProductAcceptanceRecoveryCli({
+        argv: [
+          REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION,
+          '--environment=branch',
+        ],
+        repoRoot: REPO_ROOT,
+        composition: { ports: fixture.ports, dispose },
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [
+      'product',
+      executeReviewPlannerV8ProductAcceptanceProductCli,
+      createPorts().ports,
+    ],
+    [
+      'recovery',
+      executeReviewPlannerV8ProductAcceptanceRecoveryCli,
+      createRecoveryPorts().ports,
+    ],
+  ] as const)(
+    'disposes an already-created %s composition when arguments are invalid',
+    async (_kind, execute, ports) => {
+      const dispose = jest.fn(async () => undefined);
+
+      await expect(
+        execute({
+          argv: ['--invalid'],
+          repoRoot: REPO_ROOT,
+          composition: { ports: ports as never, dispose },
+        }),
+      ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_CONFIRMATION_REQUIRED');
+      expect(dispose).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 function runProduct(ports: ReviewPlannerV8ProductAcceptanceCompositionPorts) {
