@@ -66,6 +66,30 @@ const v8CnyCostSchema = z
     }
   });
 
+const preflightResultSchema = z.union([
+  z.object({ ok: z.literal(true) }).strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      diagnosticCode: z.literal(ReviewPlannerDiagnosticCode.PreflightInvalid),
+    })
+    .strict(),
+]);
+
+const evaluatorIdentitySchema = z
+  .object({
+    provider: z.literal('deepseek'),
+    model: z.literal('deepseek-v4-pro'),
+    baseUrlIdentity: z.literal('deepseek-v1'),
+    structuredOutputMode: z.literal('deepseek_v4_pro_nonthinking_json'),
+    timeoutMs: z.literal(4_500),
+    schemaId: z.literal('review-model-candidate-v1'),
+    priceProfileId: z.literal(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+    ),
+  })
+  .strict();
+
 export type ReviewPlannerControlledLiveV8DiagnosticCode = Extract<
   SafeReviewPlannerControlledLiveV8Summary,
   { status: 'invalid_attempted' }
@@ -201,7 +225,9 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
   if (!hasExactConfirmation(input.argv)) return blocked();
   let preflight: ReviewPlannerControlledLiveV8PreflightResult;
   try {
-    preflight = dependencies.validatePreflight(input.env);
+    preflight = preflightResultSchema.parse(
+      dependencies.validatePreflight(input.env),
+    );
   } catch {
     return blocked();
   }
@@ -237,23 +263,26 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
 
   let evaluator: ReviewPlannerControlledLiveV8EvaluatorPort;
   try {
-    evaluator = dependencies.createEvaluator(input.env);
+    const candidate = dependencies.createEvaluator(input.env);
+    const snapshot = snapshotEvaluator(candidate);
+    if (!snapshot) throw new Error('invalid evaluator');
+    evaluator = snapshot;
   } catch {
     return attempted(0, ReviewPlannerDiagnosticCode.ExecutorInit);
   }
   let observedAttempts = 0;
-  const refreshAttempts = () => {
+  const checkpointAttempts = (expected: 0 | 1 | 23) => {
     try {
       const value = evaluator.providerAttemptCount();
-      if (!isAttemptCount(value)) return false;
-      observedAttempts = Math.max(observedAttempts, value);
+      if (value !== expected) return false;
+      observedAttempts = expected;
       return true;
     } catch {
       return false;
     }
   };
   if (evaluator.state === 'closed') {
-    return refreshAttempts()
+    return checkpointAttempts(0)
       ? attempted(observedAttempts, evaluator.diagnosticCode)
       : attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
@@ -263,10 +292,12 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  const advanceWithFreshAttempts = (
+  const advanceAtCheckpoint = (
+    expected: 0 | 1 | 23,
     stage: ReviewPlannerControlledLiveV8Stage,
-  ) => refreshAttempts() && advance(dependencies, reservation, stage);
-  if (!advanceWithFreshAttempts(STAGE_EVALUATOR_READY)) {
+  ) =>
+    checkpointAttempts(expected) && advance(dependencies, reservation, stage);
+  if (!advanceAtCheckpoint(0, STAGE_EVALUATOR_READY)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   try {
@@ -274,24 +305,34 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
   } catch {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advanceWithFreshAttempts(STAGE_PROVIDER_HISTORY_VERIFIED)) {
+  if (!advanceAtCheckpoint(0, STAGE_PROVIDER_HISTORY_VERIFIED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advanceWithFreshAttempts(STAGE_CANARY_STARTED)) {
+  if (!advanceAtCheckpoint(0, STAGE_CANARY_STARTED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
 
-  let canary: ReviewPlannerControlledLiveV8CanaryResult;
+  let canaryResult: unknown;
   try {
     const canaryPromise = evaluator.runCanary();
-    canary = await canaryPromise;
+    canaryResult = await canaryPromise;
   } catch {
+    checkpointAttempts(1);
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advanceWithFreshAttempts(STAGE_CANARY_RETURNED)) {
+  if (!advanceAtCheckpoint(1, STAGE_CANARY_RETURNED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!isCanaryResult(canary)) {
+  let canary: ReviewPlannerControlledLiveV8CanaryResult | null;
+  try {
+    canary = snapshotCanaryResult(canaryResult);
+  } catch {
+    return attempted(
+      observedAttempts,
+      ReviewPlannerDiagnosticCode.InvalidResponse,
+    );
+  }
+  if (!canary) {
     return attempted(
       observedAttempts,
       ReviewPlannerDiagnosticCode.InvalidResponse,
@@ -310,23 +351,25 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (!advanceWithFreshAttempts(STAGE_PAIRED_STARTED)) {
+  if (!advanceAtCheckpoint(1, STAGE_PAIRED_STARTED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
 
-  let paired: ReviewPlannerControlledLiveV8PairedResult;
+  let pairedResult: unknown;
   try {
     const pairedPromise = evaluator.runPaired();
-    paired = await pairedPromise;
+    pairedResult = await pairedPromise;
   } catch {
+    checkpointAttempts(23);
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
-  if (!advanceWithFreshAttempts(STAGE_PAIRED_RETURNED)) {
+  if (!advanceAtCheckpoint(23, STAGE_PAIRED_RETURNED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   let complete: SafeReviewPlannerControlledLiveV8Summary | null = null;
   try {
-    if (!isPairedResult(paired)) {
+    const paired = snapshotPairedResult(pairedResult);
+    if (!paired) {
       return attempted(
         observedAttempts,
         ReviewPlannerDiagnosticCode.InvalidResponse,
@@ -335,12 +378,11 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
     if (paired.kind === 'failed') {
       return attempted(observedAttempts, paired.diagnosticCode);
     }
-    const report = phase695ReportSchema.safeParse(paired.report);
-    const cost = v8CnyCostSchema.safeParse(paired.cost);
-    complete =
-      report.success && cost.success
-        ? buildCompleteSummary(report.data, cost.data, observedAttempts)
-        : null;
+    complete = buildCompleteSummary(
+      paired.report,
+      paired.cost,
+      observedAttempts,
+    );
   } catch {
     return attempted(
       observedAttempts,
@@ -353,7 +395,7 @@ export async function runReviewPlannerControlledLiveV8StageDiagnosticsCli(
       ReviewPlannerDiagnosticCode.InvalidResponse,
     );
   }
-  if (!advanceWithFreshAttempts(STAGE_REPORT_VALIDATED)) {
+  if (!advanceAtCheckpoint(23, STAGE_REPORT_VALIDATED)) {
     return attempted(observedAttempts, ReviewPlannerDiagnosticCode.EvidenceIo);
   }
   try {
@@ -535,24 +577,91 @@ function hasExactIdentity(
   );
 }
 
-function isCanaryResult(
+function snapshotEvaluator(
   value: unknown,
-): value is ReviewPlannerControlledLiveV8CanaryResult {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Record<string, unknown>;
-  return candidate.kind === 'complete'
-    ? candidate.providerAttemptCount === 1 && candidate.usageKnown === true
-    : candidate.kind === 'failed' && isDiagnosticCode(candidate.diagnosticCode);
+): ReviewPlannerControlledLiveV8EvaluatorPort | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const state = source.state;
+  const identityValue = source.identity;
+  const identity =
+    identityValue === null
+      ? null
+      : evaluatorIdentitySchema.parse(identityValue);
+  const providerAttemptCount = source.providerAttemptCount;
+  if (typeof providerAttemptCount !== 'function') return null;
+  const boundAttemptCount = providerAttemptCount.bind(value) as () => number;
+  if (state === 'closed') {
+    const diagnosticCode = source.diagnosticCode;
+    if (!isDiagnosticCode(diagnosticCode)) return null;
+    return Object.freeze({
+      state,
+      identity,
+      diagnosticCode,
+      providerAttemptCount: boundAttemptCount,
+    });
+  }
+  if (state !== 'ready' || !identity) return null;
+  const runCanary = source.runCanary;
+  const runPaired = source.runPaired;
+  if (typeof runCanary !== 'function' || typeof runPaired !== 'function') {
+    return null;
+  }
+  return Object.freeze({
+    state,
+    identity,
+    runCanary: runCanary.bind(
+      value,
+    ) as () => Promise<ReviewPlannerControlledLiveV8CanaryResult>,
+    runPaired: runPaired.bind(
+      value,
+    ) as () => Promise<ReviewPlannerControlledLiveV8PairedResult>,
+    providerAttemptCount: boundAttemptCount,
+  });
 }
 
-function isPairedResult(
+function snapshotCanaryResult(
   value: unknown,
-): value is ReviewPlannerControlledLiveV8PairedResult {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Record<string, unknown>;
-  return candidate.kind === 'report'
-    ? 'report' in candidate && 'cost' in candidate
-    : candidate.kind === 'failed' && isDiagnosticCode(candidate.diagnosticCode);
+): ReviewPlannerControlledLiveV8CanaryResult | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const kind = source.kind;
+  if (kind === 'complete') {
+    return source.providerAttemptCount === 1 && source.usageKnown === true
+      ? Object.freeze({ kind, providerAttemptCount: 1, usageKnown: true })
+      : null;
+  }
+  if (kind !== 'failed') return null;
+  const diagnosticCode = source.diagnosticCode;
+  return isDiagnosticCode(diagnosticCode)
+    ? Object.freeze({ kind, diagnosticCode })
+    : null;
+}
+
+type ReviewPlannerControlledLiveV8PairedSnapshot =
+  | Readonly<{
+      kind: 'report';
+      report: Phase695Report;
+      cost: ReviewPlannerControlledLiveV8CnyCost;
+    }>
+  | Extract<ReviewPlannerControlledLiveV8PairedResult, { kind: 'failed' }>;
+
+function snapshotPairedResult(
+  value: unknown,
+): ReviewPlannerControlledLiveV8PairedSnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const kind = source.kind;
+  if (kind === 'failed') {
+    const diagnosticCode = source.diagnosticCode;
+    return isDiagnosticCode(diagnosticCode)
+      ? Object.freeze({ kind, diagnosticCode })
+      : null;
+  }
+  if (kind !== 'report') return null;
+  const report = phase695ReportSchema.parse(source.report);
+  const cost = v8CnyCostSchema.parse(source.cost);
+  return Object.freeze({ kind, report, cost });
 }
 
 function isDiagnosticCode(

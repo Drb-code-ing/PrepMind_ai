@@ -61,6 +61,13 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
     },
   );
 
+  it('contains a throwing preflight result getter before every capability', async () => {
+    const harness = createHarness({ preflight: 'getter' });
+
+    await expect(runCli(harness)).resolves.toEqual(blocked());
+    expect(harness.events).toEqual(['preflight']);
+  });
+
   it('runs the exact stage order, one canary Promise, one paired Promise, one finalizer, and a fresh committed read', async () => {
     const harness = createHarness();
 
@@ -137,6 +144,24 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
     },
   );
 
+  it.each([
+    ['state getter', 'state_getter'],
+    ['closed diagnostic getter', 'diagnostic_getter'],
+    ['ready identity getter', 'identity_getter'],
+  ] as const)(
+    'contains an evaluator %s as a safe executor-init closure',
+    async (_name, evaluator) => {
+      const harness = createHarness({ evaluator });
+
+      await expect(runCli(harness)).resolves.toEqual(
+        attempted(0, ReviewPlannerDiagnosticCode.ExecutorInit),
+      );
+      expect(harness.runCanary).not.toHaveBeenCalled();
+      expect(harness.runPaired).not.toHaveBeenCalled();
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(
     REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(2, 9).flatMap((stage) => [
       { stage, mode: 'false' as const },
@@ -190,13 +215,27 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
 
       await expect(runCli(harness)).resolves.toEqual(
         attempted(
-          canary === 'throw' ? 0 : 1,
+          1,
           canary === 'diagnostic'
             ? 'provider_usage_missing'
             : canary === 'throw'
               ? ReviewPlannerDiagnosticCode.EvidenceIo
               : ReviewPlannerDiagnosticCode.InvalidResponse,
         ),
+      );
+      expect(harness.runCanary).toHaveBeenCalledTimes(1);
+      expect(harness.runPaired).not.toHaveBeenCalled();
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['kind_getter', 'diagnostic_getter'] as const)(
+    'contains a canary %s proxy as safe invalid_response',
+    async (canary) => {
+      const harness = createHarness({ canary });
+
+      await expect(runCli(harness)).resolves.toEqual(
+        attempted(1, ReviewPlannerDiagnosticCode.InvalidResponse),
       );
       expect(harness.runCanary).toHaveBeenCalledTimes(1);
       expect(harness.runPaired).not.toHaveBeenCalled();
@@ -211,7 +250,7 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
 
       await expect(runCli(harness)).resolves.toEqual(
         attempted(
-          paired === 'throw' ? 1 : 23,
+          23,
           paired === 'throw'
             ? ReviewPlannerDiagnosticCode.EvidenceIo
             : ReviewPlannerDiagnosticCode.StructuredOutput,
@@ -220,6 +259,63 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
       expect(harness.runCanary).toHaveBeenCalledTimes(1);
       expect(harness.runPaired).toHaveBeenCalledTimes(1);
       expect(harness.events).not.toContain('.stage-090-report-validated');
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { name: 'initial one', sequence: [1], expected: 0 },
+    { name: 'initial twenty-three', sequence: [23], expected: 0 },
+    { name: 'zero to invalid regression', sequence: [0, -1], expected: 0 },
+    { name: 'one to zero regression', sequence: [0, 0, 0, 1, 0], expected: 1 },
+    {
+      name: 'twenty-three to one regression',
+      sequence: [0, 0, 0, 1, 1, 23, 1],
+      expected: 23,
+    },
+  ])(
+    'stops an inexact attempt checkpoint: $name',
+    async ({ sequence, expected }) => {
+      const harness = createHarness({ attemptSequence: sequence });
+
+      const summary = await runCli(harness);
+
+      expect(summary).toEqual(
+        attempted(expected, ReviewPlannerDiagnosticCode.EvidenceIo),
+      );
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+      expect(harness.readEvidence).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { name: 'canary', canary: 'throw' as const, expected: 1 },
+    { name: 'paired', paired: 'throw' as const, expected: 23 },
+  ])(
+    'refreshes exactly once after a rejected $name Promise and does not under-report',
+    async ({ canary, paired, expected }) => {
+      const harness = createHarness({ canary, paired });
+
+      await expect(runCli(harness)).resolves.toEqual(
+        attempted(expected, ReviewPlannerDiagnosticCode.EvidenceIo),
+      );
+      expect(harness.events.at(-1)).toBe('providerAttemptCount');
+      expect(harness.finalizeEvidence).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { name: 'canary', canary: 'throw' as const, getterThrowAt: 4, expected: 0 },
+    { name: 'paired', paired: 'throw' as const, getterThrowAt: 6, expected: 1 },
+  ])(
+    'keeps the maximum trusted lower bound when the $name rejection checkpoint getter throws',
+    async ({ canary, paired, getterThrowAt, expected }) => {
+      const harness = createHarness({ canary, paired, getterThrowAt });
+
+      await expect(runCli(harness)).resolves.toEqual(
+        attempted(expected, ReviewPlannerDiagnosticCode.EvidenceIo),
+      );
+      expect(harness.events.at(-1)).toBe('providerAttemptCount');
       expect(harness.finalizeEvidence).not.toHaveBeenCalled();
     },
   );
@@ -353,10 +449,9 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
       });
 
       await expect(runCli(harness)).resolves.toEqual(
-        attempted(
-          attemptsAfterPaired,
-          ReviewPlannerDiagnosticCode.InvalidResponse,
-        ),
+        attemptsAfterPaired === 22
+          ? attempted(1, ReviewPlannerDiagnosticCode.EvidenceIo)
+          : attempted(23, ReviewPlannerDiagnosticCode.InvalidResponse),
       );
       expect(harness.events).not.toContain('.stage-090-report-validated');
       expect(harness.finalizeEvidence).not.toHaveBeenCalled();
@@ -412,21 +507,34 @@ describe('review planner controlled Live V8 stage diagnostics CLI', () => {
 });
 
 type HarnessOptions = Readonly<{
-  preflight?: 'ready' | 'closed' | 'throw';
+  preflight?: 'ready' | 'closed' | 'throw' | 'getter';
   failure?: 'snapshot' | 'reserve' | 'mark_false' | 'mark_throw';
-  evaluator?: 'ready' | 'closed' | 'throw';
+  evaluator?:
+    | 'ready'
+    | 'closed'
+    | 'throw'
+    | 'state_getter'
+    | 'diagnostic_getter'
+    | 'identity_getter';
   stageFailure?: Readonly<{
     stage: ReviewPlannerControlledLiveV8Stage;
     mode: 'false' | 'throw';
   }>;
   historyFailure?: boolean;
-  canary?: 'complete' | 'throw' | 'diagnostic' | 'malformed';
+  canary?:
+    | 'complete'
+    | 'throw'
+    | 'diagnostic'
+    | 'malformed'
+    | 'kind_getter'
+    | 'diagnostic_getter';
   paired?: 'report' | 'throw' | 'diagnostic';
   report?: unknown;
   attemptsAfterPaired?: number;
   cost?: Readonly<Record<string, unknown>>;
   rawCost?: unknown;
   getterThrowAt?: number;
+  attemptSequence?: readonly number[];
   finalizeFailure?: 'false' | 'throw';
   readFailure?: 'throw' | 'mismatch';
 }>;
@@ -448,10 +556,31 @@ function createHarness(options: HarnessOptions = {}) {
   };
   const runCanary = jest.fn(() => {
     events.push('runCanary');
+    providerAttempts = 1;
     if (options.canary === 'throw') {
       return Promise.reject(new Error('private canary failure'));
     }
-    providerAttempts = 1;
+    if (options.canary === 'kind_getter') {
+      return Promise.resolve(
+        new Proxy(
+          {},
+          {
+            get(_target, property) {
+              if (property === 'then') return undefined;
+              throw new Error('PRIVATE_CANARY_KIND_GETTER');
+            },
+          },
+        ) as never,
+      );
+    }
+    if (options.canary === 'diagnostic_getter') {
+      return Promise.resolve({
+        kind: 'failed' as const,
+        get diagnosticCode() {
+          throw new Error('PRIVATE_CANARY_DIAGNOSTIC_GETTER');
+        },
+      } as never);
+    }
     if (options.canary === 'diagnostic') {
       return Promise.resolve({
         kind: 'failed' as const,
@@ -469,10 +598,10 @@ function createHarness(options: HarnessOptions = {}) {
   });
   const runPaired = jest.fn(() => {
     events.push('runPaired');
+    providerAttempts = options.attemptsAfterPaired ?? 23;
     if (options.paired === 'throw') {
       return Promise.reject(new Error('private paired failure'));
     }
-    providerAttempts = options.attemptsAfterPaired ?? 23;
     if (options.paired === 'diagnostic') {
       return Promise.resolve({
         kind: 'failed' as const,
@@ -499,7 +628,7 @@ function createHarness(options: HarnessOptions = {}) {
       if (getterCalls === options.getterThrowAt) {
         throw new Error('PRIVATE_ATTEMPT_GETTER');
       }
-      return providerAttempts;
+      return options.attemptSequence?.[getterCalls - 1] ?? providerAttempts;
     },
   };
   const finalizeEvidence = jest.fn(
@@ -528,6 +657,16 @@ function createHarness(options: HarnessOptions = {}) {
     validatePreflight: () => {
       events.push('preflight');
       if (options.preflight === 'throw') throw new Error('private preflight');
+      if (options.preflight === 'getter') {
+        return new Proxy(
+          {},
+          {
+            get() {
+              throw new Error('PRIVATE_PREFLIGHT_GETTER');
+            },
+          },
+        ) as never;
+      }
       return options.preflight === 'closed'
         ? {
             ok: false,
@@ -567,6 +706,37 @@ function createHarness(options: HarnessOptions = {}) {
       events.push('createEvaluator');
       if (options.evaluator === 'throw') {
         throw new Error('private evaluator failure');
+      }
+      if (options.evaluator === 'state_getter') {
+        return new Proxy(
+          {},
+          {
+            get() {
+              throw new Error('PRIVATE_EVALUATOR_STATE_GETTER');
+            },
+          },
+        ) as never;
+      }
+      if (options.evaluator === 'diagnostic_getter') {
+        return {
+          state: 'closed' as const,
+          identity: evaluatorIdentity(),
+          get diagnosticCode() {
+            throw new Error('PRIVATE_EVALUATOR_DIAGNOSTIC_GETTER');
+          },
+          providerAttemptCount: () => 0,
+        } as never;
+      }
+      if (options.evaluator === 'identity_getter') {
+        return {
+          state: 'ready' as const,
+          get identity() {
+            throw new Error('PRIVATE_EVALUATOR_IDENTITY_GETTER');
+          },
+          runCanary,
+          runPaired,
+          providerAttemptCount: () => 0,
+        } as never;
       }
       return options.evaluator === 'closed'
         ? {
