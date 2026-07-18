@@ -333,6 +333,8 @@ git commit -m "feat(agent): guard Review Planner product acceptance"
 
 ### Task 6: Offline Gates and Independent Implementation Reviews
 
+> 2026-07-18 独立复审补充：进入本 Task 前必须先完成 `phase-6-9-5-v8-product-acceptance-durable-runner.md` Task 1--3。branch/main 单轮上限为 `7_800 / 1_760`，两轮合计为 `15_600 / 3_520`，共同受未舍入 CNY `0.10000000` hard cap；产品验收不得继续使用纯内存 runner。
+
 **Files:**
 - Modify only when a failing test identifies a defect; each defect follows its own RED/GREEN cycle and commit.
 

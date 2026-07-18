@@ -222,6 +222,8 @@ Server 环境固定为 `REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL
 
 ## 9. main 复验语义
 
+> 2026-07-18 独立复审补充：产品验收的跨进程 durability、真实 composition、browser close/drain、Trace 唯一性与 verified default-off receipt 由 `phase-6-9-5-v8-product-acceptance-durable-runner-amendment.md` 收紧；若两份文档冲突，以该 amendment 为准。
+
 已消费的 V8 paired lineage在 main 上绝不重跑。`--no-ff` 合并 main 后的复验由以下部分组成：
 
 1. 重新读取 committed V8 evidence，核对 success seal、stage manifest、V1--V7 tree 和工作区/HEAD SHA；
