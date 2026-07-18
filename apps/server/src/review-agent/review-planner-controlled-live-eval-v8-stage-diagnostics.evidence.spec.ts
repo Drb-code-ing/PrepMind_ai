@@ -4,6 +4,7 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES,
+  parseReviewPlannerControlledLiveV8CommittedCandidate,
   safeReviewPlannerControlledLiveV8SummarySchema,
   serializeReviewPlannerControlledLiveV8Evidence,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
@@ -112,5 +113,41 @@ describe('Phase 6.9.5 V8 durable stage evidence contract', () => {
         rawError: 'forbidden',
       }),
     ).toThrow();
+  });
+
+  it('strictly validates the committed success candidate rather than trusting a working-tree projection', () => {
+    const candidate = {
+      schemaVersion:
+        REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceSchemaVersion,
+      state: 'success_candidate',
+      status: 'complete',
+      gate: 'closed',
+      providerAttemptCount: 23,
+      usageKnown: true,
+      aggregateInputTokens: 42_996,
+      aggregateOutputTokens: 9_712,
+      observedCostCny: 0.18726,
+      priceProfileId:
+        REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+      caseEntries: 48,
+      zeroCallCases: 26,
+      runtimeInvocations: 22,
+      strictSuccesses: 48,
+      qualityPasses: 48,
+      criticalFailures: 0,
+      successCommitmentSha256: 'a'.repeat(64),
+      stageManifestSha256: 'b'.repeat(64),
+    };
+
+    expect(
+      parseReviewPlannerControlledLiveV8CommittedCandidate(
+        `${JSON.stringify(candidate)}\n`,
+      ),
+    ).toMatchObject({ state: 'success_candidate', caseEntries: 48 });
+    expect(() =>
+      parseReviewPlannerControlledLiveV8CommittedCandidate(
+        JSON.stringify({ ...candidate, caseEntries: 47 }),
+      ),
+    ).toThrow('CONTROLLED_LIVE_V8_COMMITTED_CANDIDATE_INVALID');
   });
 });

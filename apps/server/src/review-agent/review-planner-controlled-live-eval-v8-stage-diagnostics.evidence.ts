@@ -291,6 +291,17 @@ const successCandidateSchema = completeSummarySchema
     stageManifestSha256: z.string().regex(HASH_PATTERN),
   })
   .strict();
+
+export function parseReviewPlannerControlledLiveV8CommittedCandidate(
+  contents: string,
+) {
+  try {
+    return successCandidateSchema.parse(JSON.parse(contents) as unknown);
+  } catch {
+    throw new Error('CONTROLLED_LIVE_V8_COMMITTED_CANDIDATE_INVALID');
+  }
+}
+
 const successSealSchema = z
   .object({
     schemaVersion: z.literal(

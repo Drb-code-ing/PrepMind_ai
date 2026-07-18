@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { readFile, readdir, rm } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -10,6 +10,7 @@ import { chromium } from 'playwright-core';
 
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
+  parseReviewPlannerControlledLiveV8CommittedCandidate,
   readReviewPlannerControlledLiveV8Evidence,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 
@@ -106,6 +107,7 @@ type ProductPreflight =
       environment: ReviewPlannerV8ProductAcceptanceEnvironment;
       repoRoot: string;
       commitSha: string;
+      branchName: string;
       pairedEvidenceSha256: string;
       chromeExecutablePath: string;
       utcStamp: string;
@@ -144,6 +146,9 @@ export interface ReviewPlannerV8ProductAcceptanceCompositionPorts {
     environment: ReviewPlannerV8ProductAcceptanceEnvironment;
     role: 'product';
   }): Promise<ProductOwnerResult>;
+  revalidatePreflight(input: {
+    preflight: Extract<ProductPreflight, { status: 'ready' }>;
+  }): Promise<boolean>;
   reserveLedger(input: {
     repoRoot: string;
     environment: ReviewPlannerV8ProductAcceptanceEnvironment;
@@ -376,6 +381,9 @@ export async function runReviewPlannerV8ProductAcceptanceProductCli(input: {
       });
     }
     owner = ownership.owner;
+    if (!(await input.ports.revalidatePreflight({ preflight }))) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_PREFLIGHT_DRIFTED');
+    }
     ledger = await input.ports.reserveLedger({
       repoRoot: input.repoRoot,
       environment,
@@ -992,6 +1000,8 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     preflight: (input) => runDefaultProductPreflight(input),
     acquireOwner: (input) =>
       acquireReviewPlannerV8ProductAcceptanceOwner(input),
+    revalidatePreflight: ({ preflight }) =>
+      revalidateDefaultProductPreflight(preflight),
     reserveLedger: (input) =>
       reserveReviewPlannerV8ProductAcceptanceLedger(input),
     generateResources(preflight) {
@@ -1073,23 +1083,18 @@ async function runDefaultProductPreflight(input: {
     ) {
       throw new Error();
     }
-    const [status, commit, branch] = await Promise.all([
-      runReadOnlyProcess(repoRoot, 'git', ['status', '--porcelain']),
-      runReadOnlyProcess(repoRoot, 'git', ['rev-parse', 'HEAD']),
-      runReadOnlyProcess(repoRoot, 'git', ['branch', '--show-current']),
-    ]);
+    const repository = await readReviewPlannerV8RepositorySnapshot(repoRoot);
+    if (repository === null) {
+      return { status: 'blocked', code: 'paired_evidence_incomplete' };
+    }
     if (
-      status.trim() !== '' ||
-      !/^[a-f0-9]{40}$/.test(commit.trim()) ||
+      !repository.clean ||
       (input.environment === 'main'
-        ? branch.trim() !== 'main'
-        : branch.trim() === 'main' || !branch.trim().startsWith('codex/'))
+        ? repository.branchName !== 'main'
+        : repository.branchName === 'main' ||
+          !repository.branchName.startsWith('codex/'))
     ) {
       throw new Error();
-    }
-    const paired = await readPairedEvidence(repoRoot);
-    if (paired === null) {
-      return { status: 'blocked', code: 'paired_evidence_incomplete' };
     }
     await assertCurrentServerDefaultOff(repoRoot);
     if (input.environment === 'main') {
@@ -1099,7 +1104,7 @@ async function runDefaultProductPreflight(input: {
       });
       if (
         branchLedger.status !== 'complete' ||
-        branchLedger.pairedEvidenceSha256 !== paired
+        branchLedger.pairedEvidenceSha256 !== repository.pairedEvidenceSha256
       ) {
         throw new Error();
       }
@@ -1108,14 +1113,34 @@ async function runDefaultProductPreflight(input: {
       status: 'ready',
       environment: input.environment,
       repoRoot,
-      commitSha: commit.trim(),
-      pairedEvidenceSha256: paired,
+      commitSha: repository.commitSha,
+      branchName: repository.branchName,
+      pairedEvidenceSha256: repository.pairedEvidenceSha256,
       chromeExecutablePath:
         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       utcStamp: new Date().toISOString().replace(/[-:.]/g, '').toLowerCase(),
     });
   } catch {
     return { status: 'blocked', code: 'preflight_failed' };
+  }
+}
+
+async function revalidateDefaultProductPreflight(
+  preflight: Extract<ProductPreflight, { status: 'ready' }>,
+) {
+  try {
+    const current = await readReviewPlannerV8RepositorySnapshot(
+      preflight.repoRoot,
+    );
+    return (
+      current !== null &&
+      current.clean &&
+      current.commitSha === preflight.commitSha &&
+      current.branchName === preflight.branchName &&
+      current.pairedEvidenceSha256 === preflight.pairedEvidenceSha256
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -1842,7 +1867,7 @@ function requiredEnv(env: Readonly<Record<string, string>>, key: string) {
   return value;
 }
 
-async function readPairedEvidence(repoRoot: string) {
+async function readPairedEvidenceReference(repoRoot: string) {
   const evidence = await readReviewPlannerControlledLiveV8Evidence(repoRoot);
   if (
     evidence.state !== 'finalized' ||
@@ -1865,9 +1890,131 @@ async function readPairedEvidence(repoRoot: string) {
     /^review-planner-live-[A-Za-z0-9._-]+\.json$/.test(name),
   );
   if (names.length !== 1) return null;
-  return createHash('sha256')
-    .update(await readFile(resolve(directory, names[0])))
-    .digest('hex');
+  const evidenceDirectory =
+    REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory;
+  const allNames = (await readdir(directory)).sort();
+  const expectedTrackedPaths = allNames.map(
+    (name) => `${evidenceDirectory}/${name}`,
+  );
+  assertReviewPlannerV8EvidenceIndexIsOrdinary(
+    await runReadOnlyProcess(repoRoot, 'git', [
+      'ls-files',
+      '-v',
+      '--full-name',
+      '--',
+      evidenceDirectory,
+    ]),
+    expectedTrackedPaths,
+  );
+  return Object.freeze({
+    relativePath: `${evidenceDirectory}/${names[0]}`.replaceAll('\\', '/'),
+  });
+}
+
+export function assertReviewPlannerV8EvidenceIndexIsOrdinary(
+  output: string,
+  expectedRelativePaths: readonly string[],
+) {
+  const lines = output.split(/\r?\n/).filter((line) => line.length > 0);
+  const actualPaths: string[] = [];
+  for (const line of lines) {
+    if (!line.startsWith('H ')) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+    }
+    actualPaths.push(line.slice(2));
+  }
+  const expected = [...expectedRelativePaths].sort();
+  actualPaths.sort();
+  if (
+    expected.length !== actualPaths.length ||
+    expected.some((path, index) => path !== actualPaths[index])
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+  }
+}
+
+export function parseReviewPlannerV8GitPorcelainSnapshot(output: string) {
+  const lines = output.split(/\r?\n/).filter((line) => line.length > 0);
+  const oidLines = lines.filter((line) => line.startsWith('# branch.oid '));
+  const headLines = lines.filter((line) => line.startsWith('# branch.head '));
+  if (oidLines.length !== 1 || headLines.length !== 1) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_GIT_SNAPSHOT_INVALID');
+  }
+  const commitSha = oidLines[0].slice('# branch.oid '.length);
+  const branchName = headLines[0].slice('# branch.head '.length);
+  if (
+    !/^[a-f0-9]{40}$/.test(commitSha) ||
+    !/^[A-Za-z0-9._/-]{1,255}$/.test(branchName)
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_GIT_SNAPSHOT_INVALID');
+  }
+  return Object.freeze({
+    commitSha,
+    branchName,
+    clean: lines.every((line) => line.startsWith('# ')),
+  });
+}
+
+export async function captureReviewPlannerV8RepositorySnapshot(input: {
+  readGitStatus(): Promise<string>;
+  readEvidenceReference(): Promise<Readonly<{ relativePath: string }> | null>;
+  readCommittedEvidence(
+    commitSha: string,
+    relativePath: string,
+  ): Promise<string>;
+}) {
+  const before = parseReviewPlannerV8GitPorcelainSnapshot(
+    await input.readGitStatus(),
+  );
+  const evidence = await input.readEvidenceReference();
+  if (evidence === null) return null;
+  if (
+    !/^docs\/acceptance\/evidence\/[A-Za-z0-9._/-]+\.json$/.test(
+      evidence.relativePath,
+    )
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_PATH_INVALID');
+  }
+  const committedEvidence = await input.readCommittedEvidence(
+    before.commitSha,
+    evidence.relativePath,
+  );
+  parseReviewPlannerControlledLiveV8CommittedCandidate(committedEvidence);
+  const after = parseReviewPlannerV8GitPorcelainSnapshot(
+    await input.readGitStatus(),
+  );
+  if (
+    before.commitSha !== after.commitSha ||
+    before.branchName !== after.branchName ||
+    before.clean !== after.clean
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_REPOSITORY_DRIFTED');
+  }
+  return Object.freeze({
+    ...after,
+    pairedEvidenceSha256: createHash('sha256')
+      .update(committedEvidence)
+      .digest('hex'),
+  });
+}
+
+async function readReviewPlannerV8RepositorySnapshot(repoRoot: string) {
+  const readGitStatus = () =>
+    runReadOnlyProcess(repoRoot, 'git', [
+      'status',
+      '--porcelain=v2',
+      '--branch',
+      '--untracked-files=all',
+    ]);
+  return captureReviewPlannerV8RepositorySnapshot({
+    readGitStatus,
+    readEvidenceReference: () => readPairedEvidenceReference(repoRoot),
+    readCommittedEvidence: (commitSha, relativePath) =>
+      runReadOnlyProcess(repoRoot, 'git', [
+        'show',
+        `${commitSha}:${relativePath}`,
+      ]),
+  });
 }
 
 async function runReadOnlyProcess(

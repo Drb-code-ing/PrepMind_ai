@@ -5,25 +5,141 @@ import {
   buildReviewPlannerV8ActivationEnvironment,
   buildReviewPlannerV8DefaultOffEnvironment,
   buildReviewPlannerV8ServerRecreateCommand,
+  captureReviewPlannerV8RepositorySnapshot,
+  assertReviewPlannerV8EvidenceIndexIsOrdinary,
   createDefaultReviewPlannerV8ProductAcceptanceComposition,
   createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition,
   executeReviewPlannerV8ProductAcceptanceProductCli,
   executeReviewPlannerV8ProductAcceptanceRecoveryCli,
   mergeReviewPlannerV8AcceptanceHeaders,
+  parseReviewPlannerV8GitPorcelainSnapshot,
   parseReviewPlannerV8ProductAcceptanceArguments,
   runReviewPlannerV8ProductAcceptanceProductCli,
   runReviewPlannerV8ProductAcceptanceRecoveryCli,
   serializeReviewPlannerV8ProductAcceptanceCliSummary,
+  sha256ReviewPlannerV8CompositionValue,
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
 import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
+import {
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
+} from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
+const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
+  schemaVersion:
+    REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceSchemaVersion,
+  state: 'success_candidate',
+  status: 'complete',
+  gate: 'closed',
+  providerAttemptCount: 23,
+  usageKnown: true,
+  aggregateInputTokens: 42_996,
+  aggregateOutputTokens: 9_712,
+  observedCostCny: 0.18726,
+  priceProfileId:
+    REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+  caseEntries: 48,
+  zeroCallCases: 26,
+  runtimeInvocations: 22,
+  strictSuccesses: 48,
+  qualityPasses: 48,
+  criticalFailures: 0,
+  successCommitmentSha256: 'd'.repeat(64),
+  stageManifestSha256: 'e'.repeat(64),
+})}\n`;
 const REPO_ROOT = 'E:\\PrepMind_ai智能备考助手';
 
 describe('V8 product acceptance executable composition', () => {
+  it('strictly parses one clean Git porcelain-v2 branch snapshot and detects worktree drift', () => {
+    expect(
+      parseReviewPlannerV8GitPorcelainSnapshot(
+        `# branch.oid ${COMMIT}\n# branch.head codex/phase-6-9-5\n`,
+      ),
+    ).toEqual({
+      commitSha: COMMIT,
+      branchName: 'codex/phase-6-9-5',
+      clean: true,
+    });
+    expect(
+      parseReviewPlannerV8GitPorcelainSnapshot(
+        `# branch.oid ${COMMIT}\n# branch.head codex/phase-6-9-5\n1 .M N... 100644 100644 100644 ${COMMIT} ${COMMIT} tracked.ts\n`,
+      ).clean,
+    ).toBe(false);
+    expect(() =>
+      parseReviewPlannerV8GitPorcelainSnapshot(
+        `# branch.oid ${COMMIT}\n# branch.oid ${COMMIT}\n# branch.head main\n`,
+      ),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_GIT_SNAPSHOT_INVALID');
+  });
+
+  it('rejects a torn repository snapshot and hashes evidence from the captured commit tree', async () => {
+    const first = `# branch.oid ${COMMIT}\n# branch.head codex/phase-6-9-5\n`;
+    const driftedCommit = 'c'.repeat(40);
+    const second = `# branch.oid ${driftedCommit}\n# branch.head codex/phase-6-9-5\n`;
+    const readGitStatus = jest
+      .fn<Promise<string>, []>()
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce(second);
+    const readCommittedEvidence = jest.fn(async () => COMMITTED_V8_CANDIDATE);
+
+    await expect(
+      captureReviewPlannerV8RepositorySnapshot({
+        readGitStatus,
+        readEvidenceReference: async () => ({
+          relativePath: 'docs/acceptance/evidence/v8/report.json',
+        }),
+        readCommittedEvidence,
+      }),
+    ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_REPOSITORY_DRIFTED');
+    expect(readCommittedEvidence).toHaveBeenCalledWith(
+      COMMIT,
+      'docs/acceptance/evidence/v8/report.json',
+    );
+
+    await expect(
+      captureReviewPlannerV8RepositorySnapshot({
+        readGitStatus: jest.fn(async () => first),
+        readEvidenceReference: async () => ({
+          relativePath: 'docs/acceptance/evidence/v8/report.json',
+        }),
+        readCommittedEvidence: async () => COMMITTED_V8_CANDIDATE,
+      }),
+    ).resolves.toMatchObject({
+      commitSha: COMMIT,
+      branchName: 'codex/phase-6-9-5',
+      clean: true,
+      pairedEvidenceSha256: sha256ReviewPlannerV8CompositionValue(
+        COMMITTED_V8_CANDIDATE,
+      ),
+    });
+  });
+
+  it('rejects assume-unchanged or skip-worktree evidence index entries', () => {
+    const expected = ['docs/acceptance/evidence/v8/report.json'];
+    expect(() =>
+      assertReviewPlannerV8EvidenceIndexIsOrdinary(
+        'h docs/acceptance/evidence/v8/report.json\n',
+        expected,
+      ),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+    expect(() =>
+      assertReviewPlannerV8EvidenceIndexIsOrdinary(
+        'S docs/acceptance/evidence/v8/report.json\n',
+        expected,
+      ),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_EVIDENCE_INDEX_INVALID');
+    expect(() =>
+      assertReviewPlannerV8EvidenceIndexIsOrdinary(
+        'H docs/acceptance/evidence/v8/report.json\n',
+        expected,
+      ),
+    ).not.toThrow();
+  });
+
   it('builds the exact single-server recreate command and mutually exclusive activation/default-off environments', () => {
     expect(buildReviewPlannerV8ServerRecreateCommand()).toEqual({
       file: 'docker',
@@ -200,6 +316,7 @@ describe('V8 product acceptance executable composition', () => {
     expect(fixture.order).toEqual([
       'preflight',
       'owner:product',
+      'preflight:revalidate',
       'ledger:reserve',
       'resources',
       'recovery:prepare',
@@ -215,6 +332,24 @@ describe('V8 product acceptance executable composition', () => {
       'ledger:close',
       'owner:close',
     ]);
+  });
+
+  it('fails before ledger reservation or synthetic side effects when Git or paired evidence drifts after preflight', async () => {
+    const fixture = createPorts({ revalidationStatus: 'drifted' });
+
+    await expect(runProduct(fixture.ports)).rejects.toThrow(
+      'V8_PRODUCT_ACCEPTANCE_OPERATION_FAILED',
+    );
+    expect(fixture.order).toEqual([
+      'preflight',
+      'owner:product',
+      'preflight:revalidate',
+      'owner:close',
+    ]);
+    expect(fixture.ports.reserveLedger).not.toHaveBeenCalled();
+    expect(fixture.ports.registerAccount).not.toHaveBeenCalled();
+    expect(fixture.ports.createFixtures).not.toHaveBeenCalled();
+    expect(fixture.ports.createRunnerDependencies).not.toHaveBeenCalled();
   });
 
   it('uses only pre-generated exact emails and fixture ids in register, binding, fixture, and manifests', async () => {
@@ -490,7 +625,12 @@ function runRecovery(
   });
 }
 
-function createPorts(options: { preflightStatus?: 'ready' | 'blocked' } = {}) {
+function createPorts(
+  options: {
+    preflightStatus?: 'ready' | 'blocked';
+    revalidationStatus?: 'stable' | 'drifted';
+  } = {},
+) {
   const order: string[] = [];
   const owner = {
     assertHeld: jest.fn(),
@@ -545,6 +685,7 @@ function createPorts(options: { preflightStatus?: 'ready' | 'blocked' } = {}) {
         environment: 'branch' as const,
         repoRoot: REPO_ROOT,
         commitSha: COMMIT,
+        branchName: 'codex/phase-6-9-5',
         pairedEvidenceSha256: SHA,
         chromeExecutablePath:
           'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -554,6 +695,10 @@ function createPorts(options: { preflightStatus?: 'ready' | 'blocked' } = {}) {
     acquireOwner: jest.fn(async () => {
       order.push('owner:product');
       return { status: 'acquired' as const, owner };
+    }),
+    revalidatePreflight: jest.fn(async () => {
+      order.push('preflight:revalidate');
+      return options.revalidationStatus !== 'drifted';
     }),
     reserveLedger: jest.fn(async () => {
       order.push('ledger:reserve');
