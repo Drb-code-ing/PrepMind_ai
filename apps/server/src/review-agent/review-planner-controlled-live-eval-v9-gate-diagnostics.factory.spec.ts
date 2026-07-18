@@ -11,8 +11,10 @@ import {
 } from '@repo/agent';
 
 import {
+  REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED,
   REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE_ID,
   createReviewPlannerControlledLiveV9GateDiagnosticsEvaluator,
+  validateReviewPlannerControlledLiveV9GateDiagnosticsPreflight,
 } from './review-planner-controlled-live-eval-v9-gate-diagnostics.factory';
 import {
   v9GateDiagnosticSchema,
@@ -22,7 +24,8 @@ import {
 const readyEnv = Object.freeze({
   AI_PROVIDER_MODE: 'live',
   AI_ENABLE_LIVE_CALLS: 'true',
-  REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V8_ENABLED: 'true',
+  REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V8_ENABLED: 'false',
+  REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED: 'true',
   REVIEW_AGENT_MODEL_ENABLED: 'false',
   PLANNER_AGENT_MODEL_ENABLED: 'false',
   AI_MODEL: 'deepseek-v4-pro',
@@ -33,6 +36,79 @@ const readyEnv = Object.freeze({
 });
 
 describe('review planner controlled Live V9 gate diagnostics factory', () => {
+  it('owns an isolated V9 gate and never mutates the caller V8 gate', () => {
+    const env = Object.freeze({ ...readyEnv });
+    const harness = createExecutorHarness();
+
+    expect(
+      REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED,
+    ).toBe('REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED');
+    expect(
+      validateReviewPlannerControlledLiveV9GateDiagnosticsPreflight(env),
+    ).toEqual({ ok: true });
+    expect(
+      createReviewPlannerControlledLiveV9GateDiagnosticsEvaluator(env, {
+        createExecutor: harness.createExecutor,
+      }).state,
+    ).toBe('ready');
+    expect(env.REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V8_ENABLED).toBe('false');
+  });
+
+  it.each([
+    {
+      name: 'missing V9 gate',
+      env: {
+        ...readyEnv,
+        REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED:
+          undefined,
+      },
+    },
+    {
+      name: 'false V9 gate',
+      env: {
+        ...readyEnv,
+        REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED:
+          'false',
+      },
+    },
+    {
+      name: 'external V8 true',
+      env: {
+        ...readyEnv,
+        REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V8_ENABLED: 'true',
+      },
+    },
+    {
+      name: 'throwing V9 getter',
+      env: Object.defineProperty(
+        { ...readyEnv },
+        REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED,
+        {
+          enumerable: true,
+          get() {
+            throw new Error('PRIVATE_V9_GATE');
+          },
+        },
+      ),
+    },
+  ])('rejects $name before executor construction', ({ env }) => {
+    const createExecutor = jest.fn();
+
+    expect(
+      validateReviewPlannerControlledLiveV9GateDiagnosticsPreflight(env),
+    ).toEqual({ ok: false, diagnosticCode: 'preflight_invalid' });
+    expect(
+      createReviewPlannerControlledLiveV9GateDiagnosticsEvaluator(env, {
+        createExecutor,
+      }),
+    ).toMatchObject({
+      state: 'closed',
+      diagnosticCode: 'preflight_invalid',
+      identity: null,
+    });
+    expect(createExecutor).not.toHaveBeenCalled();
+  });
+
   it('captures exactly one strict aggregate from the existing 23-attempt run', async () => {
     const harness = createExecutorHarness();
     const report = await validLiveReport();
