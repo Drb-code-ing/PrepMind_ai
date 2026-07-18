@@ -748,4 +748,6 @@ V8 completion contract 已在 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagn
 
 2026-07-18 离线 checkpoint：上述 V8 stage evidence、CLI/factory、product admission、branch/main durable ledger、recovery 与 executable Docker/API/Prisma/headed-browser composition 已实现；Server `1265 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`，Windows native、Agent/AI/types、lint/build、Compose `config --quiet` 与 diff check 全部 exit 0，最终 contract/security 和 acceptance/operations 复审无未关闭 Critical/Important。此 checkpoint 仍不是 Live 或产品验收：V8 evidence/once marker 不存在，两个产品 gate 为 `false`，不得跳过唯一 V8 success gate 直接进入 Docker 产品路径。
 
+随后唯一 V8 controlled-Live 已消费：CLI stdout 为 `invalid_attempted / closed / 23 / false / invalid_response`；落盘 231-byte provisional 为 `attempted / 0 / false / transport`；public reader 为 `0 / evidence_io / lastStage=.stage-080-paired-returned`。durable prefix 无 `.stage-090` 或 success seal，因此 checklist 第 4 项 committed success 条件未成立，第 5--11 项 branch/main 产品路径全部禁止。不得把 CLI 23 冒充 durable terminal，也不得把落盘/public 0 解释为 zero-call、质量或零费用；V8 不可重跑。
+
 任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. 正文复选框保留为最初计划模板；当前进度只以紧随其后的“执行状态”为准，未勾选不表示任务尚未执行。
 
-> **执行状态（2026-07-18）：** Task 1--6 及 durable product runner 补充计划 Task 1--4 的离线实现、最终门和双复审已完成；真实 V8 evidence/once marker 尚不存在。下一步从 Task 7 唯一 controlled-Live 继续，不重跑 V1--V7，也不重复已通过的离线门。
+> **执行状态：** Task 1--6 与补充 runner 离线工程已完成；Task 7 唯一 V8 controlled-Live 已消费并在 `.stage-080-paired-returned / invalid_response` 关闭，无 success seal。Task 8/9 产品验收、main 合并/replay 与 push 按计划被阻断；不得重跑 V1--V8。
 
 **Goal:** 在不重跑或改写 V1--V7 的前提下，为 ReviewAgent / PlannerAgent 建立可定位、一次性、durable 的 V8 controlled-Live lineage，并完成默认关闭、只读、owner-scoped 的 Docker/API/可见浏览器/Trace 产品验收。
 

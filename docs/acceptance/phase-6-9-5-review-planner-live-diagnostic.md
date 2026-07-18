@@ -8,6 +8,26 @@
 
 本记录不把 Mock、静态检查、Docker 配置解析或浏览器页面当作真实模型质量证据。
 
+## 2026-07-18 V8 唯一 controlled-Live 终态
+
+运行前零网络 preflight 为 `ok=true`：工作树 clean，HEAD 为 `bd21091731d0e874a629bfdf37779177f079a769`，V8 目录不存在，DeepSeek credential 仅验证存在且未输出；精确 provider/model/base/timeout 与产品 gate `false/false/false` 均匹配。V1--V7 snapshot 为 20 entries，tree hash `6078891e6c962bc5c8e57471017d7f64e210c5f4ffd867c96136e33983ac2bd6`。
+
+唯一命令执行一次，耗时约 25 秒并以 exit 1 终态关闭。CLI safe summary 为：
+
+```text
+status=invalid_attempted
+gate=closed
+providerAttemptCount=23
+usageKnown=false
+diagnosticCode=invalid_response
+```
+
+durable 目录只有 once marker、`.stage-010` 至 `.stage-080` 八个连续零字节 marker 和一份 231-byte provisional JSON。该文件仍是 `state=attempted / status=invalid_attempted / gate=closed / providerAttemptCount=0 / usageKnown=false / diagnosticCode=transport`，SHA-256 为 `82813d58d70a438fb3942358c1ab49f85a52c17e319ca4261c98f7f56c39e0a7`；89-byte once marker SHA-256 为 `c014e04a7aa9a695971fe307a5b9909e0172c2e9cb0af7a1dcf0b39d5ff9733d`。没有 finalized terminal、`.stage-090-report-validated`、后续 stage、success candidate 或 success seal。
+
+public reader 返回 `invalid_attempted / closed / providerAttemptCount=0 / usageKnown=false / evidence_io / lastStage=.stage-080-paired-returned`。它只证明 paired evaluator 已返回但完整 report validation/finalization 没有形成 committed success；无法区分 strict/quality/P95/usage/cost/admission 或后续 evidence I/O 中的具体失败。CLI safe stdout 的 23/`invalid_response`、provisional 文件的 0/`transport` 和 public reader 的 0/`evidence_io` 是三个不同证据层，不能互相替代；两个 0 都不能解释为 zero-call或零成本。
+
+V8 once marker 已消费且不可重跑。由于 committed success 条件不成立，本轮没有启动 Docker、可见浏览器、合成账号、Trace 产品验收、branch acceptance、main 合并/replay或 push；两个产品 gate 始终 `false`。任何下一 lineage 都必须先有新的零网络设计与独立复审，不能把 V8 当作可重试入口。
+
 ## 2026-07-18 V8 最终离线 checkpoint
 
 V8 completion 与 durable product acceptance runner 已完成离线实现，当前实现 checkpoint 为 `faa97a8`。本轮没有读取或调用 provider，没有创建 V8 evidence/once marker，没有启动 Docker 产品验收或可见浏览器；`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false` 和 product acceptance 默认关闭保持不变。

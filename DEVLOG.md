@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-18 — Phase 6.9.5 V8 离线工程已完成：V7 继续只读且不可重跑；V8 durable stage evidence、one-shot CLI、双层 admission、branch/main ledger、executable 产品验收 runner 与 recovery 已通过最终离线门和双复审。真实 V8 evidence/once marker 尚不存在，唯一 Live、Docker/可见浏览器产品验收和 main replay 尚未执行；两个产品 gate 继续默认 `false`，当前产品仍 deterministic。
+> 2026-07-18 — Phase 6.9.5 V8 唯一 controlled-Live 已终态关闭：23 次 provider attempt 后停在 `.stage-080-paired-returned / invalid_response`，无 `.stage-090` 或 success seal。产品验收、main 合并与推送均未执行；两个产品 gate 继续默认 `false`，当前产品仍 deterministic。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-18
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v7 均为独立且不可重跑的关闭 profile；V7 终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。V8 durable stage/evidence、受控 CLI、双层 product admission、branch/main durable ledger、真实 Docker/API/Prisma/headed-browser composition 与 recovery-only 路径已完成离线实现和复审；真实 V8 evidence/once marker、provider 调用、产品验收和 main replay 仍不存在。当前 Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v8 均为独立且不可重跑的关闭 profile。V8 离线工程已完成；唯一 Live 的 CLI stdout 为 `invalid_attempted / closed / 23 / false / invalid_response`，但落盘文件仍是 provisional `attempted / 0 / false / transport`，durable prefix 到 `.stage-080-paired-returned`，public reader 为 `0 / evidence_io / lastStage=.stage-080-paired-returned`。无 success seal，不得进入产品验收或 main。当前 Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V8 离线工程与双复审已完成；待唯一 Live、branch/main 产品验收、最终文档与推送 |
+| Phase 6.9.5  | 验收未完成 | V8 唯一 Live 在 `.stage-080 / invalid_response` 关闭；产品验收与 main 被阻断 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,18 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
+
+目标：在两个产品 gate 保持关闭的前提下，只执行一次 V8 DeepSeek V4 Pro non-thinking 评测，并仅依据 durable committed evidence 决定能否进入产品验收。
+
+结果：零网络 preflight 为 `ok=true`，工作树 clean，V8 目录不存在，V1--V7 snapshot 为 20 entries / `6078891e6c962bc5c8e57471017d7f64e210c5f4ffd867c96136e33983ac2bd6`。唯一命令执行 23 次 provider attempt 后返回 `invalid_attempted / closed / usageKnown=false / invalid_response`。durable marker 连续到 `.stage-080-paired-returned`，没有 `.stage-090-report-validated`、candidate 或 success seal；因此失败位于 paired evaluator 已返回、report/cost/admission 完整成功门尚未通过的边界。
+
+落盘 231-byte 文件仍为 provisional `state=attempted / providerAttemptCount=0 / usageKnown=false / transport`，SHA-256 为 `82813d58d70a438fb3942358c1ab49f85a52c17e319ca4261c98f7f56c39e0a7`；89-byte once marker SHA-256 为 `c014e04a7aa9a695971fe307a5b9909e0172c2e9cb0af7a1dcf0b39d5ff9733d`。public reader 则返回 `invalid_attempted / closed / 0 / false / evidence_io / lastStage=.stage-080-paired-returned`。因此 23/`invalid_response` 只有本次 CLI safe stdout 支撑，未被 finalizer durable commit；落盘与 public reader 的 0 都不能解释为 zero-call、零成本或否认已发生的外部尝试。
+
+边界：V8 不可重跑，不拼接 V1--V7，不把 23 attempts 推导为 strict/quality/P95/usage/cost 通过，也不把 public reader 的 0 推导为零费用。由于没有 committed success，branch Docker/API/可见浏览器/Trace acceptance、main 合并、main replay 与 push 均禁止。两个产品 gate 继续 `false`。
+
+回顾时可以问：`.stage-080` 精确证明了什么？为什么 CLI stdout 的 23/invalid_response、provisional 文件的 0/transport 与 public reader 的 0/evidence_io 必须分开记录？为什么没有 `.stage-090` 就不能读取或补写质量 counters？
 
 ### 2026-07-18 - Phase 6.9.5 V8 最终离线工程 checkpoint
 

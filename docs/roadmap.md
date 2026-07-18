@@ -239,7 +239,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.3 的 deterministic/Mock、五次不可拼接 Live、diagnostics、400-token headroom、strict-tool 历史实验、JSON-mode resolution 与唯一完整 controlled-Live 已完成。新 run 固定 runner-v3 + `deepseek_json_object_v1`，结果为 `28/28 strict success`、`72/72 zero-call`；Verifier 通过，Router additional P95 `4264ms` 超门槛。Fresh Agent/AI 为 345/151 passed，Mock 为 `100/28/0/28/72`。当时的生产决策是 Router 继续 deterministic；该延迟失败作为历史证据保留，不再解释为永久禁止 Router 模型。当前 Phase 6.9.4.4 以高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的混合路径继续受控生产接入。证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。
 - Phase 6.9.4.4 Task 8 已完成 Docker Web runtime 接线与默认关闭配置。Router 的安全/高置信请求保持 deterministic zero-call，歧义/上下文请求才允许真实模型；Verifier 仅在 RAG 证据通过 prompt injection、high-risk、credential material 等本地零调用安全门后，按 semantic-needed 调用模型。独立 gate、5 秒/4 秒 timeout、共享单请求 `2 calls / 2400 input / 800 output` 预算、JSON-object + canonical Zod、限制性 fallback 与安全 Trace/headers 均为生产边界。Task 9 controlled-Live、Docker、可见浏览器验收前 gate 继续默认关闭。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；Memory、Orchestrator、其余 Agent 与 Phase 6 尚未完成。
 - Phase 6.9.4.4 已完成。Task 9 分支 gates 为 Agent 374/374、AI 151/151、Web remediation 后 407/407、Server 735 passed / 2 skipped；最小 controlled-Live harness 为 5/5 strict success。Task 10 在 main merge commit `b58e8d5` 重跑静态门禁：AI 151/151、Server 737 passed / 2 skipped、Web 407/407、lint/build/typecheck 与 Compose 全部通过。可见 Docker 浏览器复验 Router contextual-reference `candidate_applied / 4048ms / 295+240 tokens`、Verifier conflict `candidate_applied / 2618ms / 536+186 tokens` 与 injection provider 前 `safety_blocked / 0-call`；新的 `deepseek-v4-flash` Trace 为 `pricingKnown=true / 0.000389 USD`。两次历史 `study_plan` timeout 继续作为 fallback 时延风险保留。`de41de9` 修复 Docker Chat RAG internal API 优先级，direct/Chat parity 通过。Docker 已恢复 Mock/default-off，各轮 synthetic PostgreSQL/Redis/浏览器数据清理为 0；Admin 本轮未改源码，其镜像重建受 Prisma 官方二进制外部网络失败阻断，现有容器仍返回 200。证据见 `docs/acceptance/2026-07-14-phase-6-9-4-4-router-verifier-production.md`。
-- Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成受限只读 candidate、固定 Mock、server-only composition 与 V8 离线工程。本地 merger 继续掌握 owner-scoped facts、FSRS、分钟数、链接、任务与全部写权限。v1--v7 都是不可重跑的关闭终态；V8 已实现零字节 durable stage evidence、V1--V7 snapshot、48/26/22 one-shot CLI、双层 product admission、branch/main ledger、Docker/API/Prisma/headed-browser runner 与 recovery。最终离线门和双复审已通过，但真实 V8 evidence/once marker、唯一 Live、产品验收和 main replay 尚未执行；两个业务 gate 保持 `false`。详细设计见 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagnostics-completion-design.md`。
+- Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成受限只读 candidate、固定 Mock、server-only composition 与 V8 离线工程。本地 merger 继续掌握 owner-scoped facts、FSRS、分钟数、链接、任务与全部写权限。v1--v8 都是不可重跑的关闭终态；V8 唯一 Live 执行 23 次 provider attempt 后停在 `.stage-080-paired-returned / invalid_response`，没有 `.stage-090` 或 success seal。产品验收、main 合并/replay 与推送均未执行；两个业务 gate 保持 `false`。详细证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`。
 - 后续 Agent 架构优化执行文档见 `docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md`，重点是状态控制面、工具可靠性、RAG 冲突处理、后台任务事件化和 Reflexion 验收，而不是立刻放开全自主写操作。
 - 当前离线补强已将评测集固定为 `phase-6.9-review-planner-v2`：26 条 zero-call case 必须实际经过候选安全/资格/预算/abort gate，22 条 runtime case 覆盖多种诊断、排序和策略；`zeroCallVerified` 进入 report contract，任何意外调用都会关闭生产决策。live provider 缺失、非法或 `0/0` usage 只会 `invalid_response` 回退，Trace 仅在成功且正数 usage、集中单价完整时显示已知估算成本。以上不构成新的 Live、Docker 或浏览器证据，两个业务 gate 仍为 `false`。
 - 独立 Qwen Chat v5 目前只有零网络设计文档：`docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`。它不重试或替代 v1--v5；在实现或一次 provider 调用前，仍需受审计的精确 Qwen Chat 价格 profile、来源日期/计量依据与独立总费用上限。
@@ -295,7 +295,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V8 离线实现、最终静态门和双复审已完成，待唯一 Live、branch/main 产品验收、最终文档与推送。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V8 唯一 Live 已在 `.stage-080 / invalid_response` 关闭，无 success seal，产品验收与 main 被阻断。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -309,7 +309,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请从 Phase 6.9.5 V8 离线工程已通过的 checkpoint 继续：只执行唯一 V8 controlled-Live；成功后用 executable runner 完成 branch/main 产品验收、默认关闭恢复、精确清理和推送。不得重跑 V1--V7 或提前进入分层记忆系统。”
+下一会话可以复制：“请只读复核 Phase 6.9.5 V8 的 `.stage-080 / invalid_response` 终态并评估是否需要全新 lineage；不得重跑 V1--V8、不得进入产品验收或分层记忆系统。”
 
 ### Phase 7 — 工程化增强
 
