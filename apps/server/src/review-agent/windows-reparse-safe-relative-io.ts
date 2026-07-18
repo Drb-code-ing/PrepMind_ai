@@ -3,11 +3,13 @@ import { win32 } from 'node:path';
 const BUN_FFI_MODULE = 'bun:ffi';
 const FILE_READ_ATTRIBUTES = 0x00000080;
 const FILE_READ_DATA = 0x00000001;
+const FILE_LIST_DIRECTORY = 0x00000001;
 const FILE_WRITE_DATA = 0x00000002;
 const DELETE = 0x00010000;
 const SYNCHRONIZE = 0x00100000;
 const FILE_SHARE_READ = 0x00000001;
 const FILE_SHARE_WRITE = 0x00000002;
+const FILE_SHARE_DELETE = 0x00000004;
 const OPEN_EXISTING = 3;
 const FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
 const FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
@@ -33,6 +35,9 @@ const STATUS_REPARSE_POINT_ENCOUNTERED = -1073740533;
 const STATUS_OBJECT_NAME_COLLISION = -1073741771;
 const STATUS_OBJECT_NAME_NOT_FOUND = -1073741772;
 const STATUS_OBJECT_PATH_NOT_FOUND = -1073741766;
+const STATUS_SHARING_VIOLATION = -1073741757;
+const STATUS_NO_MORE_FILES = -2147483642;
+const FILE_NAMES_INFORMATION = 12;
 
 type BunFfi = Readonly<{
   FFIType: Record<string, number>;
@@ -86,7 +91,25 @@ type RelativeHandleInput = Readonly<{
   createDisposition: number;
   createOptions: number;
   returnNullIfNotFound?: boolean;
+  returnNullIfSharingViolation?: boolean;
+  shareAccess?: number;
 }>;
+
+export type WindowsExclusiveLifetimeFile = Readonly<{
+  assertHeld(): void;
+  close(): void;
+}>;
+
+type WindowsExclusiveLifetimeFileState = {
+  parent: WindowsNativeDirectory;
+  handle: number;
+  closed: boolean;
+};
+
+const lifetimeFileState = new WeakMap<
+  WindowsExclusiveLifetimeFile,
+  WindowsExclusiveLifetimeFileState
+>();
 
 type DurablePublicationResult =
   | Readonly<{
@@ -125,6 +148,10 @@ export type WindowsNoReparseChildDirectory = Readonly<{
   ): DurablePublicationResult;
   deleteFile(leafName: string): void;
   readRegularFile(leafName: string): Buffer;
+  listLeafNames(): readonly string[];
+  tryAcquireExclusiveLifetimeFile(
+    leafName: string,
+  ): WindowsExclusiveLifetimeFile | null;
 }>;
 
 /**
@@ -285,6 +312,57 @@ async function openWindowsNoReparseDirectoryWithDisposition(
       assertSafeLeafName(leafName);
       return readNativeFile(boundDirectory, leafName);
     },
+    listLeafNames() {
+      assertOpen();
+      return listNativeLeafNames(boundDirectory);
+    },
+    tryAcquireExclusiveLifetimeFile(leafName) {
+      assertOpen();
+      assertSafeLeafName(leafName);
+      const handle = createRelativeHandle({
+        parent: boundDirectory,
+        leafName,
+        desiredAccess: FILE_READ_DATA | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+        createDisposition: FILE_OPEN_IF,
+        createOptions: FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+        shareAccess: 0,
+        returnNullIfSharingViolation: true,
+      });
+      if (handle === null) return null;
+      const lifetimeFile = Object.freeze({
+        assertHeld() {
+          const state = lifetimeFileState.get(lifetimeFile);
+          if (!state || state.closed) {
+            throw new Error('WINDOWS_REPARSE_SAFE_IO_LIFETIME_FILE_CLOSED');
+          }
+          const information = Buffer.alloc(24);
+          assertNtSuccess(
+            Number(
+              state.parent.ntdll.symbols.NtQueryInformationFile(
+                state.handle,
+                state.parent.ffi.ptr(Buffer.alloc(16)),
+                state.parent.ffi.ptr(information),
+                information.byteLength,
+                FILE_STANDARD_INFORMATION,
+              ),
+            ),
+            'WINDOWS_REPARSE_SAFE_IO_LIFETIME_FILE_INVALID',
+          );
+        },
+        close() {
+          const state = lifetimeFileState.get(lifetimeFile);
+          if (!state || state.closed) return;
+          state.closed = true;
+          closeNativeHandle({ ...state.parent, handle: state.handle });
+        },
+      });
+      lifetimeFileState.set(lifetimeFile, {
+        parent: boundDirectory,
+        handle,
+        closed: false,
+      });
+      return lifetimeFile;
+    },
   });
 }
 
@@ -408,6 +486,22 @@ function openNativeRoot(
       ],
       returns: ffi.FFIType.i32,
     },
+    NtQueryDirectoryFile: {
+      args: [
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.ptr,
+        ffi.FFIType.u32,
+        ffi.FFIType.u32,
+        ffi.FFIType.bool,
+        ffi.FFIType.ptr,
+        ffi.FFIType.bool,
+      ],
+      returns: ffi.FFIType.i32,
+    },
     NtQueryVolumeInformationFile: {
       args: [
         ffi.FFIType.ptr,
@@ -479,9 +573,13 @@ function openNativeDirectory(
   const handle = createRelativeHandle({
     parent,
     leafName: childName,
-    desiredAccess: FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+    desiredAccess: FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | SYNCHRONIZE,
     createDisposition,
     createOptions: FILE_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+    // The HANDLE remains namespace-bound after a rename. Allowing the path
+    // entry itself to move preserves the existing junction-race regression
+    // contract while every later child lookup still uses this HANDLE.
+    shareAccess: FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
   });
   const directory = {
     ...parent,
@@ -620,6 +718,48 @@ function readNativeFileHandle(parent: WindowsNativeDirectory, file: number) {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_READ_FAILED');
   }
   return contents;
+}
+
+function listNativeLeafNames(parent: WindowsNativeDirectory) {
+  const names: string[] = [];
+  let restartScan = true;
+  while (true) {
+    const contents = Buffer.alloc(65_536);
+    const ioStatus = Buffer.alloc(16);
+    const status = Number(
+      parent.ntdll.symbols.NtQueryDirectoryFile(
+        parent.handle,
+        0,
+        0,
+        0,
+        parent.ffi.ptr(ioStatus),
+        parent.ffi.ptr(contents),
+        contents.byteLength,
+        FILE_NAMES_INFORMATION,
+        false,
+        0,
+        restartScan,
+      ),
+    );
+    if (status === STATUS_NO_MORE_FILES) break;
+    assertNtSuccess(status, 'WINDOWS_REPARSE_SAFE_IO_LIST_FAILED');
+    restartScan = false;
+    let offset = 0;
+    while (offset < contents.byteLength) {
+      const nextOffset = contents.readUInt32LE(offset);
+      const nameLength = contents.readUInt32LE(offset + 8);
+      if (nameLength % 2 !== 0 || offset + 12 + nameLength > contents.length) {
+        throw new Error('WINDOWS_REPARSE_SAFE_IO_LIST_FAILED');
+      }
+      const name = contents
+        .subarray(offset + 12, offset + 12 + nameLength)
+        .toString('utf16le');
+      if (name !== '.' && name !== '..') names.push(name);
+      if (nextOffset === 0) break;
+      offset += nextOffset;
+    }
+  }
+  return Object.freeze(names.sort((left, right) => left.localeCompare(right)));
 }
 
 function replaceNativeFile(
@@ -912,6 +1052,9 @@ function deleteNativeFile(parent: WindowsNativeDirectory, leafName: string) {
 function createRelativeHandle(
   input: RelativeHandleInput & Readonly<{ returnNullIfNotFound: true }>,
 ): number | null;
+function createRelativeHandle(
+  input: RelativeHandleInput & Readonly<{ returnNullIfSharingViolation: true }>,
+): number | null;
 function createRelativeHandle(input: RelativeHandleInput): number;
 function createRelativeHandle(input: RelativeHandleInput) {
   const name = wideString(input.leafName);
@@ -934,7 +1077,7 @@ function createRelativeHandle(input: RelativeHandleInput) {
       input.parent.ffi.ptr(ioStatus),
       0,
       0,
-      FILE_SHARE_READ | FILE_SHARE_WRITE,
+      input.shareAccess ?? FILE_SHARE_READ | FILE_SHARE_WRITE,
       input.createDisposition,
       input.createOptions,
       0,
@@ -946,6 +1089,12 @@ function createRelativeHandle(input: RelativeHandleInput) {
       input.returnNullIfNotFound === true &&
       (status === STATUS_OBJECT_NAME_NOT_FOUND ||
         status === STATUS_OBJECT_PATH_NOT_FOUND)
+    ) {
+      return null;
+    }
+    if (
+      input.returnNullIfSharingViolation === true &&
+      status === STATUS_SHARING_VIOLATION
     ) {
       return null;
     }
