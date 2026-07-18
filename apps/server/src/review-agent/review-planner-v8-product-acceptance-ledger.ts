@@ -9,6 +9,7 @@ import {
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION,
 } from './review-planner-v8-product-acceptance-evidence';
 import {
+  assertReviewPlannerV8ProductAcceptanceRecoveryClear,
   assertReviewPlannerV8ProductAcceptanceOwner,
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal,
@@ -572,6 +573,124 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
     return Object.freeze({ status: 'evidence_io' as const });
   } finally {
     directory?.close();
+  }
+}
+
+export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV8ProductAcceptanceOwner;
+}): Promise<void> {
+  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
+    'recovery',
+  ]);
+  await assertReviewPlannerV8ProductAcceptanceRecoveryClear(
+    input.repoRoot,
+    input.environment,
+  );
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      'docs',
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-v8-product-acceptance',
+      input.environment,
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertKnownPublicLeaves(directory);
+    const leaves = directory.listLeafNames();
+    if (
+      leaves.includes('.acceptance-success') ||
+      leaves.includes('.recovery-only.json') ||
+      !leaves.includes('acceptance.json')
+    ) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
+    }
+    const manifest = assertManifest(directory, input.environment);
+    const results = requireAllResults(directory);
+    assertAdmissionClaimsAndScreenshots(directory, results);
+    const defaultOff = (['review', 'planner'] as const).map((component) =>
+      readDefaultOffReceipt(directory, component),
+    );
+    readStrict(
+      directory,
+      '.owner-isolation-verified.json',
+      ownerIsolationSchema,
+    );
+    readStrict(directory, '.cleanup-verified.json', cleanupSchema);
+    const acceptance = readStrict(
+      directory,
+      'acceptance.json',
+      acceptanceSchema,
+    );
+    const inputTokens = results.reduce(
+      (total, result) => total + result.usage.inputTokens,
+      0,
+    );
+    const outputTokens = results.reduce(
+      (total, result) => total + result.usage.outputTokens,
+      0,
+    );
+    const cost = calculateReviewPlannerV8ProductAcceptanceCost(
+      inputTokens,
+      outputTokens,
+    );
+    const screenshots = {
+      plan: screenshotFor(results, 'review-browser'),
+      today: screenshotFor(results, 'planner-browser'),
+    };
+    if (
+      !cost.withinHardCap ||
+      acceptance.environment !== input.environment ||
+      acceptance.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
+      acceptance.requestCount !== 4 ||
+      acceptance.inputTokens !== inputTokens ||
+      acceptance.outputTokens !== outputTokens ||
+      acceptance.costCny !== cost.costCny ||
+      !arraysEqual(
+        acceptance.traceIdSha256,
+        results.map((result) => result.traceIdSha256),
+      ) ||
+      acceptance.screenshots.plan !== screenshots.plan ||
+      acceptance.screenshots.today !== screenshots.today
+    ) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
+    }
+    const success = successSchema.parse({
+      schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',
+      environment: input.environment,
+      pairedEvidenceSha256: manifest.pairedEvidenceSha256,
+      markerSha256: SEALED_MARKER_LEAVES.map((leaf) =>
+        hashMarker(directory, leaf),
+      ),
+      manifestSha256: hashLeaf(directory, 'manifest.json'),
+      resultSha256: SLOTS.map((slot) =>
+        hashLeaf(directory, `${SLOT_LEAVES[slot]}.result.json`),
+      ),
+      defaultOffSha256: defaultOff.map((receipt) => sha256(serialize(receipt))),
+      ownerIsolationSha256: hashLeaf(
+        directory,
+        '.owner-isolation-verified.json',
+      ),
+      cleanupSha256: hashLeaf(directory, '.cleanup-verified.json'),
+      acceptanceSha256: hashLeaf(directory, 'acceptance.json'),
+      screenshotSha256: [screenshots.plan, screenshots.today],
+    });
+    publish(directory, '.acceptance-success', serialize(success));
+    verifyCompleteLedger(directory, input.environment);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /^V8_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
+  } finally {
+    directory.close();
   }
 }
 

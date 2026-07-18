@@ -88,6 +88,19 @@ const RECOVERY_STAGE_LEAVES = Object.freeze([
   'cleanup.verified.json',
 ] as const);
 type RecoveryStageLeaf = (typeof RECOVERY_STAGE_LEAVES)[number];
+const RECOVERY_BINDING_LEAVES = Object.freeze([
+  'account-review.json',
+  'account-planner.json',
+] as const);
+type RecoveryBindingComponent = 'review' | 'planner';
+
+const recoveryAccountBindingSchema = z
+  .object({
+    component: z.enum(['review', 'planner']),
+    email: z.string().email().max(254),
+    accountId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/),
+  })
+  .strict();
 
 const KNOWN_PUBLIC_LEAVES = new Set([
   '.acceptance-reserved',
@@ -216,10 +229,44 @@ export type ReviewPlannerV8RecoveryAuthority = Readonly<{
 }>;
 
 export type ReviewPlannerV8ProductAcceptanceRecoveryJournal = Readonly<{
+  snapshot(): ReviewPlannerV8ProductAcceptanceRecoverySnapshot;
+  bindAccount(input: {
+    component: RecoveryBindingComponent;
+    email: string;
+    accountId: string;
+  }): void;
   authorizeRecoveryOnly(): Promise<ReviewPlannerV8RecoveryAuthority>;
   appendStage(leaf: RecoveryStageLeaf, contents: string): void;
   finalizeRecoveryOnly(): Promise<void>;
   close(): void;
+}>;
+
+export type ReviewPlannerV8ProductAcceptanceRecoverySnapshot = Readonly<{
+  manifest: Readonly<
+    Omit<
+      z.infer<typeof recoveryManifestSchema>,
+      'syntheticEmails' | 'fixtureIds'
+    > & {
+      syntheticEmails: Readonly<
+        z.infer<typeof recoveryManifestSchema>['syntheticEmails']
+      >;
+      fixtureIds: readonly string[];
+    }
+  >;
+  bindings: Readonly<
+    Partial<
+      Record<
+        RecoveryBindingComponent,
+        z.infer<typeof recoveryAccountBindingSchema>
+      >
+    >
+  >;
+  stages: Readonly<{
+    restoreClaimed: boolean;
+    restoreVerified: boolean;
+    cleanupClaimed: boolean;
+    cleanupVerified: boolean;
+  }>;
 }>;
 
 const journalState = new WeakMap<
@@ -371,6 +418,7 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
     assertOnlyRecoveryLeaves(directory, [
       'owner.lock',
       'recovery-manifest.json',
+      ...RECOVERY_BINDING_LEAVES,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     const parsed = recoveryManifestSchema.parse(
@@ -412,6 +460,7 @@ export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
     assertOnlyRecoveryLeaves(directory, [
       'owner.lock',
       'recovery-manifest.json',
+      ...RECOVERY_BINDING_LEAVES,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     if (!leaves.includes('recovery-manifest.json')) return false;
@@ -440,6 +489,7 @@ export async function assertReviewPlannerV8ProductAcceptanceRecoveryClear(
     assertOnlyRecoveryLeaves(directory, [
       'owner.lock',
       'recovery-manifest.json',
+      ...RECOVERY_BINDING_LEAVES,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     if (
@@ -476,7 +526,10 @@ export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(inp
       'recovery-manifest.json',
       ...RECOVERY_STAGE_LEAVES,
     ];
-    assertOnlyRecoveryLeaves(directory, expectedLeaves);
+    assertOnlyRecoveryLeaves(directory, [
+      ...expectedLeaves,
+      ...RECOVERY_BINDING_LEAVES,
+    ]);
     const leaves = directory.listLeafNames();
     if (
       !expectedLeaves.every((leaf) => leaves.includes(leaf)) ||
@@ -513,6 +566,44 @@ function createRecoveryJournal(
 ): ReviewPlannerV8ProductAcceptanceRecoveryJournal {
   const journal: ReviewPlannerV8ProductAcceptanceRecoveryJournal =
     Object.freeze({
+      snapshot() {
+        const state = requireJournalState(journal);
+        assertReviewPlannerV8ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['product', 'recovery'],
+        );
+        return snapshotRecoveryState(state);
+      },
+      bindAccount(input) {
+        const state = requireJournalState(journal);
+        assertReviewPlannerV8ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['product'],
+        );
+        const parsed = recoveryAccountBindingSchema.safeParse(input);
+        if (!parsed.success || parsed.data.component !== input.component) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
+        }
+        const snapshot = snapshotRecoveryState(state);
+        if (
+          parsed.data.email !==
+          snapshot.manifest.syntheticEmails[parsed.data.component]
+        ) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
+        }
+        const leaf = `account-${parsed.data.component}.json` as const;
+        if (state.directory.listLeafNames().includes(leaf)) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_EXISTS');
+        }
+        publish(
+          state.directory,
+          leaf,
+          `${JSON.stringify(parsed.data)}\n`,
+          'V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_IO',
+        );
+      },
       authorizeRecoveryOnly() {
         const state = requireJournalState(journal);
         assertReviewPlannerV8ProductAcceptanceOwner(
@@ -620,6 +711,7 @@ function createRecoveryJournal(
         assertOnlyRecoveryLeaves(state.directory, [
           'owner.lock',
           'recovery-manifest.json',
+          ...RECOVERY_BINDING_LEAVES,
           ...RECOVERY_STAGE_LEAVES,
         ]);
         const leaves = state.directory.listLeafNames();
@@ -666,6 +758,7 @@ function createRecoveryJournal(
         assertOnlyRecoveryLeaves(state.directory, [
           'owner.lock',
           'recovery-manifest.json',
+          ...RECOVERY_BINDING_LEAVES,
           ...RECOVERY_STAGE_LEAVES,
         ]);
         const recoveryLeaves = state.directory.listLeafNames();
@@ -760,6 +853,62 @@ function requireJournalState(
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_JOURNAL_CLOSED');
   }
   return state;
+}
+
+function snapshotRecoveryState(
+  state: RecoveryJournalState,
+): ReviewPlannerV8ProductAcceptanceRecoverySnapshot {
+  assertOnlyRecoveryLeaves(state.directory, [
+    'owner.lock',
+    'recovery-manifest.json',
+    ...RECOVERY_BINDING_LEAVES,
+    ...RECOVERY_STAGE_LEAVES,
+  ]);
+  try {
+    const manifest = recoveryManifestSchema.parse(
+      JSON.parse(
+        state.directory.readRegularFile('recovery-manifest.json').toString(),
+      ),
+    );
+    if (manifest.environment !== state.environment) throw new Error();
+    const leaves = state.directory.listLeafNames();
+    const bindings: Partial<
+      Record<
+        RecoveryBindingComponent,
+        z.infer<typeof recoveryAccountBindingSchema>
+      >
+    > = {};
+    for (const component of ['review', 'planner'] as const) {
+      const leaf = `account-${component}.json` as const;
+      if (!leaves.includes(leaf)) continue;
+      const binding = recoveryAccountBindingSchema.parse(
+        JSON.parse(state.directory.readRegularFile(leaf).toString()),
+      );
+      if (
+        binding.component !== component ||
+        binding.email !== manifest.syntheticEmails[component]
+      ) {
+        throw new Error();
+      }
+      bindings[component] = Object.freeze({ ...binding });
+    }
+    return Object.freeze({
+      manifest: Object.freeze({
+        ...manifest,
+        syntheticEmails: Object.freeze({ ...manifest.syntheticEmails }),
+        fixtureIds: Object.freeze([...manifest.fixtureIds]),
+      }),
+      bindings: Object.freeze(bindings),
+      stages: Object.freeze({
+        restoreClaimed: leaves.includes('restore.claimed'),
+        restoreVerified: leaves.includes('restore.verified.json'),
+        cleanupClaimed: leaves.includes('cleanup.claimed'),
+        cleanupVerified: leaves.includes('cleanup.verified.json'),
+      }),
+    });
+  } catch {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
 }
 
 function parseRecoveryStage<T>(schema: z.ZodType<T>, contents: string) {

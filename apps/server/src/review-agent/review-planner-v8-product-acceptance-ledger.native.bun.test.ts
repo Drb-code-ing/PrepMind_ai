@@ -16,6 +16,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+  finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
   readReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedgerForTests,
@@ -1142,6 +1143,137 @@ describeWindows(
       await expect(
         rename(publicPath, `${publicPath}-detached`),
       ).resolves.toBeUndefined();
+    });
+
+    it('projects the strict recovery manifest, append-only account bindings, and durable stage status after reopen', async () => {
+      const productOwner = await acquire(root);
+      const ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: productOwner,
+      });
+      const prepared =
+        await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: productOwner,
+          manifest: recoveryManifest(),
+        });
+      expect(prepared.snapshot()).toEqual({
+        manifest: recoveryManifest(),
+        bindings: {},
+        stages: {
+          restoreClaimed: false,
+          restoreVerified: false,
+          cleanupClaimed: false,
+          cleanupVerified: false,
+        },
+      });
+      prepared.bindAccount({
+        component: 'review',
+        email: recoveryManifest().syntheticEmails.review,
+        accountId: 'review-user-id',
+      });
+      expect(() =>
+        prepared.bindAccount({
+          component: 'review',
+          email: recoveryManifest().syntheticEmails.review,
+          accountId: 'different-user-id',
+        }),
+      ).toThrow('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_EXISTS');
+      prepared.close();
+      ledger.close();
+      productOwner.close();
+
+      const acquisition = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquisition.status).toBe('acquired');
+      if (acquisition.status !== 'acquired')
+        throw new Error('owner unavailable');
+      const reopened =
+        await openReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        });
+      const authority = await reopened.authorizeRecoveryOnly();
+      authority.assertAuthorized();
+      reopened.appendStage('restore.claimed', '');
+      expect(reopened.snapshot()).toEqual({
+        manifest: recoveryManifest(),
+        bindings: {
+          review: {
+            component: 'review',
+            email: recoveryManifest().syntheticEmails.review,
+            accountId: 'review-user-id',
+          },
+        },
+        stages: {
+          restoreClaimed: true,
+          restoreVerified: false,
+          cleanupClaimed: false,
+          cleanupVerified: false,
+        },
+      });
+      reopened.close();
+      acquisition.owner.close();
+    });
+
+    it('fresh-seals a fully verified acceptance aggregate without claiming or invoking another slot', async () => {
+      await finishBranch(root);
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      const resultLeaves = (await readdir(publicPath)).filter((leaf) =>
+        leaf.endsWith('.result.json'),
+      );
+      const resultHashes = await Promise.all(
+        resultLeaves.map(async (leaf) =>
+          createHash('sha256')
+            .update(await readFile(join(publicPath, leaf)))
+            .digest('hex'),
+        ),
+      );
+      await unlink(join(publicPath, '.acceptance-success'));
+      const acquisition = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquisition.status).toBe('acquired');
+      if (acquisition.status !== 'acquired')
+        throw new Error('owner unavailable');
+
+      await finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toMatchObject({ status: 'complete' });
+      expect(
+        await Promise.all(
+          resultLeaves.map(async (leaf) =>
+            createHash('sha256')
+              .update(await readFile(join(publicPath, leaf)))
+              .digest('hex'),
+          ),
+        ),
+      ).toEqual(resultHashes);
+      acquisition.owner.close();
     });
 
     it('does not mount an authorization handle after journal close wins the await race', async () => {
