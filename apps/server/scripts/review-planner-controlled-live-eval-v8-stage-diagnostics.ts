@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 
+import { ReviewPlannerDiagnosticCode } from '@repo/agent';
+
 import {
   runReviewPlannerControlledLiveV8StageDiagnosticsCli,
   serializeReviewPlannerControlledLiveV8StageDiagnosticsSummary,
@@ -12,14 +14,20 @@ import {
   reserveReviewPlannerControlledLiveV8Evidence,
   snapshotReviewPlannerControlledLiveV8HistoricalEvidence,
   verifyReviewPlannerControlledLiveV8HistoricalEvidence,
+  type SafeReviewPlannerControlledLiveV8Summary,
 } from '../src/review-agent/review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 import {
   createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator,
   validateReviewPlannerControlledLiveV8StageDiagnosticsPreflight,
 } from '../src/review-agent/review-planner-controlled-live-eval-v8-stage-diagnostics.factory';
 
-const FIXED_FAILURE =
-  '{"status":"invalid_attempted","gate":"closed","providerAttemptCount":0,"usageKnown":false,"diagnosticCode":"evidence_io"}\n';
+const TOP_LEVEL_FAILURE = Object.freeze({
+  status: 'invalid_attempted',
+  gate: 'closed',
+  providerAttemptCount: 0,
+  usageKnown: false,
+  diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+} satisfies SafeReviewPlannerControlledLiveV8Summary);
 
 async function main() {
   const root = resolve(__dirname, '../../..');
@@ -53,6 +61,10 @@ async function main() {
 }
 
 void main().catch(() => {
-  process.stdout.write(FIXED_FAILURE);
+  process.stdout.write(
+    serializeReviewPlannerControlledLiveV8StageDiagnosticsSummary(
+      TOP_LEVEL_FAILURE,
+    ),
+  );
   process.exitCode = 1;
 });

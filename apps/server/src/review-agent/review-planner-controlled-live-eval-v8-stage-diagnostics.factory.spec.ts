@@ -22,7 +22,10 @@ import {
   resolveReviewPlannerControlledLiveV8StageDiagnosticsPricing,
   validateReviewPlannerControlledLiveV8StageDiagnosticsPreflight,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.factory';
-import { REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
+import {
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+  safeReviewPlannerControlledLiveV8SummarySchema,
+} from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 
 const readyEnv = Object.freeze({
   AI_PROVIDER_MODE: 'live',
@@ -388,6 +391,40 @@ describe('review planner controlled Live V8 stage diagnostics factory', () => {
         );
       }
     }
+  });
+
+  it('serializes the fixed top-level failure through the safe V8 serializer', () => {
+    const root = resolve(__dirname, '../../../..');
+    const script = readFileSync(
+      resolve(
+        root,
+        'apps/server/scripts/review-planner-controlled-live-eval-v8-stage-diagnostics.ts',
+      ),
+      'utf8',
+    );
+    expect(script).not.toContain('FIXED_FAILURE');
+    expect(script).not.toMatch(
+      /['"]\{\\?"status\\?":\\?"invalid_attempted\\?"/,
+    );
+    expect(script).toMatch(
+      /main\(\)\.catch\(\(\)\s*=>\s*\{[\s\S]*process\.stdout\.write\(\s*serializeReviewPlannerControlledLiveV8StageDiagnosticsSummary\(\s*TOP_LEVEL_FAILURE,?\s*\)/,
+    );
+    expect(script).toMatch(/process\.exitCode\s*=\s*1/);
+    expect(
+      safeReviewPlannerControlledLiveV8SummarySchema.parse({
+        status: 'invalid_attempted',
+        gate: 'closed',
+        providerAttemptCount: 0,
+        usageKnown: false,
+        diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+      }),
+    ).toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 0,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.EvidenceIo,
+    });
   });
 });
 
