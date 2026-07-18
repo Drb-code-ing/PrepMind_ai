@@ -750,20 +750,22 @@ V8 completion contract 已在 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagn
 
 随后唯一 V8 controlled-Live 已消费：CLI stdout 为 `invalid_attempted / closed / 23 / false / invalid_response`；落盘 231-byte provisional 为 `attempted / 0 / false / transport`；public reader 为 `0 / evidence_io / lastStage=.stage-080-paired-returned`。durable prefix 无 `.stage-090` 或 success seal，因此 checklist 第 4 项 committed success 条件未成立，第 5--11 项 branch/main 产品路径全部禁止。不得把 CLI 23 冒充 durable terminal，也不得把落盘/public 0 解释为 zero-call、质量或零费用；V8 不可重跑。
 
-### V9 offline checkpoint 与后续 Live 门
+### V9 历史 offline checkpoint 与唯一 Live 终态
 
-截至 `683a209`，V9 Task 1--5 已完成离线实现，但尚未运行 controlled-Live。执行任何 V9 命令前必须逐项满足：
+截至 `683a209` 的以下项目是 V9 运行前 checkpoint；唯一 V9 controlled-Live 现已消费，后续不得以本段作为重跑授权。
 
 1. V1--V8 evidence/marker 只读且 fresh snapshot 一致；不得删除、覆盖、重命名、拼接或用 `git show` 构造历史成功。
-2. V9 evidence directory、once marker 与 success seal 在首次授权运行前必须不存在；当前仓库满足“不存在”，这不是成功证据。
+2. V9 evidence directory、once marker 与 success seal 在首次授权运行前必须不存在；当时仓库满足“不存在”，这不是成功证据。
 3. `REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED` 只能在单次授权进程显式开启；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 必须保持未设置或 `false`。eval gate 不授权产品调用。
 4. Product authority 只能接受 `finalized / complete / closed / passed`、`providerCount=23`、`pairedAdmissionCount=22` 和 lowercase 64-hex `evidenceSha256`；diagnostic-only、pending、`evidence_io`、未知 profile 或非法 hash 必须关闭。
 5. Authority 读取前后都要列举完整 V9 leaf，并用 `git ls-files -v --full-name -- <dir>` 验证实际 leaf 精确 tracked 且全部为 ordinary `H`。lowercase assume-unchanged、`S` skip-worktree、缺 tracked leaf、额外 untracked leaf、leaf drift 或 commit/branch/clean drift 均不得进入 ready。
 6. 上述任一失败必须在 owner/ledger reservation、Prisma account/fixture、Docker server recreate、headed browser 与产品 provider request 前阻断；不得回退 legacy V8 reader。
 7. V9 离线证据为 focused `136/136`、Server `1381 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`、AI `190/190`、Agent `406/406`、types/typecheck exit 0、Windows native 正确 cwd 合计 `133/133`、product acceptance `131/131`，以及 lint/build/Compose/diff exit 0。V5/V6 cwd 是命令入口契约，不是代码失败；这些计数均不是 V9 Live 证据。
-8. 当前没有 V9 Live、provider usage/cost、Docker/API/browser/Trace 产品验收、main replay 或 push。只有 public reader 返回第 4 项 committed success，才可另行申请 product acceptance；即使 Live 成功也不自动开启产品 gate 或宣告 Phase 6.9.5 完成。
-9. 单独明确授权后，唯一 package script 为 `eval:review-planner:live:v9:gate-diagnostics`，exact confirmation 为 `--confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`，完整命令为 `bun --filter @repo/server eval:review-planner:live:v9:gate-diagnostics -- --confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`；本 checklist 记录命令不等于运行授权。
+8. 运行前没有 V9 Live、provider usage/cost、Docker/API/browser/Trace 产品验收、main replay 或 push。只有 public reader 返回第 4 项 committed success，才可另行申请 product acceptance；即使 Live 成功也不自动开启产品 gate 或宣告 Phase 6.9.5 完成。
+9. 单独明确授权后，唯一 package script 为 `eval:review-planner:live:v9:gate-diagnostics`，exact confirmation 为 `--confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`，实际从根目录加载凭据的完整命令为 `bun --env-file=.env --filter @repo/server eval:review-planner:live:v9:gate-diagnostics -- --confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`；本 checklist 记录命令不等于运行授权。
 10. Reserve 前 preflight blocked 必须是 `0-call / 0-reservation / 0-once / 0-evidence`，再次尝试仍需重新授权；一旦 reservation/once 存在，后续任一失败都永久封存，同一 V9 禁止重跑、删除、覆盖或重建。
+
+V9 的一次实际运行遵守第 10 项后段：durable reader 为 `finalized / invalid_attempted / closed / quality_gate_failed`，`23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes、P95 `1396ms`、usage `7943/510` 和 CNY `0.026889/1.00`；但 quality `30/48`、semantic `4/22`、critical `2` 未通过。没有 success seal，故第 4 项 committed success 不成立；Docker、headed browser、Trace 产品验收、main replay 和 push 必须继续禁止，产品 gate 默认关闭。
 
 完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v9-offline-checkpoint.md`。
 

@@ -99,7 +99,7 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
-- Phase 6 多 Agent 规划：Router / KnowledgeVerifier 已具备模型/规则混合生产路径并恢复默认 gate 关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是确定性 policy。Review / Planner 的确定性只读 baseline 仍是当前产品行为，另有 server-only 受限模型 candidate；V1--V8 保持只读历史，V9 Task 1--5 已在 `683a209` 前离线实现，但 V9 Live 尚未运行且没有 evidence directory、once marker 或 success seal。独立 V9 eval gate 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 当前均未设置，缺省关闭，因此 `/review-agent/suggestions` 不会调用真实模型，Phase 6.9.5 仍未完成。模型不能决定 owner、facts、FSRS、分钟数、链接、任务或写权限；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。
+- Phase 6 多 Agent 规划：Router / KnowledgeVerifier 已具备模型/规则混合生产路径并恢复默认 gate 关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是确定性 policy。Review / Planner 的确定性只读 baseline 仍是当前产品行为，另有 server-only 受限模型 candidate；V1--V9 均为只读历史。V9 唯一 Live 已完成 `23` provider attempts / `22` paired admissions，但以 `quality_gate_failed` 封存（quality `30/48`、semantic `4/22`、critical `2`）；P95、usage 与 CNY cap 均通过但没有 success seal。`REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 继续缺省关闭，因此 `/review-agent/suggestions` 不会调用真实模型，Phase 6.9.5 仍未完成。模型不能决定 owner、facts、FSRS、分钟数、链接、任务或写权限；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。
 
 ## 当前数据流
 

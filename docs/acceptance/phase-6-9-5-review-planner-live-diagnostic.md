@@ -8,7 +8,7 @@
 
 本记录不把 Mock、静态检查、Docker 配置解析或浏览器页面当作真实模型质量证据。
 
-## 2026-07-19 V9 Task 1--5 离线 checkpoint
+## 2026-07-19 V9 Task 1--5 离线 checkpoint（历史）
 
 截至代码 checkpoint `683a209`，V9 已完成 paired aggregate、durable evidence、一次性 controlled-Live CLI 与 product acceptance authority 的离线实现。V1--V8 evidence/marker/计数保持只读；V9 不是 V8 retry，也没有复用 V8 provisional/public projection。V9 Live 尚未运行，V9 evidence directory、once marker、diagnostic/success candidate 与 success seal 均不存在。
 
@@ -17,6 +17,14 @@
 离线证据为 V9 focused `136/136`、Server `1381 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`、AI `190/190`、Agent `406/406`、shared types typecheck exit 0、Review/Planner Windows native 正确 cwd 合计 `133/133`、product acceptance `131/131`，以及 lint/build/Compose/diff exit 0；contract/security 复审 PASS 且无未关闭 Critical/Important。V5/V6 的 cwd 差异是命令入口契约，不是代码失败。完整说明见 `docs/acceptance/phase-6-9-5-review-planner-v9-offline-checkpoint.md`。
 
 本 checkpoint 没有 provider、Live、Docker、浏览器、Trace、合成账号、main replay 或 push 副作用，不构成 provider quality、真实 token/成本、产品 `candidate_applied` 或 Phase 6.9.5 完成证据。任何 V9 Live 都需要新的单独明确授权；失败必须保留关闭证据并停止，不能用本节的离线计数替代。
+
+## 2026-07-19 V9 唯一 controlled-Live 终态
+
+首次通过 workspace package script 的尝试在 reserve 前返回 `diagnostic_blocked / preflight_invalid / 0 / 0 / usageKnown=false`；根因是 `apps/server` cwd 未自动读取根 `.env` 的 `DEEPSEEK_API_KEY`。这次没有创建 V9 evidence directory、once marker 或任何 provider 调用。根 `.env` 显式注入后的唯一受控运行完成，V1--V8 20-entry immutable tree hash 仍为 `6078891e6c962bc5c8e57471017d7f64e210c5f4ffd867c96136e33983ac2bd6`。
+
+durable public reader 返回 `finalized / invalid_attempted / closed / quality_gate_failed / lastStage=.stage-090-validation-completed`。唯一 run 的安全 aggregate 是：`23/23` provider attempts、`22/22` paired admissions、`26/26` verified zero-call、`22` runtime invocations、`48` strict successes；P95 `1396ms`、input/output usage `7943/510`、CNY `0.026889` 且不超过 `1.00`。schema、P95、usage、attempt、admission 和 cost gates 通过；quality gate 失败，原因是 quality `30/48`、semantic `4/22`、critical failures `2`，production decision 为 `semantic_quality_below_threshold`。
+
+V9 once marker 和完整 evidence 已封存，不能重跑、覆盖、删除或重建。该结果没有 success seal，故 product authority fail-closed；Docker/API、headed browser、Trace、合成账号、branch acceptance、main merge/replay 和 push 均未执行。两条产品 gate 保持默认关闭，项目继续返回 deterministic Review/Planner 建议；Phase 6.9.5 尚未完成。下一步只能基于脱敏 aggregate 进行最小质量根因修复，并建立新的独立 lineage。
 
 ## 2026-07-18 V8 唯一 controlled-Live 终态
 
@@ -260,10 +268,10 @@ V7 运行前冻结的 complete 门是：48 cases、26 verified zero-call、22 ru
 ## 当前结论与未执行项
 
 - V1--V8 均为只读历史；V7/V8 的关闭终态、once marker、evidence 与计数不得改写、重跑或拼接。
-- V9 Task 1--5 已离线实现，但 V9 controlled-Live 尚未运行，V9 evidence directory、once marker 与 success seal 不存在。当前没有 V9 provider attempt、usage、cost、quality decision 或产品 `candidate_applied` 结论。
-- 独立 V9 eval gate 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 当前均未设置，缺省关闭；产品继续 deterministic，且没有开启任一 Review/Planner 业务 gate 的授权。
+- V9 已完成唯一 controlled-Live 并封存为 `quality_gate_failed`；V1--V9 evidence/marker/计数不得改写、重跑或拼接。当前可证 aggregate 是 `23/22` calls/admissions、quality `30/48`、semantic `4/22`、critical `2`、P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00`。
+- 独立 V9 eval gate 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 均保持默认关闭；产品继续 deterministic，且没有开启任一 Review/Planner 业务 gate 的授权。
 - Product acceptance 只接受 V9 committed success 与稳定 ordinary-`H` Git leaf snapshot；当前条件不成立，所以 Docker authenticated suggestions/plan、可见浏览器、Trace、合成账号、main replay 和 push 均未执行且不得提前进入。
-- Phase 6.9.5 仍为验收未完成。下一步只能先复核 V9 offline checkpoint 并取得单独 Live 授权；离线测试通过、Mock、Docker 配置解析或 V8 历史都不能替代 V9 自己的成功证据。
+- Phase 6.9.5 仍为验收未完成。下一步是最小质量根因修复的新 lineage；离线测试、Mock、Docker 配置解析或 V1--V9 历史都不能替代新的成功证据。
 
 ## 回顾入口
 

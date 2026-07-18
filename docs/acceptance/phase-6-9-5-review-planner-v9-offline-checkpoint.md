@@ -1,5 +1,7 @@
 # Phase 6.9.5 Review / Planner V9 离线 checkpoint
 
+> 历史范围：本文件第 1--8 节记录 `683a209` 时的运行前离线 checkpoint。其后唯一 V9 controlled-Live 已消费并以 `quality_gate_failed` 封存；当前终态以 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md` 为准。
+
 ## 1. 状态摘要与非结论
 
 截至代码 checkpoint `683a209`，V9 Task 1--5 已完成离线实现：paired gate aggregate、durable evidence、一次性 controlled-Live CLI，以及只接受 V9 committed success 的 product acceptance authority 已进入仓库。V9 controlled-Live 尚未运行；V9 evidence directory、once marker、diagnostic/success candidate 与 success seal 均不存在。
@@ -68,6 +70,12 @@ Product acceptance 只接受以下 V9 投影：
 
 ## 8. 后续授权与失败停止规则
 
-任何 V9 controlled-Live 必须由用户单独、明确授权，并在运行前重新核对 clean commit、V1--V8 immutable snapshot、独立 V9 eval gate、产品 gates=false、provider/model/transport/timeout、23-attempt ceiling、positive usage、P95、预算与费用上限。唯一 package script 与 exact confirmation 分别为 `eval:review-planner:live:v9:gate-diagnostics` 和 `--confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`；完整命令是 `bun --filter @repo/server eval:review-planner:live:v9:gate-diagnostics -- --confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`。文档记录这些字符串本身不构成运行授权；未授权时不得以单测、Mock、Docker 或手工 provider 请求代替。
+任何 V9 controlled-Live 必须由用户单独、明确授权，并在运行前重新核对 clean commit、V1--V8 immutable snapshot、独立 V9 eval gate、产品 gates=false、provider/model/transport/timeout、23-attempt ceiling、positive usage、P95、预算与费用上限。唯一 package script 与 exact confirmation 分别为 `eval:review-planner:live:v9:gate-diagnostics` 和 `--confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`；实际从根目录加载凭据的完整命令是 `bun --env-file=.env --filter @repo/server eval:review-planner:live:v9:gate-diagnostics -- --confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`。文档记录这些字符串本身不构成运行授权；未授权时不得以单测、Mock、Docker 或手工 provider 请求代替。
 
 Reserve 前的纯 preflight 阻断必须保持 `0-call / 0-reservation / 0-once / 0-evidence`；它不会消费 V9 lineage，但任何再次尝试仍需重新获得明确授权。V9 一旦产生 reservation 或 once marker，任一后续 provider、aggregate、quality、安全、权限、usage/cost、durable I/O 或 success-seal 失败都必须永久封存已有关闭证据；同一 V9 不得重跑、覆盖、删除或重建。只有 public reader 返回本文件第 5 节定义的 committed success，才有资格另行申请 product acceptance。即使 V9 Live 成功，也不自动开启产品 gate、不自动进入 main/push，更不表示 Phase 6.9.5 已完成。
+
+## 9. 运行后的 immutable V9 终态
+
+首次 workspace script 因根 `.env` 未注入到 `apps/server` 而在 reserve 前返回 `preflight_invalid / 0-call / 0-reservation / 0-once / 0-evidence`，没有消费 V9。使用根 `.env` 显式注入的唯一运行创建 once/evidence 并完成 `23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes。durable reader 返回 `finalized / invalid_attempted / closed / quality_gate_failed`：quality `30/48`、semantic `4/22`、critical `2`；P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00` 及 schema/attempt/admission/cost gates 均通过。
+
+因此 V9 没有 success seal，不能获得 product authority，且不得重跑、覆盖、删除或重建。Review/Planner 产品 gate 保持默认关闭；Docker、browser、Trace 产品验收、main replay 和 push 均未执行。下一步只能从该 aggregate 进行最小质量根因修复并建立新 lineage。
