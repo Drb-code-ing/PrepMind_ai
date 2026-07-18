@@ -1,14 +1,14 @@
 # PrepMind AI 开发日志
 
-> 2026-07-18 — Phase 6.9.5 V8 唯一 controlled-Live 已终态关闭：23 次 provider attempt 后停在 `.stage-080-paired-returned / invalid_response`，无 `.stage-090` 或 success seal。产品验收、main 合并与推送均未执行；两个产品 gate 继续默认 `false`，当前产品仍 deterministic。
+> 2026-07-19 — Phase 6.9.5 V9 Task 1--5 已在 `683a209` 前完成离线实现。V9 Live 尚未运行，evidence directory、once marker 与 success seal 不存在；独立 V9 eval gate 和 Review/Planner 产品 gate 当前未设置、缺省关闭，产品仍 deterministic，阶段验收未完成。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
-更新时间：2026-07-18
+更新时间：2026-07-19
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 v1--v8 均为独立且不可重跑的关闭 profile。V8 离线工程已完成；唯一 Live 的 CLI stdout 为 `invalid_attempted / closed / 23 / false / invalid_response`，但落盘文件仍是 provisional `attempted / 0 / false / transport`，durable prefix 到 `.stage-080-paired-returned`，public reader 为 `0 / evidence_io / lastStage=.stage-080-paired-returned`。无 success seal，不得进入产品验收或 main。当前 Review/Planner product path 仍 deterministic，两个 model gate 都是 `false`。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V8 保持只读历史；V9 Task 1--5 已完成 aggregate、durable evidence、一次性 CLI 与 product authority 离线实现。V9 controlled-Live 尚未运行，无 V9 evidence/once/seal；eval gate 与两条产品 gate 当前均未设置、缺省关闭。Product authority 只接受 V9 committed success，当前在 ledger、Prisma、Docker 与浏览器前阻断。Review/Planner product path 仍 deterministic，Phase 6.9.5 验收未完成。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V8 唯一 Live 在 `.stage-080 / invalid_response` 关闭；产品验收与 main 被阻断 |
+| Phase 6.9.5  | 验收未完成 | V9 Task 1--5 离线完成；Live 未运行、无 evidence/once/seal，产品 gate 默认关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,20 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-19 - Phase 6.9.5 V9 Task 1--5 离线 checkpoint
+
+目标：在不改写 V1--V8、不运行新 provider 调用和不开启产品 gate 的前提下，为 V8 未形成 durable terminal aggregate 的缺口建立独立 V9 lineage，并让产品验收只依赖 V9 committed success。
+
+为什么：V8 CLI stdout 的 23 attempts 没有形成可供产品 admission 使用的 durable success。继续读取 V8 provisional/public projection、拼接历史计数或用 `git show` 构造成功都会破坏 one-shot 与证据权威边界。V9 因此必须拥有独立 eval gate、aggregate diagnostic、durable evidence、once-only CLI 和 product authority。
+
+主要内容：`ef0cf5f` 固定 V9 strict safe aggregate contract，`36fb988` 捕获同一次 paired run 的 aggregate，`25b1a3e` 增加 durable evidence，`697ca9f` 增加 controlled-Live CLI，`683a209` 将 product acceptance 改绑 V9。Authority 仅接受 `finalized / complete / closed / passed`、23 provider attempts、22 paired admissions 与 lowercase 64-hex evidence SHA；完整 V9 leaf 集合必须全部为 Git ordinary `H`，并在读取前后保持 leaf、commit、branch、clean 一致。任何 pending、`evidence_io`、未知 profile、非法 hash、assume-unchanged、skip-worktree、缺失/额外 leaf 或漂移都在 ledger、Prisma、Docker、浏览器前关闭；无 legacy V8 reader 或 `git show` 回退。
+
+边界：V9 Live package script 尚未执行，V9 evidence directory、once marker 与 success seal 均不存在。V1--V8 继续只读；独立 V9 eval gate、`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 当前均未设置，缺省关闭，产品继续 deterministic。没有 Docker、浏览器、Trace、合成账号、main replay 或 push；不得宣称 provider quality、真实 token/成本、产品可用或 Phase 6.9.5 完成。
+
+验收：V9 focused `136/136`；Server `1381 passed / 30 skipped`；Review E2E `3/3`；Web `409/409`；AI `190/190`；Agent `406/406`；shared types typecheck exit 0；Review/Planner Windows native 按各自正确 cwd 合计 `133/133`，其中 V5/V6 cwd 是命令入口契约而非代码失败；product acceptance `131/131`；lint/build/Compose/diff 均 exit 0。contract/security 复审 PASS，无未关闭 Critical/Important。完整边界见 `docs/acceptance/phase-6-9-5-review-planner-v9-offline-checkpoint.md`。
+
+回顾时可以问：为什么 V9 offline 通过仍不能写成 Live success？为什么 product authority 必须绑定完整 ordinary-`H` leaf 集合和前后 Git snapshot？为什么 eval gate 为 true 也不能打开 Review/Planner 产品 gate？
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 
