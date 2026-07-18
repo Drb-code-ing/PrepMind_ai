@@ -203,6 +203,10 @@ export async function runReviewPlannerV8ProductAcceptance(
   const snapshot = createSafeSnapshot(input);
   const traceIds = new Set<string>();
   const componentResults = {} as Record<Component, ComponentResult>;
+  let primaryError: Error | undefined;
+  let successCandidate: ReviewPlannerV8ProductAcceptanceRunResult | undefined;
+  let cleanupReceipt: CleanupReceipt | undefined;
+  let cleanupFailed = false;
 
   try {
     for (const component of COMPONENTS) {
@@ -237,52 +241,84 @@ export async function runReviewPlannerV8ProductAcceptance(
       crossAccountInvisible: true,
       businessWrites: 0,
     });
+    successCandidate = buildRunResult(
+      snapshot.environment,
+      componentResults,
+      allTraceIdSha256,
+    );
+  } catch (error) {
+    primaryError = normalizeError(error);
+  }
 
+  try {
     const cleanup = await snapshot.dependencies.cleanup();
     assertCleanupReceipt(cleanup);
-    snapshot.ledger.recordCleanup(cleanup);
-    snapshot.ledger.finalizeSuccess();
-
-    const traces = COMPONENTS.flatMap(
-      (component) => componentResults[component].traces,
-    );
-    const traceSummaries = COMPONENTS.flatMap((component) =>
-      (['api', 'browser'] as const).map((slot, index) =>
-        toTraceSummary(
-          component,
-          slot,
-          componentResults[component].traces[index],
-          componentResults[component].traceIdSha256[index],
-        ),
-      ),
-    );
-    return Object.freeze({
-      environment: snapshot.environment,
-      provider: traces[0].provider,
-      model: traces[0].model,
-      traceIdSha256: Object.freeze([...allTraceIdSha256]),
-      screenshotSha256: Object.freeze({
-        review: componentResults.review.screenshotSha256,
-        planner: componentResults.planner.screenshotSha256,
-      }),
-      usage: Object.freeze({
-        inputTokens: traces.reduce(
-          (total, trace) => total + trace.usage.inputTokens,
-          0,
-        ),
-        outputTokens: traces.reduce(
-          (total, trace) => total + trace.usage.outputTokens,
-          0,
-        ),
-      }),
-      durationMs: traces.reduce((total, trace) => total + trace.durationMs, 0),
-      traceSummaries: Object.freeze(traceSummaries),
-    });
-  } catch (error) {
-    throw normalizeError(error);
+    cleanupReceipt = cleanup;
+  } catch {
+    cleanupFailed = true;
   } finally {
     capabilityVault.delete(snapshot.capabilityHandle);
   }
+
+  if (
+    cleanupFailed ||
+    primaryError?.message === 'PRODUCT_ACCEPTANCE_RESTORE_UNVERIFIED'
+  ) {
+    throw controlError('PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  }
+  if (primaryError) throw primaryError;
+  if (!successCandidate || !cleanupReceipt) {
+    throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  }
+  try {
+    snapshot.ledger.recordCleanup(cleanupReceipt);
+    snapshot.ledger.finalizeSuccess();
+  } catch (error) {
+    throw normalizeError(error);
+  }
+  return successCandidate;
+}
+
+function buildRunResult(
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  componentResults: Record<Component, ComponentResult>,
+  allTraceIdSha256: readonly string[],
+): ReviewPlannerV8ProductAcceptanceRunResult {
+  const traces = COMPONENTS.flatMap(
+    (component) => componentResults[component].traces,
+  );
+  const traceSummaries = COMPONENTS.flatMap((component) =>
+    (['api', 'browser'] as const).map((slot, index) =>
+      toTraceSummary(
+        component,
+        slot,
+        componentResults[component].traces[index],
+        componentResults[component].traceIdSha256[index],
+      ),
+    ),
+  );
+  return Object.freeze({
+    environment,
+    provider: traces[0].provider,
+    model: traces[0].model,
+    traceIdSha256: Object.freeze([...allTraceIdSha256]),
+    screenshotSha256: Object.freeze({
+      review: componentResults.review.screenshotSha256,
+      planner: componentResults.planner.screenshotSha256,
+    }),
+    usage: Object.freeze({
+      inputTokens: traces.reduce(
+        (total, trace) => total + trace.usage.inputTokens,
+        0,
+      ),
+      outputTokens: traces.reduce(
+        (total, trace) => total + trace.usage.outputTokens,
+        0,
+      ),
+    }),
+    durationMs: traces.reduce((total, trace) => total + trace.durationMs, 0),
+    traceSummaries: Object.freeze(traceSummaries),
+  });
 }
 
 async function runComponent(input: {
@@ -292,6 +328,7 @@ async function runComponent(input: {
 }): Promise<ComponentResult> {
   const { component, snapshot } = input;
   let restoreVerified = false;
+  let restoreFailed = false;
   let browserClaimed = false;
   let primaryError: unknown;
   let result: ComponentResult | undefined;
@@ -345,7 +382,13 @@ async function runComponent(input: {
       throw controlError('PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
     }
 
-    const restoreReceipt = await restoreAndVerify(component, snapshot);
+    let restoreReceipt: Awaited<ReturnType<typeof restoreAndVerify>>;
+    try {
+      restoreReceipt = await restoreAndVerify(component, snapshot);
+    } catch (error) {
+      restoreFailed = true;
+      throw error;
+    }
     restoreVerified = true;
     snapshot.ledger.recordDefaultOff(restoreReceipt);
     browserGuard.assertNoLateRequest();
@@ -395,11 +438,15 @@ async function runComponent(input: {
         restoreVerified = true;
         if (browserClaimed) snapshot.ledger.recordDefaultOff(receipt);
       } catch (restoreError) {
+        restoreFailed = true;
         if (primaryError === undefined) primaryError = restoreError;
       }
     }
   }
 
+  if (restoreFailed) {
+    throw controlError('PRODUCT_ACCEPTANCE_RESTORE_UNVERIFIED');
+  }
   if (primaryError !== undefined) throw normalizeError(primaryError);
   if (!restoreVerified || result === undefined) {
     throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
@@ -433,8 +480,12 @@ async function readUniqueTrace(input: {
   if (!Array.isArray(traces) || traces.length !== 1) {
     throw controlError('PRODUCT_ACCEPTANCE_TRACE_COUNT_INVALID');
   }
-  const trace: unknown = (traces as unknown[])[0];
-  if (!isPersistedTrace(input.component, trace, input.response)) {
+  const trace = canonicalizePersistedTrace(
+    input.component,
+    (traces as unknown[])[0],
+    input.response,
+  );
+  if (!trace) {
     throw controlError('PRODUCT_ACCEPTANCE_TRACE_IDENTITY_INVALID');
   }
   if (input.traceIds.has(trace.traceId)) {
@@ -444,11 +495,11 @@ async function readUniqueTrace(input: {
   return trace;
 }
 
-function isPersistedTrace(
+function canonicalizePersistedTrace(
   component: Component,
   value: unknown,
   response: ReviewPlannerV8ProductAcceptanceRequestResult,
-): value is ReviewPlannerV8ProductAcceptancePersistedTrace {
+): ReviewPlannerV8ProductAcceptancePersistedTrace | null {
   if (
     !isExactRecord(value, [
       'traceId',
@@ -462,61 +513,149 @@ function isPersistedTrace(
       'provenance',
       'durationMs',
       'usage',
-    ]) ||
-    typeof value.traceId !== 'string' ||
-    value.traceId.length === 0 ||
-    value.traceId.length > 256 ||
-    value.component !== component ||
-    value.provider !== EXACT_PROVIDER ||
-    value.model !== EXACT_MODEL ||
-    value.pricingKnown !== false ||
-    value.costEstimateUsd !== 0 ||
-    value.disposition !== 'candidate_applied' ||
-    value.provenance !== 'live_candidate' ||
-    typeof value.durationMs !== 'number' ||
-    !Number.isSafeInteger(value.durationMs) ||
-    value.durationMs <= 0 ||
-    !isUsage(value.usage) ||
-    value.durationMs !== response.target.durationMs ||
-    value.usage.inputTokens !== response.target.usage.inputTokens ||
-    value.usage.outputTokens !== response.target.usage.outputTokens ||
-    !validTraceSteps(component, value.steps)
-  ) {
-    return false;
+    ])
+  )
+    return null;
+  let traceId: unknown;
+  let traceComponent: unknown;
+  let provider: unknown;
+  let model: unknown;
+  let pricingKnown: unknown;
+  let costEstimateUsd: unknown;
+  let rawSteps: unknown;
+  let disposition: unknown;
+  let provenance: unknown;
+  let durationMs: unknown;
+  let rawUsage: unknown;
+  try {
+    traceId = value.traceId;
+    traceComponent = value.component;
+    provider = value.provider;
+    model = value.model;
+    pricingKnown = value.pricingKnown;
+    costEstimateUsd = value.costEstimateUsd;
+    rawSteps = value.steps;
+    disposition = value.disposition;
+    provenance = value.provenance;
+    durationMs = value.durationMs;
+    rawUsage = value.usage;
+  } catch {
+    return null;
   }
-  return true;
+  const usage = canonicalizeUsage(rawUsage);
+  const steps = canonicalizeTraceSteps(component, rawSteps);
+  if (
+    typeof traceId !== 'string' ||
+    traceId.length === 0 ||
+    traceId.length > 256 ||
+    traceComponent !== component ||
+    provider !== EXACT_PROVIDER ||
+    model !== EXACT_MODEL ||
+    pricingKnown !== false ||
+    costEstimateUsd !== 0 ||
+    disposition !== 'candidate_applied' ||
+    provenance !== 'live_candidate' ||
+    typeof durationMs !== 'number' ||
+    !Number.isSafeInteger(durationMs) ||
+    durationMs <= 0 ||
+    !usage ||
+    !steps ||
+    durationMs !== response.target.durationMs ||
+    usage.inputTokens !== response.target.usage.inputTokens ||
+    usage.outputTokens !== response.target.usage.outputTokens
+  )
+    return null;
+  return Object.freeze({
+    traceId,
+    component,
+    provider,
+    model,
+    pricingKnown,
+    costEstimateUsd,
+    steps,
+    disposition,
+    provenance,
+    durationMs,
+    usage,
+  });
 }
 
-function validTraceSteps(component: Component, value: unknown) {
+function canonicalizeTraceSteps(
+  component: Component,
+  value: unknown,
+): readonly ReviewPlannerV8ProductAcceptanceTraceStep[] | null {
   if (!Array.isArray(value) || value.length !== EXACT_STEPS.length) {
-    return false;
+    return null;
   }
   const steps = value as unknown[];
   const targetCandidate = component === 'review' ? 1 : 3;
-  return steps.every((step, index) => {
+  const canonical: ReviewPlannerV8ProductAcceptanceTraceStep[] = [];
+  for (const [index, step] of steps.entries()) {
     if (
-      !isExactRecord(step, [
-        'name',
-        'attempted',
-        'disposition',
-        'provenance',
-      ]) ||
-      step.name !== EXACT_STEPS[index]
+      !isExactRecord(step, ['name', 'attempted', 'disposition', 'provenance'])
     )
-      return false;
-    if (index === targetCandidate) {
-      return (
-        step.attempted === true &&
-        step.disposition === 'candidate_applied' &&
-        step.provenance === 'live_candidate'
-      );
+      return null;
+    let name: unknown;
+    let attempted: unknown;
+    let disposition: unknown;
+    let provenance: unknown;
+    try {
+      name = step.name;
+      attempted = step.attempted;
+      disposition = step.disposition;
+      provenance = step.provenance;
+    } catch {
+      return null;
     }
-    return (
-      step.attempted === false &&
-      step.disposition === 'not_eligible' &&
-      step.provenance === 'local_deterministic'
+    const expectedName = EXACT_STEPS[index];
+    if (!expectedName || name !== expectedName) return null;
+    if (index === targetCandidate) {
+      if (
+        attempted !== true ||
+        disposition !== 'candidate_applied' ||
+        provenance !== 'live_candidate'
+      )
+        return null;
+    } else if (
+      attempted !== false ||
+      disposition !== 'not_eligible' ||
+      provenance !== 'local_deterministic'
+    )
+      return null;
+    canonical.push(
+      Object.freeze({
+        name: expectedName,
+        attempted,
+        disposition,
+        provenance,
+      }),
     );
-  });
+  }
+  return Object.freeze(canonical);
+}
+
+function canonicalizeUsage(
+  value: unknown,
+): Readonly<{ inputTokens: number; outputTokens: number }> | null {
+  if (!isExactRecord(value, ['inputTokens', 'outputTokens'])) return null;
+  let inputTokens: unknown;
+  let outputTokens: unknown;
+  try {
+    inputTokens = value.inputTokens;
+    outputTokens = value.outputTokens;
+  } catch {
+    return null;
+  }
+  if (
+    typeof inputTokens !== 'number' ||
+    typeof outputTokens !== 'number' ||
+    !Number.isSafeInteger(inputTokens) ||
+    inputTokens <= 0 ||
+    !Number.isSafeInteger(outputTokens) ||
+    outputTokens <= 0
+  )
+    return null;
+  return Object.freeze({ inputTokens, outputTokens });
 }
 
 function createBrowserRouteGuard(input: {
@@ -912,17 +1051,6 @@ function positiveUsage(value: { inputTokens: number; outputTokens: number }) {
     value.inputTokens > 0 &&
     Number.isSafeInteger(value?.outputTokens) &&
     value.outputTokens > 0
-  );
-}
-
-function isUsage(
-  value: unknown,
-): value is Readonly<{ inputTokens: number; outputTokens: number }> {
-  return (
-    isExactRecord(value, ['inputTokens', 'outputTokens']) &&
-    typeof value.inputTokens === 'number' &&
-    typeof value.outputTokens === 'number' &&
-    positiveUsage(value as { inputTokens: number; outputTokens: number })
   );
 }
 

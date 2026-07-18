@@ -12,6 +12,15 @@ const reviewCapability = 'review-capability-v8';
 const plannerCapability = 'planner-capability-v8';
 const sha = (value: string | Uint8Array) =>
   createHash('sha256').update(value).digest('hex');
+type Mutable<Value> = { -readonly [Key in keyof Value]: Value[Key] };
+type MutableTrace = Mutable<
+  Omit<ReviewPlannerV8ProductAcceptancePersistedTrace, 'usage' | 'steps'>
+> & {
+  usage: Mutable<ReviewPlannerV8ProductAcceptancePersistedTrace['usage']>;
+  steps: Array<
+    Mutable<ReviewPlannerV8ProductAcceptancePersistedTrace['steps'][number]>
+  >;
+};
 
 describe('Review Planner V8 product acceptance runner', () => {
   it('uses durable receipts in the exact order and derives all identity from persisted traces', async () => {
@@ -190,6 +199,82 @@ describe('Review Planner V8 product acceptance runner', () => {
     expect(result).toHaveProperty('traceSummaries');
   });
 
+  it('reads every persisted trace field once into a canonical snapshot', async () => {
+    const fixture = createFixture();
+    const counts = new Map<string, number>();
+    const source = trace('review', 'api');
+    const hostileUsage = getterRecord(source.usage, 'usage', counts);
+    const hostileSteps = source.steps.map((step, index) =>
+      getterRecord(step, `step${index}`, counts),
+    );
+    const hostile = Object.create(null) as Record<string, unknown>;
+    for (const key of Object.keys(source)) {
+      Object.defineProperty(hostile, key, {
+        enumerable: true,
+        get() {
+          const count = (counts.get(key) ?? 0) + 1;
+          counts.set(key, count);
+          if (key === 'traceId' && count > 1) return 'changed-trace-id';
+          if (key === 'usage') return hostileUsage;
+          if (key === 'steps') return hostileSteps;
+          return source[key as keyof typeof source];
+        },
+      });
+    }
+    fixture.dependencies.readPersistedTraces = jest.fn(
+      async ({ component, slot }) =>
+        component === 'review' && slot === 'api'
+          ? [hostile as never]
+          : [trace(component, slot)],
+    );
+
+    await runReviewPlannerV8ProductAcceptance(fixture.input);
+
+    expect(Object.fromEntries(counts)).toEqual(
+      Object.fromEntries([
+        ...Object.keys(source).map((key) => [key, 1]),
+        ...Object.keys(source.usage).map((key) => [`usage.${key}`, 1]),
+        ...source.steps.flatMap((step, index) =>
+          Object.keys(step).map((key) => [`step${index}.${key}`, 1]),
+        ),
+      ]),
+    );
+  });
+
+  it('deep-freezes canonical trace evidence against delayed and post-run mutation', async () => {
+    const fixture = createFixture();
+    const rawTrace = structuredClone(trace('review', 'api')) as MutableTrace;
+    fixture.dependencies.readPersistedTraces = jest.fn(
+      async ({ component, slot }) =>
+        component === 'review' && slot === 'api'
+          ? [rawTrace]
+          : [trace(component, slot)],
+    );
+    const originalRestore = fixture.dependencies.restoreDefaultOff;
+    fixture.dependencies.restoreDefaultOff = jest.fn(async (component) => {
+      if (component === 'review') {
+        rawTrace.traceId = 'mutated-during-await';
+        rawTrace.usage.inputTokens = 999;
+        rawTrace.steps[1].disposition = 'mutated';
+      }
+      return originalRestore(component);
+    });
+
+    const result = await runReviewPlannerV8ProductAcceptance(fixture.input);
+    const ledgerRecord = fixture.ledger.recordSlotResult.mock.calls[0][0];
+    expect(ledgerRecord).toMatchObject({
+      traceIdSha256: sha('review-api-trace'),
+      usage: { inputTokens: 100, outputTokens: 20 },
+      steps: traceSteps('review'),
+    });
+    expect(result.traceSummaries[0]).toEqual(traceSummary('review', 'api'));
+
+    const serialized = JSON.stringify(result);
+    rawTrace.usage.inputTokens = 1_777;
+    rawTrace.steps[1].provenance = 'mutated-again';
+    expect(JSON.stringify(result)).toBe(serialized);
+  });
+
   it('snapshots hostile metadata before any dependency or ledger method call', async () => {
     const fixture = createFixture();
     fixture.order.length = 0;
@@ -316,7 +401,8 @@ describe('Review Planner V8 product acceptance runner', () => {
     ).rejects.toThrow('PRODUCT_ACCEPTANCE_TRACE_DUPLICATE');
     expect(fixture.ledger.recordSlotResult).toHaveBeenCalledTimes(1);
     expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
-    expect(fixture.dependencies.cleanup).not.toHaveBeenCalled();
+    expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+    expect(fixture.ledger.recordCleanup).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -425,8 +511,9 @@ describe('Review Planner V8 product acceptance runner', () => {
 
       await expect(
         runReviewPlannerV8ProductAcceptance(fixture.input),
-      ).rejects.toThrow('PRODUCT_ACCEPTANCE_DEFAULT_OFF_INVALID');
+      ).rejects.toThrow('PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
       expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(2);
+      expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
       expect(fixture.ledger.recordDefaultOff).not.toHaveBeenCalled();
       expect(fixture.dependencies.readPersistedTraces).toHaveBeenCalledTimes(1);
     },
@@ -485,7 +572,11 @@ describe('Review Planner V8 product acceptance runner', () => {
 
     await expect(
       runReviewPlannerV8ProductAcceptance(fixture.input),
-    ).rejects.toThrow('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    ).rejects.toThrow(
+      stage === 'restore' || stage === 'cleanup'
+        ? 'PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED'
+        : 'PRODUCT_ACCEPTANCE_OPERATION_FAILED',
+    );
     const dispatches = fixture.dependencies.dispatchApi.mock.calls.length;
     if (
       ![
@@ -497,13 +588,52 @@ describe('Review Planner V8 product acceptance runner', () => {
       ].includes(stage)
     ) {
       expect(dispatches).toBeLessThanOrEqual(1);
-      expect(fixture.dependencies.cleanup).not.toHaveBeenCalled();
     } else {
       expect(dispatches).toBe(2);
+    }
+    expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+    if (!['cleanup-record', 'evidence-finalize'].includes(stage)) {
+      expect(fixture.ledger.recordCleanup).not.toHaveBeenCalled();
     }
     expect(fixture.ledger.finalizeSuccess).toHaveBeenCalledTimes(
       stage === 'evidence-finalize' ? 1 : 0,
     );
+  });
+
+  it('requires recovery when cleanup fails after an earlier primary failure', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.activateComponent = jest.fn(async () => {
+      throw new Error('raw primary secret');
+    });
+    fixture.dependencies.cleanup = jest.fn(async () => {
+      throw new Error('raw cleanup secret');
+    });
+
+    const failure = runReviewPlannerV8ProductAcceptance(fixture.input);
+    await expect(failure).rejects.toThrow(
+      'PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED',
+    );
+    await expect(failure).rejects.not.toThrow(/raw|secret/i);
+    expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+    expect(fixture.ledger.recordCleanup).not.toHaveBeenCalled();
+    expect(fixture.ledger.finalizeSuccess).not.toHaveBeenCalled();
+  });
+
+  it('requires recovery when restore and the primary operation both fail', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.runBrowser = jest.fn(async () => {
+      throw new Error('raw browser secret');
+    });
+    fixture.dependencies.restoreDefaultOff = jest.fn(async () => {
+      throw new Error('raw restore secret');
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+    expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+    expect(fixture.ledger.recordCleanup).not.toHaveBeenCalled();
+    expect(fixture.ledger.finalizeSuccess).not.toHaveBeenCalled();
   });
 
   it('ignores caller-authored provider/model fields and records only persisted identity', async () => {
@@ -722,6 +852,25 @@ function traceSummary(
     slot,
     traceIdSha256: sha(traceId),
   };
+}
+
+function getterRecord(
+  source: Readonly<Record<string, unknown>>,
+  prefix: string,
+  counts: Map<string, number>,
+) {
+  const record = Object.create(null) as Record<string, unknown>;
+  for (const key of Object.keys(source)) {
+    Object.defineProperty(record, key, {
+      enumerable: true,
+      get() {
+        const counter = `${prefix}.${key}`;
+        counts.set(counter, (counts.get(counter) ?? 0) + 1);
+        return source[key];
+      },
+    });
+  }
+  return record;
 }
 
 function traceSteps(component: 'review' | 'planner') {
