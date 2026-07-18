@@ -510,7 +510,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const webService = extractYamlSection(compose, '  web:', 2);
 
     expect(adminService).toContain('dockerfile: docker/Dockerfile.admin');
-    expect(adminService).toContain('"3100:3100"');
+    expect(adminService).toContain('3100:3100');
     expect(adminService).toContain('depends_on:');
     expect(adminService).toContain('- server');
     expect(adminService).toContain(
