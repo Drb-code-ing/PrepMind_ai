@@ -28,6 +28,11 @@ import {
   type ReviewPlannerControlledLiveV8HistoricalEvidenceSnapshot,
   type SafeReviewPlannerControlledLiveV8Summary,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
+import {
+  REVIEW_PLANNER_CONTROLLED_LIVE_V8_CONFIRMATION,
+  runReviewPlannerControlledLiveV8StageDiagnosticsCli,
+  type ReviewPlannerControlledLiveV8CliDependencies,
+} from './review-planner-controlled-live-eval-v8-stage-diagnostics.cli';
 
 const describeNative = process.platform === 'win32' ? describe : describe.skip;
 const historicalDirectories = [
@@ -102,7 +107,12 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
       ),
     ).toBe(false);
     await expect(reservation.markAttempted()).resolves.toBe(true);
-    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+    expect(
+      await readFile(
+        join(evidenceDirectory, REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[1]),
+      ),
+    ).toHaveLength(0);
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(2, 9)) {
       expect(
         advanceReviewPlannerControlledLiveV8Stage(reservation, stage),
       ).toBe(true);
@@ -127,6 +137,78 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
       diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
       lastStage: REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[12],
     });
+  });
+
+  it('publishes attempted before the real CLI advances a zero-network evaluator to stage 060', async () => {
+    let providerAttempts = 0;
+    let canaryCalls = 0;
+    const dependencies: ReviewPlannerControlledLiveV8CliDependencies = {
+      validatePreflight: () => ({ ok: true }),
+      snapshotHistoricalEvidence:
+        snapshotReviewPlannerControlledLiveV8HistoricalEvidence,
+      verifyHistoricalEvidence:
+        verifyReviewPlannerControlledLiveV8HistoricalEvidence,
+      reserveEvidence: reserveReviewPlannerControlledLiveV8Evidence,
+      advanceStage: advanceReviewPlannerControlledLiveV8Stage,
+      createEvaluator: () => ({
+        state: 'ready',
+        identity: {
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro',
+          baseUrlIdentity: 'deepseek-v1',
+          structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+          timeoutMs: 4_500,
+          schemaId: 'review-model-candidate-v1',
+          priceProfileId:
+            REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
+        },
+        runCanary: () => {
+          canaryCalls += 1;
+          providerAttempts = 1;
+          return Promise.resolve({
+            kind: 'failed',
+            diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+          } as const);
+        },
+        runPaired: () =>
+          Promise.reject(new Error('paired must remain zero-call')),
+        providerAttemptCount: () => providerAttempts,
+      }),
+      finalizeEvidence: finalizeReviewPlannerControlledLiveV8Evidence,
+      readEvidence: readReviewPlannerControlledLiveV8Evidence,
+    };
+
+    await expect(
+      runReviewPlannerControlledLiveV8StageDiagnosticsCli(
+        {
+          argv: [REVIEW_PLANNER_CONTROLLED_LIVE_V8_CONFIRMATION],
+          env: {},
+          root,
+          now: () => Date.parse('2026-07-18T12:00:00.000Z'),
+          runId: 'real-cli-stage-020',
+        },
+        dependencies,
+      ),
+    ).resolves.toEqual({
+      status: 'invalid_attempted',
+      gate: 'closed',
+      providerAttemptCount: 1,
+      usageKnown: false,
+      diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
+    });
+    expect(canaryCalls).toBe(1);
+    const evidenceDirectory = join(
+      root,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE.evidenceDirectory,
+    );
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(0, 6)) {
+      expect(await readFile(join(evidenceDirectory, stage))).toHaveLength(0);
+    }
+    await expect(
+      readFile(
+        join(evidenceDirectory, REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[6]),
+      ),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('projects success only after the full manifest and strict hash-bound durable seal', async () => {
@@ -258,7 +340,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
     const winner = winners[0];
     if (winner.status !== 'fulfilled') throw new Error('missing winner');
     await expect(winner.value.markAttempted()).resolves.toBe(true);
-    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(2, 9)) {
       expect(
         advanceReviewPlannerControlledLiveV8Stage(winner.value, stage),
       ).toBe(true);
@@ -355,7 +437,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
       runId,
     });
     await reservation.markAttempted();
-    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+    for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(2, 9)) {
       expect(
         advanceReviewPlannerControlledLiveV8Stage(reservation, stage),
       ).toBe(true);
@@ -459,7 +541,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
             });
             await reservation.markAttempted();
             for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(
-              1,
+              2,
               9,
             )) {
               expect(
@@ -492,7 +574,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
             );
             await explicitSecond.markAttempted();
             for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(
-              1,
+              2,
               9,
             )) {
               expect(
@@ -551,7 +633,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
         });
         await reservation.markAttempted();
         for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(
-          1,
+          2,
           9,
         )) {
           expect(
@@ -701,9 +783,10 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
               startedAt: '2026-07-18T12:00:00.000Z',
               runId: `stage-${stageIndex}-${failedPublicationStage}`,
             });
-            await reservation.markAttempted();
+            const attempted = await reservation.markAttempted();
             if (stageIndex <= 8) {
-              for (let current = 1; current <= stageIndex; current += 1) {
+              expect(attempted).toBe(stageIndex !== 1);
+              for (let current = 2; current <= stageIndex; current += 1) {
                 const advanced = advanceReviewPlannerControlledLiveV8Stage(
                   reservation,
                   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[current],
@@ -711,8 +794,9 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
                 expect(advanced).toBe(current < stageIndex);
               }
             } else {
+              expect(attempted).toBe(true);
               for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(
-                1,
+                2,
                 9,
               )) {
                 expect(
@@ -784,7 +868,7 @@ describeNative('Review/Planner V8 durable stage evidence', () => {
           });
           await reservation.markAttempted();
           for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(
-            1,
+            2,
             9,
           )) {
             expect(
@@ -829,7 +913,7 @@ function reserve(
 async function preparedReservation(root: string, runId: string) {
   const reservation = await reserve(root, await snapshot(root), runId);
   await reservation.markAttempted();
-  for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(1, 9)) {
+  for (const stage of REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES.slice(2, 9)) {
     if (!advanceReviewPlannerControlledLiveV8Stage(reservation, stage)) {
       throw new Error(`stage failed: ${stage}`);
     }

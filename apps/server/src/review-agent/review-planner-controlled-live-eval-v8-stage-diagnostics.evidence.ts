@@ -503,8 +503,13 @@ async function reserveReviewPlannerControlledLiveV8EvidenceInternal(
             diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
           }),
         );
-        if (ok) capability.state = 'attempted';
-        return ok;
+        if (!ok) return stopCapability(capability);
+        capability.state = 'attempted';
+        return createStage(
+          capability,
+          REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGES[1],
+          1,
+        );
       } catch {
         return stopCapability(capability);
       }
