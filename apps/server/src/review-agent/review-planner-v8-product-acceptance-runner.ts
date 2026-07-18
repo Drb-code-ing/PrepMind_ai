@@ -36,6 +36,11 @@ const EXACT_STEPS = [
 ] as const;
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
+type CapabilityHandle = Readonly<Record<never, never>>;
+const capabilityVault = new WeakMap<
+  CapabilityHandle,
+  Readonly<Record<Component, string>>
+>();
 
 class ProductAcceptanceControlError extends Error {}
 
@@ -91,7 +96,9 @@ export type ReviewPlannerV8ProductAcceptanceBrowserResult =
     }>;
 
 export type ReviewPlannerV8ProductAcceptanceRoute = Readonly<{
-  continue(): void | Promise<void>;
+  continueWithAcceptanceCapability(
+    acceptanceCapability: string,
+  ): void | Promise<void>;
   abort(): void | Promise<void>;
 }>;
 
@@ -119,12 +126,11 @@ export interface ReviewPlannerV8ProductAcceptanceRunnerDependencies {
   }): Promise<string>;
   dispatchApi(input: {
     component: Component;
-    capabilitySha256: string;
+    acceptanceCapability: string;
   }): Promise<ReviewPlannerV8ProductAcceptanceRequestResult>;
   runBrowser(input: {
     component: Component;
     webOrigin: typeof EXACT_WEB_ORIGIN;
-    capabilitySha256: string;
     onRoute(
       route: ReviewPlannerV8ProductAcceptanceRoute,
       request: ReviewPlannerV8ProductAcceptanceRequest,
@@ -152,6 +158,22 @@ export type ReviewPlannerV8ProductAcceptanceRunResult = Readonly<{
   screenshotSha256: Readonly<Record<Component, string>>;
   usage: Readonly<{ inputTokens: number; outputTokens: number }>;
   durationMs: number;
+  traceSummaries: readonly ReviewPlannerV8ProductAcceptanceTraceSummary[];
+}>;
+
+export type ReviewPlannerV8ProductAcceptanceTraceSummary = Readonly<{
+  component: Component;
+  slot: RequestSlot;
+  traceIdSha256: string;
+  provider: string;
+  model: string;
+  pricingKnown: boolean;
+  costEstimateUsd: number;
+  steps: readonly ReviewPlannerV8ProductAcceptanceTraceStep[];
+  disposition: string;
+  provenance: string;
+  durationMs: number;
+  usage: Readonly<{ inputTokens: number; outputTokens: number }>;
 }>;
 
 type SafeSnapshot = Readonly<{
@@ -160,6 +182,7 @@ type SafeSnapshot = Readonly<{
   pairedEvidenceSha256: string;
   accountIdSha256: Readonly<Record<Component, string>>;
   capabilitySha256: Readonly<Record<Component, string>>;
+  capabilityHandle: CapabilityHandle;
   webOrigin: typeof EXACT_WEB_ORIGIN;
   apiOrigin: typeof EXACT_API_ORIGIN;
   ledger: RunnerLedgerPort;
@@ -223,6 +246,16 @@ export async function runReviewPlannerV8ProductAcceptance(
     const traces = COMPONENTS.flatMap(
       (component) => componentResults[component].traces,
     );
+    const traceSummaries = COMPONENTS.flatMap((component) =>
+      (['api', 'browser'] as const).map((slot, index) =>
+        toTraceSummary(
+          component,
+          slot,
+          componentResults[component].traces[index],
+          componentResults[component].traceIdSha256[index],
+        ),
+      ),
+    );
     return Object.freeze({
       environment: snapshot.environment,
       provider: traces[0].provider,
@@ -243,9 +276,12 @@ export async function runReviewPlannerV8ProductAcceptance(
         ),
       }),
       durationMs: traces.reduce((total, trace) => total + trace.durationMs, 0),
+      traceSummaries: Object.freeze(traceSummaries),
     });
   } catch (error) {
     throw normalizeError(error);
+  } finally {
+    capabilityVault.delete(snapshot.capabilityHandle);
   }
 }
 
@@ -273,10 +309,9 @@ async function runComponent(input: {
     );
 
     snapshot.ledger.claimSlot(toLedgerSlot(component, 'api'));
-    const api = await snapshot.dependencies.dispatchApi({
-      component,
-      capabilitySha256: snapshot.capabilitySha256[component],
-    });
+    const api = await snapshot.dependencies.dispatchApi(
+      createApiDispatchInput(snapshot, component),
+    );
     assertRequestResult(api);
     const apiTrace = await readUniqueTrace({
       component,
@@ -290,17 +325,15 @@ async function runComponent(input: {
       toLedgerSlotResult(component, 'api', apiTrace, apiTraceIdSha256),
     );
 
+    snapshot.ledger.claimSlot(toLedgerSlot(component, 'browser'));
+    browserClaimed = true;
     const browserGuard = createBrowserRouteGuard({
       expectedUrl: `${snapshot.apiOrigin}/review-agent/suggestions`,
-      claim: () => {
-        snapshot.ledger.claimSlot(toLedgerSlot(component, 'browser'));
-        browserClaimed = true;
-      },
+      readAcceptanceCapability: () => readCapability(snapshot, component),
     });
     const browser = await snapshot.dependencies.runBrowser({
       component,
       webOrigin: snapshot.webOrigin,
-      capabilitySha256: snapshot.capabilitySha256[component],
       onRoute: browserGuard.onRoute,
     });
     browserGuard.closeAndAssert(browser.receipt);
@@ -488,7 +521,7 @@ function validTraceSteps(component: Component, value: unknown) {
 
 function createBrowserRouteGuard(input: {
   expectedUrl: string;
-  claim(): void;
+  readAcceptanceCapability(): string;
 }) {
   let continued = 0;
   let rejected = false;
@@ -518,9 +551,10 @@ function createBrowserRouteGuard(input: {
         await route.abort();
         return;
       }
-      input.claim();
       continued += 1;
-      await route.continue();
+      await route.continueWithAcceptanceCapability(
+        input.readAcceptanceCapability(),
+      );
     },
     closeAndAssert(receipt: unknown) {
       closed = true;
@@ -537,6 +571,7 @@ function createBrowserRouteGuard(input: {
 }
 
 function createSafeSnapshot(input: unknown): SafeSnapshot {
+  let capabilityHandle: CapabilityHandle | undefined;
   try {
     if (!input || typeof input !== 'object') throw new Error();
     const source = input as Record<string, unknown>;
@@ -582,7 +617,12 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     const dependencies = snapshotDependencyPort(source.dependencies);
     if (ledger.environment() !== environment) throw new Error();
 
-    return Object.freeze({
+    capabilityHandle = Object.freeze({});
+    capabilityVault.set(
+      capabilityHandle,
+      Object.freeze({ review: capabilityReview, planner: capabilityPlanner }),
+    );
+    const snapshot = {
       environment,
       commitSha,
       pairedEvidenceSha256,
@@ -595,8 +635,18 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
       apiOrigin,
       ledger,
       dependencies,
+    } as Omit<SafeSnapshot, 'capabilityHandle'> & {
+      capabilityHandle?: CapabilityHandle;
+    };
+    Object.defineProperty(snapshot, 'capabilityHandle', {
+      value: capabilityHandle,
+      enumerable: false,
+      configurable: false,
+      writable: false,
     });
+    return Object.freeze(snapshot) as SafeSnapshot;
   } catch {
+    if (capabilityHandle) capabilityVault.delete(capabilityHandle);
     throw controlError('PRODUCT_ACCEPTANCE_INPUT_INVALID');
   }
 }
@@ -719,10 +769,56 @@ function toLedgerSlotResult(
     model: trace.model,
     usage: trace.usage,
     durationMs: trace.durationMs,
+    pricingKnown: trace.pricingKnown,
+    costEstimateUsd: trace.costEstimateUsd,
+    steps: trace.steps,
     disposition: trace.disposition,
     provenance: trace.provenance,
     traceIdSha256,
   };
+}
+
+function toTraceSummary(
+  component: Component,
+  slot: RequestSlot,
+  trace: ReviewPlannerV8ProductAcceptancePersistedTrace,
+  traceIdSha256: string,
+): ReviewPlannerV8ProductAcceptanceTraceSummary {
+  return Object.freeze({
+    component,
+    slot,
+    traceIdSha256,
+    provider: trace.provider,
+    model: trace.model,
+    pricingKnown: trace.pricingKnown,
+    costEstimateUsd: trace.costEstimateUsd,
+    steps: trace.steps,
+    disposition: trace.disposition,
+    provenance: trace.provenance,
+    durationMs: trace.durationMs,
+    usage: trace.usage,
+  });
+}
+
+function readCapability(snapshot: SafeSnapshot, component: Component) {
+  const capabilities = capabilityVault.get(snapshot.capabilityHandle);
+  if (!capabilities) {
+    throw controlError('PRODUCT_ACCEPTANCE_CAPABILITY_UNAVAILABLE');
+  }
+  return capabilities[component];
+}
+
+function createApiDispatchInput(snapshot: SafeSnapshot, component: Component) {
+  const request = { component } as {
+    component: Component;
+    acceptanceCapability: string;
+  };
+  Object.defineProperty(request, 'acceptanceCapability', {
+    enumerable: false,
+    configurable: false,
+    get: () => readCapability(snapshot, component),
+  });
+  return Object.freeze(request);
 }
 
 function assertCleanupReceipt(value: CleanupReceipt) {

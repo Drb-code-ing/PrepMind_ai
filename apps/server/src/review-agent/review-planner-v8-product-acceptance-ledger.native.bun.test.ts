@@ -170,6 +170,7 @@ function slotResult(
   screenshotSha256?: string,
 ) {
   const browser = slot.endsWith('browser');
+  const component = slot.startsWith('review') ? 'review' : 'planner';
   return {
     schemaVersion: 'phase-6.9.5-v8-product-acceptance-slot-result-v1',
     slot,
@@ -177,6 +178,14 @@ function slotResult(
     model: 'deepseek-v4-pro',
     usage: { inputTokens, outputTokens },
     durationMs: 1_000,
+    pricingKnown: false,
+    costEstimateUsd: 0,
+    steps: [
+      traceStep('deterministic_review', false),
+      traceStep('review_candidate', component === 'review'),
+      traceStep('deterministic_planner', false),
+      traceStep('planner_candidate', component === 'planner'),
+    ],
     disposition: 'candidate_applied',
     provenance: 'live_candidate',
     traceIdSha256,
@@ -188,6 +197,29 @@ function slotResult(
         }
       : {}),
   } as const;
+}
+
+function traceStep(
+  name:
+    | 'deterministic_review'
+    | 'review_candidate'
+    | 'deterministic_planner'
+    | 'planner_candidate',
+  attempted: boolean,
+) {
+  return attempted
+    ? {
+        name,
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'live_candidate',
+      }
+    : {
+        name,
+        attempted: false,
+        disposition: 'not_eligible',
+        provenance: 'local_deterministic',
+      };
 }
 
 function restoreReceipt(component: 'review' | 'planner') {

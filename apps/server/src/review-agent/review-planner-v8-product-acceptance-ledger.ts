@@ -167,31 +167,78 @@ const usageSchema = z
   })
   .strict();
 
+function traceStepSchema(
+  name:
+    | 'deterministic_review'
+    | 'review_candidate'
+    | 'deterministic_planner'
+    | 'planner_candidate',
+  attempted: boolean,
+) {
+  return z
+    .object({
+      name: z.literal(name),
+      attempted: z.literal(attempted),
+      disposition: attempted
+        ? z.literal('candidate_applied')
+        : z.literal('not_eligible'),
+      provenance: attempted
+        ? z.literal('live_candidate')
+        : z.literal('local_deterministic'),
+    })
+    .strict();
+}
+
+function traceStepsSchema(component: 'review' | 'planner') {
+  return z.tuple([
+    traceStepSchema('deterministic_review', false),
+    traceStepSchema('review_candidate', component === 'review'),
+    traceStepSchema('deterministic_planner', false),
+    traceStepSchema('planner_candidate', component === 'planner'),
+  ]);
+}
+
 const slotResultBase = {
   schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-slot-result-v1'),
   provider: z.literal('deepseek'),
   model: z.literal('deepseek-v4-pro'),
   usage: usageSchema,
   durationMs: z.number().int().positive().max(60_000),
+  pricingKnown: z.literal(false),
+  costEstimateUsd: z.literal(0),
   disposition: z.literal('candidate_applied'),
   provenance: z.literal('live_candidate'),
   traceIdSha256: z.string().regex(SHA256),
 };
 
 const slotResultSchema = z.discriminatedUnion('slot', [
-  z.object({ ...slotResultBase, slot: z.literal('review-api') }).strict(),
+  z
+    .object({
+      ...slotResultBase,
+      slot: z.literal('review-api'),
+      steps: traceStepsSchema('review'),
+    })
+    .strict(),
   z
     .object({
       ...slotResultBase,
       slot: z.literal('review-browser'),
+      steps: traceStepsSchema('review'),
       screenshotSha256: z.string().regex(SHA256),
     })
     .strict(),
-  z.object({ ...slotResultBase, slot: z.literal('planner-api') }).strict(),
+  z
+    .object({
+      ...slotResultBase,
+      slot: z.literal('planner-api'),
+      steps: traceStepsSchema('planner'),
+    })
+    .strict(),
   z
     .object({
       ...slotResultBase,
       slot: z.literal('planner-browser'),
+      steps: traceStepsSchema('planner'),
       screenshotSha256: z.string().regex(SHA256),
     })
     .strict(),

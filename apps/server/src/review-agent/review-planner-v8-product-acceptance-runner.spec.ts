@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 import { createHash } from 'node:crypto';
 
 import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
@@ -27,8 +27,8 @@ describe('Review Planner V8 product acceptance runner', () => {
       'api:review',
       'trace:review-api',
       'ledger-result:review-api',
-      'browser-start:review',
       'ledger-claim:review-browser',
+      'browser-start:review',
       'browser-continue:review',
       'browser-end:review',
       'restore:review',
@@ -43,8 +43,8 @@ describe('Review Planner V8 product acceptance runner', () => {
       'api:planner',
       'trace:planner-api',
       'ledger-result:planner-api',
-      'browser-start:planner',
       'ledger-claim:planner-browser',
+      'browser-start:planner',
       'browser-continue:planner',
       'browser-end:planner',
       'restore:planner',
@@ -67,11 +67,127 @@ describe('Review Planner V8 product acceptance runner', () => {
       durationMs: 4200,
     });
     expect(new Set(result.traceIdSha256).size).toBe(4);
+    expect(result.traceSummaries).toEqual(
+      (['review', 'planner'] as const).flatMap((component) =>
+        (['api', 'browser'] as const).map((slot) =>
+          traceSummary(component, slot),
+        ),
+      ),
+    );
     expect(fixture.ledger.recordSlotResult).toHaveBeenCalledTimes(4);
     expect(fixture.ledger.finalizeSuccess).toHaveBeenCalledTimes(1);
     expect(
       JSON.stringify(fixture.ledger.recordSlotResult.mock.calls),
     ).not.toContain(reviewCapability);
+    expect(JSON.stringify(result)).not.toContain(reviewCapability);
+    expect(JSON.stringify(result)).not.toContain(plannerCapability);
+    expect(fixture.apiCapabilitySha256).toEqual([
+      sha(reviewCapability),
+      sha(plannerCapability),
+    ]);
+    expect(
+      () =>
+        fixture.dependencies.dispatchApi.mock.calls[0][0].acceptanceCapability,
+    ).toThrow('PRODUCT_ACCEPTANCE_CAPABILITY_UNAVAILABLE');
+    expect(
+      fixture.routes.continueWithAcceptanceCapability.mock.calls.map(
+        ([capability]) => sha(capability),
+      ),
+    ).toEqual([sha(reviewCapability), sha(plannerCapability)]);
+    expect(fixture.routes.continue).not.toHaveBeenCalled();
+    for (const [record] of fixture.ledger.recordSlotResult.mock.calls) {
+      expect(record).toEqual(
+        expect.objectContaining({
+          pricingKnown: false,
+          costEstimateUsd: 0,
+          steps: expect.any(Array),
+        }),
+      );
+    }
+  });
+
+  it('durably claims the browser slot before browser launch can fail', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.runBrowser = jest.fn(async () => {
+      fixture.order.push('browser-start:review');
+      throw new Error('launch failed with raw secret');
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    expect(fixture.order.slice(0, 9)).toEqual([
+      'ledger-environment',
+      'activate:review',
+      'facts-before:review',
+      'ledger-claim:review-api',
+      'api:review',
+      'trace:review-api',
+      'ledger-result:review-api',
+      'ledger-claim:review-browser',
+      'browser-start:review',
+    ]);
+    expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes raw component capability only to API and the exact continued route', async () => {
+    const fixture = createFixture();
+
+    await runReviewPlannerV8ProductAcceptance(fixture.input);
+
+    expect(fixture.apiCapabilitySha256).toEqual([
+      sha(reviewCapability),
+      sha(plannerCapability),
+    ]);
+    expect(
+      () =>
+        fixture.dependencies.dispatchApi.mock.calls[0][0].acceptanceCapability,
+    ).toThrow('PRODUCT_ACCEPTANCE_CAPABILITY_UNAVAILABLE');
+    expect(
+      fixture.routes.continueWithAcceptanceCapability.mock.calls.map(
+        ([capability]) => sha(capability),
+      ),
+    ).toEqual([sha(reviewCapability), sha(plannerCapability)]);
+    expect(fixture.routes.continue).not.toHaveBeenCalled();
+  });
+
+  it('revokes the private capability lease after a failed run without leaking it', async () => {
+    const fixture = createFixture();
+    let captured:
+      | Parameters<
+          ReviewPlannerV8ProductAcceptanceRunnerDependencies['dispatchApi']
+        >[0]
+      | undefined;
+    fixture.dependencies.dispatchApi = jest.fn(async (input) => {
+      captured = input;
+      expect(sha(input.acceptanceCapability)).toBe(sha(reviewCapability));
+      throw new Error('raw dependency failure');
+    });
+
+    const failure = runReviewPlannerV8ProductAcceptance(fixture.input);
+    await expect(failure).rejects.toThrow(
+      'PRODUCT_ACCEPTANCE_OPERATION_FAILED',
+    );
+    await expect(failure).rejects.not.toThrow(new RegExp(reviewCapability));
+    expect(() => captured?.acceptanceCapability).toThrow(
+      'PRODUCT_ACCEPTANCE_CAPABILITY_UNAVAILABLE',
+    );
+    expect(
+      JSON.stringify(fixture.ledger.recordSlotResult.mock.calls),
+    ).not.toContain(reviewCapability);
+  });
+
+  it('copies safe persisted trace details into ledger results and run summaries', async () => {
+    const fixture = createFixture();
+
+    const result = await runReviewPlannerV8ProductAcceptance(fixture.input);
+
+    expect(fixture.ledger.recordSlotResult.mock.calls[0][0]).toMatchObject({
+      pricingKnown: false,
+      costEstimateUsd: 0,
+      steps: traceSteps('review'),
+    });
+    expect(result).toHaveProperty('traceSummaries');
   });
 
   it('snapshots hostile metadata before any dependency or ledger method call', async () => {
@@ -236,8 +352,11 @@ describe('Review Planner V8 product acceptance runner', () => {
       runReviewPlannerV8ProductAcceptance(fixture.input),
     ).rejects.toThrow('PRODUCT_ACCEPTANCE_BROWSER_RECEIPT_INVALID');
     expect(fixture.routes.continue).not.toHaveBeenCalled();
+    expect(
+      fixture.routes.continueWithAcceptanceCapability,
+    ).not.toHaveBeenCalled();
     expect(fixture.routes.abort).toHaveBeenCalledTimes(1);
-    expect(fixture.ledger.claimSlot).toHaveBeenCalledTimes(1);
+    expect(fixture.ledger.claimSlot).toHaveBeenCalledTimes(2);
     expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
   });
 
@@ -264,7 +383,10 @@ describe('Review Planner V8 product acceptance runner', () => {
     await expect(
       runReviewPlannerV8ProductAcceptance(fixture.input),
     ).rejects.toThrow('PRODUCT_ACCEPTANCE_BROWSER_ROUTE_REJECTED');
-    expect(fixture.routes.continue).toHaveBeenCalledTimes(1);
+    expect(
+      fixture.routes.continueWithAcceptanceCapability,
+    ).toHaveBeenCalledTimes(1);
+    expect(fixture.routes.continue).not.toHaveBeenCalled();
     expect(fixture.routes.abort).toHaveBeenCalledTimes(1);
     expect(fixture.dependencies.readPersistedTraces).toHaveBeenCalledTimes(1);
   });
@@ -410,7 +532,11 @@ function createFixture(
   } = {},
 ) {
   const order: string[] = [];
+  const apiCapabilitySha256: string[] = [];
   const routes = {
+    continueWithAcceptanceCapability: jest.fn(async (capability: string) => {
+      void capability;
+    }),
     continue: jest.fn(async () => undefined),
     abort: jest.fn(async () => undefined),
   };
@@ -443,7 +569,9 @@ function createFixture(
       order.push(`facts-${phase}:${component}`);
       return component === 'review' ? '3'.repeat(64) : '4'.repeat(64);
     }),
-    dispatchApi: jest.fn(async ({ component }) => {
+    dispatchApi: jest.fn(async (input) => {
+      const { component } = input;
+      apiCapabilitySha256.push(sha(input.acceptanceCapability));
       order.push(`api:${component}`);
       return requestResult(component, 'api');
     }),
@@ -451,8 +579,11 @@ function createFixture(
       order.push(`browser-start:${input.component}`);
       await input.onRoute(
         {
-          continue: async () => {
+          continueWithAcceptanceCapability: async (capability: string) => {
             order.push(`browser-continue:${input.component}`);
+            await routes.continueWithAcceptanceCapability(capability);
+          },
+          continue: async () => {
             await routes.continue();
           },
           abort: routes.abort,
@@ -494,7 +625,14 @@ function createFixture(
     ledger: ledger as unknown as ReviewPlannerV8ProductAcceptanceLedger,
     dependencies,
   };
-  return { input, order, routes, ledger, dependencies };
+  return {
+    input,
+    order,
+    routes,
+    ledger,
+    dependencies,
+    apiCapabilitySha256,
+  };
 }
 
 type MutableDependencies = {
@@ -571,6 +709,18 @@ function trace(
     durationMs: result.target.durationMs,
     usage: result.target.usage,
     ...override,
+  };
+}
+
+function traceSummary(
+  component: 'review' | 'planner',
+  slot: 'api' | 'browser',
+) {
+  const { traceId, ...safeTrace } = trace(component, slot);
+  return {
+    ...safeTrace,
+    slot,
+    traceIdSha256: sha(traceId),
   };
 }
 
