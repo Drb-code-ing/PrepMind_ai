@@ -222,6 +222,7 @@ type RecoveryJournalState = {
   authorizationAttempt: object | null;
   authorizationPromise: Promise<ReviewPlannerV8RecoveryAuthority> | null;
   publicDirectory: WindowsNoReparseChildDirectory | null;
+  bindingPublicDirectory: WindowsNoReparseChildDirectory | null;
 };
 
 export type ReviewPlannerV8RecoveryAuthority = Readonly<{
@@ -388,6 +389,16 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
       authorizationAttempt: null,
       authorizationPromise: null,
       publicDirectory: null,
+      bindingPublicDirectory: await openWindowsNoReparseExistingFrozenDirectory(
+        input.repoRoot,
+        [
+          'docs',
+          'acceptance',
+          'evidence',
+          'phase-6-9-5-v8-product-acceptance',
+          input.environment,
+        ],
+      ),
     });
   } catch (error) {
     directory.close();
@@ -440,6 +451,7 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
       authorizationAttempt: null,
       authorizationPromise: null,
       publicDirectory: null,
+      bindingPublicDirectory: null,
     });
   } catch {
     directory.close();
@@ -587,6 +599,21 @@ function createRecoveryJournal(
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
         }
         const snapshot = snapshotRecoveryState(state);
+        if (Object.values(snapshot.stages).some(Boolean)) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
+        }
+        const publicDirectory = state.bindingPublicDirectory;
+        if (publicDirectory === null) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
+        }
+        const publicLeaves = publicDirectory.listLeafNames();
+        if (
+          publicLeaves.includes('.acceptance-success') ||
+          publicLeaves.includes('.recovery-only.json') ||
+          publicLeaves.some((leaf) => !KNOWN_PUBLIC_LEAVES.has(leaf))
+        ) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
+        }
         if (
           parsed.data.email !==
           snapshot.manifest.syntheticEmails[parsed.data.component]
@@ -837,7 +864,11 @@ function createRecoveryJournal(
         try {
           state.publicDirectory?.close();
         } finally {
-          state.directory.close();
+          try {
+            state.bindingPublicDirectory?.close();
+          } finally {
+            state.directory.close();
+          }
         }
       },
     });
@@ -872,6 +903,41 @@ function snapshotRecoveryState(
     );
     if (manifest.environment !== state.environment) throw new Error();
     const leaves = state.directory.listLeafNames();
+    const orderedStages = RECOVERY_STAGE_LEAVES.map((leaf) =>
+      leaves.includes(leaf),
+    );
+    let missingSeen = false;
+    for (const present of orderedStages) {
+      if (!present) missingSeen = true;
+      else if (missingSeen) throw new Error();
+    }
+    if (
+      orderedStages[0] &&
+      state.directory.readRegularFile('restore.claimed').byteLength !== 0
+    ) {
+      throw new Error();
+    }
+    if (orderedStages[1]) {
+      const receipt = recoveryRestoreSchema.parse(
+        JSON.parse(
+          state.directory.readRegularFile('restore.verified.json').toString(),
+        ),
+      );
+      if (receipt.component !== 'recovery') throw new Error();
+    }
+    if (
+      orderedStages[2] &&
+      state.directory.readRegularFile('cleanup.claimed').byteLength !== 0
+    ) {
+      throw new Error();
+    }
+    if (orderedStages[3]) {
+      recoveryCleanupSchema.parse(
+        JSON.parse(
+          state.directory.readRegularFile('cleanup.verified.json').toString(),
+        ),
+      );
+    }
     const bindings: Partial<
       Record<
         RecoveryBindingComponent,

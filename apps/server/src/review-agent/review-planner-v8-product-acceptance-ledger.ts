@@ -615,7 +615,7 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
     const defaultOff = (['review', 'planner'] as const).map((component) =>
       readDefaultOffReceipt(directory, component),
     );
-    readStrict(
+    const ownerProof = readStrict(
       directory,
       '.owner-isolation-verified.json',
       ownerIsolationSchema,
@@ -642,6 +642,7 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
       plan: screenshotFor(results, 'review-browser'),
       today: screenshotFor(results, 'planner-browser'),
     };
+    const expectedTraceIds = results.map((result) => result.traceIdSha256);
     if (
       !cost.withinHardCap ||
       acceptance.environment !== input.environment ||
@@ -650,10 +651,8 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
       acceptance.inputTokens !== inputTokens ||
       acceptance.outputTokens !== outputTokens ||
       acceptance.costCny !== cost.costCny ||
-      !arraysEqual(
-        acceptance.traceIdSha256,
-        results.map((result) => result.traceIdSha256),
-      ) ||
+      !arraysEqual(acceptance.traceIdSha256, expectedTraceIds) ||
+      !arraysEqual(ownerProof.traceIdSha256, expectedTraceIds) ||
       acceptance.screenshots.plan !== screenshots.plan ||
       acceptance.screenshots.today !== screenshots.today
     ) {
