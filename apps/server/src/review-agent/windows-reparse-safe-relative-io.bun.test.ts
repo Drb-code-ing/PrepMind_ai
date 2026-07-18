@@ -47,10 +47,13 @@ function requireDurableFaultTestFactory() {
     }
   ).openWindowsNoReparseChildDirectoryForTests;
   expect(typeof factory).toBe('function');
-  return factory!;
+  if (typeof factory !== 'function') {
+    throw new Error('WINDOWS_REPARSE_SAFE_IO_TEST_FACTORY_UNAVAILABLE');
+  }
+  return factory;
 }
 
-async function runPublicationHardExitChild(
+function runPublicationHardExitChild(
   root: string,
   exitPhase: 'rename' | 'post_commit_cleanup',
   committedLeafName: string,
@@ -268,7 +271,7 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
   });
 
   it('leaves only the private prepare leaf when a child hard-exits before rename', async () => {
-    const child = await runPublicationHardExitChild(
+    const child = runPublicationHardExitChild(
       root,
       'rename',
       'child-before-rename',
@@ -292,7 +295,7 @@ describeWindows('Windows no-reparse relative evidence I/O', () => {
   });
 
   it('lets a fresh reader observe publication after a child hard-exits post-rename', async () => {
-    const child = await runPublicationHardExitChild(
+    const child = runPublicationHardExitChild(
       root,
       'post_commit_cleanup',
       'child-after-rename',
