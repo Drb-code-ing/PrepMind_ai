@@ -104,6 +104,7 @@ export type ReviewPlannerV8ProductAcceptanceRoute = Readonly<{
 
 export type ReviewPlannerV8ProductAcceptanceRequest = Readonly<{
   url(): string;
+  method(): string;
 }>;
 
 type CleanupReceipt = Readonly<{
@@ -672,8 +673,10 @@ function createBrowserRouteGuard(input: {
       request: ReviewPlannerV8ProductAcceptanceRequest,
     ) => {
       let url: unknown;
+      let method: unknown;
       try {
         url = request.url();
+        method = request.method();
       } catch {
         rejected = true;
         await route.abort();
@@ -685,7 +688,11 @@ function createBrowserRouteGuard(input: {
         await route.abort();
         return;
       }
-      if (continued !== 0 || !isExactUrl(url, input.expectedUrl)) {
+      if (
+        continued !== 0 ||
+        method !== 'GET' ||
+        !isCanonicalSuggestionUrl(url, input.expectedUrl)
+      ) {
         rejected = true;
         await route.abort();
         return;
@@ -1024,25 +1031,86 @@ function isExactRecord(
   }
 }
 
-function isExactUrl(value: unknown, expected: string) {
+function isCanonicalSuggestionUrl(value: unknown, expected: string) {
   if (typeof value !== 'string') return false;
   try {
     const actual = new URL(value);
     const target = new URL(expected);
+    if (actual.protocol !== 'http:') return false;
+    if (
+      actual.hostname !== '127.0.0.1' ||
+      actual.port !== '3001' ||
+      actual.origin !== target.origin ||
+      actual.pathname !== '/review-agent/suggestions' ||
+      actual.pathname !== target.pathname ||
+      actual.username !== '' ||
+      actual.password !== '' ||
+      actual.hash !== ''
+    )
+      return false;
+    const rawQuery = actual.search.slice(1);
+    if (
+      rawQuery.length === 0 ||
+      rawQuery.includes('%') ||
+      rawQuery.split('&').some((part) => part.length === 0)
+    )
+      return false;
+    const allowed = new Set(['days', 'startDate', 'timezoneOffsetMinutes']);
+    const keys = [...actual.searchParams.keys()];
+    if (
+      keys.some((key) => !allowed.has(key)) ||
+      [...allowed].some((key) => actual.searchParams.getAll(key).length > 1)
+    )
+      return false;
+    const days = actual.searchParams.get('days');
+    const startDate = actual.searchParams.get('startDate');
+    const timezoneOffset = actual.searchParams.get('timezoneOffsetMinutes');
     return (
-      actual.href === target.href &&
-      actual.protocol === 'http:' &&
-      actual.hostname === '127.0.0.1' &&
-      actual.port === '3001' &&
-      actual.pathname === '/review-agent/suggestions' &&
-      actual.username === '' &&
-      actual.password === '' &&
-      actual.search === '' &&
-      actual.hash === ''
+      days !== null &&
+      /^(?:[1-9]|1[0-4])$/.test(days) &&
+      (startDate === null || isCanonicalDate(startDate)) &&
+      (timezoneOffset === null || isCanonicalTimezoneOffset(timezoneOffset))
     );
   } catch {
     return false;
   }
+}
+
+function isCanonicalDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const daysInMonth = [
+    31,
+    year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+  return (
+    Number.isInteger(year) &&
+    Number.isInteger(month) &&
+    Number.isInteger(day) &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= daysInMonth[month - 1]
+  );
+}
+
+function isCanonicalTimezoneOffset(value: string) {
+  if (!/^(?:0|[1-9]\d{0,2}|-[1-9]\d{0,2})$/.test(value)) return false;
+  const offset = Number(value);
+  return Number.isInteger(offset) && offset >= -840 && offset <= 840;
 }
 
 function positiveUsage(value: { inputTokens: number; outputTokens: number }) {

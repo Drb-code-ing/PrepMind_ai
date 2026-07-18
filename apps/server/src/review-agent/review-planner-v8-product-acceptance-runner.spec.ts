@@ -10,6 +10,8 @@ import {
 
 const reviewCapability = 'review-capability-v8';
 const plannerCapability = 'planner-capability-v8';
+const canonicalSuggestionUrl =
+  'http://127.0.0.1:3001/review-agent/suggestions?days=7&startDate=2026-07-18&timezoneOffsetMinutes=-480';
 const sha = (value: string | Uint8Array) =>
   createHash('sha256').update(value).digest('hex');
 type Mutable<Value> = { -readonly [Key in keyof Value]: Value[Key] };
@@ -424,6 +426,7 @@ describe('Review Planner V8 product acceptance runner', () => {
   });
 
   it.each([
+    'http://127.0.0.1:3001/review-agent/suggestions',
     'http://localhost:3001/review-agent/suggestions',
     'http://127.0.0.1:3002/review-agent/suggestions',
     'https://127.0.0.1:3001/review-agent/suggestions',
@@ -431,6 +434,24 @@ describe('Review Planner V8 product acceptance runner', () => {
     'http://127.0.0.1:3001/review-agent/suggestions#x',
     'http://user:pass@127.0.0.1:3001/review-agent/suggestions',
     'http://127.0.0.1:3001/review-agent/suggestions/',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&days=8',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&extra=1',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=0',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=15',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=07',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=+7',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=-1',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=1e1',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=%37',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&startDate=2026-02-30',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&startDate=',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-841',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=841',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=%2B480',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=0480',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=',
+    'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-0',
   ])('aborts the non-exact browser API URL %s', async (url) => {
     const fixture = createFixture({ browserUrl: url });
 
@@ -444,6 +465,79 @@ describe('Review Planner V8 product acceptance runner', () => {
     expect(fixture.routes.abort).toHaveBeenCalledTimes(1);
     expect(fixture.ledger.claimSlot).toHaveBeenCalledTimes(2);
     expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts canonical query parameters in any order', async () => {
+    const fixture = createFixture({
+      browserUrl:
+        'http://127.0.0.1:3001/review-agent/suggestions?timezoneOffsetMinutes=-480&days=7&startDate=2026-07-18',
+    });
+
+    await runReviewPlannerV8ProductAcceptance(fixture.input);
+
+    expect(
+      fixture.routes.continueWithAcceptanceCapability,
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a non-GET suggestion request without exposing capability', async () => {
+    const fixture = createFixture({ browserMethod: 'POST' });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_BROWSER_RECEIPT_INVALID');
+    expect(
+      fixture.routes.continueWithAcceptanceCapability,
+    ).not.toHaveBeenCalled();
+    expect(fixture.routes.abort).toHaveBeenCalledTimes(1);
+  });
+
+  it('folds a hostile method getter without exposing capability or raw error', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.runBrowser = jest.fn(async (input) => {
+      await input.onRoute(fixture.routes, {
+        url: () => canonicalSuggestionUrl,
+        method: () => {
+          throw new Error('raw method credential secret');
+        },
+      });
+      return browserResult(input.component);
+    });
+
+    const failure = runReviewPlannerV8ProductAcceptance(fixture.input);
+    await expect(failure).rejects.toThrow(
+      'PRODUCT_ACCEPTANCE_BROWSER_RECEIPT_INVALID',
+    );
+    await expect(failure).rejects.not.toThrow(/raw|credential|secret/i);
+    expect(
+      fixture.routes.continueWithAcceptanceCapability,
+    ).not.toHaveBeenCalled();
+    expect(fixture.routes.abort).toHaveBeenCalledTimes(1);
+  });
+
+  it('snapshots route url and method getters once before continuing', async () => {
+    const fixture = createFixture();
+    let urlReads = 0;
+    let methodReads = 0;
+    fixture.dependencies.runBrowser = jest.fn(async (input) => {
+      await input.onRoute(fixture.routes, {
+        url: () => {
+          urlReads += 1;
+          return urlReads <= 2
+            ? canonicalSuggestionUrl
+            : 'http://hostile.invalid';
+        },
+        method: () => {
+          methodReads += 1;
+          return methodReads <= 2 ? 'GET' : 'POST';
+        },
+      });
+      return browserResult(input.component);
+    });
+
+    await runReviewPlannerV8ProductAcceptance(fixture.input);
+
+    expect({ urlReads, methodReads }).toEqual({ urlReads: 2, methodReads: 2 });
   });
 
   it('detects and aborts a late second request after the browser adapter resolves', async () => {
@@ -658,6 +752,7 @@ describe('Review Planner V8 product acceptance runner', () => {
 function createFixture(
   options: {
     browserUrl?: string;
+    browserMethod?: string;
     browserReceiptOverride?: Record<string, unknown>;
   } = {},
 ) {
@@ -719,9 +814,8 @@ function createFixture(
           abort: routes.abort,
         },
         {
-          url: () =>
-            options.browserUrl ??
-            'http://127.0.0.1:3001/review-agent/suggestions',
+          url: () => options.browserUrl ?? canonicalSuggestionUrl,
+          method: () => options.browserMethod ?? 'GET',
         },
       );
       order.push(`browser-end:${input.component}`);
@@ -947,7 +1041,7 @@ function cleanupReceipt() {
 }
 
 function exactRequest() {
-  return { url: () => 'http://127.0.0.1:3001/review-agent/suggestions' };
+  return { url: () => canonicalSuggestionUrl, method: () => 'GET' };
 }
 
 function injectFailure(
