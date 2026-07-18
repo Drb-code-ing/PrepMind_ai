@@ -1,37 +1,43 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
-import type { ReviewPlannerV8ProductAcceptanceEvidence } from './review-planner-v8-product-acceptance-evidence';
+import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
 import {
-  calculateReviewPlannerV8ProductAcceptanceCost,
-  reviewPlannerV8ProductAcceptanceEvidenceSchema,
-} from './review-planner-v8-product-acceptance-evidence';
+  reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
+  type ReviewPlannerV8ProductAcceptanceEnvironment,
+} from './review-planner-v8-product-acceptance-recovery';
 
 type Component = 'review' | 'planner';
-type Slot = 'api' | 'browser';
-type Environment = 'branch' | 'main';
+type RequestSlot = 'api' | 'browser';
+type LedgerSlot = `${Component}-${RequestSlot}`;
+type RunnerLedgerPort = Readonly<
+  Pick<
+    ReviewPlannerV8ProductAcceptanceLedger,
+    | 'environment'
+    | 'claimSlot'
+    | 'recordSlotResult'
+    | 'recordDefaultOff'
+    | 'recordScreenshot'
+    | 'recordOwnerIsolation'
+    | 'recordCleanup'
+    | 'finalizeSuccess'
+  >
+>;
 
+const COMPONENTS = ['review', 'planner'] as const;
 const EXACT_PROVIDER = 'deepseek';
 const EXACT_MODEL = 'deepseek-v4-pro';
+const EXACT_WEB_ORIGIN = 'http://127.0.0.1:3000';
+const EXACT_API_ORIGIN = 'http://127.0.0.1:3001';
 const EXACT_STEPS = [
   'deterministic_review',
   'review_candidate',
   'deterministic_planner',
   'planner_candidate',
 ] as const;
-const SLOT_ORDER = [
-  ['review', 'api'],
-  ['review', 'browser'],
-  ['planner', 'api'],
-  ['planner', 'browser'],
-] as const satisfies readonly (readonly [Component, Slot])[];
 const SHA256 = /^[a-f0-9]{64}$/;
+const COMMIT_SHA = /^[a-f0-9]{40}$/;
 
 class ProductAcceptanceControlError extends Error {}
-
-export type ReviewPlannerV8ProductAcceptanceRunnerControl = Readonly<{
-  claim(component: Component, slot: Slot, rawCapability: unknown): boolean;
-  isComplete(): boolean;
-}>;
 
 export type ReviewPlannerV8ProductAcceptanceObservation = Readonly<{
   attempted: boolean;
@@ -47,21 +53,42 @@ export type ReviewPlannerV8ProductAcceptanceRequestResult = Readonly<{
   inactive: ReviewPlannerV8ProductAcceptanceObservation;
 }>;
 
-export type ReviewPlannerV8ProductAcceptanceBrowserResult =
-  ReviewPlannerV8ProductAcceptanceRequestResult &
-    Readonly<{ screenshotSha256: string }>;
+export type ReviewPlannerV8ProductAcceptanceTraceStep = Readonly<{
+  name: (typeof EXACT_STEPS)[number];
+  attempted: boolean;
+  disposition: string;
+  provenance: string;
+}>;
 
 export type ReviewPlannerV8ProductAcceptancePersistedTrace = Readonly<{
+  traceId: string;
   component: Component;
-  modelProvider: string;
-  modelName: string;
+  provider: string;
+  model: string;
   pricingKnown: boolean;
   costEstimateUsd: number;
-  steps: readonly string[];
-  candidateDisposition: string;
-  inputTokens: number;
-  outputTokens: number;
+  steps: readonly ReviewPlannerV8ProductAcceptanceTraceStep[];
+  disposition: string;
+  provenance: string;
+  durationMs: number;
+  usage: Readonly<{ inputTokens: number; outputTokens: number }>;
 }>;
+
+export type ReviewPlannerV8ProductAcceptanceBrowserReceipt = Readonly<{
+  headed: true;
+  contextClosed: true;
+  routeCallbacksSettled: true;
+  continuedRequests: 1;
+  abortedLateRequests: 0;
+  noPendingCallbacks: true;
+}>;
+
+export type ReviewPlannerV8ProductAcceptanceBrowserResult =
+  ReviewPlannerV8ProductAcceptanceRequestResult &
+    Readonly<{
+      screenshot: Uint8Array;
+      receipt: ReviewPlannerV8ProductAcceptanceBrowserReceipt;
+    }>;
 
 export type ReviewPlannerV8ProductAcceptanceRoute = Readonly<{
   continue(): void | Promise<void>;
@@ -70,6 +97,15 @@ export type ReviewPlannerV8ProductAcceptanceRoute = Readonly<{
 
 export type ReviewPlannerV8ProductAcceptanceRequest = Readonly<{
   url(): string;
+}>;
+
+type CleanupReceipt = Readonly<{
+  schemaVersion: 'phase-6.9.5-v8-product-acceptance-cleanup-v1';
+  syntheticAccounts: 0;
+  fixtures: 0;
+  traces: 0;
+  browserProfiles: 0;
+  capabilities: 0;
 }>;
 
 export interface ReviewPlannerV8ProductAcceptanceRunnerDependencies {
@@ -83,428 +119,719 @@ export interface ReviewPlannerV8ProductAcceptanceRunnerDependencies {
   }): Promise<string>;
   dispatchApi(input: {
     component: Component;
-    rawCapability: string;
-    assertClaimed(): void;
+    capabilitySha256: string;
   }): Promise<ReviewPlannerV8ProductAcceptanceRequestResult>;
   runBrowser(input: {
     component: Component;
-    rawCapability: string;
+    webOrigin: typeof EXACT_WEB_ORIGIN;
+    capabilitySha256: string;
     onRoute(
       route: ReviewPlannerV8ProductAcceptanceRoute,
       request: ReviewPlannerV8ProductAcceptanceRequest,
     ): Promise<void>;
   }): Promise<ReviewPlannerV8ProductAcceptanceBrowserResult>;
-  readPersistedTraces(
-    component: Component,
-  ): Promise<readonly ReviewPlannerV8ProductAcceptancePersistedTrace[]>;
-  restoreDefaultOff(component: Component): Promise<void>;
-  verifyOwnerIsolation(): Promise<boolean>;
-  cleanup(): Promise<boolean>;
-  writeEvidence(
-    evidence: ReviewPlannerV8ProductAcceptanceEvidence,
-  ): Promise<void>;
+  readPersistedTraces(input: {
+    component: Component;
+    slot: RequestSlot;
+  }): Promise<readonly ReviewPlannerV8ProductAcceptancePersistedTrace[]>;
+  restoreDefaultOff(component: Component): Promise<unknown>;
+  verifyOwnerIsolation(input: {
+    accountIdSha256: Readonly<Record<Component, string>>;
+    traceIdSha256: readonly string[];
+  }): Promise<
+    Readonly<{ crossAccountInvisible: boolean; businessWrites: number }>
+  >;
+  cleanup(): Promise<CleanupReceipt>;
 }
 
-export function createReviewPlannerV8ProductAcceptanceRunnerControl(input: {
-  environment: Environment;
-  capabilitySha256: Readonly<Record<Component, string>>;
-}): ReviewPlannerV8ProductAcceptanceRunnerControl {
-  if (
-    (input.environment !== 'branch' && input.environment !== 'main') ||
-    !SHA256.test(input.capabilitySha256.review) ||
-    !SHA256.test(input.capabilitySha256.planner) ||
-    input.capabilitySha256.review === input.capabilitySha256.planner
-  ) {
-    throw controlError('PRODUCT_ACCEPTANCE_RUNNER_CONFIG_INVALID');
-  }
-  const expected = {
-    review: Buffer.from(input.capabilitySha256.review, 'hex'),
-    planner: Buffer.from(input.capabilitySha256.planner, 'hex'),
-  };
-  let cursor = 0;
-  let claimInProgress = false;
+export type ReviewPlannerV8ProductAcceptanceRunResult = Readonly<{
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  provider: string;
+  model: string;
+  traceIdSha256: readonly string[];
+  screenshotSha256: Readonly<Record<Component, string>>;
+  usage: Readonly<{ inputTokens: number; outputTokens: number }>;
+  durationMs: number;
+}>;
 
-  return Object.freeze({
-    claim(component, slot, rawCapability): boolean {
-      const next = SLOT_ORDER[cursor];
-      if (
-        claimInProgress ||
-        !next ||
-        next[0] !== component ||
-        next[1] !== slot ||
-        typeof rawCapability !== 'string' ||
-        rawCapability.length === 0
-      ) {
-        return false;
-      }
-      claimInProgress = true;
-      try {
-        const actual = createHash('sha256')
-          .update(rawCapability, 'utf8')
-          .digest();
-        if (!timingSafeEqual(expected[component], actual)) return false;
-        cursor += 1;
-        return true;
-      } finally {
-        claimInProgress = false;
-      }
-    },
-    isComplete(): boolean {
-      return cursor === SLOT_ORDER.length;
-    },
-  });
-}
-
-export async function runReviewPlannerV8ProductAcceptance(input: {
-  environment: Environment;
+type SafeSnapshot = Readonly<{
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   commitSha: string;
   pairedEvidenceSha256: string;
   accountIdSha256: Readonly<Record<Component, string>>;
-  capabilities: Readonly<Record<Component, string>>;
+  capabilitySha256: Readonly<Record<Component, string>>;
+  webOrigin: typeof EXACT_WEB_ORIGIN;
+  apiOrigin: typeof EXACT_API_ORIGIN;
+  ledger: RunnerLedgerPort;
   dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
-}): Promise<ReviewPlannerV8ProductAcceptanceEvidence> {
-  const capabilitySha256 = {
-    review: sha256(input.capabilities.review),
-    planner: sha256(input.capabilities.planner),
-  };
-  const control = createReviewPlannerV8ProductAcceptanceRunnerControl({
-    environment: input.environment,
-    capabilitySha256,
-  });
-  const componentResults = {} as Record<
-    Component,
-    Awaited<ReturnType<typeof runComponent>>
-  >;
-  let ownerIsolation = false;
-  let cleanup = false;
-  let primaryError: unknown;
+}>;
+
+type ComponentResult = Readonly<{
+  factsBeforeSha256: string;
+  factsAfterSha256: string;
+  traces: readonly ReviewPlannerV8ProductAcceptancePersistedTrace[];
+  traceIdSha256: readonly string[];
+  screenshotSha256: string;
+}>;
+
+export async function runReviewPlannerV8ProductAcceptance(
+  input: unknown,
+): Promise<ReviewPlannerV8ProductAcceptanceRunResult> {
+  const snapshot = createSafeSnapshot(input);
+  const traceIds = new Set<string>();
+  const componentResults = {} as Record<Component, ComponentResult>;
 
   try {
-    componentResults.review = await runComponent({
-      component: 'review',
-      rawCapability: input.capabilities.review,
-      capabilitySha256: capabilitySha256.review,
-      control,
-      dependencies: input.dependencies,
+    for (const component of COMPONENTS) {
+      componentResults[component] = await runComponent({
+        component,
+        snapshot,
+        traceIds,
+      });
+    }
+
+    const allTraceIdSha256 = COMPONENTS.flatMap(
+      (component) => componentResults[component].traceIdSha256,
+    );
+    const isolation = await snapshot.dependencies.verifyOwnerIsolation({
+      accountIdSha256: snapshot.accountIdSha256,
+      traceIdSha256: allTraceIdSha256,
     });
-    componentResults.planner = await runComponent({
-      component: 'planner',
-      rawCapability: input.capabilities.planner,
-      capabilitySha256: capabilitySha256.planner,
-      control,
-      dependencies: input.dependencies,
-    });
-    ownerIsolation = await input.dependencies.verifyOwnerIsolation();
-    if (!ownerIsolation) {
+    if (
+      !isExactRecord(isolation, ['crossAccountInvisible', 'businessWrites']) ||
+      isolation.crossAccountInvisible !== true ||
+      isolation.businessWrites !== 0
+    ) {
       throw controlError('PRODUCT_ACCEPTANCE_OWNER_ISOLATION_INVALID');
     }
+    snapshot.ledger.recordOwnerIsolation({
+      schemaVersion: 'phase-6.9.5-v8-product-acceptance-owner-isolation-v1',
+      reviewFactsBeforeSha256: componentResults.review.factsBeforeSha256,
+      reviewFactsAfterSha256: componentResults.review.factsAfterSha256,
+      plannerFactsBeforeSha256: componentResults.planner.factsBeforeSha256,
+      plannerFactsAfterSha256: componentResults.planner.factsAfterSha256,
+      traceIdSha256: allTraceIdSha256,
+      crossAccountInvisible: true,
+      businessWrites: 0,
+    });
+
+    const cleanup = await snapshot.dependencies.cleanup();
+    assertCleanupReceipt(cleanup);
+    snapshot.ledger.recordCleanup(cleanup);
+    snapshot.ledger.finalizeSuccess();
+
+    const traces = COMPONENTS.flatMap(
+      (component) => componentResults[component].traces,
+    );
+    return Object.freeze({
+      environment: snapshot.environment,
+      provider: traces[0].provider,
+      model: traces[0].model,
+      traceIdSha256: Object.freeze([...allTraceIdSha256]),
+      screenshotSha256: Object.freeze({
+        review: componentResults.review.screenshotSha256,
+        planner: componentResults.planner.screenshotSha256,
+      }),
+      usage: Object.freeze({
+        inputTokens: traces.reduce(
+          (total, trace) => total + trace.usage.inputTokens,
+          0,
+        ),
+        outputTokens: traces.reduce(
+          (total, trace) => total + trace.usage.outputTokens,
+          0,
+        ),
+      }),
+      durationMs: traces.reduce((total, trace) => total + trace.durationMs, 0),
+    });
   } catch (error) {
-    primaryError = error;
+    throw normalizeError(error);
   }
-
-  try {
-    cleanup = await input.dependencies.cleanup();
-    if (!cleanup) throw controlError('PRODUCT_ACCEPTANCE_CLEANUP_INVALID');
-  } catch (cleanupError) {
-    if (primaryError === undefined) primaryError = cleanupError;
-  }
-  if (primaryError !== undefined) throw normalizeError(primaryError);
-  if (!control.isComplete()) {
-    throw controlError('PRODUCT_ACCEPTANCE_RUNNER_SLOTS_INCOMPLETE');
-  }
-
-  const review = componentResults.review;
-  const planner = componentResults.planner;
-  const inputTokens = review.usage.inputTokens + planner.usage.inputTokens;
-  const outputTokens = review.usage.outputTokens + planner.usage.outputTokens;
-  const cost = calculateReviewPlannerV8ProductAcceptanceCost(
-    inputTokens,
-    outputTokens,
-  );
-  const evidence = reviewPlannerV8ProductAcceptanceEvidenceSchema.parse({
-    schemaVersion: 'phase-6.9.5-review-planner-v8-product-acceptance-v1',
-    environment: input.environment,
-    commitSha: input.commitSha,
-    provider: review.identity.provider,
-    model: review.identity.model,
-    components: {
-      review: toComponentEvidence('review', review),
-      planner: toComponentEvidence('planner', planner),
-    },
-    trace: {
-      status: 'persisted',
-      steps: [...EXACT_STEPS],
-      pricingKnown: false,
-      costEstimateUsd: 0,
-      targetCandidateAttempts: 4,
-    },
-    accountIdSha256: input.accountIdSha256,
-    ownerIsolation,
-    factsUnchanged: review.factsUnchanged && planner.factsUnchanged,
-    gateRestored: review.gateRestored && planner.gateRestored,
-    cleanup,
-    totals: {
-      requests: 4,
-      inputTokens,
-      outputTokens,
-      costCny: cost.costCny,
-    },
-    pricing: {
-      priceProfileId:
-        'deepseek-v4-pro-cny-noncached-2026-07-18-v8-product-acceptance',
-      inputRateCnyPerMillion: 3,
-      outputRateCnyPerMillion: 6,
-      snapshotDate: '2026-07-18',
-      source: 'user-provided-deepseek-official-price-screenshot',
-      rounding: 'ROUND_HALF_UP_8DP',
-      hardCapCny: '0.10000000',
-    },
-    pairedEvidenceSha256: input.pairedEvidenceSha256,
-    planScreenshotSha256: review.screenshotSha256,
-    todayScreenshotSha256: planner.screenshotSha256,
-  });
-  try {
-    await input.dependencies.writeEvidence(evidence);
-  } catch {
-    throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
-  }
-  return evidence;
 }
 
 async function runComponent(input: {
   component: Component;
-  rawCapability: string;
-  capabilitySha256: string;
-  control: ReviewPlannerV8ProductAcceptanceRunnerControl;
-  dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
-}) {
-  let gateRestored = false;
+  snapshot: SafeSnapshot;
+  traceIds: Set<string>;
+}): Promise<ComponentResult> {
+  const { component, snapshot } = input;
+  let restoreVerified = false;
+  let browserClaimed = false;
+  let primaryError: unknown;
+  let result: ComponentResult | undefined;
+
   try {
-    await input.dependencies.activateComponent({
-      component: input.component,
-      capabilitySha256: input.capabilitySha256,
+    await snapshot.dependencies.activateComponent({
+      component,
+      capabilitySha256: snapshot.capabilitySha256[component],
     });
-    const beforeFacts = await input.dependencies.readFactsDigest({
-      component: input.component,
-      phase: 'before',
+    const factsBeforeSha256 = assertDigest(
+      await snapshot.dependencies.readFactsDigest({
+        component,
+        phase: 'before',
+      }),
+    );
+
+    snapshot.ledger.claimSlot(toLedgerSlot(component, 'api'));
+    const api = await snapshot.dependencies.dispatchApi({
+      component,
+      capabilitySha256: snapshot.capabilitySha256[component],
     });
-    claimOrThrow(input.control, input.component, 'api', input.rawCapability);
-    let apiClaimObserved = false;
-    const api = await input.dependencies.dispatchApi({
-      component: input.component,
-      rawCapability: input.rawCapability,
-      assertClaimed: () => {
-        apiClaimObserved = true;
-        if (input.control.claim(input.component, 'api', input.rawCapability)) {
-          throw controlError('PRODUCT_ACCEPTANCE_API_CLAIM_NOT_ATOMIC');
-        }
-      },
-    });
-    if (!apiClaimObserved) {
-      throw controlError('PRODUCT_ACCEPTANCE_API_CLAIM_UNVERIFIED');
-    }
     assertRequestResult(api);
+    const apiTrace = await readUniqueTrace({
+      component,
+      slot: 'api',
+      response: api,
+      snapshot,
+      traceIds: input.traceIds,
+    });
+    const apiTraceIdSha256 = sha256(apiTrace.traceId);
+    snapshot.ledger.recordSlotResult(
+      toLedgerSlotResult(component, 'api', apiTrace, apiTraceIdSha256),
+    );
 
     const browserGuard = createBrowserRouteGuard({
-      component: input.component,
-      rawCapability: input.rawCapability,
-      control: input.control,
+      expectedUrl: `${snapshot.apiOrigin}/review-agent/suggestions`,
+      claim: () => {
+        snapshot.ledger.claimSlot(toLedgerSlot(component, 'browser'));
+        browserClaimed = true;
+      },
     });
-    const browser = await input.dependencies.runBrowser({
-      component: input.component,
-      rawCapability: input.rawCapability,
+    const browser = await snapshot.dependencies.runBrowser({
+      component,
+      webOrigin: snapshot.webOrigin,
+      capabilitySha256: snapshot.capabilitySha256[component],
       onRoute: browserGuard.onRoute,
     });
-    browserGuard.assertComplete();
+    browserGuard.closeAndAssert(browser.receipt);
     assertRequestResult(browser);
-    if (!SHA256.test(browser.screenshotSha256)) {
-      throw controlError('PRODUCT_ACCEPTANCE_SCREENSHOT_SHA_INVALID');
+    if (
+      !(browser.screenshot instanceof Uint8Array) ||
+      browser.screenshot.length === 0
+    ) {
+      throw controlError('PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
     }
 
-    const traces = await input.dependencies.readPersistedTraces(
-      input.component,
-    );
-    const usage = sumRequestUsage(api, browser);
-    assertPersistedTraces(input.component, traces, usage);
-    const afterFacts = await input.dependencies.readFactsDigest({
-      component: input.component,
-      phase: 'after',
+    const restoreReceipt = await restoreAndVerify(component, snapshot);
+    restoreVerified = true;
+    snapshot.ledger.recordDefaultOff(restoreReceipt);
+    browserGuard.assertNoLateRequest();
+
+    const browserTrace = await readUniqueTrace({
+      component,
+      slot: 'browser',
+      response: browser,
+      snapshot,
+      traceIds: input.traceIds,
     });
-    if (beforeFacts !== afterFacts) {
+    const browserTraceIdSha256 = sha256(browserTrace.traceId);
+    const screenshotSha256 = sha256(browser.screenshot);
+    snapshot.ledger.recordScreenshot(component, browser.screenshot);
+    snapshot.ledger.recordSlotResult({
+      ...toLedgerSlotResult(
+        component,
+        'browser',
+        browserTrace,
+        browserTraceIdSha256,
+      ),
+      screenshotSha256,
+    });
+
+    const factsAfterSha256 = assertDigest(
+      await snapshot.dependencies.readFactsDigest({
+        component,
+        phase: 'after',
+      }),
+    );
+    if (factsBeforeSha256 !== factsAfterSha256) {
       throw controlError('PRODUCT_ACCEPTANCE_FACTS_CHANGED');
     }
-    return {
-      usage,
-      durationMs: api.target.durationMs + browser.target.durationMs,
-      screenshotSha256: browser.screenshotSha256,
-      identity: { provider: EXACT_PROVIDER, model: EXACT_MODEL },
-      factsUnchanged: true,
-      get gateRestored() {
-        return gateRestored;
-      },
-    };
+    result = Object.freeze({
+      factsBeforeSha256,
+      factsAfterSha256,
+      traces: Object.freeze([apiTrace, browserTrace]),
+      traceIdSha256: Object.freeze([apiTraceIdSha256, browserTraceIdSha256]),
+      screenshotSha256,
+    });
+  } catch (error) {
+    primaryError = error;
   } finally {
-    await input.dependencies.restoreDefaultOff(input.component);
-    gateRestored = true;
+    if (!restoreVerified) {
+      try {
+        const receipt = await restoreAndVerify(component, snapshot);
+        restoreVerified = true;
+        if (browserClaimed) snapshot.ledger.recordDefaultOff(receipt);
+      } catch (restoreError) {
+        if (primaryError === undefined) primaryError = restoreError;
+      }
+    }
   }
+
+  if (primaryError !== undefined) throw normalizeError(primaryError);
+  if (!restoreVerified || result === undefined) {
+    throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  }
+  return result;
+}
+
+async function restoreAndVerify(component: Component, snapshot: SafeSnapshot) {
+  const value = await snapshot.dependencies.restoreDefaultOff(component);
+  const parsed =
+    reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(value);
+  if (!parsed.success || parsed.data.component !== component) {
+    throw controlError('PRODUCT_ACCEPTANCE_DEFAULT_OFF_INVALID');
+  }
+  return parsed.data;
+}
+
+async function readUniqueTrace(input: {
+  component: Component;
+  slot: RequestSlot;
+  response: ReviewPlannerV8ProductAcceptanceRequestResult;
+  snapshot: SafeSnapshot;
+  traceIds: Set<string>;
+}) {
+  const traces: unknown = await input.snapshot.dependencies.readPersistedTraces(
+    {
+      component: input.component,
+      slot: input.slot,
+    },
+  );
+  if (!Array.isArray(traces) || traces.length !== 1) {
+    throw controlError('PRODUCT_ACCEPTANCE_TRACE_COUNT_INVALID');
+  }
+  const trace: unknown = (traces as unknown[])[0];
+  if (!isPersistedTrace(input.component, trace, input.response)) {
+    throw controlError('PRODUCT_ACCEPTANCE_TRACE_IDENTITY_INVALID');
+  }
+  if (input.traceIds.has(trace.traceId)) {
+    throw controlError('PRODUCT_ACCEPTANCE_TRACE_DUPLICATE');
+  }
+  input.traceIds.add(trace.traceId);
+  return trace;
+}
+
+function isPersistedTrace(
+  component: Component,
+  value: unknown,
+  response: ReviewPlannerV8ProductAcceptanceRequestResult,
+): value is ReviewPlannerV8ProductAcceptancePersistedTrace {
+  if (
+    !isExactRecord(value, [
+      'traceId',
+      'component',
+      'provider',
+      'model',
+      'pricingKnown',
+      'costEstimateUsd',
+      'steps',
+      'disposition',
+      'provenance',
+      'durationMs',
+      'usage',
+    ]) ||
+    typeof value.traceId !== 'string' ||
+    value.traceId.length === 0 ||
+    value.traceId.length > 256 ||
+    value.component !== component ||
+    value.provider !== EXACT_PROVIDER ||
+    value.model !== EXACT_MODEL ||
+    value.pricingKnown !== false ||
+    value.costEstimateUsd !== 0 ||
+    value.disposition !== 'candidate_applied' ||
+    value.provenance !== 'live_candidate' ||
+    typeof value.durationMs !== 'number' ||
+    !Number.isSafeInteger(value.durationMs) ||
+    value.durationMs <= 0 ||
+    !isUsage(value.usage) ||
+    value.durationMs !== response.target.durationMs ||
+    value.usage.inputTokens !== response.target.usage.inputTokens ||
+    value.usage.outputTokens !== response.target.usage.outputTokens ||
+    !validTraceSteps(component, value.steps)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function validTraceSteps(component: Component, value: unknown) {
+  if (!Array.isArray(value) || value.length !== EXACT_STEPS.length) {
+    return false;
+  }
+  const steps = value as unknown[];
+  const targetCandidate = component === 'review' ? 1 : 3;
+  return steps.every((step, index) => {
+    if (
+      !isExactRecord(step, [
+        'name',
+        'attempted',
+        'disposition',
+        'provenance',
+      ]) ||
+      step.name !== EXACT_STEPS[index]
+    )
+      return false;
+    if (index === targetCandidate) {
+      return (
+        step.attempted === true &&
+        step.disposition === 'candidate_applied' &&
+        step.provenance === 'live_candidate'
+      );
+    }
+    return (
+      step.attempted === false &&
+      step.disposition === 'not_eligible' &&
+      step.provenance === 'local_deterministic'
+    );
+  });
 }
 
 function createBrowserRouteGuard(input: {
-  component: Component;
-  rawCapability: string;
-  control: ReviewPlannerV8ProductAcceptanceRunnerControl;
+  expectedUrl: string;
+  claim(): void;
 }) {
-  let suggestionsRequests = 0;
+  let continued = 0;
   let rejected = false;
-  return {
+  let closed = false;
+  let lateRequest = false;
+  return Object.freeze({
     onRoute: async (
       route: ReviewPlannerV8ProductAcceptanceRoute,
       request: ReviewPlannerV8ProductAcceptanceRequest,
     ) => {
-      if (!isSuggestionsUrl(request.url()) || suggestionsRequests > 0) {
+      let url: unknown;
+      try {
+        url = request.url();
+      } catch {
         rejected = true;
         await route.abort();
         return;
       }
-      if (
-        !input.control.claim(input.component, 'browser', input.rawCapability)
-      ) {
+      if (closed) {
+        lateRequest = true;
         rejected = true;
         await route.abort();
         return;
       }
-      suggestionsRequests += 1;
+      if (continued !== 0 || !isExactUrl(url, input.expectedUrl)) {
+        rejected = true;
+        await route.abort();
+        return;
+      }
+      input.claim();
+      continued += 1;
       await route.continue();
     },
-    assertComplete: () => {
-      if (rejected || suggestionsRequests !== 1) {
+    closeAndAssert(receipt: unknown) {
+      closed = true;
+      if (rejected || continued !== 1 || !isBrowserReceipt(receipt)) {
+        throw controlError('PRODUCT_ACCEPTANCE_BROWSER_RECEIPT_INVALID');
+      }
+    },
+    assertNoLateRequest() {
+      if (lateRequest || rejected || continued !== 1) {
         throw controlError('PRODUCT_ACCEPTANCE_BROWSER_ROUTE_REJECTED');
       }
     },
-  };
+  });
 }
+
+function createSafeSnapshot(input: unknown): SafeSnapshot {
+  try {
+    if (!input || typeof input !== 'object') throw new Error();
+    const source = input as Record<string, unknown>;
+    const environment = source.environment;
+    const commitSha = source.commitSha;
+    const pairedEvidenceSha256 = source.pairedEvidenceSha256;
+    const accountSource = source.accountIdSha256 as Record<string, unknown>;
+    const capabilitySource = source.capabilities as Record<string, unknown>;
+    const accountReview = accountSource?.review;
+    const accountPlanner = accountSource?.planner;
+    const capabilityReview = capabilitySource?.review;
+    const capabilityPlanner = capabilitySource?.planner;
+    const webOrigin = source.webOrigin;
+    const apiOrigin = source.apiOrigin;
+
+    if (
+      (environment !== 'branch' && environment !== 'main') ||
+      typeof commitSha !== 'string' ||
+      !COMMIT_SHA.test(commitSha) ||
+      typeof pairedEvidenceSha256 !== 'string' ||
+      !SHA256.test(pairedEvidenceSha256) ||
+      typeof accountReview !== 'string' ||
+      typeof accountPlanner !== 'string' ||
+      !SHA256.test(accountReview) ||
+      !SHA256.test(accountPlanner) ||
+      accountReview === accountPlanner ||
+      typeof capabilityReview !== 'string' ||
+      typeof capabilityPlanner !== 'string' ||
+      capabilityReview.length === 0 ||
+      capabilityPlanner.length === 0 ||
+      capabilityReview === capabilityPlanner ||
+      webOrigin !== EXACT_WEB_ORIGIN ||
+      apiOrigin !== EXACT_API_ORIGIN
+    ) {
+      throw new Error();
+    }
+    const capabilitySha256 = Object.freeze({
+      review: sha256(capabilityReview),
+      planner: sha256(capabilityPlanner),
+    });
+
+    const ledger = snapshotLedgerPort(source.ledger);
+    const dependencies = snapshotDependencyPort(source.dependencies);
+    if (ledger.environment() !== environment) throw new Error();
+
+    return Object.freeze({
+      environment,
+      commitSha,
+      pairedEvidenceSha256,
+      accountIdSha256: Object.freeze({
+        review: accountReview,
+        planner: accountPlanner,
+      }),
+      capabilitySha256,
+      webOrigin,
+      apiOrigin,
+      ledger,
+      dependencies,
+    });
+  } catch {
+    throw controlError('PRODUCT_ACCEPTANCE_INPUT_INVALID');
+  }
+}
+
+/* eslint-disable @typescript-eslint/unbound-method -- methods are read once, then invoked with their original receiver */
+function snapshotLedgerPort(value: unknown): RunnerLedgerPort {
+  if (!value || typeof value !== 'object') throw new Error();
+  const source = value as ReviewPlannerV8ProductAcceptanceLedger;
+  const environment = source.environment;
+  const claimSlot = source.claimSlot;
+  const recordSlotResult = source.recordSlotResult;
+  const recordDefaultOff = source.recordDefaultOff;
+  const recordScreenshot = source.recordScreenshot;
+  const recordOwnerIsolation = source.recordOwnerIsolation;
+  const recordCleanup = source.recordCleanup;
+  const finalizeSuccess = source.finalizeSuccess;
+  if (
+    typeof environment !== 'function' ||
+    typeof claimSlot !== 'function' ||
+    typeof recordSlotResult !== 'function' ||
+    typeof recordDefaultOff !== 'function' ||
+    typeof recordScreenshot !== 'function' ||
+    typeof recordOwnerIsolation !== 'function' ||
+    typeof recordCleanup !== 'function' ||
+    typeof finalizeSuccess !== 'function'
+  ) {
+    throw new Error();
+  }
+  return Object.freeze({
+    environment: () => environment.call(source),
+    claimSlot: (slot) => claimSlot.call(source, slot),
+    recordSlotResult: (record) => recordSlotResult.call(source, record),
+    recordDefaultOff: (record) => recordDefaultOff.call(source, record),
+    recordScreenshot: (component, contents) =>
+      recordScreenshot.call(source, component, contents),
+    recordOwnerIsolation: (record) => recordOwnerIsolation.call(source, record),
+    recordCleanup: (record) => recordCleanup.call(source, record),
+    finalizeSuccess: () => finalizeSuccess.call(source),
+  });
+}
+
+function snapshotDependencyPort(
+  value: unknown,
+): ReviewPlannerV8ProductAcceptanceRunnerDependencies {
+  if (!value || typeof value !== 'object') throw new Error();
+  const source = value as ReviewPlannerV8ProductAcceptanceRunnerDependencies;
+  const activateComponent = source.activateComponent;
+  const readFactsDigest = source.readFactsDigest;
+  const dispatchApi = source.dispatchApi;
+  const runBrowser = source.runBrowser;
+  const readPersistedTraces = source.readPersistedTraces;
+  const restoreDefaultOff = source.restoreDefaultOff;
+  const verifyOwnerIsolation = source.verifyOwnerIsolation;
+  const cleanup = source.cleanup;
+  if (
+    typeof activateComponent !== 'function' ||
+    typeof readFactsDigest !== 'function' ||
+    typeof dispatchApi !== 'function' ||
+    typeof runBrowser !== 'function' ||
+    typeof readPersistedTraces !== 'function' ||
+    typeof restoreDefaultOff !== 'function' ||
+    typeof verifyOwnerIsolation !== 'function' ||
+    typeof cleanup !== 'function'
+  ) {
+    throw new Error();
+  }
+  const port: ReviewPlannerV8ProductAcceptanceRunnerDependencies = {
+    activateComponent: (request) => activateComponent.call(source, request),
+    readFactsDigest: (request) => readFactsDigest.call(source, request),
+    dispatchApi: (request) => dispatchApi.call(source, request),
+    runBrowser: (request) => runBrowser.call(source, request),
+    readPersistedTraces: (request) => readPersistedTraces.call(source, request),
+    restoreDefaultOff: (component) => restoreDefaultOff.call(source, component),
+    verifyOwnerIsolation: (request) =>
+      verifyOwnerIsolation.call(source, request),
+    cleanup: () => cleanup.call(source),
+  };
+  return Object.freeze(port);
+}
+/* eslint-enable @typescript-eslint/unbound-method */
 
 function assertRequestResult(
   result: ReviewPlannerV8ProductAcceptanceRequestResult,
 ): void {
-  const target = result.target;
-  const inactive = result.inactive;
   if (
-    target.attempted !== true ||
-    target.degraded !== false ||
-    target.disposition !== 'candidate_applied' ||
-    target.provenance !== 'live_candidate' ||
-    !positiveUsage(target.usage) ||
-    inactive.attempted !== false ||
-    inactive.disposition !== 'not_eligible' ||
-    inactive.provenance !== 'local_deterministic' ||
-    inactive.usage.inputTokens !== 0 ||
-    inactive.usage.outputTokens !== 0
+    !result ||
+    result.target?.attempted !== true ||
+    result.target.degraded !== false ||
+    result.target.disposition !== 'candidate_applied' ||
+    result.target.provenance !== 'live_candidate' ||
+    !Number.isSafeInteger(result.target.durationMs) ||
+    result.target.durationMs <= 0 ||
+    !positiveUsage(result.target.usage) ||
+    result.inactive?.attempted !== false ||
+    result.inactive.degraded !== true ||
+    result.inactive.disposition !== 'not_eligible' ||
+    result.inactive.provenance !== 'local_deterministic' ||
+    result.inactive.durationMs !== 0 ||
+    result.inactive.usage.inputTokens !== 0 ||
+    result.inactive.usage.outputTokens !== 0
   ) {
     throw controlError('PRODUCT_ACCEPTANCE_OBSERVATION_INVALID');
   }
 }
 
-function assertPersistedTraces(
-  component: Component,
-  traces: readonly ReviewPlannerV8ProductAcceptancePersistedTrace[],
-  usage: { inputTokens: number; outputTokens: number },
-) {
-  if (
-    traces.length !== 2 ||
-    traces.some(
-      (trace) =>
-        trace.component !== component ||
-        trace.modelProvider !== EXACT_PROVIDER ||
-        trace.modelName !== EXACT_MODEL ||
-        trace.pricingKnown !== false ||
-        trace.costEstimateUsd !== 0 ||
-        trace.candidateDisposition !== 'candidate_applied' ||
-        !arraysEqual(trace.steps, EXACT_STEPS) ||
-        !positiveUsage(trace),
-    )
-  ) {
-    throw controlError('PRODUCT_ACCEPTANCE_TRACE_IDENTITY_INVALID');
-  }
-  const traceUsage = traces.reduce(
-    (total, trace) => ({
-      inputTokens: total.inputTokens + trace.inputTokens,
-      outputTokens: total.outputTokens + trace.outputTokens,
-    }),
-    { inputTokens: 0, outputTokens: 0 },
-  );
-  if (
-    traceUsage.inputTokens !== usage.inputTokens ||
-    traceUsage.outputTokens !== usage.outputTokens
-  ) {
-    throw controlError('PRODUCT_ACCEPTANCE_TRACE_USAGE_INVALID');
-  }
+function toLedgerSlot(component: Component, slot: RequestSlot): LedgerSlot {
+  return `${component}-${slot}`;
 }
 
-function toComponentEvidence(
+function toLedgerSlotResult(
   component: Component,
-  result: Awaited<ReturnType<typeof runComponent>>,
+  slot: RequestSlot,
+  trace: ReviewPlannerV8ProductAcceptancePersistedTrace,
+  traceIdSha256: string,
 ) {
   return {
-    component,
-    observation: { attempted: true, degraded: false },
-    disposition: 'candidate_applied',
-    provenance: 'live_candidate',
-    durationMs: result.durationMs,
-    usage: result.usage,
-    requestCount: 2,
+    schemaVersion: 'phase-6.9.5-v8-product-acceptance-slot-result-v1',
+    slot: toLedgerSlot(component, slot),
+    provider: trace.provider,
+    model: trace.model,
+    usage: trace.usage,
+    durationMs: trace.durationMs,
+    disposition: trace.disposition,
+    provenance: trace.provenance,
+    traceIdSha256,
   };
 }
 
-function sumRequestUsage(
-  api: ReviewPlannerV8ProductAcceptanceRequestResult,
-  browser: ReviewPlannerV8ProductAcceptanceRequestResult,
-) {
-  return {
-    inputTokens:
-      api.target.usage.inputTokens + browser.target.usage.inputTokens,
-    outputTokens:
-      api.target.usage.outputTokens + browser.target.usage.outputTokens,
-  };
+function assertCleanupReceipt(value: CleanupReceipt) {
+  if (
+    !isExactRecord(value, [
+      'schemaVersion',
+      'syntheticAccounts',
+      'fixtures',
+      'traces',
+      'browserProfiles',
+      'capabilities',
+    ]) ||
+    value.schemaVersion !== 'phase-6.9.5-v8-product-acceptance-cleanup-v1' ||
+    value.syntheticAccounts !== 0 ||
+    value.fixtures !== 0 ||
+    value.traces !== 0 ||
+    value.browserProfiles !== 0 ||
+    value.capabilities !== 0
+  ) {
+    throw controlError('PRODUCT_ACCEPTANCE_CLEANUP_INVALID');
+  }
 }
 
-function positiveUsage(value: { inputTokens: number; outputTokens: number }) {
+function assertDigest(value: unknown): string {
+  if (typeof value !== 'string' || !SHA256.test(value)) {
+    throw controlError('PRODUCT_ACCEPTANCE_FACTS_INVALID');
+  }
+  return value;
+}
+
+function isBrowserReceipt(
+  value: unknown,
+): value is ReviewPlannerV8ProductAcceptanceBrowserReceipt {
   return (
-    Number.isSafeInteger(value.inputTokens) &&
-    value.inputTokens > 0 &&
-    Number.isSafeInteger(value.outputTokens) &&
-    value.outputTokens > 0
+    isExactRecord(value, [
+      'headed',
+      'contextClosed',
+      'routeCallbacksSettled',
+      'continuedRequests',
+      'abortedLateRequests',
+      'noPendingCallbacks',
+    ]) &&
+    value.headed === true &&
+    value.contextClosed === true &&
+    value.routeCallbacksSettled === true &&
+    value.continuedRequests === 1 &&
+    value.abortedLateRequests === 0 &&
+    value.noPendingCallbacks === true
   );
 }
 
-function claimOrThrow(
-  control: ReviewPlannerV8ProductAcceptanceRunnerControl,
-  component: Component,
-  slot: Slot,
-  rawCapability: string,
-) {
-  if (!control.claim(component, slot, rawCapability)) {
-    throw controlError('PRODUCT_ACCEPTANCE_RUNNER_CLAIM_REJECTED');
-  }
-}
-
-function isSuggestionsUrl(value: string) {
+function isExactRecord(
+  value: unknown,
+  keys: readonly string[],
+): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   try {
-    return new URL(value).pathname === '/review-agent/suggestions';
+    const actual = Object.keys(value);
+    return (
+      actual.length === keys.length && keys.every((key) => actual.includes(key))
+    );
   } catch {
     return false;
   }
 }
 
-function arraysEqual(left: readonly string[], right: readonly string[]) {
+function isExactUrl(value: unknown, expected: string) {
+  if (typeof value !== 'string') return false;
+  try {
+    const actual = new URL(value);
+    const target = new URL(expected);
+    return (
+      actual.href === target.href &&
+      actual.protocol === 'http:' &&
+      actual.hostname === '127.0.0.1' &&
+      actual.port === '3001' &&
+      actual.pathname === '/review-agent/suggestions' &&
+      actual.username === '' &&
+      actual.password === '' &&
+      actual.search === '' &&
+      actual.hash === ''
+    );
+  } catch {
+    return false;
+  }
+}
+
+function positiveUsage(value: { inputTokens: number; outputTokens: number }) {
   return (
-    left.length === right.length &&
-    left.every((value, index) => value === right[index])
+    Number.isSafeInteger(value?.inputTokens) &&
+    value.inputTokens > 0 &&
+    Number.isSafeInteger(value?.outputTokens) &&
+    value.outputTokens > 0
   );
 }
 
-function sha256(value: string) {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+function isUsage(
+  value: unknown,
+): value is Readonly<{ inputTokens: number; outputTokens: number }> {
+  return (
+    isExactRecord(value, ['inputTokens', 'outputTokens']) &&
+    typeof value.inputTokens === 'number' &&
+    typeof value.outputTokens === 'number' &&
+    positiveUsage(value as { inputTokens: number; outputTokens: number })
+  );
+}
+
+function sha256(value: string | Uint8Array) {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function normalizeError(value: unknown): Error {
