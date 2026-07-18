@@ -13,6 +13,7 @@ import {
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
+import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
 
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
@@ -47,7 +48,7 @@ describe('V8 product acceptance executable composition', () => {
       AI_PROVIDER_MODE: 'live',
       AI_ENABLE_LIVE_CALLS: 'true',
       AI_MODEL: 'deepseek-v4-pro',
-      AI_BASE_URL: 'https://api.deepseek.com',
+      AI_BASE_URL: 'https://api.deepseek.com/v1',
       REVIEW_AGENT_MODEL_ENABLED: 'true',
       PLANNER_AGENT_MODEL_ENABLED: 'false',
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
@@ -66,6 +67,29 @@ describe('V8 product acceptance executable composition', () => {
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '0',
       DEEPSEEK_API_KEY: '',
       OPENAI_API_KEY: '',
+    });
+  });
+
+  it('builds an activation environment accepted by the production V4 Pro executor config parser', () => {
+    const activationEnvironment = buildReviewPlannerV8ActivationEnvironment(
+      'review',
+      'a'.repeat(64),
+      'provider-secret',
+    );
+
+    expect(
+      resolveReviewPlannerLiveExecutorConfig({
+        ...activationEnvironment,
+        AI_BASE_URL: 'https://api.deepseek.com',
+      }),
+    ).toBeNull();
+    expect(
+      resolveReviewPlannerLiveExecutorConfig(activationEnvironment),
+    ).toMatchObject({
+      provider: 'deepseek',
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-pro',
+      structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
     });
   });
 

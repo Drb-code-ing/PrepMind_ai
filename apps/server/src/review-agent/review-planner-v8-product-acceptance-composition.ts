@@ -1216,7 +1216,7 @@ export function buildReviewPlannerV8ActivationEnvironment(
     AI_PROVIDER_MODE: 'live',
     AI_ENABLE_LIVE_CALLS: 'true',
     AI_MODEL: 'deepseek-v4-pro',
-    AI_BASE_URL: 'https://api.deepseek.com',
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
     DEEPSEEK_API_KEY: deepseekApiKey,
     OPENAI_API_KEY: '',
     REVIEW_AGENT_MODEL_ENABLED: component === 'review' ? 'true' : 'false',
