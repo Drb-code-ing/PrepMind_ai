@@ -157,6 +157,7 @@ describe('review planner controlled Live V8 stage diagnostics factory', () => {
         createExecutor: harness.createExecutor,
       });
     expect(evaluator.state).toBe('ready');
+    expect(evaluator).not.toHaveProperty('profileId');
     expect(harness.createExecutor).toHaveBeenCalledTimes(1);
     const config = harness.createExecutor.mock.calls[0]?.[0];
     expect(config).toMatchObject({
@@ -214,6 +215,7 @@ describe('review planner controlled Live V8 stage diagnostics factory', () => {
     });
     expect(evaluator.providerAttemptCount()).toBe(1);
     const paired = await evaluator.runPaired();
+    expect(paired).not.toHaveProperty('diagnostic');
     expect(paired).toMatchObject({
       kind: 'report',
       report: {

@@ -32,6 +32,10 @@ import {
   resolveReviewPlannerLiveExecutorConfig,
   resolveReviewPlannerModelConfig,
 } from './review-planner-model-config';
+import {
+  deriveV9GateDiagnostic,
+  type V9GateDiagnostic,
+} from './review-planner-controlled-live-eval-v9-gate-diagnostics.contract';
 
 export const REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE_ID =
   'phase-6.9.5-review-planner-controlled-live-v8-deepseek-v4-pro-stage-diagnostics' as const;
@@ -98,6 +102,16 @@ type FactoryDependencies = Readonly<{
   }): Promise<Phase695Report>;
 }>;
 
+export type ReviewPlannerControlledLiveV8StageDiagnosticsFactoryOverrides =
+  Readonly<
+    Partial<FactoryDependencies> & {
+      /** @internal Safe aggregate callback; omitted by the V8 default path. */
+      onGateDiagnostic?: (value: V9GateDiagnostic) => void;
+      /** @internal Safe run-id prefix used only by the V9 wrapper. */
+      runIdProfile?: string;
+    }
+  >;
+
 const defaultDependencies: FactoryDependencies = {
   createExecutor: createOpenAICompatibleStructuredExecutor,
   pricing: DEEPSEEK_V4_PRO_V8_STAGE_DIAGNOSTICS_PRICING,
@@ -155,7 +169,7 @@ export function validateReviewPlannerControlledLiveV8StageDiagnosticsPreflight(
 /** Implements the CLI evaluator port and owns the only V8 provider composition. */
 export function createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(
   env: Record<string, unknown>,
-  overrides: Partial<FactoryDependencies> = {},
+  overrides: ReviewPlannerControlledLiveV8StageDiagnosticsFactoryOverrides = {},
 ): ReviewPlannerControlledLiveV8EvaluatorPort {
   const dependencies = { ...defaultDependencies, ...overrides };
   const preflight = resolvePreflight(env, dependencies.pricing);
@@ -213,8 +227,14 @@ export function createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(
     },
   };
 
+  const runIdProfile = resolveRunIdProfile(overrides.runIdProfile);
   const runCanaryOnce = () =>
-    (canaryPromise ??= runCanary(runtime, audit, () => providerAttempts));
+    (canaryPromise ??= runCanary(
+      runtime,
+      audit,
+      () => providerAttempts,
+      runIdProfile,
+    ));
 
   return Object.freeze({
     state: 'ready' as const,
@@ -241,6 +261,7 @@ export function createReviewPlannerControlledLiveV8StageDiagnosticsEvaluator(
         readAdmissions: () => pairedRuntimeAdmissions,
         didExceedProviderAttemptLimit: () => pairedAttemptLimitExceeded,
         audit,
+        onGateDiagnostic: overrides.onGateDiagnostic,
       });
       return pairedPromise;
     },
@@ -257,10 +278,11 @@ async function runCanary(
   runtime: ModelAgentRuntime,
   audit: AuditAggregate,
   readAttempts: () => number,
+  runIdProfile: string,
 ): Promise<CanaryOutcome> {
   try {
     const result = await runtime.invokeStructured({
-      runId: `${REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE_ID}:review-schema-canary`,
+      runId: `${runIdProfile}:review-schema-canary`,
       task: 'review_suggestion',
       schema: REVIEW_MODEL_CANDIDATE_SCHEMA,
       systemPrompt: CANARY_SYSTEM_PROMPT,
@@ -316,25 +338,51 @@ async function runPairedSafely(input: {
   readAdmissions: () => number;
   didExceedProviderAttemptLimit: () => boolean;
   audit: AuditAggregate;
+  onGateDiagnostic?: (value: V9GateDiagnostic) => void;
 }): Promise<ReviewPlannerControlledLiveV8PairedResult> {
+  let reportCandidate: unknown;
+  let published = false;
+  const finish = (
+    result: ReviewPlannerControlledLiveV8PairedResult,
+  ): ReviewPlannerControlledLiveV8PairedResult => {
+    if (!published && input.onGateDiagnostic) {
+      const diagnostic = projectV9GateDiagnostic({
+        reportCandidate,
+        canaryUsage: input.canaryUsage,
+        pricing: input.pricing,
+        attempts: boundedAttempts(input.readAttempts()),
+        admissions: boundedAdmissions(input.readAdmissions()),
+        overflow: input.didExceedProviderAttemptLimit(),
+        audit: input.audit,
+      });
+      published = true;
+      try {
+        input.onGateDiagnostic(diagnostic);
+      } catch {
+        // Internal observation must not alter the existing V8 result.
+      }
+    }
+    return result;
+  };
   try {
     const report = await input.runPairedEvaluation({
       mode: 'live',
       live: { runtime: input.runtime },
     });
+    reportCandidate = report;
     const auditCode = input.audit.readDiagnosticCode();
-    if (auditCode) return { kind: 'failed', diagnosticCode: auditCode };
+    if (auditCode) return finish({ kind: 'failed', diagnosticCode: auditCode });
     if (input.audit.readCount() !== boundedAttempts(input.readAttempts())) {
-      return { kind: 'failed', diagnosticCode: 'sdk_usage_lost' };
+      return finish({ kind: 'failed', diagnosticCode: 'sdk_usage_lost' });
     }
     if (
       !phase695ReportSchema.safeParse(report).success ||
       !isPassingReport(report)
     ) {
-      return {
+      return finish({
         kind: 'failed',
         diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
-      };
+      });
     }
     if (
       report.counters.inputTokens >
@@ -342,31 +390,175 @@ async function runPairedSafely(input: {
       report.counters.outputTokens >
         input.pricing.reservedOutputTokens - input.canaryUsage.outputTokens
     ) {
-      return { kind: 'failed', diagnosticCode: 'usage_reservation_exceeded' };
+      return finish({
+        kind: 'failed',
+        diagnosticCode: 'usage_reservation_exceeded',
+      });
     }
     const cost = aggregateCost(report, input.pricing, input.canaryUsage);
     if (!cost) {
-      return {
+      return finish({
         kind: 'failed',
         diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
-      };
+      });
     }
     if (
       input.readAdmissions() !== MAX_PAIRED_PROVIDER_ATTEMPTS ||
       input.readAttempts() !== MAX_PROVIDER_ATTEMPTS ||
       input.didExceedProviderAttemptLimit()
     ) {
-      return {
+      return finish({
         kind: 'failed',
         diagnosticCode: ReviewPlannerDiagnosticCode.InvalidResponse,
-      };
+      });
     }
-    return { kind: 'report', report, cost };
+    return finish({ kind: 'report', report, cost });
   } catch {
-    return {
+    return finish({
       kind: 'failed',
       diagnosticCode: ReviewPlannerDiagnosticCode.Transport,
-    };
+    });
+  }
+}
+
+function projectV9GateDiagnostic(input: {
+  reportCandidate: unknown;
+  canaryUsage: CanaryUsage;
+  pricing: ReviewPlannerControlledLiveV8StageDiagnosticsPricing;
+  attempts: number;
+  admissions: number;
+  overflow: boolean;
+  audit: AuditAggregate;
+}): V9GateDiagnostic {
+  try {
+    return projectV9GateDiagnosticUnsafe(input);
+  } catch {
+    return deriveV9GateDiagnostic({
+      attempts: {
+        providerCount: input.attempts,
+        expectedProviderCount: 23,
+        pairedAdmissionCount: input.admissions,
+        expectedPairedAdmissionCount: 22,
+        overflow: input.overflow,
+        auditRecordCount: boundedAttempts(input.audit.readCount()),
+      },
+      report: { schemaValid: false },
+      usage: { known: false, reason: 'usage_unverifiable' },
+      cost: { evaluated: false, reason: 'usage_unverifiable' },
+    });
+  }
+}
+
+function projectV9GateDiagnosticUnsafe(input: {
+  reportCandidate: unknown;
+  canaryUsage: CanaryUsage;
+  pricing: ReviewPlannerControlledLiveV8StageDiagnosticsPricing;
+  attempts: number;
+  admissions: number;
+  overflow: boolean;
+  audit: AuditAggregate;
+}): V9GateDiagnostic {
+  const attempts = {
+    providerCount: input.attempts,
+    expectedProviderCount: 23,
+    pairedAdmissionCount: input.admissions,
+    expectedPairedAdmissionCount: 22,
+    overflow: input.overflow,
+    auditRecordCount: boundedAttempts(input.audit.readCount()),
+  } as const;
+  const parsed = phase695ReportSchema.safeParse(input.reportCandidate);
+  if (!parsed.success || parsed.data.mode !== 'live') {
+    return deriveV9GateDiagnostic({
+      attempts,
+      report: { schemaValid: false },
+      usage: { known: false, reason: 'usage_unverifiable' },
+      cost: { evaluated: false, reason: 'usage_unverifiable' },
+    });
+  }
+
+  const report = parsed.data;
+  const runtimeEntries = report.caseEntries.filter(
+    (entry) => entry.executionKind === 'runtime',
+  );
+  const observedInputTokens =
+    input.canaryUsage.inputTokens + report.counters.inputTokens;
+  const observedOutputTokens =
+    input.canaryUsage.outputTokens + report.counters.outputTokens;
+  const usageKnown =
+    input.audit.readDiagnosticCode() === null &&
+    input.audit.readCount() === input.attempts &&
+    Number.isSafeInteger(observedInputTokens) &&
+    observedInputTokens > 0 &&
+    observedInputTokens <= input.pricing.reservedInputTokens &&
+    Number.isSafeInteger(observedOutputTokens) &&
+    observedOutputTokens > 0 &&
+    observedOutputTokens <= input.pricing.reservedOutputTokens &&
+    runtimeEntries.length === MAX_PAIRED_PROVIDER_ATTEMPTS &&
+    runtimeEntries.every(
+      (entry) =>
+        entry.runtimeInvocations === 1 &&
+        entry.strictSuccess &&
+        Number.isSafeInteger(entry.usage.inputTokens) &&
+        entry.usage.inputTokens > 0 &&
+        Number.isSafeInteger(entry.usage.outputTokens) &&
+        entry.usage.outputTokens > 0,
+    );
+  const usage = usageKnown
+    ? {
+        known: true as const,
+        inputTokens: observedInputTokens,
+        outputTokens: observedOutputTokens,
+      }
+    : { known: false as const, reason: 'usage_unverifiable' as const };
+  const amountCny = usageKnown
+    ? calculateCnyCost(observedInputTokens, observedOutputTokens)
+    : null;
+  const cost =
+    amountCny === null
+      ? { evaluated: false as const, reason: 'usage_unverifiable' as const }
+      : {
+          evaluated: true as const,
+          amountCny,
+          hardCapCny: 1 as const,
+          withinCap: amountCny <= input.pricing.hardCapCny,
+        };
+  const aggregateReport = {
+    schemaValid: true as const,
+    caseEntries: report.counters.caseEntries,
+    zeroCallCases: report.counters.zeroCallCases,
+    zeroCallVerified: report.caseEntries.filter(
+      (entry) => entry.executionKind === 'zero_call' && entry.zeroCallVerified,
+    ).length,
+    runtimeInvocations: report.counters.runtimeInvocations,
+    budgetExceededCases: report.caseEntries.filter(
+      (entry) =>
+        entry.runtimeInvocations > entry.budget.maxCalls ||
+        entry.usage.inputTokens > entry.budget.maxInputTokens ||
+        entry.usage.outputTokens > entry.budget.maxOutputTokens,
+    ).length,
+    strictSuccesses: report.counters.strictSuccesses,
+    qualityPasses: report.counters.qualityPasses,
+    criticalFailures: report.counters.criticalFailures,
+    semanticPasses: runtimeEntries.filter((entry) => entry.qualityPass).length,
+    semanticTotal: runtimeEntries.length,
+    p95DurationMs: report.metrics.p95DurationMs,
+    productionDecision: report.productionDecision,
+  };
+
+  try {
+    return deriveV9GateDiagnostic({
+      attempts,
+      report: aggregateReport,
+      usage,
+      cost,
+    });
+  } catch {
+    return deriveV9GateDiagnostic({
+      attempts,
+      report: { schemaValid: false },
+      usage: { known: false, reason: 'usage_unverifiable' },
+      cost: { evaluated: false, reason: 'usage_unverifiable' },
+    });
   }
 }
 
@@ -663,10 +855,25 @@ function trim(value: unknown): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function resolveRunIdProfile(value: unknown): string {
+  const candidate = trim(value);
+  return candidate && /^[a-z0-9][a-z0-9.-]{0,127}$/.test(candidate)
+    ? candidate
+    : REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE_ID;
+}
+
 function boundedAttempts(value: number) {
   return Number.isSafeInteger(value) &&
     value >= 0 &&
     value <= MAX_PROVIDER_ATTEMPTS
+    ? value
+    : 0;
+}
+
+function boundedAdmissions(value: number) {
+  return Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= MAX_PAIRED_PROVIDER_ATTEMPTS
     ? value
     : 0;
 }
