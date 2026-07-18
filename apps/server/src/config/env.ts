@@ -40,6 +40,20 @@ const envSchema = z
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
     REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:
+      booleanStringSchema.default(false),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: z
+      .enum(['', 'review', 'planner'])
+      .default(''),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: z
+      .union([z.literal(''), z.string().regex(/^[a-f0-9]{64}$/)])
+      .default(''),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(2)
+      .default(0),
     REVIEW_AGENT_MODEL_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -368,6 +382,54 @@ const envSchema = z
     DASHSCOPE_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
+    if (env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED) {
+      const component = env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT;
+      const exactBusinessGate =
+        component === 'review'
+          ? env.REVIEW_AGENT_MODEL_ENABLED && !env.PLANNER_AGENT_MODEL_ENABLED
+          : component === 'planner'
+            ? env.PLANNER_AGENT_MODEL_ENABLED && !env.REVIEW_AGENT_MODEL_ENABLED
+            : false;
+      if (env.SERVER_ROLE !== 'api') {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED'],
+          message: 'product acceptance is restricted to the HTTP API server',
+        });
+      }
+      if (component === '') {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT'],
+          message: 'enabled product acceptance requires one component',
+        });
+      }
+      if (
+        env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256.length !== 64
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256'],
+          message: 'enabled product acceptance requires a SHA-256 commitment',
+        });
+      }
+      if (env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS !== 2) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS'],
+          message: 'enabled product acceptance requires exactly two requests',
+        });
+      }
+      if (!exactBusinessGate) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT'],
+          message:
+            'enabled product acceptance requires exactly its matching business gate',
+        });
+      }
+    }
+
     if (env.AI_PROVIDER_MODE === 'live' && env.AI_ENABLE_LIVE_CALLS) {
       if (!isSafeHttpsProviderUrl(env.AI_BASE_URL)) {
         context.addIssue({

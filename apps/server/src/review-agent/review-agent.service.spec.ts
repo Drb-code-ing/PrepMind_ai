@@ -6,6 +6,7 @@ import { PrismaService } from '../database/prisma.service';
 import { ReviewPreferencesService } from '../review-preferences/review-preferences.service';
 import { ReviewTasksService } from '../review-tasks/review-tasks.service';
 import { ReviewAgentService } from './review-agent.service';
+import type { ReviewPlannerProductAcceptanceAdmission } from './review-planner-product-acceptance-admission';
 import type { ReviewPlannerModelRuntimeBundle } from './review-planner-model-runtime.factory';
 
 const objectContaining = <T extends object>(value: T) =>
@@ -198,12 +199,14 @@ describe('ReviewAgentService', () => {
 
   function createService(
     runtimes: ReviewPlannerModelRuntimeBundle = disabledRuntimes(),
+    admission: ReviewPlannerProductAcceptanceAdmission | null = null,
   ) {
     return new ReviewAgentService(
       prisma as unknown as PrismaService,
       reviewTasksService as unknown as ReviewTasksService,
       reviewPreferencesService as unknown as ReviewPreferencesService,
       runtimes,
+      admission,
       agentTracesService as unknown as AgentTracesService,
     );
   }
@@ -429,6 +432,89 @@ describe('ReviewAgentService', () => {
     );
   });
 
+  it('claims the review acceptance capability immediately before its only runtime call', async () => {
+    const events: string[] = [];
+    const executor: StructuredModelExecutor = () => {
+      events.push('runtime:review');
+      return Promise.resolve({
+        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        usage: { inputTokens: 20, outputTokens: 6 },
+      });
+    };
+    const admission = {
+      claim: jest.fn((component: 'review' | 'planner') => {
+        events.push(`claim:${component}`);
+        return component === 'review';
+      }),
+    } satisfies ReviewPlannerProductAcceptanceAdmission;
+
+    const result = await createService(
+      componentRuntimes('review', liveRuntime(executor)),
+      admission,
+    ).getSuggestions('user_1', query, 'temporary-capability');
+
+    expect(events).toEqual(['claim:review', 'runtime:review']);
+    expect(admission.claim).toHaveBeenCalledWith(
+      'review',
+      'temporary-capability',
+    );
+    expect(result.modelObservations).toMatchObject({
+      review: { attempted: true, disposition: 'candidate_applied' },
+      planner: { attempted: false, provenance: 'local_deterministic' },
+    });
+  });
+
+  it('uses deterministic observations and makes zero runtime calls when a claim fails', async () => {
+    const executor = jest.fn<ReturnType<StructuredModelExecutor>, []>();
+    const admission = {
+      claim: jest.fn(() => false),
+    } satisfies ReviewPlannerProductAcceptanceAdmission;
+
+    const result = await createService(
+      componentRuntimes('review', liveRuntime(executor)),
+      admission,
+    ).getSuggestions('user_1', query, 'wrong-capability');
+
+    expect(executor).not.toHaveBeenCalled();
+    expect(admission.claim).toHaveBeenCalledTimes(1);
+    expect(result.modelObservations).toMatchObject({
+      review: { attempted: false, provenance: 'local_deterministic' },
+      planner: { attempted: false, provenance: 'local_deterministic' },
+    });
+  });
+
+  it('isolates planner acceptance from the review candidate', async () => {
+    const events: string[] = [];
+    const executor: StructuredModelExecutor = () => {
+      events.push('runtime:planner');
+      return Promise.resolve({
+        object: { blockOrder: [0, 1], strategy: 'protect_overdue' },
+        usage: { inputTokens: 20, outputTokens: 6 },
+      });
+    };
+    const admission = {
+      claim: jest.fn((component: 'review' | 'planner') => {
+        events.push(`claim:${component}`);
+        return component === 'planner';
+      }),
+    } satisfies ReviewPlannerProductAcceptanceAdmission;
+
+    const result = await createService(
+      componentRuntimes('planner', liveRuntime(executor)),
+      admission,
+    ).getSuggestions('user_1', query, 'temporary-capability');
+
+    expect(events).toEqual(['claim:planner', 'runtime:planner']);
+    expect(admission.claim).toHaveBeenCalledWith(
+      'planner',
+      'temporary-capability',
+    );
+    expect(result.modelObservations).toMatchObject({
+      review: { attempted: false, provenance: 'local_deterministic' },
+      planner: { attempted: true, disposition: 'candidate_applied' },
+    });
+  });
+
   it('does not block suggestions when trace persistence rejects', async () => {
     agentTracesService.createTrace.mockRejectedValueOnce(
       new Error('trace storage unavailable'),
@@ -471,6 +557,21 @@ function enabledRuntimes(
     },
     reviewRuntime: runtime,
     plannerRuntime: runtime,
+  };
+}
+
+function componentRuntimes(
+  component: 'review' | 'planner',
+  runtime: ModelAgentRuntime,
+): ReviewPlannerModelRuntimeBundle {
+  const enabled = enabledRuntimes(runtime);
+  return {
+    ...enabled,
+    config: {
+      ...enabled.config,
+      reviewEnabled: component === 'review',
+      plannerEnabled: component === 'planner',
+    },
   };
 }
 

@@ -54,6 +54,10 @@ describe('parseEnv', () => {
       CONVERSATION_SUMMARY_TIMEOUT_MS: 8000,
       REVIEW_AGENT_MODEL_ENABLED: false,
       PLANNER_AGENT_MODEL_ENABLED: false,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: false,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: '',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: '',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 0,
       REVIEW_AGENT_MODEL_TIMEOUT_MS: 4500,
       PLANNER_AGENT_MODEL_TIMEOUT_MS: 4500,
     });
@@ -71,6 +75,58 @@ describe('parseEnv', () => {
       PLANNER_AGENT_MODEL_ENABLED: false,
     });
   });
+
+  it('accepts only an exact server-only Review product acceptance configuration', () => {
+    const hash = 'a'.repeat(64);
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        REVIEW_AGENT_MODEL_ENABLED: 'true',
+        PLANNER_AGENT_MODEL_ENABLED: 'false',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: hash,
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '2',
+      }),
+    ).toMatchObject({
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: true,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: hash,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 2,
+    });
+  });
+
+  it.each([
+    { SERVER_ROLE: 'worker' },
+    { SERVER_ROLE: 'both' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: '' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'planner' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'A'.repeat(64) },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'a'.repeat(63) },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '0' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '1' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '3' },
+    { REVIEW_AGENT_MODEL_ENABLED: 'false' },
+    { PLANNER_AGENT_MODEL_ENABLED: 'true' },
+  ])(
+    'rejects invalid enabled product acceptance combination %#',
+    (override) => {
+      expect(() =>
+        parseEnv({
+          ...requiredEnv,
+          SERVER_ROLE: 'api',
+          REVIEW_AGENT_MODEL_ENABLED: 'true',
+          PLANNER_AGENT_MODEL_ENABLED: 'false',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'a'.repeat(64),
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '2',
+          ...override,
+        }),
+      ).toThrow();
+    },
+  );
 
   it('requires an HTTPS provider and matching key only when summary live calls are enabled', () => {
     expect(() =>

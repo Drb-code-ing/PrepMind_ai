@@ -325,6 +325,27 @@ describe('Docker Compose worker readiness healthcheck', () => {
     }
   });
 
+  it('projects product acceptance admission only to the HTTP server with safe defaults', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+    const adminService = extractYamlSection(compose, '  admin:', 2);
+    const controls = [
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:-false}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT:-}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256:-}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS:-0}',
+    ];
+
+    for (const control of controls) {
+      expect(serverService).toContain(control);
+      expect(workerService).not.toContain(control);
+      expect(webService).not.toContain(control);
+      expect(adminService).not.toContain(control);
+    }
+  });
+
   it('keeps Docker API and worker on the same explicit Qwen RAG contract', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const server = extractYamlSection(compose, '  server:', 2);

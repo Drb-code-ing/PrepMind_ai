@@ -27,6 +27,10 @@ import {
   REVIEW_PLANNER_MODEL_RUNTIMES,
   type ReviewPlannerModelRuntimeBundle,
 } from './review-planner-model-runtime.factory';
+import {
+  REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ADMISSION,
+  type ReviewPlannerProductAcceptanceAdmission,
+} from './review-planner-product-acceptance-admission';
 import { createReviewPlannerTrace } from './review-planner-trace';
 
 const RECENT_REVIEW_DAYS = 14;
@@ -79,12 +83,15 @@ export class ReviewAgentService {
     private readonly reviewPreferencesService: ReviewPreferencesService,
     @Inject(REVIEW_PLANNER_MODEL_RUNTIMES)
     private readonly modelRuntimes: ReviewPlannerModelRuntimeBundle,
+    @Inject(REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ADMISSION)
+    private readonly productAcceptanceAdmission: ReviewPlannerProductAcceptanceAdmission | null,
     private readonly agentTracesService: AgentTracesService,
   ) {}
 
   async getSuggestions(
     userId: string,
     input: ReviewAgentSuggestionQuery,
+    rawAcceptanceCapability?: unknown,
   ): Promise<ReviewAgentSuggestionResponse> {
     const now = new Date();
     const [plan, preference, reviewInput] = await Promise.all([
@@ -103,33 +110,45 @@ export class ReviewAgentService {
     const deterministicReview = analyzeReview(reviewInput);
     const deterministicReviewDurationMs =
       Date.now() - deterministicReviewStartedAt;
-    const reviewCandidate = this.modelRuntimes.config.reviewEnabled
-      ? await runReviewModelCandidate({
-          runId,
-          deterministic: deterministicReview,
-          budget,
-          runtime: this.modelRuntimes.reviewRuntime,
-        })
-      : {
-          value: deterministicReview,
-          observation: createLocalReviewPlannerCandidateObservation(),
-        };
+    const reviewCandidate =
+      this.modelRuntimes.config.reviewEnabled &&
+      (this.productAcceptanceAdmission === null ||
+        this.productAcceptanceAdmission.claim(
+          'review',
+          rawAcceptanceCapability,
+        ))
+        ? await runReviewModelCandidate({
+            runId,
+            deterministic: deterministicReview,
+            budget,
+            runtime: this.modelRuntimes.reviewRuntime,
+          })
+        : {
+            value: deterministicReview,
+            observation: createLocalReviewPlannerCandidateObservation(),
+          };
     const review = reviewCandidate.value;
     const deterministicPlannerStartedAt = Date.now();
     const deterministicPlanner = planStudy({ review, plan, preference });
     const deterministicPlannerDurationMs =
       Date.now() - deterministicPlannerStartedAt;
-    const plannerCandidate = this.modelRuntimes.config.plannerEnabled
-      ? await runPlannerModelCandidate({
-          runId,
-          deterministic: deterministicPlanner,
-          budget: reviewCandidate.observation.budget,
-          runtime: this.modelRuntimes.plannerRuntime,
-        })
-      : {
-          value: deterministicPlanner,
-          observation: createLocalReviewPlannerCandidateObservation(),
-        };
+    const plannerCandidate =
+      this.modelRuntimes.config.plannerEnabled &&
+      (this.productAcceptanceAdmission === null ||
+        this.productAcceptanceAdmission.claim(
+          'planner',
+          rawAcceptanceCapability,
+        ))
+        ? await runPlannerModelCandidate({
+            runId,
+            deterministic: deterministicPlanner,
+            budget: reviewCandidate.observation.budget,
+            runtime: this.modelRuntimes.plannerRuntime,
+          })
+        : {
+            value: deterministicPlanner,
+            observation: createLocalReviewPlannerCandidateObservation(),
+          };
     const planner = plannerCandidate.value;
     const modelObservations = toReviewPlannerModelObservations({
       review: reviewCandidate.observation,
