@@ -93,6 +93,25 @@ const RECOVERY_BINDING_LEAVES = Object.freeze([
   'account-planner.json',
 ] as const);
 type RecoveryBindingComponent = 'review' | 'planner';
+const RECOVERY_MODE_LEAF = 'mode.json' as const;
+const recoveryModeSchema = z.discriminatedUnion('mode', [
+  z
+    .object({
+      schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-mode-v1'),
+      environment: z.enum(['branch', 'main']),
+      mode: z.literal('recovery'),
+    })
+    .strict(),
+  z
+    .object({
+      schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-mode-v1'),
+      environment: z.enum(['branch', 'main']),
+      mode: z.literal('preseal'),
+      pairedEvidenceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      acceptanceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
+]);
 
 const recoveryAccountBindingSchema = z
   .object({
@@ -262,6 +281,7 @@ export type ReviewPlannerV8ProductAcceptanceRecoverySnapshot = Readonly<{
       >
     >
   >;
+  mode: Readonly<z.infer<typeof recoveryModeSchema>> | null;
   stages: Readonly<{
     restoreClaimed: boolean;
     restoreVerified: boolean;
@@ -430,6 +450,7 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
       'owner.lock',
       'recovery-manifest.json',
       ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     const parsed = recoveryManifestSchema.parse(
@@ -473,6 +494,7 @@ export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
       'owner.lock',
       'recovery-manifest.json',
       ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     if (!leaves.includes('recovery-manifest.json')) return false;
@@ -502,6 +524,7 @@ export async function assertReviewPlannerV8ProductAcceptanceRecoveryClear(
       'owner.lock',
       'recovery-manifest.json',
       ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
       ...RECOVERY_STAGE_LEAVES,
     ]);
     if (
@@ -541,7 +564,9 @@ export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(inp
     assertOnlyRecoveryLeaves(directory, [
       ...expectedLeaves,
       ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
     ]);
+    requireRecoveryMode(directory, input.environment);
     const leaves = directory.listLeafNames();
     if (
       !expectedLeaves.every((leaf) => leaves.includes(leaf)) ||
@@ -566,6 +591,106 @@ export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(inp
     ) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
     }
+  } catch {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory.close();
+  }
+}
+
+export async function claimReviewPlannerV8ProductAcceptancePresealMode(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV8ProductAcceptanceOwner;
+  pairedEvidenceSha256: string;
+  acceptanceSha256: string;
+}): Promise<Readonly<{ modeSha256: string }>> {
+  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
+    'recovery',
+  ]);
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertOnlyRecoveryLeaves(directory, [
+      'owner.lock',
+      'recovery-manifest.json',
+      ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
+      ...RECOVERY_STAGE_LEAVES,
+    ]);
+    const manifest = recoveryManifestSchema.parse(
+      JSON.parse(
+        directory.readRegularFile('recovery-manifest.json').toString(),
+      ),
+    );
+    if (manifest.environment !== input.environment) throw new Error();
+    const stages = validateRecoveryStages(directory);
+    if (stages.some(Boolean)) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_MODE_CONFLICT');
+    }
+    const record = recoveryModeSchema.parse({
+      schemaVersion: 'phase-6.9.5-v8-product-acceptance-mode-v1',
+      environment: input.environment,
+      mode: 'preseal',
+      pairedEvidenceSha256: input.pairedEvidenceSha256,
+      acceptanceSha256: input.acceptanceSha256,
+    });
+    return Object.freeze({
+      modeSha256: claimMode(
+        directory,
+        record,
+        'V8_PRODUCT_ACCEPTANCE_PRESEAL_MODE_CONFLICT',
+      ),
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'V8_PRODUCT_ACCEPTANCE_PRESEAL_MODE_CONFLICT'
+    ) {
+      throw error;
+    }
+    throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_MODE_CONFLICT');
+  } finally {
+    directory.close();
+  }
+}
+
+export async function readReviewPlannerV8ProductAcceptanceLocalMode(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<
+  Readonly<{
+    mode: Readonly<z.infer<typeof recoveryModeSchema>> | null;
+    modeSha256: string | null;
+    stagesPresent: boolean;
+  }>
+> {
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertOnlyRecoveryLeaves(directory, [
+      'owner.lock',
+      'recovery-manifest.json',
+      ...RECOVERY_BINDING_LEAVES,
+      RECOVERY_MODE_LEAF,
+      ...RECOVERY_STAGE_LEAVES,
+    ]);
+    const stages = validateRecoveryStages(directory);
+    const mode = readMode(directory, input.environment);
+    return Object.freeze({
+      mode: mode === null ? null : Object.freeze({ ...mode }),
+      modeSha256:
+        mode === null
+          ? null
+          : sha256(directory.readRegularFile(RECOVERY_MODE_LEAF)),
+      stagesPresent: stages.some(Boolean),
+    });
   } catch {
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   } finally {
@@ -599,7 +724,10 @@ function createRecoveryJournal(
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
         }
         const snapshot = snapshotRecoveryState(state);
-        if (Object.values(snapshot.stages).some(Boolean)) {
+        if (
+          snapshot.mode !== null ||
+          Object.values(snapshot.stages).some(Boolean)
+        ) {
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_BINDING_INVALID');
         }
         const publicDirectory = state.bindingPublicDirectory;
@@ -686,6 +814,15 @@ function createRecoveryJournal(
                 'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
               );
             }
+            claimMode(
+              current.directory,
+              {
+                schemaVersion: 'phase-6.9.5-v8-product-acceptance-mode-v1',
+                environment: current.environment,
+                mode: 'recovery',
+              },
+              'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+            );
             const authority: ReviewPlannerV8RecoveryAuthority = Object.freeze({
               assertAuthorized() {
                 const latest = requireJournalState(journal);
@@ -699,6 +836,7 @@ function createRecoveryJournal(
                     'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
                   );
                 }
+                requireRecoveryMode(latest.directory, latest.environment);
               },
             });
             current.authorized = true;
@@ -732,6 +870,7 @@ function createRecoveryJournal(
             'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
           );
         }
+        requireRecoveryMode(state.directory, state.environment);
         if (!RECOVERY_STAGE_LEAVES.includes(leaf)) {
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_STAGE_INVALID');
         }
@@ -739,6 +878,7 @@ function createRecoveryJournal(
           'owner.lock',
           'recovery-manifest.json',
           ...RECOVERY_BINDING_LEAVES,
+          RECOVERY_MODE_LEAF,
           ...RECOVERY_STAGE_LEAVES,
         ]);
         const leaves = state.directory.listLeafNames();
@@ -782,10 +922,12 @@ function createRecoveryJournal(
             'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
           );
         }
+        requireRecoveryMode(state.directory, state.environment);
         assertOnlyRecoveryLeaves(state.directory, [
           'owner.lock',
           'recovery-manifest.json',
           ...RECOVERY_BINDING_LEAVES,
+          RECOVERY_MODE_LEAF,
           ...RECOVERY_STAGE_LEAVES,
         ]);
         const recoveryLeaves = state.directory.listLeafNames();
@@ -893,6 +1035,7 @@ function snapshotRecoveryState(
     'owner.lock',
     'recovery-manifest.json',
     ...RECOVERY_BINDING_LEAVES,
+    RECOVERY_MODE_LEAF,
     ...RECOVERY_STAGE_LEAVES,
   ]);
   try {
@@ -938,6 +1081,16 @@ function snapshotRecoveryState(
         ),
       );
     }
+    const mode = leaves.includes(RECOVERY_MODE_LEAF)
+      ? recoveryModeSchema.parse(
+          JSON.parse(
+            state.directory.readRegularFile(RECOVERY_MODE_LEAF).toString(),
+          ),
+        )
+      : null;
+    if (mode !== null && mode.environment !== state.environment) {
+      throw new Error();
+    }
     const bindings: Partial<
       Record<
         RecoveryBindingComponent,
@@ -965,6 +1118,7 @@ function snapshotRecoveryState(
         fixtureIds: Object.freeze([...manifest.fixtureIds]),
       }),
       bindings: Object.freeze(bindings),
+      mode: mode === null ? null : Object.freeze({ ...mode }),
       stages: Object.freeze({
         restoreClaimed: leaves.includes('restore.claimed'),
         restoreVerified: leaves.includes('restore.verified.json'),
@@ -983,6 +1137,86 @@ function parseRecoveryStage<T>(schema: z.ZodType<T>, contents: string) {
   } catch {
     return false;
   }
+}
+
+function claimMode(
+  directory: WindowsNoReparseChildDirectory,
+  value: z.infer<typeof recoveryModeSchema>,
+  conflictCode: string,
+) {
+  const contents = `${JSON.stringify(value)}\n`;
+  const leaves = directory.listLeafNames();
+  if (leaves.includes(RECOVERY_MODE_LEAF)) {
+    const existing = directory.readRegularFile(RECOVERY_MODE_LEAF);
+    let parsed: z.infer<typeof recoveryModeSchema>;
+    try {
+      parsed = recoveryModeSchema.parse(JSON.parse(existing.toString()));
+    } catch {
+      throw new Error(conflictCode);
+    }
+    if (JSON.stringify(parsed) !== JSON.stringify(value)) {
+      throw new Error(conflictCode);
+    }
+    return sha256(existing);
+  }
+  publish(directory, RECOVERY_MODE_LEAF, contents, conflictCode);
+  return sha256(Buffer.from(contents));
+}
+
+function readMode(
+  directory: WindowsNoReparseChildDirectory,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+) {
+  if (!directory.listLeafNames().includes(RECOVERY_MODE_LEAF)) return null;
+  const mode = recoveryModeSchema.parse(
+    JSON.parse(directory.readRegularFile(RECOVERY_MODE_LEAF).toString()),
+  );
+  if (mode.environment !== environment) throw new Error();
+  return mode;
+}
+
+function requireRecoveryMode(
+  directory: WindowsNoReparseChildDirectory,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+) {
+  const mode = readMode(directory, environment);
+  if (mode?.mode !== 'recovery') {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID');
+  }
+}
+
+function validateRecoveryStages(directory: WindowsNoReparseChildDirectory) {
+  const leaves = directory.listLeafNames();
+  const stages = RECOVERY_STAGE_LEAVES.map((leaf) => leaves.includes(leaf));
+  let missingSeen = false;
+  for (const present of stages) {
+    if (!present) missingSeen = true;
+    else if (missingSeen) throw new Error();
+  }
+  if (
+    stages[0] &&
+    directory.readRegularFile('restore.claimed').byteLength !== 0
+  ) {
+    throw new Error();
+  }
+  if (stages[1]) {
+    const receipt = recoveryRestoreSchema.parse(
+      JSON.parse(directory.readRegularFile('restore.verified.json').toString()),
+    );
+    if (receipt.component !== 'recovery') throw new Error();
+  }
+  if (
+    stages[2] &&
+    directory.readRegularFile('cleanup.claimed').byteLength !== 0
+  ) {
+    throw new Error();
+  }
+  if (stages[3]) {
+    recoveryCleanupSchema.parse(
+      JSON.parse(directory.readRegularFile('cleanup.verified.json').toString()),
+    );
+  }
+  return stages;
 }
 
 function isKnownPublicLeaf(leaf: string) {

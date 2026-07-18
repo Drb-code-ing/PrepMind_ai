@@ -11,6 +11,8 @@ import {
 import {
   assertReviewPlannerV8ProductAcceptanceRecoveryClear,
   assertReviewPlannerV8ProductAcceptanceOwner,
+  claimReviewPlannerV8ProductAcceptancePresealMode,
+  readReviewPlannerV8ProductAcceptanceLocalMode,
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal,
   type ReviewPlannerV8ProductAcceptanceEnvironment,
@@ -315,6 +317,15 @@ const successSchema = z
     cleanupSha256: z.string().regex(SHA256),
     acceptanceSha256: z.string().regex(SHA256),
     screenshotSha256: z.array(z.string().regex(SHA256)).length(2),
+    completion: z.discriminatedUnion('mode', [
+      z.object({ mode: z.literal('product') }).strict(),
+      z
+        .object({
+          mode: z.literal('preseal'),
+          modeSha256: z.string().regex(SHA256),
+        })
+        .strict(),
+    ]),
   })
   .strict();
 
@@ -567,7 +578,15 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
       return Object.freeze({ status: 'recovery_only' as const });
     }
     if (!success) return Object.freeze({ status: 'incomplete' as const });
-    const aggregate = verifyCompleteLedger(directory, input.environment);
+    const localMode = await readReviewPlannerV8ProductAcceptanceLocalMode({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+    });
+    const aggregate = verifyCompleteLedger(
+      directory,
+      input.environment,
+      localMode,
+    );
     return Object.freeze({ status: 'complete' as const, ...aggregate });
   } catch {
     return Object.freeze({ status: 'evidence_io' as const });
@@ -658,6 +677,14 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
     ) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
     }
+    const acceptanceSha256 = hashLeaf(directory, 'acceptance.json');
+    const presealMode = await claimReviewPlannerV8ProductAcceptancePresealMode({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+      owner: input.owner,
+      pairedEvidenceSha256: manifest.pairedEvidenceSha256,
+      acceptanceSha256,
+    });
     const success = successSchema.parse({
       schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',
       environment: input.environment,
@@ -675,11 +702,23 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
         '.owner-isolation-verified.json',
       ),
       cleanupSha256: hashLeaf(directory, '.cleanup-verified.json'),
-      acceptanceSha256: hashLeaf(directory, 'acceptance.json'),
+      acceptanceSha256,
       screenshotSha256: [screenshots.plan, screenshots.today],
+      completion: {
+        mode: 'preseal',
+        modeSha256: presealMode.modeSha256,
+      },
     });
     publish(directory, '.acceptance-success', serialize(success));
-    verifyCompleteLedger(directory, input.environment);
+    verifyCompleteLedger(directory, input.environment, {
+      mode: {
+        mode: 'preseal',
+        pairedEvidenceSha256: manifest.pairedEvidenceSha256,
+        acceptanceSha256,
+      },
+      modeSha256: presealMode.modeSha256,
+      stagesPresent: false,
+    });
   } catch (error) {
     if (
       error instanceof Error &&
@@ -968,6 +1007,7 @@ function createLedger(
         cleanupSha256: hashLeaf(current.directory, '.cleanup-verified.json'),
         acceptanceSha256: hashLeaf(current.directory, 'acceptance.json'),
         screenshotSha256: [screenshots.plan, screenshots.today],
+        completion: { mode: 'product' },
       });
       publish(current.directory, '.acceptance-success', serialize(success));
     },
@@ -993,6 +1033,20 @@ function createLedger(
 function verifyCompleteLedger(
   directory: WindowsNoReparseChildDirectory,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  localMode: Readonly<{
+    mode:
+      | Readonly<{
+          mode: 'recovery';
+        }>
+      | Readonly<{
+          mode: 'preseal';
+          pairedEvidenceSha256: string;
+          acceptanceSha256: string;
+        }>
+      | null;
+    modeSha256: string | null;
+    stagesPresent: boolean;
+  }>,
 ) {
   const manifest = assertManifest(directory, environment);
   const results = requireAllResults(directory);
@@ -1002,6 +1056,13 @@ function verifyCompleteLedger(
   if (
     success.environment !== environment ||
     acceptance.environment !== environment ||
+    localMode.stagesPresent ||
+    (success.completion.mode === 'product'
+      ? localMode.mode !== null || localMode.modeSha256 !== null
+      : localMode.mode?.mode !== 'preseal' ||
+        localMode.modeSha256 !== success.completion.modeSha256 ||
+        localMode.mode.pairedEvidenceSha256 !== success.pairedEvidenceSha256 ||
+        localMode.mode.acceptanceSha256 !== success.acceptanceSha256) ||
     success.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
     acceptance.pairedEvidenceSha256 !== manifest.pairedEvidenceSha256 ||
     !arraysEqual(
@@ -1111,6 +1172,8 @@ function assertNoRecoveryStage(state: LedgerState) {
       (leaf) =>
         leaf !== 'owner.lock' &&
         leaf !== 'recovery-manifest.json' &&
+        leaf !== 'account-review.json' &&
+        leaf !== 'account-planner.json' &&
         !(RECOVERY_STAGE_LEAVES as readonly string[]).includes(leaf),
     ) ||
     leaves.some((leaf) =>

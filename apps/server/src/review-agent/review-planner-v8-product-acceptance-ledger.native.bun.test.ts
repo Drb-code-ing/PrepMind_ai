@@ -1162,6 +1162,7 @@ describeWindows(
       expect(prepared.snapshot()).toEqual({
         manifest: recoveryManifest(),
         bindings: {},
+        mode: null,
         stages: {
           restoreClaimed: false,
           restoreVerified: false,
@@ -1210,6 +1211,11 @@ describeWindows(
             email: recoveryManifest().syntheticEmails.review,
             accountId: 'review-user-id',
           },
+        },
+        mode: {
+          schemaVersion: 'phase-6.9.5-v8-product-acceptance-mode-v1',
+          environment: 'branch',
+          mode: 'recovery',
         },
         stages: {
           restoreClaimed: true,
@@ -1322,6 +1328,165 @@ describeWindows(
       await expect(journal.authorizeRecoveryOnly()).resolves.toBeDefined();
       journal.close();
       acquisition.owner.close();
+    });
+
+    it('serializes recovery authorization before preseal completion for the same recovery owner', async () => {
+      await finishBranch(root);
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      await unlink(join(publicPath, '.acceptance-success'));
+      const acquisition = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquisition.status).toBe('acquired');
+      if (acquisition.status !== 'acquired')
+        throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        {
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        },
+      );
+      await journal.authorizeRecoveryOnly();
+
+      await expect(
+        finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        }),
+      ).rejects.toThrow('V8_PRODUCT_ACCEPTANCE_PRESEAL_MODE_CONFLICT');
+      expect((await readdir(publicPath)).includes('.acceptance-success')).toBe(
+        false,
+      );
+      journal.close();
+      acquisition.owner.close();
+    });
+
+    it('allows only one winner when recovery authorization races preseal completion', async () => {
+      await finishBranch(root);
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      await unlink(join(publicPath, '.acceptance-success'));
+      const acquisition = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquisition.status).toBe('acquired');
+      if (acquisition.status !== 'acquired')
+        throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        {
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        },
+      );
+      const outcomes = await Promise.allSettled([
+        journal.authorizeRecoveryOnly(),
+        finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        }),
+      ]);
+      expect(
+        outcomes.filter((outcome) => outcome.status === 'fulfilled'),
+      ).toHaveLength(1);
+      expect(
+        outcomes.filter((outcome) => outcome.status === 'rejected'),
+      ).toHaveLength(1);
+      journal.close();
+      acquisition.owner.close();
+    });
+
+    it('rejects recovery stages after a preseal terminal and safely resumes a missing preseal success seal', async () => {
+      await finishBranch(root);
+      const publicPath = join(
+        root,
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        'branch',
+      );
+      await unlink(join(publicPath, '.acceptance-success'));
+      const acquisition = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(acquisition.status).toBe('acquired');
+      if (acquisition.status !== 'acquired')
+        throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        {
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        },
+      );
+      await finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+      await expect(journal.authorizeRecoveryOnly()).rejects.toThrow(
+        'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+      );
+      expect(() => journal.appendStage('restore.claimed', '')).toThrow(
+        'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+      );
+      await unlink(join(publicPath, '.acceptance-success'));
+      await expect(
+        finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        }),
+      ).resolves.toBeUndefined();
+      journal.close();
+      acquisition.owner.close();
+    });
+
+    it('fails complete ledger reads closed when a local recovery mode coexists with public success', async () => {
+      await finishBranch(root);
+      await writeFile(
+        join(
+          root,
+          '.tmp',
+          'phase-6-9-5-v8-product-acceptance',
+          'branch',
+          'mode.json',
+        ),
+        `${JSON.stringify({
+          schemaVersion: 'phase-6.9.5-v8-product-acceptance-mode-v1',
+          environment: 'branch',
+          mode: 'recovery',
+        })}\n`,
+      );
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toEqual({ status: 'evidence_io' });
     });
 
     it.each([
