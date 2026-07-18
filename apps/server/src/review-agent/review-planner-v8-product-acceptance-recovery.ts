@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import {
-  openWindowsNoReparseDirectory,
+  openWindowsNoReparseExistingFrozenDirectory,
+  openWindowsNoReparseFrozenDirectory,
   type WindowsExclusiveLifetimeFile,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
@@ -88,22 +89,85 @@ const RECOVERY_STAGE_LEAVES = Object.freeze([
 ] as const);
 type RecoveryStageLeaf = (typeof RECOVERY_STAGE_LEAVES)[number];
 
-const recoveryRestoreSchema = z
+const KNOWN_PUBLIC_LEAVES = new Set([
+  '.acceptance-reserved',
+  'manifest.json',
+  '.slot-01-review-api',
+  '.slot-01-review-api.result.json',
+  '.slot-02-review-browser',
+  '.slot-02-review-browser.result.json',
+  '.review-default-off.json',
+  '.slot-03-planner-api',
+  '.slot-03-planner-api.result.json',
+  '.slot-04-planner-browser',
+  '.slot-04-planner-browser.result.json',
+  '.planner-default-off.json',
+  '.owner-isolation-verified.json',
+  '.cleanup-verified.json',
+  '.recovery-only.json',
+  'acceptance.json',
+  '.acceptance-success',
+  'plan.png',
+  'today.png',
+]);
+
+export const reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema = z
   .object({
     schemaVersion: z.literal(
-      'phase-6.9.5-v8-product-acceptance-recovery-restore-v1',
+      'phase-6.9.5-v8-product-acceptance-default-off-v2',
     ),
-    reviewAgentModelEnabled: z.literal(false),
-    plannerAgentModelEnabled: z.literal(false),
-    acceptanceEnabled: z.literal(false),
-    capabilityPresent: z.literal(false),
-    providerMode: z.literal('mock'),
-    liveCallsEnabled: z.literal(false),
-    deterministicProbePassed: z.literal(true),
-    containerIdSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    component: z.enum(['review', 'planner', 'recovery']),
+    container: z
+      .object({
+        previousIdSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        newIdSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict(),
+    inspected: z
+      .object({
+        aiProviderMode: z.literal('mock'),
+        liveCallsEnabled: z.literal(false),
+        reviewAgentModelEnabled: z.literal(false),
+        plannerAgentModelEnabled: z.literal(false),
+        acceptanceEnabled: z.literal(false),
+        acceptanceComponent: z.literal(''),
+        capabilitySha256: z.literal(''),
+        maxRequests: z.literal(0),
+        deepseekCredentialPresent: z.literal(false),
+        openaiCredentialPresent: z.literal(false),
+      })
+      .strict(),
+    binding: z
+      .object({
+        port: z.literal(3001),
+        healthContainerIdSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+      .strict(),
+    deterministicProbe: z
+      .object({
+        passed: z.literal(true),
+        provenance: z.literal('local_deterministic'),
+      })
+      .strict(),
     providerInvocations: z.literal(0),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.container.previousIdSha256 === value.container.newIdSha256 ||
+      value.binding.healthContainerIdSha256 !== value.container.newIdSha256
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'DEFAULT_OFF_CONTAINER_BINDING_INVALID',
+      });
+    }
+  });
+
+const recoveryRestoreSchema =
+  reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.refine(
+    (value) => value.component === 'recovery',
+  );
 
 const recoveryCleanupSchema = z
   .object({
@@ -140,9 +204,16 @@ type RecoveryJournalState = {
   directory: WindowsNoReparseChildDirectory;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   closed: boolean;
+  authorized: boolean;
+  publicDirectory: WindowsNoReparseChildDirectory | null;
 };
 
+export type ReviewPlannerV8RecoveryAuthority = Readonly<{
+  assertAuthorized(): void;
+}>;
+
 export type ReviewPlannerV8ProductAcceptanceRecoveryJournal = Readonly<{
+  authorizeRecoveryOnly(): Promise<ReviewPlannerV8RecoveryAuthority>;
   appendStage(leaf: RecoveryStageLeaf, contents: string): void;
   finalizeRecoveryOnly(): Promise<void>;
   close(): void;
@@ -167,7 +238,7 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
   if (!isEnvironment(input.environment) || !isRole(input.role)) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_INPUT_INVALID');
   }
-  const directory = await openWindowsNoReparseDirectory(input.repoRoot, [
+  const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
     '.tmp',
     'phase-6-9-5-v8-product-acceptance',
     input.environment,
@@ -242,7 +313,7 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
   if (!parsed.success || parsed.data.environment !== input.environment) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_MANIFEST_INVALID');
   }
-  const directory = await openWindowsNoReparseDirectory(input.repoRoot, [
+  const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
     '.tmp',
     'phase-6-9-5-v8-product-acceptance',
     input.environment,
@@ -262,6 +333,8 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
       directory,
       owner: input.owner,
       closed: false,
+      authorized: false,
+      publicDirectory: null,
     });
   } catch (error) {
     directory.close();
@@ -283,11 +356,10 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
   assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
     'recovery',
   ]);
-  const directory = await openWindowsNoReparseDirectory(input.repoRoot, [
-    '.tmp',
-    'phase-6-9-5-v8-product-acceptance',
-    input.environment,
-  ]);
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+  );
   try {
     directory.assertLocalFixedNtfsVolume();
     assertOnlyRecoveryLeaves(directory, [
@@ -309,6 +381,8 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
       directory,
       owner: input.owner,
       closed: false,
+      authorized: false,
+      publicDirectory: null,
     });
   } catch {
     directory.close();
@@ -320,11 +394,10 @@ export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
   repoRoot: string,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
 ): Promise<boolean> {
-  const directory = await openWindowsNoReparseDirectory(repoRoot, [
-    '.tmp',
-    'phase-6-9-5-v8-product-acceptance',
-    environment,
-  ]);
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', environment],
+  );
   try {
     const leaves = directory.listLeafNames();
     assertOnlyRecoveryLeaves(directory, [
@@ -350,11 +423,10 @@ export async function assertReviewPlannerV8ProductAcceptanceRecoveryClear(
   repoRoot: string,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
 ): Promise<void> {
-  const directory = await openWindowsNoReparseDirectory(repoRoot, [
-    '.tmp',
-    'phase-6-9-5-v8-product-acceptance',
-    environment,
-  ]);
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', environment],
+  );
   try {
     assertOnlyRecoveryLeaves(directory, [
       'owner.lock',
@@ -375,18 +447,126 @@ export async function assertReviewPlannerV8ProductAcceptanceRecoveryClear(
   }
 }
 
+export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  terminal: unknown;
+}): Promise<void> {
+  const terminal = recoveryTerminalSchema.parse(input.terminal);
+  if (terminal.environment !== input.environment) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    const expectedLeaves = [
+      'owner.lock',
+      'recovery-manifest.json',
+      ...RECOVERY_STAGE_LEAVES,
+    ];
+    assertOnlyRecoveryLeaves(directory, expectedLeaves);
+    const leaves = directory.listLeafNames();
+    if (
+      !expectedLeaves.every((leaf) => leaves.includes(leaf)) ||
+      directory.readRegularFile('restore.claimed').byteLength !== 0 ||
+      directory.readRegularFile('cleanup.claimed').byteLength !== 0
+    ) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    const manifestBytes = directory.readRegularFile('recovery-manifest.json');
+    const restoreBytes = directory.readRegularFile('restore.verified.json');
+    const cleanupBytes = directory.readRegularFile('cleanup.verified.json');
+    const manifest = recoveryManifestSchema.parse(
+      JSON.parse(manifestBytes.toString()),
+    );
+    recoveryRestoreSchema.parse(JSON.parse(restoreBytes.toString()));
+    recoveryCleanupSchema.parse(JSON.parse(cleanupBytes.toString()));
+    if (
+      manifest.environment !== input.environment ||
+      terminal.recoveryManifestSha256 !== sha256(manifestBytes) ||
+      terminal.restoreReceiptSha256 !== sha256(restoreBytes) ||
+      terminal.cleanupReceiptSha256 !== sha256(cleanupBytes)
+    ) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+  } catch {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory.close();
+  }
+}
+
 function createRecoveryJournal(
   initialState: RecoveryJournalState,
 ): ReviewPlannerV8ProductAcceptanceRecoveryJournal {
   const journal: ReviewPlannerV8ProductAcceptanceRecoveryJournal =
     Object.freeze({
+      async authorizeRecoveryOnly() {
+        const state = requireJournalState(journal);
+        assertReviewPlannerV8ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['recovery'],
+        );
+        const publicDirectory =
+          await openWindowsNoReparseExistingFrozenDirectory(state.repoRoot, [
+            'docs',
+            'acceptance',
+            'evidence',
+            'phase-6-9-5-v8-product-acceptance',
+            state.environment,
+          ]);
+        try {
+          publicDirectory.assertLocalFixedNtfsVolume();
+          const leaves = publicDirectory.listLeafNames();
+          if (
+            !leaves.includes('.acceptance-reserved') ||
+            leaves.includes('.acceptance-success') ||
+            leaves.includes('.recovery-only.json') ||
+            leaves.some((leaf) => !isKnownPublicLeaf(leaf))
+          ) {
+            throw new Error(
+              'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+            );
+          }
+          state.authorized = true;
+          state.publicDirectory = publicDirectory;
+          const authority: ReviewPlannerV8RecoveryAuthority = Object.freeze({
+            assertAuthorized() {
+              const current = requireJournalState(journal);
+              assertReviewPlannerV8ProductAcceptanceOwner(
+                current.owner,
+                current.environment,
+                ['recovery'],
+              );
+              if (!current.authorized) {
+                throw new Error(
+                  'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+                );
+              }
+            },
+          });
+          return authority;
+        } catch (error) {
+          publicDirectory.close();
+          throw error;
+        }
+      },
       appendStage(leaf, contents) {
         const state = requireJournalState(journal);
         assertReviewPlannerV8ProductAcceptanceOwner(
           state.owner,
           state.environment,
-          ['product', 'recovery'],
+          ['recovery'],
         );
+        if (!state.authorized) {
+          throw new Error(
+            'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+          );
+        }
         if (!RECOVERY_STAGE_LEAVES.includes(leaf)) {
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_STAGE_INVALID');
         }
@@ -424,13 +604,18 @@ function createRecoveryJournal(
           'V8_PRODUCT_ACCEPTANCE_RECOVERY_STAGE_IO',
         );
       },
-      async finalizeRecoveryOnly() {
+      finalizeRecoveryOnly() {
         const state = requireJournalState(journal);
         assertReviewPlannerV8ProductAcceptanceOwner(
           state.owner,
           state.environment,
           ['recovery'],
         );
+        if (!state.authorized) {
+          throw new Error(
+            'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
+          );
+        }
         assertOnlyRecoveryLeaves(state.directory, [
           'owner.lock',
           'recovery-manifest.json',
@@ -460,60 +645,57 @@ function createRecoveryJournal(
           ),
         );
 
-        const publicDirectory = await openWindowsNoReparseDirectory(
-          state.repoRoot,
-          [
-            'docs',
-            'acceptance',
-            'evidence',
-            'phase-6-9-5-v8-product-acceptance',
-            state.environment,
-          ],
-        );
-        try {
-          publicDirectory.assertLocalFixedNtfsVolume();
-          const publicLeaves = publicDirectory.listLeafNames();
-          if (
-            !publicLeaves.includes('.acceptance-reserved') ||
-            publicLeaves.includes('.acceptance-success') ||
-            publicLeaves.includes('.recovery-only.json') ||
-            publicLeaves.includes('acceptance.json') ||
-            publicLeaves.some((leaf) => !isKnownPublicLeaf(leaf))
-          ) {
-            throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_TERMINAL_INVALID');
-          }
-          const terminal = recoveryTerminalSchema.parse({
-            schemaVersion:
-              'phase-6.9.5-v8-product-acceptance-recovery-terminal-v1',
-            environment: state.environment,
-            status: 'failed',
-            reason: 'hard_crash_recovered',
-            providerInvocations: 0,
-            recoveryManifestSha256: sha256(
-              state.directory.readRegularFile('recovery-manifest.json'),
-            ),
-            restoreReceiptSha256: sha256(
-              state.directory.readRegularFile('restore.verified.json'),
-            ),
-            cleanupReceiptSha256: sha256(
-              state.directory.readRegularFile('cleanup.verified.json'),
-            ),
-          });
-          publish(
-            publicDirectory,
-            '.recovery-only.json',
-            `${JSON.stringify(terminal)}\n`,
-            'V8_PRODUCT_ACCEPTANCE_RECOVERY_TERMINAL_IO',
+        const publicDirectory = state.publicDirectory;
+        if (publicDirectory === null) {
+          throw new Error(
+            'V8_PRODUCT_ACCEPTANCE_RECOVERY_AUTHORIZATION_INVALID',
           );
-        } finally {
-          publicDirectory.close();
         }
+        publicDirectory.assertLocalFixedNtfsVolume();
+        const publicLeaves = publicDirectory.listLeafNames();
+        if (
+          !publicLeaves.includes('.acceptance-reserved') ||
+          publicLeaves.includes('.acceptance-success') ||
+          publicLeaves.includes('.recovery-only.json') ||
+          publicLeaves.includes('acceptance.json') ||
+          publicLeaves.some((leaf) => !isKnownPublicLeaf(leaf))
+        ) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_TERMINAL_INVALID');
+        }
+        const terminal = recoveryTerminalSchema.parse({
+          schemaVersion:
+            'phase-6.9.5-v8-product-acceptance-recovery-terminal-v1',
+          environment: state.environment,
+          status: 'failed',
+          reason: 'hard_crash_recovered',
+          providerInvocations: 0,
+          recoveryManifestSha256: sha256(
+            state.directory.readRegularFile('recovery-manifest.json'),
+          ),
+          restoreReceiptSha256: sha256(
+            state.directory.readRegularFile('restore.verified.json'),
+          ),
+          cleanupReceiptSha256: sha256(
+            state.directory.readRegularFile('cleanup.verified.json'),
+          ),
+        });
+        publish(
+          publicDirectory,
+          '.recovery-only.json',
+          `${JSON.stringify(terminal)}\n`,
+          'V8_PRODUCT_ACCEPTANCE_RECOVERY_TERMINAL_IO',
+        );
+        return Promise.resolve();
       },
       close() {
         const state = journalState.get(journal);
         if (!state || state.closed) return;
         state.closed = true;
-        state.directory.close();
+        try {
+          state.publicDirectory?.close();
+        } finally {
+          state.directory.close();
+        }
       },
     });
   journalState.set(journal, initialState);
@@ -539,19 +721,7 @@ function parseRecoveryStage<T>(schema: z.ZodType<T>, contents: string) {
 }
 
 function isKnownPublicLeaf(leaf: string) {
-  return (
-    leaf === '.acceptance-reserved' ||
-    leaf === 'manifest.json' ||
-    /^\.slot-0[1-4]-(?:review|planner)-(?:api|browser)(?:\.result\.json)?$/.test(
-      leaf,
-    ) ||
-    leaf === '.review-default-off.json' ||
-    leaf === '.planner-default-off.json' ||
-    leaf === '.owner-isolation-verified.json' ||
-    leaf === '.cleanup-verified.json' ||
-    leaf === 'plan.png' ||
-    leaf === 'today.png'
-  );
+  return KNOWN_PUBLIC_LEAVES.has(leaf);
 }
 
 function sha256(value: Uint8Array) {

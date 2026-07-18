@@ -54,7 +54,7 @@ type BunFfi = Readonly<{
   ptr: (value: Uint8Array) => number;
 }>;
 
-type DurableFaultStage =
+export type DurableFaultStage =
   | 'write'
   | 'flush'
   | 'close'
@@ -69,7 +69,7 @@ type DurableFaultStage =
   | 'volume_non_disk_device'
   | 'volume_remote_characteristic'
   | 'volume_removable_characteristic';
-type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
+export type DurableFaultInjector = (stage: DurableFaultStage) => boolean;
 type DurableFaultTestCapability = Readonly<{
   injector: DurableFaultInjector;
   pendingCloseHandles: Map<number, ReturnType<BunFfi['dlopen']>>;
@@ -144,7 +144,7 @@ export type WindowsNoReparseChildDirectory = Readonly<{
   ): void;
   commitExclusiveDurableFileViaRename(
     committedLeafName: string,
-    contents: string,
+    contents: string | Uint8Array,
   ): DurablePublicationResult;
   deleteFile(leafName: string): void;
   readRegularFile(leafName: string): Buffer;
@@ -169,6 +169,21 @@ export async function openWindowsNoReparseDirectory(
     childNames,
     FILE_OPEN_IF,
     null,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+  );
+}
+
+/** Binds the final directory with FILE_SHARE_DELETE denied. */
+export async function openWindowsNoReparseFrozenDirectory(
+  root: string,
+  childNames: readonly string[],
+): Promise<WindowsNoReparseChildDirectory> {
+  return openWindowsNoReparseDirectoryWithDisposition(
+    root,
+    childNames,
+    FILE_OPEN_IF,
+    null,
+    FILE_SHARE_READ | FILE_SHARE_WRITE,
   );
 }
 
@@ -182,6 +197,21 @@ export async function openWindowsNoReparseExistingDirectory(
     childNames,
     FILE_OPEN,
     null,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+  );
+}
+
+/** Binds an existing final directory while denying namespace replacement. */
+export async function openWindowsNoReparseExistingFrozenDirectory(
+  root: string,
+  childNames: readonly string[],
+): Promise<WindowsNoReparseChildDirectory> {
+  return openWindowsNoReparseDirectoryWithDisposition(
+    root,
+    childNames,
+    FILE_OPEN,
+    null,
+    FILE_SHARE_READ | FILE_SHARE_WRITE,
   );
 }
 
@@ -191,15 +221,28 @@ export async function openWindowsNoReparseChildDirectoryForTests(
   childName: string,
   injector: DurableFaultInjector,
 ) {
+  return openWindowsNoReparseDirectoryForTests(root, [childName], injector);
+}
+
+/** Instance-scoped nested/frozen native fault facade for ledger tests. */
+export async function openWindowsNoReparseDirectoryForTests(
+  root: string,
+  childNames: readonly string[],
+  injector: DurableFaultInjector,
+  freezeFinalDirectory = false,
+) {
   const capability: DurableFaultTestCapability = {
     injector,
     pendingCloseHandles: new Map(),
   };
   const directory = await openWindowsNoReparseDirectoryWithDisposition(
     root,
-    [childName],
+    childNames,
     FILE_OPEN_IF,
     capability,
+    freezeFinalDirectory
+      ? FILE_SHARE_READ | FILE_SHARE_WRITE
+      : FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
   );
   return Object.freeze({
     directory,
@@ -225,6 +268,7 @@ async function openWindowsNoReparseDirectoryWithDisposition(
   childNames: readonly string[],
   childDisposition: typeof FILE_OPEN | typeof FILE_OPEN_IF,
   durableFaultTestCapability: DurableFaultTestCapability | null,
+  finalDirectoryShareAccess: number,
 ): Promise<WindowsNoReparseChildDirectory> {
   if (process.platform !== 'win32') {
     throw new Error('WINDOWS_REPARSE_SAFE_IO_UNAVAILABLE');
@@ -236,10 +280,17 @@ async function openWindowsNoReparseDirectoryWithDisposition(
   const ffi = await loadBunFfi();
   let directory = openNativeRoot(ffi, root, durableFaultTestCapability);
   try {
-    for (const childName of childNames) {
+    for (const [index, childName] of childNames.entries()) {
       // Only evidence children beneath the already-bound root may be
       // created. Root and ancestor components are always FILE_OPEN.
-      directory = openNativeDirectory(directory, childName, childDisposition);
+      directory = openNativeDirectory(
+        directory,
+        childName,
+        childDisposition,
+        index === childNames.length - 1
+          ? finalDirectoryShareAccess
+          : FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+      );
     }
   } catch (error) {
     closeNativeDirectory(directory);
@@ -556,7 +607,12 @@ function openNativeRoot(
   try {
     assertNotReparsePoint(directory);
     for (const component of nativeRootComponents(root)) {
-      directory = openNativeDirectory(directory, component, FILE_OPEN);
+      directory = openNativeDirectory(
+        directory,
+        component,
+        FILE_OPEN,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+      );
     }
     return directory;
   } catch (error) {
@@ -569,6 +625,7 @@ function openNativeDirectory(
   parent: WindowsNativeDirectory,
   childName: string,
   createDisposition: typeof FILE_OPEN | typeof FILE_OPEN_IF,
+  shareAccess: number,
 ): WindowsNativeDirectory {
   const handle = createRelativeHandle({
     parent,
@@ -579,7 +636,7 @@ function openNativeDirectory(
     // The HANDLE remains namespace-bound after a rename. Allowing the path
     // entry itself to move preserves the existing junction-race regression
     // contract while every later child lookup still uses this HANDLE.
-    shareAccess: FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    shareAccess,
   });
   const directory = {
     ...parent,
@@ -848,7 +905,7 @@ function replaceDurableNativeFile(
 function commitExclusiveDurableFileViaRename(
   parent: WindowsNativeDirectory,
   committedLeafName: string,
-  contents: string,
+  contents: string | Uint8Array,
 ): DurablePublicationResult {
   assertSafeLeafName(committedLeafName);
   if (committedLeafName.toLowerCase().endsWith('.prepare')) {
@@ -881,7 +938,10 @@ function commitExclusiveDurableFileViaRename(
     return { committed: false, stage: 'prepare_create' };
   }
 
-  const bytes = Buffer.from(contents, 'utf8');
+  const bytes =
+    typeof contents === 'string'
+      ? Buffer.from(contents, 'utf8')
+      : Buffer.from(contents);
   if (shouldInjectDurableFaultForTests(parent, 'prepare_write')) {
     closeNativeHandle({ ...parent, handle: prepareHandle });
     return { committed: false, stage: 'prepare_write' };

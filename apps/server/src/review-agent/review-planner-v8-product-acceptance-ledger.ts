@@ -5,20 +5,29 @@ import { z } from 'zod';
 import {
   calculateReviewPlannerV8ProductAcceptanceCost,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PER_ENVIRONMENT_LIMIT,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RESERVATION,
 } from './review-planner-v8-product-acceptance-evidence';
 import {
   assertReviewPlannerV8ProductAcceptanceOwner,
+  reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
+  verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal,
   type ReviewPlannerV8ProductAcceptanceEnvironment,
   type ReviewPlannerV8ProductAcceptanceOwner,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
-  openWindowsNoReparseDirectory,
+  type DurableFaultInjector,
+  openWindowsNoReparseExistingFrozenDirectory,
+  openWindowsNoReparseFrozenDirectory,
+  openWindowsNoReparseDirectoryForTests,
+  type WindowsExclusiveLifetimeFile,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const MAX_SCREENSHOT_BYTES = 20 * 1024 * 1024;
 const SLOT_RESERVATION = Object.freeze({
   inputTokens: 1_950,
   outputTokens: 440,
@@ -76,12 +85,41 @@ const reservationSchema = z
   })
   .strict();
 
+const pricingSchema = z
+  .object({
+    priceProfileId: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.priceProfileId,
+    ),
+    inputRateCnyPerMillion: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.inputRateCnyPerMillion,
+    ),
+    outputRateCnyPerMillion: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.outputRateCnyPerMillion,
+    ),
+    snapshotDate: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.snapshotDate,
+    ),
+    source: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.source,
+    ),
+    rounding: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.rounding,
+    ),
+    hardCapCny: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE.hardCapCny,
+    ),
+  })
+  .strict();
+
 const manifestSchema = z
   .object({
     schemaVersion: z.literal('phase-6.9.5-v8-product-acceptance-manifest-v1'),
     environment: z.enum(['branch', 'main']),
     commitSha: z.string().regex(COMMIT_SHA),
     pairedEvidenceSha256: z.string().regex(SHA256),
+    provider: z.literal('deepseek'),
+    model: z.literal('deepseek-v4-pro'),
+    pricing: pricingSchema,
     accountIdSha256: z
       .object({
         review: z.string().regex(SHA256),
@@ -154,23 +192,6 @@ const slotResultSchema = z.discriminatedUnion('slot', [
     })
     .strict(),
 ]);
-
-const defaultOffSchema = z
-  .object({
-    schemaVersion: z.literal(
-      'phase-6.9.5-v8-product-acceptance-default-off-v1',
-    ),
-    component: z.enum(['review', 'planner']),
-    reviewAgentModelEnabled: z.literal(false),
-    plannerAgentModelEnabled: z.literal(false),
-    acceptanceEnabled: z.literal(false),
-    capabilityPresent: z.literal(false),
-    providerMode: z.literal('mock'),
-    liveCallsEnabled: z.literal(false),
-    deterministicProbePassed: z.literal(true),
-    containerIdSha256: z.string().regex(SHA256),
-  })
-  .strict();
 
 const ownerIsolationSchema = z
   .object({
@@ -265,6 +286,7 @@ type LedgerState = {
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   directory: WindowsNoReparseChildDirectory;
   recoveryDirectory: WindowsNoReparseChildDirectory;
+  reservationGuard: WindowsExclusiveLifetimeFile;
   closed: boolean;
 };
 
@@ -274,6 +296,7 @@ export type ReviewPlannerV8ProductAcceptanceLedger = Readonly<{
   claimSlot(slot: Slot): void;
   recordSlotResult(value: unknown): void;
   recordDefaultOff(value: unknown): void;
+  recordScreenshot(component: 'review' | 'planner', contents: Uint8Array): void;
   recordOwnerIsolation(value: unknown): void;
   recordCleanup(value: unknown): void;
   finalizeSuccess(): void;
@@ -285,12 +308,50 @@ const ledgerState = new WeakMap<
   LedgerState
 >();
 
-export async function reserveReviewPlannerV8ProductAcceptanceLedger(input: {
+type ReserveLedgerInput = {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   pairedEvidenceSha256?: string;
-}): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
+};
+
+export async function reserveReviewPlannerV8ProductAcceptanceLedger(
+  input: ReserveLedgerInput,
+): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
+  return reserveLedger(input, null);
+}
+
+export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
+  input: ReserveLedgerInput & Readonly<{ injector: DurableFaultInjector }>,
+): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
+  const facade = await openWindowsNoReparseDirectoryForTests(
+    input.repoRoot,
+    [
+      'docs',
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-v8-product-acceptance',
+      input.environment,
+    ],
+    input.injector,
+    true,
+  );
+  try {
+    return await reserveLedger(input, facade);
+  } catch (error) {
+    facade.cleanupInjectedHandles();
+    facade.directory.close();
+    throw error;
+  }
+}
+
+async function reserveLedger(
+  input: ReserveLedgerInput,
+  testFacade: Readonly<{
+    directory: WindowsNoReparseChildDirectory;
+    cleanupInjectedHandles(): void;
+  }> | null,
+): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
   if (input.environment !== 'branch' && input.environment !== 'main') {
     throw new Error('V8_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
   }
@@ -324,17 +385,20 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedger(input: {
       throw new Error('V8_PRODUCT_ACCEPTANCE_COMBINED_BUDGET_EXCEEDED');
     }
   }
-  const directory = await openWindowsNoReparseDirectory(input.repoRoot, [
-    'docs',
-    'acceptance',
-    'evidence',
-    'phase-6-9-5-v8-product-acceptance',
-    input.environment,
-  ]);
-  const recoveryDirectory = await openWindowsNoReparseDirectory(
+  const directory =
+    testFacade?.directory ??
+    (await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+      'docs',
+      'acceptance',
+      'evidence',
+      'phase-6-9-5-v8-product-acceptance',
+      input.environment,
+    ]));
+  const recoveryDirectory = await openWindowsNoReparseFrozenDirectory(
     input.repoRoot,
     ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
   );
+  let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
   try {
     directory.assertLocalFixedNtfsVolume();
     recoveryDirectory.assertLocalFixedNtfsVolume();
@@ -343,17 +407,25 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedger(input: {
       throw new Error('V8_PRODUCT_ACCEPTANCE_ALREADY_RESERVED');
     }
     publish(directory, '.acceptance-reserved', '');
+    reservationGuard = directory.tryAcquireExclusiveLifetimeFile(
+      '.acceptance-reserved',
+    );
+    if (reservationGuard === null) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
     const ledger = createLedger({
       repoRoot: input.repoRoot,
       environment: input.environment,
       owner: input.owner,
       directory,
       recoveryDirectory,
+      reservationGuard,
       closed: false,
     });
     return ledger;
   } catch (error) {
-    directory.close();
+    reservationGuard?.close();
+    if (testFacade === null) directory.close();
     recoveryDirectory.close();
     if (
       error instanceof Error &&
@@ -382,13 +454,16 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
 > {
   let directory: WindowsNoReparseChildDirectory | null = null;
   try {
-    directory = await openWindowsNoReparseDirectory(input.repoRoot, [
-      'docs',
-      'acceptance',
-      'evidence',
-      'phase-6-9-5-v8-product-acceptance',
-      input.environment,
-    ]);
+    directory = await openWindowsNoReparseExistingFrozenDirectory(
+      input.repoRoot,
+      [
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v8-product-acceptance',
+        input.environment,
+      ],
+    );
     directory.assertLocalFixedNtfsVolume();
     const leaves = directory.listLeafNames();
     if (leaves.length === 0) return Object.freeze({ status: 'empty' as const });
@@ -404,7 +479,10 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
     if (success && recovery)
       return Object.freeze({ status: 'evidence_io' as const });
     if (recovery) {
-      if (leaves.includes('acceptance.json')) {
+      if (
+        !leaves.includes('.acceptance-reserved') ||
+        leaves.includes('acceptance.json')
+      ) {
         return Object.freeze({ status: 'evidence_io' as const });
       }
       const terminal = readStrict(
@@ -415,6 +493,11 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
       if (terminal.environment !== input.environment) {
         return Object.freeze({ status: 'evidence_io' as const });
       }
+      await verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+        terminal,
+      });
       return Object.freeze({ status: 'recovery_only' as const });
     }
     if (!success) return Object.freeze({ status: 'incomplete' as const });
@@ -507,6 +590,17 @@ function createLedger(
       ) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_DEFAULT_OFF_MISSING');
       }
+      if (parsed.data.slot.endsWith('browser')) {
+        const screenshotLeaf =
+          component === 'review' ? 'plan.png' : 'today.png';
+        if (
+          !('screenshotSha256' in parsed.data) ||
+          readScreenshotSha256(current.directory, screenshotLeaf) !==
+            parsed.data.screenshotSha256
+        ) {
+          throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
+        }
+      }
       const existingTraces = readResults(current.directory).map(
         (result) => result.traceIdSha256,
       );
@@ -537,8 +631,11 @@ function createLedger(
       const current = requireActiveState(ledger);
       assertKnownPublicLeaves(current.directory);
       assertNoRecoveryStage(current);
-      const parsed = defaultOffSchema.safeParse(value);
-      if (!parsed.success)
+      const parsed =
+        reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(
+          value,
+        );
+      if (!parsed.success || parsed.data.component === 'recovery')
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       const browserLeaf =
         SLOT_LEAVES[`${parsed.data.component}-browser` as Slot];
@@ -550,6 +647,32 @@ function createLedger(
         current.directory,
         `.${parsed.data.component}-default-off.json`,
         serialize(parsed.data),
+      );
+    },
+    recordScreenshot(component, contents) {
+      const current = requireActiveState(ledger);
+      assertKnownPublicLeaves(current.directory);
+      assertNoRecoveryStage(current);
+      if (component !== 'review' && component !== 'planner') {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
+      }
+      const bytes = Buffer.from(contents);
+      if (!isReasonablePng(bytes)) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
+      }
+      const slot = `${component}-browser` as const;
+      const slotLeaf = SLOT_LEAVES[slot];
+      const leaves = current.directory.listLeafNames();
+      if (
+        !leaves.includes(slotLeaf) ||
+        leaves.includes(`${slotLeaf}.result.json`)
+      ) {
+        throw new Error('V8_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
+      }
+      publish(
+        current.directory,
+        component === 'review' ? 'plan.png' : 'today.png',
+        bytes,
       );
     },
     recordOwnerIsolation(value) {
@@ -596,12 +719,9 @@ function createLedger(
       }
       const manifest = assertManifest(current.directory, current.environment);
       const results = requireAllResults(current.directory);
-      const defaultOff = ['review', 'planner'].map((component) =>
-        readStrict(
-          current.directory,
-          `.${component}-default-off.json`,
-          defaultOffSchema,
-        ),
+      assertAdmissionClaimsAndScreenshots(current.directory, results);
+      const defaultOff = (['review', 'planner'] as const).map((component) =>
+        readDefaultOffReceipt(current.directory, component),
       );
       readStrict(
         current.directory,
@@ -666,9 +786,13 @@ function createLedger(
       if (!current || current.closed) return;
       current.closed = true;
       try {
-        current.directory.close();
+        current.reservationGuard.close();
       } finally {
-        current.recoveryDirectory.close();
+        try {
+          current.directory.close();
+        } finally {
+          current.recoveryDirectory.close();
+        }
       }
     },
   });
@@ -682,6 +806,7 @@ function verifyCompleteLedger(
 ) {
   const manifest = assertManifest(directory, environment);
   const results = requireAllResults(directory);
+  assertAdmissionClaimsAndScreenshots(directory, results);
   const acceptance = readStrict(directory, 'acceptance.json', acceptanceSchema);
   const success = readStrict(directory, '.acceptance-success', successSchema);
   if (
@@ -720,9 +845,21 @@ function verifyCompleteLedger(
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
   for (const component of ['review', 'planner'] as const) {
-    readStrict(directory, `.${component}-default-off.json`, defaultOffSchema);
+    readDefaultOffReceipt(directory, component);
   }
-  readStrict(directory, '.owner-isolation-verified.json', ownerIsolationSchema);
+  const ownerProof = readStrict(
+    directory,
+    '.owner-isolation-verified.json',
+    ownerIsolationSchema,
+  );
+  if (
+    !arraysEqual(
+      ownerProof.traceIdSha256,
+      results.map((result) => result.traceIdSha256),
+    )
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
   readStrict(directory, '.cleanup-verified.json', cleanupSchema);
   const inputTokens = results.reduce(
     (total, result) => total + result.usage.inputTokens,
@@ -818,9 +955,12 @@ function readResults(directory: WindowsNoReparseChildDirectory) {
   const leaves = directory.listLeafNames();
   return SLOTS.flatMap((slot) => {
     const leaf = `${SLOT_LEAVES[slot]}.result.json`;
-    return leaves.includes(leaf)
-      ? [readStrict(directory, leaf, slotResultSchema)]
-      : [];
+    if (!leaves.includes(leaf)) return [];
+    const result = readStrict(directory, leaf, slotResultSchema);
+    if (result.slot !== slot) {
+      throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
+    return [result];
   });
 }
 
@@ -835,6 +975,23 @@ function requireAllResults(directory: WindowsNoReparseChildDirectory) {
   return results;
 }
 
+function assertAdmissionClaimsAndScreenshots(
+  directory: WindowsNoReparseChildDirectory,
+  results: readonly z.infer<typeof slotResultSchema>[],
+) {
+  const leaves = directory.listLeafNames();
+  if (
+    !leaves.includes('.acceptance-reserved') ||
+    SLOTS.some((slot) => !leaves.includes(SLOT_LEAVES[slot])) ||
+    readScreenshotSha256(directory, 'plan.png') !==
+      screenshotFor(results, 'review-browser') ||
+    readScreenshotSha256(directory, 'today.png') !==
+      screenshotFor(results, 'planner-browser')
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+}
+
 function screenshotFor(
   results: readonly z.infer<typeof slotResultSchema>[],
   slot: 'review-browser' | 'planner-browser',
@@ -844,6 +1001,51 @@ function screenshotFor(
     throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_MISSING');
   }
   return result.screenshotSha256;
+}
+
+function readScreenshotSha256(
+  directory: WindowsNoReparseChildDirectory,
+  leaf: 'plan.png' | 'today.png',
+) {
+  const bytes = directory.readRegularFile(leaf);
+  if (!isReasonablePng(bytes)) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
+  }
+  return sha256(bytes);
+}
+
+function isReasonablePng(bytes: Buffer) {
+  if (
+    bytes.byteLength < 45 ||
+    bytes.byteLength > MAX_SCREENSHOT_BYTES ||
+    !bytes.subarray(0, PNG_SIGNATURE.byteLength).equals(PNG_SIGNATURE)
+  ) {
+    return false;
+  }
+  let offset = PNG_SIGNATURE.byteLength;
+  let chunkIndex = 0;
+  while (offset + 12 <= bytes.byteLength) {
+    const dataLength = bytes.readUInt32BE(offset);
+    const chunkEnd = offset + 12 + dataLength;
+    if (!Number.isSafeInteger(chunkEnd) || chunkEnd > bytes.byteLength) {
+      return false;
+    }
+    const type = bytes.subarray(offset + 4, offset + 8).toString('ascii');
+    if (chunkIndex === 0) {
+      if (type !== 'IHDR' || dataLength !== 13) return false;
+      const width = bytes.readUInt32BE(offset + 8);
+      const height = bytes.readUInt32BE(offset + 12);
+      if (width < 1 || height < 1 || width > 20_000 || height > 20_000) {
+        return false;
+      }
+    }
+    if (type === 'IEND') {
+      return dataLength === 0 && chunkEnd === bytes.byteLength;
+    }
+    offset = chunkEnd;
+    chunkIndex += 1;
+  }
+  return false;
 }
 
 function readStrict<T>(
@@ -860,10 +1062,25 @@ function readStrict<T>(
   }
 }
 
+function readDefaultOffReceipt(
+  directory: WindowsNoReparseChildDirectory,
+  component: 'review' | 'planner',
+) {
+  const receipt = readStrict(
+    directory,
+    `.${component}-default-off.json`,
+    reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
+  );
+  if (receipt.component !== component) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+  return receipt;
+}
+
 function publish(
   directory: WindowsNoReparseChildDirectory,
   leaf: string,
-  contents: string,
+  contents: string | Uint8Array,
 ) {
   const result = directory.commitExclusiveDurableFileViaRename(leaf, contents);
   if (!result.committed || result.cleanupStatus !== 'closed') {
