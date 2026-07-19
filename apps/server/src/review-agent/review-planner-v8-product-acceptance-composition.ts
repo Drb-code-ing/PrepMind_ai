@@ -22,6 +22,7 @@ import {
   finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
   readReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedger,
+  type ReviewPlannerV11ProductAcceptanceLedger,
   type ReviewPlannerV8ProductAcceptanceLedger,
 } from './review-planner-v8-product-acceptance-ledger';
 import {
@@ -32,11 +33,13 @@ import {
   type ReviewPlannerV8ProductAcceptanceEnvironment,
   type ReviewPlannerV8ProductAcceptanceOwner,
   type ReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  type ReviewPlannerV11ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
   runReviewPlannerV8ProductAcceptance,
   type ReviewPlannerV8ProductAcceptancePersistedTrace,
   type ReviewPlannerV8ProductAcceptanceRequestResult,
+  type ReviewPlannerV11ProductAcceptanceDiagnosticsPort,
   type ReviewPlannerV8ProductAcceptanceRunnerDependencies,
   type ReviewPlannerV8ProductAcceptanceRunResult,
 } from './review-planner-v8-product-acceptance-runner';
@@ -44,9 +47,15 @@ import {
   normalizeReviewPlannerProductAcceptanceSchemaRecord,
   parseReviewPlannerProductAcceptanceArguments,
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
 } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS,
+  parseReviewPlannerV11ProductAcceptanceCheckpoint,
+  type ReviewPlannerV11ProductAcceptanceCheckpoint,
+} from './review-planner-v11-product-acceptance-diagnostics';
 
 const execFileAsync = promisify(execFile);
 
@@ -76,6 +85,65 @@ const REVIEW_PLANNER_FACT_TABLES = [
 
 type ReviewPlannerFactsTable = (typeof REVIEW_PLANNER_FACT_TABLES)[number];
 type ReviewPlannerFactRow = Readonly<{ id: string }>;
+
+export function createReviewPlannerV11ProductAcceptanceDiagnosticsPort(input: {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal;
+  ledger: ReviewPlannerV11ProductAcceptanceLedger;
+}): ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
+  let failurePublished = false;
+  return Object.freeze({
+    checkpoint(value: ReviewPlannerV11ProductAcceptanceCheckpoint) {
+      const record = toReviewPlannerV11Checkpoint(value);
+      input.journal.appendCheckpoint(record);
+    },
+    publishFailure() {
+      if (failurePublished) return;
+      const latest = parseReviewPlannerV11ProductAcceptanceCheckpoint(
+        input.journal.latestCheckpoint(),
+      );
+      input.ledger.recordFailure(input.journal.issueFailureAuthority(), {
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+        environment: input.environment,
+        component: latest.component,
+        slot: latest.slot,
+        checkpoint: latest.checkpoint,
+        terminal: 'operation_failed',
+        providerCallState: latest.providerCallState,
+      });
+      failurePublished = true;
+    },
+  });
+}
+
+function toReviewPlannerV11Checkpoint(
+  value: ReviewPlannerV11ProductAcceptanceCheckpoint,
+) {
+  const [component, slot] = value.split('_') as [
+    'review' | 'planner',
+    'api' | 'browser',
+  ];
+  const slotCheckpoints =
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.filter((checkpoint) =>
+      checkpoint.startsWith(`${component}_${slot}_`),
+    );
+  const dispatch = `${component}_${slot}_dispatch`;
+  return {
+    schemaVersion:
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.checkpoint,
+    component,
+    slot,
+    checkpoint: value,
+    providerCallState:
+      slotCheckpoints.indexOf(value) >=
+      slotCheckpoints.indexOf(
+        dispatch as ReviewPlannerV11ProductAcceptanceCheckpoint,
+      )
+        ? ('indeterminate' as const)
+        : ('not_started' as const),
+  };
+}
 
 export type ReviewPlannerOwnerFactsSnapshot = Readonly<
   Record<ReviewPlannerFactsTable, readonly ReviewPlannerFactRow[]>
@@ -1630,11 +1698,13 @@ function createDefaultRunnerDependencies(
     },
     readFactsDigest: ({ component, phase }) =>
       readFactsDigest(state, component, phase),
-    async dispatchApi({ component, acceptanceCapability }) {
+    async captureTraceBaseline({ component, slot }) {
       state.traceBaselines.set(
-        `${component}:api`,
+        `${component}:${slot}`,
         await readLiveTraceIds(state.accounts[component]?.token),
       );
+    },
+    async dispatchApi({ component, acceptanceCapability }) {
       return fetchSuggestion(
         state.accounts[component]?.token,
         acceptanceCapability,
@@ -1643,10 +1713,6 @@ function createDefaultRunnerDependencies(
     },
     // eslint-disable-next-line @typescript-eslint/unbound-method -- port callback is defined without receiver state
     async runBrowser({ component, webOrigin, onRoute }) {
-      state.traceBaselines.set(
-        `${component}:browser`,
-        await readLiveTraceIds(state.accounts[component]?.token),
-      );
       const account = state.accounts[component];
       const resources = state.resources;
       if (!account || !resources) throw new Error();

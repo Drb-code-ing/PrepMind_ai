@@ -8,10 +8,15 @@ import {
 import {
   normalizeReviewPlannerProductAcceptanceSchemaRecord,
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
   withReviewPlannerProductAcceptanceSchemaIdentity,
 } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS,
+  type ReviewPlannerV11ProductAcceptanceCheckpoint,
+} from './review-planner-v11-product-acceptance-diagnostics';
 
 type Component = 'review' | 'planner';
 type RequestSlot = 'api' | 'browser';
@@ -132,6 +137,10 @@ export interface ReviewPlannerV8ProductAcceptanceRunnerDependencies {
     component: Component;
     phase: 'before' | 'after';
   }): Promise<string>;
+  captureTraceBaseline?(input: {
+    component: Component;
+    slot: RequestSlot;
+  }): Promise<void>;
   dispatchApi(input: {
     component: Component;
     acceptanceCapability: string;
@@ -156,6 +165,11 @@ export interface ReviewPlannerV8ProductAcceptanceRunnerDependencies {
     Readonly<{ crossAccountInvisible: boolean; businessWrites: number }>
   >;
   cleanup(): Promise<CleanupReceipt>;
+}
+
+export interface ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
+  checkpoint(value: ReviewPlannerV11ProductAcceptanceCheckpoint): void;
+  publishFailure(): void;
 }
 
 export type ReviewPlannerV8ProductAcceptanceRunResult = Readonly<{
@@ -196,6 +210,7 @@ type SafeSnapshot = Readonly<{
   apiOrigin: typeof EXACT_API_ORIGIN;
   ledger: RunnerLedgerPort;
   dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
+  diagnostics: ReviewPlannerV11ProductAcceptanceDiagnosticsPort | null;
 }>;
 
 type ComponentResult = Readonly<{
@@ -205,6 +220,10 @@ type ComponentResult = Readonly<{
   traceIdSha256: readonly string[];
   screenshotSha256: string;
 }>;
+
+type FailurePublicationState = {
+  published: boolean;
+};
 
 export async function runReviewPlannerV8ProductAcceptance(
   input: unknown,
@@ -216,6 +235,9 @@ export async function runReviewPlannerV8ProductAcceptance(
   let successCandidate: ReviewPlannerV8ProductAcceptanceRunResult | undefined;
   let cleanupReceipt: CleanupReceipt | undefined;
   let cleanupFailed = false;
+  const failurePublication = {
+    published: false,
+  } satisfies FailurePublicationState;
 
   try {
     for (const component of COMPONENTS) {
@@ -223,6 +245,7 @@ export async function runReviewPlannerV8ProductAcceptance(
         component,
         snapshot,
         traceIds,
+        failurePublication,
       });
     }
 
@@ -257,6 +280,11 @@ export async function runReviewPlannerV8ProductAcceptance(
     );
   } catch (error) {
     primaryError = normalizeError(error);
+    try {
+      publishV11Failure(snapshot, failurePublication);
+    } catch {
+      primaryError = controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    }
   }
 
   try {
@@ -273,16 +301,31 @@ export async function runReviewPlannerV8ProductAcceptance(
     cleanupFailed ||
     primaryError?.message === 'PRODUCT_ACCEPTANCE_RESTORE_UNVERIFIED'
   ) {
+    try {
+      publishV11Failure(snapshot, failurePublication);
+    } catch {
+      throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    }
     throw controlError('PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
   }
   if (primaryError) throw primaryError;
   if (!successCandidate || !cleanupReceipt) {
+    try {
+      publishV11Failure(snapshot, failurePublication);
+    } catch {
+      throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    }
     throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
   }
   try {
     snapshot.ledger.recordCleanup(cleanupReceipt);
     snapshot.ledger.finalizeSuccess();
   } catch (error) {
+    try {
+      publishV11Failure(snapshot, failurePublication);
+    } catch {
+      throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    }
     throw normalizeError(error);
   }
   return successCandidate;
@@ -334,6 +377,7 @@ async function runComponent(input: {
   component: Component;
   snapshot: SafeSnapshot;
   traceIds: Set<string>;
+  failurePublication: FailurePublicationState;
 }): Promise<ComponentResult> {
   const { component, snapshot } = input;
   let restoreVerified = false;
@@ -343,10 +387,12 @@ async function runComponent(input: {
   let result: ComponentResult | undefined;
 
   try {
+    checkpoint(snapshot, `${component}_api_activate`);
     await snapshot.dependencies.activateComponent({
       component,
       capabilitySha256: snapshot.capabilitySha256[component],
     });
+    checkpoint(snapshot, `${component}_api_facts_before`);
     const factsBeforeSha256 = assertDigest(
       await snapshot.dependencies.readFactsDigest({
         component,
@@ -355,9 +401,13 @@ async function runComponent(input: {
     );
 
     snapshot.ledger.claimSlot(toLedgerSlot(component, 'api'));
+    checkpoint(snapshot, `${component}_api_trace_baseline`);
+    await captureTraceBaseline(snapshot, component, 'api');
+    checkpoint(snapshot, `${component}_api_dispatch`);
     const api = await snapshot.dependencies.dispatchApi(
       createApiDispatchInput(snapshot, component),
     );
+    checkpoint(snapshot, `${component}_api_observation`);
     assertRequestResult(api);
     const apiTrace = await readUniqueTrace({
       component,
@@ -367,6 +417,7 @@ async function runComponent(input: {
       traceIds: input.traceIds,
     });
     const apiTraceIdSha256 = sha256(apiTrace.traceId);
+    checkpoint(snapshot, `${component}_api_slot_record`);
     snapshot.ledger.recordSlotResult(
       toLedgerSlotResult(
         component,
@@ -379,15 +430,21 @@ async function runComponent(input: {
 
     snapshot.ledger.claimSlot(toLedgerSlot(component, 'browser'));
     browserClaimed = true;
+    checkpoint(snapshot, `${component}_browser_trace_baseline`);
+    await captureTraceBaseline(snapshot, component, 'browser');
     const browserGuard = createBrowserRouteGuard({
       expectedUrl: `${snapshot.apiOrigin}/review-agent/suggestions`,
       readAcceptanceCapability: () => readCapability(snapshot, component),
+      beforeContinue: () =>
+        checkpoint(snapshot, `${component}_browser_dispatch`),
     });
+    checkpoint(snapshot, `${component}_browser_launch`);
     const browser = await snapshot.dependencies.runBrowser({
       component,
       webOrigin: snapshot.webOrigin,
       onRoute: browserGuard.onRoute,
     });
+    checkpoint(snapshot, `${component}_browser_observation`);
     browserGuard.closeAndAssert(browser.receipt);
     assertRequestResult(browser);
     if (
@@ -399,6 +456,7 @@ async function runComponent(input: {
 
     let restoreReceipt: Awaited<ReturnType<typeof restoreAndVerify>>;
     try {
+      checkpoint(snapshot, `${component}_browser_default_off`);
       restoreReceipt = await restoreAndVerify(component, snapshot);
     } catch (error) {
       restoreFailed = true;
@@ -417,6 +475,7 @@ async function runComponent(input: {
     });
     const browserTraceIdSha256 = sha256(browserTrace.traceId);
     const screenshotSha256 = sha256(browser.screenshot);
+    checkpoint(snapshot, `${component}_browser_slot_record`);
     snapshot.ledger.recordScreenshot(component, browser.screenshot);
     snapshot.ledger.recordSlotResult({
       ...toLedgerSlotResult(
@@ -447,6 +506,11 @@ async function runComponent(input: {
     });
   } catch (error) {
     primaryError = error;
+    try {
+      publishV11Failure(snapshot, input.failurePublication);
+    } catch {
+      primaryError = controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    }
   } finally {
     if (!restoreVerified) {
       try {
@@ -504,6 +568,7 @@ async function readUniqueTrace(input: {
   snapshot: SafeSnapshot;
   traceIds: Set<string>;
 }) {
+  checkpoint(input.snapshot, `${input.component}_${input.slot}_trace_wait`);
   const traces: unknown = await input.snapshot.dependencies.readPersistedTraces(
     {
       component: input.component,
@@ -513,6 +578,10 @@ async function readUniqueTrace(input: {
   if (!Array.isArray(traces) || traces.length !== 1) {
     throw controlError('PRODUCT_ACCEPTANCE_TRACE_COUNT_INVALID');
   }
+  checkpoint(
+    input.snapshot,
+    `${input.component}_${input.slot}_trace_canonicalize`,
+  );
   const trace = canonicalizePersistedTrace(
     input.component,
     (traces as unknown[])[0],
@@ -694,6 +763,7 @@ function canonicalizeUsage(
 function createBrowserRouteGuard(input: {
   expectedUrl: string;
   readAcceptanceCapability(): string;
+  beforeContinue(): void;
 }) {
   let continued = 0;
   let rejected = false;
@@ -729,6 +799,13 @@ function createBrowserRouteGuard(input: {
         await route.abort();
         return;
       }
+      try {
+        input.beforeContinue();
+      } catch {
+        rejected = true;
+        await route.abort();
+        return;
+      }
       continued += 1;
       await route.continueWithAcceptanceCapability(
         input.readAcceptanceCapability(),
@@ -758,6 +835,9 @@ function canonicalizeProductAcceptanceProfile(value: unknown) {
   if (value === REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE) {
     return REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
   }
+  if (value === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE) {
+    return REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE;
+  }
   throw new Error();
 }
 
@@ -767,7 +847,13 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     if (!input || typeof input !== 'object') throw new Error();
     const source = input as Record<string, unknown>;
     const environment = source.environment;
-    const profile = canonicalizeProductAcceptanceProfile(source.profile);
+    const requestedProfile = canonicalizeProductAcceptanceProfile(
+      source.profile,
+    );
+    const profile =
+      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE
+        ? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE
+        : requestedProfile;
     const commitSha = source.commitSha;
     const pairedEvidenceSha256 = source.pairedEvidenceSha256;
     const accountSource = source.accountIdSha256 as Record<string, unknown>;
@@ -806,7 +892,14 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     });
 
     const ledger = snapshotLedgerPort(source.ledger);
-    const dependencies = snapshotDependencyPort(source.dependencies);
+    const dependencies = snapshotDependencyPort(
+      source.dependencies,
+      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+    );
+    const diagnostics =
+      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE
+        ? snapshotV11DiagnosticsPort(source.diagnostics)
+        : null;
     if (ledger.environment() !== environment) throw new Error();
 
     capabilityHandle = Object.freeze({});
@@ -828,6 +921,7 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
       apiOrigin,
       ledger,
       dependencies,
+      diagnostics,
     } as Omit<SafeSnapshot, 'capabilityHandle'> & {
       capabilityHandle?: CapabilityHandle;
     };
@@ -883,11 +977,15 @@ function snapshotLedgerPort(value: unknown): RunnerLedgerPort {
 
 function snapshotDependencyPort(
   value: unknown,
+  requireCaptureTraceBaseline: boolean,
 ): ReviewPlannerV8ProductAcceptanceRunnerDependencies {
   if (!value || typeof value !== 'object') throw new Error();
   const source = value as ReviewPlannerV8ProductAcceptanceRunnerDependencies;
   const activateComponent = source.activateComponent;
   const readFactsDigest = source.readFactsDigest;
+  const captureTraceBaseline = requireCaptureTraceBaseline
+    ? source.captureTraceBaseline
+    : undefined;
   const dispatchApi = source.dispatchApi;
   const runBrowser = source.runBrowser;
   const readPersistedTraces = source.readPersistedTraces;
@@ -897,6 +995,8 @@ function snapshotDependencyPort(
   if (
     typeof activateComponent !== 'function' ||
     typeof readFactsDigest !== 'function' ||
+    (requireCaptureTraceBaseline &&
+      typeof captureTraceBaseline !== 'function') ||
     typeof dispatchApi !== 'function' ||
     typeof runBrowser !== 'function' ||
     typeof readPersistedTraces !== 'function' ||
@@ -917,9 +1017,70 @@ function snapshotDependencyPort(
       verifyOwnerIsolation.call(source, request),
     cleanup: () => cleanup.call(source),
   };
+  if (captureTraceBaseline) {
+    port.captureTraceBaseline = (request) =>
+      captureTraceBaseline.call(source, request);
+  }
   return Object.freeze(port);
 }
 /* eslint-enable @typescript-eslint/unbound-method */
+
+function snapshotV11DiagnosticsPort(
+  value: unknown,
+): ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
+  if (!value || typeof value !== 'object') throw new Error();
+  const source = value as ReviewPlannerV11ProductAcceptanceDiagnosticsPort;
+  /* eslint-disable @typescript-eslint/unbound-method -- methods are read once, then invoked with their original receiver */
+  const checkpoint = source.checkpoint;
+  const publishFailure = source.publishFailure;
+  /* eslint-enable @typescript-eslint/unbound-method */
+  if (
+    typeof checkpoint !== 'function' ||
+    typeof publishFailure !== 'function'
+  ) {
+    throw new Error();
+  }
+  return Object.freeze({
+    checkpoint: (record: ReviewPlannerV11ProductAcceptanceCheckpoint) =>
+      checkpoint.call(source, record),
+    publishFailure: () => publishFailure.call(source),
+  });
+}
+
+function checkpoint(snapshot: SafeSnapshot, value: string) {
+  if (snapshot.diagnostics === null) return;
+  if (
+    !(
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS as readonly string[]
+    ).includes(value)
+  ) {
+    throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  }
+  snapshot.diagnostics.checkpoint(
+    value as ReviewPlannerV11ProductAcceptanceCheckpoint,
+  );
+}
+
+async function captureTraceBaseline(
+  snapshot: SafeSnapshot,
+  component: Component,
+  slot: RequestSlot,
+) {
+  if (snapshot.diagnostics === null) return;
+  if (typeof snapshot.dependencies.captureTraceBaseline !== 'function') {
+    throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  }
+  await snapshot.dependencies.captureTraceBaseline({ component, slot });
+}
+
+function publishV11Failure(
+  snapshot: SafeSnapshot,
+  state: FailurePublicationState,
+) {
+  if (snapshot.diagnostics === null || state.published) return;
+  snapshot.diagnostics.publishFailure();
+  state.published = true;
+}
 
 function assertRequestResult(
   result: ReviewPlannerV8ProductAcceptanceRequestResult,

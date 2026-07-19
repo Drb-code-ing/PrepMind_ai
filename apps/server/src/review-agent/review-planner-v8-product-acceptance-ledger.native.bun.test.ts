@@ -25,6 +25,7 @@ import {
   reserveReviewPlannerV11ProductAcceptanceLedger,
   reserveReviewPlannerV11ProductAcceptanceLedgerForTests,
 } from './review-planner-v8-product-acceptance-ledger';
+import { createReviewPlannerV11ProductAcceptanceDiagnosticsPort } from './review-planner-v8-product-acceptance-composition';
 import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
@@ -2350,6 +2351,39 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
       checkpoint: expected.checkpoint,
       terminal: expected.terminal,
       providerCallState: expected.providerCallState,
+    });
+  });
+
+  it('projects a Task4 diagnostics checkpoint through the real opaque Task3 authority and strict reader', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      const diagnostics =
+        createReviewPlannerV11ProductAcceptanceDiagnosticsPort({
+          environment: 'branch',
+          journal,
+          ledger,
+        });
+      diagnostics.checkpoint('review_api_activate');
+      diagnostics.publishFailure();
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({
+      status: 'operation_failed',
+      environment: 'branch',
+      component: 'review',
+      slot: 'api',
+      checkpoint: 'review_api_activate',
+      terminal: 'operation_failed',
+      providerCallState: 'not_started',
     });
   });
 

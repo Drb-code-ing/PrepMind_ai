@@ -7,6 +7,7 @@ import {
   buildReviewPlannerV8ServerRecreateCommand,
   captureReviewPlannerV8RepositorySnapshot,
   captureReviewPlannerV8RepositorySnapshotFromAuthority,
+  createReviewPlannerV11ProductAcceptanceDiagnosticsPort,
   createReviewPlannerV9PairedEvidenceAuthority,
   assertReviewPlannerV8EvidenceIndexIsOrdinary,
   createDefaultReviewPlannerV8ProductAcceptanceComposition,
@@ -37,6 +38,7 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
+import { REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
 
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
@@ -1030,6 +1032,95 @@ describe('V8 recovery-only executable composition', () => {
 });
 
 describe('V8 default composition resource lifecycle', () => {
+  it('builds a V11 diagnostics port from the opaque Task3 journal and ledger authority', () => {
+    const authority = Object.freeze({ assertAuthorized: jest.fn() });
+    const journal = {
+      appendCheckpoint: jest.fn((value: unknown) => value),
+      latestCheckpoint: jest.fn(() => ({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_dispatch',
+        providerCallState: 'indeterminate',
+      })),
+      issueFailureAuthority: jest.fn(() => authority),
+    };
+    const ledger = { recordFailure: jest.fn() };
+    const diagnostics = createReviewPlannerV11ProductAcceptanceDiagnosticsPort({
+      environment: 'branch',
+      journal: journal as never,
+      ledger: ledger as never,
+    });
+    diagnostics.checkpoint('review_api_activate');
+    diagnostics.checkpoint('review_api_dispatch');
+    diagnostics.publishFailure();
+
+    expect(journal.appendCheckpoint.mock.calls.map(([value]) => value)).toEqual(
+      [
+        {
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.checkpoint,
+          component: 'review',
+          slot: 'api',
+          checkpoint: 'review_api_activate',
+          providerCallState: 'not_started',
+        },
+        {
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.checkpoint,
+          component: 'review',
+          slot: 'api',
+          checkpoint: 'review_api_dispatch',
+          providerCallState: 'indeterminate',
+        },
+      ],
+    );
+    expect(journal.issueFailureAuthority).toHaveBeenCalledTimes(1);
+    expect(ledger.recordFailure).toHaveBeenCalledWith(authority, {
+      schemaVersion:
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+      environment: 'branch',
+      component: 'review',
+      slot: 'api',
+      checkpoint: 'review_api_dispatch',
+      terminal: 'operation_failed',
+      providerCallState: 'indeterminate',
+    });
+  });
+
+  it('does not seal V11 failure publication before the opaque ledger write succeeds', () => {
+    const authority = Object.freeze({ assertAuthorized: jest.fn() });
+    const journal = {
+      appendCheckpoint: jest.fn((value: unknown) => value),
+      latestCheckpoint: jest.fn(() => ({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_activate',
+        providerCallState: 'not_started',
+      })),
+      issueFailureAuthority: jest.fn(() => authority),
+    };
+    const ledger = {
+      recordFailure: jest.fn().mockImplementationOnce(() => {
+        throw new Error('first durable write failed');
+      }),
+    };
+    const diagnostics = createReviewPlannerV11ProductAcceptanceDiagnosticsPort({
+      environment: 'branch',
+      journal: journal as never,
+      ledger: ledger as never,
+    });
+    diagnostics.checkpoint('review_api_activate');
+
+    expect(() => diagnostics.publishFailure()).toThrow(
+      'first durable write failed',
+    );
+    expect(() => diagnostics.publishFailure()).not.toThrow();
+    expect(journal.issueFailureAuthority).toHaveBeenCalledTimes(2);
+    expect(ledger.recordFailure).toHaveBeenCalledTimes(2);
+  });
+
   it('parses an inactive deterministic observation with zero duration from the live suggestion envelope', async () => {
     const disconnect = jest.fn(async () => undefined);
     const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
@@ -1105,6 +1196,19 @@ describe('V8 default composition resource lifecycle', () => {
         password: resources.passwords.review,
       });
       const dependencies = product.ports.createRunnerDependencies({} as never);
+      const v11Dependencies = dependencies as unknown as {
+        captureTraceBaseline(input: {
+          component: 'review' | 'planner';
+          slot: 'api' | 'browser';
+        }): Promise<void>;
+      };
+
+      await expect(
+        v11Dependencies.captureTraceBaseline({
+          component: 'review',
+          slot: 'api',
+        }),
+      ).resolves.toBeUndefined();
 
       await expect(
         dependencies.dispatchApi({
@@ -1129,6 +1233,19 @@ describe('V8 default composition resource lifecycle', () => {
           usage: { inputTokens: 0, outputTokens: 0 },
         },
       });
+      expect(
+        fetchMock.mock.calls.map(([input]) =>
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url,
+        ),
+      ).toEqual([
+        'http://127.0.0.1:3001/auth/register',
+        'http://127.0.0.1:3001/agent-traces?limit=50&route=review_analysis&mode=live',
+        'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-480',
+      ]);
     } finally {
       fetchMock.mockRestore();
       await product.dispose();

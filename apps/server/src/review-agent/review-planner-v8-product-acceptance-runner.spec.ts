@@ -3,7 +3,10 @@ import { createHash } from 'node:crypto';
 
 import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
 import { createDefaultReviewPlannerV8ProductAcceptanceComposition } from './review-planner-v8-product-acceptance-composition';
-import { REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+} from './review-planner-product-acceptance-profile';
 import {
   runReviewPlannerV8ProductAcceptance,
   type ReviewPlannerV8ProductAcceptancePersistedTrace,
@@ -169,6 +172,151 @@ describe('Review Planner V8 product acceptance runner', () => {
     }
   });
 
+  it('records the complete V11 checkpoint sequence before every product boundary', async () => {
+    const fixture = createFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(),
+    };
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      diagnostics,
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).resolves.toMatchObject({ environment: 'branch' });
+
+    expect(diagnostics.checkpoint.mock.calls.map(([value]) => value)).toEqual([
+      'review_api_activate',
+      'review_api_facts_before',
+      'review_api_trace_baseline',
+      'review_api_dispatch',
+      'review_api_observation',
+      'review_api_trace_wait',
+      'review_api_trace_canonicalize',
+      'review_api_slot_record',
+      'review_browser_trace_baseline',
+      'review_browser_launch',
+      'review_browser_dispatch',
+      'review_browser_observation',
+      'review_browser_default_off',
+      'review_browser_trace_wait',
+      'review_browser_trace_canonicalize',
+      'review_browser_slot_record',
+      'planner_api_activate',
+      'planner_api_facts_before',
+      'planner_api_trace_baseline',
+      'planner_api_dispatch',
+      'planner_api_observation',
+      'planner_api_trace_wait',
+      'planner_api_trace_canonicalize',
+      'planner_api_slot_record',
+      'planner_browser_trace_baseline',
+      'planner_browser_launch',
+      'planner_browser_dispatch',
+      'planner_browser_observation',
+      'planner_browser_default_off',
+      'planner_browser_trace_wait',
+      'planner_browser_trace_canonicalize',
+      'planner_browser_slot_record',
+    ]);
+    expect(diagnostics.publishFailure).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['review_api_trace_baseline', 'capture'],
+    ['review_api_dispatch', 'dispatch'],
+    ['review_api_observation', 'observation'],
+    ['review_api_trace_wait', 'trace-wait'],
+    ['review_api_trace_canonicalize', 'trace-canonicalize'],
+    ['review_api_slot_record', 'slot-record'],
+    ['review_browser_trace_baseline', 'browser-baseline'],
+    ['review_browser_launch', 'browser-launch'],
+    ['review_browser_dispatch', 'browser-dispatch'],
+    ['review_browser_observation', 'browser-observation'],
+    ['review_browser_default_off', 'browser-default-off'],
+    ['review_browser_trace_wait', 'browser-trace-wait'],
+    ['review_browser_trace_canonicalize', 'browser-trace-canonicalize'],
+    ['review_browser_slot_record', 'browser-slot-record'],
+  ] as const)(
+    'publishes one safe V11 failure and stops later effects when %s cannot checkpoint',
+    async (checkpoint, stage) => {
+      const fixture = createFixture();
+      const diagnostics = {
+        checkpoint: jest.fn((value: string) => {
+          if (value === checkpoint)
+            throw new Error('checkpoint persistence raw secret');
+        }),
+        publishFailure: jest.fn(),
+      };
+      Object.assign(fixture.input, {
+        profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+        diagnostics,
+      });
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).rejects.toThrow(
+        stage === 'browser-dispatch'
+          ? 'PRODUCT_ACCEPTANCE_BROWSER_RECEIPT_INVALID'
+          : stage === 'browser-default-off'
+            ? 'PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED'
+            : 'PRODUCT_ACCEPTANCE_OPERATION_FAILED',
+      );
+
+      expect(diagnostics.publishFailure).toHaveBeenCalledTimes(1);
+      expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+      if (stage === 'capture') {
+        expect(fixture.dependencies.dispatchApi).not.toHaveBeenCalled();
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'dispatch') {
+        expect(fixture.dependencies.dispatchApi).not.toHaveBeenCalled();
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'observation' || stage === 'trace-wait') {
+        expect(fixture.dependencies.readPersistedTraces).not.toHaveBeenCalled();
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'trace-canonicalize' || stage === 'slot-record') {
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'browser-launch') {
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'browser-baseline') {
+        expect(fixture.dependencies.runBrowser).not.toHaveBeenCalled();
+      }
+      if (stage === 'browser-dispatch') {
+        expect(
+          fixture.routes.continueWithAcceptanceCapability,
+        ).not.toHaveBeenCalled();
+      }
+      if (stage === 'browser-observation' || stage === 'browser-trace-wait') {
+        expect(fixture.dependencies.readPersistedTraces).toHaveBeenCalledTimes(
+          1,
+        );
+      }
+      if (
+        stage === 'browser-trace-canonicalize' ||
+        stage === 'browser-slot-record'
+      ) {
+        expect(fixture.dependencies.readPersistedTraces).toHaveBeenCalledTimes(
+          2,
+        );
+      }
+      if (stage === 'browser-slot-record') {
+        expect(fixture.ledger.recordScreenshot).toHaveBeenCalledTimes(0);
+      }
+      if (stage === 'browser-default-off') {
+        expect(fixture.dependencies.readPersistedTraces).toHaveBeenCalledTimes(
+          1,
+        );
+      }
+    },
+  );
+
   it.each([
     ['clone', { ...REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE }],
     [
@@ -188,6 +336,188 @@ describe('Review Planner V8 product acceptance runner', () => {
     expect(fixture.ledger.claimSlot).not.toHaveBeenCalled();
     expect(fixture.dependencies.cleanup).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['clone', { ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE }],
+    [
+      'hostile proxy',
+      new Proxy(REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE, {
+        get() {
+          throw new Error('profile getter must not run');
+        },
+      }),
+    ],
+  ])(
+    'rejects a non-canonical V11 profile %s before an external action',
+    async (_label, profile) => {
+      const fixture = createFixture();
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance({
+          ...fixture.input,
+          profile,
+          diagnostics: {
+            checkpoint: jest.fn(),
+            publishFailure: jest.fn(),
+          },
+        }),
+      ).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID');
+      expect(fixture.dependencies.activateComponent).not.toHaveBeenCalled();
+      expect(fixture.dependencies.cleanup).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not read a V11 diagnostics port for a V10 run', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.restoreDefaultOff = jest.fn(async (component) => ({
+      ...defaultOffReceipt(component),
+      schemaVersion:
+        REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.defaultOff,
+    }));
+    fixture.dependencies.cleanup = jest.fn(async () => ({
+      ...cleanupReceipt(),
+      schemaVersion:
+        REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
+    }));
+    const diagnostics = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('V11 diagnostics must remain unread');
+        },
+      },
+    );
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance({
+        ...fixture.input,
+        profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        diagnostics,
+      }),
+    ).resolves.toMatchObject({ environment: 'branch' });
+  });
+
+  it('publishes a V11 operation failure without raw error, capability, or token data', async () => {
+    const fixture = createFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(),
+    };
+    fixture.dependencies.dispatchApi = jest.fn(async () => {
+      throw new Error('sk-secret capability-v8-token raw failure');
+    });
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      diagnostics,
+    });
+
+    const failure = runReviewPlannerV8ProductAcceptance(fixture.input);
+    await expect(failure).rejects.toThrow(
+      'PRODUCT_ACCEPTANCE_OPERATION_FAILED',
+    );
+    await expect(failure).rejects.not.toThrow(
+      /sk-secret|capability|token|raw/i,
+    );
+    expect(diagnostics.publishFailure).toHaveBeenCalledTimes(1);
+    expect(diagnostics.publishFailure).toHaveBeenCalledWith();
+    expect(JSON.stringify(diagnostics.publishFailure.mock.calls)).not.toMatch(
+      /sk-secret|capability|token|raw/i,
+    );
+    expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
+    expect(fixture.dependencies.cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['cleanup', 'PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED'],
+    ['cleanup-record', 'PRODUCT_ACCEPTANCE_OPERATION_FAILED'],
+    ['evidence-finalize', 'PRODUCT_ACCEPTANCE_OPERATION_FAILED'],
+  ] as const)(
+    'publishes a V11 failure before returning a %s terminal error',
+    async (stage, expectedError) => {
+      const fixture = createFixture();
+      const diagnostics = {
+        checkpoint: jest.fn(),
+        publishFailure: jest.fn(),
+      };
+      Object.assign(fixture.input, {
+        profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+        diagnostics,
+      });
+      if (stage === 'cleanup') {
+        fixture.dependencies.cleanup = jest.fn(async () => {
+          throw new Error('cleanup raw secret');
+        });
+      }
+      if (stage === 'cleanup-record') {
+        fixture.ledger.recordCleanup.mockImplementation(() => {
+          throw new Error('cleanup record raw secret');
+        });
+      }
+      if (stage === 'evidence-finalize') {
+        fixture.ledger.finalizeSuccess.mockImplementation(() => {
+          throw new Error('finalize raw secret');
+        });
+      }
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).rejects.toThrow(expectedError);
+      expect(diagnostics.publishFailure).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('retries V11 failure publication when the first publisher attempt fails', async () => {
+    const fixture = createFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn().mockImplementationOnce(() => {
+        throw new Error('first failure publication raw secret');
+      }),
+    };
+    fixture.dependencies.dispatchApi = jest.fn(async () => {
+      throw new Error('dispatch raw secret');
+    });
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      diagnostics,
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+    expect(diagnostics.publishFailure).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['V8', undefined],
+    ['V10', REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE],
+  ] as const)(
+    'does not require or call captureTraceBaseline for a legacy %s run',
+    async (_label, profile) => {
+      const fixture = createFixture();
+      fixture.dependencies.captureTraceBaseline = jest.fn(async () => {
+        throw new Error('legacy baseline must remain adapter-owned');
+      });
+      if (profile) {
+        fixture.dependencies.restoreDefaultOff = jest.fn(async (component) => ({
+          ...defaultOffReceipt(component),
+          schemaVersion: profile.schemas.defaultOff,
+        }));
+        fixture.dependencies.cleanup = jest.fn(async () => ({
+          ...cleanupReceipt(),
+          schemaVersion: profile.schemas.cleanup,
+        }));
+      }
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance({
+          ...fixture.input,
+          ...(profile ? { profile } : {}),
+        }),
+      ).resolves.toMatchObject({ environment: 'branch' });
+      expect(fixture.dependencies.captureTraceBaseline).not.toHaveBeenCalled();
+    },
+  );
 
   it('durably claims the browser slot before browser launch can fail', async () => {
     const fixture = createFixture();
@@ -894,6 +1224,9 @@ function createFixture(
     readFactsDigest: jest.fn(async ({ component, phase }) => {
       order.push(`facts-${phase}:${component}`);
       return component === 'review' ? '3'.repeat(64) : '4'.repeat(64);
+    }),
+    captureTraceBaseline: jest.fn(async ({ component, slot }) => {
+      order.push(`trace-baseline:${component}-${slot}`);
     }),
     dispatchApi: jest.fn(async (input) => {
       const { component } = input;
