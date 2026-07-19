@@ -773,7 +773,7 @@ V9 的一次实际运行遵守第 10 项后段：durable reader 为 `finalized /
 
 V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Review `focusIndexes` 与 Planner `blockOrder`。唯一 controlled-Live 已 exit `0`，public reader 五次 fresh read 均为 `complete / passed`：`23` provider attempts、`22` paired admissions、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`，schema/quality/P95/usage/attempt/admission/cost 全通过。V1--V9 manifest 仍为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`；V10 evidence/once/success seal 已封存且不可改写。
 
-根 `.env` 未改，普通环境继续 mock/default-off；V8/V9 eval 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 均保持 `false`。V10 safe writer/reader 只持久化 strict lane aggregate，拒绝 prompt、snapshot、output、raw error、URL、credential、cookie、stack 和 per-case timing/usage。现在允许进入分支 Docker/headed-browser 产品验收，但产品 gate 必须逐组件临时开启，随后恢复 `false`；main、push 与 Phase completion 仍需等待产品验收、清理和 main replay。
+根 `.env` 未改，普通环境继续 mock/default-off；V8/V9 eval 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 均保持 `false`。V10 safe writer/reader 只持久化 strict lane aggregate，拒绝 prompt、snapshot、output、raw error、URL、credential、cookie、stack 和 per-case timing/usage。旧 V8 branch 产品验收 evidence 已以 recovery-only terminal 归档：一次遗漏 preflight 参数的失败为 `0-call`，首次实际分支尝试暴露 runner parse bug；恢复过程没有新 provider 调用且 cleanup 为零。这不是 V10 Live failure，V8 evidence 不得 reset、重用或扩展。必须先建立新的隔离 V10 product-acceptance lineage，才能进入 Docker/headed-browser；main、push 与 Phase completion 仍需等待该新 lineage 的产品验收、清理和 main replay。
 
 完整结果、证据边界和产品顺序见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
 

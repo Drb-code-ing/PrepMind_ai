@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-19 — Phase 6.9.5 V10 唯一 controlled-Live 已通过并封存：`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`；产品 gate 保持关闭，分支 Docker/headed-browser 验收尚未开始，阶段验收未完成。
+> 2026-07-19 — Phase 6.9.5 V10 唯一 controlled-Live 已通过并封存：`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`；旧 V8 branch 产品尝试 recovery-only 归档，需建立新的隔离 V10 product-acceptance lineage，阶段验收未完成。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-19
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 为 `quality_gate_failed`。V10 已把模型契约收窄为生产有效的 `focusIndexes` / `blockOrder`，唯一 controlled-Live 的 public reader 五次 fresh read 均为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V1--V9 manifest 未变，V10 evidence/success seal immutable。eval gate 与两条产品 gate 默认关闭，Review/Planner product path 仍 deterministic；下一步才是分支 Docker/headed-browser 验收，Phase 6.9.5 仍未完成。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 为 `quality_gate_failed`。V10 已把模型契约收窄为生产有效的 `focusIndexes` / `blockOrder`，唯一 controlled-Live 的 public reader 五次 fresh read 均为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V1--V9 manifest 未变，V10 evidence/success seal immutable。旧 V8 branch 产品尝试的 preflight 参数遗漏为 `0-call`，首次实际尝试暴露 runner parse bug，随后已 recovery-only 终态收口且没有新 provider 调用、cleanup 为零；它不是 V10 Live failure，也不可 reset 或重用。eval gate 与两条产品 gate 默认关闭，下一步需建立新的隔离 V10 product-acceptance lineage，Phase 6.9.5 仍未完成。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V9 已 `quality_gate_failed` 封存；V10 Live 已通过，产品 gate 默认关闭，分支产品验收未开始 |
+| Phase 6.9.5  | 验收未完成 | V10 Live 已通过；旧 V8 branch 产品尝试 recovery-only 归档，需新的隔离 V10 产品验收 lineage |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,12 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-19 - V8 branch product-acceptance recovered archive
+
+结果：旧 V8 branch 产品验收先因遗漏 preflight 参数在 provider 前以 `0-call` 失败；随后首次实际分支尝试暴露 runner parse bug，并写入 recovery-only terminal。恢复过程没有新 provider 调用，cleanup 为零。
+
+边界：该证据仅归档历史失败，既不是 V10 controlled-Live failure，也不能 reset、重用或扩展。旧 V8 evidence 保持只读，产品 gate 继续默认关闭；下一步必须建立新的隔离 V10 product-acceptance lineage，不能直接进入 Docker、浏览器、main 或 push。
 
 ### 2026-07-19 - Phase 6.9.5 V10 唯一 controlled-Live outcome
 

@@ -1,7 +1,7 @@
 # Phase 6.9.5 Review / Planner V10 Controlled-Live Outcome
 
 Date: 2026-07-19
-Status: the unique V10 controlled-Live completed successfully; product gates remain default-off and branch product acceptance is next.
+Status: the unique V10 controlled-Live completed successfully; product gates remain default-off. The recovered V8 branch product-acceptance attempt is read-only, so a new isolated V10 product-acceptance lineage is required next.
 
 ## What This Checkpoint Proves
 
@@ -66,6 +66,6 @@ The successful V10 evidence is immutable. It must not be retried, deleted, overw
 
 ## Exact Next Actions
 
-1. Perform branch Docker and headed-browser acceptance with the product gates enabled one component at a time, then restore both to `false` and clean only the recorded synthetic data.
-2. If branch acceptance passes, perform the prescribed `--no-ff` main merge, main replay, evidence review, and remote parity check.
-3. Only after those product steps may the phase be declared complete and `origin/main` be pushed.
+1. Do not reset, reuse, or extend the recovered V8 branch product-acceptance evidence. Its omitted-preflight-argument zero-call failure and later runner parse failure were sealed as recovery-only; recovery made zero new provider calls and cleanup reached zero.
+2. Design and implement a new isolated V10 product-acceptance lineage, then perform its branch Docker/headed-browser acceptance with one product gate at a time and restore both to `false`.
+3. Only after that new lineage's branch acceptance, cleanup, `--no-ff` main merge, main replay, and evidence review may the phase be declared complete and `origin/main` be pushed.
