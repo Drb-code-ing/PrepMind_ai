@@ -32,8 +32,10 @@ import {
   acquireReviewPlannerV11ProductAcceptanceOwner,
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
   openReviewPlannerV11ProductAcceptanceRecoveryJournal,
+  inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV11ProductAcceptanceRecoveryJournal,
+  readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
@@ -2499,6 +2501,54 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     }
   });
 
+  it('fails direct V11 checkpoint readers closed for stale private history before reservation', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const staleAttemptId = 'c'.repeat(64);
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    await writeFile(
+      join(recoveryPath, 'attempt-binding.json'),
+      `${JSON.stringify({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-attempt-v1',
+        attemptId: staleAttemptId,
+        attemptSha256: createHash('sha256')
+          .update(staleAttemptId)
+          .digest('hex'),
+      })}\n`,
+    );
+    await writeFile(
+      join(recoveryPath, 'checkpoint-001-review_api_activate.json'),
+      `${JSON.stringify(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      )}\n`,
+    );
+    try {
+      await expect(
+        inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+      await expect(
+        readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    } finally {
+      acquisition.owner.close();
+    }
+  });
+
   it('rejects a public/private V11 attempt mismatch before recovery can project', async () => {
     const { owner, ledger, journal } = await prepareV11Journal(root);
     journal.close();
@@ -2522,6 +2572,18 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
           .digest('hex'),
       })}\n`,
     );
+    await expect(
+      inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    await expect(
+      readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
 
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
@@ -2547,6 +2609,38 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     } finally {
       acquisition.owner.close();
     }
+  });
+
+  it('fails direct V11 checkpoint readers closed when the private attempt binding is missing', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    journal.appendCheckpoint(
+      v11Checkpoint('review_api_activate', 'not_started'),
+    );
+    journal.close();
+    ledger.close();
+    owner.close();
+    await unlink(
+      join(
+        root,
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+          'branch',
+        ),
+        'attempt-binding.json',
+      ),
+    );
+
+    await expect(
+      inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    await expect(
+      readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   });
 
   it('rejects a V11 authority from a different opaque attempt', async () => {

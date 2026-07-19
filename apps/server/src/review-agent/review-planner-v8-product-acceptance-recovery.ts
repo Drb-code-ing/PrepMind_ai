@@ -2054,6 +2054,11 @@ export async function inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
 }): Promise<ReviewPlannerV11ProductAcceptanceCheckpointRecord | null> {
+  try {
+    await readReviewPlannerV11ProductAcceptanceAttemptBinding(input);
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
     [
