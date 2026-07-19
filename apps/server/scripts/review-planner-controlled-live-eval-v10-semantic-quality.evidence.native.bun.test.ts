@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { tmpdir } from 'node:os';
@@ -84,6 +84,39 @@ test('V10 reader rejects fresh V1-V9 history drift and unrecognized V10 leaves',
     assert.equal(afterExtraLeaf.diagnosticCode, 'evidence_io');
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('V10 reservation rejects a junctioned evidence namespace before writing externally', async () => {
+  if (process.platform !== 'win32') return;
+  const root = await mkdtemp(join(tmpdir(), 'prepmind-v10-junction-'));
+  const outside = await mkdtemp(join(tmpdir(), 'prepmind-v10-outside-'));
+  try {
+    await cp(
+      resolve(process.cwd(), 'docs/acceptance/evidence'),
+      join(root, 'docs/acceptance/evidence'),
+      { recursive: true },
+    );
+    const target = join(
+      root,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory,
+    );
+    await mkdir(resolve(target, '..'), { recursive: true });
+    await symlink(outside, target, 'junction');
+
+    await assert.rejects(
+      reserveReviewPlannerControlledLiveV10SemanticQualityEvidence({
+        root,
+        startedAt: '2026-07-19T12:00:00.000Z',
+        runId: 'junction-proof',
+        historicalSnapshot:
+          await snapshotReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(root),
+      }),
+    );
+    assert.deepEqual(await readdir(outside), []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });
 

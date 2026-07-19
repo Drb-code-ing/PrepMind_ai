@@ -1,12 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  lstat,
-  mkdir,
-  open,
-  readFile,
-  readdir,
-  writeFile,
-} from 'node:fs/promises';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
 import { z } from 'zod';
@@ -21,6 +14,7 @@ import {
   snapshotReviewPlannerControlledLiveV9HistoricalEvidence,
 } from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
 import {
+  openWindowsNoReparseFrozenDirectory,
   openWindowsNoReparseExistingFrozenDirectory,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
@@ -96,7 +90,19 @@ const v9ExpectedLeaves = Object.freeze(
     v9TerminalLeaf,
   ].sort(),
 );
-const reservationRoots = new WeakMap<object, string>();
+type V10ReservationCapability = {
+  root: string;
+  directory: WindowsNoReparseChildDirectory;
+  snapshot: ReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidenceSnapshot;
+  leafName: string;
+  stageIndex: number;
+  closed: boolean;
+  diagnostic: V10SemanticQualityDiagnostic | null;
+};
+const reservationCapabilities = new WeakMap<
+  ReviewPlannerControlledLiveV10SemanticQualityEvidenceReservation,
+  V10ReservationCapability
+>();
 const V10_CONSUMED_MARKER =
   'phase-6.9.5-review-planner-controlled-live-v10-semantic-quality-consumed';
 const diagnosticCommitmentSchema = z
@@ -209,53 +215,62 @@ export async function reserveReviewPlannerControlledLiveV10SemanticQualityEviden
   if (!isSnapshot(input.historicalSnapshot) || !safeRunId(input.runId)) {
     throw new Error('CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_RESERVATION_FAILED');
   }
-  const directory = resolveInsideRoot(
-    root,
-    REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory,
-  );
-  await mkdir(directory, { recursive: true });
-  const oncePath = resolveInsideRoot(
-    root,
-    `${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory}/${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.onceLockLeaf}`,
-  );
-  let handle;
+  let directory: WindowsNoReparseChildDirectory | null = null;
   try {
-    handle = await open(oncePath, 'wx');
-    await handle.writeFile(
-      `phase-6.9.5-review-planner-controlled-live-v10-semantic-quality-consumed\n${input.startedAt}\n`,
+    directory = await openWindowsNoReparseFrozenDirectory(
+      root,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory.split(
+        '/',
+      ),
+    );
+    directory.assertLocalFixedNtfsVolume();
+    directory.createExclusiveDurableFile(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.onceLockLeaf,
+      `${V10_CONSUMED_MARKER}\n${input.startedAt}\n`,
+    );
+    directory.createExclusiveDurableFile(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES[0],
+      '',
     );
   } catch {
-    throw new Error('CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_ALREADY_CONSUMED');
-  } finally {
-    await handle?.close();
+    directory?.close();
+    throw new Error('CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_RESERVATION_FAILED');
   }
-  await writeEmptyStage(root, '.stage-010-reserved');
   const evidenceLeaf = `review-planner-live-${input.runId}.json`;
-  let terminal = false;
   const reservation = Object.freeze({
     relativePath: `${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory}/${evidenceLeaf}`,
     historicalSnapshot: input.historicalSnapshot,
     async markAttempted() {
-      if (terminal) return false;
-      try {
-        await writeEmptyStage(root, '.stage-020-attempted');
-        return true;
-      } catch {
-        return false;
-      }
+      await Promise.resolve();
+      const capability = reservationCapabilities.get(reservation);
+      return capability ? createStage(capability, 1) : false;
     },
     async abort() {
-      if (terminal) return false;
-      terminal = true;
+      await Promise.resolve();
+      const capability = reservationCapabilities.get(reservation);
+      if (!capability || capability.closed) return false;
       try {
-        await writeEmptyStage(root, '.stage-130-terminal-record-written');
+        capability.directory.createExclusiveDurableFile(
+          '.stage-130-terminal-record-written',
+          '',
+        );
+        closeCapability(capability);
         return true;
       } catch {
+        closeCapability(capability);
         return false;
       }
     },
   });
-  reservationRoots.set(reservation, root);
+  reservationCapabilities.set(reservation, {
+    root,
+    directory,
+    snapshot: input.historicalSnapshot,
+    leafName: evidenceLeaf,
+    stageIndex: 0,
+    closed: false,
+    diagnostic: null,
+  });
   return reservation;
 }
 
@@ -263,20 +278,12 @@ export async function advanceReviewPlannerControlledLiveV10SemanticQualityStage(
   reservation: ReviewPlannerControlledLiveV10SemanticQualityEvidenceReservation,
   stage: ReviewPlannerControlledLiveV10SemanticQualityStage,
 ): Promise<boolean> {
-  try {
-    if (
-      stage ===
-      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.diagnosticCommitLeaf
-    ) {
-      return false;
-    }
-    const root = reservationRoots.get(reservation);
-    if (!root) return false;
-    await writeEmptyStage(root, stage);
-    return true;
-  } catch {
-    return false;
-  }
+  await Promise.resolve();
+  const capability = reservationCapabilities.get(reservation);
+  const index =
+    REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES.indexOf(stage);
+  if (!capability || index < 2 || index >= 8) return false;
+  return createStage(capability, index);
 }
 
 export async function commitReviewPlannerControlledLiveV10SemanticQualityDiagnostic(
@@ -286,36 +293,41 @@ export async function commitReviewPlannerControlledLiveV10SemanticQualityDiagnos
     diagnostic: V10SemanticQualityDiagnostic;
   }>,
 ): Promise<DiagnosticCommitment | null> {
+  await Promise.resolve();
+  const capability = reservationCapabilities.get(input.reservation);
   try {
-    const root = trustedRoot(input.root);
+    if (
+      !capability ||
+      capability.closed ||
+      capability.stageIndex !== 7 ||
+      trustedRoot(input.root) !== capability.root
+    ) {
+      return null;
+    }
     const diagnostic = v10SemanticQualityDiagnosticSchema.parse(
       input.diagnostic,
     );
-    const snapshot = input.reservation.historicalSnapshot;
-    const evidenceLeaf = input.reservation.relativePath.split('/').at(-1);
-    if (!evidenceLeaf || !isSnapshot(snapshot)) return null;
+    if (!isSnapshot(capability.snapshot)) return null;
     const diagnosticJson = JSON.stringify(diagnostic);
-    const evidencePath = resolveInsideRoot(
-      root,
-      input.reservation.relativePath,
-    );
-    await writeFile(evidencePath, diagnosticJson, { flag: 'wx' });
     const commitment: DiagnosticCommitment = {
       schemaVersion: 'phase-6.9.5-review-planner-v10-safe-aggregate-commit-v1',
-      evidenceLeaf,
+      evidenceLeaf: capability.leafName,
       diagnosticSha256: sha256(diagnosticJson),
-      historicalTreeHash: snapshot.treeHash,
+      historicalTreeHash: capability.snapshot.treeHash,
     };
-    await writeFile(
-      resolveInsideRoot(
-        root,
-        `${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory}/${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.diagnosticCommitLeaf}`,
-      ),
-      JSON.stringify(commitment),
-      { flag: 'wx' },
+    capability.directory.createExclusiveDurableFile(
+      capability.leafName,
+      diagnosticJson,
     );
-    return Object.freeze(commitment);
+    capability.directory.createExclusiveDurableFile(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.diagnosticCommitLeaf,
+      JSON.stringify(commitment),
+    );
+    capability.stageIndex = 8;
+    capability.diagnostic = diagnostic;
+    return Object.freeze(diagnosticCommitmentSchema.parse(commitment));
   } catch {
+    if (capability) closeCapability(capability);
     return null;
   }
 }
@@ -326,16 +338,29 @@ export async function completeReviewPlannerControlledLiveV10SemanticQualityValid
     reservation: ReviewPlannerControlledLiveV10SemanticQualityEvidenceReservation;
   }>,
 ) {
+  const capability = reservationCapabilities.get(input.reservation);
   try {
+    if (
+      !capability ||
+      capability.closed ||
+      capability.stageIndex !== 8 ||
+      trustedRoot(input.root) !== capability.root
+    ) {
+      return false;
+    }
     await verifyReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(
       {
         root: input.root,
-        snapshot: input.reservation.historicalSnapshot,
+        snapshot: capability.snapshot,
       },
     );
-    await writeEmptyStage(input.root, '.stage-090-validation-completed');
+    if (!createStage(capability, 9)) return false;
+    if (capability.diagnostic?.terminalReason !== 'passed') {
+      closeCapability(capability);
+    }
     return true;
   } catch {
+    if (capability) closeCapability(capability);
     return false;
   }
 }
@@ -347,36 +372,43 @@ export async function finalizeReviewPlannerControlledLiveV10SemanticQualitySucce
     diagnostic: V10SemanticQualityDiagnostic;
   }>,
 ) {
+  const capability = reservationCapabilities.get(input.reservation);
   try {
-    if (input.diagnostic.terminalReason !== 'passed') return false;
-    await verifyReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(
-      {
-        root: input.root,
-        snapshot: input.reservation.historicalSnapshot,
-      },
-    );
-    const root = trustedRoot(input.root);
-    const evidenceLeaf = input.reservation.relativePath.split('/').at(-1);
-    if (!evidenceLeaf) return false;
+    if (
+      !capability ||
+      capability.closed ||
+      capability.stageIndex !== 9 ||
+      capability.diagnostic?.terminalReason !== 'passed' ||
+      trustedRoot(input.root) !== capability.root
+    ) {
+      return false;
+    }
     const diagnostic = v10SemanticQualityDiagnosticSchema.parse(
       input.diagnostic,
     );
+    if (JSON.stringify(diagnostic) !== JSON.stringify(capability.diagnostic)) {
+      return false;
+    }
+    await verifyReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(
+      {
+        root: input.root,
+        snapshot: capability.snapshot,
+      },
+    );
     const seal = {
       schemaVersion: 'phase-6.9.5-review-planner-v10-success-commit-v1',
-      evidenceLeaf,
+      evidenceLeaf: capability.leafName,
       diagnosticSha256: sha256(JSON.stringify(diagnostic)),
-      historicalTreeHash: input.reservation.historicalSnapshot.treeHash,
+      historicalTreeHash: capability.snapshot.treeHash,
     };
-    await writeFile(
-      resolveInsideRoot(
-        root,
-        `${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory}/${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.successCommitLeaf}`,
-      ),
+    capability.directory.createExclusiveDurableFile(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.successCommitLeaf,
       JSON.stringify(seal),
-      { flag: 'wx' },
     );
+    closeCapability(capability);
     return true;
   } catch {
+    if (capability) closeCapability(capability);
     return false;
   }
 }
@@ -515,15 +547,36 @@ function isV10ConsumedMarker(bytes: Buffer) {
   ).test(bytes.toString('utf8'));
 }
 
-function writeEmptyStage(root: string, stage: string) {
-  return writeFile(
-    resolveInsideRoot(
-      trustedRoot(root),
-      `${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory}/${stage}`,
-    ),
-    '',
-    { flag: 'wx' },
-  );
+function createStage(capability: V10ReservationCapability, index: number) {
+  if (
+    capability.closed ||
+    capability.stageIndex + 1 !== index ||
+    index < 0 ||
+    index >= REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES.length
+  ) {
+    return false;
+  }
+  try {
+    const stage =
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES[index];
+    if (!stage) return false;
+    capability.directory.createExclusiveDurableFile(stage, '');
+    capability.stageIndex = index;
+    return true;
+  } catch {
+    closeCapability(capability);
+    return false;
+  }
+}
+
+function closeCapability(capability: V10ReservationCapability) {
+  if (capability.closed) return;
+  capability.closed = true;
+  try {
+    capability.directory.close();
+  } catch {
+    // The capability is terminal even if native cleanup reports a close failure.
+  }
 }
 
 function isSnapshot(
