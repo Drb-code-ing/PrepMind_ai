@@ -1,11 +1,25 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 import { createHash } from 'node:crypto';
+import {
+  mkdtemp,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
 import { createDefaultReviewPlannerV8ProductAcceptanceComposition } from './review-planner-v8-product-acceptance-composition';
+import { createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter } from './review-planner-v11-product-acceptance-execution';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 } from './review-planner-product-acceptance-profile';
 import {
   runReviewPlannerV8ProductAcceptance,
@@ -222,6 +236,219 @@ describe('Review Planner V8 product acceptance runner', () => {
       'planner_browser_slot_record',
     ]);
     expect(diagnostics.publishFailure).not.toHaveBeenCalled();
+  });
+
+  it('serializes the four runner slots into the isolated V11 success ledger after exact cleanup', async () => {
+    const fixture = createFixture();
+    const v11 = createV11RunnerLedgerFixture();
+    const legacyRoots = await createLegacyProductAcceptanceRootSnapshot();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(() => v11.recordFailure()),
+    };
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      ledger: createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+        environment: 'branch',
+        attemptSha256: 'a'.repeat(64),
+        ledger: v11.ledger,
+        manifest: v11RunnerManifest(),
+      }),
+      diagnostics,
+    });
+
+    try {
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).resolves.toMatchObject({ environment: 'branch' });
+
+      expect(v11.slotResults).toHaveLength(4);
+      expect(v11.slotResults.map((record) => record.slot)).toEqual([
+        'review-api',
+        'review-browser',
+        'planner-api',
+        'planner-browser',
+      ]);
+      expect(
+        v11.slotResults.every((record) =>
+          record.schemaVersion.includes('-v11-'),
+        ),
+      ).toBe(true);
+      expect(v11.success).toMatchObject({
+        schemaVersion: expect.stringContaining('-v11-'),
+      });
+      await legacyRoots.expectUnchanged();
+      expect(v11.order.indexOf('cleanup')).toBeLessThan(
+        v11.order.indexOf('acceptance'),
+      );
+      expect(v11.order.indexOf('acceptance')).toBeLessThan(
+        v11.order.indexOf('success'),
+      );
+      expect(diagnostics.publishFailure).not.toHaveBeenCalled();
+    } finally {
+      await legacyRoots.dispose();
+    }
+  });
+
+  it('publishes exactly one V11 failure without a V11 success when the runner fails', async () => {
+    const fixture = createFixture();
+    const v11 = createV11RunnerLedgerFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(() => v11.recordFailure()),
+    };
+    fixture.dependencies.activateComponent = jest.fn(async () => {
+      throw new Error('raw activation secret');
+    });
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      ledger: createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+        environment: 'branch',
+        attemptSha256: 'a'.repeat(64),
+        ledger: v11.ledger,
+        manifest: v11RunnerManifest(),
+      }),
+      diagnostics,
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+
+    expect(diagnostics.publishFailure).toHaveBeenCalledTimes(1);
+    expect(v11.failures).toBe(1);
+    expect(v11.success).toBeUndefined();
+    expect(v11.slotResults).toHaveLength(0);
+  });
+
+  it('publishes one V11 failure when the adapter success seal rejects asynchronously', async () => {
+    const fixture = createFixture();
+    const v11 = createV11RunnerLedgerFixture({ finalizeRejects: true });
+    const legacyRoots = await createLegacyProductAcceptanceRootSnapshot();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(() => v11.recordFailure()),
+    };
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      ledger: createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+        environment: 'branch',
+        attemptSha256: 'a'.repeat(64),
+        ledger: v11.ledger,
+        manifest: v11RunnerManifest(),
+      }),
+      diagnostics,
+    });
+
+    try {
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).rejects.toThrow('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+
+      expect(v11.order).toContain('cleanup');
+      expect(v11.order).toContain('acceptance');
+      expect(v11.order).not.toContain('success');
+      expect(v11.failures).toBe(1);
+      expect(v11.success).toBeUndefined();
+      expect(diagnostics.publishFailure).toHaveBeenCalledTimes(1);
+      await legacyRoots.expectUnchanged();
+    } finally {
+      await legacyRoots.dispose();
+    }
+  });
+
+  it('detects a new legacy V8 public-ledger leaf after a V11 adapter run', async () => {
+    const legacyRoots = await createLegacyProductAcceptanceRootSnapshot();
+
+    try {
+      await writeFile(
+        join(
+          legacyRoots.root,
+          ...REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+            'branch',
+          ),
+          '.forged-v8-leaf.json',
+        ),
+        'forged',
+        'utf8',
+      );
+
+      await expect(legacyRoots.expectUnchanged()).rejects.toThrow(
+        'V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED',
+      );
+    } finally {
+      await legacyRoots.dispose();
+    }
+  });
+
+  it.each([
+    {
+      label: 'unknown empty directory',
+      mutate: async (root: string, legacyRoot: string) => {
+        await mkdir(join(legacyRoot, '.unexpected-empty-directory'));
+      },
+    },
+    {
+      label: 'deleted legacy leaf',
+      mutate: async (_root: string, legacyRoot: string) => {
+        await rm(join(legacyRoot, 'legacy-sentinel.json'));
+      },
+    },
+    {
+      label: 'replacement legacy leaf',
+      mutate: async (_root: string, legacyRoot: string) => {
+        await writeFile(
+          join(legacyRoot, 'legacy-sentinel.json'),
+          'replacement',
+          'utf8',
+        );
+      },
+    },
+    {
+      label: 'unsupported reparse entry',
+      mutate: async (root: string, legacyRoot: string) => {
+        const target = join(root, 'reparse-target');
+        await mkdir(target);
+        await symlink(
+          target,
+          join(legacyRoot, '.unexpected-reparse-entry'),
+          process.platform === 'win32' ? 'junction' : 'dir',
+        );
+      },
+    },
+  ])('rejects a legacy-root %s mutation', async ({ mutate }) => {
+    const legacyRoots = await createLegacyProductAcceptanceRootSnapshot();
+
+    try {
+      const legacyRoot = join(
+        legacyRoots.root,
+        ...REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+          'branch',
+        ),
+      );
+      await mutate(legacyRoots.root, legacyRoot);
+
+      await expect(legacyRoots.expectUnchanged()).rejects.toThrow(
+        'V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED',
+      );
+    } finally {
+      await legacyRoots.dispose();
+    }
+  });
+
+  it('removes the temporary root when legacy snapshot initialization fails', async () => {
+    let createdRoot = '';
+
+    await expect(
+      createLegacyProductAcceptanceRootSnapshot({
+        onRootCreatedForTest(root) {
+          createdRoot = root;
+          throw new Error('forced initialization failure');
+        },
+      }),
+    ).rejects.toThrow('forced initialization failure');
+
+    await expect(lstat(createdRoot)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it.each([
@@ -1293,6 +1520,208 @@ function createFixture(
   };
 }
 
+function createV11RunnerLedgerFixture(
+  options: Readonly<{ finalizeRejects?: boolean }> = {},
+) {
+  const order: string[] = [];
+  const slotResults: Array<Record<string, unknown>> = [];
+  const defaultOff: Array<Record<string, unknown>> = [];
+  let ownerIsolation: Record<string, unknown> | undefined;
+  let cleanup: Record<string, unknown> | undefined;
+  let acceptance: Record<string, unknown> | undefined;
+  let success: Record<string, unknown> | undefined;
+  let failures = 0;
+
+  const ledger = {
+    writeExecutionManifest: jest.fn(async () => undefined),
+    writeManifest: jest.fn(() => undefined),
+    claimSlot: jest.fn((slot: string) => order.push(`claim:${slot}`)),
+    recordSlotResult: jest.fn((value: Record<string, unknown>) => {
+      slotResults.push(value);
+      order.push(`slot:${String(value.slot)}`);
+    }),
+    recordDefaultOff: jest.fn((value: Record<string, unknown>) => {
+      defaultOff.push(value);
+      order.push(`default-off:${String(value.component)}`);
+    }),
+    recordOwnerIsolation: jest.fn((value: Record<string, unknown>) => {
+      ownerIsolation = value;
+      order.push('owner-isolation');
+    }),
+    recordCleanup: jest.fn((value: Record<string, unknown>) => {
+      cleanup = value;
+      order.push('cleanup');
+    }),
+    recordAcceptance: jest.fn((value: Record<string, unknown>) => {
+      acceptance = value;
+      order.push('acceptance');
+    }),
+    finalizeSuccess: jest.fn(async () => {
+      if (options.finalizeRejects) {
+        throw new Error('raw finalization secret');
+      }
+      success = {
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-success-v1',
+      };
+      order.push('success');
+    }),
+    recordFailure: jest.fn(() => undefined),
+    close: jest.fn(),
+  };
+
+  return {
+    ledger: ledger as never,
+    order,
+    slotResults,
+    defaultOff,
+    get ownerIsolation() {
+      return ownerIsolation;
+    },
+    get cleanup() {
+      return cleanup;
+    },
+    get acceptance() {
+      return acceptance;
+    },
+    get success() {
+      return success;
+    },
+    get failures() {
+      return failures;
+    },
+    recordFailure() {
+      failures += 1;
+    },
+  };
+}
+
+async function createLegacyProductAcceptanceRootSnapshot(
+  options: Readonly<{
+    onRootCreatedForTest?(root: string): void;
+  }> = {},
+) {
+  const root = await mkdtemp(join(tmpdir(), 'prepmind-v11-legacy-'));
+  try {
+    options.onRootCreatedForTest?.(root);
+    const roots = [] as Array<
+      Readonly<{
+        directory: string;
+        snapshot: readonly LegacyProductAcceptanceRootEntry[];
+      }>
+    >;
+    for (const profile of [
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+      REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+    ]) {
+      const directory = join(root, ...profile.publicLedgerSegments('branch'));
+      const leaf = join(directory, 'legacy-sentinel.json');
+      const contents = `${profile.schemas.manifest}\n`;
+      await mkdir(directory, { recursive: true });
+      await writeFile(leaf, contents, 'utf8');
+      roots.push(
+        Object.freeze({
+          directory,
+          snapshot: await snapshotLegacyProductAcceptanceRoot(directory),
+        }),
+      );
+    }
+    return Object.freeze({
+      root,
+      async expectUnchanged() {
+        try {
+          const current = await Promise.all(
+            roots.map(({ directory }) =>
+              snapshotLegacyProductAcceptanceRoot(directory),
+            ),
+          );
+          if (
+            JSON.stringify(current) !==
+            JSON.stringify(roots.map(({ snapshot }) => snapshot))
+          ) {
+            throw new Error('V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED');
+          }
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED'
+          ) {
+            throw error;
+          }
+          throw new Error('V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED');
+        }
+      },
+      async dispose() {
+        await rm(root, { recursive: true, force: true });
+      },
+    });
+  } catch (error) {
+    await rm(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+type LegacyProductAcceptanceRootEntry = Readonly<
+  | { path: string; type: 'directory' }
+  | { path: string; type: 'file'; sha256: string }
+>;
+
+async function snapshotLegacyProductAcceptanceRoot(
+  directory: string,
+  relativePath = '',
+): Promise<readonly LegacyProductAcceptanceRootEntry[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const snapshots = await Promise.all(
+    entries
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map(async (entry) => {
+        const nextRelative = relativePath
+          ? `${relativePath}/${entry.name}`
+          : entry.name;
+        const absolute = join(directory, entry.name);
+        const metadata = await lstat(absolute);
+        if (entry.isSymbolicLink() || metadata.isSymbolicLink()) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED');
+        }
+        if (entry.isDirectory() && metadata.isDirectory()) {
+          return [
+            Object.freeze({
+              path: nextRelative,
+              type: 'directory' as const,
+            }),
+            ...(await snapshotLegacyProductAcceptanceRoot(
+              absolute,
+              nextRelative,
+            )),
+          ];
+        }
+        if (entry.isFile() && metadata.isFile()) {
+          return [
+            Object.freeze({
+              path: nextRelative,
+              type: 'file' as const,
+              sha256: sha(await readFile(absolute)),
+            }),
+          ];
+        }
+        throw new Error('V11_PRODUCT_ACCEPTANCE_LEGACY_ROOT_CHANGED');
+      }),
+  );
+  return Object.freeze(snapshots.flat());
+}
+
+function v11RunnerManifest() {
+  return {
+    schemaVersion: 'phase-6.9.5-v11-product-acceptance-manifest-v1',
+    environment: 'branch' as const,
+    attemptSha256: 'a'.repeat(64),
+    commitSha: 'b'.repeat(40),
+    provider: 'deepseek' as const,
+    model: 'deepseek-v4-pro' as const,
+    accountSha256: { review: 'c'.repeat(64), planner: 'd'.repeat(64) },
+    fixtureSha256: { review: 'e'.repeat(64), planner: 'f'.repeat(64) },
+  };
+}
+
 type MutableDependencies = {
   -readonly [Key in keyof ReviewPlannerV8ProductAcceptanceRunnerDependencies]: jest.MockedFunction<
     ReviewPlannerV8ProductAcceptanceRunnerDependencies[Key]
@@ -1352,7 +1781,7 @@ function browserResult(
 ) {
   return {
     ...requestResult(component, 'browser'),
-    screenshot: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1]),
+    screenshot: validPngScreenshot(),
     receipt: {
       headed: true,
       contextClosed: true,
@@ -1489,6 +1918,15 @@ function cleanupReceipt() {
     browserProfiles: 0 as const,
     capabilities: 0 as const,
   };
+}
+
+function validPngScreenshot() {
+  return new Uint8Array(
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  );
 }
 
 function exactRequest() {

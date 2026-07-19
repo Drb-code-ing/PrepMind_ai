@@ -1,4 +1,7 @@
+import { createHash } from 'node:crypto';
+
 import {
+  createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter,
   parseReviewPlannerV11ProductAcceptanceAggregate,
   parseReviewPlannerV11ProductAcceptanceExecutionManifest,
   parseReviewPlannerV11ProductAcceptanceManifest,
@@ -131,6 +134,84 @@ describe('Review Planner V11 product-acceptance execution contracts', () => {
     ).toThrow('V11_PRODUCT_ACCEPTANCE_EXECUTION_RECORD_INVALID');
   });
 
+  it('keeps screenshot bytes inside the runner adapter and writes only the V11 screenshot hash', () => {
+    const slotWrites: unknown[] = [];
+    const ledger = {
+      claimSlot: jest.fn(),
+      recordSlotResult: jest.fn((value: unknown) => slotWrites.push(value)),
+      recordDefaultOff: jest.fn(),
+      recordOwnerIsolation: jest.fn(),
+      recordCleanup: jest.fn(),
+      recordAcceptance: jest.fn(),
+      finalizeSuccess: jest.fn(() => Promise.resolve()),
+    };
+    const adapter = createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+      environment: 'branch',
+      attemptSha256: HASH_A,
+      ledger: ledger as never,
+      manifest,
+    });
+    const screenshot = validPng();
+    const screenshotSha256 = createHash('sha256')
+      .update(screenshot)
+      .digest('hex');
+
+    adapter.claimSlot('review-api');
+    adapter.recordSlotResult(v8RunnerSlotRecord('review-api'));
+    adapter.claimSlot('review-browser');
+    adapter.recordScreenshot('review', screenshot);
+    adapter.recordSlotResult(
+      v8RunnerSlotRecord('review-browser', { screenshotSha256 }),
+    );
+
+    expect(slotWrites).toHaveLength(2);
+    expect(slotWrites[1]).toMatchObject({
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-slot-result-v1',
+      slot: 'review-browser',
+      screenshotSha256,
+    });
+    expect(JSON.stringify(slotWrites)).not.toContain(
+      Buffer.from(screenshot).toString('base64'),
+    );
+  });
+
+  it.each([
+    ['a malformed image', new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+    ['an oversized image', new Uint8Array(20 * 1024 * 1024 + 1)],
+  ])('rejects %s before a V11 screenshot hash is recorded', (_label, image) => {
+    const adapter = createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+      environment: 'branch',
+      attemptSha256: HASH_A,
+      ledger: v11RunnerLedgerForTest() as never,
+      manifest,
+    });
+
+    expect(() => adapter.recordScreenshot('review', image)).toThrow(
+      'V11_PRODUCT_ACCEPTANCE_RUNNER_SCREENSHOT_INVALID',
+    );
+  });
+
+  it('rejects a V8 runner trace whose step order does not match its component', () => {
+    const adapter = createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+      environment: 'branch',
+      attemptSha256: HASH_A,
+      ledger: v11RunnerLedgerForTest() as never,
+      manifest,
+    });
+    const record = v8RunnerSlotRecord('review-api');
+    record.steps[1] = {
+      name: 'planner_candidate',
+      attempted: true,
+      disposition: 'candidate_applied',
+      provenance: 'live_candidate',
+    };
+
+    adapter.claimSlot('review-api');
+    expect(() => adapter.recordSlotResult(record)).toThrow(
+      'V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID',
+    );
+  });
+
   it('allows only aggregate usage and rejects all other sensitive execution material', () => {
     expect(
       parseReviewPlannerV11ProductAcceptanceAggregate({
@@ -214,3 +295,70 @@ describe('Review Planner V11 product-acceptance execution contracts', () => {
     },
   );
 });
+
+function v8RunnerSlotRecord(
+  slot: 'review-api' | 'review-browser',
+  extra: Readonly<{ screenshotSha256?: string }> = {},
+) {
+  return {
+    schemaVersion: 'phase-6.9.5-v8-product-acceptance-slot-result-v1',
+    slot,
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
+    usage: { inputTokens: 1, outputTokens: 1 },
+    durationMs: 1,
+    pricingKnown: false,
+    costEstimateUsd: 0,
+    steps: [
+      {
+        name: 'deterministic_review',
+        attempted: false,
+        disposition: 'not_eligible',
+        provenance: 'local_deterministic',
+      },
+      {
+        name: 'review_candidate',
+        attempted: true,
+        disposition: 'candidate_applied',
+        provenance: 'live_candidate',
+      },
+      {
+        name: 'deterministic_planner',
+        attempted: false,
+        disposition: 'not_eligible',
+        provenance: 'local_deterministic',
+      },
+      {
+        name: 'planner_candidate',
+        attempted: false,
+        disposition: 'not_eligible',
+        provenance: 'local_deterministic',
+      },
+    ],
+    disposition: 'candidate_applied',
+    provenance: 'live_candidate',
+    traceIdSha256: HASH_C,
+    ...extra,
+  };
+}
+
+function v11RunnerLedgerForTest() {
+  return {
+    claimSlot: jest.fn(),
+    recordSlotResult: jest.fn(),
+    recordDefaultOff: jest.fn(),
+    recordOwnerIsolation: jest.fn(),
+    recordCleanup: jest.fn(),
+    recordAcceptance: jest.fn(),
+    finalizeSuccess: jest.fn(() => Promise.resolve()),
+  };
+}
+
+function validPng() {
+  return new Uint8Array(
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  );
+}

@@ -21,18 +21,22 @@ import {
 type Component = 'review' | 'planner';
 type RequestSlot = 'api' | 'browser';
 type LedgerSlot = `${Component}-${RequestSlot}`;
-type RunnerLedgerPort = Readonly<
-  Pick<
-    ReviewPlannerV8ProductAcceptanceLedger,
-    | 'environment'
-    | 'claimSlot'
-    | 'recordSlotResult'
-    | 'recordDefaultOff'
-    | 'recordScreenshot'
-    | 'recordOwnerIsolation'
-    | 'recordCleanup'
-    | 'finalizeSuccess'
-  >
+export type ReviewPlannerV8ProductAcceptanceRunnerLedgerPort = Readonly<
+  Omit<
+    Pick<
+      ReviewPlannerV8ProductAcceptanceLedger,
+      | 'environment'
+      | 'claimSlot'
+      | 'recordSlotResult'
+      | 'recordDefaultOff'
+      | 'recordScreenshot'
+      | 'recordOwnerIsolation'
+      | 'recordCleanup'
+    >,
+    'finalizeSuccess'
+  > & {
+    finalizeSuccess(): void | Promise<void>;
+  }
 >;
 
 const COMPONENTS = ['review', 'planner'] as const;
@@ -208,7 +212,7 @@ type SafeSnapshot = Readonly<{
   capabilityHandle: CapabilityHandle;
   webOrigin: typeof EXACT_WEB_ORIGIN;
   apiOrigin: typeof EXACT_API_ORIGIN;
-  ledger: RunnerLedgerPort;
+  ledger: ReviewPlannerV8ProductAcceptanceRunnerLedgerPort;
   dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
   diagnostics: ReviewPlannerV11ProductAcceptanceDiagnosticsPort | null;
 }>;
@@ -319,7 +323,7 @@ export async function runReviewPlannerV8ProductAcceptance(
   }
   try {
     snapshot.ledger.recordCleanup(cleanupReceipt);
-    snapshot.ledger.finalizeSuccess();
+    await snapshot.ledger.finalizeSuccess();
   } catch (error) {
     try {
       publishV11Failure(snapshot, failurePublication);
@@ -939,7 +943,9 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
 }
 
 /* eslint-disable @typescript-eslint/unbound-method -- methods are read once, then invoked with their original receiver */
-function snapshotLedgerPort(value: unknown): RunnerLedgerPort {
+function snapshotLedgerPort(
+  value: unknown,
+): ReviewPlannerV8ProductAcceptanceRunnerLedgerPort {
   if (!value || typeof value !== 'object') throw new Error();
   const source = value as ReviewPlannerV8ProductAcceptanceLedger;
   const environment = source.environment;

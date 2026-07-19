@@ -2,17 +2,24 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { calculateReviewPlannerV8ProductAcceptanceCost } from './review-planner-v8-product-acceptance-evidence';
+import type { ReviewPlannerV11ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
 import {
   assertReviewPlannerV11ProductAcceptanceOwner,
   readReviewPlannerV11ProductAcceptanceAttemptBinding,
+  reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   type ReviewPlannerV11ProductAcceptanceOwner,
 } from './review-planner-v8-product-acceptance-recovery';
+import type { ReviewPlannerV8ProductAcceptanceRunnerLedgerPort } from './review-planner-v8-product-acceptance-runner';
 import {
   openWindowsNoReparseExistingFrozenDirectory,
   openWindowsNoReparseFrozenDirectory,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
-import { REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+} from './review-planner-product-acceptance-profile';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
@@ -28,6 +35,8 @@ const PRIVATE_EXECUTION_MANIFEST_LEAF = 'execution-manifest.json';
 const PRIVATE_ATTEMPT_BINDING_LEAF = 'attempt-binding.json';
 const PRIVATE_OWNER_LOCK_LEAF = 'owner.lock';
 const PRIVATE_CHECKPOINT_LEAF = /^checkpoint-\d{3}-[a-z_]+\.json$/;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const MAX_SCREENSHOT_BYTES = 20 * 1024 * 1024;
 
 export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS = [
   'review-api',
@@ -38,6 +47,518 @@ export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS = [
 
 export type ReviewPlannerV11ProductAcceptanceExecutionSlot =
   (typeof REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS)[number];
+
+type V11RunnerComponent = 'review' | 'planner';
+
+const v11RunnerSafeHashSchema = z.string().regex(SHA256);
+
+const v8RunnerTraceStepSchema = z
+  .object({
+    name: z.enum([
+      'deterministic_review',
+      'review_candidate',
+      'deterministic_planner',
+      'planner_candidate',
+    ]),
+    attempted: z.boolean(),
+    disposition: z.enum(['candidate_applied', 'not_eligible']),
+    provenance: z.enum(['live_candidate', 'local_deterministic']),
+  })
+  .strict();
+
+const v8RunnerSlotRecordSchema = z
+  .object({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.slotResult,
+    ),
+    slot: z.enum([
+      'review-api',
+      'review-browser',
+      'planner-api',
+      'planner-browser',
+    ]),
+    provider: z.literal('deepseek'),
+    model: z.literal('deepseek-v4-pro'),
+    usage: z
+      .object({
+        inputTokens: z.number().int().positive().max(1_950),
+        outputTokens: z.number().int().positive().max(440),
+      })
+      .strict(),
+    durationMs: z.number().int().positive().max(60_000),
+    pricingKnown: z.literal(false),
+    costEstimateUsd: z.literal(0),
+    steps: z.array(v8RunnerTraceStepSchema).length(4),
+    disposition: z.literal('candidate_applied'),
+    provenance: z.literal('live_candidate'),
+    traceIdSha256: v11RunnerSafeHashSchema,
+    screenshotSha256: v11RunnerSafeHashSchema.optional(),
+  })
+  .strict();
+
+const v8RunnerOwnerIsolationSchema = z
+  .object({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.ownerIsolation,
+    ),
+    reviewFactsBeforeSha256: v11RunnerSafeHashSchema,
+    reviewFactsAfterSha256: v11RunnerSafeHashSchema,
+    plannerFactsBeforeSha256: v11RunnerSafeHashSchema,
+    plannerFactsAfterSha256: v11RunnerSafeHashSchema,
+    traceIdSha256: z.array(v11RunnerSafeHashSchema).length(4),
+    crossAccountInvisible: z.literal(true),
+    businessWrites: z.literal(0),
+  })
+  .strict();
+
+const v8RunnerCleanupSchema = z
+  .object({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
+    ),
+    syntheticAccounts: z.literal(0),
+    fixtures: z.literal(0),
+    traces: z.literal(0),
+    browserProfiles: z.literal(0),
+    capabilities: z.literal(0),
+  })
+  .strict();
+
+/**
+ * Adapts the deterministic V8 runner mechanics to the V11-only durable ledger.
+ * It never writes V8/V10 records or screenshot bytes: only the V11 records and
+ * screenshot hashes accepted by the V11 ledger cross this boundary.
+ */
+export function createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter(
+  input: Readonly<{
+    environment: 'branch' | 'main';
+    attemptSha256: string;
+    ledger: ReviewPlannerV11ProductAcceptanceLedger;
+    manifest: unknown;
+  }>,
+): ReviewPlannerV8ProductAcceptanceRunnerLedgerPort {
+  const snapshot = snapshotV11RunnerAdapterInput(input);
+  const screenshots = new Map<V11RunnerComponent, string>();
+  const results = new Map<
+    ReviewPlannerV11ProductAcceptanceExecutionSlot,
+    z.infer<typeof v8RunnerSlotRecordSchema>
+  >();
+  const defaultOff = new Map<
+    V11RunnerComponent,
+    ReviewPlannerV11ProductAcceptanceDefaultOffRecord
+  >();
+  let cleanupRecorded = false;
+  let finalized = false;
+  let defaultOffFlushed = false;
+
+  const flushDefaultOff = () => {
+    if (defaultOffFlushed) return;
+    for (const component of ['review', 'planner'] as const) {
+      const receipt = defaultOff.get(component);
+      if (receipt === undefined) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+      }
+      snapshot.recordDefaultOff(receipt);
+    }
+    defaultOffFlushed = true;
+  };
+
+  return Object.freeze({
+    environment: () => snapshot.environment,
+    claimSlot(slot) {
+      assertV11RunnerSlot(slot);
+      snapshot.claimSlot(slot);
+    },
+    recordSlotResult(value) {
+      const record = parseV8RunnerSlotRecord(value);
+      const component = componentForV11RunnerSlot(record.slot);
+      const browser = record.slot.endsWith('-browser');
+      const screenshotSha256 = browser ? screenshots.get(component) : undefined;
+      if (
+        (browser &&
+          (screenshotSha256 === undefined ||
+            record.screenshotSha256 !== screenshotSha256)) ||
+        (!browser && record.screenshotSha256 !== undefined) ||
+        results.has(record.slot)
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+      }
+      const v11Record = {
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.slotResult,
+        slot: record.slot,
+        provider: record.provider,
+        model: record.model,
+        observation: 'candidate_applied' as const,
+        provenance: 'live_candidate' as const,
+        durationMs: record.durationMs,
+        traceSha256: record.traceIdSha256,
+        ...(browser ? { screenshotSha256 } : {}),
+      };
+      snapshot.recordSlotResult(v11Record);
+      results.set(record.slot, record);
+    },
+    recordDefaultOff(value) {
+      const record = parseV8RunnerDefaultOff(value);
+      const component = record.component;
+      if (component === 'recovery' || defaultOff.has(component)) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+      }
+      defaultOff.set(component, {
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.defaultOff,
+        component,
+        containerSha256: record.container.newIdSha256,
+        gates: {
+          liveCallsEnabled: false,
+          reviewAgentModelEnabled: false,
+          plannerAgentModelEnabled: false,
+        },
+        providerInvocations: 0,
+      });
+    },
+    recordScreenshot(component, contents) {
+      if (
+        (component !== 'review' && component !== 'planner') ||
+        !(contents instanceof Uint8Array) ||
+        !isReasonableV11RunnerPng(contents) ||
+        screenshots.has(component)
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_SCREENSHOT_INVALID');
+      }
+      screenshots.set(component, sha256(contents));
+    },
+    recordOwnerIsolation(value) {
+      const record = parseV8RunnerOwnerIsolation(value);
+      flushDefaultOff();
+      snapshot.recordOwnerIsolation({
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.ownerIsolation,
+        accountSha256: snapshot.accountSha256,
+        factsSha256: {
+          reviewBefore: record.reviewFactsBeforeSha256,
+          reviewAfter: record.reviewFactsAfterSha256,
+          plannerBefore: record.plannerFactsBeforeSha256,
+          plannerAfter: record.plannerFactsAfterSha256,
+        },
+        traceSha256: [...record.traceIdSha256],
+        crossAccountInvisible: true,
+        businessWrites: 0,
+      });
+    },
+    recordCleanup(value) {
+      const record = parseV8RunnerCleanup(value);
+      snapshot.recordCleanup({
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
+        syntheticAccounts: record.syntheticAccounts,
+        fixtures: record.fixtures,
+        traces: record.traces,
+        browserProfiles: record.browserProfiles,
+        capabilities: record.capabilities,
+      });
+      cleanupRecorded = true;
+    },
+    async finalizeSuccess() {
+      if (finalized || !cleanupRecorded) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_FINALIZE_INVALID');
+      }
+      const slotRecords =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.map((slot) =>
+          results.get(slot),
+        );
+      if (
+        slotRecords.some((record) => record === undefined) ||
+        defaultOff.size !== 2 ||
+        screenshots.size !== 2
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_FINALIZE_INVALID');
+      }
+      const completeRecords = slotRecords as z.infer<
+        typeof v8RunnerSlotRecordSchema
+      >[];
+      const inputTokens = completeRecords.reduce(
+        (total, record) => total + record.usage.inputTokens,
+        0,
+      );
+      const outputTokens = completeRecords.reduce(
+        (total, record) => total + record.usage.outputTokens,
+        0,
+      );
+      const cost = calculateReviewPlannerV8ProductAcceptanceCost(
+        inputTokens,
+        outputTokens,
+      );
+      if (!cost.withinHardCap) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_BUDGET_INVALID');
+      }
+      const plan = screenshots.get('review');
+      const today = screenshots.get('planner');
+      if (plan === undefined || today === undefined) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_FINALIZE_INVALID');
+      }
+      snapshot.recordAcceptance({
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.acceptance,
+        environment: snapshot.environment,
+        attemptSha256: snapshot.attemptSha256,
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
+        observation: 'candidate_applied',
+        aggregate: {
+          requests: 4,
+          durationMs: completeRecords.reduce(
+            (total, record) => total + record.durationMs,
+            0,
+          ),
+          usage: { input: inputTokens, output: outputTokens },
+          costCny: cost.costCny,
+        },
+        screenshotSha256: { plan, today },
+        cleanup: true,
+      });
+      await snapshot.finalizeSuccess();
+      finalized = true;
+    },
+  });
+}
+
+function snapshotV11RunnerAdapterInput(input: unknown) {
+  try {
+    if (!input || typeof input !== 'object') throw new Error();
+    const source = input as Record<string, unknown>;
+    const environment = source.environment;
+    const attemptSha256 = source.attemptSha256;
+    const ledger = source.ledger as ReviewPlannerV11ProductAcceptanceLedger;
+    if (
+      (environment !== 'branch' && environment !== 'main') ||
+      typeof attemptSha256 !== 'string' ||
+      !SHA256.test(attemptSha256) ||
+      !ledger ||
+      typeof ledger !== 'object'
+    ) {
+      throw new Error();
+    }
+    const claimSlot = ledger.claimSlot;
+    const recordSlotResult = ledger.recordSlotResult;
+    const recordDefaultOff = ledger.recordDefaultOff;
+    const recordOwnerIsolation = ledger.recordOwnerIsolation;
+    const recordCleanup = ledger.recordCleanup;
+    const recordAcceptance = ledger.recordAcceptance;
+    const finalizeSuccess = ledger.finalizeSuccess;
+    if (
+      typeof claimSlot !== 'function' ||
+      typeof recordSlotResult !== 'function' ||
+      typeof recordDefaultOff !== 'function' ||
+      typeof recordOwnerIsolation !== 'function' ||
+      typeof recordCleanup !== 'function' ||
+      typeof recordAcceptance !== 'function' ||
+      typeof finalizeSuccess !== 'function'
+    ) {
+      throw new Error();
+    }
+    const manifest = source.manifest;
+    const parsedManifest =
+      parseReviewPlannerV11ProductAcceptanceManifest(manifest);
+    if (
+      parsedManifest.environment !== environment ||
+      parsedManifest.attemptSha256 !== attemptSha256
+    ) {
+      throw new Error();
+    }
+    return Object.freeze({
+      environment,
+      attemptSha256,
+      accountSha256: Object.freeze({ ...parsedManifest.accountSha256 }),
+      claimSlot: (slot: ReviewPlannerV11ProductAcceptanceExecutionSlot) =>
+        claimSlot.call(ledger, slot),
+      recordSlotResult: (value: unknown) =>
+        recordSlotResult.call(ledger, value),
+      recordDefaultOff: (value: unknown) =>
+        recordDefaultOff.call(ledger, value),
+      recordOwnerIsolation: (value: unknown) =>
+        recordOwnerIsolation.call(ledger, value),
+      recordCleanup: (value: unknown) => recordCleanup.call(ledger, value),
+      recordAcceptance: (value: unknown) =>
+        recordAcceptance.call(ledger, value),
+      finalizeSuccess: () => Promise.resolve(finalizeSuccess.call(ledger)),
+    });
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_INPUT_INVALID');
+  }
+}
+
+function assertV11RunnerSlot(
+  slot: string,
+): asserts slot is ReviewPlannerV11ProductAcceptanceExecutionSlot {
+  if (
+    !(
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS as readonly string[]
+    ).includes(slot)
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+  }
+}
+
+function parseV8RunnerSlotRecord(value: unknown) {
+  const parsed = v8RunnerSlotRecordSchema.safeParse(value);
+  if (
+    !parsed.success ||
+    !hasCanonicalV8RunnerTraceSteps(parsed.data.slot, parsed.data.steps)
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+  }
+  return parsed.data;
+}
+
+function parseV8RunnerDefaultOff(value: unknown) {
+  const parsed =
+    reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+  }
+  return parsed.data;
+}
+
+function parseV8RunnerOwnerIsolation(value: unknown) {
+  const parsed = v8RunnerOwnerIsolationSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+  }
+  return parsed.data;
+}
+
+function parseV8RunnerCleanup(value: unknown) {
+  const parsed = v8RunnerCleanupSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RUNNER_RECORD_INVALID');
+  }
+  return parsed.data;
+}
+
+function componentForV11RunnerSlot(
+  slot: ReviewPlannerV11ProductAcceptanceExecutionSlot,
+): V11RunnerComponent {
+  return slot.startsWith('review-') ? 'review' : 'planner';
+}
+
+function hasCanonicalV8RunnerTraceSteps(
+  slot: ReviewPlannerV11ProductAcceptanceExecutionSlot,
+  steps: readonly z.infer<typeof v8RunnerTraceStepSchema>[],
+) {
+  const component = componentForV11RunnerSlot(slot);
+  const expected = [
+    ['deterministic_review', false],
+    ['review_candidate', component === 'review'],
+    ['deterministic_planner', false],
+    ['planner_candidate', component === 'planner'],
+  ] as const;
+  return steps.every(
+    (step, index) =>
+      step.name === expected[index]?.[0] &&
+      step.attempted === expected[index]?.[1] &&
+      step.disposition ===
+        (step.attempted ? 'candidate_applied' : 'not_eligible') &&
+      step.provenance ===
+        (step.attempted ? 'live_candidate' : 'local_deterministic'),
+  );
+}
+
+function isReasonableV11RunnerPng(bytes: Uint8Array) {
+  if (
+    bytes.byteLength < 45 ||
+    bytes.byteLength > MAX_SCREENSHOT_BYTES ||
+    !Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+      .subarray(0, PNG_SIGNATURE.byteLength)
+      .equals(PNG_SIGNATURE)
+  ) {
+    return false;
+  }
+  const png = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = PNG_SIGNATURE.byteLength;
+  let chunkIndex = 0;
+  let seenIdat = false;
+  let idatEnded = false;
+  while (offset + 12 <= png.byteLength) {
+    const dataLength = png.readUInt32BE(offset);
+    const chunkEnd = offset + 12 + dataLength;
+    if (!Number.isSafeInteger(chunkEnd) || chunkEnd > png.byteLength) {
+      return false;
+    }
+    const type = png.subarray(offset + 4, offset + 8).toString('ascii');
+    if (!/^[A-Za-z]{4}$/.test(type)) return false;
+    const data = png.subarray(offset + 8, offset + 8 + dataLength);
+    const expectedCrc = png.readUInt32BE(offset + 8 + dataLength);
+    if (
+      crc32(Buffer.concat([png.subarray(offset + 4, offset + 8), data])) !==
+      expectedCrc
+    ) {
+      return false;
+    }
+    if (chunkIndex === 0) {
+      if (type !== 'IHDR' || dataLength !== 13) return false;
+      const width = data.readUInt32BE(0);
+      const height = data.readUInt32BE(4);
+      const bitDepth = data[8];
+      const colorType = data[9];
+      const compression = data[10];
+      const filter = data[11];
+      const interlace = data[12];
+      if (
+        width < 1 ||
+        height < 1 ||
+        width > 20_000 ||
+        height > 20_000 ||
+        !isValidPngBitDepth(bitDepth, colorType) ||
+        compression !== 0 ||
+        filter !== 0 ||
+        (interlace !== 0 && interlace !== 1)
+      ) {
+        return false;
+      }
+    } else if (type === 'IHDR') {
+      return false;
+    }
+    if (type === 'IDAT') {
+      if (idatEnded || dataLength === 0) return false;
+      seenIdat = true;
+    } else if (seenIdat && type !== 'IEND') {
+      idatEnded = true;
+    }
+    if (type === 'IEND') {
+      return seenIdat && dataLength === 0 && chunkEnd === png.byteLength;
+    }
+    offset = chunkEnd;
+    chunkIndex += 1;
+  }
+  return false;
+}
+
+function isValidPngBitDepth(
+  bitDepth: number | undefined,
+  colorType: number | undefined,
+) {
+  if (bitDepth === undefined || colorType === undefined) return false;
+  const allowed: Readonly<Record<number, readonly number[]>> = {
+    0: [1, 2, 4, 8, 16],
+    2: [8, 16],
+    3: [1, 2, 4, 8],
+    4: [8, 16],
+    6: [8, 16],
+  };
+  return allowed[colorType]?.includes(bitDepth) === true;
+}
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
 
 export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES =
   Object.freeze({
@@ -706,6 +1227,6 @@ function serialize(value: unknown) {
   return `${JSON.stringify(value)}\n`;
 }
 
-function sha256(value: string) {
+function sha256(value: string | Uint8Array) {
   return createHash('sha256').update(value).digest('hex');
 }
