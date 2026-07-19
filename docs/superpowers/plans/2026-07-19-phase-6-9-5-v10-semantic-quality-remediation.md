@@ -44,9 +44,11 @@ Commit: `fix(agent): align Review Planner model decisions`
 ### Task 2: Replace Hidden Runtime Fixture Oracles
 
 **Files:**
-- Modify: `packages/agent/src/evals/phase-6-9-review-planner-cases.ts`
-- Modify: `packages/agent/src/evals/run-phase-6-9-review-planner-paired.ts`
-- Modify: `packages/agent/tests/phase-6-9-review-planner-paired.test.ts`
+- Create: `packages/agent/src/evals/phase-6-9-review-planner-v10-cases.ts`
+- Create: `packages/agent/src/evals/run-phase-6-9-review-planner-v10-paired.ts`
+- Create: `packages/agent/src/evals/phase-6-9-review-planner-v10-contract.ts`
+- Create: `packages/agent/tests/phase-6-9-review-planner-v10-paired.test.ts`
+- Keep: `packages/agent/src/evals/phase-6-9-review-planner-cases.ts` and `run-phase-6-9-review-planner-paired.ts` as the V1--V9 historical dataset/runner contract
 
 - [ ] **Step 1: Write failing fixture-policy and non-tautological mock tests**
 
@@ -58,17 +60,17 @@ expect(report.review.runtime.qualityPasses + report.planner.runtime.qualityPasse
 
 - [ ] **Step 2: Run RED**
 
-Run: `bun --cwd packages/agent test phase-6-9-review-planner-paired.test.ts`
+Run: `bun --cwd packages/agent test phase-6-9-review-planner-v10-paired.test.ts`
 
 Expected: exports and safe lane aggregate are absent; Mock still returns fixture expected data.
 
 - [ ] **Step 3: Implement visible-policy fixtures and safe lane totals**
 
-Keep `48/26/22` coverage. Give runtime review weak points explicit priority/confidence evidence; give runtime Planner blocks an explicit overdue or normal visible reason and preserve source order outside overdue blocks. Generate expected decisions with a local policy helper. Change the Mock responder to invoke that helper. Grade only selected weak points and block ordering, while preserving strict, trace, budget, zero-call, and critical safety rules. Add bounded Review/Planner lane aggregates without case content.
+Keep `48/26/22` coverage in a new `phase-6.9-review-planner-v3` V10 dataset. Give runtime review weak points explicit priority/confidence evidence; give runtime Planner blocks an explicit overdue or normal visible reason and preserve source order outside overdue blocks. Generate expected decisions with a local policy helper. Change the V10 Mock responder to invoke that helper. Grade only selected weak points and block ordering, while preserving strict, trace, budget, zero-call, and critical safety rules. Add bounded Review/Planner lane aggregates without case content. Do not change the V2 dataset or runner used by V1--V9 historical contracts.
 
 - [ ] **Step 4: Run GREEN and commit**
 
-Run: `bun --cwd packages/agent test phase-6-9-review-planner-paired.test.ts`
+Run: `bun --cwd packages/agent test phase-6-9-review-planner-v10-paired.test.ts`
 
 Commit: `test(agent): make Review Planner quality oracle derivable`
 
