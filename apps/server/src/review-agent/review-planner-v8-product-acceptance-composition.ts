@@ -334,6 +334,10 @@ export interface ReviewPlannerV11ProductAcceptanceCompositionPorts {
     preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>;
     owner: ReviewPlannerV11ProductAcceptanceOwner;
   }): Promise<boolean>;
+  assertReservationPreconditions(input: {
+    preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+  }): Promise<boolean>;
   reserveLedger(input: {
     environment: ReviewPlannerV8ProductAcceptanceEnvironment;
     repoRoot: string;
@@ -452,6 +456,15 @@ export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
     owner = ownership.owner;
     owner.assertHeld();
     if (!(await input.ports.revalidatePreflight({ preflight, owner }))) {
+      result = Object.freeze({
+        status: 'blocked' as const,
+        stage: 'revalidate' as const,
+      });
+      return result;
+    }
+    if (
+      !(await input.ports.assertReservationPreconditions({ preflight, owner }))
+    ) {
       result = Object.freeze({
         status: 'blocked' as const,
         stage: 'revalidate' as const,
@@ -1958,6 +1971,7 @@ type ReviewPlannerV11DefaultCompositionOptions = Omit<
         chromium?(): void;
         fetch?(): void;
         terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
+        assertRootsEmpty?: typeof assertReviewPlannerV11ProductAcceptanceRootsEmpty;
       }>;
       recoverFailure?(input: {
         environment: ReviewPlannerV8ProductAcceptanceEnvironment;
@@ -2067,6 +2081,21 @@ export function createDefaultReviewPlannerV11ProductAcceptanceComposition(
         boundary?.runtime,
         owner,
       ),
+    async assertReservationPreconditions({ preflight, owner }) {
+      try {
+        const assertRootsEmpty =
+          boundary?.runtime?.assertRootsEmpty ??
+          assertReviewPlannerV11ProductAcceptanceRootsEmpty;
+        await assertRootsEmpty({
+          repoRoot: preflight.repoRoot,
+          environment: preflight.environment,
+          activeOwner: owner,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
     async reserveLedger(input) {
       const ledger =
         await reserveReviewPlannerV11ProductAcceptanceLedger(input);
@@ -2447,13 +2476,15 @@ export async function assertReviewPlannerV11ProductAcceptanceRootsEmpty(input: {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   activeOwner?: ReviewPlannerV11ProductAcceptanceOwner;
 }): Promise<void> {
+  await Promise.resolve();
+  const root = resolve(input.repoRoot);
   if (input.activeOwner) {
     assertReviewPlannerV11ProductAcceptanceOwnerSelfLock(
       input.activeOwner,
       input.environment,
+      root,
     );
   }
-  const root = resolve(input.repoRoot);
   const relativeRoots = [
     {
       kind: 'public' as const,
@@ -2477,12 +2508,10 @@ export async function assertReviewPlannerV11ProductAcceptanceRootsEmpty(input: {
     },
   ];
   for (const { kind, relativePath } of relativeRoots) {
-    if (kind === 'recovery' && input.activeOwner) continue;
     const absolutePath = resolve(root, relativePath);
     if (!existsSync(absolutePath)) continue;
-    if ((await readdir(absolutePath)).length !== 0) {
-      throw new Error('V11_PRODUCT_ACCEPTANCE_ROOT_NOT_EMPTY');
-    }
+    if (kind === 'recovery' && input.activeOwner) continue;
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ROOT_NOT_EMPTY');
   }
 }
 

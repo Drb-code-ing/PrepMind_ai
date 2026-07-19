@@ -1437,6 +1437,7 @@ describe('V11 execution-bridge composition', () => {
       'preflight',
       'owner',
       'revalidate',
+      'reservation-preconditions',
       'reserve',
       'manifest',
       'fixtures',
@@ -3071,6 +3072,10 @@ function createV11CompositionPorts(
     revalidatePreflight: jest.fn(async () => {
       order.push('revalidate');
       return options.revalidationStatus !== 'drifted';
+    }),
+    assertReservationPreconditions: jest.fn(async () => {
+      order.push('reservation-preconditions');
+      return true;
     }),
     reserveLedger: jest.fn(async () => {
       order.push('reserve');

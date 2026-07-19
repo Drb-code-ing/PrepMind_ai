@@ -45,6 +45,7 @@ import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
   acquireReviewPlannerV11ProductAcceptanceOwner,
+  type ReviewPlannerV11ProductAcceptanceOwner,
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
   openReviewPlannerV11ProductAcceptanceRecoveryJournal,
   inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
@@ -2298,28 +2299,15 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
   });
 
   it('allows only its active V11 owner lock during product revalidation', async () => {
-    await expect(
-      assertReviewPlannerV11ProductAcceptanceRootsEmpty({
-        repoRoot: root,
-        environment: 'branch',
-      }),
-    ).resolves.toBeUndefined();
-    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
-      repoRoot: root,
-      environment: 'branch',
-      role: 'product',
-    });
-    expect(acquisition.status).toBe('acquired');
-    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
-    const recoveryPath = join(
-      root,
-      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
-        'branch',
-      ),
-    );
     const publicPath = join(
       root,
       ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
         'branch',
       ),
     );
@@ -2329,6 +2317,30 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
         'branch',
       ),
     );
+    await expect(
+      assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toBeUndefined();
+    for (const path of [publicPath, recoveryPath, executionPath]) {
+      await mkdir(path, { recursive: true });
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).rejects.toThrow();
+      await rm(path, { recursive: true, force: true });
+    }
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const otherRoot = await createRoot();
 
     try {
       await expect(
@@ -2353,6 +2365,13 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
         }),
       ).rejects.toThrow();
       await unlink(join(recoveryPath, 'unexpected.txt'));
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: otherRoot,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).rejects.toThrow();
       await mkdir(publicPath, { recursive: true });
       await writeFile(join(publicPath, 'unexpected.txt'), 'unexpected\n');
       await expect(
@@ -2374,7 +2393,142 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
       ).rejects.toThrow();
     } finally {
       acquisition.owner.close();
+      await rm(otherRoot, { recursive: true, force: true });
     }
+  });
+
+  it('rejects a non-empty V11 owner lock during active-owner revalidation', async () => {
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    await mkdir(recoveryPath, { recursive: true });
+    await writeFile(join(recoveryPath, 'owner.lock'), 'unexpected\n');
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    try {
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).rejects.toThrow();
+    } finally {
+      acquisition.owner.close();
+    }
+  });
+
+  it('rechecks active V11 owner roots before reservation after a self-lock race', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    let reserveCalls = 0;
+    let manifestCalls = 0;
+    let fixtureCalls = 0;
+    let journalCalls = 0;
+    let runnerCalls = 0;
+    const preflight = {
+      status: 'ready' as const,
+      environment: 'branch' as const,
+      repoRoot: root,
+      commitSha: 'a'.repeat(40),
+      branchName: 'codex/v11-self-lock-race',
+      pairedEvidenceSha256: 'b'.repeat(64),
+      chromeExecutablePath: 'C:\\Browser\\chrome.exe',
+    };
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceComposition({
+        environment: 'branch',
+        repoRoot: root,
+        ports: {
+          preflight: () => Promise.resolve(preflight),
+          acquireOwner: () => Promise.resolve(acquisition),
+          revalidatePreflight: async ({
+            owner,
+          }: {
+            owner: ReviewPlannerV11ProductAcceptanceOwner;
+          }) => {
+            await assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+              repoRoot: root,
+              environment: 'branch',
+              activeOwner: owner,
+            });
+            await writeFile(join(recoveryPath, 'race-sibling.txt'), 'race\n');
+            return true;
+          },
+          assertReservationPreconditions: async ({
+            owner,
+          }: {
+            owner: ReviewPlannerV11ProductAcceptanceOwner;
+          }) => {
+            try {
+              await assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+                repoRoot: root,
+                environment: 'branch',
+                activeOwner: owner,
+              });
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          reserveLedger: () => {
+            reserveCalls += 1;
+            return Promise.reject(new Error('reserve must not run'));
+          },
+          writeExecutionManifest: () => {
+            manifestCalls += 1;
+            return Promise.reject(new Error('manifest must not run'));
+          },
+          createFixtures: () => {
+            fixtureCalls += 1;
+            return Promise.reject(new Error('fixtures must not run'));
+          },
+          prepareRecoveryJournal: () => {
+            journalCalls += 1;
+            return Promise.reject(new Error('journal must not run'));
+          },
+          createRunner: () => {
+            runnerCalls += 1;
+            return Promise.reject(new Error('runner must not run'));
+          },
+          recoverFailure: () =>
+            Promise.reject(new Error('recovery must not run')),
+        },
+      }),
+    ).resolves.toEqual({ status: 'blocked', stage: 'revalidate' });
+    expect({
+      reserveCalls,
+      manifestCalls,
+      fixtureCalls,
+      journalCalls,
+      runnerCalls,
+    }).toEqual({
+      reserveCalls: 0,
+      manifestCalls: 0,
+      fixtureCalls: 0,
+      journalCalls: 0,
+      runnerCalls: 0,
+    });
   });
 
   it('rejects an unbound V11 public failure write', async () => {
@@ -4011,6 +4165,100 @@ describeWindows('Review/Planner V11 default composition fake boundary', () => {
       }
     });
   }
+
+  it('blocks a recovery sibling raced after default revalidation before every product boundary', async () => {
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    const calls = {
+      reserve: 0,
+      manifest: 0,
+      fixtures: 0,
+      journal: 0,
+      runner: 0,
+    };
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(root, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: () => Promise.resolve(undefined) },
+        boundary: {
+          preflight: () =>
+            Promise.resolve({
+              status: 'ready' as const,
+              environment: 'branch' as const,
+              repoRoot: root,
+              commitSha: COMMIT_A,
+              branchName: 'codex/v11-default-race',
+              pairedEvidenceSha256: SHA_A,
+              chromeExecutablePath:
+                'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+              utcStamp: '20260720t000000z',
+            }),
+          async revalidatePreflight({
+            owner,
+          }: {
+            owner: ReviewPlannerV11ProductAcceptanceOwner;
+          }) {
+            await assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+              repoRoot: root,
+              environment: 'branch',
+              activeOwner: owner,
+            });
+            await writeFile(join(recoveryPath, 'race-sibling.txt'), 'race\n');
+            return true;
+          },
+        },
+      } as never);
+    const ports = composition.ports as unknown as {
+      reserveLedger: () => Promise<never>;
+      writeExecutionManifest: () => Promise<never>;
+      createFixtures: () => Promise<never>;
+      prepareRecoveryJournal: () => Promise<never>;
+      createRunner: () => Promise<never>;
+    };
+    ports.reserveLedger = () => {
+      calls.reserve += 1;
+      return Promise.reject(new Error('reserve must not run'));
+    };
+    ports.writeExecutionManifest = () => {
+      calls.manifest += 1;
+      return Promise.reject(new Error('manifest must not run'));
+    };
+    ports.createFixtures = () => {
+      calls.fixtures += 1;
+      return Promise.reject(new Error('fixtures must not run'));
+    };
+    ports.prepareRecoveryJournal = () => {
+      calls.journal += 1;
+      return Promise.reject(new Error('journal must not run'));
+    };
+    ports.createRunner = () => {
+      calls.runner += 1;
+      return Promise.reject(new Error('runner must not run'));
+    };
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: root,
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'revalidate' });
+      expect(calls).toEqual({
+        reserve: 0,
+        manifest: 0,
+        fixtures: 0,
+        journal: 0,
+        runner: 0,
+      });
+    } finally {
+      await composition.dispose();
+    }
+  });
 
   it('runs a V11-owned fake harness without Docker, API, browser, or provider calls', async () => {
     const originalFetch = globalThis.fetch;

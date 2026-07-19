@@ -37,6 +37,7 @@ describe('Review Planner V11 product-acceptance CLI', () => {
       })),
       acquireOwner: jest.fn(async () => ({ status: 'owner_active' as const })),
       revalidatePreflight: jest.fn(),
+      assertReservationPreconditions: jest.fn(),
       reserveLedger: jest.fn(),
       writeExecutionManifest: jest.fn(),
       createFixtures: jest.fn(),
@@ -91,6 +92,7 @@ describe('Review Planner V11 product-acceptance CLI', () => {
         owner,
       })),
       revalidatePreflight: jest.fn(async () => true),
+      assertReservationPreconditions: jest.fn(async () => true),
       reserveLedger: jest.fn(async () => ({
         ledger,
         attemptSha256: manifest.attemptSha256,
