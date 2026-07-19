@@ -2184,6 +2184,17 @@ function createV11CheckpointJournal(
           state.environment,
           ['product', 'recovery'],
         );
+        let latest:
+          | ReviewPlannerV11ProductAcceptanceCheckpointRecord
+          | undefined;
+        try {
+          latest = v11CheckpointHistory(state.directory).at(-1);
+        } catch {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+        }
+        if (!latest) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_REQUIRED');
+        }
         if (state.failureAuthority !== null) return state.failureAuthority;
         const authority: ReviewPlannerV11ProductAcceptanceFailureAuthority =
           Object.freeze({

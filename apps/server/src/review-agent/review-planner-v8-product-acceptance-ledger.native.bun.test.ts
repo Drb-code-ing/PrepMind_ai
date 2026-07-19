@@ -2452,6 +2452,23 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     }
   });
 
+  it('requires a first V11 checkpoint before issuing and sealing failure authority', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      expect(() => journal.issueFailureAuthority()).toThrow(
+        'V11_PRODUCT_ACCEPTANCE_CHECKPOINT_REQUIRED',
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      expect(() => journal.issueFailureAuthority()).not.toThrow();
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+  });
+
   it('rejects creating a V11 private journal before its public reservation exists', async () => {
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
