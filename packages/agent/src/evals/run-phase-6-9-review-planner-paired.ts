@@ -209,8 +209,8 @@ function mockDependencies(
       liveCallsEnabled: false,
       timeoutMs: PHASE_695_CASE_TIMEOUT_MS,
       mockResponder: () => fixture.lane === 'review'
-        ? { focusIndexes: fixture.expected.focusIndexes, diagnosis: fixture.expected.diagnosis }
-        : { blockOrder: fixture.expected.blockOrder, strategy: fixture.expected.strategy },
+        ? { focusIndexes: fixture.expected.focusIndexes }
+        : { blockOrder: fixture.expected.blockOrder },
     }),
     now: now ?? defaultNow,
     setTimeout: (callback, ms) => setTimeout(callback, ms),
@@ -264,7 +264,7 @@ function deriveCandidateEntry(input: {
     input.runtimeCalls,
   );
   const strictSuccess = provenance.ok && provenance.disposition === 'candidate_applied';
-  const qualityPass = strictSuccess && passesLocalRubric(input.fixture, input.value, provenance.reasonCodes);
+  const qualityPass = strictSuccess && passesLocalRubric(input.fixture, input.value);
   const diagnosticCode = strictSuccess
     ? undefined
     : provenance.diagnosticCode;
@@ -397,15 +397,14 @@ function deriveRuntimeProvenance(
 function passesLocalRubric(
   fixture: Phase695CaseFixture,
   value: unknown,
-  reasonCodes: readonly string[],
 ): boolean {
   if (fixture.lane === 'review') {
-    if (!isReviewResult(value) || !reasonCodes.includes(fixture.expected.diagnosis)) return false;
+    if (!isReviewResult(value)) return false;
     const expected = fixture.expected.focusIndexes.map((index) => fixture.deterministic.weakPoints[index]);
     return expected.length === value.weakPoints.length &&
       expected.every((point, index) => sameWeakPoint(point, value.weakPoints[index]));
   }
-  if (!isPlannerResult(value) || !reasonCodes.includes(fixture.expected.strategy)) return false;
+  if (!isPlannerResult(value)) return false;
   const expected = fixture.expected.blockOrder.map((index) => fixture.deterministic.suggestedBlocks[index]);
   return expected.length === value.suggestedBlocks.length &&
     expected.every((block, index) => samePlanBlock(block, value.suggestedBlocks[index]));

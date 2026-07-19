@@ -96,7 +96,6 @@ describe('review planner model candidates', () => {
   test('reconstructs review weak points only from the deterministic snapshot', async () => {
     const { requests, runtime } = createTrackedMockRuntime({
       focusIndexes: [1],
-      diagnosis: 'review_pressure',
     });
 
     const result = await runReviewModelCandidate({
@@ -114,13 +113,17 @@ describe('review planner model candidates', () => {
       maxOutputTokens: 220,
     });
     expect(requests[0]?.estimatedInputTokens).toBeLessThanOrEqual(900);
+    expect(requests[0]?.systemPrompt).toContain(
+      'prefer high-priority weak points',
+    );
+    expect(requests[0]?.userPrompt).toContain('"options"');
+    expect(requests[0]?.userPrompt).not.toContain('deterministicReview');
     expect(JSON.stringify(result.observation)).not.toMatch(/minutes|href|ReviewTask|prompt|apiKey/i);
   });
 
   test('reconstructs planner blocks only from the deterministic snapshot', async () => {
     const { requests, runtime } = createTrackedMockRuntime({
       blockOrder: [1, 0],
-      strategy: 'protect_overdue',
     });
 
     const result = await runPlannerModelCandidate({
@@ -144,6 +147,11 @@ describe('review planner model candidates', () => {
       maxOutputTokens: 220,
     });
     expect(requests[0]?.estimatedInputTokens).toBeLessThanOrEqual(1050);
+    expect(requests[0]?.systemPrompt).toContain(
+      'return every supplied block exactly once',
+    );
+    expect(requests[0]?.userPrompt).toContain('"options"');
+    expect(requests[0]?.userPrompt).not.toContain('deterministicPlanner');
     expect(JSON.stringify(result.observation)).not.toMatch(/minutes|href|ReviewTask|prompt|apiKey/i);
   });
 
@@ -151,25 +159,27 @@ describe('review planner model candidates', () => {
     expect(
       REVIEW_MODEL_CANDIDATE_SCHEMA.safeParse({
         focusIndexes: [0, 1, 2],
-        diagnosis: 'knowledge_gap',
       }).success,
     ).toBe(true);
     expect(
       REVIEW_MODEL_CANDIDATE_SCHEMA.safeParse({
         focusIndexes: [0],
-        diagnosis: 'knowledge_gap',
         extra: 'not allowed',
       }).success,
     ).toBe(false);
     expect(
       PLANNER_MODEL_CANDIDATE_SCHEMA.safeParse({
         blockOrder: [0, 1],
-        strategy: 'steady_progress',
       }).success,
     ).toBe(true);
     expect(
       PLANNER_MODEL_CANDIDATE_SCHEMA.safeParse({
         blockOrder: [0, 1, 2, 3],
+      }).success,
+    ).toBe(false);
+    expect(
+      PLANNER_MODEL_CANDIDATE_SCHEMA.safeParse({
+        blockOrder: [0, 1],
         strategy: 'steady_progress',
       }).success,
     ).toBe(false);

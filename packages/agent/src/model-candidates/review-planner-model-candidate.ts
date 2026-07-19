@@ -31,14 +31,12 @@ export const MAX_PLAN_BLOCKS = 3;
 export const REVIEW_MODEL_CANDIDATE_SCHEMA = z
   .object({
     focusIndexes: z.array(z.number().int().nonnegative()).min(1).max(3),
-    diagnosis: z.enum(['review_pressure', 'stability_risk', 'knowledge_gap']),
   })
   .strict();
 
 export const PLANNER_MODEL_CANDIDATE_SCHEMA = z
   .object({
     blockOrder: z.array(z.number().int().nonnegative()).min(1).max(MAX_PLAN_BLOCKS),
-    strategy: z.enum(['relieve_capacity', 'protect_overdue', 'steady_progress']),
   })
   .strict();
 
@@ -46,10 +44,14 @@ type ReviewDecision = z.infer<typeof REVIEW_MODEL_CANDIDATE_SCHEMA>;
 type PlannerDecision = z.infer<typeof PLANNER_MODEL_CANDIDATE_SCHEMA>;
 
 export type ReviewModelCandidateReasonCode =
-  | ReviewDecision['diagnosis']
+  | 'review_pressure'
+  | 'stability_risk'
+  | 'knowledge_gap'
   | ModelAgentErrorCode;
 export type PlannerModelCandidateReasonCode =
-  | PlannerDecision['strategy']
+  | 'relieve_capacity'
+  | 'protect_overdue'
+  | 'steady_progress'
   | ModelAgentErrorCode;
 
 export type ReviewModelCandidateInput = {
@@ -86,19 +88,21 @@ const REVIEW_MAX_SNAPSHOT_CHARS = 1_200;
 const PLANNER_MAX_SNAPSHOT_CHARS = 1_500;
 
 const REVIEW_SYSTEM_PROMPT = [
-  'You select review focus indexes from a supplied deterministic snapshot.',
-  'Return only strict JSON with focusIndexes and diagnosis.',
+  'You select review focus indexes from supplied numbered options.',
+  'Policy: prefer high-priority weak points, then lower confidence, and preserve source order for ties.',
+  'Return only strict JSON with focusIndexes containing one to three unique indexes.',
   'Do not create tasks, facts, links, minutes, instructions, or write actions.',
 ].join(' ');
 const PLANNER_SYSTEM_PROMPT = [
-  'You order supplied study-plan block indexes from a deterministic snapshot.',
-  'Return only strict JSON with blockOrder and strategy.',
+  'You order supplied numbered study-plan block options.',
+  'Policy: return every supplied block exactly once; blocks whose visible reason is overdue come first; otherwise preserve source order.',
+  'Return only strict JSON with blockOrder.',
   'Do not create tasks, facts, links, minutes, instructions, or write actions.',
 ].join(' ');
 const REVIEW_SCHEMA_DESCRIPTOR =
-  'Output strict JSON: {"focusIndexes":[nonnegative indexes, one to three],"diagnosis":"review_pressure|stability_risk|knowledge_gap"}. No extra fields.';
+  'Output strict JSON: {"focusIndexes":[nonnegative indexes, one to three]}. No extra fields.';
 const PLANNER_SCHEMA_DESCRIPTOR =
-  'Output strict JSON: {"blockOrder":[nonnegative indexes, one to three],"strategy":"relieve_capacity|protect_overdue|steady_progress"}. No extra fields.';
+  'Output strict JSON: {"blockOrder":[nonnegative indexes, one to three]}. No extra fields.';
 
 const SAFE_REVIEW_RESULT: ReviewAgentResult = Object.freeze({
   priority: 'low',
@@ -136,7 +140,20 @@ export async function runReviewModelCandidate(
     );
   }
 
-  const prepared = prepareSnapshot(validation.value, REVIEW_MAX_SNAPSHOT_CHARS);
+  // Scan the complete deterministic result before projecting only model-safe options.
+  const safetyCheck = prepareSnapshot(validation.value, REVIEW_MAX_SNAPSHOT_CHARS);
+  if (!safetyCheck.ok) {
+    return localReviewEnvelope(
+      validation.value,
+      safetyCheck.disposition,
+      validation.budget,
+      [],
+    );
+  }
+  const prepared = prepareSnapshot(
+    buildReviewPromptPayload(validation.value),
+    REVIEW_MAX_SNAPSHOT_CHARS,
+  );
   if (!prepared.ok) {
     return localReviewEnvelope(
       validation.value,
@@ -165,7 +182,20 @@ export async function runPlannerModelCandidate(
     );
   }
 
-  const prepared = prepareSnapshot(validation.value, PLANNER_MAX_SNAPSHOT_CHARS);
+  // Scan the complete deterministic result before projecting only model-safe options.
+  const safetyCheck = prepareSnapshot(validation.value, PLANNER_MAX_SNAPSHOT_CHARS);
+  if (!safetyCheck.ok) {
+    return localPlannerEnvelope(
+      validation.value,
+      safetyCheck.disposition,
+      validation.budget,
+      [],
+    );
+  }
+  const prepared = prepareSnapshot(
+    buildPlannerPromptPayload(validation.value),
+    PLANNER_MAX_SNAPSHOT_CHARS,
+  );
   if (!prepared.ok) {
     return localPlannerEnvelope(
       validation.value,
@@ -189,7 +219,7 @@ async function invokeReviewCandidate(
   input: ValidReviewInput,
   snapshot: string,
 ): Promise<ReviewModelCandidateEnvelope> {
-  const userPrompt = JSON.stringify({ deterministicReview: snapshot });
+  const userPrompt = snapshot;
   const estimatedInputTokens = estimateInputTokens([
     REVIEW_SYSTEM_PROMPT,
     userPrompt,
@@ -261,7 +291,7 @@ async function invokeReviewCandidate(
     runtimeResult.budget,
     runtimeResult.usage,
     runtimeResult.trace,
-    [runtimeResult.data.diagnosis],
+    [deriveReviewReasonCode(input.value)],
   );
 }
 
@@ -269,7 +299,7 @@ async function invokePlannerCandidate(
   input: ValidPlannerInput,
   snapshot: string,
 ): Promise<PlannerModelCandidateEnvelope> {
-  const userPrompt = JSON.stringify({ deterministicPlanner: snapshot });
+  const userPrompt = snapshot;
   const estimatedInputTokens = estimateInputTokens([
     PLANNER_SYSTEM_PROMPT,
     userPrompt,
@@ -341,7 +371,7 @@ async function invokePlannerCandidate(
     runtimeResult.budget,
     runtimeResult.usage,
     runtimeResult.trace,
-    [runtimeResult.data.strategy],
+    [derivePlannerReasonCode(input.value)],
   );
 }
 
@@ -456,6 +486,46 @@ function prepareSnapshot(value: unknown, maxChars: number):
   } catch {
     return { ok: false, disposition: 'fallback_invalid_input' };
   }
+}
+
+function buildReviewPromptPayload(value: ReviewAgentResult) {
+  return {
+    options: value.weakPoints.map((point, index) => ({
+      index,
+      label: point.label,
+      priority: point.priority,
+      confidence: point.confidence,
+      reason: point.reason,
+    })),
+  };
+}
+
+function buildPlannerPromptPayload(value: PlannerAgentResult) {
+  return {
+    options: value.suggestedBlocks.map((block, index) => ({
+      index,
+      title: block.title,
+      reason: block.reason,
+    })),
+  };
+}
+
+function deriveReviewReasonCode(
+  value: ReviewAgentResult,
+): Exclude<ReviewModelCandidateReasonCode, ModelAgentErrorCode> {
+  if (value.signals.includes('overdue')) return 'review_pressure';
+  if (value.signals.includes('lowStability') || value.signals.includes('againPattern')) {
+    return 'stability_risk';
+  }
+  return 'knowledge_gap';
+}
+
+function derivePlannerReasonCode(
+  value: PlannerAgentResult,
+): Exclude<PlannerModelCandidateReasonCode, ModelAgentErrorCode> {
+  if (value.signals.includes('overdue')) return 'protect_overdue';
+  if (value.signals.includes('capacityOver')) return 'relieve_capacity';
+  return 'steady_progress';
 }
 
 function readAbortState(signal: AbortSignal | undefined):

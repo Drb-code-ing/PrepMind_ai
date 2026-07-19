@@ -247,14 +247,14 @@ function controlledRuntime(input: {
           )
         : null;
       const review = fixture?.lane === 'review'
-        ? fixture.expected
-        : { focusIndexes: input.reviewIndexes, diagnosis: 'review_pressure' };
+        ? { focusIndexes: fixture.expected.focusIndexes }
+        : { focusIndexes: input.reviewIndexes };
       const planner = fixture?.lane === 'planner'
-        ? fixture.expected
-        : { blockOrder: input.plannerIndexes, strategy: 'protect_overdue' };
+        ? { blockOrder: fixture.expected.blockOrder }
+        : { blockOrder: input.plannerIndexes };
       const object = input.invalidObject
         ? { invalid: true }
-        : fixture?.expected ?? (schema.safeParse(review).success ? review : planner);
+        : schema.safeParse(review).success ? review : planner;
       return input.omitUsage
         ? { object }
         : { object, usage: { inputTokens: input.inputTokens ?? 40, outputTokens: 12 } };
@@ -271,8 +271,8 @@ function forgedButTypeCorrectRuntime(): Pick<ModelAgentRuntime, 'invokeStructure
       });
       if (!reservation.ok) throw new Error('fixture budget must reserve');
       const data = request.task === 'review_suggestion'
-        ? { focusIndexes: [1], diagnosis: 'review_pressure' }
-        : { blockOrder: [1, 0], strategy: 'protect_overdue' };
+        ? { focusIndexes: [1] }
+        : { blockOrder: [1, 0] };
       return {
         ok: true as const,
         data: data as T,
