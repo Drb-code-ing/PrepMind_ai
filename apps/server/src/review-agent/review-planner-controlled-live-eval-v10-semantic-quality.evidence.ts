@@ -20,6 +20,10 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V9_STAGES,
   snapshotReviewPlannerControlledLiveV9HistoricalEvidence,
 } from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
+import {
+  openWindowsNoReparseExistingFrozenDirectory,
+  type WindowsNoReparseChildDirectory,
+} from './windows-reparse-safe-relative-io';
 
 export const REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE =
   Object.freeze({
@@ -93,6 +97,32 @@ const v9ExpectedLeaves = Object.freeze(
   ].sort(),
 );
 const reservationRoots = new WeakMap<object, string>();
+const V10_CONSUMED_MARKER =
+  'phase-6.9.5-review-planner-controlled-live-v10-semantic-quality-consumed';
+const diagnosticCommitmentSchema = z
+  .object({
+    schemaVersion: z.literal(
+      'phase-6.9.5-review-planner-v10-safe-aggregate-commit-v1',
+    ),
+    evidenceLeaf: z
+      .string()
+      .regex(/^review-planner-live-[A-Za-z0-9._-]+\.json$/),
+    diagnosticSha256: z.string().regex(HASH),
+    historicalTreeHash: z.string().regex(HASH),
+  })
+  .strict();
+const successSealSchema = z
+  .object({
+    schemaVersion: z.literal(
+      'phase-6.9.5-review-planner-v10-success-commit-v1',
+    ),
+    evidenceLeaf: z
+      .string()
+      .regex(/^review-planner-live-[A-Za-z0-9._-]+\.json$/),
+    diagnosticSha256: z.string().regex(HASH),
+    historicalTreeHash: z.string().regex(HASH),
+  })
+  .strict();
 
 export async function snapshotReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(
   rootInput = process.cwd(),
@@ -354,55 +384,135 @@ export async function finalizeReviewPlannerControlledLiveV10SemanticQualitySucce
 export async function readReviewPlannerControlledLiveV10SemanticQualityEvidence(
   rootInput = process.cwd(),
 ): Promise<Record<string, unknown>> {
-  const root = trustedRoot(rootInput);
-  const directory =
-    REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
-  const seal = z
-    .object({
-      schemaVersion: z.literal(
-        'phase-6.9.5-review-planner-v10-success-commit-v1',
+  const fallback = evidenceIoProjection();
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  try {
+    const root = trustedRoot(rootInput);
+    const relativeDirectory =
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
+    directory = await openWindowsNoReparseExistingFrozenDirectory(
+      root,
+      relativeDirectory.split('/'),
+    );
+    const names = [...directory.listLeafNames()].sort();
+    const evidenceLeaves = names.filter((name) =>
+      /^review-planner-live-[A-Za-z0-9._-]+\.json$/.test(name),
+    );
+    if (evidenceLeaves.length !== 1) return fallback;
+    const evidenceLeaf = evidenceLeaves[0];
+    if (!evidenceLeaf) return fallback;
+    const allowed = new Set<string>([
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.onceLockLeaf,
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.successCommitLeaf,
+      ...REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES.slice(
+        0,
+        10,
       ),
-      evidenceLeaf: z
-        .string()
-        .regex(/^review-planner-live-[A-Za-z0-9._-]+\.json$/),
-      diagnosticSha256: z.string().regex(HASH),
-      historicalTreeHash: z.string().regex(HASH),
-    })
-    .strict()
-    .parse(
-      JSON.parse(
-        await readFile(
-          resolveInsideRoot(
-            root,
-            `${directory}/${REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.successCommitLeaf}`,
-          ),
-          'utf8',
+      evidenceLeaf,
+    ]);
+    if (
+      names.length !== allowed.size ||
+      names.some((name) => !allowed.has(name)) ||
+      [...allowed].some((name) => !names.includes(name))
+    ) {
+      return fallback;
+    }
+    const once = directory.readRegularFile(
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.onceLockLeaf,
+    );
+    if (!isV10ConsumedMarker(once)) return fallback;
+    const commitment = diagnosticCommitmentSchema.safeParse(
+      parseJson(
+        directory.readRegularFile(
+          REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.diagnosticCommitLeaf,
         ),
       ),
     );
-  const diagnostic = v10SemanticQualityDiagnosticSchema.parse(
-    JSON.parse(
-      await readFile(
-        resolveInsideRoot(root, `${directory}/${seal.evidenceLeaf}`),
-        'utf8',
+    if (!commitment.success || commitment.data.evidenceLeaf !== evidenceLeaf) {
+      return fallback;
+    }
+    for (const [
+      index,
+      stage,
+    ] of REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_STAGES.slice(
+      0,
+      10,
+    ).entries()) {
+      const bytes = directory.readRegularFile(stage);
+      if (index !== 8 && bytes.byteLength !== 0) return fallback;
+    }
+    const diagnosticBytes = directory.readRegularFile(evidenceLeaf);
+    const diagnostic = v10SemanticQualityDiagnosticSchema.safeParse(
+      parseJson(diagnosticBytes),
+    );
+    if (
+      !diagnostic.success ||
+      diagnostic.data.terminalReason !== 'passed' ||
+      sha256(diagnosticBytes) !== commitment.data.diagnosticSha256
+    ) {
+      return fallback;
+    }
+    const seal = successSealSchema.safeParse(
+      parseJson(
+        directory.readRegularFile(
+          REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.successCommitLeaf,
+        ),
       ),
-    ),
-  );
-  if (
-    diagnostic.terminalReason !== 'passed' ||
-    sha256(JSON.stringify(diagnostic)) !== seal.diagnosticSha256
-  ) {
-    throw new Error('CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_EVIDENCE_INVALID');
+    );
+    if (
+      !seal.success ||
+      seal.data.evidenceLeaf !== evidenceLeaf ||
+      seal.data.diagnosticSha256 !== commitment.data.diagnosticSha256 ||
+      seal.data.historicalTreeHash !== commitment.data.historicalTreeHash
+    ) {
+      return fallback;
+    }
+    const history =
+      await snapshotReviewPlannerControlledLiveV10SemanticQualityHistoricalEvidence(
+        root,
+      );
+    if (
+      history.treeHash !== commitment.data.historicalTreeHash ||
+      history.treeHash !== seal.data.historicalTreeHash
+    ) {
+      return fallback;
+    }
+    return Object.freeze({
+      schemaVersion: diagnostic.data.schemaVersion,
+      state: 'finalized',
+      status: 'complete',
+      gate: 'closed',
+      terminalReason: 'passed',
+      attempts: diagnostic.data.attempts,
+      evidenceSha256: commitment.data.diagnosticSha256,
+    });
+  } catch {
+    return fallback;
+  } finally {
+    directory?.close();
   }
+}
+
+function evidenceIoProjection(): Record<string, unknown> {
   return Object.freeze({
-    schemaVersion: diagnostic.schemaVersion,
-    state: 'finalized',
-    status: 'complete',
+    status: 'invalid_attempted',
     gate: 'closed',
-    terminalReason: 'passed',
-    attempts: diagnostic.attempts,
-    evidenceSha256: seal.diagnosticSha256,
+    diagnosticCode: 'evidence_io',
   });
+}
+
+function parseJson(bytes: Buffer): unknown {
+  try {
+    return JSON.parse(bytes.toString('utf8')) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function isV10ConsumedMarker(bytes: Buffer) {
+  return new RegExp(
+    `^${V10_CONSUMED_MARKER}\\n\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z\\n$`,
+  ).test(bytes.toString('utf8'));
 }
 
 function writeEmptyStage(root: string, stage: string) {
