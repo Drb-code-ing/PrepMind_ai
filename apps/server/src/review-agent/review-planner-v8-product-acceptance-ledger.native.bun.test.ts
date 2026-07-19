@@ -2304,4 +2304,76 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
       REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
     );
   });
+
+  it('fails closed for a partial V11 reservation without a public failure projection', async () => {
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+    });
+    ledger.close();
+
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'incomplete' });
+  });
+
+  it('keeps V8/V10 evidence bytes readable and fails closed for a V11 failure leaf', async () => {
+    await finishBranch(root);
+    const v8Path = join(
+      root,
+      ...REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    const v8Acceptance = await readFile(
+      join(v8Path, 'acceptance.json'),
+      'utf8',
+    );
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({ status: 'complete' });
+
+    const v10 = REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
+    await finishBranch(root, 100, 50, PLAN_PNG, TODAY_PNG, v10);
+    const v10Path = join(root, ...v10.publicLedgerSegments('branch'));
+    const v10Acceptance = await readFile(
+      join(v10Path, 'acceptance.json'),
+      'utf8',
+    );
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        profile: v10,
+      }),
+    ).resolves.toMatchObject({ status: 'complete' });
+
+    await writeFile(join(v8Path, '.failure.json'), '{}\n');
+    await writeFile(join(v10Path, '.failure.json'), '{}\n');
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        profile: v10,
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await expect(
+      readFile(join(v8Path, 'acceptance.json'), 'utf8'),
+    ).resolves.toBe(v8Acceptance);
+    await expect(
+      readFile(join(v10Path, 'acceptance.json'), 'utf8'),
+    ).resolves.toBe(v10Acceptance);
+  });
 });

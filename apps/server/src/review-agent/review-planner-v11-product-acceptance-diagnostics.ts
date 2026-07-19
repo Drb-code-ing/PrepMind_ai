@@ -142,16 +142,14 @@ export function readReviewPlannerV11ProductAcceptanceCheckpoints(
     throw new Error('V11_PRODUCT_ACCEPTANCE_DIAGNOSTIC_INVALID');
   }
   const records: ReviewPlannerV11ProductAcceptanceCheckpointRecord[] = [];
-  let previousIndex = -1;
   for (const value of values) {
     const record = parseReviewPlannerV11ProductAcceptanceCheckpoint(value);
-    const index = REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.indexOf(
-      record.checkpoint,
-    );
-    if (index <= previousIndex) {
+    if (
+      record.checkpoint !==
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS[records.length]
+    ) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_DIAGNOSTIC_INVALID');
     }
-    previousIndex = index;
     records.push(record);
   }
   return Object.freeze(records);
@@ -186,12 +184,14 @@ function providerCallStateIsImpossible(value: {
   providerCallState: ReviewPlannerV11ProviderCallState;
 }) {
   if (value.providerCallState !== 'not_started') return false;
+  const slotCheckpoints =
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.filter((checkpoint) =>
+      checkpoint.startsWith(`${value.component}_${value.slot}_`),
+    );
   const dispatch =
     `${value.component}_${value.slot}_dispatch` as ReviewPlannerV11ProductAcceptanceCheckpoint;
-  const dispatchIndex =
-    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.indexOf(dispatch);
-  const checkpointIndex =
-    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.indexOf(value.checkpoint);
+  const dispatchIndex = slotCheckpoints.indexOf(dispatch);
+  const checkpointIndex = slotCheckpoints.indexOf(value.checkpoint);
   return checkpointIndex >= dispatchIndex;
 }
 
