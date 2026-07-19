@@ -1030,6 +1030,113 @@ describe('V8 recovery-only executable composition', () => {
 });
 
 describe('V8 default composition resource lifecycle', () => {
+  it('parses an inactive deterministic observation with zero duration from the live suggestion envelope', async () => {
+    const disconnect = jest.fn(async () => undefined);
+    const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+      REPO_ROOT,
+      {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: disconnect } as never,
+      },
+    );
+    const resources = product.ports.generateResources({
+      environment: 'branch',
+      utcStamp: '20260719T060000Z',
+    } as never);
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (url === 'http://127.0.0.1:3001/auth/register') {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                user: { id: 'review-account-id' },
+                accessToken: 'review-account-token',
+              },
+            }),
+          );
+        }
+        if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
+          return new Response(
+            JSON.stringify({ success: true, data: { runs: [] } }),
+          );
+        }
+        if (url.startsWith('http://127.0.0.1:3001/review-agent/suggestions?')) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                modelObservations: {
+                  review: {
+                    attempted: true,
+                    degraded: false,
+                    disposition: 'candidate_applied',
+                    provenance: 'live_candidate',
+                    durationMs: 123,
+                    usage: { inputTokens: 100, outputTokens: 20 },
+                  },
+                  planner: {
+                    attempted: false,
+                    degraded: true,
+                    disposition: 'not_eligible',
+                    provenance: 'local_deterministic',
+                    durationMs: 0,
+                    usage: { inputTokens: 0, outputTokens: 0 },
+                  },
+                },
+              },
+            }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+    try {
+      await product.ports.registerAccount({
+        component: 'review',
+        email: resources.syntheticEmails.review,
+        password: resources.passwords.review,
+      });
+      const dependencies = product.ports.createRunnerDependencies({} as never);
+
+      await expect(
+        dependencies.dispatchApi({
+          component: 'review',
+          acceptanceCapability: resources.capabilities.review,
+        }),
+      ).resolves.toEqual({
+        target: {
+          attempted: true,
+          degraded: false,
+          disposition: 'candidate_applied',
+          provenance: 'live_candidate',
+          durationMs: 123,
+          usage: { inputTokens: 100, outputTokens: 20 },
+        },
+        inactive: {
+          attempted: false,
+          degraded: true,
+          disposition: 'not_eligible',
+          provenance: 'local_deterministic',
+          durationMs: 0,
+          usage: { inputTokens: 0, outputTokens: 0 },
+        },
+      });
+    } finally {
+      fetchMock.mockRestore();
+      await product.dispose();
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('blocks default preflight before ledger, Prisma, fixtures, or Docker work', async () => {
     const prismaAccess = jest.fn();
     const disconnect = jest.fn(async () => undefined);

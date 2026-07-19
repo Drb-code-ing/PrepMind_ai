@@ -141,6 +141,35 @@ describe('Review Planner V8 product acceptance runner', () => {
     expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects a zero-duration attempted live candidate while accepting a zero-duration inactive observation', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.dispatchApi = jest.fn(async ({ component }) => ({
+      ...requestResult(component, 'api'),
+      target: {
+        attempted: true,
+        degraded: false,
+        disposition: 'candidate_applied',
+        provenance: 'live_candidate',
+        durationMs: 0,
+        usage: { inputTokens: 100, outputTokens: 20 },
+      },
+      inactive: {
+        attempted: false,
+        degraded: true,
+        disposition: 'not_eligible',
+        provenance: 'local_deterministic',
+        durationMs: 0,
+        usage: { inputTokens: 0, outputTokens: 0 },
+      },
+    }));
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_OBSERVATION_INVALID');
+    expect(fixture.ledger.recordSlotResult).not.toHaveBeenCalled();
+    expect(fixture.dependencies.restoreDefaultOff).toHaveBeenCalledTimes(1);
+  });
+
   it('passes raw component capability only to API and the exact continued route', async () => {
     const fixture = createFixture();
 

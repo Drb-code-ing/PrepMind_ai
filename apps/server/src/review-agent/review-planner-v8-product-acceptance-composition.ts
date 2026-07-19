@@ -2429,7 +2429,7 @@ function parseObservation(value: unknown) {
     degraded: requireBoolean(record.degraded),
     disposition: requireString(record.disposition),
     provenance: requireString(record.provenance),
-    durationMs: requirePositiveInteger(record.durationMs),
+    durationMs: requireNonNegativeInteger(record.durationMs),
     usage: Object.freeze({
       inputTokens: requireNonNegativeInteger(usage.inputTokens),
       outputTokens: requireNonNegativeInteger(usage.outputTokens),
