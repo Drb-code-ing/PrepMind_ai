@@ -1,7 +1,7 @@
-# Phase 6.9.5 Review / Planner V10 Offline Checkpoint
+# Phase 6.9.5 Review / Planner V10 Controlled-Live Outcome
 
 Date: 2026-07-19
-Status: offline gates passed; the unique V10 controlled-Live has **not** run.
+Status: the unique V10 controlled-Live completed successfully; product gates remain default-off and branch product acceptance is next.
 
 ## What This Checkpoint Proves
 
@@ -24,13 +24,22 @@ V9 remains immutable: its only controlled-Live is `finalized / invalid_attempted
 - V10 native evidence tests: `3/3`
 - `git diff --check`: pass
 - Fresh V1--V9 immutable manifest: `36` entries, SHA-256 `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`
-- V10 evidence directory, once marker, and success seal: absent
+- The V1--V9 manifest was unchanged at `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d` before the V10 reservation.
 
-This checkpoint does not prove provider quality, product behavior, Docker behavior, browser behavior, cost, or Phase 6.9.5 completion.
+These offline gates did not by themselves prove provider quality, product behavior, Docker behavior, browser behavior, cost, or Phase 6.9.5 completion.
 
-## One-Shot Preconditions
+## Controlled-Live Result
 
-Use a clean HEAD and a fresh PowerShell process. The root `.env` is input only through `--env-file=.env`; do not edit `.env` and do not persist a gate there.
+The approved command below ran once from a clean HEAD and exited `0`. The public reader was fresh-read five times and remained `complete / passed` with `23` provider attempts and `22` paired admissions. Its V10 v3 safe aggregate reports:
+
+- `48/48` strict successes and quality passes; `0` critical failures
+- schema, quality, P95, usage, attempt, admission, and cost gates all passed
+- P95 `1465ms`; usage `5764` input / `232` output tokens
+- CNY `0.018684`, within the CNY `1.00` hard cap
+
+The root `.env` was only injected by `--env-file=.env`; it was not edited. After the process, the ordinary environment remains mock/default-off: V8/V9/V10 eval gates are absent or false as applicable, and `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` remain false.
+
+The consumed command was:
 
 ```powershell
 $env:AI_PROVIDER_MODE='live'
@@ -47,17 +56,16 @@ $env:PLANNER_AGENT_MODEL_TIMEOUT_MS='4500'
 bun --env-file=.env --filter @repo/server eval:review-planner:live:v10:semantic-quality -- --confirm-controlled-live-v10-deepseek-v4-pro-semantic-quality
 ```
 
-The profile uses JSON-object non-thinking transport, a `4500ms` timeout, at most `23` provider attempts / `22` paired admissions, `26` verified zero-call cases, and a CNY `1.00` hard cap. V8/V9 eval gates and both product gates must stay explicitly `false`.
+It used JSON-object non-thinking transport, a `4500ms` timeout, `26` verified zero-call cases, and the fixed CNY `1.00` hard cap. V8/V9 eval gates and both product gates were explicitly `false` during the run and remain default-off.
 
 ## Durable Safety Boundary
 
 V10 owns a separate profile, confirmation, eval gate, evidence directory, once marker, stage manifest, and success seal. Before reservation it snapshots V1--V9 and fails closed on drift. Its safe writer and public reader accept only strict aggregate lane counts; they reject unknown fields and prompt, snapshot, model output, raw error, URL, credential, cookie, stack, case entry, and per-case duration or usage.
 
-Any non-success terminal result consumes and seals V10. It must not be retried, deleted, overwritten, reconstructed, or combined with other lineages. No V10 failure may be replaced by a Mock, Docker, browser, or historical result.
+The successful V10 evidence is immutable. It must not be retried, deleted, overwritten, reconstructed, or combined with other lineages. No Docker, browser, Mock, or historical result may alter or substitute this controlled-Live result.
 
 ## Exact Next Actions
 
-1. Independently review this checkpoint and the V10 code/authority boundary.
-2. Run the single controlled-Live command above once, then read only its durable terminal evidence.
-3. Continue to branch Docker and headed-browser acceptance only when the V10 reader reports committed success; restore product gates to `false` after each component check.
-4. Only after branch acceptance, cleanup, `--no-ff` main merge, main replay, and evidence review may the phase be declared complete and `origin/main` be pushed.
+1. Perform branch Docker and headed-browser acceptance with the product gates enabled one component at a time, then restore both to `false` and clean only the recorded synthetic data.
+2. If branch acceptance passes, perform the prescribed `--no-ff` main merge, main replay, evidence review, and remote parity check.
+3. Only after those product steps may the phase be declared complete and `origin/main` be pushed.
