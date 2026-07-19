@@ -1564,6 +1564,21 @@ const V11_ATTEMPT_HASH = /^[a-f0-9]{64}$/;
 const V11_PUBLIC_ATTEMPT_LEAVES = Object.freeze([
   '.acceptance-reserved',
   '.failure.json',
+  'manifest.json',
+  '.slot-01-review-api',
+  '.slot-01-review-api.result.json',
+  '.slot-02-review-browser',
+  '.slot-02-review-browser.result.json',
+  '.slot-03-planner-api',
+  '.slot-03-planner-api.result.json',
+  '.slot-04-planner-browser',
+  '.slot-04-planner-browser.result.json',
+  '.review-default-off.json',
+  '.planner-default-off.json',
+  '.owner-isolation-verified.json',
+  '.cleanup-verified.json',
+  'acceptance.json',
+  '.acceptance-success',
 ] as const);
 
 const v11AttemptBindingSchema = z
@@ -2346,8 +2361,14 @@ function v11CheckpointHistory(
 
 function assertV11CheckpointLeaves(directory: WindowsNoReparseChildDirectory) {
   const leaves = directory.listLeafNames();
+  const ownerLockPresent = leaves.includes(V11_OWNER_LOCK_LEAF);
+  if (!ownerLockPresent) {
+    if (leaves.length !== 1 || leaves[0] !== V11_ATTEMPT_BINDING_LEAF) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    return;
+  }
   if (
-    !leaves.includes(V11_OWNER_LOCK_LEAF) ||
     leaves.some(
       (leaf) =>
         leaf !== V11_OWNER_LOCK_LEAF &&

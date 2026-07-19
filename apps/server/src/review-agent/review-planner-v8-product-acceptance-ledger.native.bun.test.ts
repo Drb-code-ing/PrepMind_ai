@@ -32,6 +32,7 @@ import {
 import {
   assertReviewPlannerV11ProductAcceptanceRootsEmpty,
   createDefaultReviewPlannerV11ProductAcceptanceComposition,
+  createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition,
   createReviewPlannerV11ProductAcceptanceDiagnosticsPort,
   runReviewPlannerV11ProductAcceptanceComposition,
   runReviewPlannerV11ProductAcceptanceRecoveryComposition,
@@ -51,6 +52,7 @@ import {
   inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV11ProductAcceptanceRecoveryJournal,
+  readReviewPlannerV11ProductAcceptanceAttemptBinding,
   readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
@@ -365,6 +367,63 @@ async function prepareV11Journal(root: string) {
     },
   );
   return { owner: acquisition.owner, ledger, journal };
+}
+
+async function prepareV11EarliestRecoveryState(root: string) {
+  const { owner, ledger, journal } = await prepareV11Journal(root);
+  const attemptSha256 = ledger.attemptSha256();
+  const accountId = {
+    review: 'v11-synthetic-account-review-earliest-recovery',
+    planner: 'v11-synthetic-account-planner-earliest-recovery',
+  };
+  const fixtureId = {
+    review: 'v11-synthetic-fixture-review-earliest-recovery',
+    planner: 'v11-synthetic-fixture-planner-earliest-recovery',
+  };
+  const hash = (value: string) =>
+    createHash('sha256').update(value).digest('hex');
+  const executionManifest = {
+    schemaVersion:
+      'phase-6.9.5-v11-product-acceptance-execution-manifest-v1' as const,
+    environment: 'branch' as const,
+    attemptSha256,
+    resources: {
+      accountId,
+      fixtureId,
+      browser: {
+        executablePath: 'C:\\Browser\\chrome.exe',
+        profilePath:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            'branch',
+          ),
+      },
+    },
+  };
+  try {
+    await ledger.writeExecutionManifest(executionManifest);
+    ledger.writeManifest({
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-manifest-v1',
+      environment: 'branch',
+      attemptSha256,
+      commitSha: COMMIT_A,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      accountSha256: {
+        review: hash(accountId.review),
+        planner: hash(accountId.planner),
+      },
+      fixtureSha256: {
+        review: hash(fixtureId.review),
+        planner: hash(fixtureId.planner),
+      },
+    });
+    ledger.claimSlot('review-api');
+  } finally {
+    journal.close();
+    ledger.close();
+    owner.close();
+  }
+  return executionManifest;
 }
 
 function runV11DispatchHardExitChild(root: string) {
@@ -2746,6 +2805,141 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     ).resolves.toMatchObject({ status: 'operation_failed' });
   });
 
+  it('admits the strict earliest V11 failure state and projects its fixed initial checkpoint', async () => {
+    const executionManifest = await prepareV11EarliestRecoveryState(root);
+    await expect(
+      readdir(
+        join(
+          root,
+          ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+            'branch',
+          ),
+        ),
+      ),
+    ).resolves.toEqual(['attempt-binding.json', 'owner.lock']);
+    const earliestBinding =
+      await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+        repoRoot: root,
+        environment: 'branch',
+      });
+    expect(earliestBinding).toMatchObject({
+      attemptSha256: executionManifest.attemptSha256,
+    });
+    await expect(
+      inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toBeNull();
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition(root, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: () => Promise.resolve(undefined) } as never,
+      });
+    let owner:
+      | Awaited<
+          ReturnType<typeof acquireReviewPlannerV11ProductAcceptanceOwner>
+        >
+      | undefined;
+    let journal:
+      | Awaited<
+          ReturnType<
+            typeof openReviewPlannerV11ProductAcceptanceRecoveryJournal
+          >
+        >
+      | undefined;
+    try {
+      await expect(
+        readReviewPlannerV11ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toEqual({ status: 'incomplete' });
+      const preflight = await composition.ports.preflight({
+        repoRoot: root,
+        environment: 'branch',
+      });
+      expect(preflight).toMatchObject({
+        status: 'ready',
+        attemptSha256: executionManifest.attemptSha256,
+        executionManifest,
+      });
+      owner = await composition.ports.acquireOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      expect(owner.status).toBe('acquired');
+      if (owner.status !== 'acquired') throw new Error('owner unavailable');
+      journal = await composition.ports.openRecoveryJournal({
+        repoRoot: root,
+        environment: 'branch',
+        owner: owner.owner,
+        executionManifest,
+      });
+      await composition.ports.publishFailure({
+        repoRoot: root,
+        environment: 'branch',
+        owner: owner.owner,
+        journal,
+        executionManifest,
+      });
+      expect(journal.latestCheckpoint()).toMatchObject(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      await expect(
+        readReviewPlannerV11ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toMatchObject({
+        status: 'operation_failed',
+        checkpoint: 'review_api_activate',
+        providerCallState: 'not_started',
+      });
+    } finally {
+      journal?.close();
+      if (owner?.status === 'acquired') owner.owner.close();
+      await composition.dispose();
+    }
+  });
+
+  it('keeps a malformed earliest V11 checkpoint fail-closed before recovery ownership', async () => {
+    await prepareV11EarliestRecoveryState(root);
+    await writeFile(
+      join(
+        root,
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+          'branch',
+        ),
+        'checkpoint-001-review_api_activate.json',
+      ),
+      '{"invalid":true}\n',
+    );
+    let acquireOwnerCalls = 0;
+    const acquireOwner = () => {
+      acquireOwnerCalls += 1;
+      throw new Error('recovery owner must not be acquired');
+    };
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition(root, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: () => Promise.resolve(undefined) } as never,
+        boundary: { acquireOwner },
+      });
+    try {
+      await expect(
+        composition.ports.preflight({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toEqual({ status: 'blocked' });
+      expect(acquireOwnerCalls).toBe(0);
+    } finally {
+      await composition.dispose();
+    }
+  });
+
   it('rejects a direct stale reserved-attempt manifest without creating private execution output', async () => {
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
@@ -3789,7 +3983,7 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     );
   });
 
-  it('fails closed for a partial V11 reservation without a public failure projection', async () => {
+  it('keeps a bare V11 reservation fail-closed without matching execution evidence', async () => {
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
       environment: 'branch',
@@ -3809,7 +4003,7 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
         repoRoot: root,
         environment: 'branch',
       }),
-    ).resolves.toEqual({ status: 'incomplete' });
+    ).resolves.toEqual({ status: 'evidence_io' });
   });
 
   it('keeps V8/V10 evidence bytes readable and fails closed for a V11 failure leaf', async () => {

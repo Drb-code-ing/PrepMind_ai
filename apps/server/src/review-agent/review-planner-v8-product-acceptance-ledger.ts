@@ -1043,14 +1043,35 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
       });
     }
     if (!leaves.includes('.acceptance-success')) {
-      await readReviewPlannerV11ProductAcceptanceAttemptBinding({
-        repoRoot: input.repoRoot,
-        environment: input.environment,
-      });
-      await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
-        repoRoot: input.repoRoot,
-        environment: input.environment,
-      });
+      const binding = await readReviewPlannerV11ProductAcceptanceAttemptBinding(
+        {
+          repoRoot: input.repoRoot,
+          environment: input.environment,
+        },
+      );
+      const manifest = readV11Manifest(directory, input.environment);
+      if (manifest.attemptSha256 !== binding.attemptSha256) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      const execution =
+        await readReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt(
+          {
+            repoRoot: input.repoRoot,
+            environment: input.environment,
+            attemptSha256: binding.attemptSha256,
+          },
+        );
+      if (!executionManifestMatchesPublicManifest(execution, manifest)) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      const checkpoint =
+        await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+          repoRoot: input.repoRoot,
+          environment: input.environment,
+        });
+      if (checkpoint === null) {
+        return Object.freeze({ status: 'incomplete' as const });
+      }
       return Object.freeze({ status: 'incomplete' as const });
     }
     const aggregate = await verifyCompleteV11Ledger({
