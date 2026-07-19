@@ -73,6 +73,14 @@
 
 ## 近期关键记录
 
+### 2026-07-19 - V10 branch product-acceptance terminal recovery
+
+结果：V10 的唯一 branch product-acceptance ledger 在 `slot-01-review-api` durable claim 后、结果 leaf 之前以脱敏 `operation_failed` 终止。后续 recovery-only 已成功将 server 恢复为 mock/default-off，且用精确 selector 清理合成账号、fixture、Trace 与临时浏览器 profile；recovery 本身为 `0` provider invocation、`0` acceptance request、`0` browser continue。
+
+边界：这是一条独立的 V10 product 终态，不是 V10 controlled-Live 失败，也不能重跑、reset、补写、重用或解释为 zero-call / zero-cost。原 runner 将 trace baseline、API dispatch、response schema、Trace 读取和 slot 写入统一折叠为 `operation_failed`，所以不能从此安全证据逆推原始根因。
+
+下一步：先设计和实现新的 V11 product-acceptance lineage。它只增加 fixed failure checkpoint、component/slot 与保守 provider-call state，不落 prompt、response、raw error、credential、token、用户 facts 或单次 usage。在 Mock/fake 验证与复审通过前，两个 product gate 继续 default-off。完整证据见 `docs/acceptance/phase-6-9-5-review-planner-v10-product-acceptance-recovery.md`。
+
 ### 2026-07-19 - V10 product-acceptance 隔离 lineage
 
 目标：在不重跑已通过的 V10 controlled-Live、也不改写 V8 `recovery_only` 历史的前提下，为后续 branch 产品验收建立独立的 V10 命名空间。
