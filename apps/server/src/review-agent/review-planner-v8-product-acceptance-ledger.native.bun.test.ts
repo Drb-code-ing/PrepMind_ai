@@ -29,9 +29,17 @@ import {
   reserveReviewPlannerV11ProductAcceptanceLedger,
   reserveReviewPlannerV11ProductAcceptanceLedgerForTests,
 } from './review-planner-v8-product-acceptance-ledger';
-import { createReviewPlannerV11ProductAcceptanceDiagnosticsPort } from './review-planner-v8-product-acceptance-composition';
+import {
+  createDefaultReviewPlannerV11ProductAcceptanceComposition,
+  createReviewPlannerV11ProductAcceptanceDiagnosticsPort,
+  runReviewPlannerV11ProductAcceptanceComposition,
+  runReviewPlannerV11ProductAcceptanceRecoveryComposition,
+} from './review-planner-v8-product-acceptance-composition';
 import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
-import { writeReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt } from './review-planner-v11-product-acceptance-execution';
+import {
+  readReviewPlannerV11ProductAcceptanceExecutionManifest,
+  writeReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt,
+} from './review-planner-v11-product-acceptance-execution';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
@@ -2364,6 +2372,145 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     });
   });
 
+  it('recovers through the exact attempt-bound V11 execution selectors and publishes no legacy terminal', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    let binding: { attemptSha256: string };
+    let executionManifest: {
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-execution-manifest-v1';
+      environment: 'branch';
+      attemptSha256: string;
+      resources: {
+        accountId: { review: string; planner: string };
+        fixtureId: { review: string; planner: string };
+        browser: { executablePath: string; profilePath: string };
+      };
+    };
+    try {
+      const recoveryPath = join(
+        root,
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+          'branch',
+        ),
+        'attempt-binding.json',
+      );
+      binding = JSON.parse(await readFile(recoveryPath, 'utf8')) as {
+        attemptSha256: string;
+      };
+      executionManifest = {
+        schemaVersion:
+          'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+        environment: 'branch',
+        attemptSha256: binding.attemptSha256,
+        resources: {
+          accountId: {
+            review: 'v11-synthetic-account-review-recovery',
+            planner: 'v11-synthetic-account-planner-recovery',
+          },
+          fixtureId: {
+            review: 'v11-synthetic-fixture-review-recovery',
+            planner: 'v11-synthetic-fixture-planner-recovery',
+          },
+          browser: {
+            executablePath: 'C:\\Browser\\chrome.exe',
+            profilePath:
+              REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+                'branch',
+              ),
+          },
+        },
+      };
+      await ledger.writeExecutionManifest(executionManifest);
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const observedSelectors: unknown[] = [];
+    const result =
+      await runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+        environment: 'branch',
+        repoRoot: root,
+        ports: {
+          async preflight() {
+            return {
+              status: 'ready' as const,
+              environment: 'branch' as const,
+              repoRoot: root,
+              attemptSha256: executionManifest.attemptSha256,
+              executionManifest:
+                await readReviewPlannerV11ProductAcceptanceExecutionManifest({
+                  repoRoot: root,
+                  environment: 'branch',
+                }),
+            };
+          },
+          async readAuthoritativeExecutionManifest() {
+            return {
+              attemptSha256: executionManifest.attemptSha256,
+              executionManifest:
+                await readReviewPlannerV11ProductAcceptanceExecutionManifest({
+                  repoRoot: root,
+                  environment: 'branch',
+                }),
+            };
+          },
+          acquireOwner: () =>
+            Promise.resolve({
+              status: 'acquired' as const,
+              owner: acquisition.owner,
+            }),
+          openRecoveryJournal: (input) =>
+            openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+              repoRoot: input.repoRoot,
+              environment: input.environment,
+              owner: input.owner,
+            }),
+          async publishFailure(input) {
+            const recoveryLedger =
+              await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+                repoRoot: input.repoRoot,
+                environment: input.environment,
+                owner: input.owner,
+              });
+            try {
+              input.journal.projectRecoveryOnly(recoveryLedger);
+            } finally {
+              recoveryLedger.close();
+            }
+          },
+          restoreDefaultOff: (manifest) => {
+            observedSelectors.push(manifest.resources);
+            return Promise.resolve();
+          },
+          cleanupExact: (manifest) => {
+            observedSelectors.push(manifest.resources);
+            return Promise.resolve();
+          },
+        },
+      });
+    expect(result).toEqual({ status: 'recovered', environment: 'branch' });
+    expect(observedSelectors).toEqual([
+      executionManifest.resources,
+      executionManifest.resources,
+    ]);
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({ status: 'operation_failed' });
+  });
+
   it('rejects a direct stale reserved-attempt manifest without creating private execution output', async () => {
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
@@ -3716,5 +3863,165 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
         environment: 'branch',
       }),
     ).resolves.toEqual({ status: 'evidence_io' });
+  });
+});
+
+describeWindows('Review/Planner V11 default composition fake boundary', () => {
+  let root = '';
+
+  beforeEach(async () => {
+    root = await createRoot();
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  for (const blockedAt of ['preflight', 'owner'] as const) {
+    it(`does not reach Docker, API, browser, or provider boundaries when ${blockedAt} blocks`, async () => {
+      const originalFetch = globalThis.fetch;
+      let fetchCalls = 0;
+      let ownerCalls = 0;
+      globalThis.fetch = () => {
+        fetchCalls += 1;
+        return Promise.reject(new Error('unexpected external request'));
+      };
+      const composition =
+        createDefaultReviewPlannerV11ProductAcceptanceComposition(root, {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: () => Promise.resolve(undefined) },
+          boundary: {
+            preflight: () =>
+              Promise.resolve(
+                blockedAt === 'preflight'
+                  ? ({ status: 'blocked' } as never)
+                  : {
+                      status: 'ready' as const,
+                      environment: 'branch' as const,
+                      repoRoot: root,
+                      commitSha: COMMIT_A,
+                      branchName: 'codex/v11-default-fake',
+                      pairedEvidenceSha256: SHA_A,
+                      chromeExecutablePath:
+                        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                      utcStamp: '20260720t000000z',
+                    },
+              ),
+            acquireOwner: () => {
+              ownerCalls += 1;
+              return Promise.resolve({ status: 'owner_active' as const });
+            },
+          },
+        } as never);
+
+      try {
+        await expect(
+          runReviewPlannerV11ProductAcceptanceComposition({
+            environment: 'branch',
+            repoRoot: root,
+            ports: composition.ports,
+          }),
+        ).resolves.toEqual({ status: 'blocked', stage: blockedAt });
+        expect(ownerCalls).toBe(blockedAt === 'owner' ? 1 : 0);
+        expect(fetchCalls).toBe(0);
+      } finally {
+        globalThis.fetch = originalFetch;
+        await composition.dispose();
+      }
+    });
+  }
+
+  it('runs a V11-owned fake harness without Docker, API, browser, or provider calls', async () => {
+    const originalFetch = globalThis.fetch;
+    let fetchCalls = 0;
+    let runnerCalls = 0;
+    const runtimeCalls = {
+      dockerExec: 0,
+      apiProvider: 0,
+      chromium: 0,
+      fetch: 0,
+    };
+    const runtime = {
+      dockerExec() {
+        runtimeCalls.dockerExec += 1;
+        throw new Error('unexpected docker execution');
+      },
+      apiProvider() {
+        runtimeCalls.apiProvider += 1;
+        throw new Error('unexpected api/provider execution');
+      },
+      chromium() {
+        runtimeCalls.chromium += 1;
+        throw new Error('unexpected chromium execution');
+      },
+      fetch() {
+        runtimeCalls.fetch += 1;
+        throw new Error('unexpected fetch execution');
+      },
+    };
+    globalThis.fetch = () => {
+      fetchCalls += 1;
+      return Promise.reject(new Error('unexpected external request'));
+    };
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(root, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: () => Promise.resolve(undefined) },
+        boundary: {
+          runtime,
+          preflight: () =>
+            Promise.resolve({
+              status: 'ready' as const,
+              environment: 'branch' as const,
+              repoRoot: root,
+              commitSha: COMMIT_A,
+              branchName: 'codex/v11-default-fake',
+              pairedEvidenceSha256: SHA_A,
+              chromeExecutablePath:
+                'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+              utcStamp: '20260720t000000z',
+            }),
+          revalidatePreflight: () => Promise.resolve(true),
+          createFixtures: () =>
+            Promise.resolve({
+              resources: {},
+              accounts: {},
+              fixtureReceipt: {
+                accountIdSha256: {},
+                fixtureIdSha256: {},
+              },
+            } as never),
+          createRunner: () =>
+            Promise.resolve(
+              Object.freeze({
+                run() {
+                  runnerCalls += 1;
+                  return Promise.resolve(undefined);
+                },
+              }),
+            ),
+        },
+      } as never);
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: root,
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'passed', environment: 'branch' });
+      expect(runnerCalls).toBe(1);
+      expect(fetchCalls).toBe(0);
+      expect(runtimeCalls).toEqual({
+        dockerExec: 0,
+        apiProvider: 0,
+        chromium: 0,
+        fetch: 0,
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      await composition.dispose();
+    }
   });
 });

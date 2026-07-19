@@ -1905,6 +1905,7 @@ export async function readReviewPlannerV11ProductAcceptanceAttemptHash(input: {
 
 type V11CheckpointJournalState = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  role: ReviewPlannerV11ProductAcceptanceOwnerRole;
   attemptSha256: string;
   owner: ReviewPlannerV11ProductAcceptanceOwner;
   directory: WindowsNoReparseChildDirectory;
@@ -1981,6 +1982,7 @@ export async function prepareReviewPlannerV11ProductAcceptanceRecoveryJournal(in
     }
     return createV11CheckpointJournal({
       environment: input.environment,
+      role: 'product',
       attemptSha256: binding.attemptSha256,
       owner: input.owner,
       directory,
@@ -2025,6 +2027,7 @@ export async function openReviewPlannerV11ProductAcceptanceRecoveryJournal(input
     });
     return createV11CheckpointJournal({
       environment: input.environment,
+      role: 'recovery',
       attemptSha256: binding.attemptSha256,
       owner: input.owner,
       directory,
@@ -2125,7 +2128,7 @@ function createV11CheckpointJournal(
         assertReviewPlannerV11ProductAcceptanceOwner(
           state.owner,
           state.environment,
-          ['product'],
+          state.role === 'recovery' ? ['recovery'] : ['product'],
         );
         if (state.sealed) {
           throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_SEALED');
@@ -2134,6 +2137,16 @@ function createV11CheckpointJournal(
         try {
           record = parseReviewPlannerV11ProductAcceptanceCheckpoint(value);
           const history = v11CheckpointHistory(state.directory);
+          if (
+            state.role === 'recovery' &&
+            (history.length !== 0 ||
+              record.component !== 'review' ||
+              record.slot !== 'api' ||
+              record.checkpoint !== 'review_api_activate' ||
+              record.providerCallState !== 'not_started')
+          ) {
+            throw new Error();
+          }
           const prefix = v11SlotCheckpoints(record.component, record.slot);
           const localHistory = history.filter(
             (entry) =>

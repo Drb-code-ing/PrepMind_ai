@@ -521,6 +521,7 @@ type V11LedgerState = {
 };
 
 export type ReviewPlannerV11ProductAcceptanceLedger = Readonly<{
+  attemptSha256(): string;
   writeExecutionManifest(value: unknown): Promise<void>;
   writeManifest(value: unknown): void;
   claimSlot(slot: ReviewPlannerV11ProductAcceptanceExecutionSlot): void;
@@ -1236,6 +1237,9 @@ function createV11Ledger(
   state: V11LedgerState,
 ): ReviewPlannerV11ProductAcceptanceLedger {
   const ledger: ReviewPlannerV11ProductAcceptanceLedger = Object.freeze({
+    attemptSha256() {
+      return requireActiveV11LedgerState(ledger).attemptSha256;
+    },
     async writeExecutionManifest(value) {
       const current = requireActiveV11LedgerState(ledger);
       assertV11SuccessWritable(current.directory);

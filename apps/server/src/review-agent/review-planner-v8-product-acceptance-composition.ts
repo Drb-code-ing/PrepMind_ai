@@ -20,6 +20,9 @@ import {
 } from './review-planner-v8-product-acceptance-evidence';
 import {
   finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
+  openReviewPlannerV11ProductAcceptanceRecoveryLedger,
+  readReviewPlannerV11ProductAcceptanceLedger,
+  reserveReviewPlannerV11ProductAcceptanceLedger,
   readReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedger,
   type ReviewPlannerV11ProductAcceptanceLedger,
@@ -27,13 +30,18 @@ import {
 } from './review-planner-v8-product-acceptance-ledger';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
+  acquireReviewPlannerV11ProductAcceptanceOwner,
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  openReviewPlannerV11ProductAcceptanceRecoveryJournal,
+  prepareReviewPlannerV11ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  readReviewPlannerV11ProductAcceptanceAttemptBinding,
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   type ReviewPlannerV8ProductAcceptanceEnvironment,
   type ReviewPlannerV8ProductAcceptanceOwner,
   type ReviewPlannerV8ProductAcceptanceRecoveryJournal,
   type ReviewPlannerV11ProductAcceptanceFailureAuthority,
+  type ReviewPlannerV11ProductAcceptanceOwner,
   type ReviewPlannerV11ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
@@ -58,6 +66,11 @@ import {
   type ReviewPlannerV11ProductAcceptanceCheckpoint,
   type ReviewPlannerV11ProductAcceptanceFailureRecord,
 } from './review-planner-v11-product-acceptance-diagnostics';
+import {
+  createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter,
+  readReviewPlannerV11ProductAcceptanceExecutionManifest,
+  type ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+} from './review-planner-v11-product-acceptance-execution';
 
 const execFileAsync = promisify(execFile);
 
@@ -287,6 +300,379 @@ export interface ReviewPlannerV8ProductAcceptanceCompositionPorts {
   ): Promise<ReviewPlannerV8ProductAcceptanceRunResult>;
 }
 
+type ReviewPlannerV11ProductPreflight =
+  | Readonly<{ status: 'blocked' }>
+  | Readonly<{
+      status: 'ready';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+      repoRoot: string;
+      commitSha: string;
+      branchName: string;
+      pairedEvidenceSha256: string;
+      chromeExecutablePath: string;
+    }>;
+
+type ReviewPlannerV11CompositionOwnerResult =
+  | Readonly<{ status: 'owner_active' }>
+  | Readonly<{
+      status: 'acquired';
+      owner: ReviewPlannerV11ProductAcceptanceOwner;
+    }>;
+
+export interface ReviewPlannerV11ProductAcceptanceCompositionPorts {
+  preflight(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  }): Promise<ReviewPlannerV11ProductPreflight>;
+  acquireOwner(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    role: 'product';
+  }): Promise<ReviewPlannerV11CompositionOwnerResult>;
+  revalidatePreflight(input: {
+    preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>;
+  }): Promise<boolean>;
+  reserveLedger(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+  }): Promise<
+    Readonly<{
+      ledger: ReviewPlannerV11ProductAcceptanceLedger;
+      attemptSha256: string;
+    }>
+  >;
+  writeExecutionManifest(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    ledger: ReviewPlannerV11ProductAcceptanceLedger;
+    attemptSha256: string;
+    preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>;
+  }): Promise<ReviewPlannerV11ProductAcceptanceExecutionManifestRecord>;
+  createFixtures(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    ledger: ReviewPlannerV11ProductAcceptanceLedger;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<unknown>;
+  prepareRecoveryJournal(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    ledger: ReviewPlannerV11ProductAcceptanceLedger;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<ReviewPlannerV11ProductAcceptanceRecoveryJournal>;
+  createRunner(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    ledger: ReviewPlannerV11ProductAcceptanceLedger;
+    journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal;
+    fixtures: unknown;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<Readonly<{ run(): Promise<unknown> }>>;
+  recoverFailure(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<void>;
+}
+
+export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  repoRoot: string;
+  ports: ReviewPlannerV11ProductAcceptanceCompositionPorts;
+}): Promise<
+  | Readonly<{
+      status: 'blocked';
+      stage: 'preflight' | 'owner' | 'revalidate';
+    }>
+  | Readonly<{
+      status: 'passed';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    }>
+> {
+  let owner: ReviewPlannerV11ProductAcceptanceOwner | undefined;
+  let ledger: ReviewPlannerV11ProductAcceptanceLedger | undefined;
+  let journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal | undefined;
+  let executionManifest:
+    | ReviewPlannerV11ProductAcceptanceExecutionManifestRecord
+    | undefined;
+  let failure: Error | undefined;
+  let result:
+    | Readonly<{
+        status: 'blocked';
+        stage: 'preflight' | 'owner' | 'revalidate';
+      }>
+    | Readonly<{
+        status: 'passed';
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+      }>
+    | undefined;
+  try {
+    const preflight = await input.ports.preflight({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+    });
+    if (
+      preflight.status !== 'ready' ||
+      preflight.environment !== input.environment ||
+      preflight.repoRoot !== input.repoRoot
+    ) {
+      result = Object.freeze({
+        status: 'blocked' as const,
+        stage: 'preflight' as const,
+      });
+      return result;
+    }
+    const ownership = await input.ports.acquireOwner({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      role: 'product',
+    });
+    if (ownership.status !== 'acquired') {
+      result = Object.freeze({
+        status: 'blocked' as const,
+        stage: 'owner' as const,
+      });
+      return result;
+    }
+    owner = ownership.owner;
+    owner.assertHeld();
+    if (!(await input.ports.revalidatePreflight({ preflight }))) {
+      result = Object.freeze({
+        status: 'blocked' as const,
+        stage: 'revalidate' as const,
+      });
+      return result;
+    }
+    const reservation = await input.ports.reserveLedger({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+    });
+    ledger = reservation.ledger;
+    executionManifest = await input.ports.writeExecutionManifest({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      ledger,
+      attemptSha256: reservation.attemptSha256,
+      preflight,
+    });
+    if (
+      executionManifest.environment !== input.environment ||
+      executionManifest.attemptSha256 !== reservation.attemptSha256
+    ) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+    }
+    const fixtures = await input.ports.createFixtures({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      ledger,
+      executionManifest,
+    });
+    journal = await input.ports.prepareRecoveryJournal({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      ledger,
+      executionManifest,
+    });
+    const runner = await input.ports.createRunner({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      ledger,
+      journal,
+      fixtures,
+      executionManifest,
+    });
+    await runner.run();
+    result = Object.freeze({
+      status: 'passed' as const,
+      environment: input.environment,
+    });
+  } catch (error) {
+    failure =
+      error instanceof Error
+        ? error
+        : new Error('V11_PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  } finally {
+    journal?.close();
+    ledger?.close();
+    owner?.close();
+  }
+  if (failure !== undefined) {
+    if (executionManifest !== undefined) {
+      await input.ports.recoverFailure({
+        environment: input.environment,
+        repoRoot: input.repoRoot,
+        executionManifest,
+      });
+    }
+    throw failure;
+  }
+  if (result === undefined) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_OPERATION_FAILED');
+  }
+  return result;
+}
+
+type ReviewPlannerV11RecoveryPreflight =
+  | Readonly<{ status: 'blocked' }>
+  | Readonly<{
+      status: 'ready';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+      repoRoot: string;
+      attemptSha256: string;
+      executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+    }>;
+
+export interface ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts {
+  preflight(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  }): Promise<ReviewPlannerV11RecoveryPreflight>;
+  readAuthoritativeExecutionManifest(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  }): Promise<
+    Readonly<{
+      attemptSha256: string;
+      executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+    }>
+  >;
+  acquireOwner(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    role: 'recovery';
+  }): Promise<ReviewPlannerV11CompositionOwnerResult>;
+  openRecoveryJournal(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<ReviewPlannerV11ProductAcceptanceRecoveryJournal>;
+  publishFailure(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+    journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal;
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+  }): Promise<void>;
+  restoreDefaultOff(
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+  ): Promise<void>;
+  cleanupExact(
+    executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+  ): Promise<void>;
+}
+
+export async function runReviewPlannerV11ProductAcceptanceRecoveryComposition(input: {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  repoRoot: string;
+  ports: ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts;
+}): Promise<
+  | Readonly<{ status: 'blocked'; stage: 'preflight' | 'owner' }>
+  | Readonly<{
+      status: 'recovered';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    }>
+> {
+  let owner: ReviewPlannerV11ProductAcceptanceOwner | undefined;
+  let journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal | undefined;
+  try {
+    const preflight = await input.ports.preflight({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+    });
+    if (
+      preflight.status !== 'ready' ||
+      preflight.environment !== input.environment ||
+      preflight.repoRoot !== input.repoRoot ||
+      preflight.executionManifest.environment !== input.environment ||
+      preflight.executionManifest.attemptSha256 !== preflight.attemptSha256
+    ) {
+      return Object.freeze({
+        status: 'blocked' as const,
+        stage: 'preflight' as const,
+      });
+    }
+    const authoritative = await input.ports.readAuthoritativeExecutionManifest({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+    });
+    if (
+      authoritative.attemptSha256 !== preflight.attemptSha256 ||
+      !sameReviewPlannerV11ExecutionManifest(
+        authoritative.executionManifest,
+        preflight.executionManifest,
+      )
+    ) {
+      return Object.freeze({
+        status: 'blocked' as const,
+        stage: 'preflight' as const,
+      });
+    }
+    const ownership = await input.ports.acquireOwner({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      role: 'recovery',
+    });
+    if (ownership.status !== 'acquired') {
+      return Object.freeze({
+        status: 'blocked' as const,
+        stage: 'owner' as const,
+      });
+    }
+    owner = ownership.owner;
+    journal = await input.ports.openRecoveryJournal({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      executionManifest: preflight.executionManifest,
+    });
+    await input.ports.publishFailure({
+      environment: input.environment,
+      repoRoot: input.repoRoot,
+      owner,
+      journal,
+      executionManifest: preflight.executionManifest,
+    });
+    await input.ports.restoreDefaultOff(preflight.executionManifest);
+    await input.ports.cleanupExact(preflight.executionManifest);
+    return Object.freeze({
+      status: 'recovered' as const,
+      environment: input.environment,
+    });
+  } finally {
+    journal?.close();
+    owner?.close();
+  }
+}
+
+function sameReviewPlannerV11ExecutionManifest(
+  left: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+  right: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+) {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    left.environment === right.environment &&
+    left.attemptSha256 === right.attemptSha256 &&
+    left.resources.accountId.review === right.resources.accountId.review &&
+    left.resources.accountId.planner === right.resources.accountId.planner &&
+    left.resources.fixtureId.review === right.resources.fixtureId.review &&
+    left.resources.fixtureId.planner === right.resources.fixtureId.planner &&
+    left.resources.browser.executablePath ===
+      right.resources.browser.executablePath &&
+    left.resources.browser.profilePath === right.resources.browser.profilePath
+  );
+}
+
 type RecoveryPreflight =
   | Readonly<{
       status: 'blocked';
@@ -405,6 +791,26 @@ type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
   prisma?: PrismaClient;
   pairedEvidenceAuthority?: PairedEvidenceAuthority;
   profile?: ReviewPlannerProductAcceptanceProfile;
+  preflightFactory?(input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  }): Promise<ProductPreflight>;
+  resourcesFactory?(
+    preflight: Extract<ProductPreflight, { status: 'ready' }>,
+    profile: ReviewPlannerProductAcceptanceProfile,
+  ): GeneratedResources;
+  runnerCleanupScopeFactory?(
+    input: Parameters<
+      ReviewPlannerV8ProductAcceptanceCompositionPorts['createRunnerDependencies']
+    >[0],
+  ):
+    | Readonly<{
+        executablePath: string;
+        allowedProfilePaths: readonly string[];
+      }>
+    | undefined;
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary;
+  terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
 }>;
 
 export type PairedEvidenceAuthority = Readonly<{
@@ -1345,6 +1751,8 @@ type DefaultRuntimeState = {
   prisma: PrismaClient;
   repoRoot: string;
   env: Readonly<Record<string, string>>;
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary;
+  terminateBrowser: typeof terminateDefaultReviewPlannerV8ExactBrowser;
   resources: GeneratedResources | null;
   accounts: Partial<Record<Component, RuntimeAccount & { email: string }>>;
   fixtureIds: readonly string[];
@@ -1353,6 +1761,21 @@ type DefaultRuntimeState = {
   liveContainerId: Partial<Record<Component, string>>;
   factsSnapshots: ReviewPlannerFactsSnapshotState;
 };
+
+type ReviewPlannerV11DefaultRuntimeBoundary = Readonly<{
+  readOnlyExec?(input: {
+    cwd: string;
+    file: string;
+    args: readonly string[];
+    options: Readonly<{ signal?: AbortSignal; timeoutMs?: number }>;
+  }): Promise<string>;
+  fetchHealth?(input: { url: string; init: RequestInit }): Promise<Response>;
+  dockerExec?(): void;
+  apiProvider?(): void;
+  chromium?(): void;
+  fetch?(): void;
+  terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
+}>;
 
 export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   repoRoot: string,
@@ -1371,6 +1794,9 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     prisma,
     repoRoot: root,
     env,
+    runtimeBoundary: options.runtimeBoundary,
+    terminateBrowser:
+      options.terminateBrowser ?? terminateDefaultReviewPlannerV8ExactBrowser,
     resources: null,
     accounts: {},
     fixtureIds: [],
@@ -1384,6 +1810,7 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     createReviewPlannerV10PairedEvidenceAuthority();
   const ports: ReviewPlannerV8ProductAcceptanceCompositionPorts = {
     preflight: (input) =>
+      options.preflightFactory?.(input) ??
       runDefaultProductPreflight(input, pairedEvidenceAuthority, profile),
     acquireOwner: (input) =>
       acquireReviewPlannerV8ProductAcceptanceOwner({ ...input, profile }),
@@ -1392,7 +1819,9 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     reserveLedger: (input) =>
       reserveReviewPlannerV8ProductAcceptanceLedger({ ...input, profile }),
     generateResources(preflight) {
-      const resources = generateDefaultResources(preflight, profile);
+      const resources =
+        options.resourcesFactory?.(preflight, profile) ??
+        generateDefaultResources(preflight, profile);
       state.resources = resources;
       state.fixtureIds = resources.fixtureIds;
       return resources;
@@ -1403,15 +1832,19 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
         profile,
       }),
     async registerAccount(input) {
-      const body = await fetchEnvelope('http://127.0.0.1:3001/auth/register', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          email: input.email,
-          password: input.password,
-          name: `V8 ${input.component}`,
-        }),
-      });
+      const body = await fetchEnvelope(
+        'http://127.0.0.1:3001/auth/register',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            email: input.email,
+            password: input.password,
+            name: `V8 ${input.component}`,
+          }),
+        },
+        state.runtimeBoundary,
+      );
       const account = parseAuthEnvelope(body);
       state.accounts[input.component] = {
         ...account,
@@ -1449,7 +1882,12 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
       };
     },
     createRunnerDependencies(input) {
-      return createDefaultRunnerDependencies(state, input, profile);
+      return createDefaultRunnerDependencies(
+        state,
+        input,
+        profile,
+        options.runnerCleanupScopeFactory?.(input),
+      );
     },
     runAcceptance: (input) =>
       runReviewPlannerV8ProductAcceptance({
@@ -1460,6 +1898,396 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   return Object.freeze({
     ports,
     dispose: createIdempotentPrismaDisposer(prisma),
+  });
+}
+
+type ReviewPlannerV11DefaultCompositionOptions = Omit<
+  ReviewPlannerV8DefaultCompositionOptions,
+  'profile' | 'resourcesFactory' | 'preflightFactory'
+> &
+  Readonly<{
+    boundary?: Readonly<{
+      preflight?(input: {
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+        repoRoot: string;
+      }): Promise<ProductPreflight>;
+      acquireOwner?(input: {
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+        repoRoot: string;
+        role: 'product';
+      }): Promise<ReviewPlannerV11CompositionOwnerResult>;
+      revalidatePreflight?(input: {
+        preflight: Extract<
+          ReviewPlannerV11ProductPreflight,
+          { status: 'ready' }
+        >;
+      }): Promise<boolean>;
+      runtime?: Readonly<{
+        readOnlyExec?(input: {
+          cwd: string;
+          file: string;
+          args: readonly string[];
+          options: Readonly<{ signal?: AbortSignal; timeoutMs?: number }>;
+        }): Promise<string>;
+        fetchHealth?(input: {
+          url: string;
+          init: RequestInit;
+        }): Promise<Response>;
+        dockerExec?(): void;
+        apiProvider?(): void;
+        chromium?(): void;
+        fetch?(): void;
+        terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
+      }>;
+      recoverFailure?(input: {
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+        repoRoot: string;
+        executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+      }): Promise<void>;
+      createFixtures?(input: {
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+        repoRoot: string;
+        owner: ReviewPlannerV11ProductAcceptanceOwner;
+        ledger: ReviewPlannerV11ProductAcceptanceLedger;
+        executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+      }): Promise<ReviewPlannerV11FixtureState>;
+      createRunner?(input: {
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+        repoRoot: string;
+        owner: ReviewPlannerV11ProductAcceptanceOwner;
+        ledger: ReviewPlannerV11ProductAcceptanceLedger;
+        journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal;
+        fixtures: ReviewPlannerV11FixtureState;
+        executionManifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord;
+      }): Promise<Readonly<{ run(): Promise<unknown> }>>;
+      captureRunnerDependencies?(input: {
+        dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
+        runtime: ReviewPlannerV11DefaultRuntimeBoundary | undefined;
+      }): void;
+    }>;
+  }>;
+
+type ReviewPlannerV11FixtureState = Readonly<{
+  resources: GeneratedResources;
+  accounts: RuntimeAccounts;
+  fixtureReceipt: FixtureReceipt;
+}>;
+
+/**
+ * Builds the V11 product bridge without starting runtime work. The actual
+ * Docker, browser, API, and provider effects remain behind `runner.run()`.
+ */
+export function createDefaultReviewPlannerV11ProductAcceptanceComposition(
+  repoRoot: string,
+  options: ReviewPlannerV11DefaultCompositionOptions = {},
+): ReviewPlannerV8DisposableComposition<ReviewPlannerV11ProductAcceptanceCompositionPorts> {
+  let selectedExecutionManifest:
+    | ReviewPlannerV11ProductAcceptanceExecutionManifestRecord
+    | undefined;
+  let latestPreflight:
+    | Extract<ProductPreflight, { status: 'ready' }>
+    | undefined;
+  const pairedEvidenceAuthority =
+    options.pairedEvidenceAuthority ??
+    createReviewPlannerV10PairedEvidenceAuthority();
+  const boundary = options.boundary;
+  const legacy = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+    repoRoot,
+    {
+      ...options,
+      pairedEvidenceAuthority,
+      preflightFactory:
+        boundary?.preflight ??
+        ((input) =>
+          runDefaultReviewPlannerV11ProductPreflight(
+            input,
+            pairedEvidenceAuthority,
+            boundary?.runtime,
+          )),
+      resourcesFactory: () => {
+        if (!selectedExecutionManifest) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+        }
+        return createReviewPlannerV11SyntheticResources(
+          selectedExecutionManifest,
+        );
+      },
+      runnerCleanupScopeFactory: () => {
+        if (!selectedExecutionManifest) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+        }
+        return Object.freeze({
+          executablePath:
+            selectedExecutionManifest.resources.browser.executablePath,
+          allowedProfilePaths: Object.freeze([
+            selectedExecutionManifest.resources.browser.profilePath,
+          ]),
+        });
+      },
+      runtimeBoundary: boundary?.runtime,
+      terminateBrowser: boundary?.runtime?.terminateBrowser,
+    },
+  );
+  const ports: ReviewPlannerV11ProductAcceptanceCompositionPorts = {
+    async preflight(input) {
+      const result = await legacy.ports.preflight(input);
+      if (result.status !== 'ready')
+        return Object.freeze({ status: 'blocked' });
+      latestPreflight = result;
+      return result;
+    },
+    acquireOwner: (input) =>
+      boundary?.acquireOwner?.(input) ??
+      acquireReviewPlannerV11ProductAcceptanceOwner(input),
+    revalidatePreflight: ({ preflight }) =>
+      boundary?.revalidatePreflight?.({ preflight }) ??
+      revalidateDefaultReviewPlannerV11ProductPreflight(
+        preflight,
+        pairedEvidenceAuthority,
+        boundary?.runtime,
+      ),
+    async reserveLedger(input) {
+      const ledger =
+        await reserveReviewPlannerV11ProductAcceptanceLedger(input);
+      return Object.freeze({ ledger, attemptSha256: ledger.attemptSha256() });
+    },
+    async writeExecutionManifest(input) {
+      const manifest = createReviewPlannerV11ExecutionManifest({
+        environment: input.environment,
+        attemptSha256: input.attemptSha256,
+        chromeExecutablePath: input.preflight.chromeExecutablePath,
+      });
+      await input.ledger.writeExecutionManifest(manifest);
+      input.ledger.writeManifest({
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest,
+        environment: input.environment,
+        attemptSha256: input.attemptSha256,
+        commitSha: input.preflight.commitSha,
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
+        accountSha256: {
+          review: sha256ReviewPlannerV8CompositionValue(
+            manifest.resources.accountId.review,
+          ),
+          planner: sha256ReviewPlannerV8CompositionValue(
+            manifest.resources.accountId.planner,
+          ),
+        },
+        fixtureSha256: {
+          review: sha256ReviewPlannerV8CompositionValue(
+            manifest.resources.fixtureId.review,
+          ),
+          planner: sha256ReviewPlannerV8CompositionValue(
+            manifest.resources.fixtureId.planner,
+          ),
+        },
+      });
+      selectedExecutionManifest = manifest;
+      return manifest;
+    },
+    async createFixtures(input) {
+      if (
+        selectedExecutionManifest !== input.executionManifest ||
+        latestPreflight === undefined
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+      }
+      const resources = legacy.ports.generateResources(latestPreflight);
+      if (boundary?.createFixtures) {
+        return boundary.createFixtures(input);
+      }
+      const accounts = {} as Record<Component, RuntimeAccount>;
+      for (const component of ['review', 'planner'] as const) {
+        const account = await legacy.ports.registerAccount({
+          component,
+          email: resources.syntheticEmails[component],
+          password: resources.passwords[component],
+        });
+        accounts[component] = account;
+      }
+      const fixtureReceipt = await legacy.ports.createFixtures({
+        accounts,
+        fixtureIds: resources.fixtureIds,
+      });
+      return Object.freeze({ resources, accounts, fixtureReceipt });
+    },
+    prepareRecoveryJournal: (input) => {
+      if (selectedExecutionManifest !== input.executionManifest) {
+        return Promise.reject(
+          new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID'),
+        );
+      }
+      return prepareReviewPlannerV11ProductAcceptanceRecoveryJournal({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+        owner: input.owner,
+      });
+    },
+    createRunner(input) {
+      if (boundary?.createRunner) {
+        return boundary.createRunner({
+          ...input,
+          fixtures: input.fixtures as ReviewPlannerV11FixtureState,
+        });
+      }
+      const preflight = latestPreflight;
+      if (
+        selectedExecutionManifest !== input.executionManifest ||
+        preflight === undefined
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+      }
+      const fixtures = input.fixtures as ReviewPlannerV11FixtureState;
+      const runnerLedger =
+        createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+          environment: input.environment,
+          attemptSha256: input.executionManifest.attemptSha256,
+          ledger: input.ledger,
+          manifest: {
+            schemaVersion:
+              REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest,
+            environment: input.environment,
+            attemptSha256: input.executionManifest.attemptSha256,
+            commitSha: preflight.commitSha,
+            provider: 'deepseek',
+            model: 'deepseek-v4-pro',
+            accountSha256: {
+              review: sha256ReviewPlannerV8CompositionValue(
+                input.executionManifest.resources.accountId.review,
+              ),
+              planner: sha256ReviewPlannerV8CompositionValue(
+                input.executionManifest.resources.accountId.planner,
+              ),
+            },
+            fixtureSha256: {
+              review: sha256ReviewPlannerV8CompositionValue(
+                input.executionManifest.resources.fixtureId.review,
+              ),
+              planner: sha256ReviewPlannerV8CompositionValue(
+                input.executionManifest.resources.fixtureId.planner,
+              ),
+            },
+          },
+        });
+      const diagnostics =
+        createReviewPlannerV11ProductAcceptanceDiagnosticsPort({
+          environment: input.environment,
+          journal: input.journal,
+          ledger: input.ledger,
+        });
+      const dependencies = legacy.ports.createRunnerDependencies({
+        preflight,
+        resources: fixtures.resources,
+        accounts: fixtures.accounts,
+        fixtureReceipt: fixtures.fixtureReceipt,
+      });
+      boundary?.captureRunnerDependencies?.({
+        dependencies,
+        runtime: boundary?.runtime,
+      });
+      return Promise.resolve(
+        Object.freeze({
+          run: () =>
+            runReviewPlannerV8ProductAcceptance({
+              environment: input.environment,
+              commitSha: preflight.commitSha,
+              pairedEvidenceSha256: preflight.pairedEvidenceSha256,
+              accountIdSha256: fixtures.fixtureReceipt.accountIdSha256,
+              capabilities: fixtures.resources.capabilities,
+              webOrigin: 'http://127.0.0.1:3000',
+              apiOrigin: 'http://127.0.0.1:3001',
+              ledger: runnerLedger,
+              dependencies,
+              diagnostics,
+            }),
+        }),
+      );
+    },
+    async recoverFailure(input) {
+      if (boundary?.recoverFailure) {
+        await boundary.recoverFailure(input);
+        return;
+      }
+      const recovery =
+        createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition(
+          input.repoRoot,
+          { env: options.env },
+        );
+      try {
+        const result =
+          await runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+            environment: input.environment,
+            repoRoot: input.repoRoot,
+            ports: recovery.ports,
+          });
+        if (result.status !== 'recovered') {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+        }
+      } finally {
+        await recovery.dispose();
+      }
+    },
+  };
+  return Object.freeze({ ports, dispose: legacy.dispose });
+}
+
+function createReviewPlannerV11ExecutionManifest(input: {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  attemptSha256: string;
+  chromeExecutablePath: string;
+}): ReviewPlannerV11ProductAcceptanceExecutionManifestRecord {
+  const nonce = input.attemptSha256.slice(0, 16);
+  return Object.freeze({
+    schemaVersion:
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.executionManifest,
+    environment: input.environment,
+    attemptSha256: input.attemptSha256,
+    resources: {
+      accountId: {
+        review: `v11-synthetic-account-review-${nonce}`,
+        planner: `v11-synthetic-account-planner-${nonce}`,
+      },
+      fixtureId: {
+        review: `v11-synthetic-fixture-review-${nonce}`,
+        planner: `v11-synthetic-fixture-planner-${nonce}`,
+      },
+      browser: {
+        executablePath: input.chromeExecutablePath,
+        profilePath:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            input.environment,
+          ),
+      },
+    },
+  });
+}
+
+function createReviewPlannerV11SyntheticResources(
+  manifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+): GeneratedResources {
+  const fixtureIds = (['review', 'planner'] as const).flatMap((component) =>
+    Array.from(
+      { length: 8 },
+      (_, index) => `${manifest.resources.fixtureId[component]}-${index + 1}`,
+    ),
+  );
+  return Object.freeze({
+    syntheticEmails: Object.freeze({
+      review: `${manifest.resources.accountId.review}@example.invalid`,
+      planner: `${manifest.resources.accountId.planner}@example.invalid`,
+      probe: `v11-synthetic-probe-${manifest.attemptSha256.slice(0, 16)}@example.invalid`,
+    }),
+    fixtureIds: Object.freeze(fixtureIds),
+    browserProfilePath: manifest.resources.browser.profilePath,
+    passwords: Object.freeze({
+      review: randomBytes(24).toString('base64url'),
+      planner: randomBytes(24).toString('base64url'),
+    }),
+    capabilities: Object.freeze({
+      review: randomBytes(32).toString('hex'),
+      planner: randomBytes(32).toString('hex'),
+    }),
   });
 }
 
@@ -1525,6 +2353,87 @@ async function runDefaultProductPreflight(
   } catch {
     return { status: 'blocked', code: 'preflight_failed' };
   }
+}
+
+async function runDefaultReviewPlannerV11ProductPreflight(
+  input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  },
+  pairedEvidenceAuthority: PairedEvidenceAuthority,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+): Promise<ProductPreflight> {
+  try {
+    const repoRoot = resolve(input.repoRoot);
+    const expectedRoot = resolve(__dirname, '../../../..');
+    if (
+      process.platform !== 'win32' ||
+      repoRoot !== expectedRoot ||
+      !existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')
+    ) {
+      throw new Error();
+    }
+    const repository = await readReviewPlannerV8RepositorySnapshot(
+      repoRoot,
+      pairedEvidenceAuthority,
+      runtimeBoundary,
+    );
+    if (
+      repository === null ||
+      !repository.clean ||
+      (input.environment === 'main'
+        ? repository.branchName !== 'main'
+        : repository.branchName === 'main' ||
+          !repository.branchName.startsWith('codex/'))
+    ) {
+      throw new Error();
+    }
+    await assertCurrentServerDefaultOff(repoRoot, runtimeBoundary);
+    if (input.environment === 'main') {
+      const branch = await readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot,
+        environment: 'branch',
+      });
+      if (branch.status !== 'complete') throw new Error();
+    }
+    return Object.freeze({
+      status: 'ready',
+      environment: input.environment,
+      repoRoot,
+      commitSha: repository.commitSha,
+      branchName: repository.branchName,
+      pairedEvidenceSha256: repository.pairedEvidenceSha256,
+      chromeExecutablePath:
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      utcStamp: new Date().toISOString().replace(/[-:.]/g, '').toLowerCase(),
+    });
+  } catch {
+    return { status: 'blocked', code: 'preflight_failed' };
+  }
+}
+
+async function revalidateDefaultReviewPlannerV11ProductPreflight(
+  preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>,
+  pairedEvidenceAuthority: PairedEvidenceAuthority,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
+  const current = await runDefaultReviewPlannerV11ProductPreflight(
+    {
+      environment: preflight.environment,
+      repoRoot: preflight.repoRoot,
+    },
+    pairedEvidenceAuthority,
+    runtimeBoundary,
+  );
+  return (
+    current.status === 'ready' &&
+    current.environment === preflight.environment &&
+    current.repoRoot === preflight.repoRoot &&
+    current.commitSha === preflight.commitSha &&
+    current.branchName === preflight.branchName &&
+    current.pairedEvidenceSha256 === preflight.pairedEvidenceSha256 &&
+    current.chromeExecutablePath === preflight.chromeExecutablePath
+  );
 }
 
 async function revalidateDefaultProductPreflight(
@@ -1692,6 +2601,10 @@ function createDefaultRunnerDependencies(
     ReviewPlannerV8ProductAcceptanceCompositionPorts['createRunnerDependencies']
   >[0],
   profile: ReviewPlannerProductAcceptanceProfile,
+  cleanupScope?: Readonly<{
+    executablePath: string;
+    allowedProfilePaths: readonly string[];
+  }>,
 ): ReviewPlannerV8ProductAcceptanceRunnerDependencies {
   return {
     async activateComponent(request) {
@@ -1707,6 +2620,7 @@ function createDefaultRunnerDependencies(
       const inspected = await waitForDefaultServerReadiness(
         state.repoRoot,
         current,
+        state.runtimeBoundary,
       );
       assertExpectedServerEnvironment(
         inspected.environment,
@@ -1719,7 +2633,10 @@ function createDefaultRunnerDependencies(
     async captureTraceBaseline({ component, slot }) {
       state.traceBaselines.set(
         `${component}:${slot}`,
-        await readLiveTraceIds(state.accounts[component]?.token),
+        await readLiveTraceIds(
+          state.accounts[component]?.token,
+          state.runtimeBoundary,
+        ),
       );
     },
     async dispatchApi({ component, acceptanceCapability }) {
@@ -1727,13 +2644,17 @@ function createDefaultRunnerDependencies(
       if (!state.traceBaselines.has(traceBaselineKey)) {
         state.traceBaselines.set(
           traceBaselineKey,
-          await readLiveTraceIds(state.accounts[component]?.token),
+          await readLiveTraceIds(
+            state.accounts[component]?.token,
+            state.runtimeBoundary,
+          ),
         );
       }
       return fetchSuggestion(
         state.accounts[component]?.token,
         acceptanceCapability,
         component,
+        state.runtimeBoundary,
       );
     },
     // eslint-disable-next-line @typescript-eslint/unbound-method -- port callback is defined without receiver state
@@ -1745,7 +2666,10 @@ function createDefaultRunnerDependencies(
       if (!state.traceBaselines.has(traceBaselineKey)) {
         state.traceBaselines.set(
           traceBaselineKey,
-          await readLiveTraceIds(state.accounts[component]?.token),
+          await readLiveTraceIds(
+            state.accounts[component]?.token,
+            state.runtimeBoundary,
+          ),
         );
       }
       const profilePath = resolve(state.repoRoot, resources.browserProfilePath);
@@ -1755,6 +2679,7 @@ function createDefaultRunnerDependencies(
         | undefined;
       let contextClosed = false;
       let continuedRequests = 0;
+      state.runtimeBoundary?.chromium?.();
       const context = await chromium.launchPersistentContext(profilePath, {
         executablePath: input.preflight.chromeExecutablePath,
         headless: false,
@@ -1818,6 +2743,7 @@ function createDefaultRunnerDependencies(
           executablePath: input.preflight.chromeExecutablePath,
           profilePath,
           profile,
+          allowedProfilePaths: [resources.browserProfilePath],
         });
         if (
           !responseResult ||
@@ -1848,10 +2774,14 @@ function createDefaultRunnerDependencies(
       const baseline = state.traceBaselines.get(`${component}:${slot}`);
       if (!token || !baseline) throw new Error();
       for (let attempt = 0; attempt < 20; attempt += 1) {
-        const list = await fetchTraceList(token);
+        const list = await fetchTraceList(token, state.runtimeBoundary);
         const candidates = list.filter((id) => !baseline.has(id));
         if (candidates.length === 1) {
-          const trace = await fetchTraceDetail(token, candidates[0]);
+          const trace = await fetchTraceDetail(
+            token,
+            candidates[0],
+            state.runtimeBoundary,
+          );
           state.traceIds.add(trace.traceId);
           return [trace];
         }
@@ -1874,7 +2804,7 @@ function createDefaultRunnerDependencies(
       });
     },
     async cleanup() {
-      await cleanupDefaultState(state);
+      await cleanupDefaultState(state, cleanupScope);
       return {
         schemaVersion: profile.schemas.cleanup,
         syntheticAccounts: 0,
@@ -1915,11 +2845,17 @@ async function restoreDefaultOff(
   const inspected = await waitForDefaultServerReadiness(
     state.repoRoot,
     current,
+    state.runtimeBoundary,
   );
   assertDefaultOffEnvironment(inspected.environment);
   const account = state.accounts[component];
   if (!account) throw new Error();
-  const probe = await fetchSuggestion(account.token, undefined, component);
+  const probe = await fetchSuggestion(
+    account.token,
+    undefined,
+    component,
+    state.runtimeBoundary,
+  );
   if (
     probe.target.attempted ||
     probe.target.provenance !== 'local_deterministic'
@@ -2005,9 +2941,14 @@ export function buildReviewPlannerV8DefaultOffEnvironment(): Readonly<
 }
 
 async function recreateServer(
-  state: Pick<DefaultRuntimeState, 'repoRoot' | 'env'>,
+  state: Readonly<{
+    repoRoot: string;
+    env: Readonly<Record<string, string>>;
+    runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary;
+  }>,
   overrides: Readonly<Record<string, string>>,
 ) {
+  state.runtimeBoundary?.dockerExec?.();
   const command = buildReviewPlannerV8ServerRecreateCommand();
   await execFileAsync(command.file, [...command.args], {
     cwd: state.repoRoot,
@@ -2383,16 +3324,18 @@ async function terminateDefaultReviewPlannerV8ExactBrowser(input: {
   executablePath: string;
   profilePath: string;
   profile?: ReviewPlannerProductAcceptanceProfile;
+  allowedProfilePaths?: readonly string[];
 }) {
   const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const repoRoot = resolve(input.repoRoot);
   const profilePath = resolve(input.profilePath);
   const allowedProfiles = new Set(
-    (['branch', 'main'] as const).map((environment) =>
-      normalizeWindowsPath(
-        resolve(repoRoot, profile.browserProfilePath(environment)),
-      ),
-    ),
+    (
+      input.allowedProfilePaths ??
+      (['branch', 'main'] as const).map((environment) =>
+        profile.browserProfilePath(environment),
+      )
+    ).map((candidate) => normalizeWindowsPath(resolve(repoRoot, candidate))),
   );
   if (!allowedProfiles.has(normalizeWindowsPath(profilePath))) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_BROWSER_PATH_INVALID');
@@ -2436,9 +3379,14 @@ async function removeDefaultReviewPlannerV8BrowserProfile(
   );
 }
 
-async function readServerContainerId(repoRoot: string, signal?: AbortSignal) {
+async function readServerContainerId(
+  repoRoot: string,
+  signal?: AbortSignal,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
   return (
-    await runReadOnlyProcess(
+    await runRuntimeBoundReadOnlyProcess(
+      runtimeBoundary,
       repoRoot,
       'docker',
       [
@@ -2461,8 +3409,10 @@ async function readServerContainerId(repoRoot: string, signal?: AbortSignal) {
 async function inspectServerContainer(
   containerId: string,
   signal?: AbortSignal,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ) {
-  const output = await runReadOnlyProcess(
+  const output = await runRuntimeBoundReadOnlyProcess(
+    runtimeBoundary,
     process.cwd(),
     'docker',
     [
@@ -2565,10 +3515,17 @@ function assertExpectedServerEnvironment(
   }
 }
 
-async function assertCurrentServerDefaultOff(repoRoot: string) {
-  const id = await readServerContainerId(repoRoot);
+async function assertCurrentServerDefaultOff(
+  repoRoot: string,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
+  const id = await readServerContainerId(repoRoot, undefined, runtimeBoundary);
   if (!id) throw new Error();
-  const inspected = await waitForDefaultServerReadiness(repoRoot, id);
+  const inspected = await waitForDefaultServerReadiness(
+    repoRoot,
+    id,
+    runtimeBoundary,
+  );
   assertDefaultOffEnvironment(inspected.environment);
 }
 
@@ -2681,14 +3638,23 @@ async function runReadinessOperation<T>(
 async function waitForDefaultServerReadiness(
   repoRoot: string,
   expectedContainerId: string,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ) {
   return waitForReviewPlannerV8ServerReadiness({
     expectedContainerId,
-    readCurrentContainerId: (signal) => readServerContainerId(repoRoot, signal),
+    readCurrentContainerId: (signal) =>
+      readServerContainerId(repoRoot, signal, runtimeBoundary),
     inspectContainer: (signal) =>
-      inspectServerContainer(expectedContainerId, signal),
+      inspectServerContainer(expectedContainerId, signal, runtimeBoundary),
     fetchHealth: async (signal) => {
-      const response = await fetch('http://127.0.0.1:3001/health', { signal });
+      runtimeBoundary?.fetch?.();
+      const healthInit = { signal };
+      const response = runtimeBoundary?.fetchHealth
+        ? await runtimeBoundary.fetchHealth({
+            url: 'http://127.0.0.1:3001/health',
+            init: healthInit,
+          })
+        : await fetch('http://127.0.0.1:3001/health', healthInit);
       return response.ok;
     },
     totalTimeoutMs: 45_000,
@@ -2701,6 +3667,7 @@ async function fetchSuggestion(
   token: string | undefined,
   acceptanceCapability: string | undefined,
   component: Component,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ): Promise<ReviewPlannerV8ProductAcceptanceRequestResult> {
   if (!token) throw new Error();
   const headers: Record<string, string> = { authorization: `Bearer ${token}` };
@@ -2710,6 +3677,7 @@ async function fetchSuggestion(
   const body = await fetchEnvelope(
     'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-480',
     { headers },
+    runtimeBoundary,
   );
   return parseSuggestionEnvelope(body, component);
 }
@@ -2743,15 +3711,22 @@ function parseObservation(value: unknown) {
   });
 }
 
-async function readLiveTraceIds(token: string | undefined) {
+async function readLiveTraceIds(
+  token: string | undefined,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
   if (!token) throw new Error();
-  return new Set(await fetchTraceList(token));
+  return new Set(await fetchTraceList(token, runtimeBoundary));
 }
 
-async function fetchTraceList(token: string) {
+async function fetchTraceList(
+  token: string,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
   const envelope = await fetchEnvelope(
     'http://127.0.0.1:3001/agent-traces?limit=50&route=review_analysis&mode=live',
     { headers: { authorization: `Bearer ${token}` } },
+    runtimeBoundary,
   );
   const runs = asRecord(unwrapEnvelope(envelope)).runs;
   if (!Array.isArray(runs)) throw new Error();
@@ -2761,10 +3736,12 @@ async function fetchTraceList(token: string) {
 async function fetchTraceDetail(
   token: string,
   traceId: string,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ): Promise<ReviewPlannerV8ProductAcceptancePersistedTrace> {
   const envelope = await fetchEnvelope(
     `http://127.0.0.1:3001/agent-traces/${encodeURIComponent(traceId)}`,
     { headers: { authorization: `Bearer ${token}` } },
+    runtimeBoundary,
   );
   const data = asRecord(unwrapEnvelope(envelope));
   const run = asRecord(data.run);
@@ -2815,7 +3792,13 @@ async function fetchTraceDetail(
   });
 }
 
-async function cleanupDefaultState(state: DefaultRuntimeState) {
+async function cleanupDefaultState(
+  state: DefaultRuntimeState,
+  cleanupScope?: Readonly<{
+    executablePath: string;
+    allowedProfilePaths: readonly string[];
+  }>,
+) {
   const accountEntries = Object.values(state.accounts);
   await state.prisma.$transaction(async (tx) => {
     if (state.traceIds.size > 0) {
@@ -2831,11 +3814,15 @@ async function cleanupDefaultState(state: DefaultRuntimeState) {
   });
   const profile = state.resources?.browserProfilePath;
   if (profile) {
-    await terminateDefaultReviewPlannerV8ExactBrowser({
+    await state.terminateBrowser({
       repoRoot: state.repoRoot,
       executablePath:
+        cleanupScope?.executablePath ??
         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       profilePath: resolve(state.repoRoot, profile),
+      ...(cleanupScope
+        ? { allowedProfilePaths: cleanupScope.allowedProfilePaths }
+        : {}),
     });
   }
   const [users, fixtures, traces] = await Promise.all([
@@ -2969,11 +3956,12 @@ export async function captureReviewPlannerV8RepositorySnapshot(input: {
 async function readReviewPlannerV8RepositorySnapshot(
   repoRoot: string,
   authority: PairedEvidenceAuthority,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ) {
   const evidenceDirectory =
     REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
   const readGitStatus = () =>
-    runReadOnlyProcess(repoRoot, 'git', [
+    runRuntimeBoundReadOnlyProcess(runtimeBoundary, repoRoot, 'git', [
       'status',
       '--porcelain=v2',
       '--branch',
@@ -2984,7 +3972,7 @@ async function readReviewPlannerV8RepositorySnapshot(
       .sort()
       .map((name) => `${evidenceDirectory}/${name}`);
   const readEvidenceIndex = () =>
-    runReadOnlyProcess(repoRoot, 'git', [
+    runRuntimeBoundReadOnlyProcess(runtimeBoundary, repoRoot, 'git', [
       'ls-files',
       '-v',
       '--full-name',
@@ -3016,7 +4004,26 @@ async function runReadOnlyProcess(
   return result.stdout;
 }
 
-async function fetchEnvelope(url: string, init: RequestInit = {}) {
+async function runRuntimeBoundReadOnlyProcess(
+  runtimeBoundary: ReviewPlannerV11DefaultRuntimeBoundary | undefined,
+  cwd: string,
+  file: string,
+  args: readonly string[],
+  options: Readonly<{ signal?: AbortSignal; timeoutMs?: number }> = {},
+) {
+  if (runtimeBoundary?.readOnlyExec) {
+    return runtimeBoundary.readOnlyExec({ cwd, file, args, options });
+  }
+  return runReadOnlyProcess(cwd, file, args, options);
+}
+
+async function fetchEnvelope(
+  url: string,
+  init: RequestInit = {},
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
+  runtimeBoundary?.apiProvider?.();
+  runtimeBoundary?.fetch?.();
   const response = await fetch(url, {
     ...init,
     signal: AbortSignal.timeout(15_000),
@@ -3282,6 +4289,200 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
     ports,
     dispose: createIdempotentPrismaDisposer(prisma),
   });
+}
+
+type ReviewPlannerV11DefaultRecoveryCompositionOptions = Readonly<{
+  env?: Readonly<Record<string, string>>;
+  prisma?: PrismaClient;
+  boundary?: Readonly<{
+    readLedger?: typeof readReviewPlannerV11ProductAcceptanceLedger;
+    readAttemptBinding?: typeof readReviewPlannerV11ProductAcceptanceAttemptBinding;
+    readExecutionManifest?: typeof readReviewPlannerV11ProductAcceptanceExecutionManifest;
+    acquireOwner?: typeof acquireReviewPlannerV11ProductAcceptanceOwner;
+  }>;
+}>;
+
+export function createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition(
+  repoRoot: string,
+  options: ReviewPlannerV11DefaultRecoveryCompositionOptions = {},
+): ReviewPlannerV8DisposableComposition<ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts> {
+  const root = resolve(repoRoot);
+  const env = options.env ?? readRootEnvironment(root);
+  const boundary = options.boundary;
+  const readLedger =
+    boundary?.readLedger ?? readReviewPlannerV11ProductAcceptanceLedger;
+  const readAttemptBinding =
+    boundary?.readAttemptBinding ??
+    readReviewPlannerV11ProductAcceptanceAttemptBinding;
+  const readExecutionManifest =
+    boundary?.readExecutionManifest ??
+    readReviewPlannerV11ProductAcceptanceExecutionManifest;
+  const prisma =
+    options.prisma ??
+    new PrismaClient({
+      datasources: { db: { url: requiredEnv(env, 'DATABASE_URL') } },
+    });
+  const readAuthoritative = async (input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  }) => {
+    if (resolve(input.repoRoot) !== root) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    const binding = await readAttemptBinding({
+      repoRoot: root,
+      environment: input.environment,
+    });
+    const execution = await readExecutionManifest({
+      repoRoot: root,
+      environment: input.environment,
+    });
+    if (
+      execution.environment !== input.environment ||
+      execution.attemptSha256 !== binding.attemptSha256 ||
+      execution.resources.browser.profilePath !==
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+          input.environment,
+        )
+    ) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    return Object.freeze({
+      attemptSha256: binding.attemptSha256,
+      executionManifest: execution,
+    });
+  };
+  const ports: ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts = {
+    async preflight(input) {
+      try {
+        if (process.platform !== 'win32' || resolve(input.repoRoot) !== root) {
+          throw new Error();
+        }
+        const ledger = await readLedger({
+          repoRoot: root,
+          environment: input.environment,
+        });
+        if (
+          ledger.status !== 'incomplete' &&
+          ledger.status !== 'operation_failed'
+        ) {
+          throw new Error();
+        }
+        const authoritative = await readAuthoritative(input);
+        return Object.freeze({
+          status: 'ready' as const,
+          environment: input.environment,
+          repoRoot: root,
+          ...authoritative,
+        });
+      } catch {
+        return Object.freeze({ status: 'blocked' as const });
+      }
+    },
+    acquireOwner: (input) =>
+      boundary?.acquireOwner?.(input) ??
+      acquireReviewPlannerV11ProductAcceptanceOwner(input),
+    readAuthoritativeExecutionManifest: readAuthoritative,
+    openRecoveryJournal: (input) =>
+      openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+        owner: input.owner,
+      }),
+    async publishFailure(input) {
+      try {
+        input.journal.latestCheckpoint();
+      } catch {
+        input.journal.appendCheckpoint({
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.checkpoint,
+          component: 'review',
+          slot: 'api',
+          checkpoint: 'review_api_activate',
+          providerCallState: 'not_started',
+        });
+      }
+      const ledger = await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+        owner: input.owner,
+      });
+      try {
+        input.journal.projectRecoveryOnly(ledger);
+      } finally {
+        ledger.close();
+      }
+    },
+    restoreDefaultOff: (executionManifest) =>
+      restoreDefaultV11ReviewPlannerOff(root, env, executionManifest),
+    cleanupExact: (executionManifest) =>
+      cleanupDefaultV11ReviewPlannerResources(root, prisma, executionManifest),
+  };
+  return Object.freeze({
+    ports,
+    dispose: createIdempotentPrismaDisposer(prisma),
+  });
+}
+
+async function restoreDefaultV11ReviewPlannerOff(
+  repoRoot: string,
+  env: Readonly<Record<string, string>>,
+  manifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+) {
+  assertDefaultV11ExecutionManifest(manifest);
+  const previous = await readServerContainerId(repoRoot);
+  if (!previous) throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  await recreateServer(
+    { repoRoot, env },
+    buildReviewPlannerV8DefaultOffEnvironment(),
+  );
+  const current = await readServerContainerId(repoRoot);
+  if (!current || current === previous) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  }
+  const inspected = await waitForDefaultServerReadiness(repoRoot, current);
+  assertDefaultOffEnvironment(inspected.environment);
+}
+
+async function cleanupDefaultV11ReviewPlannerResources(
+  repoRoot: string,
+  prisma: PrismaClient,
+  manifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+) {
+  assertDefaultV11ExecutionManifest(manifest);
+  const profilePath = resolve(repoRoot, manifest.resources.browser.profilePath);
+  await terminateDefaultReviewPlannerV8ExactBrowser({
+    repoRoot,
+    executablePath: manifest.resources.browser.executablePath,
+    profilePath,
+    allowedProfilePaths: [manifest.resources.browser.profilePath],
+  });
+  const emails = ['review', 'planner'].map(
+    (component) =>
+      `${manifest.resources.accountId[component as Component]}@example.invalid`,
+  );
+  await prisma.user.deleteMany({ where: { email: { in: emails } } });
+  const remaining = await prisma.user.count({
+    where: { email: { in: emails } },
+  });
+  if (remaining !== 0 || existsSync(profilePath)) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  }
+}
+
+function assertDefaultV11ExecutionManifest(
+  manifest: ReviewPlannerV11ProductAcceptanceExecutionManifestRecord,
+) {
+  if (
+    manifest.resources.browser.executablePath !==
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' ||
+    manifest.resources.browser.profilePath !==
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+        manifest.environment,
+      )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
 }
 
 function createIdempotentPrismaDisposer(prisma: PrismaClient) {

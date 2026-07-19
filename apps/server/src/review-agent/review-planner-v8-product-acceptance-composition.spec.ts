@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await -- typed Jest fixtures intentionally use matcher values and async port signatures */
+import { readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
 import {
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION,
@@ -8,6 +11,10 @@ import {
   captureReviewPlannerV8RepositorySnapshot,
   captureReviewPlannerV8RepositorySnapshotFromAuthority,
   createReviewPlannerV11ProductAcceptanceDiagnosticsPort,
+  createDefaultReviewPlannerV11ProductAcceptanceComposition,
+  createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition,
+  runReviewPlannerV11ProductAcceptanceComposition,
+  runReviewPlannerV11ProductAcceptanceRecoveryComposition,
   createReviewPlannerV9PairedEvidenceAuthority,
   assertReviewPlannerV8EvidenceIndexIsOrdinary,
   createDefaultReviewPlannerV8ProductAcceptanceComposition,
@@ -27,6 +34,8 @@ import {
   waitForReviewPlannerV8ServerReadiness,
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
+  type ReviewPlannerV11ProductAcceptanceCompositionPorts,
+  type ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
 import { chromium } from 'playwright-core';
 import * as legacyV8Evidence from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
@@ -34,6 +43,7 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE,
   REVIEW_PLANNER_CONTROLLED_LIVE_V9_STAGES,
 } from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
+import { REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE } from './review-planner-controlled-live-eval-v10-semantic-quality.evidence';
 import { resolveReviewPlannerLiveExecutorConfig } from './review-planner-model-config';
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
@@ -882,6 +892,630 @@ describe('V8 product acceptance executable composition', () => {
     expect(line).not.toMatch(
       /password|token|jwt|capability|https?:|provider|trace|@/i,
     );
+  });
+});
+
+describe('V11 execution-bridge composition', () => {
+  it('uses the default V11 boundary before ownership and never falls through to a V8 path', async () => {
+    const runtime = {
+      dockerExec: jest.fn(() => {
+        throw new Error('unexpected docker execution');
+      }),
+      apiProvider: jest.fn(() => {
+        throw new Error('unexpected api/provider execution');
+      }),
+      chromium: jest.fn(() => {
+        throw new Error('unexpected chromium execution');
+      }),
+      fetch: jest.fn(() => {
+        throw new Error('unexpected fetch execution');
+      }),
+    };
+    const preflight = jest.fn(async () => ({
+      status: 'ready' as const,
+      environment: 'branch' as const,
+      repoRoot: 'E:\\v11-default-boundary',
+      commitSha: COMMIT,
+      chromeExecutablePath: CHROME_EXE,
+    }));
+    const acquireOwner = jest.fn(async () => ({
+      status: 'owner_active' as const,
+    }));
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(
+        'E:\\v11-default-boundary',
+        {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+          boundary: { preflight, acquireOwner, runtime },
+        } as never,
+      );
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: 'E:\\v11-default-boundary',
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'owner' });
+      expect(preflight).toHaveBeenCalledTimes(1);
+      expect(acquireOwner).toHaveBeenCalledTimes(1);
+      expect(runtime.dockerExec).not.toHaveBeenCalled();
+      expect(runtime.apiProvider).not.toHaveBeenCalled();
+      expect(runtime.chromium).not.toHaveBeenCalled();
+      expect(runtime.fetch).not.toHaveBeenCalled();
+    } finally {
+      await composition.dispose();
+    }
+  });
+
+  it('routes actual V11 preflight compose and health checks through injected adapters before owner blocks', async () => {
+    const evidenceDirectory =
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
+    const evidencePaths = (await readdir(resolve(REPO_ROOT, evidenceDirectory)))
+      .sort()
+      .map((name) => `${evidenceDirectory}/${name}`);
+    const counts = {
+      git: 0,
+      docker: 0,
+      health: 0,
+      apiProvider: 0,
+      chromium: 0,
+      fetchObserver: 0,
+    };
+    const readOnlyExec = jest.fn(
+      async (input: { file: string; args: readonly string[] }) => {
+        if (input.file === 'git') {
+          counts.git += 1;
+          if (input.args[0] === 'status') {
+            return `# branch.oid ${COMMIT}\n# branch.head codex/v11-preflight-fake\n`;
+          }
+          if (input.args[0] === 'ls-files') {
+            return ordinaryEvidenceIndex(evidencePaths);
+          }
+        }
+        if (input.file === 'docker') {
+          counts.docker += 1;
+          if (input.args[0] === 'compose') return `${CONTAINER_ID}\n`;
+          if (input.args[0] === 'inspect') {
+            return JSON.stringify({
+              id: CONTAINER_ID,
+              environment: Object.entries(
+                buildReviewPlannerV8DefaultOffEnvironment(),
+              ).map(([key, value]) => `${key}=${value}`),
+              status: 'running',
+              health: 'healthy',
+              labels: {
+                'com.docker.compose.project': 'docker',
+                'com.docker.compose.service': 'server',
+              },
+              ports: {
+                '3001/tcp': [{ HostIp: '127.0.0.1', HostPort: '3001' }],
+              },
+            });
+          }
+        }
+        throw new Error('unexpected read-only process');
+      },
+    );
+    const fetchHealth = jest.fn(async () => {
+      counts.health += 1;
+      return new Response(null, { status: 200 });
+    });
+    const acquireOwner = jest.fn(async () => ({
+      status: 'owner_active' as const,
+    }));
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(REPO_ROOT, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+        pairedEvidenceAuthority: {
+          profile: 'v10',
+          readCommittedSuccess: jest.fn(async () => ({
+            providerAttemptCount: 23 as const,
+            pairedAdmissionCount: 22 as const,
+            evidenceSha256: SHA,
+          })),
+        },
+        boundary: {
+          acquireOwner,
+          runtime: {
+            readOnlyExec,
+            fetchHealth,
+            fetch: () => {
+              counts.fetchObserver += 1;
+            },
+            apiProvider: () => {
+              counts.apiProvider += 1;
+              throw new Error('unexpected api/provider execution');
+            },
+            chromium: () => {
+              counts.chromium += 1;
+              throw new Error('unexpected chromium execution');
+            },
+          },
+        },
+      } as never);
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: REPO_ROOT,
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'owner' });
+      expect(acquireOwner).toHaveBeenCalledTimes(1);
+      expect(counts.git).toBeGreaterThan(0);
+      expect(counts.docker).toBeGreaterThan(0);
+      expect(counts.health).toBeGreaterThan(0);
+      expect(counts.fetchObserver).toBeGreaterThan(0);
+      expect(counts.apiProvider).toBe(0);
+      expect(counts.chromium).toBe(0);
+    } finally {
+      await composition.dispose();
+    }
+  });
+
+  it('revalidates canonical V11 repo and default-off facts through adapters after owner acquisition', async () => {
+    const evidenceDirectory =
+      REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
+    const evidencePaths = (await readdir(resolve(REPO_ROOT, evidenceDirectory)))
+      .sort()
+      .map((name) => `${evidenceDirectory}/${name}`);
+    const driftCommit = 'd'.repeat(40);
+    const order: string[] = [];
+    let gitStatusReads = 0;
+    const runtimeCounts = {
+      dockerExec: 0,
+      apiProvider: 0,
+      chromium: 0,
+    };
+    const readOnlyExec = jest.fn(
+      async (input: { file: string; args: readonly string[] }) => {
+        const phase = gitStatusReads >= 3 ? 'revalidate' : 'preflight';
+        if (input.file === 'git' && input.args[0] === 'status') {
+          gitStatusReads += 1;
+          const statusPhase = gitStatusReads >= 3 ? 'revalidate' : 'preflight';
+          order.push(`${statusPhase}:git-status`);
+          const commit = gitStatusReads >= 3 ? driftCommit : COMMIT;
+          return `# branch.oid ${commit}\n# branch.head codex/v11-preflight-fake\n`;
+        }
+        if (input.file === 'git' && input.args[0] === 'ls-files') {
+          order.push(`${phase}:git-index`);
+          return ordinaryEvidenceIndex(evidencePaths);
+        }
+        if (input.file === 'docker' && input.args[0] === 'compose') {
+          order.push(`${phase}:docker-compose`);
+          return `${CONTAINER_ID}\n`;
+        }
+        if (input.file === 'docker' && input.args[0] === 'inspect') {
+          order.push(`${phase}:docker-inspect`);
+          return JSON.stringify({
+            id: CONTAINER_ID,
+            environment: Object.entries(
+              buildReviewPlannerV8DefaultOffEnvironment(),
+            ).map(([key, value]) => `${key}=${value}`),
+            status: 'running',
+            health: 'healthy',
+            labels: {
+              'com.docker.compose.project': 'docker',
+              'com.docker.compose.service': 'server',
+            },
+            ports: {
+              '3001/tcp': [{ HostIp: '127.0.0.1', HostPort: '3001' }],
+            },
+          });
+        }
+        throw new Error('unexpected read-only process');
+      },
+    );
+    const owner = Object.freeze({
+      assertHeld: jest.fn(),
+      close: jest.fn(() => order.push('owner:close')),
+    });
+    const acquireOwner = jest.fn(async () => {
+      order.push('owner');
+      return { status: 'acquired' as const, owner };
+    });
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(REPO_ROOT, {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+        pairedEvidenceAuthority: {
+          profile: 'v10',
+          readCommittedSuccess: jest.fn(async () => ({
+            providerAttemptCount: 23 as const,
+            pairedAdmissionCount: 22 as const,
+            evidenceSha256: SHA,
+          })),
+        },
+        boundary: {
+          acquireOwner,
+          runtime: {
+            readOnlyExec,
+            fetchHealth: async () => {
+              const phase = gitStatusReads >= 3 ? 'revalidate' : 'preflight';
+              order.push(`${phase}:health`);
+              return new Response(null, { status: 200 });
+            },
+            fetch: () => {
+              const phase = gitStatusReads >= 3 ? 'revalidate' : 'preflight';
+              order.push(`${phase}:fetch`);
+            },
+            dockerExec: () => {
+              runtimeCounts.dockerExec += 1;
+              throw new Error('unexpected docker execution');
+            },
+            apiProvider: () => {
+              runtimeCounts.apiProvider += 1;
+              throw new Error('unexpected api/provider execution');
+            },
+            chromium: () => {
+              runtimeCounts.chromium += 1;
+              throw new Error('unexpected chromium execution');
+            },
+          },
+        },
+      } as never);
+    const reserveLedger = jest
+      .spyOn(composition.ports, 'reserveLedger')
+      .mockRejectedValue(new Error('unexpected reserve'));
+    const writeExecutionManifest = jest.spyOn(
+      composition.ports,
+      'writeExecutionManifest',
+    );
+    const createFixtures = jest.spyOn(composition.ports, 'createFixtures');
+    const prepareRecoveryJournal = jest.spyOn(
+      composition.ports,
+      'prepareRecoveryJournal',
+    );
+    const createRunner = jest.spyOn(composition.ports, 'createRunner');
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: REPO_ROOT,
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'revalidate' });
+      expect(order).toEqual([
+        'preflight:git-status',
+        'preflight:git-index',
+        'preflight:git-index',
+        'preflight:git-status',
+        'preflight:docker-compose',
+        'preflight:docker-compose',
+        'preflight:docker-inspect',
+        'preflight:fetch',
+        'preflight:health',
+        'preflight:docker-compose',
+        'preflight:docker-inspect',
+        'owner',
+        'revalidate:git-status',
+        'revalidate:git-index',
+        'revalidate:git-index',
+        'revalidate:git-status',
+        'revalidate:docker-compose',
+        'revalidate:docker-compose',
+        'revalidate:docker-inspect',
+        'revalidate:fetch',
+        'revalidate:health',
+        'revalidate:docker-compose',
+        'revalidate:docker-inspect',
+        'owner:close',
+      ]);
+      expect(acquireOwner).toHaveBeenCalledTimes(1);
+      expect(owner.assertHeld).toHaveBeenCalledTimes(1);
+      expect(reserveLedger).not.toHaveBeenCalled();
+      expect(writeExecutionManifest).not.toHaveBeenCalled();
+      expect(createFixtures).not.toHaveBeenCalled();
+      expect(prepareRecoveryJournal).not.toHaveBeenCalled();
+      expect(createRunner).not.toHaveBeenCalled();
+      expect(runtimeCounts).toEqual({
+        dockerExec: 0,
+        apiProvider: 0,
+        chromium: 0,
+      });
+    } finally {
+      await composition.dispose();
+    }
+  });
+
+  it('keeps all four default V11 runtime guards at zero when preflight blocks', async () => {
+    const runtime = {
+      dockerExec: jest.fn(() => {
+        throw new Error('unexpected docker execution');
+      }),
+      apiProvider: jest.fn(() => {
+        throw new Error('unexpected api/provider execution');
+      }),
+      chromium: jest.fn(() => {
+        throw new Error('unexpected chromium execution');
+      }),
+      fetch: jest.fn(() => {
+        throw new Error('unexpected fetch execution');
+      }),
+    };
+    const acquireOwner = jest.fn(async () => ({
+      status: 'owner_active' as const,
+    }));
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(
+        'E:\\v11-default-preflight-block',
+        {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+          boundary: {
+            preflight: async () => ({ status: 'blocked' }),
+            acquireOwner,
+            runtime,
+          },
+        } as never,
+      );
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: 'E:\\v11-default-preflight-block',
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'preflight' });
+      expect(acquireOwner).not.toHaveBeenCalled();
+      expect(runtime.dockerExec).not.toHaveBeenCalled();
+      expect(runtime.apiProvider).not.toHaveBeenCalled();
+      expect(runtime.chromium).not.toHaveBeenCalled();
+      expect(runtime.fetch).not.toHaveBeenCalled();
+    } finally {
+      await composition.dispose();
+    }
+  });
+
+  it('binds one opaque selector set through manifest, fixtures, journal, and runner without external runtime calls', async () => {
+    const fixture = createV11CompositionPorts();
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).resolves.toMatchObject({ status: 'passed', environment: 'branch' });
+
+    expect(fixture.order).toEqual([
+      'preflight',
+      'owner',
+      'revalidate',
+      'reserve',
+      'manifest',
+      'fixtures',
+      'journal',
+      'runner',
+    ]);
+    expect(fixture.ports.createFixtures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionManifest: fixture.executionManifest,
+      }),
+    );
+    expect(fixture.ports.prepareRecoveryJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionManifest: fixture.executionManifest,
+      }),
+    );
+    expect(fixture.ports.createRunner).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionManifest: fixture.executionManifest,
+      }),
+    );
+  });
+
+  it('blocks V11 revalidation drift after owner acquisition before durable or runtime work', async () => {
+    const fixture = createV11CompositionPorts({
+      revalidationStatus: 'drifted',
+    });
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).resolves.toEqual({ status: 'blocked', stage: 'revalidate' });
+
+    expect(fixture.order).toEqual(['preflight', 'owner', 'revalidate']);
+    expect(fixture.owner.assertHeld).toHaveBeenCalledTimes(1);
+    expect(fixture.ports.reserveLedger).not.toHaveBeenCalled();
+    expect(fixture.ports.writeExecutionManifest).not.toHaveBeenCalled();
+    expect(fixture.ports.createFixtures).not.toHaveBeenCalled();
+    expect(fixture.ports.prepareRecoveryJournal).not.toHaveBeenCalled();
+    expect(fixture.ports.createRunner).not.toHaveBeenCalled();
+  });
+
+  it.each(['preflight', 'owner'] as const)(
+    'does not construct V11 resources or invoke external runtime when %s blocks',
+    async (blockedAt) => {
+      const fixture = createV11CompositionPorts({ blockedAt });
+
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: REPO_ROOT,
+          ports: fixture.ports,
+        }),
+      ).resolves.toMatchObject({ status: 'blocked', stage: blockedAt });
+
+      expect(fixture.ports.reserveLedger).not.toHaveBeenCalled();
+      expect(fixture.ports.writeExecutionManifest).not.toHaveBeenCalled();
+      expect(fixture.ports.createFixtures).not.toHaveBeenCalled();
+      expect(fixture.ports.prepareRecoveryJournal).not.toHaveBeenCalled();
+      expect(fixture.ports.createRunner).not.toHaveBeenCalled();
+    },
+  );
+
+  it('fails recovery closed before default-off or cleanup when its manifest selector is stale', async () => {
+    const fixture = createV11RecoveryCompositionPorts({ staleManifest: true });
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).resolves.toMatchObject({ status: 'blocked', stage: 'preflight' });
+
+    expect(fixture.ports.acquireOwner).not.toHaveBeenCalled();
+    expect(fixture.ports.restoreDefaultOff).not.toHaveBeenCalled();
+    expect(fixture.ports.cleanupExact).not.toHaveBeenCalled();
+  });
+
+  it('recovers only through the matching V11 manifest selector and publishes the strict failure terminal first', async () => {
+    const fixture = createV11RecoveryCompositionPorts();
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).resolves.toMatchObject({ status: 'recovered', environment: 'branch' });
+
+    expect(fixture.order).toEqual([
+      'preflight',
+      'owner',
+      'journal',
+      'failure',
+      'default-off',
+      'cleanup',
+    ]);
+    expect(fixture.ports.restoreDefaultOff).toHaveBeenCalledWith(
+      fixture.executionManifest,
+    );
+    expect(fixture.ports.cleanupExact).toHaveBeenCalledWith(
+      fixture.executionManifest,
+    );
+  });
+
+  it.each(['fixtures', 'runner'] as const)(
+    'projects one strict V11 failure and exact manifest cleanup when %s fails after resources begin',
+    async (stage) => {
+      const fixture = createV11CompositionPorts();
+      if (stage === 'fixtures') {
+        fixture.ports.createFixtures.mockRejectedValueOnce(
+          new Error('fixture failure'),
+        );
+      } else {
+        fixture.ports.createRunner.mockResolvedValueOnce(
+          Object.freeze({
+            run: async () => {
+              throw new Error('runner failure');
+            },
+          }),
+        );
+      }
+
+      await expect(
+        runReviewPlannerV11ProductAcceptanceComposition({
+          environment: 'branch',
+          repoRoot: REPO_ROOT,
+          ports: fixture.ports,
+        }),
+      ).rejects.toThrow(
+        stage === 'fixtures' ? 'fixture failure' : 'runner failure',
+      );
+
+      expect(fixture.recoverFailure).toHaveBeenCalledTimes(1);
+      expect(fixture.recoverFailure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          executionManifest: fixture.executionManifest,
+        }),
+      );
+      expect(fixture.order).toContain('failure:strict');
+      expect(fixture.order).toContain('failure:default-off');
+      expect(fixture.order).toContain('failure:cleanup');
+    },
+  );
+
+  it('rejects recovery selector substitution against a second authoritative manifest read before runtime cleanup', async () => {
+    const fixture = createV11RecoveryCompositionPorts();
+    const altered = {
+      ...fixture.executionManifest,
+      resources: {
+        ...fixture.executionManifest.resources,
+        accountId: {
+          ...fixture.executionManifest.resources.accountId,
+          review: 'v11-synthetic-account-review-substituted',
+        },
+      },
+    };
+    fixture.readAuthoritativeExecutionManifest.mockResolvedValueOnce({
+      attemptSha256: altered.attemptSha256,
+      executionManifest: altered,
+    });
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).resolves.toMatchObject({ status: 'blocked', stage: 'preflight' });
+
+    expect(fixture.readAuthoritativeExecutionManifest).toHaveBeenCalledTimes(1);
+    expect(fixture.ports.acquireOwner).not.toHaveBeenCalled();
+    expect(fixture.ports.restoreDefaultOff).not.toHaveBeenCalled();
+    expect(fixture.ports.cleanupExact).not.toHaveBeenCalled();
+  });
+
+  it('makes the default V11 recovery composition re-read and reject a substituted selector before it acquires runtime ownership', async () => {
+    const original = createV11RecoveryCompositionPorts().executionManifest;
+    const substituted = {
+      ...original,
+      resources: {
+        ...original.resources,
+        fixtureId: {
+          ...original.resources.fixtureId,
+          planner: 'v11-synthetic-fixture-planner-substituted',
+        },
+      },
+    };
+    const acquireOwner = jest.fn();
+    const readExecutionManifest = jest
+      .fn()
+      .mockResolvedValueOnce(original)
+      .mockResolvedValueOnce(substituted);
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceRecoveryComposition(
+        'E:\\v11-recovery-boundary',
+        {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+          boundary: {
+            readLedger: jest.fn(async () => ({ status: 'operation_failed' })),
+            readAttemptBinding: jest.fn(async () => ({
+              attemptSha256: original.attemptSha256,
+            })),
+            readExecutionManifest,
+            acquireOwner,
+          },
+        } as never,
+      );
+
+    try {
+      await expect(
+        runReviewPlannerV11ProductAcceptanceRecoveryComposition({
+          environment: 'branch',
+          repoRoot: 'E:\\v11-recovery-boundary',
+          ports: composition.ports,
+        }),
+      ).resolves.toEqual({ status: 'blocked', stage: 'preflight' });
+      expect(readExecutionManifest).toHaveBeenCalledTimes(2);
+      expect(acquireOwner).not.toHaveBeenCalled();
+    } finally {
+      await composition.dispose();
+    }
   });
 });
 
@@ -2205,4 +2839,181 @@ function createRecoveryPorts(
     }),
   } satisfies ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts;
   return { order, ports, owner, journal };
+}
+
+function createV11CompositionPorts(
+  options: {
+    blockedAt?: 'preflight' | 'owner';
+    revalidationStatus?: 'stable' | 'drifted';
+  } = {},
+) {
+  const order: string[] = [];
+  const recoverFailure = jest.fn(async () => {
+    order.push('failure:strict');
+    order.push('failure:default-off');
+    order.push('failure:cleanup');
+  });
+  const executionManifest = Object.freeze({
+    schemaVersion:
+      'phase-6.9.5-v11-product-acceptance-execution-manifest-v1' as const,
+    environment: 'branch' as const,
+    attemptSha256: 'a'.repeat(64),
+    resources: {
+      accountId: {
+        review: 'v11-synthetic-account-review-a',
+        planner: 'v11-synthetic-account-planner-a',
+      },
+      fixtureId: {
+        review: 'v11-synthetic-fixture-review-a',
+        planner: 'v11-synthetic-fixture-planner-a',
+      },
+      browser: {
+        executablePath: CHROME_EXE,
+        profilePath:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            'branch',
+          ),
+      },
+    },
+  });
+  const owner = Object.freeze({
+    assertHeld: jest.fn(),
+    close: jest.fn(),
+  });
+  const ports = {
+    preflight: jest.fn(async () => {
+      order.push('preflight');
+      return options.blockedAt === 'preflight'
+        ? { status: 'blocked' as const }
+        : {
+            status: 'ready' as const,
+            environment: 'branch' as const,
+            repoRoot: REPO_ROOT,
+            commitSha: COMMIT,
+            branchName: 'codex/phase-6-9-5-v11',
+            pairedEvidenceSha256: SHA,
+            chromeExecutablePath: CHROME_EXE,
+          };
+    }),
+    acquireOwner: jest.fn(async () => {
+      order.push('owner');
+      return options.blockedAt === 'owner'
+        ? { status: 'owner_active' as const }
+        : { status: 'acquired' as const, owner };
+    }),
+    revalidatePreflight: jest.fn(async () => {
+      order.push('revalidate');
+      return options.revalidationStatus !== 'drifted';
+    }),
+    reserveLedger: jest.fn(async () => {
+      order.push('reserve');
+      return {
+        ledger: Object.freeze({ close: jest.fn() }),
+        attemptSha256: 'a'.repeat(64),
+      };
+    }),
+    writeExecutionManifest: jest.fn(async () => {
+      order.push('manifest');
+      return executionManifest;
+    }),
+    createFixtures: jest.fn(async () => {
+      order.push('fixtures');
+      return Object.freeze({});
+    }),
+    prepareRecoveryJournal: jest.fn(async () => {
+      order.push('journal');
+      return Object.freeze({ close: jest.fn() });
+    }),
+    createRunner: jest.fn(async () => {
+      order.push('runner');
+      return Object.freeze({
+        async run() {
+          return undefined;
+        },
+      });
+    }),
+    recoverFailure,
+  } satisfies ReviewPlannerV11ProductAcceptanceCompositionPorts;
+  return {
+    order,
+    ports,
+    owner,
+    executionManifest,
+    recoverFailure,
+  };
+}
+
+function createV11RecoveryCompositionPorts(
+  options: { staleManifest?: boolean } = {},
+) {
+  const order: string[] = [];
+  const readAuthoritativeExecutionManifest = jest.fn(async () => ({
+    attemptSha256: executionManifest.attemptSha256,
+    executionManifest,
+  }));
+  const executionManifest = Object.freeze({
+    schemaVersion:
+      'phase-6.9.5-v11-product-acceptance-execution-manifest-v1' as const,
+    environment: 'branch' as const,
+    attemptSha256: 'a'.repeat(64),
+    resources: {
+      accountId: {
+        review: 'v11-synthetic-account-review-a',
+        planner: 'v11-synthetic-account-planner-a',
+      },
+      fixtureId: {
+        review: 'v11-synthetic-fixture-review-a',
+        planner: 'v11-synthetic-fixture-planner-a',
+      },
+      browser: {
+        executablePath: CHROME_EXE,
+        profilePath:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            'branch',
+          ),
+      },
+    },
+  });
+  const owner = Object.freeze({
+    assertHeld: jest.fn(),
+    close: jest.fn(),
+  });
+  const ports = {
+    preflight: jest.fn(async () => {
+      order.push('preflight');
+      return {
+        status: 'ready' as const,
+        environment: 'branch' as const,
+        repoRoot: REPO_ROOT,
+        attemptSha256: options.staleManifest ? 'b'.repeat(64) : 'a'.repeat(64),
+        executionManifest,
+      };
+    }),
+    readAuthoritativeExecutionManifest,
+    acquireOwner: jest.fn(async () => {
+      order.push('owner');
+      return { status: 'acquired' as const, owner };
+    }),
+    openRecoveryJournal: jest.fn(async () => {
+      order.push('journal');
+      return Object.freeze({ close: jest.fn() });
+    }),
+    publishFailure: jest.fn(async () => {
+      order.push('failure');
+    }),
+    restoreDefaultOff: jest.fn(async () => {
+      order.push('default-off');
+      return undefined;
+    }),
+    cleanupExact: jest.fn(async () => {
+      order.push('cleanup');
+      return undefined;
+    }),
+  } satisfies ReviewPlannerV11ProductAcceptanceRecoveryCompositionPorts;
+  return {
+    order,
+    ports,
+    executionManifest,
+    readAuthoritativeExecutionManifest,
+  };
 }

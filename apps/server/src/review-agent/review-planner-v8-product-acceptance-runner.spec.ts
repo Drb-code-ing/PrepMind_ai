@@ -14,7 +14,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
-import { createDefaultReviewPlannerV8ProductAcceptanceComposition } from './review-planner-v8-product-acceptance-composition';
+import {
+  createDefaultReviewPlannerV11ProductAcceptanceComposition,
+  createDefaultReviewPlannerV8ProductAcceptanceComposition,
+} from './review-planner-v8-product-acceptance-composition';
 import { createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter } from './review-planner-v11-product-acceptance-execution';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
@@ -287,6 +290,131 @@ describe('Review Planner V8 product acceptance runner', () => {
       expect(diagnostics.publishFailure).not.toHaveBeenCalled();
     } finally {
       await legacyRoots.dispose();
+    }
+  });
+
+  it('runs fake V11 success through manifest-bound default cleanup before finalizing the V11 ledger', async () => {
+    const fixture = createFixture();
+    const v11 = createV11RunnerLedgerFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(() => v11.recordFailure()),
+    };
+    const terminateBrowser = jest.fn(async () => undefined);
+    const runtime = Object.freeze({
+      dockerExec: jest.fn(() => undefined),
+      apiProvider: jest.fn(() => undefined),
+      chromium: jest.fn(() => undefined),
+      fetch: jest.fn(() => undefined),
+      terminateBrowser,
+    });
+    let defaultDependencies:
+      | ReviewPlannerV8ProductAcceptanceRunnerDependencies
+      | undefined;
+    let observedRuntime: unknown;
+    const composition =
+      createDefaultReviewPlannerV11ProductAcceptanceComposition(
+        'E:\\v11-cleanup-scope',
+        {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: {
+            $disconnect: jest.fn(async () => undefined),
+            $transaction: jest.fn(async (callback) => callback({})),
+            user: { count: jest.fn(async () => 0) },
+            wrongQuestion: { count: jest.fn(async () => 0) },
+            agentTraceRun: { count: jest.fn(async () => 0) },
+          } as never,
+          boundary: {
+            preflight: async () =>
+              ({
+                status: 'ready',
+                environment: 'branch',
+                repoRoot: 'E:\\v11-cleanup-scope',
+                commitSha: 'b'.repeat(40),
+                pairedEvidenceSha256: 'c'.repeat(64),
+                chromeExecutablePath:
+                  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                utcStamp: '20260720t000000z',
+              }) as never,
+            createFixtures: async () =>
+              ({ resources: {}, accounts: {}, fixtureReceipt: {} }) as never,
+            captureRunnerDependencies: (input: {
+              dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
+              runtime: unknown;
+            }) => {
+              defaultDependencies = input.dependencies;
+              observedRuntime = input.runtime;
+            },
+            runtime,
+          },
+        } as never,
+      );
+
+    try {
+      const preflight = await composition.ports.preflight({
+        environment: 'branch',
+        repoRoot: 'E:\\v11-cleanup-scope',
+      });
+      if (preflight.status !== 'ready') throw new Error('expected preflight');
+      const executionManifest = await composition.ports.writeExecutionManifest({
+        environment: 'branch',
+        repoRoot: 'E:\\v11-cleanup-scope',
+        owner: {} as never,
+        ledger: v11.ledger,
+        attemptSha256: 'a'.repeat(64),
+        preflight,
+      });
+      const fixtures = await composition.ports.createFixtures({
+        environment: 'branch',
+        repoRoot: 'E:\\v11-cleanup-scope',
+        owner: {} as never,
+        ledger: v11.ledger,
+        executionManifest,
+      });
+      await composition.ports.createRunner({
+        environment: 'branch',
+        repoRoot: 'E:\\v11-cleanup-scope',
+        owner: {} as never,
+        ledger: v11.ledger,
+        journal: {} as never,
+        fixtures,
+        executionManifest,
+      });
+      expect(defaultDependencies).toBeDefined();
+      expect(observedRuntime).toBe(runtime);
+      await expect(defaultDependencies?.cleanup()).resolves.toMatchObject({
+        schemaVersion:
+          REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
+      });
+      fixture.dependencies.cleanup = jest.fn(() =>
+        defaultDependencies?.cleanup(),
+      );
+      Object.assign(fixture.input, {
+        profile: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+        ledger: createReviewPlannerV11ProductAcceptanceRunnerLedgerAdapter({
+          environment: 'branch',
+          attemptSha256: 'a'.repeat(64),
+          ledger: v11.ledger,
+          manifest: v11RunnerManifest(),
+        }),
+        diagnostics,
+      });
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).resolves.toMatchObject({ environment: 'branch' });
+      expect(terminateBrowser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedProfilePaths: [
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+              'branch',
+            ),
+          ],
+        }),
+      );
+      expect(v11.success).toBeDefined();
+    } finally {
+      await composition.dispose();
     }
   });
 
