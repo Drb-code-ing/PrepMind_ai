@@ -28,6 +28,7 @@ import {
   type ReviewPlannerV8ProductAcceptanceCompositionPorts,
   type ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts,
 } from './review-planner-v8-product-acceptance-composition';
+import { chromium } from 'playwright-core';
 import * as legacyV8Evidence from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE,
@@ -38,7 +39,11 @@ import {
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PRICE_PROFILE_ID,
   REVIEW_PLANNER_CONTROLLED_LIVE_V8_STAGE_DIAGNOSTICS_PROFILE,
 } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
-import { REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+} from './review-planner-product-acceptance-profile';
 
 const SHA = 'a'.repeat(64);
 const COMMIT = 'b'.repeat(40);
@@ -880,6 +885,38 @@ describe('V8 product acceptance executable composition', () => {
   });
 });
 
+function browserTraceDetailEnvelope() {
+  return {
+    run: {
+      modelProvider: 'deepseek',
+      modelName: 'deepseek-v4-pro',
+      pricingKnown: false,
+      costEstimate: 0,
+      totalDurationMs: 1000,
+      inputTokenEstimate: 100,
+      outputTokenEstimate: 20,
+    },
+    steps: [
+      {
+        node: 'deterministic_review',
+        outputSummary: 'disposition=not_eligible',
+      },
+      {
+        node: 'review_candidate',
+        outputSummary: 'disposition=candidate_applied',
+      },
+      {
+        node: 'deterministic_planner',
+        outputSummary: 'disposition=not_eligible',
+      },
+      {
+        node: 'planner_candidate',
+        outputSummary: 'disposition=not_eligible',
+      },
+    ],
+  };
+}
+
 function v9Evidence(mode: 'complete' | 'diagnostic') {
   return {
     schemaVersion: V9_DIAGNOSTIC_SCHEMA_VERSION,
@@ -1032,6 +1069,195 @@ describe('V8 recovery-only executable composition', () => {
 });
 
 describe('V8 default composition resource lifecycle', () => {
+  it.each([
+    ['V8', REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE],
+    ['V10', REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE],
+  ] as const)(
+    'keeps the adapter-owned browser baseline available to the real trace reader for legacy %s runs',
+    async (_label, profile) => {
+      const disconnect = jest.fn(async () => undefined);
+      const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+        REPO_ROOT,
+        {
+          profile,
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: disconnect } as never,
+        },
+      );
+      const resources = product.ports.generateResources({
+        environment: 'branch',
+        utcStamp: '20260719T060000Z',
+      } as never);
+      let traceListCalls = 0;
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(async (input) => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          if (url === 'http://127.0.0.1:3001/auth/register') {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  user: { id: 'review-account-id' },
+                  accessToken: 'review-account-token',
+                },
+              }),
+            );
+          }
+          if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
+            traceListCalls += 1;
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  runs:
+                    traceListCalls === 1
+                      ? []
+                      : [{ id: 'review-browser-trace' }],
+                },
+              }),
+            );
+          }
+          if (
+            url === 'http://127.0.0.1:3001/agent-traces/review-browser-trace'
+          ) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: browserTraceDetailEnvelope(),
+              }),
+            );
+          }
+          throw new Error(`unexpected fetch: ${url}`);
+        });
+      const launch = jest
+        .spyOn(chromium, 'launchPersistentContext')
+        .mockRejectedValueOnce(new Error('controlled browser launch failure'));
+
+      try {
+        await product.ports.registerAccount({
+          component: 'review',
+          email: resources.syntheticEmails.review,
+          password: resources.passwords.review,
+        });
+        const dependencies = product.ports.createRunnerDependencies({
+          preflight: { chromeExecutablePath: CHROME_EXE },
+        } as never);
+
+        await expect(
+          dependencies.runBrowser({
+            component: 'review',
+            webOrigin: 'http://127.0.0.1:3000',
+            onRoute: jest.fn(),
+          }),
+        ).rejects.toThrow('controlled browser launch failure');
+        await expect(
+          dependencies.readPersistedTraces({
+            component: 'review',
+            slot: 'browser',
+          }),
+        ).resolves.toMatchObject([
+          { traceId: 'review-browser-trace', component: 'review' },
+        ]);
+        expect(traceListCalls).toBe(2);
+      } finally {
+        launch.mockRestore();
+        fetchMock.mockRestore();
+        await product.dispose();
+      }
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not duplicate the V11 runner-owned browser trace baseline before launch', async () => {
+    const disconnect = jest.fn(async () => undefined);
+    const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+      REPO_ROOT,
+      {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: disconnect } as never,
+      },
+    );
+    const resources = product.ports.generateResources({
+      environment: 'branch',
+      utcStamp: '20260719T060000Z',
+    } as never);
+    let traceListCalls = 0;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (url === 'http://127.0.0.1:3001/auth/register') {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                user: { id: 'review-account-id' },
+                accessToken: 'review-account-token',
+              },
+            }),
+          );
+        }
+        if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
+          traceListCalls += 1;
+          return new Response(
+            JSON.stringify({ success: true, data: { runs: [] } }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+    const launch = jest
+      .spyOn(chromium, 'launchPersistentContext')
+      .mockRejectedValueOnce(new Error('controlled browser launch failure'));
+
+    try {
+      await product.ports.registerAccount({
+        component: 'review',
+        email: resources.syntheticEmails.review,
+        password: resources.passwords.review,
+      });
+      const dependencies = product.ports.createRunnerDependencies({
+        preflight: { chromeExecutablePath: CHROME_EXE },
+      } as never);
+      const v11Dependencies = dependencies as unknown as {
+        captureTraceBaseline(input: {
+          component: 'review' | 'planner';
+          slot: 'api' | 'browser';
+        }): Promise<void>;
+      };
+
+      await v11Dependencies.captureTraceBaseline({
+        component: 'review',
+        slot: 'browser',
+      });
+      await expect(
+        dependencies.runBrowser({
+          component: 'review',
+          webOrigin: 'http://127.0.0.1:3000',
+          onRoute: jest.fn(),
+        }),
+      ).rejects.toThrow('controlled browser launch failure');
+      expect(traceListCalls).toBe(1);
+    } finally {
+      launch.mockRestore();
+      fetchMock.mockRestore();
+      await product.dispose();
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('builds a V11 diagnostics port from the opaque Task3 journal and ledger authority', () => {
     const authority = Object.freeze({ assertAuthorized: jest.fn() });
     const journal = {

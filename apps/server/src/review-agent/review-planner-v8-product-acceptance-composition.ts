@@ -1716,6 +1716,13 @@ function createDefaultRunnerDependencies(
       const account = state.accounts[component];
       const resources = state.resources;
       if (!account || !resources) throw new Error();
+      const traceBaselineKey = `${component}:browser`;
+      if (!state.traceBaselines.has(traceBaselineKey)) {
+        state.traceBaselines.set(
+          traceBaselineKey,
+          await readLiveTraceIds(state.accounts[component]?.token),
+        );
+      }
       const profilePath = resolve(state.repoRoot, resources.browserProfilePath);
       const callbacks = new Set<Promise<void>>();
       let responseResult:
