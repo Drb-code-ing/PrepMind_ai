@@ -91,6 +91,11 @@ expect(V10_CONFIRMATION).toBe('--confirm-controlled-live-v10-deepseek-v4-pro-sem
 expect(diagnostic.report.review.runtime.qualityPasses).toBeGreaterThanOrEqual(0);
 expect(await readV10Evidence(root)).toMatchObject({ terminalReason: 'quality_gate_failed' });
 expect(await productPreflight(v10CommittedSuccess)).toMatchObject({ ok: true });
+expect(() => v10GateDiagnosticSchema.parse({ ...diagnostic, prompt: 'forbidden' })).toThrow();
+expect(() => v10GateDiagnosticSchema.parse({
+  ...diagnostic,
+  report: { ...diagnostic.report, caseEntries: [] },
+})).toThrow();
 ```
 
 - [ ] **Step 2: Run RED**
@@ -101,7 +106,7 @@ Expected: V10 modules and V10 authority do not exist.
 
 - [ ] **Step 3: Implement V10 by reusing V9 behavior through a new immutable profile**
 
-Keep V9 exports and evidence bytes untouched. Create a V10 profile with its own gate, confirmation, directory, once marker, stages, V1--V9 snapshot, exact `23/22` ceiling, `4500ms`, CNY `1.00`, and pass-only success seal. Serialize only safe aggregate/lane counts. Update product authority to require V10 committed success and ordinary-`H` leaf stability.
+Keep V9 exports and evidence bytes untouched. Create a V10 profile with its own gate, confirmation, directory, once marker, stages, V1--V9 snapshot, exact `23/22` ceiling, `4500ms`, CNY `1.00`, and pass-only success seal. Serialize only strict safe aggregate/lane counts; reject unknown fields at every level and forbid raw entries, case ids, prompts, snapshots, model outputs, URLs, credentials, raw errors, and per-case duration/usage. Update product authority to require V10 committed success and ordinary-`H` leaf stability.
 
 - [ ] **Step 4: Run GREEN and commit**
 
@@ -135,7 +140,24 @@ Commit: `docs(agent): record V10 offline gates`
 
 - [ ] **Step 4: Execute only one V10 controlled-Live and read its durable result**
 
-Run only after clean-head preflight: `bun --env-file=.env --filter @repo/server eval:review-planner:live:v10:semantic-quality -- --confirm-controlled-live-v10-deepseek-v4-pro-semantic-quality`
+Run only after clean-head preflight, from a fresh PowerShell process so all gates are process-scoped and automatically discarded:
+
+```powershell
+$env:AI_PROVIDER_MODE='live'
+$env:AI_ENABLE_LIVE_CALLS='true'
+$env:REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V10_SEMANTIC_QUALITY_ENABLED='true'
+$env:REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V8_ENABLED='false'
+$env:REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED='false'
+$env:REVIEW_AGENT_MODEL_ENABLED='false'
+$env:PLANNER_AGENT_MODEL_ENABLED='false'
+$env:AI_MODEL='deepseek-v4-pro'
+$env:AI_BASE_URL='https://api.deepseek.com/v1'
+$env:REVIEW_AGENT_MODEL_TIMEOUT_MS='4500'
+$env:PLANNER_AGENT_MODEL_TIMEOUT_MS='4500'
+bun --env-file=.env --filter @repo/server eval:review-planner:live:v10:semantic-quality -- --confirm-controlled-live-v10-deepseek-v4-pro-semantic-quality
+```
+
+The command must fail closed before reservation if any V8/V9/product gate is not false. It must never write a gate to `.env`; the fresh process exit restores default-off.
 
 If the reader is not committed success, commit only the safe evidence and stop the lineage. If it is committed success, continue to Task 5.
 

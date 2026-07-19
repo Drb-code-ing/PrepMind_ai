@@ -25,7 +25,7 @@ The prompt is a direct sanitized JSON object, not a JSON string nested inside an
 
 The runtime fixtures expose the evidence required by these rules. Each expected choice is generated from visible priority, confidence, block reason, and source index. The fixture policy oracle rejects an expected value that cannot be derived from the same visible input, preventing hidden ordinal labels. Mock coverage must derive the decision from the fixture-visible policy instead of returning `fixture.expected`.
 
-The safe aggregate records only lane totals and dimensions: `review.focusIndexes`, `planner.blockOrder`, plus strict, quality, and critical counts. It contains no prompt, case id, snapshot, model output, URL, credential, raw error, or per-case timing/usage.
+The safe aggregate records only lane totals and dimensions: `review.focusIndexes`, `planner.blockOrder`, plus strict, quality, and critical counts. A strict Zod contract rejects unknown top-level and nested fields, raw case entries, prompt, snapshot, model output, URL, credential, raw error, and per-case timing/usage. It is the only serializable V10 evidence projection.
 
 ## V10 One-Shot and Admission
 
@@ -37,6 +37,6 @@ Product acceptance reads only a committed V10 success. The existing Review-only,
 
 1. Prompt-contract tests prove both model requests receive a direct structured payload, visible indexes, the exact selection/order policy, and the Planner full-permutation instruction.
 2. Fixture-policy tests prove every runtime expected decision from the visible fixture data; no runtime expected answer is a hidden ordinal.
-3. The evaluator marks quality only from production-effective `focusIndexes` and `blockOrder`, retains all safety/strict/zero-call checks, and publishes safe lane aggregates.
-4. V1--V9 evidence is byte-stable before and after V10 work; V10 starts with no evidence/once marker and uses one controlled-Live command only after all offline gates and independent review pass.
+3. The evaluator marks quality only from production-effective `focusIndexes` and `blockOrder`, retains all safety/strict/zero-call checks, and publishes safe lane aggregates protected by strict unknown-key and forbidden-key tests.
+4. V1--V9 evidence is byte-stable before and after V10 work; V10 starts with no evidence/once marker and uses one controlled-Live command only after all offline gates and independent review pass. The command enables only the V10 eval gate in its own process, explicitly keeps V8/V9 and Review/Planner product gates false, and never writes a gate into `.env`.
 5. Phase 6.9.5 is complete only after V10 committed success, branch Docker/headed-browser product acceptance, default-off recovery and exact cleanup, `--no-ff` main merge, main evidence/product replay, current docs, and `origin/main` SHA parity.
