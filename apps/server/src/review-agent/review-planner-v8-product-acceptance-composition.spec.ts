@@ -1053,6 +1053,7 @@ describe('V11 execution-bridge composition', () => {
         boundary: {
           acquireOwner,
           runtime: {
+            assertRootsEmpty: async () => undefined,
             readOnlyExec,
             fetchHealth,
             fetch: () => {
@@ -1149,6 +1150,7 @@ describe('V11 execution-bridge composition', () => {
           boundary: {
             acquireOwner,
             runtime: {
+              assertRootsEmpty: async () => undefined,
               readOnlyExec: async (input: {
                 file: string;
                 args: readonly string[];
@@ -1279,6 +1281,7 @@ describe('V11 execution-bridge composition', () => {
         boundary: {
           acquireOwner,
           runtime: {
+            assertRootsEmpty: async () => undefined,
             readOnlyExec,
             fetchHealth: async () => {
               const phase = gitStatusReads >= 3 ? 'revalidate' : 'preflight';
@@ -1440,6 +1443,9 @@ describe('V11 execution-bridge composition', () => {
       'journal',
       'runner',
     ]);
+    expect(fixture.ports.revalidatePreflight).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: fixture.owner }),
+    );
     expect(fixture.ports.createFixtures).toHaveBeenCalledWith(
       expect.objectContaining({
         executionManifest: fixture.executionManifest,

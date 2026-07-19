@@ -31,6 +31,7 @@ import {
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
   acquireReviewPlannerV11ProductAcceptanceOwner,
+  assertReviewPlannerV11ProductAcceptanceOwnerSelfLock,
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
   openReviewPlannerV11ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV11ProductAcceptanceRecoveryJournal,
@@ -331,6 +332,7 @@ export interface ReviewPlannerV11ProductAcceptanceCompositionPorts {
   }): Promise<ReviewPlannerV11CompositionOwnerResult>;
   revalidatePreflight(input: {
     preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
   }): Promise<boolean>;
   reserveLedger(input: {
     environment: ReviewPlannerV8ProductAcceptanceEnvironment;
@@ -449,7 +451,7 @@ export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
     }
     owner = ownership.owner;
     owner.assertHeld();
-    if (!(await input.ports.revalidatePreflight({ preflight }))) {
+    if (!(await input.ports.revalidatePreflight({ preflight, owner }))) {
       result = Object.freeze({
         status: 'blocked' as const,
         stage: 'revalidate' as const,
@@ -1791,6 +1793,7 @@ type ReviewPlannerV11DefaultRuntimeBoundary = Readonly<{
   chromium?(): void;
   fetch?(): void;
   terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
+  assertRootsEmpty?: typeof assertReviewPlannerV11ProductAcceptanceRootsEmpty;
 }>;
 
 export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
@@ -1937,6 +1940,7 @@ type ReviewPlannerV11DefaultCompositionOptions = Omit<
           ReviewPlannerV11ProductPreflight,
           { status: 'ready' }
         >;
+        owner: ReviewPlannerV11ProductAcceptanceOwner;
       }): Promise<boolean>;
       runtime?: Readonly<{
         readOnlyExec?(input: {
@@ -2055,12 +2059,13 @@ export function createDefaultReviewPlannerV11ProductAcceptanceComposition(
     acquireOwner: (input) =>
       boundary?.acquireOwner?.(input) ??
       acquireReviewPlannerV11ProductAcceptanceOwner(input),
-    revalidatePreflight: ({ preflight }) =>
-      boundary?.revalidatePreflight?.({ preflight }) ??
+    revalidatePreflight: ({ preflight, owner }) =>
+      boundary?.revalidatePreflight?.({ preflight, owner }) ??
       revalidateDefaultReviewPlannerV11ProductPreflight(
         preflight,
         pairedEvidenceAuthority,
         boundary?.runtime,
+        owner,
       ),
     async reserveLedger(input) {
       const ledger =
@@ -2378,6 +2383,7 @@ async function runDefaultReviewPlannerV11ProductPreflight(
   },
   pairedEvidenceAuthority: PairedEvidenceAuthority,
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+  activeOwner?: ReviewPlannerV11ProductAcceptanceOwner,
 ): Promise<ProductPreflight> {
   try {
     const repoRoot = resolve(input.repoRoot);
@@ -2404,10 +2410,14 @@ async function runDefaultReviewPlannerV11ProductPreflight(
     ) {
       throw new Error();
     }
-    await assertReviewPlannerV11ProductAcceptanceRootsEmpty(
+    const assertRootsEmpty =
+      runtimeBoundary?.assertRootsEmpty ??
+      assertReviewPlannerV11ProductAcceptanceRootsEmpty;
+    await assertRootsEmpty({
       repoRoot,
-      input.environment,
-    );
+      environment: input.environment,
+      activeOwner,
+    });
     await assertCurrentServerV11PreflightDefaultOff(repoRoot, runtimeBoundary);
     if (input.environment === 'main') {
       const branch = await readReviewPlannerV11ProductAcceptanceLedger({
@@ -2432,19 +2442,42 @@ async function runDefaultReviewPlannerV11ProductPreflight(
   }
 }
 
-async function assertReviewPlannerV11ProductAcceptanceRootsEmpty(
-  repoRoot: string,
-  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
-) {
-  const root = resolve(repoRoot);
+export async function assertReviewPlannerV11ProductAcceptanceRootsEmpty(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  activeOwner?: ReviewPlannerV11ProductAcceptanceOwner;
+}): Promise<void> {
+  if (input.activeOwner) {
+    assertReviewPlannerV11ProductAcceptanceOwnerSelfLock(
+      input.activeOwner,
+      input.environment,
+    );
+  }
+  const root = resolve(input.repoRoot);
   const relativeRoots = [
-    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath(environment),
-    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath(environment),
-    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
-      environment,
-    ),
+    {
+      kind: 'public' as const,
+      relativePath:
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath(
+          input.environment,
+        ),
+    },
+    {
+      kind: 'recovery' as const,
+      relativePath: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath(
+        input.environment,
+      ),
+    },
+    {
+      kind: 'execution' as const,
+      relativePath:
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
+          input.environment,
+        ),
+    },
   ];
-  for (const relativePath of relativeRoots) {
+  for (const { kind, relativePath } of relativeRoots) {
+    if (kind === 'recovery' && input.activeOwner) continue;
     const absolutePath = resolve(root, relativePath);
     if (!existsSync(absolutePath)) continue;
     if ((await readdir(absolutePath)).length !== 0) {
@@ -2457,6 +2490,7 @@ async function revalidateDefaultReviewPlannerV11ProductPreflight(
   preflight: Extract<ReviewPlannerV11ProductPreflight, { status: 'ready' }>,
   pairedEvidenceAuthority: PairedEvidenceAuthority,
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+  activeOwner?: ReviewPlannerV11ProductAcceptanceOwner,
 ) {
   const current = await runDefaultReviewPlannerV11ProductPreflight(
     {
@@ -2465,6 +2499,7 @@ async function revalidateDefaultReviewPlannerV11ProductPreflight(
     },
     pairedEvidenceAuthority,
     runtimeBoundary,
+    activeOwner,
   );
   return (
     current.status === 'ready' &&

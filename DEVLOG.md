@@ -8,6 +8,8 @@
 
 > 2026-07-20 — 收紧 V11 product runtime 的密钥边界：server Compose 不再持久映射根 `DEEPSEEK_API_KEY`，只在受控 activation 期间由内存中的 root key 注入一次性产品变量；default-off 与 cleanup 均显式清空。常规 Docker server Chat 继续 mock 默认，worker/web 和 OpenAI 路径未改，未执行 V11 runtime。
 
+> 2026-07-20 — 修正 V11 owner-held revalidation 的 self-lock 误拦截：初始 preflight 仍要求 public/recovery/execution 三根为空；仅同一活跃 product owner 的 revalidate 可见并验证 recovery 根中唯一的 `owner.lock`。任何额外 recovery leaf、public/execution 内容、伪造/关闭/跨环境 owner 都 fail-closed，未执行 V11 runtime。
+
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照

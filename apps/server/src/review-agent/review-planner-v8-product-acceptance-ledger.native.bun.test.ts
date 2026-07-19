@@ -30,6 +30,7 @@ import {
   reserveReviewPlannerV11ProductAcceptanceLedgerForTests,
 } from './review-planner-v8-product-acceptance-ledger';
 import {
+  assertReviewPlannerV11ProductAcceptanceRootsEmpty,
   createDefaultReviewPlannerV11ProductAcceptanceComposition,
   createReviewPlannerV11ProductAcceptanceDiagnosticsPort,
   runReviewPlannerV11ProductAcceptanceComposition,
@@ -2294,6 +2295,86 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
 
   afterEach(async () => {
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('allows only its active V11 owner lock during product revalidation', async () => {
+    await expect(
+      assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toBeUndefined();
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    const publicPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    const executionPath = join(
+      root,
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
+        'branch',
+      ),
+    );
+
+    try {
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).rejects.toThrow();
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).resolves.toBeUndefined();
+      await writeFile(join(recoveryPath, 'unexpected.txt'), 'unexpected\n');
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).rejects.toThrow();
+      await unlink(join(recoveryPath, 'unexpected.txt'));
+      await mkdir(publicPath, { recursive: true });
+      await writeFile(join(publicPath, 'unexpected.txt'), 'unexpected\n');
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).rejects.toThrow();
+      await unlink(join(publicPath, 'unexpected.txt'));
+      await mkdir(executionPath, { recursive: true });
+      await writeFile(join(executionPath, 'unexpected.txt'), 'unexpected\n');
+      await expect(
+        assertReviewPlannerV11ProductAcceptanceRootsEmpty({
+          repoRoot: root,
+          environment: 'branch',
+          activeOwner: acquisition.owner,
+        }),
+      ).rejects.toThrow();
+    } finally {
+      acquisition.owner.close();
+    }
   });
 
   it('rejects an unbound V11 public failure write', async () => {

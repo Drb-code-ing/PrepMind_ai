@@ -1729,6 +1729,23 @@ export function assertReviewPlannerV11ProductAcceptanceOwner(
   state.runtimeLock.assertHeld();
 }
 
+export function assertReviewPlannerV11ProductAcceptanceOwnerSelfLock(
+  owner: ReviewPlannerV11ProductAcceptanceOwner,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+): void {
+  assertReviewPlannerV11ProductAcceptanceOwner(owner, environment, ['product']);
+  const state = v11OwnerState.get(owner);
+  const leaves = state?.directory.listLeafNames();
+  if (
+    !state ||
+    !leaves ||
+    leaves.length !== 1 ||
+    leaves[0] !== V11_OWNER_LOCK_LEAF
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_OWNER_SELF_LOCK_INVALID');
+  }
+}
+
 export function registerReviewPlannerV11ProductAcceptanceOwnerAttempt(
   owner: ReviewPlannerV11ProductAcceptanceOwner,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
