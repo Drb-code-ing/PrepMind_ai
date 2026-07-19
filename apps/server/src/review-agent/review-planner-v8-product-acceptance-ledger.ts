@@ -31,10 +31,16 @@ import {
 import {
   normalizeReviewPlannerProductAcceptanceSchemaRecord,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
   type ReviewPlannerProductAcceptanceSchemaKey,
   withReviewPlannerProductAcceptanceSchemaIdentity,
 } from './review-planner-product-acceptance-profile';
+import {
+  parseReviewPlannerV11ProductAcceptanceFailure,
+  serializeReviewPlannerV11ProductAcceptanceFailure,
+  type ReviewPlannerV11ProductAcceptanceFailureRecord,
+} from './review-planner-v11-product-acceptance-diagnostics';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
@@ -78,6 +84,11 @@ const PUBLIC_LEAVES = Object.freeze([
   '.acceptance-success',
   'plan.png',
   'today.png',
+] as const);
+
+const V11_PUBLIC_LEAVES = Object.freeze([
+  '.acceptance-reserved',
+  '.failure.json',
 ] as const);
 
 const RECOVERY_STAGE_LEAVES = Object.freeze([
@@ -471,6 +482,23 @@ const ledgerState = new WeakMap<
   LedgerState
 >();
 
+type V11LedgerState = {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  directory: WindowsNoReparseChildDirectory;
+  reservationGuard: WindowsExclusiveLifetimeFile;
+  closed: boolean;
+};
+
+export type ReviewPlannerV11ProductAcceptanceLedger = Readonly<{
+  recordFailure(value: unknown): void;
+  close(): void;
+}>;
+
+const v11LedgerState = new WeakMap<
+  ReviewPlannerV11ProductAcceptanceLedger,
+  V11LedgerState
+>();
+
 type ReserveLedgerInput = {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
@@ -512,6 +540,51 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
     facade.cleanupInjectedHandles();
     facade.directory.close();
     throw error;
+  }
+}
+
+export async function reserveReviewPlannerV11ProductAcceptanceLedger(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<ReviewPlannerV11ProductAcceptanceLedger> {
+  if (!isV11Environment(input.environment)) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
+  }
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
+  try {
+    directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        input.environment,
+      ),
+    ]);
+    directory.assertLocalFixedNtfsVolume();
+    if (directory.listLeafNames().length > 0) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_ALREADY_RESERVED');
+    }
+    publishV11(directory, '.acceptance-reserved', '');
+    reservationGuard = directory.tryAcquireExclusiveLifetimeFile(
+      '.acceptance-reserved',
+    );
+    if (reservationGuard === null) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
+    return createV11Ledger({
+      environment: input.environment,
+      directory,
+      reservationGuard,
+      closed: false,
+    });
+  } catch (error) {
+    reservationGuard?.close();
+    directory?.close();
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
 }
 
@@ -696,6 +769,66 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
   }
 }
 
+export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<
+  | Readonly<{ status: 'empty' | 'incomplete' | 'evidence_io' }>
+  | Readonly<
+      {
+        status: 'operation_failed';
+      } & Omit<ReviewPlannerV11ProductAcceptanceFailureRecord, 'schemaVersion'>
+    >
+> {
+  if (!isV11Environment(input.environment)) {
+    return Object.freeze({ status: 'evidence_io' as const });
+  }
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  try {
+    directory = await openWindowsNoReparseExistingFrozenDirectory(
+      input.repoRoot,
+      [
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+          input.environment,
+        ),
+      ],
+    );
+    directory.assertLocalFixedNtfsVolume();
+    const leaves = directory.listLeafNames();
+    if (leaves.length === 0) return Object.freeze({ status: 'empty' as const });
+    if (
+      leaves.some(
+        (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+      ) ||
+      !leaves.includes('.acceptance-reserved')
+    ) {
+      return Object.freeze({ status: 'evidence_io' as const });
+    }
+    if (!leaves.includes('.failure.json')) {
+      return Object.freeze({ status: 'incomplete' as const });
+    }
+    const failure = parseReviewPlannerV11ProductAcceptanceFailure(
+      JSON.parse(directory.readRegularFile('.failure.json').toString()),
+    );
+    if (failure.environment !== input.environment) {
+      return Object.freeze({ status: 'evidence_io' as const });
+    }
+    return Object.freeze({
+      status: 'operation_failed' as const,
+      environment: failure.environment,
+      component: failure.component,
+      slot: failure.slot,
+      checkpoint: failure.checkpoint,
+      terminal: failure.terminal,
+      providerCallState: failure.providerCallState,
+    });
+  } catch {
+    return Object.freeze({ status: 'evidence_io' as const });
+  } finally {
+    directory?.close();
+  }
+}
+
 export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(input: {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
@@ -847,6 +980,80 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
   } finally {
     directory.close();
   }
+}
+
+function createV11Ledger(
+  state: V11LedgerState,
+): ReviewPlannerV11ProductAcceptanceLedger {
+  const ledger: ReviewPlannerV11ProductAcceptanceLedger = Object.freeze({
+    recordFailure(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      const leaves = current.directory.listLeafNames();
+      if (
+        leaves.some(
+          (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+        ) ||
+        !leaves.includes('.acceptance-reserved') ||
+        leaves.includes('.failure.json')
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      let failure: ReviewPlannerV11ProductAcceptanceFailureRecord;
+      try {
+        failure = parseReviewPlannerV11ProductAcceptanceFailure(value);
+      } catch {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      if (failure.environment !== current.environment) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        '.failure.json',
+        serializeReviewPlannerV11ProductAcceptanceFailure(failure),
+      );
+    },
+    close() {
+      const current = v11LedgerState.get(ledger);
+      if (!current || current.closed) return;
+      current.closed = true;
+      try {
+        current.reservationGuard.close();
+      } finally {
+        current.directory.close();
+      }
+    },
+  });
+  v11LedgerState.set(ledger, state);
+  return ledger;
+}
+
+function requireActiveV11LedgerState(
+  ledger: ReviewPlannerV11ProductAcceptanceLedger,
+) {
+  const state = v11LedgerState.get(ledger);
+  if (!state || state.closed) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_LEDGER_CLOSED');
+  }
+  state.reservationGuard.assertHeld();
+  return state;
+}
+
+function publishV11(
+  directory: WindowsNoReparseChildDirectory,
+  leaf: (typeof V11_PUBLIC_LEAVES)[number],
+  contents: string,
+) {
+  const result = directory.commitExclusiveDurableFileViaRename(leaf, contents);
+  if (!result.committed || result.cleanupStatus !== 'closed') {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+}
+
+function isV11Environment(
+  value: unknown,
+): value is ReviewPlannerV8ProductAcceptanceEnvironment {
+  return value === 'branch' || value === 'main';
 }
 
 function createLedger(

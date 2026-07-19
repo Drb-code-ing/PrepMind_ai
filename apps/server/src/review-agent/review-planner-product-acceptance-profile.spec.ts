@@ -1,11 +1,44 @@
 import { serializeReviewPlannerV10ProductAcceptanceCliFailure } from './review-planner-v8-product-acceptance-composition';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   parseReviewPlannerProductAcceptanceArguments,
 } from './review-planner-product-acceptance-profile';
 
 describe('Review Planner product-acceptance profiles', () => {
+  it('keeps the canonical V11 failure-diagnostics namespace and schemas separate from V8/V10', () => {
+    const profile = REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE;
+
+    expect(profile.publicLedgerPath('branch')).toBe(
+      'docs/acceptance/evidence/phase-6-9-5-v11-product-acceptance/branch',
+    );
+    expect(profile.recoveryPath('main')).toBe(
+      '.tmp/phase-6-9-5-v11-product-acceptance/main',
+    );
+    expect(profile.browserProfilePath('branch')).toBe(
+      '.tmp/phase-6-9-5-v11-product-acceptance/branch/profile-v11',
+    );
+    expect(profile.productConfirmation).toBe(
+      '--confirm-v11-review-planner-product-acceptance',
+    );
+    expect(profile.recoveryConfirmation).toBe(
+      '--confirm-v11-review-planner-product-acceptance-recovery-only',
+    );
+    expect(profile.schemas.failure).toBe(
+      'phase-6.9.5-v11-product-acceptance-failure-v1',
+    );
+    expect(profile.schemas.checkpoint).toBe(
+      'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+  });
+
   it('keeps V10 ledger, recovery, browser, and confirmation namespaces separate from recovered V8', () => {
     expect(
       REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),

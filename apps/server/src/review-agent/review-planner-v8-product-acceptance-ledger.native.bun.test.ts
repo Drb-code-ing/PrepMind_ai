@@ -18,8 +18,10 @@ import { pathToFileURL } from 'node:url';
 import {
   finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
   readReviewPlannerV8ProductAcceptanceLedger,
+  readReviewPlannerV11ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedgerForTests,
+  reserveReviewPlannerV11ProductAcceptanceLedger,
 } from './review-planner-v8-product-acceptance-ledger';
 import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
@@ -30,6 +32,7 @@ import {
 } from './review-planner-v8-product-acceptance-recovery';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
 } from './review-planner-product-acceptance-profile';
@@ -53,6 +56,29 @@ const TODAY_PNG_SHA = createHash('sha256').update(TODAY_PNG).digest('hex');
 const RECOVERY_RESTORE_RECEIPT = {
   ...restoreReceiptForRecovery(),
 } as const;
+
+function v11Failure(
+  overrides: Partial<{
+    schemaVersion: string;
+    environment: 'branch' | 'main';
+    component: 'review' | 'planner';
+    slot: 'api' | 'browser';
+    checkpoint: string;
+    terminal: 'operation_failed';
+    providerCallState: 'not_started' | 'indeterminate';
+  }> = {},
+) {
+  return {
+    schemaVersion: 'phase-6.9.5-v11-product-acceptance-failure-v1' as const,
+    environment: 'branch' as const,
+    component: 'review' as const,
+    slot: 'api' as const,
+    checkpoint: 'review_api_facts_before' as const,
+    terminal: 'operation_failed' as const,
+    providerCallState: 'not_started' as const,
+    ...overrides,
+  };
+}
 
 function crc32(bytes: Uint8Array) {
   let crc = 0xffffffff;
@@ -2159,3 +2185,123 @@ describeWindows(
     });
   },
 );
+
+describeWindows('Review/Planner V11 safe failure ledger', () => {
+  let root = '';
+
+  beforeEach(async () => {
+    root = await createRoot();
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('writes and reads the exact strict V11 public failure projection', async () => {
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+    });
+    const expected = v11Failure();
+    ledger.recordFailure(expected);
+    ledger.close();
+
+    const failurePath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+      '.failure.json',
+    );
+    await expect(readFile(failurePath, 'utf8')).resolves.toBe(
+      `${JSON.stringify(expected)}\n`,
+    );
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({
+      status: 'operation_failed',
+      environment: expected.environment,
+      component: expected.component,
+      slot: expected.slot,
+      checkpoint: expected.checkpoint,
+      terminal: expected.terminal,
+      providerCallState: expected.providerCallState,
+    });
+  });
+
+  it('rejects V8/V10 identity injection, unknown leaves, and impossible dispatch state', async () => {
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+    });
+    expect(() =>
+      ledger.recordFailure({
+        ...v11Failure(),
+        schemaVersion:
+          REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
+      }),
+    ).toThrow('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+    expect(() =>
+      ledger.recordFailure({
+        ...v11Failure(),
+        checkpoint: 'review_api_dispatch',
+      }),
+    ).toThrow('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+    ledger.recordFailure(v11Failure());
+    ledger.close();
+
+    const publicPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    await writeFile(join(publicPath, 'unknown.json'), '{}\n');
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await unlink(join(publicPath, 'unknown.json'));
+    await writeFile(
+      join(publicPath, '.failure.json'),
+      `${JSON.stringify({
+        ...v11Failure(),
+        schemaVersion:
+          REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
+      })}\n`,
+    );
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('does not alter V8 or V10 ledger behavior', async () => {
+    await finishBranch(root);
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+    });
+    ledger.recordFailure(v11Failure());
+    ledger.close();
+
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({ status: 'complete' });
+    expect(
+      REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    ).not.toBe(
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+  });
+});

@@ -39,6 +39,30 @@ export type ReviewPlannerProductAcceptanceProfile = Readonly<{
   ): readonly string[];
 }>;
 
+export type ReviewPlannerV11ProductAcceptanceProfile = Readonly<{
+  lineage: 'v11';
+  errorPrefix: 'V11_PRODUCT_ACCEPTANCE';
+  productConfirmation: '--confirm-v11-review-planner-product-acceptance';
+  recoveryConfirmation: '--confirm-v11-review-planner-product-acceptance-recovery-only';
+  schemas: Readonly<{
+    failure: 'phase-6.9.5-v11-product-acceptance-failure-v1';
+    checkpoint: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1';
+  }>;
+  publicLedgerPath(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): string;
+  recoveryPath(environment: ReviewPlannerProductAcceptanceEnvironment): string;
+  browserProfilePath(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): string;
+  publicLedgerSegments(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): readonly string[];
+  recoverySegments(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): readonly string[];
+}>;
+
 function createReviewPlannerProductAcceptanceProfile(
   lineage: 'v8' | 'v10',
 ): ReviewPlannerProductAcceptanceProfile {
@@ -87,6 +111,39 @@ export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE =
 
 export const REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE =
   createReviewPlannerProductAcceptanceProfile('v10');
+
+export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE =
+  Object.freeze<ReviewPlannerV11ProductAcceptanceProfile>({
+    lineage: 'v11',
+    errorPrefix: 'V11_PRODUCT_ACCEPTANCE',
+    productConfirmation: '--confirm-v11-review-planner-product-acceptance',
+    recoveryConfirmation:
+      '--confirm-v11-review-planner-product-acceptance-recovery-only',
+    schemas: Object.freeze({
+      failure: 'phase-6.9.5-v11-product-acceptance-failure-v1',
+      checkpoint: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
+    }),
+    publicLedgerPath: (environment) =>
+      `docs/acceptance/evidence/phase-6-9-5-v11-product-acceptance/${environment}`,
+    recoveryPath: (environment) =>
+      `.tmp/phase-6-9-5-v11-product-acceptance/${environment}`,
+    browserProfilePath: (environment) =>
+      `.tmp/phase-6-9-5-v11-product-acceptance/${environment}/profile-v11`,
+    publicLedgerSegments: (environment) =>
+      Object.freeze([
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v11-product-acceptance',
+        environment,
+      ]),
+    recoverySegments: (environment) =>
+      Object.freeze([
+        '.tmp',
+        'phase-6-9-5-v11-product-acceptance',
+        environment,
+      ]),
+  });
 
 export function normalizeReviewPlannerProductAcceptanceSchemaRecord(
   profile: ReviewPlannerProductAcceptanceProfile,
