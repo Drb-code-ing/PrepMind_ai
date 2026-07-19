@@ -30,6 +30,8 @@ type OwnerState = {
   role: ReviewPlannerV8ProductAcceptanceOwnerRole;
   directory: WindowsNoReparseChildDirectory;
   lock: WindowsExclusiveLifetimeFile;
+  runtimeDirectory: WindowsNoReparseChildDirectory;
+  runtimeLock: WindowsExclusiveLifetimeFile;
   closed: boolean;
 };
 
@@ -322,11 +324,25 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
   const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
     ...profile.recoverySegments(input.environment),
   ]);
+  let runtimeDirectory: WindowsNoReparseChildDirectory | null = null;
+  let lock: WindowsExclusiveLifetimeFile | null = null;
+  let runtimeLock: WindowsExclusiveLifetimeFile | null = null;
   try {
     directory.assertLocalFixedNtfsVolume();
-    const lock = directory.tryAcquireExclusiveLifetimeFile('owner.lock');
+    runtimeDirectory = await openWindowsNoReparseFrozenDirectory(
+      input.repoRoot,
+      sharedRuntimeOwnerSegments(),
+    );
+    runtimeDirectory.assertLocalFixedNtfsVolume();
+    lock = directory.tryAcquireExclusiveLifetimeFile('owner.lock');
     if (lock === null) {
-      directory.close();
+      closeAcquisitionResources([runtimeDirectory, directory]);
+      return Object.freeze({ status: 'owner_active' as const });
+    }
+    runtimeLock =
+      runtimeDirectory.tryAcquireExclusiveLifetimeFile('owner.lock');
+    if (runtimeLock === null) {
+      closeAcquisitionResources([lock, runtimeDirectory, directory]);
       return Object.freeze({ status: 'owner_active' as const });
     }
     const owner: ReviewPlannerV8ProductAcceptanceOwner = Object.freeze({
@@ -336,15 +352,24 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
           throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_CLOSED');
         }
         state.lock.assertHeld();
+        state.runtimeLock.assertHeld();
       },
       close() {
         const state = ownerState.get(owner);
         if (!state || state.closed) return;
         state.closed = true;
         try {
-          state.lock.close();
+          state.runtimeLock.close();
         } finally {
-          state.directory.close();
+          try {
+            state.runtimeDirectory.close();
+          } finally {
+            try {
+              state.lock.close();
+            } finally {
+              state.directory.close();
+            }
+          }
         }
       },
     });
@@ -354,11 +379,21 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
       role: input.role,
       directory,
       lock,
+      runtimeDirectory,
+      runtimeLock,
       closed: false,
     });
+    runtimeDirectory = null;
+    lock = null;
+    runtimeLock = null;
     return Object.freeze({ status: 'acquired' as const, owner });
   } catch (error) {
-    directory.close();
+    closeAcquisitionResourcesIgnoringFailures([
+      runtimeLock,
+      lock,
+      runtimeDirectory,
+      directory,
+    ]);
     throw sanitizeOwnerError(error);
   }
 }
@@ -1461,6 +1496,38 @@ function isEnvironment(
   value: unknown,
 ): value is ReviewPlannerV8ProductAcceptanceEnvironment {
   return value === 'branch' || value === 'main';
+}
+
+function closeAcquisitionResources(
+  resources: readonly ({ close(): void } | null | undefined)[],
+) {
+  let failure: Error | undefined;
+  for (const resource of resources) {
+    if (!resource) continue;
+    try {
+      resource.close();
+    } catch (error) {
+      failure ??=
+        error instanceof Error
+          ? error
+          : new Error('V8_PRODUCT_ACCEPTANCE_OWNER_IO');
+    }
+  }
+  if (failure !== undefined) throw failure;
+}
+
+function closeAcquisitionResourcesIgnoringFailures(
+  resources: readonly ({ close(): void } | null | undefined)[],
+) {
+  try {
+    closeAcquisitionResources(resources);
+  } catch {
+    // The acquisition error remains authoritative after best-effort release.
+  }
+}
+
+function sharedRuntimeOwnerSegments() {
+  return ['.tmp', 'phase-6-9-5-product-acceptance-runtime'] as const;
 }
 
 function isRole(

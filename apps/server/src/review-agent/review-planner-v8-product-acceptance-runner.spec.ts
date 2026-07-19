@@ -2,6 +2,8 @@
 import { createHash } from 'node:crypto';
 
 import type { ReviewPlannerV8ProductAcceptanceLedger } from './review-planner-v8-product-acceptance-ledger';
+import { createDefaultReviewPlannerV8ProductAcceptanceComposition } from './review-planner-v8-product-acceptance-composition';
+import { REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
 import {
   runReviewPlannerV8ProductAcceptance,
   type ReviewPlannerV8ProductAcceptancePersistedTrace,
@@ -115,6 +117,76 @@ describe('Review Planner V8 product acceptance runner', () => {
         }),
       );
     }
+  });
+
+  it('uses the V10 default composition cleanup and seals only V10 ledger records', async () => {
+    const profile = REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
+    const composition =
+      createDefaultReviewPlannerV8ProductAcceptanceComposition(
+        'E:\\PrepMind_ai智能备考助手',
+        {
+          profile,
+          env: { DATABASE_URL: 'postgresql://unused.invalid/prepmind' },
+          prisma: createCleanupOnlyPrisma() as never,
+        },
+      );
+    try {
+      const fixture = createFixture();
+      const defaultDependencies = composition.ports.createRunnerDependencies(
+        {} as never,
+      );
+      fixture.input.profile = profile;
+      fixture.dependencies.restoreDefaultOff = jest.fn(async (component) => ({
+        ...defaultOffReceipt(component),
+        schemaVersion: profile.schemas.defaultOff,
+      }));
+      fixture.dependencies.cleanup = jest.fn(() =>
+        defaultDependencies.cleanup(),
+      );
+
+      await expect(
+        runReviewPlannerV8ProductAcceptance(fixture.input),
+      ).resolves.toMatchObject({ environment: 'branch' });
+      expect(
+        fixture.ledger.recordSlotResult.mock.calls.map(
+          ([record]) => record.schemaVersion,
+        ),
+      ).toEqual(Array(4).fill(profile.schemas.slotResult));
+      expect(
+        fixture.ledger.recordDefaultOff.mock.calls.map(
+          ([record]) => record.schemaVersion,
+        ),
+      ).toEqual(Array(2).fill(profile.schemas.defaultOff));
+      expect(
+        fixture.ledger.recordOwnerIsolation.mock.calls[0][0].schemaVersion,
+      ).toBe(profile.schemas.ownerIsolation);
+      expect(fixture.ledger.recordCleanup.mock.calls[0][0].schemaVersion).toBe(
+        profile.schemas.cleanup,
+      );
+      expect(fixture.ledger.finalizeSuccess).toHaveBeenCalledTimes(1);
+    } finally {
+      await composition.dispose();
+    }
+  });
+
+  it.each([
+    ['clone', { ...REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE }],
+    [
+      'hostile proxy',
+      new Proxy(REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE, {
+        get() {
+          throw new Error('profile getter must not run');
+        },
+      }),
+    ],
+  ])('rejects a non-canonical V10 profile %s', async (_label, profile) => {
+    const fixture = createFixture();
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance({ ...fixture.input, profile }),
+    ).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID');
+    expect(fixture.ledger.claimSlot).not.toHaveBeenCalled();
+    expect(fixture.dependencies.cleanup).not.toHaveBeenCalled();
   });
 
   it('durably claims the browser slot before browser launch can fail', async () => {
@@ -893,6 +965,23 @@ type MutableDependencies = {
     ReviewPlannerV8ProductAcceptanceRunnerDependencies[Key]
   >;
 };
+
+function createCleanupOnlyPrisma() {
+  const transaction = {
+    agentTraceRun: { deleteMany: jest.fn(async () => ({ count: 0 })) },
+    user: { deleteMany: jest.fn(async () => ({ count: 0 })) },
+  };
+  return {
+    $transaction: jest.fn(
+      async (callback: (tx: typeof transaction) => unknown) =>
+        callback(transaction),
+    ),
+    $disconnect: jest.fn(async () => undefined),
+    agentTraceRun: { count: jest.fn(async () => 0) },
+    user: { count: jest.fn(async () => 0) },
+    wrongQuestion: { count: jest.fn(async () => 0) },
+  };
+}
 
 function requestResult(
   component: 'review' | 'planner',

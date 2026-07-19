@@ -1778,7 +1778,7 @@ function createDefaultRunnerDependencies(
     async cleanup() {
       await cleanupDefaultState(state);
       return {
-        schemaVersion: 'phase-6.9.5-v8-product-acceptance-cleanup-v1',
+        schemaVersion: profile.schemas.cleanup,
         syntheticAccounts: 0,
         fixtures: 0,
         traces: 0,

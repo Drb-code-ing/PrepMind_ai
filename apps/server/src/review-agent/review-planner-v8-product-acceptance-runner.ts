@@ -5,6 +5,13 @@ import {
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   type ReviewPlannerV8ProductAcceptanceEnvironment,
 } from './review-planner-v8-product-acceptance-recovery';
+import {
+  normalizeReviewPlannerProductAcceptanceSchemaRecord,
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  type ReviewPlannerProductAcceptanceProfile,
+  withReviewPlannerProductAcceptanceSchemaIdentity,
+} from './review-planner-product-acceptance-profile';
 
 type Component = 'review' | 'planner';
 type RequestSlot = 'api' | 'browser';
@@ -108,7 +115,7 @@ export type ReviewPlannerV8ProductAcceptanceRequest = Readonly<{
 }>;
 
 type CleanupReceipt = Readonly<{
-  schemaVersion: 'phase-6.9.5-v8-product-acceptance-cleanup-v1';
+  schemaVersion: string;
   syntheticAccounts: 0;
   fixtures: 0;
   traces: 0;
@@ -179,6 +186,7 @@ export type ReviewPlannerV8ProductAcceptanceTraceSummary = Readonly<{
 
 type SafeSnapshot = Readonly<{
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile: ReviewPlannerProductAcceptanceProfile;
   commitSha: string;
   pairedEvidenceSha256: string;
   accountIdSha256: Readonly<Record<Component, string>>;
@@ -233,7 +241,7 @@ export async function runReviewPlannerV8ProductAcceptance(
       throw controlError('PRODUCT_ACCEPTANCE_OWNER_ISOLATION_INVALID');
     }
     snapshot.ledger.recordOwnerIsolation({
-      schemaVersion: 'phase-6.9.5-v8-product-acceptance-owner-isolation-v1',
+      schemaVersion: snapshot.profile.schemas.ownerIsolation,
       reviewFactsBeforeSha256: componentResults.review.factsBeforeSha256,
       reviewFactsAfterSha256: componentResults.review.factsAfterSha256,
       plannerFactsBeforeSha256: componentResults.planner.factsBeforeSha256,
@@ -253,7 +261,7 @@ export async function runReviewPlannerV8ProductAcceptance(
 
   try {
     const cleanup = await snapshot.dependencies.cleanup();
-    assertCleanupReceipt(cleanup);
+    assertCleanupReceipt(cleanup, snapshot.profile);
     cleanupReceipt = cleanup;
   } catch {
     cleanupFailed = true;
@@ -360,7 +368,13 @@ async function runComponent(input: {
     });
     const apiTraceIdSha256 = sha256(apiTrace.traceId);
     snapshot.ledger.recordSlotResult(
-      toLedgerSlotResult(component, 'api', apiTrace, apiTraceIdSha256),
+      toLedgerSlotResult(
+        component,
+        'api',
+        apiTrace,
+        apiTraceIdSha256,
+        snapshot.profile,
+      ),
     );
 
     snapshot.ledger.claimSlot(toLedgerSlot(component, 'browser'));
@@ -410,6 +424,7 @@ async function runComponent(input: {
         'browser',
         browserTrace,
         browserTraceIdSha256,
+        snapshot.profile,
       ),
       screenshotSha256,
     });
@@ -457,12 +472,29 @@ async function runComponent(input: {
 
 async function restoreAndVerify(component: Component, snapshot: SafeSnapshot) {
   const value = await snapshot.dependencies.restoreDefaultOff(component);
+  const normalized = normalizeReviewPlannerProductAcceptanceSchemaRecord(
+    snapshot.profile,
+    'defaultOff',
+    value,
+  );
   const parsed =
-    reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(value);
-  if (!parsed.success || parsed.data.component !== component) {
+    normalized === null
+      ? null
+      : reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(
+          normalized,
+        );
+  if (
+    parsed === null ||
+    !parsed.success ||
+    parsed.data.component !== component
+  ) {
     throw controlError('PRODUCT_ACCEPTANCE_DEFAULT_OFF_INVALID');
   }
-  return parsed.data;
+  return withReviewPlannerProductAcceptanceSchemaIdentity(
+    snapshot.profile,
+    'defaultOff',
+    parsed.data,
+  );
 }
 
 async function readUniqueTrace(input: {
@@ -716,12 +748,26 @@ function createBrowserRouteGuard(input: {
   });
 }
 
+function canonicalizeProductAcceptanceProfile(value: unknown) {
+  if (value === undefined) {
+    return REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  }
+  if (value === REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE) {
+    return REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  }
+  if (value === REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE) {
+    return REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
+  }
+  throw new Error();
+}
+
 function createSafeSnapshot(input: unknown): SafeSnapshot {
   let capabilityHandle: CapabilityHandle | undefined;
   try {
     if (!input || typeof input !== 'object') throw new Error();
     const source = input as Record<string, unknown>;
     const environment = source.environment;
+    const profile = canonicalizeProductAcceptanceProfile(source.profile);
     const commitSha = source.commitSha;
     const pairedEvidenceSha256 = source.pairedEvidenceSha256;
     const accountSource = source.accountIdSha256 as Record<string, unknown>;
@@ -770,6 +816,7 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     );
     const snapshot = {
       environment,
+      profile,
       commitSha,
       pairedEvidenceSha256,
       accountIdSha256: Object.freeze({
@@ -907,9 +954,10 @@ function toLedgerSlotResult(
   slot: RequestSlot,
   trace: ReviewPlannerV8ProductAcceptancePersistedTrace,
   traceIdSha256: string,
+  profile: ReviewPlannerProductAcceptanceProfile,
 ) {
   return {
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-slot-result-v1',
+    schemaVersion: profile.schemas.slotResult,
     slot: toLedgerSlot(component, slot),
     provider: trace.provider,
     model: trace.model,
@@ -967,7 +1015,10 @@ function createApiDispatchInput(snapshot: SafeSnapshot, component: Component) {
   return Object.freeze(request);
 }
 
-function assertCleanupReceipt(value: CleanupReceipt) {
+function assertCleanupReceipt(
+  value: CleanupReceipt,
+  profile: ReviewPlannerProductAcceptanceProfile,
+) {
   if (
     !isExactRecord(value, [
       'schemaVersion',
@@ -977,7 +1028,7 @@ function assertCleanupReceipt(value: CleanupReceipt) {
       'browserProfiles',
       'capabilities',
     ]) ||
-    value.schemaVersion !== 'phase-6.9.5-v8-product-acceptance-cleanup-v1' ||
+    value.schemaVersion !== profile.schemas.cleanup ||
     value.syntheticAccounts !== 0 ||
     value.fixtures !== 0 ||
     value.traces !== 0 ||

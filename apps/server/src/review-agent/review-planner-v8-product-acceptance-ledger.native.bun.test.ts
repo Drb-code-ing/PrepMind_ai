@@ -1123,6 +1123,85 @@ describeWindows(
       recovery.owner.close();
     });
 
+    it('holds one shared runtime lease across V8 and V10 ownership profiles', async () => {
+      const v8 = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'product',
+      });
+      let v10WhileV8:
+        | Awaited<
+            ReturnType<typeof acquireReviewPlannerV8ProductAcceptanceOwner>
+          >
+        | undefined;
+      let v10:
+        | Awaited<
+            ReturnType<typeof acquireReviewPlannerV8ProductAcceptanceOwner>
+          >
+        | undefined;
+      let v8WhileV10:
+        | Awaited<
+            ReturnType<typeof acquireReviewPlannerV8ProductAcceptanceOwner>
+          >
+        | undefined;
+      try {
+        expect(v8.status).toBe('acquired');
+        v10WhileV8 = await acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'branch',
+          role: 'recovery',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        });
+        expect(v10WhileV8).toEqual({ status: 'owner_active' });
+        if (v8.status === 'acquired') v8.owner.close();
+
+        v10 = await acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'branch',
+          role: 'recovery',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        });
+        expect(v10.status).toBe('acquired');
+        v8WhileV10 = await acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'branch',
+          role: 'product',
+        });
+        expect(v8WhileV10).toEqual({ status: 'owner_active' });
+      } finally {
+        if (v8.status === 'acquired') v8.owner.close();
+        if (v10WhileV8?.status === 'acquired') v10WhileV8.owner.close();
+        if (v10?.status === 'acquired') v10.owner.close();
+        if (v8WhileV10?.status === 'acquired') v8WhileV10.owner.close();
+      }
+    });
+
+    it('holds one shared runtime lease across branch and main environments', async () => {
+      const branch = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'product',
+      });
+      let main:
+        | Awaited<
+            ReturnType<typeof acquireReviewPlannerV8ProductAcceptanceOwner>
+          >
+        | undefined;
+      try {
+        expect(branch.status).toBe('acquired');
+        main = await acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'main',
+          role: 'recovery',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        });
+        expect(main).toEqual({ status: 'owner_active' });
+      } finally {
+        if (branch.status === 'acquired') branch.owner.close();
+        if (main?.status === 'acquired') main.owner.close();
+      }
+    });
+
     it('rejects recovery authorization for a non-canonical public slot leaf', async () => {
       const productOwner = await acquire(root);
       const ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
@@ -1729,8 +1808,9 @@ describeWindows(
       expect(
         await acquireReviewPlannerV8ProductAcceptanceOwner({
           repoRoot: root,
-          environment: 'branch',
+          environment: 'main',
           role: 'recovery',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
         }),
       ).toEqual({ status: 'owner_active' });
       child.kill();
@@ -1739,8 +1819,9 @@ describeWindows(
       );
       const recovered = await acquireReviewPlannerV8ProductAcceptanceOwner({
         repoRoot: root,
-        environment: 'branch',
+        environment: 'main',
         role: 'recovery',
+        profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
       });
       expect(recovered.status).toBe('acquired');
       if (recovered.status === 'acquired') recovered.owner.close();
