@@ -147,13 +147,15 @@ Phase 6.9.5 已完成 ReviewAgent / PlannerAgent 的受限只读候选、owner-s
 
 2026-07-19 的 V9 Task 1--5 离线收口没有重跑或改写 V1--V8。V9 新增独立 aggregate gate diagnostics、durable evidence、一次性 CLI 和 product authority。随后唯一 V9 controlled-Live 在根 `.env` 显式注入后运行：预检前一次 `preflight_invalid` 为零调用、零 reservation、零 once、零 evidence；实际运行创建 V9 once/evidence，完成 `23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes，却以 `quality_gate_failed` 封存。quality 为 `30/48`，semantic 为 `4/22`，critical 为 `2`；P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00` 及其余 gates 均通过。V9 不可重跑；没有 success seal，独立 V9 eval gate 与两条 Review/Planner 产品 gate 仍缺省关闭，产品继续 deterministic。
 
+2026-07-19 的 V10 是对 V9 质量 contract 的最小修复，尚未执行 controlled-Live：模型只返回产品实际合并的 `focusIndexes`（Review）或 `blockOrder`（Planner），本地仍拥有 owner、facts、FSRS、分钟数、链接、写权限和最终只读结果。V1--V9 保持 immutable；fresh manifest 为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`，V10 evidence directory、once marker 与 success seal 均不存在。离线门已通过但不构成 Live：V10/V8/V9/composition Jest `266/266`、Agent `409/409` 与 typecheck、server lint/build、V10 native `3/3`、`git diff --check`。唯一命令只能从根目录以 `bun --env-file=.env` 注入凭据（绝不改写 `.env`）并在独立进程中开启 V10 eval gate；V8/V9 eval gate 和两条产品 gate 必须显式 `false`。配置固定为 `deepseek-v4-pro`、JSON-object non-thinking、`4500ms`、`23/22` 上限和 CNY `1.00` hard cap。V10 writer/reader 只能发布 strict safe lane aggregate，拒绝 prompt、snapshot、model output、raw error、URL、credential、cookie、stack 及 per-case timing/usage；任何失败都封存 V10 且不得进入 Docker、浏览器、main 或 push。详情见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
+
 V9 product authority 只接受 `finalized / complete / closed / passed`、`providerCount=23`、`pairedAdmissionCount=22` 与 lowercase 64-hex evidence SHA-256；还要求完整 V9 leaf 集合全部以 ordinary `H` 被 Git 精确跟踪，并在 authority 读取前后保持 leaf、commit、branch、clean 状态一致。pending、`evidence_io`、未知 profile、非法 hash、assume-unchanged、skip-worktree、缺失/额外 leaf 或漂移都在 ledger、Prisma、Docker、浏览器之前 fail-closed；没有 legacy V8 reader 或 `git show` 回退。
 
 离线证据为：V9 focused `136/136`；Server `1381 passed / 30 skipped`；Review E2E `3/3`；Web `409/409`；AI `190/190`；Agent `406/406`；shared types typecheck exit 0；Review/Planner Windows native 按各自正确 cwd 合计 `133/133`（V5/V6 的 cwd 约束属于命令入口契约，不是代码失败）；product acceptance `131/131`；lint/build/Compose/diff 均 exit 0；contract/security 复审 PASS 且无未关闭 Critical/Important。这些只证明 V9 离线工程边界，不是 Live、provider quality、Docker 产品验收或 Phase 6.9.5 完成证据。
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请只读审查 V9 `quality_gate_failed` 的 `30/48`、`4/22` 和 2 个 critical 根因，并设计最小的新 lineage；不得重跑或改写 V1--V9，不得提前进入产品验收。”
+下一会话可以问：“请从 V10 offline checkpoint 开始，先独立复审并确认唯一 controlled-Live 的进程级 gates；不得改写 V1--V9、`.env` 或提前进入产品验收。”
 
 ## 常用命令
 

@@ -769,4 +769,12 @@ V9 的一次实际运行遵守第 10 项后段：durable reader 为 `finalized /
 
 完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v9-offline-checkpoint.md`。
 
+### V10 当前 offline checkpoint 与唯一 Live 前提
+
+V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Review `focusIndexes` 与 Planner `blockOrder`。截至当前 checkpoint，V1--V9 fresh manifest 为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`，V10 evidence directory、once marker 和 success seal 都不存在。已验证 V10/V8/V9/composition Jest `266/266`、Agent `409/409` 与 typecheck、server lint/build、V10 native `3/3`、`git diff --check`；这些不是 Live、Docker 或浏览器验收。
+
+唯一 V10 controlled-Live 只可在 clean-head 与独立复审后，从根目录用 `bun --env-file=.env` 注入现有凭据，绝不写入 `.env`。进程内只允许 `REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V10_SEMANTIC_QUALITY_ENABLED=true`，必须显式将 V8/V9 eval gate 和 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 设为 `false`。固定配置为 `deepseek-v4-pro`、JSON-object non-thinking、`4500ms`、最多 `23` provider attempts / `22` paired admissions 与 CNY `1.00` cap。V10 safe writer/reader 只能持久化 strict lane aggregate，拒绝 prompt、snapshot、output、raw error、URL、credential、cookie、stack 和 per-case timing/usage；任何失败终态都封存 V10，禁止 Docker、headed browser、main 或 push。
+
+精确命令、gate 值和后续产品验收顺序见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
+
 任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。

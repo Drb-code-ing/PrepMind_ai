@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-19 — Phase 6.9.5 V9 唯一 controlled-Live 已封存为 `quality_gate_failed`：`23` provider attempts、`22` paired admissions、quality `30/48`、semantic `4/22`、critical `2`；P95、usage 与 CNY cap 通过但没有 success seal。产品 gate 保持关闭，阶段验收未完成。
+> 2026-07-19 — Phase 6.9.5 V10 离线门已完成，唯一 controlled-Live 尚未执行：V9 继续以 `quality_gate_failed` 封存，V10 evidence/once/success seal 均不存在，产品 gate 保持关闭，阶段验收未完成。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
@@ -8,7 +8,7 @@
 
 更新时间：2026-07-19
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 已形成 durable final `quality_gate_failed`，所以 V9 committed success 不成立。真实运行有 `23` provider attempts、`22` paired admissions、P95 `1396ms`、usage `7943/510` 和 CNY `0.026889/1.00`，但 quality `30/48`、semantic `4/22`、critical `2` 未达标。eval gate 与两条产品 gate 已恢复默认关闭；Product authority 在 ledger、Prisma、Docker 与浏览器前阻断，Review/Planner product path 仍 deterministic，Phase 6.9.5 验收未完成。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 为 `quality_gate_failed`，所以 V9 committed success 不成立。V10 已把模型契约收窄为生产有效的 `focusIndexes` / `blockOrder` 并完成离线门，但 evidence directory、once marker 与 success seal 均不存在。eval gate 与两条产品 gate 默认关闭；V10 只有一次独立的 `deepseek-v4-pro` JSON-object non-thinking `4500ms`、`23/22`、CNY `1.00` controlled-Live，成功前 Product authority 继续在 ledger、Prisma、Docker 与浏览器前阻断，Review/Planner product path 仍 deterministic，Phase 6.9.5 验收未完成。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -26,7 +26,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V9 唯一 Live 已 `quality_gate_failed` 封存；产品 gate 默认关闭，产品验收未进入 |
+| Phase 6.9.5  | 验收未完成 | V9 已 `quality_gate_failed` 封存；V10 离线门完成、唯一 Live 未执行，产品 gate 默认关闭 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
@@ -72,6 +72,16 @@
 | Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
 
 ## 近期关键记录
+
+### 2026-07-19 - Phase 6.9.5 V10 offline checkpoint
+
+目标：以最小修复让模型的可见 contract 与产品实际合并的 Review `focusIndexes` / Planner `blockOrder` 一致，同时不扩大模型权限。
+
+边界：V9 仍是不可改写的 `quality_gate_failed` 历史。V10 还没有 evidence directory、once marker 或 success seal；产品 gate 均为 `false`，没有运行 Live、Docker、浏览器、main replay 或 push。V10 writer/reader 只发布 strict safe lane aggregate，拒绝 prompt、snapshot、model output、raw error、URL、credential、cookie、stack 和 per-case timing/usage。
+
+验收：V10/V8/V9/composition Jest `266/266`、Agent `409/409` 与 typecheck、server lint/build、V10 native `3/3` 和 `git diff --check` 已通过；V1--V9 fresh manifest 为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`。唯一 Live 仅可从根目录 `--env-file=.env` 注入凭据，在独立进程中开启 V10 eval gate 并显式关闭 V8/V9 eval 与两条产品 gate；固定 `deepseek-v4-pro`、JSON-object non-thinking、`4500ms`、`23/22` 和 CNY `1.00`。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
+
+回顾时可以问：为什么 V10 只评估产品真正使用的两个字段？为什么 V9 的质量失败不能用 V10 离线通过抵消？为什么 `.env` 只能用于命令注入而不能写入 gate？
 
 ### 2026-07-19 - Phase 6.9.5 V9 Task 1--5 离线 checkpoint
 

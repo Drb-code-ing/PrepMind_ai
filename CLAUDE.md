@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.5 已完成，后续进入 Phase 6.6。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前处于 Phase 6.9.5：Review/Planner V10 的离线门已完成，唯一 controlled-Live 尚未执行；当前产品仍是确定性只读建议。
 
 已完成主线：
 
@@ -36,8 +36,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.
 
 下一步：
 
-1. Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认和撤销。
-2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
+1. 仅在独立复审和 clean-head preflight 后执行一次 V10 controlled-Live；它不是 Docker 或产品验收授权。
+2. 只有 V10 committed success 后，才可做分支 Docker/headed-browser 验收、main 合并、main replay 与 push；随后才继续其余 Agent 架构和 Phase 6.10 记忆工作。
 
 ## 常用命令
 
@@ -99,7 +99,7 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
-- Phase 6 多 Agent 规划：Router / KnowledgeVerifier 已具备模型/规则混合生产路径并恢复默认 gate 关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是确定性 policy。Review / Planner 的确定性只读 baseline 仍是当前产品行为，另有 server-only 受限模型 candidate；V1--V9 均为只读历史。V9 唯一 Live 已完成 `23` provider attempts / `22` paired admissions，但以 `quality_gate_failed` 封存（quality `30/48`、semantic `4/22`、critical `2`）；P95、usage 与 CNY cap 均通过但没有 success seal。`REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 继续缺省关闭，因此 `/review-agent/suggestions` 不会调用真实模型，Phase 6.9.5 仍未完成。模型不能决定 owner、facts、FSRS、分钟数、链接、任务或写权限；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。
+- Phase 6 多 Agent 规划：Router / KnowledgeVerifier 已具备模型/规则混合生产路径并恢复默认 gate 关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是确定性 policy。Review / Planner 的确定性只读 baseline 仍是当前产品行为，另有 server-only 受限模型 candidate；V1--V9 均为只读历史。V9 唯一 Live 已完成 `23` provider attempts / `22` paired admissions，但以 `quality_gate_failed` 封存（quality `30/48`、semantic `4/22`、critical `2`）；P95、usage 与 CNY cap 均通过但没有 success seal。V10 将模型 contract 收窄为 `focusIndexes` / `blockOrder`，离线门已通过但 evidence/once/success seal 尚不存在。唯一 V10 Live 必须以根目录 `--env-file=.env` 注入凭据，进程内只开启 V10 eval gate，并显式保持 V8/V9 eval 与两条产品 gate 为 `false`；`deepseek-v4-pro` 固定 JSON-object non-thinking、`4500ms`、`23/22` 与 CNY `1.00` cap。`REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 继续缺省关闭，因此 `/review-agent/suggestions` 不会调用真实模型，Phase 6.9.5 仍未完成。模型不能决定 owner、facts、FSRS、分钟数、链接、任务或写权限；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。完整预检见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
 
 ## 当前数据流
 
