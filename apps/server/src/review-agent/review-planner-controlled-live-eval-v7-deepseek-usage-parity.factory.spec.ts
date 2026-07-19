@@ -588,7 +588,6 @@ function createExecutorHarness(
         ? fixtureCandidateFor(request.userPrompt, request.schema)
         : (input.object ?? {
             focusIndexes: [0],
-            diagnosis: 'review_pressure',
           }),
       ...(Object.hasOwn(input, 'usage')
         ? input.usage === undefined
@@ -608,31 +607,31 @@ function createExecutorHarness(
 }
 
 const reviewRuntimeProfiles = [
-  { focusIndexes: [1], diagnosis: 'review_pressure' },
-  { focusIndexes: [0], diagnosis: 'stability_risk' },
-  { focusIndexes: [0, 1], diagnosis: 'knowledge_gap' },
-  { focusIndexes: [1], diagnosis: 'stability_risk' },
-  { focusIndexes: [0], diagnosis: 'review_pressure' },
-  { focusIndexes: [0, 1], diagnosis: 'review_pressure' },
-  { focusIndexes: [2], diagnosis: 'knowledge_gap' },
-  { focusIndexes: [0, 2], diagnosis: 'stability_risk' },
-  { focusIndexes: [0, 1, 2], diagnosis: 'knowledge_gap' },
-  { focusIndexes: [2, 1], diagnosis: 'review_pressure' },
-  { focusIndexes: [0], diagnosis: 'knowledge_gap' },
+  { focusIndexes: [1] },
+  { focusIndexes: [0] },
+  { focusIndexes: [0, 1] },
+  { focusIndexes: [1] },
+  { focusIndexes: [0] },
+  { focusIndexes: [0, 1] },
+  { focusIndexes: [2] },
+  { focusIndexes: [0, 2] },
+  { focusIndexes: [0, 1, 2] },
+  { focusIndexes: [2, 1] },
+  { focusIndexes: [0] },
 ] as const;
 
 const plannerRuntimeProfiles = [
-  { blockOrder: [1, 0], strategy: 'protect_overdue' },
-  { blockOrder: [0, 1], strategy: 'steady_progress' },
-  { blockOrder: [1, 0, 2], strategy: 'relieve_capacity' },
-  { blockOrder: [2, 0, 1], strategy: 'protect_overdue' },
-  { blockOrder: [0, 1, 2], strategy: 'steady_progress' },
-  { blockOrder: [2, 1, 0], strategy: 'relieve_capacity' },
-  { blockOrder: [1, 0], strategy: 'steady_progress' },
-  { blockOrder: [0, 1], strategy: 'protect_overdue' },
-  { blockOrder: [1, 2, 0], strategy: 'relieve_capacity' },
-  { blockOrder: [0, 2, 1], strategy: 'steady_progress' },
-  { blockOrder: [2, 1, 0], strategy: 'protect_overdue' },
+  { blockOrder: [1, 0] },
+  { blockOrder: [0, 1] },
+  { blockOrder: [1, 0, 2] },
+  { blockOrder: [2, 0, 1] },
+  { blockOrder: [0, 1, 2] },
+  { blockOrder: [2, 1, 0] },
+  { blockOrder: [1, 0] },
+  { blockOrder: [0, 1] },
+  { blockOrder: [1, 2, 0] },
+  { blockOrder: [0, 2, 1] },
+  { blockOrder: [2, 1, 0] },
 ] as const;
 
 function fixtureCandidateFor(
@@ -649,7 +648,6 @@ function fixtureCandidateFor(
   }
   const plannerCanary = {
     blockOrder: [0],
-    strategy: 'steady_progress',
   } as const;
   if (
     PLANNER_MODEL_CANDIDATE_SCHEMA.safeParse(plannerCanary).success &&
@@ -657,7 +655,7 @@ function fixtureCandidateFor(
   ) {
     return plannerCanary;
   }
-  return { focusIndexes: [0], diagnosis: 'review_pressure' };
+  return { focusIndexes: [0] };
 }
 
 function readSyntheticOrdinal(

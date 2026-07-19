@@ -27,7 +27,6 @@ describe('review planner controlled Live v4 evaluator', () => {
             message: {
               content: JSON.stringify({
                 focusIndexes: [0],
-                diagnosis: 'review_pressure',
               }),
             },
           },

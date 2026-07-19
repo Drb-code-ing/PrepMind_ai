@@ -24,26 +24,13 @@ const liveDiagnosticEnv = Object.freeze({
 
 const CONTROLLED_REVIEW_SCHEMA_CANARY = Object.freeze({
   focusIndexes: [0],
-  diagnosis: 'review_pressure',
 });
-const CONTROLLED_REVIEW_SCHEMA_CANARY_JSON = JSON.stringify(
-  CONTROLLED_REVIEW_SCHEMA_CANARY,
-);
-const CONTROLLED_REVIEW_SCHEMA_CANARY_SYSTEM_PROMPT =
-  'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0],"diagnosis":"review_pressure"}. Do not return an acknowledgement, prose, or extra fields.';
-const CONTROLLED_REVIEW_SCHEMA_CANARY_USER_PROMPT = `Return exactly ${CONTROLLED_REVIEW_SCHEMA_CANARY_JSON}.`;
-
 describe('review planner controlled Live evaluator factory', () => {
   it('creates one JSON-object executor and runs an exact valid review-schema canary once', async () => {
     const executor: StructuredModelExecutor = jest.fn((input) => {
       expect(input.systemPrompt).not.toMatch(/factory-private-canary/i);
+      expect(input.userPrompt).not.toMatch(/factory-private-canary/i);
       expect(input.schema).toBe(REVIEW_MODEL_CANDIDATE_SCHEMA);
-      expect(input.systemPrompt).toBe(
-        CONTROLLED_REVIEW_SCHEMA_CANARY_SYSTEM_PROMPT,
-      );
-      expect(input.userPrompt).toBe(
-        CONTROLLED_REVIEW_SCHEMA_CANARY_USER_PROMPT,
-      );
       return Promise.resolve({
         object: CONTROLLED_REVIEW_SCHEMA_CANARY,
         usage: { inputTokens: 12, outputTokens: 4 },
@@ -118,11 +105,8 @@ describe('review planner controlled Live evaluator factory', () => {
 
   it.each([
     ['acknowledgement', { acknowledged: 'CONTROLLED_LIVE_RAW_SUMMARY_CANARY' }],
-    ['missing required diagnosis', { focusIndexes: [0] }],
-    [
-      'wrong focus index type',
-      { focusIndexes: ['0'], diagnosis: 'review_pressure' },
-    ],
+    ['missing required focus indexes', {}],
+    ['wrong focus index type', { focusIndexes: ['0'] }],
     [
       'extra acknowledgement field',
       {

@@ -2,6 +2,8 @@
 
 > 2026-07-20 — Phase 6.9.5 V11 execution bridge 已完成离线 checkpoint：V10 controlled-Live 仍是唯一语义质量权威，V10 product terminal 仍为 recovery-only。V11 CLI、私有 manifest、success ledger、默认关闭与精确 recovery selector 已就位；未执行 V11 Docker、浏览器或真实模型，产品 gate 继续为 `false`。
 
+> 2026-07-20 — 对齐遗留 Review/Planner server 测试 fixture 与 index-only candidate contract：只更新 V1/V4/V6/V7 controlled-eval 和 service mock 输出及过时负例，未改生产、Agent、AI 或 V11 行为；该修复恢复全量 server 静态门禁，不产生新的 Live/Docker/browser 证据。
+
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照

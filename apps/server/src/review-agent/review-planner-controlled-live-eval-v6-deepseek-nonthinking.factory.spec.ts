@@ -489,7 +489,7 @@ function createExecutorHarness(
       onAudit(currentAudit);
     }
     return Promise.resolve({
-      object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+      object: { focusIndexes: [0] },
       ...(usage === undefined ? {} : { usage }),
     });
   }) as jest.MockedFunction<StructuredModelExecutor>;

@@ -374,8 +374,8 @@ describe('ReviewAgentService', () => {
     const executor: StructuredModelExecutor = ({ systemPrompt }) =>
       Promise.resolve({
         object: systemPrompt.includes('review focus')
-          ? { focusIndexes: [0], diagnosis: 'review_pressure' }
-          : { blockOrder: [0], strategy: 'protect_overdue' },
+          ? { focusIndexes: [0] }
+          : { blockOrder: [0] },
         usage: { inputTokens: 20, outputTokens: 6 },
       });
     const runtime = liveRuntime(executor);
@@ -437,7 +437,7 @@ describe('ReviewAgentService', () => {
     const executor: StructuredModelExecutor = () => {
       events.push('runtime:review');
       return Promise.resolve({
-        object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+        object: { focusIndexes: [0] },
         usage: { inputTokens: 20, outputTokens: 6 },
       });
     };
@@ -488,7 +488,7 @@ describe('ReviewAgentService', () => {
     const executor: StructuredModelExecutor = () => {
       events.push('runtime:planner');
       return Promise.resolve({
-        object: { blockOrder: [0, 1], strategy: 'protect_overdue' },
+        object: { blockOrder: [0, 1] },
         usage: { inputTokens: 20, outputTokens: 6 },
       });
     };
