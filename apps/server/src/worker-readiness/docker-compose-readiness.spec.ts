@@ -302,7 +302,12 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(serverService).toContain(
       'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
     );
-    expect(serverService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
+    expect(serverService).toContain(
+      'DEEPSEEK_API_KEY: ${REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY:-}',
+    );
+    expect(serverService).not.toContain(
+      'DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}',
+    );
     expect(serverService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
     expect(serverService).toContain(
       'CONVERSATION_SUMMARY_MAX_CALLS: ${CONVERSATION_SUMMARY_MAX_CALLS:-1}',

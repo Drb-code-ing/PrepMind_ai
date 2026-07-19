@@ -2981,6 +2981,26 @@ export function buildReviewPlannerV8DefaultOffEnvironment(): Readonly<
   };
 }
 
+export function buildReviewPlannerV8ServerRecreateEnvironment(
+  rootEnvironment: Readonly<Record<string, string>>,
+  overrides: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
+  const activationEnabled =
+    overrides.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED === 'true';
+  const productDeepseekApiKey = activationEnabled
+    ? overrides.DEEPSEEK_API_KEY
+    : '';
+  if (activationEnabled && !productDeepseekApiKey) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_ACTIVATION_INVALID');
+  }
+  return Object.freeze({
+    ...rootEnvironment,
+    ...overrides,
+    DEEPSEEK_API_KEY: '',
+    REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY: productDeepseekApiKey,
+  });
+}
+
 async function recreateServer(
   state: Readonly<{
     repoRoot: string;
@@ -2994,7 +3014,10 @@ async function recreateServer(
   await execFileAsync(command.file, [...command.args], {
     cwd: state.repoRoot,
     windowsHide: true,
-    env: { ...process.env, ...state.env, ...overrides },
+    env: {
+      ...process.env,
+      ...buildReviewPlannerV8ServerRecreateEnvironment(state.env, overrides),
+    },
     maxBuffer: 1024 * 1024,
     timeout: 60_000,
   });

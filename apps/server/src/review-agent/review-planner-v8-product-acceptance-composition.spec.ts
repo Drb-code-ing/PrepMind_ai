@@ -7,6 +7,7 @@ import {
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION,
   buildReviewPlannerV8ActivationEnvironment,
   buildReviewPlannerV8DefaultOffEnvironment,
+  buildReviewPlannerV8ServerRecreateEnvironment,
   buildReviewPlannerV8ServerRecreateCommand,
   captureReviewPlannerV8RepositorySnapshot,
   captureReviewPlannerV8RepositorySnapshotFromAuthority,
@@ -690,6 +691,37 @@ describe('V8 product acceptance executable composition', () => {
       model: 'deepseek-v4-pro',
       structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
     });
+  });
+
+  it('binds the provider key only through the product Compose variable during activation', () => {
+    const activationEnvironment = buildReviewPlannerV8ServerRecreateEnvironment(
+      {
+        DEEPSEEK_API_KEY: 'root-key',
+        OPENAI_API_KEY: 'root-openai-key',
+      },
+      buildReviewPlannerV8ActivationEnvironment(
+        'review',
+        'a'.repeat(64),
+        'activation-key',
+      ),
+    );
+    const defaultOffEnvironment = buildReviewPlannerV8ServerRecreateEnvironment(
+      {
+        DEEPSEEK_API_KEY: 'root-key',
+        OPENAI_API_KEY: 'root-openai-key',
+        REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY: 'stale-key',
+      },
+      buildReviewPlannerV8DefaultOffEnvironment(),
+    );
+
+    expect(activationEnvironment.DEEPSEEK_API_KEY === '').toBe(true);
+    expect(
+      Boolean(activationEnvironment.REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY),
+    ).toBe(true);
+    expect(defaultOffEnvironment.DEEPSEEK_API_KEY === '').toBe(true);
+    expect(
+      defaultOffEnvironment.REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY === '',
+    ).toBe(true);
   });
 
   it('merges the raw browser capability into original request headers without dropping them', () => {
