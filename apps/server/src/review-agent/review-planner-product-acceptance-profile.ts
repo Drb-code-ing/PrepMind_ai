@@ -47,6 +47,14 @@ export type ReviewPlannerV11ProductAcceptanceProfile = Readonly<{
   schemas: Readonly<{
     failure: 'phase-6.9.5-v11-product-acceptance-failure-v1';
     checkpoint: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1';
+    manifest: 'phase-6.9.5-v11-product-acceptance-manifest-v1';
+    executionManifest: 'phase-6.9.5-v11-product-acceptance-execution-manifest-v1';
+    slotResult: 'phase-6.9.5-v11-product-acceptance-slot-result-v1';
+    defaultOff: 'phase-6.9.5-v11-product-acceptance-default-off-v1';
+    ownerIsolation: 'phase-6.9.5-v11-product-acceptance-owner-isolation-v1';
+    cleanup: 'phase-6.9.5-v11-product-acceptance-cleanup-v1';
+    acceptance: 'phase-6.9.5-v11-product-acceptance-aggregate-v1';
+    success: 'phase-6.9.5-v11-product-acceptance-success-v1';
   }>;
   publicLedgerPath(
     environment: ReviewPlannerProductAcceptanceEnvironment,
@@ -59,6 +67,12 @@ export type ReviewPlannerV11ProductAcceptanceProfile = Readonly<{
     environment: ReviewPlannerProductAcceptanceEnvironment,
   ): readonly string[];
   recoverySegments(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): readonly string[];
+  executionManifestPath(
+    environment: ReviewPlannerProductAcceptanceEnvironment,
+  ): string;
+  executionManifestSegments(
     environment: ReviewPlannerProductAcceptanceEnvironment,
   ): readonly string[];
 }>;
@@ -122,6 +136,15 @@ export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE =
     schemas: Object.freeze({
       failure: 'phase-6.9.5-v11-product-acceptance-failure-v1',
       checkpoint: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
+      manifest: 'phase-6.9.5-v11-product-acceptance-manifest-v1',
+      executionManifest:
+        'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+      slotResult: 'phase-6.9.5-v11-product-acceptance-slot-result-v1',
+      defaultOff: 'phase-6.9.5-v11-product-acceptance-default-off-v1',
+      ownerIsolation: 'phase-6.9.5-v11-product-acceptance-owner-isolation-v1',
+      cleanup: 'phase-6.9.5-v11-product-acceptance-cleanup-v1',
+      acceptance: 'phase-6.9.5-v11-product-acceptance-aggregate-v1',
+      success: 'phase-6.9.5-v11-product-acceptance-success-v1',
     }),
     publicLedgerPath: (environment) =>
       `docs/acceptance/evidence/phase-6-9-5-v11-product-acceptance/${environment}`,
@@ -141,6 +164,14 @@ export const REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE =
       Object.freeze([
         '.tmp',
         'phase-6-9-5-v11-product-acceptance',
+        environment,
+      ]),
+    executionManifestPath: (environment) =>
+      `.tmp/phase-6-9-5-v11-product-acceptance-execution/${environment}`,
+    executionManifestSegments: (environment) =>
+      Object.freeze([
+        '.tmp',
+        'phase-6-9-5-v11-product-acceptance-execution',
         environment,
       ]),
   });

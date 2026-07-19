@@ -31,6 +31,38 @@ describe('Review Planner product-acceptance profiles', () => {
     expect(profile.schemas.checkpoint).toBe(
       'phase-6.9.5-v11-product-acceptance-checkpoint-v1',
     );
+    expect(profile.schemas.manifest).toBe(
+      'phase-6.9.5-v11-product-acceptance-manifest-v1',
+    );
+    expect(profile.schemas.executionManifest).toBe(
+      'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+    );
+    expect(profile.schemas.slotResult).toBe(
+      'phase-6.9.5-v11-product-acceptance-slot-result-v1',
+    );
+    expect(profile.schemas.defaultOff).toBe(
+      'phase-6.9.5-v11-product-acceptance-default-off-v1',
+    );
+    expect(profile.schemas.ownerIsolation).toBe(
+      'phase-6.9.5-v11-product-acceptance-owner-isolation-v1',
+    );
+    expect(profile.schemas.cleanup).toBe(
+      'phase-6.9.5-v11-product-acceptance-cleanup-v1',
+    );
+    expect(profile.schemas.acceptance).toBe(
+      'phase-6.9.5-v11-product-acceptance-aggregate-v1',
+    );
+    expect(profile.schemas.success).toBe(
+      'phase-6.9.5-v11-product-acceptance-success-v1',
+    );
+    expect(profile.executionManifestPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v11-product-acceptance-execution/branch',
+    );
+    expect(profile.executionManifestSegments('main')).toEqual([
+      '.tmp',
+      'phase-6-9-5-v11-product-acceptance-execution',
+      'main',
+    ]);
     expect(profile.publicLedgerPath('branch')).not.toBe(
       REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
     );

@@ -49,6 +49,23 @@ import {
   serializeReviewPlannerV11ProductAcceptanceFailure,
   type ReviewPlannerV11ProductAcceptanceFailureRecord,
 } from './review-planner-v11-product-acceptance-diagnostics';
+import {
+  executionManifestMatchesPublicManifest,
+  parseReviewPlannerV11ProductAcceptanceAggregate,
+  parseReviewPlannerV11ProductAcceptanceCleanup,
+  parseReviewPlannerV11ProductAcceptanceDefaultOff,
+  parseReviewPlannerV11ProductAcceptanceExecutionManifest,
+  parseReviewPlannerV11ProductAcceptanceManifest,
+  parseReviewPlannerV11ProductAcceptanceOwnerIsolation,
+  parseReviewPlannerV11ProductAcceptanceSlotResult,
+  parseReviewPlannerV11ProductAcceptanceSuccess,
+  readReviewPlannerV11ProductAcceptanceExecutionManifest,
+  readReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PUBLIC_LEAVES,
+  type ReviewPlannerV11ProductAcceptanceExecutionSlot,
+} from './review-planner-v11-product-acceptance-execution';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
@@ -94,10 +111,12 @@ const PUBLIC_LEAVES = Object.freeze([
   'today.png',
 ] as const);
 
-const V11_PUBLIC_LEAVES = Object.freeze([
+const V11_PUBLIC_LEAVES = REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PUBLIC_LEAVES;
+const V11_FAILURE_PUBLIC_LEAVES = Object.freeze([
   '.acceptance-reserved',
   '.failure.json',
 ] as const);
+const V11_PRIVATE_EXECUTION_MANIFEST_LEAF = 'execution-manifest.json';
 
 const RECOVERY_STAGE_LEAVES = Object.freeze([
   'restore.claimed',
@@ -491,6 +510,7 @@ const ledgerState = new WeakMap<
 >();
 
 type V11LedgerState = {
+  repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   attemptSha256: string;
   directory: WindowsNoReparseChildDirectory;
@@ -501,6 +521,15 @@ type V11LedgerState = {
 };
 
 export type ReviewPlannerV11ProductAcceptanceLedger = Readonly<{
+  writeExecutionManifest(value: unknown): Promise<void>;
+  writeManifest(value: unknown): void;
+  claimSlot(slot: ReviewPlannerV11ProductAcceptanceExecutionSlot): void;
+  recordSlotResult(value: unknown): void;
+  recordDefaultOff(value: unknown): void;
+  recordOwnerIsolation(value: unknown): void;
+  recordCleanup(value: unknown): void;
+  recordAcceptance(value: unknown): void;
+  finalizeSuccess(): Promise<void>;
   recordFailure(
     authority: ReviewPlannerV11ProductAcceptanceFailureAuthority,
     value: unknown,
@@ -644,6 +673,7 @@ async function reserveV11Ledger(
       attemptSha256,
     );
     const ledger = createV11Ledger({
+      repoRoot: input.repoRoot,
       environment: input.environment,
       attemptSha256,
       directory,
@@ -711,6 +741,7 @@ export async function openReviewPlannerV11ProductAcceptanceRecoveryLedger(input:
       throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
     }
     const ledger = createV11Ledger({
+      repoRoot: input.repoRoot,
       environment: input.environment,
       attemptSha256: binding.attemptSha256,
       directory,
@@ -926,6 +957,21 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
         status: 'operation_failed';
       } & Omit<ReviewPlannerV11ProductAcceptanceFailureRecord, 'schemaVersion'>
     >
+  | Readonly<{
+      status: 'complete';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+      provider: 'deepseek';
+      model: 'deepseek-v4-pro';
+      observation: 'candidate_applied';
+      aggregate: Readonly<{
+        requests: 4;
+        durationMs: number;
+        usage: Readonly<{ input: number; output: number }>;
+        costCny: string;
+      }>;
+      screenshotSha256: Readonly<{ plan: string; today: string }>;
+      cleanup: true;
+    }>
 > {
   if (!isV11Environment(input.environment)) {
     return Object.freeze({ status: 'evidence_io' as const });
@@ -951,41 +997,80 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
     ) {
       return Object.freeze({ status: 'evidence_io' as const });
     }
-    await readReviewPlannerV11ProductAcceptanceAttemptBinding({
-      repoRoot: input.repoRoot,
-      environment: input.environment,
-    });
-    const checkpoint =
+    if (leaves.includes('.failure.json')) {
+      if (
+        leaves.length !== V11_FAILURE_PUBLIC_LEAVES.length ||
+        leaves.some(
+          (leaf) =>
+            !(V11_FAILURE_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+        )
+      ) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+      });
+      const checkpoint =
+        await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+          repoRoot: input.repoRoot,
+          environment: input.environment,
+        });
+      const failure = parseReviewPlannerV11ProductAcceptanceFailure(
+        JSON.parse(directory.readRegularFile('.failure.json').toString()),
+      );
+      if (failure.environment !== input.environment) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      if (
+        checkpoint === null ||
+        failure.component !== checkpoint.component ||
+        failure.slot !== checkpoint.slot ||
+        failure.checkpoint !== checkpoint.checkpoint ||
+        failure.providerCallState !== checkpoint.providerCallState
+      ) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      return Object.freeze({
+        status: 'operation_failed' as const,
+        environment: failure.environment,
+        component: failure.component,
+        slot: failure.slot,
+        checkpoint: failure.checkpoint,
+        terminal: failure.terminal,
+        providerCallState: failure.providerCallState,
+      });
+    }
+    if (!leaves.includes('.acceptance-success')) {
+      await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+      });
       await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
         repoRoot: input.repoRoot,
         environment: input.environment,
       });
-    if (!leaves.includes('.failure.json')) {
       return Object.freeze({ status: 'incomplete' as const });
     }
-    const failure = parseReviewPlannerV11ProductAcceptanceFailure(
-      JSON.parse(directory.readRegularFile('.failure.json').toString()),
-    );
-    if (failure.environment !== input.environment) {
-      return Object.freeze({ status: 'evidence_io' as const });
-    }
-    if (
-      checkpoint === null ||
-      failure.component !== checkpoint.component ||
-      failure.slot !== checkpoint.slot ||
-      failure.checkpoint !== checkpoint.checkpoint ||
-      failure.providerCallState !== checkpoint.providerCallState
-    ) {
-      return Object.freeze({ status: 'evidence_io' as const });
-    }
+    const aggregate = await verifyCompleteV11Ledger({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+      directory,
+    });
     return Object.freeze({
-      status: 'operation_failed' as const,
-      environment: failure.environment,
-      component: failure.component,
-      slot: failure.slot,
-      checkpoint: failure.checkpoint,
-      terminal: failure.terminal,
-      providerCallState: failure.providerCallState,
+      status: 'complete' as const,
+      environment: aggregate.environment,
+      provider: aggregate.provider,
+      model: aggregate.model,
+      observation: aggregate.observation,
+      aggregate: Object.freeze({
+        requests: aggregate.aggregate.requests,
+        durationMs: aggregate.aggregate.durationMs,
+        usage: Object.freeze({ ...aggregate.aggregate.usage }),
+        costCny: aggregate.aggregate.costCny,
+      }),
+      screenshotSha256: Object.freeze({ ...aggregate.screenshotSha256 }),
+      cleanup: aggregate.cleanup,
     });
   } catch {
     return Object.freeze({ status: 'evidence_io' as const });
@@ -1151,6 +1236,298 @@ function createV11Ledger(
   state: V11LedgerState,
 ): ReviewPlannerV11ProductAcceptanceLedger {
   const ledger: ReviewPlannerV11ProductAcceptanceLedger = Object.freeze({
+    async writeExecutionManifest(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      if (current.directory.listLeafNames().length !== 1) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      const manifest =
+        parseReviewPlannerV11ProductAcceptanceExecutionManifest(value);
+      if (
+        manifest.environment !== current.environment ||
+        manifest.attemptSha256 !== current.attemptSha256 ||
+        manifest.resources.browser.profilePath !==
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            current.environment,
+          )
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+      }
+      let directory: WindowsNoReparseChildDirectory | null = null;
+      try {
+        directory = await openWindowsNoReparseFrozenDirectory(
+          current.repoRoot,
+          [
+            ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestSegments(
+              current.environment,
+            ),
+          ],
+        );
+        directory.assertLocalFixedNtfsVolume();
+        if (directory.listLeafNames().length > 0) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+        }
+        const result = directory.commitExclusiveDurableFileViaRename(
+          V11_PRIVATE_EXECUTION_MANIFEST_LEAF,
+          serializeV11ExecutionRecord(manifest),
+        );
+        if (!result.committed || result.cleanupStatus !== 'closed') {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_IO');
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+        ) {
+          throw error;
+        }
+        throw new Error('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_IO');
+      } finally {
+        directory?.close();
+      }
+    },
+    writeManifest(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const manifest = parseReviewPlannerV11ProductAcceptanceManifest(value);
+      if (
+        manifest.environment !== current.environment ||
+        manifest.attemptSha256 !== current.attemptSha256
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      if (current.directory.listLeafNames().includes('manifest.json')) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        'manifest.json',
+        serializeV11ExecutionRecord(manifest),
+      );
+    },
+    claimSlot(slot) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const manifest = readV11Manifest(current.directory, current.environment);
+      if (manifest.attemptSha256 !== current.attemptSha256) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      const index =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.indexOf(slot);
+      if (index < 0) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
+      }
+      const leaves = current.directory.listLeafNames();
+      for (let position = 0; position < index; position += 1) {
+        const preceding =
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS[position];
+        const precedingLeaf =
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[
+            preceding
+          ];
+        if (!leaves.includes(`${precedingLeaf}.result.json`)) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
+        }
+      }
+      const leaf =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[slot];
+      if (leaves.includes(leaf) || leaves.includes(`${leaf}.result.json`)) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
+      }
+      publishV11(current.directory, leaf, '');
+    },
+    recordSlotResult(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const manifest = readV11Manifest(current.directory, current.environment);
+      const result = parseReviewPlannerV11ProductAcceptanceSlotResult(value);
+      const leaf =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[
+          result.slot
+        ];
+      const leaves = current.directory.listLeafNames();
+      if (
+        result.provider !== manifest.provider ||
+        result.model !== manifest.model ||
+        !leaves.includes(leaf) ||
+        leaves.includes(`${leaf}.result.json`) ||
+        current.directory.readRegularFile(leaf).byteLength !== 0
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      const index =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.indexOf(
+          result.slot,
+        );
+      for (let position = 0; position < index; position += 1) {
+        const preceding =
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS[position];
+        const precedingLeaf =
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[
+            preceding
+          ];
+        if (!leaves.includes(`${precedingLeaf}.result.json`)) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
+        }
+      }
+      publishV11(
+        current.directory,
+        `${leaf}.result.json`,
+        serializeV11ExecutionRecord(result),
+      );
+    },
+    recordDefaultOff(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      requireAllV11Results(current.directory, current.environment);
+      const receipt = parseReviewPlannerV11ProductAcceptanceDefaultOff(value);
+      const leaf = `.${receipt.component}-default-off.json` as const;
+      const leaves = current.directory.listLeafNames();
+      if (
+        leaves.includes(leaf) ||
+        (receipt.component === 'planner' &&
+          !leaves.includes('.review-default-off.json'))
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(current.directory, leaf, serializeV11ExecutionRecord(receipt));
+    },
+    recordOwnerIsolation(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const manifest = readV11Manifest(current.directory, current.environment);
+      const results = requireAllV11Results(
+        current.directory,
+        current.environment,
+      );
+      requireV11DefaultOff(current.directory);
+      const ownerIsolation =
+        parseReviewPlannerV11ProductAcceptanceOwnerIsolation(value);
+      const leaves = current.directory.listLeafNames();
+      if (
+        leaves.includes('.owner-isolation-verified.json') ||
+        ownerIsolation.accountSha256.review !== manifest.accountSha256.review ||
+        ownerIsolation.accountSha256.planner !==
+          manifest.accountSha256.planner ||
+        !arraysEqual(
+          ownerIsolation.traceSha256,
+          results.map((result) => result.traceSha256),
+        )
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        '.owner-isolation-verified.json',
+        serializeV11ExecutionRecord(ownerIsolation),
+      );
+    },
+    recordCleanup(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      if (
+        !current.directory
+          .listLeafNames()
+          .includes('.owner-isolation-verified.json')
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      const cleanup = parseReviewPlannerV11ProductAcceptanceCleanup(value);
+      if (
+        current.directory.listLeafNames().includes('.cleanup-verified.json')
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        '.cleanup-verified.json',
+        serializeV11ExecutionRecord(cleanup),
+      );
+    },
+    recordAcceptance(value) {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const manifest = readV11Manifest(current.directory, current.environment);
+      const results = requireAllV11Results(
+        current.directory,
+        current.environment,
+      );
+      requireV11DefaultOff(current.directory);
+      requireV11OwnerIsolation(
+        current.directory,
+        current.environment,
+        manifest,
+        results,
+      );
+      requireV11Cleanup(current.directory);
+      const aggregate = parseReviewPlannerV11ProductAcceptanceAggregate(value);
+      const leaves = current.directory.listLeafNames();
+      if (
+        leaves.includes('acceptance.json') ||
+        !aggregateMatchesV11Records(aggregate, manifest, results)
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        'acceptance.json',
+        serializeV11ExecutionRecord(aggregate),
+      );
+    },
+    async finalizeSuccess() {
+      const current = requireActiveV11LedgerState(ledger);
+      assertV11SuccessWritable(current.directory);
+      const aggregate = await verifyV11SuccessPrerequisites(
+        {
+          repoRoot: current.repoRoot,
+          environment: current.environment,
+          attemptSha256: current.attemptSha256,
+          directory: current.directory,
+        },
+        false,
+        true,
+      );
+      const success = parseReviewPlannerV11ProductAcceptanceSuccess({
+        schemaVersion:
+          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
+        environment: current.environment,
+        attemptSha256: current.attemptSha256,
+        manifestSha256: hashLeaf(current.directory, 'manifest.json'),
+        resultSha256: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.map(
+          (slot) =>
+            hashLeaf(
+              current.directory,
+              `${REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[slot]}.result.json`,
+            ),
+        ),
+        defaultOffSha256: ['review', 'planner'].map((component) =>
+          hashLeaf(current.directory, `.${component}-default-off.json`),
+        ),
+        ownerIsolationSha256: hashLeaf(
+          current.directory,
+          '.owner-isolation-verified.json',
+        ),
+        cleanupSha256: hashLeaf(current.directory, '.cleanup-verified.json'),
+        acceptanceSha256: hashLeaf(current.directory, 'acceptance.json'),
+      });
+      if (aggregate.attemptSha256 !== success.attemptSha256) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      publishV11(
+        current.directory,
+        '.acceptance-success',
+        serializeV11ExecutionRecord(success),
+      );
+      await verifyCompleteV11Ledger(
+        {
+          repoRoot: current.repoRoot,
+          environment: current.environment,
+          directory: current.directory,
+        },
+        true,
+      );
+    },
     recordFailure(authority, value) {
       const current = requireActiveV11LedgerState(ledger);
       const leaves = current.directory.listLeafNames();
@@ -1158,7 +1535,8 @@ function createV11Ledger(
         leaves.some(
           (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
         ) ||
-        !leaves.includes('.acceptance-reserved')
+        !leaves.includes('.acceptance-reserved') ||
+        leaves.includes('.acceptance-success')
       ) {
         throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
@@ -1178,6 +1556,9 @@ function createV11Ledger(
         throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
       if (leaves.includes('.failure.json')) {
+        if (leaves.length !== V11_FAILURE_PUBLIC_LEAVES.length) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+        }
         try {
           const existing = parseReviewPlannerV11ProductAcceptanceFailure(
             JSON.parse(
@@ -1190,6 +1571,7 @@ function createV11Ledger(
         }
         throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
+      discardV11SuccessProgress(current.directory);
       publishV11(
         current.directory,
         '.failure.json',
@@ -1213,6 +1595,37 @@ function createV11Ledger(
   });
   v11LedgerState.set(ledger, state);
   return ledger;
+}
+
+function discardV11SuccessProgress(directory: WindowsNoReparseChildDirectory) {
+  const leaves = directory.listLeafNames();
+  if (
+    leaves.includes('.failure.json') ||
+    leaves.includes('.acceptance-success') ||
+    !leaves.includes('.acceptance-reserved') ||
+    leaves.some(
+      (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+    )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  try {
+    for (const leaf of leaves) {
+      if (leaf !== '.acceptance-reserved') directory.deleteFile(leaf);
+    }
+    const remaining = directory.listLeafNames();
+    if (remaining.length !== 1 || remaining[0] !== '.acceptance-reserved') {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
 }
 
 function requireActiveV11LedgerState(
@@ -1239,6 +1652,312 @@ function publishV11(
   if (!result.committed || result.cleanupStatus !== 'closed') {
     throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
+}
+
+function assertV11SuccessWritable(directory: WindowsNoReparseChildDirectory) {
+  const leaves = directory.listLeafNames();
+  if (
+    !leaves.includes('.acceptance-reserved') ||
+    leaves.includes('.failure.json') ||
+    leaves.includes('.acceptance-success') ||
+    leaves.some(
+      (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+    )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+}
+
+function readV11Json(directory: WindowsNoReparseChildDirectory, leaf: string) {
+  try {
+    const parsed: unknown = JSON.parse(
+      directory.readRegularFile(leaf).toString(),
+    );
+    return parsed;
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+}
+
+function serializeV11ExecutionRecord(value: object) {
+  return `${JSON.stringify(value)}\n`;
+}
+
+function readV11Manifest(
+  directory: WindowsNoReparseChildDirectory,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+) {
+  const leaves = directory.listLeafNames();
+  if (!leaves.includes('manifest.json')) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  const manifest = parseReviewPlannerV11ProductAcceptanceManifest(
+    readV11Json(directory, 'manifest.json'),
+  );
+  if (manifest.environment !== environment) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return manifest;
+}
+
+function requireAllV11Results(
+  directory: WindowsNoReparseChildDirectory,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+) {
+  const manifest = readV11Manifest(directory, environment);
+  const leaves = directory.listLeafNames();
+  const results = REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.map(
+    (slot) => {
+      const claim =
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[slot];
+      const resultLeaf = `${claim}.result.json`;
+      if (
+        !leaves.includes(claim) ||
+        !leaves.includes(resultLeaf) ||
+        directory.readRegularFile(claim).byteLength !== 0
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_SLOT_RESULT_MISSING');
+      }
+      const result = parseReviewPlannerV11ProductAcceptanceSlotResult(
+        readV11Json(directory, resultLeaf),
+      );
+      if (
+        result.slot !== slot ||
+        result.provider !== manifest.provider ||
+        result.model !== manifest.model
+      ) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      return result;
+    },
+  );
+  if (new Set(results.map((result) => result.traceSha256)).size !== 4) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return results;
+}
+
+function requireV11DefaultOff(directory: WindowsNoReparseChildDirectory) {
+  const leaves = directory.listLeafNames();
+  const receipts = (['review', 'planner'] as const).map((component) => {
+    const leaf = `.${component}-default-off.json`;
+    if (!leaves.includes(leaf)) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+    }
+    const receipt = parseReviewPlannerV11ProductAcceptanceDefaultOff(
+      readV11Json(directory, leaf),
+    );
+    if (receipt.component !== component) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+    }
+    return receipt;
+  });
+  if (receipts[0].containerSha256 === receipts[1].containerSha256) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return receipts;
+}
+
+function requireV11OwnerIsolation(
+  directory: WindowsNoReparseChildDirectory,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  manifest = readV11Manifest(directory, environment),
+  results = requireAllV11Results(directory, environment),
+) {
+  const leaves = directory.listLeafNames();
+  if (!leaves.includes('.owner-isolation-verified.json')) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  const ownerIsolation = parseReviewPlannerV11ProductAcceptanceOwnerIsolation(
+    readV11Json(directory, '.owner-isolation-verified.json'),
+  );
+  if (
+    ownerIsolation.accountSha256.review !== manifest.accountSha256.review ||
+    ownerIsolation.accountSha256.planner !== manifest.accountSha256.planner ||
+    !arraysEqual(
+      ownerIsolation.traceSha256,
+      results.map((result) => result.traceSha256),
+    )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return ownerIsolation;
+}
+
+function requireV11Cleanup(directory: WindowsNoReparseChildDirectory) {
+  if (!directory.listLeafNames().includes('.cleanup-verified.json')) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return parseReviewPlannerV11ProductAcceptanceCleanup(
+    readV11Json(directory, '.cleanup-verified.json'),
+  );
+}
+
+function aggregateMatchesV11Records(
+  aggregate: ReturnType<typeof parseReviewPlannerV11ProductAcceptanceAggregate>,
+  manifest: ReturnType<typeof parseReviewPlannerV11ProductAcceptanceManifest>,
+  results: readonly ReturnType<
+    typeof parseReviewPlannerV11ProductAcceptanceSlotResult
+  >[],
+) {
+  const reviewBrowser = results.find(
+    (result) => result.slot === 'review-browser',
+  );
+  const plannerBrowser = results.find(
+    (result) => result.slot === 'planner-browser',
+  );
+  return (
+    aggregate.environment === manifest.environment &&
+    aggregate.attemptSha256 === manifest.attemptSha256 &&
+    aggregate.provider === manifest.provider &&
+    aggregate.model === manifest.model &&
+    aggregate.aggregate.durationMs ===
+      results.reduce((total, result) => total + result.durationMs, 0) &&
+    reviewBrowser !== undefined &&
+    plannerBrowser !== undefined &&
+    'screenshotSha256' in reviewBrowser &&
+    'screenshotSha256' in plannerBrowser &&
+    aggregate.screenshotSha256.plan === reviewBrowser.screenshotSha256 &&
+    aggregate.screenshotSha256.today === plannerBrowser.screenshotSha256
+  );
+}
+
+async function verifyV11SuccessPrerequisites(
+  input: {
+    repoRoot: string;
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    attemptSha256: string;
+    directory: WindowsNoReparseChildDirectory;
+  },
+  allowSealed = false,
+  attemptBoundByLiveLedger = false,
+) {
+  try {
+    const leaves = input.directory.listLeafNames();
+    const required = [
+      '.acceptance-reserved',
+      'manifest.json',
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.flatMap(
+        (slot) => {
+          const claim =
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[slot];
+          return [claim, `${claim}.result.json`];
+        },
+      ),
+      '.review-default-off.json',
+      '.planner-default-off.json',
+      '.owner-isolation-verified.json',
+      '.cleanup-verified.json',
+      'acceptance.json',
+    ];
+    if (
+      leaves.includes('.failure.json') ||
+      (!allowSealed && leaves.includes('.acceptance-success')) ||
+      !required.every((leaf) => leaves.includes(leaf))
+    ) {
+      throw new Error();
+    }
+    const manifest = readV11Manifest(input.directory, input.environment);
+    const results = requireAllV11Results(input.directory, input.environment);
+    requireV11DefaultOff(input.directory);
+    requireV11OwnerIsolation(
+      input.directory,
+      input.environment,
+      manifest,
+      results,
+    );
+    requireV11Cleanup(input.directory);
+    const aggregate = parseReviewPlannerV11ProductAcceptanceAggregate(
+      readV11Json(input.directory, 'acceptance.json'),
+    );
+    if (
+      manifest.attemptSha256 !== input.attemptSha256 ||
+      !aggregateMatchesV11Records(aggregate, manifest, results)
+    ) {
+      throw new Error();
+    }
+    const execution = attemptBoundByLiveLedger
+      ? await readReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt(
+          {
+            repoRoot: input.repoRoot,
+            environment: input.environment,
+            attemptSha256: input.attemptSha256,
+          },
+        )
+      : await readReviewPlannerV11ProductAcceptanceExecutionManifest({
+          repoRoot: input.repoRoot,
+          environment: input.environment,
+        });
+    if (!executionManifestMatchesPublicManifest(execution, manifest)) {
+      throw new Error();
+    }
+    return aggregate;
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+}
+
+async function verifyCompleteV11Ledger(
+  input: {
+    repoRoot: string;
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    directory: WindowsNoReparseChildDirectory;
+  },
+  attemptBoundByLiveLedger = false,
+) {
+  const leaves = input.directory.listLeafNames();
+  if (
+    leaves.some(
+      (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+    ) ||
+    leaves.includes('.failure.json') ||
+    !leaves.includes('.acceptance-success')
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  const manifest = readV11Manifest(input.directory, input.environment);
+  const aggregate = await verifyV11SuccessPrerequisites(
+    {
+      ...input,
+      attemptSha256: manifest.attemptSha256,
+    },
+    true,
+    attemptBoundByLiveLedger,
+  );
+  const success = parseReviewPlannerV11ProductAcceptanceSuccess(
+    readV11Json(input.directory, '.acceptance-success'),
+  );
+  const expected = {
+    environment: input.environment,
+    attemptSha256: manifest.attemptSha256,
+    manifestSha256: hashLeaf(input.directory, 'manifest.json'),
+    resultSha256: REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOTS.map(
+      (slot) =>
+        hashLeaf(
+          input.directory,
+          `${REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_EXECUTION_SLOT_LEAVES[slot]}.result.json`,
+        ),
+    ),
+    defaultOffSha256: ['review', 'planner'].map((component) =>
+      hashLeaf(input.directory, `.${component}-default-off.json`),
+    ),
+    ownerIsolationSha256: hashLeaf(
+      input.directory,
+      '.owner-isolation-verified.json',
+    ),
+    cleanupSha256: hashLeaf(input.directory, '.cleanup-verified.json'),
+    acceptanceSha256: hashLeaf(input.directory, 'acceptance.json'),
+  };
+  if (
+    Object.entries(expected).some(
+      ([key, value]) =>
+        JSON.stringify(success[key as keyof typeof success]) !==
+        JSON.stringify(value),
+    )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  }
+  return aggregate;
 }
 
 function isV11Environment(

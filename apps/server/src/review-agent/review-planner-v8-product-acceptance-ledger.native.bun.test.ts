@@ -15,6 +15,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+// prettier-ignore
+// @ts-expect-error Bun resolves this native-test-only module at test runtime.
+import { afterEach as bunAfterEach, beforeEach as bunBeforeEach, describe as bunDescribe, expect as bunExpect, it as bunIt } from 'bun:test';
+
 import {
   finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
   readReviewPlannerV8ProductAcceptanceLedger,
@@ -27,6 +31,7 @@ import {
 } from './review-planner-v8-product-acceptance-ledger';
 import { createReviewPlannerV11ProductAcceptanceDiagnosticsPort } from './review-planner-v8-product-acceptance-composition';
 import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
+import { writeReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt } from './review-planner-v11-product-acceptance-execution';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
@@ -45,6 +50,11 @@ import {
   type ReviewPlannerProductAcceptanceProfile,
 } from './review-planner-product-acceptance-profile';
 
+const afterEach = bunAfterEach as unknown as jest.Lifecycle;
+const beforeEach = bunBeforeEach as unknown as jest.Lifecycle;
+const describe = bunDescribe as unknown as jest.Describe;
+const expect = bunExpect as unknown as jest.Expect;
+const it = bunIt as unknown as jest.It;
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
 const SHA_A = 'a'.repeat(64);
 const SHA_B = 'b'.repeat(64);
@@ -2354,6 +2364,272 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     });
   });
 
+  it('rejects a direct stale reserved-attempt manifest without creating private execution output', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    ledger.close();
+    const staleAttemptSha256 = '0'.repeat(64);
+    try {
+      await expect(
+        writeReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt(
+          {
+            repoRoot: root,
+            environment: 'branch',
+            owner: acquisition.owner,
+            attemptSha256: staleAttemptSha256,
+            value: {
+              schemaVersion:
+                'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+              environment: 'branch',
+              attemptSha256: staleAttemptSha256,
+              resources: {
+                accountId: {
+                  review: 'v11-synthetic-account-review',
+                  planner: 'v11-synthetic-account-planner',
+                },
+                fixtureId: {
+                  review: 'v11-synthetic-fixture-review',
+                  planner: 'v11-synthetic-fixture-planner',
+                },
+                browser: {
+                  executablePath: 'C:\\Browser\\chrome.exe',
+                  profilePath:
+                    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+                      'branch',
+                    ),
+                },
+              },
+            },
+          },
+        ),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_EXECUTION_MANIFEST_INVALID');
+      await expect(
+        readdir(
+          join(
+            root,
+            ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestSegments(
+              'branch',
+            ),
+          ),
+        ),
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      acquisition.owner.close();
+    }
+  });
+
+  it('rejects a direct execution manifest before reservation without creating private output', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const attemptSha256 = '0'.repeat(64);
+    try {
+      await expect(
+        writeReviewPlannerV11ProductAcceptanceExecutionManifestForReservedAttempt(
+          {
+            repoRoot: root,
+            environment: 'branch',
+            owner: acquisition.owner,
+            attemptSha256,
+            value: {
+              schemaVersion:
+                'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+              environment: 'branch',
+              attemptSha256,
+              resources: {
+                accountId: {
+                  review: 'v11-synthetic-account-review',
+                  planner: 'v11-synthetic-account-planner',
+                },
+                fixtureId: {
+                  review: 'v11-synthetic-fixture-review',
+                  planner: 'v11-synthetic-fixture-planner',
+                },
+                browser: {
+                  executablePath: 'C:\\Browser\\chrome.exe',
+                  profilePath:
+                    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+                      'branch',
+                    ),
+                },
+              },
+            },
+          },
+        ),
+      ).rejects.toThrow();
+      await expect(
+        readdir(
+          join(
+            root,
+            ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestSegments(
+              'branch',
+            ),
+          ),
+        ),
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      acquisition.owner.close();
+    }
+  });
+
+  it('transitions authorized V11 manifest, claimed slot, and slot result progress to one strict failure terminal', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      ledger.writeManifest({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-manifest-v1',
+        environment: 'branch',
+        attemptSha256: (
+          JSON.parse(
+            await readFile(
+              join(
+                root,
+                ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+                  'branch',
+                ),
+                'attempt-binding.json',
+              ),
+              'utf8',
+            ),
+          ) as { attemptSha256: string }
+        ).attemptSha256,
+        commitSha: COMMIT_A,
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
+        accountSha256: { review: SHA_A, planner: SHA_B },
+        fixtureSha256: { review: SHA_C, planner: SHA_D },
+      });
+      ledger.claimSlot('review-api');
+      ledger.recordSlotResult({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-slot-result-v1',
+        slot: 'review-api',
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
+        observation: 'candidate_applied',
+        provenance: 'live_candidate',
+        durationMs: 1,
+        traceSha256: SHA_A,
+      });
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      ledger.recordFailure(journal.issueFailureAuthority(), v11Failure());
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+
+    const publicPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    await expect(readdir(publicPath)).resolves.toEqual([
+      '.acceptance-reserved',
+      '.failure.json',
+    ]);
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({ status: 'operation_failed' });
+  });
+
+  it('rejects failure publication after a V11 success seal is present', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      const publicPath = join(
+        root,
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+          'branch',
+        ),
+      );
+      await writeFile(join(publicPath, '.acceptance-success'), '{}\n');
+      expect(() =>
+        ledger.recordFailure(journal.issueFailureAuthority(), v11Failure()),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+  });
+
+  it('fails closed when a strict V11 failure is mixed with any non-terminal public leaf', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      ledger.recordFailure(journal.issueFailureAuthority(), v11Failure());
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+
+    const publicPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    const variants = [
+      [
+        'manifest.json',
+        `${JSON.stringify({
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest,
+        })}\n`,
+      ],
+      ['.slot-01-review-api', ''],
+      ['unknown.json', '{}\n'],
+      [
+        'manifest.json',
+        `${JSON.stringify({
+          schemaVersion:
+            REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest,
+        })}\n`,
+      ],
+    ] as const;
+    for (const [leaf, contents] of variants) {
+      await writeFile(join(publicPath, leaf), contents);
+      await expect(
+        readReviewPlannerV11ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+        }),
+      ).resolves.toEqual({ status: 'evidence_io' });
+      await unlink(join(publicPath, leaf));
+    }
+  });
+
   it('projects a Task4 diagnostics checkpoint through the real opaque Task3 authority and strict reader', async () => {
     const { owner, ledger, journal } = await prepareV11Journal(root);
     try {
@@ -3209,5 +3485,236 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     await expect(
       readFile(join(v10Path, 'acceptance.json'), 'utf8'),
     ).resolves.toBe(v10Acceptance);
+  });
+
+  it('seals a strict V11 success and rejects a conflicting terminal or unknown leaf', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    const attemptSha256 = (
+      JSON.parse(
+        await readFile(join(recoveryPath, 'attempt-binding.json'), 'utf8'),
+      ) as { attemptSha256: string }
+    ).attemptSha256;
+    const accountId = {
+      review: 'v11-synthetic-account-review',
+      planner: 'v11-synthetic-account-planner',
+    };
+    const fixtureId = {
+      review: 'v11-synthetic-fixture-review',
+      planner: 'v11-synthetic-fixture-planner',
+    };
+    const hash = (value: string) =>
+      createHash('sha256').update(value).digest('hex');
+    const manifest = {
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-manifest-v1',
+      environment: 'branch',
+      attemptSha256,
+      commitSha: COMMIT_A,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      accountSha256: {
+        review: hash(accountId.review),
+        planner: hash(accountId.planner),
+      },
+      fixtureSha256: {
+        review: hash(fixtureId.review),
+        planner: hash(fixtureId.planner),
+      },
+    } as const;
+    const screenshotSha256 = {
+      plan: 'e'.repeat(64),
+      today: 'f'.repeat(64),
+    } as const;
+    const results = [
+      ['review-api', SHA_A],
+      ['review-browser', SHA_B],
+      ['planner-api', SHA_C],
+      ['planner-browser', SHA_D],
+    ].map(([slot, traceSha256]) => ({
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-slot-result-v1',
+      slot,
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      observation: 'candidate_applied',
+      provenance: 'live_candidate',
+      durationMs: 1,
+      traceSha256,
+      ...(slot === 'review-browser'
+        ? { screenshotSha256: screenshotSha256.plan }
+        : slot === 'planner-browser'
+          ? { screenshotSha256: screenshotSha256.today }
+          : {}),
+    }));
+    try {
+      await ledger.writeExecutionManifest({
+        schemaVersion:
+          'phase-6.9.5-v11-product-acceptance-execution-manifest-v1',
+        environment: 'branch',
+        attemptSha256,
+        resources: {
+          accountId,
+          fixtureId,
+          browser: {
+            executablePath: 'C:\\Browser\\chrome.exe',
+            profilePath:
+              REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+                'branch',
+              ),
+          },
+        },
+      });
+      ledger.writeManifest(manifest);
+      for (const result of results) {
+        ledger.claimSlot(
+          result.slot as
+            | 'review-api'
+            | 'review-browser'
+            | 'planner-api'
+            | 'planner-browser',
+        );
+        ledger.recordSlotResult(result);
+      }
+      ledger.recordDefaultOff({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-default-off-v1',
+        component: 'review',
+        containerSha256: SHA_A,
+        gates: {
+          liveCallsEnabled: false,
+          reviewAgentModelEnabled: false,
+          plannerAgentModelEnabled: false,
+        },
+        providerInvocations: 0,
+      });
+      ledger.recordDefaultOff({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-default-off-v1',
+        component: 'planner',
+        containerSha256: SHA_B,
+        gates: {
+          liveCallsEnabled: false,
+          reviewAgentModelEnabled: false,
+          plannerAgentModelEnabled: false,
+        },
+        providerInvocations: 0,
+      });
+      ledger.recordOwnerIsolation({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-owner-isolation-v1',
+        accountSha256: manifest.accountSha256,
+        factsSha256: {
+          reviewBefore: SHA_A,
+          reviewAfter: SHA_A,
+          plannerBefore: SHA_B,
+          plannerAfter: SHA_B,
+        },
+        traceSha256: results.map((result) => result.traceSha256),
+        crossAccountInvisible: true,
+        businessWrites: 0,
+      });
+      ledger.recordCleanup({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-cleanup-v1',
+        syntheticAccounts: 0,
+        fixtures: 0,
+        traces: 0,
+        browserProfiles: 0,
+        capabilities: 0,
+      });
+      ledger.recordAcceptance({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-aggregate-v1',
+        environment: 'branch',
+        attemptSha256,
+        provider: 'deepseek',
+        model: 'deepseek-v4-pro',
+        observation: 'candidate_applied',
+        aggregate: {
+          requests: 4,
+          durationMs: 4,
+          usage: { input: 1, output: 1 },
+          costCny: '0.00000001',
+        },
+        screenshotSha256,
+        cleanup: true,
+      });
+      await ledger.finalizeSuccess();
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({
+      status: 'complete',
+      environment: 'branch',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    });
+
+    const publicPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+    );
+    const executionPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestSegments(
+        'branch',
+      ),
+      'execution-manifest.json',
+    );
+    const executionManifest = await readFile(executionPath, 'utf8');
+    await writeFile(
+      executionPath,
+      `${JSON.stringify({
+        ...(JSON.parse(executionManifest) as Record<string, unknown>),
+        attemptSha256: '0'.repeat(64),
+      })}\n`,
+    );
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await writeFile(executionPath, executionManifest);
+    const attemptBindingPath = join(recoveryPath, 'attempt-binding.json');
+    const attemptBinding = await readFile(attemptBindingPath, 'utf8');
+    await writeFile(
+      attemptBindingPath,
+      `${JSON.stringify({
+        ...(JSON.parse(attemptBinding) as Record<string, unknown>),
+        attemptSha256: '0'.repeat(64),
+      })}\n`,
+    );
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await writeFile(attemptBindingPath, attemptBinding);
+    await writeFile(join(publicPath, '.failure.json'), '{}\n');
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await unlink(join(publicPath, '.failure.json'));
+    await writeFile(join(publicPath, 'unexpected.json'), '{}\n');
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
   });
 });
