@@ -28,6 +28,7 @@ import {
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
+import { REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
 
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
 const SHA_A = 'a'.repeat(64);
@@ -1770,6 +1771,87 @@ describeWindows(
       ).resolves.toEqual({ status: 'recovery_only' });
       journal.close();
       acquisition.owner.close();
+    });
+
+    it('allows a new V10 reservation after V8 has finalized recovery_only', async () => {
+      const productOwner = await acquire(root);
+      const v8Ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: productOwner,
+      });
+      const prepared =
+        await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: productOwner,
+          manifest: recoveryManifest(),
+        });
+      prepared.close();
+      v8Ledger.close();
+      productOwner.close();
+
+      const recovery = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+      });
+      if (recovery.status !== 'acquired') throw new Error('owner unavailable');
+      const journal = await openReviewPlannerV8ProductAcceptanceRecoveryJournal(
+        {
+          repoRoot: root,
+          environment: 'branch',
+          owner: recovery.owner,
+        },
+      );
+      const authority = await journal.authorizeRecoveryOnly();
+      authority.assertAuthorized();
+      journal.appendStage('restore.claimed', '');
+      journal.appendStage(
+        'restore.verified.json',
+        JSON.stringify({ ...restoreReceipt('review'), component: 'recovery' }),
+      );
+      journal.appendStage('cleanup.claimed', '');
+      journal.appendStage(
+        'cleanup.verified.json',
+        JSON.stringify({
+          schemaVersion:
+            'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1',
+          syntheticAccounts: 0,
+          fixtures: 0,
+          traces: 0,
+          browserProcesses: 0,
+          browserProfiles: 0,
+          probeAccounts: 0,
+        }),
+      );
+      await journal.finalizeRecoveryOnly();
+      journal.close();
+      recovery.owner.close();
+
+      const v10Owner = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'product',
+        profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+      });
+      expect(v10Owner.status).toBe('acquired');
+      if (v10Owner.status !== 'acquired') throw new Error('owner unavailable');
+      const v10Ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: v10Owner.owner,
+        profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+      });
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        }),
+      ).resolves.toEqual({ status: 'incomplete' });
+      v10Ledger.close();
+      v10Owner.owner.close();
     });
 
     it('rejects a public recovery terminal when its local journal is missing', async () => {

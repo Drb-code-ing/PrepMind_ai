@@ -26,6 +26,8 @@
     "eval:review-planner:live:v10:semantic-quality": "bun scripts/review-planner-controlled-live-eval-v10-semantic-quality.ts",
     "accept:review-planner:v8:product": "bun scripts/review-planner-v8-product-acceptance.ts",
     "recover:review-planner:v8:product": "bun scripts/review-planner-v8-product-acceptance-recovery.ts",
+    "accept:review-planner:v10:product": "bun scripts/review-planner-v10-product-acceptance.ts",
+    "recover:review-planner:v10:product": "bun scripts/review-planner-v10-product-acceptance-recovery.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:integration:audit-export-delay": "OPERATOR_AUDIT_EXPORT_DELAY_INTEGRATION=true jest operator-audit-export-delay.integration --runInBand",

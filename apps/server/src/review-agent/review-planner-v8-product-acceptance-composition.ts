@@ -40,13 +40,23 @@ import {
   type ReviewPlannerV8ProductAcceptanceRunnerDependencies,
   type ReviewPlannerV8ProductAcceptanceRunResult,
 } from './review-planner-v8-product-acceptance-runner';
+import {
+  parseReviewPlannerProductAcceptanceArguments,
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  type ReviewPlannerProductAcceptanceProfile,
+} from './review-planner-product-acceptance-profile';
 
 const execFileAsync = promisify(execFile);
 
 export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION =
-  '--confirm-v8-review-planner-product-acceptance' as const;
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.productConfirmation;
 export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION =
-  '--confirm-v8-review-planner-product-acceptance-recovery-only' as const;
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.recoveryConfirmation;
+export const REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_CONFIRMATION =
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.productConfirmation;
+export const REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION =
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.recoveryConfirmation;
 
 type Component = 'review' | 'planner';
 type CliKind = 'product' | 'recovery';
@@ -307,6 +317,7 @@ type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
   env?: Readonly<Record<string, string>>;
   prisma?: PrismaClient;
   pairedEvidenceAuthority?: PairedEvidenceAuthority;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }>;
 
 export type PairedEvidenceAuthority = Readonly<{
@@ -411,20 +422,22 @@ export function parseReviewPlannerV8ProductAcceptanceArguments(
   argv: readonly string[],
   kind: CliKind,
 ): Readonly<{ environment: ReviewPlannerV8ProductAcceptanceEnvironment }> {
-  const confirmation =
-    kind === 'product'
-      ? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION
-      : REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION;
-  if (
-    argv.length !== 2 ||
-    argv[0] !== confirmation ||
-    (argv[1] !== '--environment=branch' && argv[1] !== '--environment=main')
-  ) {
-    throw new Error('V8_PRODUCT_ACCEPTANCE_CONFIRMATION_REQUIRED');
-  }
-  return Object.freeze({
-    environment: argv[1] === '--environment=branch' ? 'branch' : 'main',
-  });
+  return parseReviewPlannerProductAcceptanceArguments(
+    REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+    argv,
+    kind,
+  );
+}
+
+export function parseReviewPlannerV10ProductAcceptanceArguments(
+  argv: readonly string[],
+  kind: CliKind,
+): Readonly<{ environment: ReviewPlannerV8ProductAcceptanceEnvironment }> {
+  return parseReviewPlannerProductAcceptanceArguments(
+    REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+    argv,
+    kind,
+  );
 }
 
 export async function runReviewPlannerV8ProductAcceptanceProductCli(input: {
@@ -432,7 +445,33 @@ export async function runReviewPlannerV8ProductAcceptanceProductCli(input: {
   repoRoot: string;
   ports: ReviewPlannerV8ProductAcceptanceCompositionPorts;
 }): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
-  const { environment } = parseReviewPlannerV8ProductAcceptanceArguments(
+  return runReviewPlannerProductAcceptanceProductCli(
+    input,
+    REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+export async function runReviewPlannerV10ProductAcceptanceProductCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  ports: ReviewPlannerV8ProductAcceptanceCompositionPorts;
+}): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
+  return runReviewPlannerProductAcceptanceProductCli(
+    input,
+    REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+async function runReviewPlannerProductAcceptanceProductCli(
+  input: {
+    argv: readonly string[];
+    repoRoot: string;
+    ports: ReviewPlannerV8ProductAcceptanceCompositionPorts;
+  },
+  profile: ReviewPlannerProductAcceptanceProfile,
+): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
+  const { environment } = parseReviewPlannerProductAcceptanceArguments(
+    profile,
     input.argv,
     'product',
   );
@@ -494,7 +533,7 @@ export async function runReviewPlannerV8ProductAcceptanceProductCli(input: {
       repoRoot: input.repoRoot,
       environment,
       owner,
-      manifest: buildRecoveryManifest(preflight, resources),
+      manifest: buildRecoveryManifest(preflight, resources, profile),
     });
 
     const accounts = {} as Record<Component, RuntimeAccount>;
@@ -518,7 +557,9 @@ export async function runReviewPlannerV8ProductAcceptanceProductCli(input: {
       accounts,
       fixtureIds: resources.fixtureIds,
     });
-    ledger.writeManifest(buildPublicManifest(preflight, fixtureReceipt));
+    ledger.writeManifest(
+      buildPublicManifest(preflight, fixtureReceipt, profile),
+    );
     stage = 'operation';
     const dependencies = input.ports.createRunnerDependencies({
       preflight,
@@ -570,7 +611,33 @@ export async function runReviewPlannerV8ProductAcceptanceRecoveryCli(input: {
   repoRoot: string;
   ports: ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts;
 }): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
-  const { environment } = parseReviewPlannerV8ProductAcceptanceArguments(
+  return runReviewPlannerProductAcceptanceRecoveryCli(
+    input,
+    REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+export async function runReviewPlannerV10ProductAcceptanceRecoveryCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  ports: ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts;
+}): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
+  return runReviewPlannerProductAcceptanceRecoveryCli(
+    input,
+    REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+async function runReviewPlannerProductAcceptanceRecoveryCli(
+  input: {
+    argv: readonly string[];
+    repoRoot: string;
+    ports: ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts;
+  },
+  profile: ReviewPlannerProductAcceptanceProfile,
+): Promise<ReviewPlannerV8ProductAcceptanceCliSummary> {
+  const { environment } = parseReviewPlannerProductAcceptanceArguments(
+    profile,
     input.argv,
     'recovery',
   );
@@ -714,21 +781,59 @@ export async function executeReviewPlannerV8ProductAcceptanceProductCli(input: {
   repoRoot: string;
   composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts>;
 }) {
+  return executeReviewPlannerProductAcceptanceProductCli(
+    input,
+    REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+export async function executeReviewPlannerV10ProductAcceptanceProductCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts>;
+}) {
+  return executeReviewPlannerProductAcceptanceProductCli(
+    input,
+    REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+async function executeReviewPlannerProductAcceptanceProductCli(
+  input: {
+    argv: readonly string[];
+    repoRoot: string;
+    composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts>;
+  },
+  profile: ReviewPlannerProductAcceptanceProfile,
+) {
   if (!input.composition) {
-    parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'product');
+    parseReviewPlannerProductAcceptanceArguments(
+      profile,
+      input.argv,
+      'product',
+    );
   }
   const composition =
     input.composition ??
-    createDefaultReviewPlannerV8ProductAcceptanceComposition(input.repoRoot);
+    createDefaultReviewPlannerV8ProductAcceptanceComposition(input.repoRoot, {
+      profile,
+    });
   try {
     if (input.composition) {
-      parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'product');
+      parseReviewPlannerProductAcceptanceArguments(
+        profile,
+        input.argv,
+        'product',
+      );
     }
-    return await runReviewPlannerV8ProductAcceptanceProductCli({
-      argv: input.argv,
-      repoRoot: input.repoRoot,
-      ports: composition.ports,
-    });
+    return await runReviewPlannerProductAcceptanceProductCli(
+      {
+        argv: input.argv,
+        repoRoot: input.repoRoot,
+        ports: composition.ports,
+      },
+      profile,
+    );
   } finally {
     await composition.dispose();
   }
@@ -739,23 +844,60 @@ export async function executeReviewPlannerV8ProductAcceptanceRecoveryCli(input: 
   repoRoot: string;
   composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts>;
 }) {
+  return executeReviewPlannerProductAcceptanceRecoveryCli(
+    input,
+    REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+export async function executeReviewPlannerV10ProductAcceptanceRecoveryCli(input: {
+  argv: readonly string[];
+  repoRoot: string;
+  composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts>;
+}) {
+  return executeReviewPlannerProductAcceptanceRecoveryCli(
+    input,
+    REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  );
+}
+
+async function executeReviewPlannerProductAcceptanceRecoveryCli(
+  input: {
+    argv: readonly string[];
+    repoRoot: string;
+    composition?: ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts>;
+  },
+  profile: ReviewPlannerProductAcceptanceProfile,
+) {
   if (!input.composition) {
-    parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'recovery');
+    parseReviewPlannerProductAcceptanceArguments(
+      profile,
+      input.argv,
+      'recovery',
+    );
   }
   const composition =
     input.composition ??
     createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition(
       input.repoRoot,
+      { profile },
     );
   try {
     if (input.composition) {
-      parseReviewPlannerV8ProductAcceptanceArguments(input.argv, 'recovery');
+      parseReviewPlannerProductAcceptanceArguments(
+        profile,
+        input.argv,
+        'recovery',
+      );
     }
-    return await runReviewPlannerV8ProductAcceptanceRecoveryCli({
-      argv: input.argv,
-      repoRoot: input.repoRoot,
-      ports: composition.ports,
-    });
+    return await runReviewPlannerProductAcceptanceRecoveryCli(
+      {
+        argv: input.argv,
+        repoRoot: input.repoRoot,
+        ports: composition.ports,
+      },
+      profile,
+    );
   } finally {
     await composition.dispose();
   }
@@ -780,11 +922,12 @@ function preflightResult(
 function buildRecoveryManifest(
   preflight: Extract<ProductPreflight, { status: 'ready' }>,
   resources: GeneratedResources,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
   return Object.freeze({
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-recovery-v1',
+    schemaVersion: profile.schemas.recoveryManifest,
     environment: preflight.environment,
-    publicLedgerPath: `docs/acceptance/evidence/phase-6-9-5-v8-product-acceptance/${preflight.environment}`,
+    publicLedgerPath: profile.publicLedgerPath(preflight.environment),
     syntheticEmails: resources.syntheticEmails,
     fixtureIds: resources.fixtureIds,
     browserExecutablePath: preflight.chromeExecutablePath,
@@ -795,9 +938,10 @@ function buildRecoveryManifest(
 function buildPublicManifest(
   preflight: Extract<ProductPreflight, { status: 'ready' }>,
   fixture: FixtureReceipt,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
   return Object.freeze({
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-manifest-v1',
+    schemaVersion: profile.schemas.manifest,
     environment: preflight.environment,
     commitSha: preflight.commitSha,
     pairedEvidenceSha256: preflight.pairedEvidenceSha256,
@@ -1077,6 +1221,8 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   options: ReviewPlannerV8DefaultCompositionOptions = {},
 ): ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceCompositionPorts> {
   const root = resolve(repoRoot);
+  const profile =
+    options.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const env = options.env ?? readRootEnvironment(root);
   const prisma =
     options.prisma ??
@@ -1100,21 +1246,24 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     createReviewPlannerV10PairedEvidenceAuthority();
   const ports: ReviewPlannerV8ProductAcceptanceCompositionPorts = {
     preflight: (input) =>
-      runDefaultProductPreflight(input, pairedEvidenceAuthority),
+      runDefaultProductPreflight(input, pairedEvidenceAuthority, profile),
     acquireOwner: (input) =>
-      acquireReviewPlannerV8ProductAcceptanceOwner(input),
+      acquireReviewPlannerV8ProductAcceptanceOwner({ ...input, profile }),
     revalidatePreflight: ({ preflight }) =>
       revalidateDefaultProductPreflight(preflight, pairedEvidenceAuthority),
     reserveLedger: (input) =>
-      reserveReviewPlannerV8ProductAcceptanceLedger(input),
+      reserveReviewPlannerV8ProductAcceptanceLedger({ ...input, profile }),
     generateResources(preflight) {
-      const resources = generateDefaultResources(preflight);
+      const resources = generateDefaultResources(preflight, profile);
       state.resources = resources;
       state.fixtureIds = resources.fixtureIds;
       return resources;
     },
     prepareRecoveryJournal: (input) =>
-      prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(input),
+      prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+        ...input,
+        profile,
+      }),
     async registerAccount(input) {
       const body = await fetchEnvelope('http://127.0.0.1:3001/auth/register', {
         method: 'POST',
@@ -1162,9 +1311,13 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
       };
     },
     createRunnerDependencies(input) {
-      return createDefaultRunnerDependencies(state, input);
+      return createDefaultRunnerDependencies(state, input, profile);
     },
-    runAcceptance: (input) => runReviewPlannerV8ProductAcceptance(input),
+    runAcceptance: (input) =>
+      runReviewPlannerV8ProductAcceptance({
+        ...(input as Record<string, unknown>),
+        profile,
+      }),
   };
   return Object.freeze({
     ports,
@@ -1178,6 +1331,7 @@ async function runDefaultProductPreflight(
     repoRoot: string;
   },
   pairedEvidenceAuthority: PairedEvidenceAuthority,
+  profile: ReviewPlannerProductAcceptanceProfile,
 ): Promise<ProductPreflight> {
   try {
     const repoRoot = resolve(input.repoRoot);
@@ -1210,6 +1364,7 @@ async function runDefaultProductPreflight(
       const branchLedger = await readReviewPlannerV8ProductAcceptanceLedger({
         repoRoot,
         environment: 'branch',
+        profile,
       });
       if (
         branchLedger.status !== 'complete' ||
@@ -1257,8 +1412,9 @@ async function revalidateDefaultProductPreflight(
 
 function generateDefaultResources(
   preflight: Extract<ProductPreflight, { status: 'ready' }>,
+  profile: ReviewPlannerProductAcceptanceProfile,
 ): GeneratedResources {
-  const prefix = `phase695-v8-accept-${preflight.utcStamp}`;
+  const prefix = `phase695-${profile.lineage}-accept-${preflight.utcStamp}`;
   const fixtureIds = Array.from({ length: 16 }, () =>
     randomUUID().replaceAll('-', ''),
   );
@@ -1269,7 +1425,7 @@ function generateDefaultResources(
       probe: `${prefix}-probe@example.invalid`,
     }),
     fixtureIds: Object.freeze(fixtureIds),
-    browserProfilePath: `.tmp/phase-6-9-5-v8-product-acceptance/${preflight.environment}/profile-v8`,
+    browserProfilePath: profile.browserProfilePath(preflight.environment),
     passwords: Object.freeze({
       review: randomBytes(24).toString('base64url'),
       planner: randomBytes(24).toString('base64url'),
@@ -1397,6 +1553,7 @@ function createDefaultRunnerDependencies(
   input: Parameters<
     ReviewPlannerV8ProductAcceptanceCompositionPorts['createRunnerDependencies']
   >[0],
+  profile: ReviewPlannerProductAcceptanceProfile,
 ): ReviewPlannerV8ProductAcceptanceRunnerDependencies {
   return {
     async activateComponent(request) {
@@ -1510,6 +1667,7 @@ function createDefaultRunnerDependencies(
           repoRoot: state.repoRoot,
           executablePath: input.preflight.chromeExecutablePath,
           profilePath,
+          profile,
         });
         if (
           !responseResult ||
@@ -1552,7 +1710,8 @@ function createDefaultRunnerDependencies(
       }
       throw new Error();
     },
-    restoreDefaultOff: (component) => restoreDefaultOff(state, component),
+    restoreDefaultOff: (component) =>
+      restoreDefaultOff(state, component, profile),
     async verifyOwnerIsolation() {
       const review = state.accounts.review;
       const planner = state.accounts.planner;
@@ -1596,6 +1755,7 @@ async function readFactsDigest(
 async function restoreDefaultOff(
   state: DefaultRuntimeState,
   component: Component,
+  profile: ReviewPlannerProductAcceptanceProfile,
 ) {
   const previous = state.liveContainerId[component];
   if (!previous) throw new Error();
@@ -1617,7 +1777,7 @@ async function restoreDefaultOff(
     throw new Error();
   }
   return {
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-default-off-v2',
+    schemaVersion: profile.schemas.defaultOff,
     component,
     container: {
       previousIdSha256: sha256ReviewPlannerV8CompositionValue(previous),
@@ -2072,19 +2232,15 @@ async function terminateDefaultReviewPlannerV8ExactBrowser(input: {
   repoRoot: string;
   executablePath: string;
   profilePath: string;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }) {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const repoRoot = resolve(input.repoRoot);
   const profilePath = resolve(input.profilePath);
   const allowedProfiles = new Set(
     (['branch', 'main'] as const).map((environment) =>
       normalizeWindowsPath(
-        resolve(
-          repoRoot,
-          '.tmp',
-          'phase-6-9-5-v8-product-acceptance',
-          environment,
-          'profile-v8',
-        ),
+        resolve(repoRoot, profile.browserProfilePath(environment)),
       ),
     ),
   );
@@ -2770,6 +2926,8 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
   options: ReviewPlannerV8DefaultCompositionOptions = {},
 ): ReviewPlannerV8DisposableComposition<ReviewPlannerV8ProductAcceptanceRecoveryCompositionPorts> {
   const root = resolve(repoRoot);
+  const profile =
+    options.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const env = options.env ?? readRootEnvironment(root);
   const prisma =
     options.prisma ??
@@ -2790,6 +2948,7 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
         const publicState = await readReviewPlannerV8ProductAcceptanceLedger({
           repoRoot: root,
           environment,
+          profile,
         });
         if (publicState.status !== 'incomplete') {
           return {
@@ -2805,29 +2964,21 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
             existsSync(
               resolve(
                 root,
-                'docs',
-                'acceptance',
-                'evidence',
-                'phase-6-9-5-v8-product-acceptance',
-                environment,
+                profile.publicLedgerPath(environment),
                 'acceptance.json',
               ),
             ) &&
             !existsSync(
               resolve(
                 root,
-                'docs',
-                'acceptance',
-                'evidence',
-                'phase-6-9-5-v8-product-acceptance',
-                environment,
+                profile.publicLedgerPath(environment),
                 '.acceptance-success',
               ),
             ),
           manifest: {
             browserExecutablePath:
               'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            browserProfilePath: `.tmp/phase-6-9-5-v8-product-acceptance/${environment}/profile-v8`,
+            browserProfilePath: profile.browserProfilePath(environment),
           },
         };
       } catch {
@@ -2835,30 +2986,39 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
       }
     },
     acquireOwner: (input) =>
-      acquireReviewPlannerV8ProductAcceptanceOwner(input),
+      acquireReviewPlannerV8ProductAcceptanceOwner({ ...input, profile }),
     openRecoveryJournal: (input) =>
-      openReviewPlannerV8ProductAcceptanceRecoveryJournal(input),
+      openReviewPlannerV8ProductAcceptanceRecoveryJournal({
+        ...input,
+        profile,
+      }),
     finalizePresealedSuccess: (input) =>
-      finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(input),
+      finalizeReviewPlannerV8ProductAcceptancePresealedSuccess({
+        ...input,
+        profile,
+      }),
     async terminateExactBrowser(input) {
       const executable = resolve(input.executablePath);
-      const profile = resolve(root, input.profilePath);
+      const profilePath = resolve(root, input.profilePath);
+      const allowedProfiles = new Set(
+        (['branch', 'main'] as const).map((environment) =>
+          resolve(root, profile.browserProfilePath(environment)),
+        ),
+      );
       if (
         executable !==
           resolve(
             'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
           ) ||
-        profile !== resolve(root, input.profilePath) ||
-        !profile.startsWith(
-          `${resolve(root, '.tmp', 'phase-6-9-5-v8-product-acceptance')}\\`,
-        )
+        !allowedProfiles.has(profilePath)
       ) {
         throw new Error();
       }
       await terminateDefaultReviewPlannerV8ExactBrowser({
         repoRoot: root,
         executablePath: executable,
-        profilePath: profile,
+        profilePath,
+        profile,
       });
     },
     async restoreDefaultOff({ journal }) {
@@ -2900,7 +3060,7 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
         throw new Error();
       }
       return {
-        schemaVersion: 'phase-6.9.5-v8-product-acceptance-default-off-v2',
+        schemaVersion: profile.schemas.defaultOff,
         component: 'recovery',
         container: {
           previousIdSha256: sha256ReviewPlannerV8CompositionValue(previous),

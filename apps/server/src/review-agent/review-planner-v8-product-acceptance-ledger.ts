@@ -28,6 +28,10 @@ import {
   type WindowsExclusiveLifetimeFile,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
+import {
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  type ReviewPlannerProductAcceptanceProfile,
+} from './review-planner-product-acceptance-profile';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/;
@@ -438,6 +442,7 @@ function buildOfficialAcceptanceEvidence(input: {
 type LedgerState = {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile: ReviewPlannerProductAcceptanceProfile;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   directory: WindowsNoReparseChildDirectory;
   recoveryDirectory: WindowsNoReparseChildDirectory;
@@ -468,6 +473,7 @@ type ReserveLedgerInput = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   pairedEvidenceSha256?: string;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 };
 
 export async function reserveReviewPlannerV8ProductAcceptanceLedger(
@@ -486,11 +492,9 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
   const facade = await openWindowsNoReparseDirectoryForTests(
     input.repoRoot,
     [
-      'docs',
-      'acceptance',
-      'evidence',
-      'phase-6-9-5-v8-product-acceptance',
-      input.environment,
+      ...(
+        input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE
+      ).publicLedgerSegments(input.environment),
     ],
     input.injector,
     true,
@@ -516,12 +520,16 @@ async function reserveLedger(
   }> | null,
   failRecoveryOpenForTests: boolean,
 ): Promise<ReviewPlannerV8ProductAcceptanceLedger> {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   if (input.environment !== 'branch' && input.environment !== 'main') {
     throw new Error('V8_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
   }
-  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
-    'product',
-  ]);
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    input.owner,
+    input.environment,
+    ['product'],
+    profile,
+  );
   if (input.environment === 'main') {
     if (!input.pairedEvidenceSha256?.match(SHA256)) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_MAIN_LINEAGE_INVALID');
@@ -529,6 +537,7 @@ async function reserveLedger(
     const branch = await readReviewPlannerV8ProductAcceptanceLedger({
       repoRoot: input.repoRoot,
       environment: 'branch',
+      profile,
     });
     if (branch.status !== 'complete') {
       throw new Error('V8_PRODUCT_ACCEPTANCE_BRANCH_INCOMPLETE');
@@ -555,18 +564,14 @@ async function reserveLedger(
   let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
   try {
     directory ??= await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
-      'docs',
-      'acceptance',
-      'evidence',
-      'phase-6-9-5-v8-product-acceptance',
-      input.environment,
+      ...profile.publicLedgerSegments(input.environment),
     ]);
     if (failRecoveryOpenForTests) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
     }
     recoveryDirectory = await openWindowsNoReparseFrozenDirectory(
       input.repoRoot,
-      ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+      [...profile.recoverySegments(input.environment)],
     );
     directory.assertLocalFixedNtfsVolume();
     recoveryDirectory.assertLocalFixedNtfsVolume();
@@ -584,6 +589,7 @@ async function reserveLedger(
     const ledger = createLedger({
       repoRoot: input.repoRoot,
       environment: input.environment,
+      profile,
       owner: input.owner,
       directory,
       recoveryDirectory,
@@ -608,6 +614,7 @@ async function reserveLedger(
 export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<
   | Readonly<{
       status: 'empty' | 'incomplete' | 'recovery_only' | 'evidence_io';
@@ -620,17 +627,12 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
       costCny: string;
     }>
 > {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   let directory: WindowsNoReparseChildDirectory | null = null;
   try {
     directory = await openWindowsNoReparseExistingFrozenDirectory(
       input.repoRoot,
-      [
-        'docs',
-        'acceptance',
-        'evidence',
-        'phase-6-9-5-v8-product-acceptance',
-        input.environment,
-      ],
+      [...profile.publicLedgerSegments(input.environment)],
     );
     directory.assertLocalFixedNtfsVolume();
     const leaves = directory.listLeafNames();
@@ -665,6 +667,7 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
         repoRoot: input.repoRoot,
         environment: input.environment,
         terminal,
+        profile,
       });
       return Object.freeze({ status: 'recovery_only' as const });
     }
@@ -672,6 +675,7 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
     const localMode = await readReviewPlannerV8ProductAcceptanceLocalMode({
       repoRoot: input.repoRoot,
       environment: input.environment,
+      profile,
     });
     const aggregate = verifyCompleteLedger(
       directory,
@@ -690,23 +694,23 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<void> {
-  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
-    'recovery',
-  ]);
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    input.owner,
+    input.environment,
+    ['recovery'],
+    profile,
+  );
   await assertReviewPlannerV8ProductAcceptanceRecoveryClear(
     input.repoRoot,
     input.environment,
+    profile,
   );
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
-    [
-      'docs',
-      'acceptance',
-      'evidence',
-      'phase-6-9-5-v8-product-acceptance',
-      input.environment,
-    ],
+    [...profile.publicLedgerSegments(input.environment)],
   );
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -773,6 +777,7 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
       owner: input.owner,
       pairedEvidenceSha256: manifest.pairedEvidenceSha256,
       acceptanceSha256,
+      profile,
     });
     const success = successSchema.parse({
       schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',

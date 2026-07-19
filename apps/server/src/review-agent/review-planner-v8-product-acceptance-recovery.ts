@@ -8,6 +8,10 @@ import {
   type WindowsExclusiveLifetimeFile,
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
+import {
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  type ReviewPlannerProductAcceptanceProfile,
+} from './review-planner-product-acceptance-profile';
 
 export type ReviewPlannerV8ProductAcceptanceEnvironment = 'branch' | 'main';
 export type ReviewPlannerV8ProductAcceptanceOwnerRole = 'product' | 'recovery';
@@ -19,6 +23,7 @@ export type ReviewPlannerV8ProductAcceptanceOwner = Readonly<{
 
 type OwnerState = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile: ReviewPlannerProductAcceptanceProfile;
   role: ReviewPlannerV8ProductAcceptanceOwnerRole;
   directory: WindowsNoReparseChildDirectory;
   lock: WindowsExclusiveLifetimeFile;
@@ -48,22 +53,6 @@ const recoveryManifestSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    const expectedPublic = `docs/acceptance/evidence/phase-6-9-5-v8-product-acceptance/${value.environment}`;
-    const expectedProfile = `.tmp/phase-6-9-5-v8-product-acceptance/${value.environment}/profile-v8`;
-    if (value.publicLedgerPath !== expectedPublic) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['publicLedgerPath'],
-        message: 'RECOVERY_PUBLIC_PATH_INVALID',
-      });
-    }
-    if (value.browserProfilePath !== expectedProfile) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['browserProfilePath'],
-        message: 'RECOVERY_PROFILE_PATH_INVALID',
-      });
-    }
     const emails = Object.values(value.syntheticEmails);
     if (new Set(emails).size !== emails.length) {
       context.addIssue({
@@ -80,6 +69,21 @@ const recoveryManifestSchema = z
       });
     }
   });
+
+function assertRecoveryManifestProfile(
+  manifest: z.infer<typeof recoveryManifestSchema>,
+  profile: ReviewPlannerProductAcceptanceProfile,
+) {
+  if (
+    manifest.publicLedgerPath !==
+      profile.publicLedgerPath(manifest.environment) ||
+    manifest.browserProfilePath !==
+      profile.browserProfilePath(manifest.environment)
+  ) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_MANIFEST_INVALID');
+  }
+  return manifest;
+}
 
 const RECOVERY_STAGE_LEAVES = Object.freeze([
   'restore.claimed',
@@ -233,6 +237,7 @@ const recoveryTerminalSchema = z
 type RecoveryJournalState = {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile: ReviewPlannerProductAcceptanceProfile;
   directory: WindowsNoReparseChildDirectory;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   closed: boolean;
@@ -299,6 +304,7 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   role: ReviewPlannerV8ProductAcceptanceOwnerRole;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<
   | Readonly<{
       status: 'acquired';
@@ -306,13 +312,12 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
     }>
   | Readonly<{ status: 'owner_active' }>
 > {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   if (!isEnvironment(input.environment) || !isRole(input.role)) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_INPUT_INVALID');
   }
   const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
-    '.tmp',
-    'phase-6-9-5-v8-product-acceptance',
-    input.environment,
+    ...profile.recoverySegments(input.environment),
   ]);
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -342,6 +347,7 @@ export async function acquireReviewPlannerV8ProductAcceptanceOwner(input: {
     });
     ownerState.set(owner, {
       environment: input.environment,
+      profile,
       role: input.role,
       directory,
       lock,
@@ -358,12 +364,14 @@ export function assertReviewPlannerV8ProductAcceptanceOwner(
   owner: ReviewPlannerV8ProductAcceptanceOwner,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
   allowedRoles: readonly ReviewPlannerV8ProductAcceptanceOwnerRole[],
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ): void {
   const state = ownerState.get(owner);
   if (
     !state ||
     state.closed ||
     state.environment !== environment ||
+    state.profile !== profile ||
     !allowedRoles.includes(state.role)
   ) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_INVALID');
@@ -376,18 +384,22 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   manifest: unknown;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<ReviewPlannerV8ProductAcceptanceRecoveryJournal> {
-  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
-    'product',
-  ]);
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    input.owner,
+    input.environment,
+    ['product'],
+    profile,
+  );
   const parsed = recoveryManifestSchema.safeParse(input.manifest);
   if (!parsed.success || parsed.data.environment !== input.environment) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_MANIFEST_INVALID');
   }
+  assertRecoveryManifestProfile(parsed.data, profile);
   const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
-    '.tmp',
-    'phase-6-9-5-v8-product-acceptance',
-    input.environment,
+    ...profile.recoverySegments(input.environment),
   ]);
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -401,6 +413,7 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
     return createRecoveryJournal({
       repoRoot: input.repoRoot,
       environment: input.environment,
+      profile,
       directory,
       owner: input.owner,
       closed: false,
@@ -411,13 +424,7 @@ export async function prepareReviewPlannerV8ProductAcceptanceRecoveryJournal(inp
       publicDirectory: null,
       bindingPublicDirectory: await openWindowsNoReparseExistingFrozenDirectory(
         input.repoRoot,
-        [
-          'docs',
-          'acceptance',
-          'evidence',
-          'phase-6-9-5-v8-product-acceptance',
-          input.environment,
-        ],
+        [...profile.publicLedgerSegments(input.environment)],
       ),
     });
   } catch (error) {
@@ -436,13 +443,18 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   owner: ReviewPlannerV8ProductAcceptanceOwner;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<ReviewPlannerV8ProductAcceptanceRecoveryJournal> {
-  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
-    'recovery',
-  ]);
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    input.owner,
+    input.environment,
+    ['recovery'],
+    profile,
+  );
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+    [...profile.recoverySegments(input.environment)],
   );
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -461,9 +473,11 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
     if (parsed.environment !== input.environment) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_MANIFEST_INVALID');
     }
+    assertRecoveryManifestProfile(parsed, profile);
     return createRecoveryJournal({
       repoRoot: input.repoRoot,
       environment: input.environment,
+      profile,
       directory,
       owner: input.owner,
       closed: false,
@@ -483,10 +497,11 @@ export async function openReviewPlannerV8ProductAcceptanceRecoveryJournal(input:
 export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
   repoRoot: string,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ): Promise<boolean> {
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', environment],
+    [...profile.recoverySegments(environment)],
   );
   try {
     const leaves = directory.listLeafNames();
@@ -503,7 +518,14 @@ export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
         directory.readRegularFile('recovery-manifest.json').toString(),
       ),
     );
-    return parsed.success && parsed.data.environment === environment;
+    return (
+      parsed.success &&
+      parsed.data.environment === environment &&
+      (() => {
+        assertRecoveryManifestProfile(parsed.data, profile);
+        return true;
+      })()
+    );
   } catch {
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   } finally {
@@ -514,10 +536,11 @@ export async function hasReviewPlannerV8ProductAcceptanceRecoveryManifest(
 export async function assertReviewPlannerV8ProductAcceptanceRecoveryClear(
   repoRoot: string,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ): Promise<void> {
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', environment],
+    [...profile.recoverySegments(environment)],
   );
   try {
     assertOnlyRecoveryLeaves(directory, [
@@ -545,14 +568,16 @@ export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(inp
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   terminal: unknown;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<void> {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const terminal = recoveryTerminalSchema.parse(input.terminal);
   if (terminal.environment !== input.environment) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   }
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+    [...profile.recoverySegments(input.environment)],
   );
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -581,6 +606,7 @@ export async function verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal(inp
     const manifest = recoveryManifestSchema.parse(
       JSON.parse(manifestBytes.toString()),
     );
+    assertRecoveryManifestProfile(manifest, profile);
     recoveryRestoreSchema.parse(JSON.parse(restoreBytes.toString()));
     recoveryCleanupSchema.parse(JSON.parse(cleanupBytes.toString()));
     if (
@@ -604,13 +630,18 @@ export async function claimReviewPlannerV8ProductAcceptancePresealMode(input: {
   owner: ReviewPlannerV8ProductAcceptanceOwner;
   pairedEvidenceSha256: string;
   acceptanceSha256: string;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<Readonly<{ modeSha256: string }>> {
-  assertReviewPlannerV8ProductAcceptanceOwner(input.owner, input.environment, [
-    'recovery',
-  ]);
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    input.owner,
+    input.environment,
+    ['recovery'],
+    profile,
+  );
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+    [...profile.recoverySegments(input.environment)],
   );
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -626,6 +657,7 @@ export async function claimReviewPlannerV8ProductAcceptancePresealMode(input: {
         directory.readRegularFile('recovery-manifest.json').toString(),
       ),
     );
+    assertRecoveryManifestProfile(manifest, profile);
     if (manifest.environment !== input.environment) throw new Error();
     const stages = validateRecoveryStages(directory);
     if (stages.some(Boolean)) {
@@ -661,6 +693,7 @@ export async function claimReviewPlannerV8ProductAcceptancePresealMode(input: {
 export async function readReviewPlannerV8ProductAcceptanceLocalMode(input: {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  profile?: ReviewPlannerProductAcceptanceProfile;
 }): Promise<
   Readonly<{
     mode: Readonly<z.infer<typeof recoveryModeSchema>> | null;
@@ -668,9 +701,10 @@ export async function readReviewPlannerV8ProductAcceptanceLocalMode(input: {
     stagesPresent: boolean;
   }>
 > {
+  const profile = input.profile ?? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE;
   const directory = await openWindowsNoReparseExistingFrozenDirectory(
     input.repoRoot,
-    ['.tmp', 'phase-6-9-5-v8-product-acceptance', input.environment],
+    [...profile.recoverySegments(input.environment)],
   );
   try {
     directory.assertLocalFixedNtfsVolume();
@@ -709,6 +743,7 @@ function createRecoveryJournal(
           state.owner,
           state.environment,
           ['product', 'recovery'],
+          state.profile,
         );
         return snapshotRecoveryState(state);
       },
@@ -718,6 +753,7 @@ function createRecoveryJournal(
           state.owner,
           state.environment,
           ['product'],
+          state.profile,
         );
         const parsed = recoveryAccountBindingSchema.safeParse(input);
         if (!parsed.success || parsed.data.component !== input.component) {
@@ -765,6 +801,7 @@ function createRecoveryJournal(
           state.owner,
           state.environment,
           ['recovery'],
+          state.profile,
         );
         if (state.authorized && state.authority !== null) {
           return Promise.resolve(state.authority);
@@ -779,19 +816,14 @@ function createRecoveryJournal(
           try {
             publicDirectory = await openWindowsNoReparseExistingFrozenDirectory(
               state.repoRoot,
-              [
-                'docs',
-                'acceptance',
-                'evidence',
-                'phase-6-9-5-v8-product-acceptance',
-                state.environment,
-              ],
+              [...state.profile.publicLedgerSegments(state.environment)],
             );
             const current = requireJournalState(journal);
             assertReviewPlannerV8ProductAcceptanceOwner(
               current.owner,
               current.environment,
               ['recovery'],
+              current.profile,
             );
             if (
               current.authorizationAttempt !== authorizationAttempt ||
@@ -830,6 +862,7 @@ function createRecoveryJournal(
                   latest.owner,
                   latest.environment,
                   ['recovery'],
+                  latest.profile,
                 );
                 if (!latest.authorized || latest.authority !== authority) {
                   throw new Error(
@@ -864,6 +897,7 @@ function createRecoveryJournal(
           state.owner,
           state.environment,
           ['recovery'],
+          state.profile,
         );
         if (!state.authorized) {
           throw new Error(
@@ -916,6 +950,7 @@ function createRecoveryJournal(
           state.owner,
           state.environment,
           ['recovery'],
+          state.profile,
         );
         if (!state.authorized) {
           throw new Error(
@@ -936,13 +971,14 @@ function createRecoveryJournal(
         ) {
           throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_INCOMPLETE');
         }
-        recoveryManifestSchema.parse(
+        const manifest = recoveryManifestSchema.parse(
           JSON.parse(
             state.directory
               .readRegularFile('recovery-manifest.json')
               .toString(),
           ),
         );
+        assertRecoveryManifestProfile(manifest, state.profile);
         recoveryRestoreSchema.parse(
           JSON.parse(
             state.directory.readRegularFile('restore.verified.json').toString(),
@@ -1045,6 +1081,7 @@ function snapshotRecoveryState(
       ),
     );
     if (manifest.environment !== state.environment) throw new Error();
+    assertRecoveryManifestProfile(manifest, state.profile);
     const leaves = state.directory.listLeafNames();
     const orderedStages = RECOVERY_STAGE_LEAVES.map((leaf) =>
       leaves.includes(leaf),

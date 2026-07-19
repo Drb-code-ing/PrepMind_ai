@@ -73,6 +73,16 @@
 
 ## 近期关键记录
 
+### 2026-07-19 - V10 product-acceptance 隔离 lineage
+
+目标：在不重跑已通过的 V10 controlled-Live、也不改写 V8 `recovery_only` 历史的前提下，为后续 branch 产品验收建立独立的 V10 命名空间。
+
+主要内容：新增不可变 profile，统一 V8/V10 的 public ledger 根目录、recovery 临时根目录、可见浏览器 profile 路径与 product/recovery 确认令牌；新增 V10 product/recovery CLI 与 package 命令。V10 branch 只读取已经封存的 V10 Live authority；V8 与 V10 使用不同 owner lock、ledger 与 recovery 目录，四请求上限、default-off 恢复、owner、ledger、recovery 与 cleanup 约束不变。两条 lineage 复用同一份严格 wire schema（数据语义没有变化），本次隔离的是运行和证据命名空间，不进行 schema migration。
+
+验收边界：Windows native 测试先完成 V8 `recovery_only`，再成功获取 V10 owner 并预留 V10 branch ledger，证明旧终态不会授权、阻断或写入新 lineage。该提交不运行 Docker、浏览器、真实模型，不修改 `.env`、V8/V10 evidence，也不打开产品 gate。
+
+回顾时可以问：为什么 V10 不能复用 V8 的 recovery-only ledger？V10 CLI 如何拒绝 V8 confirmation？新的 namespace 如何保留原有 cleanup/default-off 安全边界？
+
 ### 2026-07-19 - V8 branch product-acceptance recovered archive
 
 结果：旧 V8 branch 产品验收先因遗漏 preflight 参数在 provider 前以 `0-call` 失败；随后首次实际分支尝试暴露 runner parse bug，并写入 recovery-only terminal。恢复过程没有新 provider 调用，cleanup 为零。
