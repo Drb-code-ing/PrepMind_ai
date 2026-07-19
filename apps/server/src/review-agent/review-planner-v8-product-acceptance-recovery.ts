@@ -11,10 +11,19 @@ import {
 import {
   normalizeReviewPlannerProductAcceptanceSchemaRecord,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
   type ReviewPlannerProductAcceptanceSchemaKey,
   withReviewPlannerProductAcceptanceSchemaIdentity,
 } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS,
+  parseReviewPlannerV11ProductAcceptanceCheckpoint,
+  parseReviewPlannerV11ProductAcceptanceFailure,
+  readReviewPlannerV11ProductAcceptanceCheckpoints,
+  type ReviewPlannerV11ProductAcceptanceCheckpointRecord,
+  type ReviewPlannerV11ProductAcceptanceFailureRecord,
+} from './review-planner-v11-product-acceptance-diagnostics';
 
 export type ReviewPlannerV8ProductAcceptanceEnvironment = 'branch' | 'main';
 export type ReviewPlannerV8ProductAcceptanceOwnerRole = 'product' | 'recovery';
@@ -1544,4 +1553,546 @@ function sanitizeOwnerError(error: unknown) {
     return error;
   }
   return new Error('V8_PRODUCT_ACCEPTANCE_OWNER_IO');
+}
+
+const V11_OWNER_LOCK_LEAF = 'owner.lock';
+const V11_CHECKPOINT_LEAF = /^checkpoint-(\d{3})-([a-z_]+)\.json$/;
+
+export type ReviewPlannerV11ProductAcceptanceOwnerRole = 'product' | 'recovery';
+
+export type ReviewPlannerV11ProductAcceptanceOwner = Readonly<{
+  assertHeld(): void;
+  close(): void;
+}>;
+
+type V11OwnerState = {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  role: ReviewPlannerV11ProductAcceptanceOwnerRole;
+  directory: WindowsNoReparseChildDirectory;
+  lock: WindowsExclusiveLifetimeFile;
+  runtimeDirectory: WindowsNoReparseChildDirectory;
+  runtimeLock: WindowsExclusiveLifetimeFile;
+  closed: boolean;
+};
+
+const v11OwnerState = new WeakMap<
+  ReviewPlannerV11ProductAcceptanceOwner,
+  V11OwnerState
+>();
+
+export async function acquireReviewPlannerV11ProductAcceptanceOwner(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  role: ReviewPlannerV11ProductAcceptanceOwnerRole;
+}): Promise<
+  | Readonly<{
+      status: 'acquired';
+      owner: ReviewPlannerV11ProductAcceptanceOwner;
+    }>
+  | Readonly<{ status: 'owner_active' }>
+> {
+  if (!isEnvironment(input.environment) || !isV11OwnerRole(input.role)) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_OWNER_INPUT_INVALID');
+  }
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  let runtimeDirectory: WindowsNoReparseChildDirectory | null = null;
+  let lock: WindowsExclusiveLifetimeFile | null = null;
+  let runtimeLock: WindowsExclusiveLifetimeFile | null = null;
+  try {
+    directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ]);
+    directory.assertLocalFixedNtfsVolume();
+    runtimeDirectory = await openWindowsNoReparseFrozenDirectory(
+      input.repoRoot,
+      sharedRuntimeOwnerSegments(),
+    );
+    runtimeDirectory.assertLocalFixedNtfsVolume();
+    lock = directory.tryAcquireExclusiveLifetimeFile(V11_OWNER_LOCK_LEAF);
+    if (lock === null) {
+      runtimeDirectory.close();
+      directory.close();
+      return Object.freeze({ status: 'owner_active' as const });
+    }
+    runtimeLock =
+      runtimeDirectory.tryAcquireExclusiveLifetimeFile('owner.lock');
+    if (runtimeLock === null) {
+      lock.close();
+      runtimeDirectory.close();
+      directory.close();
+      return Object.freeze({ status: 'owner_active' as const });
+    }
+    const owner: ReviewPlannerV11ProductAcceptanceOwner = Object.freeze({
+      assertHeld() {
+        const state = v11OwnerState.get(owner);
+        if (!state || state.closed) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_OWNER_CLOSED');
+        }
+        state.lock.assertHeld();
+        state.runtimeLock.assertHeld();
+      },
+      close() {
+        const state = v11OwnerState.get(owner);
+        if (!state || state.closed) return;
+        state.closed = true;
+        try {
+          state.runtimeLock.close();
+        } finally {
+          try {
+            state.runtimeDirectory.close();
+          } finally {
+            try {
+              state.lock.close();
+            } finally {
+              state.directory.close();
+            }
+          }
+        }
+      },
+    });
+    v11OwnerState.set(owner, {
+      environment: input.environment,
+      role: input.role,
+      directory,
+      lock,
+      runtimeDirectory,
+      runtimeLock,
+      closed: false,
+    });
+    runtimeDirectory = null;
+    lock = null;
+    runtimeLock = null;
+    directory = null;
+    return Object.freeze({ status: 'acquired' as const, owner });
+  } catch (error) {
+    closeAcquisitionResourcesIgnoringFailures([
+      runtimeLock,
+      lock,
+      runtimeDirectory,
+      directory,
+    ]);
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_OWNER_IO');
+  }
+}
+
+export function assertReviewPlannerV11ProductAcceptanceOwner(
+  owner: ReviewPlannerV11ProductAcceptanceOwner,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  allowedRoles: readonly ReviewPlannerV11ProductAcceptanceOwnerRole[],
+): void {
+  const state = v11OwnerState.get(owner);
+  if (
+    !state ||
+    state.closed ||
+    state.environment !== environment ||
+    !allowedRoles.includes(state.role)
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_OWNER_INVALID');
+  }
+  owner.assertHeld();
+  state.runtimeLock.assertHeld();
+}
+
+type V11CheckpointJournalState = {
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+  directory: WindowsNoReparseChildDirectory;
+  closed: boolean;
+  failureAuthority: ReviewPlannerV11ProductAcceptanceFailureAuthority | null;
+};
+
+export type ReviewPlannerV11ProductAcceptanceFailureAuthority = Readonly<{
+  assertAuthorized(): void;
+}>;
+
+export type ReviewPlannerV11ProductAcceptanceFailurePublisher = Readonly<{
+  recordFailure(
+    authority: ReviewPlannerV11ProductAcceptanceFailureAuthority,
+    value: unknown,
+  ): void;
+}>;
+
+export type ReviewPlannerV11ProductAcceptanceRecoveryJournal = Readonly<{
+  appendCheckpoint(
+    value: unknown,
+  ): ReviewPlannerV11ProductAcceptanceCheckpointRecord;
+  latestCheckpoint(): ReviewPlannerV11ProductAcceptanceCheckpointRecord;
+  issueFailureAuthority(): ReviewPlannerV11ProductAcceptanceFailureAuthority;
+  projectRecoveryOnly(
+    publisher: ReviewPlannerV11ProductAcceptanceFailurePublisher,
+  ): void;
+  close(): void;
+}>;
+
+const v11CheckpointJournalState = new WeakMap<
+  ReviewPlannerV11ProductAcceptanceRecoveryJournal,
+  V11CheckpointJournalState
+>();
+
+const v11FailureAuthorityState = new WeakMap<
+  ReviewPlannerV11ProductAcceptanceFailureAuthority,
+  ReviewPlannerV11ProductAcceptanceRecoveryJournal
+>();
+
+export async function prepareReviewPlannerV11ProductAcceptanceRecoveryJournal(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+}): Promise<ReviewPlannerV11ProductAcceptanceRecoveryJournal> {
+  assertReviewPlannerV11ProductAcceptanceOwner(input.owner, input.environment, [
+    'product',
+  ]);
+  const directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+    ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+      input.environment,
+    ),
+  ]);
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertV11CheckpointLeaves(directory);
+    if (v11CheckpointHistory(directory).length > 0) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_EXISTS');
+    }
+    return createV11CheckpointJournal({
+      environment: input.environment,
+      owner: input.owner,
+      directory,
+      closed: false,
+      failureAuthority: null,
+    });
+  } catch (error) {
+    directory.close();
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+}
+
+export async function openReviewPlannerV11ProductAcceptanceRecoveryJournal(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+}): Promise<ReviewPlannerV11ProductAcceptanceRecoveryJournal> {
+  assertReviewPlannerV11ProductAcceptanceOwner(input.owner, input.environment, [
+    'recovery',
+  ]);
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertV11CheckpointLeaves(directory);
+    return createV11CheckpointJournal({
+      environment: input.environment,
+      owner: input.owner,
+      directory,
+      closed: false,
+      failureAuthority: null,
+    });
+  } catch {
+    directory.close();
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+}
+
+export async function readReviewPlannerV11ProductAcceptanceRecoveryCheckpoint(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<ReviewPlannerV11ProductAcceptanceCheckpointRecord> {
+  const latest =
+    await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint(input);
+  if (latest === null) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+  return latest;
+}
+
+export async function inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<ReviewPlannerV11ProductAcceptanceCheckpointRecord | null> {
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    const history = v11CheckpointHistory(directory);
+    const latest = history.at(-1);
+    return latest === undefined ? null : Object.freeze({ ...latest });
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory.close();
+  }
+}
+
+export function assertReviewPlannerV11ProductAcceptanceFailureAuthority(
+  authority: ReviewPlannerV11ProductAcceptanceFailureAuthority,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  value: unknown,
+): void {
+  const journal = v11FailureAuthorityState.get(authority);
+  const state =
+    journal === undefined ? undefined : v11CheckpointJournalState.get(journal);
+  if (!state || state.closed || state.failureAuthority !== authority) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
+  }
+  try {
+    assertReviewPlannerV11ProductAcceptanceOwner(state.owner, environment, [
+      'product',
+      'recovery',
+    ]);
+    authority.assertAuthorized();
+    const failure = parseReviewPlannerV11ProductAcceptanceFailure(value);
+    const latest = v11CheckpointHistory(state.directory).at(-1);
+    if (
+      !latest ||
+      failure.environment !== environment ||
+      failure.component !== latest.component ||
+      failure.slot !== latest.slot ||
+      failure.checkpoint !== latest.checkpoint ||
+      failure.providerCallState !== latest.providerCallState
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
+  }
+}
+
+function createV11CheckpointJournal(
+  initialState: V11CheckpointJournalState,
+): ReviewPlannerV11ProductAcceptanceRecoveryJournal {
+  const journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal =
+    Object.freeze({
+      appendCheckpoint(value) {
+        const state = requireV11CheckpointJournalState(journal);
+        assertReviewPlannerV11ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['product'],
+        );
+        let record: ReviewPlannerV11ProductAcceptanceCheckpointRecord;
+        try {
+          record = parseReviewPlannerV11ProductAcceptanceCheckpoint(value);
+          const history = v11CheckpointHistory(state.directory);
+          const prefix = v11SlotCheckpoints(record.component, record.slot);
+          const localHistory = history.filter(
+            (entry) =>
+              entry.component === record.component &&
+              entry.slot === record.slot,
+          );
+          const expected = prefix[localHistory.length];
+          if (expected !== record.checkpoint) throw new Error();
+          const expectedState = v11ExpectedProviderCallState(record);
+          if (record.providerCallState !== expectedState) throw new Error();
+          const leaf = `checkpoint-${String(history.length + 1).padStart(3, '0')}-${record.checkpoint}.json`;
+          publish(
+            state.directory,
+            leaf,
+            `${JSON.stringify(record)}\n`,
+            'V11_PRODUCT_ACCEPTANCE_CHECKPOINT_IO',
+          );
+        } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message === 'V11_PRODUCT_ACCEPTANCE_CHECKPOINT_IO'
+          ) {
+            throw error;
+          }
+          throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_INVALID');
+        }
+        return Object.freeze({ ...record });
+      },
+      latestCheckpoint() {
+        const state = requireV11CheckpointJournalState(journal);
+        assertReviewPlannerV11ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['product', 'recovery'],
+        );
+        try {
+          const latest = v11CheckpointHistory(state.directory).at(-1);
+          if (!latest) throw new Error();
+          return Object.freeze({ ...latest });
+        } catch {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+        }
+      },
+      issueFailureAuthority() {
+        const state = requireV11CheckpointJournalState(journal);
+        assertReviewPlannerV11ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['product', 'recovery'],
+        );
+        if (state.failureAuthority !== null) return state.failureAuthority;
+        const authority: ReviewPlannerV11ProductAcceptanceFailureAuthority =
+          Object.freeze({
+            assertAuthorized() {
+              const latest = requireV11CheckpointJournalState(journal);
+              assertReviewPlannerV11ProductAcceptanceOwner(
+                latest.owner,
+                latest.environment,
+                ['product', 'recovery'],
+              );
+              if (latest.failureAuthority !== authority) {
+                throw new Error(
+                  'V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID',
+                );
+              }
+            },
+          });
+        state.failureAuthority = authority;
+        v11FailureAuthorityState.set(authority, journal);
+        return authority;
+      },
+      projectRecoveryOnly(publisher) {
+        const state = requireV11CheckpointJournalState(journal);
+        assertReviewPlannerV11ProductAcceptanceOwner(
+          state.owner,
+          state.environment,
+          ['recovery'],
+        );
+        let latest: ReviewPlannerV11ProductAcceptanceCheckpointRecord;
+        try {
+          latest =
+            v11CheckpointHistory(state.directory).at(-1) ??
+            (() => {
+              throw new Error();
+            })();
+        } catch {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+        }
+        const authority = journal.issueFailureAuthority();
+        publisher.recordFailure(authority, {
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+          environment: state.environment,
+          component: latest.component,
+          slot: latest.slot,
+          checkpoint: latest.checkpoint,
+          terminal: 'operation_failed',
+          providerCallState: latest.providerCallState,
+        } satisfies ReviewPlannerV11ProductAcceptanceFailureRecord);
+      },
+      close() {
+        const state = v11CheckpointJournalState.get(journal);
+        if (!state || state.closed) return;
+        state.closed = true;
+        state.failureAuthority = null;
+        state.directory.close();
+      },
+    });
+  v11CheckpointJournalState.set(journal, initialState);
+  return journal;
+}
+
+function requireV11CheckpointJournalState(
+  journal: ReviewPlannerV11ProductAcceptanceRecoveryJournal,
+) {
+  const state = v11CheckpointJournalState.get(journal);
+  if (!state || state.closed) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_JOURNAL_CLOSED');
+  }
+  return state;
+}
+
+function v11CheckpointHistory(
+  directory: WindowsNoReparseChildDirectory,
+): readonly ReviewPlannerV11ProductAcceptanceCheckpointRecord[] {
+  assertV11CheckpointLeaves(directory);
+  try {
+    const entries = directory
+      .listLeafNames()
+      .filter((leaf) => leaf !== V11_OWNER_LOCK_LEAF)
+      .map((leaf) => {
+        const match = V11_CHECKPOINT_LEAF.exec(leaf);
+        if (!match) throw new Error();
+        return {
+          index: Number(match[1]),
+          checkpoint: match[2],
+          leaf,
+        };
+      })
+      .sort((left, right) => left.index - right.index);
+    for (const [position, entry] of entries.entries()) {
+      if (entry.index !== position + 1) throw new Error();
+    }
+    const records = readReviewPlannerV11ProductAcceptanceCheckpoints(
+      entries.map((entry) => {
+        const record = parseReviewPlannerV11ProductAcceptanceCheckpoint(
+          JSON.parse(directory.readRegularFile(entry.leaf).toString()),
+        );
+        if (record.checkpoint !== entry.checkpoint) throw new Error();
+        return record;
+      }),
+    );
+    return Object.freeze(records.map((record) => Object.freeze({ ...record })));
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+}
+
+function assertV11CheckpointLeaves(directory: WindowsNoReparseChildDirectory) {
+  const leaves = directory.listLeafNames();
+  if (
+    !leaves.includes(V11_OWNER_LOCK_LEAF) ||
+    leaves.some(
+      (leaf) => leaf !== V11_OWNER_LOCK_LEAF && !V11_CHECKPOINT_LEAF.test(leaf),
+    )
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+}
+
+function v11SlotCheckpoints(
+  component: ReviewPlannerV11ProductAcceptanceCheckpointRecord['component'],
+  slot: ReviewPlannerV11ProductAcceptanceCheckpointRecord['slot'],
+) {
+  const prefix = `${component}_${slot}_`;
+  return Object.freeze(
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.filter((checkpoint) =>
+      checkpoint.startsWith(prefix),
+    ),
+  );
+}
+
+function v11ExpectedProviderCallState(
+  record: ReviewPlannerV11ProductAcceptanceCheckpointRecord,
+) {
+  const checkpoints = v11SlotCheckpoints(record.component, record.slot);
+  const dispatch =
+    `${record.component}_${record.slot}_dispatch` as ReviewPlannerV11ProductAcceptanceCheckpointRecord['checkpoint'];
+  return checkpoints.indexOf(record.checkpoint) >= checkpoints.indexOf(dispatch)
+    ? 'indeterminate'
+    : 'not_started';
+}
+
+function isV11OwnerRole(
+  value: unknown,
+): value is ReviewPlannerV11ProductAcceptanceOwnerRole {
+  return value === 'product' || value === 'recovery';
 }

@@ -13,12 +13,17 @@ import {
 import {
   assertReviewPlannerV8ProductAcceptanceRecoveryClear,
   assertReviewPlannerV8ProductAcceptanceOwner,
+  assertReviewPlannerV11ProductAcceptanceFailureAuthority,
+  assertReviewPlannerV11ProductAcceptanceOwner,
   claimReviewPlannerV8ProductAcceptancePresealMode,
+  inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
   readReviewPlannerV8ProductAcceptanceLocalMode,
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal,
   type ReviewPlannerV8ProductAcceptanceEnvironment,
   type ReviewPlannerV8ProductAcceptanceOwner,
+  type ReviewPlannerV11ProductAcceptanceFailureAuthority,
+  type ReviewPlannerV11ProductAcceptanceOwner,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
   type DurableFaultInjector,
@@ -486,11 +491,16 @@ type V11LedgerState = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   directory: WindowsNoReparseChildDirectory;
   reservationGuard: WindowsExclusiveLifetimeFile;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+  cleanupInjectedHandles: (() => void) | null;
   closed: boolean;
 };
 
 export type ReviewPlannerV11ProductAcceptanceLedger = Readonly<{
-  recordFailure(value: unknown): void;
+  recordFailure(
+    authority: ReviewPlannerV11ProductAcceptanceFailureAuthority,
+    value: unknown,
+  ): void;
   close(): void;
 }>;
 
@@ -546,14 +556,58 @@ export async function reserveReviewPlannerV8ProductAcceptanceLedgerForTests(
 export async function reserveReviewPlannerV11ProductAcceptanceLedger(input: {
   repoRoot: string;
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
 }): Promise<ReviewPlannerV11ProductAcceptanceLedger> {
+  return reserveV11Ledger(input, null);
+}
+
+export async function reserveReviewPlannerV11ProductAcceptanceLedgerForTests(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+  injector: DurableFaultInjector;
+}): Promise<ReviewPlannerV11ProductAcceptanceLedger> {
+  const facade = await openWindowsNoReparseDirectoryForTests(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        input.environment,
+      ),
+    ],
+    input.injector,
+    true,
+  );
+  try {
+    return await reserveV11Ledger(input, facade);
+  } catch (error) {
+    facade.cleanupInjectedHandles();
+    facade.directory.close();
+    throw error;
+  }
+}
+
+async function reserveV11Ledger(
+  input: {
+    repoRoot: string;
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    owner: ReviewPlannerV11ProductAcceptanceOwner;
+  },
+  testFacade: Readonly<{
+    directory: WindowsNoReparseChildDirectory;
+    cleanupInjectedHandles(): void;
+  }> | null,
+): Promise<ReviewPlannerV11ProductAcceptanceLedger> {
   if (!isV11Environment(input.environment)) {
     throw new Error('V11_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
   }
-  let directory: WindowsNoReparseChildDirectory | null = null;
+  assertReviewPlannerV11ProductAcceptanceOwner(input.owner, input.environment, [
+    'product',
+  ]);
+  let directory: WindowsNoReparseChildDirectory | null =
+    testFacade?.directory ?? null;
   let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
   try {
-    directory = await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
+    directory ??= await openWindowsNoReparseFrozenDirectory(input.repoRoot, [
       ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
         input.environment,
       ),
@@ -569,12 +623,79 @@ export async function reserveReviewPlannerV11ProductAcceptanceLedger(input: {
     if (reservationGuard === null) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
     }
-    return createV11Ledger({
+    const ledger = createV11Ledger({
       environment: input.environment,
       directory,
       reservationGuard,
+      owner: input.owner,
+      cleanupInjectedHandles: testFacade?.cleanupInjectedHandles ?? null,
       closed: false,
     });
+    directory = null;
+    reservationGuard = null;
+    return ledger;
+  } catch (error) {
+    reservationGuard?.close();
+    if (testFacade === null) directory?.close();
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+}
+
+export async function openReviewPlannerV11ProductAcceptanceRecoveryLedger(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+}): Promise<ReviewPlannerV11ProductAcceptanceLedger> {
+  if (!isV11Environment(input.environment)) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ENVIRONMENT_INVALID');
+  }
+  assertReviewPlannerV11ProductAcceptanceOwner(input.owner, input.environment, [
+    'recovery',
+  ]);
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
+  try {
+    directory = await openWindowsNoReparseExistingFrozenDirectory(
+      input.repoRoot,
+      [
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+          input.environment,
+        ),
+      ],
+    );
+    directory.assertLocalFixedNtfsVolume();
+    const leaves = directory.listLeafNames();
+    if (
+      leaves.some(
+        (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
+      ) ||
+      !leaves.includes('.acceptance-reserved')
+    ) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    reservationGuard = directory.tryAcquireExclusiveLifetimeFile(
+      '.acceptance-reserved',
+    );
+    if (reservationGuard === null) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
+    const ledger = createV11Ledger({
+      environment: input.environment,
+      directory,
+      reservationGuard,
+      owner: input.owner,
+      cleanupInjectedHandles: null,
+      closed: false,
+    });
+    directory = null;
+    reservationGuard = null;
+    return ledger;
   } catch (error) {
     reservationGuard?.close();
     directory?.close();
@@ -584,7 +705,7 @@ export async function reserveReviewPlannerV11ProductAcceptanceLedger(input: {
     ) {
       throw error;
     }
-    throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   }
 }
 
@@ -804,6 +925,11 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
     ) {
       return Object.freeze({ status: 'evidence_io' as const });
     }
+    const checkpoint =
+      await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+      });
     if (!leaves.includes('.failure.json')) {
       return Object.freeze({ status: 'incomplete' as const });
     }
@@ -811,6 +937,15 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
       JSON.parse(directory.readRegularFile('.failure.json').toString()),
     );
     if (failure.environment !== input.environment) {
+      return Object.freeze({ status: 'evidence_io' as const });
+    }
+    if (
+      checkpoint === null ||
+      failure.component !== checkpoint.component ||
+      failure.slot !== checkpoint.slot ||
+      failure.checkpoint !== checkpoint.checkpoint ||
+      failure.providerCallState !== checkpoint.providerCallState
+    ) {
       return Object.freeze({ status: 'evidence_io' as const });
     }
     return Object.freeze({
@@ -986,25 +1121,42 @@ function createV11Ledger(
   state: V11LedgerState,
 ): ReviewPlannerV11ProductAcceptanceLedger {
   const ledger: ReviewPlannerV11ProductAcceptanceLedger = Object.freeze({
-    recordFailure(value) {
+    recordFailure(authority, value) {
       const current = requireActiveV11LedgerState(ledger);
       const leaves = current.directory.listLeafNames();
       if (
         leaves.some(
           (leaf) => !(V11_PUBLIC_LEAVES as readonly string[]).includes(leaf),
         ) ||
-        !leaves.includes('.acceptance-reserved') ||
-        leaves.includes('.failure.json')
+        !leaves.includes('.acceptance-reserved')
       ) {
         throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
       let failure: ReviewPlannerV11ProductAcceptanceFailureRecord;
       try {
+        assertReviewPlannerV11ProductAcceptanceFailureAuthority(
+          authority,
+          current.environment,
+          value,
+        );
         failure = parseReviewPlannerV11ProductAcceptanceFailure(value);
       } catch {
-        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+        throw new Error('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
       }
       if (failure.environment !== current.environment) {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+      }
+      if (leaves.includes('.failure.json')) {
+        try {
+          const existing = parseReviewPlannerV11ProductAcceptanceFailure(
+            JSON.parse(
+              current.directory.readRegularFile('.failure.json').toString(),
+            ),
+          );
+          if (JSON.stringify(existing) === JSON.stringify(failure)) return;
+        } catch {
+          // The fail-closed terminal conflict below is authoritative.
+        }
         throw new Error('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
       publishV11(
@@ -1020,7 +1172,11 @@ function createV11Ledger(
       try {
         current.reservationGuard.close();
       } finally {
-        current.directory.close();
+        try {
+          current.cleanupInjectedHandles?.();
+        } finally {
+          current.directory.close();
+        }
       }
     },
   });
@@ -1036,6 +1192,10 @@ function requireActiveV11LedgerState(
     throw new Error('V11_PRODUCT_ACCEPTANCE_LEDGER_CLOSED');
   }
   state.reservationGuard.assertHeld();
+  assertReviewPlannerV11ProductAcceptanceOwner(state.owner, state.environment, [
+    'product',
+    'recovery',
+  ]);
   return state;
 }
 

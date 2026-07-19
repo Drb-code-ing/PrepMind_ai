@@ -62,7 +62,7 @@ describe('Review Planner V11 product-acceptance safe diagnostics', () => {
     ).toBe(false);
   });
 
-  it('rejects unknown enum values and impossible not_started dispatch state', () => {
+  it('rejects unknown enum values plus early indeterminate and late not_started state', () => {
     expect(
       reviewPlannerV11ProductAcceptanceCheckpointSchema.safeParse({
         ...checkpoint,
@@ -73,6 +73,12 @@ describe('Review Planner V11 product-acceptance safe diagnostics', () => {
       reviewPlannerV11ProductAcceptanceCheckpointSchema.safeParse({
         ...checkpoint,
         checkpoint: 'review_api_dispatch',
+      }).success,
+    ).toBe(false);
+    expect(
+      reviewPlannerV11ProductAcceptanceCheckpointSchema.safeParse({
+        ...checkpoint,
+        providerCallState: 'indeterminate',
       }).success,
     ).toBe(false);
   });
@@ -201,5 +207,18 @@ describe('Review Planner V11 product-acceptance safe diagnostics', () => {
     expect(
       readReviewPlannerV11ProductAcceptanceCheckpoints(records),
     ).toHaveLength(REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.length);
+  });
+
+  it('accepts interleaved slot-local canonical prefixes without global contamination', () => {
+    expect(
+      readReviewPlannerV11ProductAcceptanceCheckpoints([
+        checkpointRecord('review_api_activate', 'not_started'),
+        checkpointRecord('planner_browser_trace_baseline', 'not_started'),
+        checkpointRecord('review_api_facts_before', 'not_started'),
+        checkpointRecord('planner_browser_launch', 'not_started'),
+        checkpointRecord('review_api_trace_baseline', 'not_started'),
+        checkpointRecord('review_api_dispatch', 'indeterminate'),
+      ]),
+    ).toHaveLength(6);
   });
 });

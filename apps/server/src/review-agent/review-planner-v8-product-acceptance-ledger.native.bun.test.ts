@@ -19,16 +19,21 @@ import {
   finalizeReviewPlannerV8ProductAcceptancePresealedSuccess,
   readReviewPlannerV8ProductAcceptanceLedger,
   readReviewPlannerV11ProductAcceptanceLedger,
+  openReviewPlannerV11ProductAcceptanceRecoveryLedger,
   reserveReviewPlannerV8ProductAcceptanceLedger,
   reserveReviewPlannerV8ProductAcceptanceLedgerForTests,
   reserveReviewPlannerV11ProductAcceptanceLedger,
+  reserveReviewPlannerV11ProductAcceptanceLedgerForTests,
 } from './review-planner-v8-product-acceptance-ledger';
 import { reviewPlannerV8ProductAcceptanceEvidenceSchema } from './review-planner-v8-product-acceptance-evidence';
 import type { DurableFaultStage } from './windows-reparse-safe-relative-io';
 import {
   acquireReviewPlannerV8ProductAcceptanceOwner,
+  acquireReviewPlannerV11ProductAcceptanceOwner,
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  openReviewPlannerV11ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  prepareReviewPlannerV11ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
@@ -77,6 +82,21 @@ function v11Failure(
     terminal: 'operation_failed' as const,
     providerCallState: 'not_started' as const,
     ...overrides,
+  };
+}
+
+function v11Checkpoint(
+  checkpoint: string,
+  providerCallState: 'not_started' | 'indeterminate',
+  component: 'review' | 'planner' = 'review',
+  slot: 'api' | 'browser' = 'api',
+) {
+  return {
+    schemaVersion: 'phase-6.9.5-v11-product-acceptance-checkpoint-v1' as const,
+    component,
+    slot,
+    checkpoint,
+    providerCallState,
   };
 }
 
@@ -300,6 +320,64 @@ async function createRoot() {
     recursive: true,
   });
   return root;
+}
+
+async function prepareV11Journal(root: string) {
+  const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+    repoRoot: root,
+    environment: 'branch',
+    role: 'product',
+  });
+  if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+  const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+    repoRoot: root,
+    environment: 'branch',
+    owner: acquisition.owner,
+  });
+  const journal = await prepareReviewPlannerV11ProductAcceptanceRecoveryJournal(
+    {
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    },
+  );
+  return { owner: acquisition.owner, ledger, journal };
+}
+
+function runV11DispatchHardExitChild(root: string) {
+  const ledgerUrl = pathToFileURL(
+    resolve(
+      'apps/server/src/review-agent/review-planner-v8-product-acceptance-ledger.ts',
+    ),
+  ).href;
+  const recoveryUrl = pathToFileURL(
+    resolve(
+      'apps/server/src/review-agent/review-planner-v8-product-acceptance-recovery.ts',
+    ),
+  ).href;
+  const script = [
+    'const ledgerModule=await import(process.env.TEST_LEDGER_URL);',
+    'const recoveryModule=await import(process.env.TEST_RECOVERY_URL);',
+    "const acquired=await recoveryModule.acquireReviewPlannerV11ProductAcceptanceOwner({repoRoot:process.env.TEST_ROOT,environment:'branch',role:'product'});",
+    "if(acquired.status!=='acquired')process.exit(90);",
+    "await ledgerModule.reserveReviewPlannerV11ProductAcceptanceLedger({repoRoot:process.env.TEST_ROOT,environment:'branch',owner:acquired.owner});",
+    "const journal=await recoveryModule.prepareReviewPlannerV11ProductAcceptanceRecoveryJournal({repoRoot:process.env.TEST_ROOT,environment:'branch',owner:acquired.owner});",
+    "journal.appendCheckpoint({schemaVersion:'phase-6.9.5-v11-product-acceptance-checkpoint-v1',component:'review',slot:'api',checkpoint:'review_api_activate',providerCallState:'not_started'});",
+    "journal.appendCheckpoint({schemaVersion:'phase-6.9.5-v11-product-acceptance-checkpoint-v1',component:'review',slot:'api',checkpoint:'review_api_facts_before',providerCallState:'not_started'});",
+    "journal.appendCheckpoint({schemaVersion:'phase-6.9.5-v11-product-acceptance-checkpoint-v1',component:'review',slot:'api',checkpoint:'review_api_trace_baseline',providerCallState:'not_started'});",
+    "journal.appendCheckpoint({schemaVersion:'phase-6.9.5-v11-product-acceptance-checkpoint-v1',component:'review',slot:'api',checkpoint:'review_api_dispatch',providerCallState:'indeterminate'});",
+    'process.exit(77);',
+  ].join('');
+  return spawnSync(process.execPath, ['-e', script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      TEST_LEDGER_URL: ledgerUrl,
+      TEST_RECOVERY_URL: recoveryUrl,
+      TEST_ROOT: root,
+    },
+    encoding: 'utf8',
+  });
 }
 
 function runLedgerHardExitChild(
@@ -2197,14 +2275,55 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('writes and reads the exact strict V11 public failure projection', async () => {
+  it('rejects an unbound V11 public failure write', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
     const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
       repoRoot: root,
       environment: 'branch',
+      owner: acquisition.owner,
     });
+
+    try {
+      expect(() =>
+        ledger.recordFailure(
+          Object.freeze({ assertAuthorized() {} }) as never,
+          v11Failure(),
+        ),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
+    } finally {
+      ledger.close();
+      acquisition.owner.close();
+    }
+  });
+
+  it('writes and reads the exact strict V11 public failure projection', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
     const expected = v11Failure();
-    ledger.recordFailure(expected);
-    ledger.close();
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      const authority = journal.issueFailureAuthority();
+      authority.assertAuthorized();
+      expect(journal.latestCheckpoint()).toMatchObject({
+        checkpoint: expected.checkpoint,
+        providerCallState: expected.providerCallState,
+      });
+      ledger.recordFailure(authority, expected);
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
 
     const failurePath = join(
       root,
@@ -2232,26 +2351,45 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     });
   });
 
-  it('rejects V8/V10 identity injection, unknown leaves, and impossible dispatch state', async () => {
-    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
-      repoRoot: root,
-      environment: 'branch',
-    });
-    expect(() =>
-      ledger.recordFailure({
-        ...v11Failure(),
-        schemaVersion:
-          REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
-      }),
-    ).toThrow('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
-    expect(() =>
-      ledger.recordFailure({
-        ...v11Failure(),
-        checkpoint: 'review_api_dispatch',
-      }),
-    ).toThrow('V11_PRODUCT_ACCEPTANCE_RECORD_INVALID');
-    ledger.recordFailure(v11Failure());
-    ledger.close();
+  it('rejects V8/V10 identity injection plus early indeterminate and late not_started checkpoints', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      const authority = journal.issueFailureAuthority();
+      expect(() =>
+        ledger.recordFailure(authority, {
+          ...v11Failure(),
+          schemaVersion:
+            REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
+        }),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
+      expect(() =>
+        journal.appendCheckpoint(
+          v11Checkpoint('review_api_trace_baseline', 'indeterminate'),
+        ),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_INVALID');
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_trace_baseline', 'not_started'),
+      );
+      expect(() =>
+        journal.appendCheckpoint(
+          v11Checkpoint('review_api_dispatch', 'not_started'),
+        ),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_INVALID');
+      ledger.recordFailure(
+        authority,
+        v11Failure({ checkpoint: 'review_api_trace_baseline' }),
+      );
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
 
     const publicPath = join(
       root,
@@ -2283,14 +2421,383 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     ).resolves.toEqual({ status: 'evidence_io' });
   });
 
-  it('does not alter V8 or V10 ledger behavior', async () => {
-    await finishBranch(root);
-    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
+  it('keeps checkpoint prefixes slot-local while projecting the latest strict checkpoint', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint(
+          'planner_browser_trace_baseline',
+          'not_started',
+          'planner',
+          'browser',
+        ),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_trace_baseline', 'not_started'),
+      );
+      const dispatch = journal.appendCheckpoint(
+        v11Checkpoint('review_api_dispatch', 'indeterminate'),
+      );
+      expect(journal.latestCheckpoint()).toEqual(dispatch);
+      ledger.recordFailure(
+        journal.issueFailureAuthority(),
+        v11Failure({
+          checkpoint: 'review_api_dispatch',
+          providerCallState: 'indeterminate',
+        }),
+      );
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({
+      status: 'operation_failed',
+      checkpoint: 'review_api_dispatch',
+      providerCallState: 'indeterminate',
+    });
+  });
+
+  it('allows one V11 reservation and shares the global runtime owner lease with V8/V10', async () => {
+    const v11 = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
       environment: 'branch',
+      role: 'product',
     });
-    ledger.recordFailure(v11Failure());
-    ledger.close();
+    expect(v11.status).toBe('acquired');
+    if (v11.status !== 'acquired') throw new Error('owner unavailable');
+    try {
+      await expect(
+        acquireReviewPlannerV11ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'main',
+          role: 'recovery',
+        }),
+      ).resolves.toEqual({ status: 'owner_active' });
+      await expect(
+        acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'branch',
+          role: 'product',
+        }),
+      ).resolves.toEqual({ status: 'owner_active' });
+      await expect(
+        acquireReviewPlannerV8ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'main',
+          role: 'recovery',
+          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+        }),
+      ).resolves.toEqual({ status: 'owner_active' });
+      const first = await reserveReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: v11.owner,
+      });
+      try {
+        await expect(
+          reserveReviewPlannerV11ProductAcceptanceLedger({
+            repoRoot: root,
+            environment: 'branch',
+            owner: v11.owner,
+          }),
+        ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_ALREADY_RESERVED');
+      } finally {
+        first.close();
+      }
+    } finally {
+      v11.owner.close();
+    }
+  });
+
+  it('rejects a V11 private recovery junction without writing outside the repo', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'prepmind-v11-outside-'));
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    await mkdir(join(recoveryPath, '..'), { recursive: true });
+    await symlink(outside, recoveryPath, 'junction');
+    try {
+      await expect(
+        acquireReviewPlannerV11ProductAcceptanceOwner({
+          repoRoot: root,
+          environment: 'branch',
+          role: 'product',
+        }),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_OWNER_IO');
+      expect(await readdir(outside)).toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('recovers a hard-exited dispatch checkpoint without external recovery calls or a second terminal', async () => {
+    const child = runV11DispatchHardExitChild(root);
+    expect({ status: child.status, stderr: child.stderr }).toEqual({
+      status: 77,
+      stderr: '',
+    });
+    const externalRecoveryCalls = {
+      provider: 0,
+      api: 0,
+      browser: 0,
+      defaultOff: 0,
+      cleanup: 0,
+    };
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    expect(acquisition.status).toBe('acquired');
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const journal = await openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    const ledger = await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    const failurePath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+      '.failure.json',
+    );
+    try {
+      expect(journal.latestCheckpoint()).toMatchObject({
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_dispatch',
+        providerCallState: 'indeterminate',
+      });
+      journal.projectRecoveryOnly(ledger);
+      const firstTerminal = await readFile(failurePath, 'utf8');
+      journal.projectRecoveryOnly(ledger);
+      await expect(readFile(failurePath, 'utf8')).resolves.toBe(firstTerminal);
+      expect(externalRecoveryCalls).toEqual({
+        provider: 0,
+        api: 0,
+        browser: 0,
+        defaultOff: 0,
+        cleanup: 0,
+      });
+    } finally {
+      ledger.close();
+      journal.close();
+      acquisition.owner.close();
+    }
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toMatchObject({
+      status: 'operation_failed',
+      checkpoint: 'review_api_dispatch',
+      providerCallState: 'indeterminate',
+    });
+  });
+
+  it('fails closed for malformed private checkpoints during recovery', async () => {
+    const child = runV11DispatchHardExitChild(root);
+    expect(child.status).toBe(77);
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    await writeFile(
+      join(recoveryPath, 'checkpoint-004-review_api_dispatch.json'),
+      '{not-json}\n',
+    );
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const journal = await openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    const ledger = await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    try {
+      expect(() => journal.projectRecoveryOnly(ledger)).toThrow(
+        'V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO',
+      );
+    } finally {
+      ledger.close();
+      journal.close();
+      acquisition.owner.close();
+    }
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('leaves no V11 public failure leaf when durable failure publication faults after a checkpoint', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    let renameCalls = 0;
+    const ledger = await reserveReviewPlannerV11ProductAcceptanceLedgerForTests(
+      {
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+        injector: (stage: DurableFaultStage) =>
+          stage === 'rename' && ++renameCalls === 2,
+      },
+    );
+    const journal =
+      await prepareReviewPlannerV11ProductAcceptanceRecoveryJournal({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      expect(() =>
+        ledger.recordFailure(journal.issueFailureAuthority(), v11Failure()),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    } finally {
+      ledger.close();
+      journal.close();
+      acquisition.owner.close();
+    }
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+    await expect(
+      readdir(
+        join(
+          root,
+          ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+            'branch',
+          ),
+        ),
+      ),
+    ).resolves.toEqual(['.acceptance-reserved', '.failure.json.prepare']);
+  });
+
+  it('refuses a conflicting V11 public terminal without replacing it', async () => {
+    const child = runV11DispatchHardExitChild(root);
+    expect(child.status).toBe(77);
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const journal = await openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquisition.owner,
+    });
+    const firstLedger =
+      await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+    const failurePath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+      '.failure.json',
+    );
+    try {
+      journal.projectRecoveryOnly(firstLedger);
+    } finally {
+      firstLedger.close();
+    }
+    const conflict = v11Failure({
+      checkpoint: 'review_api_trace_baseline',
+      providerCallState: 'not_started',
+    });
+    await writeFile(failurePath, `${JSON.stringify(conflict)}\n`);
+    const conflictingLedger =
+      await openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+    try {
+      expect(() => journal.projectRecoveryOnly(conflictingLedger)).toThrow(
+        'V11_PRODUCT_ACCEPTANCE_RECORD_INVALID',
+      );
+      await expect(readFile(failurePath, 'utf8')).resolves.toBe(
+        `${JSON.stringify(conflict)}\n`,
+      );
+    } finally {
+      conflictingLedger.close();
+      journal.close();
+      acquisition.owner.close();
+    }
+    await expect(
+      readReviewPlannerV11ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('does not alter V8 or V10 ledger behavior', async () => {
+    await finishBranch(root);
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      ledger.recordFailure(journal.issueFailureAuthority(), v11Failure());
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
 
     await expect(
       readReviewPlannerV8ProductAcceptanceLedger({
@@ -2306,11 +2813,19 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
   });
 
   it('fails closed for a partial V11 reservation without a public failure projection', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
     const ledger = await reserveReviewPlannerV11ProductAcceptanceLedger({
       repoRoot: root,
       environment: 'branch',
+      owner: acquisition.owner,
     });
     ledger.close();
+    acquisition.owner.close();
 
     await expect(
       readReviewPlannerV11ProductAcceptanceLedger({

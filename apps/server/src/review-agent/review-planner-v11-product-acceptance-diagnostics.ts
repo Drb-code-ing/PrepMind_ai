@@ -142,20 +142,25 @@ export function readReviewPlannerV11ProductAcceptanceCheckpoints(
     throw new Error('V11_PRODUCT_ACCEPTANCE_DIAGNOSTIC_INVALID');
   }
   const records: ReviewPlannerV11ProductAcceptanceCheckpointRecord[] = [];
+  const nextCheckpointIndex = new Map<string, number>();
   for (const value of values) {
     const record = parseReviewPlannerV11ProductAcceptanceCheckpoint(value);
-    if (
-      record.checkpoint !==
-      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS[records.length]
-    ) {
+    const boundary = `${record.component}_${record.slot}`;
+    const slotCheckpoints =
+      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.filter((checkpoint) =>
+        checkpoint.startsWith(`${boundary}_`),
+      );
+    const expectedIndex = nextCheckpointIndex.get(boundary) ?? 0;
+    if (record.checkpoint !== slotCheckpoints[expectedIndex]) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_DIAGNOSTIC_INVALID');
     }
+    nextCheckpointIndex.set(boundary, expectedIndex + 1);
     records.push(record);
   }
   return Object.freeze(records);
 }
 
-function parseReviewPlannerV11ProductAcceptanceCheckpoint(
+export function parseReviewPlannerV11ProductAcceptanceCheckpoint(
   value: unknown,
 ): ReviewPlannerV11ProductAcceptanceCheckpointRecord {
   if (containsForbiddenDiagnosticKey(value)) {
@@ -183,7 +188,6 @@ function providerCallStateIsImpossible(value: {
   checkpoint: ReviewPlannerV11ProductAcceptanceCheckpoint;
   providerCallState: ReviewPlannerV11ProviderCallState;
 }) {
-  if (value.providerCallState !== 'not_started') return false;
   const slotCheckpoints =
     REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS.filter((checkpoint) =>
       checkpoint.startsWith(`${value.component}_${value.slot}_`),
@@ -192,7 +196,10 @@ function providerCallStateIsImpossible(value: {
     `${value.component}_${value.slot}_dispatch` as ReviewPlannerV11ProductAcceptanceCheckpoint;
   const dispatchIndex = slotCheckpoints.indexOf(dispatch);
   const checkpointIndex = slotCheckpoints.indexOf(value.checkpoint);
-  return checkpointIndex >= dispatchIndex;
+  if (checkpointIndex < 0 || dispatchIndex < 0) return true;
+  return checkpointIndex < dispatchIndex
+    ? value.providerCallState !== 'not_started'
+    : value.providerCallState !== 'indeterminate';
 }
 
 function containsForbiddenDiagnosticKey(value: unknown) {
