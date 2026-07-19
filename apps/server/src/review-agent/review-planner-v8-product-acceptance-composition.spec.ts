@@ -1058,6 +1058,119 @@ describe('V11 execution-bridge composition', () => {
     }
   });
 
+  it.each([
+    [
+      'admits the safe mock Flash Chat model',
+      { AI_MODEL: 'deepseek-v4-flash' },
+      'owner',
+    ],
+    ['rejects a live provider mode', { AI_PROVIDER_MODE: 'live' }, 'preflight'],
+    [
+      'rejects enabled live calls',
+      { AI_ENABLE_LIVE_CALLS: 'true' },
+      'preflight',
+    ],
+    [
+      'rejects enabled Review model gate',
+      { REVIEW_AGENT_MODEL_ENABLED: 'true' },
+      'preflight',
+    ],
+    [
+      'rejects enabled Planner model gate',
+      { PLANNER_AGENT_MODEL_ENABLED: 'true' },
+      'preflight',
+    ],
+    [
+      'rejects enabled product acceptance capability',
+      { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true' },
+      'preflight',
+    ],
+  ] as const)(
+    'V11 canonical preflight %s',
+    async (_label, override, expectedStage) => {
+      const evidenceDirectory =
+        REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
+      const evidencePaths = (
+        await readdir(resolve(REPO_ROOT, evidenceDirectory))
+      )
+        .sort()
+        .map((name) => `${evidenceDirectory}/${name}`);
+      const environment = {
+        ...buildReviewPlannerV8DefaultOffEnvironment(),
+        ...override,
+      };
+      const acquireOwner = jest.fn(async () => ({
+        status: 'owner_active' as const,
+      }));
+      const composition =
+        createDefaultReviewPlannerV11ProductAcceptanceComposition(REPO_ROOT, {
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: jest.fn(async () => undefined) } as never,
+          pairedEvidenceAuthority: {
+            profile: 'v10',
+            readCommittedSuccess: jest.fn(async () => ({
+              providerAttemptCount: 23 as const,
+              pairedAdmissionCount: 22 as const,
+              evidenceSha256: SHA,
+            })),
+          },
+          boundary: {
+            acquireOwner,
+            runtime: {
+              readOnlyExec: async (input: {
+                file: string;
+                args: readonly string[];
+              }) => {
+                if (input.file === 'git' && input.args[0] === 'status') {
+                  return `# branch.oid ${COMMIT}\n# branch.head codex/v11-preflight-fake\n`;
+                }
+                if (input.file === 'git' && input.args[0] === 'ls-files') {
+                  return ordinaryEvidenceIndex(evidencePaths);
+                }
+                if (input.file === 'docker' && input.args[0] === 'compose') {
+                  return `${CONTAINER_ID}\n`;
+                }
+                if (input.file === 'docker' && input.args[0] === 'inspect') {
+                  return JSON.stringify({
+                    id: CONTAINER_ID,
+                    environment: Object.entries(environment).map(
+                      ([key, value]) => `${key}=${value}`,
+                    ),
+                    status: 'running',
+                    health: 'healthy',
+                    labels: {
+                      'com.docker.compose.project': 'docker',
+                      'com.docker.compose.service': 'server',
+                    },
+                    ports: {
+                      '3001/tcp': [{ HostIp: '127.0.0.1', HostPort: '3001' }],
+                    },
+                  });
+                }
+                throw new Error('unexpected read-only process');
+              },
+              fetchHealth: async () => new Response(null, { status: 200 }),
+            },
+          },
+        } as never);
+
+      try {
+        await expect(
+          runReviewPlannerV11ProductAcceptanceComposition({
+            environment: 'branch',
+            repoRoot: REPO_ROOT,
+            ports: composition.ports,
+          }),
+        ).resolves.toEqual({ status: 'blocked', stage: expectedStage });
+        expect(acquireOwner).toHaveBeenCalledTimes(
+          expectedStage === 'owner' ? 1 : 0,
+        );
+      } finally {
+        await composition.dispose();
+      }
+    },
+  );
+
   it('revalidates canonical V11 repo and default-off facts through adapters after owner acquisition', async () => {
     const evidenceDirectory =
       REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;

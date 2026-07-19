@@ -2408,7 +2408,7 @@ async function runDefaultReviewPlannerV11ProductPreflight(
       repoRoot,
       input.environment,
     );
-    await assertCurrentServerDefaultOff(repoRoot, runtimeBoundary);
+    await assertCurrentServerV11PreflightDefaultOff(repoRoot, runtimeBoundary);
     if (input.environment === 'main') {
       const branch = await readReviewPlannerV11ProductAcceptanceLedger({
         repoRoot,
@@ -3568,6 +3568,37 @@ async function assertCurrentServerDefaultOff(
     runtimeBoundary,
   );
   assertDefaultOffEnvironment(inspected.environment);
+}
+
+async function assertCurrentServerV11PreflightDefaultOff(
+  repoRoot: string,
+  runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+) {
+  const id = await readServerContainerId(repoRoot, undefined, runtimeBoundary);
+  if (!id) throw new Error();
+  const inspected = await waitForDefaultServerReadiness(
+    repoRoot,
+    id,
+    runtimeBoundary,
+  );
+  assertV11PreflightDefaultOffEnvironment(inspected.environment);
+}
+
+function assertV11PreflightDefaultOffEnvironment(entries: readonly string[]) {
+  const environment = new Map(
+    entries.map((entry) => {
+      const index = entry.indexOf('=');
+      return [entry.slice(0, index), entry.slice(index + 1)] as const;
+    }),
+  );
+  const model = environment.get('AI_MODEL');
+  if (model !== 'deepseek-v4-flash' && model !== 'deepseek-v4-pro') {
+    throw new Error();
+  }
+  assertExpectedServerEnvironment(entries, {
+    ...buildReviewPlannerV8DefaultOffEnvironment(),
+    AI_MODEL: model,
+  });
 }
 
 export async function waitForReviewPlannerV8ServerReadiness(input: {

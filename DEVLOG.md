@@ -4,6 +4,8 @@
 
 > 2026-07-20 — 对齐遗留 Review/Planner server 测试 fixture 与 index-only candidate contract：只更新 V1/V4/V6/V7 controlled-eval 和 service mock 输出及过时负例，未改生产、Agent、AI 或 V11 行为；该修复恢复全量 server 静态门禁，不产生新的 Live/Docker/browser 证据。
 
+> 2026-07-20 — 修正 V11 branch product preflight 对安全默认 Chat 配置的误拦截：仅在 `mock/default-off` 且所有 gate、密钥与产品能力均关闭时，允许当前 Chat 的 `deepseek-v4-flash`（并保留恢复目标 `deepseek-v4-pro`）；V8/V10 恢复与 activation 断言未放宽，尚未执行 V11 runtime。
+
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
