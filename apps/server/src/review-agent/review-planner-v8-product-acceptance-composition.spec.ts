@@ -1258,6 +1258,239 @@ describe('V8 default composition resource lifecycle', () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['V8', REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE],
+    ['V10', REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE],
+  ] as const)(
+    'keeps the adapter-owned API baseline available to the real trace reader for legacy %s runs',
+    async (_label, profile) => {
+      const disconnect = jest.fn(async () => undefined);
+      const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+        REPO_ROOT,
+        {
+          profile,
+          env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+          prisma: { $disconnect: disconnect } as never,
+        },
+      );
+      const resources = product.ports.generateResources({
+        environment: 'branch',
+        utcStamp: '20260719T060000Z',
+      } as never);
+      let traceListCalls = 0;
+      const fetchMock = jest
+        .spyOn(global, 'fetch')
+        .mockImplementation(async (input) => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          if (url === 'http://127.0.0.1:3001/auth/register') {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  user: { id: 'review-account-id' },
+                  accessToken: 'review-account-token',
+                },
+              }),
+            );
+          }
+          if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
+            traceListCalls += 1;
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  runs:
+                    traceListCalls === 1 ? [] : [{ id: 'review-api-trace' }],
+                },
+              }),
+            );
+          }
+          if (
+            url ===
+            'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-480'
+          ) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  modelObservations: {
+                    review: {
+                      attempted: true,
+                      degraded: false,
+                      disposition: 'candidate_applied',
+                      provenance: 'live_candidate',
+                      durationMs: 123,
+                      usage: { inputTokens: 100, outputTokens: 20 },
+                    },
+                    planner: {
+                      attempted: false,
+                      degraded: true,
+                      disposition: 'not_eligible',
+                      provenance: 'local_deterministic',
+                      durationMs: 0,
+                      usage: { inputTokens: 0, outputTokens: 0 },
+                    },
+                  },
+                },
+              }),
+            );
+          }
+          if (url === 'http://127.0.0.1:3001/agent-traces/review-api-trace') {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                data: browserTraceDetailEnvelope(),
+              }),
+            );
+          }
+          throw new Error(`unexpected fetch: ${url}`);
+        });
+
+      try {
+        await product.ports.registerAccount({
+          component: 'review',
+          email: resources.syntheticEmails.review,
+          password: resources.passwords.review,
+        });
+        const dependencies = product.ports.createRunnerDependencies(
+          {} as never,
+        );
+
+        await expect(
+          dependencies.dispatchApi({
+            component: 'review',
+            acceptanceCapability: resources.capabilities.review,
+          }),
+        ).resolves.toMatchObject({ target: { attempted: true } });
+        await expect(
+          dependencies.readPersistedTraces({
+            component: 'review',
+            slot: 'api',
+          }),
+        ).resolves.toMatchObject([
+          { traceId: 'review-api-trace', component: 'review' },
+        ]);
+        expect(traceListCalls).toBe(2);
+      } finally {
+        fetchMock.mockRestore();
+        await product.dispose();
+      }
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not duplicate the V11 runner-owned API trace baseline before dispatch', async () => {
+    const disconnect = jest.fn(async () => undefined);
+    const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
+      REPO_ROOT,
+      {
+        env: { DATABASE_URL: 'postgresql://acceptance.invalid/database' },
+        prisma: { $disconnect: disconnect } as never,
+      },
+    );
+    const resources = product.ports.generateResources({
+      environment: 'branch',
+      utcStamp: '20260719T060000Z',
+    } as never);
+    let traceListCalls = 0;
+    const fetchMock = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (url === 'http://127.0.0.1:3001/auth/register') {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                user: { id: 'review-account-id' },
+                accessToken: 'review-account-token',
+              },
+            }),
+          );
+        }
+        if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
+          traceListCalls += 1;
+          return new Response(
+            JSON.stringify({ success: true, data: { runs: [] } }),
+          );
+        }
+        if (
+          url ===
+          'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-480'
+        ) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                modelObservations: {
+                  review: {
+                    attempted: true,
+                    degraded: false,
+                    disposition: 'candidate_applied',
+                    provenance: 'live_candidate',
+                    durationMs: 123,
+                    usage: { inputTokens: 100, outputTokens: 20 },
+                  },
+                  planner: {
+                    attempted: false,
+                    degraded: true,
+                    disposition: 'not_eligible',
+                    provenance: 'local_deterministic',
+                    durationMs: 0,
+                    usage: { inputTokens: 0, outputTokens: 0 },
+                  },
+                },
+              },
+            }),
+          );
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+    try {
+      await product.ports.registerAccount({
+        component: 'review',
+        email: resources.syntheticEmails.review,
+        password: resources.passwords.review,
+      });
+      const dependencies = product.ports.createRunnerDependencies({} as never);
+      const v11Dependencies = dependencies as unknown as {
+        captureTraceBaseline(input: {
+          component: 'review' | 'planner';
+          slot: 'api' | 'browser';
+        }): Promise<void>;
+      };
+
+      await v11Dependencies.captureTraceBaseline({
+        component: 'review',
+        slot: 'api',
+      });
+      await expect(
+        dependencies.dispatchApi({
+          component: 'review',
+          acceptanceCapability: resources.capabilities.review,
+        }),
+      ).resolves.toMatchObject({ target: { attempted: true } });
+      expect(traceListCalls).toBe(1);
+    } finally {
+      fetchMock.mockRestore();
+      await product.dispose();
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('builds a V11 diagnostics port from the opaque Task3 journal and ledger authority', () => {
     const authority = Object.freeze({ assertAuthorized: jest.fn() });
     const journal = {
@@ -1343,8 +1576,45 @@ describe('V8 default composition resource lifecycle', () => {
       'first durable write failed',
     );
     expect(() => diagnostics.publishFailure()).not.toThrow();
-    expect(journal.issueFailureAuthority).toHaveBeenCalledTimes(2);
+    expect(journal.latestCheckpoint).toHaveBeenCalledTimes(1);
+    expect(journal.issueFailureAuthority).toHaveBeenCalledTimes(1);
     expect(ledger.recordFailure).toHaveBeenCalledTimes(2);
+    const [firstAuthority, firstFailure] = ledger.recordFailure.mock.calls[0];
+    const [secondAuthority, secondFailure] = ledger.recordFailure.mock.calls[1];
+    expect(secondAuthority).toBe(firstAuthority);
+    expect(secondFailure).toBe(firstFailure);
+    expect(firstFailure).toEqual({
+      schemaVersion:
+        REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+      environment: 'branch',
+      component: 'review',
+      slot: 'api',
+      checkpoint: 'review_api_activate',
+      terminal: 'operation_failed',
+      providerCallState: 'not_started',
+    });
+  });
+
+  it('does not issue a V11 failure authority when the first safe journal read fails', () => {
+    const journal = {
+      appendCheckpoint: jest.fn((value: unknown) => value),
+      latestCheckpoint: jest.fn(() => {
+        throw new Error('journal read failed');
+      }),
+      issueFailureAuthority: jest.fn(),
+    };
+    const ledger = { recordFailure: jest.fn() };
+    const diagnostics = createReviewPlannerV11ProductAcceptanceDiagnosticsPort({
+      environment: 'branch',
+      journal: journal as never,
+      ledger: ledger as never,
+    });
+    diagnostics.checkpoint('review_api_activate');
+
+    expect(() => diagnostics.publishFailure()).toThrow('journal read failed');
+    expect(journal.latestCheckpoint).toHaveBeenCalledTimes(1);
+    expect(journal.issueFailureAuthority).not.toHaveBeenCalled();
+    expect(ledger.recordFailure).not.toHaveBeenCalled();
   });
 
   it('parses an inactive deterministic observation with zero duration from the live suggestion envelope', async () => {

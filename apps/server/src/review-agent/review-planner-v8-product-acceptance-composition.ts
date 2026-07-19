@@ -33,6 +33,7 @@ import {
   type ReviewPlannerV8ProductAcceptanceEnvironment,
   type ReviewPlannerV8ProductAcceptanceOwner,
   type ReviewPlannerV8ProductAcceptanceRecoveryJournal,
+  type ReviewPlannerV11ProductAcceptanceFailureAuthority,
   type ReviewPlannerV11ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
 import {
@@ -55,6 +56,7 @@ import {
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS,
   parseReviewPlannerV11ProductAcceptanceCheckpoint,
   type ReviewPlannerV11ProductAcceptanceCheckpoint,
+  type ReviewPlannerV11ProductAcceptanceFailureRecord,
 } from './review-planner-v11-product-acceptance-diagnostics';
 
 const execFileAsync = promisify(execFile);
@@ -92,6 +94,12 @@ export function createReviewPlannerV11ProductAcceptanceDiagnosticsPort(input: {
   ledger: ReviewPlannerV11ProductAcceptanceLedger;
 }): ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
   let failurePublished = false;
+  let cachedFailure:
+    | Readonly<{
+        authority: ReviewPlannerV11ProductAcceptanceFailureAuthority;
+        failure: ReviewPlannerV11ProductAcceptanceFailureRecord;
+      }>
+    | undefined;
   return Object.freeze({
     checkpoint(value: ReviewPlannerV11ProductAcceptanceCheckpoint) {
       const record = toReviewPlannerV11Checkpoint(value);
@@ -99,19 +107,29 @@ export function createReviewPlannerV11ProductAcceptanceDiagnosticsPort(input: {
     },
     publishFailure() {
       if (failurePublished) return;
-      const latest = parseReviewPlannerV11ProductAcceptanceCheckpoint(
-        input.journal.latestCheckpoint(),
+      if (!cachedFailure) {
+        const latest = parseReviewPlannerV11ProductAcceptanceCheckpoint(
+          input.journal.latestCheckpoint(),
+        );
+        const failure = Object.freeze({
+          schemaVersion:
+            REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+          environment: input.environment,
+          component: latest.component,
+          slot: latest.slot,
+          checkpoint: latest.checkpoint,
+          terminal: 'operation_failed' as const,
+          providerCallState: latest.providerCallState,
+        } satisfies ReviewPlannerV11ProductAcceptanceFailureRecord);
+        cachedFailure = Object.freeze({
+          authority: input.journal.issueFailureAuthority(),
+          failure,
+        });
+      }
+      input.ledger.recordFailure(
+        cachedFailure.authority,
+        cachedFailure.failure,
       );
-      input.ledger.recordFailure(input.journal.issueFailureAuthority(), {
-        schemaVersion:
-          REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
-        environment: input.environment,
-        component: latest.component,
-        slot: latest.slot,
-        checkpoint: latest.checkpoint,
-        terminal: 'operation_failed',
-        providerCallState: latest.providerCallState,
-      });
       failurePublished = true;
     },
   });
@@ -1705,6 +1723,13 @@ function createDefaultRunnerDependencies(
       );
     },
     async dispatchApi({ component, acceptanceCapability }) {
+      const traceBaselineKey = `${component}:api`;
+      if (!state.traceBaselines.has(traceBaselineKey)) {
+        state.traceBaselines.set(
+          traceBaselineKey,
+          await readLiveTraceIds(state.accounts[component]?.token),
+        );
+      }
       return fetchSuggestion(
         state.accounts[component]?.token,
         acceptanceCapability,
