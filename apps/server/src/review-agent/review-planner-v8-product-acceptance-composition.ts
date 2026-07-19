@@ -41,6 +41,7 @@ import {
   type ReviewPlannerV8ProductAcceptanceRunResult,
 } from './review-planner-v8-product-acceptance-runner';
 import {
+  normalizeReviewPlannerProductAcceptanceSchemaRecord,
   parseReviewPlannerProductAcceptanceArguments,
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
@@ -217,7 +218,7 @@ type RecoveryPreflight =
     }>;
 
 type RecoveryCleanupReceipt = Readonly<{
-  schemaVersion: 'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1';
+  schemaVersion: string;
   syntheticAccounts: 0;
   fixtures: 0;
   traces: 0;
@@ -730,14 +731,15 @@ async function runReviewPlannerProductAcceptanceRecoveryCli(
       if (!recoveryState.stages.restoreClaimed) {
         journal.appendStage('restore.claimed', '');
       }
-      const restore =
-        reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.parse(
-          await input.ports.restoreDefaultOff({ environment, journal }),
-        );
+      const restoreRaw = await input.ports.restoreDefaultOff({
+        environment,
+        journal,
+      });
+      const restore = parseRecoveryDefaultOffReceipt(profile, restoreRaw);
       if (restore.component !== 'recovery') throw new Error();
       journal.appendStage(
         'restore.verified.json',
-        `${JSON.stringify(restore)}\n`,
+        `${JSON.stringify(restoreRaw)}\n`,
       );
       recoveryState = journal.snapshot();
     }
@@ -752,7 +754,7 @@ async function runReviewPlannerProductAcceptanceRecoveryCli(
         manifest: preflight.manifest,
         journal,
       });
-      assertRecoveryCleanupReceipt(cleanup);
+      assertRecoveryCleanupReceipt(cleanup, profile);
       journal.appendStage(
         'cleanup.verified.json',
         `${JSON.stringify(cleanup)}\n`,
@@ -909,6 +911,35 @@ export function serializeReviewPlannerV8ProductAcceptanceCliSummary(
   return JSON.stringify(summary);
 }
 
+export function serializeReviewPlannerV10ProductAcceptanceCliFailure(
+  kind: CliKind,
+  error: unknown,
+): string {
+  if (
+    error instanceof Error &&
+    error.message === 'V10_PRODUCT_ACCEPTANCE_CONFIRMATION_REQUIRED'
+  ) {
+    return JSON.stringify({
+      stage: 'preflight',
+      status: 'blocked',
+      code: 'confirmation_required',
+    });
+  }
+  return JSON.stringify(
+    kind === 'product'
+      ? {
+          stage: 'operation',
+          status: 'failed',
+          code: 'operation_failed',
+        }
+      : {
+          stage: 'recovery',
+          status: 'failed',
+          code: 'recovery_required',
+        },
+  );
+}
+
 function preflightResult(
   preflight: Extract<ProductPreflight, { status: 'blocked' }>,
 ) {
@@ -974,15 +1005,36 @@ function calculateSafeCny(usage: {
   ).costCny;
 }
 
+function parseRecoveryDefaultOffReceipt(
+  profile: ReviewPlannerProductAcceptanceProfile,
+  value: unknown,
+) {
+  const normalized = normalizeReviewPlannerProductAcceptanceSchemaRecord(
+    profile,
+    'defaultOff',
+    value,
+  );
+  if (normalized === null) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_DEFAULT_OFF_INVALID');
+  }
+  return reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.parse(
+    normalized,
+  );
+}
+
 function assertRecoveryCleanupReceipt(
   value: RecoveryCleanupReceipt,
+  profile: ReviewPlannerProductAcceptanceProfile,
 ): asserts value is RecoveryCleanupReceipt {
   if (
     !value ||
     Object.keys(value).sort().join(',') !==
       'browserProcesses,browserProfiles,fixtures,probeAccounts,schemaVersion,syntheticAccounts,traces' ||
-    value.schemaVersion !==
-      'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1' ||
+    normalizeReviewPlannerProductAcceptanceSchemaRecord(
+      profile,
+      'recoveryCleanup',
+      value,
+    ) === null ||
     value.syntheticAccounts !== 0 ||
     value.fixtures !== 0 ||
     value.traces !== 0 ||
@@ -3118,7 +3170,7 @@ export function createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition
       });
       if (remaining !== 0) throw new Error();
       return {
-        schemaVersion: 'phase-6.9.5-v8-product-acceptance-recovery-cleanup-v1',
+        schemaVersion: profile.schemas.recoveryCleanup,
         syntheticAccounts: 0,
         fixtures: 0,
         traces: 0,

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import {
   executeReviewPlannerV10ProductAcceptanceProductCli,
   parseReviewPlannerV10ProductAcceptanceArguments,
+  serializeReviewPlannerV10ProductAcceptanceCliFailure,
   serializeReviewPlannerV8ProductAcceptanceCliSummary,
 } from '../src/review-agent/review-planner-v8-product-acceptance-composition';
 
@@ -20,9 +21,9 @@ async function main() {
   if (summary.status !== 'passed') process.exitCode = 1;
 }
 
-void main().catch(() => {
+void main().catch((error: unknown) => {
   process.stdout.write(
-    '{"stage":"operation","status":"failed","code":"operation_failed"}\n',
+    `${serializeReviewPlannerV10ProductAcceptanceCliFailure('product', error)}\n`,
   );
   process.exitCode = 1;
 });

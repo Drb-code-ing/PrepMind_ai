@@ -29,8 +29,11 @@ import {
   type WindowsNoReparseChildDirectory,
 } from './windows-reparse-safe-relative-io';
 import {
+  normalizeReviewPlannerProductAcceptanceSchemaRecord,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
+  type ReviewPlannerProductAcceptanceSchemaKey,
+  withReviewPlannerProductAcceptanceSchemaIdentity,
 } from './review-planner-product-acceptance-profile';
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -655,10 +658,12 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
       ) {
         return Object.freeze({ status: 'evidence_io' as const });
       }
-      const terminal = readStrict(
+      const terminal = readProfileStrict(
         directory,
         '.recovery-only.json',
         recoveryTerminalSchema,
+        profile,
+        'recoveryTerminal',
       );
       if (terminal.environment !== input.environment) {
         return Object.freeze({ status: 'evidence_io' as const });
@@ -681,6 +686,7 @@ export async function readReviewPlannerV8ProductAcceptanceLedger(input: {
       directory,
       input.environment,
       localMode,
+      profile,
     );
     return Object.freeze({ status: 'complete' as const, ...aggregate });
   } catch {
@@ -723,26 +729,32 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
     ) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_PRESEAL_INVALID');
     }
-    const manifest = assertManifest(directory, input.environment);
-    const results = requireAllResults(directory);
+    const manifest = assertManifest(directory, input.environment, profile);
+    const results = requireAllResults(directory, profile);
     assertAdmissionClaimsAndScreenshots(directory, results);
     const defaultOff = (['review', 'planner'] as const).map((component) =>
-      readDefaultOffReceipt(directory, component),
+      readDefaultOffReceipt(directory, component, profile),
     );
-    const ownerProof = readStrict(
+    const ownerProof = readProfileStrict(
       directory,
       '.owner-isolation-verified.json',
       ownerIsolationSchema,
+      profile,
+      'ownerIsolation',
     );
-    const cleanup = readStrict(
+    const cleanup = readProfileStrict(
       directory,
       '.cleanup-verified.json',
       cleanupSchema,
+      profile,
+      'cleanup',
     );
-    const acceptance = readStrict(
+    const acceptance = readProfileStrict(
       directory,
       'acceptance.json',
       reviewPlannerV8ProductAcceptanceEvidenceSchema,
+      profile,
+      'evidence',
     );
     const screenshots = {
       plan: screenshotFor(results, 'review-browser'),
@@ -790,7 +802,9 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
       resultSha256: SLOTS.map((slot) =>
         hashLeaf(directory, `${SLOT_LEAVES[slot]}.result.json`),
       ),
-      defaultOffSha256: defaultOff.map((receipt) => sha256(serialize(receipt))),
+      defaultOffSha256: defaultOff.map((receipt) =>
+        sha256(serializeProfileRecord(profile, 'defaultOff', receipt)),
+      ),
       ownerIsolationSha256: hashLeaf(
         directory,
         '.owner-isolation-verified.json',
@@ -803,16 +817,25 @@ export async function finalizeReviewPlannerV8ProductAcceptancePresealedSuccess(i
         modeSha256: presealMode.modeSha256,
       },
     });
-    publish(directory, '.acceptance-success', serialize(success));
-    verifyCompleteLedger(directory, input.environment, {
-      mode: {
-        mode: 'preseal',
-        pairedEvidenceSha256: manifest.pairedEvidenceSha256,
-        acceptanceSha256,
+    publish(
+      directory,
+      '.acceptance-success',
+      serializeProfileRecord(profile, 'success', success),
+    );
+    verifyCompleteLedger(
+      directory,
+      input.environment,
+      {
+        mode: {
+          mode: 'preseal',
+          pairedEvidenceSha256: manifest.pairedEvidenceSha256,
+          acceptanceSha256,
+        },
+        modeSha256: presealMode.modeSha256,
+        stagesPresent: false,
       },
-      modeSha256: presealMode.modeSha256,
-      stagesPresent: false,
-    });
+      profile,
+    );
   } catch (error) {
     if (
       error instanceof Error &&
@@ -836,17 +859,30 @@ function createLedger(
     writeManifest(value) {
       const current = requireActiveState(ledger);
       assertRecoveryManifest(current);
-      const parsed = manifestSchema.safeParse(value);
-      if (!parsed.success || parsed.data.environment !== current.environment) {
+      const parsed = safeParseProfileRecord(
+        manifestSchema,
+        current.profile,
+        'manifest',
+        value,
+      );
+      if (
+        parsed === null ||
+        !parsed.success ||
+        parsed.data.environment !== current.environment
+      ) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       }
-      publish(current.directory, 'manifest.json', serialize(parsed.data));
+      publish(
+        current.directory,
+        'manifest.json',
+        serializeProfileRecord(current.profile, 'manifest', parsed.data),
+      );
     },
     claimSlot(slot) {
       const current = requireActiveState(ledger);
       assertKnownPublicLeaves(current.directory);
       assertNoRecoveryStage(current);
-      assertManifest(current.directory, current.environment);
+      assertManifest(current.directory, current.environment, current.profile);
       const index = SLOTS.indexOf(slot);
       if (index < 0)
         throw new Error('V8_PRODUCT_ACCEPTANCE_SLOT_ORDER_INVALID');
@@ -889,8 +925,13 @@ function createLedger(
       const current = requireActiveState(ledger);
       assertKnownPublicLeaves(current.directory);
       assertNoRecoveryStage(current);
-      const parsed = slotResultSchema.safeParse(value);
-      if (!parsed.success)
+      const parsed = safeParseProfileRecord(
+        slotResultSchema,
+        current.profile,
+        'slotResult',
+        value,
+      );
+      if (parsed === null || !parsed.success)
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       const leaf = SLOT_LEAVES[parsed.data.slot];
       const leaves = current.directory.listLeafNames();
@@ -917,13 +958,14 @@ function createLedger(
           throw new Error('V8_PRODUCT_ACCEPTANCE_SCREENSHOT_INVALID');
         }
       }
-      const existingTraces = readResults(current.directory).map(
-        (result) => result.traceIdSha256,
-      );
+      const existingTraces = readResults(
+        current.directory,
+        current.profile,
+      ).map((result) => result.traceIdSha256);
       if (existingTraces.includes(parsed.data.traceIdSha256)) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_TRACE_DUPLICATE');
       }
-      const totals = readResults(current.directory).reduce(
+      const totals = readResults(current.directory, current.profile).reduce(
         (sum, result) => ({
           inputTokens: sum.inputTokens + result.usage.inputTokens,
           outputTokens: sum.outputTokens + result.usage.outputTokens,
@@ -941,17 +983,27 @@ function createLedger(
       ) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_BUDGET_EXCEEDED');
       }
-      publish(current.directory, `${leaf}.result.json`, serialize(parsed.data));
+      publish(
+        current.directory,
+        `${leaf}.result.json`,
+        serializeProfileRecord(current.profile, 'slotResult', parsed.data),
+      );
     },
     recordDefaultOff(value) {
       const current = requireActiveState(ledger);
       assertKnownPublicLeaves(current.directory);
       assertNoRecoveryStage(current);
-      const parsed =
-        reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema.safeParse(
-          value,
-        );
-      if (!parsed.success || parsed.data.component === 'recovery')
+      const parsed = safeParseProfileRecord(
+        reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
+        current.profile,
+        'defaultOff',
+        value,
+      );
+      if (
+        parsed === null ||
+        !parsed.success ||
+        parsed.data.component === 'recovery'
+      )
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       const browserLeaf =
         SLOT_LEAVES[`${parsed.data.component}-browser` as Slot];
@@ -962,7 +1014,7 @@ function createLedger(
       publish(
         current.directory,
         `.${parsed.data.component}-default-off.json`,
-        serialize(parsed.data),
+        serializeProfileRecord(current.profile, 'defaultOff', parsed.data),
       );
     },
     recordScreenshot(component, contents) {
@@ -993,10 +1045,15 @@ function createLedger(
     },
     recordOwnerIsolation(value) {
       const current = requireActiveState(ledger);
-      const parsed = ownerIsolationSchema.safeParse(value);
-      if (!parsed.success)
+      const parsed = safeParseProfileRecord(
+        ownerIsolationSchema,
+        current.profile,
+        'ownerIsolation',
+        value,
+      );
+      if (parsed === null || !parsed.success)
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
-      const results = requireAllResults(current.directory);
+      const results = requireAllResults(current.directory, current.profile);
       const expected = results.map((result) => result.traceIdSha256);
       if (!arraysEqual(parsed.data.traceIdSha256, expected)) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_ISOLATION_INVALID');
@@ -1004,7 +1061,7 @@ function createLedger(
       publish(
         current.directory,
         '.owner-isolation-verified.json',
-        serialize(parsed.data),
+        serializeProfileRecord(current.profile, 'ownerIsolation', parsed.data),
       );
     },
     recordCleanup(value) {
@@ -1016,13 +1073,18 @@ function createLedger(
       ) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_OWNER_ISOLATION_MISSING');
       }
-      const parsed = cleanupSchema.safeParse(value);
-      if (!parsed.success)
+      const parsed = safeParseProfileRecord(
+        cleanupSchema,
+        current.profile,
+        'cleanup',
+        value,
+      );
+      if (parsed === null || !parsed.success)
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
       publish(
         current.directory,
         '.cleanup-verified.json',
-        serialize(parsed.data),
+        serializeProfileRecord(current.profile, 'cleanup', parsed.data),
       );
     },
     finalizeSuccess() {
@@ -1033,25 +1095,33 @@ function createLedger(
       if (leaves.includes('.recovery-only.json')) {
         throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_TERMINAL');
       }
-      const manifest = assertManifest(current.directory, current.environment);
-      const results = requireAllResults(current.directory);
+      const manifest = assertManifest(
+        current.directory,
+        current.environment,
+        current.profile,
+      );
+      const results = requireAllResults(current.directory, current.profile);
       assertAdmissionClaimsAndScreenshots(
         current.directory,
         results,
         current.reservationGuard,
       );
       const defaultOff = (['review', 'planner'] as const).map((component) =>
-        readDefaultOffReceipt(current.directory, component),
+        readDefaultOffReceipt(current.directory, component, current.profile),
       );
-      const ownerProof = readStrict(
+      const ownerProof = readProfileStrict(
         current.directory,
         '.owner-isolation-verified.json',
         ownerIsolationSchema,
+        current.profile,
+        'ownerIsolation',
       );
-      const cleanup = readStrict(
+      const cleanup = readProfileStrict(
         current.directory,
         '.cleanup-verified.json',
         cleanupSchema,
+        current.profile,
+        'cleanup',
       );
       const inputTokens = results.reduce(
         (total, result) => total + result.usage.inputTokens,
@@ -1083,7 +1153,13 @@ function createLedger(
       publish(
         current.directory,
         'acceptance.json',
-        serializeReviewPlannerV8ProductAcceptanceEvidence(acceptance),
+        serializeProfileRecord(
+          current.profile,
+          'evidence',
+          JSON.parse(
+            serializeReviewPlannerV8ProductAcceptanceEvidence(acceptance),
+          ) as Record<string, unknown>,
+        ),
       );
       const success = successSchema.parse({
         schemaVersion: 'phase-6.9.5-v8-product-acceptance-success-v1',
@@ -1097,7 +1173,9 @@ function createLedger(
           hashLeaf(current.directory, `${SLOT_LEAVES[slot]}.result.json`),
         ),
         defaultOffSha256: defaultOff.map((receipt) =>
-          sha256(serialize(receipt)),
+          sha256(
+            serializeProfileRecord(current.profile, 'defaultOff', receipt),
+          ),
         ),
         ownerIsolationSha256: hashLeaf(
           current.directory,
@@ -1108,7 +1186,11 @@ function createLedger(
         screenshotSha256: [screenshots.plan, screenshots.today],
         completion: { mode: 'product' },
       });
-      publish(current.directory, '.acceptance-success', serialize(success));
+      publish(
+        current.directory,
+        '.acceptance-success',
+        serializeProfileRecord(current.profile, 'success', success),
+      );
     },
     close() {
       const current = ledgerState.get(ledger);
@@ -1146,31 +1228,38 @@ function verifyCompleteLedger(
     modeSha256: string | null;
     stagesPresent: boolean;
   }>,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
-  const manifest = assertManifest(directory, environment);
-  const results = requireAllResults(directory);
+  const manifest = assertManifest(directory, environment, profile);
+  const results = requireAllResults(directory, profile);
   assertAdmissionClaimsAndScreenshots(directory, results);
   const defaultOff = (['review', 'planner'] as const).map((component) =>
-    readDefaultOffReceipt(directory, component),
+    readDefaultOffReceipt(directory, component, profile),
   );
-  const ownerProof = readStrict(
+  const ownerProof = readProfileStrict(
     directory,
     '.owner-isolation-verified.json',
     ownerIsolationSchema,
+    profile,
+    'ownerIsolation',
   );
-  const cleanup = readStrict(
+  const cleanup = readProfileStrict(
     directory,
     '.cleanup-verified.json',
     cleanupSchema,
+    profile,
+    'cleanup',
   );
   const screenshots = {
     plan: screenshotFor(results, 'review-browser'),
     today: screenshotFor(results, 'planner-browser'),
   };
-  const acceptance = readStrict(
+  const acceptance = readProfileStrict(
     directory,
     'acceptance.json',
     reviewPlannerV8ProductAcceptanceEvidenceSchema,
+    profile,
+    'evidence',
   );
   const expectedAcceptance = buildOfficialAcceptanceEvidence({
     manifest,
@@ -1180,7 +1269,13 @@ function verifyCompleteLedger(
     cleanup,
     screenshots,
   });
-  const success = readStrict(directory, '.acceptance-success', successSchema);
+  const success = readProfileStrict(
+    directory,
+    '.acceptance-success',
+    successSchema,
+    profile,
+    'success',
+  );
   if (
     success.environment !== environment ||
     acceptance.environment !== environment ||
@@ -1245,9 +1340,12 @@ function requireState(ledger: ReviewPlannerV8ProductAcceptanceLedger) {
 
 function requireActiveState(ledger: ReviewPlannerV8ProductAcceptanceLedger) {
   const state = requireState(ledger);
-  assertReviewPlannerV8ProductAcceptanceOwner(state.owner, state.environment, [
-    'product',
-  ]);
+  assertReviewPlannerV8ProductAcceptanceOwner(
+    state.owner,
+    state.environment,
+    ['product'],
+    state.profile,
+  );
   return state;
 }
 
@@ -1295,20 +1393,36 @@ function assertKnownPublicLeaves(directory: WindowsNoReparseChildDirectory) {
 function assertManifest(
   directory: WindowsNoReparseChildDirectory,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
-  const parsed = readStrict(directory, 'manifest.json', manifestSchema);
+  const parsed = readProfileStrict(
+    directory,
+    'manifest.json',
+    manifestSchema,
+    profile,
+    'manifest',
+  );
   if (parsed.environment !== environment) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
   return parsed;
 }
 
-function readResults(directory: WindowsNoReparseChildDirectory) {
+function readResults(
+  directory: WindowsNoReparseChildDirectory,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+) {
   const leaves = directory.listLeafNames();
   return SLOTS.flatMap((slot) => {
     const leaf = `${SLOT_LEAVES[slot]}.result.json`;
     if (!leaves.includes(leaf)) return [];
-    const result = readStrict(directory, leaf, slotResultSchema);
+    const result = readProfileStrict(
+      directory,
+      leaf,
+      slotResultSchema,
+      profile,
+      'slotResult',
+    );
     if (result.slot !== slot) {
       throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
     }
@@ -1316,8 +1430,11 @@ function readResults(directory: WindowsNoReparseChildDirectory) {
   });
 }
 
-function requireAllResults(directory: WindowsNoReparseChildDirectory) {
-  const results = readResults(directory);
+function requireAllResults(
+  directory: WindowsNoReparseChildDirectory,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+) {
+  const results = readResults(directory, profile);
   if (
     results.length !== 4 ||
     new Set(results.map((value) => value.traceIdSha256)).size !== 4
@@ -1478,28 +1595,78 @@ function crc32(bytes: Uint8Array) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function readStrict<T>(
+function parseProfileRecord<T>(
+  schema: z.ZodType<T>,
+  profile: ReviewPlannerProductAcceptanceProfile,
+  key: ReviewPlannerProductAcceptanceSchemaKey,
+  value: unknown,
+): T {
+  const normalized = normalizeReviewPlannerProductAcceptanceSchemaRecord(
+    profile,
+    key,
+    value,
+  );
+  if (normalized === null)
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECORD_INVALID');
+  return schema.parse(normalized);
+}
+
+function safeParseProfileRecord<T>(
+  schema: z.ZodType<T>,
+  profile: ReviewPlannerProductAcceptanceProfile,
+  key: ReviewPlannerProductAcceptanceSchemaKey,
+  value: unknown,
+) {
+  const normalized = normalizeReviewPlannerProductAcceptanceSchemaRecord(
+    profile,
+    key,
+    value,
+  );
+  return normalized === null ? null : schema.safeParse(normalized);
+}
+
+function readProfileStrict<T>(
   directory: WindowsNoReparseChildDirectory,
   leaf: string,
   schema: z.ZodType<T>,
-): T {
+  profile: ReviewPlannerProductAcceptanceProfile,
+  key: ReviewPlannerProductAcceptanceSchemaKey,
+) {
+  const bytes = directory.readRegularFile(leaf, MAX_SCREENSHOT_BYTES);
+  let value: unknown;
   try {
-    return schema.parse(
-      JSON.parse(directory.readRegularFile(leaf).toString('utf8')),
-    );
+    value = JSON.parse(bytes.toString());
+  } catch {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+  }
+  try {
+    return parseProfileRecord(schema, profile, key, value);
   } catch {
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
   }
 }
 
+function serializeProfileRecord(
+  profile: ReviewPlannerProductAcceptanceProfile,
+  key: ReviewPlannerProductAcceptanceSchemaKey,
+  value: Record<string, unknown>,
+) {
+  return serialize(
+    withReviewPlannerProductAcceptanceSchemaIdentity(profile, key, value),
+  );
+}
+
 function readDefaultOffReceipt(
   directory: WindowsNoReparseChildDirectory,
   component: 'review' | 'planner',
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
-  const receipt = readStrict(
+  const receipt = readProfileStrict(
     directory,
     `.${component}-default-off.json`,
     reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
+    profile,
+    'defaultOff',
   );
   if (receipt.component !== component) {
     throw new Error('V8_PRODUCT_ACCEPTANCE_EVIDENCE_IO');

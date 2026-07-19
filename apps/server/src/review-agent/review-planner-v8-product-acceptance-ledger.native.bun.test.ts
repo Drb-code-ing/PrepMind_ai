@@ -28,7 +28,11 @@ import {
   openReviewPlannerV8ProductAcceptanceRecoveryJournal,
   prepareReviewPlannerV8ProductAcceptanceRecoveryJournal,
 } from './review-planner-v8-product-acceptance-recovery';
-import { REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
+import {
+  REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+  type ReviewPlannerProductAcceptanceProfile,
+} from './review-planner-product-acceptance-profile';
 
 const describeWindows = process.platform === 'win32' ? describe : describe.skip;
 const SHA_A = 'a'.repeat(64);
@@ -414,31 +418,47 @@ process.stdout.write(JSON.stringify(counters));
 async function acquire(
   root: string,
   environment: 'branch' | 'main' = 'branch',
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
   const acquired = await acquireReviewPlannerV8ProductAcceptanceOwner({
     repoRoot: root,
     environment,
     role: 'product',
+    profile,
   });
   expect(acquired.status).toBe('acquired');
   if (acquired.status !== 'acquired') throw new Error('owner unavailable');
   return acquired.owner;
 }
 
-async function prepareReserved(root: string, keepJournal = false) {
-  const owner = await acquire(root);
+async function prepareReserved(
+  root: string,
+  keepJournal = false,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
+) {
+  const owner = await acquire(root, 'branch', profile);
   const ledger = await reserveReviewPlannerV8ProductAcceptanceLedger({
     repoRoot: root,
     environment: 'branch',
     owner,
+    profile,
   });
   const journal = await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
     repoRoot: root,
     environment: 'branch',
     owner,
-    manifest: recoveryManifest(),
+    profile,
+    manifest: {
+      ...recoveryManifest(),
+      schemaVersion: profile.schemas.recoveryManifest,
+      publicLedgerPath: profile.publicLedgerPath('branch'),
+      browserProfilePath: profile.browserProfilePath('branch'),
+    },
   });
-  ledger.writeManifest(manifest());
+  ledger.writeManifest({
+    ...manifest(),
+    schemaVersion: profile.schemas.manifest,
+  });
   if (!keepJournal) journal.close();
   return { owner, ledger, journal };
 }
@@ -449,42 +469,53 @@ async function finishBranch(
   outputTokens = 50,
   planPng = PLAN_PNG,
   todayPng = TODAY_PNG,
+  profile: ReviewPlannerProductAcceptanceProfile = REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 ) {
-  const { owner, ledger } = await prepareReserved(root);
+  const { owner, ledger } = await prepareReserved(root, false, profile);
   ledger.claimSlot('review-api');
-  ledger.recordSlotResult(
-    slotResult('review-api', SHA_A, inputTokens, outputTokens),
-  );
+  ledger.recordSlotResult({
+    ...slotResult('review-api', SHA_A, inputTokens, outputTokens),
+    schemaVersion: profile.schemas.slotResult,
+  });
   ledger.claimSlot('review-browser');
-  ledger.recordDefaultOff(restoreReceipt('review'));
+  ledger.recordDefaultOff({
+    ...restoreReceipt('review'),
+    schemaVersion: profile.schemas.defaultOff,
+  });
   ledger.recordScreenshot('review', planPng);
-  ledger.recordSlotResult(
-    slotResult(
+  ledger.recordSlotResult({
+    ...slotResult(
       'review-browser',
       SHA_B,
       inputTokens,
       outputTokens,
       createHash('sha256').update(planPng).digest('hex'),
     ),
-  );
+    schemaVersion: profile.schemas.slotResult,
+  });
   ledger.claimSlot('planner-api');
-  ledger.recordSlotResult(
-    slotResult('planner-api', SHA_C, inputTokens, outputTokens),
-  );
+  ledger.recordSlotResult({
+    ...slotResult('planner-api', SHA_C, inputTokens, outputTokens),
+    schemaVersion: profile.schemas.slotResult,
+  });
   ledger.claimSlot('planner-browser');
-  ledger.recordDefaultOff(restoreReceipt('planner'));
+  ledger.recordDefaultOff({
+    ...restoreReceipt('planner'),
+    schemaVersion: profile.schemas.defaultOff,
+  });
   ledger.recordScreenshot('planner', todayPng);
-  ledger.recordSlotResult(
-    slotResult(
+  ledger.recordSlotResult({
+    ...slotResult(
       'planner-browser',
       SHA_D,
       inputTokens,
       outputTokens,
       createHash('sha256').update(todayPng).digest('hex'),
     ),
-  );
+    schemaVersion: profile.schemas.slotResult,
+  });
   ledger.recordOwnerIsolation({
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-owner-isolation-v1',
+    schemaVersion: profile.schemas.ownerIsolation,
     reviewFactsBeforeSha256: SHA_A,
     reviewFactsAfterSha256: SHA_A,
     plannerFactsBeforeSha256: SHA_B,
@@ -494,7 +525,7 @@ async function finishBranch(
     businessWrites: 0,
   });
   ledger.recordCleanup({
-    schemaVersion: 'phase-6.9.5-v8-product-acceptance-cleanup-v1',
+    schemaVersion: profile.schemas.cleanup,
     syntheticAccounts: 0,
     fixtures: 0,
     traces: 0,
@@ -539,6 +570,25 @@ describeWindows('Review/Planner V8 durable product acceptance ledger', () => {
     expect(parsed.schemaVersion).toBe(
       'phase-6.9.5-review-planner-v8-product-acceptance-v1',
     );
+  });
+
+  it('seals a complete V10 ledger with V10 evidence and success identities', async () => {
+    const profile = REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
+    await finishBranch(root, 100, 50, PLAN_PNG, TODAY_PNG, profile);
+    const publicPath = join(root, ...profile.publicLedgerSegments('branch'));
+    await expect(
+      readFile(join(publicPath, 'acceptance.json'), 'utf8'),
+    ).resolves.toContain(`"schemaVersion":"${profile.schemas.evidence}"`);
+    await expect(
+      readFile(join(publicPath, '.acceptance-success'), 'utf8'),
+    ).resolves.toContain(`"schemaVersion":"${profile.schemas.success}"`);
+    await expect(
+      readReviewPlannerV8ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+        profile,
+      }),
+    ).resolves.toMatchObject({ status: 'complete' });
   });
 
   it('durably rejects duplicate and concurrent reservation', async () => {
@@ -1843,15 +1893,134 @@ describeWindows(
         owner: v10Owner.owner,
         profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
       });
+      const v10Profile = REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE;
+      const v10Prepared =
+        await prepareReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: v10Owner.owner,
+          profile: v10Profile,
+          manifest: {
+            ...recoveryManifest(),
+            schemaVersion: v10Profile.schemas.recoveryManifest,
+            publicLedgerPath: v10Profile.publicLedgerPath('branch'),
+            browserProfilePath: v10Profile.browserProfilePath('branch'),
+          },
+        });
+      v10Ledger.writeManifest({
+        ...manifest(),
+        schemaVersion: v10Profile.schemas.manifest,
+      });
+      const v10ManifestPath = join(
+        root,
+        ...v10Profile.publicLedgerSegments('branch'),
+        'manifest.json',
+      );
+      await expect(readFile(v10ManifestPath, 'utf8')).resolves.toContain(
+        `"schemaVersion":"${v10Profile.schemas.manifest}"`,
+      );
+      const v10RecoveryPath = join(
+        root,
+        ...v10Profile.recoverySegments('branch'),
+      );
+      await expect(
+        readFile(join(v10RecoveryPath, 'recovery-manifest.json'), 'utf8'),
+      ).resolves.toContain(
+        `"schemaVersion":"${v10Profile.schemas.recoveryManifest}"`,
+      );
       await expect(
         readReviewPlannerV8ProductAcceptanceLedger({
           repoRoot: root,
           environment: 'branch',
-          profile: REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
+          profile: v10Profile,
         }),
       ).resolves.toEqual({ status: 'incomplete' });
+      v10Prepared.close();
       v10Ledger.close();
       v10Owner.owner.close();
+
+      const v10Recovery = await acquireReviewPlannerV8ProductAcceptanceOwner({
+        repoRoot: root,
+        environment: 'branch',
+        role: 'recovery',
+        profile: v10Profile,
+      });
+      expect(v10Recovery.status).toBe('acquired');
+      if (v10Recovery.status !== 'acquired')
+        throw new Error('owner unavailable');
+      const v10Journal =
+        await openReviewPlannerV8ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: v10Recovery.owner,
+          profile: v10Profile,
+        });
+      const v10Authority = await v10Journal.authorizeRecoveryOnly();
+      v10Authority.assertAuthorized();
+      v10Journal.appendStage('restore.claimed', '');
+      v10Journal.appendStage(
+        'restore.verified.json',
+        JSON.stringify({
+          ...restoreReceipt('review'),
+          schemaVersion: v10Profile.schemas.defaultOff,
+          component: 'recovery',
+        }),
+      );
+      v10Journal.appendStage('cleanup.claimed', '');
+      v10Journal.appendStage(
+        'cleanup.verified.json',
+        JSON.stringify({
+          schemaVersion: v10Profile.schemas.recoveryCleanup,
+          syntheticAccounts: 0,
+          fixtures: 0,
+          traces: 0,
+          browserProcesses: 0,
+          browserProfiles: 0,
+          probeAccounts: 0,
+        }),
+      );
+      await v10Journal.finalizeRecoveryOnly();
+      await expect(
+        readFile(join(v10RecoveryPath, 'mode.json'), 'utf8'),
+      ).resolves.toContain(
+        `"schemaVersion":"${v10Profile.schemas.recoveryMode}"`,
+      );
+      const v10TerminalPath = join(
+        v10ManifestPath,
+        '..',
+        '.recovery-only.json',
+      );
+      await expect(readFile(v10TerminalPath, 'utf8')).resolves.toContain(
+        `"schemaVersion":"${v10Profile.schemas.recoveryTerminal}"`,
+      );
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+          profile: v10Profile,
+        }),
+      ).resolves.toEqual({ status: 'recovery_only' });
+      const v10Terminal = JSON.parse(
+        await readFile(v10TerminalPath, 'utf8'),
+      ) as Record<string, unknown>;
+      await writeFile(
+        v10TerminalPath,
+        `${JSON.stringify({
+          ...v10Terminal,
+          schemaVersion:
+            REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas
+              .recoveryTerminal,
+        })}\n`,
+      );
+      await expect(
+        readReviewPlannerV8ProductAcceptanceLedger({
+          repoRoot: root,
+          environment: 'branch',
+          profile: v10Profile,
+        }),
+      ).resolves.toEqual({ status: 'evidence_io' });
+      v10Journal.close();
+      v10Recovery.owner.close();
     });
 
     it('rejects a public recovery terminal when its local journal is missing', async () => {

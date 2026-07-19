@@ -1,3 +1,4 @@
+import { serializeReviewPlannerV10ProductAcceptanceCliFailure } from './review-planner-v8-product-acceptance-composition';
 import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
@@ -29,6 +30,12 @@ describe('Review Planner product-acceptance profiles', () => {
     ).not.toBe(
       REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
     );
+    expect(REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest).toBe(
+      'phase-6.9.5-v10-product-acceptance-manifest-v1',
+    );
+    expect(
+      REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest,
+    ).not.toBe(REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.schemas.manifest);
   });
 
   it('rejects confirmations from the other lineage', () => {
@@ -53,4 +60,22 @@ describe('Review Planner product-acceptance profiles', () => {
       ),
     ).toThrow('V8_PRODUCT_ACCEPTANCE_CONFIRMATION_REQUIRED');
   });
+
+  it.each(['product', 'recovery'] as const)(
+    'serializes a stable V10 %s confirmation rejection before composition',
+    (kind) => {
+      expect(
+        serializeReviewPlannerV10ProductAcceptanceCliFailure(
+          kind,
+          new Error('V10_PRODUCT_ACCEPTANCE_CONFIRMATION_REQUIRED'),
+        ),
+      ).toBe(
+        JSON.stringify({
+          stage: 'preflight',
+          status: 'blocked',
+          code: 'confirmation_required',
+        }),
+      );
+    },
+  );
 });
