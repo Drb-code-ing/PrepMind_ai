@@ -43,7 +43,7 @@ const COMMIT = 'b'.repeat(40);
 const CONTAINER_ID = 'c'.repeat(64);
 const CHROME_EXE = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const V9_DIAGNOSTIC_SCHEMA_VERSION =
-  'phase-6.9.5-review-planner-v9-gate-diagnostic-v1';
+  'phase-6.9.5-review-planner-v10-semantic-quality-v1';
 const BROWSER_PROFILE =
   'E:\\PrepMind_ai智能备考助手\\.tmp\\phase-6-9-5-v8-product-acceptance\\branch\\profile-v8';
 const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
@@ -90,7 +90,7 @@ describe('V8 product acceptance executable composition', () => {
       evidenceSha256: SHA,
     });
     await expect(authority.readCommittedSuccess(REPO_ROOT)).resolves.toBeNull();
-    expect(authority.profile).toBe('v9');
+    expect(authority.profile).toBe('v10');
     expect(legacyReader).not.toHaveBeenCalled();
     legacyReader.mockRestore();
   });

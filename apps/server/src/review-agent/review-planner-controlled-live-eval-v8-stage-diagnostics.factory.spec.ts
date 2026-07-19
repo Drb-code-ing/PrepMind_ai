@@ -190,6 +190,12 @@ describe('review planner controlled Live V8 stage diagnostics factory', () => {
     expect(`${request.systemPrompt}\n${request.userPrompt}`).not.toMatch(
       /email|userId|wrongQuestion|reviewLog|password|api[_ -]?key/i,
     );
+    expect(`${request.systemPrompt}\n${request.userPrompt}`).toContain(
+      '{"focusIndexes":[0]}',
+    );
+    expect(`${request.systemPrompt}\n${request.userPrompt}`).not.toContain(
+      'diagnosis',
+    );
   });
 
   it('returns the complete 48/26/22 report with 23 attempts and verified cost', async () => {
@@ -501,7 +507,6 @@ function createExecutorHarness(
     return Promise.resolve({
       object: input.object ?? {
         focusIndexes: [0],
-        diagnosis: 'review_pressure',
       },
       ...(Object.hasOwn(input, 'usage')
         ? input.usage === undefined

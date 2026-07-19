@@ -10,9 +10,9 @@ import { chromium } from 'playwright-core';
 
 import { parseReviewPlannerControlledLiveV8CommittedCandidate } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 import {
-  REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE,
-  readReviewPlannerControlledLiveV9Evidence,
-} from './review-planner-controlled-live-eval-v9-gate-diagnostics.evidence';
+  REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE,
+  readReviewPlannerControlledLiveV10SemanticQualityEvidence,
+} from './review-planner-controlled-live-eval-v10-semantic-quality.evidence';
 
 import {
   calculateReviewPlannerV8ProductAcceptanceCost,
@@ -310,7 +310,7 @@ type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
 }>;
 
 export type PairedEvidenceAuthority = Readonly<{
-  profile: 'v9';
+  profile: 'v10';
   readCommittedSuccess(repoRoot: string): Promise<Readonly<{
     providerAttemptCount: 23;
     pairedAdmissionCount: 22;
@@ -318,22 +318,23 @@ export type PairedEvidenceAuthority = Readonly<{
   }> | null>;
 }>;
 
-export function createReviewPlannerV9PairedEvidenceAuthority(
+export function createReviewPlannerV10PairedEvidenceAuthority(
   dependencies: Readonly<{
     readEvidence?: (repoRoot: string) => Promise<Record<string, unknown>>;
   }> = {},
 ): PairedEvidenceAuthority {
   const readEvidence =
-    dependencies.readEvidence ?? readReviewPlannerControlledLiveV9Evidence;
+    dependencies.readEvidence ??
+    readReviewPlannerControlledLiveV10SemanticQualityEvidence;
   return Object.freeze({
-    profile: 'v9' as const,
+    profile: 'v10' as const,
     async readCommittedSuccess(repoRoot: string) {
       try {
         const evidence = await readEvidence(repoRoot);
         const attempts = evidence.attempts;
         if (
           evidence.schemaVersion !==
-            'phase-6.9.5-review-planner-v9-gate-diagnostic-v1' ||
+            'phase-6.9.5-review-planner-v10-semantic-quality-v1' ||
           evidence.state !== 'finalized' ||
           evidence.status !== 'complete' ||
           evidence.gate !== 'closed' ||
@@ -359,6 +360,10 @@ export function createReviewPlannerV9PairedEvidenceAuthority(
   });
 }
 
+/** @deprecated Kept only for injected legacy test fixtures; it still validates V10 evidence. */
+export const createReviewPlannerV9PairedEvidenceAuthority =
+  createReviewPlannerV10PairedEvidenceAuthority;
+
 export async function captureReviewPlannerV8RepositorySnapshotFromAuthority(
   input: Readonly<{
     readGitStatus(): Promise<string>;
@@ -371,7 +376,7 @@ export async function captureReviewPlannerV8RepositorySnapshotFromAuthority(
   const before = parseReviewPlannerV8GitPorcelainSnapshot(
     await input.readGitStatus(),
   );
-  if (input.authority.profile !== 'v9') return null;
+  if (input.authority.profile !== 'v10') return null;
   const beforePaths = [...(await input.listEvidencePaths())].sort();
   assertReviewPlannerV8EvidenceIndexIsOrdinary(
     await input.readEvidenceIndex(),
@@ -1092,7 +1097,7 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
   };
   const pairedEvidenceAuthority =
     options.pairedEvidenceAuthority ??
-    createReviewPlannerV9PairedEvidenceAuthority();
+    createReviewPlannerV10PairedEvidenceAuthority();
   const ports: ReviewPlannerV8ProductAcceptanceCompositionPorts = {
     preflight: (input) =>
       runDefaultProductPreflight(input, pairedEvidenceAuthority),
@@ -2660,7 +2665,7 @@ async function readReviewPlannerV8RepositorySnapshot(
   authority: PairedEvidenceAuthority,
 ) {
   const evidenceDirectory =
-    REVIEW_PLANNER_CONTROLLED_LIVE_V9_GATE_DIAGNOSTICS_PROFILE.evidenceDirectory;
+    REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
   const readGitStatus = () =>
     runReadOnlyProcess(repoRoot, 'git', [
       'status',

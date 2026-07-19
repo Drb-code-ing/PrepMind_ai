@@ -51,9 +51,8 @@ const HARD_CAP_CNY = 1;
 const INPUT_CNY_PER_MILLION = 3;
 const OUTPUT_CNY_PER_MILLION = 6;
 const CANARY_SYSTEM_PROMPT =
-  'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0],"diagnosis":"review_pressure"}. Do not use tools. Do not return reasoning, acknowledgement, prose, or extra fields.';
-const CANARY_USER_PROMPT =
-  'Return exactly {"focusIndexes":[0],"diagnosis":"review_pressure"}.';
+  'Return exactly one strict JSON object matching REVIEW_MODEL_CANDIDATE_SCHEMA. Its exact value must be {"focusIndexes":[0]}. Do not use tools. Do not return reasoning, acknowledgement, prose, or extra fields.';
+const CANARY_USER_PROMPT = 'Return exactly {"focusIndexes":[0]}.';
 
 type V8ExecutorConfig = Extract<
   OpenAICompatibleExecutorConfig,

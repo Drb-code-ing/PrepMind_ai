@@ -386,7 +386,7 @@ function createExecutorHarness(
       : defaultAudit();
     if (audit) onAudit?.(audit as never);
     return Promise.resolve({
-      object: { focusIndexes: [0], diagnosis: 'review_pressure' },
+      object: { focusIndexes: [0] },
       usage: input.usageForCall?.(call) ?? {
         inputTokens: 12,
         outputTokens: 4,

@@ -23,6 +23,7 @@
     "eval:review-planner:live:v7:deepseek-usage-parity": "bun scripts/review-planner-controlled-live-eval-v7-deepseek-usage-parity.ts",
     "eval:review-planner:live:v8:stage-diagnostics": "bun scripts/review-planner-controlled-live-eval-v8-stage-diagnostics.ts",
     "eval:review-planner:live:v9:gate-diagnostics": "bun scripts/review-planner-controlled-live-eval-v9-gate-diagnostics.ts",
+    "eval:review-planner:live:v10:semantic-quality": "bun scripts/review-planner-controlled-live-eval-v10-semantic-quality.ts",
     "accept:review-planner:v8:product": "bun scripts/review-planner-v8-product-acceptance.ts",
     "recover:review-planner:v8:product": "bun scripts/review-planner-v8-product-acceptance-recovery.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

@@ -5,6 +5,8 @@ export * from './evals/phase-6-9-eval-contract.ts';
 export * from './evals/phase-6-9-review-planner-cases.ts';
 export * from './evals/phase-6-9-review-planner-contract.ts';
 export * from './evals/run-phase-6-9-review-planner-paired.ts';
+export * from './evals/phase-6-9-review-planner-v10-cases.ts';
+export * from './evals/run-phase-6-9-review-planner-v10-paired.ts';
 export * from './evals/phase-6-9-seed-cases.ts';
 export * from './evals/run-phase-6-9-baseline.ts';
 export * from './nodes/knowledge-dedup.ts';
