@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { z } from 'zod';
 
@@ -15,8 +15,11 @@ import {
   assertReviewPlannerV8ProductAcceptanceOwner,
   assertReviewPlannerV11ProductAcceptanceFailureAuthority,
   assertReviewPlannerV11ProductAcceptanceOwner,
+  bindReviewPlannerV11ProductAcceptanceAttempt,
   claimReviewPlannerV8ProductAcceptancePresealMode,
   inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint,
+  readReviewPlannerV11ProductAcceptanceAttemptBinding,
+  registerReviewPlannerV11ProductAcceptanceOwnerAttempt,
   readReviewPlannerV8ProductAcceptanceLocalMode,
   reviewPlannerV8ProductAcceptanceDefaultOffReceiptSchema,
   verifyReviewPlannerV8ProductAcceptanceRecoveryTerminal,
@@ -489,6 +492,7 @@ const ledgerState = new WeakMap<
 
 type V11LedgerState = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  attemptSha256: string;
   directory: WindowsNoReparseChildDirectory;
   reservationGuard: WindowsExclusiveLifetimeFile;
   owner: ReviewPlannerV11ProductAcceptanceOwner;
@@ -616,15 +620,32 @@ async function reserveV11Ledger(
     if (directory.listLeafNames().length > 0) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_ALREADY_RESERVED');
     }
-    publishV11(directory, '.acceptance-reserved', '');
+    const attemptId = randomBytes(32).toString('hex');
+    const attemptSha256 = createHash('sha256').update(attemptId).digest('hex');
+    publishV11(directory, '.acceptance-reserved', `${attemptSha256}\n`);
+    const binding = await bindReviewPlannerV11ProductAcceptanceAttempt({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+      owner: input.owner,
+      attemptId,
+    });
+    if (binding.attemptSha256 !== attemptSha256) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
+    }
     reservationGuard = directory.tryAcquireExclusiveLifetimeFile(
       '.acceptance-reserved',
     );
     if (reservationGuard === null) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_EVIDENCE_IO');
     }
+    registerReviewPlannerV11ProductAcceptanceOwnerAttempt(
+      input.owner,
+      input.environment,
+      attemptSha256,
+    );
     const ledger = createV11Ledger({
       environment: input.environment,
+      attemptSha256,
       directory,
       reservationGuard,
       owner: input.owner,
@@ -661,6 +682,10 @@ export async function openReviewPlannerV11ProductAcceptanceRecoveryLedger(input:
   let directory: WindowsNoReparseChildDirectory | null = null;
   let reservationGuard: WindowsExclusiveLifetimeFile | null = null;
   try {
+    const binding = await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+    });
     directory = await openWindowsNoReparseExistingFrozenDirectory(
       input.repoRoot,
       [
@@ -687,6 +712,7 @@ export async function openReviewPlannerV11ProductAcceptanceRecoveryLedger(input:
     }
     const ledger = createV11Ledger({
       environment: input.environment,
+      attemptSha256: binding.attemptSha256,
       directory,
       reservationGuard,
       owner: input.owner,
@@ -925,6 +951,10 @@ export async function readReviewPlannerV11ProductAcceptanceLedger(input: {
     ) {
       return Object.freeze({ status: 'evidence_io' as const });
     }
+    await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+    });
     const checkpoint =
       await inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint({
         repoRoot: input.repoRoot,
@@ -1137,6 +1167,7 @@ function createV11Ledger(
         assertReviewPlannerV11ProductAcceptanceFailureAuthority(
           authority,
           current.environment,
+          current.attemptSha256,
           value,
         );
         failure = parseReviewPlannerV11ProductAcceptanceFailure(value);

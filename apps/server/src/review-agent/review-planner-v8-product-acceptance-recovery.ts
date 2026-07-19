@@ -1556,7 +1556,33 @@ function sanitizeOwnerError(error: unknown) {
 }
 
 const V11_OWNER_LOCK_LEAF = 'owner.lock';
+const V11_ATTEMPT_BINDING_LEAF = 'attempt-binding.json';
 const V11_CHECKPOINT_LEAF = /^checkpoint-(\d{3})-([a-z_]+)\.json$/;
+const V11_ATTEMPT_ID = /^[a-f0-9]{64}$/;
+const V11_ATTEMPT_HASH = /^[a-f0-9]{64}$/;
+const V11_PUBLIC_ATTEMPT_LEAVES = Object.freeze([
+  '.acceptance-reserved',
+  '.failure.json',
+] as const);
+
+const v11AttemptBindingSchema = z
+  .object({
+    schemaVersion: z.literal('phase-6.9.5-v11-product-acceptance-attempt-v1'),
+    attemptId: z.string().regex(V11_ATTEMPT_ID),
+    attemptSha256: z.string().regex(V11_ATTEMPT_HASH),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (sha256(Buffer.from(value.attemptId)) !== value.attemptSha256) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['attemptSha256'],
+        message: 'ATTEMPT_HASH_INVALID',
+      });
+    }
+  });
+
+type V11AttemptBinding = z.infer<typeof v11AttemptBindingSchema>;
 
 export type ReviewPlannerV11ProductAcceptanceOwnerRole = 'product' | 'recovery';
 
@@ -1572,6 +1598,7 @@ type V11OwnerState = {
   lock: WindowsExclusiveLifetimeFile;
   runtimeDirectory: WindowsNoReparseChildDirectory;
   runtimeLock: WindowsExclusiveLifetimeFile;
+  attemptSha256: string | null;
   closed: boolean;
 };
 
@@ -1659,6 +1686,7 @@ export async function acquireReviewPlannerV11ProductAcceptanceOwner(input: {
       lock,
       runtimeDirectory,
       runtimeLock,
+      attemptSha256: null,
       closed: false,
     });
     runtimeDirectory = null;
@@ -1701,11 +1729,187 @@ export function assertReviewPlannerV11ProductAcceptanceOwner(
   state.runtimeLock.assertHeld();
 }
 
+export function registerReviewPlannerV11ProductAcceptanceOwnerAttempt(
+  owner: ReviewPlannerV11ProductAcceptanceOwner,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  attemptSha256: string,
+): void {
+  assertReviewPlannerV11ProductAcceptanceOwner(owner, environment, ['product']);
+  const state = v11OwnerState.get(owner);
+  if (
+    !state ||
+    state.attemptSha256 !== null ||
+    !V11_ATTEMPT_HASH.test(attemptSha256)
+  ) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+  state.attemptSha256 = attemptSha256;
+}
+
+function assertReviewPlannerV11ProductAcceptanceOwnerAttempt(
+  owner: ReviewPlannerV11ProductAcceptanceOwner,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  attemptSha256: string,
+) {
+  assertReviewPlannerV11ProductAcceptanceOwner(owner, environment, ['product']);
+  const state = v11OwnerState.get(owner);
+  if (!state || state.attemptSha256 !== attemptSha256) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+}
+
+export async function bindReviewPlannerV11ProductAcceptanceAttempt(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  owner: ReviewPlannerV11ProductAcceptanceOwner;
+  attemptId: string;
+}): Promise<Readonly<V11AttemptBinding>> {
+  assertReviewPlannerV11ProductAcceptanceOwner(input.owner, input.environment, [
+    'product',
+  ]);
+  const expectedHash = sha256(Buffer.from(input.attemptId));
+  if (!V11_ATTEMPT_ID.test(input.attemptId)) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+  const publicHash = await readReviewPlannerV11ProductAcceptanceAttemptHash({
+    repoRoot: input.repoRoot,
+    environment: input.environment,
+  });
+  if (publicHash !== expectedHash) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertV11CheckpointLeaves(directory);
+    if (directory.listLeafNames().includes(V11_ATTEMPT_BINDING_LEAF)) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+    }
+    const binding = v11AttemptBindingSchema.parse({
+      schemaVersion: 'phase-6.9.5-v11-product-acceptance-attempt-v1',
+      attemptId: input.attemptId,
+      attemptSha256: expectedHash,
+    });
+    publish(
+      directory,
+      V11_ATTEMPT_BINDING_LEAF,
+      `${JSON.stringify(binding)}\n`,
+      'V11_PRODUCT_ACCEPTANCE_ATTEMPT_IO',
+    );
+    return Object.freeze({ ...binding });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /^V11_PRODUCT_ACCEPTANCE_[A-Z_]+$/.test(error.message)
+    ) {
+      throw error;
+    }
+    throw new Error('V11_PRODUCT_ACCEPTANCE_ATTEMPT_IO');
+  } finally {
+    directory.close();
+  }
+}
+
+export async function readReviewPlannerV11ProductAcceptanceAttemptBinding(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<Readonly<V11AttemptBinding>> {
+  const publicHash =
+    await readReviewPlannerV11ProductAcceptanceAttemptHash(input);
+  const binding =
+    await readReviewPlannerV11ProductAcceptancePrivateAttemptBinding(input);
+  if (binding.attemptSha256 !== publicHash) {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  }
+  return binding;
+}
+
+async function readReviewPlannerV11ProductAcceptancePrivateAttemptBinding(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<Readonly<V11AttemptBinding>> {
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertV11CheckpointLeaves(directory);
+    if (!directory.listLeafNames().includes(V11_ATTEMPT_BINDING_LEAF)) {
+      throw new Error();
+    }
+    const binding = v11AttemptBindingSchema.parse(
+      JSON.parse(
+        directory.readRegularFile(V11_ATTEMPT_BINDING_LEAF).toString(),
+      ),
+    );
+    return Object.freeze({ ...binding });
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory.close();
+  }
+}
+
+export async function readReviewPlannerV11ProductAcceptanceAttemptHash(input: {
+  repoRoot: string;
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+}): Promise<string> {
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    const leaves = directory.listLeafNames();
+    if (
+      !leaves.includes('.acceptance-reserved') ||
+      leaves.some(
+        (leaf) =>
+          !(V11_PUBLIC_ATTEMPT_LEAVES as readonly string[]).includes(leaf),
+      )
+    ) {
+      throw new Error();
+    }
+    const attemptHash = directory
+      .readRegularFile('.acceptance-reserved')
+      .toString();
+    if (
+      !V11_ATTEMPT_HASH.test(attemptHash.trim()) ||
+      attemptHash !== `${attemptHash.trim()}\n`
+    ) {
+      throw new Error();
+    }
+    return attemptHash.trim();
+  } catch {
+    throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory.close();
+  }
+}
+
 type V11CheckpointJournalState = {
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+  attemptSha256: string;
   owner: ReviewPlannerV11ProductAcceptanceOwner;
   directory: WindowsNoReparseChildDirectory;
   closed: boolean;
+  sealed: boolean;
   failureAuthority: ReviewPlannerV11ProductAcceptanceFailureAuthority | null;
 };
 
@@ -1758,14 +1962,30 @@ export async function prepareReviewPlannerV11ProductAcceptanceRecoveryJournal(in
   try {
     directory.assertLocalFixedNtfsVolume();
     assertV11CheckpointLeaves(directory);
+    const binding =
+      await readReviewPlannerV11ProductAcceptancePrivateAttemptBinding({
+        repoRoot: input.repoRoot,
+        environment: input.environment,
+      });
+    try {
+      assertReviewPlannerV11ProductAcceptanceOwnerAttempt(
+        input.owner,
+        input.environment,
+        binding.attemptSha256,
+      );
+    } catch {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    }
     if (v11CheckpointHistory(directory).length > 0) {
       throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_EXISTS');
     }
     return createV11CheckpointJournal({
       environment: input.environment,
+      attemptSha256: binding.attemptSha256,
       owner: input.owner,
       directory,
       closed: false,
+      sealed: false,
       failureAuthority: null,
     });
   } catch (error) {
@@ -1799,11 +2019,17 @@ export async function openReviewPlannerV11ProductAcceptanceRecoveryJournal(input
   try {
     directory.assertLocalFixedNtfsVolume();
     assertV11CheckpointLeaves(directory);
+    const binding = await readReviewPlannerV11ProductAcceptanceAttemptBinding({
+      repoRoot: input.repoRoot,
+      environment: input.environment,
+    });
     return createV11CheckpointJournal({
       environment: input.environment,
+      attemptSha256: binding.attemptSha256,
       owner: input.owner,
       directory,
       closed: false,
+      sealed: false,
       failureAuthority: null,
     });
   } catch {
@@ -1851,6 +2077,7 @@ export async function inspectReviewPlannerV11ProductAcceptanceRecoveryCheckpoint
 export function assertReviewPlannerV11ProductAcceptanceFailureAuthority(
   authority: ReviewPlannerV11ProductAcceptanceFailureAuthority,
   environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+  attemptSha256: string,
   value: unknown,
 ): void {
   const journal = v11FailureAuthorityState.get(authority);
@@ -1869,6 +2096,7 @@ export function assertReviewPlannerV11ProductAcceptanceFailureAuthority(
     const latest = v11CheckpointHistory(state.directory).at(-1);
     if (
       !latest ||
+      state.attemptSha256 !== attemptSha256 ||
       failure.environment !== environment ||
       failure.component !== latest.component ||
       failure.slot !== latest.slot ||
@@ -1894,6 +2122,9 @@ function createV11CheckpointJournal(
           state.environment,
           ['product'],
         );
+        if (state.sealed) {
+          throw new Error('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_SEALED');
+        }
         let record: ReviewPlannerV11ProductAcceptanceCheckpointRecord;
         try {
           record = parseReviewPlannerV11ProductAcceptanceCheckpoint(value);
@@ -1965,6 +2196,7 @@ function createV11CheckpointJournal(
               }
             },
           });
+        state.sealed = true;
         state.failureAuthority = authority;
         v11FailureAuthorityState.set(authority, journal);
         return authority;
@@ -2027,7 +2259,10 @@ function v11CheckpointHistory(
   try {
     const entries = directory
       .listLeafNames()
-      .filter((leaf) => leaf !== V11_OWNER_LOCK_LEAF)
+      .filter(
+        (leaf) =>
+          leaf !== V11_OWNER_LOCK_LEAF && leaf !== V11_ATTEMPT_BINDING_LEAF,
+      )
       .map((leaf) => {
         const match = V11_CHECKPOINT_LEAF.exec(leaf);
         if (!match) throw new Error();
@@ -2061,7 +2296,10 @@ function assertV11CheckpointLeaves(directory: WindowsNoReparseChildDirectory) {
   if (
     !leaves.includes(V11_OWNER_LOCK_LEAF) ||
     leaves.some(
-      (leaf) => leaf !== V11_OWNER_LOCK_LEAF && !V11_CHECKPOINT_LEAF.test(leaf),
+      (leaf) =>
+        leaf !== V11_OWNER_LOCK_LEAF &&
+        leaf !== V11_ATTEMPT_BINDING_LEAF &&
+        !V11_CHECKPOINT_LEAF.test(leaf),
     )
   ) {
     throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');

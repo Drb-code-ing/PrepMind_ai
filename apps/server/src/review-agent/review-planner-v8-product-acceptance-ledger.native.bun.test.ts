@@ -2360,14 +2360,6 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
       journal.appendCheckpoint(
         v11Checkpoint('review_api_facts_before', 'not_started'),
       );
-      const authority = journal.issueFailureAuthority();
-      expect(() =>
-        ledger.recordFailure(authority, {
-          ...v11Failure(),
-          schemaVersion:
-            REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
-        }),
-      ).toThrow('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
       expect(() =>
         journal.appendCheckpoint(
           v11Checkpoint('review_api_trace_baseline', 'indeterminate'),
@@ -2381,6 +2373,15 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
           v11Checkpoint('review_api_dispatch', 'not_started'),
         ),
       ).toThrow('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_INVALID');
+      const authority = journal.issueFailureAuthority();
+      expect(() =>
+        ledger.recordFailure(authority, {
+          ...v11Failure(),
+          checkpoint: 'review_api_trace_baseline',
+          schemaVersion:
+            REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
+        }),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
       ledger.recordFailure(
         authority,
         v11Failure({ checkpoint: 'review_api_trace_baseline' }),
@@ -2419,6 +2420,161 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
         environment: 'branch',
       }),
     ).resolves.toEqual({ status: 'evidence_io' });
+  });
+
+  it('seals a V11 journal when issuing the failure authority', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    try {
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_activate', 'not_started'),
+      );
+      journal.appendCheckpoint(
+        v11Checkpoint('review_api_facts_before', 'not_started'),
+      );
+      const authority = journal.issueFailureAuthority();
+      expect(() =>
+        journal.appendCheckpoint(
+          v11Checkpoint('review_api_trace_baseline', 'not_started'),
+        ),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_SEALED');
+      ledger.recordFailure(authority, v11Failure());
+      expect(() =>
+        journal.appendCheckpoint(
+          v11Checkpoint('review_api_trace_baseline', 'not_started'),
+        ),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_CHECKPOINT_SEALED');
+    } finally {
+      ledger.close();
+      journal.close();
+      owner.close();
+    }
+  });
+
+  it('rejects creating a V11 private journal before its public reservation exists', async () => {
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    const staleAttemptId = 'd'.repeat(64);
+    await writeFile(
+      join(
+        root,
+        ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+          'branch',
+        ),
+        'attempt-binding.json',
+      ),
+      `${JSON.stringify({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-attempt-v1',
+        attemptId: staleAttemptId,
+        attemptSha256: createHash('sha256')
+          .update(staleAttemptId)
+          .digest('hex'),
+      })}\n`,
+    );
+    let pending:
+      | Promise<
+          Awaited<
+            ReturnType<
+              typeof prepareReviewPlannerV11ProductAcceptanceRecoveryJournal
+            >
+          >
+        >
+      | undefined;
+    try {
+      pending = prepareReviewPlannerV11ProductAcceptanceRecoveryJournal({
+        repoRoot: root,
+        environment: 'branch',
+        owner: acquisition.owner,
+      });
+      await expect(pending).rejects.toThrow(
+        'V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO',
+      );
+    } finally {
+      const journal = await pending?.catch(() => null);
+      journal?.close();
+      acquisition.owner.close();
+    }
+  });
+
+  it('rejects a public/private V11 attempt mismatch before recovery can project', async () => {
+    const { owner, ledger, journal } = await prepareV11Journal(root);
+    journal.close();
+    ledger.close();
+    owner.close();
+
+    const mismatchedAttemptId = 'e'.repeat(64);
+    const recoveryPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        'branch',
+      ),
+    );
+    await writeFile(
+      join(recoveryPath, 'attempt-binding.json'),
+      `${JSON.stringify({
+        schemaVersion: 'phase-6.9.5-v11-product-acceptance-attempt-v1',
+        attemptId: mismatchedAttemptId,
+        attemptSha256: createHash('sha256')
+          .update(mismatchedAttemptId)
+          .digest('hex'),
+      })}\n`,
+    );
+
+    const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    if (acquisition.status !== 'acquired') throw new Error('owner unavailable');
+    try {
+      await expect(
+        openReviewPlannerV11ProductAcceptanceRecoveryJournal({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        }),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+      await expect(
+        openReviewPlannerV11ProductAcceptanceRecoveryLedger({
+          repoRoot: root,
+          environment: 'branch',
+          owner: acquisition.owner,
+        }),
+      ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+    } finally {
+      acquisition.owner.close();
+    }
+  });
+
+  it('rejects a V11 authority from a different opaque attempt', async () => {
+    const otherRoot = await createRoot();
+    const first = await prepareV11Journal(root);
+    const second = await prepareV11Journal(otherRoot);
+    try {
+      for (const prepared of [first, second]) {
+        prepared.journal.appendCheckpoint(
+          v11Checkpoint('review_api_activate', 'not_started'),
+        );
+        prepared.journal.appendCheckpoint(
+          v11Checkpoint('review_api_facts_before', 'not_started'),
+        );
+      }
+      const firstAuthority = first.journal.issueFailureAuthority();
+      expect(() =>
+        second.ledger.recordFailure(firstAuthority, v11Failure()),
+      ).toThrow('V11_PRODUCT_ACCEPTANCE_FAILURE_AUTHORITY_INVALID');
+    } finally {
+      first.ledger.close();
+      first.journal.close();
+      first.owner.close();
+      second.ledger.close();
+      second.journal.close();
+      second.owner.close();
+      await rm(otherRoot, { recursive: true, force: true });
+    }
   });
 
   it('keeps checkpoint prefixes slot-local while projecting the latest strict checkpoint', async () => {
@@ -2545,19 +2701,43 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
     }
   });
 
-  it('recovers a hard-exited dispatch checkpoint without external recovery calls or a second terminal', async () => {
+  it('recovers a hard-exited dispatch checkpoint without a second terminal', async () => {
     const child = runV11DispatchHardExitChild(root);
     expect({ status: child.status, stderr: child.stderr }).toEqual({
       status: 77,
       stderr: '',
     });
-    const externalRecoveryCalls = {
-      provider: 0,
-      api: 0,
-      browser: 0,
-      defaultOff: 0,
-      cleanup: 0,
-    };
+    const reservationPath = join(
+      root,
+      ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+        'branch',
+      ),
+      '.acceptance-reserved',
+    );
+    await expect(readFile(reservationPath, 'utf8')).resolves.toMatch(
+      /^[a-f0-9]{64}\n$/,
+    );
+    const privateAttempt = JSON.parse(
+      await readFile(
+        join(
+          root,
+          ...REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+            'branch',
+          ),
+          'attempt-binding.json',
+        ),
+        'utf8',
+      ),
+    ) as Record<string, unknown>;
+    expect(Object.keys(privateAttempt).sort()).toEqual([
+      'attemptId',
+      'attemptSha256',
+      'schemaVersion',
+    ]);
+    expect(privateAttempt.attemptId).toMatch(/^[a-f0-9]{64}$/);
+    expect(privateAttempt.attemptSha256).toBe(
+      (await readFile(reservationPath, 'utf8')).trim(),
+    );
     const acquisition = await acquireReviewPlannerV11ProductAcceptanceOwner({
       repoRoot: root,
       environment: 'branch',
@@ -2593,13 +2773,7 @@ describeWindows('Review/Planner V11 safe failure ledger', () => {
       const firstTerminal = await readFile(failurePath, 'utf8');
       journal.projectRecoveryOnly(ledger);
       await expect(readFile(failurePath, 'utf8')).resolves.toBe(firstTerminal);
-      expect(externalRecoveryCalls).toEqual({
-        provider: 0,
-        api: 0,
-        browser: 0,
-        defaultOff: 0,
-        cleanup: 0,
-      });
+      // Task4 owns injected external-call spies and runtime cleanup validation.
     } finally {
       ledger.close();
       journal.close();
