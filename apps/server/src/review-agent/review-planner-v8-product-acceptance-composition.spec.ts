@@ -1422,9 +1422,7 @@ describe('V11 execution-bridge composition', () => {
           repoRoot: REPO_ROOT,
           ports: fixture.ports,
         }),
-      ).rejects.toThrow(
-        stage === 'fixtures' ? 'fixture failure' : 'runner failure',
-      );
+      ).resolves.toEqual({ status: 'recovered', environment: 'branch' });
 
       expect(fixture.recoverFailure).toHaveBeenCalledTimes(1);
       expect(fixture.recoverFailure).toHaveBeenCalledWith(
@@ -1437,6 +1435,24 @@ describe('V11 execution-bridge composition', () => {
       expect(fixture.order).toContain('failure:cleanup');
     },
   );
+
+  it('requires manual recovery only when automatic V11 recovery cannot complete', async () => {
+    const fixture = createV11CompositionPorts();
+    fixture.ports.createFixtures.mockRejectedValueOnce(
+      new Error('fixture failure'),
+    );
+    fixture.recoverFailure.mockRejectedValueOnce(new Error('recovery failure'));
+
+    await expect(
+      runReviewPlannerV11ProductAcceptanceComposition({
+        environment: 'branch',
+        repoRoot: REPO_ROOT,
+        ports: fixture.ports,
+      }),
+    ).rejects.toThrow('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+
+    expect(fixture.recoverFailure).toHaveBeenCalledTimes(1);
+  });
 
   it('rejects recovery selector substitution against a second authoritative manifest read before runtime cleanup', async () => {
     const fixture = createV11RecoveryCompositionPorts();

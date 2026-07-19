@@ -5,6 +5,22 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0. Phase 6.9.5 V11 Product-Acceptance
+
+离线 bridge 已完成，不等于 product 验收成功。V10 controlled-Live 是唯一语义质量 authority，V10 product terminal 是 recovery-only；Review/Planner gate 默认关闭。独立复审和静态 gates 通过后，branch 仅执行一次：
+
+```powershell
+bun --filter @repo/server accept:review-planner:v11:product -- --confirm-v11-review-planner-product-acceptance --environment=branch
+```
+
+`operation_failed_recovered` 表示 product 已完成一次 exact automatic recovery；此时必须停止，不能再运行 standalone recovery 或重试 product。只有 product 输出 `recovery_required`，或 crash 后 V11 recovery preflight 明确授权时，才运行一次 standalone recovery：
+
+```powershell
+bun --filter @repo/server recover:review-planner:v11:product -- --confirm-v11-review-planner-product-acceptance-recovery-only --environment=branch
+```
+
+只有已包含 default-off restoration 与精确 cleanup receipts 的 branch `passed` 结果，才允许合并 main、执行 main replay、更新证据并推送；任何 automatic 或 standalone recovery 后均停止。V11 runtime 前后禁止 `down -v`、prune、volume 清理或 Docker 全量清空。
+
 ## 1. 先判断本次要验收什么
 
 | 场景                      | 推荐模式                                                          | 能证明什么                                                   | 不能证明什么                      |

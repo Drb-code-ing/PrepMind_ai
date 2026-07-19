@@ -2,6 +2,8 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
+Phase 6.9.5 当前使用隔离的 V11 product-acceptance bridge：V10 controlled-Live 是唯一语义质量权威，V10 product terminal 保持 recovery-only。V11 的两条业务 gate 继续默认关闭；本次只完成离线 CLI/ledger/composition 检查，尚未执行 Docker、浏览器或真实模型。下一步在两次独立复审后，只能执行一次 branch product command；post-manifest 失败会自动按 V11 manifest recovery 一次并输出 `operation_failed_recovered` 后停止，只有输出 `recovery_required` 或 crash 后 preflight 明确授权时才可手工 recovery 一次。成功才可合并 main、main replay 并推送。
+
 ## 项目快照
 
 | 阶段         | 状态   | 重点                                                                                                               |

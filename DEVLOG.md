@@ -1,14 +1,14 @@
 # PrepMind AI 开发日志
 
-> 2026-07-19 — Phase 6.9.5 V10 唯一 controlled-Live 已通过并封存：`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`；旧 V8 branch 产品尝试 recovery-only 归档，需建立新的隔离 V10 product-acceptance lineage，阶段验收未完成。
+> 2026-07-20 — Phase 6.9.5 V11 execution bridge 已完成离线 checkpoint：V10 controlled-Live 仍是唯一语义质量权威，V10 product terminal 仍为 recovery-only。V11 CLI、私有 manifest、success ledger、默认关闭与精确 recovery selector 已就位；未执行 V11 Docker、浏览器或真实模型，产品 gate 继续为 `false`。
 
 > 维护规则：`DEVLOG.md` 记录阶段级里程碑、关键工程决策和验收结果，不写逐提交流水账。每个关键阶段必须保留“目标 / 为什么 / 主要内容 / 边界 / 验收 / 回顾时可以问”，方便接手、复盘和面试表达。精简只压缩重复和噪声，不能删掉理解项目所需的动机、关键步骤和决策依据。完整路线看 `docs/roadmap.md`，当前数据边界看 `docs/data-flow.md`，面试复盘看 `docs/blogs/`，具体实现追溯看 `git log`。
 
 ## 当前快照
 
-更新时间：2026-07-19
+更新时间：2026-07-20
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 为 `quality_gate_failed`。V10 已把模型契约收窄为生产有效的 `focusIndexes` / `blockOrder`，唯一 controlled-Live 的 public reader 五次 fresh read 均为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V1--V9 manifest 未变，V10 evidence/success seal immutable。旧 V8 branch 产品尝试的 preflight 参数遗漏为 `0-call`，首次实际尝试暴露 runner parse bug，随后已 recovery-only 终态收口且没有新 provider 调用、cleanup 为零；它不是 V10 Live failure，也不可 reset 或重用。eval gate 与两条产品 gate 默认关闭，下一步需建立新的隔离 V10 product-acceptance lineage，Phase 6.9.5 仍未完成。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V9 保持只读历史；V9 唯一 Live 为 `quality_gate_failed`。V10 的唯一 controlled-Live 是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V10 product terminal 仅可 recovery，不得重试或复用。V11 execution bridge 的离线 contract、runner adapter、composition、CLI 与 exact recovery selector 已完成；两条产品 gate 仍为 `false`，V11 Docker/浏览器/真实模型尚未执行。下一步是两次独立复审后一次 branch product command；post-manifest 失败自动 recovery 完成时输出 `operation_failed_recovered` 并停止，只有 `recovery_required` 或 crash 后 preflight 授权时才手工 recovery 一次，成功才 main replay、合并和 push。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |

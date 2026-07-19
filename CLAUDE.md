@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前处于 Phase 6.9.5：Review/Planner V10 controlled-Live 已通过，产品 gate 仍默认关闭；下一步是分支 Docker/headed-browser 验收。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前处于 Phase 6.9.5：V10 controlled-Live 是唯一语义质量权威，V10 product terminal 为 recovery-only。V11 branch product CLI 已完成离线接线，产品 gate 仍默认关闭；通过复审后才可执行唯一一次 Docker/headed-browser 验收。
 
 已完成主线：
 

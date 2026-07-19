@@ -2,6 +2,10 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.5 V11 Product Boundary
+
+Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 在离线阶段只验证 CLI、ledger、manifest、default-off 和 recovery selector，不产生 Docker、浏览器或 provider 证据。`REVIEW_AGENT_MODEL_ENABLED=false` 与 `PLANNER_AGENT_MODEL_ENABLED=false` 保持默认。复审后 V11 branch command 仅可执行一次：post-manifest 失败会自动按其 V11 manifest recovery 一次，输出 `operation_failed_recovered` 后必须停止；只有输出 `recovery_required` 或 crash 后 preflight 明确授权时才可手工 recovery 一次。成功才可以 main replay、合并和推送。
+
 ## 1. Mock 与 Live 的分工
 
 - Mock 验收用于验证工程链路：请求参数、路由、headers、prompt 拼接、token 预算、RAG 降级、消息同步和 UI 渲染。

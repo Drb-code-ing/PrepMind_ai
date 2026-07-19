@@ -393,6 +393,10 @@ export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
       status: 'passed';
       environment: ReviewPlannerV8ProductAcceptanceEnvironment;
     }>
+  | Readonly<{
+      status: 'recovered';
+      environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    }>
 > {
   let owner: ReviewPlannerV11ProductAcceptanceOwner | undefined;
   let ledger: ReviewPlannerV11ProductAcceptanceLedger | undefined;
@@ -408,6 +412,10 @@ export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
       }>
     | Readonly<{
         status: 'passed';
+        environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+      }>
+    | Readonly<{
+        status: 'recovered';
         environment: ReviewPlannerV8ProductAcceptanceEnvironment;
       }>
     | undefined;
@@ -508,10 +516,18 @@ export async function runReviewPlannerV11ProductAcceptanceComposition(input: {
   }
   if (failure !== undefined) {
     if (executionManifest !== undefined) {
-      await input.ports.recoverFailure({
+      try {
+        await input.ports.recoverFailure({
+          environment: input.environment,
+          repoRoot: input.repoRoot,
+          executionManifest,
+        });
+      } catch {
+        throw new Error('V11_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+      }
+      return Object.freeze({
+        status: 'recovered' as const,
         environment: input.environment,
-        repoRoot: input.repoRoot,
-        executionManifest,
       });
     }
     throw failure;
@@ -2388,6 +2404,10 @@ async function runDefaultReviewPlannerV11ProductPreflight(
     ) {
       throw new Error();
     }
+    await assertReviewPlannerV11ProductAcceptanceRootsEmpty(
+      repoRoot,
+      input.environment,
+    );
     await assertCurrentServerDefaultOff(repoRoot, runtimeBoundary);
     if (input.environment === 'main') {
       const branch = await readReviewPlannerV11ProductAcceptanceLedger({
@@ -2409,6 +2429,27 @@ async function runDefaultReviewPlannerV11ProductPreflight(
     });
   } catch {
     return { status: 'blocked', code: 'preflight_failed' };
+  }
+}
+
+async function assertReviewPlannerV11ProductAcceptanceRootsEmpty(
+  repoRoot: string,
+  environment: ReviewPlannerV8ProductAcceptanceEnvironment,
+) {
+  const root = resolve(repoRoot);
+  const relativeRoots = [
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath(environment),
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath(environment),
+    REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
+      environment,
+    ),
+  ];
+  for (const relativePath of relativeRoots) {
+    const absolutePath = resolve(root, relativePath);
+    if (!existsSync(absolutePath)) continue;
+    if ((await readdir(absolutePath)).length !== 0) {
+      throw new Error('V11_PRODUCT_ACCEPTANCE_ROOT_NOT_EMPTY');
+    }
   }
 }
 

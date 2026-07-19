@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 现处于 V11 product-acceptance 离线 checkpoint：V10 controlled-Live 仍是唯一质量依据，Review/Planner 产品 gate 默认关闭，尚未运行 V11 runtime。
 
 ## 当前状态
 
@@ -225,7 +225,7 @@ bun --cwd packages/fsrs test
 
 回顾时可以问：“V10 为什么只让模型返回 `focusIndexes` / `blockOrder`？”“为什么 V10 Live 通过后产品 gate 仍默认关闭？”“为什么模型不能决定权限和写操作？”
 
-下一会话可以复制：“请读取 Phase 6.9.5 V10 committed Live evidence 后开始分支 Docker/headed-browser 验收；逐组件恢复产品 gate=false，不改写 V1--V10 证据或提前合并 main。”
+下一会话可以复制：“请先复审 Phase 6.9.5 V11 execution bridge；确认离线 gates 后只执行一次 branch product command。若输出 `operation_failed_recovered` 则停止；只有 `recovery_required` 或 crash 后 preflight 授权时才手工 recovery 一次，成功才合并 main 并 replay。”
 
 ## 文档入口
 

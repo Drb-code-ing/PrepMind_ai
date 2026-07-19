@@ -203,7 +203,9 @@ export function withReviewPlannerProductAcceptanceSchemaIdentity(
 }
 
 export function parseReviewPlannerProductAcceptanceArguments(
-  profile: ReviewPlannerProductAcceptanceProfile,
+  profile:
+    | ReviewPlannerProductAcceptanceProfile
+    | ReviewPlannerV11ProductAcceptanceProfile,
   argv: readonly string[],
   kind: ReviewPlannerProductAcceptanceKind,
 ): Readonly<{ environment: ReviewPlannerProductAcceptanceEnvironment }> {
