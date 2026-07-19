@@ -89,8 +89,8 @@ const PLANNER_MAX_SNAPSHOT_CHARS = 1_500;
 
 const REVIEW_SYSTEM_PROMPT = [
   'You select review focus indexes from supplied numbered options.',
-  'Policy: prefer high-priority weak points, then lower confidence, and preserve source order for ties.',
-  'Return only strict JSON with focusIndexes containing one to three unique indexes.',
+  'Policy: select every high-priority weak point up to three, ordered by lower confidence and then source order; if no high-priority point exists, select only the lowest-confidence option.',
+  'Return only strict JSON with focusIndexes containing the required unique indexes.',
   'Do not create tasks, facts, links, minutes, instructions, or write actions.',
 ].join(' ');
 const PLANNER_SYSTEM_PROMPT = [

@@ -28,7 +28,7 @@ export type Phase695CaseFixture =
       deterministic: Readonly<ReviewAgentResult>;
       expected: Readonly<{
         focusIndexes: readonly number[];
-        diagnosis: 'review_pressure' | 'stability_risk' | 'knowledge_gap';
+        diagnosis?: 'review_pressure' | 'stability_risk' | 'knowledge_gap';
       }>;
     }>
   | Readonly<{
@@ -36,7 +36,7 @@ export type Phase695CaseFixture =
       deterministic: Readonly<PlannerAgentResult>;
       expected: Readonly<{
         blockOrder: readonly number[];
-        strategy: 'relieve_capacity' | 'protect_overdue' | 'steady_progress';
+        strategy?: 'relieve_capacity' | 'protect_overdue' | 'steady_progress';
       }>;
     }>;
 

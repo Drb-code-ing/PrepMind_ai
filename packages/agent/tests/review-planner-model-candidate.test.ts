@@ -114,7 +114,10 @@ describe('review planner model candidates', () => {
     });
     expect(requests[0]?.estimatedInputTokens).toBeLessThanOrEqual(900);
     expect(requests[0]?.systemPrompt).toContain(
-      'prefer high-priority weak points',
+      'select every high-priority weak point',
+    );
+    expect(requests[0]?.systemPrompt).toContain(
+      'if no high-priority point exists, select only the lowest-confidence option',
     );
     expect(requests[0]?.userPrompt).toContain('"options"');
     expect(requests[0]?.userPrompt).not.toContain('deterministicReview');

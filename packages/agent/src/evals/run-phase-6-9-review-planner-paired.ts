@@ -46,6 +46,20 @@ export type RunPhase695ReviewPlannerPairedInput =
   | Readonly<{ mode: 'mock'; now?: () => number }>
   | Readonly<{ mode: 'live'; live: Phase695LiveDependencies }>;
 
+export type Phase695DatasetAdapter = Readonly<{
+  cases: readonly Phase695ReviewPlannerCase[];
+  getFixture(caseId: string): Phase695CaseFixture | null;
+  mockDecision(fixture: Phase695CaseFixture): unknown;
+}>;
+
+const phase695V2Dataset: Phase695DatasetAdapter = Object.freeze({
+  cases: phase695ReviewPlannerCases,
+  getFixture: getPhase695CaseFixture,
+  mockDecision: (fixture) => fixture.lane === 'review'
+    ? { focusIndexes: fixture.expected.focusIndexes }
+    : { blockOrder: fixture.expected.blockOrder },
+});
+
 type CandidateObservation = Readonly<{
   attempted?: unknown;
   disposition?: unknown;
@@ -60,22 +74,31 @@ type CandidateObservation = Readonly<{
 export async function runPhase695ReviewPlannerPaired(
   input: RunPhase695ReviewPlannerPairedInput,
 ): Promise<Phase695Report> {
-  const entries: Phase695CaseEntry[] = [];
-  for (const testCase of phase695ReviewPlannerCases) {
-    entries.push(await runCase(testCase, input));
-  }
+  const entries = await runPhase695ReviewPlannerEntries(input, phase695V2Dataset);
   return phase695ReportSchema.parse(buildReport(input.mode, entries));
+}
+
+export async function runPhase695ReviewPlannerEntries(
+  input: RunPhase695ReviewPlannerPairedInput,
+  dataset: Phase695DatasetAdapter,
+): Promise<readonly Phase695CaseEntry[]> {
+  const entries: Phase695CaseEntry[] = [];
+  for (const testCase of dataset.cases) {
+    entries.push(await runCase(testCase, input, dataset));
+  }
+  return Object.freeze(entries.map((entry) => Object.freeze({ ...entry })));
 }
 
 async function runCase(
   testCase: Phase695ReviewPlannerCase,
   input: RunPhase695ReviewPlannerPairedInput,
+  dataset: Phase695DatasetAdapter,
 ): Promise<Phase695CaseEntry> {
-  const fixture = getPhase695CaseFixture(testCase.id);
+  const fixture = dataset.getFixture(testCase.id);
   if (!fixture) return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
 
   const dependencies = input.mode === 'mock'
-    ? mockDependencies(fixture, input.now)
+    ? mockDependencies(fixture, input.now, dataset.mockDecision)
     : completeLiveDependencies(input.live);
   if (!isSafeDependencies(dependencies)) {
     return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
@@ -200,6 +223,7 @@ async function runCase(
 function mockDependencies(
   fixture: Phase695CaseFixture,
   now: (() => number) | undefined,
+  mockDecision: (fixture: Phase695CaseFixture) => unknown,
 ): Required<Phase695LiveDependencies> {
   return {
     runtime: createModelAgentRuntime({
@@ -208,9 +232,7 @@ function mockDependencies(
       model: 'phase-6-9-review-planner-mock-v1',
       liveCallsEnabled: false,
       timeoutMs: PHASE_695_CASE_TIMEOUT_MS,
-      mockResponder: () => fixture.lane === 'review'
-        ? { focusIndexes: fixture.expected.focusIndexes }
-        : { blockOrder: fixture.expected.blockOrder },
+      mockResponder: () => mockDecision(fixture),
     }),
     now: now ?? defaultNow,
     setTimeout: (callback, ms) => setTimeout(callback, ms),
