@@ -73,5 +73,13 @@ function testTodayPageUsesCompactReviewAgentSuggestion() {
 
   assert.match(source, /useReviewAgentSuggestions/);
   assert.match(source, /ReviewAgentSuggestionCard/);
-  assert.match(source, /suggestion=\{reviewAgentSuggestions\.data\} compact/);
+  assert.match(
+    source,
+    /suggestion=\{reviewAgentSuggestions\.data\}[\s\S]*?compact[\s\S]*?onPrimaryAction=\{focusTodayReview\}/,
+  );
+  assert.match(source, /id="today-review"/);
+  assert.match(source, /scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
+  assert.match(source, /focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /!todayReviewTasks\.isLoading[\s\S]*?!todayReviewTasks\.isError/);
+  assert.match(source, /今天暂时没有待复习任务，可先按今日清单学习。/);
 }

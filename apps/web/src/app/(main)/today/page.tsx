@@ -124,6 +124,8 @@ export default function TodayPage() {
     pendingByTaskId: Record<string, { rating: ReviewRating }>;
   } | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
+  const todayReviewSectionRef = useRef<HTMLElement | null>(null);
+  const firstPendingReviewTaskRef = useRef<HTMLDivElement | null>(null);
   const timezoneOffsetMinutes = useMemo(() => new Date().getTimezoneOffset(), []);
   const todayReviewTasks = useTodayReviewTaskList({
     date: dateKey,
@@ -258,6 +260,23 @@ export default function TodayPage() {
       noticeTimerRef.current = null;
     }, 2400);
   }, []);
+
+  const focusTodayReview = useCallback(() => {
+    const focusTarget = firstPendingReviewTaskRef.current ?? todayReviewSectionRef.current;
+
+    if (!focusTarget) return;
+
+    focusTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    focusTarget.focus({ preventScroll: true });
+
+    if (
+      !firstPendingReviewTaskRef.current &&
+      !todayReviewTasks.isLoading &&
+      !todayReviewTasks.isError
+    ) {
+      showNotice('今天暂时没有待复习任务，可先按今日清单学习。', 'neutral');
+    }
+  }, [showNotice, todayReviewTasks.isError, todayReviewTasks.isLoading]);
 
   useEffect(() => {
     return () => {
@@ -498,11 +517,20 @@ export default function TodayPage() {
 
         {reviewAgentSuggestions.data ? (
           <div className="mt-4">
-            <ReviewAgentSuggestionCard suggestion={reviewAgentSuggestions.data} compact />
+            <ReviewAgentSuggestionCard
+              suggestion={reviewAgentSuggestions.data}
+              compact
+              onPrimaryAction={focusTodayReview}
+            />
           </div>
         ) : null}
 
-        <section className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4">
+        <section
+          id="today-review"
+          ref={todayReviewSectionRef}
+          tabIndex={-1}
+          className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -543,18 +571,23 @@ export default function TodayPage() {
                 复习任务读取失败，稍后再试。
               </p>
             ) : groupedReviewTasks.pending.length ? (
-              groupedReviewTasks.pending.map((task) => (
-                <ReviewTaskCard
+              groupedReviewTasks.pending.map((task, index) => (
+                <div
                   key={task.id}
-                  task={task}
-                  revealed={revealedTaskIds.has(task.id)}
-                  feedback={reviewFeedbacks[task.id] ?? null}
-                  ratingPending={submitReviewRating.isPending}
-                  actionPending={skipReviewTask.isPending || reopenReviewTask.isPending}
-                  onToggleAnswer={() => toggleAnswer(task.id)}
-                  onRate={(rating) => void rateTask(task, rating)}
-                  onSkip={() => void skipTask(task.id)}
-                />
+                  ref={index === 0 ? firstPendingReviewTaskRef : undefined}
+                  tabIndex={index === 0 ? -1 : undefined}
+                >
+                  <ReviewTaskCard
+                    task={task}
+                    revealed={revealedTaskIds.has(task.id)}
+                    feedback={reviewFeedbacks[task.id] ?? null}
+                    ratingPending={submitReviewRating.isPending}
+                    actionPending={skipReviewTask.isPending || reopenReviewTask.isPending}
+                    onToggleAnswer={() => toggleAnswer(task.id)}
+                    onRate={(rating) => void rateTask(task, rating)}
+                    onSkip={() => void skipTask(task.id)}
+                  />
+                </div>
               ))
             ) : (
               <p className="rounded-2xl bg-white/70 px-3 py-3 text-sm leading-6 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
