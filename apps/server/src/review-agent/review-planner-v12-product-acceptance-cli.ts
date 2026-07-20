@@ -3,6 +3,11 @@ import {
   REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceEnvironment,
 } from './review-planner-product-acceptance-profile';
+import {
+  createDefaultReviewPlannerV12ProductAcceptanceComposition,
+  runReviewPlannerV12ProductAcceptanceComposition,
+  type ReviewPlannerV12ProductAcceptanceCompositionPorts,
+} from './review-planner-v12-product-acceptance-composition';
 
 type V12CliKind = 'product' | 'recovery';
 
@@ -12,7 +17,9 @@ export type ReviewPlannerV12ProductAcceptanceCliSummary = Readonly<{
   code: 'default_off';
 }>;
 
-export interface ReviewPlannerV12ProductAcceptanceCliPorts {
+export interface ReviewPlannerV12ProductAcceptanceCliPorts extends Partial<
+  Omit<ReviewPlannerV12ProductAcceptanceCompositionPorts, 'preflight'>
+> {
   preflight(input: {
     environment: ReviewPlannerProductAcceptanceEnvironment;
     repoRoot: string;
@@ -35,7 +42,17 @@ export async function runReviewPlannerV12ProductAcceptanceProductCli(input: {
   repoRoot: string;
   ports: ReviewPlannerV12ProductAcceptanceCliPorts;
 }): Promise<ReviewPlannerV12ProductAcceptanceCliSummary> {
-  return runReviewPlannerV12ProductAcceptanceCli(input, 'product');
+  const { environment } = parseReviewPlannerV12ProductAcceptanceArguments(
+    input.argv,
+    'product',
+  );
+  const defaults = createDefaultReviewPlannerV12ProductAcceptanceComposition();
+  await runReviewPlannerV12ProductAcceptanceComposition({
+    environment,
+    repoRoot: input.repoRoot,
+    ports: Object.freeze({ ...defaults.ports, ...input.ports }),
+  });
+  return defaultOffSummary();
 }
 
 export async function runReviewPlannerV12ProductAcceptanceRecoveryCli(input: {

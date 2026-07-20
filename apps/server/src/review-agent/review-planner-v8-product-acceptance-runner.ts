@@ -9,6 +9,7 @@ import {
   normalizeReviewPlannerProductAcceptanceSchemaRecord,
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
   withReviewPlannerProductAcceptanceSchemaIdentity,
@@ -17,6 +18,10 @@ import {
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS,
   type ReviewPlannerV11ProductAcceptanceCheckpoint,
 } from './review-planner-v11-product-acceptance-diagnostics';
+import {
+  REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_CHECKPOINTS,
+  type ReviewPlannerV12ProductAcceptanceCheckpoint,
+} from './review-planner-v12-product-acceptance-recovery';
 
 type Component = 'review' | 'planner';
 type RequestSlot = 'api' | 'browser';
@@ -176,6 +181,16 @@ export interface ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
   publishFailure(): void;
 }
 
+export interface ReviewPlannerV12ProductAcceptanceDiagnosticsPort {
+  checkpoint(value: ReviewPlannerV12ProductAcceptanceCheckpoint): void;
+  publishFailure(): void;
+}
+
+type ProductAcceptanceDiagnosticsPort = Readonly<{
+  checkpoint(value: string): void;
+  publishFailure(): void;
+}>;
+
 export type ReviewPlannerV8ProductAcceptanceRunResult = Readonly<{
   environment: ReviewPlannerV8ProductAcceptanceEnvironment;
   provider: string;
@@ -214,7 +229,8 @@ type SafeSnapshot = Readonly<{
   apiOrigin: typeof EXACT_API_ORIGIN;
   ledger: ReviewPlannerV8ProductAcceptanceRunnerLedgerPort;
   dependencies: ReviewPlannerV8ProductAcceptanceRunnerDependencies;
-  diagnostics: ReviewPlannerV11ProductAcceptanceDiagnosticsPort | null;
+  diagnostics: ProductAcceptanceDiagnosticsPort | null;
+  diagnosticCheckpoints: readonly string[] | null;
 }>;
 
 type ComponentResult = Readonly<{
@@ -285,7 +301,7 @@ export async function runReviewPlannerV8ProductAcceptance(
   } catch (error) {
     primaryError = normalizeError(error);
     try {
-      publishV11Failure(snapshot, failurePublication);
+      publishDiagnosticFailure(snapshot, failurePublication);
     } catch {
       primaryError = controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
     }
@@ -306,7 +322,7 @@ export async function runReviewPlannerV8ProductAcceptance(
     primaryError?.message === 'PRODUCT_ACCEPTANCE_RESTORE_UNVERIFIED'
   ) {
     try {
-      publishV11Failure(snapshot, failurePublication);
+      publishDiagnosticFailure(snapshot, failurePublication);
     } catch {
       throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
     }
@@ -315,7 +331,7 @@ export async function runReviewPlannerV8ProductAcceptance(
   if (primaryError) throw primaryError;
   if (!successCandidate || !cleanupReceipt) {
     try {
-      publishV11Failure(snapshot, failurePublication);
+      publishDiagnosticFailure(snapshot, failurePublication);
     } catch {
       throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
     }
@@ -326,7 +342,7 @@ export async function runReviewPlannerV8ProductAcceptance(
     await snapshot.ledger.finalizeSuccess();
   } catch (error) {
     try {
-      publishV11Failure(snapshot, failurePublication);
+      publishDiagnosticFailure(snapshot, failurePublication);
     } catch {
       throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
     }
@@ -511,7 +527,7 @@ async function runComponent(input: {
   } catch (error) {
     primaryError = error;
     try {
-      publishV11Failure(snapshot, input.failurePublication);
+      publishDiagnosticFailure(snapshot, input.failurePublication);
     } catch {
       primaryError = controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
     }
@@ -842,6 +858,9 @@ function canonicalizeProductAcceptanceProfile(value: unknown) {
   if (value === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE) {
     return REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE;
   }
+  if (value === REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE) {
+    return REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE;
+  }
   throw new Error();
 }
 
@@ -854,10 +873,12 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     const requestedProfile = canonicalizeProductAcceptanceProfile(
       source.profile,
     );
-    const profile =
-      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE
-        ? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE
-        : requestedProfile;
+    const hasDiagnostics =
+      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE ||
+      requestedProfile === REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE;
+    const profile = hasDiagnostics
+      ? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE
+      : requestedProfile;
     const commitSha = source.commitSha;
     const pairedEvidenceSha256 = source.pairedEvidenceSha256;
     const accountSource = source.accountIdSha256 as Record<string, unknown>;
@@ -898,12 +919,17 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
     const ledger = snapshotLedgerPort(source.ledger);
     const dependencies = snapshotDependencyPort(
       source.dependencies,
-      requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
+      hasDiagnostics,
     );
-    const diagnostics =
+    const diagnostics = hasDiagnostics
+      ? snapshotDiagnosticsPort(source.diagnostics)
+      : null;
+    const diagnosticCheckpoints =
       requestedProfile === REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE
-        ? snapshotV11DiagnosticsPort(source.diagnostics)
-        : null;
+        ? REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS
+        : requestedProfile === REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE
+          ? REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_CHECKPOINTS
+          : null;
     if (ledger.environment() !== environment) throw new Error();
 
     capabilityHandle = Object.freeze({});
@@ -926,6 +952,7 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
       ledger,
       dependencies,
       diagnostics,
+      diagnosticCheckpoints,
     } as Omit<SafeSnapshot, 'capabilityHandle'> & {
       capabilityHandle?: CapabilityHandle;
     };
@@ -1031,15 +1058,13 @@ function snapshotDependencyPort(
 }
 /* eslint-enable @typescript-eslint/unbound-method */
 
-function snapshotV11DiagnosticsPort(
+function snapshotDiagnosticsPort(
   value: unknown,
-): ReviewPlannerV11ProductAcceptanceDiagnosticsPort {
+): ProductAcceptanceDiagnosticsPort {
   if (!value || typeof value !== 'object') throw new Error();
-  const source = value as ReviewPlannerV11ProductAcceptanceDiagnosticsPort;
-  /* eslint-disable @typescript-eslint/unbound-method -- methods are read once, then invoked with their original receiver */
+  const source = value as ProductAcceptanceDiagnosticsPort;
   const checkpoint = source.checkpoint;
   const publishFailure = source.publishFailure;
-  /* eslint-enable @typescript-eslint/unbound-method */
   if (
     typeof checkpoint !== 'function' ||
     typeof publishFailure !== 'function'
@@ -1047,24 +1072,17 @@ function snapshotV11DiagnosticsPort(
     throw new Error();
   }
   return Object.freeze({
-    checkpoint: (record: ReviewPlannerV11ProductAcceptanceCheckpoint) =>
-      checkpoint.call(source, record),
+    checkpoint: (record: string) => checkpoint.call(source, record),
     publishFailure: () => publishFailure.call(source),
   });
 }
 
 function checkpoint(snapshot: SafeSnapshot, value: string) {
   if (snapshot.diagnostics === null) return;
-  if (
-    !(
-      REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_CHECKPOINTS as readonly string[]
-    ).includes(value)
-  ) {
+  if (!snapshot.diagnosticCheckpoints?.includes(value)) {
     throw controlError('PRODUCT_ACCEPTANCE_OPERATION_FAILED');
   }
-  snapshot.diagnostics.checkpoint(
-    value as ReviewPlannerV11ProductAcceptanceCheckpoint,
-  );
+  snapshot.diagnostics.checkpoint(value);
 }
 
 async function captureTraceBaseline(
@@ -1079,7 +1097,7 @@ async function captureTraceBaseline(
   await snapshot.dependencies.captureTraceBaseline({ component, slot });
 }
 
-function publishV11Failure(
+function publishDiagnosticFailure(
   snapshot: SafeSnapshot,
   state: FailurePublicationState,
 ) {
