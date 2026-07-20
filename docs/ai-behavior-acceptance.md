@@ -2,11 +2,11 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.5 V19 Product Boundary
+## Phase 6.9.5 Review / Planner 当前边界
 
-Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V11--V18 都是不可重跑、不可复用的历史。V18 的 argv 已确认正确，但其 Node product preflight 在 owner 前关闭；未创建 owner、ledger、Docker、浏览器、API、provider、合成资源或 runtime root。
+Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。
 
-V19 是新的隔离 product lineage，拥有独立 profile、durable ledger、attempt binding、V8 four-slot adapter 与真实 default-off host。它保留 repository-root CWD、严格 allowlist、只读 Bun V10-authority bridge、receipt 与 recovery 边界；确认 parser、权限、facts、预算、默认关闭和恢复规则均未放宽。V19 在产品命令前先运行零资源 read-only Node preflight，以确认同一 runner/default host 的真实运行路径；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。只有明确授权且 preflight ready 的 V19 branch `passed` 才可进入 main replay、合并与推送。
+修复后，用户授权下的独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 分支验收均得到 `candidate_applied`，Trace 为 `live / deepseek-v4-pro / completed`；模型仍只能从本地 snapshot 选择 `focusIndexes` / `blockOrder`，本地保留 owner、facts、FSRS、写权限和最终只读 merger。两个业务 gate 与 live-call gate 已恢复 `false`，合成账户/Trace 已清理。当前唯一允许的后续验收是：提交/复验分支后 `--no-ff` 合并 `main`，确认 `HEAD` 在 `main`，再执行无真实模型 default-off replay；不得执行任一历史 V19/V20/V21/V22 accept 或 recover 命令。
 
 ## 1. Mock 与 Live 的分工
 

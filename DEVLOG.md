@@ -1,4 +1,6 @@
 # PrepMind AI 开发日志
+> 2026-07-20 — Phase 6.9.5 Review/Planner 分支生产验收收口：V22 的唯一 branch product 因把 API aggregate duration 与 Trace candidate-step duration 做精确相等比较而终止，唯一 recovery 已封存为 `recovered`。修复仅解除该独立计时耦合，仍严格校验 provider/model、candidate state、正 duration、step topology 与双向 usage。随后在用户授权下完成一次独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收：API 为 Review `candidate_applied / 945ms / 225+7`、Planner `candidate_applied / 732ms / 222+8`；浏览器为 Review `1329ms / 225+7`、Planner `839ms / 222+8`，页面实际渲染“Agent 学习建议”。Docker server 已恢复 `REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`AI_ENABLE_LIVE_CALLS=false`；合成账户与 Trace 清理复核为 `0/0`。下一步必须先提交并复验分支，再 `--no-ff` 合并到 `main`；只在 `main` 的 HEAD 上进行 default-off replay、复核和推送，才可标记阶段最终完成。完整证据见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+
 > 2026-07-20 — V21 最小运行时切换：V20 `preflightOnly` 已通过，但唯一 product 在真实 `acquireOwner` 前安全关闭。根因是 owner/ledger 的 Windows reparse-safe I/O 依赖 `bun:ffi`，Node runner 不能执行它。V21 仅将受控 product/recovery/preflight lifecycle 改为 Bun 直接执行，保留 profile、确认、权限、预算、default-off、清理和 V10 authority 的既有边界；V21 product/recovery、Docker、浏览器、API 与 provider 尚未运行，gate 仍 false。
 
 > 2026-07-20 — V20 离线收口：V19 的只读 Node preflight 已返回 `ready`，证明 runner/parser/default host 可执行；但其唯一 branch product 仍在 owner 前返回固定 `default_off`，没有 owner、ledger、Docker、浏览器、API、provider、合成资源或三类 roots，故不可重跑且 recovery 不适用。V20 建立独立 namespace，并在 public product execute 内增加 `preflightOnly`：它保留真实 confirmation/default ports/default host，只把 owner 固定为 `owner_active`，因而在 reservation 前零资源验证 exact execute path。V20 product/recovery、Docker、浏览器、API 与 provider 均未运行，两个 gate 继续 false。详见 `docs/acceptance/phase-6-9-5-review-planner-v19-closure-v20-plan.md` 与 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v20-product-lineage-design.md`。
@@ -41,7 +43,7 @@
 
 更新时间：2026-07-20
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11/V12 为 recovered 历史，V13 的 Bun interruption reservation、V14/V15 receipt mismatch、V16 Node CWD authority mismatch、V17 Bun separator parser stop 与 V18 Node-runner preflight stop 都不可重跑或恢复。V19 已建立独立 lineage：保留 root-or-v1 URL、Flash/Pro、repository-root CWD、allowlist、bridge、receipt/recovery 边界，并先使用不可变更资源的 Node read-only preflight 验证真实 host parity。V19 尚未运行 product/recovery、Docker、浏览器、API 或 provider，两个 gate 为 false。下一步是 V19 read-only preflight；只有随后唯一 V19 branch product 的 `passed` 才能 main replay、合并和 push。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成分支验收：V10 仍是唯一语义质量 authority，V22 的 `operation_failed -> recovered` 历史不可重跑，修复后的一次独立 DeepSeek V4 Pro Docker API/可见 `/plan` 验收确认 Review/Planner 均能 `candidate_applied`。默认产品开关已恢复 false，合成账户与 Trace 已精确清理。下一步是提交/复验分支、`--no-ff` 合并 main；只在 main 上 default-off replay、复核和推送，完成后才进入 Phase 6.9.6。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -59,7 +61,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16 均封存，V17 已离线收口，待唯一 Node branch product 验收 |
+| Phase 6.9.5  | 分支验收完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、default-off 恢复与合成数据清理；待 main replay |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

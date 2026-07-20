@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 仍在 Phase 6.9.5 验收未完成状态。V10 是唯一语义质量 authority，V11--V19 均为不可重跑历史；V20 已完成独立 default-off 离线收口：repository-root CWD、只读 Bun V10-authority bridge、严格路径/receipt/recovery 边界保持，并用 `preflightOnly` 在真实 public execute/default ports/default host 中零资源验证最后编排层后才允许产品命令。V20 尚未运行 Docker、浏览器、API 或 provider；两条业务 gate 默认 `false`，当前产品路径仍 deterministic。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 已完成分支验收。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。修复计时耦合后的一次独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均得到 `candidate_applied`，随后两条业务 gate 和 live-call gate 恢复默认 `false`，合成账户与 Trace 已清理。仍须提交/复验分支、`--no-ff` 合并 main 后，在 main 的 HEAD 上 default-off replay 才可标记阶段完成；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -524,8 +524,8 @@ Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
 - `GET /review-agent/suggestions` 经过 `JwtAuthGuard`，按当前 `userId` 聚合数据。
 - ReviewAgent 负责识别薄弱知识点、逾期压力、Again / Hard 信号、低稳定度和高难度卡片。
 - PlannerAgent 负责结合 ReviewAgent 输出、未来计划窗口和 `ReviewPreference` 生成今日重点、周计划节奏、容量提示和建议 block。
-- 该建议链路不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 的 candidate 即使启用也保持只读，FSRS 与容量事实由后端确定。
-- `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。
+- 该建议链路不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 的 DeepSeek V4 Pro Docker API 和可见 `/plan` 已验证 candidate 路径，但 FSRS 与容量事实仍由后端确定。
+- `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。验收通过后也恢复 default-off。
 - 2026-07-16~17 的 v1--v6 server-only controlled-Live profile 均在独立 once marker 下终态关闭，计数不可合并；v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 表示 provider boundary 被触达一次但 usage 不可验证，不是 zero-call、零成本、账单或质量结论。私有 evidence 不进入用户建议、Trace、Docker 或浏览器数据流；六个 marker 均已消耗，当前阶段不得重跑 profile 或执行 V6 48-case/Docker/浏览器后续验收；两个业务 gate 继续默认 `false`。
 - V7 诊断工程不改变产品数据流。唯一 Live 已封存 once marker 与 `finalized evidence_io` JSON，无 success seal、token/cost、prompt、response、credential、raw error 或 quality counters。这些证据只允许推导 23 次 provider attempts 与 terminal gate 关闭，不允许把模型候选注入 `/review-agent/suggestions`。因此当前 suggestions 继续走 deterministic read-only path，V7 不得重跑或作为 Docker/Web/worker/API 入口。
 - V8 设计同样不改变当前产品数据流：它只为新的 server-only paired lineage 增加零字节、固定枚举、append-only stage markers 与独立 evidence。只有 V8 committed success 后才允许临时启用 Nest `server` 的单个 Review 或 Planner gate；Web/worker 不消费这些 gate，且每个组件验完必须重建 default-off `server`。

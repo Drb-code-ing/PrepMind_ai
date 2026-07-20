@@ -917,23 +917,22 @@ Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http:/
 
 ### Phase 6.9.5 产品验收与关机收口
 
-V20 是当前唯一待运行的 Review/Planner 产品 lineage；V10 仍是唯一语义质量 authority，V11--V19 不可重跑。先执行零资源 `preflightOnly` execute gate，只有它返回 `ready` 且明确授权的 V20 branch command 继续通过严格 preflight 后，才在受控产品验收期间一次只开启一个 Review/Planner gate，并只重建 `server`：
+Phase 6.9.5 已完成分支真实模型验收，仍待 `main` 的无真实模型 default-off replay。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 与 V11--V21 历史均不可重跑、不可恢复或拼接。先提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，再确认当前 branch/HEAD 为 `main`。只有随后才可执行下列 Docker 重建；全程禁止开启 Review/Planner 或 live-call gate，也禁止执行任何 V19/V20/V21/V22 accept/recover 命令。
 
 ```powershell
-# Review-only：当前会话显式设置 Review=true、Planner=false 后执行
-docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate server
-
-# Review 验完后先把两个 gate 都恢复 false，再执行同一条 server 命令
-
-# Planner-only：当前会话显式设置 Review=false、Planner=true 后执行
-docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate server
-
-# Planner 验完后再次恢复两个 gate false，并执行同一条 server 命令
+$env:AI_PROVIDER_MODE = 'mock'
+$env:AI_ENABLE_LIVE_CALLS = 'false'
+$env:REVIEW_AGENT_MODEL_ENABLED = 'false'
+$env:PLANNER_AGENT_MODEL_ENABLED = 'false'
+$env:REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED = 'false'
+$env:REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS = '0'
+docker compose --env-file .env -f docker/docker-compose.dev.yml up -d --build --no-deps server web
+curl.exe -fsS http://127.0.0.1:3001/health
 ```
 
-每次重建后都要读取 `/review-agent/suggestions` 的 `modelObservations`，确认目标组件与另一个组件的 disposition/provenance 符合验收表；恢复后两者必须回到 deterministic。不要把 gate 或 key 写入命令行、日志、文档或截图。
+每次重建后都要读取 `/review-agent/suggestions` 的 `modelObservations`，确认 Review/Planner 都是 `not_eligible / local_deterministic`，不存在 live usage/Trace。不要把 gate 或 key 写入命令行、日志、文档或截图。
 
-合并 main 后不重跑已经消费的 paired lineage；只重新读取 committed success evidence，完成静态/构建、Docker default-off 和受独立费用上限约束的产品 API/可见浏览器/Trace replay。
+合并 main 后不重跑已经消费的 paired lineage；只重新读取 V10/V22 与分支验收 evidence，完成静态/构建、Docker default-off、可见浏览器和精确 synthetic cleanup replay。
 
 若用户要求验收后关机，必须先完成：精确删除本轮合成账号/业务记录/Trace 和浏览器 storage；清除当前 PowerShell 的 Live/eval/gate/key；重建 default-off `server`；关闭 headed 浏览器、Playwright、本地 Bun 与辅助进程；确认 Git clean 且本地/远程 main SHA 一致。最后只使用：
 

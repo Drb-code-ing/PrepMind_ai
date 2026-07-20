@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch、V17 wrapper/parser pre-confirmation stop、V18 root-absent Node-runner preflight stop、V19 root-absent product-execute stop 与 V20 root-absent owner-acquisition stop 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V20 的 `preflightOnly` 已证明 default execute 在 owner 前可达，但真实 owner 依赖 `bun:ffi` 的 Windows native I/O，Node runner 在该点安全关闭；没有 V20 ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。V21 是唯一待运行的隔离 lineage：保留严格 parser/default-off/只读模型边界，受控 lifecycle 直接由 Bun 执行，以支持 native owner/ledger I/O。两个业务 gate 继续 false；只有 V21 preflight `ready` 后的 V21 branch `passed` 才能 main replay、合并或 push。
+Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成分支生产验收收口：V10 controlled-Live 仍是唯一语义质量 authority；V12、V21 和 V22 的 `operation_failed -> recovered` 以及 V13--V20 的安全终态均保留为不可重跑、不可改写的历史。V22 的 Trace 计时耦合修复后，在用户授权下完成了一次独立的 DeepSeek V4 Pro Docker API 与可见 `/plan` 浏览器验收，Review/Planner 都返回 `candidate_applied`；合成账户/Trace 已精确清理，三个模型开关已恢复 `false`。仍须先提交并通过分支复验，再以 `--no-ff` 合并到 `main`；只在确认当前 `HEAD` 属于 `main` 后执行 default-off replay 与静态复验，才可把 Phase 6.9.5 标记为最终完成并推送。该路径只覆盖受限只读 Review/Planner，不代表其余 Agent、可执行 LangGraph 或 Phase 6.9 全部完成。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
 
 ## 项目快照
 
@@ -48,7 +48,7 @@ Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt
 | Phase 6.9.4.2 | 已完成 | Router / Verifier Mock candidate、零调用安全门、strict schema、不可变预算与安全降级             |
 | Phase 6.9.4.3 | 验收未完成 | JSON-mode 完整 Live 已完成；28/28、72/72 通过但 Router P95 延迟失败，当时结论为 terminal deterministic fallback |
 | Phase 6.9.4.4 | 已完成 | Router/Verifier 混合生产接入；Task 10 已合并 main 并完成静态、Docker、真实模型、可见浏览器、Trace 价格与精确清理复验 |
-| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13--V20 不可重跑；V21 使用 Bun native lifecycle，先执行 read-only execute preflight |
+| Phase 6.9.5 | 分支验收完成 | Review/Planner 受限真实模型只读路径已完成 V10 语义质量、独立 Docker API/可见浏览器验收、default-off 恢复与合成数据清理；待 main replay |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -107,6 +107,8 @@ Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt
 Agent 目标框架使用 LangGraph，不使用 AutoGen；当前仓库只有 graph descriptor 与分散的 policy/service orchestration，尚未完成可执行 `StateGraph`。
 Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent、PlannerAgent、MemoryAgent、Agent Trace 可观测闭环，以及 KnowledgeDedupAgent / KnowledgeOrganizerAgent 资料管理建议。Router / Verifier 已完成模型/规则混合的生产验收，但默认 gate 已恢复关闭；`TutorAgent`、`WrongQuestionOrganizerAgent`、`MemoryAgent`、`KnowledgeDedupAgent` 与 `KnowledgeOrganizerAgent` 仍是确定性 policy。Review / Planner 已具备受限只读模型 candidate；V1--V9 是只读历史，V9 唯一 controlled-Live 以 `quality_gate_failed` 封存：`23` provider attempts、`22` paired admissions、quality `30/48`、semantic `4/22`、critical `2`，但 P95、usage、cost 通过。没有 success seal，独立 V9 eval gate 与两条 Review/Planner 产品 gate 均缺省关闭，因此当前项目仍只返回确定性建议，不能称为 Review/Planner 真实模型可用。Tutor 负责讲题意图和 prompt 策略，Verifier 只在 RAG 命中后评估资料可信度，WrongQuestionOrganizer 只给错题学科组与专题 deck 建议，Review / Planner 只基于当前用户错题、复习日志、复习计划和偏好生成只读学习建议，Memory 只生成长期记忆候选并等待用户确认，KnowledgeDedup / KnowledgeOrganizer 只基于当前用户资料元数据和少量 chunk 摘要给出重复、新版、互补、集合与标签建议。最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责；错题组织由 NestJS organizer API 写入独立组织层；复习计划建议由 `/review-agent/suggestions` 读取并展示，不创建未来 `ReviewTask`；长期记忆由 `/memory-agent` 与 `/user-memories` API 管理，不自动注入每次 Chat；资料管理建议由 `/knowledge-agent/suggestions` 读取并在 `/knowledge` 展示，不自动合并、删除、替换、重命名或分类资料。facts、FSRS、分钟数、链接、写库与权限始终由本地权威代码决定。Agent Trace 由 `/agent-traces` 在线账号级 API 持久化脱敏后的路由、步骤、token 和估算成本元数据，`/agent-trace` 提供调试台；它不保存完整 prompt、完整回答、完整 RAG chunk 或 API key，成本看板只展示估算值，不替代模型供应商账单。
 
+2026-07-20 更正：上段关于“不能称为 Review/Planner 真实模型可用”的历史结论已被 Phase 6.9.5 分支验收更新。当前 default-off 时产品确实返回确定性建议，但受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用；两者均不改变 Review/Planner 的只读权限、本地事实权威和默认关闭回滚边界，且仍待 main replay 才标记阶段最终完成。
+
 2026-07-15 的后续权威路线覆盖 12 个受治理组件：11 个当前逻辑节点 `RouterAgent`、`TutorAgent`、`RetrieverAgent`、`KnowledgeVerifierAgent`、`FinalResponseAgent`、`WrongQuestionOrganizerAgent`、`ReviewAgent`、`PlannerAgent`、`MemoryAgent`、`KnowledgeDedupAgent`、`KnowledgeOrganizerAgent`，以及待实现的 `Tool-Using Orchestrator`。当前 `createAgentGraph()` 仍只是 descriptor；Retriever/FinalResponse 主要隐含在 RAG/Chat 链路，Orchestrator 尚未实现。目标路径为：Router、Tutor、Verifier、WrongQuestionOrganizer、Retriever 使用模型/规则混合；Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取与 Orchestrator 必须有真实模型参与。权限、安全、事实计算、schema、预算、人审和写库保持本地权威。必须先完成全部 Agent 架构，再进入 Phase 6.10 记忆注入与 Episodic Memory。完整设计见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
 
 Phase 6.9.1 已建立统一评测 contract 和 `phase-6.9-seed-v1`：Router、Verifier、Memory 各 8 个可执行 deterministic case，Orchestrator 8 个 expectation-only case。当前 baseline 为 21/24，通过率 87.5%，并发现 MemoryAgent 会把含示例 API key 的“以后请记住”误提取为偏好候选这一 critical failure。该阶段不调用真实模型、不修饰 baseline 结果；这是早期四类 seed 的历史范围，不代表最终治理范围。后续所有模型化/混合 Agent 都必须有职责匹配的 baseline、Mock、controlled-Live、降级、权限、延迟和成本证据。
@@ -159,7 +161,7 @@ V9 product authority 只接受 `finalized / complete / closed / passed`、`provi
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请继续 Phase 6.9.5 V18：V10 是唯一语义质量 authority，V11--V17 均为不可重跑历史。V18 已用独立 roots/confirmation/ledger 建立，保留 repository-root CWD、bridge、allowlist、receipt/recovery 边界，只剥离一个 Bun 首位 separator。先跑最终静态与 Docker image default-off 门禁；之后在明确授权下执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
+下一会话可以问：“请先提交并复验 Phase 6.9.5 分支，再 `--no-ff` 合并 main；只在 main 上执行 default-off replay 后推送。”或“为什么 Review/Planner 已通过真实模型 API/浏览器验收却仍保持 default-off？”
 
 ## 常用命令
 
@@ -363,8 +365,8 @@ mcp -> ai, fsrs, rag, types
 后续最优先：
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
-2. V1--V9 保持只读历史；V9 唯一 Live 已以 `quality_gate_failed` 封存，故 V9 committed success 不成立，Review/Planner 产品 gate 默认关闭，产品验收被阻断。先完成最小质量修复的新 lineage，不能重跑或改写历史。
-3. 后续按 Phase 6.9.5～6.9.10 依次完成 Review/Planner、KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；不得提前进入记忆注入或 Episodic Memory。
+2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority 和后续分支产品验收已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写；当前只待 main default-off replay。
+3. main replay 后，后续按 Phase 6.9.6～6.9.10 依次完成 KnowledgeDedup/Organizer、Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；不得提前进入记忆注入或 Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. 下一会话可直接问：`请复核 V9 offline checkpoint 与 Live 授权前提；保持产品 gate 关闭，不得改写 V1--V8 或提前进入产品验收。`
