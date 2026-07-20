@@ -782,7 +782,6 @@ function canonicalizePersistedTrace(
     durationMs <= 0 ||
     !usage ||
     !steps ||
-    durationMs !== response.target.durationMs ||
     usage.inputTokens !== response.target.usage.inputTokens ||
     usage.outputTokens !== response.target.usage.outputTokens
   )

@@ -1423,12 +1423,30 @@ describe('Review Planner V8 product acceptance runner', () => {
     expect(fixture.ledger.recordCleanup).not.toHaveBeenCalled();
   });
 
+  it('accepts an independently timed candidate trace when its identity and verified usage match', async () => {
+    const fixture = createFixture();
+    fixture.dependencies.readPersistedTraces = jest.fn(
+      async ({ component, slot }) => [
+        trace(component, slot, { durationMs: 1_234 }),
+      ],
+    );
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).resolves.toMatchObject({
+      environment: 'branch',
+      traceSummaries: expect.arrayContaining([
+        expect.objectContaining({ durationMs: 1_234 }),
+      ]),
+    });
+    expect(fixture.ledger.recordSlotResult).toHaveBeenCalledTimes(4);
+  });
+
   it.each([
     ['provider', { provider: 'openai' }],
     ['model', { model: 'deepseek-v4-flash' }],
     ['steps', { steps: traceSteps('planner') }],
     ['usage', { usage: { inputTokens: 999, outputTokens: 20 } }],
-    ['duration', { durationMs: 999 }],
   ])('rejects persisted trace %s mismatches', async (_label, override) => {
     const fixture = createFixture();
     fixture.dependencies.readPersistedTraces = jest.fn(
