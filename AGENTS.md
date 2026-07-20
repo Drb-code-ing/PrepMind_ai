@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch 与 V16 Node CWD authority mismatch 都是 root-absent、不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V16 的安全 host/receipt 已通过，但其 Node runner 以 `apps/server` CWD 读取默认 `process.cwd()` authority，因而在 owner 前安全停止。新 V17 以独立 confirmation、ledger/recovery/execution/browser roots 与 V11--V16 sentinel 收口：Node runner 先切换并验证仓库根，再加载两个精确 allowlisted entry；原 source roots、bridge 与 resolver 限制不放宽。V17 继承受限 Flash/Pro、官方 root-or-v1 URL、durable model/baseUrl receipt 与 recovery validator；两个业务 gate 仍为 false。只有 V17 branch `passed` 才可合并 main、执行 main replay 并推送；详细边界见 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v17-product-lineage-design.md`。
+Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch 与 V17 root-absent preflight 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V17 已修复 Node CWD，并通过固定只读 Bun authority bridge 让直接 Node host preflight 返回 `ready`；但其唯一 package command 仍在 owner 前返回 fixed `default_off`，没有 V17 owner、ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。两个业务 gate 继续 false；必须先定位这一 command-only 差异并建立新的 isolated lineage，不能把 V17 解释为 Phase 完成、main merge 或 push。
 
 ## 项目快照
 
@@ -48,7 +48,7 @@ Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt
 | Phase 6.9.4.2 | 已完成 | Router / Verifier Mock candidate、零调用安全门、strict schema、不可变预算与安全降级             |
 | Phase 6.9.4.3 | 验收未完成 | JSON-mode 完整 Live 已完成；28/28、72/72 通过但 Router P95 延迟失败，当时结论为 terminal deterministic fallback |
 | Phase 6.9.4.4 | 已完成 | Router/Verifier 混合生产接入；Task 10 已合并 main 并完成静态、Docker、真实模型、可见浏览器、Trace 价格与精确清理复验 |
-| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16 不可重跑；V17 已完成独立离线安全收口，gate 默认关闭，待唯一 branch product 验收 |
+| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16/V17 不可重跑；V17 command root-absent stopped，仍需定位 command-only preflight 差异 |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
