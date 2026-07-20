@@ -34,6 +34,8 @@
     "recover:review-planner:v12:product": "bun scripts/review-planner-v12-product-acceptance-recovery.ts",
     "accept:review-planner:v13:product": "bun scripts/review-planner-v13-product-acceptance.ts",
     "recover:review-planner:v13:product": "bun scripts/review-planner-v13-product-acceptance-recovery.ts",
+    "accept:review-planner:v14:product": "node scripts/review-planner-v14-node-runner.cjs review-planner-v14-product-acceptance.ts",
+    "recover:review-planner:v14:product": "node scripts/review-planner-v14-node-runner.cjs review-planner-v14-product-acceptance-recovery.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:integration:audit-export-delay": "OPERATOR_AUDIT_EXPORT_DELAY_INTEGRATION=true jest operator-audit-export-delay.integration --runInBand",

@@ -28,6 +28,7 @@ export {
   type ReviewModelCandidateInput,
 } from './model-candidates/review-planner-model-candidate.ts';
 export * from './recorder.ts';
+export * from './review-planner-diagnostics.ts';
 export * from './router.ts';
 export * from './runtime.ts';
 export * from './state.ts';

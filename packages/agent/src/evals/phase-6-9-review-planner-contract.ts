@@ -5,6 +5,7 @@ import {
   phase695ReviewPlannerCases,
   type Phase695ReviewPlannerCase,
 } from './phase-6-9-review-planner-cases.ts';
+import { ReviewPlannerDiagnosticCode } from '../review-planner-diagnostics.ts';
 
 export const PHASE_695_REPORT_SCHEMA_VERSION = 'phase-6.9-review-planner-report-v1' as const;
 export const PHASE_695_SHARED_BUDGET = Object.freeze({
@@ -13,19 +14,7 @@ export const PHASE_695_SHARED_BUDGET = Object.freeze({
   maxOutputTokens: 440,
 });
 
-export enum ReviewPlannerDiagnosticCode {
-  PreflightInvalid = 'preflight_invalid',
-  ExecutorInit = 'executor_init',
-  HttpAuth = 'http_auth',
-  HttpRateLimit = 'http_rate_limit',
-  HttpClient = 'http_client',
-  HttpServer = 'http_server',
-  Transport = 'transport',
-  StructuredOutput = 'structured_output',
-  InvalidResponse = 'invalid_response',
-  UsageUnverifiable = 'usage_unverifiable',
-  EvidenceIo = 'evidence_io',
-}
+export { ReviewPlannerDiagnosticCode } from '../review-planner-diagnostics.ts';
 
 export const reviewPlannerDiagnosticCodeSchema = z.enum([
   ReviewPlannerDiagnosticCode.PreflightInvalid,

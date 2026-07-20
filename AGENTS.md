@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成，V12 为不可重试、不可改写的 `recovered` 历史。根因已由真实 Trace DTO 回归测试修复。V13 唯一 branch product 随后被 Bun 1.3.14 segmentation fault 中断：只留下 reservation/owner-lock，没有 execution manifest、checkpoint、failure terminal、Docker/API/browser/provider 或合成资源，故不满足 recovery preflight，不能重试或恢复。V10 controlled-Live 仍是唯一语义质量 authority。新的 V14 product-acceptance lineage 已拥有独立 confirmation、schema、public/recovery/execution/browser root、owner lock、ledger、recovery、host 与 CLI；V14 native ledger 明确证明不写 V11/V12/V13 根。V14 两条业务 gate 继续默认关闭，尚未执行 Docker、浏览器或真实模型；用户已经授权继续。唯一 V14 branch product 先由 Bun 在同目录构建 CommonJS bundle，再由 Node 执行，以规避已观察到的 Bun host-process crash；失败即停止，只有 recovery preflight 明确允许时才可执行独立的一次 recovery。只有 V14 branch `passed` 才可合并 main、执行 main replay 并推送。
+Phase 6.9.5 的 V12 已在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成，V12 为不可重试、不可改写的 `recovered` 历史。根因已由真实 Trace DTO 回归测试修复。V13 唯一 branch product 随后被 Bun 1.3.14 segmentation fault 中断：只留下 reservation/owner-lock，没有 execution manifest、checkpoint、failure terminal、Docker/API/browser/provider 或合成资源，故不满足 recovery preflight，不能重试或恢复。V10 controlled-Live 仍是唯一语义质量 authority。新的 V14 product-acceptance lineage 已拥有独立 confirmation、schema、public/recovery/execution/browser root、owner lock、ledger、recovery、host 与 CLI；V14 native ledger 明确证明不写 V11/V12/V13 根。V14 两条业务 gate 继续默认关闭，尚未执行 Docker、浏览器或真实模型；用户已经授权继续。唯一 V14 branch product 由 Node CommonJS TypeScript runner 执行：仅 allowlist 两个 V14 entry，并在内存转译其代码定义的相对依赖；TypeScript 路径只允许 scripts/review-agent roots 和 database/agent-diagnostics 两个精确 workspace bridge，V7/V8/V9 evidence 通过窄 diagnostics subpath 避免加载 Agent barrel，保留模块级 `__dirname`，不生成 bundle，以规避已观察到的 Bun host-process crash；失败即停止，只有 recovery preflight 明确允许时才可执行独立的一次 recovery。只有 V14 branch `passed` 才可合并 main、执行 main replay 并推送。
 
 ## 项目快照
 
@@ -159,7 +159,7 @@ V9 product authority 只接受 `finalized / complete / closed / passed`、`provi
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请继续 Phase 6.9.5 V14：V10 是唯一语义质量 authority，V11/V12 都是 recovered 历史，V13 是 Bun crash 后的不可重试 reservation 且无 recovery terminal。Trace duration correlation 已修复，V14 native sentinel 证明不会改写 V11/V12/V13。先跑最终静态与 Docker image 门禁；之后在同目录构建 V14 CJS bundle 并用 Node 执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
+下一会话可以问：“请继续 Phase 6.9.5 V14：V10 是唯一语义质量 authority，V11/V12 都是 recovered 历史，V13 是 Bun crash 后的不可重试 reservation 且无 recovery terminal。Trace duration correlation 已修复，V14 native sentinel 证明不会改写 V11/V12/V13。先跑最终静态与 Docker image 门禁；之后用严格 allowlist 的 Node TypeScript runner 执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
 
 ## 常用命令
 

@@ -14,6 +14,7 @@
     "./model-candidates": "./src/model-candidates/production.ts",
     "./phase-6-9-eval": "./src/evals/phase-6-9-eval-contract.ts",
     "./planner": "./src/nodes/planner.ts",
+    "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",

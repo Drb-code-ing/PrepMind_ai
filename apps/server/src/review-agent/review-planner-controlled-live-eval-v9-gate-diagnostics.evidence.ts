@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { lstat, readdir } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 
-import { ReviewPlannerDiagnosticCode } from '@repo/agent';
+import { ReviewPlannerDiagnosticCode } from '@repo/agent/review-planner-diagnostics';
 import { z } from 'zod';
 
 import {
