@@ -151,10 +151,14 @@ After `showNotice`, add this callback:
     focusTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
     focusTarget.focus({ preventScroll: true });
 
-    if (!firstPendingReviewTaskRef.current) {
+    if (
+      !firstPendingReviewTaskRef.current &&
+      !todayReviewTasks.isLoading &&
+      !todayReviewTasks.isError
+    ) {
       showNotice('今天暂时没有待复习任务，可先按今日清单学习。', 'neutral');
     }
-  }, [showNotice]);
+  }, [showNotice, todayReviewTasks.isError, todayReviewTasks.isLoading]);
 ```
 
 Pass the callback to the compact card:
@@ -230,7 +234,7 @@ Add a short entry that states: the card had a same-route link on `/today`; the n
 
 - [ ] **Step 2: Verify the branch in a visible browser**
 
-Start or reuse the local Docker/Web stack without destructive Docker commands. In a headed browser, open `/today` with a test account that has a pending review task, click “先完成今日复习”, and confirm viewport movement plus focus on the first pending card. Repeat with no pending task and confirm the neutral notice. Leave the browser window visible after validation.
+Start or reuse the local Docker/Web stack without destructive Docker commands. In a headed browser, open `/today` with a test account that has a pending review task, click “先完成今日复习”, and confirm viewport movement plus focus on the first pending card. The ordinary no-pending product state intentionally changes the Planner target away from `/today`, so it cannot render this button naturally; cover the callback's loaded-empty guard with the source contract and do not fabricate a browser response. Leave the browser window visible after validation.
 
 - [ ] **Step 3: Re-run branch regression gates and inspect the diff**
 
