@@ -6,7 +6,7 @@
 
 **Architecture:** `ReviewAgentSuggestionCard` receives an optional local primary-action callback. It may use that callback only when its normalized first-block target is `/today`; `/today` supplies it to scroll and focus with a stable section ref and first pending-task wrapper ref. Every non-`/today` target, including `/error-book` and `/plan`, and every caller without the callback retains the existing normalized Next `Link` behavior. No API, data model, task mutation, or model-gate behavior changes.
 
-**State safety:** The empty-task notice is emitted only after a successful task query. Loading and errors retain their existing status views; offline or paused queries render a neutral unavailable state rather than the no-due-cards empty state. The review section carries scroll margin for the sticky header.
+**State safety:** The empty-task notice is emitted only after a successful task query. Loading and errors retain their existing status views; offline or paused queries render a neutral unavailable state rather than the no-due-cards empty state. Both the review section fallback and the first pending-task wrapper—the two possible `scrollIntoView()` targets—carry scroll margin for the sticky header.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, Node built-in test runner, Bun.
 

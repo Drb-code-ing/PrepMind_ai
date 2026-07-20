@@ -86,5 +86,9 @@ function testTodayPageUsesCompactReviewAgentSuggestion() {
   assert.match(source, /taskQuerySucceeded: todayReviewTasks\.isSuccess/);
   assert.match(source, /todayReviewTaskReadState === 'unavailable'/);
   assert.match(source, /scroll-mt-24/);
+  assert.match(
+    source,
+    /ref=\{index === 0 \? firstPendingReviewTaskRef : undefined\}[\s\S]*?tabIndex=\{index === 0 \? -1 : undefined\}[\s\S]*?className=\{index === 0 \? 'scroll-mt-24' : undefined\}/,
+  );
   assert.match(source, /今天暂时没有待复习任务，可先按今日清单学习。/);
 }
