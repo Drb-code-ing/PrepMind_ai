@@ -2,11 +2,11 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.5 V18 Product Boundary
+## Phase 6.9.5 V19 Product Boundary
 
-Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V11--V17 都是不可重跑、不可复用的历史。V17 的唯一 package command 在严格 confirmation parser 之前因 Bun 首位 `--` 被 wrapper 原样转发而安全停止；未创建 owner、ledger、Docker、浏览器、API、provider、合成资源或 runtime root。
+Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V11--V18 都是不可重跑、不可复用的历史。V18 的 argv 已确认正确，但其 Node product preflight 在 owner 前关闭；未创建 owner、ledger、Docker、浏览器、API、provider、合成资源或 runtime root。
 
-V18 是新的隔离 product lineage，拥有独立 profile、durable ledger、attempt binding、V8 four-slot adapter 与真实 default-off host。它保留 V17 的 repository-root CWD、严格 allowlist、只读 Bun V10-authority bridge、receipt 与 recovery 边界；唯一改变是 allowlisted Node entry 后最多剥离一个 separator。确认 parser、权限、facts、预算、默认关闭和恢复规则均未放宽。V18 没有运行 product/recovery CLI、Docker、浏览器、API 或 provider；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。只有明确授权的 V18 branch `passed` 才可进入 main replay、合并与推送。
+V19 是新的隔离 product lineage，拥有独立 profile、durable ledger、attempt binding、V8 four-slot adapter 与真实 default-off host。它保留 repository-root CWD、严格 allowlist、只读 Bun V10-authority bridge、receipt 与 recovery 边界；确认 parser、权限、facts、预算、默认关闭和恢复规则均未放宽。V19 在产品命令前先运行零资源 read-only Node preflight，以确认同一 runner/default host 的真实运行路径；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。只有明确授权且 preflight ready 的 V19 branch `passed` 才可进入 main replay、合并与推送。
 
 ## 1. Mock 与 Live 的分工
 

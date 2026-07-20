@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch 与 V17 wrapper/parser pre-confirmation stop 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V17 的 package command 把 Bun 的首个 `--` 转发为第三个 CLI 参数，严格 parser 因而在 preflight 前安全返回 `default_off`；没有 V17 owner、ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。V18 是唯一待运行的隔离 lineage：保留 V17 的 repository-root CWD、只读 Bun V10-authority bridge 与所有限制，仅在 Node wrapper 中剥离一个首位 package separator；confirmation/environment parser 不放宽。两个业务 gate 继续 false；V18 branch `passed` 之前不得 main replay、合并或 push。
+Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch、V17 wrapper/parser pre-confirmation stop 与 V18 root-absent Node-runner preflight stop 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V18 的 confirmation 参数经探针确认正确，但 product Node runner 仍在 owner 前返回 `default_off`；没有 V18 owner、ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。V19 是唯一待运行的隔离 lineage：在同一严格 parser/default host 前增加只读 `preflight` command，先证明 Node-runner parity 再消耗 product command；它保留 repository-root CWD、只读 Bun V10-authority bridge 与所有限制。两个业务 gate 继续 false；只有 V19 preflight `ready` 后的 V19 branch `passed` 才能 main replay、合并或 push。
 
 ## 项目快照
 
@@ -48,7 +48,7 @@ Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt
 | Phase 6.9.4.2 | 已完成 | Router / Verifier Mock candidate、零调用安全门、strict schema、不可变预算与安全降级             |
 | Phase 6.9.4.3 | 验收未完成 | JSON-mode 完整 Live 已完成；28/28、72/72 通过但 Router P95 延迟失败，当时结论为 terminal deterministic fallback |
 | Phase 6.9.4.4 | 已完成 | Router/Verifier 混合生产接入；Task 10 已合并 main 并完成静态、Docker、真实模型、可见浏览器、Trace 价格与精确清理复验 |
-| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13--V17 不可重跑；V18 已完成 default-off 离线收口，待唯一 branch product |
+| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13--V18 不可重跑；V19 已完成 default-off 离线收口，先执行只读 Node preflight |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |

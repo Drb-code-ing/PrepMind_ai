@@ -28,6 +28,7 @@ import {
   REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V17_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V18_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
 } from './review-planner-product-acceptance-profile';
 import { REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-planner-v13-product-acceptance-recovery';
@@ -36,6 +37,7 @@ import { REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-plan
 import { REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-planner-v16-product-acceptance-recovery';
 import { REVIEW_PLANNER_V17_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-planner-v17-product-acceptance-recovery';
 import { REVIEW_PLANNER_V18_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-planner-v18-product-acceptance-recovery';
+import { REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_CHECKPOINTS } from './review-planner-v19-product-acceptance-recovery';
 import {
   runReviewPlannerV8ProductAcceptance,
   type ReviewPlannerV8ProductAcceptancePersistedTrace,
@@ -375,6 +377,27 @@ describe('Review Planner V8 product acceptance runner', () => {
 
     expect(diagnostics.checkpoint.mock.calls.map(([value]) => value)).toEqual(
       REVIEW_PLANNER_V18_PRODUCT_ACCEPTANCE_CHECKPOINTS.slice(1),
+    );
+    expect(diagnostics.publishFailure).not.toHaveBeenCalled();
+  });
+
+  it('admits the isolated V19 profile and records its complete checkpoint sequence', async () => {
+    const fixture = createFixture();
+    const diagnostics = {
+      checkpoint: jest.fn(),
+      publishFailure: jest.fn(),
+    };
+    Object.assign(fixture.input, {
+      profile: REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE,
+      diagnostics,
+    });
+
+    await expect(
+      runReviewPlannerV8ProductAcceptance(fixture.input),
+    ).resolves.toMatchObject({ environment: 'branch' });
+
+    expect(diagnostics.checkpoint.mock.calls.map(([value]) => value)).toEqual(
+      REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_CHECKPOINTS.slice(1),
     );
     expect(diagnostics.publishFailure).not.toHaveBeenCalled();
   });

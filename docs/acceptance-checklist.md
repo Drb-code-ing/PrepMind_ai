@@ -5,27 +5,27 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0. Phase 6.9.5 V18 Product-Acceptance（当前离线 checkpoint）
+## 0. Phase 6.9.5 V19 Product-Acceptance（当前离线 checkpoint）
 
-V10 controlled-Live 仍是唯一语义质量 authority。V11--V17 都是不可重跑、不可复用的历史；其中 V17 的 package command 在严格 confirmation parser 前因 Bun 首位 `--` forwarding 安全停止，未创建 owner、ledger、Docker、浏览器、API、provider、合成账号或任何 runtime root。
+V10 controlled-Live 仍是唯一语义质量 authority。V11--V18 都是不可重跑、不可复用的历史；V18 的 product argv 已确认正确，但 Node product preflight 在 owner 前返回 `default_off`，未创建 owner、ledger、Docker、浏览器、API、provider、合成账号或任何 runtime root。
 
-V18 是新的隔离 lineage：它有独立 confirmation、schema、public/recovery/execution/browser roots 与 ledger。它保持 repository-root CWD、只读 Bun V10-authority bridge、receipt/default-off/attempt/recovery 边界；仅在 allowlisted Node entry 后剥离一个首位 separator，confirmation/environment parser 仍严格只接受两个参数。V18 尚未运行 product/recovery CLI、Docker、浏览器、API 或 provider，两个 gate 均为 `false`。
+V19 是新的隔离 lineage：它有独立 confirmation、schema、public/recovery/execution/browser roots 与 ledger。它保持 repository-root CWD、只读 Bun V10-authority bridge、receipt/default-off/attempt/recovery 边界和严格 parser。先运行只读 Node preflight：同一 runner、同一 product confirmation、同一 default host，但 owner 前停止且零资源。V19 尚未运行 product/recovery CLI、Docker、浏览器、API 或 provider，两个 gate 均为 `false`。
 
-离线 checkpoint 不等于产品验收成功。只有在现有授权仍有效、preflight 通过、V18 branch command 真实返回 `passed` 后，才能进行 main replay、合并与 push。失败保留终态；recovery 需要自己的 preflight 和独立授权。详见 `docs/acceptance/phase-6-9-5-review-planner-v17-closure-v18-plan.md`。
+离线 checkpoint 不等于产品验收成功。只有 V19 read-only preflight `ready`、现有授权仍有效、且 branch command 真实返回 `passed` 后，才能进行 main replay、合并与 push。失败保留终态；recovery 需要自己的 preflight 和独立授权。详见 `docs/acceptance/phase-6-9-5-review-planner-v18-closure-v19-plan.md`。
 
-只有相互独立的 contract review 与 operations review 均已完成、均无未关闭 P0/P1，且取得一次新的单独用户运行授权后，才允许在当前 branch 执行一次 V18 product：
-
-```powershell
-bun --filter @repo/server accept:review-planner:v18:product -- --confirm-v18-review-planner-product-acceptance --environment=branch
-```
-
-V18 product 报告 `operation_failed` 时必须停止，不能重试 product。只有 failure state 被 V18 recovery preflight 明确接纳，并取得另一次单独的用户授权时，才运行一次 standalone recovery；成功的 recovery CLI 终态为 `recovered`：
+只有相互独立的 contract review 与 operations review 均已完成、均无未关闭 P0/P1，且 V19 read-only preflight 返回 `ready` 并取得一次新的单独用户运行授权后，才允许在当前 branch 执行一次 V19 product：
 
 ```powershell
-bun --filter @repo/server recover:review-planner:v18:product -- --confirm-v18-review-planner-product-acceptance-recovery-only --environment=branch
+bun --filter @repo/server accept:review-planner:v19:product -- --confirm-v19-review-planner-product-acceptance --environment=branch
 ```
 
-只有已包含 default-off restoration 与精确 cleanup receipts 的 branch `passed` 结果，才允许合并 main、执行 main replay、更新证据并推送；任何 standalone recovery 后均停止。V18 runtime 前后禁止 `down -v`、prune、volume 清理或 Docker 全量清空。完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v17-closure-v18-plan.md`。
+V19 product 报告 `operation_failed` 时必须停止，不能重试 product。只有 failure state 被 V19 recovery preflight 明确接纳，并取得另一次单独的用户授权时，才运行一次 standalone recovery；成功的 recovery CLI 终态为 `recovered`：
+
+```powershell
+bun --filter @repo/server recover:review-planner:v19:product -- --confirm-v19-review-planner-product-acceptance-recovery-only --environment=branch
+```
+
+只有已包含 default-off restoration 与精确 cleanup receipts 的 branch `passed` 结果，才允许合并 main、执行 main replay、更新证据并推送；任何 standalone recovery 后均停止。V19 runtime 前后禁止 `down -v`、prune、volume 清理或 Docker 全量清空。完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v18-closure-v19-plan.md`。
 
 ## 1. 先判断本次要验收什么
 
