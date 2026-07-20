@@ -4041,10 +4041,20 @@ async function fetchTraceDetail(
       attempted: candidateApplied,
       disposition: candidateApplied ? 'candidate_applied' : 'not_eligible',
       provenance: candidateApplied ? 'live_candidate' : 'local_deterministic',
+      durationMs: candidateApplied
+        ? requirePositiveInteger(step.durationMs)
+        : null,
     });
   });
   const applied = steps.filter((step) => step.attempted);
-  if (applied.length !== 1) throw new Error();
+  const candidateDurationMs = applied[0]?.durationMs;
+  if (
+    applied.length !== 1 ||
+    candidateDurationMs === null ||
+    candidateDurationMs === undefined
+  ) {
+    throw new Error();
+  }
   return Object.freeze({
     traceId,
     component: applied[0].name === 'review_candidate' ? 'review' : 'planner',
@@ -4055,7 +4065,7 @@ async function fetchTraceDetail(
     steps: Object.freeze(steps),
     disposition: 'candidate_applied',
     provenance: 'live_candidate',
-    durationMs: requirePositiveInteger(run.totalDurationMs),
+    durationMs: candidateDurationMs,
     usage: Object.freeze({
       inputTokens: requirePositiveInteger(run.inputTokenEstimate),
       outputTokens: requirePositiveInteger(run.outputTokenEstimate),

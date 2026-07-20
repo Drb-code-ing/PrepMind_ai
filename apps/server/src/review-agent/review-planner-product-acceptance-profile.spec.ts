@@ -3,11 +3,55 @@ import {
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   parseReviewPlannerProductAcceptanceArguments,
 } from './review-planner-product-acceptance-profile';
 
 describe('Review Planner product-acceptance profiles', () => {
+  it('keeps V13 confirmations, schemas, and every runtime root independent from recovered V12', () => {
+    const profile = REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE;
+
+    expect(profile.lineage).toBe('v13');
+    expect(profile.productConfirmation).toBe(
+      '--confirm-v13-review-planner-product-acceptance',
+    );
+    expect(profile.recoveryConfirmation).toBe(
+      '--confirm-v13-review-planner-product-acceptance-recovery-only',
+    );
+    expect(profile.schemas.failure).toBe(
+      'phase-6.9.5-v13-product-acceptance-failure-v1',
+    );
+    expect(profile.publicLedgerPath('branch')).toBe(
+      'docs/acceptance/evidence/phase-6-9-5-v13-product-acceptance/branch',
+    );
+    expect(profile.recoveryPath('main')).toBe(
+      '.tmp/phase-6-9-5-v13-product-acceptance/main',
+    );
+    expect(profile.executionManifestPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v13-product-acceptance-execution/branch',
+    );
+    expect(profile.browserProfilePath('branch')).toBe(
+      '.tmp/phase-6-9-5-v13-product-acceptance/branch/profile-v13',
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+    expect(profile.recoveryPath('branch')).not.toBe(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
+    );
+    expect(profile.executionManifestPath('branch')).not.toBe(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
+        'branch',
+      ),
+    );
+    expect(profile.browserProfilePath('branch')).not.toBe(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+        'branch',
+      ),
+    );
+  });
+
   it('keeps V12 confirmations, schemas, and all roots separate from immutable V11', () => {
     const profile = REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE;
 

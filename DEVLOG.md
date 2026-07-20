@@ -1,5 +1,7 @@
 # PrepMind AI 开发日志
 
+> 2026-07-20 — 当前更正：V12 已消费唯一 branch product，因 `review_api_trace_canonicalize` 的 Trace 总耗时/候选步骤耗时错误关联而安全终止，随后已完成唯一 recovery；V12 永久封存为 `recovered`，不得重跑或改写证据。根因已由生产 DTO 回归测试修复，V13 已建立完全独立的 confirmation、ledger/recovery/execution/browser namespace，并已证明不写 V11/V12 根。V13 尚未运行 Docker、浏览器、API 或 provider，两个业务 gate 继续为 `false`；下一步是在最终静态与镜像门禁后执行唯一 V13 branch product。详见 `docs/acceptance/phase-6-9-5-review-planner-v12-closure-v13-plan.md` 与 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v13-product-lineage-design.md`。本条替代下方 V12 离线 checkpoint 的“尚未执行”当前态描述，保留其作为执行前历史记录。
+
 > 2026-07-20 — Phase 6.9.5 V12 已完成离线 checkpoint：独立 profile、four-slot durable ledger、attempt binding、最早安全 recovery、V8 adapter 和真实 default-off host boundary 已就位；V11 public/recovery root 的 native SHA sentinel 保持不变。此 checkpoint 没有执行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；V12 roots 为空，两个 Review/Planner gate 继续为 `false`。V10 仍是唯一语义质量 authority，V11 仍是不可复用的 `operation_failed / recovery-only` 历史。两项相互独立的 contract/operations review 已无未关闭 P0/P1；下一步仍须一次新的单独用户授权，才可运行唯一 V12 branch product。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
 
 > 2026-07-20 — V11 branch product 已封存为 `operation_failed / recovery-only`：安全终态停在 `review_api_activate / not_started`，未到 provider 调用。首 checkpoint 前的严格 attempt state 曾被 recovery preflight 误拒；`cfd15b1` 只修复该 recoverability 缺口，随后一次有效 recovery 完成，server 已验证回到 mock/default-off、两个 gate=false、容器无 DeepSeek key。V11 不重跑、不进 main；下一次产品验收必须使用独立 lineage。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v11-product-recovery.md`。
@@ -38,7 +40,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V10 Live 已通过；旧 V8 branch 产品尝试 recovery-only 归档，需新的隔离 V10 产品验收 lineage |
+| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V12 已 `operation_failed -> recovered` 封存，V13 已离线就绪，待唯一 branch product 验收 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

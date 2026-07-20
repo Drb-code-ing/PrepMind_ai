@@ -1,0 +1,1 @@
+{"schemaVersion":"phase-6.9.5-v12-product-acceptance-failure-v1","environment":"branch","attemptSha256":"18dd81251abf0024635dacc2f8bc1e81ab8992576938f2fdf65da2de0b4e3f93","component":"review","slot":"api","checkpoint":"review_api_trace_canonicalize","terminal":"operation_failed","providerCallState":"indeterminate"}

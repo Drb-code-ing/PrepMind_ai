@@ -296,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority，V10 product terminal 为 recovery-only。V11 已完成一次 branch product 并以 `operation_failed / recovery-only` 封存、恢复完成；V12 已完成新的隔离 lineage 离线 checkpoint 和 failure/recovery/DB/TOCTOU/half-activation 安全收口，product gate 默认关闭。两项独立 contract/operations review 已无未关闭 P0/P1；下一次仅可在取得新的单独用户授权后执行一次 V12 branch product，只有 `passed` 才能 main replay。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority。V11 已 `operation_failed / recovered` 封存；V12 唯一 branch product 在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成，二者均不可重跑。根因已由 production DTO 回归测试修复，V13 已建立隔离 lineage、独立 ledger/recovery/execution/browser 根和 runner diagnostics 适配，且 native sentinel 证明不写 V11/V12 根；V13 gate 默认关闭，尚未运行 Docker、浏览器、API 或 provider。下一次只可执行一次 V13 branch product；只有 `passed` 才能 main replay、合并与 push。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -310,7 +310,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.5 V12：先复核离线 checkpoint、一次性 recovery terminal、`DATABASE_URL` 指纹、owner 后重验、半激活 default-off 恢复和 30 秒 headed browser 边界。V10 是唯一语义质量 authority，V11 已 recovery-only 封存，绝不能重跑或复用。V12 product/recovery CLI、Docker、浏览器、API 与 provider 尚未执行；两项 review 已无未关闭 P0/P1，但在我单独授权前，不要运行 V12 branch product。”
+下一会话可以复制：“请继续 Phase 6.9.5 V13：V10 是唯一语义质量 authority；V11 和 V12 都是不可重跑的 recovery 终态。V12 的 Trace duration correlation 根因已修复，V13 有独立 roots，且 native sentinel 已证明不写 V11/V12。先跑最终静态与 Docker image 门禁；随后执行唯一 V13 branch product，并保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

@@ -1718,18 +1718,22 @@ function browserTraceDetailEnvelope() {
     steps: [
       {
         node: 'deterministic_review',
+        durationMs: 1,
         outputSummary: 'disposition=not_eligible',
       },
       {
         node: 'review_candidate',
+        durationMs: 997,
         outputSummary: 'disposition=candidate_applied',
       },
       {
         node: 'deterministic_planner',
+        durationMs: 1,
         outputSummary: 'disposition=not_eligible',
       },
       {
         node: 'planner_candidate',
+        durationMs: 1,
         outputSummary: 'disposition=not_eligible',
       },
     ],
@@ -2436,7 +2440,7 @@ describe('V8 default composition resource lifecycle', () => {
     expect(ledger.recordFailure).not.toHaveBeenCalled();
   });
 
-  it('parses an inactive deterministic observation with zero duration from the live suggestion envelope', async () => {
+  it('projects the applied candidate step duration instead of total orchestration duration', async () => {
     const disconnect = jest.fn(async () => undefined);
     const product = createDefaultReviewPlannerV8ProductAcceptanceComposition(
       REPO_ROOT,
@@ -2449,6 +2453,7 @@ describe('V8 default composition resource lifecycle', () => {
       environment: 'branch',
       utcStamp: '20260719T060000Z',
     } as never);
+    let traceListReads = 0;
     const fetchMock = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async (input) => {
@@ -2471,7 +2476,52 @@ describe('V8 default composition resource lifecycle', () => {
         }
         if (url.startsWith('http://127.0.0.1:3001/agent-traces?')) {
           return new Response(
-            JSON.stringify({ success: true, data: { runs: [] } }),
+            JSON.stringify({
+              success: true,
+              data: {
+                runs: traceListReads++ === 0 ? [] : [{ id: 'review-trace-id' }],
+              },
+            }),
+          );
+        }
+        if (url === 'http://127.0.0.1:3001/agent-traces/review-trace-id') {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                run: {
+                  modelProvider: 'deepseek',
+                  modelName: 'deepseek-v4-pro',
+                  pricingKnown: false,
+                  costEstimate: 0,
+                  totalDurationMs: 130,
+                  inputTokenEstimate: 100,
+                  outputTokenEstimate: 20,
+                },
+                steps: [
+                  {
+                    node: 'deterministic_review',
+                    durationMs: 3,
+                    outputSummary: 'result=deterministic',
+                  },
+                  {
+                    node: 'review_candidate',
+                    durationMs: 123,
+                    outputSummary: 'disposition=candidate_applied',
+                  },
+                  {
+                    node: 'deterministic_planner',
+                    durationMs: 2,
+                    outputSummary: 'result=deterministic',
+                  },
+                  {
+                    node: 'planner_candidate',
+                    durationMs: 2,
+                    outputSummary: 'disposition=not_eligible',
+                  },
+                ],
+              },
+            }),
           );
         }
         if (url.startsWith('http://127.0.0.1:3001/review-agent/suggestions?')) {
@@ -2548,6 +2598,18 @@ describe('V8 default composition resource lifecycle', () => {
           usage: { inputTokens: 0, outputTokens: 0 },
         },
       });
+      await expect(
+        dependencies.readPersistedTraces({
+          component: 'review',
+          slot: 'api',
+        }),
+      ).resolves.toMatchObject([
+        {
+          component: 'review',
+          durationMs: 123,
+          usage: { inputTokens: 100, outputTokens: 20 },
+        },
+      ]);
       expect(
         fetchMock.mock.calls.map(([input]) =>
           typeof input === 'string'
@@ -2560,6 +2622,8 @@ describe('V8 default composition resource lifecycle', () => {
         'http://127.0.0.1:3001/auth/register',
         'http://127.0.0.1:3001/agent-traces?limit=50&route=review_analysis&mode=live',
         'http://127.0.0.1:3001/review-agent/suggestions?days=7&timezoneOffsetMinutes=-480',
+        'http://127.0.0.1:3001/agent-traces?limit=50&route=review_analysis&mode=live',
+        'http://127.0.0.1:3001/agent-traces/review-trace-id',
       ]);
     } finally {
       fetchMock.mockRestore();
