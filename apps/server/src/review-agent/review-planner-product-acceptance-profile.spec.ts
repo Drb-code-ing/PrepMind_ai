@@ -5,6 +5,7 @@ import {
   REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V14_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   parseReviewPlannerProductAcceptanceArguments,
 } from './review-planner-product-acceptance-profile';
@@ -34,6 +35,36 @@ describe('Review Planner product-acceptance profiles', () => {
     );
     expect(profile.publicLedgerPath('branch')).not.toBe(
       REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+    expect(profile.recoveryPath('branch')).not.toBe(
+      REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
+    );
+  });
+
+  it('keeps V15 roots and confirmation separate from every immutable V11-V14 lineage', () => {
+    const profile = REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE;
+
+    expect(profile.lineage).toBe('v15');
+    expect(profile.productConfirmation).toBe(
+      '--confirm-v15-review-planner-product-acceptance',
+    );
+    expect(profile.recoveryConfirmation).toBe(
+      '--confirm-v15-review-planner-product-acceptance-recovery-only',
+    );
+    expect(profile.publicLedgerPath('branch')).toBe(
+      'docs/acceptance/evidence/phase-6-9-5-v15-product-acceptance/branch',
+    );
+    expect(profile.recoveryPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v15-product-acceptance/branch',
+    );
+    expect(profile.executionManifestPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v15-product-acceptance-execution/branch',
+    );
+    expect(profile.browserProfilePath('branch')).toBe(
+      '.tmp/phase-6-9-5-v15-product-acceptance/branch/profile-v15',
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V14_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
     );
     expect(profile.recoveryPath('branch')).not.toBe(
       REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),

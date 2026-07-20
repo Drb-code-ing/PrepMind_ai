@@ -17,6 +17,7 @@ import {
   runReviewPlannerV11ProductAcceptanceComposition,
   runReviewPlannerV11ProductAcceptanceRecoveryComposition,
   createReviewPlannerV9PairedEvidenceAuthority,
+  assertReviewPlannerV8DefaultOffEnvironment,
   assertReviewPlannerV8EvidenceIndexIsOrdinary,
   createDefaultReviewPlannerV8ProductAcceptanceComposition,
   createDefaultReviewPlannerV8ProductAcceptanceRecoveryComposition,
@@ -686,6 +687,56 @@ describe('V8 product acceptance executable composition', () => {
       OPENAI_API_KEY: '',
     });
   });
+
+  it('keeps historical V8 default-off pinned to DeepSeek V4 Pro', () => {
+    const toEntries = (environment: Readonly<Record<string, string>>) =>
+      Object.entries(environment).map(([key, value]) => `${key}=${value}`);
+
+    expect(() =>
+      assertReviewPlannerV8DefaultOffEnvironment(
+        toEntries({
+          ...buildReviewPlannerV8DefaultOffEnvironment(),
+          AI_MODEL: 'deepseek-v4-pro',
+        }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertReviewPlannerV8DefaultOffEnvironment(
+        toEntries({
+          ...buildReviewPlannerV8DefaultOffEnvironment(),
+          AI_MODEL: 'deepseek-v4-flash',
+        }),
+      ),
+    ).toThrow();
+    expect(() =>
+      assertReviewPlannerV8DefaultOffEnvironment(
+        toEntries({
+          ...buildReviewPlannerV8DefaultOffEnvironment(),
+          AI_MODEL: 'unapproved-model',
+        }),
+      ),
+    ).toThrow();
+  });
+
+  it.each([
+    ['AI_ENABLE_LIVE_CALLS=false'],
+    ['AI_MODEL=deepseek-v4-flash'],
+    ['REVIEW_AGENT_MODEL_ENABLED=false'],
+  ])(
+    'rejects a duplicate controlled default-off environment key: %s',
+    (duplicateEntry) => {
+      const entries = [
+        ...Object.entries(buildReviewPlannerV8DefaultOffEnvironment()).map(
+          ([key, value]) => `${key}=${value}`,
+        ),
+        duplicateEntry,
+      ];
+
+      expect(() =>
+        assertReviewPlannerV8DefaultOffEnvironment(entries),
+      ).toThrow();
+    },
+  );
 
   it('builds an activation environment accepted by the production V4 Pro executor config parser', () => {
     const activationEnvironment = buildReviewPlannerV8ActivationEnvironment(

@@ -237,6 +237,7 @@ export async function runDefaultReviewPlannerProductAcceptanceHostPreflight(
   },
   options: Readonly<{
     branchAcceptanceComplete(repoRoot: string): Promise<boolean>;
+    assertDefaultOffEnvironment?(entries: readonly string[]): void;
   }>,
 ): Promise<ProductPreflight> {
   try {
@@ -263,7 +264,11 @@ export async function runDefaultReviewPlannerProductAcceptanceHostPreflight(
     ) {
       throw new Error();
     }
-    await assertCurrentServerDefaultOff(repoRoot);
+    await assertCurrentServerDefaultOff(
+      repoRoot,
+      undefined,
+      options.assertDefaultOffEnvironment,
+    );
     if (
       input.environment === 'main' &&
       !(await options.branchAcceptanceComplete(repoRoot))
@@ -906,6 +911,7 @@ type ReviewPlannerV8DefaultCompositionOptions = Readonly<{
       }>
     | undefined;
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary;
+  defaultOffEnvironmentValidator?: (entries: readonly string[]) => void;
   terminateBrowser?: typeof terminateDefaultReviewPlannerV8ExactBrowser;
 }>;
 
@@ -1848,6 +1854,7 @@ type DefaultRuntimeState = {
   repoRoot: string;
   env: Readonly<Record<string, string>>;
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary;
+  defaultOffEnvironmentValidator: (entries: readonly string[]) => void;
   terminateBrowser: typeof terminateDefaultReviewPlannerV8ExactBrowser;
   resources: GeneratedResources | null;
   accounts: Partial<Record<Component, RuntimeAccount & { email: string }>>;
@@ -1892,6 +1899,8 @@ export function createDefaultReviewPlannerV8ProductAcceptanceComposition(
     repoRoot: root,
     env,
     runtimeBoundary: options.runtimeBoundary,
+    defaultOffEnvironmentValidator:
+      options.defaultOffEnvironmentValidator ?? assertDefaultOffEnvironment,
     terminateBrowser:
       options.terminateBrowser ?? terminateDefaultReviewPlannerV8ExactBrowser,
     resources: null,
@@ -3021,7 +3030,7 @@ async function restoreDefaultOff(
     current,
     state.runtimeBoundary,
   );
-  assertDefaultOffEnvironment(inspected.environment);
+  state.defaultOffEnvironmentValidator(inspected.environment);
   const account = state.accounts[component];
   if (!account) throw new Error();
   const probe = await fetchSuggestion(
@@ -3734,10 +3743,40 @@ export function parseReviewPlannerV8ServerInspection(
 }
 
 function assertDefaultOffEnvironment(entries: readonly string[]) {
-  assertExpectedServerEnvironment(
-    entries,
-    buildReviewPlannerV8DefaultOffEnvironment(),
+  assertReviewPlannerV8DefaultOffEnvironment(entries);
+}
+
+export function assertReviewPlannerV8DefaultOffEnvironment(
+  entries: readonly string[],
+) {
+  const controlledKeys = new Set(
+    Object.keys(buildReviewPlannerV8DefaultOffEnvironment()),
   );
+  const seenControlledKeys = new Set<string>();
+  for (const entry of entries) {
+    const key = entry.slice(0, entry.indexOf('='));
+    if (!controlledKeys.has(key)) {
+      continue;
+    }
+    if (seenControlledKeys.has(key)) {
+      throw new Error();
+    }
+    seenControlledKeys.add(key);
+  }
+  const environment = new Map(
+    entries.map((entry) => {
+      const index = entry.indexOf('=');
+      return [entry.slice(0, index), entry.slice(index + 1)] as const;
+    }),
+  );
+  const model = environment.get('AI_MODEL');
+  if (model !== 'deepseek-v4-pro') {
+    throw new Error();
+  }
+  assertExpectedServerEnvironment(entries, {
+    ...buildReviewPlannerV8DefaultOffEnvironment(),
+    AI_MODEL: model,
+  });
 }
 
 function assertExpectedServerEnvironment(
@@ -3758,6 +3797,7 @@ function assertExpectedServerEnvironment(
 async function assertCurrentServerDefaultOff(
   repoRoot: string,
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
+  validator: (entries: readonly string[]) => void = assertDefaultOffEnvironment,
 ) {
   const id = await readServerContainerId(repoRoot, undefined, runtimeBoundary);
   if (!id) throw new Error();
@@ -3766,7 +3806,7 @@ async function assertCurrentServerDefaultOff(
     id,
     runtimeBoundary,
   );
-  assertDefaultOffEnvironment(inspected.environment);
+  validator(inspected.environment);
 }
 
 async function assertCurrentServerV11PreflightDefaultOff(

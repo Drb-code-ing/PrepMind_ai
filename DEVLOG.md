@@ -1,4 +1,6 @@
 # PrepMind AI 开发日志
+> 2026-07-20 — V15 离线收口：V14 已在 root-absent `default_off` preflight 封存，绝不重跑。其根因是普通 Compose Chat 安全地使用 `deepseek-v4-flash`，而旧 receipt 错将 `deepseek-v4-pro` 固定为关闭态前提。修复只允许 Flash/Pro 两个明确模型值；`mock`、live=false、两 gate=false、空 credential/capability、maxRequests=0 仍逐项严格校验，受控 Docker 环境键重复也 fail-closed。V15 以独立 confirmation、Node runner、ledger/recovery/execution/browser roots 与 V11--V14 native sentinel 建立；reservation 后、diagnostics 前发生异常时，仅在可证明零资源、零 checkpoint 的情况下回滚，否则保持 `failed` fail-closed。此时尚未运行 V15 product/recovery、Docker、浏览器、API 或 provider，两个 gate 仍为 false。详细边界见 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v15-product-lineage-design.md` 与 `docs/acceptance/phase-6-9-5-review-planner-v14-closure-v15-plan.md`。
+
 > 2026-07-20 — V14 preflight 关闭：在 `b808d97` 离线收口与 Docker mock/default-off 复验后，唯一 V14 branch CLI 返回固定 `default_off`，未进入 owner、ledger、Docker mutation、浏览器、API、provider 或合成资源；public/recovery/execution roots 均仍不存在，故没有 recovery-admissible terminal。根因是历史 V8 strict default-off receipt 将 `AI_MODEL=deepseek-v4-pro` 作为关闭态前置条件，而普通 Compose server 保留 Chat 的 `deepseek-v4-flash`；live/gate/credential 均保持关闭。V14 不得重试，必须由用户在修复 strict default-off contract 并建立新 lineage或其他路线之间作出新决定。详见 `docs/acceptance/phase-6-9-5-review-planner-v14-preflight-blocked.md`。
 
 > 2026-07-20 — 当前更正（二）：V13 唯一 branch product 在只写入 reservation 后被 Bun 1.3.14 segmentation fault 中断；未产生 execution manifest、checkpoint、failure terminal、Docker/API/browser/provider 或合成资源，且 default-off 已复验，因此 V13 不可重试也不满足 recovery preflight。V14 已使用新 root 建立独立 lineage，并用 native sentinel 证明不写 V11/V12/V13。V14 的唯一 host 命令由 Node CommonJS TypeScript runner 执行：仅 allowlist 两个 V14 入口，并在内存转译 canonical path 位于 scripts/review-agent approved roots 或两个精确 workspace bridge（`packages/database/src/index.ts`、`packages/agent/src/review-planner-diagnostics.ts`）的相对依赖；V7/V8/V9 evidence 已改为 diagnostics subpath，避免加载 Agent barrel，保留每个模块原始 `__dirname`，不生成 bundle；继承/未知入口、越界依赖和 bootstrap 失败都只输出固定 `default_off`，以绕开已观察的 Bun host-process crash；详细边界见 `docs/acceptance/phase-6-9-5-review-planner-v13-closure-v14-plan.md`。
@@ -25,7 +27,7 @@
 
 更新时间：2026-07-20
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11 已执行唯一 branch product 并封存为 `operation_failed / recovery-only`，checkpoint 为 `review_api_activate / not_started`，不含 provider、浏览器或质量成功结论；其恢复已完成，server 已回到 mock/default-off。V12 已建立新的独立 lineage 并完成离线 checkpoint，默认 gate 继续关闭，根目录为空，尚未运行 product/recovery CLI、Docker、浏览器、API 或 provider。下一步是两项相互独立的 contract/operations review；均无未关闭 P0/P1 且取得一次新的单独用户授权后才可执行唯一 V12 branch product，只有 `passed` 才能 main replay、合并和 push。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11/V12 为 recovered 历史，V13 的 Bun interruption reservation 和 V14 的 root-absent `default_off` preflight 都不可重跑或恢复。V15 已建立独立 lineage，并收紧 default-off receipt（Flash/Pro 明确白名单、重复受控变量拒绝）和 reservation 前置回滚；默认 gate 继续关闭，尚未运行 V15 product/recovery CLI、Docker、浏览器、API 或 provider。下一步是在 final static/Docker default-off 复验后执行唯一 V15 branch product；只有 `passed` 才能 main replay、合并和 push。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -43,7 +45,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V12 recovered、V13 interrupted reservation 均封存，V14 已离线就绪，待唯一 Node branch product 验收 |
+| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V11/V12 recovered、V13/V14 均封存，V15 已离线收口，待唯一 Node branch product 验收 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
