@@ -31,6 +31,7 @@ const OWNER_ISOLATION_LEAF = 'owner-isolation.json';
 const CLEANUP_LEAF = 'cleanup.json';
 const AGGREGATE_LEAF = 'aggregate.json';
 const SUCCESS_LEAF = 'success.json';
+const FAILURE_LEAF = 'failure.json';
 const SLOT_LEAF = /^slot-(review|planner)-(api|browser)\.json$/;
 const DEFAULT_OFF_LEAF = /^default-off-(review|planner)\.json$/;
 
@@ -136,6 +137,20 @@ export const reviewPlannerV12ProductAcceptanceSuccessSchema = z
   })
   .strict();
 
+export const reviewPlannerV12ProductAcceptanceFailureSchema = z
+  .object({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
+    ),
+    environment: z.enum(['branch', 'main']),
+    component: v12ComponentSchema,
+    slot: z.enum(['api', 'browser']),
+    checkpoint: z.string().regex(/^(review|planner)_(api|browser)_[a-z_]+$/),
+    terminal: z.literal('operation_failed'),
+    providerCallState: z.enum(['not_started', 'indeterminate']),
+  })
+  .strict();
+
 export type ReviewPlannerV12ProductAcceptanceManifest = z.infer<
   typeof reviewPlannerV12ProductAcceptanceManifestSchema
 >;
@@ -160,6 +175,9 @@ export type ReviewPlannerV12ProductAcceptanceAggregate = z.infer<
 export type ReviewPlannerV12ProductAcceptanceSuccess = z.infer<
   typeof reviewPlannerV12ProductAcceptanceSuccessSchema
 >;
+export type ReviewPlannerV12ProductAcceptanceFailure = z.infer<
+  typeof reviewPlannerV12ProductAcceptanceFailureSchema
+>;
 
 type LedgerState = {
   repoRoot: string;
@@ -174,6 +192,7 @@ type LedgerState = {
   defaultOff: Set<ReviewPlannerV12ProductAcceptanceDefaultOff['component']>;
   ownerIsolationWritten: boolean;
   cleanupWritten: boolean;
+  failureWritten: boolean;
   finalized: boolean;
   closed: boolean;
 };
@@ -188,6 +207,7 @@ export type ReviewPlannerV12ProductAcceptanceLedger = Readonly<{
   recordOwnerIsolation(value: unknown): void;
   recordCleanup(value: unknown): void;
   finalizeSuccess(value: unknown): Promise<void>;
+  recordFailure(value: unknown): void;
   close(): void;
 }>;
 
@@ -258,6 +278,7 @@ export async function reserveReviewPlannerV12ProductAcceptanceLedger(input: {
       defaultOff: new Set(),
       ownerIsolationWritten: false,
       cleanupWritten: false,
+      failureWritten: false,
       finalized: false,
       closed: false,
     });
@@ -281,7 +302,14 @@ export async function readReviewPlannerV12ProductAcceptanceLedger(input: {
   repoRoot: string;
   environment: ReviewPlannerProductAcceptanceEnvironment;
 }): Promise<
-  Readonly<{ status: 'empty' | 'incomplete' | 'complete' | 'evidence_io' }>
+  Readonly<{
+    status:
+      | 'empty'
+      | 'incomplete'
+      | 'complete'
+      | 'operation_failed'
+      | 'evidence_io';
+  }>
 > {
   if (!isEnvironment(input.environment)) {
     return Object.freeze({ status: 'evidence_io' as const });
@@ -332,6 +360,15 @@ export async function readReviewPlannerV12ProductAcceptanceLedger(input: {
       return Object.freeze({ status: 'evidence_io' as const });
     }
     await inspectReviewPlannerV12ProductAcceptanceRecoveryCheckpoint(input);
+    if (leaves.includes(FAILURE_LEAF)) {
+      const failure = parseReviewPlannerV12ProductAcceptanceFailure(
+        JSON.parse(directory.readRegularFile(FAILURE_LEAF).toString()),
+      );
+      if (failure.environment !== input.environment) {
+        return Object.freeze({ status: 'evidence_io' as const });
+      }
+      return Object.freeze({ status: 'operation_failed' as const });
+    }
     if (!leaves.includes(SUCCESS_LEAF)) {
       return Object.freeze({ status: 'incomplete' as const });
     }
@@ -482,6 +519,12 @@ export function parseReviewPlannerV12ProductAcceptanceSuccess(
   return parseV12Record(reviewPlannerV12ProductAcceptanceSuccessSchema, value);
 }
 
+export function parseReviewPlannerV12ProductAcceptanceFailure(
+  value: unknown,
+): ReviewPlannerV12ProductAcceptanceFailure {
+  return parseV12Record(reviewPlannerV12ProductAcceptanceFailureSchema, value);
+}
+
 function parseV12Record<T>(schema: z.ZodType<T>, value: unknown): T {
   const parsed = schema.safeParse(value);
   if (!parsed.success) {
@@ -617,6 +660,19 @@ function createV12Ledger(
       state.finalized = true;
       return Promise.resolve();
     },
+    recordFailure(value) {
+      assertActiveLedger(ledger);
+      const failure = parseReviewPlannerV12ProductAcceptanceFailure(value);
+      if (
+        state.finalized ||
+        state.failureWritten ||
+        failure.environment !== state.environment
+      ) {
+        throw new Error('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
+      }
+      writePublicRecord(state, FAILURE_LEAF, failure);
+      state.failureWritten = true;
+    },
     close() {
       if (state.closed) return;
       state.closed = true;
@@ -662,6 +718,7 @@ function hasOnlyV12PublicLeaves(leaves: readonly string[]) {
     CLEANUP_LEAF,
     AGGREGATE_LEAF,
     SUCCESS_LEAF,
+    FAILURE_LEAF,
   ]);
   return leaves.every(
     (leaf) =>

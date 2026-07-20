@@ -3,6 +3,7 @@ import {
   parseReviewPlannerV12ProductAcceptanceCleanup,
   parseReviewPlannerV12ProductAcceptanceDefaultOff,
   parseReviewPlannerV12ProductAcceptanceExecutionManifest,
+  parseReviewPlannerV12ProductAcceptanceFailure,
   parseReviewPlannerV12ProductAcceptanceManifest,
   parseReviewPlannerV12ProductAcceptanceOwnerIsolation,
   parseReviewPlannerV12ProductAcceptanceSlotResult,
@@ -108,5 +109,19 @@ describe('Review Planner V12 product-acceptance ledger contracts', () => {
         prompt: 'private',
       }),
     ).toThrow('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
+  });
+
+  it('accepts only the fixed V12 failure terminal vocabulary', () => {
+    expect(
+      parseReviewPlannerV12ProductAcceptanceFailure({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-failure-v1',
+        environment: 'branch',
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_activate',
+        terminal: 'operation_failed',
+        providerCallState: 'not_started',
+      }),
+    ).toMatchObject({ terminal: 'operation_failed' });
   });
 });

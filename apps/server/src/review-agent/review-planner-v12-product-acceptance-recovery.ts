@@ -28,6 +28,7 @@ const V12_PUBLIC_RECEIPT_LEAVES = new Set([
   'cleanup.json',
   'aggregate.json',
   'success.json',
+  'failure.json',
 ]);
 
 export const REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_CHECKPOINTS = [

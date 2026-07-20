@@ -8,6 +8,11 @@ import {
   runReviewPlannerV12ProductAcceptanceComposition,
   type ReviewPlannerV12ProductAcceptanceCompositionPorts,
 } from './review-planner-v12-product-acceptance-composition';
+import {
+  createDefaultReviewPlannerV12ProductAcceptanceRecoveryComposition,
+  runReviewPlannerV12ProductAcceptanceRecoveryComposition,
+  type ReviewPlannerV12ProductAcceptanceRecoveryCompositionPorts,
+} from './review-planner-v12-product-acceptance-recovery-composition';
 
 type V12CliKind = 'product' | 'recovery';
 
@@ -27,10 +32,17 @@ export type ReviewPlannerV12ProductAcceptanceCliSummary =
       stage: 'operation';
       status: 'failed';
       code: 'operation_failed';
+    }>
+  | Readonly<{
+      stage: 'recovery';
+      status: 'recovered';
+      environment: ReviewPlannerProductAcceptanceEnvironment;
     }>;
 
 export type ReviewPlannerV12ProductAcceptanceCliPorts =
   ReviewPlannerV12ProductAcceptanceCompositionPorts;
+export type ReviewPlannerV12ProductAcceptanceRecoveryCliPorts =
+  ReviewPlannerV12ProductAcceptanceRecoveryCompositionPorts;
 
 export function parseReviewPlannerV12ProductAcceptanceArguments(
   argv: readonly string[],
@@ -64,9 +76,24 @@ export async function runReviewPlannerV12ProductAcceptanceProductCli(input: {
 export async function runReviewPlannerV12ProductAcceptanceRecoveryCli(input: {
   argv: readonly string[];
   repoRoot: string;
-  ports: ReviewPlannerV12ProductAcceptanceCliPorts;
+  ports: ReviewPlannerV12ProductAcceptanceRecoveryCliPorts;
 }): Promise<ReviewPlannerV12ProductAcceptanceCliSummary> {
-  return runReviewPlannerV12ProductAcceptanceCli(input, 'recovery');
+  const { environment } = parseReviewPlannerV12ProductAcceptanceArguments(
+    input.argv,
+    'recovery',
+  );
+  const result = await runReviewPlannerV12ProductAcceptanceRecoveryComposition({
+    environment,
+    repoRoot: input.repoRoot,
+    ports: input.ports,
+  });
+  return result.status === 'recovered'
+    ? Object.freeze({
+        stage: 'recovery' as const,
+        status: 'recovered' as const,
+        environment: result.environment,
+      })
+    : defaultOffSummary();
 }
 
 export async function executeReviewPlannerV12ProductAcceptanceProductCli(input: {
@@ -83,11 +110,13 @@ export async function executeReviewPlannerV12ProductAcceptanceProductCli(input: 
 export async function executeReviewPlannerV12ProductAcceptanceRecoveryCli(input: {
   argv: readonly string[];
   repoRoot: string;
-  ports?: ReviewPlannerV12ProductAcceptanceCliPorts;
+  ports?: ReviewPlannerV12ProductAcceptanceRecoveryCliPorts;
 }): Promise<ReviewPlannerV12ProductAcceptanceCliSummary> {
   return runReviewPlannerV12ProductAcceptanceRecoveryCli({
     ...input,
-    ports: input.ports ?? createDefaultReviewPlannerV12ProductAcceptancePorts(),
+    ports:
+      input.ports ??
+      createDefaultReviewPlannerV12ProductAcceptanceRecoveryComposition().ports,
   });
 }
 
@@ -106,29 +135,6 @@ export function serializeReviewPlannerV12ProductAcceptanceCliFailure(
   return serializeReviewPlannerV12ProductAcceptanceCliSummary(
     defaultOffSummary(),
   );
-}
-
-async function runReviewPlannerV12ProductAcceptanceCli(
-  input: {
-    argv: readonly string[];
-    repoRoot: string;
-    ports: ReviewPlannerV12ProductAcceptanceCliPorts;
-  },
-  kind: V12CliKind,
-): Promise<ReviewPlannerV12ProductAcceptanceCliSummary> {
-  const { environment } = parseReviewPlannerV12ProductAcceptanceArguments(
-    input.argv,
-    kind,
-  );
-  try {
-    await input.ports.preflight({
-      environment,
-      repoRoot: input.repoRoot,
-    });
-  } catch {
-    // V12 Task 1 intentionally exposes no owner or runtime boundary.
-  }
-  return defaultOffSummary();
 }
 
 function createDefaultReviewPlannerV12ProductAcceptancePorts(): ReviewPlannerV12ProductAcceptanceCliPorts {

@@ -22,7 +22,7 @@ import {
 } from './review-planner-v8-product-acceptance-runner';
 import { REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE } from './review-planner-product-acceptance-profile';
 
-type V12ReadyPreflight = Readonly<{
+export type ReviewPlannerV12ReadyPreflight = Readonly<{
   status: 'ready';
   environment: 'branch' | 'main';
   repoRoot: string;
@@ -37,7 +37,7 @@ export type ReviewPlannerV12ProductAcceptanceCompositionPorts = Readonly<{
   preflight(input: {
     environment: 'branch' | 'main';
     repoRoot: string;
-  }): Promise<Readonly<{ status: 'blocked' }> | V12ReadyPreflight>;
+  }): Promise<Readonly<{ status: 'blocked' }> | ReviewPlannerV12ReadyPreflight>;
   acquireOwner(input: {
     environment: 'branch' | 'main';
     repoRoot: string;
@@ -98,23 +98,24 @@ export async function runReviewPlannerV12ProductAcceptanceComposition(input: {
     }
     owner = ownership.owner;
     owner.assertHeld();
-    ledger = await input.ports.reserveLedger({
+    const reservedLedger = await input.ports.reserveLedger({
       environment: input.environment,
       repoRoot: input.repoRoot,
       owner,
     });
-    const attemptSha256 = ledger.attemptSha256();
+    ledger = reservedLedger;
+    const attemptSha256 = reservedLedger.attemptSha256();
     const manifest = {
       schemaVersion: 'phase-6.9.5-v12-product-acceptance-manifest-v1' as const,
       environment: input.environment,
       attemptSha256,
     };
-    await ledger.writeExecutionManifest({
+    await reservedLedger.writeExecutionManifest({
       schemaVersion: 'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
       environment: input.environment,
       attemptSha256,
     });
-    ledger.writeManifest(manifest);
+    reservedLedger.writeManifest(manifest);
     journal = await input.ports.prepareJournal({
       environment: input.environment,
       repoRoot: input.repoRoot,
@@ -123,12 +124,12 @@ export async function runReviewPlannerV12ProductAcceptanceComposition(input: {
     const diagnostics = createReviewPlannerV12ProductAcceptanceDiagnosticsPort({
       environment: input.environment,
       journal,
-      recordFailure: input.ports.recordFailure,
+      recordFailure: (failure) => reservedLedger.recordFailure(failure),
     });
     const runnerLedger =
       createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter({
         environment: input.environment,
-        ledger,
+        ledger: reservedLedger,
         manifest,
       });
     await input.ports.runRunner({
@@ -160,12 +161,31 @@ export async function runReviewPlannerV12ProductAcceptanceComposition(input: {
   }
 }
 
-export function createDefaultReviewPlannerV12ProductAcceptanceComposition(): Readonly<{
+export type ReviewPlannerV12DefaultCompositionOptions = Readonly<{
+  boundary?: Readonly<{
+    preflight(input: {
+      environment: 'branch' | 'main';
+      repoRoot: string;
+    }): Promise<
+      Readonly<{ status: 'blocked' }> | ReviewPlannerV12ReadyPreflight
+    >;
+  }>;
+}>;
+
+export function createDefaultReviewPlannerV12ProductAcceptanceComposition(
+  _repoRoot = '',
+  options: ReviewPlannerV12DefaultCompositionOptions = {},
+): Readonly<{
   ports: ReviewPlannerV12ProductAcceptanceCompositionPorts;
 }> {
+  void _repoRoot;
   return Object.freeze({
     ports: Object.freeze({
-      preflight: () =>
+      preflight: (input: {
+        environment: 'branch' | 'main';
+        repoRoot: string;
+      }) =>
+        options.boundary?.preflight(input) ??
         Promise.resolve(Object.freeze({ status: 'blocked' as const })),
       acquireOwner: acquireReviewPlannerV12ProductAcceptanceOwner,
       reserveLedger: reserveReviewPlannerV12ProductAcceptanceLedger,
