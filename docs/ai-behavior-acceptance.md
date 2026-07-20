@@ -4,7 +4,7 @@
 
 ## Phase 6.9.5 V11 Product Boundary
 
-Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 在离线阶段只验证 CLI、ledger、manifest、default-off 和 recovery selector，不产生 Docker、浏览器或 provider 证据。`REVIEW_AGENT_MODEL_ENABLED=false` 与 `PLANNER_AGENT_MODEL_ENABLED=false` 保持默认。复审后 V11 branch command 仅可执行一次：post-manifest 失败会自动按其 V11 manifest recovery 一次，输出 `operation_failed_recovered` 后必须停止；只有输出 `recovery_required` 或 crash 后 preflight 明确授权时才可手工 recovery 一次。成功才可以 main replay、合并和推送。
+Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 已执行唯一 branch command，并以 `operation_failed / recovery-only` 封存：strict failure checkpoint 是 `review_api_activate / not_started`，不构成 provider 调用、质量、成本或浏览器成功证据。`cfd15b1` 只修复了首 checkpoint 前合法 attempt state 的 recovery preflight，精确 recovery 已完成并恢复 mock/default-off。V11 不得重跑、复用、main replay、合并或推送；下一次 product 验收必须使用新的隔离 lineage，两个业务 gate 在此之前仍为 `false`。
 
 ## 1. Mock 与 Live 的分工
 
