@@ -8,13 +8,14 @@ import type {
   ModelAgentRequest,
   ModelAgentResult,
   ModelAgentRunBudget,
+  ModelAgentStructuredOutputStage,
   ModelAgentTask,
   ModelAgentTrace,
   ModelAgentUsage,
   StructuredModelExecutor,
 } from './model-agent-contract.ts';
 import { isModelAgentRunBudget, reserveModelAgentBudget } from './model-agent-budget.ts';
-import { takeModelAgentProviderFailureCategory } from './model-agent-provider-failure.ts';
+import { takeModelAgentProviderFailure } from './model-agent-provider-failure.ts';
 import {
   createSafeModelAgentError,
   hashModelAgentRunId,
@@ -97,10 +98,23 @@ export function createModelAgentRuntime(input: CreateModelAgentRuntimeInput): Mo
               startedAt,
               now,
               liveExecution.providerFailureCategory,
+              liveExecution.structuredOutputStage,
             );
           }
           output = liveExecution.result.object;
-          usage = normalizeUsage(liveExecution.result.usage);
+          const verifiedUsage = normalizeUsage(liveExecution.result.usage);
+          if (verifiedUsage === null) {
+            return failure(
+              input,
+              request,
+              reservation.budget,
+              'PROVIDER_ERROR',
+              startedAt,
+              now,
+              'invalid_response',
+            );
+          }
+          usage = verifiedUsage;
         }
       } catch {
         const classification = classifyExecutionError();
@@ -149,6 +163,7 @@ type LiveExecutionResult =
       ok: false;
       code: 'TIMEOUT' | 'ABORTED' | 'PROVIDER_ERROR';
       providerFailureCategory?: ModelAgentProviderFailureCategory;
+      structuredOutputStage?: ModelAgentStructuredOutputStage;
     };
 
 async function executeLive<T>(
@@ -187,11 +202,17 @@ async function executeLive<T>(
     } catch (error) {
       if (cancellationCode === TIMEOUT_ERROR) return { ok: false, code: 'TIMEOUT' };
       if (cancellationCode === ABORTED_ERROR) return { ok: false, code: 'ABORTED' };
+      const providerFailure = takeModelAgentProviderFailure(
+        error,
+        controller.signal,
+      ) ?? { category: 'unknown' as const };
       return {
         ok: false,
         code: 'PROVIDER_ERROR',
-        providerFailureCategory:
-          takeModelAgentProviderFailureCategory(error, controller.signal) ?? 'unknown',
+        providerFailureCategory: providerFailure.category,
+        ...(providerFailure.structuredOutputStage
+          ? { structuredOutputStage: providerFailure.structuredOutputStage }
+          : {}),
       };
     }
   } finally {
@@ -210,15 +231,27 @@ function classifyExecutionError(): {
   };
 }
 
-function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number }): ModelAgentUsage {
-  return {
-    inputTokens: normalizeTokenCount(usage?.inputTokens),
-    outputTokens: normalizeTokenCount(usage?.outputTokens),
-  };
+function normalizeUsage(
+  usage?: { inputTokens?: number; outputTokens?: number },
+): ModelAgentUsage | null {
+  const inputTokens = usage?.inputTokens;
+  const outputTokens = usage?.outputTokens;
+  if (!isVerifiedLiveTokenCount(inputTokens) || !isVerifiedLiveTokenCount(outputTokens)) {
+    return null;
+  }
+  return { inputTokens, outputTokens };
 }
 
-function normalizeTokenCount(value: number | undefined) {
-  return Number.isSafeInteger(value) && (value ?? -1) >= 0 ? (value ?? 0) : 0;
+function isVerifiedLiveTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+function isVerifiedTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function normalizeTokenCount(value: unknown): number {
+  return isVerifiedTokenCount(value) ? value : 0;
 }
 
 function validateRuntimeConfig(input: CreateModelAgentRuntimeInput) {
@@ -246,6 +279,8 @@ const MODEL_AGENT_TASKS = new Set<ModelAgentTask>([
   'conversation_summary',
   'router_fallback',
   'knowledge_verification',
+  'review_suggestion',
+  'planner_suggestion',
   'memory_candidate_extraction',
   'tool_orchestration',
 ]);
@@ -280,6 +315,7 @@ function failure<T>(
   startedAt: number | null,
   now: () => number,
   providerFailureCategory?: ModelAgentProviderFailureCategory,
+  structuredOutputStage?: ModelAgentStructuredOutputStage,
 ): ModelAgentResult<T> {
   const usage = { inputTokens: 0, outputTokens: 0 };
   const error = createSafeModelAgentError(code, providerFailureCategory);
@@ -297,6 +333,7 @@ function failure<T>(
       now,
       code,
       error.providerFailureCategory,
+      structuredOutputStage,
     ),
   };
 }
@@ -310,6 +347,7 @@ function trace(
   now: () => number,
   errorCode?: ModelAgentErrorCode,
   providerFailureCategory?: ModelAgentProviderFailureCategory,
+  structuredOutputStage?: ModelAgentStructuredOutputStage,
 ): ModelAgentTrace {
   const safeRequest = safeTraceRequest(request);
   return {
@@ -326,6 +364,7 @@ function trace(
     degraded: status === 'failed',
     ...(errorCode ? { errorCode } : {}),
     ...(providerFailureCategory ? { providerFailureCategory } : {}),
+    ...(structuredOutputStage ? { structuredOutputStage } : {}),
   };
 }
 
@@ -364,7 +403,7 @@ function safeTraceRequest(request: unknown): {
   return {
     runId: typeof candidate.runId === 'string' ? candidate.runId : 'invalid-request',
     task,
-    maxOutputTokens: normalizeTokenCount(candidate.maxOutputTokens as number | undefined),
+    maxOutputTokens: normalizeTokenCount(candidate.maxOutputTokens),
   };
 }
 

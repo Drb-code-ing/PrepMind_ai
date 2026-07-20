@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.5 已完成，后续进入 Phase 6.6。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前处于 Phase 6.9.5：V10 controlled-Live 是唯一语义质量权威，V10 product terminal 为 recovery-only。V11 branch product CLI 已完成离线接线，产品 gate 仍默认关闭；通过复审后才可执行唯一一次 Docker/headed-browser 验收。
 
 已完成主线：
 
@@ -36,8 +36,8 @@ PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。当前 Phase 6.
 
 下一步：
 
-1. Phase 6.6：`MemoryAgent`，长期记忆候选、人审确认和撤销。
-2. Phase 7：BullMQ 后台任务、事件总线和生产化工程增强。
+1. 以 V10 committed success 为唯一 paired-eval 依据，进行分支 Docker/headed-browser 验收；每个组件验收后恢复产品 gate 为 `false`。
+2. 只有分支验收、清理、`--no-ff` main 合并和 main replay 全部通过后，才可 push；随后才继续其余 Agent 架构和 Phase 6.10 记忆工作。
 
 ## 常用命令
 
@@ -99,7 +99,7 @@ mcp -> ai, fsrs, rag, types
 - 同层 packages 禁止循环依赖。
 - API contract 优先放入 `@repo/types`，用 Zod 表达。
 - Agent 框架使用 LangGraph，不使用 AutoGen。
-- Phase 6 多 Agent 规划：当前已完成 Agent Runtime 地基、RouterAgent 到 Chat 的轻量接入、TutorAgent 策略层、KnowledgeVerifierAgent、WrongQuestionOrganizerAgent、ReviewAgent 和 PlannerAgent。`TutorAgent`、`KnowledgeVerifierAgent`、`WrongQuestionOrganizerAgent`、`ReviewAgent` 与 `PlannerAgent` 当前都是确定性 policy，不直接调用真实模型；最终流式输出仍由 `/api/chat` 的既有 mock/live 链路负责。`KnowledgeVerifierAgent` 在 RAG 检索命中后评估资料片段为 `trusted / suspicious / conflict / insufficient / skipped`，避免 AI 盲从错误笔记；`WrongQuestionOrganizerAgent` 让错题首页按学科卡片优先展示，学科内部按专题 deck 下钻，并由 NestJS organizer API 写入独立组织层；`ReviewAgent / PlannerAgent` 通过只读 `/review-agent/suggestions` 基于当前用户复习事实生成建议，不创建未来任务、不写事实表；`KnowledgeDedupAgent / KnowledgeOrganizerAgent` 后续用于判断资料重复、更新版或互补资料；AI 可生成默认专题名，但用户重命名、移动和合并拥有最终优先级。
+- Phase 6 多 Agent 规划：Router / KnowledgeVerifier 已具备模型/规则混合生产路径并恢复默认 gate 关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是确定性 policy。Review / Planner 的确定性只读 baseline 仍是当前产品行为，另有 server-only 受限模型 candidate；V1--V9 均为只读历史，V9 以 `quality_gate_failed` 封存。V10 收窄为 `focusIndexes` / `blockOrder` 后，唯一 `deepseek-v4-pro` JSON-object non-thinking Live 已通过：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V1--V9 manifest 未变，V10 evidence/success seal immutable。根 `.env` 未改，V8/V9 eval 和 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 保持默认关闭，因此当前产品仍不会调用 Review/Planner 模型；先完成分支 Docker/headed-browser 验收，再考虑 main。模型不能决定 owner、facts、FSRS、分钟数、链接、任务或写权限；完整结果见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
 
 ## 当前数据流
 
@@ -120,13 +120,13 @@ mcp -> ai, fsrs, rag, types
 - RAG 状态边界：`Document` 状态流为 `PENDING -> PROCESSING -> DONE / FAILED`，空文本、零 chunk、解析/embedding 失败进入 `FAILED`；forced reprocess 会先清旧 chunks，避免 stale retrieval。
 - RAG 检索 API：`POST /knowledge/search` 已支持 query embedding + pgvector 相似度搜索，只检索当前用户 `DONE` 文档 chunks，支持 `limit`、`minScore` 和按 `documentId` 过滤。
 - Chat RAG：`/api/chat` 已在有 access token 时调用 `/knowledge/search`，命中后把 chunks 注入 system prompt，并在助手消息末尾追加 Markdown “参考资料”；未上传资料、未命中或检索失败时仍降级普通 AI 回答。
-- KnowledgeVerifierAgent：`/api/chat` 会在 RAG 命中后调用 `@repo/agent/knowledge-verifier` 确定性 policy，评估资料状态为 `trusted / suspicious / conflict / insufficient / skipped`；可疑、冲突或不足时会向 RAG prompt 注入保守使用规则，并在引用区追加温和“资料核对提示”。
+- KnowledgeVerifierAgent：`/api/chat` 会在 RAG 命中后先执行本地 safety/eligibility gate；只有 semantic-needed 且安全的证据才可进入受控模型候选，gate 关闭或模型失败时回退确定性 policy。评估状态仍为 `trusted / suspicious / conflict / insufficient / skipped`，可疑、冲突或不足时会注入保守使用规则并追加温和“资料核对提示”。
 - Chat live 流式结束后会等待短稳定窗口并校验 assistant 内容；若最后仍是 user 或 assistant 为空，不写 Dexie、不同步服务端，并提示“本次回答没有成功生成，请重试”。
 - `/chat-messages/sync` 后端会拒绝不完整会话快照，非空快照必须以非空 `ASSISTANT` 消息收尾，防止前端兜底失效时污染 PostgreSQL。
 - Agent Chat：`/api/chat` 已接入 `chat-agent-runtime` adapter，每次请求会通过 RouterAgent 生成 route metadata；`tutor` route 会调用 TutorAgent policy，生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 策略。
 - Agent headers：Chat 响应带 `x-prepmind-agent-route`、`x-prepmind-agent-confidence`、`x-prepmind-agent-rag-required`；Tutor 路线额外带 `x-prepmind-tutor-intent` 与 `x-prepmind-tutor-depth`；RAG 命中后会带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - Agent prompt 顺序：`BASE_SYSTEM_PROMPT -> activeStudyContext -> agent/tutor strategy prompt -> RAG knowledge context -> verifier guidance`；RAG 因 token 预算被丢弃时，短 Agent prompt 仍保留，verifier notice 不追加。
-- `@repo/agent` 当前不直接调用 `streamText`、不读取 API key、不启用 live 模型；真实模型调用仍只存在于 `/api/chat`，并受 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true` 双开关保护。
+- `@repo/agent` 不读取 API key；真实模型 executor 只能由 app/server composition root 注入，并同时受全局 Live 双开关、组件独立 gate、预算、超时与安全 eligibility 保护。Review/Planner 当前产品 gate 默认 `false`；V9 离线 CLI 的存在不代表 Live 已运行或产品模型已启用。
 - `/knowledge` 页面已接入 RAG 文档管理与检索测试：支持资料上传、列表、处理、替换上传、删除内联确认、状态摘要和手动检索预览；资料卡片操作使用右上角三点菜单，点击页面其它区域可收起菜单，`DONE` 资料不再展示主按钮式重新处理；该页面在线直连 knowledge API，不进入 Dexie `mutationQueue`。
 - `/error-book` 已升级为学科优先入口：错题首页展示学科卡片，学科内展示专题 deck，专题内展示错题列表；专题支持重命名，详情弹层、备注、掌握状态、删除确认和加入复习保持原有 CRUD 能力。
 - Organizer API：`GET /wrong-question-groups`、`GET /wrong-question-groups/:subjectGroupId/decks`、`GET /wrong-question-decks/:deckId/questions`、`POST /wrong-question-organizer/organize/:wrongQuestionId`、`POST /wrong-question-organizer/organize-batch`、`PATCH /wrong-question-decks/:deckId`、`POST /wrong-question-decks/:deckId/items`、`DELETE /wrong-question-decks/:deckId/items/:wrongQuestionId`；在线直连 organizer API，不进入 Dexie `mutationQueue`。

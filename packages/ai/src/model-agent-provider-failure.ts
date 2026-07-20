@@ -7,12 +7,24 @@ import {
   TypeValidationError,
 } from 'ai';
 
-import type { ModelAgentProviderFailureCategory } from './model-agent-contract.ts';
+import {
+  MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
+} from './model-agent-contract.ts';
+import type {
+  ModelAgentProviderFailureCategory,
+  ModelAgentStructuredOutputStage,
+} from './model-agent-contract.ts';
 
 type ProviderFailureEntry = {
   category: ModelAgentProviderFailureCategory;
+  structuredOutputStage?: ModelAgentStructuredOutputStage;
   scope: AbortSignal;
 };
+
+type ProviderFailureClassification = Readonly<{
+  category: ModelAgentProviderFailureCategory;
+  structuredOutputStage?: ModelAgentStructuredOutputStage;
+}>;
 
 const providerFailureCategories = new WeakMap<object, ProviderFailureEntry>();
 
@@ -33,20 +45,51 @@ export function createTrustedModelAgentProviderFailureSignal(
  * It intentionally accepts no error and cannot inspect or retain provider-controlled data.
  */
 export function createUntrustedModelAgentProviderFailureSignal(scope: AbortSignal): Error {
-  return createSignal('unknown', scope);
+  return createSignal({ category: 'unknown' }, scope);
 }
 
-function createSignal(category: ModelAgentProviderFailureCategory, scope: AbortSignal): Error {
+/**
+ * Private runtime capability for a first-party direct adapter that has already
+ * reduced its own parser/type failure to a fixed stage. The signal retains no
+ * provider-controlled error or response. Unknown stage values fail closed as
+ * ordinary unknown provider failures.
+ */
+export function createTrustedModelAgentStructuredOutputFailureSignal(
+  scope: AbortSignal,
+  stage: unknown,
+): Error {
+  return createSignal(
+    isStructuredOutputStage(stage)
+      ? { category: 'structured_output', structuredOutputStage: stage }
+      : { category: 'unknown' },
+    scope,
+  );
+}
+
+function createSignal(
+  classification: ProviderFailureClassification,
+  scope: AbortSignal,
+): Error {
   const signal = new Error('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
   signal.name = 'ModelAgentProviderFailure';
-  providerFailureCategories.set(signal, { category, scope });
+  providerFailureCategories.set(signal, {
+    category: classification.category,
+    ...(classification.structuredOutputStage
+      ? { structuredOutputStage: classification.structuredOutputStage }
+      : {}),
+    scope,
+  });
   return signal;
 }
 
-export function takeModelAgentProviderFailureCategory(
+/**
+ * Private runtime handoff. It carries only fixed classification values, never
+ * a provider exception, message, raw object, response, or model text.
+ */
+export function takeModelAgentProviderFailure(
   value: unknown,
   expectedScope: AbortSignal,
-): ModelAgentProviderFailureCategory | undefined {
+): ProviderFailureClassification | undefined {
   if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
     return undefined;
   }
@@ -55,30 +98,86 @@ export function takeModelAgentProviderFailureCategory(
   if (!entry || entry.scope !== expectedScope) return undefined;
 
   providerFailureCategories.delete(value);
-  return entry.category;
+  return {
+    category: entry.category,
+    ...(entry.structuredOutputStage
+      ? { structuredOutputStage: entry.structuredOutputStage }
+      : {}),
+  };
 }
 
-function classifyProviderFailure(error: unknown): ModelAgentProviderFailureCategory {
-  if (
-    safeGuard(error, NoObjectGeneratedError) ||
-    safeGuard(error, JSONParseError) ||
-    safeGuard(error, TypeValidationError)
-  ) {
-    return 'structured_output';
+export function takeModelAgentProviderFailureCategory(
+  value: unknown,
+  expectedScope: AbortSignal,
+): ModelAgentProviderFailureCategory | undefined {
+  return takeModelAgentProviderFailure(value, expectedScope)?.category;
+}
+
+function classifyProviderFailure(error: unknown): ProviderFailureClassification {
+  const structuredOutputStage = classifyStructuredOutputFailure(error);
+  if (structuredOutputStage) {
+    return {
+      category: 'structured_output',
+      structuredOutputStage,
+    };
   }
 
   if (
     safeGuard(error, EmptyResponseBodyError) ||
     safeGuard(error, InvalidResponseDataError)
   ) {
-    return 'invalid_response';
+    return { category: 'invalid_response' };
   }
 
   if (safeGuard(error, APICallError)) {
-    return classifyApiCallError(error);
+    return { category: classifyApiCallError(error) };
   }
 
-  return 'unknown';
+  return { category: 'unknown' };
+}
+
+/**
+ * This classifier is intentionally kept at the AI SDK adapter boundary. It
+ * examines only official error markers and never forwards an error, message,
+ * parsed value, response, or raw model text past that boundary.
+ */
+function classifyStructuredOutputFailure(
+  error: unknown,
+): ModelAgentStructuredOutputStage | null {
+  if (safeGuard(error, JSONParseError)) return 'provider_json_parse';
+  if (safeGuard(error, TypeValidationError)) {
+    return 'provider_type_validation';
+  }
+  if (!safeGuard(error, NoObjectGeneratedError)) return null;
+
+  // `generateObject` wraps JSON parse and Zod/type failures in
+  // `NoObjectGeneratedError`. This is the only cause chain we inspect; a
+  // generic outer error's cause is untrusted and remains opaque.
+  const cause = readStructuredOutputCause(error);
+  if (safeGuard(cause, JSONParseError)) return 'provider_json_parse';
+  if (safeGuard(cause, TypeValidationError)) {
+    return 'provider_type_validation';
+  }
+  return 'provider_object_missing';
+}
+
+function readStructuredOutputCause(error: NoObjectGeneratedError): unknown {
+  try {
+    return error.cause;
+  } catch {
+    return undefined;
+  }
+}
+
+function isStructuredOutputStage(
+  value: unknown,
+): value is ModelAgentStructuredOutputStage {
+  return (
+    typeof value === 'string' &&
+    MODEL_AGENT_STRUCTURED_OUTPUT_STAGES.includes(
+      value as ModelAgentStructuredOutputStage,
+    )
+  );
 }
 
 function classifyApiCallError(error: APICallError): ModelAgentProviderFailureCategory {

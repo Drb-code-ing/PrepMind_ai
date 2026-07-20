@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 import { AgentTracesService } from './agent-traces.service';
+import { createReviewPlannerTrace } from '../review-agent/review-planner-trace';
 
 const objectContaining = <T extends object>(value: T) =>
   expect.objectContaining(value) as unknown as T;
@@ -167,6 +168,33 @@ describe('AgentTracesService', () => {
     );
   });
 
+  it('persists the Review Planner projection without its candidate source material', async () => {
+    const trace = createReviewPlannerTrace({
+      runId: 'review_planner_trace_1',
+      startedAt: now,
+      finishedAt: finishedAt,
+      deterministicReviewDurationMs: 10,
+      deterministicPlannerDurationMs: 10,
+      review: localCandidateObservation(),
+      planner: localCandidateObservation(),
+    });
+
+    await createService().createTrace('user_1', trace);
+
+    const createManyInput = firstMockArg<TraceStepCreateManyInput>(
+      prisma.agentTraceStep.createMany,
+    );
+    expect(createManyInput?.data.map((step) => step.inputSummary)).toEqual([
+      'scope=owner_read_only',
+      'scope=local_projection',
+      'scope=owner_read_only',
+      'scope=local_projection',
+    ]);
+    expect(JSON.stringify(createManyInput)).not.toMatch(
+      /prompt|api.?key|base.?url|raw.error|secret/i,
+    );
+  });
+
   it('lists only current user traces with filters', async () => {
     const result = await createService().listTraces('user_1', {
       limit: 5,
@@ -273,6 +301,23 @@ function createTraceInput() {
         errorMessage: null,
       },
     ],
+  };
+}
+
+function localCandidateObservation() {
+  return {
+    attempted: false as const,
+    disposition: 'not_eligible' as const,
+    budget: {
+      maxCalls: 2,
+      usedCalls: 0,
+      maxInputTokens: 1950,
+      usedInputTokens: 0,
+      maxOutputTokens: 440,
+      usedOutputTokens: 0,
+    },
+    usage: { inputTokens: 0, outputTokens: 0 },
+    reasonCodes: ['not_eligible'] as const,
   };
 }
 

@@ -6,11 +6,15 @@ import * as productionModelCandidates from '@repo/agent/model-candidates';
 
 const EXPECTED_RUNTIME_EXPORTS = [
   'MODEL_CANDIDATE_DISPOSITIONS',
+  'PLANNER_MODEL_CANDIDATE_SCHEMA',
+  'REVIEW_MODEL_CANDIDATE_SCHEMA',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
   'isKnowledgeVerifierModelEligible',
   'isRouterModelEligible',
   'runKnowledgeVerifierModelCandidate',
+  'runPlannerModelCandidate',
+  'runReviewModelCandidate',
   'runRouterModelCandidate',
 ];
 
@@ -19,6 +23,8 @@ describe('production model candidate exports', () => {
     expect(Object.keys(productionModelCandidates).sort()).toEqual(EXPECTED_RUNTIME_EXPORTS);
     expect(productionModelCandidates.runRouterModelCandidate).toBeFunction();
     expect(productionModelCandidates.runKnowledgeVerifierModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
       'candidate_applied',
     );

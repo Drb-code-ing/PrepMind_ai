@@ -14,6 +14,7 @@
     "./model-candidates": "./src/model-candidates/production.ts",
     "./phase-6-9-eval": "./src/evals/phase-6-9-eval-contract.ts",
     "./planner": "./src/nodes/planner.ts",
+    "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
@@ -25,6 +26,7 @@
     "eval:phase-6-9-4-3:accept-mock": "bun scripts/run-phase-6-9-4-3-paired-eval.ts mock-evidence",
     "eval:phase-6-9-4-3:live": "bun scripts/run-phase-6-9-4-3-paired-eval.ts live",
     "eval:phase-6-9-4-3:validate": "bun scripts/validate-phase-6-9-4-3-evidence.ts",
+    "eval:review-planner": "bun scripts/phase-6-9-review-planner-paired-cli.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

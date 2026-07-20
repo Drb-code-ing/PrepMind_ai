@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-15。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前 Phase 6.9.4.4 功能分支已把 Router/Verifier 模型候选编排接入 `/api/chat`，组件 gate 默认关闭，Docker/controlled-Live/浏览器/main 验收尚未完成。后续先完成全部 Agent 架构，再进入 Phase 6.10 分层记忆；权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`。
+> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 已完成分支验收。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。修复计时耦合后的一次独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均得到 `candidate_applied`，随后两条业务 gate 和 live-call gate 恢复默认 `false`，合成账户与 Trace 已清理。仍须提交/复验分支、`--no-ff` 合并 main 后，在 main 的 HEAD 上 default-off replay 才可标记阶段完成；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -105,7 +105,7 @@
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；当前功能分支已用于 Router/Verifier 结构化候选，组件 gate 默认关闭，尚待 Phase 6.9.4.4 生产验收。Memory 与其他业务 Agent 尚未接入该 runtime。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Review/Planner 的 V7 Live 已关闭为 `23 / false / evidence_io`，当前业务 gate 默认 `false`。Memory 与其他业务 Agent 尚未接入该 runtime。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
@@ -513,15 +513,22 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 ```text
 Card + ReviewLog + ReviewTask plan + ReviewPreference + WrongQuestionDeck
   -> GET /review-agent/suggestions
-  -> @repo/agent analyzeReview() + planStudy()
-  -> read-only study suggestions
+  -> Nest 根据 JWT userId 建立 owner-scoped fact snapshot
+  -> @repo/agent analyzeReview() + planStudy() deterministic baseline
+  -> 仅在全局 Live、对应业务 gate、HTTPS provider、凭据与预算均满足时，调用受限 Review/Planner candidate
+  -> 本地 merger 只接收弱点索引、block 排序和策略枚举，重新建立事实、分钟数、链接和只读建议
+  -> read-only study suggestions + safe modelObservations
   -> /plan full suggestion and /today compact suggestion
 ```
 
 - `GET /review-agent/suggestions` 经过 `JwtAuthGuard`，按当前 `userId` 聚合数据。
 - ReviewAgent 负责识别薄弱知识点、逾期压力、Again / Hard 信号、低稳定度和高难度卡片。
 - PlannerAgent 负责结合 ReviewAgent 输出、未来计划窗口和 `ReviewPreference` 生成今日重点、周计划节奏、容量提示和建议 block。
-- 该建议链路当前不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 增加真实模型诊断/计划后仍保持只读，FSRS 与容量事实由后端确定。
+- 该建议链路不创建 `ReviewTask(source=PLANNER)`，不更新 Card / ReviewLog / ReviewPreference / WrongQuestion / deck 数据，不进入 Dexie `mutationQueue`。Phase 6.9.5 的 DeepSeek V4 Pro Docker API 和可见 `/plan` 已验证 candidate 路径，但 FSRS 与容量事实仍由后端确定。
+- `REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 是仅 Nest HTTP server 的独立 rollback gate，默认均为 `false`，不会投影到 Web 或 worker；gate 缺失、超时、schema/usage 不可验证或任一安全门失败时只能返回 deterministic 建议和脱敏的降级状态。验收通过后也恢复 default-off。
+- 2026-07-16~17 的 v1--v6 server-only controlled-Live profile 均在独立 once marker 下终态关闭，计数不可合并；v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 表示 provider boundary 被触达一次但 usage 不可验证，不是 zero-call、零成本、账单或质量结论。私有 evidence 不进入用户建议、Trace、Docker 或浏览器数据流；六个 marker 均已消耗，当前阶段不得重跑 profile 或执行 V6 48-case/Docker/浏览器后续验收；两个业务 gate 继续默认 `false`。
+- V7 诊断工程不改变产品数据流。唯一 Live 已封存 once marker 与 `finalized evidence_io` JSON，无 success seal、token/cost、prompt、response、credential、raw error 或 quality counters。这些证据只允许推导 23 次 provider attempts 与 terminal gate 关闭，不允许把模型候选注入 `/review-agent/suggestions`。因此当前 suggestions 继续走 deterministic read-only path，V7 不得重跑或作为 Docker/Web/worker/API 入口。
+- V8 设计同样不改变当前产品数据流：它只为新的 server-only paired lineage 增加零字节、固定枚举、append-only stage markers 与独立 evidence。只有 V8 committed success 后才允许临时启用 Nest `server` 的单个 Review 或 Planner gate；Web/worker 不消费这些 gate，且每个组件验完必须重建 default-off `server`。
 - 今日任务页读取当天 plan 摘要，展示“今日预计 N 分钟”和容量状态；plan 查询失败不影响今日复习主列表。
 - 学习统计页 `/stats` 不在前端扫描原始表，只读取服务端聚合后的 Review stats/logs，并用客户端 ECharts 渲染趋势、评分分布和卡片状态。
 - `/reviews/stats` 基于 `Card` / `ReviewLog` 聚合复习次数、掌握率、连续复习、评分分布、卡片状态和每日趋势。

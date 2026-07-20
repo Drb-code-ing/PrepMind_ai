@@ -2,6 +2,11 @@ export * from './graph/index.ts';
 export * from './control-plane.ts';
 export * from './evals/critic-rubric.ts';
 export * from './evals/phase-6-9-eval-contract.ts';
+export * from './evals/phase-6-9-review-planner-cases.ts';
+export * from './evals/phase-6-9-review-planner-contract.ts';
+export * from './evals/run-phase-6-9-review-planner-paired.ts';
+export * from './evals/phase-6-9-review-planner-v10-cases.ts';
+export * from './evals/run-phase-6-9-review-planner-v10-paired.ts';
 export * from './evals/phase-6-9-seed-cases.ts';
 export * from './evals/run-phase-6-9-baseline.ts';
 export * from './nodes/knowledge-dedup.ts';
@@ -12,7 +17,18 @@ export * from './nodes/planner.ts';
 export * from './nodes/review.ts';
 export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
+export {
+  PLANNER_MODEL_CANDIDATE_SCHEMA,
+  REVIEW_MODEL_CANDIDATE_SCHEMA,
+  runPlannerModelCandidate,
+  runReviewModelCandidate,
+  type PlannerModelCandidateEnvelope,
+  type PlannerModelCandidateInput,
+  type ReviewModelCandidateEnvelope,
+  type ReviewModelCandidateInput,
+} from './model-candidates/review-planner-model-candidate.ts';
 export * from './recorder.ts';
+export * from './review-planner-diagnostics.ts';
 export * from './router.ts';
 export * from './runtime.ts';
 export * from './state.ts';

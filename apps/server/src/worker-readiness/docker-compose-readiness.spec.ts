@@ -1,4 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 describe('Docker Compose worker readiness healthcheck', () => {
@@ -194,6 +196,18 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(workerService).toContain('start_period:');
   });
 
+  it('gives the HTTP server a bounded container healthcheck for identity-bound acceptance', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+
+    expect(serverService).toContain('healthcheck:');
+    expect(serverService).toContain("fetch('http://127.0.0.1:3001/health')");
+    expect(serverService).toContain('interval: 5s');
+    expect(serverService).toContain('timeout: 3s');
+    expect(serverService).toContain('retries: 12');
+    expect(serverService).toContain('start_period: 10s');
+  });
+
   it('bootstraps the audit export lifecycle and bounds plaintext worker temp storage', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const lifecycle = JSON.parse(
@@ -288,7 +302,12 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(serverService).toContain(
       'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
     );
-    expect(serverService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
+    expect(serverService).toContain(
+      'DEEPSEEK_API_KEY: ${REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY:-}',
+    );
+    expect(serverService).not.toContain(
+      'DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}',
+    );
     expect(serverService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
     expect(serverService).toContain(
       'CONVERSATION_SUMMARY_MAX_CALLS: ${CONVERSATION_SUMMARY_MAX_CALLS:-1}',
@@ -302,6 +321,46 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(serverService).toContain(
       'CONVERSATION_SUMMARY_TIMEOUT_MS: ${CONVERSATION_SUMMARY_TIMEOUT_MS:-8000}',
     );
+  });
+
+  it('projects Review and Planner live controls only to the HTTP server', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+    const reviewPlannerControls = [
+      'REVIEW_AGENT_MODEL_ENABLED: ${REVIEW_AGENT_MODEL_ENABLED:-false}',
+      'PLANNER_AGENT_MODEL_ENABLED: ${PLANNER_AGENT_MODEL_ENABLED:-false}',
+      'REVIEW_AGENT_MODEL_TIMEOUT_MS: ${REVIEW_AGENT_MODEL_TIMEOUT_MS:-4500}',
+      'PLANNER_AGENT_MODEL_TIMEOUT_MS: ${PLANNER_AGENT_MODEL_TIMEOUT_MS:-4500}',
+    ];
+
+    for (const control of reviewPlannerControls) {
+      expect(serverService).toContain(control);
+      expect(workerService).not.toContain(control);
+      expect(webService).not.toContain(control);
+    }
+  });
+
+  it('projects product acceptance admission only to the HTTP server with safe defaults', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+    const adminService = extractYamlSection(compose, '  admin:', 2);
+    const controls = [
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:-false}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT:-}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256:-}',
+      'REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: ${REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS:-0}',
+    ];
+
+    for (const control of controls) {
+      expect(serverService).toContain(control);
+      expect(workerService).not.toContain(control);
+      expect(webService).not.toContain(control);
+      expect(adminService).not.toContain(control);
+    }
   });
 
   it('keeps Docker API and worker on the same explicit Qwen RAG contract', () => {
@@ -365,12 +424,11 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(compose).toContain('  minio-init:');
   });
 
-  it('keeps the web service wired for local dev AI mode switching', () => {
+  it('uses an explicit Web environment allowlist when a safe root fixture carries model credentials', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const webService = extractYamlSection(compose, '  web:', 2);
 
-    expect(webService).toContain('env_file:');
-    expect(webService).toContain('- ../.env');
+    expect(webService).not.toContain('env_file:');
     expect(webService).toContain(
       'PREPMIND_INTERNAL_API_BASE_URL: http://server:3001',
     );
@@ -387,13 +445,53 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(webService).toContain(
       'KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS: ${KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS:-4000}',
     );
+    expect(webService).toContain('AI_PROVIDER_MODE: ${AI_PROVIDER_MODE:-mock}');
+    expect(webService).toContain(
+      'AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}',
+    );
+    expect(webService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
-    expect(webService).not.toContain('AI_PROVIDER_MODE: ${');
-    expect(webService).not.toContain('AI_ENABLE_LIVE_CALLS: ${');
-    expect(webService).not.toContain('AI_BASE_URL: ${');
-    expect(webService).not.toContain('AI_MODEL: ${');
-    expect(webService).not.toContain('DEEPSEEK_API_KEY: ${');
-    expect(webService).not.toContain('OPENAI_API_KEY: ${');
+    expect(webService).toContain(
+      'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
+    );
+    expect(webService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
+    expect(webService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
+    expect(webService).not.toContain('REVIEW_AGENT_MODEL_ENABLED: ${');
+    expect(webService).not.toContain('PLANNER_AGENT_MODEL_ENABLED: ${');
+
+    const originalQwenApiKey = process.env.QWEN_API_KEY;
+    process.env.QWEN_API_KEY = 'host_only_qwen_fixture_canary';
+    let environments: ReturnType<
+      typeof resolveWebEnvironmentFromSafeRootFixture
+    >;
+    try {
+      environments = resolveWebEnvironmentFromSafeRootFixture();
+    } finally {
+      if (originalQwenApiKey === undefined) delete process.env.QWEN_API_KEY;
+      else process.env.QWEN_API_KEY = originalQwenApiKey;
+    }
+    const webEnvironment = environments.web;
+    for (const forbiddenVariable of [
+      'REVIEW_AGENT_MODEL_ENABLED',
+      'PLANNER_AGENT_MODEL_ENABLED',
+      'REVIEW_AGENT_MODEL_TIMEOUT_MS',
+      'PLANNER_AGENT_MODEL_TIMEOUT_MS',
+    ]) {
+      expect(webEnvironment).not.toHaveProperty(forbiddenVariable);
+    }
+    expect(webEnvironment).toMatchObject({
+      AI_PROVIDER_MODE: 'live',
+      AI_ENABLE_LIVE_CALLS: 'true',
+      AI_MODEL: 'deepseek-v4-flash',
+      AI_BASE_URL: 'https://fixture.invalid/v1',
+      DEEPSEEK_API_KEY: 'safe_fixture_deepseek_key',
+      OPENAI_API_KEY: 'safe_fixture_openai_key',
+      ROUTER_MODEL_ENABLED: 'true',
+      KNOWLEDGE_VERIFIER_MODEL_ENABLED: 'true',
+      NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
+      PREPMIND_INTERNAL_API_BASE_URL: 'http://server:3001',
+    });
+    expect(environments.server.QWEN_API_KEY).toBe('');
   });
 
   it('keeps the admin Dockerfile aligned with the Bun workspace and Next standalone output', () => {
@@ -429,7 +527,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const webService = extractYamlSection(compose, '  web:', 2);
 
     expect(adminService).toContain('dockerfile: docker/Dockerfile.admin');
-    expect(adminService).toContain('"3100:3100"');
+    expect(adminService).toContain('3100:3100');
     expect(adminService).toContain('depends_on:');
     expect(adminService).toContain('- server');
     expect(adminService).toContain(
@@ -475,3 +573,113 @@ function expectComposeOptionBeforeSubcommand(
   expect(tokens[optionIndex + 1]).toBe(value);
   expect(optionIndex).toBeLessThan(subcommandIndex);
 }
+
+function resolveWebEnvironmentFromSafeRootFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'prepmind-compose-'));
+  const dockerDirectory = path.join(root, 'docker');
+  const composePath = path.join(dockerDirectory, 'docker-compose.dev.yml');
+  const envPath = path.join(root, '.env');
+
+  try {
+    fs.mkdirSync(dockerDirectory, { recursive: true });
+    fs.copyFileSync(
+      path.resolve(__dirname, '../../../../docker/docker-compose.dev.yml'),
+      composePath,
+    );
+    fs.writeFileSync(
+      envPath,
+      [
+        'NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
+        'AI_PROVIDER_MODE=live',
+        'AI_ENABLE_LIVE_CALLS=true',
+        'AI_MODEL=deepseek-v4-flash',
+        'ROUTER_MODEL_ENABLED=true',
+        'KNOWLEDGE_VERIFIER_MODEL_ENABLED=true',
+        'DEEPSEEK_API_KEY=safe_fixture_deepseek_key',
+        'OPENAI_API_KEY=safe_fixture_openai_key',
+        'AI_BASE_URL=https://fixture.invalid/v1',
+        'REVIEW_AGENT_MODEL_ENABLED=true',
+        'PLANNER_AGENT_MODEL_ENABLED=true',
+        'REVIEW_AGENT_MODEL_TIMEOUT_MS=4500',
+        'PLANNER_AGENT_MODEL_TIMEOUT_MS=4500',
+      ].join('\n'),
+      'utf8',
+    );
+    const output = execFileSync(
+      'docker',
+      [
+        'compose',
+        '--env-file',
+        envPath,
+        '-f',
+        composePath,
+        'config',
+        '--format',
+        'json',
+      ],
+      {
+        cwd: root,
+        env: composeFixtureEnvironment(),
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      },
+    );
+    const resolved = JSON.parse(output) as {
+      services?: Record<string, { environment?: Record<string, string> }>;
+    };
+    return {
+      web: resolved.services?.web?.environment ?? {},
+      server: resolved.services?.server?.environment ?? {},
+    };
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function composeFixtureEnvironment() {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const name of COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES) {
+    const value = process.env[name];
+    if (value !== undefined) environment[name] = value;
+  }
+  return environment;
+}
+
+const COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES = [
+  'ALLUSERSPROFILE',
+  'APPDATA',
+  'COMSPEC',
+  'ComSpec',
+  'CommonProgramFiles',
+  'CommonProgramFiles(x86)',
+  'CommonProgramW6432',
+  'DOCKER_CONFIG',
+  'HOME',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'LOCALAPPDATA',
+  'NUMBER_OF_PROCESSORS',
+  'OS',
+  'Path',
+  'PATH',
+  'PATHEXT',
+  'PROCESSOR_ARCHITECTURE',
+  'PROCESSOR_ARCHITEW6432',
+  'ProgramData',
+  'PROGRAMDATA',
+  'ProgramFiles',
+  'ProgramFiles(x86)',
+  'ProgramW6432',
+  'SystemDrive',
+  'SystemRoot',
+  'SYSTEMROOT',
+  'TEMP',
+  'TMP',
+  'USERDOMAIN',
+  'USERNAME',
+  'USERPROFILE',
+  'WINDIR',
+  'XDG_CONFIG_HOME',
+  'XDG_RUNTIME_DIR',
+] as const;

@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { createModelAgentBudget } from '../src/model-agent-budget';
 import type { ModelAgentProviderFailureCategory } from '../src/model-agent-contract';
+import { createFirstPartyDeepSeekV4Runtime } from '../src/first-party-deepseek-v4-runtime';
 import { createTrustedModelAgentProviderFailureSignal } from '../src/model-agent-provider-failure';
 import { createOpenAICompatibleStructuredExecutor } from '../src/model-agent-provider';
 import { createModelAgentRuntime } from '../src/model-agent-runtime';
@@ -57,6 +58,25 @@ describe('safe model agent errors', () => {
 });
 
 describe('model agent runtime mock mode', () => {
+  it.each(['review_suggestion', 'planner_suggestion'] as const)(
+    'accepts the bounded %s task',
+    async (task) => {
+      const runtime = createModelAgentRuntime({
+        mode: 'mock',
+        provider: 'mock',
+        model: 'mock-agent-runtime',
+        liveCallsEnabled: false,
+        timeoutMs: 100,
+        mockResponder: () => ({ route: 'chat' }),
+      });
+
+      const result = await runtime.invokeStructured({ ...request(), task });
+
+      expect(result.ok).toBe(true);
+      expect(result.trace.task).toBe(task);
+    },
+  );
+
   it('parses mock output through the shared schema without a live executor', async () => {
     const runtime = createModelAgentRuntime({
       mode: 'mock',
@@ -260,6 +280,70 @@ describe('model agent runtime live mode', () => {
     expect(JSON.stringify(result)).not.toContain('credential material');
   });
 
+  it('does not hand the trusted structured-output capability to an ordinary injected executor', async () => {
+    let receivedCapability: unknown = Symbol('not-called');
+    const runtime = liveRuntime({
+      executor: async ({ createTrustedStructuredOutputFailure }) => {
+        receivedCapability = createTrustedStructuredOutputFailure;
+        if (createTrustedStructuredOutputFailure) {
+          throw createTrustedStructuredOutputFailure('provider_json_parse');
+        }
+        throw new Error(CANARY);
+      },
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected untrusted executor failure');
+    expect(receivedCapability).toBeUndefined();
+    expect(result.error.providerFailureCategory).toBe('unknown');
+    expect('structuredOutputStage' in result.trace).toBe(false);
+    expect(JSON.stringify(result)).not.toContain(CANARY);
+  });
+
+  it('does not accept a structured stage reentered through the first-party V4 runtime', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: `{${CANARY}` } }],
+          }),
+      }) as Response) as typeof fetch;
+    try {
+      let innerResult: Awaited<
+        ReturnType<ReturnType<typeof createFirstPartyDeepSeekV4Runtime>['runtime']['invokeStructured']>
+      > | null = null;
+      const runtime = liveRuntime({
+        executor: async () => {
+          const firstParty = createFirstPartyDeepSeekV4Runtime({
+            provider: 'deepseek',
+            apiKey: 'test-only-key',
+            baseURL: 'https://api.deepseek.com/v1',
+            model: 'deepseek-v4-flash',
+          });
+          innerResult = await firstParty.runtime.invokeStructured(request());
+          throw innerResult;
+        },
+      });
+
+      const result = await runtime.invokeStructured(request());
+
+      expect(innerResult).not.toBeNull();
+      expect(innerResult?.ok).toBe(false);
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected outer reentry failure');
+      expect(result.error.providerFailureCategory).toBe('unknown');
+      expect('structuredOutputStage' in result.trace).toBe(false);
+      expect(JSON.stringify(result)).not.toContain(CANARY);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('propagates a trusted provider category identically to the error and trace', async () => {
     const runtime = liveRuntime({
       executor: async ({ signal }) => {
@@ -390,6 +474,10 @@ describe('model agent runtime live mode', () => {
         providerFailureCategory: 'structured_output',
       });
       expect(result.trace.providerFailureCategory).toBe(result.error.providerFailureCategory);
+      expect(result.trace.structuredOutputStage).toBe(
+        'provider_type_validation',
+      );
+      expect('structuredOutputStage' in result.error).toBe(false);
       expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
       expect(fetchCalls).toBe(1);
       expect(JSON.stringify(result)).not.toContain('unsafe');
@@ -485,7 +573,7 @@ describe('model agent runtime live mode', () => {
     expect(observedAbort).toBe(true);
   });
 
-  it('normalizes invalid provider usage to zero', async () => {
+  it('fails closed when a live provider reports invalid usage instead of relabeling it as zero', async () => {
     const runtime = liveRuntime({
       executor: async () => ({
         object: { route: 'chat' },
@@ -495,10 +583,45 @@ describe('model agent runtime live mode', () => {
 
     const result = await runtime.invokeStructured(request());
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.error.code);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
     expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
     expect(result.budget.usedCalls).toBe(1);
+  });
+
+  it('fails closed when a live provider omits usage instead of treating it as a reported zero', async () => {
+    const runtime = liveRuntime({
+      executor: async () => ({ object: { route: 'chat' } }),
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
+    expect(result.budget.usedCalls).toBe(1);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it('fails closed when a live provider reports zero usage instead of treating it as metered telemetry', async () => {
+    const runtime = liveRuntime({
+      executor: async () => ({
+        object: { route: 'chat' },
+        usage: { inputTokens: 0, outputTokens: 0 },
+      }),
+    });
+
+    const result = await runtime.invokeStructured(request());
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unverifiable usage failure');
+    expect(result.error.code).toBe('PROVIDER_ERROR');
+    expect(result.error.providerFailureCategory).toBe('invalid_response');
+    expect(result.budget.usedCalls).toBe(1);
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0 });
   });
 
   it('keeps the first cancellation reason when timeout and external abort race', async () => {
@@ -649,7 +772,10 @@ function liveRuntime(overrides: Partial<Parameters<typeof createModelAgentRuntim
     model: 'deepseek-test',
     liveCallsEnabled: true,
     timeoutMs: 100,
-    executor: async () => ({ object: { route: 'chat' } }),
+    executor: async () => ({
+      object: { route: 'chat' },
+      usage: { inputTokens: 20, outputTokens: 10 },
+    }),
     ...overrides,
   });
 }

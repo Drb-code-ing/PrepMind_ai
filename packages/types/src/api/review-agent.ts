@@ -83,6 +83,90 @@ export const plannerAgentResultSchema = z.object({
 
 export const reviewAgentSuggestionQuerySchema = reviewTaskPlanQuerySchema;
 
+export const reviewPlannerModelObservationDispositionSchema = z.enum([
+  'not_eligible',
+  'safety_blocked',
+  'candidate_applied',
+  'fallback_invalid_input',
+  'fallback_schema_invalid',
+  'fallback_budget_exceeded',
+  'fallback_timeout',
+  'fallback_aborted',
+  'fallback_runtime_error',
+]);
+
+export const reviewPlannerModelObservationErrorCodeSchema = z.enum([
+  'INVALID_REQUEST',
+  'INVALID_RUNTIME_CONFIG',
+  'LIVE_CALLS_DISABLED',
+  'EXECUTOR_UNAVAILABLE',
+  'CALL_BUDGET_EXCEEDED',
+  'INPUT_BUDGET_EXCEEDED',
+  'OUTPUT_BUDGET_EXCEEDED',
+  'SCHEMA_INVALID',
+  'TIMEOUT',
+  'ABORTED',
+  'PROVIDER_ERROR',
+]);
+
+export const reviewPlannerModelProviderFailureCategorySchema = z.enum([
+  'http_auth',
+  'http_rate_limit',
+  'http_client',
+  'http_server',
+  'transport',
+  'structured_output',
+  'invalid_response',
+  'unknown',
+]);
+
+export const reviewPlannerModelObservationSchema = z
+  .object({
+    attempted: z.boolean(),
+    disposition: reviewPlannerModelObservationDispositionSchema,
+    durationMs: z.number().int().nonnegative(),
+    usage: z
+      .object({
+        inputTokens: z.number().int().nonnegative(),
+        outputTokens: z.number().int().nonnegative(),
+      })
+      .strict(),
+    errorCode: reviewPlannerModelObservationErrorCodeSchema.optional(),
+    providerFailureCategory:
+      reviewPlannerModelProviderFailureCategorySchema.optional(),
+    provenance: z.enum([
+      'local_deterministic',
+      'mock_candidate',
+      'live_candidate',
+    ]),
+    degraded: z.boolean(),
+    cached: z.literal(false),
+  })
+  .strict()
+  .superRefine((observation, context) => {
+    if (
+      observation.providerFailureCategory !== undefined &&
+      (observation.errorCode !== 'PROVIDER_ERROR' ||
+        !observation.attempted ||
+        observation.provenance !== 'live_candidate')
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['providerFailureCategory'],
+        message:
+          'providerFailureCategory is only valid for attempted live provider failures.',
+      });
+    }
+  });
+
+export const reviewPlannerModelObservationsSchema = z
+  .object({
+    version: z.literal(1),
+    review: reviewPlannerModelObservationSchema,
+    planner: reviewPlannerModelObservationSchema,
+  })
+  .strict();
+
 export const reviewAgentSuggestionResponseSchema = z.object({
   generatedAt: z.string().datetime(),
   review: reviewAgentResultSchema,
@@ -103,6 +187,7 @@ export const reviewAgentSuggestionResponseSchema = z.object({
     dailyMinutes: z.number().int().positive(),
     dailyCardLimit: z.number().int().positive(),
   }),
+  modelObservations: reviewPlannerModelObservationsSchema.optional(),
 });
 
 export type ReviewAgentPriority = z.infer<typeof reviewAgentPrioritySchema>;
@@ -115,6 +200,12 @@ export type PlannerAgentInput = z.infer<typeof plannerAgentInputSchema>;
 export type PlannerAgentBlock = z.infer<typeof plannerAgentBlockSchema>;
 export type PlannerAgentResult = z.infer<typeof plannerAgentResultSchema>;
 export type ReviewAgentSuggestionQuery = z.infer<typeof reviewAgentSuggestionQuerySchema>;
+export type ReviewPlannerModelObservation = z.infer<
+  typeof reviewPlannerModelObservationSchema
+>;
+export type ReviewPlannerModelObservations = z.infer<
+  typeof reviewPlannerModelObservationsSchema
+>;
 export type ReviewAgentSuggestionResponse = z.infer<
   typeof reviewAgentSuggestionResponseSchema
 >;

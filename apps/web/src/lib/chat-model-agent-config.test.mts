@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import fs from 'node:fs';
 import { register } from 'node:module';
 import test from 'node:test';
+import os from 'node:os';
+import path from 'node:path';
 
 register(
   `data:text/javascript,${encodeURIComponent(`
@@ -15,9 +19,7 @@ register(
   import.meta.url,
 );
 
-const { resolveChatModelAgentConfig } = await import(
-  './chat-model-agent-config.ts'
-);
+const { resolveChatModelAgentConfig } = await import('./chat-model-agent-config.ts');
 
 const LIVE_DEEPSEEK_ENV = {
   AI_PROVIDER_MODE: 'live',
@@ -29,11 +31,56 @@ const LIVE_DEEPSEEK_ENV = {
 };
 
 test('provider config resolution is explicitly server-only', async () => {
-  const source = await readFile(
-    new URL('./chat-model-agent-config.ts', import.meta.url),
-    'utf8',
-  );
+  const source = await readFile(new URL('./chat-model-agent-config.ts', import.meta.url), 'utf8');
   assert.equal(source.split(/\r?\n/u)[0], "import 'server-only';");
+});
+
+test('Docker Web resolved allowlist keeps the server-side live Router and Verifier route config', () => {
+  const originalQwenApiKey = process.env.QWEN_API_KEY;
+  process.env.QWEN_API_KEY = 'host_only_qwen_fixture_canary';
+  let environments: ReturnType<typeof resolveWebEnvironmentFromSafeRootFixture>;
+  try {
+    environments = resolveWebEnvironmentFromSafeRootFixture();
+  } finally {
+    if (originalQwenApiKey === undefined) delete process.env.QWEN_API_KEY;
+    else process.env.QWEN_API_KEY = originalQwenApiKey;
+  }
+  const env = environments.web;
+  const config = resolveChatModelAgentConfig(env);
+
+  assert.deepEqual(
+    {
+      mode: config.mode,
+      liveCallsEnabled: config.liveCallsEnabled,
+      routerEnabled: config.routerEnabled,
+      verifierEnabled: config.verifierEnabled,
+      configured: config.configured,
+      provider: config.provider,
+      credentialSource: config.credentialSource,
+      model: config.model,
+    },
+    {
+      mode: 'live',
+      liveCallsEnabled: true,
+      routerEnabled: true,
+      verifierEnabled: true,
+      configured: true,
+      provider: 'deepseek',
+      credentialSource: 'deepseek',
+      model: 'deepseek-v4-flash',
+    },
+  );
+  for (const forbiddenVariable of [
+    'REVIEW_AGENT_MODEL_ENABLED',
+    'PLANNER_AGENT_MODEL_ENABLED',
+    'REVIEW_AGENT_MODEL_TIMEOUT_MS',
+    'PLANNER_AGENT_MODEL_TIMEOUT_MS',
+  ]) {
+    assert.equal(Object.hasOwn(env, forbiddenVariable), false);
+  }
+  assert.equal(env.DEEPSEEK_API_KEY, 'safe_fixture_deepseek_key');
+  assert.equal(env.OPENAI_API_KEY, '');
+  assert.equal(environments.server.QWEN_API_KEY, '');
 });
 
 test('empty environment resolves to the exact safe disabled config', () => {
@@ -361,3 +408,76 @@ test('public config JSON never exposes credentials, URLs, raw errors, or secret 
     'verifierTimeoutMs',
   ]);
 });
+
+function resolveWebEnvironmentFromSafeRootFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'prepmind-web-compose-'));
+  const dockerDirectory = path.join(root, 'docker');
+  const composePath = path.join(dockerDirectory, 'docker-compose.dev.yml');
+  const envPath = path.join(root, '.env');
+
+  try {
+    fs.mkdirSync(dockerDirectory, { recursive: true });
+    fs.copyFileSync(
+      new URL('../../../../docker/docker-compose.dev.yml', import.meta.url),
+      composePath,
+    );
+    fs.writeFileSync(
+      envPath,
+      [
+        'NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001',
+        'AI_PROVIDER_MODE=live',
+        'AI_ENABLE_LIVE_CALLS=true',
+        'AI_MODEL=deepseek-v4-flash',
+        'ROUTER_MODEL_ENABLED=true',
+        'KNOWLEDGE_VERIFIER_MODEL_ENABLED=true',
+        'DEEPSEEK_API_KEY=safe_fixture_deepseek_key',
+        'OPENAI_API_KEY=',
+        'AI_BASE_URL=https://api.deepseek.com/v1',
+        'REVIEW_AGENT_MODEL_ENABLED=true',
+        'PLANNER_AGENT_MODEL_ENABLED=true',
+        'REVIEW_AGENT_MODEL_TIMEOUT_MS=4500',
+        'PLANNER_AGENT_MODEL_TIMEOUT_MS=4500',
+      ].join('\n'),
+      'utf8',
+    );
+    const output = execFileSync(
+      'docker',
+      ['compose', '--env-file', envPath, '-f', composePath, 'config', '--format', 'json'],
+      {
+        cwd: root,
+        env: composeFixtureEnvironment(),
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      },
+    );
+    const resolved = JSON.parse(output) as {
+      services?: Record<string, { environment?: Record<string, string> }>;
+    };
+    return {
+      web: resolved.services?.web?.environment ?? {},
+      server: resolved.services?.server?.environment ?? {},
+    };
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function composeFixtureEnvironment() {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const name of COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES) {
+    const value = process.env[name];
+    if (value !== undefined) environment[name] = value;
+  }
+  return environment;
+}
+
+const COMPOSE_FIXTURE_OS_ENVIRONMENT_NAMES = [
+  'ALLUSERSPROFILE', 'APPDATA', 'COMSPEC', 'ComSpec', 'CommonProgramFiles',
+  'CommonProgramFiles(x86)', 'CommonProgramW6432', 'DOCKER_CONFIG', 'HOME',
+  'HOMEDRIVE', 'HOMEPATH', 'LOCALAPPDATA', 'NUMBER_OF_PROCESSORS', 'OS',
+  'Path', 'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'PROCESSOR_ARCHITEW6432',
+  'ProgramData', 'PROGRAMDATA', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramW6432',
+  'SystemDrive', 'SystemRoot', 'SYSTEMROOT', 'TEMP', 'TMP', 'USERDOMAIN', 'USERNAME',
+  'USERPROFILE', 'WINDIR', 'XDG_CONFIG_HOME', 'XDG_RUNTIME_DIR',
+] as const;

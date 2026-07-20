@@ -236,11 +236,15 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.3.5 已完成 Docker Mock/Live 收口：Mock 覆盖 12 条触发、复用、ownership、CAS/stale、Dexie 白名单与安全 Trace；DeepSeek Live 通过共享 executor JSON mode 生成 strict `conversation-summary-v1`，version/watermark 为 `1/15`，最终 Chat 保留二次函数判别式与正确值 `1`。Trace 新增 bounded `layerTokens`，不含正文。结束后恢复 Mock，并严格清理 7 个合成账号、4 个会话、级联 summary/state/cache 和测试浏览器 storage；证据见 `docs/acceptance/2026-07-11-phase-6-9-3-conversation-memory.md`。
 - Phase 6.9.4.1 已固定 Router 60 / Verifier 40 的 `phase-6.9-router-verifier-v1`、专项 metrics 和 deterministic CLI。baseline 为 74/100、critical=2；Router 歧义 macro-F1 52.47%，Verifier 复杂冲突 recall 0%，prompt injection release 0。当前 Enabled=no，失败样本保留给后续同 case candidate 对照；证据见 `docs/acceptance/phase-6-9-4-1-router-verifier-baseline.md`。
 - Phase 6.9.4.2 已完成 Router / Verifier Mock candidate contract：candidate eligibility 与 safety gate 在 runtime 前零调用拦截，Router 权限只由 canonical map 重建，Verifier high-risk 整批阻断并使用 literal evidence code 的 strict discriminated union 与稳定 chunk 排序。schema、budget、timeout、abort、hostile accessor、runtime budget mutation 和 telemetry unavailable 均 fail-closed；真实 provider input usage 不会被工程估算误拒，无法验证 telemetry 时按 preview budget 记账防止重试超卖。Envelope/Trace 不含 prompt、chunk、output、raw error 或 credential 正文。当前 `Enabled=no`、`Reason=paired_candidate_not_run`；Mock 只证明工程 contract。证据见 `docs/acceptance/phase-6-9-4-2-router-verifier-mock-candidate.md`。
-- Phase 6.9.4.3 的 deterministic/Mock、五次不可拼接 Live、diagnostics、400-token headroom、strict-tool 历史实验、JSON-mode resolution 与唯一完整 controlled-Live 已完成。新 run 固定 runner-v3 + `deepseek_json_object_v1`，结果为 `28/28 strict success`、`72/72 zero-call`；Verifier 通过，Router additional P95 `4264ms` 超门槛。Fresh Agent/AI 为 345/151 passed，Mock 为 `100/28/0/28/72`。当时的生产决策是 Router 继续 deterministic；该延迟失败作为历史证据保留，不再解释为永久禁止 Router 模型。当前 Phase 6.9.4.4 以高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的混合路径继续受控生产接入。证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。
+- Phase 6.9.4.3 的 deterministic/Mock、五次不可拼接 Live、diagnostics、400-token headroom、strict-tool 历史实验、JSON-mode resolution 与唯一完整 controlled-Live 已完成。新 run 固定 runner-v3 + `deepseek_json_object_v1`，结果为 `28/28 strict success`、`72/72 zero-call`；Verifier 通过，Router additional P95 `4264ms` 超门槛。Fresh Agent/AI 为 345/151 passed，Mock 为 `100/28/0/28/72`。当时的生产决策是 Router 继续 deterministic；该延迟失败作为历史证据保留，不再解释为永久禁止 Router 模型。后续 Phase 6.9.4.4 已完成高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的受控生产接入并恢复默认关闭。证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。
 - Phase 6.9.4.4 Task 8 已完成 Docker Web runtime 接线与默认关闭配置。Router 的安全/高置信请求保持 deterministic zero-call，歧义/上下文请求才允许真实模型；Verifier 仅在 RAG 证据通过 prompt injection、high-risk、credential material 等本地零调用安全门后，按 semantic-needed 调用模型。独立 gate、5 秒/4 秒 timeout、共享单请求 `2 calls / 2400 input / 800 output` 预算、JSON-object + canonical Zod、限制性 fallback 与安全 Trace/headers 均为生产边界。Task 9 controlled-Live、Docker、可见浏览器验收前 gate 继续默认关闭。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；Memory、Orchestrator、其余 Agent 与 Phase 6 尚未完成。
 - Phase 6.9.4.4 已完成。Task 9 分支 gates 为 Agent 374/374、AI 151/151、Web remediation 后 407/407、Server 735 passed / 2 skipped；最小 controlled-Live harness 为 5/5 strict success。Task 10 在 main merge commit `b58e8d5` 重跑静态门禁：AI 151/151、Server 737 passed / 2 skipped、Web 407/407、lint/build/typecheck 与 Compose 全部通过。可见 Docker 浏览器复验 Router contextual-reference `candidate_applied / 4048ms / 295+240 tokens`、Verifier conflict `candidate_applied / 2618ms / 536+186 tokens` 与 injection provider 前 `safety_blocked / 0-call`；新的 `deepseek-v4-flash` Trace 为 `pricingKnown=true / 0.000389 USD`。两次历史 `study_plan` timeout 继续作为 fallback 时延风险保留。`de41de9` 修复 Docker Chat RAG internal API 优先级，direct/Chat parity 通过。Docker 已恢复 Mock/default-off，各轮 synthetic PostgreSQL/Redis/浏览器数据清理为 0；Admin 本轮未改源码，其镜像重建受 Prisma 官方二进制外部网络失败阻断，现有容器仍返回 200。证据见 `docs/acceptance/2026-07-14-phase-6-9-4-4-router-verifier-production.md`。
+- Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成受限只读真实模型路径的分支验收。模型只返回产品实际合并的 `focusIndexes` / `blockOrder`；本地 merger 始终掌握 owner-scoped facts、FSRS、分钟数、链接、任务与全部写权限。V10 唯一 controlled-Live 是语义质量 authority：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V22 的一次 product 终止与 recovery 均作为不可重跑历史保留；修复 aggregate API timing 与 candidate-step Trace timing 的错误精确耦合后，用户授权下的独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`。两个产品 gate 和 live-call gate 已恢复 `false`，合成账户/Trace 清理为 0。仍须 main default-off replay 后才可标记阶段完成。完整记录见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+- V9 唯一 controlled-Live 已完成并封存：`23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes，P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00` 均在门内；但 quality `30/48`、semantic `4/22`、critical `2` 导致 durable reader 为 `finalized / invalid_attempted / closed / quality_gate_failed`。V1--V9 继续只读；没有 success seal，Review/Planner 产品 gate 缺省关闭，产品仍 deterministic。Product authority 只接受 `finalized / complete / closed / passed + 23 provider / 22 paired admission + lowercase SHA-256`，当前在 ledger、Prisma、Docker、浏览器前阻断，不回退 V8 或 `git show`。详情见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`。
 - 后续 Agent 架构优化执行文档见 `docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md`，重点是状态控制面、工具可靠性、RAG 冲突处理、后台任务事件化和 Reflexion 验收，而不是立刻放开全自主写操作。
-- 当前实现事实：Tutor、WrongQuestionOrganizer、Review、Planner、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是 deterministic policy；Router/Verifier 已完成混合模型生产接入；FinalResponse 由既有 `/api/chat` mock/live 模型链路承担；Retriever 由 Qwen embedding + pgvector/关键词混合检索承担。下一步从 main 推进 Review/Planner 的受控真实模型只读路径，而不是维持这些 policy 纯 deterministic。
+- 当前离线补强已将评测集固定为 `phase-6.9-review-planner-v2`：26 条 zero-call case 必须实际经过候选安全/资格/预算/abort gate，22 条 runtime case 覆盖多种诊断、排序和策略；`zeroCallVerified` 进入 report contract，任何意外调用都会关闭生产决策。live provider 缺失、非法或 `0/0` usage 只会 `invalid_response` 回退，Trace 仅在成功且正数 usage、集中单价完整时显示已知估算成本。以上不构成新的 Live、Docker 或浏览器证据，两个业务 gate 仍为 `false`。
+- 独立 Qwen Chat v5 目前只有零网络设计文档：`docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`。它不重试或替代 v1--v5；在实现或一次 provider 调用前，仍需受审计的精确 Qwen Chat 价格 profile、来源日期/计量依据与独立总费用上限。
+- 当前实现事实：Router/Verifier 已完成混合模型生产接入且默认 gate 已恢复关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是 deterministic policy。Review/Planner 有受限只读 candidate，但 V9 真实模型质量门失败且产品 gates=false，因此当前项目仍返回 deterministic 建议，不能称为 Review/Planner 真实模型可用。FinalResponse 由既有 `/api/chat` mock/live 链路承担；Retriever 由 Qwen embedding + pgvector/关键词混合检索承担。
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -253,7 +257,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Organizer API 已落地：`GET /wrong-question-groups`、`GET /wrong-question-groups/:subjectGroupId/decks`、`GET /wrong-question-decks/:deckId/questions`、`POST /wrong-question-organizer/organize/:wrongQuestionId`、`POST /wrong-question-organizer/organize-batch`、`PATCH /wrong-question-decks/:deckId`、`POST /wrong-question-decks/:deckId/items`、`DELETE /wrong-question-decks/:deckId/items/:wrongQuestionId`。
 - `/error-book` 已升级为学科卡片 -> 专题 deck -> 错题列表的下钻结构，保留错题详情、备注、掌握状态、删除确认和加入复习。
 - ReviewAgent / PlannerAgent API 已落地：`GET /review-agent/suggestions` 经过认证，按当前用户读取 Card、ReviewLog、ReviewTask 计划、ReviewPreference 和错题组织摘要，生成 `/plan` 完整建议与 `/today` 紧凑建议。
-- ReviewAgent / PlannerAgent 当前边界：只读建议，不创建 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck，不进入 Dexie `mutationQueue`。Phase 6.9.5 将增加真实模型诊断与计划路径，但 FSRS、容量事实、写操作和用户确认仍由后端控制。
+- ReviewAgent / PlannerAgent 当前边界：只读建议，不创建 `ReviewTask(source=PLANNER)`，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck，不进入 Dexie `mutationQueue`。Phase 6.9.5 真实模型路径已验收但 gate 默认关闭；FSRS、容量事实、写操作和用户确认始终由后端控制。
 - MemoryAgent API 已落地：`GET /memory-agent/candidates`、`POST /memory-agent/candidates/generate`、`POST /memory-agent/candidates/:id/accept`、`POST /memory-agent/candidates/:id/reject`、`GET /user-memories`、`PATCH /user-memories/:id`、`DELETE /user-memories/:id`。
 - MemoryAgent 当前边界：候选需用户确认，不静默创建正式记忆；不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`，不自动注入 Chat prompt。Phase 6.9.9 只增加受控真实模型候选提取；Chat 注入、召回与情景记忆延后至 Phase 6.10。
 - Agent Trace 边界：`/agent-traces` 不进入 Dexie `mutationQueue`，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key；`/agent-trace` 成本看板只展示估算成本，不替代供应商账单。
@@ -292,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。（下一阶段，从最新 main 开分支）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。V10 是唯一语义质量 authority；V22 `operation_failed -> recovered` 及其他历史 lineages 不可重跑或改写。修复独立计时边界的错误精确比较后，受控 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`；synthetic account/Trace 清理为 0，两个 gate 与 live-call gate 均恢复 default-off。（分支验收完成，待 main replay）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -306,7 +310,26 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请从最新 main 开始 Phase 6.9.5：为 ReviewAgent / PlannerAgent 设计并实现真实模型只读建议路径，明确通信、权限、评测、预算、超时、降级与验收；不要提前进入分层记忆系统。”
+下一会话可以复制：“请先提交并复验 Phase 6.9.5 分支，再 `git switch main`、`git merge --no-ff`；只在 main 保持 Review/Planner default-off、无真实模型调用地完成静态与 Docker replay、证据复核并推送，之后再进入 Phase 6.9.6。”
+
+### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
+
+V12's earlier fake default host has been replaced with a real default-off host
+composition. It performs read-only preflight, reserves and writes V12-only
+non-secret resource selectors before creating synthetic resources, and then
+uses lineage-neutral V8 Docker/API/browser/Trace/default-off/cleanup
+mechanics. `review_api_setup / not_started` preserves a recoverable terminal
+when setup fails before provider dispatch. No V12 product/recovery CLI,
+Docker, browser, API or provider operation has run; the two gates remain
+`false`. Refreshed independent contract and operations reviews have no
+unresolved P0/P1; fresh user authorization is still required before the
+single V12 branch product command.
+
+The V12 hardening pass adds attempt/checkpoint-bound failure evidence,
+one-time recovered terminal semantics, `DATABASE_URL` fingerprint continuity,
+owner-after-preflight revalidation, default-off recovery after a half-recorded
+activation, and a 30-second headed-browser observation boundary. These are
+offline controls, not product evidence.
 
 ### Phase 7 — 工程化增强
 

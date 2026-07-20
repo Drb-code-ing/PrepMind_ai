@@ -52,8 +52,99 @@ describe('parseEnv', () => {
       CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: 1600,
       CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: 400,
       CONVERSATION_SUMMARY_TIMEOUT_MS: 8000,
+      REVIEW_AGENT_MODEL_ENABLED: false,
+      PLANNER_AGENT_MODEL_ENABLED: false,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: false,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: '',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: '',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 0,
+      REVIEW_AGENT_MODEL_TIMEOUT_MS: 4500,
+      PLANNER_AGENT_MODEL_TIMEOUT_MS: 4500,
     });
   });
+
+  it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {
+    expect(() =>
+      parseEnv({ ...requiredEnv, REVIEW_AGENT_MODEL_TIMEOUT_MS: 999 }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...requiredEnv, PLANNER_AGENT_MODEL_TIMEOUT_MS: 15001 }),
+    ).toThrow();
+    expect(parseEnv(requiredEnv)).toMatchObject({
+      REVIEW_AGENT_MODEL_ENABLED: false,
+      PLANNER_AGENT_MODEL_ENABLED: false,
+    });
+  });
+
+  it('accepts only an exact server-only Review product acceptance configuration', () => {
+    const hash = 'a'.repeat(64);
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        DEEPSEEK_API_KEY: 'acceptance-deepseek-key',
+        REVIEW_AGENT_MODEL_ENABLED: 'true',
+        PLANNER_AGENT_MODEL_ENABLED: 'false',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: hash,
+        REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '2',
+      }),
+    ).toMatchObject({
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: true,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: hash,
+      REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 2,
+    });
+  });
+
+  it.each([
+    { SERVER_ROLE: 'worker' },
+    { SERVER_ROLE: 'both' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: '' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'planner' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'A'.repeat(64) },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'a'.repeat(63) },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '0' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '1' },
+    { REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '3' },
+    { REVIEW_AGENT_MODEL_ENABLED: 'false' },
+    { PLANNER_AGENT_MODEL_ENABLED: 'true' },
+    { AI_PROVIDER_MODE: 'mock' },
+    { AI_ENABLE_LIVE_CALLS: 'false' },
+    { AI_MODEL: 'deepseek-v4-flash' },
+    { AI_BASE_URL: 'https://api.openai.com/v1' },
+    { DEEPSEEK_API_KEY: '' },
+    { OPENAI_API_KEY: 'acceptance-openai-key' },
+    { REVIEW_AGENT_MODEL_TIMEOUT_MS: '4499' },
+    { PLANNER_AGENT_MODEL_TIMEOUT_MS: '4501' },
+  ])(
+    'rejects invalid enabled product acceptance combination %#',
+    (override) => {
+      expect(() =>
+        parseEnv({
+          ...requiredEnv,
+          SERVER_ROLE: 'api',
+          AI_PROVIDER_MODE: 'live',
+          AI_ENABLE_LIVE_CALLS: 'true',
+          AI_MODEL: 'deepseek-v4-pro',
+          AI_BASE_URL: 'https://api.deepseek.com/v1',
+          DEEPSEEK_API_KEY: 'acceptance-deepseek-key',
+          REVIEW_AGENT_MODEL_ENABLED: 'true',
+          PLANNER_AGENT_MODEL_ENABLED: 'false',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED: 'true',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: 'review',
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: 'a'.repeat(64),
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: '2',
+          ...override,
+        }),
+      ).toThrow();
+    },
+  );
 
   it('requires an HTTPS provider and matching key only when summary live calls are enabled', () => {
     expect(() =>

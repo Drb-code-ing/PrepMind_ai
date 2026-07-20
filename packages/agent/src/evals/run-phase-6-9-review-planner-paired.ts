@@ -1,0 +1,748 @@
+import {
+  createModelAgentBudget,
+  createModelAgentRuntime,
+  hashModelAgentRunId,
+  isModelAgentRunBudget,
+  type ModelAgentRunBudget,
+  type ModelAgentRuntime,
+  type ModelAgentUsage,
+} from '@repo/ai';
+import type {
+  PlannerAgentResult,
+  ReviewAgentResult,
+} from '@repo/types/api/review-agent';
+
+import {
+  runPlannerModelCandidate,
+  runReviewModelCandidate,
+} from '../model-candidates/review-planner-model-candidate.ts';
+import {
+  PHASE_695_REPORT_SCHEMA_VERSION,
+  PHASE_695_SHARED_BUDGET,
+  ReviewPlannerDiagnosticCode,
+  decideProductionDecision,
+  phase695ReportSchema,
+  type Phase695CaseEntry,
+  type Phase695Report,
+} from './phase-6-9-review-planner-contract.ts';
+import {
+  PHASE_695_REVIEW_PLANNER_DATASET_VERSION,
+  getPhase695CaseFixture,
+  phase695ReviewPlannerCases,
+  type Phase695CaseFixture,
+  type Phase695ReviewPlannerCase,
+} from './phase-6-9-review-planner-cases.ts';
+
+export const PHASE_695_CASE_TIMEOUT_MS = 4_500;
+
+export type Phase695LiveDependencies = Readonly<{
+  runtime: Pick<ModelAgentRuntime, 'invokeStructured'>;
+  now?: () => number;
+  setTimeout?: (callback: () => void, ms: number) => unknown;
+  clearTimeout?: (handle: unknown) => void;
+}>;
+
+export type RunPhase695ReviewPlannerPairedInput =
+  | Readonly<{ mode: 'mock'; now?: () => number }>
+  | Readonly<{ mode: 'live'; live: Phase695LiveDependencies }>;
+
+export type Phase695DatasetAdapter = Readonly<{
+  cases: readonly Phase695ReviewPlannerCase[];
+  getFixture(caseId: string): Phase695CaseFixture | null;
+  mockDecision(fixture: Phase695CaseFixture): unknown;
+}>;
+
+const phase695V2Dataset: Phase695DatasetAdapter = Object.freeze({
+  cases: phase695ReviewPlannerCases,
+  getFixture: getPhase695CaseFixture,
+  mockDecision: (fixture) => fixture.lane === 'review'
+    ? { focusIndexes: fixture.expected.focusIndexes }
+    : { blockOrder: fixture.expected.blockOrder },
+});
+
+type CandidateObservation = Readonly<{
+  attempted?: unknown;
+  disposition?: unknown;
+  budget?: unknown;
+  usage?: unknown;
+  trace?: unknown;
+  traceUnavailable?: unknown;
+  usageUnavailable?: unknown;
+  reasonCodes?: unknown;
+}>;
+
+export async function runPhase695ReviewPlannerPaired(
+  input: RunPhase695ReviewPlannerPairedInput,
+): Promise<Phase695Report> {
+  const entries = await runPhase695ReviewPlannerEntries(input, phase695V2Dataset);
+  return phase695ReportSchema.parse(buildReport(input.mode, entries));
+}
+
+export async function runPhase695ReviewPlannerEntries(
+  input: RunPhase695ReviewPlannerPairedInput,
+  dataset: Phase695DatasetAdapter,
+): Promise<readonly Phase695CaseEntry[]> {
+  const entries: Phase695CaseEntry[] = [];
+  for (const testCase of dataset.cases) {
+    entries.push(await runCase(testCase, input, dataset));
+  }
+  return Object.freeze(entries.map((entry) => Object.freeze({ ...entry })));
+}
+
+async function runCase(
+  testCase: Phase695ReviewPlannerCase,
+  input: RunPhase695ReviewPlannerPairedInput,
+  dataset: Phase695DatasetAdapter,
+): Promise<Phase695CaseEntry> {
+  const fixture = dataset.getFixture(testCase.id);
+  if (!fixture) return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
+
+  const dependencies = input.mode === 'mock'
+    ? mockDependencies(fixture, input.now, dataset.mockDecision)
+    : completeLiveDependencies(input.live);
+  if (!isSafeDependencies(dependencies)) {
+    return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
+  }
+  if (testCase.executionKind === 'zero_call') {
+    return runZeroCallCase(testCase, fixture, dependencies);
+  }
+
+  const startedAt = readMonotonicNow(dependencies.now);
+  if (startedAt === null) {
+    return rejectedEntry(testCase, 0, zeroUsage(), ReviewPlannerDiagnosticCode.PreflightInvalid);
+  }
+  const controller = new AbortController();
+  let runtimeCalls = 0;
+  const trackingRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {
+    async invokeStructured(request) {
+      runtimeCalls += 1;
+      return dependencies.runtime.invokeStructured(request);
+    },
+  };
+  let timeout: unknown;
+  let clearTimer: (() => boolean) | null = null;
+  let timerCleared = false;
+  try {
+    let resolveTimeout: ((value: 'timeout') => void) | null = null;
+    const timeoutReached = new Promise<'timeout'>((resolve) => {
+      resolveTimeout = resolve;
+    });
+    timeout = dependencies.setTimeout(() => {
+      try {
+        controller.abort();
+      } catch {
+        // Abort transport errors are collapsed into the fixed timeout outcome.
+      }
+      resolveTimeout?.('timeout');
+    }, PHASE_695_CASE_TIMEOUT_MS);
+    clearTimer = () => {
+      if (timerCleared) return true;
+      timerCleared = true;
+      try {
+        dependencies.clearTimeout(timeout);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
+    const candidate = fixture.lane === 'review'
+      ? runReviewModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: cloneReviewFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        })
+      : runPlannerModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: clonePlannerFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        });
+    const envelope = await Promise.race([
+      Promise.resolve(candidate).then(
+        (value) => ({ kind: 'candidate' as const, value }),
+        () => ({ kind: 'candidate_rejected' as const }),
+      ),
+      timeoutReached.then(() => ({ kind: 'timeout' as const })),
+    ]);
+    if (envelope.kind === 'timeout') {
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.Transport,
+      );
+    }
+    if (envelope.kind === 'candidate_rejected') {
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.Transport,
+      );
+    }
+    const finishedAt = readMonotonicNow(dependencies.now);
+    if (finishedAt === null || finishedAt < startedAt) {
+      return rejectedEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        zeroUsage(),
+        ReviewPlannerDiagnosticCode.PreflightInvalid,
+      );
+    }
+    const entry = deriveCandidateEntry({
+      testCase,
+      fixture,
+      value: envelope.value.value,
+      observation: envelope.value.observation,
+      expectedMode: input.mode,
+      durationMs: finishedAt - startedAt,
+      runtimeCalls,
+    });
+    return clearTimer() ? entry : rejectedEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      zeroUsage(),
+      ReviewPlannerDiagnosticCode.PreflightInvalid,
+    );
+  } catch {
+    return rejectedEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      zeroUsage(),
+      ReviewPlannerDiagnosticCode.Transport,
+    );
+  } finally {
+    if (clearTimer) clearTimer();
+  }
+}
+
+function mockDependencies(
+  fixture: Phase695CaseFixture,
+  now: (() => number) | undefined,
+  mockDecision: (fixture: Phase695CaseFixture) => unknown,
+): Required<Phase695LiveDependencies> {
+  return {
+    runtime: createModelAgentRuntime({
+      mode: 'mock',
+      provider: 'mock',
+      model: 'phase-6-9-review-planner-mock-v1',
+      liveCallsEnabled: false,
+      timeoutMs: PHASE_695_CASE_TIMEOUT_MS,
+      mockResponder: () => mockDecision(fixture),
+    }),
+    now: now ?? defaultNow,
+    setTimeout: (callback, ms) => setTimeout(callback, ms),
+    clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+  };
+}
+
+function completeLiveDependencies(
+  input: Phase695LiveDependencies,
+): Required<Phase695LiveDependencies> | null {
+  try {
+    return {
+      runtime: input.runtime,
+      now: input.now ?? defaultNow,
+      setTimeout: input.setTimeout ?? ((callback, ms) => setTimeout(callback, ms)),
+      clearTimeout: input.clearTimeout ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isSafeDependencies(value: unknown): value is Required<Phase695LiveDependencies> {
+  try {
+    if (typeof value !== 'object' || value === null) return false;
+    const candidate = value as Record<string, unknown>;
+    return typeof candidate.runtime === 'object' && candidate.runtime !== null &&
+      typeof (candidate.runtime as { invokeStructured?: unknown }).invokeStructured === 'function' &&
+      typeof candidate.now === 'function' &&
+      typeof candidate.setTimeout === 'function' &&
+      typeof candidate.clearTimeout === 'function';
+  } catch {
+    return false;
+  }
+}
+
+function deriveCandidateEntry(input: {
+  testCase: Phase695ReviewPlannerCase;
+  fixture: Phase695CaseFixture;
+  value: unknown;
+  observation: unknown;
+  expectedMode: 'mock' | 'live';
+  durationMs: number;
+  runtimeCalls: number;
+}): Phase695CaseEntry {
+  const provenance = deriveRuntimeProvenance(
+    input.observation,
+    input.expectedMode,
+    input.fixture.lane === 'review' ? 'review_suggestion' : 'planner_suggestion',
+    hashModelAgentRunId(`phase-695:${input.testCase.id}`),
+    input.runtimeCalls,
+  );
+  const strictSuccess = provenance.ok && provenance.disposition === 'candidate_applied';
+  const qualityPass = strictSuccess && passesLocalRubric(input.fixture, input.value);
+  const diagnosticCode = strictSuccess
+    ? undefined
+    : provenance.diagnosticCode;
+
+  return {
+    caseId: input.testCase.id,
+    lane: input.testCase.lane,
+    executionKind: 'runtime',
+    zeroCallVerified: false,
+    runtimeInvocations: provenance.runtimeInvocations,
+    strictSuccess,
+    qualityPass,
+    criticalFailure: input.testCase.criticalSemanticCase && !qualityPass,
+    durationMs: isSafeInteger(input.durationMs) ? input.durationMs : 0,
+    usage: provenance.usage,
+    budget: { ...PHASE_695_SHARED_BUDGET },
+    gate: strictSuccess && qualityPass ? 'candidate_evaluated' : 'candidate_rejected',
+    ...(diagnosticCode ? { diagnosticCode } : {}),
+  };
+}
+
+function deriveZeroCallEntry(input: {
+  testCase: Phase695ReviewPlannerCase;
+  observation: unknown;
+  durationMs: number;
+  runtimeCalls: number;
+}): Phase695CaseEntry {
+  const observation = asObservation(input.observation);
+  const expectedDisposition = expectedZeroCallDisposition(
+    input.testCase.zeroCallGuard,
+  );
+  const runtimeInvocations = boundedRuntimeInvocations(input.runtimeCalls);
+  const expectedBudget = expectedZeroCallBudget(input.testCase.zeroCallGuard);
+  const observedBudget = observation?.budget;
+  const observedUsage = isSafeUsage(observation?.usage)
+    ? observation.usage
+    : zeroUsage();
+  const verified = expectedDisposition !== null &&
+    runtimeInvocations === 0 &&
+    observation?.attempted === false &&
+    observation.disposition === expectedDisposition &&
+    observation.trace === undefined &&
+    observation.traceUnavailable === undefined &&
+    observation.usageUnavailable === undefined &&
+    isModelAgentRunBudget(observedBudget) &&
+    budgetsEqual(observedBudget, expectedBudget) &&
+    observedUsage.inputTokens === 0 &&
+    observedUsage.outputTokens === 0 &&
+    safeReasonCodes(observation.reasonCodes).includes(expectedDisposition);
+
+  return {
+    caseId: input.testCase.id,
+    lane: input.testCase.lane,
+    executionKind: 'zero_call',
+    zeroCallVerified: verified,
+    runtimeInvocations,
+    strictSuccess: verified,
+    qualityPass: verified,
+    criticalFailure: false,
+    durationMs: isSafeInteger(input.durationMs) ? input.durationMs : 0,
+    usage: verified ? zeroUsage() : observedUsage,
+    budget: { ...PHASE_695_SHARED_BUDGET },
+    gate: verified ? 'zero_call' : 'candidate_rejected',
+    ...(verified
+      ? {}
+      : { diagnosticCode: ReviewPlannerDiagnosticCode.PreflightInvalid }),
+  };
+}
+
+function deriveRuntimeProvenance(
+  raw: unknown,
+  expectedMode: 'mock' | 'live',
+  expectedTask: 'review_suggestion' | 'planner_suggestion',
+  expectedRunIdHash: string,
+  runtimeCalls: number,
+): Readonly<{
+  ok: boolean;
+  disposition: string | null;
+  runtimeInvocations: 0 | 1;
+  usage: ModelAgentUsage;
+  reasonCodes: readonly string[];
+  diagnosticCode: ReviewPlannerDiagnosticCode;
+}> {
+  const observation = asObservation(raw);
+  const boundedCalls = boundedRuntimeInvocations(runtimeCalls);
+  if (!observation || observation.attempted !== true) {
+    return invalidProvenance(ReviewPlannerDiagnosticCode.InvalidResponse, boundedCalls);
+  }
+  const budget = observation.budget;
+  const usage = observation.usage;
+  const trace = observation.trace;
+  if (!isTrackedBudget(budget) || !isSafeUsage(usage)) {
+    return invalidProvenance(ReviewPlannerDiagnosticCode.UsageUnverifiable, boundedCalls);
+  }
+  const runtimeInvocations = boundedCalls === 1 && budget.usedCalls >= 1 ? 1 : 0;
+  const usageUnavailable = isUsageUnavailableObservation(observation);
+  const traceValid = isExpectedTrace(
+    trace,
+    usage,
+    expectedMode,
+    expectedTask,
+    expectedRunIdHash,
+  );
+  const usageWithinCap = usage.inputTokens <= budget.maxInputTokens &&
+    usage.outputTokens <= budget.maxOutputTokens;
+  const usageProvenance = expectedMode === 'mock' ||
+    usage.inputTokens > 0 || usage.outputTokens > 0;
+  const successful = observation.disposition === 'candidate_applied' &&
+    traceValid &&
+    observation.traceUnavailable === undefined && observation.usageUnavailable === undefined &&
+    runtimeInvocations === 1 && budget.usedCalls === 1 && usageWithinCap && usageProvenance;
+  return {
+    ok: successful,
+    disposition: typeof observation.disposition === 'string' ? observation.disposition : null,
+    runtimeInvocations,
+    usage: { ...usage },
+    reasonCodes: safeReasonCodes(observation.reasonCodes),
+    diagnosticCode: successful
+      ? ReviewPlannerDiagnosticCode.InvalidResponse
+      : usageUnavailable
+        ? ReviewPlannerDiagnosticCode.UsageUnverifiable
+        : !traceValid ? ReviewPlannerDiagnosticCode.StructuredOutput
+          : !usageProvenance
+            ? ReviewPlannerDiagnosticCode.UsageUnverifiable
+            : usageWithinCap ? ReviewPlannerDiagnosticCode.StructuredOutput
+              : ReviewPlannerDiagnosticCode.PreflightInvalid,
+  };
+}
+
+function passesLocalRubric(
+  fixture: Phase695CaseFixture,
+  value: unknown,
+): boolean {
+  if (fixture.lane === 'review') {
+    if (!isReviewResult(value)) return false;
+    const expected = fixture.expected.focusIndexes.map((index) => fixture.deterministic.weakPoints[index]);
+    return expected.length === value.weakPoints.length &&
+      expected.every((point, index) => sameWeakPoint(point, value.weakPoints[index]));
+  }
+  if (!isPlannerResult(value)) return false;
+  const expected = fixture.expected.blockOrder.map((index) => fixture.deterministic.suggestedBlocks[index]);
+  return expected.length === value.suggestedBlocks.length &&
+    expected.every((block, index) => samePlanBlock(block, value.suggestedBlocks[index]));
+}
+
+function asObservation(value: unknown): CandidateObservation | null {
+  return typeof value === 'object' && value !== null ? value : null;
+}
+
+function isTrackedBudget(value: unknown): value is ModelAgentRunBudget {
+  return isModelAgentRunBudget(value) &&
+    value.maxCalls === PHASE_695_SHARED_BUDGET.maxCalls &&
+    value.maxInputTokens === PHASE_695_SHARED_BUDGET.maxInputTokens &&
+    value.maxOutputTokens === PHASE_695_SHARED_BUDGET.maxOutputTokens &&
+    value.usedCalls <= 1;
+}
+
+function isSafeUsage(value: unknown): value is ModelAgentUsage {
+  return typeof value === 'object' && value !== null &&
+    isSafeInteger((value as { inputTokens?: unknown }).inputTokens) &&
+    isSafeInteger((value as { outputTokens?: unknown }).outputTokens);
+}
+
+function isExpectedTrace(
+  value: unknown,
+  usage: ModelAgentUsage,
+  expectedMode: 'mock' | 'live',
+  expectedTask: 'review_suggestion' | 'planner_suggestion',
+  expectedRunIdHash: string,
+): value is Readonly<{ task: 'review_suggestion' | 'planner_suggestion'; mode: 'mock' | 'live'; status: 'succeeded'; degraded: false; inputTokens: number; outputTokens: number; maxOutputTokens: number }> {
+  if (typeof value !== 'object' || value === null) return false;
+  const trace = value as Record<string, unknown>;
+  return trace.task === expectedTask && trace.runIdHash === expectedRunIdHash &&
+    trace.mode === expectedMode && trace.status === 'succeeded' && trace.degraded === false &&
+    trace.inputTokens === usage.inputTokens && trace.outputTokens === usage.outputTokens &&
+    isSafeInteger(trace.maxOutputTokens) && trace.maxOutputTokens <= PHASE_695_SHARED_BUDGET.maxOutputTokens;
+}
+
+function safeReasonCodes(value: unknown): readonly string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? [...value] : [];
+}
+
+function invalidProvenance(
+  diagnosticCode: ReviewPlannerDiagnosticCode,
+  runtimeInvocations: 0 | 1 = 0,
+) {
+  return {
+    ok: false,
+    disposition: null,
+    runtimeInvocations,
+    usage: zeroUsage(),
+    reasonCodes: [],
+    diagnosticCode,
+  };
+}
+
+function createCaseBudget(
+  testCase: Phase695ReviewPlannerCase,
+): ModelAgentRunBudget {
+  const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
+  return testCase.zeroCallGuard === 'budget_exhausted'
+    ? { ...budget, usedCalls: budget.maxCalls }
+    : budget;
+}
+
+function expectedZeroCallDisposition(
+  guard: Phase695ReviewPlannerCase['zeroCallGuard'],
+) {
+  switch (guard) {
+    case 'not_eligible':
+      return 'not_eligible';
+    case 'safety_blocked':
+      return 'safety_blocked';
+    case 'budget_exhausted':
+      return 'fallback_budget_exceeded';
+    case 'aborted':
+      return 'fallback_aborted';
+    default:
+      return null;
+  }
+}
+
+async function runZeroCallCase(
+  testCase: Phase695ReviewPlannerCase,
+  fixture: Phase695CaseFixture,
+  dependencies: Required<Phase695LiveDependencies>,
+): Promise<Phase695CaseEntry> {
+  const startedAt = readMonotonicNow(dependencies.now);
+  if (startedAt === null) {
+    return rejectedZeroCallEntry(testCase, 0, ReviewPlannerDiagnosticCode.PreflightInvalid);
+  }
+  const controller = new AbortController();
+  if (testCase.zeroCallGuard === 'aborted') controller.abort();
+  let runtimeCalls = 0;
+  const trackingRuntime: Pick<ModelAgentRuntime, 'invokeStructured'> = {
+    async invokeStructured(request) {
+      runtimeCalls += 1;
+      return dependencies.runtime.invokeStructured(request);
+    },
+  };
+  try {
+    const budget = createCaseBudget(testCase);
+    const candidate = fixture.lane === 'review'
+      ? await runReviewModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: cloneReviewFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        })
+      : await runPlannerModelCandidate({
+          runId: `phase-695:${testCase.id}`,
+          deterministic: clonePlannerFixture(fixture.deterministic),
+          runtime: trackingRuntime,
+          budget,
+          signal: controller.signal,
+        });
+    const finishedAt = readMonotonicNow(dependencies.now);
+    if (finishedAt === null || finishedAt < startedAt) {
+      return rejectedZeroCallEntry(
+        testCase,
+        boundedRuntimeInvocations(runtimeCalls),
+        ReviewPlannerDiagnosticCode.PreflightInvalid,
+      );
+    }
+    return deriveZeroCallEntry({
+      testCase,
+      observation: candidate.observation,
+      durationMs: finishedAt - startedAt,
+      runtimeCalls,
+    });
+  } catch {
+    return rejectedZeroCallEntry(
+      testCase,
+      boundedRuntimeInvocations(runtimeCalls),
+      ReviewPlannerDiagnosticCode.Transport,
+    );
+  }
+}
+
+function expectedZeroCallBudget(
+  guard: Phase695ReviewPlannerCase['zeroCallGuard'],
+): ModelAgentRunBudget {
+  const budget = createModelAgentBudget(PHASE_695_SHARED_BUDGET);
+  return guard === 'budget_exhausted'
+    ? { ...budget, usedCalls: budget.maxCalls }
+    : budget;
+}
+
+function budgetsEqual(left: ModelAgentRunBudget, right: ModelAgentRunBudget) {
+  return left.maxCalls === right.maxCalls &&
+    left.usedCalls === right.usedCalls &&
+    left.maxInputTokens === right.maxInputTokens &&
+    left.usedInputTokens === right.usedInputTokens &&
+    left.maxOutputTokens === right.maxOutputTokens &&
+    left.usedOutputTokens === right.usedOutputTokens;
+}
+
+function isUsageUnavailableObservation(observation: CandidateObservation): boolean {
+  try {
+    const trace = observation.trace;
+    return observation.usageUnavailable === true ||
+      (typeof trace === 'object' && trace !== null &&
+        (trace as { errorCode?: unknown }).errorCode === 'PROVIDER_ERROR' &&
+        (trace as { providerFailureCategory?: unknown }).providerFailureCategory ===
+          'invalid_response');
+  } catch {
+    return true;
+  }
+}
+
+function boundedRuntimeInvocations(value: number): 0 | 1 {
+  return Number.isSafeInteger(value) && value > 0 ? 1 : 0;
+}
+
+function rejectedEntry(
+  testCase: Phase695ReviewPlannerCase,
+  runtimeInvocations: 0 | 1,
+  usage: ModelAgentUsage,
+  diagnosticCode: ReviewPlannerDiagnosticCode,
+): Phase695CaseEntry {
+  return {
+    caseId: testCase.id,
+    lane: testCase.lane,
+    executionKind: 'runtime',
+    zeroCallVerified: false,
+    runtimeInvocations,
+    strictSuccess: false,
+    qualityPass: false,
+    criticalFailure: testCase.criticalSemanticCase,
+    durationMs: 0,
+    usage,
+    budget: { ...PHASE_695_SHARED_BUDGET },
+    gate: 'candidate_rejected',
+    diagnosticCode,
+  };
+}
+
+function rejectedZeroCallEntry(
+  testCase: Phase695ReviewPlannerCase,
+  runtimeInvocations: 0 | 1,
+  diagnosticCode: ReviewPlannerDiagnosticCode,
+): Phase695CaseEntry {
+  return {
+    caseId: testCase.id,
+    lane: testCase.lane,
+    executionKind: 'zero_call',
+    zeroCallVerified: false,
+    runtimeInvocations,
+    strictSuccess: false,
+    qualityPass: false,
+    criticalFailure: false,
+    durationMs: 0,
+    usage: zeroUsage(),
+    budget: { ...PHASE_695_SHARED_BUDGET },
+    gate: 'candidate_rejected',
+    diagnosticCode,
+  };
+}
+
+function cloneReviewFixture(value: Readonly<ReviewAgentResult>): ReviewAgentResult {
+  return JSON.parse(JSON.stringify(value)) as ReviewAgentResult;
+}
+
+function clonePlannerFixture(value: Readonly<PlannerAgentResult>): PlannerAgentResult {
+  return JSON.parse(JSON.stringify(value)) as PlannerAgentResult;
+}
+
+function isReviewResult(value: unknown): value is ReviewAgentResult {
+  return typeof value === 'object' && value !== null && Array.isArray((value as { weakPoints?: unknown }).weakPoints);
+}
+
+function isPlannerResult(value: unknown): value is PlannerAgentResult {
+  return typeof value === 'object' && value !== null && Array.isArray((value as { suggestedBlocks?: unknown }).suggestedBlocks);
+}
+
+function sameWeakPoint(
+  left: ReviewAgentResult['weakPoints'][number] | undefined,
+  right: ReviewAgentResult['weakPoints'][number] | undefined,
+): boolean {
+  return left !== undefined && right !== undefined &&
+    left.label === right.label && left.reason === right.reason &&
+    left.priority === right.priority && left.confidence === right.confidence;
+}
+
+function samePlanBlock(
+  left: PlannerAgentResult['suggestedBlocks'][number] | undefined,
+  right: PlannerAgentResult['suggestedBlocks'][number] | undefined,
+): boolean {
+  return left !== undefined && right !== undefined &&
+    left.title === right.title && left.minutes === right.minutes &&
+    left.reason === right.reason && left.targetHref === right.targetHref;
+}
+
+function zeroUsage(): ModelAgentUsage {
+  return { inputTokens: 0, outputTokens: 0 };
+}
+
+function readMonotonicNow(now: () => number): number | null {
+  try {
+    const value = now();
+    return Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER
+      ? Math.floor(value)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function defaultNow(): number {
+  return globalThis.performance.now();
+}
+
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function buildReport(mode: 'mock' | 'live', caseEntries: readonly Phase695CaseEntry[]): unknown {
+  const runtimeEntries = caseEntries.filter((entry) => entry.executionKind === 'runtime');
+  const zeroCallEntries = caseEntries.filter((entry) => entry.executionKind === 'zero_call');
+  const counters = {
+    caseEntries: caseEntries.length,
+    zeroCallCases: zeroCallEntries.length,
+    runtimeInvocations: caseEntries.reduce((total, entry) => total + entry.runtimeInvocations, 0),
+    strictSuccesses: caseEntries.filter((entry) => entry.strictSuccess).length,
+    qualityPasses: caseEntries.filter((entry) => entry.qualityPass).length,
+    criticalFailures: caseEntries.filter((entry) => entry.criticalFailure).length,
+    inputTokens: caseEntries.reduce((total, entry) => total + entry.usage.inputTokens, 0),
+    outputTokens: caseEntries.reduce((total, entry) => total + entry.usage.outputTokens, 0),
+  } as const;
+  const metrics = {
+    strictSchemaSuccessRate: ratio(runtimeEntries.filter((entry) => entry.strictSuccess).length, runtimeEntries.length),
+    semanticQualityRate: ratio(runtimeEntries.filter((entry) => entry.qualityPass).length, runtimeEntries.length),
+    criticalFailures: counters.criticalFailures,
+    p95DurationMs: nearestRank(runtimeEntries.map((entry) => entry.durationMs)),
+  } as const;
+  const productionDecision = mode === 'mock'
+    ? 'mock_quality_not_evidence' as const
+    : decideProductionDecision({ mode, zeroCallEntries, runtimeEntries, metrics });
+
+  return {
+    schemaVersion: PHASE_695_REPORT_SCHEMA_VERSION,
+    datasetVersion: PHASE_695_REVIEW_PLANNER_DATASET_VERSION,
+    mode,
+    caseEntries: [...caseEntries],
+    counters,
+    metrics,
+    productionDecision,
+  };
+}
+
+function ratio(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : numerator / denominator;
+}
+
+function nearestRank(values: readonly number[]): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.ceil(0.95 * sorted.length) - 1] ?? 0;
+}

@@ -16,6 +16,7 @@ import {
 import {
   createTrustedModelAgentProviderFailureSignal,
   createUntrustedModelAgentProviderFailureSignal,
+  takeModelAgentProviderFailure,
   takeModelAgentProviderFailureCategory,
 } from '../src/model-agent-provider-failure';
 
@@ -71,7 +72,8 @@ describe('model agent provider failure signal', () => {
       label: 'plain JSON parse marker object',
       error: { [Symbol.for('vercel.ai.error.AI_JSONParseError')]: true },
       officialGuard: (error: unknown) => JSONParseError.isInstance(error),
-      expected: 'structured_output',
+      expectedCategory: 'structured_output',
+      expectedStage: 'provider_json_parse',
     },
     {
       label: 'plain API call marker object',
@@ -80,7 +82,7 @@ describe('model agent provider failure signal', () => {
         statusCode: 401,
       },
       officialGuard: (error: unknown) => APICallError.isInstance(error),
-      expected: 'http_auth',
+      expectedCategory: 'http_auth',
     },
     {
       label: 'Error with a JSON parse marker',
@@ -88,7 +90,8 @@ describe('model agent provider failure signal', () => {
         [Symbol.for('vercel.ai.error.AI_JSONParseError')]: true,
       }),
       officialGuard: (error: unknown) => JSONParseError.isInstance(error),
-      expected: 'structured_output',
+      expectedCategory: 'structured_output',
+      expectedStage: 'provider_json_parse',
     },
     {
       label: 'Error with an API call marker',
@@ -97,17 +100,18 @@ describe('model agent provider failure signal', () => {
         statusCode: 401,
       }),
       officialGuard: (error: unknown) => APICallError.isInstance(error),
-      expected: 'http_auth',
+      expectedCategory: 'http_auth',
     },
   ])(
     'follows official cross-bundle marker semantics for a $label; marker is not provenance',
-    ({ error, officialGuard, expected }) => {
+    ({ error, officialGuard, expectedCategory, expectedStage }) => {
       // Official Symbol.for markers provide cross-bundle compatibility, not cryptographic identity.
       // Only a private adapter catch boundary can establish trusted provenance.
       expect(officialGuard(error)).toBe(true);
       expectSanitizedSignal(
         createTrustedModelAgentProviderFailureSignal(error, TEST_SCOPE),
-        expected,
+        expectedCategory,
+        expectedStage,
       );
       expectSanitizedSignal(createUntrustedModelAgentProviderFailureSignal(TEST_SCOPE), 'unknown');
     },
@@ -158,7 +162,46 @@ describe('model agent provider failure signal', () => {
 
   it.each([
     {
-      label: 'no object generated',
+      label: 'NoObjectGenerated JSON parse cause',
+      error: () =>
+        new NoObjectGeneratedError({
+          message: CANARY,
+          cause: new JSONParseError({ text: CANARY, cause: new Error(CANARY) }),
+          text: CANARY,
+          response: {
+            id: CANARY,
+            timestamp: new Date(0),
+            modelId: CANARY,
+            headers: { [CANARY]: CANARY },
+          },
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          finishReason: 'error',
+        }),
+      expectedStage: 'provider_json_parse',
+    },
+    {
+      label: 'NoObjectGenerated type validation cause',
+      error: () =>
+        new NoObjectGeneratedError({
+          message: CANARY,
+          cause: new TypeValidationError({
+            value: { raw: CANARY },
+            cause: new Error(CANARY),
+          }),
+          text: CANARY,
+          response: {
+            id: CANARY,
+            timestamp: new Date(0),
+            modelId: CANARY,
+            headers: { [CANARY]: CANARY },
+          },
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          finishReason: 'error',
+        }),
+      expectedStage: 'provider_type_validation',
+    },
+    {
+      label: 'NoObjectGenerated missing object',
       error: () =>
         new NoObjectGeneratedError({
           message: CANARY,
@@ -173,10 +216,12 @@ describe('model agent provider failure signal', () => {
           usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
           finishReason: 'error',
         }),
+      expectedStage: 'provider_object_missing',
     },
     {
       label: 'JSON parse',
       error: () => new JSONParseError({ text: CANARY, cause: new Error(CANARY) }),
+      expectedStage: 'provider_json_parse',
     },
     {
       label: 'type validation',
@@ -185,11 +230,13 @@ describe('model agent provider failure signal', () => {
           value: { raw: CANARY },
           cause: new Error(CANARY),
         }),
+      expectedStage: 'provider_type_validation',
     },
-  ])('classifies $label errors as structured output failures', ({ error }) => {
+  ])('classifies $label errors as fixed safe structured-output stages', ({ error, expectedStage }) => {
     expectSanitizedSignal(
       createTrustedModelAgentProviderFailureSignal(error(), TEST_SCOPE),
       'structured_output',
+      expectedStage,
     );
   });
 
@@ -205,6 +252,7 @@ describe('model agent provider failure signal', () => {
     expectSanitizedSignal(
       createTrustedModelAgentProviderFailureSignal(structuredError, TEST_SCOPE),
       'structured_output',
+      'provider_json_parse',
     );
   });
 
@@ -298,6 +346,7 @@ describe('model agent provider failure signal', () => {
 
     expect('createTrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
     expect('createUntrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
+    expect('takeModelAgentProviderFailure' in packageRoot).toBe(false);
     expect('takeModelAgentProviderFailureCategory' in packageRoot).toBe(false);
 
     const internalContract = await import('../src/model-agent-provider-failure');
@@ -319,14 +368,23 @@ function apiCallError(statusCode: unknown): APICallError {
   });
 }
 
-function expectSanitizedSignal(signal: Error, expectedCategory: string): void {
+function expectSanitizedSignal(
+  signal: Error,
+  expectedCategory: string,
+  expectedStructuredOutputStage?: string,
+): void {
   expect(signal.name).toBe('ModelAgentProviderFailure');
   expect(signal.message).toBe('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
   expect((signal as Error & { cause?: unknown }).cause).toBeUndefined();
   expect(signal.name).not.toContain(CANARY);
   expect(signal.message).not.toContain(CANARY);
   expect(JSON.stringify(signal)).not.toContain(CANARY);
-  expect(takeModelAgentProviderFailureCategory(signal, TEST_SCOPE)).toBe(expectedCategory);
+  expect(takeModelAgentProviderFailure(signal, TEST_SCOPE)).toEqual({
+    category: expectedCategory,
+    ...(expectedStructuredOutputStage
+      ? { structuredOutputStage: expectedStructuredOutputStage }
+      : {}),
+  });
 }
 
 const ALLOWED_SIGNAL_OWN_KEYS = [

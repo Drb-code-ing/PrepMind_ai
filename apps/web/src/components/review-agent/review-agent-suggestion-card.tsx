@@ -8,6 +8,10 @@ import {
   getReviewAgentPriorityMeta,
   getReviewAgentShortTodayText,
 } from '@/lib/review-agent-view';
+import {
+  getReviewPlannerModelStatus,
+  reviewPlannerModelStatusLabels,
+} from '@/lib/review-agent-model-status';
 
 type ReviewAgentSuggestionCardProps = {
   suggestion: ReviewAgentSuggestionResponse;
@@ -23,6 +27,7 @@ export function ReviewAgentSuggestionCard({
   const actionHref = firstBlock ? normalizeSuggestionHref(firstBlock.targetHref) : '/today';
   const weakPoints = suggestion.review.weakPoints.slice(0, 3);
   const todayText = getReviewAgentShortTodayText(suggestion.planner);
+  const modelStatus = getReviewPlannerModelStatus(suggestion.modelObservations);
 
   return (
     <section className="pm-glass-card pm-enter overflow-hidden rounded-[1.5rem] p-4">
@@ -57,6 +62,18 @@ export function ReviewAgentSuggestionCard({
           {suggestion.planner.capacityNotice ? (
             <p className="mt-3 break-words rounded-2xl bg-[#fff7df] px-3 py-2 text-xs font-semibold leading-5 text-[#8a6815] ring-1 ring-[#f3e6a8]">
               {suggestion.planner.capacityNotice}
+            </p>
+          ) : null}
+
+          {modelStatus ? (
+            <p
+              className={`mt-3 break-words rounded-2xl px-3 py-2 text-xs font-semibold leading-5 ring-1 ${
+                modelStatus === 'applied'
+                  ? 'bg-[#eafff9] text-[#247269] ring-[#bdeee5]'
+                  : 'bg-[#fff7df] text-[#8a6815] ring-[#f3e6a8]'
+              }`}
+            >
+              {reviewPlannerModelStatusLabels[modelStatus]}
             </p>
           ) : null}
 

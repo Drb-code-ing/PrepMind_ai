@@ -8,5 +8,6 @@ import { AgentTracesService } from './agent-traces.service';
   imports: [AuthModule],
   controllers: [AgentTracesController],
   providers: [AgentTracesService],
+  exports: [AgentTracesService],
 })
 export class AgentTracesModule {}

@@ -4,6 +4,8 @@ export type ModelAgentTask =
   | 'conversation_summary'
   | 'router_fallback'
   | 'knowledge_verification'
+  | 'review_suggestion'
+  | 'planner_suggestion'
   | 'memory_candidate_extraction'
   | 'tool_orchestration';
 
@@ -23,6 +25,16 @@ export const MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES = Object.freeze([
 
 export type ModelAgentProviderFailureCategory =
   (typeof MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES)[number];
+
+/** Fixed, non-content metadata retained only by the runtime trace. */
+export const MODEL_AGENT_STRUCTURED_OUTPUT_STAGES = Object.freeze([
+  'provider_json_parse',
+  'provider_type_validation',
+  'provider_object_missing',
+] as const);
+
+export type ModelAgentStructuredOutputStage =
+  (typeof MODEL_AGENT_STRUCTURED_OUTPUT_STAGES)[number];
 
 export type ModelAgentRunBudget = {
   maxCalls: number;
@@ -102,6 +114,7 @@ export type ModelAgentTrace = ModelAgentUsage & {
   degraded: boolean;
   errorCode?: ModelAgentErrorCode;
   providerFailureCategory?: ModelAgentProviderFailureCategory;
+  structuredOutputStage?: ModelAgentStructuredOutputStage;
 };
 
 export type ModelAgentResult<T> =

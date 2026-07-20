@@ -61,6 +61,23 @@ describe('model candidate runtime result sanitizer', () => {
     expect('providerFailureCategory' in result.trace).toBe(false);
   });
 
+  test('strips a fixed structured-output stage before ordinary candidate trace projection', () => {
+    const value = failure(
+      'PROVIDER_ERROR',
+      'structured_output',
+      'structured_output',
+    );
+    value.trace.structuredOutputStage = 'provider_json_parse';
+
+    const result = sanitize(value);
+
+    expect(result?.ok).toBe(false);
+    if (!result || result.ok) throw new Error('expected a sanitized failure');
+    expect(result.trace.providerFailureCategory).toBe('structured_output');
+    expect('structuredOutputStage' in result.trace).toBe(false);
+    expect(JSON.stringify(result)).not.toContain('provider_json_parse');
+  });
+
   test.each([
     {
       name: 'error-only category',
@@ -85,6 +102,18 @@ describe('model candidate runtime result sanitizer', () => {
     {
       name: 'non-provider error with categories',
       value: failure('TIMEOUT', 'unknown', 'unknown'),
+    },
+    {
+      name: 'structured-output stage on another provider category',
+      value: Object.assign(
+        failure('PROVIDER_ERROR', 'transport', 'transport'),
+        {
+          trace: {
+            ...failure('PROVIDER_ERROR', 'transport', 'transport').trace,
+            structuredOutputStage: 'provider_json_parse',
+          },
+        },
+      ),
     },
   ])('rejects $name', ({ value }) => {
     expect(sanitize(value)).toBeNull();

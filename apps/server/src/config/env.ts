@@ -38,6 +38,34 @@ const envSchema = z
     AI_MODEL: z.string().trim().min(1).max(120).default('deepseek-v4-flash'),
     AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:
+      booleanStringSchema.default(false),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: z
+      .enum(['', 'review', 'planner'])
+      .default(''),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: z
+      .union([z.literal(''), z.string().regex(/^[a-f0-9]{64}$/)])
+      .default(''),
+    REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(2)
+      .default(0),
+    REVIEW_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
+    PLANNER_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
     CONVERSATION_SUMMARY_MAX_CALLS: z.coerce
       .number()
       .int()
@@ -354,6 +382,72 @@ const envSchema = z
     DASHSCOPE_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
+    if (env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED) {
+      const component = env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT;
+      const exactBusinessGate =
+        component === 'review'
+          ? env.REVIEW_AGENT_MODEL_ENABLED && !env.PLANNER_AGENT_MODEL_ENABLED
+          : component === 'planner'
+            ? env.PLANNER_AGENT_MODEL_ENABLED && !env.REVIEW_AGENT_MODEL_ENABLED
+            : false;
+      const exactLiveRuntime =
+        env.AI_PROVIDER_MODE === 'live' &&
+        env.AI_ENABLE_LIVE_CALLS === true &&
+        env.AI_MODEL === 'deepseek-v4-pro' &&
+        env.AI_BASE_URL === 'https://api.deepseek.com/v1' &&
+        typeof env.DEEPSEEK_API_KEY === 'string' &&
+        env.DEEPSEEK_API_KEY.length > 0 &&
+        env.OPENAI_API_KEY === undefined &&
+        env.REVIEW_AGENT_MODEL_TIMEOUT_MS === 4_500 &&
+        env.PLANNER_AGENT_MODEL_TIMEOUT_MS === 4_500;
+      if (env.SERVER_ROLE !== 'api') {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED'],
+          message: 'product acceptance is restricted to the HTTP API server',
+        });
+      }
+      if (component === '') {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT'],
+          message: 'enabled product acceptance requires one component',
+        });
+      }
+      if (
+        env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256.length !== 64
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256'],
+          message: 'enabled product acceptance requires a SHA-256 commitment',
+        });
+      }
+      if (env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS !== 2) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS'],
+          message: 'enabled product acceptance requires exactly two requests',
+        });
+      }
+      if (!exactBusinessGate) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT'],
+          message:
+            'enabled product acceptance requires exactly its matching business gate',
+        });
+      }
+      if (!exactLiveRuntime) {
+        context.addIssue({
+          code: 'custom',
+          path: ['REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED'],
+          message:
+            'product acceptance requires exact DeepSeek V4 Pro live runtime configuration',
+        });
+      }
+    }
+
     if (env.AI_PROVIDER_MODE === 'live' && env.AI_ENABLE_LIVE_CALLS) {
       if (!isSafeHttpsProviderUrl(env.AI_BASE_URL)) {
         context.addIssue({

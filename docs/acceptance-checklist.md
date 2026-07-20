@@ -5,6 +5,14 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
+
+> 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 分支验收均为 `candidate_applied`，gate 已恢复 default-off、合成账户/Trace 已清理。仍待 main replay；详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+
+V10 controlled-Live 仍是唯一语义质量 authority。V11--V22 都是不可重跑、不可复用的历史，其中 V22 终态为 `operation_failed -> recovered`；本节原有 V19 product/recovery 命令已过期，严禁执行。
+
+当前只允许按以下顺序执行不含真实模型调用的 default-off replay：提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，确认当前 branch/HEAD 为 `main`，再重建 `server`/`web`、验证健康与环境开关、用新的合成账户确认两种 suggestion 均为 deterministic、精确清理账号与 Trace，最后完成证据复核与推送。禁止 `down -v`、prune、volume 清理、数据库 reset、Redis flush 或 MinIO wipe。当前验收记录见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+
 ## 1. 先判断本次要验收什么
 
 | 场景                      | 推荐模式                                                          | 能证明什么                                                   | 不能证明什么                      |
@@ -161,7 +169,7 @@ Remove-Item Env:COMPOSE_BAKE
 
 不要为该宿主工具异常清理 build cache、container 或 volume，也不要执行 `down -v`。
 
-RAG Docker 验收前在根 `.env` 或宿主环境明确配置 `RAG_EMBEDDING_PROVIDER=qwen`、`RAG_EMBEDDING_MODEL=text-embedding-v4`、`RAG_EMBEDDING_DIMENSIONS=1536`、无凭据 HTTPS `RAG_EMBEDDING_BASE_URL` 和 `QWEN_API_KEY`。`--env-file .env` 只是 Compose CLI 的 `${...}` 插值源，不会把整个文件自动注入每个 service；server/worker 仍只收到 `environment` 明列的共享 RAG runtime allowlist。宿主别名 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 仅用于兼容输入，容器内规范化为 `QWEN_API_KEY`。不允许 provider fallback，不允许 production fake。web/admin 的 service `env_file` 是另一层 Compose 配置，不要与 CLI `--env-file` 混淆。
+RAG Docker 验收前在根 `.env` 或宿主环境明确配置 `RAG_EMBEDDING_PROVIDER=qwen`、`RAG_EMBEDDING_MODEL=text-embedding-v4`、`RAG_EMBEDDING_DIMENSIONS=1536`、无凭据 HTTPS `RAG_EMBEDDING_BASE_URL` 和 `QWEN_API_KEY`。`--env-file .env` 只是 Compose CLI 的 `${...}` 插值源，不会把整个文件自动注入每个 service；server/worker 仍只收到 `environment` 明列的共享 RAG runtime allowlist。`web` 不使用根 `.env` 的 service `env_file`，只接收显式 Chat、Router、Verifier runtime allowlist；Review/Planner gate 与 timeout 只进入 `server`。`admin` 的独立 `env_file` 是另一层 Compose 配置，但不执行 Chat provider。宿主别名 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 仅用于兼容输入，容器内规范化为 `QWEN_API_KEY`。不允许 provider fallback，不允许 production fake。
 
 Compose 配置静态检查只运行不输出解析凭据的命令：
 
@@ -700,3 +708,81 @@ bun --filter @repo/server test:e2e
 git add <changed-files>
 git commit -m "<本次提交说明>"
 ```
+
+## 9. Phase 6.9.5 Review / Planner 受控模型验收
+
+Review / Planner 的建议页不是 Chat 自动调用入口。先由 JWT owner-scoped Nest service 计算确定性事实与建议，再由可选模型 candidate 选择现有索引/枚举，最后仍由本地 merger 重建只读结果。模型不得创建或修改复习任务、卡片、日志、偏好、错题或资料。
+
+执行顺序固定如下：
+
+1. 先跑 Agent、AI、Server、Web、types 的无凭据静态门；任一失败就停止，不进入诊断或 Live。
+2. 用唯一、尚不存在的 `.tmp/phase-6-9-5-live-diagnostic-mock-<utc>.json` 执行 `bun --filter @repo/agent eval:review-planner -- --mode mock --out <path>`。预期为 48 cases、26 zero-call、48 strict successes 和 `mock_quality_not_evidence`；Mock 不得打开 production gate。
+3. 复核 `main...HEAD`、server/web/worker 的环境 allowlist、owner isolation、zero-call safety、默认 `false` gate、每个批准 profile 的一次 attempt/零 retry 和 evidence 脱敏。不得把 prompt、用户 facts、provider 原文、base URL、key、header、cookie 或 stack 写进报告。
+   - 当前 `phase-6.9-review-planner-v2` 的 26 条 zero-call 不得由报告直接构造，必须实际执行 candidate safety/eligibility/budget/abort guard 并写入 `zeroCallVerified=true`；任一 runtime call 或不一致记录都必须得到 `zero_call_boundary_failed`。
+   - 22 条 runtime case 需要覆盖多个 Review diagnosis / focus 与 Planner strategy / block order。Mock 的 48/48 只证明结构、预算、降级与安全边界，不证明真实模型语义质量。
+4. 只有前三步全部通过，才可在独立进程中用精确确认参数执行一个已批准 profile 的 server-only controlled diagnostic。该 profile 诊断失败时保存固定类别、保持 gate 关闭并停止；禁止用历史 run、该 profile 的重试或 Docker 成功替代诊断结论。若要提出新 profile，必须先有新的零网络根因设计与复审，且 evidence/once marker/计数必须完全隔离。
+
+DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。因此 v5 的 48-case、Docker、浏览器、main 合并与推送均未执行，v5 marker 已消耗且不可重跑。V6 的 Task 1--6 已在独立 lineage 中完成 default-off typed non-thinking transport、resolver/factory、evidence/CLI、Mock、复审与离线文档：精确 DeepSeek V4 Pro `/v1` request 固定写入 `thinking:{type:'disabled'}`，本地拒绝 tool/schema drift 与 reasoning-content response；V1--V5 immutable no-reparse snapshot 在 V6 preflight 前复核。用户授权后，V6 唯一 canary 已封存为 `finalized / invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 离线 wire、fake CLI 31/31、focused V6 suite 61/61、native 15/15 与 Mock 48/26/22/48/0 都不构成真实模型通过，两个业务 gate 继续保持 `false`。
+
+V7 不是 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。
+5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
+
+当前 v1--v6 都是独立关闭证据，计数不得拼接：v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`；所有 once marker 已消耗且不可重试。V6 48-case、Docker、浏览器、main 合并与推送都被终态关闭；不得从其 fact-free canary 推导模型质量、可用性、zero-call、零成本或账单。一次离线 Mock proof 为 48 cases / 26 verified zero-call / 22 Mock runtime / 48 strict / 0 critical、`mock_quality_not_evidence`，其 `.tmp` 已删除。完整静态验证在 lint-style 修复后重新通过 AI、Agent、Server、shared types、Web 测试/lint/build，以及 Compose `config --quiet` 和 `git diff --check`；这些都是 V6 pre-Live checks，而非 Live、Docker 或浏览器验收。
+
+若要继续，不得再授权或执行 V7；必须先为新 lineage 完成零网络 stage-diagnostic 设计、TDD、独立复审与新的明确 Live 授权。新 stage 只能是无内容、固定枚举，不保存 prompt、response、credential、raw error 或失败 token/cost。
+
+Task 7 contract/security 与 acceptance/operations 两轮离线复审已通过，但 V7 实际 Live terminal gate 未通过；原定的 `48/26/22/48/48/0`、P95、usage/cost 与 success seal 均不能从现有 `evidence_io` 反推。因此本轮不得开启任一 Review/Planner 产品 gate 或进入产品验收。
+
+V8 completion contract 已在 `docs/superpowers/specs/phase-6-9-5-v8-stage-diagnostics-completion-design.md` 冻结。实施和验收必须额外满足：
+
+1. V8 使用独立 profile/eval gate/confirmation/evidence/once marker/success seal，V1--V7 继续只读；15 个 stage marker 必须是固定文件名、零字节、append-only、exclusive-create 的合法连续前缀。
+2. once marker、15 个 stage marker 与 success seal 必须先在各自固定 private prepare leaf 完成 write-through/flush/checked-close，再从同一 no-reparse directory HANDLE existing-only 重开并 exclusive rename 到 public leaf；rename 是唯一 commit 点。prepare/reopen/rename 失败不得出现对应 public leaf，rename 后 cleanup close failure 不得删除、重试或撤销 committed；禁止路径型 `MoveFileExW`。
+   - I/O API 只接收 committed leaf，prepare 固定内部派生为 `<committed>.prepare`；V8 只允许 once、15-stage enum、success 三类 committed leaf，拒绝同名、任意 pair、覆盖或 `.prepare` 输入。
+   - durability scope 只覆盖 local fixed NTFS 的 process crash/restart，不宣称物理断电或其他 volume；preflight 必须查询 volume 并 provider 前 fail-closed，native child hard-exit 必须分别证明 rename 前无 public leaf、rename 后 fresh reader 可恢复。
+   - 任一 prepare/public leaf 遗留都表示 consumed/blocked；若失败早于首个 prepare 成功创建，只能证明本 invocation 零重试/零 provider，后续 invocation 仍需新的用户明确授权。
+3. V8 Live 前完成 RED/GREEN、native race/reparse/write-denied、fake 48/26/22/48/48/0、完整静态门与两轮独立复审。paired Live 时 `REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`。
+4. 只有 V8 public reader 读取 committed success，且 stage manifest、candidate、success seal、V1--V7 tree、23 attempts、P95、positive usage、CNY cap 和全部质量计数匹配，才可进入产品验收。
+5. 产品验收使用两个 `phase695-v8-accept-<UTC>` 隔离账号和精确 id 清单：
+   - Review-only：`Review=true / Planner=false`，authenticated suggestions 的 Review observation 必须为 `attempted=true / candidate_applied / live_candidate / degraded=false / positive usage`，Planner 必须为 `not_eligible / local_deterministic`；headed `/plan` 与对应 Trace 必须通过。
+   - 立即恢复两 gate 为 `false`，`--force-recreate server`，探测 suggestions 回到 deterministic；不得只重建 `web`。
+   - Planner-only：`Review=false / Planner=true`，执行对称 API 断言、headed `/today` 与 Trace；随后再次恢复 default-off 并重建 `server`。
+   - Token A 不得读取 Token B 的 owner facts 或 Trace。模型调用前后 Card、ReviewLog、ReviewTask、ReviewPreference、WrongQuestion、deck 与计划事实必须一致。
+6. Trace 必须实际持久化，steps 为 `deterministic_review / review_candidate / deterministic_planner / planner_candidate`，目标 candidate 的 disposition 为 `candidate_applied`、usage 为正、pricing 状态与模型一致；不得包含 prompt、response、key、URL 或 raw error。
+7. 分支与 main 的产品验收各最多 4 次模型请求。runner 与 server 都为每组件持有 `remainingRequests=2` 原子 admission：runner 在任何 await/HTTP dispatch/`route.continue()` 前同步 check-and-decrement，server 在 `ModelAgentRuntime` 前以一次性 capability 再 claim；任一失败都 provider 前 abort。显式 API 消耗一次，Playwright route 只放行一个 suggestions network request并在浏览器侧阻断第二个，Trace 差值必须证明每组件恰好 2 次 live attempts；owner-isolation 只在 gate-off/default-off server 下做零 Live 读取。两轮总 reservation 不超过 `15_600 / 3_520`；价格 profile 固定为 `deepseek-v4-pro-cny-noncached-2026-07-18-v8-product-acceptance`，来源是用户提供的 2026-07-18 DeepSeek 官方价格截图，按非缓存 input CNY `3/1M`、output CNY `6/1M` 和 verified 整数 token 精确计算，未舍入值判 cap、evidence 8 位 `ROUND_HALF_UP`；worst case `0.06792000`，hard cap CNY `0.10000000`。超出 admission、usage 或费用立即关闭 gate，不刷新重试；V4 Pro 的现有 USD Trace 必须保持 `pricingKnown=false / costEstimate=0`，不得编造汇率。
+8. 合并 main 后不得重跑已消费的 V8 paired lineage。main 重新读取 committed evidence，运行完整静态门与 default-off Docker smoke，再按上述 hard cap 重放 Review-only/Planner-only 产品路径；它是产品 replay，不改写 paired evidence。
+9. 清理按记录的精确账号、refresh token、Card/log/task/preference、WrongQuestion/deck、Trace 与浏览器 storage 执行并断言零残留。禁止 reset、flush、wipe、`down`、`down -v`、prune 或 volume 删除。
+10. 推送后必须核对本地 main、`origin/main` 与 evidence SHA；关机前清除进程级 Live/eval/gate/key，重建 default-off `server`，关闭浏览器/Bun/辅助进程，并只用 `docker compose ... stop` 停止服务、保留全部 Docker 资源和数据。
+11. branch/main 证据必须分别写入 `docs/acceptance/evidence/phase-6-9-5-v8-product-acceptance/{branch,main}/acceptance.json`、`plan.png`、`today.png`。JSON 只保存安全 observation/Trace 汇总、哈希账号 id、commit SHA、`pairedEvidenceSha256 / planScreenshotSha256 / todayScreenshotSha256`、调用/usage/CNY cost 计数和验收布尔值；JSON 不自哈希，不得保存 email、token、cookie、prompt、response、用户事实、原始 Trace、key、URL、header、raw error 或 stack。
+
+2026-07-18 离线 checkpoint：上述 V8 stage evidence、CLI/factory、product admission、branch/main durable ledger、recovery 与 executable Docker/API/Prisma/headed-browser composition 已实现；Server `1265 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`，Windows native、Agent/AI/types、lint/build、Compose `config --quiet` 与 diff check 全部 exit 0，最终 contract/security 和 acceptance/operations 复审无未关闭 Critical/Important。此 checkpoint 仍不是 Live 或产品验收：V8 evidence/once marker 不存在，两个产品 gate 为 `false`，不得跳过唯一 V8 success gate 直接进入 Docker 产品路径。
+
+随后唯一 V8 controlled-Live 已消费：CLI stdout 为 `invalid_attempted / closed / 23 / false / invalid_response`；落盘 231-byte provisional 为 `attempted / 0 / false / transport`；public reader 为 `0 / evidence_io / lastStage=.stage-080-paired-returned`。durable prefix 无 `.stage-090` 或 success seal，因此 checklist 第 4 项 committed success 条件未成立，第 5--11 项 branch/main 产品路径全部禁止。不得把 CLI 23 冒充 durable terminal，也不得把落盘/public 0 解释为 zero-call、质量或零费用；V8 不可重跑。
+
+### V9 历史 offline checkpoint 与唯一 Live 终态
+
+截至 `683a209` 的以下项目是 V9 运行前 checkpoint；唯一 V9 controlled-Live 现已消费，后续不得以本段作为重跑授权。
+
+1. V1--V8 evidence/marker 只读且 fresh snapshot 一致；不得删除、覆盖、重命名、拼接或用 `git show` 构造历史成功。
+2. V9 evidence directory、once marker 与 success seal 在首次授权运行前必须不存在；当时仓库满足“不存在”，这不是成功证据。
+3. `REVIEW_PLANNER_CONTROLLED_LIVE_EVAL_V9_GATE_DIAGNOSTICS_ENABLED` 只能在单次授权进程显式开启；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 必须保持未设置或 `false`。eval gate 不授权产品调用。
+4. Product authority 只能接受 `finalized / complete / closed / passed`、`providerCount=23`、`pairedAdmissionCount=22` 和 lowercase 64-hex `evidenceSha256`；diagnostic-only、pending、`evidence_io`、未知 profile 或非法 hash 必须关闭。
+5. Authority 读取前后都要列举完整 V9 leaf，并用 `git ls-files -v --full-name -- <dir>` 验证实际 leaf 精确 tracked 且全部为 ordinary `H`。lowercase assume-unchanged、`S` skip-worktree、缺 tracked leaf、额外 untracked leaf、leaf drift 或 commit/branch/clean drift 均不得进入 ready。
+6. 上述任一失败必须在 owner/ledger reservation、Prisma account/fixture、Docker server recreate、headed browser 与产品 provider request 前阻断；不得回退 legacy V8 reader。
+7. V9 离线证据为 focused `136/136`、Server `1381 passed / 30 skipped`、Review E2E `3/3`、Web `409/409`、AI `190/190`、Agent `406/406`、types/typecheck exit 0、Windows native 正确 cwd 合计 `133/133`、product acceptance `131/131`，以及 lint/build/Compose/diff exit 0。V5/V6 cwd 是命令入口契约，不是代码失败；这些计数均不是 V9 Live 证据。
+8. 运行前没有 V9 Live、provider usage/cost、Docker/API/browser/Trace 产品验收、main replay 或 push。只有 public reader 返回第 4 项 committed success，才可另行申请 product acceptance；即使 Live 成功也不自动开启产品 gate 或宣告 Phase 6.9.5 完成。
+9. 单独明确授权后，唯一 package script 为 `eval:review-planner:live:v9:gate-diagnostics`，exact confirmation 为 `--confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`，实际从根目录加载凭据的完整命令为 `bun --env-file=.env --filter @repo/server eval:review-planner:live:v9:gate-diagnostics -- --confirm-controlled-live-v9-deepseek-v4-pro-gate-diagnostics`；本 checklist 记录命令不等于运行授权。
+10. Reserve 前 preflight blocked 必须是 `0-call / 0-reservation / 0-once / 0-evidence`，再次尝试仍需重新授权；一旦 reservation/once 存在，后续任一失败都永久封存，同一 V9 禁止重跑、删除、覆盖或重建。
+
+V9 的一次实际运行遵守第 10 项后段：durable reader 为 `finalized / invalid_attempted / closed / quality_gate_failed`，`23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes、P95 `1396ms`、usage `7943/510` 和 CNY `0.026889/1.00`；但 quality `30/48`、semantic `4/22`、critical `2` 未通过。没有 success seal，故第 4 项 committed success 不成立；Docker、headed browser、Trace 产品验收、main replay 和 push 必须继续禁止，产品 gate 默认关闭。
+
+完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v9-offline-checkpoint.md`。
+
+### V10 committed Live outcome and product precondition
+
+V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Review `focusIndexes` 与 Planner `blockOrder`。唯一 controlled-Live 已 exit `0`，public reader 五次 fresh read 均为 `complete / passed`：`23` provider attempts、`22` paired admissions、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`，schema/quality/P95/usage/attempt/admission/cost 全通过。V1--V9 manifest 仍为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`；V10 evidence/once/success seal 已封存且不可改写。
+
+根 `.env` 未改，普通环境继续 mock/default-off；V8/V9 eval 与 `REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 均保持 `false`。V10 safe writer/reader 只持久化 strict lane aggregate，拒绝 prompt、snapshot、output、raw error、URL、credential、cookie、stack 和 per-case timing/usage。旧 V8 branch 产品验收 evidence 已以 recovery-only terminal 归档：一次遗漏 preflight 参数的失败为 `0-call`，首次实际分支尝试暴露 runner parse bug；恢复过程没有新 provider 调用且 cleanup 为零。它不是 V10 Live failure，V8 evidence 不得 reset、重用或扩展。V10 branch product-acceptance 现亦已单独终态为 `recovery_only`：它在 `slot-01-review-api` claim 后无 result leaf 而发生脱敏 `operation_failed`，recovery 没有新 provider/API/browser 调用且精确清理为零。该 terminal 不能推导原 slot 是 zero-call 或 zero-cost，也不能进入 main、push 或 Phase completion。后续必须建立全新、不重用 V10 product ledger 的 V11 lineage，先以 fixed safe failure checkpoint 完成 Mock/fake 证明与独立复审，再在新授权下运行一次 product 分支验收。完整归档见 `docs/acceptance/phase-6-9-5-review-planner-v10-product-acceptance-recovery.md`。
+
+完整结果、证据边界和产品顺序见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
+
+任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。
