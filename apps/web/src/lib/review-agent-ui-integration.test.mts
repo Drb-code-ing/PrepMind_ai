@@ -51,6 +51,11 @@ function testSuggestionCardExists() {
   assert.match(source, /getReviewPlannerModelStatus/);
   assert.match(source, /reviewPlannerModelStatusLabels/);
   assert.match(source, /reviewPlannerModelStatusLabels\[modelStatus\]/);
+  assert.match(source, /onPrimaryAction\?: \(\) => void/);
+  assert.match(
+    source,
+    /onPrimaryAction \? \([\s\S]*?<button[\s\S]*?onClick=\{onPrimaryAction\}[\s\S]*?: \([\s\S]*?<Link/,
+  );
   assert.doesNotMatch(source, /deepseek|api[_ -]?key|token|provider|raw error/i);
 }
 

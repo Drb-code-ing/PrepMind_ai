@@ -16,11 +16,13 @@ import {
 type ReviewAgentSuggestionCardProps = {
   suggestion: ReviewAgentSuggestionResponse;
   compact?: boolean;
+  onPrimaryAction?: () => void;
 };
 
 export function ReviewAgentSuggestionCard({
   suggestion,
   compact = false,
+  onPrimaryAction,
 }: ReviewAgentSuggestionCardProps) {
   const priority = getReviewAgentPriorityMeta(suggestion.review.priority);
   const firstBlock = suggestion.planner.suggestedBlocks[0];
@@ -91,14 +93,26 @@ export function ReviewAgentSuggestionCard({
           ) : null}
 
           {firstBlock ? (
-            <Link
-              href={actionHref}
-              className="tap-target mt-3 inline-flex min-h-11 max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98]"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="break-words">{firstBlock.title}</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+            onPrimaryAction ? (
+              <button
+                type="button"
+                onClick={onPrimaryAction}
+                className="tap-target mt-3 inline-flex min-h-11 max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98]"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="break-words">{firstBlock.title}</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <Link
+                href={actionHref}
+                className="tap-target mt-3 inline-flex min-h-11 max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-[#2b2335] px-4 text-sm font-semibold text-white transition-all hover:bg-[#3a3047] active:scale-[0.98]"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="break-words">{firstBlock.title}</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            )
           ) : null}
         </div>
       </div>
