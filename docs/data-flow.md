@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 已完成分支验收。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。修复计时耦合后的一次独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均得到 `candidate_applied`，随后两条业务 gate 和 live-call gate 恢复默认 `false`，合成账户与 Trace 已清理。仍须提交/复验分支、`--no-ff` 合并 main 后，在 main 的 HEAD 上 default-off replay 才可标记阶段完成；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收得到 `candidate_applied`，main 的新镜像 default-off 回放又确认两条业务 gate/live-call gate 均为 `false`、页面建议 deterministic、合成账户与 Trace 清理为 0。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 

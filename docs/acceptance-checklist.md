@@ -7,11 +7,11 @@
 
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 
-> 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 分支验收均为 `candidate_applied`，gate 已恢复 default-off、合成账户/Trace 已清理。仍待 main replay；详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+> 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收为 `candidate_applied`；main default-off replay 已通过，gate 保持关闭、合成账户/Trace 已清理。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
 
 V10 controlled-Live 仍是唯一语义质量 authority。V11--V22 都是不可重跑、不可复用的历史，其中 V22 终态为 `operation_failed -> recovered`；本节原有 V19 product/recovery 命令已过期，严禁执行。
 
-当前只允许按以下顺序执行不含真实模型调用的 default-off replay：提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，确认当前 branch/HEAD 为 `main`，再重建 `server`/`web`、验证健康与环境开关、用新的合成账户确认两种 suggestion 均为 deterministic、精确清理账号与 Trace，最后完成证据复核与推送。禁止 `down -v`、prune、volume 清理、数据库 reset、Redis flush 或 MinIO wipe。当前验收记录见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
+main default-off replay 已完成。本段流程保留给后续同类阶段：提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，确认当前 branch/HEAD 为 `main`，再重建 `server`/`web`、验证健康与环境开关、用新的合成账户确认两种 suggestion 均为 deterministic、精确清理账号与 Trace，最后完成证据复核与推送。禁止 `down -v`、prune、volume 清理、数据库 reset、Redis flush 或 MinIO wipe。当前验收记录见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
 
 ## 1. 先判断本次要验收什么
 

@@ -917,7 +917,7 @@ Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http:/
 
 ### Phase 6.9.5 产品验收与关机收口
 
-Phase 6.9.5 已完成分支真实模型验收，仍待 `main` 的无真实模型 default-off replay。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 与 V11--V21 历史均不可重跑、不可恢复或拼接。先提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，再确认当前 branch/HEAD 为 `main`。只有随后才可执行下列 Docker 重建；全程禁止开启 Review/Planner 或 live-call gate，也禁止执行任何 V19/V20/V21/V22 accept/recover 命令。
+Phase 6.9.5 已完成真实模型分支验收和 main default-off replay。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 与 V11--V21 历史均不可重跑、不可恢复或拼接。下列命令保留为后续同类阶段的 main replay 模板：先提交并复验分支，`git switch main`，`git merge --no-ff <branch>`，再确认当前 branch/HEAD 为 `main`。只有随后才可执行 Docker 重建；全程禁止开启 Review/Planner 或 live-call gate，也禁止执行任何 V19/V20/V21/V22 accept/recover 命令。
 
 ```powershell
 $env:AI_PROVIDER_MODE = 'mock'

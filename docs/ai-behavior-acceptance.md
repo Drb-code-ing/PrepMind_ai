@@ -6,7 +6,7 @@
 
 Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。
 
-修复后，用户授权下的独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 分支验收均得到 `candidate_applied`，Trace 为 `live / deepseek-v4-pro / completed`；模型仍只能从本地 snapshot 选择 `focusIndexes` / `blockOrder`，本地保留 owner、facts、FSRS、写权限和最终只读 merger。两个业务 gate 与 live-call gate 已恢复 `false`，合成账户/Trace 已清理。当前唯一允许的后续验收是：提交/复验分支后 `--no-ff` 合并 `main`，确认 `HEAD` 在 `main`，再执行无真实模型 default-off replay；不得执行任一历史 V19/V20/V21/V22 accept 或 recover 命令。
+修复后，用户授权下的独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 分支验收均得到 `candidate_applied`，Trace 为 `live / deepseek-v4-pro / completed`；模型仍只能从本地 snapshot 选择 `focusIndexes` / `blockOrder`，本地保留 owner、facts、FSRS、写权限和最终只读 merger。main `3aff6cc` 的无真实模型 default-off replay 已通过，两个业务 gate 与 live-call gate 保持 `false`，合成账户/Trace 已清理；不得执行任一历史 V19/V20/V21/V22 accept 或 recover 命令。
 
 ## 1. Mock 与 Live 的分工
 

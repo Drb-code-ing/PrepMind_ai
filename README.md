@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 已完成分支验收：V10 保留唯一语义质量依据，V22 的恢复历史保留不改写，修复后的独立 DeepSeek V4 Pro Docker API 与可见浏览器验收均得到 Review/Planner `candidate_applied`；模型 gate 已恢复默认关闭，合成账户与 Trace 已清理。仍待 main replay 后再标记阶段完成并推送。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 已完成：V10 保留唯一语义质量依据，V22 的恢复历史保留不改写，独立 DeepSeek V4 Pro API/浏览器验收和 main default-off Docker/浏览器回放均通过；模型 gate 已恢复默认关闭，合成账户与 Trace 已两轮清理。
 
 ## 当前状态
 
@@ -219,13 +219,13 @@ bun --cwd packages/fsrs test
 
 下一步主线：
 
-1. Phase 6.9.5 已完成分支验收；V10 是唯一语义质量 authority，V22 的恢复历史保留，独立真实模型 API/浏览器验收成功后模型 gate 已恢复默认关闭。下一步是提交并复验分支、`--no-ff` 合并 `main`、确认 `HEAD` 在 `main` 后执行 default-off replay、复核并推送。
-2. main replay 和推送完成后，按 Phase 6.9.6 完成 KnowledgeDedupAgent / KnowledgeOrganizerAgent 的真实模型语义路径、只读权限、评测、Docker/浏览器验收与清理，再继续其余 Agent 架构。
+1. Phase 6.9.5 已完成：V10 是唯一语义质量 authority，V22 的恢复历史保留，独立真实模型 API/浏览器验收和 main default-off replay 均通过，模型 gate 保持默认关闭。
+2. 下一步按 Phase 6.9.6 完成 KnowledgeDedupAgent / KnowledgeOrganizerAgent 的真实模型语义路径、只读权限、评测、Docker/浏览器验收与清理，再继续其余 Agent 架构。
 3. 全部 Agent 完成后进入 Phase 6.10 分层记忆。未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 
 回顾时可以问：“为什么 V22 的恢复不能代替独立产品验收？”“为什么 Review/Planner 只让模型返回 `focusIndexes` / `blockOrder`？”“为什么验收通过后产品 gate 仍默认关闭？”
 
-下一会话可以复制：“请先提交并复验 Phase 6.9.5 分支，再 `git switch main`、`git merge --no-ff`；只在 main 保持 Review/Planner default-off、无真实模型调用地完成静态与 Docker replay、证据复核并推送，之后再进入 Phase 6.9.6。”
+下一会话可以复制：“请开始 Phase 6.9.6：先制定 KnowledgeDedupAgent / KnowledgeOrganizerAgent 的真实模型、只读权限、评测与生产验收设计；保持已完成 Review/Planner 的 default-off gate，不改写 V10/V22 历史。”
 
 ## 文档入口
 
