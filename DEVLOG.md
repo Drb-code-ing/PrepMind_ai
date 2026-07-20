@@ -1,5 +1,5 @@
 # PrepMind AI 开发日志
-> 2026-07-21 — `/today` Review/Planner “先完成今日复习”主操作修复：目标是让同页建议卡产生可感知、可访问的结果，而不是重新跳转当前 `/today` URL。根因是建议卡对首个 Planner block 一律渲染 Next `Link`；当目标同为 `/today` 时，路由没有页面或焦点变化。修复为可选的 `onPrimaryAction`：`/today` 传入本地回调，平滑滚动并聚焦第一张 `PENDING` 复习卡；`/plan` 等其他调用方仍保留受控 `/today` 导航。任务加载中或读取失败时只定位区域、不误报空状态；仅成功加载后确实无待复习卡时才显示中性 notice。该操作不评分、不跳过、不创建或修改任何 ReviewTask。
+> 2026-07-21 — `/today` Review/Planner “先完成今日复习”主操作修复：目标是让同页建议卡产生可感知、可访问的结果，而不是重新跳转当前 `/today` URL。根因是建议卡对首个 Planner block 一律渲染 Next `Link`；当目标同为 `/today` 时，路由没有页面或焦点变化。修复为可选的 `onPrimaryAction`：仅当标准化目标确为 `/today` 时，`/today` 才以本地回调平滑滚动并聚焦第一张 `PENDING` 复习卡；`/error-book`、`/plan` 等跨页建议与未传回调的调用方仍保持原有安全 Link 导航。空任务 notice 只在已成功读取且确实无待复习卡时显示；加载和失败保留原状态，离线或暂停查询显示“暂不可用”而非空态。目标区使用 sticky-header scroll margin，避免焦点卡被页头遮挡。该操作不评分、不跳过、不创建或修改任何 ReviewTask。
 >
 > 验收：先以 `review-agent-ui-integration.test.mts` 观察两个 RED（缺少本地 action contract、缺少同页焦点 contract），最小实现后 Web `409/409`、lint 和 production build 均通过。浏览器使用一次 synthetic 账号、1 条错题、1 张到期 Card 和 1 条 `PENDING` ReviewTask：`/today` 初始 `scrollY=0`，点击后为 `scrollY=767`，焦点为第一张卡的 `DIV[tabindex=-1]`，且该容器包含 review card；当前页控制台无错误。无待复习卡的正常 Planner 结果会把主目标改为错题/计划页，因而不会自然渲染本按钮；loaded-empty guard 由回归 contract 覆盖，不伪造浏览器响应。
 >

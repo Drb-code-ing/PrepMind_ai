@@ -4,7 +4,9 @@
 
 **Goal:** Make the Review/Planner primary action on `/today` move the user to the current day's review tasks instead of silently navigating to the same URL.
 
-**Architecture:** `ReviewAgentSuggestionCard` receives an optional local primary-action callback. `/today` alone supplies that callback, which uses a stable section ref and the first pending task wrapper ref to scroll and focus locally; all other callers retain the existing normalized Next `Link` behavior. No API, data model, task mutation, or model-gate behavior changes.
+**Architecture:** `ReviewAgentSuggestionCard` receives an optional local primary-action callback. It may use that callback only when its normalized first-block target is `/today`; `/today` supplies it to scroll and focus with a stable section ref and first pending-task wrapper ref. Every non-`/today` target, including `/error-book` and `/plan`, and every caller without the callback retains the existing normalized Next `Link` behavior. No API, data model, task mutation, or model-gate behavior changes.
+
+**State safety:** The empty-task notice is emitted only after a successful task query. Loading and errors retain their existing status views; offline or paused queries render a neutral unavailable state rather than the no-due-cards empty state. The review section carries scroll margin for the sticky header.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, Node built-in test runner, Bun.
 
@@ -60,10 +62,10 @@ export function ReviewAgentSuggestionCard({
 }: ReviewAgentSuggestionCardProps) {
 ```
 
-Replace the existing primary `Link` branch with a callback-first branch that retains the exact visual children and class string:
+Replace the existing primary `Link` branch with a target-gated callback branch that retains the exact visual children and class string. `hasLocalPrimaryAction` is true only when the standardized `actionHref` is `/today` and the caller supplied a callback:
 
 ```tsx
-{onPrimaryAction ? (
+{hasLocalPrimaryAction ? (
   <button
     type="button"
     onClick={onPrimaryAction}

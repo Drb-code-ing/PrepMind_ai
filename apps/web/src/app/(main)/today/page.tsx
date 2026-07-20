@@ -45,6 +45,10 @@ import {
 } from '@/lib/review-feedback';
 import { buildReviewReminderSummary } from '@/lib/review-reminder';
 import {
+  getTodayReviewTaskReadState,
+  shouldShowTodayReviewEmptyNotice,
+} from '@/lib/review-agent-action';
+import {
   createReviewTaskRatingQueueItem,
   isRetryableReviewTaskRatingError,
 } from '@/lib/review-task-offline';
@@ -146,6 +150,11 @@ export default function TodayPage() {
     useReviewTaskPendingRatings(userId);
   const { flush } = useMutationQueueFlush({ auto: false });
   const todayReviewTaskItems = todayReviewTasks.data?.tasks;
+  const todayReviewTaskReadState = getTodayReviewTaskReadState({
+    isLoading: todayReviewTasks.isLoading,
+    isError: todayReviewTasks.isError,
+    isSuccess: todayReviewTasks.isSuccess,
+  });
   const optimisticPendingRatingsByTaskId = useMemo<Record<string, { rating: ReviewRating }>>(
     () =>
       optimisticPendingRatings?.ownerId === userId
@@ -270,13 +279,14 @@ export default function TodayPage() {
     focusTarget.focus({ preventScroll: true });
 
     if (
-      !firstPendingReviewTaskRef.current &&
-      !todayReviewTasks.isLoading &&
-      !todayReviewTasks.isError
+      shouldShowTodayReviewEmptyNotice({
+        hasPendingReviewTask: Boolean(firstPendingReviewTaskRef.current),
+        taskQuerySucceeded: todayReviewTasks.isSuccess,
+      })
     ) {
       showNotice('今天暂时没有待复习任务，可先按今日清单学习。', 'neutral');
     }
-  }, [showNotice, todayReviewTasks.isError, todayReviewTasks.isLoading]);
+  }, [showNotice, todayReviewTasks.isSuccess]);
 
   useEffect(() => {
     return () => {
@@ -529,7 +539,7 @@ export default function TodayPage() {
           id="today-review"
           ref={todayReviewSectionRef}
           tabIndex={-1}
-          className="pm-glass-card pm-enter mt-4 rounded-[1.5rem] p-4"
+          className="pm-glass-card pm-enter mt-4 scroll-mt-24 rounded-[1.5rem] p-4"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -561,14 +571,18 @@ export default function TodayPage() {
           </div>
 
           <div className="mt-3 space-y-3">
-            {todayReviewTasks.isLoading ? (
+            {todayReviewTaskReadState === 'loading' ? (
               <div className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-3 text-sm text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 正在读取复习卡...
               </div>
-            ) : todayReviewTasks.isError ? (
+            ) : todayReviewTaskReadState === 'error' ? (
               <p className="rounded-2xl bg-red-50/80 px-3 py-3 text-sm text-red-600 ring-1 ring-red-100">
                 复习任务读取失败，稍后再试。
+              </p>
+            ) : todayReviewTaskReadState === 'unavailable' ? (
+              <p className="rounded-2xl bg-white/70 px-3 py-3 text-sm leading-6 text-[var(--pm-muted)] ring-1 ring-[var(--pm-line)]">
+                复习任务暂不可用，请在网络恢复后重试。
               </p>
             ) : groupedReviewTasks.pending.length ? (
               groupedReviewTasks.pending.map((task, index) => (

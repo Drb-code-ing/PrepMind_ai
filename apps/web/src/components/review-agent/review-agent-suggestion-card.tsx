@@ -12,6 +12,7 @@ import {
   getReviewPlannerModelStatus,
   reviewPlannerModelStatusLabels,
 } from '@/lib/review-agent-model-status';
+import { shouldHandleReviewSuggestionLocally } from '@/lib/review-agent-action';
 
 type ReviewAgentSuggestionCardProps = {
   suggestion: ReviewAgentSuggestionResponse;
@@ -27,6 +28,10 @@ export function ReviewAgentSuggestionCard({
   const priority = getReviewAgentPriorityMeta(suggestion.review.priority);
   const firstBlock = suggestion.planner.suggestedBlocks[0];
   const actionHref = firstBlock ? normalizeSuggestionHref(firstBlock.targetHref) : '/today';
+  const hasLocalPrimaryAction = shouldHandleReviewSuggestionLocally({
+    actionHref,
+    hasPrimaryAction: Boolean(onPrimaryAction),
+  });
   const weakPoints = suggestion.review.weakPoints.slice(0, 3);
   const todayText = getReviewAgentShortTodayText(suggestion.planner);
   const modelStatus = getReviewPlannerModelStatus(suggestion.modelObservations);
@@ -93,7 +98,7 @@ export function ReviewAgentSuggestionCard({
           ) : null}
 
           {firstBlock ? (
-            onPrimaryAction ? (
+            hasLocalPrimaryAction ? (
               <button
                 type="button"
                 onClick={onPrimaryAction}

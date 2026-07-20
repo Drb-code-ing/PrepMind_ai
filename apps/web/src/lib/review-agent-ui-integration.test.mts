@@ -52,9 +52,10 @@ function testSuggestionCardExists() {
   assert.match(source, /reviewPlannerModelStatusLabels/);
   assert.match(source, /reviewPlannerModelStatusLabels\[modelStatus\]/);
   assert.match(source, /onPrimaryAction\?: \(\) => void/);
+  assert.match(source, /shouldHandleReviewSuggestionLocally/);
   assert.match(
     source,
-    /onPrimaryAction \? \([\s\S]*?<button[\s\S]*?onClick=\{onPrimaryAction\}[\s\S]*?: \([\s\S]*?<Link/,
+    /hasLocalPrimaryAction \? \([\s\S]*?<button[\s\S]*?onClick=\{onPrimaryAction\}[\s\S]*?: \([\s\S]*?<Link/,
   );
   assert.doesNotMatch(source, /deepseek|api[_ -]?key|token|provider|raw error/i);
 }
@@ -80,6 +81,10 @@ function testTodayPageUsesCompactReviewAgentSuggestion() {
   assert.match(source, /id="today-review"/);
   assert.match(source, /scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
   assert.match(source, /focus\(\{ preventScroll: true \}\)/);
-  assert.match(source, /!todayReviewTasks\.isLoading[\s\S]*?!todayReviewTasks\.isError/);
+  assert.match(source, /shouldShowTodayReviewEmptyNotice/);
+  assert.match(source, /getTodayReviewTaskReadState/);
+  assert.match(source, /taskQuerySucceeded: todayReviewTasks\.isSuccess/);
+  assert.match(source, /todayReviewTaskReadState === 'unavailable'/);
+  assert.match(source, /scroll-mt-24/);
   assert.match(source, /今天暂时没有待复习任务，可先按今日清单学习。/);
 }
