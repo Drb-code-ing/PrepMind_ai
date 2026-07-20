@@ -296,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority。V11 已 `operation_failed / recovered` 封存；V12 唯一 branch product 在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成。V13 唯一 branch product 被 Bun 1.3.14 segmentation fault 在 reservation 后中断，无 execution manifest/checkpoint/failure 或 runtime resource，故不可重跑且无 recovery 资格。根因已由 production DTO 回归测试修复；V14 已建立隔离 lineage、独立 ledger/recovery/execution/browser 根和 runner diagnostics 适配，native sentinel 证明不写 V11/V12/V13 根。V14 gate 默认关闭，尚未运行 Docker、浏览器、API 或 provider；唯一 branch product 使用 Node CommonJS TypeScript runner，严格 allowlist V14 入口、scripts/review-agent roots 与 database/agent-diagnostics 两个精确 workspace bridge，V7/V8/V9 evidence 通过窄 diagnostics subpath 避免 Agent barrel，在内存转译相对依赖并保留模块级 `__dirname`，不生成 bundle。只有 `passed` 才能 main replay、合并与 push。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority。V11 已 `operation_failed / recovered` 封存；V12 唯一 branch product 在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成。V13 唯一 branch product 被 Bun 1.3.14 segmentation fault 在 reservation 后中断，无 execution manifest/checkpoint/failure 或 runtime resource，故不可重跑且无 recovery 资格。根因已由 production DTO 回归测试修复；V14 的 Node runner、独立 roots、native sentinel 和离线 Docker/default-off 已就绪，但唯一 branch CLI 在 preflight `default_off` 停止，未进入 owner/ledger/Docker mutation/browser/API/provider/合成资源，V14 roots 仍不存在且 recovery 不适用。根因是普通 Compose Chat 默认 `deepseek-v4-flash` 与历史 strict default-off receipt 要求 `deepseek-v4-pro` 不匹配；V14 不可 retry，待新的用户决定。只有未来 branch `passed` 才能 main replay、合并与 push。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -310,7 +310,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.5 V14：V10 是唯一语义质量 authority；V11/V12 是不可重跑 recovery 终态，V13 是 Bun crash 后不可重试且不满足 recovery 的 reservation。Trace duration correlation 已修复，V14 有独立 roots，native sentinel 已证明不写 V11/V12/V13。先跑最终静态与 Docker image 门禁；随后用严格 allowlist 的 Node TypeScript runner 执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
+下一会话可以复制：“请处理 Phase 6.9.5 V14 preflight：V10 是唯一语义质量 authority；V11/V12 不可重跑，V13 不可重试。V14 Node runner 离线收口已在 `b808d97` 完成，但唯一 branch CLI 已在 `default_off` preflight 安全停止，public/recovery/execution roots 均不存在且 recovery 不适用。根因是普通 Compose 的 mock/default-off Chat 使用 `deepseek-v4-flash`，历史 strict receipt 要求 `deepseek-v4-pro`。不要重跑 V14；先取得用户对修复 strict default-off contract 后新建 lineage或其他路线的决定。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

@@ -58,3 +58,16 @@ deletion, prune, or unscoped file deletion is permitted.
    exact cleanup. Any other terminal stops V14; recovery is possible only if
    its own preflight admits the concrete terminal.
 5. Only a branch pass permits main replay, merge and push.
+
+## 2026-07-20 preflight outcome
+
+The V14 branch CLI was invoked once and safely returned `default_off` before
+owner acquisition, ledger reservation, Docker mutation, browser/API/provider
+work or synthetic-resource creation. The V14 public, recovery and execution
+roots remain absent, so no recovery terminal exists. The strict default-off
+receipt expected `AI_MODEL=deepseek-v4-pro`, while the ordinary Compose server
+was correctly mock/default-off but retained `deepseek-v4-flash` for Chat. This
+is a preflight configuration mismatch, not a model-quality, cost, provider or
+cleanup result. The V14 command must not be retried without a new explicit user
+decision; recovery is inapplicable. The durable record is
+`docs/acceptance/phase-6-9-5-review-planner-v14-preflight-blocked.md`.

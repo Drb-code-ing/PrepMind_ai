@@ -34,10 +34,17 @@ bundle. An inherited/unknown entry, blocked path or bootstrap failure returns
 the same fixed `default_off` preflight response before roots are created. This
 avoids the observed Bun process crash without changing the agent contract.
 
-At this document revision V14 has not run Docker, browser, API, provider or a
-product command; normal gates remain false. The next step is final static/image
-verification followed by the one V14 branch execution described in the paired
-design document.
+The V14 branch CLI was invoked once after final static/image verification, but
+its host preflight returned the fixed `default_off` projection before owner,
+ledger, Docker mutation, browser, API, provider or synthetic-resource work. Its
+public, recovery and execution roots remain absent, so it did not create a
+recovery-admissible terminal. The concrete cause is a strict historical
+default-off comparison: the recreated ordinary Compose server was
+`mock/default-off` but retained Chat's `AI_MODEL=deepseek-v4-flash`, while the
+V8 acceptance preflight requires `deepseek-v4-pro` even when all model gates are
+false. V14 must not be retried without a new explicit user decision; recovery is
+not available for this root-absent state. See
+`docs/acceptance/phase-6-9-5-review-planner-v14-preflight-blocked.md`.
 
 ## Review prompts
 
