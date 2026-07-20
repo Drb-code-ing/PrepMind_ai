@@ -296,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V10 唯一 controlled-Live 是唯一语义质量 authority。V11/V12 recovered、V13 interruption reservation、V14/V15/V16 root-absent preflight 都不可重跑或恢复。V16 已确认 Docker default-off 与 authority 本身有效，问题是 Node entry 从 `apps/server` CWD 启动，默认 `process.cwd()` 的 V10 authority 没有被从仓库根读取。V17 以新 confirmation、Node runner、ledger/recovery/execution/browser roots 隔离，并先切换/验证仓库根再加载既有 allowlisted entry；不放宽路径、bridge 或 resolver。它继承 V16 的严格 root-or-v1 URL、Flash/Pro、receipt 和 recovery 边界。V17 product/recovery/Docker/browser/API/provider 尚未运行；两个 gate 默认为 false。只有 V17 branch `passed` 才能 main replay、合并与 push。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V10 唯一 controlled-Live 是唯一语义质量 authority。V11/V12 recovered、V13 interruption reservation、V14/V15/V16 root-absent preflight 与 V17 wrapper/parser pre-confirmation stop 都不可重跑或恢复。V17 在 owner 前没有创建任何 root 或运行资源；根因是 package Bun separator 被原样转发为严格 parser 的第三个参数。V18 以新 confirmation、Node runner、ledger/recovery/execution/browser/public-evidence roots 隔离，保留 repository-root CWD、allowlist、bridge、resolver、root-or-v1 URL、Flash/Pro、receipt 和 recovery 边界；唯一变化是在 entry 后最多剥离一个 separator，其余参数仍严格 fail-closed。V18 product/recovery/Docker/browser/API/provider 尚未运行；两个 gate 默认为 false。只有 V18 branch `passed` 才能 main replay、合并与 push。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -310,7 +310,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.5 V17：V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16 都不可重跑。V17 已离线收口：Node runner 从仓库根读取 V10 authority，仍限制原 entry/source/bridge/resolver，保留 root-or-v1 URL、Flash/Pro、receipt/recovery 边界。先复验静态与 Docker default-off；随后执行已经授权的唯一 V17 branch command，保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
+下一会话可以复制：“请继续 Phase 6.9.5 V18：V10 是唯一语义质量 authority；V11--V17 都不可重跑。V18 已离线收口：Node runner 从仓库根读取 V10 authority，仍限制原 entry/source/bridge/resolver，保留 root-or-v1 URL、Flash/Pro、receipt/recovery 边界；只剥离一个 Bun 首位 separator。先复验静态与 Docker default-off；随后执行已经授权的唯一 V18 branch command，保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

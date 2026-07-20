@@ -2,19 +2,11 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.5 V12 Product Boundary
+## Phase 6.9.5 V18 Product Boundary
 
-**2026-07-20 host-wiring correction.** V12 no longer uses a fake default host.
-Its real host remains default-off until the one-shot product command: it does
-read-only preflight, writes V12-only non-secret selectors after reservation,
-then uses the existing controlled Docker/API/browser/Trace mechanics. A
-`review_api_setup / not_started` terminal covers setup failures before any
-provider dispatch. This is not V12 Live evidence and both product gates remain
-`false`.
+Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V11--V17 都是不可重跑、不可复用的历史。V17 的唯一 package command 在严格 confirmation parser 之前因 Bun 首位 `--` 被 wrapper 原样转发而安全停止；未创建 owner、ledger、Docker、浏览器、API、provider、合成资源或 runtime root。
 
-Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 已执行唯一 branch command，并以 `operation_failed / recovery-only` 封存：strict failure checkpoint 是 `review_api_activate / not_started`，不构成 provider 调用、质量、成本或浏览器成功证据。`cfd15b1` 只修复了首 checkpoint 前合法 attempt state 的 recovery preflight，精确 recovery 已完成并恢复 mock/default-off。V11 不得重跑、复用、main replay、合并或推送。
-
-V12 是新的隔离 product lineage，已完成 profile、durable ledger、attempt binding、V8 four-slot adapter 与真实 default-off host 的离线 checkpoint。失败 terminal 必须与同一 attempt 和 latest checkpoint 匹配；recovery 会独占 owner、复核 execution `DATABASE_URL` SHA-256 指纹，在 restore mock/default-off 与精确 cleanup 都成功后一次性封存 `recovered`，因此不可重入。产品 owner 获取后还会再次核验 repo/evidence/default-off/DB identity；切换容器的半失败仍恢复 default-off；headed 浏览器至少可见 30 秒。该 checkpoint 没有运行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。两项相互独立的 contract review 与 operations review 已无未关闭 P0/P1；下一次 V12 branch product 仍只能在用户给出新的单独授权后执行一次。任何 standalone `recovered` terminal 均终止该 lineage，不得重试 product。
+V18 是新的隔离 product lineage，拥有独立 profile、durable ledger、attempt binding、V8 four-slot adapter 与真实 default-off host。它保留 V17 的 repository-root CWD、严格 allowlist、只读 Bun V10-authority bridge、receipt 与 recovery 边界；唯一改变是 allowlisted Node entry 后最多剥离一个 separator。确认 parser、权限、facts、预算、默认关闭和恢复规则均未放宽。V18 没有运行 product/recovery CLI、Docker、浏览器、API 或 provider；`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。只有明确授权的 V18 branch `passed` 才可进入 main replay、合并与推送。
 
 ## 1. Mock 与 Live 的分工
 

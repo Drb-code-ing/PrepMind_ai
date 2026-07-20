@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch 与 V17 root-absent preflight 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V17 已修复 Node CWD，并通过固定只读 Bun authority bridge 让直接 Node host preflight 返回 `ready`；但其唯一 package command 仍在 owner 前返回 fixed `default_off`，没有 V17 owner、ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。两个业务 gate 继续 false；必须先定位这一 command-only 差异并建立新的 isolated lineage，不能把 V17 解释为 Phase 完成、main merge 或 push。
+Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt mismatch、V16 Node CWD authority mismatch 与 V17 wrapper/parser pre-confirmation stop 都是不可重跑、不可恢复、不可改写的历史；V10 controlled-Live 仍是唯一语义质量 authority。V17 的 package command 把 Bun 的首个 `--` 转发为第三个 CLI 参数，严格 parser 因而在 preflight 前安全返回 `default_off`；没有 V17 owner、ledger、Docker mutation、browser、API、provider 或合成资源，三类 root 均为空，recovery 不适用。V18 是唯一待运行的隔离 lineage：保留 V17 的 repository-root CWD、只读 Bun V10-authority bridge 与所有限制，仅在 Node wrapper 中剥离一个首位 package separator；confirmation/environment parser 不放宽。两个业务 gate 继续 false；V18 branch `passed` 之前不得 main replay、合并或 push。
 
 ## 项目快照
 
@@ -48,7 +48,7 @@ Phase 6.9.5 的 V12 已 `recovered`，V13 的 Bun interruption、V14/V15 receipt
 | Phase 6.9.4.2 | 已完成 | Router / Verifier Mock candidate、零调用安全门、strict schema、不可变预算与安全降级             |
 | Phase 6.9.4.3 | 验收未完成 | JSON-mode 完整 Live 已完成；28/28、72/72 通过但 Router P95 延迟失败，当时结论为 terminal deterministic fallback |
 | Phase 6.9.4.4 | 已完成 | Router/Verifier 混合生产接入；Task 10 已合并 main 并完成静态、Docker、真实模型、可见浏览器、Trace 价格与精确清理复验 |
-| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16/V17 不可重跑；V17 command root-absent stopped，仍需定位 command-only preflight 差异 |
+| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13--V17 不可重跑；V18 已完成 default-off 离线收口，待唯一 branch product |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -159,7 +159,7 @@ V9 product authority 只接受 `finalized / complete / closed / passed`、`provi
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请继续 Phase 6.9.5 V14：V10 是唯一语义质量 authority，V11/V12 都是 recovered 历史，V13 是 Bun crash 后的不可重试 reservation 且无 recovery terminal。Trace duration correlation 已修复，V14 native sentinel 证明不会改写 V11/V12/V13。先跑最终静态与 Docker image 门禁；之后用严格 allowlist 的 Node TypeScript runner 执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
+下一会话可以问：“请继续 Phase 6.9.5 V18：V10 是唯一语义质量 authority，V11--V17 均为不可重跑历史。V18 已用独立 roots/confirmation/ledger 建立，保留 repository-root CWD、bridge、allowlist、receipt/recovery 边界，只剥离一个 Bun 首位 separator。先跑最终静态与 Docker image default-off 门禁；之后在明确授权下执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
 
 ## 常用命令
 

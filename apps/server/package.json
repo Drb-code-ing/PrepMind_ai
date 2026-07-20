@@ -42,6 +42,8 @@
     "recover:review-planner:v16:product": "node scripts/review-planner-v16-node-runner.cjs review-planner-v16-product-acceptance-recovery.ts",
     "accept:review-planner:v17:product": "node scripts/review-planner-v17-node-runner.cjs review-planner-v17-product-acceptance.ts",
     "recover:review-planner:v17:product": "node scripts/review-planner-v17-node-runner.cjs review-planner-v17-product-acceptance-recovery.ts",
+    "accept:review-planner:v18:product": "node scripts/review-planner-v18-node-runner.cjs review-planner-v18-product-acceptance.ts",
+    "recover:review-planner:v18:product": "node scripts/review-planner-v18-node-runner.cjs review-planner-v18-product-acceptance-recovery.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:integration:audit-export-delay": "OPERATOR_AUDIT_EXPORT_DELAY_INTEGRATION=true jest operator-audit-export-delay.integration --runInBand",
