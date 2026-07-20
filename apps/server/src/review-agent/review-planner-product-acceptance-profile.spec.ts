@@ -4,11 +4,42 @@ import {
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V14_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   parseReviewPlannerProductAcceptanceArguments,
 } from './review-planner-product-acceptance-profile';
 
 describe('Review Planner product-acceptance profiles', () => {
+  it('keeps V14 roots and confirmation separate from the interrupted V13 reservation', () => {
+    const profile = REVIEW_PLANNER_V14_PRODUCT_ACCEPTANCE_PROFILE;
+
+    expect(profile.lineage).toBe('v14');
+    expect(profile.productConfirmation).toBe(
+      '--confirm-v14-review-planner-product-acceptance',
+    );
+    expect(profile.recoveryConfirmation).toBe(
+      '--confirm-v14-review-planner-product-acceptance-recovery-only',
+    );
+    expect(profile.publicLedgerPath('branch')).toBe(
+      'docs/acceptance/evidence/phase-6-9-5-v14-product-acceptance/branch',
+    );
+    expect(profile.recoveryPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v14-product-acceptance/branch',
+    );
+    expect(profile.executionManifestPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v14-product-acceptance-execution/branch',
+    );
+    expect(profile.browserProfilePath('branch')).toBe(
+      '.tmp/phase-6-9-5-v14-product-acceptance/branch/profile-v14',
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+    expect(profile.recoveryPath('branch')).not.toBe(
+      REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
+    );
+  });
+
   it('keeps V13 confirmations, schemas, and every runtime root independent from recovered V12', () => {
     const profile = REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE;
 

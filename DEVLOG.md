@@ -1,4 +1,5 @@
 # PrepMind AI 开发日志
+> 2026-07-20 — 当前更正（二）：V13 唯一 branch product 在只写入 reservation 后被 Bun 1.3.14 segmentation fault 中断；未产生 execution manifest、checkpoint、failure terminal、Docker/API/browser/provider 或合成资源，且 default-off 已复验，因此 V13 不可重试也不满足 recovery preflight。V14 已使用新 root 建立独立 lineage，并用 native sentinel 证明不写 V11/V12/V13。V14 的唯一 host 命令将由 Bun 同目录构建 CommonJS bundle、Node 执行，以绕开已观察的 Bun host-process crash；详细边界见 `docs/acceptance/phase-6-9-5-review-planner-v13-closure-v14-plan.md`。
 
 > 2026-07-20 — 当前更正：V12 已消费唯一 branch product，因 `review_api_trace_canonicalize` 的 Trace 总耗时/候选步骤耗时错误关联而安全终止，随后已完成唯一 recovery；V12 永久封存为 `recovered`，不得重跑或改写证据。根因已由生产 DTO 回归测试修复，V13 已建立完全独立的 confirmation、ledger/recovery/execution/browser namespace，并已证明不写 V11/V12 根。V13 尚未运行 Docker、浏览器、API 或 provider，两个业务 gate 继续为 `false`；下一步是在最终静态与镜像门禁后执行唯一 V13 branch product。详见 `docs/acceptance/phase-6-9-5-review-planner-v12-closure-v13-plan.md` 与 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v13-product-lineage-design.md`。本条替代下方 V12 离线 checkpoint 的“尚未执行”当前态描述，保留其作为执行前历史记录。
 
@@ -40,7 +41,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V12 已 `operation_failed -> recovered` 封存，V13 已离线就绪，待唯一 branch product 验收 |
+| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V12 recovered、V13 interrupted reservation 均封存，V14 已离线就绪，待唯一 Node branch product 验收 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

@@ -2,7 +2,7 @@
 
 PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
-Phase 6.9.5 的 V12 已消费唯一 branch product，并在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`；其唯一 standalone recovery 已完成，V12 现为不可重试、不可改写的 `recovered` 历史。V10 controlled-Live 仍是唯一语义质量权威。根因已由真实 Trace DTO 回归测试修复，新的 V13 product-acceptance lineage 已拥有独立 confirmation、schema、public/recovery/execution/browser root、owner lock、ledger、recovery、host 与 CLI；V13 native ledger 明确证明不写 V11/V12 根。V13 两条业务 gate 继续默认关闭，尚未执行 Docker、浏览器或真实模型；用户已经授权继续。只可执行唯一 V13 branch product；失败即停止，只有 recovery preflight 明确允许时才可执行独立的一次 recovery，终态为 `recovered`。只有 V13 branch `passed` 才可合并 main、执行 main replay 并推送。
+Phase 6.9.5 的 V12 已在 `review_api_trace_canonicalize` 因 Trace 总耗时与候选步骤耗时错误关联而 `operation_failed`，其唯一 recovery 已完成，V12 为不可重试、不可改写的 `recovered` 历史。根因已由真实 Trace DTO 回归测试修复。V13 唯一 branch product 随后被 Bun 1.3.14 segmentation fault 中断：只留下 reservation/owner-lock，没有 execution manifest、checkpoint、failure terminal、Docker/API/browser/provider 或合成资源，故不满足 recovery preflight，不能重试或恢复。V10 controlled-Live 仍是唯一语义质量 authority。新的 V14 product-acceptance lineage 已拥有独立 confirmation、schema、public/recovery/execution/browser root、owner lock、ledger、recovery、host 与 CLI；V14 native ledger 明确证明不写 V11/V12/V13 根。V14 两条业务 gate 继续默认关闭，尚未执行 Docker、浏览器或真实模型；用户已经授权继续。唯一 V14 branch product 先由 Bun 在同目录构建 CommonJS bundle，再由 Node 执行，以规避已观察到的 Bun host-process crash；失败即停止，只有 recovery preflight 明确允许时才可执行独立的一次 recovery。只有 V14 branch `passed` 才可合并 main、执行 main replay 并推送。
 
 ## 项目快照
 
@@ -48,7 +48,7 @@ Phase 6.9.5 的 V12 已消费唯一 branch product，并在 `review_api_trace_ca
 | Phase 6.9.4.2 | 已完成 | Router / Verifier Mock candidate、零调用安全门、strict schema、不可变预算与安全降级             |
 | Phase 6.9.4.3 | 验收未完成 | JSON-mode 完整 Live 已完成；28/28、72/72 通过但 Router P95 延迟失败，当时结论为 terminal deterministic fallback |
 | Phase 6.9.4.4 | 已完成 | Router/Verifier 混合生产接入；Task 10 已合并 main 并完成静态、Docker、真实模型、可见浏览器、Trace 价格与精确清理复验 |
-| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 均为不可重跑的 recovered 历史；V13 已离线就绪，gate 默认关闭，待唯一 branch product |
+| Phase 6.9.5 | 验收未完成 | V10 是唯一语义质量 authority；V11/V12 recovered、V13 interrupted reservation 均不可重跑；V14 已离线就绪，gate 默认关闭，待唯一 Node branch product |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -155,11 +155,11 @@ V9 product authority 只接受 `finalized / complete / closed / passed`、`provi
 
 离线证据为：V9 focused `136/136`；Server `1381 passed / 30 skipped`；Review E2E `3/3`；Web `409/409`；AI `190/190`；Agent `406/406`；shared types typecheck exit 0；Review/Planner Windows native 按各自正确 cwd 合计 `133/133`（V5/V6 的 cwd 约束属于命令入口契约，不是代码失败）；product acceptance `131/131`；lint/build/Compose/diff 均 exit 0；contract/security 复审 PASS 且无未关闭 Critical/Important。这些只证明 V9 离线工程边界，不是 Live、provider quality、Docker 产品验收或 Phase 6.9.5 完成证据。
 
-2026-07-20 的 V12 已消费唯一 branch product：API observation 与一条 Trace 均已出现，但 acceptance adapter 将 aggregate orchestration duration 与 candidate-step duration 做严格相等比较，安全终止于 `review_api_trace_canonicalize`。V12 recovery 随后一次成功并封存为 `recovered`；不得重跑、重置、删除或改写其证据。根因不是 pricing 或模型语义，而是 Trace DTO 投影；现已用 `candidate=123ms / aggregate=130ms` 的 production DTO regression 修复。新的 V13 不读取或写入 V12 roots，独立拥有 profile、ledger、recovery、execution、browser、host、CLI 和 diagnostics；native sentinel 同时证明 V13 不改写 V11/V12 roots。V13 Docker/浏览器/API/provider 尚未执行，两个业务 gate 继续 `false`。
+2026-07-20 的 V12 已消费唯一 branch product：API observation 与一条 Trace 均已出现，但 acceptance adapter 将 aggregate orchestration duration 与 candidate-step duration 做严格相等比较，安全终止于 `review_api_trace_canonicalize`。V12 recovery 随后一次成功并封存为 `recovered`；不得重跑、重置、删除或改写其证据。根因不是 pricing 或模型语义，而是 Trace DTO 投影；已用 `candidate=123ms / aggregate=130ms` 的 production DTO regression 修复。V13 的唯一 command 随后被 Bun 1.3.14 segmentation fault 在 reservation 后中断；无 execution manifest/checkpoint/failure terminal，默认 server 已验证回到 mock/default-off，V13 不可重试且不满足 recovery preflight。V14 不读取或写入 V11/V12/V13 roots，拥有独立 profile、ledger、recovery、execution、browser、host、CLI 和 diagnostics；native sentinel 同时证明 prior roots 不变。V14 Docker/浏览器/API/provider 尚未执行，两个业务 gate 继续 `false`。
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“请继续 Phase 6.9.5 V13：V10 是唯一语义质量 authority，V11/V12 都是不可重跑的 recovered 历史。Trace duration correlation 已修复，V13 拥有独立 roots 且 native sentinel 证明不会改写 V11/V12。先跑最终静态与 Docker image 门禁；之后执行唯一 V13 branch product，并保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
+下一会话可以问：“请继续 Phase 6.9.5 V14：V10 是唯一语义质量 authority，V11/V12 都是 recovered 历史，V13 是 Bun crash 后的不可重试 reservation 且无 recovery terminal。Trace duration correlation 已修复，V14 native sentinel 证明不会改写 V11/V12/V13。先跑最终静态与 Docker image 门禁；之后在同目录构建 V14 CJS bundle 并用 Node 执行唯一 branch product，保留可见浏览器。只有 branch `passed` 才能 main replay、合并和推送。”
 
 ## 常用命令
 
