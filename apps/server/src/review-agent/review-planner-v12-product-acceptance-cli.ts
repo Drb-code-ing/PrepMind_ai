@@ -11,20 +11,26 @@ import {
 
 type V12CliKind = 'product' | 'recovery';
 
-export type ReviewPlannerV12ProductAcceptanceCliSummary = Readonly<{
-  stage: 'preflight';
-  status: 'blocked';
-  code: 'default_off';
-}>;
+export type ReviewPlannerV12ProductAcceptanceCliSummary =
+  | Readonly<{
+      stage: 'preflight' | 'owner';
+      status: 'blocked';
+      code: 'default_off' | 'owner_active';
+    }>
+  | Readonly<{
+      stage: 'complete';
+      status: 'passed';
+      environment: ReviewPlannerProductAcceptanceEnvironment;
+      requestCount: 4;
+    }>
+  | Readonly<{
+      stage: 'operation';
+      status: 'failed';
+      code: 'operation_failed';
+    }>;
 
-export interface ReviewPlannerV12ProductAcceptanceCliPorts extends Partial<
-  Omit<ReviewPlannerV12ProductAcceptanceCompositionPorts, 'preflight'>
-> {
-  preflight(input: {
-    environment: ReviewPlannerProductAcceptanceEnvironment;
-    repoRoot: string;
-  }): Promise<Readonly<{ status: 'blocked' }>>;
-}
+export type ReviewPlannerV12ProductAcceptanceCliPorts =
+  ReviewPlannerV12ProductAcceptanceCompositionPorts;
 
 export function parseReviewPlannerV12ProductAcceptanceArguments(
   argv: readonly string[],
@@ -47,12 +53,12 @@ export async function runReviewPlannerV12ProductAcceptanceProductCli(input: {
     'product',
   );
   const defaults = createDefaultReviewPlannerV12ProductAcceptanceComposition();
-  await runReviewPlannerV12ProductAcceptanceComposition({
+  const result = await runReviewPlannerV12ProductAcceptanceComposition({
     environment,
     repoRoot: input.repoRoot,
     ports: Object.freeze({ ...defaults.ports, ...input.ports }),
   });
-  return defaultOffSummary();
+  return toProductSummary(result);
 }
 
 export async function runReviewPlannerV12ProductAcceptanceRecoveryCli(input: {
@@ -126,10 +132,37 @@ async function runReviewPlannerV12ProductAcceptanceCli(
 }
 
 function createDefaultReviewPlannerV12ProductAcceptancePorts(): ReviewPlannerV12ProductAcceptanceCliPorts {
-  return Object.freeze({
-    preflight: () =>
-      Promise.resolve(Object.freeze({ status: 'blocked' as const })),
-  });
+  return createDefaultReviewPlannerV12ProductAcceptanceComposition().ports;
+}
+
+function toProductSummary(
+  result: Awaited<
+    ReturnType<typeof runReviewPlannerV12ProductAcceptanceComposition>
+  >,
+): ReviewPlannerV12ProductAcceptanceCliSummary {
+  if (result.status === 'passed') {
+    return Object.freeze({
+      stage: 'complete' as const,
+      status: 'passed' as const,
+      environment: result.environment,
+      requestCount: 4 as const,
+    });
+  }
+  if (result.status === 'failed') {
+    return Object.freeze({
+      stage: 'operation' as const,
+      status: 'failed' as const,
+      code: 'operation_failed' as const,
+    });
+  }
+  if (result.stage === 'owner') {
+    return Object.freeze({
+      stage: 'owner' as const,
+      status: 'blocked' as const,
+      code: 'owner_active' as const,
+    });
+  }
+  return defaultOffSummary();
 }
 
 function defaultOffSummary(): ReviewPlannerV12ProductAcceptanceCliSummary {
