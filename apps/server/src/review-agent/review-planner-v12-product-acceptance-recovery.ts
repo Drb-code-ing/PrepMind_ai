@@ -21,6 +21,14 @@ const ATTEMPT_BINDING_LEAF = 'attempt-binding.json';
 const CHECKPOINT_LEAF = /^checkpoint-(\d{3})-([a-z_]+)\.json$/;
 const PUBLIC_RESERVATION_LEAF = '.acceptance-reserved';
 const PUBLIC_MANIFEST_LEAF = 'manifest.json';
+const V12_PUBLIC_SLOT_LEAF = /^slot-(review|planner)-(api|browser)\.json$/;
+const V12_PUBLIC_DEFAULT_OFF_LEAF = /^default-off-(review|planner)\.json$/;
+const V12_PUBLIC_RECEIPT_LEAVES = new Set([
+  'owner-isolation.json',
+  'cleanup.json',
+  'aggregate.json',
+  'success.json',
+]);
 
 export const REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_CHECKPOINTS = [
   'review_api_activate',
@@ -493,7 +501,11 @@ async function readPublicAttemptHash(input: {
       !leaves.includes(PUBLIC_RESERVATION_LEAF) ||
       leaves.some(
         (leaf) =>
-          leaf !== PUBLIC_RESERVATION_LEAF && leaf !== PUBLIC_MANIFEST_LEAF,
+          leaf !== PUBLIC_RESERVATION_LEAF &&
+          leaf !== PUBLIC_MANIFEST_LEAF &&
+          !V12_PUBLIC_SLOT_LEAF.test(leaf) &&
+          !V12_PUBLIC_DEFAULT_OFF_LEAF.test(leaf) &&
+          !V12_PUBLIC_RECEIPT_LEAVES.has(leaf),
       )
     ) {
       throw new Error();

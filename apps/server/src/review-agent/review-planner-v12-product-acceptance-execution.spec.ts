@@ -52,18 +52,26 @@ describe('Review Planner V12 execution bridge', () => {
     );
   });
 
-  it('converts exactly four runner slots to V12-safe events without V11 records', async () => {
-    const events: Array<Record<string, unknown>> = [];
+  it('durably commits exactly four V12 runner slots without V11 records', async () => {
+    const ledger = {
+      attemptSha256: () => attemptSha256,
+      claimSlot: jest.fn(),
+      recordSlotResult: jest.fn(),
+      recordDefaultOff: jest.fn(),
+      recordOwnerIsolation: jest.fn(),
+      recordCleanup: jest.fn(),
+      finalizeSuccess: jest.fn(() => Promise.resolve()),
+    };
     const adapter = createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter({
       environment: 'branch',
-      ledger: { attemptSha256: () => attemptSha256 },
+      ledger,
       manifest: {
         schemaVersion:
           'phase-6.9.5-v12-product-acceptance-manifest-v1' as const,
         environment: 'branch' as const,
         attemptSha256,
       },
-      record: (event) => events.push(event),
+      record: jest.fn(),
     });
 
     for (const slot of [
@@ -110,16 +118,19 @@ describe('Review Planner V12 execution bridge', () => {
     });
     await adapter.finalizeSuccess();
 
-    expect(events.filter((event) => event.kind === 'slot')).toHaveLength(4);
-    expect(events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
-        }),
-      ]),
+    expect(ledger.claimSlot).toHaveBeenCalledTimes(4);
+    expect(ledger.recordSlotResult).toHaveBeenCalledTimes(4);
+    expect(ledger.recordDefaultOff).toHaveBeenCalledTimes(2);
+    expect(ledger.recordOwnerIsolation).toHaveBeenCalledTimes(1);
+    expect(ledger.recordCleanup).toHaveBeenCalledTimes(1);
+    expect(ledger.finalizeSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.acceptance,
+        requests: 4,
+      }),
     );
-    expect(JSON.stringify(events)).not.toContain('v11');
+    expect(JSON.stringify(ledger)).not.toContain('v11');
   });
 
   it('stops at V12 preflight before owner, ledger, runner, or external work', async () => {

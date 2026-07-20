@@ -1,4 +1,12 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -167,6 +175,124 @@ describeWindows('Review/Planner V12 durable product acceptance ledger', () => {
       }),
     ).resolves.toEqual({ status: 'evidence_io' });
     expect(state.attemptSha256).toHaveLength(64);
+  });
+
+  it('seals exactly four V12 slots and leaves V11 root bytes untouched', async () => {
+    const v11Root = join(root, ...v11PublicSegments('branch'));
+    await mkdir(v11Root, { recursive: true });
+    await writeFile(join(v11Root, 'v11-immutable.txt'), 'immutable-v11\n');
+    const before = createHash('sha256')
+      .update(await readFile(join(v11Root, 'v11-immutable.txt')))
+      .digest('hex');
+    const v11RecoveryRoot = join(root, ...v11RecoverySegments('branch'));
+    await mkdir(v11RecoveryRoot, { recursive: true });
+    await writeFile(
+      join(v11RecoveryRoot, 'v11-recovery-immutable.txt'),
+      'v11-recovery\n',
+    );
+    const recoveryBefore = createHash('sha256')
+      .update(
+        await readFile(join(v11RecoveryRoot, 'v11-recovery-immutable.txt')),
+      )
+      .digest('hex');
+
+    const acquired = await acquireReviewPlannerV12ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'product',
+    });
+    expect(acquired.status).toBe('acquired');
+    if (acquired.status !== 'acquired') throw new Error('owner unavailable');
+    const ledger = await reserveReviewPlannerV12ProductAcceptanceLedger({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquired.owner,
+    });
+    const attemptSha256 = ledger.attemptSha256();
+    try {
+      await ledger.writeExecutionManifest({
+        schemaVersion:
+          'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+        environment: 'branch',
+        attemptSha256,
+      });
+      ledger.writeManifest({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-manifest-v1',
+        environment: 'branch',
+        attemptSha256,
+      });
+      for (const [slot, traceSha256] of [
+        ['review-api', 'a'.repeat(64)],
+        ['review-browser', 'b'.repeat(64)],
+        ['planner-api', 'c'.repeat(64)],
+        ['planner-browser', 'd'.repeat(64)],
+      ] as const) {
+        ledger.claimSlot(slot);
+        ledger.recordSlotResult({
+          schemaVersion: 'phase-6.9.5-v12-product-acceptance-slot-result-v1',
+          slot,
+          traceSha256,
+        });
+      }
+      for (const component of ['review', 'planner'] as const) {
+        ledger.recordDefaultOff({
+          schemaVersion: 'phase-6.9.5-v12-product-acceptance-default-off-v1',
+          component,
+          providerInvocations: 0,
+          gates: {
+            liveCallsEnabled: false,
+            reviewAgentModelEnabled: false,
+            plannerAgentModelEnabled: false,
+          },
+        });
+      }
+      ledger.recordOwnerIsolation({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-owner-isolation-v1',
+        crossAccountInvisible: true,
+        businessWrites: 0,
+        traceSha256: [
+          'a'.repeat(64),
+          'b'.repeat(64),
+          'c'.repeat(64),
+          'd'.repeat(64),
+        ],
+      });
+      ledger.recordCleanup({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-cleanup-v1',
+        syntheticAccounts: 0,
+        fixtures: 0,
+        traces: 0,
+        browserProfiles: 0,
+        capabilities: 0,
+      });
+      await ledger.finalizeSuccess({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-aggregate-v1',
+        environment: 'branch',
+        attemptSha256,
+        requests: 4,
+        durationMs: 4_000,
+      });
+    } finally {
+      ledger.close();
+      acquired.owner.close();
+    }
+
+    await expect(
+      readReviewPlannerV12ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'complete' });
+    const after = createHash('sha256')
+      .update(await readFile(join(v11Root, 'v11-immutable.txt')))
+      .digest('hex');
+    expect(after).toBe(before);
+    const recoveryAfter = createHash('sha256')
+      .update(
+        await readFile(join(v11RecoveryRoot, 'v11-recovery-immutable.txt')),
+      )
+      .digest('hex');
+    expect(recoveryAfter).toBe(recoveryBefore);
   });
 });
 

@@ -26,9 +26,17 @@ export type ReviewPlannerV12ProductAcceptanceSafeEvent = Readonly<{
 
 export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input: {
   environment: 'branch' | 'main';
-  ledger: Pick<ReviewPlannerV12ProductAcceptanceLedger, 'attemptSha256'>;
+  ledger: Pick<
+    ReviewPlannerV12ProductAcceptanceLedger,
+    | 'attemptSha256'
+    | 'claimSlot'
+    | 'recordSlotResult'
+    | 'recordDefaultOff'
+    | 'recordOwnerIsolation'
+    | 'recordCleanup'
+    | 'finalizeSuccess'
+  >;
   manifest: ReviewPlannerV12ProductAcceptanceManifest;
-  record(event: ReviewPlannerV12ProductAcceptanceSafeEvent): void;
 }): ReviewPlannerV8ProductAcceptanceRunnerLedgerPort {
   if (
     input.manifest.environment !== input.environment ||
@@ -40,6 +48,7 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
   const slots = new Set<(typeof SLOTS)[number]>();
   const screenshots = new Map<'review' | 'planner', string>();
   const defaultOff = new Set<'review' | 'planner'>();
+  const durations = new Map<(typeof SLOTS)[number], number>();
   let cleanup = false;
   let finalized = false;
 
@@ -50,6 +59,7 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
       slots.add(slot);
+      input.ledger.claimSlot(slot);
     },
     recordSlotResult(value) {
       const record = value as Record<string, unknown>;
@@ -68,15 +78,22 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
       if (slot.endsWith('browser') && !screenshots.has(component)) {
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
-      input.record(
-        Object.freeze({
-          kind: 'slot' as const,
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.slotResult,
-          slot: slot as (typeof SLOTS)[number],
-          traceSha256: trace,
-        }),
-      );
+      const durationMs = record.durationMs;
+      if (
+        typeof durationMs !== 'number' ||
+        !Number.isInteger(durationMs) ||
+        durationMs <= 0 ||
+        durationMs > 60_000
+      ) {
+        throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
+      }
+      input.ledger.recordSlotResult({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.slotResult,
+        slot: slot as (typeof SLOTS)[number],
+        traceSha256: trace,
+      });
+      durations.set(slot as (typeof SLOTS)[number], durationMs);
     },
     recordDefaultOff(value) {
       const component = (value as { component?: unknown }).component;
@@ -87,14 +104,17 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
       defaultOff.add(component);
-      input.record(
-        Object.freeze({
-          kind: 'default_off' as const,
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.defaultOff,
-          component,
-        }),
-      );
+      input.ledger.recordDefaultOff({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.defaultOff,
+        component,
+        providerInvocations: 0,
+        gates: {
+          liveCallsEnabled: false,
+          reviewAgentModelEnabled: false,
+          plannerAgentModelEnabled: false,
+        },
+      });
     },
     recordScreenshot(component, contents) {
       if (
@@ -114,6 +134,7 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
       const record = value as {
         crossAccountInvisible?: unknown;
         businessWrites?: unknown;
+        traceIdSha256?: unknown;
       };
       if (
         record.crossAccountInvisible !== true ||
@@ -121,14 +142,21 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
       ) {
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
-      input.record(
-        Object.freeze({
-          kind: 'owner_isolation' as const,
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas
-              .ownerIsolation,
-        }),
-      );
+      const traces = record.traceIdSha256;
+      if (
+        !Array.isArray(traces) ||
+        traces.length !== 4 ||
+        traces.some((trace) => typeof trace !== 'string' || !SHA256.test(trace))
+      ) {
+        throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
+      }
+      input.ledger.recordOwnerIsolation({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.ownerIsolation,
+        crossAccountInvisible: true,
+        businessWrites: 0,
+        traceSha256: traces,
+      });
     },
     recordCleanup(value) {
       const record = value as Record<string, unknown>;
@@ -142,15 +170,17 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
       cleanup = true;
-      input.record(
-        Object.freeze({
-          kind: 'cleanup' as const,
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
-        }),
-      );
+      input.ledger.recordCleanup({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.cleanup,
+        syntheticAccounts: 0,
+        fixtures: 0,
+        traces: 0,
+        browserProfiles: 0,
+        capabilities: 0,
+      });
     },
-    finalizeSuccess() {
+    async finalizeSuccess() {
       if (
         finalized ||
         !cleanup ||
@@ -160,14 +190,20 @@ export function createReviewPlannerV12ProductAcceptanceRunnerLedgerAdapter(input
       ) {
         throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
       }
-      input.record(
-        Object.freeze({
-          kind: 'success' as const,
-          schemaVersion:
-            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.success,
-          attemptSha256: input.manifest.attemptSha256,
-        }),
-      );
+      if (durations.size !== SLOTS.length) {
+        throw new Error('V12_PRODUCT_ACCEPTANCE_EXECUTION_INVALID');
+      }
+      await input.ledger.finalizeSuccess({
+        schemaVersion:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.acceptance,
+        environment: input.environment,
+        attemptSha256: input.manifest.attemptSha256,
+        requests: 4,
+        durationMs: [...durations.values()].reduce(
+          (total, durationMs) => total + durationMs,
+          0,
+        ),
+      });
       finalized = true;
       return Promise.resolve();
     },

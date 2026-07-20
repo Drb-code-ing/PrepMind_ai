@@ -130,7 +130,6 @@ export async function runReviewPlannerV12ProductAcceptanceComposition(input: {
         environment: input.environment,
         ledger,
         manifest,
-        record: input.ports.record,
       });
     await input.ports.runRunner({
       environment: input.environment,
