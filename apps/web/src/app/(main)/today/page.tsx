@@ -590,6 +590,7 @@ export default function TodayPage() {
                   key={task.id}
                   ref={index === 0 ? firstPendingReviewTaskRef : undefined}
                   tabIndex={index === 0 ? -1 : undefined}
+                  className={index === 0 ? 'scroll-mt-24' : undefined}
                 >
                   <ReviewTaskCard
                     task={task}
