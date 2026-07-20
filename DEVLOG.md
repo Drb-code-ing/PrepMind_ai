@@ -1,4 +1,6 @@
 # PrepMind AI 开发日志
+> 2026-07-20 — V17 离线收口：V16 唯一 branch command 在 root-absent preflight 安全停止，未创建 owner、ledger、Docker mutation、浏览器、API、provider 或合成资源，故不得重跑或 recovery。根因不是 default-off：V16 Node runner 从 `apps/server` CWD 启动，而 V10 immutable authority 受设计保护使用默认 `process.cwd()`，从错误目录读不到 evidence。V17 建立全新 namespace，并在加载两个精确 allowlisted entry 前切换并复核仓库根；既有 source roots、两个 bridge、resolver boundary 不放宽。它继承 V16 的受限 URL/model receipt 与 recovery boundary，V11--V16 sentinel 不变。此时 V17 gate=false，尚未运行 product/recovery、Docker、浏览器、API 或 provider。详见 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v17-product-lineage-design.md` 与 `docs/acceptance/phase-6-9-5-review-planner-v16-closure-v17-plan.md`。
+
 > 2026-07-20 — V16 离线收口：V15 的唯一 branch command 在 `default_off` preflight 安全停止，未创建 owner、ledger、Docker mutation、浏览器、API、provider 或合成资源，三类 V15 root 均为空，故不得重跑或 recovery。根因是普通 Compose 的安全官方 URL `https://api.deepseek.com/v1` 与 V15 receipt 固定根 URL 不匹配。V16 建立全新 confirmation、Node runner、ledger/recovery/execution/browser namespace，并只允许官方根 URL或 `/v1`、Flash/Pro；mock、live、两 gate、credential、capability、max-request 与重复受控键仍严格 fail-closed。default-off receipt 持久重读 `baseUrl`/`model`，V16 recovery 显式注入自己的 validator，V11--V15 sentinel 保持不变。此时尚未运行 V16 product/recovery、Docker、浏览器、API 或 provider，两个 gate 继续 false。详见 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v16-product-lineage-design.md` 与 `docs/acceptance/phase-6-9-5-review-planner-v15-closure-v16-plan.md`。
 
 > 2026-07-20 — V15 离线收口：V14 已在 root-absent `default_off` preflight 封存，绝不重跑。其根因是普通 Compose Chat 安全地使用 `deepseek-v4-flash`，而旧 receipt 错将 `deepseek-v4-pro` 固定为关闭态前提。修复只允许 Flash/Pro 两个明确模型值；`mock`、live=false、两 gate=false、空 credential/capability、maxRequests=0 仍逐项严格校验，受控 Docker 环境键重复也 fail-closed。V15 以独立 confirmation、Node runner、ledger/recovery/execution/browser roots 与 V11--V14 native sentinel 建立；reservation 后、diagnostics 前发生异常时，仅在可证明零资源、零 checkpoint 的情况下回滚，否则保持 `failed` fail-closed。此时尚未运行 V15 product/recovery、Docker、浏览器、API 或 provider，两个 gate 仍为 false。详细边界见 `docs/superpowers/specs/2026-07-20-phase-6-9-5-v15-product-lineage-design.md` 与 `docs/acceptance/phase-6-9-5-review-planner-v14-closure-v15-plan.md`。
@@ -29,7 +31,7 @@
 
 更新时间：2026-07-20
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11/V12 为 recovered 历史，V13 的 Bun interruption reservation、V14 的 model receipt mismatch 与 V15 的 base-URL receipt mismatch 都 root-absent、不可重跑或恢复。V16 已建立独立 lineage：默认关闭精确允许官方根 URL或 `/v1`、Flash/Pro，其他受控字段严格关闭，receipt 重读 baseUrl/model，recovery 注入 V16 validator；尚未运行 V16 product/recovery CLI、Docker、浏览器、API 或 provider。下一步是在 final static/Docker default-off 复验后执行唯一 V16 branch product；只有 `passed` 才能 main replay、合并和 push。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11/V12 为 recovered 历史，V13 的 Bun interruption reservation、V14/V15 receipt mismatch 与 V16 Node CWD authority mismatch 都 root-absent、不可重跑或恢复。V17 已建立独立 lineage：Node entry 先切换仓库根再读取 V10 authority，仍限制原 entry/source/bridge/resolver；它保留 root-or-v1 URL、Flash/Pro、receipt/recovery 边界，尚未运行 V17 product/recovery CLI、Docker、浏览器、API 或 provider。下一步是在 final static/Docker default-off 复验后执行唯一 V17 branch product；只有 `passed` 才能 main replay、合并和 push。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -47,7 +49,7 @@
 | Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15 均封存，V16 已离线收口，待唯一 Node branch product 验收 |
+| Phase 6.9.5  | 验收未完成 | V10 Live 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15/V16 均封存，V17 已离线收口，待唯一 Node branch product 验收 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

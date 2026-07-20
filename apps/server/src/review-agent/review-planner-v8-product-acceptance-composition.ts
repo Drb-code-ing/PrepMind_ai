@@ -10,11 +10,6 @@ import { chromium } from 'playwright-core';
 
 import { parseReviewPlannerControlledLiveV8CommittedCandidate } from './review-planner-controlled-live-eval-v8-stage-diagnostics.evidence';
 import {
-  REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE,
-  readReviewPlannerControlledLiveV10SemanticQualityEvidence,
-} from './review-planner-controlled-live-eval-v10-semantic-quality.evidence';
-
-import {
   calculateReviewPlannerV8ProductAcceptanceCost,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PRICE_PROFILE,
 } from './review-planner-v8-product-acceptance-evidence';
@@ -74,6 +69,17 @@ import {
 } from './review-planner-v11-product-acceptance-execution';
 
 const execFileAsync = promisify(execFile);
+
+const REVIEW_PLANNER_V10_PAIRED_EVIDENCE_DIRECTORY =
+  'docs/acceptance/evidence/phase-6-9-5-controlled-live-v10-semantic-quality';
+const REVIEW_PLANNER_V10_EVIDENCE_READER_MODULE =
+  './review-planner-controlled-live-eval-v10-semantic-quality.evidence';
+
+type ReviewPlannerV10EvidenceReaderModule = Readonly<{
+  readReviewPlannerControlledLiveV10SemanticQualityEvidence(
+    repoRoot: string,
+  ): Promise<Record<string, unknown>>;
+}>;
 
 export const REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_CONFIRMATION =
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE.productConfirmation;
@@ -238,6 +244,7 @@ export async function runDefaultReviewPlannerProductAcceptanceHostPreflight(
   options: Readonly<{
     branchAcceptanceComplete(repoRoot: string): Promise<boolean>;
     assertDefaultOffEnvironment?(entries: readonly string[]): void;
+    pairedEvidenceAuthority?: PairedEvidenceAuthority;
   }>,
 ): Promise<ProductPreflight> {
   try {
@@ -252,7 +259,8 @@ export async function runDefaultReviewPlannerProductAcceptanceHostPreflight(
     }
     const repository = await readReviewPlannerV8RepositorySnapshot(
       repoRoot,
-      createReviewPlannerV10PairedEvidenceAuthority(),
+      options.pairedEvidenceAuthority ??
+        createReviewPlannerV10PairedEvidenceAuthority(),
     );
     if (
       repository === null ||
@@ -931,7 +939,7 @@ export function createReviewPlannerV10PairedEvidenceAuthority(
 ): PairedEvidenceAuthority {
   const readEvidence =
     dependencies.readEvidence ??
-    readReviewPlannerControlledLiveV10SemanticQualityEvidence;
+    readDefaultReviewPlannerV10SemanticQualityEvidence;
   return Object.freeze({
     profile: 'v10' as const,
     async readCommittedSuccess(repoRoot: string) {
@@ -964,6 +972,17 @@ export function createReviewPlannerV10PairedEvidenceAuthority(
       }
     },
   });
+}
+
+async function readDefaultReviewPlannerV10SemanticQualityEvidence(
+  repoRoot: string,
+): Promise<Record<string, unknown>> {
+  const evidence = (await import(
+    REVIEW_PLANNER_V10_EVIDENCE_READER_MODULE
+  )) as ReviewPlannerV10EvidenceReaderModule;
+  return evidence.readReviewPlannerControlledLiveV10SemanticQualityEvidence(
+    repoRoot,
+  );
 }
 
 /** @deprecated Kept only for injected legacy test fixtures; it still validates V10 evidence. */
@@ -4282,8 +4301,7 @@ async function readReviewPlannerV8RepositorySnapshot(
   authority: PairedEvidenceAuthority,
   runtimeBoundary?: ReviewPlannerV11DefaultRuntimeBoundary,
 ) {
-  const evidenceDirectory =
-    REVIEW_PLANNER_CONTROLLED_LIVE_V10_SEMANTIC_QUALITY_PROFILE.evidenceDirectory;
+  const evidenceDirectory = REVIEW_PLANNER_V10_PAIRED_EVIDENCE_DIRECTORY;
   const readGitStatus = () =>
     runRuntimeBoundReadOnlyProcess(runtimeBoundary, repoRoot, 'git', [
       'status',
