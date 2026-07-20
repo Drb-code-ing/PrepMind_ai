@@ -5,21 +5,23 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0. Phase 6.9.5 V11 Product-Acceptance
+## 0. Phase 6.9.5 V12 Product-Acceptance（离线 checkpoint）
 
-离线 bridge 已完成，不等于 product 验收成功。V10 controlled-Live 是唯一语义质量 authority，V10 product terminal 是 recovery-only；Review/Planner gate 默认关闭。独立复审和静态 gates 通过后，branch 仅执行一次：
+V12 已完成隔离 lineage 的离线 checkpoint，不等于 product 验收成功。V10 controlled-Live 仍是唯一语义质量 authority；V11 已作为 `operation_failed / recovery-only` 历史封存，不能重跑、复用或进入 main。V12 的 public/recovery/execution/browser 根目录在 checkpoint 时均为空，Review/Planner gate 默认关闭。本 checkpoint 没有运行 Docker、浏览器、API、provider、product CLI 或 recovery CLI。
 
-```powershell
-bun --filter @repo/server accept:review-planner:v11:product -- --confirm-v11-review-planner-product-acceptance --environment=branch
-```
-
-`operation_failed_recovered` 表示 product 已完成一次 exact automatic recovery；此时必须停止，不能再运行 standalone recovery 或重试 product。只有 product 输出 `recovery_required`，或 crash 后 V11 recovery preflight 明确授权时，才运行一次 standalone recovery：
+只有相互独立的 contract review 与 operations review 均已完成、均无未关闭 P0/P1，且取得一次新的单独用户运行授权后，才允许在当前 branch 执行一次 V12 product：
 
 ```powershell
-bun --filter @repo/server recover:review-planner:v11:product -- --confirm-v11-review-planner-product-acceptance-recovery-only --environment=branch
+bun --filter @repo/server accept:review-planner:v12:product -- --confirm-v12-review-planner-product-acceptance --environment=branch
 ```
 
-只有已包含 default-off restoration 与精确 cleanup receipts 的 branch `passed` 结果，才允许合并 main、执行 main replay、更新证据并推送；任何 automatic 或 standalone recovery 后均停止。V11 runtime 前后禁止 `down -v`、prune、volume 清理或 Docker 全量清空。
+`operation_failed_recovered` 表示 product 已完成一次 exact automatic recovery；此时必须停止，不能重试 product。只有 product 输出 `recovery_required`，或 crash 后 V12 recovery preflight 明确授权，并取得另一次单独的用户授权时，才运行一次 standalone recovery：
+
+```powershell
+bun --filter @repo/server recover:review-planner:v12:product -- --confirm-v12-review-planner-product-acceptance-recovery-only --environment=branch
+```
+
+只有已包含 default-off restoration 与精确 cleanup receipts 的 branch `passed` 结果，才允许合并 main、执行 main replay、更新证据并推送；任何 automatic 或 standalone recovery 后均停止。V12 runtime 前后禁止 `down -v`、prune、volume 清理或 Docker 全量清空。完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
 
 ## 1. 先判断本次要验收什么
 

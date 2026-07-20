@@ -1,5 +1,7 @@
 # PrepMind AI 开发日志
 
+> 2026-07-20 — Phase 6.9.5 V12 已完成离线 checkpoint：独立 profile、four-slot durable ledger、attempt binding、最早安全 recovery、V8 adapter 和 host-recovery fake boundary 已就位；V11 public/recovery root 的 native SHA sentinel 保持不变。此 checkpoint 没有执行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；V12 roots 为空，两个 Review/Planner gate 继续为 `false`。V10 仍是唯一语义质量 authority，V11 仍是不可复用的 `operation_failed / recovery-only` 历史。下一步必须先完成两项相互独立的 contract/operations review 且无未关闭 P0/P1，之后还需一次新的单独用户授权才可运行唯一 V12 branch product。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
+
 > 2026-07-20 — V11 branch product 已封存为 `operation_failed / recovery-only`：安全终态停在 `review_api_activate / not_started`，未到 provider 调用。首 checkpoint 前的严格 attempt state 曾被 recovery preflight 误拒；`cfd15b1` 只修复该 recoverability 缺口，随后一次有效 recovery 完成，server 已验证回到 mock/default-off、两个 gate=false、容器无 DeepSeek key。V11 不重跑、不进 main；下一次产品验收必须使用独立 lineage。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v11-product-recovery.md`。
 
 > 2026-07-20 — Phase 6.9.5 V11 execution bridge 已完成离线 checkpoint：V10 controlled-Live 仍是唯一语义质量权威，V10 product terminal 仍为 recovery-only。V11 CLI、私有 manifest、success ledger、默认关闭与精确 recovery selector 已就位；未执行 V11 Docker、浏览器或真实模型，产品 gate 继续为 `false`。
@@ -18,7 +20,7 @@
 
 更新时间：2026-07-20
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11 已执行唯一 branch product 并封存为 `operation_failed / recovery-only`，checkpoint 为 `review_api_activate / not_started`，不含 provider、浏览器或质量成功结论；其恢复已完成，server 已回到 mock/default-off。下一步必须建立独立 lineage，再做一次 branch product；成功后才 main replay、合并和 push。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 的 V1--V10 保持只读历史；V10 的唯一 controlled-Live 仍是唯一语义质量 authority，public reader 为 `complete / passed`：`23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`。V11 已执行唯一 branch product 并封存为 `operation_failed / recovery-only`，checkpoint 为 `review_api_activate / not_started`，不含 provider、浏览器或质量成功结论；其恢复已完成，server 已回到 mock/default-off。V12 已建立新的独立 lineage 并完成离线 checkpoint，默认 gate 继续关闭，根目录为空，尚未运行 product/recovery CLI、Docker、浏览器、API 或 provider。下一步是两项相互独立的 contract/operations review；均无未关闭 P0/P1 且取得一次新的单独用户授权后才可执行唯一 V12 branch product，只有 `passed` 才能 main replay、合并和 push。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |

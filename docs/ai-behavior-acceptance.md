@@ -2,9 +2,11 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.5 V11 Product Boundary
+## Phase 6.9.5 V12 Product Boundary
 
-Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 已执行唯一 branch command，并以 `operation_failed / recovery-only` 封存：strict failure checkpoint 是 `review_api_activate / not_started`，不构成 provider 调用、质量、成本或浏览器成功证据。`cfd15b1` 只修复了首 checkpoint 前合法 attempt state 的 recovery preflight，精确 recovery 已完成并恢复 mock/default-off。V11 不得重跑、复用、main replay、合并或推送；下一次 product 验收必须使用新的隔离 lineage，两个业务 gate 在此之前仍为 `false`。
+Review/Planner 的 V10 controlled-Live 是唯一语义质量 authority；V10 product terminal 是 recovery-only，不能重跑或复用。V11 已执行唯一 branch command，并以 `operation_failed / recovery-only` 封存：strict failure checkpoint 是 `review_api_activate / not_started`，不构成 provider 调用、质量、成本或浏览器成功证据。`cfd15b1` 只修复了首 checkpoint 前合法 attempt state 的 recovery preflight，精确 recovery 已完成并恢复 mock/default-off。V11 不得重跑、复用、main replay、合并或推送。
+
+V12 是新的隔离 product lineage，已完成 profile、durable ledger、attempt binding、recovery selector、V8 four-slot adapter 与 host-recovery fake boundary 的离线 checkpoint。该 checkpoint 没有运行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；V12 public/recovery/execution/browser 根目录为空，`REVIEW_AGENT_MODEL_ENABLED` 与 `PLANNER_AGENT_MODEL_ENABLED` 仍为 `false`。下一次 V12 branch product 只能在两项相互独立的 contract review 与 operations review 均无未关闭 P0/P1，且用户给出新的单独授权后执行一次；任何 `operation_failed_recovered` 或 standalone recovery 均终止该 lineage，不得重试 product。
 
 ## 1. Mock 与 Live 的分工
 
@@ -209,6 +211,8 @@ V8 stage-diagnostics completion contract 与离线实现已完成，唯一 contr
 V9 是在不改写 V1--V8 的前提下建立的独立 gate-diagnostics lineage。唯一 Live 已完成 `23` provider attempts、`22` paired admissions、`26` verified zero-call 和 `48` strict successes；P95 `1396ms`、positive usage `7943/510` 与 CNY `0.026889/1.00` 通过，但 quality `30/48`、semantic `4/22`、critical `2` 使 durable reader 固定为 `finalized / invalid_attempted / closed / quality_gate_failed`。V9 once/evidence 已消费且不可重跑、覆盖或删除，无 success seal。`REVIEW_AGENT_MODEL_ENABLED` / `PLANNER_AGENT_MODEL_ENABLED` 保持缺省关闭，产品仍 deterministic。V9 product authority 只接受 `finalized / complete / closed / passed`、23 provider attempts、22 paired admissions 和合法 evidence SHA，并要求完整 V9 leaf 全部以 ordinary `H` 被 Git 精确跟踪且读取前后 repository snapshot 稳定；当前失败在 ledger、Prisma、Docker、浏览器前阻断，不回退 V8 reader 或 `git show`。完整证据见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`。
 
 V10 是独立的最小修复 lineage，不重跑或改写 V1--V9：生产有效模型输出收窄为 Review `focusIndexes` 与 Planner `blockOrder`，安全扫描仍覆盖完整 snapshot，本地继续重建 facts、策略、FSRS、分钟数、链接和写权限。唯一 Live 已完成：CLI exit `0`，public reader 五次 fresh read 为 `complete / passed`，V10 v3 aggregate 为 `23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232`、CNY `0.018684/1.00`，全部 schema/quality/P95/usage/attempt/admission/cost gates 通过；V1--V9 manifest 仍为 `36` entries / `61a6e4a956784a59a8b8639d4c94d6fd870bce5dd8549a026abf02a0e7cb769d`。V10 evidence/success seal immutable，safe writer/reader 只接受严格 lane aggregate，拒绝 prompt、snapshot、model output、raw error、URL、credential、cookie、stack 与 per-case timing/usage。根 `.env` 未改，V8/V9 eval 与 Review/Planner 产品 gates 继续 default-off；下一步是分支 Docker/headed-browser 验收，不是 Phase completion。完整结果见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
+
+V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch acceptance 的安全运行边界与此前不可复用 lineage 分离。离线证据仅证明 default-off、owner/attempt/recovery contract 和 host boundary 的 fake contract；它不证明真实模型质量、产品 API、Docker 容器、headed browser 或 cleanup 实际执行。完整离线记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
 
 补充约束：`zero-call` 不是报告中的静态计数。每条 zero-call case 必须实际进入相应 candidate 入口，经过安全扫描、资格、预算或 abort gate，并由 runtime call counter 得到 `0` 才能写入 `zeroCallVerified=true`。任何意外 runtime 调用都必须令生产决策成为 `zero_call_boundary_failed`。Live success 还必须有 provider-reported 的正安全整数 input/output usage；缺失、非法或 `0/0` usage 是 `PROVIDER_ERROR / invalid_response`，保留预留预算并降级，不得标作 candidate applied、known pricing 或 zero cost。Review/Planner Trace 只有在成功 Trace 的 usage 可验证且集中价格表完整时才写入估算成本；这仍不是供应商账单。
 
