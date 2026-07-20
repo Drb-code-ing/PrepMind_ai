@@ -6,6 +6,7 @@ import {
   REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V14_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   parseReviewPlannerProductAcceptanceArguments,
 } from './review-planner-product-acceptance-profile';
@@ -68,6 +69,49 @@ describe('Review Planner product-acceptance profiles', () => {
     );
     expect(profile.recoveryPath('branch')).not.toBe(
       REVIEW_PLANNER_V13_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
+    );
+  });
+
+  it('gives V16 its own confirmations, schemas, and every durable root', () => {
+    const profile = REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_PROFILE;
+
+    expect(profile.lineage).toBe('v16');
+    expect(profile.productConfirmation).toBe(
+      '--confirm-v16-review-planner-product-acceptance',
+    );
+    expect(profile.recoveryConfirmation).toBe(
+      '--confirm-v16-review-planner-product-acceptance-recovery-only',
+    );
+    expect(profile.schemas.defaultOff).toBe(
+      'phase-6.9.5-v16-product-acceptance-default-off-v1',
+    );
+    expect(profile.publicLedgerPath('branch')).toBe(
+      'docs/acceptance/evidence/phase-6-9-5-v16-product-acceptance/branch',
+    );
+    expect(profile.recoveryPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v16-product-acceptance/branch',
+    );
+    expect(profile.executionManifestPath('branch')).toBe(
+      '.tmp/phase-6-9-5-v16-product-acceptance-execution/branch',
+    );
+    expect(profile.browserProfilePath('branch')).toBe(
+      '.tmp/phase-6-9-5-v16-product-acceptance/branch/profile-v16',
+    );
+    expect(profile.publicLedgerPath('branch')).not.toBe(
+      REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerPath('branch'),
+    );
+    expect(profile.recoveryPath('branch')).not.toBe(
+      REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE.recoveryPath('branch'),
+    );
+    expect(profile.executionManifestPath('branch')).not.toBe(
+      REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE.executionManifestPath(
+        'branch',
+      ),
+    );
+    expect(profile.browserProfilePath('branch')).not.toBe(
+      REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+        'branch',
+      ),
     );
   });
 

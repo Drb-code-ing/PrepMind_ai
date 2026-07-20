@@ -296,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V10 唯一 controlled-Live 是唯一语义质量 authority。V11/V12 recovered、V13 interruption reservation、V14 root-absent `default_off` 都不可重跑或恢复。V14 暴露普通 Compose 的安全 Flash Chat 与 historical Pro-only default-off receipt 的不匹配；V15 仅将关闭态模型放宽为显式 Flash/Pro allowlist，并拒绝重复受控环境变量，live/gate/credential/capability/max-request 仍严格关闭。V15 使用新的 confirmation、Node runner、ledger/recovery/execution/browser roots，并在 pre-diagnostics reservation 失败时只允许零资源证明后的回滚。V15 product/recovery/Docker/browser/API/provider 尚未运行；两个 gate 默认为 false。只有 V15 branch `passed` 才能 main replay、合并与 push。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V10 唯一 controlled-Live 是唯一语义质量 authority。V11/V12 recovered、V13 interruption reservation、V14/V15 root-absent `default_off` 都不可重跑或恢复。V15 发现普通 Compose 安全地使用官方 `https://api.deepseek.com/v1`，而其 receipt 只接受根 URL。V16 以新 confirmation、Node runner、ledger/recovery/execution/browser roots 隔离：默认关闭只允许根 URL 或 `/v1`、Flash/Pro，且 mock/live/gate/credential/capability/max-request/重复键仍严格 fail-closed；receipt 持久重读 `baseUrl` 和 `model`，recovery 显式使用 V16 validator。V16 product/recovery/Docker/browser/API/provider 尚未运行；两个 gate 默认为 false。只有 V16 branch `passed` 才能 main replay、合并与 push。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -310,7 +310,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.5 V15：V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14 都不可重跑。V15 已离线收口：普通 Compose `mock/default-off` 仅允许 Chat Flash/Pro、重复受控环境键 fail-closed，V15 roots 独立且 reservation 后失败只能零资源回滚。先复验静态与 Docker default-off；随后执行已经授权的唯一 V15 branch command，保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
+下一会话可以复制：“请继续 Phase 6.9.5 V16：V10 是唯一语义质量 authority；V11/V12 recovered、V13/V14/V15 都不可重跑。V16 已离线收口：普通 Compose `mock/default-off` 只接受 DeepSeek 根 URL或 `/v1`、Flash/Pro，其他受控字段严格关闭，receipt 持久重读 baseUrl/model，recovery 使用 V16 validator。先复验静态与 Docker default-off；随后执行已经授权的唯一 V16 branch command，保留可见浏览器。只有 branch `passed` 才能 main replay、合并与 push。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

@@ -3198,6 +3198,9 @@ export function buildReviewPlannerV8ServerRecreateCommand() {
 
 export async function restoreDefaultReviewPlannerProductAcceptanceServer(
   repoRoot: string,
+  defaultOffEnvironmentValidator: (
+    entries: readonly string[],
+  ) => void = assertDefaultOffEnvironment,
 ) {
   const root = resolve(repoRoot);
   const env = readRootEnvironment(root);
@@ -3214,7 +3217,7 @@ export async function restoreDefaultReviewPlannerProductAcceptanceServer(
     throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
   }
   const inspected = await waitForDefaultServerReadiness(root, current);
-  assertDefaultOffEnvironment(inspected.environment);
+  defaultOffEnvironmentValidator(inspected.environment);
 }
 
 export function mergeReviewPlannerV8AcceptanceHeaders(

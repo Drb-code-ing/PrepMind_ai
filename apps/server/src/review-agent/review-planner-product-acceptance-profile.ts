@@ -233,6 +233,35 @@ export type ReviewPlannerV15ProductAcceptanceProfile = Readonly<{
   ): readonly string[];
 }>;
 
+export type ReviewPlannerV16ProductAcceptanceProfile = Readonly<
+  Omit<
+    ReviewPlannerV15ProductAcceptanceProfile,
+    | 'lineage'
+    | 'errorPrefix'
+    | 'productConfirmation'
+    | 'recoveryConfirmation'
+    | 'schemas'
+  > & {
+    lineage: 'v16';
+    errorPrefix: 'V16_PRODUCT_ACCEPTANCE';
+    productConfirmation: '--confirm-v16-review-planner-product-acceptance';
+    recoveryConfirmation: '--confirm-v16-review-planner-product-acceptance-recovery-only';
+    schemas: Readonly<{
+      failure: 'phase-6.9.5-v16-product-acceptance-failure-v1';
+      checkpoint: 'phase-6.9.5-v16-product-acceptance-checkpoint-v1';
+      manifest: 'phase-6.9.5-v16-product-acceptance-manifest-v1';
+      executionManifest: 'phase-6.9.5-v16-product-acceptance-execution-manifest-v1';
+      slotResult: 'phase-6.9.5-v16-product-acceptance-slot-result-v1';
+      defaultOff: 'phase-6.9.5-v16-product-acceptance-default-off-v1';
+      ownerIsolation: 'phase-6.9.5-v16-product-acceptance-owner-isolation-v1';
+      cleanup: 'phase-6.9.5-v16-product-acceptance-cleanup-v1';
+      acceptance: 'phase-6.9.5-v16-product-acceptance-aggregate-v1';
+      success: 'phase-6.9.5-v16-product-acceptance-success-v1';
+      recovery: 'phase-6.9.5-v16-product-acceptance-recovery-v1';
+    }>;
+  }
+>;
+
 function createReviewPlannerProductAcceptanceProfile(
   lineage: 'v8' | 'v10',
 ): ReviewPlannerProductAcceptanceProfile {
@@ -536,6 +565,57 @@ export const REVIEW_PLANNER_V15_PRODUCT_ACCEPTANCE_PROFILE =
       ]),
   });
 
+export const REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_PROFILE =
+  Object.freeze<ReviewPlannerV16ProductAcceptanceProfile>({
+    lineage: 'v16',
+    errorPrefix: 'V16_PRODUCT_ACCEPTANCE',
+    productConfirmation: '--confirm-v16-review-planner-product-acceptance',
+    recoveryConfirmation:
+      '--confirm-v16-review-planner-product-acceptance-recovery-only',
+    schemas: Object.freeze({
+      failure: 'phase-6.9.5-v16-product-acceptance-failure-v1',
+      checkpoint: 'phase-6.9.5-v16-product-acceptance-checkpoint-v1',
+      manifest: 'phase-6.9.5-v16-product-acceptance-manifest-v1',
+      executionManifest:
+        'phase-6.9.5-v16-product-acceptance-execution-manifest-v1',
+      slotResult: 'phase-6.9.5-v16-product-acceptance-slot-result-v1',
+      defaultOff: 'phase-6.9.5-v16-product-acceptance-default-off-v1',
+      ownerIsolation: 'phase-6.9.5-v16-product-acceptance-owner-isolation-v1',
+      cleanup: 'phase-6.9.5-v16-product-acceptance-cleanup-v1',
+      acceptance: 'phase-6.9.5-v16-product-acceptance-aggregate-v1',
+      success: 'phase-6.9.5-v16-product-acceptance-success-v1',
+      recovery: 'phase-6.9.5-v16-product-acceptance-recovery-v1',
+    }),
+    publicLedgerPath: (environment) =>
+      `docs/acceptance/evidence/phase-6-9-5-v16-product-acceptance/${environment}`,
+    recoveryPath: (environment) =>
+      `.tmp/phase-6-9-5-v16-product-acceptance/${environment}`,
+    browserProfilePath: (environment) =>
+      `.tmp/phase-6-9-5-v16-product-acceptance/${environment}/profile-v16`,
+    publicLedgerSegments: (environment) =>
+      Object.freeze([
+        'docs',
+        'acceptance',
+        'evidence',
+        'phase-6-9-5-v16-product-acceptance',
+        environment,
+      ]),
+    recoverySegments: (environment) =>
+      Object.freeze([
+        '.tmp',
+        'phase-6-9-5-v16-product-acceptance',
+        environment,
+      ]),
+    executionManifestPath: (environment) =>
+      `.tmp/phase-6-9-5-v16-product-acceptance-execution/${environment}`,
+    executionManifestSegments: (environment) =>
+      Object.freeze([
+        '.tmp',
+        'phase-6-9-5-v16-product-acceptance-execution',
+        environment,
+      ]),
+  });
+
 export function normalizeReviewPlannerProductAcceptanceSchemaRecord(
   profile: ReviewPlannerProductAcceptanceProfile,
   key: ReviewPlannerProductAcceptanceSchemaKey,
@@ -569,7 +649,8 @@ export function parseReviewPlannerProductAcceptanceArguments(
     | ReviewPlannerV12ProductAcceptanceProfile
     | ReviewPlannerV13ProductAcceptanceProfile
     | ReviewPlannerV14ProductAcceptanceProfile
-    | ReviewPlannerV15ProductAcceptanceProfile,
+    | ReviewPlannerV15ProductAcceptanceProfile
+    | ReviewPlannerV16ProductAcceptanceProfile,
   argv: readonly string[],
   kind: ReviewPlannerProductAcceptanceKind,
 ): Readonly<{ environment: ReviewPlannerProductAcceptanceEnvironment }> {
