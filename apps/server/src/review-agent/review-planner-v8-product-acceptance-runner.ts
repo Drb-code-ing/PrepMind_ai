@@ -17,6 +17,7 @@ import {
   REVIEW_PLANNER_V17_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V18_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE,
+  REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_PROFILE,
   REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE,
   type ReviewPlannerProductAcceptanceProfile,
   withReviewPlannerProductAcceptanceSchemaIdentity,
@@ -57,6 +58,10 @@ import {
   REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_CHECKPOINTS,
   type ReviewPlannerV19ProductAcceptanceCheckpoint,
 } from './review-planner-v19-product-acceptance-recovery';
+import {
+  REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_CHECKPOINTS,
+  type ReviewPlannerV20ProductAcceptanceCheckpoint,
+} from './review-planner-v20-product-acceptance-recovery';
 
 type Component = 'review' | 'planner';
 type RequestSlot = 'api' | 'browser';
@@ -253,6 +258,11 @@ export interface ReviewPlannerV18ProductAcceptanceDiagnosticsPort {
 
 export interface ReviewPlannerV19ProductAcceptanceDiagnosticsPort {
   checkpoint(value: ReviewPlannerV19ProductAcceptanceCheckpoint): void;
+  publishFailure(): void;
+}
+
+export interface ReviewPlannerV20ProductAcceptanceDiagnosticsPort {
+  checkpoint(value: ReviewPlannerV20ProductAcceptanceCheckpoint): void;
   publishFailure(): void;
 }
 
@@ -952,6 +962,9 @@ function canonicalizeProductAcceptanceProfile(value: unknown) {
   if (value === REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE) {
     return REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE;
   }
+  if (value === REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_PROFILE) {
+    return REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_PROFILE;
+  }
   throw new Error();
 }
 
@@ -973,7 +986,8 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
       requestedProfile === REVIEW_PLANNER_V16_PRODUCT_ACCEPTANCE_PROFILE ||
       requestedProfile === REVIEW_PLANNER_V17_PRODUCT_ACCEPTANCE_PROFILE ||
       requestedProfile === REVIEW_PLANNER_V18_PRODUCT_ACCEPTANCE_PROFILE ||
-      requestedProfile === REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE;
+      requestedProfile === REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE ||
+      requestedProfile === REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_PROFILE;
     const profile = hasDiagnostics
       ? REVIEW_PLANNER_V8_PRODUCT_ACCEPTANCE_PROFILE
       : requestedProfile;
@@ -1046,7 +1060,10 @@ function createSafeSnapshot(input: unknown): SafeSnapshot {
                       : requestedProfile ===
                           REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_PROFILE
                         ? REVIEW_PLANNER_V19_PRODUCT_ACCEPTANCE_CHECKPOINTS
-                        : null;
+                        : requestedProfile ===
+                            REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_PROFILE
+                          ? REVIEW_PLANNER_V20_PRODUCT_ACCEPTANCE_CHECKPOINTS
+                          : null;
     if (ledger.environment() !== environment) throw new Error();
 
     capabilityHandle = Object.freeze({});

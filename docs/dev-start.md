@@ -917,7 +917,7 @@ Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http:/
 
 ### Phase 6.9.5 产品验收与关机收口
 
-V19 是当前唯一待运行的 Review/Planner 产品 lineage；V10 仍是唯一语义质量 authority，V11--V18 不可重跑。先执行零资源 read-only Node preflight，只有它返回 `ready` 且明确授权的 V19 branch command 继续通过严格 preflight 后，才在受控产品验收期间一次只开启一个 Review/Planner gate，并只重建 `server`：
+V20 是当前唯一待运行的 Review/Planner 产品 lineage；V10 仍是唯一语义质量 authority，V11--V19 不可重跑。先执行零资源 `preflightOnly` execute gate，只有它返回 `ready` 且明确授权的 V20 branch command 继续通过严格 preflight 后，才在受控产品验收期间一次只开启一个 Review/Planner gate，并只重建 `server`：
 
 ```powershell
 # Review-only：当前会话显式设置 Review=true、Planner=false 后执行
