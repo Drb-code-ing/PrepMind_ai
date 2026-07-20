@@ -1,4 +1,5 @@
 import {
+  createReviewPlannerV12ProductAcceptanceExecutionManifest,
   parseReviewPlannerV12ProductAcceptanceAggregate,
   parseReviewPlannerV12ProductAcceptanceCleanup,
   parseReviewPlannerV12ProductAcceptanceDefaultOff,
@@ -111,11 +112,116 @@ describe('Review Planner V12 product-acceptance ledger contracts', () => {
     ).toThrow('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
   });
 
+  it('requires private, non-secret resource selectors so a failed run can be cleaned exactly', () => {
+    expect(() =>
+      parseReviewPlannerV12ProductAcceptanceExecutionManifest({
+        schemaVersion:
+          'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+        environment: 'branch',
+        attemptSha256,
+      }),
+    ).toThrow('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
+
+    expect(
+      parseReviewPlannerV12ProductAcceptanceExecutionManifest({
+        schemaVersion:
+          'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+        environment: 'branch',
+        attemptSha256,
+        databaseUrlSha256: 'e'.repeat(64),
+        resources: {
+          accountId: {
+            review: `v12-synthetic-account-review-${'a'.repeat(32)}`,
+            planner: `v12-synthetic-account-planner-${'b'.repeat(32)}`,
+          },
+          fixtureId: {
+            review: `v12-synthetic-fixture-review-${'c'.repeat(32)}`,
+            planner: `v12-synthetic-fixture-planner-${'d'.repeat(32)}`,
+          },
+          browser: {
+            executablePath:
+              'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            profilePath:
+              '.tmp/phase-6-9-5-v12-product-acceptance/branch/profile-v12',
+          },
+        },
+      }),
+    ).toMatchObject({
+      resources: {
+        accountId: {
+          review: `v12-synthetic-account-review-${'a'.repeat(32)}`,
+        },
+      },
+    });
+  });
+
+  it('requires an attempt-bound hash of the selected database URL without persisting the URL', () => {
+    const record = {
+      schemaVersion: 'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+      environment: 'branch',
+      attemptSha256,
+      resources: {
+        accountId: {
+          review: `v12-synthetic-account-review-${'a'.repeat(32)}`,
+          planner: `v12-synthetic-account-planner-${'b'.repeat(32)}`,
+        },
+        fixtureId: {
+          review: `v12-synthetic-fixture-review-${'c'.repeat(32)}`,
+          planner: `v12-synthetic-fixture-planner-${'d'.repeat(32)}`,
+        },
+        browser: {
+          executablePath:
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+          profilePath:
+            '.tmp/phase-6-9-5-v12-product-acceptance/branch/profile-v12',
+        },
+      },
+    };
+
+    expect(() =>
+      parseReviewPlannerV12ProductAcceptanceExecutionManifest(record),
+    ).toThrow('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
+    expect(
+      parseReviewPlannerV12ProductAcceptanceExecutionManifest({
+        ...record,
+        databaseUrlSha256: 'f'.repeat(64),
+      }),
+    ).toMatchObject({ databaseUrlSha256: 'f'.repeat(64) });
+  });
+
+  it('generates distinct V12-only selectors that bind cleanup to the reserved attempt', () => {
+    const execution = createReviewPlannerV12ProductAcceptanceExecutionManifest({
+      environment: 'branch',
+      attemptSha256,
+      databaseUrlSha256: 'f'.repeat(64),
+    });
+
+    expect(execution).toMatchObject({
+      schemaVersion: 'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+      environment: 'branch',
+      attemptSha256,
+      databaseUrlSha256: 'f'.repeat(64),
+      resources: {
+        browser: {
+          profilePath:
+            '.tmp/phase-6-9-5-v12-product-acceptance/branch/profile-v12',
+        },
+      },
+    });
+    expect(execution.resources.accountId.review).toMatch(
+      /^v12-synthetic-account-review-[a-f0-9]{32}$/,
+    );
+    expect(execution.resources.accountId.review).not.toBe(
+      execution.resources.accountId.planner,
+    );
+  });
+
   it('accepts only the fixed V12 failure terminal vocabulary', () => {
     expect(
       parseReviewPlannerV12ProductAcceptanceFailure({
         schemaVersion: 'phase-6.9.5-v12-product-acceptance-failure-v1',
         environment: 'branch',
+        attemptSha256,
         component: 'review',
         slot: 'api',
         checkpoint: 'review_api_activate',
@@ -123,5 +229,19 @@ describe('Review Planner V12 product-acceptance ledger contracts', () => {
         providerCallState: 'not_started',
       }),
     ).toMatchObject({ terminal: 'operation_failed' });
+  });
+
+  it('requires the reserved attempt hash in every recovery-authorizing failure', () => {
+    expect(() =>
+      parseReviewPlannerV12ProductAcceptanceFailure({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-failure-v1',
+        environment: 'branch',
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_setup',
+        terminal: 'operation_failed',
+        providerCallState: 'not_started',
+      }),
+    ).toThrow('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
   });
 });

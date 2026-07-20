@@ -32,6 +32,7 @@ const CLEANUP_LEAF = 'cleanup.json';
 const AGGREGATE_LEAF = 'aggregate.json';
 const SUCCESS_LEAF = 'success.json';
 const FAILURE_LEAF = 'failure.json';
+const RECOVERY_LEAF = 'recovery.json';
 const SLOT_LEAF = /^slot-(review|planner)-(api|browser)\.json$/;
 const DEFAULT_OFF_LEAF = /^default-off-(review|planner)\.json$/;
 
@@ -45,6 +46,14 @@ export const reviewPlannerV12ProductAcceptanceManifestSchema = z
   })
   .strict();
 
+const v12ExecutionSelector = (
+  kind: 'account' | 'fixture',
+  component: 'review' | 'planner',
+) =>
+  z
+    .string()
+    .regex(new RegExp(`^v12-synthetic-${kind}-${component}-[a-f0-9]{32}$`));
+
 export const reviewPlannerV12ProductAcceptanceExecutionManifestSchema = z
   .object({
     schemaVersion: z.literal(
@@ -52,8 +61,43 @@ export const reviewPlannerV12ProductAcceptanceExecutionManifestSchema = z
     ),
     environment: z.enum(['branch', 'main']),
     attemptSha256: z.string().regex(ATTEMPT_HASH),
+    databaseUrlSha256: z.string().regex(ATTEMPT_HASH),
+    resources: z
+      .object({
+        accountId: z
+          .object({
+            review: v12ExecutionSelector('account', 'review'),
+            planner: v12ExecutionSelector('account', 'planner'),
+          })
+          .strict(),
+        fixtureId: z
+          .object({
+            review: v12ExecutionSelector('fixture', 'review'),
+            planner: v12ExecutionSelector('fixture', 'planner'),
+          })
+          .strict(),
+        browser: z
+          .object({
+            executablePath: z.literal(
+              'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            ),
+            profilePath: z.string(),
+          })
+          .strict(),
+      })
+      .strict(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.resources.browser.profilePath !==
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+        value.environment,
+      )
+    ) {
+      context.addIssue({ code: 'custom', message: 'V12 profile mismatch' });
+    }
+  });
 
 const v12SlotSchema = z.enum([
   'review-api',
@@ -143,11 +187,23 @@ export const reviewPlannerV12ProductAcceptanceFailureSchema = z
       REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
     ),
     environment: z.enum(['branch', 'main']),
+    attemptSha256: v12HashSchema,
     component: v12ComponentSchema,
     slot: z.enum(['api', 'browser']),
     checkpoint: z.string().regex(/^(review|planner)_(api|browser)_[a-z_]+$/),
     terminal: z.literal('operation_failed'),
     providerCallState: z.enum(['not_started', 'indeterminate']),
+  })
+  .strict();
+
+export const reviewPlannerV12ProductAcceptanceRecoverySchema = z
+  .object({
+    schemaVersion: z.literal(
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.recovery,
+    ),
+    environment: z.enum(['branch', 'main']),
+    attemptSha256: z.string().regex(ATTEMPT_HASH),
+    terminal: z.literal('recovered'),
   })
   .strict();
 
@@ -177,6 +233,9 @@ export type ReviewPlannerV12ProductAcceptanceSuccess = z.infer<
 >;
 export type ReviewPlannerV12ProductAcceptanceFailure = z.infer<
   typeof reviewPlannerV12ProductAcceptanceFailureSchema
+>;
+export type ReviewPlannerV12ProductAcceptanceRecovery = z.infer<
+  typeof reviewPlannerV12ProductAcceptanceRecoverySchema
 >;
 
 type LedgerState = {
@@ -308,6 +367,7 @@ export async function readReviewPlannerV12ProductAcceptanceLedger(input: {
       | 'incomplete'
       | 'complete'
       | 'operation_failed'
+      | 'recovered'
       | 'evidence_io';
   }>
 > {
@@ -360,16 +420,48 @@ export async function readReviewPlannerV12ProductAcceptanceLedger(input: {
       return Object.freeze({ status: 'evidence_io' as const });
     }
     await inspectReviewPlannerV12ProductAcceptanceRecoveryCheckpoint(input);
-    if (leaves.includes(FAILURE_LEAF)) {
+    const hasFailure = leaves.includes(FAILURE_LEAF);
+    const hasSuccess = leaves.includes(SUCCESS_LEAF);
+    const hasRecovery = leaves.includes(RECOVERY_LEAF);
+    if (
+      (hasFailure && hasSuccess) ||
+      (hasSuccess && hasRecovery) ||
+      (!hasFailure && hasRecovery)
+    ) {
+      return Object.freeze({ status: 'evidence_io' as const });
+    }
+    if (hasFailure) {
       const failure = parseReviewPlannerV12ProductAcceptanceFailure(
         JSON.parse(directory.readRegularFile(FAILURE_LEAF).toString()),
       );
-      if (failure.environment !== input.environment) {
+      const checkpoint =
+        await inspectReviewPlannerV12ProductAcceptanceRecoveryCheckpoint(input);
+      if (
+        failure.environment !== input.environment ||
+        failure.attemptSha256 !== attemptSha256 ||
+        checkpoint === null ||
+        checkpoint.component !== failure.component ||
+        checkpoint.slot !== failure.slot ||
+        checkpoint.checkpoint !== failure.checkpoint ||
+        checkpoint.providerCallState !== failure.providerCallState
+      ) {
         return Object.freeze({ status: 'evidence_io' as const });
+      }
+      if (hasRecovery) {
+        const recovery = parseReviewPlannerV12ProductAcceptanceRecovery(
+          JSON.parse(directory.readRegularFile(RECOVERY_LEAF).toString()),
+        );
+        if (
+          recovery.environment !== input.environment ||
+          recovery.attemptSha256 !== attemptSha256
+        ) {
+          return Object.freeze({ status: 'evidence_io' as const });
+        }
+        return Object.freeze({ status: 'recovered' as const });
       }
       return Object.freeze({ status: 'operation_failed' as const });
     }
-    if (!leaves.includes(SUCCESS_LEAF)) {
+    if (!hasSuccess) {
       return Object.freeze({ status: 'incomplete' as const });
     }
     const slots = [
@@ -471,6 +563,46 @@ export function parseReviewPlannerV12ProductAcceptanceExecutionManifest(
   return Object.freeze({ ...parsed.data });
 }
 
+export function createReviewPlannerV12ProductAcceptanceExecutionManifest(input: {
+  environment: ReviewPlannerProductAcceptanceEnvironment;
+  attemptSha256: string;
+  databaseUrlSha256: string;
+}): ReviewPlannerV12ProductAcceptanceExecutionManifest {
+  if (
+    !isEnvironment(input.environment) ||
+    !ATTEMPT_HASH.test(input.attemptSha256) ||
+    !ATTEMPT_HASH.test(input.databaseUrlSha256)
+  ) {
+    throw new Error('V12_PRODUCT_ACCEPTANCE_LEDGER_RECORD_INVALID');
+  }
+  const selector = () => randomBytes(16).toString('hex');
+  return parseReviewPlannerV12ProductAcceptanceExecutionManifest({
+    schemaVersion:
+      REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.executionManifest,
+    environment: input.environment,
+    attemptSha256: input.attemptSha256,
+    databaseUrlSha256: input.databaseUrlSha256,
+    resources: {
+      accountId: {
+        review: `v12-synthetic-account-review-${selector()}`,
+        planner: `v12-synthetic-account-planner-${selector()}`,
+      },
+      fixtureId: {
+        review: `v12-synthetic-fixture-review-${selector()}`,
+        planner: `v12-synthetic-fixture-planner-${selector()}`,
+      },
+      browser: {
+        executablePath:
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        profilePath:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            input.environment,
+          ),
+      },
+    },
+  });
+}
+
 export function parseReviewPlannerV12ProductAcceptanceSlotResult(
   value: unknown,
 ): ReviewPlannerV12ProductAcceptanceSlotResult {
@@ -523,6 +655,99 @@ export function parseReviewPlannerV12ProductAcceptanceFailure(
   value: unknown,
 ): ReviewPlannerV12ProductAcceptanceFailure {
   return parseV12Record(reviewPlannerV12ProductAcceptanceFailureSchema, value);
+}
+
+export function parseReviewPlannerV12ProductAcceptanceRecovery(
+  value: unknown,
+): ReviewPlannerV12ProductAcceptanceRecovery {
+  return parseV12Record(reviewPlannerV12ProductAcceptanceRecoverySchema, value);
+}
+
+export async function finalizeReviewPlannerV12ProductAcceptanceRecovery(input: {
+  repoRoot: string;
+  environment: ReviewPlannerProductAcceptanceEnvironment;
+  owner: ReviewPlannerV12ProductAcceptanceOwner;
+}): Promise<void> {
+  if (!isEnvironment(input.environment)) {
+    throw new Error('V12_PRODUCT_ACCEPTANCE_RECOVERY_NOT_AUTHORIZED');
+  }
+  assertReviewPlannerV12ProductAcceptanceOwner(input.owner, input.environment, [
+    'recovery',
+  ]);
+  let directory: WindowsNoReparseChildDirectory | null = null;
+  try {
+    directory = await openWindowsNoReparseExistingFrozenDirectory(
+      input.repoRoot,
+      [
+        ...REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.publicLedgerSegments(
+          input.environment,
+        ),
+      ],
+    );
+    directory.assertLocalFixedNtfsVolume();
+    const leaves = directory.listLeafNames();
+    if (
+      !hasOnlyV12PublicLeaves(leaves) ||
+      !leaves.includes(RESERVATION_LEAF) ||
+      !leaves.includes(MANIFEST_LEAF) ||
+      !leaves.includes(FAILURE_LEAF) ||
+      leaves.includes(SUCCESS_LEAF) ||
+      leaves.includes(RECOVERY_LEAF)
+    ) {
+      throw new Error('V12_PRODUCT_ACCEPTANCE_RECOVERY_NOT_AUTHORIZED');
+    }
+    const attemptSha256 = readReservationHash(directory);
+    const binding =
+      await readReviewPlannerV12ProductAcceptanceAttemptBinding(input);
+    const manifest = parseReviewPlannerV12ProductAcceptanceManifest(
+      JSON.parse(directory.readRegularFile(MANIFEST_LEAF).toString()),
+    );
+    const execution =
+      await readReviewPlannerV12ProductAcceptanceExecutionManifest(input);
+    const failure = parseReviewPlannerV12ProductAcceptanceFailure(
+      JSON.parse(directory.readRegularFile(FAILURE_LEAF).toString()),
+    );
+    const checkpoint =
+      await inspectReviewPlannerV12ProductAcceptanceRecoveryCheckpoint(input);
+    if (
+      binding.attemptSha256 !== attemptSha256 ||
+      manifest.environment !== input.environment ||
+      manifest.attemptSha256 !== attemptSha256 ||
+      execution.environment !== input.environment ||
+      execution.attemptSha256 !== attemptSha256 ||
+      failure.environment !== input.environment ||
+      failure.attemptSha256 !== attemptSha256 ||
+      checkpoint === null ||
+      checkpoint.component !== failure.component ||
+      checkpoint.slot !== failure.slot ||
+      checkpoint.checkpoint !== failure.checkpoint ||
+      checkpoint.providerCallState !== failure.providerCallState
+    ) {
+      throw new Error('V12_PRODUCT_ACCEPTANCE_RECOVERY_NOT_AUTHORIZED');
+    }
+    directory.createExclusiveDurableFile(
+      RECOVERY_LEAF,
+      `${JSON.stringify(
+        parseReviewPlannerV12ProductAcceptanceRecovery({
+          schemaVersion:
+            REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.recovery,
+          environment: input.environment,
+          attemptSha256,
+          terminal: 'recovered',
+        }),
+      )}\n`,
+    );
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'V12_PRODUCT_ACCEPTANCE_RECOVERY_NOT_AUTHORIZED'
+    ) {
+      throw error;
+    }
+    throw new Error('V12_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
+  } finally {
+    directory?.close();
+  }
 }
 
 function parseV12Record<T>(schema: z.ZodType<T>, value: unknown): T {
@@ -719,6 +944,7 @@ function hasOnlyV12PublicLeaves(leaves: readonly string[]) {
     AGGREGATE_LEAF,
     SUCCESS_LEAF,
     FAILURE_LEAF,
+    RECOVERY_LEAF,
   ]);
   return leaves.every(
     (leaf) =>

@@ -93,6 +93,7 @@ export type ReviewPlannerV12ProductAcceptanceProfile = Readonly<{
     cleanup: 'phase-6.9.5-v12-product-acceptance-cleanup-v1';
     acceptance: 'phase-6.9.5-v12-product-acceptance-aggregate-v1';
     success: 'phase-6.9.5-v12-product-acceptance-success-v1';
+    recovery: 'phase-6.9.5-v12-product-acceptance-recovery-v1';
   }>;
   publicLedgerPath(
     environment: ReviewPlannerProductAcceptanceEnvironment,
@@ -233,6 +234,7 @@ export const REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE =
       cleanup: 'phase-6.9.5-v12-product-acceptance-cleanup-v1',
       acceptance: 'phase-6.9.5-v12-product-acceptance-aggregate-v1',
       success: 'phase-6.9.5-v12-product-acceptance-success-v1',
+      recovery: 'phase-6.9.5-v12-product-acceptance-recovery-v1',
     }),
     publicLedgerPath: (environment) =>
       `docs/acceptance/evidence/phase-6-9-5-v12-product-acceptance/${environment}`,

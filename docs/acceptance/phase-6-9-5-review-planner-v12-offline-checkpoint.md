@@ -7,10 +7,11 @@ Date: 2026-07-20
 V12 is a new, isolated product-acceptance lineage for the existing
 ReviewAgent and PlannerAgent candidate. It has its own confirmation literals,
 public/recovery/execution/browser namespaces, four-slot durable ledger,
-attempt binding, V8 execution adapter, and recovery composition. The host
-boundary is intentionally an injectable fake facade: the unconfigured default
-returns `blocked`, and a fake-ready port proves the V12-only composition
-contract without touching V11.
+attempt binding, V8 execution adapter, and recovery composition. The default
+host is now real: read-only preflight precedes reservation, and only a
+reserved V12 attempt can create synthetic resources and enter the V8
+Docker/API/browser/Trace mechanics. The injectable fake ports remain tests,
+not runtime evidence.
 
 This is an offline checkpoint, not a product-acceptance success. V10
 controlled-Live remains the only semantic-quality authority:
@@ -26,30 +27,46 @@ a product retry permit.
   confirmation/preflight reaches no owner, Docker, browser, API, or provider
   boundary.
 - The V12 durable record has one reservation, four deterministic slots,
-  matching public/private attempt evidence, and a fail-closed recovery reader.
-  Earliest recovery is admitted only when reservation/manifest/binding match
-  and the checkpoint is genuinely absent; malformed, unknown, or mismatched
-  terminal state remains blocked.
+  matching public/private attempt evidence, a `failure.json` bound to the
+  latest journal checkpoint, and a fail-closed recovery reader. A recovery
+  terminal is attempt-bound, mutually exclusive with success, written once
+  only after restore plus cleanup, and makes a second recovery block.
 - Native V11 public/recovery-root SHA sentinel regression remains unchanged;
   V12 never writes or reads the V11 reserve/open/read APIs.
-- Default composition stays blocked without an injected host boundary. The
-  host-recovery composition only projects an injected `operation_failed`
-  reader plus a ready preflight; it is an offline fake-boundary contract, not a
-  Docker/API/browser lifecycle integration.
+- The private execution manifest persists only V12 synthetic selectors, the
+  exact V12 browser profile path, and a SHA-256 `DATABASE_URL` fingerprint; it
+  never stores the URL or credential. The fingerprint is captured before the
+  reusable V8 host reads configuration, preventing a manifest/new-env vs.
+  Prisma/old-env split. Product revalidates repository/evidence/default-off/
+  database identity after acquiring its owner and before reserve.
+  Recovery takes its own owner, rereads state, rejects DB-fingerprint drift
+  before any write, then can restore mock/default-off, terminate only that
+  profile, and delete only matching synthetic accounts, traces and fixtures.
+  `review_api_setup / not_started` records a post-reservation setup failure
+  before provider dispatch, so it cannot become an unrecoverable incomplete
+  attempt.
+- An activation failure before `liveContainerId` assignment now restores from
+  the observed current server container. Headed product browser evidence has a
+  30-second operator-visible hold before exact cleanup. These are offline
+  control-flow guarantees, not Docker/browser execution evidence.
+- Default product and recovery compositions now have real host wiring, but
+  this checkpoint still contains no V12 Docker/API/browser/provider execution.
 - `REVIEW_AGENT_MODEL_ENABLED` and `PLANNER_AGENT_MODEL_ENABLED` remain
   default-off. V12 has not enabled either normal application gate.
 
 ## Static Gates
 
-- V11/V12 focused Server Jest: `7` suites / `22` tests passed.
-- V12 native durable ledger: `6` passed / `20` assertions.
+- V11/V12 focused Server Jest: `9` suites / `72` tests passed.
+- V12 native durable ledger: `8` tests passed / `26` assertions.
 - `@repo/agent`: `409` tests passed; `@repo/ai`: `190` tests passed;
   `@repo/types`: `39` tests passed; their typechecks passed.
 - `@repo/web`: `409` tests passed; lint passed; optimized production build
   passed with all `17` routes generated.
-- Full Server Jest: `124` suites / `1,526` tests passed; `3` suites / `30`
-  tests were configured skips. Server build and no-write TypeScript ESLint
-  passed.
+- Full Server Jest, executed with `--runInBand`: `125` suites / `1,540` tests
+  passed; `3` suites / `30` tests were configured skips. The parallel Jest
+  wrapper can report a forced worker-exit warning with an invalid `0/128`
+  summary, so that output is explicitly not acceptance evidence. Server build
+  and no-write TypeScript ESLint passed.
 - `docker compose --env-file .env -f docker/docker-compose.dev.yml config
   --quiet` passed. It only parsed configuration; it did not start, stop,
   recreate, or delete Docker resources.
@@ -80,18 +97,17 @@ It must not be used to enable the two product gates.
 
 ## Next Runtime Step
 
-The next actions are two separate, independent reviews: one contract review
-and one operations review. Only after both have no unresolved P0/P1 finding
-and one fresh, separate user authorization may the current branch execute this
-single command:
+The refreshed, independent contract and operations reviews have no unresolved
+P0/P1 finding. A fresh, separate user authorization is still required before
+the current branch may execute this single command:
 
 ```powershell
 bun --filter @repo/server accept:review-planner:v12:product -- --confirm-v12-review-planner-product-acceptance --environment=branch
 ```
 
-If it reports `operation_failed_recovered`, stop the lineage; do not retry the
-product command. Only `recovery_required`, or a crash state explicitly admitted
-by the V12 recovery preflight, can request a separate one-time recovery
+If the product command reports `operation_failed`, stop the lineage; do not
+retry the product command. Only a coherent `operation_failed` state explicitly
+admitted by the V12 recovery preflight can request a separate one-time recovery
 authorization:
 
 ```powershell
@@ -99,6 +115,7 @@ bun --filter @repo/server recover:review-planner:v12:product -- --confirm-v12-re
 ```
 
 Only a branch `passed` result that includes default-off restoration and exact
-cleanup receipts can permit a later main replay, merge, and push. Neither
+cleanup receipts can permit a later main replay, merge, and push. A standalone
+`recovered` terminal ends V12 permanently. Neither
 command permits `docker compose down -v`, Docker prune, volume cleanup, or any
 Docker-wide cleanup.

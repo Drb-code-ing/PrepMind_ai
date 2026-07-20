@@ -83,6 +83,7 @@ export const REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_CONFIRMATION =
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.productConfirmation;
 export const REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_RECOVERY_CONFIRMATION =
   REVIEW_PLANNER_V10_PRODUCT_ACCEPTANCE_PROFILE.recoveryConfirmation;
+export const REVIEW_PLANNER_PRODUCT_ACCEPTANCE_BROWSER_VISIBLE_HOLD_MS = 30_000;
 
 type Component = 'review' | 'planner';
 type CliKind = 'product' | 'recovery';
@@ -223,6 +224,70 @@ type ProductPreflight =
       chromeExecutablePath: string;
       utcStamp: string;
     }>;
+
+export type ReviewPlannerProductAcceptanceHostPreflight = Extract<
+  ProductPreflight,
+  { status: 'ready' }
+>;
+
+export async function runDefaultReviewPlannerProductAcceptanceHostPreflight(
+  input: {
+    environment: ReviewPlannerV8ProductAcceptanceEnvironment;
+    repoRoot: string;
+  },
+  options: Readonly<{
+    branchAcceptanceComplete(repoRoot: string): Promise<boolean>;
+  }>,
+): Promise<ProductPreflight> {
+  try {
+    const repoRoot = resolve(input.repoRoot);
+    const expectedRoot = resolve(__dirname, '../../../..');
+    if (
+      process.platform !== 'win32' ||
+      repoRoot !== expectedRoot ||
+      !existsSync('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe')
+    ) {
+      throw new Error();
+    }
+    const repository = await readReviewPlannerV8RepositorySnapshot(
+      repoRoot,
+      createReviewPlannerV10PairedEvidenceAuthority(),
+    );
+    if (
+      repository === null ||
+      !repository.clean ||
+      (input.environment === 'main'
+        ? repository.branchName !== 'main'
+        : repository.branchName === 'main' ||
+          !repository.branchName.startsWith('codex/'))
+    ) {
+      throw new Error();
+    }
+    await assertCurrentServerDefaultOff(repoRoot);
+    if (
+      input.environment === 'main' &&
+      !(await options.branchAcceptanceComplete(repoRoot))
+    ) {
+      throw new Error();
+    }
+    return Object.freeze({
+      status: 'ready' as const,
+      environment: input.environment,
+      repoRoot,
+      commitSha: repository.commitSha,
+      branchName: repository.branchName,
+      pairedEvidenceSha256: repository.pairedEvidenceSha256,
+      chromeExecutablePath:
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      utcStamp: new Date().toISOString().replace(/[-:.]/g, '').toLowerCase(),
+    });
+  } catch {
+    return Object.freeze({
+      status: 'blocked' as const,
+      code: 'preflight_failed' as const,
+    });
+  }
+}
 
 type GeneratedResources = Readonly<{
   syntheticEmails: Readonly<Record<Component | 'probe', string>>;
@@ -2839,7 +2904,9 @@ function createDefaultRunnerDependencies(
           type: 'png',
           fullPage: true,
         });
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(
+          REVIEW_PLANNER_PRODUCT_ACCEPTANCE_BROWSER_VISIBLE_HOLD_MS,
+        );
         await context.close();
         contextClosed = true;
         await Promise.allSettled([...callbacks]);
@@ -2942,8 +3009,10 @@ async function restoreDefaultOff(
   component: Component,
   profile: ReviewPlannerProductAcceptanceProfile,
 ) {
-  const previous = state.liveContainerId[component];
-  if (!previous) throw new Error();
+  const previous = selectReviewPlannerV8DefaultOffRestoreSource(
+    state.liveContainerId[component],
+    await readServerContainerId(state.repoRoot),
+  );
   await recreateServer(state, buildReviewPlannerV8DefaultOffEnvironment());
   const current = await readServerContainerId(state.repoRoot);
   if (!current || current === previous) throw new Error();
@@ -2996,6 +3065,17 @@ async function restoreDefaultOff(
     },
     providerInvocations: 0,
   };
+}
+
+export function selectReviewPlannerV8DefaultOffRestoreSource(
+  recordedLiveContainerId: string | undefined,
+  observedContainerId: string | null,
+): string {
+  const source = recordedLiveContainerId ?? observedContainerId;
+  if (!source) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RESTORE_REQUIRED');
+  }
+  return source;
 }
 
 export function buildReviewPlannerV8ActivationEnvironment(
@@ -3105,6 +3185,27 @@ export function buildReviewPlannerV8ServerRecreateCommand() {
       'server',
     ]),
   });
+}
+
+export async function restoreDefaultReviewPlannerProductAcceptanceServer(
+  repoRoot: string,
+) {
+  const root = resolve(repoRoot);
+  const env = readRootEnvironment(root);
+  const previous = await readServerContainerId(root);
+  if (!previous) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  }
+  await recreateServer(
+    { repoRoot: root, env },
+    buildReviewPlannerV8DefaultOffEnvironment(),
+  );
+  const current = await readServerContainerId(root);
+  if (!current || current === previous) {
+    throw new Error('V8_PRODUCT_ACCEPTANCE_RECOVERY_REQUIRED');
+  }
+  const inspected = await waitForDefaultServerReadiness(root, current);
+  assertDefaultOffEnvironment(inspected.environment);
 }
 
 export function mergeReviewPlannerV8AcceptanceHeaders(
@@ -3480,6 +3581,17 @@ async function terminateDefaultReviewPlannerV8ExactBrowser(input: {
     profileExists: () => existsSync(profilePath),
     timeoutMs: 10_000,
     pollIntervalMs: 100,
+  });
+}
+
+export async function cleanupDefaultReviewPlannerProductAcceptanceBrowser(input: {
+  repoRoot: string;
+  executablePath: string;
+  profilePath: string;
+}) {
+  await terminateDefaultReviewPlannerV8ExactBrowser({
+    ...input,
+    allowedProfilePaths: [input.profilePath],
   });
 }
 

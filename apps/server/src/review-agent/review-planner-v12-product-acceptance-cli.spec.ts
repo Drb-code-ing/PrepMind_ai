@@ -71,7 +71,11 @@ describe('Review Planner V12 product-acceptance CLI', () => {
       writeManifest: jest.fn(),
       close: jest.fn(),
     };
-    const journal = { close: jest.fn() };
+    const journal = {
+      appendCheckpoint: jest.fn(),
+      latestCheckpoint: jest.fn(() => null),
+      close: jest.fn(),
+    };
     const runRunner = jest.fn(async () => undefined);
     const ports = {
       preflight: jest.fn(async () => ({
@@ -80,12 +84,21 @@ describe('Review Planner V12 product-acceptance CLI', () => {
         repoRoot: 'E:\\v12-cli',
         commitSha: 'b'.repeat(40),
         pairedEvidenceSha256: 'c'.repeat(64),
+        databaseUrlSha256: 'e'.repeat(64),
         accountIdSha256: { review: 'd'.repeat(64), planner: 'e'.repeat(64) },
         capabilities: {
           review: 'review-capability',
           planner: 'planner-capability',
         },
         dependencies: {},
+      })),
+      revalidate: jest.fn(async () => ({
+        status: 'ready' as const,
+        environment: 'branch' as const,
+        repoRoot: 'E:\\v12-cli',
+        commitSha: 'b'.repeat(40),
+        pairedEvidenceSha256: 'c'.repeat(64),
+        databaseUrlSha256: 'e'.repeat(64),
       })),
       acquireOwner: jest.fn(async () => ({
         status: 'acquired' as const,
@@ -124,7 +137,11 @@ describe('Review Planner V12 product-acceptance CLI', () => {
       writeManifest: jest.fn(),
       close: jest.fn(),
     };
-    const journal = { close: jest.fn() };
+    const journal = {
+      appendCheckpoint: jest.fn(),
+      latestCheckpoint: jest.fn(() => null),
+      close: jest.fn(),
+    };
     const ports = {
       preflight: jest.fn(async () => ({
         status: 'ready' as const,
@@ -132,12 +149,21 @@ describe('Review Planner V12 product-acceptance CLI', () => {
         repoRoot: 'E:\\v12-cli',
         commitSha: 'a'.repeat(40),
         pairedEvidenceSha256: 'b'.repeat(64),
+        databaseUrlSha256: 'e'.repeat(64),
         accountIdSha256: { review: 'c'.repeat(64), planner: 'd'.repeat(64) },
         capabilities: {
           review: 'review-capability',
           planner: 'planner-capability',
         },
         dependencies: {},
+      })),
+      revalidate: jest.fn(async () => ({
+        status: 'ready' as const,
+        environment: 'branch' as const,
+        repoRoot: 'E:\\v12-cli',
+        commitSha: 'a'.repeat(40),
+        pairedEvidenceSha256: 'b'.repeat(64),
+        databaseUrlSha256: 'e'.repeat(64),
       })),
       acquireOwner: jest.fn(async () => ({
         status: 'acquired' as const,

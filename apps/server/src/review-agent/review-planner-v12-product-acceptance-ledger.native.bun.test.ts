@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach as bunAfterEach, beforeEach as bunBeforeEach, describe as bunDescribe, expect as bunExpect, it as bunIt } from 'bun:test';
 
 import {
+  finalizeReviewPlannerV12ProductAcceptanceRecovery,
   readReviewPlannerV12ProductAcceptanceLedger,
   reserveReviewPlannerV12ProductAcceptanceLedger,
 } from './review-planner-v12-product-acceptance-ledger';
@@ -22,6 +23,7 @@ import {
   acquireReviewPlannerV12ProductAcceptanceOwner,
   inspectReviewPlannerV12ProductAcceptanceRecoveryCheckpoint,
   openReviewPlannerV12ProductAcceptanceRecoveryJournal,
+  prepareReviewPlannerV12ProductAcceptanceRecoveryJournal,
 } from './review-planner-v12-product-acceptance-recovery';
 import {
   REVIEW_PLANNER_V11_PRODUCT_ACCEPTANCE_PROFILE,
@@ -210,12 +212,9 @@ describeWindows('Review/Planner V12 durable product acceptance ledger', () => {
     });
     const attemptSha256 = ledger.attemptSha256();
     try {
-      await ledger.writeExecutionManifest({
-        schemaVersion:
-          'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
-        environment: 'branch',
-        attemptSha256,
-      });
+      await ledger.writeExecutionManifest(
+        executionManifest('branch', attemptSha256),
+      );
       ledger.writeManifest({
         schemaVersion: 'phase-6.9.5-v12-product-acceptance-manifest-v1',
         environment: 'branch',
@@ -294,6 +293,76 @@ describeWindows('Review/Planner V12 durable product acceptance ledger', () => {
       .digest('hex');
     expect(recoveryAfter).toBe(recoveryBefore);
   });
+
+  it('seals recovery exactly once and rejects a second recovery owner', async () => {
+    const state = await prepareFailedV12State(root);
+    const recovery = await acquireReviewPlannerV12ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    expect(recovery.status).toBe('acquired');
+    if (recovery.status !== 'acquired') throw new Error('owner unavailable');
+    try {
+      await finalizeReviewPlannerV12ProductAcceptanceRecovery({
+        repoRoot: root,
+        environment: 'branch',
+        owner: recovery.owner,
+      });
+    } finally {
+      recovery.owner.close();
+    }
+
+    await expect(
+      readReviewPlannerV12ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'recovered' });
+    const second = await acquireReviewPlannerV12ProductAcceptanceOwner({
+      repoRoot: root,
+      environment: 'branch',
+      role: 'recovery',
+    });
+    expect(second.status).toBe('acquired');
+    if (second.status !== 'acquired') throw new Error('owner unavailable');
+    try {
+      await expect(
+        finalizeReviewPlannerV12ProductAcceptanceRecovery({
+          repoRoot: root,
+          environment: 'branch',
+          owner: second.owner,
+        }),
+      ).rejects.toThrow('V12_PRODUCT_ACCEPTANCE_RECOVERY_NOT_AUTHORIZED');
+    } finally {
+      second.owner.close();
+    }
+    expect(state.attemptSha256).toHaveLength(64);
+  });
+
+  it('fails closed when a failure terminal disagrees with its attempt-bound latest checkpoint', async () => {
+    await prepareFailedV12State(root);
+    await writeFile(
+      join(root, ...v12PublicSegments('branch'), 'failure.json'),
+      JSON.stringify({
+        schemaVersion: 'phase-6.9.5-v12-product-acceptance-failure-v1',
+        environment: 'branch',
+        attemptSha256: 'f'.repeat(64),
+        component: 'review',
+        slot: 'api',
+        checkpoint: 'review_api_setup',
+        terminal: 'operation_failed',
+        providerCallState: 'not_started',
+      }) + '\n',
+    );
+
+    await expect(
+      readReviewPlannerV12ProductAcceptanceLedger({
+        repoRoot: root,
+        environment: 'branch',
+      }),
+    ).resolves.toEqual({ status: 'evidence_io' });
+  });
 });
 
 async function prepareEarliestV12State(root: string) {
@@ -310,17 +379,74 @@ async function prepareEarliestV12State(root: string) {
   });
   const attemptSha256 = ledger.attemptSha256();
   try {
-    await ledger.writeExecutionManifest({
-      schemaVersion: 'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
-      environment: 'branch',
-      attemptSha256,
-    });
+    await ledger.writeExecutionManifest(
+      executionManifest('branch', attemptSha256),
+    );
     ledger.writeManifest({
       schemaVersion: 'phase-6.9.5-v12-product-acceptance-manifest-v1',
       environment: 'branch',
       attemptSha256,
     });
   } finally {
+    ledger.close();
+    acquired.owner.close();
+  }
+  return { attemptSha256 };
+}
+
+async function prepareFailedV12State(root: string) {
+  const acquired = await acquireReviewPlannerV12ProductAcceptanceOwner({
+    repoRoot: root,
+    environment: 'branch',
+    role: 'product',
+  });
+  if (acquired.status !== 'acquired') throw new Error('owner unavailable');
+  const ledger = await reserveReviewPlannerV12ProductAcceptanceLedger({
+    repoRoot: root,
+    environment: 'branch',
+    owner: acquired.owner,
+  });
+  const attemptSha256 = ledger.attemptSha256();
+  let journal:
+    | Awaited<
+        ReturnType<
+          typeof prepareReviewPlannerV12ProductAcceptanceRecoveryJournal
+        >
+      >
+    | undefined;
+  try {
+    await ledger.writeExecutionManifest(
+      executionManifest('branch', attemptSha256),
+    );
+    ledger.writeManifest({
+      schemaVersion: 'phase-6.9.5-v12-product-acceptance-manifest-v1',
+      environment: 'branch',
+      attemptSha256,
+    });
+    journal = await prepareReviewPlannerV12ProductAcceptanceRecoveryJournal({
+      repoRoot: root,
+      environment: 'branch',
+      owner: acquired.owner,
+    });
+    journal.appendCheckpoint({
+      schemaVersion: 'phase-6.9.5-v12-product-acceptance-checkpoint-v1',
+      component: 'review',
+      slot: 'api',
+      checkpoint: 'review_api_setup',
+      providerCallState: 'not_started',
+    });
+    ledger.recordFailure({
+      schemaVersion: 'phase-6.9.5-v12-product-acceptance-failure-v1',
+      environment: 'branch',
+      attemptSha256,
+      component: 'review',
+      slot: 'api',
+      checkpoint: 'review_api_setup',
+      terminal: 'operation_failed',
+      providerCallState: 'not_started',
+    });
+  } finally {
+    journal?.close();
     ledger.close();
     acquired.owner.close();
   }
@@ -349,4 +475,34 @@ function v12RecoverySegments(environment: 'branch' | 'main') {
   return REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
     environment,
   );
+}
+
+function executionManifest(
+  environment: 'branch' | 'main',
+  attemptSha256: string,
+) {
+  return {
+    schemaVersion: 'phase-6.9.5-v12-product-acceptance-execution-manifest-v1',
+    environment,
+    attemptSha256,
+    databaseUrlSha256: 'e'.repeat(64),
+    resources: {
+      accountId: {
+        review: `v12-synthetic-account-review-${'a'.repeat(32)}`,
+        planner: `v12-synthetic-account-planner-${'b'.repeat(32)}`,
+      },
+      fixtureId: {
+        review: `v12-synthetic-fixture-review-${'c'.repeat(32)}`,
+        planner: `v12-synthetic-fixture-planner-${'d'.repeat(32)}`,
+      },
+      browser: {
+        executablePath:
+          'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        profilePath:
+          REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.browserProfilePath(
+            environment,
+          ),
+      },
+    },
+  };
 }

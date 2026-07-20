@@ -3,6 +3,7 @@ import {
   createDefaultReviewPlannerProductAcceptanceHostRuntime,
   type ReviewPlannerProductAcceptanceHostRuntime,
 } from './review-planner-product-acceptance-host-runtime';
+import { createDefaultReviewPlannerV12ProductAcceptanceRecoveryHost } from './review-planner-v12-product-acceptance-host';
 
 type Environment = 'branch' | 'main';
 
@@ -52,21 +53,34 @@ export async function runReviewPlannerV12ProductAcceptanceRecoveryComposition(in
   });
 }
 
+type ReviewPlannerV12RecoveryCompositionOptions = Partial<{
+  readLedger: typeof readReviewPlannerV12ProductAcceptanceLedger;
+  host: ReviewPlannerProductAcceptanceHostRuntime;
+}>;
+
 export function createDefaultReviewPlannerV12ProductAcceptanceRecoveryComposition(
-  options: Partial<{
-    readLedger: typeof readReviewPlannerV12ProductAcceptanceLedger;
-    host: ReviewPlannerProductAcceptanceHostRuntime;
-  }> = {},
+  repoRootOrOptions: string | ReviewPlannerV12RecoveryCompositionOptions = '',
+  options: ReviewPlannerV12RecoveryCompositionOptions = {},
 ): Readonly<{
   ports: ReviewPlannerV12ProductAcceptanceRecoveryCompositionPorts;
 }> {
+  const repoRoot =
+    typeof repoRootOrOptions === 'string' ? repoRootOrOptions : '';
+  const resolvedOptions =
+    typeof repoRootOrOptions === 'string' ? options : repoRootOrOptions;
   const readLedger =
-    options.readLedger ?? readReviewPlannerV12ProductAcceptanceLedger;
+    resolvedOptions.readLedger ?? readReviewPlannerV12ProductAcceptanceLedger;
   const host =
-    options.host ?? createDefaultReviewPlannerProductAcceptanceHostRuntime();
+    resolvedOptions.host ??
+    createDefaultReviewPlannerProductAcceptanceHostRuntime();
+  const v12Host =
+    !resolvedOptions.host && repoRoot
+      ? createDefaultReviewPlannerV12ProductAcceptanceRecoveryHost(repoRoot)
+      : undefined;
   return Object.freeze({
     ports: Object.freeze({
       async preflight(input: { environment: Environment; repoRoot: string }) {
+        if (v12Host) return v12Host.preflight(input);
         try {
           const [ledger, hostPreflight] = await Promise.all([
             readLedger(input),
@@ -84,7 +98,7 @@ export function createDefaultReviewPlannerV12ProductAcceptanceRecoveryCompositio
         }
       },
       recover: (input: { environment: Environment; repoRoot: string }) =>
-        host.recover(input),
+        v12Host?.recover(input) ?? host.recover(input),
     }),
   });
 }

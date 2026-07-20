@@ -10,6 +10,7 @@ describe('Review Planner V12 execution bridge', () => {
     const checkpoints: unknown[] = [];
     const failures: unknown[] = [];
     const journal = {
+      attemptSha256: () => attemptSha256,
       appendCheckpoint: jest.fn((value) => {
         checkpoints.push(value);
         return undefined as never;
@@ -40,6 +41,7 @@ describe('Review Planner V12 execution bridge', () => {
         schemaVersion:
           REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
         environment: 'branch',
+        attemptSha256,
         component: 'review',
         slot: 'api',
         checkpoint: 'review_api_activate',

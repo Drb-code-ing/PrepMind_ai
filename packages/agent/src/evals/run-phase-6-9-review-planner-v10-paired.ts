@@ -13,7 +13,6 @@ import {
   runPhase695ReviewPlannerEntries,
   type Phase695DatasetAdapter,
   type Phase695LiveDependencies,
-  type RunPhase695ReviewPlannerPairedInput,
 } from './run-phase-6-9-review-planner-paired.ts';
 
 export const PHASE_695_V10_REPORT_SCHEMA_VERSION =
@@ -68,7 +67,7 @@ export async function runPhase695V10ReviewPlannerPaired(
   input: RunPhase695V10ReviewPlannerPairedInput,
 ): Promise<Phase695V10Report> {
   const entries = await runPhase695ReviewPlannerEntries(
-    input as RunPhase695ReviewPlannerPairedInput,
+    input,
     phase695V10Dataset,
   );
   const runtimeEntries = entries.filter((entry) => entry.executionKind === 'runtime');

@@ -103,7 +103,9 @@ export async function executeReviewPlannerV12ProductAcceptanceProductCli(input: 
 }): Promise<ReviewPlannerV12ProductAcceptanceCliSummary> {
   return runReviewPlannerV12ProductAcceptanceProductCli({
     ...input,
-    ports: input.ports ?? createDefaultReviewPlannerV12ProductAcceptancePorts(),
+    ports:
+      input.ports ??
+      createDefaultReviewPlannerV12ProductAcceptancePorts(input.repoRoot),
   });
 }
 
@@ -116,7 +118,9 @@ export async function executeReviewPlannerV12ProductAcceptanceRecoveryCli(input:
     ...input,
     ports:
       input.ports ??
-      createDefaultReviewPlannerV12ProductAcceptanceRecoveryComposition().ports,
+      createDefaultReviewPlannerV12ProductAcceptanceRecoveryComposition(
+        input.repoRoot,
+      ).ports,
   });
 }
 
@@ -137,8 +141,11 @@ export function serializeReviewPlannerV12ProductAcceptanceCliFailure(
   );
 }
 
-function createDefaultReviewPlannerV12ProductAcceptancePorts(): ReviewPlannerV12ProductAcceptanceCliPorts {
-  return createDefaultReviewPlannerV12ProductAcceptanceComposition().ports;
+function createDefaultReviewPlannerV12ProductAcceptancePorts(
+  repoRoot: string,
+): ReviewPlannerV12ProductAcceptanceCliPorts {
+  return createDefaultReviewPlannerV12ProductAcceptanceComposition(repoRoot)
+    .ports;
 }
 
 function toProductSummary(

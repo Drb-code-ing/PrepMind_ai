@@ -29,9 +29,11 @@ const V12_PUBLIC_RECEIPT_LEAVES = new Set([
   'aggregate.json',
   'success.json',
   'failure.json',
+  'recovery.json',
 ]);
 
 export const REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_CHECKPOINTS = [
+  'review_api_setup',
   'review_api_activate',
   'review_api_facts_before',
   'review_api_trace_baseline',
@@ -309,25 +311,9 @@ export async function readReviewPlannerV12ProductAcceptanceAttemptBinding(input:
 }): Promise<Readonly<AttemptBinding>> {
   try {
     const publicHash = await readPublicAttemptHash(input);
-    const directory = await openWindowsNoReparseExistingFrozenDirectory(
-      input.repoRoot,
-      [
-        ...REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
-          input.environment,
-        ),
-      ],
-    );
-    try {
-      directory.assertLocalFixedNtfsVolume();
-      assertRecoveryLeaves(directory, true);
-      const binding = parseAttemptBinding(
-        JSON.parse(directory.readRegularFile(ATTEMPT_BINDING_LEAF).toString()),
-      );
-      if (binding.attemptSha256 !== publicHash) throw new Error();
-      return Object.freeze({ ...binding });
-    } finally {
-      directory.close();
-    }
+    const binding = await readPrivateAttemptBinding(input);
+    if (binding.attemptSha256 !== publicHash) throw new Error();
+    return binding;
   } catch {
     throw new Error('V12_PRODUCT_ACCEPTANCE_RECOVERY_EVIDENCE_IO');
   }
@@ -341,10 +327,15 @@ export async function prepareReviewPlannerV12ProductAcceptanceRecoveryJournal(in
   assertReviewPlannerV12ProductAcceptanceOwner(input.owner, input.environment, [
     'product',
   ]);
-  const binding =
-    await readReviewPlannerV12ProductAcceptanceAttemptBinding(input);
-  assertOwnerAttempt(input.owner, input.environment, binding.attemptSha256);
-  return openV12Journal(input, binding.attemptSha256, true);
+  const state = ownerState.get(input.owner);
+  if (!state || state.attemptSha256 === null) {
+    throw new Error('V12_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+  const binding = await readPrivateAttemptBinding(input);
+  if (binding.attemptSha256 !== state.attemptSha256) {
+    throw new Error('V12_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
+  }
+  return openV12Journal(input, state.attemptSha256, true);
 }
 
 export async function openReviewPlannerV12ProductAcceptanceRecoveryJournal(input: {
@@ -523,6 +514,29 @@ async function readPublicAttemptHash(input: {
   }
 }
 
+async function readPrivateAttemptBinding(input: {
+  repoRoot: string;
+  environment: ReviewPlannerProductAcceptanceEnvironment;
+}): Promise<Readonly<AttemptBinding>> {
+  const directory = await openWindowsNoReparseExistingFrozenDirectory(
+    input.repoRoot,
+    [
+      ...REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.recoverySegments(
+        input.environment,
+      ),
+    ],
+  );
+  try {
+    directory.assertLocalFixedNtfsVolume();
+    assertRecoveryLeaves(directory, true);
+    return parseAttemptBinding(
+      JSON.parse(directory.readRegularFile(ATTEMPT_BINDING_LEAF).toString()),
+    );
+  } finally {
+    directory.close();
+  }
+}
+
 function assertRecoveryLeaves(
   directory: WindowsNoReparseChildDirectory,
   requireBinding: boolean,
@@ -614,18 +628,6 @@ function checkpointMatchesBoundary(
   value: ReviewPlannerV12ProductAcceptanceCheckpointRecord,
 ) {
   return value.checkpoint.startsWith(`${value.component}_${value.slot}_`);
-}
-
-function assertOwnerAttempt(
-  owner: ReviewPlannerV12ProductAcceptanceOwner,
-  environment: ReviewPlannerProductAcceptanceEnvironment,
-  attemptSha256: string,
-) {
-  assertReviewPlannerV12ProductAcceptanceOwner(owner, environment, ['product']);
-  const state = ownerState.get(owner);
-  if (!state || state.attemptSha256 !== attemptSha256) {
-    throw new Error('V12_PRODUCT_ACCEPTANCE_ATTEMPT_INVALID');
-  }
 }
 
 function sha256(value: string) {

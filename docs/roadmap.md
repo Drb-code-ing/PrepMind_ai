@@ -239,7 +239,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.3 的 deterministic/Mock、五次不可拼接 Live、diagnostics、400-token headroom、strict-tool 历史实验、JSON-mode resolution 与唯一完整 controlled-Live 已完成。新 run 固定 runner-v3 + `deepseek_json_object_v1`，结果为 `28/28 strict success`、`72/72 zero-call`；Verifier 通过，Router additional P95 `4264ms` 超门槛。Fresh Agent/AI 为 345/151 passed，Mock 为 `100/28/0/28/72`。当时的生产决策是 Router 继续 deterministic；该延迟失败作为历史证据保留，不再解释为永久禁止 Router 模型。后续 Phase 6.9.4.4 已完成高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的受控生产接入并恢复默认关闭。证据见 `docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md`。
 - Phase 6.9.4.4 Task 8 已完成 Docker Web runtime 接线与默认关闭配置。Router 的安全/高置信请求保持 deterministic zero-call，歧义/上下文请求才允许真实模型；Verifier 仅在 RAG 证据通过 prompt injection、high-risk、credential material 等本地零调用安全门后，按 semantic-needed 调用模型。独立 gate、5 秒/4 秒 timeout、共享单请求 `2 calls / 2400 input / 800 output` 预算、JSON-object + canonical Zod、限制性 fallback 与安全 Trace/headers 均为生产边界。Task 9 controlled-Live、Docker、可见浏览器验收前 gate 继续默认关闭。权威路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；Memory、Orchestrator、其余 Agent 与 Phase 6 尚未完成。
 - Phase 6.9.4.4 已完成。Task 9 分支 gates 为 Agent 374/374、AI 151/151、Web remediation 后 407/407、Server 735 passed / 2 skipped；最小 controlled-Live harness 为 5/5 strict success。Task 10 在 main merge commit `b58e8d5` 重跑静态门禁：AI 151/151、Server 737 passed / 2 skipped、Web 407/407、lint/build/typecheck 与 Compose 全部通过。可见 Docker 浏览器复验 Router contextual-reference `candidate_applied / 4048ms / 295+240 tokens`、Verifier conflict `candidate_applied / 2618ms / 536+186 tokens` 与 injection provider 前 `safety_blocked / 0-call`；新的 `deepseek-v4-flash` Trace 为 `pricingKnown=true / 0.000389 USD`。两次历史 `study_plan` timeout 继续作为 fallback 时延风险保留。`de41de9` 修复 Docker Chat RAG internal API 优先级，direct/Chat parity 通过。Docker 已恢复 Mock/default-off，各轮 synthetic PostgreSQL/Redis/浏览器数据清理为 0；Admin 本轮未改源码，其镜像重建受 Prisma 官方二进制外部网络失败阻断，现有容器仍返回 200。证据见 `docs/acceptance/2026-07-14-phase-6-9-4-4-router-verifier-production.md`。
-- Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成受限只读 candidate、固定 Mock、server-only composition 与 V10 最小语义修复。本地 merger 继续掌握 owner-scoped facts、FSRS、分钟数、链接、任务与全部写权限；模型只返回产品实际合并的 `focusIndexes` / `blockOrder`。V1--V10 都是不可重跑的历史；V10 唯一 controlled-Live 已通过 `23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232` 和 CNY `0.018684/1.00`，并是唯一语义质量 authority。V11 branch product 已封存为 `operation_failed / recovery-only`，strict terminal 为 `review_api_activate / not_started`，不代表 provider 调用、质量或成本；`cfd15b1` 修复最早合法 failure state 的 recovery preflight 后，精确 recovery 已恢复 mock/default-off。V12 已完成独立 profile、four-slot durable ledger、attempt binding、最早安全 recovery、V8 adapter 和 host-recovery fake boundary 的离线 checkpoint；V12 根目录为空，product/recovery CLI、Docker、浏览器、API 与 provider 均未执行，两个业务 gate 仍为 `false`。V11 不得重跑、进入 main 或复用；V12 branch product 只能在相互独立的 contract/operations review 均无未关闭 P0/P1、并取得一次新的单独用户授权后执行。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
+- Phase 6.9.5 的 ReviewAgent / PlannerAgent 已完成受限只读 candidate、固定 Mock、server-only composition 与 V10 最小语义修复。本地 merger 继续掌握 owner-scoped facts、FSRS、分钟数、链接、任务与全部写权限；模型只返回产品实际合并的 `focusIndexes` / `blockOrder`。V1--V10 都是不可重跑的历史；V10 唯一 controlled-Live 已通过 `23/22`、`48/48` strict/quality、critical `0`、P95 `1465ms`、usage `5764/232` 和 CNY `0.018684/1.00`，并是唯一语义质量 authority。V11 branch product 已封存为 `operation_failed / recovery-only`，strict terminal 为 `review_api_activate / not_started`，不代表 provider 调用、质量或成本；`cfd15b1` 修复最早合法 failure state 的 recovery preflight 后，精确 recovery 已恢复 mock/default-off。V12 已完成独立 profile、four-slot durable ledger、attempt binding、真实 default-off host 与离线安全收口：owner 后 repo/evidence/default-off/DB 指纹复核、attempt/checkpoint-bound failure、一次性 `recovered` terminal、DB drift fail-closed、半激活 default-off 恢复和 30 秒 headed browser 可见边界。V12 根目录为空，product/recovery CLI、Docker、浏览器、API 与 provider 均未执行，两个业务 gate 仍为 `false`。V11 不得重跑、进入 main 或复用；V12 branch product 只能在相互独立的 contract/operations review 均无未关闭 P0/P1、并取得一次新的单独用户授权后执行。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
 - V9 唯一 controlled-Live 已完成并封存：`23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes，P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00` 均在门内；但 quality `30/48`、semantic `4/22`、critical `2` 导致 durable reader 为 `finalized / invalid_attempted / closed / quality_gate_failed`。V1--V9 继续只读；没有 success seal，Review/Planner 产品 gate 缺省关闭，产品仍 deterministic。Product authority 只接受 `finalized / complete / closed / passed + 23 provider / 22 paired admission + lowercase SHA-256`，当前在 ledger、Prisma、Docker、浏览器前阻断，不回退 V8 或 `git show`。详情见 `docs/acceptance/phase-6-9-5-review-planner-live-diagnostic.md`。
 - 后续 Agent 架构优化执行文档见 `docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md`，重点是状态控制面、工具可靠性、RAG 冲突处理、后台任务事件化和 Reflexion 验收，而不是立刻放开全自主写操作。
 - 当前离线补强已将评测集固定为 `phase-6.9-review-planner-v2`：26 条 zero-call case 必须实际经过候选安全/资格/预算/abort gate，22 条 runtime case 覆盖多种诊断、排序和策略；`zeroCallVerified` 进入 report contract，任何意外调用都会关闭生产决策。live provider 缺失、非法或 `0/0` usage 只会 `invalid_response` 回退，Trace 仅在成功且正数 usage、集中单价完整时显示已知估算成本。以上不构成新的 Live、Docker 或浏览器证据，两个业务 gate 仍为 `false`。
@@ -296,7 +296,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 8：Router/Verifier Docker Web gates、默认关闭配置与运维文档。（已完成）
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
-- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority，V10 product terminal 为 recovery-only。V11 已完成一次 branch product 并以 `operation_failed / recovery-only` 封存、恢复完成；V12 已完成新的隔离 lineage 离线 checkpoint，product gate 默认关闭。下一次仅可在两项独立 contract/operations review 均无未关闭 P0/P1、并取得新的单独用户授权后执行一次 V12 branch product；只有 `passed` 才能 main replay。（验收未完成）
+- Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界；V9 唯一 Live 已 `quality_gate_failed` 封存，V10 唯一 controlled-Live 是唯一语义质量 authority，V10 product terminal 为 recovery-only。V11 已完成一次 branch product 并以 `operation_failed / recovery-only` 封存、恢复完成；V12 已完成新的隔离 lineage 离线 checkpoint 和 failure/recovery/DB/TOCTOU/half-activation 安全收口，product gate 默认关闭。两项独立 contract/operations review 已无未关闭 P0/P1；下一次仅可在取得新的单独用户授权后执行一次 V12 branch product，只有 `passed` 才能 main replay。（验收未完成）
 - Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -310,7 +310,26 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.5 V12 离线 checkpoint 的两项独立 contract 与 operations review；V10 是唯一语义质量 authority，V11 已 recovery-only 封存，绝不能重跑或复用。V12 product/recovery CLI、Docker、浏览器、API 与 provider 尚未执行；两项 review 无未关闭 P0/P1 且我单独授权前，不要运行 V12 branch product。”
+下一会话可以复制：“请继续 Phase 6.9.5 V12：先复核离线 checkpoint、一次性 recovery terminal、`DATABASE_URL` 指纹、owner 后重验、半激活 default-off 恢复和 30 秒 headed browser 边界。V10 是唯一语义质量 authority，V11 已 recovery-only 封存，绝不能重跑或复用。V12 product/recovery CLI、Docker、浏览器、API 与 provider 尚未执行；两项 review 已无未关闭 P0/P1，但在我单独授权前，不要运行 V12 branch product。”
+
+### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
+
+V12's earlier fake default host has been replaced with a real default-off host
+composition. It performs read-only preflight, reserves and writes V12-only
+non-secret resource selectors before creating synthetic resources, and then
+uses lineage-neutral V8 Docker/API/browser/Trace/default-off/cleanup
+mechanics. `review_api_setup / not_started` preserves a recoverable terminal
+when setup fails before provider dispatch. No V12 product/recovery CLI,
+Docker, browser, API or provider operation has run; the two gates remain
+`false`. Refreshed independent contract and operations reviews have no
+unresolved P0/P1; fresh user authorization is still required before the
+single V12 branch product command.
+
+The V12 hardening pass adds attempt/checkpoint-bound failure evidence,
+one-time recovered terminal semantics, `DATABASE_URL` fingerprint continuity,
+owner-after-preflight revalidation, default-off recovery after a half-recorded
+activation, and a 30-second headed-browser observation boundary. These are
+offline controls, not product evidence.
 
 ### Phase 7 — 工程化增强
 

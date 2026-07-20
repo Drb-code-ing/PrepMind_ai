@@ -30,6 +30,8 @@ import {
   runReviewPlannerV8ProductAcceptanceRecoveryCli,
   serializeReviewPlannerV8ProductAcceptanceCliSummary,
   sha256ReviewPlannerV8CompositionValue,
+  REVIEW_PLANNER_PRODUCT_ACCEPTANCE_BROWSER_VISIBLE_HOLD_MS,
+  selectReviewPlannerV8DefaultOffRestoreSource,
   selectReviewPlannerV8ExactBrowserProcesses,
   terminateReviewPlannerV8ExactBrowser,
   waitForReviewPlannerV8ServerReadiness,
@@ -89,6 +91,21 @@ const COMMITTED_V8_CANDIDATE = `${JSON.stringify({
 const REPO_ROOT = 'E:\\PrepMind_ai智能备考助手';
 
 describe('V8 product acceptance executable composition', () => {
+  it('uses the observed live container as the default-off restore source when activation fails before recording it', () => {
+    expect(
+      selectReviewPlannerV8DefaultOffRestoreSource(undefined, CONTAINER_ID),
+    ).toBe(CONTAINER_ID);
+    expect(() =>
+      selectReviewPlannerV8DefaultOffRestoreSource(undefined, undefined),
+    ).toThrow('V8_PRODUCT_ACCEPTANCE_RESTORE_REQUIRED');
+  });
+
+  it('holds the headed browser long enough for operator-visible acceptance before exact cleanup', () => {
+    expect(REVIEW_PLANNER_PRODUCT_ACCEPTANCE_BROWSER_VISIBLE_HOLD_MS).toBe(
+      30_000,
+    );
+  });
+
   it('accepts only committed V9 success and never reads legacy V8 evidence', async () => {
     const legacyReader = jest.spyOn(
       legacyV8Evidence,

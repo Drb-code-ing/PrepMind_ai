@@ -153,7 +153,7 @@ function createCases(
 ): readonly InternalCase[] {
   return Array.from({ length: 24 }, (_, index) => {
     const ordinal = index + 1;
-    const id = `${lane}_${ordinal}` as Phase695ReviewPlannerCase['id'];
+    const id: Phase695ReviewPlannerCase['id'] = `${lane}_${ordinal}`;
     const zeroCallGuard = zeroCallIndexes.has(ordinal)
       ? zeroCallGuardFor(ordinal)
       : null;

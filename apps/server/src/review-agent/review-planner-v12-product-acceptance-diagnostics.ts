@@ -24,7 +24,7 @@ export function createReviewPlannerV12ProductAcceptanceDiagnosticsPort(input: {
   environment: 'branch' | 'main';
   journal: Pick<
     ReviewPlannerV12ProductAcceptanceRecoveryJournal,
-    'appendCheckpoint' | 'latestCheckpoint'
+    'appendCheckpoint' | 'attemptSha256' | 'latestCheckpoint'
   >;
   recordFailure(value: ReviewPlannerV12ProductAcceptanceFailure): void;
 }): ReviewPlannerV12ProductAcceptanceDiagnosticsPort {
@@ -62,6 +62,7 @@ export function createReviewPlannerV12ProductAcceptanceDiagnosticsPort(input: {
           schemaVersion:
             REVIEW_PLANNER_V12_PRODUCT_ACCEPTANCE_PROFILE.schemas.failure,
           environment: input.environment,
+          attemptSha256: input.journal.attemptSha256(),
           component: checkpoint.component,
           slot: checkpoint.slot,
           checkpoint: checkpoint.checkpoint,

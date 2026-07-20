@@ -1,6 +1,6 @@
 # PrepMind AI 开发日志
 
-> 2026-07-20 — Phase 6.9.5 V12 已完成离线 checkpoint：独立 profile、four-slot durable ledger、attempt binding、最早安全 recovery、V8 adapter 和 host-recovery fake boundary 已就位；V11 public/recovery root 的 native SHA sentinel 保持不变。此 checkpoint 没有执行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；V12 roots 为空，两个 Review/Planner gate 继续为 `false`。V10 仍是唯一语义质量 authority，V11 仍是不可复用的 `operation_failed / recovery-only` 历史。下一步必须先完成两项相互独立的 contract/operations review 且无未关闭 P0/P1，之后还需一次新的单独用户授权才可运行唯一 V12 branch product。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
+> 2026-07-20 — Phase 6.9.5 V12 已完成离线 checkpoint：独立 profile、four-slot durable ledger、attempt binding、最早安全 recovery、V8 adapter 和真实 default-off host boundary 已就位；V11 public/recovery root 的 native SHA sentinel 保持不变。此 checkpoint 没有执行 V12 product/recovery CLI、Docker、浏览器、API 或 provider；V12 roots 为空，两个 Review/Planner gate 继续为 `false`。V10 仍是唯一语义质量 authority，V11 仍是不可复用的 `operation_failed / recovery-only` 历史。两项相互独立的 contract/operations review 已无未关闭 P0/P1；下一步仍须一次新的单独用户授权，才可运行唯一 V12 branch product。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v12-offline-checkpoint.md`。
 
 > 2026-07-20 — V11 branch product 已封存为 `operation_failed / recovery-only`：安全终态停在 `review_api_activate / not_started`，未到 provider 调用。首 checkpoint 前的严格 attempt state 曾被 recovery preflight 误拒；`cfd15b1` 只修复该 recoverability 缺口，随后一次有效 recovery 完成，server 已验证回到 mock/default-off、两个 gate=false、容器无 DeepSeek key。V11 不重跑、不进 main；下一次产品验收必须使用独立 lineage。完整记录见 `docs/acceptance/phase-6-9-5-review-planner-v11-product-recovery.md`。
 
@@ -2265,3 +2265,40 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
 - `docs/blogs/worker-readiness-deployment-checks.md`：Worker Readiness、部署前检查和 CLI 退出码面试学习博客。
 - `docs/blogs/admin-console-ops-platform.md`：后台管理、Admin Console、Outbox Ops、审计和控制台总览面试学习博客。
+## 2026-07-20 — Phase 6.9.5 V12 real host wiring (offline)
+
+- Replaced the V12 fake default host with a real default-off composition. The
+  host performs read-only preflight, reserves durable V12 state, writes a
+  private non-secret resource-selector manifest, creates only synthetic
+  resources, and delegates the controlled Docker/API/browser/Trace/default-off
+  lifecycle to lineage-neutral V8 mechanics.
+- Added `review_api_setup / not_started` so a post-reservation setup failure is
+  recorded as a recoverable, pre-provider terminal. Recovery can restore
+  mock/default-off and clean only the selectors in the V12 manifest.
+- Corrected V12 product/recovery script exit codes. No V12 CLI, Docker,
+  browser, API, provider or synthetic runtime data was executed or created.
+- Fresh focused V11/V12 Jest, native V12 durable ledger, full Server Jest
+  (`--runInBand`), server build/lint, Agent/AI/types/Web static gates, Compose
+  config and diff check passed. The two independent reviews have no unresolved
+  P0/P1; a fresh user authorization remains required before any one-shot V12
+  branch command.
+
+### V12 offline safety hardening (same lineage; still no runtime)
+
+- Added an attempt-bound `recovery.json` terminal. It is mutually exclusive
+  with success, verifies the failure record against the latest journal
+  checkpoint, and can be sealed once only after default-off restore and exact
+  cleanup; a later recovery is blocked instead of repeating Docker/DB work.
+- Private V12 execution state now contains only a SHA-256 fingerprint of the
+  root `DATABASE_URL`, captured before the reusable V8 host reads its Prisma/
+  Docker configuration. Product revalidates repo/evidence/default-off/database
+  identity after it owns the lock and before reserve; recovery repeats the
+  check under a recovery owner and fails closed on drift before any write.
+- Closed the Docker half-activation edge: when server recreation succeeded but
+  the live container id was not yet recorded, default-off restore uses the
+  observed current container. The headed V12 browser evidence window is held
+  for 30 seconds before exact cleanup so the operator can inspect it.
+- This remains offline: no V12 product/recovery CLI, Docker lifecycle,
+  browser, API, provider, synthetic account, trace or test data was executed
+  or created. The offline gates and independent contract/operations reviews
+  are complete; the next required step is fresh, explicit user authorization.

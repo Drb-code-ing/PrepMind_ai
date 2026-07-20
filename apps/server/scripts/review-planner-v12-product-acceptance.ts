@@ -14,7 +14,7 @@ async function main() {
   process.stdout.write(
     `${serializeReviewPlannerV12ProductAcceptanceCliSummary(summary)}\n`,
   );
-  process.exitCode = 1;
+  if (summary.status !== 'passed') process.exitCode = 1;
 }
 
 void main().catch((error: unknown) => {

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-18。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 仍在 Phase 6.9.5 验收未完成状态。V7 唯一 controlled-Live 已以 `23 / false / evidence_io` 关闭且不可重跑；独立 V8 零正文 stage-diagnostics 与产品验收设计已冻结但尚未实现或运行。两条业务 gate 默认 `false`，当前产品路径仍 deterministic。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 仍在 Phase 6.9.5 验收未完成状态。V10 是唯一语义质量 authority，V11 已 recovery-only 封存；V12 已完成 attempt-bound recovery、DB 指纹、owner 后重验、半激活 default-off 和 30 秒 headed browser 的离线安全收口，且两项独立复审无未关闭 P0/P1，但尚未运行 Docker、浏览器、API 或 provider。两条业务 gate 默认 `false`，当前产品路径仍 deterministic。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
