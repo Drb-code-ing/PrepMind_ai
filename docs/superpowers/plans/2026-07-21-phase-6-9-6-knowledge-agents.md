@@ -916,7 +916,7 @@ Run: `bun test packages/agent/tests/phase-6-9-knowledge-agent-{paired-contract,p
 
 Expected: PASS with exactly 72 cases, 24 zero-call verified with 0 invocation, 48 structured Mock successes in 24 paired requests, no sensitive evidence keys, and no network call.
 
-- [ ] **Step 6: Commit Task 10**
+- [x] **Step 6: Commit Task 10**
 
 ```bash
 git add packages/agent/src/evals/phase-6-9-knowledge-agent-* packages/agent/scripts/*phase-6-9-6* packages/agent/tests/phase-6-9-knowledge-agent-* packages/agent/package.json
@@ -926,10 +926,13 @@ git commit -m "test(agent): add knowledge paired evaluation"
 ### Task 11: Wire server-only Docker configuration and operating documentation
 
 **Files:**
-- Modify: `.env.example`
-- Modify: `docker-compose.yml`
-- Modify: `apps/server/src/config/env.validation.spec.ts`
-- Modify: `apps/server/src/knowledge-agent/knowledge-agent.module.spec.ts`
+- Modify: `docker/.env.example`
+- Modify: `docker/docker-compose.dev.yml`
+- Modify: `apps/server/src/config/env.ts`
+- Modify: `apps/server/src/config/env.spec.ts`
+- Modify: `apps/server/src/worker-readiness/docker-compose-readiness.spec.ts`
+- Create: `apps/server/src/knowledge-agent/knowledge-agent.module.spec.ts`
+- Modify: `apps/server/src/knowledge-agent/knowledge-agent.module.ts`
 - Modify: `docs/dev-start.md`
 - Modify: `docs/ai-behavior-acceptance.md`
 - Modify: `docs/acceptance-checklist.md`
@@ -939,7 +942,7 @@ git commit -m "test(agent): add knowledge paired evaluation"
 - Modify: `DEVLOG.md`
 - Modify: `docs/roadmap.md`
 
-- [ ] **Step 1: Write RED Docker/config boundary tests**
+- [x] **Step 1: Write RED Docker/config boundary tests**
 
 ```ts
 it('exposes Knowledge model gates only to the API service', () => {
@@ -954,33 +957,34 @@ it('exposes Knowledge model gates only to the API service', () => {
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
-Run: `bun --filter @repo/server test -- env.validation.spec.ts knowledge-agent.module.spec.ts --runInBand`
+Run: `bun --filter @repo/server test -- env.spec.ts docker-compose-readiness.spec.ts knowledge-agent.module.spec.ts --runInBand`
 
 Expected: FAIL because the Compose/config keys are absent.
 
-- [ ] **Step 3: Add default-off API-only configuration**
+- [x] **Step 3: Add default-off API-only configuration**
 
 ```yaml
+KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: ${KNOWLEDGE_AGENT_DEEPSEEK_API_KEY:-}
 KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: ${KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED:-false}
 KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: ${KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED:-false}
 KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: ${KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS:-4500}
 KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: ${KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS:-4500}
 ```
 
-Add these only under the API service. Document the full live conjunction, independent rollback, 0.03 CNY request cap, synthetic-only controlled-Live rule, provider retention prerequisite, default-off restoration, and the prohibited Docker cleanup commands.
+Add these only under the API service. The dedicated Knowledge credential must not borrow `DEEPSEEK_API_KEY` or `REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY`; Review/Planner product acceptance must also reject an active Knowledge credential or gate. Document the full live conjunction, independent rollback, 0.03 CNY request cap, synthetic-only controlled-Live rule, provider retention prerequisite, default-off restoration, and the prohibited Docker cleanup commands.
 
-- [ ] **Step 4: Run GREEN config tests and render Compose**
+- [x] **Step 4: Run GREEN config tests and render Compose**
 
-Run: `bun --filter @repo/server test -- env.validation.spec.ts knowledge-agent.module.spec.ts --runInBand && docker compose config --quiet`
+Run: `bun --filter @repo/server test -- env.spec.ts docker-compose-readiness.spec.ts knowledge-agent.module.spec.ts --runInBand && docker compose --env-file .env -f docker/docker-compose.dev.yml config --quiet`
 
-Expected: exit 0; rendered API environment contains four variables with false/false/4500/4500 defaults, and worker/web/admin do not contain them.
+Expected: exit 0; rendered API environment contains the empty dedicated credential plus false/false/4500/4500 defaults, and worker/web/admin do not contain them.
 
-- [ ] **Step 5: Commit Task 11**
+- [x] **Step 5: Commit Task 11**
 
 ```bash
-git add .env.example docker-compose.yml apps/server/src/config/env.validation.spec.ts apps/server/src/knowledge-agent/knowledge-agent.module.spec.ts docs/dev-start.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md docs/data-flow.md README.md AGENTS.md DEVLOG.md docs/roadmap.md
+git add docker/.env.example docker/docker-compose.dev.yml apps/server/src/config/env.ts apps/server/src/config/env.spec.ts apps/server/src/worker-readiness/docker-compose-readiness.spec.ts apps/server/src/knowledge-agent/knowledge-agent.module.ts apps/server/src/knowledge-agent/knowledge-agent.module.spec.ts docs/dev-start.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md docs/data-flow.md README.md AGENTS.md DEVLOG.md docs/roadmap.md docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md
 git commit -m "docs(agent): operate knowledge semantic agents"
 ```
 

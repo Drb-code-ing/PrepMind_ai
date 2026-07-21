@@ -216,15 +216,15 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 补充约束：`zero-call` 不是报告中的静态计数。每条 zero-call case 必须实际进入相应 candidate 入口，经过安全扫描、资格、预算或 abort gate，并由 runtime call counter 得到 `0` 才能写入 `zeroCallVerified=true`。任何意外 runtime 调用都必须令生产决策成为 `zero_call_boundary_failed`。Live success 还必须有 provider-reported 的正安全整数 input/output usage；缺失、非法或 `0/0` usage 是 `PROVIDER_ERROR / invalid_response`，保留预留预算并降级，不得标作 candidate applied、known pricing 或 zero cost。Review/Planner Trace 只有在成功 Trace 的 usage 可验证且集中价格表完整时才写入估算成本；这仍不是供应商账单。
 
-## Phase 6.9.6 Knowledge Agent 设计期验收合同
+## Phase 6.9.6 Knowledge Agent 验收合同
 
-本节固定未来实现必须满足的验收入口，不表示模型路径已经实现或获准调用。完整数值与 schema 以 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md` 为准。
+当前 candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置已经实现；本节仍不授权调用真实模型，也不表示 controlled-Live、Docker 或浏览器产品证据已经存在。完整数值与 schema 以 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md` 为准。
 
 - deterministic、Mock 与 controlled-Live 必须复用 `phase-6.9-knowledge-agents-v1` 的 72 个 case ID：Dedup 40 条、Organizer 32 条；24 条 zero-call 必须实际穿过 candidate guard 且 runtime counter 为 0，48 条 runtime case 必须通过 strict schema；
 - exact `contentHash`、ownership、document status、时间、真实 document ID、recommendation、写权限和最终 merger 始终由本地代码决定；模型不得把语义相似伪装成 exact duplicate，也不得生成删除、替换、合并、改名或分类操作；
 - embedding shortlist 只能使用 canonical owner 的 `DONE`、安全、已有 Qwen 1536 Chunk embedding；每份资料最多稳定采样 6 个 chunk、最多 12 个 pair、阈值 `0.78`，向量和 chunk 正文不得进入 API、Trace 或前端；
 - Document/chunk/score 必须来自同一 `REPEATABLE READ` owner snapshot；provider 前重验 owner、updatedAt、hash、status 与 chunk identity，漂移以 `snapshot_stale` 零调用。文件名和每段摘要必须先完整经过 `knowledge-model-projection-v1` 的 strict 类型/hostile accessor、credential、instruction override 与持久化 safety 双重检查，再裁剪和分配 ordinal；任一字段不安全即排除整份资料；
-- Dedup/Organizer 分别使用 server-only 独立 gate，默认 `false`；真实调用还需全局 Live 双开关、有效 credential、已知 pricing、不可变预算和 eligibility。两个候选共享 `2 calls / 6000 input / 1200 output`，各自 timeout 4500ms、SDK retry 0；
+- Dedup/Organizer 分别使用 server-only 独立 gate，默认 `false`；真实调用还需全局 Live 双开关、API-only `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、精确 DeepSeek HTTPS base URL、已知 pricing、不可变预算和 eligibility。该凭据不得借用 Chat 或 Review/Planner 产品凭据，worker/web/admin 不接收 Knowledge credential/gate/timeout。两个候选共享 `2 calls / 6000 input / 1200 output`，各自 timeout 4500ms、SDK retry 0，单请求硬 cap `0.03 CNY`；
 - controlled-Live 必须满足 critical/越权/越界索引/写操作为 0、Dedup macro-F1 >= 0.85、revision recall >= 0.85、Organizer subject top-1 >= 0.88、tag micro-F1 >= 0.80、collection pairwise-F1 >= 0.80、语义加权分比 baseline 至少提升 10 个百分点、单 Agent P95 <= 4500ms、并行 endpoint P95 <= 5200ms、总费用 <= 1.00 CNY；
 - semantic score 固定为 `0.35*Dedup macro-F1 + 0.15*revision recall + 0.20*subject top-1 + 0.15*tag micro-F1 + 0.15*collection pairwise-F1`，只在同一 48 个 runtime case 上比较，非法/失败按错误预测计分；提升是绝对差 `>=0.10`。24+24 runtime case 按 `pairedRunIndex=0..23` 组成 24 次并行请求；P95 用 nearest-rank 的第 23 个观测值，包含 attempted success/fallback/error/timeout，不含 zero-call，branch/main 不拼接；
 - usage 必须是 provider-reported 正安全整数并与 reservation/runtime/Trace 一致。缺失、非法、`0/0`、unknown pricing、timeout、abort、schema invalid 或 Trace unavailable 都只能回退到 `local_deterministic`，不能伪造 hybrid success 或零成本成功；

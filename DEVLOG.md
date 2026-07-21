@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 11 API-only Docker/运维边界：Compose 只向 Nest `server` 注入 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、Dedup/Organizer 两个独立 default-off gate 与两个 4500ms timeout；worker/web/admin 均不接收。Knowledge composition 不再借用通用 Chat 或 Review/Planner 产品凭据，Review/Planner 产品 acceptance 也拒绝 Knowledge key/gate 同时开启，避免跨能力串用和轮换耦合。
+>
+> TDD 与安全：先用 Compose boundary、API positive control、generic-key isolation 和 worker zero-executor 测试观察 RED，再补 env schema/composition。有效路径仍要求全局 Live 双开关、精确 DeepSeek HTTPS、独立 credential、已知价格、owner eligibility 与冻结 reservation；两个候选共享 `2 calls / 6000 input / 1200 output`，request cap `0.03 CNY`。缺条件、worker role 或 executor 构造失败都回到 Mock/default-off。
+>
+> 运维文档：同步 server-only allowlist、独立 rollback、synthetic-only controlled-Live、provider retention/训练设置前置、default-off/key 清空和精确 synthetic cleanup。禁止 `down -v`、Docker prune、volume/database reset、Redis flush 或 MinIO wipe。本任务没有启动容器/浏览器、读取 key 或调用 provider；下一步是 Task 12 分支静态/Mock 验收并停下重新申请 controlled-Live 授权。
+>
+> 回顾时可以问：为什么 Knowledge 要有独立 credential 而不能借 Review/Planner 的 key？为什么 worker 即使被注入 live/gate/key 也不能创建 executor？为什么 `--env-file` 不等于 service `env_file`？为什么本地 cleanup 不能承诺删除供应商日志？
+
 > 2026-07-21 — Phase 6.9.6 Task 10 Knowledge paired eval：新增固定 72-case 的 strict Mock/Live runner、CLI 与 evidence validator。24 条 zero-call 不再按 expected reason 自报：候选级样本实际穿过 exact-hash、projection safety、abort 和 budget guard，并用独立 executor counter 证明 provider 0 调用；48 条 runtime case 按 24 个 paired index 并行运行 Dedup/Organizer，失败仍保留在质量分母。
 >
 > 证据边界：报告重算 dataset/prompt/projection/shortlist 版本、case identity、语义指标、exact-hash、安全计数、单 Agent/endpoint P95、正 usage、逐 case 与总 CNY 成本。Mock 满分仍固定 `quality_gate_failed`，只有 `mode=live + deepseek + deepseek-v4-pro` 且全部阈值通过才可开启生产结论。validator 递归拒绝 prompt、filename、summary、chunk、embedding、provider body/header/response、credential、API key 与 raw error key，并强制 evidence filename 与 mode/scope/runId 一致，拒绝重复或跨 scope 复用 runId、未知 usage/price 和成本公式篡改。
@@ -154,7 +162,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排、`/knowledge` local/hybrid/degraded 只读来源状态，以及 strict Mock paired runner/CLI/evidence validator；当前尚未调用真实 provider 或进行 Docker/浏览器生产验收，下一步是 Task 11。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排、`/knowledge` local/hybrid/degraded 只读来源状态、strict Mock paired runner/CLI/evidence validator，以及 API-only Docker gate/timeout/独立 credential 运维边界；当前尚未调用真实 provider 或进行 Docker/浏览器生产验收，下一步是 Task 12 分支静态/Mock 验收。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -183,6 +191,7 @@
 | Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
 | Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
 | Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
+| Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

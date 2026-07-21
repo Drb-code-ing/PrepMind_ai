@@ -96,6 +96,21 @@ describe('parseEnv', () => {
     ).toThrow();
   });
 
+  it('normalizes the dedicated server-only Knowledge Agent credential', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '  synthetic-knowledge-key  ',
+      }).KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
+    ).toBe('synthetic-knowledge-key');
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '   ',
+      }).KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
+    ).toBeUndefined();
+  });
+
   it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {
     expect(() =>
       parseEnv({ ...requiredEnv, REVIEW_AGENT_MODEL_TIMEOUT_MS: 999 }),
@@ -153,6 +168,9 @@ describe('parseEnv', () => {
     { AI_BASE_URL: 'https://api.openai.com/v1' },
     { DEEPSEEK_API_KEY: '' },
     { OPENAI_API_KEY: 'acceptance-openai-key' },
+    { KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: 'knowledge-key-must-be-isolated' },
+    { KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true' },
+    { KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: 'true' },
     { REVIEW_AGENT_MODEL_TIMEOUT_MS: '4499' },
     { PLANNER_AGENT_MODEL_TIMEOUT_MS: '4501' },
   ])(
@@ -211,6 +229,32 @@ describe('parseEnv', () => {
         AI_ENABLE_LIVE_CALLS: 'false',
       }).AI_PROVIDER_MODE,
     ).toBe('live');
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
+        KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '  knowledge-live-key  ',
+      }).KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
+    ).toBe('knowledge-live-key');
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: 'knowledge-key-without-gate',
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        DEEPSEEK_API_KEY: 'generic-key-cannot-serve-knowledge',
+        KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
+      }),
+    ).toThrow();
   });
 
   it('rejects mismatched or ambiguous live provider credentials', () => {

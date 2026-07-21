@@ -47,7 +47,9 @@ import { KnowledgeSemanticCandidateSource } from './knowledge-semantic-candidate
             'KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS',
             { infer: true },
           ),
-          DEEPSEEK_API_KEY: config.get('DEEPSEEK_API_KEY', { infer: true }),
+          DEEPSEEK_API_KEY: config.get('KNOWLEDGE_AGENT_DEEPSEEK_API_KEY', {
+            infer: true,
+          }),
         });
       },
     },
