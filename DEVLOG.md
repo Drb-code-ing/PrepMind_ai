@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 10 Knowledge paired eval：新增固定 72-case 的 strict Mock/Live runner、CLI 与 evidence validator。24 条 zero-call 不再按 expected reason 自报：候选级样本实际穿过 exact-hash、projection safety、abort 和 budget guard，并用独立 executor counter 证明 provider 0 调用；48 条 runtime case 按 24 个 paired index 并行运行 Dedup/Organizer，失败仍保留在质量分母。
+>
+> 证据边界：报告重算 dataset/prompt/projection/shortlist 版本、case identity、语义指标、exact-hash、安全计数、单 Agent/endpoint P95、正 usage、逐 case 与总 CNY 成本。Mock 满分仍固定 `quality_gate_failed`，只有 `mode=live + deepseek + deepseek-v4-pro` 且全部阈值通过才可开启生产结论。validator 递归拒绝 prompt、filename、summary、chunk、embedding、provider body/header/response、credential、API key 与 raw error key，并强制 evidence filename 与 mode/scope/runId 一致，拒绝重复或跨 scope 复用 runId、未知 usage/price 和成本公式篡改。
+>
+> Live 安全门：CLI 需要 fresh `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`、全局 live 双门、Knowledge 双 gate、精确 DeepSeek URL、有效 key 和合法 timeout；配置不完整时不会创建 marker 或触发 executor。一次性 marker 使用 `wx`，Live evidence 通过 hard-link 不可变发布，stdout 只有 runId、版本、聚合 counts/metrics/latency/usage/cost/gate 与 evidence path。focused `16/16`、Agent typecheck/lint、Mock CLI/validator 和两轮只读复审通过；没有读取 `.env`/API key、调用真实 provider、启动 Docker/浏览器或修改业务数据，双 gate 仍默认关闭。下一步是 Task 11 API-only Docker 配置与运维文档。
+>
+> 回顾时可以问：为什么 Mock 满分仍不能打开生产 gate？为什么 zero-call 不能回显 expected reason？为什么 endpoint latency 必须不低于两个并行 Agent 的样本？为什么 Live evidence 要用 hard-link 而不是先建空文件再 rename？
+
 > 2026-07-21 — Phase 6.9.6 Task 9 `/knowledge` 只读来源状态：Knowledge suggestions 现在把后端 strict runtime metadata 收敛为三个用户可理解的状态。任一 Dedup/Organizer runtime `degraded=true` 时优先显示“本地规则建议”与安全回退说明；否则任一 `hybrid_model / candidate_applied` 显示“语义建议”；default-off、not eligible 或纯本地结果显示“本地规则建议”。
 >
 > UI 与权限：来源 badge/description 位于原有资料建议内容上方，API 已返回但没有有效建议时也会说明当前来源。loading、request error、empty、上传、处理、替换、删除和检索路径保持不变；页面不展示 token、cost、Trace ID、provider error 或 document UUID，也没有语义重试、自动整理或任何新增写操作。移动端通过 `flex-wrap`、`min-w-0` 与 `break-words` 安全换行。
@@ -146,7 +154,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排，以及 `/knowledge` local/hybrid/degraded 只读来源状态；当前仍未完成 paired eval 或生产验收，下一步是 Task 10。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排、`/knowledge` local/hybrid/degraded 只读来源状态，以及 strict Mock paired runner/CLI/evidence validator；当前尚未调用真实 provider 或进行 Docker/浏览器生产验收，下一步是 Task 11。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -174,6 +182,7 @@
 | Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
 | Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
 | Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
+| Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

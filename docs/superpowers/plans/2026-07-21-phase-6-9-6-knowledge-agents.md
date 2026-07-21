@@ -849,7 +849,7 @@ git commit -m "feat(web): label knowledge semantic suggestions"
 - Create: `packages/agent/tests/phase-6-9-knowledge-agent-cli.test.ts`
 - Modify: `packages/agent/package.json`
 
-- [ ] **Step 1: Write RED report-contract and runner tests**
+- [x] **Step 1: Write RED report-contract and runner tests**
 
 ```ts
 test('requires exact counts, versions, provenance, and separate branch/main run identity', () => {
@@ -868,13 +868,13 @@ test('runs two runtime cases concurrently for every pairedRunIndex', async () =>
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `bun test packages/agent/tests/phase-6-9-knowledge-agent-{paired-contract,paired-runner,cli}.test.ts`
 
 Expected: FAIL because paired contracts and CLI do not exist.
 
-- [ ] **Step 3: Implement the strict report schema and gate calculation**
+- [x] **Step 3: Implement the strict report schema and gate calculation**
 
 ```ts
 export const PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA = z.object({
@@ -899,7 +899,7 @@ export const PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA = z.object({
 
 `computeKnowledgeGate()` must require 24/24 verified zero-call, 48/48 canonical schema success, no critical/permission/mutation failures, exact-hash 100%, all fixed quality thresholds, absolute score improvement `>=0.10`, Dedup/Organizer P95 `<=4500`, endpoint P95 `<=5200`, known provenance/usage/pricing, total controlled-Live cost `<=1.00 CNY`, and no broader fallback. Failed cases remain in denominators.
 
-- [ ] **Step 4: Implement safe CLI modes and evidence validation**
+- [x] **Step 4: Implement safe CLI modes and evidence validation**
 
 ```ts
 const mode = z.enum(['baseline', 'mock', 'live', 'validate']).parse(process.argv[2]);
@@ -910,7 +910,7 @@ if (mode === 'live' && process.env.PHASE_6_9_6_CONTROLLED_LIVE_APPROVED !== 'tru
 
 CLI stdout may print only run ID, versions, aggregate counts, metrics, latency, usage, cost, gate, and evidence path. The evidence writer must reject keys matching `/prompt|filename|summary|chunk|embedding|provider.*(body|header|response)|credential|api.?key|raw.*error/i`. Validator must reject duplicate IDs, wrong counts, missing cases, mixed branch/main run IDs, nonpositive attempted usage, impossible cost, unknown pricing, or any sensitive key.
 
-- [ ] **Step 5: Run GREEN Mock runner and validator**
+- [x] **Step 5: Run GREEN Mock runner and validator**
 
 Run: `bun test packages/agent/tests/phase-6-9-knowledge-agent-{paired-contract,paired-runner,cli}.test.ts && bun --filter @repo/agent eval:phase-6-9-6:mock && bun --filter @repo/agent eval:phase-6-9-6:validate`
 

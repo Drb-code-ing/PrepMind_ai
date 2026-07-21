@@ -28,6 +28,9 @@
     "eval:phase-6-9-4-3:validate": "bun scripts/validate-phase-6-9-4-3-evidence.ts",
     "eval:review-planner": "bun scripts/phase-6-9-review-planner-paired-cli.ts",
     "eval:phase-6-9-6:baseline": "bun scripts/run-phase-6-9-6-baseline.ts",
+    "eval:phase-6-9-6:mock": "bun scripts/phase-6-9-6-knowledge-agent-cli.ts mock",
+    "eval:phase-6-9-6:live": "bun scripts/phase-6-9-6-knowledge-agent-cli.ts live",
+    "eval:phase-6-9-6:validate": "bun scripts/validate-phase-6-9-6-knowledge-agent-evidence.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"
