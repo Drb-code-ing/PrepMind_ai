@@ -24,7 +24,7 @@ export type KnowledgeDedupInput = {
   documents: readonly KnowledgeAgentDocumentInput[];
 };
 
-const MAX_SUGGESTIONS = 5;
+export const MAX_KNOWLEDGE_DEDUP_SUGGESTIONS = 5;
 
 export function analyzeKnowledgeDedup(input: KnowledgeDedupInput): KnowledgeDedupResult {
   const orderedDocuments = orderDocuments(input.documents, input.targetDocumentId);
@@ -36,7 +36,7 @@ export function analyzeKnowledgeDedup(input: KnowledgeDedupInput): KnowledgeDedu
   addRevisionSuggestions(orderedDocuments, items, signals, targetDocumentId);
   addComplementarySuggestions(orderedDocuments, items, signals, targetDocumentId);
 
-  const uniqueItems = dedupeItems(items).slice(0, MAX_SUGGESTIONS);
+  const uniqueItems = dedupeItems(items).slice(0, MAX_KNOWLEDGE_DEDUP_SUGGESTIONS);
   if (uniqueItems.length === 0) {
     signals.add('insufficientSignal');
     return {
@@ -188,6 +188,33 @@ function filenameRevisionMatch(left: string, right: string) {
     normalizedLeft.includes(normalizedRight) ||
     normalizedRight.includes(normalizedLeft)
   );
+}
+
+export function hasKnowledgeRevisionSignal(
+  left: KnowledgeAgentDocumentInput,
+  right: KnowledgeAgentDocumentInput,
+): boolean {
+  const leftVersion = extractVersionSignal(left.name);
+  const rightVersion = extractVersionSignal(right.name);
+  if (leftVersion !== null || rightVersion !== null) {
+    return leftVersion !== rightVersion;
+  }
+
+  const leftTimestamp = Date.parse(left.updatedAt);
+  const rightTimestamp = Date.parse(right.updatedAt);
+  return (
+    Number.isFinite(leftTimestamp) &&
+    Number.isFinite(rightTimestamp) &&
+    leftTimestamp !== rightTimestamp
+  );
+}
+
+function extractVersionSignal(value: string): string | null {
+  const match = value
+    .normalize('NFKC')
+    .toLowerCase()
+    .match(/(?:\bv(?:ersion)?\s*|版本\s*)(\d+(?:\.\d+)*)|(?:新版|旧版)/u);
+  return match?.[1] ?? match?.[0] ?? null;
 }
 
 function pairIncludesTarget(

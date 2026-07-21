@@ -17,6 +17,7 @@ const documentIdSchema = z.string().trim().min(1);
 
 export const knowledgeDedupSuggestionKindSchema = z.enum([
   'exact_duplicate',
+  'semantic_duplicate',
   'possible_revision',
   'complementary',
   'insufficient_signal',

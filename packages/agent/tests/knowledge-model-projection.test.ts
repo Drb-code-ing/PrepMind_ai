@@ -49,6 +49,7 @@ describe('knowledge model projection', () => {
     expect(result.value.pairs).toEqual([
       { pairIndex: 0, left: 'd0', right: 'd1', evidenceBand: 'high' },
     ]);
+    expect(result).not.toHaveProperty('documentIdsByOrdinal');
     expect(JSON.stringify(result.value)).not.toMatch(/owner-doc-/);
     expect(Object.isFrozen(result.value)).toBe(true);
     expect(Object.isFrozen(result.value.documents)).toBe(true);

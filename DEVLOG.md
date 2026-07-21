@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 3 Dedup 受治理候选：目标是让 `KnowledgeDedupAgent` 在 exact hash 本地权威不变的前提下，具备受限语义关系判断能力。候选先生成 ordinal-only 安全投影，再只允许返回 `semantic_duplicate / possible_revision / complementary / unrelated` 与固定 evidence code；真实 document ID、标题、原因、严重度、置信度、recommendation、signals 和全部写权限均由本地 merger 重建。`semantic_duplicate` 是独立只读建议并固定 `review_manually`，不伪装成新版；`possible_revision` 缺少本地版本 token 或时间顺序证据时会降级为人工复核并标记 `insufficient_version_evidence`；`complementary` 只建议 `keep_both`，`unrelated` 不生成条目。
+>
+> 为什么 exact hash 必须留在本地：相同 `contentHash` 已是确定事实，交给模型既增加成本与延迟，也可能被语义输出覆盖。因此即使 exact-hash pair 误入 semantic shortlist，候选也会在 runtime 前剔除，并保留 deterministic `exact_duplicate / use_existing`；没有剩余语义 pair 时 counting runtime 证明 provider 调用数为 0。公开 `projectKnowledgeSnapshot()` 只返回 ordinal 投影，ordinal→真实 ID map 不再从 `production.ts` 暴露，只在候选内部 merger 使用。
+>
+> TDD/验收：先增加公开 projection 不得携带真实 ID map 的回归并观察预期 RED，再完成修复；Dedup/Projection focused `22/22`、AI `191/191`、Types `39/39` 通过，Agent/AI/Types typecheck、Agent/AI lint 与 `git diff --check` 均 exit 0。timeout、abort、budget、schema、invalid usage 和 runtime throw 全部回退 deterministic；最大只展示 5 条，不产生删除、替换、合并或分类写操作。规格与质量复审最终均无 Critical/Important；质量复审还复核了候选 preview reservation 与共享 runtime 唯一真实预留的边界，避免误改成双重扣减。
+>
+> 本任务只使用 Mock/runtime fixture 和注入式无网络 executor；没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建业务数据。整套 24 条 zero-call 尚未跑 paired runner，不能写成 24/24 已验证；Organizer candidate、owner snapshot、pgvector shortlist、server gate、Trace/API/UI、paired eval 与生产验收仍未完成。下一步是 Task 4 Organizer candidate 与本地权威 merger。
+>
+> 回顾时可以问：为什么 exact hash 不应该交给模型？semantic duplicate 为什么不能伪装成 revision？本地版本证据不足时为什么仍保留人工复核而不是相信模型？preview reservation 与 runtime 真正记账怎样避免超卖和双重扣减？
+
 > 2026-07-21 — Phase 6.9.6 Task 2 Knowledge 模型安全边界：新增 strict Dedup/Organizer 输出合同。Dedup 只允许最多 12 个本地 pair index、四类语义关系、medium/high confidence 和固定 evidence code；Organizer 只允许最多 20 份资料的学科/资料类型、每份最多 2 个受限 topic label、最多 5 个集合及 2..8 个有序唯一成员。schema 之外的动态 validator 会整批拒绝重复/越界索引与关系-evidence 错配，模型没有 exact-hash 覆盖、删除、写库或任意字段能力。
 >
 > `knowledge-model-projection-v1` 为什么需要：文件名和摘要都属于不可信文本，若先裁剪后扫描，凭据或 prompt injection 可以藏在截断区；若先分配真实 ID，模型边界又会无谓暴露 owner 数据。实现先用 property descriptor 把普通自有数据克隆到隔离对象，hostile getter/proxy 只得到固定 `invalid_input`；随后逐个扫描完整 filename 和每段 summary 的 malformed UTF-16、控制字符、credential、instruction/system prompt 与持久化 safety metadata。字段全部通过后才裁剪、分配 `d0...` ordinal、重建 surviving pair 并深冻结。unsafe non-target 整份排除，unsafe target 固定 `target_projection_blocked`，输出不含 document ID、owner、storage、chunk、向量或写权限。
@@ -78,7 +88,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 KnowledgeDedup/Organizer 的 72-case baseline，并完成 Task 2 strict schema 与 `knowledge-model-projection-v1` 安全投影；当前尚未实现 candidate、shortlist、生产 gate 或调用真实模型，下一步是 Dedup candidate 与本地权威 merger。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 KnowledgeDedup/Organizer 的 72-case baseline，完成 Task 2 strict schema/安全投影以及 Task 3 Dedup 受治理 candidate/本地权威 merger；当前仍未实现 Organizer candidate、shortlist、生产 gate 或真实 provider 路径，下一步是 Organizer candidate 与本地权威 merger。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -99,6 +109,7 @@
 | Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
 | Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
 | Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
+| Phase 6.9.6 Task 3 | 已完成 | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

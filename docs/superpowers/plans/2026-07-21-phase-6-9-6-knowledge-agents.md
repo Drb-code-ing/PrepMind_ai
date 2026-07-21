@@ -305,7 +305,7 @@ git commit -m "feat(agent): constrain knowledge model projection"
 - Modify: `packages/agent/tests/knowledge-dedup.test.ts`
 - Modify: `packages/agent/src/model-candidates/production.ts`
 
-- [ ] **Step 1: Write RED tests for zero-call and merger authority**
+- [x] **Step 1: Write RED tests for zero-call and merger authority**
 
 ```ts
 test('keeps exact hash local and skips runtime when no semantic pair exists', async () => {
@@ -326,13 +326,13 @@ test('downgrades a revision without local version/time evidence', async () => {
 });
 ```
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
 
 Run: `bun test packages/agent/tests/knowledge-dedup-model-candidate.test.ts`
 
 Expected: FAIL because the candidate does not exist.
 
-- [ ] **Step 3: Implement candidate invocation and fail-closed merger**
+- [x] **Step 3: Implement candidate invocation and fail-closed merger**
 
 ```ts
 export async function runKnowledgeDedupModelCandidate(
@@ -352,13 +352,13 @@ export async function runKnowledgeDedupModelCandidate(
 
 `mergeKnowledgeDedupDecision()` must reject the whole candidate for duplicate/out-of-range pair indexes or invalid evidence associations, ignore `unrelated`, map `complementary -> keep_both`, map semantic duplicate and all revisions to `review_manually`, and require a local version token or timestamp ordering before retaining `possible_revision`. It must rebuild IDs, title, reason, severity, confidence, recommendation, and signals from the owner snapshot.
 
-- [ ] **Step 4: Run full Dedup GREEN tests**
+- [x] **Step 4: Run full Dedup GREEN tests**
 
 Run: `bun test packages/agent/tests/knowledge-dedup.test.ts packages/agent/tests/knowledge-dedup-model-candidate.test.ts`
 
 Expected: PASS, including timeout, abort, invalid usage, invalid schema, runtime throw, exact-hash immutability, maximum five suggestions, no write capability, and no prompt/content in observations.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```bash
 git add packages/agent/src/model-candidates/knowledge-dedup-model-candidate.ts packages/agent/src/model-candidates/production.ts packages/agent/src/nodes/knowledge-dedup.ts packages/agent/tests/knowledge-dedup*.test.ts

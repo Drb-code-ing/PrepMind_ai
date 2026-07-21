@@ -74,7 +74,18 @@ export type KnowledgeProjectionReasonCode =
   | 'no_safe_projection';
 
 export type KnowledgeProjectionResult =
-  | { ok: true; value: KnowledgeModelProjection }
+  | {
+      ok: true;
+      value: KnowledgeModelProjection;
+    }
+  | { ok: false; reasonCode: KnowledgeProjectionReasonCode };
+
+type InternalKnowledgeProjectionResult =
+  | {
+      ok: true;
+      value: KnowledgeModelProjection;
+      documentIdsByOrdinal: readonly string[];
+    }
   | { ok: false; reasonCode: KnowledgeProjectionReasonCode };
 
 type PreparedSourceDocument = Readonly<{
@@ -86,6 +97,16 @@ type PreparedSourceDocument = Readonly<{
 }>;
 
 export function projectKnowledgeSnapshot(input: unknown): KnowledgeProjectionResult {
+  const projected = projectKnowledgeSnapshotForCandidate(input);
+  return projected.ok
+    ? { ok: true, value: projected.value }
+    : { ok: false, reasonCode: projected.reasonCode };
+}
+
+/** @internal Only model candidates may retain the local ordinal-to-ID map. */
+export function projectKnowledgeSnapshotForCandidate(
+  input: unknown,
+): InternalKnowledgeProjectionResult {
   try {
     const cloned = clonePlainData(input);
     if (!cloned.ok) return { ok: false, reasonCode: 'invalid_input' };
@@ -125,6 +146,9 @@ export function projectKnowledgeSnapshot(input: unknown): KnowledgeProjectionRes
     return {
       ok: true,
       value: buildFrozenProjection(parsed.data, preparedDocuments),
+      documentIdsByOrdinal: deepFreeze(
+        preparedDocuments.map((document) => document.documentId),
+      ),
     };
   } catch {
     return { ok: false, reasonCode: 'invalid_input' };

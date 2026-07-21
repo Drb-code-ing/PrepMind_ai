@@ -39,6 +39,12 @@ export {
   type KnowledgeProjectionResult,
 } from './knowledge-model-projection.ts';
 export {
+  mergeKnowledgeDedupDecision,
+  runKnowledgeDedupModelCandidate,
+  type KnowledgeDedupModelCandidateEnvelope,
+  type KnowledgeDedupModelCandidateInput,
+} from './knowledge-dedup-model-candidate.ts';
+export {
   decideKnowledgeVerifierModelEligibility,
   decideRouterModelEligibility,
   isKnowledgeVerifierModelEligible,

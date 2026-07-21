@@ -7,6 +7,7 @@ import {
 
 testQueryDefaults();
 testValidSuggestionResponse();
+testSemanticDuplicateSuggestionResponse();
 testInvalidEmptyDocumentReferencesRejected();
 
 function testQueryDefaults() {
@@ -25,6 +26,37 @@ function testQueryDefaults() {
   );
   assert.throws(() => knowledgeAgentSuggestionQuerySchema.parse({ limit: 0 }));
   assert.throws(() => knowledgeAgentSuggestionQuerySchema.parse({ limit: 51 }));
+}
+
+function testSemanticDuplicateSuggestionResponse() {
+  const parsed = knowledgeAgentSuggestionResponseSchema.parse({
+    generatedAt: '2026-07-21T00:00:00.000Z',
+    dedup: {
+      summary: '发现 1 条疑似语义重复资料。',
+      items: [
+        {
+          kind: 'semantic_duplicate',
+          severity: 'warning',
+          documentIds: ['doc_left', 'doc_right'],
+          title: '疑似语义重复资料',
+          reason: '内容高度重合，仍需人工确认。',
+          recommendation: 'review_manually',
+          confidence: 0.84,
+          signals: ['modelSemanticDuplicate'],
+        },
+      ],
+      signals: ['modelSemanticDedup'],
+    },
+    organizer: {
+      summary: '',
+      collections: [],
+      tags: [],
+      signals: [],
+    },
+  });
+
+  assert.equal(parsed.dedup.items[0]?.kind, 'semantic_duplicate');
+  assert.equal(parsed.dedup.items[0]?.recommendation, 'review_manually');
 }
 
 function testValidSuggestionResponse() {
