@@ -608,11 +608,11 @@ git commit -m "feat(server): shortlist knowledge semantics"
 - Create: `apps/server/src/knowledge-agent/knowledge-model-config.spec.ts`
 - Create: `apps/server/src/knowledge-agent/knowledge-model-runtime.factory.ts`
 - Create: `apps/server/src/knowledge-agent/knowledge-model-runtime.factory.spec.ts`
-- Modify: `apps/server/src/config/env.validation.ts`
-- Modify: `apps/server/src/config/env.validation.spec.ts`
+- Modify: `apps/server/src/config/env.ts`
+- Modify: `apps/server/src/config/env.spec.ts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.module.ts`
 
-- [ ] **Step 1: Write RED configuration and transport tests**
+- [x] **Step 1: Write RED configuration and transport tests**
 
 ```ts
 it('defaults both gates off and timeouts to 4500ms', () => {
@@ -633,13 +633,13 @@ it('uses non-thinking JSON object mode, maxRetries=0, and no tools', async () =>
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `bun --filter @repo/server test -- knowledge-model-config.spec.ts knowledge-model-runtime.factory.spec.ts env.validation.spec.ts --runInBand`
 
 Expected: FAIL because config keys and factory do not exist.
 
-- [ ] **Step 3: Implement composition-only configuration**
+- [x] **Step 3: Implement composition-only configuration**
 
 ```ts
 export const KNOWLEDGE_REQUEST_BUDGET = Object.freeze({
@@ -664,7 +664,7 @@ export function resolveKnowledgeModelConfig(env: NodeJS.ProcessEnv): KnowledgeMo
 
 The factory receives API key/base URL/pricing through the server composition root only. `@repo/agent` must not read environment variables. Live eligibility is the conjunction of `AI_PROVIDER_MODE=live`, `AI_ENABLE_LIVE_CALLS=true`, the corresponding Knowledge gate, valid credentials, known exact pricing profile, snapshot eligibility, and available budget.
 
-- [ ] **Step 4: Implement parallel-safe budget reservations**
+- [x] **Step 4: Implement parallel-safe budget reservations**
 
 Reserve Dedup `3000/500` and Organizer `3000/700` from one cloned, deep-frozen request budget before either Promise starts. If either reservation cannot be proven, both candidates return `fallback_budget_exhausted` with zero invocation. Runtime usage must be positive safe integers, within its reservation, and reconcile to the aggregate `<=6000/1200`, or the affected candidate fails closed. Assert the frozen worst-case price:
 
@@ -673,13 +673,13 @@ expect(6000 * 3 / 1_000_000 + 1200 * 6 / 1_000_000).toBe(0.0252);
 expect(estimateKnowledgeRequestCostCny({ inputTokens: 6000, outputTokens: 1200 })).toBeLessThanOrEqual(0.03);
 ```
 
-- [ ] **Step 5: Run GREEN tests and server build**
+- [x] **Step 5: Run GREEN tests and server build**
 
 Run: `bun --filter @repo/server test -- knowledge-model-config.spec.ts knowledge-model-runtime.factory.spec.ts env.validation.spec.ts --runInBand && bun --filter @repo/server build`
 
 Expected: PASS for default-off, malformed booleans/timeouts, unknown price fail-closed, missing credential zero-call, no retry, JSON-object mode, abort deadline, usage validation, and immutable shared budget.
 
-- [ ] **Step 6: Commit Task 7**
+- [x] **Step 6: Commit Task 7**
 
 ```bash
 git add apps/server/src/knowledge-agent/knowledge-model-* apps/server/src/config/env.validation* apps/server/src/knowledge-agent/knowledge-agent.module.ts

@@ -66,6 +66,20 @@ const envSchema = z
       .min(1_000)
       .max(15_000)
       .default(4_500),
+    KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
+    KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
     CONVERSATION_SUMMARY_MAX_CALLS: z.coerce
       .number()
       .int()

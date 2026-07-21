@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 7 Knowledge production composition 地基：新增 Dedup/Organizer 两个独立 server gate，默认均为 `false`，timeout 默认 4500ms、只接受 1000..15000ms。真实 runtime 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、对应组件 gate=true、精确 `https://api.deepseek.com/v1`、有效 DeepSeek credential 与已知精确价格同时成立时才创建；worker-only role 强制两个组件 gate 关闭。
+>
+> 模型与 transport：Knowledge 候选固定 `deepseek-v4-pro`、prompt `knowledge-agents-v1`、`deepseek_v4_pro_nonthinking_json`，复用共享 OpenAI-compatible executor 的 non-thinking JSON object、`maxRetries=0`、no-tools 与 abort deadline。API key 只进入 composition closure，不进入安全 config、budget 或返回值；unknown/被篡改 pricing、missing credential、错误 base URL、executor construction 异常、hostile env/price getter 或 Proxy 都关闭双 gate/返回 null，不把异常正文向外传播。
+>
+> 预算与价格：在任何并行 Promise 启动前，从冻结的 `2 calls / 6000 input / 1200 output` request budget 纯函数预留 Dedup `3000/500` 与 Organizer `3000/700` 两个隔离 budget；任一 reservation 不可证明时两者都不调用。固定非缓存价格为 `3 CNY / 1M input`、`6 CNY / 1M output`，理论最坏 `0.0252 CNY`，request cap `0.03 CNY`；未知价格、usage 非正/不可验证、超过 reservation/总 token ceiling 或 cost cap 都必须 fail-closed。
+>
+> TDD/验收：缺失模块与 env keys 得到预期 RED，hostile getter/Proxy 与 over-cap 也先 RED 后修复；focused `90/90`、Server lint/build 与 `git diff --check` 通过。规格复审 PASS；质量复审发现的 getter/proxy Important 已关闭并复审 APPROVED。没有读取 `.env`/API key、调用真实 provider、启动 Docker/浏览器或创建/修改业务数据。runtime provider 已注册但尚未注入 `KnowledgeAgentService` dispatch，产品仍返回 deterministic 建议；下一步是 Task 8 并行编排、API metadata 与安全 Trace。
+>
+> 回顾时可以问：为什么组件 gate=true 仍不一定允许真实调用？为什么两个并行 Agent 必须在启动前一次性预留共享预算？为什么 `0/0` usage 不能显示为零成本成功？为什么 Task 7 已有真实模型 runtime 仍不能说产品已经在用真实模型？
+
 > 2026-07-21 — Phase 6.9.6 Task 6 owner-scoped pgvector semantic shortlist：把 owner snapshot 中最多 20 份资料收敛为可供 Dedup/Organizer 裁决的 bounded 语义候选。只纳入当前 owner 的 `DONE` Document，以及显式 `riskLevel=low`、`safeForPrompt=true`、1536 维且 provenance 精确为 Qwen `text-embedding-v4` 的 Chunk；新处理 Chunk 会持久化 provider/model/dimensions，旧 Chunk 缺少可信 provenance 时不会被猜测为可用，仍返回 deterministic 建议。
 >
 > 采样与评分：每份资料按 `index/id` 通过 `ntile(6)` 稳定取最多 6 个 Chunk；跨文档 pair 取最高 3 个 cosine similarity 的均值，`>=0.78` 才入选，`>=0.9` 标记 high，按 score 与 code-unit document ID 稳定排序后最多 12 对。exact non-empty content hash 在向量计算前排除；target 请求只保留包含 target 的 pair。无关的 PENDING/PROCESSING/FAILED 资料不会压制其他 DONE pair，但 target 自身非 DONE 时仍 fail-closed。
@@ -118,7 +128,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer 两个受治理 candidate/本地权威 merger、owner snapshot/stale fence 与 owner-scoped pgvector semantic shortlist；当前仍未实现 server provider/gate、paired eval 或生产验收，下一步是 Task 7 default-off gates、DeepSeek runtime、价格与不可变共享预算。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer 两个受治理 candidate/本地权威 merger、owner snapshot/stale fence、owner-scoped pgvector semantic shortlist，以及 default-off DeepSeek runtime/价格/共享预算 composition；当前仍未完成 Service 并行编排、API/Trace、paired eval 或生产验收，下一步是 Task 8。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -143,6 +153,7 @@
 | Phase 6.9.6 Task 4 | 已完成 | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor |
 | Phase 6.9.6 Task 5 | 已完成 | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider |
 | Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
+| Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

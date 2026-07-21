@@ -60,7 +60,40 @@ describe('parseEnv', () => {
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 0,
       REVIEW_AGENT_MODEL_TIMEOUT_MS: 4500,
       PLANNER_AGENT_MODEL_TIMEOUT_MS: 4500,
+      KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: false,
+      KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: 4500,
+      KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 4500,
     });
+  });
+
+  it('validates Knowledge Agent gates and bounded model timeouts', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
+        KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: 'false',
+        KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: '1000',
+        KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '15000',
+      }),
+    ).toMatchObject({
+      KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: true,
+      KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: 1000,
+      KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 15000,
+    });
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: 999,
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 15001,
+      }),
+    ).toThrow();
   });
 
   it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {
