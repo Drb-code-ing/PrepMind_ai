@@ -247,7 +247,7 @@ describe('review planner controlled Live V9 gate diagnostics CLI', () => {
   });
 
   it('registers the exact package command and keeps both script paths behind the serializer', () => {
-    const script = readFileSync(scriptPath(), 'utf8');
+    const script = readFileSync(scriptPath(), 'utf8').replace(/\r\n/g, '\n');
     const packageJson = JSON.parse(
       readFileSync(resolve(__dirname, '../../package.json'), 'utf8'),
     ) as { scripts?: Record<string, string> };

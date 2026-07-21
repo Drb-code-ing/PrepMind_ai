@@ -204,10 +204,12 @@ export type ReviewPlannerV18ProductAcceptanceRecoveryHost = Readonly<{
  */
 export function createDefaultReviewPlannerV18ProductAcceptanceHost(
   repoRoot: string,
+  options: Readonly<{ pairedEvidenceAuthority?: PairedEvidenceAuthority }> = {},
 ): ReviewPlannerV18ProductAcceptanceHost {
   const root = resolve(repoRoot);
   const hostDatabaseUrlSha256 = sha256(readRootDatabaseUrl(root));
   const pairedEvidenceAuthority =
+    options.pairedEvidenceAuthority ??
     createReviewPlannerV18BunPairedEvidenceAuthority(root);
   let latest:
     | Awaited<

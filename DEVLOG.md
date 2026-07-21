@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 12 分支静态/Mock checkpoint：Knowledge focused 为 Agent `114/114`、Types `1/1`、Server `50/50`、Web `7/7`；分支全量为 Agent `465/465`、Types `39/39`、Server `2110 passed / 30 skipped`、Web `413/413`，相关 typecheck/lint/build 与 `git diff --check` 均通过。为完成唯一数据库 integration gate，只启动 Docker Desktop 与既有 PostgreSQL service，保留原卷且没有进入 API/Web/worker 产品验收。
+>
+> 评测证据：未修饰 deterministic baseline 仍为 `12/48`、critical `0`、semantic `0.2322452551`；strict Mock 为 `24/24` verified zero-call、`48/48` canonical schema、semantic `1`、绝对提升 `0.7677547449`、P95 `286/348/348ms`、usage `14472/4185`、estimated `0.068526 CNY`，validator 返回 `ok=true`。Mock 的 `quality_gate_failed` 是 production gate 只接受 DeepSeek V4 Pro Live 的固定设计，不能把 Mock 满分冒充真实语义质量。
+>
+> 兼容性收口：`.gitattributes` 固定历史 acceptance evidence 字节，避免 Windows CRLF 破坏 SHA authority；V9 spec 只在测试侧归一化换行；V17--V22 bridge tests 注入 strict synthetic authority，production host 默认仍使用真实 Bun evidence authority 并 fail-closed；Knowledge 公共导出检查与 Web Node runner 命令也已补齐。没有改写历史 evidence、调用 provider、启用 Knowledge gate、创建账号/资料/对象/Trace 或执行可见浏览器验收。
+>
+> 阶段边界：Task 12 已形成独立 checkpoint，但 Phase 6.9.6 尚未完成，两个生产 gate 继续为 `false`。下一步必须先由用户重新明确授权一次 branch controlled-Live，Task 13 才可继续 Docker API、可见 `/knowledge`、精确清理、main 回放与远程推送。完整证据见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`。
+>
+> 回顾时可以问：为什么 Mock semantic=1 仍不能通过 production gate？为什么历史 evidence 要按字节固定？为什么测试可以注入 synthetic authority 而生产不能放宽？为什么仅启动 PostgreSQL 不等于 Docker 产品验收？
+
 > 2026-07-21 — Phase 6.9.6 Task 11 API-only Docker/运维边界：Compose 只向 Nest `server` 注入 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、Dedup/Organizer 两个独立 default-off gate 与两个 4500ms timeout；worker/web/admin 均不接收。Knowledge composition 不再借用通用 Chat 或 Review/Planner 产品凭据，Review/Planner 产品 acceptance 也拒绝 Knowledge key/gate 同时开启，避免跨能力串用和轮换耦合。
 >
 > TDD 与安全：先用 Compose boundary、API positive control、generic-key isolation 和 worker zero-executor 测试观察 RED，再补 env schema/composition。有效路径仍要求全局 Live 双开关、精确 DeepSeek HTTPS、独立 credential、已知价格、owner eligibility 与冻结 reservation；两个候选共享 `2 calls / 6000 input / 1200 output`，request cap `0.03 CNY`。缺条件、worker role 或 executor 构造失败都回到 Mock/default-off。
@@ -192,6 +202,7 @@
 | Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
 | Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
 | Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
+| Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

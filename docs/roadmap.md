@@ -309,6 +309,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.6 Task 9：`/knowledge` 已把 strict runtime metadata 映射为语义建议、本地规则与安全降级三态，且 degraded 优先于 hybrid candidate；来源说明在空建议 response 下仍展示。页面不显示 cost、prompt、provider error、Trace/document ID，不提供 retry 或自动 mutation，并保持既有 loading/error/empty 与资料操作。Web `413/413`、lint/build、focused strict API/view/page tests 和两轮复审通过；双 gate 仍默认关闭，下一步 Task 10 paired runner/CLI/evidence validator。（已完成）
 - Phase 6.9.6 Task 10：已实现 72-case strict Mock/Live paired runner、CLI 与 evidence validator。24 条 zero-call 由实际 candidate guard/独立 preflight 条件和 executor counter 证明 0 调用，不再回显 expected reason；48 runtime 保留完整分母并组成 24 次并行请求。报告重算版本、case、质量、安全、exact-hash、P95、usage 与逐 case/总 CNY 成本；Mock 满分仍不能通过 Live production gate。CLI 需要 fresh 显式授权和完整 live conjunction，marker 一次性消费，Live evidence 以 hard-link 不可变发布，filename 与 mode/scope/runId 强绑定，stdout 只含聚合信息。focused `16/16`、Agent typecheck/lint、Mock CLI/validator 与两轮复审通过；未调用 provider/Docker，下一步 Task 11。（已完成）
 - Phase 6.9.6 Task 11：Compose 只向 API server 投影独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、两个 default-off gate 与两个 4500ms timeout；worker/web/admin 不接收，worker role 即使被伪造注入也不创建 executor。Knowledge 不借用通用 Chat 或 Review/Planner 产品凭据，Review/Planner acceptance 也拒绝 Knowledge key/gate 同时开启。运维合同已记录完整 Live conjunction、独立回滚、`0.03 CNY` request cap、synthetic-only、provider retention 前置、default-off/key 清空和禁止破坏性 Docker 清理；未启动容器或 provider。下一步 Task 12 分支静态/Mock 验收。（已完成）
+- Phase 6.9.6 Task 12：分支 Knowledge focused 为 Agent `114/114`、Types `1/1`、Server `50/50`、Web `7/7`；全量为 Agent `465/465`、Types `39/39`、Server `2110 passed / 30 skipped`、Web `413/413`，typecheck/lint/build/diff 门均通过。Mock 为 `24/24` verified zero-call、`48/48` strict runtime、semantic `1`、P95 `286/348/348ms`、estimated `0.068526 CNY`，Live-only gate 按设计仍为 `quality_gate_failed`。Windows evidence 字节与历史 Review/Planner bridge tests 已作不放宽生产 authority 的 hermetic 收口；未调用 provider 或做产品 Docker/浏览器验收，双 gate 保持关闭。下一步必须先取得新的 controlled-Live 明确授权。（已完成 checkpoint，Phase 6.9.6 未完成）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
@@ -321,7 +322,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请按 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md` 执行 Task 12 分支静态/Mock 验收与 evidence checkpoint；不要调用真实模型、启动 Docker/浏览器或提前进入 Task 13，提交后停下向我申请新的 controlled-Live 授权。”
+下一会话可以复制：“我明确授权执行一次 Phase 6.9.6 Task 13 branch controlled-Live；按 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md` 的一次性门禁执行，失败不得重跑，完成后再进入 Docker/可见浏览器验收。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

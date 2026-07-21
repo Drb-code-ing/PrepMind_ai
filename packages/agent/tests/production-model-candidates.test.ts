@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import * as productionModelCandidates from '@repo/agent/model-candidates';
 
 const EXPECTED_RUNTIME_EXPORTS = [
+  'KNOWLEDGE_DEDUP_MODEL_SCHEMA',
+  'KNOWLEDGE_MODEL_PROJECTION_VERSION',
+  'KNOWLEDGE_ORGANIZER_MODEL_SCHEMA',
   'MODEL_CANDIDATE_DISPOSITIONS',
   'PLANNER_MODEL_CANDIDATE_SCHEMA',
   'REVIEW_MODEL_CANDIDATE_SCHEMA',
@@ -12,10 +15,17 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'decideRouterModelEligibility',
   'isKnowledgeVerifierModelEligible',
   'isRouterModelEligible',
+  'mergeKnowledgeDedupDecision',
+  'mergeKnowledgeOrganizerDecision',
+  'projectKnowledgeSnapshot',
+  'runKnowledgeDedupModelCandidate',
+  'runKnowledgeOrganizerModelCandidate',
   'runKnowledgeVerifierModelCandidate',
   'runPlannerModelCandidate',
   'runReviewModelCandidate',
   'runRouterModelCandidate',
+  'validateKnowledgeDedupModelDecision',
+  'validateKnowledgeOrganizerModelDecision',
 ];
 
 describe('production model candidate exports', () => {
@@ -23,6 +33,8 @@ describe('production model candidate exports', () => {
     expect(Object.keys(productionModelCandidates).sort()).toEqual(EXPECTED_RUNTIME_EXPORTS);
     expect(productionModelCandidates.runRouterModelCandidate).toBeFunction();
     expect(productionModelCandidates.runKnowledgeVerifierModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runKnowledgeDedupModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runKnowledgeOrganizerModelCandidate).toBeFunction();
     expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
     expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(

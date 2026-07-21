@@ -991,23 +991,28 @@ git commit -m "docs(agent): operate knowledge semantic agents"
 ### Task 12: Complete branch static and Mock acceptance, then stop for Live authorization
 
 **Files:**
+- Create: `.gitattributes`
 - Create: `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`
 - Modify: `AGENTS.md`
 - Modify: `DEVLOG.md`
 - Modify: `docs/roadmap.md`
+- Modify: `packages/agent/tests/production-model-candidates.test.ts`
+- Modify: `apps/server/src/review-agent/review-planner-controlled-live-eval-v9-gate-diagnostics.cli.spec.ts`
+- Modify: `apps/server/src/review-agent/review-planner-v17-product-acceptance-host.ts` through `review-planner-v22-product-acceptance-host.ts`
+- Modify: `apps/server/src/review-agent/review-planner-v17-bun-authority-bridge.spec.ts` through `review-planner-v22-bun-authority-bridge.spec.ts`
 
-- [ ] **Step 1: Run the focused suites once**
+- [x] **Step 1: Run the focused suites once**
 
 ```bash
 bun test packages/agent/tests/knowledge-*.test.ts packages/agent/tests/phase-6-9-knowledge-agent-*.test.ts
 node --experimental-strip-types --test packages/types/tests/knowledge-agent.test.mts
 bun --filter @repo/server test -- knowledge-agent --runInBand
-bun test apps/web/src/lib/knowledge-agent-*.test.mts apps/web/src/app/'(main)'/knowledge/page.test.mts
+node --experimental-strip-types --test apps/web/src/lib/knowledge-agent-*.test.mts "apps/web/src/app/(main)/knowledge/page.test.mts"
 ```
 
 Expected: all pass; capture counts and elapsed time in the acceptance document.
 
-- [ ] **Step 2: Run the branch-wide static gates once**
+- [x] **Step 2: Run the branch-wide static gates once**
 
 ```bash
 bun --filter @repo/agent test
@@ -1023,7 +1028,7 @@ bun --filter @repo/web build
 
 Expected: all exit 0. Do not rerun successful expensive gates unless a later change touches their code path.
 
-- [ ] **Step 3: Run and validate deterministic/Mock evidence**
+- [x] **Step 3: Run and validate deterministic/Mock evidence**
 
 ```bash
 bun --filter @repo/agent eval:phase-6-9-6:baseline
@@ -1033,14 +1038,14 @@ git diff --check
 git status --short
 ```
 
-Expected: the frozen deterministic baseline is reproduced; Mock has 24/24 verified zero-call and 48/48 strict runtime success; validator and `git diff --check` pass; only intended acceptance/doc changes remain.
+Expected: the frozen deterministic baseline is reproduced; Mock has 24/24 verified zero-call and 48/48 strict runtime success; validator and `git diff --check` pass; only intended acceptance/docs plus branch-gate compatibility test changes remain. Compatibility changes must not relax production evidence authority or rewrite historical evidence.
 
-- [ ] **Step 4: Record the branch checkpoint and commit**
+- [x] **Step 4: Record the branch checkpoint and commit**
 
 The acceptance document must state: no real model call yet, no Docker/browser product acceptance yet, both production gates remain false, controlled-Live needs new explicit approval, static/Mock evidence paths and hashes, no database/object/Trace cleanup was needed, and Phase 6.9.6 is not complete.
 
 ```bash
-git add docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md AGENTS.md DEVLOG.md docs/roadmap.md
+git add .gitattributes AGENTS.md DEVLOG.md docs/roadmap.md docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md packages/agent/tests/production-model-candidates.test.ts apps/server/src/review-agent/review-planner-controlled-live-eval-v9-gate-diagnostics.cli.spec.ts apps/server/src/review-agent/review-planner-v{17,18,19,20,21,22}-product-acceptance-host.ts apps/server/src/review-agent/review-planner-v{17,18,19,20,21,22}-bun-authority-bridge.spec.ts
 git commit -m "docs(agent): checkpoint knowledge branch acceptance"
 ```
 
