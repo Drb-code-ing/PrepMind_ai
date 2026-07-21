@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 6 owner-scoped pgvector semantic shortlist：把 owner snapshot 中最多 20 份资料收敛为可供 Dedup/Organizer 裁决的 bounded 语义候选。只纳入当前 owner 的 `DONE` Document，以及显式 `riskLevel=low`、`safeForPrompt=true`、1536 维且 provenance 精确为 Qwen `text-embedding-v4` 的 Chunk；新处理 Chunk 会持久化 provider/model/dimensions，旧 Chunk 缺少可信 provenance 时不会被猜测为可用，仍返回 deterministic 建议。
+>
+> 采样与评分：每份资料按 `index/id` 通过 `ntile(6)` 稳定取最多 6 个 Chunk；跨文档 pair 取最高 3 个 cosine similarity 的均值，`>=0.78` 才入选，`>=0.9` 标记 high，按 score 与 code-unit document ID 稳定排序后最多 12 对。exact non-empty content hash 在向量计算前排除；target 请求只保留包含 target 的 pair。无关的 PENDING/PROCESSING/FAILED 资料不会压制其他 DONE pair，但 target 自身非 DONE 时仍 fail-closed。
+>
+> 安全与一致性：两侧 Chunk 和 Document 都绑定 canonical owner，所有原始 SQL 使用 Prisma tagged `$queryRaw`/`Prisma.join`，hostile owner/document ID 只作为 bound values；查询结果不返回 embedding、正文、文件名、metadata 或 raw owner。selected Chunk identity/full-content hash/safety 与 pair score/evidence band 加入 snapshot fingerprint，provider 前重建可发现选择、内容、安全或语义分数漂移；畸形、越界、重复、跨 owner 或 DB 异常整批回到冻结空 shortlist。
+>
+> TDD/验收：focused `44/44`、Server lint/build 与 `git diff --check` 通过；规格复审 PASS、质量复审 APPROVED，均无 Critical/Important。没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建/修改业务数据。下一步是 Task 7 default-off gates、DeepSeek runtime、集中价格与不可变共享预算。
+>
+> 回顾时可以问：为什么 1536 维还不能证明 embedding 来自 Qwen？为什么 exact hash 必须在 pgvector 前排除？为什么选 top-3 mean 而不是只看最大相似度？为什么 shortlist 已完成仍不能说 Knowledge Agent 已经使用真实模型？
+
 > 2026-07-21 — Phase 6.9.6 Task 5 单一 owner snapshot 与 stale fence：把原先“先独立查 target、再查列表、必要时第三次补 target”的 TOCTOU 链路收敛为一个 bounded PostgreSQL interactive transaction。事务以 `REPEATABLE READ` 运行并先执行 `SET TRANSACTION READ ONLY`，所有 target ownership、Document 与所选 Chunk 读取都绑定 canonical `userId`；请求 `limit` 即使为 50 也最多取 20 份，target 在窗口外时占用一个名额而不是形成第 21 份，缺失或跨 owner 仍返回同一个 404。
 >
 > 快照与安全边界：`knowledge-owner-snapshot-v1` 不保留 raw user ID，而是使用必需 JWT secret 作为服务端密钥材料生成域分离 HMAC；该 HMAC 只用于本次请求的 owner fingerprint，JWT secret 轮换只会改变后续瞬时快照。完整 canonical fingerprint 覆盖 target binding、所有影响 prompt/policy/merger 的 Document 字段、selected chunk identity/order、全文 SHA-256、safety schema 版本与完整 canonical safety hash，以及 shortlist 版本。返回对象、Document、chunk 和嵌套数组全部深冻结，数据库 mock 行在 load 后被修改也不会改变快照。
@@ -108,7 +118,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影及 Dedup/Organizer 两个受治理 candidate 与本地权威 merger；当前仍未实现 owner snapshot、shortlist、生产 gate 或真实 provider 路径，下一步是单一不可变 owner snapshot 与 stale fence。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer 两个受治理 candidate/本地权威 merger、owner snapshot/stale fence 与 owner-scoped pgvector semantic shortlist；当前仍未实现 server provider/gate、paired eval 或生产验收，下一步是 Task 7 default-off gates、DeepSeek runtime、价格与不可变共享预算。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -131,6 +141,8 @@
 | Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
 | Phase 6.9.6 Task 3 | 已完成 | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor |
 | Phase 6.9.6 Task 4 | 已完成 | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor |
+| Phase 6.9.6 Task 5 | 已完成 | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider |
+| Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

@@ -64,6 +64,9 @@ describe('DocumentProcessingService', () => {
       RAG_CHUNK_TARGET_TOKENS: 100,
       RAG_CHUNK_OVERLAP_TOKENS: 0,
       RAG_CHUNK_MAX_TOKENS: 200,
+      RAG_EMBEDDING_PROVIDER: 'qwen',
+      RAG_EMBEDDING_MODEL: 'text-embedding-v4',
+      RAG_EMBEDDING_DIMENSIONS: 1536,
     };
     return values[key as keyof typeof values];
   });
@@ -186,6 +189,11 @@ describe('DocumentProcessingService', () => {
             documentId: 'doc_1',
             chunkIndex: 0,
             sectionTitle: 'Algebra',
+            embedding: {
+              provider: 'qwen',
+              model: 'text-embedding-v4',
+              dimensions: 1536,
+            },
             safety: {
               riskLevel: 'low',
               categories: [],

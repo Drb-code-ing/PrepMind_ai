@@ -6,9 +6,15 @@ import {
   KnowledgeOwnerSnapshotSource,
   fingerprintKnowledgeOwnerSnapshot,
 } from './knowledge-owner-snapshot';
+import type {
+  KnowledgeSemanticCandidateScope,
+  KnowledgeSemanticCandidateSource,
+  KnowledgeSemanticShortlist,
+} from './knowledge-semantic-candidate.source';
 
 describe('KnowledgeOwnerSnapshotSource', () => {
-  const source = new KnowledgeOwnerSnapshotSource();
+  const semantic = semanticSourceFixture();
+  const source = new KnowledgeOwnerSnapshotSource(semantic.value);
   const ownerSecret = 'test-owner-secret-with-at-least-32-bytes';
 
   it('loads an owner-scoped, bounded, deeply frozen snapshot and replaces the tail with an out-of-window target', async () => {
@@ -26,7 +32,7 @@ describe('KnowledgeOwnerSnapshotSource', () => {
     expect(tx.executeReadOnly).toHaveBeenCalledWith(
       'SET TRANSACTION READ ONLY',
     );
-    expect(tx.findMany).toHaveBeenCalledWith(
+    expect(tx.findDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'owner-canary-never-serialize' },
         take: 2,
@@ -59,6 +65,8 @@ describe('KnowledgeOwnerSnapshotSource', () => {
     expect(Object.isFrozen(snapshot.documents[0]?.chunkSummaries)).toBe(true);
     expect(Object.isFrozen(snapshot.selectedChunks)).toBe(true);
     expect(Object.isFrozen(snapshot.selectedChunks[0])).toBe(true);
+    expect(Object.isFrozen(snapshot.semanticPairs)).toBe(true);
+    expect(Object.isFrozen(snapshot.semanticPairs[0])).toBe(true);
 
     target.name = 'mutation-after-load.pdf';
     target.chunks[0].content = 'mutation-after-load';
@@ -84,7 +92,7 @@ describe('KnowledgeOwnerSnapshotSource', () => {
       snapshot.documents.filter((document) => document.id === 'doc-target'),
     ).toHaveLength(1);
     expect(tx.findFirst).not.toHaveBeenCalled();
-    expect(tx.findMany).toHaveBeenCalledWith(
+    expect(tx.findDocuments).toHaveBeenCalledWith(
       expect.objectContaining({ take: 20 }),
     );
   });
@@ -140,6 +148,7 @@ describe('KnowledgeOwnerSnapshotSource', () => {
       ...material,
       documents: [...material.documents].reverse(),
       selectedChunks: [...material.selectedChunks].reverse(),
+      semanticPairs: [...material.semanticPairs].reverse(),
     };
     expect(fingerprintKnowledgeOwnerSnapshot(reordered)).toBe(
       fingerprintKnowledgeOwnerSnapshot(material),
@@ -165,11 +174,64 @@ describe('KnowledgeOwnerSnapshotSource', () => {
           index === 0 ? { ...chunk, safetyVersion: 'safety:changed' } : chunk,
         ),
       },
+      {
+        ...material,
+        semanticPairs: material.semanticPairs.map((pair, index) =>
+          index === 0
+            ? { ...pair, score: 0.81, evidenceBand: 'medium' as const }
+            : pair,
+        ),
+      },
     ]) {
       expect(fingerprintKnowledgeOwnerSnapshot(changed)).not.toBe(
         fingerprintKnowledgeOwnerSnapshot(material),
       );
     }
+  });
+
+  it('attaches the fake semantic shortlist to the snapshot and detects score drift during preflight', async () => {
+    const rows = [documentRow('doc-1'), documentRow('doc-2')];
+    const tx = transactionFixture({ recent: rows });
+    const snapshot = await source.load(tx.value, {
+      userId: 'owner-1',
+      ownerHashSecret: ownerSecret,
+      limit: 20,
+    });
+
+    expect(semantic.load).toHaveBeenCalledWith(
+      tx.value,
+      expect.objectContaining({ userId: 'owner-1' }),
+    );
+    const latestSemanticCall =
+      semantic.load.mock.calls[semantic.load.mock.calls.length - 1];
+    expect(latestSemanticCall?.[1].documents).toEqual([
+      { id: 'doc-1', status: 'DONE', contentHash: 'sha256:doc-1' },
+      { id: 'doc-2', status: 'DONE', contentHash: 'sha256:doc-2' },
+    ]);
+    expect(snapshot.semanticPairs).toEqual([
+      {
+        leftDocumentId: 'doc-1',
+        rightDocumentId: 'doc-2',
+        score: 0.9,
+        evidenceBand: 'high',
+      },
+    ]);
+    expect(JSON.stringify(snapshot)).not.toMatch(/embedding|owner-1/);
+
+    semantic.load.mockResolvedValueOnce(
+      semanticResult(rows, {
+        score: 0.88,
+        evidenceBand: 'medium',
+      }),
+    );
+    const prisma = revalidationFixture(rows);
+    await expect(
+      source.revalidate(prisma.value, {
+        userId: 'owner-1',
+        ownerHashSecret: ownerSecret,
+        snapshot,
+      }),
+    ).resolves.toBe(false);
   });
 
   it('revalidates the complete canonical snapshot and rejects document, chunk, safety, or selection drift', async () => {
@@ -189,7 +251,7 @@ describe('KnowledgeOwnerSnapshotSource', () => {
         snapshot,
       }),
     ).resolves.toBe(true);
-    expect(prisma.findMany).toHaveBeenCalledWith(
+    expect(prisma.findDocuments).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'owner-1', id: { in: ['doc-1'] } },
       }),
@@ -267,7 +329,7 @@ describe('KnowledgeOwnerSnapshotSource', () => {
         snapshot: tampered,
       }),
     ).resolves.toBe(false);
-    expect(prisma.findMany).not.toHaveBeenCalled();
+    expect(prisma.findDocuments).not.toHaveBeenCalled();
   });
 });
 
@@ -276,24 +338,49 @@ function transactionFixture(input: {
   target?: DocumentRow | null;
 }) {
   const executeReadOnly = jest.fn().mockResolvedValue(0);
-  const findMany = jest.fn().mockResolvedValue(input.recent);
+  const findDocuments = jest.fn().mockResolvedValue(input.recent);
   const findFirst = jest.fn().mockResolvedValue(input.target ?? null);
+  const availableChunks = [
+    ...input.recent,
+    ...(input.target ? [input.target] : []),
+  ].flatMap((document) => document.chunks);
+  const findChunks = jest
+    .fn()
+    .mockImplementation((args: ChunkFindManyArgs) =>
+      Promise.resolve(
+        availableChunks.filter((chunk) => args.where.id.in.includes(chunk.id)),
+      ),
+    );
   return {
     executeReadOnly,
-    findMany,
+    findDocuments,
     findFirst,
+    findChunks,
     value: {
       $executeRawUnsafe: executeReadOnly,
-      document: { findMany, findFirst },
+      document: { findMany: findDocuments, findFirst },
+      chunk: { findMany: findChunks },
     } as unknown as Prisma.TransactionClient,
   };
 }
 
 function revalidationFixture(rows: DocumentRow[]) {
-  const findMany = jest.fn().mockResolvedValue(rows);
+  const findDocuments = jest.fn().mockResolvedValue(rows);
+  const availableChunks = rows.flatMap((document) => document.chunks);
+  const findChunks = jest
+    .fn()
+    .mockImplementation((args: ChunkFindManyArgs) =>
+      Promise.resolve(
+        availableChunks.filter((chunk) => args.where.id.in.includes(chunk.id)),
+      ),
+    );
   return {
-    findMany,
-    value: { document: { findMany } } as never,
+    findDocuments,
+    findChunks,
+    value: {
+      document: { findMany: findDocuments },
+      chunk: { findMany: findChunks },
+    } as never,
   };
 }
 
@@ -403,7 +490,66 @@ function snapshotMaterial() {
         safeForModel: true,
       },
     ],
+    semanticPairs: [
+      {
+        leftDocumentId: 'doc-1',
+        rightDocumentId: 'doc-2',
+        score: 0.9,
+        evidenceBand: 'high' as const,
+      },
+    ],
     shortlistVersion: KNOWLEDGE_SEMANTIC_SHORTLIST_VERSION,
+  };
+}
+
+function semanticSourceFixture() {
+  const load = jest.fn(
+    (
+      _transaction: Prisma.TransactionClient,
+      scope: KnowledgeSemanticCandidateScope,
+    ) => Promise.resolve(semanticResultFromScope(scope)),
+  );
+  return {
+    load,
+    value: { load } as Pick<KnowledgeSemanticCandidateSource, 'load'>,
+  };
+}
+
+function semanticResultFromScope(
+  scope: KnowledgeSemanticCandidateScope,
+): KnowledgeSemanticShortlist {
+  return semanticResult(
+    scope.documents.map((document) => documentRow(document.id)),
+  );
+}
+
+function semanticResult(
+  rows: readonly DocumentRow[],
+  pairOverrides: { score: number; evidenceBand: 'medium' | 'high' } = {
+    score: 0.9,
+    evidenceBand: 'high',
+  },
+): KnowledgeSemanticShortlist {
+  const selectedChunks = rows.map((row) => ({
+    id: row.chunks[0]?.id ?? `${row.id}-chunk-1`,
+    documentId: row.id,
+    index: row.chunks[0]?.index ?? 0,
+  }));
+  const first = rows[0];
+  const second = rows[1];
+  return {
+    version: KNOWLEDGE_SEMANTIC_SHORTLIST_VERSION,
+    selectedChunks,
+    pairs:
+      first && second
+        ? [
+            {
+              leftDocumentId: first.id,
+              rightDocumentId: second.id,
+              ...pairOverrides,
+            },
+          ]
+        : [],
   };
 }
 
@@ -414,6 +560,10 @@ type ChunkRow = {
   content: string;
   index: number;
   metadata: Record<string, unknown>;
+};
+
+type ChunkFindManyArgs = {
+  where: { id: { in: string[] } };
 };
 
 type DocumentRow = {

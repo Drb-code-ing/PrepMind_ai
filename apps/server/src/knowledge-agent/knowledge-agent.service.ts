@@ -20,11 +20,10 @@ const SNAPSHOT_TRANSACTION_TIMEOUT_MS = 5_000;
 
 @Injectable()
 export class KnowledgeAgentService {
-  private readonly snapshotSource = new KnowledgeOwnerSnapshotSource();
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<ServerEnv, true>,
+    private readonly snapshotSource: KnowledgeOwnerSnapshotSource,
   ) {}
 
   async getSuggestions(

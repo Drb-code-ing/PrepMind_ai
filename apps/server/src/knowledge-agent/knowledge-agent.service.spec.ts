@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { KnowledgeAgentService } from './knowledge-agent.service';
+import { KnowledgeOwnerSnapshotSource } from './knowledge-owner-snapshot';
+import type { KnowledgeSemanticCandidateSource } from './knowledge-semantic-candidate.source';
 
 describe('KnowledgeAgentService', () => {
   const now = new Date('2026-07-21T08:00:00.000Z');
@@ -20,6 +22,7 @@ describe('KnowledgeAgentService', () => {
       deleteMany: jest.fn(),
     },
     chunk: {
+      findMany: jest.fn(),
       create: jest.fn(),
       createMany: jest.fn(),
       update: jest.fn(),
@@ -40,6 +43,7 @@ describe('KnowledgeAgentService', () => {
       deleteMany: jest.fn(),
     },
     chunk: {
+      findMany: jest.fn(),
       create: jest.fn(),
       createMany: jest.fn(),
       update: jest.fn(),
@@ -83,6 +87,18 @@ describe('KnowledgeAgentService', () => {
       events.push('revalidate:documents');
       return Promise.resolve(defaultRows());
     });
+    tx.chunk.findMany.mockImplementation(() => {
+      events.push('tx:chunks');
+      return Promise.resolve(
+        defaultRows().flatMap((document) => document.chunks),
+      );
+    });
+    prisma.chunk.findMany.mockImplementation(() => {
+      events.push('revalidate:chunks');
+      return Promise.resolve(
+        defaultRows().flatMap((document) => document.chunks),
+      );
+    });
     prisma.$transaction.mockImplementation(
       async (callback: (client: typeof tx) => Promise<unknown>) => {
         events.push('transaction:start');
@@ -98,9 +114,27 @@ describe('KnowledgeAgentService', () => {
   });
 
   function createService() {
+    const semanticSource = {
+      load: jest.fn(
+        (
+          _transaction: unknown,
+          scope: { documents: readonly { id: string }[] },
+        ) =>
+          Promise.resolve({
+            version: 'knowledge-semantic-shortlist-v1' as const,
+            selectedChunks: scope.documents.map((document) => ({
+              id: `${document.id}-chunk-1`,
+              documentId: document.id,
+              index: 0,
+            })),
+            pairs: [],
+          }),
+      ),
+    } as unknown as KnowledgeSemanticCandidateSource;
     return new KnowledgeAgentService(
       prisma as unknown as PrismaService,
       config as unknown as ConfigService<ServerEnv, true>,
+      new KnowledgeOwnerSnapshotSource(semanticSource),
     );
   }
 
@@ -128,8 +162,10 @@ describe('KnowledgeAgentService', () => {
       'transaction:start',
       'tx:read-only',
       'tx:documents',
+      'tx:chunks',
       'transaction:end',
       'revalidate:documents',
+      'revalidate:chunks',
     ]);
     expect(result.generatedAt).toBe(now.toISOString());
     expect(result.organizer.collections[0]?.name).toBe('数学资料');
@@ -160,6 +196,8 @@ describe('KnowledgeAgentService', () => {
       events.push('revalidate:documents');
       return Promise.resolve([target]);
     });
+    tx.chunk.findMany.mockResolvedValueOnce(target.chunks);
+    prisma.chunk.findMany.mockResolvedValueOnce(target.chunks);
 
     const result = await createService().getSuggestions('user_1', {
       documentId: 'doc_old',

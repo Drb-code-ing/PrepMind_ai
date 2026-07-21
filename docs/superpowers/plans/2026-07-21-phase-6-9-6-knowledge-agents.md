@@ -537,8 +537,10 @@ git commit -m "feat(server): fence knowledge owner snapshots"
 - Create: `apps/server/src/knowledge-agent/knowledge-semantic-candidate.source.spec.ts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-owner-snapshot.ts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.module.ts`
+- Modify: `apps/server/src/knowledge-agent/knowledge-agent.service.ts`
+- Modify: `apps/server/src/knowledge-documents/document-processing.service.ts`
 
-- [ ] **Step 1: Write RED tests for stable sampling, scoring, and isolation**
+- [x] **Step 1: Write RED tests for stable sampling, scoring, and isolation**
 
 ```ts
 it('uses at most six safe chunks per document and top-three cross-document mean', async () => {
@@ -555,13 +557,13 @@ it('binds raw SQL to canonical owner and bounded document IDs', async () => {
 });
 ```
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
 
 Run: `bun --filter @repo/server test -- knowledge-semantic-candidate.source.spec.ts --runInBand`
 
 Expected: FAIL because the semantic candidate source does not exist.
 
-- [ ] **Step 3: Implement source constants and deterministic aggregation**
+- [x] **Step 3: Implement source constants and deterministic aggregation**
 
 ```ts
 export const KNOWLEDGE_SEMANTIC_SHORTLIST_VERSION = 'knowledge-semantic-shortlist-v1';
@@ -586,13 +588,13 @@ function finalizePairs(rows: readonly ChunkSimilarityRow[]): readonly KnowledgeS
 
 The raw pgvector query must use `1 - (left.embedding <=> right.embedding)` only for selected current-owner chunks and current snapshot document IDs. Sample chunks by stable index buckets, then index/id order; exclude exact-hash pairs, non-`DONE` documents, null/invalid-dimension vectors, and anything without explicitly safe metadata. Return neither vectors nor content outside the snapshot loader.
 
-- [ ] **Step 4: Run GREEN server tests**
+- [x] **Step 4: Run GREEN server tests**
 
 Run: `bun --filter @repo/server test -- knowledge-semantic-candidate.source.spec.ts knowledge-owner-snapshot.spec.ts --runInBand`
 
 Expected: PASS for 1536-dimension validation, top-three mean, threshold boundary, maximum 12 pairs, stable tie ordering, exact-hash exclusion, target filtering, cross-owner exclusion, and fake-source parity.
 
-- [ ] **Step 5: Commit Task 6**
+- [x] **Step 5: Commit Task 6**
 
 ```bash
 git add apps/server/src/knowledge-agent/knowledge-semantic-candidate.source.ts apps/server/src/knowledge-agent/knowledge-semantic-candidate.source.spec.ts apps/server/src/knowledge-agent/knowledge-owner-snapshot.ts apps/server/src/knowledge-agent/knowledge-agent.module.ts
