@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 9 `/knowledge` 只读来源状态：Knowledge suggestions 现在把后端 strict runtime metadata 收敛为三个用户可理解的状态。任一 Dedup/Organizer runtime `degraded=true` 时优先显示“本地规则建议”与安全回退说明；否则任一 `hybrid_model / candidate_applied` 显示“语义建议”；default-off、not eligible 或纯本地结果显示“本地规则建议”。
+>
+> UI 与权限：来源 badge/description 位于原有资料建议内容上方，API 已返回但没有有效建议时也会说明当前来源。loading、request error、empty、上传、处理、替换、删除和检索路径保持不变；页面不展示 token、cost、Trace ID、provider error 或 document UUID，也没有语义重试、自动整理或任何新增写操作。移动端通过 `flex-wrap`、`min-w-0` 与 `break-words` 安全换行。
+>
+> TDD/验收：先观察 helper/export 和页面来源渲染缺失的 RED，再实现三态映射与 UI。API fixture 已纳入 strict runtime metadata，并显式证明未知 `providerError` 字段被拒绝；混合 hybrid+degraded 用例证明 degraded 优先级。Web `413/413`、lint、production build、focused `5/5` 与 `git diff --check` 通过；质量/安全复审 APPROVED，规格复审的两项 Minor 测试证据补齐后 PASS。没有读取 `.env`/API key、调用 provider、启动 Docker/浏览器或修改业务数据；双 gate 仍默认关闭。下一步是 Task 10 paired runner、CLI 与 evidence validator。
+>
+> 回顾时可以问：为什么 degraded 必须压过 semantic？为什么空建议也要显示来源？为什么页面不提供“重试语义建议”或“自动整理”？API 为什么要拒绝额外的 provider error 字段？
+
 > 2026-07-21 — Phase 6.9.6 Task 8 Knowledge candidate 生产编排：把 Task 3/4 的 Dedup/Organizer 受治理 candidate 与 Task 7 runtime bundle 注入 `KnowledgeAgentService`。两个 gate 独立 default-off；Dedup `3000/500` 与 Organizer `3000/700` 的冻结 reservation 在任一 Promise 启动前一次性建立，eligible candidate 通过 `Promise.all` 并行，disabled candidate 保持 zero-call。HTTP `aborted` 使用同一 AbortSignal 传播到两个候选，并在 controller `finally` 移除 listener。
 >
 > 权限与一致性：模型前重验 owner-scoped snapshot，两个 candidate 结束后再做第二次完整 fingerprint fence；post-candidate 漂移会丢弃两份模型值。target 只进入 Dedup deterministic input，Organizer 不接收 target 扩展。candidate 仍只裁决本地 ordinal，本地 merger 重建 document ID、标题、reason、recommendation、标签/集合与权限；接口不写 Document / Chunk / 分类表，也不自动删除、替换、合并、改名或分类。
@@ -138,7 +146,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算，以及 Service/API/Trace 并行编排；当前仍未完成 `/knowledge` 来源状态、paired eval 或生产验收，下一步是 Task 9。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排，以及 `/knowledge` local/hybrid/degraded 只读来源状态；当前仍未完成 paired eval 或生产验收，下一步是 Task 10。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -165,6 +173,7 @@
 | Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
 | Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
 | Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
+| Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

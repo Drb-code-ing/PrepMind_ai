@@ -785,9 +785,9 @@ git commit -m "feat(server): orchestrate knowledge semantic agents"
 - Modify: `apps/web/src/lib/knowledge-agent-view.test.mts`
 - Modify: `apps/web/src/lib/knowledge-agent-api.test.mts`
 - Modify: `apps/web/src/app/(main)/knowledge/page.tsx`
-- Modify: `apps/web/src/app/(main)/knowledge/page.test.mts`
+- Create: `apps/web/src/app/(main)/knowledge/page.test.mts`
 
-- [ ] **Step 1: Write RED view-state tests**
+- [x] **Step 1: Write RED view-state tests**
 
 ```ts
 assert.deepEqual(getKnowledgeAgentSourceView(hybridResponse()), {
@@ -801,13 +801,13 @@ assert.deepEqual(getKnowledgeAgentSourceView(degradedResponse()), {
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `bun test apps/web/src/lib/knowledge-agent-view.test.mts apps/web/src/app/'(main)'/knowledge/page.test.mts`
 
 Expected: FAIL because source-state helpers and labels do not exist.
 
-- [ ] **Step 3: Implement source-state mapping and render it**
+- [x] **Step 3: Implement source-state mapping and render it**
 
 ```ts
 export function getKnowledgeAgentSourceView(response: KnowledgeAgentSuggestionResponse): KnowledgeAgentSourceView {
@@ -824,13 +824,13 @@ export function getKnowledgeAgentSourceView(response: KnowledgeAgentSuggestionRe
 
 Render one compact badge/description above the existing suggestions. Do not render cost, prompt, provider error, document UUID, a retry button, or an automatic-organize action. Preserve existing upload/process/replace/delete/search controls and the current empty/error states.
 
-- [ ] **Step 4: Run GREEN web checks**
+- [x] **Step 4: Run GREEN web checks**
 
 Run: `bun --filter @repo/web test && bun --filter @repo/web lint && bun --filter @repo/web build`
 
 Expected: all exit 0; tests cover hybrid, default-off local, degraded, empty, request failure, mobile text wrapping, and absence of any automatic mutation action.
 
-- [ ] **Step 5: Commit Task 9**
+- [x] **Step 5: Commit Task 9**
 
 ```bash
 git add apps/web/src/lib/knowledge-agent-* apps/web/src/app/'(main)'/knowledge/page.tsx apps/web/src/app/'(main)'/knowledge/page.test.mts
