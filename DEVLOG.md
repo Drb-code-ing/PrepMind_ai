@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 4 Organizer 受治理候选：目标是让 `KnowledgeOrganizerAgent` 能理解词表之外的资料主题与集合关系，同时继续只做建议。候选至少需要 1 份通过完整字段扫描与 safety metadata 的 ordinal-only projection；模型只能选择固定 subject/resource type、最多 2 个 topic label、最多 5 个集合及每组 2..8 个有序唯一成员。真实 document ID、中文 subject/resource labels、reason、description、confidence、signals 和全部权限由本地 merger 重建，最终每份资料最多 3 个标签。
+>
+> 安全与降级：schema 之后仍对 topic label/collection name 做 URL、Markdown、HTML、instruction、credential 和控制字符检查，任一非法值都会整批回退，不部分应用。重复/越界 document index、乱序或重复 member index、超过数量上限、unsafe projection、abort、预算不足、timeout、invalid usage、schema invalid 或 runtime throw 都只返回既有 deterministic Organizer 结果；observation 不携带文件名、摘要、prompt、provider body、raw error、真实 ID map 或凭据。模型没有持久化 tag/collection、自动分类、删除、替换、改名或合并权限。
+>
+> TDD/验收：缺失 candidate 模块得到预期 RED，随后 Organizer focused `12/12`、AI `192/192` 通过，Agent/AI typecheck 与 lint、`git diff --check` 均 exit 0；规格与代码质量复审无 Critical/Important。测试覆盖本地 ordinal→owner ID 映射、最终标签/集合上限、post-schema 指令拦截、成员范围/顺序/唯一性、provider 前 zero-call guard、无网络 timeout/usage failure 与 caller input/budget 不变。
+>
+> 本任务仅使用 Mock responder 和注入式无网络 executor；没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建业务数据。Task 3/4 现在只完成 package 级候选与本地 merger；owner-scoped `REPEATABLE READ` snapshot、stale fence、pgvector shortlist、server composition/gates、Trace/API/UI、paired eval 和生产验收仍未完成。下一步是 Task 5 单一不可变 owner snapshot 与 provider 前 stale revalidation。
+>
+> 回顾时可以问：为什么模型返回 documentIndex 而不能返回 document ID？为什么 schema 通过后还要再次扫描 label？为什么 Organizer 失败必须整批回退而不是保留一部分标签？为什么 package candidate 完成不等于产品已使用真实模型？
+
 > 2026-07-21 — Phase 6.9.6 Task 3 Dedup 受治理候选：目标是让 `KnowledgeDedupAgent` 在 exact hash 本地权威不变的前提下，具备受限语义关系判断能力。候选先生成 ordinal-only 安全投影，再只允许返回 `semantic_duplicate / possible_revision / complementary / unrelated` 与固定 evidence code；真实 document ID、标题、原因、严重度、置信度、recommendation、signals 和全部写权限均由本地 merger 重建。`semantic_duplicate` 是独立只读建议并固定 `review_manually`，不伪装成新版；`possible_revision` 缺少本地版本 token 或时间顺序证据时会降级为人工复核并标记 `insufficient_version_evidence`；`complementary` 只建议 `keep_both`，`unrelated` 不生成条目。
 >
 > 为什么 exact hash 必须留在本地：相同 `contentHash` 已是确定事实，交给模型既增加成本与延迟，也可能被语义输出覆盖。因此即使 exact-hash pair 误入 semantic shortlist，候选也会在 runtime 前剔除，并保留 deterministic `exact_duplicate / use_existing`；没有剩余语义 pair 时 counting runtime 证明 provider 调用数为 0。公开 `projectKnowledgeSnapshot()` 只返回 ordinal 投影，ordinal→真实 ID map 不再从 `production.ts` 暴露，只在候选内部 merger 使用。
@@ -88,7 +98,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 KnowledgeDedup/Organizer 的 72-case baseline，完成 Task 2 strict schema/安全投影以及 Task 3 Dedup 受治理 candidate/本地权威 merger；当前仍未实现 Organizer candidate、shortlist、生产 gate 或真实 provider 路径，下一步是 Organizer candidate 与本地权威 merger。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影及 Dedup/Organizer 两个受治理 candidate 与本地权威 merger；当前仍未实现 owner snapshot、shortlist、生产 gate 或真实 provider 路径，下一步是单一不可变 owner snapshot 与 stale fence。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -110,6 +120,7 @@
 | Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
 | Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
 | Phase 6.9.6 Task 3 | 已完成 | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor |
+| Phase 6.9.6 Task 4 | 已完成 | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

@@ -280,6 +280,7 @@ const MODEL_AGENT_TASKS = new Set<ModelAgentTask>([
   'router_fallback',
   'knowledge_verification',
   'knowledge_dedup',
+  'knowledge_organizer',
   'review_suggestion',
   'planner_suggestion',
   'memory_candidate_extraction',

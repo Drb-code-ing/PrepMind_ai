@@ -45,6 +45,12 @@ export {
   type KnowledgeDedupModelCandidateInput,
 } from './knowledge-dedup-model-candidate.ts';
 export {
+  mergeKnowledgeOrganizerDecision,
+  runKnowledgeOrganizerModelCandidate,
+  type KnowledgeOrganizerModelCandidateEnvelope,
+  type KnowledgeOrganizerModelCandidateInput,
+} from './knowledge-organizer-model-candidate.ts';
+export {
   decideKnowledgeVerifierModelEligibility,
   decideRouterModelEligibility,
   isKnowledgeVerifierModelEligible,

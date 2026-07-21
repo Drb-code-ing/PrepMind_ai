@@ -58,7 +58,12 @@ describe('safe model agent errors', () => {
 });
 
 describe('model agent runtime mock mode', () => {
-  it.each(['review_suggestion', 'planner_suggestion', 'knowledge_dedup'] as const)(
+  it.each([
+    'review_suggestion',
+    'planner_suggestion',
+    'knowledge_dedup',
+    'knowledge_organizer',
+  ] as const)(
     'accepts the bounded %s task',
     async (task) => {
       const runtime = createModelAgentRuntime({

@@ -374,7 +374,7 @@ git commit -m "feat(agent): add governed dedup candidate"
 - Modify: `packages/agent/tests/knowledge-organizer.test.ts`
 - Modify: `packages/agent/src/model-candidates/production.ts`
 
-- [ ] **Step 1: Write RED tests for label constraints and local reconstruction**
+- [x] **Step 1: Write RED tests for label constraints and local reconstruction**
 
 ```ts
 test('rejects unsafe labels and does not partially apply candidate output', async () => {
@@ -396,13 +396,13 @@ test('maps ordinals to owner snapshot IDs and rebuilds descriptive fields locall
 });
 ```
 
-- [ ] **Step 2: Run RED test**
+- [x] **Step 2: Run RED test**
 
 Run: `bun test packages/agent/tests/knowledge-organizer-model-candidate.test.ts`
 
 Expected: FAIL because the candidate does not exist.
 
-- [ ] **Step 3: Implement Organizer candidate and merger**
+- [x] **Step 3: Implement Organizer candidate and merger**
 
 ```ts
 export function mergeKnowledgeOrganizerDecision(input: OrganizerMergeInput): KnowledgeOrganizerResult | null {
@@ -428,13 +428,13 @@ export function mergeKnowledgeOrganizerDecision(input: OrganizerMergeInput): Kno
 
 The candidate uses a 700-token output reservation. It requires at least one safe projected document, rejects URL/Markdown/HTML/instruction/credential/control characters after schema parsing, never persists tags or collections, and returns the existing deterministic Organizer result on every failure.
 
-- [ ] **Step 4: Run Organizer GREEN tests**
+- [x] **Step 4: Run Organizer GREEN tests**
 
 Run: `bun test packages/agent/tests/knowledge-organizer.test.ts packages/agent/tests/knowledge-organizer-model-candidate.test.ts`
 
 Expected: PASS for topic-label max 2, final-label max 3, collection max 5, members 2..8, exact ordinal membership, no duplicates, runtime errors, usage errors, abort, and deterministic fallback.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 ```bash
 git add packages/agent/src/model-candidates/knowledge-organizer-model-candidate.ts packages/agent/src/model-candidates/production.ts packages/agent/src/nodes/knowledge-organizer.ts packages/agent/tests/knowledge-organizer*.test.ts
