@@ -298,7 +298,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
 - Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。V10 是唯一语义质量 authority；V22 `operation_failed -> recovered` 及其他历史 lineages 不可重跑或改写。修复独立计时边界的错误精确比较后，受控 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`；main default-off replay 确认确定性 0-call 路径，synthetic account/Trace 清理为 0，两个 gate 与 live-call gate 均保持 default-off。（已完成）
-- Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。职责、shortlist、schema、72-case 门槛、预算、default-off、Docker/浏览器和清理设计已固定，等待书面规范审阅后进入实施计划。（设计中）
+- Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。设计已通过书面审阅；`docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md` 已把 dataset、projection、两个 candidate、owner snapshot、pgvector shortlist、composition、Trace/API、UI、paired eval、Docker 和最终验收拆成 13 个一任务一提交的 TDD 单元。当前尚未开始代码实现或真实模型调用。（计划完成）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
