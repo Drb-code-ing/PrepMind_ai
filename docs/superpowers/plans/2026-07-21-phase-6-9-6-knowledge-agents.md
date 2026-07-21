@@ -694,10 +694,12 @@ git commit -m "feat(server): compose knowledge model runtime"
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.service.ts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.service.spec.ts`
 - Modify: `packages/types/src/api/knowledge-agent.ts`
-- Create: `packages/types/tests/knowledge-agent.test.mts`
+- Modify: `packages/types/tests/knowledge-agent.test.mts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.controller.ts`
+- Create: `apps/server/src/knowledge-agent/knowledge-agent.controller.spec.ts`
+- Modify: `apps/server/src/knowledge-agent/knowledge-agent.module.ts`
 
-- [ ] **Step 1: Write RED API and service orchestration tests**
+- [x] **Step 1: Write RED API and service orchestration tests**
 
 ```ts
 it('starts both eligible candidates before awaiting either one', async () => {
@@ -716,13 +718,13 @@ test('accepts only the backward-compatible safe runtime metadata', () => {
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `node --experimental-strip-types --test packages/types/tests/knowledge-agent.test.mts && bun --filter @repo/server test -- knowledge-agent.service.spec.ts knowledge-agent-trace.spec.ts --runInBand`
 
 Expected: FAIL because response metadata and Trace composer do not exist.
 
-- [ ] **Step 3: Extend the strict response contract**
+- [x] **Step 3: Extend the strict response contract**
 
 ```ts
 export const knowledgeAgentRuntimeMetadataSchema = z.object({
@@ -748,7 +750,7 @@ export const knowledgeAgentSuggestionResponseSchema = z.object({
 
 Default-off/local metadata uses zero usage, `pricingKnown=false`, `estimatedCostCny=null`, never a fake zero-cost model success.
 
-- [ ] **Step 4: Implement service orchestration and Trace composition**
+- [x] **Step 4: Implement service orchestration and Trace composition**
 
 ```ts
 const [dedup, organizer] = await Promise.all([
@@ -763,13 +765,13 @@ return attachSafeRuntimeMetadata({ generatedAt, dedup, organizer, trace });
 
 Trace must contain one parent and two candidate steps with agent name, version, disposition, fixed reason codes, latency, verified usage, pricing provenance, and cost. It must not contain owner ID/hash, fingerprint, ordinal map, prompt, filename, summary, chunk/vector, provider body/header, raw error, or credentials. Each provider call gets one `usageRef`; aggregate cost deduplicates by `usageRef`.
 
-- [ ] **Step 5: Run GREEN contracts and orchestration tests**
+- [x] **Step 5: Run GREEN contracts and orchestration tests**
 
 Run: `node --experimental-strip-types --test packages/types/tests/knowledge-agent.test.mts && bun --filter @repo/server test -- knowledge-agent.service.spec.ts knowledge-agent-trace.spec.ts --runInBand`
 
 Expected: PASS for independent gates, Dedup-only/Organizer-only/both/default-off, parallel dispatch, one-call-one-charge, Trace unavailable fail-closed, stable API schema, no mutations, and no sensitive metadata.
 
-- [ ] **Step 6: Commit Task 8**
+- [x] **Step 6: Commit Task 8**
 
 ```bash
 git add packages/types/src/api/knowledge-agent* apps/server/src/knowledge-agent/knowledge-agent.controller.ts apps/server/src/knowledge-agent/knowledge-agent.service* apps/server/src/knowledge-agent/knowledge-agent-trace*

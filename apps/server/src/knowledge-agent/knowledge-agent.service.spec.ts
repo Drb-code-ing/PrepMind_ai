@@ -1,11 +1,29 @@
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import {
+  runKnowledgeDedupModelCandidate,
+  runKnowledgeOrganizerModelCandidate,
+  type ModelCandidateObservation,
+} from '@repo/agent/model-candidates';
 
+import { AgentTracesService } from '../agent-traces/agent-traces.service';
 import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { KnowledgeAgentService } from './knowledge-agent.service';
+import type { KnowledgeModelRuntimeBundle } from './knowledge-model-runtime.factory';
 import { KnowledgeOwnerSnapshotSource } from './knowledge-owner-snapshot';
 import type { KnowledgeSemanticCandidateSource } from './knowledge-semantic-candidate.source';
+
+jest.mock('@repo/agent/model-candidates', () => {
+  const actual = jest.requireActual<
+    typeof import('@repo/agent/model-candidates')
+  >('@repo/agent/model-candidates');
+  return {
+    ...actual,
+    runKnowledgeDedupModelCandidate: jest.fn(),
+    runKnowledgeOrganizerModelCandidate: jest.fn(),
+  };
+});
 
 describe('KnowledgeAgentService', () => {
   const now = new Date('2026-07-21T08:00:00.000Z');
@@ -59,6 +77,11 @@ describe('KnowledgeAgentService', () => {
         : undefined,
     ),
   };
+  const agentTracesService = {
+    createTrace: jest.fn(),
+  };
+  const dedupCandidate = jest.mocked(runKnowledgeDedupModelCandidate);
+  const organizerCandidate = jest.mocked(runKnowledgeOrganizerModelCandidate);
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -70,6 +93,9 @@ describe('KnowledgeAgentService', () => {
         ? 'test-jwt-secret-with-domain-separation'
         : undefined,
     );
+    agentTracesService.createTrace.mockResolvedValue({ run: {}, steps: [] });
+    dedupCandidate.mockResolvedValue(dedupEnvelope());
+    organizerCandidate.mockResolvedValue(organizerEnvelope());
 
     tx.$executeRawUnsafe.mockImplementation(() => {
       events.push('tx:read-only');
@@ -113,7 +139,12 @@ describe('KnowledgeAgentService', () => {
     jest.useRealTimers();
   });
 
-  function createService() {
+  function createService(
+    options: {
+      dedupEnabled?: boolean;
+      organizerEnabled?: boolean;
+    } = {},
+  ) {
     const semanticSource = {
       load: jest.fn(
         (
@@ -127,14 +158,45 @@ describe('KnowledgeAgentService', () => {
               documentId: document.id,
               index: 0,
             })),
-            pairs: [],
+            pairs:
+              scope.documents.length >= 2
+                ? [
+                    {
+                      leftDocumentId: scope.documents[0].id,
+                      rightDocumentId: scope.documents[1].id,
+                      score: 0.84,
+                      evidenceBand: 'candidate' as const,
+                    },
+                  ]
+                : [],
           }),
       ),
     } as unknown as KnowledgeSemanticCandidateSource;
+    const runtimes = {
+      config: {
+        dedupEnabled: options.dedupEnabled ?? false,
+        organizerEnabled: options.organizerEnabled ?? false,
+        dedupTimeoutMs: 4500,
+        organizerTimeoutMs: 4500,
+        mode:
+          options.dedupEnabled || options.organizerEnabled ? 'live' : 'mock',
+        provider:
+          options.dedupEnabled || options.organizerEnabled
+            ? 'deepseek'
+            : 'mock',
+        model: 'deepseek-v4-pro',
+        promptVersion: 'knowledge-agents-v1',
+        pricingKnown: true,
+      },
+      dedupRuntime: { invokeStructured: jest.fn() },
+      organizerRuntime: { invokeStructured: jest.fn() },
+    } as unknown as KnowledgeModelRuntimeBundle;
     return new KnowledgeAgentService(
       prisma as unknown as PrismaService,
       config as unknown as ConfigService<ServerEnv, true>,
       new KnowledgeOwnerSnapshotSource(semanticSource),
+      runtimes,
+      agentTracesService as unknown as AgentTracesService,
     );
   }
 
@@ -173,6 +235,16 @@ describe('KnowledgeAgentService', () => {
     expect(
       result.dedup.items.some((item) => item.kind === 'complementary'),
     ).toBe(true);
+    expect(result.dedup.runtime).toMatchObject({
+      source: 'local_deterministic',
+      disposition: 'gate_disabled',
+      attempted: false,
+      degraded: false,
+      traceId: null,
+    });
+    expect(result.organizer.runtime.disposition).toBe('gate_disabled');
+    expect(dedupCandidate).not.toHaveBeenCalled();
+    expect(organizerCandidate).not.toHaveBeenCalled();
   });
 
   it('checks and includes an out-of-window target inside the same transaction without exceeding the limit', async () => {
@@ -262,6 +334,8 @@ describe('KnowledgeAgentService', () => {
 
     expect(result.dedup.summary.length).toBeGreaterThan(0);
     expect(result.organizer.summary.length).toBeGreaterThan(0);
+    expect(result.dedup.runtime.disposition).toBe('snapshot_stale');
+    expect(result.organizer.runtime.disposition).toBe('snapshot_stale');
     expectNoWrites();
   });
 
@@ -274,6 +348,152 @@ describe('KnowledgeAgentService', () => {
 
     expect(result.dedup.summary.length).toBeGreaterThan(0);
     expect(result.organizer.summary.length).toBeGreaterThan(0);
+    expect(result.dedup.runtime.disposition).toBe('snapshot_stale');
+    expect(result.organizer.runtime.disposition).toBe('snapshot_stale');
+    expectNoWrites();
+  });
+
+  it('starts both eligible candidates before awaiting either one', async () => {
+    const started: string[] = [];
+    const releases: Array<() => void> = [];
+    dedupCandidate.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          started.push('dedup');
+          releases.push(() => resolve(dedupEnvelope()));
+        }),
+    );
+    organizerCandidate.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          started.push('organizer');
+          releases.push(() => resolve(organizerEnvelope()));
+        }),
+    );
+
+    const pending = createService({
+      dedupEnabled: true,
+      organizerEnabled: true,
+    }).getSuggestions('user_1', { limit: 20 });
+    for (let index = 0; index < 20 && started.length < 2; index += 1) {
+      await Promise.resolve();
+    }
+
+    expect(started).toEqual(['dedup', 'organizer']);
+    releases.forEach((release) => release());
+    const result = await pending;
+    expect(result.dedup.runtime.disposition).toBe('candidate_applied');
+    expect(result.organizer.runtime.disposition).toBe('candidate_applied');
+    expect(result.dedup.runtime.traceId).toEqual(expect.any(String));
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['dedup', true, false, 1, 0],
+    ['organizer', false, true, 0, 1],
+  ] as const)(
+    'honors the independent %s gate without invoking the disabled candidate',
+    async (
+      _name,
+      dedupEnabled,
+      organizerEnabled,
+      dedupCalls,
+      organizerCalls,
+    ) => {
+      const result = await createService({
+        dedupEnabled,
+        organizerEnabled,
+      }).getSuggestions('user_1', { limit: 20 });
+
+      expect(dedupCandidate).toHaveBeenCalledTimes(dedupCalls);
+      expect(organizerCandidate).toHaveBeenCalledTimes(organizerCalls);
+      expect(result.dedup.runtime.disposition).toBe(
+        dedupEnabled ? 'candidate_applied' : 'gate_disabled',
+      );
+      expect(result.organizer.runtime.disposition).toBe(
+        organizerEnabled ? 'candidate_applied' : 'gate_disabled',
+      );
+    },
+  );
+
+  it('passes frozen independent reservations and the target only to Dedup', async () => {
+    const abortController = new AbortController();
+    await createService({
+      dedupEnabled: true,
+      organizerEnabled: true,
+    }).getSuggestions(
+      'user_1',
+      { documentId: 'doc_1', limit: 20 },
+      abortController.signal,
+    );
+
+    const dedupInput = dedupCandidate.mock.calls[0]?.[0];
+    const organizerInput = organizerCandidate.mock.calls[0]?.[0];
+    expect(dedupInput?.deterministicInput).toMatchObject({
+      targetDocumentId: 'doc_1',
+    });
+    expect(organizerInput?.deterministicInput).not.toHaveProperty(
+      'targetDocumentId',
+    );
+    expect(dedupInput?.budget).toMatchObject({
+      maxCalls: 1,
+      maxInputTokens: 3000,
+      maxOutputTokens: 500,
+    });
+    expect(organizerInput?.budget).toMatchObject({
+      maxCalls: 1,
+      maxInputTokens: 3000,
+      maxOutputTokens: 700,
+    });
+    expect(Object.isFrozen(dedupInput?.budget)).toBe(true);
+    expect(Object.isFrozen(organizerInput?.budget)).toBe(true);
+    expect(dedupInput?.signal).toBe(abortController.signal);
+    expect(organizerInput?.signal).toBe(abortController.signal);
+  });
+
+  it('discards both candidate values when the post-candidate snapshot fence is stale', async () => {
+    prisma.document.findMany
+      .mockImplementationOnce(() => Promise.resolve(defaultRows()))
+      .mockImplementationOnce(() =>
+        Promise.resolve(
+          defaultRows().map((row, index) =>
+            index === 0
+              ? { ...row, updatedAt: new Date('2026-07-21T09:00:00.000Z') }
+              : row,
+          ),
+        ),
+      );
+
+    const result = await createService({
+      dedupEnabled: true,
+      organizerEnabled: true,
+    }).getSuggestions('user_1', { limit: 20 });
+
+    expect(result.dedup.runtime.disposition).toBe('snapshot_stale');
+    expect(result.organizer.runtime.disposition).toBe('snapshot_stale');
+    expect(result.dedup.runtime.degraded).toBe(true);
+    expect(result.dedup.signals).not.toContain('modelSemanticDedup');
+  });
+
+  it('fails closed to local suggestions when Trace persistence is unavailable', async () => {
+    agentTracesService.createTrace.mockRejectedValueOnce(
+      new Error('database body secret'),
+    );
+
+    const result = await createService({
+      dedupEnabled: true,
+      organizerEnabled: true,
+    }).getSuggestions('user_1', { limit: 20 });
+
+    expect(result.dedup.runtime).toMatchObject({
+      source: 'local_deterministic',
+      disposition: 'fallback_runtime_error',
+      reasonCode: 'trace_unavailable',
+      degraded: true,
+      traceId: null,
+    });
+    expect(result.organizer.runtime.disposition).toBe('fallback_runtime_error');
+    expect(result.dedup.signals).not.toContain('modelSemanticDedup');
     expectNoWrites();
   });
 
@@ -298,6 +518,64 @@ describe('KnowledgeAgentService', () => {
     }
   }
 });
+
+function dedupEnvelope() {
+  return {
+    value: {
+      summary: '模型语义去重建议。',
+      items: [],
+      signals: ['modelSemanticDedup'],
+    },
+    observation: candidateObservation('knowledge_dedup', 120, 30, 410),
+  };
+}
+
+function organizerEnvelope() {
+  return {
+    value: {
+      summary: '模型语义整理建议。',
+      collections: [],
+      tags: [],
+      signals: ['modelSemanticOrganizer'],
+    },
+    observation: candidateObservation('knowledge_organizer', 180, 40, 520),
+  };
+}
+
+function candidateObservation(
+  task: 'knowledge_dedup' | 'knowledge_organizer',
+  inputTokens: number,
+  outputTokens: number,
+  durationMs: number,
+): ModelCandidateObservation<string> {
+  return {
+    attempted: true,
+    disposition: 'candidate_applied',
+    budget: {
+      maxCalls: 1,
+      usedCalls: 1,
+      maxInputTokens: 3000,
+      usedInputTokens: 3000,
+      maxOutputTokens: task === 'knowledge_dedup' ? 500 : 700,
+      usedOutputTokens: task === 'knowledge_dedup' ? 500 : 700,
+    },
+    usage: { inputTokens, outputTokens },
+    reasonCodes: ['candidate_applied', 'semantic_match'],
+    trace: {
+      runIdHash: `sha256:${'a'.repeat(64)}`,
+      task,
+      mode: 'live',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+      status: 'succeeded',
+      inputTokens,
+      outputTokens,
+      maxOutputTokens: task === 'knowledge_dedup' ? 500 : 700,
+      durationMs,
+      degraded: false,
+    },
+  };
+}
 
 function defaultRows() {
   return [

@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 8 Knowledge candidate 生产编排：把 Task 3/4 的 Dedup/Organizer 受治理 candidate 与 Task 7 runtime bundle 注入 `KnowledgeAgentService`。两个 gate 独立 default-off；Dedup `3000/500` 与 Organizer `3000/700` 的冻结 reservation 在任一 Promise 启动前一次性建立，eligible candidate 通过 `Promise.all` 并行，disabled candidate 保持 zero-call。HTTP `aborted` 使用同一 AbortSignal 传播到两个候选，并在 controller `finally` 移除 listener。
+>
+> 权限与一致性：模型前重验 owner-scoped snapshot，两个 candidate 结束后再做第二次完整 fingerprint fence；post-candidate 漂移会丢弃两份模型值。target 只进入 Dedup deterministic input，Organizer 不接收 target 扩展。candidate 仍只裁决本地 ordinal，本地 merger 重建 document ID、标题、reason、recommendation、标签/集合与权限；接口不写 Document / Chunk / 分类表，也不自动删除、替换、合并、改名或分类。
+>
+> API 与 Trace：`KnowledgeAgentSuggestionResponse` 增加 strict additive runtime metadata，只有 verified positive usage、精确 CNY price、`candidate_applied` 与已持久化 Trace 同时成立时才显示 `hybrid_model`；default-off、not eligible、safety、abort、budget、schema、usage、runtime、stale 或 Trace unavailable 都返回本地只读建议与固定 disposition。每次模型编排记录一个 parent + 两个 candidate step，含固定 agent/version、reason、latency、usageRef 去重、usage 与 `cost_cny` provenance；现有 Agent Trace 顶层 `costEstimate` 是 USD 语义，因此保持 `pricingKnown=false / costEstimate=0`，不伪造汇率。
+>
+> TDD/验收：API contract、Trace、Service parallel barrier、独立 gate、冻结预算、target、二次 stale fence、Trace failure 和 HTTP abort 均先观察 RED 再 GREEN。Knowledge focused `47/47`、Types `39/39`、Server lint/build、Types typecheck 与 `git diff --check` 通过；规格复审与质量/安全复审均 PASS，无 Critical/Important。没有读取 `.env`/API key、调用 provider、启动 Docker/浏览器或修改 Knowledge 业务数据；双 gate 仍默认关闭。下一步是 Task 9 `/knowledge` local/hybrid/degraded 来源状态。
+>
+> 回顾时可以问：为什么两个 candidate 要先冻结 reservation 再并行？为什么模型完成后还要第二次 stale fence？为什么 Trace 写失败必须丢弃模型建议？为什么 CNY 费用不能直接写入现有 USD Trace 顶层字段？
+
 > 2026-07-21 — Phase 6.9.6 Task 7 Knowledge production composition 地基：新增 Dedup/Organizer 两个独立 server gate，默认均为 `false`，timeout 默认 4500ms、只接受 1000..15000ms。真实 runtime 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、对应组件 gate=true、精确 `https://api.deepseek.com/v1`、有效 DeepSeek credential 与已知精确价格同时成立时才创建；worker-only role 强制两个组件 gate 关闭。
 >
 > 模型与 transport：Knowledge 候选固定 `deepseek-v4-pro`、prompt `knowledge-agents-v1`、`deepseek_v4_pro_nonthinking_json`，复用共享 OpenAI-compatible executor 的 non-thinking JSON object、`maxRetries=0`、no-tools 与 abort deadline。API key 只进入 composition closure，不进入安全 config、budget 或返回值；unknown/被篡改 pricing、missing credential、错误 base URL、executor construction 异常、hostile env/price getter 或 Proxy 都关闭双 gate/返回 null，不把异常正文向外传播。
@@ -128,7 +138,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer 两个受治理 candidate/本地权威 merger、owner snapshot/stale fence、owner-scoped pgvector semantic shortlist，以及 default-off DeepSeek runtime/价格/共享预算 composition；当前仍未完成 Service 并行编排、API/Trace、paired eval 或生产验收，下一步是 Task 8。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算，以及 Service/API/Trace 并行编排；当前仍未完成 `/knowledge` 来源状态、paired eval 或生产验收，下一步是 Task 9。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -154,6 +164,7 @@
 | Phase 6.9.6 Task 5 | 已完成 | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider |
 | Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
 | Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
+| Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

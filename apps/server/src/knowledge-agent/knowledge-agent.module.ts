@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AuthModule } from '../auth/auth.module';
+import { AgentTracesModule } from '../agent-traces/agent-traces.module';
 import type { ServerEnv } from '../config/env';
 import { KnowledgeAgentController } from './knowledge-agent.controller';
 import { KnowledgeAgentService } from './knowledge-agent.service';
@@ -13,7 +14,7 @@ import { KnowledgeOwnerSnapshotSource } from './knowledge-owner-snapshot';
 import { KnowledgeSemanticCandidateSource } from './knowledge-semantic-candidate.source';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AgentTracesModule],
   controllers: [KnowledgeAgentController],
   providers: [
     {

@@ -1,6 +1,11 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { knowledgeAgentSuggestionQuerySchema } from '@repo/types/api/knowledge-agent';
+import type { Request } from 'express';
+import {
+  knowledgeAgentSuggestionQuerySchema,
+  knowledgeAgentSuggestionResponseSchema,
+  type KnowledgeAgentSuggestionResponse,
+} from '@repo/types/api/knowledge-agent';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,13 +20,25 @@ export class KnowledgeAgentController {
   constructor(private readonly knowledgeAgentService: KnowledgeAgentService) {}
 
   @Get('suggestions')
-  getSuggestions(
+  async getSuggestions(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: unknown,
-  ) {
-    return this.knowledgeAgentService.getSuggestions(
-      user.id,
-      knowledgeAgentSuggestionQuerySchema.parse(query),
-    );
+    @Req() request: Request,
+  ): Promise<KnowledgeAgentSuggestionResponse> {
+    const abortController = new AbortController();
+    const abort = () => abortController.abort();
+    request.once('aborted', abort);
+    if (request.aborted) abort();
+    try {
+      return knowledgeAgentSuggestionResponseSchema.parse(
+        await this.knowledgeAgentService.getSuggestions(
+          user.id,
+          knowledgeAgentSuggestionQuerySchema.parse(query),
+          abortController.signal,
+        ),
+      );
+    } finally {
+      request.off('aborted', abort);
+    }
   }
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  knowledgeAgentRuntimeMetadataSchema,
   knowledgeAgentSuggestionQuerySchema,
   knowledgeAgentSuggestionResponseSchema,
 } from '../src/api/knowledge-agent.ts';
@@ -8,6 +9,7 @@ import {
 testQueryDefaults();
 testValidSuggestionResponse();
 testSemanticDuplicateSuggestionResponse();
+testRuntimeMetadataContract();
 testInvalidEmptyDocumentReferencesRejected();
 
 function testQueryDefaults() {
@@ -46,12 +48,24 @@ function testSemanticDuplicateSuggestionResponse() {
         },
       ],
       signals: ['modelSemanticDedup'],
+      runtime: runtimeMetadata({
+        source: 'hybrid_model',
+        disposition: 'candidate_applied',
+        reasonCode: 'semantic_duplicate',
+        attempted: true,
+        traceId: 'trace_1',
+        inputTokens: 320,
+        outputTokens: 96,
+        pricingKnown: true,
+        estimatedCostCny: 0.001536,
+      }),
     },
     organizer: {
       summary: '',
       collections: [],
       tags: [],
       signals: [],
+      runtime: runtimeMetadata(),
     },
   });
 
@@ -77,6 +91,7 @@ function testValidSuggestionResponse() {
         },
       ],
       signals: ['revisionCandidate'],
+      runtime: runtimeMetadata(),
     },
     organizer: {
       summary: '建议按数学讲义整理 2 份资料。',
@@ -99,6 +114,7 @@ function testValidSuggestionResponse() {
         },
       ],
       signals: ['topicCluster'],
+      runtime: runtimeMetadata(),
     },
   });
 
@@ -113,12 +129,14 @@ function testInvalidEmptyDocumentReferencesRejected() {
       summary: '',
       items: [],
       signals: [],
+      runtime: runtimeMetadata(),
     },
     organizer: {
       summary: '',
       collections: [],
       tags: [],
       signals: [],
+      runtime: runtimeMetadata(),
     },
   };
 
@@ -181,4 +199,63 @@ function testInvalidEmptyDocumentReferencesRejected() {
       },
     }),
   );
+}
+
+function testRuntimeMetadataContract() {
+  const parsed = knowledgeAgentRuntimeMetadataSchema.parse(
+    runtimeMetadata({
+      source: 'hybrid_model',
+      disposition: 'candidate_applied',
+      reasonCode: 'semantic_duplicate',
+      attempted: true,
+      traceId: 'trace_1',
+      inputTokens: 100,
+      outputTokens: 20,
+      pricingKnown: true,
+      estimatedCostCny: 0.00042,
+    }),
+  );
+
+  assert.equal(parsed.source, 'hybrid_model');
+  assert.equal(parsed.usage.estimatedCostCny, 0.00042);
+  assert.throws(() =>
+    knowledgeAgentRuntimeMetadataSchema.parse({ ...parsed, providerOutput: 'secret' }),
+  );
+  assert.throws(() =>
+    knowledgeAgentRuntimeMetadataSchema.parse({
+      ...parsed,
+      reasonCode: 'INVALID CODE',
+    }),
+  );
+  assert.throws(() =>
+    knowledgeAgentRuntimeMetadataSchema.parse({
+      ...parsed,
+      usage: { ...parsed.usage, estimatedCostCny: 0 },
+    }),
+  );
+}
+
+function runtimeMetadata(overrides = {}) {
+  const {
+    inputTokens = 0,
+    outputTokens = 0,
+    pricingKnown = false,
+    estimatedCostCny = null,
+    ...metadataOverrides
+  } = overrides;
+  return {
+    source: 'local_deterministic',
+    disposition: 'gate_disabled',
+    reasonCode: 'gate_disabled',
+    attempted: false,
+    degraded: false,
+    usage: {
+      inputTokens,
+      outputTokens,
+      pricingKnown,
+      estimatedCostCny,
+    },
+    traceId: null,
+    ...metadataOverrides,
+  };
 }
