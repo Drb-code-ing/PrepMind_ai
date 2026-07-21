@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 2 Knowledge 模型安全边界：新增 strict Dedup/Organizer 输出合同。Dedup 只允许最多 12 个本地 pair index、四类语义关系、medium/high confidence 和固定 evidence code；Organizer 只允许最多 20 份资料的学科/资料类型、每份最多 2 个受限 topic label、最多 5 个集合及 2..8 个有序唯一成员。schema 之外的动态 validator 会整批拒绝重复/越界索引与关系-evidence 错配，模型没有 exact-hash 覆盖、删除、写库或任意字段能力。
+>
+> `knowledge-model-projection-v1` 为什么需要：文件名和摘要都属于不可信文本，若先裁剪后扫描，凭据或 prompt injection 可以藏在截断区；若先分配真实 ID，模型边界又会无谓暴露 owner 数据。实现先用 property descriptor 把普通自有数据克隆到隔离对象，hostile getter/proxy 只得到固定 `invalid_input`；随后逐个扫描完整 filename 和每段 summary 的 malformed UTF-16、控制字符、credential、instruction/system prompt 与持久化 safety metadata。字段全部通过后才裁剪、分配 `d0...` ordinal、重建 surviving pair 并深冻结。unsafe non-target 整份排除，unsafe target 固定 `target_projection_blocked`，输出不含 document ID、owner、storage、chunk、向量或写权限。
+>
+> TDD/验收：两份模块先以缺失导入得到预期 RED，再完成 focused `10/10` GREEN；Agent typecheck/lint exit 0，规格复审与代码质量/安全复审均无 Critical/Important。没有读取 API key、调用 provider、启动 Docker/浏览器或创建业务数据。Task 2 只是 schema 与投影地基，Dedup/Organizer candidate、runtime counter、usage/cost、Trace、shortlist 和产品接入均未完成；下一步是 Task 3 Dedup candidate 与本地权威 merger。
+>
+> 回顾时可以问：为什么 Zod 的静态 `max(11)` 不能替代按本次 shortlist 长度做动态越界检查？为什么 hostile getter 需要 descriptor clone 而不是普通展开？为什么非目标 unsafe 文档可以排除，但目标文档必须整体 fail-closed？为什么此时仍不能声称 24/24 zero-call 已验证？
+
 > 2026-07-21 — Phase 6.9.6.1 Knowledge Agent baseline：目标是先把 KnowledgeDedup/Organizer 的当前能力变成不可修饰、可复现的比较基准，再接模型，避免“为了让结果好看”边做 candidate 边改 expected。`phase-6.9-knowledge-agents-v1` 固定 72 条合成 case：Dedup 40、Organizer 32；24 条定义未来 provider 前零调用的 gate/safety/owner/budget/abort 场景，48 条语义质量 case 按 `pairedRunIndex=0..23` 形成 24 个 Dedup/Organizer 请求对。
 >
 > 结果与原因：原有 deterministic policy 在 48 条 runtime case 中完整通过 `12` 条，critical `0`，Dedup relation macro-F1 `0.3343653251`、revision recall `0`、unrelated false-positive rate `0`；Organizer subject top-1 `0.25`、topic tag micro-F1 `0`、collection pairwise-F1 `0.4347826087`；固定加权 semantic score 为 `0.2322452551`。这说明规则对明显互补/无关资料较保守，但无法理解换名语义重复、新旧版本和词表外专业主题，正是后续 embedding shortlist + 受限模型裁决需要解决的差距。
@@ -70,7 +78,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6.1 已冻结 KnowledgeDedup/Organizer 的 72-case 数据集、指标与未经修饰的 deterministic baseline；当前尚未实现 candidate、shortlist、生产 gate 或调用真实模型，下一步是 strict schema 与 `knowledge-model-projection-v1`。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 KnowledgeDedup/Organizer 的 72-case baseline，并完成 Task 2 strict schema 与 `knowledge-model-projection-v1` 安全投影；当前尚未实现 candidate、shortlist、生产 gate 或调用真实模型，下一步是 Dedup candidate 与本地权威 merger。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -90,6 +98,7 @@
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
 | Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
 | Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
+| Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

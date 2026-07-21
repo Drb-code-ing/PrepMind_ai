@@ -191,7 +191,7 @@ git commit -m "test(agent): baseline knowledge semantic agents"
 - Create: `packages/agent/tests/knowledge-model-projection.test.ts`
 - Modify: `packages/agent/src/model-candidates/production.ts`
 
-- [ ] **Step 1: Write RED tests for strict schemas and full-field pre-truncation scanning**
+- [x] **Step 1: Write RED tests for strict schemas and full-field pre-truncation scanning**
 
 ```ts
 test('rejects extra fields, duplicate pairs, and out-of-range indexes', () => {
@@ -213,13 +213,13 @@ test('scans every complete filename and summary before truncation or ordinal ass
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `bun test packages/agent/tests/knowledge-{agent-model-contract,model-projection}.test.ts`
 
 Expected: FAIL because the schemas and projector do not exist.
 
-- [ ] **Step 3: Implement strict output schemas**
+- [x] **Step 3: Implement strict output schemas**
 
 ```ts
 export const KNOWLEDGE_DEDUP_MODEL_SCHEMA = z.object({
@@ -250,7 +250,7 @@ export const KNOWLEDGE_ORGANIZER_MODEL_SCHEMA = z.object({
 }).strict();
 ```
 
-- [ ] **Step 4: Implement the projector contract**
+- [x] **Step 4: Implement the projector contract**
 
 ```ts
 export const KNOWLEDGE_MODEL_PROJECTION_VERSION = 'knowledge-model-projection-v1';
@@ -283,13 +283,13 @@ export function projectKnowledgeSnapshot(input: unknown): KnowledgeProjectionRes
 
 `completeMutableFields()` must include the complete normalized filename and every complete selected summary. Only `assignOrdinalsAndTruncate()` may shorten text. Target exclusion returns a fixed `target_projection_blocked`; non-target unsafe documents are excluded, and eligibility is recalculated afterward.
 
-- [ ] **Step 5: Run GREEN tests and package checks**
+- [x] **Step 5: Run GREEN tests and package checks**
 
 Run: `bun test packages/agent/tests/knowledge-{agent-model-contract,model-projection}.test.ts && bun --filter @repo/agent typecheck && bun --filter @repo/agent lint`
 
 Expected: all commands exit 0; tests prove filename, each summary, metadata conflict, control characters, credentials, injection, hostile getter/proxy, and ordinal-after-scan ordering.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```bash
 git add packages/agent/src/model-candidates packages/agent/tests/knowledge-agent-model-contract.test.ts packages/agent/tests/knowledge-model-projection.test.ts
