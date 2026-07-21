@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6.1 Knowledge Agent baseline：目标是先把 KnowledgeDedup/Organizer 的当前能力变成不可修饰、可复现的比较基准，再接模型，避免“为了让结果好看”边做 candidate 边改 expected。`phase-6.9-knowledge-agents-v1` 固定 72 条合成 case：Dedup 40、Organizer 32；24 条定义未来 provider 前零调用的 gate/safety/owner/budget/abort 场景，48 条语义质量 case 按 `pairedRunIndex=0..23` 形成 24 个 Dedup/Organizer 请求对。
+>
+> 结果与原因：原有 deterministic policy 在 48 条 runtime case 中完整通过 `12` 条，critical `0`，Dedup relation macro-F1 `0.3343653251`、revision recall `0`、unrelated false-positive rate `0`；Organizer subject top-1 `0.25`、topic tag micro-F1 `0`、collection pairwise-F1 `0.4347826087`；固定加权 semantic score 为 `0.2322452551`。这说明规则对明显互补/无关资料较保守，但无法理解换名语义重复、新旧版本和词表外专业主题，正是后续 embedding shortlist + 受限模型裁决需要解决的差距。
+>
+> 工程与边界：case、嵌套 fixture 和预期均深冻结；指标拒绝非法数值、固定四类 macro-F1、case-scoped tag/collection micro-F1 和 24 样本 nearest-rank P95，第 23 个值为 P95。focused tests `13/13`、Agent typecheck/lint 均通过，baseline CLI 复现相同结果。没有读取 key、调用 provider、启动 Docker/浏览器或创建业务数据；24 条 zero-call 当前只是合同，candidate 尚未实现，不能声称已实际 24/24 零调用。完整证据见 `docs/acceptance/phase-6-9-6-1-knowledge-agent-baseline.md`。
+>
+> 回顾时可以问：为什么 baseline 不能边跑边修 expected？为什么 72 条只有 48 条进入 semantic score？为什么 revision recall 为 0 但 unrelated false-positive rate 为 0？为什么 zero-call case 此时只能叫合同？下一步 `knowledge-model-projection-v1` 为什么必须先扫描完整字段再裁剪？
+
 > 2026-07-21 — Phase 6.9.6 Knowledge Agent 设计检查点：目标是把 `KnowledgeDedupAgent` 从 hash/文件名/小词表判断升级为“exact hash 零调用 + Qwen Chunk embedding 候选 + DeepSeek V4 Pro 受限关系裁决”，并把 `KnowledgeOrganizerAgent` 升级为真实语义标签和集合顾问。为什么需要：当前 policy 能识别明显副本和固定学科词，却不能可靠区分换名后的语义重复、新旧版本、互补资料或词表之外的专业课主题；继续只靠规则会让“Agent”缺少真正的语义大脑。
 >
 > 主要设计：选择复用现有 Qwen `text-embedding-v4` / 1536 Chunk embedding，不在本阶段新增 Document embedding 表或把全部资料直接塞给模型。owner-scoped shortlist 最多 12 对，模型只看到本地 ordinal、受限文件信息和脱敏短摘要；Dedup 只能返回四类关系与固定 evidence code，Organizer 的标签/集合受数量、长度、字符和成员索引约束，本地 merger 重建真实 ID、时间、recommendation、reason 和权限。两个 server gate 独立且默认关闭；candidate 并行共享 `2 calls / 6000 input / 1200 output` 预算，单请求 CNY cap `0.03`，未知 pricing/usage/Trace 均 fail-closed。
@@ -62,7 +70,7 @@
 
 更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的 KnowledgeDedup/Organizer 设计已通过书面审阅，13 个一任务一提交的 TDD 实施单元已固定；当前尚未实现 candidate、运行评测或调用真实模型，下一步由用户选择子代理驱动或当前会话内联执行。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6.1 已冻结 KnowledgeDedup/Organizer 的 72-case 数据集、指标与未经修饰的 deterministic baseline；当前尚未实现 candidate、shortlist、生产 gate 或调用真实模型，下一步是 strict schema 与 `knowledge-model-projection-v1`。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -81,7 +89,7 @@
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
 | Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
-| Phase 6.9.6  | 计划完成 | 设计已审阅；13 个 TDD 任务覆盖 baseline、candidate、snapshot、shortlist、composition、产品与验收，尚未实现 |
+| Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

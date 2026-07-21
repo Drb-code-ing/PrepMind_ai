@@ -48,7 +48,7 @@
 - Modify: `DEVLOG.md`
 - Modify: `docs/roadmap.md`
 
-- [ ] **Step 1: Write the failing dataset contract test**
+- [x] **Step 1: Write the failing dataset contract test**
 
 ```ts
 import { describe, expect, test } from 'bun:test';
@@ -70,13 +70,13 @@ describe('phase-6.9 knowledge-agent cases', () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `bun test packages/agent/tests/phase-6-9-knowledge-agent-cases.test.ts`
 
 Expected: FAIL because `phase-6-9-knowledge-agent-cases.ts` does not exist.
 
-- [ ] **Step 3: Implement the typed fixture matrix and exact case IDs**
+- [x] **Step 3: Implement the typed fixture matrix and exact case IDs**
 
 ```ts
 export const PHASE_6_9_KNOWLEDGE_AGENT_DATASET_VERSION = 'phase-6.9-knowledge-agents-v1';
@@ -119,7 +119,7 @@ export const PHASE_6_9_KNOWLEDGE_AGENT_CASES = Object.freeze([
 
 The two builders must emit synthetic filenames/summaries only, explicit expected relation/subject/tags/collection edges, eligibility inputs, and `expectedRuntimeInvocations`; no real document IDs or copied production text.
 
-- [ ] **Step 4: Write metric tests before metric implementation**
+- [x] **Step 4: Write metric tests before metric implementation**
 
 ```ts
 test('uses the frozen weighted formula and nearest-rank P95', () => {
@@ -143,7 +143,7 @@ test('keeps invalid attempted outputs in the denominator', () => {
 });
 ```
 
-- [ ] **Step 5: Implement metric functions and baseline runner**
+- [x] **Step 5: Implement metric functions and baseline runner**
 
 ```ts
 export function computeKnowledgeSemanticScore(input: KnowledgeSemanticMetrics): number {
@@ -169,13 +169,13 @@ export function runKnowledgeAgentDeterministicBaseline() {
 }
 ```
 
-- [ ] **Step 6: Run GREEN tests and write immutable baseline evidence**
+- [x] **Step 6: Run GREEN tests and write immutable baseline evidence**
 
 Run: `bun test packages/agent/tests/phase-6-9-knowledge-agent-{cases,metrics,baseline}.test.ts`
 
 Expected: PASS with 72 total, 24 zero-call, 48 runtime, 24 paired indexes per agent, and a reproducible deterministic score. Record the unmodified numbers in `docs/acceptance/phase-6-9-6-1-knowledge-agent-baseline.md`; do not improve or relabel the baseline in this task.
 
-- [ ] **Step 7: Commit Task 1**
+- [x] **Step 7: Commit Task 1**
 
 ```bash
 git add packages/agent/src/evals packages/agent/tests/phase-6-9-knowledge-agent-*.test.ts packages/agent/package.json docs/acceptance/phase-6-9-6-1-knowledge-agent-baseline.md AGENTS.md DEVLOG.md docs/roadmap.md
