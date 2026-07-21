@@ -786,3 +786,21 @@ V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Revie
 完整结果、证据边界和产品顺序见 `docs/acceptance/phase-6-9-5-review-planner-v10-offline-checkpoint.md`。
 
 任何后续 Qwen Chat v5 只能遵循独立设计 `docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`：在受审计的精确 model/endpoint/JSON 支持、价格 profile 和独立费用 cap 齐备之前，preflight 必须 provider 前关闭，且不得重试或改写 v1--v4。
+
+## 10. Phase 6.9.6 Knowledge Agent 验收入口（设计期）
+
+本节是后续实施的执行入口，不授权当前调用真实模型，也不表示 candidate、Docker 或浏览器证据已存在。量化权威见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
+
+1. 确认工作从已推送的最新 main 创建普通 `codex/` 分支；只有主工作目录，不从功能分支开分支，不创建非必要 worktree。
+2. 固定 `phase-6.9-knowledge-agents-v1` 的 72 个 case ID、expected 与 digest。先记录 deterministic baseline，不为满足门槛改写 expected 或删除失败 case。
+3. 24 条 zero-call case 必须实际进入 Dedup/Organizer candidate，穿过 gate/safety/ownership/embedding/budget/abort guard，并由 runtime counter 证明 0 invocation；exact hash 不能调用 provider。
+4. Qwen shortlist 只读取 canonical owner 的 `DONE`、安全、1536 维 Chunk embedding。Document/chunk/score 来自同一 `REPEATABLE READ` snapshot；provider 前重验 owner/updatedAt/hash/status/chunk identity，漂移为 `snapshot_stale` 零调用。验证每文档最多 6 个稳定样本、阈值 0.78、最多 12 pair、稳定排序、target document 补入、跨用户候选为 0、API/Trace 不含向量或 chunk 正文。
+5. Mock candidate 验证 `knowledge-model-projection-v1` 在裁剪/ordinal 前逐字段扫描完整 filename 和每段 summary，并交叉检查持久化 safety metadata；strict 类型/字节/字符、未知/重复/越界 index、非法 relation/evidence、标签字符/长度/数量、hostile getter/proxy、credential、prompt injection、timeout、abort、预算污染、usage/Trace 不一致全部 fail-closed。
+6. 本地 merger 必须保留 exact hash、时间、document status、真实 ID、recommendation 与全部权限；`semantic_duplicate` 只允许 `review_manually`，`possible_revision` 缺少本地版本/时间证据时不得声称新版。Prisma create/update/delete 与 MinIO mutation 计数必须为 0。
+7. 两个 server-only gate 默认均为 false；真实 composition 还需全局 Live 双开关、有效 credential、已知 pricing。预算固定 `2 calls / 6000 input / 1200 output`，Dedup 3000/500、Organizer 3000/700、各 4500ms、SDK retry 0、单请求 CNY cap 0.03。
+8. 只有用户再次明确授权后才能执行 controlled-Live。48 个 runtime case 必须复用同一 dataset，并按 Dedup/Organizer `pairedRunIndex=0..23` 组成 24 次并行请求；usage 为 provider-reported 正安全整数并与 reservation/runtime/Trace 一致，总费用 <= 1.00 CNY。任一 schema、质量、critical、P95、usage 或成本门失败都保持产品 gate 关闭。
+9. Live 质量门为：Dedup macro-F1 >= 0.85、revision recall >= 0.85、无关 false-positive <= 0.10；Organizer subject top-1 >= 0.88、tag micro-F1 >= 0.80、collection pairwise-F1 >= 0.80；semantic score 固定为 `0.35*Dedup macro-F1 + 0.15*revision recall + 0.20*subject top-1 + 0.15*tag micro-F1 + 0.15*collection pairwise-F1`，只比较同一 48 runtime case，非法/失败按错误预测，绝对提升 >=0.10。P95 为 24 个观测值 nearest-rank 第 23 个，包含 attempted success/fallback/error/timeout，不含 zero-call，branch/main 不拼接；critical、跨用户、越界 ID 和写操作为 0。
+10. 分支产品验收分别运行 Dedup-only、Organizer-only、双开关 API；可见 `/knowledge` 覆盖 hybrid/local/degraded、空态、失败态和移动端。模型失败不得影响上传、处理、替换、检索或 RAG Chat。
+11. Trace 使用一个 Knowledge parent run 和两个 candidate step，provider call 只记账一次；验证 disposition、正 usage、pricing/cost 和 API 双向一致，但禁止把 aggregate API duration 与 candidate-step duration 做精确相等比较。
+12. 精确清理 synthetic user/document/chunk/object/BackgroundJob/Trace/browser storage 并断言 0；验证 SDK/Nest logger、HTTP debug、telemetry、stdout、evidence 和临时目录不含 prompt、filename/summary 正文、provider body/header、credential 或 raw error。外部 provider retention 必须在启用前文档化，不得声称本地清理删除了 provider 日志。恢复 `AI_PROVIDER_MODE=mock`、live=false、两个 Knowledge gate=false。禁止 prune、`down -v`、volume/database reset、Redis flush 或 MinIO wipe。
+13. 独立复审无 Critical/Important 后 `--no-ff` 合并 main；在 main 重跑关键静态、Docker、可见浏览器 default-off 和必要的受控 authority 回放，推送并确认 `origin/main...HEAD = 0 0`。

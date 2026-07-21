@@ -244,7 +244,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - 后续 Agent 架构优化执行文档见 `docs/superpowers/plans/2026-06-29-agent-architecture-optimization.md`，重点是状态控制面、工具可靠性、RAG 冲突处理、后台任务事件化和 Reflexion 验收，而不是立刻放开全自主写操作。
 - 当前离线补强已将评测集固定为 `phase-6.9-review-planner-v2`：26 条 zero-call case 必须实际经过候选安全/资格/预算/abort gate，22 条 runtime case 覆盖多种诊断、排序和策略；`zeroCallVerified` 进入 report contract，任何意外调用都会关闭生产决策。live provider 缺失、非法或 `0/0` usage 只会 `invalid_response` 回退，Trace 仅在成功且正数 usage、集中单价完整时显示已知估算成本。以上不构成新的 Live、Docker 或浏览器证据，两个业务 gate 仍为 `false`。
 - 独立 Qwen Chat v5 目前只有零网络设计文档：`docs/superpowers/specs/2026-07-17-phase-6-9-5-qwen-controlled-live-v5-design.md`。它不重试或替代 v1--v5；在实现或一次 provider 调用前，仍需受审计的精确 Qwen Chat 价格 profile、来源日期/计量依据与独立总费用上限。
-- 当前实现事实：Router/Verifier 已完成混合模型生产接入且默认 gate 已恢复关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是 deterministic policy。Review/Planner 有受限只读 candidate，但 V9 真实模型质量门失败且产品 gates=false，因此当前项目仍返回 deterministic 建议，不能称为 Review/Planner 真实模型可用。FinalResponse 由既有 `/api/chat` mock/live 链路承担；Retriever 由 Qwen embedding + pgvector/关键词混合检索承担。
+- 当前实现事实：Router/Verifier 已完成混合模型生产接入且默认 gate 已恢复关闭；Tutor、WrongQuestionOrganizer、Memory、KnowledgeDedup 与 KnowledgeOrganizer 仍是 deterministic policy。Review/Planner 的 V9 失败作为只读历史保留，后续 V10 语义质量 authority、独立 DeepSeek V4 Pro Docker API/可见浏览器验收和 main default-off replay 已证明其受限真实模型 candidate 可用；产品 gates=false 表示默认安全回滚状态，不再表示“真实模型不可用”。FinalResponse 由既有 `/api/chat` mock/live 链路承担；Retriever 由 Qwen embedding + pgvector/关键词混合检索承担。
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -262,6 +262,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - MemoryAgent 当前边界：候选需用户确认，不静默创建正式记忆；不写 Chat / Review / WrongQuestion 事实表，不进入 Dexie `mutationQueue`，不自动注入 Chat prompt。Phase 6.9.9 只增加受控真实模型候选提取；Chat 注入、召回与情景记忆延后至 Phase 6.10。
 - Agent Trace 边界：`/agent-traces` 不进入 Dexie `mutationQueue`，不保存完整 prompt、完整回答、完整 RAG chunk 或 API key；`/agent-trace` 成本看板只展示估算成本，不替代供应商账单。
 - KnowledgeAgent 当前边界：`/knowledge-agent/suggestions` 经过 `JwtAuthGuard`，Service 层所有 `Document` / `Chunk` 查询都带当前 `userId`，只读取每份资料最多少量 chunk 摘要；该接口不写 Document / Chunk / 分类表，不进入 Dexie `mutationQueue`，失败只影响建议面板。Phase 6.9.6 将以 hash/权限 deterministic guard + embedding/真实模型语义判断增强重复、版本、互补、标签与集合建议，仍禁止自动删除、替换、合并或分类。
+- Phase 6.9.6 设计检查点已固定推荐方案：复用当前用户已持久化的 Qwen `text-embedding-v4` / 1536 安全 Chunk embedding，按 `knowledge-semantic-shortlist-v1` 形成最多 12 个候选 pair；DeepSeek V4 Pro 只裁决本地 ordinal 与严格关系/标签 schema，本地 merger 重建 document ID、时间、recommendation 和全部权限。数据集 `phase-6.9-knowledge-agents-v1` 共 72 case，其中 24 条必须验证 provider 前零调用、48 条进入 runtime；两个 server gate 继续默认关闭。当前只是设计，不代表 candidate、评测或生产验收已经完成。详见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
 - Phase 6 总体设计见 `docs/superpowers/specs/2026-06-19-phase-6-multi-agent-collaboration-design.md`；错题整理详细设计见 `docs/superpowers/specs/2026-06-21-phase-6-4-wrong-question-organizer-design.md`；复习计划 Agent 详细设计见 `docs/superpowers/specs/2026-06-22-phase-6-5-review-planner-agent-design.md`；MemoryAgent 详细设计见 `docs/superpowers/specs/2026-06-28-phase-6-6-memory-agent-design.md`；Agent Trace / Eval 详细设计见 `docs/superpowers/specs/2026-06-28-phase-6-7-agent-trace-eval-design.md`；KnowledgeDedupAgent / KnowledgeOrganizerAgent 详细设计见 `docs/superpowers/specs/2026-06-29-phase-6-8-knowledge-agents-design.md`。
 - Phase 6.0 / 6.1 / 6.2 / 6.3 / 6.4 / 6.5 / 6.6 / 6.7 / 6.8 详细设计与实施计划见 `docs/superpowers/specs/2026-06-20-phase-6-0-agent-runtime-design.md`、`docs/superpowers/specs/2026-06-20-phase-6-1-router-tutor-chat-integration-design.md`、`docs/superpowers/specs/2026-06-20-phase-6-2-tutor-agent-policy-design.md`、`docs/superpowers/specs/2026-06-21-phase-6-3-knowledge-verifier-design.md`、`docs/superpowers/specs/2026-06-21-phase-6-4-wrong-question-organizer-design.md`、`docs/superpowers/specs/2026-06-22-phase-6-5-review-planner-agent-design.md`、`docs/superpowers/specs/2026-06-28-phase-6-6-memory-agent-design.md`、`docs/superpowers/specs/2026-06-28-phase-6-7-agent-trace-eval-design.md`、`docs/superpowers/specs/2026-06-29-phase-6-8-knowledge-agents-design.md` 以及对应 `docs/superpowers/plans/` 文件；Phase 6.8 实施计划见 `docs/superpowers/plans/2026-06-29-phase-6-8-knowledge-agents.md`。
 
@@ -297,7 +298,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.4.4 Task 9：在分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、合成数据精确清理和 evidence/current-doc 提交。（已完成）
 - Phase 6.9.4.4 Task 10：最终 spec/质量复核、完整分支 gates、`--no-ff` 合并 main、main 静态/controlled-Live/Docker/可见浏览器复验、精确清理和远程同步。（已完成）
 - Phase 6.9.5：ReviewAgent / PlannerAgent 真实模型路径与只读权限边界。V10 是唯一语义质量 authority；V22 `operation_failed -> recovered` 及其他历史 lineages 不可重跑或改写。修复独立计时边界的错误精确比较后，受控 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`；main default-off replay 确认确定性 0-call 路径，synthetic account/Trace 清理为 0，两个 gate 与 live-call gate 均保持 default-off。（已完成）
-- Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。（规划中）
+- Phase 6.9.6：KnowledgeDedupAgent / KnowledgeOrganizerAgent embedding + 真实模型语义路径。职责、shortlist、schema、72-case 门槛、预算、default-off、Docker/浏览器和清理设计已固定，等待书面规范审阅后进入实施计划。（设计中）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
@@ -310,7 +311,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请开始 Phase 6.9.6：为 KnowledgeDedupAgent / KnowledgeOrganizerAgent 制定真实模型语义路径、只读权限、评测、Docker/浏览器验收和 default-off 回滚方案；不要改写 Phase 6.9.5 的 V10/V22 历史。”
+下一会话可以复制：“请审阅 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`，重点检查 embedding shortlist、72-case 门槛、只读权限、并行预算与验收；不要改写 Phase 6.9.5 的 V10/V22 历史。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

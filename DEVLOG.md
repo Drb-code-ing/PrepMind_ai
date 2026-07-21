@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Knowledge Agent 设计检查点：目标是把 `KnowledgeDedupAgent` 从 hash/文件名/小词表判断升级为“exact hash 零调用 + Qwen Chunk embedding 候选 + DeepSeek V4 Pro 受限关系裁决”，并把 `KnowledgeOrganizerAgent` 升级为真实语义标签和集合顾问。为什么需要：当前 policy 能识别明显副本和固定学科词，却不能可靠区分换名后的语义重复、新旧版本、互补资料或词表之外的专业课主题；继续只靠规则会让“Agent”缺少真正的语义大脑。
+>
+> 主要设计：选择复用现有 Qwen `text-embedding-v4` / 1536 Chunk embedding，不在本阶段新增 Document embedding 表或把全部资料直接塞给模型。owner-scoped shortlist 最多 12 对，模型只看到本地 ordinal、受限文件信息和脱敏短摘要；Dedup 只能返回四类关系与固定 evidence code，Organizer 的标签/集合受数量、长度、字符和成员索引约束，本地 merger 重建真实 ID、时间、recommendation、reason 和权限。两个 server gate 独立且默认关闭；candidate 并行共享 `2 calls / 6000 input / 1200 output` 预算，单请求 CNY cap `0.03`，未知 pricing/usage/Trace 均 fail-closed。
+>
+> 评测与边界：数据集固定为 `phase-6.9-knowledge-agents-v1` 共 72 case，24 条验证 provider 前零调用、48 条进入 runtime；同时固定 Dedup macro-F1/revision recall、Organizer subject/tag/collection 指标、P95、CNY 1.00 controlled-Live 总 cap、critical/越权/写操作为 0 等门槛。API 和 `/knowledge` 继续只读，不写 Document / Chunk / 分类表，不自动删除、替换、合并、改名或分类；模型路径尚未实现，本检查点没有读取 key、调用 provider、启动 Docker/浏览器或产生合成数据。完整设计见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
+>
+> 回顾时可以问：两个 Knowledge Agent 分别做什么？为什么 exact hash 必须零调用？为什么复用 Chunk embedding 而不新增 Document embedding 表？为什么模型只能返回 ordinal 和受限关系？72-case 如何同时证明语义质量、权限、成本和降级？
+
 > 2026-07-21 — `/today` Review/Planner “先完成今日复习”主操作修复：目标是让同页建议卡产生可感知、可访问的结果，而不是重新跳转当前 `/today` URL。根因是建议卡对首个 Planner block 一律渲染 Next `Link`；当目标同为 `/today` 时，路由没有页面或焦点变化。修复为可选的 `onPrimaryAction`：仅当标准化目标确为 `/today` 时，`/today` 才以本地回调平滑滚动并聚焦第一张 `PENDING` 复习卡；`/error-book`、`/plan` 等跨页建议与未传回调的调用方仍保持原有安全 Link 导航。空任务 notice 只在已成功读取且确实无待复习卡时显示；加载和失败保留原状态，离线或暂停查询显示“暂不可用”而非空态。浏览器复验发现实际滚动目标是首张待复习卡 wrapper，而非 section；因此 wrapper 与无任务 section fallback 均使用 sticky-header scroll margin，避免焦点卡被页头遮挡。该操作不评分、不跳过、不创建或修改任何 ReviewTask。
 >
 > 验收：先以 `review-agent-ui-integration.test.mts` 观察两个 RED（缺少本地 action contract、缺少同页焦点 contract），最小实现后 Web `409/409`、lint 和 production build 均通过。浏览器使用一次 synthetic 账号、1 条错题、1 张到期 Card 和 1 条 `PENDING` ReviewTask：首次 `/today` 初始 `scrollY=0`，点击后为 `scrollY=767`，焦点为第一张卡的 `DIV[tabindex=-1]`，从而暴露 wrapper 顶部为 `0px` 的 offset 缺口；补齐 wrapper margin 后重新回归为 `scrollY≈671`、焦点仍为该 `DIV[tabindex=-1]`、其包含 review card 且顶部为 `96px`。复验新增控制台错误为 0。无待复习卡的正常 Planner 结果会把主目标改为错题/计划页，因而不会自然渲染本按钮；loaded-empty guard 由回归 contract 覆盖，不伪造浏览器响应。
@@ -50,9 +58,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-20
+更新时间：2026-07-21
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成：V10 仍是唯一语义质量 authority，V22 的 `operation_failed -> recovered` 历史不可重跑，独立 DeepSeek V4 Pro Docker API/可见 `/plan` 验收确认 Review/Planner 能 `candidate_applied`，main default-off Docker/浏览器回放确认安全回滚与确定性路径。合成账户与 Trace 已两轮精确清理。下一步进入 Phase 6.9.6。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已完成 KnowledgeDedup/Organizer 的首个设计检查点，固定 embedding shortlist、受限真实模型 contract、72-case 门槛、只读权限、预算、Docker/浏览器与清理标准；当前尚未实现 candidate、运行评测或调用真实模型，下一步等待书面规范审阅后编写实施计划。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -71,6 +79,7 @@
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
 | Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
+| Phase 6.9.6  | 设计中 | Qwen embedding shortlist、DeepSeek 受限语义判断、72-case paired eval、只读 merger 与 default-off 验收设计 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
