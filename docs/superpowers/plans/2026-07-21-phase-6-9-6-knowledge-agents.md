@@ -449,7 +449,7 @@ git commit -m "feat(agent): add governed organizer candidate"
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.service.ts`
 - Modify: `apps/server/src/knowledge-agent/knowledge-agent.service.spec.ts`
 
-- [ ] **Step 1: Write RED service tests for transaction isolation and stale revalidation**
+- [x] **Step 1: Write RED service tests for transaction isolation and stale revalidation**
 
 ```ts
 it('loads target ownership, documents, chunks, and shortlist in one RepeatableRead transaction', async () => {
@@ -469,13 +469,13 @@ it('returns snapshot_stale without invoking either runtime', async () => {
 });
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `bun --filter @repo/server test -- knowledge-owner-snapshot.spec.ts knowledge-agent.service.spec.ts --runInBand`
 
 Expected: FAIL because current service performs independent ownership/list/target queries and has no snapshot fingerprint.
 
-- [ ] **Step 3: Implement the snapshot contract and hash**
+- [x] **Step 3: Implement the snapshot contract and hash**
 
 ```ts
 export const KNOWLEDGE_OWNER_SNAPSHOT_VERSION = 'knowledge-owner-snapshot-v1';
@@ -493,36 +493,37 @@ export type KnowledgeOwnerSnapshot = Readonly<{
 export function fingerprintKnowledgeOwnerSnapshot(input: KnowledgeOwnerSnapshotMaterial): string {
   return createHash('sha256').update(stableStringify({
     ownerHash: input.ownerHash,
-    documents: input.documents.map(({ id, updatedAt, contentHash, status }) => ({ id, updatedAt, contentHash, status })),
-    chunks: input.selectedChunks.map(({ id, documentId, index, contentHash, safetyVersion }) => ({ id, documentId, index, contentHash, safetyVersion })),
+    targetDocumentId: input.targetDocumentId ?? null,
+    documents: canonicalizeAllPromptAndPolicyFields(input.documents),
+    chunks: canonicalizeSelectedChunkIdentityAndSafety(input.selectedChunks),
     shortlistVersion: input.shortlistVersion,
   })).digest('hex');
 }
 ```
 
-Owner hash must be HMAC/one-way server-local material, not the raw user ID. Chunk `contentHash` is derived locally from full selected content because Prisma `Chunk` has no `updatedAt`; the hash is not returned to API/Trace.
+Owner hash uses a domain-separated HMAC with required server-local secret material, never plain SHA or the raw user ID. The request-local snapshot does not retain canonical `userId`; revalidation receives it through a separate owner-scoped parameter. The fingerprint covers target binding plus every document field used by prompt/policy/merger, selected chunk identity/order/full-content hash, canonical safety fingerprint and algorithm versions. Chunk `contentHash` is derived locally from full selected content because Prisma `Chunk` has no `updatedAt`; fingerprint, owner hash and full chunk content are not returned to API/Trace.
 
-- [ ] **Step 4: Refactor service snapshot loading and preflight**
+- [x] **Step 4: Refactor service snapshot loading and preflight**
 
 ```ts
 const snapshot = await this.prisma.$transaction(
   (tx) => this.snapshotSource.load(tx, { userId, documentId: query.documentId, limit: Math.min(query.limit, 20) }),
   { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
 );
-const fresh = await this.snapshotSource.revalidate(this.prisma, snapshot);
+const fresh = await this.snapshotSource.revalidate(this.prisma, { userId, snapshot });
 if (!fresh) return this.localResponse(snapshot, now, 'snapshot_stale');
 return this.runCandidates(snapshot, now);
 ```
 
-`load()` must throw the existing 404 for an absent/cross-owner target inside the transaction, select at most 20 documents, include the target inside that same bounded set, and deep-freeze all returned arrays/objects. `revalidate()` repeats owner, document version/status/hash, and selected chunk identity/content hash/safety-version checks immediately before provider dispatch.
+`load()` must start with `SET TRANSACTION READ ONLY`, throw the existing 404 for an absent/cross-owner target inside the transaction, select at most 20 documents, include the target inside that same bounded set, and deep-freeze all returned arrays/objects. `revalidate()` reruns the same bounded chunk selection and rebuilds the complete canonical fingerprint immediately before provider dispatch; missing/malformed results, owner drift, document changes, or chunk selection/content/safety changes fail closed.
 
-- [ ] **Step 5: Run GREEN tests and build**
+- [x] **Step 5: Run GREEN tests and build**
 
 Run: `bun --filter @repo/server test -- knowledge-owner-snapshot.spec.ts knowledge-agent.service.spec.ts --runInBand && bun --filter @repo/server build`
 
 Expected: PASS; model calls occur outside the transaction, a stale/missing/replaced/reprocessed document or chunk yields provider zero-call, and target ownership is never checked in a separate pre-snapshot query.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 ```bash
 git add apps/server/src/knowledge-agent/knowledge-owner-snapshot.ts apps/server/src/knowledge-agent/knowledge-owner-snapshot.spec.ts apps/server/src/knowledge-agent/knowledge-agent.service.ts apps/server/src/knowledge-agent/knowledge-agent.service.spec.ts

@@ -1,4 +1,14 @@
 # PrepMind AI 开发日志
+> 2026-07-21 — Phase 6.9.6 Task 5 单一 owner snapshot 与 stale fence：把原先“先独立查 target、再查列表、必要时第三次补 target”的 TOCTOU 链路收敛为一个 bounded PostgreSQL interactive transaction。事务以 `REPEATABLE READ` 运行并先执行 `SET TRANSACTION READ ONLY`，所有 target ownership、Document 与所选 Chunk 读取都绑定 canonical `userId`；请求 `limit` 即使为 50 也最多取 20 份，target 在窗口外时占用一个名额而不是形成第 21 份，缺失或跨 owner 仍返回同一个 404。
+>
+> 快照与安全边界：`knowledge-owner-snapshot-v1` 不保留 raw user ID，而是使用必需 JWT secret 作为服务端密钥材料生成域分离 HMAC；该 HMAC 只用于本次请求的 owner fingerprint，JWT secret 轮换只会改变后续瞬时快照。完整 canonical fingerprint 覆盖 target binding、所有影响 prompt/policy/merger 的 Document 字段、selected chunk identity/order、全文 SHA-256、safety schema 版本与完整 canonical safety hash，以及 shortlist 版本。返回对象、Document、chunk 和嵌套数组全部深冻结，数据库 mock 行在 load 后被修改也不会改变快照。
+>
+> provider-preflight：模型调用不会放在数据库事务内；事务结束后，短 owner-scoped 查询重跑相同 chunk 选取并重建完整 fingerprint。Document 删除/改 owner/改名/换 hash/状态或时间变化，Chunk 删除/替换/改 index/全文/safety/选取集合变化，以及 DB 异常或快照篡改都返回 stale=false 并只保留 deterministic 本地建议。Task 8 才增加公开 runtime metadata 和实际双候选 dispatch，因此 Task 5 不提前伪造 `snapshot_stale` API 字段，也没有 provider 调用。
+>
+> TDD/验收：新模块缺失时得到预期 RED；随后 owner snapshot 与 Service focused `13/13`、Server build 通过。测试覆盖只读事务顺序、20 条边界、target 内联 ownership、HMAC/raw owner 隔离、canonical fingerprint、deep freeze、完整 stale 矩阵、事务结束后 revalidation、异常 fail-closed 与 root/transaction 两侧零写入。本任务没有读取 API key、启动 Docker/浏览器、调用真实模型或创建/修改业务数据；下一步是 Task 6 owner-scoped pgvector semantic shortlist。
+>
+> 回顾时可以问：为什么 `REPEATABLE READ` 事务结束后还要 provider 前 revalidation？为什么 owner hash 要用域分离 HMAC 而不是普通 SHA？为什么 target 补入必须占用 20 条上限？为什么 Task 5 已有 stale fence 但还不能说 Knowledge Agent 已接入真实模型？
+
 > 2026-07-21 — Phase 6.9.6 Task 4 Organizer 受治理候选：目标是让 `KnowledgeOrganizerAgent` 能理解词表之外的资料主题与集合关系，同时继续只做建议。候选至少需要 1 份通过完整字段扫描与 safety metadata 的 ordinal-only projection；模型只能选择固定 subject/resource type、最多 2 个 topic label、最多 5 个集合及每组 2..8 个有序唯一成员。真实 document ID、中文 subject/resource labels、reason、description、confidence、signals 和全部权限由本地 merger 重建，最终每份资料最多 3 个标签。
 >
 > 安全与降级：schema 之后仍对 topic label/collection name 做 URL、Markdown、HTML、instruction、credential 和控制字符检查，任一非法值都会整批回退，不部分应用。重复/越界 document index、乱序或重复 member index、超过数量上限、unsafe projection、abort、预算不足、timeout、invalid usage、schema invalid 或 runtime throw 都只返回既有 deterministic Organizer 结果；observation 不携带文件名、摘要、prompt、provider body、raw error、真实 ID map 或凭据。模型没有持久化 tag/collection、自动分类、删除、替换、改名或合并权限。

@@ -1,9 +1,15 @@
+import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
+
+import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
 import { KnowledgeAgentService } from './knowledge-agent.service';
 
 describe('KnowledgeAgentService', () => {
-  const now = new Date('2026-06-29T08:00:00.000Z');
-  const prisma = {
+  const now = new Date('2026-07-21T08:00:00.000Z');
+  const events: string[] = [];
+  const tx = {
+    $executeRawUnsafe: jest.fn(),
     document: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -22,30 +28,69 @@ describe('KnowledgeAgentService', () => {
       deleteMany: jest.fn(),
     },
   };
+  const prisma = {
+    $transaction: jest.fn(),
+    document: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    chunk: {
+      create: jest.fn(),
+      createMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+  };
+  const config = {
+    get: jest.fn((key: keyof ServerEnv) =>
+      key === 'JWT_SECRET'
+        ? 'test-jwt-secret-with-domain-separation'
+        : undefined,
+    ),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
     jest.useFakeTimers().setSystemTime(now);
-    prisma.document.findFirst.mockResolvedValue(createDocument('doc_1'));
-    prisma.document.findMany.mockResolvedValue([
-      createDocument('doc_1', {
-        name: '高等数学 导数讲义.pdf',
-        contentHash: 'sha256:a',
-        chunks: [
-          {
-            content: '导数 极限 函数'.repeat(30),
-            index: 0,
-          },
-        ],
-        chunkCount: 5,
-      }),
-      createDocument('doc_2', {
-        name: '高等数学 导数练习.pdf',
-        contentHash: 'sha256:b',
-        chunks: [{ content: '导数应用题', index: 0 }],
-        chunkCount: 1,
-      }),
-    ]);
+    events.length = 0;
+
+    config.get.mockImplementation((key: keyof ServerEnv) =>
+      key === 'JWT_SECRET'
+        ? 'test-jwt-secret-with-domain-separation'
+        : undefined,
+    );
+
+    tx.$executeRawUnsafe.mockImplementation(() => {
+      events.push('tx:read-only');
+      return Promise.resolve(0);
+    });
+    tx.document.findFirst.mockImplementation(() => {
+      events.push('tx:target');
+      return Promise.resolve(null);
+    });
+    tx.document.findMany.mockImplementation(() => {
+      events.push('tx:documents');
+      return Promise.resolve(defaultRows());
+    });
+    prisma.document.findMany.mockImplementation(() => {
+      events.push('revalidate:documents');
+      return Promise.resolve(defaultRows());
+    });
+    prisma.$transaction.mockImplementation(
+      async (callback: (client: typeof tx) => Promise<unknown>) => {
+        events.push('transaction:start');
+        const result = await callback(tx);
+        events.push('transaction:end');
+        return result;
+      },
+    );
   });
 
   afterEach(() => {
@@ -53,123 +98,98 @@ describe('KnowledgeAgentService', () => {
   });
 
   function createService() {
-    return new KnowledgeAgentService(prisma as unknown as PrismaService);
+    return new KnowledgeAgentService(
+      prisma as unknown as PrismaService,
+      config as unknown as ConfigService<ServerEnv, true>,
+    );
   }
 
-  it('builds read-only suggestions from current user documents and capped chunk summaries', async () => {
+  it('loads all governed facts in one bounded RepeatableRead transaction and revalidates only after it closes', async () => {
     const result = await createService().getSuggestions('user_1', {
-      limit: 20,
+      limit: 50,
     });
 
-    expect(prisma.document.findFirst).not.toHaveBeenCalled();
-    expect(prisma.document.findMany).toHaveBeenCalledWith({
-      where: { userId: 'user_1' },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        size: true,
-        status: true,
-        sourceType: true,
-        contentHash: true,
-        processedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        chunks: {
-          where: { userId: 'user_1' },
-          select: { content: true, index: true },
-          orderBy: { index: 'asc' },
-          take: 3,
-        },
-        _count: { select: { chunks: { where: { userId: 'user_1' } } } },
-      },
-      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
-      take: 20,
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      maxWait: 2_000,
+      timeout: 5_000,
     });
+    expect(tx.$executeRawUnsafe).toHaveBeenCalledWith(
+      'SET TRANSACTION READ ONLY',
+    );
+    expect(tx.document.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user_1' },
+        take: 20,
+      }),
+    );
+    expect(prisma.document.findFirst).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      'transaction:start',
+      'tx:read-only',
+      'tx:documents',
+      'transaction:end',
+      'revalidate:documents',
+    ]);
     expect(result.generatedAt).toBe(now.toISOString());
     expect(result.organizer.collections[0]?.name).toBe('数学资料');
     expect(result.organizer.tags[0]?.labels).toContain('数学');
     expect(
       result.dedup.items.some((item) => item.kind === 'complementary'),
     ).toBe(true);
-    expect(result.dedup.items[0]?.reason.length).toBeGreaterThan(0);
   });
 
-  it('scopes targeted suggestions to an owned target document', async () => {
-    prisma.document.findFirst.mockResolvedValueOnce(createDocument('doc_2'));
-
-    const result = await createService().getSuggestions('user_1', {
-      documentId: 'doc_2',
-      limit: 20,
+  it('checks and includes an out-of-window target inside the same transaction without exceeding the limit', async () => {
+    const target = createDocument('doc_old', {
+      name: '高等数学 导数讲义.pdf',
+      contentHash: 'sha256:old',
     });
-
-    expect(prisma.document.findFirst).toHaveBeenCalledWith({
-      where: { id: 'doc_2', userId: 'user_1' },
-      select: { id: true },
+    const recent = createDocument('doc_recent', {
+      name: '高等数学 导数练习.pdf',
+      contentHash: 'sha256:recent',
     });
-    expect(prisma.document.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { userId: 'user_1' },
-        take: 20,
-      }),
-    );
-    for (const item of result.dedup.items) {
-      expect(item.documentIds).toContain('doc_2');
-    }
-  });
-
-  it('keeps the target document in policy input when it is outside the recent limit', async () => {
-    prisma.document.findFirst
-      .mockResolvedValueOnce({ id: 'doc_old' })
-      .mockResolvedValueOnce(
-        createDocument('doc_old', {
-          name: '高等数学 导数讲义.pdf',
-          contentHash: 'sha256:old',
-          chunks: [{ content: '导数 极限', index: 0 }],
-        }),
-      );
-    prisma.document.findMany.mockResolvedValueOnce([
-      createDocument('doc_recent', {
-        name: '高等数学 导数练习.pdf',
-        contentHash: 'sha256:recent',
-        chunks: [{ content: '导数应用题', index: 0 }],
-      }),
-    ]);
+    tx.document.findMany.mockImplementationOnce(() => {
+      events.push('tx:documents');
+      return Promise.resolve([recent]);
+    });
+    tx.document.findFirst.mockImplementationOnce(() => {
+      events.push('tx:target');
+      return Promise.resolve(target);
+    });
+    prisma.document.findMany.mockImplementationOnce(() => {
+      events.push('revalidate:documents');
+      return Promise.resolve([target]);
+    });
 
     const result = await createService().getSuggestions('user_1', {
       documentId: 'doc_old',
       limit: 1,
     });
 
-    expect(prisma.document.findFirst).toHaveBeenNthCalledWith(2, {
-      where: { id: 'doc_old', userId: 'user_1' },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        size: true,
-        status: true,
-        sourceType: true,
-        contentHash: true,
-        processedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        chunks: {
-          where: { userId: 'user_1' },
-          select: { content: true, index: true },
-          orderBy: { index: 'asc' },
-          take: 3,
-        },
-        _count: { select: { chunks: { where: { userId: 'user_1' } } } },
-      },
-    });
+    expect(tx.document.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'doc_old', userId: 'user_1' },
+      }),
+    );
+    expect(tx.document.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 1 }),
+    );
+    expect(prisma.document.findFirst).not.toHaveBeenCalled();
     for (const item of result.dedup.items) {
       expect(item.documentIds).toContain('doc_old');
+      expect(item.documentIds).not.toContain('doc_recent');
     }
   });
 
-  it('throws not found for a missing or non-owned target document', async () => {
-    prisma.document.findFirst.mockResolvedValueOnce(null);
+  it('throws the existing 404 from inside the snapshot transaction for a missing or cross-owner target', async () => {
+    tx.document.findMany.mockImplementationOnce(() => {
+      events.push('tx:documents');
+      return Promise.resolve([]);
+    });
+    tx.document.findFirst.mockImplementationOnce(() => {
+      events.push('tx:target');
+      return Promise.resolve(null);
+    });
 
     await expect(
       createService().getSuggestions('user_1', {
@@ -181,32 +201,96 @@ describe('KnowledgeAgentService', () => {
       statusCode: 404,
     });
 
+    expect(prisma.document.findFirst).not.toHaveBeenCalled();
     expect(prisma.document.findMany).not.toHaveBeenCalled();
+    expect(events).not.toContain('transaction:end');
+  });
+
+  it('returns deterministic local advice and performs no writes when preflight detects snapshot drift', async () => {
+    prisma.document.findMany.mockImplementationOnce(() => {
+      events.push('revalidate:documents');
+      return Promise.resolve(
+        defaultRows().map((row, index) =>
+          index === 0
+            ? { ...row, updatedAt: new Date('2026-07-21T09:00:00.000Z') }
+            : row,
+        ),
+      );
+    });
+
+    const result = await createService().getSuggestions('user_1', {
+      limit: 20,
+    });
+
+    expect(result.dedup.summary.length).toBeGreaterThan(0);
+    expect(result.organizer.summary.length).toBeGreaterThan(0);
+    expectNoWrites();
+  });
+
+  it('fails closed to deterministic local advice when preflight throws', async () => {
+    prisma.document.findMany.mockRejectedValueOnce(new Error('db body secret'));
+
+    const result = await createService().getSuggestions('user_1', {
+      limit: 20,
+    });
+
+    expect(result.dedup.summary.length).toBeGreaterThan(0);
+    expect(result.organizer.summary.length).toBeGreaterThan(0);
+    expectNoWrites();
   });
 
   it('does not write documents or chunks while generating advice', async () => {
     await createService().getSuggestions('user_1', { limit: 20 });
-
-    expect(prisma.document.create).not.toHaveBeenCalled();
-    expect(prisma.document.update).not.toHaveBeenCalled();
-    expect(prisma.document.updateMany).not.toHaveBeenCalled();
-    expect(prisma.document.delete).not.toHaveBeenCalled();
-    expect(prisma.document.deleteMany).not.toHaveBeenCalled();
-    expect(prisma.chunk.create).not.toHaveBeenCalled();
-    expect(prisma.chunk.createMany).not.toHaveBeenCalled();
-    expect(prisma.chunk.update).not.toHaveBeenCalled();
-    expect(prisma.chunk.updateMany).not.toHaveBeenCalled();
-    expect(prisma.chunk.delete).not.toHaveBeenCalled();
-    expect(prisma.chunk.deleteMany).not.toHaveBeenCalled();
+    expectNoWrites();
   });
+
+  function expectNoWrites() {
+    for (const client of [prisma, tx]) {
+      expect(client.document.create).not.toHaveBeenCalled();
+      expect(client.document.update).not.toHaveBeenCalled();
+      expect(client.document.updateMany).not.toHaveBeenCalled();
+      expect(client.document.delete).not.toHaveBeenCalled();
+      expect(client.document.deleteMany).not.toHaveBeenCalled();
+      expect(client.chunk.create).not.toHaveBeenCalled();
+      expect(client.chunk.createMany).not.toHaveBeenCalled();
+      expect(client.chunk.update).not.toHaveBeenCalled();
+      expect(client.chunk.updateMany).not.toHaveBeenCalled();
+      expect(client.chunk.delete).not.toHaveBeenCalled();
+      expect(client.chunk.deleteMany).not.toHaveBeenCalled();
+    }
+  }
 });
+
+function defaultRows() {
+  return [
+    createDocument('doc_1', {
+      name: '高等数学 导数讲义.pdf',
+      contentHash: 'sha256:a',
+      chunks: [
+        createChunk('doc_1-chunk-1', 'doc_1', {
+          content: '导数 极限 函数'.repeat(30),
+        }),
+      ],
+      chunkCount: 5,
+    }),
+    createDocument('doc_2', {
+      name: '高等数学 导数练习.pdf',
+      contentHash: 'sha256:b',
+      chunks: [
+        createChunk('doc_2-chunk-1', 'doc_2', { content: '导数应用题' }),
+      ],
+      chunkCount: 1,
+    }),
+  ];
+}
 
 function createDocument(
   id: string,
   overrides: Partial<DocumentRecord> & { chunkCount?: number } = {},
 ): DocumentRecord {
-  const createdAt = new Date('2026-06-28T00:00:00.000Z');
-  const chunkCount = overrides.chunkCount ?? overrides.chunks?.length ?? 1;
+  const createdAt = new Date('2026-07-21T08:00:00.000Z');
+  const chunks = overrides.chunks ?? [createChunk(`${id}-chunk-1`, id)];
+  const chunkCount = overrides.chunkCount ?? chunks.length;
   return {
     id,
     name: '高等数学 导数讲义.pdf',
@@ -218,11 +302,43 @@ function createDocument(
     processedAt: createdAt,
     createdAt,
     updatedAt: createdAt,
-    chunks: [{ content: '导数 极限 函数', index: 0 }],
+    chunks,
     _count: { chunks: chunkCount },
     ...overrides,
   };
 }
+
+function createChunk(
+  id: string,
+  documentId: string,
+  overrides: Partial<ChunkRecord> = {},
+): ChunkRecord {
+  return {
+    id,
+    documentId,
+    userId: 'user_1',
+    content: '导数 极限 函数',
+    index: 0,
+    metadata: {
+      safety: {
+        riskLevel: 'low',
+        categories: [],
+        matchedPatterns: [],
+        safeForPrompt: true,
+      },
+    },
+    ...overrides,
+  };
+}
+
+type ChunkRecord = {
+  id: string;
+  documentId: string;
+  userId: string;
+  content: string;
+  index: number;
+  metadata: Record<string, unknown>;
+};
 
 type DocumentRecord = {
   id: string;
@@ -235,6 +351,6 @@ type DocumentRecord = {
   processedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  chunks: { content: string; index: number }[];
+  chunks: ChunkRecord[];
   _count: { chunks: number };
 };
