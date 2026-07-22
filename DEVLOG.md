@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 Task 13 R7 Docker/API 分支验收：在包含 PostgreSQL `ntile(?::integer)` 修复的 `1ce77ff` 镜像上，独立 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 完成 Dedup-only、Organizer-only、双开关、强制 provider 失败与 default-off 五种模式。四个实际模型结果均为 `candidate_applied`；总 usage `3770/446`，估算费用 `0.013986 CNY`。exact hash、credential、prompt injection、unsafe metadata 和跨账号 target 均在 provider 前零调用；API/Trace parity、worker credential/gate isolation、读取兼容性和只读 fingerprint 均通过。R7 evidence / marker SHA-256 为 `ad8b242562d73d2a697648e66cc9c6ac755d1ae7db00149e3a631f1191016468` / `0c62a62f210aedcf7348478ed6d60da565d5b89316e67da0b10370728d8bc9db`，不得重跑、删除、覆盖或与 V2 Live 拼接。
+>
+> R7 清理只删除本轮 2 个 synthetic owner、7 份 synthetic Document 和 2 个匹配 MinIO object；User/Document/Chunk/Object/BackgroundJob/Trace/TraceStep/Session/RefreshToken residue 全部为 0。API 已恢复 `AI_PROVIDER_MODE=mock`、live=false、Dedup=false、Organizer=false、Knowledge credential absent；worker 不含 Knowledge key/gate。`docker_pgdata` 与 `docker_miniodata` 保留，没有 prune、`down -v`、database/volume reset、Redis flush 或 MinIO wipe。R1--R6 仍是不可改写的独立历史，R7 成功不覆盖早期失败终态。两位独立复审均 APPROVED，无 Critical/Important。
+>
+> 2026-07-22 — Phase 6.9.6 Task 13 可见浏览器分支验收：发现 Docker `web` 仍是旧镜像，API 已返回来源状态但页面缺少新 badge；仅从 pinned HEAD 重建并替换 web 容器后恢复，不改 server authority 或数据卷。浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 在真实 Docker 路径完成注册、TXT 上传、处理、列表和 Qwen 混合检索；default-off 显示“本地规则建议”，建议面板自动执行按钮为 0。semantic/degraded/error 状态使用绑定不可变 R7 response authority 的 strict UI replay，浏览器阶段新增模型调用为 0，不构成第二份语义质量 authority。
+>
+> 浏览器覆盖 1440、510、390px，390px 建议面板 `scrollWidth=clientWidth=357`，无横向溢出；local/semantic/degraded/empty/error、上传/处理/检索均通过。evidence / marker SHA-256 为 `5a9a4cba005ba3ec10e031ed17e5f41981a685dc62c6672695db41cabc024299` / `6a75430f8aebfa8c7278c641504ff5fa5d6d0502d103088c98cb3927846cfe79`。专用合成账号及 User/Document/Chunk/Job/Trace/Session residue、匹配 MinIO object、cookie/localStorage/sessionStorage/IndexedDB/cache 均为 0；两个独立复审无 Critical/Important。Phase 6.9.6 尚未完成，下一步只做分支文档提交、main default-off 静态/API/可见浏览器回放、精确清理与远程推送；禁止重跑 V2 controlled-Live 或 R7。
+
 > 2026-07-22 — Phase 6.9.6 Task 13 V2 Live authority 与产品 shortlist 修复：唯一 V2 controlled-Live run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 已以 `quality_gate_passed` 封存，72 cases、`24/24` zero-call、`48/48` runtime、semantic `0.9875`、费用 `0.117498 CNY`；evidence / marker SHA-256 分别为 `c0a6d06a94438dddedb24b78e271eb7b4df1bd6089949bd0b7692d8570c707ff` / `0940cee101cc219b8a691e8eba6ddc9dc33197e2eec20048ac46d269ef8d7ac5`，不得重跑、删除、覆盖或改写。
 >
 > Docker/API 产品验收 R1--R6 均保留独立失败终态。R1/R2 在 provider 前分别因外层 Docker 命令和 Knowledge-only Live 启动失败关闭；后者定位并修复 ConversationSummary 错误借用通用 DeepSeek credential。R3 未保存首个 endpoint runtime，因此只可证明 `unknown_zero_or_one`；R4 证明旧夹具因 exact hash 正确触发 `exact_hash_only` 零调用。R5 从 Git Bash 启动时缺少 loopback `NO_PROXY`，宿主 health probe 被错误送到 `127.0.0.1:7897`，在 fixture/provider 前以 `server_health_timeout` 关闭；R6 使用隔离语义夹具后仍返回 `no_semantic_pair / attempted=false / 0 token / 0 CNY`，但上传、处理、列表、检索、Qwen provenance/safety 和原始 cosine `0.957066` 均通过。
@@ -210,9 +218,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-21
+更新时间：2026-07-22
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 已冻结 72-case baseline，并完成 strict schema/安全投影、Dedup/Organizer candidate/本地 merger、owner snapshot/双 stale fence、owner-scoped pgvector shortlist、default-off DeepSeek runtime/价格/共享预算、Service/API/Trace 并行编排、`/knowledge` local/hybrid/degraded 只读来源状态、strict Mock paired runner/CLI/evidence validator，以及 API-only Docker gate/timeout/独立 credential 运维边界；当前尚未调用真实 provider 或进行 Docker/浏览器生产验收，下一步是 Task 12 分支静态/Mock 验收。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API 与可见 `/knowledge` 分支验收已经通过，R1--R6 历史保留、两个生产 gate 恢复关闭、synthetic 数据和浏览器 storage 精确清理为 0。当前只待分支收尾提交、`--no-ff` 合并最新 main、main default-off 回放和远程推送；在这些完成前仍不把 Phase 6.9.6 标记为最终完成。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -243,6 +251,8 @@
 | Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
 | Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
 | Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
+| Phase 6.9.6 V2 Live | 已完成 | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑 |
+| Phase 6.9.6 Task 13 | 进行中 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审已通过；待 main default-off 回放和 push |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

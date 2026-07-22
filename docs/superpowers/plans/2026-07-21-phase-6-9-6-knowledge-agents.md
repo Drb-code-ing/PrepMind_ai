@@ -1089,7 +1089,9 @@ Expected: one report with 72 cases, 24/24 zero-call, 48/48 structured runtime su
 
 Actual V1 verdict (2026-07-22): run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` completed once and produced immutable `quality_gate_failed`. Engineering, safety, latency, usage, and cost gates passed; Dedup/Organizer semantic thresholds failed. The run was not repeated, Docker/browser acceptance did not start, and remediation moved to `2026-07-22-phase-6-9-6-knowledge-agents-live-v2-remediation.md`.
 
-- [ ] **Step 3: Run Docker API acceptance with synthetic owner data**
+Actual V2 verdict (2026-07-22): after the separately versioned remediation and fresh authorization, the only V2 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` completed 72 cases with `24/24` zero-call, `48/48` runtime, semantic `0.9875`, cost `0.117498 CNY`, and immutable `quality_gate_passed`. It must not be rerun or treated as a product/API authority.
+
+- [x] **Step 3: Run Docker API acceptance with synthetic owner data**
 
 Start the existing stack without deleting volumes. Test these modes with separately created synthetic accounts/documents and record Trace/API parity:
 
@@ -1100,11 +1102,15 @@ Start the existing stack without deleting volumes. Test these modes with separat
 
 Expected: exact hash is always provider zero-call; unsafe/credential/injection/other-owner target is zero-call; eligible semantic data returns `candidate_applied`; forced provider failure returns local degraded results; upload/process/search/list remain successful; no document/chunk/tag/collection mutations occur.
 
-- [ ] **Step 4: Perform visible `/knowledge` browser acceptance and leave the window open**
+Actual: R7 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` passed on `1ce77ff`: Dedup-only, Organizer-only, and both-enabled produced four `candidate_applied` results with aggregate usage `3770/446` and `0.013986 CNY`; forced failure safely degraded; default-off returned local results. All exact-hash/safety/credential/cross-owner guards were zero-call, API/Trace parity and read-only fingerprints passed, and R1--R6 remained immutable.
+
+- [x] **Step 4: Perform visible `/knowledge` browser acceptance and leave the window open**
 
 Use the visible browser against the Docker web app. Verify desktop and mobile widths for semantic badge, local badge, degraded copy, empty state, failure state, suggestions, upload/process/search, and absence of automatic organize/delete/replace actions. Leave the browser window open when acceptance finishes so the user can inspect it.
 
-- [ ] **Step 5: Precisely clean synthetic data and restore defaults**
+Actual: browser run `012bc3ce-486e-4dce-be32-d29c246f47cd` passed real Docker registration/upload/process/list/Qwen hybrid search plus local/semantic/degraded/error rendering at 1440/510/390px with no overflow or automatic suggestion actions. Semantic/degraded/error were strict response-shape replays bound to R7; browser-stage provider calls were zero. The visible browser remains open at the login page after storage cleanup.
+
+- [x] **Step 5: Precisely clean synthetic data and restore defaults**
 
 Delete only synthetic account-owned documents, chunks, MinIO objects, BackgroundJobs, Agent Traces, and browser storage created by this task; verify their counts are zero. Restore:
 
@@ -1117,12 +1123,14 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false
 
 Do not prune Docker, remove volumes, reset databases, flush Redis, wipe MinIO, or remove unrelated browser data.
 
-- [ ] **Step 6: Complete independent review, final docs, and branch commit**
+Actual: R7 and browser synthetic User/Document/Chunk/Object/BackgroundJob/Trace/TraceStep/Session/RefreshToken/browser storage residue is zero. API is `mock / live=false / false/false / credential absent`; worker has no Knowledge credential/gate; `docker_pgdata` and `docker_miniodata` are preserved. No prune, `down -v`, reset, flush, or wipe was run.
 
-Request separate security/permissions and metrics/evidence reviews. Resolve every Critical/Important finding, rerun only affected focused checks, then update all listed docs with actual commit IDs, counts, cost, dispositions, cleanup proof, remaining default-off boundary, next phase, and reusable review questions.
+- [x] **Step 6: Complete independent review, final docs, and branch commit**
+
+Request separate security/permissions and metrics/evidence reviews. Resolve every Critical/Important finding, rerun only affected focused checks, then update all listed docs with actual commit IDs, counts, cost, dispositions, cleanup proof, remaining default-off boundary, next phase, and reusable review questions. Actual independent R7 and browser reviews are both APPROVED with no Critical/Important findings.
 
 ```bash
-git add docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md AGENTS.md README.md DEVLOG.md docs/roadmap.md docs/data-flow.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md
+git add docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md AGENTS.md README.md DEVLOG.md docs/roadmap.md docs/data-flow.md docs/ai-behavior-acceptance.md docs/acceptance-checklist.md docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md docs/superpowers/plans/2026-07-22-phase-6-9-6-knowledge-agents-live-v2-remediation.md
 git commit -m "docs(agent): accept knowledge semantic agents"
 ```
 

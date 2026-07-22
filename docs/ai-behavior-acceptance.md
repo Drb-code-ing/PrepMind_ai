@@ -216,9 +216,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 补充约束：`zero-call` 不是报告中的静态计数。每条 zero-call case 必须实际进入相应 candidate 入口，经过安全扫描、资格、预算或 abort gate，并由 runtime call counter 得到 `0` 才能写入 `zeroCallVerified=true`。任何意外 runtime 调用都必须令生产决策成为 `zero_call_boundary_failed`。Live success 还必须有 provider-reported 的正安全整数 input/output usage；缺失、非法或 `0/0` usage 是 `PROVIDER_ERROR / invalid_response`，保留预留预算并降级，不得标作 candidate applied、known pricing 或 zero cost。Review/Planner Trace 只有在成功 Trace 的 usage 可验证且集中价格表完整时才写入估算成本；这仍不是供应商账单。
 
-## Phase 6.9.6 Knowledge Agent 验收合同
+## Phase 6.9.6 Knowledge Agent 验收合同与分支结果
 
-当前 candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置已经实现；本节仍不授权调用真实模型，也不表示 controlled-Live、Docker 或浏览器产品证据已经存在。完整数值与 schema 以 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md` 为准。
+当前 candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现；唯一 V2 controlled-Live、R7 Docker/API 与可见浏览器分支验收也已通过且不可重跑。本节记录持续有效的合同和已完成证据，不构成新的 Live 授权。完整数值与 schema 以 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md` 为准。
 
 - deterministic、Mock 与 controlled-Live 必须复用 `phase-6.9-knowledge-agents-v1` 的 72 个 case ID：Dedup 40 条、Organizer 32 条；24 条 zero-call 必须实际穿过 candidate guard 且 runtime counter 为 0，48 条 runtime case 必须通过 strict schema；
 - exact `contentHash`、ownership、document status、时间、真实 document ID、recommendation、写权限和最终 merger 始终由本地代码决定；模型不得把语义相似伪装成 exact duplicate，也不得生成删除、替换、合并、改名或分类操作；
@@ -230,6 +230,10 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 - usage 必须是 provider-reported 正安全整数并与 reservation/runtime/Trace 一致。缺失、非法、`0/0`、unknown pricing、timeout、abort、schema invalid 或 Trace unavailable 都只能回退到 `local_deterministic`，不能伪造 hybrid success 或零成本成功；
 - Docker 验收分别覆盖 Dedup-only、Organizer-only、双开关和恢复 default-off；可见 `/knowledge` 覆盖 hybrid/local/degraded、空态、失败态和移动端。建议始终只读，模型失败不得影响上传、处理、替换、检索或 RAG Chat；
 - 验收后精确清理 synthetic user/document/chunk/object/job/trace/browser storage，并证明 logger/telemetry/stdout/evidence/临时文件不含 prompt、文件名/摘要正文、provider body/header、credential 或 raw error；外部 provider retention 必须先文档化，不能伪称已清理 provider 日志。随后恢复 Mock/live=false/两个 Knowledge gate=false。禁止 Docker prune、`down -v`、volume reset、Redis flush 或 MinIO wipe；main 合并后必须回放并确认远程 SHA parity。
+
+2026-07-22 分支结果：唯一 V2 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 完成 72 cases、`24/24` verified zero-call、`48/48` runtime，semantic `0.9875`、费用 `0.117498 CNY`，最终 `quality_gate_passed`。R7 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 分别验证 Dedup-only、Organizer-only、双开关、强制 provider 失败与 default-off；四次实际语义结果为 `candidate_applied`，总 usage `3770/446`、费用 `0.013986 CNY`，exact hash/credential/injection/unsafe/cross-owner 均为 provider 前零调用。API/Trace parity、worker isolation、只读 fingerprint 与精确清理通过。V1 质量失败与 R1--R6 产品失败仍是不可改写历史，R7 不覆盖它们。
+
+可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。Phase 6.9.6 仍需 main default-off 回放和远程推送后才能最终完成。
 
 ## 8. Reflexion / Critic 验收要求
 

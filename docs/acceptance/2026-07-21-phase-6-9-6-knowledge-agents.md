@@ -2,19 +2,20 @@
 
 ## 结论
 
-Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint 已完成。唯一 `knowledge-agents-v1` controlled-Live 因语义质量门失败而只读封存；V2 remediation 随后完成并在用户明确授权下执行唯一一次 V2 controlled-Live，最终不可变结论为 `quality_gate_passed`。
+Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint、V2 remediation、唯一 V2 controlled-Live、R7 Docker/API 以及可见 `/knowledge` 分支验收均已完成。唯一 `knowledge-agents-v1` controlled-Live 因语义质量门失败而只读封存；唯一 V2 controlled-Live 的不可变结论为 `quality_gate_passed`。R1--R6 的失败终态仍完整保留，R7 成功不覆盖或改写任何历史 attempt。
 
-当前仍不是 Phase 6.9.6 最终完成态。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；V1/V2 controlled-Live 都不得重跑。Docker/API 产品验收 R1--R6 已保留各自终态，并在 R6 暴露出真实 PostgreSQL `ntile(bigint)` shortlist 缺陷；该缺陷现已修复和验证，但修复后完整产品链路、可见浏览器、main 回放与远程推送尚未完成。
+当前仍不是 Phase 6.9.6 最终完成态。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；V1/V2 controlled-Live 与 R1--R7 都不得重跑。R6 暴露的真实 PostgreSQL `ntile(bigint)` shortlist 缺陷已修复；R7 在修复镜像上证明完整产品链路可用，可见浏览器与精确清理也已通过。剩余步骤只有分支收尾提交、`--no-ff` 合并最新 main、main default-off 静态/API/浏览器回放和远程推送。
 
 ## 范围与仓库状态
 
-- 日期：2026-07-21
+- 日期：2026-07-21 至 2026-07-22
 - 分支：`codex/phase-6-9-6-knowledge-agents`
 - Task 12 起点：`180fa15 docs(agent): operate knowledge semantic agents`
-- 与 `origin/main` 的起点关系：behind `0` / ahead `13`
-- 本检查点只覆盖静态、Mock、文档与兼容性测试修复；不覆盖真实 provider、Docker API、可见 `/knowledge`、合成账户/资料、main 合并或远程推送。
+- R7 / browser pinned HEAD：`1ce77ff3e6e75ff4d7bb6e97a354113f1c2b068f`
+- Task 12 checkpoint 当时与 `origin/main` 的起点关系：behind `0` / ahead `13`
+- 当前分支验收覆盖静态、Mock、唯一 V2 provider run、Docker/API、可见 `/knowledge`、合成数据精确清理与独立复审；尚不覆盖 main 合并、main default-off 回放或远程推送。
 
-以上范围描述是 Task 12 当时的 checkpoint 边界；2026-07-22 的 V1 controlled-Live 增量证据见下节，Docker/API/浏览器/main 边界仍未改变。
+Task 12 当时的“无 provider/Docker/browser”边界只描述该历史 checkpoint；后续增量结果分别记录在 V1/V2 Live、R1--R7 和浏览器章节中，不得用后续成功改写早期 evidence。
 
 ## 2026-07-22 V1 controlled-Live 增量结论
 
@@ -132,7 +133,7 @@ R4 还通过 Knowledge focused `117/117`、Agent 全量测试/typecheck/lint、T
 
 ## 权限、运行与清理边界
 
-以下前四项是 Task 12 checkpoint 当时的历史事实；V1 Live 之后以本节末尾的增量说明为当前状态。
+以下前四项是 Task 12 checkpoint 当时的历史事实；V1 与 V2 R4 段也只描述各自 checkpoint，不是 Task 13 最终状态。当前状态以本节末尾的 Task 13 增量和后续 R7/浏览器章节为准。
 
 - 没有读取或打印 `.env` 中的 API key，没有调用 DeepSeek、Qwen embedding 或其它真实 provider。
 - 没有设置 `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`，没有启用两个 Knowledge gate。
@@ -144,6 +145,8 @@ R4 还通过 Knowledge focused `117/117`、Agent 全量测试/typecheck/lint、T
 V1 增量：真实 DeepSeek 调用只发生于独立 CLI 合成评测，没有创建账号、Document、Chunk、MinIO object、BackgroundJob、Agent Trace 或浏览器 storage，因此没有业务对象可清理；没有启动 Docker 产品验收，也没有执行任何破坏性 Docker/数据库/Redis/MinIO 操作。根 `.env` 的 key 值没有打印、写入 evidence、文档或 Git。两个产品 gate 和全局运行配置保持 default-off。
 
 V2 R4 增量：本轮只执行本地测试、Mock runner、evidence validator 与只读状态核对。V1 Live evidence/marker SHA-256 仍为 `9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923` / `228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`；V2 Live evidence 与 `.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker` 不存在。根环境未显式设置两个 Knowledge gate，代码/Compose 继续解析为 default-off；既有 Docker 服务与 `docker_pgdata` / `docker_miniodata` 卷只读核对后保持原状，没有启停、重建或清理。
+
+Task 13 当前增量：唯一 V2 Live evidence/marker 已按用户授权创建并封存，随后只有 R7 产品 run 产生真实模型调用。浏览器验收没有新增模型调用。R7 与浏览器专用合成数据已精确清理，API 恢复 mock/live=false/双 gate=false/Knowledge credential absent，worker 未接收 Knowledge 能力，Docker 卷保持原状。key 值从未进入 evidence、文档、Git 或安全 stdout；本地精确清理不宣称删除外部 provider retention/log。
 
 ## V2 授权后零调用 preflight 修复
 
@@ -187,6 +190,56 @@ R5 之后的 launcher 只为宿主 `127.0.0.1,localhost,::1` 设置进程级 `NO
 - 修复后真实 PostgreSQL：source 两条参数化查询分别返回 `2/1` rows；shortlist 为 `2` selected chunks、`1` high pair，score `0.957065639321`。
 - 每次诊断均只使用合成账号/资料，User/Document/Chunk/MinIO object/Trace/Job residue 为 0；没有清空或重置 Docker、PostgreSQL、Redis 或 MinIO。
 
+## Docker/API 产品验收 R7
+
+- run ID：`38748577-f250-4a7a-ab17-8fd14a63b2a3`
+- scope / product attempt：`branch / v2-r7`
+- pinned branch / HEAD：`codex/phase-6-9-6-knowledge-agents@1ce77ff3e6e75ff4d7bb6e97a354113f1c2b068f`
+- evidence：`.tmp/phase-6-9-6-knowledge-agent-branch-product-v2-38748577-f250-4a7a-ab17-8fd14a63b2a3.json`
+- evidence SHA-256：`ad8b242562d73d2a697648e66cc9c6ac755d1ae7db00149e3a631f1191016468`
+- marker SHA-256：`0c62a62f210aedcf7348478ed6d60da565d5b89316e67da0b10370728d8bc9db`
+- result：`status=passed`
+
+R7 在包含 `ntile(?::integer)` 修复的新 server 镜像上运行，先绑定唯一 V2 Live authority，再按独立 lineage 验证产品：
+
+| 模式 | Dedup | Organizer | usage / cost |
+| --- | --- | --- | --- |
+| Dedup-only | `candidate_applied / possible_revision` | `gate_disabled` | `820/59`，`0.002814 CNY` |
+| Organizer-only | `gate_disabled` | `candidate_applied / semantic_organization` | `1065/164`，`0.004179 CNY` |
+| Both enabled | `candidate_applied / possible_revision` | `candidate_applied / semantic_organization` | `1885/223`，`0.006993 CNY` |
+| Forced provider failure | `fallback_runtime_error / provider_error` | `gate_disabled` | `0/0`，unknown cost，安全降级 |
+| Default-off | `gate_disabled` | `gate_disabled` | `0/0`，无 Trace step |
+
+聚合为 `5` 个 attempted agent calls、`4` 个 `candidate_applied`、input/output `3770/446`、`0.013986 CNY`。每个 attempted success 都有 API/Trace usage parity、`pricingKnown=true` 和一个 parent + 两个 candidate step；forced failure 保持本地建议且不伪造 usage/cost。上传、处理、列表、检索均通过，语义夹具 pair score 为 `0.957066`。
+
+provider 前 guard 全部通过：exact hash 为 `exact_hash_only`，credential 与 prompt injection 为 `target_projection_blocked`，unsafe metadata 为 `no_semantic_pair`，cross-owner target 为统一 404 且 Trace delta 0。五类 guard 均为 zero-call。产品前后只读 fingerprint 相同，automatic Document/Chunk/tag/collection mutation 为 0。worker 没有 Knowledge credential/gate；Review/Planner gate 保持关闭。
+
+清理删除的范围精确绑定本轮 2 个 synthetic owner、7 份 synthetic Document 与 2 个匹配 MinIO object。清理后 User/Document/Chunk/BackgroundJob/Trace/TraceStep/Session/RefreshToken/MinIO residue 全为 0；没有 database reset、volume delete 或 Redis flush。API 恢复 `mock / live=false / dedup=false / organizer=false / credential absent`。R7 evidence 与 marker 不得重跑、删除、覆盖、重建或解释为 V2 quality authority。
+
+## 可见 `/knowledge` 浏览器验收
+
+- run ID：`012bc3ce-486e-4dce-be32-d29c246f47cd`
+- evidence：`.tmp/phase-6-9-6-knowledge-agent-branch-browser-v2-012bc3ce-486e-4dce-be32-d29c246f47cd.json`
+- evidence SHA-256：`5a9a4cba005ba3ec10e031ed17e5f41981a685dc62c6672695db41cabc024299`
+- marker SHA-256：`6a75430f8aebfa8c7278c641504ff5fa5d6d0502d103088c98cb3927846cfe79`
+- bound R7 authority：run `38748577-f250-4a7a-ab17-8fd14a63b2a3`，evidence/marker hashes 与上节一致
+- Live calls during browser acceptance：`0`
+
+初次检查发现 Docker `web` 使用约 40 小时前的旧镜像：API 已返回严格来源状态，但页面还没有新 badge。只从 pinned HEAD 重新构建并替换 web 容器后恢复；server authority、数据库和数据卷没有变化。
+
+实际 Docker 路径注册一个专用合成账号，完成 TXT 上传、处理、列表和 Qwen 混合检索命中；default-off 页面显示“本地规则建议”，建议面板自动操作按钮为 0。semantic、degraded 与 failure 使用符合当前 strict response schema、并绑定 R7 authority 的 UI replay，只验证渲染，不再次调用 provider，也不声称第二份语义质量证据。空态、失败态、local/semantic/degraded、上传、处理和检索均覆盖。
+
+桌面宽度为 1440px，移动宽度为 510px / 390px；无横向溢出，390px 建议面板 `scrollWidth=clientWidth=357`。四张截图及 SHA-256：
+
+- `.tmp/phase-6-9-6-browser-mobile-local.png`：`acaec1a902c7f20df015deea92bf8af7acf7c56204c2e821ac2f7552278385f6`
+- `.tmp/phase-6-9-6-browser-desktop-local.png`：`5300e2c5ec9bc9ad7b9df1648fdcebffc81e6347e4f212bc3e2604be9d3be62b`
+- `.tmp/phase-6-9-6-browser-desktop-semantic-replay.png`：`7400c709dafb53953173f51708a5c6340d99cf8ccd6daea3456cd5a4ebc8c6bb`
+- `.tmp/phase-6-9-6-browser-desktop-degraded-replay.png`：`76d1ce1e5984164157af8d416441626293a9c4ba799fafbf8634b7bcb7855e17`
+
+浏览器验收后 synthetic User/Document/Chunk/BackgroundJob/Trace/TraceStep/Session/RefreshToken 与 R7 synthetic users 均为 0；匹配 MinIO object 为 0；cookie、localStorage、sessionStorage、IndexedDB 和 cache 均清空。`docker_pgdata`、`docker_miniodata` 保留，未执行 prune、`down -v`、database/volume reset、Redis flush 或 MinIO wipe。API/worker isolation 和默认关闭状态与 R7 清理结果一致。
+
+两个独立只读复审分别检查 evidence/marker/hash/lineage 和安全/权限/清理/响应式结果，结论均为 APPROVED，无 Critical/Important。
+
 ## 阶段判定与下一步
 
 - Task 12：分支静态/Mock checkpoint 已完成。
@@ -195,7 +248,10 @@ R5 之后的 launcher 只为宿主 `127.0.0.1,localhost,::1` 设置进程级 `NO
 - V1 controlled-Live：已完成一次，结论失败且不可重跑。
 - V2 controlled-Live：唯一 run 已 `quality_gate_passed`，不得重跑。
 - V2 product R1--R6：历史终态全部保留；R6 暴露的 shortlist PostgreSQL 参数类型缺陷已按 TDD 修复并通过真实数据库诊断。
-- 下一步：从包含该修复的新提交与新 server 镜像建立独立产品 acceptance lineage；通过后继续可见 `/knowledge`、精确清理、独立复审、`--no-ff` 合并 main、main default-off 回放与远程推送。
+- V2 product R7：Docker/API、Trace、只读权限、worker isolation、zero-call guards、精确清理均已通过且不得重跑。
+- 可见浏览器：真实上传/处理/检索、local/semantic/degraded/error/响应式与清理已通过；本轮新增 Live call 为 0。
+- 独立复审：两项均 APPROVED，无 Critical/Important。
+- 下一步：提交分支文档收尾；`--no-ff` 合并最新 main，只做 default-off 静态、Docker/API 与可见 `/knowledge` 回放，精确清理后推送并确认远程 parity。禁止重跑 V2 controlled-Live 或 R7。
 
 ## 回顾时可以问
 
@@ -208,3 +264,6 @@ R5 之后的 launcher 只为宿主 `127.0.0.1,localhost,::1` 设置进程级 `NO
 - “V1 与 V2 为什么必须使用不同的授权变量、evidence 文件和一次性 marker？”
 - “为什么 raw cosine 0.957 仍然可能在 provider 前返回 `no_semantic_pair`？”
 - “Prisma 参数化 SQL 为什么会把 `ntile(6)` 变成 PostgreSQL 不接受的 `ntile(bigint)`？”
+- “为什么 R7 成功必须新增 lineage，而不能覆盖 R1--R6？”
+- “为什么浏览器 semantic/degraded 采用绑定 R7 authority 的 response replay，而不再次调用真实模型？”
+- “为什么 gate 恢复关闭表示安全回滚，而不表示 Knowledge Agent 不能使用真实模型？”
