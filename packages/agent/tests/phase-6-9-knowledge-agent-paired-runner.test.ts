@@ -74,9 +74,13 @@ describe('phase 6.9.6 knowledge paired runner', () => {
     );
     let dedupIndex = 0;
     let organizerIndex = 0;
-    const executor = async (request: { systemPrompt: string }) => {
+    const dedupProjections: Array<{
+      documents: Array<{ relativeTime: 'older' | 'same_time' | 'newer' }>;
+    }> = [];
+    const executor = async (request: { systemPrompt: string; userPrompt: string }) => {
       if (request.systemPrompt.startsWith('Classify')) {
         const entry = dedupCases[dedupIndex++]!;
+        dedupProjections.push(JSON.parse(request.userPrompt));
         return {
           object: {
             decisions: [
@@ -128,6 +132,14 @@ describe('phase 6.9.6 knowledge paired runner', () => {
     expect(report.safety.canonicalSchemaSuccesses).toBe(48);
     expect(report.metrics.semanticScore).toBe(1);
     expect(report.gate).toBe('quality_gate_passed');
+    expect(dedupProjections[0]?.documents.map((document) => document.relativeTime)).toEqual([
+      'same_time',
+      'same_time',
+    ]);
+    expect(dedupProjections[6]?.documents.map((document) => document.relativeTime)).toEqual([
+      'older',
+      'newer',
+    ]);
   });
 
   test('derives zero-call results from guard execution instead of echoing expected reasons', async () => {

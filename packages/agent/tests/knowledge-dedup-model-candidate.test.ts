@@ -181,6 +181,52 @@ describe('knowledge Dedup model candidate', () => {
     expect(result.value.items[0]?.recommendation).not.toBe('use_existing');
     expect(tracked.requests[0]?.task).toBe('knowledge_dedup');
     expect(tracked.requests[0]?.userPrompt).not.toMatch(/documentId|hash-|contentHash/);
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'possible_revision requires semantic_overlap',
+    );
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'complementary requires different_purpose or complementary_coverage',
+    );
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'unrelated requires different_purpose or insufficient_version_evidence',
+    );
+  });
+
+  test('lets authoritative local version or timestamp evidence upgrade a semantic duplicate to a revision', async () => {
+    const documents = [
+      document('d1', { updatedAt: '2026-07-01T08:00:00.000Z' }),
+      document('d2', { updatedAt: '2026-07-15T08:00:00.000Z' }),
+    ];
+    const tracked = trackedRuntime({
+      decisions: [
+        {
+          pairIndex: 0,
+          relation: 'semantic_duplicate',
+          confidence: 'high',
+          evidenceCodes: ['semantic_overlap', 'same_scope'],
+        },
+      ],
+    });
+
+    const result = await runKnowledgeDedupModelCandidate({
+      runId: 'local-revision-authority',
+      deterministicInput: { now: NOW, documents },
+      projectionSource: projectionSource(documents, [
+        { leftDocumentId: 'd1', rightDocumentId: 'd2', evidenceBand: 'high' },
+      ]),
+      runtime: tracked.runtime,
+      budget: budget(),
+    });
+
+    expect(result.observation.disposition).toBe('candidate_applied');
+    expect(result.value.items[0]).toMatchObject({
+      kind: 'possible_revision',
+      recommendation: 'review_manually',
+      documentIds: ['d1', 'd2'],
+    });
+    expect(result.value.items[0]?.signals).toEqual(
+      expect.arrayContaining(['semantic_overlap', 'newer_timestamp', 'localVersionSignal']),
+    );
   });
 
   test('preserves exact-hash authority while applying a separate semantic decision', async () => {

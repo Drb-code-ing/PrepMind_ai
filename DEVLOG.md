@@ -1,4 +1,10 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 controlled-Live V1 verdict 与 V2 R1：唯一 V1 run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` 完成 `72` cases、`24/24` zero-call、`48/48` verified usage，安全失败为 `0`，endpoint P95 `2068.2995ms`，费用 `0.092604 CNY`；但 Dedup macro-F1 `0.6807692308`、revision recall `0`、Organizer subject `0.75`、tag F1 `0.6197183099`，因此不可变结论为 `quality_gate_failed`。V1 marker/evidence 保留，未做第二次调用，也未进入 Docker/浏览器产品验收。
+>
+> R1 修复没有放宽 schema、动态 evidence 校验或质量阈值：Dedup prompt 现在明确四类 relation 的允许/必需 evidence code；本地 version/timestamp 事实可把模型的 `semantic_duplicate` 安全重建为只读 `possible_revision`；paired harness 不再把不同更新时间错误压成 `same_time`，而是投影 `older/newer`。RED 覆盖 prompt contract、本地 revision authority 与时间投影，GREEN 为相关 `22/22`、Agent typecheck/lint exit `0`。
+>
+> 下一步是 V2 R2 Organizer 学科边界与 topic-label 精度；V1 数据集、baseline、预算、价格、权限、default-off gate 和 Docker 数据均未改变。回顾时可以问：为什么本地时间事实可以提升 revision 提示，但不能授权自动替换？为什么 evidence code 规则必须进入 prompt 而不能只依赖事后 Zod？
+
 > 2026-07-21 — Phase 6.9.6 Task 12 分支静态/Mock checkpoint：Knowledge focused 为 Agent `114/114`、Types `1/1`、Server `50/50`、Web `7/7`；分支全量为 Agent `465/465`、Types `39/39`、Server `2110 passed / 30 skipped`、Web `413/413`，相关 typecheck/lint/build 与 `git diff --check` 均通过。为完成唯一数据库 integration gate，只启动 Docker Desktop 与既有 PostgreSQL service，保留原卷且没有进入 API/Web/worker 产品验收。
 >
 > 评测证据：未修饰 deterministic baseline 仍为 `12/48`、critical `0`、semantic `0.2322452551`；strict Mock 为 `24/24` verified zero-call、`48/48` canonical schema、semantic `1`、绝对提升 `0.7677547449`、P95 `286/348/348ms`、usage `14472/4185`、estimated `0.068526 CNY`，validator 返回 `ok=true`。Mock 的 `quality_gate_failed` 是 production gate 只接受 DeepSeek V4 Pro Live 的固定设计，不能把 Mock 满分冒充真实语义质量。

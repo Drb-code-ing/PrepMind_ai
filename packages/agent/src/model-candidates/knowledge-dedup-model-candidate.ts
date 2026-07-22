@@ -49,6 +49,11 @@ const MAX_OUTPUT_TOKENS = 500;
 const SYSTEM_PROMPT = [
   'Classify only the supplied ordinal document pairs.',
   'Use one of semantic_duplicate, possible_revision, complementary, or unrelated.',
+  'Prefer possible_revision over semantic_duplicate when filenames or older/newer relativeTime show draft, revision, version, or update evidence.',
+  'semantic_duplicate requires semantic_overlap; its evidenceCodes may contain only semantic_overlap and same_scope.',
+  'possible_revision requires semantic_overlap; its evidenceCodes may contain only semantic_overlap, version_signal, newer_timestamp, and insufficient_version_evidence.',
+  'complementary requires different_purpose or complementary_coverage; its evidenceCodes may also contain semantic_overlap.',
+  'unrelated requires different_purpose or insufficient_version_evidence and may use only those codes.',
   'Return only strict JSON with pairIndex, relation, confidence, and allowed evidenceCodes.',
   'Never invent documents, exact hashes, identifiers, write actions, deletion, replacement, or permissions.',
 ].join(' ');
@@ -314,7 +319,11 @@ export function mergeKnowledgeDedupDecision(input: {
     const right = rightId ? documentById.get(rightId) : undefined;
     if (!left || !right || left.id === right.id) return null;
 
-    const item = buildSemanticItem(modelDecision, left, right);
+    const item = buildSemanticItem(
+      applyKnowledgeDedupLocalRelationAuthority(modelDecision, left, right),
+      left,
+      right,
+    );
     if (item !== null) semanticItems.push(item);
   }
 
@@ -341,6 +350,34 @@ export function mergeKnowledgeDedupDecision(input: {
         'modelSemanticDedup',
       ]),
     ],
+  };
+}
+
+export function applyKnowledgeDedupLocalRelationAuthority(
+  decision: KnowledgeDedupModelDecision['decisions'][number],
+  left: KnowledgeAgentDocumentInput,
+  right: KnowledgeAgentDocumentInput,
+): KnowledgeDedupModelDecision['decisions'][number] {
+  if (
+    decision.relation !== 'semantic_duplicate' ||
+    !hasKnowledgeRevisionSignal(left, right)
+  ) {
+    return decision;
+  }
+
+  const leftTimestamp = Date.parse(left.updatedAt);
+  const rightTimestamp = Date.parse(right.updatedAt);
+  const localEvidenceCode: 'newer_timestamp' | 'version_signal' =
+    Number.isFinite(leftTimestamp) &&
+    Number.isFinite(rightTimestamp) &&
+    leftTimestamp !== rightTimestamp
+      ? 'newer_timestamp'
+      : 'version_signal';
+
+  return {
+    ...decision,
+    relation: 'possible_revision',
+    evidenceCodes: ['semantic_overlap', localEvidenceCode],
   };
 }
 

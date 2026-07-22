@@ -36,7 +36,10 @@ import {
   KNOWLEDGE_ORGANIZER_MODEL_SCHEMA,
   type KnowledgeOrganizerModelDecision,
 } from '../model-candidates/knowledge-agent-model-contract.ts';
-import { runKnowledgeDedupModelCandidate } from '../model-candidates/knowledge-dedup-model-candidate.ts';
+import {
+  applyKnowledgeDedupLocalRelationAuthority,
+  runKnowledgeDedupModelCandidate,
+} from '../model-candidates/knowledge-dedup-model-candidate.ts';
 import { runKnowledgeOrganizerModelCandidate } from '../model-candidates/knowledge-organizer-model-candidate.ts';
 import type { ModelCandidateObservation } from '../model-candidates/model-candidate-policy.ts';
 
@@ -181,12 +184,23 @@ export function createKnowledgeAgentLiveHarness(input: {
       });
       const decision = KNOWLEDGE_DEDUP_MODEL_SCHEMA.safeParse(captured.object);
       const candidate = decision.success ? decision.data.decisions[0] : undefined;
+      const pairDocuments = entry.expected.pairDocumentIds.map((documentId) =>
+        entry.input.documents.find((document) => document.id === documentId),
+      );
+      const appliedCandidate =
+        candidate && pairDocuments[0] && pairDocuments[1]
+          ? applyKnowledgeDedupLocalRelationAuthority(
+              candidate,
+              pairDocuments[0],
+              pairDocuments[1],
+            )
+          : candidate;
       return {
         ...SAFE_RESULT,
         runtimeInvocations: captured.invocations(),
         canonicalSchemaSuccess:
           result.observation.disposition === 'candidate_applied' && decision.success,
-        actualRelation: candidate?.relation ?? null,
+        actualRelation: appliedCandidate?.relation ?? null,
         latencyMs: candidateLatency(result.observation, timeoutMs),
         usage: candidateUsage(result.observation),
       };
@@ -773,12 +787,13 @@ function projectionSource(
     evidenceBand: 'medium' | 'high';
   }[],
 ) {
+  const relativeTimes = documentRelativeTimes(documents);
   return {
-    documents: documents.map((document) => ({
+    documents: documents.map((document, index) => ({
       documentId: document.id,
       name: document.name,
       type: document.type,
-      relativeTime: 'same_time' as const,
+      relativeTime: relativeTimes[index] ?? 'same_time',
       safety: 'safe_for_model' as const,
       summaries: document.chunkSummaries.map((text) => ({
         text,
@@ -787,6 +802,21 @@ function projectionSource(
     })),
     pairs,
   };
+}
+
+function documentRelativeTimes(
+  documents: Phase69KnowledgeAgentCase['input']['documents'],
+): readonly ('older' | 'same_time' | 'newer')[] {
+  const timestamps = documents.map((document) => Date.parse(document.updatedAt));
+  if (timestamps.some((timestamp) => !Number.isFinite(timestamp))) {
+    return documents.map(() => 'same_time');
+  }
+  const oldest = Math.min(...timestamps);
+  const newest = Math.max(...timestamps);
+  if (oldest === newest) return documents.map(() => 'same_time');
+  return timestamps.map((timestamp) =>
+    timestamp === oldest ? 'older' : timestamp === newest ? 'newer' : 'same_time',
+  );
 }
 
 function candidateLatency<ReasonCode extends string>(

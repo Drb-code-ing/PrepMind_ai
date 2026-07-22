@@ -43,11 +43,13 @@ Observed failure groups:
 - Modify `packages/agent/tests/knowledge-dedup-model-candidate.test.ts`
 - Modify `packages/agent/tests/phase-6-9-knowledge-agent-paired-runner.test.ts`
 
-- [ ] Add RED tests proving the request describes every relation-specific evidence-code rule and never exposes local IDs/hashes.
-- [ ] Add RED tests proving a high-semantic-overlap duplicate decision plus authoritative local version/time evidence is rebuilt as `possible_revision`, while the same decision without local evidence remains `semantic_duplicate`.
-- [ ] Add RED tests proving the eval projection preserves `older/newer/same_time` from canonical timestamps instead of flattening all cases to `same_time`.
-- [ ] Implement the minimum prompt, local-merger, and eval-projection changes. Do not loosen the Zod or dynamic evidence validator.
-- [ ] Run focused candidate/contract/paired tests and commit.
+- [x] Add RED tests proving the request describes every relation-specific evidence-code rule and never exposes local IDs/hashes.
+- [x] Add RED tests proving a high-semantic-overlap duplicate decision plus authoritative local version/time evidence is rebuilt as `possible_revision`, while the same decision without local evidence remains `semantic_duplicate`.
+- [x] Add RED tests proving the eval projection preserves `older/newer/same_time` from canonical timestamps instead of flattening all cases to `same_time`.
+- [x] Implement the minimum prompt, local-merger, and eval-projection changes. Do not loosen the Zod or dynamic evidence validator.
+- [x] Run focused candidate/contract/paired tests and commit.
+
+R1 evidence: the new tests first failed on all three missing behaviors. GREEN verification is `22/22` across the strict model contract, Dedup candidate, paired contract, and paired runner; Agent typecheck and lint both exit `0`.
 
 ## Task R2: Organizer V2 precision contract
 
