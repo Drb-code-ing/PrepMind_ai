@@ -17,6 +17,7 @@ const documentIdSchema = z.string().trim().min(1);
 
 export const knowledgeDedupSuggestionKindSchema = z.enum([
   'exact_duplicate',
+  'semantic_duplicate',
   'possible_revision',
   'complementary',
   'insufficient_signal',
@@ -76,11 +77,85 @@ export const knowledgeOrganizerResultSchema = z.object({
   signals: z.array(z.string()),
 });
 
-export const knowledgeAgentSuggestionResponseSchema = z.object({
-  generatedAt: z.string().datetime(),
-  dedup: knowledgeDedupResultSchema,
-  organizer: knowledgeOrganizerResultSchema,
-});
+export const knowledgeAgentRuntimeMetadataSchema = z
+  .object({
+    source: z.enum(['local_deterministic', 'hybrid_model']),
+    disposition: z.enum([
+      'candidate_applied',
+      'not_eligible',
+      'gate_disabled',
+      'safety_blocked',
+      'snapshot_stale',
+      'fallback_aborted',
+      'fallback_budget_exhausted',
+      'fallback_schema_invalid',
+      'fallback_runtime_error',
+      'fallback_usage_invalid',
+    ]),
+    reasonCode: z.string().regex(/^[a-z0-9_]+$/),
+    attempted: z.boolean(),
+    degraded: z.boolean(),
+    usage: z
+      .object({
+        inputTokens: z.number().int().safe().nonnegative(),
+        outputTokens: z.number().int().safe().nonnegative(),
+        pricingKnown: z.boolean(),
+        estimatedCostCny: z.number().positive().nullable(),
+      })
+      .strict(),
+    traceId: z.string().min(1).nullable(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const hybridApplied =
+      value.source === 'hybrid_model' &&
+      value.disposition === 'candidate_applied' &&
+      value.attempted &&
+      !value.degraded &&
+      value.traceId !== null;
+    if ((value.source === 'hybrid_model') !== hybridApplied) {
+      context.addIssue({
+        code: 'custom',
+        message: 'hybrid source requires a persisted applied candidate',
+      });
+    }
+    if (value.disposition === 'candidate_applied' && !hybridApplied) {
+      context.addIssue({
+        code: 'custom',
+        message: 'applied candidate metadata is inconsistent',
+      });
+    }
+    if (
+      value.usage.pricingKnown !==
+      (value.usage.estimatedCostCny !== null)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'pricing provenance is inconsistent',
+      });
+    }
+    if (
+      value.usage.pricingKnown &&
+      (value.usage.inputTokens <= 0 || value.usage.outputTokens <= 0)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'known pricing requires verified positive usage',
+      });
+    }
+  });
+
+export const knowledgeAgentSuggestionResponseSchema = z
+  .object({
+    generatedAt: z.string().datetime(),
+    dedup: knowledgeDedupResultSchema.extend({
+      runtime: knowledgeAgentRuntimeMetadataSchema,
+    }),
+    organizer: knowledgeOrganizerResultSchema.extend({
+      runtime: knowledgeAgentRuntimeMetadataSchema,
+    }),
+  })
+  .strict();
 
 export type KnowledgeAgentSuggestionQuery = z.infer<
   typeof knowledgeAgentSuggestionQuerySchema
@@ -98,6 +173,9 @@ export type KnowledgeOrganizerCollection = z.infer<
 >;
 export type KnowledgeOrganizerTag = z.infer<typeof knowledgeOrganizerTagSchema>;
 export type KnowledgeOrganizerResult = z.infer<typeof knowledgeOrganizerResultSchema>;
+export type KnowledgeAgentRuntimeMetadata = z.infer<
+  typeof knowledgeAgentRuntimeMetadataSchema
+>;
 export type KnowledgeAgentSuggestionResponse = z.infer<
   typeof knowledgeAgentSuggestionResponseSchema
 >;

@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-20。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收得到 `candidate_applied`，main 的新镜像 default-off 回放又确认两条业务 gate/live-call gate 均为 `false`、页面建议 deterministic、合成账户与 Trace 清理为 0。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-22。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 分支实现与验收已完成 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict paired runner、唯一 V2 controlled-Live、R7 Docker/API 与可见浏览器。R1--R6 历史保持不可变；两个生产 gate 已恢复默认关闭，最终阶段仍待 main default-off 回放和推送。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -19,7 +19,7 @@
 - Operator Audit 职责：`OperatorAuditLog` 以 PostgreSQL 为权威来源，记录 operator/admin 诊断写操作的安全审计元数据。Phase 7.14.3 / 7.14.4 已落审计模型、`OperatorAuditService` 和 outbox requeue 成功/失败留痕；Phase 7.14.5 新增 `GET /operator-audit-logs` admin-only 脱敏查询 API，用于受控排障和事故复盘；Phase 7.14.6 新增前端页面 `/operator-audit`，管理员侧边栏显示“审计”入口，普通用户不显示入口；Phase 7.15 已完成真实管理员/普通用户前后端验收，并修复本地 Docker dev 诊断开关与 `127.0.0.1` dev hydration 问题。审计记录只保存 actor、action、status、target、reason、requestId、IP/User-Agent hash、错误 code 和截断后的脱敏错误预览，不保存 payload、aggregateId、prompt、RAG chunk、模型回答、API key、token、cookie 或原始 IP/User-Agent。查询 API 不返回 `metadata` 或业务 payload；actor user 删除时保留审计记录并把 `actorUserId` 置空。前端页面只有当前会话 `role=ADMIN` 时才请求审计 API，真正鉴权仍以后端 guard 为准。
 - OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；Phase 7.5 为核心写接口补充中文说明和安全 request body 示例。`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
-- 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 只基于当前用户资料元数据和少量 chunk 摘要生成重复、新版、互补、集合和标签建议；`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料。
+- 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 已可从同一 owner snapshot 生成 deterministic facts、owner-scoped Qwen Chunk embedding shortlist，并在完整安全投影和双 stale fence 后选择性调用受限 DeepSeek V4 Pro candidate；本地 merger 始终重建真实 ID、时间、recommendation 与权限。`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料；默认 gate 关闭时仍返回 deterministic 建议。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。当前 11 个 graph 名称仍是 descriptor，Retriever/FinalResponse 职责隐含于 RAG/Chat 链路，Tool-Using Orchestrator 尚未实现。
 - Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
 - Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
@@ -243,7 +243,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
 
-资料管理建议数据流：
+资料管理建议默认关闭 gate 时的 fallback 数据流：
 
 ```text
 用户打开 /knowledge
@@ -256,6 +256,27 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> 返回重复、新版、互补、集合和标签建议
   -> /knowledge 只读展示建议，不提供自动合并/删除/分类按钮
 ```
+
+Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
+
+```text
+用户打开 /knowledge
+  -> GET /knowledge-agent/suggestions + JwtAuthGuard
+  -> REPEATABLE READ 按 canonical userId 查询最多 20 份 Document/安全 Chunk/score
+  -> 深冻结 owner snapshot + fingerprint；provider 前重验 owner/version/chunk identity
+  -> exact contentHash / 本地事实
+  -> owner-scoped safe Chunk embedding shortlist（最多 12 对）
+  -> filename/每段 summary 全字段安全扫描，再裁剪并做 ordinal 投影
+  -> Dedup / Organizer safety eligibility
+  -> API server 读取独立 Knowledge credential + 两个独立 default-off gate
+  -> 全局 Live 双开关 / 精确 DeepSeek HTTPS / 已知价格 / 冻结 reservation
+  -> 两个 model candidate 并行共享 2-call / 6000-in / 1200-out 预算（0.03 CNY cap）
+  -> strict schema + local merger 重建 ID、时间、recommendation 与权限
+  -> 返回 hybrid_model 或 local_deterministic 安全状态
+  -> /knowledge 继续只读展示，不执行整理写操作
+```
+
+该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0；main 回放与远程推送仍待完成。
 
 当前 `/knowledge` 页面数据流：
 
@@ -325,7 +346,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 - 检索失败作为 RAG 增强失败处理，Chat 必须降级为普通 AI 回答。
 - KnowledgeVerifierAgent 只消费 `/knowledge/search` 的命中结果，不单独读取数据库；无命中返回 `skipped`，可信资料返回 `trusted`，低分或过短资料返回 `insufficient`，包含“可能有误 / 待核对 / 不确定 / wrong / contradict”等风险标记时返回 `suspicious`，多个片段出现互斥答案标记时返回 `conflict`。
 - verifier 结果只影响 prompt guidance、引用区提示和 debug headers，不修改 Document / Chunk，不自动纠错用户资料。
-- KnowledgeDedupAgent / KnowledgeOrganizerAgent 当前 deterministic baseline 只消费当前用户 `Document` 元数据和裁剪后的少量 `Chunk` 摘要；Phase 6.9.6 将加入 embedding + 真实模型语义判断。`exact_duplicate` 的 hash 结论继续零调用；模型只产生受限关系、标签和集合建议，不自动修改资料。
+- KnowledgeDedupAgent / KnowledgeOrganizerAgent 已接入 embedding shortlist 与受限模型 candidate；当前生产 gate 默认关闭，所以在线默认仍走 deterministic fallback。`exact_duplicate` 的 hash 结论继续零调用；模型只产生受限关系、标签和集合建议，不自动修改资料。Knowledge credential/gate/timeout 只进入 API server，不进入 worker/web/admin，也不借用 Chat 或 Review/Planner 产品凭据。唯一 V2 Live 与 R7 分支产品证据已证明 gated candidate 可用；default-off 表示安全回滚状态，不表示模型链路不可用。
 - `/knowledge-agent/suggestions` 经过 `JwtAuthGuard`，Service 层先校验可选 `documentId` 归属，再按当前 `userId` 读取最近资料；如果目标资料不在 recent limit 中，会补入目标资料参与分析，避免 targeted 查询因为分页窗口漏掉目标。
 - KnowledgeAgent suggestions 只读，不写 Document / Chunk，不写资料集合或标签表，不自动清理 MinIO，不修改资料状态，不进入 Dexie `mutationQueue`，失败只影响建议面板。
 - `GET /background-jobs`、`GET /background-jobs/summary` 和 `GET /background-jobs/:id` 经过 `JwtAuthGuard`，所有查询都按当前 `userId` 隔离；当前 `/knowledge` 用列表 API 展示单份资料的最近后台状态，用 summary API 展示账号级后台任务摘要。

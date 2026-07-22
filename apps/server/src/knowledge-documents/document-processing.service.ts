@@ -136,6 +136,17 @@ export class DocumentProcessingService {
         embedding: vectors[index] ?? [],
         metadata: {
           ...chunk.metadata,
+          embedding: {
+            provider: this.configService.get('RAG_EMBEDDING_PROVIDER', {
+              infer: true,
+            }),
+            model: this.configService.get('RAG_EMBEDDING_MODEL', {
+              infer: true,
+            }),
+            dimensions: this.configService.get('RAG_EMBEDDING_DIMENSIONS', {
+              infer: true,
+            }),
+          },
           safety: classifyRagChunkSafety(chunk.content),
         },
         index: chunk.index,

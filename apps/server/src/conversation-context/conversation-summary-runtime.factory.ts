@@ -93,24 +93,29 @@ export function createConversationSummaryRuntime(
 function resolveProvider(env: ConversationSummaryEnv) {
   if (env.AI_PROVIDER_MODE === 'mock') return 'mock' as const;
   if (!env.AI_ENABLE_LIVE_CALLS) {
-    try {
-      const hostname = new URL(env.AI_BASE_URL).hostname.toLowerCase();
-      return hostname === 'openai.com' || hostname.endsWith('.openai.com')
-        ? ('openai' as const)
-        : ('deepseek' as const);
-    } catch {
-      return 'deepseek' as const;
-    }
+    return inferProviderFromBaseUrl(env.AI_BASE_URL);
   }
   const provider = resolveLiveModelProvider({
     baseURL: env.AI_BASE_URL,
     hasDeepseekKey: Boolean(env.DEEPSEEK_API_KEY),
     hasOpenAIKey: Boolean(env.OPENAI_API_KEY),
   });
-  if (!provider) {
-    throw new Error('INVALID_CONVERSATION_SUMMARY_PROVIDER_CONFIG');
+  // A component-specific Live capability (for example Knowledge Agents) may
+  // intentionally enable the global transport gate without provisioning the
+  // conversation-summary credential. Keep this runtime unavailable instead of
+  // borrowing another component's key or preventing the API from starting.
+  return provider ?? inferProviderFromBaseUrl(env.AI_BASE_URL);
+}
+
+function inferProviderFromBaseUrl(baseURL: string) {
+  try {
+    const hostname = new URL(baseURL).hostname.toLowerCase();
+    return hostname === 'openai.com' || hostname.endsWith('.openai.com')
+      ? ('openai' as const)
+      : ('deepseek' as const);
+  } catch {
+    return 'deepseek' as const;
   }
-  return provider;
 }
 
 function createLiveExecutor(

@@ -342,6 +342,28 @@ describe('Docker Compose worker readiness healthcheck', () => {
     }
   });
 
+  it('projects Knowledge semantic Agent controls only to the HTTP server', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const serverService = extractYamlSection(compose, '  server:', 2);
+    const workerService = extractYamlSection(compose, '  worker:', 2);
+    const webService = extractYamlSection(compose, '  web:', 2);
+    const adminService = extractYamlSection(compose, '  admin:', 2);
+    const controls = [
+      'KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: ${KNOWLEDGE_AGENT_DEEPSEEK_API_KEY:-}',
+      'KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: ${KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED:-false}',
+      'KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: ${KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED:-false}',
+      'KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: ${KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS:-4500}',
+      'KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: ${KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS:-4500}',
+    ];
+
+    for (const control of controls) {
+      expect(serverService).toContain(control);
+      expect(workerService).not.toContain(control);
+      expect(webService).not.toContain(control);
+      expect(adminService).not.toContain(control);
+    }
+  });
+
   it('projects product acceptance admission only to the HTTP server with safe defaults', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const serverService = extractYamlSection(compose, '  server:', 2);

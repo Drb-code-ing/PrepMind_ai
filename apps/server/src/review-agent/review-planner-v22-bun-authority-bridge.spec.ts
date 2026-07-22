@@ -143,8 +143,15 @@ describe('Review Planner V22 Bun paired-evidence authority bridge', () => {
     const previousCwd = process.cwd();
     process.chdir(appsServerRoot);
     try {
-      const host =
-        subject.createDefaultReviewPlannerV22ProductAcceptanceHost(root);
+      const host = subject.createDefaultReviewPlannerV22ProductAcceptanceHost(
+        root,
+        {
+          pairedEvidenceAuthority: bridgeFactory()(root, {
+            executeBunHelper: () =>
+              Promise.resolve({ stdout: JSON.stringify(validEvidence) }),
+          }),
+        },
+      );
       const preflight = await host.preflight({
         environment: 'branch',
         repoRoot: root,

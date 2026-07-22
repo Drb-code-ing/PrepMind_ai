@@ -38,6 +38,7 @@ const envSchema = z
     AI_MODEL: z.string().trim().min(1).max(120).default('deepseek-v4-flash'),
     AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
     REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:
@@ -61,6 +62,20 @@ const envSchema = z
       .max(15_000)
       .default(4_500),
     PLANNER_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
+    KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(4_500),
+    KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: z.coerce
       .number()
       .int()
       .min(1_000)
@@ -397,7 +412,10 @@ const envSchema = z
         env.AI_BASE_URL === 'https://api.deepseek.com/v1' &&
         typeof env.DEEPSEEK_API_KEY === 'string' &&
         env.DEEPSEEK_API_KEY.length > 0 &&
+        env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY === undefined &&
         env.OPENAI_API_KEY === undefined &&
+        env.KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED === false &&
+        env.KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED === false &&
         env.REVIEW_AGENT_MODEL_TIMEOUT_MS === 4_500 &&
         env.PLANNER_AGENT_MODEL_TIMEOUT_MS === 4_500;
       if (env.SERVER_ROLE !== 'api') {
@@ -456,7 +474,24 @@ const envSchema = z
           message: 'live model calls require a credential-free HTTPS base URL',
         });
       }
-      if (!env.DEEPSEEK_API_KEY && !env.OPENAI_API_KEY) {
+      const knowledgeLiveRequested =
+        env.KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED ||
+        env.KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED;
+      const hasKnowledgeDeepseekKey = Boolean(
+        env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
+      );
+      const hasDeepseekKey =
+        Boolean(env.DEEPSEEK_API_KEY) ||
+        (knowledgeLiveRequested && hasKnowledgeDeepseekKey);
+      if (knowledgeLiveRequested && !hasKnowledgeDeepseekKey) {
+        context.addIssue({
+          code: 'custom',
+          path: ['KNOWLEDGE_AGENT_DEEPSEEK_API_KEY'],
+          message:
+            'live Knowledge model calls require the dedicated Knowledge credential',
+        });
+      }
+      if (!hasDeepseekKey && !env.OPENAI_API_KEY) {
         context.addIssue({
           code: 'custom',
           path: ['DEEPSEEK_API_KEY'],
@@ -466,7 +501,7 @@ const envSchema = z
       if (
         !resolveLiveModelProvider({
           baseURL: env.AI_BASE_URL,
-          hasDeepseekKey: Boolean(env.DEEPSEEK_API_KEY),
+          hasDeepseekKey,
           hasOpenAIKey: Boolean(env.OPENAI_API_KEY),
         })
       ) {

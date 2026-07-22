@@ -1,4 +1,172 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 Task 13 R7 Docker/API 分支验收：在包含 PostgreSQL `ntile(?::integer)` 修复的 `1ce77ff` 镜像上，独立 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 完成 Dedup-only、Organizer-only、双开关、强制 provider 失败与 default-off 五种模式。四个实际模型结果均为 `candidate_applied`；总 usage `3770/446`，估算费用 `0.013986 CNY`。exact hash、credential、prompt injection、unsafe metadata 和跨账号 target 均在 provider 前零调用；API/Trace parity、worker credential/gate isolation、读取兼容性和只读 fingerprint 均通过。R7 evidence / marker SHA-256 为 `ad8b242562d73d2a697648e66cc9c6ac755d1ae7db00149e3a631f1191016468` / `0c62a62f210aedcf7348478ed6d60da565d5b89316e67da0b10370728d8bc9db`，不得重跑、删除、覆盖或与 V2 Live 拼接。
+>
+> R7 清理只删除本轮 2 个 synthetic owner、7 份 synthetic Document 和 2 个匹配 MinIO object；User/Document/Chunk/Object/BackgroundJob/Trace/TraceStep/Session/RefreshToken residue 全部为 0。API 已恢复 `AI_PROVIDER_MODE=mock`、live=false、Dedup=false、Organizer=false、Knowledge credential absent；worker 不含 Knowledge key/gate。`docker_pgdata` 与 `docker_miniodata` 保留，没有 prune、`down -v`、database/volume reset、Redis flush 或 MinIO wipe。R1--R6 仍是不可改写的独立历史，R7 成功不覆盖早期失败终态。两位独立复审均 APPROVED，无 Critical/Important。
+>
+> 2026-07-22 — Phase 6.9.6 Task 13 可见浏览器分支验收：发现 Docker `web` 仍是旧镜像，API 已返回来源状态但页面缺少新 badge；仅从 pinned HEAD 重建并替换 web 容器后恢复，不改 server authority 或数据卷。浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 在真实 Docker 路径完成注册、TXT 上传、处理、列表和 Qwen 混合检索；default-off 显示“本地规则建议”，建议面板自动执行按钮为 0。semantic/degraded/error 状态使用绑定不可变 R7 response authority 的 strict UI replay，浏览器阶段新增模型调用为 0，不构成第二份语义质量 authority。
+>
+> 浏览器覆盖 1440、510、390px，390px 建议面板 `scrollWidth=clientWidth=357`，无横向溢出；local/semantic/degraded/empty/error、上传/处理/检索均通过。evidence / marker SHA-256 为 `5a9a4cba005ba3ec10e031ed17e5f41981a685dc62c6672695db41cabc024299` / `6a75430f8aebfa8c7278c641504ff5fa5d6d0502d103088c98cb3927846cfe79`。专用合成账号及 User/Document/Chunk/Job/Trace/Session residue、匹配 MinIO object、cookie/localStorage/sessionStorage/IndexedDB/cache 均为 0；两个独立复审无 Critical/Important。Phase 6.9.6 尚未完成，下一步只做分支文档提交、main default-off 静态/API/可见浏览器回放、精确清理与远程推送；禁止重跑 V2 controlled-Live 或 R7。
+
+> 2026-07-22 — Phase 6.9.6 Task 13 V2 Live authority 与产品 shortlist 修复：唯一 V2 controlled-Live run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 已以 `quality_gate_passed` 封存，72 cases、`24/24` zero-call、`48/48` runtime、semantic `0.9875`、费用 `0.117498 CNY`；evidence / marker SHA-256 分别为 `c0a6d06a94438dddedb24b78e271eb7b4df1bd6089949bd0b7692d8570c707ff` / `0940cee101cc219b8a691e8eba6ddc9dc33197e2eec20048ac46d269ef8d7ac5`，不得重跑、删除、覆盖或改写。
+>
+> Docker/API 产品验收 R1--R6 均保留独立失败终态。R1/R2 在 provider 前分别因外层 Docker 命令和 Knowledge-only Live 启动失败关闭；后者定位并修复 ConversationSummary 错误借用通用 DeepSeek credential。R3 未保存首个 endpoint runtime，因此只可证明 `unknown_zero_or_one`；R4 证明旧夹具因 exact hash 正确触发 `exact_hash_only` 零调用。R5 从 Git Bash 启动时缺少 loopback `NO_PROXY`，宿主 health probe 被错误送到 `127.0.0.1:7897`，在 fixture/provider 前以 `server_health_timeout` 关闭；R6 使用隔离语义夹具后仍返回 `no_semantic_pair / attempted=false / 0 token / 0 CNY`，但上传、处理、列表、检索、Qwen provenance/safety 和原始 cosine `0.957066` 均通过。
+>
+> R6 根因是 Prisma 将 `ntile(${6})` 的参数绑定为 PostgreSQL `bigint`，而 PostgreSQL 只提供 `ntile(integer)`；真实 source 查询抛出 `P2010 / SQLSTATE 42883` 后按设计 fail-closed 为空 shortlist。TDD 先新增 SQL-shape 断言得到 `11 pass / 1 fail`，再将参数改为 `ntile(${6}::integer)` 后 `12/12`；相关 Knowledge Server `32/32`、Server build、focused ESLint 与 diff gate 通过。真实 PostgreSQL 合成诊断在修复前为 source query `P2010/42883 + selected=0`，修复后同一 Qwen `text-embedding-v4 / 1536`、low/safe 数据为查询 `2 rows + 1 row`、selected chunks `2`、high pair `1`、score `0.957065639321`。每轮 synthetic User/Document/Chunk/MinIO/Trace/Job 均精确清理为 0；未执行 volume/database reset、Redis flush、MinIO wipe 或 Docker prune，当前 server 已恢复 `mock / live=false / dedup=false / organizer=false / credential absent`。
+>
+> 边界：上述修复只恢复既定 owner-scoped shortlist 的可执行性，不改变阈值、top-3 mean、provenance/safety/exact-hash guard、权限、预算、价格、只读 merger 或默认 gate。Phase 6.9.6 尚未完成；下一步必须先在包含该修复的新提交/镜像上完成独立产品 acceptance lineage，再做可见 `/knowledge`、精确清理、main default-off 回放与远程推送。回顾时可以问：为什么 Mock 能通过但真实 PostgreSQL 的 `ntile` 仍会失败？为什么 R6 的 raw cosine 高于阈值仍然是 provider 0-call？
+
+> 2026-07-22 — Phase 6.9.6 V2 authorized-Live 零调用 preflight：用户已接受 DeepSeek 当前账号的数据保留/训练边界并授权唯一一次 V2 branch controlled-Live。执行前发现 standalone eval CLI 仍读取通用 `DEEPSEEK_API_KEY`，而 Task 11 已规定 Knowledge 必须通过独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY` 接入；若直接运行会绕过 server-only credential isolation。
+>
+> TDD 修复：新增 generic-only 拒绝测试后先得到 `7 pass / 2 fail`，证明旧 CLI 会错误接受通用 key，且新的 dedicated-only fixture 无法运行；CLI 改为只读取 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY` 后 focused `9/9`、Agent 全量 `469/469`、typecheck/lint 与 `git diff --check` 均通过。generic-only 现在固定在 marker/executor 前返回 `live_configuration_invalid`，provider invocation 为 0，V2 marker/evidence 仍不存在。
+>
+> 边界：本修复只对齐凭据入口，不修改 `knowledge-agents-v2` prompt、72-case dataset、schema、预算、价格、timeout、质量阈值、默认 gate、marker 或 evidence contract；根 `.env` 与 V1/V2 既有 evidence 均未改写。下一步沿用本次已取得的唯一 V2 授权，以进程级环境提供 dedicated credential 后执行一次 Live；marker 一旦创建即不得重跑。
+
+> 2026-07-22 — Phase 6.9.6 V2 R4 静态/Mock checkpoint：Knowledge focused `117/117`；Agent 全量命令、typecheck 与 lint 均 exit `0`；Types `39/39` + typecheck、Server Knowledge `50/50` + build、Web Knowledge `7/7` + lint 均通过。V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` 使用独立 evidence `.tmp/phase-6-9-6-knowledge-agent-branch-mock-v2.json`，覆盖 72 cases、`24/24` verified zero-call 与 `48/48` runtime；Dedup macro-F1/revision recall 和 Organizer subject/tag/collection 五项语义指标均为 `1`。
+>
+> 量化证据：P95 为 Dedup `286ms` / Organizer `348ms` / endpoint `348ms`，usage `14472/4185`，Mock estimated cost `0.068526 CNY`；strict validator 返回 `ok=true / evidenceCount=3`，V2 Mock SHA-256 为 `2dfa326018bba9912b8e8faf35b7fb9f2c41b33d7e655e4e5e8c8472ecc23958`。Mock report 仍为 `quality_gate_failed`，因为 production gate 固定只接受满足全部门槛的 DeepSeek V4 Pro Live；这不是 Mock contract 失败，也不是 V2 真实语义质量证明。
+>
+> 不可变与运行边界：V1 Live evidence/marker SHA-256 仍为 `9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923` / `228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`。V2 Live evidence 与一次性 marker 均不存在；根环境没有显式设置两个 Knowledge gate，配置继续 default-off。只读核对确认既有 Docker 服务与 `docker_pgdata` / `docker_miniodata` 卷仍在；本轮没有调用 provider、执行产品 Docker/API/浏览器验收、启动或停止服务、创建业务数据，亦没有任何 prune/reset/flush/wipe。
+>
+> R4 到此停止。下一步必须由用户接受当前 provider retention/训练边界并使用新授权变量明确批准唯一一次 V2 branch controlled-Live；失败必须封存且不得重跑，只有全部固定门通过后才可进入 Docker API、可见 `/knowledge`、精确清理、main 回放与远程推送。回顾时可以问：V2 R4 修复了哪些语义缺口？为什么 Mock 五项全 1 仍不能打开生产 gate？V1 与 V2 的 evidence/marker 为什么必须完全隔离？
+
+> 2026-07-22 — Phase 6.9.6 V2 R3 evidence/one-shot：current report identity 升级为 `knowledge-agents-v2`，但 validator 继续严格接受没有新字段的历史 V1 report。V2 runtime entry 只新增 `rawSchemaValid: boolean` 与枚举 `candidateDisposition`，zero-call 固定为 `null/null`；因此下一次若失败，可以区分原始 schema、动态 candidate 拒绝与已应用语义，同时仍不保存 prompt、provider response、raw error 或自由文本。
+>
+> 一次性边界：旧 `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED` 不再授权 V2，必须使用新的 `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED=true`。V2 Mock/Live 使用独立文件名和 `.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker`；测试证明现有 V1 marker 不阻塞一次新授权的 V2，而第二次 V2 被 `live_already_attempted` 拒绝。focused CLI/contract/runner `17/17`、Agent typecheck/lint exit `0`，当前 V1 evidence bundle 仍为 `ok=true / evidenceCount=2`。
+>
+> V1 live evidence SHA-256 为 `9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923`，V1 marker SHA-256 为 `228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`；两者未被修改。下一步是 R4 全量静态/Mock checkpoint，不会调用 provider。回顾时可以问：为什么新版本必须使用新授权变量和新 marker？为什么 V2 诊断只记录布尔/枚举而不记录 provider 原文？
+
+> 2026-07-22 — Phase 6.9.6 V2 R2 Organizer 精度：V1 的 collection pair 已全对，实际缺口是 subject taxonomy 与 raw extra-topic scoring。V2 prompt 现在明确 math/english/politics/computer/major/other 边界，要求每份资料只给一个完整、来源可证的 topic phrase，并禁止“核心概念/复习重点/补充/课程/资料”等泛标签冒充 topic。
+>
+> 混合权威：模型仍负责语义分类和集合关系；本地只在安全 projection 中出现高置信学科词时纠正过宽 subject，不接收模型生成的 ID、写操作或权限。评测 topic 现在与产品 merger 一致，只计 subject/resource 之后实际会应用的首个 topic label；不会掩盖 subject、collection、schema 或安全错误。RED 复现 prompt 缺失、四类 subject 偏差和 raw extras 导致的 `semanticScore=0.95`，GREEN 为相关 `20/20`、Agent typecheck/lint exit `0`。
+>
+> 下一步 R3 将把新运行标识为 `knowledge-agents-v2`、增加有界失败诊断并使用独立 V2 一次性 marker；V1 evidence/marker 继续不可变。回顾时可以问：为什么 topic 评测必须对齐实际 merger，而不能惩罚产品不会应用的第二标签？为什么本地只能纠正高置信学科事实而不能取代模型的全部语义判断？
+
+> 2026-07-22 — Phase 6.9.6 controlled-Live V1 verdict 与 V2 R1：唯一 V1 run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` 完成 `72` cases、`24/24` zero-call、`48/48` verified usage，安全失败为 `0`，endpoint P95 `2068.2995ms`，费用 `0.092604 CNY`；但 Dedup macro-F1 `0.6807692308`、revision recall `0`、Organizer subject `0.75`、tag F1 `0.6197183099`，因此不可变结论为 `quality_gate_failed`。V1 marker/evidence 保留，未做第二次调用，也未进入 Docker/浏览器产品验收。
+>
+> R1 修复没有放宽 schema、动态 evidence 校验或质量阈值：Dedup prompt 现在明确四类 relation 的允许/必需 evidence code；本地 version/timestamp 事实可把模型的 `semantic_duplicate` 安全重建为只读 `possible_revision`；paired harness 不再把不同更新时间错误压成 `same_time`，而是投影 `older/newer`。RED 覆盖 prompt contract、本地 revision authority 与时间投影，GREEN 为相关 `22/22`、Agent typecheck/lint exit `0`。
+>
+> 下一步是 V2 R2 Organizer 学科边界与 topic-label 精度；V1 数据集、baseline、预算、价格、权限、default-off gate 和 Docker 数据均未改变。回顾时可以问：为什么本地时间事实可以提升 revision 提示，但不能授权自动替换？为什么 evidence code 规则必须进入 prompt 而不能只依赖事后 Zod？
+
+> 2026-07-21 — Phase 6.9.6 Task 12 分支静态/Mock checkpoint：Knowledge focused 为 Agent `114/114`、Types `1/1`、Server `50/50`、Web `7/7`；分支全量为 Agent `465/465`、Types `39/39`、Server `2110 passed / 30 skipped`、Web `413/413`，相关 typecheck/lint/build 与 `git diff --check` 均通过。为完成唯一数据库 integration gate，只启动 Docker Desktop 与既有 PostgreSQL service，保留原卷且没有进入 API/Web/worker 产品验收。
+>
+> 评测证据：未修饰 deterministic baseline 仍为 `12/48`、critical `0`、semantic `0.2322452551`；strict Mock 为 `24/24` verified zero-call、`48/48` canonical schema、semantic `1`、绝对提升 `0.7677547449`、P95 `286/348/348ms`、usage `14472/4185`、estimated `0.068526 CNY`，validator 返回 `ok=true`。Mock 的 `quality_gate_failed` 是 production gate 只接受 DeepSeek V4 Pro Live 的固定设计，不能把 Mock 满分冒充真实语义质量。
+>
+> 兼容性收口：`.gitattributes` 固定历史 acceptance evidence 字节，避免 Windows CRLF 破坏 SHA authority；V9 spec 只在测试侧归一化换行；V17--V22 bridge tests 注入 strict synthetic authority，production host 默认仍使用真实 Bun evidence authority 并 fail-closed；Knowledge 公共导出检查与 Web Node runner 命令也已补齐。没有改写历史 evidence、调用 provider、启用 Knowledge gate、创建账号/资料/对象/Trace 或执行可见浏览器验收。
+>
+> 阶段边界：Task 12 已形成独立 checkpoint，但 Phase 6.9.6 尚未完成，两个生产 gate 继续为 `false`。下一步必须先由用户重新明确授权一次 branch controlled-Live，Task 13 才可继续 Docker API、可见 `/knowledge`、精确清理、main 回放与远程推送。完整证据见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`。
+>
+> 回顾时可以问：为什么 Mock semantic=1 仍不能通过 production gate？为什么历史 evidence 要按字节固定？为什么测试可以注入 synthetic authority 而生产不能放宽？为什么仅启动 PostgreSQL 不等于 Docker 产品验收？
+
+> 2026-07-21 — Phase 6.9.6 Task 11 API-only Docker/运维边界：Compose 只向 Nest `server` 注入 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、Dedup/Organizer 两个独立 default-off gate 与两个 4500ms timeout；worker/web/admin 均不接收。Knowledge composition 不再借用通用 Chat 或 Review/Planner 产品凭据，Review/Planner 产品 acceptance 也拒绝 Knowledge key/gate 同时开启，避免跨能力串用和轮换耦合。
+>
+> TDD 与安全：先用 Compose boundary、API positive control、generic-key isolation 和 worker zero-executor 测试观察 RED，再补 env schema/composition。有效路径仍要求全局 Live 双开关、精确 DeepSeek HTTPS、独立 credential、已知价格、owner eligibility 与冻结 reservation；两个候选共享 `2 calls / 6000 input / 1200 output`，request cap `0.03 CNY`。缺条件、worker role 或 executor 构造失败都回到 Mock/default-off。
+>
+> 运维文档：同步 server-only allowlist、独立 rollback、synthetic-only controlled-Live、provider retention/训练设置前置、default-off/key 清空和精确 synthetic cleanup。禁止 `down -v`、Docker prune、volume/database reset、Redis flush 或 MinIO wipe。本任务没有启动容器/浏览器、读取 key 或调用 provider；下一步是 Task 12 分支静态/Mock 验收并停下重新申请 controlled-Live 授权。
+>
+> 回顾时可以问：为什么 Knowledge 要有独立 credential 而不能借 Review/Planner 的 key？为什么 worker 即使被注入 live/gate/key 也不能创建 executor？为什么 `--env-file` 不等于 service `env_file`？为什么本地 cleanup 不能承诺删除供应商日志？
+
+> 2026-07-21 — Phase 6.9.6 Task 10 Knowledge paired eval：新增固定 72-case 的 strict Mock/Live runner、CLI 与 evidence validator。24 条 zero-call 不再按 expected reason 自报：候选级样本实际穿过 exact-hash、projection safety、abort 和 budget guard，并用独立 executor counter 证明 provider 0 调用；48 条 runtime case 按 24 个 paired index 并行运行 Dedup/Organizer，失败仍保留在质量分母。
+>
+> 证据边界：报告重算 dataset/prompt/projection/shortlist 版本、case identity、语义指标、exact-hash、安全计数、单 Agent/endpoint P95、正 usage、逐 case 与总 CNY 成本。Mock 满分仍固定 `quality_gate_failed`，只有 `mode=live + deepseek + deepseek-v4-pro` 且全部阈值通过才可开启生产结论。validator 递归拒绝 prompt、filename、summary、chunk、embedding、provider body/header/response、credential、API key 与 raw error key，并强制 evidence filename 与 mode/scope/runId 一致，拒绝重复或跨 scope 复用 runId、未知 usage/price 和成本公式篡改。
+>
+> Live 安全门：CLI 需要 fresh `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`、全局 live 双门、Knowledge 双 gate、精确 DeepSeek URL、有效 key 和合法 timeout；配置不完整时不会创建 marker 或触发 executor。一次性 marker 使用 `wx`，Live evidence 通过 hard-link 不可变发布，stdout 只有 runId、版本、聚合 counts/metrics/latency/usage/cost/gate 与 evidence path。focused `16/16`、Agent typecheck/lint、Mock CLI/validator 和两轮只读复审通过；没有读取 `.env`/API key、调用真实 provider、启动 Docker/浏览器或修改业务数据，双 gate 仍默认关闭。下一步是 Task 11 API-only Docker 配置与运维文档。
+>
+> 回顾时可以问：为什么 Mock 满分仍不能打开生产 gate？为什么 zero-call 不能回显 expected reason？为什么 endpoint latency 必须不低于两个并行 Agent 的样本？为什么 Live evidence 要用 hard-link 而不是先建空文件再 rename？
+
+> 2026-07-21 — Phase 6.9.6 Task 9 `/knowledge` 只读来源状态：Knowledge suggestions 现在把后端 strict runtime metadata 收敛为三个用户可理解的状态。任一 Dedup/Organizer runtime `degraded=true` 时优先显示“本地规则建议”与安全回退说明；否则任一 `hybrid_model / candidate_applied` 显示“语义建议”；default-off、not eligible 或纯本地结果显示“本地规则建议”。
+>
+> UI 与权限：来源 badge/description 位于原有资料建议内容上方，API 已返回但没有有效建议时也会说明当前来源。loading、request error、empty、上传、处理、替换、删除和检索路径保持不变；页面不展示 token、cost、Trace ID、provider error 或 document UUID，也没有语义重试、自动整理或任何新增写操作。移动端通过 `flex-wrap`、`min-w-0` 与 `break-words` 安全换行。
+>
+> TDD/验收：先观察 helper/export 和页面来源渲染缺失的 RED，再实现三态映射与 UI。API fixture 已纳入 strict runtime metadata，并显式证明未知 `providerError` 字段被拒绝；混合 hybrid+degraded 用例证明 degraded 优先级。Web `413/413`、lint、production build、focused `5/5` 与 `git diff --check` 通过；质量/安全复审 APPROVED，规格复审的两项 Minor 测试证据补齐后 PASS。没有读取 `.env`/API key、调用 provider、启动 Docker/浏览器或修改业务数据；双 gate 仍默认关闭。下一步是 Task 10 paired runner、CLI 与 evidence validator。
+>
+> 回顾时可以问：为什么 degraded 必须压过 semantic？为什么空建议也要显示来源？为什么页面不提供“重试语义建议”或“自动整理”？API 为什么要拒绝额外的 provider error 字段？
+
+> 2026-07-21 — Phase 6.9.6 Task 8 Knowledge candidate 生产编排：把 Task 3/4 的 Dedup/Organizer 受治理 candidate 与 Task 7 runtime bundle 注入 `KnowledgeAgentService`。两个 gate 独立 default-off；Dedup `3000/500` 与 Organizer `3000/700` 的冻结 reservation 在任一 Promise 启动前一次性建立，eligible candidate 通过 `Promise.all` 并行，disabled candidate 保持 zero-call。HTTP `aborted` 使用同一 AbortSignal 传播到两个候选，并在 controller `finally` 移除 listener。
+>
+> 权限与一致性：模型前重验 owner-scoped snapshot，两个 candidate 结束后再做第二次完整 fingerprint fence；post-candidate 漂移会丢弃两份模型值。target 只进入 Dedup deterministic input，Organizer 不接收 target 扩展。candidate 仍只裁决本地 ordinal，本地 merger 重建 document ID、标题、reason、recommendation、标签/集合与权限；接口不写 Document / Chunk / 分类表，也不自动删除、替换、合并、改名或分类。
+>
+> API 与 Trace：`KnowledgeAgentSuggestionResponse` 增加 strict additive runtime metadata，只有 verified positive usage、精确 CNY price、`candidate_applied` 与已持久化 Trace 同时成立时才显示 `hybrid_model`；default-off、not eligible、safety、abort、budget、schema、usage、runtime、stale 或 Trace unavailable 都返回本地只读建议与固定 disposition。每次模型编排记录一个 parent + 两个 candidate step，含固定 agent/version、reason、latency、usageRef 去重、usage 与 `cost_cny` provenance；现有 Agent Trace 顶层 `costEstimate` 是 USD 语义，因此保持 `pricingKnown=false / costEstimate=0`，不伪造汇率。
+>
+> TDD/验收：API contract、Trace、Service parallel barrier、独立 gate、冻结预算、target、二次 stale fence、Trace failure 和 HTTP abort 均先观察 RED 再 GREEN。Knowledge focused `47/47`、Types `39/39`、Server lint/build、Types typecheck 与 `git diff --check` 通过；规格复审与质量/安全复审均 PASS，无 Critical/Important。没有读取 `.env`/API key、调用 provider、启动 Docker/浏览器或修改 Knowledge 业务数据；双 gate 仍默认关闭。下一步是 Task 9 `/knowledge` local/hybrid/degraded 来源状态。
+>
+> 回顾时可以问：为什么两个 candidate 要先冻结 reservation 再并行？为什么模型完成后还要第二次 stale fence？为什么 Trace 写失败必须丢弃模型建议？为什么 CNY 费用不能直接写入现有 USD Trace 顶层字段？
+
+> 2026-07-21 — Phase 6.9.6 Task 7 Knowledge production composition 地基：新增 Dedup/Organizer 两个独立 server gate，默认均为 `false`，timeout 默认 4500ms、只接受 1000..15000ms。真实 runtime 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、对应组件 gate=true、精确 `https://api.deepseek.com/v1`、有效 DeepSeek credential 与已知精确价格同时成立时才创建；worker-only role 强制两个组件 gate 关闭。
+>
+> 模型与 transport：Knowledge 候选固定 `deepseek-v4-pro`、prompt `knowledge-agents-v1`、`deepseek_v4_pro_nonthinking_json`，复用共享 OpenAI-compatible executor 的 non-thinking JSON object、`maxRetries=0`、no-tools 与 abort deadline。API key 只进入 composition closure，不进入安全 config、budget 或返回值；unknown/被篡改 pricing、missing credential、错误 base URL、executor construction 异常、hostile env/price getter 或 Proxy 都关闭双 gate/返回 null，不把异常正文向外传播。
+>
+> 预算与价格：在任何并行 Promise 启动前，从冻结的 `2 calls / 6000 input / 1200 output` request budget 纯函数预留 Dedup `3000/500` 与 Organizer `3000/700` 两个隔离 budget；任一 reservation 不可证明时两者都不调用。固定非缓存价格为 `3 CNY / 1M input`、`6 CNY / 1M output`，理论最坏 `0.0252 CNY`，request cap `0.03 CNY`；未知价格、usage 非正/不可验证、超过 reservation/总 token ceiling 或 cost cap 都必须 fail-closed。
+>
+> TDD/验收：缺失模块与 env keys 得到预期 RED，hostile getter/Proxy 与 over-cap 也先 RED 后修复；focused `90/90`、Server lint/build 与 `git diff --check` 通过。规格复审 PASS；质量复审发现的 getter/proxy Important 已关闭并复审 APPROVED。没有读取 `.env`/API key、调用真实 provider、启动 Docker/浏览器或创建/修改业务数据。runtime provider 已注册但尚未注入 `KnowledgeAgentService` dispatch，产品仍返回 deterministic 建议；下一步是 Task 8 并行编排、API metadata 与安全 Trace。
+>
+> 回顾时可以问：为什么组件 gate=true 仍不一定允许真实调用？为什么两个并行 Agent 必须在启动前一次性预留共享预算？为什么 `0/0` usage 不能显示为零成本成功？为什么 Task 7 已有真实模型 runtime 仍不能说产品已经在用真实模型？
+
+> 2026-07-21 — Phase 6.9.6 Task 6 owner-scoped pgvector semantic shortlist：把 owner snapshot 中最多 20 份资料收敛为可供 Dedup/Organizer 裁决的 bounded 语义候选。只纳入当前 owner 的 `DONE` Document，以及显式 `riskLevel=low`、`safeForPrompt=true`、1536 维且 provenance 精确为 Qwen `text-embedding-v4` 的 Chunk；新处理 Chunk 会持久化 provider/model/dimensions，旧 Chunk 缺少可信 provenance 时不会被猜测为可用，仍返回 deterministic 建议。
+>
+> 采样与评分：每份资料按 `index/id` 通过 `ntile(6)` 稳定取最多 6 个 Chunk；跨文档 pair 取最高 3 个 cosine similarity 的均值，`>=0.78` 才入选，`>=0.9` 标记 high，按 score 与 code-unit document ID 稳定排序后最多 12 对。exact non-empty content hash 在向量计算前排除；target 请求只保留包含 target 的 pair。无关的 PENDING/PROCESSING/FAILED 资料不会压制其他 DONE pair，但 target 自身非 DONE 时仍 fail-closed。
+>
+> 安全与一致性：两侧 Chunk 和 Document 都绑定 canonical owner，所有原始 SQL 使用 Prisma tagged `$queryRaw`/`Prisma.join`，hostile owner/document ID 只作为 bound values；查询结果不返回 embedding、正文、文件名、metadata 或 raw owner。selected Chunk identity/full-content hash/safety 与 pair score/evidence band 加入 snapshot fingerprint，provider 前重建可发现选择、内容、安全或语义分数漂移；畸形、越界、重复、跨 owner 或 DB 异常整批回到冻结空 shortlist。
+>
+> TDD/验收：focused `44/44`、Server lint/build 与 `git diff --check` 通过；规格复审 PASS、质量复审 APPROVED，均无 Critical/Important。没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建/修改业务数据。下一步是 Task 7 default-off gates、DeepSeek runtime、集中价格与不可变共享预算。
+>
+> 回顾时可以问：为什么 1536 维还不能证明 embedding 来自 Qwen？为什么 exact hash 必须在 pgvector 前排除？为什么选 top-3 mean 而不是只看最大相似度？为什么 shortlist 已完成仍不能说 Knowledge Agent 已经使用真实模型？
+
+> 2026-07-21 — Phase 6.9.6 Task 5 单一 owner snapshot 与 stale fence：把原先“先独立查 target、再查列表、必要时第三次补 target”的 TOCTOU 链路收敛为一个 bounded PostgreSQL interactive transaction。事务以 `REPEATABLE READ` 运行并先执行 `SET TRANSACTION READ ONLY`，所有 target ownership、Document 与所选 Chunk 读取都绑定 canonical `userId`；请求 `limit` 即使为 50 也最多取 20 份，target 在窗口外时占用一个名额而不是形成第 21 份，缺失或跨 owner 仍返回同一个 404。
+>
+> 快照与安全边界：`knowledge-owner-snapshot-v1` 不保留 raw user ID，而是使用必需 JWT secret 作为服务端密钥材料生成域分离 HMAC；该 HMAC 只用于本次请求的 owner fingerprint，JWT secret 轮换只会改变后续瞬时快照。完整 canonical fingerprint 覆盖 target binding、所有影响 prompt/policy/merger 的 Document 字段、selected chunk identity/order、全文 SHA-256、safety schema 版本与完整 canonical safety hash，以及 shortlist 版本。返回对象、Document、chunk 和嵌套数组全部深冻结，数据库 mock 行在 load 后被修改也不会改变快照。
+>
+> provider-preflight：模型调用不会放在数据库事务内；事务结束后，短 owner-scoped 查询重跑相同 chunk 选取并重建完整 fingerprint。Document 删除/改 owner/改名/换 hash/状态或时间变化，Chunk 删除/替换/改 index/全文/safety/选取集合变化，以及 DB 异常或快照篡改都返回 stale=false 并只保留 deterministic 本地建议。Task 8 才增加公开 runtime metadata 和实际双候选 dispatch，因此 Task 5 不提前伪造 `snapshot_stale` API 字段，也没有 provider 调用。
+>
+> TDD/验收：新模块缺失时得到预期 RED；随后 owner snapshot 与 Service focused `13/13`、Server build 通过。测试覆盖只读事务顺序、20 条边界、target 内联 ownership、HMAC/raw owner 隔离、canonical fingerprint、deep freeze、完整 stale 矩阵、事务结束后 revalidation、异常 fail-closed 与 root/transaction 两侧零写入。本任务没有读取 API key、启动 Docker/浏览器、调用真实模型或创建/修改业务数据；下一步是 Task 6 owner-scoped pgvector semantic shortlist。
+>
+> 回顾时可以问：为什么 `REPEATABLE READ` 事务结束后还要 provider 前 revalidation？为什么 owner hash 要用域分离 HMAC 而不是普通 SHA？为什么 target 补入必须占用 20 条上限？为什么 Task 5 已有 stale fence 但还不能说 Knowledge Agent 已接入真实模型？
+
+> 2026-07-21 — Phase 6.9.6 Task 4 Organizer 受治理候选：目标是让 `KnowledgeOrganizerAgent` 能理解词表之外的资料主题与集合关系，同时继续只做建议。候选至少需要 1 份通过完整字段扫描与 safety metadata 的 ordinal-only projection；模型只能选择固定 subject/resource type、最多 2 个 topic label、最多 5 个集合及每组 2..8 个有序唯一成员。真实 document ID、中文 subject/resource labels、reason、description、confidence、signals 和全部权限由本地 merger 重建，最终每份资料最多 3 个标签。
+>
+> 安全与降级：schema 之后仍对 topic label/collection name 做 URL、Markdown、HTML、instruction、credential 和控制字符检查，任一非法值都会整批回退，不部分应用。重复/越界 document index、乱序或重复 member index、超过数量上限、unsafe projection、abort、预算不足、timeout、invalid usage、schema invalid 或 runtime throw 都只返回既有 deterministic Organizer 结果；observation 不携带文件名、摘要、prompt、provider body、raw error、真实 ID map 或凭据。模型没有持久化 tag/collection、自动分类、删除、替换、改名或合并权限。
+>
+> TDD/验收：缺失 candidate 模块得到预期 RED，随后 Organizer focused `12/12`、AI `192/192` 通过，Agent/AI typecheck 与 lint、`git diff --check` 均 exit 0；规格与代码质量复审无 Critical/Important。测试覆盖本地 ordinal→owner ID 映射、最终标签/集合上限、post-schema 指令拦截、成员范围/顺序/唯一性、provider 前 zero-call guard、无网络 timeout/usage failure 与 caller input/budget 不变。
+>
+> 本任务仅使用 Mock responder 和注入式无网络 executor；没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建业务数据。Task 3/4 现在只完成 package 级候选与本地 merger；owner-scoped `REPEATABLE READ` snapshot、stale fence、pgvector shortlist、server composition/gates、Trace/API/UI、paired eval 和生产验收仍未完成。下一步是 Task 5 单一不可变 owner snapshot 与 provider 前 stale revalidation。
+>
+> 回顾时可以问：为什么模型返回 documentIndex 而不能返回 document ID？为什么 schema 通过后还要再次扫描 label？为什么 Organizer 失败必须整批回退而不是保留一部分标签？为什么 package candidate 完成不等于产品已使用真实模型？
+
+> 2026-07-21 — Phase 6.9.6 Task 3 Dedup 受治理候选：目标是让 `KnowledgeDedupAgent` 在 exact hash 本地权威不变的前提下，具备受限语义关系判断能力。候选先生成 ordinal-only 安全投影，再只允许返回 `semantic_duplicate / possible_revision / complementary / unrelated` 与固定 evidence code；真实 document ID、标题、原因、严重度、置信度、recommendation、signals 和全部写权限均由本地 merger 重建。`semantic_duplicate` 是独立只读建议并固定 `review_manually`，不伪装成新版；`possible_revision` 缺少本地版本 token 或时间顺序证据时会降级为人工复核并标记 `insufficient_version_evidence`；`complementary` 只建议 `keep_both`，`unrelated` 不生成条目。
+>
+> 为什么 exact hash 必须留在本地：相同 `contentHash` 已是确定事实，交给模型既增加成本与延迟，也可能被语义输出覆盖。因此即使 exact-hash pair 误入 semantic shortlist，候选也会在 runtime 前剔除，并保留 deterministic `exact_duplicate / use_existing`；没有剩余语义 pair 时 counting runtime 证明 provider 调用数为 0。公开 `projectKnowledgeSnapshot()` 只返回 ordinal 投影，ordinal→真实 ID map 不再从 `production.ts` 暴露，只在候选内部 merger 使用。
+>
+> TDD/验收：先增加公开 projection 不得携带真实 ID map 的回归并观察预期 RED，再完成修复；Dedup/Projection focused `22/22`、AI `191/191`、Types `39/39` 通过，Agent/AI/Types typecheck、Agent/AI lint 与 `git diff --check` 均 exit 0。timeout、abort、budget、schema、invalid usage 和 runtime throw 全部回退 deterministic；最大只展示 5 条，不产生删除、替换、合并或分类写操作。规格与质量复审最终均无 Critical/Important；质量复审还复核了候选 preview reservation 与共享 runtime 唯一真实预留的边界，避免误改成双重扣减。
+>
+> 本任务只使用 Mock/runtime fixture 和注入式无网络 executor；没有读取 API key、调用真实 provider、启动 Docker/浏览器或创建业务数据。整套 24 条 zero-call 尚未跑 paired runner，不能写成 24/24 已验证；Organizer candidate、owner snapshot、pgvector shortlist、server gate、Trace/API/UI、paired eval 与生产验收仍未完成。下一步是 Task 4 Organizer candidate 与本地权威 merger。
+>
+> 回顾时可以问：为什么 exact hash 不应该交给模型？semantic duplicate 为什么不能伪装成 revision？本地版本证据不足时为什么仍保留人工复核而不是相信模型？preview reservation 与 runtime 真正记账怎样避免超卖和双重扣减？
+
+> 2026-07-21 — Phase 6.9.6 Task 2 Knowledge 模型安全边界：新增 strict Dedup/Organizer 输出合同。Dedup 只允许最多 12 个本地 pair index、四类语义关系、medium/high confidence 和固定 evidence code；Organizer 只允许最多 20 份资料的学科/资料类型、每份最多 2 个受限 topic label、最多 5 个集合及 2..8 个有序唯一成员。schema 之外的动态 validator 会整批拒绝重复/越界索引与关系-evidence 错配，模型没有 exact-hash 覆盖、删除、写库或任意字段能力。
+>
+> `knowledge-model-projection-v1` 为什么需要：文件名和摘要都属于不可信文本，若先裁剪后扫描，凭据或 prompt injection 可以藏在截断区；若先分配真实 ID，模型边界又会无谓暴露 owner 数据。实现先用 property descriptor 把普通自有数据克隆到隔离对象，hostile getter/proxy 只得到固定 `invalid_input`；随后逐个扫描完整 filename 和每段 summary 的 malformed UTF-16、控制字符、credential、instruction/system prompt 与持久化 safety metadata。字段全部通过后才裁剪、分配 `d0...` ordinal、重建 surviving pair 并深冻结。unsafe non-target 整份排除，unsafe target 固定 `target_projection_blocked`，输出不含 document ID、owner、storage、chunk、向量或写权限。
+>
+> TDD/验收：两份模块先以缺失导入得到预期 RED，再完成 focused `10/10` GREEN；Agent typecheck/lint exit 0，规格复审与代码质量/安全复审均无 Critical/Important。没有读取 API key、调用 provider、启动 Docker/浏览器或创建业务数据。Task 2 只是 schema 与投影地基，Dedup/Organizer candidate、runtime counter、usage/cost、Trace、shortlist 和产品接入均未完成；下一步是 Task 3 Dedup candidate 与本地权威 merger。
+>
+> 回顾时可以问：为什么 Zod 的静态 `max(11)` 不能替代按本次 shortlist 长度做动态越界检查？为什么 hostile getter 需要 descriptor clone 而不是普通展开？为什么非目标 unsafe 文档可以排除，但目标文档必须整体 fail-closed？为什么此时仍不能声称 24/24 zero-call 已验证？
+
+> 2026-07-21 — Phase 6.9.6.1 Knowledge Agent baseline：目标是先把 KnowledgeDedup/Organizer 的当前能力变成不可修饰、可复现的比较基准，再接模型，避免“为了让结果好看”边做 candidate 边改 expected。`phase-6.9-knowledge-agents-v1` 固定 72 条合成 case：Dedup 40、Organizer 32；24 条定义未来 provider 前零调用的 gate/safety/owner/budget/abort 场景，48 条语义质量 case 按 `pairedRunIndex=0..23` 形成 24 个 Dedup/Organizer 请求对。
+>
+> 结果与原因：原有 deterministic policy 在 48 条 runtime case 中完整通过 `12` 条，critical `0`，Dedup relation macro-F1 `0.3343653251`、revision recall `0`、unrelated false-positive rate `0`；Organizer subject top-1 `0.25`、topic tag micro-F1 `0`、collection pairwise-F1 `0.4347826087`；固定加权 semantic score 为 `0.2322452551`。这说明规则对明显互补/无关资料较保守，但无法理解换名语义重复、新旧版本和词表外专业主题，正是后续 embedding shortlist + 受限模型裁决需要解决的差距。
+>
+> 工程与边界：case、嵌套 fixture 和预期均深冻结；指标拒绝非法数值、固定四类 macro-F1、case-scoped tag/collection micro-F1 和 24 样本 nearest-rank P95，第 23 个值为 P95。focused tests `13/13`、Agent typecheck/lint 均通过，baseline CLI 复现相同结果。没有读取 key、调用 provider、启动 Docker/浏览器或创建业务数据；24 条 zero-call 当前只是合同，candidate 尚未实现，不能声称已实际 24/24 零调用。完整证据见 `docs/acceptance/phase-6-9-6-1-knowledge-agent-baseline.md`。
+>
+> 回顾时可以问：为什么 baseline 不能边跑边修 expected？为什么 72 条只有 48 条进入 semantic score？为什么 revision recall 为 0 但 unrelated false-positive rate 为 0？为什么 zero-call case 此时只能叫合同？下一步 `knowledge-model-projection-v1` 为什么必须先扫描完整字段再裁剪？
+
+> 2026-07-21 — Phase 6.9.6 Knowledge Agent 设计检查点：目标是把 `KnowledgeDedupAgent` 从 hash/文件名/小词表判断升级为“exact hash 零调用 + Qwen Chunk embedding 候选 + DeepSeek V4 Pro 受限关系裁决”，并把 `KnowledgeOrganizerAgent` 升级为真实语义标签和集合顾问。为什么需要：当前 policy 能识别明显副本和固定学科词，却不能可靠区分换名后的语义重复、新旧版本、互补资料或词表之外的专业课主题；继续只靠规则会让“Agent”缺少真正的语义大脑。
+>
+> 主要设计：选择复用现有 Qwen `text-embedding-v4` / 1536 Chunk embedding，不在本阶段新增 Document embedding 表或把全部资料直接塞给模型。owner-scoped shortlist 最多 12 对，模型只看到本地 ordinal、受限文件信息和脱敏短摘要；Dedup 只能返回四类关系与固定 evidence code，Organizer 的标签/集合受数量、长度、字符和成员索引约束，本地 merger 重建真实 ID、时间、recommendation、reason 和权限。两个 server gate 独立且默认关闭；candidate 并行共享 `2 calls / 6000 input / 1200 output` 预算，单请求 CNY cap `0.03`，未知 pricing/usage/Trace 均 fail-closed。
+>
+> 评测与边界：数据集固定为 `phase-6.9-knowledge-agents-v1` 共 72 case，24 条验证 provider 前零调用、48 条进入 runtime；同时固定 Dedup macro-F1/revision recall、Organizer subject/tag/collection 指标、P95、CNY 1.00 controlled-Live 总 cap、critical/越权/写操作为 0 等门槛。API 和 `/knowledge` 继续只读，不写 Document / Chunk / 分类表，不自动删除、替换、合并、改名或分类；模型路径尚未实现，本检查点没有读取 key、调用 provider、启动 Docker/浏览器或产生合成数据。完整设计见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
+>
+> 书面设计审阅已经通过，实施计划已固定在 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md`。计划按 TDD 拆成 13 个“一任务一提交”单元：先冻结 baseline/Mock 和安全 contract，再接 owner snapshot、pgvector shortlist、生产 composition、Trace/API 与前端，最后完成分支静态/Mock 验收。Task 12 必须暂停并重新获取 controlled-Live 授权；Task 13 才允许真实模型、Docker API、可见浏览器、精确清理、`--no-ff` 合并 main、main default-off 回放与远程推送。当前仍未开始业务实现，也没有读取 key 或调用 provider。
+>
+> 回顾时可以问：两个 Knowledge Agent 分别做什么？为什么 exact hash 必须零调用？为什么复用 Chunk embedding 而不新增 Document embedding 表？为什么模型只能返回 ordinal 和受限关系？72-case 如何同时证明语义质量、权限、成本和降级？
+
 > 2026-07-21 — `/today` Review/Planner “先完成今日复习”主操作修复：目标是让同页建议卡产生可感知、可访问的结果，而不是重新跳转当前 `/today` URL。根因是建议卡对首个 Planner block 一律渲染 Next `Link`；当目标同为 `/today` 时，路由没有页面或焦点变化。修复为可选的 `onPrimaryAction`：仅当标准化目标确为 `/today` 时，`/today` 才以本地回调平滑滚动并聚焦第一张 `PENDING` 复习卡；`/error-book`、`/plan` 等跨页建议与未传回调的调用方仍保持原有安全 Link 导航。空任务 notice 只在已成功读取且确实无待复习卡时显示；加载和失败保留原状态，离线或暂停查询显示“暂不可用”而非空态。浏览器复验发现实际滚动目标是首张待复习卡 wrapper，而非 section；因此 wrapper 与无任务 section fallback 均使用 sticky-header scroll margin，避免焦点卡被页头遮挡。该操作不评分、不跳过、不创建或修改任何 ReviewTask。
 >
 > 验收：先以 `review-agent-ui-integration.test.mts` 观察两个 RED（缺少本地 action contract、缺少同页焦点 contract），最小实现后 Web `409/409`、lint 和 production build 均通过。浏览器使用一次 synthetic 账号、1 条错题、1 张到期 Card 和 1 条 `PENDING` ReviewTask：首次 `/today` 初始 `scrollY=0`，点击后为 `scrollY=767`，焦点为第一张卡的 `DIV[tabindex=-1]`，从而暴露 wrapper 顶部为 `0px` 的 offset 缺口；补齐 wrapper margin 后重新回归为 `scrollY≈671`、焦点仍为该 `DIV[tabindex=-1]`、其包含 review card 且顶部为 `96px`。复验新增控制台错误为 0。无待复习卡的正常 Planner 结果会把主目标改为错题/计划页，因而不会自然渲染本按钮；loaded-empty guard 由回归 contract 覆盖，不伪造浏览器响应。
@@ -50,9 +218,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-20
+更新时间：2026-07-22
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 已完成 Router/Verifier 混合模型生产验收并恢复默认关闭。Phase 6.9.5 已完成：V10 仍是唯一语义质量 authority，V22 的 `operation_failed -> recovered` 历史不可重跑，独立 DeepSeek V4 Pro Docker API/可见 `/plan` 验收确认 Review/Planner 能 `candidate_applied`，main default-off Docker/浏览器回放确认安全回滚与确定性路径。合成账户与 Trace 已两轮精确清理。下一步进入 Phase 6.9.6。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API 与可见 `/knowledge` 分支验收已经通过，R1--R6 历史保留、两个生产 gate 恢复关闭、synthetic 数据和浏览器 storage 精确清理为 0。当前只待分支收尾提交、`--no-ff` 合并最新 main、main default-off 回放和远程推送；在这些完成前仍不把 Phase 6.9.6 标记为最终完成。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -71,6 +239,20 @@
 | Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
 | Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
 | Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
+| Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
+| Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
+| Phase 6.9.6 Task 3 | 已完成 | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor |
+| Phase 6.9.6 Task 4 | 已完成 | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor |
+| Phase 6.9.6 Task 5 | 已完成 | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider |
+| Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
+| Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
+| Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
+| Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
+| Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
+| Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
+| Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
+| Phase 6.9.6 V2 Live | 已完成 | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑 |
+| Phase 6.9.6 Task 13 | 进行中 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审已通过；待 main default-off 回放和 push |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

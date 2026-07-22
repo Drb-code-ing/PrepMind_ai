@@ -97,6 +97,38 @@ describe('conversation summary runtime factory', () => {
     });
   });
 
+  it('does not borrow a dedicated Knowledge credential or block Knowledge-only Live startup', async () => {
+    const createExecutor = jest.fn();
+    const bundle = createConversationSummaryRuntime(
+      parseEnv({
+        ...requiredEnv,
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
+        KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: 'private-knowledge-only-key',
+      }),
+      { createExecutor },
+    );
+
+    expect(createExecutor).not.toHaveBeenCalled();
+    expect(bundle).toMatchObject({ mode: 'live', provider: 'deepseek' });
+    const result = await bundle.runtime.invokeStructured({
+      runId: 'summary_knowledge_only_live',
+      task: 'conversation_summary',
+      schema: conversationSummaryOutputSchema,
+      systemPrompt: 'fixed summary instruction',
+      userPrompt: 'synthetic redacted conversation',
+      estimatedInputTokens: 120,
+      maxOutputTokens: 80,
+      budget: bundle.createBudget(),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected unavailable summary executor');
+    expect(result.error.code).toBe('EXECUTOR_UNAVAILABLE');
+    expect(result.budget.usedCalls).toBe(0);
+  });
+
   it('uses the OpenAI official base URL when only the OpenAI key is configured', () => {
     const executor: StructuredModelExecutor = () =>
       Promise.resolve({ object: { summary: 'safe summary' } });

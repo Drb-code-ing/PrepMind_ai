@@ -42,6 +42,20 @@ assert.equal(requests[0].method, 'GET');
 assert.equal(requests[0].authorization, 'Bearer token_1');
 assert.equal(result.dedup.items[0]?.kind, 'possible_revision');
 assert.equal(result.organizer.collections[0]?.name, '数学资料');
+assert.equal(result.dedup.runtime.source, 'hybrid_model');
+assert.equal(result.dedup.runtime.disposition, 'candidate_applied');
+assert.equal(result.organizer.runtime.source, 'local_deterministic');
+assert.equal(result.organizer.runtime.disposition, 'gate_disabled');
+
+const invalidPayload = createSuggestionPayload();
+Object.assign(invalidPayload.dedup.runtime, {
+  providerError: 'must-not-cross-the-api-boundary',
+});
+const invalidApi = createKnowledgeAgentApi(createTestClient([], invalidPayload));
+await assert.rejects(
+  () => invalidApi.getSuggestions('token_1', {}),
+  /unrecognized key.*providerError/i,
+);
 
 function createTestClient(requests: CapturedRequest[], data: unknown) {
   return createApiClient({
@@ -86,6 +100,20 @@ function createSuggestionPayload() {
         },
       ],
       signals: ['revisionCandidate'],
+      runtime: {
+        source: 'hybrid_model',
+        disposition: 'candidate_applied',
+        reasonCode: 'candidate_applied',
+        attempted: true,
+        degraded: false,
+        usage: {
+          inputTokens: 320,
+          outputTokens: 96,
+          pricingKnown: true,
+          estimatedCostCny: 0.0012,
+        },
+        traceId: 'trace_1',
+      },
     },
     organizer: {
       summary: '建议整理为 1 个资料集合。',
@@ -108,6 +136,20 @@ function createSuggestionPayload() {
         },
       ],
       signals: ['topicCluster', 'documentTags'],
+      runtime: {
+        source: 'local_deterministic',
+        disposition: 'gate_disabled',
+        reasonCode: 'gate_disabled',
+        attempted: false,
+        degraded: false,
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          pricingKnown: false,
+          estimatedCostCny: null,
+        },
+        traceId: null,
+      },
     },
   };
 }

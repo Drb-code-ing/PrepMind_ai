@@ -24,6 +24,33 @@ export {
   type ModelCandidateObservation,
 } from './model-candidate-policy.ts';
 export {
+  KNOWLEDGE_DEDUP_MODEL_SCHEMA,
+  KNOWLEDGE_ORGANIZER_MODEL_SCHEMA,
+  validateKnowledgeDedupModelDecision,
+  validateKnowledgeOrganizerModelDecision,
+  type KnowledgeDedupModelDecision,
+  type KnowledgeOrganizerModelDecision,
+} from './knowledge-agent-model-contract.ts';
+export {
+  KNOWLEDGE_MODEL_PROJECTION_VERSION,
+  projectKnowledgeSnapshot,
+  type KnowledgeModelProjection,
+  type KnowledgeProjectionReasonCode,
+  type KnowledgeProjectionResult,
+} from './knowledge-model-projection.ts';
+export {
+  mergeKnowledgeDedupDecision,
+  runKnowledgeDedupModelCandidate,
+  type KnowledgeDedupModelCandidateEnvelope,
+  type KnowledgeDedupModelCandidateInput,
+} from './knowledge-dedup-model-candidate.ts';
+export {
+  mergeKnowledgeOrganizerDecision,
+  runKnowledgeOrganizerModelCandidate,
+  type KnowledgeOrganizerModelCandidateEnvelope,
+  type KnowledgeOrganizerModelCandidateInput,
+} from './knowledge-organizer-model-candidate.ts';
+export {
   decideKnowledgeVerifierModelEligibility,
   decideRouterModelEligibility,
   isKnowledgeVerifierModelEligible,
