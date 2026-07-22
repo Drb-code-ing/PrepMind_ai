@@ -312,6 +312,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.6 Task 12：分支 Knowledge focused 为 Agent `114/114`、Types `1/1`、Server `50/50`、Web `7/7`；全量为 Agent `465/465`、Types `39/39`、Server `2110 passed / 30 skipped`、Web `413/413`，typecheck/lint/build/diff 门均通过。Mock 为 `24/24` verified zero-call、`48/48` strict runtime、semantic `1`、P95 `286/348/348ms`、estimated `0.068526 CNY`，Live-only gate 按设计仍为 `quality_gate_failed`。Windows evidence 字节与历史 Review/Planner bridge tests 已作不放宽生产 authority 的 hermetic 收口；未调用 provider 或做产品 Docker/浏览器验收，双 gate 保持关闭。下一步必须先取得新的 controlled-Live 明确授权。（已完成 checkpoint，Phase 6.9.6 未完成）
 - Phase 6.9.6 Task 13 V1 controlled-Live：唯一 run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` 的工程、安全、延迟与费用门通过，但 Dedup/Organizer 语义质量未达固定阈值，最终 `quality_gate_failed`。V1 evidence/marker 不可改写或重跑，未进入 Docker/浏览器产品验收。（已完成失败证据，Phase 6.9.6 未完成）
 - Phase 6.9.6 V2 R1：保持 V1 dataset/baseline/gates 不变，补齐 Dedup relation-specific evidence prompt、local revision fact authority 与 eval `older/newer` 时间投影。相关 `22/22`、Agent typecheck/lint 通过；下一步 R2 修复 Organizer 学科/标签精度。（已完成）
+- Phase 6.9.6 V2 R2：Organizer prompt 明确六类 subject taxonomy、一个精确 source-grounded topic 与泛标签禁区；本地只纠正安全 projection 中的高置信学科事实，评测按产品 merger 实际应用的首个 topic label 计分。相关 `20/20`、Agent typecheck/lint 通过；下一步 R3 版本化 evidence/diagnostics/marker。（已完成）
 - Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）

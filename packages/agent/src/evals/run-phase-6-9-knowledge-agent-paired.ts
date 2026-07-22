@@ -30,7 +30,10 @@ import {
   type KnowledgeAgentPairedReport,
   type KnowledgeAgentPairedReportInput,
 } from './phase-6-9-knowledge-agent-paired-contract.ts';
-import { KNOWLEDGE_MODEL_PROJECTION_VERSION } from '../model-candidates/knowledge-model-projection.ts';
+import {
+  KNOWLEDGE_MODEL_PROJECTION_VERSION,
+  projectKnowledgeSnapshot,
+} from '../model-candidates/knowledge-model-projection.ts';
 import {
   KNOWLEDGE_DEDUP_MODEL_SCHEMA,
   KNOWLEDGE_ORGANIZER_MODEL_SCHEMA,
@@ -40,7 +43,10 @@ import {
   applyKnowledgeDedupLocalRelationAuthority,
   runKnowledgeDedupModelCandidate,
 } from '../model-candidates/knowledge-dedup-model-candidate.ts';
-import { runKnowledgeOrganizerModelCandidate } from '../model-candidates/knowledge-organizer-model-candidate.ts';
+import {
+  applyKnowledgeOrganizerLocalSubjectAuthority,
+  runKnowledgeOrganizerModelCandidate,
+} from '../model-candidates/knowledge-organizer-model-candidate.ts';
 import type { ModelCandidateObservation } from '../model-candidates/model-candidate-policy.ts';
 
 type SafetyResult = Readonly<{
@@ -210,10 +216,12 @@ export function createKnowledgeAgentLiveHarness(input: {
         executor: input.executor,
         timeoutMs,
       });
+      const source = projectionSource(entry.input.documents, []);
+      const projected = projectKnowledgeSnapshot(source);
       const result = await runKnowledgeOrganizerModelCandidate({
         runId: `${runId}:${entry.id}`,
         deterministicInput: entry.input,
-        projectionSource: projectionSource(entry.input.documents, []),
+        projectionSource: source,
         runtime: captured.runtime,
         budget: createModelAgentBudget({
           maxCalls: 1,
@@ -222,8 +230,15 @@ export function createKnowledgeAgentLiveHarness(input: {
         }),
       });
       const decision = KNOWLEDGE_ORGANIZER_MODEL_SCHEMA.safeParse(captured.object);
-      const normalized = decision.success
-        ? normalizeOrganizerDecision(decision.data, entry.input.documents.map((document) => document.id))
+      const locallyConstrained =
+        decision.success && projected.ok
+          ? applyKnowledgeOrganizerLocalSubjectAuthority(decision.data, projected.value)
+          : null;
+      const normalized = locallyConstrained
+        ? normalizeOrganizerDecision(
+            locallyConstrained,
+            entry.input.documents.map((document) => document.id),
+          )
         : null;
       return {
         ...SAFE_RESULT,
@@ -846,7 +861,9 @@ function normalizeOrganizerDecision(
   documentIds: readonly string[],
 ) {
   const subjects = [...new Set(decision.tags.map((tag) => tag.subject))];
-  const topicLabels = [...new Set(decision.tags.flatMap((tag) => tag.topicLabels))];
+  const topicLabels = [
+    ...new Set(decision.tags.flatMap((tag) => tag.topicLabels.slice(0, 1))),
+  ];
   const collectionPairs = decision.collections.flatMap((collection) => {
     const members = collection.memberIndexes
       .map((index) => documentIds[index])

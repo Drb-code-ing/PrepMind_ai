@@ -1,4 +1,10 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 V2 R2 Organizer 精度：V1 的 collection pair 已全对，实际缺口是 subject taxonomy 与 raw extra-topic scoring。V2 prompt 现在明确 math/english/politics/computer/major/other 边界，要求每份资料只给一个完整、来源可证的 topic phrase，并禁止“核心概念/复习重点/补充/课程/资料”等泛标签冒充 topic。
+>
+> 混合权威：模型仍负责语义分类和集合关系；本地只在安全 projection 中出现高置信学科词时纠正过宽 subject，不接收模型生成的 ID、写操作或权限。评测 topic 现在与产品 merger 一致，只计 subject/resource 之后实际会应用的首个 topic label；不会掩盖 subject、collection、schema 或安全错误。RED 复现 prompt 缺失、四类 subject 偏差和 raw extras 导致的 `semanticScore=0.95`，GREEN 为相关 `20/20`、Agent typecheck/lint exit `0`。
+>
+> 下一步 R3 将把新运行标识为 `knowledge-agents-v2`、增加有界失败诊断并使用独立 V2 一次性 marker；V1 evidence/marker 继续不可变。回顾时可以问：为什么 topic 评测必须对齐实际 merger，而不能惩罚产品不会应用的第二标签？为什么本地只能纠正高置信学科事实而不能取代模型的全部语义判断？
+
 > 2026-07-22 — Phase 6.9.6 controlled-Live V1 verdict 与 V2 R1：唯一 V1 run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` 完成 `72` cases、`24/24` zero-call、`48/48` verified usage，安全失败为 `0`，endpoint P95 `2068.2995ms`，费用 `0.092604 CNY`；但 Dedup macro-F1 `0.6807692308`、revision recall `0`、Organizer subject `0.75`、tag F1 `0.6197183099`，因此不可变结论为 `quality_gate_failed`。V1 marker/evidence 保留，未做第二次调用，也未进入 Docker/浏览器产品验收。
 >
 > R1 修复没有放宽 schema、动态 evidence 校验或质量阈值：Dedup prompt 现在明确四类 relation 的允许/必需 evidence code；本地 version/timestamp 事实可把模型的 `semantic_duplicate` 安全重建为只读 `possible_revision`；paired harness 不再把不同更新时间错误压成 `same_time`，而是投影 `older/newer`。RED 覆盖 prompt contract、本地 revision authority 与时间投影，GREEN 为相关 `22/22`、Agent typecheck/lint exit `0`。

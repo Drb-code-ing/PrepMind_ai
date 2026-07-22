@@ -60,11 +60,13 @@ R1 evidence: the new tests first failed on all three missing behaviors. GREEN ve
 - Modify `packages/agent/tests/knowledge-organizer-model-candidate.test.ts`
 - Modify `packages/agent/tests/phase-6-9-knowledge-agent-paired-runner.test.ts`
 
-- [ ] Add RED tests for explicit subject boundaries: general computer science is `computer`; named non-computing disciplines are `major`; interdisciplinary/general topics without an exam-discipline signal are `other`.
-- [ ] Add RED tests requiring precise source-grounded topic phrases, discouraging generic teaching/resource labels, and preserving a combined safe label when punctuation separates one topic phrase.
-- [ ] Align eval semantics with the local merger's actual topic-label cap; never hide a subject or collection error.
-- [ ] Implement prompt/policy changes without injecting dataset answers or weakening label/schema safety.
-- [ ] Run focused candidate/contract/paired tests and commit.
+- [x] Add RED tests for explicit subject boundaries: general computer science is `computer`; named non-computing disciplines are `major`; interdisciplinary/general topics without an exam-discipline signal are `other`.
+- [x] Add RED tests requiring precise source-grounded topic phrases, discouraging generic teaching/resource labels, and preserving a combined safe label when punctuation separates one topic phrase.
+- [x] Align eval semantics with the local merger's actual topic-label cap; never hide a subject or collection error.
+- [x] Implement prompt/policy changes without injecting dataset answers or weakening label/schema safety.
+- [x] Run focused candidate/contract/paired tests and commit.
+
+R2 evidence: RED reproduced missing prompt rules, four bounded subject-authority corrections, and raw extra-label scoring (`semanticScore=0.95`). GREEN is `20/20` across model contract, Organizer candidate, paired contract, and paired runner; Agent typecheck/lint both exit `0`.
 
 ## Task R3: V2 evidence diagnostics and one-shot boundary
 

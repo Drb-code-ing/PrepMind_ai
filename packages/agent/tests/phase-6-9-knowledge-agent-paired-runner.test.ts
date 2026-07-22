@@ -103,7 +103,7 @@ describe('phase 6.9.6 knowledge paired runner', () => {
             documentIndex,
             subject: entry.expected.subject,
             resourceType: entry.expected.resourceType,
-            topicLabels: [...entry.expected.topicLabels],
+            topicLabels: [...entry.expected.topicLabels, '复习重点'],
           })),
           collections:
             documentCount >= 2

@@ -154,6 +154,52 @@ describe('knowledge Organizer model candidate', () => {
     });
     expect(tracked.requests[0]?.task).toBe('knowledge_organizer');
     expect(tracked.requests[0]?.userPrompt).not.toMatch(/documentId|hash-|contentHash/);
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'computer is limited to computer science and software topics',
+    );
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'Return exactly one precise source-grounded topic label per document',
+    );
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'remove unsafe punctuation instead of splitting the phrase',
+    );
+    expect(tracked.requests[0]?.systemPrompt).toContain(
+      'Never use generic labels such as 核心概念, 复习重点, 补充, 课程, or 资料',
+    );
+  });
+
+  test('keeps high-confidence local subject taxonomy authoritative over a broader model guess', async () => {
+    const documents = [
+      document('d1', { name: '英语阅读策略.md', chunkSummaries: ['阅读策略与长难句。'] }),
+      document('d2', { name: '政治历史脉络.md', chunkSummaries: ['政治理论与历史脉络。'] }),
+      document('d3', { name: '数字电路讲义.md', chunkSummaries: ['数字电路与逻辑门。'] }),
+      document('d4', { name: '项目管理资料.md', chunkSummaries: ['项目管理基础。'] }),
+    ];
+    const tracked = trackedRuntime({
+      tags: [
+        { documentIndex: 0, subject: 'other', resourceType: 'notes', topicLabels: ['阅读策略'] },
+        { documentIndex: 1, subject: 'other', resourceType: 'notes', topicLabels: ['历史脉络'] },
+        { documentIndex: 2, subject: 'computer', resourceType: 'lecture', topicLabels: ['数字电路'] },
+        { documentIndex: 3, subject: 'major', resourceType: 'reference', topicLabels: ['项目管理'] },
+      ],
+      collections: [],
+    });
+
+    const result = await runKnowledgeOrganizerModelCandidate({
+      runId: 'local-subject-authority',
+      deterministicInput: { now: NOW, documents },
+      projectionSource: projectionSource(documents),
+      runtime: tracked.runtime,
+      budget: budget(),
+    });
+
+    expect(result.observation.disposition).toBe('candidate_applied');
+    expect(result.value.tags.map((tag) => tag.labels[0])).toEqual([
+      '英语',
+      '政治',
+      '专业课',
+      '其它',
+    ]);
   });
 
   test('rejects post-schema instructions and every invalid collection membership as a whole', async () => {

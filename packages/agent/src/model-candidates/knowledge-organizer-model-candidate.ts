@@ -50,6 +50,11 @@ const MAX_FINAL_LABELS = 3;
 const SYSTEM_PROMPT = [
   'Organize only the supplied ordinal documents.',
   'Return bounded subject, resourceType, topicLabels, and collection membership.',
+  'Subject boundaries: math covers mathematics, calculus, matrices, probability, limits, derivatives, and integrals; english covers language learning, long sentences, reading strategy, writing structure, and vocabulary; politics covers political theory, political history, practice-and-knowledge theory, and current affairs.',
+  'computer is limited to computer science and software topics such as data structures, operating systems, computer networks, databases, algorithms, and programming.',
+  'Use major for named non-computing professional exam disciplines such as digital circuits, engineering mechanics, finance, accounting, law, medicine, and engineering; use other for general or interdisciplinary topics such as project management, art history, education theory, and astronomy when no professional-exam signal exists.',
+  'Return exactly one precise source-grounded topic label per document; preserve a complete topic phrase, remove unsafe punctuation instead of splitting the phrase, and use the same topic label for documents in one topic collection.',
+  'Never use generic labels such as 核心概念, 复习重点, 补充, 课程, or 资料 as topicLabels; resourceType already represents ���义, 笔记, 真题, 错题, 练习, and 参考资料.',
   'Return only strict JSON with documentIndex and memberIndexes.',
   'Never invent documents, identifiers, write actions, deletion, replacement, persistence, or permissions.',
 ].join(' ');
@@ -297,9 +302,19 @@ export function mergeKnowledgeOrganizerDecision(input: {
     input.projection.documents.length,
   );
   if (!validation.ok || !projectionMapIsValid(input)) return null;
-  if (!generatedTextIsSafe(validation.value)) return null;
+  const locallyConstrained = applyKnowledgeOrganizerLocalSubjectAuthority(
+    validation.value,
+    input.projection,
+  );
+  const constrainedValidation = validateKnowledgeOrganizerModelDecision(
+    locallyConstrained,
+    input.projection.documents.length,
+  );
+  if (!constrainedValidation.ok || !generatedTextIsSafe(constrainedValidation.value)) {
+    return null;
+  }
 
-  const tags: KnowledgeOrganizerTag[] = validation.value.tags.map((tag) => ({
+  const tags: KnowledgeOrganizerTag[] = constrainedValidation.value.tags.map((tag) => ({
     documentId: input.documentIdsByOrdinal[tag.documentIndex],
     labels: [
       SUBJECT_LABELS[tag.subject],
@@ -312,7 +327,7 @@ export function mergeKnowledgeOrganizerDecision(input: {
     confidence: 0.82,
   }));
 
-  const collections: KnowledgeOrganizerCollection[] = validation.value.collections.map(
+  const collections: KnowledgeOrganizerCollection[] = constrainedValidation.value.collections.map(
     (collection) => ({
       name: collection.name,
       description: buildCollectionDescription(collection.theme),
@@ -337,6 +352,47 @@ export function mergeKnowledgeOrganizerDecision(input: {
         ? ['semanticOrganization']
         : ['semanticOrganization', 'insufficientSignal'],
   };
+}
+
+export function applyKnowledgeOrganizerLocalSubjectAuthority(
+  decision: KnowledgeOrganizerModelDecision,
+  projection: KnowledgeModelProjection,
+): KnowledgeOrganizerModelDecision {
+  return {
+    ...decision,
+    tags: decision.tags.map((tag) => {
+      const document = projection.documents[tag.documentIndex];
+      const subject = document ? inferAuthoritativeSubject(document) : null;
+      return subject === null || subject === tag.subject ? tag : { ...tag, subject };
+    }),
+  };
+}
+
+function inferAuthoritativeSubject(
+  document: KnowledgeModelProjection['documents'][number],
+): KnowledgeOrganizerModelDecision['tags'][number]['subject'] | null {
+  const text = [document.normalizedName, ...document.summaries]
+    .join(' ')
+    .normalize('NFKC')
+    .toLowerCase();
+
+  if (/数学|高数|微积分|线性代数|矩阵|概率|极限|导数|积分/u.test(text)) return 'math';
+  if (/英语|英文|english|长难句|阅读策略|写作结构|词汇复习/u.test(text)) return 'english';
+  if (/政治|马原|毛概|思修|实践认识|历史脉络|理论框架|时事专题/u.test(text)) {
+    return 'politics';
+  }
+  if (/计算机|数据结构|操作系统|计算机网络|数据库|软件工程|编程|算法/u.test(text)) {
+    return 'computer';
+  }
+  if (
+    /数字电路|工程力学|财务管理|会计|法学|法律|机械工程|电气工程|电子工程|土木工程|医学|药学/u.test(
+      text,
+    )
+  ) {
+    return 'major';
+  }
+  if (/项目管理|艺术史|教育理论|天文学/u.test(text)) return 'other';
+  return null;
 }
 
 function buildCollectionDescription(
