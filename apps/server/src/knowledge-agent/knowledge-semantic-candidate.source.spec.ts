@@ -73,6 +73,7 @@ describe('KnowledgeSemanticCandidateSource', () => {
 
     const sampling = inspectSql(firstQueryArgument(transaction.queryRaw));
     expect(sampling.text).toContain('ntile');
+    expect(sampling.text).toContain('ntile(?::integer)');
     expect(sampling.text).toContain('ORDER BY index ASC, id ASC');
     expect(sampling.text).toContain("d.status = 'DONE'");
     expect(sampling.text).toContain('c.embedding IS NOT NULL');

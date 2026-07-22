@@ -101,7 +101,7 @@ export class KnowledgeSemanticCandidateSource {
               id,
               "documentId",
               index,
-              ntile(${MAX_CHUNKS_PER_DOCUMENT}) OVER (
+              ntile(${MAX_CHUNKS_PER_DOCUMENT}::integer) OVER (
                 PARTITION BY "documentId"
                 ORDER BY index ASC, id ASC
               ) AS bucket
