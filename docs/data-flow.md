@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-21。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 已完成 KnowledgeDedup/Organizer 的 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置；两个生产 gate 仍默认关闭，尚未执行 controlled-Live、Docker 或浏览器生产验收。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-22。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 已完成 KnowledgeDedup/Organizer 的 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置；唯一 V1 controlled-Live 因语义质量门失败而封存，V2 R4 静态/Mock checkpoint 已通过。两个生产 gate 仍默认关闭，V2 controlled-Live、Docker 与浏览器产品验收尚未执行。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 

@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 V2 R4 静态/Mock checkpoint：Knowledge focused `117/117`；Agent 全量命令、typecheck 与 lint 均 exit `0`；Types `39/39` + typecheck、Server Knowledge `50/50` + build、Web Knowledge `7/7` + lint 均通过。V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` 使用独立 evidence `.tmp/phase-6-9-6-knowledge-agent-branch-mock-v2.json`，覆盖 72 cases、`24/24` verified zero-call 与 `48/48` runtime；Dedup macro-F1/revision recall 和 Organizer subject/tag/collection 五项语义指标均为 `1`。
+>
+> 量化证据：P95 为 Dedup `286ms` / Organizer `348ms` / endpoint `348ms`，usage `14472/4185`，Mock estimated cost `0.068526 CNY`；strict validator 返回 `ok=true / evidenceCount=3`，V2 Mock SHA-256 为 `2dfa326018bba9912b8e8faf35b7fb9f2c41b33d7e655e4e5e8c8472ecc23958`。Mock report 仍为 `quality_gate_failed`，因为 production gate 固定只接受满足全部门槛的 DeepSeek V4 Pro Live；这不是 Mock contract 失败，也不是 V2 真实语义质量证明。
+>
+> 不可变与运行边界：V1 Live evidence/marker SHA-256 仍为 `9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923` / `228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`。V2 Live evidence 与一次性 marker 均不存在；根环境没有显式设置两个 Knowledge gate，配置继续 default-off。只读核对确认既有 Docker 服务与 `docker_pgdata` / `docker_miniodata` 卷仍在；本轮没有调用 provider、执行产品 Docker/API/浏览器验收、启动或停止服务、创建业务数据，亦没有任何 prune/reset/flush/wipe。
+>
+> R4 到此停止。下一步必须由用户接受当前 provider retention/训练边界并使用新授权变量明确批准唯一一次 V2 branch controlled-Live；失败必须封存且不得重跑，只有全部固定门通过后才可进入 Docker API、可见 `/knowledge`、精确清理、main 回放与远程推送。回顾时可以问：V2 R4 修复了哪些语义缺口？为什么 Mock 五项全 1 仍不能打开生产 gate？V1 与 V2 的 evidence/marker 为什么必须完全隔离？
+
 > 2026-07-22 — Phase 6.9.6 V2 R3 evidence/one-shot：current report identity 升级为 `knowledge-agents-v2`，但 validator 继续严格接受没有新字段的历史 V1 report。V2 runtime entry 只新增 `rawSchemaValid: boolean` 与枚举 `candidateDisposition`，zero-call 固定为 `null/null`；因此下一次若失败，可以区分原始 schema、动态 candidate 拒绝与已应用语义，同时仍不保存 prompt、provider response、raw error 或自由文本。
 >
 > 一次性边界：旧 `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED` 不再授权 V2，必须使用新的 `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED=true`。V2 Mock/Live 使用独立文件名和 `.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker`；测试证明现有 V1 marker 不阻塞一次新授权的 V2，而第二次 V2 被 `live_already_attempted` 拒绝。focused CLI/contract/runner `17/17`、Agent typecheck/lint exit `0`，当前 V1 evidence bundle 仍为 `ok=true / evidenceCount=2`。

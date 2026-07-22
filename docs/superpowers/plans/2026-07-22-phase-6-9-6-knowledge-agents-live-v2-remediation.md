@@ -79,7 +79,7 @@ R2 evidence: RED reproduced missing prompt rules, four bounded subject-authority
 
 - [x] Keep V1 reports valid and immutable while making new reports identify `knowledge-agents-v2`.
 - [x] Add only bounded diagnostics needed to distinguish raw schema validity, dynamic validation/candidate disposition, and applied-result semantics. Reject sensitive or free-form diagnostics.
-- [x] Use a V2-specific `wx` marker; an existing V1 marker must remain untouched and must not block a separately authorized V2 run.
+- [x] Use a V2-specific exclusive-create one-shot marker; an existing V1 marker must remain untouched and must not block a separately authorized V2 run.
 - [x] Prove a V2 marker blocks a second V2 attempt and that V1 evidence still validates.
 - [x] Run focused CLI/validator/contract tests and commit.
 
@@ -93,10 +93,12 @@ R3 evidence: V2 reports add only nullable `rawSchemaValid` and enum `candidateDi
 - Modify `AGENTS.md`, `README.md`, `DEVLOG.md`, `docs/roadmap.md`
 - Modify this plan
 
-- [ ] Run focused Agent tests, full Agent/types tests, affected typecheck/lint, V2 Mock, evidence validator, and `git diff --check`.
-- [ ] Confirm no provider call, no new Live marker/evidence, both product gates false, Docker volumes untouched, and V1 evidence still validates.
-- [ ] Record actual hashes/counts/results and commit the V2 static/Mock checkpoint.
-- [ ] Stop and request one fresh V2 controlled-Live authorization.
+- [x] Run focused Agent tests, full Agent/types tests, affected typecheck/lint, V2 Mock, evidence validator, and `git diff --check`.
+- [x] Confirm no provider call, no new Live marker/evidence, both product gates false, Docker volumes untouched, and V1 evidence still validates.
+- [x] Record actual hashes/counts/results and commit the V2 static/Mock checkpoint.
+- [x] Stop and request one fresh V2 controlled-Live authorization.
+
+R4 evidence: Knowledge focused is `117/117`; Agent full tests/typecheck/lint, Types `39/39` + typecheck, Server Knowledge `50/50` + build, and Web Knowledge `7/7` + lint all exit `0`. V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` reports 72 cases, `24/24` zero-call, `48/48` runtime, all five semantic metrics `1`, P95 `286/348/348ms`, usage `14472/4185`, and estimated `0.068526 CNY`; Mock remains `quality_gate_failed` by the Live-only production rule. Validator returns `ok=true / evidenceCount=3`, and V2 Mock SHA-256 is `2dfa326018bba9912b8e8faf35b7fb9f2c41b33d7e655e4e5e8c8472ecc23958`. V1 evidence/marker hashes remain byte-identical; V2 Live evidence/marker are absent. Product gates resolve default-off, existing Docker services/volumes were only inspected, and no provider, product Docker/API, browser, or business-data operation occurred. R4 deliberately stops at the fresh V2 authorization boundary.
 
 ## Task R5: Single V2 controlled-Live
 

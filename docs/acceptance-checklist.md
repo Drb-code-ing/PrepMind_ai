@@ -789,7 +789,9 @@ V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Revie
 
 ## 10. Phase 6.9.6 Knowledge Agent 验收入口（controlled-Live 前）
 
-candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置已经实现；本节不授权当前调用真实模型，也不表示 controlled-Live、Docker 或浏览器产品证据已存在。量化权威见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
+candidate、API/UI、strict Mock paired runner 与 API-only Docker 配置已经实现；本节不授权当前调用真实模型，也不表示 V2 controlled-Live、Docker 或浏览器产品证据已存在。量化权威见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`。
+
+2026-07-22 R4 checkpoint：V1 controlled-Live 的 `quality_gate_failed` 证据保持不可变；V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` 已完成 `24/24` verified zero-call、`48/48` runtime、五项语义指标全 `1`、P95 `286/348/348ms`、usage `14472/4185`、estimated `0.068526 CNY`，validator 为 `ok=true / evidenceCount=3`。V2 Live evidence/marker 不存在，两个产品 gate 仍 default-off；本段仍不构成真实模型授权。后续唯一 V2 Live 必须使用新的 `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED=true` 明确授权，失败不得重跑。
 
 1. 确认工作从已推送的最新 main 创建普通 `codex/` 分支；只有主工作目录，不从功能分支开分支，不创建非必要 worktree。
 2. 固定 `phase-6.9-knowledge-agents-v1` 的 72 个 case ID、expected 与 digest。先记录 deterministic baseline，不为满足门槛改写 expected 或删除失败 case。
