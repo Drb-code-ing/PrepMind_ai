@@ -1,10 +1,10 @@
-# Phase 6.9.6 Knowledge Agents Branch Checkpoint, V2 Live, and Product Acceptance
+# Phase 6.9.6 Knowledge Agents Checkpoint, V2 Live, Product, and Main Acceptance
 
 ## 结论
 
 Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint、V2 remediation、唯一 V2 controlled-Live、R7 Docker/API 以及可见 `/knowledge` 分支验收均已完成。唯一 `knowledge-agents-v1` controlled-Live 因语义质量门失败而只读封存；唯一 V2 controlled-Live 的不可变结论为 `quality_gate_passed`。R1--R6 的失败终态仍完整保留，R7 成功不覆盖或改写任何历史 attempt。
 
-当前仍不是 Phase 6.9.6 最终完成态。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；V1/V2 controlled-Live 与 R1--R7 都不得重跑。R6 暴露的真实 PostgreSQL `ntile(bigint)` shortlist 缺陷已修复；R7 在修复镜像上证明完整产品链路可用，可见浏览器与精确清理也已通过。剩余步骤只有分支收尾提交、`--no-ff` 合并最新 main、main default-off 静态/API/浏览器回放和远程推送。
+Phase 6.9.6 已完成。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；V1/V2 controlled-Live 与 R1--R7 都不得重跑。R6 暴露的真实 PostgreSQL `ntile(bigint)` shortlist 缺陷已修复；R7 在修复镜像上证明完整产品链路可用，可见浏览器与精确清理也已通过。分支收尾、`--no-ff` main 合并、main default-off 静态/Docker/API/浏览器回放、精确清理和远程推送均已完成。
 
 ## 范围与仓库状态
 
@@ -13,7 +13,7 @@ Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint、V2 remediation、唯一
 - Task 12 起点：`180fa15 docs(agent): operate knowledge semantic agents`
 - R7 / browser pinned HEAD：`1ce77ff3e6e75ff4d7bb6e97a354113f1c2b068f`
 - Task 12 checkpoint 当时与 `origin/main` 的起点关系：behind `0` / ahead `13`
-- 当前分支验收覆盖静态、Mock、唯一 V2 provider run、Docker/API、可见 `/knowledge`、合成数据精确清理与独立复审；尚不覆盖 main 合并、main default-off 回放或远程推送。
+- 分支验收覆盖静态、Mock、唯一 V2 provider run、Docker/API、可见 `/knowledge`、合成数据精确清理与独立复审；main 增量章节另记录合并后的 default-off 回放、最终清理与远程 parity。
 
 Task 12 当时的“无 provider/Docker/browser”边界只描述该历史 checkpoint；后续增量结果分别记录在 V1/V2 Live、R1--R7 和浏览器章节中，不得用后续成功改写早期 evidence。
 
@@ -240,10 +240,28 @@ provider 前 guard 全部通过：exact hash 为 `exact_hash_only`，credential 
 
 两个独立只读复审分别检查 evidence/marker/hash/lineage 和安全/权限/清理/响应式结果，结论均为 APPROVED，无 Critical/Important。
 
+## main default-off 回放与最终清理
+
+- 分支文档收尾提交：`33604040`
+- main merge：`f31335c6068554d0f272562c1fbbf8da2184cd32`（`--no-ff`）
+- 真实模型调用：`0`；唯一 V2 Live、R7 和分支浏览器 authority 均未重跑或改写
+- main focused：Agent `118/118`，Types `1/1`，Server `50/50`，Web `7/7`；相关 typecheck/lint/build 均为 exit `0`
+
+main 从当前源码重建 server/worker/web。Compose BuildKit 在构建前两次因宿主会话字段 `x-docker-expose-session-sharedkey contains value with non-printable ASCII characters` 失败，均未进入业务或数据步骤；随后使用同一 Dockerfile 的 legacy builder（`DOCKER_BUILDKIT=0`）成功构建，并以 `--no-build --force-recreate` 启动。server/worker 健康，PostgreSQL、Redis、MinIO、Admin 与 `docker_pgdata` / `docker_miniodata` 均保留。
+
+可见浏览器在 main 真实 Docker 路径创建一个独立合成账号，完成 TXT 上传、Qwen embedding 处理、资料列表、混合检索和建议读取。HTTP 结果为 suggestions `200`、upload `201`、process `201`、search `201`；资料最终为 `DONE`、1 个 Chunk，检索页面相似度 `0.55`。default-off 页面显示“本地规则建议”、不显示“语义建议”，没有自动合并、删除、替换、重命名或分类控件。移动端 `390x844` 的 html/body 均为 `scrollWidth=clientWidth=390`；桌面 `1440x900` 为 `1430=1430`，均无横向溢出。控制台只有登录前 refresh `401` 和普通账号访问 admin-only worker observability 的预期 `403`。
+
+main 截图及 SHA-256：
+
+- `.tmp/phase-6-9-6-main-replay-mobile-default-off.png`：`626b8da913d3f581e2f4438d11bbcad7b7cad6cfbab6b337cb4e56479e9e60d9`
+- `.tmp/phase-6-9-6-main-replay-desktop-default-off.png`：`b46fb4c40b913053813b92fed9b8b91e632af62b9a18d3871cde0ffc80f65d27`
+
+清理先通过 owner-scoped `DELETE /knowledge/documents/:id` 删除唯一 Document/Chunk 与精确 MinIO object，再删除唯一合成 User 并级联清理 refresh token。User/Document/Chunk/ACCOUNT BackgroundJob/AgentTraceRun/AgentTraceStep/Session/RefreshToken 与匹配 MinIO object residue 全为 `0`；浏览器 cookie/localStorage/sessionStorage/IndexedDB/cache 全为 `0`，窗口保留在登录页。server 最终为 `AI_PROVIDER_MODE=mock`、live=false、Dedup=false、Organizer=false、Review=false、Planner=false、Knowledge credential absent；worker 不含 Knowledge gate/credential。没有 prune、`down -v`、database/volume reset、Redis flush 或 MinIO wipe。最终远程 parity 为 `origin/main...HEAD = 0 0`。
+
 ## 阶段判定与下一步
 
 - Task 12：分支静态/Mock checkpoint 已完成。
-- Phase 6.9.6：未完成。
+- Phase 6.9.6：已完成。
 - production gate：保持 `false / false`。
 - V1 controlled-Live：已完成一次，结论失败且不可重跑。
 - V2 controlled-Live：唯一 run 已 `quality_gate_passed`，不得重跑。
@@ -251,7 +269,8 @@ provider 前 guard 全部通过：exact hash 为 `exact_hash_only`，credential 
 - V2 product R7：Docker/API、Trace、只读权限、worker isolation、zero-call guards、精确清理均已通过且不得重跑。
 - 可见浏览器：真实上传/处理/检索、local/semantic/degraded/error/响应式与清理已通过；本轮新增 Live call 为 0。
 - 独立复审：两项均 APPROVED，无 Critical/Important。
-- 下一步：提交分支文档收尾；`--no-ff` 合并最新 main，只做 default-off 静态、Docker/API 与可见 `/knowledge` 回放，精确清理后推送并确认远程 parity。禁止重跑 V2 controlled-Live 或 R7。
+- main 收尾：`--no-ff` 合并、default-off 静态/Docker/API/可见 `/knowledge` 回放、精确清理和远程 parity 均已通过；没有重跑 V2 controlled-Live 或 R7。
+- 下一步：从最新 main 新建普通 `codex/` 分支进入 Phase 6.9.7 TutorAgent / WrongQuestionOrganizerAgent 混合模型路径；不得提前进入 Phase 6.10。
 
 ## 回顾时可以问
 

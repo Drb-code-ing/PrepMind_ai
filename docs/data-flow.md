@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-22。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 分支实现与验收已完成 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict paired runner、唯一 V2 controlled-Live、R7 Docker/API 与可见浏览器。R1--R6 历史保持不可变；两个生产 gate 已恢复默认关闭，最终阶段仍待 main default-off 回放和推送。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-22。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict paired runner、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放。R1--R6 历史保持不可变；两个生产 gate 已恢复默认关闭。下一阶段是 Phase 6.9.7；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -276,7 +276,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
   -> /knowledge 继续只读展示，不执行整理写操作
 ```
 
-该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0；main 回放与远程推送仍待完成。
+该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main `f31335c6` 再次完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
 当前 `/knowledge` 页面数据流：
 

@@ -1134,7 +1134,7 @@ git add docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md AGENTS.md REA
 git commit -m "docs(agent): accept knowledge semantic agents"
 ```
 
-- [ ] **Step 7: Merge with `--no-ff`, replay on main, and push**
+- [x] **Step 7: Merge with `--no-ff`, replay on main, and push**
 
 ```bash
 git status --short
@@ -1153,6 +1153,8 @@ git status --short --branch
 ```
 
 Expected: push succeeds; parity is `0 0`; main is clean; Docker data/volumes remain intact; both Knowledge gates remain false; Phase 6.9.6 is marked complete only after this replay.
+
+Actual (2026-07-22): branch docs commit `33604040` was merged with `--no-ff` as main `f31335c6`. Main focused gates passed at Agent `118/118`, Types `1/1`, Server `50/50`, and Web `7/7`, with the related typecheck/lint/build commands at exit `0`. Current-source server/worker/web images were rebuilt; a host BuildKit shared-key encoding error happened before build/data work, so the same Dockerfiles were built with `DOCKER_BUILDKIT=0` and recreated without deleting volumes. Visible `/knowledge` default-off replay passed upload/process/Qwen hybrid search/suggestions, local badge, zero automatic organize controls, and no overflow at 390/1440px. The single main synthetic User/Document/Chunk/Object/Job/Trace/Session/RefreshToken and browser storage were precisely cleared to zero; `docker_pgdata` and `docker_miniodata` remain. Server is `mock / live=false / dedup=false / organizer=false / credential absent`; worker has no Knowledge gate/key. V2 Live and R7 were not rerun. Main was pushed and `origin/main...HEAD` is `0 0`.
 
 ## Final completion boundary
 

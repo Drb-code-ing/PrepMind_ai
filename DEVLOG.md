@@ -1,11 +1,17 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 Task 13 main 收尾完成：分支文档提交 `33604040` 已通过 `--no-ff` 合并为 main `f31335c6`。main focused 验收为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 全部通过。当前源码重新构建的 server/worker/web 容器健康；Compose BuildKit 在进入业务与数据步骤前两次因宿主 `x-docker-expose-session-sharedkey contains value with non-printable ASCII characters` 失败，改用 `DOCKER_BUILDKIT=0` 的同一 Dockerfile 构建并以 `--no-build --force-recreate` 启动成功，未改变验收代码或数据卷。
+>
+> main 可见 `/knowledge` default-off 回放使用一个独立合成账号，完成注册、TXT 上传、Qwen `text-embedding-v4` / 1536 处理、资料列表、混合检索和建议读取；HTTP 为 suggestions `200`、upload `201`、process `201`、search `201`。移动端 `390x844` 的 html/body 均为 `scrollWidth=clientWidth=390`，桌面 `1440x900` 为 `1430=1430`，两者均无横向溢出；页面显示“本地规则建议”、不显示“语义建议”，自动合并/删除/替换/重命名/分类控件为 0。控制台仅有登录前 refresh `401` 与普通账号访问 admin-only worker observability 的预期 `403`。main 移动/桌面截图 SHA-256 分别为 `626b8da913d3f581e2f4438d11bbcad7b7cad6cfbab6b337cb4e56479e9e60d9` / `b46fb4c40b913053813b92fed9b8b91e632af62b9a18d3871cde0ffc80f65d27`。
+>
+> 清理先通过 owner-scoped 正式删除 API 删除唯一 Document/Chunk 与精确 MinIO object，再删除唯一合成用户并级联清理 refresh token；User/Document/Chunk/ACCOUNT BackgroundJob/Trace/TraceStep/Session/RefreshToken 与匹配 object residue 全为 0。测试浏览器 cookie/localStorage/sessionStorage/IndexedDB/cache 全为 0，窗口保留在登录页。server 为 `mock / live=false / dedup=false / organizer=false / Review=false / Planner=false / Knowledge credential absent`；worker 不含 Knowledge gate/credential。`docker_pgdata`、`docker_miniodata` 均保留，没有 prune、`down -v`、reset、flush 或 wipe。最终 main 已推送并确认 `origin/main...HEAD = 0 0`。Phase 6.9.6 至此完成；下一阶段是 Phase 6.9.7，不提前进入 Phase 6.10 或博客收尾。回顾时可以问：为什么 main 不重跑 controlled-Live？default-off 回放证明什么？BuildKit 宿主会话错误为什么不影响业务验收 authority？
+
 > 2026-07-22 — Phase 6.9.6 Task 13 R7 Docker/API 分支验收：在包含 PostgreSQL `ntile(?::integer)` 修复的 `1ce77ff` 镜像上，独立 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 完成 Dedup-only、Organizer-only、双开关、强制 provider 失败与 default-off 五种模式。四个实际模型结果均为 `candidate_applied`；总 usage `3770/446`，估算费用 `0.013986 CNY`。exact hash、credential、prompt injection、unsafe metadata 和跨账号 target 均在 provider 前零调用；API/Trace parity、worker credential/gate isolation、读取兼容性和只读 fingerprint 均通过。R7 evidence / marker SHA-256 为 `ad8b242562d73d2a697648e66cc9c6ac755d1ae7db00149e3a631f1191016468` / `0c62a62f210aedcf7348478ed6d60da565d5b89316e67da0b10370728d8bc9db`，不得重跑、删除、覆盖或与 V2 Live 拼接。
 >
 > R7 清理只删除本轮 2 个 synthetic owner、7 份 synthetic Document 和 2 个匹配 MinIO object；User/Document/Chunk/Object/BackgroundJob/Trace/TraceStep/Session/RefreshToken residue 全部为 0。API 已恢复 `AI_PROVIDER_MODE=mock`、live=false、Dedup=false、Organizer=false、Knowledge credential absent；worker 不含 Knowledge key/gate。`docker_pgdata` 与 `docker_miniodata` 保留，没有 prune、`down -v`、database/volume reset、Redis flush 或 MinIO wipe。R1--R6 仍是不可改写的独立历史，R7 成功不覆盖早期失败终态。两位独立复审均 APPROVED，无 Critical/Important。
 >
 > 2026-07-22 — Phase 6.9.6 Task 13 可见浏览器分支验收：发现 Docker `web` 仍是旧镜像，API 已返回来源状态但页面缺少新 badge；仅从 pinned HEAD 重建并替换 web 容器后恢复，不改 server authority 或数据卷。浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 在真实 Docker 路径完成注册、TXT 上传、处理、列表和 Qwen 混合检索；default-off 显示“本地规则建议”，建议面板自动执行按钮为 0。semantic/degraded/error 状态使用绑定不可变 R7 response authority 的 strict UI replay，浏览器阶段新增模型调用为 0，不构成第二份语义质量 authority。
 >
-> 浏览器覆盖 1440、510、390px，390px 建议面板 `scrollWidth=clientWidth=357`，无横向溢出；local/semantic/degraded/empty/error、上传/处理/检索均通过。evidence / marker SHA-256 为 `5a9a4cba005ba3ec10e031ed17e5f41981a685dc62c6672695db41cabc024299` / `6a75430f8aebfa8c7278c641504ff5fa5d6d0502d103088c98cb3927846cfe79`。专用合成账号及 User/Document/Chunk/Job/Trace/Session residue、匹配 MinIO object、cookie/localStorage/sessionStorage/IndexedDB/cache 均为 0；两个独立复审无 Critical/Important。Phase 6.9.6 尚未完成，下一步只做分支文档提交、main default-off 静态/API/可见浏览器回放、精确清理与远程推送；禁止重跑 V2 controlled-Live 或 R7。
+> 浏览器覆盖 1440、510、390px，390px 建议面板 `scrollWidth=clientWidth=357`，无横向溢出；local/semantic/degraded/empty/error、上传/处理/检索均通过。evidence / marker SHA-256 为 `5a9a4cba005ba3ec10e031ed17e5f41981a685dc62c6672695db41cabc024299` / `6a75430f8aebfa8c7278c641504ff5fa5d6d0502d103088c98cb3927846cfe79`。专用合成账号及 User/Document/Chunk/Job/Trace/Session residue、匹配 MinIO object、cookie/localStorage/sessionStorage/IndexedDB/cache 均为 0；两个独立复审无 Critical/Important。该分支浏览器 checkpoint 当时只剩 main default-off 回放与推送；其后已按本文顶部 main 收尾记录完成，且没有重跑 V2 controlled-Live 或 R7。
 
 > 2026-07-22 — Phase 6.9.6 Task 13 V2 Live authority 与产品 shortlist 修复：唯一 V2 controlled-Live run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 已以 `quality_gate_passed` 封存，72 cases、`24/24` zero-call、`48/48` runtime、semantic `0.9875`、费用 `0.117498 CNY`；evidence / marker SHA-256 分别为 `c0a6d06a94438dddedb24b78e271eb7b4df1bd6089949bd0b7692d8570c707ff` / `0940cee101cc219b8a691e8eba6ddc9dc33197e2eec20048ac46d269ef8d7ac5`，不得重跑、删除、覆盖或改写。
 >
@@ -13,7 +19,7 @@
 >
 > R6 根因是 Prisma 将 `ntile(${6})` 的参数绑定为 PostgreSQL `bigint`，而 PostgreSQL 只提供 `ntile(integer)`；真实 source 查询抛出 `P2010 / SQLSTATE 42883` 后按设计 fail-closed 为空 shortlist。TDD 先新增 SQL-shape 断言得到 `11 pass / 1 fail`，再将参数改为 `ntile(${6}::integer)` 后 `12/12`；相关 Knowledge Server `32/32`、Server build、focused ESLint 与 diff gate 通过。真实 PostgreSQL 合成诊断在修复前为 source query `P2010/42883 + selected=0`，修复后同一 Qwen `text-embedding-v4 / 1536`、low/safe 数据为查询 `2 rows + 1 row`、selected chunks `2`、high pair `1`、score `0.957065639321`。每轮 synthetic User/Document/Chunk/MinIO/Trace/Job 均精确清理为 0；未执行 volume/database reset、Redis flush、MinIO wipe 或 Docker prune，当前 server 已恢复 `mock / live=false / dedup=false / organizer=false / credential absent`。
 >
-> 边界：上述修复只恢复既定 owner-scoped shortlist 的可执行性，不改变阈值、top-3 mean、provenance/safety/exact-hash guard、权限、预算、价格、只读 merger 或默认 gate。Phase 6.9.6 尚未完成；下一步必须先在包含该修复的新提交/镜像上完成独立产品 acceptance lineage，再做可见 `/knowledge`、精确清理、main default-off 回放与远程推送。回顾时可以问：为什么 Mock 能通过但真实 PostgreSQL 的 `ntile` 仍会失败？为什么 R6 的 raw cosine 高于阈值仍然是 provider 0-call？
+> 边界：上述修复只恢复既定 owner-scoped shortlist 的可执行性，不改变阈值、top-3 mean、provenance/safety/exact-hash guard、权限、预算、价格、只读 merger 或默认 gate。该修复 checkpoint 当时尚未完成 Phase 6.9.6，后续 R7、浏览器与 main 结果见本文更靠前的条目。回顾时可以问：为什么 Mock 能通过但真实 PostgreSQL 的 `ntile` 仍会失败？为什么 R6 的 raw cosine 高于阈值仍然是 provider 0-call？
 
 > 2026-07-22 — Phase 6.9.6 V2 authorized-Live 零调用 preflight：用户已接受 DeepSeek 当前账号的数据保留/训练边界并授权唯一一次 V2 branch controlled-Live。执行前发现 standalone eval CLI 仍读取通用 `DEEPSEEK_API_KEY`，而 Task 11 已规定 Knowledge 必须通过独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY` 接入；若直接运行会绕过 server-only credential isolation。
 >
@@ -53,7 +59,7 @@
 >
 > 兼容性收口：`.gitattributes` 固定历史 acceptance evidence 字节，避免 Windows CRLF 破坏 SHA authority；V9 spec 只在测试侧归一化换行；V17--V22 bridge tests 注入 strict synthetic authority，production host 默认仍使用真实 Bun evidence authority 并 fail-closed；Knowledge 公共导出检查与 Web Node runner 命令也已补齐。没有改写历史 evidence、调用 provider、启用 Knowledge gate、创建账号/资料/对象/Trace 或执行可见浏览器验收。
 >
-> 阶段边界：Task 12 已形成独立 checkpoint，但 Phase 6.9.6 尚未完成，两个生产 gate 继续为 `false`。下一步必须先由用户重新明确授权一次 branch controlled-Live，Task 13 才可继续 Docker API、可见 `/knowledge`、精确清理、main 回放与远程推送。完整证据见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`。
+> 阶段边界（Task 12 当时）：该 checkpoint 尚未完成 Phase 6.9.6，两个生产 gate 继续为 `false`；后续唯一 V2 Live、R7、浏览器与 main 结果见本文顶部当前状态。完整证据见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`。
 >
 > 回顾时可以问：为什么 Mock semantic=1 仍不能通过 production gate？为什么历史 evidence 要按字节固定？为什么测试可以注入 synthetic authority 而生产不能放宽？为什么仅启动 PostgreSQL 不等于 Docker 产品验收？
 
@@ -220,7 +226,7 @@
 
 更新时间：2026-07-22
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier 与 Phase 6.9.5 Review/Planner 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API 与可见 `/knowledge` 分支验收已经通过，R1--R6 历史保留、两个生产 gate 恢复关闭、synthetic 数据和浏览器 storage 精确清理为 0。当前只待分支收尾提交、`--no-ff` 合并最新 main、main default-off 回放和远程推送；在这些完成前仍不把 Phase 6.9.6 标记为最终完成。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收、main `f31335c6` default-off 回放、精确清理和远程推送全部完成；R1--R6 历史继续保留。下一阶段是 Phase 6.9.7。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -252,7 +258,7 @@
 | Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
 | Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
 | Phase 6.9.6 V2 Live | 已完成 | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑 |
-| Phase 6.9.6 Task 13 | 进行中 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审已通过；待 main default-off 回放和 push |
+| Phase 6.9.6 Task 13 | 已完成 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审保持不可变；main default-off 回放、零残留和 push 已通过 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

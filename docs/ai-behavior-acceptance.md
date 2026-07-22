@@ -233,7 +233,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 2026-07-22 分支结果：唯一 V2 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 完成 72 cases、`24/24` verified zero-call、`48/48` runtime，semantic `0.9875`、费用 `0.117498 CNY`，最终 `quality_gate_passed`。R7 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 分别验证 Dedup-only、Organizer-only、双开关、强制 provider 失败与 default-off；四次实际语义结果为 `candidate_applied`，总 usage `3770/446`、费用 `0.013986 CNY`，exact hash/credential/injection/unsafe/cross-owner 均为 provider 前零调用。API/Trace parity、worker isolation、只读 fingerprint 与精确清理通过。V1 质量失败与 R1--R6 产品失败仍是不可改写历史，R7 不覆盖它们。
 
-可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。Phase 6.9.6 仍需 main default-off 回放和远程推送后才能最终完成。
+可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
 ## 8. Reflexion / Critic 验收要求
 

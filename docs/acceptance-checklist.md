@@ -791,7 +791,7 @@ V10 不重跑或改写 V1--V9，且只让模型返回生产实际合并的 Revie
 
 candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现；唯一 V2 controlled-Live、R7 Docker/API 和可见浏览器分支证据也已存在且不可重跑。本节不授权新的真实模型调用。量化权威见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`，运行证据见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`。
 
-2026-07-22 当前结果：V1 controlled-Live 的 `quality_gate_failed` 与 R1--R6 产品失败证据保持不可变。唯一 V2 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 为 `24/24` verified zero-call、`48/48` runtime、semantic `0.9875`、`quality_gate_passed`、`0.117498 CNY`；R7 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 完成 Dedup-only、Organizer-only、双开关、强制失败/default-off，四次 `candidate_applied`，总 usage `3770/446`、`0.013986 CNY`。浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实上传/处理/检索和 local/semantic/degraded/error/响应式状态，新增 Live 调用为 0。精确清理与默认关闭恢复均通过；当前只待分支提交、main default-off 回放和推送。
+2026-07-22 当前结果：V1 controlled-Live 的 `quality_gate_failed` 与 R1--R6 产品失败证据保持不可变。唯一 V2 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 为 `24/24` verified zero-call、`48/48` runtime、semantic `0.9875`、`quality_gate_passed`、`0.117498 CNY`；R7 run `38748577-f250-4a7a-ab17-8fd14a63b2a3` 完成 Dedup-only、Organizer-only、双开关、强制失败/default-off，四次 `candidate_applied`，总 usage `3770/446`、`0.013986 CNY`。浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实上传/处理/检索和 local/semantic/degraded/error/响应式状态，新增 Live 调用为 0。分支精确清理与默认关闭恢复通过；main `f31335c6` 的 default-off 静态、Docker/API、可见浏览器、精确清理和远程 parity 也已通过，Phase 6.9.6 已完成。
 
 1. 确认工作从已推送的最新 main 创建普通 `codex/` 分支；只有主工作目录，不从功能分支开分支，不创建非必要 worktree。
 2. 固定 `phase-6.9-knowledge-agents-v1` 的 72 个 case ID、expected 与 digest。先记录 deterministic baseline，不为满足门槛改写 expected 或删除失败 case。
@@ -806,3 +806,5 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 11. Trace 使用一个 Knowledge parent run 和两个 candidate step，provider call 只记账一次；验证 disposition、正 usage、pricing/cost 和 API 双向一致，但禁止把 aggregate API duration 与 candidate-step duration 做精确相等比较。
 12. 精确清理 synthetic user/document/chunk/object/BackgroundJob/Trace/browser storage 并断言 0；验证 SDK/Nest logger、HTTP debug、telemetry、stdout、evidence 和临时目录不含 prompt、filename/summary 正文、provider body/header、credential 或 raw error。外部 provider retention 必须在启用前文档化，不得声称本地清理删除了 provider 日志。恢复 `AI_PROVIDER_MODE=mock`、live=false、两个 Knowledge gate=false。禁止 prune、`down -v`、volume/database reset、Redis flush 或 MinIO wipe。
 13. 独立复审无 Critical/Important 后 `--no-ff` 合并 main；在 main 重跑关键静态、Docker/API 与可见浏览器 default-off 回放，不重跑 V2 controlled-Live 或 R7，推送并确认 `origin/main...HEAD = 0 0`。
+
+完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
