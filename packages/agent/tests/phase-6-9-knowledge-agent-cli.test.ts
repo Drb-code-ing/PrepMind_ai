@@ -97,6 +97,33 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
     }
   });
 
+  test('requires the dedicated Knowledge credential instead of the generic DeepSeek key', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-6-generic-key-live-'));
+    let invocations = 0;
+    try {
+      const result = await executePhase696KnowledgeAgentCli({
+        argv: ['live'],
+        env: {
+          ...completeLiveEnv(),
+          KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '',
+          DEEPSEEK_API_KEY: 'generic-key-must-not-authorize-knowledge',
+        },
+        repositoryRoot: root,
+        liveExecutor: async () => {
+          invocations += 1;
+          throw new Error('must not invoke');
+        },
+      });
+      expect(result).toEqual({ ok: false, code: 'live_configuration_invalid' });
+      expect(invocations).toBe(0);
+      await expect(
+        access(resolve(root, '.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker')),
+      ).rejects.toBeDefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('rejects duplicate run identity across branch and main evidence', async () => {
     const branch = await runKnowledgeAgentPairedEval(createKnowledgeAgentMockHarness());
     const main = { ...branch, runScope: 'main' as const };
@@ -209,7 +236,7 @@ function completeLiveEnv(): Readonly<Record<string, string>> {
     KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
     KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
     AI_BASE_URL: 'https://api.deepseek.com/v1',
-    DEEPSEEK_API_KEY: 'synthetic-test-key',
+    KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: 'synthetic-test-key',
     KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: '4500',
     KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '4500',
   };

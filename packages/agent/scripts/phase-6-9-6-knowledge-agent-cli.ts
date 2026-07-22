@@ -187,7 +187,7 @@ function resolveLiveConfiguration(
 ):
   | Readonly<{ ok: true; apiKey: string; timeoutMs: number }>
   | Readonly<{ ok: false; code: 'live_configuration_invalid' }> {
-  const rawApiKey = env.DEEPSEEK_API_KEY ?? '';
+  const rawApiKey = env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY ?? '';
   const apiKey = rawApiKey.trim();
   const dedupTimeout = parseTimeout(env.KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS);
   const organizerTimeout = parseTimeout(env.KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS);

@@ -102,10 +102,13 @@ R4 evidence: Knowledge focused is `117/117`; Agent full tests/typecheck/lint, Ty
 
 ## Task R5: Single V2 controlled-Live
 
+- [x] Align the standalone Live CLI with Task 11 credential isolation before consuming the marker: accept only `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`, reject generic-only configuration before marker/executor, and keep `.env` unchanged.
 - [ ] Recheck clean branch, V1/V2 evidence bundle, provider retention acceptance, credential isolation, Docker volumes, and default-off gates.
 - [ ] Execute exactly one authorized `knowledge-agents-v2` branch Live run.
 - [ ] Validate the immutable report. If any fixed gate fails, preserve it, keep product gates false, and create a new versioned diagnosis; never replay V2.
 - [ ] Only if every fixed gate passes, proceed to the existing Task 13 Docker API, visible browser, precise cleanup, documentation, branch commit, `--no-ff` main merge, main default-off replay, and remote push.
+
+Authorized preflight correction evidence: the dedicated-credential test first produced `7 pass / 2 fail`; after changing the CLI from `DEEPSEEK_API_KEY` to `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`, focused is `9/9`, Agent full is `469/469`, and typecheck/lint/diff exit `0`. Generic-only input now returns `live_configuration_invalid` with no marker or executor invocation. V2 prompt/dataset/schema/budgets/pricing/timeouts/gates/evidence identity are unchanged, no provider call occurred, and the user's one-shot authorization remains available.
 
 ## Completion boundary
 

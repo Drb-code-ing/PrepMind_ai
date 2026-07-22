@@ -1,4 +1,10 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 V2 authorized-Live 零调用 preflight：用户已接受 DeepSeek 当前账号的数据保留/训练边界并授权唯一一次 V2 branch controlled-Live。执行前发现 standalone eval CLI 仍读取通用 `DEEPSEEK_API_KEY`，而 Task 11 已规定 Knowledge 必须通过独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY` 接入；若直接运行会绕过 server-only credential isolation。
+>
+> TDD 修复：新增 generic-only 拒绝测试后先得到 `7 pass / 2 fail`，证明旧 CLI 会错误接受通用 key，且新的 dedicated-only fixture 无法运行；CLI 改为只读取 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY` 后 focused `9/9`、Agent 全量 `469/469`、typecheck/lint 与 `git diff --check` 均通过。generic-only 现在固定在 marker/executor 前返回 `live_configuration_invalid`，provider invocation 为 0，V2 marker/evidence 仍不存在。
+>
+> 边界：本修复只对齐凭据入口，不修改 `knowledge-agents-v2` prompt、72-case dataset、schema、预算、价格、timeout、质量阈值、默认 gate、marker 或 evidence contract；根 `.env` 与 V1/V2 既有 evidence 均未改写。下一步沿用本次已取得的唯一 V2 授权，以进程级环境提供 dedicated credential 后执行一次 Live；marker 一旦创建即不得重跑。
+
 > 2026-07-22 — Phase 6.9.6 V2 R4 静态/Mock checkpoint：Knowledge focused `117/117`；Agent 全量命令、typecheck 与 lint 均 exit `0`；Types `39/39` + typecheck、Server Knowledge `50/50` + build、Web Knowledge `7/7` + lint 均通过。V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` 使用独立 evidence `.tmp/phase-6-9-6-knowledge-agent-branch-mock-v2.json`，覆盖 72 cases、`24/24` verified zero-call 与 `48/48` runtime；Dedup macro-F1/revision recall 和 Organizer subject/tag/collection 五项语义指标均为 `1`。
 >
 > 量化证据：P95 为 Dedup `286ms` / Organizer `348ms` / endpoint `348ms`，usage `14472/4185`，Mock estimated cost `0.068526 CNY`；strict validator 返回 `ok=true / evidenceCount=3`，V2 Mock SHA-256 为 `2dfa326018bba9912b8e8faf35b7fb9f2c41b33d7e655e4e5e8c8472ecc23958`。Mock report 仍为 `quality_gate_failed`，因为 production gate 固定只接受满足全部门槛的 DeepSeek V4 Pro Live；这不是 Mock contract 失败，也不是 V2 真实语义质量证明。
