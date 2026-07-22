@@ -77,11 +77,13 @@ R2 evidence: RED reproduced missing prompt rules, four bounded subject-authority
 - Modify `packages/agent/scripts/phase-6-9-6-knowledge-agent-cli.ts`
 - Modify matching CLI/contract/runner/validator tests
 
-- [ ] Keep V1 reports valid and immutable while making new reports identify `knowledge-agents-v2`.
-- [ ] Add only bounded diagnostics needed to distinguish raw schema validity, dynamic validation/candidate disposition, and applied-result semantics. Reject sensitive or free-form diagnostics.
-- [ ] Use a V2-specific `wx` marker; an existing V1 marker must remain untouched and must not block a separately authorized V2 run.
-- [ ] Prove a V2 marker blocks a second V2 attempt and that V1 evidence still validates.
-- [ ] Run focused CLI/validator/contract tests and commit.
+- [x] Keep V1 reports valid and immutable while making new reports identify `knowledge-agents-v2`.
+- [x] Add only bounded diagnostics needed to distinguish raw schema validity, dynamic validation/candidate disposition, and applied-result semantics. Reject sensitive or free-form diagnostics.
+- [x] Use a V2-specific `wx` marker; an existing V1 marker must remain untouched and must not block a separately authorized V2 run.
+- [x] Prove a V2 marker blocks a second V2 attempt and that V1 evidence still validates.
+- [x] Run focused CLI/validator/contract tests and commit.
+
+R3 evidence: V2 reports add only nullable `rawSchemaValid` and enum `candidateDisposition`; V1 requires those fields to remain absent. V2 uses `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED`, versioned Mock/Live filenames, and `.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker`. Focused CLI/contract/runner is `17/17`, Agent typecheck/lint exit `0`, and the two existing V1 reports still validate.
 
 ## Task R4: Static/Mock checkpoint and documentation
 

@@ -53,7 +53,13 @@ describe('phase 6.9.6 knowledge paired runner', () => {
         const result = await base.runDedup(entry);
         if (!replaced) {
           replaced = true;
-          return { ...result, canonicalSchemaSuccess: false, actualRelation: null };
+          return {
+            ...result,
+            canonicalSchemaSuccess: false,
+            rawSchemaValid: true,
+            candidateDisposition: 'fallback_schema_invalid' as const,
+            actualRelation: null,
+          };
         }
         return result;
       },
@@ -63,6 +69,13 @@ describe('phase 6.9.6 knowledge paired runner', () => {
     expect(report.metrics.invalidRuntimeCases).toBe(1);
     expect(report.safety.canonicalSchemaSuccesses).toBe(47);
     expect(report.gate).toBe('quality_gate_failed');
+    expect(
+      report.caseEntries.find((entry) => entry.caseId === 'dedup-runtime-01'),
+    ).toMatchObject({
+      rawSchemaValid: true,
+      candidateDisposition: 'fallback_schema_invalid',
+      canonicalSchemaSuccess: false,
+    });
   });
 
   test('drives the real candidate contracts with a no-network Live executor', async () => {

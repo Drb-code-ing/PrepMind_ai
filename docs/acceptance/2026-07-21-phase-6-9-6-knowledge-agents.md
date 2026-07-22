@@ -1,10 +1,10 @@
-# Phase 6.9.6 Knowledge Agents Branch Checkpoint
+# Phase 6.9.6 Knowledge Agents Branch Checkpoint and V1 Live Verdict
 
 ## 结论
 
-Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint 已完成。`KnowledgeDedupAgent` / `KnowledgeOrganizerAgent` 的 72-case deterministic/Mock 合同、分支级测试、类型、lint、build 与 strict evidence validator 均通过；本检查点没有调用真实模型，也没有执行 Docker API 或可见浏览器产品验收。
+Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint 已完成。随后经用户明确授权执行了唯一一次 `knowledge-agents-v1` controlled-Live：工程、安全、延迟、usage 与费用门通过，但 Dedup/Organizer 语义质量未达到固定阈值，最终不可变结论为 `quality_gate_failed`。
 
-当前仍不是 Phase 6.9.6 最终完成态。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；Task 13 必须在用户重新明确授权一次 controlled-Live 后才可开始。
+当前仍不是 Phase 6.9.6 最终完成态。`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false` 与 `KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false` 继续是生产默认值；V1 不得重跑，Docker API 与可见浏览器产品验收尚未开始。当前按独立 V2 remediation 完成静态/Mock 后，再申请一次新的 V2 Live 授权。
 
 ## 范围与仓库状态
 
@@ -13,6 +13,27 @@ Phase 6.9.6 Task 12 的分支静态与 Mock checkpoint 已完成。`KnowledgeDed
 - Task 12 起点：`180fa15 docs(agent): operate knowledge semantic agents`
 - 与 `origin/main` 的起点关系：behind `0` / ahead `13`
 - 本检查点只覆盖静态、Mock、文档与兼容性测试修复；不覆盖真实 provider、Docker API、可见 `/knowledge`、合成账户/资料、main 合并或远程推送。
+
+以上范围描述是 Task 12 当时的 checkpoint 边界；2026-07-22 的 V1 controlled-Live 增量证据见下节，Docker/API/浏览器/main 边界仍未改变。
+
+## 2026-07-22 V1 controlled-Live 增量结论
+
+- run ID：`35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd`
+- prompt：`knowledge-agents-v1`
+- evidence：`.tmp/phase-6-9-6-knowledge-agent-branch-live-35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd.json`
+- counts：72 cases / 24 zero-call / 48 runtime / 24 paired requests
+- safety：critical / permission / mutation / broader fallback 全部为 0
+- canonical schema success：41 / 48；7 个无效 runtime 均为 Dedup `07..11, 13, 16`
+- Dedup：macro-F1 `0.6807692307692308`，revision recall `0`
+- Organizer：subject top-1 `0.75`，tag micro-F1 `0.619718309859155`，collection pairwise-F1 `1`
+- latency P95：Dedup `1420ms` / Organizer `2066ms` / endpoint `2068.2995ms`
+- verified usage：input `22882` / output `3993`
+- cost：`0.092604 CNY`
+- gate：`quality_gate_failed`
+- evidence SHA-256：`9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923`
+- marker SHA-256：`228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`
+
+V1 evidence 没有保存 provider 原始 evidenceCodes，因此只能证明 7 个条目 raw relation 可解析但 candidate 未应用，不能追写具体 provider 数组。源码诊断同时发现：V1 prompt 未列 relation/evidence 关联矩阵；eval projection 把 revision 时间错误压成 `same_time`；Organizer prompt 缺少 subject/topic 精度边界，且 evaluator 计入了产品 merger 不会应用的第二 topic label。V2 R1--R3 已分别修复这些合同并增加布尔/枚举诊断；没有放宽任何安全或质量阈值。
 
 ## Focused 验收
 
@@ -90,6 +111,8 @@ Mock 的 `quality_gate_failed` 是固定生产门设计：`computeKnowledgeGate(
 
 ## 权限、运行与清理边界
 
+以下前四项是 Task 12 checkpoint 当时的历史事实；V1 Live 之后以本节末尾的增量说明为当前状态。
+
 - 没有读取或打印 `.env` 中的 API key，没有调用 DeepSeek、Qwen embedding 或其它真实 provider。
 - 没有设置 `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`，没有启用两个 Knowledge gate。
 - 没有执行 Docker API/worker/web/admin 或可见浏览器产品验收；仅恢复既有 PostgreSQL service 以完成全量 Server integration gate。
@@ -97,12 +120,16 @@ Mock 的 `quality_gate_failed` 是固定生产门设计：`computeKnowledgeGate(
 - 没有执行 `docker compose down -v`、Docker prune、volume/database reset、Redis flush 或 MinIO wipe；既有 Docker 数据卷保持不变。
 - Agent 仍是只读 adviser：不自动删除、替换、合并、改名、分类或持久化标签/集合，真实 ID、权限、事实、schema、预算、价格与写入边界继续由本地代码权威控制。
 
+V1 增量：真实 DeepSeek 调用只发生于独立 CLI 合成评测，没有创建账号、Document、Chunk、MinIO object、BackgroundJob、Agent Trace 或浏览器 storage，因此没有业务对象可清理；没有启动 Docker 产品验收，也没有执行任何破坏性 Docker/数据库/Redis/MinIO 操作。根 `.env` 的 key 值没有打印、写入 evidence、文档或 Git。两个产品 gate 和全局运行配置保持 default-off。
+
 ## 阶段判定与下一步
 
 - Task 12：分支静态/Mock checkpoint 已完成。
 - Phase 6.9.6：未完成。
 - production gate：保持 `false / false`。
-- 下一步：获得用户一次新的明确授权后，按 Task 13 仅执行一次 branch controlled-Live；随后才允许 Docker API、可见 `/knowledge`、精确合成数据清理、独立复审、分支提交、`--no-ff` 合并 main、main default-off 回放与远程推送。
+- V1 controlled-Live：已完成一次，结论失败且不可重跑。
+- V2 R1--R3：已完成代码/合同修复，尚未调用 provider。
+- 下一步：先完成 V2 全量静态/Mock checkpoint；再由用户明确设置 `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED=true` 授权唯一一次 V2 Live。只有 V2 全部门通过后，才允许 Docker API、可见 `/knowledge`、精确清理、独立复审、分支提交、`--no-ff` 合并 main、main default-off 回放与远程推送。
 
 ## 回顾时可以问
 

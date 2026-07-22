@@ -21,11 +21,41 @@ describe('phase 6.9.6 knowledge paired report contract', () => {
       pairedRequests: 24,
     });
     expect(parsed.datasetVersion).toBe('phase-6.9-knowledge-agents-v1');
-    expect(parsed.promptVersion).toBe('knowledge-agents-v1');
+    expect(parsed.promptVersion).toBe('knowledge-agents-v2');
     expect(parsed.projectionVersion).toBe('knowledge-model-projection-v1');
     expect(parsed.shortlistVersion).toBe('knowledge-semantic-shortlist-v1');
     expect(parsed.runScope).toBe('branch');
     expect(parsed.runId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(
+      parsed.caseEntries
+        .filter((entry) => entry.executionKind === 'runtime')
+        .every(
+          (entry) =>
+            entry.rawSchemaValid === true && entry.candidateDisposition === 'candidate_applied',
+        ),
+    ).toBe(true);
+    expect(
+      parsed.caseEntries
+        .filter((entry) => entry.executionKind === 'zero_call')
+        .every(
+          (entry) => entry.rawSchemaValid === null && entry.candidateDisposition === null,
+        ),
+    ).toBe(true);
+  });
+
+  test('continues to validate legacy V1 evidence without retrofitted diagnostics', async () => {
+    const report = await runKnowledgeAgentPairedEval(createKnowledgeAgentMockHarness());
+    const caseEntries = report.caseEntries.map((entry) => {
+      const { rawSchemaValid: _raw, candidateDisposition: _disposition, ...legacy } = entry;
+      return legacy;
+    });
+    const legacy = {
+      ...report,
+      promptVersion: 'knowledge-agents-v1',
+      caseEntries,
+    };
+
+    expect(PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA.safeParse(legacy).success).toBe(true);
   });
 
   test('rejects duplicate, missing, extra, or mismatched paired cases', async () => {

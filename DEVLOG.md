@@ -1,4 +1,10 @@
 # PrepMind AI 开发日志
+> 2026-07-22 — Phase 6.9.6 V2 R3 evidence/one-shot：current report identity 升级为 `knowledge-agents-v2`，但 validator 继续严格接受没有新字段的历史 V1 report。V2 runtime entry 只新增 `rawSchemaValid: boolean` 与枚举 `candidateDisposition`，zero-call 固定为 `null/null`；因此下一次若失败，可以区分原始 schema、动态 candidate 拒绝与已应用语义，同时仍不保存 prompt、provider response、raw error 或自由文本。
+>
+> 一次性边界：旧 `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED` 不再授权 V2，必须使用新的 `PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED=true`。V2 Mock/Live 使用独立文件名和 `.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker`；测试证明现有 V1 marker 不阻塞一次新授权的 V2，而第二次 V2 被 `live_already_attempted` 拒绝。focused CLI/contract/runner `17/17`、Agent typecheck/lint exit `0`，当前 V1 evidence bundle 仍为 `ok=true / evidenceCount=2`。
+>
+> V1 live evidence SHA-256 为 `9d56d4b474065b7476feb16a0509b755c032c6a346d63a894fe91b4b18f74923`，V1 marker SHA-256 为 `228016fcd52ca2dc411e2d9e96c12d18d01aa63e87a8c8ef1605c1e973b0b246`；两者未被修改。下一步是 R4 全量静态/Mock checkpoint，不会调用 provider。回顾时可以问：为什么新版本必须使用新授权变量和新 marker？为什么 V2 诊断只记录布尔/枚举而不记录 provider 原文？
+
 > 2026-07-22 — Phase 6.9.6 V2 R2 Organizer 精度：V1 的 collection pair 已全对，实际缺口是 subject taxonomy 与 raw extra-topic scoring。V2 prompt 现在明确 math/english/politics/computer/major/other 边界，要求每份资料只给一个完整、来源可证的 topic phrase，并禁止“核心概念/复习重点/补充/课程/资料”等泛标签冒充 topic。
 >
 > 混合权威：模型仍负责语义分类和集合关系；本地只在安全 projection 中出现高置信学科词时纠正过宽 subject，不接收模型生成的 ID、写操作或权限。评测 topic 现在与产品 merger 一致，只计 subject/resource 之后实际会应用的首个 topic label；不会掩盖 subject、collection、schema 或安全错误。RED 复现 prompt 缺失、四类 subject 偏差和 raw extras 导致的 `semanticScore=0.95`，GREEN 为相关 `20/20`、Agent typecheck/lint exit `0`。

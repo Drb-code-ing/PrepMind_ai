@@ -11,6 +11,7 @@ import {
   runKnowledgeAgentPairedEval,
 } from '../src/evals/run-phase-6-9-knowledge-agent-paired.ts';
 import type { KnowledgeAgentPairedReport } from '../src/evals/phase-6-9-knowledge-agent-paired-contract.ts';
+import { PHASE_6_9_KNOWLEDGE_PROMPT_VERSION } from '../src/evals/phase-6-9-knowledge-agent-paired-contract.ts';
 
 const SENSITIVE_EVIDENCE_KEY =
   /prompt|filename|summary|chunk|embedding|provider.*(?:body|header|response)|credential|api.?key|raw.*error/i;
@@ -59,7 +60,7 @@ export function parsePhase696KnowledgeAgentCli(input: {
   if (runScope === null) return { ok: false, code: 'cli_invalid' };
   if (
     mode === 'live' &&
-    input.env.PHASE_6_9_6_CONTROLLED_LIVE_APPROVED !== 'true'
+    input.env.PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED !== 'true'
   ) {
     return { ok: false, code: 'live_authorization_required' };
   }
@@ -123,7 +124,10 @@ export async function executePhase696KnowledgeAgentCli(input: {
       runScope: parsed.runScope,
       timeoutMs: live.timeoutMs,
     });
-    const markerPath = resolve(root, '.tmp/phase-6-9-6-controlled-live.marker');
+    const markerPath = resolve(
+      root,
+      `.tmp/phase-6-9-6-${PHASE_6_9_KNOWLEDGE_PROMPT_VERSION}-controlled-live.marker`,
+    );
     await mkdir(dirname(markerPath), { recursive: true });
     try {
       await writeFile(markerPath, `${harness.runId}\n`, {
@@ -140,8 +144,8 @@ export async function executePhase696KnowledgeAgentCli(input: {
   }
   const evidencePath =
     parsed.mode === 'mock'
-      ? `.tmp/phase-6-9-6-knowledge-agent-${parsed.runScope}-mock.json`
-      : `.tmp/phase-6-9-6-knowledge-agent-${parsed.runScope}-live-${report.runId}.json`;
+      ? `.tmp/phase-6-9-6-knowledge-agent-${parsed.runScope}-mock-v2.json`
+      : `.tmp/phase-6-9-6-knowledge-agent-${parsed.runScope}-live-v2-${report.runId}.json`;
   const absolutePath = resolve(root, evidencePath);
   const temporaryPath = `${absolutePath}.tmp-${process.pid}`;
   await mkdir(dirname(absolutePath), { recursive: true });

@@ -10,8 +10,10 @@ import {
   nearestRankP95,
 } from './phase-6-9-knowledge-agent-metrics.ts';
 import { KNOWLEDGE_MODEL_PROJECTION_VERSION } from '../model-candidates/knowledge-model-projection.ts';
+import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 
-export const PHASE_6_9_KNOWLEDGE_PROMPT_VERSION = 'knowledge-agents-v1' as const;
+export const PHASE_6_9_KNOWLEDGE_PROMPT_VERSION_V1 = 'knowledge-agents-v1' as const;
+export const PHASE_6_9_KNOWLEDGE_PROMPT_VERSION = 'knowledge-agents-v2' as const;
 export const PHASE_6_9_KNOWLEDGE_SHORTLIST_VERSION =
   'knowledge-semantic-shortlist-v1' as const;
 export const PHASE_6_9_KNOWLEDGE_BASELINE_SEMANTIC_SCORE = 0.2322452551 as const;
@@ -36,6 +38,7 @@ const subjectSchema = z.enum([
   'other',
 ]);
 const pairSchema = z.tuple([z.string().min(1), z.string().min(1)]);
+const candidateDispositionSchema = z.enum(MODEL_CANDIDATE_DISPOSITIONS);
 
 export const KNOWLEDGE_CASE_USAGE_SCHEMA = z
   .object({
@@ -58,6 +61,8 @@ export const KNOWLEDGE_CASE_ENTRY_SCHEMA = z
     zeroCallReason: z.string().regex(/^[a-z0-9_]+$/).nullable(),
     zeroCallVerified: z.boolean(),
     canonicalSchemaSuccess: z.boolean(),
+    rawSchemaValid: z.boolean().nullable().optional(),
+    candidateDisposition: candidateDispositionSchema.nullable().optional(),
     criticalFailure: z.boolean(),
     permissionFailure: z.boolean(),
     mutationFailure: z.boolean(),
@@ -136,7 +141,10 @@ const reportBaseSchema = z
     runScope: z.enum(['branch', 'main']),
     mode: z.enum(['deterministic', 'mock', 'live']),
     datasetVersion: z.literal(PHASE_6_9_KNOWLEDGE_AGENT_DATASET_VERSION),
-    promptVersion: z.literal(PHASE_6_9_KNOWLEDGE_PROMPT_VERSION),
+    promptVersion: z.enum([
+      PHASE_6_9_KNOWLEDGE_PROMPT_VERSION_V1,
+      PHASE_6_9_KNOWLEDGE_PROMPT_VERSION,
+    ]),
     projectionVersion: z.literal(KNOWLEDGE_MODEL_PROJECTION_VERSION),
     shortlistVersion: z.literal(PHASE_6_9_KNOWLEDGE_SHORTLIST_VERSION),
     provider: z.enum(['none', 'mock', 'deepseek']),
@@ -165,10 +173,48 @@ export type KnowledgeAgentPairedReport = KnowledgeAgentPairedReportInput;
 export const PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA = reportBaseSchema.superRefine(
   (report, context) => {
     validateModeIdentity(report, context);
+    validateVersionedDiagnostics(report, context);
     validateCanonicalEntries(report, context);
     validateDerivedFields(report, context);
   },
 );
+
+function validateVersionedDiagnostics(
+  report: KnowledgeAgentPairedReportInput,
+  context: z.RefinementCtx,
+) {
+  const v2 = report.promptVersion === PHASE_6_9_KNOWLEDGE_PROMPT_VERSION;
+  for (const entry of report.caseEntries) {
+    const hasRaw = entry.rawSchemaValid !== undefined;
+    const hasDisposition = entry.candidateDisposition !== undefined;
+    if (!v2) {
+      if (hasRaw || hasDisposition) {
+        addIssue(context, `V1 diagnostics must remain absent: ${entry.caseId}`);
+      }
+      continue;
+    }
+    if (!hasRaw || !hasDisposition) {
+      addIssue(context, `V2 diagnostics missing: ${entry.caseId}`);
+      continue;
+    }
+    if (entry.executionKind === 'zero_call') {
+      if (entry.rawSchemaValid !== null || entry.candidateDisposition !== null) {
+        addIssue(context, `zero-call diagnostics mismatch: ${entry.caseId}`);
+      }
+      continue;
+    }
+    if (entry.rawSchemaValid === null || entry.candidateDisposition === null) {
+      addIssue(context, `runtime diagnostics mismatch: ${entry.caseId}`);
+      continue;
+    }
+    if (
+      entry.canonicalSchemaSuccess !==
+      (entry.rawSchemaValid && entry.candidateDisposition === 'candidate_applied')
+    ) {
+      addIssue(context, `candidate application diagnostics mismatch: ${entry.caseId}`);
+    }
+  }
+}
 
 export function computeKnowledgeGate(
   report: KnowledgeAgentPairedReportInput,

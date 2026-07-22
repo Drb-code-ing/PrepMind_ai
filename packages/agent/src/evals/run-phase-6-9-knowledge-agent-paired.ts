@@ -47,7 +47,10 @@ import {
   applyKnowledgeOrganizerLocalSubjectAuthority,
   runKnowledgeOrganizerModelCandidate,
 } from '../model-candidates/knowledge-organizer-model-candidate.ts';
-import type { ModelCandidateObservation } from '../model-candidates/model-candidate-policy.ts';
+import type {
+  ModelCandidateDisposition,
+  ModelCandidateObservation,
+} from '../model-candidates/model-candidate-policy.ts';
 
 type SafetyResult = Readonly<{
   criticalFailure: boolean;
@@ -77,6 +80,8 @@ export type KnowledgeDedupEvalResult = SafetyResult &
   Readonly<{
     runtimeInvocations: number;
     canonicalSchemaSuccess: boolean;
+    rawSchemaValid: boolean;
+    candidateDisposition: ModelCandidateDisposition;
     actualRelation: Phase69KnowledgeDedupRuntimeCase['expected']['relation'] | null;
     latencyMs: number;
     usage: KnowledgeAgentRuntimeUsage | null;
@@ -86,6 +91,8 @@ export type KnowledgeOrganizerEvalResult = SafetyResult &
   Readonly<{
     runtimeInvocations: number;
     canonicalSchemaSuccess: boolean;
+    rawSchemaValid: boolean;
+    candidateDisposition: ModelCandidateDisposition;
     actualSubject: Phase69KnowledgeOrganizerRuntimeCase['expected']['subject'] | null;
     actualTopicLabels: readonly string[];
     actualCollectionPairs: readonly (readonly [string, string])[];
@@ -125,6 +132,8 @@ export function createKnowledgeAgentMockHarness(): KnowledgeAgentEvalHarness {
         ...SAFE_RESULT,
         runtimeInvocations: 1,
         canonicalSchemaSuccess: true,
+        rawSchemaValid: true,
+        candidateDisposition: 'candidate_applied',
         actualRelation: entry.expected.relation,
         latencyMs: 220 + entry.pairedRunIndex * 3,
         usage: usage(inputTokens, outputTokens),
@@ -137,6 +146,8 @@ export function createKnowledgeAgentMockHarness(): KnowledgeAgentEvalHarness {
         ...SAFE_RESULT,
         runtimeInvocations: 1,
         canonicalSchemaSuccess: true,
+        rawSchemaValid: true,
+        candidateDisposition: 'candidate_applied',
         actualSubject: entry.expected.subject,
         actualTopicLabels: entry.expected.topicLabels,
         actualCollectionPairs: entry.expected.collectionPairs,
@@ -206,6 +217,8 @@ export function createKnowledgeAgentLiveHarness(input: {
         runtimeInvocations: captured.invocations(),
         canonicalSchemaSuccess:
           result.observation.disposition === 'candidate_applied' && decision.success,
+        rawSchemaValid: decision.success,
+        candidateDisposition: result.observation.disposition,
         actualRelation: appliedCandidate?.relation ?? null,
         latencyMs: candidateLatency(result.observation, timeoutMs),
         usage: candidateUsage(result.observation),
@@ -245,6 +258,8 @@ export function createKnowledgeAgentLiveHarness(input: {
         runtimeInvocations: captured.invocations(),
         canonicalSchemaSuccess:
           result.observation.disposition === 'candidate_applied' && decision.success,
+        rawSchemaValid: decision.success,
+        candidateDisposition: result.observation.disposition,
         actualSubject: normalized?.subject ?? null,
         actualTopicLabels: normalized?.topicLabels ?? [],
         actualCollectionPairs: normalized?.collectionPairs ?? [],
@@ -304,6 +319,8 @@ function buildZeroCallEntry(
     zeroCallVerified:
       result.runtimeInvocations === 0 && result.observedReason === entry.zeroCallReason,
     canonicalSchemaSuccess: false,
+    rawSchemaValid: null,
+    candidateDisposition: null,
     exactHashCheck: exactHash
       ? result.exactHashPreserved
         ? 'preserved'
@@ -335,6 +352,8 @@ function buildDedupEntry(
     zeroCallReason: null,
     zeroCallVerified: false,
     canonicalSchemaSuccess: result.canonicalSchemaSuccess,
+    rawSchemaValid: result.rawSchemaValid,
+    candidateDisposition: result.candidateDisposition,
     exactHashCheck: 'not_applicable',
     latencyMs: result.latencyMs,
     usage: toCaseUsage(result.usage),
@@ -362,6 +381,8 @@ function buildOrganizerEntry(
     zeroCallReason: null,
     zeroCallVerified: false,
     canonicalSchemaSuccess: result.canonicalSchemaSuccess,
+    rawSchemaValid: result.rawSchemaValid,
+    candidateDisposition: result.candidateDisposition,
     exactHashCheck: 'not_applicable',
     latencyMs: result.latencyMs,
     usage: toCaseUsage(result.usage),

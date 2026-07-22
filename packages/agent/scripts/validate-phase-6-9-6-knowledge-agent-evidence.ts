@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { hasSensitiveEvidence } from './phase-6-9-6-knowledge-agent-cli.ts';
 import { PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA } from '../src/evals/phase-6-9-knowledge-agent-paired-contract.ts';
+import { PHASE_6_9_KNOWLEDGE_PROMPT_VERSION } from '../src/evals/phase-6-9-knowledge-agent-paired-contract.ts';
 
 export type Phase696EvidenceValidation =
   | Readonly<{ ok: true }>
@@ -67,10 +68,11 @@ export function validatePhase696KnowledgeAgentEvidenceRecord(input: {
   const validation = validatePhase696KnowledgeAgentEvidenceValue(input.value);
   if (!validation.ok) return validation;
   const report = PHASE_6_9_KNOWLEDGE_AGENT_REPORT_SCHEMA.parse(input.value);
+  const v2 = report.promptVersion === PHASE_6_9_KNOWLEDGE_PROMPT_VERSION;
   const expectedName =
     report.mode === 'mock'
-      ? `phase-6-9-6-knowledge-agent-${report.runScope}-mock.json`
-      : `phase-6-9-6-knowledge-agent-${report.runScope}-${report.mode}-${report.runId}.json`;
+      ? `phase-6-9-6-knowledge-agent-${report.runScope}-mock${v2 ? '-v2' : ''}.json`
+      : `phase-6-9-6-knowledge-agent-${report.runScope}-${report.mode}${v2 ? '-v2' : ''}-${report.runId}.json`;
   return basename(input.path) === expectedName
     ? { ok: true }
     : { ok: false, code: 'evidence_filename_invalid' };
@@ -95,7 +97,7 @@ if (import.meta.main) {
   let evidenceCount = 0;
   try {
     const names = (await readdir(directory)).filter((name) =>
-      /^phase-6-9-6-knowledge-agent-(branch|main)-(mock|live(?:-[0-9a-f-]{36})?)\.json$/.test(
+      /^phase-6-9-6-knowledge-agent-(branch|main)-(mock(?:-v2)?|live(?:-v2)?-[0-9a-f-]{36})\.json$/.test(
         name,
       ),
     );

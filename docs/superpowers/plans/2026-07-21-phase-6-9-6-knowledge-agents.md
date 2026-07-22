@@ -1049,7 +1049,7 @@ git add .gitattributes AGENTS.md DEVLOG.md docs/roadmap.md docs/superpowers/plan
 git commit -m "docs(agent): checkpoint knowledge branch acceptance"
 ```
 
-- [ ] **Step 5: Stop and ask for fresh controlled-Live authorization**
+- [x] **Step 5: Stop and ask for fresh controlled-Live authorization**
 
 Do not set `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`, do not enable live/gates, and do not start Task 13 until the user explicitly authorizes one controlled-Live run.
 
@@ -1065,7 +1065,7 @@ Do not set `PHASE_6_9_6_CONTROLLED_LIVE_APPROVED=true`, do not enable live/gates
 - Modify: `docs/ai-behavior-acceptance.md`
 - Modify: `docs/acceptance-checklist.md`
 
-- [ ] **Step 1: Preflight fresh authorization, provider policy, repository, and Docker data safety**
+- [x] **Step 1: Preflight fresh authorization, provider policy, repository, and Docker data safety**
 
 ```bash
 git status --short --branch
@@ -1076,7 +1076,7 @@ bun --filter @repo/agent eval:phase-6-9-6:validate
 
 Expected: clean feature branch at the Task 12 checkpoint; Docker volumes remain present; default provider mode/gates are still mock/false/false; the account/provider retention setting is documented and accepted. If authorization or retention acceptance is missing, stop without a network call.
 
-- [ ] **Step 2: Execute the single authorized branch controlled-Live run**
+- [x] **Step 2: Execute the single authorized branch controlled-Live run**
 
 Run with environment supplied to the process only, never written to evidence:
 
@@ -1086,6 +1086,8 @@ bun --filter @repo/agent eval:phase-6-9-6:validate
 ```
 
 Expected: one report with 72 cases, 24/24 zero-call, 48/48 structured runtime successes, 24 paired endpoint samples, all fixed quality/latency/safety gates, verified positive usage, known cost `<=1.00 CNY`, and no sensitive evidence. If any gate fails, keep both production gates false, preserve the immutable report, document the exact fixed failure code, and return to a newly versioned remediation plan rather than rerunning.
+
+Actual V1 verdict (2026-07-22): run `35cef6a3-97ee-4cb3-accb-ff8fa6bd59cd` completed once and produced immutable `quality_gate_failed`. Engineering, safety, latency, usage, and cost gates passed; Dedup/Organizer semantic thresholds failed. The run was not repeated, Docker/browser acceptance did not start, and remediation moved to `2026-07-22-phase-6-9-6-knowledge-agents-live-v2-remediation.md`.
 
 - [ ] **Step 3: Run Docker API acceptance with synthetic owner data**
 

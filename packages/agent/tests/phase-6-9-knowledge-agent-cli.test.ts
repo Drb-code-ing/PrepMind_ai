@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
@@ -33,6 +33,12 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
       parsePhase696KnowledgeAgentCli({
         argv: ['live'],
         env: { PHASE_6_9_6_CONTROLLED_LIVE_APPROVED: 'true' },
+      }),
+    ).toEqual({ ok: false, code: 'live_authorization_required' });
+    expect(
+      parsePhase696KnowledgeAgentCli({
+        argv: ['live'],
+        env: { PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED: 'true' },
       }),
     ).toMatchObject({ ok: true, mode: 'live', runScope: 'branch' });
   });
@@ -74,7 +80,7 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
     try {
       const result = await executePhase696KnowledgeAgentCli({
         argv: ['live'],
-        env: { PHASE_6_9_6_CONTROLLED_LIVE_APPROVED: 'true' },
+        env: { PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED: 'true' },
         repositoryRoot: root,
         liveExecutor: async () => {
           invocations += 1;
@@ -84,7 +90,7 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
       expect(result).toEqual({ ok: false, code: 'live_configuration_invalid' });
       expect(invocations).toBe(0);
       await expect(
-        access(resolve(root, '.tmp/phase-6-9-6-controlled-live.marker')),
+        access(resolve(root, '.tmp/phase-6-9-6-knowledge-agents-v2-controlled-live.marker')),
       ).rejects.toBeDefined();
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -146,6 +152,9 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
       invocations += 1;
     });
     try {
+      const legacyMarker = resolve(root, '.tmp/phase-6-9-6-controlled-live.marker');
+      await mkdir(resolve(root, '.tmp'), { recursive: true });
+      await writeFile(legacyMarker, 'immutable-v1-run\n', { encoding: 'utf8', flag: 'wx' });
       const first = await executePhase696KnowledgeAgentCli({
         argv: ['live'],
         env: completeLiveEnv(),
@@ -166,6 +175,10 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
         'versions',
       ]);
       expect(invocations).toBe(48);
+      expect(await readFile(legacyMarker, 'utf8')).toBe('immutable-v1-run\n');
+      expect(first.evidencePath).toMatch(
+        /^\.tmp\/phase-6-9-6-knowledge-agent-branch-live-v2-[0-9a-f-]{36}\.json$/,
+      );
       const persisted = JSON.parse(
         await readFile(resolve(root, first.evidencePath), 'utf8'),
       ) as unknown;
@@ -190,7 +203,7 @@ describe('phase 6.9.6 knowledge paired CLI and evidence validator', () => {
 
 function completeLiveEnv(): Readonly<Record<string, string>> {
   return {
-    PHASE_6_9_6_CONTROLLED_LIVE_APPROVED: 'true',
+    PHASE_6_9_6_V2_CONTROLLED_LIVE_APPROVED: 'true',
     AI_PROVIDER_MODE: 'live',
     AI_ENABLE_LIVE_CALLS: 'true',
     KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true',
