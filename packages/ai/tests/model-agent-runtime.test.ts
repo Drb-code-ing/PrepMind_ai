@@ -59,6 +59,7 @@ describe('safe model agent errors', () => {
 
 describe('model agent runtime mock mode', () => {
   it.each([
+    'tutor_strategy',
     'review_suggestion',
     'planner_suggestion',
     'knowledge_dedup',

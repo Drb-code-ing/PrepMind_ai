@@ -11,21 +11,27 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'MODEL_CANDIDATE_DISPOSITIONS',
   'PLANNER_MODEL_CANDIDATE_SCHEMA',
   'REVIEW_MODEL_CANDIDATE_SCHEMA',
+  'TUTOR_MODEL_DECISION_SCHEMA',
+  'TUTOR_MODEL_PROJECTION_VERSION',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
   'isKnowledgeVerifierModelEligible',
   'isRouterModelEligible',
   'mergeKnowledgeDedupDecision',
   'mergeKnowledgeOrganizerDecision',
+  'mergeTutorModelDecision',
   'projectKnowledgeSnapshot',
+  'projectTutorModelInput',
   'runKnowledgeDedupModelCandidate',
   'runKnowledgeOrganizerModelCandidate',
   'runKnowledgeVerifierModelCandidate',
   'runPlannerModelCandidate',
   'runReviewModelCandidate',
   'runRouterModelCandidate',
+  'runTutorModelCandidate',
   'validateKnowledgeDedupModelDecision',
   'validateKnowledgeOrganizerModelDecision',
+  'validateTutorModelDecision',
 ];
 
 describe('production model candidate exports', () => {
@@ -37,6 +43,7 @@ describe('production model candidate exports', () => {
     expect(productionModelCandidates.runKnowledgeOrganizerModelCandidate).toBeFunction();
     expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
     expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runTutorModelCandidate).toBeFunction();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
       'candidate_applied',
     );

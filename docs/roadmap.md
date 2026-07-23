@@ -319,7 +319,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.6 Task 13 产品 R1--R7：R1--R6 所有失败 evidence 保留；R7 在修复镜像上通过 Dedup-only、Organizer-only、双开关、强制失败和 default-off，API/Trace/worker isolation/只读权限/zero-call guards/精确清理均通过。随后可见浏览器完成真实上传、处理、列表、Qwen 混合检索以及 local/semantic/degraded/error/响应式状态；浏览器阶段不再调用 provider。两轮独立复审无 Critical/Important。分支以 `33604040` 收尾并 `--no-ff` 合入 main `f31335c6`；main focused、Docker/API、桌面/移动端 default-off 可见回放、精确清理和远程 parity 均通过，未重跑 V2 controlled-Live 或 R7。（已完成）
 - Phase 6.9.7 Task 0：已冻结 TutorAgent / WrongQuestionOrganizerAgent 混合模型专项设计；Task 0 是设计 checkpoint，后续 Task 1--13 为 13 个原子执行/验收任务。Tutor 明确教学指令保持 zero-call，隐含/上下文/冲突意图使用受限 V4 Pro candidate；Organizer 已有 item、固定 `>=0.72` 高置信结构字段与不安全输入 zero-call，最多 12 条低置信错题共享一次模型调用。模型只返回 enum/ordinal/topic label，本地保留 TutorStrategy、JWT/owner、用户锁定名称、两阶段 Trace admission 和组织层写 command。固定评测为 72 cases（24 zero-call / 48 runtime）；两条 component-specific credential 分别只进入 web/server，Organizer timeout 为 5000ms 且 worker role 强制关闭。Task 0 未调用 provider。（已完成）
 - Phase 6.9.7 Task 1：已冻结 `phase-6.9-tutor-wrong-question-v1` / SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，共 72 cases、48 runtime、24 paired indexes、32 Organizer decisions。未修饰 policy 完整命中 `6/48`，Tutor/Organizer/combined semantic 为 `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 全为 0；Agent focused `14/14`（`514 expect()`）、full `483/483`（`5035 expect()`）、typecheck/lint 和双 CLI 字节稳定均通过。该任务没有穿过未来 candidate guard；后续 Task 2 已完成。（已完成）
-- Phase 6.9.7 Task 2：Tutor 输出禁止 `answer_direct`，Organizer 只接受完整 `q0..q11` / `d0..d19` 关联、固定 enum 与安全 topic label；两条路径均使用 descriptor-only 有界 clone、完整字段先扫描、safety metadata、裁剪/ordinal/token 重验与 deep freeze，公开投影不含真实 ID/完整答案/写能力。复审发现并修复既有 Knowledge projection 的超大稀疏数组预解析、空 summary 和末尾高位 surrogate 边界；Task 2 `19/19`、共享 safety focused `25/25`、Agent full `502/502`、typecheck/lint 均通过，两路复审无 Critical/Important。未创建 executor、读取 key、调用 provider 或启动 Docker；下一步 Task 3 Tutor candidate + local merger。（已完成）
+- Phase 6.9.7 Task 2：Tutor 输出禁止 `answer_direct`，Organizer 只接受完整 `q0..q11` / `d0..d19` 关联、固定 enum 与安全 topic label；两条路径均使用 descriptor-only 有界 clone、完整字段先扫描、safety metadata、裁剪/ordinal/token 重验与 deep freeze，公开投影不含真实 ID/完整答案/写能力。复审发现并修复既有 Knowledge projection 的超大稀疏数组预解析、空 summary 和末尾高位 surrogate 边界；Task 2 `19/19`、共享 safety focused `25/25`、Agent full `502/502`、typecheck/lint 均通过，两路复审无 Critical/Important。未创建 executor、读取 key、调用 provider 或启动 Docker；后续 Task 3 已完成。（已完成）
+- Phase 6.9.7 Task 3：Tutor candidate 复用本地 signal detector，五类明确教学指令、非 Tutor route、空/不安全/abort/预算失败保持 provider 前零调用；隐含、上下文、冲突和有 active context 的 general follow-up 最多一次 `tutor_strategy` 调用。预算固定 `1/1200/300`，strict runtime/schema/evidence/usage/depth 通过后，本地重建 booleans、answerStructure、prompt/debug，`answer_direct` 与 route/context 权限不交给模型。focused `16/16`（含冻结 12+24 eligibility）、Agent `518/518`、AI `193/193`、typecheck/lint 和两路复审通过；只使用 Mock/注入式无网络 runtime，未读取 key、调用 provider、启动 Docker/浏览器或接入产品。下一步 Task 4 WrongQuestionOrganizer candidate + local merger。（已完成）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -327,11 +328,11 @@ Phase 5.6 已完成知识库页面体验打磨：
 
 回顾时可以问：
 
-- “普通 `json_object` 与 DeepSeek Beta strict tool 分别保证什么？”
-- “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
-- “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
+- “为什么 TutorAgent 不是最终回答模型，Task 3 完成后 Chat 也还没有启用 Tutor 模型？”
+- “为什么明确教学指令保持 zero-call，只有隐含、上下文或冲突意图才调用 candidate？”
+- “为什么 candidate 先预检预算，而共享 runtime 仍要做唯一权威 reservation？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 3：按冻结设计实现 Tutor candidate eligibility 与本地权威 merger；明确教学指令保持 provider 前 zero-call，不读取密钥、不调用真实 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 4：按冻结设计实现 WrongQuestionOrganizer candidate 与本地 merger；保持 owner/真实 ID/写权限本地权威，不读取密钥、不调用真实 provider。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

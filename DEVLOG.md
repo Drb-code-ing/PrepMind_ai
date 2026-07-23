@@ -1,9 +1,15 @@
 # PrepMind AI 开发日志
+> 2026-07-23 — Phase 6.9.7 Task 3 Tutor governed model candidate：先加入 `tutor-model-candidate.test.ts`，确认 candidate 模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`。随后把 Tutor 强信号检测提取为 `detectTutorSignals()` 并由现有 deterministic policy 与 candidate 共用；五类明确教学指令、非 Tutor route、空输入、不安全/hostile 字段、abort 与预算不足保持 runtime 前零调用，只有隐含、上下文、真正冲突或带 active context 的 `general_follow_up` 才进入一次受治理调用。
+>
+> 新增 `ModelAgentTask=tutor_strategy` 与 `1 call / 1200 input / 300 output` 预算。candidate 先做不可变 admission preview，共享 runtime 对 caller snapshot 做唯一权威 reservation；结果继续经过 runtime sanitizer、strict schema、intent/evidence 动态关联和本地 depth compatibility。merger 重新构建 guiding/final/context booleans、有序 answer structure、固定 prompt/debug，`socratic_hint` 不含 final answer，`answer_direct` 既不能由模型输出，也不能通过公共 merger 改写。pre/post runtime abort、timeout、畸形 usage、schema/runtime throw 都回退原 deterministic strategy，observation 不含用户文本、active context、prompt 或 credential。
+>
+> RED/GREEN 后 focused `16/16 / 169 expect()`，其中冻结 12 条 zero-call 全部 runtime=0、24 条 runtime 全部恰好调用一次并命中 canonical local strategy；Agent full `518/518 / 5306 expect()`，AI full `193/193 / 1018 expect()`，Agent/AI typecheck/lint exit 0。两路独立复审最终无 Critical/Important；预算复核确认传 caller snapshot 是为了避免 runtime 双预留。仅使用 Mock/注入式无网络 runtime，没有读取 `.env`/key、调用真实 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`。Task 3 只是 package candidate，不代表 Chat 产品已启用模型；下一任务是 Task 4 WrongQuestionOrganizer candidate 与本地 merger。回顾时可以问：为什么明确教学指令 zero-call？为什么 `answer_direct` 需要 schema 与 merger 双重禁止？为什么 package candidate 完成仍不能声称产品已可用？
+
 > 2026-07-23 — Phase 6.9.7 Task 2 strict contract / full-field safety projection：先加入 Tutor contract/projection 与 WrongQuestionOrganizer contract/projection 四份测试，确认生产文件缺失时 RED 为 `0 pass / 4 fail / 4 module-not-found errors`。随后实现两套 strict Zod schema 与独立动态关联 validator：Tutor 模型不能选择 `answer_direct`；Organizer 必须为每个投影 question 恰好返回一次决定，只能引用受限 question/deck ordinal、subject/action/confidence/evidence enum 与安全 topic label，重复/越界、跨 subject、部分 batch、本地 subject 权威冲突和危险 label 全批拒绝。
 >
 > 两条 projection 都先做普通自有属性 descriptor clone，再完整扫描、合并 safety metadata、裁剪、分配 ordinal、重验输入预算并深冻结。Tutor 只暴露有界 latest/context、deterministic intent/depth 和固定 ambiguity codes；Organizer 扫描 subject/category/knowledge point/error type/question/analysis/answer/userNote 与全部 deck name/keyword，但只暴露 `q0..q11` / `d0..d19`、有界摘要和安全结构字段。公开 projection 不含 UUID/owner/图片 URL/完整 answer/userNote/写能力；真实 ID map 只留在 candidate/merger 内部。
 >
-> 独立质量复审发现既有 Knowledge projection 在 Zod 上限前可能按超大稀疏数组工作，且空 summary 可形成无证据投影。统一有界 clone 后固定 `array<=256 / keys<=512 / nodes<=4096 / depth<=8`，Knowledge 改为至少一条 summary，并补超大数组、空 summary 与末尾高位 surrogate 回归。Task 2 focused `19/19`；含 Knowledge safety 为 `25/25 / 103 expect()`；Agent full `502/502 / 5126 expect()`，typecheck/lint exit 0。两路独立复审最终无 Critical/Important。没有读取 `.env`/key、创建 executor、调用 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；下一任务 Task 3 是 Tutor candidate eligibility 与本地权威 merger。回顾时可以问：为什么 schema strict 之后仍需要动态 ordinal/subject validator？为什么完整 answer 不投影却仍必须扫描？
+> 独立质量复审发现既有 Knowledge projection 在 Zod 上限前可能按超大稀疏数组工作，且空 summary 可形成无证据投影。统一有界 clone 后固定 `array<=256 / keys<=512 / nodes<=4096 / depth<=8`，Knowledge 改为至少一条 summary，并补超大数组、空 summary 与末尾高位 surrogate 回归。Task 2 focused `19/19`；含 Knowledge safety 为 `25/25 / 103 expect()`；Agent full `502/502 / 5126 expect()`，typecheck/lint exit 0。两路独立复审最终无 Critical/Important。没有读取 `.env`/key、创建 executor、调用 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；该检查点当时的下一任务是 Task 3 Tutor candidate eligibility 与本地权威 merger，现已完成。回顾时可以问：为什么 schema strict 之后仍需要动态 ordinal/subject validator？为什么完整 answer 不投影却仍必须扫描？
 
 > 2026-07-23 — Phase 6.9.7 Task 1 deterministic baseline：先新增 cases/metrics/baseline 三份测试并确认 RED 为 `0 pass / 3 fail / 3 module-not-found errors`，随后实现纯合成 dataset、可复算专项 metrics、未修饰 baseline runner、稳定 JSON CLI 与 package script。dataset `phase-6.9-tutor-wrong-question-v1` / SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e` 固定为 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime，24 paired indexes，Organizer index `0..19` 各 1 条、`20..23` 各 3 条，共 32 decision units。
 >
@@ -242,9 +248,9 @@
 
 ## 当前快照
 
-更新时间：2026-07-22
+更新时间：2026-07-23
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收、main `f31335c6` default-off 回放、精确清理和远程推送全部完成；R1--R6 历史继续保留。下一阶段是 Phase 6.9.7。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--3 已完成，Tutor package candidate/merger 尚未接入 Web product composition；下一任务是 Task 4 WrongQuestionOrganizer candidate。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -277,6 +283,10 @@
 | Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
 | Phase 6.9.6 V2 Live | 已完成 | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑 |
 | Phase 6.9.6 Task 13 | 已完成 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审保持不可变；main default-off 回放、零残留和 push 已通过 |
+| Phase 6.9.7 Task 0 | 已完成 | Tutor/Organizer 混合模型专项设计、权限/预算/72-case/生产验收路线冻结；无 provider |
+| Phase 6.9.7 Task 1 | 已完成 | 72-case/32-decision baseline：`6/48`、Tutor `0.4418666667`、Organizer `0.278125`；无 provider |
+| Phase 6.9.7 Task 2 | 已完成 | strict contract、动态关联、完整字段扫描、ordinal-only 投影与 descriptor clone hardening；无 provider |
+| Phase 6.9.7 Task 3 | 已完成 | Tutor governed candidate、冻结 12+24 eligibility、`1/1200/300`、strict runtime 与 local merger；仅无网络 Mock，未接产品 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

@@ -19,6 +19,7 @@ export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
 export * from './model-candidates/tutor-model-contract.ts';
 export * from './model-candidates/tutor-model-projection.ts';
+export * from './model-candidates/tutor-model-candidate.ts';
 export * from './model-candidates/wrong-question-organizer-model-contract.ts';
 export * from './model-candidates/wrong-question-organizer-model-projection.ts';
 export {

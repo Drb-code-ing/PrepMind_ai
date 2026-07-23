@@ -19,6 +19,25 @@ export {
   type ReviewModelCandidateInput,
 } from './review-planner-model-candidate.ts';
 export {
+  TUTOR_MODEL_DECISION_SCHEMA,
+  validateTutorModelDecision,
+  type TutorModelDecision,
+} from './tutor-model-contract.ts';
+export {
+  TUTOR_MODEL_PROJECTION_VERSION,
+  projectTutorModelInput,
+  type TutorModelProjection,
+  type TutorModelProjectionReasonCode,
+  type TutorModelProjectionResult,
+} from './tutor-model-projection.ts';
+export {
+  mergeTutorModelDecision,
+  runTutorModelCandidate,
+  type TutorModelCandidateEnvelope,
+  type TutorModelCandidateInput,
+  type TutorModelCandidateReasonCode,
+} from './tutor-model-candidate.ts';
+export {
   MODEL_CANDIDATE_DISPOSITIONS,
   type ModelCandidateDisposition,
   type ModelCandidateObservation,

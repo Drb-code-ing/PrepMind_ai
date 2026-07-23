@@ -57,7 +57,7 @@
 
 ## Task 1：冻结 72-case 数据集、专项指标和 deterministic baseline
 
-**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2 也已完成，当前下一任务为 Task 3。
+**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2/3 也已完成，当前下一任务为 Task 4。
 
 **文件：**
 
@@ -87,7 +87,7 @@
 
 ## Task 2：建立 strict output contract 与完整字段安全投影
 
-**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；下一任务为 Task 3。
+**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；后续 Task 3 已完成，当前下一任务为 Task 4。
 
 **文件：**
 
@@ -110,6 +110,8 @@
 
 ## Task 3：实现 Tutor candidate eligibility 与本地权威 merger
 
+**状态：已完成。** Tutor focused `16/16`（含冻结 12 zero-call + 24 runtime eligibility 全量回放），Agent full `518/518`，AI full `193/193`，Agent/AI typecheck/lint exit 0；两路独立复审最终无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；下一任务为 Task 4。
+
 **文件：**
 
 - `packages/agent/src/model-candidates/tutor-model-candidate.ts`
@@ -126,7 +128,7 @@
 - hint 不含 final answer，active context 和 route permissions 继续本地权威；
 - envelope 只含 fixed disposition/reason、usage、duration 和 budget snapshot。
 
-**验证：** candidate focused tests、现有 Tutor tests、Agent full test/typecheck/lint、AI runtime tests、`git diff --check`。
+**验证：** [x] candidate focused tests；[x] 现有 Tutor tests；[x] Agent/AI full test/typecheck/lint；[x] Node ESM production export；[x] 两路独立复审；[x] `git diff --check`。
 
 **提交：** `feat(agent): govern tutor model candidate`
 

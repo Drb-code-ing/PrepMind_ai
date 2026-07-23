@@ -49,4 +49,4 @@ bun --cwd packages/agent lint
 - 没有实现 candidate eligibility、merger、gate/config、Trace、API/UI 或数据库写入；
 - 没有启动 Docker/浏览器，也没有创建或修改业务数据。
 
-因此 Task 2 证明的是“模型即使以后被调用，也只能看安全投影并返回受限决定”，不证明 Tutor/Organizer 已能使用真实模型。下一任务是 Task 3：Tutor candidate eligibility 与本地权威 merger，仍只使用无网络 Mock/注入式 executor。
+因此 Task 2 证明的是“模型即使以后被调用，也只能看安全投影并返回受限决定”，不证明 Tutor/Organizer 已能使用真实模型。后续 Task 3 已完成 Tutor package candidate eligibility 与本地权威 merger，证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；当前下一任务是 Task 4 WrongQuestionOrganizer candidate，仍只使用无网络 Mock/注入式 executor。

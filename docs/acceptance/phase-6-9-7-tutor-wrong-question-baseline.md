@@ -100,7 +100,7 @@ bun --cwd packages/agent test
 
 本任务没有读取根 `.env`、API key 或 provider 配置，没有创建 executor、调用真实模型、启动 Docker/浏览器或修改数据库/MinIO/Redis。两个未来 production gate 仍不存在；现有产品继续运行原 deterministic policy。
 
-后续 Task 2 已完成 strict output contract 与完整字段安全投影，证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`。下一任务是 Task 3 Tutor candidate eligibility 与本地权威 merger；仍不得读取 credential 或调用真实 provider。
+后续 Task 2 已完成 strict output contract 与完整字段安全投影，Task 3 已完成 Tutor package candidate eligibility 与本地权威 merger；证据分别见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md` 与 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`。当前下一任务是 Task 4 WrongQuestionOrganizer candidate；仍不得读取 credential 或调用真实 provider。
 
 回顾时可以问：
 

@@ -35,6 +35,28 @@ export type BuildTutorStrategyInput = {
   activeStudyContext?: string;
 };
 
+export type TutorIntentSignalMatch = Readonly<{
+  intent: TutorIntent;
+  matchedSignals: readonly string[];
+  reason: string;
+}>;
+
+export type TutorSignalDetection = Readonly<{
+  normalizedText: string;
+  selected: TutorIntentSignalMatch;
+  intentMatches: readonly TutorIntentSignalMatch[];
+}>;
+
+export type BuildTutorStrategyFromIntentInput = Readonly<{
+  intent: TutorIntent;
+  depth: TutorDepth;
+  hasActiveStudyContext: boolean;
+  debug: Readonly<{
+    reason: string;
+    matchedSignals: readonly string[];
+  }>;
+}>;
+
 type IntentRule = {
   intent: TutorIntent;
   signals: string[];
@@ -96,29 +118,48 @@ const intentRules: IntentRule[] = [
 const weakStepSignals = new Set(['this step', '这一步']);
 
 export function buildTutorStrategy(input: BuildTutorStrategyInput): TutorStrategy {
-  const text = normalizeText(input.latestUserText);
-  const match = findIntent(text);
+  const match = findIntent(input.latestUserText);
   const hasActiveStudyContext = Boolean(input.activeStudyContext?.trim());
   const intent = match.intent;
   const depth = selectDepth(intent, hasActiveStudyContext);
-  const answerStructure = selectAnswerStructure(intent, hasActiveStudyContext);
 
-  return {
+  return buildTutorStrategyFromIntent({
     intent,
     depth,
-    shouldAskGuidingQuestion: intent === 'socratic_hint' || intent === 'step_check',
-    shouldGiveFinalAnswer: intent === 'answer_direct' || intent === 'explain_solution',
-    shouldUseActiveStudyContext: hasActiveStudyContext,
-    answerStructure,
-    promptAddition: buildTutorPrompt({
-      intent,
-      depth,
-      answerStructure,
-      hasActiveStudyContext,
-    }),
+    hasActiveStudyContext,
     debug: {
       reason: match.reason,
       matchedSignals: match.matchedSignals,
+    },
+  });
+}
+
+export function buildTutorStrategyFromIntent(
+  input: BuildTutorStrategyFromIntentInput,
+): TutorStrategy {
+  const answerStructure = selectAnswerStructure(
+    input.intent,
+    input.hasActiveStudyContext,
+  );
+
+  return {
+    intent: input.intent,
+    depth: input.depth,
+    shouldAskGuidingQuestion:
+      input.intent === 'socratic_hint' || input.intent === 'step_check',
+    shouldGiveFinalAnswer:
+      input.intent === 'answer_direct' || input.intent === 'explain_solution',
+    shouldUseActiveStudyContext: input.hasActiveStudyContext,
+    answerStructure,
+    promptAddition: buildTutorPrompt({
+      intent: input.intent,
+      depth: input.depth,
+      answerStructure,
+      hasActiveStudyContext: input.hasActiveStudyContext,
+    }),
+    debug: {
+      reason: input.debug.reason,
+      matchedSignals: [...input.debug.matchedSignals],
     },
   };
 }
@@ -132,6 +173,18 @@ function findIntent(text: string): {
   matchedSignals: string[];
   reason: string;
 } {
+  const detection = detectTutorSignals(text);
+  return {
+    intent: detection.selected.intent,
+    matchedSignals: [...detection.selected.matchedSignals],
+    reason: detection.selected.reason,
+  };
+}
+
+export function detectTutorSignals(latestUserText: string): TutorSignalDetection {
+  const text = normalizeText(latestUserText);
+  const intentMatches: TutorIntentSignalMatch[] = [];
+
   for (const rule of intentRules) {
     const matchedSignals = rule.signals.filter((signal) => {
       if (
@@ -146,18 +199,24 @@ function findIntent(text: string): {
     });
 
     if (matchedSignals.length > 0) {
-      return {
+      intentMatches.push({
         intent: rule.intent,
         matchedSignals,
         reason: rule.reason,
-      };
+      });
     }
   }
 
-  return {
+  const selected = intentMatches[0] ?? {
     intent: 'general_follow_up',
     matchedSignals: [],
     reason: 'No strong tutoring intent signal was matched.',
+  };
+
+  return {
+    normalizedText: text,
+    selected,
+    intentMatches,
   };
 }
 
