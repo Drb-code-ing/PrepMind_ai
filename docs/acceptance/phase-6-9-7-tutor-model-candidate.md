@@ -72,4 +72,4 @@
 
 ## 6. 后续状态同步（不改写 Task 3 验收）
 
-Task 4 已完成 WrongQuestionOrganizer package candidate 与本地权威 merger，证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。两个 package candidate 均已完成，但 Chat/NestJS 产品 composition 和真实 provider 验收仍未完成；当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。
+Task 4 已完成 WrongQuestionOrganizer package candidate 与本地权威 merger，证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。Task 5 又完成 Tutor Web server-only default-off composition、Chat 编排与安全 Trace，证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`；该后续状态不改写本页 Task 3 的 package 验收。Tutor controlled-Live 与 Organizer NestJS composition/真实 provider 验收仍未完成；当前下一任务是 Task 6。

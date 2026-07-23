@@ -5,6 +5,7 @@ import {
   aggregateChatModelAgentObservations,
   buildChatModelAgentObservationHeaders,
   projectChatModelAgentObservation,
+  projectTutorModelAgentObservation,
 } from './chat-model-agent-observation.ts';
 
 const CANARY = 'CANARY_prompt_query_chunk_sk-secret_https_raw-error';
@@ -308,4 +309,62 @@ test('headers project both observations without leaking hostile fields', () => {
   assert.equal(headers['x-prepmind-model-agent-calls'], '1');
   assert.equal(headers['x-prepmind-model-agent-total-tokens'], '13');
   assert.equal(JSON.stringify(headers).includes(CANARY), false);
+});
+
+test('projects Tutor reason and known CNY cost without exposing raw candidate fields', () => {
+  const projected = projectTutorModelAgentObservation({
+    attempted: true,
+    disposition: 'candidate_applied',
+    reasonCodes: ['candidate_applied', 'contextual_reference'],
+    usage: { inputTokens: 240, outputTokens: 24 },
+    trace: { durationMs: 17, rawProviderOutput: CANARY },
+    latestUserText: CANARY,
+    prompt: CANARY,
+  });
+
+  assert.deepEqual(projected, {
+    attempted: true,
+    disposition: 'candidate_applied',
+    durationMs: 17,
+    inputTokens: 240,
+    outputTokens: 24,
+    reasonCode: 'contextual_reference',
+    pricingKnown: true,
+    costCny: 0.000864,
+    currency: 'CNY',
+  });
+  assert.equal(JSON.stringify(projected).includes(CANARY), false);
+});
+
+test('adds bounded Tutor headers and includes Tutor usage only in the aggregate', () => {
+  const headers = buildChatModelAgentObservationHeaders({
+    router: {
+      attempted: false,
+      disposition: 'not_eligible',
+      usage: { inputTokens: 0, outputTokens: 0 },
+    },
+    tutor: {
+      attempted: true,
+      disposition: 'candidate_applied',
+      reasonCodes: ['candidate_applied', CANARY],
+      usage: { inputTokens: 100, outputTokens: 20 },
+      trace: { durationMs: 9, rawError: CANARY },
+    },
+  });
+
+  assert.equal(headers['x-prepmind-tutor-model-attempted'], 'true');
+  assert.equal(headers['x-prepmind-tutor-model-disposition'], 'candidate_applied');
+  assert.equal(headers['x-prepmind-tutor-model-reason-code'], 'candidate_applied');
+  assert.equal(headers['x-prepmind-tutor-model-pricing-known'], 'true');
+  assert.equal(headers['x-prepmind-tutor-model-cost-cny'], '0.00042');
+  assert.equal(headers['x-prepmind-tutor-model-currency'], 'CNY');
+  assert.equal(headers['x-prepmind-model-agent-calls'], '1');
+  assert.equal(headers['x-prepmind-model-agent-input-tokens'], '100');
+  assert.equal(headers['x-prepmind-model-agent-output-tokens'], '20');
+  assert.equal(headers['x-prepmind-model-agent-total-tokens'], '120');
+  assert.equal(JSON.stringify(headers).includes(CANARY), false);
+  for (const [name, value] of Object.entries(headers)) {
+    assert.match(name, /^[a-z0-9-]{1,64}$/);
+    assert.match(value, /^[\x20-\x7e]{1,32}$/);
+  }
 });

@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--4 已完成，Tutor 与 WrongQuestionOrganizer package candidate/merger 均已落地但尚未接入产品 composition
+状态：设计冻结；Task 1--5 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 仍待 owner/write 与 NestJS composition
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -20,7 +20,7 @@ Phase 6.9.7 把两个仍是纯确定性策略的业务 Agent 升级为受治理�
 
 阶段完成后，用户可以在受控开关下真正使用模型理解隐含教学意图和低置信错题语义；默认开关关闭时仍保留现有确定性产品能力。阶段完成不代表 Phase 6.9 全部完成，也不进入 Phase 6.10 记忆系统。
 
-## 2. 当前实现事实与缺口
+## 2. Task 0 冻结时的实现事实与缺口
 
 ### 2.1 TutorAgent
 
@@ -48,6 +48,8 @@ Phase 6.9.7 把两个仍是纯确定性策略的业务 Agent 升级为受治理�
 - 关键词冲突只能靠固定优先级，不能理解用户究竟想要提示、纠错还是完整讲解；
 - 没有 Tutor 专属 candidate schema、eligibility、预算、独立 gate、usage/cost 和 paired eval；
 - Trace 目前只有 Router/Verifier 的模型 observation，没有 Tutor 模型 provenance。
+
+Task 3 已补齐 package candidate/merger；Task 5 又把它接入 Web server-only composition：固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后只注册 Tutor factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final canonical `route=tutor` 且 implicit/contextual/conflicting candidate 真正调用时构造一次；失败保留原 route 与 deterministic strategy。安全 header/Trace、request abort、Router/Verifier 预算隔离和 Docker web-only allowlist 均已完成静态/Mock 验证。production gate 仍默认关闭，尚未执行 controlled-Live、Docker API 或可见浏览器验收；专项 paired eval 仍属于 Task 9。
 
 ### 2.2 WrongQuestionOrganizerAgent
 

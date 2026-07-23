@@ -837,9 +837,9 @@ Remove-Item Env:COMPOSE_BAKE
 
 ### Docker server / web 真实模型配置补充
 
-> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`web` 不再使用根 `.env` 的 `env_file`，而是只接收明确列出的 Chat、Router、Verifier 服务端运行变量；`admin` 仍有自己的 `env_file`，但不执行 Chat provider。Review/Planner 以及 KnowledgeDedup/Organizer 的 gate 和 timeout 只进入 `server`，不进入 `web`、`worker` 或 `admin`。本节下方任何“web/admin 都使用 `env_file`”的历史表述均以本说明为准。
+> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`web` 不再使用根 `.env` 的 `env_file`，而是只接收明确列出的 Chat、Router、Verifier 与 Tutor 服务端运行变量；`admin` 仍有自己的 `env_file`，但不执行 Chat provider。Review/Planner 以及 KnowledgeDedup/Organizer 的 gate 和 timeout 只进入 `server`，不进入 `web`、`worker` 或 `admin`。本节下方任何“web/admin 都使用 `env_file`”的历史表述均以本说明为准。
 
-Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`，也不会把整个文件注入所有容器。`server` 与 `worker` 不导入整个文件，而是只接收 `environment` 中显式列出的运行变量；`web` 同样只接收明确列出的 Chat、Router、Verifier provider allowlist，根 `.env` 不是 Web 的 `env_file`；只有 `admin` 保留独立的 `env_file`，且不执行 Chat provider。Review/Planner 与 Knowledge 的 gate/timeout 都只进入 `server`；Knowledge 还使用独立的 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`，不回退到 Chat 的 `DEEPSEEK_API_KEY` 或 Review/Planner 的产品验收凭据。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
+Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`，也不会把整个文件注入所有容器。`server` 与 `worker` 不导入整个文件，而是只接收 `environment` 中显式列出的运行变量；`web` 同样只接收明确列出的 Chat、Router、Verifier 与 Tutor provider allowlist，根 `.env` 不是 Web 的 `env_file`；只有 `admin` 保留独立的 `env_file`，且不执行 Chat provider。Tutor 使用独立 `TUTOR_AGENT_DEEPSEEK_API_KEY`，不回退到通用或其它 Agent key。Review/Planner 与 Knowledge 的 gate/timeout 都只进入 `server`；Knowledge 还使用独立的 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`，不回退到 Chat 的 `DEEPSEEK_API_KEY` 或 Review/Planner 的产品验收凭据。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
 
 不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
 
@@ -859,6 +859,9 @@ ROUTER_MODEL_ENABLED=false
 KNOWLEDGE_VERIFIER_MODEL_ENABLED=false
 ROUTER_MODEL_TIMEOUT_MS=5000
 KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
+TUTOR_AGENT_MODEL_ENABLED=false
+TUTOR_AGENT_MODEL_TIMEOUT_MS=3000
+TUTOR_AGENT_DEEPSEEK_API_KEY=
 REVIEW_AGENT_MODEL_ENABLED=false
 PLANNER_AGENT_MODEL_ENABLED=false
 REVIEW_AGENT_MODEL_TIMEOUT_MS=4500
@@ -871,6 +874,14 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 ```
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
+
+### Phase 6.9.7 Tutor 模型策略配置（Task 5 静态/Mock checkpoint）
+
+Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
+
+真实 executor 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、Tutor gate=true、`AI_BASE_URL=https://api.deepseek.com/v1`、独立 key 非空、价格/timeout 已知且请求 eligibility 安全时才创建。模型固定 `deepseek-v4-pro` non-thinking JSON、无 tools/retry；单请求预算 `1 call / 1200 input / 300 output`，硬 cap `0.006 CNY`，并与 Router -> Verifier 的共享预算隔离。非 Tutor final route、明确教学指令、不安全输入、abort 或任一配置失败都保持 zero-call；运行失败保留 deterministic Tutor strategy。
+
+Task 5 尚未授权 controlled-Live，也没有执行 Docker API/可见浏览器验收。日常开发必须保持 gate=false/key 空；不要因为配置入口已经存在就把静态/Mock 接入解释为真实模型可用性结论。当前证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
@@ -897,7 +908,7 @@ controlled-Live 只允许使用合成账号和合成资料，必须先获得新�
 
 Phase 6.9.4.4 Task 8 当时只把 Router/Verifier 变量显式传入 Docker `web` runtime；`web` 不使用根 `.env` 的 `env_file`，也没有把凭据放进 build args 或 `NEXT_PUBLIC_*` 客户端变量。Review/Planner gate 与 timeout 不属于 Web allowlist，只由 `server` 消费。Phase 6.9.4.3 additional P95 `4264ms` 是当时的历史延迟 verdict，不是永久禁止 Router 模型的产品决定；后续 Task 9/10 已完成 controlled-Live、Docker、可见浏览器和 main 复验，并恢复两个 gate 默认关闭。权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这不代表 Memory、Orchestrator、其余 Agent 或 Phase 6 已完成。
 
-`/agent-trace` 的 `AI 模式` 开关只切换最终 Chat 流式回答的 Mock / Live 请求模式，不会替 Router/Verifier 打开 Agent runtime gate。仅设置 `AI_ENABLE_LIVE_CALLS=true` 时，若 `AI_PROVIDER_MODE` 仍为 `mock` 或两个组件 gate 仍为 `false`，Agent 候选路径仍不会调用真实模型。
+`/agent-trace` 的 `AI 模式` 开关只切换最终 Chat 流式回答的 Mock / Live 请求模式，不会替 Router/Verifier/Tutor 打开 Agent runtime gate。仅设置 `AI_ENABLE_LIVE_CALLS=true` 时，若 `AI_PROVIDER_MODE` 仍为 `mock` 或对应组件 gate 仍为 `false`，Agent 候选路径仍不会调用真实模型。
 
 Phase 6.9.4.4 Task 9 的受控 Docker Live 必须在未跟踪的根 `.env` 中临时同时提供完整运行条件。下面只列非敏感值；还必须通过根 `.env` 或受控 secret 注入与所选 provider 匹配的有效 key，例如 DeepSeek 使用 `DEEPSEEK_API_KEY`、OpenAI 使用 `OPENAI_API_KEY`，但不要把 key 值复制到命令、终端输出、日志或文档：
 
@@ -918,7 +929,7 @@ KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
 
-验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Knowledge credential，保留 5000/4000 与 4500/4500 timeout。Router/Verifier 属于 `web` runtime，恢复后精确重建 `web`；Review/Planner 与 Knowledge 只由 Nest `server` 消费，恢复后必须精确重建并探测 `server`，不能用重建 `web` 代替：
+验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`TUTOR_AGENT_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Tutor/Knowledge credential，保留 5000/4000、3000 与 4500/4500 timeout。Router/Verifier/Tutor 属于 `web` runtime，恢复后精确重建 `web`；Review/Planner 与 Knowledge 只由 Nest `server` 消费，恢复后必须精确重建并探测 `server`，不能用重建 `web` 代替：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web server

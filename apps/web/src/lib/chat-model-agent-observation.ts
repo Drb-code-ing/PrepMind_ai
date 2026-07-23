@@ -8,6 +8,8 @@ import {
   type ModelAgentProviderFailureCategory,
 } from '@repo/ai';
 
+import { estimateTutorRequestCostCny } from './tutor-model-pricing.ts';
+
 const MODEL_AGENT_ERROR_CODES = Object.freeze([
   'INVALID_REQUEST',
   'INVALID_RUNTIME_CONFIG',
@@ -35,6 +37,13 @@ export type SafeChatModelAgentObservation = {
   usageUnavailable?: boolean;
   errorCode?: ModelAgentErrorCode | 'UNKNOWN';
   providerFailureCategory?: ModelAgentProviderFailureCategory;
+};
+
+export type SafeTutorModelAgentObservation = SafeChatModelAgentObservation & {
+  reasonCode: TutorSafeReasonCode;
+  pricingKnown: boolean;
+  costCny?: number;
+  currency?: 'CNY';
 };
 
 export type ChatModelAgentObservationAggregate = {
@@ -81,32 +90,81 @@ export function projectChatModelAgentObservation(
   }
 }
 
+export function projectTutorModelAgentObservation(
+  value: unknown,
+): SafeTutorModelAgentObservation {
+  const projected = projectChatModelAgentObservation(value);
+  try {
+    const reasonCodes = readOwnData(value, 'reasonCodes');
+    const detailReason = toTutorSafeReasonCode(readOwnData(reasonCodes, '1'));
+    const costCny = projected.attempted
+      ? estimateTutorRequestCostCny({
+          inputTokens: projected.inputTokens,
+          outputTokens: projected.outputTokens,
+        })
+      : null;
+    return {
+      ...projected,
+      reasonCode: detailReason ?? projected.disposition,
+      pricingKnown: costCny !== null,
+      ...(costCny === null ? {} : { costCny, currency: 'CNY' as const }),
+    };
+  } catch {
+    return {
+      ...projected,
+      reasonCode: projected.disposition,
+      pricingKnown: false,
+    };
+  }
+}
+
 export function aggregateChatModelAgentObservations(
   router: unknown,
   verifier?: unknown,
+  tutor?: unknown,
 ): ChatModelAgentObservationAggregate {
   const routerObservation = projectChatModelAgentObservation(router);
   const verifierObservation =
     verifier === undefined
       ? undefined
       : projectChatModelAgentObservation(verifier);
-  return aggregateProjectedObservations(routerObservation, verifierObservation);
+  const tutorObservation =
+    tutor === undefined ? undefined : projectTutorModelAgentObservation(tutor);
+  return aggregateProjectedObservations(
+    routerObservation,
+    verifierObservation,
+    tutorObservation,
+  );
 }
 
 export function buildChatModelAgentObservationHeaders(input: {
   router: unknown;
   verifier?: unknown;
+  tutor?: unknown;
 }): Record<string, string> {
   const router = projectChatModelAgentObservation(input.router);
   const verifier =
     input.verifier === undefined
       ? undefined
       : projectChatModelAgentObservation(input.verifier);
-  const aggregate = aggregateProjectedObservations(router, verifier);
+  const tutor =
+    input.tutor === undefined
+      ? undefined
+      : projectTutorModelAgentObservation(input.tutor);
+  const aggregate = aggregateProjectedObservations(router, verifier, tutor);
 
   return {
     ...observationHeaders('router', router),
     ...observationHeaders('verifier', verifier),
+    ...(tutor === undefined
+      ? {}
+      : {
+          ...observationHeaders('tutor', tutor),
+          'x-prepmind-tutor-model-reason-code': tutor.reasonCode,
+          'x-prepmind-tutor-model-pricing-known': String(tutor.pricingKnown),
+          'x-prepmind-tutor-model-cost-cny': formatSafeCost(tutor.costCny),
+          'x-prepmind-tutor-model-currency': tutor.currency ?? 'none',
+        }),
     'x-prepmind-model-agent-calls': String(aggregate.calls),
     'x-prepmind-model-agent-input-tokens': String(aggregate.inputTokens),
     'x-prepmind-model-agent-output-tokens': String(aggregate.outputTokens),
@@ -117,17 +175,21 @@ export function buildChatModelAgentObservationHeaders(input: {
 function aggregateProjectedObservations(
   router: SafeChatModelAgentObservation,
   verifier?: SafeChatModelAgentObservation,
+  tutor?: SafeTutorModelAgentObservation,
 ): ChatModelAgentObservationAggregate {
   const inputTokens = saturatingAdd(
-    router.inputTokens,
-    verifier?.inputTokens ?? 0,
+    saturatingAdd(router.inputTokens, verifier?.inputTokens ?? 0),
+    tutor?.inputTokens ?? 0,
   );
   const outputTokens = saturatingAdd(
-    router.outputTokens,
-    verifier?.outputTokens ?? 0,
+    saturatingAdd(router.outputTokens, verifier?.outputTokens ?? 0),
+    tutor?.outputTokens ?? 0,
   );
   return {
-    calls: Number(router.attempted) + Number(verifier?.attempted === true),
+    calls:
+      Number(router.attempted) +
+      Number(verifier?.attempted === true) +
+      Number(tutor?.attempted === true),
     inputTokens,
     outputTokens,
     totalTokens: saturatingAdd(inputTokens, outputTokens),
@@ -135,7 +197,7 @@ function aggregateProjectedObservations(
 }
 
 function observationHeaders(
-  agent: 'router' | 'verifier',
+  agent: 'router' | 'verifier' | 'tutor',
   observation?: SafeChatModelAgentObservation,
 ): Record<string, string> {
   const prefix = `x-prepmind-${agent}-model`;
@@ -149,6 +211,58 @@ function observationHeaders(
     [`${prefix}-provider-failure`]:
       observation?.providerFailureCategory ?? 'none',
   };
+}
+
+const TUTOR_SAFE_REASON_CODES = Object.freeze([
+  ...MODEL_CANDIDATE_DISPOSITIONS,
+  ...MODEL_AGENT_ERROR_CODES,
+  'route_not_tutor',
+  'empty_input',
+  'no_ambiguous_learning_intent',
+  'incompatible_depth',
+  'explicit_answer_direct',
+  'explicit_socratic_hint',
+  'explicit_step_check',
+  'explicit_concept_bridge',
+  'explicit_explain_solution',
+  'contextual_reference',
+  'implicit_learning_request',
+  'implicit_hint_request',
+  'submitted_step',
+  'concept_gap',
+  'conflicting_intent_signals',
+  'general_follow_up',
+  'full_explanation_request',
+  'ambiguous_intent',
+  'invalid_input',
+  'field_too_large',
+  'credential_material',
+  'instruction_override',
+  'system_prompt_exfiltration',
+  'control_character',
+  'unsafe_metadata',
+  'no_safe_projection',
+  'answer_direct_not_model_eligible',
+  'input_budget_exceeded',
+  'schema_invalid',
+  'invalid_evidence_association',
+] as const);
+
+export type TutorSafeReasonCode = (typeof TUTOR_SAFE_REASON_CODES)[number];
+
+export function isTutorSafeReasonCode(value: unknown): value is TutorSafeReasonCode {
+  return typeof value === 'string' &&
+    (TUTOR_SAFE_REASON_CODES as readonly string[]).includes(value);
+}
+
+function toTutorSafeReasonCode(value: unknown): TutorSafeReasonCode | undefined {
+  return isTutorSafeReasonCode(value) ? value : undefined;
+}
+
+function formatSafeCost(value: number | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value.toFixed(12).replace(/0+$/u, '').replace(/\.$/u, '')
+    : '0';
 }
 
 type OwnDataState =

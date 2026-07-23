@@ -14,6 +14,7 @@ import type {
   ChatContextMessage,
 } from './chat-context.ts';
 import type { ChatModelAgentRuntimeBundle } from './chat-model-agent-runtime.ts';
+import type { TutorModelRuntimeBundle } from './tutor-model-runtime.ts';
 
 export type ChatVerifierModelContext = {
   enabled: boolean;
@@ -30,6 +31,8 @@ export type ChatModelAgentOrchestrationResult = {
 
 export async function orchestrateChatModelAgents(input: {
   bundle: ChatModelAgentRuntimeBundle;
+  tutorBundle?: TutorModelRuntimeBundle;
+  createTutorBundle?: () => TutorModelRuntimeBundle;
   messages: ChatContextMessage[];
   activeContext: ActiveStudyContext | null;
   runId: string;
@@ -37,6 +40,7 @@ export async function orchestrateChatModelAgents(input: {
   signal: AbortSignal;
 }): Promise<ChatModelAgentOrchestrationResult> {
   const budget = input.bundle.createBudget();
+  const tutorBudget = input.tutorBundle?.createBudget();
   const agentExecution = await buildChatAgentExecution({
     messages: input.messages,
     activeContext: input.activeContext,
@@ -48,6 +52,27 @@ export async function orchestrateChatModelAgents(input: {
       runtime: input.bundle.routerRuntime,
       budget,
     },
+    ...(input.tutorBundle && tutorBudget
+      ? {
+          tutorModel: {
+            enabled: input.tutorBundle.enabled,
+            runtime: input.tutorBundle.runtime,
+            budget: tutorBudget,
+          },
+        }
+      : {}),
+    ...(!input.tutorBundle && input.createTutorBundle
+      ? {
+          tutorModelFactory: () => {
+            const bundle = input.createTutorBundle!();
+            return {
+              enabled: bundle.enabled,
+              runtime: bundle.runtime,
+              budget: bundle.createBudget(),
+            };
+          },
+        }
+      : {}),
   });
 
   return {

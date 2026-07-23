@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--4 已完成，Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 都已落地；两条产品 composition 和真实 provider 验收仍未完成，下一步是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。本阶段仍未读取 credential 或调用真实 provider。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--5 已完成：Tutor package candidate 已接入 Web server-only default-off composition、Chat 编排与安全 Trace；WrongQuestionOrganizer package candidate 已完成但 NestJS owner/write composition 尚未开始。两条真实 provider 验收都尚未执行，下一步是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command。本阶段仍未读取根 `.env`/credential 或调用真实 provider。
 
 ## 当前状态
 
@@ -76,13 +76,13 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 - RAG 可信度评估：Phase 6.3 `KnowledgeVerifierAgent` 已接入 Chat RAG，命中资料后评估 `trusted / suspicious / conflict / insufficient / skipped`，资料片段只作为回答参考，不作为绝对真理。
 - Agent Runtime：`@repo/agent` 已提供 Agent state、ActionProposal contract、RouterAgent、阈值触发 guard、运行 recorder、graph descriptor 和降级链路。
 - Router Chat：`/api/chat` 已接入 RouterAgent，响应头会暴露 Agent route、confidence 和是否需要 RAG；现有流式输出、RAG、OCR 上下文、mock/live 双开关和 token 预算保持不变。
-- TutorAgent：Tutor 路线当前会根据用户输入生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 讲题策略，并把短策略 prompt 注入现有 Chat prompt。Task 3 已在 package 层实现受治理 candidate：五类明确教学指令继续 deterministic zero-call，隐含、上下文指代或冲突意图才允许一次 `1/1200/300` Mock/runtime 调用，最终 booleans、answer structure、prompt、context 使用与 `answer_direct` 权限由本地 merger 重建。冻结 12 zero-call + 24 runtime eligibility 已全量通过；candidate 尚未接入 Web product composition，也没有调用真实 provider。Task 1 未修饰 baseline 的 Tutor semantic 仍为 `0.4418666667`，不能被 Mock contract 改写。
+- TutorAgent：Tutor 路线会根据用户输入生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 讲题策略，并把短策略 prompt 注入现有 Chat prompt。Task 3 已在 package 层实现受治理 candidate；Task 5 已将其接入 Web server-only default-off composition：五类明确教学指令继续 deterministic zero-call，final route 为 Tutor 且属于隐含、上下文或冲突意图时才允许一次 `1/1200/300` 调用。非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential；Live executor/runtime 只在 candidate 真正调用时惰性构造一次。runtime 固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `TUTOR_AGENT_DEEPSEEK_API_KEY` 与 `0.006 CNY` cap；最终 booleans、answer structure、prompt、context 使用与 `answer_direct` 权限仍由本地 merger 重建。失败保留原 Tutor route/strategy，安全 header/Trace 不含正文或 provider 原文。生产 gate 默认关闭，尚未做 controlled-Live/Docker/浏览器验收；Task 1 未修饰 Tutor baseline `0.4418666667` 仍不可被 Mock contract 改写。
 - WrongQuestionOrganizerAgent：当前 NestJS 产品 composition 仍执行确定性 policy，把错题组织到 `WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem`，该组织层不替代 WrongQuestion / Card / ReviewLog / ReviewTask。Task 4 已在 package 层实现受治理 candidate：已有 item、精确专题、高置信结构字段、owner/stale/abort/预算/安全失败保持 runtime 前零调用；低置信安全错题最多 12 条共享一次 `1/3500/800` 调用，模型只返回受限 question/deck ordinal、学科/action/confidence/evidence 或安全短标签，本地重建真实 ID、锁定名称、reason/description、数值 confidence 和全部写权限。它尚未接入 owner snapshot、NestJS production runtime/Trace/写事务，也没有调用真实 provider；Task 1 未修饰 baseline 的 Organizer semantic 仍为 `0.278125`。
 - ReviewAgent / PlannerAgent：`@repo/agent/review` 和 `@repo/agent/planner` 生成 owner-scoped 的只读建议；`GET /review-agent/suggestions` 基于当前用户复习事实生成建议，`/plan` 展示完整建议，`/today` 展示紧凑建议，不创建未来 ReviewTask，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck。V10 是唯一语义质量 authority；历史 V11--V22 仍不可改写。修复 V22 的 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`。两条业务 gate 仍默认关闭，以便可控回滚；详见 [Phase 6.9.5 production acceptance](./docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md)。
 - MemoryAgent：`@repo/agent/memory` 当前是确定性 policy，不调用真实模型；`UserMemoryCandidate` 与 `UserMemory` 以 PostgreSQL 为权威来源，候选必须由用户在 `/profile` 确认后才会成为正式 `ACTIVE` 记忆，支持停用、恢复和删除；当前不把记忆自动注入 `/api/chat`。
 - Agent Trace：`/api/chat` 在有 access token 时 best-effort 写入脱敏 trace，`/agent-traces` 提供账号级在线 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key，成本看板不替代供应商账单。
 - KnowledgeDedupAgent / KnowledgeOrganizerAgent：`GET /knowledge-agent/suggestions` 已接入 owner-scoped Qwen Chunk embedding shortlist、受限 DeepSeek V4 Pro candidate、本地权威 merger 与 local/hybrid/degraded 来源状态。exact hash、越权、不安全投影、abort 和预算失败保持 provider 前零调用；模型只裁决本地 ordinal，不接触真实 document ID，也不自动合并、删除、替换、重命名或分类资料。唯一 V2 controlled-Live run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 以 semantic `0.9875`、`quality_gate_passed` 封存；R7 Docker/API 的 Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/安全/凭据/跨账号 guard 均为 provider 前零调用。可见浏览器完成真实上传、处理、列表、Qwen 混合检索以及 semantic/local/degraded/失败/响应式回放；浏览器阶段没有新增模型调用。分支验收后合成数据精确清理为 0，API 恢复 `mock / live=false / gate=false/false / credential absent`。main `f31335c6` 又完成 default-off focused、Docker/API、桌面/移动端可见浏览器回放与零残留清理，Phase 6.9.6 已完成。详见 [Phase 6.9.6 验收记录](./docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md)。
-- Agent 成本边界：生产 Agent 的真实模型调用必须同时经过 server-only composition、全局 Live 双开关、组件独立 gate、不可变预算、超时、零自动重试、安全 eligibility 与脱敏 Trace；组件 gate 默认关闭并可独立回滚。Knowledge 两个 candidate 共享 `2 calls / 6000 input / 1200 output`，单请求硬 cap 为 `0.03 CNY`，并使用只注入 API server 的独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`，不借用 Chat 或 Review/Planner 凭据。Mock/CLI 只证明工程 contract，controlled-Live 才能证明语义质量。
+- Agent 成本边界：生产 Agent 的真实模型调用必须同时经过 server-only composition、全局 Live 双开关、组件独立 gate、不可变预算、超时、零自动重试、安全 eligibility 与脱敏 Trace；组件 gate 默认关闭并可独立回滚。Knowledge 两个 candidate 共享 `2 calls / 6000 input / 1200 output`，单请求硬 cap 为 `0.03 CNY`，并使用只注入 API server 的独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`。Tutor 使用独立 `1/1200/300` 预算、`0.006 CNY` cap 与仅注入 Web server runtime 的 `TUTOR_AGENT_DEEPSEEK_API_KEY`，不借用通用或其它 Agent 凭据，也不消耗 Router -> Verifier 共享预算。Mock/CLI 只证明工程 contract，controlled-Live 才能证明语义质量。
 - Model Agent Runtime：`@repo/ai` 提供共享结构化 `ModelAgentRuntime`，Mock/Live 共用 Zod schema、不可变 run budget、结果和安全 Trace contract；package 不读取 env，API key 只保留在 composition root 创建的 executor closure。Phase 6.9.2 未迁移 `/api/chat` streaming，也未把任何业务 Agent 改为模型路径。
 - Router / Verifier paired eval：Phase 6.9.4.3 已完成 deterministic、Mock、diagnostics、历史五次不可拼接 Live、JSON-mode resolution 与唯一完整 controlled-Live。新 run 使用 runner-v3 / `deepseek_json_object_v1`，得到 `28/28 strict success`、`72/72 zero-call`、input/output `10677/4323`、约 `$0.00284`；Verifier 为 `quality_gate_passed`，Router additional P95 `4264ms` 导致 `latency_budget_exceeded`。这是当时的历史结论，不删除、不拼接，也不再解释为永久禁止 Router 模型；后续 Phase 6.9.4.4 已完成高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的受控混合生产路径。完整证据见 [Phase 6.9.4.3 验收记录](./docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md)。
 - Router / Verifier 生产 contract：Router 的安全/高置信请求 deterministic zero-call，歧义、多意图和上下文指代才进入真实模型；Verifier 只处理通过本地安全门且 semantic-needed 的 RAG。两条 gate 独立回滚且默认关闭，timeout 分别为 5 秒/4 秒；共享请求预算为 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800`。Provider JSON-object output 仍须通过 canonical Zod；prompt injection、high-risk 或 credential material 零调用，provider failure、timeout、schema invalid 或预算耗尽回退到限制性 deterministic 结果。Trace/headers 只含安全元数据。Phase 6.9.4.4 的 Task 9/10 已完成受控 Live、Docker、可见浏览器和 main 复验，随后已恢复默认关闭。完整路线见 [Agent 架构完成设计](./docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md)；这不表示 Memory、Orchestrator、全部 Agent 或 Phase 6 已完成。
@@ -146,7 +146,7 @@ flowchart LR
 - `/api/chat` 在有 access token 时调用知识库检索，命中后把 chunks 注入 system prompt 并追加 Markdown citations；未上传资料、未命中或检索失败时继续普通 AI 回答。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Routes 代理 AI 服务；Chat 默认本地 mock，真实模型调用必须显式开启 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true`，默认 live 模型为 `deepseek-v4-flash`。
 - `/api/chat` 会统一估算 system prompt、activeStudyContext 和近期消息 token，默认输入上限 2500、输出上限 1200，超限返回 413。
-- `/api/chat` 已接入 RouterAgent、TutorAgent policy 和 KnowledgeVerifierAgent；Phase 6.9.4.4 的受控 Router/Verifier 混合路径已经完成生产验收并恢复默认 gate 关闭。模型只负责受限语义判断，权限、安全、canonical route、RAG 放行、预算与写业务数据仍由本地代码掌握。
+- `/api/chat` 已接入 RouterAgent、TutorAgent 与 KnowledgeVerifierAgent；Phase 6.9.4.4 的 Router/Verifier 混合路径已经完成生产验收并恢复默认 gate 关闭，Phase 6.9.7 Task 5 又完成 Tutor candidate 的 default-off Web composition 与安全 Trace，但尚未执行 Tutor controlled-Live。模型只负责受限语义判断，权限、安全、canonical route、RAG 放行、预算与写业务数据仍由本地代码掌握。
 - `/error-book` 通过 organizer API 展示学科卡片、专题 deck 和 deck 内错题；创建错题后的自动整理为非阻塞流程，整理失败不影响错题保存。
 - Dexie 负责本地快速恢复、离线兜底、乐观更新和旧图片预览；ReviewTask rating 已进入 mutation queue，但服务端仍是 FSRS 与统计权威来源。
 
@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--4 已完成，Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 均通过 strict runtime、zero-call eligibility 与本地权限回归，但尚未接入产品或真实 provider。72 cases / 32 Organizer decisions 的未修饰 baseline 仍为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；下一步 Task 5 接入 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。
+2. 当前执行 Phase 6.9.7：Task 0--5 已完成。Tutor 已接入 Web server-only default-off runtime、Chat 编排与安全 Trace；WrongQuestionOrganizer 仍只有 package candidate/merger，尚未接 NestJS owner/write composition。72 cases / 32 Organizer decisions 的未修饰 baseline 仍为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；两条真实 provider 验收均未执行。下一步 Task 6 建立 Organizer owner snapshot、双 stale fence 与授权写 command。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 5：把 Tutor package candidate 接入 Web server-only default-off runtime、Chat 编排与安全 Trace；使用独立 credential/预算，不读取或调用真实 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 6：建立 WrongQuestionOrganizer owner-scoped 不可变快照、双 stale fence 与 model-free 授权写 command；模型调用不得位于事务内，不读取或调用真实 provider。”
 
 ## 文档入口
 
@@ -236,6 +236,7 @@ bun --cwd packages/fsrs test
 - [数据流说明](./docs/data-flow.md)
 - [Phase 6.9.7 Task 3 Tutor candidate 验收](./docs/acceptance/phase-6-9-7-tutor-model-candidate.md)
 - [Phase 6.9.7 Task 4 WrongQuestionOrganizer candidate 验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md)
+- [Phase 6.9.7 Task 5 Tutor Web runtime 验收](./docs/acceptance/phase-6-9-7-tutor-web-runtime.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

@@ -111,4 +111,4 @@ bun --cwd packages/agent test
 
 ## 6. 后续状态同步（不改写 Task 1 baseline）
 
-Task 2--4 后续均已完成：Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 已落地，Task 4 证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。这不改变本页 `6/48` 未修饰 deterministic baseline，也不等于产品 composition 或真实模型验收完成。当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace；Phase 6.10 仍须等待全部 Agent 架构完成。
+Task 2--5 后续均已完成：Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 已落地，Tutor 还完成 Web server-only default-off composition 与安全 Trace，Task 5 证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。这不改变本页 `6/48` 未修饰 deterministic baseline，也不等于 controlled-Live 或完整产品验收完成。当前下一任务是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command；Phase 6.10 仍须等待全部 Agent 架构完成。

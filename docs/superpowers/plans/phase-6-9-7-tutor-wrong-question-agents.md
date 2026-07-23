@@ -57,7 +57,7 @@
 
 ## Task 1：冻结 72-case 数据集、专项指标和 deterministic baseline
 
-**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2--4 也已完成，当前下一任务为 Task 5。
+**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2--5 也已完成，当前下一任务为 Task 6。
 
 **文件：**
 
@@ -87,7 +87,7 @@
 
 ## Task 2：建立 strict output contract 与完整字段安全投影
 
-**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；后续 Task 3/4 已完成，当前下一任务为 Task 5。
+**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；后续 Task 3--5 已完成，当前下一任务为 Task 6。
 
 **文件：**
 
@@ -110,7 +110,7 @@
 
 ## Task 3：实现 Tutor candidate eligibility 与本地权威 merger
 
-**状态：已完成。** Tutor focused `16/16`（含冻结 12 zero-call + 24 runtime eligibility 全量回放），Agent full `518/518`，AI full `193/193`，Agent/AI typecheck/lint exit 0；两路独立复审最终无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；后续 Task 4 已完成，当前下一任务为 Task 5。
+**状态：已完成。** Tutor focused `16/16`（含冻结 12 zero-call + 24 runtime eligibility 全量回放），Agent full `518/518`，AI full `193/193`，Agent/AI typecheck/lint exit 0；两路独立复审最终无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；后续 Task 4/5 已完成，当前下一任务为 Task 6。
 
 **文件：**
 
@@ -134,7 +134,7 @@
 
 ## Task 4：实现 WrongQuestionOrganizer candidate 与本地 merger
 
-**状态：已完成。** Candidate focused 与 companion tests `24/24`；冻结 24 条 Organizer runtime fixture 均恰好调用一次，Task 4 自有 existing/exact/high-confidence/owner/stale/abort/budget/safety 路径保持 runtime 前零调用。Agent `529/529`、AI `194/194`、typecheck/lint、Native Node ESM export、`git diff --check` 与两路独立复审均通过；证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。下一任务是 Task 5。
+**状态：已完成。** Candidate focused 与 companion tests `24/24`；冻结 24 条 Organizer runtime fixture 均恰好调用一次，Task 4 自有 existing/exact/high-confidence/owner/stale/abort/budget/safety 路径保持 runtime 前零调用。Agent `529/529`、AI `194/194`、typecheck/lint、Native Node ESM export、`git diff --check` 与两路独立复审均通过；证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。后续 Task 5 已完成，当前下一任务是 Task 6。
 
 **文件：**
 
@@ -158,6 +158,8 @@
 
 ## Task 5：接入 Tutor 独立 default-off runtime、Chat 编排与安全 Trace
 
+**状态：已完成。** Web server-only composition 固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap；只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后仅注册惰性 factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 仅在 final Tutor candidate 真正调用时构造一次。明确指令、不安全/abort/配置失败保持 provider zero-call；失败保留 deterministic Tutor strategy。安全 Tutor header/Trace、CNY 与顶层 USD 隔离、Router/Verifier 预算隔离及 Docker web-only allowlist 均已验证。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build、Compose tracked-example quiet parse 与两路复审通过。未读取根 `.env`、调用 provider 或执行 Docker/浏览器产品验收；production gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。当前下一任务是 Task 6。
+
 **文件：**
 
 - `apps/web/src/lib/tutor-model-config.ts`
@@ -176,7 +178,7 @@
 - `tutorObservation` 进入安全 header/Trace，raw input/output/error 永不进入；
 - final Chat streaming、RAG/Verifier、登录、413、conversation prepare 和 abort 语义保持不变。
 
-**验证：** Web focused runtime/orchestration/route/trace tests、Web full test/lint/build、Agent/AI tests、`git diff --check`。
+**验证：** [x] Web focused runtime/orchestration/route/trace tests；[x] Web full test/lint/build；[x] Agent/AI tests；[x] Compose tracked-example quiet parse；[x] 两路独立复审；[x] `git diff --check`。
 
 **提交：** `feat(web): integrate hybrid tutor strategy`
 

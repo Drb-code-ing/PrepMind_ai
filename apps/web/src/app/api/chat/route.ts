@@ -32,9 +32,11 @@ import {
 import {
   buildChatModelAgentObservationHeaders,
   projectChatModelAgentObservation,
+  projectTutorModelAgentObservation,
 } from '@/lib/chat-model-agent-observation';
 import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
+import { createTutorModelRuntimeBundle } from '@/lib/tutor-model-runtime';
 import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
@@ -267,6 +269,7 @@ export async function POST(req: Request) {
     const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
     const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
       bundle: modelAgentBundle,
+      createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
       runId: traceRunId,
@@ -294,8 +297,12 @@ export async function POST(req: Request) {
         : projectChatModelAgentObservation(
             knowledgeSearch.verifierObservation,
           );
+    const tutorModelObservation = projectTutorModelAgentObservation(
+      agentExecution.tutorObservation,
+    );
     const modelAgentHeaders = buildChatModelAgentObservationHeaders({
       router: agentExecution.routerObservation,
+      tutor: agentExecution.tutorObservation,
       ...(knowledgeSearch.verifierObservation === undefined
         ? {}
         : { verifier: knowledgeSearch.verifierObservation }),
@@ -363,6 +370,7 @@ export async function POST(req: Request) {
         knowledgeVerifierResult: citationVerifierResult,
         modelAgentObservations: {
           router: routerModelObservation,
+          tutor: tutorModelObservation,
           ...(verifierModelObservation === undefined
             ? {}
             : { verifier: verifierModelObservation }),

@@ -811,7 +811,7 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 ## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口
 
-Task 0 已冻结设计/计划，Task 1 已冻结 72-case deterministic baseline，Task 2 已完成 strict contract 与完整字段安全投影；仍未实现 candidate、读取 credential、调用 provider 或进行产品验收。执行时逐项确认：
+Task 0--5 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger，以及 Tutor Web server-only default-off composition 已落地。当前仍未读取根 `.env`/credential、调用 provider 或进行 controlled-Live/Docker/浏览器产品验收；Organizer owner/write 与 NestJS composition 也尚未实现。执行时逐项确认：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。

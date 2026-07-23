@@ -56,7 +56,7 @@
 
 ## 5. 下一步与回顾问题
 
-下一任务是 Task 5：把已经完成的 Tutor package candidate 接入 Web server-only、独立 default-off runtime、Chat 编排与安全 Trace。该任务仍先用 Mock/注入式 executor 验证 production composition，不会自动获得 controlled-Live 授权。
+后续 Task 5 已把 Tutor package candidate 接入 Web server-only default-off runtime、Chat 编排与安全 Trace，证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。当前下一任务是 Task 6：为本页 Organizer candidate 建立 owner-scoped immutable snapshot、双 stale fence 与 model-free 授权写 command；仍不调用真实 provider。
 
 回顾时可以问：
 

@@ -1,11 +1,17 @@
 # PrepMind AI 开发日志
+> 2026-07-23 — Phase 6.9.7 Task 5 Tutor Web server-only runtime：Task 3 的 package candidate 已能受限判断“怎么教”，但产品 `/api/chat` 仍没有 Tutor 专属 gate、executor、独立预算或模型 provenance。Task 5 因此先完成 default-off 静态/Mock composition，不打开真实 provider：固定 `deepseek-v4-pro`、`https://api.deepseek.com/v1`、non-thinking JSON、3000ms、无 tools/retry，并只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。完整 Live conjunction 任一缺失、timeout/价格/依赖异常都返回 disabled bundle，绝不借用通用或其它 Agent credential。
+>
+> live access 与 conversation-context prepare 成功后，Route 只注册 Tutor bundle factory，再先取得 final canonical Router route；非 Tutor route 不创建 Tutor bundle/runtime，也不读取 Tutor component credential。Live executor/runtime 仅在 candidate 真正调用 `invokeStructured` 时以单请求 Promise memo 惰性构造；明确教学指令、不安全输入、abort、预算/配置失败保持 executor 前零调用。只有 implicit/contextual/conflicting Tutor intent 才可使用独立 `1 call / 1200 input / 300 output` 预算与 `0.006 CNY` cap；runtime/schema/usage/timeout/abort 失败仍保留原 Tutor route 和 deterministic strategy，不影响现有 RAG、Verifier、413、登录与最终 Chat streaming。该预算与 Router -> Verifier 共享预算隔离。
+>
+> 新增安全 Tutor observation/header/Trace：只记录固定 disposition/reason、正 usage、pricingKnown、CNY 与版本，不记录题目、active context、prompt、provider output、credential、URL、raw error 或 stack；Tutor CNY 不混入 AgentTrace 顶层 USD cost。Compose 仅向 `web` 注入 Tutor gate/timeout/key，server/worker/admin 不接收，默认 gate=false/key 空。最终 focused `27/27`、Web full `432/432`、Agent `529/529 / 5479 expect()`、AI `194/194 / 1020 expect()`、Web lint/build、Compose tracked-example `config --quiet`、diff 与两路独立复审均通过。未读取根 `.env`、调用 provider、启动 Docker/浏览器或创建业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。下一任务是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command。回顾时可以问：为什么 Tutor factory 必须等到 final route 后才执行、Live executor 又必须等到真实 invocation 才构造？为什么 Tutor 预算不能复用 Router/Verifier 预算？为什么静态接入完成仍不等于 Live 可用性验收？
+
 > 2026-07-23 — Phase 6.9.7 Task 4 WrongQuestionOrganizer governed model candidate：既有确定性整理对知识点、分类和错因等结构化字段稳定，但无法可靠理解缺少 subject、同义专题复用或专业课术语；本任务因此只把低置信语义裁决交给受限 candidate，不改变 organizer 产品写入权威。先新增 candidate 测试并确认模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`，随后实现最多 12 道错题、20 个已有专题和一次 `1 call / 3500 input / 800 output` 的 package runtime。
 >
 > 已有 item、精确结构化专题、非空 subject 且 deterministic confidence `>=0.72` 的知识点或 category+errorType、owner 不合格、snapshot stale、abort、预算不足、无语义正文与完整字段安全失败都在 runtime 前零调用。模型只可返回 question/deck ordinal、固定 subject/action/confidence/evidence 或安全 topic label；partial/重复/越界、跨 subject deck、自由写命令、非法 label、timeout、不可验证 usage 和 runtime throw 均整批 deterministic fallback，且不重试。
 >
 > 本地 merger 使用 candidate-only authority map 重建真实 question/deck ID、原 subject、用户锁定 deck 名称、reason/description、数值 confidence、signals 与全部写权限；模型不拥有 userId、数据库 command，也不能修改 WrongQuestion、Card、ReviewLog、ReviewTask 或 ReviewPreference。用户锁定名称在最终 `deckName` 原样保留，说明文本只展示最多 80 个 Unicode scalar，避免超长权威文本放大。
 >
-> 最终 focused + contract/projection/production companion 为 `24/24 / 220 expect()`，冻结 24 条 Organizer runtime fixture 均恰好调用一次并 `candidate_applied`；Agent full `529/529 / 5479 expect()`，AI full `194/194 / 1020 expect()`，Agent/AI typecheck 与 lint、Native Node ESM export、`git diff --check` 均通过。两路独立只读复审无 Critical/Important；未读取 `.env`/key、未调用真实 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。Task 4 仍只是 package candidate；owner snapshot/写 command 与生产 composition 分属 Task 6/7。当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。回顾时可以问：为什么 partial batch 必须整批回退？为什么 locked deck 可被选择却不能由模型改名？
+> 最终 focused + contract/projection/production companion 为 `24/24 / 220 expect()`，冻结 24 条 Organizer runtime fixture 均恰好调用一次并 `candidate_applied`；Agent full `529/529 / 5479 expect()`，AI full `194/194 / 1020 expect()`，Agent/AI typecheck 与 lint、Native Node ESM export、`git diff --check` 均通过。两路独立只读复审无 Critical/Important；未读取 `.env`/key、未调用真实 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。Task 4 仍只是 package candidate；owner snapshot/写 command 与生产 composition 分属 Task 6/7。该检查点当时下一任务是 Task 5，后续已完成并见本文顶部。回顾时可以问：为什么 partial batch 必须整批回退？为什么 locked deck 可被选择却不能由模型改名？
 
 > 2026-07-23 — Phase 6.9.7 Task 3 Tutor governed model candidate：先加入 `tutor-model-candidate.test.ts`，确认 candidate 模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`。随后把 Tutor 强信号检测提取为 `detectTutorSignals()` 并由现有 deterministic policy 与 candidate 共用；五类明确教学指令、非 Tutor route、空输入、不安全/hostile 字段、abort 与预算不足保持 runtime 前零调用，只有隐含、上下文、真正冲突或带 active context 的 `general_follow_up` 才进入一次受治理调用。
 >
@@ -258,7 +264,7 @@
 
 更新时间：2026-07-23
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--4 已完成，Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 均尚未接入产品 composition 或真实 provider；下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--5 已完成，Tutor 已接入 Web server-only default-off composition，WrongQuestionOrganizer 仍只有 package candidate/merger；两条真实 provider 验收均未执行。下一任务是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |

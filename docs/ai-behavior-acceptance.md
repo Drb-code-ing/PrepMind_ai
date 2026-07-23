@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--2）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--5）
 
-本节是后续实现和验收门槛，不表示 candidate、Live 或产品路径已经完成，也不授权真实模型调用。数值与边界以 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md` 为准。
+本节同时记录已完成的 Task 0--5 静态/Mock 边界与后续 Live/产品验收门槛，不授权真实模型调用。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 仍未完成 owner/write 与 NestJS composition，两条 controlled-Live 都尚未执行。数值与边界以 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md` 为准。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -249,6 +249,8 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Chat Router+Tutor 决策编排 P95 <=6500ms；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
 - Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；
 - Live 只在分支静态/Mock checkpoint 后重新获得一次明确授权。通过后分别验收 Docker Tutor Chat、Organizer single/batch、owner/locked-name/zero-call/forced-failure、可见 `/chat`/`/error-book` 和精确清理；最终恢复 mock/gates=false/key absent，禁止破坏 Docker 卷。
+
+Task 5 当前证据：Tutor Web server-only composition 固定 V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`；Route 在 live access/context prepare 后注册惰性 factory，非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final Tutor route 的 implicit/contextual/conflicting candidate 真正调用时构造一次。失败保留 deterministic strategy，Tutor budget 不污染 Router -> Verifier 共享预算，header/Trace 只含固定安全字段且 CNY 不混入顶层 USD。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build 与 Compose tracked-example quiet parse 已通过。该证据只证明静态/Mock 产品 composition，不证明 controlled-Live、Docker API、可见浏览器或真实回答质量。
 
 ## 8. Reflexion / Critic 验收要求
 
