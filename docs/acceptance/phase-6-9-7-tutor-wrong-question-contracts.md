@@ -50,3 +50,7 @@ bun --cwd packages/agent lint
 - 没有启动 Docker/浏览器，也没有创建或修改业务数据。
 
 因此 Task 2 证明的是“模型即使以后被调用，也只能看安全投影并返回受限决定”，不证明 Tutor/Organizer 已能使用真实模型。后续 Task 3 已完成 Tutor package candidate eligibility 与本地权威 merger，证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；当前下一任务是 Task 4 WrongQuestionOrganizer candidate，仍只使用无网络 Mock/注入式 executor。
+
+## 5. 后续状态同步（不改写 Task 2 边界）
+
+Task 4 已完成 WrongQuestionOrganizer package candidate 与本地权威 merger，证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。Tutor/Organizer 两个 package candidate 现在都已完成，但产品 composition、真实 provider 与生产验收仍未完成；当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。

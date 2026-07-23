@@ -7,6 +7,7 @@ export type ModelAgentTask =
   | 'knowledge_dedup'
   | 'knowledge_organizer'
   | 'tutor_strategy'
+  | 'wrong_question_organization'
   | 'review_suggestion'
   | 'planner_suggestion'
   | 'memory_candidate_extraction'

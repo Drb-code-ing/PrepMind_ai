@@ -20,6 +20,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'mergeKnowledgeDedupDecision',
   'mergeKnowledgeOrganizerDecision',
   'mergeTutorModelDecision',
+  'mergeWrongQuestionOrganizerModelDecision',
   'projectKnowledgeSnapshot',
   'projectTutorModelInput',
   'runKnowledgeDedupModelCandidate',
@@ -29,6 +30,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'runReviewModelCandidate',
   'runRouterModelCandidate',
   'runTutorModelCandidate',
+  'runWrongQuestionOrganizerModelCandidate',
   'validateKnowledgeDedupModelDecision',
   'validateKnowledgeOrganizerModelDecision',
   'validateTutorModelDecision',
@@ -44,6 +46,9 @@ describe('production model candidate exports', () => {
     expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
     expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
     expect(productionModelCandidates.runTutorModelCandidate).toBeFunction();
+    expect(
+      productionModelCandidates.runWrongQuestionOrganizerModelCandidate,
+    ).toBeFunction();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
       'candidate_applied',
     );

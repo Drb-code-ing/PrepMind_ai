@@ -57,7 +57,7 @@
 
 ## Task 1：冻结 72-case 数据集、专项指标和 deterministic baseline
 
-**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2/3 也已完成，当前下一任务为 Task 4。
+**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2--4 也已完成，当前下一任务为 Task 5。
 
 **文件：**
 
@@ -87,7 +87,7 @@
 
 ## Task 2：建立 strict output contract 与完整字段安全投影
 
-**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；后续 Task 3 已完成，当前下一任务为 Task 4。
+**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；后续 Task 3/4 已完成，当前下一任务为 Task 5。
 
 **文件：**
 
@@ -110,7 +110,7 @@
 
 ## Task 3：实现 Tutor candidate eligibility 与本地权威 merger
 
-**状态：已完成。** Tutor focused `16/16`（含冻结 12 zero-call + 24 runtime eligibility 全量回放），Agent full `518/518`，AI full `193/193`，Agent/AI typecheck/lint exit 0；两路独立复审最终无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；下一任务为 Task 4。
+**状态：已完成。** Tutor focused `16/16`（含冻结 12 zero-call + 24 runtime eligibility 全量回放），Agent full `518/518`，AI full `193/193`，Agent/AI typecheck/lint exit 0；两路独立复审最终无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-model-candidate.md`；后续 Task 4 已完成，当前下一任务为 Task 5。
 
 **文件：**
 
@@ -134,6 +134,8 @@
 
 ## Task 4：实现 WrongQuestionOrganizer candidate 与本地 merger
 
+**状态：已完成。** Candidate focused 与 companion tests `24/24`；冻结 24 条 Organizer runtime fixture 均恰好调用一次，Task 4 自有 existing/exact/high-confidence/owner/stale/abort/budget/safety 路径保持 runtime 前零调用。Agent `529/529`、AI `194/194`、typecheck/lint、Native Node ESM export、`git diff --check` 与两路独立复审均通过；证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。下一任务是 Task 5。
+
 **文件：**
 
 - `packages/agent/src/model-candidates/wrong-question-organizer-model-candidate.ts`
@@ -150,7 +152,7 @@
 - reason/description/confidence/source 全由固定本地模板生成；
 - schema/usage/timeout/stale/runtime 失败返回对应 deterministic result，不重试。
 
-**验证：** candidate focused、现有 organizer policy tests、Agent full/typecheck/lint、`git diff --check`。
+**验证：** [x] candidate focused 与现有 organizer policy tests；[x] 冻结 24 runtime fixture 单调用回放；[x] schema/usage/timeout/abort/runtime fallback；[x] Agent/AI full/typecheck/lint；[x] Native Node ESM production export；[x] 两路独立复审；[x] `git diff --check`。
 
 **提交：** `feat(agent): govern wrong question organizer candidate`
 

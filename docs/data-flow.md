@@ -278,7 +278,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 3 已完成 Tutor package candidate/merger；产品 composition 与 Organizer candidate 尚未实现）：
+Phase 6.9.7 增量数据流（Task 0--4 已完成两个 package candidate/merger；产品 composition、owner/write 编排与真实 provider 验收尚未实现）：
 
 ```text
 /api/chat
@@ -287,20 +287,20 @@ Phase 6.9.7 增量数据流（Task 3 已完成 Tutor package candidate/merger；
   -> explicit/high-confidence Tutor intent: deterministic zero-call
   -> implicit/contextual/conflicting Tutor intent: safe projection -> bounded candidate
   -> strict result/usage/budget admission -> local merger 重建 TutorStrategy/prompt
-  -> Task 5 才接入既有 Final Chat streaming / Trace / headers
+  -> Task 5 接入既有 Final Chat streaming / Trace / headers（当前尚未接入）
 
 POST /wrong-question-organizer/organize/:id 或 organize-batch
   -> JwtAuthGuard canonical userId
-  -> REPEATABLE READ + READ ONLY owner snapshot/fingerprint
+  -> Task 6: REPEATABLE READ + READ ONLY owner snapshot/fingerprint
   -> existing/high-confidence/unsafe: deterministic zero-call
-  -> 最多 12 条低置信安全错题 -> 一次 ordinal-only model candidate
+  -> Task 4 package candidate: 最多 12 条低置信安全错题 -> 一次 ordinal-only 决策
   -> post-candidate stale fence -> stable runId 的 command_pending Trace admission
   -> owner advisory-lock write transaction 内再次 fence
   -> 本地 command 只写 SubjectGroup/Deck/DeckItem
   -> 同 runId 原子更新最终 command Trace（失败时 admission trace 仍保留）
 ```
 
-Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放、`1/1200/300` runtime admission 和本地权威 merger，但尚未创建 production gate/executor 或接入 `/api/chat`。Tutor candidate 不拥有最终回答、RAG/approval 权限或写库能力。Organizer 模型不接触 userId/真实 ID，也不能修改 WrongQuestion、Card、ReviewLog、ReviewTask、用户锁定名称或直接执行写命令。两个规划 gate 默认关闭；Tutor/Organizer 使用各自 component-specific credential，web/server 不互相借用，worker role 强制关闭 Organizer runtime。Task 0--3 均没有读取 credential 或调用真实 provider。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
+Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放、`1/1200/300` runtime admission 和本地权威 merger，但尚未创建 production gate/executor 或接入 `/api/chat`。Organizer Task 4 已实现最多 12 道错题、20 个已有专题、`1/3500/800` runtime admission、strict ordinal 输出和本地权威 merger；owner/snapshot/stale 当前仍是 package contract 输入，NestJS 查询、Trace admission 与写事务尚未接线。两个 candidate 都不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。两个规划 gate 默认关闭；Tutor/Organizer 将使用各自 component-specific credential，web/server 不互相借用，worker role 强制关闭 Organizer runtime。Task 0--4 均没有读取 credential 或调用真实 provider；下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
 
 当前 `/knowledge` 页面数据流：
 
@@ -449,7 +449,7 @@ Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放�
 - 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
 - 上传失败不阻塞 OCR，当前设备 Dexie 继续保留本地预览作为兜底。
 - 创建错题后的自动整理是非阻塞流程，整理失败不影响错题保存结果。
-- WrongQuestionOrganizerAgent 是确定性 policy，不调用真实模型、不读取 API key，只根据错题结构化字段和已有 deck 摘要输出组织建议。
+- WrongQuestionOrganizerAgent 当前产品 composition 仍运行确定性 policy，不读取 API key 或调用真实模型；Task 4 已完成 package 级受治理 candidate/merger，但 owner snapshot、NestJS runtime/Trace 与授权写事务尚未接入。
 - 一个错题同一时间只属于当前用户一个 organizer deck，服务端通过 `userId + wrongQuestionId` 唯一约束防止同一错题被重复归入多个专题。
 
 服务端 OCRRecord API：

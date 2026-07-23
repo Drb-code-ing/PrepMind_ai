@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--3 已完成，Tutor package candidate/merger 已落地但尚未接入产品，WrongQuestionOrganizer candidate 尚未实现
+状态：设计冻结；Task 1--4 已完成，Tutor 与 WrongQuestionOrganizer package candidate/merger 均已落地但尚未接入产品 composition
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值

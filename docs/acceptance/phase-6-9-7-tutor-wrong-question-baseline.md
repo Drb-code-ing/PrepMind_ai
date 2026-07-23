@@ -108,3 +108,7 @@ bun --cwd packages/agent test
 - 为什么 Organizer 的 `deck action accuracy=0.8125` 仍不能证明专题语义正确？
 - 为什么本 baseline 的零 provider usage 不能替代后续 `24/24` zero-call guard 验收？
 - dataset SHA-256 和 `32 decision units` 分别防止什么指标漂移？
+
+## 6. 后续状态同步（不改写 Task 1 baseline）
+
+Task 2--4 后续均已完成：Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 已落地，Task 4 证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。这不改变本页 `6/48` 未修饰 deterministic baseline，也不等于产品 composition 或真实模型验收完成。当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace；Phase 6.10 仍须等待全部 Agent 架构完成。

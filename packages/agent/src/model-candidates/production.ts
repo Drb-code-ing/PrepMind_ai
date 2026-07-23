@@ -38,6 +38,13 @@ export {
   type TutorModelCandidateReasonCode,
 } from './tutor-model-candidate.ts';
 export {
+  mergeWrongQuestionOrganizerModelDecision,
+  runWrongQuestionOrganizerModelCandidate,
+  type WrongQuestionOrganizerModelCandidateEnvelope,
+  type WrongQuestionOrganizerModelCandidateInput,
+  type WrongQuestionOrganizerModelCandidateReasonCode,
+} from './wrong-question-organizer-model-candidate.ts';
+export {
   MODEL_CANDIDATE_DISPOSITIONS,
   type ModelCandidateDisposition,
   type ModelCandidateObservation,

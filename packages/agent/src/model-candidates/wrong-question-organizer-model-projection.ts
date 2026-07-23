@@ -100,11 +100,27 @@ export type InternalWrongQuestionOrganizerProjectionResult =
       value: WrongQuestionOrganizerModelProjection;
       questionIdsByOrdinal: readonly string[];
       deckIdsByOrdinal: readonly string[];
+      questionAuthoritiesByOrdinal: readonly WrongQuestionOrganizerQuestionAuthority[];
+      deckAuthoritiesByOrdinal: readonly WrongQuestionOrganizerDeckAuthority[];
     }
   | { ok: false; reasonCode: WrongQuestionOrganizerProjectionReasonCode };
 
+export type WrongQuestionOrganizerQuestionAuthority = Readonly<{
+  questionId: string;
+  subject: string | null;
+}>;
+
+export type WrongQuestionOrganizerDeckAuthority = Readonly<{
+  deckId: string;
+  subject: WrongQuestionOrganizerSubject;
+  name: string;
+  nameLocked: boolean;
+  keywords: readonly string[];
+}>;
+
 type PreparedQuestion = Readonly<{
   questionId: string;
+  authoritySubject: string | null;
   subjectHint: WrongQuestionOrganizerSubject | 'unknown';
   category?: string;
   knowledgePoints: readonly string[];
@@ -117,7 +133,10 @@ type PreparedDeck = Readonly<{
   deckId: string;
   subject: WrongQuestionOrganizerSubject;
   name: string;
+  authorityName: string;
+  nameLocked: boolean;
   keywords: readonly string[];
+  authorityKeywords: readonly string[];
 }>;
 
 export function projectWrongQuestionOrganizerSnapshot(
@@ -156,6 +175,21 @@ export function projectWrongQuestionOrganizerSnapshotForCandidate(
         prepared.questions.map((question) => question.questionId),
       ),
       deckIdsByOrdinal: deepFreezeModelValue(prepared.decks.map((deck) => deck.deckId)),
+      questionAuthoritiesByOrdinal: deepFreezeModelValue(
+        prepared.questions.map((question) => ({
+          questionId: question.questionId,
+          subject: question.authoritySubject,
+        })),
+      ),
+      deckAuthoritiesByOrdinal: deepFreezeModelValue(
+        prepared.decks.map((deck) => ({
+          deckId: deck.deckId,
+          subject: deck.subject,
+          name: deck.authorityName,
+          nameLocked: deck.nameLocked,
+          keywords: [...deck.authorityKeywords],
+        })),
+      ),
     };
   } catch {
     return { ok: false, reasonCode: 'invalid_input' };
@@ -209,6 +243,7 @@ function prepareCompleteSource(
     ) {
       preparedQuestions.push({
         questionId: question.questionId,
+        authoritySubject: question.subject,
         subjectHint: question.subjectHint,
         category: fields.category.ok ? fields.category.value || undefined : undefined,
         knowledgePoints: knowledgePoints.flatMap((result) =>
@@ -239,9 +274,12 @@ function prepareCompleteSource(
         deckId: deck.deckId,
         subject: deck.subject,
         name: name.value,
+        authorityName: deck.name,
+        nameLocked: deck.nameLocked,
         keywords: keywords.flatMap((keyword) =>
           keyword.ok && keyword.value ? [keyword.value] : [],
         ),
+        authorityKeywords: [...deck.keywords],
       });
     }
   }

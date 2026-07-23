@@ -1,4 +1,12 @@
 # PrepMind AI 开发日志
+> 2026-07-23 — Phase 6.9.7 Task 4 WrongQuestionOrganizer governed model candidate：既有确定性整理对知识点、分类和错因等结构化字段稳定，但无法可靠理解缺少 subject、同义专题复用或专业课术语；本任务因此只把低置信语义裁决交给受限 candidate，不改变 organizer 产品写入权威。先新增 candidate 测试并确认模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`，随后实现最多 12 道错题、20 个已有专题和一次 `1 call / 3500 input / 800 output` 的 package runtime。
+>
+> 已有 item、精确结构化专题、非空 subject 且 deterministic confidence `>=0.72` 的知识点或 category+errorType、owner 不合格、snapshot stale、abort、预算不足、无语义正文与完整字段安全失败都在 runtime 前零调用。模型只可返回 question/deck ordinal、固定 subject/action/confidence/evidence 或安全 topic label；partial/重复/越界、跨 subject deck、自由写命令、非法 label、timeout、不可验证 usage 和 runtime throw 均整批 deterministic fallback，且不重试。
+>
+> 本地 merger 使用 candidate-only authority map 重建真实 question/deck ID、原 subject、用户锁定 deck 名称、reason/description、数值 confidence、signals 与全部写权限；模型不拥有 userId、数据库 command，也不能修改 WrongQuestion、Card、ReviewLog、ReviewTask 或 ReviewPreference。用户锁定名称在最终 `deckName` 原样保留，说明文本只展示最多 80 个 Unicode scalar，避免超长权威文本放大。
+>
+> 最终 focused + contract/projection/production companion 为 `24/24 / 220 expect()`，冻结 24 条 Organizer runtime fixture 均恰好调用一次并 `candidate_applied`；Agent full `529/529 / 5479 expect()`，AI full `194/194 / 1020 expect()`，Agent/AI typecheck 与 lint、Native Node ESM export、`git diff --check` 均通过。两路独立只读复审无 Critical/Important；未读取 `.env`/key、未调用真实 provider、启动 Docker/浏览器或修改业务数据。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。Task 4 仍只是 package candidate；owner snapshot/写 command 与生产 composition 分属 Task 6/7。当前下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。回顾时可以问：为什么 partial batch 必须整批回退？为什么 locked deck 可被选择却不能由模型改名？
+
 > 2026-07-23 — Phase 6.9.7 Task 3 Tutor governed model candidate：先加入 `tutor-model-candidate.test.ts`，确认 candidate 模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`。随后把 Tutor 强信号检测提取为 `detectTutorSignals()` 并由现有 deterministic policy 与 candidate 共用；五类明确教学指令、非 Tutor route、空输入、不安全/hostile 字段、abort 与预算不足保持 runtime 前零调用，只有隐含、上下文、真正冲突或带 active context 的 `general_follow_up` 才进入一次受治理调用。
 >
 > 新增 `ModelAgentTask=tutor_strategy` 与 `1 call / 1200 input / 300 output` 预算。candidate 先做不可变 admission preview，共享 runtime 对 caller snapshot 做唯一权威 reservation；结果继续经过 runtime sanitizer、strict schema、intent/evidence 动态关联和本地 depth compatibility。merger 重新构建 guiding/final/context booleans、有序 answer structure、固定 prompt/debug，`socratic_hint` 不含 final answer，`answer_direct` 既不能由模型输出，也不能通过公共 merger 改写。pre/post runtime abort、timeout、畸形 usage、schema/runtime throw 都回退原 deterministic strategy，observation 不含用户文本、active context、prompt 或 credential。
@@ -250,7 +258,7 @@
 
 更新时间：2026-07-23
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--3 已完成，Tutor package candidate/merger 尚未接入 Web product composition；下一任务是 Task 4 WrongQuestionOrganizer candidate。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--4 已完成，Tutor 与 WrongQuestionOrganizer 的 package candidate/merger 均尚未接入产品 composition 或真实 provider；下一任务是 Task 5 Tutor Web server-only default-off runtime、Chat 编排与安全 Trace。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -287,6 +295,7 @@
 | Phase 6.9.7 Task 1 | 已完成 | 72-case/32-decision baseline：`6/48`、Tutor `0.4418666667`、Organizer `0.278125`；无 provider |
 | Phase 6.9.7 Task 2 | 已完成 | strict contract、动态关联、完整字段扫描、ordinal-only 投影与 descriptor clone hardening；无 provider |
 | Phase 6.9.7 Task 3 | 已完成 | Tutor governed candidate、冻结 12+24 eligibility、`1/1200/300`、strict runtime 与 local merger；仅无网络 Mock，未接产品 |
+| Phase 6.9.7 Task 4 | 已完成 | WrongQuestionOrganizer governed candidate、最多 12 题/20 deck、`1/3500/800`、ordinal-only strict runtime 与 local merger；仅无网络 Mock，未接产品 |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
