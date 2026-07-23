@@ -276,7 +276,30 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
   -> /knowledge 继续只读展示，不执行整理写操作
 ```
 
-该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main `f31335c6` 再次完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
+该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
+
+Phase 6.9.7 目标数据流（Task 0 设计已冻结，代码尚未实现）：
+
+```text
+/api/chat
+  -> final canonical Router route
+  -> route=tutor
+  -> explicit/high-confidence Tutor intent: deterministic zero-call
+  -> implicit/contextual/conflicting Tutor intent: safe projection -> bounded candidate
+  -> local merger 重建 TutorStrategy/prompt -> 既有 Final Chat streaming
+
+POST /wrong-question-organizer/organize/:id 或 organize-batch
+  -> JwtAuthGuard canonical userId
+  -> REPEATABLE READ + READ ONLY owner snapshot/fingerprint
+  -> existing/high-confidence/unsafe: deterministic zero-call
+  -> 最多 12 条低置信安全错题 -> 一次 ordinal-only model candidate
+  -> post-candidate stale fence -> stable runId 的 command_pending Trace admission
+  -> owner advisory-lock write transaction 内再次 fence
+  -> 本地 command 只写 SubjectGroup/Deck/DeckItem
+  -> 同 runId 原子更新最终 command Trace（失败时 admission trace 仍保留）
+```
+
+Tutor candidate 不拥有最终回答、RAG/approval 权限或写库能力。Organizer 模型不接触 userId/真实 ID，也不能修改 WrongQuestion、Card、ReviewLog、ReviewTask、用户锁定名称或直接执行写命令。两个 gate 默认关闭；Tutor/Organizer 使用各自 component-specific credential，web/server 不互相借用，worker role 强制关闭 Organizer runtime。Task 0 没有调用 provider。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
 
 当前 `/knowledge` 页面数据流：
 

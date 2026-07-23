@@ -808,3 +808,21 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 13. 独立复审无 Critical/Important 后 `--no-ff` 合并 main；在 main 重跑关键静态、Docker/API 与可见浏览器 default-off 回放，不重跑 V2 controlled-Live 或 R7，推送并确认 `origin/main...HEAD = 0 0`。
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
+
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口
+
+Task 0 只冻结设计与计划，尚未实现 candidate、读取 credential、调用 provider 或进行产品验收。执行时逐项确认：
+
+1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
+2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime；deterministic baseline 不修饰、不删除失败 case，provider/token/cost 为 0。
+3. full-field safety scan 必须先于裁剪/ordinal/runtime；credential、instruction/control、hostile accessor、越权、abort 和预算失败均 provider 前关闭。
+4. Tutor 模型不能选择 `answer_direct`、生成自由 prompt、改变 route/RAG/approval 或最终回答；本地 merger 重建完整 TutorStrategy。
+5. Organizer 模型不能接收/返回 userId、真实 question/deck ID 或写命令；真实 subject/deck/item、用户锁定名称、WrongQuestion/FSRS 事实和权限由本地保持。
+6. Organizer snapshot 来自 owner-scoped `REPEATABLE READ + READ ONLY`；provider 前、candidate 后和 advisory-lock 写事务内均验证 fingerprint，模型调用不在事务/锁内。
+7. single/batch 每 HTTP request 最多一次 Organizer provider call，batch 最多 12 个 eligible item；其余 deterministic，失败不阻断错题保存。
+8. Tutor/Organizer gate 默认 false，分别只读取 Tutor/Organizer component-specific credential，固定 V4 Pro non-thinking JSON、3000/5000ms timeout、no retry/tools；Organizer 仅允许 `SERVER_ROLE=api|both`，worker 强制关闭。request cap 0.006/0.016 CNY，24-pair Live 总 cap 0.55 CNY。
+9. Mock 只证明 contract；唯一 controlled-Live 需 fresh 用户授权，并满足 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score >=0.85、各提升 >=0.15 和全部 P95/usage/cost gate。
+10. Tutor Trace 可 best-effort；Organizer model-influenced command 必须有 persisted safe Trace，否则 candidate 不得影响写入。Trace/API/header 不含 prompt、题目/答案正文、model output、key、URL、cookie、token 或 raw error。
+11. Docker/API 分别验证 Tutor candidate/explicit zero-call/failure fallback 与 Organizer single/batch/owner/locked-name/zero-call/组织层 write isolation；可见浏览器保持窗口并覆盖 1440/510/390px。
+12. 精确清理本轮 synthetic user/question/group/deck/item/Trace/session/browser storage，恢复 mock/gates=false/key absent，保留容器、镜像和卷；禁止 prune、`down -v`、reset、flush 或 wipe。
+13. 独立复审无 Critical/Important 后 `--no-ff` 合入 main；main 不重跑已消费 Live，只验证 committed authority、静态门和 default-off Docker/API/浏览器回放，再推送并核对远程 SHA。

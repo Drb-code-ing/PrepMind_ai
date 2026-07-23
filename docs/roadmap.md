@@ -26,7 +26,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3   | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                         |
 | Phase 4   | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度 |
 | Phase 5   | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                       | 主线已完成；Phase 7.8.5 runtime parity 已完成 |
-| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.4.4 已在 main 完成；继续完成其余 Agent |
+| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 实施中 |
 | Phase 6.10 | 分层记忆系统     | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动      |
 | Phase 7   | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成 |
 | Phase 8   | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                         |
@@ -317,7 +317,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.6 V2 R4：Knowledge focused `117/117`，Agent 全量/typecheck/lint、Types `39/39`、Server Knowledge `50/50`、Web Knowledge `7/7` 及相关 build/lint/typecheck 均通过。V2 Mock run `05516dae-e8d3-42df-ba6b-3ffd41e99db6` 为 `24/24` zero-call、`48/48` runtime、五项语义指标全 `1`、P95 `286/348/348ms`、usage `14472/4185`、estimated `0.068526 CNY`；validator `evidenceCount=3`。V1 evidence/marker 未变，V2 Live evidence/marker 当时不存在，未调用 provider 或执行产品 Docker/浏览器验收。该句保留 R4 checkpoint 的历史授权边界；后续唯一 V2 Live、R7 与浏览器结果见下方条目。（已完成 checkpoint，当时 Phase 6.9.6 未完成）
 - Phase 6.9.6 V2 controlled-Live：唯一 run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 为 72 cases、`24/24` zero-call、`48/48` runtime、semantic `0.9875`、`0.117498 CNY`，最终 `quality_gate_passed`；evidence/marker 不得重跑或改写。（已完成）
 - Phase 6.9.6 Task 13 产品 R1--R7：R1--R6 所有失败 evidence 保留；R7 在修复镜像上通过 Dedup-only、Organizer-only、双开关、强制失败和 default-off，API/Trace/worker isolation/只读权限/zero-call guards/精确清理均通过。随后可见浏览器完成真实上传、处理、列表、Qwen 混合检索以及 local/semantic/degraded/error/响应式状态；浏览器阶段不再调用 provider。两轮独立复审无 Critical/Important。分支以 `33604040` 收尾并 `--no-ff` 合入 main `f31335c6`；main focused、Docker/API、桌面/移动端 default-off 可见回放、精确清理和远程 parity 均通过，未重跑 V2 controlled-Live 或 R7。（已完成）
-- Phase 6.9.7：TutorAgent / WrongQuestionOrganizerAgent 混合模型路径。（规划中）
+- Phase 6.9.7 Task 0：已冻结 TutorAgent / WrongQuestionOrganizerAgent 混合模型专项设计；Task 0 是设计 checkpoint，后续 Task 1--13 为 13 个原子执行/验收任务。Tutor 明确教学指令保持 zero-call，隐含/上下文/冲突意图使用受限 V4 Pro candidate；Organizer 已有 item、固定 `>=0.72` 高置信结构字段与不安全输入 zero-call，最多 12 条低置信错题共享一次模型调用。模型只返回 enum/ordinal/topic label，本地保留 TutorStrategy、JWT/owner、用户锁定名称、两阶段 Trace admission 和组织层写 command。固定评测为 72 cases（24 zero-call / 48 runtime）；两条 component-specific credential 分别只进入 web/server，Organizer timeout 为 5000ms 且 worker role 强制关闭。Task 0 未调用 provider；下一步 Task 1 运行并冻结 deterministic baseline 具体数值。（实施中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -329,7 +329,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 Provider schema 需要兼容投影，但 canonical Zod 仍是最终权威？”
 - “零网络 checkpoint 已经 151/345 tests passed，为什么 Router/Verifier 仍不能启用？”
 
-下一会话可以复制：“请从最新 main 开始 Phase 6.9.7；先按规范解释 TutorAgent / WrongQuestionOrganizerAgent 混合模型路径的目标、边界和实施顺序，再从 main 新建普通 `codex/` 分支。保留 Phase 6.9.6 的 V1/V2、R1--R7 与浏览器 evidence，不得重跑或改写。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 1：按冻结设计建立 Tutor/WrongQuestionOrganizer 72-case 数据集、指标和未修饰 deterministic baseline；不读取密钥、不调用 provider。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

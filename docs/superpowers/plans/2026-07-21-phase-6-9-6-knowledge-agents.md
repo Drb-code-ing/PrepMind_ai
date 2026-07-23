@@ -1,5 +1,7 @@
 # Phase 6.9.6 Knowledge Agents Implementation Plan
 
+> 历史说明：本计划已执行完成。唯一 V2 controlled-Live、R7 Docker/API、可见浏览器、main default-off 回放、精确清理与远程推送的当前结论，以 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md` 为准；Task 12/早期 Task 13 中的“阶段未完成”只保留当时 checkpoint 语义。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Upgrade `KnowledgeDedupAgent` and `KnowledgeOrganizerAgent` from deterministic-only advisers to production-gated, read-only hybrid semantic agents using the existing Qwen chunk embeddings and constrained DeepSeek V4 Pro decisions.

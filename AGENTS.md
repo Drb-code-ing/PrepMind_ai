@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
+PrepMind AI 是移动端优先的 Web + PWA 智能备考助手。Phase 7 核心工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前已进入 Phase 6.9.7 TutorAgent / WrongQuestionOrganizerAgent 混合模型路径；完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收后，再进入 Phase 6.10 分层记忆补强；随后进入 Phase 8 性能与 PWA、Phase 9 MCP Tool 体系。
 
 Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live 仍是唯一语义质量 authority；V12、V21 和 V22 的 `operation_failed -> recovered` 以及 V13--V20 的安全终态均保留为不可重跑、不可改写的历史。V22 的 Trace 计时耦合修复后，在用户授权下完成了一次独立的 DeepSeek V4 Pro Docker API 与可见 `/plan` 浏览器验收，Review/Planner 都返回 `candidate_applied`；随后已在 main merge commit `3aff6cc` 完成静态、Docker、可见浏览器 default-off 回放。合成账户/Trace 已精确清理，三个模型开关恢复 `false`。该路径只覆盖受限只读 Review/Planner，不代表其余 Agent、可执行 LangGraph 或 Phase 6.9 全部完成。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
 
@@ -63,6 +63,7 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、72-case deterministic/Mock、strict evidence validator 与 checkpoint 文档；尚未调用 provider 或执行产品 Docker/浏览器验收 |
 | Phase 6.9.6 V2 Live | 已完成 | 唯一 V2 run `10ae2f36...` 为 72-case、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不得重跑 |
 | Phase 6.9.6 Task 13 | 已完成 | 唯一 V2 Live、R7 Docker/API 与可见 `/knowledge` 分支验收保持不可变；main `f31335c6` 已完成 focused、Docker/API、可见浏览器 default-off 回放、精确清理与远程推送 |
+| Phase 6.9.7 Task 0 | 已完成 | Tutor/WrongQuestionOrganizer 专项设计、72-case/预算/权限/写隔离门槛已冻结；Task 0 后另有 13 个原子执行/验收任务，尚未实现 candidate 或调用 provider |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -123,7 +124,9 @@ Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基�
 
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
-2026-07-22 Phase 6.9.6 已完成。选定方案复用当前用户已经持久化的 Qwen `text-embedding-v4` / 1536 安全 Chunk embedding 形成最多 12 个语义候选，再由 DeepSeek V4 Pro 只裁决本地 ordinal 和受限关系；exact hash 保持 provider 前零调用。全阶段只返回建议，不写 Document / Chunk / 分类表，不自动删除、替换、合并、改名或分类。13 个 TDD 任务、V2 remediation、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器、分支精确清理、`--no-ff` main 合并、main default-off 静态/Docker/API/浏览器回放与远程推送均已完成。worker/web/admin 不接收 Knowledge credential/gate/timeout，Review/Planner 产品验收也拒绝 Knowledge 能力同时开启。V1 controlled-Live 失败证据、R1--R6 产品失败和后续成功 evidence 各自保持不可变；两个生产 gate 已恢复关闭。下一阶段是 Phase 6.9.7，不进入 Phase 6.10 分层记忆。权威设计见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`，执行计划见 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md`。
+2026-07-22 Phase 6.9.6 已完成。选定方案复用当前用户已经持久化的 Qwen `text-embedding-v4` / 1536 安全 Chunk embedding 形成最多 12 个语义候选，再由 DeepSeek V4 Pro 只裁决本地 ordinal 和受限关系；exact hash 保持 provider 前零调用。全阶段只返回建议，不写 Document / Chunk / 分类表，不自动删除、替换、合并、改名或分类。13 个 TDD 任务、V2 remediation、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器、分支精确清理、`--no-ff` main 合并、main default-off 静态/Docker/API/浏览器回放与远程推送均已完成。worker/web/admin 不接收 Knowledge credential/gate/timeout，Review/Planner 产品验收也拒绝 Knowledge 能力同时开启。V1 controlled-Live 失败证据、R1--R6 产品失败和后续成功 evidence 各自保持不可变；两个生产 gate 已恢复关闭。Phase 6.9.7 已开始，不进入 Phase 6.10 分层记忆。权威设计见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`，执行计划见 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md`。
+
+2026-07-23 Phase 6.9.7 Task 0 已冻结：Tutor 的明确教学指令继续 deterministic zero-call，隐含/上下文/冲突意图才允许受限 DeepSeek V4 Pro candidate；WrongQuestionOrganizer 的已有 item、固定 `>=0.72` 高置信结构字段和不安全输入 zero-call，低置信错题最多 12 条共享一次模型调用。模型只返回受限 enum/ordinal/topic label；TutorStrategy、真实 ID、JWT/owner、用户锁定名称、两阶段 Trace admission 和组织层写 command 由本地权威。固定 dataset 为 72 cases（两个 lane 各 12 zero-call + 24 runtime），production gate 默认关闭；Tutor/Organizer 使用两条 component-specific key 入口，timeout 为 `3000/5000ms`，worker role 强制关闭 Organizer runtime。Task 0 未实现 candidate、未读取 key、未调用 provider；baseline 数值必须由 Task 1 实际运行后写入 acceptance。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，计划见 `docs/superpowers/plans/phase-6-9-7-tutor-wrong-question-agents.md`。
 
 Phase 6.9.6.1 已固定 `phase-6.9-knowledge-agents-v1`：Dedup 40 条、Organizer 32 条，其中 24 条 zero-call contract 与 48 条 runtime quality case 按 `pairedRunIndex=0..23` 配对。未经修饰的 deterministic baseline 为 `12/48` 完整命中、critical `0`、Dedup macro-F1 `0.3343653251`、revision recall `0`、Organizer subject/tag/collection `0.25/0/0.4347826087`、weighted semantic `0.2322452551`，provider/token/cost 均为 0。该检查点当时尚未穿过 candidate guard；后续 Task 10 已让 24 条 zero-call 实际经过 guard 并由独立 runtime counter 证明 0 调用，不能用后续结果改写 baseline 报告。证据见 `docs/acceptance/phase-6-9-6-1-knowledge-agent-baseline.md`。
 
@@ -414,7 +417,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 分支的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理和独立复审已经完成；当前只提交分支收尾、`--no-ff` 合并最新 main、执行无真实模型的 main default-off API/浏览器回放并推送。完成后再按 Phase 6.9.7～6.9.10 推进 Tutor/WrongQuestionOrganizer、Retriever/FinalResponse、MemoryAgent 候选提取和 MCP-ready Orchestrator；不得提前进入记忆注入或 Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。当前在普通分支推进 Phase 6.9.7 Tutor/WrongQuestionOrganizer；Task 0 设计/计划已冻结，下一任务是 72-case deterministic baseline。不得提前进入记忆注入或 Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话可直接问：`请继续 Phase 6.9.6 Task 13 main 收尾；保留唯一 V2 Live、R1--R7 与浏览器证据，不得重跑真实模型，只做 default-off 回放、精确清理和推送。`
+6. 下一会话可直接问：`请继续 Phase 6.9.7 Task 1：冻结 Tutor/WrongQuestionOrganizer 的 72-case 数据集、专项指标与未修饰 deterministic baseline；不要调用 provider。`

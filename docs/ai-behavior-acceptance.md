@@ -235,6 +235,19 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0 冻结）
+
+本节是后续实现和验收门槛，不表示 candidate、Live 或产品路径已经完成，也不授权真实模型调用。数值与边界以 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md` 为准。
+
+- 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
+- Tutor 明确 direct/hint/step/concept/explain 指令、非 tutor route、不安全输入、abort/budget/gate-off 保持 zero-call；模型只处理隐含、上下文或冲突教学意图，不能输出 `answer_direct`，最终 TutorStrategy/prompt 由本地重建；
+- Organizer 已有 item、高置信结构字段、精确 deck、不安全/越权/stale/gate-off 路径 zero-call；single/batch 每 HTTP request 最多一次 provider 调用，batch 最多投影 12 个 eligible item；
+- Organizer 模型只返回 question/deck ordinal、固定 subject enum 或有界 topic label；JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、reason/description、Trace admission 与写 command 为本地权威；
+- Tutor/Organizer 独立 default-off gate，固定 V4 Pro non-thinking JSON、3000/5000ms timeout、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY，唯一 24-pair Live 总 cap 0.55 CNY；usage 必须为正安全整数且价格可验证；
+- quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Chat Router+Tutor 决策编排 P95 <=6500ms；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
+- Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；
+- Live 只在分支静态/Mock checkpoint 后重新获得一次明确授权。通过后分别验收 Docker Tutor Chat、Organizer single/batch、owner/locked-name/zero-call/forced-failure、可见 `/chat`/`/error-book` 和精确清理；最终恢复 mock/gates=false/key absent，禁止破坏 Docker 卷。
+
 ## 8. Reflexion / Critic 验收要求
 
 当改动 RouterAgent、TutorAgent prompt、RAG prompt、KnowledgeVerifierAgent 或 `/api/chat` 输出行为时，除了 mock 单测和必要的 live smoke，还要记录 critic/rubric 结论。

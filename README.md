@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。下一阶段是 Phase 6.9.7。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。当前已进入 Phase 6.9.7，Tutor/WrongQuestionOrganizer 的专项设计与实施计划已冻结，代码实现从 72-case deterministic baseline 开始。
 
 ## 当前状态
 
@@ -50,6 +50,7 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                  | 已完成 |
 | Phase 6.9.5 | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放        | 已完成 |
 | Phase 6.9.6 | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                       | 已完成 |
+| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | 实施中 |
 | Phase 7     | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit      | 核心工程化已完成 |
 | Phase 7.8.5 | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固             | 已完成 |
 | Phase 7.23  | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                    | 已完成 |
@@ -75,8 +76,8 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 - RAG 可信度评估：Phase 6.3 `KnowledgeVerifierAgent` 已接入 Chat RAG，命中资料后评估 `trusted / suspicious / conflict / insufficient / skipped`，资料片段只作为回答参考，不作为绝对真理。
 - Agent Runtime：`@repo/agent` 已提供 Agent state、ActionProposal contract、RouterAgent、阈值触发 guard、运行 recorder、graph descriptor 和降级链路。
 - Router Chat：`/api/chat` 已接入 RouterAgent，响应头会暴露 Agent route、confidence 和是否需要 RAG；现有流式输出、RAG、OCR 上下文、mock/live 双开关和 token 预算保持不变。
-- TutorAgent：Tutor 路线会根据用户输入生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 讲题策略，并把短策略 prompt 注入现有 Chat prompt。
-- WrongQuestionOrganizerAgent：`@repo/agent/wrong-question-organizer` 当前是确定性 policy，不调用真实模型；NestJS organizer API 将错题组织到 `WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem`，该组织层不替代 WrongQuestion / Card / ReviewLog / ReviewTask。
+- TutorAgent：Tutor 路线当前会根据用户输入生成 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 或 `general_follow_up` 讲题策略，并把短策略 prompt 注入现有 Chat prompt。Phase 6.9.7 设计规定明确教学指令保持 deterministic zero-call，只有隐含、上下文指代或冲突意图才进入受限模型 candidate；当前 Task 0 尚未把 candidate 接入产品。
+- WrongQuestionOrganizerAgent：`@repo/agent/wrong-question-organizer` 当前仍是确定性 policy；NestJS organizer API 将错题组织到 `WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem`，该组织层不替代 WrongQuestion / Card / ReviewLog / ReviewTask。Phase 6.9.7 将让低置信语义分类使用模型建议，但真实 ID、JWT/owner、用户锁定名称和写事务继续由本地掌握；当前 Task 0 仅完成设计/计划。
 - ReviewAgent / PlannerAgent：`@repo/agent/review` 和 `@repo/agent/planner` 生成 owner-scoped 的只读建议；`GET /review-agent/suggestions` 基于当前用户复习事实生成建议，`/plan` 展示完整建议，`/today` 展示紧凑建议，不创建未来 ReviewTask，不写 Card / ReviewLog / ReviewPreference / WrongQuestion / deck。V10 是唯一语义质量 authority；历史 V11--V22 仍不可改写。修复 V22 的 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收均返回 `candidate_applied`。两条业务 gate 仍默认关闭，以便可控回滚；详见 [Phase 6.9.5 production acceptance](./docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md)。
 - MemoryAgent：`@repo/agent/memory` 当前是确定性 policy，不调用真实模型；`UserMemoryCandidate` 与 `UserMemory` 以 PostgreSQL 为权威来源，候选必须由用户在 `/profile` 确认后才会成为正式 `ACTIVE` 记忆，支持停用、恢复和删除；当前不把记忆自动注入 `/api/chat`。
 - Agent Trace：`/api/chat` 在有 access token 时 best-effort 写入脱敏 trace，`/agent-traces` 提供账号级在线 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key，成本看板不替代供应商账单。
@@ -221,13 +222,13 @@ bun --cwd packages/fsrs test
 
 下一步主线：
 
-1. Phase 6.9.5 已完成：V10 是唯一语义质量 authority，V22 的恢复历史保留，独立真实模型 API/浏览器验收和 main default-off replay 均通过，模型 gate 保持默认关闭。
-2. Phase 6.9.6 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 与分支精确清理均已通过且不可重跑；下一步只提交分支收尾，`--no-ff` 合并最新 main，在 main 执行无真实模型的静态、Docker/API 与可见浏览器 default-off 回放，精确清理后推送并确认远程 parity。
-3. 全部 Agent 完成后进入 Phase 6.10 分层记忆。未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
+1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
+2. 当前执行 Phase 6.9.7：Tutor 明确指令零调用、隐含教学意图模型裁决；WrongQuestionOrganizer 高置信结构字段零调用、低置信语义使用受限模型建议，写入仍经过 owner snapshot、Trace admission 和本地授权事务。Task 0 已完成，下一步冻结 72-case deterministic baseline。
+3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
-回顾时可以问：“为什么 Knowledge Agent 复用 Qwen embedding shortlist，却用 DeepSeek 做语义裁决？”“为什么 R1--R6 失败证据不能被 R7 成功覆盖？”“为什么浏览器语义状态使用绑定 R7 authority 的严格回放，而不再调用一次模型？”
+回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”
 
-下一会话可以复制：“请继续 Phase 6.9.6 Task 13 收尾：保留唯一 V2 Live、R1--R7 和浏览器证据，不得重跑真实模型；提交分支文档后合并 main，只做 default-off 回放、精确清理和推送。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 1：冻结 Tutor/WrongQuestionOrganizer 的 72-case 数据集、专项指标与未修饰 deterministic baseline；不要调用 provider。”
 
 ## 文档入口
 
