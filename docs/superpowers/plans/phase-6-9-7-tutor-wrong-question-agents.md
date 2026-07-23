@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-23）：** Task 0--9 已完成；72-case paired Mock/evidence 工程门通过，真实 provider、Docker/API 与可见浏览器验收尚未执行，两个生产 gate 默认关闭。下一任务是 Task 10 Docker allowlist、环境示例与运维回滚。
+**当前状态（2026-07-23）：** Task 0--10 已完成；72-case paired Mock/evidence 工程门、Docker allowlist、tracked defaults、API/worker/admin 角色隔离与回滚合同均已通过。真实 provider、Docker service/API 与可见浏览器验收尚未执行，两个生产 gate 默认关闭。下一任务是 Task 11 分支全量静态/Mock checkpoint 与双路终审。
 
 权威设计：`docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`
 
@@ -227,7 +227,7 @@
 
 **验证：** server focused config/service/controller/e2e、Server full test/lint/build、Agent/AI tests、`git diff --check`。
 
-**完成记录（2026-07-23）：** 已实现独立 default-off gate/credential、固定 V4 Pro non-thinking JSON、5000ms、`1/3500/800` 与 `0.016 CNY` cap；worker 强制关闭。single/batch 单次 dispatch、最多 12 eligible、candidate 后 stale fence、两阶段 Trace admission/final replacement、HTTP abort/listener cleanup 与 Task 6 model-free command 已接通。focused 单测 `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、相关 typecheck/lint/build/diff 门及两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md`。Task 8/9 后续均已完成，当前下一任务是 Task 10。
+**完成记录（2026-07-23）：** 已实现独立 default-off gate/credential、固定 V4 Pro non-thinking JSON、5000ms、`1/3500/800` 与 `0.016 CNY` cap；worker 强制关闭。single/batch 单次 dispatch、最多 12 eligible、candidate 后 stale fence、两阶段 Trace admission/final replacement、HTTP abort/listener cleanup 与 Task 6 model-free command 已接通。focused 单测 `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、相关 typecheck/lint/build/diff 门及两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md`。Task 8--10 后续均已完成，当前下一任务是 Task 11。
 
 **提交：** `feat(server): integrate hybrid wrong question organizer`
 
@@ -249,7 +249,7 @@
 
 **验证：** Types test/typecheck、Web focused/full/lint/build、Server contract tests、390/510/1440px 静态布局断言、`git diff --check`。
 
-**完成记录（2026-07-23）：** single/batch response 已增加 request-level strict runtime，只允许 `source / disposition / degraded / 可选 traceId`；只有已通过 usage/价格、Trace admission 与本地授权 command 的 candidate 才能返回 `hybrid_model / candidate_applied`。batch item 不携带 runtime，candidate scope 的 degraded 结论不会被 deterministic remainder 覆盖；Web API 在 envelope 解包后继续 strict parse，未知或敏感字段 fail-closed。`/error-book` 仅在用户主动批量整理成功后显示“语义整理 / 本地规则 / 安全回退”，degraded 优先，390/510/1440px 静态布局具备安全换行，且没有模型重试或自动 mutation。Types `42/42`、Web `438/438`、Server `2149 passed / 30 skipped` 以及 focused/typecheck/lint/build/diff 门通过；未读取 key、调用 provider 或执行 controlled-Live/Docker/可见浏览器，gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-api-source.md`；Task 9 后续已完成，当前下一任务为 Task 10。
+**完成记录（2026-07-23）：** single/batch response 已增加 request-level strict runtime，只允许 `source / disposition / degraded / 可选 traceId`；只有已通过 usage/价格、Trace admission 与本地授权 command 的 candidate 才能返回 `hybrid_model / candidate_applied`。batch item 不携带 runtime，candidate scope 的 degraded 结论不会被 deterministic remainder 覆盖；Web API 在 envelope 解包后继续 strict parse，未知或敏感字段 fail-closed。`/error-book` 仅在用户主动批量整理成功后显示“语义整理 / 本地规则 / 安全回退”，degraded 优先，390/510/1440px 静态布局具备安全换行，且没有模型重试或自动 mutation。Types `42/42`、Web `438/438`、Server `2149 passed / 30 skipped` 以及 focused/typecheck/lint/build/diff 门通过；未读取 key、调用 provider 或执行 controlled-Live/Docker/可见浏览器，gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-api-source.md`；Task 9/10 后续均已完成，当前下一任务为 Task 11。
 
 **提交：** `feat(web): show organizer decision source`
 
@@ -275,11 +275,11 @@
 
 **验证：** focused cases/contract/runner/CLI/validator、Mock CLI 两次、validator、Agent full/typecheck/lint、AI tests、`git diff --check`。
 
-**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。当前下一任务是 Task 10。
+**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。Task 10 后续已完成，当前下一任务是 Task 11。
 
 **提交：** `test(agent): evaluate tutor organizer candidates`
 
-## Task 10：固定 Docker allowlist、环境示例和运维回滚
+## Task 10：固定 Docker allowlist、环境示例和运维回滚（已完成）
 
 **文件：**
 
@@ -298,6 +298,8 @@
 - `docker compose ... config --quiet`，不打印解析后的 secret。
 
 **验证：** focused config/Compose tests、Compose `config --quiet`、Web/Server build、`git diff --check`。
+
+**完成证据：** 新 boundary RED `3/3` 精确暴露 Organizer server projection、tracked defaults 与 Admin 整份 env 注入缺口；GREEN `3/3`，与既有 Compose readiness 合跑 `24/24`。Server config/Compose focused `29/29`、Tutor config `5/5`、tracked `config --quiet`、Server/Web build 均通过。`admin` service `env_file` 已移除并保留显式 URL；resolved synthetic Compose fixture 证明 web/server 正向投影和 worker/admin 负向隔离，generic/cross-component key 均不可替代。未读取根 `.env`/key、调用 provider、启动 Docker service 或执行 API/浏览器；当前下一任务是 Task 11。证据见 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
 
 **提交：** `chore(agent): wire phase 6.9.7 runtime boundaries`
 

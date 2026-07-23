@@ -53,6 +53,13 @@ describe('wrong-question organizer model config', () => {
       }),
     ).toMatchObject({ enabled: false, mode: 'mock' });
     expect(
+      resolveWrongQuestionOrganizerModelConfig({
+        ...validLiveEnv(),
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '',
+        TUTOR_AGENT_DEEPSEEK_API_KEY: 'tutor-key-must-not-be-used',
+      }),
+    ).toMatchObject({ enabled: false, mode: 'mock' });
+    expect(
       resolveWrongQuestionOrganizerModelConfig(validLiveEnv(), {
         ...WRONG_QUESTION_ORGANIZER_MODEL_PRICE_CNY,
         requestCap: 0.02,
@@ -75,6 +82,13 @@ describe('wrong-question organizer model config', () => {
         ...validLiveEnv(),
         WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '',
         DEEPSEEK_API_KEY: 'generic-key-must-not-be-used',
+      }),
+    ).toBeNull();
+    expect(
+      resolveWrongQuestionOrganizerLiveExecutorConfig({
+        ...validLiveEnv(),
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '',
+        TUTOR_AGENT_DEEPSEEK_API_KEY: 'tutor-key-must-not-be-used',
       }),
     ).toBeNull();
   });

@@ -327,8 +327,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Task 7：WrongQuestionOrganizer 已接入 server-only default-off composition，固定 DeepSeek V4 Pro non-thinking JSON、5000ms、独立 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`、`1/3500/800` 与 `0.016 CNY` cap；global Live/gate/URL/key/known-price 任一不满足都不创建 executor，worker 强制关闭。single 最多一次 candidate，batch 最多 12 个低置信安全目标共享一次 candidate，其余走本地 command；candidate 后再次验证 snapshot，不在事务/锁内调用 provider。模型结果必须先持久化同一 runId 的 `command_pending` Trace 才可影响 command；final 原子替换失败保留 pending，跨 owner 无法替换。HTTP abort 贯穿 snapshot/candidate/command preflight，事务开始后仅完成最小本地写入。focused `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、typecheck/lint/build/diff 与两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器，gate 默认关闭。（已完成静态/Mock 产品接入）
 - Phase 6.9.7 Task 8：WrongQuestionOrganizer single/batch response 已增加 strict request-level runtime，只允许 `source / disposition / degraded / 可选 traceId`；`hybrid_model` 仅接受已持久化 Trace 的 `candidate_applied`，正常 gate-off/zero-call 为本地非降级，其余安全失败为本地降级。batch item 不重复携带 runtime，本地 remainder 不覆盖候选 scope 的来源或降级结论；Web API 在 envelope 解包后继续用 Zod strict parse，未知/sensitive 字段 fail-closed。`/error-book` 只在用户主动批量整理成功后显示“语义整理 / 本地规则 / 安全回退”，degraded 优先且无模型重试或自动 mutation。Types `42/42`、Web `438/438`、Server `2149 passed / 30 skipped` 及 focused、typecheck/lint/build/390/510/1440 静态布局门通过；未读取 key、调用 provider 或执行 controlled-Live/Docker/可见浏览器，gate 默认关闭。（已完成）
 - Phase 6.9.7 Task 9：已实现同一 72-case 的 strict paired runner、一次性 CLI 与 evidence validator。24 条 zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在 24 个 paired index 内并行且失败不删分母。报告重算 dataset/prompt/schema/projection、两个 semantic score、critical、P95、usage 与 CNY。两次 Mock 均为 `24/24` zero-call、`48/48` runtime、semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`；`mock_synthetic` provenance 使 Live-only gate 保持 `quality_gate_failed`。终审把非产品链路的 `chatProduct*` 更名为 `tutorOrchestration*`，公共 Live CLI 不接受 executor 注入，production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、Mock/validator/diff 通过；未读取 key、调用 provider、创建 Live marker/evidence 或执行 Docker/浏览器，两个 gate 默认关闭。（已完成）
-- Phase 6.9.7 Task 10：固定 Docker allowlist、环境示例、API/worker/admin 角色隔离与运维回滚；仍不调用 provider。（下一任务）
-- Phase 6.9.7 Task 11：完成分支全量静态/Mock checkpoint 与双路终审，随后重新申请唯一 controlled-Live 授权。（规划中）
+- Phase 6.9.7 Task 10：tracked Docker example 固定 mock/live=false、全部 Agent gate=false、Tutor/Organizer 3000/5000ms 与空 component credential。Compose 只把 Tutor 三项投影给 `web`、Organizer 三项投影给 `server`，`worker/admin` 均不接收；Admin 的整份根 env service 注入已移除。静态与 resolved Compose synthetic fixture 证明 generic/cross-component key 不会穿透，worker module 继续强制关闭。新 boundary RED/GREEN `3/3`，与 readiness 合跑 `24/24`，Server config/Compose `29/29`、Tutor config `5/5`、tracked `config --quiet`、Server/Web build 通过；未读取根 `.env`/key、调用 provider、启动 Docker service 或执行 API/浏览器。（已完成）
+- Phase 6.9.7 Task 11：完成分支全量静态/Mock checkpoint 与双路终审，随后重新申请唯一 controlled-Live 授权。（下一任务）
 - Phase 6.9.7 Task 12：仅在新授权后执行唯一 Live quality authority、Docker/API、可见浏览器与精确清理。（规划中）
 - Phase 6.9.7 Task 13：分支收尾、`--no-ff` 合并 main、main default-off 回放、精确清理与远程推送。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
@@ -350,8 +350,11 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `/error-book` 必须让安全回退优先于语义整理显示？”
 - “为什么 Task 9 的 Tutor orchestration P95 不是 Router/API/最终流式 Chat 产品 P95？”
 - “为什么 synthetic Live executor 即使满分也不能通过 production gate？”
+- “为什么应用层已有 worker-off，Compose 仍必须做 service allowlist？”
+- “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
+- “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 10：固定 Tutor/Organizer Docker allowlist、环境示例、角色隔离与运维回滚；保持两个生产 gate 默认关闭，不读取或调用真实 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 11：执行分支全量静态/Mock checkpoint 与 contract/security、operations/acceptance 两路独立终审；保持两个生产 gate 默认关闭，不读取 credential、不调用真实 provider或启动产品 Docker/浏览器。全部通过后停止并重新申请 Task 12 唯一 controlled-Live 授权。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

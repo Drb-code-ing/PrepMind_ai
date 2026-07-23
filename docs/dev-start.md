@@ -837,15 +837,23 @@ Remove-Item Env:COMPOSE_BAKE
 
 ### Docker server / web 真实模型配置补充
 
-> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`web` 不再使用根 `.env` 的 `env_file`，而是只接收明确列出的 Chat、Router、Verifier 与 Tutor 服务端运行变量；`admin` 仍有自己的 `env_file`，但不执行 Chat provider。Review/Planner 以及 KnowledgeDedup/Organizer 的 gate 和 timeout 只进入 `server`，不进入 `web`、`worker` 或 `admin`。本节下方任何“web/admin 都使用 `env_file`”的历史表述均以本说明为准。
+> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`server`、`worker`、`web`、`admin` 都不再通过 service `env_file` 导入整份根 `.env`，只接收各自 `environment` 中明列的 allowlist。`web` 接收 Chat、Router、Verifier 与 Tutor；`server` 接收 Review/Planner、KnowledgeDedup/Organizer 与 WrongQuestionOrganizer；`worker` 只接收 RAG/队列/运维变量；`admin` 只接收后台所需 URL。根 `.env` 只是宿主 Compose 插值输入，不会整份进入任一容器。
 
-Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`，也不会把整个文件注入所有容器。`server` 与 `worker` 不导入整个文件，而是只接收 `environment` 中显式列出的运行变量；`web` 同样只接收明确列出的 Chat、Router、Verifier 与 Tutor provider allowlist，根 `.env` 不是 Web 的 `env_file`；只有 `admin` 保留独立的 `env_file`，且不执行 Chat provider。Tutor 使用独立 `TUTOR_AGENT_DEEPSEEK_API_KEY`，不回退到通用或其它 Agent key。Review/Planner 与 Knowledge 的 gate/timeout 都只进入 `server`；Knowledge 还使用独立的 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`，不回退到 Chat 的 `DEEPSEEK_API_KEY` 或 Review/Planner 的产品验收凭据。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
+Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`。Tutor 只使用 `TUTOR_AGENT_DEEPSEEK_API_KEY`，WrongQuestionOrganizer 只使用 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic key、另一组件 key、Review/Planner 或 Knowledge credential 都不能替代。Review/Planner、Knowledge 与 WrongQuestionOrganizer 的 gate/timeout 只进入 `server`；`SERVER_ROLE=worker` 即使被宿主额外伪造注入 Organizer gate/key，模块也强制关闭 executor。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
 
 不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker config --quiet
 ```
+
+在不读取根 `.env` 的静态/CI 检查中，改用受版本控制且只有占位值的模板：
+
+```powershell
+docker compose --env-file docker/.env.example -f docker/docker-compose.dev.yml --profile worker config --quiet
+```
+
+两条命令成功时都不输出解析后的 key；不要把 `--quiet` 换成 `config`、`config --environment` 或 `config --format json` 后粘贴终端结果。
 
 Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
 
@@ -862,6 +870,9 @@ KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 TUTOR_AGENT_MODEL_ENABLED=false
 TUTOR_AGENT_MODEL_TIMEOUT_MS=3000
 TUTOR_AGENT_DEEPSEEK_API_KEY=
+WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false
+WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=5000
+WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY=
 REVIEW_AGENT_MODEL_ENABLED=false
 PLANNER_AGENT_MODEL_ENABLED=false
 REVIEW_AGENT_MODEL_TIMEOUT_MS=4500
@@ -875,13 +886,17 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor 模型策略配置（Task 5 静态/Mock checkpoint）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署边界（Task 10）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
 真实 executor 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、Tutor gate=true、`AI_BASE_URL=https://api.deepseek.com/v1`、独立 key 非空、价格/timeout 已知且请求 eligibility 安全时才创建。模型固定 `deepseek-v4-pro` non-thinking JSON、无 tools/retry；单请求预算 `1 call / 1200 input / 300 output`，硬 cap `0.006 CNY`，并与 Router -> Verifier 的共享预算隔离。非 Tutor final route、明确教学指令、不安全输入、abort 或任一配置失败都保持 zero-call；运行失败保留 deterministic Tutor strategy。
 
-Task 5 尚未授权 controlled-Live，也没有执行 Docker API/可见浏览器验收。日常开发必须保持 gate=false/key 空；不要因为配置入口已经存在就把静态/Mock 接入解释为真实模型可用性结论。当前证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。
+WrongQuestionOrganizer candidate 只在 Nest `server` 的 `SERVER_ROLE=api|both` 中运行。Compose 只向 `server` 投影 `WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED`、固定 5000ms timeout 与 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；`web`、`worker`、`admin` 不接收。真实配置固定 DeepSeek V4 Pro non-thinking JSON、无 tools/retry、`1 call / 3500 input / 800 output` 与 `0.016 CNY` cap；generic 或 Tutor key 都不能替代 Organizer key。worker 模块还会在代码层把 gate 强制为 false，Compose 隔离和运行时隔离缺一不可。
+
+Task 10 只完成部署 allowlist、tracked example、角色隔离测试和回滚说明，仍未授权 controlled-Live，也没有启动 Docker service、执行 API 或可见浏览器验收。日常开发必须保持两个 gate=false、两条 component key 空；不要把 `config --quiet` 或 Mock 解释为真实模型可用性。Task 5/7/10 证据分别见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`、`docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md` 与 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
+
+后续产品验收必须使用合成账号/错题，只允许 Tutor 与 Organizer 两个目标 gate 按步骤开启，其余 Router、Verifier、Review、Planner、Knowledge gate 全部保持 false。执行前必须重新确认 DeepSeek 账号的数据保留/训练设置；本地精确清理不能声称删除供应商日志。验收或失败后立即恢复 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、两个 gate=false、两条 component key absent/空，并只重建受影响的 `web server`。精确删除本轮 synthetic user/question/group/deck/item/Trace/session/browser storage；禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
@@ -929,13 +944,13 @@ KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
 
-验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`TUTOR_AGENT_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Tutor/Knowledge credential，保留 5000/4000、3000 与 4500/4500 timeout。Router/Verifier/Tutor 属于 `web` runtime，恢复后精确重建 `web`；Review/Planner 与 Knowledge 只由 Nest `server` 消费，恢复后必须精确重建并探测 `server`，不能用重建 `web` 代替：
+验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`TUTOR_AGENT_MODEL_ENABLED=false`、`WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Tutor、WrongQuestionOrganizer 与 Knowledge credential，保留 5000/4000、3000、5000 与 4500/4500 timeout。Router/Verifier/Tutor 属于 `web` runtime，Review/Planner、Knowledge 与 WrongQuestionOrganizer 属于 Nest `server` runtime；恢复后精确重建并探测 `web server`，不能只重建其中一个：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web server
 ```
 
-只验收 Review/Planner 或 Knowledge 时只需重建 `server`。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
+只验收 Review/Planner、Knowledge 或 WrongQuestionOrganizer 时只需重建 `server`。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
 
 Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。
 

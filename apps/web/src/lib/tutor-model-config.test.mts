@@ -87,6 +87,14 @@ test('gate, mode, global gate, exact URL, component key, timeout and pricing fai
         DEEPSEEK_API_KEY: 'must_not_be_borrowed',
       },
     },
+    {
+      name: 'Organizer component key only',
+      env: {
+        ...LIVE_ENV,
+        TUTOR_AGENT_DEEPSEEK_API_KEY: '',
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'must_not_be_borrowed',
+      },
+    },
     { name: 'wrong path', env: { ...LIVE_ENV, AI_BASE_URL: 'https://api.deepseek.com' } },
     { name: 'wrong host', env: { ...LIVE_ENV, AI_BASE_URL: 'https://deepseek.example/v1' } },
     { name: 'wrong timeout', env: { ...LIVE_ENV, TUTOR_AGENT_MODEL_TIMEOUT_MS: '3001' } },

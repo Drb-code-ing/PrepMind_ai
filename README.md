@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--9 已完成：Tutor package candidate 已接入 Web server-only default-off composition、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner-scoped 快照、三阶段 stale fence、model-free 授权写命令、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort，以及 strict request-level runtime 与 `/error-book` 来源状态；72-case paired runner、一次性 CLI 与 evidence validator 的 Mock 工程门也已通过。Mock 为 `24/24` verified zero-call、`48/48` strict runtime，但 `quality_gate_failed` 是 Live-only authority 设计，不代表 contract 失败。Tutor/Organizer 的真实 provider、Docker/API 与可见浏览器验收都尚未执行，生产 gate 继续默认关闭；下一步是 Task 10 Docker allowlist、环境示例与运维回滚。本阶段仍未读取根 `.env`/credential 或调用真实 provider。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--10 已完成：Tutor/Organizer candidate、产品 default-off composition、Organizer owner/write/Trace/API/UI、72-case paired Mock/evidence，以及 Docker allowlist、tracked defaults、角色隔离与回滚合同均已落地。Mock 为 `24/24` verified zero-call、`48/48` strict runtime，但 `quality_gate_failed` 是 Live-only authority 设计，不代表 contract 失败。Tutor/Organizer 的真实 provider、Docker service/API 与可见浏览器验收都尚未执行，生产 gate 继续默认关闭；下一步是 Task 11 分支全量静态/Mock checkpoint 与双路终审。本阶段仍未读取根 `.env`/credential 或调用真实 provider。
 
 ## 当前状态
 
@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--9 已完成。Tutor 已接入 Web server-only default-off runtime、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 fence、model-free command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort，以及 strict request-level API runtime metadata 与 `/error-book` 来源状态。Task 9 又补齐 72-case strict paired runner、一次性 Mock/Live CLI 与不可变 evidence validator：Mock 为 `24/24` verified zero-call、`48/48` strict runtime，Tutor/Organizer semantic 均为 `1`；`quality_gate_failed` 是 Live-only authority 设计。该 Mock 未经过真实 Router、HTTP、RAG 或最终流式回答，两个真实 provider、Docker/API 与可见浏览器验收仍未执行。下一步 Task 10 固定 Docker allowlist、环境示例与运维回滚。
+2. 当前执行 Phase 6.9.7：Task 0--10 已完成。Task 9 补齐 72-case strict paired runner、一次性 Mock/Live CLI 与不可变 evidence validator；Task 10 又把部署边界固定为 Tutor→`web`、WrongQuestionOrganizer→`server`，`worker/admin` 不接收两组能力，四个应用 service 都不导入整份根 env。tracked example 默认 mock/live=false、全部 gate=false；generic/cross-component key 不可替代。该证据仍未经过真实 Router、HTTP、RAG、最终流式回答或 Docker service/API，两个真实 provider 与可见浏览器验收也未执行。下一步 Task 11 执行分支全量静态/Mock checkpoint 与两路独立终审。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 10：固定 Tutor/Organizer 的 Docker allowlist、环境变量示例、API/worker 角色隔离与运维回滚；保持两个生产 gate 默认关闭，不读取 credential、不调用真实 provider，也不启动产品 Docker 或浏览器。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 11：执行分支全量静态/Mock checkpoint 与 contract/security、operations/acceptance 两路独立终审；保持两个生产 gate 默认关闭，不读取 credential、不调用真实 provider，也不启动产品 Docker 或浏览器。全部通过后停止并重新申请 Task 12 唯一 controlled-Live 授权。”
 
 ## 文档入口
 
@@ -241,6 +241,7 @@ bun --cwd packages/fsrs test
 - [Phase 6.9.7 Task 7 Organizer runtime/Trace 验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md)
 - [Phase 6.9.7 Task 8 Organizer API/来源状态验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-api-source.md)
 - [Phase 6.9.7 Task 9 Tutor/Organizer paired eval 验收](./docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md)
+- [Phase 6.9.7 Task 10 Docker runtime boundary 验收](./docs/acceptance/phase-6-9-7-runtime-boundaries.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

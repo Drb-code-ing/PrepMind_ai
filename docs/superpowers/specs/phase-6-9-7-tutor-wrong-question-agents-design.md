@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--9 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态和 72-case strict paired Mock 工程门均已接入；两条 controlled-Live 与 Task 10+ 仍待完成
+状态：设计冻结；Task 1--10 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门以及 Docker allowlist/角色隔离/回滚合同均已接入；两条 controlled-Live 与 Task 11+ 仍待完成
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -190,6 +190,8 @@ AND immutable reservation succeeds
 - `server` 仅在 `SERVER_ROLE=api|both` 时接收 WrongQuestionOrganizer gate、timeout 和 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；
 - `SERVER_ROLE=worker` 即使宿主伪造注入 WrongQuestionOrganizer gate/key，也强制关闭该 runtime；
 - `worker`、`admin` 不接收这些 gate 或 credential。
+
+Task 10 已把该设计落到 tracked Compose：四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只做 `${...}` 插值；`admin` 只保留显式 URL。tracked example 固定 mock/live=false、全部 Agent gate=false、两条 component credential 为空。静态 source guard 与 resolved synthetic Compose fixture 同时证明 web/server 正向投影、worker/admin 负向隔离以及 generic/cross-component key 不可替代；`config --quiet` 只完成无输出解析，不构成 Docker 产品验收。
 
 ### 6.2 固定 profile
 
