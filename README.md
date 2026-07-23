@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0 设计与 Task 1 baseline 已完成。72 cases / 32 Organizer decisions 的未修饰结果为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；下一步建立 strict output contract 与完整字段安全投影。
+2. 当前执行 Phase 6.9.7：Task 0 设计、Task 1 baseline 与 Task 2 strict contract / full-field safety projection 已完成。72 cases / 32 Organizer decisions 的未修饰结果为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；下一步实现 Tutor candidate eligibility 与本地权威 merger，仍不调用真实 provider。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 2：建立 Tutor/WrongQuestionOrganizer strict output contract 与完整字段安全投影；不要读取密钥或调用 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 3：实现 Tutor candidate eligibility 与本地权威 merger；保持明确教学指令 provider 前 zero-call，不读取密钥或调用真实 provider。”
 
 ## 文档入口
 

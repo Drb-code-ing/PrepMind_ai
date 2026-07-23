@@ -811,11 +811,11 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 ## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口
 
-Task 0 已冻结设计/计划；Task 1 已冻结 72-case deterministic baseline，仍未实现 candidate、读取 credential、调用 provider 或进行产品验收。执行时逐项确认：
+Task 0 已冻结设计/计划，Task 1 已冻结 72-case deterministic baseline，Task 2 已完成 strict contract 与完整字段安全投影；仍未实现 candidate、读取 credential、调用 provider 或进行产品验收。执行时逐项确认：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
-3. full-field safety scan 必须先于裁剪/ordinal/runtime；credential、instruction/control、hostile accessor、越权、abort 和预算失败均 provider 前关闭。
+3. Task 2 已证明 full-field safety scan 先于裁剪/ordinal/runtime：credential、instruction/control、hostile accessor、畸形 UTF-16、unsafe metadata 与超大稀疏结构 fail-closed；公开 Organizer projection 只有 ordinal，没有真实 ID、完整 answer/userNote 或写能力。后续 candidate 必须保持同一顺序，并用实际 runtime counter 证明 provider 前关闭。
 4. Tutor 模型不能选择 `answer_direct`、生成自由 prompt、改变 route/RAG/approval 或最终回答；本地 merger 重建完整 TutorStrategy。
 5. Organizer 模型不能接收/返回 userId、真实 question/deck ID 或写命令；真实 subject/deck/item、用户锁定名称、WrongQuestion/FSRS 事实和权限由本地保持。
 6. Organizer snapshot 来自 owner-scoped `REPEATABLE READ + READ ONLY`；provider 前、candidate 后和 advisory-lock 写事务内均验证 fingerprint，模型调用不在事务/锁内。

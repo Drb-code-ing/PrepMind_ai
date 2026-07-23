@@ -308,6 +308,8 @@ fingerprint 覆盖 owner 的域分离 HMAC、wrongQuestion ID/version、结构�
 
 模型只看到 `q0..q11`、`d0..d19` ordinal、受限 subject hint、category/error type/knowledge point、经过完整扫描后裁剪的 question/analysis 摘要，以及 existing deck 的安全名称/关键词。模型看不到 UUID、userId、图片 URL、source record、数据库时间、完整答案、rawContent 或写操作。
 
+Task 2 固定的投影上限为：question excerpt `480`、analysis excerpt `320`、结构化 label `80`、最多 3 个 knowledge point；deck name `80`、最多 8 个 keyword 且每个 `60` Unicode scalar。`topicLabel` 为 NFKC canonical 的 `2..24` 个受限字符，并继续接受 post-schema credential/instruction/URL/Markdown/HTML/control/reserved-name guard。`nameLocked` 保留在本地 snapshot/merger，不进入模型投影。
+
 ```ts
 {
   decisions: Array<{

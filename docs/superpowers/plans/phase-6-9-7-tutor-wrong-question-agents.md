@@ -57,7 +57,7 @@
 
 ## Task 1：冻结 72-case 数据集、专项指标和 deterministic baseline
 
-**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；下一任务为 Task 2。
+**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；后续 Task 2 也已完成，当前下一任务为 Task 3。
 
 **文件：**
 
@@ -86,6 +86,8 @@
 **提交：** `test(agent): baseline tutor organizer semantics`
 
 ## Task 2：建立 strict output contract 与完整字段安全投影
+
+**状态：已完成。** 四份 Task 2 focused tests `19/19`，连同 Knowledge projection 安全回归为 `25/25`；Agent full `502/502`，typecheck/lint exit 0，两路独立复审无 Critical/Important。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-contracts.md`；下一任务为 Task 3。
 
 **文件：**
 
