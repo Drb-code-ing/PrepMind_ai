@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--8 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata 与来源状态均已接入；两条 controlled-Live 与 Task 9+ 仍待完成
+状态：设计冻结；Task 1--9 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态和 72-case strict paired Mock 工程门均已接入；两条 controlled-Live 与 Task 10+ 仍待完成
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -49,7 +49,7 @@ Phase 6.9.7 把两个仍是纯确定性策略的业务 Agent 升级为受治理�
 - 没有 Tutor 专属 candidate schema、eligibility、预算、独立 gate、usage/cost 和 paired eval；
 - Trace 目前只有 Router/Verifier 的模型 observation，没有 Tutor 模型 provenance。
 
-Task 3 已补齐 package candidate/merger；Task 5 又把它接入 Web server-only composition：固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后只注册 Tutor factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final canonical `route=tutor` 且 implicit/contextual/conflicting candidate 真正调用时构造一次；失败保留原 route 与 deterministic strategy。安全 header/Trace、request abort、Router/Verifier 预算隔离和 Docker web-only allowlist 均已完成静态/Mock 验证。production gate 仍默认关闭，尚未执行 controlled-Live、Docker API 或可见浏览器验收；专项 paired eval 仍属于 Task 9。
+Task 3 已补齐 package candidate/merger；Task 5 又把它接入 Web server-only composition：固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后只注册 Tutor factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final canonical `route=tutor` 且 implicit/contextual/conflicting candidate 真正调用时构造一次；失败保留原 route 与 deterministic strategy。安全 header/Trace、request abort、Router/Verifier 预算隔离和 Docker web-only allowlist 均已完成静态/Mock 验证。Task 9 已补齐专项 paired runner、一次性 CLI 与 evidence validator，但 production gate 仍默认关闭，尚未执行 controlled-Live、Docker API 或可见浏览器验收。
 
 ### 2.2 WrongQuestionOrganizerAgent
 
@@ -415,6 +415,8 @@ Task 8 已实现这组产品边界：single 与 batch 都只在 response 顶层�
 
 24 个 runtime paired index 每个同时执行 Tutor 与 Organizer，失败仍保留在分母。Organizer 的 paired index `0..19` 各投影 1 个 question，`20..23` 各投影 3 个 question，因此固定为 24 cases / 32 decision units；Task 1 还必须发布 canonical dataset JSON 的 SHA-256，后续报告同时校验 case count、decision count 和 hash。24 条 zero-call 必须实际穿过 candidate/preflight guard，并由独立 runtime counter 证明 0 调用，不能回显 expected reason 自证。
 
+Task 9 已按该合同实现：Mock 为 `24/24` verified zero-call、`48/48` strict runtime，Tutor/Organizer semantic 均为 `1`；`executorProvenance=mock_synthetic` 使 production gate 按设计保持 `quality_gate_failed`。公共 Live CLI 不接受注入 executor；无网络测试使用 `synthetic_test` provenance，production gate 只接受 `deepseek_network`。完整工程证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。
+
 Tutor runtime 覆盖中英文上下文指代、隐含提示、步骤提交、概念卡点、完整讲解、冲突信号和 active context。Organizer runtime 覆盖缺 subject 语义分类、专业课主题、同义专题复用、相近但不同专题、新专题 label、错误类型与多条批量一致性。
 
 critical cases 至少包括：
@@ -471,7 +473,9 @@ Organizer semantic score：
 
 - Tutor/Organizer candidate duration：从调用 `ModelAgentRuntime.run()` 前一刻，到 strict parse、动态校验、usage/价格校验完成；包含 provider 网络时间，不含 dataset load、owner snapshot、projection、Trace 和数据库 command；
 - paired candidate duration：从同一 paired index 的两个 `run()` 并发 dispatch 前一刻，到两个 canonical envelope 完成；不含 fixture/evidence I/O，不是完整 HTTP endpoint 时延；
-- Chat Router+Tutor product duration：从 canonical agent orchestration 开始，到 Router 决策、TutorStrategy 和最终 promptAddition 就绪；包含 Router/Tutor 串行候选与本地 merger，不含登录/body parse、RAG、最终 Chat 模型和流式传输。
+- Tutor orchestration duration：从本地 `buildTutorStrategy()` 开始，到 Tutor candidate strict 结果和本地 merger 就绪；包含 Tutor 本地策略准备与 candidate，不含真实 Router model、`/api/chat` HTTP、登录/body parse、RAG、Verifier、最终 Chat 模型和流式传输。
+
+Task 9 终审修正了原设计中的命名冲突：旧称“Chat Router+Tutor product duration”无法由固定 48-call paired runner真实测量，也与后续 Task 12 的产品验收职责重叠。字段已改为 `tutorOrchestration*`，只作为离线 candidate 编排余量门；真实 Router/Tutor 产品链路、API 和流式体验仍必须在 Task 12 的 Docker/API 与可见浏览器中独立验收，不能由该指标代替。
 
 Tutor/Organizer runtime timeout 分别固定 `3000/5000ms`，因此 `2500/4500ms` candidate P95 都保留至少 `500ms` abort/解析余量；timeout/fallback 样本仍计入 strict-success 分母，不能从延迟或质量报告删除。
 
@@ -486,7 +490,7 @@ Production quality gate 同时要求：
 - Tutor candidate P95 `<= 2500ms`；
 - Organizer candidate P95 `<= 4500ms`；
 - 双候选 paired candidate P95 `<= 4500ms`；
-- Chat Router+Tutor 双候选产品 P95 `<= 6500ms`；
+- Tutor orchestration P95 `<= 6500ms`；该指标不是产品端到端 P95；
 - usage、价格、逐 case/aggregate CNY 和 request/total cap 全部可验证。
 
 Mock 满分只证明 contract，不通过 Live-only production quality gate。
