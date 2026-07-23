@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结，代码实现尚未开始
+状态：设计冻结；Task 1 dataset/metrics/deterministic baseline 已完成，candidate 尚未实现
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -455,7 +455,7 @@ Organizer semantic score：
 - topic-label F1 只在 expected `create_topic` decision 上计算。先对输出做 NFKC、trim、连续空白折叠和 ASCII lowercase；若命中该 decision 的 `acceptedTopicLabels`，映射回 `canonicalTopicLabel`，否则映射为独立 `__unexpected__` 类，再对冻结 canonical labels 计算 macro-F1；
 - evidence/confidence accuracy 只有 confidence exact match、全部 required evidence 存在、且没有超出 allowed evidence 时该 decision 才得 1。
 
-报告可以额外给出 `combinedSemanticScore = 0.5 * tutorSemanticScore + 0.5 * organizerSemanticScore`，只用于比较整体趋势；production gate 仍分别检查两个 lane，不能用高分 lane 抵消低分 lane。Task 1 运行后把未修饰 deterministic baseline 的两个 lane、combined 和各子指标写入 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；设计阶段不预先编造具体数值。
+报告可以额外给出 `combinedSemanticScore = 0.5 * tutorSemanticScore + 0.5 * organizerSemanticScore`，只用于比较整体趋势；production gate 仍分别检查两个 lane，不能用高分 lane 抵消低分 lane。Task 1 已冻结未修饰 baseline：Tutor `0.44186666666666674`、Organizer `0.278125`、combined `0.3599958333333334`、完整命中 `6/48`、critical `0`；权威明细与 dataset SHA-256 见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`。
 
 `canonical strict runtime success` 的定义是：该 runtime case 的独立 counter 恰好观测一次 executor 调用；strict schema 与动态关联校验通过；usage 为正安全整数且价格/预算/cap 重算一致；disposition 为 `candidate_applied`；没有 timeout、abort、degraded 或 deterministic fallback。它是 eval envelope 的成功定义，不替代 Organizer 产品阶段的 Trace/write admission。
 

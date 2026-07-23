@@ -31,6 +31,7 @@
     "eval:phase-6-9-6:mock": "bun scripts/phase-6-9-6-knowledge-agent-cli.ts mock",
     "eval:phase-6-9-6:live": "bun scripts/phase-6-9-6-knowledge-agent-cli.ts live",
     "eval:phase-6-9-6:validate": "bun scripts/validate-phase-6-9-6-knowledge-agent-evidence.ts",
+    "eval:phase-6-9-7:baseline": "bun scripts/run-phase-6-9-7-baseline.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

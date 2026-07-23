@@ -57,6 +57,8 @@
 
 ## Task 1：冻结 72-case 数据集、专项指标和 deterministic baseline
 
+**状态：已完成。** 冻结值与验证见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-baseline.md`；下一任务为 Task 2。
+
 **文件：**
 
 - `packages/agent/src/evals/phase-6-9-tutor-wrong-question-cases.ts`
