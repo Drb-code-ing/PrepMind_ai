@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-23。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放，失败历史保持不可变。Phase 6.9.7 Task 0--10 已完成：Tutor/Organizer candidate、产品 default-off composition、Organizer owner/write/Trace/API/UI、72-case strict paired Mock，以及 Docker allowlist、tracked defaults、角色隔离和回滚合同均已落地。两条真实 provider、Docker service/API 与可见浏览器验收仍未执行；当前下一任务是 Task 11 分支全量静态/Mock checkpoint 与双路终审。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-23。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成：Tutor/Organizer candidate、产品 default-off composition、Organizer owner/write/Trace/API/UI、72-case strict paired Mock、Docker runtime boundary 与分支全量 checkpoint 均已落地。两条真实模型路径、Docker service/API 与可见浏览器验收仍未执行；当前停在 Task 12 新授权门前。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -278,7 +278,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 0--10 已完成；Tutor/Organizer default-off composition、Organizer API 来源状态、strict paired Mock 工程门与 Docker runtime boundary 均已接入，全部真实 provider 验收尚未执行）：
+Phase 6.9.7 增量数据流（Task 0--11 已完成；Tutor/Organizer default-off composition、Organizer API 来源状态、strict paired Mock 工程门、Docker runtime boundary 与分支全量 checkpoint 均已接入，全部真实 provider 验收尚未执行）：
 
 ```text
 /api/chat
@@ -325,9 +325,18 @@ Task 10 deployment boundary
   -> worker/admin：两组能力均 absent；worker 模块再次强制 gate=false
   -> generic/cross-component key 不可替代；tracked defaults 全部 gate=false
   -> config --quiet 只验证解析，不启动 service、不输出 credential
+
+Task 11 branch checkpoint
+  -> 同一 HEAD 重跑 focused + Agent/AI/Types/Server/Web full/static
+  -> Organizer PostgreSQL E2E + 测试账号残留=0
+  -> 重新生成 deterministic baseline + fresh strict Mock
+  -> Mock: 24/24 zero-call + 48/48 runtime + semantic 1/1/1
+  -> mock_synthetic provenance => Live-only quality_gate_failed
+  -> validator 后精确删除 Mock evidence；不创建 Live marker/evidence
+  -> 停在 Task 12 新授权门；gates=false
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9 又建立 72-case strict paired Mock/evidence 门，明确 `tutorOrchestrationP95Ms` 不是 Router/API/最终流式产品时延。Task 10 现在把运行时部署收口为双层隔离：Compose 只向 `web` 投影 Tutor、只向 `server` 投影 WrongQuestionOrganizer，`worker/admin` 均不接收；应用 config 继续拒绝 generic/cross-component credential，worker module 强制关闭。四个应用 service 都不导入整份根 env，tracked example 固定 mock/live=false 与全部 gate=false。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。Task 0--10 均没有读取根 `.env`/credential 或调用真实 provider；`config --quiet` 只完成无输出静态解析，没有启动 Docker service。下一任务是 Task 11 分支全量静态/Mock checkpoint 与双路终审。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9 建立 72-case strict paired Mock/evidence 门，明确 `tutorOrchestrationP95Ms` 不是 Router/API/最终流式产品时延；Task 10 把运行时部署收口为 Tutor→`web`、Organizer→`server`，`worker/admin` 不接收。Task 11 又在同一分支 HEAD 完成全量静态、fresh Mock、PostgreSQL E2E 与残留检查。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。Task 0--11 均没有读取根 `.env`/credential、创建 Live marker/evidence 或调用真实 provider；产品 Docker/API 与浏览器也未启动。当前停在 Task 12 新授权门前。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
 
 当前 `/knowledge` 页面数据流：
 

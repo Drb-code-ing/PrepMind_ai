@@ -26,7 +26,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3   | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                         |
 | Phase 4   | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度 |
 | Phase 5   | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                       | 主线已完成；Phase 7.8.5 runtime parity 已完成 |
-| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 实施中 |
+| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 Task 0--11 已完成，待 Task 12 新授权 |
 | Phase 6.10 | 分层记忆系统     | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动      |
 | Phase 7   | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成 |
 | Phase 8   | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                         |
@@ -328,8 +328,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Task 8：WrongQuestionOrganizer single/batch response 已增加 strict request-level runtime，只允许 `source / disposition / degraded / 可选 traceId`；`hybrid_model` 仅接受已持久化 Trace 的 `candidate_applied`，正常 gate-off/zero-call 为本地非降级，其余安全失败为本地降级。batch item 不重复携带 runtime，本地 remainder 不覆盖候选 scope 的来源或降级结论；Web API 在 envelope 解包后继续用 Zod strict parse，未知/sensitive 字段 fail-closed。`/error-book` 只在用户主动批量整理成功后显示“语义整理 / 本地规则 / 安全回退”，degraded 优先且无模型重试或自动 mutation。Types `42/42`、Web `438/438`、Server `2149 passed / 30 skipped` 及 focused、typecheck/lint/build/390/510/1440 静态布局门通过；未读取 key、调用 provider 或执行 controlled-Live/Docker/可见浏览器，gate 默认关闭。（已完成）
 - Phase 6.9.7 Task 9：已实现同一 72-case 的 strict paired runner、一次性 CLI 与 evidence validator。24 条 zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在 24 个 paired index 内并行且失败不删分母。报告重算 dataset/prompt/schema/projection、两个 semantic score、critical、P95、usage 与 CNY。两次 Mock 均为 `24/24` zero-call、`48/48` runtime、semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`；`mock_synthetic` provenance 使 Live-only gate 保持 `quality_gate_failed`。终审把非产品链路的 `chatProduct*` 更名为 `tutorOrchestration*`，公共 Live CLI 不接受 executor 注入，production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、Mock/validator/diff 通过；未读取 key、调用 provider、创建 Live marker/evidence 或执行 Docker/浏览器，两个 gate 默认关闭。（已完成）
 - Phase 6.9.7 Task 10：tracked Docker example 固定 mock/live=false、全部 Agent gate=false、Tutor/Organizer 3000/5000ms 与空 component credential。Compose 只把 Tutor 三项投影给 `web`、Organizer 三项投影给 `server`，`worker/admin` 均不接收；Admin 的整份根 env service 注入已移除。静态与 resolved Compose synthetic fixture 证明 generic/cross-component key 不会穿透，worker module 继续强制关闭。新 boundary RED/GREEN `3/3`，与 readiness 合跑 `24/24`，Server config/Compose `29/29`、Tutor config `5/5`、tracked `config --quiet`、Server/Web build 通过；未读取根 `.env`/key、调用 provider、启动 Docker service 或执行 API/浏览器。（已完成）
-- Phase 6.9.7 Task 11：完成分支全量静态/Mock checkpoint 与双路终审，随后重新申请唯一 controlled-Live 授权。（下一任务）
-- Phase 6.9.7 Task 12：仅在新授权后执行唯一 Live quality authority、Docker/API、可见浏览器与精确清理。（规划中）
+- Phase 6.9.7 Task 11：已完成 focused `97/97`、Agent `543/543`、AI `194/194`、Types `42/42 + tsc`、Server `2152 passed / 30 skipped`、Web `438/438`、Organizer PostgreSQL E2E `10/10` 与 Compose quiet config。fresh Mock run `0c33c01f-802a-4f53-a6e6-538b7af9abc7` 为 `24/24` zero-call、`48/48` runtime、semantic `1/1/1`；Mock 的 `quality_gate_failed` 是 Live-only authority 设计。无 credential/provider/Live/产品 Docker/浏览器。（已完成 checkpoint）
+- Phase 6.9.7 Task 12：仅在 Task 11 后取得新授权，才执行唯一 Live quality authority、Docker/API、可见浏览器与精确清理。（等待新授权）
 - Phase 6.9.7 Task 13：分支收尾、`--no-ff` 合并 main、main default-off 回放、精确清理与远程推送。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
@@ -354,7 +354,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 11：执行分支全量静态/Mock checkpoint 与 contract/security、operations/acceptance 两路独立终审；保持两个生产 gate 默认关闭，不读取 credential、不调用真实 provider或启动产品 Docker/浏览器。全部通过后停止并重新申请 Task 12 唯一 controlled-Live 授权。”
+下一会话可以复制：“我已接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权执行一次 Phase 6.9.7 Tutor/Organizer branch controlled-Live。”没有这条新授权时，只允许回顾 Task 11，不读取 credential、不创建 marker、不调用 provider 或启动产品 Docker/API/浏览器。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 
