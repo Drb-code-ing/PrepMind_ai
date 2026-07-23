@@ -385,6 +385,29 @@ describe('WrongQuestionOrganizerService', () => {
     expect(result.createdSubjectGroup).toBe(true);
     expect(result.createdDeck).toBe(true);
     expect(result.item.id).toBe('deck_item_1');
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'gate_disabled',
+      degraded: false,
+    });
+  });
+
+  it('keeps an eligible gate-on high-confidence request local without a provider call', async () => {
+    prepareOrganizerFlow();
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
+
+    expect(modelRuntime.invokeStructured).not.toHaveBeenCalled();
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'not_eligible',
+      degraded: false,
+    });
   });
 
   it('does not overwrite locked deck names when organizing again', async () => {
@@ -438,7 +461,9 @@ describe('WrongQuestionOrganizerService', () => {
     ]);
 
     const service = createService();
-    await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(commandExecutor.execute).toHaveBeenCalledWith(
       objectContaining({
@@ -456,6 +481,11 @@ describe('WrongQuestionOrganizerService', () => {
         data: objectContaining({ name: KNOWLEDGE_POINT }),
       }),
     );
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'gate_disabled',
+      degraded: false,
+    });
   });
 
   it('counts empty decks for subject groups without changing question totals', async () => {
@@ -517,7 +547,16 @@ describe('WrongQuestionOrganizerService', () => {
     });
     expect(snapshotSource.load).not.toHaveBeenCalled();
     expect(modelRuntime.invokeStructured).not.toHaveBeenCalled();
-    expect(result).toEqual({ organizedCount: 0, skippedCount: 0, items: [] });
+    expect(result).toEqual({
+      organizedCount: 0,
+      skippedCount: 0,
+      items: [],
+      runtime: {
+        source: 'local_deterministic',
+        disposition: 'gate_disabled',
+        degraded: false,
+      },
+    });
   });
 
   it('returns an existing organization without creating another item when force is false', async () => {
@@ -676,7 +715,9 @@ describe('WrongQuestionOrganizerService', () => {
     ]);
 
     const service = createService({ modelEnabled: true });
-    await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
     expect(modelRuntime.invokeStructured).toHaveBeenCalledWith(
@@ -720,6 +761,71 @@ describe('WrongQuestionOrganizerService', () => {
         }),
       }),
     );
+    expect(result.runtime).toEqual({
+      source: 'hybrid_model',
+      disposition: 'candidate_applied',
+      degraded: false,
+      traceId: admission?.runId,
+    });
+  });
+
+  it('keeps admitted candidate provenance when the authorized command returns existing authority', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    const existingDeck = {
+      ...deck,
+      id: 'deck_existing',
+      name: '用户整理专题',
+      subjectGroup,
+    };
+    const existingItem = {
+      ...item,
+      id: 'deck_item_existing',
+      deckId: existingDeck.id,
+      reason: '用户并发整理结果优先。',
+      confidence: 1,
+      source: 'USER' as const,
+      deck: existingDeck,
+    };
+    prepareOrganizerFlow({
+      snapshot,
+      result: {
+        status: 'authority',
+        entries: [{ wrongQuestionId: wrongQuestion.id, item: existingItem }],
+      },
+    });
+    prepareSuccessfulModelCandidate();
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      {
+        deck: existingDeck,
+        deckId: existingDeck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+
+    const service = createService({ modelEnabled: true });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
+
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({
+      createdItem: false,
+      item: { id: 'deck_item_existing', source: 'USER' },
+      runtime: {
+        source: 'hybrid_model',
+        disposition: 'candidate_applied',
+        degraded: false,
+        traceId: admission?.runId,
+      },
+    });
   });
 
   it('falls back to the deterministic command when trace admission fails', async () => {
@@ -733,7 +839,9 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
 
     const service = createService({ modelEnabled: true });
-    await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
     expect(agentTracesService.createTrace).toHaveBeenCalledTimes(1);
@@ -751,6 +859,11 @@ describe('WrongQuestionOrganizerService', () => {
         }),
       }),
     );
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'fallback_runtime_error',
+      degraded: true,
+    });
   });
 
   it('does not call the provider twice after a post-candidate stale fence', async () => {
@@ -766,12 +879,19 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
 
     const service = createService({ modelEnabled: true });
-    await service.organizeOne('user_1', 'wrong_1', { force: false });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
 
     expect(snapshotSource.load).toHaveBeenCalledTimes(2);
     expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
     expect(agentTracesService.createTrace).not.toHaveBeenCalled();
     expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'snapshot_stale',
+      degraded: true,
+    });
   });
 
   it('keeps a persisted command_pending trace when finalization fails', async () => {
@@ -785,15 +905,25 @@ describe('WrongQuestionOrganizerService', () => {
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
 
     const service = createService({ modelEnabled: true });
-    await expect(
-      service.organizeOne('user_1', 'wrong_1', { force: false }),
-    ).resolves.toMatchObject({ item: { id: item.id } });
-
-    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
     const admission = mockCall<[string, TestTraceInput]>(
       agentTracesService.createTrace,
       0,
     )?.[1];
+
+    expect(result).toMatchObject({
+      item: { id: item.id },
+      runtime: {
+        source: 'hybrid_model',
+        disposition: 'candidate_applied',
+        degraded: false,
+        traceId: admission?.runId,
+      },
+    });
+
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
     expect(admission?.steps.at(-1)?.node).toBe(
       'wrong_question_organizer_command_pending',
     );
@@ -901,13 +1031,127 @@ describe('WrongQuestionOrganizerService', () => {
     expect(secondSnapshotInput?.wrongQuestionIds).toEqual(['wrong_13']);
     expect(commandExecutor.execute).toHaveBeenCalledTimes(2);
     expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
     expect(result).toMatchObject({
       organizedCount: 13,
       skippedCount: 0,
+      runtime: {
+        source: 'hybrid_model',
+        disposition: 'candidate_applied',
+        degraded: false,
+        traceId: admission?.runId,
+      },
     });
     expect(result.items.map((entry) => entry.item.wrongQuestionId)).toEqual(
       rows.map(({ id }) => id),
     );
+  });
+
+  it('keeps candidate degradation authoritative when a batch also has local remainder items', async () => {
+    const rows = [
+      {
+        id: 'wrong_candidate',
+        subject: '',
+        category: '',
+        knowledgePoints: [],
+        errorType: null,
+        questionText: '判断这道题的知识主题。',
+        analysis: '需要语义归类。',
+      },
+      {
+        id: 'wrong_local',
+        subject: SUBJECT,
+        category: CATEGORY,
+        knowledgePoints: [KNOWLEDGE_POINT],
+        errorType: '概念混淆',
+        questionText: '计算闭合曲线积分。',
+        analysis: '使用格林公式。',
+      },
+    ];
+    prisma.wrongQuestion.findMany.mockResolvedValue(rows);
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: object) => T | Promise<T>) =>
+        Promise.resolve(callback({})),
+    );
+    snapshotSource.load.mockImplementation(
+      (_transaction: unknown, input: { wrongQuestionIds: string[] }) => {
+        const selectedRows = input.wrongQuestionIds.map((wrongQuestionId) => {
+          const row = rows.find(({ id }) => id === wrongQuestionId);
+          if (!row) throw new Error('missing test row');
+          return row;
+        });
+        const material = {
+          ...snapshotMaterial,
+          targetWrongQuestionIds: [...input.wrongQuestionIds],
+          wrongQuestions: selectedRows.map((row) => ({
+            ...snapshotMaterial.wrongQuestions[0],
+            ...row,
+          })),
+          subjectGroups: [],
+          decks: [],
+          items: [],
+        };
+        return {
+          ...material,
+          fingerprint: fingerprintWrongQuestionOrganizerOwnerSnapshot(material),
+        };
+      },
+    );
+    snapshotSource.revalidate.mockResolvedValue(true);
+    modelRuntime.invokeStructured.mockRejectedValue(
+      new Error('provider unavailable'),
+    );
+    commandExecutor.execute.mockImplementation(
+      (input: {
+        command: {
+          entries: Array<{
+            wrongQuestionId: string;
+            reason: string;
+            confidence: number;
+          }>;
+        };
+      }) =>
+        Promise.resolve({
+          status: 'applied',
+          entries: input.command.entries.map((entry) => ({
+            wrongQuestionId: entry.wrongQuestionId,
+            subjectGroup,
+            deck,
+            item: {
+              ...item,
+              id: `deck_item_${entry.wrongQuestionId}`,
+              wrongQuestionId: entry.wrongQuestionId,
+              reason: entry.reason,
+              confidence: entry.confidence,
+            },
+            createdSubjectGroup: true,
+            createdDeck: true,
+            createdItem: true,
+            reason: entry.reason,
+            confidence: entry.confidence,
+          })),
+        }),
+    );
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    const result = await service.organizeBatch('user_1', { limit: 2 });
+
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(2);
+    expect(result.items.map((entry) => entry.item.wrongQuestionId)).toEqual([
+      'wrong_candidate',
+      'wrong_local',
+    ]);
+    expect(result.runtime).toEqual({
+      source: 'local_deterministic',
+      disposition: 'fallback_runtime_error',
+      degraded: true,
+    });
   });
 
   it('stops before snapshot, provider, trace, or command when the request is already aborted', async () => {

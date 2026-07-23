@@ -138,7 +138,15 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
       .expect(201);
     const result = getSuccessData<OrganizeWrongQuestionBatchResponse>(response);
 
-    expect(result).toMatchObject({ organizedCount: 2, skippedCount: 0 });
+    expect(result).toMatchObject({
+      organizedCount: 2,
+      skippedCount: 0,
+      runtime: {
+        source: 'local_deterministic',
+        disposition: 'gate_disabled',
+        degraded: false,
+      },
+    });
     expect(result.items.map(({ item }) => item.wrongQuestionId).sort()).toEqual(
       [first.id, second.id].sort(),
     );
@@ -579,7 +587,7 @@ type WrongQuestionDeckQuestionListResponse = {
   pageSize: number;
 };
 
-type OrganizeWrongQuestionResponse = {
+type OrganizedWrongQuestionItem = {
   subjectGroup: WrongQuestionSubjectGroupResponse;
   deck: WrongQuestionDeckResponse;
   item: {
@@ -599,8 +607,20 @@ type OrganizeWrongQuestionResponse = {
   confidence: number;
 };
 
+type OrganizeWrongQuestionResponse = OrganizedWrongQuestionItem & {
+  runtime: WrongQuestionOrganizerRuntimeMetadata;
+};
+
 type OrganizeWrongQuestionBatchResponse = {
   organizedCount: number;
   skippedCount: number;
-  items: OrganizeWrongQuestionResponse[];
+  items: OrganizedWrongQuestionItem[];
+  runtime: WrongQuestionOrganizerRuntimeMetadata;
+};
+
+type WrongQuestionOrganizerRuntimeMetadata = {
+  source: 'local_deterministic' | 'hybrid_model';
+  disposition: string;
+  degraded: boolean;
+  traceId?: string;
 };

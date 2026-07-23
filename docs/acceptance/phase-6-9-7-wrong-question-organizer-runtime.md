@@ -104,14 +104,14 @@ E2E 复用现有本地 PostgreSQL，并由测试账号级联精确清理；没�
 - 没有读取根 `.env`、API key 或真实 provider credential；
 - 没有调用 DeepSeek，也没有执行 controlled-Live 或证明 Organizer 语义质量；
 - 没有启动 Docker 产品栈、没有执行真实产品 API gate-on 验收，也没有打开可见 `/error-book` 浏览器；
-- 没有新增 Task 8 的 public runtime metadata、`local/hybrid/degraded` 来源状态或 UI badge；
+- Task 7 检查点当时没有 public runtime metadata、`local/hybrid/degraded` 来源状态或 UI badge；后续 Task 8 已完成，不能用后续结果改写本任务的历史边界；
 - 没有执行 72-case paired runner、24/24 zero-call、48/48 runtime、质量/P95/费用门；
 - 没有修改 `.env.example`、Compose、运维回滚或 Live acceptance 配置，这些属于后续 Task 11+；
 - 没有证明 Phase 6.9.7、全部 Agent、可执行 LangGraph 或 Phase 6 已完成。
 
 ## 5. 下一步与回顾问题
 
-下一任务是 Task 8：为 single/batch response 增加 strict runtime metadata，只允许 `source / disposition / degraded / 可选 traceId`；`/error-book` 展示“语义整理 / 本地规则 / 安全回退”来源状态。Task 8 不打开 gate、不调用 provider，不暴露 token、费用、provider error、prompt、真实 ID 映射或模型重试按钮。
+Task 7 完成时的下一任务是 Task 8：为 single/batch response 增加 strict runtime metadata，并在 `/error-book` 展示“语义整理 / 本地规则 / 安全回退”。该任务现已完成，证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-api-source.md`；当前下一任务是 Task 9 strict paired runner、CLI 与 evidence validator。Task 8 没有打开 gate 或调用 provider，也不暴露 token、费用、provider error、prompt、真实 ID 映射或模型重试按钮。
 
 回顾时可以问：
 

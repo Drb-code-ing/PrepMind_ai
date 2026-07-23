@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--7 已完成：Tutor package candidate 已接入 Web server-only default-off composition、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner-scoped 快照、三阶段 stale fence、model-free 授权写命令、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort。Tutor/Organizer 的真实 provider 验收都尚未执行，生产 gate 继续默认关闭；下一步是 Task 8 strict API runtime metadata 与 `/error-book` 来源状态。本阶段仍未读取根 `.env`/credential 或调用真实 provider。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--8 已完成：Tutor package candidate 已接入 Web server-only default-off composition、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner-scoped 快照、三阶段 stale fence、model-free 授权写命令、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort，以及 strict request-level runtime 与 `/error-book` 来源状态。Tutor/Organizer 的真实 provider 验收都尚未执行，生产 gate 继续默认关闭；下一步是 Task 9 strict paired runner、一次性 CLI 与 evidence validator。本阶段仍未读取根 `.env`/credential 或调用真实 provider。
 
 ## 当前状态
 
@@ -147,7 +147,7 @@ flowchart LR
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Routes 代理 AI 服务；Chat 默认本地 mock，真实模型调用必须显式开启 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true`，默认 live 模型为 `deepseek-v4-flash`。
 - `/api/chat` 会统一估算 system prompt、activeStudyContext 和近期消息 token，默认输入上限 2500、输出上限 1200，超限返回 413。
 - `/api/chat` 已接入 RouterAgent、TutorAgent 与 KnowledgeVerifierAgent；Phase 6.9.4.4 的 Router/Verifier 混合路径已经完成生产验收并恢复默认 gate 关闭，Phase 6.9.7 Task 5 又完成 Tutor candidate 的 default-off Web composition 与安全 Trace，但尚未执行 Tutor controlled-Live。模型只负责受限语义判断，权限、安全、canonical route、RAG 放行、预算与写业务数据仍由本地代码掌握。
-- `/error-book` 通过 organizer API 展示学科卡片、专题 deck 和 deck 内错题；创建错题后的自动整理为非阻塞流程，整理失败不影响错题保存。
+- `/error-book` 通过 organizer API 展示学科卡片、专题 deck 和 deck 内错题；用户主动批量整理成功后会按 request-level runtime 显示“语义整理 / 本地规则 / 安全回退”，降级优先。创建错题后的自动整理仍是非阻塞流程，整理失败不影响错题保存。
 - Dexie 负责本地快速恢复、离线兜底、乐观更新和旧图片预览；ReviewTask rating 已进入 mutation queue，但服务端仍是 FSRS 与统计权威来源。
 
 ## Monorepo 结构
@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--7 已完成。Tutor 已接入 Web server-only default-off runtime、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 fence、model-free command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort。72 cases / 32 Organizer decisions 的未修饰 baseline 仍为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；两条真实 provider 验收均未执行。下一步 Task 8 增加 strict API runtime metadata 与 `/error-book` 来源状态。
+2. 当前执行 Phase 6.9.7：Task 0--8 已完成。Tutor 已接入 Web server-only default-off runtime、Chat 编排与安全 Trace；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 fence、model-free command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort，以及 strict request-level API runtime metadata 与 `/error-book` 来源状态。72 cases / 32 Organizer decisions 的未修饰 baseline 仍为 `6/48` 完整命中、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/cost `0`；两条真实 provider 验收均未执行。下一步 Task 9 实现 strict paired runner、一次性 CLI 与 evidence validator。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
-回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”
+回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 batch 只在 request 顶层返回 runtime，且安全回退优先展示？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 8：为 WrongQuestionOrganizer 增加 strict API runtime metadata 与 `/error-book` local/hybrid/degraded 来源状态；保持 Task 7 gate 默认关闭，不读取或调用真实 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 9：实现 Tutor/Organizer 72-case strict paired runner、一次性 CLI 与 evidence validator；保持两个生产 gate 默认关闭，不读取或调用真实 provider。”
 
 ## 文档入口
 
@@ -239,6 +239,7 @@ bun --cwd packages/fsrs test
 - [Phase 6.9.7 Task 5 Tutor Web runtime 验收](./docs/acceptance/phase-6-9-7-tutor-web-runtime.md)
 - [Phase 6.9.7 Task 6 Organizer owner/write 验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-owner-command.md)
 - [Phase 6.9.7 Task 7 Organizer runtime/Trace 验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md)
+- [Phase 6.9.7 Task 8 Organizer API/来源状态验收](./docs/acceptance/phase-6-9-7-wrong-question-organizer-api-source.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

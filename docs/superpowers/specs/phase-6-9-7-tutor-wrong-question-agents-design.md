@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--7 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition 均已接入；两条 controlled-Live 与 Task 8+ 仍待完成
+状态：设计冻结；Task 1--8 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata 与来源状态均已接入；两条 controlled-Live 与 Task 9+ 仍待完成
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -398,6 +398,8 @@ Organizer 的模型结果可能影响组织层写入，因此 Trace 是 model-in
 - `traceId` 仅在已持久化时返回
 
 `hybrid_model` 只在至少一个 candidate decision 通过本地 merger、正 usage/价格/预算校验、首次 Trace admission，并实际进入授权 command 时返回；仅尝试模型但因 schema/stale/Trace/abort/command preflight 回退时返回 `local_deterministic + degraded=true`。正常 gate-off、已有 item 或高置信 zero-call 返回 `local_deterministic + degraded=false`。不得返回 token、费用、provider error、prompt、question/deck UUID 映射或重试按钮语义。
+
+Task 8 已实现这组产品边界：single 与 batch 都只在 response 顶层返回一次 strict runtime，batch item 不携带模型细节；candidate scope 的来源/降级结论对整次 batch 有权威性，不会被后续 deterministic remainder 覆盖。`/error-book` 只在用户主动批量整理成功后显示语义/本地/安全回退来源，degraded 优先；API strict parse 拒绝未知或敏感字段，页面不显示 traceId 或提供模型重试/自动 mutation。该实现是 default-off 静态/Mock/contract 证据，不是 controlled-Live 或产品浏览器验收。
 
 ## 10. 固定评测合同
 

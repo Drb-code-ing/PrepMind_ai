@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type {
   WrongQuestionDeckResponse,
+  WrongQuestionOrganizerRuntimeMetadata,
   WrongQuestionSubjectGroupResponse,
 } from '@repo/types/api/wrong-question-organizer';
 
@@ -67,6 +68,7 @@ import {
   getDeckHref,
   getOrganizerConfidenceLabel,
   getOrganizerMasteryPercent,
+  getWrongQuestionOrganizerSourceView,
   getSubjectGroupHref,
 } from '@/lib/wrong-question-organizer-view';
 import { getWrongQuestionFocusId } from '@/lib/wrong-question-navigation';
@@ -128,6 +130,8 @@ export default function ErrorBookPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [locallyDeletedIds, setLocallyDeletedIds] = useState<Set<string>>(() => new Set());
   const [notice, setNotice] = useState<ActionNotice | null>(null);
+  const [organizerRuntime, setOrganizerRuntime] =
+    useState<WrongQuestionOrganizerRuntimeMetadata | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const userId = currentUser?.id ?? null;
   const wrongQuestionsQuery = useWrongQuestions({ pageSize: 50 });
@@ -451,8 +455,10 @@ export default function ErrorBookPage() {
   };
 
   const organizeHistory = async () => {
+    setOrganizerRuntime(null);
     try {
       const result = await organizeBatch.mutateAsync({ limit: 50 });
+      setOrganizerRuntime(result.runtime);
       showNotice(
         result.organizedCount > 0
           ? `已整理 ${result.organizedCount} 道历史错题`
@@ -569,6 +575,9 @@ export default function ErrorBookPage() {
             pending={organizeBatch.isPending}
             onClick={() => void organizeHistory()}
           />
+        ) : null}
+        {organizerRuntime ? (
+          <OrganizerSourceStatus runtime={organizerRuntime} />
         ) : null}
 
         {showFlatFilters ? (
@@ -765,6 +774,34 @@ function OrganizerWarning() {
   return (
     <div className="pm-enter mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium leading-5 text-amber-700">
       错题整理视图暂时不可用，当前展示基础错题列表。
+    </div>
+  );
+}
+
+function OrganizerSourceStatus({
+  runtime,
+}: {
+  runtime: WrongQuestionOrganizerRuntimeMetadata;
+}) {
+  const sourceView = getWrongQuestionOrganizerSourceView(runtime);
+  const toneClassName =
+    sourceView.tone === 'semantic'
+      ? 'border-teal-200 bg-teal-50 text-teal-800'
+      : sourceView.tone === 'degraded'
+        ? 'border-amber-200 bg-amber-50 text-amber-800'
+        : 'border-blue-200 bg-blue-50 text-blue-800';
+
+  return (
+    <div
+      className={`pm-enter mb-3 flex w-full min-w-0 flex-wrap items-start gap-2 rounded-2xl border px-3 py-2 ${toneClassName}`}
+      aria-live="polite"
+    >
+      <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold">
+        {sourceView.label}
+      </span>
+      <p className="min-w-0 flex-1 break-words text-xs font-medium leading-5">
+        {sourceView.description}
+      </p>
     </div>
   );
 }

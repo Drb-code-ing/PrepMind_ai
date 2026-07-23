@@ -325,6 +325,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Task 5：Tutor 已接入 Web server-only default-off composition；固定 `deepseek-v4-pro` non-thinking JSON、精确 `/v1` base URL、3000ms、独立 `TUTOR_AGENT_DEEPSEEK_API_KEY`、`1/1200/300` 与 `0.006 CNY` cap。live access/context prepare 后只注册惰性 factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final Tutor route 且 implicit/contextual/conflicting candidate 真正调用时构造一次。明确指令/不安全/abort/配置失败保持 provider 零调用，失败保留原 route 与 deterministic strategy。Tutor header/Trace 只含固定 disposition/reason/正 usage/CNY，CNY 不污染顶层 USD；Tutor 预算不污染 Router -> Verifier 共享预算。Compose 仅向 `web` 注入 Tutor gate/timeout/key。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build、Compose quiet parse 与两路复审通过；未读取根 `.env`、调用 provider 或执行 Docker/浏览器产品验收，gate 仍默认关闭。（已完成静态/Mock 产品接入）
 - Phase 6.9.7 Task 6：WrongQuestionOrganizer 已建立最多 12 个目标的 `REPEATABLE READ + READ ONLY` 深冻结 owner snapshot、域分离 HMAC、完整 fingerprint 与事务外双 revalidation；本地 decision 只能构建不含 provider/userId 的 `wrong-question-organizer-command-v1`。短 `Serializable` 写事务取得 owner advisory xact lock 并做第三次 fence；stale/用户 authority fail-closed，force 关系保持唯一，P2034/40001 只 bounded retry 本地事务。rename/move/remove 共用 owner lock；精确同名 deck 全量复用，canonical 100 条窗口溢出时 stale，避免重复创建。focused `23/23`、Server `2122 passed / 30 skipped`、真实 PostgreSQL E2E `9/9`、Database `7/7`、lint/build/diff 通过；未读取 key、调用 provider 或执行产品 Live。（已完成）
 - Phase 6.9.7 Task 7：WrongQuestionOrganizer 已接入 server-only default-off composition，固定 DeepSeek V4 Pro non-thinking JSON、5000ms、独立 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`、`1/3500/800` 与 `0.016 CNY` cap；global Live/gate/URL/key/known-price 任一不满足都不创建 executor，worker 强制关闭。single 最多一次 candidate，batch 最多 12 个低置信安全目标共享一次 candidate，其余走本地 command；candidate 后再次验证 snapshot，不在事务/锁内调用 provider。模型结果必须先持久化同一 runId 的 `command_pending` Trace 才可影响 command；final 原子替换失败保留 pending，跨 owner 无法替换。HTTP abort 贯穿 snapshot/candidate/command preflight，事务开始后仅完成最小本地写入。focused `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、typecheck/lint/build/diff 与两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器，gate 默认关闭。（已完成静态/Mock 产品接入）
+- Phase 6.9.7 Task 8：WrongQuestionOrganizer single/batch response 已增加 strict request-level runtime，只允许 `source / disposition / degraded / 可选 traceId`；`hybrid_model` 仅接受已持久化 Trace 的 `candidate_applied`，正常 gate-off/zero-call 为本地非降级，其余安全失败为本地降级。batch item 不重复携带 runtime，本地 remainder 不覆盖候选 scope 的来源或降级结论；Web API 在 envelope 解包后继续用 Zod strict parse，未知/sensitive 字段 fail-closed。`/error-book` 只在用户主动批量整理成功后显示“语义整理 / 本地规则 / 安全回退”，degraded 优先且无模型重试或自动 mutation。Types `42/42`、Web `438/438`、Server `2149 passed / 30 skipped` 及 focused、typecheck/lint/build/390/510/1440 静态布局门通过；未读取 key、调用 provider 或执行 controlled-Live/Docker/可见浏览器，gate 默认关闭。（已完成）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -340,8 +341,10 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “owner snapshot、事务外双 fence 和写事务内第三次 fence 分别防什么？”
 - “为什么 canonical deck 扫描超过有界窗口时必须 stale，而不是冒险创建？”
 - “为什么 model-influenced write 必须先持久化 command_pending Trace，final Trace 失败又不能回滚已授权业务写入？”
+- “为什么 Organizer batch 只返回一个 request-level runtime，而不是给每道错题附带模型细节？”
+- “为什么 `/error-book` 必须让安全回退优先于语义整理显示？”
 
-下一会话可以复制：“请继续 Phase 6.9.7 Task 8：为 WrongQuestionOrganizer 增加 strict API runtime metadata 与 `/error-book` local/hybrid/degraded 来源状态；保持 Task 7 gate 默认关闭，不读取或调用真实 provider。”
+下一会话可以复制：“请继续 Phase 6.9.7 Task 9：实现 Tutor/Organizer 72-case strict paired runner、一次性 CLI 与 evidence validator；保持两个生产 gate 默认关闭，不读取或调用真实 provider。”
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

@@ -15,6 +15,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type {
   MoveWrongQuestionToDeckRequest,
+  OrganizedWrongQuestionItem,
   OrganizeWrongQuestionBatchRequest,
   OrganizeWrongQuestionBatchResponse,
   OrganizeWrongQuestionRequest,
@@ -26,6 +27,8 @@ import type {
   WrongQuestionDeckQuestionListResponse,
   WrongQuestionDeckResponse,
   WrongQuestionGroupListResponse,
+  WrongQuestionOrganizerRuntimeDisposition,
+  WrongQuestionOrganizerRuntimeMetadata,
   WrongQuestionSubjectGroupResponse,
 } from '@repo/types/api/wrong-question-organizer';
 import type { WrongQuestionResponse } from '@repo/types/api/wrong-question';
@@ -62,6 +65,16 @@ const MAX_LOCAL_STALE_ATTEMPTS = 2;
 const MAX_SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
 const MAX_MODEL_CANDIDATE_ITEMS = 12;
 const MAX_LOCAL_COMMAND_ITEMS = 12;
+
+type OrganizerScopeResult = Readonly<{
+  items: OrganizedWrongQuestionItem[];
+  runtime: WrongQuestionOrganizerRuntimeMetadata;
+}>;
+
+type LocalRuntimeDisposition = Exclude<
+  WrongQuestionOrganizerRuntimeDisposition,
+  'candidate_applied'
+>;
 
 @Injectable()
 export class WrongQuestionOrganizerService {
@@ -168,16 +181,16 @@ export class WrongQuestionOrganizerService {
     input: OrganizeWrongQuestionRequest,
     signal?: AbortSignal,
   ): Promise<OrganizeWrongQuestionResponse> {
-    const responses = await this.organizeScope({
+    const scope = await this.organizeScope({
       userId,
       targets: [{ wrongQuestionId, force: input.force }],
       allowModel: true,
       signal,
     });
-    const response = responses.find(
+    const response = scope.items.find(
       (entry) => entry.item.wrongQuestionId === wrongQuestionId,
     );
-    if (response) return response;
+    if (response) return { ...response, runtime: scope.runtime };
     throw this.staleError();
   }
 
@@ -213,20 +226,23 @@ export class WrongQuestionOrganizerService {
           .map(({ id }) => id)
       : [];
     const candidateIdSet = new Set(candidateIds);
-    const responses: OrganizeWrongQuestionResponse[] = [];
+    const responses: OrganizedWrongQuestionItem[] = [];
+    let runtime = localRuntimeMetadata(
+      this.modelRuntime.config.enabled ? 'not_eligible' : 'gate_disabled',
+    );
 
     if (candidateIds.length > 0) {
-      responses.push(
-        ...(await this.organizeScope({
-          userId,
-          targets: candidateIds.map((wrongQuestionId) => ({
-            wrongQuestionId,
-            force: false,
-          })),
-          allowModel: true,
-          signal,
+      const candidateScope = await this.organizeScope({
+        userId,
+        targets: candidateIds.map((wrongQuestionId) => ({
+          wrongQuestionId,
+          force: false,
         })),
-      );
+        allowModel: true,
+        signal,
+      });
+      responses.push(...candidateScope.items);
+      runtime = candidateScope.runtime;
     }
 
     const localIds = wrongQuestions
@@ -234,17 +250,16 @@ export class WrongQuestionOrganizerService {
       .filter((id) => !candidateIdSet.has(id));
     for (const wrongQuestionIds of chunks(localIds, MAX_LOCAL_COMMAND_ITEMS)) {
       this.assertRequestActive(signal);
-      responses.push(
-        ...(await this.organizeScope({
-          userId,
-          targets: wrongQuestionIds.map((wrongQuestionId) => ({
-            wrongQuestionId,
-            force: false,
-          })),
-          allowModel: false,
-          signal,
+      const localScope = await this.organizeScope({
+        userId,
+        targets: wrongQuestionIds.map((wrongQuestionId) => ({
+          wrongQuestionId,
+          force: false,
         })),
-      );
+        allowModel: false,
+        signal,
+      });
+      responses.push(...localScope.items);
     }
 
     const responseByQuestionId = new Map(
@@ -259,6 +274,7 @@ export class WrongQuestionOrganizerService {
       organizedCount: items.length,
       skippedCount: wrongQuestions.length - items.length,
       items,
+      runtime,
     };
   }
 
@@ -267,10 +283,13 @@ export class WrongQuestionOrganizerService {
     targets: readonly OrganizerTarget[];
     allowModel: boolean;
     signal?: AbortSignal;
-  }): Promise<OrganizeWrongQuestionResponse[]> {
+  }): Promise<OrganizerScopeResult> {
     const ownerHashSecret = this.config.get('JWT_SECRET', { infer: true });
     let modelAttemptConsumed =
       !input.allowModel || !this.modelRuntime.config.enabled;
+    let runtime = localRuntimeMetadata(
+      this.modelRuntime.config.enabled ? 'not_eligible' : 'gate_disabled',
+    );
 
     for (let attempt = 1; attempt <= MAX_LOCAL_STALE_ATTEMPTS; attempt += 1) {
       this.assertRequestActive(input.signal);
@@ -302,7 +321,9 @@ export class WrongQuestionOrganizerService {
       if (!modelAttemptConsumed) {
         modelAttemptConsumed = true;
         const reservation = reserveWrongQuestionOrganizerCandidateBudget();
-        if (reservation !== null) {
+        if (reservation === null) {
+          runtime = localRuntimeMetadata('fallback_budget_exceeded');
+        } else {
           const runId = randomUUID();
           const startedAt = new Date();
           const candidate = await this.safeModelCandidate({
@@ -314,11 +335,20 @@ export class WrongQuestionOrganizerService {
           });
           const candidateFinishedAt = new Date();
           this.assertRequestActive(input.signal);
+          runtime = candidateRuntimeMetadata(candidate);
           const admission = candidate
             ? validateWrongQuestionOrganizerCandidateAdmission(
                 candidate.observation,
               )
             : null;
+          if (
+            candidate !== null &&
+            candidate.observation.disposition === 'candidate_applied' &&
+            admission !== null &&
+            candidate.result.length !== input.targets.length
+          ) {
+            runtime = localRuntimeMetadata('fallback_schema_invalid');
+          }
           if (
             admission !== null &&
             candidate !== null &&
@@ -333,7 +363,10 @@ export class WrongQuestionOrganizerService {
               },
             );
             postDecisionFenceCompleted = true;
-            if (!freshAfterCandidate) continue;
+            if (!freshAfterCandidate) {
+              runtime = localRuntimeMetadata('snapshot_stale');
+              continue;
+            }
             this.assertRequestActive(input.signal);
 
             const context = {
@@ -356,6 +389,7 @@ export class WrongQuestionOrganizerService {
               traceContext = context;
             } catch {
               decisions = localDecisions;
+              runtime = localRuntimeMetadata('fallback_runtime_error');
             }
           }
         }
@@ -394,6 +428,7 @@ export class WrongQuestionOrganizerService {
       if (!command) {
         if (traceContext) {
           await this.finalizeTrace(input.userId, traceContext, 'stale');
+          runtime = localRuntimeMetadata('snapshot_stale');
         }
         continue;
       }
@@ -414,13 +449,17 @@ export class WrongQuestionOrganizerService {
       }
       if (traceContext) {
         await this.finalizeTrace(input.userId, traceContext, result.status);
+        runtime =
+          result.status === 'stale'
+            ? localRuntimeMetadata('snapshot_stale')
+            : hybridRuntimeMetadata(traceContext.runId);
       }
       const responses = await this.commandResultToResponses(
         input.userId,
         input.targets.map(({ wrongQuestionId }) => wrongQuestionId),
         result,
       );
-      if (responses.length > 0) return responses;
+      if (responses.length > 0) return { items: responses, runtime };
     }
 
     const authorities = await Promise.all(
@@ -428,13 +467,13 @@ export class WrongQuestionOrganizerService {
         this.loadExistingOrganization(input.userId, wrongQuestionId),
       ),
     );
-    const responses: OrganizeWrongQuestionResponse[] = [];
+    const responses: OrganizedWrongQuestionItem[] = [];
     for (const authority of authorities) {
       if (authority) {
         responses.push(await this.authorityToResponse(input.userId, authority));
       }
     }
-    if (responses.length > 0) return responses;
+    if (responses.length > 0) return { items: responses, runtime };
     throw this.staleError();
   }
 
@@ -623,8 +662,7 @@ export class WrongQuestionOrganizerService {
       ),
     );
     return responses.filter(
-      (response): response is OrganizeWrongQuestionResponse =>
-        response !== null,
+      (response): response is OrganizedWrongQuestionItem => response !== null,
     );
   }
 
@@ -801,7 +839,7 @@ export class WrongQuestionOrganizerService {
     userId: string,
     wrongQuestionId: string,
     result: WrongQuestionOrganizerCommandResult,
-  ): Promise<OrganizeWrongQuestionResponse | null> {
+  ): Promise<OrganizedWrongQuestionItem | null> {
     if (result.status === 'stale') return null;
     if (result.status === 'authority') {
       const entry = result.entries.find(
@@ -845,7 +883,7 @@ export class WrongQuestionOrganizerService {
   private async authorityToResponse(
     userId: string,
     item: OrganizerAuthorityItem,
-  ): Promise<OrganizeWrongQuestionResponse> {
+  ): Promise<OrganizedWrongQuestionItem> {
     const stats = await this.loadGroupStats(userId, [item.deck.subjectGroupId]);
     return {
       subjectGroup: this.toSubjectGroupResponse(
@@ -1217,6 +1255,55 @@ function chunks<T>(values: readonly T[], size: number): T[][] {
     result.push(values.slice(index, index + size));
   }
   return result;
+}
+
+function localRuntimeMetadata(
+  disposition: LocalRuntimeDisposition,
+): WrongQuestionOrganizerRuntimeMetadata {
+  return Object.freeze({
+    source: 'local_deterministic',
+    disposition,
+    degraded: disposition !== 'not_eligible' && disposition !== 'gate_disabled',
+  });
+}
+
+function hybridRuntimeMetadata(
+  traceId: string,
+): WrongQuestionOrganizerRuntimeMetadata {
+  return Object.freeze({
+    source: 'hybrid_model',
+    disposition: 'candidate_applied',
+    degraded: false,
+    traceId,
+  });
+}
+
+function candidateRuntimeMetadata(
+  candidate: WrongQuestionOrganizerModelCandidateEnvelope | null,
+): WrongQuestionOrganizerRuntimeMetadata {
+  if (candidate === null) return localRuntimeMetadata('fallback_runtime_error');
+  switch (candidate.observation.disposition) {
+    case 'not_eligible':
+      return localRuntimeMetadata('not_eligible');
+    case 'safety_blocked':
+      return localRuntimeMetadata('safety_blocked');
+    case 'fallback_invalid_input':
+      return localRuntimeMetadata('fallback_invalid_input');
+    case 'fallback_schema_invalid':
+      return localRuntimeMetadata('fallback_schema_invalid');
+    case 'fallback_budget_exceeded':
+      return localRuntimeMetadata('fallback_budget_exceeded');
+    case 'fallback_timeout':
+      return localRuntimeMetadata('fallback_timeout');
+    case 'fallback_aborted':
+      return localRuntimeMetadata('fallback_aborted');
+    case 'fallback_runtime_error':
+      return localRuntimeMetadata('fallback_runtime_error');
+    case 'candidate_applied':
+      // A candidate is not public hybrid evidence until usage/price admission,
+      // persisted Trace, and the local authorized command all succeed.
+      return localRuntimeMetadata('fallback_usage_invalid');
+  }
 }
 
 function isRetryableSerializableTransactionError(error: unknown): boolean {

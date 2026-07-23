@@ -61,7 +61,7 @@ describe('WrongQuestionOrganizerController', () => {
       request.emit('aborted');
       expect(observedSignal?.aborted).toBe(true);
       resolveRequest?.();
-      await pending;
+      await expect(pending).resolves.toEqual(response);
 
       expect(request.listenerCount('aborted')).toBe(0);
     },
@@ -78,9 +78,23 @@ function singleResponse() {
     createdItem: false,
     reason: '',
     confidence: 0.5,
+    runtime: {
+      source: 'local_deterministic',
+      disposition: 'gate_disabled',
+      degraded: false,
+    },
   };
 }
 
 function batchResponse() {
-  return { organizedCount: 0, skippedCount: 0, items: [] };
+  return {
+    organizedCount: 0,
+    skippedCount: 0,
+    items: [],
+    runtime: {
+      source: 'local_deterministic',
+      disposition: 'gate_disabled',
+      degraded: false,
+    },
+  };
 }

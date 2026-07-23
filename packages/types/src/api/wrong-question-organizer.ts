@@ -80,22 +80,102 @@ export const organizeWrongQuestionBatchRequestSchema = z.object({
   limit: z.number().int().min(1).max(50).default(20),
 });
 
-export const organizeWrongQuestionResponseSchema = z.object({
-  subjectGroup: wrongQuestionSubjectGroupSchema,
-  deck: wrongQuestionDeckSchema,
-  item: wrongQuestionDeckItemSchema,
-  createdSubjectGroup: z.boolean(),
-  createdDeck: z.boolean(),
-  createdItem: z.boolean(),
-  reason: z.string(),
-  confidence: z.number().min(0).max(1),
-});
+export const wrongQuestionOrganizerRuntimeSourceSchema = z.enum([
+  'local_deterministic',
+  'hybrid_model',
+]);
 
-export const organizeWrongQuestionBatchResponseSchema = z.object({
-  organizedCount: z.number().int().nonnegative(),
-  skippedCount: z.number().int().nonnegative(),
-  items: z.array(organizeWrongQuestionResponseSchema),
-});
+export const wrongQuestionOrganizerRuntimeDispositionSchema = z.enum([
+  'candidate_applied',
+  'not_eligible',
+  'gate_disabled',
+  'safety_blocked',
+  'snapshot_stale',
+  'fallback_invalid_input',
+  'fallback_schema_invalid',
+  'fallback_budget_exceeded',
+  'fallback_timeout',
+  'fallback_aborted',
+  'fallback_runtime_error',
+  'fallback_usage_invalid',
+]);
+
+const nonDegradedOrganizerRuntimeDispositions = new Set([
+  'candidate_applied',
+  'not_eligible',
+  'gate_disabled',
+]);
+
+export const wrongQuestionOrganizerRuntimeMetadataSchema = z
+  .object({
+    source: wrongQuestionOrganizerRuntimeSourceSchema,
+    disposition: wrongQuestionOrganizerRuntimeDispositionSchema,
+    degraded: z.boolean(),
+    traceId: z.string().regex(/^[a-z0-9_-]{1,96}$/i).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const hybridApplied =
+      value.source === 'hybrid_model' &&
+      value.disposition === 'candidate_applied' &&
+      !value.degraded &&
+      value.traceId !== undefined;
+    if ((value.source === 'hybrid_model') !== hybridApplied) {
+      context.addIssue({
+        code: 'custom',
+        message: 'hybrid source requires a persisted applied candidate',
+      });
+    }
+    if (value.disposition === 'candidate_applied' && !hybridApplied) {
+      context.addIssue({
+        code: 'custom',
+        message: 'applied candidate metadata is inconsistent',
+      });
+    }
+    if (value.source === 'local_deterministic' && value.traceId !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'local runtime must not expose a trace id',
+      });
+    }
+    const expectedDegraded = !nonDegradedOrganizerRuntimeDispositions.has(
+      value.disposition,
+    );
+    if (value.degraded !== expectedDegraded) {
+      context.addIssue({
+        code: 'custom',
+        message: 'runtime degraded state is inconsistent',
+      });
+    }
+  });
+
+export const organizedWrongQuestionItemSchema = z
+  .object({
+    subjectGroup: wrongQuestionSubjectGroupSchema,
+    deck: wrongQuestionDeckSchema,
+    item: wrongQuestionDeckItemSchema,
+    createdSubjectGroup: z.boolean(),
+    createdDeck: z.boolean(),
+    createdItem: z.boolean(),
+    reason: z.string(),
+    confidence: z.number().min(0).max(1),
+  })
+  .strict();
+
+export const organizeWrongQuestionResponseSchema = organizedWrongQuestionItemSchema
+  .extend({
+    runtime: wrongQuestionOrganizerRuntimeMetadataSchema,
+  })
+  .strict();
+
+export const organizeWrongQuestionBatchResponseSchema = z
+  .object({
+    organizedCount: z.number().int().nonnegative(),
+    skippedCount: z.number().int().nonnegative(),
+    items: z.array(organizedWrongQuestionItemSchema),
+    runtime: wrongQuestionOrganizerRuntimeMetadataSchema,
+  })
+  .strict();
 
 export const updateWrongQuestionDeckRequestSchema = z
   .object({
@@ -132,6 +212,18 @@ export type WrongQuestionDeckQuestionListResponse = z.infer<
 export type OrganizeWrongQuestionRequest = z.infer<typeof organizeWrongQuestionRequestSchema>;
 export type OrganizeWrongQuestionBatchRequest = z.infer<
   typeof organizeWrongQuestionBatchRequestSchema
+>;
+export type WrongQuestionOrganizerRuntimeSource = z.infer<
+  typeof wrongQuestionOrganizerRuntimeSourceSchema
+>;
+export type WrongQuestionOrganizerRuntimeDisposition = z.infer<
+  typeof wrongQuestionOrganizerRuntimeDispositionSchema
+>;
+export type WrongQuestionOrganizerRuntimeMetadata = z.infer<
+  typeof wrongQuestionOrganizerRuntimeMetadataSchema
+>;
+export type OrganizedWrongQuestionItem = z.infer<
+  typeof organizedWrongQuestionItemSchema
 >;
 export type OrganizeWrongQuestionResponse = z.infer<typeof organizeWrongQuestionResponseSchema>;
 export type OrganizeWrongQuestionBatchResponse = z.infer<
