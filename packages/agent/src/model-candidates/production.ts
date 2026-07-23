@@ -41,9 +41,14 @@ export {
   mergeWrongQuestionOrganizerModelDecision,
   runWrongQuestionOrganizerModelCandidate,
   type WrongQuestionOrganizerModelCandidateEnvelope,
+  type WrongQuestionOrganizerModelCandidateItem,
   type WrongQuestionOrganizerModelCandidateInput,
   type WrongQuestionOrganizerModelCandidateReasonCode,
 } from './wrong-question-organizer-model-candidate.ts';
+export {
+  WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
+  type WrongQuestionOrganizerModelDecision,
+} from './wrong-question-organizer-model-contract.ts';
 export {
   MODEL_CANDIDATE_DISPOSITIONS,
   type ModelCandidateDisposition,

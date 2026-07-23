@@ -9,6 +9,32 @@ import {
 const objectContaining = <T extends object>(value: T) =>
   expect.objectContaining(value) as unknown as T;
 
+type MockCalls = {
+  mock: {
+    calls: unknown[][];
+  };
+};
+
+type TestTraceInput = {
+  runId: string;
+  steps: Array<{ node: string }>;
+};
+
+type TestModelRequest = {
+  userPrompt: string;
+};
+
+type TestSnapshotLoadInput = {
+  wrongQuestionIds: string[];
+};
+
+function mockCall<TArgs extends unknown[]>(
+  mock: MockCalls,
+  index: number,
+): TArgs | undefined {
+  return mock.mock.calls[index] as TArgs | undefined;
+}
+
 const NOW = new Date('2026-06-21T00:00:00.000Z');
 const SUBJECT = '高等数学';
 const CATEGORY = '曲线积分';
@@ -128,56 +154,6 @@ describe('WrongQuestionOrganizerService', () => {
       fingerprintWrongQuestionOrganizerOwnerSnapshot(snapshotMaterial),
   } satisfies WrongQuestionOrganizerOwnerSnapshot;
 
-  const organizeResponse = {
-    subjectGroup: {
-      id: subjectGroup.id,
-      userId: subjectGroup.userId,
-      subject: subjectGroup.subject,
-      displayName: subjectGroup.displayName,
-      sortOrder: subjectGroup.sortOrder,
-      totalCount: 1,
-      unresolvedCount: 1,
-      resolvedCount: 0,
-      deckCount: 1,
-      topKnowledgePoints: [KNOWLEDGE_POINT],
-      lastUpdatedAt: NOW.toISOString(),
-      createdAt: NOW.toISOString(),
-      updatedAt: NOW.toISOString(),
-    },
-    deck: {
-      id: deck.id,
-      userId: deck.userId,
-      subjectGroupId: deck.subjectGroupId,
-      name: deck.name,
-      description: deck.description,
-      source: deck.source,
-      nameLocked: deck.nameLocked,
-      confidence: deck.confidence,
-      totalCount: 1,
-      unresolvedCount: 1,
-      resolvedCount: 0,
-      topKnowledgePoints: [KNOWLEDGE_POINT],
-      lastUpdatedAt: NOW.toISOString(),
-      createdAt: NOW.toISOString(),
-      updatedAt: NOW.toISOString(),
-    },
-    item: {
-      id: item.id,
-      deckId: item.deckId,
-      wrongQuestionId: item.wrongQuestionId,
-      reason: item.reason,
-      confidence: item.confidence,
-      source: item.source,
-      createdAt: NOW.toISOString(),
-      updatedAt: NOW.toISOString(),
-    },
-    createdSubjectGroup: false,
-    createdDeck: false,
-    createdItem: false,
-    reason: item.reason,
-    confidence: item.confidence,
-  };
-
   const prisma = {
     $transaction: jest.fn(),
     wrongQuestion: {
@@ -216,18 +192,114 @@ describe('WrongQuestionOrganizerService', () => {
   const commandExecutor = {
     execute: jest.fn(),
   };
+  const modelRuntime = {
+    invokeStructured: jest.fn(),
+  };
+  const agentTracesService = {
+    createTrace: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
     config.get.mockReturnValue('test-jwt-secret-at-least-16-bytes');
+    agentTracesService.createTrace.mockResolvedValue({});
   });
 
-  function createService() {
+  function createService(options: { modelEnabled?: boolean } = {}) {
     return new WrongQuestionOrganizerService(
       prisma as unknown as PrismaService,
       config as never,
       snapshotSource as never,
       commandExecutor as never,
+      {
+        config: {
+          enabled: options.modelEnabled ?? false,
+          timeoutMs: 5000,
+          mode: options.modelEnabled ? 'live' : 'mock',
+          provider: options.modelEnabled ? 'deepseek' : 'mock',
+          model: 'deepseek-v4-pro',
+          promptVersion: 'wrong-question-organizer-model-candidate-v1',
+          pricingKnown: true,
+        },
+        runtime: modelRuntime,
+      } as never,
+      agentTracesService as never,
+    );
+  }
+
+  function lowConfidenceSnapshot(): WrongQuestionOrganizerOwnerSnapshot {
+    const material = {
+      ...snapshotMaterial,
+      wrongQuestions: [
+        {
+          ...snapshotMaterial.wrongQuestions[0],
+          subject: '',
+          category: '',
+          knowledgePoints: [],
+          errorType: null,
+        },
+      ],
+      subjectGroups: [],
+      decks: [],
+    };
+    return {
+      ...material,
+      fingerprint: fingerprintWrongQuestionOrganizerOwnerSnapshot(material),
+    };
+  }
+
+  function prepareSuccessfulModelCandidate() {
+    modelRuntime.invokeStructured.mockImplementation(
+      (request: {
+        budget: {
+          maxCalls: number;
+          maxInputTokens: number;
+          maxOutputTokens: number;
+        };
+        estimatedInputTokens: number;
+        maxOutputTokens: number;
+        userPrompt: string;
+      }) =>
+        Promise.resolve({
+          ok: true,
+          data: {
+            decisions: (
+              JSON.parse(request.userPrompt) as { questions: unknown[] }
+            ).questions.map((_, questionIndex) => ({
+              questionIndex,
+              subject: 'math',
+              deck: {
+                action: 'create_topic',
+                topicLabel:
+                  questionIndex === 0
+                    ? '函数极限'
+                    : `函数极限${questionIndex + 1}`,
+              },
+              confidence: 'high',
+              evidenceCodes: ['semantic_topic'],
+            })),
+          },
+          budget: {
+            ...request.budget,
+            usedCalls: 1,
+            usedInputTokens: request.estimatedInputTokens,
+            usedOutputTokens: request.maxOutputTokens,
+          },
+          usage: { inputTokens: 120, outputTokens: 40 },
+          trace: {
+            runIdHash: `sha256:${'b'.repeat(64)}`,
+            task: 'wrong_question_organization',
+            mode: 'live',
+            provider: 'deepseek',
+            model: 'deepseek-v4-pro',
+            status: 'succeeded',
+            inputTokens: 120,
+            outputTokens: 40,
+            maxOutputTokens: 800,
+            durationMs: 5,
+            degraded: false,
+          },
+        }),
     );
   }
 
@@ -420,15 +492,9 @@ describe('WrongQuestionOrganizerService', () => {
     expect(prisma.wrongQuestionDeckItem.findMany).not.toHaveBeenCalled();
   });
 
-  it('organizes only current user wrong questions without deck items up to the limit', async () => {
-    prisma.wrongQuestion.findMany.mockResolvedValue([
-      { id: 'wrong_1' },
-      { id: 'wrong_2' },
-    ]);
+  it('selects only current-user unorganized rows with the bounded batch fields', async () => {
+    prisma.wrongQuestion.findMany.mockResolvedValue([]);
     const service = createService();
-    const organizeOne = jest
-      .spyOn(service, 'organizeOne')
-      .mockResolvedValue(organizeResponse);
 
     const result = await service.organizeBatch('user_1', { limit: 2 });
 
@@ -439,20 +505,19 @@ describe('WrongQuestionOrganizerService', () => {
       },
       orderBy: { createdAt: 'desc' },
       take: 2,
-      select: { id: true },
+      select: {
+        id: true,
+        subject: true,
+        category: true,
+        knowledgePoints: true,
+        errorType: true,
+        questionText: true,
+        analysis: true,
+      },
     });
-    expect(organizeOne).toHaveBeenCalledTimes(2);
-    expect(organizeOne).toHaveBeenNthCalledWith(1, 'user_1', 'wrong_1', {
-      force: false,
-    });
-    expect(organizeOne).toHaveBeenNthCalledWith(2, 'user_1', 'wrong_2', {
-      force: false,
-    });
-    expect(result).toMatchObject({
-      organizedCount: 2,
-      skippedCount: 0,
-      items: [organizeResponse, organizeResponse],
-    });
+    expect(snapshotSource.load).not.toHaveBeenCalled();
+    expect(modelRuntime.invokeStructured).not.toHaveBeenCalled();
+    expect(result).toEqual({ organizedCount: 0, skippedCount: 0, items: [] });
   });
 
   it('returns an existing organization without creating another item when force is false', async () => {
@@ -594,6 +659,274 @@ describe('WrongQuestionOrganizerService', () => {
     expect(snapshotSource.load).toHaveBeenCalledTimes(2);
     expect(snapshotSource.revalidate).toHaveBeenCalledTimes(4);
     expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('admits one governed model candidate before the model-free command and finalizes the same trace', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate();
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      {
+        deck,
+        deckId: deck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+
+    const service = createService({ modelEnabled: true });
+    await service.organizeOne('user_1', 'wrong_1', { force: false });
+
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task: 'wrong_question_organization',
+        maxOutputTokens: 800,
+        budget: objectContaining({
+          maxCalls: 1,
+          maxInputTokens: 3500,
+          maxOutputTokens: 800,
+        }),
+      }),
+    );
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
+    const finalTrace = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      1,
+    )?.[1];
+    expect(admission?.runId).toBe(finalTrace?.runId);
+    expect(admission?.steps.at(-1)?.node).toBe(
+      'wrong_question_organizer_command_pending',
+    );
+    expect(finalTrace?.steps.at(-1)?.node).toBe(
+      'wrong_question_organizer_command',
+    );
+    expect(commandExecutor.execute).toHaveBeenCalledWith(
+      objectContaining({
+        command: objectContaining({
+          entries: [
+            objectContaining({
+              deck: objectContaining({
+                action: 'create',
+                name: '函数极限',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('falls back to the deterministic command when trace admission fails', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate();
+    agentTracesService.createTrace.mockRejectedValueOnce(
+      new Error('trace unavailable'),
+    );
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    await service.organizeOne('user_1', 'wrong_1', { force: false });
+
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(1);
+    expect(commandExecutor.execute).toHaveBeenCalledWith(
+      objectContaining({
+        command: objectContaining({
+          entries: [
+            objectContaining({
+              deck: objectContaining({
+                action: 'create',
+                name: '未分类错题',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('does not call the provider twice after a post-candidate stale fence', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate();
+    snapshotSource.revalidate
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    await service.organizeOne('user_1', 'wrong_1', { force: false });
+
+    expect(snapshotSource.load).toHaveBeenCalledTimes(2);
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(agentTracesService.createTrace).not.toHaveBeenCalled();
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a persisted command_pending trace when finalization fails', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate();
+    agentTracesService.createTrace
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('final trace unavailable'));
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    await expect(
+      service.organizeOne('user_1', 'wrong_1', { force: false }),
+    ).resolves.toMatchObject({ item: { id: item.id } });
+
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
+    expect(admission?.steps.at(-1)?.node).toBe(
+      'wrong_question_organizer_command_pending',
+    );
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses one candidate call for at most 12 eligible batch items and keeps the remainder deterministic', async () => {
+    const rows = Array.from({ length: 13 }, (_, index) => ({
+      id: `wrong_${index + 1}`,
+      subject: '',
+      category: '',
+      knowledgePoints: [],
+      errorType: null,
+      questionText: `判断第 ${index + 1} 道题的知识主题。`,
+      analysis: '需要语义归类。',
+    }));
+    prisma.wrongQuestion.findMany.mockResolvedValue(rows);
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: object) => T | Promise<T>) =>
+        Promise.resolve(callback({})),
+    );
+    snapshotSource.load.mockImplementation(
+      (_transaction: unknown, input: { wrongQuestionIds: string[] }) => {
+        const material = {
+          ...snapshotMaterial,
+          targetWrongQuestionIds: [...input.wrongQuestionIds],
+          wrongQuestions: input.wrongQuestionIds.map((id, index) => ({
+            ...snapshotMaterial.wrongQuestions[0],
+            id,
+            subject: '',
+            category: '',
+            knowledgePoints: [],
+            errorType: null,
+            questionText: `判断第 ${index + 1} 道题的知识主题。`,
+            analysis: '需要语义归类。',
+          })),
+          subjectGroups: [],
+          decks: [],
+          items: [],
+        };
+        return {
+          ...material,
+          fingerprint: fingerprintWrongQuestionOrganizerOwnerSnapshot(material),
+        };
+      },
+    );
+    snapshotSource.revalidate.mockResolvedValue(true);
+    prepareSuccessfulModelCandidate();
+    commandExecutor.execute.mockImplementation(
+      (input: {
+        command: {
+          entries: Array<{
+            wrongQuestionId: string;
+            reason: string;
+            confidence: number;
+          }>;
+        };
+      }) =>
+        Promise.resolve({
+          status: 'applied',
+          entries: input.command.entries.map((entry, index) => ({
+            wrongQuestionId: entry.wrongQuestionId,
+            subjectGroup,
+            deck,
+            item: {
+              ...item,
+              id: `deck_item_${index + 1}`,
+              wrongQuestionId: entry.wrongQuestionId,
+              reason: entry.reason,
+              confidence: entry.confidence,
+            },
+            createdSubjectGroup: index === 0,
+            createdDeck: index === 0,
+            createdItem: true,
+            reason: entry.reason,
+            confidence: entry.confidence,
+          })),
+        }),
+    );
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({ modelEnabled: true });
+    const result = await service.organizeBatch('user_1', { limit: 13 });
+
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    const modelRequest = mockCall<[TestModelRequest]>(
+      modelRuntime.invokeStructured,
+      0,
+    )?.[0];
+    const projectedQuestions = JSON.parse(modelRequest?.userPrompt ?? '{}') as {
+      questions?: unknown[];
+    };
+    expect(projectedQuestions.questions).toHaveLength(12);
+    expect(snapshotSource.load).toHaveBeenCalledTimes(2);
+    const firstSnapshotInput = mockCall<[unknown, TestSnapshotLoadInput]>(
+      snapshotSource.load,
+      0,
+    )?.[1];
+    const secondSnapshotInput = mockCall<[unknown, TestSnapshotLoadInput]>(
+      snapshotSource.load,
+      1,
+    )?.[1];
+    expect(firstSnapshotInput?.wrongQuestionIds).toHaveLength(12);
+    expect(secondSnapshotInput?.wrongQuestionIds).toEqual(['wrong_13']);
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(2);
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({
+      organizedCount: 13,
+      skippedCount: 0,
+    });
+    expect(result.items.map((entry) => entry.item.wrongQuestionId)).toEqual(
+      rows.map(({ id }) => id),
+    );
+  });
+
+  it('stops before snapshot, provider, trace, or command when the request is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const service = createService({ modelEnabled: true });
+
+    await expect(
+      service.organizeOne(
+        'user_1',
+        'wrong_1',
+        { force: false },
+        controller.signal,
+      ),
+    ).rejects.toMatchObject({ code: 'WRONG_QUESTION_ORGANIZER_ABORTED' });
+    expect(snapshotSource.load).not.toHaveBeenCalled();
+    expect(modelRuntime.invokeStructured).not.toHaveBeenCalled();
+    expect(agentTracesService.createTrace).not.toHaveBeenCalled();
+    expect(commandExecutor.execute).not.toHaveBeenCalled();
   });
 
   it('moves an owned wrong question to an owned deck', async () => {

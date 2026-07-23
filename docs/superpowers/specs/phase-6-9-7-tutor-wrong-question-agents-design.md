@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--6 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 已完成 owner/write fencing，runtime/Trace composition 仍待 Task 7
+状态：设计冻结；Task 1--7 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition 均已接入；两条 controlled-Live 与 Task 8+ 仍待完成
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -362,7 +362,7 @@ Task 2 固定的投影上限为：question excerpt `480`、analysis excerpt `320
 
 模型调用绝不持有 advisory lock 或数据库事务。
 
-Task 6 实现状态：当前 NestJS deterministic organize-one 路径已使用上述 snapshot、事务外双 fence 与 model-free command；rename/move/remove 也取得同一 owner lock，真实 PostgreSQL 并发回归证明同主题不创建重复空 deck、force relation 唯一、用户 rename/move 最终权威。精确同名 deck 使用全量查询复用；canonical variant 只扫描有界 100 条，窗口溢出时返回 stale 而不冒险创建重复专题。Task 6 没有 runtime、Trace admission 或 provider；这些仍属于 Task 7。
+Task 6 实现状态：NestJS organize-one/batch 写路径已使用上述 snapshot、事务外双 fence 与 model-free command；rename/move/remove 也取得同一 owner lock，真实 PostgreSQL 并发回归证明同主题不创建重复空 deck、force relation 唯一、用户 rename/move 最终权威。精确同名 deck 使用全量查询复用；canonical variant 只扫描有界 100 条，窗口溢出时返回 stale 而不冒险创建重复专题。Task 6 当时没有 runtime、Trace admission 或 provider；后续 Task 7 已在该写边界外接入 runtime/Trace/abort，provider 仍不进入事务或锁。
 
 ## 9. 通信、Trace 与响应 metadata
 
@@ -390,7 +390,7 @@ Tutor 延续 Chat 的 best-effort Trace 语义：Trace 写失败不能中断流�
 
 ### 9.3 Organizer Trace 与 API runtime
 
-Organizer 的模型结果可能影响组织层写入，因此 Trace 是 model-influenced command 的 admission 条件。当前 `apps/server/src/agent-traces/agent-traces.service.ts` 的 `createTrace(userId, input)` 已按 `id_userId` 执行 run upsert，并在同一个数据库事务中删除/重建该 run 的 steps；事务失败会回滚而保留上一次完整版本。落地采用同一 request-scoped 稳定 `runId` 的两阶段调用：先持久化 parent + deterministic + candidate + `command_pending` admission trace，成功后才允许模型结果进入短写事务；写事务完成后再以同一 `runId` 原子替换为最终 command step。每个请求只有 owning orchestrator 可以 finalize 一次；最终 upsert 失败时，首次 admission trace 仍保留且 command 不会被伪报为已记录完成。Task 7 必须用真实 service contract 测试两次同 runId 调用、step 原子替换、finalize 失败回滚和跨 owner 拒绝，不能只 mock `createTrace` 成功。现有顶层 `costEstimate` 保持 USD 语义，不把 CNY 冒充 USD。API runtime metadata 只允许：
+Organizer 的模型结果可能影响组织层写入，因此 Trace 是 model-influenced command 的 admission 条件。当前 `apps/server/src/agent-traces/agent-traces.service.ts` 的 `createTrace(userId, input)` 已按 `id_userId` 执行 run upsert，并在同一个数据库事务中删除/重建该 run 的 steps；事务失败会回滚而保留上一次完整版本。Task 7 已采用同一 request-scoped 稳定 `runId` 的两阶段调用：先持久化 parent + deterministic + candidate + `command_pending` admission trace，成功后才允许模型结果进入短写事务；写事务完成后再以同一 `runId` 原子替换为最终 command step。最终 upsert 失败时，首次 admission trace 仍保留且 command 不会被伪报为已记录完成。真实 PostgreSQL contract 已覆盖两次同 runId 调用、step 原子替换、finalize 失败回滚和跨 owner 拒绝，不只 mock `createTrace`。现有顶层 `costEstimate` 保持 USD 语义，不把 CNY 冒充 USD。Task 8 才把以下 strict API runtime metadata 暴露给产品：
 
 - `source=local_deterministic | hybrid_model`
 - `disposition` 固定枚举

@@ -1,0 +1,156 @@
+import {
+  WRONG_QUESTION_ORGANIZER_MODEL_PRICE_CNY,
+  WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET,
+  WRONG_QUESTION_ORGANIZER_RESERVATION,
+  estimateWrongQuestionOrganizerRequestCostCny,
+  reserveWrongQuestionOrganizerCandidateBudget,
+  resolveWrongQuestionOrganizerLiveExecutorConfig,
+  resolveWrongQuestionOrganizerModelConfig,
+} from './wrong-question-organizer-model-config';
+
+describe('wrong-question organizer model config', () => {
+  it('defaults the component gate off and timeout to 5000ms', () => {
+    expect(resolveWrongQuestionOrganizerModelConfig({})).toMatchObject({
+      enabled: false,
+      timeoutMs: 5000,
+      mode: 'mock',
+      provider: 'mock',
+      model: 'deepseek-v4-pro',
+      promptVersion: 'wrong-question-organizer-model-candidate-v1',
+      pricingKnown: true,
+    });
+  });
+
+  it('requires the exact live conjunction and the component credential', () => {
+    expect(
+      resolveWrongQuestionOrganizerModelConfig(validLiveEnv()),
+    ).toMatchObject({
+      enabled: true,
+      mode: 'live',
+      provider: 'deepseek',
+    });
+
+    for (const override of [
+      { AI_PROVIDER_MODE: 'mock' },
+      { AI_ENABLE_LIVE_CALLS: false },
+      { WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false },
+      { WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '' },
+      { AI_BASE_URL: 'https://untrusted.example/v1' },
+    ]) {
+      expect(
+        resolveWrongQuestionOrganizerModelConfig({
+          ...validLiveEnv(),
+          ...override,
+        }),
+      ).toMatchObject({ enabled: false, mode: 'mock' });
+    }
+
+    expect(
+      resolveWrongQuestionOrganizerModelConfig({
+        ...validLiveEnv(),
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '',
+        DEEPSEEK_API_KEY: 'generic-key-must-not-be-used',
+      }),
+    ).toMatchObject({ enabled: false, mode: 'mock' });
+    expect(
+      resolveWrongQuestionOrganizerModelConfig(validLiveEnv(), {
+        ...WRONG_QUESTION_ORGANIZER_MODEL_PRICE_CNY,
+        requestCap: 0.02,
+      }),
+    ).toMatchObject({ enabled: false, pricingKnown: false });
+  });
+
+  it('creates only the fixed DeepSeek V4 Pro non-thinking executor config', () => {
+    expect(
+      resolveWrongQuestionOrganizerLiveExecutorConfig(validLiveEnv()),
+    ).toEqual({
+      provider: 'deepseek',
+      apiKey: 'synthetic-organizer-key',
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-pro',
+      structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+    });
+    expect(
+      resolveWrongQuestionOrganizerLiveExecutorConfig({
+        ...validLiveEnv(),
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '',
+        DEEPSEEK_API_KEY: 'generic-key-must-not-be-used',
+      }),
+    ).toBeNull();
+  });
+
+  it('reserves the immutable one-call 3500/800 ceiling before dispatch', () => {
+    const before = structuredClone(WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET);
+    const reserved = reserveWrongQuestionOrganizerCandidateBudget();
+
+    expect(WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET).toEqual(before);
+    expect(reserved).not.toBeNull();
+    expect(reserved?.requestBudget).toEqual({
+      ...WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET,
+      usedCalls: 1,
+      usedInputTokens: 3500,
+      usedOutputTokens: 800,
+    });
+    expect(reserved?.candidateBudget).toEqual({
+      maxCalls: 1,
+      usedCalls: 0,
+      maxInputTokens: WRONG_QUESTION_ORGANIZER_RESERVATION.inputTokens,
+      usedInputTokens: 0,
+      maxOutputTokens: WRONG_QUESTION_ORGANIZER_RESERVATION.outputTokens,
+      usedOutputTokens: 0,
+    });
+    expect(Object.isFrozen(reserved)).toBe(true);
+    expect(Object.isFrozen(reserved?.requestBudget)).toBe(true);
+    expect(Object.isFrozen(reserved?.candidateBudget)).toBe(true);
+    expect(
+      reserveWrongQuestionOrganizerCandidateBudget({
+        ...WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET,
+        maxOutputTokens: 799,
+      }),
+    ).toBeNull();
+  });
+
+  it('uses exact CNY pricing, positive usage, ceilings, and the 0.016 cap', () => {
+    expect(
+      estimateWrongQuestionOrganizerRequestCostCny({
+        inputTokens: 3500,
+        outputTokens: 800,
+      }),
+    ).toBe(0.0153);
+    expect(
+      estimateWrongQuestionOrganizerRequestCostCny({
+        inputTokens: 3500,
+        outputTokens: 800,
+      }),
+    ).toBeLessThanOrEqual(WRONG_QUESTION_ORGANIZER_MODEL_PRICE_CNY.requestCap);
+    expect(
+      estimateWrongQuestionOrganizerRequestCostCny({
+        inputTokens: 0,
+        outputTokens: 1,
+      }),
+    ).toBeNull();
+    expect(
+      estimateWrongQuestionOrganizerRequestCostCny({
+        inputTokens: 3501,
+        outputTokens: 800,
+      }),
+    ).toBeNull();
+    expect(
+      estimateWrongQuestionOrganizerRequestCostCny(
+        { inputTokens: 1, outputTokens: 1 },
+        { ...WRONG_QUESTION_ORGANIZER_MODEL_PRICE_CNY, inputPerMillion: 0 },
+      ),
+    ).toBeNull();
+  });
+});
+
+function validLiveEnv(): Record<string, unknown> {
+  return {
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: true,
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: true,
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
+    WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'synthetic-organizer-key',
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
+  };
+}

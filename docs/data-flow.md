@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-23。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict paired runner、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放。R1--R6 历史保持不可变；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--6 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence 与 model-free 写命令；Organizer runtime/Trace 仍待 Task 7。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-23。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成 owner-scoped embedding shortlist、受治理 model candidate、API/UI、strict paired runner、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放。R1--R6 历史保持不可变；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--7 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写命令、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；两条真实 provider 验收均未执行。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -278,7 +278,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 0--6 已完成；Tutor 产品静态/Mock composition 与 Organizer owner/write fencing 已接入，Organizer runtime/Trace 与全部真实 provider 验收尚未实现）：
+Phase 6.9.7 增量数据流（Task 0--7 已完成；Tutor 与 Organizer 的 default-off composition 均已接入，全部真实 provider 验收尚未执行）：
 
 ```text
 /api/chat
@@ -292,21 +292,22 @@ Phase 6.9.7 增量数据流（Task 0--6 已完成；Tutor 产品静态/Mock comp
 
 POST /wrong-question-organizer/organize/:id 或 organize-batch
   -> JwtAuthGuard canonical userId
+  -> HTTP request aborted signal；结束时清理 listener
   -> Task 6: REPEATABLE READ + READ ONLY owner snapshot/fingerprint
   -> provider/decision 前 revalidation
-  -> 当前 deterministic decision -> decision 后 revalidation
+  -> default-off / existing / high-confidence / unsafe：deterministic zero-call
+  -> eligible single 或 batch 最多 12 条：一次 ordinal-only DeepSeek candidate
+  -> candidate 后 revalidation；stale 不重调 provider
+  -> 同一 stable runId 原子持久化 command_pending admission Trace
+  -> Trace 失败：丢弃模型结果，回到 deterministic decision
   -> 深冻结 model-free OrganizerCommand
   -> owner advisory-lock write transaction 内第三次 fence
   -> 本地 command 只写 SubjectGroup/Deck/DeckItem
-
-Task 7 在相同边界内新增：
-  -> existing/high-confidence/unsafe: deterministic zero-call
-  -> 最多 12 条低置信安全错题 -> 一次 ordinal-only candidate
-  -> stable runId 的 command_pending Trace admission
-  -> command 后同 runId 原子更新最终 Trace
+  -> command 后同 runId 原子全量替换 final Trace
+  -> final Trace 失败：保留 command_pending，不回滚已授权业务写入
 ```
 
-Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放、`1/1200/300` runtime admission 和本地权威 merger；Task 5 已进一步创建 Web server-only production composition，固定 DeepSeek V4 Pro non-thinking JSON、3000ms、`0.006 CNY` cap，并只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后只注册 Tutor factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 candidate 真正调用时构造一次；Tutor 预算与 Router -> Verifier 共享预算隔离，失败保留原 route/strategy，安全 header/Trace 不含正文或 provider 原文。Compose 只向 `web` 注入 Tutor gate/timeout/key，默认 gate=false。Organizer Task 4 已实现最多 12 道错题、20 个已有专题、`1/3500/800` runtime admission、strict ordinal 输出和本地权威 merger；Task 6 已把当前 deterministic 产品路径接到 owner-scoped immutable snapshot、事务外双 fence、owner advisory-lock 第三 fence 与 model-free command。rename/move/remove 共用 owner lock，用户 authority、force 唯一关系、并发同主题和旧 deck 复用由真实 PostgreSQL E2E 证明。两个 candidate 都不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。Task 0--6 均没有读取根 `.env`/credential 或调用真实 provider；下一任务是 Task 7 Organizer runtime、single/batch dispatch、Trace 与 HTTP abort。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
+Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放、`1/1200/300` runtime admission 和本地权威 merger；Task 5 已进一步创建 Web server-only production composition，固定 DeepSeek V4 Pro non-thinking JSON、3000ms、`0.006 CNY` cap，并只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后只注册 Tutor factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 candidate 真正调用时构造一次；Tutor 预算与 Router -> Verifier 共享预算隔离，失败保留原 route/strategy，安全 header/Trace 不含正文或 provider 原文。Compose 只向 `web` 注入 Tutor gate/timeout/key，默认 gate=false。Organizer Task 4 已实现最多 12 道错题、20 个已有专题、strict ordinal 输出和本地权威 merger；Task 6 已把产品写路径接到 owner-scoped immutable snapshot、事务外双 fence、owner advisory-lock 第三 fence 与 model-free command。Task 7 又接入 server-only default-off DeepSeek V4 Pro non-thinking runtime、5000ms、独立 credential、`1/3500/800`、`0.016 CNY` cap、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；worker 强制关闭。rename/move/remove 共用 owner lock，用户 authority、force 唯一关系、并发同主题、旧 deck 复用、Trace 原子替换/回滚与跨 owner 隔离均由真实 PostgreSQL E2E 证明。两个 candidate 都不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。Task 0--7 均没有读取根 `.env`/credential 或调用真实 provider；下一任务是 Task 8 strict API runtime metadata 与 `/error-book` 来源状态。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
 
 当前 `/knowledge` 页面数据流：
 
@@ -455,7 +456,7 @@ Tutor Task 3 已实现共享 signal detection、12+24 冻结 eligibility 回放�
 - 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
 - 上传失败不阻塞 OCR，当前设备 Dexie 继续保留本地预览作为兜底。
 - 创建错题后的自动整理是非阻塞流程，整理失败不影响错题保存结果。
-- WrongQuestionOrganizerAgent 当前产品仍运行确定性 policy，不读取 API key 或调用真实模型；Task 6 已接入 owner snapshot、事务外双 stale fence、写事务内第三次 revalidation 与 model-free command，Task 7 才接入 NestJS runtime/Trace/HTTP abort。
+- WrongQuestionOrganizerAgent 默认 gate 关闭时继续运行确定性 policy；Task 6 已接入 owner snapshot、事务外双 stale fence、写事务内第三次 revalidation 与 model-free command，Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort，但尚未读取 key、调用真实模型或执行 controlled-Live。
 - 一个错题同一时间只属于当前用户一个 organizer deck，服务端通过 `userId + wrongQuestionId` 唯一约束防止同一错题被重复归入多个专题。
 
 服务端 OCRRecord API：

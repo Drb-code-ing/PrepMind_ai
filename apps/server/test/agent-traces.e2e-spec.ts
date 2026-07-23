@@ -2,9 +2,11 @@ import cookieParser from 'cookie-parser';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  agentTraceCreateRequestSchema,
   agentTraceDetailResponseSchema,
   agentTraceListResponseSchema,
   agentTraceSummaryResponseSchema,
+  type AgentTraceCreateRequest,
 } from '@repo/types/api/agent-trace';
 import request from 'supertest';
 import type { Response as SupertestResponse } from 'supertest';
@@ -13,11 +15,13 @@ import type { App } from 'supertest/types';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { PrismaService } from '../src/database/prisma.service';
+import { AgentTracesService } from '../src/agent-traces/agent-traces.service';
 
 describe('AgentTracesController (e2e)', () => {
   let app: INestApplication<App>;
   let server: App;
   let prisma: PrismaService;
+  let agentTracesService: AgentTracesService;
   const emails: string[] = [];
 
   beforeAll(async () => {
@@ -42,6 +46,7 @@ describe('AgentTracesController (e2e)', () => {
 
     server = app.getHttpServer();
     prisma = app.get(PrismaService);
+    agentTracesService = app.get(AgentTracesService);
   });
 
   afterAll(async () => {
@@ -130,6 +135,81 @@ describe('AgentTracesController (e2e)', () => {
       .expect(404);
   });
 
+  it('atomically replaces command_pending steps for the same owner and runId', async () => {
+    const owner = await registerAndLogin('agent-traces-command-final');
+    const runId = `trace-final-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const admission = commandTracePayload(runId, 'pending');
+    const finalTrace = commandTracePayload(runId, 'applied');
+
+    await agentTracesService.createTrace(owner.userId, admission);
+    await agentTracesService.createTrace(owner.userId, finalTrace);
+
+    const detail = await agentTracesService.getTrace(owner.userId, runId);
+    expect(detail.steps.map(({ node }) => node)).toEqual([
+      'wrong_question_organizer_command',
+    ]);
+    expect(detail.steps[0]?.outputSummary).toBe(
+      'state=applied;authority=local_command',
+    );
+    await expect(
+      prisma.agentTraceRun.count({
+        where: { id: runId, userId: owner.userId },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it('rolls back a failed final replacement and preserves command_pending', async () => {
+    const owner = await registerAndLogin('agent-traces-command-rollback');
+    const runId = `trace-rollback-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const admission = commandTracePayload(runId, 'pending');
+    const finalTrace = commandTracePayload(runId, 'applied');
+    const invalidFinal: AgentTraceCreateRequest = {
+      ...finalTrace,
+      steps: finalTrace.steps.map((step) => ({
+        ...step,
+        // PostgreSQL INTEGER overflow is raised after the run upsert and step
+        // delete, proving the surrounding Prisma transaction rolls both back.
+        durationMs: 3_000_000_000,
+      })),
+    };
+
+    await agentTracesService.createTrace(owner.userId, admission);
+    await expect(
+      agentTracesService.createTrace(owner.userId, invalidFinal),
+    ).rejects.toBeDefined();
+
+    const detail = await agentTracesService.getTrace(owner.userId, runId);
+    expect(detail.steps.map(({ node }) => node)).toEqual([
+      'wrong_question_organizer_command_pending',
+    ]);
+    expect(detail.steps[0]?.outputSummary).toBe(
+      'state=pending;admission=trace_persisted',
+    );
+  });
+
+  it('cannot replace another owner command_pending trace with the same runId', async () => {
+    const owner = await registerAndLogin('agent-traces-command-owner');
+    const other = await registerAndLogin('agent-traces-command-other');
+    const runId = `trace-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const admission = commandTracePayload(runId, 'pending');
+
+    await agentTracesService.createTrace(owner.userId, admission);
+    await expect(
+      agentTracesService.createTrace(
+        other.userId,
+        commandTracePayload(runId, 'applied'),
+      ),
+    ).rejects.toBeDefined();
+
+    const detail = await agentTracesService.getTrace(owner.userId, runId);
+    expect(detail.steps.map(({ node }) => node)).toEqual([
+      'wrong_question_organizer_command_pending',
+    ]);
+    await expect(
+      agentTracesService.getTrace(other.userId, runId),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
   it('rejects unauthenticated trace requests', async () => {
     await request(server).get('/agent-traces').expect(401);
   });
@@ -203,6 +283,38 @@ function createTracePayload(runId: string) {
       },
     ],
   };
+}
+
+function commandTracePayload(
+  runId: string,
+  state: 'pending' | 'applied',
+): AgentTraceCreateRequest {
+  const base = createTracePayload(runId);
+  const startedAt = '2026-06-28T08:00:02.000Z';
+  return agentTraceCreateRequestSchema.parse({
+    ...base,
+    route: 'wrong_question_organize',
+    status: 'completed',
+    degraded: false,
+    steps: [
+      {
+        node:
+          state === 'pending'
+            ? 'wrong_question_organizer_command_pending'
+            : 'wrong_question_organizer_command',
+        status: 'completed',
+        startedAt,
+        finishedAt: startedAt,
+        durationMs: 0,
+        inputSummary: 'scope=model_free_command;permission=local_only',
+        outputSummary:
+          state === 'pending'
+            ? 'state=pending;admission=trace_persisted'
+            : 'state=applied;authority=local_command',
+        errorMessage: null,
+      },
+    ],
+  });
 }
 
 function getSuccessData<T = unknown>(response: SupertestResponse): T {

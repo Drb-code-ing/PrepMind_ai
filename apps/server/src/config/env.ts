@@ -39,6 +39,8 @@ const envSchema = z
     AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
     KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+      optionalNonEmptyStringSchema,
     REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:
@@ -81,6 +83,14 @@ const envSchema = z
       .min(1_000)
       .max(15_000)
       .default(4_500),
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED:
+      booleanStringSchema.default(false),
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(15_000)
+      .default(5_000),
     CONVERSATION_SUMMARY_MAX_CALLS: z.coerce
       .number()
       .int()
@@ -413,11 +423,14 @@ const envSchema = z
         typeof env.DEEPSEEK_API_KEY === 'string' &&
         env.DEEPSEEK_API_KEY.length > 0 &&
         env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY === undefined &&
+        env.WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY === undefined &&
         env.OPENAI_API_KEY === undefined &&
         env.KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED === false &&
         env.KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED === false &&
+        env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED === false &&
         env.REVIEW_AGENT_MODEL_TIMEOUT_MS === 4_500 &&
-        env.PLANNER_AGENT_MODEL_TIMEOUT_MS === 4_500;
+        env.PLANNER_AGENT_MODEL_TIMEOUT_MS === 4_500 &&
+        env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS === 5_000;
       if (env.SERVER_ROLE !== 'api') {
         context.addIssue({
           code: 'custom',
@@ -480,15 +493,29 @@ const envSchema = z
       const hasKnowledgeDeepseekKey = Boolean(
         env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
       );
+      const organizerLiveRequested =
+        env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED;
+      const hasOrganizerDeepseekKey = Boolean(
+        env.WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY,
+      );
       const hasDeepseekKey =
         Boolean(env.DEEPSEEK_API_KEY) ||
-        (knowledgeLiveRequested && hasKnowledgeDeepseekKey);
+        (knowledgeLiveRequested && hasKnowledgeDeepseekKey) ||
+        (organizerLiveRequested && hasOrganizerDeepseekKey);
       if (knowledgeLiveRequested && !hasKnowledgeDeepseekKey) {
         context.addIssue({
           code: 'custom',
           path: ['KNOWLEDGE_AGENT_DEEPSEEK_API_KEY'],
           message:
             'live Knowledge model calls require the dedicated Knowledge credential',
+        });
+      }
+      if (organizerLiveRequested && !hasOrganizerDeepseekKey) {
+        context.addIssue({
+          code: 'custom',
+          path: ['WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY'],
+          message:
+            'live WrongQuestionOrganizer model calls require the dedicated Organizer credential',
         });
       }
       if (!hasDeepseekKey && !env.OPENAI_API_KEY) {

@@ -64,6 +64,8 @@ describe('parseEnv', () => {
       KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: false,
       KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: 4500,
       KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 4500,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
     });
   });
 
@@ -109,6 +111,73 @@ describe('parseEnv', () => {
         KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '   ',
       }).KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
     ).toBeUndefined();
+  });
+
+  it('validates the dedicated server-only WrongQuestionOrganizer gate, timeout, and credential', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'false',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+          '  synthetic-organizer-key  ',
+      }),
+    ).toMatchObject({
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
+      WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+        'synthetic-organizer-key',
+    });
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '   ',
+      }).WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY,
+    ).toBeUndefined();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 999,
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 15001,
+      }),
+    ).toThrow();
+  });
+
+  it('requires the dedicated Organizer credential when its live gate is requested', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+          'synthetic-organizer-key',
+      }),
+    ).toMatchObject({
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: true,
+      WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+        'synthetic-organizer-key',
+    });
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        DEEPSEEK_API_KEY: 'generic-key-cannot-serve-organizer',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+      }),
+    ).toThrow();
   });
 
   it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {

@@ -134,7 +134,7 @@
 
 ## Task 4：实现 WrongQuestionOrganizer candidate 与本地 merger
 
-**状态：已完成。** Candidate focused 与 companion tests `24/24`；冻结 24 条 Organizer runtime fixture 均恰好调用一次，Task 4 自有 existing/exact/high-confidence/owner/stale/abort/budget/safety 路径保持 runtime 前零调用。Agent `529/529`、AI `194/194`、typecheck/lint、Native Node ESM export、`git diff --check` 与两路独立复审均通过；证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。后续 Task 5/6 已完成，当前下一任务是 Task 7。
+**状态：已完成。** Candidate focused 与 companion tests `24/24`；冻结 24 条 Organizer runtime fixture 均恰好调用一次，Task 4 自有 existing/exact/high-confidence/owner/stale/abort/budget/safety 路径保持 runtime 前零调用。Agent `529/529`、AI `194/194`、typecheck/lint、Native Node ESM export、`git diff --check` 与两路独立复审均通过；证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-model-candidate.md`。后续 Task 5--7 已完成，当前下一任务是 Task 8。
 
 **文件：**
 
@@ -158,7 +158,7 @@
 
 ## Task 5：接入 Tutor 独立 default-off runtime、Chat 编排与安全 Trace
 
-**状态：已完成。** Web server-only composition 固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap；只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后仅注册惰性 factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 仅在 final Tutor candidate 真正调用时构造一次。明确指令、不安全/abort/配置失败保持 provider zero-call；失败保留 deterministic Tutor strategy。安全 Tutor header/Trace、CNY 与顶层 USD 隔离、Router/Verifier 预算隔离及 Docker web-only allowlist 均已验证。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build、Compose tracked-example quiet parse 与两路复审通过。未读取根 `.env`、调用 provider 或执行 Docker/浏览器产品验收；production gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。后续 Task 6 已完成，当前下一任务是 Task 7。
+**状态：已完成。** Web server-only composition 固定 DeepSeek V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap；只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。live access/context prepare 后仅注册惰性 factory；非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 仅在 final Tutor candidate 真正调用时构造一次。明确指令、不安全/abort/配置失败保持 provider zero-call；失败保留 deterministic Tutor strategy。安全 Tutor header/Trace、CNY 与顶层 USD 隔离、Router/Verifier 预算隔离及 Docker web-only allowlist 均已验证。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build、Compose tracked-example quiet parse 与两路复审通过。未读取根 `.env`、调用 provider 或执行 Docker/浏览器产品验收；production gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。后续 Task 6/7 已完成，当前下一任务是 Task 8。
 
 **文件：**
 
@@ -184,7 +184,7 @@
 
 ## Task 6：建立 Organizer owner snapshot、双 stale fence 与授权写 command
 
-**状态：已完成。** 已建立 bounded `REPEATABLE READ + READ ONLY` owner snapshot、域分离 HMAC/fingerprint、事务外双 revalidation、owner advisory-lock 写事务内第三次 fence、深冻结 model-free command、用户 authority、force 唯一关系、P2034/40001 bounded retry 与 canonical deck 溢出 fail-closed。focused `23/23`、Server `2122 passed / 30 skipped`、真实 PostgreSQL E2E `9/9`、Database `7/7`、Server lint/build/diff 通过；代码/安全与文档/验收两路独立复审无 Critical/Important。没有读取 key 或调用 provider。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-owner-command.md`。当前下一任务是 Task 7。
+**状态：已完成。** 已建立 bounded `REPEATABLE READ + READ ONLY` owner snapshot、域分离 HMAC/fingerprint、事务外双 revalidation、owner advisory-lock 写事务内第三次 fence、深冻结 model-free command、用户 authority、force 唯一关系、P2034/40001 bounded retry 与 canonical deck 溢出 fail-closed。focused `23/23`、Server `2122 passed / 30 skipped`、真实 PostgreSQL E2E `9/9`、Database `7/7`、Server lint/build/diff 通过；代码/安全与文档/验收两路独立复审无 Critical/Important。没有读取 key 或调用 provider。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-owner-command.md`。后续 Task 7 已完成，当前下一任务是 Task 8。
 
 **文件：**
 
@@ -206,7 +206,7 @@
 
 **提交：** `feat(server): fence organizer write commands`
 
-## Task 7：接入 Organizer default-off runtime、single/batch dispatch、Trace 与 HTTP abort
+## Task 7：接入 Organizer default-off runtime、single/batch dispatch、Trace 与 HTTP abort（已完成）
 
 **文件：**
 
@@ -224,6 +224,8 @@
 - HTTP disconnect/abort 贯穿 snapshot/candidate/command preflight，事务开始后仅执行不可中断的最小本地 command。
 
 **验证：** server focused config/service/controller/e2e、Server full test/lint/build、Agent/AI tests、`git diff --check`。
+
+**完成记录（2026-07-23）：** 已实现独立 default-off gate/credential、固定 V4 Pro non-thinking JSON、5000ms、`1/3500/800` 与 `0.016 CNY` cap；worker 强制关闭。single/batch 单次 dispatch、最多 12 eligible、candidate 后 stale fence、两阶段 Trace admission/final replacement、HTTP abort/listener cleanup 与 Task 6 model-free command 已接通。focused 单测 `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、相关 typecheck/lint/build/diff 门及两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md`；下一任务为 Task 8。
 
 **提交：** `feat(server): integrate hybrid wrong question organizer`
 

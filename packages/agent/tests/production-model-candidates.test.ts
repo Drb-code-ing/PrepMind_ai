@@ -13,6 +13,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'REVIEW_MODEL_CANDIDATE_SCHEMA',
   'TUTOR_MODEL_DECISION_SCHEMA',
   'TUTOR_MODEL_PROJECTION_VERSION',
+  'WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
   'isKnowledgeVerifierModelEligible',
@@ -49,6 +50,9 @@ describe('production model candidate exports', () => {
     expect(
       productionModelCandidates.runWrongQuestionOrganizerModelCandidate,
     ).toBeFunction();
+    expect(
+      productionModelCandidates.WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
+    ).toBeDefined();
     expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
       'candidate_applied',
     );

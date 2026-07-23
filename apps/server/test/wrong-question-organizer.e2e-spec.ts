@@ -9,11 +9,17 @@ import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { PrismaService } from '../src/database/prisma.service';
+import {
+  WRONG_QUESTION_ORGANIZER_MODEL_RUNTIME,
+  type WrongQuestionOrganizerModelRuntimeBundle,
+} from '../src/wrong-question-organizer/wrong-question-organizer-model-runtime.factory';
 
 describe('WrongQuestionOrganizerController (e2e)', () => {
   let app: INestApplication<App>;
   let server: App;
   let prisma: PrismaService;
+  let organizerRuntime: WrongQuestionOrganizerModelRuntimeBundle;
+  let previousOrganizerGate: string | undefined;
   const emails: string[] = [];
 
   beforeAll(async () => {
@@ -21,6 +27,9 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     process.env.JWT_SECRET ??= 'dev-secret-change-me';
     process.env.DATABASE_URL ??=
       'postgresql://prepmind:devpass@127.0.0.1:5433/prepmind';
+    previousOrganizerGate =
+      process.env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED;
+    process.env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED = 'false';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -34,6 +43,7 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
 
     server = app.getHttpServer();
     prisma = app.get(PrismaService);
+    organizerRuntime = app.get(WRONG_QUESTION_ORGANIZER_MODEL_RUNTIME);
   });
 
   afterAll(async () => {
@@ -41,6 +51,13 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
       await prisma.user.deleteMany({
         where: { email: { in: emails } },
       });
+    }
+
+    if (previousOrganizerGate === undefined) {
+      delete process.env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED;
+    } else {
+      process.env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED =
+        previousOrganizerGate;
     }
 
     await app?.close();
@@ -100,6 +117,34 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     expect(questions.items.map((item) => item.id).sort()).toEqual(
       [first.id, second.id].sort(),
     );
+  });
+
+  it('keeps the batch endpoint default-off with local writes and zero model traces', async () => {
+    const user = await registerUser('organizer-batch-default-off');
+    const first = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-batch-a-${Date.now()}`,
+      questionText: '批量整理：判断格林公式的积分方向。',
+    });
+    const second = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-batch-b-${Date.now()}`,
+      questionText: '批量整理：使用格林公式计算闭合曲线积分。',
+    });
+
+    expect(organizerRuntime.config.enabled).toBe(false);
+    const response = await request(server)
+      .post('/wrong-question-organizer/organize-batch')
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ limit: 2 })
+      .expect(201);
+    const result = getSuccessData<OrganizeWrongQuestionBatchResponse>(response);
+
+    expect(result).toMatchObject({ organizedCount: 2, skippedCount: 0 });
+    expect(result.items.map(({ item }) => item.wrongQuestionId).sort()).toEqual(
+      [first.id, second.id].sort(),
+    );
+    await expect(
+      prisma.agentTraceRun.count({ where: { userId: user.userId } }),
+    ).resolves.toBe(0);
   });
 
   it('keeps user isolation for groups and decks', async () => {
@@ -552,4 +597,10 @@ type OrganizeWrongQuestionResponse = {
   createdItem: boolean;
   reason: string;
   confidence: number;
+};
+
+type OrganizeWrongQuestionBatchResponse = {
+  organizedCount: number;
+  skippedCount: number;
+  items: OrganizeWrongQuestionResponse[];
 };

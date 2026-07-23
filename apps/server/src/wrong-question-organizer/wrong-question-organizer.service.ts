@@ -1,6 +1,17 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { organizeWrongQuestion } from '@repo/agent/wrong-question-organizer';
+import {
+  runWrongQuestionOrganizerModelCandidate,
+  type WrongQuestionOrganizerModelCandidateEnvelope,
+  type WrongQuestionOrganizerModelCandidateItem,
+} from '@repo/agent/model-candidates';
+import {
+  organizeWrongQuestion,
+  type WrongQuestionOrganizerInput,
+  type WrongQuestionOrganizerResult,
+} from '@repo/agent/wrong-question-organizer';
 import { Prisma } from '@prisma/client';
 import type {
   MoveWrongQuestionToDeckRequest,
@@ -19,14 +30,26 @@ import type {
 } from '@repo/types/api/wrong-question-organizer';
 import type { WrongQuestionResponse } from '@repo/types/api/wrong-question';
 
+import { AgentTracesService } from '../agent-traces/agent-traces.service';
 import { AppError } from '../common/errors/app-error';
 import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
+import {
+  buildWrongQuestionOrganizerAdmissionTrace,
+  buildWrongQuestionOrganizerFinalTrace,
+  validateWrongQuestionOrganizerCandidateAdmission,
+  type WrongQuestionOrganizerCandidateAdmission,
+} from './wrong-question-organizer-agent-trace';
 import {
   buildWrongQuestionOrganizerCommand,
   WrongQuestionOrganizerCommandExecutor,
   type WrongQuestionOrganizerCommandResult,
 } from './wrong-question-organizer-command';
+import { reserveWrongQuestionOrganizerCandidateBudget } from './wrong-question-organizer-model-config';
+import {
+  WRONG_QUESTION_ORGANIZER_MODEL_RUNTIME,
+  type WrongQuestionOrganizerModelRuntimeBundle,
+} from './wrong-question-organizer-model-runtime.factory';
 import {
   hashWrongQuestionOrganizerOwner,
   type WrongQuestionOrganizerOwnerSnapshot,
@@ -37,6 +60,8 @@ const SNAPSHOT_TRANSACTION_MAX_WAIT_MS = 2_000;
 const SNAPSHOT_TRANSACTION_TIMEOUT_MS = 5_000;
 const MAX_LOCAL_STALE_ATTEMPTS = 2;
 const MAX_SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
+const MAX_MODEL_CANDIDATE_ITEMS = 12;
+const MAX_LOCAL_COMMAND_ITEMS = 12;
 
 @Injectable()
 export class WrongQuestionOrganizerService {
@@ -45,6 +70,9 @@ export class WrongQuestionOrganizerService {
     private readonly config: ConfigService<ServerEnv, true>,
     private readonly snapshotSource: WrongQuestionOrganizerOwnerSnapshotSource,
     private readonly commandExecutor: WrongQuestionOrganizerCommandExecutor,
+    @Inject(WRONG_QUESTION_ORGANIZER_MODEL_RUNTIME)
+    private readonly modelRuntime: WrongQuestionOrganizerModelRuntimeBundle,
+    private readonly agentTracesService: AgentTracesService,
   ) {}
 
   async listGroups(userId: string): Promise<WrongQuestionGroupListResponse> {
@@ -138,90 +166,27 @@ export class WrongQuestionOrganizerService {
     userId: string,
     wrongQuestionId: string,
     input: OrganizeWrongQuestionRequest,
+    signal?: AbortSignal,
   ): Promise<OrganizeWrongQuestionResponse> {
-    const ownerHashSecret = this.config.get('JWT_SECRET', { infer: true });
-
-    for (let attempt = 1; attempt <= MAX_LOCAL_STALE_ATTEMPTS; attempt += 1) {
-      const snapshot = await this.prisma.$transaction(
-        (transaction) =>
-          this.snapshotSource.load(transaction, {
-            userId,
-            ownerHashSecret,
-            wrongQuestionIds: [wrongQuestionId],
-          }),
-        {
-          isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
-          maxWait: SNAPSHOT_TRANSACTION_MAX_WAIT_MS,
-          timeout: SNAPSHOT_TRANSACTION_TIMEOUT_MS,
-        },
-      );
-
-      const freshBeforeDecision = await this.snapshotSource.revalidate(
-        this.prisma,
-        {
-          userId,
-          ownerHashSecret,
-          snapshot,
-        },
-      );
-      if (!freshBeforeDecision) continue;
-
-      const policy = this.organizerDecision(snapshot, wrongQuestionId);
-
-      // Task 6 has no provider dispatch. Keeping the post-decision fence here makes
-      // the later Task 7 candidate insertion unable to bypass the write boundary.
-      const freshAfterDecision = await this.snapshotSource.revalidate(
-        this.prisma,
-        {
-          userId,
-          ownerHashSecret,
-          snapshot,
-        },
-      );
-      if (!freshAfterDecision) continue;
-
-      const command = buildWrongQuestionOrganizerCommand({
-        snapshot,
-        decisions: [
-          {
-            wrongQuestionId,
-            force: input.force,
-            result: policy,
-          },
-        ],
-      });
-      if (!command) continue;
-
-      const result = await this.commandExecutor.execute({
-        userId,
-        ownerHashSecret,
-        snapshot,
-        command,
-      });
-      const response = await this.commandResultToResponse(
-        userId,
-        wrongQuestionId,
-        result,
-      );
-      if (response) return response;
-    }
-
-    const authority = await this.loadExistingOrganization(
+    const responses = await this.organizeScope({
       userId,
-      wrongQuestionId,
+      targets: [{ wrongQuestionId, force: input.force }],
+      allowModel: true,
+      signal,
+    });
+    const response = responses.find(
+      (entry) => entry.item.wrongQuestionId === wrongQuestionId,
     );
-    if (authority) return this.authorityToResponse(userId, authority);
-    throw new AppError(
-      'WRONG_QUESTION_ORGANIZER_STALE',
-      '错题整理依据已变化，请重试',
-      HttpStatus.CONFLICT,
-    );
+    if (response) return response;
+    throw this.staleError();
   }
 
   async organizeBatch(
     userId: string,
     input: OrganizeWrongQuestionBatchRequest,
+    signal?: AbortSignal,
   ): Promise<OrganizeWrongQuestionBatchResponse> {
+    this.assertRequestActive(signal);
     const wrongQuestions = await this.prisma.wrongQuestion.findMany({
       where: {
         userId,
@@ -229,21 +194,456 @@ export class WrongQuestionOrganizerService {
       },
       orderBy: { createdAt: 'desc' },
       take: input.limit,
-      select: { id: true },
+      select: {
+        id: true,
+        subject: true,
+        category: true,
+        knowledgePoints: true,
+        errorType: true,
+        questionText: true,
+        analysis: true,
+      },
     });
-    const items: OrganizeWrongQuestionResponse[] = [];
+    const candidateIds = this.modelRuntime.config.enabled
+      ? wrongQuestions
+          .filter((wrongQuestion) =>
+            this.isPotentialModelCandidate(wrongQuestion),
+          )
+          .slice(0, MAX_MODEL_CANDIDATE_ITEMS)
+          .map(({ id }) => id)
+      : [];
+    const candidateIdSet = new Set(candidateIds);
+    const responses: OrganizeWrongQuestionResponse[] = [];
 
-    for (const wrongQuestion of wrongQuestions) {
-      items.push(
-        await this.organizeOne(userId, wrongQuestion.id, { force: false }),
+    if (candidateIds.length > 0) {
+      responses.push(
+        ...(await this.organizeScope({
+          userId,
+          targets: candidateIds.map((wrongQuestionId) => ({
+            wrongQuestionId,
+            force: false,
+          })),
+          allowModel: true,
+          signal,
+        })),
       );
     }
 
+    const localIds = wrongQuestions
+      .map(({ id }) => id)
+      .filter((id) => !candidateIdSet.has(id));
+    for (const wrongQuestionIds of chunks(localIds, MAX_LOCAL_COMMAND_ITEMS)) {
+      this.assertRequestActive(signal);
+      responses.push(
+        ...(await this.organizeScope({
+          userId,
+          targets: wrongQuestionIds.map((wrongQuestionId) => ({
+            wrongQuestionId,
+            force: false,
+          })),
+          allowModel: false,
+          signal,
+        })),
+      );
+    }
+
+    const responseByQuestionId = new Map(
+      responses.map((response) => [response.item.wrongQuestionId, response]),
+    );
+    const items = wrongQuestions.flatMap(({ id }) => {
+      const response = responseByQuestionId.get(id);
+      return response ? [response] : [];
+    });
+
     return {
       organizedCount: items.length,
-      skippedCount: 0,
+      skippedCount: wrongQuestions.length - items.length,
       items,
     };
+  }
+
+  private async organizeScope(input: {
+    userId: string;
+    targets: readonly OrganizerTarget[];
+    allowModel: boolean;
+    signal?: AbortSignal;
+  }): Promise<OrganizeWrongQuestionResponse[]> {
+    const ownerHashSecret = this.config.get('JWT_SECRET', { infer: true });
+    let modelAttemptConsumed =
+      !input.allowModel || !this.modelRuntime.config.enabled;
+
+    for (let attempt = 1; attempt <= MAX_LOCAL_STALE_ATTEMPTS; attempt += 1) {
+      this.assertRequestActive(input.signal);
+      const snapshot = await this.loadOwnerSnapshot(
+        input.userId,
+        ownerHashSecret,
+        input.targets.map(({ wrongQuestionId }) => wrongQuestionId),
+      );
+      this.assertRequestActive(input.signal);
+
+      const freshBeforeDecision = await this.snapshotSource.revalidate(
+        this.prisma,
+        {
+          userId: input.userId,
+          ownerHashSecret,
+          snapshot,
+        },
+      );
+      if (!freshBeforeDecision) continue;
+
+      const localDecisions = input.targets.map(({ wrongQuestionId }) => ({
+        wrongQuestionId,
+        result: this.organizerDecision(snapshot, wrongQuestionId),
+      }));
+      let decisions = localDecisions;
+      let traceContext: OrganizerTraceContext | null = null;
+      let postDecisionFenceCompleted = false;
+
+      if (!modelAttemptConsumed) {
+        modelAttemptConsumed = true;
+        const reservation = reserveWrongQuestionOrganizerCandidateBudget();
+        if (reservation !== null) {
+          const runId = randomUUID();
+          const startedAt = new Date();
+          const candidate = await this.safeModelCandidate({
+            runId,
+            snapshot,
+            targets: input.targets,
+            budget: reservation.candidateBudget,
+            signal: input.signal,
+          });
+          const candidateFinishedAt = new Date();
+          this.assertRequestActive(input.signal);
+          const admission = candidate
+            ? validateWrongQuestionOrganizerCandidateAdmission(
+                candidate.observation,
+              )
+            : null;
+          if (
+            admission !== null &&
+            candidate !== null &&
+            candidate.result.length === input.targets.length
+          ) {
+            const freshAfterCandidate = await this.snapshotSource.revalidate(
+              this.prisma,
+              {
+                userId: input.userId,
+                ownerHashSecret,
+                snapshot,
+              },
+            );
+            postDecisionFenceCompleted = true;
+            if (!freshAfterCandidate) continue;
+            this.assertRequestActive(input.signal);
+
+            const context = {
+              runId,
+              snapshotFingerprint: snapshot.fingerprint,
+              targetCount: input.targets.length,
+              startedAt,
+              candidateFinishedAt,
+              admission,
+            } satisfies OrganizerTraceContext;
+            try {
+              await this.agentTracesService.createTrace(
+                input.userId,
+                buildWrongQuestionOrganizerAdmissionTrace(context),
+              );
+              decisions = input.targets.map((target, index) => ({
+                wrongQuestionId: target.wrongQuestionId,
+                result: candidate.result[index],
+              }));
+              traceContext = context;
+            } catch {
+              decisions = localDecisions;
+            }
+          }
+        }
+      }
+
+      if (!postDecisionFenceCompleted) {
+        const freshAfterDecision = await this.snapshotSource.revalidate(
+          this.prisma,
+          {
+            userId: input.userId,
+            ownerHashSecret,
+            snapshot,
+          },
+        );
+        if (!freshAfterDecision) continue;
+      }
+
+      if (traceContext && input.signal?.aborted) {
+        await this.finalizeTrace(input.userId, traceContext, 'aborted');
+        this.assertRequestActive(input.signal);
+      }
+      this.assertRequestActive(input.signal);
+
+      const command = buildWrongQuestionOrganizerCommand({
+        snapshot,
+        decisions: input.targets.map((target) => ({
+          wrongQuestionId: target.wrongQuestionId,
+          force: target.force,
+          result:
+            decisions.find(
+              (entry) => entry.wrongQuestionId === target.wrongQuestionId,
+            )?.result ??
+            this.organizerDecision(snapshot, target.wrongQuestionId),
+        })),
+      });
+      if (!command) {
+        if (traceContext) {
+          await this.finalizeTrace(input.userId, traceContext, 'stale');
+        }
+        continue;
+      }
+
+      let result: WrongQuestionOrganizerCommandResult;
+      try {
+        result = await this.commandExecutor.execute({
+          userId: input.userId,
+          ownerHashSecret,
+          snapshot,
+          command,
+        });
+      } catch (error) {
+        if (traceContext) {
+          await this.finalizeTrace(input.userId, traceContext, 'failed');
+        }
+        throw error;
+      }
+      if (traceContext) {
+        await this.finalizeTrace(input.userId, traceContext, result.status);
+      }
+      const responses = await this.commandResultToResponses(
+        input.userId,
+        input.targets.map(({ wrongQuestionId }) => wrongQuestionId),
+        result,
+      );
+      if (responses.length > 0) return responses;
+    }
+
+    const authorities = await Promise.all(
+      input.targets.map(({ wrongQuestionId }) =>
+        this.loadExistingOrganization(input.userId, wrongQuestionId),
+      ),
+    );
+    const responses: OrganizeWrongQuestionResponse[] = [];
+    for (const authority of authorities) {
+      if (authority) {
+        responses.push(await this.authorityToResponse(input.userId, authority));
+      }
+    }
+    if (responses.length > 0) return responses;
+    throw this.staleError();
+  }
+
+  private loadOwnerSnapshot(
+    userId: string,
+    ownerHashSecret: string,
+    wrongQuestionIds: readonly string[],
+  ) {
+    return this.prisma.$transaction(
+      (transaction) =>
+        this.snapshotSource.load(transaction, {
+          userId,
+          ownerHashSecret,
+          wrongQuestionIds,
+        }),
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: SNAPSHOT_TRANSACTION_MAX_WAIT_MS,
+        timeout: SNAPSHOT_TRANSACTION_TIMEOUT_MS,
+      },
+    );
+  }
+
+  private async safeModelCandidate(input: {
+    runId: string;
+    snapshot: WrongQuestionOrganizerOwnerSnapshot;
+    targets: readonly OrganizerTarget[];
+    budget: Parameters<
+      typeof runWrongQuestionOrganizerModelCandidate
+    >[0]['budget'];
+    signal?: AbortSignal;
+  }): Promise<WrongQuestionOrganizerModelCandidateEnvelope | null> {
+    try {
+      const items = input.targets.map(({ wrongQuestionId }) =>
+        this.modelCandidateItem(input.snapshot, wrongQuestionId),
+      );
+      const force = input.targets[0]?.force ?? false;
+      if (input.targets.some((target) => target.force !== force)) return null;
+      return await runWrongQuestionOrganizerModelCandidate({
+        runId: input.runId,
+        items,
+        force,
+        ownerEligible: true,
+        snapshotCurrent: true,
+        projectionSource: this.modelProjectionSource(input.snapshot, items),
+        runtime: this.modelRuntime.runtime,
+        budget: input.budget,
+        ...(input.signal ? { signal: input.signal } : {}),
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  private modelCandidateItem(
+    snapshot: WrongQuestionOrganizerOwnerSnapshot,
+    wrongQuestionId: string,
+  ): WrongQuestionOrganizerModelCandidateItem {
+    return {
+      deterministicInput: this.organizerInput(snapshot, wrongQuestionId),
+      hasExistingItem: snapshot.items.some(
+        (item) => item.wrongQuestionId === wrongQuestionId,
+      ),
+    };
+  }
+
+  private modelProjectionSource(
+    snapshot: WrongQuestionOrganizerOwnerSnapshot,
+    items: readonly WrongQuestionOrganizerModelCandidateItem[],
+  ) {
+    const deckIds = new Set(
+      items.flatMap((item) =>
+        (item.deterministicInput.existingDecks ?? []).map(({ id }) => id),
+      ),
+    );
+    return {
+      questions: items.map(({ deterministicInput }) => ({
+        questionId: deterministicInput.wrongQuestion.id,
+        subject: normalizedOrNull(deterministicInput.wrongQuestion.subject),
+        subjectHint: organizerSubjectHint(
+          deterministicInput.wrongQuestion.subject,
+        ),
+        category: normalizedOrNull(deterministicInput.wrongQuestion.category),
+        knowledgePoints: [
+          ...(deterministicInput.wrongQuestion.knowledgePoints ?? []),
+        ],
+        errorType: normalizedOrNull(deterministicInput.wrongQuestion.errorType),
+        questionText: normalizedOrNull(
+          deterministicInput.wrongQuestion.questionText,
+        ),
+        analysis: normalizedOrNull(deterministicInput.wrongQuestion.analysis),
+        answer: normalizedOrNull(deterministicInput.wrongQuestion.answer),
+        userNote: normalizedOrNull(deterministicInput.wrongQuestion.userNote),
+        safety: 'safe_for_model' as const,
+      })),
+      existingDecks: snapshot.decks
+        .filter((deck) => deckIds.has(deck.id))
+        .map((deck) => ({
+          deckId: deck.id,
+          subject: organizerSubjectHint(deck.subject, true),
+          name: deck.name,
+          nameLocked: deck.nameLocked,
+          keywords: [...deck.keywords],
+          safety: 'safe_for_model' as const,
+        })),
+    };
+  }
+
+  private organizerInput(
+    snapshot: WrongQuestionOrganizerOwnerSnapshot,
+    wrongQuestionId: string,
+  ): WrongQuestionOrganizerInput {
+    const wrongQuestion = snapshot.wrongQuestions.find(
+      ({ id }) => id === wrongQuestionId,
+    );
+    if (!wrongQuestion) throw this.wrongQuestionNotFound();
+    const detachedQuestion: WrongQuestionOrganizerInput['wrongQuestion'] = {
+      id: wrongQuestion.id,
+      subject: wrongQuestion.subject,
+      category: wrongQuestion.category,
+      knowledgePoints: [...wrongQuestion.knowledgePoints],
+      errorType: wrongQuestion.errorType,
+      questionText: wrongQuestion.questionText,
+      analysis: wrongQuestion.analysis,
+      answer: wrongQuestion.answer,
+      userNote: wrongQuestion.userNote,
+    };
+    const firstPass = organizeWrongQuestion({
+      wrongQuestion: detachedQuestion,
+    });
+    const existingDecks = snapshot.decks
+      .filter(({ subject }) => subject === firstPass.subjectKey)
+      .map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        nameLocked: deck.nameLocked,
+        keywords: [...deck.keywords],
+      }));
+    return { wrongQuestion: detachedQuestion, existingDecks };
+  }
+
+  private isPotentialModelCandidate(input: BatchCandidateRow): boolean {
+    if (!input.questionText.trim() && !input.analysis.trim()) return false;
+    const local = organizeWrongQuestion({
+      wrongQuestion: {
+        id: input.id,
+        subject: input.subject,
+        category: input.category,
+        knowledgePoints: input.knowledgePoints,
+        errorType: input.errorType,
+        questionText: input.questionText,
+        analysis: input.analysis,
+      },
+    });
+    return !input.subject.trim() || local.confidence < 0.72;
+  }
+
+  private async finalizeTrace(
+    userId: string,
+    context: OrganizerTraceContext,
+    outcome: 'applied' | 'authority' | 'stale' | 'aborted' | 'failed',
+  ) {
+    try {
+      await this.agentTracesService.createTrace(
+        userId,
+        buildWrongQuestionOrganizerFinalTrace({
+          ...context,
+          finishedAt: new Date(),
+          outcome,
+        }),
+      );
+    } catch {
+      // createTrace is atomic; a failed final replacement leaves the admission
+      // command_pending trace intact and must not roll back an authorized write.
+    }
+  }
+
+  private async commandResultToResponses(
+    userId: string,
+    wrongQuestionIds: readonly string[],
+    result: WrongQuestionOrganizerCommandResult,
+  ) {
+    const responses = await Promise.all(
+      wrongQuestionIds.map((wrongQuestionId) =>
+        this.commandResultToResponse(userId, wrongQuestionId, result),
+      ),
+    );
+    return responses.filter(
+      (response): response is OrganizeWrongQuestionResponse =>
+        response !== null,
+    );
+  }
+
+  private assertRequestActive(signal: AbortSignal | undefined) {
+    if (signal?.aborted) {
+      throw new AppError(
+        'WRONG_QUESTION_ORGANIZER_ABORTED',
+        '错题整理请求已取消',
+        HttpStatus.REQUEST_TIMEOUT,
+      );
+    }
+  }
+
+  private staleError() {
+    return new AppError(
+      'WRONG_QUESTION_ORGANIZER_STALE',
+      '错题整理依据已变化，请重试',
+      HttpStatus.CONFLICT,
+    );
   }
 
   async updateDeck(
@@ -347,25 +747,10 @@ export class WrongQuestionOrganizerService {
   private organizerDecision(
     snapshot: WrongQuestionOrganizerOwnerSnapshot,
     wrongQuestionId: string,
-  ) {
-    const wrongQuestion = snapshot.wrongQuestions.find(
-      ({ id }) => id === wrongQuestionId,
+  ): WrongQuestionOrganizerResult {
+    return organizeWrongQuestion(
+      this.organizerInput(snapshot, wrongQuestionId),
     );
-    if (!wrongQuestion) throw this.wrongQuestionNotFound();
-
-    const firstPass = organizeWrongQuestion({
-      wrongQuestion,
-      existingDecks: [],
-    });
-    const existingDecks = snapshot.decks
-      .filter(({ subject }) => subject === firstPass.subjectKey)
-      .map((deck) => ({
-        id: deck.id,
-        name: deck.name,
-        nameLocked: deck.nameLocked,
-        keywords: deck.keywords,
-      }));
-    return organizeWrongQuestion({ wrongQuestion, existingDecks });
   }
 
   private async runOwnerWriteTransaction<T>(
@@ -745,6 +1130,38 @@ type OrganizerAuthorityItem = Prisma.WrongQuestionDeckItemGetPayload<{
   };
 }>;
 
+type OrganizerTarget = Readonly<{
+  wrongQuestionId: string;
+  force: boolean;
+}>;
+
+type OrganizerTraceContext = Readonly<{
+  runId: string;
+  snapshotFingerprint: string;
+  targetCount: number;
+  startedAt: Date;
+  candidateFinishedAt: Date;
+  admission: WrongQuestionOrganizerCandidateAdmission;
+}>;
+
+type BatchCandidateRow = Readonly<{
+  id: string;
+  subject: string;
+  category: string;
+  knowledgePoints: readonly string[];
+  errorType: string | null;
+  questionText: string;
+  analysis: string;
+}>;
+
+type OrganizerModelSubject =
+  | 'math'
+  | 'english'
+  | 'politics'
+  | 'computer'
+  | 'major'
+  | 'other';
+
 type CountStats = {
   totalCount: number;
   unresolvedCount: number;
@@ -759,6 +1176,48 @@ type OrganizerStats = {
   groups: Map<string, CountStats>;
   decks: Map<string, CountStats>;
 };
+
+function organizerSubjectHint(
+  value: string | null | undefined,
+  requireKnown: true,
+): OrganizerModelSubject;
+function organizerSubjectHint(
+  value: string | null | undefined,
+  requireKnown?: false,
+): OrganizerModelSubject | 'unknown';
+function organizerSubjectHint(
+  value: string | null | undefined,
+  requireKnown = false,
+): OrganizerModelSubject | 'unknown' {
+  const normalized = (value ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/gu, '');
+  if (!normalized) return requireKnown ? 'other' : 'unknown';
+  if (normalized === 'math' || normalized.includes('数学')) return 'math';
+  if (normalized === 'english' || normalized.includes('英语')) return 'english';
+  if (normalized === 'politics' || normalized.includes('政治'))
+    return 'politics';
+  if (normalized === 'computer' || normalized.includes('计算机'))
+    return 'computer';
+  if (normalized === 'major' || normalized.includes('专业课')) return 'major';
+  return 'other';
+}
+
+function normalizedOrNull(value: string | null | undefined): string | null {
+  const normalized =
+    value?.normalize('NFKC').trim().replace(/\s+/gu, ' ') ?? '';
+  return normalized || null;
+}
+
+function chunks<T>(values: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+}
 
 function isRetryableSerializableTransactionError(error: unknown): boolean {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
