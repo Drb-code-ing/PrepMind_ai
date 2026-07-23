@@ -1,9 +1,15 @@
 # PrepMind AI 开发日志
+> 2026-07-23 — Phase 6.9.7 Task 6 WrongQuestionOrganizer owner snapshot 与授权写命令：Task 4 已能生成受治理语义建议，但 Organizer 最终会写 subject group、deck 和 item；若不隔离模型决策与数据库写入，候选运行期间发生的错题编辑、用户移动/重命名或并发整理可能被旧结果覆盖。本任务先完成 model-free 安全边界，不接 runtime/provider：最多 12 个目标在单个 `REPEATABLE READ + READ ONLY` 事务中形成深冻结 owner snapshot，raw userId 由 JWT secret 派生的域分离 HMAC 代替，完整 fingerprint 绑定目标错题、现有 item、最多 20 个 group/deck、名称/`nameLocked`/版本/关键词与 policy/projection version；missing 与 cross-owner 统一为 `404 / WRONG_QUESTION_NOT_FOUND`。
+>
+> 当前 deterministic decision 前后分别在事务外重建 fingerprint；随后本地构建不含 prompt/provider/key/userId 的 `wrong-question-organizer-command-v1`。短 `Serializable` 写事务按 owner HMAC 取得 advisory xact lock，并做第三次 revalidation；stale 不写入，已存在用户 item 时返回当前权威结果。rename/move/remove 也取得同一 owner lock，force path 先删除其它 relation 再按 `userId + wrongQuestionId` 唯一键 upsert。P2034/40001 只重试本地事务且最多 3 次，不重算或重调 provider；非 force batch 遇到任一用户 authority 时整批 fail-closed，留给 Task 7 用 fresh snapshot 重编排。
+>
+> 独立代码审查发现旧同名 deck 若落在 100 条 write preflight 窗口外可能被重复创建。最终实现先做不受窗口限制的精确名称查询，再扫描最近 100 个 canonical variant；若窗口溢出且无法安全证明不存在旧变体，则返回 stale，不冒险创建重复专题。focused `23/23`、Server full `2122 passed / 30 skipped`、真实 PostgreSQL Organizer E2E `9/9`、Database `7/7`、Server lint/build 和 `git diff --check` 均通过；E2E 覆盖同主题并发、统一 404、force 唯一、并发 rename/move 用户权威，测试数据精确清理。最终代码/安全与文档/验收两路独立复审均 PASS，无 Critical/Important。没有读取根 `.env`/key、调用 provider 或执行 controlled-Live/浏览器验收，Docker 卷保持原样。证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-owner-command.md`。下一任务是 Task 7 Organizer default-off runtime、single/batch dispatch、两阶段 Trace 与 HTTP abort。回顾时可以问：三次 fence 分别防什么？为什么模型结果必须先变成 model-free command？为什么 canonical scan 溢出要 stale 而不能继续创建？
+
 > 2026-07-23 — Phase 6.9.7 Task 5 Tutor Web server-only runtime：Task 3 的 package candidate 已能受限判断“怎么教”，但产品 `/api/chat` 仍没有 Tutor 专属 gate、executor、独立预算或模型 provenance。Task 5 因此先完成 default-off 静态/Mock composition，不打开真实 provider：固定 `deepseek-v4-pro`、`https://api.deepseek.com/v1`、non-thinking JSON、3000ms、无 tools/retry，并只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`。完整 Live conjunction 任一缺失、timeout/价格/依赖异常都返回 disabled bundle，绝不借用通用或其它 Agent credential。
 >
 > live access 与 conversation-context prepare 成功后，Route 只注册 Tutor bundle factory，再先取得 final canonical Router route；非 Tutor route 不创建 Tutor bundle/runtime，也不读取 Tutor component credential。Live executor/runtime 仅在 candidate 真正调用 `invokeStructured` 时以单请求 Promise memo 惰性构造；明确教学指令、不安全输入、abort、预算/配置失败保持 executor 前零调用。只有 implicit/contextual/conflicting Tutor intent 才可使用独立 `1 call / 1200 input / 300 output` 预算与 `0.006 CNY` cap；runtime/schema/usage/timeout/abort 失败仍保留原 Tutor route 和 deterministic strategy，不影响现有 RAG、Verifier、413、登录与最终 Chat streaming。该预算与 Router -> Verifier 共享预算隔离。
 >
-> 新增安全 Tutor observation/header/Trace：只记录固定 disposition/reason、正 usage、pricingKnown、CNY 与版本，不记录题目、active context、prompt、provider output、credential、URL、raw error 或 stack；Tutor CNY 不混入 AgentTrace 顶层 USD cost。Compose 仅向 `web` 注入 Tutor gate/timeout/key，server/worker/admin 不接收，默认 gate=false/key 空。最终 focused `27/27`、Web full `432/432`、Agent `529/529 / 5479 expect()`、AI `194/194 / 1020 expect()`、Web lint/build、Compose tracked-example `config --quiet`、diff 与两路独立复审均通过。未读取根 `.env`、调用 provider、启动 Docker/浏览器或创建业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。下一任务是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command。回顾时可以问：为什么 Tutor factory 必须等到 final route 后才执行、Live executor 又必须等到真实 invocation 才构造？为什么 Tutor 预算不能复用 Router/Verifier 预算？为什么静态接入完成仍不等于 Live 可用性验收？
+> 新增安全 Tutor observation/header/Trace：只记录固定 disposition/reason、正 usage、pricingKnown、CNY 与版本，不记录题目、active context、prompt、provider output、credential、URL、raw error 或 stack；Tutor CNY 不混入 AgentTrace 顶层 USD cost。Compose 仅向 `web` 注入 Tutor gate/timeout/key，server/worker/admin 不接收，默认 gate=false/key 空。最终 focused `27/27`、Web full `432/432`、Agent `529/529 / 5479 expect()`、AI `194/194 / 1020 expect()`、Web lint/build、Compose tracked-example `config --quiet`、diff 与两路独立复审均通过。未读取根 `.env`、调用 provider、启动 Docker/浏览器或创建业务数据。证据见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`。该检查点当时的下一任务是 Task 6，现已完成；当前下一任务是 Task 7。回顾时可以问：为什么 Tutor factory 必须等到 final route 后才执行、Live executor 又必须等到真实 invocation 才构造？为什么 Tutor 预算不能复用 Router/Verifier 预算？为什么静态接入完成仍不等于 Live 可用性验收？
 
 > 2026-07-23 — Phase 6.9.7 Task 4 WrongQuestionOrganizer governed model candidate：既有确定性整理对知识点、分类和错因等结构化字段稳定，但无法可靠理解缺少 subject、同义专题复用或专业课术语；本任务因此只把低置信语义裁决交给受限 candidate，不改变 organizer 产品写入权威。先新增 candidate 测试并确认模块缺失时 RED 为 `0 pass / 1 fail / 1 module-not-found error`，随后实现最多 12 道错题、20 个已有专题和一次 `1 call / 3500 input / 800 output` 的 package runtime。
 >
@@ -264,7 +270,7 @@
 
 更新时间：2026-07-23
 
-当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--5 已完成，Tutor 已接入 Web server-only default-off composition，WrongQuestionOrganizer 仍只有 package candidate/merger；两条真实 provider 验收均未执行。下一任务是 Task 6 Organizer owner snapshot、双 stale fence 与授权写 command。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
+当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 正在普通功能分支按任务推进：Task 0--6 已完成，Tutor 已接入 Web server-only default-off composition，WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence 与 model-free 授权写命令；两条真实 provider 验收均未执行。下一任务是 Task 7 Organizer runtime、single/batch dispatch、Trace 与 HTTP abort。R1--R6 等历史证据继续保留，不提前进入 Phase 6.10。
 
 | 阶段         | 状态   | 关键词                                                                                       |
 | ------------ | ------ | -------------------------------------------------------------------------------------------- |
@@ -302,6 +308,8 @@
 | Phase 6.9.7 Task 2 | 已完成 | strict contract、动态关联、完整字段扫描、ordinal-only 投影与 descriptor clone hardening；无 provider |
 | Phase 6.9.7 Task 3 | 已完成 | Tutor governed candidate、冻结 12+24 eligibility、`1/1200/300`、strict runtime 与 local merger；仅无网络 Mock，未接产品 |
 | Phase 6.9.7 Task 4 | 已完成 | WrongQuestionOrganizer governed candidate、最多 12 题/20 deck、`1/3500/800`、ordinal-only strict runtime 与 local merger；仅无网络 Mock，未接产品 |
+| Phase 6.9.7 Task 5 | 已完成 | Tutor Web server-only default-off runtime、Chat 编排、独立预算与安全 Trace；无 provider/产品 Live |
+| Phase 6.9.7 Task 6 | 已完成 | Organizer owner snapshot、事务外双 fence、advisory-lock 第三 fence、model-free command、用户 authority 与并发 E2E；无 provider |
 | Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
 | Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |

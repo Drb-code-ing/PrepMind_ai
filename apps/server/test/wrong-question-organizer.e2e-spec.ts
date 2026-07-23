@@ -206,6 +206,147 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     ]);
   });
 
+  it('serializes concurrent same-owner topic organization without duplicate empty decks', async () => {
+    const user = await registerUser('organizer-concurrent-topic');
+    const first = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-concurrent-a-${Date.now()}`,
+      questionText: '并发题目 A：使用格林公式。',
+    });
+    const second = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-concurrent-b-${Date.now()}`,
+      questionText: '并发题目 B：使用格林公式。',
+    });
+
+    await Promise.all([
+      organize(user.accessToken, first.id),
+      organize(user.accessToken, second.id),
+    ]);
+
+    const decks = await prisma.wrongQuestionDeck.findMany({
+      where: { userId: user.userId, name: '格林公式' },
+      include: { items: { select: { wrongQuestionId: true } } },
+    });
+
+    expect(decks).toHaveLength(1);
+    expect(
+      decks[0].items.map(({ wrongQuestionId }) => wrongQuestionId).sort(),
+    ).toEqual([first.id, second.id].sort());
+  });
+
+  it('returns the same 404 authority for missing and cross-owner organizer targets', async () => {
+    const owner = await registerUser('organizer-target-owner');
+    const other = await registerUser('organizer-target-other');
+    const wrongQuestion = await createWrongQuestion(owner.accessToken, {
+      sourceGroupId: `organizer-target-owner-${Date.now()}`,
+    });
+    const targetIds = [wrongQuestion.id, `missing-${Date.now()}`];
+    const codes: string[] = [];
+
+    for (const targetId of targetIds) {
+      const response = await request(server)
+        .post(`/wrong-question-organizer/organize/${targetId}`)
+        .set('Authorization', `Bearer ${other.accessToken}`)
+        .send({})
+        .expect(404);
+      codes.push(getErrorBody(response).error.code);
+    }
+
+    expect(codes).toEqual([
+      'WRONG_QUESTION_NOT_FOUND',
+      'WRONG_QUESTION_NOT_FOUND',
+    ]);
+  });
+
+  it('keeps one authority relation after the force path', async () => {
+    const user = await registerUser('organizer-force-unique');
+    const first = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-force-a-${Date.now()}`,
+      knowledgePoints: ['格林公式'],
+    });
+    const second = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-force-b-${Date.now()}`,
+      category: '曲面积分',
+      knowledgePoints: ['高斯公式'],
+      questionText: '使用高斯公式计算曲面积分。',
+    });
+    await organize(user.accessToken, first.id);
+    const secondOrganized = await organize(user.accessToken, second.id);
+
+    await request(server)
+      .post(`/wrong-question-decks/${secondOrganized.deck.id}/items`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .send({ wrongQuestionId: first.id })
+      .expect(201);
+    await organize(user.accessToken, first.id, { force: true });
+
+    const relations = await prisma.wrongQuestionDeckItem.findMany({
+      where: { userId: user.userId, wrongQuestionId: first.id },
+      select: { deckId: true, source: true },
+    });
+    expect(relations).toHaveLength(1);
+    expect(relations[0]).toMatchObject({ source: 'AI' });
+  });
+
+  it('preserves concurrent user rename authority over organizer writes', async () => {
+    const user = await registerUser('organizer-concurrent-rename');
+    const first = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-rename-a-${Date.now()}`,
+    });
+    const second = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-rename-b-${Date.now()}`,
+      questionText: '继续使用格林公式解题。',
+    });
+    const organized = await organize(user.accessToken, first.id);
+
+    await Promise.all([
+      request(server)
+        .patch(`/wrong-question-decks/${organized.deck.id}`)
+        .set('Authorization', `Bearer ${user.accessToken}`)
+        .send({ name: '用户最终专题', nameLocked: true })
+        .expect(200),
+      organize(user.accessToken, second.id),
+    ]);
+
+    const finalDeck = await prisma.wrongQuestionDeck.findFirstOrThrow({
+      where: { id: organized.deck.id, userId: user.userId },
+      include: { items: { select: { wrongQuestionId: true } } },
+    });
+    expect(finalDeck).toMatchObject({ name: '用户最终专题', nameLocked: true });
+    expect(
+      finalDeck.items.map(({ wrongQuestionId }) => wrongQuestionId).sort(),
+    ).toEqual([first.id, second.id].sort());
+  });
+
+  it('preserves concurrent user move authority over organizer writes', async () => {
+    const user = await registerUser('organizer-concurrent-move');
+    const targetSeed = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-move-target-${Date.now()}`,
+      category: '曲面积分',
+      knowledgePoints: ['高斯公式'],
+      questionText: '使用高斯公式计算曲面积分。',
+    });
+    const target = await organize(user.accessToken, targetSeed.id);
+    const moving = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-move-source-${Date.now()}`,
+      knowledgePoints: ['格林公式'],
+    });
+
+    await Promise.all([
+      organize(user.accessToken, moving.id),
+      request(server)
+        .post(`/wrong-question-decks/${target.deck.id}/items`)
+        .set('Authorization', `Bearer ${user.accessToken}`)
+        .send({ wrongQuestionId: moving.id })
+        .expect(201),
+    ]);
+
+    const relations = await prisma.wrongQuestionDeckItem.findMany({
+      where: { userId: user.userId, wrongQuestionId: moving.id },
+      select: { deckId: true, source: true },
+    });
+    expect(relations).toEqual([{ deckId: target.deck.id, source: 'USER' }]);
+  });
+
   async function registerUser(label: string) {
     const email = `wrong-question-organizer-${label}-${Date.now()}-${Math.random()
       .toString(16)
@@ -241,11 +382,15 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     return getSuccessData<WrongQuestionResponse>(response);
   }
 
-  async function organize(accessToken: string, wrongQuestionId: string) {
+  async function organize(
+    accessToken: string,
+    wrongQuestionId: string,
+    input: { force?: boolean } = {},
+  ) {
     const response = await request(server)
       .post(`/wrong-question-organizer/organize/${wrongQuestionId}`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({})
+      .send(input)
       .expect(201);
 
     return getSuccessData<OrganizeWrongQuestionResponse>(response);

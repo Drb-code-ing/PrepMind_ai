@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--5 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 仍待 owner/write 与 NestJS composition
+状态：设计冻结；Task 1--6 已完成，Tutor 已接入 default-off Web composition，WrongQuestionOrganizer 已完成 owner/write fencing，runtime/Trace composition 仍待 Task 7
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -361,6 +361,8 @@ Task 2 固定的投影上限为：question excerpt `480`、analysis excerpt `320
 6. 并发请求在锁后发现已完成时返回同一权威结果，不创建空重复 deck。
 
 模型调用绝不持有 advisory lock 或数据库事务。
+
+Task 6 实现状态：当前 NestJS deterministic organize-one 路径已使用上述 snapshot、事务外双 fence 与 model-free command；rename/move/remove 也取得同一 owner lock，真实 PostgreSQL 并发回归证明同主题不创建重复空 deck、force relation 唯一、用户 rename/move 最终权威。精确同名 deck 使用全量查询复用；canonical variant 只扫描有界 100 条，窗口溢出时返回 stale 而不冒险创建重复专题。Task 6 没有 runtime、Trace admission 或 provider；这些仍属于 Task 7。
 
 ## 9. 通信、Trace 与响应 metadata
 

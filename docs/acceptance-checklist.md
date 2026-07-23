@@ -811,7 +811,7 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 ## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口
 
-Task 0--5 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger，以及 Tutor Web server-only default-off composition 已落地。当前仍未读取根 `.env`/credential、调用 provider 或进行 controlled-Live/Docker/浏览器产品验收；Organizer owner/write 与 NestJS composition 也尚未实现。执行时逐项确认：
+Task 0--6 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、Tutor Web server-only default-off composition，以及 Organizer owner snapshot/三阶段 stale fence/model-free command 已落地。当前仍未读取根 `.env`/credential、调用 provider 或进行 controlled-Live/Docker/浏览器产品验收；Organizer runtime/Trace composition 尚未实现。执行时逐项确认：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -826,3 +826,5 @@ Task 0--5 已完成：72-case baseline、strict contract/projection、Tutor/Orga
 11. Docker/API 分别验证 Tutor candidate/explicit zero-call/failure fallback 与 Organizer single/batch/owner/locked-name/zero-call/组织层 write isolation；可见浏览器保持窗口并覆盖 1440/510/390px。
 12. 精确清理本轮 synthetic user/question/group/deck/item/Trace/session/browser storage，恢复 mock/gates=false/key absent，保留容器、镜像和卷；禁止 prune、`down -v`、reset、flush 或 wipe。
 13. 独立复审无 Critical/Important 后 `--no-ff` 合入 main；main 不重跑已消费 Live，只验证 committed authority、静态门和 default-off Docker/API/浏览器回放，再推送并核对远程 SHA。
+
+Task 6 完成回执：owner snapshot 使用 `REPEATABLE READ + READ ONLY`、域分离 HMAC 和深冻结完整 fingerprint；当前 deterministic product path 已按事务外双 revalidation、model-free command、owner advisory-lock 写事务内第三 fence 执行。missing/cross-owner 同一 404、用户 authority、force 唯一 relation、同主题并发、rename/move 胜出与旧专题复用均有测试。canonical variant 超过 100 条有界 scan 时 fail-closed，不创建可能重复的 deck。focused `23/23`、Server `2122 passed / 30 skipped`、真实 PostgreSQL E2E `9/9`、Database `7/7`、Server lint/build/diff 通过；没有 provider、Live、产品 Docker API 或浏览器结论。下一任务是 Task 7。

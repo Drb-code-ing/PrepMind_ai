@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { organizeWrongQuestion } from '@repo/agent/wrong-question-organizer';
 import { Prisma } from '@prisma/client';
 import type {
@@ -19,11 +20,32 @@ import type {
 import type { WrongQuestionResponse } from '@repo/types/api/wrong-question';
 
 import { AppError } from '../common/errors/app-error';
+import type { ServerEnv } from '../config/env';
 import { PrismaService } from '../database/prisma.service';
+import {
+  buildWrongQuestionOrganizerCommand,
+  WrongQuestionOrganizerCommandExecutor,
+  type WrongQuestionOrganizerCommandResult,
+} from './wrong-question-organizer-command';
+import {
+  hashWrongQuestionOrganizerOwner,
+  type WrongQuestionOrganizerOwnerSnapshot,
+  WrongQuestionOrganizerOwnerSnapshotSource,
+} from './wrong-question-organizer-owner-snapshot';
+
+const SNAPSHOT_TRANSACTION_MAX_WAIT_MS = 2_000;
+const SNAPSHOT_TRANSACTION_TIMEOUT_MS = 5_000;
+const MAX_LOCAL_STALE_ATTEMPTS = 2;
+const MAX_SERIALIZABLE_TRANSACTION_ATTEMPTS = 3;
 
 @Injectable()
 export class WrongQuestionOrganizerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService<ServerEnv, true>,
+    private readonly snapshotSource: WrongQuestionOrganizerOwnerSnapshotSource,
+    private readonly commandExecutor: WrongQuestionOrganizerCommandExecutor,
+  ) {}
 
   async listGroups(userId: string): Promise<WrongQuestionGroupListResponse> {
     const groups = await this.prisma.wrongQuestionSubjectGroup.findMany({
@@ -117,163 +139,83 @@ export class WrongQuestionOrganizerService {
     wrongQuestionId: string,
     input: OrganizeWrongQuestionRequest,
   ): Promise<OrganizeWrongQuestionResponse> {
-    const wrongQuestion = await this.prisma.wrongQuestion.findFirst({
-      where: { id: wrongQuestionId, userId },
-    });
+    const ownerHashSecret = this.config.get('JWT_SECRET', { infer: true });
 
-    if (!wrongQuestion) {
-      throw this.wrongQuestionNotFound();
-    }
+    for (let attempt = 1; attempt <= MAX_LOCAL_STALE_ATTEMPTS; attempt += 1) {
+      const snapshot = await this.prisma.$transaction(
+        (transaction) =>
+          this.snapshotSource.load(transaction, {
+            userId,
+            ownerHashSecret,
+            wrongQuestionIds: [wrongQuestionId],
+          }),
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+          maxWait: SNAPSHOT_TRANSACTION_MAX_WAIT_MS,
+          timeout: SNAPSHOT_TRANSACTION_TIMEOUT_MS,
+        },
+      );
 
-    if (!input.force) {
-      const existingItem = await this.prisma.wrongQuestionDeckItem.findFirst({
-        where: { userId, wrongQuestionId },
-        include: {
-          deck: {
-            include: { subjectGroup: true },
+      const freshBeforeDecision = await this.snapshotSource.revalidate(
+        this.prisma,
+        {
+          userId,
+          ownerHashSecret,
+          snapshot,
+        },
+      );
+      if (!freshBeforeDecision) continue;
+
+      const policy = this.organizerDecision(snapshot, wrongQuestionId);
+
+      // Task 6 has no provider dispatch. Keeping the post-decision fence here makes
+      // the later Task 7 candidate insertion unable to bypass the write boundary.
+      const freshAfterDecision = await this.snapshotSource.revalidate(
+        this.prisma,
+        {
+          userId,
+          ownerHashSecret,
+          snapshot,
+        },
+      );
+      if (!freshAfterDecision) continue;
+
+      const command = buildWrongQuestionOrganizerCommand({
+        snapshot,
+        decisions: [
+          {
+            wrongQuestionId,
+            force: input.force,
+            result: policy,
           },
-        },
-        orderBy: { createdAt: 'asc' },
+        ],
       });
+      if (!command) continue;
 
-      if (existingItem) {
-        const stats = await this.loadGroupStats(userId, [
-          existingItem.deck.subjectGroupId,
-        ]);
-
-        return {
-          subjectGroup: this.toSubjectGroupResponse(
-            existingItem.deck.subjectGroup,
-            stats.groups.get(existingItem.deck.subjectGroupId),
-          ),
-          deck: this.toDeckResponse(
-            existingItem.deck,
-            stats.decks.get(existingItem.deckId),
-          ),
-          item: this.toDeckItemResponse(existingItem),
-          createdSubjectGroup: false,
-          createdDeck: false,
-          createdItem: false,
-          reason: existingItem.reason ?? '',
-          confidence: existingItem.confidence,
-        };
-      }
-    }
-
-    const firstPass = organizeWrongQuestion({
-      wrongQuestion,
-      existingDecks: [],
-    });
-    const existingSubjectGroup =
-      await this.prisma.wrongQuestionSubjectGroup.findFirst({
-        where: { userId, subject: firstPass.subjectKey },
-        select: { id: true },
+      const result = await this.commandExecutor.execute({
+        userId,
+        ownerHashSecret,
+        snapshot,
+        command,
       });
-    const subjectGroup = await this.prisma.wrongQuestionSubjectGroup.upsert({
-      where: {
-        userId_subject: {
-          userId,
-          subject: firstPass.subjectKey,
-        },
-      },
-      update: { displayName: firstPass.subjectDisplayName },
-      create: {
+      const response = await this.commandResultToResponse(
         userId,
-        subject: firstPass.subjectKey,
-        displayName: firstPass.subjectDisplayName,
-      },
-    });
-
-    const existingDecks = await this.prisma.wrongQuestionDeck.findMany({
-      where: { userId, subjectGroupId: subjectGroup.id },
-      include: {
-        items: {
-          include: {
-            wrongQuestion: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-    const policy = organizeWrongQuestion({
-      wrongQuestion,
-      existingDecks: existingDecks.map((deck) => ({
-        id: deck.id,
-        name: deck.name,
-        nameLocked: deck.nameLocked,
-        keywords: this.collectDeckKeywords(deck),
-      })),
-    });
-    const matchedDeck = policy.matchedDeckId
-      ? existingDecks.find((deck) => deck.id === policy.matchedDeckId)
-      : undefined;
-    const deck =
-      matchedDeck ??
-      (await this.prisma.wrongQuestionDeck.create({
-        data: {
-          userId,
-          subjectGroupId: subjectGroup.id,
-          name: policy.deckName,
-          description: policy.deckDescription,
-          source: 'AI',
-          nameLocked: false,
-          confidence: policy.confidence,
-        },
-      }));
-    const existingItem = await this.prisma.wrongQuestionDeckItem.findFirst({
-      where: { userId, deckId: deck.id, wrongQuestionId },
-      select: { id: true },
-    });
-    const upsertDeckItemArgs: Prisma.WrongQuestionDeckItemUpsertArgs = {
-      where: {
-        userId_wrongQuestionId: {
-          userId,
-          wrongQuestionId,
-        },
-      },
-      update: {
-        deckId: deck.id,
-        reason: policy.reason,
-        confidence: policy.confidence,
-        source: 'AI',
-      },
-      create: {
-        userId,
-        deckId: deck.id,
         wrongQuestionId,
-        reason: policy.reason,
-        confidence: policy.confidence,
-        source: 'AI',
-      },
-    };
-    const item = input.force
-      ? await this.prisma.$transaction(async (tx) => {
-          await tx.wrongQuestionDeckItem.deleteMany({
-            where: {
-              userId,
-              wrongQuestionId,
-              deckId: { not: deck.id },
-            },
-          });
+        result,
+      );
+      if (response) return response;
+    }
 
-          return tx.wrongQuestionDeckItem.upsert(upsertDeckItemArgs);
-        })
-      : await this.prisma.wrongQuestionDeckItem.upsert(upsertDeckItemArgs);
-    const stats = await this.loadGroupStats(userId, [subjectGroup.id]);
-
-    return {
-      subjectGroup: this.toSubjectGroupResponse(
-        subjectGroup,
-        stats.groups.get(subjectGroup.id),
-      ),
-      deck: this.toDeckResponse(deck, stats.decks.get(deck.id)),
-      item: this.toDeckItemResponse(item),
-      createdSubjectGroup: !existingSubjectGroup,
-      createdDeck: !matchedDeck,
-      createdItem: !existingItem,
-      reason: policy.reason,
-      confidence: policy.confidence,
-    };
+    const authority = await this.loadExistingOrganization(
+      userId,
+      wrongQuestionId,
+    );
+    if (authority) return this.authorityToResponse(userId, authority);
+    throw new AppError(
+      'WRONG_QUESTION_ORGANIZER_STALE',
+      '错题整理依据已变化，请重试',
+      HttpStatus.CONFLICT,
+    );
   }
 
   async organizeBatch(
@@ -309,21 +251,20 @@ export class WrongQuestionOrganizerService {
     deckId: string,
     input: UpdateWrongQuestionDeckRequest,
   ): Promise<WrongQuestionDeckResponse> {
-    const existing = await this.prisma.wrongQuestionDeck.findFirst({
-      where: { id: deckId, userId },
-    });
+    const deck = await this.runOwnerWriteTransaction(
+      userId,
+      async (transaction) => {
+        const existing = await transaction.wrongQuestionDeck.findFirst({
+          where: { id: deckId, userId },
+        });
+        if (!existing) throw this.deckNotFound();
 
-    if (!existing) {
-      throw this.deckNotFound();
-    }
-
-    const deck = await this.prisma.wrongQuestionDeck.update({
-      where: { id: deckId },
-      data: {
-        ...input,
-        source: 'USER',
+        return transaction.wrongQuestionDeck.update({
+          where: { id: deckId },
+          data: { ...input, source: 'USER' },
+        });
       },
-    });
+    );
     const stats = await this.loadGroupStats(userId, [deck.subjectGroupId]);
 
     return this.toDeckResponse(deck, stats.decks.get(deck.id));
@@ -334,54 +275,51 @@ export class WrongQuestionOrganizerService {
     deckId: string,
     input: MoveWrongQuestionToDeckRequest,
   ): Promise<WrongQuestionDeckItemResponse> {
-    const deck = await this.prisma.wrongQuestionDeck.findFirst({
-      where: { id: deckId, userId },
-      select: { id: true },
-    });
+    const item = await this.runOwnerWriteTransaction(
+      userId,
+      async (transaction) => {
+        const deck = await transaction.wrongQuestionDeck.findFirst({
+          where: { id: deckId, userId },
+          select: { id: true },
+        });
+        if (!deck) throw this.deckNotFound();
 
-    if (!deck) {
-      throw this.deckNotFound();
-    }
+        const wrongQuestion = await transaction.wrongQuestion.findFirst({
+          where: { id: input.wrongQuestionId, userId },
+          select: { id: true },
+        });
+        if (!wrongQuestion) throw this.wrongQuestionNotFound();
 
-    const wrongQuestion = await this.prisma.wrongQuestion.findFirst({
-      where: { id: input.wrongQuestionId, userId },
-      select: { id: true },
-    });
-
-    if (!wrongQuestion) {
-      throw this.wrongQuestionNotFound();
-    }
-
-    const item = await this.prisma.$transaction(async (tx) => {
-      await tx.wrongQuestionDeckItem.deleteMany({
-        where: {
-          userId,
-          wrongQuestionId: input.wrongQuestionId,
-          deckId: { not: deckId },
-        },
-      });
-
-      return tx.wrongQuestionDeckItem.upsert({
-        where: {
-          userId_wrongQuestionId: {
+        await transaction.wrongQuestionDeckItem.deleteMany({
+          where: {
             userId,
             wrongQuestionId: input.wrongQuestionId,
+            deckId: { not: deckId },
           },
-        },
-        update: {
-          deckId,
-          source: input.source,
-        },
-        create: {
-          userId,
-          deckId,
-          wrongQuestionId: input.wrongQuestionId,
-          source: input.source,
-          confidence: 1,
-          reason: '用户手动归入专题。',
-        },
-      });
-    });
+        });
+
+        return transaction.wrongQuestionDeckItem.upsert({
+          where: {
+            userId_wrongQuestionId: {
+              userId,
+              wrongQuestionId: input.wrongQuestionId,
+            },
+          },
+          update: {
+            deckId,
+            source: input.source,
+          },
+          create: {
+            userId,
+            deckId,
+            wrongQuestionId: input.wrongQuestionId,
+            source: input.source,
+            confidence: 1,
+            reason: '用户手动归入专题。',
+          },
+        });
+      },
+    );
 
     return this.toDeckItemResponse(item);
   }
@@ -391,20 +329,152 @@ export class WrongQuestionOrganizerService {
     deckId: string,
     wrongQuestionId: string,
   ): Promise<{ ok: true }> {
-    const deck = await this.prisma.wrongQuestionDeck.findFirst({
-      where: { id: deckId, userId },
-      select: { id: true },
-    });
+    await this.runOwnerWriteTransaction(userId, async (transaction) => {
+      const deck = await transaction.wrongQuestionDeck.findFirst({
+        where: { id: deckId, userId },
+        select: { id: true },
+      });
+      if (!deck) throw this.deckNotFound();
 
-    if (!deck) {
-      throw this.deckNotFound();
-    }
-
-    await this.prisma.wrongQuestionDeckItem.deleteMany({
-      where: { userId, deckId, wrongQuestionId },
+      await transaction.wrongQuestionDeckItem.deleteMany({
+        where: { userId, deckId, wrongQuestionId },
+      });
     });
 
     return { ok: true };
+  }
+
+  private organizerDecision(
+    snapshot: WrongQuestionOrganizerOwnerSnapshot,
+    wrongQuestionId: string,
+  ) {
+    const wrongQuestion = snapshot.wrongQuestions.find(
+      ({ id }) => id === wrongQuestionId,
+    );
+    if (!wrongQuestion) throw this.wrongQuestionNotFound();
+
+    const firstPass = organizeWrongQuestion({
+      wrongQuestion,
+      existingDecks: [],
+    });
+    const existingDecks = snapshot.decks
+      .filter(({ subject }) => subject === firstPass.subjectKey)
+      .map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        nameLocked: deck.nameLocked,
+        keywords: deck.keywords,
+      }));
+    return organizeWrongQuestion({ wrongQuestion, existingDecks });
+  }
+
+  private async runOwnerWriteTransaction<T>(
+    userId: string,
+    callback: (transaction: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const ownerHash = hashWrongQuestionOrganizerOwner(
+      userId,
+      this.config.get('JWT_SECRET', { infer: true }),
+    );
+    const run = () =>
+      this.prisma.$transaction(
+        async (transaction) => {
+          await transaction.$executeRaw`
+            SELECT pg_advisory_xact_lock(
+              hashtextextended(${ownerHash}, 0)
+            )
+          `;
+          return callback(transaction);
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          maxWait: SNAPSHOT_TRANSACTION_MAX_WAIT_MS,
+          timeout: SNAPSHOT_TRANSACTION_TIMEOUT_MS,
+        },
+      );
+
+    for (
+      let attempt = 1;
+      attempt <= MAX_SERIALIZABLE_TRANSACTION_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        return await run();
+      } catch (error) {
+        if (
+          attempt === MAX_SERIALIZABLE_TRANSACTION_ATTEMPTS ||
+          !isRetryableSerializableTransactionError(error)
+        ) {
+          throw error;
+        }
+      }
+    }
+    throw new Error('WRONG_QUESTION_ORGANIZER_TRANSACTION_RETRY_EXHAUSTED');
+  }
+
+  private async commandResultToResponse(
+    userId: string,
+    wrongQuestionId: string,
+    result: WrongQuestionOrganizerCommandResult,
+  ): Promise<OrganizeWrongQuestionResponse | null> {
+    if (result.status === 'stale') return null;
+    if (result.status === 'authority') {
+      const entry = result.entries.find(
+        (candidate) => candidate.wrongQuestionId === wrongQuestionId,
+      );
+      if (!entry) return null;
+      return this.authorityToResponse(userId, entry.item);
+    }
+
+    const entry = result.entries.find(
+      (candidate) => candidate.wrongQuestionId === wrongQuestionId,
+    );
+    if (!entry) return null;
+    const stats = await this.loadGroupStats(userId, [entry.subjectGroup.id]);
+    return {
+      subjectGroup: this.toSubjectGroupResponse(
+        entry.subjectGroup,
+        stats.groups.get(entry.subjectGroup.id),
+      ),
+      deck: this.toDeckResponse(entry.deck, stats.decks.get(entry.deck.id)),
+      item: this.toDeckItemResponse(entry.item),
+      createdSubjectGroup: entry.createdSubjectGroup,
+      createdDeck: entry.createdDeck,
+      createdItem: entry.createdItem,
+      reason: entry.reason,
+      confidence: entry.confidence,
+    };
+  }
+
+  private async loadExistingOrganization(
+    userId: string,
+    wrongQuestionId: string,
+  ): Promise<OrganizerAuthorityItem | null> {
+    return this.prisma.wrongQuestionDeckItem.findFirst({
+      where: { userId, wrongQuestionId },
+      include: { deck: { include: { subjectGroup: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  private async authorityToResponse(
+    userId: string,
+    item: OrganizerAuthorityItem,
+  ): Promise<OrganizeWrongQuestionResponse> {
+    const stats = await this.loadGroupStats(userId, [item.deck.subjectGroupId]);
+    return {
+      subjectGroup: this.toSubjectGroupResponse(
+        item.deck.subjectGroup,
+        stats.groups.get(item.deck.subjectGroupId),
+      ),
+      deck: this.toDeckResponse(item.deck, stats.decks.get(item.deckId)),
+      item: this.toDeckItemResponse(item),
+      createdSubjectGroup: false,
+      createdDeck: false,
+      createdItem: false,
+      reason: item.reason ?? '',
+      confidence: item.confidence,
+    };
   }
 
   private async loadGroupStats(userId: string, subjectGroupIds: string[]) {
@@ -481,16 +551,6 @@ export class WrongQuestionOrganizerService {
     }
 
     return stats;
-  }
-
-  private collectDeckKeywords(deck: DeckWithQuestionItems): string[] {
-    return uniqueStrings(
-      (deck.items ?? []).flatMap((item) => [
-        ...item.wrongQuestion.knowledgePoints,
-        item.wrongQuestion.category,
-        item.wrongQuestion.errorType,
-      ]),
-    );
   }
 
   private toSubjectGroupResponse(
@@ -669,12 +729,6 @@ function topKnowledgePoints(points: Map<string, number>) {
     .map(([point]) => point);
 }
 
-function uniqueStrings(values: Array<string | null | undefined>) {
-  return [
-    ...new Set(values.map((value) => value?.trim()).filter(Boolean)),
-  ] as string[];
-}
-
 type WrongQuestionRecord = Prisma.WrongQuestionGetPayload<object>;
 type StatsWrongQuestionRecord = Pick<
   WrongQuestionRecord,
@@ -685,13 +739,9 @@ type WrongQuestionSubjectGroupRecord =
 type WrongQuestionDeckRecord = Prisma.WrongQuestionDeckGetPayload<object>;
 type WrongQuestionDeckItemRecord =
   Prisma.WrongQuestionDeckItemGetPayload<object>;
-type DeckWithQuestionItems = Prisma.WrongQuestionDeckGetPayload<{
+type OrganizerAuthorityItem = Prisma.WrongQuestionDeckItemGetPayload<{
   include: {
-    items: {
-      include: {
-        wrongQuestion: true;
-      };
-    };
+    deck: { include: { subjectGroup: true } };
   };
 }>;
 
@@ -709,3 +759,12 @@ type OrganizerStats = {
   groups: Map<string, CountStats>;
   decks: Map<string, CountStats>;
 };
+
+function isRetryableSerializableTransactionError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code === 'P2034';
+  }
+  if (typeof error !== 'object' || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  return code === '40001' || code === 'P2034';
+}

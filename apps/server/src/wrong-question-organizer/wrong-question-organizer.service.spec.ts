@@ -1,10 +1,13 @@
 import { WrongQuestionOrganizerService } from './wrong-question-organizer.service';
 import { PrismaService } from '../database/prisma.service';
+import {
+  fingerprintWrongQuestionOrganizerOwnerSnapshot,
+  WRONG_QUESTION_ORGANIZER_OWNER_SNAPSHOT_VERSION,
+  type WrongQuestionOrganizerOwnerSnapshot,
+} from './wrong-question-organizer-owner-snapshot';
 
 const objectContaining = <T extends object>(value: T) =>
   expect.objectContaining(value) as unknown as T;
-const anyString = () => expect.any(String) as unknown as string;
-const anyNumber = () => expect.any(Number) as unknown as number;
 
 const NOW = new Date('2026-06-21T00:00:00.000Z');
 const SUBJECT = '高等数学';
@@ -67,6 +70,63 @@ describe('WrongQuestionOrganizerService', () => {
     createdAt: NOW,
     updatedAt: NOW,
   };
+
+  const snapshotMaterial = {
+    version: WRONG_QUESTION_ORGANIZER_OWNER_SNAPSHOT_VERSION,
+    ownerHash: `hmac-sha256:${'a'.repeat(64)}`,
+    targetWrongQuestionIds: [wrongQuestion.id],
+    wrongQuestions: [
+      {
+        id: wrongQuestion.id,
+        source: wrongQuestion.source,
+        sourceRecordId: wrongQuestion.sourceRecordId,
+        sourceGroupId: wrongQuestion.sourceGroupId,
+        questionText: wrongQuestion.questionText,
+        subject: wrongQuestion.subject,
+        category: wrongQuestion.category,
+        knowledgePoints: wrongQuestion.knowledgePoints,
+        analysis: wrongQuestion.analysis,
+        answer: wrongQuestion.answer,
+        errorType: wrongQuestion.errorType,
+        userNote: wrongQuestion.userNote,
+        rawContent: wrongQuestion.rawContent,
+        status: wrongQuestion.status,
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+    subjectGroups: [
+      {
+        id: subjectGroup.id,
+        subject: subjectGroup.subject,
+        displayName: subjectGroup.displayName,
+        sortOrder: subjectGroup.sortOrder,
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+    decks: [
+      {
+        id: deck.id,
+        subjectGroupId: deck.subjectGroupId,
+        subject: subjectGroup.subject,
+        name: deck.name,
+        description: deck.description,
+        source: deck.source,
+        nameLocked: deck.nameLocked,
+        confidence: deck.confidence,
+        keywords: [KNOWLEDGE_POINT, CATEGORY, wrongQuestion.errorType],
+        createdAt: NOW.toISOString(),
+        updatedAt: NOW.toISOString(),
+      },
+    ],
+    items: [],
+  } as const;
+  const ownerSnapshot = {
+    ...snapshotMaterial,
+    fingerprint:
+      fingerprintWrongQuestionOrganizerOwnerSnapshot(snapshotMaterial),
+  } satisfies WrongQuestionOrganizerOwnerSnapshot;
 
   const organizeResponse = {
     subjectGroup: {
@@ -146,27 +206,72 @@ describe('WrongQuestionOrganizerService', () => {
       deleteMany: jest.fn(),
     },
   };
+  const config = {
+    get: jest.fn().mockReturnValue('test-jwt-secret-at-least-16-bytes'),
+  };
+  const snapshotSource = {
+    load: jest.fn(),
+    revalidate: jest.fn(),
+  };
+  const commandExecutor = {
+    execute: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
+    config.get.mockReturnValue('test-jwt-secret-at-least-16-bytes');
   });
 
   function createService() {
     return new WrongQuestionOrganizerService(
       prisma as unknown as PrismaService,
+      config as never,
+      snapshotSource as never,
+      commandExecutor as never,
+    );
+  }
+
+  function prepareOrganizerFlow(input?: {
+    snapshot?: WrongQuestionOrganizerOwnerSnapshot;
+    result?: unknown;
+  }) {
+    const snapshot = input?.snapshot ?? ownerSnapshot;
+    snapshotSource.load.mockResolvedValue(snapshot);
+    snapshotSource.revalidate.mockResolvedValue(true);
+    commandExecutor.execute.mockResolvedValue(
+      input?.result ?? {
+        status: 'applied',
+        entries: [
+          {
+            wrongQuestionId: wrongQuestion.id,
+            subjectGroup,
+            deck,
+            item,
+            createdSubjectGroup: true,
+            createdDeck: true,
+            createdItem: true,
+            reason: item.reason ?? '',
+            confidence: item.confidence,
+          },
+        ],
+      },
+    );
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: object) => T | Promise<T>) =>
+        Promise.resolve(callback({})),
     );
   }
 
   it('creates subject group, deck, and item for an owned wrong question', async () => {
-    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue(null);
-    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
-    prisma.wrongQuestionDeck.findMany.mockResolvedValue([]);
-    prisma.wrongQuestionDeck.create.mockResolvedValue(deck);
-    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(null);
-    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue(item);
+    prepareOrganizerFlow();
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
-      { deck, wrongQuestion },
+      {
+        deck,
+        deckId: deck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
     ]);
 
     const service = createService();
@@ -174,46 +279,37 @@ describe('WrongQuestionOrganizerService', () => {
       force: false,
     });
 
-    expect(prisma.wrongQuestion.findFirst).toHaveBeenCalledWith({
-      where: { id: 'wrong_1', userId: 'user_1' },
+    expect(config.get).toHaveBeenCalledWith('JWT_SECRET', { infer: true });
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'RepeatableRead',
+      maxWait: 2_000,
+      timeout: 5_000,
     });
-    expect(prisma.wrongQuestionSubjectGroup.upsert).toHaveBeenCalledWith({
-      where: { userId_subject: { userId: 'user_1', subject: SUBJECT } },
-      update: { displayName: SUBJECT },
-      create: {
+    expect(snapshotSource.load).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
         userId: 'user_1',
-        subject: SUBJECT,
-        displayName: SUBJECT,
-      },
-    });
-    expect(prisma.wrongQuestionDeck.create).toHaveBeenCalledWith({
-      data: objectContaining({
+        wrongQuestionIds: ['wrong_1'],
+      }),
+    );
+    expect(snapshotSource.revalidate).toHaveBeenCalledTimes(2);
+    expect(commandExecutor.execute).toHaveBeenCalledWith(
+      objectContaining({
         userId: 'user_1',
-        subjectGroupId: 'subject_group_1',
-        name: KNOWLEDGE_POINT,
-        source: 'AI',
-        nameLocked: false,
+        snapshot: ownerSnapshot,
+        command: objectContaining({
+          entries: [
+            objectContaining({
+              wrongQuestionId: 'wrong_1',
+              force: false,
+            }),
+          ],
+        }),
       }),
-    });
-    expect(prisma.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
-      where: {
-        userId_wrongQuestionId: {
-          userId: 'user_1',
-          wrongQuestionId: 'wrong_1',
-        },
-      },
-      update: objectContaining({
-        reason: anyString(),
-        confidence: anyNumber(),
-        source: 'AI',
-      }),
-      create: objectContaining({
-        userId: 'user_1',
-        deckId: 'deck_1',
-        wrongQuestionId: 'wrong_1',
-        source: 'AI',
-      }),
-    });
+    );
+    expect(prisma.wrongQuestionSubjectGroup.upsert).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeck.create).not.toHaveBeenCalled();
+    expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
     expect(result.createdSubjectGroup).toBe(true);
     expect(result.createdDeck).toBe(true);
     expect(result.item.id).toBe('deck_item_1');
@@ -224,29 +320,65 @@ describe('WrongQuestionOrganizerService', () => {
       ...deck,
       name: '我的专题',
       nameLocked: true,
-      items: [{ wrongQuestion }],
     };
-
-    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
-      id: subjectGroup.id,
+    const lockedMaterial = {
+      ...snapshotMaterial,
+      decks: [
+        {
+          ...snapshotMaterial.decks[0],
+          name: existingDeck.name,
+          nameLocked: true,
+        },
+      ],
+    };
+    const lockedSnapshot = {
+      ...lockedMaterial,
+      fingerprint:
+        fingerprintWrongQuestionOrganizerOwnerSnapshot(lockedMaterial),
+    } satisfies WrongQuestionOrganizerOwnerSnapshot;
+    prepareOrganizerFlow({
+      snapshot: lockedSnapshot,
+      result: {
+        status: 'applied',
+        entries: [
+          {
+            wrongQuestionId: wrongQuestion.id,
+            subjectGroup,
+            deck: existingDeck,
+            item,
+            createdSubjectGroup: false,
+            createdDeck: false,
+            createdItem: true,
+            reason: item.reason ?? '',
+            confidence: item.confidence,
+          },
+        ],
+      },
     });
-    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
-    prisma.wrongQuestionDeckItem.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: item.id });
-    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue({
-      ...item,
-      deckId: existingDeck.id,
-    });
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
-      { deck: existingDeck, wrongQuestion },
+      {
+        deck: existingDeck,
+        deckId: existingDeck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
     ]);
 
     const service = createService();
     await service.organizeOne('user_1', 'wrong_1', { force: false });
 
+    expect(commandExecutor.execute).toHaveBeenCalledWith(
+      objectContaining({
+        command: objectContaining({
+          entries: [
+            objectContaining({
+              deck: { action: 'reuse', id: existingDeck.id },
+            }),
+          ],
+        }),
+      }),
+    );
     expect(prisma.wrongQuestionDeck.update).not.toHaveBeenCalledWith(
       objectContaining({
         data: objectContaining({ name: KNOWLEDGE_POINT }),
@@ -339,16 +471,13 @@ describe('WrongQuestionOrganizerService', () => {
       source: 'USER' as const,
       deck: existingDeck,
     };
-
-    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(existingItem);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
-      id: subjectGroup.id,
+    prepareOrganizerFlow({
+      result: {
+        status: 'authority',
+        entries: [{ wrongQuestionId: wrongQuestion.id, item: existingItem }],
+      },
     });
-    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
     prisma.wrongQuestionDeck.findMany.mockResolvedValue([existingDeck]);
-    prisma.wrongQuestionDeck.create.mockResolvedValue(deck);
-    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue(item);
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
       {
         deck: existingDeck,
@@ -363,15 +492,8 @@ describe('WrongQuestionOrganizerService', () => {
       force: false,
     });
 
-    expect(prisma.wrongQuestionDeckItem.findFirst).toHaveBeenCalledWith({
-      where: { userId: 'user_1', wrongQuestionId: 'wrong_1' },
-      include: {
-        deck: {
-          include: { subjectGroup: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
+    expect(snapshotSource.revalidate).toHaveBeenCalledTimes(2);
     expect(prisma.wrongQuestionSubjectGroup.upsert).not.toHaveBeenCalled();
     expect(prisma.wrongQuestionDeck.create).not.toHaveBeenCalled();
     expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
@@ -392,90 +514,97 @@ describe('WrongQuestionOrganizerService', () => {
     });
   });
 
-  it('force organizes by removing other deck relations and upserting the policy target item in a transaction', async () => {
-    const targetDeck = {
-      ...deck,
-      id: 'deck_target',
-      name: KNOWLEDGE_POINT,
-      items: [{ wrongQuestion }],
-    };
+  it('passes force through the frozen command while direct service writes remain disabled', async () => {
     const targetItem = {
       ...item,
       id: 'deck_item_target',
-      deckId: targetDeck.id,
+      deckId: deck.id,
     };
-    const tx = {
-      wrongQuestionDeckItem: {
-        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
-        upsert: jest.fn().mockResolvedValue(targetItem),
+    prepareOrganizerFlow({
+      result: {
+        status: 'applied',
+        entries: [
+          {
+            wrongQuestionId: wrongQuestion.id,
+            subjectGroup,
+            deck,
+            item: targetItem,
+            createdSubjectGroup: false,
+            createdDeck: false,
+            createdItem: true,
+            reason: targetItem.reason ?? '',
+            confidence: targetItem.confidence,
+          },
+        ],
       },
-    };
-
-    prisma.wrongQuestion.findFirst.mockResolvedValue(wrongQuestion);
-    prisma.wrongQuestionSubjectGroup.findFirst.mockResolvedValue({
-      id: subjectGroup.id,
     });
-    prisma.wrongQuestionSubjectGroup.upsert.mockResolvedValue(subjectGroup);
-    prisma.wrongQuestionDeck.findMany
-      .mockResolvedValueOnce([targetDeck])
-      .mockResolvedValueOnce([targetDeck]);
-    prisma.wrongQuestionDeckItem.findFirst.mockResolvedValue(null);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
     prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
       {
-        deck: targetDeck,
-        deckId: targetDeck.id,
+        deck,
+        deckId: deck.id,
         wrongQuestionId: wrongQuestion.id,
         wrongQuestion,
       },
     ]);
-    prisma.$transaction.mockImplementation(
-      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
-        Promise.resolve(callback(tx)),
-    );
 
     const service = createService();
     const result = await service.organizeOne('user_1', 'wrong_1', {
       force: true,
     });
 
-    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
-    expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
-      where: {
-        userId: 'user_1',
-        wrongQuestionId: 'wrong_1',
-        deckId: { not: 'deck_target' },
-      },
-    });
-    expect(tx.wrongQuestionDeckItem.upsert).toHaveBeenCalledWith({
-      where: {
-        userId_wrongQuestionId: {
-          userId: 'user_1',
-          wrongQuestionId: 'wrong_1',
-        },
-      },
-      update: objectContaining({
-        reason: anyString(),
-        confidence: anyNumber(),
-        source: 'AI',
+    expect(commandExecutor.execute).toHaveBeenCalledWith(
+      objectContaining({
+        command: objectContaining({
+          entries: [objectContaining({ force: true })],
+        }),
       }),
-      create: objectContaining({
-        userId: 'user_1',
-        deckId: 'deck_target',
-        wrongQuestionId: 'wrong_1',
-        source: 'AI',
-      }),
-    });
+    );
     expect(prisma.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
     expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       createdItem: true,
-      item: { id: 'deck_item_target', deckId: 'deck_target' },
-      deck: { id: 'deck_target' },
+      item: { id: 'deck_item_target', deckId: deck.id },
+      deck: { id: deck.id },
     });
+  });
+
+  it('drops a stale post-decision command and rebuilds a fresh local snapshot once', async () => {
+    prepareOrganizerFlow();
+    snapshotSource.revalidate
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true);
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([
+      {
+        deck,
+        deckId: deck.id,
+        wrongQuestionId: wrongQuestion.id,
+        wrongQuestion,
+      },
+    ]);
+
+    const service = createService();
+    await expect(
+      service.organizeOne('user_1', wrongQuestion.id, { force: false }),
+    ).resolves.toMatchObject({ item: { id: item.id } });
+
+    expect(snapshotSource.load).toHaveBeenCalledTimes(2);
+    expect(snapshotSource.revalidate).toHaveBeenCalledTimes(4);
+    expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
   });
 
   it('moves an owned wrong question to an owned deck', async () => {
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      wrongQuestionDeck: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'deck_1' }),
+      },
+      wrongQuestion: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'wrong_1' }),
+      },
       wrongQuestionDeckItem: {
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
         upsert: jest.fn().mockResolvedValue({
@@ -486,16 +615,6 @@ describe('WrongQuestionOrganizerService', () => {
         }),
       },
     };
-
-    prisma.wrongQuestionDeck.findFirst.mockResolvedValue({ id: 'deck_1' });
-    prisma.wrongQuestion.findFirst.mockResolvedValue({ id: 'wrong_1' });
-    prisma.wrongQuestionDeckItem.deleteMany.mockResolvedValue({ count: 1 });
-    prisma.wrongQuestionDeckItem.upsert.mockResolvedValue({
-      ...item,
-      source: 'USER',
-      confidence: 1,
-      reason: '用户手动归入专题。',
-    });
 
     prisma.$transaction.mockImplementation(
       <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
@@ -508,15 +627,20 @@ describe('WrongQuestionOrganizerService', () => {
       source: 'USER',
     });
 
-    expect(prisma.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
+    expect(tx.$executeRaw).toHaveBeenCalled();
+    expect(tx.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
       where: { id: 'deck_1', userId: 'user_1' },
       select: { id: true },
     });
-    expect(prisma.wrongQuestion.findFirst).toHaveBeenCalledWith({
+    expect(tx.wrongQuestion.findFirst).toHaveBeenCalledWith({
       where: { id: 'wrong_1', userId: 'user_1' },
       select: { id: true },
     });
-    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+      maxWait: 2_000,
+      timeout: 5_000,
+    });
     expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
       where: {
         userId: 'user_1',
@@ -551,7 +675,16 @@ describe('WrongQuestionOrganizerService', () => {
   });
 
   it('rejects moveToDeck when the target deck is not owned by the current user', async () => {
-    prisma.wrongQuestionDeck.findFirst.mockResolvedValue(null);
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      wrongQuestionDeck: { findFirst: jest.fn().mockResolvedValue(null) },
+      wrongQuestion: { findFirst: jest.fn() },
+      wrongQuestionDeckItem: { deleteMany: jest.fn(), upsert: jest.fn() },
+    };
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = createService();
 
@@ -561,23 +694,36 @@ describe('WrongQuestionOrganizerService', () => {
         source: 'USER',
       }),
     ).rejects.toMatchObject({ code: 'WRONG_QUESTION_DECK_NOT_FOUND' });
-    expect(prisma.wrongQuestion.findFirst).not.toHaveBeenCalled();
+    expect(tx.wrongQuestion.findFirst).not.toHaveBeenCalled();
+    expect(tx.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
+    expect(tx.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
     expect(prisma.wrongQuestionDeckItem.deleteMany).not.toHaveBeenCalled();
     expect(prisma.wrongQuestionDeckItem.upsert).not.toHaveBeenCalled();
   });
 
   it('removes only the deck item relation for the current user', async () => {
-    prisma.wrongQuestionDeck.findFirst.mockResolvedValue({ id: 'deck_1' });
-    prisma.wrongQuestionDeckItem.deleteMany.mockResolvedValue({ count: 1 });
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      wrongQuestionDeck: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'deck_1' }),
+      },
+      wrongQuestionDeckItem: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    prisma.$transaction.mockImplementation(
+      <T>(callback: (transaction: typeof tx) => T | Promise<T>) =>
+        Promise.resolve(callback(tx)),
+    );
 
     const service = createService();
     const result = await service.removeDeckItem('user_1', 'deck_1', 'wrong_1');
 
-    expect(prisma.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
+    expect(tx.wrongQuestionDeck.findFirst).toHaveBeenCalledWith({
       where: { id: 'deck_1', userId: 'user_1' },
       select: { id: true },
     });
-    expect(prisma.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
+    expect(tx.wrongQuestionDeckItem.deleteMany).toHaveBeenCalledWith({
       where: {
         userId: 'user_1',
         deckId: 'deck_1',
