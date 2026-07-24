@@ -177,6 +177,38 @@ describe('phase 6.9.7 Tutor/Organizer paired runner', () => {
     expect(report.metrics.organizer.scoredDecisions).toBe(32);
     expect(report.metrics.organizer.invalidDecisions).toBe(1);
     expect(report.safety.strictRuntimeSuccesses).toBe(47);
+    expect(
+      report.caseEntries.filter(
+        (entry) => entry.executionKind === 'runtime' && entry.runtimeInvocations === 0,
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps a post-dispatch harness failure at one actual invocation', async () => {
+    const base = createPhase697TutorOrganizerMockHarness();
+    let thrown = false;
+    const report = await runPhase697TutorOrganizerPairedEval({
+      ...base,
+      async runOrganizer(entry, recorder) {
+        const result = await base.runOrganizer(entry, recorder);
+        if (!thrown) {
+          thrown = true;
+          throw new Error('synthetic post-dispatch runner failure');
+        }
+        return result;
+      },
+    });
+
+    expect(report.caseEntries).toHaveLength(72);
+    expect(report.safety.strictRuntimeSuccesses).toBe(47);
+    expect(
+      report.caseEntries.filter(
+        (entry) =>
+          entry.executionKind === 'runtime' &&
+          entry.candidateDisposition === 'fallback_runtime_error' &&
+          entry.runtimeInvocations === 1,
+      ),
+    ).toHaveLength(1);
   });
 
   test('observes bounded stages from the actual no-network candidate paths', async () => {
@@ -304,11 +336,7 @@ describe('phase 6.9.7 Tutor/Organizer paired runner', () => {
 
 function tutorEvidence(
   intent:
-    | 'explain_solution'
-    | 'socratic_hint'
-    | 'step_check'
-    | 'concept_bridge'
-    | 'general_follow_up',
+    'explain_solution' | 'socratic_hint' | 'step_check' | 'concept_bridge' | 'general_follow_up',
 ) {
   switch (intent) {
     case 'explain_solution':

@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1 与 V2 两条唯一 controlled-Live 均已失败封存且不得重跑，产品验收与 Task 13 main 收尾未开始；V3 R0 零 Provider 设计已完成，下一步仅 R1 zero-network implementation
+状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1 与 V2 两条唯一 controlled-Live 均已失败封存且不得重跑，产品验收与 Task 13 main 收尾未开始；V3 R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成，下一步仅 R2 strict-gate breaker、双 lane ledger 与固定分母
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -99,18 +99,18 @@ NestJS `WrongQuestionOrganizerService` 以 JWT 得到的 canonical `userId` 查�
 
 ## 4. 职责与权限矩阵
 
-| 能力 | Tutor 模型 | Organizer 模型 | 本地权威 |
-| --- | --- | --- | --- |
-| 识别隐含意图 | 可 | 不适用 | eligibility 与安全门 |
-| 选择教学深度 | 可在受限枚举内建议 | 不适用 | 最终深度与结构组合校验 |
-| 生成最终回答 | 不可 | 不可 | 既有 Chat 最终模型 |
-| 选择已有专题 | 不适用 | 只能返回 ordinal | owner map 与真实 deck ID |
-| 建议新专题标签 | 不适用 | 只能返回有界 label | 文本 guard、名称和 description |
-| 决定用户身份/权限 | 不可 | 不可 | JWT + owner-scoped service |
-| 修改 WrongQuestion 事实 | 不可 | 不可 | 本阶段无此写能力 |
-| 写 SubjectGroup/Deck/Item | 不可 | 不可 | 授权 command transaction |
-| 覆盖用户锁定名称 | 不可 | 不可 | 永久拒绝 |
-| 执行工具/MCP | 不可 | 不可 | Phase 6.9.10 之后的受控 Orchestrator |
+| 能力                      | Tutor 模型         | Organizer 模型     | 本地权威                             |
+| ------------------------- | ------------------ | ------------------ | ------------------------------------ |
+| 识别隐含意图              | 可                 | 不适用             | eligibility 与安全门                 |
+| 选择教学深度              | 可在受限枚举内建议 | 不适用             | 最终深度与结构组合校验               |
+| 生成最终回答              | 不可               | 不可               | 既有 Chat 最终模型                   |
+| 选择已有专题              | 不适用             | 只能返回 ordinal   | owner map 与真实 deck ID             |
+| 建议新专题标签            | 不适用             | 只能返回有界 label | 文本 guard、名称和 description       |
+| 决定用户身份/权限         | 不可               | 不可               | JWT + owner-scoped service           |
+| 修改 WrongQuestion 事实   | 不可               | 不可               | 本阶段无此写能力                     |
+| 写 SubjectGroup/Deck/Item | 不可               | 不可               | 授权 command transaction             |
+| 覆盖用户锁定名称          | 不可               | 不可               | 永久拒绝                             |
+| 执行工具/MCP              | 不可               | 不可               | Phase 6.9.10 之后的受控 Orchestrator |
 
 ## 5. 目标数据流
 
@@ -195,25 +195,25 @@ Task 10 已把该设计落到 tracked Compose：四个应用 service 都不使�
 
 ### 6.2 固定 profile
 
-| 字段 | 固定值 |
-| --- | --- |
-| provider | `deepseek` |
-| model | `deepseek-v4-pro` |
-| base URL | `https://api.deepseek.com/v1`，不得接受路径、协议或 host 变体 |
-| transport | non-thinking JSON object, no tools, `maxRetries=0` |
-| Tutor prompt | `tutor-model-candidate-v1` |
-| Organizer prompt | `wrong-question-organizer-model-candidate-v1` |
-| 价格快照 | 非缓存 input `3 CNY/1M`，output `6 CNY/1M` |
-| 价格来源 | 用户提供的 2026-07-18 DeepSeek 官方价格截图 |
+| 字段             | 固定值                                                        |
+| ---------------- | ------------------------------------------------------------- |
+| provider         | `deepseek`                                                    |
+| model            | `deepseek-v4-pro`                                             |
+| base URL         | `https://api.deepseek.com/v1`，不得接受路径、协议或 host 变体 |
+| transport        | non-thinking JSON object, no tools, `maxRetries=0`            |
+| Tutor prompt     | `tutor-model-candidate-v1`                                    |
+| Organizer prompt | `wrong-question-organizer-model-candidate-v1`                 |
+| 价格快照         | 非缓存 input `3 CNY/1M`，output `6 CNY/1M`                    |
+| 价格来源         | 用户提供的 2026-07-18 DeepSeek 官方价格截图                   |
 
 ### 6.3 不可变预算
 
-| 作用域 | calls | input | output | worst-case CNY | hard cap |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Tutor request | 1 | 1200 | 300 | 0.0054 | 0.0060 |
-| Organizer request | 1 | 3500 | 800 | 0.0153 | 0.0160 |
-| paired index | 2 | 4700 | 1100 | 0.0207 | 0.0220 |
-| 唯一 24-pair controlled-Live | 48 | 112800 | 26400 | 0.4968 | 0.55 |
+| 作用域                       | calls |  input | output | worst-case CNY | hard cap |
+| ---------------------------- | ----: | -----: | -----: | -------------: | -------: |
+| Tutor request                |     1 |   1200 |    300 |         0.0054 |   0.0060 |
+| Organizer request            |     1 |   3500 |    800 |         0.0153 |   0.0160 |
+| paired index                 |     2 |   4700 |   1100 |         0.0207 |   0.0220 |
+| 唯一 24-pair controlled-Live |    48 | 112800 |  26400 |         0.4968 |     0.55 |
 
 预算按最大输出预留且不退款；实际 usage 必须为正安全整数、不得超过单槽 reservation 或总 ceiling。未知/被篡改价格、`0/0` usage、缺失 usage、超预算或超 cap 都视为失败，不能显示为零成本成功。
 
@@ -318,14 +318,7 @@ Task 2 固定的投影上限为：question excerpt `480`、analysis excerpt `320
 {
   decisions: Array<{
     questionIndex: number;
-    subject:
-      | 'keep_local'
-      | 'math'
-      | 'english'
-      | 'politics'
-      | 'computer'
-      | 'major'
-      | 'other';
+    subject: 'keep_local' | 'math' | 'english' | 'politics' | 'computer' | 'major' | 'other';
     deck:
       | { action: 'reuse_existing'; deckIndex: number }
       | { action: 'create_topic'; topicLabel: string };
@@ -409,11 +402,11 @@ Task 8 已实现这组产品边界：single 与 batch 都只在 response 顶层�
 
 冻结 `phase-6.9-tutor-wrong-question-v1` 共 72 条合成 case：
 
-| lane | zero-call | runtime | 合计 |
-| --- | ---: | ---: | ---: |
-| Tutor | 12 | 24 | 36 |
-| WrongQuestionOrganizer | 12 | 24 | 36 |
-| 总计 | 24 | 48 | 72 |
+| lane                   | zero-call | runtime | 合计 |
+| ---------------------- | --------: | ------: | ---: |
+| Tutor                  |        12 |      24 |   36 |
+| WrongQuestionOrganizer |        12 |      24 |   36 |
+| 总计                   |        24 |      48 |   72 |
 
 24 个 runtime paired index 每个同时执行 Tutor 与 Organizer，失败仍保留在分母。Organizer 的 paired index `0..19` 各投影 1 个 question，`20..23` 各投影 3 个 question，因此固定为 24 cases / 32 decision units；Task 1 还必须发布 canonical dataset JSON 的 SHA-256，后续报告同时校验 case count、decision count 和 hash。24 条 zero-call 必须实际穿过 candidate/preflight guard，并由独立 runtime counter 证明 0 调用，不能回显 expected reason 自证。
 
@@ -499,17 +492,17 @@ Mock 满分只证明 contract，不通过 Live-only production quality gate。
 
 ## 11. 失败与降级矩阵
 
-| 失败 | Tutor | Organizer |
-| --- | --- | --- |
-| gate/config/credential | deterministic strategy | deterministic organization |
-| unsafe projection | generic/原 deterministic strategy，0-call | deterministic/未分类，0-call |
-| owner mismatch | 不适用 | 同一 404，0-call |
-| abort | 不启动或丢弃 candidate | 不写 model-influenced command |
-| budget/cost | deterministic | deterministic |
-| timeout/provider/schema/usage | deterministic | deterministic |
-| post-candidate stale | 丢弃 candidate | 丢弃 candidate，重新走本地 command |
-| Trace failure | 回答继续，标记未记录 | candidate 不得影响写入，改用 deterministic |
-| write transaction conflict | 不适用 | bounded retry/权威重读；不重调 provider |
+| 失败                          | Tutor                                     | Organizer                                  |
+| ----------------------------- | ----------------------------------------- | ------------------------------------------ |
+| gate/config/credential        | deterministic strategy                    | deterministic organization                 |
+| unsafe projection             | generic/原 deterministic strategy，0-call | deterministic/未分类，0-call               |
+| owner mismatch                | 不适用                                    | 同一 404，0-call                           |
+| abort                         | 不启动或丢弃 candidate                    | 不写 model-influenced command              |
+| budget/cost                   | deterministic                             | deterministic                              |
+| timeout/provider/schema/usage | deterministic                             | deterministic                              |
+| post-candidate stale          | 丢弃 candidate                            | 丢弃 candidate，重新走本地 command         |
+| Trace failure                 | 回答继续，标记未记录                      | candidate 不得影响写入，改用 deterministic |
+| write transaction conflict    | 不适用                                    | bounded retry/权威重读；不重调 provider    |
 
 任何失败都不得扩大权限、伪造调用成功、重试 provider 或阻断错题事实保存。
 

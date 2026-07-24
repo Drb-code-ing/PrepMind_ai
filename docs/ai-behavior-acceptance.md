@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R1）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0 零 Provider 设计。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；72-case strict paired Mock 工程门、Compose allowlist、tracked defaults、角色隔离、回滚合同和全量静态/E2E checkpoint 均已通过。V1 的 strict runtime/语义门失败；V2 的 48 个 runtime 又全部在结构化对象形成前失败。V3 R0 只冻结 failure evidence、breaker、固定分母、双 lane 与 crash seal 方案，尚未实现或调用 Provider。因此产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。数值与边界以本节、V1/V2 acceptance 与 V3 design 为准。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R1。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；72-case strict paired Mock 工程门、Compose allowlist、tracked defaults、角色隔离、回滚合同和全量静态/E2E checkpoint 均已通过。V1 的 strict runtime/语义门失败；V2 的 48 个 runtime 又全部在结构化对象形成前失败。V3 R0 冻结 failure evidence、breaker、固定分母、双 lane 与 crash seal 方案；V3 R1 已实现安全诊断投影、真实 0/1 invocation recorder 和零网络 compatibility harness，但尚未实现 R2 scheduler breaker、R3 durable evidence 或调用 Provider。因此产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。数值与边界以本节、V1/V2 acceptance 与 V3 design 为准。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -276,8 +276,23 @@ V3 R0 当前证据：源码已经存在固定 Provider failure category/structur
 派发；未执行 runtime 继续进入 48 分母且 category=null，unknown usage 不冒充零费用。Tutor 与
 Organizer 的 executor/credential/budget/abort/failure attribution 独立，崩溃后只能基于 bounded
 journal 零网络 seal，不能 resume/replay。R0 未改源码、未读 credential、未调用 Provider；下一步
-仅 R1 zero-network implementation。完整设计见
+当时下一步仅 R1 zero-network implementation。完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`。
+
+V3 R1 当前证据：新增独立 runner/prompt/runtime-evidence identity，两个 prompt content hash 分别为
+`sha256:91be509194de33c8d99d7a09fa6ef387c6f31aa06d19d8fd970800731047fc6a` 与
+`sha256:2947cea2a7bc5d64c9daf29d8b371e9825bc0423d707ff173a2c5057ee9fdffd`，继续绑定 V2
+深冻结 policy。V3 投影只接受八类 Provider category、三个 structured-output stage、十个单调
+`lastCompletedStage` 和固定 execution/usage outcome；delegate-boundary recorder 是
+`runtimeInvocations=0|1` 的权威。outer harness 在 dispatch 前失败记录
+`0 + absent_not_attempted`，dispatch 后失败记录 `1 + unknown_after_attempt`，统一使用本地
+`harness_internal_error` 且不伪装 Provider category。V1/V2 report 的全部 V3 字段继续完全 absent。
+新增 config/factory/request/non-thinking response audit/schema/abort synthetic compatibility matrix，
+只使用 sentinel/fake fetch；未读取根 `.env`/credential、未调用 Provider、未启动 Docker/API/browser，
+也未创建 V3 Live marker/journal/evidence。focused `52/52`、Agent `596/596`、AI `199/199` 与两版
+历史 validator 已通过；V1/V2 四个历史 SHA 不变。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。下一步仅 R2
+strict-gate breaker、双 lane ledger 与固定分母。
 
 ## 8. Reflexion / Critic 验收要求
 

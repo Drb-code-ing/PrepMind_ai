@@ -308,9 +308,9 @@ true，并在检查后人工清理。token、ZIP 内容、object key、payload �
 
 项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
 
-| 方式        | 启动命令                                                                     | 适合场景                                                 | 前端 env 改哪里       |
-| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------- |
-| 本机前端    | `bun --filter @repo/web dev`                                                 | 日常改 UI、调页面、热更新最快                            | `apps/web/.env.local` |
+| 方式        | 启动命令                                                                                     | 适合场景                                                 | 前端 env 改哪里       |
+| ----------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------- |
+| 本机前端    | `bun --filter @repo/web dev`                                                                 | 日常改 UI、调页面、热更新最快                            | `apps/web/.env.local` |
 | Docker 前端 | `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env`     |
 
 如果你看到 Docker Desktop 里有 `docker-web-1`，或者你是用 `docker compose ... web` 启动页面，那就是 Docker 前端。Compose 只用根目录 `.env` 为 `${...}` 做插值，并把 `docker-compose.dev.yml` 中明确列出的 Web allowlist 注入 `web`；它不会把整个根 `.env` 作为 Web 的 `env_file`。这时只改 `apps/web/.env.local` 不会影响容器里的前端。
@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R1）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -902,11 +902,18 @@ Task 12 唯一 V1 Live 已在进程级把现有底层 secret 映射到两个 com
 
 V2 R0--R6 后执行的唯一 R7 run `67ce18dd...` 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、`quality_gate_failed`。V2 evidence/marker 已封存且不得重跑；原始异常未保存，不能把失败指定为 credential、网络、模型、endpoint 或 prompt 的单一问题。按合同没有启动 R8 Docker/API/browser。当前继续保持两个 gate=false、component key 空。
 
-V3 R0 已完成零 Provider 设计，但没有新增可直接执行的配置或 Live 命令。下一步 R1--R4 只使用
-sentinel/fake fetch 做 failure taxonomy 投影、request/response compatibility、首个 runtime contract failure
-breaker、双 lane ledger、marker/journal/crash seal 与 static/Mock；不得读取根 `.env` 或真实 key。
-任何 V3 网络命令都必须等 R4 checkpoint 通过并获得新的精确授权后才会落地。设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`。
+V3 R1 已完成 failure/stage 投影、真实 invocation recorder 与 zero-network compatibility harness，
+但没有新增可执行 Live CLI、配置、marker、journal 或 evidence 路径。开发者可以用下面的命令重放
+R1 静态合同；测试只使用 sentinel/fake fetch，不读取根 `.env` 或真实 key，也不会启动 Docker：
+
+```powershell
+bun test packages/agent/tests/model-candidate-runtime-result.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-paired-runner.test.ts packages/ai/tests/model-agent-v3-zero-network-compatibility.test.ts
+```
+
+下一步 R2--R4 继续补 breaker/双 lane ledger、marker/journal/crash seal 与 static/Mock。任何 V3 网络
+命令都必须等 R4 checkpoint 通过并获得新的精确授权后才会落地。设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。
 
 未来只有新的质量 authority 通过后，产品验收才使用合成账号/错题，只允许 Tutor 与 Organizer 两个目标 gate 按步骤开启，其余 Router、Verifier、Review、Planner、Knowledge gate 全部保持 false。新的网络运行必须使用新 identity、独立 marker/journal/evidence、新的精确授权，并重新确认 DeepSeek 账号的数据保留/训练设置；本地精确清理不能声称删除供应商日志。验收或失败后立即恢复 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、两个 gate=false、两条 component key absent/空，并只重建受影响的 `web server`。精确删除本轮 synthetic user/question/group/deck/item/Trace/session/browser storage；禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
 

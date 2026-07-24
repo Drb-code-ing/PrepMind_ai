@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V3 R1 安全诊断投影与零网络 compatibility：在
+> `codex/phase-6-9-7-tutor-wrong-question-agents@06b14cf8` 上新增独立
+> `runner-v3 / tutor-model-candidate-v3 / wrong-question-organizer-model-candidate-v3` identity；两个
+> prompt identity 继续绑定 V2 深冻结 policy bytes，content SHA-256 固定为
+> `91be5091...7fc6a` / `2947cea2...fdffd`，没有加入 case-specific oracle。
+>
+> `@repo/agent` 现在把 runtime Trace 中受信的八类 Provider failure category 与三个
+> structured-output stage 投影为有界 V3 evidence；`lastCompletedStage` 只允许 config、executor、
+> request、delegate、response audit、structured object、dynamic contract、local merger 与 applied
+> 十个单调阶段，`executionOutcome / usageDisposition / runtimeInvocations` 必须满足 strict 组合。
+> `structuredOutputStage` 在 sanitizer 后仍保留固定枚举，但 raw error、Provider response、URL、
+> header、stack 与 credential 仍不会进入 candidate/evidence。
+>
+> paired harness 新增实际 invocation recorder：只有进入 delegate 才从 0 变为 1；outer safe
+> wrapper 发生异常时按 recorder 写本地 `harness_internal_error`，dispatch 前保持 0，dispatch 后为
+> 1 + unknown usage，不再由 catch 猜测或伪装 Provider category。canonical stage 只在前一层真正
+> 完成后推进；V1/V2 report builder 继续完全丢弃 V3 字段，旧 strict schema 会拒绝被补字段的历史
+> report。
+>
+> AI zero-network compatibility matrix 覆盖非法 config、provider factory failure、精确 V4 Pro
+> non-thinking request shaping、response audit、schema handoff、abort/timeout；所有 delegate 都是
+> sentinel/fake，不访问外部网络。focused `52/52`（`182` assertions）、Agent `596/596`
+> （`6387` assertions）、AI `199/199`（`1054` assertions）通过；V1/V2 validator 均为
+> `ok=true/filesChecked=1`，四个历史 evidence/marker SHA 保持
+> `be044871...3f34b5 / 7cb443f1...f6ecffb / 0c645062...84c77 / ac65ac67...98504`，V3
+> Live marker/journal/evidence artifact 为 0。
+>
+> 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
+> 创建业务数据或 Live marker/journal/evidence，也没有合并 main 或推送。权威验收：
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。下一步仅 R2
+> strict-gate breaker、双 lane ledger 与固定分母，不是 controlled-Live。
+>
 > 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
 > `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker
 > SHA-256，仍为 `0c645062...84c77` / `ac65ac67...98504`；V3 Live artifact 为 0，V1/V2
@@ -7,7 +39,7 @@
 >
 > 四路只读取证与主代理源码抽样确认：`@repo/ai` 已将受信 Provider 异常安全压缩为
 > `http_auth/http_rate_limit/http_client/http_server/transport/structured_output/
-> invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace；Tutor/Organizer
+invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace；Tutor/Organizer
 > candidate 可暂时保留 Trace，但 paired eval result/case builder 没有投影，外层 safe wrapper 又把
 > 不同失败统一为 `runtimeInvocations=1/fallback_runtime_error/usage=null`。当前 scheduler 对 24
 > 个 pair 顺序推进、每 pair 双并发，首个失败后仍会继续余下调用。这解释了 V2 证据为什么只有
@@ -576,93 +608,93 @@
 
 当前阶段：Phase 7 工程化已经完成；Phase 6.9.4.4 Router/Verifier、Phase 6.9.5 Review/Planner 与 Phase 6.9.6 KnowledgeDedup/Organizer 均已完成生产验收并恢复默认关闭。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 Live run `39a62241...` 已使用真实 `deepseek_network` 执行并以 `quality_gate_failed` 封存。`24/24` zero-call、安全、延迟、usage 与费用通过，但 strict runtime 仅 `27/48`，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此产品 Docker service/API/可见浏览器未启动，两个生产 gate 的 tracked defaults 继续关闭；V1 不得重跑。下一步是零网络 V2 remediation，不进入 Task 13/main 合并或 Phase 6.10。
 
-| 阶段         | 状态   | 关键词                                                                                       |
-| ------------ | ------ | -------------------------------------------------------------------------------------------- |
-| Phase 0      | 已完成 | Monorepo、Prisma 初稿、Docker 基础设施                                                       |
-| Phase 1      | 已完成 | 前端 MVP、AI 聊天、OCR、错题本、Dexie                                                        |
-| Phase 2      | 已完成 | NestJS、Auth、PostgreSQL、业务 API 迁移、MinIO                                               |
-| Phase 3      | 已完成 | OCR structured output、讲题 prompt、多题保存                                                 |
-| Phase 4      | 已完成 | FSRS、ReviewTask、离线评分、学习统计、复习计划                                               |
-| Phase 5      | 已完成 | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge`                                         |
-| Phase 6      | 补强中 | 多 Agent 基础、Trace 与业务 policy 已落地；真实模型 Agent、通信、权限、Orchestrator 与可执行 LangGraph 继续推进 |
-| Phase 6.9.1  | 已完成 | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板              |
-| Phase 6.9.2  | 已完成 | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                |
-| Phase 6.9.3.1 | 已完成 | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基         |
-| Phase 6.9.3.2 | 已完成 | ConversationState、Redis 降级缓存、prepare API 与 Chat history state 恢复                 |
-| Phase 6.9.3.3 | 已完成 | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                       |
-| Phase 6.9.3.4 | 已完成 | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace |
-| Phase 6.9.3.5 | 已完成 | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据      |
-| Phase 6.9.5  | 已完成 | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理 |
-| Phase 6.9.6.1 | 已完成 | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider |
-| Phase 6.9.6 Task 2 | 已完成 | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider |
-| Phase 6.9.6 Task 3 | 已完成 | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor |
-| Phase 6.9.6 Task 4 | 已完成 | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor |
-| Phase 6.9.6 Task 5 | 已完成 | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider |
-| Phase 6.9.6 Task 6 | 已完成 | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider |
-| Phase 6.9.6 Task 7 | 已完成 | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API |
-| Phase 6.9.6 Task 8 | 已完成 | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider |
-| Phase 6.9.6 Task 9 | 已完成 | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata |
-| Phase 6.9.6 Task 10 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider |
-| Phase 6.9.6 Task 11 | 已完成 | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider |
-| Phase 6.9.6 Task 12 | 已完成 | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收 |
-| Phase 6.9.6 V2 Live | 已完成 | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑 |
-| Phase 6.9.6 Task 13 | 已完成 | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审保持不可变；main default-off 回放、零残留和 push 已通过 |
-| Phase 6.9.7 Task 0 | 已完成 | Tutor/Organizer 混合模型专项设计、权限/预算/72-case/生产验收路线冻结；无 provider |
-| Phase 6.9.7 Task 1 | 已完成 | 72-case/32-decision baseline：`6/48`、Tutor `0.4418666667`、Organizer `0.278125`；无 provider |
-| Phase 6.9.7 Task 2 | 已完成 | strict contract、动态关联、完整字段扫描、ordinal-only 投影与 descriptor clone hardening；无 provider |
-| Phase 6.9.7 Task 3 | 已完成 | Tutor governed candidate、冻结 12+24 eligibility、`1/1200/300`、strict runtime 与 local merger；仅无网络 Mock，未接产品 |
-| Phase 6.9.7 Task 4 | 已完成 | WrongQuestionOrganizer governed candidate、最多 12 题/20 deck、`1/3500/800`、ordinal-only strict runtime 与 local merger；仅无网络 Mock，未接产品 |
-| Phase 6.9.7 Task 5 | 已完成 | Tutor Web server-only default-off runtime、Chat 编排、独立预算与安全 Trace；无 provider/产品 Live |
-| Phase 6.9.7 Task 6 | 已完成 | Organizer owner snapshot、事务外双 fence、advisory-lock 第三 fence、model-free command、用户 authority 与并发 E2E；无 provider |
-| Phase 6.9.7 Task 7 | 已完成 | Organizer server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort 与真实 PostgreSQL Trace contract；无 provider/产品 Live |
-| Phase 6.9.7 Task 8 | 已完成 | Organizer strict request-level API runtime、`/error-book` local/hybrid/degraded 来源状态与移动端安全展示；无 provider/产品 Live |
-| Phase 6.9.7 Task 9 | 已完成 | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider/Docker/浏览器 |
-| Phase 6.9.7 Task 10 | 已完成 | Tutor→web、Organizer→server Docker allowlist、tracked default-off example、worker/admin 隔离与运维回滚；无 provider/Docker service/API/浏览器 |
-| Phase 6.9.7 Task 11 | 已完成 | focused/full/static、baseline、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与双路终审；无 provider/Live/产品 Docker/浏览器 |
-| Phase 6.9.7 Task 12 V1 | 失败封存 | 唯一 `deepseek_network` run：24/24 zero-call、27/48 strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`、`quality_gate_failed`；未进入产品验收 |
-| Phase 7.0    | 已完成 | BackgroundJob 控制面                                                                         |
-| Phase 7.1    | 已完成 | BullMQ 文档处理队列、inline / queue 双模式                                                   |
-| Phase 7.2    | 已完成 | RAG SafetyGuard、prompt injection chunk 过滤                                                 |
-| Phase 7.3    | 已完成 | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要                                   |
-| Phase 7.4    | 已完成 | Swagger / OpenAPI debug docs、`/api-docs`、response envelope                                 |
-| Phase 7.5    | 已完成 | Swagger 中文说明、核心写接口 request body 示例                                               |
-| Phase 7.6    | 已完成 | API / worker 启动拆分、worker-only application context                                       |
-| Phase 7.7    | 已完成 | Worker Observability、Redis heartbeat、队列 backlog                                          |
-| Phase 7.8.1  | 已完成 | RAG Eval Baseline、固定评估集、recall / top1 / safety 指标                                   |
-| Phase 7.8.2  | 已完成 | Hybrid Retrieval、向量候选 + PostgreSQL full-text 融合排序                                   |
-| Phase 7.8.3  | 已完成 | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联                                          |
-| Phase 7.8.4  | 已完成 | RAG Eval Smoke 收尾增强、case guard、keep-data 开关                                          |
-| Phase 7.9.1  | 已完成 | Durable Outbox 地基、claim / retry / dead-letter 状态机                                      |
-| Phase 7.9.2  | 已完成 | Outbox Dispatcher 最小闭环、handler registry                                                 |
-| Phase 7.9.3  | 已完成 | Outbox Dispatcher worker-only 受控运行、防重入 tick                                          |
-| Phase 7.9.4  | 已完成 | Outbox Summary / Metrics、worker observability 只读指标                                      |
-| Phase 7.10   | 已完成 | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue                                             |
-| Phase 7.11   | 已完成 | Worker Readiness、`/worker-readiness`、部署前 CLI                                            |
-| Phase 7.12   | 已完成 | Docker worker healthcheck、容器级 readiness                                                  |
-| Phase 7.13   | 已完成 | Docker Web 镜像、Next standalone、全栈 Compose 验收                                          |
-| Phase 7.14.1 | 已完成 | Operator 权限与操作审计设计文档                                                              |
-| Phase 7.14.2 | 已完成 | OperatorGuard、系统级诊断入口 admin-only                                                     |
-| Phase 7.14.3 | 已完成 | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash                                  |
-| Phase 7.14.4 | 已完成 | Outbox requeue 成功/失败审计接入                                                             |
-| Phase 7.14.5 | 已完成 | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API                                      |
-| Phase 7.14.6 | 已完成 | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选                               |
-| Phase 7.15   | 已完成 | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复                    |
-| Phase 7.16   | 已完成 | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口                |
-| Phase 7.17   | 已完成 | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收                             |
-| Phase 7.17.1 | 已完成 | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录                                      |
-| Phase 7.18   | 已完成 | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证                                      |
-| Phase 7.19   | 已完成 | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客                                   |
-| Phase 7.20   | 已完成 | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API                                          |
-| Phase 7.21   | 已完成 | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填                                  |
-| Phase 7.22   | 已完成 | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口                |
-| Phase 7.23.1 | 已完成 | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计                     |
-| Phase 7.23.2 | 已完成 | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置     |
-| Phase 7.23.3 | 已完成 | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递                      |
-| Phase 7.23.4 | 已完成 | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO        |
-| Phase 7.23.5 | 已完成 | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness |
-| Phase 7.23.6 | 已完成 | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计                    |
-| Phase 7.23.7 | 已完成 | `/audit` tabs、证据包申请/查询/详情、幂等重试、authenticated Blob 下载、a11y                 |
-| Phase 7.23.8 | 已完成 | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                       |
+| 阶段                   | 状态     | 关键词                                                                                                                                                  |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0                | 已完成   | Monorepo、Prisma 初稿、Docker 基础设施                                                                                                                  |
+| Phase 1                | 已完成   | 前端 MVP、AI 聊天、OCR、错题本、Dexie                                                                                                                   |
+| Phase 2                | 已完成   | NestJS、Auth、PostgreSQL、业务 API 迁移、MinIO                                                                                                          |
+| Phase 3                | 已完成   | OCR structured output、讲题 prompt、多题保存                                                                                                            |
+| Phase 4                | 已完成   | FSRS、ReviewTask、离线评分、学习统计、复习计划                                                                                                          |
+| Phase 5                | 已完成   | RAG 数据模型、文档处理、检索、Chat RAG、`/knowledge`                                                                                                    |
+| Phase 6                | 补强中   | 多 Agent 基础、Trace 与业务 policy 已落地；真实模型 Agent、通信、权限、Orchestrator 与可执行 LangGraph 继续推进                                         |
+| Phase 6.9.1            | 已完成   | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 模板                                                                         |
+| Phase 6.9.2            | 已完成   | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时取消、脱敏 Trace                                                                           |
+| Phase 6.9.3.1          | 已完成   | ConversationSummary / ConversationState strict contract 与 PostgreSQL/Prisma 地基                                                                       |
+| Phase 6.9.3.2          | 已完成   | ConversationState、Redis 降级缓存、prepare API 与 Chat history state 恢复                                                                               |
+| Phase 6.9.3.3          | 已完成   | 12 条/70% 滚动摘要、ModelAgentRuntime、凭据防护、source hash 与 CAS                                                                                     |
+| Phase 6.9.3.4          | 已完成   | conversationId/prepare 编排、分层 assembler、Dexie v9 sanitized state、安全 headers/Trace                                                               |
+| Phase 6.9.3.5          | 已完成   | Docker Mock/Live、DeepSeek JSON structured output、Trace 分层 token、清理与阶段证据                                                                     |
+| Phase 6.9.5            | 已完成   | V10 语义质量 authority、V22 recovered 历史、独立真实模型 Docker API/浏览器验收、main default-off 回放与两轮合成数据清理                                 |
+| Phase 6.9.6.1          | 已完成   | 72-case contract、24/48 zero-call/runtime、deterministic `12/48`、semantic `0.2322452551`、无 provider                                                  |
+| Phase 6.9.6 Task 2     | 已完成   | strict schema、动态关联校验、完整字段先扫描、ordinal-only 安全投影、hostile accessor fail-closed；无 provider                                           |
+| Phase 6.9.6 Task 3     | 已完成   | Dedup 受治理 candidate、本地权威 merger、exact-hash provider 前 0-call、全失败 deterministic fallback；仅无网络 executor                                |
+| Phase 6.9.6 Task 4     | 已完成   | Organizer 受治理 candidate、本地权威 merger、标签/集合限制、post-schema 安全扫描、全失败 deterministic fallback；仅无网络 executor                      |
+| Phase 6.9.6 Task 5     | 已完成   | `REPEATABLE READ` + `READ ONLY` owner snapshot、HMAC fingerprint、provider 前 stale fence；无 provider                                                  |
+| Phase 6.9.6 Task 6     | 已完成   | Qwen pgvector semantic shortlist、6 Chunk/资料、top-3 mean、最多 12 pair、provenance/safety/fingerprint 漂移门；无 provider                             |
+| Phase 6.9.6 Task 7     | 已完成   | default-off 双 gate、DeepSeek V4 Pro non-thinking runtime、精确价格/cap、冻结共享预算；尚未编排到 API                                                   |
+| Phase 6.9.6 Task 8     | 已完成   | 独立 gate 并行 dispatch、二次 stale fence、strict runtime metadata、parent+2-step Trace、HTTP abort；无 provider                                        |
+| Phase 6.9.6 Task 9     | 已完成   | `/knowledge` 语义/本地/降级来源 badge、空建议来源说明、移动端换行、无 retry/mutation/敏感 metadata                                                      |
+| Phase 6.9.6 Task 10    | 已完成   | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider                           |
+| Phase 6.9.6 Task 11    | 已完成   | API-only Knowledge credential/gate/timeout、worker zero-executor、独立回滚与 provider retention/安全清理文档；无 provider                               |
+| Phase 6.9.6 Task 12    | 已完成   | 分支 focused/full/static、deterministic/Mock/validator、Windows evidence 字节与历史 bridge hermetic 修复；无 provider/产品 Docker/浏览器验收            |
+| Phase 6.9.6 V2 Live    | 已完成   | 唯一 run `10ae2f36...`：72 cases、24/24 zero-call、48/48 runtime、semantic `0.9875`、`quality_gate_passed`；不可重跑                                    |
+| Phase 6.9.6 Task 13    | 已完成   | R7 Docker/API、可见浏览器、只读/权限/Trace/清理与独立复审保持不可变；main default-off 回放、零残留和 push 已通过                                        |
+| Phase 6.9.7 Task 0     | 已完成   | Tutor/Organizer 混合模型专项设计、权限/预算/72-case/生产验收路线冻结；无 provider                                                                       |
+| Phase 6.9.7 Task 1     | 已完成   | 72-case/32-decision baseline：`6/48`、Tutor `0.4418666667`、Organizer `0.278125`；无 provider                                                           |
+| Phase 6.9.7 Task 2     | 已完成   | strict contract、动态关联、完整字段扫描、ordinal-only 投影与 descriptor clone hardening；无 provider                                                    |
+| Phase 6.9.7 Task 3     | 已完成   | Tutor governed candidate、冻结 12+24 eligibility、`1/1200/300`、strict runtime 与 local merger；仅无网络 Mock，未接产品                                 |
+| Phase 6.9.7 Task 4     | 已完成   | WrongQuestionOrganizer governed candidate、最多 12 题/20 deck、`1/3500/800`、ordinal-only strict runtime 与 local merger；仅无网络 Mock，未接产品       |
+| Phase 6.9.7 Task 5     | 已完成   | Tutor Web server-only default-off runtime、Chat 编排、独立预算与安全 Trace；无 provider/产品 Live                                                       |
+| Phase 6.9.7 Task 6     | 已完成   | Organizer owner snapshot、事务外双 fence、advisory-lock 第三 fence、model-free command、用户 authority 与并发 E2E；无 provider                          |
+| Phase 6.9.7 Task 7     | 已完成   | Organizer server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort 与真实 PostgreSQL Trace contract；无 provider/产品 Live |
+| Phase 6.9.7 Task 8     | 已完成   | Organizer strict request-level API runtime、`/error-book` local/hybrid/degraded 来源状态与移动端安全展示；无 provider/产品 Live                         |
+| Phase 6.9.7 Task 9     | 已完成   | 72-case strict paired runner、24 条实际 guard zero-call、48 runtime/24 pair、Mock/Live CLI 与 evidence validator；无 provider/Docker/浏览器             |
+| Phase 6.9.7 Task 10    | 已完成   | Tutor→web、Organizer→server Docker allowlist、tracked default-off example、worker/admin 隔离与运维回滚；无 provider/Docker service/API/浏览器           |
+| Phase 6.9.7 Task 11    | 已完成   | focused/full/static、baseline、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与双路终审；无 provider/Live/产品 Docker/浏览器        |
+| Phase 6.9.7 Task 12 V1 | 失败封存 | 唯一 `deepseek_network` run：24/24 zero-call、27/48 strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`、`quality_gate_failed`；未进入产品验收  |
+| Phase 7.0              | 已完成   | BackgroundJob 控制面                                                                                                                                    |
+| Phase 7.1              | 已完成   | BullMQ 文档处理队列、inline / queue 双模式                                                                                                              |
+| Phase 7.2              | 已完成   | RAG SafetyGuard、prompt injection chunk 过滤                                                                                                            |
+| Phase 7.3              | 已完成   | EventBus 失败隔离、后台任务 summary、`/knowledge` 任务摘要                                                                                              |
+| Phase 7.4              | 已完成   | Swagger / OpenAPI debug docs、`/api-docs`、response envelope                                                                                            |
+| Phase 7.5              | 已完成   | Swagger 中文说明、核心写接口 request body 示例                                                                                                          |
+| Phase 7.6              | 已完成   | API / worker 启动拆分、worker-only application context                                                                                                  |
+| Phase 7.7              | 已完成   | Worker Observability、Redis heartbeat、队列 backlog                                                                                                     |
+| Phase 7.8.1            | 已完成   | RAG Eval Baseline、固定评估集、recall / top1 / safety 指标                                                                                              |
+| Phase 7.8.2            | 已完成   | Hybrid Retrieval、向量候选 + PostgreSQL full-text 融合排序                                                                                              |
+| Phase 7.8.3            | 已完成   | RAG Eval Smoke、本地 API 级上传/处理/检索/eval 串联                                                                                                     |
+| Phase 7.8.4            | 已完成   | RAG Eval Smoke 收尾增强、case guard、keep-data 开关                                                                                                     |
+| Phase 7.9.1            | 已完成   | Durable Outbox 地基、claim / retry / dead-letter 状态机                                                                                                 |
+| Phase 7.9.2            | 已完成   | Outbox Dispatcher 最小闭环、handler registry                                                                                                            |
+| Phase 7.9.3            | 已完成   | Outbox Dispatcher worker-only 受控运行、防重入 tick                                                                                                     |
+| Phase 7.9.4            | 已完成   | Outbox Summary / Metrics、worker observability 只读指标                                                                                                 |
+| Phase 7.10             | 已完成   | Outbox Ops 后端闭环、脱敏列表/详情、安全 requeue                                                                                                        |
+| Phase 7.11             | 已完成   | Worker Readiness、`/worker-readiness`、部署前 CLI                                                                                                       |
+| Phase 7.12             | 已完成   | Docker worker healthcheck、容器级 readiness                                                                                                             |
+| Phase 7.13             | 已完成   | Docker Web 镜像、Next standalone、全栈 Compose 验收                                                                                                     |
+| Phase 7.14.1           | 已完成   | Operator 权限与操作审计设计文档                                                                                                                         |
+| Phase 7.14.2           | 已完成   | OperatorGuard、系统级诊断入口 admin-only                                                                                                                |
+| Phase 7.14.3           | 已完成   | `OperatorAuditLog`、审计 service、脱敏 metadata 与来源 hash                                                                                             |
+| Phase 7.14.4           | 已完成   | Outbox requeue 成功/失败审计接入                                                                                                                        |
+| Phase 7.14.5           | 已完成   | `GET /operator-audit-logs`、admin-only 脱敏审计查询 API                                                                                                 |
+| Phase 7.14.6           | 已完成   | `/operator-audit` 管理员审计台、ADMIN 侧边栏入口、脱敏列表筛选                                                                                          |
+| Phase 7.15             | 已完成   | 管理员审计台真实运行验收、Docker dev 诊断开关、`127.0.0.1` hydration 修复                                                                               |
+| Phase 7.16             | 已完成   | 独立桌面端 Admin Console、Outbox Ops 操作页、审计/Worker 页面、学习端后台入口                                                                           |
+| Phase 7.17             | 已完成   | Docker Admin Console service、`3100` 独立容器、全栈 Compose 验收                                                                                        |
+| Phase 7.17.1           | 已完成   | 管理员后台返回学习端 host 对齐、loopback 登录态排障记录                                                                                                 |
+| Phase 7.18             | 已完成   | Admin Outbox Ops 产品化、事件详情分区、requeue 后续验证                                                                                                 |
+| Phase 7.19             | 已完成   | Admin Console 控制台数据化、真实运维总览、后台管理复盘博客                                                                                              |
+| Phase 7.20             | 已完成   | Operator Audit 详情闭环、审计详情双栏、脱敏详情 API                                                                                                     |
+| Phase 7.21             | 已完成   | Admin Ops 交互收口、自定义筛选控件、Outbox requeue 原因必填                                                                                             |
+| Phase 7.22             | 已完成   | Docker Admin Ops 真实验收、普通用户 403 拦截、测试数据清理、后台 favicon 收口                                                                           |
+| Phase 7.23.1           | 已完成   | 180 天审计保留、异步 ZIP 证据包、事务型 Outbox、fail-closed 下载审计设计                                                                                |
+| Phase 7.23.2           | 已完成   | strict export contract、Prisma export/maintenance 模型、ACCOUNT/SYSTEM job、生产关闭配置                                                                |
+| Phase 7.23.3           | 已完成   | Serializable 申请事务、strict audit、HMAC 指纹、Outbox-only BullMQ 投递                                                                                 |
+| Phase 7.23.4           | 已完成   | 单并发 ZIP Worker、REPEATABLE READ、formula-safe CSV、lease/CAS、attempt-fenced MinIO                                                                   |
+| Phase 7.23.5           | 已完成   | 小时级维护、24h/180d 清理、active-export 水位、stale repair、crash janitor、三队列 readiness                                                            |
+| Phase 7.23.6           | 已完成   | 系统级 ADMIN 查询/详情、稳定游标、binary envelope bypass、strict 下载审计                                                                               |
+| Phase 7.23.7           | 已完成   | `/audit` tabs、证据包申请/查询/详情、幂等重试、authenticated Blob 下载、a11y                                                                            |
+| Phase 7.23.8           | 已完成   | API/Worker Docker 拓扑、下载/过期/清理 smoke、真实浏览器验收、面试博客                                                                                  |
 
 ## 近期关键记录
 
@@ -2846,6 +2878,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - `docs/blogs/durable-outbox-worker-observability.md`：Durable Outbox、Dispatcher Runner 和后台观测面试学习博客。
 - `docs/blogs/worker-readiness-deployment-checks.md`：Worker Readiness、部署前检查和 CLI 退出码面试学习博客。
 - `docs/blogs/admin-console-ops-platform.md`：后台管理、Admin Console、Outbox Ops、审计和控制台总览面试学习博客。
+
 ## 2026-07-20 — Phase 6.9.5 V12 real host wiring (offline)
 
 - Replaced the V12 fake default host with a real default-off composition. The

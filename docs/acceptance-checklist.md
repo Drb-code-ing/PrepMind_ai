@@ -23,7 +23,7 @@ main default-off replay 已完成。本段流程保留给后续同类阶段：�
 | Chat / Agent 工程链路     | Mock AI                                                           | route headers、prompt 拼接、trace、RAG 降级、UI 渲染         | 真实模型回答质量                  |
 | Chat / Agent 真实体验     | Live AI 小样本                                                    | Tutor 风格、RAG 引用自然度、真实模型是否遵守 guard           | 大规模稳定性和成本                |
 | Agent 模型路径决策        | deterministic baseline + Mock contract + Live paired eval         | 相同数据集上的质量、安全、延迟、token 与成本净收益           | 单次演示不能证明应启用模型        |
-| RAG 上传/处理/检索链路    | 非 production fake 回归或 Qwen live queue smoke                 | fake 证明工程链路，Qwen 证明真实语义召回与 runtime parity | fake embedding 不证明真实语义质量 |
+| RAG 上传/处理/检索链路    | 非 production fake 回归或 Qwen live queue smoke                   | fake 证明工程链路，Qwen 证明真实语义召回与 runtime parity    | fake embedding 不证明真实语义质量 |
 
 一句话规则：**mock / fake 验工程链路，live 验真实体验；Docker 验部署形态，本机 Bun 验开发效率。**
 
@@ -56,11 +56,11 @@ docker compose version
 
 关键 env 文件分工：
 
-| 文件                  | 主要用途                                     |
-| --------------------- | -------------------------------------------- |
+| 文件                  | 主要用途                                                    |
+| --------------------- | ----------------------------------------------------------- |
 | 根目录 `.env`         | 后端、Prisma；Compose CLI 显式 `--env-file .env` 时的插值源 |
-| `apps/server/.env`    | server/e2e 在服务目录运行时读取              |
-| `apps/web/.env.local` | 本机 `bun --filter @repo/web dev` 读取       |
+| `apps/server/.env`    | server/e2e 在服务目录运行时读取                             |
+| `apps/web/.env.local` | 本机 `bun --filter @repo/web dev` 读取                      |
 
 真实模型验收必须同时满足：
 
@@ -575,26 +575,26 @@ Swagger 手动调试受保护接口时，先通过登录接口拿到 `accessToke
 
 ## 5. 命令索引
 
-| 命令                                                                  | 什么时候用                              | 期望结果                                  |
-| --------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------- |
-| `bun install`                                                         | 首次拉仓库或依赖变化后                  | workspace 依赖安装完成                    |
-| `bun run db:generate`                                                 | Prisma client 缺失或 schema 变化后      | Prisma client 可被 server 引用            |
-| `bun run db:migrate`                                                  | 数据库迁移变化后                        | PostgreSQL schema 更新完成                |
-| `bun --filter @repo/web lint`                                         | 前端提交前                              | ESLint 通过                               |
-| `bun --filter @repo/web test`                                         | 前端表单、hook、纯函数变化后            | Web 单测通过                              |
-| `bun --filter @repo/web build`                                        | 阶段收尾或 Docker Web 前                | Next build 通过                           |
-| `bun --filter @repo/server lint`                                      | 后端提交前                              | ESLint 通过                               |
-| `bun --filter @repo/server test`                                      | 后端 service / controller / env 变化后  | Jest 单测通过                             |
-| `bun --filter @repo/server test:e2e`                                  | Auth、鉴权、跨用户隔离、核心 API 变化后 | e2e 通过                                  |
-| `bun --filter @repo/server build`                                     | 后端收尾、Docker 镜像前                 | Nest build 通过                           |
-| `bun --filter @repo/server smoke:rag-eval`                            | RAG API / queue / embedding / hybrid 检索验收 | BackgroundJob SUCCEEDED，hybrid scores 完整且无重复 chunk |
-| `bun --filter @repo/server smoke:operator-audit-export`               | 审计证据包真实 API/队列/存储验收        | 权限、ZIP、hash、审计、过期和清理串联通过 |
-| `bun --filter @repo/server readiness:worker`                          | worker 部署前或排障                     | 返回 ready/degraded/not_ready 和退出码    |
-| `bun --cwd packages/types typecheck`                                  | API contract 变化后                     | types 包通过类型检查                      |
-| `bun --cwd packages/database test`                                    | Prisma helper 或数据库包变化后          | database 包测试通过                       |
-| `bun --cwd packages/fsrs test`                                        | FSRS 算法变化后                         | fsrs 包测试通过                           |
-| `docker compose --env-file .env -f docker/docker-compose.dev.yml ps`                  | 看基础设施容器                          | postgres / redis / minio 状态正常         |
-| `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker ps` | 看全栈与 worker healthcheck             | worker 显示 healthy 或给出 unhealthy 信号 |
+| 命令                                                                                  | 什么时候用                                    | 期望结果                                                  |
+| ------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------- |
+| `bun install`                                                                         | 首次拉仓库或依赖变化后                        | workspace 依赖安装完成                                    |
+| `bun run db:generate`                                                                 | Prisma client 缺失或 schema 变化后            | Prisma client 可被 server 引用                            |
+| `bun run db:migrate`                                                                  | 数据库迁移变化后                              | PostgreSQL schema 更新完成                                |
+| `bun --filter @repo/web lint`                                                         | 前端提交前                                    | ESLint 通过                                               |
+| `bun --filter @repo/web test`                                                         | 前端表单、hook、纯函数变化后                  | Web 单测通过                                              |
+| `bun --filter @repo/web build`                                                        | 阶段收尾或 Docker Web 前                      | Next build 通过                                           |
+| `bun --filter @repo/server lint`                                                      | 后端提交前                                    | ESLint 通过                                               |
+| `bun --filter @repo/server test`                                                      | 后端 service / controller / env 变化后        | Jest 单测通过                                             |
+| `bun --filter @repo/server test:e2e`                                                  | Auth、鉴权、跨用户隔离、核心 API 变化后       | e2e 通过                                                  |
+| `bun --filter @repo/server build`                                                     | 后端收尾、Docker 镜像前                       | Nest build 通过                                           |
+| `bun --filter @repo/server smoke:rag-eval`                                            | RAG API / queue / embedding / hybrid 检索验收 | BackgroundJob SUCCEEDED，hybrid scores 完整且无重复 chunk |
+| `bun --filter @repo/server smoke:operator-audit-export`                               | 审计证据包真实 API/队列/存储验收              | 权限、ZIP、hash、审计、过期和清理串联通过                 |
+| `bun --filter @repo/server readiness:worker`                                          | worker 部署前或排障                           | 返回 ready/degraded/not_ready 和退出码                    |
+| `bun --cwd packages/types typecheck`                                                  | API contract 变化后                           | types 包通过类型检查                                      |
+| `bun --cwd packages/database test`                                                    | Prisma helper 或数据库包变化后                | database 包测试通过                                       |
+| `bun --cwd packages/fsrs test`                                                        | FSRS 算法变化后                               | fsrs 包测试通过                                           |
+| `docker compose --env-file .env -f docker/docker-compose.dev.yml ps`                  | 看基础设施容器                                | postgres / redis / minio 状态正常                         |
+| `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker ps` | 看全栈与 worker healthcheck                   | worker 显示 healthy 或给出 unhealthy 信号                 |
 
 ## 6. 什么结果才算通过
 
@@ -724,8 +724,7 @@ Review / Planner 的建议页不是 Chat 自动调用入口。先由 JWT owner-s
 
 DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。因此 v5 的 48-case、Docker、浏览器、main 合并与推送均未执行，v5 marker 已消耗且不可重跑。V6 的 Task 1--6 已在独立 lineage 中完成 default-off typed non-thinking transport、resolver/factory、evidence/CLI、Mock、复审与离线文档：精确 DeepSeek V4 Pro `/v1` request 固定写入 `thinking:{type:'disabled'}`，本地拒绝 tool/schema drift 与 reasoning-content response；V1--V5 immutable no-reparse snapshot 在 V6 preflight 前复核。用户授权后，V6 唯一 canary 已封存为 `finalized / invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 离线 wire、fake CLI 31/31、focused V6 suite 61/61、native 15/15 与 Mock 48/26/22/48/0 都不构成真实模型通过，两个业务 gate 继续保持 `false`。
 
-V7 不是 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。
-5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
+V7 不是 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
 当前 v1--v6 都是独立关闭证据，计数不得拼接：v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`；所有 once marker 已消耗且不可重试。V6 48-case、Docker、浏览器、main 合并与推送都被终态关闭；不得从其 fact-free canary 推导模型质量、可用性、zero-call、零成本或账单。一次离线 Mock proof 为 48 cases / 26 verified zero-call / 22 Mock runtime / 48 strict / 0 critical、`mock_quality_not_evidence`，其 `.tmp` 已删除。完整静态验证在 lint-style 修复后重新通过 AI、Agent、Server、shared types、Web 测试/lint/build，以及 Compose `config --quiet` 和 `git diff --check`；这些都是 V6 pre-Live checks，而非 Live、Docker 或浏览器验收。
 
@@ -809,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R1）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0 已冻结零 Provider 修复设计但未改源码或调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0 已冻结零 Provider 修复设计，V3 R1 已实现安全诊断投影、真实 invocation recorder 与零网络 compatibility harness；二者均未调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -855,5 +854,18 @@ case builder 未投影，safe wrapper 还会统一失败并猜测 invocation；s
 pair。V3 冻结新 identity、zero-network compatibility harness、真实 dispatch/usage outcome、24
 guard 先行、单 pair 最大双并发、首个 runtime contract failure 后 breaker、固定 48 分母、双 lane 隔离、
 append-only journal、crash-only seal 与 hard-link evidence。R0 没有 source/credential/provider/
-Docker/API/browser/业务数据操作；下一步仅 R1 zero-network implementation。完整设计见
+Docker/API/browser/业务数据操作；当时下一步仅 R1 zero-network implementation。完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`。
+
+V3 R1 完成回执：新增 `phase-6.9.7-tutor-organizer-runner-v3`、两个 v3 prompt identity 和
+`phase-6.9.7-v3-runtime-evidence-v1`，prompt bytes 继续绑定 V2 深冻结 policy，稳定 hash 为
+`sha256:91be509194de33c8d99d7a09fa6ef387c6f31aa06d19d8fd970800731047fc6a` /
+`sha256:2947cea2a7bc5d64c9daf29d8b371e9825bc0423d707ff173a2c5057ee9fdffd`。投影只接受固定
+Provider category、structured-output stage、十阶段单调 ledger 与 execution/usage 枚举；outer
+harness dispatch 前后分别保留真实 invocation `0/1`，不猜测或复制 Provider 类别。V1/V2 新字段
+保持完全 absent。config/factory/request/non-thinking response audit/schema/abort compatibility matrix
+仅使用 sentinel/fake fetch，focused `52/52`、Agent `596/596`、AI `199/199`、V1/V2 validator 与
+四个历史 SHA 已通过，V3 Live artifact 为 0。未读取根 `.env`/credential、未调用 Provider、未启动
+Docker/API/browser。证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`；下一步仅 R2
+strict-gate breaker、双 lane ledger 与固定分母。

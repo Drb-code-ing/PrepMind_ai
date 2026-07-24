@@ -6,7 +6,8 @@
 落地且相互拒绝，R6 static/Mock、并发/恢复/取消/路由 checkpoint 与双路复审已通过。R7 唯一
 V2 branch controlled-Live 已执行并以 `quality_gate_failed` 封存：`24/24` zero-call，`0/48`
 strict runtime，Tutor/Organizer semantic `0/0`，verified usage `0`。V2 marker/evidence 已消费且
-不得重跑；R8 产品验收未启动。后续 V3 R0 零 Provider 设计已完成，下一步仅 R1 零网络实现。
+不得重跑；R8 产品验收未启动。后续 V3 R0 零 Provider 设计与 R1 安全诊断/零网络
+compatibility 已完成，下一步仅 R2 strict-gate breaker、双 lane ledger 与固定分母。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -58,23 +59,23 @@ V2 不重跑 V1、不放宽 validator、不修改冻结数据集或门槛，也�
 
 V1 authority 固定如下：
 
-| 项目 | V1 结果 |
-| --- | --- |
-| run ID | `39a62241-0f51-45be-a423-0d13b0b60ae4` |
-| runner | `phase-6.9.7-tutor-organizer-runner-v1` |
-| dataset | `phase-6.9-tutor-wrong-question-v1` |
-| dataset SHA-256 | `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e` |
-| executor provenance | `deepseek_network` |
-| zero-call | `24/24` |
-| strict runtime | `27/48` |
-| Tutor semantic | `0.3485119048` |
-| Tutor improvement | `-0.0933547619` |
-| Organizer semantic | `0.7000000000` |
-| Organizer improvement | `0.4218750000` |
-| critical / permission / mutation / broader fallback | 全部 `0` |
-| verified usage | `48/48` |
-| total cost | `0.086418 CNY` |
-| final gate | `quality_gate_failed` |
+| 项目                                                | V1 结果                                                            |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| run ID                                              | `39a62241-0f51-45be-a423-0d13b0b60ae4`                             |
+| runner                                              | `phase-6.9.7-tutor-organizer-runner-v1`                            |
+| dataset                                             | `phase-6.9-tutor-wrong-question-v1`                                |
+| dataset SHA-256                                     | `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e` |
+| executor provenance                                 | `deepseek_network`                                                 |
+| zero-call                                           | `24/24`                                                            |
+| strict runtime                                      | `27/48`                                                            |
+| Tutor semantic                                      | `0.3485119048`                                                     |
+| Tutor improvement                                   | `-0.0933547619`                                                    |
+| Organizer semantic                                  | `0.7000000000`                                                     |
+| Organizer improvement                               | `0.4218750000`                                                     |
+| critical / permission / mutation / broader fallback | 全部 `0`                                                           |
+| verified usage                                      | `48/48`                                                            |
+| total cost                                          | `0.086418 CNY`                                                     |
+| final gate                                          | `quality_gate_failed`                                              |
 
 V1 evidence：
 `.tmp/phase-6-9-7-tutor-organizer-branch-live-39a62241-0f51-45be-a423-0d13b0b60ae4.json`
@@ -175,19 +176,19 @@ V2 保持以下约束原样：
 
 ## 7. V2 identity 与兼容策略
 
-| 维度 | V1 | V2 |
-| --- | --- | --- |
-| dataset | `phase-6.9-tutor-wrong-question-v1` | 不变 |
-| dataset SHA | `7ac2f4...2207e` | 不变 |
-| runner | `phase-6.9.7-tutor-organizer-runner-v1` | `phase-6.9.7-tutor-organizer-runner-v2` |
-| Tutor prompt | `tutor-model-candidate-v1` | `tutor-model-candidate-v2` |
-| Organizer prompt | `wrong-question-organizer-model-candidate-v1` | `wrong-question-organizer-model-candidate-v2` |
-| Tutor schema/projection | v1 | 不变 |
-| Organizer schema/projection | v1 | 不变 |
-| approval env | `PHASE_6_9_7_CONTROLLED_LIVE_APPROVED` | `PHASE_6_9_7_V2_CONTROLLED_LIVE_APPROVED` |
-| confirmation | V1 固定确认词 | `I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_V2_CONTROLLED_LIVE_ONCE` |
-| marker | V1 marker | `.tmp/phase-6-9-7-tutor-organizer-v2-controlled-live.marker` |
-| evidence prefix | V1 prefix | `.tmp/phase-6-9-7-tutor-organizer-v2-` |
+| 维度                        | V1                                            | V2                                                             |
+| --------------------------- | --------------------------------------------- | -------------------------------------------------------------- |
+| dataset                     | `phase-6.9-tutor-wrong-question-v1`           | 不变                                                           |
+| dataset SHA                 | `7ac2f4...2207e`                              | 不变                                                           |
+| runner                      | `phase-6.9.7-tutor-organizer-runner-v1`       | `phase-6.9.7-tutor-organizer-runner-v2`                        |
+| Tutor prompt                | `tutor-model-candidate-v1`                    | `tutor-model-candidate-v2`                                     |
+| Organizer prompt            | `wrong-question-organizer-model-candidate-v1` | `wrong-question-organizer-model-candidate-v2`                  |
+| Tutor schema/projection     | v1                                            | 不变                                                           |
+| Organizer schema/projection | v1                                            | 不变                                                           |
+| approval env                | `PHASE_6_9_7_CONTROLLED_LIVE_APPROVED`        | `PHASE_6_9_7_V2_CONTROLLED_LIVE_APPROVED`                      |
+| confirmation                | V1 固定确认词                                 | `I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_V2_CONTROLLED_LIVE_ONCE` |
+| marker                      | V1 marker                                     | `.tmp/phase-6-9-7-tutor-organizer-v2-controlled-live.marker`   |
+| evidence prefix             | V1 prefix                                     | `.tmp/phase-6-9-7-tutor-organizer-v2-`                         |
 
 V2 不改变 schema/projection version，因为输出 shape、ordinal 范围、字段安全和动态权限边界不变；
 改变的是 prompt policy、runner diagnostics 与 evidence identity。若实施中必须改变 schema 或
@@ -203,13 +204,13 @@ V1 evidence hash 与 marker hash 在每个 checkpoint 复核保持一致。
 把当前 contract 中分散的 allowed evidence、primary evidence 与 candidate 中的 compatible depth
 收敛为一个深冻结 policy table。validator 与 prompt formatter 都从该表读取：
 
-| intent | primary evidence | 允许的附加 evidence | compatible depth |
-| --- | --- | --- | --- |
-| `explain_solution` | `full_explanation_request` | `contextual_reference`, `ambiguous_intent` | `standard`, `deep` |
-| `socratic_hint` | `implicit_hint_request` 或 `contextual_reference` | `ambiguous_intent` | `brief`, `standard` |
-| `step_check` | `submitted_step` | `contextual_reference`, `ambiguous_intent` | `brief`, `standard` |
-| `concept_bridge` | `concept_gap` | `contextual_reference`, `ambiguous_intent` | `standard`, `deep` |
-| `general_follow_up` | `contextual_reference` 或 `ambiguous_intent` | 无其它 code | `brief`, `standard` |
+| intent              | primary evidence                                  | 允许的附加 evidence                        | compatible depth    |
+| ------------------- | ------------------------------------------------- | ------------------------------------------ | ------------------- |
+| `explain_solution`  | `full_explanation_request`                        | `contextual_reference`, `ambiguous_intent` | `standard`, `deep`  |
+| `socratic_hint`     | `implicit_hint_request` 或 `contextual_reference` | `ambiguous_intent`                         | `brief`, `standard` |
+| `step_check`        | `submitted_step`                                  | `contextual_reference`, `ambiguous_intent` | `brief`, `standard` |
+| `concept_bridge`    | `concept_gap`                                     | `contextual_reference`, `ambiguous_intent` | `standard`, `deep`  |
+| `general_follow_up` | `contextual_reference` 或 `ambiguous_intent`      | 无其它 code                                | `brief`, `standard` |
 
 其中 `general_follow_up` 的 primary evidence 是二选一，不要求
 `contextual_reference` 与 `ambiguous_intent` 同时出现；“无其它 code”仅表示这两个 code
@@ -338,12 +339,12 @@ V1 只有 `rawSchemaValid`、`candidateDisposition` 与
 
 组合规则：
 
-| stage | failure reason |
-| --- | --- |
-| `raw_schema` | 只能是 `schema_invalid` |
-| `dynamic_contract` | Tutor/Organizer 现有 dynamic validator reason |
-| `local_merger` | `incompatible_depth` 或 `projection_association_invalid` |
-| `applied` | 必须为 `null` |
+| stage              | failure reason                                           |
+| ------------------ | -------------------------------------------------------- |
+| `raw_schema`       | 只能是 `schema_invalid`                                  |
+| `dynamic_contract` | Tutor/Organizer 现有 dynamic validator reason            |
+| `local_merger`     | `incompatible_depth` 或 `projection_association_invalid` |
+| `applied`          | 必须为 `null`                                            |
 
 若 provider/runtime/usage/abort 在 structured object 形成前失败，这两个 canonical 字段都为
 `null`，现有 `candidateDisposition` 继续作为安全 authority；不得把 transport failure 伪装成

@@ -5,9 +5,10 @@ Provider failure 证据、zero-network compatibility preflight、strict-gate bre
 dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock checkpoint 后停止并重新
 申请一次 V3 controlled-Live，只有全门通过才进入产品验收。
 
-**当前状态：** R0 零 Provider 设计已冻结；R1--R4 尚未实现。V3 没有读取 credential、调用
-Provider、创建 Live marker/journal/evidence、启动 Docker/API/browser 或修改业务数据。下一步是
-R1，不是直接执行 Live、R8、Task 13/main 或 Phase 6.10。
+**当前状态：** R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成；R2--R4 尚未
+实现。V3 没有读取 credential、调用 Provider、创建 Live marker/journal/evidence、启动
+Docker/API/browser 或修改业务数据。下一步仅 R2，不是直接执行 Live、R8、Task 13/main 或
+Phase 6.10。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`
@@ -52,6 +53,8 @@ R1，不是直接执行 Live、R8、Task 13/main 或 Phase 6.10。
 
 ## R1：安全诊断投影与零网络 compatibility harness
 
+**状态：** [x] 已完成，下一步仅 R2。
+
 **主要文件：**
 
 - `packages/ai/src/model-agent-provider-failure.ts` 及 tests；
@@ -75,6 +78,19 @@ R1，不是直接执行 Live、R8、Task 13/main 或 Phase 6.10。
 - config/factory/request/response/schema/abort synthetic matrix 在真实 fetch sentinel 下 zero-network；
 - v3 prompt identity 绑定现有深冻结 V2 policy，并记录稳定 content hash/泄漏扫描；
 - V1/V2 新字段完全 absent，三版 identity/validator 互斥。
+
+**完成证据：**
+
+- [x] 独立 runner/prompt/runtime-evidence identity 与两个稳定 prompt content hash；
+- [x] 固定 Provider category/structured stage、十阶段单调 ledger、execution/usage 组合 fail-closed；
+- [x] delegate-boundary invocation recorder 与 outer-harness dispatch 前后真实 `0/1`；
+- [x] config/factory/request/non-thinking response audit/schema/abort synthetic matrix 零外部网络；
+- [x] V1/V2 report 的全部 V3 字段保持 absent，两个历史 validator 与四个 SHA 不变；
+- [x] V3 Live marker/journal/evidence artifact 为 0，无 credential/Provider/Docker/API/browser；
+- [x] focused、Agent/AI full、typecheck/lint/format/diff 与两路只读终审通过。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`
 
 **验证：** focused AI/Agent tests、category/stage/combination exhaustive tests、no-network sentinel、
 V1/V2 bundle validator 与四个历史 SHA、typecheck/lint/Prettier/diff。

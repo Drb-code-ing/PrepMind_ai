@@ -53,6 +53,11 @@ import {
   type Phase697CanonicalDiagnostic,
 } from './phase-6-9-tutor-wrong-question-bounded-diagnostics.ts';
 import {
+  PHASE_6_9_7_V3_LAST_COMPLETED_STAGES,
+  projectPhase697V3RuntimeEvidence,
+  type Phase697V3RuntimeEvidence,
+} from './phase-6-9-tutor-wrong-question-v3-contract.ts';
+import {
   TUTOR_MODEL_DECISION_SCHEMA,
   type TutorModelDecision,
 } from '../model-candidates/tutor-model-contract.ts';
@@ -105,6 +110,7 @@ export type Phase697TutorEvalResult = SafetyResult &
     latencyMs: number;
     tutorOrchestrationLatencyMs: number;
     usage: Phase697RuntimeUsage | null;
+    v3RuntimeEvidence?: Readonly<Phase697V3RuntimeEvidence> | null;
   }>;
 
 export type Phase697OrganizerEvalResult = SafetyResult &
@@ -117,9 +123,15 @@ export type Phase697OrganizerEvalResult = SafetyResult &
     observations: readonly OrganizerDecisionObservation[];
     latencyMs: number;
     usage: Phase697RuntimeUsage | null;
+    v3RuntimeEvidence?: Readonly<Phase697V3RuntimeEvidence> | null;
   }>;
 
 type Phase697ZeroCallCase = Phase69TutorZeroCallCase | Phase69OrganizerZeroCallCase;
+
+export type Phase697RuntimeEvidenceRecorder = Readonly<{
+  completeStage(stage: NonNullable<Phase697V3RuntimeEvidence['lastCompletedStage']>): void;
+  startDelegate(): void;
+}>;
 
 export type Phase697TutorOrganizerEvalHarness = Readonly<{
   runId: string;
@@ -129,9 +141,18 @@ export type Phase697TutorOrganizerEvalHarness = Readonly<{
   model: 'mock' | 'deepseek-v4-pro';
   structuredOutputMode: 'mock_json_v1' | 'deepseek_v4_pro_nonthinking_json';
   executorProvenance: 'mock_synthetic' | 'deepseek_network' | 'synthetic_test';
-  runZeroCall(entry: Phase697ZeroCallCase): Promise<Phase697ZeroCallResult>;
-  runTutor(entry: Phase69TutorRuntimeCase): Promise<Phase697TutorEvalResult>;
-  runOrganizer(entry: Phase69OrganizerRuntimeCase): Promise<Phase697OrganizerEvalResult>;
+  runZeroCall(
+    entry: Phase697ZeroCallCase,
+    recorder?: Phase697RuntimeEvidenceRecorder,
+  ): Promise<Phase697ZeroCallResult>;
+  runTutor(
+    entry: Phase69TutorRuntimeCase,
+    recorder?: Phase697RuntimeEvidenceRecorder,
+  ): Promise<Phase697TutorEvalResult>;
+  runOrganizer(
+    entry: Phase69OrganizerRuntimeCase,
+    recorder?: Phase697RuntimeEvidenceRecorder,
+  ): Promise<Phase697OrganizerEvalResult>;
 }>;
 
 const SAFE_RESULT: SafetyResult = Object.freeze({
@@ -153,12 +174,18 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
     model: 'mock',
     structuredOutputMode: 'mock_json_v1',
     executorProvenance: 'mock_synthetic',
-    runZeroCall: (entry) =>
-      runPhase697ZeroCall(entry, rejectZeroCallExecutor, {
-        tutorTimeoutMs: 3_000,
-        organizerTimeoutMs: 5_000,
-      }),
-    async runTutor(entry) {
+    runZeroCall: (entry, recorder) =>
+      runPhase697ZeroCall(
+        entry,
+        rejectZeroCallExecutor,
+        {
+          tutorTimeoutMs: 3_000,
+          organizerTimeoutMs: 5_000,
+        },
+        recorder,
+      ),
+    async runTutor(entry, recorder) {
+      recordSyntheticRuntimeSuccess(recorder);
       const inputTokens = 320 + entry.pairedRunIndex;
       const outputTokens = 80 + (entry.pairedRunIndex % 11);
       return {
@@ -175,9 +202,11 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
         latencyMs: 180 + entry.pairedRunIndex * 3,
         tutorOrchestrationLatencyMs: 210 + entry.pairedRunIndex * 3,
         usage: usage(inputTokens, outputTokens),
+        v3RuntimeEvidence: syntheticV3SuccessEvidence(),
       };
     },
-    async runOrganizer(entry) {
+    async runOrganizer(entry, recorder) {
+      recordSyntheticRuntimeSuccess(recorder);
       const inputTokens = 560 + entry.pairedRunIndex * 2;
       const outputTokens = 140 + entry.expected.decisions.length * 8;
       return {
@@ -195,6 +224,7 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
         ),
         latencyMs: 240 + entry.pairedRunIndex * 4,
         usage: usage(inputTokens, outputTokens),
+        v3RuntimeEvidence: syntheticV3SuccessEvidence(),
       };
     },
   };
@@ -220,24 +250,31 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
     model: 'deepseek-v4-pro',
     structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
     executorProvenance: input.executorProvenance,
-    runZeroCall: (entry) =>
-      runPhase697ZeroCall(entry, rejectZeroCallExecutor, {
-        tutorTimeoutMs,
-        organizerTimeoutMs,
-      }),
-    runTutor: (entry) =>
+    runZeroCall: (entry, recorder) =>
+      runPhase697ZeroCall(
+        entry,
+        rejectZeroCallExecutor,
+        {
+          tutorTimeoutMs,
+          organizerTimeoutMs,
+        },
+        recorder,
+      ),
+    runTutor: (entry, recorder) =>
       runTutorRuntimeCase({
         entry,
         executor: input.tutorExecutor,
         timeoutMs: tutorTimeoutMs,
         runId,
+        recorder,
       }),
-    runOrganizer: (entry) =>
+    runOrganizer: (entry, recorder) =>
       runOrganizerRuntimeCase({
         entry,
         executor: input.organizerExecutor,
         timeoutMs: organizerTimeoutMs,
         runId,
+        recorder,
       }),
   };
 }
@@ -271,7 +308,7 @@ async function runPhase697TutorOrganizerPairedEvalVersion(
     zeroCallCases.map(async (entry) =>
       buildZeroCallEntry(
         entry,
-        await safeZeroCall(() => harness.runZeroCall(entry)),
+        await safeZeroCall((recorder) => harness.runZeroCall(entry, recorder)),
         runnerVersion,
       ),
     ),
@@ -284,8 +321,10 @@ async function runPhase697TutorOrganizerPairedEvalVersion(
     const organizerCase = getRuntimeCase('wrong_question_organizer', pairedRunIndex);
     const startedAt = performance.now();
     const [tutorResult, organizerResult] = await Promise.all([
-      safeTutorRuntime(tutorCase, () => harness.runTutor(tutorCase)),
-      safeOrganizerRuntime(organizerCase, () => harness.runOrganizer(organizerCase)),
+      safeTutorRuntime(tutorCase, (recorder) => harness.runTutor(tutorCase, recorder)),
+      safeOrganizerRuntime(organizerCase, (recorder) =>
+        harness.runOrganizer(organizerCase, recorder),
+      ),
     ]);
     const observedPairMs = performance.now() - startedAt;
     pairedCandidateSamplesMs.push(
@@ -635,18 +674,20 @@ async function runPhase697ZeroCall(
   entry: Phase697ZeroCallCase,
   executor: StructuredModelExecutor,
   timeout: { tutorTimeoutMs: number; organizerTimeoutMs: number },
+  recorder?: Phase697RuntimeEvidenceRecorder,
 ) {
   return entry.agent === 'tutor'
-    ? runTutorZeroCall(entry, executor, timeout.tutorTimeoutMs)
-    : runOrganizerZeroCall(entry, executor, timeout.organizerTimeoutMs);
+    ? runTutorZeroCall(entry, executor, timeout.tutorTimeoutMs, recorder)
+    : runOrganizerZeroCall(entry, executor, timeout.organizerTimeoutMs, recorder);
 }
 
 async function runTutorZeroCall(
   entry: Phase69TutorZeroCallCase,
   executor: StructuredModelExecutor,
   timeoutMs: number,
+  recorder?: Phase697RuntimeEvidenceRecorder,
 ): Promise<Phase697ZeroCallResult> {
-  const captured = createCapturedRuntime({ executor, timeoutMs });
+  const captured = createCapturedRuntime({ executor, timeoutMs, recorder });
   const controller = new AbortController();
   if (entry.input.requestAborted) controller.abort();
   const latestUserText = safeTutorZeroText(entry);
@@ -710,6 +751,7 @@ async function runOrganizerZeroCall(
   entry: Phase69OrganizerZeroCallCase,
   executor: StructuredModelExecutor,
   timeoutMs: number,
+  recorder?: Phase697RuntimeEvidenceRecorder,
 ): Promise<Phase697ZeroCallResult> {
   if (!entry.input.agentGateEnabled) {
     return zeroCallPreflight(entry, 'agent_gate_disabled');
@@ -717,7 +759,7 @@ async function runOrganizerZeroCall(
   if (!entry.input.liveCallsEnabled) {
     return zeroCallPreflight(entry, 'live_calls_disabled');
   }
-  const captured = createCapturedRuntime({ executor, timeoutMs });
+  const captured = createCapturedRuntime({ executor, timeoutMs, recorder });
   const controller = new AbortController();
   if (entry.input.requestAborted) controller.abort();
   const questions = safeOrganizerZeroQuestions(entry);
@@ -792,6 +834,7 @@ async function runTutorRuntimeCase(input: {
   executor: StructuredModelExecutor;
   timeoutMs: number;
   runId: string;
+  recorder?: Phase697RuntimeEvidenceRecorder;
 }): Promise<Phase697TutorEvalResult> {
   const productStartedAt = performance.now();
   const deterministic = buildTutorStrategy({
@@ -803,6 +846,7 @@ async function runTutorRuntimeCase(input: {
   const captured = createCapturedRuntime({
     executor: input.executor,
     timeoutMs: input.timeoutMs,
+    recorder: input.recorder,
   });
   const candidate = await runTutorModelCandidate({
     runId: `${input.runId}:${input.entry.id}`,
@@ -838,14 +882,33 @@ async function runTutorRuntimeCase(input: {
     input.entry.criticalSafetyCase &&
     (candidate.result.shouldGiveFinalAnswer ||
       candidate.result.answerStructure.includes('final_answer'));
-  const latencyMs = candidateLatency(candidate.observation, input.timeoutMs);
-  return {
+  const safetyResult: SafetyResult = {
     criticalFailure,
     permissionFailure: candidate.result.intent === 'answer_direct',
     mutationFailure: false,
     broaderThanDeterministicFallback:
       candidate.observation.disposition !== 'candidate_applied' &&
       !sameJson(candidate.result, deterministic),
+  };
+  const latencyMs = candidateLatency(candidate.observation, input.timeoutMs);
+  const runtimeUsage = candidateUsage(candidate.observation);
+  const executedSuccess = isV3RuntimeExecutionSuccess({
+    runtimeInvocations: captured.invocations(),
+    canonicalSchemaSuccess,
+    observation: candidate.observation,
+    usage: runtimeUsage,
+    safetyResult,
+  });
+  recordV3CanonicalCompletion(captured, canonicalDiagnostic, executedSuccess);
+  const v3RuntimeEvidence = buildV3RuntimeEvidence({
+    invocations: captured.invocations(),
+    lastCompletedStage: captured.lastCompletedStage(),
+    executedSuccess,
+    usage: runtimeUsage,
+    observation: candidate.observation,
+  });
+  return {
+    ...safetyResult,
     runtimeInvocations: captured.invocations(),
     rawSchemaValid,
     candidateDisposition: candidate.observation.disposition,
@@ -854,7 +917,8 @@ async function runTutorRuntimeCase(input: {
     observation,
     latencyMs,
     tutorOrchestrationLatencyMs: Math.max(performance.now() - productStartedAt, latencyMs),
-    usage: candidateUsage(candidate.observation),
+    usage: runtimeUsage,
+    v3RuntimeEvidence,
   };
 }
 
@@ -863,10 +927,12 @@ async function runOrganizerRuntimeCase(input: {
   executor: StructuredModelExecutor;
   timeoutMs: number;
   runId: string;
+  recorder?: Phase697RuntimeEvidenceRecorder;
 }): Promise<Phase697OrganizerEvalResult> {
   const captured = createCapturedRuntime({
     executor: input.executor,
     timeoutMs: input.timeoutMs,
+    recorder: input.recorder,
   });
   const items = organizerCandidateItems(
     input.entry.input.questions,
@@ -921,13 +987,32 @@ async function runOrganizerRuntimeCase(input: {
     (input.entry.tags.includes('critical_locked_name') &&
       !lockedNamePreserved(input.entry, candidate.result)) ||
     (input.entry.tags.includes('critical_no_write_command') && mutationFailure);
-  return {
+  const safetyResult: SafetyResult = {
     criticalFailure,
     permissionFailure,
     mutationFailure,
     broaderThanDeterministicFallback:
       candidate.observation.disposition !== 'candidate_applied' &&
       !sameJson(candidate.result, deterministic),
+  };
+  const runtimeUsage = candidateUsage(candidate.observation);
+  const executedSuccess = isV3RuntimeExecutionSuccess({
+    runtimeInvocations: captured.invocations(),
+    canonicalSchemaSuccess,
+    observation: candidate.observation,
+    usage: runtimeUsage,
+    safetyResult,
+  });
+  recordV3CanonicalCompletion(captured, canonicalDiagnostic, executedSuccess);
+  const v3RuntimeEvidence = buildV3RuntimeEvidence({
+    invocations: captured.invocations(),
+    lastCompletedStage: captured.lastCompletedStage(),
+    executedSuccess,
+    usage: runtimeUsage,
+    observation: candidate.observation,
+  });
+  return {
+    ...safetyResult,
     runtimeInvocations: captured.invocations(),
     rawSchemaValid,
     candidateDisposition: candidate.observation.disposition,
@@ -935,7 +1020,8 @@ async function runOrganizerRuntimeCase(input: {
     canonicalDiagnostic,
     observations,
     latencyMs: candidateLatency(candidate.observation, input.timeoutMs),
-    usage: candidateUsage(candidate.observation),
+    usage: runtimeUsage,
+    v3RuntimeEvidence,
   };
 }
 
@@ -1185,10 +1271,23 @@ function deriveOrganizerZeroCallReason(
   return 'guard_mismatch';
 }
 
-function createCapturedRuntime(input: { executor: StructuredModelExecutor; timeoutMs: number }) {
+function createCapturedRuntime(input: {
+  executor: StructuredModelExecutor;
+  timeoutMs: number;
+  recorder?: Phase697RuntimeEvidenceRecorder;
+}) {
   let object: unknown = null;
   let structuredObjectCaptured = false;
-  let invocations = 0;
+  const localLedger = createRuntimeEvidenceLedger();
+  const completeStage = (stage: NonNullable<Phase697V3RuntimeEvidence['lastCompletedStage']>) => {
+    localLedger.recorder.completeStage(stage);
+    input.recorder?.completeStage(stage);
+  };
+  const startDelegate = () => {
+    localLedger.recorder.startDelegate();
+    input.recorder?.startDelegate();
+  };
+  completeStage('config_validated');
   const runtime = createModelAgentRuntime({
     mode: 'live',
     provider: 'deepseek',
@@ -1196,21 +1295,67 @@ function createCapturedRuntime(input: { executor: StructuredModelExecutor; timeo
     liveCallsEnabled: true,
     timeoutMs: input.timeoutMs,
     executor: async (request) => {
-      invocations += 1;
+      completeStage('request_validated');
+      startDelegate();
       const result = await input.executor(request);
+      completeStage('delegate_returned');
+      completeStage('response_audit_passed');
       object = result.object;
       structuredObjectCaptured = true;
+      completeStage('structured_object_captured');
       return result;
     },
   });
+  completeStage('executor_ready');
   return {
     runtime,
     get object() {
       return object;
     },
     hasStructuredObject: () => structuredObjectCaptured,
-    invocations: () => invocations,
+    invocations: localLedger.invocations,
+    lastCompletedStage: localLedger.lastCompletedStage,
+    completeStage,
   };
+}
+
+function createRuntimeEvidenceLedger() {
+  let invocations = 0;
+  let lastCompletedStage: Phase697V3RuntimeEvidence['lastCompletedStage'] = null;
+  const recorder: Phase697RuntimeEvidenceRecorder = Object.freeze({
+    completeStage(stage) {
+      const previousIndex = lastCompletedStage
+        ? PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf(lastCompletedStage)
+        : -1;
+      const nextIndex = PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf(stage);
+      const delegateIndex = PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf('delegate_started');
+      if (
+        nextIndex < 0 ||
+        nextIndex < previousIndex ||
+        (invocations === 0 && nextIndex >= delegateIndex) ||
+        (invocations === 1 && nextIndex < delegateIndex)
+      ) {
+        throw new Error('PHASE_6_9_7_V3_LEDGER_STAGE_INVALID');
+      }
+      lastCompletedStage = stage;
+    },
+    startDelegate() {
+      const requestIndex = PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf('request_validated');
+      const currentIndex = lastCompletedStage
+        ? PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf(lastCompletedStage)
+        : -1;
+      if (invocations !== 0 || currentIndex !== requestIndex) {
+        throw new Error('PHASE_6_9_7_V3_LEDGER_DISPATCH_INVALID');
+      }
+      invocations = 1;
+      lastCompletedStage = 'delegate_started';
+    },
+  });
+  return Object.freeze({
+    recorder,
+    invocations: () => invocations,
+    lastCompletedStage: () => lastCompletedStage,
+  });
 }
 
 async function rejectZeroCallExecutor(): Promise<never> {
@@ -1256,6 +1401,120 @@ function toCaseUsage(value: Phase697RuntimeUsage | null) {
         pricingProfile: PHASE_6_9_7_PRICING_PROFILE,
       }
     : null;
+}
+
+function syntheticV3SuccessEvidence(): Readonly<Phase697V3RuntimeEvidence> {
+  const evidence = projectPhase697V3RuntimeEvidence({
+    runtimeInvocations: 1,
+    executionOutcome: 'executed_success',
+    usageDisposition: 'verified',
+    lastCompletedStage: 'applied',
+    observation: null,
+  });
+  if (!evidence) throw new Error('PHASE_6_9_7_V3_SYNTHETIC_EVIDENCE_INVALID');
+  return evidence;
+}
+
+function recordSyntheticRuntimeSuccess(recorder?: Phase697RuntimeEvidenceRecorder) {
+  if (!recorder) return;
+  recorder.completeStage('config_validated');
+  recorder.completeStage('executor_ready');
+  recorder.completeStage('request_validated');
+  recorder.startDelegate();
+  recorder.completeStage('delegate_returned');
+  recorder.completeStage('response_audit_passed');
+  recorder.completeStage('structured_object_captured');
+  recorder.completeStage('dynamic_contract_passed');
+  recorder.completeStage('local_merger_passed');
+  recorder.completeStage('applied');
+}
+
+function buildV3RuntimeEvidence(input: {
+  invocations: number;
+  lastCompletedStage: Phase697V3RuntimeEvidence['lastCompletedStage'];
+  executedSuccess: boolean;
+  usage: Phase697RuntimeUsage | null;
+  observation: ModelCandidateObservation<string>;
+}): Readonly<Phase697V3RuntimeEvidence> | null {
+  const runtimeInvocations = input.invocations === 0 ? 0 : input.invocations === 1 ? 1 : null;
+  if (runtimeInvocations === null) return null;
+  if (runtimeInvocations === 0) {
+    return projectPhase697V3RuntimeEvidence({
+      runtimeInvocations,
+      executionOutcome: 'not_started_case_guard',
+      usageDisposition: 'absent_not_attempted',
+      lastCompletedStage: null,
+      observation: input.observation,
+    });
+  }
+
+  const attemptedAborted = input.observation.disposition === 'fallback_aborted';
+  return projectPhase697V3RuntimeEvidence({
+    runtimeInvocations,
+    executionOutcome: input.executedSuccess
+      ? 'executed_success'
+      : attemptedAborted
+        ? 'attempted_aborted'
+        : 'executed_failure',
+    usageDisposition:
+      input.executedSuccess || input.usage !== null ? 'verified' : 'unknown_after_attempt',
+    lastCompletedStage: input.executedSuccess
+      ? 'applied'
+      : attemptedAborted
+        ? input.lastCompletedStage
+        : input.lastCompletedStage,
+    observation: input.observation,
+  });
+}
+
+function isV3RuntimeExecutionSuccess(input: {
+  runtimeInvocations: number;
+  canonicalSchemaSuccess: boolean;
+  observation: ModelCandidateObservation<string>;
+  usage: Phase697RuntimeUsage | null;
+  safetyResult: SafetyResult;
+}) {
+  return (
+    input.runtimeInvocations === 1 &&
+    input.canonicalSchemaSuccess &&
+    input.observation.disposition === 'candidate_applied' &&
+    input.usage !== null &&
+    !input.safetyResult.criticalFailure &&
+    !input.safetyResult.permissionFailure &&
+    !input.safetyResult.mutationFailure &&
+    !input.safetyResult.broaderThanDeterministicFallback
+  );
+}
+
+function recordV3CanonicalCompletion(
+  captured: ReturnType<typeof createCapturedRuntime>,
+  diagnostic: Phase697CanonicalDiagnostic,
+  executedSuccess: boolean,
+) {
+  if (diagnostic.canonicalValidationStage === null) return;
+  const structuredObjectIndex = PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf(
+    'structured_object_captured',
+  );
+  const observedStage = captured.lastCompletedStage();
+  const observedIndex = observedStage
+    ? PHASE_6_9_7_V3_LAST_COMPLETED_STAGES.indexOf(observedStage)
+    : -1;
+  if (observedIndex < structuredObjectIndex) {
+    throw new Error('PHASE_6_9_7_V3_CANONICAL_STAGE_INVALID');
+  }
+  switch (diagnostic.canonicalValidationStage) {
+    case 'applied':
+      captured.completeStage('dynamic_contract_passed');
+      captured.completeStage('local_merger_passed');
+      if (executedSuccess) captured.completeStage('applied');
+      return;
+    case 'local_merger':
+      captured.completeStage('dynamic_contract_passed');
+      return;
+    case 'dynamic_contract':
+    case 'raw_schema':
+      return;
+  }
 }
 
 function exhaustedBudget(budget: ModelAgentRunBudget, exhausted: boolean): ModelAgentRunBudget {
@@ -1338,17 +1597,18 @@ function containsMutationDirective(value: unknown): boolean {
 }
 
 async function safeZeroCall(
-  operation: () => Promise<Phase697ZeroCallResult>,
+  operation: (recorder: Phase697RuntimeEvidenceRecorder) => Promise<Phase697ZeroCallResult>,
 ): Promise<Phase697ZeroCallResult> {
+  const ledger = createRuntimeEvidenceLedger();
   try {
-    return await operation();
+    return await operation(ledger.recorder);
   } catch {
     return {
       criticalFailure: true,
       permissionFailure: false,
       mutationFailure: false,
       broaderThanDeterministicFallback: false,
-      runtimeInvocations: 1,
+      runtimeInvocations: ledger.invocations(),
       observedReason: 'guard_mismatch',
     };
   }
@@ -1356,15 +1616,16 @@ async function safeZeroCall(
 
 async function safeTutorRuntime(
   entry: Phase69TutorRuntimeCase,
-  operation: () => Promise<Phase697TutorEvalResult>,
+  operation: (recorder: Phase697RuntimeEvidenceRecorder) => Promise<Phase697TutorEvalResult>,
 ): Promise<Phase697TutorEvalResult> {
   const startedAt = performance.now();
+  const ledger = createRuntimeEvidenceLedger();
   try {
-    return await operation();
+    return await operation(ledger.recorder);
   } catch {
     return {
       ...SAFE_RESULT,
-      runtimeInvocations: 1,
+      runtimeInvocations: ledger.invocations(),
       rawSchemaValid: false,
       candidateDisposition: 'fallback_runtime_error',
       canonicalSchemaSuccess: false,
@@ -1373,21 +1634,23 @@ async function safeTutorRuntime(
       latencyMs: Math.max(0, performance.now() - startedAt),
       tutorOrchestrationLatencyMs: Math.max(0, performance.now() - startedAt),
       usage: null,
+      v3RuntimeEvidence: harnessFailureEvidence(ledger),
     };
   }
 }
 
 async function safeOrganizerRuntime(
   entry: Phase69OrganizerRuntimeCase,
-  operation: () => Promise<Phase697OrganizerEvalResult>,
+  operation: (recorder: Phase697RuntimeEvidenceRecorder) => Promise<Phase697OrganizerEvalResult>,
 ): Promise<Phase697OrganizerEvalResult> {
   const startedAt = performance.now();
+  const ledger = createRuntimeEvidenceLedger();
   try {
-    return await operation();
+    return await operation(ledger.recorder);
   } catch {
     return {
       ...SAFE_RESULT,
-      runtimeInvocations: 1,
+      runtimeInvocations: ledger.invocations(),
       rawSchemaValid: false,
       candidateDisposition: 'fallback_runtime_error',
       canonicalSchemaSuccess: false,
@@ -1397,8 +1660,23 @@ async function safeOrganizerRuntime(
       ),
       latencyMs: Math.max(0, performance.now() - startedAt),
       usage: null,
+      v3RuntimeEvidence: harnessFailureEvidence(ledger),
     };
   }
+}
+
+function harnessFailureEvidence(
+  ledger: ReturnType<typeof createRuntimeEvidenceLedger>,
+): Readonly<Phase697V3RuntimeEvidence> | null {
+  const invocations = ledger.invocations();
+  if (invocations !== 0 && invocations !== 1) return null;
+  return projectPhase697V3RuntimeEvidence({
+    runtimeInvocations: invocations,
+    executionOutcome: 'harness_internal_error',
+    usageDisposition: invocations === 0 ? 'absent_not_attempted' : 'unknown_after_attempt',
+    lastCompletedStage: ledger.lastCompletedStage(),
+    observation: null,
+  });
 }
 
 function invalidTutorObservation(entry: Phase69TutorRuntimeCase): TutorRuntimeObservation {

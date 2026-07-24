@@ -27,9 +27,7 @@ const MODEL_AGENT_ERROR_CODE_SCHEMA = z.enum([
   'PROVIDER_ERROR',
 ]);
 
-const PROVIDER_FAILURE_CATEGORY_SCHEMA = z.enum(
-  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
-);
+const PROVIDER_FAILURE_CATEGORY_SCHEMA = z.enum(MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES);
 
 const RUNTIME_BUDGET_SCHEMA = z
   .object({
@@ -202,9 +200,7 @@ function createRuntimeTraceSchema(task: ModelAgentTask, maxOutputTokens: number)
       degraded: z.boolean(),
       errorCode: MODEL_AGENT_ERROR_CODE_SCHEMA.optional(),
       providerFailureCategory: PROVIDER_FAILURE_CATEGORY_SCHEMA.optional(),
-      structuredOutputStage: z
-        .enum(MODEL_AGENT_STRUCTURED_OUTPUT_STAGES)
-        .optional(),
+      structuredOutputStage: z.enum(MODEL_AGENT_STRUCTURED_OUTPUT_STAGES).optional(),
     })
     .strict();
 }
@@ -231,8 +227,7 @@ function hasConsistentStructuredOutputStage(
 ): boolean {
   return (
     structuredOutputStage === undefined ||
-    (errorCode === 'PROVIDER_ERROR' &&
-      providerFailureCategory === 'structured_output')
+    (errorCode === 'PROVIDER_ERROR' && providerFailureCategory === 'structured_output')
   );
 }
 
@@ -248,10 +243,7 @@ function hasExpectedFailureBudget(
     case 'PROVIDER_ERROR':
       return budgetsEqual(actualBudget, previewBudget);
     case 'ABORTED':
-      return (
-        budgetsEqual(actualBudget, callerBudget) ||
-        budgetsEqual(actualBudget, previewBudget)
-      );
+      return budgetsEqual(actualBudget, callerBudget) || budgetsEqual(actualBudget, previewBudget);
     case 'INVALID_REQUEST':
     case 'LIVE_CALLS_DISABLED':
     case 'EXECUTOR_UNAVAILABLE':
@@ -263,10 +255,7 @@ function hasExpectedFailureBudget(
   }
 }
 
-function budgetsEqual(
-  left: ModelAgentRunBudget,
-  right: ModelAgentRunBudget,
-): boolean {
+function budgetsEqual(left: ModelAgentRunBudget, right: ModelAgentRunBudget): boolean {
   return (
     left.maxCalls === right.maxCalls &&
     left.usedCalls === right.usedCalls &&
@@ -284,10 +273,8 @@ function isUsageWithinRequest(
   previewBudget: ModelAgentRunBudget,
   maxOutputTokens: number,
 ): boolean {
-  const reservedInputTokens =
-    previewBudget.usedInputTokens - callerBudget.usedInputTokens;
-  const reservedOutputTokens =
-    previewBudget.usedOutputTokens - callerBudget.usedOutputTokens;
+  const reservedInputTokens = previewBudget.usedInputTokens - callerBudget.usedInputTokens;
+  const reservedOutputTokens = previewBudget.usedOutputTokens - callerBudget.usedOutputTokens;
   if (
     reservedInputTokens < 0 ||
     reservedOutputTokens < 0 ||
@@ -303,10 +290,7 @@ function isUsageWithinRequest(
   );
 }
 
-function isConsistentRuntimeTrace(
-  trace: ModelAgentTrace,
-  usage: ModelAgentUsage,
-): boolean {
+function isConsistentRuntimeTrace(trace: ModelAgentTrace, usage: ModelAgentUsage): boolean {
   return (
     trace.inputTokens === usage.inputTokens &&
     trace.outputTokens === usage.outputTokens &&
@@ -350,5 +334,6 @@ function rebuildTrace(value: ModelAgentTrace): ModelAgentTrace {
     ...(value.providerFailureCategory
       ? { providerFailureCategory: value.providerFailureCategory }
       : {}),
+    ...(value.structuredOutputStage ? { structuredOutputStage: value.structuredOutputStage } : {}),
   };
 }

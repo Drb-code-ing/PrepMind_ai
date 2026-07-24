@@ -9,7 +9,8 @@ held-out/metamorphic anti-overfit、R5 独立 V2 lineage 与 R6 static/Mock/生�
 R7 唯一 V2 branch controlled-Live run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 已执行并以
 `quality_gate_failed` 封存：`24/24` zero-call 通过，但 `0/48` strict runtime、Tutor/Organizer
 semantic `0/0`、verified usage `0`。V2 marker/evidence 已消费且不得重跑；V2 R8--R11 永久
-不适用。后续 V3 R0 零 Provider 设计已完成，下一步仅 R1 zero-network implementation。
+不适用。后续 V3 R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成，下一步仅 R2
+strict-gate breaker、双 lane ledger 与固定分母。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`

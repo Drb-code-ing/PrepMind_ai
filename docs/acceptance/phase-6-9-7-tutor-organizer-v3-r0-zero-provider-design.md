@@ -36,7 +36,7 @@ Tutor/Organizer semantic `0/0`、verified usage `0`、critical `1`，最终
 
 1. `packages/ai/src/model-agent-provider-failure.ts` 已安全分类
    `http_auth/http_rate_limit/http_client/http_server/transport/structured_output/
-   invalid_response/unknown`，并只通过 WeakMap 传递固定枚举；
+invalid_response/unknown`，并只通过 WeakMap 传递固定枚举；
 2. `packages/ai/src/model-agent-contract.ts` 的 runtime Trace 已可携带
    `providerFailureCategory` 与 `structuredOutputStage`；
 3. Tutor/Organizer candidate observation 的 Trace 在正常 runtime failure 中可以保留这些字段；
@@ -51,22 +51,22 @@ Tutor/Organizer semantic `0/0`、verified usage `0`、critical `1`，最终
 
 ## 4. 冻结设计
 
-| 维度 | V3 决策 |
-| --- | --- |
-| history | V1/V2 marker/evidence 永久不可变，三版 validator 互斥 |
-| identity | 新 runner/prompt/approval/confirmation/marker/journal/evidence |
-| taxonomy | 复用 `@repo/ai` 固定 Provider enum，不保存自由文本/raw error |
-| stage | 有界记录 config -> executor -> request -> delegate -> response -> structured -> canonical |
-| invocation | 以 dispatch ledger/counter 为 authority，不由 catch 猜测 |
-| usage | 区分 verified、unknown-after-attempt、absent-not-attempted |
-| concurrency | 24 guard 先行；runtime 单 pair 最多双并发，不并发多个 pair |
-| breaker | 首个显式 `runtimeContractFailure` 使 `48/48` 门不可能通过，收口当前 pair 后停止派发；semantic-only mismatch 不触发 |
-| denominator | 未执行 runtime 仍保留在 48 分母，明确 `not_started_quality_breaker` |
-| isolation | Tutor/Organizer 独立 lane；不复制 failure category、不借预算/credential |
-| retry | 无自动 retry、补跑或 replay |
-| crash | marker + append-only journal；崩溃后只 zero-network seal，不 resume |
-| evidence | temp `wx` + fsync + hard-link final；EEXIST/hash mismatch fail-closed |
-| product | 只有唯一 V3 Live 全门通过后才启动新 V3 Docker/API/headed-browser lineage |
+| 维度        | V3 决策                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------ |
+| history     | V1/V2 marker/evidence 永久不可变，三版 validator 互斥                                                              |
+| identity    | 新 runner/prompt/approval/confirmation/marker/journal/evidence                                                     |
+| taxonomy    | 复用 `@repo/ai` 固定 Provider enum，不保存自由文本/raw error                                                       |
+| stage       | 有界记录 config -> executor -> request -> delegate -> response -> structured -> canonical                          |
+| invocation  | 以 dispatch ledger/counter 为 authority，不由 catch 猜测                                                           |
+| usage       | 区分 verified、unknown-after-attempt、absent-not-attempted                                                         |
+| concurrency | 24 guard 先行；runtime 单 pair 最多双并发，不并发多个 pair                                                         |
+| breaker     | 首个显式 `runtimeContractFailure` 使 `48/48` 门不可能通过，收口当前 pair 后停止派发；semantic-only mismatch 不触发 |
+| denominator | 未执行 runtime 仍保留在 48 分母，明确 `not_started_quality_breaker`                                                |
+| isolation   | Tutor/Organizer 独立 lane；不复制 failure category、不借预算/credential                                            |
+| retry       | 无自动 retry、补跑或 replay                                                                                        |
+| crash       | marker + append-only journal；崩溃后只 zero-network seal，不 resume                                                |
+| evidence    | temp `wx` + fsync + hard-link final；EEXIST/hash mismatch fail-closed                                              |
+| product     | 只有唯一 V3 Live 全门通过后才启动新 V3 Docker/API/headed-browser lineage                                           |
 
 ## 5. 原子执行路线
 
@@ -121,9 +121,11 @@ R0 设计不构成任何网络授权。用户之前的 V1/V2 授权都不能复�
 
 ## 8. 当前结论与下一步
 
-Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。下一步只执行 R1 的零网络
-源码实现，不读取 credential、不调用 Provider、不启动 Docker 产品验收。V1/V2 不得重跑，R8、
-Task 13/main、Phase 6.10 均不得开始。
+Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。本 R0 检查点当时的下一步只
+执行 R1 零网络源码，不读取 credential、不调用 Provider、不启动 Docker 产品验收。后续 R1 已
+完成，当前下一步仅 R2；证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。V1/V2 不得重跑，
+R8、Task 13/main、Phase 6.10 均不得开始。
 
 回顾时可以问：
 

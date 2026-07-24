@@ -2,8 +2,9 @@
 
 日期：2026-07-24
 
-状态：R0 零 Provider 设计冻结。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；
-V3 尚未实现 runner、CLI、marker、journal、evidence 或产品路径，也没有获得任何新网络授权。
+状态：R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成。V1/V2 两条唯一
+controlled-Live 均已失败封存且不得重跑；V3 尚未实现 R2 paired scheduler/report、CLI、marker、
+journal、evidence 或产品路径，也没有获得任何新网络授权。下一步仅 R2。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -43,16 +44,16 @@ V3 的目标是一次性补齐“能定位、会熔断、不丢状态、不误�
 
 ## 2. V1/V2 不可变事实
 
-| 维度 | V1 | V2 |
-| --- | --- | --- |
-| run ID | `39a62241-0f51-45be-a423-0d13b0b60ae4` | `67ce18dd-e2ed-4a05-8507-2a98898b8ede` |
-| runner | `phase-6.9.7-tutor-organizer-runner-v1` | `phase-6.9.7-tutor-organizer-runner-v2` |
-| zero-call | `24/24` | `24/24` |
-| strict runtime | `27/48` | `0/48` |
-| Tutor semantic | `0.3485119048` | `0` |
-| Organizer semantic | `0.7000000000` | `0` |
-| verified usage | `48` | `0` |
-| final gate | `quality_gate_failed` | `quality_gate_failed` |
+| 维度               | V1                                      | V2                                      |
+| ------------------ | --------------------------------------- | --------------------------------------- |
+| run ID             | `39a62241-0f51-45be-a423-0d13b0b60ae4`  | `67ce18dd-e2ed-4a05-8507-2a98898b8ede`  |
+| runner             | `phase-6.9.7-tutor-organizer-runner-v1` | `phase-6.9.7-tutor-organizer-runner-v2` |
+| zero-call          | `24/24`                                 | `24/24`                                 |
+| strict runtime     | `27/48`                                 | `0/48`                                  |
+| Tutor semantic     | `0.3485119048`                          | `0`                                     |
+| Organizer semantic | `0.7000000000`                          | `0`                                     |
+| verified usage     | `48`                                    | `0`                                     |
+| final gate         | `quality_gate_failed`                   | `quality_gate_failed`                   |
 
 V1 evidence/marker SHA-256：
 
@@ -117,23 +118,26 @@ V3 R0 不读取 `.env`、不调用 Provider，因此只能设计如何获得安�
 
 ## 5. V3 identity 与版本隔离
 
-| 维度 | V3 冻结值 |
-| --- | --- |
-| dataset | `phase-6.9-tutor-wrong-question-v1` |
-| dataset SHA | `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e` |
-| runner | `phase-6.9.7-tutor-organizer-runner-v3` |
-| Tutor prompt identity | `tutor-model-candidate-v3` |
-| Organizer prompt identity | `wrong-question-organizer-model-candidate-v3` |
-| schema/projection | 继续使用各自 v1 |
-| model/mode | `deepseek-v4-pro` / non-thinking JSON object |
-| approval env | `PHASE_6_9_7_V3_CONTROLLED_LIVE_APPROVED` |
-| confirmation | `I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_V3_CONTROLLED_LIVE_ONCE` |
-| marker | `.tmp/phase-6-9-7-tutor-organizer-v3-controlled-live.marker` |
-| journal | `.tmp/phase-6-9-7-tutor-organizer-v3-controlled-live-<runId>.journal.jsonl` |
-| evidence | `.tmp/phase-6-9-7-tutor-organizer-v3-<scope>-<mode>-<runId>.json` |
+| 维度                      | V3 冻结值                                                                   |
+| ------------------------- | --------------------------------------------------------------------------- |
+| dataset                   | `phase-6.9-tutor-wrong-question-v1`                                         |
+| dataset SHA               | `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`          |
+| runner                    | `phase-6.9.7-tutor-organizer-runner-v3`                                     |
+| Tutor prompt identity     | `tutor-model-candidate-v3`                                                  |
+| Organizer prompt identity | `wrong-question-organizer-model-candidate-v3`                               |
+| schema/projection         | 继续使用各自 v1                                                             |
+| model/mode                | `deepseek-v4-pro` / non-thinking JSON object                                |
+| approval env              | `PHASE_6_9_7_V3_CONTROLLED_LIVE_APPROVED`                                   |
+| confirmation              | `I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_V3_CONTROLLED_LIVE_ONCE`              |
+| marker                    | `.tmp/phase-6-9-7-tutor-organizer-v3-controlled-live.marker`                |
+| journal                   | `.tmp/phase-6-9-7-tutor-organizer-v3-controlled-live-<runId>.journal.jsonl` |
+| evidence                  | `.tmp/phase-6-9-7-tutor-organizer-v3-<scope>-<mode>-<runId>.json`           |
 
 两个 v3 prompt identity 只隔离新 lineage；实际语义 policy 必须继续来自 V2 的深冻结单一规则源。
-R1 应记录稳定 prompt content hash，并证明没有新增 case-specific 文本。若实现中必须改变
+R1 已记录稳定 prompt content hash：Tutor 为
+`sha256:91be509194de33c8d99d7a09fa6ef387c6f31aa06d19d8fd970800731047fc6a`，Organizer 为
+`sha256:2947cea2a7bc5d64c9daf29d8b371e9825bc0423d707ff173a2c5057ee9fdffd`，并证明没有新增
+case-specific 文本。若实现中必须改变
 schema/projection、模型、价格、预算、timeout 或质量门，必须停止并修订本设计，不能静默借用 V3
 identity。
 
@@ -204,14 +208,14 @@ V3 runtime entry 新增固定 `executionOutcome`：
 
 一致性要求：
 
-| outcome | runtimeInvocations | usage disposition | Provider category |
-| --- | --- | --- | --- |
-| `executed_success` | `1` | `verified` | `null` |
-| `executed_failure` | `1` | 通常 `unknown_after_attempt` | 仅受信 Trace 可非空 |
-| `attempted_aborted/orphaned` | `1` | `unknown_after_attempt` | 不推断 |
-| `not_started_case_guard` | `0` | `absent_not_attempted` | `null` |
-| `not_started_*` | `0` | `absent_not_attempted` | `null` |
-| `harness_internal_error` | ledger 决定 `0/1` | 与是否已 dispatch 一致 | `null` |
+| outcome                      | runtimeInvocations | usage disposition            | Provider category   |
+| ---------------------------- | ------------------ | ---------------------------- | ------------------- |
+| `executed_success`           | `1`                | `verified`                   | `null`              |
+| `executed_failure`           | `1`                | 通常 `unknown_after_attempt` | 仅受信 Trace 可非空 |
+| `attempted_aborted/orphaned` | `1`                | `unknown_after_attempt`      | 不推断              |
+| `not_started_case_guard`     | `0`                | `absent_not_attempted`       | `null`              |
+| `not_started_*`              | `0`                | `absent_not_attempted`       | `null`              |
+| `harness_internal_error`     | ledger 决定 `0/1`  | 与是否已 dispatch 一致       | `null`              |
 
 现有 safe wrapper 不得再无条件写 `runtimeInvocations=1`。实际 counter 与 journal ledger 才是
 authority。只要调用可能已经越过 delegate，就不得声称 zero usage、未计费或未到 Provider；供应商
@@ -263,6 +267,27 @@ R1--R4 只允许 synthetic/sentinel 输入，不读取根 `.env` 或真实 crede
 
 该 harness 只能证明本地构造和分类合同，不能证明真实 credential、DNS/TLS、Provider endpoint、
 model compatibility 或账单。
+
+### 7.1 R1 实现 checkpoint
+
+R1 已把上述兼容合同落为零网络源码与测试：
+
+- V3 runtime evidence 使用独立 `phase-6.9.7-v3-runtime-evidence-v1`，只接受八类 Provider
+  category、三个 structured-output stage、十个单调完成阶段及固定 execution/usage outcome；
+- `runtimeInvocations` 由 delegate boundary recorder 从 `0` 单次推进为 `1`，outer safe wrapper
+  不再在 catch 中猜测；dispatch 前后的 harness failure 分别保留 `absent_not_attempted` 与
+  `unknown_after_attempt`，且 Provider category 必须为 `null`；
+- ordinary candidate sanitizer 仅保留受信固定 `structuredOutputStage`，raw error、response、prompt、
+  credential、URL/header 与自由文本均不进入投影；
+- V1/V2 report schema 继续拒绝 V3 字段，历史 bundle validator 与四个 SHA 保持不变；
+- compatibility matrix 使用 sentinel component key、注入 provider/fetch 与本地 pending promise，
+  覆盖 config、factory、exact request shaping、V4 Pro non-thinking response audit、schema、abort/timeout；
+  没有外部 Provider、Docker/API/browser 或业务数据操作；
+- V3 Live marker/journal/evidence artifact 数量保持 `0`。
+
+R1 没有实现 scheduler breaker、双 lane run ledger、固定分母 report、durable journal 或 CLI；这些只
+能在 R2/R3 继续实现。验收证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。
 
 ## 8. 调度、熔断与固定分母
 

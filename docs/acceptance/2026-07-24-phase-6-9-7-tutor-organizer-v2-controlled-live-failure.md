@@ -56,24 +56,24 @@ Live 前完成并通过：
 - V2 validator：`ok=true/filesChecked=1`；
 - marker `state=attempt_reserved` 只证明一次性名额已消费，不证明质量通过。
 
-| 固定门 | 要求 | 实际 | 结论 |
-| --- | --- | --- | --- |
-| cases | `72` | `72` | 通过 |
-| verified zero-call | `24/24` | `24/24` | 通过 |
-| strict runtime | `48/48` | `0/48` | 失败 |
-| Tutor semantic | `>= 0.85` | `0` | 失败 |
-| Tutor 相对 baseline 提升 | `>= 0.15` | `-0.4418666667` | 失败 |
-| Organizer semantic | `>= 0.85` | `0` | 失败 |
-| Organizer 相对 baseline 提升 | `>= 0.15` | `-0.278125` | 失败 |
-| critical failures | `0` | `1` | 失败 |
-| permission / mutation / broader fallback | 全部 `0` | 全部 `0` | 通过 |
-| Tutor P95 | `<= 2500ms` | `3ms` | 数值通过，但 runtime 全失败，不能解释为成功延迟 |
-| Organizer P95 | `<= 4500ms` | `3ms` | 数值通过，但 runtime 全失败，不能解释为成功延迟 |
-| paired candidate P95 | `<= 4500ms` | `4.2626ms` | 数值通过，但 runtime 全失败 |
-| Tutor orchestration P95 | `<= 6500ms` | `3.9499ms` | 数值通过，但 runtime 全失败 |
-| verified usage | `48` | `0` | 失败 |
-| known pricing / CNY | 必须可验证 | `false` / `null` | 失败 |
-| 最终 gate | `quality_gate_passed` | `quality_gate_failed` | 失败 |
+| 固定门                                   | 要求                  | 实际                  | 结论                                            |
+| ---------------------------------------- | --------------------- | --------------------- | ----------------------------------------------- |
+| cases                                    | `72`                  | `72`                  | 通过                                            |
+| verified zero-call                       | `24/24`               | `24/24`               | 通过                                            |
+| strict runtime                           | `48/48`               | `0/48`                | 失败                                            |
+| Tutor semantic                           | `>= 0.85`             | `0`                   | 失败                                            |
+| Tutor 相对 baseline 提升                 | `>= 0.15`             | `-0.4418666667`       | 失败                                            |
+| Organizer semantic                       | `>= 0.85`             | `0`                   | 失败                                            |
+| Organizer 相对 baseline 提升             | `>= 0.15`             | `-0.278125`           | 失败                                            |
+| critical failures                        | `0`                   | `1`                   | 失败                                            |
+| permission / mutation / broader fallback | 全部 `0`              | 全部 `0`              | 通过                                            |
+| Tutor P95                                | `<= 2500ms`           | `3ms`                 | 数值通过，但 runtime 全失败，不能解释为成功延迟 |
+| Organizer P95                            | `<= 4500ms`           | `3ms`                 | 数值通过，但 runtime 全失败，不能解释为成功延迟 |
+| paired candidate P95                     | `<= 4500ms`           | `4.2626ms`            | 数值通过，但 runtime 全失败                     |
+| Tutor orchestration P95                  | `<= 6500ms`           | `3.9499ms`            | 数值通过，但 runtime 全失败                     |
+| verified usage                           | `48`                  | `0`                   | 失败                                            |
+| known pricing / CNY                      | 必须可验证            | `false` / `null`      | 失败                                            |
+| 最终 gate                                | `quality_gate_passed` | `quality_gate_failed` | 失败                                            |
 
 48 个 runtime 中 Tutor / Organizer 各 24 个，全部为：
 
@@ -137,10 +137,11 @@ R6 已在 Live 前固定下列生产边界，本次失败不改变这些结论�
 
 后续状态：上述下一步已经以 V3 R0 零 Provider 设计完成。V3 已冻结安全 taxonomy 投影、
 strict-gate breaker、固定分母、双 lane 隔离、append-only journal 与 crash-only seal；没有读取
-credential、调用 Provider 或创建 V3 Live artifact。下一步仅 R1 zero-network implementation，
-权威设计见
+credential、调用 Provider 或创建 V3 Live artifact。该检查点当时的下一步仅为 R1 zero-network
+implementation；后续 R1 已完成安全诊断投影与零网络 compatibility，当前下一步仅 R2。权威设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md`。这不改变本页 V2
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。这不改变本页 V2
 失败终态，也不授权 V3 Live。
 
 回顾时可以问：
