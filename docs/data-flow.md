@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；产品 Docker service/API 与可见浏览器因质量门失败未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步是零网络 V2 remediation；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；产品 Docker service/API 与可见浏览器因质量门失败未启动，两个目标 gate 的 tracked defaults 保持关闭。V2 R0--R6 已完成离线 remediation、独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；V2 Live marker/evidence 仍为 0，下一步停在 R7 新精确授权门前。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -80,7 +80,7 @@
   -> resolveChatProviderStatus() 基于 env 与开发调试开关判断 mock / live
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
   -> 有 accessToken 时 best-effort 写入 /agent-traces 脱敏观测元数据
-  -> mock data stream 或 OpenAI / DeepSeek SSE
+  -> mock data stream 或 OpenAI / DeepSeek SSE；request abort 传播到最终 streamText
   -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
   -> POST /chat-messages/sync
@@ -105,7 +105,8 @@
 - RAG 命中后会调用 KnowledgeVerifierAgent，输出 `trusted / suspicious / conflict / insufficient / skipped`；响应头带 `x-prepmind-knowledge-verifier-status` 与 `x-prepmind-knowledge-verifier-chunks`。
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier/Tutor candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成，Tutor candidate 只选择并由本地重建教学策略。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 已完成静态/Mock 产品接入但尚未 controlled-Live；Review/Planner 已由后续 V10 与产品验收证明可用并恢复默认关闭。WrongQuestionOrganizer 已完成 owner/write fencing、default-off runtime、Trace admission、strict API runtime 与 UI 来源状态，但尚未 controlled-Live。Task 9 paired Mock 只证明 candidate/evidence 工程合同，不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量；Memory 与其余未完成节点仍按各自后续任务推进。
+- `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 已完成 V2 R6 static/Mock、并发/恢复/取消边界，但尚无 V2 controlled-Live 或产品验收。Mock 只证明 candidate/evidence 工程合同，不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量；Memory 与其余未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
@@ -278,7 +279,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 0--11 已完成；Task 12 V1 真实 provider 质量失败并封存，产品验收未启动）：
+Phase 6.9.7 增量数据流（Task 0--11 与 V2 R0--R6 已完成；Task 12 V1 真实 provider 质量失败并封存，V2 等待新授权，产品验收未启动）：
 
 ```text
 /api/chat
@@ -288,6 +289,7 @@ Phase 6.9.7 增量数据流（Task 0--11 已完成；Task 12 V1 真实 provider 
   -> implicit/contextual/conflicting Tutor intent: safe projection -> bounded candidate
   -> strict result/usage/budget admission -> local merger 重建 TutorStrategy/prompt
   -> 既有 Final Chat streaming / RAG / Verifier / 413 保持不变
+  -> req.signal 同时取消 Tutor candidate 与最终 streamText
   -> 固定 Tutor model headers + best-effort Trace
 
 POST /wrong-question-organizer/organize/:id 或 organize-batch
@@ -303,10 +305,12 @@ POST /wrong-question-organizer/organize/:id 或 organize-batch
   -> 深冻结 model-free OrganizerCommand
   -> owner advisory-lock write transaction 内第三次 fence
   -> 本地 command 只写 SubjectGroup/Deck/DeckItem
+  -> command commit 失败：同 runId failed terminal Trace + 请求失败，不伪造成功
   -> command 后同 runId 原子全量替换 final Trace
   -> final Trace 失败：保留 command_pending，不回滚已授权业务写入
   -> single/batch 顶层 strict runtime：local_deterministic | hybrid_model
   -> /error-book 主动批量整理成功后显示语义整理 / 本地规则 / 安全回退
+  -> 未写入题仍满足 deckItems:none，可由后续 organize-batch 补偿
 
 Task 9 offline paired eval
   -> 读取冻结 72-case dataset 与 SHA-256
@@ -345,9 +349,19 @@ Task 12 V1 controlled-Live
   -> 安全、P95、usage、0.086418 CNY 通过，但最终 quality_gate_failed
   -> evidence/marker + SHA + validator 封存
   -> 停止：不启动 Docker/API/browser，不创建 synthetic 产品数据
+
+V2 R6 static/Mock checkpoint
+  -> V2 marker wx 并发竞争：一个 winner，其余 live_already_attempted
+  -> marker 目录/存储故障：evidence_io_failed，executor zero-call
+  -> evidence 随机 temp wx -> hard-link final authority -> best-effort temp cleanup
+  -> orphan temp 不阻塞；target EEXIST 与普通 link I/O 故障分开
+  -> 同题 normal/force 与 single/batch PostgreSQL 竞争收敛到唯一 owner authority
+  -> fresh V2 Mock 24/24 zero-call + 48/48 runtime + semantic 1/1
+  -> 精确删除 Mock evidence；V1 SHA 不变，V2 Live marker/evidence=0
+  -> 停在 R7 新精确授权门；gates=false
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9 建立 72-case strict paired Mock/evidence 门，明确 `tutorOrchestrationP95Ms` 不是 Router/API/最终流式产品时延；Task 10 把运行时部署收口为 Tutor→`web`、Organizer→`server`，`worker/admin` 不接收。Task 11 又在同一分支 HEAD 完成全量静态、fresh Mock、PostgreSQL E2E 与残留检查。Task 12 V1 证明真实 provider、计费、延迟和 zero-call 边界可工作，但 canonical strict runtime 与语义质量不足，因此不能外推为产品可用。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力；default-off 时继续使用本地确定性策略。V1 不重跑，下一步先做新的零网络 remediation 与 Mock authority。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，失败证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明真实 provider/计费/延迟/zero-call 边界可工作，但 canonical strict runtime 与语义质量不足，不能外推为产品可用。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 进一步证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1 不重跑，V2 未授权不调用。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，R6 证据见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。
 
 当前 `/knowledge` 页面数据流：
 
@@ -476,10 +490,11 @@ Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Or
   -> 若为有效题目：从结构化题目生成 activeStudyContext
   -> 用户确认保存错题
   -> POST /wrong-questions
-  -> 成功：PostgreSQL + Dexie 缓存
-  -> 非阻塞触发 WrongQuestionOrganizerAgent
-  -> upsert WrongQuestionSubjectGroup / WrongQuestionDeck / WrongQuestionDeckItem
-  -> 失败：Dexie mutationQueue 暂存，后续自动补偿同步
+  -> 错题保存成功：PostgreSQL + Dexie 缓存
+     -> 非阻塞触发 WrongQuestionOrganizerAgent
+     -> 成功：upsert WrongQuestionSubjectGroup / WrongQuestionDeck / WrongQuestionDeckItem
+     -> 整理失败/取消：不回滚错题；保持 deckItems:none，后续 organize-batch 补偿
+  -> 错题保存失败：Dexie mutationQueue 暂存，后续自动补偿同步
 ```
 
 关键约定：
@@ -496,8 +511,9 @@ Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Or
 - 新图片优先保存 `/uploads/images/users/...` 服务端 URL。
 - 上传失败不阻塞 OCR，当前设备 Dexie 继续保留本地预览作为兜底。
 - 创建错题后的自动整理是非阻塞流程，整理失败不影响错题保存结果。
-- WrongQuestionOrganizerAgent 默认 gate 关闭时继续运行确定性 policy；Task 6 已接入 owner snapshot、事务外双 stale fence、写事务内第三次 revalidation 与 model-free command，Task 7/8 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict API runtime 与来源状态；Task 9 只增加零网络 paired Mock/evidence 合同，尚未读取 key、调用真实模型或执行 controlled-Live/Docker/浏览器产品验收。
+- WrongQuestionOrganizerAgent 默认 gate 关闭时继续运行确定性 policy；Task 6--8 已接入 owner snapshot、三阶段 fence、model-free command、server-only runtime、Trace、HTTP abort 与 strict 来源状态。V2 R6 又验证 provider abort 无 Trace/command、command 失败终态、同题 single/batch/force 写入收敛和未写题 batch 补偿；仍没有 V2 Live 或产品验收。
 - 一个错题同一时间只属于当前用户一个 organizer deck，服务端通过 `userId + wrongQuestionId` 唯一约束防止同一错题被重复归入多个专题。
+- Organizer 在线调用不进入 Dexie `mutationQueue`、BullMQ 或 Outbox；失败由当前请求显式返回，未写入题由用户后续 batch 补偿。若未来自动后台整理，必须另建 durable job/outbox 与幂等恢复合同。
 
 服务端 OCRRecord API：
 

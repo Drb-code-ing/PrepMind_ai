@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：唯一 V1 branch controlled-Live 已执行并以 `quality_gate_failed` 封存；授权已消费，不得重跑。因质量门未通过，Docker/API/可见浏览器产品验收未启动。后续 V2 R0--R5 已离线完成，已具备独立 runner-v2、CLI/validator 和 one-shot evidence lineage，但尚未产生任何 V2 Live marker/evidence 或质量 authority，Phase 6.9.7 仍未完成。
+状态：唯一 V1 branch controlled-Live 已执行并以 `quality_gate_failed` 封存；授权已消费，不得重跑。因质量门未通过，Docker/API/可见浏览器产品验收未启动。后续 V2 R0--R6 已完成，已具备独立 runner-v2、CLI/validator、one-shot evidence lineage 以及 static/Mock/并发恢复 checkpoint，但尚未产生任何 V2 Live marker/evidence 或质量 authority，Phase 6.9.7 仍未完成。
 
 ## 1. 本次授权范围
 
@@ -78,9 +78,9 @@ provider 共报告 `21288` input tokens 与 `3759` output tokens，价格 profil
 
 本次结果命中了固定停止条件：V1 marker/evidence 保持不可变，不得删除、覆盖、拼接或再次运行同一 CLI；Docker service、产品 API、可见浏览器与 synthetic 业务数据阶段均未启动。调用只使用进程级覆盖，进程退出后不保留 Live/gate/component-key 变量，仓库 tracked defaults 仍为 mock/live=false、两个目标 gate=false；根 `.env` 未被修改，Docker service/容器/镜像/卷也未清理或重建。
 
-Phase 6.9.7 不能据此宣称完成。后续零网络 V2 R0--R5 已完成：R1 增加 bounded diagnostics 并保持 V1 字段 absent 兼容；R2/R3 分别把 Tutor 与 Organizer 的 prompt/validator/merger 规则收敛为深冻结单一 authority，并将 candidate、Web/Server config 与 Trace 切到两个 v2 prompt identity；R4 增加独立 held-out/metamorphic/authority suite 与实际 candidate prompt leakage scanner，不进入冻结 dataset 或 Live 分母；R5 新增独立 runner-v2、V2 CLI/validator、确认词、授权变量、marker/evidence prefix 与 V1/V2 双向 lineage 拒绝，V1 入口和历史文件保持兼容。fresh V2 Mock run `d4fc9a3a-5825-47f2-a4d2-d0148c7ccaf4` 为 `24/24` zero-call、`48/48` strict runtime、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、估算 `0.099726 CNY`；Mock 的最终 gate 按 Live-only authority 仍为 `quality_gate_failed`。临时 Mock evidence 已精确删除，本页 V1 evidence/marker SHA 不变，V2 Live marker/evidence 为 0；因此没有创建新 Live authority，也没有读取 credential、调用 provider 或启动 Docker/API/browser。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`，实施计划见 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`。下一步是 R6 分支静态/Mock checkpoint 与独立复审；R6 clean commit 完成并取得新的精确授权前不得申请或执行 V2 Live，更不得绕过语义门直接做产品验收。
+Phase 6.9.7 不能据此宣称完成。后续 V2 R0--R6 已完成：R1 增加 bounded diagnostics 并保持 V1 字段 absent 兼容；R2/R3 把 Tutor 与 Organizer 的 prompt/validator/merger 收敛为单一 authority；R4 增加独立 held-out/metamorphic/authority suite 与 prompt leakage scanner；R5 新增与 V1 双向隔离的 runner-v2、CLI/validator、确认词、授权变量和 marker/evidence lineage；R6 又关闭 marker/evidence 并发与故障恢复、Chat 最终流取消、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛及未写题 batch 补偿边界。R6 fresh V2 Mock run `593ee863-3743-4957-96e1-cb90e852a795` 为 `24/24` zero-call、`48/48` strict runtime、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、估算 `0.099726 CNY`；Mock 的最终 gate 按 Live-only authority 仍为 `quality_gate_failed`。临时 Mock evidence 已精确删除，本页 V1 evidence/marker SHA 不变，V2 Live marker/evidence 为 0；因此没有创建新 Live authority，也没有读取真实 credential、调用 provider 或启动产品 Docker/API/browser。R6 权威记录见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。下一步停在 R7 新精确授权门前；不得绕过语义门直接做产品验收。
 
-R4 与 R5 的独立复审均 `APPROVED`，无未关闭 Critical/Important。R5 复审覆盖代码/合同/安全、V1 SHA、两套授权/marker/evidence/identity/provenance 隔离与 hostile env；该结论只关闭 R5 离线工程范围，不改变 V1 失败终态或产品可用性结论。
+R4 与 R5 的独立复审均 `APPROVED`，无未关闭 Critical/Important；R6 的最终复审记录见独立 R6 acceptance。以上结论只关闭各自零 Provider 工程范围，不改变 V1 失败终态或产品可用性结论。
 
 回顾时可以问：
 

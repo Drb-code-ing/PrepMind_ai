@@ -12,6 +12,7 @@ import {
   executePhase697TutorOrganizerV2CliWithSyntheticExecutorsForTest,
   parsePhase697TutorOrganizerCli,
   parsePhase697TutorOrganizerV2Cli,
+  publishPhase697TutorOrganizerEvidenceForTest,
 } from '../scripts/phase-6-9-7-tutor-wrong-question-cli.ts';
 import {
   validatePhase697TutorOrganizerEvidenceFile,
@@ -187,6 +188,39 @@ describe('phase 6.9.7 Tutor/Organizer V2 CLI and evidence isolation', () => {
     }
   });
 
+  test('recovers from an orphan temporary file and treats the linked evidence as authoritative', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-v2-evidence-recovery-'));
+    try {
+      const report = await runPhase697TutorOrganizerPairedEvalV2(
+        createPhase697TutorOrganizerMockHarness({ runId: MOCK_RUN_ID }),
+      );
+      const evidencePath = `.tmp/phase-6-9-7-tutor-organizer-v2-branch-mock-${MOCK_RUN_ID}.json`;
+      const absolutePath = resolve(root, evidencePath);
+      await mkdir(resolve(root, '.tmp'), { recursive: true });
+      await writeFile(`${absolutePath}.tmp-${process.pid}-${report.runId}`, 'orphan\n', {
+        encoding: 'utf8',
+        flag: 'wx',
+      });
+
+      const published = await publishPhase697TutorOrganizerEvidenceForTest(
+        { root, evidencePath, report },
+        {
+          temporaryId: () => 'recovered-attempt',
+          unlink: async () => {
+            throw new Error('simulated cleanup failure');
+          },
+        },
+      );
+
+      expect(published).toEqual({ ok: true });
+      expect(await validatePhase697TutorOrganizerV2EvidenceFile({ path: absolutePath })).toEqual({
+        ok: true,
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('rejects invalid V2 Live config before reserving its marker', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-v2-invalid-live-'));
     let invocations = 0;
@@ -205,6 +239,80 @@ describe('phase 6.9.7 Tutor/Organizer V2 CLI and evidence isolation', () => {
       expect(result).toEqual({ ok: false, code: 'live_configuration_invalid' });
       expect(invocations).toBe(0);
       await expect(access(resolve(root, V2_MARKER_PATH))).rejects.toBeDefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('distinguishes marker storage failure from an already reserved V2 run', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-v2-marker-io-'));
+    let invocations = 0;
+    const executors = createSyntheticExecutors(() => {
+      invocations += 1;
+    });
+    try {
+      await mkdir(resolve(root, V2_MARKER_PATH), { recursive: true });
+
+      const result = await executePhase697TutorOrganizerV2CliWithSyntheticExecutorsForTest({
+        argv: ['live', PHASE_6_9_7_V2_LIVE_CONFIRMATION],
+        env: completeV2LiveEnv(),
+        repositoryRoot: root,
+        runId: LIVE_RUN_ID,
+        ...executors,
+      });
+
+      expect(result).toEqual({ ok: false, code: 'evidence_io_failed' });
+      expect(invocations).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('allows exactly one concurrent V2 Live reservation', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-v2-marker-race-'));
+    let invocations = 0;
+    try {
+      const attempts = [
+        {
+          runId: LIVE_RUN_ID,
+          ...createSyntheticExecutors(() => {
+            invocations += 1;
+          }),
+        },
+        {
+          runId: '33333333-3333-4333-8333-333333333333',
+          ...createSyntheticExecutors(() => {
+            invocations += 1;
+          }),
+        },
+      ] as const;
+
+      const results = await Promise.all(
+        attempts.map((attempt) =>
+          executePhase697TutorOrganizerV2CliWithSyntheticExecutorsForTest({
+            argv: ['live', PHASE_6_9_7_V2_LIVE_CONFIRMATION],
+            env: completeV2LiveEnv(),
+            repositoryRoot: root,
+            ...attempt,
+          }),
+        ),
+      );
+
+      expect(results.filter((result) => result.ok)).toHaveLength(1);
+      expect(results.filter((result) => !result.ok)).toEqual([
+        { ok: false, code: 'live_already_attempted' },
+      ]);
+      expect(invocations).toBe(48);
+      const successful = results.find((result) => result.ok);
+      if (!successful?.ok) throw new Error('expected one successful reservation');
+      const marker = JSON.parse(await readFile(resolve(root, V2_MARKER_PATH), 'utf8')) as {
+        runId: string;
+        state: string;
+      };
+      expect(marker).toMatchObject({
+        runId: successful.runId,
+        state: 'attempt_reserved',
+      });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -333,7 +441,11 @@ function createSyntheticExecutors(onInvoke: () => void): {
 
 function tutorEvidence(
   intent:
-    'explain_solution' | 'socratic_hint' | 'step_check' | 'concept_bridge' | 'general_follow_up',
+    | 'explain_solution'
+    | 'socratic_hint'
+    | 'step_check'
+    | 'concept_bridge'
+    | 'general_follow_up',
 ) {
   switch (intent) {
     case 'explain_solution':

@@ -17,7 +17,8 @@ type MockCalls = {
 
 type TestTraceInput = {
   runId: string;
-  steps: Array<{ node: string }>;
+  status?: string;
+  steps: Array<{ node: string; status?: string; errorMessage?: string | null }>;
 };
 
 type TestModelRequest = {
@@ -930,6 +931,36 @@ describe('WrongQuestionOrganizerService', () => {
     expect(commandExecutor.execute).toHaveBeenCalledTimes(1);
   });
 
+  it('records a failed terminal trace when the authorized command cannot commit', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate();
+    const commandFailure = new Error('command transaction unavailable');
+    commandExecutor.execute.mockRejectedValueOnce(commandFailure);
+
+    const service = createService({ modelEnabled: true });
+    await expect(
+      service.organizeOne('user_1', 'wrong_1', { force: false }),
+    ).rejects.toBe(commandFailure);
+
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
+    const failed = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      1,
+    )?.[1];
+    expect(failed?.runId).toBe(admission?.runId);
+    expect(failed?.status).toBe('failed');
+    expect(failed?.steps.at(-1)).toMatchObject({
+      node: 'wrong_question_organizer_command',
+      status: 'failed',
+      errorMessage: 'error_code=command_failed',
+    });
+  });
+
   it('uses one candidate call for at most 12 eligible batch items and keeps the remainder deterministic', async () => {
     const rows = Array.from({ length: 13 }, (_, index) => ({
       id: `wrong_${index + 1}`,
@@ -1169,6 +1200,45 @@ describe('WrongQuestionOrganizerService', () => {
     ).rejects.toMatchObject({ code: 'WRONG_QUESTION_ORGANIZER_ABORTED' });
     expect(snapshotSource.load).not.toHaveBeenCalled();
     expect(modelRuntime.invokeStructured).not.toHaveBeenCalled();
+    expect(agentTracesService.createTrace).not.toHaveBeenCalled();
+    expect(commandExecutor.execute).not.toHaveBeenCalled();
+  });
+
+  it('stops after an in-flight model request is aborted and never admits a trace or command', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    const controller = new AbortController();
+    let markProviderStarted!: () => void;
+    const providerStarted = new Promise<void>((resolve) => {
+      markProviderStarted = resolve;
+    });
+    modelRuntime.invokeStructured.mockImplementation(
+      (request: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          expect(request.signal).toBe(controller.signal);
+          markProviderStarted();
+          request.signal?.addEventListener(
+            'abort',
+            () => reject(new Error('provider request aborted')),
+            { once: true },
+          );
+        }),
+    );
+
+    const service = createService({ modelEnabled: true });
+    const operation = service.organizeOne(
+      'user_1',
+      'wrong_1',
+      { force: false },
+      controller.signal,
+    );
+    await providerStarted;
+    controller.abort();
+
+    await expect(operation).rejects.toMatchObject({
+      code: 'WRONG_QUESTION_ORGANIZER_ABORTED',
+    });
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
     expect(agentTracesService.createTrace).not.toHaveBeenCalled();
     expect(commandExecutor.execute).not.toHaveBeenCalled();
   });

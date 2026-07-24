@@ -286,6 +286,70 @@ describe('WrongQuestionOrganizerController (e2e)', () => {
     ).toEqual([first.id, second.id].sort());
   });
 
+  it('serializes duplicate concurrent requests for the same question across force modes', async () => {
+    const user = await registerUser('organizer-concurrent-same-question');
+    const wrongQuestion = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-concurrent-same-${Date.now()}`,
+      questionText: '并发整理同一道题：使用格林公式。',
+    });
+
+    const [normal, forced] = await Promise.all([
+      organize(user.accessToken, wrongQuestion.id),
+      organize(user.accessToken, wrongQuestion.id, { force: true }),
+    ]);
+
+    expect(normal.item.wrongQuestionId).toBe(wrongQuestion.id);
+    expect(forced.item.wrongQuestionId).toBe(wrongQuestion.id);
+    const relations = await prisma.wrongQuestionDeckItem.findMany({
+      where: { userId: user.userId, wrongQuestionId: wrongQuestion.id },
+      select: { deckId: true, source: true },
+    });
+    const decks = await prisma.wrongQuestionDeck.findMany({
+      where: { userId: user.userId },
+      include: { items: { select: { wrongQuestionId: true } } },
+    });
+
+    expect(relations).toHaveLength(1);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].items).toEqual([{ wrongQuestionId: wrongQuestion.id }]);
+  });
+
+  it('converges concurrent single and batch routes on one durable question authority', async () => {
+    const user = await registerUser('organizer-concurrent-single-batch');
+    const wrongQuestion = await createWrongQuestion(user.accessToken, {
+      sourceGroupId: `organizer-concurrent-single-batch-${Date.now()}`,
+      questionText: '并发单题与批量补偿：使用格林公式。',
+    });
+
+    const [single, batchResponse] = await Promise.all([
+      organize(user.accessToken, wrongQuestion.id),
+      request(server)
+        .post('/wrong-question-organizer/organize-batch')
+        .set('Authorization', `Bearer ${user.accessToken}`)
+        .send({ limit: 1 })
+        .expect(201),
+    ]);
+    const batch =
+      getSuccessData<OrganizeWrongQuestionBatchResponse>(batchResponse);
+
+    expect(single.item.wrongQuestionId).toBe(wrongQuestion.id);
+    expect([0, 1]).toContain(batch.organizedCount);
+    const relations = await prisma.wrongQuestionDeckItem.findMany({
+      where: { userId: user.userId, wrongQuestionId: wrongQuestion.id },
+      select: { deckId: true },
+    });
+    expect(relations).toHaveLength(1);
+
+    const questionResponse = await request(server)
+      .get(`/wrong-question-decks/${relations[0].deckId}/questions`)
+      .set('Authorization', `Bearer ${user.accessToken}`)
+      .expect(200);
+    const questions =
+      getSuccessData<WrongQuestionDeckQuestionListResponse>(questionResponse);
+    expect(questions.total).toBe(1);
+    expect(questions.items.map(({ id }) => id)).toEqual([wrongQuestion.id]);
+  });
+
   it('returns the same 404 authority for missing and cross-owner organizer targets', async () => {
     const owner = await registerUser('organizer-target-owner');
     const other = await registerUser('organizer-target-other');

@@ -4,12 +4,12 @@
 WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock checkpoint；随后只有在
 新的精确授权下执行唯一 V2 controlled-Live，并仅在全门通过后进入产品验收。
 
-**当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract 单一规则源、R3 Organizer
-prompt/contract precision、R4 held-out/metamorphic anti-overfit 与 R5 独立 V2
-runner/CLI/validator/evidence 均已完成。V1 入口、marker/evidence 和 validator 保持独立兼容；V2
-已具备 runner-v2、双向隔离的授权/确认词/marker/evidence prefix 与 strict validator，但没有创建
-V2 Live marker/evidence、读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据。
-下一步是 R6 分支静态/Mock checkpoint 与独立复审。
+**当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract、R3 Organizer precision、R4
+held-out/metamorphic anti-overfit、R5 独立 V2 lineage 与 R6 static/Mock/生产极端边界均已完成。
+V1 入口、marker/evidence 和 validator 保持独立兼容；V2 runner-v2、授权/确认词/marker/evidence
+prefix、strict validator、并发/恢复/取消/路由 checkpoint 与双路复审均通过。没有创建 V2 Live
+marker/evidence、读取真实 credential、调用 provider 或启动产品 Docker/API/浏览器。下一步停在
+R7 新 V2 branch controlled-Live 精确授权门前。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -308,6 +308,9 @@ credential、调用 provider、启动 Docker/API/browser 或修改业务数据�
 - 执行 fresh V2 Mock 和 evidence validator；
 - 验证 V1 evidence/marker hash 不变、V2 Live marker/evidence 不存在；
 - 验证产品 gates=false、无 credential/provider、无业务残留；
+- 故障注入 V2 marker/evidence 的并发竞争、orphan temp、link/unlink 与 I/O 分类；
+- 验证 Chat 最终流取消、Organizer provider abort、command 失败终态、normal/force 与
+  single/batch 并发收敛、未组织题 batch 补偿和 final route/组件路由隔离；
 - contract/security 与 operations/acceptance 两路独立复审。
 
 **文档：**
@@ -318,6 +321,28 @@ credential、调用 provider、启动 Docker/API/browser 或修改业务数据�
 
 **停止条件：** 全部通过后停止并向用户申请一次新的
 “Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live”精确授权。没有新授权不得继续。
+
+**当前状态：已完成。** V2 evidence temp 改为随机唯一 ID，hard-link final 成功即成为发布
+authority；orphan temp 与 unlink cleanup failure 不再阻断或误报已发布 evidence，`EEXIST` 与
+普通 I/O 故障分开返回。V2 marker 的真实并发竞争只允许一个执行者，既有普通 marker 返回
+`live_already_attempted`，目录/存储故障返回 `evidence_io_failed`。Chat 的 `req.signal` 已继续
+传到最终 `streamText.abortSignal`；Organizer 补齐 in-flight abort 无 Trace/command、command
+commit failure 的同 runId failed Trace、同题 normal/force 和 single/batch PostgreSQL 并发收敛。
+同步 Organizer 不伪装为 durable background job；未写题仍由 `deckItems: none` batch 路径补偿，
+跨多实例 provider exactly-once 明确不在本 checkpoint 的已完成声明内。
+
+focused V2 为 `57/57`；Agent/AI/Types/Server/Web 分别 `578/194/42/2154/439`，Server
+`227` suites passed、`30` tests skipped，Organizer PostgreSQL E2E `12/12`，相关
+typecheck/lint/build、Compose quiet config、changed TypeScript Prettier 与 diff 门通过。未修饰 baseline
+保持 `6/48`、Tutor/Organizer semantic `0.44186666666666674/0.278125`。fresh V2 Mock run
+`593ee863-3743-4957-96e1-cb90e852a795` 为 `24/24` zero-call、`48/48` runtime、semantic
+`1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；V2
+validator 通过、V1 validator 正确拒绝，临时 evidence 已精确删除。V1 evidence/marker SHA
+保持不变，V2 Live marker/evidence 为 0，tracked gates=false、component credential 为空、测试
+账号残留为 0。权威记录见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。R6 不读取真实
+credential、不调用 provider、不执行产品 Docker/API/browser；两路最终复审均 `APPROVED`，
+无未关闭 Critical/Important。下一步停在 R7 新精确授权门前。
 
 **提交：** `docs(agent): checkpoint phase 6.9.7 v2 remediation`
 

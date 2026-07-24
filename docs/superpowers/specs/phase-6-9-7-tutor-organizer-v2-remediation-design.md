@@ -2,9 +2,10 @@
 
 日期：2026-07-24
 
-状态：V2 R0--R5 已离线完成；legacy V1 与独立 V2 runner/CLI/validator/evidence lineage 均已
-落地且相互拒绝。尚未创建 V2 Live marker/evidence、读取 credential、调用 provider、启动产品
-Docker/API 或浏览器。下一步为 R6 分支静态/Mock checkpoint 与独立复审。
+状态：V2 R0--R6 已完成；legacy V1 与独立 V2 runner/CLI/validator/evidence lineage 均已
+落地且相互拒绝，R6 static/Mock、并发/恢复/取消/路由 checkpoint 与双路复审已通过。尚未创建
+V2 Live marker/evidence、读取真实 credential、调用 provider 或启动产品 Docker/API/浏览器。
+下一步停在 R7 新 V2 branch controlled-Live 精确授权门前。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -450,6 +451,27 @@ RED/GREEN、focused/full、Mock CLI/validator、V1 SHA 和零 V2 Live marker/evi
 计划 R5 状态。代码/合同/安全与 V1 历史不可变性两路独立复审均 `APPROVED`，无阻断项；
 hard-link 发布后的临时文件清理失败是非阻塞低风险观察。R5 只建立独立 evidence 能力，不发布
 真实质量 authority，也不改变产品可用性结论；下一步 R6。
+
+### R6 实现状态（2026-07-24）
+
+R6 已关闭 R5 的 evidence 恢复观察：每次使用随机唯一 temp ID，final hard-link 成功即成为
+不可变发布 authority，后续 unlink 失败只留下可回收临时名字；旧 orphan temp 不阻塞新发布，
+target `EEXIST` 与普通 I/O 故障分开处理。marker `wx` 的真实并发竞争只允许一个执行者；只有
+既有普通 marker 文件解释为 `live_already_attempted`，目录或存储故障 fail-closed 为
+`evidence_io_failed`。marker 后进程崩溃仍永久消费本 lineage 的一次性名额，这是禁止自动重跑
+真实模型的安全语义，不通过删除 marker“恢复”。
+
+产品极端边界同步补强：Chat request signal 贯穿 Tutor orchestration 与最终 live stream；
+Organizer provider await 中 abort 不写 Trace/command，command commit failure 以同 runId 记录
+failed 终态；同题 normal/force 与 single/batch 真实 PostgreSQL 竞争最终只保留一个 owner-scoped
+deck/item authority，后续读取路由可见。未写入题仍满足 batch 的 `deckItems: none` 补偿条件。
+Organizer 仍是同步 API，不冒充 BullMQ/Outbox durable task；本地写入具备收敛/幂等 authority，
+但并发请求各自至多一次候选调用，因此不声明跨多实例 provider exactly-once。
+
+实际静态、Mock、历史 SHA、默认关闭、零残留与独立复审结果见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。R6 没有读取真实
+credential、调用 provider 或执行产品 Docker/API/browser；两路最终复审均 `APPROVED`，无
+Critical/Important。必须停在 R7 新精确授权门前。
 
 ## 12. 质量门与停止条件
 

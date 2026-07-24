@@ -22,3 +22,13 @@ test('Chat route defers Tutor bundle creation until after access/context prepara
   assert.match(source, /tutor:\s*tutorModelObservation/u);
   assert.match(source, /signal:\s*req\.signal/u);
 });
+
+test('Chat route propagates request cancellation into the final live model stream', async () => {
+  const source = await readFile(new URL('./route.ts', import.meta.url), 'utf8');
+
+  assert.match(
+    source,
+    /function\s+createLiveChatResponse[\s\S]*?signal:\s*AbortSignal[\s\S]*?streamText\(\{[\s\S]*?abortSignal:\s*input\.signal/u,
+  );
+  assert.match(source, /return\s+createLiveChatResponse\(\{[\s\S]*?signal:\s*req\.signal/u);
+});

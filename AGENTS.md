@@ -81,7 +81,8 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 V2 R2 | 已完成 | Tutor 五类 intent 深冻结单一 policy、validator/prompt/merger 共用、v2 prompt identity 与逐 intent depth fail-closed；未发布 V2 runner/evidence |
 | Phase 6.9.7 V2 R3 | 已完成 | Organizer subject/deck/evidence/confidence/taxonomy/topic 规则收敛为深冻结单一 policy；v2 identity 已接 Server/Trace，公共 runner 仍为 V1 |
 | Phase 6.9.7 V2 R4 | 已完成 | 独立 held-out/metamorphic fixtures、实际 candidate prompt 泄漏扫描、authority 变化/fail-closed；dataset/SHA/V1 evidence 不变 |
-| Phase 6.9.7 V2 R5 | 已完成 | 独立 runner-v2、双向隔离 CLI/validator/授权/marker/evidence prefix、exclusive-create 与 V1 历史兼容；下一步 R6 |
+| Phase 6.9.7 V2 R5 | 已完成 | 独立 runner-v2、双向隔离 CLI/validator/授权/marker/evidence prefix、exclusive-create 与 V1 历史兼容 |
+| Phase 6.9.7 V2 R6 | 已完成 | 分支 static/Mock、marker/evidence 并发故障恢复、Chat/Organizer 取消与失败终态、同题跨路由 PostgreSQL 收敛；等待 R7 新精确授权 |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -217,6 +218,29 @@ semantic `1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated `0.099
 validator 正确拒绝。Mock evidence 已精确删除，V2 Live marker/evidence 不存在；V1
 evidence/marker SHA 不变。两路独立代码/安全复审 `APPROVED`，无阻断项。本任务未读取
 credential、调用 provider、启动 Docker/API/browser 或修改业务数据，下一任务 R6。
+
+2026-07-24 Phase 6.9.7 V2 R6 static/Mock checkpoint 已完成：V2 marker 的真实并发 `wx`
+竞争只允许一个执行者，既有普通 marker、目录与普通存储故障被正确区分；evidence temp 改用
+随机唯一 ID，旧 orphan 不阻断，hard-link final 成功即为发布 authority，unlink cleanup failure
+不再误报 evidence 丢失。Chat request signal 贯穿 Tutor orchestration 与最终
+`streamText.abortSignal`；Organizer provider await 中 abort 不写 Trace/command，command commit
+失败以同 runId 写 failed 终态。真实 PostgreSQL E2E 证明同题 normal/force 与 single/batch 并发
+最终只保留一个 owner-scoped deck/item，后续读取路由可见；未写题仍由 `deckItems: none` batch
+补偿。Organizer 是同步 API，本 checkpoint 不宣称跨多实例 provider exactly-once。
+
+V2 focused `57/57`；Agent/AI/Types/Server/Web 为 `578/194/42/2154/439`，Server `227`
+suites passed / `30` skipped，Organizer PostgreSQL E2E `12/12`，typecheck/lint/build、Compose
+quiet、changed TypeScript Prettier 与 diff 门通过。baseline 保持 `6/48`、Tutor/Organizer semantic
+`0.44186666666666674/0.278125`。fresh V2 Mock run
+`593ee863-3743-4957-96e1-cb90e852a795` 为 `24/24` zero-call、`48/48` runtime、semantic
+`1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`，按
+Live-only authority 仍为 `quality_gate_failed`；V2 validator 通过、V1 validator 正确拒绝，临时
+evidence 已精确删除。V1 evidence/marker SHA 不变，V2 Live marker/evidence 为 0，tracked
+gates=false、component credential 为空、测试账号残留为 0。没有读取真实 credential、调用
+provider 或执行产品 Docker/API/browser。contract/security/concurrency/routing 与
+operations/acceptance/history 两路终审均 `APPROVED`，无未关闭 Critical/Important。权威记录见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`；下一步必须停在 R7
+新的 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live` 精确授权门前。
 
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
@@ -403,7 +427,7 @@ API：http://127.0.0.1:3001
 - Phase 7.13 起 `docker/Dockerfile.web` 已迁移到 Bun workspace + Next standalone 输出，`apps/web/next.config.ts` 使用 `output: 'standalone'` 和 monorepo tracing root。Phase 7.17 起 Docker Compose 全栈验收命令为 `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin`；本地浏览器访问学习端 `http://127.0.0.1:3000`，管理员后台 `http://127.0.0.1:3100`，API `http://127.0.0.1:3001`。Compose server 默认允许 `http://localhost:3000`、`http://127.0.0.1:3000`、`http://localhost:3100` 和 `http://127.0.0.1:3100`，web 镜像默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001` 且 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，避免 Docker 本机验收时 localhost / 127.0.0.1 cookie 与 CORS 混用。Compose dev 栈会设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 standalone 容器内的 `/agent-trace` 仍可展示 Mock / Live 开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 - Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。Phase 7.5 起核心写接口补充中文说明和安全 request body 示例，便于本地调试与面试讲解。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；默认 live 模型为 `deepseek-v4-flash`，并建议保留 `AI_MAX_INPUT_TOKENS=2500`、`AI_MAX_OUTPUT_TOKENS=1200` 预算上限。
-- Phase 6.9.7 Task 5 起 Tutor 模型候选还有独立 `TUTOR_AGENT_MODEL_ENABLED` gate、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；三者只进入 Next `web` server runtime，默认 `false`/空。只有全局 Live 双开关、精确 `https://api.deepseek.com/v1`、已知价格和完整 eligibility 同时成立才创建 V4 Pro non-thinking executor；不借用通用或其它 Agent key。Tutor 单请求预算为 `1/1200/300`、硬 cap `0.006 CNY`，与 Router -> Verifier 共享预算隔离。Task 12 V1 已调用真实模型但语义质量门失败，未取得产品 Docker/API/浏览器可用性结论；V2 R2/R3 已分别收口 Tutor 与 Organizer 的 prompt/contract 单一规则源和 v2 identity，R4 已增加独立 anti-overfit/authority/leakage 测试，R5 已建立独立 V2 runner/CLI/validator/one-shot evidence 入口，但 R2--R5 均未调用 provider 或改变可用性结论，产品 gate 继续默认关闭。
+- Phase 6.9.7 Task 5 起 Tutor 模型候选还有独立 `TUTOR_AGENT_MODEL_ENABLED` gate、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；三者只进入 Next `web` server runtime，默认 `false`/空。只有全局 Live 双开关、精确 `https://api.deepseek.com/v1`、已知价格和完整 eligibility 同时成立才创建 V4 Pro non-thinking executor；不借用通用或其它 Agent key。Tutor 单请求预算为 `1/1200/300`、硬 cap `0.006 CNY`，与 Router -> Verifier 共享预算隔离。Task 12 V1 已调用真实模型但语义质量门失败，未取得产品 Docker/API/浏览器可用性结论；V2 R2/R3 已分别收口 Tutor 与 Organizer 的 prompt/contract 单一规则源和 v2 identity，R4 已增加独立 anti-overfit/authority/leakage 测试，R5 已建立独立 V2 runner/CLI/validator/one-shot evidence 入口，R6 已补齐一次性 evidence/marker、Chat abort 与 Organizer 并发/失败/补偿边界。R2--R6 没有新增 provider 调用或改变产品可用性结论，产品 gate 继续默认关闭。
 - 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 调试台切换 mock / live；该开关默认仅非 production 可见。Docker Compose dev 的 Next standalone 容器因运行时 `NODE_ENV=production`，需要同时设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 才显示；该本地诊断开关不能用于生产，也不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
 - AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
 
@@ -450,7 +474,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
-- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 controlled-Live 的 Organizer 语义质量未达门槛，未进入产品 API/浏览器；V2 R0--R5 已完成离线 design/diagnostics、Tutor/Organizer 单一规则源、anti-overfit suite 与独立 runner/CLI/validator/evidence，但尚无 V2 Live authority 或产品验收，gate 关闭时 decision 继续 deterministic。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 controlled-Live 的 Organizer 语义质量未达门槛，未进入产品 API/浏览器；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但尚无 V2 Live authority 或产品验收。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - `/review-preferences` 读写当前用户账号级复习计划偏好，包括每日分钟、每日卡片上限、提醒时间、提醒开关和计划窗口。
 - `/review-tasks/plan` 是只读预览接口，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
@@ -532,7 +556,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 的唯一 V1 Live run `39a62241...` 已以 `quality_gate_failed` 封存，24/24 zero-call 与安全/延迟/usage/cost 通过，但 strict runtime 仅 27/48，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此未进入 Docker service/API/浏览器，生产 gate 保持默认关闭，V1 不得重跑。V2 R0--R5 已完成，legacy V1 与独立 V2 runner/CLI/validator/evidence lineage 已隔离；下一步是 R6 分支静态/Mock checkpoint 与独立复审。R6 完成并取得新的明确授权前不得调用 provider 或启动产品验收，也不得提前进入记忆注入或 Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 的唯一 V1 Live run `39a62241...` 已以 `quality_gate_failed` 封存，24/24 zero-call 与安全/延迟/usage/cost 通过，但 strict runtime 仅 27/48，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此未进入 Docker service/API/浏览器，生产 gate 保持默认关闭，V1 不得重跑。V2 R0--R6 已完成；legacy V1 与独立 V2 lineage 已隔离，R6 static/Mock、并发/恢复/路由边界及零残留已通过。下一步停在 R7 新的 V2 branch controlled-Live 精确授权门前；未授权不得读取 credential、创建 marker/evidence、调用 provider 或启动产品验收，也不得提前进入记忆注入或 Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话应先要求：`请按 V2 remediation 计划执行 R6 分支静态/Mock checkpoint 与独立复审，并保持 dataset、质量门与 V1 evidence 不变。` R6 完成前不申请或执行新的 Live；任何新 Live 都必须另行说明数据边界并取得精确授权。
+6. 下一会话先核对 R6 clean commit 与 V2 Live marker/evidence 仍为 0；随后必须由用户重新接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权唯一一次 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live`，否则停止在授权门前。

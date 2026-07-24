@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V2 remediation R6 static/Mock 与生产极端边界：在 R5
+> runner/evidence 隔离之后，R6 先修复一次性执行与 evidence 的恢复语义。V2 marker 的真实
+> 并发 `wx` 竞争只允许一个执行者；既有普通 marker 才返回 `live_already_attempted`，目录或
+> 存储故障返回 `evidence_io_failed`。evidence temp 改用随机唯一 ID，旧 orphan 不阻塞；
+> hard-link 成功即为 final authority，unlink cleanup failure 不再把已校验结果误报为丢失，
+> `EEXIST` 与普通 I/O 故障分别处理。
+>
+> Chat 的 request signal 现已贯穿 Tutor orchestration 和最终 `streamText.abortSignal`。Organizer
+> 新增 provider await 中 abort 无 Trace/command、command commit failure 同 runId failed Trace、
+> 同题 normal/force 及 single/batch 并发的回归；PostgreSQL `12/12` 证明最终只有一个
+> owner-scoped deck/item authority，后续读取路由可见。未写入题仍可由 batch 的
+> `deckItems: none` 路径补偿。Organizer 是同步 API，不冒充 durable job；R6 不声明跨多实例
+> provider exactly-once，但保证失败可见、无重复写、无越权和未写题可恢复。
+>
+> V2 focused `57/57`；Agent/AI/Types/Server/Web 分别 `578/194/42/2154/439`，Server
+> `227` suites passed / `30` skipped，相关 typecheck/lint/build、Compose quiet、changed TypeScript Prettier、diff
+> 均通过。baseline 保持 `6/48`、semantic `0.44186666666666674/0.278125`。fresh V2 Mock
+> `593ee863-3743-4957-96e1-cb90e852a795` 为 `24/24` zero-call、`48/48` runtime、semantic
+> `1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；按
+> Live-only authority 仍是 `quality_gate_failed`。V2 validator 通过，临时 evidence 精确删除，
+> V1 SHA 不变，V2 Live marker/evidence 为 0，tracked gates=false、component key 为空、测试
+> 账号残留为 0。
+>
+> contract/security/concurrency/routing 与 operations/acceptance/history 两路终审均
+> `APPROVED`，无未关闭 Critical/Important。本任务没有读取真实 credential、调用 provider、执行产品 Docker/API/browser、合并 main 或
+> 推送远程。权威记录：
+> `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。下一步必须
+> 停在 R7 新的 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live` 精确授权门前。回顾时
+> 可以问：为什么 marker 后崩溃不能自动重跑？为什么 hard-link 是发布 authority？single/batch
+> 如何避免丢题和重复写？为什么 Mock semantic=1 仍不能证明产品可用？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R5 独立 runner/CLI/validator/evidence：R4
 > 之前只证明 v2 prompt/contract 与 anti-overfit，公共 runner/CLI 仍固定生成 V1；直接切换默认
 > 常量会破坏唯一 V1 failure evidence 的兼容性，也会让旧 marker 错误阻塞 V2。因此 R5 保留

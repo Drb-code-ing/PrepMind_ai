@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { link, mkdir, unlink, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -93,6 +93,12 @@ export type Phase697TutorOrganizerCliInput = Readonly<{
 type SyntheticTestExecutors = Readonly<{
   tutorExecutor: StructuredModelExecutor;
   organizerExecutor: StructuredModelExecutor;
+}>;
+
+type EvidencePublishOverrides = Readonly<{
+  temporaryId?: () => string;
+  link?: typeof link;
+  unlink?: typeof unlink;
 }>;
 
 type Phase697CliProfile = Readonly<{
@@ -394,16 +400,31 @@ async function reserveLiveMarker(input: {
       { encoding: 'utf8', flag: 'wx' },
     );
     return { ok: true };
-  } catch {
-    return { ok: false, code: 'live_already_attempted' };
+  } catch (error) {
+    if (!isAlreadyExistsError(error)) {
+      return { ok: false, code: 'evidence_io_failed' };
+    }
+    try {
+      const existing = await lstat(markerPath);
+      if (!existing.isFile()) return { ok: false, code: 'evidence_io_failed' };
+    } catch {
+      return { ok: false, code: 'evidence_io_failed' };
+    }
+    return {
+      ok: false,
+      code: 'live_already_attempted',
+    };
   }
 }
 
-async function publishImmutableEvidence(input: {
-  root: string;
-  evidencePath: string;
-  report: Phase697TutorOrganizerReport;
-}): Promise<
+async function publishImmutableEvidence(
+  input: {
+    root: string;
+    evidencePath: string;
+    report: Phase697TutorOrganizerReport;
+  },
+  overrides: EvidencePublishOverrides = {},
+): Promise<
   | Readonly<{ ok: true }>
   | Readonly<{
       ok: false;
@@ -411,8 +432,13 @@ async function publishImmutableEvidence(input: {
     }>
 > {
   const absolutePath = resolve(input.root, input.evidencePath);
-  const temporaryPath = `${absolutePath}.tmp-${process.pid}-${input.report.runId}`;
+  let temporaryPath: string;
   try {
+    const temporaryId = (overrides.temporaryId ?? randomUUID)();
+    if (!/^[a-z0-9-]{1,96}$/i.test(temporaryId)) {
+      return { ok: false, code: 'evidence_io_failed' };
+    }
+    temporaryPath = `${absolutePath}.tmp-${process.pid}-${temporaryId}`;
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(temporaryPath, `${JSON.stringify(input.report, null, 2)}\n`, {
       encoding: 'utf8',
@@ -422,17 +448,35 @@ async function publishImmutableEvidence(input: {
     return { ok: false, code: 'evidence_io_failed' };
   }
   try {
-    await link(temporaryPath, absolutePath);
-  } catch {
-    await unlink(temporaryPath).catch(() => undefined);
-    return { ok: false, code: 'evidence_target_exists' };
+    await (overrides.link ?? link)(temporaryPath, absolutePath);
+  } catch (error) {
+    await (overrides.unlink ?? unlink)(temporaryPath).catch(() => undefined);
+    return {
+      ok: false,
+      code: isAlreadyExistsError(error) ? 'evidence_target_exists' : 'evidence_io_failed',
+    };
   }
-  try {
-    await unlink(temporaryPath);
-  } catch {
-    return { ok: false, code: 'evidence_io_failed' };
-  }
+  // The hard link is the immutable publication authority. Cleanup failure may
+  // leave an unreferenced temporary name, but must not misreport a published
+  // and independently valid final evidence file as lost.
+  await (overrides.unlink ?? unlink)(temporaryPath).catch(() => undefined);
   return { ok: true };
+}
+
+export function publishPhase697TutorOrganizerEvidenceForTest(
+  input: {
+    root: string;
+    evidencePath: string;
+    report: Phase697TutorOrganizerReport;
+  },
+  overrides: EvidencePublishOverrides = {},
+) {
+  return publishImmutableEvidence(input, overrides);
+}
+
+function isAlreadyExistsError(error: unknown) {
+  if (typeof error !== 'object' || error === null) return false;
+  return (error as { code?: unknown }).code === 'EEXIST';
 }
 
 if (import.meta.main) {

@@ -6,9 +6,9 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0--R5 已完成；Tutor/Organizer candidate 与 Web/Server config/Trace 使用各自 v2 prompt identity，anti-overfit/authority/leakage suite 已通过，独立 runner-v2、CLI/validator、授权变量/确认词、marker/evidence prefix 已与 V1 双向隔离。fresh V2 Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`，但仍是 Live-only `quality_gate_failed`，V2 Live marker/evidence 为 0。下一步按独立 remediation 计划执行 R6 分支静态/Mock checkpoint 与独立复审，不是 Task 13/main 合并。
+**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0--R6 已完成；Tutor/Organizer v2 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛均有零 Provider 证据。R6 fresh V2 Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`，但仍是 Live-only `quality_gate_failed`，V2 Live marker/evidence 为 0。下一步停在 R7 新 V2 branch controlled-Live 精确授权门前，不是 Task 13/main 合并。
 
-R4 与 R5 的代码/合同/安全、文档/历史不可变性独立复审均 `APPROVED`，无未关闭 Critical/Important。
+R4/R5 的历史复审与 R6 当前复审分别记录在对应 acceptance；当前没有未关闭 Critical/Important 才能申请 R7。
 
 权威设计：`docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`
 
@@ -348,7 +348,7 @@ V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0--R5 已完成，当前停在 R6 前；只有 remediation R6 checkpoint、R7 独立质量 authority、R8 产品验收与 R9 分支最终文档全部通过后，才能恢复本节并按 R10--R11 完成 main 合并复验与远程推送。
+**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0--R6 已完成，当前停在 R7 新授权门前；只有 R7 独立质量 authority、R8 产品验收与 R9 分支最终文档全部通过后，才能恢复本节并按 R10--R11 完成 main 合并复验与远程推送。
 
 **分支：**
 
