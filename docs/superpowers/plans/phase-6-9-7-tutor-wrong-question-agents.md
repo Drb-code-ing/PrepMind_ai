@@ -6,7 +6,9 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0--R3 已完成；Tutor/Organizer candidate 与对应 Web/Server config/Trace 已使用各自 v2 prompt identity，但当前公共 runner 仍只能生成 V1 且 validator 拒绝 V2 report。下一步按独立 remediation 计划执行 R4 held-out/metamorphic anti-overfit，不是 Task 13/main 合并。
+**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0--R4 已完成；Tutor/Organizer candidate 与对应 Web/Server config/Trace 已使用各自 v2 prompt identity，独立 anti-overfit/authority/leakage suite 已通过，但当前公共 runner 仍只能生成 V1 且 validator 拒绝 V2 report。下一步按独立 remediation 计划执行 R5 V2 runner/CLI/validator 与独立 one-shot evidence，不是 Task 13/main 合并。
+
+R4 代码/安全与文档/历史边界两路独立复审均 `APPROVED`，无未关闭 Critical/Important。
 
 权威设计：`docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`
 
@@ -346,7 +348,7 @@ V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0--R3 已完成，当前停在 R4 前；只有 remediation R4--R9、新的独立质量 authority 与产品验收通过后，才能恢复本节。
+**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0--R4 已完成，当前停在 R5 前；只有 remediation R5--R9、新的独立质量 authority 与产品验收通过后，才能恢复本节。
 
 **分支：**
 

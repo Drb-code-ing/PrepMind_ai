@@ -2,9 +2,9 @@
 
 日期：2026-07-24
 
-状态：V2 R0--R3 已离线完成；公共 runner/CLI 仍为 V1，尚未发布 V2 evidence、读取
-credential、调用 provider、启动产品 Docker/API 或浏览器。下一步为 R4 held-out/metamorphic
-anti-overfit。
+状态：V2 R0--R4 已离线完成；公共 runner/CLI 仍为 V1，尚未发布 V2 evidence、读取
+credential、调用 provider、启动产品 Docker/API 或浏览器。下一步为 R5 V2
+runner/CLI/validator 与独立 one-shot evidence。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -322,7 +322,7 @@ lint/build 与 diff 门通过；两路独立复审无未关闭 Critical/Importan
 SHA-256 保持 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
 `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。没有读取
 credential、调用 provider、创建 V2 evidence、启动 Docker/API/browser 或修改业务数据；
-下一步为 R4 held-out/metamorphic anti-overfit。
+该 checkpoint 当时下一步为 R4 held-out/metamorphic anti-overfit，后续已完成。
 
 ## 10. V2 bounded diagnostics
 
@@ -411,6 +411,25 @@ credential、调用 provider、发布 V2 evidence 或启动 Docker/API/browser�
 - Mock 满分仍必须是 `quality_gate_failed`，因为 synthetic output 不是语义 authority。
 
 held-out 测试证明实现不是显式答案表，并不能证明真实模型质量；真实语义仍由唯一 V2 Live 判定。
+
+### R4 实现状态（2026-07-24）
+
+R4 已新增独立深冻结 `phase-6.9.7-tutor-organizer-v2-robustness-v1` fixture 与三组
+离线 tests，不并入冻结 dataset、runner 或 Live 分母。Tutor 覆盖中文/英文/混合语言同义改写、
+context reorder、无关安全句、context authority 变化和注入/凭据 fail-closed；Organizer 覆盖
+六类新 subject、known/unknown authority、same/cross-subject deck、deck/question ordinal reorder、
+evidence 顺序/重复、越界 ordinal、locked-name 与 authority drift。语义不变变换保持 canonical
+decision；authority 改变时只能按本地规则变化或返回 null/safety fallback。
+
+prompt leakage scanner 直接检查 Tutor/Organizer 实际 candidate request，而不是只扫描测试源码；
+扫描范围包括 frozen case ID、dataset identity、oracle key、完整 expected object 和 Organizer
+canonical/accepted topic labels。故意拼入 case ID、label 和 `acceptedTopicLabels` 的污染控制会被
+命中，真实 prompt 命中为 0。formatter bytes 稳定，公共 runner/prompt identity 仍为 V1，冻结
+dataset SHA 与 V1 evidence/marker SHA 均保持不变，V2 marker/evidence 不存在。focused
+`16/16`（`212` assertions）、Agent full `570/570`（`6283` assertions）、typecheck/lint、
+新增 TypeScript 文件的 Prettier check 与 V1 validator 通过；代码/安全与文档/历史边界两路
+独立复审均 `APPROVED`，无未关闭 Critical/Important。该结果只证明没有显式答案表和本地
+变形回归，不能替代 Live 语义质量；下一步 R5。
 
 ## 12. 质量门与停止条件
 

@@ -1,5 +1,39 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V2 remediation R4 held-out/metamorphic anti-overfit：R2/R3
+> 已让 prompt 与 validator 共用规则源，但仅在冻结 72-case 上取得工程满分仍可能隐藏
+> case ID、expected output 或 accepted-label 答案表，也不能证明 ordinal、subject、deck 和
+> context authority 变化时仍由本地规则掌权。R4 因此新增独立深冻结
+> `phase-6.9.7-tutor-organizer-v2-robustness-v1` fixture，明确不进入原 dataset、Live 分母、
+> 费用或 production quality authority。
+>
+> Tutor tests 覆盖中文/英文/混合语言同义改写、context reorder、无关安全句插入、context
+> availability 变化、incompatible depth、`answer_direct` 与注入/凭据 zero-call；Organizer
+> tests 覆盖六类新 subject、known/unknown authority、same/cross-subject deck、deck/question
+> ordinal reorder、evidence 顺序/重复、越界 ordinal、locked-name 与 authority drift。语义不变
+> 变换必须保持 canonical decision；authority 变化只能改变本地结果或 fail-closed。
+>
+> prompt leakage scanner 直接捕获 Tutor/Organizer 实际 candidate request，检查全部 frozen case
+> ID、dataset identity、oracle key、完整 expected object 及 canonical/accepted topic labels；故意
+> 注入 case ID、label 和 `acceptedTopicLabels` 的反例会被命中，真实 prompt 为 0 泄漏。
+> formatter bytes 稳定，公共 runner/CLI 继续绑定 V1；既有 paired runner 的 synthetic 满分仍是
+> `quality_gate_failed`，Mock 没有被升级为语义 authority。
+>
+> R4 focused `16/16`（`212` assertions）、Agent full `570/570`（`6283` assertions）、Agent
+> typecheck/lint、新增 TypeScript 文件的 Prettier check 与 V1 evidence validator 通过。冻结 dataset SHA-256 保持
+> `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`；V1
+> evidence/marker SHA-256 仍为
+> `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+> `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`，V2
+> marker/evidence 匹配为 0。代码/安全与文档/历史边界两路独立复审均 `APPROVED`，无未关闭
+> Critical/Important；固定 Mock responder 不验证真实模型语义，这与 R4 零 provider 范围一致。
+>
+> 本任务没有读取 credential、调用 provider、启动 Docker/API/browser、创建 V2 evidence、
+> 修改业务数据、合并或推送 main。下一步是 R5 独立 V2 runner/CLI/validator 与 one-shot
+> evidence；R6 checkpoint 前不申请新 Live。回顾时可以问：为什么 held-out/metamorphic
+> 满分不能替代 controlled-Live？为什么 deck reorder 必须按本地 ID authority 重映射？为什么
+> prompt 泄漏扫描需要故意污染反例？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R3 Organizer prompt/contract precision：V1
 > Organizer prompt 没有完整表达本地 validator 已执行的 known/unknown subject authority、
 > same-subject deck、reuse/create evidence、confidence 与 topic-label 精度规则，容易让合法 JSON
@@ -25,8 +59,8 @@
 > `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。
 >
 > 本任务为纯离线 R3：没有读取 credential、调用 provider、启动 Docker/API/browser、
-> 创建 V2 evidence、修改业务数据、合并或推送 main。下一步是 R4 held-out/metamorphic
-> anti-overfit。回顾时可以问：为什么 prompt formatter 与 validator 必须共用 association
+> 创建 V2 evidence、修改业务数据、合并或推送 main。该 checkpoint 当时下一步是 R4
+> held-out/metamorphic anti-overfit，后续已完成。回顾时可以问：为什么 prompt formatter 与 validator 必须共用 association
 > policy？为什么 v2 identity 已接 Server/Trace 仍不等于 V2 runner 已发布？为什么泛标签禁区
 > 不能替代 R4 的防答案表测试？
 >

@@ -4,12 +4,12 @@
 WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock checkpoint；随后只有在
 新的精确授权下执行唯一 V2 controlled-Live，并仅在全门通过后进入产品验收。
 
-**当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract 单一规则源与 R3 Organizer
-prompt/contract precision 均已完成。Tutor/Organizer candidate 与对应 Web/Server config/Trace
-已使用各自 v2 prompt identity；当前公共 runner/CLI 仍只生成 V1，V1 evidence validator
-明确拒绝 V2 report，因此尚不存在可发布的 V2 evidence 入口。本轮没有读取 credential、
-调用 provider、启动 Docker/API/浏览器或修改业务数据；下一步是 R4 held-out/metamorphic
-anti-overfit。
+**当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract 单一规则源、R3 Organizer
+prompt/contract precision 与 R4 held-out/metamorphic anti-overfit 均已完成。Tutor/Organizer
+candidate 与对应 Web/Server config/Trace 已使用各自 v2 prompt identity；当前公共 runner/CLI
+仍只生成 V1，V1 evidence validator 明确拒绝 V2 report，因此尚不存在可发布的 V2 evidence
+入口。本轮没有读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据；
+下一步是 R5 V2 runner/CLI/validator 与独立 one-shot evidence。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -189,7 +189,7 @@ evidence/marker SHA-256 仍为
 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
 `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。未读取
 credential、调用 provider、创建 V2 evidence、启动 Docker/API/browser 或修改业务数据；
-下一步 R4。
+该 checkpoint 当时下一步为 R4，后续已完成。
 
 **提交：** `fix(agent): align organizer v2 prompt contract`
 
@@ -217,6 +217,27 @@ credential、调用 provider、创建 V2 evidence、启动 Docker/API/browser �
 
 **验证：** robustness focused、原 dataset identity tests、Agent full 或等价影响面、
 typecheck/lint/diff。
+
+**当前状态：已完成。** 新增独立深冻结
+`phase-6.9.7-tutor-organizer-v2-robustness-v1` fixture，不进入冻结 72-case dataset、Live
+分母或费用。Tutor suite 覆盖中英文同义改写、混合语言、上下文重排、无关安全句、context
+authority 变化、incompatible depth、`answer_direct` 与注入/凭据 zero-call；Organizer suite
+覆盖六类 held-out subject、known/unknown authority、same/cross-subject deck、deck/question
+ordinal reorder、evidence 顺序/重复、越界 ordinal、locked-name 与 authority drift fail-closed。
+实际 candidate request 的 prompt leakage scanner 同时扫描 frozen case ID、dataset identity、
+oracle key、完整 expected object 与 canonical/accepted topic labels，并用故意污染反例证明 scanner
+会报错；真实 V2 candidate prompt 命中为 0。
+
+R4 focused `16/16`（`212` assertions）、Agent full `570/570`（`6283` assertions）、Agent
+typecheck/lint、新增 TypeScript 文件的 Prettier check 与 V1 evidence validator 通过。冻结 dataset SHA-256 保持
+`7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`；V1
+evidence/marker SHA-256 保持
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`，V2
+marker/evidence 匹配为 0。Mock 满分仍由既有 paired runner 固定为
+`quality_gate_failed`，不能成为真实语义质量 authority。没有读取 credential、调用 provider、
+启动 Docker/API/browser 或修改业务数据；代码/安全与文档/历史边界两路独立复审均
+`APPROVED`，无未关闭 Critical/Important。公共 runner/CLI 继续为 V1，下一步 R5。
 
 **提交：** `test(agent): harden phase 6.9.7 v2 against overfit`
 
