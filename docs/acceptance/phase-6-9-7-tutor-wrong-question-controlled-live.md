@@ -78,7 +78,7 @@ provider 共报告 `21288` input tokens 与 `3759` output tokens，价格 profil
 
 本次结果命中了固定停止条件：V1 marker/evidence 保持不可变，不得删除、覆盖、拼接或再次运行同一 CLI；Docker service、产品 API、可见浏览器与 synthetic 业务数据阶段均未启动。调用只使用进程级覆盖，进程退出后不保留 Live/gate/component-key 变量，仓库 tracked defaults 仍为 mock/live=false、两个目标 gate=false；根 `.env` 未被修改，Docker service/容器/镜像/卷也未清理或重建。
 
-Phase 6.9.7 不能据此宣称完成。下一步只能先做零网络失败归因与 V2 remediation 设计，使用新的 runner/prompt identity、独立 marker/evidence 和新的明确授权；V1 继续作为失败 authority 保留。V2 设计完成前不得申请新 Live，更不得绕过语义门直接做产品验收。
+Phase 6.9.7 不能据此宣称完成。后续零网络复盘与 V2 R0 设计现已冻结：保持原 dataset/SHA/baseline/threshold/model/price/budget/timeout/权限/分母不变，使用新的 runner/prompt identity、独立 marker/evidence、有界阶段诊断和新的明确授权；V1 继续作为失败 authority 保留。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`，实施计划见 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`。下一步是零网络 R1 bounded diagnostics；R6 静态/Mock checkpoint 完成前不得申请新 Live，更不得绕过语义门直接做产品验收。
 
 回顾时可以问：
 
