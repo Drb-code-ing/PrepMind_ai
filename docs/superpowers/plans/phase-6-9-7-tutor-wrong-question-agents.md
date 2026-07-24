@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-23）：** Task 0--11 已完成；72-case paired Mock/evidence 工程门、Docker allowlist、tracked defaults、角色隔离、回滚合同与分支全量 checkpoint 均已通过。真实 provider、Docker service/API 与可见浏览器验收尚未执行，两个生产 gate 默认关闭。当前停在 Task 12 新授权门前。
+**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成；下一步是零网络 V2 remediation 设计，不是 Task 13/main 合并。
 
 权威设计：`docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`
 
@@ -227,7 +227,7 @@
 
 **验证：** server focused config/service/controller/e2e、Server full test/lint/build、Agent/AI tests、`git diff --check`。
 
-**完成记录（2026-07-23）：** 已实现独立 default-off gate/credential、固定 V4 Pro non-thinking JSON、5000ms、`1/3500/800` 与 `0.016 CNY` cap；worker 强制关闭。single/batch 单次 dispatch、最多 12 eligible、candidate 后 stale fence、两阶段 Trace admission/final replacement、HTTP abort/listener cleanup 与 Task 6 model-free command 已接通。focused 单测 `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、相关 typecheck/lint/build/diff 门及两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md`。Task 8--10 后续均已完成，Task 11 后续已完成；当前停在 Task 12 新授权门前。
+**完成记录（2026-07-23）：** 已实现独立 default-off gate/credential、固定 V4 Pro non-thinking JSON、5000ms、`1/3500/800` 与 `0.016 CNY` cap；worker 强制关闭。single/batch 单次 dispatch、最多 12 eligible、candidate 后 stale fence、两阶段 Trace admission/final replacement、HTTP abort/listener cleanup 与 Task 6 model-free command 已接通。focused 单测 `126/126`、真实 PostgreSQL AgentTrace/Organizer E2E `16/16`、Server full `226/226 suites / 2146 passed / 30 skipped`、Agent `529/529`、AI `194/194`、相关 typecheck/lint/build/diff 门及两路独立复审通过；未读取根 `.env`/key、调用 provider 或执行 controlled-Live/Docker/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md`。Task 8--10 后续均已完成，Task 11 后续已完成；该 checkpoint 当时停在 Task 12 新授权门前；后续 V1 失败终态见当前摘要。
 
 **提交：** `feat(server): integrate hybrid wrong question organizer`
 
@@ -275,7 +275,7 @@
 
 **验证：** focused cases/contract/runner/CLI/validator、Mock CLI 两次、validator、Agent full/typecheck/lint、AI tests、`git diff --check`。
 
-**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。Task 10 后续已完成，Task 11 后续已完成；当前停在 Task 12 新授权门前。
+**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。Task 10 后续已完成，Task 11 后续已完成；该 checkpoint 当时停在 Task 12 新授权门前；后续 V1 失败终态见当前摘要。
 
 **提交：** `test(agent): evaluate tutor organizer candidates`
 
@@ -322,7 +322,7 @@
 
 ## Task 12：唯一 controlled-Live、Docker/API 与可见浏览器分支验收
 
-**当前状态（2026-07-24）：已取得新授权，唯一 Live 尚未执行。** 零网络 preflight 发现 CLI 使用错误的 Router/Verifier gate 名称；已改为真实 `ROUTER_MODEL_ENABLED` / `KNOWLEDGE_VERIFIER_MODEL_ENABLED`，并以六个其它生产 gate 参数化 RED/GREEN、Agent full/typecheck/lint 和独立复核确认 marker/executor 前 fail-closed。先提交该 hardening 并恢复 clean，随后才执行唯一 Live。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
+**当前状态（2026-07-24）：V1 已完成失败终态。** 零网络 preflight 先修复 Router/Verifier 真实 gate 名称漏检并提交 clean hardening；随后唯一 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用 `deepseek_network` 完成 72 cases。zero-call、安全、延迟、usage 与 `0.086418 CNY` 费用门通过，但 strict runtime 仅 `27/48`；Tutor semantic `0.3485119048`、绝对提升 `-0.0933547619`，Organizer semantic `0.7000000000`、绝对提升 `0.4218750000`，最终 `quality_gate_failed`。marker/evidence 与 SHA 已封存且不得重跑。依照本任务第 3 步，Docker/API/浏览器与 synthetic 产品数据阶段未启动。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
 
 **前置：** 用户在 Task 11 后明确接受当前 DeepSeek 数据保留/训练边界，并授权一次 `Phase 6.9.7 Tutor/Organizer branch controlled-Live`。没有该句不得运行。
 
@@ -337,11 +337,13 @@
 7. 精确清理 synthetic user/question/group/deck/item/Trace/session/storage；
 8. 恢复 mock、gates=false、两条 component-specific credential 均 absent，保留 volumes/services。
 
-**复审：** 独立 contract/security 与 product/cleanup 两轮无 Critical/Important。
+**复审：** Live evidence 独立复核确认 gate 失败且不得进入 product/cleanup；原计划中的 product/cleanup 复审因产品验收未启动而不适用。
 
-**提交：** `test(agent): accept phase 6.9.7 hybrid agents`
+**提交：** `docs(agent): seal phase 6.9.7 v1 live failure`
 
 ## Task 13：分支收尾、main 合并复验与远程推送
+
+**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。先新增并评审 V2 remediation 设计；只有新的独立质量 authority 与产品验收通过后，才能恢复本节。
 
 **分支：**
 

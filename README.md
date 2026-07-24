@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过。V1 质量失败和 R1--R6 产品失败仍以不可变历史保留；两个生产 gate 已恢复默认关闭。Phase 6.9.7 Task 0--11 已完成：Tutor/Organizer candidate、产品 default-off composition、Organizer owner/write/Trace/API/UI、72-case paired Mock/evidence、Docker allowlist、角色隔离与分支全量 checkpoint 均已落地。fresh Mock run `0c33c01f-802a-4f53-a6e6-538b7af9abc7` 为 `24/24` verified zero-call、`48/48` runtime、semantic `1/1/1`，但 `quality_gate_failed` 是 Live-only authority 设计，不代表 contract 失败。Tutor/Organizer 的真实 provider、Docker service/API 与可见浏览器验收都尚未执行，生产 gate 继续默认关闭；当前停在 Task 12 新授权门前。本阶段仍未读取根 `.env`/credential、创建 Live marker/evidence 或调用真实 provider。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过，失败 lineage 保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 Live run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定质量门未进入 Docker service/API 或可见浏览器，生产 gate 的 tracked defaults 继续关闭。Phase 6.9.7 尚未完成，下一步是零网络 V2 remediation 设计，而不是 Task 13/main 合并或 Phase 6.10。
 
 ## 当前状态
 
@@ -50,7 +50,7 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                  | 已完成 |
 | Phase 6.9.5 | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放        | 已完成 |
 | Phase 6.9.6 | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                       | 已完成 |
-| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11 已完成；待 Task 12 新授权 |
+| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11 完成；Task 12 V1 Live 质量失败，待 V2 remediation |
 | Phase 7     | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit      | 核心工程化已完成 |
 | Phase 7.8.5 | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固             | 已完成 |
 | Phase 7.23  | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                    | 已完成 |
@@ -146,7 +146,7 @@ flowchart LR
 - `/api/chat` 在有 access token 时调用知识库检索，命中后把 chunks 注入 system prompt 并追加 Markdown citations；未上传资料、未命中或检索失败时继续普通 AI 回答。
 - `/api/chat` 与 `/api/ocr` 仍由 Next.js API Routes 代理 AI 服务；Chat 默认本地 mock，真实模型调用必须显式开启 `AI_PROVIDER_MODE=live` 和 `AI_ENABLE_LIVE_CALLS=true`，默认 live 模型为 `deepseek-v4-flash`。
 - `/api/chat` 会统一估算 system prompt、activeStudyContext 和近期消息 token，默认输入上限 2500、输出上限 1200，超限返回 413。
-- `/api/chat` 已接入 RouterAgent、TutorAgent 与 KnowledgeVerifierAgent；Phase 6.9.4.4 的 Router/Verifier 混合路径已经完成生产验收并恢复默认 gate 关闭，Phase 6.9.7 Task 5 又完成 Tutor candidate 的 default-off Web composition 与安全 Trace，但尚未执行 Tutor controlled-Live。模型只负责受限语义判断，权限、安全、canonical route、RAG 放行、预算与写业务数据仍由本地代码掌握。
+- `/api/chat` 已接入 RouterAgent、TutorAgent 与 KnowledgeVerifierAgent；Phase 6.9.4.4 的 Router/Verifier 混合路径已经完成生产验收并恢复默认 gate 关闭，Phase 6.9.7 Task 5 又完成 Tutor candidate 的 default-off Web composition 与安全 Trace。Task 12 V1 真实模型质量未达门槛，因此 Tutor/Organizer 产品 gate 仍关闭，未进行 Docker/API/浏览器可用性验收。模型只负责受限语义判断，权限、安全、canonical route、RAG 放行、预算与写业务数据仍由本地代码掌握。
 - `/error-book` 通过 organizer API 展示学科卡片、专题 deck 和 deck 内错题；用户主动批量整理成功后会按 request-level runtime 显示“语义整理 / 本地规则 / 安全回退”，降级优先。创建错题后的自动整理仍是非阻塞流程，整理失败不影响错题保存。
 - Dexie 负责本地快速恢复、离线兜底、乐观更新和旧图片预览；ReviewTask rating 已进入 mutation queue，但服务端仍是 FSRS 与统计权威来源。
 
@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--11 已完成。Task 11 已在同一分支 HEAD 完成 focused/full/static、deterministic baseline、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与双路终审；Mock run `0c33c01f-802a-4f53-a6e6-538b7af9abc7` 为 `24/24` zero-call、`48/48` runtime、semantic `1/1/1`，其 `quality_gate_failed` 只说明没有 Live authority。该证据仍未经过真实 Router、HTTP、RAG、最终流式回答或产品 Docker service/API，两条真实模型路径与可见浏览器验收也未执行。当前停在 Task 12 新授权门前。
+2. 当前执行 Phase 6.9.7：Task 0--11 已完成；Task 12 唯一 V1 Live 已以 `quality_gate_failed` 封存。真实 run `39a62241...` 的 zero-call、安全、延迟、usage 与 `0.086418 CNY` 费用门通过，但 strict runtime 只有 `27/48`，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此没有进入真实 Router、HTTP、RAG、最终流式回答或产品 Docker service/API/浏览器验收，不能声称两个 Agent 已生产可用。下一步先做离线失败归因、V2 prompt/association/merger remediation 与全量 Mock checkpoint；V1 不重跑。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”
 
-下一会话可以复制：“我已接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权执行一次 Phase 6.9.7 Tutor/Organizer branch controlled-Live。”在发送前可以先要求回顾 Task 11；没有这条新授权时，不读取 credential、不创建 Live marker/evidence、不调用 provider，也不启动产品 Docker/API 或浏览器验收。
+下一会话可以复制：“请分析 Phase 6.9.7 V1 controlled-Live 的失败签名并制定零网络 V2 remediation 方案。”V2 设计、新 identity/marker/evidence、静态/Mock checkpoint 与独立复审完成前，不申请或执行新的 Live；任何新 Live 都需要新的精确授权。
 
 ## 文档入口
 
@@ -243,6 +243,7 @@ bun --cwd packages/fsrs test
 - [Phase 6.9.7 Task 9 Tutor/Organizer paired eval 验收](./docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md)
 - [Phase 6.9.7 Task 10 Docker runtime boundary 验收](./docs/acceptance/phase-6-9-7-runtime-boundaries.md)
 - [Phase 6.9.7 Task 11 分支 checkpoint 验收](./docs/acceptance/phase-6-9-7-tutor-wrong-question-agents.md)
+- [Phase 6.9.7 Task 12 V1 controlled-Live 失败记录](./docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

@@ -26,7 +26,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3   | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                         |
 | Phase 4   | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度 |
 | Phase 5   | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                       | 主线已完成；Phase 7.8.5 runtime parity 已完成 |
-| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 Task 0--11 已完成，待 Task 12 新授权 |
+| Phase 6   | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V1 Live 质量失败，待 V2 remediation |
 | Phase 6.10 | 分层记忆系统     | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动      |
 | Phase 7   | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成 |
 | Phase 8   | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                         |
@@ -224,7 +224,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.1 已完成 Router + Tutor Chat 接入：`/api/chat` 通过 `chat-agent-runtime` adapter 调用 RouterAgent，并保留原有 streaming、RAG、OCR activeStudyContext、mock/live 双开关和 token 预算。
 - Phase 6.2 已完成 TutorAgent 策略层：`TutorAgent` 作为确定性 policy 识别 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 和 `general_follow_up`，并生成短策略 prompt 与 mock strategy metadata。
 - Phase 6.3 已完成 KnowledgeVerifierAgent：`@repo/agent/knowledge-verifier` 作为确定性 policy 在 RAG 命中后评估资料状态为 `trusted / suspicious / conflict / insufficient / skipped`，并向 Chat RAG prompt 注入保守使用规则。
-- Phase 6.4 已完成 WrongQuestionOrganizerAgent 的确定性产品能力：`@repo/agent/wrong-question-organizer` 根据错题结构化字段和已有 deck 摘要推荐学科组与专题 deck；Phase 6.9.7 Task 4 又完成 package 级受治理 candidate/merger，Task 6/7 已接入 NestJS owner/write fencing 与 server-only default-off runtime/Trace/HTTP abort，但尚未执行真实 provider 验收。
+- Phase 6.4 已完成 WrongQuestionOrganizerAgent 的确定性产品能力：`@repo/agent/wrong-question-organizer` 根据错题结构化字段和已有 deck 摘要推荐学科组与专题 deck；Phase 6.9.7 Task 4 又完成 package 级受治理 candidate/merger，Task 6/7 已接入 NestJS owner/write fencing 与 server-only default-off runtime/Trace/HTTP abort。Task 12 V1 已调用真实 provider，但语义质量门失败，尚未进入产品 Docker/API/浏览器验收。
 - Phase 6.5 已完成 ReviewAgent / PlannerAgent：`@repo/agent/review` 和 `@repo/agent/planner` 作为确定性 policy，基于当前用户错题、复习日志、ReviewTask 计划和偏好生成只读复习诊断与学习计划建议。
 - Phase 6.6 已完成 MemoryAgent：`@repo/agent/memory` 作为确定性 policy，基于当前用户学习信号生成长期记忆候选；`UserMemoryCandidate` 和 `UserMemory` 以 PostgreSQL 为权威来源，候选必须经用户确认后才成为正式记忆。
 - Phase 6.7 已完成 Agent Trace / Eval：新增固定 deterministic eval set、`/agent-traces` 在线账号级观测 API、`/api/chat` best-effort trace capture、估算成本看板和 `/agent-trace` 调试台；trace 写入失败不影响 streaming / 流式回答。2026-07-15 补齐默认 Live `deepseek-v4-flash` 的集中 USD 价格快照，新的 Trace 正确标记 `pricingKnown=true`；未知模型保持“未配置单价”，旧 Trace 不回填。
@@ -329,8 +329,9 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Task 9：已实现同一 72-case 的 strict paired runner、一次性 CLI 与 evidence validator。24 条 zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在 24 个 paired index 内并行且失败不删分母。报告重算 dataset/prompt/schema/projection、两个 semantic score、critical、P95、usage 与 CNY。两次 Mock 均为 `24/24` zero-call、`48/48` runtime、semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`；`mock_synthetic` provenance 使 Live-only gate 保持 `quality_gate_failed`。终审把非产品链路的 `chatProduct*` 更名为 `tutorOrchestration*`，公共 Live CLI 不接受 executor 注入，production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、Mock/validator/diff 通过；未读取 key、调用 provider、创建 Live marker/evidence 或执行 Docker/浏览器，两个 gate 默认关闭。（已完成）
 - Phase 6.9.7 Task 10：tracked Docker example 固定 mock/live=false、全部 Agent gate=false、Tutor/Organizer 3000/5000ms 与空 component credential。Compose 只把 Tutor 三项投影给 `web`、Organizer 三项投影给 `server`，`worker/admin` 均不接收；Admin 的整份根 env service 注入已移除。静态与 resolved Compose synthetic fixture 证明 generic/cross-component key 不会穿透，worker module 继续强制关闭。新 boundary RED/GREEN `3/3`，与 readiness 合跑 `24/24`，Server config/Compose `29/29`、Tutor config `5/5`、tracked `config --quiet`、Server/Web build 通过；未读取根 `.env`/key、调用 provider、启动 Docker service 或执行 API/浏览器。（已完成）
 - Phase 6.9.7 Task 11：已完成 focused `97/97`、Agent `543/543`、AI `194/194`、Types `42/42 + tsc`、Server `2152 passed / 30 skipped`、Web `438/438`、Organizer PostgreSQL E2E `10/10` 与 Compose quiet config。fresh Mock run `0c33c01f-802a-4f53-a6e6-538b7af9abc7` 为 `24/24` zero-call、`48/48` runtime、semantic `1/1/1`；Mock 的 `quality_gate_failed` 是 Live-only authority 设计。无 credential/provider/Live/产品 Docker/浏览器。（已完成 checkpoint）
-- Phase 6.9.7 Task 12：仅在 Task 11 后取得新授权，才执行唯一 Live quality authority、Docker/API、可见浏览器与精确清理。（等待新授权）
-- Phase 6.9.7 Task 13：分支收尾、`--no-ff` 合并 main、main default-off 回放、精确清理与远程推送。（规划中）
+- Phase 6.9.7 Task 12 V1：唯一 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用 `deepseek_network` 完成 72 cases；`24/24` zero-call、安全、延迟、48 个 verified usage 与 `0.086418 CNY` 费用门通过，但 strict runtime 仅 `27/48`，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 与 SHA 已封存且不得重跑；按固定顺序未进入 Docker/API/可见浏览器。（已完成失败终态，Phase 6.9.7 未完成）
+- Phase 6.9.7 V2 remediation：先零网络分析 canonical association/merger 后 `fallback_schema_invalid` 的失败签名，冻结新的 prompt/runner identity、独立 marker/evidence 与 Mock checkpoint；在完成前不申请新 Live。（下一步）
+- Phase 6.9.7 Task 13：仅在新的质量 authority 与分支产品验收通过后，才执行分支收尾、`--no-ff` 合并 main、main default-off 回放、精确清理与远程推送。（不得开始）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -354,7 +355,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-下一会话可以复制：“我已接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权执行一次 Phase 6.9.7 Tutor/Organizer branch controlled-Live。”没有这条新授权时，只允许回顾 Task 11，不读取 credential、不创建 marker、不调用 provider 或启动产品 Docker/API/浏览器。
+下一会话可以复制：“请分析 Phase 6.9.7 V1 controlled-Live 的失败签名并制定零网络 V2 remediation 方案。”V1 不得重跑；V2 的设计、identity、测试与 checkpoint 未完成前，不读取 credential、不调用 provider 或启动产品 Docker/API/浏览器。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

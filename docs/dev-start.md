@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--11）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 V1）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -894,11 +894,13 @@ Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Com
 
 WrongQuestionOrganizer candidate 只在 Nest `server` 的 `SERVER_ROLE=api|both` 中运行。Compose 只向 `server` 投影 `WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED`、固定 5000ms timeout 与 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；`web`、`worker`、`admin` 不接收。真实配置固定 DeepSeek V4 Pro non-thinking JSON、无 tools/retry、`1 call / 3500 input / 800 output` 与 `0.016 CNY` cap；generic 或 Tutor key 都不能替代 Organizer key。worker 模块还会在代码层把 gate 强制为 false，Compose 隔离和运行时隔离缺一不可。
 
-Task 10 只完成部署 allowlist、tracked example、角色隔离测试和回滚说明，仍未授权 controlled-Live，也没有启动 Docker service、执行 API 或可见浏览器验收。日常开发必须保持两个 gate=false、两条 component key 空；不要把 `config --quiet` 或 Mock 解释为真实模型可用性。Task 5/7/10 证据分别见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`、`docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md` 与 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
+Task 10 只完成部署 allowlist、tracked example、角色隔离测试和回滚说明；它本身没有启动 Docker service、执行 API 或可见浏览器验收。日常开发必须保持两个 gate=false、两条 component key 空；不要把 `config --quiet` 或 Mock 解释为真实模型可用性。Task 5/7/10 证据分别见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`、`docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md` 与 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
 
-Task 11 已在不读取 credential、不调用 provider、不启动产品 Docker/API/浏览器的前提下完成分支 focused/full/static、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与残留检查。Mock 的 `quality_gate_failed` 是 Live-only authority 预期结果，不能通过修改本节配置把它变成产品验收。当前必须保持两个 gate=false、component key 空，直到用户在 Task 11 后重新授权唯一 Task 12 controlled-Live；checkpoint 证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-agents.md`。
+Task 11 已在不读取 credential、不调用 provider、不启动产品 Docker/API/浏览器的前提下完成分支 focused/full/static、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与残留检查。Mock 的 `quality_gate_failed` 是 Live-only authority 预期结果，不能通过修改本节配置把它变成产品验收。该 checkpoint 的历史证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-agents.md`。
 
-后续产品验收必须使用合成账号/错题，只允许 Tutor 与 Organizer 两个目标 gate 按步骤开启，其余 Router、Verifier、Review、Planner、Knowledge gate 全部保持 false。执行前必须重新确认 DeepSeek 账号的数据保留/训练设置；本地精确清理不能声称删除供应商日志。验收或失败后立即恢复 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、两个 gate=false、两条 component key absent/空，并只重建受影响的 `web server`。精确删除本轮 synthetic user/question/group/deck/item/Trace/session/browser storage；禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
+Task 12 唯一 V1 Live 已在进程级把现有底层 secret 映射到两个 component-specific 变量；CLI/runtime 仍只读取组件变量，没有让 generic key 绕过能力边界，也没有修改根 `.env`。run `39a62241...` 的 zero-call、安全、延迟、usage 和费用门通过，但 strict runtime 为 `27/48`，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 不得删除或重跑；按合同没有启动/重建 Docker service、调用产品 API、打开浏览器或创建 synthetic 数据。当前必须保持两个 gate=false、component key 空；先完成零网络 V2 remediation 设计和 Mock checkpoint，新的精确授权之前不得调用 provider。权威记录见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
+
+未来通过新的质量 authority 后，产品验收仍必须使用合成账号/错题，只允许 Tutor 与 Organizer 两个目标 gate 按步骤开启，其余 Router、Verifier、Review、Planner、Knowledge gate 全部保持 false。执行前必须重新确认 DeepSeek 账号的数据保留/训练设置；本地精确清理不能声称删除供应商日志。验收或失败后立即恢复 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、两个 gate=false、两条 component key absent/空，并只重建受影响的 `web server`。精确删除本轮 synthetic user/question/group/deck/item/Trace/session/browser storage；禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

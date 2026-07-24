@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-23。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier 已完成混合模型生产验收并恢复默认关闭；Review/Planner 的 Phase 6.9.5 也已完成。V10 是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 历史不可重跑。Phase 6.9.6 的 KnowledgeDedup/Organizer 已完成唯一 V2 controlled-Live、R7 Docker/API、可见浏览器和 main default-off 回放，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成：Tutor/Organizer candidate、产品 default-off composition、Organizer owner/write/Trace/API/UI、72-case strict paired Mock、Docker runtime boundary 与分支全量 checkpoint 均已落地。两条真实模型路径、Docker service/API 与可见浏览器验收仍未执行；当前停在 Task 12 新授权门前。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；产品 Docker service/API 与可见浏览器因质量门失败未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步是零网络 V2 remediation；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -278,7 +278,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 0--11 已完成；Tutor/Organizer default-off composition、Organizer API 来源状态、strict paired Mock 工程门、Docker runtime boundary 与分支全量 checkpoint 均已接入，全部真实 provider 验收尚未执行）：
+Phase 6.9.7 增量数据流（Task 0--11 已完成；Task 12 V1 真实 provider 质量失败并封存，产品验收未启动）：
 
 ```text
 /api/chat
@@ -334,9 +334,20 @@ Task 11 branch checkpoint
   -> mock_synthetic provenance => Live-only quality_gate_failed
   -> validator 后精确删除 Mock evidence；不创建 Live marker/evidence
   -> 停在 Task 12 新授权门；gates=false
+
+Task 12 V1 controlled-Live
+  -> clean preflight 修复并验证其它六个生产 Agent gate 全关
+  -> 进程级注入 Tutor/Organizer 两条组件变量；不修改根 .env
+  -> 唯一 deepseek_network 72-case run；marker 先占用且不可删除/重跑
+  -> 24/24 zero-call；27/48 strict runtime
+  -> Tutor semantic 0.3485119048，absolute improvement -0.0933547619
+  -> Organizer semantic 0.7000000000，absolute improvement 0.4218750000
+  -> 安全、P95、usage、0.086418 CNY 通过，但最终 quality_gate_failed
+  -> evidence/marker + SHA + validator 封存
+  -> 停止：不启动 Docker/API/browser，不创建 synthetic 产品数据
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9 建立 72-case strict paired Mock/evidence 门，明确 `tutorOrchestrationP95Ms` 不是 Router/API/最终流式产品时延；Task 10 把运行时部署收口为 Tutor→`web`、Organizer→`server`，`worker/admin` 不接收。Task 11 又在同一分支 HEAD 完成全量静态、fresh Mock、PostgreSQL E2E 与残留检查。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力。Task 0--11 均没有读取根 `.env`/credential、创建 Live marker/evidence 或调用真实 provider；产品 Docker/API 与浏览器也未启动。当前停在 Task 12 新授权门前。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9 建立 72-case strict paired Mock/evidence 门，明确 `tutorOrchestrationP95Ms` 不是 Router/API/最终流式产品时延；Task 10 把运行时部署收口为 Tutor→`web`、Organizer→`server`，`worker/admin` 不接收。Task 11 又在同一分支 HEAD 完成全量静态、fresh Mock、PostgreSQL E2E 与残留检查。Task 12 V1 证明真实 provider、计费、延迟和 zero-call 边界可工作，但 canonical strict runtime 与语义质量不足，因此不能外推为产品可用。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写能力；default-off 时继续使用本地确定性策略。V1 不重跑，下一步先做新的零网络 remediation 与 Mock authority。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，失败证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
 
 当前 `/knowledge` 页面数据流：
 
