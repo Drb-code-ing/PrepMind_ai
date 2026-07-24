@@ -334,6 +334,19 @@ R1 最小 RED/GREEN 矩阵必须逐层注入并断言：
 
 diagnostics 只用于回答“失败发生在哪一层”，不能绕过 contract，也不能成为重试 provider 的依据。
 
+### R1 实现状态（2026-07-24）
+
+R1 已按上述矩阵完成：versioned bounded adapter 分开约束 Tutor/Organizer dynamic reason，未知或
+混合额外 reason fail-closed；`structuredObjectCaptured` 区分 schema-invalid object 与 structured
+object 形成前的 transport/runtime 失败。V1 entry 仍要求两个新字段完全 absent；当前 runner/CLI
+仍只生成 V1，V1 evidence validator 明确拒绝 V2 report。focused `19/19`、Agent full
+`548/548`（`5643` assertions）、typecheck/lint 与 V1 bundle validator 通过；V1
+evidence/marker SHA-256 仍为
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。本任务没有读取
+credential、调用 provider、发布 V2 evidence 或启动 Docker/API/browser；下一步 R2 建立 Tutor
+prompt/contract 单一规则源。
+
 ## 11. Anti-overfit 设计
 
 冻结 72-case 继续是唯一 Live quality authority，不能删 case、改 expected、扩大 accepted label 或改变

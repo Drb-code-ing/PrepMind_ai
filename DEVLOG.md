@@ -1,9 +1,36 @@
 # PrepMind AI 开发日志
+> 2026-07-24 — Phase 6.9.7 V2 remediation R1 bounded diagnostics：V1 只能看到
+> `rawSchemaValid`、`candidateDisposition` 与 `canonicalSchemaSuccess`，无法安全区分 raw schema、
+> dynamic contract、本地 merger 和最终 applied；同时又不能为了排障保存 provider 原文。本任务因此
+> 新增 versioned bounded adapter，只输出 `raw_schema / dynamic_contract / local_merger / applied`
+> 与受限 reason enum。Tutor/Organizer 的 dynamic reason 分开校验，未知或混合额外 reason
+> fail-closed；`structuredObjectCaptured` 区分 schema-invalid object 与 structured object 形成前的
+> transport/runtime failure，后者和 zero-call 均保持双 `null`。
+>
+> report contract 继续要求 V1 entry 的两个新字段完全 absent；runner-v1 只能绑定
+> `tutor-model-candidate-v1` / `wrong-question-organizer-model-candidate-v1`，future runner-v2 必须同时
+> 绑定两个 v2 prompt identity。当前公共 runner/CLI 仍只生成 V1，V1 evidence validator 明确拒绝
+> V2 report，避免在 R2--R5 完成前形成伪 V2 evidence 入口。dataset、SHA、baseline、schema/
+> projection、模型、价格、预算、timeout、质量门、分母和生产 gate 均未改变。
+>
+> RED/GREEN focused `19/19`；Agent full `548/548`（`5643` assertions）、typecheck、lint 与 V1
+> bundle validator `{"ok":true,"filesChecked":1}` 通过。V1 evidence/marker SHA-256 仍为
+> `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+> `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`；两路独立复审均
+> `APPROVED`，无未关闭 Critical/Important。CodeGraph ensure 为 already up to date；update-check
+> 的一次普通 exit 1 未盲目重试。`bunx prettier --check` 因本机未安装 prettier 且网络受限未能
+> 执行，没有产生修改；权威 lint 已通过。
+>
+> 本任务没有读取 credential、调用 provider、发布 V2 evidence、启动 Docker/API/浏览器或修改业务
+> 数据，也没有合并/推送 main。下一步是 R2 Tutor prompt/contract 单一规则源；回顾时可以问：为什么
+> transport failure 不能伪装成 schema failure？为什么 V1 字段必须 absent？为什么已有 V2 report
+> schema 仍不等于 V2 runner 已可发布？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R0 零网络设计 checkpoint：V1 的 48 个 runtime entry 全部 `rawSchemaValid=true`，但 Tutor 只有 `9/24`、WrongQuestionOrganizer 只有 `18/24` `candidate_applied`，合计 strict runtime `27/48`。Tutor 15 个 invalid 集中在 `concept_bridge`、`explain_solution` 与局部 hint/step/follow-up；Organizer 6 个 invalid 为 `runtime-13..18`，已应用结果仍有 subject、topic label 与 evidence/confidence 精度缺口。由于安全 evidence 不保存 raw provider output，本轮明确只确认失败位于 raw schema 之后，不伪造具体 evidence/depth 根因。
 >
 > 源码复核证明，V1 prompt 没有把本地 validator 实际执行的 Tutor intent→primary/allowed evidence/depth 映射，以及 Organizer subject authority、reuse/create evidence、confidence/keep-local 规则完整提供给模型。V2 选择共享深冻结 policy：validator 与稳定 prompt formatter 使用同一规则源，同时保留 strict Zod、本地 merger、ordinal、owner、locked-name、Trace admission 和写隔离。新 report 只增加固定 `raw_schema / dynamic_contract / local_merger / applied` 阶段与枚举 reason，不保存 prompt、题目、模型原文或自由文本诊断。
 >
-> 新设计继续冻结 dataset `phase-6.9-tutor-wrong-question-v1`、SHA `7ac2f4b5...2207e`、baseline、全部质量门、模型/价格/预算/timeout/权限/分母；另加 held-out/metamorphic 防答案表测试。V2 使用独立 runner/prompt、授权变量、marker/evidence，V1 marker/evidence 字节保持不可变。计划拆为 R1--R11：R1--R5 纯离线，R6 仅允许既有本地 PostgreSQL/静态 Compose 门且保持外部 provider 零调用；R6 静态/Mock checkpoint 后必须停止并取得新授权；V2 任一门失败即封存，不做产品验收。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`，计划见 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`。R0 未改源码、读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据；下一步 R1 bounded diagnostics。
+> 新设计继续冻结 dataset `phase-6.9-tutor-wrong-question-v1`、SHA `7ac2f4b5...2207e`、baseline、全部质量门、模型/价格/预算/timeout/权限/分母；另加 held-out/metamorphic 防答案表测试。V2 使用独立 runner/prompt、授权变量、marker/evidence，V1 marker/evidence 字节保持不可变。计划拆为 R1--R11：R1--R5 纯离线，R6 仅允许既有本地 PostgreSQL/静态 Compose 门且保持外部 provider 零调用；R6 静态/Mock checkpoint 后必须停止并取得新授权；V2 任一门失败即封存，不做产品验收。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`，计划见 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`。R0 未改源码、读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据；该 checkpoint 当时的下一步是 R1，后续已完成。
 >
 > contract/security 与 operations/acceptance 两路独立复审无 Critical/Important；Tutor 技术复审提出的唯一 Important 是 diagnostics 缺逐层 RED fixtures，现已补齐 schema-invalid、dynamic evidence、Tutor incompatible depth、Organizer projection association、applied、zero-call、V1 absent 与未知组合拒绝矩阵。无上下文读者测试为 `READER PASS`。V1 evidence/marker SHA-256 复核仍为 `be044871...3f34b5` / `7cb443f1...f6ecffb`，`git diff --check` 与引用/冲突扫描通过；Git 变更仅为文档。
 >

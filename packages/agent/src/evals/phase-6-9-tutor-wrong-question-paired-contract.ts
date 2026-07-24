@@ -10,15 +10,35 @@ import {
   buildTutorWrongQuestionSemanticMetrics,
   nearestRankP95,
 } from './phase-6-9-tutor-wrong-question-metrics.ts';
+import {
+  PHASE_6_9_7_CANONICAL_DIAGNOSTIC_SCHEMA,
+  PHASE_6_9_7_CANONICAL_FAILURE_REASONS,
+  PHASE_6_9_7_CANONICAL_VALIDATION_STAGES,
+  PHASE_6_9_7_ORGANIZER_DYNAMIC_CONTRACT_FAILURE_REASONS,
+  PHASE_6_9_7_TUTOR_DYNAMIC_CONTRACT_FAILURE_REASONS,
+} from './phase-6-9-tutor-wrong-question-bounded-diagnostics.ts';
 import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 
-export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION =
+export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1 =
   'phase-6.9.7-tutor-organizer-runner-v1' as const;
-export const PHASE_6_9_7_TUTOR_PROMPT_VERSION = 'tutor-model-candidate-v1' as const;
-export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION =
+export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2 =
+  'phase-6.9.7-tutor-organizer-runner-v2' as const;
+export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION =
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1;
+export type Phase697TutorOrganizerRunnerVersion =
+  | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1
+  | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2;
+export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1 = 'tutor-model-candidate-v1' as const;
+export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 = 'tutor-model-candidate-v2' as const;
+export const PHASE_6_9_7_TUTOR_PROMPT_VERSION = PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1;
+export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1 =
   'wrong-question-organizer-model-candidate-v1' as const;
+export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2 =
+  'wrong-question-organizer-model-candidate-v2' as const;
+export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION =
+  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1;
 export const PHASE_6_9_7_TUTOR_SCHEMA_VERSION = 'tutor-model-decision-v1' as const;
 export const PHASE_6_9_7_ORGANIZER_SCHEMA_VERSION =
   'wrong-question-organizer-model-decision-v1' as const;
@@ -145,6 +165,14 @@ export const PHASE_6_9_7_CASE_ENTRY_SCHEMA = z
     rawSchemaValid: z.boolean().nullable(),
     candidateDisposition: dispositionSchema.nullable(),
     canonicalSchemaSuccess: z.boolean(),
+    canonicalValidationStage: z
+      .enum(PHASE_6_9_7_CANONICAL_VALIDATION_STAGES)
+      .nullable()
+      .optional(),
+    canonicalFailureReason: z
+      .enum(PHASE_6_9_7_CANONICAL_FAILURE_REASONS)
+      .nullable()
+      .optional(),
     strictRuntimeSuccess: z.boolean(),
     criticalFailure: z.boolean(),
     permissionFailure: z.boolean(),
@@ -238,13 +266,22 @@ const reportBaseSchema = z
     runId: z.string().uuid(),
     runScope: z.enum(['branch', 'main']),
     mode: z.enum(['mock', 'live']),
-    runnerVersion: z.literal(PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION),
+    runnerVersion: z.enum([
+      PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
+      PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+    ]),
     datasetVersion: z.literal(PHASE_6_9_TUTOR_WRONG_QUESTION_DATASET_VERSION),
     datasetSha256: z.literal(PHASE_6_9_TUTOR_WRONG_QUESTION_DATASET_SHA256),
     identities: z
       .object({
-        tutorPromptVersion: z.literal(PHASE_6_9_7_TUTOR_PROMPT_VERSION),
-        organizerPromptVersion: z.literal(PHASE_6_9_7_ORGANIZER_PROMPT_VERSION),
+        tutorPromptVersion: z.enum([
+          PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1,
+          PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
+        ]),
+        organizerPromptVersion: z.enum([
+          PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1,
+          PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
+        ]),
         tutorSchemaVersion: z.literal(PHASE_6_9_7_TUTOR_SCHEMA_VERSION),
         organizerSchemaVersion: z.literal(PHASE_6_9_7_ORGANIZER_SCHEMA_VERSION),
         tutorProjectionVersion: z.literal(TUTOR_MODEL_PROJECTION_VERSION),
@@ -280,10 +317,116 @@ export type Phase697TutorOrganizerReport = Phase697TutorOrganizerReportInput;
 export const PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA = reportBaseSchema.superRefine(
   (report, context) => {
     validateModeIdentity(report, context);
+    validateVersionedDiagnostics(report, context);
     validateCanonicalEntries(report, context);
     validateDerivedFields(report, context);
   },
 );
+
+function validateVersionedDiagnostics(
+  report: Phase697TutorOrganizerReportInput,
+  context: z.RefinementCtx,
+) {
+  const v2 = report.runnerVersion === PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2;
+  const promptIdentityMatches = v2
+    ? report.identities.tutorPromptVersion === PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 &&
+      report.identities.organizerPromptVersion === PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2
+    : report.identities.tutorPromptVersion === PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1 &&
+      report.identities.organizerPromptVersion === PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1;
+  if (!promptIdentityMatches) {
+    addIssue(context, 'runner/prompt identity mismatch');
+  }
+  const tutorDynamicReasons = new Set<string>(
+    PHASE_6_9_7_TUTOR_DYNAMIC_CONTRACT_FAILURE_REASONS,
+  );
+  const organizerDynamicReasons = new Set<string>(
+    PHASE_6_9_7_ORGANIZER_DYNAMIC_CONTRACT_FAILURE_REASONS,
+  );
+  for (const entry of report.caseEntries) {
+    const hasStage = Object.hasOwn(entry, 'canonicalValidationStage');
+    const hasReason = Object.hasOwn(entry, 'canonicalFailureReason');
+    if (!v2) {
+      if (hasStage || hasReason) {
+        addIssue(context, `V1 diagnostics must remain absent: ${entry.caseId}`);
+      }
+      continue;
+    }
+    if (!hasStage || !hasReason) {
+      addIssue(context, `V2 diagnostics missing: ${entry.caseId}`);
+      continue;
+    }
+
+    const parsed = PHASE_6_9_7_CANONICAL_DIAGNOSTIC_SCHEMA.safeParse({
+      canonicalValidationStage: entry.canonicalValidationStage,
+      canonicalFailureReason: entry.canonicalFailureReason,
+    });
+    if (!parsed.success) {
+      addIssue(context, `V2 diagnostics invalid: ${entry.caseId}`);
+      continue;
+    }
+    const diagnostic = parsed.data;
+
+    if (entry.executionKind === 'zero_call') {
+      if (
+        diagnostic.canonicalValidationStage !== null ||
+        diagnostic.canonicalFailureReason !== null
+      ) {
+        addIssue(context, `zero-call diagnostics mismatch: ${entry.caseId}`);
+      }
+      continue;
+    }
+
+    if (diagnostic.canonicalValidationStage === null) {
+      if (entry.canonicalSchemaSuccess || entry.strictRuntimeSuccess) {
+        addIssue(context, `pre-structured diagnostics mismatch: ${entry.caseId}`);
+      }
+      continue;
+    }
+
+    if (diagnostic.canonicalValidationStage === 'applied') {
+      if (
+        entry.rawSchemaValid !== true ||
+        entry.candidateDisposition !== 'candidate_applied' ||
+        !entry.canonicalSchemaSuccess
+      ) {
+        addIssue(context, `applied diagnostics mismatch: ${entry.caseId}`);
+      }
+      continue;
+    }
+
+    if (entry.candidateDisposition !== 'fallback_schema_invalid' || entry.canonicalSchemaSuccess) {
+      addIssue(context, `failed diagnostics disposition mismatch: ${entry.caseId}`);
+    }
+    if (
+      diagnostic.canonicalValidationStage === 'raw_schema' &&
+      entry.rawSchemaValid !== false
+    ) {
+      addIssue(context, `raw diagnostics mismatch: ${entry.caseId}`);
+    }
+    if (
+      diagnostic.canonicalValidationStage !== 'raw_schema' &&
+      entry.rawSchemaValid !== true
+    ) {
+      addIssue(context, `post-schema diagnostics mismatch: ${entry.caseId}`);
+    }
+    if (
+      (entry.agent === 'tutor' &&
+        diagnostic.canonicalFailureReason === 'projection_association_invalid') ||
+      (entry.agent === 'wrong_question_organizer' &&
+        diagnostic.canonicalFailureReason === 'incompatible_depth')
+    ) {
+      addIssue(context, `agent diagnostics mismatch: ${entry.caseId}`);
+    }
+    if (
+      diagnostic.canonicalValidationStage === 'dynamic_contract' &&
+      !(
+        entry.agent === 'tutor' ? tutorDynamicReasons : organizerDynamicReasons
+      ).has(diagnostic.canonicalFailureReason)
+    ) {
+      addIssue(context, `agent dynamic diagnostics mismatch: ${entry.caseId}`);
+    }
+  }
+}
 
 export function computePhase697TutorOrganizerGate(
   report: Phase697TutorOrganizerReportInput,

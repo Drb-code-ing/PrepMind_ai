@@ -3,6 +3,7 @@ import { basename } from 'node:path';
 
 import {
   PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
   type Phase697TutorOrganizerReport,
 } from '../src/evals/phase-6-9-tutor-wrong-question-paired-contract.ts';
 
@@ -55,7 +56,10 @@ export function validatePhase697TutorOrganizerEvidenceValue(
     return { ok: false, code: 'sensitive_evidence' };
   }
   const parsed = PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse(value);
-  return parsed.success ? { ok: true } : { ok: false, code: 'report_contract_invalid' };
+  return parsed.success &&
+    parsed.data.runnerVersion === PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1
+    ? { ok: true }
+    : { ok: false, code: 'report_contract_invalid' };
 }
 
 export function validatePhase697TutorOrganizerEvidenceBundle(

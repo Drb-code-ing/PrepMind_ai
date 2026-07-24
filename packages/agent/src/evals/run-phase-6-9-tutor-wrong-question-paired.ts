@@ -44,6 +44,11 @@ import {
   type Phase697TutorOrganizerReportInput,
 } from './phase-6-9-tutor-wrong-question-paired-contract.ts';
 import {
+  PHASE_6_9_7_PRE_STRUCTURED_CANONICAL_DIAGNOSTIC,
+  resolvePhase697CanonicalDiagnostic,
+  type Phase697CanonicalDiagnostic,
+} from './phase-6-9-tutor-wrong-question-bounded-diagnostics.ts';
+import {
   TUTOR_MODEL_DECISION_SCHEMA,
   type TutorModelDecision,
 } from '../model-candidates/tutor-model-contract.ts';
@@ -91,6 +96,7 @@ export type Phase697TutorEvalResult = SafetyResult &
     rawSchemaValid: boolean;
     candidateDisposition: ModelCandidateDisposition;
     canonicalSchemaSuccess: boolean;
+    canonicalDiagnostic: Phase697CanonicalDiagnostic;
     observation: TutorRuntimeObservation;
     latencyMs: number;
     tutorOrchestrationLatencyMs: number;
@@ -103,6 +109,7 @@ export type Phase697OrganizerEvalResult = SafetyResult &
     rawSchemaValid: boolean;
     candidateDisposition: ModelCandidateDisposition;
     canonicalSchemaSuccess: boolean;
+    canonicalDiagnostic: Phase697CanonicalDiagnostic;
     observations: readonly OrganizerDecisionObservation[];
     latencyMs: number;
     usage: Phase697RuntimeUsage | null;
@@ -156,6 +163,10 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
         rawSchemaValid: true,
         candidateDisposition: 'candidate_applied',
         canonicalSchemaSuccess: true,
+        canonicalDiagnostic: {
+          canonicalValidationStage: 'applied',
+          canonicalFailureReason: null,
+        },
         observation: tutorObservationFromExpected(entry),
         latencyMs: 180 + entry.pairedRunIndex * 3,
         tutorOrchestrationLatencyMs: 210 + entry.pairedRunIndex * 3,
@@ -171,6 +182,10 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
         rawSchemaValid: true,
         candidateDisposition: 'candidate_applied',
         canonicalSchemaSuccess: true,
+        canonicalDiagnostic: {
+          canonicalValidationStage: 'applied',
+          canonicalFailureReason: null,
+        },
         observations: entry.expected.decisions.map((decision) =>
           organizerObservationFromExpected(entry, decision),
         ),
@@ -264,7 +279,7 @@ function buildZeroCallEntry(
   entry: Phase697ZeroCallCase,
   result: Phase697ZeroCallResult,
 ): Phase697TutorOrganizerCaseEntry {
-  return {
+  const caseEntry: Phase697TutorOrganizerCaseEntry = {
     ...baseEntry(entry.id, entry.agent, result),
     executionKind: 'zero_call',
     pairedRunIndex: null,
@@ -283,6 +298,7 @@ function buildZeroCallEntry(
     tutorActual: null,
     organizerDecisions: [],
   };
+  return caseEntry;
 }
 
 function buildTutorEntry(
@@ -759,6 +775,13 @@ async function runTutorRuntimeCase(input: {
   const rawSchemaValid = TUTOR_MODEL_DECISION_SCHEMA.safeParse(captured.object).success;
   const canonicalSchemaSuccess =
     candidate.observation.disposition === 'candidate_applied' && rawSchemaValid;
+  const canonicalDiagnostic = resolvePhase697CanonicalDiagnostic({
+    agent: 'tutor',
+    structuredObjectCaptured: captured.hasStructuredObject(),
+    rawSchemaValid,
+    candidateDisposition: candidate.observation.disposition,
+    reasonCodes: candidate.observation.reasonCodes,
+  });
   const observation = tutorObservation(input.entry, candidate.result, canonicalSchemaSuccess);
   const criticalFailure =
     input.entry.criticalSafetyCase &&
@@ -776,6 +799,7 @@ async function runTutorRuntimeCase(input: {
     rawSchemaValid,
     candidateDisposition: candidate.observation.disposition,
     canonicalSchemaSuccess,
+    canonicalDiagnostic,
     observation,
     latencyMs,
     tutorOrchestrationLatencyMs: Math.max(performance.now() - productStartedAt, latencyMs),
@@ -820,6 +844,13 @@ async function runOrganizerRuntimeCase(input: {
     candidate.observation.disposition === 'candidate_applied' &&
     rawSchemaValid &&
     candidate.result.length === input.entry.expected.decisions.length;
+  const canonicalDiagnostic = resolvePhase697CanonicalDiagnostic({
+    agent: 'wrong_question_organizer',
+    structuredObjectCaptured: captured.hasStructuredObject(),
+    rawSchemaValid,
+    candidateDisposition: candidate.observation.disposition,
+    reasonCodes: candidate.observation.reasonCodes,
+  });
   const observations = input.entry.expected.decisions.map((expected) =>
     organizerObservation(
       input.entry,
@@ -850,6 +881,7 @@ async function runOrganizerRuntimeCase(input: {
     rawSchemaValid,
     candidateDisposition: candidate.observation.disposition,
     canonicalSchemaSuccess,
+    canonicalDiagnostic,
     observations,
     latencyMs: candidateLatency(candidate.observation, input.timeoutMs),
     usage: candidateUsage(candidate.observation),
@@ -1104,6 +1136,7 @@ function deriveOrganizerZeroCallReason(
 
 function createCapturedRuntime(input: { executor: StructuredModelExecutor; timeoutMs: number }) {
   let object: unknown = null;
+  let structuredObjectCaptured = false;
   let invocations = 0;
   const runtime = createModelAgentRuntime({
     mode: 'live',
@@ -1115,6 +1148,7 @@ function createCapturedRuntime(input: { executor: StructuredModelExecutor; timeo
       invocations += 1;
       const result = await input.executor(request);
       object = result.object;
+      structuredObjectCaptured = true;
       return result;
     },
   });
@@ -1123,6 +1157,7 @@ function createCapturedRuntime(input: { executor: StructuredModelExecutor; timeo
     get object() {
       return object;
     },
+    hasStructuredObject: () => structuredObjectCaptured,
     invocations: () => invocations,
   };
 }
@@ -1282,6 +1317,7 @@ async function safeTutorRuntime(
       rawSchemaValid: false,
       candidateDisposition: 'fallback_runtime_error',
       canonicalSchemaSuccess: false,
+      canonicalDiagnostic: PHASE_6_9_7_PRE_STRUCTURED_CANONICAL_DIAGNOSTIC,
       observation: invalidTutorObservation(entry),
       latencyMs: Math.max(0, performance.now() - startedAt),
       tutorOrchestrationLatencyMs: Math.max(0, performance.now() - startedAt),
@@ -1304,6 +1340,7 @@ async function safeOrganizerRuntime(
       rawSchemaValid: false,
       candidateDisposition: 'fallback_runtime_error',
       canonicalSchemaSuccess: false,
+      canonicalDiagnostic: PHASE_6_9_7_PRE_STRUCTURED_CANONICAL_DIAGNOSTIC,
       observations: entry.expected.decisions.map((decision) =>
         invalidOrganizerObservation(entry, decision),
       ),

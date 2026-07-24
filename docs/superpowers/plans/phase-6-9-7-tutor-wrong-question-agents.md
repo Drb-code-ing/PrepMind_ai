@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0 零网络设计已冻结，下一步按独立 remediation 计划执行 R1，不是 Task 13/main 合并。
+**当前状态（2026-07-24）：** Task 0--11 与 Task 12 的唯一 V1 controlled-Live 已执行。run `39a62241-0f51-45be-a423-0d13b0b60ae4` 为 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定顺序未进入 Docker service/API 或可见浏览器产品验收。两个生产 gate 的 tracked defaults 仍关闭，Phase 6.9.7 未完成。V2 R0 与 R1 bounded diagnostics 已完成；当前 runner 仍只能生成 V1 且 validator 拒绝 V2 report，下一步按独立 remediation 计划执行 R2 Tutor prompt/contract 单一规则源，不是 Task 13/main 合并。
 
 权威设计：`docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`
 
@@ -278,7 +278,7 @@ V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediat
 
 **验证：** focused cases/contract/runner/CLI/validator、Mock CLI 两次、validator、Agent full/typecheck/lint、AI tests、`git diff --check`。
 
-**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。Task 10 后续已完成，Task 11 后续已完成；该 checkpoint 当时停在 Task 12 新授权门前；后续 V1 失败终态见当前摘要。
+**完成记录（2026-07-23）：** 已实现固定 72-case / 24 zero-call / 48 runtime / 24 paired index / 32 Organizer decision units 的 strict report。zero-call 实际穿过 candidate/preflight guard并由独立 counter 证明 0 调用；48 runtime 在每个 paired index 内并行，throw/schema/usage 失败仍保留分母。报告重算 dataset SHA、prompt/schema/projection identity、两个 semantic score、critical、P95、usage 与 CNY；Mock 两次均为 `24/24`、`48/48`、Tutor/Organizer semantic `1/1`、P95 `246/328/328/276ms`、synthetic usage `21948/5647`、cost `0.099726 CNY`，但 `executorProvenance=mock_synthetic` 使 Live-only gate 保持 `quality_gate_failed`。终审把并非真实 Router/API 链路的 `chatProduct*` 更名为 `tutorOrchestration*`，并把公共 Live CLI 的 executor 注入移到 `synthetic_test` 专用入口；production gate 只接受 `deepseek_network`。focused `14/14`、Agent `543/543`、AI `194/194`、typecheck/lint、两次 Mock CLI、bundle validator 与 diff 门通过。未读取 key、调用 provider、创建 Live marker/evidence 或执行 Docker/浏览器；两个生产 gate 仍默认关闭。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-paired-eval.md`。Task 10 后续已完成，Task 11 后续已完成；该 checkpoint 当时停在 Task 12 新授权门前；后续 V1 失败终态见当前摘要。
 
 **提交：** `test(agent): evaluate tutor organizer candidates`
 
@@ -346,7 +346,7 @@ V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0 设计已冻结；只有 remediation R1--R9、新的独立质量 authority 与产品验收通过后，才能恢复本节。
+**当前状态：不得开始。** Task 12 V1 未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 R0/R1 已完成，当前停在 R2 前；只有 remediation R2--R9、新的独立质量 authority 与产品验收通过后，才能恢复本节。
 
 **分支：**
 

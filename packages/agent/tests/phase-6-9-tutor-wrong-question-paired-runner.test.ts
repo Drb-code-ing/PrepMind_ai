@@ -178,6 +178,128 @@ describe('phase 6.9.7 Tutor/Organizer paired runner', () => {
     expect(report.metrics.organizer.invalidDecisions).toBe(1);
     expect(report.safety.strictRuntimeSuccesses).toBe(47);
   });
+
+  test('observes bounded stages from the actual no-network candidate paths', async () => {
+    const tutorCase = phase69TutorCases.find((entry) => entry.expectedRuntimeInvocations === 1);
+    const organizerCase = phase69WrongQuestionOrganizerCases.find(
+      (entry) => entry.expectedRuntimeInvocations === 1,
+    );
+    if (!tutorCase || tutorCase.expectedRuntimeInvocations !== 1) {
+      throw new Error('missing Tutor runtime fixture');
+    }
+    if (!organizerCase || organizerCase.expectedRuntimeInvocations !== 1) {
+      throw new Error('missing Organizer runtime fixture');
+    }
+
+    const unusedOrganizerExecutor: StructuredModelExecutor = async () => ({
+      object: { decisions: [] },
+      usage: { inputTokens: 400, outputTokens: 80 },
+    });
+    const tutorScenarios = [
+      {
+        object: { invalid: true },
+        expected: {
+          canonicalValidationStage: 'raw_schema',
+          canonicalFailureReason: 'schema_invalid',
+        },
+      },
+      {
+        object: {
+          intent: 'socratic_hint',
+          depth: 'brief',
+          confidence: 'high',
+          evidenceCodes: ['concept_gap'],
+        },
+        expected: {
+          canonicalValidationStage: 'dynamic_contract',
+          canonicalFailureReason: 'invalid_evidence_association',
+        },
+      },
+      {
+        object: {
+          intent: 'socratic_hint',
+          depth: 'deep',
+          confidence: 'high',
+          evidenceCodes: ['implicit_hint_request'],
+        },
+        expected: {
+          canonicalValidationStage: 'local_merger',
+          canonicalFailureReason: 'incompatible_depth',
+        },
+      },
+      {
+        object: {
+          intent: tutorCase.expected.intent,
+          depth: tutorCase.expected.depth,
+          confidence: 'high',
+          evidenceCodes: [tutorEvidence(tutorCase.expected.intent)],
+        },
+        expected: {
+          canonicalValidationStage: 'applied',
+          canonicalFailureReason: null,
+        },
+      },
+    ] as const;
+
+    for (const [scenarioIndex, scenario] of tutorScenarios.entries()) {
+      const harness = createPhase697TutorOrganizerLiveHarness({
+        tutorExecutor: async () => ({
+          object: scenario.object,
+          usage: { inputTokens: 420, outputTokens: 90 },
+        }),
+        organizerExecutor: unusedOrganizerExecutor,
+        runScope: 'branch',
+        executorProvenance: 'synthetic_test',
+      });
+      const result = await harness.runTutor(tutorCase).catch(() => {
+        throw new Error(`bounded Tutor scenario failed: ${scenarioIndex}`);
+      });
+      expect(result.canonicalDiagnostic).toEqual(scenario.expected);
+    }
+
+    const transportHarness = createPhase697TutorOrganizerLiveHarness({
+      tutorExecutor: async () => {
+        throw new Error('synthetic transport failure');
+      },
+      organizerExecutor: unusedOrganizerExecutor,
+      runScope: 'branch',
+      executorProvenance: 'synthetic_test',
+    });
+    expect((await transportHarness.runTutor(tutorCase)).canonicalDiagnostic).toEqual({
+      canonicalValidationStage: null,
+      canonicalFailureReason: null,
+    });
+
+    const organizerHarness = createPhase697TutorOrganizerLiveHarness({
+      tutorExecutor: async () => ({
+        object: tutorScenarios[3].object,
+        usage: { inputTokens: 420, outputTokens: 90 },
+      }),
+      organizerExecutor: async (request) => {
+        const projection = JSON.parse(request.userPrompt) as {
+          questions: Array<{ subjectHint: string }>;
+        };
+        return {
+          object: {
+            decisions: projection.questions.map((question, questionIndex) => ({
+              questionIndex,
+              subject: question.subjectHint === 'unknown' ? 'keep_local' : 'math',
+              deck: { action: 'create_topic', topicLabel: '边界测试' },
+              confidence: 'medium',
+              evidenceCodes: ['semantic_topic'],
+            })),
+          },
+          usage: { inputTokens: 760, outputTokens: 180 },
+        };
+      },
+      runScope: 'branch',
+      executorProvenance: 'synthetic_test',
+    });
+    expect((await organizerHarness.runOrganizer(organizerCase)).canonicalDiagnostic).toEqual({
+      canonicalValidationStage: 'dynamic_contract',
+      canonicalFailureReason: 'subject_authority_violation',
+    });
+  });
 });
 
 function tutorEvidence(

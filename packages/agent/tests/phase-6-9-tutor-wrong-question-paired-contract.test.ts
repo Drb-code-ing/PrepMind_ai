@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
   PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+  PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
   computePhase697TutorOrganizerGate,
 } from '../src/evals/phase-6-9-tutor-wrong-question-paired-contract.ts';
 import {
@@ -77,6 +80,107 @@ describe('phase 6.9.7 Tutor/Organizer paired report contract', () => {
       PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse({
         ...report,
         caseEntries: tampered,
+      }).success,
+    ).toBe(false);
+  });
+
+  test('keeps V1 diagnostics absent and requires strict V2 diagnostic pairs', async () => {
+    const report = await runPhase697TutorOrganizerPairedEval(
+      createPhase697TutorOrganizerMockHarness(),
+    );
+    expect(
+      report.caseEntries.every(
+        (entry) =>
+          !Object.hasOwn(entry, 'canonicalValidationStage') &&
+          !Object.hasOwn(entry, 'canonicalFailureReason'),
+      ),
+    ).toBe(true);
+    expect(
+      PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse({
+        ...report,
+        caseEntries: report.caseEntries.map((entry) => ({
+          ...entry,
+          canonicalValidationStage: null,
+          canonicalFailureReason: null,
+        })),
+      }).success,
+    ).toBe(false);
+
+    const v2Report = {
+      ...report,
+      runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+      identities: {
+        ...report.identities,
+        tutorPromptVersion: PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
+        organizerPromptVersion: PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
+      },
+      caseEntries: report.caseEntries.map((entry) => ({
+        ...entry,
+        canonicalValidationStage:
+          entry.executionKind === 'zero_call' ? null : ('applied' as const),
+        canonicalFailureReason: null,
+      })),
+    };
+    expect(PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse(v2Report).success).toBe(true);
+    expect(
+      PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse({
+        ...v2Report,
+        identities: report.identities,
+      }).success,
+    ).toBe(false);
+
+    const runtimeIndex = v2Report.caseEntries.findIndex(
+      (entry) => entry.executionKind === 'runtime',
+    );
+    const invalidPairs = [
+      { canonicalValidationStage: 'raw_schema', canonicalFailureReason: null },
+      {
+        canonicalValidationStage: 'dynamic_contract',
+        canonicalFailureReason: 'schema_invalid',
+      },
+      {
+        canonicalValidationStage: 'local_merger',
+        canonicalFailureReason: 'invalid_evidence_association',
+      },
+      {
+        canonicalValidationStage: 'applied',
+        canonicalFailureReason: 'incompatible_depth',
+      },
+      { canonicalValidationStage: null, canonicalFailureReason: 'schema_invalid' },
+      { canonicalValidationStage: 'unknown', canonicalFailureReason: null },
+      { canonicalValidationStage: 'dynamic_contract', canonicalFailureReason: 'free text' },
+    ];
+    for (const invalidPair of invalidPairs) {
+      expect(
+        PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse({
+          ...v2Report,
+          caseEntries: v2Report.caseEntries.map((entry, index) =>
+            index === runtimeIndex ? { ...entry, ...invalidPair } : entry,
+          ),
+        }).success,
+      ).toBe(false);
+    }
+
+    const tutorRuntimeIndex = v2Report.caseEntries.findIndex(
+      (entry) => entry.agent === 'tutor' && entry.executionKind === 'runtime',
+    );
+    expect(
+      PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.safeParse({
+        ...v2Report,
+        caseEntries: v2Report.caseEntries.map((entry, index) =>
+          index === tutorRuntimeIndex
+            ? {
+                ...entry,
+                rawSchemaValid: true,
+                candidateDisposition: 'fallback_schema_invalid',
+                canonicalSchemaSuccess: false,
+                strictRuntimeSuccess: false,
+                tutorActual: null,
+                canonicalValidationStage: 'dynamic_contract',
+                canonicalFailureReason: 'subject_authority_violation',
+              }
+            : entry,
+        ),
       }).success,
     ).toBe(false);
   });

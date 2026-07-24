@@ -22,6 +22,11 @@ import {
   phase69WrongQuestionOrganizerCases,
 } from '../src/evals/phase-6-9-tutor-wrong-question-cases.ts';
 import {
+  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+  PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
+} from '../src/evals/phase-6-9-tutor-wrong-question-paired-contract.ts';
+import {
   createPhase697TutorOrganizerMockHarness,
   runPhase697TutorOrganizerPairedEval,
 } from '../src/evals/run-phase-6-9-tutor-wrong-question-paired.ts';
@@ -91,6 +96,26 @@ describe('phase 6.9.7 Tutor/Organizer CLI and evidence validator', () => {
         caseEntries: zeroUsage,
       }),
     ).toEqual({ ok: false, code: 'report_contract_invalid' });
+
+    const v2Report = {
+      ...report,
+      runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+      identities: {
+        ...report.identities,
+        tutorPromptVersion: PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
+        organizerPromptVersion: PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
+      },
+      caseEntries: report.caseEntries.map((entry) => ({
+        ...entry,
+        canonicalValidationStage:
+          entry.executionKind === 'zero_call' ? null : ('applied' as const),
+        canonicalFailureReason: null,
+      })),
+    };
+    expect(validatePhase697TutorOrganizerEvidenceValue(v2Report)).toEqual({
+      ok: false,
+      code: 'report_contract_invalid',
+    });
   });
 
   test('rejects duplicate run identity across branch and main reports', async () => {

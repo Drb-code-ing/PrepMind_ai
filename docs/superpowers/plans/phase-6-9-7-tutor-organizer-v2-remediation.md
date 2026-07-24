@@ -4,8 +4,10 @@
 WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock checkpoint；随后只有在
 新的精确授权下执行唯一 V2 controlled-Live，并仅在全门通过后进入产品验收。
 
-**当前状态：** R0 设计 checkpoint 已完成，下一步是 R1 bounded diagnostics。本轮没有修改
-source code、读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据。
+**当前状态：** R1 bounded diagnostics 已完成并保持 V1 report/evidence 字节兼容。当前 runner/CLI
+仍只生成 V1，V1 evidence validator 明确拒绝 V2 report，因此尚不存在可发布的 V2 evidence 入口。
+本轮没有读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据；下一步是 R2
+Tutor prompt/contract 单一规则源。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -83,6 +85,16 @@ diagnostics 分层 RED matrix 已补齐后关闭，fresh reader 对 V1 边界、
 
 **验证：** focused contract/runner/candidate tests、Agent typecheck/lint、V1 bundle validator、
 `git diff --check`。
+
+**当前状态：已完成。** RED/GREEN focused `19/19`；Agent full `548/548`、`5643`
+assertions；Agent typecheck/lint 通过。V1 bundle validator 返回
+`{"ok":true,"filesChecked":1}`；既有 V1 evidence/marker SHA-256 仍为
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。当前公共
+runner 继续绑定 `phase-6.9.7-tutor-organizer-runner-v1`；future runner-v2 只有同时绑定
+`tutor-model-candidate-v2` 与 `wrong-question-organizer-model-candidate-v2` 才能通过 report
+contract，而本任务没有实现该 runner、发布 V2 evidence 或调用 provider/Docker/API/browser。
+两路独立复审均为 `APPROVED`，无未关闭 Critical/Important。下一步 R2。
 
 **提交：** `feat(agent): add phase 6.9.7 v2 bounded diagnostics`
 
