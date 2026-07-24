@@ -75,6 +75,7 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 Task 9 | 已完成 | 72-case strict paired runner、24/24 guard zero-call、48/48 Mock runtime、一次性 CLI、executor provenance 与 evidence validator；无 provider/controlled-Live |
 | Phase 6.9.7 Task 10 | 已完成 | Tutor→web、Organizer→server 的 Docker allowlist、tracked default-off example、worker/admin 隔离与运维回滚；无 provider/Docker service/API/浏览器 |
 | Phase 6.9.7 Task 11 | 已完成 | 分支 focused/full/static、deterministic baseline、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与双路终审；无 provider/Live/产品 Docker/浏览器 |
+| Phase 6.9.7 Task 12 preflight | 已完成 | 用户已新授权；修复 Router/Verifier 真实 gate 名称漏检，六个其它生产 Agent gate 均在 marker/executor 前 fail-closed；唯一 Live 尚未执行 |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |

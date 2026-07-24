@@ -322,6 +322,8 @@
 
 ## Task 12：唯一 controlled-Live、Docker/API 与可见浏览器分支验收
 
+**当前状态（2026-07-24）：已取得新授权，唯一 Live 尚未执行。** 零网络 preflight 发现 CLI 使用错误的 Router/Verifier gate 名称；已改为真实 `ROUTER_MODEL_ENABLED` / `KNOWLEDGE_VERIFIER_MODEL_ENABLED`，并以六个其它生产 gate 参数化 RED/GREEN、Agent full/typecheck/lint 和独立复核确认 marker/executor 前 fail-closed。先提交该 hardening 并恢复 clean，随后才执行唯一 Live。证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
+
 **前置：** 用户在 Task 11 后明确接受当前 DeepSeek 数据保留/训练边界，并授权一次 `Phase 6.9.7 Tutor/Organizer branch controlled-Live`。没有该句不得运行。
 
 **顺序：**

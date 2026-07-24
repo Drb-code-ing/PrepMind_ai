@@ -131,7 +131,7 @@ describe('phase 6.9.7 Tutor/Organizer CLI and evidence validator', () => {
     }
   });
 
-  test('does not let a generic key replace either component credential or coexist with another gate', async () => {
+  test('does not let a generic key replace either component credential or coexist with another product gate', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-key-boundary-'));
     let invocations = 0;
     const neverInvoke = async () => {
@@ -154,20 +154,29 @@ describe('phase 6.9.7 Tutor/Organizer CLI and evidence validator', () => {
         ok: false,
         code: 'live_configuration_invalid',
       });
-      const otherGate = await executePhase697TutorOrganizerCliWithSyntheticExecutorsForTest({
-        argv: ['live', PHASE_6_9_7_LIVE_CONFIRMATION],
-        env: {
-          ...completeLiveEnv(),
-          ROUTER_AGENT_MODEL_ENABLED: 'true',
-        },
-        repositoryRoot: root,
-        tutorExecutor: neverInvoke,
-        organizerExecutor: neverInvoke,
-      });
-      expect(otherGate).toEqual({
-        ok: false,
-        code: 'live_configuration_invalid',
-      });
+      for (const gate of [
+        'ROUTER_MODEL_ENABLED',
+        'KNOWLEDGE_VERIFIER_MODEL_ENABLED',
+        'REVIEW_AGENT_MODEL_ENABLED',
+        'PLANNER_AGENT_MODEL_ENABLED',
+        'KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED',
+        'KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED',
+      ] as const) {
+        const otherGate = await executePhase697TutorOrganizerCliWithSyntheticExecutorsForTest({
+          argv: ['live', PHASE_6_9_7_LIVE_CONFIRMATION],
+          env: {
+            ...completeLiveEnv(),
+            [gate]: 'true',
+          },
+          repositoryRoot: root,
+          tutorExecutor: neverInvoke,
+          organizerExecutor: neverInvoke,
+        });
+        expect(otherGate).toEqual({
+          ok: false,
+          code: 'live_configuration_invalid',
+        });
+      }
       expect(invocations).toBe(0);
     } finally {
       await rm(root, { recursive: true, force: true });

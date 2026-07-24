@@ -1,4 +1,10 @@
 # PrepMind AI 开发日志
+> 2026-07-24 — Phase 6.9.7 Task 12 controlled-Live 零网络 preflight hardening：用户已在 Task 11 后明确接受 DeepSeek 当前账号的数据保留/训练边界并授权一次 branch controlled-Live。执行唯一调用前核对 CLI 时发现，`OTHER_AGENT_GATES` 使用不存在的 `ROUTER_AGENT_MODEL_ENABLED` / `KNOWLEDGE_VERIFIER_AGENT_MODEL_ENABLED`，而产品真实 gate 是 `ROUTER_MODEL_ENABLED` / `KNOWLEDGE_VERIFIER_MODEL_ENABLED`。旧实现不能证明其它 Agent 全关，因此没有用“当前环境碰巧 false”绕过，也没有创建 marker 或调用 provider。
+>
+> 新参数化 RED 覆盖 Router、Verifier、Review、Planner、KnowledgeDedup、KnowledgeOrganizer 六个其它生产 gate；首个真实 Router gate 为 true 时旧代码进入 repo 外 synthetic Live，focused 得到 `6 pass / 1 fail`，证明漏检。修复两个名称后，六项任一 true 都在 marker/executor 前返回 `live_configuration_invalid`，invocation=0；GREEN `7/7 / 41 expect()`，Agent full `543/543 / 5598 expect()`、typecheck、lint 与 diff 门通过。独立复核确认全仓八个生产模型 gate 已完整覆盖且旧名称匹配为 0。
+>
+> RED/ GREEN 都只使用系统临时目录和 synthetic executor，finally 精确清理临时 marker/evidence；仓库 `.tmp` 的唯一 controlled-Live marker/evidence 仍未创建。没有读取/打印 credential、调用 provider、启动 Docker/API/Web 或浏览器，也没有修改业务数据或 Docker 卷。权威记录见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。下一步先在该 hardening 提交上完成 clean preflight，再执行唯一 72-case Live；只有 `quality_gate_passed` 才进入产品验收。
+
 > 2026-07-23 — Phase 6.9.7 Task 11 分支全量 checkpoint：Task 9 的 strict paired runner 和 Task 10 的 Docker allowlist 分别证明局部评测合同与部署边界，但不能自动证明 Task 1--8 的 candidate、owner/write fence、Trace、API/UI 和仓库其它包在同一分支 HEAD 上没有回归。Task 11 因此在真实模型前固定一次分支级完整检查，并重新生成 deterministic baseline 与 fresh strict Mock，避免把旧报告或 Mock 满分冒充 Live authority。
 >
 > 同一 `3e85fcc4` 起点上，Tutor/Organizer focused 为 `97/97`；全量为 Agent `543/543`、AI `194/194`、Types `42/42 + tsc --noEmit`、Server `227 suites passed / 3 skipped、2152 tests passed / 30 skipped`、Web `438/438`，相应 Agent/AI/Server/Web typecheck/lint/build 均通过。Organizer PostgreSQL E2E `10/10`，测试账号残留为 `0`；tracked Compose `config --quiet` 无输出通过。Types package 没有独立 ESLint script，因此只记录其权威门 tests + `tsc`，不虚构 Types lint 结论。
