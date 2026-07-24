@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-24）：** Task 0--11 已完成。Task 12 V1 run `39a62241...` 与 V2 R7 run `67ce18dd...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。唯一 V2 Live 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象形成前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`。V2 marker/evidence 已封存，R8 产品 Docker/API/浏览器未启动，两个 tracked gate 仍关闭，Phase 6.9.7 未完成。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计，不是 Task 13/main 合并。
+**当前状态（2026-07-24）：** Task 0--11 已完成。Task 12 V1 run `39a62241...` 与 V2 R7 run `67ce18dd...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。唯一 V2 Live 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象形成前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`。V2 marker/evidence 已封存，R8 产品 Docker/API/浏览器未启动，两个 tracked gate 仍关闭，Phase 6.9.7 未完成。V3 R0 已冻结 taxonomy 投影、zero-network compatibility、首个 runtime contract failure breaker、固定分母、双 lane、journal/crash seal 与独立 lineage；下一步仅 R1 零网络实现，不是 Provider、产品验收或 Task 13/main 合并。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -14,6 +14,9 @@ R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6
 
 V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`
+
+V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md` 与
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v3-remediation.md`
 
 ---
 

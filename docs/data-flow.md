@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V2 evidence/marker 已封存，R8 产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步只能先做零 Provider V3 失败复盘设计；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0 已冻结 failure taxonomy 投影、零网络 compatibility harness、首个 runtime contract failure breaker、固定分母、双 lane 隔离与 crash-only seal；尚未实现源码或调用 Provider。R8 产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步仅 R1 零网络实现；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -106,7 +106,7 @@
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier/Tutor candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成，Tutor candidate 只选择并由本地重建教学策略。
 - `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 已完成 V2 R6 static/Mock、并发/恢复/取消边界，但尚无 V2 controlled-Live 或产品验收。Mock 只证明 candidate/evidence 工程合同，不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量；Memory 与其余未完成节点仍按各自后续任务推进。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 已完成 V2 R6 static/Mock、并发/恢复/取消边界；V2 R7 controlled-Live 已执行但 `0/48` strict runtime 并失败封存，产品验收没有启动。V3 R0 只设计安全 failure 投影、breaker 与恢复合同，不是新的 Live 或产品证据。Mock 只证明 candidate/evidence 工程合同，不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量；Memory 与其余未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
@@ -369,10 +369,20 @@ V2 R7 unique controlled-Live
   -> 0/48 strict runtime；semantic 0/0；critical=1；verified usage=0
   -> evidence/marker hard-link authority + SHA + V2 validator 封存
   -> quality_gate_failed：不重跑、不进入 R8 Docker/API/browser
-  -> 下一步仅零 Provider V3 复盘设计；gates=false
+  -> 后续进入零 Provider V3 R0 设计；gates=false
+
+V3 R0 zero-provider design
+  -> 复用 @repo/ai 固定 provider failure category / structured stage
+  -> paired evidence 增加 bounded stage + dispatch/usage outcome；不保存 raw error
+  -> 24 guard 先行；runtime 单 pair 最多 Tutor+Organizer 双并发
+  -> 首个 runtime contract failure => quality_gate_impossible，收口当前 pair 后停止后续派发
+  -> 未执行 runtime 仍留在 48 分母；category=null；无 retry/补跑
+  -> Tutor/Organizer lane、credential、budget、abort、failure attribution 相互隔离
+  -> marker + append-only journal + hard-link evidence；crash 后只 seal，不 resume
+  -> 当前仅设计，下一步 R1 zero-network implementation；gates=false
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，R6/R7 证据见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md` 与 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。V3 R0 已设计有界 failure evidence、首个 runtime contract failure 后停止派发、固定分母、双 lane 隔离和 crash-only seal；这些尚未成为运行源码。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须先完成 V3 R1--R4，并使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R6/R7 证据见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md` 与 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
 
 当前 `/knowledge` 页面数据流：
 

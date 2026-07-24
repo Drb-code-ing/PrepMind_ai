@@ -84,6 +84,7 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 V2 R5 | 已完成 | 独立 runner-v2、双向隔离 CLI/validator/授权/marker/evidence prefix、exclusive-create 与 V1 历史兼容 |
 | Phase 6.9.7 V2 R6 | 已完成 | 分支 static/Mock、marker/evidence 并发故障恢复、Chat/Organizer 取消与失败终态、同题跨路由 PostgreSQL 收敛；R7 前置已关闭 |
 | Phase 6.9.7 V2 R7 | 失败封存 | 唯一 run `67ce18dd...` 为 24/24 zero-call、0/48 strict runtime、Tutor/Organizer semantic `0/0`、verified usage `0`，最终 `quality_gate_failed`；不得重跑，未进入 R8 产品验收 |
+| Phase 6.9.7 V3 R0 | 已完成 | 零 Provider 复盘确认 runtime 已有安全 failure taxonomy 但 paired evidence 丢失，冻结首个 runtime contract failure 即熔断、固定分母、双 lane 隔离、journal/crash seal、独立 V3 lineage 与 R1--R9 原子计划；未改源码或调用 Provider |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -255,9 +256,23 @@ SHA 不变、V2 marker/evidence 为 0、V1 validator 与 V2 CLI hardening `8/8` 
 `0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
 `ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator 通过。
 一次性名额已经消费，V2 不得重跑；R8 Docker/API/browser、Task 13/main 合并与 Phase 6.10
-均不得开始。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计；该设计本身不授权新
-Provider 调用。权威记录见
+均不得开始。该终态当时要求先做零 Provider V3 复盘；后续 R0 设计已完成，见下一条，且仍不
+授权新 Provider 调用。权威记录见
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+
+2026-07-24 Phase 6.9.7 V3 R0 零 Provider 设计已冻结：源码取证确认 `@repo/ai` 已把受信
+Provider failure 压缩为固定 category/stage 并写入 runtime Trace，但 Tutor/Organizer paired
+runner 的 eval result 与 case builder 没有投影这些字段，外层 safe wrapper 又把失败统一为
+`fallback_runtime_error`；当前 24 个 pair 还会在首个失败后继续派发。V3 复用现有安全 taxonomy，
+新增有界执行阶段、真实 dispatch/usage outcome、24 guard 先行、单 pair 最多双并发和 run-level
+quality breaker：由于质量门固定要求 `48/48` strict runtime，首个 runtime contract failure 后本轮已不可能
+通过，收口当前 pair 后停止后续派发；未执行 case 仍留在 48 分母，且不得复制另一 lane 的故障
+类别、重试、补跑或伪造零费用。V3 使用独立 runner/prompt/授权/marker/journal/evidence，崩溃后
+只允许零网络 seal，不 resume/replay。R0 只修改文档，没有读取 `.env`/credential、调用 Provider、
+创建 V3 Live artifact、启动 Docker 或修改业务数据。权威设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，原子计划见
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v3-remediation.md`，验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md`。下一步仅 R1 零网络实现。
 
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
@@ -491,7 +506,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
-- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 与 V2 R7 两条唯一 Live 均未通过质量门；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但 V2 R7 的 24 个 Organizer runtime 全在结构化对象前失败，仍无通过的质量 authority 或产品验收。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 与 V2 R7 两条唯一 Live 均未通过质量门；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但 V2 R7 的 24 个 Organizer runtime 全在结构化对象前失败，仍无通过的质量 authority 或产品验收。V3 R0 已冻结 failure taxonomy 投影、首个 runtime contract failure 熔断、固定分母、双 lane 隔离与 crash-only seal 设计，但尚未实现源码或调用 Provider。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - `/review-preferences` 读写当前用户账号级复习计划偏好，包括每日分钟、每日卡片上限、提醒时间、提醒开关和计划窗口。
 - `/review-tasks/plan` 是只读预览接口，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
@@ -573,7 +588,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 V1 与 V2 R7 两条唯一 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 run `67ce18dd...` 保持 `24/24` zero-call，但为 `0/48` strict runtime、Tutor/Organizer semantic `0/0`、verified usage `0`；因此没有进入 R8 Docker/API/browser，生产 gate 保持默认关闭。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计；不得修改 V1/V2 history、擅自调用 Provider、开始 Task 13/main 合并或提前进入记忆注入/Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 V1 与 V2 R7 两条唯一 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。V3 R0 零 Provider 设计已冻结：复用安全 failure taxonomy，新增真实 dispatch/usage outcome、首个 runtime contract failure 后 breaker、固定 48 分母、双 lane 隔离、append-only journal 与 crash-only seal。下一步只执行 R1 安全诊断投影和零网络 compatibility harness；不得修改 V1/V2 history、擅自调用 Provider、开始产品验收/Task 13/main 或提前进入记忆注入/Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话先核对 V2 evidence/marker 两个 SHA、失败 acceptance 与 clean commit。V2 一次性名额已消费，禁止删除 marker 或重跑；先完成零 Provider 失败复盘与 V3 设计，任何未来网络运行都需要新的 identity、独立 marker/evidence 和新的精确用户授权。
+6. V3 R0 已核对 V2 evidence/marker SHA 并完成设计；下一任务是 R1 零网络源码实现。V2 一次性名额已消费，禁止删除 marker 或重跑；任何未来网络运行都需要 R1--R4 checkpoint 全部通过、独立 V3 identity/marker/journal/evidence 和新的精确用户授权。

@@ -4,9 +4,9 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
-Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1 与 V2 两条唯一 controlled-Live 均以 `quality_gate_failed` 封存且不得重跑。V1 run `39a62241...` 为 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`。V2 R0--R6 已完成独立 runner/CLI/validator/evidence lineage、held-out/metamorphic/authority/leakage、marker/evidence 并发故障恢复、Chat abort、Organizer 失败终态及同题跨路由 PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。随后唯一 V2 R7 run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前进入 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、`quality_gate_failed`。证据未保存原始异常，不能武断归因于 credential、网络、模型、endpoint 或 prompt。
+Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1 与 V2 两条唯一 controlled-Live 均以 `quality_gate_failed` 封存且不得重跑。V1 run `39a62241...` 为 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`。V2 R0--R6 已完成独立 runner/CLI/validator/evidence lineage、held-out/metamorphic/authority/leakage、marker/evidence 并发故障恢复、Chat abort、Organizer 失败终态及同题跨路由 PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。随后唯一 V2 R7 run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前进入 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、`quality_gate_failed`。证据未保存原始异常，不能武断归因于 credential、网络、模型、endpoint 或 prompt。V3 R0 已完成零 Provider 设计：现有 runtime failure taxonomy 将被安全投影到 evidence；首个 runtime contract failure 会立即使固定 `48/48` 门进入不可通过状态，收口当前最多双并发 pair 后停止后续派发，未执行 case 仍保留分母；Tutor/Organizer 不复制故障类别、不借预算，崩溃后只 seal、不重放。
 
-V2 marker/evidence 已封存；没有进入 R8 Docker/API/可见浏览器，生产 gate 的 tracked defaults 继续关闭。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计，而不是删除 marker 重跑 V2、开始 Task 13/main 合并或进入 Phase 6.10。
+V2 marker/evidence 已封存；没有进入 R8 Docker/API/可见浏览器，生产 gate 的 tracked defaults 继续关闭。下一步是 V3 R1 安全诊断投影与零网络 compatibility harness，不是删除 marker 重跑 V2、调用真实模型、开始 Task 13/main 合并或进入 Phase 6.10。
 
 ## 当前状态
 
@@ -54,7 +54,7 @@ V2 marker/evidence 已封存；没有进入 R8 Docker/API/可见浏览器，生�
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                  | 已完成 |
 | Phase 6.9.5 | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放        | 已完成 |
 | Phase 6.9.6 | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                       | 已完成 |
-| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11 完成；V1/V2 Live 均失败封存；等待零 Provider V3 复盘设计 |
+| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11、V3 R0 完成；V1/V2 Live 失败封存；下一步 V3 R1 零网络实现 |
 | Phase 7     | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit      | 核心工程化已完成 |
 | Phase 7.8.5 | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固             | 已完成 |
 | Phase 7.23  | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                    | 已完成 |
@@ -227,13 +227,13 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--11、V2 R0--R6 均已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 都已分别以 `quality_gate_failed` 封存。V2 保持 `24/24` guard zero-call，但为 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`；48 个 runtime 都在结构化对象前回退，不能据此证明语义、价格或产品可用。V2 evidence/marker SHA 已记录并通过专用 validator，一次性名额已消费，未进入 R8 Docker/API/browser。
-   下一步先做零 Provider 失败复盘并设计新的 V3 identity、安全传输失败分类与 preflight；这不授权任何新网络调用。R6 的并发、任务丢失/补偿、取消和跨路由收敛结论保留，但不能替代真实模型质量门。
+2. 当前执行 Phase 6.9.7：Task 0--11、V2 R0--R6 与 V3 R0 均已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 都已分别以 `quality_gate_failed` 封存。V2 保持 `24/24` guard zero-call，但为 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`；48 个 runtime 都在结构化对象前回退，不能据此证明语义、价格或产品可用。V2 evidence/marker SHA 已记录并通过专用 validator，一次性名额已消费，未进入 R8 Docker/API/browser。
+   V3 R0 已冻结现有安全 taxonomy 的 evidence 投影、零网络 compatibility harness、首个 runtime contract failure 后停止派发、固定分母、双 lane 隔离和 crash-only seal。下一步只做 R1 零网络源码；R1--R4 完成前不申请新 Live。这不授权任何网络调用。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”“为什么 held-out/metamorphic 满分仍不能替代 controlled-Live？”
 
-下一会话先核对 V2 evidence/marker SHA、失败 acceptance 与 clean commit。禁止删除 marker 或重跑 V2；任何未来网络运行都必须使用新的 identity、独立 marker/evidence 和新的精确授权。
+V3 R0 已核对 V2 evidence/marker SHA、失败 acceptance 与 clean 起点。禁止删除 marker 或重跑 V2；任何未来网络运行都必须先完成 V3 R1--R4、使用独立 marker/journal/evidence，并取得新的精确授权。
 
 ## 文档入口
 
@@ -253,6 +253,9 @@ bun --cwd packages/fsrs test
 - [Phase 6.9.7 V2 R7 controlled-Live 失败封存](./docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md)
 - [Phase 6.9.7 V2 remediation 设计](./docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md)
 - [Phase 6.9.7 V2 remediation 实施计划](./docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md)
+- [Phase 6.9.7 V3 remediation 设计](./docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md)
+- [Phase 6.9.7 V3 remediation 实施计划](./docs/superpowers/plans/phase-6-9-7-tutor-organizer-v3-remediation.md)
+- [Phase 6.9.7 V3 R0 零 Provider 设计验收](./docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

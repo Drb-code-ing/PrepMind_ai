@@ -8,8 +8,8 @@ WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock 
 held-out/metamorphic anti-overfit、R5 独立 V2 lineage 与 R6 static/Mock/生产极端边界均已完成。
 R7 唯一 V2 branch controlled-Live run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 已执行并以
 `quality_gate_failed` 封存：`24/24` zero-call 通过，但 `0/48` strict runtime、Tutor/Organizer
-semantic `0/0`、verified usage `0`。V2 marker/evidence 已消费且不得重跑；R8--R11 不得开始。
-下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计。
+semantic `0/0`、verified usage `0`。V2 marker/evidence 已消费且不得重跑；V2 R8--R11 永久
+不适用。后续 V3 R0 零 Provider 设计已完成，下一步仅 R1 zero-network implementation。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -383,9 +383,9 @@ evidence/marker SHA-256 为
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。按本计划
 停止条件，V2 不得重跑，R8 不启动；新问题只能另起 V3 identity 与新计划。
 
-## R8：分支 Docker/API/headed-browser 产品验收
+## R8：分支 Docker/API/headed-browser 产品验收（V2 失败后永久不适用）
 
-**仅在 R7 pass 后执行。**
+**仅在 R7 pass 后执行；实际 R7 已失败，因此本节未执行。未来产品验收归属独立 V3 lineage。**
 
 - Tutor-only Docker Chat：applied / explicit zero-call / forced fallback；
 - Organizer-only API：single/batch、existing/high-confidence zero-call、owner、locked-name、

@@ -135,6 +135,14 @@ R6 已在 Live 前固定下列生产边界，本次失败不改变这些结论�
 环境/请求兼容性 preflight 与新的 one-shot 授权边界；不得修改 V1/V2 history，也不得把新设计
 解释为已获得下一次 Provider 授权。
 
+后续状态：上述下一步已经以 V3 R0 零 Provider 设计完成。V3 已冻结安全 taxonomy 投影、
+strict-gate breaker、固定分母、双 lane 隔离、append-only journal 与 crash-only seal；没有读取
+credential、调用 Provider 或创建 V3 Live artifact。下一步仅 R1 zero-network implementation，
+权威设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md`。这不改变本页 V2
+失败终态，也不授权 V3 Live。
+
 回顾时可以问：
 
 - 为什么 `deepseek_network` 只表示真实 executor 路径，不等于 Provider 已返回 usage？

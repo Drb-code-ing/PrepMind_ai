@@ -6,7 +6,7 @@
 落地且相互拒绝，R6 static/Mock、并发/恢复/取消/路由 checkpoint 与双路复审已通过。R7 唯一
 V2 branch controlled-Live 已执行并以 `quality_gate_failed` 封存：`24/24` zero-call，`0/48`
 strict runtime，Tutor/Organizer semantic `0/0`，verified usage `0`。V2 marker/evidence 已消费且
-不得重跑；R8 产品验收未启动。下一步只能先做零 Provider V3 失败复盘设计。
+不得重跑；R8 产品验收未启动。后续 V3 R0 零 Provider 设计已完成，下一步仅 R1 零网络实现。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -513,12 +513,17 @@ evidence 与 marker SHA-256 分别为
 `ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator 通过。
 安全 evidence 不保存原始异常或 Provider 原文，所以当前只能确认“结构化对象前 runtime failure”，
 不能指定 credential、代理/TLS/网络、endpoint/model compatibility、请求适配或 prompt 为单一
-根因。一次性名额已经消费；本设计的失败停止条件现已生效，R8--R11 不得开始。权威记录见
+根因。一次性名额已经消费；本设计的失败停止条件现已生效，V2 R8--R11 永久不适用。权威记录见
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+
+后续 V3 R0 已另立独立 identity、failure evidence、strict-gate breaker、journal/crash seal 与
+R1--R9 计划；它不改写 V2，也不授权网络调用。见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`。
 
 ## 13. 产品验收顺序
 
-只有 V2 `quality_gate_passed` 后才执行：
+本节保留 V2 当时的条件计划；由于 V2 已失败，以下步骤没有执行且永久不适用于 V2。未来产品
+验收只能属于 V3 通过后的新 lineage。
 
 1. Tutor-only Docker Chat：隐含/上下文/冲突样本
    `candidate_applied`，明确指令 zero-call，forced failure fallback；

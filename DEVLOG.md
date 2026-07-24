@@ -1,5 +1,39 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
+> `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker
+> SHA-256，仍为 `0c645062...84c77` / `ac65ac67...98504`；V3 Live artifact 为 0，V1/V2
+> history 未删除、覆盖或重建。
+>
+> 四路只读取证与主代理源码抽样确认：`@repo/ai` 已将受信 Provider 异常安全压缩为
+> `http_auth/http_rate_limit/http_client/http_server/transport/structured_output/
+> invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace；Tutor/Organizer
+> candidate 可暂时保留 Trace，但 paired eval result/case builder 没有投影，外层 safe wrapper 又把
+> 不同失败统一为 `runtimeInvocations=1/fallback_runtime_error/usage=null`。当前 scheduler 对 24
+> 个 pair 顺序推进、每 pair 双并发，首个失败后仍会继续余下调用。这解释了 V2 证据为什么只有
+> `fallback_runtime_error`，但仍不能指定 credential、网络、TLS、endpoint、model 或 adapter 为
+> 单一真实根因。
+>
+> V3 现已冻结独立 runner/prompt/approval/confirmation/marker/journal/evidence identity；复用
+> 现有安全 taxonomy，增加有界 `lastCompletedStage`、真实 dispatch outcome 与 usage 可知性。执行
+> 先跑 24 guard，再按 pair 推进，最大网络并发 2。固定质量门要求 `48/48` strict runtime，所以
+> 首个 runtime contract failure 后本轮已不可能通过：收口当前 pair 后立即停止后续派发，剩余 case 仍
+> 保留在 48 分母并标记 not-started；Tutor/Organizer 不复制故障类别、不借 credential/预算，不
+> 自动 retry、补跑或伪造零费用。
+>
+> marker 后先 durable 初始化 append-only hash-chain journal，再允许 dispatch；崩溃后只允许
+> zero-network orphan seal，in-flight 记 unknown usage、未开始记 not-started，永不 resume/replay。
+> evidence 继续使用 temp `wx` + fsync + hard-link final。后续压缩为 R1 diagnostics/preflight、
+> R2 breaker/ledger、R3 journal/evidence、R4 static/Mock checkpoint 四个零 Provider 工程任务；
+> R4 通过后必须停止并重新申请一次 V3 branch controlled-Live。
+>
+> 本任务只改文档，没有读取 `.env`/credential、调用 Provider、创建 V3 Live artifact、启动或清理
+> Docker、修改数据库/Redis/MinIO/业务数据、合并 main 或推送。权威设计：
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`；原子计划：
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v3-remediation.md`；验收：
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md`。下一步仅 R1
+> zero-network implementation。
+>
 > 2026-07-24 — Phase 6.9.7 V2 R7 唯一 controlled-Live 失败封存：用户重新接受 DeepSeek
 > 当前账号的数据保留/训练边界并授权一次 V2 branch run。零网络 preflight 在 clean
 > `8a3073f0` 上确认分支、V1 evidence/marker SHA、V2 artifact=0、默认 gate 与 V1 validator；
@@ -20,7 +54,7 @@
 > `0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
 > `ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator
 > `ok=true/filesChecked=1`。一次性名额已消费，V2 不得重跑；R8 Docker/API/browser、Task 13、
-> main 合并与 Phase 6.10 均未开始。下一步只能先做零 Provider 失败复盘并另起 V3 identity；
+> main 合并与 Phase 6.10 均未开始。该 checkpoint 当时下一步只能先做零 Provider 失败复盘并另起 V3 identity；
 > 新设计本身不授权网络调用。权威记录：
 > `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
 >

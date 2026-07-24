@@ -809,9 +809,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 唯一 V1 controlled-Live 已执行并以 `quality_gate_failed` 封存；因固定质量门失败，Docker service/API/浏览器产品验收未启动。下列合同继续作为 V1 证据解释与未来 V2 不可放宽的基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0 已冻结零 Provider 修复设计但未改源码或调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -840,3 +840,20 @@ Task 10 完成回执：tracked `docker/.env.example` 固定 mock/live=false、�
 Task 11 完成回执：focused `97/97`；全量 Agent `543/543`、AI `194/194`、Types `42/42 + tsc --noEmit`、Server `227 suites passed / 3 skipped、2152 passed / 30 skipped`、Web `438/438`，相关 lint/build 与 Compose tracked-example quiet config 通过。Organizer PostgreSQL E2E `10/10`，匹配测试账号残留为 0。deterministic baseline 为 `6/48`、critical `0`、Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`、provider/token/cost 全 0；fresh Mock run `0c33c01f-802a-4f53-a6e6-538b7af9abc7` 为 `24/24` zero-call、`48/48` runtime、semantic `1/1/1`、usage `21948/5647`、estimated `0.099726 CNY`，Live-only gate 按设计仍为 `quality_gate_failed`。Mock evidence 经 validator 后按精确路径删除；无 credential/provider/Live marker/evidence/产品 Docker/API/浏览器。完整证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-agents.md`；该 checkpoint 当时停在 Task 12 新授权门前；后续 V1 结果见下方 Task 12 回执。
 
 Task 12 V1 完成回执：preflight 修复 Router/Verifier 真实 gate 名称后在 clean `5f2cfcdc` 上执行唯一 branch run `39a62241-0f51-45be-a423-0d13b0b60ae4`。`executorProvenance=deepseek_network`，dataset SHA 为 `7ac2f4b5...2207e`；`24/24` zero-call 通过，但 strict runtime 仅 `27/48`。Tutor semantic `0.3485119048`、提升 `-0.0933547619`；Organizer semantic `0.7000000000`、提升 `0.4218750000`。critical/permission/mutation/broader fallback 为 0，P95 全部通过，48 个 usage case、`21288/3759` tokens 与 `0.086418 CNY` 可验证；最终 `quality_gate_failed`。evidence SHA `be044871...3f34b5`、marker SHA `7cb443f1...f6ecffb`，validator 通过。V1 不得重跑；产品 Docker/API/浏览器与 synthetic 业务数据均未启动，Docker 数据未清理。Phase 6.9.7 未完成，Task 13 不得开始；下一步先做零网络 V2 remediation。
+
+V2 R7 完成回执：唯一 branch run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 使用
+runner-v2、冻结 dataset/SHA、两个 v2 prompt 与 `deepseek_network`。`24/24` guard zero-call
+通过，但 Tutor/Organizer 各 24 个 runtime 都在 structured object 前
+`fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、critical `1`、verified
+usage `0`、pricing/cost 不可验证，gate 为 `quality_gate_failed`。evidence/marker SHA 分别为
+`0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
+`ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`。原始异常未保存，
+不能指定 credential/网络/model/endpoint/prompt 单一根因。V2 不得重跑，产品验收未启动。
+
+V3 R0 完成回执：复盘确认 runtime 已有固定 Provider failure category/structured stage，但 paired
+case builder 未投影，safe wrapper 还会统一失败并猜测 invocation；scheduler 在首个失败后继续
+pair。V3 冻结新 identity、zero-network compatibility harness、真实 dispatch/usage outcome、24
+guard 先行、单 pair 最大双并发、首个 runtime contract failure 后 breaker、固定 48 分母、双 lane 隔离、
+append-only journal、crash-only seal 与 hard-link evidence。R0 没有 source/credential/provider/
+Docker/API/browser/业务数据操作；下一步仅 R1 zero-network implementation。完整设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`。
