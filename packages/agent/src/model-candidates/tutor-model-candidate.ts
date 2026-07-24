@@ -12,6 +12,8 @@ import type { RouterResult } from '@repo/types/api/agent';
 
 import {
   TUTOR_MODEL_DECISION_SCHEMA,
+  formatTutorModelIntentPolicyForPrompt,
+  isTutorModelDepthCompatible,
   validateTutorModelDecision,
   type TutorModelDecision,
   type TutorModelDecisionValidationResult,
@@ -37,7 +39,6 @@ import {
   buildTutorStrategy,
   buildTutorStrategyFromIntent,
   detectTutorSignals,
-  type TutorDepth,
   type TutorIntent,
   type TutorIntentSignalMatch,
   type TutorStrategy,
@@ -48,10 +49,10 @@ const MAX_OUTPUT_TOKENS = 300;
 
 const SYSTEM_PROMPT = [
   'Classify only the bounded Tutor strategy request supplied as JSON.',
-  'Choose one teaching intent and a compatible depth from the strict schema.',
-  'Use only the allowed fixed evidence codes that support the chosen intent.',
+  formatTutorModelIntentPolicyForPrompt(),
+  'Choose the most specific supported intent. Primary evidence is mandatory; allowed evidence is exhaustive; depth must be compatible.',
   'Never choose answer_direct, write an answer, reveal a final answer, execute tools, alter routing, or create permissions.',
-].join(' ');
+].join('\n');
 const SCHEMA_DESCRIPTOR =
   'Output strict JSON: {"intent":"explain_solution|socratic_hint|step_check|concept_bridge|general_follow_up","depth":"brief|standard|deep","confidence":"medium|high","evidenceCodes":["allowed_code"]}. No extra fields.';
 
@@ -367,7 +368,7 @@ export function mergeTutorModelDecision(
     if (local.intent === 'answer_direct') return null;
     const validated = validateTutorModelDecision(decision);
     if (!validated.ok) return null;
-    if (!isCompatibleDepth(validated.value.intent, validated.value.depth)) return null;
+    if (!isTutorModelDepthCompatible(validated.value.intent, validated.value.depth)) return null;
 
     const merged = buildTutorStrategyFromIntent({
       intent: validated.value.intent,
@@ -646,18 +647,6 @@ function projectionFailureEnvelope(
     return localEnvelope(deterministic, 'not_eligible', budget, [reasonCode]);
   }
   return localEnvelope(deterministic, 'fallback_invalid_input', budget, [reasonCode]);
-}
-
-function isCompatibleDepth(intent: TutorModelDecision['intent'], depth: TutorDepth): boolean {
-  switch (intent) {
-    case 'socratic_hint':
-    case 'step_check':
-    case 'general_follow_up':
-      return depth === 'brief' || depth === 'standard';
-    case 'concept_bridge':
-    case 'explain_solution':
-      return depth === 'standard' || depth === 'deep';
-  }
 }
 
 function readAbortState(signal: AbortSignal | undefined):

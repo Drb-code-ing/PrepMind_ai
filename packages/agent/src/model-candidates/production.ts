@@ -20,8 +20,16 @@ export {
 } from './review-planner-model-candidate.ts';
 export {
   TUTOR_MODEL_DECISION_SCHEMA,
+  TUTOR_MODEL_INTENT_POLICY,
+  TUTOR_MODEL_PROMPT_VERSION,
+  formatTutorModelIntentPolicyForPrompt,
+  isTutorModelDepthCompatible,
   validateTutorModelDecision,
   type TutorModelDecision,
+  type TutorModelDepth,
+  type TutorModelEvidenceCode,
+  type TutorModelIntent,
+  type TutorModelIntentPolicy,
 } from './tutor-model-contract.ts';
 export {
   TUTOR_MODEL_PROJECTION_VERSION,

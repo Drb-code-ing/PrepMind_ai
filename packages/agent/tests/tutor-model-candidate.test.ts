@@ -13,6 +13,13 @@ import {
   runTutorModelCandidate,
   type TutorModelCandidateInput,
 } from '../src/model-candidates/tutor-model-candidate.ts';
+import {
+  TUTOR_MODEL_DEPTHS,
+  TUTOR_MODEL_INTENT_POLICY,
+  TUTOR_MODEL_PROMPT_VERSION,
+  formatTutorModelIntentPolicyForPrompt,
+  validateTutorModelDecision,
+} from '../src/model-candidates/tutor-model-contract.ts';
 import { phase69TutorCases } from '../src/evals/phase-6-9-tutor-wrong-question-cases.ts';
 import { buildTutorStrategy } from '../src/nodes/tutor.ts';
 
@@ -334,6 +341,8 @@ describe('Phase 6.9.7 Tutor governed model candidate', () => {
         task: 'tutor_strategy',
         maxOutputTokens: 300,
       });
+      expect(requests[0]?.systemPrompt).toContain(TUTOR_MODEL_PROMPT_VERSION);
+      expect(requests[0]?.systemPrompt).toContain(formatTutorModelIntentPolicyForPrompt());
       expect(requests[0]?.estimatedInputTokens).toBeLessThanOrEqual(1_200);
       expect(requests[0]?.budget).toMatchObject({
         usedCalls: 0,
@@ -387,6 +396,32 @@ describe('Phase 6.9.7 Tutor governed model candidate', () => {
     expect(result.result.debug.matchedSignals).toEqual([
       'model:implicit_hint_request',
     ]);
+  });
+
+  test('keeps incompatible depth rejection in the local merger for every intent', () => {
+    const deterministic = buildTutorStrategy({
+      latestUserText: DEFAULT_TEXT,
+      activeStudyContext: DEFAULT_CONTEXT,
+    });
+
+    for (const policy of TUTOR_MODEL_INTENT_POLICY) {
+      for (const depth of TUTOR_MODEL_DEPTHS) {
+        if (policy.compatibleDepths.includes(depth)) continue;
+        const validated = validateTutorModelDecision({
+          intent: policy.intent,
+          depth,
+          confidence: 'high',
+          evidenceCodes: [policy.primaryEvidenceCodes[0]],
+        });
+
+        expect(validated.ok, `${policy.intent}:${depth}:contract`).toBe(true);
+        if (!validated.ok) continue;
+        expect(
+          mergeTutorModelDecision(deterministic, validated.value),
+          `${policy.intent}:${depth}:local_merger`,
+        ).toBeNull();
+      }
+    }
   });
 
   test('rejects answer_direct, invalid evidence association, and incompatible depth', async () => {

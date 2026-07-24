@@ -77,7 +77,8 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 Task 11 | 已完成 | 分支 focused/full/static、deterministic baseline、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与双路终审；无 provider/Live/产品 Docker/浏览器 |
 | Phase 6.9.7 Task 12 V1 Live | 失败封存 | 唯一 run `39a62241...` 为 24/24 zero-call、27/48 strict runtime；Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`；不得重跑，未进入产品 Docker/API/浏览器 |
 | Phase 6.9.7 V2 R0 | 已完成 | 零网络复盘 V1，冻结 prompt/validator 单一规则源、有界阶段诊断、anti-overfit、独立 runner/marker/evidence 与 R1--R11 原子计划；未改源码、读取密钥或调用 provider |
-| Phase 6.9.7 V2 R1 | 已完成 | versioned bounded diagnostics、Tutor/Organizer 分域 reason、V1 字段 absent 兼容与 runner/prompt identity 绑定；当前 runner 仍只生成 V1，未调用 provider/Docker，下一步 R2 |
+| Phase 6.9.7 V2 R1 | 已完成 | versioned bounded diagnostics、Tutor/Organizer 分域 reason、V1 字段 absent 兼容与 runner/prompt identity 绑定；当前 runner 仍只生成 V1，未调用 provider/Docker |
+| Phase 6.9.7 V2 R2 | 已完成 | Tutor 五类 intent 深冻结单一 policy、validator/prompt/merger 共用、v2 prompt identity 与逐 intent depth fail-closed；未发布 V2 runner/evidence，下一步 R3 |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -146,7 +147,24 @@ Phase 6 是多 Agent 协作亮点阶段：当前已完成 Agent Runtime 地基�
 
 2026-07-24 Phase 6.9.7 V2 R0 零网络设计已冻结：V1 的 48 个 runtime 均 `rawSchemaValid=true`，但 Tutor 只有 9/24、Organizer 只有 18/24 `candidate_applied`；21 个失败都位于 raw schema 之后，但由于不保存 provider 原文，不能再武断归因。V2 保持 dataset/SHA/baseline/threshold/model/price/budget/timeout/权限/分母不变，通过共享深冻结 policy 让 prompt 与 canonical validator 使用同一规则源，并新增只含固定枚举的 `raw_schema / dynamic_contract / local_merger / applied` 诊断。V2 使用独立 runner/prompt/授权变量/marker/evidence，增加 held-out/metamorphic 防答案表测试；R1--R5 纯离线，R6 只允许既有本地 PostgreSQL/静态 Compose 门且仍保持外部 provider 零调用；R6 checkpoint 后必须停止并取得新的精确授权。权威设计见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`，计划见 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md`。R0 未改源代码、读取 credential、调用 provider 或启动 Docker/API/浏览器；该 checkpoint 当时的下一任务是 R1，后续已完成。
 
-2026-07-24 Phase 6.9.7 V2 R1 bounded diagnostics 已完成：新增 `raw_schema / dynamic_contract / local_merger / applied` 四阶段和 nullable bounded reason adapter；Tutor/Organizer 的 dynamic reason 分域校验，未知或混合额外 reason fail-closed，structured object 形成前的 transport/runtime failure 与 zero-call 均保持双 `null`。V1 entry 的两个新字段必须完全 absent；runner-v1/v2 与各自 prompt identity 严格绑定。focused `19/19`、Agent full `548/548`（`5643` assertions）、typecheck/lint、V1 bundle validator 与两路独立复审通过；V1 evidence/marker SHA-256 仍为 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` / `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。当前公共 runner/CLI 仍只生成 V1，V1 evidence validator 明确拒绝 V2 report；本任务没有读取 credential、调用 provider、发布 V2 evidence 或启动 Docker/API/浏览器。下一任务是 R2 Tutor prompt/contract 单一规则源。
+2026-07-24 Phase 6.9.7 V2 R1 bounded diagnostics 已完成：新增 `raw_schema / dynamic_contract / local_merger / applied` 四阶段和 nullable bounded reason adapter；Tutor/Organizer 的 dynamic reason 分域校验，未知或混合额外 reason fail-closed，structured object 形成前的 transport/runtime failure 与 zero-call 均保持双 `null`。V1 entry 的两个新字段必须完全 absent；runner-v1/v2 与各自 prompt identity 严格绑定。focused `19/19`、Agent full `548/548`（`5643` assertions）、typecheck/lint、V1 bundle validator 与两路独立复审通过；V1 evidence/marker SHA-256 仍为 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` / `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。公共 runner/CLI 仍只生成 V1，V1 evidence validator 明确拒绝 V2 report；本任务没有读取 credential、调用 provider、发布 V2 evidence 或启动 Docker/API/浏览器。该 checkpoint 当时下一任务是 R2，后续已完成。
+
+2026-07-24 Phase 6.9.7 V2 R2 Tutor prompt/contract 单一规则源已完成：五类
+intent 的 primary/allowed evidence、compatible depth 与通用选择语义已收敛到一个深冻结
+readonly policy；contract validator、稳定 prompt formatter 与 local merger 共用同一
+authority。depth 仍由 local merger 最终 fail-closed，保留 R1
+`local_merger / incompatible_depth` 诊断语义；`answer_direct`、schema/projection、
+dataset/SHA、质量门和预算均不变。Tutor candidate/Web config 的 prompt identity 已升为
+`tutor-model-candidate-v2`，但 active public paired runner/CLI 仍只生成 V1，R5 前不存在
+V2 marker/evidence 入口。Tutor/package focused `25/25`（`375` assertions）、Phase 6.9.7
+兼容 `33/33`（`656` assertions）、Web config `5/5`、Agent full `552/552`（`5827`
+assertions）、Web full `438/438`、Agent/AI typecheck/lint 与 Web lint 通过。两路复审无未关闭
+Critical/Important；一条 depth 意见经核对冻结设计后撤回为测试覆盖建议，已补齐
+逐 intent merger 矩阵。V1 evidence/marker SHA-256 仍为
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。本任务未读取
+credential、调用 provider、启动 Docker/API/browser 或修改业务数据；下一任务是 R3
+Organizer prompt/contract precision。
 
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
@@ -333,7 +351,7 @@ API：http://127.0.0.1:3001
 - Phase 7.13 起 `docker/Dockerfile.web` 已迁移到 Bun workspace + Next standalone 输出，`apps/web/next.config.ts` 使用 `output: 'standalone'` 和 monorepo tracing root。Phase 7.17 起 Docker Compose 全栈验收命令为 `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --build postgres redis minio server worker web admin`；本地浏览器访问学习端 `http://127.0.0.1:3000`，管理员后台 `http://127.0.0.1:3100`，API `http://127.0.0.1:3001`。Compose server 默认允许 `http://localhost:3000`、`http://127.0.0.1:3000`、`http://localhost:3100` 和 `http://127.0.0.1:3100`，web 镜像默认 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001` 且 `NEXT_PUBLIC_ADMIN_CONSOLE_URL=http://127.0.0.1:3100`，避免 Docker 本机验收时 localhost / 127.0.0.1 cookie 与 CORS 混用。Compose dev 栈会设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 和 `AI_DEV_MODE_SWITCH_ENABLED=true`，让 standalone 容器内的 `/agent-trace` 仍可展示 Mock / Live 开关；生产部署不要设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true`。
 - Swagger / OpenAPI 调试文档默认只在非 production 开启，入口为 `/api-docs` 和 `/api-docs-json`；production 默认关闭，`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，且不放宽任何 `JwtAuthGuard`。Phase 7.5 起核心写接口补充中文说明和安全 request body 示例，便于本地调试与面试讲解。
 - 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；默认 live 模型为 `deepseek-v4-flash`，并建议保留 `AI_MAX_INPUT_TOKENS=2500`、`AI_MAX_OUTPUT_TOKENS=1200` 预算上限。
-- Phase 6.9.7 Task 5 起 Tutor 模型候选还有独立 `TUTOR_AGENT_MODEL_ENABLED` gate、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；三者只进入 Next `web` server runtime，默认 `false`/空。只有全局 Live 双开关、精确 `https://api.deepseek.com/v1`、已知价格和完整 eligibility 同时成立才创建 V4 Pro non-thinking executor；不借用通用或其它 Agent key。Tutor 单请求预算为 `1/1200/300`、硬 cap `0.006 CNY`，与 Router -> Verifier 共享预算隔离。Task 12 V1 已调用真实模型但语义质量门失败，未取得产品 Docker/API/浏览器可用性结论；V2 R0 只冻结离线修复设计，产品 gate 继续默认关闭。
+- Phase 6.9.7 Task 5 起 Tutor 模型候选还有独立 `TUTOR_AGENT_MODEL_ENABLED` gate、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；三者只进入 Next `web` server runtime，默认 `false`/空。只有全局 Live 双开关、精确 `https://api.deepseek.com/v1`、已知价格和完整 eligibility 同时成立才创建 V4 Pro non-thinking executor；不借用通用或其它 Agent key。Tutor 单请求预算为 `1/1200/300`、硬 cap `0.006 CNY`，与 Router -> Verifier 共享预算隔离。Task 12 V1 已调用真实模型但语义质量门失败，未取得产品 Docker/API/浏览器可用性结论；V2 R2 已收口 Tutor prompt/contract 单一规则源与 v2 identity，但未调用 provider 或改变可用性结论，产品 gate 继续默认关闭。
 - 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 调试台切换 mock / live；该开关默认仅非 production 可见。Docker Compose dev 的 Next standalone 容器因运行时 `NODE_ENV=production`，需要同时设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 才显示；该本地诊断开关不能用于生产，也不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
 - AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
 
@@ -462,7 +480,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 的唯一 V1 Live run `39a62241...` 已以 `quality_gate_failed` 封存，24/24 zero-call 与安全/延迟/usage/cost 通过，但 strict runtime 仅 27/48，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此未进入 Docker service/API/浏览器，生产 gate 保持默认关闭，V1 不得重跑。V2 R0/R1 已完成；当前 runner/CLI 仍只生成 V1且 validator 拒绝 V2 report，下一步是 R2 Tutor prompt/contract 单一规则源。R6 静态/Mock checkpoint 与新的明确授权前不得调用 provider 或启动产品验收，也不得提前进入记忆注入或 Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 的唯一 V1 Live run `39a62241...` 已以 `quality_gate_failed` 封存，24/24 zero-call 与安全/延迟/usage/cost 通过，但 strict runtime 仅 27/48，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此未进入 Docker service/API/浏览器，生产 gate 保持默认关闭，V1 不得重跑。V2 R0--R2 已完成；当前公共 runner/CLI 仍只生成 V1 且 validator 拒绝 V2 report，下一步是 R3 Organizer prompt/contract precision。R6 静态/Mock checkpoint 与新的明确授权前不得调用 provider 或启动产品验收，也不得提前进入记忆注入或 Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话应先要求：`请按 V2 remediation 计划执行 R2 Tutor prompt/contract 单一规则源，并保持 dataset、质量门与 V1 evidence 不变。` R2--R6 的测试、独立 identity/marker/evidence 与 checkpoint 完成前，不申请或执行新的 Live；任何新 Live 都必须另行说明数据边界并取得精确授权。
+6. 下一会话应先要求：`请按 V2 remediation 计划执行 R3 Organizer prompt/contract precision，并保持 dataset、质量门与 V1 evidence 不变。` R3--R6 的测试、独立 identity/marker/evidence 与 checkpoint 完成前，不申请或执行新的 Live；任何新 Live 都必须另行说明数据边界并取得精确授权。

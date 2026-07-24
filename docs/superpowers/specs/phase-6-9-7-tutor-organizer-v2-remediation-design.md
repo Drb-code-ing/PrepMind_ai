@@ -232,6 +232,23 @@ V2 prompt 还应使用通用、非 case-specific 的最小区分规则：
 
 这些规则描述产品 intent 语义，不包含 72 条 fixture 的文本或答案。
 
+### R2 实现状态（2026-07-24）
+
+R2 已将 intent、primary/allowed evidence、compatible depth 与通用选择语义收敛到
+一个深冻结 readonly policy。contract validator、稳定 prompt formatter 与本地 merger
+共用该 policy；depth 仍按本设计在 local merger 最终拒绝，并保留
+`local_merger / incompatible_depth` 诊断语义。Tutor candidate 和 Web server-only
+config 的 prompt identity 已升为 `tutor-model-candidate-v2`，但公共 paired runner/CLI
+仍只生成 V1；R5 前不存在 V2 evidence 入口。
+
+Tutor/package focused `25/25`、原 12 zero-call + 24 runtime 冻结矩阵、逐 intent
+depth fail-closed 矩阵、Phase 6.9.7 V1/diagnostics 兼容 `33/33`、Agent full
+`552/552`、Web full `438/438` 均通过；Agent/AI typecheck/lint、Web lint 与
+diff 门同步通过。dataset/SHA、schema/projection、质量门、预算和 V1
+evidence/marker 均不变；本任务没有读取 credential、调用 provider、发布
+V2 evidence 或启动 Docker/API/browser。下一步 R3 收口 Organizer prompt/contract
+precision。
+
 ## 9. Organizer V2：关联规则与精度
 
 ### 9.1 共享关联 policy
@@ -344,8 +361,8 @@ object 形成前的 transport/runtime 失败。V1 entry 仍要求两个新字段
 evidence/marker SHA-256 仍为
 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
 `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。本任务没有读取
-credential、调用 provider、发布 V2 evidence 或启动 Docker/API/browser；下一步 R2 建立 Tutor
-prompt/contract 单一规则源。
+credential、调用 provider、发布 V2 evidence 或启动 Docker/API/browser；该 checkpoint 当时下一步
+是 R2 Tutor prompt/contract 单一规则源，后续已完成。
 
 ## 11. Anti-overfit 设计
 

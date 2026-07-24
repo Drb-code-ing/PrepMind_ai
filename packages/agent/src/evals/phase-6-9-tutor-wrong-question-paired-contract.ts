@@ -19,6 +19,7 @@ import {
 } from './phase-6-9-tutor-wrong-question-bounded-diagnostics.ts';
 import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
+import { TUTOR_MODEL_PROMPT_VERSION as TUTOR_MODEL_CANDIDATE_PROMPT_VERSION } from '../model-candidates/tutor-model-contract.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 
 export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1 =
@@ -31,7 +32,7 @@ export type Phase697TutorOrganizerRunnerVersion =
   | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1
   | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2;
 export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1 = 'tutor-model-candidate-v1' as const;
-export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 = 'tutor-model-candidate-v2' as const;
+export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 = TUTOR_MODEL_CANDIDATE_PROMPT_VERSION;
 export const PHASE_6_9_7_TUTOR_PROMPT_VERSION = PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1;
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1 =
   'wrong-question-organizer-model-candidate-v1' as const;

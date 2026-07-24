@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { OpenAICompatibleExecutorConfig } from '@repo/ai';
+import { TUTOR_MODEL_PROMPT_VERSION } from '@repo/agent/model-candidates';
 
 import {
   TUTOR_MODEL,
@@ -16,7 +17,7 @@ export {
 } from './tutor-model-pricing.ts';
 
 export const TUTOR_MODEL_BASE_URL = 'https://api.deepseek.com/v1' as const;
-export const TUTOR_MODEL_PROMPT_VERSION = 'tutor-model-candidate-v1' as const;
+export { TUTOR_MODEL_PROMPT_VERSION };
 export const TUTOR_MODEL_TIMEOUT_MS = 3_000 as const;
 
 export type TutorModelConfig = Readonly<{

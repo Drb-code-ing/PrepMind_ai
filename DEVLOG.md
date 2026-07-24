@@ -1,4 +1,36 @@
 # PrepMind AI 开发日志
+
+> 2026-07-24 — Phase 6.9.7 V2 remediation R2 Tutor prompt/contract 单一规则源：V1 Tutor
+> prompt 只要求选择 intent/evidence/depth，却没有完整告诉模型本地 contract 实际执行的
+> primary/allowed evidence 和 compatible depth；validator与 candidate 还各自保留一份规则，
+> 后续容易漂移。R2 因此把五类 intent 的 evidence、depth 和通用选择语义收敛为一个
+> 深冻结 readonly policy，contract validator、稳定 prompt formatter 与 local merger 共用同一
+> authority。formatter 只包含固定 enum/规则，泄漏扫描确认不含 case ID、fixture 文本、
+> expected output 或 canonical label。
+>
+> Tutor prompt identity 已升为 `tutor-model-candidate-v2`；Web server-only config 不再手写另一个
+> version，而是从 `@repo/agent/model-candidates` 引用同一常量。future paired V2 identity
+> 也引用该常量，但 active public runner/CLI 仍是 V1；R5 前没有 V2 marker/evidence
+> 入口。`answer_direct` 仍不在模型 schema 中，schema/projection、dataset/SHA、质量门、
+> 预算和权限均不变。depth compatibility 继续由 local merger 最终拒绝，以保留
+> R1 `local_merger / incompatible_depth` 诊断语义。复审曾将 validator 未提前拒绝
+> depth 列为 Important；对照冻结设计和实际 candidate 路径后该意见已撤回为测试
+> 覆盖建议，并已补齐五类 intent 的逐项不兼容 depth merger fail-closed 矩阵。
+>
+> Tutor/package focused `25/25`（`375` assertions）、Phase 6.9.7 V1/diagnostics 兼容
+> `33/33`（`656` assertions）、Web Tutor config `5/5`、Agent full `552/552`（`5827`
+> assertions）与 Web full `438/438` 通过；Agent/AI typecheck/lint、Web lint 与
+> `git diff --check` 通过。两路独立只读复审最终无未关闭 Critical/Important。V1
+> evidence/marker SHA-256 实际复核仍为
+> `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+> `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。
+>
+> 本任务为纯离线 R2：没有读取 credential、调用 provider、启动 Docker/API/browser、
+> 创建 V2 evidence 或修改业务数据，也没有合并/推送 main。下一步是 R3 Organizer
+> prompt/contract precision。回顾时可以问：为什么 prompt/validator 必须共用一个 policy？
+> 为什么 depth 不在 validator 提前拒绝？为什么 Web 已显示 v2 identity 仍不等于 V2
+> runner/evidence 已可用？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R1 bounded diagnostics：V1 只能看到
 > `rawSchemaValid`、`candidateDisposition` 与 `canonicalSchemaSuccess`，无法安全区分 raw schema、
 > dynamic contract、本地 merger 和最终 applied；同时又不能为了排障保存 provider 原文。本任务因此
@@ -22,7 +54,7 @@
 > 执行，没有产生修改；权威 lint 已通过。
 >
 > 本任务没有读取 credential、调用 provider、发布 V2 evidence、启动 Docker/API/浏览器或修改业务
-> 数据，也没有合并/推送 main。下一步是 R2 Tutor prompt/contract 单一规则源；回顾时可以问：为什么
+> 数据，也没有合并/推送 main。该 checkpoint 当时下一步是 R2，后续已完成；回顾时可以问：为什么
 > transport failure 不能伪装成 schema failure？为什么 V1 字段必须 absent？为什么已有 V2 report
 > schema 仍不等于 V2 runner 已可发布？
 >
