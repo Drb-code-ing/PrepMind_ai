@@ -2,9 +2,9 @@
 
 日期：2026-07-24
 
-状态：V2 R0--R4 已离线完成；公共 runner/CLI 仍为 V1，尚未发布 V2 evidence、读取
-credential、调用 provider、启动产品 Docker/API 或浏览器。下一步为 R5 V2
-runner/CLI/validator 与独立 one-shot evidence。
+状态：V2 R0--R5 已离线完成；legacy V1 与独立 V2 runner/CLI/validator/evidence lineage 均已
+落地且相互拒绝。尚未创建 V2 Live marker/evidence、读取 credential、调用 provider、启动产品
+Docker/API 或浏览器。下一步为 R6 分支静态/Mock checkpoint 与独立复审。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -430,6 +430,26 @@ dataset SHA 与 V1 evidence/marker SHA 均保持不变，V2 marker/evidence 不�
 新增 TypeScript 文件的 Prettier check 与 V1 validator 通过；代码/安全与文档/历史边界两路
 独立复审均 `APPROVED`，无未关闭 Critical/Important。该结果只证明没有显式答案表和本地
 变形回归，不能替代 Live 语义质量；下一步 R5。
+
+### R5 实现状态（2026-07-24）
+
+R5 保留 legacy V1 public entry，不把默认常量切到 V2；新增显式
+`runPhase697TutorOrganizerPairedEvalV2`，由同一冻结 72-case runner 在构造 entry 时按版本选择：
+V1 完全省略 bounded diagnostic 字段，V2 对 zero-call 写 `null/null`，对 runtime 写 candidate
+返回的受限 stage/reason。report runner/prompt identity 同时按版本绑定，schema、projection、dataset、
+SHA、分母、质量门、价格、预算、timeout 和本地 authority 均不变。
+
+CLI 通过只读 profile 复用配置安全门与 immutable publisher，但 V1/V2 分别拥有确认词、approval
+env、marker path、evidence prefix、runner 与 validator。V2 marker `wx` 独占创建，evidence 采用
+临时文件 `wx` 后 hard-link 到最终路径；旧 V1 marker 不参与 V2 reservation。V1/V2 validator
+分别固定 runner identity 与 filename，任何 cross-version report、scope/mode/runId filename 不一致、
+敏感字段或重复 runId 都 fail-closed。Live synthetic harness 继续只产生
+`executorProvenance=synthetic_test`，共享 production gate 明确只接受 `deepseek_network`。
+
+RED/GREEN、focused/full、Mock CLI/validator、V1 SHA 和零 V2 Live marker/evidence 的实际结果见实施
+计划 R5 状态。代码/合同/安全与 V1 历史不可变性两路独立复审均 `APPROVED`，无阻断项；
+hard-link 发布后的临时文件清理失败是非阻塞低风险观察。R5 只建立独立 evidence 能力，不发布
+真实质量 authority，也不改变产品可用性结论；下一步 R6。
 
 ## 12. 质量门与停止条件
 

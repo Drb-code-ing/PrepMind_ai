@@ -5,11 +5,11 @@ WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock 
 新的精确授权下执行唯一 V2 controlled-Live，并仅在全门通过后进入产品验收。
 
 **当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract 单一规则源、R3 Organizer
-prompt/contract precision 与 R4 held-out/metamorphic anti-overfit 均已完成。Tutor/Organizer
-candidate 与对应 Web/Server config/Trace 已使用各自 v2 prompt identity；当前公共 runner/CLI
-仍只生成 V1，V1 evidence validator 明确拒绝 V2 report，因此尚不存在可发布的 V2 evidence
-入口。本轮没有读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据；
-下一步是 R5 V2 runner/CLI/validator 与独立 one-shot evidence。
+prompt/contract precision、R4 held-out/metamorphic anti-overfit 与 R5 独立 V2
+runner/CLI/validator/evidence 均已完成。V1 入口、marker/evidence 和 validator 保持独立兼容；V2
+已具备 runner-v2、双向隔离的授权/确认词/marker/evidence prefix 与 strict validator，但没有创建
+V2 Live marker/evidence、读取 credential、调用 provider、启动 Docker/API/浏览器或修改业务数据。
+下一步是 R6 分支静态/Mock checkpoint 与独立复审。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -268,6 +268,32 @@ marker/evidence 匹配为 0。Mock 满分仍由既有 paired runner 固定为
 
 **验证：** CLI/contract/runner/validator focused、Mock CLI、bundle validator、Agent
 typecheck/lint、diff。
+
+**当前状态：已完成。** legacy V1 `runPhase697TutorOrganizerPairedEval`、CLI、validator、确认词、
+授权变量、marker 与 evidence filename 保持不变；新增独立
+`runPhase697TutorOrganizerPairedEvalV2`、V2 CLI/validator entry 与 package scripts。V2 report 固定
+`phase-6.9.7-tutor-organizer-runner-v2`、两个 v2 prompt identity，并要求 72 个 entry 都显式携带
+bounded `canonicalValidationStage/canonicalFailureReason`；V1 entry 继续要求两个字段完全 absent。
+
+V2 Live 只接受新确认词与 `PHASE_6_9_7_V2_CONTROLLED_LIVE_APPROVED=true`，使用独立
+`.tmp/phase-6-9-7-tutor-organizer-v2-controlled-live.marker` 和
+`phase-6-9-7-tutor-organizer-v2-{scope}-{mode}-{runId}.json`。marker 使用 `wx`、evidence 使用
+临时文件 + hard-link exclusive-create；旧 V1 marker 不阻塞 V2，第二次 V2 marker 被拒绝。V1/V2
+validator 双向拒绝对方 report/filename；`synthetic_test` 可用于无网络工程测试，但 production gate
+仍固定为 `quality_gate_failed`，只有 `deepseek_network` 才可能通过。
+
+RED 为缺少 V2 独立导出；GREEN 新增 V2 隔离测试 `5/5`（`40` assertions），相关 focused
+`37/37`（`371` assertions），Agent full `575/575`（`6323` assertions），Agent typecheck/lint
+通过。fresh V2 Mock run `d4fc9a3a-5825-47f2-a4d2-d0148c7ccaf4` 为 `24/24` verified
+zero-call、`48/48` strict runtime、Tutor/Organizer semantic `1/1`、P95
+`246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；V2 validator
+`ok=true/filesChecked=1`，V1 validator 按设计拒绝。临时 Mock evidence 已精确删除，V2 Live
+marker/evidence 仍不存在。V1 evidence/marker SHA-256 仍为
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。本任务没有读取
+credential、调用 provider、启动 Docker/API/browser 或修改业务数据。代码/合同/安全与 V1
+历史不可变性两路独立复审均 `APPROVED`，无阻断项；hard-link 发布后的临时文件清理失败是
+非阻塞低风险观察，不改变 R5 结论。下一步 R6。
 
 **提交：** `feat(agent): isolate phase 6.9.7 v2 evidence`
 

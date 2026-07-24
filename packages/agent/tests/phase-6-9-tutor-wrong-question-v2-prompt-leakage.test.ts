@@ -271,7 +271,7 @@ describe('Phase 6.9.7 V2 prompt leakage and frozen authority', () => {
     ).toBe(true);
   });
 
-  test('leaves the public runner and CLI identity on V1 before R5', () => {
+  test('keeps the legacy public runner identity on V1 after adding an isolated V2 entry', () => {
     expect(PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION).toBe(
       PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
     );

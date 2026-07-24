@@ -30,18 +30,22 @@ import {
 } from './phase-6-9-tutor-wrong-question-metrics.ts';
 import {
   PHASE_6_9_7_ORGANIZER_BASELINE_SEMANTIC_SCORE,
-  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION,
+  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1,
+  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2,
   PHASE_6_9_7_ORGANIZER_SCHEMA_VERSION,
   PHASE_6_9_7_PRICING_PROFILE,
   PHASE_6_9_7_TUTOR_BASELINE_SEMANTIC_SCORE,
   PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA,
-  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION,
-  PHASE_6_9_7_TUTOR_PROMPT_VERSION,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+  PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1,
+  PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
   PHASE_6_9_7_TUTOR_SCHEMA_VERSION,
   computePhase697TutorOrganizerGate,
   type Phase697TutorOrganizerCaseEntry,
   type Phase697TutorOrganizerReport,
   type Phase697TutorOrganizerReportInput,
+  type Phase697TutorOrganizerRunnerVersion,
 } from './phase-6-9-tutor-wrong-question-paired-contract.ts';
 import {
   PHASE_6_9_7_PRE_STRUCTURED_CANONICAL_DIAGNOSTIC,
@@ -241,12 +245,35 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
 export async function runPhase697TutorOrganizerPairedEval(
   harness: Phase697TutorOrganizerEvalHarness,
 ): Promise<Phase697TutorOrganizerReport> {
+  return runPhase697TutorOrganizerPairedEvalVersion(
+    harness,
+    PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
+  );
+}
+
+export async function runPhase697TutorOrganizerPairedEvalV2(
+  harness: Phase697TutorOrganizerEvalHarness,
+): Promise<Phase697TutorOrganizerReport> {
+  return runPhase697TutorOrganizerPairedEvalVersion(
+    harness,
+    PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+  );
+}
+
+async function runPhase697TutorOrganizerPairedEvalVersion(
+  harness: Phase697TutorOrganizerEvalHarness,
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
+): Promise<Phase697TutorOrganizerReport> {
   const zeroCallCases = PHASE_6_9_TUTOR_WRONG_QUESTION_CASES.filter(
     (entry): entry is Phase697ZeroCallCase => entry.expectedRuntimeInvocations === 0,
   );
   const zeroEntries = await Promise.all(
     zeroCallCases.map(async (entry) =>
-      buildZeroCallEntry(entry, await safeZeroCall(() => harness.runZeroCall(entry))),
+      buildZeroCallEntry(
+        entry,
+        await safeZeroCall(() => harness.runZeroCall(entry)),
+        runnerVersion,
+      ),
     ),
   );
   const runtimeEntries: Phase697TutorOrganizerCaseEntry[] = [];
@@ -265,19 +292,20 @@ export async function runPhase697TutorOrganizerPairedEval(
       Math.max(observedPairMs, tutorResult.latencyMs, organizerResult.latencyMs),
     );
     runtimeEntries.push(
-      buildTutorEntry(tutorCase, tutorResult),
-      buildOrganizerEntry(organizerCase, organizerResult),
+      buildTutorEntry(tutorCase, tutorResult, runnerVersion),
+      buildOrganizerEntry(organizerCase, organizerResult, runnerVersion),
     );
   }
 
   const caseEntries = [...zeroEntries, ...runtimeEntries];
-  const report = buildReport(harness, caseEntries, pairedCandidateSamplesMs);
+  const report = buildReport(harness, caseEntries, pairedCandidateSamplesMs, runnerVersion);
   return PHASE_6_9_7_TUTOR_ORGANIZER_REPORT_SCHEMA.parse(report);
 }
 
 function buildZeroCallEntry(
   entry: Phase697ZeroCallCase,
   result: Phase697ZeroCallResult,
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
 ): Phase697TutorOrganizerCaseEntry {
   const caseEntry: Phase697TutorOrganizerCaseEntry = {
     ...baseEntry(entry.id, entry.agent, result),
@@ -290,6 +318,7 @@ function buildZeroCallEntry(
     rawSchemaValid: null,
     candidateDisposition: null,
     canonicalSchemaSuccess: false,
+    ...versionedDiagnostics(runnerVersion, null),
     strictRuntimeSuccess: false,
     latencyMs: null,
     tutorOrchestrationLatencyMs: null,
@@ -304,6 +333,7 @@ function buildZeroCallEntry(
 function buildTutorEntry(
   entry: Phase69TutorRuntimeCase,
   result: Phase697TutorEvalResult,
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
 ): Phase697TutorOrganizerCaseEntry {
   const caseEntry: Phase697TutorOrganizerCaseEntry = {
     ...baseEntry(entry.id, entry.agent, result),
@@ -315,6 +345,7 @@ function buildTutorEntry(
     rawSchemaValid: result.rawSchemaValid,
     candidateDisposition: result.candidateDisposition,
     canonicalSchemaSuccess: result.canonicalSchemaSuccess,
+    ...versionedDiagnostics(runnerVersion, result.canonicalDiagnostic),
     strictRuntimeSuccess: false,
     latencyMs: result.latencyMs,
     tutorOrchestrationLatencyMs: Math.max(result.tutorOrchestrationLatencyMs, result.latencyMs),
@@ -341,6 +372,7 @@ function buildTutorEntry(
 function buildOrganizerEntry(
   entry: Phase69OrganizerRuntimeCase,
   result: Phase697OrganizerEvalResult,
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
 ): Phase697TutorOrganizerCaseEntry {
   const caseEntry: Phase697TutorOrganizerCaseEntry = {
     ...baseEntry(entry.id, entry.agent, result),
@@ -352,6 +384,7 @@ function buildOrganizerEntry(
     rawSchemaValid: result.rawSchemaValid,
     candidateDisposition: result.candidateDisposition,
     canonicalSchemaSuccess: result.canonicalSchemaSuccess,
+    ...versionedDiagnostics(runnerVersion, result.canonicalDiagnostic),
     strictRuntimeSuccess: false,
     latencyMs: result.latencyMs,
     tutorOrchestrationLatencyMs: null,
@@ -394,10 +427,22 @@ function baseEntry(
   };
 }
 
+function versionedDiagnostics(
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
+  diagnostic: Phase697CanonicalDiagnostic | null,
+) {
+  if (runnerVersion === PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1) return {};
+  return {
+    canonicalValidationStage: diagnostic?.canonicalValidationStage ?? null,
+    canonicalFailureReason: diagnostic?.canonicalFailureReason ?? null,
+  };
+}
+
 function buildReport(
   harness: Phase697TutorOrganizerEvalHarness,
   caseEntries: Phase697TutorOrganizerCaseEntry[],
   pairedCandidateSamplesMs: number[],
+  runnerVersion: Phase697TutorOrganizerRunnerVersion,
 ): Phase697TutorOrganizerReportInput {
   const runtime = caseEntries.filter((entry) => entry.executionKind === 'runtime');
   const tutorEntries = runtime.filter((entry) => entry.agent === 'tutor');
@@ -417,12 +462,18 @@ function buildReport(
     runId: harness.runId,
     runScope: harness.runScope,
     mode: harness.mode,
-    runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION,
+    runnerVersion,
     datasetVersion: PHASE_6_9_TUTOR_WRONG_QUESTION_DATASET_VERSION,
     datasetSha256: PHASE_6_9_TUTOR_WRONG_QUESTION_DATASET_SHA256,
     identities: {
-      tutorPromptVersion: PHASE_6_9_7_TUTOR_PROMPT_VERSION,
-      organizerPromptVersion: PHASE_6_9_7_ORGANIZER_PROMPT_VERSION,
+      tutorPromptVersion:
+        runnerVersion === PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2
+          ? PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2
+          : PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1,
+      organizerPromptVersion:
+        runnerVersion === PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2
+          ? PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2
+          : PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1,
       tutorSchemaVersion: PHASE_6_9_7_TUTOR_SCHEMA_VERSION,
       organizerSchemaVersion: PHASE_6_9_7_ORGANIZER_SCHEMA_VERSION,
       tutorProjectionVersion: TUTOR_MODEL_PROJECTION_VERSION,

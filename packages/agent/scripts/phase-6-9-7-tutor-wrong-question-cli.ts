@@ -6,22 +6,31 @@ import { fileURLToPath } from 'node:url';
 import { createOpenAICompatibleStructuredExecutor, type StructuredModelExecutor } from '@repo/ai';
 
 import {
-  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
+  PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
   type Phase697TutorOrganizerReport,
+  type Phase697TutorOrganizerRunnerVersion,
 } from '../src/evals/phase-6-9-tutor-wrong-question-paired-contract.ts';
 import {
   createPhase697TutorOrganizerLiveHarness,
   createPhase697TutorOrganizerMockHarness,
   runPhase697TutorOrganizerPairedEval,
+  runPhase697TutorOrganizerPairedEvalV2,
 } from '../src/evals/run-phase-6-9-tutor-wrong-question-paired.ts';
 import {
+  PHASE_6_9_7_V1_EVIDENCE_PREFIX,
+  PHASE_6_9_7_V2_EVIDENCE_PREFIX,
   hasSensitivePhase697Evidence,
   validatePhase697TutorOrganizerEvidenceValue,
+  validatePhase697TutorOrganizerV2EvidenceValue,
 } from './validate-phase-6-9-7-tutor-wrong-question-evidence.ts';
 
 export const PHASE_6_9_7_LIVE_CONFIRMATION =
   'I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_CONTROLLED_LIVE_ONCE' as const;
-const LIVE_MARKER_PATH = '.tmp/phase-6-9-7-tutor-organizer-controlled-live.marker' as const;
+export const PHASE_6_9_7_V2_LIVE_CONFIRMATION =
+  'I_ACCEPT_PHASE_6_9_7_TUTOR_ORGANIZER_V2_CONTROLLED_LIVE_ONCE' as const;
+const V1_LIVE_MARKER_PATH = '.tmp/phase-6-9-7-tutor-organizer-controlled-live.marker' as const;
+const V2_LIVE_MARKER_PATH = '.tmp/phase-6-9-7-tutor-organizer-v2-controlled-live.marker' as const;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1' as const;
 const TUTOR_TIMEOUT_MS = 3_000 as const;
 const ORGANIZER_TIMEOUT_MS = 5_000 as const;
@@ -86,10 +95,57 @@ type SyntheticTestExecutors = Readonly<{
   organizerExecutor: StructuredModelExecutor;
 }>;
 
+type Phase697CliProfile = Readonly<{
+  runnerVersion: Phase697TutorOrganizerRunnerVersion;
+  liveConfirmation: string;
+  liveApprovalEnv: string;
+  liveMarkerPath: string;
+  evidencePrefix: string;
+  runPairedEval: typeof runPhase697TutorOrganizerPairedEval;
+  validateEvidence: typeof validatePhase697TutorOrganizerEvidenceValue;
+}>;
+
+const V1_CLI_PROFILE: Phase697CliProfile = Object.freeze({
+  runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1,
+  liveConfirmation: PHASE_6_9_7_LIVE_CONFIRMATION,
+  liveApprovalEnv: 'PHASE_6_9_7_CONTROLLED_LIVE_APPROVED',
+  liveMarkerPath: V1_LIVE_MARKER_PATH,
+  evidencePrefix: PHASE_6_9_7_V1_EVIDENCE_PREFIX,
+  runPairedEval: runPhase697TutorOrganizerPairedEval,
+  validateEvidence: validatePhase697TutorOrganizerEvidenceValue,
+});
+
+const V2_CLI_PROFILE: Phase697CliProfile = Object.freeze({
+  runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2,
+  liveConfirmation: PHASE_6_9_7_V2_LIVE_CONFIRMATION,
+  liveApprovalEnv: 'PHASE_6_9_7_V2_CONTROLLED_LIVE_APPROVED',
+  liveMarkerPath: V2_LIVE_MARKER_PATH,
+  evidencePrefix: PHASE_6_9_7_V2_EVIDENCE_PREFIX,
+  runPairedEval: runPhase697TutorOrganizerPairedEvalV2,
+  validateEvidence: validatePhase697TutorOrganizerV2EvidenceValue,
+});
+
 export function parsePhase697TutorOrganizerCli(input: {
   argv: readonly string[];
   env: Readonly<Record<string, string | undefined>>;
 }): Phase697TutorOrganizerCliParseResult {
+  return parsePhase697TutorOrganizerCliForProfile(input, V1_CLI_PROFILE);
+}
+
+export function parsePhase697TutorOrganizerV2Cli(input: {
+  argv: readonly string[];
+  env: Readonly<Record<string, string | undefined>>;
+}): Phase697TutorOrganizerCliParseResult {
+  return parsePhase697TutorOrganizerCliForProfile(input, V2_CLI_PROFILE);
+}
+
+function parsePhase697TutorOrganizerCliForProfile(
+  input: {
+    argv: readonly string[];
+    env: Readonly<Record<string, string | undefined>>;
+  },
+  profile: Phase697CliProfile,
+): Phase697TutorOrganizerCliParseResult {
   const mode = input.argv[0];
   if (mode === 'mock') {
     if (input.argv.length > 2) return { ok: false, code: 'cli_invalid' };
@@ -101,8 +157,8 @@ export function parsePhase697TutorOrganizerCli(input: {
       return { ok: false, code: 'live_authorization_required' };
     }
     if (
-      input.argv[1] !== PHASE_6_9_7_LIVE_CONFIRMATION ||
-      safeReadEnv(input.env, 'PHASE_6_9_7_CONTROLLED_LIVE_APPROVED') !== 'true'
+      input.argv[1] !== profile.liveConfirmation ||
+      safeReadEnv(input.env, profile.liveApprovalEnv) !== 'true'
     ) {
       return { ok: false, code: 'live_authorization_required' };
     }
@@ -115,23 +171,33 @@ export function parsePhase697TutorOrganizerCli(input: {
 export async function executePhase697TutorOrganizerCli(
   input: Phase697TutorOrganizerCliInput,
 ): Promise<Phase697TutorOrganizerCliResult> {
-  return executePhase697TutorOrganizerCliInternal(input);
+  return executePhase697TutorOrganizerCliInternal(input, V1_CLI_PROFILE);
+}
+
+export async function executePhase697TutorOrganizerV2Cli(
+  input: Phase697TutorOrganizerCliInput,
+): Promise<Phase697TutorOrganizerCliResult> {
+  return executePhase697TutorOrganizerCliInternal(input, V2_CLI_PROFILE);
 }
 
 export async function executePhase697TutorOrganizerCliWithSyntheticExecutorsForTest(
   input: Phase697TutorOrganizerCliInput & SyntheticTestExecutors,
 ): Promise<Phase697TutorOrganizerCliResult> {
-  return executePhase697TutorOrganizerCliInternal(input, {
-    tutorExecutor: input.tutorExecutor,
-    organizerExecutor: input.organizerExecutor,
-  });
+  return executePhase697TutorOrganizerCliInternal(input, V1_CLI_PROFILE, syntheticExecutors(input));
+}
+
+export async function executePhase697TutorOrganizerV2CliWithSyntheticExecutorsForTest(
+  input: Phase697TutorOrganizerCliInput & SyntheticTestExecutors,
+): Promise<Phase697TutorOrganizerCliResult> {
+  return executePhase697TutorOrganizerCliInternal(input, V2_CLI_PROFILE, syntheticExecutors(input));
 }
 
 async function executePhase697TutorOrganizerCliInternal(
   input: Phase697TutorOrganizerCliInput,
+  profile: Phase697CliProfile,
   syntheticTestExecutors?: SyntheticTestExecutors,
 ): Promise<Phase697TutorOrganizerCliResult> {
-  const parsed = parsePhase697TutorOrganizerCli(input);
+  const parsed = parsePhase697TutorOrganizerCliForProfile(input, profile);
   if (!parsed.ok) return parsed;
   const root = input.repositoryRoot ?? fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -149,6 +215,7 @@ async function executePhase697TutorOrganizerCliInternal(
       root,
       runId,
       runScope: parsed.runScope,
+      profile,
     });
     if (!markerResult.ok) return markerResult;
 
@@ -183,18 +250,15 @@ async function executePhase697TutorOrganizerCliInternal(
 
   let report: Phase697TutorOrganizerReport;
   try {
-    report = await runPhase697TutorOrganizerPairedEval(harness);
+    report = await profile.runPairedEval(harness);
   } catch {
     return { ok: false, code: 'execution_failed' };
   }
-  if (
-    hasSensitivePhase697Evidence(report) ||
-    !validatePhase697TutorOrganizerEvidenceValue(report).ok
-  ) {
+  if (hasSensitivePhase697Evidence(report) || !profile.validateEvidence(report).ok) {
     return { ok: false, code: 'evidence_contract_invalid' };
   }
 
-  const evidencePath = `.tmp/phase-6-9-7-tutor-organizer-${report.runScope}-${report.mode}-${report.runId}.json`;
+  const evidencePath = `.tmp/${profile.evidencePrefix}-${report.runScope}-${report.mode}-${report.runId}.json`;
   const published = await publishImmutableEvidence({
     root,
     evidencePath,
@@ -226,6 +290,13 @@ async function executePhase697TutorOrganizerCliInternal(
     usage: report.usage,
     gate: report.gate,
     evidencePath,
+  };
+}
+
+function syntheticExecutors(input: SyntheticTestExecutors): SyntheticTestExecutors {
+  return {
+    tutorExecutor: input.tutorExecutor,
+    organizerExecutor: input.organizerExecutor,
   };
 }
 
@@ -297,6 +368,7 @@ async function reserveLiveMarker(input: {
   root: string;
   runId: string;
   runScope: 'branch' | 'main';
+  profile: Phase697CliProfile;
 }): Promise<
   | Readonly<{ ok: true }>
   | Readonly<{
@@ -304,7 +376,7 @@ async function reserveLiveMarker(input: {
       code: 'live_already_attempted' | 'evidence_io_failed';
     }>
 > {
-  const markerPath = resolve(input.root, LIVE_MARKER_PATH);
+  const markerPath = resolve(input.root, input.profile.liveMarkerPath);
   try {
     await mkdir(dirname(markerPath), { recursive: true });
   } catch {
@@ -314,7 +386,7 @@ async function reserveLiveMarker(input: {
     await writeFile(
       markerPath,
       `${JSON.stringify({
-        runnerVersion: PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION,
+        runnerVersion: input.profile.runnerVersion,
         runId: input.runId,
         runScope: input.runScope,
         state: 'attempt_reserved',

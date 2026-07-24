@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V2 remediation R5 独立 runner/CLI/validator/evidence：R4
+> 之前只证明 v2 prompt/contract 与 anti-overfit，公共 runner/CLI 仍固定生成 V1；直接切换默认
+> 常量会破坏唯一 V1 failure evidence 的兼容性，也会让旧 marker 错误阻塞 V2。因此 R5 保留
+> legacy V1 entry，新增长期并存的显式 `runPhase697TutorOrganizerPairedEvalV2`、V2 CLI、V2
+> validator 和 package scripts。
+>
+> V2 report 固定 `phase-6.9.7-tutor-organizer-runner-v2` 与两个 v2 prompt identity；72 个
+> entry 必须显式携带 bounded diagnostics，而 V1 仍要求字段完全 absent。新 Live confirmation、
+> `PHASE_6_9_7_V2_CONTROLLED_LIVE_APPROVED`、V2 marker 与 evidence prefix 均与 V1 分离；
+> marker 使用 `wx`，evidence 使用临时文件 + hard-link exclusive-create。旧 V1 marker 不阻塞
+> V2，V1/V2 validator 双向拒绝对方 report/filename，第二次 V2 marker/evidence 写入被拒绝。
+>
+> 无网络 synthetic Live 即使 `48/48` applied 也只能记录 `synthetic_test`，共享 production gate
+> 仍因 provenance 固定关闭；只有未来 CLI 自建的 `deepseek_network` 才可能通过。配置、授权或
+> cross-agent gate 不完整时仍在 marker/executor 前失败，component credential 边界未改变。
+>
+> RED 为 V2 独立导出缺失；GREEN V2 isolation `5/5 / 40 assertions`，相关 focused
+> `37/37 / 371 assertions`，Agent full `575/575 / 6323 assertions`，typecheck/lint 通过。
+> fresh Mock run `d4fc9a3a-5825-47f2-a4d2-d0148c7ccaf4` 为 `24/24` zero-call、`48/48`
+> strict runtime、semantic `1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated
+> `0.099726 CNY`；V2 validator `ok=true/filesChecked=1`，V1 validator 正确拒绝。
+>
+> Mock evidence 已精确删除，V2 Live marker/evidence 仍不存在。V1 evidence/marker SHA-256
+> 仍为 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+> `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。本任务没有读取
+> credential、调用 provider、启动 Docker/API/browser、修改业务数据、合并或推送 main。
+> 代码/合同/安全与 V1 历史不可变性两路独立复审均 `APPROVED`，无阻断项；hard-link
+> 成功后若临时文件清理失败可能出现状态歧义是非阻塞低风险观察，不改变 R5 结论。
+> 下一步 R6 分支静态/Mock checkpoint 与独立复审；R6 完成前不申请新 Live。回顾时可以问：
+> 为什么 V1/V2 要保留两个 validator？为什么旧 marker 不能通过删除来“升级”？为什么 Mock
+> semantic=1 仍是 `quality_gate_failed`？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R4 held-out/metamorphic anti-overfit：R2/R3
 > 已让 prompt 与 validator 共用规则源，但仅在冻结 72-case 上取得工程满分仍可能隐藏
 > case ID、expected output 或 accepted-label 答案表，也不能证明 ordinal、subject、deck 和
@@ -29,8 +61,8 @@
 > Critical/Important；固定 Mock responder 不验证真实模型语义，这与 R4 零 provider 范围一致。
 >
 > 本任务没有读取 credential、调用 provider、启动 Docker/API/browser、创建 V2 evidence、
-> 修改业务数据、合并或推送 main。下一步是 R5 独立 V2 runner/CLI/validator 与 one-shot
-> evidence；R6 checkpoint 前不申请新 Live。回顾时可以问：为什么 held-out/metamorphic
+> 修改业务数据、合并或推送 main。该 checkpoint 当时下一步是 R5，后续已完成；R6
+> checkpoint 前不申请新 Live。回顾时可以问：为什么 held-out/metamorphic
 > 满分不能替代 controlled-Live？为什么 deck reorder 必须按本地 ID authority 重映射？为什么
 > prompt 泄漏扫描需要故意污染反例？
 >
