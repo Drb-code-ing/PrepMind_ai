@@ -1,5 +1,35 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V2 remediation R3 Organizer prompt/contract precision：V1
+> Organizer prompt 没有完整表达本地 validator 已执行的 known/unknown subject authority、
+> same-subject deck、reuse/create evidence、confidence 与 topic-label 精度规则，容易让合法 JSON
+> 在动态 contract 后被安全回退。R3 新增单一深冻结
+> `WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY`，由 contract validator 与稳定 prompt
+> formatter 共用，完整覆盖 `keep_local + structured_subject`、
+> `reuse_existing + existing_deck_overlap`、`create_topic` 的 evidence 选择、
+> `high + insufficient_signal` 禁止、六类 subject taxonomy 和 medium/high confidence 语义。
+>
+> topic label 继续要求单一、短、精确且来源可证，并明确拒绝“知识点”“综合题”“学习资料”
+> “错题整理”等泛标签；没有增加 dataset-specific alias map，也没有扩大
+> `acceptedTopicLabels`。schema/projection 仍为 v1，ordinal、真实 ID、owner snapshot、
+> locked deck 名称、Trace admission、写命令和最终 local merger authority 均未改变。
+> `wrong-question-organizer-model-candidate-v2` identity 已由 package candidate、Server config、
+> Agent Trace 与 future V2 report contract 共用；active public runner/CLI 仍为 V1，R5 前没有
+> V2 marker/evidence 入口。
+>
+> R3/Phase 6.9.7 focused `40/40`（`582` assertions）、Agent full `554/554`（`6071`
+> assertions）、Server Organizer `30/30`（`162` assertions）通过；Agent/AI
+> typecheck/lint、Server lint/build 与 `git diff --check` 通过。两路独立只读复审无未关闭
+> Critical/Important。V1 evidence/marker SHA-256 实际复核仍为
+> `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+> `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。
+>
+> 本任务为纯离线 R3：没有读取 credential、调用 provider、启动 Docker/API/browser、
+> 创建 V2 evidence、修改业务数据、合并或推送 main。下一步是 R4 held-out/metamorphic
+> anti-overfit。回顾时可以问：为什么 prompt formatter 与 validator 必须共用 association
+> policy？为什么 v2 identity 已接 Server/Trace 仍不等于 V2 runner 已发布？为什么泛标签禁区
+> 不能替代 R4 的防答案表测试？
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R2 Tutor prompt/contract 单一规则源：V1 Tutor
 > prompt 只要求选择 intent/evidence/depth，却没有完整告诉模型本地 contract 实际执行的
 > primary/allowed evidence 和 compatible depth；validator与 candidate 还各自保留一份规则，
@@ -26,8 +56,8 @@
 > `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。
 >
 > 本任务为纯离线 R2：没有读取 credential、调用 provider、启动 Docker/API/browser、
-> 创建 V2 evidence 或修改业务数据，也没有合并/推送 main。下一步是 R3 Organizer
-> prompt/contract precision。回顾时可以问：为什么 prompt/validator 必须共用一个 policy？
+> 创建 V2 evidence 或修改业务数据，也没有合并/推送 main。该 checkpoint 当时下一步是 R3
+> Organizer prompt/contract precision，后续已完成。回顾时可以问：为什么 prompt/validator 必须共用一个 policy？
 > 为什么 depth 不在 validator 提前拒绝？为什么 Web 已显示 v2 identity 仍不等于 V2
 > runner/evidence 已可用？
 >

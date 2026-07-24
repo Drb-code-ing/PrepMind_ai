@@ -54,8 +54,21 @@ export {
   type WrongQuestionOrganizerModelCandidateReasonCode,
 } from './wrong-question-organizer-model-candidate.ts';
 export {
+  WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY,
+  WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
+  formatWrongQuestionOrganizerAssociationPolicyForPrompt,
+  validateWrongQuestionOrganizerModelDecision,
+  type WrongQuestionOrganizerAssociationPolicy,
+  type WrongQuestionOrganizerDeckAction,
+  type WrongQuestionOrganizerDecisionContext,
+  type WrongQuestionOrganizerDecisionReasonCode,
+  type WrongQuestionOrganizerDecisionValidationResult,
+  type WrongQuestionOrganizerEvidenceCode,
+  type WrongQuestionOrganizerEvidenceRequirement,
   type WrongQuestionOrganizerModelDecision,
+  type WrongQuestionOrganizerModelSubject,
+  type WrongQuestionOrganizerSubject,
 } from './wrong-question-organizer-model-contract.ts';
 export {
   MODEL_CANDIDATE_DISPOSITIONS,

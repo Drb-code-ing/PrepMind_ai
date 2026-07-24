@@ -4,6 +4,7 @@ import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
 
 import {
   WRONG_QUESTION_ORGANIZER_MODEL,
+  WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
   WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET,
   estimateWrongQuestionOrganizerRequestCostCny,
 } from './wrong-question-organizer-model-config';
@@ -212,8 +213,7 @@ function traceBase(input: {
       startedAt: candidateStartedAt.toISOString(),
       finishedAt: input.candidateFinishedAt.toISOString(),
       durationMs: candidateDuration,
-      inputSummary:
-        'scope=ordinal_projection;version=wrong-question-organizer-model-candidate-v1',
+      inputSummary: `scope=ordinal_projection;version=${WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION}`,
       outputSummary: [
         'disposition=candidate_applied',
         `usage=${usage.inputTokens}/${usage.outputTokens}`,

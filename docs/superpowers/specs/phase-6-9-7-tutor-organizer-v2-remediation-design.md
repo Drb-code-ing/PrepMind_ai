@@ -2,7 +2,9 @@
 
 日期：2026-07-24
 
-状态：零网络设计已冻结；尚未实现 V2、读取 credential、调用 provider、启动产品 Docker/API 或浏览器。
+状态：V2 R0--R3 已离线完成；公共 runner/CLI 仍为 V1，尚未发布 V2 evidence、读取
+credential、调用 provider、启动产品 Docker/API 或浏览器。下一步为 R4 held-out/metamorphic
+anti-overfit。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -246,8 +248,8 @@ depth fail-closed 矩阵、Phase 6.9.7 V1/diagnostics 兼容 `33/33`、Agent ful
 `552/552`、Web full `438/438` 均通过；Agent/AI typecheck/lint、Web lint 与
 diff 门同步通过。dataset/SHA、schema/projection、质量门、预算和 V1
 evidence/marker 均不变；本任务没有读取 credential、调用 provider、发布
-V2 evidence 或启动 Docker/API/browser。下一步 R3 收口 Organizer prompt/contract
-precision。
+V2 evidence 或启动 Docker/API/browser。该 checkpoint 当时下一步是 R3 Organizer
+prompt/contract precision，后续已完成。
 
 ## 9. Organizer V2：关联规则与精度
 
@@ -298,6 +300,29 @@ prompt 明确：
 
 本地 contract 继续拒绝 `high + insufficient_signal`，评测继续按原 expected confidence/evidence
 计分。
+
+### R3 实现状态（2026-07-24）
+
+R3 已把本节的 subject、deck、evidence、confidence、taxonomy 与 topic-label 规则收敛为单一
+深冻结 readonly association policy，contract validator 与稳定 prompt formatter 共用同一
+authority。known subject 继续只允许 `keep_local + structured_subject`；unknown subject 继续必须
+选择六类 subject；`reuse_existing` 只允许 same-subject deck 且必须包含
+`existing_deck_overlap`；`create_topic` 必须有三类允许 evidence 之一；
+`high + insufficient_signal` 继续 fail-closed。prompt 还明确 medium/high 选择、computer/major
+边界、单一 source-grounded concept 与“知识点/综合题/学习资料/错题整理”等泛标签禁区。
+
+Organizer candidate、Server config、Agent Trace 与 future V2 report identity 现在共用
+`wrong-question-organizer-model-candidate-v2` 常量；active public runner/CLI 仍绑定 V1，R5 前
+不存在 V2 marker/evidence 发布入口。schema/projection v1、ordinal-only、owner snapshot、
+locked-name、写隔离、本地 merger、dataset/SHA、质量门、预算和 accepted labels 均未改变。
+
+R3/Phase 6.9.7 focused `40/40`（`582` assertions）、Agent full `554/554`（`6071`
+assertions）、Server Organizer `30/30`（`162` assertions）、Agent/AI typecheck/lint、Server
+lint/build 与 diff 门通过；两路独立复审无未关闭 Critical/Important。V1 evidence/marker
+SHA-256 保持 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。没有读取
+credential、调用 provider、创建 V2 evidence、启动 Docker/API/browser 或修改业务数据；
+下一步为 R4 held-out/metamorphic anti-overfit。
 
 ## 10. V2 bounded diagnostics
 

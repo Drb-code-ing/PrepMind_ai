@@ -15,10 +15,13 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'TUTOR_MODEL_INTENT_POLICY',
   'TUTOR_MODEL_PROJECTION_VERSION',
   'TUTOR_MODEL_PROMPT_VERSION',
+  'WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY',
+  'WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION',
   'WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
   'formatTutorModelIntentPolicyForPrompt',
+  'formatWrongQuestionOrganizerAssociationPolicyForPrompt',
   'isKnowledgeVerifierModelEligible',
   'isRouterModelEligible',
   'isTutorModelDepthCompatible',
@@ -39,6 +42,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'validateKnowledgeDedupModelDecision',
   'validateKnowledgeOrganizerModelDecision',
   'validateTutorModelDecision',
+  'validateWrongQuestionOrganizerModelDecision',
 ];
 
 describe('production model candidate exports', () => {

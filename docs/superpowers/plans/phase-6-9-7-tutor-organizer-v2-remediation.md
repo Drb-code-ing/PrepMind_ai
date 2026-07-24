@@ -4,11 +4,12 @@
 WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock checkpoint；随后只有在
 新的精确授权下执行唯一 V2 controlled-Live，并仅在全门通过后进入产品验收。
 
-**当前状态：** R1 bounded diagnostics 与 R2 Tutor prompt/contract 单一规则源均已完成。
-Tutor candidate/Web config 已使用 `tutor-model-candidate-v2` identity；当前公共
-runner/CLI 仍只生成 V1，V1 evidence validator 明确拒绝 V2 report，因此尚不存在
-可发布的 V2 evidence 入口。本轮没有读取 credential、调用 provider、启动
-Docker/API/浏览器或修改业务数据；下一步是 R3 Organizer prompt/contract precision。
+**当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract 单一规则源与 R3 Organizer
+prompt/contract precision 均已完成。Tutor/Organizer candidate 与对应 Web/Server config/Trace
+已使用各自 v2 prompt identity；当前公共 runner/CLI 仍只生成 V1，V1 evidence validator
+明确拒绝 V2 report，因此尚不存在可发布的 V2 evidence 入口。本轮没有读取 credential、
+调用 provider、启动 Docker/API/浏览器或修改业务数据；下一步是 R4 held-out/metamorphic
+anti-overfit。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -141,7 +142,8 @@ depth 意见经对照冻结设计后撤回为测试覆盖建议，已用逐 inte
 V1 evidence/marker SHA-256 仍为
 `be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
 `7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。未读取
-credential、调用 provider、启动 Docker/API/browser 或修改业务数据。下一步 R3。
+credential、调用 provider、启动 Docker/API/browser 或修改业务数据。该 checkpoint 当时
+下一步是 R3，后续已完成。
 
 **提交：** `fix(agent): align tutor v2 prompt contract`
 
@@ -170,6 +172,24 @@ credential、调用 provider、启动 Docker/API/browser 或修改业务数据�
 
 **验证：** Organizer focused、batch/ordinal/cross-subject/label tests、Agent/AI
 typecheck/lint、diff。
+
+**当前状态：已完成。** 单一深冻结 association policy 统一了 known/unknown subject
+authority、same-subject deck、reuse/create evidence、confidence、六类 subject taxonomy 与
+topic-label precision；validator 与稳定 prompt formatter 共用同一 authority。新增泛标签禁区
+不包含 fixture 答案，也未扩大 accepted labels。Organizer candidate、Server config、Agent
+Trace 与 future V2 report contract 共用
+`wrong-question-organizer-model-candidate-v2` identity；active public runner/CLI 仍为 V1，
+未提前发布 V2 marker/evidence。schema/projection v1、ordinal、owner、locked-name、写隔离与
+local merger 均未改变。
+
+R3/Phase 6.9.7 focused `40/40`（`582` assertions）、Agent full `554/554`（`6071`
+assertions）、Server Organizer `30/30`（`162` assertions）、Agent/AI typecheck/lint、Server
+lint/build 与 `git diff --check` 通过。两路独立复审无未关闭 Critical/Important；V1
+evidence/marker SHA-256 仍为
+`be0448712b2567e572a27003937995700ef7f6e0d32ff210b3c1c7793c3f34b5` /
+`7cb443f18149de25628576a1e4969c423281776b5f3f6ffb1da6a8d39f6ecffb`。未读取
+credential、调用 provider、创建 V2 evidence、启动 Docker/API/browser 或修改业务数据；
+下一步 R4。
 
 **提交：** `fix(agent): align organizer v2 prompt contract`
 

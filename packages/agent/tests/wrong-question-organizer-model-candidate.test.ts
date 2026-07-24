@@ -15,6 +15,10 @@ import {
   type WrongQuestionOrganizerModelCandidateItem,
 } from '../src/model-candidates/wrong-question-organizer-model-candidate.ts';
 import {
+  WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
+  formatWrongQuestionOrganizerAssociationPolicyForPrompt,
+} from '../src/model-candidates/wrong-question-organizer-model-contract.ts';
+import {
   phase69WrongQuestionOrganizerCases,
   type OrganizerSubject,
   type Phase69OrganizerRuntimeCase,
@@ -218,6 +222,15 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
       task: 'wrong_question_organization',
       maxOutputTokens: 800,
     });
+    expect(requests[0]?.systemPrompt).toContain(
+      WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
+    );
+    expect(requests[0]?.systemPrompt).toContain(
+      formatWrongQuestionOrganizerAssociationPolicyForPrompt(),
+    );
+    expect(requests[0]?.systemPrompt).not.toMatch(
+      /question-1|question-2|deck-english|expectedSubject|canonicalTopicLabel|acceptedTopicLabels/i,
+    );
     expect(JSON.stringify(requests[0]?.userPrompt)).not.toMatch(
       /question-1|question-2|deck-english|nameLocked|writeCommand/i,
     );

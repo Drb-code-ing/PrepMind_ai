@@ -218,7 +218,7 @@ describe('WrongQuestionOrganizerService', () => {
           mode: options.modelEnabled ? 'live' : 'mock',
           provider: options.modelEnabled ? 'deepseek' : 'mock',
           model: 'deepseek-v4-pro',
-          promptVersion: 'wrong-question-organizer-model-candidate-v1',
+          promptVersion: 'wrong-question-organizer-model-candidate-v2',
           pricingKnown: true,
         },
         runtime: modelRuntime,

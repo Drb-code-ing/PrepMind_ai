@@ -13,6 +13,7 @@ import {
   WRONG_QUESTION_ORGANIZER_EVIDENCE_CODES,
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
   WRONG_QUESTION_ORGANIZER_SUBJECTS,
+  formatWrongQuestionOrganizerAssociationPolicyForPrompt,
   validateWrongQuestionOrganizerModelDecision,
   type WrongQuestionOrganizerDecisionReasonCode,
   type WrongQuestionOrganizerModelDecision,
@@ -55,10 +56,10 @@ const MAX_PROJECTED_DECK_KEYWORD_SCALARS = 60;
 
 const SYSTEM_PROMPT = [
   'Classify only the bounded wrong-question organization batch supplied as JSON.',
+  formatWrongQuestionOrganizerAssociationPolicyForPrompt(),
   'Return exactly one decision for every projected question and use only q/d ordinal indexes.',
-  'Keep a non-empty local subject, choose only a same-subject projected deck, or propose one safe short topic label.',
   'Never output IDs, user identity, write commands, database operations, tools, URLs, Markdown, or explanations.',
-].join(' ');
+].join('\n');
 const SCHEMA_DESCRIPTOR =
   'Output strict JSON: {"decisions":[{"questionIndex":0,"subject":"keep_local|math|english|politics|computer|major|other","deck":{"action":"reuse_existing","deckIndex":0}|{"action":"create_topic","topicLabel":"safe label"},"confidence":"medium|high","evidenceCodes":["structured_subject|semantic_topic|existing_deck_overlap|error_pattern|insufficient_signal"]}]}. No extra fields.';
 

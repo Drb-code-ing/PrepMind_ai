@@ -70,6 +70,9 @@ describe('wrong-question organizer agent trace', () => {
       'wrong_question_organizer_command_pending',
     ]);
     const serialized = JSON.stringify(trace);
+    expect(serialized).toContain(
+      'version=wrong-question-organizer-model-candidate-v2',
+    );
     expect(serialized).not.toContain('user_1');
     expect(serialized).not.toContain('wrong_1');
     expect(serialized).not.toContain('api_key');

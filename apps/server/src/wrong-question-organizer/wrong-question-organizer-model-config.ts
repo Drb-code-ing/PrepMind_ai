@@ -5,12 +5,12 @@ import {
   type ModelAgentRunBudget,
   type OpenAICompatibleExecutorConfig,
 } from '@repo/ai';
+import { WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION } from '@repo/agent/model-candidates';
 
 export const WRONG_QUESTION_ORGANIZER_MODEL = 'deepseek-v4-pro';
 export const WRONG_QUESTION_ORGANIZER_MODEL_BASE_URL =
   'https://api.deepseek.com/v1';
-export const WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION =
-  'wrong-question-organizer-model-candidate-v1';
+export { WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION };
 
 export const WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET: ModelAgentRunBudget =
   Object.freeze({

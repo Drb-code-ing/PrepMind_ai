@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过，失败 lineage 保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 Live run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定质量门未进入 Docker service/API 或可见浏览器，生产 gate 的 tracked defaults 继续关闭。V2 R0--R2 已完成；Tutor candidate/Web config 已统一为 v2 prompt identity，但当前公共 runner/CLI 仍只生成 V1，V1 validator 拒绝 V2 report。下一步是 R3 Organizer prompt/contract precision，而不是 Task 13/main 合并、真实模型重跑或 Phase 6.10。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。Phase 6.9.5 和 Phase 6.9.6 均已完成；KnowledgeDedup/Organizer 的唯一 V2 controlled-Live、R7 Docker/API、可见 `/knowledge` 分支验收及 main default-off 回放均已通过，失败 lineage 保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 Live run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7000000000`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；按固定质量门未进入 Docker service/API 或可见浏览器，生产 gate 的 tracked defaults 继续关闭。V2 R0--R3 已完成；Tutor/Organizer candidate 与对应 Web/Server config/Trace 已统一为 v2 prompt identity，但当前公共 runner/CLI 仍只生成 V1，V1 validator 拒绝 V2 report。下一步是 R4 held-out/metamorphic anti-overfit，而不是 Task 13/main 合并、真实模型重跑或 Phase 6.10。
 
 ## 当前状态
 
@@ -50,7 +50,7 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                  | 已完成 |
 | Phase 6.9.5 | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放        | 已完成 |
 | Phase 6.9.6 | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                       | 已完成 |
-| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11 完成；V1 失败封存；V2 R0--R2 完成，下一步 R3 |
+| Phase 6.9.7 | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                    | Task 0--11 完成；V1 失败封存；V2 R0--R3 完成，下一步 R4 |
 | Phase 7     | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit      | 核心工程化已完成 |
 | Phase 7.8.5 | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固             | 已完成 |
 | Phase 7.23  | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                    | 已完成 |
@@ -223,12 +223,12 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7：Task 0--11 已完成；Task 12 唯一 V1 Live 已以 `quality_gate_failed` 封存。真实 run `39a62241...` 的 zero-call、安全、延迟、usage 与 `0.086418 CNY` 费用门通过，但 strict runtime 只有 `27/48`，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此没有进入真实 Router、HTTP、RAG、最终流式回答或产品 Docker service/API/浏览器验收，不能声称两个 Agent 已生产可用。V2 R0--R2 已完成；R2 的 Tutor/package focused `25/25`、Phase 6.9.7 兼容 `33/33`、Agent full `552/552`、Web full `438/438`、typecheck/lint 与独立复审通过，既有 evidence/marker SHA 不变。当前公共 runner/CLI 仍只生成 V1 且 validator 拒绝 V2 report；下一步执行 R3 Organizer prompt/contract precision，R6 checkpoint 前不申请新 Live，V1 不重跑。
+2. 当前执行 Phase 6.9.7：Task 0--11 已完成；Task 12 唯一 V1 Live 已以 `quality_gate_failed` 封存。真实 run `39a62241...` 的 zero-call、安全、延迟、usage 与 `0.086418 CNY` 费用门通过，但 strict runtime 只有 `27/48`，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此没有进入真实 Router、HTTP、RAG、最终流式回答或产品 Docker service/API/浏览器验收，不能声称两个 Agent 已生产可用。V2 R0--R3 已完成；R3 已让 Organizer known/unknown subject、same-subject deck、evidence/confidence、taxonomy/topic 规则由 validator 与稳定 prompt formatter 共用同一深冻结 policy，并把 candidate、Server config、Trace 与 future V2 report identity 统一为 `wrong-question-organizer-model-candidate-v2`。R3/Phase 6.9.7 focused `40/40`、Agent full `554/554`、Server Organizer `30/30`、typecheck/lint/build 与独立复审通过，既有 evidence/marker SHA 不变。当前公共 runner/CLI 仍只生成 V1 且 validator 拒绝 V2 report；下一步执行 R4 held-out/metamorphic anti-overfit，R6 checkpoint 前不申请新 Live，V1 不重跑。
 3. Phase 6.9.7 完成后继续 Retriever/FinalResponse、Memory candidate 和 MCP-ready Orchestrator。全部 Agent 完成后才进入 Phase 6.10 分层记忆；未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，题目与结构由用户届时确认。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”
 
-下一会话可以复制：“请按 Phase 6.9.7 V2 remediation 计划执行 R3 Organizer prompt/contract precision，并保持 dataset、质量门与 V1 evidence 不变。”R3--R6、新 identity/marker/evidence、静态/Mock checkpoint 与独立复审完成前，不申请或执行新的 Live；任何新 Live 都需要新的精确授权。
+下一会话可以复制：“请按 Phase 6.9.7 V2 remediation 计划执行 R4 held-out/metamorphic anti-overfit，并保持 dataset、质量门与 V1 evidence 不变。”R4--R6、新 identity/marker/evidence、静态/Mock checkpoint 与独立复审完成前，不申请或执行新的 Live；任何新 Live 都需要新的精确授权。
 
 ## 文档入口
 

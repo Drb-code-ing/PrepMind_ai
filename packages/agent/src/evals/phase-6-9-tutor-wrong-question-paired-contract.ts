@@ -20,6 +20,7 @@ import {
 import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
 import { TUTOR_MODEL_PROMPT_VERSION as TUTOR_MODEL_CANDIDATE_PROMPT_VERSION } from '../model-candidates/tutor-model-contract.ts';
+import { WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION as WRONG_QUESTION_ORGANIZER_MODEL_CANDIDATE_PROMPT_VERSION } from '../model-candidates/wrong-question-organizer-model-contract.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 
 export const PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1 =
@@ -37,7 +38,7 @@ export const PHASE_6_9_7_TUTOR_PROMPT_VERSION = PHASE_6_9_7_TUTOR_PROMPT_VERSION
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1 =
   'wrong-question-organizer-model-candidate-v1' as const;
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2 =
-  'wrong-question-organizer-model-candidate-v2' as const;
+  WRONG_QUESTION_ORGANIZER_MODEL_CANDIDATE_PROMPT_VERSION;
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION =
   PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1;
 export const PHASE_6_9_7_TUTOR_SCHEMA_VERSION = 'tutor-model-decision-v1' as const;
