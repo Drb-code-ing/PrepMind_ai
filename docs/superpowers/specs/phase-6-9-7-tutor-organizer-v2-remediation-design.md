@@ -3,9 +3,10 @@
 日期：2026-07-24
 
 状态：V2 R0--R6 已完成；legacy V1 与独立 V2 runner/CLI/validator/evidence lineage 均已
-落地且相互拒绝，R6 static/Mock、并发/恢复/取消/路由 checkpoint 与双路复审已通过。尚未创建
-V2 Live marker/evidence、读取真实 credential、调用 provider 或启动产品 Docker/API/浏览器。
-下一步停在 R7 新 V2 branch controlled-Live 精确授权门前。
+落地且相互拒绝，R6 static/Mock、并发/恢复/取消/路由 checkpoint 与双路复审已通过。R7 唯一
+V2 branch controlled-Live 已执行并以 `quality_gate_failed` 封存：`24/24` zero-call，`0/48`
+strict runtime，Tutor/Organizer semantic `0/0`，verified usage `0`。V2 marker/evidence 已消费且
+不得重跑；R8 产品验收未启动。下一步只能先做零 Provider V3 失败复盘设计。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -471,7 +472,8 @@ Organizer 仍是同步 API，不冒充 BullMQ/Outbox durable task；本地写入
 实际静态、Mock、历史 SHA、默认关闭、零残留与独立复审结果见
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。R6 没有读取真实
 credential、调用 provider 或执行产品 Docker/API/browser；两路最终复审均 `APPROVED`，无
-Critical/Important。必须停在 R7 新精确授权门前。
+Critical/Important。R6 当时必须停在 R7 新精确授权门前；后续 R7 已执行并失败封存，见本设计
+“R7 执行终态”。
 
 ## 12. 质量门与停止条件
 
@@ -496,6 +498,23 @@ V2 继续使用原门槛：
 3. 不启动 Docker service/API/browser 产品验收；
 4. 不重跑 V2；
 5. 新问题另起 V3 identity 与设计，不修改 V1/V2 history。
+
+### R7 执行终态（2026-07-24）
+
+唯一 run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 使用冻结 runner-v2、dataset SHA、两个 v2
+prompt、schema v1、`deepseek-v4-pro` non-thinking JSON 与 `deepseek_network` provenance。
+`24/24` Provider 前 guard zero-call 通过；Tutor/Organizer 各 24 个 runtime 都在结构化对象形成前
+成为 `fallback_runtime_error`，因此 `rawSchemaValid=false`，bounded canonical stage/reason 按
+合同为 `null/null`。最终 strict runtime `0/48`、semantic `0/0`、critical `1`、verified usage
+`0`、pricing/cost 不可验证，gate 为 `quality_gate_failed`。
+
+evidence 与 marker SHA-256 分别为
+`0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
+`ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator 通过。
+安全 evidence 不保存原始异常或 Provider 原文，所以当前只能确认“结构化对象前 runtime failure”，
+不能指定 credential、代理/TLS/网络、endpoint/model compatibility、请求适配或 prompt 为单一
+根因。一次性名额已经消费；本设计的失败停止条件现已生效，R8--R11 不得开始。权威记录见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
 
 ## 13. 产品验收顺序
 

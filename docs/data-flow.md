@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；Task 12 唯一 V1 run `39a62241-0f51-45be-a423-0d13b0b60ae4` 使用真实 `deepseek_network` 得到 `24/24` zero-call、`27/48` strict runtime，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 已封存且不得重跑；产品 Docker service/API 与可见浏览器因质量门失败未启动，两个目标 gate 的 tracked defaults 保持关闭。V2 R0--R6 已完成离线 remediation、独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；V2 Live marker/evidence 仍为 0，下一步停在 R7 新精确授权门前。全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V2 evidence/marker 已封存，R8 产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步只能先做零 Provider V3 失败复盘设计；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -279,7 +279,7 @@ Phase 6.9.6 当前数据流（已实现，生产 gate 默认关闭）：
 
 该数据流已经由唯一 V2 controlled-Live 与 R7 Docker/API 验证：Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/credential/injection/unsafe/cross-owner guard 保持 provider 前零调用；强制 provider 失败返回本地降级且上传、处理、列表、检索不受影响。可见浏览器使用真实 Docker 路径完成上传、处理和 Qwen 混合检索；semantic/degraded/error 只做绑定 R7 strict response authority 的渲染回放，未产生第二轮模型调用。分支验收后 API 恢复 mock/default-off，synthetic 数据和浏览器 storage 清理为 0。main 合并与最终文档提交已完成真实 Docker 上传/处理/混合检索、default-off 本地建议、桌面/移动端无溢出和精确清理；没有再次调用 provider，远程 parity 已确认。
 
-Phase 6.9.7 增量数据流（Task 0--11 与 V2 R0--R6 已完成；Task 12 V1 真实 provider 质量失败并封存，V2 等待新授权，产品验收未启动）：
+Phase 6.9.7 增量数据流（Task 0--11 与 V2 R0--R6 已完成；V1/V2 两条唯一 Live 均质量失败并封存，产品验收未启动）：
 
 ```text
 /api/chat
@@ -359,9 +359,20 @@ V2 R6 static/Mock checkpoint
   -> fresh V2 Mock 24/24 zero-call + 48/48 runtime + semantic 1/1
   -> 精确删除 Mock evidence；V1 SHA 不变，V2 Live marker/evidence=0
   -> 停在 R7 新精确授权门；gates=false
+
+V2 R7 unique controlled-Live
+  -> clean preflight + 两个 component credential 的进程级映射；其它 Agent gate=false
+  -> marker wx 先占用唯一 V2 lineage；runner-v2 / deepseek_network / 72 cases
+  -> 24/24 guard zero-call
+  -> Tutor 24 + Organizer 24 runtime 全部 fallback_runtime_error
+  -> structured object 未形成：rawSchemaValid=false，canonical stage/reason=null/null
+  -> 0/48 strict runtime；semantic 0/0；critical=1；verified usage=0
+  -> evidence/marker hard-link authority + SHA + V2 validator 封存
+  -> quality_gate_failed：不重跑、不进入 R8 Docker/API/browser
+  -> 下一步仅零 Provider V3 复盘设计；gates=false
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明真实 provider/计费/延迟/zero-call 边界可工作，但 canonical strict runtime 与语义质量不足，不能外推为产品可用。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 进一步证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1 不重跑，V2 未授权不调用。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，R6 证据见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-wrong-question-agents-design.md`，R6/R7 证据见 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md` 与 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
 
 当前 `/knowledge` 页面数据流：
 

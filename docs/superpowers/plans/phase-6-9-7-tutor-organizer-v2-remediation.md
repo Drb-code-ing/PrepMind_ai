@@ -6,10 +6,10 @@ WrongQuestionOrganizer 的 prompt/contract 对齐问题，完成 V2 静态/Mock 
 
 **当前状态：** R1 bounded diagnostics、R2 Tutor prompt/contract、R3 Organizer precision、R4
 held-out/metamorphic anti-overfit、R5 独立 V2 lineage 与 R6 static/Mock/生产极端边界均已完成。
-V1 入口、marker/evidence 和 validator 保持独立兼容；V2 runner-v2、授权/确认词/marker/evidence
-prefix、strict validator、并发/恢复/取消/路由 checkpoint 与双路复审均通过。没有创建 V2 Live
-marker/evidence、读取真实 credential、调用 provider 或启动产品 Docker/API/浏览器。下一步停在
-R7 新 V2 branch controlled-Live 精确授权门前。
+R7 唯一 V2 branch controlled-Live run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 已执行并以
+`quality_gate_failed` 封存：`24/24` zero-call 通过，但 `0/48` strict runtime、Tutor/Organizer
+semantic `0/0`、verified usage `0`。V2 marker/evidence 已消费且不得重跑；R8--R11 不得开始。
+下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`
@@ -342,7 +342,7 @@ validator 通过、V1 validator 正确拒绝，临时 evidence 已精确删除�
 账号残留为 0。权威记录见
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`。R6 不读取真实
 credential、不调用 provider、不执行产品 Docker/API/browser；两路最终复审均 `APPROVED`，
-无未关闭 Critical/Important。下一步停在 R7 新精确授权门前。
+无未关闭 Critical/Important。R6 当时下一步是 R7；后续 R7 已执行并失败封存，见下文。
 
 **提交：** `docs(agent): checkpoint phase 6.9.7 v2 remediation`
 
@@ -368,6 +368,20 @@ credential、不调用 provider、不执行产品 Docker/API/browser；两路最
 
 - pass：`docs(agent): seal phase 6.9.7 v2 live authority`
 - fail：`docs(agent): seal phase 6.9.7 v2 live failure`
+
+**当前状态：失败封存。** zero-network preflight 在 clean `8a3073f0` 上通过；根 `.env` 未修改，
+同一底层 secret 仅以进程级 Tutor/Organizer component credential 映射，其他 Agent gate 显式关闭。
+唯一 run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 使用 runner-v2、冻结 dataset/prompt/schema 与
+`deepseek_network` provenance。`24/24` guard zero-call 通过；48 个 runtime 全部为
+`rawSchemaValid=false / fallback_runtime_error / canonical stage=null / reason=null`，最终
+`0/48` strict runtime、semantic `0/0`、critical `1`、verified usage `0`、pricing/cost 不可验证。
+evidence/marker SHA-256 为
+`0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
+`ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator 通过。
+证据没有保存原始异常，不能指定 credential、网络、模型、endpoint 或 prompt 为单一根因。
+权威失败记录见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。按本计划
+停止条件，V2 不得重跑，R8 不启动；新问题只能另起 V3 identity 与新计划。
 
 ## R8：分支 Docker/API/headed-browser 产品验收
 

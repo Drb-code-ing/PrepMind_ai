@@ -8,6 +8,11 @@ checkpoint 起点：`418c5253`
 
 状态：R6 分支静态、fresh V2 Mock、并发/取消/恢复/路由边界与独立复审已完成；V2 Live marker/evidence 仍不存在，两个产品 gate 仍默认关闭。下一步必须取得一次新的 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live` 精确授权。本 checkpoint 没有读取真实 credential、调用 provider、启动产品验收或把 Mock 解释为真实可用。
 
+后续状态：上述“V2 Live=0 / 等待 R7”只描述 R6 当时边界。后续唯一 R7 run
+`67ce18dd-e2ed-4a05-8507-2a98898b8ede` 已以 `quality_gate_failed` 封存且不得重跑，未进入
+产品验收；见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+
 ## 1. R6 为什么不是再跑一遍测试
 
 R5 建立了与 V1 双向隔离的 runner-v2、CLI、validator、marker 和 evidence 路径，但还留下四类生产风险需要在真实模型授权前关闭：
@@ -126,7 +131,7 @@ R6 完成代码、运行证据与文档后执行两路互相独立的只读复�
 
 ## 9. 停止条件与下一步
 
-R6 clean commit 后必须停在新授权门前。下一步 R7 只能执行唯一一次 V2 72-case controlled-Live；无论 pass/fail 都封存 marker/evidence且不得重跑。只有 `quality_gate_passed` 才能进入 R8 Docker/API/可见浏览器产品验收。
+R6 clean commit 后在当时必须停在新授权门前。后续 R7 只能执行唯一一次 V2 72-case controlled-Live；无论 pass/fail 都封存 marker/evidence 且不得重跑。该 R7 后续已失败封存，因此没有进入 R8 Docker/API/可见浏览器产品验收。
 
 继续需要用户重新确认 DeepSeek 当前账号的数据保留/训练边界，并明确授权：
 

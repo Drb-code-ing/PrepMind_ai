@@ -82,7 +82,8 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 V2 R3 | 已完成 | Organizer subject/deck/evidence/confidence/taxonomy/topic 规则收敛为深冻结单一 policy；v2 identity 已接 Server/Trace，公共 runner 仍为 V1 |
 | Phase 6.9.7 V2 R4 | 已完成 | 独立 held-out/metamorphic fixtures、实际 candidate prompt 泄漏扫描、authority 变化/fail-closed；dataset/SHA/V1 evidence 不变 |
 | Phase 6.9.7 V2 R5 | 已完成 | 独立 runner-v2、双向隔离 CLI/validator/授权/marker/evidence prefix、exclusive-create 与 V1 历史兼容 |
-| Phase 6.9.7 V2 R6 | 已完成 | 分支 static/Mock、marker/evidence 并发故障恢复、Chat/Organizer 取消与失败终态、同题跨路由 PostgreSQL 收敛；等待 R7 新精确授权 |
+| Phase 6.9.7 V2 R6 | 已完成 | 分支 static/Mock、marker/evidence 并发故障恢复、Chat/Organizer 取消与失败终态、同题跨路由 PostgreSQL 收敛；R7 前置已关闭 |
+| Phase 6.9.7 V2 R7 | 失败封存 | 唯一 run `67ce18dd...` 为 24/24 zero-call、0/48 strict runtime、Tutor/Organizer semantic `0/0`、verified usage `0`，最终 `quality_gate_failed`；不得重跑，未进入 R8 产品验收 |
 | Phase 7.0    | 已完成 | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                       |
 | Phase 7.1    | 已完成 | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                               |
 | Phase 7.2    | 已完成 | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示               |
@@ -242,6 +243,22 @@ operations/acceptance/history 两路终审均 `APPROVED`，无未关闭 Critical
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-r6-static-mock.md`；下一步必须停在 R7
 新的 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live` 精确授权门前。
 
+2026-07-24 Phase 6.9.7 V2 R7 唯一 controlled-Live 已失败封存：用户重新接受 DeepSeek
+数据保留/训练边界并授权一次 branch run 后，零网络 preflight 在 clean `8a3073f0` 上确认 V1
+SHA 不变、V2 marker/evidence 为 0、V1 validator 与 V2 CLI hardening `8/8` 通过。唯一 run
+`67ce18dd-e2ed-4a05-8507-2a98898b8ede` 固定 runner-v2、dataset SHA、两个 v2 prompt 与
+`deepseek_network` provenance；`24/24` guard zero-call 通过，但 Tutor/Organizer 各 24 个 runtime
+全部为 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage
+`0`、pricing/cost 不可验证，并有 `1` 个 critical case，故 `quality_gate_failed`。48 个失败都在
+结构化对象形成前，bounded stage/reason 按合同为 `null/null`；证据不保存原始异常，不能武断
+归因于 credential、网络、模型、endpoint 或 prompt。V2 evidence/marker SHA-256 分别为
+`0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
+`ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator 通过。
+一次性名额已经消费，V2 不得重跑；R8 Docker/API/browser、Task 13/main 合并与 Phase 6.10
+均不得开始。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计；该设计本身不授权新
+Provider 调用。权威记录见
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
 2026-07-22 Phase 6.9.6 已完成。选定方案复用当前用户已经持久化的 Qwen `text-embedding-v4` / 1536 安全 Chunk embedding 形成最多 12 个语义候选，再由 DeepSeek V4 Pro 只裁决本地 ordinal 和受限关系；exact hash 保持 provider 前零调用。全阶段只返回建议，不写 Document / Chunk / 分类表，不自动删除、替换、合并、改名或分类。13 个 TDD 任务、V2 remediation、唯一 V2 controlled-Live、R7 Docker/API、可见浏览器、分支精确清理、`--no-ff` main 合并、main default-off 静态/Docker/API/浏览器回放与远程推送均已完成。worker/web/admin 不接收 Knowledge credential/gate/timeout，Review/Planner 产品验收也拒绝 Knowledge 能力同时开启。V1 controlled-Live 失败证据、R1--R6 产品失败和后续成功 evidence 各自保持不可变；两个生产 gate 已恢复关闭。Phase 6.9.7 已开始，不进入 Phase 6.10 分层记忆。权威设计见 `docs/superpowers/specs/2026-07-21-phase-6-9-6-knowledge-agents-design.md`，执行计划见 `docs/superpowers/plans/2026-07-21-phase-6-9-6-knowledge-agents.md`。
@@ -350,7 +367,7 @@ V9 product authority 只接受 `finalized / complete / closed / passed`、`provi
 
 2026-07-15 已修复在线 Agent Trace 成本表与默认 Live 模型脱节：`deepseek-v4-flash` 采用受控 Live 评测已记录的非缓存 USD 价格快照，新的 Trace 会写入非零估算与 `pricingKnown=true`；未知模型仍 fail-safe 显示“未配置单价”，旧 Trace 不回填，避免伪造历史成本。成本仅为 token 估算，不替代供应商账单；价格变更必须连同集中表、测试和 `docs/ai-behavior-acceptance.md` 一起提交。
 
-下一会话可以问：“为什么 R7 成功仍不能覆盖 R1--R6 的失败 lineage？”或“为什么可见浏览器的 semantic/degraded 状态绑定 R7 response authority 回放，而不再调用一次真实模型？”
+回顾 Phase 6.9.6 Knowledge Agents 时可以问：“为什么 Knowledge R7 成功仍不能覆盖 R1--R6 的失败 lineage？”或“为什么可见浏览器的 semantic/degraded 状态绑定 Knowledge R7 response authority 回放，而不再调用一次真实模型？”
 
 ## 常用命令
 
@@ -474,7 +491,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
-- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 controlled-Live 的 Organizer 语义质量未达门槛，未进入产品 API/浏览器；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但尚无 V2 Live authority 或产品验收。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 与 V2 R7 两条唯一 Live 均未通过质量门；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但 V2 R7 的 24 个 Organizer runtime 全在结构化对象前失败，仍无通过的质量 authority 或产品验收。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - `/review-preferences` 读写当前用户账号级复习计划偏好，包括每日分钟、每日卡片上限、提醒时间、提醒开关和计划窗口。
 - `/review-tasks/plan` 是只读预览接口，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
@@ -556,7 +573,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 的唯一 V1 Live run `39a62241...` 已以 `quality_gate_failed` 封存，24/24 zero-call 与安全/延迟/usage/cost 通过，但 strict runtime 仅 27/48，Tutor/Organizer semantic 为 `0.3485119048/0.7`。因此未进入 Docker service/API/浏览器，生产 gate 保持默认关闭，V1 不得重跑。V2 R0--R6 已完成；legacy V1 与独立 V2 lineage 已隔离，R6 static/Mock、并发/恢复/路由边界及零残留已通过。下一步停在 R7 新的 V2 branch controlled-Live 精确授权门前；未授权不得读取 credential、创建 marker/evidence、调用 provider 或启动产品验收，也不得提前进入记忆注入或 Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 V1 与 V2 R7 两条唯一 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 run `67ce18dd...` 保持 `24/24` zero-call，但为 `0/48` strict runtime、Tutor/Organizer semantic `0/0`、verified usage `0`；因此没有进入 R8 Docker/API/browser，生产 gate 保持默认关闭。下一步只能先做零 Provider 失败复盘并另起 V3 identity/设计；不得修改 V1/V2 history、擅自调用 Provider、开始 Task 13/main 合并或提前进入记忆注入/Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. 下一会话先核对 R6 clean commit 与 V2 Live marker/evidence 仍为 0；随后必须由用户重新接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权唯一一次 `Phase 6.9.7 Tutor/Organizer V2 branch controlled-Live`，否则停止在授权门前。
+6. 下一会话先核对 V2 evidence/marker 两个 SHA、失败 acceptance 与 clean commit。V2 一次性名额已消费，禁止删除 marker 或重跑；先完成零 Provider 失败复盘与 V3 设计，任何未来网络运行都需要新的 identity、独立 marker/evidence 和新的精确用户授权。

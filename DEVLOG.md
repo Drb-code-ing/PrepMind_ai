@@ -1,5 +1,29 @@
 # PrepMind AI 开发日志
 
+> 2026-07-24 — Phase 6.9.7 V2 R7 唯一 controlled-Live 失败封存：用户重新接受 DeepSeek
+> 当前账号的数据保留/训练边界并授权一次 V2 branch run。零网络 preflight 在 clean
+> `8a3073f0` 上确认分支、V1 evidence/marker SHA、V2 artifact=0、默认 gate 与 V1 validator；
+> V2 marker/evidence 并发 hardening `8/8` 通过。根 `.env` 只检测凭据存在性，同一底层 secret
+> 仅在子进程映射为 Tutor/Organizer 两条 component-specific 变量，文件未修改；其它 Agent gate
+> 显式关闭，Docker 未启动、停止、重建或清理。
+>
+> 唯一 run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` 使用 runner-v2、冻结 dataset SHA、两个
+> v2 prompt、`deepseek-v4-pro` non-thinking JSON 与 `deepseek_network` provenance。`24/24`
+> guard zero-call 通过；Tutor/Organizer 各 24 个 runtime 全部为 `fallback_runtime_error`，最终
+> `0/48` strict runtime、semantic `0/0`、absolute improvement
+> `-0.4418666667/-0.278125`、critical `1`、verified usage `0`、pricing/cost 不可验证，gate 为
+> `quality_gate_failed`。毫秒级 P95 只反映 runtime 提前失败，不是成功性能证据。
+>
+> 48 个失败都在结构化对象形成前，`canonicalValidationStage/Reason=null/null`；安全 evidence
+> 不保存原始异常或 Provider 原文，因此不能武断归因于 credential、代理/TLS/网络、模型、
+> endpoint、请求适配或 prompt。evidence/marker SHA-256 为
+> `0c64506211d66570fdcf6a016a10885881985bdb0bc4628441c2e5b363d84c77` /
+> `ac65ac67bd155f448e498a2c1dd9d7762d1efb4cc720a3cf1153083299c98504`，V2 validator
+> `ok=true/filesChecked=1`。一次性名额已消费，V2 不得重跑；R8 Docker/API/browser、Task 13、
+> main 合并与 Phase 6.10 均未开始。下一步只能先做零 Provider 失败复盘并另起 V3 identity；
+> 新设计本身不授权网络调用。权威记录：
+> `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
+>
 > 2026-07-24 — Phase 6.9.7 V2 remediation R6 static/Mock 与生产极端边界：在 R5
 > runner/evidence 隔离之后，R6 先修复一次性执行与 evidence 的恢复语义。V2 marker 的真实
 > 并发 `wx` 竞争只允许一个执行者；既有普通 marker 才返回 `live_already_attempted`，目录或

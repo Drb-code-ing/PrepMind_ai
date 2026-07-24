@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；Task 12 controlled-Live/产品验收与 Task 13 main 收尾仍待完成
+状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1 与 V2 两条唯一 controlled-Live 均已失败封存且不得重跑，产品验收与 Task 13 main 收尾未开始，下一步仅允许零 Provider V3 失败复盘设计
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -534,9 +534,13 @@ Live evidence 使用独立一次性 marker 和 immutable publish，不能删除�
 
 禁止 Docker prune、`down -v`、volume/database reset、Redis flush 和 MinIO wipe。只删除本轮有记录的合成资源，保留现有容器、镜像和数据卷。
 
-2026-07-24 当前边界：上述顺序的第一次 V1 Live 已以 `quality_gate_failed` 封存，并按步骤 5/6 的固定停止条件没有进入产品验收。V1 不得重跑。后续步骤由
+2026-07-24 当前边界：上述顺序的 V1 run `39a62241...` 与后续 V2 R7 run `67ce18dd...`
+均已以 `quality_gate_failed` 封存，并按固定停止条件没有进入产品验收。V1/V2 都不得重跑；V2
+为 `24/24` zero-call、`0/48` strict runtime、semantic `0/0`、verified usage `0`，失败发生在
+结构化对象形成前且未保存原始异常，不能指定单一根因。后续只能先做零 Provider V3 失败复盘
+设计；当前没有新的网络授权。V2 authority 见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md` 与
-`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v2-remediation.md` 控制；V2 R0 只完成零网络设计，尚未实现或取得新的 Live 授权。
+`docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`。
 
 ## 13. 非目标与后续阶段
 
@@ -549,7 +553,7 @@ Live evidence 使用独立一次性 marker 和 immutable publish，不能删除�
 - 不实现 MemoryAgent、记忆注入或 Episodic Memory；
 - 不开始《多 Agent 架构》或《记忆系统》博客收尾。
 
-只有 Phase 6.9.7 V2 质量、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
+只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；当前 V2 失败不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
 
 ## 14. 文档同步与回顾问题
 
