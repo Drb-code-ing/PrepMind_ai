@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-24）：** Task 0--11 已完成。Task 12 V1 run `39a62241...` 与 V2 R7 run `67ce18dd...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。唯一 V2 Live 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象形成前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`。V2 marker/evidence 已封存，R8 产品 Docker/API/浏览器未启动，两个 tracked gate 仍关闭，Phase 6.9.7 未完成。V3 R0 已冻结 taxonomy、breaker、固定分母、双 lane、journal/crash seal 与独立 lineage；V3 R1 已实现安全诊断投影、真实 invocation recorder、V1/V2 absent-field 兼容和 zero-network compatibility harness。下一步仅 R2 strict-gate breaker、双 lane ledger 与固定分母，不是 Provider、产品验收或 Task 13/main 合并。
+**当前状态（2026-07-25）：** Task 0--11 已完成。Task 12 V1 run `39a62241...` 与 V2 R7 run `67ce18dd...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。唯一 V2 Live 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象形成前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`。V2 marker/evidence 已封存，R8 产品 Docker/API/浏览器未启动，两个 tracked gate 仍关闭，Phase 6.9.7 未完成。V3 R0 已冻结 taxonomy、breaker、固定分母、双 lane、journal/crash seal 与独立 lineage；V3 R1 已实现安全诊断投影、真实 invocation recorder、V1/V2 absent-field 兼容和 zero-network compatibility harness；V3 R2 已实现 guard-first、首个 runtime contract failure 熔断、固定 48 分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 与不完整 usage/P95/费用 fail-closed。下一步仅 R3 独立 CLI/journal/crash-only seal/evidence，不是 Provider、产品验收或 Task 13/main 合并。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -351,7 +351,7 @@ V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1 与 V2 R7 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 一次性 marker/evidence 已封存且不得重跑；当前只能先做零 Provider V3 失败复盘设计。只有未来新的质量 authority、产品验收与分支最终文档全部通过后，才能另行恢复 main 合并复验与远程推送计划。
+**当前状态：不得开始。** Task 12 V1 与 V2 R7 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 一次性 marker/evidence 已封存且不得重跑；V3 R0--R2 已完成，当前只能继续零 Provider R3/R4。只有未来新的质量 authority、产品验收与分支最终文档全部通过后，才能另行恢复 main 合并复验与远程推送计划。
 
 **分支：**
 

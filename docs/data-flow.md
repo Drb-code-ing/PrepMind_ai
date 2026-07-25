@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-24。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0 已冻结 failure taxonomy、breaker、固定分母、双 lane 与 crash-only seal；V3 R1 已实现有界 failure/stage 投影、真实 invocation recorder、outer-harness local failure 与零网络 adapter compatibility。R8 产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步仅 R2 breaker/双 lane ledger；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-25。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0--R2 已完成 failure taxonomy、真实 invocation/stage、strict-gate breaker、固定 48 分母、双 lane ledger/abort 隔离与有界 sibling 收口；V1/V2 历史不变，V3 Live artifact 仍为 0。产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。下一步仅 R3 journal/evidence；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
 
 ## 1. 当前边界
 
@@ -389,10 +389,21 @@ V3 R1 diagnostics + zero-network compatibility
   -> usage verified / unknown_after_attempt / absent_not_attempted 分离
   -> V1/V2 case/report 的全部 V3 字段继续 absent
   -> config/factory/request/response audit/schema/abort 仅 synthetic/fake fetch，外部网络 0
-  -> V3 Live marker/journal/evidence artifact 0；下一步 R2 breaker + 双 lane ledger
+  -> V3 Live marker/journal/evidence artifact 0
+
+V3 R2 strict breaker + dual-lane ledger
+  -> 24 guard 全先行；任一失败时 48 runtime 保留且真实 runtime 0-call
+  -> runtime 按 pair 0..23 串行；每 pair Tutor/Organizer 各一条独立 lane，最大并发 2
+  -> (runId, agent, pairedRunIndex) reserve/terminal，重复 key fail-closed
+  -> runtimeContractSuccess 只读 invocation/schema/canonical/latency/usage/safety，不读 semantic expected
+  -> 首个 contract failure => quality_gate_impossible，只 abort 当前 sibling
+  -> sibling 保留自身 failure/abort；忽略 abort 则有界收口为 orphaned + unknown usage
+  -> 后续 runtime => not_started_quality_breaker；固定 48 分母，无 retry/补跑/预算借用
+  -> metrics/P95/usage/CNY/lane/outcome counters 由 V3 schema 重算；不完整门失败
+  -> V1/V2 validator + 四 SHA 不变；V3 Live artifact 0；下一步仅 R3 journal/evidence
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。V3 R0 已设计有界 failure evidence、breaker、固定分母、双 lane 隔离和 crash-only seal；V3 R1 已把安全 failure/stage 投影、真实 invocation recorder 与 zero-network adapter compatibility 落为源码，但 R2 scheduler breaker/双 lane ledger、R3 durable journal/evidence 和 R4 static/Mock checkpoint 尚未完成。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须先完成 V3 R1--R4，并使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1 证据见 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。V3 R0 已设计有界 failure evidence、breaker、固定分母、双 lane 隔离和 crash-only seal；V3 R1 已把安全 failure/stage 投影、真实 invocation recorder 与 zero-network adapter compatibility 落为源码；V3 R2 已把 breaker-aware scheduler、独立 lane abort、单 dispatch ledger、固定 48 分母与 usage/P95 fail-closed 落地。R3 durable journal/evidence 与 R4 static/Mock checkpoint 尚未完成。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须先完成 V3 R1--R4，并使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1/R2 证据见 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md` 与 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。
 
 当前 `/knowledge` 页面数据流：
 

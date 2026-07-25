@@ -138,11 +138,13 @@ R6 已在 Live 前固定下列生产边界，本次失败不改变这些结论�
 后续状态：上述下一步已经以 V3 R0 零 Provider 设计完成。V3 已冻结安全 taxonomy 投影、
 strict-gate breaker、固定分母、双 lane 隔离、append-only journal 与 crash-only seal；没有读取
 credential、调用 Provider 或创建 V3 Live artifact。该检查点当时的下一步仅为 R1 zero-network
-implementation；后续 R1 已完成安全诊断投影与零网络 compatibility，当前下一步仅 R2。权威设计见
+implementation；后续 R1 已完成安全诊断投影与零网络 compatibility，该检查点当时下一步仅
+R2；后续 R2 也已完成，当前下一步仅 R3。权威设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。这不改变本页 V2
-失败终态，也不授权 V3 Live。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。这不改变本页 V2 失败
+终态，也不授权 V3 Live。
 
 回顾时可以问：
 

@@ -5,9 +5,10 @@ Provider failure 证据、zero-network compatibility preflight、strict-gate bre
 dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock checkpoint 后停止并重新
 申请一次 V3 controlled-Live，只有全门通过才进入产品验收。
 
-**当前状态：** R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成；R2--R4 尚未
-实现。V3 没有读取 credential、调用 Provider、创建 Live marker/journal/evidence、启动
-Docker/API/browser 或修改业务数据。下一步仅 R2，不是直接执行 Live、R8、Task 13/main 或
+**当前状态：** R0 零 Provider 设计、R1 安全诊断/零网络 compatibility 与 R2 strict-gate
+breaker/双 lane ledger/固定分母均已完成；R3--R4 尚未实现。V3 没有读取 credential、调用
+Provider、创建 Live marker/journal/evidence、启动 Docker/API/browser 或修改业务数据。下一步仅
+R3，不是直接执行 Live、R8、Task 13/main 或
 Phase 6.10。
 
 **设计 authority：**
@@ -53,7 +54,7 @@ Phase 6.10。
 
 ## R1：安全诊断投影与零网络 compatibility harness
 
-**状态：** [x] 已完成，下一步仅 R2。
+**状态：** [x] 已完成；该检查点当时下一步为 R2，后续 R2 已完成。
 
 **主要文件：**
 
@@ -101,6 +102,8 @@ V1/V2 bundle validator 与四个历史 SHA、typecheck/lint/Prettier/diff。
 
 ## R2：Strict-gate breaker、双 lane ledger 与固定分母
 
+**状态：** [x] 已完成，下一步仅 R3。
+
 **主要文件：**
 
 - V3 paired scheduler/runner；
@@ -129,6 +132,19 @@ V1/V2 bundle validator 与四个历史 SHA、typecheck/lint/Prettier/diff。
 - latency/usage sample incomplete 必须使质量门失败；
 - strict applied 但语义 expected 不匹配不提前熔断，完整运行后由冻结 metric 判定；
 - Tutor/Organizer lane 的 executor/credential/budget/timeout/abort/summary 相互隔离。
+
+**完成证据：**
+
+- [x] 24 guard 全先行、guard failure 时 runtime 真实 0-call；
+- [x] 独立 V3 scheduler、固定 72/24/48 report 与 `(runId,agent,pairedRunIndex)` 单 dispatch ledger；
+- [x] 首/中/末 failure、Tutor-first/Organizer-first、sibling abort/orphan bounded settlement；
+- [x] 语义 mismatch 不触发 breaker，usage/schema/abort/harness failure 触发；
+- [x] 未执行 case、unknown usage、不完整 P95/费用与 lane budget 均 fail-closed；
+- [x] V1/V2 字段、validator 与四个历史 SHA 不变，V3 Live artifact 仍为 0；
+- [x] focused、Agent/AI full、typecheck/lint/format/diff 与两路只读复审通过。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`
 
 **验证：** 首 case/中途/末 case failure、两 lane 不同完成顺序、abort race、duplicate key、budget
 freeze、all-success Mock、guard failure、fixed denominator、metrics/P95 completeness、

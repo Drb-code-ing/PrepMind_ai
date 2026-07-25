@@ -148,10 +148,12 @@ export type Phase697TutorOrganizerEvalHarness = Readonly<{
   runTutor(
     entry: Phase69TutorRuntimeCase,
     recorder?: Phase697RuntimeEvidenceRecorder,
+    signal?: AbortSignal,
   ): Promise<Phase697TutorEvalResult>;
   runOrganizer(
     entry: Phase69OrganizerRuntimeCase,
     recorder?: Phase697RuntimeEvidenceRecorder,
+    signal?: AbortSignal,
   ): Promise<Phase697OrganizerEvalResult>;
 }>;
 
@@ -260,21 +262,23 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
         },
         recorder,
       ),
-    runTutor: (entry, recorder) =>
+    runTutor: (entry, recorder, signal) =>
       runTutorRuntimeCase({
         entry,
         executor: input.tutorExecutor,
         timeoutMs: tutorTimeoutMs,
         runId,
         recorder,
+        signal,
       }),
-    runOrganizer: (entry, recorder) =>
+    runOrganizer: (entry, recorder, signal) =>
       runOrganizerRuntimeCase({
         entry,
         executor: input.organizerExecutor,
         timeoutMs: organizerTimeoutMs,
         runId,
         recorder,
+        signal,
       }),
   };
 }
@@ -835,6 +839,7 @@ async function runTutorRuntimeCase(input: {
   timeoutMs: number;
   runId: string;
   recorder?: Phase697RuntimeEvidenceRecorder;
+  signal?: AbortSignal;
 }): Promise<Phase697TutorEvalResult> {
   const productStartedAt = performance.now();
   const deterministic = buildTutorStrategy({
@@ -866,6 +871,7 @@ async function runTutorRuntimeCase(input: {
       maxInputTokens: 1_200,
       maxOutputTokens: 300,
     }),
+    signal: input.signal,
   });
   const rawSchemaValid = TUTOR_MODEL_DECISION_SCHEMA.safeParse(captured.object).success;
   const canonicalSchemaSuccess =
@@ -928,6 +934,7 @@ async function runOrganizerRuntimeCase(input: {
   timeoutMs: number;
   runId: string;
   recorder?: Phase697RuntimeEvidenceRecorder;
+  signal?: AbortSignal;
 }): Promise<Phase697OrganizerEvalResult> {
   const captured = createCapturedRuntime({
     executor: input.executor,
@@ -955,6 +962,7 @@ async function runOrganizerRuntimeCase(input: {
       maxInputTokens: 3_500,
       maxOutputTokens: 800,
     }),
+    signal: input.signal,
   });
   const rawSchemaValid = WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA.safeParse(captured.object).success;
   const canonicalSchemaSuccess =

@@ -1,5 +1,34 @@
 # PrepMind AI 开发日志
 
+> 2026-07-25 — Phase 6.9.7 V3 R2 strict-gate breaker、双 Lane Ledger 与固定分母：在
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 上新增独立 V3 paired scheduler/report，不改写
+> V1/V2 runner。24 条 guard 现在全部先执行；任一 guard 失败时 48 条 runtime 仍保留在报告固定
+> 分母，但实际 provider dispatch 为 0。
+>
+> runtime 按 24 个 pair 顺序推进，同 pair 的 Tutor/Organizer 最多双并发并分别使用独立
+> AbortController、预算和故障归属。`runtimeContractSuccess` 只检查 invocation、schema、
+> disposition、canonical diagnostic、latency、usage/价格与安全边界，不读取 fixture expected 或
+> semantic score；首个 contract failure 打开 `quality_gate_impossible`，收口当前 pair 后停止后续
+> dispatch。semantic-only mismatch 不提前熔断，仍完整运行 48 条后由冻结 metric 判定。
+>
+> `(runId,agent,pairedRunIndex)` ledger 保证本进程单 dispatch。触发 lane 只 abort sibling，不能把
+> 自己的 Provider category 复制给另一 lane；sibling 忽略 abort 时在 1000ms 有界窗口后记录为
+> `attempted_orphaned + unknown_after_attempt`。后续未执行 case 记录
+> `not_started_quality_breaker`，不 retry、不补跑、不借用另一 lane 预算；usage/P95/价格不完整、
+> applied 后评测层 usage 校验失败和 report summary 篡改全部 fail-closed，raw harness canary 不进入
+> report。
+>
+> focused V3 contract/runner `29/29`（`132` assertions）、Agent full `608/608`（`6479`
+> assertions）、AI full `199/199`（`1054` assertions）通过；Agent/AI typecheck/lint、V1/V2
+> validator、四个历史 evidence/marker SHA、V3 Live artifact=0、Prettier 与 diff 门均通过。两路独立
+> 只读复审无未关闭 Critical/Important。
+>
+> 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
+> 创建 V3 CLI/marker/journal/evidence 或修改业务数据，也没有合并 main 或推送。权威验收：
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。下一步仅 R3 独立
+> CLI/journal/crash-only seal/evidence，仍是零 Provider，不是 controlled-Live。回顾时可以问：为什么
+> 首个 contract failure 可以熔断而 semantic mismatch 不可以？为什么 unknown usage 不能记为零费用？
+>
 > 2026-07-24 — Phase 6.9.7 V3 R1 安全诊断投影与零网络 compatibility：在
 > `codex/phase-6-9-7-tutor-wrong-question-agents@06b14cf8` 上新增独立
 > `runner-v3 / tutor-model-candidate-v3 / wrong-question-organizer-model-candidate-v3` identity；两个
@@ -29,8 +58,8 @@
 >
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建业务数据或 Live marker/journal/evidence，也没有合并 main 或推送。权威验收：
-> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。下一步仅 R2
-> strict-gate breaker、双 lane ledger 与固定分母，不是 controlled-Live。
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。该检查点当时下一步
+> 仅 R2；后续 R2 已完成，当前下一步仅 R3，仍不是 controlled-Live。
 >
 > 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
 > `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker

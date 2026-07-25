@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R1）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R2）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R1。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；72-case strict paired Mock 工程门、Compose allowlist、tracked defaults、角色隔离、回滚合同和全量静态/E2E checkpoint 均已通过。V1 的 strict runtime/语义门失败；V2 的 48 个 runtime 又全部在结构化对象形成前失败。V3 R0 冻结 failure evidence、breaker、固定分母、双 lane 与 crash seal 方案；V3 R1 已实现安全诊断投影、真实 0/1 invocation recorder 和零网络 compatibility harness，但尚未实现 R2 scheduler breaker、R3 durable evidence 或调用 Provider。因此产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。数值与边界以本节、V1/V2 acceptance 与 V3 design 为准。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R2。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；72-case strict paired Mock 工程门、Compose allowlist、tracked defaults、角色隔离、回滚合同和全量静态/E2E checkpoint 均已通过。V1 的 strict runtime/语义门失败；V2 的 48 个 runtime 又全部在结构化对象形成前失败。V3 R0 冻结 failure evidence、breaker、固定分母、双 lane 与 crash seal 方案；V3 R1 已实现安全诊断投影、真实 0/1 invocation recorder 和零网络 compatibility harness；V3 R2 已实现 guard-first、首个 runtime contract failure 熔断、固定 48 分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 与 usage/P95/费用不完整 fail-closed。R3 durable evidence 尚未实现，也未调用 Provider。因此产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。数值与边界以本节、V1/V2 acceptance 与 V3 design 为准。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -291,8 +291,21 @@ V3 R1 当前证据：新增独立 runner/prompt/runtime-evidence identity，两�
 只使用 sentinel/fake fetch；未读取根 `.env`/credential、未调用 Provider、未启动 Docker/API/browser，
 也未创建 V3 Live marker/journal/evidence。focused `52/52`、Agent `596/596`、AI `199/199` 与两版
 历史 validator 已通过；V1/V2 四个历史 SHA 不变。完整证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。下一步仅 R2
-strict-gate breaker、双 lane ledger 与固定分母。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。该检查点当时下一步仅
+R2；后续 R2 已完成。
+
+V3 R2 当前证据：独立 V3 paired scheduler 先完整执行 24 条 guard；guard 失败时 48 条 runtime
+保留固定分母且实际零调用。runtime 按 24 个 pair 顺序派发，同 pair 的 Tutor/Organizer 共享质量
+结论但不共享 AbortController、预算或故障类别；`(runId,agent,pairedRunIndex)` ledger 阻止重复
+dispatch。首个 runtime contract failure 打开 `quality_gate_impossible`，只收口当前 pair 并停止
+后续 pair；未执行 case 为 `not_started_quality_breaker`。sibling 忽略 abort 时在 1000ms 有界窗口后
+记录为 orphaned/unknown usage，不复制另一 lane 的 Provider category。semantic-only mismatch 不提前
+熔断；schema/usage/abort/harness failure、预算串用、P95/usage/价格不完整与 summary 篡改均
+fail-closed。focused `29/29`、Agent `608/608`、AI `199/199`、两版 validator、四个历史 SHA 与
+V3 Live artifact=0 检查通过；没有读取 credential、调用 Provider、启动 Docker/API/browser 或创建
+Live artifact。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。下一步仅 R3 独立
+CLI/journal/crash-only seal/evidence，仍不是 Live。
 
 ## 8. Reflexion / Critic 验收要求
 

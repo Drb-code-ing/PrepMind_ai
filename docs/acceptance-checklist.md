@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R1）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R2）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0 已冻结零 Provider 修复设计，V3 R1 已实现安全诊断投影、真实 invocation recorder 与零网络 compatibility harness；二者均未调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0 已冻结零 Provider 修复设计，V3 R1 已实现安全诊断投影、真实 invocation recorder 与零网络 compatibility harness，V3 R2 已实现 guard-first、首错熔断、固定分母、双 lane 隔离、单 dispatch ledger 与不完整 usage/P95/费用 fail-closed；R0--R2 均未调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -867,5 +867,19 @@ harness dispatch 前后分别保留真实 invocation `0/1`，不猜测或复制 
 仅使用 sentinel/fake fetch，focused `52/52`、Agent `596/596`、AI `199/199`、V1/V2 validator 与
 四个历史 SHA 已通过，V3 Live artifact 为 0。未读取根 `.env`/credential、未调用 Provider、未启动
 Docker/API/browser。证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`；下一步仅 R2
-strict-gate breaker、双 lane ledger 与固定分母。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`；该检查点当时下一步仅
+R2，后续已完成。
+
+V3 R2 完成回执：独立 V3 paired scheduler 先执行全部 24 条 guard；任一 guard 失败时 48 条
+runtime 保留固定分母且实际 dispatch 为 0。runtime 按 pair 顺序推进，同 pair 的 Tutor/Organizer
+分别使用独立 AbortController、预算与故障归属；首个 runtime contract failure 打开
+`quality_gate_impossible`，收口当前 pair 后停止后续派发。未执行 case 记录
+`not_started_quality_breaker`；sibling 忽略 abort 时最多等待 1000ms 并记录
+`attempted_orphaned/unknown_after_attempt`，不复制触发 lane 的 Provider category。
+`(runId,agent,pairedRunIndex)` ledger 拒绝重复 dispatch；semantic-only mismatch 不提前熔断，
+schema/usage/abort/harness failure、lane budget 串用、P95/usage/价格不完整与派生 summary 篡改均
+fail-closed。focused `29/29`、Agent `608/608`、AI `199/199`、Agent/AI typecheck/lint、V1/V2
+validator、四个历史 SHA、V3 Live artifact=0、Prettier/diff 与两路复审通过。没有读取
+credential、调用 Provider、启动 Docker/API/browser 或创建 V3 Live artifact。证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`；下一步仅 R3 独立
+CLI/journal/crash-only seal/evidence，仍是零 Provider。

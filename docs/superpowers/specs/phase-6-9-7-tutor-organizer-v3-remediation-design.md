@@ -2,9 +2,9 @@
 
 日期：2026-07-24
 
-状态：R0 零 Provider 设计与 R1 安全诊断/零网络 compatibility 已完成。V1/V2 两条唯一
-controlled-Live 均已失败封存且不得重跑；V3 尚未实现 R2 paired scheduler/report、CLI、marker、
-journal、evidence 或产品路径，也没有获得任何新网络授权。下一步仅 R2。
+状态：R0 零 Provider 设计、R1 安全诊断/零网络 compatibility 与 R2 paired scheduler/report 已
+完成。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3 尚未实现 CLI、marker、
+journal、evidence 或产品路径，也没有获得任何新网络授权。下一步仅 R3。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -346,6 +346,20 @@ predicate，不读取 intent/subject/topic 等 semantic expected 或 semantic sc
 - 未执行 lane 的 provider category 必须为 `null`；
 - 产品 `web/chat` 与 `server/single|batch` 不共享 eval breaker/ledger；未来产品验收使用独立 lineage；
 - Organizer 本地 command、owner lock、stale fence 与补偿逻辑不由 eval breaker 修改。
+
+### 8.4 R2 实施状态（2026-07-25）
+
+R2 已新增独立 V3 scheduler、case/report schema 与双 lane dispatch ledger。24 条 guard 全部先行；
+runtime 只按单 pair 双并发推进，首个 `runtimeContractSuccess=false` 后只 abort 当前 sibling，后续
+pair 保留为 `not_started_quality_breaker`。Tutor/Organizer 使用独立 AbortController，忽略 abort
+的 sibling 由调度层有界收口为 orphaned/unknown usage，不复制触发 lane 的 Provider category。
+
+V3 report 始终保留 72 case、24 guard、48 runtime 与 24 paired index；strict、semantic、usage、
+P95、预算、ledger 和 outcome/category/stage counters 均由 strict schema 重算。首/中/末失败、两种
+lane 完成顺序、abort/orphan race、guard failure、duplicate key、跨 lane usage cap、semantic-only
+mismatch 与 no-leak 回归已通过。V1/V2 validator 与四个历史 SHA 不变，V3 Live artifact 仍为 0。
+验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。
 
 ## 9. Marker、journal、崩溃恢复与 evidence
 

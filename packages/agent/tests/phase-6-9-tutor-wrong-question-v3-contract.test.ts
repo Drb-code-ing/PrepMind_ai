@@ -220,6 +220,27 @@ describe('Phase 6.9.7 Tutor/Organizer V3 bounded runtime contract', () => {
     ).toBe('request_validated');
   });
 
+  test('records post-runtime usage verification failure after applied as a bounded harness failure', () => {
+    const evidence = projectPhase697V3RuntimeEvidence({
+      runtimeInvocations: 1,
+      executionOutcome: 'harness_internal_error',
+      usageDisposition: 'unknown_after_attempt',
+      lastCompletedStage: 'applied',
+      observation: null,
+    });
+
+    expect(evidence).toEqual({
+      runtimeEvidenceVersion: 'phase-6.9.7-v3-runtime-evidence-v1',
+      runtimeInvocations: 1,
+      providerFailureCategory: null,
+      structuredOutputStage: null,
+      lastCompletedStage: 'applied',
+      executionOutcome: 'harness_internal_error',
+      usageDisposition: 'unknown_after_attempt',
+    });
+    expect(PHASE_6_9_7_V3_RUNTIME_EVIDENCE_SCHEMA.safeParse(evidence).success).toBe(true);
+  });
+
   test('accepts strict success and genuine not-started states but rejects contradictory evidence', () => {
     const success = projectPhase697V3RuntimeEvidence({
       runtimeInvocations: 1,
