@@ -5,10 +5,10 @@ Tutor/Organizer 的 bounded diagnostic 真值与语义单一规则源；完成�
 V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授权才执行一次 V4
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
-**当前状态：** R0--R3 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy，
-但未调用 Provider、未创建 V4 runner 或 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。
-下一步仅 R4 independent robustness 与 V4 lineage；Phase 6.9.7、产品验收、Task 13/main 与
-Phase 6.10 仍未完成。
+**当前状态：** R0--R4 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy、
+independent robustness 与独立 crash-safe evidence lineage，但未调用 Provider 或创建 V4 Live artifact。
+V3 run `ff2e1a54...` 已失败封存且不得重跑。下一步仅 R5 static/Mock checkpoint 与独立终审；
+Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10 仍未完成。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`
@@ -110,7 +110,7 @@ eval harness 改走只读 V2 policy path，V3 prompt SHA 仍为原值，避免�
 
 ## R3：Organizer V4 语义单一规则源
 
-**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R4。
+**状态：** [x] 已完成。2026-07-26，zero-network；当时下一步仅 R4，后续 R4 已完成。
 
 **GREEN：**
 
@@ -134,16 +134,26 @@ artifacts 未改写。全程未读取 credential、调用 Provider、启动 Dock
 
 ## R4：Independent robustness 与 V4 lineage
 
-**状态：** [ ] 未开始。
+**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R5。
 
 **GREEN：**
 
-- 新建与 72-case dataset 隔离的 versioned held-out/metamorphic/schema-negative fixtures；
-- 实际 candidate prompt 做 case ID/expected/accepted-label/oracle 泄漏扫描；
-- authority drift、batch/question/deck reorder、abort、预算与写隔离回归通过；
-- 新 V4 runner/prompt/approval/confirmation/marker/journal/evidence/validator identity；
-- 复用 V3 breaker/journal 实现但与 V1/V2/V3 artifact 双向隔离；
-- 无真实 credential、Provider 或 Live artifact。
+- [x] 新建与 72-case dataset 隔离的 versioned held-out/metamorphic/schema-negative fixtures；
+- [x] 实际 candidate prompt 做 case ID/expected/accepted-label/oracle 泄漏扫描；
+- [x] authority drift、batch/question/deck reorder、abort、预算与写隔离回归通过；
+- [x] 新 V4 runner/prompt/approval/confirmation/marker/journal/evidence/validator identity；
+- [x] 保留 V3 调度原则但使用独立 V4 terminal projection/hash-chain/recovery/evidence，与 V1/V2/V3 artifact 双向隔离；
+- [x] 无真实 credential、Provider 或 Live artifact。
+
+**完成证据：** `phase-6.9.7-v4-independent-robustness-v1` fixture 覆盖 Tutor 跨语言改写、否定、
+context reorder 与 Organizer authority/schema drift；测试扫描实际 candidate prompt，并验证 lane 独立
+abort/预算、single-call/no-retry 和写隔离。独立 V4 runner/report/CLI/validator 与
+marker/journal/recovery/evidence durability 已落地：marker `wx` 单胜者、dispatch-before-call fsync、固定
+72/24/48 hash-chain、breaker、orphan seal、ABA fence、hard-link final、same-byte idempotency 与
+cross-version/tamper fail-closed 均有回归。Live CLI 在 R6 前硬拒绝。Durability `6/6`、R4/V3
+focused `68/68`、Agent full `674/674`、typecheck/lint 与三版历史 validator/SHA 通过；未读取
+credential、调用 Provider、启动 Docker/API/browser 或创建 V4 Live artifact。详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
 
 **提交：** `feat(agent): prepare phase 6.9.7 v4 evidence lineage`
 

@@ -2,9 +2,10 @@
 
 日期：2026-07-26
 
-状态：R0--R3 已完成；V4 bounded diagnostics 与 Tutor/Organizer 单一语义 policy 已实现，但尚未
-调用 Provider、创建 V4 evidence lineage 或获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一
-Live 均已失败封存且不得重跑。下一步仅 R4 independent robustness 与 V4 lineage。
+状态：R0--R4 已完成；V4 bounded diagnostics、Tutor/Organizer 单一语义 policy、independent
+robustness 与独立 crash-safe evidence lineage 已实现，但尚未调用 Provider、创建 V4 Live artifact 或
+获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一 Live 均已失败封存且不得重跑。下一步仅 R5
+static/Mock checkpoint 与独立终审。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -244,7 +245,7 @@ validator 与 merger 共用 known/unknown subject、keep/create/reuse、same-sub
 evidence 与 confidence 决策矩阵；merger 不补 evidence、不修正越权 subject、不清洗 unsafe topic。
 Owner、ordinal、locked name、三阶段 stale fence、single call、独立预算、abort 与 no-retry 不变。
 历史 paired eval 显式走 Organizer V2 candidate，保持 V2 prompt bytes、V3 prompt SHA 与旧 evidence
-不变。R3 未实现 V4 runner/lineage 或调用 Provider；下一步仅第 8--9 节 R4。
+不变。R3 当时未实现 V4 runner/lineage 或调用 Provider；后续第 8--9 节 R4 已完成。
 
 ## 8. Anti-overfit 与测试隔离
 
@@ -277,6 +278,33 @@ V4 继承并重新版本化 V3 已通过的工程原则：
 - unknown usage、incomplete latency、incomplete pricing 都 fail-closed。
 
 复用实现不等于复用 V3 identity 或 artifact。V4 journal/evidence 必须是新的 lineage。
+
+### 9.1 R4 实现状态（2026-07-26）
+
+R4 已落地与冻结 72-case authority 隔离的 `phase-6.9.7-v4-independent-robustness-v1` fixture。
+Tutor 覆盖中英/混合改写、否定、干扰、active-context reorder 与 primary-signal conflict；Organizer
+覆盖 authority drift、question/deck reorder、locked name、cross-subject deck、ordinal/topic/evidence/
+confidence/schema-negative。Fixture 只描述 relation 与变形，不导入 dataset expected、accepted-label
+表或 V3 失败题目；测试对实际 V4 candidate system/user prompt 执行 case ID、expected、accepted-label、
+oracle 泄漏扫描。Abort、lane budget、single dispatch、no retry 与 write isolation 均保持 fail-closed。
+
+V4 runner lifecycle 可以在内存中复用 V3 已通过的 scheduler 原则，但调度结果立即转换为 V4
+entry/report，所有持久化回调只接收 V4 identity。V4 另有独立 terminal projection、evidence envelope、
+CLI/validator、journal schema/parser 与 durability I/O：
+
+- marker 使用 `wx` 单胜者，路径与 V1/V2/V3 双向拒绝；
+- journal 在 executor/dispatch 前 append + fsync，以 sequence、previous SHA、record SHA 验证固定
+  72/24/48 状态机；
+- live owner 存活时拒绝恢复；dead owner 由 recovery claim 单胜者接管，并用 owner token 阻止 ABA；
+- dispatch 无 terminal 只可零网络 seal 为 attempted orphan；从未 dispatch 保持 not-started，不做
+  resume/replay/retry；
+- evidence 使用随机 temp `wx`、fsync 与 hard-link final，same bytes 幂等，different bytes/tamper
+  冲突 fail-closed；
+- V4 Live CLI 在 R6 前固定返回 `live_not_available_before_r6`，R4 不会创建 Provider executor。
+
+R4 durability `6/6`、R4/V3 focused `68/68`、Agent full `674/674`、typecheck/lint，以及
+V1/V2/V3 validator 与七个历史 artifact SHA 均通过。R4 没有读取 credential、调用 Provider、启动
+Docker/API/browser、创建 V4 Live artifact 或修改业务数据；下一步仅 R5 static/Mock checkpoint。
 
 ## 10. 质量门与停止条件
 

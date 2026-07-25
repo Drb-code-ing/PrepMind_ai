@@ -201,11 +201,7 @@ export function detectTutorSignals(latestUserText: string): TutorSignalDetection
         return false;
       }
 
-      if (
-        rule.intent === 'answer_direct' &&
-        matchesSignal(text, signal) &&
-        isNegatedDirectAnswerSignal(text, signal)
-      ) {
+      if (matchesSignal(text, signal) && isNegatedIntentSignal(text, signal)) {
         return false;
       }
 
@@ -254,7 +250,7 @@ function matchesSignal(text: string, signal: string) {
   return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedSignal)}($|[^a-z0-9])`).test(text);
 }
 
-function isNegatedDirectAnswerSignal(text: string, signal: string) {
+function isNegatedIntentSignal(text: string, signal: string) {
   const normalizedSignal = signal.toLowerCase();
   let searchFrom = 0;
   let sawOccurrence = false;
@@ -263,10 +259,12 @@ function isNegatedDirectAnswerSignal(text: string, signal: string) {
     const index = text.indexOf(normalizedSignal, searchFrom);
     if (index < 0) return sawOccurrence;
     sawOccurrence = true;
-    const prefix = text.slice(Math.max(0, index - 32), index);
+    const prefix = text.slice(Math.max(0, index - 48), index);
     const negated =
       /(?:不要|别|不必|无需|避免)\s*$/u.test(prefix) ||
-      /(?:do not|don't|dont|without|rather than|not)\s*$/iu.test(prefix);
+      /(?:不要|别|不必|无需|避免)[^，。！？；;]{0,24}$/u.test(prefix) ||
+      /(?:do not|don't|dont|without|rather than)[^,.!?;]{0,32}$/iu.test(prefix) ||
+      /(?:\bnot)\s*$/iu.test(prefix);
     if (!negated) return false;
     searchFrom = index + normalizedSignal.length;
   }

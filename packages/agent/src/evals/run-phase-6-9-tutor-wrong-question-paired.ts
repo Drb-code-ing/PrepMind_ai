@@ -61,13 +61,19 @@ import {
   TUTOR_MODEL_DECISION_SCHEMA,
   type TutorModelDecision,
 } from '../model-candidates/tutor-model-contract.ts';
-import { runTutorModelCandidateV2 } from '../model-candidates/tutor-model-candidate.ts';
+import {
+  runTutorModelCandidate,
+  runTutorModelCandidateV2,
+} from '../model-candidates/tutor-model-candidate.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
 import {
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
   type WrongQuestionOrganizerModelDecision,
 } from '../model-candidates/wrong-question-organizer-model-contract.ts';
-import { runWrongQuestionOrganizerModelCandidateV2 } from '../model-candidates/wrong-question-organizer-model-candidate.ts';
+import {
+  runWrongQuestionOrganizerModelCandidate,
+  runWrongQuestionOrganizerModelCandidateV2,
+} from '../model-candidates/wrong-question-organizer-model-candidate.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 import type {
   ModelCandidateDisposition,
@@ -127,6 +133,7 @@ export type Phase697OrganizerEvalResult = SafetyResult &
   }>;
 
 type Phase697ZeroCallCase = Phase69TutorZeroCallCase | Phase69OrganizerZeroCallCase;
+type Phase697CandidateVersion = 'v2' | 'v4';
 
 export type Phase697RuntimeEvidenceRecorder = Readonly<{
   completeStage(stage: NonNullable<Phase697V3RuntimeEvidence['lastCompletedStage']>): void;
@@ -185,6 +192,7 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
           organizerTimeoutMs: 5_000,
         },
         recorder,
+        'v2',
       ),
     async runTutor(entry, recorder) {
       recordSyntheticRuntimeSuccess(recorder);
@@ -232,6 +240,24 @@ export function createPhase697TutorOrganizerMockHarness(input?: {
   };
 }
 
+export function createPhase697TutorOrganizerV4MockHarness(input?: {
+  runScope?: 'branch' | 'main';
+  runId?: string;
+}): Phase697TutorOrganizerEvalHarness {
+  const base = createPhase697TutorOrganizerMockHarness(input);
+  return Object.freeze({
+    ...base,
+    runZeroCall: (entry, recorder) =>
+      runPhase697ZeroCall(
+        entry,
+        rejectZeroCallExecutor,
+        { tutorTimeoutMs: 3_000, organizerTimeoutMs: 5_000 },
+        recorder,
+        'v4',
+      ),
+  });
+}
+
 export function createPhase697TutorOrganizerLiveHarness(input: {
   tutorExecutor: StructuredModelExecutor;
   organizerExecutor: StructuredModelExecutor;
@@ -241,6 +267,33 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
   organizerTimeoutMs?: number;
   executorProvenance: 'deepseek_network' | 'synthetic_test';
 }): Phase697TutorOrganizerEvalHarness {
+  return createPhase697TutorOrganizerLiveHarnessVersion(input, 'v2');
+}
+
+export function createPhase697TutorOrganizerV4LiveHarness(input: {
+  tutorExecutor: StructuredModelExecutor;
+  organizerExecutor: StructuredModelExecutor;
+  runScope: 'branch' | 'main';
+  runId?: string;
+  tutorTimeoutMs?: number;
+  organizerTimeoutMs?: number;
+  executorProvenance: 'deepseek_network' | 'synthetic_test';
+}): Phase697TutorOrganizerEvalHarness {
+  return createPhase697TutorOrganizerLiveHarnessVersion(input, 'v4');
+}
+
+function createPhase697TutorOrganizerLiveHarnessVersion(
+  input: {
+    tutorExecutor: StructuredModelExecutor;
+    organizerExecutor: StructuredModelExecutor;
+    runScope: 'branch' | 'main';
+    runId?: string;
+    tutorTimeoutMs?: number;
+    organizerTimeoutMs?: number;
+    executorProvenance: 'deepseek_network' | 'synthetic_test';
+  },
+  candidateVersion: Phase697CandidateVersion,
+): Phase697TutorOrganizerEvalHarness {
   const runId = input.runId ?? randomUUID();
   const tutorTimeoutMs = boundedTimeout(input.tutorTimeoutMs, 3_000);
   const organizerTimeoutMs = boundedTimeout(input.organizerTimeoutMs, 5_000);
@@ -261,6 +314,7 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
           organizerTimeoutMs,
         },
         recorder,
+        candidateVersion,
       ),
     runTutor: (entry, recorder, signal) =>
       runTutorRuntimeCase({
@@ -270,6 +324,7 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
         runId,
         recorder,
         signal,
+        candidateVersion,
       }),
     runOrganizer: (entry, recorder, signal) =>
       runOrganizerRuntimeCase({
@@ -279,6 +334,7 @@ export function createPhase697TutorOrganizerLiveHarness(input: {
         runId,
         recorder,
         signal,
+        candidateVersion,
       }),
   };
 }
@@ -679,10 +735,11 @@ async function runPhase697ZeroCall(
   executor: StructuredModelExecutor,
   timeout: { tutorTimeoutMs: number; organizerTimeoutMs: number },
   recorder?: Phase697RuntimeEvidenceRecorder,
+  candidateVersion: Phase697CandidateVersion = 'v2',
 ) {
   return entry.agent === 'tutor'
-    ? runTutorZeroCall(entry, executor, timeout.tutorTimeoutMs, recorder)
-    : runOrganizerZeroCall(entry, executor, timeout.organizerTimeoutMs, recorder);
+    ? runTutorZeroCall(entry, executor, timeout.tutorTimeoutMs, recorder, candidateVersion)
+    : runOrganizerZeroCall(entry, executor, timeout.organizerTimeoutMs, recorder, candidateVersion);
 }
 
 async function runTutorZeroCall(
@@ -690,6 +747,7 @@ async function runTutorZeroCall(
   executor: StructuredModelExecutor,
   timeoutMs: number,
   recorder?: Phase697RuntimeEvidenceRecorder,
+  candidateVersion: Phase697CandidateVersion = 'v2',
 ): Promise<Phase697ZeroCallResult> {
   const captured = createCapturedRuntime({ executor, timeoutMs, recorder });
   const controller = new AbortController();
@@ -733,11 +791,15 @@ async function runTutorZeroCall(
         throw new Error('PHASE_6_9_7_TUTOR_HOSTILE_ACCESSOR');
       },
     });
-    candidate = await runTutorModelCandidateV2(
-      hostile as Parameters<typeof runTutorModelCandidateV2>[0],
-    );
+    candidate =
+      candidateVersion === 'v4'
+        ? await runTutorModelCandidate(hostile as Parameters<typeof runTutorModelCandidate>[0])
+        : await runTutorModelCandidateV2(hostile as Parameters<typeof runTutorModelCandidateV2>[0]);
   } else {
-    candidate = await runTutorModelCandidateV2(regularInput);
+    candidate =
+      candidateVersion === 'v4'
+        ? await runTutorModelCandidate(regularInput)
+        : await runTutorModelCandidateV2(regularInput);
   }
   const observedReason = deriveTutorZeroCallReason(entry, candidate.observation);
   const verified = captured.invocations() === 0 && observedReason === entry.expected.zeroCallReason;
@@ -756,6 +818,7 @@ async function runOrganizerZeroCall(
   executor: StructuredModelExecutor,
   timeoutMs: number,
   recorder?: Phase697RuntimeEvidenceRecorder,
+  candidateVersion: Phase697CandidateVersion = 'v2',
 ): Promise<Phase697ZeroCallResult> {
   if (!entry.input.agentGateEnabled) {
     return zeroCallPreflight(entry, 'agent_gate_disabled');
@@ -791,7 +854,11 @@ async function runOrganizerZeroCall(
     maxInputTokens: 3_500,
     maxOutputTokens: 800,
   });
-  const candidate = await runWrongQuestionOrganizerModelCandidateV2({
+  const runCandidate =
+    candidateVersion === 'v4'
+      ? runWrongQuestionOrganizerModelCandidate
+      : runWrongQuestionOrganizerModelCandidateV2;
+  const candidate = await runCandidate({
     runId: `phase-697-zero:${entry.id}`,
     items,
     force: entry.input.force,
@@ -840,6 +907,7 @@ async function runTutorRuntimeCase(input: {
   runId: string;
   recorder?: Phase697RuntimeEvidenceRecorder;
   signal?: AbortSignal;
+  candidateVersion?: Phase697CandidateVersion;
 }): Promise<Phase697TutorEvalResult> {
   const productStartedAt = performance.now();
   const deterministic = buildTutorStrategy({
@@ -853,7 +921,9 @@ async function runTutorRuntimeCase(input: {
     timeoutMs: input.timeoutMs,
     recorder: input.recorder,
   });
-  const candidate = await runTutorModelCandidateV2({
+  const runCandidate =
+    input.candidateVersion === 'v4' ? runTutorModelCandidate : runTutorModelCandidateV2;
+  const candidate = await runCandidate({
     runId: `${input.runId}:${input.entry.id}`,
     finalRoute: 'tutor',
     latestUserText: input.entry.input.latestUserText,
@@ -935,6 +1005,7 @@ async function runOrganizerRuntimeCase(input: {
   runId: string;
   recorder?: Phase697RuntimeEvidenceRecorder;
   signal?: AbortSignal;
+  candidateVersion?: Phase697CandidateVersion;
 }): Promise<Phase697OrganizerEvalResult> {
   const captured = createCapturedRuntime({
     executor: input.executor,
@@ -946,7 +1017,11 @@ async function runOrganizerRuntimeCase(input: {
     input.entry.input.existingDecks,
   );
   const deterministic = items.map((item) => organizeWrongQuestion(item.deterministicInput));
-  const candidate = await runWrongQuestionOrganizerModelCandidateV2({
+  const runCandidate =
+    input.candidateVersion === 'v4'
+      ? runWrongQuestionOrganizerModelCandidate
+      : runWrongQuestionOrganizerModelCandidateV2;
+  const candidate = await runCandidate({
     runId: `${input.runId}:${input.entry.id}`,
     items,
     force: input.entry.input.force,

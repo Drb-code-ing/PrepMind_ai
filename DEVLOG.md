@@ -1,5 +1,33 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R4 independent robustness 与 crash-safe evidence lineage：新增与
+> 冻结 72-case authority 隔离的 versioned held-out/metamorphic/schema-negative fixtures，覆盖 Tutor
+> 中英/混合改写、否定、干扰与 active-context 重排，Organizer authority drift、question/deck reorder、
+> locked name、ordinal/topic/evidence/confidence/schema fail-closed，以及两 lane abort、独立预算、
+> single-call/no-retry 和写权限隔离。测试直接扫描实际 V4 candidate prompt，确认不含 case ID、expected、
+> accepted-label、oracle 或冻结答案表。
+>
+> 新增独立 `phase-6.9.7-tutor-organizer-runner-v4`、V4 report/evidence envelope、CLI/validator 与
+> marker/journal/recovery/evidence durability。V4 marker 使用 `wx` 单胜者；journal 在 dispatch 前 append +
+> fsync，并以 sequence/previous SHA/record SHA 验证固定 72/24/48 状态机；recovery claim 防活 owner
+> 误封和 ABA takeover；orphan 只能零网络封存，不能 resume/replay/retry；evidence 使用 temp `wx` +
+> fsync + hard-link final，same bytes 幂等、different bytes/tamper/cross-version 均 fail-closed。V4 Live
+> CLI 在 R6 前固定返回 `live_not_available_before_r6`，本轮没有调用 Provider。
+>
+> V4 durability `6/6`（`41 expect()`），R4/V3 focused `68/68`（`548 expect()`），Agent 全量
+> `674/674`（`7094 expect()`）、typecheck 与 lint 通过；V1/V2/V3 历史 validator 及七个
+> marker/journal/evidence SHA 均保持不变。另修复历史 Organizer V2 prompt identity 漂移：
+> `PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2` 重新固定为
+> `wrong-question-organizer-model-candidate-v2`，避免当前产品 V4 identity 污染封存 V2 validator。
+> Contract/security/concurrency 与 docs/history/operations 两路只读终审均 PASS，无
+> Critical/Important。
+>
+> 本轮未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、创建 V4 Live artifact 或修改
+> PostgreSQL、Redis、MinIO、Docker volume/业务数据。V4 R0--R4 已完成；下一步仅 R5
+> static/Mock checkpoint 与独立终审。V4 Live、产品 Docker/API/browser、Task 13/main 与 Phase 6.10
+> 均未开始；R5 通过后仍须新的精确一次性 Live 授权。验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R3 WrongQuestionOrganizer 语义单一规则源：新增深冻结
 > `packages/agent/src/policies/wrong-question-organizer-policy.ts`，把 subject、deck、topic、evidence
 > 与 confidence 收敛为一份可执行决策矩阵。已知 subject 只能 `keep_local +
@@ -20,8 +48,9 @@ structured_subject`，未知 subject 禁止 `keep_local`；`reuse_existing` 只�
 > Critical/Important。
 >
 > 本轮未读取 `.env`/credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
-> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R4
-> independent robustness 与 V4 lineage；R5 checkpoint 后仍须重新取得一次精确 V4 Live 授权。
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。该检查点当时下一步仅
+> R4 independent robustness 与 V4 lineage，后续已完成；R5 checkpoint 后仍须重新取得一次精确
+> V4 Live 授权。
 > 验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。
 >

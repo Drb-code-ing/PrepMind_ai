@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R4）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7 与 V3 R5 三条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V3 R0--R4 已完成零 Provider 修复设计、安全诊断、零网络 compatibility、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 为 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`，未形成产品质量 authority。Docker service/API/浏览器产品验收未启动。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7 与 V3 R5 三条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V3 R0--R4 已完成零 Provider 修复设计、安全诊断、零网络 compatibility、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 为 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`，未形成产品质量 authority。V4 R0--R4 已完成 bounded diagnostics、两 Agent 单一语义 policy、independent robustness 与独立 crash-safe evidence lineage；下一步仅 R5 static/Mock checkpoint。Docker service/API/浏览器产品验收未启动。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -993,6 +993,27 @@ authority；产品默认 identity 为 `wrong-question-organizer-model-candidate-
 - [x] dataset/SHA/baseline/expected/metric/threshold 与 V1/V2/V3 artifacts 不变；
 - [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
 
-下一步仅 R4 independent robustness 与 V4 lineage；R5 checkpoint 与新的精确授权前不得执行 V4
-Live。证据见
+该检查点当时下一步仅 R4 independent robustness 与 V4 lineage，后续已完成；R5 checkpoint 与新的
+精确授权前不得执行 V4 Live。证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。
+
+V4 R4 完成回执：新增与冻结 72-case dataset 隔离的
+`phase-6.9.7-v4-independent-robustness-v1` fixtures，并直接验证实际 V4 candidate prompt 与运行合同。
+
+- [x] Tutor 中英/混合改写、否定、干扰、active-context reorder 与 primary-signal conflict 保持 V4 precedence；
+- [x] Organizer authority drift、question/deck reorder、locked name、cross-subject/ordinal/topic/evidence/confidence/schema-negative 全部 fail-closed；
+- [x] actual prompt 不包含 case ID、expected、accepted-label、oracle 或冻结答案表；
+- [x] Tutor/Organizer lane 独立 abort/预算，single dispatch、no retry 与 write isolation 不变；
+- [x] V4 runner/report/evidence envelope 继续固定 72/24/48，guard failure 零 dispatch，首个 contract failure 只收口当前 pair 后 breaker；
+- [x] V4 marker `wx` 单胜者，journal append+fsync 与 hash-chain 拒绝乱序/篡改/跨版本；
+- [x] recovery claim 防活 owner 误封与 ABA，orphan 只做零网络 seal，不 resume/replay/retry；
+- [x] evidence 以 temp `wx` + fsync + hard-link final 发布，same bytes 幂等、different bytes 冲突；
+- [x] V1/V2/V3 marker/journal/evidence bytes、validator 与七个 SHA 不变；
+- [x] V4 Live CLI 在 R6 前固定返回 `live_not_available_before_r6`。
+
+V4 durability `6/6`（`41 expect()`），R4/V3 focused `68/68`（`548 expect()`）、Agent full
+`674/674`（`7094 expect()`）、typecheck/lint 通过。未读取 `.env`/credential、调用 Provider、启动
+Docker/API/browser、创建 V4 Live artifact 或修改业务数据。V4 R0--R4 已完成；下一步仅 R5
+static/Mock checkpoint 与两路独立终审。R5 通过后仍须新的精确一次性 V4 controlled-Live 授权。
+证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。

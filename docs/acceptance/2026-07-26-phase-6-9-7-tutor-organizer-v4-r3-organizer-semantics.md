@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R3 已完成；下一步仅为 R4 independent robustness 与 V4 lineage。
+状态：R3 已完成；该检查点当时下一步为 R4，后续 R4 已完成；当前下一步仅 R5。
 
 ## 1. 为什么需要本轮
 
@@ -81,9 +81,11 @@ build 为回归 authority，不把既存问题包装成 R3 回归或在本提交
 
 ## 5. 下一步与停止条件
 
-下一步仅执行 R4：建立与冻结 72-case dataset 隔离的 held-out/metamorphic/schema-negative fixtures，
+该检查点当时下一步仅执行 R4：建立与冻结 72-case dataset 隔离的 held-out/metamorphic/schema-negative fixtures，
 验证 prompt 泄漏、authority drift、reorder、abort、预算与写隔离，并创建完全独立的 V4
-runner/approval/marker/journal/evidence/validator lineage。R4 仍必须 zero-network。
+runner/approval/marker/journal/evidence/validator lineage。R4 已按该边界保持 zero-network 完成，证据见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`；当前下一步仅 R5 static/Mock
+checkpoint 与独立终审。
 
 R5 static/Mock checkpoint 全部门通过后必须停止；用户此前的“继续/所有权限”不替代新的、精确的一次
 V4 branch controlled-Live 授权。Phase 6.9.7、产品 Docker/API/浏览器验收、Task 13/main 与

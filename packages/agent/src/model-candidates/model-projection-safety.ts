@@ -57,20 +57,55 @@ const MAX_CLONE_DEPTH = 8;
 const MAX_CLONE_ARRAY_LENGTH = 256;
 const MAX_CLONE_OBJECT_KEYS = 512;
 const MAX_CLONE_NODES = 4_096;
+const EVIDENCE_MAX_CLONE_DEPTH = 12;
+const EVIDENCE_MAX_CLONE_NODES = 32_768;
 
-export function clonePlainModelData(
+type CloneLimits = Readonly<{
+  maxDepth: number;
+  maxArrayLength: number;
+  maxObjectKeys: number;
+}>;
+
+const MODEL_CLONE_LIMITS: CloneLimits = Object.freeze({
+  maxDepth: MAX_CLONE_DEPTH,
+  maxArrayLength: MAX_CLONE_ARRAY_LENGTH,
+  maxObjectKeys: MAX_CLONE_OBJECT_KEYS,
+});
+
+const EVIDENCE_CLONE_LIMITS: CloneLimits = Object.freeze({
+  maxDepth: EVIDENCE_MAX_CLONE_DEPTH,
+  maxArrayLength: MAX_CLONE_ARRAY_LENGTH,
+  maxObjectKeys: MAX_CLONE_OBJECT_KEYS,
+});
+
+export function clonePlainModelData(input: unknown): { ok: true; value: unknown } | { ok: false } {
+  return clonePlainModelDataWithBudget(
+    input,
+    0,
+    { remainingNodes: MAX_CLONE_NODES },
+    MODEL_CLONE_LIMITS,
+  );
+}
+
+export function clonePlainEvidenceData(
   input: unknown,
 ): { ok: true; value: unknown } | { ok: false } {
-  return clonePlainModelDataWithBudget(input, 0, { remainingNodes: MAX_CLONE_NODES });
+  return clonePlainModelDataWithBudget(
+    input,
+    0,
+    { remainingNodes: EVIDENCE_MAX_CLONE_NODES },
+    EVIDENCE_CLONE_LIMITS,
+  );
 }
 
 function clonePlainModelDataWithBudget(
   input: unknown,
   depth: number,
   budget: { remainingNodes: number },
+  limits: CloneLimits,
 ): { ok: true; value: unknown } | { ok: false } {
   budget.remainingNodes -= 1;
-  if (budget.remainingNodes < 0 || depth > MAX_CLONE_DEPTH) return { ok: false };
+  if (budget.remainingNodes < 0 || depth > limits.maxDepth) return { ok: false };
   if (
     input === null ||
     typeof input === 'string' ||
@@ -83,7 +118,7 @@ function clonePlainModelDataWithBudget(
 
   try {
     const keys = Reflect.ownKeys(input);
-    if (keys.length > MAX_CLONE_OBJECT_KEYS) return { ok: false };
+    if (keys.length > limits.maxObjectKeys) return { ok: false };
     if (Array.isArray(input)) {
       const lengthDescriptor = Object.getOwnPropertyDescriptor(input, 'length');
       if (
@@ -91,15 +126,12 @@ function clonePlainModelDataWithBudget(
         !('value' in lengthDescriptor) ||
         !Number.isSafeInteger(lengthDescriptor.value) ||
         lengthDescriptor.value < 0 ||
-        lengthDescriptor.value > MAX_CLONE_ARRAY_LENGTH
+        lengthDescriptor.value > limits.maxArrayLength
       ) {
         return { ok: false };
       }
       const length = lengthDescriptor.value as number;
-      const allowed = new Set([
-        'length',
-        ...Array.from({ length }, (_, index) => String(index)),
-      ]);
+      const allowed = new Set(['length', ...Array.from({ length }, (_, index) => String(index))]);
       if (keys.some((key) => typeof key !== 'string' || !allowed.has(key))) {
         return { ok: false };
       }
@@ -108,7 +140,7 @@ function clonePlainModelDataWithBudget(
       for (let index = 0; index < length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(input, String(index));
         if (descriptor === undefined || !('value' in descriptor)) return { ok: false };
-        const cloned = clonePlainModelDataWithBudget(descriptor.value, depth + 1, budget);
+        const cloned = clonePlainModelDataWithBudget(descriptor.value, depth + 1, budget, limits);
         if (!cloned.ok) return cloned;
         output.push(cloned.value);
       }
@@ -123,7 +155,7 @@ function clonePlainModelDataWithBudget(
       if (typeof key !== 'string') return { ok: false };
       const descriptor = Object.getOwnPropertyDescriptor(input, key);
       if (descriptor === undefined || !('value' in descriptor)) return { ok: false };
-      const cloned = clonePlainModelDataWithBudget(descriptor.value, depth + 1, budget);
+      const cloned = clonePlainModelDataWithBudget(descriptor.value, depth + 1, budget, limits);
       if (!cloned.ok) return cloned;
       Object.defineProperty(output, key, {
         value: cloned.value,
