@@ -86,9 +86,10 @@ Tutor 配置/编排完整 focused 结果仍为 `18/18`。
 ## 5. 下一步与停止条件
 
 该检查点当时下一步仅执行 R3：把 WrongQuestionOrganizer 的 subject、deck、topic、evidence 与
-confidence 收敛为单一 V4 决策矩阵；R3/R4 后续均已以 zero-network 完成。当前下一步仅为 R5
-static/Mock checkpoint 与独立终审，仍不能启动产品验收。R4 证据见
-`2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
+confidence 收敛为单一 V4 决策矩阵；R3--R5 后续均已以 zero-network 完成。R4 证据见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`，R5 static/Mock checkpoint 与
+独立终审见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性
+V4 Live 授权门前，仍不能启动产品验收。
 
-R5 checkpoint 全部门通过后仍必须停止；用户当前“继续/所有权限”不替代新的、精确的一次
-V4 branch controlled-Live 授权。
+R5 checkpoint 已全部通过并停止；用户当前“继续/所有权限”不替代新的、精确的一次 V4 branch
+controlled-Live 授权。

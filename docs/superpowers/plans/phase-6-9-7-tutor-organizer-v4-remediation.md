@@ -5,10 +5,10 @@ Tutor/Organizer 的 bounded diagnostic 真值与语义单一规则源；完成�
 V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授权才执行一次 V4
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
-**当前状态：** R0--R4 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy、
-independent robustness 与独立 crash-safe evidence lineage，但未调用 Provider 或创建 V4 Live artifact。
-V3 run `ff2e1a54...` 已失败封存且不得重跑。下一步仅 R5 static/Mock checkpoint 与独立终审；
-Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10 仍未完成。
+**当前状态：** R0--R5 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy、
+independent robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint，但未调用 Provider
+或创建 V4 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。当前停在 R6 新的精确一次性
+V4 branch controlled-Live 授权门前；Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10 仍未完成。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`
@@ -134,7 +134,7 @@ artifacts 未改写。全程未读取 credential、调用 Provider、启动 Dock
 
 ## R4：Independent robustness 与 V4 lineage
 
-**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R5。
+**状态：** [x] 已完成。2026-07-26，zero-network；当时下一步仅 R5，后续 R5 已完成。
 
 **GREEN：**
 
@@ -159,7 +159,7 @@ credential、调用 Provider、启动 Docker/API/browser 或创建 V4 Live artif
 
 ## R5：分支 static/Mock checkpoint 与 Reader/安全终审
 
-**状态：** [ ] 未开始。
+**状态：** [x] 已完成。2026-07-26，zero-network；当前停在 R6 新精确授权门前。
 
 **动作：**
 
@@ -174,6 +174,15 @@ credential、调用 Provider、启动 Docker/API/browser 或创建 V4 Live artif
 - fresh-reader 问题能从设计/计划/acceptance 得到一致答案。
 
 **停止条件：** 全部门通过后停止。没有新的精确 V4 branch controlled-Live 授权不得进入 R6。
+
+**完成证据：** fresh V4 Mock run `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified
+zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`，P95
+`246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；V4 validator 通过。
+`mock_synthetic` provenance 使 Live-only gate 按设计保持 `quality_gate_failed`。V4/V3 focused
+`68/68`、Agent `674/674`、AI `199/199`、Types `42/42`、Server `2154 passed / 30 skipped`、Web
+`439/439`、Organizer PostgreSQL E2E `12/12`、Compose quiet、历史 SHA/validator、V4 artifact=0、测试
+账号零残留与两路终审通过。未读取 credential、调用 Provider 或启动产品 Docker/API/browser。详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
 
 **提交：** `docs(agent): checkpoint phase 6.9.7 v4 remediation`
 

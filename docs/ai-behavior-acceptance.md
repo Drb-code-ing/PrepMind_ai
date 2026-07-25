@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R4）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R5）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3 三条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R4 已完成安全诊断、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 在 Organizer `subject_authority_violation` 后以 `quality_gate_failed` 封存。V4 R0--R4 已完成零 Provider bounded 复盘、独立 diagnostics/历史兼容、Tutor/Organizer 单一语义 policy、independent robustness 与独立 crash-safe evidence lineage；产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3 三条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R4 已完成安全诊断、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 在 Organizer `subject_authority_violation` 后以 `quality_gate_failed` 封存。V4 R0--R5 已完成零 Provider bounded 复盘、独立 diagnostics/历史兼容、Tutor/Organizer 单一语义 policy、independent robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint；当前停在 R6 新的精确一次性 Live 授权门前。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -419,9 +419,22 @@ Live CLI 在 R6 前硬返回 `live_not_available_before_r6`。
 V4 durability `6/6`（`41 expect()`）、R4/V3 focused `68/68`（`548 expect()`）、Agent full
 `674/674`（`7094 expect()`）、typecheck/lint 通过；V1/V2/V3 validator 与七个历史 SHA 不变。
 本轮未读取 credential、调用 Provider、启动 Docker/API/browser、创建 V4 Live artifact 或修改业务数据。
-下一步仅 R5 static/Mock checkpoint 与独立终审；R5 通过后仍须新的精确一次性 V4 Live 授权。完整
-证据见
+该检查点当时下一步仅 R5 static/Mock checkpoint 与独立终审，后续已完成；当前仍须新的精确一次性
+V4 Live 授权。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
+
+V4 R5 当前证据：fresh Mock run `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified
+zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`，P95
+`246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；V4 validator 通过。
+`mock_synthetic` 不能冒充 `deepseek_network`，所以 Live-only gate 按设计保持
+`quality_gate_failed`。唯一 Mock evidence 已精确删除，V4 marker/journal/recovery/evidence 为 0。
+
+V4/V3 focused `68/68`、Agent `674/674`、AI `199/199`、Types `42/42`、Server `2154 passed / 30
+skipped`、Web `439/439`、Organizer PostgreSQL E2E `12/12`、Compose default-off 与相关
+typecheck/lint/build 均通过；测试账号残留为 0，tracked gates=false、component credential example
+empty，V1/V2/V3 validators 与七个历史 SHA 不变。未读取根 `.env`/credential、调用 Provider、启动
+产品 Docker/API/browser 或修改业务数据。当前停在 R6 新的精确一次性 V4 Live 授权门前；完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

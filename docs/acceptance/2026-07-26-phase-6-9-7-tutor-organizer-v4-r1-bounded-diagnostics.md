@@ -4,7 +4,8 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R1 已完成；该检查点当时下一步为 R2，后续 R2--R4 已完成，当前下一步仅 R5。
+状态：R1 已完成；该检查点当时下一步为 R2，后续 R2--R5 已完成；当前停在 R6 新精确 Live
+授权门前。
 
 ## 1. 本轮解决了什么
 
@@ -118,9 +119,10 @@ robustness、runner/lineage 与 static/Mock checkpoint。
 R5 完成后必须停止并重新取得一次精确 V4 controlled-Live 授权；当前用户的“继续”不替代该未来
 授权。V4 Live、产品 Docker/API/可见浏览器、Task 13/main 合并、Phase 6.10 与博客收尾均未开始。
 
-后续状态（2026-07-26）：R2--R4 已保持 zero-network 完成；独立 robustness 与 V4 evidence lineage
-见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。当前下一步仅 R5
-static/Mock checkpoint，本段对 R1 当时范围的记录不作改写。
+后续状态（2026-07-26）：R2--R5 已保持 zero-network 完成；独立 robustness 与 V4 evidence lineage
+见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`，R5 static/Mock checkpoint 与
+独立终审见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性
+V4 Live 授权门前，本段对 R1 当时范围的记录不作改写。
 
 ## 7. 回顾时可以问
 

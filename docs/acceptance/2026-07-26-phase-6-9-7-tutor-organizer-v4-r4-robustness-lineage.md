@@ -14,8 +14,9 @@ expected、accepted-label、oracle 或冻结答案表。V4 runner/report/CLI/val
 recovery claim 与 evidence publication 已使用新的 identity，并与 V1/V2/V3 双向隔离。
 
 本结论只证明 R4 工程合同。没有读取 credential、调用 Provider、创建 V4 Live artifact、启动产品
-Docker/API/浏览器或修改业务数据。Phase 6.9.7 仍未完成；下一步仅 R5 static/Mock checkpoint 与
-独立终审。R5 通过后仍必须取得新的精确一次性 V4 branch controlled-Live 授权。
+Docker/API/浏览器或修改业务数据。Phase 6.9.7 仍未完成；该检查点当时下一步仅 R5 static/Mock
+checkpoint 与独立终审，后续 R5 已完成。当前仍必须取得新的精确一次性 V4 branch controlled-Live
+授权。
 
 ## 2. Independent robustness
 
@@ -161,9 +162,13 @@ bun run --cwd packages/agent lint
 Organizer PostgreSQL E2E、Compose default-off boundary、V4 Live artifact/recovery claim 为 0、历史 SHA/
 validator、两个 gate=false、两路独立终审与 fresh-reader 文档测试。
 
-R5 全部门通过后必须停止。用户可以这样继续询问：
+后续状态（2026-07-26）：R5 static/Mock checkpoint 与两路独立终审已全部通过，完整证据见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性 V4 Live
+授权门前；本节对 R4 当时范围与“未执行 R5”的历史记录不作改写。
 
-- “按计划执行 Phase 6.9.7 V4 R5 static/Mock checkpoint，完成独立终审，但不要调用真实模型。”
+用户可以这样继续询问：
+
+- “R5 为什么 Mock semantic `1/1` 仍然是 `quality_gate_failed`？”
 - “R4 为什么可以复用 V3 调度原则，却必须使用独立 marker/journal/evidence？”
 - “orphan seal、recovery claim 和 ABA fence 分别防止什么问题？”
 - “为什么 actual-prompt 防泄漏通过仍不能证明真实模型语义质量？”

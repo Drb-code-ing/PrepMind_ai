@@ -119,8 +119,10 @@ controlled-Live 的一次性精确授权。
 
 Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。本 R0 检查点当时下一步是
 R1 V4-only bounded diagnostics 与历史兼容测试；后续 R1 已保持 zero-network 完成，见
-`2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`；后续 R2--R4 也已完成，当前
-下一步仅 R5 static/Mock checkpoint 与独立终审。R5 完成后仍必须停止请求新的精确 V4 Live 授权。
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`；后续 R2--R5 也已完成。R5
+static/Mock checkpoint 与独立终审见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性 V4 Live
+授权门前，本段对 R0 当时范围的记录不作改写。
 
 回顾时可以问：
 

@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R4）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R5）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -926,7 +926,7 @@ R3 CLI 已注册 `eval:phase-6-9-7:v3:mock|live|seal|validate`。其中 V3 `live
 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`；R5 失败 authority 见
 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
 
-V4 R0--R4 已完成且都为 zero-network。产品 Tutor/Organizer candidate 的 prompt identity 分别是
+V4 R0--R5 已完成且都为 zero-network。产品 Tutor/Organizer candidate 的 prompt identity 分别是
 `tutor-model-candidate-v4` 与 `wrong-question-organizer-model-candidate-v4`，但 tracked gates 仍为
 `false`；两条 V4 路径各自从一份深冻结 policy 派生 formatter、validator、merger 和本地不变量。
 历史 paired eval 则显式调用 Tutor/Organizer V2 policy，以保持 V2 prompt bytes、V3 prompt SHA 和
@@ -944,10 +944,17 @@ bun run --cwd packages/agent eval:phase-6-9-7:v4:mock
 bun run --cwd packages/agent typecheck
 ```
 
+R5 fresh Mock run `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified zero-call、`48/48`
+strict runtime、Tutor/Organizer/combined semantic `1/1/1`，P95 `246/328/328/276ms`、usage
+`21948/5647`、estimated `0.099726 CNY`；`mock_synthetic` provenance 使 Live-only gate 按设计保持
+`quality_gate_failed`。Agent/AI/Types/Server/Web 全量、Organizer PostgreSQL E2E `12/12`、Compose
+default-off、历史 SHA/validator、V4 artifact=0、测试账号零残留与两路终审均通过。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
+
 `eval:phase-6-9-7:v4:live` 已注册独立确认词和 approval env，但在 R6 前硬返回
-`live_not_available_before_r6`。不要为了“试一下”设置授权变量或读取 component key；R4 没有创建任何
-V4 Live marker/journal/evidence。当前下一步仅 R5 static/Mock checkpoint 与独立终审，仍不得执行网络、
-Docker API 或浏览器验收。R5 全部门通过后必须停止并重新取得精确 V4 branch controlled-Live 授权。
+`live_not_available_before_r6`。不要为了“试一下”设置授权变量或读取 component key；R5 没有创建任何
+V4 Live marker/journal/evidence。当前已停止在 R6 精确一次性 V4 branch controlled-Live 授权门前，
+仍不得执行网络、Docker API 或浏览器验收。
 
 V4 R5 static/Mock 不形成质量 authority，因此没有 R6 的精确授权不得执行 Live；只有 R6
 `quality_gate_passed` 才能进入 R7--R9 产品验收、Task 13/main。新的网络运行必须使用 V4 identity、

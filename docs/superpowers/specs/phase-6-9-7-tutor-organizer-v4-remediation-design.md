@@ -2,10 +2,10 @@
 
 日期：2026-07-26
 
-状态：R0--R4 已完成；V4 bounded diagnostics、Tutor/Organizer 单一语义 policy、independent
-robustness 与独立 crash-safe evidence lineage 已实现，但尚未调用 Provider、创建 V4 Live artifact 或
-获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一 Live 均已失败封存且不得重跑。下一步仅 R5
-static/Mock checkpoint 与独立终审。
+状态：R0--R5 已完成；V4 bounded diagnostics、Tutor/Organizer 单一语义 policy、independent
+robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint 已实现，但尚未调用 Provider、
+创建 V4 Live artifact 或获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一 Live 均已失败封存且
+不得重跑。当前停在 R6 新的精确一次性 V4 branch controlled-Live 授权门前。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -304,7 +304,23 @@ CLI/validator、journal schema/parser 与 durability I/O：
 
 R4 durability `6/6`、R4/V3 focused `68/68`、Agent full `674/674`、typecheck/lint，以及
 V1/V2/V3 validator 与七个历史 artifact SHA 均通过。R4 没有读取 credential、调用 Provider、启动
-Docker/API/browser、创建 V4 Live artifact 或修改业务数据；下一步仅 R5 static/Mock checkpoint。
+Docker/API/browser、创建 V4 Live artifact 或修改业务数据；该检查点当时下一步仅 R5 static/Mock
+checkpoint，后续已完成。
+
+### 9.2 R5 实现状态（2026-07-26）
+
+R5 已完成 zero-network static/Mock checkpoint。Fresh V4 Mock run
+`c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified zero-call、`48/48` strict runtime、
+Tutor/Organizer/combined semantic `1/1/1`，P95 `246/328/328/276ms`、usage `21948/5647`、estimated
+`0.099726 CNY`；V4 validator 通过。`mock_synthetic` provenance 使 Live-only gate 按设计保持
+`quality_gate_failed`，不能启用产品 gate 或冒充真实模型质量 authority。
+
+V4/V3 focused `68/68`、Agent `674/674`、AI `199/199`、Types `42/42`、Server `2154 passed / 30
+skipped`、Web `439/439`、Organizer PostgreSQL E2E `12/12`、Compose default-off 与相关
+typecheck/lint/build 均通过。测试账号残留为 0；V1/V2/V3 validators 与七个历史 SHA 不变；V4 Mock
+evidence 已精确删除，V4 marker/journal/recovery/evidence 为 0。两路终审无 Critical/Important。
+R5 没有读取 credential、调用 Provider、启动产品 Docker/API/browser 或修改业务数据，当前停在 R6
+新精确一次性 V4 Live 授权门前。
 
 ## 10. 质量门与停止条件
 

@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R5 static/Mock checkpoint：在
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 上完成 zero-network 分支收口。Fresh V4 Mock run
+> `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified zero-call、`48/48` strict runtime，
+> Tutor/Organizer/combined semantic `1/1/1`，P95 `246/328/328/276ms`，verified usage
+> `21948/5647`，estimated cost `0.099726 CNY`；V4 validator 通过。由于 provenance 是
+> `mock_synthetic`，报告按 Live-only authority 保持 `quality_gate_failed`。唯一 Mock evidence 已按
+> run ID 精确删除，V4 marker/journal/recovery/evidence 均为 0。
+>
+> 分支静态门通过：V4/V3 focused `68/68`（`548 expect()`），Agent `674/674`（`7094
+expect()`），AI `199/199`（`1054 expect()`），Types `42/42`，Server `227` suites passed / `3`
+> skipped、`2154` passed / `30` skipped，Web `439/439` 与 17-route build，Organizer PostgreSQL E2E
+> `12/12`，Compose tracked example quiet config、相关 typecheck/lint/build 均通过。测试账号残留为 0，
+> tracked gates=false、component credential example empty；V1/V2/V3 validators 与七个历史 SHA 保持
+> 不变。Server 首次仅因未注入测试 `DATABASE_URL` 在 Prisma 初始化前退出；使用测试文件公开的本地
+> 默认连接串补跑后全量通过，不属于代码缺陷。
+>
+> 本轮未读取根 `.env` 或 component credential、未调用 Provider、未执行 V4 Live、未启动或重建产品
+> Docker/API/browser，也未修改或清空 Docker 容器、镜像、卷、PostgreSQL、Redis 或 MinIO。V4
+> R0--R5 已完成，Phase 6.9.7 仍未完成；当前停在 R6 新的精确一次性 V4 branch controlled-Live
+> 授权门前。产品验收、Task 13/main、Phase 6.10 与博客收尾均未开始。验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R4 independent robustness 与 crash-safe evidence lineage：新增与
 > 冻结 72-case authority 隔离的 versioned held-out/metamorphic/schema-negative fixtures，覆盖 Tutor
 > 中英/混合改写、否定、干扰与 active-context 重排，Organizer authority drift、question/deck reorder、
@@ -23,9 +45,9 @@
 > Critical/Important。
 >
 > 本轮未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、创建 V4 Live artifact 或修改
-> PostgreSQL、Redis、MinIO、Docker volume/业务数据。V4 R0--R4 已完成；下一步仅 R5
-> static/Mock checkpoint 与独立终审。V4 Live、产品 Docker/API/browser、Task 13/main 与 Phase 6.10
-> 均未开始；R5 通过后仍须新的精确一次性 Live 授权。验收见
+> PostgreSQL、Redis、MinIO、Docker volume/业务数据。V4 R0--R4 已完成；该检查点当时下一步仅 R5
+> static/Mock checkpoint 与独立终审，后续已完成。V4 Live、产品 Docker/API/browser、Task 13/main
+> 与 Phase 6.10 均未开始；当前仍须新的精确一次性 Live 授权。验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
 >
 > 2026-07-26 — Phase 6.9.7 V4 R3 WrongQuestionOrganizer 语义单一规则源：新增深冻结
