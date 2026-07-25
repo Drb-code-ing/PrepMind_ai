@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R2 Tutor 语义单一规则源：新增深冻结
+> `packages/agent/src/policies/tutor-strategy-policy.ts`，统一五类模型 intent、primary/allowed
+> evidence、compatible depth、default/active-context depth、guiding/final-answer 与 answer structure。
+> V4 precedence 固定为
+> `step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`；prompt formatter、
+> validator、evidence resolver、depth compatibility、candidate merger 与本地
+> `buildTutorStrategyFromIntent` 共用该 authority。
+>
+> active context 现在只能作为支持上下文，不能把本地已识别的具体 intent 降级为
+> `general_follow_up`；merger 对 precedence downgrade 返回 fail-closed。`answer_direct` 继续保持本地
+> provider 前 zero-call、模型 schema 禁止和本地答案权限；同时修复中英文否定句“不要/Don't just
+> give me the answer”被误判为 direct-answer 的风险。V4 generic prompt 不包含 case ID、expected、
+> accepted label、答案、route/tool/permission 或写能力。
+>
+> 冻结 deterministic detector/baseline 没有被新模型 precedence 重排；V2/V3 paired eval 改走显式
+> `runTutorModelCandidateV2` 历史 policy，当前产品 candidate 使用
+> `tutor-model-candidate-v4`。因此 deterministic `6/48`、Tutor semantic `0.4418666667` 与 V3 Tutor
+> prompt SHA `sha256:91be5091...47fc6a` 均保持不变，没有让 V4 prompt 冒充旧 evidence。R2 focused
+> `56/56`、`533 expect()`，Agent 全量 `647/647`、`6856 expect()`，Web Tutor 配置/编排
+> `18/18`、Agent TypeScript、Agent/Web lint、Prettier、diff check 与 Markdown 相对链接门均通过。
+>
+> 本轮未读取 credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R3
+> WrongQuestionOrganizer V4 语义单一规则源，仍为 zero-network；R5 后仍须重新取得一次精确 V4
+> Live 授权。验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R1 bounded diagnostics 与历史兼容：新增独立
 > `phase-6.9.7-v4-bounded-diagnostics-v1` case/report contract，将每个 case 互斥区分为
 > `not_started / executed_contract_failure / executed_semantic_mismatch /
@@ -23,8 +50,8 @@ dynamic_contract / local_merger / usage / latency / safety`；24 个 guard 必�
 > 记录 7/7 一致。
 >
 > 本轮未读取 credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
-> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R2 Tutor
-> V4 语义单一规则源，仍为 zero-network；R5 后依旧必须重新取得精确 V4 Live 授权。验收见
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。该回执当时下一步仅
+> R2 Tutor V4 语义单一规则源；后续 R2 已完成。R5 后依旧必须重新取得精确 V4 Live 授权。验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`。
 >
 > 2026-07-26 — Phase 6.9.7 V4 R0 零 Provider bounded 复盘与设计：在 V3 失败 authority

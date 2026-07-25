@@ -38,11 +38,14 @@ test('applies one governed Tutor candidate after the final Tutor route', async (
   let tutorInvokes = 0;
   let seenSignal: AbortSignal | undefined;
   const controller = new AbortController();
-  const tutorRuntime = trackedTutorRuntime(() => {
-    tutorInvokes += 1;
-  }, (request) => {
-    seenSignal = request.signal;
-  });
+  const tutorRuntime = trackedTutorRuntime(
+    () => {
+      tutorInvokes += 1;
+    },
+    (request) => {
+      seenSignal = request.signal;
+    },
+  );
   const routerBudget = routerVerifierBudget();
   const tutorBudget = createTutorModelBudget();
 
@@ -173,7 +176,7 @@ test('aborted requests stay zero-call and unverifiable usage cannot influence Tu
         intent: 'socratic_hint',
         depth: 'brief',
         confidence: 'high',
-        evidenceCodes: ['contextual_reference'],
+        evidenceCodes: ['implicit_hint_request'],
       },
       usage: { inputTokens: 200, outputTokens: 0 },
     }),
@@ -268,7 +271,7 @@ function trackedTutorRuntime(
         intent: 'socratic_hint',
         depth: 'brief',
         confidence: 'high',
-        evidenceCodes: ['contextual_reference'],
+        evidenceCodes: ['implicit_hint_request'],
       },
       usage: { inputTokens: 240, outputTokens: 24 },
     }),
@@ -344,7 +347,7 @@ function makeTutorBundle(
       mode: 'live',
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
-      promptVersion: 'tutor-model-candidate-v1',
+      promptVersion: 'tutor-model-candidate-v4',
       timeoutMs: 3_000,
       pricingKnown: true,
       configured: true,

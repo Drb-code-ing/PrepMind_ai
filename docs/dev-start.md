@@ -926,6 +926,22 @@ R3 CLI 已注册 `eval:phase-6-9-7:v3:mock|live|seal|validate`。其中 V3 `live
 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`；R5 失败 authority 见
 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
 
+V4 R0--R2 已完成且都为 zero-network。R2 后，产品 Tutor candidate 的 prompt identity 是
+`tutor-model-candidate-v4`，但 tracked gate 仍为 `false`；V4 precedence、evidence/depth、merger 与
+本地 strategy invariants 来自同一深冻结 policy。历史 paired eval 则显式调用 V2 policy，以保持 V2
+prompt bytes、V3 prompt SHA 和已封存 evidence 不变。不要用历史 V1/V2/V3 CLI 试跑 V4，也不要把
+`runTutorModelCandidateV2` 接回产品 Web runtime。
+
+以下 R2 回归命令不读取 `.env`、不创建 executor、不启动 Docker：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-v4-semantics.test.ts packages/agent/tests/tutor-model-contract.test.ts packages/agent/tests/tutor-model-candidate.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-baseline.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts
+bun run --cwd packages/agent typecheck
+```
+
+下一步仅 R3 WrongQuestionOrganizer V4 policy，仍不得执行网络、Docker API 或浏览器验收。R5
+checkpoint 全部门通过后必须停止并重新取得精确 V4 branch controlled-Live 授权。
+
 R5 没有形成质量 authority，因此 R6--R9 产品验收、Task 13/main 均不得执行。未来只有另立新版本并通过新的质量 authority 后，产品验收才可使用合成账号/错题；新的网络运行必须使用新 identity、独立 marker/journal/evidence、质量计划与精确授权，并重新确认 DeepSeek 账号的数据保留/训练设置。禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置

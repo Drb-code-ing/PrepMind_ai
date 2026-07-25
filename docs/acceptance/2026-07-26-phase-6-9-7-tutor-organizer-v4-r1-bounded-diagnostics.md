@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R1 已完成；下一步仅为 R2 Tutor V4 语义单一规则源。
+状态：R1 已完成；该检查点当时下一步为 R2，后续 R2 已完成，当前下一步仅 R3。
 
 ## 1. 本轮解决了什么
 

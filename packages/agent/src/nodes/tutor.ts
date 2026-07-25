@@ -1,20 +1,13 @@
-export type TutorIntent =
-  | 'explain_solution'
-  | 'socratic_hint'
-  | 'step_check'
-  | 'concept_bridge'
-  | 'answer_direct'
-  | 'general_follow_up';
+import {
+  tutorBoundedIntentPolicy,
+  type TutorBoundedAnswerSection,
+  type TutorBoundedDepth,
+  type TutorBoundedIntent,
+} from '../policies/tutor-strategy-policy.ts';
 
-export type TutorDepth = 'brief' | 'standard' | 'deep';
-
-export type TutorAnswerSection =
-  | 'known_conditions'
-  | 'concept'
-  | 'reasoning_steps'
-  | 'common_mistake'
-  | 'final_answer'
-  | 'guiding_question';
+export type TutorIntent = TutorBoundedIntent | 'answer_direct';
+export type TutorDepth = TutorBoundedDepth;
+export type TutorAnswerSection = TutorBoundedAnswerSection;
 
 export type TutorStrategy = {
   intent: TutorIntent;
@@ -57,33 +50,34 @@ export type BuildTutorStrategyFromIntentInput = Readonly<{
   }>;
 }>;
 
-type IntentRule = {
+type IntentRule = Readonly<{
   intent: TutorIntent;
-  signals: string[];
+  signals: readonly string[];
   reason: string;
-};
+}>;
 
-const intentRules: IntentRule[] = [
-  {
-    intent: 'answer_direct',
-    signals: [
-      'only answer',
-      'answer only',
-      'just give me the answer',
-      'just give me the result',
-      'just give me result',
-      'final answer',
-      'what is the answer',
-      "what's the answer",
-      '直接给答案',
-      '直接给我答案',
-      '只要答案',
-      '答案是什么',
-      '最后答案是什么',
-    ],
-    reason: 'User explicitly asks for a direct answer.',
-  },
-  {
+const answerDirectRule: IntentRule = Object.freeze({
+  intent: 'answer_direct',
+  signals: Object.freeze([
+    'only answer',
+    'answer only',
+    'just give me the answer',
+    'just give me the result',
+    'just give me result',
+    'final answer',
+    'what is the answer',
+    "what's the answer",
+    '直接给答案',
+    '直接给我答案',
+    '只要答案',
+    '答案是什么',
+    '最后答案是什么',
+  ]),
+  reason: 'User explicitly asks for a direct answer.',
+});
+
+const boundedIntentRules = {
+  step_check: {
     intent: 'step_check',
     signals: [
       'is it correct',
@@ -98,22 +92,42 @@ const intentRules: IntentRule[] = [
     ],
     reason: 'User asks to verify a submitted step.',
   },
-  {
-    intent: 'concept_bridge',
-    signals: ['what is', 'formula', 'theorem', 'concept', '公式', '定理', '概念', '是什么'],
-    reason: 'User asks for the concept or theorem behind the problem.',
-  },
-  {
-    intent: 'socratic_hint',
-    signals: ['why', 'hint', 'how should i think', '思路', '提示', '为什么', '为什么可以'],
-    reason: 'User asks for reasoning guidance rather than only the final answer.',
-  },
-  {
+  explain_solution: {
     intent: 'explain_solution',
     signals: ['how to solve', 'solve', 'explain', '讲一下', '解析', '解释', '怎么做'],
     reason: 'User asks for a full solution explanation.',
   },
-];
+  concept_bridge: {
+    intent: 'concept_bridge',
+    signals: ['what is', 'formula', 'theorem', 'concept', '公式', '定理', '概念', '是什么'],
+    reason: 'User asks for the concept or theorem behind the problem.',
+  },
+  socratic_hint: {
+    intent: 'socratic_hint',
+    signals: ['why', 'hint', 'how should i think', '思路', '提示', '为什么', '为什么可以'],
+    reason: 'User asks for reasoning guidance rather than only the final answer.',
+  },
+  general_follow_up: {
+    intent: 'general_follow_up',
+    signals: [],
+    reason: 'No strong tutoring intent signal was matched.',
+  },
+} as const satisfies Record<TutorBoundedIntent, IntentRule>;
+
+// This historical deterministic order is a frozen zero-call/baseline authority.
+// The governed V4 model precedence is separate and lives in TUTOR_BOUNDED_INTENT_POLICY.
+const LOCAL_DETERMINISTIC_INTENT_ORDER = [
+  'step_check',
+  'concept_bridge',
+  'socratic_hint',
+  'explain_solution',
+  'general_follow_up',
+] as const satisfies readonly TutorBoundedIntent[];
+
+const intentRules: readonly IntentRule[] = Object.freeze([
+  answerDirectRule,
+  ...LOCAL_DETERMINISTIC_INTENT_ORDER.map((intent) => boundedIntentRules[intent]),
+]);
 
 const weakStepSignals = new Set(['this step', '这一步']);
 
@@ -137,18 +151,14 @@ export function buildTutorStrategy(input: BuildTutorStrategyInput): TutorStrateg
 export function buildTutorStrategyFromIntent(
   input: BuildTutorStrategyFromIntentInput,
 ): TutorStrategy {
-  const answerStructure = selectAnswerStructure(
-    input.intent,
-    input.hasActiveStudyContext,
-  );
+  const invariants = selectLocalStrategyInvariants(input.intent, input.hasActiveStudyContext);
+  const answerStructure = [...invariants.answerStructure];
 
   return {
     intent: input.intent,
     depth: input.depth,
-    shouldAskGuidingQuestion:
-      input.intent === 'socratic_hint' || input.intent === 'step_check',
-    shouldGiveFinalAnswer:
-      input.intent === 'answer_direct' || input.intent === 'explain_solution',
+    shouldAskGuidingQuestion: invariants.shouldAskGuidingQuestion,
+    shouldGiveFinalAnswer: invariants.shouldGiveFinalAnswer,
     shouldUseActiveStudyContext: input.hasActiveStudyContext,
     answerStructure,
     promptAddition: buildTutorPrompt({
@@ -187,10 +197,14 @@ export function detectTutorSignals(latestUserText: string): TutorSignalDetection
 
   for (const rule of intentRules) {
     const matchedSignals = rule.signals.filter((signal) => {
+      if (rule.intent === 'step_check' && weakStepSignals.has(signal) && hasGuidanceSignal(text)) {
+        return false;
+      }
+
       if (
-        rule.intent === 'step_check' &&
-        weakStepSignals.has(signal) &&
-        hasGuidanceSignal(text)
+        rule.intent === 'answer_direct' &&
+        matchesSignal(text, signal) &&
+        isNegatedDirectAnswerSignal(text, signal)
       ) {
         return false;
       }
@@ -207,7 +221,8 @@ export function detectTutorSignals(latestUserText: string): TutorSignalDetection
     }
   }
 
-  const selected = intentMatches[0] ?? {
+  const normalizedMatches = suppressBroadExplanationMatch(intentMatches);
+  const selected = normalizedMatches[0] ?? {
     intent: 'general_follow_up',
     matchedSignals: [],
     reason: 'No strong tutoring intent signal was matched.',
@@ -216,7 +231,7 @@ export function detectTutorSignals(latestUserText: string): TutorSignalDetection
   return {
     normalizedText: text,
     selected,
-    intentMatches,
+    intentMatches: normalizedMatches,
   };
 }
 
@@ -236,8 +251,39 @@ function matchesSignal(text: string, signal: string) {
     return text.includes(normalizedSignal);
   }
 
-  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedSignal)}($|[^a-z0-9])`).test(
-    text,
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedSignal)}($|[^a-z0-9])`).test(text);
+}
+
+function isNegatedDirectAnswerSignal(text: string, signal: string) {
+  const normalizedSignal = signal.toLowerCase();
+  let searchFrom = 0;
+  let sawOccurrence = false;
+
+  while (searchFrom < text.length) {
+    const index = text.indexOf(normalizedSignal, searchFrom);
+    if (index < 0) return sawOccurrence;
+    sawOccurrence = true;
+    const prefix = text.slice(Math.max(0, index - 32), index);
+    const negated =
+      /(?:不要|别|不必|无需|避免)\s*$/u.test(prefix) ||
+      /(?:do not|don't|dont|without|rather than|not)\s*$/iu.test(prefix);
+    if (!negated) return false;
+    searchFrom = index + normalizedSignal.length;
+  }
+
+  return sawOccurrence;
+}
+
+function suppressBroadExplanationMatch(
+  matches: readonly TutorIntentSignalMatch[],
+): TutorIntentSignalMatch[] {
+  const conceptMatch = matches.find((match) => match.intent === 'concept_bridge');
+  if (conceptMatch === undefined) return [...matches];
+
+  return matches.filter(
+    (match) =>
+      match.intent !== 'explain_solution' ||
+      match.matchedSignals.some((signal) => signal !== 'explain' && signal !== '解释'),
   );
 }
 
@@ -251,37 +297,44 @@ function escapeRegExp(text: string) {
 
 function selectDepth(intent: TutorIntent, hasActiveStudyContext: boolean): TutorDepth {
   if (intent === 'answer_direct') return 'brief';
-  if (intent === 'explain_solution' && hasActiveStudyContext) return 'deep';
-  return 'standard';
+  const policy = tutorBoundedIntentPolicy(intent);
+  if (policy === undefined) return 'standard';
+  return hasActiveStudyContext
+    ? policy.localStrategy.activeContextDepth
+    : policy.localStrategy.defaultDepth;
 }
 
-function selectAnswerStructure(
+function selectLocalStrategyInvariants(
   intent: TutorIntent,
   hasActiveStudyContext: boolean,
-): TutorAnswerSection[] {
+): Readonly<{
+  shouldAskGuidingQuestion: boolean;
+  shouldGiveFinalAnswer: boolean;
+  answerStructure: readonly TutorAnswerSection[];
+}> {
   if (intent === 'answer_direct') {
-    return ['final_answer', 'reasoning_steps'];
+    return {
+      shouldAskGuidingQuestion: false,
+      shouldGiveFinalAnswer: true,
+      answerStructure: ['final_answer', 'reasoning_steps'],
+    };
   }
 
-  if (intent === 'step_check') {
-    return ['known_conditions', 'reasoning_steps', 'common_mistake', 'guiding_question'];
+  const policy = tutorBoundedIntentPolicy(intent);
+  if (policy === undefined) {
+    return {
+      shouldAskGuidingQuestion: false,
+      shouldGiveFinalAnswer: false,
+      answerStructure: ['concept', 'reasoning_steps'],
+    };
   }
-
-  if (intent === 'concept_bridge') {
-    return ['known_conditions', 'concept', 'reasoning_steps', 'guiding_question'];
-  }
-
-  if (intent === 'socratic_hint') {
-    return ['known_conditions', 'concept', 'reasoning_steps', 'guiding_question'];
-  }
-
-  if (intent === 'explain_solution') {
-    return ['known_conditions', 'concept', 'reasoning_steps', 'final_answer'];
-  }
-
-  return hasActiveStudyContext
-    ? ['known_conditions', 'reasoning_steps', 'guiding_question']
-    : ['concept', 'reasoning_steps'];
+  return {
+    shouldAskGuidingQuestion: policy.localStrategy.shouldAskGuidingQuestion,
+    shouldGiveFinalAnswer: policy.localStrategy.shouldGiveFinalAnswer,
+    answerStructure: hasActiveStudyContext
+      ? policy.localStrategy.activeContextAnswerStructure
+      : policy.localStrategy.answerStructure,
+  };
 }
 
 function buildTutorPrompt(input: {

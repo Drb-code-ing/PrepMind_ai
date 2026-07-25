@@ -19,7 +19,6 @@ import {
 } from './phase-6-9-tutor-wrong-question-bounded-diagnostics.ts';
 import { MODEL_CANDIDATE_DISPOSITIONS } from '../model-candidates/model-candidate-policy.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
-import { TUTOR_MODEL_PROMPT_VERSION as TUTOR_MODEL_CANDIDATE_PROMPT_VERSION } from '../model-candidates/tutor-model-contract.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION as WRONG_QUESTION_ORGANIZER_MODEL_CANDIDATE_PROMPT_VERSION } from '../model-candidates/wrong-question-organizer-model-contract.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 
@@ -33,14 +32,13 @@ export type Phase697TutorOrganizerRunnerVersion =
   | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V1
   | typeof PHASE_6_9_7_TUTOR_ORGANIZER_RUNNER_VERSION_V2;
 export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1 = 'tutor-model-candidate-v1' as const;
-export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 = TUTOR_MODEL_CANDIDATE_PROMPT_VERSION;
+export const PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2 = 'tutor-model-candidate-v2' as const;
 export const PHASE_6_9_7_TUTOR_PROMPT_VERSION = PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1;
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1 =
   'wrong-question-organizer-model-candidate-v1' as const;
 export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V2 =
   WRONG_QUESTION_ORGANIZER_MODEL_CANDIDATE_PROMPT_VERSION;
-export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION =
-  PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1;
+export const PHASE_6_9_7_ORGANIZER_PROMPT_VERSION = PHASE_6_9_7_ORGANIZER_PROMPT_VERSION_V1;
 export const PHASE_6_9_7_TUTOR_SCHEMA_VERSION = 'tutor-model-decision-v1' as const;
 export const PHASE_6_9_7_ORGANIZER_SCHEMA_VERSION =
   'wrong-question-organizer-model-decision-v1' as const;
@@ -167,14 +165,8 @@ export const PHASE_6_9_7_CASE_ENTRY_SCHEMA = z
     rawSchemaValid: z.boolean().nullable(),
     candidateDisposition: dispositionSchema.nullable(),
     canonicalSchemaSuccess: z.boolean(),
-    canonicalValidationStage: z
-      .enum(PHASE_6_9_7_CANONICAL_VALIDATION_STAGES)
-      .nullable()
-      .optional(),
-    canonicalFailureReason: z
-      .enum(PHASE_6_9_7_CANONICAL_FAILURE_REASONS)
-      .nullable()
-      .optional(),
+    canonicalValidationStage: z.enum(PHASE_6_9_7_CANONICAL_VALIDATION_STAGES).nullable().optional(),
+    canonicalFailureReason: z.enum(PHASE_6_9_7_CANONICAL_FAILURE_REASONS).nullable().optional(),
     strictRuntimeSuccess: z.boolean(),
     criticalFailure: z.boolean(),
     permissionFailure: z.boolean(),
@@ -338,9 +330,7 @@ function validateVersionedDiagnostics(
   if (!promptIdentityMatches) {
     addIssue(context, 'runner/prompt identity mismatch');
   }
-  const tutorDynamicReasons = new Set<string>(
-    PHASE_6_9_7_TUTOR_DYNAMIC_CONTRACT_FAILURE_REASONS,
-  );
+  const tutorDynamicReasons = new Set<string>(PHASE_6_9_7_TUTOR_DYNAMIC_CONTRACT_FAILURE_REASONS);
   const organizerDynamicReasons = new Set<string>(
     PHASE_6_9_7_ORGANIZER_DYNAMIC_CONTRACT_FAILURE_REASONS,
   );
@@ -399,16 +389,10 @@ function validateVersionedDiagnostics(
     if (entry.candidateDisposition !== 'fallback_schema_invalid' || entry.canonicalSchemaSuccess) {
       addIssue(context, `failed diagnostics disposition mismatch: ${entry.caseId}`);
     }
-    if (
-      diagnostic.canonicalValidationStage === 'raw_schema' &&
-      entry.rawSchemaValid !== false
-    ) {
+    if (diagnostic.canonicalValidationStage === 'raw_schema' && entry.rawSchemaValid !== false) {
       addIssue(context, `raw diagnostics mismatch: ${entry.caseId}`);
     }
-    if (
-      diagnostic.canonicalValidationStage !== 'raw_schema' &&
-      entry.rawSchemaValid !== true
-    ) {
+    if (diagnostic.canonicalValidationStage !== 'raw_schema' && entry.rawSchemaValid !== true) {
       addIssue(context, `post-schema diagnostics mismatch: ${entry.caseId}`);
     }
     if (
@@ -421,9 +405,9 @@ function validateVersionedDiagnostics(
     }
     if (
       diagnostic.canonicalValidationStage === 'dynamic_contract' &&
-      !(
-        entry.agent === 'tutor' ? tutorDynamicReasons : organizerDynamicReasons
-      ).has(diagnostic.canonicalFailureReason)
+      !(entry.agent === 'tutor' ? tutorDynamicReasons : organizerDynamicReasons).has(
+        diagnostic.canonicalFailureReason,
+      )
     ) {
       addIssue(context, `agent dynamic diagnostics mismatch: ${entry.caseId}`);
     }

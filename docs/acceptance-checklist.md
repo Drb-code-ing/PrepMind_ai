@@ -954,5 +954,25 @@ reason 链；legacy API 只映射同一结果，产品 merger 复用成功 valid
 额外字段全部 fail-closed。V1/V2/V3 V4 字段 absent、旧 validator 拒绝 V4、V4 validator 拒绝旧
 report，synthetic SHA 不变。focused `32/32`、Agent `635/635`、typecheck/lint/Prettier/diff check
 通过；未读取 credential、调用 Provider、创建 V4 runner/CLI/Live artifact、启动 Docker/API/browser
-或修改业务数据。下一步仅 R2 Tutor policy；R5 与新精确授权前不得执行 V4 Live。证据见
+或修改业务数据。后续 R2 已完成；R5 与新精确授权前不得执行 V4 Live。证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`。
+
+V4 R2 完成回执：Tutor V4 使用唯一深冻结 policy，precedence 固定为
+`step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`。以下项目必须共用
+该 authority：prompt formatter、primary/allowed evidence validator、evidence resolver、depth
+compatibility、candidate merger，以及本地 context/guiding/final-answer/answer-structure invariants。
+
+- [x] active context 只能支持、不能压过具体 primary intent；
+- [x] merger 拒绝把已识别的具体 local intent 降级到更低 precedence；
+- [x] `general_follow_up` 只由 contextual/ambiguous 且无具体 primary signal 支撑；
+- [x] `answer_direct` 不进入模型 schema，继续 provider 前 zero-call；
+- [x] 中英文否定 final-answer 表达不提升为 `answer_direct`；
+- [x] V4 prompt 无 case ID、expected/accepted label、答案、route/tool/permission/write 能力；
+- [x] deterministic detector/baseline 不按 V4 model precedence 重排；
+- [x] 历史 paired eval 显式走 V2 policy，V3 prompt SHA 与 V1/V2/V3 artifacts 不变；
+- [x] dataset/SHA/expected/metric/threshold/budget/no-retry 不变；
+- [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
+
+下一步仅 R3 WrongQuestionOrganizer policy；R4/R5 前不创建 V4 Live lineage，R5 checkpoint 与新的
+精确授权前不得执行 V4 Live。证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。

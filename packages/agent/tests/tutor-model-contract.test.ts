@@ -7,6 +7,7 @@ import {
   TUTOR_MODEL_PROMPT_VERSION,
   formatTutorModelIntentPolicyForPrompt,
   isTutorModelDepthCompatible,
+  isTutorModelIntentAtLeastAsSpecific,
   validateTutorModelDecision,
 } from '../src/model-candidates/tutor-model-contract.ts';
 import { phase69TutorCases } from '../src/evals/phase-6-9-tutor-wrong-question-cases.ts';
@@ -19,26 +20,36 @@ const validDecision = {
 } as const;
 
 describe('Phase 6.9.7 Tutor model contract', () => {
-  test('deep-freezes one intent policy and formats byte-stable v2 prompt rules', () => {
-    expect(TUTOR_MODEL_PROMPT_VERSION).toBe('tutor-model-candidate-v2');
+  test('deep-freezes one intent policy and formats byte-stable v4 prompt rules', () => {
+    expect(TUTOR_MODEL_PROMPT_VERSION).toBe('tutor-model-candidate-v4');
     expect(Object.isFrozen(TUTOR_MODEL_INTENT_POLICY)).toBe(true);
     for (const policy of TUTOR_MODEL_INTENT_POLICY) {
       expect(Object.isFrozen(policy), policy.intent).toBe(true);
       expect(Object.isFrozen(policy.primaryEvidenceCodes), policy.intent).toBe(true);
       expect(Object.isFrozen(policy.allowedEvidenceCodes), policy.intent).toBe(true);
       expect(Object.isFrozen(policy.compatibleDepths), policy.intent).toBe(true);
+      expect(Object.isFrozen(policy.localStrategy), policy.intent).toBe(true);
+      expect(Object.isFrozen(policy.localStrategy.answerStructure), policy.intent).toBe(true);
+      expect(
+        Object.isFrozen(policy.localStrategy.activeContextAnswerStructure),
+        policy.intent,
+      ).toBe(true);
     }
 
     const formatted = formatTutorModelIntentPolicyForPrompt();
     expect(formatTutorModelIntentPolicyForPrompt()).toBe(formatted);
     expect(formatted).toBe(
       [
-        'policyVersion=tutor-model-candidate-v2',
+        'policyVersion=tutor-model-candidate-v4',
+        'precedence=step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up',
+        'chooseEarliestPrimaryByPrecedence=true',
+        'generalFollowUpRequiresNoSpecificPrimary=true',
+        'activeContextCanOverridePrimary=false',
         'intentRules:',
-        '- explain_solution: primaryAnyOf=[full_explanation_request]; allowed=[full_explanation_request,contextual_reference,ambiguous_intent]; compatibleDepths=[standard,deep]; use=complete worked solution or derivation.',
-        '- socratic_hint: primaryAnyOf=[implicit_hint_request,contextual_reference]; allowed=[implicit_hint_request,contextual_reference,ambiguous_intent]; compatibleDepths=[brief,standard]; use=hint or next step before a full solution.',
         '- step_check: primaryAnyOf=[submitted_step]; allowed=[submitted_step,contextual_reference,ambiguous_intent]; compatibleDepths=[brief,standard]; use=check a step the learner already submitted.',
+        '- explain_solution: primaryAnyOf=[full_explanation_request]; allowed=[full_explanation_request,contextual_reference,ambiguous_intent]; compatibleDepths=[standard,deep]; use=complete worked solution or derivation.',
         '- concept_bridge: primaryAnyOf=[concept_gap]; allowed=[concept_gap,contextual_reference,ambiguous_intent]; compatibleDepths=[standard,deep]; use=explain why a concept holds or how concepts connect.',
+        '- socratic_hint: primaryAnyOf=[implicit_hint_request]; allowed=[implicit_hint_request,contextual_reference,ambiguous_intent]; compatibleDepths=[brief,standard]; use=hint or next step before a full solution.',
         '- general_follow_up: primaryAnyOf=[contextual_reference,ambiguous_intent]; allowed=[contextual_reference,ambiguous_intent]; compatibleDepths=[brief,standard]; use=contextual follow-up with no more specific teaching signal.',
       ].join('\n'),
     );
@@ -105,9 +116,10 @@ describe('Phase 6.9.7 Tutor model contract', () => {
   });
 
   test('rejects extra fields, answer_direct, invalid enums, and duplicate evidence', () => {
-    expect(
-      validateTutorModelDecision({ ...validDecision, promptAddition: 'model text' }),
-    ).toEqual({ ok: false, reasonCode: 'schema_invalid' });
+    expect(validateTutorModelDecision({ ...validDecision, promptAddition: 'model text' })).toEqual({
+      ok: false,
+      reasonCode: 'schema_invalid',
+    });
     expect(validateTutorModelDecision({ ...validDecision, intent: 'answer_direct' })).toEqual({
       ok: false,
       reasonCode: 'schema_invalid',
@@ -147,5 +159,12 @@ describe('Phase 6.9.7 Tutor model contract', () => {
         evidenceCodes: ['ambiguous_intent'],
       },
     });
+  });
+
+  test('uses the frozen precedence to reject a downgrade from a more specific local intent', () => {
+    expect(isTutorModelIntentAtLeastAsSpecific('step_check', 'socratic_hint')).toBe(true);
+    expect(isTutorModelIntentAtLeastAsSpecific('explain_solution', 'concept_bridge')).toBe(true);
+    expect(isTutorModelIntentAtLeastAsSpecific('general_follow_up', 'socratic_hint')).toBe(false);
+    expect(isTutorModelIntentAtLeastAsSpecific('socratic_hint', 'step_check')).toBe(false);
   });
 });

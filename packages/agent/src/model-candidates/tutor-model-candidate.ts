@@ -13,8 +13,12 @@ import type { RouterResult } from '@repo/types/api/agent';
 import {
   TUTOR_MODEL_DECISION_SCHEMA,
   formatTutorModelIntentPolicyForPrompt,
+  formatTutorModelIntentPolicyForPromptV2,
   isTutorModelDepthCompatible,
+  isTutorModelDepthCompatibleV2,
+  isTutorModelIntentAtLeastAsSpecific,
   validateTutorModelDecision,
+  validateTutorModelDecisionV2,
   type TutorModelDecision,
   type TutorModelDecisionValidationResult,
 } from './tutor-model-contract.ts';
@@ -47,9 +51,15 @@ import {
 const MAX_INPUT_TOKENS = 1_200;
 const MAX_OUTPUT_TOKENS = 300;
 
-const SYSTEM_PROMPT = [
+const SYSTEM_PROMPT_V4 = [
   'Classify only the bounded Tutor strategy request supplied as JSON.',
   formatTutorModelIntentPolicyForPrompt(),
+  'Choose the most specific supported intent. Primary evidence is mandatory; allowed evidence is exhaustive; depth must be compatible.',
+  'Never choose answer_direct, write an answer, reveal a final answer, execute tools, alter routing, or create permissions.',
+].join('\n');
+const SYSTEM_PROMPT_V2 = [
+  'Classify only the bounded Tutor strategy request supplied as JSON.',
+  formatTutorModelIntentPolicyForPromptV2(),
   'Choose the most specific supported intent. Primary evidence is mandatory; allowed evidence is exhaustive; depth must be compatible.',
   'Never choose answer_direct, write an answer, reveal a final answer, execute tools, alter routing, or create permissions.',
 ].join('\n');
@@ -119,7 +129,8 @@ const EXPLICIT_REASON_BY_INTENT = {
 } as const;
 
 type TutorAmbiguitySignal = (typeof TUTOR_AMBIGUITY_SIGNAL_CODES)[number];
-type ExplicitTutorReason = (typeof EXPLICIT_REASON_BY_INTENT)[keyof typeof EXPLICIT_REASON_BY_INTENT];
+type ExplicitTutorReason =
+  (typeof EXPLICIT_REASON_BY_INTENT)[keyof typeof EXPLICIT_REASON_BY_INTENT];
 
 export type TutorModelCandidateReasonCode =
   | TutorModelProjectionReasonCode
@@ -174,45 +185,68 @@ type InvalidInput = {
   budget: ModelAgentRunBudget;
 };
 
+type TutorCandidatePolicy = Readonly<{
+  systemPrompt: string;
+  validateDecision: (input: unknown) => TutorModelDecisionValidationResult;
+  isDepthCompatible: (
+    intent: TutorModelDecision['intent'],
+    depth: TutorModelDecision['depth'],
+  ) => boolean;
+  enforceIntentPrecedence: boolean;
+}>;
+
+const TUTOR_CANDIDATE_POLICY_V4: TutorCandidatePolicy = Object.freeze({
+  systemPrompt: SYSTEM_PROMPT_V4,
+  validateDecision: validateTutorModelDecision,
+  isDepthCompatible: isTutorModelDepthCompatible,
+  enforceIntentPrecedence: true,
+});
+
+const TUTOR_CANDIDATE_POLICY_V2: TutorCandidatePolicy = Object.freeze({
+  systemPrompt: SYSTEM_PROMPT_V2,
+  validateDecision: validateTutorModelDecisionV2,
+  isDepthCompatible: isTutorModelDepthCompatibleV2,
+  enforceIntentPrecedence: false,
+});
+
 export async function runTutorModelCandidate(
   input: TutorModelCandidateInput,
 ): Promise<TutorModelCandidateEnvelope> {
+  return runTutorModelCandidateWithPolicy(input, TUTOR_CANDIDATE_POLICY_V4);
+}
+
+export async function runTutorModelCandidateV2(
+  input: TutorModelCandidateInput,
+): Promise<TutorModelCandidateEnvelope> {
+  return runTutorModelCandidateWithPolicy(input, TUTOR_CANDIDATE_POLICY_V2);
+}
+
+async function runTutorModelCandidateWithPolicy(
+  input: TutorModelCandidateInput,
+  policy: TutorCandidatePolicy,
+): Promise<TutorModelCandidateEnvelope> {
   const valid = validateInput(input);
   if (!valid.ok) {
-    return localEnvelope(
-      valid.value,
-      'fallback_invalid_input',
-      valid.budget,
-      ['invalid_input'],
-    );
+    return localEnvelope(valid.value, 'fallback_invalid_input', valid.budget, ['invalid_input']);
   }
 
   if (valid.finalRoute !== 'tutor') {
-    return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, [
-      'route_not_tutor',
-    ]);
+    return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, ['route_not_tutor']);
   }
 
   const abort = readAbortState(valid.signal);
   if (!abort.ok) {
-    return localEnvelope(
-      valid.deterministic,
-      'fallback_invalid_input',
-      valid.budget,
-      ['invalid_input'],
-    );
+    return localEnvelope(valid.deterministic, 'fallback_invalid_input', valid.budget, [
+      'invalid_input',
+    ]);
   }
   if (abort.aborted) {
-    return localEnvelope(valid.deterministic, 'fallback_aborted', valid.budget, [
-      'ABORTED',
-    ]);
+    return localEnvelope(valid.deterministic, 'fallback_aborted', valid.budget, ['ABORTED']);
   }
 
   const detection = detectTutorSignals(valid.latestUserText);
   if (!detection.normalizedText) {
-    return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, [
-      'empty_input',
-    ]);
+    return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, ['empty_input']);
   }
 
   const meaningfulMatches = meaningfulIntentMatches(detection.intentMatches);
@@ -233,11 +267,7 @@ export async function runTutorModelCandidate(
     safety: valid.safety,
   });
   if (!projected.ok) {
-    return projectionFailureEnvelope(
-      valid.deterministic,
-      valid.budget,
-      projected.reasonCode,
-    );
+    return projectionFailureEnvelope(valid.deterministic, valid.budget, projected.reasonCode);
   }
 
   if (valid.deterministic.intent === 'answer_direct') {
@@ -249,9 +279,7 @@ export async function runTutorModelCandidate(
   if (meaningfulMatches.length === 1) {
     const explicitReason = explicitReasonForIntent(meaningfulMatches[0]?.intent);
     if (explicitReason) {
-      return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, [
-        explicitReason,
-      ]);
+      return localEnvelope(valid.deterministic, 'not_eligible', valid.budget, [explicitReason]);
     }
   }
   if (meaningfulMatches.length === 0 && ambiguitySignals.length === 0) {
@@ -262,17 +290,14 @@ export async function runTutorModelCandidate(
 
   const userPrompt = JSON.stringify(projected.value);
   const estimatedInputTokens = estimateCandidateInputTokens([
-    SYSTEM_PROMPT,
+    policy.systemPrompt,
     userPrompt,
     SCHEMA_DESCRIPTOR,
   ]);
   if (estimatedInputTokens > MAX_INPUT_TOKENS) {
-    return localEnvelope(
-      valid.deterministic,
-      'fallback_budget_exceeded',
-      valid.budget,
-      ['INPUT_BUDGET_EXCEEDED'],
-    );
+    return localEnvelope(valid.deterministic, 'fallback_budget_exceeded', valid.budget, [
+      'INPUT_BUDGET_EXCEEDED',
+    ]);
   }
 
   const reservation = reserveModelAgentBudget(valid.budget, {
@@ -293,6 +318,7 @@ export async function runTutorModelCandidate(
   // caller snapshot and performs the single authoritative reservation itself.
   const runtimeResult = await invokeRuntime({
     input: valid,
+    systemPrompt: policy.systemPrompt,
     userPrompt,
     estimatedInputTokens,
     reservationBudget: reservation.budget,
@@ -325,7 +351,7 @@ export async function runTutorModelCandidate(
     );
   }
 
-  const decision = validateTutorModelDecision(runtimeResult.data);
+  const decision = policy.validateDecision(runtimeResult.data);
   if (!decision.ok) {
     return attemptedEnvelope(
       valid.deterministic,
@@ -336,7 +362,20 @@ export async function runTutorModelCandidate(
       [decision.reasonCode],
     );
   }
-  const merged = mergeTutorModelDecision(valid.deterministic, decision.value);
+  if (
+    policy.enforceIntentPrecedence &&
+    !isTutorModelIntentAtLeastAsSpecific(decision.value.intent, valid.deterministic.intent)
+  ) {
+    return attemptedEnvelope(
+      valid.deterministic,
+      'fallback_schema_invalid',
+      runtimeResult.budget,
+      runtimeResult.usage,
+      runtimeResult.trace,
+      ['invalid_evidence_association'],
+    );
+  }
+  const merged = mergeTutorModelDecisionWithPolicy(valid.deterministic, decision.value, policy);
   if (merged === null) {
     return attemptedEnvelope(
       valid.deterministic,
@@ -362,13 +401,27 @@ export function mergeTutorModelDecision(
   deterministic: TutorStrategy,
   decision: TutorModelDecision,
 ): TutorStrategy | null {
+  return mergeTutorModelDecisionWithPolicy(deterministic, decision, TUTOR_CANDIDATE_POLICY_V4);
+}
+
+function mergeTutorModelDecisionWithPolicy(
+  deterministic: TutorStrategy,
+  decision: TutorModelDecision,
+  policy: TutorCandidatePolicy,
+): TutorStrategy | null {
   try {
     const local = cloneTutorStrategy(deterministic);
     if (local === null) return null;
     if (local.intent === 'answer_direct') return null;
-    const validated = validateTutorModelDecision(decision);
+    const validated = policy.validateDecision(decision);
     if (!validated.ok) return null;
-    if (!isTutorModelDepthCompatible(validated.value.intent, validated.value.depth)) return null;
+    if (
+      policy.enforceIntentPrecedence &&
+      !isTutorModelIntentAtLeastAsSpecific(validated.value.intent, local.intent)
+    ) {
+      return null;
+    }
+    if (!policy.isDepthCompatible(validated.value.intent, validated.value.depth)) return null;
 
     const merged = buildTutorStrategyFromIntent({
       intent: validated.value.intent,
@@ -469,9 +522,9 @@ const REQUIRED_INPUT_KEYS = [
   'budget',
 ] as const;
 
-function readPlainInputObject(input: unknown):
-  | { ok: true; values: Record<string, unknown> }
-  | { ok: false } {
+function readPlainInputObject(
+  input: unknown,
+): { ok: true; values: Record<string, unknown> } | { ok: false } {
   if (typeof input !== 'object' || input === null) return { ok: false };
   const prototype: unknown = Object.getPrototypeOf(input);
   if (prototype !== Object.prototype && prototype !== null) return { ok: false };
@@ -609,10 +662,7 @@ function deriveAmbiguitySignals(input: {
   ) {
     push('implicit_learning_request');
   }
-  if (
-    input.deterministicIntent === 'general_follow_up' &&
-    input.hasActiveStudyContext
-  ) {
+  if (input.deterministicIntent === 'general_follow_up' && input.hasActiveStudyContext) {
     push('general_follow_up');
   }
   return signals;
@@ -640,18 +690,15 @@ function projectionFailureEnvelope(
   ) {
     return localEnvelope(deterministic, 'safety_blocked', budget, [reasonCode]);
   }
-  if (
-    reasonCode === 'no_safe_projection' ||
-    reasonCode === 'answer_direct_not_model_eligible'
-  ) {
+  if (reasonCode === 'no_safe_projection' || reasonCode === 'answer_direct_not_model_eligible') {
     return localEnvelope(deterministic, 'not_eligible', budget, [reasonCode]);
   }
   return localEnvelope(deterministic, 'fallback_invalid_input', budget, [reasonCode]);
 }
 
-function readAbortState(signal: AbortSignal | undefined):
-  | { ok: true; aborted: boolean }
-  | { ok: false } {
+function readAbortState(
+  signal: AbortSignal | undefined,
+): { ok: true; aborted: boolean } | { ok: false } {
   if (signal === undefined) return { ok: true, aborted: false };
   try {
     return typeof signal.aborted === 'boolean'
@@ -664,6 +711,7 @@ function readAbortState(signal: AbortSignal | undefined):
 
 async function invokeRuntime(input: {
   input: ValidInput;
+  systemPrompt: string;
   userPrompt: string;
   estimatedInputTokens: number;
   reservationBudget: ModelAgentRunBudget;
@@ -674,7 +722,7 @@ async function invokeRuntime(input: {
       runId: input.input.runId,
       task: 'tutor_strategy',
       schema: TUTOR_MODEL_DECISION_SCHEMA,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: input.systemPrompt,
       userPrompt: input.userPrompt,
       estimatedInputTokens: input.estimatedInputTokens,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
@@ -696,9 +744,7 @@ async function invokeRuntime(input: {
 }
 
 function toModelAgentErrorCode(code: string): ModelAgentErrorCode {
-  return code === 'INVALID_MODEL_AGENT_BUDGET'
-    ? 'INVALID_REQUEST'
-    : (code as ModelAgentErrorCode);
+  return code === 'INVALID_MODEL_AGENT_BUDGET' ? 'INVALID_REQUEST' : (code as ModelAgentErrorCode);
 }
 
 function localEnvelope(
@@ -725,10 +771,7 @@ function attemptedEnvelope(
   budget: ModelAgentRunBudget,
   usage: { inputTokens: number; outputTokens: number },
   trace: NonNullable<
-    Exclude<
-      ModelCandidateObservation<TutorModelCandidateReasonCode>,
-      { attempted: false }
-    >['trace']
+    Exclude<ModelCandidateObservation<TutorModelCandidateReasonCode>, { attempted: false }>['trace']
   >,
   reasons: readonly TutorModelCandidateReasonCode[],
 ): TutorModelCandidateEnvelope {

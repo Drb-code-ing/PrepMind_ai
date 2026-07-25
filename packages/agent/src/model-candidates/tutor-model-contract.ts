@@ -1,59 +1,44 @@
 import { z } from 'zod';
 
 import { clonePlainModelData } from './model-projection-safety.ts';
+import {
+  TUTOR_BOUNDED_DEPTHS,
+  TUTOR_BOUNDED_EVIDENCE_CODES,
+  TUTOR_BOUNDED_INTENTS,
+  TUTOR_BOUNDED_INTENT_POLICY,
+  isTutorBoundedIntentAtLeastAsSpecific,
+  tutorBoundedIntentPolicy,
+  type TutorBoundedDepth,
+  type TutorBoundedEvidenceCode,
+  type TutorBoundedIntent,
+  type TutorBoundedIntentPolicy,
+} from '../policies/tutor-strategy-policy.ts';
 
-export const TUTOR_MODEL_INTENTS = [
-  'explain_solution',
-  'socratic_hint',
-  'step_check',
-  'concept_bridge',
-  'general_follow_up',
-] as const;
+export const TUTOR_MODEL_INTENTS = TUTOR_BOUNDED_INTENTS;
+export const TUTOR_MODEL_EVIDENCE_CODES = TUTOR_BOUNDED_EVIDENCE_CODES;
+export const TUTOR_MODEL_DEPTHS = TUTOR_BOUNDED_DEPTHS;
+export const TUTOR_MODEL_PROMPT_VERSION = 'tutor-model-candidate-v4' as const;
+export const TUTOR_MODEL_PROMPT_VERSION_V2 = 'tutor-model-candidate-v2' as const;
 
-export const TUTOR_MODEL_EVIDENCE_CODES = [
-  'contextual_reference',
-  'implicit_hint_request',
-  'submitted_step',
-  'concept_gap',
-  'full_explanation_request',
-  'ambiguous_intent',
-] as const;
+export type TutorModelIntent = TutorBoundedIntent;
+export type TutorModelEvidenceCode = TutorBoundedEvidenceCode;
+export type TutorModelDepth = TutorBoundedDepth;
+export type TutorModelIntentPolicy = TutorBoundedIntentPolicy;
 
-export const TUTOR_MODEL_DEPTHS = ['brief', 'standard', 'deep'] as const;
-export const TUTOR_MODEL_PROMPT_VERSION = 'tutor-model-candidate-v2' as const;
+export const TUTOR_MODEL_INTENT_POLICY = TUTOR_BOUNDED_INTENT_POLICY;
 
-export type TutorModelIntent = (typeof TUTOR_MODEL_INTENTS)[number];
-export type TutorModelEvidenceCode = (typeof TUTOR_MODEL_EVIDENCE_CODES)[number];
-export type TutorModelDepth = (typeof TUTOR_MODEL_DEPTHS)[number];
-
-export type TutorModelIntentPolicy = Readonly<{
-  intent: TutorModelIntent;
-  primaryEvidenceCodes: readonly TutorModelEvidenceCode[];
-  allowedEvidenceCodes: readonly TutorModelEvidenceCode[];
-  compatibleDepths: readonly TutorModelDepth[];
-  selectionGuidance: string;
-}>;
-
-const TUTOR_MODEL_INTENT_POLICY_SOURCE = [
+const TUTOR_MODEL_INTENT_POLICY_V2 = [
   {
     intent: 'explain_solution',
     primaryEvidenceCodes: ['full_explanation_request'],
-    allowedEvidenceCodes: [
-      'full_explanation_request',
-      'contextual_reference',
-      'ambiguous_intent',
-    ],
+    allowedEvidenceCodes: ['full_explanation_request', 'contextual_reference', 'ambiguous_intent'],
     compatibleDepths: ['standard', 'deep'],
     selectionGuidance: 'complete worked solution or derivation',
   },
   {
     intent: 'socratic_hint',
     primaryEvidenceCodes: ['implicit_hint_request', 'contextual_reference'],
-    allowedEvidenceCodes: [
-      'implicit_hint_request',
-      'contextual_reference',
-      'ambiguous_intent',
-    ],
+    allowedEvidenceCodes: ['implicit_hint_request', 'contextual_reference', 'ambiguous_intent'],
     compatibleDepths: ['brief', 'standard'],
     selectionGuidance: 'hint or next step before a full solution',
   },
@@ -78,24 +63,17 @@ const TUTOR_MODEL_INTENT_POLICY_SOURCE = [
     compatibleDepths: ['brief', 'standard'],
     selectionGuidance: 'contextual follow-up with no more specific teaching signal',
   },
-] as const satisfies readonly TutorModelIntentPolicy[];
-
-export const TUTOR_MODEL_INTENT_POLICY: readonly TutorModelIntentPolicy[] = Object.freeze(
-  TUTOR_MODEL_INTENT_POLICY_SOURCE.map((policy) =>
-    Object.freeze({
-      intent: policy.intent,
-      primaryEvidenceCodes: Object.freeze([...policy.primaryEvidenceCodes]),
-      allowedEvidenceCodes: Object.freeze([...policy.allowedEvidenceCodes]),
-      compatibleDepths: Object.freeze([...policy.compatibleDepths]),
-      selectionGuidance: policy.selectionGuidance,
-    }),
-  ),
-);
+] as const satisfies readonly Pick<
+  TutorModelIntentPolicy,
+  | 'intent'
+  | 'primaryEvidenceCodes'
+  | 'allowedEvidenceCodes'
+  | 'compatibleDepths'
+  | 'selectionGuidance'
+>[];
 
 export function formatTutorModelIntentPolicyForPrompt(): string {
-  const lines = TUTOR_MODEL_INTENTS.map((intent) => {
-    const policy = tutorModelIntentPolicy(intent);
-    if (policy === undefined) throw new Error('TUTOR_MODEL_INTENT_POLICY_INCOMPLETE');
+  const lines = TUTOR_MODEL_INTENT_POLICY.map((policy) => {
     return [
       `- ${policy.intent}: primaryAnyOf=[${policy.primaryEvidenceCodes.join(',')}]`,
       `allowed=[${policy.allowedEvidenceCodes.join(',')}]`,
@@ -103,7 +81,27 @@ export function formatTutorModelIntentPolicyForPrompt(): string {
       `use=${policy.selectionGuidance}.`,
     ].join('; ');
   });
-  return [`policyVersion=${TUTOR_MODEL_PROMPT_VERSION}`, 'intentRules:', ...lines].join('\n');
+  return [
+    `policyVersion=${TUTOR_MODEL_PROMPT_VERSION}`,
+    `precedence=${TUTOR_MODEL_INTENTS.join(' > ')}`,
+    'chooseEarliestPrimaryByPrecedence=true',
+    'generalFollowUpRequiresNoSpecificPrimary=true',
+    'activeContextCanOverridePrimary=false',
+    'intentRules:',
+    ...lines,
+  ].join('\n');
+}
+
+export function formatTutorModelIntentPolicyForPromptV2(): string {
+  const lines = TUTOR_MODEL_INTENT_POLICY_V2.map((policy) =>
+    [
+      `- ${policy.intent}: primaryAnyOf=[${policy.primaryEvidenceCodes.join(',')}]`,
+      `allowed=[${policy.allowedEvidenceCodes.join(',')}]`,
+      `compatibleDepths=[${policy.compatibleDepths.join(',')}]`,
+      `use=${policy.selectionGuidance}.`,
+    ].join('; '),
+  );
+  return [`policyVersion=${TUTOR_MODEL_PROMPT_VERSION_V2}`, 'intentRules:', ...lines].join('\n');
 }
 
 export function isTutorModelDepthCompatible(
@@ -111,6 +109,31 @@ export function isTutorModelDepthCompatible(
   depth: TutorModelDepth,
 ): boolean {
   return tutorModelIntentPolicy(intent)?.compatibleDepths.includes(depth) ?? false;
+}
+
+export function isTutorModelDepthCompatibleV2(
+  intent: TutorModelIntent,
+  depth: TutorModelDepth,
+): boolean {
+  return tutorModelIntentPolicyV2(intent)?.compatibleDepths.includes(depth) ?? false;
+}
+
+export function isTutorModelIntentAtLeastAsSpecific(
+  candidate: TutorModelIntent,
+  localAuthority: TutorModelIntent,
+): boolean {
+  return isTutorBoundedIntentAtLeastAsSpecific(candidate, localAuthority);
+}
+
+export function selectTutorModelIntentFromEvidence(
+  evidenceCodes: readonly TutorModelEvidenceCode[],
+): TutorModelIntent | null {
+  for (const policy of TUTOR_MODEL_INTENT_POLICY) {
+    if (policy.primaryEvidenceCodes.some((code) => evidenceCodes.includes(code))) {
+      return policy.intent;
+    }
+  }
+  return null;
 }
 
 export const TUTOR_MODEL_DECISION_SCHEMA = z
@@ -137,12 +160,26 @@ export type TutorModelDecisionValidationResult =
   | { ok: false; reasonCode: 'schema_invalid' | 'invalid_evidence_association' };
 
 export function validateTutorModelDecision(input: unknown): TutorModelDecisionValidationResult {
+  return validateTutorModelDecisionAgainstPolicy(input, TUTOR_MODEL_INTENT_POLICY);
+}
+
+export function validateTutorModelDecisionV2(input: unknown): TutorModelDecisionValidationResult {
+  return validateTutorModelDecisionAgainstPolicy(input, TUTOR_MODEL_INTENT_POLICY_V2);
+}
+
+function validateTutorModelDecisionAgainstPolicy(
+  input: unknown,
+  policies: readonly Pick<
+    TutorModelIntentPolicy,
+    'intent' | 'primaryEvidenceCodes' | 'allowedEvidenceCodes'
+  >[],
+): TutorModelDecisionValidationResult {
   const cloned = clonePlainModelData(input);
   if (!cloned.ok) return { ok: false, reasonCode: 'schema_invalid' };
   const parsed = TUTOR_MODEL_DECISION_SCHEMA.safeParse(cloned.value);
   if (!parsed.success) return { ok: false, reasonCode: 'schema_invalid' };
 
-  const policy = tutorModelIntentPolicy(parsed.data.intent);
+  const policy = policies.find((entry) => entry.intent === parsed.data.intent);
   if (
     policy === undefined ||
     parsed.data.evidenceCodes.some((code) => !policy.allowedEvidenceCodes.includes(code))
@@ -160,5 +197,16 @@ export function validateTutorModelDecision(input: unknown): TutorModelDecisionVa
 }
 
 function tutorModelIntentPolicy(intent: TutorModelIntent): TutorModelIntentPolicy | undefined {
-  return TUTOR_MODEL_INTENT_POLICY.find((policy) => policy.intent === intent);
+  return tutorBoundedIntentPolicy(intent);
+}
+
+function tutorModelIntentPolicyV2(
+  intent: TutorModelIntent,
+):
+  | Pick<
+      TutorModelIntentPolicy,
+      'intent' | 'primaryEvidenceCodes' | 'allowedEvidenceCodes' | 'compatibleDepths'
+    >
+  | undefined {
+  return TUTOR_MODEL_INTENT_POLICY_V2.find((policy) => policy.intent === intent);
 }

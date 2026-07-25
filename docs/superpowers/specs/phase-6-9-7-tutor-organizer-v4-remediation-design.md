@@ -210,6 +210,15 @@ Tutor V4 深冻结 policy 增加显式优先级，而不是只写“choose most 
 context 不能把它降级为 `general_follow_up`。Tutor 仍只返回分类决策，最终教学内容由本地策略与 Chat
 链路控制。
 
+### 6.1 R2 实现状态（2026-07-26）
+
+R2 已按本节落地 `tutor-model-candidate-v4` 深冻结 policy。V4 formatter、validator、evidence
+precedence resolver、depth compatibility、candidate merger 和本地 strategy invariants 共用该
+authority；active context downgrade 与否定式 direct-answer 权限边界均有零网络回归。冻结
+deterministic detector/baseline 不按 V4 model precedence 重排；历史 paired eval 显式走 V2 policy，
+从而保持 V2 prompt bytes、V3 prompt SHA 和旧 evidence 不变。R2 未实现 V4 runner/lineage 或调用
+Provider；下一步仅第 7 节 Organizer R3。
+
 ## 7. Organizer 语义规则
 
 Organizer V4 保持本地 authority，并把 prompt/validator 的必要条件写成同一决策矩阵：

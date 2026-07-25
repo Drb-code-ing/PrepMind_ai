@@ -5,8 +5,9 @@ Tutor/Organizer 的 bounded diagnostic 真值与语义单一规则源；完成�
 V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授权才执行一次 V4
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
-**当前状态：** R0 已完成设计冻结；未修改 V4 源码、未调用 Provider、未创建 V4 Live artifact。
-V3 run `ff2e1a54...` 已失败封存且不得重跑。Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10
+**当前状态：** R0--R2 已完成；R2 已落地 Tutor V4 单一语义 policy，但未调用 Provider、未创建
+V4 runner 或 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。下一步仅 R3
+WrongQuestionOrganizer V4 语义单一规则源；Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10
 仍未完成。
 
 **设计 authority：**
@@ -54,7 +55,7 @@ V3 run `ff2e1a54...` 已失败封存且不得重跑。Phase 6.9.7、产品验收
 
 ## R1：V4 bounded diagnostics 与历史兼容
 
-**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R2。
+**状态：** [x] 已完成。2026-07-26，zero-network；当时下一步为 R2，后续 R2 已完成。
 
 **主要文件：**
 
@@ -86,7 +87,7 @@ lint、Prettier、diff check 通过；未读取 credential、调用 Provider 或
 
 ## R2：Tutor V4 语义单一规则源
 
-**状态：** [ ] 未开始。
+**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R3。
 
 **GREEN：**
 
@@ -95,6 +96,15 @@ lint、Prettier、diff check 通过；未读取 credential、调用 Provider 或
 - active context 不能压过更具体 primary evidence；
 - 不新增 answer_direct、最终答案、route/tool/permission 能力；
 - 合成冲突/否定/双语/上下文重排测试通过，prompt 无 oracle 泄漏。
+
+**完成证据：** 新增深冻结 `tutor-model-candidate-v4` policy，显式固定
+`step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`；当前 Tutor
+candidate 的 formatter、validator、depth、merger precedence 与本地 strategy invariants 共用该
+authority。`general_follow_up` 不再能仅凭 active context 压过具体 intent，否定式“不要直接给答案”
+不会误开 `answer_direct`。冻结 deterministic detector/baseline 保持原字节和原指标；历史 V2/V3
+eval harness 改走只读 V2 policy path，V3 prompt SHA 仍为原值，避免新 V4 prompt 冒充旧 evidence。
+全程未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。
 
 **提交：** `feat(agent): align phase 6.9.7 v4 tutor semantics`
 

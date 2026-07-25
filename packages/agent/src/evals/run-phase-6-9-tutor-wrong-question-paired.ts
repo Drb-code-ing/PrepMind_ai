@@ -61,7 +61,7 @@ import {
   TUTOR_MODEL_DECISION_SCHEMA,
   type TutorModelDecision,
 } from '../model-candidates/tutor-model-contract.ts';
-import { runTutorModelCandidate } from '../model-candidates/tutor-model-candidate.ts';
+import { runTutorModelCandidateV2 } from '../model-candidates/tutor-model-candidate.ts';
 import { TUTOR_MODEL_PROJECTION_VERSION } from '../model-candidates/tutor-model-projection.ts';
 import {
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
@@ -733,11 +733,11 @@ async function runTutorZeroCall(
         throw new Error('PHASE_6_9_7_TUTOR_HOSTILE_ACCESSOR');
       },
     });
-    candidate = await runTutorModelCandidate(
-      hostile as Parameters<typeof runTutorModelCandidate>[0],
+    candidate = await runTutorModelCandidateV2(
+      hostile as Parameters<typeof runTutorModelCandidateV2>[0],
     );
   } else {
-    candidate = await runTutorModelCandidate(regularInput);
+    candidate = await runTutorModelCandidateV2(regularInput);
   }
   const observedReason = deriveTutorZeroCallReason(entry, candidate.observation);
   const verified = captured.invocations() === 0 && observedReason === entry.expected.zeroCallReason;
@@ -853,7 +853,7 @@ async function runTutorRuntimeCase(input: {
     timeoutMs: input.timeoutMs,
     recorder: input.recorder,
   });
-  const candidate = await runTutorModelCandidate({
+  const candidate = await runTutorModelCandidateV2({
     runId: `${input.runId}:${input.entry.id}`,
     finalRoute: 'tutor',
     latestUserText: input.entry.input.latestUserText,

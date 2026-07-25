@@ -40,7 +40,7 @@ test('Tutor model config is server-only and freezes the approved profile', async
   assert.equal(source.split(/\r?\n/u)[0], "import 'server-only';");
   assert.equal(TUTOR_MODEL, 'deepseek-v4-pro');
   assert.equal(TUTOR_MODEL_BASE_URL, 'https://api.deepseek.com/v1');
-  assert.equal(TUTOR_MODEL_PROMPT_VERSION, 'tutor-model-candidate-v2');
+  assert.equal(TUTOR_MODEL_PROMPT_VERSION, 'tutor-model-candidate-v4');
   assert.deepEqual(TUTOR_MODEL_PRICE_CNY, {
     model: 'deepseek-v4-pro',
     inputPerMillion: 3,
@@ -55,7 +55,7 @@ test('resolves only the complete component-specific Live conjunction', () => {
     mode: 'live',
     provider: 'deepseek',
     model: 'deepseek-v4-pro',
-    promptVersion: 'tutor-model-candidate-v2',
+    promptVersion: 'tutor-model-candidate-v4',
     timeoutMs: 3000,
     pricingKnown: true,
     configured: true,
@@ -108,7 +108,11 @@ test('gate, mode, global gate, exact URL, component key, timeout and pricing fai
   for (const item of cases) {
     const config = resolveTutorModelConfig(item.env, item.price ?? TUTOR_MODEL_PRICE_CNY);
     assert.equal(config.enabled, false, item.name);
-    assert.equal(resolveTutorLiveExecutorConfig(item.env, item.price ?? TUTOR_MODEL_PRICE_CNY), null, item.name);
+    assert.equal(
+      resolveTutorLiveExecutorConfig(item.env, item.price ?? TUTOR_MODEL_PRICE_CNY),
+      null,
+      item.name,
+    );
   }
 });
 
