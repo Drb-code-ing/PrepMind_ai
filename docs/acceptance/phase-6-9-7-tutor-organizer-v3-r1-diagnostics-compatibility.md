@@ -167,6 +167,6 @@ contract/security 与 docs/history 两路只读终审均无未关闭 Critical/Im
 交付约束是一个 R-task 对应一个源码/文档提交：R1 的实现、测试与本文由本文所在的单一提交
 `feat(agent): add phase 6.9.7 v3 failure evidence` 一并交付，不拆分第二提交。完成该提交并确认工作区
 clean 后，该检查点当时下一步只能开始 R2：实现 strict-gate breaker、双 lane ledger 与固定 48
-runtime 分母。后续 R2 已完成，当前下一步仅 R3；证据见
+runtime 分母。后续 R2/R3 已完成，当前下一步仅 R4；证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。R4 static/Mock
 checkpoint 完成并取得新的精确授权前，不得调用 Provider。

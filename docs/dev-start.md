@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R2）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R3）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -904,19 +904,23 @@ V2 R0--R6 后执行的唯一 R7 run `67ce18dd...` 保持 `24/24` guard zero-call
 
 V3 R1 已完成 failure/stage 投影、真实 invocation recorder 与 zero-network compatibility harness；
 V3 R2 已新增 guard-first、首个 runtime contract failure 熔断、固定 48 runtime 分母、双 lane 独立
-abort/预算/故障归属、单 dispatch ledger 与 sibling orphan 有界收口。R2 仍没有新增可执行 Live
-CLI、配置、marker、journal 或 evidence 路径。开发者可以用下面的命令重放 R1/R2 静态合同；测试
-只使用 sentinel/fake fetch/Mock，不读取根 `.env` 或真实 key，也不会启动 Docker：
+abort/预算/故障归属、单 dispatch ledger 与 sibling orphan 有界收口。V3 R3 又新增独立 CLI、一次性
+marker、dispatch-before-call hash-chain journal、活 owner/recovery claim、zero-network seal 与
+hard-link evidence。开发者可以用下面的命令重放 R1--R3 静态合同；测试只使用
+sentinel/fake fetch/Mock，不读取根 `.env` 或真实 key，也不会启动 Docker：
 
 ```powershell
-bun test packages/agent/tests/model-candidate-runtime-result.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-runner.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-paired-runner.test.ts packages/ai/tests/model-agent-v3-zero-network-compatibility.test.ts
+bun test packages/agent/tests/model-candidate-runtime-result.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-runner.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-durability.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-paired-runner.test.ts packages/ai/tests/model-agent-v3-zero-network-compatibility.test.ts
 ```
 
-下一步 R3--R4 继续补独立 CLI、marker/journal/crash seal、不可重放 evidence 与 static/Mock。
-任何 V3 网络命令都必须等 R4 checkpoint 通过并获得新的精确授权后才会落地。设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1/R2 证据见
+R3 CLI 已注册 `eval:phase-6-9-7:v3:mock|live|seal|validate`。其中 `seal` 只读取既有 V3
+marker/journal 并零网络封存，不接受 Live approval；`live` 虽已具备独立确认词与授权变量，但当前
+严禁执行。下一步仅 R4 分支 static/Mock checkpoint与独立复审；任何 V3 网络命令都必须等 R4
+通过、重新确认供应商数据边界并获得新的精确授权后才允许执行。设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1--R3 证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。
 
 未来只有新的质量 authority 通过后，产品验收才使用合成账号/错题，只允许 Tutor 与 Organizer 两个目标 gate 按步骤开启，其余 Router、Verifier、Review、Planner、Knowledge gate 全部保持 false。新的网络运行必须使用新 identity、独立 marker/journal/evidence、新的精确授权，并重新确认 DeepSeek 账号的数据保留/训练设置；本地精确清理不能声称删除供应商日志。验收或失败后立即恢复 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、两个 gate=false、两条 component key absent/空，并只重建受影响的 `web server`。精确删除本轮 synthetic user/question/group/deck/item/Trace/session/browser storage；禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush 或 MinIO wipe。
 

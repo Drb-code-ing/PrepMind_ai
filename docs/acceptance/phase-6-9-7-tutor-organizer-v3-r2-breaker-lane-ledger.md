@@ -89,9 +89,9 @@ Docker/API/browser 仍禁止开始。
 
 ## 6. 下一步与回顾问题
 
-下一步只能执行 R3：新增独立 V3 CLI、一次性 marker、append-only hash-chain journal、crash-only
-orphan sealer、hard-link evidence publisher 与 V3 validator。R3 仍是零 Provider；R4 static/Mock
-checkpoint 和独立终审完成前，不申请或执行 V3 controlled-Live。
+该检查点当时下一步只能执行 R3：新增独立 V3 CLI、一次性 marker、append-only hash-chain
+journal、crash-only orphan sealer、hard-link evidence publisher 与 V3 validator。后续 R3 已完成；
+当前下一步仅 R4 static/Mock checkpoint 与独立终审，仍不申请或执行 V3 controlled-Live。
 
 回顾时可以问：
 

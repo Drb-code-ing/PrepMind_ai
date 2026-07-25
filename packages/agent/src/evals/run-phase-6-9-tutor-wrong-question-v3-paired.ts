@@ -36,6 +36,22 @@ export const PHASE_6_9_7_V3_SIBLING_SETTLEMENT_TIMEOUT_MS = 1_000 as const;
 
 export type Phase697V3RunnerOptions = Readonly<{
   siblingSettlementTimeoutMs?: number;
+  lifecycle?: Phase697V3RunnerLifecycle;
+}>;
+
+export type Phase697V3RunnerLifecycle = Readonly<{
+  recordGuardTerminal?(entry: Readonly<Phase697V3CaseEntry>): Promise<void>;
+  recordDispatchStarted?(
+    reservation: Readonly<Phase697V3DispatchReservation>,
+    caseId: string,
+  ): Promise<void>;
+  recordRuntimeTerminal?(
+    reservation: Readonly<Phase697V3DispatchReservation>,
+    entry: Readonly<Phase697V3CaseEntry>,
+  ): Promise<void>;
+  recordPairTerminal?(pairedRunIndex: number, latencyMs: number | null): Promise<void>;
+  recordBreakerOpened?(entry: Readonly<Phase697V3CaseEntry>): Promise<void>;
+  recordRunCompleted?(report: Readonly<Phase697TutorOrganizerV3Report>): Promise<void>;
 }>;
 
 export type Phase697V3DispatchReservation = Readonly<{
@@ -98,6 +114,9 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
   const zeroEntries = await Promise.all(
     zeroCallCases.map((entry) => runAndBuildZeroCallEntry(harness, entry)),
   );
+  for (const entry of zeroEntries) {
+    await options?.lifecycle?.recordGuardTerminal?.(entry);
+  }
   const guardFailure = zeroEntries.find((entry) => !entry.zeroCallVerified) ?? null;
   const dispatchLedger = createPhase697V3DispatchLedger(harness.runId);
   const runtimeEntries: Phase697V3CaseEntry[] = [];
@@ -109,6 +128,7 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
   let maximumActiveLaneOperations = 0;
 
   if (guardFailure) {
+    await options?.lifecycle?.recordBreakerOpened?.(guardFailure);
     for (let pairedRunIndex = 0; pairedRunIndex < 24; pairedRunIndex += 1) {
       runtimeEntries.push(
         buildNotStartedRuntimeEntry(
@@ -138,6 +158,8 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
         'wrong_question_organizer',
         pairedRunIndex,
       );
+      await options?.lifecycle?.recordDispatchStarted?.(tutorReservation, tutorCase.id);
+      await options?.lifecycle?.recordDispatchStarted?.(organizerReservation, organizerCase.id);
       dispatchedPairs += 1;
       const tutorController = new AbortController();
       const organizerController = new AbortController();
@@ -151,8 +173,10 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
       ) => {
         activeLaneOperations += 1;
         maximumActiveLaneOperations = Math.max(maximumActiveLaneOperations, activeLaneOperations);
+        let terminalEntry: Phase697V3CaseEntry | null = null;
         try {
           const entry = await operation();
+          terminalEntry = entry;
           if (!runtimeContractSuccess(entry) && pairTrigger === null) {
             pairTrigger = entry;
             abortSibling();
@@ -160,7 +184,13 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
           return entry;
         } finally {
           activeLaneOperations -= 1;
-          dispatchLedger.complete(reservation);
+          try {
+            if (terminalEntry) {
+              await options?.lifecycle?.recordRuntimeTerminal?.(reservation, terminalEntry);
+            }
+          } finally {
+            dispatchLedger.complete(reservation);
+          }
         }
       };
 
@@ -190,16 +220,20 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
       ]);
       completedPairs += 1;
       runtimeEntries.push(tutorEntry, organizerEntry);
-      if (tutorEntry.latencyMs !== null && organizerEntry.latencyMs !== null) {
-        pairedCandidateSamplesMs.push(
-          Math.max(
-            performance.now() - pairStartedAt,
-            tutorEntry.latencyMs,
-            organizerEntry.latencyMs,
-          ),
-        );
+      const pairedLatencyMs =
+        tutorEntry.latencyMs !== null && organizerEntry.latencyMs !== null
+          ? Math.max(
+              performance.now() - pairStartedAt,
+              tutorEntry.latencyMs,
+              organizerEntry.latencyMs,
+            )
+          : null;
+      if (pairedLatencyMs !== null) pairedCandidateSamplesMs.push(pairedLatencyMs);
+      await options?.lifecycle?.recordPairTerminal?.(pairedRunIndex, pairedLatencyMs);
+      if (pairTrigger !== null) {
+        breakerTrigger = pairTrigger;
+        await options?.lifecycle?.recordBreakerOpened?.(pairTrigger);
       }
-      if (pairTrigger !== null) breakerTrigger = pairTrigger;
     }
   }
 
@@ -210,7 +244,7 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
       ? ('quality_gate_impossible' as const)
       : ('closed' as const);
   const trigger = breakerTrigger;
-  return buildPhase697TutorOrganizerV3Report({
+  const report = buildPhase697TutorOrganizerV3Report({
     runId: harness.runId,
     runScope: harness.runScope,
     mode: harness.mode,
@@ -233,6 +267,8 @@ export async function runPhase697TutorOrganizerPairedEvalV3(
     },
     ledger: dispatchLedger.summary(),
   });
+  await options?.lifecycle?.recordRunCompleted?.(report);
+  return report;
 }
 
 async function runAndBuildZeroCallEntry(
@@ -288,6 +324,8 @@ async function runAndBuildZeroCallEntry(
       runtimeInvocations === 1
         ? ('unknown_after_attempt' as const)
         : ('absent_not_attempted' as const),
+    dispatchRecorded: false,
+    runtimeTerminalRecorded: false,
   };
   return PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.parse(raw);
 }
@@ -432,6 +470,8 @@ function buildTutorRuntimeEntry(
       : null,
     organizerDecisions: [],
     ...evidence,
+    dispatchRecorded: true,
+    runtimeTerminalRecorded: true,
   };
   raw.strictRuntimeSuccess = runtimeContractSuccess(raw);
   const parsed = PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.safeParse(raw);
@@ -468,6 +508,8 @@ function buildOrganizerRuntimeEntry(
     tutorActual: null,
     organizerDecisions: organizerDecisionEntries(entry, result.observations),
     ...evidence,
+    dispatchRecorded: true,
+    runtimeTerminalRecorded: true,
   };
   raw.strictRuntimeSuccess = runtimeContractSuccess(raw);
   const parsed = PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.safeParse(raw);
@@ -551,6 +593,8 @@ function buildRuntimeHarnessFailureEntry(
     lastCompletedStage: ledger.lastCompletedStage(),
     executionOutcome,
     usageDisposition,
+    dispatchRecorded: true,
+    runtimeTerminalRecorded: true,
   };
   return PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.parse(raw);
 }
@@ -598,6 +642,8 @@ function buildRuntimeOrphanedEntry(
     lastCompletedStage: ledger.lastCompletedStage(),
     executionOutcome: 'attempted_orphaned' as const,
     usageDisposition: 'unknown_after_attempt' as const,
+    dispatchRecorded: true,
+    runtimeTerminalRecorded: true,
   };
   return PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.parse(raw);
 }
@@ -638,6 +684,12 @@ function buildNotStartedRuntimeEntry(
     organizerDecisions:
       entry.agent === 'wrong_question_organizer' ? organizerDecisionEntries(entry, []) : [],
     ...notStartedEvidence(executionOutcome),
+    dispatchRecorded:
+      executionOutcome === 'not_started_parent_abort' ||
+      executionOutcome === 'not_started_orphaned',
+    runtimeTerminalRecorded:
+      executionOutcome === 'not_started_parent_abort' ||
+      executionOutcome === 'not_started_orphaned',
   };
   return PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA.parse(raw);
 }

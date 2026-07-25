@@ -5,11 +5,11 @@ Provider failure 证据、zero-network compatibility preflight、strict-gate bre
 dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock checkpoint 后停止并重新
 申请一次 V3 controlled-Live，只有全门通过才进入产品验收。
 
-**当前状态：** R0 零 Provider 设计、R1 安全诊断/零网络 compatibility 与 R2 strict-gate
-breaker/双 lane ledger/固定分母均已完成；R3--R4 尚未实现。V3 没有读取 credential、调用
-Provider、创建 Live marker/journal/evidence、启动 Docker/API/browser 或修改业务数据。下一步仅
-R3，不是直接执行 Live、R8、Task 13/main 或
-Phase 6.10。
+**当前状态：** R0 零 Provider 设计、R1 安全诊断/零网络 compatibility、R2 strict-gate
+breaker/双 lane ledger/固定分母与 R3 crash-safe evidence 均已完成；R4 尚未实现。V3 没有读取
+credential、调用 Provider、创建真实 Live marker/journal/evidence、启动 Docker/API/browser 或修改
+业务数据。下一步仅 R4 static/Mock checkpoint 与独立复审，不是直接执行 Live、R6 产品验收、
+Task 13/main 或 Phase 6.10。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`
@@ -102,7 +102,7 @@ V1/V2 bundle validator 与四个历史 SHA、typecheck/lint/Prettier/diff。
 
 ## R2：Strict-gate breaker、双 lane ledger 与固定分母
 
-**状态：** [x] 已完成，下一步仅 R3。
+**状态：** [x] 已完成；该检查点当时下一步仅 R3，后续 R3 已完成。
 
 **主要文件：**
 
@@ -156,6 +156,8 @@ Agent full/typecheck/lint/diff。
 
 ## R3：独立 V3 CLI、journal 与不可重放 evidence
 
+**状态：** [x] 已完成，下一步仅 R4。
+
 **主要文件：**
 
 - V3 CLI/profile/authorization；
@@ -179,6 +181,22 @@ Agent full/typecheck/lint/diff。
 - orphan sealer 零网络、无 executor：in-flight 标 unknown usage，未开始标 orphaned，永不 resume/replay；
 - marker/journal/evidence 三者 runId/identity/hash-chain 一致；
 - production gate 只接受 V3 authorized `deepseek_network`，synthetic provenance 永远失败。
+
+**完成证据：**
+
+- [x] V3 runner/confirmation/approval env/marker/journal/evidence/validator 与 V1/V2 双向隔离；
+- [x] marker `wx`，journal 初始化与每条 `dispatch_started` 均在 executor 前 fsync；
+- [x] append-only sequence/hash-chain 与 guard/dispatch/terminal/pair/breaker/run/seal 严格状态机；
+- [x] 活 marker owner 防误封，死 owner token recovery claim 单胜者接管，同 claim 单 appender；
+- [x] 单主机 PID liveness 下的 stale appender/release takeover fence 与 writer close drain；
+- [x] marker-only、dispatch-without-terminal、terminal、run-complete crash 均零网络 seal 且不重放；
+- [x] temp `wx` + fsync + hard-link final，同字节幂等、不同字节/路径冲突 fail-closed；
+- [x] durability `21/21`、V3 focused `50/50`、Agent `629/629`、AI `199/199`、typecheck/lint；
+- [x] V1/V2 validator 与四历史 SHA 不变，V3 Live artifact/recovery claim 为 0；
+- [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`
 
 **验证：** marker 并发、journal create/append/fsync/sequence/hash、crash before journal/before dispatch/
 after dispatch/before final、orphan seal、second seal、link/unlink/EEXIST/orphan temp/I/O、三版 validator

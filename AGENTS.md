@@ -86,7 +86,8 @@ Phase 6.9.5 的 ReviewAgent / PlannerAgent 已最终完成：V10 controlled-Live
 | Phase 6.9.7 V2 R7           | 失败封存   | 唯一 run `67ce18dd...` 为 24/24 zero-call、0/48 strict runtime、Tutor/Organizer semantic `0/0`、verified usage `0`，最终 `quality_gate_failed`；不得重跑，未进入 R8 产品验收                                                      |
 | Phase 6.9.7 V3 R0           | 已完成     | 零 Provider 复盘确认 runtime 已有安全 failure taxonomy 但 paired evidence 丢失，冻结首个 runtime contract failure 即熔断、固定分母、双 lane 隔离、journal/crash seal、独立 V3 lineage 与 R1--R9 原子计划；未改源码或调用 Provider |
 | Phase 6.9.7 V3 R1           | 已完成     | 固定 Provider category/stage 与十阶段执行证据、真实 0/1 invocation recorder、outer-harness local failure、V1/V2 absent-field 兼容及 config/factory/request/response/schema/abort 零网络 harness；当时下一步为 R2，后续已完成      |
-| Phase 6.9.7 V3 R2           | 已完成     | 24 guard 先行、固定 72/24/48 分母、首个 runtime contract failure 熔断、单 dispatch ledger、双 lane abort/预算/故障归属隔离、sibling orphan 有界收口及 usage/P95/费用不完整 fail-closed；下一步仅 R3                               |
+| Phase 6.9.7 V3 R2           | 已完成     | 24 guard 先行、固定 72/24/48 分母、首个 runtime contract failure 熔断、单 dispatch ledger、双 lane abort/预算/故障归属隔离、sibling orphan 有界收口及 usage/P95/费用不完整 fail-closed；后续 R3 已完成                            |
+| Phase 6.9.7 V3 R3           | 已完成     | 独立 V3 CLI/授权/marker、dispatch-before-call hash-chain journal、活 owner 防误封、单胜者 recovery claim 与 stale lease fence、零网络 orphan seal、hard-link evidence、三版 validator 隔离；下一步仅 R4 static/Mock checkpoint    |
 | Phase 7.0                   | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                      |
 | Phase 7.1                   | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                              |
 | Phase 7.2                   | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                              |
@@ -300,8 +301,24 @@ runtime contract failure 收口当前 pair 后停止后续派发，未执行 cas
 failure、P95/usage/价格不完整和预算串用均 fail-closed。R2 focused `29/29`、Agent `608/608`、AI
 `199/199`、typecheck/lint、V1/V2 validator、四个历史 SHA 与 V3 Live artifact=0 检查通过；未读取
 `.env`/credential、调用 Provider、启动 Docker/API/browser 或创建 Live artifact。权威验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。下一步仅 R3 独立
-CLI/journal/crash-only seal/evidence，仍不是 Live。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。该检查点当时下一步仅 R3
+独立 CLI/journal/crash-only seal/evidence；后续 R3 已完成。
+
+2026-07-25 Phase 6.9.7 V3 R3 crash-safe evidence 已完成：新增独立 V3 confirmation、授权变量、
+CLI/validator/marker/journal/evidence identity。marker 以 `wx` 预留后，journal 初始记录先 fsync；每次
+`dispatch_started` 也必须 fsync 后才允许 executor 调用。append-only JSONL 以 sequence + SHA-256
+hash-chain 记录 guard、dispatch、runtime terminal、pair、breaker、run completion 与 seal；崩溃后
+zero-network sealer 只依据持久化事实生成固定 72-entry failure evidence，不读取 credential、不创建
+executor，也不 resume/replay/retry。sealer 对活跃 marker owner 返回 `live_attempt_in_progress`；死 owner
+通过 token 化 recovery claim 原子接管，同 claim 只允许一个 appender；旧 appender 与 stale release 在
+takeover 后均被 fence，不会触碰新 owner claim。evidence 使用 temp `wx` + fsync + hard-link final，
+same bytes 幂等，不同字节冲突 fail-closed。V3 focused `50/50`（`360` assertions）、Agent
+`629/629`（`6710` assertions）、AI `199/199`
+（`1054` assertions）、Agent/AI typecheck/lint、V1/V2 validator 与四个历史 SHA 均通过；V3 Live
+marker/journal/evidence/recovery claim 为 0。没有读取根 `.env`/credential、调用 Provider、启动
+Docker/API/browser 或创建真实 V3 Live artifact。权威验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。下一步仅 R4 分支
+static/Mock checkpoint，不是 controlled-Live。
 
 2026-07-20 当前状态：Phase 6.9.5 已完成。default-off 时产品返回确定性建议；受控 DeepSeek V4 Pro API 与可见 `/plan` 已证明真实模型 candidate 可用，main replay 进一步证明 default-off 回滚、本地只读权限和事实权威未变。
 
@@ -535,7 +552,7 @@ mcp -> ai, fsrs, rag, types
 - 登录态权威来源：NestJS Auth API + PostgreSQL refresh token + httpOnly cookie。
 - Refresh token 已启用 rotation 与 reuse detection；Auth 主链路不依赖 Redis。
 - WrongQuestion / ChatMessage / OCRRecord 已迁移到 PostgreSQL，按当前 `userId` 隔离。
-- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 与 V2 R7 两条唯一 Live 均未通过质量门；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但 V2 R7 的 24 个 Organizer runtime 全在结构化对象前失败，仍无通过的质量 authority 或产品验收。V3 R0 已冻结 failure taxonomy、breaker、固定分母、双 lane 与 crash-only seal；V3 R1 已实现安全 failure/stage 投影、真实 invocation recorder 和零网络 adapter compatibility；V3 R2 已实现 guard-first、首错熔断、固定分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 和不完整 usage/P95/费用 fail-closed。R3 CLI/journal/evidence 与 R4 static/Mock checkpoint 尚未完成。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
+- WrongQuestionOrganizer：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 是错题组织层，按当前 `userId` 隔离；一个错题同一时间只属于当前用户一个 organizer deck，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。Task 6 起 organize path 使用 owner-scoped immutable snapshot、事务外双 stale fence、owner advisory-lock 第三 fence 与 model-free command；Task 7 已接入 server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace 与 HTTP abort；Task 8 已增加 request-level strict runtime 和 `/error-book` 语义/本地/安全回退来源状态。Task 12 V1 与 V2 R7 两条唯一 Live 均未通过质量门；V2 R0--R6 已完成离线 design/diagnostics、单一规则源、anti-overfit、独立 runner/evidence，以及同题 normal/force、single/batch、provider abort、command failed Trace 和未写题 batch 补偿边界，但 V2 R7 的 24 个 Organizer runtime 全在结构化对象前失败，仍无通过的质量 authority 或产品验收。V3 R0 已冻结 failure taxonomy、breaker、固定分母、双 lane 与 crash-only seal；V3 R1 已实现安全 failure/stage 投影、真实 invocation recorder 和零网络 adapter compatibility；V3 R2 已实现 guard-first、首错熔断、固定分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 和不完整 usage/P95/费用 fail-closed；V3 R3 已补独立 CLI、dispatch-before-call durable journal、活 owner 防误封、可恢复单胜者 claim、crash-only seal 与不可覆盖 evidence。R4 static/Mock checkpoint 尚未完成。Organizer 仍是同步 API，不声明跨实例 provider exactly-once；gate 关闭时 decision 继续 deterministic。
 - Review：`/reviews` 已支持错题加入复习、学习统计和最近复习日志；`/review-tasks` 已支持今日复习任务、评分完成、跳过、恢复和未来复习计划预览；Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - `/review-preferences` 读写当前用户账号级复习计划偏好，包括每日分钟、每日卡片上限、提醒时间、提醒开关和计划窗口。
 - `/review-tasks/plan` 是只读预览接口，基于 `Card.nextReview`、`Card.difficulty`、`Card.stability` 和 `ReviewPreference` 计算加权压力，不创建未来 `ReviewTask`。
@@ -617,7 +634,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. V1--V9 保持只读历史；V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 V1 与 V2 R7 两条唯一 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。V3 R0--R2 已完成设计、安全诊断/零网络 compatibility、strict-gate breaker、双 lane ledger 与固定分母；下一步只执行 R3 独立 CLI/journal/crash-only seal/evidence。不得修改 V1/V2 history、擅自调用 Provider、开始产品验收/Task 13/main 或提前进入记忆注入/Episodic Memory。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；Task 12 V1 与 V2 R7 两条唯一 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。V3 R0--R3 已完成设计、安全诊断/零网络 compatibility、strict-gate breaker、双 lane ledger、固定分母与 crash-safe evidence；下一步只执行 R4 分支 static/Mock checkpoint 与独立复审。不得修改 V1/V2 history、擅自调用 Provider、开始产品验收/Task 13/main 或提前进入记忆注入/Episodic Memory。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
-6. V3 R2 已再次核对 V1/V2 四个历史 SHA、专用 validator 与 V3 Live artifact=0；下一任务是 R3，不是 Live。V2 一次性名额已消费，禁止删除 marker 或重跑；任何未来网络运行都需要 R1--R4 checkpoint 全部通过、独立 V3 identity/marker/journal/evidence 和新的精确用户授权。
+6. V3 R3 已再次核对 V1/V2 四个历史 SHA、专用 validator 与 V3 Live artifact=0；下一任务是 R4，不是 Live。V2 一次性名额已消费，禁止删除 marker 或重跑；任何未来网络运行都需要 R1--R4 checkpoint 全部通过、独立 V3 identity/marker/journal/evidence 和新的精确用户授权。

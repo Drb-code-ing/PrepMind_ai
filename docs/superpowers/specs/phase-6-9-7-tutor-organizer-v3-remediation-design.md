@@ -2,9 +2,10 @@
 
 日期：2026-07-24
 
-状态：R0 零 Provider 设计、R1 安全诊断/零网络 compatibility 与 R2 paired scheduler/report 已
-完成。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3 尚未实现 CLI、marker、
-journal、evidence 或产品路径，也没有获得任何新网络授权。下一步仅 R3。
+状态：R0 零 Provider 设计、R1 安全诊断/零网络 compatibility、R2 paired scheduler/report 与
+R3 crash-safe evidence 已完成。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3
+尚未执行 controlled-Live 或产品路径，也没有获得任何新网络授权。下一步仅 R4 static/Mock
+checkpoint 与独立复审。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -398,6 +399,31 @@ mismatch 与 no-leak 回归已通过。V1/V2 validator 与四个历史 SHA 不�
 
 本地机制只能保证 run-level 单胜者与不重放，不能声明 Provider exactly-once。delegate 已开始但进程
 崩溃时，是否被 Provider 接收/计费仍未知。
+
+### 9.4 R3 实施状态（2026-07-25）
+
+R3 已新增独立 V3 CLI、confirmation、approval env、marker、journal、evidence prefix 与 validator。
+marker 使用 `wx` 并记录 owner PID；marker 后、executor 创建前先 fsync journal 初始化，每条
+`dispatch_started` 也必须先 fsync。append-only JSONL 通过 sequence、previous-record SHA 与
+record SHA 组成 hash chain，并以严格状态机约束 guard、dispatch、runtime/pair terminal、breaker、
+run completion 与 seal。
+
+marker owner 存活时 sealer 拒绝误封；死亡 owner 由 token recovery claim 单胜者接管，同 claim
+只能 reserve 一个 appender。takeover 后旧 appender 每次 append 前被 fence；在单主机 PID
+liveness 合同下，旧 release 在任何 rename 前先验证 canonical token，不会触碰新 owner claim。
+journal writer close 会 drain 已接受 append。该 claim 不作为跨主机分布式 lease。
+
+零网络 sealer 对 dispatch 无 terminal 的 lane 生成
+`attempted_orphaned + unknown_after_attempt`，对从未 dispatch 的 lane 生成
+`not_started_orphaned + absent_not_attempted`，保留全部固定分母且不 resume/replay/retry。evidence
+通过随机 temp `wx` + fsync + hard-link final 发布；same bytes 幂等，不同 bytes、非普通文件、
+symlink、错误路径与 hash mismatch 均 fail-closed。该本地合同覆盖进程崩溃与受测 I/O 故障，不
+声明突然断电后的目录元数据持久性或 Provider exactly-once。
+
+durability `21/21`、V3 focused `50/50`、Agent `629/629`、AI `199/199`、V1/V2 validator 与四个
+历史 SHA 通过；V3 Live marker/journal/evidence/recovery claim 为 0。没有读取 credential、调用
+Provider、启动 Docker/API/browser 或修改业务数据。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。
 
 ## 10. RED/GREEN 与故障注入矩阵
 

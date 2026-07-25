@@ -1,5 +1,39 @@
 # PrepMind AI 开发日志
 
+> 2026-07-25 — Phase 6.9.7 V3 R3 crash-safe evidence 与不可重放恢复：在
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 上新增完全独立的 V3 CLI、确认词、授权变量、
+> marker、journal、evidence prefix 与 validator；V1/V2 runner、文件和历史 authority 不接受 V3
+> 字段，也没有被改写。
+>
+> Live marker 使用 `wx` 并记录 owner PID；marker 后、任何 executor 创建前，journal 必须完成初始化
+> 记录写入与 fsync。runner lifecycle 又保证每条 `dispatch_started` fsync 早于对应 executor。journal
+> 为 append-only JSONL，以单调 sequence、previous SHA 与 record SHA 组成 hash chain，并对 guard、
+> dispatch、runtime/pair terminal、breaker、run complete 与 seal 执行严格状态机校验。
+>
+> 进程崩溃后只允许零网络 `seal`：已 dispatch 未 terminal 的 lane 固定为
+> `attempted_orphaned + unknown_after_attempt`，从未 dispatch 的 lane 为
+> `not_started_orphaned + absent_not_attempted`，已 terminal 结果保持不变；完整 72/24/48 分母不会
+> 删除、补跑、resume、replay 或 retry。journal 缺失只能形成 marker-only 初始化失败证据。
+>
+> orphan sealer 会阻止活 marker owner，死 owner 通过 token 化 recovery claim 单胜者接管；同一
+> claim 只能打开一个 appender，takeover 后旧 appender 被 fence。终审发现旧 lease cleanup 仍会短暂
+> 移动新 owner claim，现已增加 canonical token 前置验证与“stale release rename=0”竞态断言；在
+> 单主机 PID liveness 合同下，已被接管的 stale release 不再触碰新 claim。writer close 会 drain
+> 已接受 append；该机制不冒充跨主机分布式 lease。
+>
+> evidence 先过 strict schema、派生字段、敏感字段与 marker/journal SHA 校验，再通过随机 temp
+> `wx` + fsync + hard-link 发布；final 只接受 same bytes 幂等，不同字节和路径冲突拒绝覆盖。R3
+> durability `21/21`（`228` assertions）、V3 focused `50/50`（`360` assertions）、Agent full
+> `629/629`（`6710` assertions）、AI full `199/199`（`1054` assertions）通过；Agent/AI
+> typecheck/lint、V1/V2 validator、四个历史 SHA 与 V3 Live artifact=0 均通过。
+>
+> 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
+> 创建真实 V3 Live marker/journal/evidence/recovery claim 或修改业务数据，也没有开始 Task 13、
+> main 合并或推送。权威验收：
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。下一步仅 R4 分支
+> static/Mock checkpoint 与独立复审；R4 前没有任何网络授权。回顾时可以问：为什么 dispatch 必须
+> 先 fsync？为什么崩溃后只 seal 不能 resume？为什么 hard-link 不等于 Provider exactly-once？
+>
 > 2026-07-25 — Phase 6.9.7 V3 R2 strict-gate breaker、双 Lane Ledger 与固定分母：在
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 上新增独立 V3 paired scheduler/report，不改写
 > V1/V2 runner。24 条 guard 现在全部先执行；任一 guard 失败时 48 条 runtime 仍保留在报告固定
@@ -25,8 +59,8 @@
 >
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建 V3 CLI/marker/journal/evidence 或修改业务数据，也没有合并 main 或推送。权威验收：
-> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。下一步仅 R3 独立
-> CLI/journal/crash-only seal/evidence，仍是零 Provider，不是 controlled-Live。回顾时可以问：为什么
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。该检查点当时下一步仅 R3
+> 独立 CLI/journal/crash-only seal/evidence；后续 R3 已完成。回顾时可以问：为什么
 > 首个 contract failure 可以熔断而 semantic mismatch 不可以？为什么 unknown usage 不能记为零费用？
 >
 > 2026-07-24 — Phase 6.9.7 V3 R1 安全诊断投影与零网络 compatibility：在
@@ -59,7 +93,7 @@
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建业务数据或 Live marker/journal/evidence，也没有合并 main 或推送。权威验收：
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。该检查点当时下一步
-> 仅 R2；后续 R2 已完成，当前下一步仅 R3，仍不是 controlled-Live。
+> 仅 R2；后续 R2/R3 均已完成，当前下一步仅 R4，仍不是 controlled-Live。
 >
 > 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
 > `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker

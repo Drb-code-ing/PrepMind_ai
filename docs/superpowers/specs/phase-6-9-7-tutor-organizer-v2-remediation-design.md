@@ -7,7 +7,8 @@
 V2 branch controlled-Live 已执行并以 `quality_gate_failed` 封存：`24/24` zero-call，`0/48`
 strict runtime，Tutor/Organizer semantic `0/0`，verified usage `0`。V2 marker/evidence 已消费且
 不得重跑；R8 产品验收未启动。后续 V3 R0 零 Provider 设计、R1 安全诊断/零网络
-compatibility 与 R2 strict-gate breaker/双 lane ledger/固定分母均已完成，当前下一步仅 R3。
+compatibility、R2 strict-gate breaker/双 lane ledger/固定分母与 R3 crash-safe evidence 均已完成，
+当前下一步仅 R4 static/Mock checkpoint。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 

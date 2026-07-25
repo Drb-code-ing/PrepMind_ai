@@ -111,7 +111,9 @@ export const PHASE_6_9_7_V3_RUNTIME_EVIDENCE_SCHEMA = z
 
     if (
       (value.runtimeInvocations === 0 && completedStageIndex >= delegateStartedIndex) ||
-      (value.runtimeInvocations === 1 && completedStageIndex < delegateStartedIndex)
+      (value.runtimeInvocations === 1 &&
+        completedStageIndex < delegateStartedIndex &&
+        value.executionOutcome !== 'attempted_orphaned')
     ) {
       addIssue('runtime invocation and completed stage mismatch');
     }
@@ -427,6 +429,8 @@ export const PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA = PHASE_6_9_7_CASE_ENTRY_SCHEMA.ex
   lastCompletedStage: z.enum(PHASE_6_9_7_V3_LAST_COMPLETED_STAGES).nullable(),
   executionOutcome: z.enum(PHASE_6_9_7_V3_EXECUTION_OUTCOMES),
   usageDisposition: z.enum(PHASE_6_9_7_V3_USAGE_DISPOSITIONS),
+  dispatchRecorded: z.boolean(),
+  runtimeTerminalRecorded: z.boolean(),
 }).superRefine((entry, context) => {
   const runtimeEvidence = PHASE_6_9_7_V3_RUNTIME_EVIDENCE_SCHEMA.safeParse({
     runtimeEvidenceVersion: entry.runtimeEvidenceVersion,
@@ -478,6 +482,17 @@ export const PHASE_6_9_7_V3_CASE_ENTRY_SCHEMA = PHASE_6_9_7_CASE_ENTRY_SCHEMA.ex
   }
 
   const notStarted = entry.executionOutcome.startsWith('not_started_');
+  if (
+    (entry.runtimeInvocations === 1 && !entry.dispatchRecorded) ||
+    (entry.executionKind === 'zero_call' && entry.dispatchRecorded) ||
+    ((entry.executionOutcome === 'not_started_case_guard' ||
+      entry.executionOutcome === 'not_started_quality_breaker') &&
+      entry.dispatchRecorded) ||
+    (entry.runtimeTerminalRecorded &&
+      (entry.executionKind !== 'runtime' || !entry.dispatchRecorded))
+  ) {
+    addV3Issue(context, 'durable dispatch evidence mismatch');
+  }
   if (entry.executionKind === 'zero_call') {
     if (
       entry.pairedRunIndex !== null ||
@@ -1075,15 +1090,22 @@ function validateV3DerivedFields(
 
   const reservedRuntime = runtime.filter(isV3LedgerReserved);
   const reservedPairIndexes = new Set(reservedRuntime.map((entry) => entry.pairedRunIndex));
+  const terminalRuntime = runtime.filter((entry) => entry.runtimeTerminalRecorded);
+  const completedPairIndexes = new Set(
+    [...reservedPairIndexes].filter(
+      (pairedRunIndex) =>
+        terminalRuntime.filter((entry) => entry.pairedRunIndex === pairedRunIndex).length === 2,
+    ),
+  );
   if (
     report.ledger.reservedEntries !== reservedRuntime.length ||
-    report.ledger.terminalEntries !== reservedRuntime.length
+    report.ledger.terminalEntries !== terminalRuntime.length
   ) {
     addV3Issue(context, 'V3 ledger summary mismatch');
   }
   if (
     report.scheduler.dispatchedPairs !== reservedPairIndexes.size ||
-    report.scheduler.completedPairs !== reservedPairIndexes.size ||
+    report.scheduler.completedPairs !== completedPairIndexes.size ||
     report.scheduler.maxConcurrentPairs !== (reservedPairIndexes.size > 0 ? 1 : 0) ||
     (reservedRuntime.length === 0
       ? report.scheduler.maxConcurrentLaneOperations !== 0
@@ -1226,11 +1248,7 @@ function deriveV3Lane(
 }
 
 function isV3LedgerReserved(entry: Phase697V3CaseEntry) {
-  return (
-    entry.executionKind === 'runtime' &&
-    entry.executionOutcome !== 'not_started_case_guard' &&
-    entry.executionOutcome !== 'not_started_quality_breaker'
-  );
+  return entry.executionKind === 'runtime' && entry.dispatchRecorded;
 }
 
 function orderedV3Latency(
