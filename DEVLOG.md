@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R1 bounded diagnostics 与历史兼容：新增独立
+> `phase-6.9.7-v4-bounded-diagnostics-v1` case/report contract，将每个 case 互斥区分为
+> `not_started / executed_contract_failure / executed_semantic_mismatch /
+executed_semantic_match`。合同失败必须记录真实 stage：`provider_runtime / raw_schema /
+dynamic_contract / local_merger / usage / latency / safety`；24 个 guard 必须保持
+> `not_started/case_guard`，不能冒充模型成功或 schema failure。
+>
+> Tutor 只投影 intent、depth、evidence association、context、guiding、final-answer、answer-structure
+> 七个布尔轴与 nullable primary-evidence suppression。Organizer validator 现在以唯一
+> `context/index -> subject -> deck -> topic -> evidence -> confidence` 顺序返回固定
+> `stage/axis/reason`；legacy API 只映射同一结果回旧 reason，产品 merger 直接复用已通过 validation，
+> 不建立第二套排序，也不自动补 evidence、修正 subject 或清洗 topic。Organizer raw-schema/dynamic
+> failure 必须携带精确 reason；Provider/usage 等失败只记录真实 stage，继续复用 V3 bounded runtime
+> authority。
+>
+> 72-case aggregate 由 entries 重算并拒绝重复 ID、手改计数、跨 agent、guard/runtime 错配、额外字段
+> 与 raw output。V1/V2/V3 的 V4 字段继续 absent，旧 strict validator 拒绝 V4，V4 validator 也拒绝
+> 旧 report；synthetic 三版 report 在 projection 前后 SHA 不变。focused `32/32`、Agent 全量
+> `635/635`、`6759 expect()`、typecheck/lint/Prettier/diff check 通过。history 复审 APPROVED；contract
+> 复审发现的 contract-stage 缺口已修复并复审 RESOLVED；七个 V1/V2/V3 历史 artifact SHA 与 R0
+> 记录 7/7 一致。
+>
+> 本轮未读取 credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R2 Tutor
+> V4 语义单一规则源，仍为 zero-network；R5 后依旧必须重新取得精确 V4 Live 授权。验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R0 零 Provider bounded 复盘与设计：在 V3 失败 authority
 > `ff2e1a54...` 不可变、不重跑的前提下，只读取已封存的安全 evidence。Tutor 前 14 个 runtime
 > 全部 strict/usage verified；intent/depth/context/guiding/final-answer/structure 命中分别为
@@ -20,8 +47,9 @@
 > 自动修正非法模型输出。
 >
 > 本任务没有修改 Agent 源码、读取 credential、调用 Provider、创建 V4 Live artifact、启动
-> Docker/API/browser 或修改业务数据。下一步是 R1 zero-network bounded diagnostics；R5 通过后仍
-> 必须重新取得一次精确 V4 controlled-Live 授权。设计、计划与验收分别见
+> Docker/API/browser 或修改业务数据。该 R0 检查点当时下一步是 R1 zero-network bounded
+> diagnostics，后续已完成；R5 通过后仍必须重新取得一次精确 V4 controlled-Live 授权。设计、计划
+> 与验收分别见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md`、
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r0-zero-provider-postmortem.md`。

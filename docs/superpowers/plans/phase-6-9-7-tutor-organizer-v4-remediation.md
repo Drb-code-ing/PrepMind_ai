@@ -54,7 +54,7 @@ V3 run `ff2e1a54...` 已失败封存且不得重跑。Phase 6.9.7、产品验收
 
 ## R1：V4 bounded diagnostics 与历史兼容
 
-**状态：** [ ] 未开始。
+**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R2。
 
 **主要文件：**
 
@@ -71,6 +71,16 @@ V3 run `ff2e1a54...` 已失败封存且不得重跑。Phase 6.9.7、产品验收
 - merger 复用相同 validator result，不创建第二套 reason 顺序；
 - V1/V2/V3 report 不出现 V4 字段，历史 validator 与 SHA 不变；
 - 全部 synthetic/no-network。
+
+**完成证据：** 新增独立 `phase-6.9.7-v4-bounded-diagnostics-v1` case/report contract；固定
+not-started、contract failure、semantic mismatch/match 四类终态和七类 contract stage；Organizer
+validator 以唯一 `context/index -> subject -> deck -> topic -> evidence -> confidence` 链返回精确
+`stage/axis/reason`，legacy API 只映射同一结果，产品 merger 复用已通过 validation。72-case report
+重新计算 execution/stage/axis/reason aggregate 并拒绝篡改；V1/V2/V3 V4-field absent、双向 strict
+validator 隔离和 synthetic SHA 不变测试通过。Agent 全量 `635 passed / 6759 expect()`，typecheck、
+lint、Prettier、diff check 通过；未读取 credential、调用 Provider 或实现 V4 runner/Live artifact。
+详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`。
 
 **提交：** `feat(agent): add phase 6.9.7 v4 bounded diagnostics`
 

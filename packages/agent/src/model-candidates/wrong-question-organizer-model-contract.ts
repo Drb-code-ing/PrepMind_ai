@@ -359,6 +359,71 @@ export type WrongQuestionOrganizerDecisionReasonCode =
   | 'unsafe_topic_label'
   | 'invalid_evidence_association';
 
+export const WRONG_QUESTION_ORGANIZER_V4_VALIDATION_STAGES = [
+  'raw_schema',
+  'dynamic_contract',
+] as const;
+
+export const WRONG_QUESTION_ORGANIZER_V4_VALIDATION_AXES = [
+  'schema',
+  'context',
+  'question_index',
+  'subject',
+  'deck',
+  'topic',
+  'evidence',
+  'confidence',
+] as const;
+
+export const WRONG_QUESTION_ORGANIZER_V4_FAILURE_REASONS = [
+  'schema_invalid',
+  'context_invalid',
+  'question_count_mismatch',
+  'duplicate_question_index',
+  'question_index_out_of_range',
+  'known_subject_requires_keep_local',
+  'unknown_subject_requires_bounded_subject',
+  'subject_unresolved',
+  'deck_index_out_of_range',
+  'cross_subject_deck',
+  'topic_label_invalid',
+  'known_subject_evidence_missing',
+  'deck_action_evidence_missing',
+  'confidence_evidence_conflict',
+] as const;
+
+export type WrongQuestionOrganizerV4ValidationStage =
+  (typeof WRONG_QUESTION_ORGANIZER_V4_VALIDATION_STAGES)[number];
+export type WrongQuestionOrganizerV4ValidationAxis =
+  (typeof WRONG_QUESTION_ORGANIZER_V4_VALIDATION_AXES)[number];
+export type WrongQuestionOrganizerV4FailureReason =
+  (typeof WRONG_QUESTION_ORGANIZER_V4_FAILURE_REASONS)[number];
+
+export const WRONG_QUESTION_ORGANIZER_V4_FAILURE_DIAGNOSTIC_SCHEMA = z
+  .object({
+    stage: z.enum(WRONG_QUESTION_ORGANIZER_V4_VALIDATION_STAGES),
+    axis: z.enum(WRONG_QUESTION_ORGANIZER_V4_VALIDATION_AXES),
+    reasonCode: z.enum(WRONG_QUESTION_ORGANIZER_V4_FAILURE_REASONS),
+  })
+  .strict()
+  .superRefine((diagnostic, context) => {
+    const expected = v4StageAndAxisForReason(diagnostic.reasonCode);
+    if (diagnostic.stage !== expected.stage || diagnostic.axis !== expected.axis) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'V4 organizer failure diagnostic mismatch',
+      });
+    }
+  });
+
+export type WrongQuestionOrganizerV4FailureDiagnostic = z.infer<
+  typeof WRONG_QUESTION_ORGANIZER_V4_FAILURE_DIAGNOSTIC_SCHEMA
+>;
+
+export type WrongQuestionOrganizerV4DecisionValidationResult =
+  | { ok: true; value: WrongQuestionOrganizerModelDecision }
+  | { ok: false; diagnostic: WrongQuestionOrganizerV4FailureDiagnostic };
+
 export type WrongQuestionOrganizerDecisionValidationResult =
   | { ok: true; value: WrongQuestionOrganizerModelDecision }
   | { ok: false; reasonCode: WrongQuestionOrganizerDecisionReasonCode };
@@ -367,72 +432,169 @@ export function validateWrongQuestionOrganizerModelDecision(
   input: unknown,
   context: WrongQuestionOrganizerDecisionContext,
 ): WrongQuestionOrganizerDecisionValidationResult {
+  const result = validateWrongQuestionOrganizerModelDecisionV4(input, context);
+  return result.ok
+    ? result
+    : {
+        ok: false,
+        reasonCode: mapV4FailureToLegacyReason(result.diagnostic.reasonCode),
+      };
+}
+
+export function validateWrongQuestionOrganizerModelDecisionV4(
+  input: unknown,
+  context: WrongQuestionOrganizerDecisionContext,
+): WrongQuestionOrganizerV4DecisionValidationResult {
   const cloned = clonePlainModelData(input);
-  if (!cloned.ok) return { ok: false, reasonCode: 'schema_invalid' };
+  if (!cloned.ok) return v4Failure('raw_schema', 'schema', 'schema_invalid');
   const parsed = WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA.safeParse(cloned.value);
-  if (!parsed.success) return { ok: false, reasonCode: 'schema_invalid' };
+  if (!parsed.success) return v4Failure('raw_schema', 'schema', 'schema_invalid');
 
   const clonedContext = clonePlainModelData(context);
-  if (!clonedContext.ok) return { ok: false, reasonCode: 'context_invalid' };
+  if (!clonedContext.ok) {
+    return v4Failure('dynamic_contract', 'context', 'context_invalid');
+  }
   const parsedContext = WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA.safeParse(
     clonedContext.value,
   );
   if (!parsedContext.success) {
-    return { ok: false, reasonCode: 'context_invalid' };
+    return v4Failure('dynamic_contract', 'context', 'context_invalid');
   }
   const safeContext = parsedContext.data;
 
   const seen = new Set<number>();
   for (const decision of parsed.data.decisions) {
     if (decision.questionIndex >= safeContext.questions.length) {
-      return { ok: false, reasonCode: 'question_index_out_of_range' };
+      return v4Failure('dynamic_contract', 'question_index', 'question_index_out_of_range');
     }
     if (seen.has(decision.questionIndex)) {
-      return { ok: false, reasonCode: 'duplicate_question_index' };
+      return v4Failure('dynamic_contract', 'question_index', 'duplicate_question_index');
     }
     seen.add(decision.questionIndex);
   }
   if (parsed.data.decisions.length !== safeContext.questions.length) {
-    return { ok: false, reasonCode: 'question_count_mismatch' };
+    return v4Failure('dynamic_contract', 'question_index', 'question_count_mismatch');
   }
 
   for (const decision of parsed.data.decisions) {
     const question = safeContext.questions[decision.questionIndex];
     if (question === undefined) {
-      return { ok: false, reasonCode: 'question_index_out_of_range' };
+      return v4Failure('dynamic_contract', 'question_index', 'question_index_out_of_range');
     }
-    if (!subjectAssociationIsValid(question.subjectHint, decision.subject)) {
-      return { ok: false, reasonCode: 'subject_authority_violation' };
+    if (question.subjectHint !== 'unknown' && decision.subject !== 'keep_local') {
+      return v4Failure('dynamic_contract', 'subject', 'known_subject_requires_keep_local');
+    }
+    if (question.subjectHint === 'unknown' && decision.subject === 'keep_local') {
+      return v4Failure('dynamic_contract', 'subject', 'unknown_subject_requires_bounded_subject');
     }
 
     const resolvedSubject =
       decision.subject === 'keep_local' ? question.subjectHint : decision.subject;
     if (resolvedSubject === 'unknown') {
-      return { ok: false, reasonCode: 'subject_authority_violation' };
+      return v4Failure('dynamic_contract', 'subject', 'subject_unresolved');
     }
 
     if (decision.deck.action === 'reuse_existing') {
       const deckPolicy = deckAssociationPolicy(decision.deck.action);
       if (deckPolicy === undefined) {
-        return { ok: false, reasonCode: 'invalid_evidence_association' };
+        return v4Failure('dynamic_contract', 'evidence', 'deck_action_evidence_missing');
       }
       const deck = safeContext.decks[decision.deck.deckIndex];
       if (deck === undefined) {
-        return { ok: false, reasonCode: 'deck_index_out_of_range' };
+        return v4Failure('dynamic_contract', 'deck', 'deck_index_out_of_range');
       }
       if (deckPolicy.sameResolvedSubject && deck.subject !== resolvedSubject) {
-        return { ok: false, reasonCode: 'cross_subject_deck' };
+        return v4Failure('dynamic_contract', 'deck', 'cross_subject_deck');
       }
     } else if (!topicLabelIsSafe(decision.deck.topicLabel)) {
-      return { ok: false, reasonCode: 'unsafe_topic_label' };
+      return v4Failure('dynamic_contract', 'topic', 'topic_label_invalid');
     }
 
-    if (!evidenceAssociationIsValid(decision)) {
-      return { ok: false, reasonCode: 'invalid_evidence_association' };
+    if (
+      decision.subject ===
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.requiredSubject &&
+      !evidenceRequirementIsSatisfied(
+        decision.evidenceCodes,
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.evidence,
+      )
+    ) {
+      return v4Failure('dynamic_contract', 'evidence', 'known_subject_evidence_missing');
+    }
+    const deckPolicy = deckAssociationPolicy(decision.deck.action);
+    if (
+      deckPolicy === undefined ||
+      !evidenceRequirementIsSatisfied(decision.evidenceCodes, deckPolicy.evidence)
+    ) {
+      return v4Failure('dynamic_contract', 'evidence', 'deck_action_evidence_missing');
+    }
+    if (
+      decision.confidence === 'high' &&
+      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.forbiddenEvidenceCodes.some(
+        (code) => decision.evidenceCodes.includes(code),
+      )
+    ) {
+      return v4Failure('dynamic_contract', 'confidence', 'confidence_evidence_conflict');
     }
   }
 
   return { ok: true, value: parsed.data };
+}
+
+function v4Failure(
+  stage: WrongQuestionOrganizerV4ValidationStage,
+  axis: WrongQuestionOrganizerV4ValidationAxis,
+  reasonCode: WrongQuestionOrganizerV4FailureReason,
+): WrongQuestionOrganizerV4DecisionValidationResult {
+  return { ok: false, diagnostic: { stage, axis, reasonCode } };
+}
+
+function v4StageAndAxisForReason(reasonCode: WrongQuestionOrganizerV4FailureReason): Readonly<{
+  stage: WrongQuestionOrganizerV4ValidationStage;
+  axis: WrongQuestionOrganizerV4ValidationAxis;
+}> {
+  switch (reasonCode) {
+    case 'schema_invalid':
+      return { stage: 'raw_schema', axis: 'schema' };
+    case 'context_invalid':
+      return { stage: 'dynamic_contract', axis: 'context' };
+    case 'question_count_mismatch':
+    case 'duplicate_question_index':
+    case 'question_index_out_of_range':
+      return { stage: 'dynamic_contract', axis: 'question_index' };
+    case 'known_subject_requires_keep_local':
+    case 'unknown_subject_requires_bounded_subject':
+    case 'subject_unresolved':
+      return { stage: 'dynamic_contract', axis: 'subject' };
+    case 'deck_index_out_of_range':
+    case 'cross_subject_deck':
+      return { stage: 'dynamic_contract', axis: 'deck' };
+    case 'topic_label_invalid':
+      return { stage: 'dynamic_contract', axis: 'topic' };
+    case 'known_subject_evidence_missing':
+    case 'deck_action_evidence_missing':
+      return { stage: 'dynamic_contract', axis: 'evidence' };
+    case 'confidence_evidence_conflict':
+      return { stage: 'dynamic_contract', axis: 'confidence' };
+  }
+}
+
+function mapV4FailureToLegacyReason(
+  reasonCode: WrongQuestionOrganizerV4FailureReason,
+): WrongQuestionOrganizerDecisionReasonCode {
+  switch (reasonCode) {
+    case 'known_subject_requires_keep_local':
+    case 'unknown_subject_requires_bounded_subject':
+    case 'subject_unresolved':
+      return 'subject_authority_violation';
+    case 'topic_label_invalid':
+      return 'unsafe_topic_label';
+    case 'known_subject_evidence_missing':
+    case 'deck_action_evidence_missing':
+    case 'confidence_evidence_conflict':
+      return 'invalid_evidence_association';
+    default:
+      return reasonCode;
+  }
 }
 
 function topicLabelIsSafe(value: string): boolean {
@@ -456,46 +618,6 @@ function topicLabelIsSafe(value: string): boolean {
     maxUtf16CodeUnits: 24,
     rejectToolOrWriteInstruction: true,
   }).ok;
-}
-
-function evidenceAssociationIsValid(
-  decision: WrongQuestionOrganizerModelDecision['decisions'][number],
-): boolean {
-  if (
-    decision.confidence === 'high' &&
-    WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.forbiddenEvidenceCodes.some((code) =>
-      decision.evidenceCodes.includes(code),
-    )
-  ) {
-    return false;
-  }
-  if (
-    decision.subject === WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.requiredSubject &&
-    !evidenceRequirementIsSatisfied(
-      decision.evidenceCodes,
-      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.evidence,
-    )
-  ) {
-    return false;
-  }
-  const deckPolicy = deckAssociationPolicy(decision.deck.action);
-  return (
-    deckPolicy !== undefined &&
-    evidenceRequirementIsSatisfied(decision.evidenceCodes, deckPolicy.evidence)
-  );
-}
-
-function subjectAssociationIsValid(
-  subjectHint: WrongQuestionOrganizerSubject | 'unknown',
-  subject: WrongQuestionOrganizerModelSubject,
-): boolean {
-  if (subjectHint !== 'unknown') {
-    return subject === WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.requiredSubject;
-  }
-  return (
-    subject !== 'keep_local' &&
-    WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.unknownSubject.allowedSubjects.includes(subject)
-  );
 }
 
 function deckAssociationPolicy(action: WrongQuestionOrganizerDeckAction) {

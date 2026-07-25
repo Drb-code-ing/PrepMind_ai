@@ -941,3 +941,18 @@ V4 已冻结新的 runner/prompt/runtime-evidence/approval/marker/journal/eviden
 V3 breaker/journal 原则不变；merger 不得自动补 evidence 或修正越权 subject。R1--R5 只允许
 zero-network/static/Mock；checkpoint 与新的精确授权完成前不得执行 V4 Live。证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r0-zero-provider-postmortem.md`。
+
+V4 R1 完成回执：新增独立 `phase-6.9.7-v4-bounded-diagnostics-v1`，case 必须互斥为
+not-started、contract failure、semantic mismatch 或 semantic match；合同失败另固定
+provider/schema/dynamic/merger/usage/latency/safety stage。Tutor 只保留七个布尔语义轴，Organizer
+只保留 subject/deck/topic/evidence/confidence 五轴；任何题目、prompt、raw output、Provider 原始
+错误、真实 ID 或凭据都不进入该合同。
+
+Organizer 已使用唯一 `context/index -> subject -> deck -> topic -> evidence -> confidence` validator
+reason 链；legacy API 只映射同一结果，产品 merger 复用成功 validation 且仍由本地掌握 ID、名称和
+写权限。72-case report aggregate 必须由 entries 重算；重复、篡改、跨 agent、guard/runtime 错配和
+额外字段全部 fail-closed。V1/V2/V3 V4 字段 absent、旧 validator 拒绝 V4、V4 validator 拒绝旧
+report，synthetic SHA 不变。focused `32/32`、Agent `635/635`、typecheck/lint/Prettier/diff check
+通过；未读取 credential、调用 Provider、创建 V4 runner/CLI/Live artifact、启动 Docker/API/browser
+或修改业务数据。下一步仅 R2 Tutor policy；R5 与新精确授权前不得执行 V4 Live。证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`。

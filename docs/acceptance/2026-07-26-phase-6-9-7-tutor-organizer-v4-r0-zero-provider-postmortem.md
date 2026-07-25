@@ -117,9 +117,10 @@ controlled-Live 的一次性精确授权。
 
 ## 7. 当前结论与下一步
 
-Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。下一步是 R1：实现 V4-only
-bounded diagnostics 与历史兼容测试，保持 zero-network。R1--R5 完成后必须停止请求新的精确 V4
-Live 授权。
+Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。本 R0 检查点当时下一步是
+R1 V4-only bounded diagnostics 与历史兼容测试；后续 R1 已保持 zero-network 完成，见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`，当前下一步仅 R2。R1--R5
+完成后仍必须停止请求新的精确 V4 Live 授权。
 
 回顾时可以问：
 

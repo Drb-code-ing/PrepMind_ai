@@ -15,6 +15,7 @@ import {
   WRONG_QUESTION_ORGANIZER_SUBJECTS,
   formatWrongQuestionOrganizerAssociationPolicyForPrompt,
   validateWrongQuestionOrganizerModelDecision,
+  type WrongQuestionOrganizerDecisionValidationResult,
   type WrongQuestionOrganizerDecisionReasonCode,
   type WrongQuestionOrganizerModelDecision,
   type WrongQuestionOrganizerSubject,
@@ -241,23 +242,16 @@ export async function runWrongQuestionOrganizerModelCandidate(
 ): Promise<WrongQuestionOrganizerModelCandidateEnvelope> {
   const valid = validateInput(input);
   if (!valid.ok) {
-    return localEnvelope(
-      valid.value,
-      'fallback_invalid_input',
-      valid.budget,
-      ['no_candidate_items'],
-    );
+    return localEnvelope(valid.value, 'fallback_invalid_input', valid.budget, [
+      'no_candidate_items',
+    ]);
   }
 
   if (!valid.ownerEligible) {
-    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [
-      'owner_ineligible',
-    ]);
+    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, ['owner_ineligible']);
   }
   if (!valid.snapshotCurrent) {
-    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [
-      'stale_snapshot',
-    ]);
+    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, ['stale_snapshot']);
   }
 
   const abort = readAbortState(valid.signal);
@@ -267,25 +261,15 @@ export async function runWrongQuestionOrganizerModelCandidate(
     ]);
   }
   if (abort.aborted) {
-    return localEnvelope(valid.localResults, 'fallback_aborted', valid.budget, [
-      'ABORTED',
-    ]);
+    return localEnvelope(valid.localResults, 'fallback_aborted', valid.budget, ['ABORTED']);
   }
   if (!valid.force && valid.items.some((item) => item.hasExistingItem)) {
-    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [
-      'existing_item',
-    ]);
+    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, ['existing_item']);
   }
 
-  const projected = projectWrongQuestionOrganizerSnapshotForCandidate(
-    valid.projectionSource,
-  );
+  const projected = projectWrongQuestionOrganizerSnapshotForCandidate(valid.projectionSource);
   if (!projected.ok) {
-    return projectionFailureEnvelope(
-      valid.localResults,
-      valid.budget,
-      projected.reasonCode,
-    );
+    return projectionFailureEnvelope(valid.localResults, valid.budget, projected.reasonCode);
   }
   if (
     !projectionAssociationIsValid({
@@ -310,16 +294,12 @@ export async function runWrongQuestionOrganizerModelCandidate(
       deckIdsByOrdinal: projected.deckIdsByOrdinal,
     })
   ) {
-    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [
-      'exact_deck_match',
-    ]);
+    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, ['exact_deck_match']);
   }
 
   const highConfidenceReason = highConfidenceLocalReason(valid.items, valid.localResults);
   if (highConfidenceReason !== null) {
-    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [
-      highConfidenceReason,
-    ]);
+    return localEnvelope(valid.localResults, 'not_eligible', valid.budget, [highConfidenceReason]);
   }
 
   const userPrompt = JSON.stringify(projected.value);
@@ -329,12 +309,9 @@ export async function runWrongQuestionOrganizerModelCandidate(
     SCHEMA_DESCRIPTOR,
   ]);
   if (estimatedInputTokens > MAX_INPUT_TOKENS) {
-    return localEnvelope(
-      valid.localResults,
-      'fallback_budget_exceeded',
-      valid.budget,
-      ['INPUT_BUDGET_EXCEEDED'],
-    );
+    return localEnvelope(valid.localResults, 'fallback_budget_exceeded', valid.budget, [
+      'INPUT_BUDGET_EXCEEDED',
+    ]);
   }
 
   const reservation = reserveModelAgentBudget(valid.budget, {
@@ -391,10 +368,7 @@ export async function runWrongQuestionOrganizerModelCandidate(
     })),
     decks: projected.value.decks.map((deck) => ({ subject: deck.subject })),
   } as const;
-  const decision = validateWrongQuestionOrganizerModelDecision(
-    runtimeResult.data,
-    context,
-  );
+  const decision = validateWrongQuestionOrganizerModelDecision(runtimeResult.data, context);
   if (!decision.ok) {
     return attemptedEnvelope(
       valid.localResults,
@@ -406,14 +380,14 @@ export async function runWrongQuestionOrganizerModelCandidate(
     );
   }
 
-  const merged = mergeWrongQuestionOrganizerModelDecision({
+  const merged = mergeValidatedWrongQuestionOrganizerModelDecision({
     items: valid.items,
     projection: projected.value,
     questionIdsByOrdinal: projected.questionIdsByOrdinal,
     deckIdsByOrdinal: projected.deckIdsByOrdinal,
     questionAuthoritiesByOrdinal: projected.questionAuthoritiesByOrdinal,
     deckAuthoritiesByOrdinal: projected.deckAuthoritiesByOrdinal,
-    decision: decision.value,
+    validation: decision,
   });
   if (merged === null) {
     return attemptedEnvelope(
@@ -445,20 +419,46 @@ export function mergeWrongQuestionOrganizerModelDecision(input: {
   deckAuthoritiesByOrdinal: readonly WrongQuestionOrganizerDeckAuthority[];
   decision: WrongQuestionOrganizerModelDecision;
 }): readonly WrongQuestionOrganizerResult[] | null {
+  return mergeWrongQuestionOrganizerModelDecisionInternal({
+    ...input,
+    validation: null,
+  });
+}
+
+function mergeValidatedWrongQuestionOrganizerModelDecision(input: {
+  items: readonly WrongQuestionOrganizerModelCandidateItem[];
+  projection: WrongQuestionOrganizerModelProjection;
+  questionIdsByOrdinal: readonly string[];
+  deckIdsByOrdinal: readonly string[];
+  questionAuthoritiesByOrdinal: readonly WrongQuestionOrganizerQuestionAuthority[];
+  deckAuthoritiesByOrdinal: readonly WrongQuestionOrganizerDeckAuthority[];
+  validation: WrongQuestionOrganizerDecisionValidationResult;
+}): readonly WrongQuestionOrganizerResult[] | null {
+  return mergeWrongQuestionOrganizerModelDecisionInternal({
+    ...input,
+    decision: null,
+  });
+}
+
+function mergeWrongQuestionOrganizerModelDecisionInternal(input: {
+  items: readonly WrongQuestionOrganizerModelCandidateItem[];
+  projection: WrongQuestionOrganizerModelProjection;
+  questionIdsByOrdinal: readonly string[];
+  deckIdsByOrdinal: readonly string[];
+  questionAuthoritiesByOrdinal: readonly WrongQuestionOrganizerQuestionAuthority[];
+  deckAuthoritiesByOrdinal: readonly WrongQuestionOrganizerDeckAuthority[];
+  decision: WrongQuestionOrganizerModelDecision | null;
+  validation: WrongQuestionOrganizerDecisionValidationResult | null;
+}): readonly WrongQuestionOrganizerResult[] | null {
   try {
     const items = cloneCandidateItems(input.items);
     const projection = cloneProjection(input.projection);
-    const questionIdsByOrdinal = cloneStringMap(
-      input.questionIdsByOrdinal,
-      MAX_QUESTIONS,
-    );
+    const questionIdsByOrdinal = cloneStringMap(input.questionIdsByOrdinal, MAX_QUESTIONS);
     const deckIdsByOrdinal = cloneStringMap(input.deckIdsByOrdinal, MAX_DECKS);
     const questionAuthoritiesByOrdinal = cloneQuestionAuthorities(
       input.questionAuthoritiesByOrdinal,
     );
-    const deckAuthoritiesByOrdinal = cloneDeckAuthorities(
-      input.deckAuthoritiesByOrdinal,
-    );
+    const deckAuthoritiesByOrdinal = cloneDeckAuthorities(input.deckAuthoritiesByOrdinal);
     if (
       items === null ||
       projection === null ||
@@ -478,12 +478,17 @@ export function mergeWrongQuestionOrganizerModelDecision(input: {
       return null;
     }
 
-    const validation = validateWrongQuestionOrganizerModelDecision(input.decision, {
-      questions: projection.questions.map((question) => ({
-        subjectHint: question.subjectHint,
-      })),
-      decks: projection.decks.map((deck) => ({ subject: deck.subject })),
-    });
+    const validation = input.validation
+      ? input.validation
+      : input.decision === null
+        ? null
+        : validateWrongQuestionOrganizerModelDecision(input.decision, {
+            questions: projection.questions.map((question) => ({
+              subjectHint: question.subjectHint,
+            })),
+            decks: projection.decks.map((deck) => ({ subject: deck.subject })),
+          });
+    if (validation === null) return null;
     if (!validation.ok) return null;
 
     const deckAuthorityById = new Map(
@@ -502,9 +507,7 @@ export function mergeWrongQuestionOrganizerModelDecision(input: {
       }
 
       const resolvedSubject =
-        decision.subject === 'keep_local'
-          ? questionProjection.subjectHint
-          : decision.subject;
+        decision.subject === 'keep_local' ? questionProjection.subjectHint : decision.subject;
       if (resolvedSubject === 'unknown') throw new Error('unresolved subject');
       const subject =
         decision.subject === 'keep_local'
@@ -559,8 +562,8 @@ function validateInput(input: unknown): ValidInput | InvalidInput {
       return { ok: false, value: SAFE_INVALID_RESULTS, budget: SAFE_INVALID_BUDGET };
     }
     const items = cloneCandidateItems(source.values.items);
-    const localResults = items?.map((item) => organizeWrongQuestion(item.deterministicInput)) ??
-      SAFE_INVALID_RESULTS;
+    const localResults =
+      items?.map((item) => organizeWrongQuestion(item.deterministicInput)) ?? SAFE_INVALID_RESULTS;
     const budget = cloneBudget(source.values.budget) ?? SAFE_INVALID_BUDGET;
     const runtime = snapshotRuntime(source.values.runtime);
     const signal = source.values.signal;
@@ -618,9 +621,9 @@ const REQUIRED_INPUT_KEYS = [
   'budget',
 ] as const;
 
-function readPlainInputObject(input: unknown):
-  | { ok: true; values: Record<string, unknown> }
-  | { ok: false } {
+function readPlainInputObject(
+  input: unknown,
+): { ok: true; values: Record<string, unknown> } | { ok: false } {
   if (typeof input !== 'object' || input === null) return { ok: false };
   const prototype: unknown = Object.getPrototypeOf(input);
   if (prototype !== Object.prototype && prototype !== null) return { ok: false };
@@ -770,7 +773,10 @@ function projectionAssociationIsValid(input: {
       authority.subject !== projection.subject ||
       !sameLocalDeck(local, authority) ||
       projection.name !==
-        truncateUnicodeScalars(normalizeProjectionText(authority.name), MAX_PROJECTED_DECK_NAME_SCALARS) ||
+        truncateUnicodeScalars(
+          normalizeProjectionText(authority.name),
+          MAX_PROJECTED_DECK_NAME_SCALARS,
+        ) ||
       !sameOrderedValues(
         projection.keywords,
         authority.keywords
@@ -837,19 +843,14 @@ function hasExactStructuredDeckMatch(input: {
     const deck = input.projection.decks[deckIndex];
     if (!deck || deck.subject !== question.subjectHint) return false;
     const expected = normalizeMatchLabel(structuredLabel);
-    return [deck.name, ...deck.keywords].some(
-      (value) => normalizeMatchLabel(value) === expected,
-    );
+    return [deck.name, ...deck.keywords].some((value) => normalizeMatchLabel(value) === expected);
   });
 }
 
 function highConfidenceLocalReason(
   items: readonly SafeCandidateItem[],
   localResults: readonly WrongQuestionOrganizerResult[],
-):
-  | 'high_confidence_knowledge_point'
-  | 'high_confidence_category_error'
-  | null {
+): 'high_confidence_knowledge_point' | 'high_confidence_category_error' | null {
   for (let index = 0; index < items.length; index += 1) {
     const wrongQuestion = items[index]?.deterministicInput.wrongQuestion;
     const local = localResults[index];
@@ -946,9 +947,9 @@ function projectionFailureEnvelope(
   return localEnvelope(results, 'fallback_invalid_input', budget, [reasonCode]);
 }
 
-function readAbortState(signal: AbortSignal | undefined):
-  | { ok: true; aborted: boolean }
-  | { ok: false } {
+function readAbortState(
+  signal: AbortSignal | undefined,
+): { ok: true; aborted: boolean } | { ok: false } {
   if (signal === undefined) return { ok: true, aborted: false };
   try {
     return typeof signal.aborted === 'boolean'
@@ -993,9 +994,7 @@ async function invokeRuntime(input: {
 }
 
 function toModelAgentErrorCode(code: string): ModelAgentErrorCode {
-  return code === 'INVALID_MODEL_AGENT_BUDGET'
-    ? 'INVALID_REQUEST'
-    : (code as ModelAgentErrorCode);
+  return code === 'INVALID_MODEL_AGENT_BUDGET' ? 'INVALID_REQUEST' : (code as ModelAgentErrorCode);
 }
 
 function localEnvelope(
