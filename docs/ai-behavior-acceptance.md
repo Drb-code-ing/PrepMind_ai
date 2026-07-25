@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R3）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R4）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R3。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；72-case strict paired Mock 工程门、Compose allowlist、tracked defaults、角色隔离、回滚合同和全量静态/E2E checkpoint 均已通过。V1 的 strict runtime/语义门失败；V2 的 48 个 runtime 又全部在结构化对象形成前失败。V3 R0 冻结 failure evidence、breaker、固定分母、双 lane 与 crash seal 方案；V3 R1 已实现安全诊断投影、真实 0/1 invocation recorder 和零网络 compatibility harness；V3 R2 已实现 guard-first、首个 runtime contract failure 熔断、固定 48 分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 与 usage/P95/费用不完整 fail-closed；V3 R3 已实现独立 CLI/授权 lineage、dispatch-before-call hash-chain journal、活 owner/recovery claim、零网络 orphan seal 与不可覆盖 evidence。R3 仍未调用 Provider。产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。数值与边界以本节、V1/V2 acceptance 与 V3 design 为准。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R4。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R3 已完成安全诊断、首错熔断、固定分母、双 lane ledger 与 crash-safe evidence；R4 又完成 fresh Mock、breaker/failure report、分支全量静态门、PostgreSQL E2E、历史不可变性和独立复审。R0--R4 均未调用 Provider。V1/V2 质量失败不变，V3 产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -312,14 +312,28 @@ V1/V2 双向隔离。marker `wx` 后、executor 创建前先 fsync journal 初�
 `dispatch_started` 也必须先 fsync。append-only JSONL 以 sequence/previous SHA/record SHA 验证
 guard、dispatch、runtime/pair terminal、breaker、run complete 与 seal 状态机。活 marker owner
 不能被误封；死 owner 由 token recovery claim 单胜者接管，同 claim 只允许一个 appender，takeover
-后旧 appender 与旧 release 被 fence。dispatch 无 terminal 保守封存为
+后旧 appender 被 fence；release 防护依赖单主机 PID liveness，不冒充跨主机或 false-liveness 下的
+原子 lease。dispatch 无 terminal 保守封存为
 `attempted_orphaned/unknown_after_attempt`，从未 dispatch 为
 `not_started_orphaned/absent_not_attempted`，永不 resume/replay/retry。evidence 使用随机 temp
-`wx` + fsync + hard-link final，same bytes 幂等，不同 bytes 拒绝覆盖。durability `21/21`、V3
-focused `50/50`、Agent `629/629`、AI `199/199`、V1/V2 validator 与四个历史 SHA 通过，V3 Live
+`wx` + fsync + hard-link final，same bytes 幂等，不同 bytes 拒绝覆盖。durability `21/21` tests、
+`228 expect()`，V3 focused `50/50`、Agent `629/629`、AI `199/199`、V1/V2 validator 与四个历史 SHA 通过，V3 Live
 artifact=0。没有读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。下一步仅 R4 分支
-static/Mock checkpoint 与独立复审，当前仍不是 Live。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。该检查点当时下一步仅 R4；
+后续 R4 已完成。
+
+V3 R4 当前证据：fresh Mock run `116cc321-962f-426c-8a91-f05ab8debc93` 为 `24/24`
+zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`、P95
+`246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`，V3 validator 通过；Mock
+按 Live-only authority 仍为 `quality_gate_failed`，evidence 已精确删除。首对 strict failure 的
+breaker report 只启动两个 lane，余下 46 runtime 为 0-call 且固定分母仍为 48。V3 focused
+`50/50`、Agent `629/629`、AI `199/199`、Types `42/42`、Server `2154` tests、Web
+`439/439`、Organizer PostgreSQL E2E `12/12`、Compose quiet 与相关 typecheck/lint/build 通过；
+测试账号残留为 0。V1/V2 四 SHA 与 validator 不变，V3 Live artifact=0、tracked gates=false、
+component credential empty。没有读取根 `.env`/key、调用 Provider、启动产品 API/browser 或开始
+Task 13/main。证据见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`。当前必须停在新的 V3
+branch controlled-Live 精确授权门。
 
 ## 8. Reflexion / Critic 验收要求
 

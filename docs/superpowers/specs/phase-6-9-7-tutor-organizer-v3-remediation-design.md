@@ -2,10 +2,10 @@
 
 日期：2026-07-24
 
-状态：R0 零 Provider 设计、R1 安全诊断/零网络 compatibility、R2 paired scheduler/report 与
-R3 crash-safe evidence 已完成。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3
-尚未执行 controlled-Live 或产品路径，也没有获得任何新网络授权。下一步仅 R4 static/Mock
-checkpoint 与独立复审。
+状态：R0--R4 已完成。fresh V3 Mock、breaker/failure report、全量静态门、PostgreSQL E2E、
+历史不可变性与独立复审已关闭。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3
+尚未执行 controlled-Live 或产品路径，也没有获得任何新网络授权。当前停在新的 V3
+controlled-Live 精确授权门。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -420,7 +420,7 @@ journal writer close 会 drain 已接受 append。该 claim 不作为跨主机�
 symlink、错误路径与 hash mismatch 均 fail-closed。该本地合同覆盖进程崩溃与受测 I/O 故障，不
 声明突然断电后的目录元数据持久性或 Provider exactly-once。
 
-durability `21/21`、V3 focused `50/50`、Agent `629/629`、AI `199/199`、V1/V2 validator 与四个
+durability `21/21` tests、`228 expect()`，V3 focused `50/50`、Agent `629/629`、AI `199/199`、V1/V2 validator 与四个
 历史 SHA 通过；V3 Live marker/journal/evidence/recovery claim 为 0。没有读取 credential、调用
 Provider、启动 Docker/API/browser 或修改业务数据。验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。
@@ -462,6 +462,11 @@ R4 必须在同一 clean HEAD 完成：
 
 Mock 即使满分也必须是 `quality_gate_failed`，因为 `mock_synthetic` / `synthetic_test` 不是语义
 authority。checkpoint 通过后必须停止并请求新的精确 V3 branch controlled-Live 授权。
+
+R4 已按此合同完成：fresh V3 Mock 为 `24/24` zero-call、`48/48` strict runtime、Tutor/Organizer
+semantic `1/1`；首对 strict failure 的 breaker report 只启动 Tutor/Organizer 各一次并保持余下
+46 个 runtime 0-call、固定分母 48。权威证据见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`。
 
 ## 12. 唯一 V3 controlled-Live
 

@@ -10,7 +10,7 @@ R7 唯一 V2 branch controlled-Live run `67ce18dd-e2ed-4a05-8507-2a98898b8ede` �
 `quality_gate_failed` 封存：`24/24` zero-call 通过，但 `0/48` strict runtime、Tutor/Organizer
 semantic `0/0`、verified usage `0`。V2 marker/evidence 已消费且不得重跑；V2 R8--R11 永久
 不适用。后续 V3 R0 零 Provider 设计、R1 安全诊断/零网络 compatibility、R2 strict-gate
-breaker/双 lane ledger/固定分母与 R3 crash-safe evidence 均已完成，当前下一步仅 R4 static/Mock。
+breaker/双 lane ledger/固定分母与 R3 crash-safe evidence 均已完成，后续 R4 已完成；当前停在新的 V3 Live 精确授权门 static/Mock。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md`

@@ -5,11 +5,10 @@ Provider failure 证据、zero-network compatibility preflight、strict-gate bre
 dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock checkpoint 后停止并重新
 申请一次 V3 controlled-Live，只有全门通过才进入产品验收。
 
-**当前状态：** R0 零 Provider 设计、R1 安全诊断/零网络 compatibility、R2 strict-gate
-breaker/双 lane ledger/固定分母与 R3 crash-safe evidence 均已完成；R4 尚未实现。V3 没有读取
-credential、调用 Provider、创建真实 Live marker/journal/evidence、启动 Docker/API/browser 或修改
-业务数据。下一步仅 R4 static/Mock checkpoint 与独立复审，不是直接执行 Live、R6 产品验收、
-Task 13/main 或 Phase 6.10。
+**当前状态：** R0--R4 均已完成；fresh V3 Mock、breaker/failure report、分支全量静态门、
+PostgreSQL E2E、历史不可变性与独立复审已关闭。V3 没有读取 credential、调用 Provider、创建真实
+Live marker/journal/evidence、启动产品 API/browser 或修改真实业务数据。当前必须停在新的 V3
+controlled-Live 精确授权门，不得直接执行 R5、R6 产品验收、Task 13/main 或 Phase 6.10。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`
@@ -156,7 +155,7 @@ Agent full/typecheck/lint/diff。
 
 ## R3：独立 V3 CLI、journal 与不可重放 evidence
 
-**状态：** [x] 已完成，下一步仅 R4。
+**状态：** [x] 已完成；后续 R4 已完成。
 
 **主要文件：**
 
@@ -191,7 +190,8 @@ Agent full/typecheck/lint/diff。
 - [x] 单主机 PID liveness 下的 stale appender/release takeover fence 与 writer close drain；
 - [x] marker-only、dispatch-without-terminal、terminal、run-complete crash 均零网络 seal 且不重放；
 - [x] temp `wx` + fsync + hard-link final，同字节幂等、不同字节/路径冲突 fail-closed；
-- [x] durability `21/21`、V3 focused `50/50`、Agent `629/629`、AI `199/199`、typecheck/lint；
+- [x] durability `21/21` tests、`228 expect()`，V3 focused `50/50`、Agent `629/629`、AI
+      `199/199`、typecheck/lint；
 - [x] V1/V2 validator 与四历史 SHA 不变，V3 Live artifact/recovery claim 为 0；
 - [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
 
@@ -205,6 +205,9 @@ after dispatch/before final、orphan seal、second seal、link/unlink/EEXIST/orp
 **提交：** `feat(agent): make phase 6.9.7 v3 evidence crash safe`
 
 ## R4：分支 static/Mock checkpoint 与独立复审
+
+**状态：** [x] 已完成。fresh V3 Mock、breaker/failure report、分支全量门、PostgreSQL E2E、
+Compose 默认关闭边界、历史 SHA/validator、零残留与两路复审均已关闭；未调用 Provider。
 
 **动作：**
 
@@ -223,6 +226,9 @@ checkpoint 数值。
 “Phase 6.9.7 Tutor/Organizer V3 branch controlled-Live”精确授权。没有新授权不得继续。
 
 **提交：** `docs(agent): checkpoint phase 6.9.7 v3 remediation`
+
+验收：
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`
 
 ## R5：唯一 V3 branch controlled-Live
 

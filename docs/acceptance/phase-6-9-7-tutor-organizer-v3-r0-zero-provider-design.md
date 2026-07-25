@@ -123,7 +123,7 @@ R0 设计不构成任何网络授权。用户之前的 V1/V2 授权都不能复�
 
 Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确认。本 R0 检查点当时的下一步只
 执行 R1 零网络源码，不读取 credential、不调用 Provider、不启动 Docker 产品验收。后续 R1 已
-完成；该检查点当时下一步仅 R2。后续 R2/R3 也已完成，当前下一步仅 R4；证据见
+完成；该检查点当时下一步仅 R2。后续 R2/R3 也已完成，后续 R4 已完成；当前停在新的 V3 Live 精确授权门；证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。V1/V2 不得重跑，R8、
 Task 13/main、Phase 6.10 均不得开始。

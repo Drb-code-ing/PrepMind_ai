@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-07-25 — Phase 6.9.7 V3 R4 static/Mock checkpoint：在
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 上完成 R4 零 Provider 验收。fresh V3 Mock run
+> `116cc321-962f-426c-8a91-f05ab8debc93` 为 `24/24` verified zero-call、`48/48` strict
+> runtime、Tutor/Organizer/combined semantic `1/1/1`，P95 为 `246/328/328/276ms`，verified
+> usage `21948/5647`，估算 `0.099726 CNY`；V3 validator `ok=true`。Mock 仍按 Live-only
+> authority 固定为 `quality_gate_failed`，唯一 evidence 已按 run ID 精确删除。
+>
+> 独立 breaker/failure synthetic report 在 pair 0 注入 Tutor strict schema failure，只实际启动
+> Tutor/Organizer 各一次，余下 46 个 runtime 为 `not_started_quality_breaker`，固定 runtime 分母仍为
+> 48；P95、价格和费用因样本不完整而 fail-closed。没有 Provider 调用或 evidence 文件。
+>
+> V3 focused `50/50`、Agent `629/629`、AI `199/199`、Types `42/42`、Server `2154`
+> tests、Web `439/439`、Organizer PostgreSQL E2E `12/12`、Compose quiet config、相关
+> typecheck/lint/build 均通过。首次 Server full 只因 Docker 未运行而中断；随后仅启动现有 Docker
+> Desktop 与 `docker-postgres-1` 补跑，不 prune、不删容器/镜像/卷。E2E 测试账号残留为 0。
+>
+> V1/V2 四个 SHA 与两版 validator 均保持不变，V3 Live marker/journal/evidence/recovery claim 为
+> 0，两个 tracked gate=false、component credential example 为空。本任务没有读取根 `.env` 或真实
+> key，没有调用 Provider、启动产品 API/browser、开始 Task 13/main 或 Phase 6.10。权威验收：
+> `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`。当前必须停止并
+> 重新取得一次精确 V3 branch controlled-Live 授权。
+>
 > 2026-07-25 — Phase 6.9.7 V3 R3 crash-safe evidence 与不可重放恢复：在
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 上新增完全独立的 V3 CLI、确认词、授权变量、
 > marker、journal、evidence prefix 与 validator；V1/V2 runner、文件和历史 authority 不接受 V3
@@ -16,10 +38,10 @@
 > 删除、补跑、resume、replay 或 retry。journal 缺失只能形成 marker-only 初始化失败证据。
 >
 > orphan sealer 会阻止活 marker owner，死 owner 通过 token 化 recovery claim 单胜者接管；同一
-> claim 只能打开一个 appender，takeover 后旧 appender 被 fence。终审发现旧 lease cleanup 仍会短暂
-> 移动新 owner claim，现已增加 canonical token 前置验证与“stale release rename=0”竞态断言；在
-> 单主机 PID liveness 合同下，已被接管的 stale release 不再触碰新 claim。writer close 会 drain
-> 已接受 append；该机制不冒充跨主机分布式 lease。
+> claim 只能打开一个 appender，takeover 后旧 appender 被 fence。release 增加 canonical token
+> 前置验证与“已明确失去 claim 时 rename=0”断言；其保证依赖单主机 PID liveness。它不承诺在
+> false-liveness、测试 override 或跨主机文件系统上原子消除 `assertOwned -> rename` 的全部
+> TOCTOU。writer close 会 drain 已接受 append；该机制不冒充跨主机分布式 lease。
 >
 > evidence 先过 strict schema、派生字段、敏感字段与 marker/journal SHA 校验，再通过随机 temp
 > `wx` + fsync + hard-link 发布；final 只接受 same bytes 幂等，不同字节和路径冲突拒绝覆盖。R3
@@ -30,8 +52,7 @@
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建真实 V3 Live marker/journal/evidence/recovery claim 或修改业务数据，也没有开始 Task 13、
 > main 合并或推送。权威验收：
-> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。下一步仅 R4 分支
-> static/Mock checkpoint 与独立复审；R4 前没有任何网络授权。回顾时可以问：为什么 dispatch 必须
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。该检查点当时下一步仅 R4；后续 R4 已完成，当前停在新的 V3 Live 精确授权门。回顾时可以问：为什么 dispatch 必须
 > 先 fsync？为什么崩溃后只 seal 不能 resume？为什么 hard-link 不等于 Provider exactly-once？
 >
 > 2026-07-25 — Phase 6.9.7 V3 R2 strict-gate breaker、双 Lane Ledger 与固定分母：在
@@ -93,7 +114,7 @@
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建业务数据或 Live marker/journal/evidence，也没有合并 main 或推送。权威验收：
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。该检查点当时下一步
-> 仅 R2；后续 R2/R3 均已完成，当前下一步仅 R4，仍不是 controlled-Live。
+> 仅 R2；后续 R2/R3/R4 均已完成，当前停在新的 V3 controlled-Live 精确授权门。
 >
 > 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
 > `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker

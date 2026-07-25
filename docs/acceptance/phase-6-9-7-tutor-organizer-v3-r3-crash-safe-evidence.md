@@ -48,9 +48,10 @@ pair_terminal -> breaker_opened? -> run_completed? -> evidence_sealed`；乱序�
   拒绝第二个 sealer，死亡 owner 才允许原子接管。
 - 同一 claim 只能 reserve 一个 journal appender；takeover 后旧 appender 每次 append 前都会重新验证
   token，不能继续写 seal。
-- release 先验证 canonical claim 仍属于当前 token；在单主机 PID liveness 合同下，旧 lease 在新
-  owner 接管后不会进入 rename，也不能删除或短暂移走新 claim。测试明确要求 stale release 的
-  rename 调用数为 0。
+- release 先验证 canonical claim 仍属于当前 token；测试明确要求“已在前置检查发现失去 claim”的
+  stale release 不进入 rename。在单主机 PID liveness 合同中，仍存活 owner 不允许被 takeover；
+  该机制不承诺在 false-liveness、测试 override 或跨主机文件系统上原子消除
+  `assertOwned -> rename` 之间的全部 TOCTOU。
 - journal writer 串行化 append，`close()` 会等待已接受的 append 全部落盘；并发 close 不丢失已接收
   记录。
 
@@ -116,8 +117,9 @@ API 或可见浏览器，没有创建真实 V3 Live artifact，没有修改 Post
 
 ## 9. 下一步与回顾问题
 
-下一步只能执行 R4：在同一分支完成 static/Mock checkpoint、受影响全量门与两路独立终审。R4
-通过后也必须停止，重新取得精确的 V3 branch controlled-Live 授权；当前没有任何网络授权。
+该检查点当时下一步只能执行 R4：在同一分支完成 static/Mock checkpoint、受影响全量门与两路独立
+终审。后续 R4 已完成；当前仍必须停止，重新取得精确的 V3 branch controlled-Live 授权，没有任何
+网络授权。
 
 回顾时可以问：
 
