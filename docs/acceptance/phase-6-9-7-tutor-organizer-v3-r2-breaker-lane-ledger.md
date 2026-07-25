@@ -91,7 +91,7 @@ Docker/API/browser 仍禁止开始。
 
 该检查点当时下一步只能执行 R3：新增独立 V3 CLI、一次性 marker、append-only hash-chain
 journal、crash-only orphan sealer、hard-link evidence publisher 与 V3 validator。后续 R3 已完成；
-后续 R4 已完成；当前停在新的 V3 Live 精确授权门 static/Mock checkpoint 与独立终审，仍不申请或执行 V3 controlled-Live。
+后续 R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封存，R6--R9 不得开始。
 
 回顾时可以问：
 

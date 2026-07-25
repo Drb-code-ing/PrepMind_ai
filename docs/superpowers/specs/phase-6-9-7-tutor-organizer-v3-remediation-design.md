@@ -2,10 +2,10 @@
 
 日期：2026-07-24
 
-状态：R0--R4 已完成。fresh V3 Mock、breaker/failure report、全量静态门、PostgreSQL E2E、
-历史不可变性与独立复审已关闭。V1/V2 两条唯一 controlled-Live 均已失败封存且不得重跑；V3
-尚未执行 controlled-Live 或产品路径，也没有获得任何新网络授权。当前停在新的 V3
-controlled-Live 精确授权门。
+状态：R0--R4 已完成。V1/V2/V3 三条唯一 controlled-Live 均已失败封存且不得重跑。唯一 V3 R5
+run `ff2e1a54...` 在第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict
+runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`；
+marker/journal/evidence 已 durable seal。产品路径、R6--R9、Task 13/main 与 Phase 6.10 不得开始。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -358,7 +358,7 @@ pair 保留为 `not_started_quality_breaker`。Tutor/Organizer 使用独立 Abor
 V3 report 始终保留 72 case、24 guard、48 runtime 与 24 paired index；strict、semantic、usage、
 P95、预算、ledger 和 outcome/category/stage counters 均由 strict schema 重算。首/中/末失败、两种
 lane 完成顺序、abort/orphan race、guard failure、duplicate key、跨 lane usage cap、semantic-only
-mismatch 与 no-leak 回归已通过。V1/V2 validator 与四个历史 SHA 不变，V3 Live artifact 仍为 0。
+mismatch 与 no-leak 回归已通过。V1/V2 validator 与四个历史 SHA 不变；R2 checkpoint 当时 V3 Live artifact 为 0。
 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`。
 
@@ -470,7 +470,7 @@ semantic `1/1`；首对 strict failure 的 breaker report 只启动 Tutor/Organi
 
 ## 12. 唯一 V3 controlled-Live
 
-未来授权必须同时重新确认当时 DeepSeek 账号的数据保留/训练边界，并明确写出
+当时授权必须同时重新确认 DeepSeek 账号的数据保留/训练边界，并明确写出
 “Phase 6.9.7 Tutor/Organizer V3 branch controlled-Live once”。旧 V1/V2 授权不能复用。
 
 执行前仍需零网络 preflight；真实 credential 只在授权后的子进程中映射为两个 component-specific
@@ -492,9 +492,17 @@ semantic `1/1`；首对 strict failure 的 breaker report 只启动 Tutor/Organi
 任一门失败都封存一次性 V3 lineage，不重跑、不进入产品验收。breaker 早停是失败证据，不是可
 补跑的“部分测试”。
 
+实际 R5 已命中该失败分支：唯一 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 保持
+`24/24` guard zero-call；第 14 对 Organizer 的结构化对象在本地动态合同命中
+`subject_authority_violation`，breaker 打开。最终 `27/48` strict runtime、28 个 verified usage、
+20 个 runtime 未启动，Tutor/Organizer semantic `0.5280555556/0.4376201923`；P95、pricing 与总
+CNY 因分母不完整保持 `null`，gate 为 `quality_gate_failed`。权威证据见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
+
 ## 13. 通过后的产品路径
 
-只有 V3 `quality_gate_passed` 才创建新的 V3 产品 lineage：
+**实际状态：不得开始。** 只有 V3 `quality_gate_passed` 才创建新的 V3 产品 lineage；实际 R5 已
+失败封存：
 
 1. Tutor-only Docker Chat：implicit/context/conflict applied、explicit zero-call、forced failure；
 2. Organizer-only API：single/batch、existing/high-confidence zero-call、owner/locked-name、Trace、
@@ -508,7 +516,7 @@ semantic `1/1`；首对 strict failure 的 breaker report 只启动 Tutor/Organi
 9. main acceptance 提交后推送并核对远程 SHA parity。
 
 V2 R8 作为“因 V2 失败而未启动”的历史步骤永久不适用；未来产品验收属于 V3 通过后的新路径，
-不能回填成 V2 成功。
+不能回填成 V2 成功。V3 R6--R9 也因 R5 失败而不适用，不能回填成 V3 成功。
 
 ## 14. 回顾问题
 

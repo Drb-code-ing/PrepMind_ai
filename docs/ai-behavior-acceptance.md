@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R4）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2 两条唯一 Live 的失败终态和 V3 R0--R4。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R3 已完成安全诊断、首错熔断、固定分母、双 lane ledger 与 crash-safe evidence；R4 又完成 fresh Mock、breaker/failure report、分支全量静态门、PostgreSQL E2E、历史不可变性和独立复审。R0--R4 均未调用 Provider。V1/V2 质量失败不变，V3 产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3 三条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R4 已完成安全诊断、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 在 Organizer `subject_authority_violation` 后以 `quality_gate_failed` 封存。产品 Docker/API/浏览器未启动，不能声称两个 Agent 已生产可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -332,8 +332,19 @@ breaker report 只启动两个 lane，余下 46 runtime 为 0-call 且固定分�
 测试账号残留为 0。V1/V2 四 SHA 与 validator 不变，V3 Live artifact=0、tracked gates=false、
 component credential empty。没有读取根 `.env`/key、调用 Provider、启动产品 API/browser 或开始
 Task 13/main。证据见
-`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`。当前必须停在新的 V3
-branch controlled-Live 精确授权门。
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`。R4 当时必须停在新的 V3
+branch controlled-Live 精确授权门；后续 R5 已完成并失败封存。
+
+V3 R5 当前证据：唯一 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 为 `24/24` guard
+zero-call；Tutor/Organizer 各启动 14 个 runtime，28 个 usage 全部 verified。Organizer
+`organizer-runtime-14` 的结构化对象在本地 `dynamic_contract` 命中
+`subject_authority_violation`，首错 breaker 保留固定 48 分母并让剩余 20 个 runtime 不启动。
+最终 strict runtime `27/48`，Tutor/Organizer/combined semantic
+`0.5280555556/0.4376201923/0.4828378739`，P95/pricing/total CNY 因不完整而 fail-closed，gate 为
+`quality_gate_failed`。没有 Provider failure category、critical、permission、mutation 或 broader
+fallback；这证明安全降级和 durable evidence 生效，但不能证明产品模型路径可用。V3
+marker/journal/evidence 已封存且 validator 通过，不得重跑或进入 R6--R9。证据见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R4）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1 与后续 V2 R7 两条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存；V2 为 `0/48` strict runtime 且没有 verified usage，Docker service/API/浏览器产品验收未启动。V3 R0--R3 已完成零 Provider 修复设计、安全诊断、零网络 compatibility、首错熔断、固定分母、双 lane ledger 与 crash-safe evidence；V3 R4 已完成 fresh Mock、breaker/failure report、分支全量门、PostgreSQL E2E、历史不可变性与独立复审。R0--R4 均未调用 Provider。下列合同继续作为历史与 V3 不可放宽的基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7 与 V3 R5 三条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V3 R0--R4 已完成零 Provider 修复设计、安全诊断、零网络 compatibility、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 为 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`，未形成产品质量 authority。Docker service/API/浏览器产品验收未启动。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -898,7 +898,7 @@ durability `21/21`（`228` assertions）、V3 focused `50/50`（`360` assertions
 `629/629`（`6710` assertions）、AI `199/199`（`1054` assertions）、typecheck/lint、V1/V2
 validator、四历史 SHA 与 V3 Live artifact=0 通过。没有读取根 `.env`/credential、调用 Provider、
 启动 Docker/API/browser、修改业务数据或开始 Task 13/main。证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`；该检查点当时下一步仅 R4。后续 R4 已完成，当前停在新的 V3 branch controlled-Live 精确授权门。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`；该检查点当时下一步仅 R4。后续 R4 已完成；该检查点当时停在新的 V3 branch controlled-Live 精确授权门，后续 R5 已失败封存。
 
 V3 R4 完成回执：fresh V3 Mock run `116cc321-962f-426c-8a91-f05ab8debc93` 为 `24/24`
 zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`、P95
@@ -909,5 +909,21 @@ Agent `629/629`、AI `199/199`、Types `42/42`、Server `2154` tests、Web `439/
 PostgreSQL E2E `12/12`、Compose quiet 与相关 typecheck/lint/build 通过；测试账号残留为 0。V1/V2
 四 SHA 和 validator 不变，V3 Live artifact=0，tracked gates=false、component credential empty。
 没有读取根 `.env`/key、调用 Provider、启动产品 API/browser 或开始 Task 13/main。证据见
-`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`；当前必须停在新的 V3
-branch controlled-Live 精确授权门。
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`；R4 当时必须停在新的 V3
+branch controlled-Live 精确授权门；后续 R5 结果如下。
+
+V3 R5 失败回执：用户精确授权的唯一 branch run
+`ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 使用 DeepSeek V4 Pro non-thinking JSON；`24/24`
+guard zero-call 通过。第 14 对 Organizer 的 `organizer-runtime-14` 在结构化对象形成后、本地
+`dynamic_contract` 命中 `subject_authority_violation`，breaker 进入
+`quality_gate_impossible`。最终 executor/usage verified `28/28`、strict runtime `27/48`、剩余
+20 个 runtime 为 `not_started_quality_breaker`；Tutor/Organizer/combined semantic 为
+`0.5280555556/0.4376201923/0.4828378739`。Latency 分母不完整，authority P95、pricing profile 与
+total CNY 均为 `null`，最终 `quality_gate_failed`。
+
+V3 marker/journal/evidence SHA 分别为 `b18a768...be412` / `df14187...d6cff` /
+`e24f4e6...22d25c`；file/bundle validator 通过，98 条 journal 以 `breaker_opened ->
+run_completed(failed) -> evidence_sealed` 结束，recovery claim 为 0。V1/V2 四 SHA 与 validator
+不变，tracked gates=false、component credential empty。V3 不得重跑；R6--R9、产品
+Docker/API/browser、Task 13/main 与 Phase 6.10 均不得开始。证据见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。

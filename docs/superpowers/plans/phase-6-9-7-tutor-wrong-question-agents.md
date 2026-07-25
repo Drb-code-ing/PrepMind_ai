@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-25）：** Task 0--11 已完成。Task 12 V1 run `39a62241...` 与 V2 R7 run `67ce18dd...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成 prompt/contract、anti-overfit、独立 runner/evidence lineage、marker/evidence 并发恢复、Chat abort、Organizer failed Trace、同题 normal/force 与 single/batch PostgreSQL 收敛；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1`。唯一 V2 Live 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象形成前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、critical `1`。V2 marker/evidence 已封存，R8 产品 Docker/API/浏览器未启动，两个 tracked gate 仍关闭，Phase 6.9.7 未完成。V3 R0 已冻结 taxonomy、breaker、固定分母、双 lane、journal/crash seal 与独立 lineage；V3 R1 已实现安全诊断投影、真实 invocation recorder、V1/V2 absent-field 兼容和 zero-network compatibility harness；V3 R2 已实现 guard-first、首个 runtime contract failure 熔断、固定 48 分母、双 lane 独立 abort/预算/故障归属、单 dispatch ledger 与不完整 usage/P95/费用 fail-closed；V3 R3 已实现独立 CLI/授权、dispatch-before-call hash-chain journal、活 owner/recovery claim、零网络 orphan seal 与不可覆盖 evidence；V3 R4 已完成 fresh Mock、breaker/failure report、分支全量静态门、PostgreSQL E2E、历史不可变性与独立复审。当前停在新的 V3 Live 精确授权门，不是产品验收或 Task 13/main 合并。
+**当前状态（2026-07-25）：** Task 0--11 已完成。Task 12 V1 run `39a62241...`、V2 R7 run `67ce18dd...` 与 V3 R5 run `ff2e1a54...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V3 R0--R4 已完成安全诊断、真实 invocation、strict breaker、固定分母、双 lane ledger、dispatch-before-call journal、crash-only seal、不可覆盖 evidence 与 static/Mock checkpoint；唯一 R5 保持 `24/24` guard zero-call，但在第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`。V3 marker/journal/evidence 已 durable seal，两个 tracked gate 仍关闭。R6--R9、产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -351,7 +351,7 @@ V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1 与 V2 R7 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V2 一次性 marker/evidence 已封存且不得重跑；V3 R0--R4 已完成，当前必须停在新的 V3 branch controlled-Live 精确授权门。只有未来新的质量 authority、产品验收与分支最终文档全部通过后，才能另行恢复 main 合并复验与远程推送计划。
+**当前状态：不得开始。** Task 12 V1、V2 R7 与 V3 R5 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1/V2/V3 一次性 marker/evidence 已封存且不得重跑；R6--R9、产品验收、main 合并复验与远程推送计划均停止。只有未来另立版本并形成新的质量 authority、产品验收与分支最终文档后，才能重新规划 main 收尾。
 
 **分支：**
 
@@ -384,3 +384,6 @@ V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediat
 - 两个 production gate 最终恢复 `false`。
 
 随后进入 Phase 6.9.8，不进入 Phase 6.10，也不提前写两篇博客。
+
+实际 V3 R5 已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。下一步只能先做零
+Provider 失败复盘，并由用户决定是否另立新版本。

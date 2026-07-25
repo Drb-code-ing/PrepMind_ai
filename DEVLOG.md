@@ -1,5 +1,30 @@
 # PrepMind AI 开发日志
 
+> 2026-07-25 — Phase 6.9.7 V3 R5 controlled-Live 失败封存：用户重新确认 DeepSeek 数据
+> 保留/训练边界并精确授权唯一一次 V3 branch Live。零网络 preflight 在 clean `8167f9e3` 上通过
+> V3 focused `50/50`、`360 expect()`、V1/V2 四 SHA/validator、V3 artifact=0、tracked
+> gates=false 与 component credential empty；根 `.env` 只验证通用 key 可用，值未输出且文件未修改。
+>
+> 唯一 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 使用 DeepSeek V4 Pro non-thinking JSON。
+> `24/24` guard 保持 provider 前 zero-call；执行到第 14 对时，Organizer
+> `organizer-runtime-14` 的结构化对象在本地 `dynamic_contract` 命中
+> `subject_authority_violation`，breaker 进入 `quality_gate_impossible`。最终 28 个 runtime 启动且
+> usage 全部 verified，`27/48` strict runtime，剩余 20 个保持
+> `not_started_quality_breaker`；Tutor/Organizer/combined semantic 为
+> `0.5280555556/0.4376201923/0.4828378739`，最终 `quality_gate_failed`。
+>
+> Marker SHA 为 `b18a768...be412`，journal SHA 为 `df14187...d6cff`，evidence SHA 为
+> `e24f4e6...22d25c`。98 条 journal 最后依次为 `breaker_opened`、`run_completed(failed)`、
+> `evidence_sealed`；V3 file/bundle validator 均通过，recovery claim 为 0。28 个 runtime token
+> `21771/1781` 可验证，但固定 48 分母不完整，P95、pricing profile 与 total CNY 按合同保持
+> `null`，供应商账单仍是外部 authority。
+>
+> 本次没有 Provider failure category、critical、permission、mutation 或 broader fallback；这只证明
+> 安全与 durable failure path 工作，不形成产品质量 authority。V3 一次性授权已经消费，不得重跑、
+> 补跑或改写 V1/V2/V3 历史；R6--R9、产品 Docker/API/browser、Task 13/main、远程推送与 Phase
+> 6.10 均不得开始。权威验收：
+> `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
+>
 > 2026-07-25 — Phase 6.9.7 V3 R4 static/Mock checkpoint：在
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 上完成 R4 零 Provider 验收。fresh V3 Mock run
 > `116cc321-962f-426c-8a91-f05ab8debc93` 为 `24/24` verified zero-call、`48/48` strict
@@ -52,7 +77,7 @@
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建真实 V3 Live marker/journal/evidence/recovery claim 或修改业务数据，也没有开始 Task 13、
 > main 合并或推送。权威验收：
-> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。该检查点当时下一步仅 R4；后续 R4 已完成，当前停在新的 V3 Live 精确授权门。回顾时可以问：为什么 dispatch 必须
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。该检查点当时下一步仅 R4；后续 R4 已完成，唯一 V3 R5 又以 `quality_gate_failed` 封存。回顾时可以问：为什么 dispatch 必须
 > 先 fsync？为什么崩溃后只 seal 不能 resume？为什么 hard-link 不等于 Provider exactly-once？
 >
 > 2026-07-25 — Phase 6.9.7 V3 R2 strict-gate breaker、双 Lane Ledger 与固定分母：在
@@ -114,7 +139,7 @@
 > 本任务没有读取根 `.env`/credential、调用 DeepSeek 或其它 Provider、启动 Docker/API/browser、
 > 创建业务数据或 Live marker/journal/evidence，也没有合并 main 或推送。权威验收：
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`。该检查点当时下一步
-> 仅 R2；后续 R2/R3/R4 均已完成，当前停在新的 V3 controlled-Live 精确授权门。
+> 仅 R2；后续 R2--R4 均已完成，唯一 V3 R5 又以 `quality_gate_failed` 封存。
 >
 > 2026-07-24 — Phase 6.9.7 V3 R0 零 Provider 失败复盘与设计：在 clean
 > `codex/phase-6-9-7-tutor-wrong-question-agents@c23d593c` 上重新核对 V2 evidence/marker

@@ -7,9 +7,9 @@
 checkpoint 起点：`648727a5`
 
 状态：R4 分支 static/Mock checkpoint 已完成。V3 fresh Mock、首失败熔断报告、全量静态门、
-PostgreSQL 并发 E2E、历史不可变性与两路独立复审均已关闭；V3 Live marker、journal、evidence 与
-recovery claim 仍为 `0`，两个产品 gate 继续默认关闭。下一步必须停下并取得一次新的
-`Phase 6.9.7 Tutor/Organizer V3 branch controlled-Live` 精确授权。
+PostgreSQL 并发 E2E、历史不可变性与两路独立复审均已关闭；该检查点当时 V3 Live marker、
+journal、evidence 与 recovery claim 为 `0`，两个产品 gate 默认关闭，并必须先停下取得一次新的
+`Phase 6.9.7 Tutor/Organizer V3 branch controlled-Live` 精确授权。后续 R5 结果见第 9 节。
 
 本 checkpoint 没有读取根 `.env` 或真实 credential，没有调用 DeepSeek、OpenAI、Qwen 或其它
 Provider，也没有启动产品 API、浏览器验收或修改真实业务数据。Mock 只证明工程合同，不能证明真实
@@ -17,20 +17,20 @@ Provider，也没有启动产品 API、浏览器验收或修改真实业务数�
 
 ## 1. R4 验收结果
 
-| 范围 | 结果 |
-| --- | --- |
-| V3 focused | `50/50`，`360 expect()` |
-| Agent full | `629/629`，`6710 expect()` |
-| Agent typecheck / lint | exit `0` / exit `0` |
-| AI full | `199/199`，`1054 expect()` |
-| AI typecheck / lint | exit `0` / exit `0` |
-| Types tests / typecheck | `42/42` / exit `0` |
-| Server full | `227` suites passed / `3` skipped；`2154` passed / `30` skipped |
-| Server no-fix lint / build | exit `0` / exit `0` |
-| Web full | `439/439` |
-| Web lint / production build | exit `0` / exit `0`；17 routes |
-| WrongQuestionOrganizer PostgreSQL E2E | `12/12` |
-| Compose tracked example | `config --quiet` exit `0`，无 stdout |
+| 范围                                  | 结果                                                            |
+| ------------------------------------- | --------------------------------------------------------------- |
+| V3 focused                            | `50/50`，`360 expect()`                                         |
+| Agent full                            | `629/629`，`6710 expect()`                                      |
+| Agent typecheck / lint                | exit `0` / exit `0`                                             |
+| AI full                               | `199/199`，`1054 expect()`                                      |
+| AI typecheck / lint                   | exit `0` / exit `0`                                             |
+| Types tests / typecheck               | `42/42` / exit `0`                                              |
+| Server full                           | `227` suites passed / `3` skipped；`2154` passed / `30` skipped |
+| Server no-fix lint / build            | exit `0` / exit `0`                                             |
+| Web full                              | `439/439`                                                       |
+| Web lint / production build           | exit `0` / exit `0`；17 routes                                  |
+| WrongQuestionOrganizer PostgreSQL E2E | `12/12`                                                         |
+| Compose tracked example               | `config --quiet` exit `0`，无 stdout                            |
 
 第一次 Server full 因 Docker Desktop 尚未运行、`127.0.0.1:5433` 不可达而中断；这不是代码断言
 失败。随后只启动现有 Docker Desktop 与 `docker-postgres-1`，确认 PostgreSQL accepting connections
@@ -136,10 +136,15 @@ R4 文档与运行证据完成后执行两路只读终审：
 
 ## 9. 停止条件与下一步
 
-R4 clean commit 后必须停止。继续前，用户需要重新确认 DeepSeek 当前账号的数据保留/训练边界，
-并明确授权：
+R4 clean commit 后当时必须停止。继续前，用户需要重新确认 DeepSeek 当前账号的数据保留/训练
+边界，并明确授权：
 
 > 我已接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权执行一次 Phase 6.9.7 Tutor/Organizer V3 branch controlled-Live。
+
+后续状态：用户按上文给出精确授权，唯一 R5 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc`
+已执行并以 `quality_gate_failed` durable seal。R4 的 static/Mock 结论保持历史不变，但不再是当前授权
+状态，也不授权重跑 V3 或进入产品验收。R5 authority 见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
 
 回顾时可以问：
 

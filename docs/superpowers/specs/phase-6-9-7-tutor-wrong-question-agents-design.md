@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1 与 V2 两条唯一 controlled-Live 均已失败封存且不得重跑，产品验收与 Task 13 main 收尾未开始；V3 R0--R3 已完成零 Provider 设计、安全诊断/零网络 compatibility、strict-gate breaker、固定分母、双 lane ledger 与 crash-safe evidence；R4 static/Mock checkpoint 已完成，当前等待新的 V3 Live 精确授权
+状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1、V2 与 V3 三条唯一 controlled-Live 均已失败封存且不得重跑。V3 R0--R4 已完成安全诊断、零网络 compatibility、strict-gate breaker、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 run `ff2e1a54...` 在 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`。产品验收、R6--R9、Task 13/main 与 Phase 6.10 不得开始
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -532,7 +532,7 @@ Live evidence 使用独立一次性 marker 和 immutable publish，不能删除�
 为 `24/24` zero-call、`0/48` strict runtime、semantic `0/0`、verified usage `0`，失败发生在
 结构化对象形成前且未保存原始异常，不能指定单一根因。V3 R0--R3 后续已完成零 Provider failure
 evidence、breaker、双 lane、dispatch-before-call journal、recovery claim、orphan seal 与 immutable
-evidence；后续 R4 已完成；当前停在新的 V3 Live 精确授权门 static/Mock，不是 Live，且没有新的网络授权。V2 authority 见
+evidence；后续 R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封存，R6--R9 不得开始。V2 authority 见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md` 与
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`；V3 R3 见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。

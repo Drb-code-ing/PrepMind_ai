@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-25。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...` 与 V2 run `67ce18dd...` 均以 `quality_gate_failed` 封存且不得重跑。V2 R0--R6 已完成独立 lineage、static/Mock 与并发/恢复/路由 checkpoint；唯一 R7 保持 `24/24` zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0--R4 已完成 failure taxonomy、真实 invocation/stage、strict-gate breaker、固定 48 分母、双 lane ledger/abort 隔离、dispatch-before-call hash-chain journal、单胜者 recovery claim、零网络 orphan seal 与不可覆盖 evidence；R4 又完成 fresh Mock、首失败 breaker report、分支全量门、PostgreSQL E2E、历史不可变性与独立复审。V1/V2 历史不变，V3 Live artifact 仍为 0。产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。当前停在新的 V3 branch controlled-Live 精确授权门；全部 Agent 架构完成前不进入 Phase 6.10 分层记忆。
+> 当前版本：2026-07-25。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...`、V2 run `67ce18dd...` 与 V3 run `ff2e1a54...` 均以 `quality_gate_failed` 封存且不得重跑。V3 R0--R4 已完成 failure taxonomy、真实 invocation/stage、strict-gate breaker、固定 48 分母、双 lane ledger/abort 隔离、dispatch-before-call hash-chain journal、单胜者 recovery claim、零网络 orphan seal、不可覆盖 evidence 与 static/Mock checkpoint；唯一 R5 保持 `24/24` zero-call，但在第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`。Marker/journal/evidence 已 durable seal，产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。R6--R9、Task 13/main 与 Phase 6.10 均不得开始。
 
 ## 1. 当前边界
 
@@ -389,7 +389,7 @@ V3 R1 diagnostics + zero-network compatibility
   -> usage verified / unknown_after_attempt / absent_not_attempted 分离
   -> V1/V2 case/report 的全部 V3 字段继续 absent
   -> config/factory/request/response audit/schema/abort 仅 synthetic/fake fetch，外部网络 0
-  -> V3 Live marker/journal/evidence artifact 0
+  -> R1 checkpoint 当时 V3 Live marker/journal/evidence artifact 0
 
 V3 R2 strict breaker + dual-lane ledger
   -> 24 guard 全先行；任一失败时 48 runtime 保留且真实 runtime 0-call
@@ -400,7 +400,7 @@ V3 R2 strict breaker + dual-lane ledger
   -> sibling 保留自身 failure/abort；忽略 abort 则有界收口为 orphaned + unknown usage
   -> 后续 runtime => not_started_quality_breaker；固定 48 分母，无 retry/补跑/预算借用
   -> metrics/P95/usage/CNY/lane/outcome counters 由 V3 schema 重算；不完整门失败
-  -> V1/V2 validator + 四 SHA 不变；V3 Live artifact 0
+  -> V1/V2 validator + 四 SHA 不变；R2 checkpoint 当时 V3 Live artifact 0
 
 V3 R3 crash-safe evidence
   -> 独立 V3 CLI / confirmation / approval env / marker / journal / evidence / validator
@@ -412,10 +412,12 @@ V3 R3 crash-safe evidence
   -> dispatch 无 terminal => attempted_orphaned + unknown_after_attempt
   -> 未 dispatch => not_started_orphaned + absent_not_attempted；不 resume/replay/retry
   -> temp wx + fsync + hard-link final；same bytes 幂等，不同 bytes 拒绝覆盖
-  -> V1/V2 validator + 四 SHA 不变；V3 Live artifact 0；R4 static/Mock 已通过；下一步需新的 V3 Live 精确授权
+  -> V1/V2 validator + 四 SHA 不变；R4 static/Mock 已通过
+  -> 唯一 V3 R5: marker -> journal -> 28 dispatch/terminal -> breaker -> run failed -> evidence sealed
+  -> R5 quality_gate_failed；不得重跑或进入 R6--R9
 ```
 
-Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R5 完成 prompt/contract、anti-overfit 与独立 lineage；R6 证明一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败，没有 verified usage，不能据此判断真实语义、费用或单一 transport 根因。V3 R0 已设计有界 failure evidence、breaker、固定分母、双 lane 隔离和 crash-only seal；V3 R1 已把安全 failure/stage 投影、真实 invocation recorder 与 zero-network adapter compatibility 落为源码；V3 R2 已把 breaker-aware scheduler、独立 lane abort、单 dispatch ledger、固定 48 分母与 usage/P95 fail-closed 落地；V3 R3 已把 marker 后 journal 初始化、dispatch-before-call、hash-chain、活 owner/recovery claim、orphan seal 与 hard-link evidence 落地，并在单主机 PID liveness 合同下 fence stale release。R4 static/Mock checkpoint 已完成，fresh Mock 与 breaker report 保持固定分母和零 Provider 边界；当前等待新的 V3 Live 精确授权。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2 都不得重跑，任何未来网络运行必须先完成 V3 R4，并使用新 identity 与新授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`；R1--R3 证据见对应 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r*-*.md`。
+Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑，任何未来网络运行必须另立新 identity、marker/journal/evidence、质量计划与授权。完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`；R5 证据见 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
 
 当前 `/knowledge` 页面数据流：
 

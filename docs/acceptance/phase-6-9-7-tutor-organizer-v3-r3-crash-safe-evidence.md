@@ -118,8 +118,8 @@ API 或可见浏览器，没有创建真实 V3 Live artifact，没有修改 Post
 ## 9. 下一步与回顾问题
 
 该检查点当时下一步只能执行 R4：在同一分支完成 static/Mock checkpoint、受影响全量门与两路独立
-终审。后续 R4 已完成；当前仍必须停止，重新取得精确的 V3 branch controlled-Live 授权，没有任何
-网络授权。
+终审。后续 R4 已完成，唯一 V3 R5 又以 `quality_gate_failed` 封存；V3 不得重跑，R6--R9 不得
+开始。
 
 回顾时可以问：
 

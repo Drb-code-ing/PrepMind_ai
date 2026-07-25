@@ -5,10 +5,11 @@ Provider failure 证据、zero-network compatibility preflight、strict-gate bre
 dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock checkpoint 后停止并重新
 申请一次 V3 controlled-Live，只有全门通过才进入产品验收。
 
-**当前状态：** R0--R4 均已完成；fresh V3 Mock、breaker/failure report、分支全量静态门、
-PostgreSQL E2E、历史不可变性与独立复审已关闭。V3 没有读取 credential、调用 Provider、创建真实
-Live marker/journal/evidence、启动产品 API/browser 或修改真实业务数据。当前必须停在新的 V3
-controlled-Live 精确授权门，不得直接执行 R5、R6 产品验收、Task 13/main 或 Phase 6.10。
+**当前状态：** R0--R4 均已完成；唯一 R5 branch controlled-Live run `ff2e1a54...` 已 durable
+seal 并以 `quality_gate_failed` 失败封存。它在第 14 对 Organizer
+`subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic
+`0.5280555556/0.4376201923`。V3 一次性名额已消费且不得重跑；R6--R9、产品验收、Task 13/main 与
+Phase 6.10 均不得开始。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`
@@ -139,7 +140,7 @@ V1/V2 bundle validator 与四个历史 SHA、typecheck/lint/Prettier/diff。
 - [x] 首/中/末 failure、Tutor-first/Organizer-first、sibling abort/orphan bounded settlement；
 - [x] 语义 mismatch 不触发 breaker，usage/schema/abort/harness failure 触发；
 - [x] 未执行 case、unknown usage、不完整 P95/费用与 lane budget 均 fail-closed；
-- [x] V1/V2 字段、validator 与四个历史 SHA 不变，V3 Live artifact 仍为 0；
+- [x] V1/V2 字段、validator 与四个历史 SHA 不变；R2 checkpoint 当时 V3 Live artifact 为 0；
 - [x] focused、Agent/AI full、typecheck/lint/format/diff 与两路只读复审通过。
 
 验收：
@@ -232,6 +233,11 @@ checkpoint 数值。
 
 ## R5：唯一 V3 branch controlled-Live
 
+**状态：** [x] 失败封存。唯一 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 为 `24/24`
+zero-call、`27/48` strict runtime；Organizer `subject_authority_violation` 触发 breaker，最终
+`quality_gate_failed`。Marker/journal/evidence 已封存且 validator 通过，不得重跑。权威证据：
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
+
 **前置：**
 
 - 用户重新接受当时 DeepSeek 账号的数据保留/训练边界；
@@ -256,7 +262,7 @@ checkpoint 数值。
 
 ## R6：V3 分支 Docker/API/headed-browser 产品验收
 
-**仅在 R5 pass 后执行。**
+**状态：不得开始。** 仅在 R5 pass 后执行；实际 R5 已失败封存。
 
 - Tutor-only Docker Chat：applied / explicit zero-call / forced fallback；
 - Organizer-only API：single/batch、existing/high-confidence zero-call、owner、locked-name、
@@ -271,6 +277,8 @@ checkpoint 数值。
 
 ## R7：分支最终文档 checkpoint
 
+**状态：不得开始。** R5 未形成质量 authority。
+
 - 同步所有当前文档、acceptance、AI behavior/checklist/dev-start 的实际结果；
 - 明确 V1/V2 failure、V3 authority 与 V3 产品 lineage 相互独立；
 - 确认工作区 clean、gates false、零 synthetic 残留；
@@ -281,6 +289,8 @@ checkpoint 数值。
 
 ## R8：合并 main
 
+**状态：不得开始。** R5 未形成质量 authority，分支不能作为 Phase 6.9.7 完成合并。
+
 - 切回最新 `main`，确认 `origin/main` parity；
 - `git merge --no-ff codex/phase-6-9-7-tutor-wrong-question-agents`；
 - 不重跑 V1/V2/V3 Live 或 branch product authority。
@@ -288,6 +298,8 @@ checkpoint 数值。
 **提交：** Git `--no-ff` merge commit。
 
 ## R9：main default-off 回放、文档与远程推送
+
+**状态：不得开始。** R8 未发生，不存在可回放的 V3 产品 authority。
 
 - 在 main 运行 focused/static/Mock；
 - 读取 committed V3/product authority，不重跑；
@@ -304,3 +316,6 @@ checkpoint 数值。
 只有 R0--R9 的适用步骤全部完成、V3 Live 与分支产品验收通过、main default-off 回放通过且远程
 同步，才能称 Phase 6.9.7 完成。若 R5 失败，Phase 6.9.7 继续未完成并停止；不得用 R0--R4
 工程合同替代真实模型与产品验收。
+
+实际结果命中后一分支：R5 `quality_gate_failed`，Phase 6.9.7 未完成并停止。任何未来网络运行都
+必须另立新版本、identity、marker/journal/evidence、质量计划与精确授权，不能重用 V3。

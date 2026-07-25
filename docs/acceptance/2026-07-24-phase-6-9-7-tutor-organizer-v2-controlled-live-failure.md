@@ -139,7 +139,7 @@ R6 已在 Live 前固定下列生产边界，本次失败不改变这些结论�
 strict-gate breaker、固定分母、双 lane 隔离、append-only journal 与 crash-only seal；没有读取
 credential、调用 Provider 或创建 V3 Live artifact。该检查点当时的下一步仅为 R1 zero-network
 implementation；后续 R1 已完成安全诊断投影与零网络 compatibility，该检查点当时下一步仅
-R2；后续 R2/R3 也已完成，后续 R4 已完成；当前停在新的 V3 Live 精确授权门 static/Mock。权威设计见
+R2；后续 R2--R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封存，R6--R9 不得开始。权威设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md`、
