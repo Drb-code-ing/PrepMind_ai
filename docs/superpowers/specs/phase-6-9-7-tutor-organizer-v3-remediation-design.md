@@ -5,7 +5,8 @@
 状态：R0--R4 已完成。V1/V2/V3 三条唯一 controlled-Live 均已失败封存且不得重跑。唯一 V3 R5
 run `ff2e1a54...` 在第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict
 runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`；
-marker/journal/evidence 已 durable seal。产品路径、R6--R9、Task 13/main 与 Phase 6.10 不得开始。
+marker/journal/evidence 已 durable seal。V3 产品路径与 R6--R9 永久不适用；后续已另立 V4 R0
+zero-provider remediation，V4 通过前 Task 13/main 与 Phase 6.10 不得开始。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 

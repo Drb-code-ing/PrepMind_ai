@@ -1,5 +1,31 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R0 零 Provider bounded 复盘与设计：在 V3 失败 authority
+> `ff2e1a54...` 不可变、不重跑的前提下，只读取已封存的安全 evidence。Tutor 前 14 个 runtime
+> 全部 strict/usage verified；intent/depth/context/guiding/final-answer/structure 命中分别为
+> `11/14、14/14、14/14、11/14、14/14、11/14`，三个可见偏差为两个
+> `socratic_hint -> general_follow_up` 和一个 `step_check -> general_follow_up`。报告中的 10 个
+> invalid Tutor case 是 breaker 后未执行项，不是已执行 schema failure。
+>
+> Organizer 前 14 个 runtime 为 13 success + 1 dynamic-contract failure；14 个 bounded decision
+> 的 subject/action/accepted-topic/confidence/required-evidence 命中分别为
+> `13/14、14/14、5/14、12/14、10/14`，7 个使用 `insufficient_signal`。首错
+> `organizer-runtime-14` 只可确认在本地 subject authority 合同失败；semantic observation 的
+> unexpected topic/空 evidence 不能倒推 raw model output 或 Provider 根因。
+>
+> V4 已冻结独立 runner/prompt/runtime-evidence/approval/marker/journal/evidence/validator identity，
+> 以及 R1 diagnostics、R2 Tutor policy、R3 Organizer policy、R4 robustness/lineage、R5
+> static/Mock checkpoint 路线。V3 的 guard/breaker/fixed denominator/lane/journal/seal 原则继续复用，
+> 但 artifact 与授权绝不复用；dataset、`0.85/0.15` 质量门、权限、预算、no-retry 不变，merger 不
+> 自动修正非法模型输出。
+>
+> 本任务没有修改 Agent 源码、读取 credential、调用 Provider、创建 V4 Live artifact、启动
+> Docker/API/browser 或修改业务数据。下一步是 R1 zero-network bounded diagnostics；R5 通过后仍
+> 必须重新取得一次精确 V4 controlled-Live 授权。设计、计划与验收分别见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md`、
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r0-zero-provider-postmortem.md`。
+>
 > 2026-07-25 — Phase 6.9.7 V3 R5 controlled-Live 失败封存：用户重新确认 DeepSeek 数据
 > 保留/训练边界并精确授权唯一一次 V3 branch Live。零网络 preflight 在 clean `8167f9e3` 上通过
 > V3 focused `50/50`、`360 expect()`、V1/V2 四 SHA/validator、V3 artifact=0、tracked

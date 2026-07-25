@@ -8,8 +8,10 @@ dispatch ledger、崩溃 seal 与独立 V3 evidence lineage；通过 static/Mock
 **当前状态：** R0--R4 均已完成；唯一 R5 branch controlled-Live run `ff2e1a54...` 已 durable
 seal 并以 `quality_gate_failed` 失败封存。它在第 14 对 Organizer
 `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic
-`0.5280555556/0.4376201923`。V3 一次性名额已消费且不得重跑；R6--R9、产品验收、Task 13/main 与
-Phase 6.10 均不得开始。
+`0.5280555556/0.4376201923`。V3 一次性名额已消费且不得重跑；V3 R6--R9 永久不适用。后续已另立
+V4 R0 零 Provider 复盘与独立 remediation，见
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md`；V4 通过前产品验收、Task
+13/main 与 Phase 6.10 均不得开始。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`
@@ -317,5 +319,6 @@ zero-call、`27/48` strict runtime；Organizer `subject_authority_violation` 触
 同步，才能称 Phase 6.9.7 完成。若 R5 失败，Phase 6.9.7 继续未完成并停止；不得用 R0--R4
 工程合同替代真实模型与产品验收。
 
-实际结果命中后一分支：R5 `quality_gate_failed`，Phase 6.9.7 未完成并停止。任何未来网络运行都
-必须另立新版本、identity、marker/journal/evidence、质量计划与精确授权，不能重用 V3。
+实际结果命中后一分支：R5 `quality_gate_failed`，Phase 6.9.7 未完成，V3 停止。V4 R0 后续已
+冻结独立 identity、marker/journal/evidence 与质量计划；R1--R5 仍是 zero-network/static/Mock，
+只有 checkpoint 后新的精确授权才允许唯一 V4 网络运行，不能重用 V3。

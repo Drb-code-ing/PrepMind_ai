@@ -527,15 +527,18 @@ Live evidence 使用独立一次性 marker 和 immutable publish，不能删除�
 
 禁止 Docker prune、`down -v`、volume/database reset、Redis flush 和 MinIO wipe。只删除本轮有记录的合成资源，保留现有容器、镜像和数据卷。
 
-2026-07-25 当前边界：上述顺序的 V1 run `39a62241...` 与后续 V2 R7 run `67ce18dd...`
+2026-07-26 当前边界：上述顺序的 V1 run `39a62241...` 与后续 V2 R7 run `67ce18dd...`
 均已以 `quality_gate_failed` 封存，并按固定停止条件没有进入产品验收。V1/V2 都不得重跑；V2
 为 `24/24` zero-call、`0/48` strict runtime、semantic `0/0`、verified usage `0`，失败发生在
 结构化对象形成前且未保存原始异常，不能指定单一根因。V3 R0--R3 后续已完成零 Provider failure
 evidence、breaker、双 lane、dispatch-before-call journal、recovery claim、orphan seal 与 immutable
-evidence；后续 R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封存，R6--R9 不得开始。V2 authority 见
+evidence；后续 R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封存。V4 R0 已进一步区分 executed
+semantic mismatch、dynamic contract failure 与 breaker 未执行项，并冻结细粒度 diagnostics、两条
+语义单一规则源、anti-overfit 和独立 V4 lineage；R1--R5 只允许 zero-network/static/Mock。V2 authority 见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediation-design.md` 与
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`；V3 R3 见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`；V4 设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`。
 
 ## 13. 非目标与后续阶段
 
@@ -548,7 +551,7 @@ evidence；后续 R4 已完成；唯一 V3 R5 又以 `quality_gate_failed` 封�
 - 不实现 MemoryAgent、记忆注入或 Episodic Memory；
 - 不开始《多 Agent 架构》或《记忆系统》博客收尾。
 
-只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；当前 V2 失败不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
+只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；V1/V2/V3 失败与 V4 static/Mock 都不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
 
 ## 14. 文档同步与回顾问题
 

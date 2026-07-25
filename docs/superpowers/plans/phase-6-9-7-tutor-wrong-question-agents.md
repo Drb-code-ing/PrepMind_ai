@@ -351,7 +351,7 @@ V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediat
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1、V2 R7 与 V3 R5 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1/V2/V3 一次性 marker/evidence 已封存且不得重跑；R6--R9、产品验收、main 合并复验与远程推送计划均停止。只有未来另立版本并形成新的质量 authority、产品验收与分支最终文档后，才能重新规划 main 收尾。
+**当前状态：不得开始。** Task 12 V1、V2 R7 与 V3 R5 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1/V2/V3 一次性 marker/evidence 已封存且不得重跑；V4 R0 已完成，但 R1--R5 zero-network/static/Mock、唯一 V4 Live、产品验收和分支终审尚未完成。只有 V4 形成新的质量 authority、产品验收与分支最终文档后，才能重新规划 main 收尾。
 
 **分支：**
 
@@ -385,5 +385,7 @@ V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediat
 
 随后进入 Phase 6.9.8，不进入 Phase 6.10，也不提前写两篇博客。
 
-实际 V3 R5 已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。下一步只能先做零
-Provider 失败复盘，并由用户决定是否另立新版本。
+实际 V3 R5 已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V4 R0 已完成零
+Provider 复盘与独立设计；下一步按
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md` 执行 R1 bounded
+diagnostics，R1--R5 均不得调用 Provider。

@@ -927,3 +927,17 @@ run_completed(failed) -> evidence_sealed` 结束，recovery claim 为 0。V1/V2 
 不变，tracked gates=false、component credential empty。V3 不得重跑；R6--R9、产品
 Docker/API/browser、Task 13/main 与 Phase 6.10 均不得开始。证据见
 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
+
+V4 R0 完成回执：只读 V3 bounded evidence 后，Tutor 14 个已执行 runtime 中有两个
+`socratic_hint` 和一个 `step_check` 被降级为 `general_follow_up`；10 个 invalid Tutor case 是
+breaker 后未执行项。Organizer 14 个已执行 decision 的 subject/action/accepted-topic/
+confidence/required-evidence 命中为 `13/14、14/14、5/14、12/14、10/14`；首错只能确认是本地
+subject-authority dynamic contract，不能从后置 topic/evidence observation 猜测 raw output 或
+Provider 根因。
+
+V4 已冻结新的 runner/prompt/runtime-evidence/approval/marker/journal/evidence/validator identity，
+以及细粒度 bounded diagnostics、Tutor/Organizer 单一语义 policy、independent held-out/metamorphic
+与 anti-leakage。Dataset/SHA/baseline/`0.85/0.15` 质量门、权限、预算、no-retry、固定分母和
+V3 breaker/journal 原则不变；merger 不得自动补 evidence 或修正越权 subject。R1--R5 只允许
+zero-network/static/Mock；checkpoint 与新的精确授权完成前不得执行 V4 Live。证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r0-zero-provider-postmortem.md`。
