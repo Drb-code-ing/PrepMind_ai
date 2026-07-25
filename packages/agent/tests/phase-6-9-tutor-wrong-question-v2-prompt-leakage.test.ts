@@ -24,10 +24,10 @@ import {
   PHASE_6_9_7_TUTOR_PROMPT_VERSION_V1,
   PHASE_6_9_7_TUTOR_PROMPT_VERSION_V2,
 } from '../src/evals/phase-6-9-tutor-wrong-question-paired-contract.ts';
-import { runTutorModelCandidate } from '../src/model-candidates/tutor-model-candidate.ts';
-import { formatTutorModelIntentPolicyForPrompt } from '../src/model-candidates/tutor-model-contract.ts';
-import { runWrongQuestionOrganizerModelCandidate } from '../src/model-candidates/wrong-question-organizer-model-candidate.ts';
-import { formatWrongQuestionOrganizerAssociationPolicyForPrompt } from '../src/model-candidates/wrong-question-organizer-model-contract.ts';
+import { runTutorModelCandidateV2 } from '../src/model-candidates/tutor-model-candidate.ts';
+import { formatTutorModelIntentPolicyForPromptV2 } from '../src/model-candidates/tutor-model-contract.ts';
+import { runWrongQuestionOrganizerModelCandidateV2 } from '../src/model-candidates/wrong-question-organizer-model-candidate.ts';
+import { formatWrongQuestionOrganizerAssociationPolicyForPromptV2 } from '../src/model-candidates/wrong-question-organizer-model-contract.ts';
 import { buildTutorStrategy } from '../src/nodes/tutor.ts';
 import {
   PHASE_6_9_7_V2_ORGANIZER_SUBJECT_FIXTURES,
@@ -120,7 +120,7 @@ async function captureTutorRequest() {
   const activeStudyContext = fixture.contextVariants[0];
   const { requests, runtime } = trackedRuntime(fixture.decision);
   const deterministic = buildTutorStrategy({ latestUserText, activeStudyContext });
-  const result = await runTutorModelCandidate({
+  const result = await runTutorModelCandidateV2({
     runId: 'phase-6-9-7-v2-prompt-leakage-tutor',
     finalRoute: 'tutor',
     latestUserText,
@@ -172,7 +172,7 @@ async function captureOrganizerRequest() {
       },
     ],
   });
-  const result = await runWrongQuestionOrganizerModelCandidate({
+  const result = await runWrongQuestionOrganizerModelCandidateV2({
     runId: 'phase-6-9-7-v2-prompt-leakage-organizer',
     items: [
       {
@@ -249,10 +249,10 @@ describe('Phase 6.9.7 V2 prompt leakage and frozen authority', () => {
   });
 
   test('keeps formatter bytes stable without exporting frozen case or fixture oracles', () => {
-    const tutorPrompt = formatTutorModelIntentPolicyForPrompt();
-    const organizerPrompt = formatWrongQuestionOrganizerAssociationPolicyForPrompt();
-    expect(tutorPrompt).toBe(formatTutorModelIntentPolicyForPrompt());
-    expect(organizerPrompt).toBe(formatWrongQuestionOrganizerAssociationPolicyForPrompt());
+    const tutorPrompt = formatTutorModelIntentPolicyForPromptV2();
+    const organizerPrompt = formatWrongQuestionOrganizerAssociationPolicyForPromptV2();
+    expect(tutorPrompt).toBe(formatTutorModelIntentPolicyForPromptV2());
+    expect(organizerPrompt).toBe(formatWrongQuestionOrganizerAssociationPolicyForPromptV2());
     expect(findPromptLeaks(`${tutorPrompt}\n${organizerPrompt}`)).toEqual([]);
   });
 

@@ -14,7 +14,10 @@ import {
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
   WRONG_QUESTION_ORGANIZER_SUBJECTS,
   formatWrongQuestionOrganizerAssociationPolicyForPrompt,
+  formatWrongQuestionOrganizerAssociationPolicyForPromptV2,
   validateWrongQuestionOrganizerModelDecision,
+  validateWrongQuestionOrganizerModelDecisionV2,
+  type WrongQuestionOrganizerDecisionContext,
   type WrongQuestionOrganizerDecisionValidationResult,
   type WrongQuestionOrganizerDecisionReasonCode,
   type WrongQuestionOrganizerModelDecision,
@@ -55,9 +58,15 @@ const MAX_PROJECTED_DECK_NAME_SCALARS = 80;
 const MAX_PROJECTED_DECK_KEYWORDS = 8;
 const MAX_PROJECTED_DECK_KEYWORD_SCALARS = 60;
 
-const SYSTEM_PROMPT = [
+const SYSTEM_PROMPT_V4 = [
   'Classify only the bounded wrong-question organization batch supplied as JSON.',
   formatWrongQuestionOrganizerAssociationPolicyForPrompt(),
+  'Return exactly one decision for every projected question and use only q/d ordinal indexes.',
+  'Never output IDs, user identity, write commands, database operations, tools, URLs, Markdown, or explanations.',
+].join('\n');
+const SYSTEM_PROMPT_V2 = [
+  'Classify only the bounded wrong-question organization batch supplied as JSON.',
+  formatWrongQuestionOrganizerAssociationPolicyForPromptV2(),
   'Return exactly one decision for every projected question and use only q/d ordinal indexes.',
   'Never output IDs, user identity, write commands, database operations, tools, URLs, Markdown, or explanations.',
 ].join('\n');
@@ -237,8 +246,52 @@ type InvalidInput = Readonly<{
   budget: ModelAgentRunBudget;
 }>;
 
+type WrongQuestionOrganizerCandidatePolicy = Readonly<{
+  systemPrompt: string;
+  buildDecisionContext: (
+    projection: WrongQuestionOrganizerModelProjection,
+  ) => WrongQuestionOrganizerDecisionContext;
+  validateDecision: (
+    input: unknown,
+    context: WrongQuestionOrganizerDecisionContext,
+  ) => WrongQuestionOrganizerDecisionValidationResult;
+}>;
+
+const WRONG_QUESTION_ORGANIZER_CANDIDATE_POLICY_V4: WrongQuestionOrganizerCandidatePolicy =
+  Object.freeze({
+    systemPrompt: SYSTEM_PROMPT_V4,
+    buildDecisionContext: buildV4DecisionContext,
+    validateDecision: validateWrongQuestionOrganizerModelDecision,
+  });
+
+const WRONG_QUESTION_ORGANIZER_CANDIDATE_POLICY_V2: WrongQuestionOrganizerCandidatePolicy =
+  Object.freeze({
+    systemPrompt: SYSTEM_PROMPT_V2,
+    buildDecisionContext: buildV2DecisionContext,
+    validateDecision: validateWrongQuestionOrganizerModelDecisionV2,
+  });
+
 export async function runWrongQuestionOrganizerModelCandidate(
   input: WrongQuestionOrganizerModelCandidateInput,
+): Promise<WrongQuestionOrganizerModelCandidateEnvelope> {
+  return runWrongQuestionOrganizerModelCandidateWithPolicy(
+    input,
+    WRONG_QUESTION_ORGANIZER_CANDIDATE_POLICY_V4,
+  );
+}
+
+export async function runWrongQuestionOrganizerModelCandidateV2(
+  input: WrongQuestionOrganizerModelCandidateInput,
+): Promise<WrongQuestionOrganizerModelCandidateEnvelope> {
+  return runWrongQuestionOrganizerModelCandidateWithPolicy(
+    input,
+    WRONG_QUESTION_ORGANIZER_CANDIDATE_POLICY_V2,
+  );
+}
+
+async function runWrongQuestionOrganizerModelCandidateWithPolicy(
+  input: WrongQuestionOrganizerModelCandidateInput,
+  policy: WrongQuestionOrganizerCandidatePolicy,
 ): Promise<WrongQuestionOrganizerModelCandidateEnvelope> {
   const valid = validateInput(input);
   if (!valid.ok) {
@@ -304,7 +357,7 @@ export async function runWrongQuestionOrganizerModelCandidate(
 
   const userPrompt = JSON.stringify(projected.value);
   const estimatedInputTokens = estimateCandidateInputTokens([
-    SYSTEM_PROMPT,
+    policy.systemPrompt,
     userPrompt,
     SCHEMA_DESCRIPTOR,
   ]);
@@ -333,6 +386,7 @@ export async function runWrongQuestionOrganizerModelCandidate(
     userPrompt,
     estimatedInputTokens,
     reservationBudget: reservation.budget,
+    systemPrompt: policy.systemPrompt,
   });
   if (runtimeResult === null) {
     return unavailableEnvelope(valid.localResults, reservation.budget);
@@ -362,13 +416,8 @@ export async function runWrongQuestionOrganizerModelCandidate(
     );
   }
 
-  const context = {
-    questions: projected.value.questions.map((question) => ({
-      subjectHint: question.subjectHint,
-    })),
-    decks: projected.value.decks.map((deck) => ({ subject: deck.subject })),
-  } as const;
-  const decision = validateWrongQuestionOrganizerModelDecision(runtimeResult.data, context);
+  const context = policy.buildDecisionContext(projected.value);
+  const decision = policy.validateDecision(runtimeResult.data, context);
   if (!decision.ok) {
     return attemptedEnvelope(
       valid.localResults,
@@ -422,6 +471,26 @@ export function mergeWrongQuestionOrganizerModelDecision(input: {
   return mergeWrongQuestionOrganizerModelDecisionInternal({
     ...input,
     validation: null,
+  });
+}
+
+export function mergeWrongQuestionOrganizerModelDecisionV2(input: {
+  items: readonly WrongQuestionOrganizerModelCandidateItem[];
+  projection: WrongQuestionOrganizerModelProjection;
+  questionIdsByOrdinal: readonly string[];
+  deckIdsByOrdinal: readonly string[];
+  questionAuthoritiesByOrdinal: readonly WrongQuestionOrganizerQuestionAuthority[];
+  deckAuthoritiesByOrdinal: readonly WrongQuestionOrganizerDeckAuthority[];
+  decision: WrongQuestionOrganizerModelDecision;
+}): readonly WrongQuestionOrganizerResult[] | null {
+  const validation = validateWrongQuestionOrganizerModelDecisionV2(
+    input.decision,
+    buildV2DecisionContext(input.projection),
+  );
+  return mergeWrongQuestionOrganizerModelDecisionInternal({
+    ...input,
+    decision: null,
+    validation,
   });
 }
 
@@ -483,10 +552,7 @@ function mergeWrongQuestionOrganizerModelDecisionInternal(input: {
       : input.decision === null
         ? null
         : validateWrongQuestionOrganizerModelDecision(input.decision, {
-            questions: projection.questions.map((question) => ({
-              subjectHint: question.subjectHint,
-            })),
-            decks: projection.decks.map((deck) => ({ subject: deck.subject })),
+            ...buildV4DecisionContext(projection),
           });
     if (validation === null) return null;
     if (!validation.ok) return null;
@@ -924,6 +990,37 @@ function buildDeckDescription(subjectDisplayName: string, deckName: string): str
   return `用于整理${subjectDisplayName}中的${deckName}相关错题。`;
 }
 
+function buildV2DecisionContext(
+  projection: WrongQuestionOrganizerModelProjection,
+): WrongQuestionOrganizerDecisionContext {
+  return {
+    questions: projection.questions.map((question) => ({
+      subjectHint: question.subjectHint,
+    })),
+    decks: projection.decks.map((deck) => ({ subject: deck.subject })),
+  };
+}
+
+function buildV4DecisionContext(
+  projection: WrongQuestionOrganizerModelProjection,
+): WrongQuestionOrganizerDecisionContext {
+  return {
+    questions: projection.questions.map((question) => ({
+      subjectHint: question.subjectHint,
+      ...(question.category ? { category: question.category } : {}),
+      knowledgePoints: [...question.knowledgePoints],
+      ...(question.errorType ? { errorType: question.errorType } : {}),
+      ...(question.questionExcerpt ? { questionExcerpt: question.questionExcerpt } : {}),
+      ...(question.analysisExcerpt ? { analysisExcerpt: question.analysisExcerpt } : {}),
+    })),
+    decks: projection.decks.map((deck) => ({
+      subject: deck.subject,
+      name: deck.name,
+      keywords: [...deck.keywords],
+    })),
+  };
+}
+
 function projectionFailureEnvelope(
   results: readonly WrongQuestionOrganizerResult[],
   budget: ModelAgentRunBudget,
@@ -965,6 +1062,7 @@ async function invokeRuntime(input: {
   userPrompt: string;
   estimatedInputTokens: number;
   reservationBudget: ModelAgentRunBudget;
+  systemPrompt: string;
 }) {
   let rawResult: unknown;
   try {
@@ -972,7 +1070,7 @@ async function invokeRuntime(input: {
       runId: input.input.runId,
       task: 'wrong_question_organization',
       schema: WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: input.systemPrompt,
       userPrompt: input.userPrompt,
       estimatedInputTokens: input.estimatedInputTokens,
       maxOutputTokens: MAX_OUTPUT_TOKENS,

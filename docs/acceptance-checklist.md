@@ -973,6 +973,26 @@ compatibility、candidate merger，以及本地 context/guiding/final-answer/ans
 - [x] dataset/SHA/expected/metric/threshold/budget/no-retry 不变；
 - [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
 
-下一步仅 R3 WrongQuestionOrganizer policy；R4/R5 前不创建 V4 Live lineage，R5 checkpoint 与新的
-精确授权前不得执行 V4 Live。证据见
+该检查点当时下一步仅 R3 WrongQuestionOrganizer policy，后续已完成；R4/R5 前不创建 V4 Live
+lineage，R5 checkpoint 与新的精确授权前不得执行 V4 Live。证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。
+
+V4 R3 完成回执：WrongQuestionOrganizer V4 使用唯一深冻结 decision matrix，formatter、dynamic
+validator 与 merger 共用 `context/index -> subject -> deck -> topic -> evidence -> confidence`
+authority；产品默认 identity 为 `wrong-question-organizer-model-candidate-v4`。
+
+- [x] known subject 只能 `keep_local + structured_subject`，unknown subject 禁止 `keep_local`；
+- [x] `reuse_existing` 只引用同学科 deck ordinal，并要求 `existing_deck_overlap`；
+- [x] `create_topic` 只接受安全、精确、有题意依据的 topic；
+- [x] 明确 `errorType` 要求 `error_pattern`，具体题意要求 `semantic_topic`；
+- [x] `insufficient_signal` 仅允许 medium，且不能与正向 evidence 混用；
+- [x] high confidence 只由结构化 category/knowledge point、明确错误模式或同学科 overlap 支撑；
+- [x] merger 不补 evidence、不纠正越权 subject、不清洗非法 topic；
+- [x] owner、ordinal、locked-name、前后 stale fence、single call、budget、abort、no-retry 不变；
+- [x] 历史 paired eval 显式走 Organizer V2 candidate，V2 formatter 与 V3 prompt SHA 不变；
+- [x] dataset/SHA/baseline/expected/metric/threshold 与 V1/V2/V3 artifacts 不变；
+- [x] 未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
+
+下一步仅 R4 independent robustness 与 V4 lineage；R5 checkpoint 与新的精确授权前不得执行 V4
+Live。证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。

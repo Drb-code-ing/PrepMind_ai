@@ -8,13 +8,13 @@ import {
 } from '@repo/ai';
 
 import {
-  mergeWrongQuestionOrganizerModelDecision,
-  runWrongQuestionOrganizerModelCandidate,
+  mergeWrongQuestionOrganizerModelDecisionV2,
+  runWrongQuestionOrganizerModelCandidateV2,
   type WrongQuestionOrganizerModelCandidateInput,
   type WrongQuestionOrganizerModelCandidateItem,
 } from '../src/model-candidates/wrong-question-organizer-model-candidate.ts';
 import {
-  validateWrongQuestionOrganizerModelDecision,
+  validateWrongQuestionOrganizerModelDecisionV2,
   type WrongQuestionOrganizerModelDecision,
   type WrongQuestionOrganizerSubject,
 } from '../src/model-candidates/wrong-question-organizer-model-contract.ts';
@@ -152,7 +152,7 @@ function mergeScenario(
   const projected = projectedFor(source);
   return {
     projected,
-    result: mergeWrongQuestionOrganizerModelDecision({
+    result: mergeWrongQuestionOrganizerModelDecisionV2({
       items,
       projection: projected.value,
       questionIdsByOrdinal: projected.questionIdsByOrdinal,
@@ -191,7 +191,7 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
     expect(Object.isFrozen(PHASE_6_9_7_V2_ORGANIZER_SUBJECT_FIXTURES)).toBe(true);
     for (const fixture of PHASE_6_9_7_V2_ORGANIZER_SUBJECT_FIXTURES) {
       expect(Object.isFrozen(fixture), fixture.id).toBe(true);
-      const result = validateWrongQuestionOrganizerModelDecision(
+      const result = validateWrongQuestionOrganizerModelDecisionV2(
         {
           decisions: [
             createTopicDecision({
@@ -230,25 +230,25 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
     } as const;
 
     expect(
-      validateWrongQuestionOrganizerModelDecision(knownDecision, {
+      validateWrongQuestionOrganizerModelDecisionV2(knownDecision, {
         questions: [{ subjectHint: 'math' }],
         decks: [],
       }).ok,
     ).toBe(true);
     expect(
-      validateWrongQuestionOrganizerModelDecision(inferredDecision, {
+      validateWrongQuestionOrganizerModelDecisionV2(inferredDecision, {
         questions: [{ subjectHint: 'unknown' }],
         decks: [],
       }).ok,
     ).toBe(true);
     expect(
-      validateWrongQuestionOrganizerModelDecision(knownDecision, {
+      validateWrongQuestionOrganizerModelDecisionV2(knownDecision, {
         questions: [{ subjectHint: 'unknown' }],
         decks: [],
       }),
     ).toEqual({ ok: false, reasonCode: 'subject_authority_violation' });
     expect(
-      validateWrongQuestionOrganizerModelDecision(inferredDecision, {
+      validateWrongQuestionOrganizerModelDecisionV2(inferredDecision, {
         questions: [{ subjectHint: 'math' }],
         decks: [],
       }),
@@ -381,10 +381,10 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
         createTopicDecision({ questionIndex: 1, subject: 'computer', topicLabel: '并发互斥' }),
       ],
     } as const;
-    expect(validateWrongQuestionOrganizerModelDecision(ordered, context).ok).toBe(true);
-    expect(validateWrongQuestionOrganizerModelDecision(reversed, context).ok).toBe(true);
+    expect(validateWrongQuestionOrganizerModelDecisionV2(ordered, context).ok).toBe(true);
+    expect(validateWrongQuestionOrganizerModelDecisionV2(reversed, context).ok).toBe(true);
     expect(
-      validateWrongQuestionOrganizerModelDecision(
+      validateWrongQuestionOrganizerModelDecisionV2(
         {
           decisions: [
             createTopicDecision({ questionIndex: 0, subject: 'math', topicLabel: '级数判敛' }),
@@ -395,7 +395,7 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
       ),
     ).toEqual({ ok: false, reasonCode: 'duplicate_question_index' });
     expect(
-      validateWrongQuestionOrganizerModelDecision(
+      validateWrongQuestionOrganizerModelDecisionV2(
         {
           decisions: [
             createTopicDecision({ questionIndex: 0, subject: 'math', topicLabel: '级数判敛' }),
@@ -406,7 +406,7 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
       ),
     ).toEqual({ ok: false, reasonCode: 'question_index_out_of_range' });
     expect(
-      validateWrongQuestionOrganizerModelDecision(
+      validateWrongQuestionOrganizerModelDecisionV2(
         {
           decisions: [
             createTopicDecision({
@@ -450,7 +450,7 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
     });
 
     expect(
-      mergeWrongQuestionOrganizerModelDecision({
+      mergeWrongQuestionOrganizerModelDecisionV2({
         items: itemsFor(source),
         projection: projected.value,
         questionIdsByOrdinal: projected.questionIdsByOrdinal,
@@ -502,7 +502,7 @@ describe('Phase 6.9.7 V2 WrongQuestionOrganizer held-out and metamorphic robustn
         runtime,
         budget: candidateBudget(),
       };
-      const result = await runWrongQuestionOrganizerModelCandidate(input);
+      const result = await runWrongQuestionOrganizerModelCandidateV2(input);
 
       expect(requests, attack.reasonCode).toHaveLength(0);
       expect(result.observation.disposition, attack.reasonCode).toBe('safety_blocked');

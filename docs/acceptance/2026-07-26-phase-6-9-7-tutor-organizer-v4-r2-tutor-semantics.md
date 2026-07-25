@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R2 已完成；下一步仅为 R3 WrongQuestionOrganizer V4 语义单一规则源。
+状态：R2 已完成；该检查点当时下一步仅为 R3，后续 R3 已完成。
 
 ## 1. 为什么需要本轮
 
@@ -85,8 +85,9 @@ Tutor 配置/编排完整 focused 结果仍为 `18/18`。
 
 ## 5. 下一步与停止条件
 
-下一步仅执行 R3：把 WrongQuestionOrganizer 的 subject、deck、topic、evidence 与 confidence 收敛为
-单一 V4 决策矩阵，仍保持 zero-network。R3 不能顺带进入 R4/R5，也不能启动产品验收。
+该检查点当时下一步仅执行 R3：把 WrongQuestionOrganizer 的 subject、deck、topic、evidence 与
+confidence 收敛为单一 V4 决策矩阵；R3 后续已以 zero-network 完成。当前下一步仅为 R4
+independent robustness 与 V4 lineage，仍不能启动产品验收。
 
 R5 checkpoint 全部门通过后仍必须停止；用户当前“继续/所有权限”不替代新的、精确的一次
 V4 branch controlled-Live 授权。

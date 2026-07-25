@@ -16,7 +16,7 @@ describe('wrong-question organizer model config', () => {
       mode: 'mock',
       provider: 'mock',
       model: 'deepseek-v4-pro',
-      promptVersion: 'wrong-question-organizer-model-candidate-v2',
+      promptVersion: 'wrong-question-organizer-model-candidate-v4',
       pricingKnown: true,
     });
   });

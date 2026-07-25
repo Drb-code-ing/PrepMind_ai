@@ -1,45 +1,40 @@
 import { z } from 'zod';
 
 import { clonePlainModelData, scanCompleteModelField } from './model-projection-safety.ts';
+import {
+  WRONG_QUESTION_ORGANIZER_BOUNDED_EVIDENCE_CODES,
+  WRONG_QUESTION_ORGANIZER_BOUNDED_MODEL_SUBJECTS,
+  WRONG_QUESTION_ORGANIZER_BOUNDED_SUBJECTS,
+  WRONG_QUESTION_ORGANIZER_DECISION_POLICY,
+  wrongQuestionOrganizerDeckPolicy,
+  wrongQuestionOrganizerEvidenceRequirementIsSatisfied,
+  type WrongQuestionOrganizerBoundedDeckAction,
+  type WrongQuestionOrganizerBoundedEvidenceCode,
+  type WrongQuestionOrganizerBoundedModelSubject,
+  type WrongQuestionOrganizerBoundedSubject,
+  type WrongQuestionOrganizerDecisionPolicy,
+  type WrongQuestionOrganizerEvidenceRequirement as BoundedEvidenceRequirement,
+} from '../policies/wrong-question-organizer-policy.ts';
 
-export const WRONG_QUESTION_ORGANIZER_SUBJECTS = [
-  'math',
-  'english',
-  'politics',
-  'computer',
-  'major',
-  'other',
-] as const;
-
-export const WRONG_QUESTION_ORGANIZER_MODEL_SUBJECTS = [
-  'keep_local',
-  ...WRONG_QUESTION_ORGANIZER_SUBJECTS,
-] as const;
-
-export const WRONG_QUESTION_ORGANIZER_EVIDENCE_CODES = [
-  'structured_subject',
-  'semantic_topic',
-  'existing_deck_overlap',
-  'error_pattern',
-  'insufficient_signal',
-] as const;
+export const WRONG_QUESTION_ORGANIZER_SUBJECTS = WRONG_QUESTION_ORGANIZER_BOUNDED_SUBJECTS;
+export const WRONG_QUESTION_ORGANIZER_MODEL_SUBJECTS =
+  WRONG_QUESTION_ORGANIZER_BOUNDED_MODEL_SUBJECTS;
+export const WRONG_QUESTION_ORGANIZER_EVIDENCE_CODES =
+  WRONG_QUESTION_ORGANIZER_BOUNDED_EVIDENCE_CODES;
 
 export const WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION =
+  'wrong-question-organizer-model-candidate-v4' as const;
+export const WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION_V2 =
   'wrong-question-organizer-model-candidate-v2' as const;
 
-export type WrongQuestionOrganizerSubject = (typeof WRONG_QUESTION_ORGANIZER_SUBJECTS)[number];
-export type WrongQuestionOrganizerModelSubject =
-  (typeof WRONG_QUESTION_ORGANIZER_MODEL_SUBJECTS)[number];
-export type WrongQuestionOrganizerEvidenceCode =
-  (typeof WRONG_QUESTION_ORGANIZER_EVIDENCE_CODES)[number];
-export type WrongQuestionOrganizerDeckAction = 'reuse_existing' | 'create_topic';
+export type WrongQuestionOrganizerSubject = WrongQuestionOrganizerBoundedSubject;
+export type WrongQuestionOrganizerModelSubject = WrongQuestionOrganizerBoundedModelSubject;
+export type WrongQuestionOrganizerEvidenceCode = WrongQuestionOrganizerBoundedEvidenceCode;
+export type WrongQuestionOrganizerDeckAction = WrongQuestionOrganizerBoundedDeckAction;
+export type WrongQuestionOrganizerEvidenceRequirement = BoundedEvidenceRequirement;
+export type WrongQuestionOrganizerAssociationPolicy = WrongQuestionOrganizerDecisionPolicy;
 
-export type WrongQuestionOrganizerEvidenceRequirement = Readonly<{
-  mode: 'all' | 'any';
-  codes: readonly WrongQuestionOrganizerEvidenceCode[];
-}>;
-
-export type WrongQuestionOrganizerAssociationPolicy = Readonly<{
+type WrongQuestionOrganizerAssociationPolicyV2 = Readonly<{
   knownSubject: Readonly<{
     requiredSubject: 'keep_local';
     evidence: WrongQuestionOrganizerEvidenceRequirement;
@@ -74,7 +69,7 @@ export type WrongQuestionOrganizerAssociationPolicy = Readonly<{
   }>;
 }>;
 
-const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE = {
+const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE = {
   knownSubject: {
     requiredSubject: 'keep_local',
     evidence: { mode: 'all', codes: ['structured_subject'] },
@@ -169,24 +164,24 @@ const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE = {
       'Do not combine unrelated concepts into one label',
     ],
   },
-} as const satisfies WrongQuestionOrganizerAssociationPolicy;
+} as const satisfies WrongQuestionOrganizerAssociationPolicyV2;
 
-export const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY: WrongQuestionOrganizerAssociationPolicy =
+export const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2: WrongQuestionOrganizerAssociationPolicyV2 =
   Object.freeze({
     knownSubject: Object.freeze({
       requiredSubject:
-        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.knownSubject.requiredSubject,
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.knownSubject.requiredSubject,
       evidence: freezeEvidenceRequirement(
-        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.knownSubject.evidence,
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.knownSubject.evidence,
       ),
     }),
     unknownSubject: Object.freeze({
       allowedSubjects: Object.freeze([
-        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.unknownSubject.allowedSubjects,
+        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.unknownSubject.allowedSubjects,
       ]),
     }),
     deckActions: Object.freeze(
-      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.deckActions.map((policy) =>
+      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.deckActions.map((policy) =>
         Object.freeze({
           action: policy.action,
           sameResolvedSubject: policy.sameResolvedSubject,
@@ -196,68 +191,109 @@ export const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY: WrongQuestionOrganizer
       ),
     ),
     evidenceTaxonomy: Object.freeze(
-      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.evidenceTaxonomy.map((entry) =>
+      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.evidenceTaxonomy.map((entry) =>
         Object.freeze({ ...entry }),
       ),
     ),
     highConfidence: Object.freeze({
       forbiddenEvidenceCodes: Object.freeze([
-        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.highConfidence.forbiddenEvidenceCodes,
+        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.highConfidence
+          .forbiddenEvidenceCodes,
       ]),
-      guidance: WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.highConfidence.guidance,
+      guidance: WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.highConfidence.guidance,
     }),
     mediumConfidence: Object.freeze({
-      guidance: WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.mediumConfidence.guidance,
+      guidance: WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.mediumConfidence.guidance,
     }),
     subjectTaxonomy: Object.freeze(
-      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.subjectTaxonomy.map((taxonomy) =>
+      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.subjectTaxonomy.map((taxonomy) =>
         Object.freeze({ ...taxonomy }),
       ),
     ),
     topicLabel: Object.freeze({
       forbiddenGenericLabels: Object.freeze([
-        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.topicLabel.forbiddenGenericLabels,
+        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.topicLabel.forbiddenGenericLabels,
       ]),
       guidance: Object.freeze([
-        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_SOURCE.topicLabel.guidance,
+        ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2_SOURCE.topicLabel.guidance,
       ]),
     }),
   });
 
-export function formatWrongQuestionOrganizerAssociationPolicyForPrompt(): string {
-  const deckRules = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.deckActions.map(
+export const WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY = WRONG_QUESTION_ORGANIZER_DECISION_POLICY;
+
+export function formatWrongQuestionOrganizerAssociationPolicyForPromptV2(): string {
+  const deckRules = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.deckActions.map(
     (policy) =>
       `- ${policy.action}: sameResolvedSubject=${String(policy.sameResolvedSubject)}; ${formatEvidenceRequirement(policy.evidence)}; use=${policy.selectionGuidance}.`,
   );
-  const evidenceTaxonomy = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.evidenceTaxonomy.map(
+  const evidenceTaxonomy = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.evidenceTaxonomy.map(
     (entry) => `- ${entry.code}: ${entry.guidance}.`,
   );
-  const taxonomy = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.subjectTaxonomy.map(
+  const taxonomy = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.subjectTaxonomy.map(
     (entry) => `- ${entry.subject}: ${entry.guidance}.`,
   );
   const topicRules = [
-    ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.topicLabel.guidance.map(
+    ...WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.topicLabel.guidance.map(
       (guidance) => `- ${guidance}.`,
     ),
-    `- forbiddenGenericLabels=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.topicLabel.forbiddenGenericLabels.join(',')}].`,
+    `- forbiddenGenericLabels=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.topicLabel.forbiddenGenericLabels.join(',')}].`,
   ];
 
   return [
-    `policyVersion=${WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION}`,
+    `policyVersion=${WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION_V2}`,
     'subjectAuthority:',
-    `- subjectHint!=unknown: subject=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.requiredSubject}; ${formatEvidenceRequirement(WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.evidence)}.`,
-    `- subjectHint=unknown: subjectAnyOf=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.unknownSubject.allowedSubjects.join(',')}]; keep_local=forbidden.`,
+    `- subjectHint!=unknown: subject=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.knownSubject.requiredSubject}; ${formatEvidenceRequirement(WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.knownSubject.evidence)}.`,
+    `- subjectHint=unknown: subjectAnyOf=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.unknownSubject.allowedSubjects.join(',')}]; keep_local=forbidden.`,
     'deckRules:',
     ...deckRules,
     'evidenceTaxonomy:',
     ...evidenceTaxonomy,
     'confidenceRules:',
-    `- high: forbiddenEvidence=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.forbiddenEvidenceCodes.join(',')}]; use=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.guidance}.`,
-    `- medium: use=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.mediumConfidence.guidance}.`,
+    `- high: forbiddenEvidence=[${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.highConfidence.forbiddenEvidenceCodes.join(',')}]; use=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.highConfidence.guidance}.`,
+    `- medium: use=${WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.mediumConfidence.guidance}.`,
     'subjectTaxonomy:',
     ...taxonomy,
     'topicRules:',
     ...topicRules,
+  ].join('\n');
+}
+
+export function formatWrongQuestionOrganizerAssociationPolicyForPrompt(): string {
+  const policy = WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY;
+  const deckRules = policy.deckActions.map(
+    (entry) =>
+      `- ${entry.action}: sameResolvedSubject=${String(entry.sameResolvedSubject)}; ${formatEvidenceRequirement(entry.evidence)}; forbiddenEvidence=[${entry.forbiddenEvidenceCodes.join(',')}]; use=${entry.selectionGuidance}.`,
+  );
+  const evidenceTaxonomy = policy.evidenceTaxonomy.map(
+    (entry) => `- ${entry.code}: ${entry.guidance}.`,
+  );
+  const subjectTaxonomy = policy.subjectTaxonomy.map(
+    (entry) => `- ${entry.subject}: ${entry.guidance}.`,
+  );
+
+  return [
+    `policyVersion=${WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION}`,
+    'subjectAuthority:',
+    `- subjectHint!=unknown: subject=${policy.knownSubject.requiredSubject}; ${formatEvidenceRequirement(policy.knownSubject.evidence)}.`,
+    `- subjectHint=unknown: subjectAnyOf=[${policy.unknownSubject.allowedSubjects.join(',')}]; keep_local=forbidden.`,
+    'deckRules:',
+    ...deckRules,
+    'evidenceTaxonomy:',
+    ...evidenceTaxonomy,
+    'evidenceRules:',
+    '- create_topic with projected semantic question or analysis meaning requires semantic_topic.',
+    '- projected errorType requires error_pattern.',
+    `- insufficient_signal: confidence=${policy.insufficientSignal.allowedConfidence}; forbiddenWith=[${policy.insufficientSignal.forbiddenWith.join(',')}]; use=${policy.insufficientSignal.guidance}.`,
+    'confidenceRules:',
+    `- high: supportingEvidenceAnyOf=[${policy.highConfidence.supportingEvidenceAnyOf.join(',')}]; forbiddenEvidence=[${policy.highConfidence.forbiddenEvidenceCodes.join(',')}]; use=${policy.highConfidence.guidance}.`,
+    `- medium: use=${policy.mediumConfidence.guidance}.`,
+    'subjectTaxonomy:',
+    ...subjectTaxonomy,
+    'topicRules:',
+    ...policy.topicLabel.guidance.map((guidance) => `- ${guidance}.`),
+    `- unicodeScalars=${policy.topicLabel.minUnicodeScalars}..${policy.topicLabel.maxUnicodeScalars}.`,
+    `- forbiddenGenericLabels=[${policy.topicLabel.forbiddenGenericLabels.join(',')}].`,
   ].join('\n');
 }
 
@@ -267,7 +303,10 @@ const TOPIC_LABEL_SCHEMA = z
   .regex(SAFE_TOPIC_LABEL_PATTERN)
   .superRefine((value, context) => {
     const scalarLength = Array.from(value).length;
-    if (scalarLength < 2 || scalarLength > 24) {
+    if (
+      scalarLength < WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.topicLabel.minUnicodeScalars ||
+      scalarLength > WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.topicLabel.maxUnicodeScalars
+    ) {
       context.addIssue({ code: 'custom', message: 'topic label scalar length out of range' });
     }
   });
@@ -310,7 +349,7 @@ export const WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA = z
   })
   .strict();
 
-const WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA = z
+const WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA_V2 = z
   .object({
     questions: z
       .array(
@@ -334,6 +373,38 @@ const WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA = z
   })
   .strict();
 
+const OPTIONAL_CONTEXT_TEXT_SCHEMA = z.string().optional();
+const WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA = z
+  .object({
+    questions: z
+      .array(
+        z
+          .object({
+            subjectHint: z.enum([...WRONG_QUESTION_ORGANIZER_SUBJECTS, 'unknown']),
+            category: OPTIONAL_CONTEXT_TEXT_SCHEMA,
+            knowledgePoints: z.array(z.string()).max(3).optional(),
+            errorType: OPTIONAL_CONTEXT_TEXT_SCHEMA,
+            questionExcerpt: OPTIONAL_CONTEXT_TEXT_SCHEMA,
+            analysisExcerpt: OPTIONAL_CONTEXT_TEXT_SCHEMA,
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(12),
+    decks: z
+      .array(
+        z
+          .object({
+            subject: z.enum(WRONG_QUESTION_ORGANIZER_SUBJECTS),
+            name: OPTIONAL_CONTEXT_TEXT_SCHEMA,
+            keywords: z.array(z.string()).max(8).optional(),
+          })
+          .strict(),
+      )
+      .max(20),
+  })
+  .strict();
+
 export type WrongQuestionOrganizerModelDecision = z.infer<
   typeof WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA
 >;
@@ -341,9 +412,16 @@ export type WrongQuestionOrganizerModelDecision = z.infer<
 export type WrongQuestionOrganizerDecisionContext = Readonly<{
   questions: readonly Readonly<{
     subjectHint: WrongQuestionOrganizerSubject | 'unknown';
+    category?: string;
+    knowledgePoints?: readonly string[];
+    errorType?: string;
+    questionExcerpt?: string;
+    analysisExcerpt?: string;
   }>[];
   decks: readonly Readonly<{
     subject: WrongQuestionOrganizerSubject;
+    name?: string;
+    keywords?: readonly string[];
   }>[];
 }>;
 
@@ -441,6 +519,91 @@ export function validateWrongQuestionOrganizerModelDecision(
       };
 }
 
+export function validateWrongQuestionOrganizerModelDecisionV2(
+  input: unknown,
+  context: WrongQuestionOrganizerDecisionContext,
+): WrongQuestionOrganizerDecisionValidationResult {
+  const cloned = clonePlainModelData(input);
+  if (!cloned.ok) return { ok: false, reasonCode: 'schema_invalid' };
+  const parsed = WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA.safeParse(cloned.value);
+  if (!parsed.success) return { ok: false, reasonCode: 'schema_invalid' };
+
+  const clonedContext = clonePlainModelData(context);
+  if (!clonedContext.ok) return { ok: false, reasonCode: 'context_invalid' };
+  const parsedContext = WRONG_QUESTION_ORGANIZER_DECISION_CONTEXT_SCHEMA_V2.safeParse(
+    clonedContext.value,
+  );
+  if (!parsedContext.success) return { ok: false, reasonCode: 'context_invalid' };
+  const safeContext = parsedContext.data;
+
+  const seen = new Set<number>();
+  for (const decision of parsed.data.decisions) {
+    if (decision.questionIndex >= safeContext.questions.length) {
+      return { ok: false, reasonCode: 'question_index_out_of_range' };
+    }
+    if (seen.has(decision.questionIndex)) {
+      return { ok: false, reasonCode: 'duplicate_question_index' };
+    }
+    seen.add(decision.questionIndex);
+  }
+  if (parsed.data.decisions.length !== safeContext.questions.length) {
+    return { ok: false, reasonCode: 'question_count_mismatch' };
+  }
+
+  for (const decision of parsed.data.decisions) {
+    const question = safeContext.questions[decision.questionIndex];
+    if (question === undefined) return { ok: false, reasonCode: 'question_index_out_of_range' };
+    if (
+      (question.subjectHint !== 'unknown' && decision.subject !== 'keep_local') ||
+      (question.subjectHint === 'unknown' && decision.subject === 'keep_local')
+    ) {
+      return { ok: false, reasonCode: 'subject_authority_violation' };
+    }
+    const resolvedSubject =
+      decision.subject === 'keep_local' ? question.subjectHint : decision.subject;
+    if (resolvedSubject === 'unknown') {
+      return { ok: false, reasonCode: 'subject_authority_violation' };
+    }
+
+    if (decision.deck.action === 'reuse_existing') {
+      const deck = safeContext.decks[decision.deck.deckIndex];
+      if (deck === undefined) return { ok: false, reasonCode: 'deck_index_out_of_range' };
+      if (deck.subject !== resolvedSubject) return { ok: false, reasonCode: 'cross_subject_deck' };
+    } else if (
+      !topicLabelIsSafeAgainstPolicy(
+        decision.deck.topicLabel,
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2,
+      )
+    ) {
+      return { ok: false, reasonCode: 'unsafe_topic_label' };
+    }
+
+    if (
+      decision.subject ===
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.knownSubject.requiredSubject &&
+      !evidenceRequirementIsSatisfiedV2(
+        decision.evidenceCodes,
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.knownSubject.evidence,
+      )
+    ) {
+      return { ok: false, reasonCode: 'invalid_evidence_association' };
+    }
+    const deckPolicy = deckAssociationPolicyV2(decision.deck.action);
+    if (
+      deckPolicy === undefined ||
+      !evidenceRequirementIsSatisfiedV2(decision.evidenceCodes, deckPolicy.evidence) ||
+      (decision.confidence === 'high' &&
+        WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.highConfidence.forbiddenEvidenceCodes.some(
+          (code) => decision.evidenceCodes.includes(code),
+        ))
+    ) {
+      return { ok: false, reasonCode: 'invalid_evidence_association' };
+    }
+  }
+
+  return { ok: true, value: parsed.data };
+}
+
 export function validateWrongQuestionOrganizerModelDecisionV4(
   input: unknown,
   context: WrongQuestionOrganizerDecisionContext,
@@ -495,7 +658,7 @@ export function validateWrongQuestionOrganizerModelDecisionV4(
     }
 
     if (decision.deck.action === 'reuse_existing') {
-      const deckPolicy = deckAssociationPolicy(decision.deck.action);
+      const deckPolicy = wrongQuestionOrganizerDeckPolicy(decision.deck.action);
       if (deckPolicy === undefined) {
         return v4Failure('dynamic_contract', 'evidence', 'deck_action_evidence_missing');
       }
@@ -513,25 +676,42 @@ export function validateWrongQuestionOrganizerModelDecisionV4(
     if (
       decision.subject ===
         WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.requiredSubject &&
-      !evidenceRequirementIsSatisfied(
+      !wrongQuestionOrganizerEvidenceRequirementIsSatisfied(
         decision.evidenceCodes,
         WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject.evidence,
       )
     ) {
       return v4Failure('dynamic_contract', 'evidence', 'known_subject_evidence_missing');
     }
-    const deckPolicy = deckAssociationPolicy(decision.deck.action);
+    const deckPolicy = wrongQuestionOrganizerDeckPolicy(decision.deck.action);
     if (
       deckPolicy === undefined ||
-      !evidenceRequirementIsSatisfied(decision.evidenceCodes, deckPolicy.evidence)
+      !wrongQuestionOrganizerEvidenceRequirementIsSatisfied(
+        decision.evidenceCodes,
+        deckPolicy.evidence,
+      ) ||
+      deckPolicy.forbiddenEvidenceCodes.some((code) => decision.evidenceCodes.includes(code)) ||
+      (decision.deck.action === 'create_topic' &&
+        hasSemanticTopicSignal(question) &&
+        !decision.evidenceCodes.includes('semantic_topic')) ||
+      (Boolean(question.errorType) && !decision.evidenceCodes.includes('error_pattern'))
     ) {
       return v4Failure('dynamic_contract', 'evidence', 'deck_action_evidence_missing');
     }
     if (
-      decision.confidence === 'high' &&
-      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.forbiddenEvidenceCodes.some(
-        (code) => decision.evidenceCodes.includes(code),
+      decision.evidenceCodes.includes('insufficient_signal') &&
+      WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.insufficientSignal.forbiddenWith.some((code) =>
+        decision.evidenceCodes.includes(code),
       )
+    ) {
+      return v4Failure('dynamic_contract', 'confidence', 'confidence_evidence_conflict');
+    }
+    if (
+      decision.confidence === 'high' &&
+      (WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.highConfidence.forbiddenEvidenceCodes.some(
+        (code) => decision.evidenceCodes.includes(code),
+      ) ||
+        !hasHighConfidenceSupport(decision.evidenceCodes, question))
     ) {
       return v4Failure('dynamic_contract', 'confidence', 'confidence_evidence_conflict');
     }
@@ -598,6 +778,13 @@ function mapV4FailureToLegacyReason(
 }
 
 function topicLabelIsSafe(value: string): boolean {
+  return topicLabelIsSafeAgainstPolicy(value, WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY);
+}
+
+function topicLabelIsSafeAgainstPolicy(
+  value: string,
+  policy: Pick<WrongQuestionOrganizerAssociationPolicyV2, 'topicLabel'>,
+): boolean {
   const canonical = value.normalize('NFKC').trim().replace(/\s+/gu, ' ');
   if (canonical !== value) return false;
   if (
@@ -608,7 +795,7 @@ function topicLabelIsSafe(value: string): boolean {
     return false;
   }
   if (
-    WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.topicLabel.forbiddenGenericLabels.some(
+    policy.topicLabel.forbiddenGenericLabels.some(
       (label) => label.toLowerCase() === value.toLowerCase(),
     )
   ) {
@@ -620,19 +807,42 @@ function topicLabelIsSafe(value: string): boolean {
   }).ok;
 }
 
-function deckAssociationPolicy(action: WrongQuestionOrganizerDeckAction) {
-  return WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.deckActions.find(
+function deckAssociationPolicyV2(action: WrongQuestionOrganizerDeckAction) {
+  return WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2.deckActions.find(
     (policy) => policy.action === action,
   );
 }
 
-function evidenceRequirementIsSatisfied(
+function evidenceRequirementIsSatisfiedV2(
   evidenceCodes: readonly WrongQuestionOrganizerEvidenceCode[],
   requirement: WrongQuestionOrganizerEvidenceRequirement,
 ): boolean {
   return requirement.mode === 'all'
     ? requirement.codes.every((code) => evidenceCodes.includes(code))
     : requirement.codes.some((code) => evidenceCodes.includes(code));
+}
+
+function hasSemanticTopicSignal(
+  question: WrongQuestionOrganizerDecisionContext['questions'][number],
+): boolean {
+  return Boolean(
+    question.category ||
+    question.knowledgePoints?.some(Boolean) ||
+    question.questionExcerpt ||
+    question.analysisExcerpt,
+  );
+}
+
+function hasHighConfidenceSupport(
+  evidenceCodes: readonly WrongQuestionOrganizerEvidenceCode[],
+  question: WrongQuestionOrganizerDecisionContext['questions'][number],
+): boolean {
+  if (evidenceCodes.includes('existing_deck_overlap')) return true;
+  if (evidenceCodes.includes('error_pattern') && Boolean(question.errorType)) return true;
+  return (
+    evidenceCodes.includes('structured_subject') &&
+    Boolean(question.category || question.knowledgePoints?.some(Boolean))
+  );
 }
 
 function freezeEvidenceRequirement(

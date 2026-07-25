@@ -71,7 +71,7 @@ describe('wrong-question organizer agent trace', () => {
     ]);
     const serialized = JSON.stringify(trace);
     expect(serialized).toContain(
-      'version=wrong-question-organizer-model-candidate-v2',
+      'version=wrong-question-organizer-model-candidate-v4',
     );
     expect(serialized).not.toContain('user_1');
     expect(serialized).not.toContain('wrong_1');

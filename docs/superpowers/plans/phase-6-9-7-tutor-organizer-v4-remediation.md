@@ -5,10 +5,10 @@ Tutor/Organizer 的 bounded diagnostic 真值与语义单一规则源；完成�
 V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授权才执行一次 V4
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
-**当前状态：** R0--R2 已完成；R2 已落地 Tutor V4 单一语义 policy，但未调用 Provider、未创建
-V4 runner 或 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。下一步仅 R3
-WrongQuestionOrganizer V4 语义单一规则源；Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10
-仍未完成。
+**当前状态：** R0--R3 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy，
+但未调用 Provider、未创建 V4 runner 或 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。
+下一步仅 R4 independent robustness 与 V4 lineage；Phase 6.9.7、产品验收、Task 13/main 与
+Phase 6.10 仍未完成。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`
@@ -87,7 +87,7 @@ lint、Prettier、diff check 通过；未读取 credential、调用 Provider 或
 
 ## R2：Tutor V4 语义单一规则源
 
-**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R3。
+**状态：** [x] 已完成。2026-07-26，zero-network；当时下一步仅 R3，后续 R3 已完成。
 
 **GREEN：**
 
@@ -110,7 +110,7 @@ eval harness 改走只读 V2 policy path，V3 prompt SHA 仍为原值，避免�
 
 ## R3：Organizer V4 语义单一规则源
 
-**状态：** [ ] 未开始。
+**状态：** [x] 已完成。2026-07-26，zero-network；下一步仅 R4。
 
 **GREEN：**
 
@@ -119,6 +119,16 @@ eval harness 改走只读 V2 policy path，V3 prompt SHA 仍为原值，避免�
 - computer/major/other、topic specificity 与 insufficient-signal 边界明确；
 - validator fail-closed，merger 不补 evidence、不替换越权 subject、不改 unsafe topic；
 - owner、ordinal、locked name、deck subject 与 stale authority 不变。
+
+**完成证据：** 新增深冻结 Organizer V4 policy，产品默认 candidate 使用
+`wrong-question-organizer-model-candidate-v4`。Known/unknown subject、keep/create/reuse、同学科 deck、
+精确 topic、required evidence 与 confidence 共用同一矩阵；merger 只应用已通过 validation 的 ordinal
+decision，不补 evidence、不修正越权 subject、不清洗 unsafe topic。owner、locked-name、三阶段
+stale authority、single call、独立预算、abort/no-retry 保持不变。历史 paired harness 显式走 V2
+candidate，V2 formatter SHA 与 V3 Organizer prompt SHA 不变；冻结 dataset/baseline 与 V1/V2/V3
+artifacts 未改写。全程未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
+详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。
 
 **提交：** `feat(agent): align phase 6.9.7 v4 organizer semantics`
 

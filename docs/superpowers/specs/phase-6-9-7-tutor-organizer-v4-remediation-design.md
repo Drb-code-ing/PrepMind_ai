@@ -2,8 +2,9 @@
 
 日期：2026-07-26
 
-状态：R0 零 Provider 复盘与设计已冻结；V4 尚未实现、尚未调用 Provider，也没有获得 V4
-controlled-Live 精确授权。V1/V2/V3 三条唯一 Live 均已失败封存且不得重跑。
+状态：R0--R3 已完成；V4 bounded diagnostics 与 Tutor/Organizer 单一语义 policy 已实现，但尚未
+调用 Provider、创建 V4 evidence lineage 或获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一
+Live 均已失败封存且不得重跑。下一步仅 R4 independent robustness 与 V4 lineage。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -217,7 +218,7 @@ precedence resolver、depth compatibility、candidate merger 和本地 strategy 
 authority；active context downgrade 与否定式 direct-answer 权限边界均有零网络回归。冻结
 deterministic detector/baseline 不按 V4 model precedence 重排；历史 paired eval 显式走 V2 policy，
 从而保持 V2 prompt bytes、V3 prompt SHA 和旧 evidence 不变。R2 未实现 V4 runner/lineage 或调用
-Provider；下一步仅第 7 节 Organizer R3。
+Provider；该检查点当时下一步仅第 7 节 Organizer R3，后续已完成。
 
 ## 7. Organizer 语义规则
 
@@ -235,6 +236,15 @@ Organizer V4 保持本地 authority，并把 prompt/validator 的必要条件写
 Topic label 的语义评测继续使用冻结 accepted-label authority；该答案表不得进入 policy formatter 或
 prompt。Local merger 只应用已通过 validator 的 ordinal decision，仍以本地 subject/deck/name authority
 为准。
+
+### 7.1 R3 实现状态（2026-07-26）
+
+R3 已按本节落地 `wrong-question-organizer-model-candidate-v4` 深冻结 policy。Formatter、dynamic
+validator 与 merger 共用 known/unknown subject、keep/create/reuse、same-subject deck、topic、
+evidence 与 confidence 决策矩阵；merger 不补 evidence、不修正越权 subject、不清洗 unsafe topic。
+Owner、ordinal、locked name、三阶段 stale fence、single call、独立预算、abort 与 no-retry 不变。
+历史 paired eval 显式走 Organizer V2 candidate，保持 V2 prompt bytes、V3 prompt SHA 与旧 evidence
+不变。R3 未实现 V4 runner/lineage 或调用 Provider；下一步仅第 8--9 节 R4。
 
 ## 8. Anti-overfit 与测试隔离
 

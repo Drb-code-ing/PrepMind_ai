@@ -1,5 +1,30 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R3 WrongQuestionOrganizer 语义单一规则源：新增深冻结
+> `packages/agent/src/policies/wrong-question-organizer-policy.ts`，把 subject、deck、topic、evidence
+> 与 confidence 收敛为一份可执行决策矩阵。已知 subject 只能 `keep_local +
+structured_subject`，未知 subject 禁止 `keep_local`；`reuse_existing` 只能引用同学科 ordinal deck
+> 并要求 `existing_deck_overlap`，`create_topic` 必须生成安全、精确且有题意依据的 topic。
+>
+> `semantic_topic`、`error_pattern`、`insufficient_signal` 与 high-confidence 支撑条件由同一 policy
+> 同时供 formatter、validator 和 merger 使用。Merger 只应用已通过校验的 ordinal decision，不补
+> evidence、不修正越权 subject、不清洗非法 topic；owner、question/deck ordinal、用户锁定名称、
+> 前后 stale fence、单次调用、独立预算、abort 与 no-retry 边界保持不变。产品默认 identity 更新为
+> `wrong-question-organizer-model-candidate-v4`。
+>
+> 历史 paired harness 显式走 `runWrongQuestionOrganizerModelCandidateV2`；V2 formatter SHA
+> `e1489fb8...c257` 与 V3 Organizer prompt SHA `2947cea2...ffdffd` 保持不变，72-case
+> dataset/SHA/baseline 及 V1/V2/V3 report/validator/evidence 未被重建或改写。R3 focused
+> `45/45`、`571 expect()`，Agent 全量 `656/656`、`6896 expect()`，Server Organizer
+> `50/50`、Agent TypeScript 与 Server production build 通过；两路只读复审均无
+> Critical/Important。
+>
+> 本轮未读取 `.env`/credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R4
+> independent robustness 与 V4 lineage；R5 checkpoint 后仍须重新取得一次精确 V4 Live 授权。
+> 验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R2 Tutor 语义单一规则源：新增深冻结
 > `packages/agent/src/policies/tutor-strategy-policy.ts`，统一五类模型 intent、primary/allowed
 > evidence、compatible depth、default/active-context depth、guiding/final-answer 与 answer structure。
@@ -22,8 +47,8 @@
 > `18/18`、Agent TypeScript、Agent/Web lint、Prettier、diff check 与 Markdown 相对链接门均通过。
 >
 > 本轮未读取 credential、调用 Provider、创建 V4 runner/CLI/marker/journal/evidence、启动
-> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。下一步仅 R3
-> WrongQuestionOrganizer V4 语义单一规则源，仍为 zero-network；R5 后仍须重新取得一次精确 V4
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO、Docker volume/业务数据。该检查点当时下一步
+> 仅 R3 WrongQuestionOrganizer V4 语义单一规则源，后续已完成；R5 后仍须重新取得一次精确 V4
 > Live 授权。验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。
 >

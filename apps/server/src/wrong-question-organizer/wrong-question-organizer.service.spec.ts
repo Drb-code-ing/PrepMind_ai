@@ -219,7 +219,7 @@ describe('WrongQuestionOrganizerService', () => {
           mode: options.modelEnabled ? 'live' : 'mock',
           provider: options.modelEnabled ? 'deepseek' : 'mock',
           model: 'deepseek-v4-pro',
-          promptVersion: 'wrong-question-organizer-model-candidate-v2',
+          promptVersion: 'wrong-question-organizer-model-candidate-v4',
           pricingKnown: true,
         },
         runtime: modelRuntime,
@@ -276,7 +276,7 @@ describe('WrongQuestionOrganizerService', () => {
                     ? '函数极限'
                     : `函数极限${questionIndex + 1}`,
               },
-              confidence: 'high',
+              confidence: 'medium',
               evidenceCodes: ['semantic_topic'],
             })),
           },

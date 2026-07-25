@@ -11,6 +11,7 @@ import {
 import {
   mergeWrongQuestionOrganizerModelDecision,
   runWrongQuestionOrganizerModelCandidate,
+  runWrongQuestionOrganizerModelCandidateV2,
   type WrongQuestionOrganizerModelCandidateInput,
   type WrongQuestionOrganizerModelCandidateItem,
 } from '../src/model-candidates/wrong-question-organizer-model-candidate.ts';
@@ -222,9 +223,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
       task: 'wrong_question_organization',
       maxOutputTokens: 800,
     });
-    expect(requests[0]?.systemPrompt).toContain(
-      WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
-    );
+    expect(requests[0]?.systemPrompt).toContain(WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION);
     expect(requests[0]?.systemPrompt).toContain(
       formatWrongQuestionOrganizerAssociationPolicyForPrompt(),
     );
@@ -432,9 +431,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
       const input = scenario.mutate(candidateInput(runtime));
       const result = await runWrongQuestionOrganizerModelCandidate(input);
       expect(requests, scenario.name).toHaveLength(0);
-      expect(result.observation.disposition, scenario.name).toBe(
-        scenario.expectedDisposition,
-      );
+      expect(result.observation.disposition, scenario.name).toBe(scenario.expectedDisposition);
     }
   });
 
@@ -703,9 +700,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
       'fallback_runtime_error',
       'fallback_runtime_error',
     ]);
-    expect(results.every((result) => result.result[0]?.subjectKey === '其他')).toBe(
-      true,
-    );
+    expect(results.every((result) => result.result[0]?.subjectKey === '其他')).toBe(true);
     expect(results[1]?.observation).toMatchObject({
       attempted: true,
       traceUnavailable: true,
@@ -718,7 +713,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
     });
   });
 
-  test('honors all frozen 24 Organizer runtime fixtures with one call each', async () => {
+  test('keeps the frozen 24 Organizer runtime fixtures on the explicit V2 candidate', async () => {
     const runtimeCases = phase69WrongQuestionOrganizerCases.filter(
       (fixture): fixture is Phase69OrganizerRuntimeCase => fixture.subset === 'runtime',
     );
@@ -743,7 +738,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
         })),
       };
       const { requests, runtime } = trackedRuntime(output);
-      const result = await runWrongQuestionOrganizerModelCandidate(
+      const result = await runWrongQuestionOrganizerModelCandidateV2(
         candidateInput(runtime, organizerFixtureInput(fixture)),
       );
 
@@ -757,10 +752,9 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
             fixture.input.existingDecks[expected.deckIndex ?? -1]?.id,
           );
         } else {
-          expect(
-            expected.acceptedTopicLabels.map(normalizeLabel),
-            fixture.id,
-          ).toContain(normalizeLabel(actual?.deckName ?? ''));
+          expect(expected.acceptedTopicLabels.map(normalizeLabel), fixture.id).toContain(
+            normalizeLabel(actual?.deckName ?? ''),
+          );
         }
       });
     }
@@ -783,9 +777,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
         items: [candidateItem()],
         projection: {
           version: 'wrong-question-organizer-model-projection-v1',
-          questions: [
-            { ordinal: 'q0', subjectHint: 'unknown', knowledgePoints: [] },
-          ],
+          questions: [{ ordinal: 'q0', subjectHint: 'unknown', knowledgePoints: [] }],
           decks: [
             {
               ordinal: 'd0',
@@ -797,9 +789,7 @@ describe('Phase 6.9.7 governed WrongQuestionOrganizer model candidate', () => {
         },
         questionIdsByOrdinal: ['foreign-question'],
         deckIdsByOrdinal: ['foreign-deck'],
-        questionAuthoritiesByOrdinal: [
-          { questionId: 'foreign-question', subject: null },
-        ],
+        questionAuthoritiesByOrdinal: [{ questionId: 'foreign-question', subject: null }],
         deckAuthoritiesByOrdinal: [
           {
             deckId: 'foreign-deck',

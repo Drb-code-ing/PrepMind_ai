@@ -67,7 +67,7 @@ import {
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
   type WrongQuestionOrganizerModelDecision,
 } from '../model-candidates/wrong-question-organizer-model-contract.ts';
-import { runWrongQuestionOrganizerModelCandidate } from '../model-candidates/wrong-question-organizer-model-candidate.ts';
+import { runWrongQuestionOrganizerModelCandidateV2 } from '../model-candidates/wrong-question-organizer-model-candidate.ts';
 import { WRONG_QUESTION_ORGANIZER_MODEL_PROJECTION_VERSION } from '../model-candidates/wrong-question-organizer-model-projection.ts';
 import type {
   ModelCandidateDisposition,
@@ -791,7 +791,7 @@ async function runOrganizerZeroCall(
     maxInputTokens: 3_500,
     maxOutputTokens: 800,
   });
-  const candidate = await runWrongQuestionOrganizerModelCandidate({
+  const candidate = await runWrongQuestionOrganizerModelCandidateV2({
     runId: `phase-697-zero:${entry.id}`,
     items,
     force: entry.input.force,
@@ -946,7 +946,7 @@ async function runOrganizerRuntimeCase(input: {
     input.entry.input.existingDecks,
   );
   const deterministic = items.map((item) => organizeWrongQuestion(item.deterministicInput));
-  const candidate = await runWrongQuestionOrganizerModelCandidate({
+  const candidate = await runWrongQuestionOrganizerModelCandidateV2({
     runId: `${input.runId}:${input.entry.id}`,
     items,
     force: input.entry.input.force,

@@ -1,10 +1,14 @@
 import { describe, expect, test } from 'bun:test';
+import { createHash } from 'node:crypto';
 
 import {
   WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY,
+  WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2,
   WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
+  WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION_V2,
   WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
   formatWrongQuestionOrganizerAssociationPolicyForPrompt,
+  formatWrongQuestionOrganizerAssociationPolicyForPromptV2,
   validateWrongQuestionOrganizerModelDecision,
 } from '../src/model-candidates/wrong-question-organizer-model-contract.ts';
 import { phase69WrongQuestionOrganizerCases } from '../src/evals/phase-6-9-tutor-wrong-question-cases.ts';
@@ -34,9 +38,9 @@ const validDecision = {
 } as const;
 
 describe('Phase 6.9.7 WrongQuestionOrganizer model contract', () => {
-  test('deep-freezes one association policy and formats byte-stable v2 prompt rules', () => {
+  test('deep-freezes one V4 association policy and keeps the V2 formatter byte-stable', () => {
     expect(WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION).toBe(
-      'wrong-question-organizer-model-candidate-v2',
+      'wrong-question-organizer-model-candidate-v4',
     );
     expect(Object.isFrozen(WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY)).toBe(true);
     expect(Object.isFrozen(WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY.knownSubject)).toBe(true);
@@ -84,36 +88,20 @@ describe('Phase 6.9.7 WrongQuestionOrganizer model contract', () => {
 
     const formatted = formatWrongQuestionOrganizerAssociationPolicyForPrompt();
     expect(formatWrongQuestionOrganizerAssociationPolicyForPrompt()).toBe(formatted);
-    expect(formatted).toBe(
-      [
-        'policyVersion=wrong-question-organizer-model-candidate-v2',
-        'subjectAuthority:',
-        '- subjectHint!=unknown: subject=keep_local; requiredEvidenceAll=[structured_subject].',
-        '- subjectHint=unknown: subjectAnyOf=[math,english,politics,computer,major,other]; keep_local=forbidden.',
-        'deckRules:',
-        '- reuse_existing: sameResolvedSubject=true; requiredEvidenceAll=[existing_deck_overlap]; use=select only when projected deck name or keywords directly overlap the question topic.',
-        '- create_topic: sameResolvedSubject=false; requiredEvidenceAnyOf=[semantic_topic,error_pattern,insufficient_signal]; use=select when no same-subject projected deck directly matches; propose one bounded topic.',
-        'evidenceTaxonomy:',
-        '- structured_subject: known subjectHint or another projected structured subject or topic field supports the decision.',
-        '- semantic_topic: projected question meaning supports the selected topic or deck.',
-        '- existing_deck_overlap: selected same-subject deck name or keywords directly overlap.',
-        '- error_pattern: projected errorType or analysis exposes a specific error pattern.',
-        '- insufficient_signal: projected content cannot ground a more precise topic.',
-        'confidenceRules:',
-        '- high: forbiddenEvidence=[insufficient_signal]; use=only for explicit same-subject deck overlap or a structured category, knowledge point, or error pattern that directly pins the decision.',
-        '- medium: use=default for semantic inference from question text; use insufficient_signal when no precise topic is grounded.',
-        'subjectTaxonomy:',
-        '- math: explicit mathematics signal.',
-        '- english: explicit English-language subject signal.',
-        '- politics: explicit politics subject signal.',
-        '- computer: general computer foundations, software, algorithms, networks, databases, or operating systems.',
-        '- major: explicit non-general-computer major course or professional exam domain.',
-        '- other: insufficient exam-subject signal or outside the preceding subjects.',
-        'topicRules:',
-        '- Return one short, precise, source-grounded concept or error pattern from the projected question.',
-        '- Do not combine unrelated concepts into one label.',
-        '- forbiddenGenericLabels=[未分类,未分类错题,其他,other,default,uncategorized,知识点,综合题,学习资料,错题整理].',
-      ].join('\n'),
+    expect(formatted).toContain('policyVersion=wrong-question-organizer-model-candidate-v4');
+    expect(formatted).toContain('projected errorType requires error_pattern');
+    expect(formatted).toContain('supportingEvidenceAnyOf=');
+    expect(formatted).toContain('computer: general computer foundations');
+    expect(formatted).toContain('major: explicit non-general-computer major course');
+    expect(formatted).toContain('other: insufficient exam-subject signal');
+
+    const legacy = formatWrongQuestionOrganizerAssociationPolicyForPromptV2();
+    expect(WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION_V2).toBe(
+      'wrong-question-organizer-model-candidate-v2',
+    );
+    expect(Object.isFrozen(WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY_V2)).toBe(true);
+    expect(createHash('sha256').update(legacy).digest('hex')).toBe(
+      'e1489fb8b41d635471243b863ea59cd89db08ea5a52e4919ae7e265c5174c257',
     );
   });
 
@@ -338,10 +326,7 @@ describe('Phase 6.9.7 WrongQuestionOrganizer model contract', () => {
       },
     });
     expect(
-      validateWrongQuestionOrganizerModelDecision(
-        validDecision,
-        hostileContext as typeof context,
-      ),
+      validateWrongQuestionOrganizerModelDecision(validDecision, hostileContext as typeof context),
     ).toEqual({ ok: false, reasonCode: 'context_invalid' });
     expect(getterCalls).toBe(0);
   });

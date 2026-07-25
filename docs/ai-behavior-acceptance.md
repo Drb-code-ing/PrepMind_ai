@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R2）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R3）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3 三条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R4 已完成安全诊断、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 在 Organizer `subject_authority_violation` 后以 `quality_gate_failed` 封存。V4 R0 已完成零 Provider bounded 复盘与新版本设计，R1 已完成独立 diagnostics/历史兼容，R2 已完成 Tutor V4 单一语义 policy；产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3 三条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V3 R0--R4 已完成安全诊断、首错熔断、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 在 Organizer `subject_authority_violation` 后以 `quality_gate_failed` 封存。V4 R0 已完成零 Provider bounded 复盘与新版本设计，R1 已完成独立 diagnostics/历史兼容，R2/R3 已分别完成 Tutor 与 Organizer V4 单一语义 policy；产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -388,8 +388,20 @@ intent 降级到更低 precedence。`answer_direct`、最终回答内容、route
 V4 model precedence 不重排冻结 deterministic detector；历史 paired eval 显式使用 V2 policy，因此
 baseline `6/48`、Tutor semantic `0.4418666667` 与 V3 Tutor prompt SHA 均不变。R2 未读取
 credential、调用 Provider、创建 V4 runner/Live artifact、启动 Docker/API/browser 或修改业务数据。
-下一步仅 R3 Organizer policy；完整证据见
+该检查点当时下一步仅 R3 Organizer policy，后续已完成；完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`。
+
+V4 R3 当前证据：`wrong-question-organizer-model-candidate-v4` 使用深冻结
+subject/deck/topic/evidence/confidence policy。Known subject 强制 `keep_local + structured_subject`；
+unknown subject 禁止 `keep_local`；reuse 只能引用同学科 ordinal deck 并要求 overlap evidence，create
+必须生成安全精确 topic。`semantic_topic`、`error_pattern`、`insufficient_signal` 与 high-confidence
+支撑边界由同一 policy 校验，merger 不修复非法输出。
+
+owner、ordinal、locked-name、前后 stale fence、single call、独立预算、abort/no-retry 均未放宽。
+历史 paired eval 显式使用 Organizer V2 candidate，V2 formatter SHA、V3 Organizer prompt SHA、冻结
+dataset/baseline 与 V1/V2/V3 artifacts 保持不变。R3 未读取 credential、调用 Provider、创建 V4
+runner/Live artifact、启动 Docker/API/browser 或修改业务数据。下一步仅 R4；完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

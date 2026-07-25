@@ -4,9 +4,9 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
-Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1、V2 与 V3 三条唯一 controlled-Live 均以 `quality_gate_failed` 封存且不得重跑。V1 run `39a62241...` 为 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`。V2 R0--R6 已完成独立 runner/CLI/validator/evidence lineage、held-out/metamorphic/authority/leakage、marker/evidence 并发故障恢复、Chat abort、Organizer 失败终态及同题跨路由 PostgreSQL 收敛；唯一 V2 R7 run `67ce18dd...` 保持 `24/24` zero-call，但最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0--R4 完成安全 failure 投影、零网络 compatibility、strict-gate breaker、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 V3 R5 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 在第 14 对的 Organizer `subject_authority_violation` 后熔断，最终 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`。V4 R0--R2 已完成零 Provider bounded 复盘、独立 diagnostics、历史隔离与 Tutor 单一语义 policy；V4 明确使用 `step > explain > concept > hint > general`，active context 不能降级具体 intent，冻结 baseline 与 V2/V3 prompt SHA 保持不变。下一步仅为 R3 WrongQuestionOrganizer 语义单一规则源。
+Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1、V2 与 V3 三条唯一 controlled-Live 均以 `quality_gate_failed` 封存且不得重跑。V1 run `39a62241...` 为 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.3485119048/0.7`。V2 R0--R6 已完成独立 runner/CLI/validator/evidence lineage、held-out/metamorphic/authority/leakage、marker/evidence 并发故障恢复、Chat abort、Organizer 失败终态及同题跨路由 PostgreSQL 收敛；唯一 V2 R7 run `67ce18dd...` 保持 `24/24` zero-call，但最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`。V3 R0--R4 完成安全 failure 投影、零网络 compatibility、strict-gate breaker、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 V3 R5 run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 在第 14 对的 Organizer `subject_authority_violation` 后熔断，最终 `24/24` zero-call、`27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`。V4 R0--R3 已完成零 Provider bounded 复盘、独立 diagnostics、历史隔离与 Tutor/Organizer 单一语义 policy；Tutor 明确使用 `step > explain > concept > hint > general`，Organizer 统一 subject/deck/topic/evidence/confidence 决策矩阵，冻结 baseline 与 V2/V3 prompt SHA 保持不变。下一步仅为 R4 independent robustness 与 V4 lineage。
 
-V1/V2/V3 marker/evidence 均已封存，V3 journal 完整记录 breaker、run completed 与 evidence sealed；生产 gate 的 tracked defaults 继续关闭。V3 不得重跑；V4 R3--R5 只允许零网络/static/Mock，新的 V4 controlled-Live、产品 Docker/API/浏览器、Task 13/main 合并与 Phase 6.10 均不得提前开始。
+V1/V2/V3 marker/evidence 均已封存，V3 journal 完整记录 breaker、run completed 与 evidence sealed；生产 gate 的 tracked defaults 继续关闭。V3 不得重跑；V4 R4--R5 只允许零网络/static/Mock，新的 V4 controlled-Live、产品 Docker/API/浏览器、Task 13/main 合并与 Phase 6.10 均不得提前开始。
 
 ## 当前状态
 
@@ -54,7 +54,7 @@ V1/V2/V3 marker/evidence 均已封存，V3 journal 完整记录 breaker、run co
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                          | 已完成                                             |
 | Phase 6.9.5   | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放                 | 已完成                                             |
 | Phase 6.9.6   | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                                | 已完成                                             |
-| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | V1/V2/V3 Live 失败封存；V4 R0--R2 完成，阶段未完成 |
+| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | V1/V2/V3 Live 失败封存；V4 R0--R3 完成，阶段未完成 |
 | Phase 7       | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit         | 核心工程化已完成                                   |
 | Phase 7.8.5   | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                       | 已完成                                             |
 | Phase 7.23    | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                       | 已完成                                             |
@@ -228,7 +228,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. 当前执行 Phase 6.9.7：Task 0--11、V2 R0--R6 与 V3 R0--R4 均已完成；V1 run `39a62241...`、V2 run `67ce18dd...` 与 V3 run `ff2e1a54...` 都已分别以 `quality_gate_failed` 封存且不得重跑。V3 已补齐安全 failure/stage、真实 invocation、strict breaker、固定分母、双 lane/dispatch ledger、活 owner/recovery claim、dispatch-before-call journal、崩溃 seal、hard-link evidence 与跨版本 validator，但 R5 未形成产品质量 authority。
-3. V4 R0--R2 已完成：零 Provider 复盘确认 Tutor 的 3 个具体 intent 降级与 Organizer topic/evidence 弱项；独立 V4 diagnostics 现在明确区分 not-started、contract failure、semantic mismatch/match，Organizer 使用唯一 `context/index -> subject -> deck -> topic -> evidence -> confidence` reason 链，V1/V2/V3 字段与 validator 保持隔离；Tutor formatter/validator/depth/merger 与本地 strategy invariants 已共用深冻结 policy，并保留 frozen deterministic/V2/V3 历史路径。下一步仅执行 R3 Organizer policy；随后 R4/R5 完成独立 robustness/lineage 与 static/Mock checkpoint，再停止请求新的精确 V4 Live 授权。产品验收、Task 13/main 与 Phase 6.9.8 暂不得开始；全部 Agent 完成后才进入 Phase 6.10 分层记忆，并在阶段结束后分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. V4 R0--R3 已完成：零 Provider 复盘确认 Tutor 的 3 个具体 intent 降级与 Organizer topic/evidence 弱项；独立 V4 diagnostics 现在明确区分 not-started、contract failure、semantic mismatch/match，Organizer 使用唯一 `context/index -> subject -> deck -> topic -> evidence -> confidence` reason 链，V1/V2/V3 字段与 validator 保持隔离；Tutor 与 Organizer 的 formatter/validator/merger 已分别共用深冻结 policy，并保留 frozen deterministic/V2/V3 历史路径。下一步仅执行 R4 independent robustness 与 V4 lineage；随后 R5 完成 static/Mock checkpoint，再停止请求新的精确 V4 Live 授权。产品验收、Task 13/main 与 Phase 6.9.8 暂不得开始；全部 Agent 完成后才进入 Phase 6.10 分层记忆，并在阶段结束后分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”“为什么 held-out/metamorphic 满分仍不能替代 controlled-Live？”
 
@@ -265,6 +265,7 @@ V3 R5 已再次复核 V1/V2 四个历史 SHA 与专用 validator；V3 marker/jou
 - [Phase 6.9.7 V4 R0 零 Provider 复盘验收](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r0-zero-provider-postmortem.md)
 - [Phase 6.9.7 V4 R1 bounded diagnostics 验收](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md)
 - [Phase 6.9.7 V4 R2 Tutor 语义单一规则源验收](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md)
+- [Phase 6.9.7 V4 R3 Organizer 语义单一规则源验收](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)
