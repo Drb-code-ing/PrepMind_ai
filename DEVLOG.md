@@ -1,5 +1,41 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R3 WrongQuestionOrganizer Ordinal Shortlist：新增独立
+> `wrong-question-organizer-shortlist-v5`、`wrong-question-organizer-model-projection-v5` 与 V5 strict
+> candidate/local merger。Shortlist 从调用方提供的 owner snapshot 本地生成 structured/taxonomy subject、
+> bounded topic 与 existing-deck ordinal；question/deck/knowledge point/keyword 稳定排序、规范化去重，
+> 同 subject/规范化名称的 duplicate deck 折叠为最低 ID authority，全部 folded ID 仍进入 fingerprint。
+>
+> Fingerprint 绑定 owner domain、owner snapshot version/fingerprint、完整 question/deck/topic 序列、
+> shortlist/rules version 与 provenance。Candidate 在 runtime 前后各调用一次 `revalidateSource`；pre-call
+> stale 保持 zero-call，post-call stale/分页位移/ordinal ABA 不应用旧 ordinal、不重调 Provider。模型只
+> 返回 `shortlistFingerprint/questionIndex/subjectDecision/deckDecision/confidence`，structured subject、
+> same-subject association、locked name、真实 ID 与 command binding 全由本地 validator/merger 掌权，
+> merger 不执行 mutation。
+>
+> Shortlist rules SHA 冻结为 `9747383ca2ad9dfdc143a55d23ccb62ba14dc7d84ff82d3c7bfe21f0371299d3`，
+> model prompt SHA 为 `915084a80f1cf4f96fca08987d4dc228f0e73e1dc299bd1368033d37f6ac69ab`，
+> 24 条独立 held-out fixture SHA 为
+> `49336b123cb56741b3aab0fb23c2e9341e938a3f1b4c4e4f48774a94365ee097`。Fixture 固定
+> `8 zh / 8 en / 8 mixed`，并覆盖冻结 V2 Organizer 全部 32 decision units、same/cross-subject batch、
+> structured/taxonomy、locked/dedupe、reorder/分页/去重/ABA/stale、strict schema、zero-call、single-call/
+> no-retry、输入不变与实际 prompt leakage。
+>
+> 独立复审无 Critical。代码复审提出 candidate preview budget 与 runtime budget 可能不一致；对照
+> `ModelAgentRuntime` 源码确认 candidate reserve 是 fail-fast preview，runtime 必须接收未消费 caller
+> budget 执行唯一 actual reservation，否则会双扣。已补代码注释与 request/result budget 回归。测试复审
+> 提出的重复/越界、cross-subject runtime、输入 mutation、分页/ordinal drift 与 taxonomy 边界均已补齐；
+> usage unknown/aggregate failure attribution 按冻结计划留给 R4 runner。
+>
+> R3 聚焦测试 `13 pass / 0 fail / 469 expect()`，Agent 全量
+> `715 pass / 0 fail / 8965 expect()`；Agent typecheck/lint、根 Web/Server lint、Prettier、V1--V4 四个
+> 历史 evidence validator 均通过。历史 dataset/runner/marker/journal/evidence/SHA 未改。
+>
+> 本轮未读取 credential、调用 Provider、接 product composition/gate/paired runner/Trace persistence、
+> 启动 Docker/API/browser 或修改 PostgreSQL、Redis、MinIO/业务数据。下一原子任务仅 V5 R4
+> runner、lineage 与生产极端边界；不得开始 Task 13/main、Phase 6.10 或博客收尾。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R2 Tutor Local-Signal Authority：新增独立
 > `tutor-local-signal-authority-v1` 与 `tutor-model-projection-v5`。本地权威从 latest text 派生
 > primary signal、negated signal、eligible intent/depth、confidence 与 reason，并把 precedence 冻结为

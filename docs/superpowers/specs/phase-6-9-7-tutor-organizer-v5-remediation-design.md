@@ -2,9 +2,10 @@
 
 日期：2026-07-26
 
-状态：R0--R2 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
-baseline 与 Tutor local-signal authority/bounded candidate 已冻结；尚未实现 Organizer V5 ordinal
-shortlist 或 paired Mock/Live runner，尚未调用 Provider。下一步仅 R3 Organizer ordinal shortlist。
+状态：R0--R3 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
+baseline、Tutor local-signal authority/bounded candidate，以及 Organizer owner-snapshot ordinal
+shortlist/strict candidate/local merger 已冻结；尚未实现 V5 paired runner/lineage，尚未调用 Provider。
+下一步仅 R4 runner、lineage 与生产极端边界。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -22,6 +23,9 @@ R1 acceptance：
 
 R2 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`
+
+R3 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`
 
 ## 1. 决策摘要
 
@@ -161,6 +165,13 @@ Shortlist 必须在 owner snapshot 上稳定排序、规范化去重并生成包
 重排、分页漂移、重复折叠变化、owner/snapshot 变化或 ordinal 指向变化一律视为 stale/ABA，Provider
 后不重调模型，command 前 fail-closed。现有事务外双 fence 与 advisory-lock 第三 fence 继续覆盖该
 shortlist fingerprint，不能只校验错题 ID。
+
+R3 已按该设计落地：shortlist rules/prompt/24 条独立 held-out SHA 分别冻结为
+`9747383...1299d3`、`915084a8...ac69ab`、`49336b12...ee097`。同 subject/规范化名称的 deck
+按最低 ID 折叠，完整 folded ID、owner、snapshot、question/deck/topic 序列进入 fingerprint；模型只
+返回 subject/deck/topic ordinal 与 confidence，merger 只从本地 authority 解析真实值和 command
+binding。Pre/post source revalidation、reorder、分页、去重、ordinal ABA、cross-subject 与 locked-name
+均以 no-network 测试 fail-closed。本任务没有接产品、Provider、gate、Trace persistence 或 runner。
 
 ## 4. 通信、权限与生产边界
 

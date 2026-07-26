@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2 已完成 Tutor local-signal authority 与三字段 bounded candidate，仍未接产品。下一原子任务为 V5 R3 WrongQuestionOrganizer ordinal shortlist。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆；随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2 已完成 Tutor local-signal authority 与三字段 bounded candidate；V5 R3 已完成 Organizer owner-snapshot ordinal shortlist、strict candidate/local merger。V5 R0--R3 均为 zero-provider 且未接产品。下一原子任务为 V5 R4 runner、lineage 与生产极端边界。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆；随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 
 ## 项目目标
 
@@ -26,7 +26,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                   |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                           |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成            |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V5 R1 已完成，阶段未完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V5 R3 已完成，阶段未完成 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                    |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                   |
@@ -224,7 +224,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.1 已完成 Router + Tutor Chat 接入：`/api/chat` 通过 `chat-agent-runtime` adapter 调用 RouterAgent，并保留原有 streaming、RAG、OCR activeStudyContext、mock/live 双开关和 token 预算。
 - Phase 6.2 已完成 TutorAgent 策略层：`TutorAgent` 作为确定性 policy 识别 `explain_solution`、`socratic_hint`、`step_check`、`concept_bridge`、`answer_direct` 和 `general_follow_up`，并生成短策略 prompt 与 mock strategy metadata。
 - Phase 6.3 已完成 KnowledgeVerifierAgent：`@repo/agent/knowledge-verifier` 作为确定性 policy 在 RAG 命中后评估资料状态为 `trusted / suspicious / conflict / insufficient / skipped`，并向 Chat RAG prompt 注入保守使用规则。
-- Phase 6.4 已完成 WrongQuestionOrganizerAgent 的确定性产品能力：`@repo/agent/wrong-question-organizer` 根据错题结构化字段和已有 deck 摘要推荐学科组与专题 deck；Phase 6.9.7 Task 4 又完成 package 级受治理 candidate/merger，Task 6/7 已接入 NestJS owner/write fencing 与 server-only default-off runtime/Trace/HTTP abort。Task 12 V1 与 V2 R7 两条唯一 Live 均质量失败；V2 虽已完成 bounded diagnostics、共享规则源、robustness、独立 lineage、并发/恢复/路由 checkpoint，但 24 个 Organizer runtime 全在结构化对象前失败，仍未进入产品 Docker/API/浏览器验收。
+- Phase 6.4 已完成 WrongQuestionOrganizerAgent 的确定性产品能力：`@repo/agent/wrong-question-organizer` 根据错题结构化字段和已有 deck 摘要推荐学科组与专题 deck。Phase 6.9.7 Task 4/6/7 是 V1--V4 legacy 路径，包含允许受限短 topic label 的 candidate、NestJS owner/write fencing 与 server-only default-off runtime/Trace/HTTP abort；四条唯一 Live 均质量失败，仍未进入产品 Docker/API/浏览器验收。V5 R3 另建 no-network `wrong-question-organizer-shortlist-v5`，把模型权限收敛为本地 subject/deck/topic ordinal 选择；当前尚未接回 legacy 产品 composition。
 - Phase 6.5 已完成 ReviewAgent / PlannerAgent：`@repo/agent/review` 和 `@repo/agent/planner` 作为确定性 policy，基于当前用户错题、复习日志、ReviewTask 计划和偏好生成只读复习诊断与学习计划建议。
 - Phase 6.6 已完成 MemoryAgent：`@repo/agent/memory` 作为确定性 policy，基于当前用户学习信号生成长期记忆候选；`UserMemoryCandidate` 和 `UserMemory` 以 PostgreSQL 为权威来源，候选必须经用户确认后才成为正式记忆。
 - Phase 6.7 已完成 Agent Trace / Eval：新增固定 deterministic eval set、`/agent-traces` 在线账号级观测 API、`/api/chat` best-effort trace capture、估算成本看板和 `/agent-trace` 调试台；trace 写入失败不影响 streaming / 流式回答。2026-07-15 补齐默认 Live `deepseek-v4-flash` 的集中 USD 价格快照，新的 Trace 正确标记 `pricingKnown=true`；未知模型保持“未配置单价”，旧 Trace 不回填。
@@ -255,7 +255,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V4 R6 已失败封存。唯一 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 为 `24/24` guard zero-call、6 对 dispatched/completed、12 executor started、10/48 strict runtime；第 6 对 Tutor 在 `dynamic_contract` 命中 `invalid_evidence_association`，Organizer sibling 为 attempted-aborted/usage unknown，剩余 36 runtime 按 breaker 未启动。Tutor/Organizer/combined semantic 为 `0.14410714285714285/0.10372596153846154/0.1239165521978022`，最终 `quality_gate_failed`。11 个 verified usage 的部分费用为 `0.032247 CNY`；完整费用与 P95 因样本不完整保持 `null`。V4 evidence/journal/marker 已 durable seal 且不得重跑；R7--R9、Task 13/main、Phase 6.10 与博客收尾均不得开始。后续若继续，只能新建与 V1--V4 双向隔离的零 Provider remediation。
 - Phase 6.9.7 V5 R0 已完成零 Provider 根因取证。冻结 V1 `tutor-runtime-06` 把中文代数 latest text 与英文微积分 active context 拼接，并因数组奇偶误标为 `en`；但 exact input 差分回归同时证明合法 evidence 在产品 candidate 应用、缺 primary/错误 evidence 才被产品 candidate 拒绝，V4 diagnostic 只是如实投影，不能把 V4 failure 翻案为脚本误判。V4 前 5 对还保留 3 个中文 hint -> general、Organizer topic `2/5` 与一次 `major -> computer` 的真实语义证据。已冻结 V5 R1--R8 remediation 路线。（已完成）
 - Phase 6.9.7 V5 R1 已完成独立 `phase-6.9-tutor-wrong-question-v2` 与 fail-fast coherence。72/24/48/24、Tutor `12 zh/10 en/2 mixed`、Organizer 32 decision/topic ordinal/batch relation 已冻结；dataset/policy/baseline SHA 为 `42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。deterministic baseline 为 `12/48`，Tutor/Organizer/combined semantic `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0。该 checkpoint 当时的下一步为 R2，后续已完成。
-- Phase 6.9.7 V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate。Rules/prompt/held-out SHA 为 `a1e9a3b...f4892`、`7c7442ff...c5f87`、`d08e8ed5...8ab55`；32 条独立 held-out 与冻结 V2 Tutor runtime `24/24` detector 对照通过，模型不自报 evidence，active context 不创建/提升具体 intent，merger 仍由本地重建 TutorStrategy。全程 zero-provider 且未接产品，下一步仅 R3 Organizer ordinal shortlist。
+- Phase 6.9.7 V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate。Rules/prompt/held-out SHA 为 `a1e9a3b...f4892`、`7c7442ff...c5f87`、`d08e8ed5...8ab55`；32 条独立 held-out 与冻结 V2 Tutor runtime `24/24` detector 对照通过，模型不自报 evidence，active context 不创建/提升具体 intent，merger 仍由本地重建 TutorStrategy。全程 zero-provider 且未接产品；该检查点当时的下一步 R3 后续已完成。
+- Phase 6.9.7 V5 R3 已完成 Organizer owner-snapshot ordinal shortlist。Rules/prompt/held-out SHA 为 `9747383...1299d3`、`915084a8...ac69ab`、`49336b12...ee097`；question/deck/topic 稳定排序去重、duplicate deck folding、完整 fingerprint、pre/post stale fence、strict ordinal validator 与 local merger 已落地。24 条独立 held-out、32 个 V2 Organizer decision、reorder/分页/去重/ABA/cross-subject/locked-name 通过。全程 zero-provider 且未接产品/provider/gate/runner，下一步仅 R4。
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -361,8 +362,9 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V5 R0：已完成 exact fixture/product-candidate/diagnostic 差分回归与独立 remediation 设计；V1--V4 历史不变。下一步 R1 新建 V2 dataset 与 coherence validator，不调用 Provider。（已完成）
 - Phase 6.9.7 V5 R1：显式绑定 Tutor language/exercise family/latest/context，收敛 Organizer structured subject/taxonomy/topic candidate authority，冻结新 SHA/baseline/quality gate。（已完成）
 - Phase 6.9.7 V5 R2：`tutor-local-signal-authority-v1` 已冻结 latest-text-only detector、否定/引用语境、`step > explain > concept > hint > general` precedence、eligible intent/depth 与 canonical authority SHA；模型 schema 仅 `intent/depth/confidence`，不再自报 evidence。32 条独立 held-out 与 24/24 V2 Tutor runtime detector 对照通过，单次调用、零重试、预算/abort/usage/safety/prompt leakage 与 context mutation 均已验证。未接 product/provider/gate，zero-provider 验收见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`。（已完成）
-- Phase 6.9.7 V5 R3：为 WrongQuestionOrganizer 建立 owner snapshot 上稳定、去重、fingerprint-bound 的 topic/deck ordinal shortlist；覆盖 reorder/ABA/stale/taxonomy/locked-name fail-closed，模型不自由生成名称，merger 不执行 mutation。（下一步）
-- Phase 6.9.7 Task 13：V3 R5 与 V4 R6 均已失败封存；V4 一次性名额已消费且没有 Live quality authority，V5 只完成 R0--R2，Tutor candidate 仍未接产品，Organizer V5 candidate/runner/Live quality authority 尚不存在。没有新的独立版本 Live quality authority 与产品验收前，不得执行分支收尾、`--no-ff` 合并 main、main default-off 回放或 main 远程推送。（不得开始）
+- Phase 6.9.7 V5 R3：WrongQuestionOrganizer 已建立 owner snapshot 上稳定、去重、fingerprint-bound 的 topic/deck ordinal shortlist；覆盖 reorder/分页/去重/ordinal ABA/stale/taxonomy/cross-subject/locked-name fail-closed，模型不自由生成名称，merger 不执行 mutation。验收见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`。（已完成）
+- Phase 6.9.7 V5 R4：建立独立 runner/CLI/approval/marker/journal/evidence/validator，收口 fixed denominator、single dispatch、双 lane budget/abort/failure attribution、usage unknown、orphan/crash seal、duplicate dispatch、stale shortlist 与历史 identity 拒绝；继续 zero-provider。（下一步）
+- Phase 6.9.7 Task 13：V3 R5 与 V4 R6 均已失败封存；V4 一次性名额已消费且没有 Live quality authority，V5 只完成 R0--R3，Tutor/Organizer V5 candidate 均未接产品，V5 runner/Live quality authority 尚不存在。没有新的独立版本 Live quality authority 与产品验收前，不得执行分支收尾、`--no-ff` 合并 main、main default-off 回放或 main 远程推送。（不得开始）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -388,7 +390,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-V2 R7、V3 R5 与 V4 R6 均已失败封存，各自一次性授权已经消费且不得重跑。V5 R0--R2 已区分 fixture 缺陷、product candidate rejection 与真实语义偏差，并冻结独立 V2 dataset/coherence、policy/baseline 与 Tutor local-signal bounded candidate；产品验收、Task 13/main 合并、Phase 6.10 与博客收尾均不得开始。下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist；当前没有任何新的网络授权。
+V2 R7、V3 R5 与 V4 R6 均已失败封存，各自一次性授权已经消费且不得重跑。V5 R0--R3 已区分 fixture 缺陷、product candidate rejection 与真实语义偏差，并冻结独立 V2 dataset/coherence、policy/baseline、Tutor local-signal bounded candidate 与 Organizer owner-snapshot ordinal shortlist；产品验收、Task 13/main 合并、Phase 6.10 与博客收尾均不得开始。下一步仅 V5 R4 runner、lineage 与生产极端边界；当前没有任何新的网络授权。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

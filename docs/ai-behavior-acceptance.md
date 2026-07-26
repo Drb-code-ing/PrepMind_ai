@@ -235,16 +235,16 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R2）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R3）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline；V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate，但没有接 Web 产品 composition。V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline；V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate；V5 R3 已完成 Organizer owner-snapshot shortlist、strict ordinal candidate/local merger，但两者都没有接 legacy 产品 composition。V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R4 runner、lineage 与生产极端边界。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
 - Task 2 已固定 strict schema 与动态 validator：Tutor 模型没有 `answer_direct` 权限；Organizer 必须完整覆盖 `q0..q11`，只能引用 `d0..d19`，重复/越界/部分 batch、跨 subject deck、本地 subject 权威冲突和危险 topic label 全批拒绝。projection 使用有界 descriptor clone、完整字段先扫描、safety metadata、裁剪/token 重验/deep freeze，公开值不含真实 ID、完整 answer/userNote 或写能力；这仍不等于 candidate/runtime 已完成；
 - Tutor 明确 direct/hint/step/concept/explain 指令、非 tutor route、不安全输入、abort/budget/gate-off 保持 zero-call；模型只处理隐含、上下文或冲突教学意图，不能输出 `answer_direct`，最终 TutorStrategy/prompt 由本地重建；V4 model precedence 固定为 `step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`，active context 不得把具体 intent 降级为 general；
 - Organizer 已有 item、高置信结构字段、精确 deck、不安全/越权/stale/gate-off 路径 zero-call；single/batch 每 HTTP request 最多一次 provider 调用，batch 最多投影 12 个 eligible item；
-- Organizer 模型只返回 question/deck ordinal、固定 subject enum 或有界 topic label；JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、reason/description、Trace admission 与写 command 为本地权威；
+- V1--V4 legacy Organizer 模型可返回 question/deck ordinal、固定 subject enum 或有界 topic label；V5 R3 已将新 candidate 收敛为 subject/deck/topic ordinal-only，但尚未接产品。两条路径的 JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、reason/description、Trace admission 与写 command 都是本地权威；
 - Tutor/Organizer 独立 default-off gate，固定 V4 Pro non-thinking JSON、3000/5000ms timeout、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY，唯一 24-pair Live 总 cap 0.55 CNY；usage 必须为正安全整数且价格可验证；
 - Compose 只把 Tutor gate/timeout/key 投影给 `web`，只把 WrongQuestionOrganizer gate/timeout/key 投影给 `server`；`worker/admin` 均不接收。四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只参与显式插值；worker 另有模块层强制关闭。部署 allowlist 与应用 fail-closed 都必须通过，不能互相替代；
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Tutor orchestration P95 <=6500ms；后者只含本地 Tutor strategy + candidate，不含真实 Router、HTTP、RAG 或最终流式 Chat，不能作为产品 P95。production gate 还必须要求 `executorProvenance=deepseek_network`；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
@@ -486,9 +486,8 @@ usage/P95/pricing 与 `0 < CNY <= 0.55`；缺失聚合只能为 `null` 并关闭
 `0ce7c3ca5f6f7d2c78f37f88c5f90c24c7f1ed19575d4e43d9edcd41341116ca`：complete
 `12/48`、failed `36/48`，Tutor/Organizer/combined semantic 为
 `0.6629642857142858/0.278125/0.4705446428571429`，Provider/input/output/cost 均为 0；重复运行结果
-byte-equivalent。R1 仍未实现 V5 candidate/paired Mock/Live runner/network CLI，未读取 credential、调用 Provider、启动
-Docker/API/browser 或修改业务数据。下一步仅 V5 R2 `tutor-local-signal-authority-v1`，仍为
-zero-provider。完整证据见
+byte-equivalent。R1 当时未实现 V5 candidate/paired Mock/Live runner/network CLI，未读取 credential、
+调用 Provider、启动 Docker/API/browser 或修改业务数据；后续 R2/R3 已完成。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。
 
 V5 R2 当前证据：`tutor-local-signal-authority-v1` 只从 latest text 派生 primary/negated signals，
@@ -505,8 +504,25 @@ usage/abort、安全与实际 prompt leakage；冻结 V2 Tutor runtime detector 
 无 Critical/Important。
 
 R2 仍未接 product/provider/gate/paired runner，未读取 credential、调用 Provider、启动
-Docker/API/browser 或修改业务数据。下一步仅 V5 R3 Organizer ordinal shortlist。完整证据见
+Docker/API/browser 或修改业务数据；该检查点当时的下一步 R3 已完成。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`。
+
+V5 R3 当前证据：`wrong-question-organizer-shortlist-v5` 在本地稳定排序/去重 question、deck、topic；
+同 subject/规范化名称的 duplicate deck 以最低 ID 为解析 authority，完整 folded ID 仍进入 fingerprint。
+Rules/prompt/held-out SHA 分别为 `9747383...1299d3`、`915084a8...ac69ab`、
+`49336b12...ee097`。Fingerprint 绑定 owner/snapshot 与完整 question/deck/topic 序列；模型 strict
+schema 只允许 subject/deck/topic ordinal 与 confidence，本地 validator/merger 保留真实 ID、locked
+name、command binding 和全部写权限。
+
+24 条独立 held-out 固定 `8 zh / 8 en / 8 mixed`，覆盖 32 个冻结 V2 Organizer decision、structured/
+taxonomy subject、same/cross-subject batch、locked name、duplicate deck folding、reorder/分页/去重/ABA/
+stale、strict schema、zero-call、single-call/no-retry、输入不变与实际 prompt leakage。R3 聚焦
+`13/13`、Agent 全量 `715/715`，typecheck/lint/Prettier 与 V1--V4 四个历史 validator 通过。两路终审
+无 Critical；预算复审项经 runtime 源码复核为 preview/actual reservation 的正确分层，并已加回归。
+
+R3 仍未接 product/provider/gate/paired runner/Trace persistence，未读取 credential、调用 Provider、
+启动 Docker/API/browser 或修改业务数据。下一步仅 V5 R4 runner、lineage 与生产极端边界。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

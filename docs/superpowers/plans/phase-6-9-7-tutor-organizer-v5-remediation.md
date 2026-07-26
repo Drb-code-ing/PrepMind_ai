@@ -4,10 +4,11 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0--R2 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
-deterministic baseline、Tutor local-signal authority 和 bounded V5 candidate 已落地；尚未实现
-Organizer V5 ordinal shortlist、paired Mock/Live runner，尚未读取 credential、调用 Provider、启动产品
-Docker/API/浏览器或修改业务数据。下一步仅 R3 Organizer ordinal shortlist。
+**当前状态：** R0--R3 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
+deterministic baseline、Tutor local-signal authority/bounded candidate，以及 Organizer owner-snapshot
+ordinal shortlist/strict candidate/local merger 已落地；尚未实现 V5 paired runner/lineage，尚未读取
+credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务数据。下一步仅 R4 runner、lineage
+与生产极端边界。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -87,7 +88,7 @@ Docker/API/浏览器或修改业务数据。下一步仅 R3 Organizer ordinal sh
 
 ## R3：Organizer V5 ordinal shortlist
 
-**状态：** [ ] 下一步。
+**状态：** [x] 已完成，zero-provider。
 
 - 本地生成 bounded topic candidates 和 existing deck ordinals；
 - shortlist 稳定排序/去重并绑定 owner+question+deck+topic 序列 fingerprint；
@@ -97,9 +98,17 @@ Docker/API/浏览器或修改业务数据。下一步仅 R3 Organizer ordinal sh
   fail-closed；projection、Trace pending、decision 与 command 必须绑定同一 fingerprint；
 - merger 不自由改名、不补非法输出、不执行 mutation。
 
+**冻结 identity：** shortlist rules SHA `9747383...1299d3`、model prompt SHA
+`915084a8...ac69ab`、24 条独立 held-out fixture SHA `49336b12...ee097`。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`
+
+**停止点：** 已遵守；没有接 product/provider/gate/paired runner，也没有开始 R4。
+
 ## R4：V5 runner、lineage 与生产极端边界
 
-**状态：** [ ] 待开始。
+**状态：** [ ] 下一步。
 
 - 独立 V5 runner/CLI/approval/marker/journal/evidence/validator；
 - V1–V4/V5 双向拒绝与历史 SHA 校验；

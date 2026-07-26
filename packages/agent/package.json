@@ -19,6 +19,7 @@
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
     "./tutor-v5": "./src/model-candidates/tutor-v5.ts",
+    "./wrong-question-organizer-v5": "./src/model-candidates/wrong-question-organizer-v5.ts",
     "./wrong-question-organizer": "./src/nodes/wrong-question-organizer.ts"
   },
   "scripts": {
