@@ -334,7 +334,7 @@ describe('Phase 6.9.7 V4 independent runner and evidence lineage', () => {
         argv: ['live', PHASE_6_9_7_V4_CONFIRMATION, 'branch'],
         env: { [PHASE_6_9_7_V4_APPROVAL_ENV]: 'true' },
       }),
-    ).toEqual({ ok: false, code: 'live_not_available_before_r6' });
+    ).toEqual({ ok: false, code: 'live_configuration_invalid' });
   });
 
   test('publishes one exclusive Mock artifact, validates its filename, and rejects duplicate run identity', async () => {

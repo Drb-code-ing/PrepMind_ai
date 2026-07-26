@@ -121,8 +121,8 @@ Phase 6.9.7 仍未完成；Tutor/Organizer 真实模型产品可用性仍未确�
 R1 V4-only bounded diagnostics 与历史兼容测试；后续 R1 已保持 zero-network 完成，见
 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`；后续 R2--R5 也已完成。R5
 static/Mock checkpoint 与独立终审见
-`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性 V4 Live
-授权门前，本段对 R0 当时范围的记录不作改写。
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。该 R0 后续状态段在 R5 时停在 R6
+精确一次性 V4 Live 授权门前，本段对 R0 当时范围的记录不作改写。
 
 回顾时可以问：
 
@@ -132,3 +132,11 @@ static/Mock checkpoint 与独立终审见
 - V4 如何区分 dynamic contract failure、semantic mismatch 和 breaker 未执行？
 - 为什么 merger 不允许自动补 evidence 或修正 subject？
 - 为什么当前继续许可不能直接执行未来 V4 Live？
+
+## 后续 R6 终态
+
+上述是 R0 当时的零 Provider 设计记录，不作改写。后续唯一 V4 R6 run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以 `10/48` strict runtime、`quality_gate_failed` 失败封存，
+一次性名额已消费且不得重跑。R7--R9、产品 Docker/API/浏览器、Task 13/main、Phase 6.10 与博客收尾
+均不得开始；若继续只能建立与 V1--V4 双向隔离的零 Provider remediation。详见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。

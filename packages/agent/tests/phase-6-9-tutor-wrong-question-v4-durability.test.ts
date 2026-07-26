@@ -3,7 +3,12 @@ import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { sealPhase697TutorOrganizerV4Orphan } from '../scripts/phase-6-9-7-tutor-wrong-question-v4-cli.ts';
+import type { StructuredModelExecutor } from '@repo/ai';
+
+import {
+  executePhase697TutorOrganizerV4CliWithSyntheticExecutorsForTest,
+  sealPhase697TutorOrganizerV4Orphan,
+} from '../scripts/phase-6-9-7-tutor-wrong-question-v4-cli.ts';
 import {
   acquirePhase697V4RecoveryClaim,
   createPhase697V4Journal,
@@ -14,6 +19,12 @@ import {
 import { createPhase697V4JournalLifecycle } from '../scripts/phase-6-9-7-tutor-wrong-question-v4-journal-lifecycle.ts';
 import { validatePhase697TutorOrganizerV4EvidenceBundle } from '../scripts/validate-phase-6-9-7-tutor-wrong-question-v4-evidence.ts';
 import {
+  phase69TutorCases,
+  phase69WrongQuestionOrganizerCases,
+} from '../src/evals/phase-6-9-tutor-wrong-question-cases.ts';
+import {
+  PHASE_6_9_7_V4_APPROVAL_ENV,
+  PHASE_6_9_7_V4_CONFIRMATION,
   PHASE_6_9_7_V4_EVIDENCE_VERSION,
   PHASE_6_9_7_V4_MARKER_PATH,
   buildPhase697V4EvidenceEnvelope,
@@ -22,6 +33,7 @@ import {
   buildPhase697V4JournalRecord,
   buildPhase697V4Marker,
   parseAndValidatePhase697V4Journal,
+  phase697V4DispatchKeySha256,
   phase697V4EvidencePath,
   phase697V4JournalPath,
   phase697V4RecoveryClaimPath,
@@ -36,6 +48,7 @@ import {
 
 const LIVE_RUN_ID = '00000000-0000-4000-8000-000000000701';
 const SECOND_RUN_ID = '00000000-0000-4000-8000-000000000702';
+const CLI_LIVE_RUN_ID = '00000000-0000-4000-8000-000000000721';
 const DEAD_OWNER_PROCESS_ID = 2_147_483_647;
 
 describe('Phase 6.9.7 V4 independent durability lineage', () => {
@@ -144,6 +157,82 @@ describe('Phase 6.9.7 V4 independent durability lineage', () => {
       await expect(
         access(resolve(root, phase697V4JournalPath(LIVE_RUN_ID).replace('-v4-', '-v3-'))),
       ).rejects.toBeDefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('enables the R6 live CLI only after strict config and consumes the V4 marker once', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'phase-6-9-7-v4-cli-live-'));
+    const journalPath = resolve(root, phase697V4JournalPath(CLI_LIVE_RUN_ID));
+    const observedDispatches: string[] = [];
+    let invocations = 0;
+    const executors = createSyntheticExecutors(async (agent, pairedRunIndex) => {
+      invocations += 1;
+      const text = await readFile(journalPath, 'utf8');
+      const dispatchKey = phase697V4DispatchKeySha256({
+        runId: CLI_LIVE_RUN_ID,
+        agent,
+        pairedRunIndex,
+      });
+      expect(text).toContain('dispatch_started');
+      expect(text).toContain(dispatchKey);
+      observedDispatches.push(dispatchKey);
+    });
+    try {
+      const invalid = await executePhase697TutorOrganizerV4CliWithSyntheticExecutorsForTest({
+        argv: ['live', PHASE_6_9_7_V4_CONFIRMATION, 'branch'],
+        env: { [PHASE_6_9_7_V4_APPROVAL_ENV]: 'true' },
+        repositoryRoot: root,
+        runId: CLI_LIVE_RUN_ID,
+        ...executors,
+      });
+      expect(invalid).toEqual({ ok: false, code: 'live_configuration_invalid' });
+      expect(invocations).toBe(0);
+      await expect(access(resolve(root, PHASE_6_9_7_V4_MARKER_PATH))).rejects.toBeDefined();
+
+      const result = await executePhase697TutorOrganizerV4CliWithSyntheticExecutorsForTest({
+        argv: ['live', PHASE_6_9_7_V4_CONFIRMATION, 'branch'],
+        env: completeV4LiveEnv(),
+        repositoryRoot: root,
+        runId: CLI_LIVE_RUN_ID,
+        ...executors,
+      });
+      if (!result.ok) throw new Error(result.code);
+      expect(result.ok).toBe(true);
+      expect(result.disposition).toBe('completed_run');
+      expect(result.gate).toBe('quality_gate_failed');
+      expect(result.counts).toMatchObject({ cases: 72, zeroCall: 24, runtime: 48 });
+      expect(observedDispatches).toHaveLength(48);
+      expect(new Set(observedDispatches).size).toBe(48);
+      const journal = await readPhase697V4Journal({ root, runId: CLI_LIVE_RUN_ID });
+      expect(journal.ok).toBe(true);
+      if (!journal.ok) throw new Error(journal.code);
+      expect(journal.journal.guardTerminals.size).toBe(24);
+      expect(journal.journal.dispatches.size).toBe(48);
+      expect(journal.journal.runtimeTerminals.size).toBe(48);
+      expect(journal.journal.sealed?.disposition).toBe('completed_run');
+      expect(
+        await validatePhase697TutorOrganizerV4EvidenceBundle({
+          root,
+          evidencePath: resolve(root, result.evidencePath),
+        }),
+      ).toEqual({ ok: true });
+
+      const attemptsBeforeReplay = invocations;
+      const replay = await executePhase697TutorOrganizerV4CliWithSyntheticExecutorsForTest({
+        argv: ['live', PHASE_6_9_7_V4_CONFIRMATION, 'branch'],
+        env: completeV4LiveEnv(),
+        repositoryRoot: root,
+        runId: SECOND_RUN_ID,
+        ...executors,
+      });
+      expect(replay).toEqual({ ok: false, code: 'live_already_attempted' });
+      expect(invocations).toBe(attemptsBeforeReplay);
+      const output = JSON.stringify(result);
+      expect(output).not.toContain('synthetic-tutor-key');
+      expect(output).not.toContain('synthetic-organizer-key');
+      expect(output).not.toMatch(/prompt|questionText|Authorization|Bearer/i);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -347,4 +436,95 @@ function liveSyntheticHarness(runId: string): Phase697TutorOrganizerEvalHarness 
     structuredOutputMode: 'deepseek_v4_pro_nonthinking_json' as const,
     executorProvenance: 'synthetic_test' as const,
   });
+}
+
+function completeV4LiveEnv(): Readonly<Record<string, string>> {
+  return {
+    [PHASE_6_9_7_V4_APPROVAL_ENV]: 'true',
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    TUTOR_AGENT_MODEL_ENABLED: 'true',
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
+    TUTOR_AGENT_DEEPSEEK_API_KEY: 'synthetic-tutor-key',
+    WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'synthetic-organizer-key',
+    TUTOR_AGENT_MODEL_TIMEOUT_MS: '3000',
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
+  };
+}
+
+function createSyntheticExecutors(
+  onInvoke: (
+    agent: 'tutor' | 'wrong_question_organizer',
+    pairedRunIndex: number,
+  ) => void | Promise<void>,
+): { tutorExecutor: StructuredModelExecutor; organizerExecutor: StructuredModelExecutor } {
+  const tutorCases = phase69TutorCases.filter((entry) => entry.expectedRuntimeInvocations === 1);
+  const organizerCases = phase69WrongQuestionOrganizerCases.filter(
+    (entry) => entry.expectedRuntimeInvocations === 1,
+  );
+  let tutorIndex = 0;
+  let organizerIndex = 0;
+  return {
+    tutorExecutor: async () => {
+      const entry = tutorCases[tutorIndex++]!;
+      await onInvoke('tutor', entry.pairedRunIndex);
+      return {
+        object: {
+          intent: entry.expected.intent,
+          depth: entry.expected.depth,
+          confidence: 'high',
+          evidenceCodes: [tutorEvidence(entry.expected.intent)],
+        },
+        usage: { inputTokens: 420, outputTokens: 90 },
+      };
+    },
+    organizerExecutor: async (request) => {
+      const entry = organizerCases[organizerIndex++]!;
+      await onInvoke('wrong_question_organizer', entry.pairedRunIndex);
+      const projection = JSON.parse(request.userPrompt) as {
+        questions: Array<{ subjectHint: string }>;
+      };
+      return {
+        object: {
+          decisions: entry.expected.decisions.map((decision) => ({
+            questionIndex: decision.questionIndex,
+            subject:
+              projection.questions[decision.questionIndex]?.subjectHint === 'unknown'
+                ? decision.subject
+                : 'keep_local',
+            deck:
+              decision.deckAction === 'reuse_existing'
+                ? { action: 'reuse_existing', deckIndex: decision.deckIndex }
+                : { action: 'create_topic', topicLabel: decision.canonicalTopicLabel },
+            confidence: decision.confidence,
+            evidenceCodes: decision.allowedEvidenceCodes,
+          })),
+        },
+        usage: { inputTokens: 760, outputTokens: 180 },
+      };
+    },
+  };
+}
+
+function tutorEvidence(
+  intent:
+    | 'explain_solution'
+    | 'socratic_hint'
+    | 'step_check'
+    | 'concept_bridge'
+    | 'general_follow_up',
+) {
+  switch (intent) {
+    case 'explain_solution':
+      return 'full_explanation_request';
+    case 'socratic_hint':
+      return 'implicit_hint_request';
+    case 'step_check':
+      return 'submitted_step';
+    case 'concept_bridge':
+      return 'concept_gap';
+    case 'general_follow_up':
+      return 'contextual_reference';
+  }
 }

@@ -163,8 +163,8 @@ Organizer PostgreSQL E2E、Compose default-off boundary、V4 Live artifact/recov
 validator、两个 gate=false、两路独立终审与 fresh-reader 文档测试。
 
 后续状态（2026-07-26）：R5 static/Mock checkpoint 与两路独立终审已全部通过，完整证据见
-`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性 V4 Live
-授权门前；本节对 R4 当时范围与“未执行 R5”的历史记录不作改写。
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。该段在 R5 时停在 R6 精确一次性 V4
+Live 授权门前；本节对 R4 当时范围与“未执行 R5”的历史记录不作改写。
 
 用户可以这样继续询问：
 
@@ -173,3 +173,11 @@ validator、两个 gate=false、两路独立终审与 fresh-reader 文档测试�
 - “orphan seal、recovery claim 和 ABA fence 分别防止什么问题？”
 - “为什么 actual-prompt 防泄漏通过仍不能证明真实模型语义质量？”
 - “R5 通过后，还需要什么精确授权才能执行唯一 V4 controlled-Live？”
+
+## 9. 后续 R6 终态
+
+上述是 R4 当时的 robustness/lineage checkpoint，不作改写。后续唯一 V4 R6 run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以 `10/48` strict runtime、`quality_gate_failed` 失败封存，
+一次性名额已消费且不得重跑。R7--R9、产品 Docker/API/浏览器、Task 13/main、Phase 6.10 与博客收尾
+均不得开始；若继续只能建立与 V1--V4 双向隔离的零 Provider remediation。详见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。

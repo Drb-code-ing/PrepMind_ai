@@ -1,5 +1,31 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V4 R6 唯一 controlled-Live 失败封存：用户重新接受当时 DeepSeek
+> 账号的数据保留/训练边界并精确授权一次 V4 branch run。唯一 run
+> `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 使用 `deepseek-v4-pro` non-thinking JSON；`24/24`
+> guard 均为 verified zero-call。Runner 顺序完成前 6 个 pair，共启动 12 个 executor；前 5 对得到
+> 10 个 strict runtime，第 6 对 Tutor 的 raw schema 虽有效，但 `step_check` evidence 在本地 V4
+> `dynamic_contract` 命中 `invalid_evidence_association`，Organizer sibling 已发起调用后收到 abort，
+> usage 只能记为 unknown。Breaker 随即打开，剩余 36 个 runtime 没有启动，最终为 `10/48`
+> strict runtime、Tutor/Organizer/combined semantic
+> `0.14410714285714285/0.10372596153846154/0.1239165521978022`、`quality_gate_failed`。
+>
+> 11 个 verified usage 合计 `9445/652` tokens，可核验部分费用 `0.032247 CNY`；由于另有 1 个
+> attempted-aborted usage unknown，完整 pricing profile、total CNY 与四个 P95 均按合同保持 `null`，
+> 不把部分样本伪装成整轮指标。Evidence/journal/marker SHA-256 分别为
+> `6ec60be1fced72766253e237b892fabb8e1d4ceca555249593d693f5e2d94608`、
+> `8cc65e21a17d870fbad1c582677526a78f2859de933f7e43cfbea6481103188e`、
+> `601f62b6d328a805cfa8d7e3e681d2523551f4eaaba67d182323f9d1546cdae2`；58 条 journal
+> 保留 dispatch-before-call、runtime/pair terminal、breaker、run completion 与 evidence seal，专用 file/
+> bundle validator 均通过。V1/V2/V3 validators 与七个历史 SHA 仍不变。
+>
+> 根 `.env` 的通用 DeepSeek key 只在授权父进程内映射到两个 component key，未打印或写入证据；
+> tracked mock/live、两个产品 gate 与 component credential example 均保持安全默认。R6 没有启动或
+> 修改产品 Docker/API/browser、PostgreSQL、Redis、MinIO 或 synthetic 业务数据，也没有清空容器、
+> 镜像或卷。V4 一次性名额已经消费且不得重跑；不得进入 R7--R9、Task 13/main、Phase 6.10 或博客
+> 收尾。若继续只能先新建与 V1--V4 双向隔离的零 Provider remediation。验收见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R5 static/Mock checkpoint：在
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 上完成 zero-network 分支收口。Fresh V4 Mock run
 > `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified zero-call、`48/48` strict runtime，
@@ -18,7 +44,7 @@ expect()`），AI `199/199`（`1054 expect()`），Types `42/42`，Server `227` 
 >
 > 本轮未读取根 `.env` 或 component credential、未调用 Provider、未执行 V4 Live、未启动或重建产品
 > Docker/API/browser，也未修改或清空 Docker 容器、镜像、卷、PostgreSQL、Redis 或 MinIO。V4
-> R0--R5 已完成，Phase 6.9.7 仍未完成；当前停在 R6 新的精确一次性 V4 branch controlled-Live
+> R0--R5 已完成，Phase 6.9.7 仍未完成；该 R5 检查点当时停在 R6 新的精确一次性 V4 branch controlled-Live
 > 授权门前。产品验收、Task 13/main、Phase 6.10 与博客收尾均未开始。验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
 >
@@ -47,7 +73,7 @@ expect()`），AI `199/199`（`1054 expect()`），Types `42/42`，Server `227` 
 > 本轮未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、创建 V4 Live artifact 或修改
 > PostgreSQL、Redis、MinIO、Docker volume/业务数据。V4 R0--R4 已完成；该检查点当时下一步仅 R5
 > static/Mock checkpoint 与独立终审，后续已完成。V4 Live、产品 Docker/API/browser、Task 13/main
-> 与 Phase 6.10 均未开始；当前仍须新的精确一次性 Live 授权。验收见
+> 与 Phase 6.10 均未开始；该 R4 检查点当时仍须新的精确一次性 Live 授权。验收见
 > `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。
 >
 > 2026-07-26 — Phase 6.9.7 V4 R3 WrongQuestionOrganizer 语义单一规则源：新增深冻结

@@ -951,16 +951,20 @@ strict runtime、Tutor/Organizer/combined semantic `1/1/1`，P95 `246/328/328/27
 default-off、历史 SHA/validator、V4 artifact=0、测试账号零残留与两路终审均通过。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
 
-`eval:phase-6-9-7:v4:live` 已注册独立确认词和 approval env，但在 R6 前硬返回
-`live_not_available_before_r6`。不要为了“试一下”设置授权变量或读取 component key；R5 没有创建任何
-V4 Live marker/journal/evidence。当前已停止在 R6 精确一次性 V4 branch controlled-Live 授权门前，
-仍不得执行网络、Docker API 或浏览器验收。
+R5 当时的 `eval:phase-6-9-7:v4:live` 在 R6 前硬返回 `live_not_available_before_r6`；后续用户已重新
+确认 DeepSeek retention/training 边界并精确授权唯一一次 V4 branch run。Run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已 durable seal 为 `quality_gate_failed`：`24/24` guard
+zero-call、6 对完成、12 executor started、`10/48` strict runtime；第 6 对 Tutor 命中
+`invalid_evidence_association`，Organizer sibling attempted-aborted 且 usage unknown，剩余 36 runtime
+因 breaker 未启动。完整费用与 P95 均保持 `null`。
 
-V4 R5 static/Mock 不形成质量 authority，因此没有 R6 的精确授权不得执行 Live；只有 R6
-`quality_gate_passed` 才能进入 R7--R9 产品验收、Task 13/main。新的网络运行必须使用 V4 identity、
-独立 marker/journal/evidence、质量计划与精确授权，并重新确认 DeepSeek 账号的数据保留/训练设置。
-禁止 `docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush
-或 MinIO wipe。
+V4 一次性名额已经消费，禁止再次运行 `eval:phase-6-9-7:v4:live`，也不得删除/覆盖/重建 marker、
+journal 或 evidence。R7--R9 产品 Docker/API/可见浏览器、Task 13/main、Phase 6.10 与博客收尾均不得
+开始。若继续，只能先新建与 V1--V4 双向隔离的零 Provider remediation；它必须有新的 runner、
+授权变量、marker/journal/evidence/validator identity，并先完成新的 static/Mock checkpoint。禁止
+`docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush
+或 MinIO wipe。完整失败证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

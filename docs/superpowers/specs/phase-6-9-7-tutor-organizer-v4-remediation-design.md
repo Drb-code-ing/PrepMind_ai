@@ -2,10 +2,9 @@
 
 日期：2026-07-26
 
-状态：R0--R5 已完成；V4 bounded diagnostics、Tutor/Organizer 单一语义 policy、independent
-robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint 已实现，但尚未调用 Provider、
-创建 V4 Live artifact 或获得 V4 controlled-Live 精确授权。V1/V2/V3 三条唯一 Live 均已失败封存且
-不得重跑。当前停在 R6 新的精确一次性 V4 branch controlled-Live 授权门前。
+状态：R0--R5 已完成；唯一 V4 R6 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以
+`10/48` strict runtime、`quality_gate_failed` durable seal。V1/V2/V3/V4 四条唯一 Live 均已失败封存且
+不得重跑。R7--R9、产品 Docker/API/浏览器、Task 13/main、Phase 6.10 与博客收尾均不得开始。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -319,8 +318,31 @@ V4/V3 focused `68/68`、Agent `674/674`、AI `199/199`、Types `42/42`、Server 
 skipped`、Web `439/439`、Organizer PostgreSQL E2E `12/12`、Compose default-off 与相关
 typecheck/lint/build 均通过。测试账号残留为 0；V1/V2/V3 validators 与七个历史 SHA 不变；V4 Mock
 evidence 已精确删除，V4 marker/journal/recovery/evidence 为 0。两路终审无 Critical/Important。
-R5 没有读取 credential、调用 Provider、启动产品 Docker/API/browser 或修改业务数据，当前停在 R6
-新精确一次性 V4 Live 授权门前。
+R5 没有读取 credential、调用 Provider、启动产品 Docker/API/browser 或修改业务数据；该条是 R5
+当时停止在 R6 新精确授权门前的 checkpoint。后续唯一 R6 已失败封存。
+
+### 9.3 R6 唯一 controlled-Live 终态（2026-07-26）
+
+用户重新接受当时 DeepSeek 账号的数据保留/训练边界并精确授权唯一一次 V4 branch run。Run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 使用 `deepseek-v4-pro` non-thinking JSON，最终为
+`completed_run / quality_gate_failed`：
+
+- `24/24` guard verified zero-call；6 对 dispatched/completed，12 executor started；
+- 前 5 对得到 10 个 strict runtime；第 6 对 Tutor raw schema 有效，但本地 `dynamic_contract` 命中
+  `invalid_evidence_association`；
+- 同对 Organizer 为 `attempted_aborted / unknown_after_attempt`；剩余 36 runtime 为
+  `not_started_quality_breaker`；
+- Tutor/Organizer/combined semantic 为
+  `0.14410714285714285/0.10372596153846154/0.1239165521978022`；
+- 11 个 verified usage 为 `9445/652` tokens，可核验部分费用 `0.032247 CNY`；另 1 个 usage unknown，
+  因此完整 pricing/total CNY 与四个 P95 均保持 `null`；
+- evidence/journal/marker SHA 为 `6ec60be1...d94608`、`8cc65e21...3188e`、`601f62b6...dae2`；
+  58 条 journal 与 file/bundle validator 通过，V1/V2/V3 历史 validator/SHA 不变。
+
+R6 未启动产品 Docker/API/browser 或创建 synthetic 产品数据，tracked defaults 保持关闭。一次性名额
+已经消费且不得重跑；R7--R9、Task 13/main、Phase 6.10 与博客收尾被永久阻断。后续若继续，只能先
+建立与 V1--V4 双向隔离的零 Provider remediation。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
 
 ## 10. 质量门与停止条件
 
@@ -337,9 +359,9 @@ R5 没有读取 credential、调用 Provider、启动产品 Docker/API/browser �
 - `executorProvenance=deepseek_network`；
 - marker/journal/evidence/ledger/validator 完整。
 
-R1--R5 只做零网络/static/Mock。Checkpoint 全通过后必须停止并取得新的精确 V4 Live 授权。
-V4 Live 任一门失败则永久封存 V4，不重跑且不进入产品验收；只有全部通过才允许产品
-Docker/API/headed-browser、分支终审、`--no-ff` 合并 main、main default-off 回放和远程推送。
+R1--R5 只做零网络/static/Mock；其后取得的唯一 V4 Live 授权已经消费。R6 任一门失败即永久封存、
+不重跑且不进入产品验收的停止条件已经触发。因此 V4 不允许产品 Docker/API/headed-browser、分支
+产品终审、`--no-ff` 合并 main 或 main default-off 回放；当前功能分支只提交并推送失败封存事实。
 
 ## 11. 回顾问题
 
@@ -350,4 +372,5 @@ Docker/API/headed-browser、分支终审、`--no-ff` 合并 main、main default-
 - 为什么 held-out fixture 不能复制冻结 72-case 的 expected labels？
 - 为什么 V4 可以复用 V3 breaker/durability 实现，却不能复用 V3 marker 或授权？
 - 哪些失败触发 breaker，哪些 semantic mismatch 必须继续完整运行？
-- 为什么当前“继续”的许可仍不是未来 V4 controlled-Live 的一次性精确授权？
+- 为什么 V4 的 10 个 strict success 不能与 Mock 或历史 run 拼接成通过结论？
+- 为什么 Organizer usage unknown 会让完整费用与 P95 都保持 `null`？

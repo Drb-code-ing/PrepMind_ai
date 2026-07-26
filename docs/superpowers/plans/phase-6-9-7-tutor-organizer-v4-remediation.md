@@ -5,10 +5,10 @@ Tutor/Organizer 的 bounded diagnostic 真值与语义单一规则源；完成�
 V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授权才执行一次 V4
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
-**当前状态：** R0--R5 已完成；Tutor 与 WrongQuestionOrganizer V4 已分别落地单一语义 policy、
-independent robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint，但未调用 Provider
-或创建 V4 Live artifact。V3 run `ff2e1a54...` 已失败封存且不得重跑。当前停在 R6 新的精确一次性
-V4 branch controlled-Live 授权门前；Phase 6.9.7、产品验收、Task 13/main 与 Phase 6.10 仍未完成。
+**当前状态：** R0--R5 已完成；唯一 R6 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以
+`10/48` strict runtime、`quality_gate_failed` durable seal。V4 一次性名额已经消费且不得重跑；R7--R9、
+产品 Docker/API/浏览器验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。后续若继续，只能建立与
+V1--V4 双向隔离的零 Provider remediation。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`
@@ -23,11 +23,12 @@ V4 branch controlled-Live 授权门前；Phase 6.9.7、产品验收、Task 13/ma
 - dataset/SHA/expected/baseline/metric/threshold/分母/model/price/budget/timeout/retry 不变；
 - 不保存 prompt、题目/答案、active context、raw model/provider output、credential、URL/header、
   stack、真实 ID 或自由文本失败原因；
-- R0--R5 不读取真实 credential、不调用 Provider、不启动产品 Docker/API/browser；
+- R0--R5 不读取真实 credential、不调用 Provider、不启动产品 Docker/API/browser；R6 只在授权进程内
+  映射 component credential，且同样没有启动产品 Docker/API/browser；
 - 24 guard 先行、单 pair 最多双并发、lane 独立、首个 runtime contract failure 熔断、固定分母；
 - semantic-only mismatch 不提前 breaker；无 retry、补跑、resume 或 replay；
 - 禁止 Docker prune、`down -v`、volume/database reset、Redis flush、MinIO wipe；
-- 新 V4 Live 授权必须在 R5 checkpoint 后单独精确取得，当前继续许可不得复用。
+- V4 Live 授权已在 R5 后单独精确取得并消费；不得重跑、补跑、resume、replay 或复用该授权。
 
 ## R0：V3 bounded 复盘与 V4 设计
 
@@ -159,7 +160,7 @@ credential、调用 Provider、启动 Docker/API/browser 或创建 V4 Live artif
 
 ## R5：分支 static/Mock checkpoint 与 Reader/安全终审
 
-**状态：** [x] 已完成。2026-07-26，zero-network；当前停在 R6 新精确授权门前。
+**状态：** [x] 已完成。2026-07-26，zero-network；该条记录 R5 当时停在 R6 精确授权门前，后续 R6 已失败封存。
 
 **动作：**
 
@@ -188,25 +189,32 @@ zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`�
 
 ## R6：唯一 V4 branch controlled-Live
 
-**状态：** [ ] 未授权、不得开始。
+**状态：** [x] 已执行并失败封存；不得重跑。
 
-**前置：**
+**已完成前置：**
 
 - 用户重新接受当时 DeepSeek 账号的数据保留/训练边界；
 - 用户明确写出一次 V4 branch controlled-Live 授权；
 - R5 clean commit，V4 marker/journal/evidence 不存在；
 - 历史 SHA、V4 Mock、gates/config/model/price/budget/timeout/credential isolation 全通过。
 
-**顺序：** zero-network preflight -> 进程级 component credential 映射 -> reserve V4 marker/journal ->
-24 guard -> breaker-aware 24 pair -> evidence seal/validator。任一门失败永久封存 V4 并停止，不重跑；
-只有 `quality_gate_passed` 才允许 R7。
+**执行结果：** zero-network preflight -> 进程级 component credential 映射 -> reserve V4 marker/journal ->
+24 guard -> breaker-aware pair -> evidence seal/validator。唯一 run 为 `24/24` guard zero-call、6 对完成、
+12 executor started、`10/48` strict runtime。第 6 对 Tutor 在 `dynamic_contract` 命中
+`invalid_evidence_association`，Organizer sibling 为 attempted-aborted/usage unknown；剩余 36 runtime
+按 breaker 没有启动。Tutor/Organizer semantic 为
+`0.14410714285714285/0.10372596153846154`，最终 `quality_gate_failed`。
+
+11 个 verified usage 的部分费用为 `0.032247 CNY`；完整费用与 P95 因样本不完整保持 `null`。Evidence、
+58 条 hash-chain journal 与一次性 marker authority 已 durable seal，file/bundle validator 通过。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
 
 **提交：** pass 使用 `docs(agent): seal phase 6.9.7 v4 live authority`；fail 使用
 `docs(agent): seal phase 6.9.7 v4 live failure`。
 
 ## R7：V4 分支产品 Docker/API/headed-browser 验收
 
-**状态：** [ ] 仅 R6 pass 后执行。
+**状态：** 阻断；R6 未通过，永久不得按 V4 lineage 执行。
 
 - Tutor-only Docker Chat：specific intent applied、explicit zero-call、forced fallback；
 - Organizer-only API：single/batch、known/unknown subject、create/reuse、owner/locked-name、Trace、
@@ -220,7 +228,7 @@ zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`�
 
 ## R8：分支最终文档 checkpoint
 
-**状态：** [ ] 仅 R6/R7 pass 后执行。
+**状态：** 阻断；R6 未通过，永久不得按 V4 lineage 执行。
 
 - 同步所有当前文档、acceptance、AI behavior/checklist/dev-start；
 - 精确区分 V1/V2/V3 failures、V4 authority 与 product lineage；
@@ -231,7 +239,7 @@ zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`�
 
 ## R9：合并 main、main 回放与远程推送
 
-**状态：** [ ] 仅 R8 通过后执行。
+**状态：** 阻断；R6 未通过，不合并 main、不做产品回放。
 
 1. 切回最新 `main` 并核对 `origin/main` parity；
 2. `git merge --no-ff codex/phase-6-9-7-tutor-wrong-question-agents`；
@@ -244,5 +252,6 @@ zero-call、`48/48` strict runtime、Tutor/Organizer/combined semantic `1/1/1`�
 
 ## 完成定义
 
-只有 R0--R9 的适用步骤完成、V4 Live 与产品验收通过、main 回放通过且远程同步，才能称 Phase
-6.9.7 完成。R1--R5 的零网络/static/Mock 工程质量不能替代真实模型或产品可用性证据。
+原完成定义要求 R0--R9 的适用步骤完成、V4 Live 与产品验收通过、main 回放通过且远程同步。唯一
+R6 已失败，因此该定义未满足，Phase 6.9.7 未完成。R7--R9 不再是待办而是当前 V4 lineage 的
+禁止项；R1--R5 的零网络/static/Mock 工程质量不能替代真实模型或产品可用性证据。

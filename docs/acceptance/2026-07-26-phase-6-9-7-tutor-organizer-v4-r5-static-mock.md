@@ -169,3 +169,11 @@ R5 文档提交与远程推送后必须停止在授权门。R6 的唯一合法�
 - “V4 Live 前哪些 marker/journal/recovery/evidence 必须为 0？”
 - “为什么 PostgreSQL E2E 通过仍不能证明 DeepSeek 模型路径可用？”
 - “我已接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权执行一次 Phase 6.9.7 Tutor/Organizer V4 branch controlled-Live。”
+
+## 10. 后续 R6 终态
+
+上述是 R5 当时的 static/Mock checkpoint 与授权门记录，不作改写。后续用户已提供所列精确授权，
+唯一 V4 R6 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以 `10/48` strict runtime、
+`quality_gate_failed` 失败封存。一次性名额已消费且不得重跑；R7--R9、产品 Docker/API/浏览器、
+Task 13/main、Phase 6.10 与博客收尾均不得开始。若继续只能建立与 V1--V4 双向隔离的零 Provider
+remediation。详见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。

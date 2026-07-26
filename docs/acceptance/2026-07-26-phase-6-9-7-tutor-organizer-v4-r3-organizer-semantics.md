@@ -4,8 +4,8 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R3 已完成；该检查点当时下一步为 R4，后续 R4/R5 已完成；当前停在 R6 新精确 Live
-授权门前。
+状态：R3 已完成；该检查点当时下一步为 R4，后续 R4/R5 已完成；R5 当时停在 R6 新精确 Live
+授权门前，后续唯一 R6 已失败封存。
 
 ## 1. 为什么需要本轮
 
@@ -86,9 +86,17 @@ build 为回归 authority，不把既存问题包装成 R3 回归或在本提交
 验证 prompt 泄漏、authority drift、reorder、abort、预算与写隔离，并创建完全独立的 V4
 runner/approval/marker/journal/evidence/validator lineage。R4 已按该边界保持 zero-network 完成，证据见
 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`。后续 R5 static/Mock checkpoint 与
-独立终审也已完成，见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`；当前已停在 R6
-精确一次性 V4 Live 授权门前。
+独立终审也已完成，见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`；该段在 R5 时停在
+R6 精确一次性 V4 Live 授权门前。
 
 R5 static/Mock checkpoint 已全部通过并停止；用户此前的“继续/所有权限”不替代新的、精确的一次
 V4 branch controlled-Live 授权。Phase 6.9.7、产品 Docker/API/浏览器验收、Task 13/main 与 Phase
 6.10 仍未完成。
+
+## 6. 后续 R6 终态
+
+上述是 R3 当时的 Organizer 语义 checkpoint，不作改写。后续唯一 V4 R6 run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以 `10/48` strict runtime、`quality_gate_failed` 失败封存，
+一次性名额已消费且不得重跑。R7--R9、产品 Docker/API/浏览器、Task 13/main、Phase 6.10 与博客收尾
+均不得开始；若继续只能建立与 V1--V4 双向隔离的零 Provider remediation。详见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。

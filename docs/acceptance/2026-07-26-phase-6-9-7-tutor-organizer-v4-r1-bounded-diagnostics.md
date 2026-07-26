@@ -4,8 +4,8 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R1 已完成；该检查点当时下一步为 R2，后续 R2--R5 已完成；当前停在 R6 新精确 Live
-授权门前。
+状态：R1 已完成；该检查点当时下一步为 R2，后续 R2--R5 已完成；R5 当时停在 R6 新精确 Live
+授权门前，后续唯一 R6 已失败封存。
 
 ## 1. 本轮解决了什么
 
@@ -121,8 +121,8 @@ R5 完成后必须停止并重新取得一次精确 V4 controlled-Live 授权；
 
 后续状态（2026-07-26）：R2--R5 已保持 zero-network 完成；独立 robustness 与 V4 evidence lineage
 见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md`，R5 static/Mock checkpoint 与
-独立终审见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。当前已停在 R6 精确一次性
-V4 Live 授权门前，本段对 R1 当时范围的记录不作改写。
+独立终审见 `2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。该段在 R5 时停在 R6 精确
+一次性 V4 Live 授权门前，本段对 R1 当时范围的记录不作改写。
 
 ## 7. 回顾时可以问
 
@@ -131,3 +131,11 @@ V4 Live 授权门前，本段对 R1 当时范围的记录不作改写。
 - 为什么旧 validator 必须拒绝 V4 字段，而不是自动填 `null`？
 - 为什么 merger 要复用已通过的 validator result，同时仍保留本地 ID/name/write authority？
 - 为什么 24 个 guard case 必须是 `not_started/case_guard`，而不能记成成功的模型调用？
+
+## 8. 后续 R6 终态
+
+上述是 R1 当时的 bounded diagnostics 记录，不作改写。后续唯一 V4 R6 run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以 `10/48` strict runtime、`quality_gate_failed` 失败封存，
+一次性名额已消费且不得重跑。R7--R9、产品 Docker/API/浏览器、Task 13/main、Phase 6.10 与博客收尾
+均不得开始；若继续只能建立与 V1--V4 双向隔离的零 Provider remediation。详见
+`2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
