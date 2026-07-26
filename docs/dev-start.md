@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R1）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -977,11 +977,23 @@ bun test packages/agent/tests/phase-6-9-tutor-wrong-question-v5-root-cause.test.
 英文微积分 active context 与错误 `en` tag；也证明合法 `submitted_step` 会由产品 candidate 应用，
 缺 primary/错误 evidence 才由同一 candidate 拒绝，V4 diagnostic 只是映射拒绝结果。
 
-该测试不是 V5 Mock/Live，也不允许运行任何 V4 Live 命令。下一步 V5 R1 只新建
-`phase-6.9-tutor-wrong-question-v2` dataset/coherence validator；在 R1--R5 完成并获得新的 V5 精确
-授权前，不得添加或执行 V5 network CLI。设计与计划见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md` 和
-`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md`。
+该测试不是 V5 Mock/Live，也不允许运行任何 V4 Live 命令。V5 R1 已新增独立
+`phase-6.9-tutor-wrong-question-v2` dataset/coherence、冻结 policy 与 deterministic baseline。下面命令
+仍然不读取 credential 或调用 Provider：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-wrong-question-v2-cases.test.ts
+bun run --cwd packages/agent eval:phase-6-9-7:v5:baseline
+```
+
+预期聚焦测试为 `8 pass / 346 expect()`；baseline 固定 `12/48` complete，Tutor/Organizer/combined
+semantic 为 `0.6629642857/0.278125/0.4705446429`。Dataset/policy/baseline SHA 分别固定为
+`42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。下一步仅 V5 R2 Tutor
+local-signal authority；在 R1--R5 完成并获得新的 V5 精确授权前，不得添加或执行 V5 network CLI。
+设计、计划与 R1 证据见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

@@ -4,8 +4,7 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0 已完成，zero-provider。尚未实现 V5 dataset/candidate/runner，尚未读取 credential、
-调用 Provider、启动产品 Docker/API/浏览器或修改业务数据。
+**当前状态：** R0--R1 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与 deterministic baseline 已落地；尚未实现 V5 candidate/paired Mock/Live runner，尚未读取 credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务数据。下一步仅 R2 Tutor local-signal authority。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -47,15 +46,19 @@ evidence 和生产验收路径。
 
 ## R1：V2 dataset authority 与 coherence validator
 
-**状态：** [ ] 待开始。
+**状态：** [x] 已完成，zero-provider。
 
-- 新建 `phase-6.9-tutor-wrong-question-v2`，不修改 V1；
+- 新建 `phase-6.9-tutor-wrong-question-v2`，V1 bytes/SHA 不变；
 - Tutor definition 显式绑定 language、exercise family、latest text、coherent active context；
-- Organizer definition 显式绑定 structured subject authority、taxonomy boundary 与 topic candidates；
-- 在任何 V5 candidate 实现前冻结新 dataset SHA、72/24/48 分母、metrics/thresholds 和 baseline；
-- coherence、language、family、prompt-leakage、deep-freeze 与 V1 historical isolation 测试。
+- Organizer definition 显式绑定 structured subject authority、taxonomy boundary、topic candidates/ordinal 与 batch relation；
+- candidate 前冻结 dataset SHA `42803d45...b437b`、policy SHA `b3913403...f009d`、baseline SHA `0ce7c3ca...116ca`；
+- 冻结 72/24/48/24 分母、Tutor/Organizer/combined semantic `>=0.85`、各 absolute improvement `>=0.15`、安全/延迟/usage/费用门；
+- deterministic baseline 为 `12/48` complete，Tutor/Organizer/combined semantic `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0；
+- coherence、language、family、prompt-safe projection、deep-freeze、paired-index/ordinal mutation 与 V1 historical isolation 测试通过。
 
-**停止点：** 只完成 dataset/baseline，不接 candidate/provider。
+**验收：** `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`
+
+**停止点：** 已遵守；只完成 dataset/policy/baseline，没有接 candidate/provider。
 
 ## R2：Tutor V5 bilingual bounded choice
 

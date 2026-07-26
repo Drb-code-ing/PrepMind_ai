@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R1）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；没有改写任何历史 authority。当前下一步仅 V5 R1 独立 V2 dataset/coherence validator；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline，没有改写任何历史 authority。当前下一步仅 V5 R2 Tutor local-signal authority；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1063,7 +1063,20 @@ V5 R0 完成回执：零 Provider 差分回归 `7 pass / 0 fail / 34 expect()`�
       翻案；
 - [x] 未读取 credential、调用 Provider、创建 V5 artifact、启动 Docker/API/browser 或修改业务数据。
 
-V5 R1 验收入口：新建独立 `phase-6.9-tutor-wrong-question-v2`，显式绑定 Tutor language、exercise
-family、latest/context coherence，并固定 Organizer subject/taxonomy/topic-candidate authority；冻结新
-SHA/baseline/threshold 后停止。R1 不实现 network CLI，也不继承任何 V4 Live 授权。完整证据见
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。
+V5 R1 完成回执：聚焦测试 `8 pass / 0 fail / 346 expect()`，Agent 全量
+`690 pass / 0 fail / 7600 expect()`；Agent typecheck/lint、Prettier、diff check、本轮 Markdown 本地链接
+检查与 V1--V4 四个历史 evidence validator 均通过。
+
+- [x] 新 V2 dataset 固定 `72/24/48/24`、Tutor/Organizer 各 `12+24`，Organizer 32 decision units；
+- [x] Tutor runtime 显式 `12 zh / 10 en / 2 mixed`，language/family/latest/context fail-fast coherence；
+- [x] Organizer structured/taxonomy subject、3-topic candidates、hidden expected ordinal 与 20/1/3 batch relation 冻结；
+- [x] prompt-safe projection 不含 expected、selected ordinal、case/owner/question/deck ID 或 V1 identity；
+- [x] dataset/policy/baseline SHA 为 `42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`；
+- [x] quality gate 固定 semantic `>=0.85`、absolute improvement `>=0.15`、strict `48/48`、guard `24/24` 与安全/延迟/usage/费用边界；
+- [x] deterministic baseline `12/48`，Tutor/Organizer/combined `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0；
+- [x] V1 canonical dataset 现场重算 SHA 仍为 `7ac2f4b...2207e`，V1--V4 evidence/validator 未改；
+- [x] 两路只读终审无未关闭 Critical/Important；
+- [x] 未实现 V5 candidate/paired Mock/Live runner/network CLI，未读取 credential、调用 Provider、启动 Docker/API/browser 或修改业务数据。
+
+下一步仅 V5 R2 Tutor local-signal authority，仍为 zero-provider。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。

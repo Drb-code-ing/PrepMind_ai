@@ -2,6 +2,8 @@
 
 日期：2026-07-26
 
+后续状态：V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；本文件仍是 R0 根因历史，不改写当时结论。下一步已推进为 R2 Tutor local-signal authority。
+
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
 ## 1. 结论
@@ -136,7 +138,7 @@ expected `major`、actual `computer`。这说明自由文本 topic 与 taxonomy 
 
 ## 7. 下一步
 
-下一原子任务是 V5 R1：建立独立 V2 dataset authority 与 coherence validator，显式绑定 language、
+R0 当时的下一原子任务是 V5 R1：建立独立 V2 dataset authority 与 coherence validator，显式绑定 language、
 exercise family 和 active context，并冻结新 SHA/baseline/quality gate。R1 仍为 zero-provider；没有新的
 V5 精确授权不得调用 Provider。
 

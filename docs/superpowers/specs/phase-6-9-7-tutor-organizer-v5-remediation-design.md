@@ -2,7 +2,7 @@
 
 日期：2026-07-26
 
-状态：R0 零 Provider 根因取证已完成；尚未实现 V5 dataset、candidate、runner，尚未调用 Provider。
+状态：R0--R1 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy 与 deterministic baseline 已冻结；尚未实现 V5 candidate/paired Mock/Live runner，尚未调用 Provider。下一步仅 R2 Tutor local-signal authority。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -14,6 +14,9 @@ V4 failure authority：
 
 R0 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`
+
+R1 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`
 
 ## 1. 决策摘要
 
@@ -168,7 +171,7 @@ shortlist fingerprint，不能只校验错题 ID。
 
 ## 5. V5 identity 与历史隔离
 
-R1 冻结最终字节前，名称先按以下 namespace 实施；不得复用 V1–V4 artifact：
+R1 已冻结 dataset/policy/baseline 最终字节；后续继续使用以下 namespace，不得复用 V1–V4 artifact：
 
 | 维度                    | V5 namespace                                  |
 | ----------------------- | --------------------------------------------- |
@@ -187,8 +190,7 @@ partial cost 拼入新结论。
 
 ## 6. 质量门与停止条件
 
-V5 仍保持 72 cases、24 guard、48 runtime 的固定分母原则，但必须使用新 dataset authority。R1 冻结
-具体 thresholds；不得在看到 Live 结果后降低门槛。
+V5 使用 R1 冻结的新 dataset authority，固定 72 cases、24 guard、48 runtime、24 paired requests 与 32 个 Organizer decision units。Dataset/policy/baseline SHA 分别为 `42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。Tutor、Organizer、combined semantic 均须 `>=0.85`，两个 lane 的 absolute improvement 均须 `>=0.15`；strict runtime `48/48`，critical/provider/permission/mutation/broader-fallback 均为 0。延迟、usage、费用与 fixed-denominator incomplete-null 规则已同步冻结。不得在看到 Mock/Live 结果后降低门槛。
 
 Live 前至少证明：
 

@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R1）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；这既不能把 V4 adapter 当作唯一根因，也不能把 V4 `quality_gate_failed` 改判为通过。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R1 zero-provider dataset/coherence authority。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline，没有改写 V1--V4 authority。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R2 Tutor local-signal authority。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -465,6 +465,31 @@ evidence/eligible-intent 由本地 projection 掌权，模型只返回 intent/de
 生成 topic/deck shortlist，模型只选择 ordinal。两者仍无最终回答、route/tool/permission 或数据库写
 权限。R1 只创建新 V2 dataset/coherence validator；当前无 V5 Live 授权。证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。
+
+V5 R1 当前证据：独立 `phase-6.9-tutor-wrong-question-v2` dataset SHA 为
+`42803d454fe59f2854ba1ccb115f2b813cc17cd9e26f3221a19b03fdd67b437b`，保持 V1
+dataset/SHA 不变。新数据固定 72 cases、24 guard、48 runtime、24 paired requests，Tutor/Organizer
+各 `12 guard + 24 runtime`，Organizer 共 32 decision units。Tutor runtime 显式绑定 language、
+exercise family、latest text 与同题 active context，语言配额为 `12 zh / 10 en / 2 mixed`；Organizer
+显式绑定 structured/taxonomy subject authority、三个稳定 topic candidates 与
+single/same-subject/cross-subject batch relation。Coherence 在模块加载时对 paired index、语言/题族/
+context、subject、topic ordinal 和 batch relation fail-fast。
+
+Prompt-safe projection 不导出 expected/canonical/accepted oracle、selected topic ordinal、case/owner/
+question/deck ID 或 V1 identity。冻结 policy `phase-6.9.7-v5-eval-policy-v1` SHA 为
+`b39134038c22fe304cf3212da11da468d9a2d88a51a0162bbad1102186cf009d`：两个 lane 与 combined
+semantic 均须 `>=0.85`，Tutor/Organizer 各自 absolute improvement `>=0.15`，并要求
+`24/24` guard、`48/48` strict runtime、安全/Provider/权限/mutation/broader fallback 全 0、完整
+usage/P95/pricing 与 `0 < CNY <= 0.55`；缺失聚合只能为 `null` 并关闭质量门。
+
+新 deterministic baseline SHA 为
+`0ce7c3ca5f6f7d2c78f37f88c5f90c24c7f1ed19575d4e43d9edcd41341116ca`：complete
+`12/48`、failed `36/48`，Tutor/Organizer/combined semantic 为
+`0.6629642857142858/0.278125/0.4705446428571429`，Provider/input/output/cost 均为 0；重复运行结果
+byte-equivalent。R1 仍未实现 V5 candidate/paired Mock/Live runner/network CLI，未读取 credential、调用 Provider、启动
+Docker/API/browser 或修改业务数据。下一步仅 V5 R2 `tutor-local-signal-authority-v1`，仍为
+zero-provider。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

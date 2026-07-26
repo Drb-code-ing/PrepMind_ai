@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R1 独立 Dataset Authority：在不修改 V1 cases/SHA 的前提下，
+> 新建 `phase-6.9-tutor-wrong-question-v2`。72 cases 固定为 24 guard + 48 runtime、24 paired
+> requests；Tutor/Organizer 各 12 guard + 24 runtime，Organizer 共 32 decision units。Tutor runtime
+> 显式冻结 `12 zh / 10 en / 2 mixed`，每条 definition 绑定 language、exercise family、latest text
+> 与同一道题的 active context；新的 `tutor-v2-runtime-06` 为中文线性方程 `2x=6` + 中文线性
+> 方程 context，不再复现 V1 的英文 derivative 错配。
+>
+> 新增 fail-fast coherence authority，覆盖 dataset/version/count、ID、paired index 0..23、deep-freeze、
+> language/family/context、Organizer structured/taxonomy subject、3-topic candidate ordinal、reuse deck
+> 与 single/same-subject/cross-subject batch relation。Prompt-safe projection 不导出 expected、selected
+> ordinal、case/owner/question/deck ID 或 V1 identity；topic candidates 是 R3 的本地输入 authority，
+> expected topic ordinal 仅留在 oracle。
+>
+> V2 dataset SHA 冻结为 `42803d454fe59f2854ba1ccb115f2b813cc17cd9e26f3221a19b03fdd67b437b`，
+> V5 eval policy SHA 为 `b39134038c22fe304cf3212da11da468d9a2d88a51a0162bbad1102186cf009d`。
+> Candidate 前固定 Tutor/Organizer/combined semantic `>=0.85`、两 lane absolute improvement
+> `>=0.15`、strict `48/48`、guard `24/24`、安全失败全 0、P95、usage、token 与
+> `0.55 CNY` cap；不完整 aggregate 必须 `null`。门槛在后续 Mock/Live 后不得下调。
+>
+> Fresh deterministic baseline 为 `12/48` complete，Tutor/Organizer/combined semantic
+> `0.6629642857142858/0.278125/0.4705446428571429`，Provider/input/output/cost 全 0；完整 report
+> SHA 冻结为 `0ce7c3ca5f6f7d2c78f37f88c5f90c24c7f1ed19575d4e43d9edcd41341116ca`。
+> 聚焦测试 `8 pass / 0 fail / 346 expect()`，Agent 全量 `690 pass / 0 fail / 7600 expect()`；
+> Agent typecheck/lint、Prettier、diff check 与 14 个本轮 Markdown 文件的本地链接检查通过。V1--V4
+> 四个历史 evidence validator 均为 `ok=true / filesChecked=1`；两路只读复审最终无未关闭
+> Critical/Important。V1 canonical dataset 现场重算仍为 `7ac2f4b5...2207e`。
+>
+> 本轮未读取 credential、调用 Provider、实现 V5 candidate/paired Mock/Live runner、创建 Live artifact、启动
+> Docker/API/browser 或修改 PostgreSQL、Redis、MinIO/业务数据。下一原子任务仅 V5 R2 Tutor
+> local-signal authority，仍为 zero-provider。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R0 零 Provider 根因取证与修复路线：对 V4 唯一失败 run 做源码、
 > 冻结 dataset 与 bounded evidence 差分复核，确认问题不是单一验收 adapter bug。V1
 > `tutor-runtime-06` 把中文代数步骤 `2x=6` 与英文微积分 active context 组合，并因
