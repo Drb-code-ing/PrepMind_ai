@@ -4,7 +4,10 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0--R1 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与 deterministic baseline 已落地；尚未实现 V5 candidate/paired Mock/Live runner，尚未读取 credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务数据。下一步仅 R2 Tutor local-signal authority。
+**当前状态：** R0--R2 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
+deterministic baseline、Tutor local-signal authority 和 bounded V5 candidate 已落地；尚未实现
+Organizer V5 ordinal shortlist、paired Mock/Live runner，尚未读取 credential、调用 Provider、启动产品
+Docker/API/浏览器或修改业务数据。下一步仅 R3 Organizer ordinal shortlist。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -62,7 +65,7 @@ evidence 和生产验收路径。
 
 ## R2：Tutor V5 bilingual bounded choice
 
-**状态：** [ ] 待开始。
+**状态：** [x] 已完成，zero-provider。
 
 - 本地 projection 派生 primary signals、precedence 与 `eligibleIntents`；
 - 冻结 `tutor-local-signal-authority-v1` schema/version/content SHA/provenance；
@@ -74,9 +77,17 @@ evidence 和生产验收路径。
 - 中文 held-out、混合语言、context reorder、否定、干扰和 metamorphic tests；
 - Chat route、答案、tool、permission 与 deterministic fallback 边界不变。
 
+**冻结 identity：** rules SHA `a1e9a3b...f4892`、prompt policy SHA
+`7c7442ff...c5f87`、32 条独立 held-out fixture SHA `d08e8ed5...8ab55`。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`
+
+**停止点：** 已遵守；没有接 product composition/provider/gate，也没有开始 R3。
+
 ## R3：Organizer V5 ordinal shortlist
 
-**状态：** [ ] 待开始。
+**状态：** [ ] 下一步。
 
 - 本地生成 bounded topic candidates 和 existing deck ordinals；
 - shortlist 稳定排序/去重并绑定 owner+question+deck+topic 序列 fingerprint；

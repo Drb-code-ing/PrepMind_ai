@@ -1,5 +1,35 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R2 Tutor Local-Signal Authority：新增独立
+> `tutor-local-signal-authority-v1` 与 `tutor-model-projection-v5`。本地权威从 latest text 派生
+> primary signal、negated signal、eligible intent/depth、confidence 与 reason，并把 precedence 冻结为
+> `step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`。Active context
+> 只影响 availability/depth，不能创建或提升具体 intent；引用语境中的 hint/answer 文本不会取得模型或
+> 答案权限。
+>
+> Detector rules SHA 冻结为 `a1e9a3b0489e5be5f2c64205128231887cf26b6f151028c2cb8324ddb65f4892`，
+> bilingual prompt policy SHA 为 `7c7442ffa96f78f23e75a34f8526e65c48f9dce5efe2b344d58cd68d5b6c5f87`。
+> 模型 contract 只保留 `intent/depth/confidence`，删除自报 evidence；validator 同时校验 local authority
+> SHA 与 canonical semantics，具体 primary 不能降级为 general。Merger 继续在本地重建完整
+> TutorStrategy，模型没有 answer/route/tool/permission/write authority。
+>
+> 新增 32 条独立 held-out fixture，SHA 为
+> `d08e8ed5a6c47f8b2fc2d0f1b108e309484814804232979a6ce6eba891d8ab55`，固定
+> `13 zh / 12 en / 7 mixed` 与 positive/context/negative/quoted/conflict 配额；覆盖 detector FP/FN、否定、
+> 引用 distractor、冲突 precedence、context 删除/空值/重排/噪声/单变量 mutation、authority 伪造、
+> strict schema、zero-call、单调用/无重试、usage/abort、安全和实际 prompt leakage。冻结 V2 的 24 条
+> Tutor runtime detector 对照为 `24/24`。
+>
+> R2 聚焦测试 `12 pass / 0 fail / 859 expect()`，Agent 全量
+> `702 pass / 0 fail / 8478 expect()`；Agent typecheck/lint、Prettier、V1--V4 四个历史 evidence
+> validator 均通过。两路只读终审最终无 Critical/Important；测试复审提出的 context mutation、覆盖
+> 配额与重复运行完整等价缺口已补齐。
+>
+> 本轮未读取 credential、调用 Provider、接 Web product composition/gate、创建 V5 runner/Live artifact、
+> 启动 Docker/API/browser 或修改 PostgreSQL、Redis、MinIO/业务数据。下一原子任务仅 V5 R3
+> WrongQuestionOrganizer ordinal shortlist；不得开始 Task 13/main、Phase 6.10 或博客收尾。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R1 独立 Dataset Authority：在不修改 V1 cases/SHA 的前提下，
 > 新建 `phase-6.9-tutor-wrong-question-v2`。72 cases 固定为 24 guard + 48 runtime、24 paired
 > requests；Tutor/Organizer 各 12 guard + 24 runtime，Organizer 共 32 decision units。Tutor runtime

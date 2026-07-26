@@ -18,6 +18,7 @@
     "./review": "./src/nodes/review.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
+    "./tutor-v5": "./src/model-candidates/tutor-v5.ts",
     "./wrong-question-organizer": "./src/nodes/wrong-question-organizer.ts"
   },
   "scripts": {

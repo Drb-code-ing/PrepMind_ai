@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R1）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R2）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline，没有改写任何历史 authority。当前下一步仅 V5 R2 Tutor local-signal authority；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2 已完成 Tutor local-signal authority 与三字段 bounded candidate，没有改写任何历史 authority，也没有接产品。当前下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1080,3 +1080,23 @@ V5 R1 完成回执：聚焦测试 `8 pass / 0 fail / 346 expect()`，Agent 全�
 
 下一步仅 V5 R2 Tutor local-signal authority，仍为 zero-provider。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`。
+
+V5 R2 完成回执：聚焦测试 `12 pass / 0 fail / 859 expect()`，Agent 全量
+`702 pass / 0 fail / 8478 expect()`；Agent typecheck/lint、Prettier 与 V1--V4 四个历史 evidence
+validator 均通过。
+
+- [x] `tutor-local-signal-authority-v1` 冻结 latest-text-only detector、否定/引用语境、precedence、
+      eligible intent/depth、provenance 与 canonical authority SHA；
+- [x] rules/prompt/held-out SHA 为 `a1e9a3b...f4892`、`7c7442ff...c5f87`、
+      `d08e8ed5...8ab55`；
+- [x] 模型 strict output 仅 `intent/depth/confidence`，不含 evidence、答案、route/tool/permission/write；
+- [x] 具体 primary intent 不得降级为 general，active context 不能创建或提升具体 intent；
+- [x] 32 条独立 held-out 固定 `13 zh / 12 en / 7 mixed`，覆盖 FP/FN、否定、引用 distractor、
+      conflict precedence、context mutation、strict schema、zero-call、single-call/no-retry 与 prompt
+      leakage；
+- [x] 冻结 V2 Tutor 24 条 runtime detector 对照为 `24/24`；
+- [x] 两路只读终审最终无 Critical/Important；
+- [x] 未接 product/provider/gate/paired runner，未读取 credential、启动 Docker/API/browser 或修改业务数据。
+
+下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist，仍为 zero-provider。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`。

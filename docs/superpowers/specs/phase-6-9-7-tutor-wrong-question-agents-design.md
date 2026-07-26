@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：基础设计冻结；Task 1--11 已完成。V1、V2、V3 与 V4 四条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0--R1 已完成 zero-provider 根因、独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；下一步仅 V5 R2 Tutor local-signal authority。产品验收、Task 13/main 与 Phase 6.10 不得开始。
+状态：基础设计冻结；Task 1--11 已完成。V1、V2、V3 与 V4 四条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0--R2 已完成 zero-provider 根因、独立 V2 dataset/coherence、冻结 policy/baseline 与 Tutor local-signal bounded candidate；下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist。产品验收、Task 13/main 与 Phase 6.10 不得开始。
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值

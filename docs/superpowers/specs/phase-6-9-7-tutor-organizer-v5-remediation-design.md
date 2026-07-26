@@ -2,7 +2,9 @@
 
 日期：2026-07-26
 
-状态：R0--R1 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy 与 deterministic baseline 已冻结；尚未实现 V5 candidate/paired Mock/Live runner，尚未调用 Provider。下一步仅 R2 Tutor local-signal authority。
+状态：R0--R2 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
+baseline 与 Tutor local-signal authority/bounded candidate 已冻结；尚未实现 Organizer V5 ordinal
+shortlist 或 paired Mock/Live runner，尚未调用 Provider。下一步仅 R3 Organizer ordinal shortlist。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -17,6 +19,9 @@ R0 acceptance：
 
 R1 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`
+
+R2 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`
 
 ## 1. 决策摘要
 
@@ -130,6 +135,10 @@ System prompt 使用中英双语的短规则表、正反例和 precedence，明�
 单变量 mutation；同一输入须比较 detector -> eligible intents -> validator -> merger 的差分结果。
 无法验证 authority version/SHA、出现互斥 primary signal 或 detector/policy 映射缺口时，必须在
 Provider 前 fail-closed，不能把错误 eligible intents 交给模型。
+
+R2 已按该设计落地：rules/prompt/独立 held-out SHA 分别冻结为 `a1e9a3b...f4892`、
+`7c7442ff...c5f87`、`d08e8ed5...8ab55`；32 条 held-out 与冻结 V2 Tutor runtime `24/24`
+detector 对照通过。模型 output 仅 `intent/depth/confidence`，没有接 product/provider/gate。
 
 ### 3.3 Organizer：local candidate shortlist + ordinal-only output
 

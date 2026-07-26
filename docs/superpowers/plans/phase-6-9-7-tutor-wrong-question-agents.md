@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R1 已完成 zero-provider 根因取证、独立 V2 dataset/coherence、冻结 eval policy 与 deterministic baseline；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R2 Tutor local-signal authority；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
+**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R2 已完成 zero-provider 根因取证、独立 V2 dataset/coherence、冻结 eval policy/baseline 与 Tutor local-signal bounded candidate；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 

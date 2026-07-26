@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline，下一原子任务为 V5 R2 Tutor local-signal authority。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆；随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2 已完成 Tutor local-signal authority 与三字段 bounded candidate，仍未接产品。下一原子任务为 V5 R3 WrongQuestionOrganizer ordinal shortlist。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆；随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 
 ## 项目目标
 
@@ -254,7 +254,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V4 R5 已完成 static/Mock checkpoint。Fresh Mock run `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1/1`、P95 `246/328/328/276ms`、usage `21948/5647`、estimated `0.099726 CNY`；`mock_synthetic` 使 Live-only gate 按设计保持 `quality_gate_failed`。Agent/AI/Types/Server/Web 全量、Organizer PostgreSQL `12/12`、Compose default-off、历史 SHA/validator、V4 artifact=0、测试账号零残留与两路终审均通过。未读取 credential、调用 Provider 或启动产品 Docker/API/browser。该条是 R5 当时的零网络 checkpoint；后续唯一 R6 已失败封存。
 - Phase 6.9.7 V4 R6 已失败封存。唯一 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 为 `24/24` guard zero-call、6 对 dispatched/completed、12 executor started、10/48 strict runtime；第 6 对 Tutor 在 `dynamic_contract` 命中 `invalid_evidence_association`，Organizer sibling 为 attempted-aborted/usage unknown，剩余 36 runtime 按 breaker 未启动。Tutor/Organizer/combined semantic 为 `0.14410714285714285/0.10372596153846154/0.1239165521978022`，最终 `quality_gate_failed`。11 个 verified usage 的部分费用为 `0.032247 CNY`；完整费用与 P95 因样本不完整保持 `null`。V4 evidence/journal/marker 已 durable seal 且不得重跑；R7--R9、Task 13/main、Phase 6.10 与博客收尾均不得开始。后续若继续，只能新建与 V1--V4 双向隔离的零 Provider remediation。
 - Phase 6.9.7 V5 R0 已完成零 Provider 根因取证。冻结 V1 `tutor-runtime-06` 把中文代数 latest text 与英文微积分 active context 拼接，并因数组奇偶误标为 `en`；但 exact input 差分回归同时证明合法 evidence 在产品 candidate 应用、缺 primary/错误 evidence 才被产品 candidate 拒绝，V4 diagnostic 只是如实投影，不能把 V4 failure 翻案为脚本误判。V4 前 5 对还保留 3 个中文 hint -> general、Organizer topic `2/5` 与一次 `major -> computer` 的真实语义证据。已冻结 V5 R1--R8 remediation 路线。（已完成）
-- Phase 6.9.7 V5 R1 已完成独立 `phase-6.9-tutor-wrong-question-v2` 与 fail-fast coherence。72/24/48/24、Tutor `12 zh/10 en/2 mixed`、Organizer 32 decision/topic ordinal/batch relation 已冻结；dataset/policy/baseline SHA 为 `42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。deterministic baseline 为 `12/48`，Tutor/Organizer/combined semantic `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0。下一步仅 R2 Tutor local-signal authority，仍为 zero-provider。
+- Phase 6.9.7 V5 R1 已完成独立 `phase-6.9-tutor-wrong-question-v2` 与 fail-fast coherence。72/24/48/24、Tutor `12 zh/10 en/2 mixed`、Organizer 32 decision/topic ordinal/batch relation 已冻结；dataset/policy/baseline SHA 为 `42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。deterministic baseline 为 `12/48`，Tutor/Organizer/combined semantic `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0。该 checkpoint 当时的下一步为 R2，后续已完成。
+- Phase 6.9.7 V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate。Rules/prompt/held-out SHA 为 `a1e9a3b...f4892`、`7c7442ff...c5f87`、`d08e8ed5...8ab55`；32 条独立 held-out 与冻结 V2 Tutor runtime `24/24` detector 对照通过，模型不自报 evidence，active context 不创建/提升具体 intent，merger 仍由本地重建 TutorStrategy。全程 zero-provider 且未接产品，下一步仅 R3 Organizer ordinal shortlist。
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -359,8 +360,9 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V3 R5：唯一 branch run `ff2e1a54-0cbd-494c-96b7-a0f366c6c3dc` 使用 `deepseek-v4-pro` non-thinking JSON 与 `deepseek_network` provenance；`24/24` guard zero-call 通过。第 14 对的 Organizer `organizer-runtime-14` 在结构化对象形成后、本地 `dynamic_contract` 命中 `subject_authority_violation`，breaker 打开；最终 28 个 executor/usage verified、`27/48` strict runtime、20 个 runtime 为 `not_started_quality_breaker`，Tutor/Organizer/combined semantic `0.5280555556/0.4376201923/0.4828378739`。P95、pricing profile 与 total CNY 因样本不完整为 `null`，最终 `quality_gate_failed`。V3 marker/journal/evidence 已 durable seal 且 validator 通过；不得重跑或进入 R6--R9。证据见 `docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。（失败封存，Phase 6.9.7 未完成）
 - Phase 6.9.7 V5 R0：已完成 exact fixture/product-candidate/diagnostic 差分回归与独立 remediation 设计；V1--V4 历史不变。下一步 R1 新建 V2 dataset 与 coherence validator，不调用 Provider。（已完成）
 - Phase 6.9.7 V5 R1：显式绑定 Tutor language/exercise family/latest/context，收敛 Organizer structured subject/taxonomy/topic candidate authority，冻结新 SHA/baseline/quality gate。（已完成）
-- Phase 6.9.7 V5 R2：冻结 `tutor-local-signal-authority-v1` schema/version/content SHA/provenance，覆盖 detector 误报/漏报和中英/混合 differential oracle；模型只选择 intent/depth/confidence。（下一步）
-- Phase 6.9.7 Task 13：V3 R5 与 V4 R6 均已失败封存；V4 一次性名额已消费且没有 Live quality authority，V5 只完成 R0--R1，尚无 candidate/Live quality authority。没有新的独立版本 Live quality authority 与产品验收前，不得执行分支收尾、`--no-ff` 合并 main、main default-off 回放或 main 远程推送。（不得开始）
+- Phase 6.9.7 V5 R2：`tutor-local-signal-authority-v1` 已冻结 latest-text-only detector、否定/引用语境、`step > explain > concept > hint > general` precedence、eligible intent/depth 与 canonical authority SHA；模型 schema 仅 `intent/depth/confidence`，不再自报 evidence。32 条独立 held-out 与 24/24 V2 Tutor runtime detector 对照通过，单次调用、零重试、预算/abort/usage/safety/prompt leakage 与 context mutation 均已验证。未接 product/provider/gate，zero-provider 验收见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`。（已完成）
+- Phase 6.9.7 V5 R3：为 WrongQuestionOrganizer 建立 owner snapshot 上稳定、去重、fingerprint-bound 的 topic/deck ordinal shortlist；覆盖 reorder/ABA/stale/taxonomy/locked-name fail-closed，模型不自由生成名称，merger 不执行 mutation。（下一步）
+- Phase 6.9.7 Task 13：V3 R5 与 V4 R6 均已失败封存；V4 一次性名额已消费且没有 Live quality authority，V5 只完成 R0--R2，Tutor candidate 仍未接产品，Organizer V5 candidate/runner/Live quality authority 尚不存在。没有新的独立版本 Live quality authority 与产品验收前，不得执行分支收尾、`--no-ff` 合并 main、main default-off 回放或 main 远程推送。（不得开始）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -386,7 +388,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-V2 R7、V3 R5 与 V4 R6 均已失败封存，各自一次性授权已经消费且不得重跑。V5 R0--R1 已区分 fixture 缺陷、product candidate rejection 与真实语义偏差，并冻结独立 V2 dataset/coherence、policy 与 baseline；产品验收、Task 13/main 合并、Phase 6.10 与博客收尾均不得开始。下一步仅 V5 R2 Tutor local-signal authority；当前没有任何新的网络授权。
+V2 R7、V3 R5 与 V4 R6 均已失败封存，各自一次性授权已经消费且不得重跑。V5 R0--R2 已区分 fixture 缺陷、product candidate rejection 与真实语义偏差，并冻结独立 V2 dataset/coherence、policy/baseline 与 Tutor local-signal bounded candidate；产品验收、Task 13/main 合并、Phase 6.10 与博客收尾均不得开始。下一步仅 V5 R3 WrongQuestionOrganizer ordinal shortlist；当前没有任何新的网络授权。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 
