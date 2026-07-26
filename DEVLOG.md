@@ -1,5 +1,38 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R0 零 Provider 根因取证与修复路线：对 V4 唯一失败 run 做源码、
+> 冻结 dataset 与 bounded evidence 差分复核，确认问题不是单一验收 adapter bug。V1
+> `tutor-runtime-06` 把中文代数步骤 `2x=6` 与英文微积分 active context 组合，并因
+> `pairedRunIndex % 2` 被错误标成 `en`；fixture 的 context 由独立轮转生成，不符合产品
+> latest message 与当前 OCR/学习上下文属于同一道题的不变量。V1 dataset bytes/SHA
+> `7ac2f4b5...2207e` 保持不可变，新版本不得原地修补历史。
+>
+> 新增 `phase-6-9-tutor-wrong-question-v5-root-cause.test.ts`，使用 exact runtime-06 输入验证四组
+> synthetic decision：`step_check + submitted_step` 以及附加 `contextual_reference` 都由产品
+> `runTutorModelCandidate()` 应用；缺 primary 或使用 `concept_gap` 时由同一产品 candidate 返回
+> `fallback_schema_invalid / invalid_evidence_association`，随后 canonical diagnostic 如实映射为
+> `dynamic_contract`。结果为 `7 pass / 0 fail / 34 expect()`，排除了 V4 adapter 单独把合法结果
+> 改成失败的假设。
+>
+> Agent 全量 `682 pass / 0 fail / 7244 expect()`，Agent typecheck/lint、Prettier 与 diff check
+> 通过；V1--V4 四个专用 file validator 均为 `ok=true / filesChecked=1`，V4
+> evidence/journal/marker SHA 与失败封存记录一致。三路只读复审补齐 local detector authority、
+> shortlist fingerprint/ordinal ABA、固定取消/孤儿终态、跨版本递归隔离、lane failure attribution 与
+> crash-only seal 后，均无未关闭 Critical/Important。
+>
+> 同时，V4 前 5 条 Tutor 的 bounded evidence 显示 3 个中文 hint 全部被判为
+> `general_follow_up`、2 个英文 hint 均命中；Organizer 前 5 条只有 2 个 canonical topic 命中，且
+> 第 5 条出现 `major -> computer`。因此坏 fixture 不推翻 V4 `quality_gate_failed`，也不能只修
+> 验收脚本后重跑。已建立独立 V5 设计与 R1--R8 计划：R1 新建显式
+> language/exercise-family/coherent-context 的 V2 dataset；R2 将 Tutor 改为本地 evidence authority +
+> 模型有界 intent/depth 选择；R3 将 Organizer 改为本地 topic shortlist + ordinal-only；随后才建立
+> V5 runner/evidence、static/Mock 和新的精确 Live 授权门。
+>
+> 本轮未读取 `.env`/credential、调用 Provider、创建 V5 Live artifact、启动 Docker/API/browser 或
+> 修改 PostgreSQL、Redis、MinIO 与业务数据。V4 run `0fb47591...` 的 marker/journal/evidence 继续
+> durable seal 且不得重跑。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V4 R6 唯一 controlled-Live 失败封存：用户重新接受当时 DeepSeek
 > 账号的数据保留/训练边界并精确授权一次 V4 branch run。唯一 run
 > `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 使用 `deepseek-v4-pro` non-thinking JSON；`24/24`

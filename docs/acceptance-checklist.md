@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V4 R0--R5 已完成 bounded diagnostics、两 Agent 单一语义 policy、independent robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint；唯一 R6 为 `24/24` guard zero-call、6 对完成、12 executor started、`10/48` strict runtime，Tutor/Organizer semantic `0.14410714285714285/0.10372596153846154`。第 6 对 Tutor 动态合同失败后打开 breaker，同对 Organizer usage unknown，完整费用与 P95 为 `null`。V4 一次性名额已消费且不得重跑；R7--R9、Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；没有改写任何历史 authority。当前下一步仅 V5 R1 独立 V2 dataset/coherence validator；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1050,3 +1050,20 @@ V4 R6 完成回执：唯一 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以
 V4 一次性名额已消费且不得重跑；R7--R9、Task 13/main、Phase 6.10 与博客收尾不得开始。若继续只能
 先建立与 V1--V4 双向隔离的零 Provider remediation。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
+
+V5 R0 完成回执：零 Provider 差分回归 `7 pass / 0 fail / 34 expect()`。
+
+- [x] V1 dataset SHA 保持 `7ac2f4b...2207e`，未改写 frozen case；
+- [x] `tutor-runtime-06` 被证明为中文代数 latest text + 英文微积分 active context + 错误 `en` tag；
+- [x] `step_check + submitted_step` 与附加 contextual evidence 均为 `candidate_applied`；
+- [x] 缺 primary 或错误 evidence 均由产品 candidate 返回
+      `fallback_schema_invalid / invalid_evidence_association`；
+- [x] canonical diagnostic 如实映射为 `dynamic_contract`，adapter 未单独改判；
+- [x] V4 前 5 对中文 Tutor 与 Organizer topic/subject semantic mismatch 继续保留，不因 fixture 缺陷
+      翻案；
+- [x] 未读取 credential、调用 Provider、创建 V5 artifact、启动 Docker/API/browser 或修改业务数据。
+
+V5 R1 验收入口：新建独立 `phase-6.9-tutor-wrong-question-v2`，显式绑定 Tutor language、exercise
+family、latest/context coherence，并固定 Organizer subject/taxonomy/topic-candidate authority；冻结新
+SHA/baseline/threshold 后停止。R1 不实现 network CLI，也不继承任何 V4 Live 授权。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。

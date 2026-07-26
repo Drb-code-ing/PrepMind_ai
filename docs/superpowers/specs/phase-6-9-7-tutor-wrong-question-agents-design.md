@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：设计冻结；Task 1--11 已完成，Tutor 与 WrongQuestionOrganizer 的 default-off composition、strict API runtime metadata、来源状态、72-case strict paired Mock 工程门、Docker allowlist/角色隔离/回滚合同与分支全量 checkpoint 均已通过；V1、V2 与 V3 三条唯一 controlled-Live 均已失败封存且不得重跑。V3 R0--R4 已完成安全诊断、零网络 compatibility、strict-gate breaker、固定分母、双 lane ledger、crash-safe evidence 与 static/Mock checkpoint；唯一 R5 run `ff2e1a54...` 在 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`、`quality_gate_failed`。产品验收、R6--R9、Task 13/main 与 Phase 6.10 不得开始
+状态：基础设计冻结；Task 1--11 已完成。V1、V2、V3 与 V4 四条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0 已确认冻结 V1 fixture 缺陷、产品 candidate rejection 与真实语义偏差并存，并建立独立 V5 remediation；下一步仅 V5 R1 V2 dataset/coherence authority。产品验收、Task 13/main 与 Phase 6.10 不得开始。
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值

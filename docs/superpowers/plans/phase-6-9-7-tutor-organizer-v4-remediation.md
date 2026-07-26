@@ -6,9 +6,9 @@ V4 runner/evidence 和 static/Mock checkpoint 后停止，只有新的精确授�
 controlled-Live，只有全门通过才进入产品与 main 路径。
 
 **当前状态：** R0--R5 已完成；唯一 R6 run `0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已以
-`10/48` strict runtime、`quality_gate_failed` durable seal。V4 一次性名额已经消费且不得重跑；R7--R9、
-产品 Docker/API/浏览器验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。后续若继续，只能建立与
-V1--V4 双向隔离的零 Provider remediation。
+`10/48` strict runtime、`quality_gate_failed` durable seal。V4 一次性名额已经消费且不得重跑；后续
+独立 V5 R0 已完成零 Provider 根因取证，不改变本 V4 authority。R7--R9、产品 Docker/API/浏览器验收、
+Task 13/main、Phase 6.10 与博客收尾均不得开始。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`

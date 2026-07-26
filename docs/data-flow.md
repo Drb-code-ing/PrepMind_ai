@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-26。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 Task 0--11 已完成；V1 run `39a62241...`、V2 run `67ce18dd...`、V3 run `ff2e1a54...` 与 V4 run `0fb47591...` 均以 `quality_gate_failed` 封存且不得重跑。V4 R0--R5 已完成 bounded diagnostics、Tutor/Organizer 单一语义 authority、independent robustness、独立 crash-safe marker/journal/recovery/evidence lineage 与 static/Mock checkpoint；唯一 R6 保持 `24/24` guard zero-call，但在第 6 对 Tutor `invalid_evidence_association` 后熔断，最终 `10/48` strict runtime、Tutor/Organizer semantic `0.14410714285714285/0.10372596153846154`。同对 Organizer 已尝试后 abort，usage unknown，因此完整费用与 P95 保持 `null`。产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭。V4 R6 已失败封存并消费一次性名额；R7--R9、Task 13/main、Phase 6.10 与博客收尾均不得开始。
+> 当前版本：2026-07-26。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V4 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0 已确认 V1 Tutor fixture 存在跨题/跨语言 active context 与 language tag 错位，但产品 candidate 对非法 evidence 的拒绝不是 adapter 凭空误判；中文 Tutor 与 Organizer topic/subject 仍有真实语义偏差。当前下一步仅 V5 R1 独立 V2 dataset/coherence authority。产品 Docker/API/浏览器未启动，两个目标 gate 的 tracked defaults 保持关闭；Task 13/main、Phase 6.10 与博客收尾均不得开始。
 
 ## 1. 当前边界
 
@@ -489,6 +489,17 @@ V4 R6 unique controlled-Live
   -> fixed 48 denominator -> Tutor/Organizer semantic 0.14410714285714285/0.10372596153846154
   -> journal 58 records + evidence_sealed；file/bundle validator 通过
   -> quality_gate_failed -> 一次性名额消费，不重跑，不进入 R7--R9/Docker/browser/main
+
+V5 R0 zero-provider root cause
+  -> 读取冻结 V1 dataset + bounded V4 evidence；不读取 raw prompt/model output/credential
+  -> tutor-runtime-06: 中文代数 latestText + 英文微积分 activeContext + 错误 en tag
+  -> exact input -> product runTutorModelCandidate -> canonical diagnostic
+  -> submitted_step -> candidate_applied
+  -> missing/wrong primary evidence -> fallback_schema_invalid / invalid_evidence_association
+  -> adapter 只投影 product rejection；不是独立误判源
+  -> V4 前 5 对仍保留中文 Tutor 与 Organizer topic/subject 真实 semantic mismatch
+  -> 冻结 V5: V2 coherent dataset -> Tutor local evidence authority -> Organizer ordinal shortlist
+  -> 下一步 R1 zero-provider；无 V5 Live 授权，不启动 Docker/API/browser
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
@@ -497,8 +508,11 @@ Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Or
 启动、`10/48` strict runtime；第 6 对 Tutor 在本地动态合同失败，Organizer sibling 的 usage unknown，
 剩余 36 runtime 按 breaker 没有启动。Evidence、58 条 hash-chain journal 与一次性 marker authority 已
 封存且不得重跑。R7--R9、产品 Docker/API/browser、Task 13/main、Phase 6.10 与博客收尾均被阻断；
-若继续只能先建立与 V1--V4 双向隔离的零 Provider remediation。完整证据见
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
+V5 R0 随后完成零 Provider 根因取证：坏 fixture 会真实进入产品 candidate prompt，但合法/非法 evidence
+在产品 candidate 与 bounded diagnostic 中结论一致，排除了 adapter 单独误判；前 5 对的中文 Tutor
+与 Organizer 语义弱点仍是真实证据。V1 bytes/SHA 与 V4 seal 不变。下一步仅新建独立 V2
+dataset/coherence authority；详见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。
 
 当前 `/knowledge` 页面数据流：
 

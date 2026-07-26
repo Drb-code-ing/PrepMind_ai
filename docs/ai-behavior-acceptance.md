@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V4 R0--R5 已完成零 Provider bounded 复盘、独立 diagnostics/历史兼容、Tutor/Organizer 单一语义 policy、independent robustness、独立 crash-safe evidence lineage 与 static/Mock checkpoint；唯一 R6 在第 6 对 Tutor `invalid_evidence_association` 后以 `10/48` strict runtime、`quality_gate_failed` 封存。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；V4 不得重跑或进入 R7--R9、Task 13/main、Phase 6.10。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；这既不能把 V4 adapter 当作唯一根因，也不能把 V4 `quality_gate_failed` 改判为通过。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R1 zero-provider dataset/coherence authority。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -450,6 +450,21 @@ authority 已 durable seal，file/bundle validator 通过，V1/V2/V3 历史 vali
 产品 Docker/API/browser 或创建 synthetic 产品数据，tracked defaults 保持关闭。V4 不得重跑；R7--R9、
 Task 13/main、Phase 6.10 与博客收尾不得开始。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
+
+V5 R0 当前证据：冻结 V1 `tutor-runtime-06` 的中文代数 latest text 与英文微积分 active context
+跨题组合，language tag 还被按数组奇偶误标为 `en`。Exact input 的零网络差分回归为
+`7 pass / 0 fail / 34 expect()`：合法 `submitted_step` 在产品 candidate 得到
+`candidate_applied`；缺 primary 或使用错误 evidence 才由同一 candidate 返回
+`fallback_schema_invalid / invalid_evidence_association`；canonical diagnostic 只是如实映射为
+`dynamic_contract`。
+
+V4 前 5 对的 bounded evidence 仍显示 3 个中文 hint 全部被判为 `general_follow_up`、两个英文 hint
+均命中；Organizer canonical topic 只命中 `2/5`，并有一次 `major -> computer`。因此 V5 必须使用
+新 dataset identity，同时修复双语 Tutor 选择和 Organizer topic/taxonomy。设计冻结为：Tutor 的
+evidence/eligible-intent 由本地 projection 掌权，模型只返回 intent/depth/confidence；Organizer 由本地
+生成 topic/deck shortlist，模型只选择 ordinal。两者仍无最终回答、route/tool/permission 或数据库写
+权限。R1 只创建新 V2 dataset/coherence validator；当前无 V5 Live 授权。证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

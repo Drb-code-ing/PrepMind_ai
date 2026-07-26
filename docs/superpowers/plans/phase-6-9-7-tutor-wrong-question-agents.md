@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-25）：** Task 0--11 已完成。Task 12 V1 run `39a62241...`、V2 R7 run `67ce18dd...` 与 V3 R5 run `ff2e1a54...` 均已分别以 `quality_gate_failed` 封存且不得重跑。V3 R0--R4 已完成安全诊断、真实 invocation、strict breaker、固定分母、双 lane ledger、dispatch-before-call journal、crash-only seal、不可覆盖 evidence 与 static/Mock checkpoint；唯一 R5 保持 `24/24` guard zero-call，但在第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、Tutor/Organizer semantic `0.5280555556/0.4376201923`。V3 marker/journal/evidence 已 durable seal，两个 tracked gate 仍关闭。R6--R9、产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
+**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0 已完成零 Provider 根因与新修复路线，确认 V1 fixture 缺陷不等于 V4 adapter 误判，也不推翻中文 Tutor 与 Organizer 的真实语义偏差。下一步仅 V5 R1 独立 V2 dataset/coherence authority；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -17,6 +17,12 @@ V2 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v2-remediat
 
 V3 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v3-remediation.md`
+
+V4 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md` 与
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md`
+
+V5 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md` 与
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md`
 
 ---
 
