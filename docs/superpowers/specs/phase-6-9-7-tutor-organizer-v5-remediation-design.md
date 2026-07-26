@@ -2,10 +2,10 @@
 
 日期：2026-07-26
 
-状态：R0--R3 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
-baseline、Tutor local-signal authority/bounded candidate，以及 Organizer owner-snapshot ordinal
-shortlist/strict candidate/local merger 已冻结；尚未实现 V5 paired runner/lineage，尚未调用 Provider。
-下一步仅 R4 runner、lineage 与生产极端边界。
+状态：R0--R4 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
+baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal shortlist/
+strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端
+边界均已冻结；尚未调用 Provider 或接产品。下一步仅 R5 static/Mock checkpoint。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -26,6 +26,9 @@ R2 acceptance：
 
 R3 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`
+
+R4 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`
 
 ## 1. 决策摘要
 
@@ -243,6 +246,13 @@ Live reservation 还必须覆盖每个持久化失败点：marker 创建前失�
 journal 初始化、append、terminal 或 evidence 发布任一失败都消费该 V5 名额，并只允许单胜者
 crash-only seal。活 owner 不得被误封，dead owner recovery 受 token/ABA fence；任何恢复都不得再调用
 Provider。
+
+R4 已按上述设计完成：原生 V5 report/runner/CLI/marker/hash-chain journal/hard-link evidence/validator
+固定 `72/24/48/24/32` 分母、guard-first、single-pair dispatch、双 lane 隔离、首错 breaker 与
+incomplete-null 聚合。Marker/journal/evidence 失败、duplicate dispatch、orphan、live/dead owner、ABA、
+tail drift、same/different bytes 与历史 lineage 双向拒绝均有 zero-provider 回归。`synthetic_test` Live
+固定 `quality_gate_failed`，只有 `deepseek_network` provenance 才可能通过。R4 没有接 product
+composition/gate/Trace persistence、Provider、Docker/API/browser 或业务数据。
 
 ## 7. 非目标
 

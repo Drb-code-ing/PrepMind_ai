@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R3）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R4）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -1014,13 +1014,31 @@ bun test packages/agent/tests/wrong-question-organizer-v5-shortlist.test.ts
 Mock/no-network runtime，只证明 package authority、contract、budget/abort/stale 与写隔离，不是
 Provider、Docker/API/browser 或产品验收。
 
-下一步仅 V5 R4 runner、lineage 与生产极端边界；R4/R5 完成并获得新的 V5 精确授权前，不得执行
-V5 network CLI。设计、计划与 R1--R3 证据见
+V5 R4 继续保持 zero-provider，新增原生 V5 report/runner/CLI/marker/hash-chain journal/hard-link
+evidence/validator 与 crash-only recovery。下面命令只运行 synthetic/no-network runner 与临时目录
+durability 测试；不会读取 `.env`、创建 Provider executor、启动 Docker 或写业务数据：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-organizer-v5-runner.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-durability.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-lineage.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-cli.test.ts
+bun run --cwd packages/agent typecheck
+```
+
+预期 R4 聚焦结果为 `26 pass / 0 fail / 145 expect()`。V5 report 固定 `72 cases / 24 guards /
+48 runtime / 24 pairs / 32 Organizer decisions`；24 guard 先行、单 pair 调度、pair 内最多双 lane，首个
+runtime contract failure 后熔断。Dispatch journal 必须在 Provider 前 append+fsync；marker、journal 或
+evidence 发布失败会消费一次性名额，恢复只允许 seal，不允许 resume/replay/retry。Usage、latency 或
+semantic 样本不完整时聚合值保持 `null`。测试注入的 `synthetic_test` Live 永远不能通过质量门；只有
+后续真实 CLI 自建的 `deepseek_network` provenance 才可能成为质量 authority。
+
+R4 没有接产品 composition/gate、Provider、Trace persistence、Docker/API/browser，也没有创建 V5 Live
+artifact。下一步仅 V5 R5 static/Mock checkpoint；R5 通过并重新取得新的 V5 精确授权前，不得执行
+V5 network CLI。设计、计划与 R1--R4 证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`、
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`。
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

@@ -4,11 +4,11 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0--R3 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
-deterministic baseline、Tutor local-signal authority/bounded candidate，以及 Organizer owner-snapshot
-ordinal shortlist/strict candidate/local merger 已落地；尚未实现 V5 paired runner/lineage，尚未读取
-credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务数据。下一步仅 R4 runner、lineage
-与生产极端边界。
+**当前状态：** R0--R4 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
+deterministic baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal
+shortlist/strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与
+生产极端边界已落地；尚未读取 credential、调用 Provider、接产品、启动 Docker/API/浏览器或修改业务
+数据。下一步仅 R5 static/Mock checkpoint。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -108,7 +108,7 @@ credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务�
 
 ## R4：V5 runner、lineage 与生产极端边界
 
-**状态：** [ ] 下一步。
+**状态：** [x] 已完成，zero-provider。
 
 - 独立 V5 runner/CLI/approval/marker/journal/evidence/validator；
 - V1–V4/V5 双向拒绝与历史 SHA 校验；
@@ -121,9 +121,18 @@ credential、调用 Provider、启动产品 Docker/API/浏览器或修改业务�
   ledger assertions；
 - 递归拒绝 V1–V4 runId、partial metrics/usage/cost、source case ID、旧 dataset/prompt SHA 与 artifact path。
 
+**验证：** focused `26/26`（145 assertions）、Agent full `741/741`（9128 assertions）、Agent
+typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence SHA/validator 与两路独立复审
+均通过；V5 Live artifact 为 0。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`
+
+**停止点：** 已遵守；未接 product/provider/gate/Trace persistence，未开始 R5。
+
 ## R5：分支 static/Mock checkpoint
 
-**状态：** [ ] 待开始。
+**状态：** [ ] 下一步。
 
 - V5 focused/full/static、Agent/AI/Types/Server/Web 受影响门；
 - fresh deterministic baseline 与 fresh V5 Mock；

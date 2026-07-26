@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R3 已完成 zero-provider 根因取证、独立 V2 dataset/coherence、冻结 eval policy/baseline、Tutor local-signal bounded candidate 与 Organizer owner-snapshot ordinal shortlist；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R4 runner、lineage 与生产极端边界；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
+**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R4 已完成 zero-provider 根因取证、独立 V2 dataset/coherence、冻结 eval policy/baseline、Tutor local-signal bounded candidate、Organizer owner-snapshot ordinal shortlist，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端边界；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R5 static/Mock checkpoint；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -24,8 +24,9 @@ V4 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediat
 V5 remediation：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md`
 
-V5 R3 acceptance：
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`
+V5 R3/R4 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`
 
 ---
 
@@ -360,7 +361,7 @@ V5 R3 acceptance：
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** Task 12 V1、V2 R7 与 V3 R5 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1/V2/V3 一次性 marker/evidence 已封存且不得重跑；V4 R0 已完成，但 R1--R5 zero-network/static/Mock、唯一 V4 Live、产品验收和分支终审尚未完成。只有 V4 形成新的质量 authority、产品验收与分支最终文档后，才能重新规划 main 收尾。
+**当前状态：不得开始。** V1、V2 R7、V3 R5 与 V4 R6 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1--V4 一次性 marker/evidence 已封存且不得重跑；V5 只完成 R0--R4 zero-provider remediation，R5 static/Mock、V5 quality authority、产品验收和分支终审均未完成。只有这些门全部关闭后，才能重新规划 main 收尾。
 
 **分支：**
 
@@ -394,7 +395,7 @@ V5 R3 acceptance：
 
 随后进入 Phase 6.9.8，不进入 Phase 6.10，也不提前写两篇博客。
 
-实际 V3 R5 已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V4 R0 已完成零
-Provider 复盘与独立设计；下一步按
-`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v4-remediation.md` 执行 R1 bounded
-diagnostics，R1--R5 均不得调用 Provider。
+实际 V1--V4 Live 均已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V5 R0--R4 已
+完成且全部为 zero-provider；下一步按
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 执行 R5 static/Mock
+checkpoint。R5 完成后仍须停止；没有新的精确一次性 V5 授权不得调用 Provider。

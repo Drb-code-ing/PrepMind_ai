@@ -1,5 +1,29 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R4 Runner / Lineage / Production Extreme Boundaries：新增原生
+> `phase-6.9.7-tutor-organizer-runner-v5` report/case/evidence contract、独立 paired runner、CLI、一次性
+> marker、dispatch-before-call hash-chain journal、hard-link evidence、recovery claim 与 V5 validator。
+> 固定 72 cases / 24 guards / 48 runtime / 24 pairs / 32 Organizer decisions；24 guard 先行，每次只运行
+> 一个 pair，pair 内最多双 lane，首个 runtime contract failure 熔断且其余 case 保留固定分母。
+>
+> Report schema 由 case entries 重算 canonical identity、decision denominator、semantic、usage、safety、
+> latency 与 gate；usage/latency/semantic 不完整时 aggregate 保持 `null`。只有
+> `executorProvenance=deepseek_network` 的完整 Live 才可能 `quality_gate_passed`，测试注入的
+> `synthetic_test` Live 固定失败。V5 validator 递归拒绝 V1--V4 runner/dataset/run/artifact、partial
+> metrics/usage/cost、source fields、getter/cycle/symbol key；历史 validators 也拒绝 V5。
+>
+> Durability 覆盖 marker/journal/evidence 任一失败消费唯一名额、发布失败、最终 seal append/fsync
+> 失败、dispatch 后 terminal 丢失、sibling orphan、活 owner 防误封、dead owner 单胜者 recovery、同字节
+> ABA、recovery claim 后 journal tail 漂移、same-byte 幂等与冲突字节拒绝。恢复只 seal，不 resume/replay
+> Provider。Focused `26/26`（145 assertions）、Agent `741/741`（9128 assertions）、Agent
+> typecheck/lint、Web/Server lint、Prettier、diff check、V1--V4 四份历史 evidence SHA/validator 与两路
+> 独立复审均通过。
+>
+> 本轮未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、修改业务数据或创建任何 V5
+> Live artifact。下一原子任务仅 V5 R5 static/Mock checkpoint；未获得新的精确授权前不得执行 V5
+> controlled-Live。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R3 WrongQuestionOrganizer Ordinal Shortlist：新增独立
 > `wrong-question-organizer-shortlist-v5`、`wrong-question-organizer-model-projection-v5` 与 V5 strict
 > candidate/local merger。Shortlist 从调用方提供的 owner snapshot 本地生成 structured/taxonomy subject、

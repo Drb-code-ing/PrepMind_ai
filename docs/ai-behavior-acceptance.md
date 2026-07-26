@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R3）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R4）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline；V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate；V5 R3 已完成 Organizer owner-snapshot shortlist、strict ordinal candidate/local merger，但两者都没有接 legacy 产品 composition。V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R4 runner、lineage 与生产极端边界。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline；V5 R2 已完成 Tutor latest-text-only local authority 与三字段 bounded candidate；V5 R3 已完成 Organizer owner-snapshot shortlist、strict ordinal candidate/local merger；V5 R4 已完成原生 runner/lineage、持久化 evidence 与生产极端边界，但仍没有接 legacy 产品 composition。V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R5 static/Mock checkpoint。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -521,8 +521,27 @@ stale、strict schema、zero-call、single-call/no-retry、输入不变与实际
 无 Critical；预算复审项经 runtime 源码复核为 preview/actual reservation 的正确分层，并已加回归。
 
 R3 仍未接 product/provider/gate/paired runner/Trace persistence，未读取 credential、调用 Provider、
-启动 Docker/API/browser 或修改业务数据。下一步仅 V5 R4 runner、lineage 与生产极端边界。完整证据见
+启动 Docker/API/browser 或修改业务数据。该检查点当时的下一步 V5 R4 已完成。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`。
+
+V5 R4 当前证据：原生 `phase-6.9.7-tutor-organizer-runner-v5` report/runner/CLI/marker/hash-chain
+journal/hard-link evidence/validator 已完成。分母固定为 `72/24/48/24/32`；24 guard 先行，runtime
+按单 pair 调度，pair 内最多双 lane，首个 contract failure 后熔断。Report 从 case entries 重算
+identity、decision units、semantic、usage、safety、latency 与 gate；任何不完整 usage/latency/semantic
+聚合都为 `null`。
+
+Dispatch journal 在 lane/Provider 前 append+fsync。Marker/journal/evidence 失败消费一次性名额；活
+owner 不得误封，dead owner 只允许单胜者 recovery，ABA/tail drift/重复 dispatch/post-seal/different
+bytes 均 fail-closed。Recovery 只 seal orphan/unknown usage，不 resume/replay/retry。V5 与 V1--V4
+validator 双向隔离；`synthetic_test` Live 固定失败，只有 `deepseek_network` provenance 才可能成为
+质量 authority。
+
+R4 focused `26/26`（145 assertions）、Agent full `741/741`（9128 assertions）、Agent
+typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence SHA/validator 与两路只读终审
+均通过。R4 未读取 `.env`/credential、调用 Provider、接 product composition/gate/Trace persistence、
+启动 Docker/API/browser、修改业务数据或创建 V5 Live artifact。下一步仅 V5 R5 static/Mock
+checkpoint；完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
 
 ## 8. Reflexion / Critic 验收要求
 
