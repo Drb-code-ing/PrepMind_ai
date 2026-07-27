@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R4）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R5）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -1031,14 +1031,32 @@ semantic 样本不完整时聚合值保持 `null`。测试注入的 `synthetic_t
 后续真实 CLI 自建的 `deepseek_network` provenance 才可能成为质量 authority。
 
 R4 没有接产品 composition/gate、Provider、Trace persistence、Docker/API/browser，也没有创建 V5 Live
-artifact。下一步仅 V5 R5 static/Mock checkpoint；R5 通过并重新取得新的 V5 精确授权前，不得执行
-V5 network CLI。设计、计划与 R1--R4 证据见
+artifact。后续 R5 static/Mock checkpoint 已完成，仍为 zero-provider。设计、计划与 R1--R5 证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`、
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md` 与
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
+
+V5 R5 的公开 Mock 入口使用正式源码 reviewed factory；它不会读取 `.env`、创建 Live marker 或调用真实
+Provider：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-7:v5:baseline
+bun --filter @repo/agent eval:phase-6-9-7:v5:mock
+```
+
+Fresh baseline 预期 `12/48` complete、semantic
+`0.6629642857/0.278125/0.4705446429`；fresh Mock 预期 `24/24` zero-call、`48/48` strict runtime、
+semantic `1/1/1`，gate 为 `mock_quality_not_evidence`。Mock 报告中的 48 次 invocation 是 synthetic
+executor 计数，不是真实 Provider call；output/cost 为 0 也不代表真实模型 token/账单。
+
+R5 已完成并停止。下一步仅 R6，但下面命令不是日常开发命令，也不得凭“继续/所有权限”执行：必须先
+重新确认当前 DeepSeek 数据保留/训练边界，并取得唯一一次 V5 branch controlled-Live 精确授权。授权
+前不得读取 component credential、创建 V5 marker 或执行任何 V5 network CLI；产品 Docker/API/browser
+同样尚未开始。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

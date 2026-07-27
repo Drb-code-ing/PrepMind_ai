@@ -2,10 +2,11 @@
 
 日期：2026-07-26
 
-状态：R0--R4 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
+状态：R0--R5 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
 baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal shortlist/
 strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端
-边界均已冻结；尚未调用 Provider 或接产品。下一步仅 R5 static/Mock checkpoint。
+边界均已冻结；R5 static/Mock、数据库并发、Compose 与两路终审已通过。尚未调用 Provider 或接产品，
+下一步仅 R6 授权门。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -29,6 +30,9 @@ R3 acceptance：
 
 R4 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`
+
+R5 acceptance：
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`
 
 ## 1. 决策摘要
 
@@ -226,7 +230,7 @@ Live 前至少证明：
 - tracked Compose 与根 `.env.example` 默认关闭；
 - focused/full/static、数据库并发 E2E 与两路独立复审通过。
 
-R5 static/Mock checkpoint 完成后必须停止。只有用户重新接受当时 Provider 数据边界并明确授权唯一
+R5 static/Mock checkpoint 已完成并停止。只有用户重新接受当时 Provider 数据边界并明确授权唯一
 一次 V5 branch controlled-Live，才能创建 V5 marker 并调用 Provider。只有 V5 Live 全门通过，才允许
 进入产品 Docker/API/可见浏览器验收、分支收尾、main 合并与 main 回放。
 
@@ -253,6 +257,12 @@ incomplete-null 聚合。Marker/journal/evidence 失败、duplicate dispatch、o
 tail drift、same/different bytes 与历史 lineage 双向拒绝均有 zero-provider 回归。`synthetic_test` Live
 固定 `quality_gate_failed`，只有 `deepseek_network` provenance 才可能通过。R4 没有接 product
 composition/gate/Trace persistence、Provider、Docker/API/browser 或业务数据。
+
+R5 已按上述设计完成：reviewed public Mock factory 经过 Tutor/Organizer V5 candidate、validator 与
+local merger；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1/1`。受影响
+静态门、Organizer PostgreSQL `12/12`、Compose default-off、V1--V4 SHA/validator、V5 Live
+artifact=0 与两路终审通过。48 次 synthetic invocation 不是真实 Provider call；R5 没有读取
+credential、调用 Provider、接产品或启动 Docker/API/browser。
 
 ## 7. 非目标
 

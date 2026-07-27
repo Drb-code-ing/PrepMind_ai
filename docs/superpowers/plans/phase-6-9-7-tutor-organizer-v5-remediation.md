@@ -4,11 +4,12 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0--R4 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
+**当前状态：** R0--R5 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
 deterministic baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal
 shortlist/strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与
-生产极端边界已落地；尚未读取 credential、调用 Provider、接产品、启动 Docker/API/浏览器或修改业务
-数据。下一步仅 R5 static/Mock checkpoint。
+生产极端边界已落地；R5 又完成 reviewed Mock factory、fresh baseline/Mock、受影响静态门、Organizer
+PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。尚未读取 credential、调用
+Provider、接产品、启动 Docker/API/浏览器或修改业务数据。下一步仅 R6 授权门。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -132,7 +133,7 @@ typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence
 
 ## R5：分支 static/Mock checkpoint
 
-**状态：** [ ] 下一步。
+**状态：** [x] 已完成，zero-provider。
 
 - V5 focused/full/static、Agent/AI/Types/Server/Web 受影响门；
 - fresh deterministic baseline 与 fresh V5 Mock；
@@ -141,7 +142,16 @@ typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence
 - V1–V4 artifacts/validators/SHA 不变，V5 Live artifact 为 0；
 - 两路独立复审：contract/security/concurrency 与 docs/history/operations。
 
-**停止点：** 全部通过后停止；没有新的 V5 精确授权不得执行 R6。
+**验证：** fresh baseline `12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh Mock
+`24/24` zero-call、`48/48` strict runtime、semantic `1/1/1`。V5 focused `62/62`、Agent
+`745/745`、AI `199/199`、Types `42/42`、Server boundary `3/3`、Web `439/439`、Organizer
+PostgreSQL `12/12` 与相关 typecheck/lint/build/Compose 通过。Mock 的 48 次 invocation 是 synthetic
+executor 计数，不是真实 Provider call。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`
+
+**停止点：** 已遵守；没有新的 V5 精确授权不得执行 R6。
 
 ## R6：唯一 V5 branch controlled-Live
 

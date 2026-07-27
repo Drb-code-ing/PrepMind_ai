@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-23
-状态：基础设计冻结；Task 1--11 已完成。V1、V2、V3 与 V4 四条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0--R4 已完成 zero-provider 根因、独立 V2 dataset/coherence、冻结 policy/baseline、Tutor local-signal bounded candidate、Organizer owner-snapshot ordinal shortlist，以及原生 V5 runner/lineage/持久化证据与生产极端边界；下一步仅 V5 R5 static/Mock checkpoint。产品验收、Task 13/main 与 Phase 6.10 不得开始。
+状态：基础设计冻结；Task 1--11 已完成。V1、V2、V3 与 V4 四条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0--R5 已完成且均为 zero-provider：独立 V2 dataset/coherence、冻结 policy/baseline、两条 bounded candidate、原生 V5 runner/lineage/持久化证据与生产极端边界，以及 static/Mock、数据库并发、Compose 与两路终审均已通过；下一步仅 V5 R6 授权门。重新确认 DeepSeek 数据边界并取得唯一一次精确授权前不得调用 Provider；产品验收、Task 13/main 与 Phase 6.10 不得开始。
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -539,9 +539,10 @@ semantic mismatch、dynamic contract failure 与 breaker 未执行项，并冻�
 `docs/acceptance/2026-07-24-phase-6-9-7-tutor-organizer-v2-controlled-live-failure.md`；V3 R3 见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md`；V4 设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`。唯一 V4 R6 后续同样以
-`quality_gate_failed` 封存且不得重跑；V5 R0--R4 已完成全部 zero-provider remediation、两条 bounded
-candidate 与原生 runner/lineage，下一步仅 R5 static/Mock。R4 验收见
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
+`quality_gate_failed` 封存且不得重跑；V5 R0--R5 已完成全部 zero-provider remediation、两条 bounded
+candidate、原生 runner/lineage 与 static/Mock checkpoint，下一步仅 R6 授权门。R4/R5 验收见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
 
 ## 13. 非目标与后续阶段
 
@@ -554,7 +555,7 @@ candidate 与原生 runner/lineage，下一步仅 R5 static/Mock。R4 验收见
 - 不实现 MemoryAgent、记忆注入或 Episodic Memory；
 - 不开始《多 Agent 架构》或《记忆系统》博客收尾。
 
-只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；V1--V4 失败与 V5 R0--R4 zero-provider 工程合同都不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
+只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；V1--V4 失败与 V5 R0--R5 zero-provider 工程合同都不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
 
 ## 14. 文档同步与回顾问题
 

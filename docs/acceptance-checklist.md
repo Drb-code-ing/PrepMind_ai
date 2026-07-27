@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R4）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R5）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2 已完成 Tutor local-signal authority 与三字段 bounded candidate；V5 R3 已完成 Organizer owner-snapshot ordinal shortlist、strict candidate/local merger；V5 R4 已完成原生 runner/CLI/marker/journal/evidence/validator 与生产极端边界。V5 R0--R4 均为 zero-provider，没有改写历史 authority，也没有接产品。当前下一步仅 V5 R5 static/Mock checkpoint；Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2/R3 已完成两条 bounded candidate；V5 R4 已完成原生 runner/CLI/marker/journal/evidence/validator 与生产极端边界；V5 R5 已完成 reviewed Mock factory、fresh baseline/Mock、受影响静态门、PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。V5 R0--R5 均为 zero-provider，没有改写历史 authority，也没有接产品。当前下一步仅 V5 R6 授权门；重新确认 DeepSeek 数据边界并取得唯一一次精确授权前不得调用 Provider。Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1146,6 +1146,23 @@ typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence
 - [x] 未读取 `.env`/credential、调用 Provider、接 product composition/gate/Trace persistence、启动
       Docker/API/browser、修改业务数据或创建 V5 Live artifact。
 
-下一步仅 V5 R5 static/Mock checkpoint。R5 与新的精确 V5 controlled-Live 授权前，不得执行 network
-CLI；产品验收、Task 13/main、Phase 6.10 与博客收尾仍不得开始。完整证据见
+该 R4 检查点当时的下一步 V5 R5 已完成。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`。
+
+V5 R5 完成回执：新增 reviewed public Mock factory 与默认 Mock CLI 路径。Fresh V2-dataset baseline 为
+`12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh Mock 为 `24/24` zero-call、
+`48/48` strict runtime、semantic `1/1/1`。48 次 invocation 是 synthetic Mock executor 计数，不是真实
+Provider call；Mock evidence 已精确删除，V5 Live marker/journal/evidence/recovery claim 仍为 0。
+
+- [x] V5 focused `62/62`（1570 assertions）、Agent full `745/745`、AI `199/199`、Types `42/42`；相关 typecheck/
+      lint/build 通过，Types 既存 lint 工具解析缺口未冒充成功；
+- [x] Web `439/439` 与 17-page production build、Server Docker boundary `3/3` 与 build 通过；
+- [x] Organizer PostgreSQL concurrency E2E `12/12`，Compose tracked default-off quiet config 通过；
+- [x] V1--V4 evidence SHA 与四版 validator 不变；V5 Live artifact=0；
+- [x] contract/security/concurrency 与 docs/history/operations 两路只读终审无 P0--P2；
+- [x] 未读取 `.env`/credential、调用 Provider、接产品 gate、启动 Docker/API/browser 或修改业务数据。
+
+下一步仅 V5 R6 授权门。必须重新确认当前 DeepSeek 数据保留/训练边界并明确授权唯一一次 V5 branch
+controlled-Live；此前不得执行 network CLI。产品验收、Task 13/main、Phase 6.10 与博客收尾仍不得
+开始。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。

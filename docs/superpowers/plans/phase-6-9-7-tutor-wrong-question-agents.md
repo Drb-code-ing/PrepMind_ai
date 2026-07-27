@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R4 已完成 zero-provider 根因取证、独立 V2 dataset/coherence、冻结 eval policy/baseline、Tutor local-signal bounded candidate、Organizer owner-snapshot ordinal shortlist，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端边界；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R5 static/Mock checkpoint；产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
+**当前状态（2026-07-26）：** Task 0--11 已完成；V1、V2、V3、V4 四条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。V5 R0--R5 已完成且均为 zero-provider：独立 V2 dataset/coherence、冻结 eval policy/baseline、两条 bounded candidate、原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端边界，以及 static/Mock、数据库并发、Compose、历史不可变性与两路终审均已关闭；V1 fixture/SHA 与 V4 failure authority 不变。下一步仅 V5 R6 授权门；重新确认 DeepSeek 数据边界并取得唯一一次精确授权前不得调用 Provider。产品 Docker/API/浏览器、Task 13/main 与 Phase 6.10 不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -361,7 +361,7 @@ V5 R3/R4 acceptance：
 
 ## Task 13：分支收尾、main 合并复验与远程推送
 
-**当前状态：不得开始。** V1、V2 R7、V3 R5 与 V4 R6 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1--V4 一次性 marker/evidence 已封存且不得重跑；V5 只完成 R0--R4 zero-provider remediation，R5 static/Mock、V5 quality authority、产品验收和分支终审均未完成。只有这些门全部关闭后，才能重新规划 main 收尾。
+**当前状态：不得开始。** V1、V2 R7、V3 R5 与 V4 R6 都未通过阶段完成定义，不能把失败分支合并为 Phase 6.9.7 完成。V1--V4 一次性 marker/evidence 已封存且不得重跑；V5 R0--R5 zero-provider remediation 已完成，但 V5 Live quality authority、产品验收和分支终审仍未完成。只有这些门全部关闭后，才能重新规划 main 收尾。
 
 **分支：**
 
@@ -395,7 +395,7 @@ V5 R3/R4 acceptance：
 
 随后进入 Phase 6.9.8，不进入 Phase 6.10，也不提前写两篇博客。
 
-实际 V1--V4 Live 均已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V5 R0--R4 已
+实际 V1--V4 Live 均已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V5 R0--R5 已
 完成且全部为 zero-provider；下一步按
-`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 执行 R5 static/Mock
-checkpoint。R5 完成后仍须停止；没有新的精确一次性 V5 授权不得调用 Provider。
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 停在 R6 授权门。没有重新确认
+DeepSeek 数据边界与新的精确一次性 V5 授权，不得创建 marker 或调用 Provider。

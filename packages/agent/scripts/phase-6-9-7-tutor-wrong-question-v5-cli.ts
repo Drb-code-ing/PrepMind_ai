@@ -10,6 +10,7 @@ import {
   type Phase697TutorOrganizerV5Report,
   type Phase697V5EvidenceEnvelope,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v5-contract.ts';
+import { createPhase697TutorOrganizerV5MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v5-mock.ts';
 import {
   buildPhase697V5Marker,
   buildPhase697V5SealedReport,
@@ -101,15 +102,21 @@ export async function executePhase697TutorOrganizerV5Cli(
 ): Promise<Phase697TutorOrganizerV5CliResult> {
   const parsed = parsePhase697TutorOrganizerV5Cli(input);
   if (!parsed.ok) return parsed;
-  // R4 freezes orchestration but intentionally owns no Provider/config factory.
-  // R5/R6 must inject the reviewed Mock/Live factory explicitly.
-  if (!input.harnessFactory) return { ok: false, code: 'runtime_factory_unavailable' };
   const root = input.repositoryRoot ?? fileURLToPath(new URL('../../../', import.meta.url));
   const runId = input.runId ?? randomUUID();
+  const harnessFactory =
+    input.harnessFactory ??
+    (parsed.mode === 'mock'
+      ? ({ runId: factoryRunId, runScope }: Parameters<Phase697V5HarnessFactory>[0]) =>
+          createPhase697TutorOrganizerV5MockHarness({ runId: factoryRunId, runScope })
+      : null);
+  // R5 owns only the reviewed zero-network Mock factory. R6 Live must inject a
+  // separately reviewed factory after the one-shot authorization boundary.
+  if (!harnessFactory) return { ok: false, code: 'runtime_factory_unavailable' };
   if (parsed.mode === 'mock') {
     let report: Readonly<Phase697TutorOrganizerV5Report>;
     try {
-      const harness = await input.harnessFactory({
+      const harness = await harnessFactory({
         mode: 'mock',
         runScope: parsed.runScope,
         runId,
@@ -165,7 +172,7 @@ export async function executePhase697TutorOrganizerV5Cli(
   try {
     // Marker and journal initialization are both fsynced before the injected
     // factory can allocate a network executor or enter either lane.
-    const harness = await input.harnessFactory({
+    const harness = await harnessFactory({
       mode: 'live',
       runScope: parsed.runScope,
       runId,

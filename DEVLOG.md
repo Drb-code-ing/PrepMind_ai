@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-07-26 — Phase 6.9.7 V5 R5 Static/Mock Checkpoint：新增 reviewed V5 Mock factory、公开
+> `@repo/agent/phase-6-9-7-v5-mock` 与 `eval:phase-6-9-7:v5:mock`。CLI Mock 默认真实经过 Tutor
+> local authority/V5 candidate/validator/local merger 和 Organizer owner-snapshot shortlist/ordinal
+> candidate/validator/local merger；24 guard 不构造 runtime，48 runtime 各执行一次合成 Mock executor。
+> Expected/oracle 只留在 eval-only responder 与评分闭包，actual prompt 不含 case ID、oracle 或 V1--V4
+> identity；Live 无显式 factory 时继续 `runtime_factory_unavailable`，不创建 marker。
+>
+> Fresh deterministic baseline 使用冻结 V2 dataset/policy：`12/48` complete，Tutor/Organizer/combined
+> semantic `0.6629642857/0.278125/0.4705446429`。Fresh Mock run `6eaf428c...` 为 `24/24`
+> zero-call、`48/48` strict runtime、semantic `1/1/1`、P95 `246/328/328/276ms`；48 次 invocation 是
+> synthetic Mock 计数，不是真实 Provider call，output/cost `0/0` 也不冒充真实 token/账单证据。Evidence
+> 经 validator 通过后已按精确 run ID 删除。
+>
+> V5 focused `62/62`（1570 assertions）、Agent `745/745`（9200 assertions）、AI `199/199`、Types
+> `42/42`、Server Docker boundary `3/3`、Web `439/439` 与 17-page production build、Organizer
+> PostgreSQL E2E `12/12`、Compose quiet/default-off、V1--V4 SHA/validator、V5 Live artifact=0 与两路
+> 独立终审均通过。Types 直接 lint 的既存工具解析缺口未冒充通过，本阶段按冻结矩阵使用 tests/typecheck。
+>
+> 本轮未读取 `.env`/credential、调用 Provider、接产品 gate、启动 Docker/API/browser 或修改业务数据。
+> V5 R0--R5 已完成且仍为 zero-provider；下一步仅 R6。提交并推送功能分支后必须停止，重新取得
+> DeepSeek 数据边界确认与唯一一次 V5 branch controlled-Live 精确授权前不得执行网络调用。完整证据见
+> `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R4 Runner / Lineage / Production Extreme Boundaries：新增原生
 > `phase-6.9.7-tutor-organizer-runner-v5` report/case/evidence contract、独立 paired runner、CLI、一次性
 > marker、dispatch-before-call hash-chain journal、hard-link evidence、recovery claim 与 V5 validator。
