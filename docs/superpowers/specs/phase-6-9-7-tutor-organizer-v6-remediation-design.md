@@ -2,10 +2,10 @@
 
 日期：2026-07-27
 
-状态：R0--R2 已完成且均为 zero-provider。V6 source contracts、intent-only Tutor candidate、
-actual-shortlist ordinal-only Organizer candidate 与独立 robustness 已冻结；尚未实现产品 composition、
-runner、CLI、marker、journal、evidence、validator、Mock 或 Live。当前没有新的 Provider 调用授权，
-下一步仅 R3。
+状态：R0--R3 已完成且均为 zero-provider。V6 source contracts、两条 bounded candidate、独立
+robustness、runner/CLI/approval、marker/hash-chain journal/hard-link evidence 与 validator lineage 已
+冻结；尚未实现产品 composition、正式 Mock factory/checkpoint 或 Live。当前没有新的 Provider 调用
+授权，下一步仅 R4 static/Mock checkpoint。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -23,6 +23,9 @@ R1 acceptance：
 
 R2 acceptance：
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`
+
+R3 acceptance：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`
 
 ## 1. 决策摘要
 
@@ -245,6 +248,37 @@ R2 focused `24/24`、Agent full `792/792`、typecheck/lint 与独立复审通过
 保持不变。R2 没有 runtime factory、product gate/Trace、runner、Mock 或 Live；expected-driven
 no-network executor 只证明工程 contract，不能作为模型语义质量 authority。
 
+### 7.3 R3 已冻结的 runner、lineage 与 durability contract
+
+R3 新增独立 V6 report/case/evidence schema、paired runner、CLI/approval、marker/hash-chain journal、
+hard-link evidence、recovery claim 与 validator：
+
+- report 固定 `72 cases / 24 guards / 48 runtime / 24 pairs / 32 Organizer decisions`，24 guard
+  全部先行；pair 串行、pair 内最多双 lane，首个 runtime contract failure 收口当前 pair 后熔断；
+- dispatch ledger 在 executor 前 append+fsync；attempted orphan、sibling abort、usage unknown、未启动项
+  都保留在固定分母，任一 lane 不完整时 semantic/P95/token/CNY 全部为 `null`；
+- runner 使用 R1 deadline contract：Tutor hard timeout `3500ms`、Organizer `5000ms`，四类 P95 仍须
+  各自恰好 24 个样本；Tutor intent 与 Organizer 三个 model-owned axes 不能被本地派生字段抵消；
+- marker 独占创建，journal 使用 sequence/previous hash/record hash 链与串行 append queue；live owner
+  不得误封，dead owner 只允许一个 recovery claimant，ABA/tail drift/旧 appender 均 fail-closed；
+- evidence 通过随机 temp 文件 fsync 后 hard-link 到 final path；同字节幂等，不同字节拒绝覆盖；recovery
+  只 seal，不 resume/replay/retry Provider；
+- V6 validator 递归拒绝 V1--V5 runner、candidate/projection/prompt、policy、marker/journal/evidence/
+  recovery identity；五版历史 validator 也拒绝 V6 envelope；
+- `synthetic_test` 仅供临时目录中的故障/lineage 回归，quality gate 强制要求
+  `executorProvenance=deepseek_network`，因此 synthetic Live 永远不能成为质量 authority；
+- 公共 CLI 已注册，但 R4 前没有正式 Mock factory；无注入运行 `mock` 会返回
+  `mock_harness_unavailable_before_r4`。R3 没有创建仓库真实 marker/journal/evidence/recovery claim。
+
+Durability 的已知范围必须如实保留：当前实现对文件执行 fsync，但没有父目录 fsync，因此不证明突然
+断电后的目录项持久性；recovery claim 获取时不直接重读 journal tail，后续 appender/seal 会再次校验；
+当前没有专门覆盖 stale claim rename 后立刻再次崩溃的测试。这些是 R3 的已知边界，不影响当前
+zero-provider contract checkpoint，也不能被表述为已经解决的生产级跨主机 lease。
+
+R3 focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
+Prettier 与独立复审通过。R3 没有正式 Mock checkpoint、Provider、产品 composition、Docker/API/browser
+或业务数据操作；下一步只能是 R4。
+
 ## 8. 原子实施路线
 
 1. **R0**：本文件、计划、acceptance 与仓库状态文档；全程零 Provider。（已完成）
@@ -252,7 +286,7 @@ no-network executor 只证明工程 contract，不能作为模型语义质量 au
 3. **R2**：Tutor intent-only bounded candidate、Organizer ordinal-only candidate、独立 held-out/
    metamorphic 与 prompt-leakage；零 Provider。（已完成）
 4. **R3**：独立 V6 runner/CLI 与 marker/journal/evidence/validator contract、fixed denominator、breaker、
-   crash seal、V1--V5 双向隔离；只实现 contract，不创建 Live marker，零 Provider。
+   crash seal、V1--V5 双向隔离；只实现 contract，不创建 Live marker，零 Provider。（已完成）
 5. **R4**：fresh baseline/Mock、focused/full/static、PostgreSQL concurrency、Compose default-off、历史
    SHA/validator 与两路终审；零 Provider。
 6. **R5**：只有新的 static/Mock checkpoint 通过且用户重新接受当时 DeepSeek 数据边界、明确授权唯一

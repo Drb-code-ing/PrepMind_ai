@@ -4,10 +4,11 @@
 Organizer confidence 的 authority/评分耦合，并保留模型对 Tutor 歧义 intent 和 Organizer
 subject/deck/topic ordinal 的真实语义职责。
 
-**当前状态：** R0--R2 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
-metrics、Tutor preferred-depth/Organizer confidence source contracts、intent-only Tutor candidate、
-actual-shortlist ordinal-only Organizer candidate 与独立 robustness；尚未实现产品 composition、runner、
-CLI、marker、journal、evidence、validator、Mock 或 Live，也没有新的 Provider 授权。下一原子任务仅 R3。
+**当前状态：** R0--R3 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
+metrics、Tutor preferred-depth/Organizer confidence source contracts、两条 bounded candidate、独立
+robustness，以及 runner/CLI/approval/marker/hash-chain journal/hard-link evidence/validator lineage。
+R3 没有发布正式 Mock factory、创建真实 V6 artifact 或接产品；也没有新的 Provider 授权。下一原子
+任务仅 R4 static/Mock checkpoint。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`
@@ -112,7 +113,7 @@ CLI、marker、journal、evidence、validator、Mock 或 Live，也没有新的 
 
 ## R3：V6 runner、lineage 与生产极端边界
 
-**状态：** [ ] 下一原子任务；R2 前置已关闭，仍为 zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 - 独立 V6 runner/CLI/approval 与 marker/hash-chain journal/hard-link evidence/validator contract；
 - V1--V5/V6 双向 lineage 拒绝和历史 SHA 校验；
@@ -123,9 +124,29 @@ CLI、marker、journal、evidence、validator、Mock 或 Live，也没有新的 
 
 **停止点：** 不创建实际 Live marker/journal；无 Provider、Docker/API/browser 或产品数据操作。
 
+**完成证据：**
+
+- 固定 `72/24/48/24/32` 分母、guard-first、pair 串行、pair 内最多双 lane、首个 runtime contract
+  failure breaker、usage unknown 与 complete-only aggregate=`null` 已由原生 V6 report 重算；
+- Tutor hard timeout `3500ms`、Organizer `5000ms`，单调 duration/overshoot 与固定 24-sample
+  nearest-rank P95 已接 runner；Tutor intent `21/24` 和 Organizer 三轴各 `28/32` 保持独立质量门；
+- marker `wx`、journal 初始化/dispatch-before-call 文件 fsync、append queue/hash-chain、live-owner、
+  dead-owner 单胜 recovery、ABA/tail drift、crash-only seal 与 same-byte hard-link evidence 已实现；
+- synthetic Live 只能生成 `quality_gate_failed`；公共 Mock 没有正式 factory，并以
+  `mock_harness_unavailable_before_r4` 停止；只有未来 `deepseek_network` 才可能成为质量 authority；
+- V6 validator 完整拒绝 V1--V5 runner/prompt/projection/policy/marker/journal/evidence/recovery lineage，
+  V1--V5 validators 同样拒绝 V6 envelope；
+- focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
+  Prettier 与三路只读复审通过，无 P0/P1 阻断；
+- 已知边界被显式保留：当前只有文件 fsync、没有父目录 fsync；recovery claim 的 journal tail 二次
+  校验发生在 appender/seal；尚缺 stale claim rename 后再次崩溃的专门测试。三项都不冒充已解决。
+
+**验收文档：**
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`
+
 ## R4：分支 static / Mock checkpoint
 
-**状态：** [ ] 被 R3 阻断。
+**状态：** [ ] 下一原子任务；R3 前置已关闭，仍须保持 zero-provider。
 
 - fresh V2 deterministic baseline 与 fresh V6 Mock；
 - `24/24` zero-call、`48/48` strict runtime、完整 semantic/model-owned axes/P95/usage contract；

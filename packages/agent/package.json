@@ -54,6 +54,8 @@
     "eval:phase-6-9-7:v5:cli": "bun scripts/phase-6-9-7-tutor-wrong-question-v5-cli.ts",
     "eval:phase-6-9-7:v5:mock": "bun scripts/phase-6-9-7-tutor-wrong-question-v5-cli.ts mock",
     "eval:phase-6-9-7:v5:validate": "bun scripts/validate-phase-6-9-7-tutor-wrong-question-v5-evidence.ts",
+    "eval:phase-6-9-7:v6:cli": "bun scripts/phase-6-9-7-tutor-wrong-question-v6-cli.ts",
+    "eval:phase-6-9-7:v6:validate": "bun scripts/validate-phase-6-9-7-tutor-wrong-question-v6-evidence.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

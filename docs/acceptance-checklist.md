@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6 / V6 R0--R2）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6 / V6 R0--R3）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6 与 V5 R6 五条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0--R5 完成独立 V2 dataset/coherence、冻结 policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock、全量静态门与生产极端边界；唯一 V5 R6 为 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor timeout 后熔断，正式聚合均为 `null`。五条 Live authority 均不可重跑或拼接，V5 仍未接产品。V6 R0--R2 已完成零 Provider 设计、source contracts、intent-only Tutor candidate、actual-shortlist ordinal-only Organizer candidate、双 stale fence 与独立 robustness；模型没有 depth/confidence/真实 ID/locked-name/写权限。仍无 runner、CLI、marker、journal、evidence、Mock、Live 或产品 wiring。Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10、Phase 8/9 与博客收尾均不得开始；下一步仅 V6 R3。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6 与 V5 R6 五条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0--R5 完成独立 V2 dataset/coherence、冻结 policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock、全量静态门与生产极端边界；唯一 V5 R6 为 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor timeout 后熔断，正式聚合均为 `null`。五条 Live authority 均不可重跑或拼接，V5 仍未接产品。V6 R0--R3 已完成零 Provider 设计、source contracts、intent-only Tutor candidate、actual-shortlist ordinal-only Organizer candidate、双 stale fence、独立 robustness 与 runner/CLI/approval/marker/hash-chain journal/hard-link evidence/validator；模型没有 depth/confidence/真实 ID/locked-name/写权限。仍无正式 Mock checkpoint、真实 V6 artifact、Live 或产品 wiring。Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10、Phase 8/9 与博客收尾均不得开始；下一步仅 V6 R4。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1178,7 +1178,7 @@ V5 R6 失败封存回执：
 - [x] 一次性名额已消费，禁止 retry/replay/resume、R7、Task 13/main、Phase 6.10、Phase 8/9 与博客
       收尾。
 
-该段记录 V5 R6 当时的停止点；后续 V6 R0--R2 已完成。R5 checkpoint 与 R6 failure authority 分别见
+该段记录 V5 R6 当时的停止点；后续 V6 R0--R3 已完成。R5 checkpoint 与 R6 failure authority 分别见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md` 与
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
@@ -1244,7 +1244,33 @@ V6 R2 zero-provider bounded-candidate 回执：
 - [x] focused `24/24`（989 assertions）、Agent full `792/792`（10458 assertions）、typecheck/lint 与
       独立复审通过；expected-driven no-network Mock 只证明 projection/validator/merger，不证明真实模型质量；
 - [x] 无产品 composition/gate/Trace persistence、runner/CLI/marker/journal/evidence/Mock/Live、credential/
-      Provider、Docker/API/browser 或业务数据操作；下一步仅 V6 R3。
+      Provider、Docker/API/browser 或业务数据操作；该检查点当时下一步仅 V6 R3，后续 R3 已完成。
 
 完整证据见
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`。
+
+V6 R3 zero-provider runner/lineage/durability 回执：
+
+- [x] 新增原生 V6 report/case/evidence schema、paired runner、CLI/approval 与 evidence validator；没有
+      从 V1--V5 report 转换、嵌入或拼接；
+- [x] 固定 `72/24/48/24/32` 分母、24 guard 先行、pair 串行/双 lane、单 dispatch/no-retry、首个
+      runtime contract failure breaker；semantic/model-owned mismatch 不误熔断；
+- [x] Tutor/Organizer hard timeout `3500/5000ms` 与单调 deadline/overshoot 接 runner；任一 lane 不完整时
+      semantic、四 P95、aggregate token/CNY 全部为 `null`；
+- [x] Tutor intent `21/24` 与 Organizer subject/deck/target 三轴各 `28/32` 独立重算，本地 depth/
+      confidence 不能抵消模型自有失败；
+- [x] marker `wx`、journal 初始化和 dispatch-before-call 文件 fsync、append queue/hash-chain、live-owner、
+      dead-owner 单胜 recovery、ABA/tail drift、crash-only seal 与 same-byte hard-link evidence 已覆盖；
+- [x] synthetic Live 强制 `quality_gate_failed`；只有未来 `deepseek_network` 可能通过。R4 前公共 Mock
+      无正式 factory并返回 `mock_harness_unavailable_before_r4`；
+- [x] V6 validator 枚举拒绝 V1--V5 runner/prompt/projection/policy/marker/journal/evidence/recovery，
+      V1--V5 validators 同样拒绝 V6 envelope；
+- [x] focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
+      Prettier 与三路只读复审通过；
+- [x] 已知边界保留：只有文件 fsync、无父目录 fsync；claim tail 校验在 appender/seal 二次执行；缺
+      stale claim rename 后再次崩溃专测；
+- [x] 未读取 credential、调用 Provider、创建仓库真实 V6 marker/journal/evidence/recovery claim、启动
+      Docker/API/browser、接产品或修改业务数据；下一步仅 V6 R4 static/Mock checkpoint。
+
+完整证据见
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`。

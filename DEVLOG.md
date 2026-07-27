@@ -1,5 +1,40 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V6 R3 Runner / Lineage / Durability：新增原生 V6 report/case/
+> evidence contract、paired runner、CLI/approval、一次性 marker、dispatch-before-call hash-chain
+> journal、hard-link evidence、recovery claim 与 strict validator。Package 新增
+> `eval:phase-6-9-7:v6:cli` / `eval:phase-6-9-7:v6:validate`，但没有注册正式 `v6:mock`；R4 前
+> 公共 Mock 入口会以 `mock_harness_unavailable_before_r4` 停止。
+>
+> Runner 固定 `72 cases / 24 guards / 48 runtime / 24 pairs / 32 Organizer decisions`。24 guard
+> 全部先行，之后 pair 串行、pair 内最多双 lane；每条 lane 只有一次 dispatch，首个 runtime contract
+> failure 收口当前 pair 后打开 breaker，semantic/model-owned mismatch 不误熔断。Tutor/Organizer hard
+> timeout 为 `3500/5000ms`，duration/overshoot 必须有限非负且单调；四类 P95 各需完整 24 样本。
+> attempted orphan、sibling abort、usage unknown 或缺 terminal 会让正式 semantic/P95/token/CNY 全部
+> 为 `null`，不得删除慢样本或用历史/Mock 补齐。
+>
+> Durability 顺序固定为 marker `wx` -> journal 初始化文件 fsync -> factory -> 每 lane
+> `dispatch_started` append+fsync -> terminal/breaker/completion -> temp file fsync + hard-link evidence。
+> Journal 使用 sequence/previous hash/record hash 与串行 append queue，close 等待 drain；live owner 不得
+> 误封，dead owner 只有一个 recovery claimant，旧 appender、ABA 与 tail drift fail-closed。Recovery 只
+> seal orphan/unknown usage，不 resume/replay/retry Provider。
+>
+> V6 validator 已补齐并拒绝 V1--V4 candidate/projection/prompt SHA、V3/V4 marker/journal/evidence/
+> recovery、V4 bounded diagnostics 以及全部 V1--V5 runner/policy/artifact identity；五版历史 validator
+> 同样拒绝 V6 envelope。`synthetic_test` 仅用于测试临时目录，production quality gate 强制要求
+> `deepseek_network`，因此 synthetic Live 永远不能成为质量 authority。
+>
+> 最终 focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
+> Prettier 通过；三路只读复审无 P0/P1 阻断，lineage 无 P2 阻断。已知边界如实保留：只有文件 fsync、
+> 没有父目录 fsync；claim 获取时 journal tail 校验延后到 appender/seal；缺少 stale claim rename 后
+> 再次崩溃的专门测试。
+>
+> 本任务全程 zero-provider：未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、
+> 创建仓库真实 V6 marker/journal/evidence/recovery claim、修改业务数据或接产品 composition。下一原子
+> 任务仅 V6 R4 static/Mock checkpoint；R5 前不得读取 credential、创建真实 marker 或调用 Provider。
+> 验收见
+> `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V6 R2 Bounded Candidates：新增公开
 > `@repo/agent/tutor-v6` 与 `@repo/agent/wrong-question-organizer-v6`。Tutor 的模型输出收敛为唯一
 > `{ intentIndex }`，只允许在本地 eligible intent ordinal 中做语义选择；preferred depth、active-context
@@ -27,8 +62,8 @@
 >
 > 本任务全程 zero-provider：未读取 `.env`/credential、调用 Provider、创建 V6 Live artifact、启动
 > Docker/API/browser 或修改业务数据；也没有产品 composition/gate/Trace persistence、runner、CLI、marker、
-> journal、evidence、validator、Mock checkpoint 或 Live。下一原子任务仅 V6 R3 runner/lineage/durability
-> contract。验收见
+> journal、evidence、validator、Mock checkpoint 或 Live。该检查点当时下一原子任务仅 V6 R3
+> runner/lineage/durability contract，后续 R3 已完成。验收见
 > `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`。
 >
 > 2026-07-27 — Phase 6.9.7 V6 R1 Source Contracts：在 R0 冻结设计上新增独立 V6 dataset
