@@ -4,11 +4,11 @@
 Organizer confidence 的 authority/评分耦合，并保留模型对 Tutor 歧义 intent 和 Organizer
 subject/deck/topic ordinal 的真实语义职责。
 
-**当前状态：** R0--R3 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
+**当前状态：** R0--R4 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
 metrics、Tutor preferred-depth/Organizer confidence source contracts、两条 bounded candidate、独立
-robustness，以及 runner/CLI/approval/marker/hash-chain journal/hard-link evidence/validator lineage。
-R3 没有发布正式 Mock factory、创建真实 V6 artifact 或接产品；也没有新的 Provider 授权。下一原子
-任务仅 R4 static/Mock checkpoint。
+robustness、runner/CLI/approval/marker/hash-chain journal/hard-link evidence/validator lineage，以及
+reviewed Mock checkpoint。R4 没有创建 V6 Live artifact、调用 Provider 或接产品；也没有新的 Provider
+授权。下一原子任务仅 R5 branch controlled-Live。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`
@@ -132,8 +132,9 @@ R3 没有发布正式 Mock factory、创建真实 V6 artifact 或接产品；也
   nearest-rank P95 已接 runner；Tutor intent `21/24` 和 Organizer 三轴各 `28/32` 保持独立质量门；
 - marker `wx`、journal 初始化/dispatch-before-call 文件 fsync、append queue/hash-chain、live-owner、
   dead-owner 单胜 recovery、ABA/tail drift、crash-only seal 与 same-byte hard-link evidence 已实现；
-- synthetic Live 只能生成 `quality_gate_failed`；公共 Mock 没有正式 factory，并以
-  `mock_harness_unavailable_before_r4` 停止；只有未来 `deepseek_network` 才可能成为质量 authority；
+- synthetic Live 只能生成 `quality_gate_failed`；该 R3 检查点当时公共 Mock 没有正式 factory，并以
+  `mock_harness_unavailable_before_r4` 停止，后续 R4 已完成；只有未来 `deepseek_network` 才可能成为
+  质量 authority；
 - V6 validator 完整拒绝 V1--V5 runner/prompt/projection/policy/marker/journal/evidence/recovery lineage，
   V1--V5 validators 同样拒绝 V6 envelope；
 - focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
@@ -146,7 +147,7 @@ R3 没有发布正式 Mock factory、创建真实 V6 artifact 或接产品；也
 
 ## R4：分支 static / Mock checkpoint
 
-**状态：** [ ] 下一原子任务；R3 前置已关闭，仍须保持 zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 - fresh V2 deterministic baseline 与 fresh V6 Mock；
 - `24/24` zero-call、`48/48` strict runtime、完整 semantic/model-owned axes/P95/usage contract；
@@ -156,7 +157,25 @@ R3 没有发布正式 Mock factory、创建真实 V6 artifact 或接产品；也
 - contract/security/concurrency 与 docs/history/operations 两路独立复审；
 - 原子提交并推送功能分支、确认远程 parity。
 
-**停止点：** 没有新的精确授权不得开始 R5。
+**完成证据：**
+
+- fresh baseline `12/48`，semantic `0.6629642857/0.278125/0.4705446429`，dataset/baseline SHA 不变；
+- fresh Mock `24/24` zero-call、`48/48` strict runtime、semantic/model-owned `1/1/1`，gate
+  `mock_quality_not_evidence`；
+- Mock duration 使用单调时钟，usage `37020/1882`、synthetic invocation `48`、费用 `0 CNY`；
+- V6 focused `36/36`、Agent `828/828`、AI `199/199`、Types `42/42`、Server boundary `3/3`、Web
+  `439/439`、Organizer PostgreSQL `12/12`、Compose default-off 与相关 typecheck/lint/build 通过；
+- V1--V5 validators 保持 `ok=true`；Mock evidence 精确删除，V6 Live marker/journal/evidence/recovery
+  claim 与测试账号残留均为 0；
+- contract/security/concurrency 与 docs/history/operations 两路只读复审均 `APPROVED`、无 P0/P1；
+- 未读取 credential、调用 Provider、启动产品 Docker/API/browser、接产品 composition 或把 V6
+  `3500ms` 接入产品 executor；R3 durability 已知边界仍保留。
+
+**验收文档：**
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`
+
+**停止点：** 没有新的精确授权不得开始 R5。Mock 满分只证明工程合同，不证明 DeepSeek 语义、网络
+P95、Provider token/账单或产品可用性。
 
 ## R5：唯一 V6 branch controlled-Live
 

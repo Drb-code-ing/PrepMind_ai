@@ -114,24 +114,37 @@ export function buildPhase697V6OrganizerModelOwnedDecision(
   for (const question of authority.value.questions) {
     const suggestion = suggestions.get(question.questionId);
     if (!suggestion || suggestion.selection.source !== 'model_ordinal') return null;
+    const selection = suggestion.selection;
+    const canonicalAuthority = entry.authority.decisions.find(
+      (decision) => decision.questionIndex === question.questionIndex,
+    );
+    const canonicalQuestion = entry.input.questions[question.questionIndex];
+    if (!canonicalAuthority || !canonicalQuestion) return null;
     const subjectDecision =
-      question.structuredSubject !== null
+      canonicalQuestion.structuredSubjectAuthority !== null
         ? ({ action: 'keep_local' } as const)
         : (() => {
-            const subjectIndex = question.subjectCandidates.indexOf(
-              suggestion.selection.resolvedSubject,
+            const subjectIndex = canonicalAuthority.subjectCandidates.indexOf(
+              selection.resolvedSubject,
             );
             return subjectIndex < 0 ? null : ({ action: 'select_subject', subjectIndex } as const);
           })();
     if (subjectDecision === null) return null;
+    const deckDecision = selection.deckDecision;
     const targetOrdinal =
-      suggestion.selection.deckDecision.action === 'reuse_existing'
-        ? suggestion.selection.deckDecision.deckIndex
-        : suggestion.selection.deckDecision.topicIndex;
+      deckDecision.action === 'reuse_existing'
+        ? entry.input.existingDecks.findIndex((deck) => deck.id === deckDecision.deckId)
+        : canonicalAuthority.topicCandidates.findIndex(
+            (topic) =>
+              topic.subject === selection.resolvedSubject &&
+              (topic.label === deckDecision.topicLabel ||
+                topic.aliases.includes(deckDecision.topicLabel)),
+          );
+    if (targetOrdinal < 0) return null;
     decisions.push({
       decisionId: `${entry.id}:q${question.questionIndex}`,
       subjectDecision,
-      deckAction: suggestion.selection.deckDecision.action,
+      deckAction: deckDecision.action,
       targetOrdinal,
     });
   }

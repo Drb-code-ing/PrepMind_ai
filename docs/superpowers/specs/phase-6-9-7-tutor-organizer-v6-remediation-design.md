@@ -2,10 +2,10 @@
 
 日期：2026-07-27
 
-状态：R0--R3 已完成且均为 zero-provider。V6 source contracts、两条 bounded candidate、独立
-robustness、runner/CLI/approval、marker/hash-chain journal/hard-link evidence 与 validator lineage 已
-冻结；尚未实现产品 composition、正式 Mock factory/checkpoint 或 Live。当前没有新的 Provider 调用
-授权，下一步仅 R4 static/Mock checkpoint。
+状态：R0--R4 已完成且均为 zero-provider。V6 source contracts、两条 bounded candidate、独立
+robustness、runner/CLI/approval、marker/hash-chain journal/hard-link evidence、validator lineage 与
+reviewed Mock checkpoint 已冻结；尚未实现产品 composition 或 Live。当前没有新的 Provider 调用
+授权，下一步仅 R5 branch controlled-Live。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -26,6 +26,9 @@ R2 acceptance：
 
 R3 acceptance：
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`
+
+R4 acceptance：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`
 
 ## 1. 决策摘要
 
@@ -267,8 +270,9 @@ hard-link evidence、recovery claim 与 validator：
   recovery identity；五版历史 validator 也拒绝 V6 envelope；
 - `synthetic_test` 仅供临时目录中的故障/lineage 回归，quality gate 强制要求
   `executorProvenance=deepseek_network`，因此 synthetic Live 永远不能成为质量 authority；
-- 公共 CLI 已注册，但 R4 前没有正式 Mock factory；无注入运行 `mock` 会返回
-  `mock_harness_unavailable_before_r4`。R3 没有创建仓库真实 marker/journal/evidence/recovery claim。
+- 公共 CLI 已注册；该 R3 检查点当时没有正式 Mock factory，无注入运行 `mock` 会返回
+  `mock_harness_unavailable_before_r4`。后续 R4 已发布 reviewed factory；R3 没有创建仓库真实
+  marker/journal/evidence/recovery claim。
 
 Durability 的已知范围必须如实保留：当前实现对文件执行 fsync，但没有父目录 fsync，因此不证明突然
 断电后的目录项持久性；recovery claim 获取时不直接重读 journal tail，后续 appender/seal 会再次校验；
@@ -277,7 +281,24 @@ zero-provider contract checkpoint，也不能被表述为已经解决的生产�
 
 R3 focused `32/32`（225 assertions）、Agent full `824/824`（10727 assertions）、typecheck/lint/
 Prettier 与独立复审通过。R3 没有正式 Mock checkpoint、Provider、产品 composition、Docker/API/browser
-或业务数据操作；下一步只能是 R4。
+或业务数据操作；R3 在 R4 前完成，后续 R4 已完成。
+
+### 7.4 R4 已冻结的 static/Mock checkpoint
+
+R4 新增 reviewed V6 Mock factory 与 baseline/Mock CLI。Mock 真实经过 V6 Tutor/Organizer candidates、
+strict validators、本地 authority mergers 与正式 runner；24 guard 不构造 runtime，48 runtime 各执行
+一次 synthetic invocation，无重试。Mock duration 来自单调时钟，output token 为正且受 cap 校验，
+费用固定 `0 CNY`，不冒充 Provider telemetry。
+
+Fresh V2 baseline 保持 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh V6 Mock 为
+`24/24` zero-call、`48/48` strict runtime、semantic/model-owned `1/1/1`，gate 固定
+`mock_quality_not_evidence`。受影响全量静态、Organizer PostgreSQL `12/12`、Compose default-off、
+V1--V5 validators 与 V6 Live artifact=0 均通过；Mock evidence 已按精确路径删除。
+
+R4 没有读取 credential、调用 Provider、启动产品 Docker/API/browser、接产品 composition 或把 V6
+`3500ms` 接入产品 executor。Mock 满分、本机 P95、synthetic token 与 `0 CNY` 只证明工程合同，不
+证明真实模型语义、网络 P95、Provider 账单或产品可用性。R3 的无父目录 fsync、claim tail 延后复核、
+缺 stale-rename 后二次崩溃专测三项边界继续保留。
 
 ## 8. 原子实施路线
 
@@ -288,10 +309,10 @@ Prettier 与独立复审通过。R3 没有正式 Mock checkpoint、Provider、�
 4. **R3**：独立 V6 runner/CLI 与 marker/journal/evidence/validator contract、fixed denominator、breaker、
    crash seal、V1--V5 双向隔离；只实现 contract，不创建 Live marker，零 Provider。（已完成）
 5. **R4**：fresh baseline/Mock、focused/full/static、PostgreSQL concurrency、Compose default-off、历史
-   SHA/validator 与两路终审；零 Provider。
+   SHA/validator 与两路终审；零 Provider。（已完成）
 6. **R5**：只有新的 static/Mock checkpoint 通过且用户重新接受当时 DeepSeek 数据边界、明确授权唯一
    一次 V6 branch controlled-Live，并且 zero-network preflight 通过后，才允许在首次 Provider 调用前
-   创建实际 marker/journal 并进入 Live。
+   创建实际 marker/journal 并进入 Live。（当前未授权）
 7. **R6**：R5 全门通过后才做产品 Docker/API/可见浏览器与精确清理。
 8. **R7**：R6 通过后才做分支收尾、main `--no-ff` 合并、main default-off 回放与远程 parity。
 

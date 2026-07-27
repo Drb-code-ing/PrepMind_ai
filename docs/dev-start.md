@@ -1067,9 +1067,10 @@ Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未
 完整失败证据见
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
-V6 R0--R3 后续已完成零 Provider 设计、source contracts、package 级 bounded candidates 与独立
-runner/CLI/lineage/durability contract。不要把 V5 CLI 改参数后当成 V6，也不要手工创建 `v6`
-artifact。V6 policy 已冻结 Tutor executor hard timeout `3500ms` 与 Tutor candidate P95 `<=2500ms`
+V6 R0--R4 后续已完成且均为 zero-provider：设计、source contracts、package 级 bounded candidates、独立
+runner/CLI/lineage/durability contract 与 reviewed static/Mock checkpoint 已落地。不要把 V5 CLI 改参数后
+当成 V6，也不要手工创建 `v6` Live artifact。V6 policy 已冻结 Tutor executor hard timeout `3500ms`
+与 Tutor candidate P95 `<=2500ms`
 的独立含义；Organizer 继续 `5000/4500ms`。每类 P95 必须恰好 24 个样本并取升序第 23 个值；任一
 lane 不完整时四个 P95 全为 `null`。R3 runner 已接入 `3500/5000ms` deadline contract，但仍没有把
 V6 timeout/candidate 接入产品 executor/composition。
@@ -1082,16 +1083,26 @@ bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```
 
-`eval:phase-6-9-7:v6:cli` 与 validator script 已注册，但 R4 前没有正式 Mock factory，也没有
-`eval:phase-6-9-7:v6:mock`。不要运行 `v6:cli -- live ...`；无注入的 `mock` 会安全返回
-`mock_harness_unavailable_before_r4`，测试中的 synthetic harness/失败 artifact 只存在临时目录，不能
-冒充正式 Mock 或 Live。
+R4 已注册正式 baseline/Mock 入口；两条命令不会读取 credential 或调用 Provider：
 
-下一步仅 V6 R4 static/Mock checkpoint，且仍为 zero-provider。R5 新授权前不读取 component
-credential、不创建真实 Live marker、不调用 Provider。设计、计划与 R3 验收见
+```powershell
+bun --filter @repo/agent eval:phase-6-9-7:v6:baseline
+bun --filter @repo/agent eval:phase-6-9-7:v6:mock
+```
+
+Fresh baseline 应保持 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh Mock 应为
+`24/24` zero-call、`48/48` strict runtime、semantic/model-owned `1/1/1`，gate 固定为
+`mock_quality_not_evidence`。Mock 命令会输出本次 `runId` 与精确 evidence path；复验结束只能删除该
+Mock 文件，不得清空 `.tmp`。48 次 invocation、正 output token、本机 P95 与 `0 CNY` 都是 synthetic
+工程证据，不是 Provider 调用、网络 P95 或账单。
+
+下一步仅 V6 R5 branch controlled-Live，当前未授权。不要运行 `v6:cli -- live ...`；新授权前不读取
+component credential、不创建 Live marker/journal/evidence/recovery claim、不调用 Provider。设计、
+计划与 R3/R4 验收见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`、
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`。
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md` 与
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

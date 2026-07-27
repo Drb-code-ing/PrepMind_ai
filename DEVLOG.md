@@ -1,10 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V6 R4 Static/Mock Checkpoint：新增 reviewed V6 Mock factory、
+> `eval:phase-6-9-7:v6:baseline` 与 `eval:phase-6-9-7:v6:mock`。公共 Mock CLI 真实经过 V6 Tutor/
+> Organizer candidate、strict validator、本地 authority merger 与正式 runner；24 条 guard 不构造
+> runtime，48 条 runtime 各执行一次 synthetic invocation，无重试。Mock duration 使用单调时钟，
+> output token 为正且受 cap 校验，费用固定 `0 CNY`，不冒充 Provider telemetry。
+>
+> Fresh V2 baseline 保持 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`，dataset/
+> baseline SHA 保持 `42803d45...b437b` / `0ce7c3ca...116ca`。Fresh V6 Mock run
+> `88d72b3c-b1b9-4b4d-bb56-903b04b437b0` 为 `24/24` verified zero-call、`48/48` strict runtime、
+> Tutor/Organizer/combined semantic `1/1/1`；model-owned Tutor intent `24/24`，Organizer subject/deck/
+> target ordinal 各 `32/32`。四类 P95 为 `3/1/9.8304/4.1247ms`，usage `37020/1882`，report
+> gate 固定 `mock_quality_not_evidence`。Organizer 实际 shortlist ordinal 到冻结 canonical ordinal 的
+> 评分映射只修正 eval adapter，没有修改 dataset、expected、candidate、模型权限或本地事实 authority。
+>
+> V6 focused `36/36`（309 assertions）、Agent `828/828`（10826 assertions）、AI `199/199`、Types
+> `42/42`、Server Docker boundary `3/3`、Web `439/439`、Organizer PostgreSQL `12/12`、Compose
+> tracked example、typecheck/lint/build 均通过。V1--V5 validators 保持 `ok=true`；Mock evidence 已按
+> 精确 run path 删除，V6 Live marker/journal/evidence/recovery claim 为 0，测试账号残留为 0。两路
+> contract/security/concurrency 与 docs/history/operations 只读复审最终均 `APPROVED`、无 P0/P1；
+> 文档复审发现的旧 V2 状态标题已修正，folded deck canonical ID 疑问经源码复核后撤销。
+>
+> 本 checkpoint 仍为 zero-provider：未读取 credential、调用 Provider、启动产品 Docker/API/browser、
+> 接产品 composition 或把 V6 `3500ms` 接入产品 executor。Mock 满分只证明工程合同，不证明真实模型
+> 语义、网络 P95、Provider token/账单或产品可用性。R3 的无父目录 fsync、claim tail 延后复核、缺
+> stale-rename 后二次崩溃专测三项边界仍保留。下一步仅 V6 R5 branch controlled-Live，当前未授权；
+> 验收见 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V6 R3 Runner / Lineage / Durability：新增原生 V6 report/case/
 > evidence contract、paired runner、CLI/approval、一次性 marker、dispatch-before-call hash-chain
 > journal、hard-link evidence、recovery claim 与 strict validator。Package 新增
-> `eval:phase-6-9-7:v6:cli` / `eval:phase-6-9-7:v6:validate`，但没有注册正式 `v6:mock`；R4 前
-> 公共 Mock 入口会以 `mock_harness_unavailable_before_r4` 停止。
+> `eval:phase-6-9-7:v6:cli` / `eval:phase-6-9-7:v6:validate`。该检查点当时没有正式 `v6:mock`，
+> 公共 Mock 入口会以 `mock_harness_unavailable_before_r4` 停止；后续 R4 已发布 reviewed factory。
 >
 > Runner 固定 `72 cases / 24 guards / 48 runtime / 24 pairs / 32 Organizer decisions`。24 guard
 > 全部先行，之后 pair 串行、pair 内最多双 lane；每条 lane 只有一次 dispatch，首个 runtime contract
@@ -30,8 +57,9 @@
 > 再次崩溃的专门测试。
 >
 > 本任务全程 zero-provider：未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、
-> 创建仓库真实 V6 marker/journal/evidence/recovery claim、修改业务数据或接产品 composition。下一原子
-> 任务仅 V6 R4 static/Mock checkpoint；R5 前不得读取 credential、创建真实 marker 或调用 Provider。
+> 创建仓库真实 V6 marker/journal/evidence/recovery claim、修改业务数据或接产品 composition。该检查点
+> R4 已在后续完成；R5 新授权前仍不得读取 credential、创建 Live marker
+> 或调用 Provider。
 > 验收见
 > `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md`。
 >

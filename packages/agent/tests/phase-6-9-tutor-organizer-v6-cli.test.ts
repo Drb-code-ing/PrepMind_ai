@@ -54,7 +54,7 @@ function authorizedLiveEnv(overrides?: Readonly<Record<string, string | undefine
   };
 }
 
-describe('Phase 6.9.7 V6 R3 CLI', () => {
+describe('Phase 6.9.7 V6 R4 CLI', () => {
   test('requires exact one-time authorization and rejects hostile environment accessors', () => {
     expect(parsePhase697TutorOrganizerV6Cli({ argv: ['live'], env: {} })).toEqual({
       ok: false,
@@ -123,7 +123,7 @@ describe('Phase 6.9.7 V6 R3 CLI', () => {
     ).toEqual({ ok: true });
   });
 
-  test('keeps the repository Mock factory unavailable until the R4 checkpoint', async () => {
+  test('uses the reviewed repository Mock factory by default without reserving Live state', async () => {
     const root = await temporaryRoot();
     const result = await executePhase697TutorOrganizerV6Cli({
       argv: ['mock'],
@@ -131,7 +131,13 @@ describe('Phase 6.9.7 V6 R3 CLI', () => {
       repositoryRoot: root,
       runId: '00000000-0000-4000-8000-000000000540',
     });
-    expect(result).toEqual({ ok: false, code: 'mock_harness_unavailable_before_r4' });
+    expect(result).toMatchObject({
+      ok: true,
+      gate: 'mock_quality_not_evidence',
+      disposition: 'mock_direct',
+      counts: { cases: 72, zeroCallCases: 24, runtimeCases: 48 },
+      usage: { providerInvocations: 48, verifiedRuntimeCases: 48 },
+    });
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V6_MARKER_PATH)).exists()).toBe(false);
   });
 

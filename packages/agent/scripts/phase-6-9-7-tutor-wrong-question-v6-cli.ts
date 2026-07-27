@@ -20,6 +20,7 @@ import {
   resolvePhase697V6LiveConfiguration,
   type Phase697V6LiveConfiguration,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v6-live.ts';
+import { createPhase697TutorOrganizerV6MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v6-mock.ts';
 import {
   buildPhase697V6Marker,
   buildPhase697V6SealedReport,
@@ -120,12 +121,15 @@ export async function executePhase697TutorOrganizerV6Cli(
     if (!resolved.ok) return resolved;
     liveConfiguration = resolved.value;
   }
-  if (parsed.mode === 'mock' && input.harnessFactory === undefined) {
-    return { ok: false, code: 'mock_harness_unavailable_before_r4' };
-  }
   const harnessFactory =
     input.harnessFactory ??
     (({ runId: factoryRunId, runScope }: Parameters<Phase697V6HarnessFactory>[0]) => {
+      if (parsed.mode === 'mock') {
+        return createPhase697TutorOrganizerV6MockHarness({
+          runId: factoryRunId,
+          runScope,
+        });
+      }
       if (liveConfiguration === null) {
         throw new Error('PHASE_6_9_7_V6_LIVE_CONFIGURATION_UNAVAILABLE');
       }
