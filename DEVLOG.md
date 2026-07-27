@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V6 R0 零 Provider 复盘与设计：只读核对 V5 run
+> `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 的 evidence/journal/marker 与三份 SHA，确认 Tutor
+> runtime-06 的 runtime trace/candidate orchestration/paired duration 分别为
+> `3021/3022.3072/3025.385ms`。前 5 条 Tutor strict latency 为 `887--1592ms`、均值
+> `1120ms`；前 6 条 Organizer 为 `1859--2607ms`、均值 `2176.5ms`。当前 evidence 没有独立
+> Provider/SDK/event-loop stage，不能把 21ms overshoot 唯一归因到任何一层。
+>
+> V6 将 Tutor executor hard timeout 从 `3000ms` 调整为 `3500ms`，但 Tutor candidate P95
+> `<=2500ms`、Organizer hard timeout/P95 `5000/4500ms`、paired `<=4500ms` 与 Tutor
+> orchestration `<=6500ms` 均不变。`3500ms` 来自 `2500ms SLA + 1000ms cancellation margin`，
+> 不是按单个 Live case 调门槛；timeout 仍 fail-closed、无 retry、固定分母与 incomplete aggregate
+> `null` 不变。nearest-rank P95 按 `sorted[ceil(0.95 * n) - 1]` 计算，四类 24-sample gate 都取
+> 升序第 23 个值。
+>
+> 语义 ownership 同步冻结：Tutor 模型继续选择 eligible intent，preferred depth 与最终策略字段由
+> 本地 authority 重建；Organizer 模型继续选择 subject/deck/topic ordinal，confidence 由本地 evidence
+> authority 重建。新增 model-owned exact-match 门：Tutor intent 固定 24 case，`>=0.85` 即至少
+> `21/24`；Organizer subject action/ordinal、deck action、target ordinal 各自固定 32 decision units，
+> 每项 `>=0.85` 即至少 `28/32`。V2 dataset/expected/baseline bytes/SHA 不变；V6 使用独立 eval
+> policy、prompt/authority、runner、approval、marker、journal、evidence 与 validator identity。
+>
+> 本任务只新增/同步设计、计划和 acceptance，没有修改业务源码、读取 credential、调用 Provider、启动
+> Docker/API/browser 或修改业务数据。用户允许重新评估 Tutor 时延只属于设计许可，不是 Live 授权。
+> 下一原子任务仅 V6 R1 deadline/eval-policy 与 local-authority contracts。设计见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`，验收见
+> `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V5 R6 Controlled-Live 失败封存：补齐 V5 真实 Live harness、默认
 > DeepSeek V4 Pro non-thinking executor、marker 前配置 fail-closed、marker+journal fsync 后 executor
 > 创建、`deepseek_network` / `synthetic_test` provenance 隔离，以及 component key/gate/URL/timeout/
@@ -26,7 +53,7 @@
 >
 > 本轮没有启动 Docker/API/浏览器、创建产品账号或修改业务数据，也没有 prune、`down -v`、reset、
 > flush 或 wipe。V5 R6 一次性名额已消费且不得重跑；R7、Task 13/main、Phase 6.10、Phase 8/9 与博客
-> 收尾均不得开始。下一步只能先做零 Provider 复盘并设计与 V1--V5 双向隔离的新版本。完整证据见
+> 收尾均不得开始。该终态当时只允许先做零 Provider 复盘并设计与 V1--V5 双向隔离的新版本。完整证据见
 > `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 >
 > 2026-07-26 — Phase 6.9.7 V5 R5 Static/Mock Checkpoint：新增 reviewed V5 Mock factory、公开

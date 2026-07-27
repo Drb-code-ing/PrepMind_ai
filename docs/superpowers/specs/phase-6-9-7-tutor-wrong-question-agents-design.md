@@ -1,7 +1,7 @@
 # Phase 6.9.7 Tutor / Wrong-Question Organizer Hybrid Agents Design
 
 日期：2026-07-27
-状态：基础设计冻结；Task 1--11 已完成。V1--V5 五条唯一 controlled-Live 均已失败封存且不得重跑。V5 R0--R5 已完成独立 V2 dataset/policy/baseline、两条 bounded candidate、原生 runner/lineage、static/Mock 与生产极端边界；唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。下一步只能先做零 Provider 复盘与新版本设计；产品验收、Task 13/main、Phase 6.9.8/6.10、Phase 8/9 与博客收尾不得开始。
+状态：基础设计冻结；Task 1--11 已完成。V1--V5 五条唯一 controlled-Live 均已失败封存且不得重跑。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。V6 R0 已完成零 Provider deadline/local-authority/独立 lineage 设计；下一步仅 V6 R1。产品验收、Task 13/main、Phase 6.9.8/6.10、Phase 8/9 与博客收尾不得开始。
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 决策、目标与价值
@@ -542,10 +542,13 @@ semantic mismatch、dynamic contract failure 与 breaker 未执行项，并冻�
 `quality_gate_failed` 封存且不得重跑；V5 R0--R5 已完成全部 zero-provider remediation、两条 bounded
 candidate、原生 runner/lineage 与 static/Mock checkpoint。唯一 V5 R6 又在 12 次 Provider invocation、
 `11/48` strict runtime 后因 Tutor timeout 失败封存；正式聚合均为 `null`，不得重跑或进入产品验收。
-R4/R5/R6 验收见
+V6 R0 随后只读取证，冻结 hard-timeout/P95 分离、Tutor preferred-depth authority、Organizer
+confidence authority、model-owned axes 与独立 V6 lineage；未改源码或调用 Provider。R4/R5/R6 与
+V6 R0 验收见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md` 与
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md` 与
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`。
 
 ## 13. 非目标与后续阶段
 
@@ -558,7 +561,7 @@ R4/R5/R6 验收见
 - 不实现 MemoryAgent、记忆注入或 Episodic Memory；
 - 不开始《多 Agent 架构》或《记忆系统》博客收尾。
 
-只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；V1--V5 失败与任何 zero-provider/Mock 工程合同都不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
+只有 Phase 6.9.7 未来新的质量 authority、产品验收、main 回放与远程推送完成后，下一阶段才是 Phase 6.9.8 Retriever/FinalResponse 正式化；V1--V5 失败、V6 R0 设计与任何 zero-provider/Mock 工程合同都不能绕过该门。Phase 6.9.10 才把纯决策节点和授权 command 节点接入最小 graph family。
 
 ## 14. 文档同步与回顾问题
 

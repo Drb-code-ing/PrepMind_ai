@@ -4,60 +4,60 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。当前先完成 Phase 6.9 全部真实模型 Agent 架构、通信、权限、可执行 LangGraph 与生产验收，再进入 Phase 6.10 分层记忆；随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
-Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1、V2、V3、V4 与 V5 五条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。V5 R0--R5 已完成独立 V2 dataset/policy/baseline、Tutor local-signal candidate、Organizer ordinal shortlist、原生 runner/lineage、reviewed Mock、全量静态门、PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 使用 `deepseek_network`，保持 `24/24` guard zero-call；前 6 对启动 12 次 Provider 调用并得到 `11/48` strict runtime，第 6 对 Tutor `tutor-v2-runtime-06` 在 `3021ms` 越过冻结的 `3000ms` timeout 后熔断，后续 36 runtime 未启动。安全、权限、mutation、broader fallback 与 Provider failure 均为 0。
+Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1、V2、V3、V4 与 V5 五条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。V5 R0--R5 已完成独立 V2 dataset/policy/baseline、Tutor local-signal candidate、Organizer ordinal shortlist、原生 runner/lineage、reviewed Mock、全量静态门、PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 使用 `deepseek_network`，保持 `24/24` guard zero-call；前 6 对启动 12 次 Provider 调用并得到 `11/48` strict runtime，第 6 对 Tutor `tutor-v2-runtime-06` 在 `3021ms` 越过冻结的 `3000ms` timeout 后熔断，后续 36 runtime 未启动。安全、权限、mutation、broader fallback 与 Provider failure 均为 0。V6 R0 已完成零 Provider 复盘与独立设计，没有实现或调用新的模型路径。
 
-V1--V5 marker/evidence 均已封存；V3--V5 journal 完整记录 dispatch、terminal、breaker、run completed 与 evidence sealed。V5 R6 因运行不完整，正式 semantic、P95、token 与总费用聚合全部为 `null`；11 条已验证 runtime 的 `9761/902 tokens`、`0.034695 CNY` 只能作为复盘 subtotal，不能冒充整轮指标。V5 R6 一次性名额已经消费；当前下一步只能先做零 Provider 复盘并设计新的独立版本，不能直接进入 R7。产品 Docker/API/浏览器、Task 13/main、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
+V1--V5 marker/evidence 均已封存；V3--V5 journal 完整记录 dispatch、terminal、breaker、run completed 与 evidence sealed。V5 R6 因运行不完整，正式 semantic、P95、token 与总费用聚合全部为 `null`；11 条已验证 runtime 的 `9761/902 tokens`、`0.034695 CNY` 只能作为复盘 subtotal，不能冒充整轮指标。V6 R0 已冻结 `3500ms` Tutor hard timeout 与不变的 `2500ms` Tutor P95，并把 Tutor depth、Organizer confidence 收回本地 authority；模型仍负责 Tutor intent 与 Organizer subject/deck/topic ordinal。下一步仅 V6 R1 contract，当前没有新的 Live 授权。产品 Docker/API/浏览器、Task 13/main、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
 
 ## 当前状态
 
-| 阶段          | 主题                                                                                           | 状态                       |
-| ------------- | ---------------------------------------------------------------------------------------------- | -------------------------- |
-| Phase 0       | Monorepo、架构设计、Prisma 初稿、Docker 基础设施                                               | 已完成                     |
-| Phase 1       | 前端 MVP：AI 聊天、OCR、错题本、今日任务、本地持久化                                           | 已完成                     |
-| Phase 2.1     | NestJS 后端基础、PostgreSQL、Auth/User API、测试覆盖                                           | 已完成                     |
-| Phase 2.2     | 前端接入后端 Auth，登录态迁移到真实 session                                                    | 已完成                     |
-| Phase 2.3     | WrongQuestion、ChatMessage、OCRRecord、图片上传链路、本地补偿队列                              | 已完成                     |
-| Phase 2.5     | Chat-first 产品壳层、注册登录页、个人中心、今日任务、交互体验                                  | 已完成                     |
-| Phase 3       | AI 讲题系统：structured output、prompt、多题保存、tool action 边界                             | 已完成                     |
-| Phase 4.1     | WrongQuestion-first FSRS 复习闭环、Review API、今日复习卡                                      | 已完成                     |
-| Phase 4.2     | 学习统计页、Review stats/logs API、复习趋势与最近记录                                          | 已完成                     |
-| Phase 4.3     | ReviewTask 持久化任务流、评分完成、跳过和恢复                                                  | 已完成                     |
-| Phase 4.4     | 离线评分队列、服务端幂等评分、待同步状态和 in-app 提醒摘要                                     | 已完成                     |
-| Phase 4.5.1   | 复习计划预览、`/plan` 页面、`/stats` ECharts 图表                                              | 已完成                     |
-| Phase 4.5.2   | 复习容量偏好、加权压力模型、7 / 14 天计划设置                                                  | 已完成                     |
-| Phase 5.0     | RAG 知识库设计、可降级 Chat 边界、Phase 5.1 实施计划                                           | 已完成                     |
-| Phase 5.1     | RAG 数据模型、pgvector 索引预留、knowledge API contract                                        | 已完成                     |
-| Phase 5.2     | 文档上传与状态 API                                                                             | 已完成                     |
-| Phase 5.3     | 文档解析、分块、embedding 入库                                                                 | 已完成                     |
-| Phase 5.4     | 检索 API、query embedding、pgvector 相似度搜索                                                 | 已完成                     |
-| Phase 5.5     | Chat RAG 增强、知识库上下文注入、Markdown citations                                            | 已完成                     |
-| Phase 5.6     | 知识库页面、资料上传/处理/替换/删除/检索测试前端闭环                                           | 已完成                     |
-| Phase 6.0     | Agent Runtime 地基、共享 Agent contract、RouterAgent、阈值 guard、recorder                     | 已完成                     |
-| Phase 6.1     | RouterAgent 接入 `/api/chat`、route headers、route-aware prompt、mock route 展示               | 已完成                     |
-| Phase 6.2     | TutorAgent 策略层、讲题意图分类、策略 prompt、mock strategy metadata                           | 已完成                     |
-| Phase 6.3     | KnowledgeVerifierAgent、RAG 资料可信度评估、资料核对提示                                       | 已完成                     |
-| Phase 6.4     | WrongQuestionOrganizerAgent、错题学科卡片、专题 deck、组织层 API                               | 已完成                     |
-| Phase 6.5     | ReviewAgent / PlannerAgent、复习分析、学习计划建议、只读 suggestions API                       | 已完成                     |
-| Phase 6.6     | MemoryAgent、长期记忆候选、人审确认、停用/恢复/删除管理                                        | 已完成                     |
-| Phase 6.7     | Agent Trace UI、估算成本看板、固定 deterministic eval set                                      | 已完成                     |
-| Phase 6.8     | KnowledgeDedupAgent / KnowledgeOrganizerAgent、资料重复/新版/互补判断、只读 suggestions API    | 已完成                     |
-| Phase 6.9.1   | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 报告模板            | 已完成                     |
-| Phase 6.9.2   | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时和脱敏 Trace                      | 已完成                     |
-| Phase 6.9.3.1 | 会话摘要/状态 strict contract 与 PostgreSQL/Prisma 地基                                        | 已完成                     |
-| Phase 6.9.3.2 | ConversationState、Redis 降级缓存、prepare API 与 Chat history 恢复                            | 已完成                     |
-| Phase 6.9.3.3 | 滚动摘要、ModelAgentRuntime、source hash、Serializable 复核与 CAS                              | 已完成                     |
-| Phase 6.9.3.4 | Web prepare、分层 context assembler、Dexie v9 sanitized state 恢复                             | 已完成                     |
-| Phase 6.9.3.5 | Docker Mock/Live、DeepSeek JSON structured output、Trace/清理/阶段证据                         | 已完成                     |
-| Phase 6.9.4.1 | Router 60 / Verifier 40 数据集、专项 metrics 与 deterministic baseline                         | 已完成                     |
-| Phase 6.9.4.2 | Router / Verifier Mock candidate、零调用安全门、strict schema 与安全降级                       | 已完成                     |
-| Phase 6.9.4.3 | JSON-mode 完整 Live：28/28、72/72；Router P95 延迟失败，当时为 terminal deterministic fallback | 验收未完成                 |
-| Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                          | 已完成                     |
-| Phase 6.9.5   | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放                 | 已完成                     |
-| Phase 6.9.6   | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                                | 已完成                     |
-| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | V5 R6 失败封存；阶段未完成 |
-| Phase 7       | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit         | 核心工程化已完成           |
-| Phase 7.8.5   | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                       | 已完成                     |
-| Phase 7.23    | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                       | 已完成                     |
+| 阶段          | 主题                                                                                           | 状态                     |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------ |
+| Phase 0       | Monorepo、架构设计、Prisma 初稿、Docker 基础设施                                               | 已完成                   |
+| Phase 1       | 前端 MVP：AI 聊天、OCR、错题本、今日任务、本地持久化                                           | 已完成                   |
+| Phase 2.1     | NestJS 后端基础、PostgreSQL、Auth/User API、测试覆盖                                           | 已完成                   |
+| Phase 2.2     | 前端接入后端 Auth，登录态迁移到真实 session                                                    | 已完成                   |
+| Phase 2.3     | WrongQuestion、ChatMessage、OCRRecord、图片上传链路、本地补偿队列                              | 已完成                   |
+| Phase 2.5     | Chat-first 产品壳层、注册登录页、个人中心、今日任务、交互体验                                  | 已完成                   |
+| Phase 3       | AI 讲题系统：structured output、prompt、多题保存、tool action 边界                             | 已完成                   |
+| Phase 4.1     | WrongQuestion-first FSRS 复习闭环、Review API、今日复习卡                                      | 已完成                   |
+| Phase 4.2     | 学习统计页、Review stats/logs API、复习趋势与最近记录                                          | 已完成                   |
+| Phase 4.3     | ReviewTask 持久化任务流、评分完成、跳过和恢复                                                  | 已完成                   |
+| Phase 4.4     | 离线评分队列、服务端幂等评分、待同步状态和 in-app 提醒摘要                                     | 已完成                   |
+| Phase 4.5.1   | 复习计划预览、`/plan` 页面、`/stats` ECharts 图表                                              | 已完成                   |
+| Phase 4.5.2   | 复习容量偏好、加权压力模型、7 / 14 天计划设置                                                  | 已完成                   |
+| Phase 5.0     | RAG 知识库设计、可降级 Chat 边界、Phase 5.1 实施计划                                           | 已完成                   |
+| Phase 5.1     | RAG 数据模型、pgvector 索引预留、knowledge API contract                                        | 已完成                   |
+| Phase 5.2     | 文档上传与状态 API                                                                             | 已完成                   |
+| Phase 5.3     | 文档解析、分块、embedding 入库                                                                 | 已完成                   |
+| Phase 5.4     | 检索 API、query embedding、pgvector 相似度搜索                                                 | 已完成                   |
+| Phase 5.5     | Chat RAG 增强、知识库上下文注入、Markdown citations                                            | 已完成                   |
+| Phase 5.6     | 知识库页面、资料上传/处理/替换/删除/检索测试前端闭环                                           | 已完成                   |
+| Phase 6.0     | Agent Runtime 地基、共享 Agent contract、RouterAgent、阈值 guard、recorder                     | 已完成                   |
+| Phase 6.1     | RouterAgent 接入 `/api/chat`、route headers、route-aware prompt、mock route 展示               | 已完成                   |
+| Phase 6.2     | TutorAgent 策略层、讲题意图分类、策略 prompt、mock strategy metadata                           | 已完成                   |
+| Phase 6.3     | KnowledgeVerifierAgent、RAG 资料可信度评估、资料核对提示                                       | 已完成                   |
+| Phase 6.4     | WrongQuestionOrganizerAgent、错题学科卡片、专题 deck、组织层 API                               | 已完成                   |
+| Phase 6.5     | ReviewAgent / PlannerAgent、复习分析、学习计划建议、只读 suggestions API                       | 已完成                   |
+| Phase 6.6     | MemoryAgent、长期记忆候选、人审确认、停用/恢复/删除管理                                        | 已完成                   |
+| Phase 6.7     | Agent Trace UI、估算成本看板、固定 deterministic eval set                                      | 已完成                   |
+| Phase 6.8     | KnowledgeDedupAgent / KnowledgeOrganizerAgent、资料重复/新版/互补判断、只读 suggestions API    | 已完成                   |
+| Phase 6.9.1   | Agent eval contract、32 个 seed cases、deterministic baseline、paired eval 报告模板            | 已完成                   |
+| Phase 6.9.2   | 共享 ModelAgentRuntime、结构化 Mock/Live contract、预算、超时和脱敏 Trace                      | 已完成                   |
+| Phase 6.9.3.1 | 会话摘要/状态 strict contract 与 PostgreSQL/Prisma 地基                                        | 已完成                   |
+| Phase 6.9.3.2 | ConversationState、Redis 降级缓存、prepare API 与 Chat history 恢复                            | 已完成                   |
+| Phase 6.9.3.3 | 滚动摘要、ModelAgentRuntime、source hash、Serializable 复核与 CAS                              | 已完成                   |
+| Phase 6.9.3.4 | Web prepare、分层 context assembler、Dexie v9 sanitized state 恢复                             | 已完成                   |
+| Phase 6.9.3.5 | Docker Mock/Live、DeepSeek JSON structured output、Trace/清理/阶段证据                         | 已完成                   |
+| Phase 6.9.4.1 | Router 60 / Verifier 40 数据集、专项 metrics 与 deterministic baseline                         | 已完成                   |
+| Phase 6.9.4.2 | Router / Verifier Mock candidate、零调用安全门、strict schema 与安全降级                       | 已完成                   |
+| Phase 6.9.4.3 | JSON-mode 完整 Live：28/28、72/72；Router P95 延迟失败，当时为 terminal deterministic fallback | 验收未完成               |
+| Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                          | 已完成                   |
+| Phase 6.9.5   | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放                 | 已完成                   |
+| Phase 6.9.6   | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                                | 已完成                   |
+| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | V6 R0 已完成；阶段未完成 |
+| Phase 7       | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit         | 核心工程化已完成         |
+| Phase 7.8.5   | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                       | 已完成                   |
+| Phase 7.23    | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                       | 已完成                   |
 
 ## 已实现能力
 
@@ -94,6 +94,7 @@ V1--V5 marker/evidence 均已封存；V3--V5 journal 完整记录 dispatch、ter
 - Phase 6.9.7 V5 R4 runner/lineage：V5 原生 report 不转换或嵌入 V1--V4，固定 72 cases、24 guard、48 runtime、24 pairs、32 Organizer decisions；24 guard 先行、每次单 pair 且最多双 lane、首个 runtime contract failure 熔断。Dispatch journal 在 lane 前 append+fsync，unknown usage 让 token/费用/P95/语义 aggregate 为 `null`，marker、hash-chain journal、hard-link evidence、dead-owner 单胜者 recovery 与 ABA fence 防止丢证据或 replay。Synthetic Live 永远不能 quality pass；R4 全程 zero-provider，尚未接产品。
 - Phase 6.9.7 V5 R5 static/Mock：默认 Mock CLI 使用正式源码 reviewed factory，真实经过两条 V5 candidate、strict validator 与本地 merger；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、semantic `1/1/1`。48 次 synthetic invocation 不是真实 Provider call；Agent/AI/Types/Server/Web、PostgreSQL `12/12`、Compose default-off、历史 SHA/validator、V5 artifact=0 与两路终审通过。R5 仍未接产品或调用 Provider。
 - Phase 6.9.7 V5 R6 controlled-Live：唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime；第 6 对 Tutor 在 `3021ms` 越过 `3000ms` timeout 后熔断，后续 36 runtime 未启动，最终 `quality_gate_failed`。正式 semantic/P95/token/费用均为 `null`；marker/journal/evidence 已封存且不得重跑，也不得进入 R7/main/Phase 6.10。
+- Phase 6.9.7 V6 R0：只读复盘区分 executor hard timeout 与 P95，冻结 Tutor `3500ms` hard timeout、`2500ms` P95 不变，Organizer `5000/4500ms` 不变；Tutor preferred depth 与 Organizer confidence 改由本地 authority，模型仍负责 intent 与 subject/deck/topic ordinal，并新增 model-owned axes 门。V2 dataset/expected/baseline 不变，V6 使用独立 lineage。全程 zero-provider，尚未实现 V6 source/runtime/runner/Mock/Live。
 - Model Agent Runtime：`@repo/ai` 提供共享结构化 `ModelAgentRuntime`，Mock/Live 共用 Zod schema、不可变 run budget、结果和安全 Trace contract；package 不读取 env，API key 只保留在 composition root 创建的 executor closure。Phase 6.9.2 未迁移 `/api/chat` streaming，也未把任何业务 Agent 改为模型路径。
 - Router / Verifier paired eval：Phase 6.9.4.3 已完成 deterministic、Mock、diagnostics、历史五次不可拼接 Live、JSON-mode resolution 与唯一完整 controlled-Live。新 run 使用 runner-v3 / `deepseek_json_object_v1`，得到 `28/28 strict success`、`72/72 zero-call`、input/output `10677/4323`、约 `$0.00284`；Verifier 为 `quality_gate_passed`，Router additional P95 `4264ms` 导致 `latency_budget_exceeded`。这是当时的历史结论，不删除、不拼接，也不再解释为永久禁止 Router 模型；后续 Phase 6.9.4.4 已完成高置信/安全 zero-call、歧义 Router 真实模型和失败 deterministic fallback 的受控混合生产路径。完整证据见 [Phase 6.9.4.3 验收记录](./docs/acceptance/phase-6-9-4-3-router-verifier-paired-eval.md)。
 - Router / Verifier 生产 contract：Router 的安全/高置信请求 deterministic zero-call，歧义、多意图和上下文指代才进入真实模型；Verifier 只处理通过本地安全门且 semantic-needed 的 RAG。两条 gate 独立回滚且默认关闭，timeout 分别为 5 秒/4 秒；共享请求预算为 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800`。Provider JSON-object output 仍须通过 canonical Zod；prompt injection、high-risk 或 credential material 零调用，provider failure、timeout、schema invalid 或预算耗尽回退到限制性 deterministic 结果。Trace/headers 只含安全元数据。Phase 6.9.4.4 的 Task 9/10 已完成受控 Live、Docker、可见浏览器和 main 复验，随后已恢复默认关闭。完整路线见 [Agent 架构完成设计](./docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md)；这不表示 Memory、Orchestrator、全部 Agent 或 Phase 6 已完成。
@@ -235,7 +236,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. 当前执行 Phase 6.9.7：V1--V5 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。唯一 V5 R6 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断；正式聚合均为 `null`，V5 marker/journal/evidence 已 durable seal。
-3. 下一任务只能先做零 Provider 复盘与新版本设计；用户允许在新版本中重新评估 Tutor 时延边界，但安全、权限、固定分母、无重试和历史证据不可变性不放宽。新的 static/Mock checkpoint 与新的精确 Live 授权前不得调用 Provider；产品验收、Task 13/main 与 Phase 6.9.8 暂不得开始。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. V6 R0 已完成零 Provider 复盘与独立设计；下一任务仅 V6 R1 deadline/eval-policy 与 local-authority contracts。Tutor hard timeout/P95 冻结为 `3500/2500ms`，Organizer 保持 `5000/4500ms`；安全、权限、固定分母、无重试和历史证据不可变性不放宽。V6 R4 static/Mock checkpoint 与新的精确 Live 授权前不得调用 Provider；产品验收、Task 13/main 与 Phase 6.9.8 暂不得开始。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 Organizer 必须先写 command_pending Trace，final Trace 失败却不能回滚已授权写入？”“为什么 baseline 零调用不能替代 candidate guard 的实际 zero-call？”“为什么 Tutor orchestration P95 不是 Chat 产品端到端 P95？”“为什么 synthetic provenance 永远不能通过生产 gate？”“为什么 held-out/metamorphic 满分仍不能替代 controlled-Live？”
 
@@ -285,6 +286,9 @@ V5 R6 evidence/journal/marker 已按 run `aa637d3a...` 封存；V1--V4 evidence 
 - [Phase 6.9.7 V5 R4 Runner / Lineage / Extreme Boundaries 验收](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md)
 - [Phase 6.9.7 V5 R5 static/Mock checkpoint](./docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md)
 - [Phase 6.9.7 V5 R6 controlled-Live 失败封存](./docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md)
+- [Phase 6.9.7 V6 remediation 设计](./docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md)
+- [Phase 6.9.7 V6 remediation 实施计划](./docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md)
+- [Phase 6.9.7 V6 R0 零 Provider 设计验收](./docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

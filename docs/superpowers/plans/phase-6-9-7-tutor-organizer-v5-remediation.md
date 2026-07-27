@@ -9,7 +9,8 @@ Tutor local-signal candidate、Organizer ordinal shortlist、原生 runner/linea
 checkpoint 已落地。唯一 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 已使用
 `deepseek_network` 执行并以 `quality_gate_failed` 封存：`24/24` guard、12 次 Provider invocation、
 `11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。
-R6 不得重跑，R7/R8 被阻断；下一步只能先做零 Provider 复盘与新的独立版本设计。
+R6 不得重跑，R7/R8 永久被该结果阻断。后续 V6 R0 已以零 Provider 方式完成独立复盘与设计；V5
+identity 不作为 V6 的授权或 artifact 入口。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -191,3 +192,16 @@ marker、58 条 hash-chain journal 与 evidence 已 durable seal，validator `ok
 - main 运行静态、Docker/API、可见浏览器 default-off 回放；
 - main 精确清理、恢复 gates=false、推送远程并确认 parity；
 - 完成 Phase 6.9 全部 Agent 后才进入 Phase 6.10 分层记忆；两篇博客按后续用户要求分别收尾。
+
+## V6 独立交接
+
+V5 的 R7/R8 不会在 V6 下重新打开。V6 使用独立 design/plan/approval/runner/marker/journal/evidence/
+validator，并从 R0 重新建立前置门：
+
+- 设计：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`；
+- 计划：`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`；
+- R0 验收：
+  `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`。
+
+用户允许重新评估 Tutor 时延边界只属于 V6 设计许可；新的 R4 static/Mock checkpoint 与新的精确
+授权前，禁止创建 V6 Live marker、读取 component credential 或调用 Provider。

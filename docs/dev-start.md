@@ -1062,10 +1062,19 @@ zero-call、12 次 Provider invocation、`11/48` strict runtime；第 6 对 Tuto
 
 V5 R6 一次性名额已消费。严禁再次运行 V5 network CLI，严禁删除、覆盖或重建 V5 marker、journal、
 evidence，也不得使用 seal/recovery 去 resume、replay 或补跑 Provider。日常开发仍保持 mock、live=false、
-Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未开始。下一步只能先做零
-Provider 复盘并设计新的独立版本，不能进入 R7、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。
+Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未开始。该终态当时只允许先做
+零 Provider 复盘与独立版本设计，不能进入 V5 R7、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。
 完整失败证据见
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
+
+V6 R0 后续已完成零 Provider 设计，但当前**没有可运行的 V6 CLI、marker、Mock 或 Live 路径**。不要把
+V5 CLI 改参数后当成 V6，也不要手工创建 `v6` artifact。V6 计划冻结 Tutor executor hard timeout
+`3500ms` 与 Tutor candidate P95 `<=2500ms` 的独立含义；Organizer 继续 `5000/4500ms`。下一步仅
+实现 R1 deadline/eval-policy 与 Tutor preferred-depth/Organizer confidence local-authority contracts。
+R4 static/Mock checkpoint 与用户新的 V6 精确授权前，不读取 component credential、不创建 Live marker、
+不调用 Provider。设计与计划见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md` 与
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

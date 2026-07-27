@@ -7,7 +7,8 @@ local-signal candidate、Organizer owner-snapshot ordinal shortlist、原生 run
 static/Mock 均已冻结。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 已使用
 `deepseek_network` 执行并以 `quality_gate_failed` 封存：`24/24` guard、12 次 Provider invocation、
 `11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。
-V5 R6 不得重跑，R7/main/Phase 6.10 被阻断；下一步只能先做零 Provider 复盘与新版本设计。
+V5 R6 不得重跑，R7/main/Phase 6.10 被阻断。后续 V6 R0 已完成零 Provider 复盘与独立设计；V5
+identity、artifact 与授权不在 V6 中复用。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -278,6 +279,11 @@ evidence 已 durable seal，validator 通过且无 recovery claim；R6 禁止 re
 该结果验证了 guard-first、dispatch-before-call、lane terminal、fixed denominator、breaker 与
 incomplete-null 设计确实在真实 Provider 路径生效，但没有形成质量 authority，也没有证明产品
 composition/API/browser 可用。R7 及其后的 main/Phase 6.10 必须保持阻断。
+
+V6 R0 只读取证并冻结 hard-timeout/P95 分离、Tutor preferred-depth local authority、Organizer
+confidence local authority、model-owned axes 与独立 lineage。V6 设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`；该交接不重开 V5 R7，
+也不构成新的 Provider 授权。
 
 ## 7. 非目标
 
