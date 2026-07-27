@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-27。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V5 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。V6 R0 已以零 Provider 方式冻结 deadline/P95 分离、Tutor depth 与 Organizer confidence 本地 authority、model-owned axes 和独立 lineage；没有 V6 source/runtime/runner/Live。下一步仅 V6 R1，产品 Docker/API/浏览器、Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
+> 当前版本：2026-07-27。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V5 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。V6 R0/R1 已以零 Provider 方式冻结 deadline/P95 分离、固定 24-sample complete-only aggregate、Tutor depth 与 Organizer confidence 本地 authority、model-owned axes 和独立 source identity；没有 V6 candidate、actual shortlist composition、runner、Mock 或 Live。下一步仅 V6 R2，产品 Docker/API/浏览器、Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
 
 ## 1. 当前边界
 
@@ -576,6 +576,17 @@ V6 R0 zero-provider design
   -> model-owned axes 单独 gate，local derived fields 不得掩盖模型质量
   -> V2 dataset/expected/baseline bytes 不变；V6 eval/runner/artifact identity 独立
   -> no source/runtime/credential/Provider/Docker/API/browser/data mutation
+
+V6 R1 zero-provider source contracts
+  -> bind unchanged V2 dataset/baseline -> independent V6 dataset/eval policy SHA
+  -> monotonic executor/runtime/orchestration/paired duration + deadline overshoot
+  -> exactly 24 samples per P95 -> sorted index 22 / one-based 23
+  -> any incomplete/invalid lane -> complete=false -> all four P95 null
+  -> Tutor model-owned intent >=21/24 -> local preferred depth/final strategy
+  -> Organizer model-owned subject/deck/target ordinal each >=28/32 -> local confidence
+  -> fingerprint shape/snapshot/subject/target contract only
+  -> actual owner shortlist/fingerprint/stale/ABA/locked-name composition deferred to R2
+  -> no candidate/runner/marker/Mock/Live/credential/Provider/Docker/API/browser/data mutation
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
@@ -588,8 +599,9 @@ invocation、`11/48` strict runtime；第 6 对 Tutor 在 `3021ms` 越过冻结 
 breaker，后续 36 runtime 没有启动。正式 semantic/P95/token/总费用因不完整全部为 `null`；11 条
 verified entry 的 subtotal 只能用于复盘。Evidence、58 条 hash-chain journal 与一次性 marker authority
 已封存，V1--V4 SHA/validator 不变且不存在 recovery claim。V5 不得重跑，也不得进入 R7、产品
-Docker/API/browser、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。V6 R0 后续已完成零 Provider
-复盘与独立设计；下一步仅 V6 R1 contract，仍没有新的 Provider 授权。
+Docker/API/browser、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。V6 R0/R1 后续已完成零 Provider
+设计与 source contracts；下一步仅 V6 R2 bounded candidate/actual shortlist composition，仍没有新的
+Provider 授权。
 详见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
@@ -598,7 +610,8 @@ Docker/API/browser、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。V6 
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md` 与
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md` 与
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`。
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md` 与
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`。
 
 当前 `/knowledge` 页面数据流：
 

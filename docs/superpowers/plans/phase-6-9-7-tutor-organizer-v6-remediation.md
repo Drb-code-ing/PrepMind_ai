@@ -4,8 +4,9 @@
 Organizer confidence 的 authority/评分耦合，并保留模型对 Tutor 歧义 intent 和 Organizer
 subject/deck/topic ordinal 的真实语义职责。
 
-**当前状态：** R0 已完成且为 zero-provider。V6 尚未实现任何 source contract、candidate、runner、
-marker、Mock 或 Live；没有新的 Provider 授权。
+**当前状态：** R0/R1 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
+metrics、Tutor preferred-depth 与 Organizer confidence source contracts；尚未实现 candidate、产品
+composition、runner、marker、Mock 或 Live，也没有新的 Provider 授权。下一原子任务仅 R2。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`
@@ -49,7 +50,7 @@ marker、Mock 或 Live；没有新的 Provider 授权。
 
 ## R1：Deadline / eval policy 与 local authority contracts
 
-**状态：** [ ] 尚未开始，zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 - 新建 V6 dataset binding/eval policy identity，复用 V2 bytes/SHA 与 baseline SHA；
 - Tutor hard timeout 改为 `3500ms`，Organizer 维持 `5000ms`；质量 P95 阈值全部不变；
@@ -62,16 +63,31 @@ marker、Mock 或 Live；没有新的 Provider 授权。
   ordinal 各自 `>=0.85`（32 decision units，每项至少 28 条）的 model-owned exact-match 门；
 - clock rollback/jump、NaN/negative/overflow、timeout 边界、缺 terminal 与 authority SHA drift fail-closed。
 
-**停止点：** 不实现模型 candidate，不创建 V6 runner/marker，不调用 Provider。
+**完成证据：**
+
+- dataset binding/eval policy SHA 分别冻结为 `3306cc399730...` 与 `5066decfc88e...`；Tutor depth 与
+  Organizer confidence rules SHA 分别为 `b57a828e1429...` 与 `a46eda402e8c...`；
+- 调用方不能覆盖固定 24 样本门；23/25/null/NaN/hostile accessor 均 fail-closed；
+- 任一 latency lane 不完整时四个 P95 同时为 `null`；V5 `3000ms` 与 V6 `3500ms` 隔离测试通过；
+- focused `15/15`、Agent full `768/768`、typecheck/lint exit 0，两路独立复审 `APPROVED`；
+- actual shortlist/fingerprint/stale composition 尚未实现，明确留给 R2。
+
+**验收文档：**
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`
+
+**停止点：** 未实现模型 candidate、产品 composition、V6 runner/marker/Mock/Live；未读取 credential、
+调用 Provider 或启动 Docker/API/browser。
 
 ## R2：V6 bounded candidates 与独立 robustness
 
-**状态：** [ ] 被 R1 阻断。
+**状态：** [ ] 待开始；R1 前置已关闭，仍为 zero-provider。
 
 - Tutor 模型只选择本地 eligible intent ordinal；depth 与策略字段由本地 authority 重建；
 - Organizer 模型只选择 subject/deck/topic ordinal；confidence 由本地 authority 重建；
 - Topic prompt 只使用通用 shortlist tie-break，不写 case/expected/Live 文本；
 - 双 Agent strict schema、projection、validator、merger、budget、abort、stale/no-retry 保持 fail-closed；
+- Organizer 把 R1 的 confidence input 绑定到实际 owner shortlist fingerprint，并完成 pre/post stale、ABA、
+  locked-name、subject/deck/topic ordinal association；
 - 独立 held-out/metamorphic 覆盖双语、否定、干扰、reorder、单变量 mutation、taxonomy、topic overlap、
   locked name、owner/snapshot/ordinal ABA；
 - actual prompt 递归泄漏扫描拒绝 V1--V5 identity、case ID、expected 与历史结果。

@@ -2,8 +2,8 @@
 
 日期：2026-07-27
 
-状态：R0 零 Provider 复盘与设计已冻结；尚未实现 V6 contract、candidate、runner、marker、Mock 或
-Live。当前没有新的 Provider 调用授权。
+状态：R0/R1 已完成且均为 zero-provider。V6 source contracts 已冻结；尚未实现 candidate、产品
+composition、runner、marker、Mock 或 Live。当前没有新的 Provider 调用授权，下一步仅 R2。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -15,6 +15,9 @@ V5 failure authority：
 
 R0 acceptance：
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`
+
+R1 acceptance：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`
 
 ## 1. 决策摘要
 
@@ -185,10 +188,30 @@ V6 confirmation token、marker schema、journal version、evidence envelope、va
 独立。V6 validator 递归拒绝 V1--V5 runId、marker/artifact path、partial metrics/usage/cost、旧 runner/
 prompt/policy SHA 与 source case ID；历史 validators 必须拒绝 V6。V5 artifacts 不复制进 V6 report。
 
+### 7.1 R1 已冻结的 source contracts
+
+R1 已将本设计中的 source-level 约束实现并冻结：
+
+- dataset binding SHA：`3306cc399730f85b3281c90f226f629873d9755325415b69a0263a0f57b96153`；
+- eval policy SHA：`5066decfc88e3d36671a60b3d269ae9e93e061207d44927bca9e0d2551973d89`；
+- Tutor preferred-depth rules SHA：
+  `b57a828e14294f712a6547be2ac168b1d58b79cdc5b9aecbb071304f4e5ae7af`；
+- Organizer confidence rules SHA：
+  `a46eda402e8c39cdc965277375e8a2aeea27e41c98cda7fd4ba513a9cb520475`。
+
+固定 24 样本 nearest-rank P95 不允许调用方覆盖；任一 lane 缺 terminal/timeout/NaN/越界时四个 P95
+全部为 `null`。model-owned scorer 固定 Tutor `21/24` 与 Organizer 三轴各 `28/32`，hostile input
+不会向外抛 raw error。V5 `3000ms` timeout 与 V6 policy `3500ms` 保持隔离。
+
+R1 的 Organizer authority 只建立输入/输出合同，并未把 fingerprint 字符串绑定到实际 owner shortlist。
+actual shortlist/fingerprint、pre/post stale fence、ABA、locked name 与真实 ordinal association 必须由 R2
+candidate composition 完成。R1 也没有 runtime factory、runner、Mock 或 Live，不能据此声称 Agent 已
+接入新的模型路径。
+
 ## 8. 原子实施路线
 
 1. **R0**：本文件、计划、acceptance 与仓库状态文档；全程零 Provider。（已完成）
-2. **R1**：deadline/eval-policy、单调计时与两条 local authority contract；零 Provider。
+2. **R1**：deadline/eval-policy、单调计时与两条 local authority contract；零 Provider。（已完成）
 3. **R2**：Tutor intent-only bounded candidate、Organizer ordinal-only candidate、独立 held-out/
    metamorphic 与 prompt-leakage；零 Provider。
 4. **R3**：独立 V6 runner/CLI 与 marker/journal/evidence/validator contract、fixed denominator、breaker、

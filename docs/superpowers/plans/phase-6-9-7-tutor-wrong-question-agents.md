@@ -6,7 +6,7 @@
 
 **技术栈：** TypeScript strict、Bun、Zod、Next.js 16 Route Handler、NestJS 11、Prisma/PostgreSQL、共享 `ModelAgentRuntime`、DeepSeek V4 Pro non-thinking JSON-object、Agent Trace、Docker Compose。
 
-**当前状态（2026-07-27）：** Task 0--11 已完成；V1--V5 五条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`；marker/journal/evidence 已封存。V6 R0 已完成零 Provider deadline/local-authority/独立 lineage 设计；下一步仅 V6 R1。产品 Docker/API/浏览器、Task 13/main、Phase 6.9.8/6.10、Phase 8/9 与博客收尾均不得开始，Phase 6.9.7 未完成。
+**当前状态（2026-07-27）：** Task 0--11 已完成；V1--V5 五条唯一 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`；marker/journal/evidence 已封存。V6 R0/R1 已完成零 Provider 设计与 source contracts：Tutor policy `3500/2500ms`、固定 24-sample nearest-rank、第 23 值、四个 model-owned axes 以及 Tutor depth/Organizer confidence local authority 已冻结。actual shortlist composition、candidate、runner、Mock 与 Live 尚未实现；下一步仅 V6 R2。产品 Docker/API/浏览器、Task 13/main、Phase 6.9.8/6.10、Phase 8/9 与博客收尾均不得开始，Phase 6.9.7 未完成。
 
 R4/R5/R6 的工程复审与 R7 失败终态分别记录在对应 acceptance；R6 的通过结论不替代 R7 真实质量门。
 
@@ -396,10 +396,12 @@ V5 R3/R4 acceptance：
 随后进入 Phase 6.9.8，不进入 Phase 6.10，也不提前写两篇博客。
 
 实际 V1--V5 Live 均已失败封存，因此上述完成定义未满足，Phase 6.9.8 也不得开始。V5 R6 一次性
-授权已经消费；不得删除或改写 durable artifacts，也不得 retry/resume/replay。V6 R0 已完成零
-Provider 复盘并冻结独立 deadline/local-authority/lineage 路线；下一步仅 V6 R1。新的 static/Mock
-checkpoint 和用户新的精确授权前不得创建 V6 marker 或调用 Provider。V6 计划与 R0 authority 见
+授权已经消费；不得删除或改写 durable artifacts，也不得 retry/resume/replay。V6 R0/R1 已完成零
+Provider 设计与 source contracts；下一步仅 V6 R2，将实现 bounded candidates、actual
+shortlist/fingerprint/stale composition 与独立 robustness。新的 static/Mock checkpoint 和用户新的精确
+授权前不得创建 V6 marker 或调用 Provider。V6 计划与 R0/R1 authority 见
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md` 与
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`；V5 failure
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`、
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`；V5 failure
 authority 仍见
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。

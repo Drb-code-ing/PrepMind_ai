@@ -1,5 +1,33 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V6 R1 Source Contracts：在 R0 冻结设计上新增独立 V6 dataset
+> binding/eval policy、单调 deadline evidence、固定分母 model-owned scorer、Tutor preferred-depth
+> local authority 与 WrongQuestionOrganizer confidence local authority。V2 dataset/expected/baseline bytes
+> 不变；dataset binding/eval policy SHA 分别冻结为 `3306cc399730...`、`5066decfc88e...`，两条本地
+> authority rules SHA 分别为 `b57a828e1429...`、`a46eda402e8c...`。
+>
+> Tutor executor hard-timeout policy 为 `3500ms`，candidate P95 仍为 `<=2500ms`；Organizer 仍为
+> `5000/4500ms`。nearest-rank P95 强制恰好 24 个样本并取升序第 23 个值，调用方不能覆盖分母；
+> executor/runtime trace/candidate orchestration/paired request 使用有限非负单调 duration 与 overshoot。
+> 任一 lane 缺 terminal、timeout、NaN 或越界时，四类 P95 全部为 `null`。`null`、hostile accessor、
+> clock rollback/jump 与 malformed observation 均 fail-closed，不传播 raw error。
+>
+> 模型职责继续保留：Tutor 后续只选择 eligible intent，固定 24 case 至少 `21/24`；Organizer 后续只
+> 选择 subject decision、deck action、target ordinal，三个 32-decision 门各至少 `28/32`。Tutor depth/
+> guiding/final-answer/structure 和 Organizer confidence 都由本地 authority 重建，不能抵消 model-owned
+> failure。R1 的 Organizer fingerprint 仅为 source contract；实际 owner shortlist/fingerprint、pre/post
+> stale、ABA、locked-name 与 ordinal association 明确留给 R2 composition，未冒充为已接 candidate。
+>
+> 验证：focused `15/15`、160 assertions；Agent full `768/768`、9430 assertions/85 files；Agent
+> typecheck/lint exit 0；本地 Prettier 3.8.3 完成格式化；两路独立复审刷新当前文件后均 `APPROVED`。
+> V5 `3000ms` timeout 与 frozen policy SHA 隔离测试通过。
+>
+> 本任务全程 zero-provider：没有读取 `.env`/credential、实现 candidate/runner/marker/Mock/Live、调用
+> Provider、启动 Docker/API/browser 或修改业务数据。下一原子任务仅 V6 R2 bounded candidates、actual
+> shortlist composition 与独立 robustness；R4 checkpoint 和新的精确授权前仍不得创建 Live artifact
+> 或调用 Provider。验收见
+> `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V6 R0 零 Provider 复盘与设计：只读核对 V5 run
 > `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 的 evidence/journal/marker 与三份 SHA，确认 Tutor
 > runtime-06 的 runtime trace/candidate orchestration/paired duration 分别为
