@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createOpenAICompatibleStructuredExecutor } from '@repo/ai';
+
 import {
   PHASE_6_9_7_TUTOR_ORGANIZER_V5_REPORT_SCHEMA,
   PHASE_6_9_7_V5_APPROVAL_ENV,
@@ -11,6 +13,14 @@ import {
   type Phase697V5EvidenceEnvelope,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v5-contract.ts';
 import { createPhase697TutorOrganizerV5MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v5-mock.ts';
+import {
+  PHASE_6_9_7_V5_DEEPSEEK_BASE_URL,
+  PHASE_6_9_7_V5_ORGANIZER_TIMEOUT_MS,
+  PHASE_6_9_7_V5_TUTOR_TIMEOUT_MS,
+  createPhase697TutorOrganizerV5LiveHarness,
+  resolvePhase697V5LiveConfiguration,
+  type Phase697V5LiveConfiguration,
+} from '../src/evals/phase-6-9-tutor-wrong-question-v5-live.ts';
 import {
   buildPhase697V5Marker,
   buildPhase697V5SealedReport,
@@ -104,15 +114,48 @@ export async function executePhase697TutorOrganizerV5Cli(
   if (!parsed.ok) return parsed;
   const root = input.repositoryRoot ?? fileURLToPath(new URL('../../../', import.meta.url));
   const runId = input.runId ?? randomUUID();
+  const injectedHarnessFactory = input.harnessFactory !== undefined;
+  let liveConfiguration: Phase697V5LiveConfiguration | null = null;
+  if (parsed.mode === 'live') {
+    const resolved = resolvePhase697V5LiveConfiguration(input.env);
+    if (!resolved.ok) return resolved;
+    liveConfiguration = resolved.value;
+  }
   const harnessFactory =
     input.harnessFactory ??
     (parsed.mode === 'mock'
       ? ({ runId: factoryRunId, runScope }: Parameters<Phase697V5HarnessFactory>[0]) =>
           createPhase697TutorOrganizerV5MockHarness({ runId: factoryRunId, runScope })
-      : null);
-  // R5 owns only the reviewed zero-network Mock factory. R6 Live must inject a
-  // separately reviewed factory after the one-shot authorization boundary.
-  if (!harnessFactory) return { ok: false, code: 'runtime_factory_unavailable' };
+      : ({ runId: factoryRunId, runScope }: Parameters<Phase697V5HarnessFactory>[0]) => {
+          if (liveConfiguration === null) {
+            throw new Error('PHASE_6_9_7_V5_LIVE_CONFIGURATION_UNAVAILABLE');
+          }
+          // The closure is created before marker reservation, but network executors
+          // are allocated only when invoked after marker+journal fsync.
+          const tutorExecutor = createOpenAICompatibleStructuredExecutor({
+            provider: 'deepseek',
+            apiKey: liveConfiguration.tutorApiKey,
+            baseURL: PHASE_6_9_7_V5_DEEPSEEK_BASE_URL,
+            model: 'deepseek-v4-pro',
+            structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+          });
+          const organizerExecutor = createOpenAICompatibleStructuredExecutor({
+            provider: 'deepseek',
+            apiKey: liveConfiguration.organizerApiKey,
+            baseURL: PHASE_6_9_7_V5_DEEPSEEK_BASE_URL,
+            model: 'deepseek-v4-pro',
+            structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+          });
+          return createPhase697TutorOrganizerV5LiveHarness({
+            tutorExecutor,
+            organizerExecutor,
+            runId: factoryRunId,
+            runScope,
+            tutorTimeoutMs: PHASE_6_9_7_V5_TUTOR_TIMEOUT_MS,
+            organizerTimeoutMs: PHASE_6_9_7_V5_ORGANIZER_TIMEOUT_MS,
+            executorProvenance: 'deepseek_network',
+          });
+        });
   if (parsed.mode === 'mock') {
     let report: Readonly<Phase697TutorOrganizerV5Report>;
     try {
@@ -152,7 +195,7 @@ export async function executePhase697TutorOrganizerV5Cli(
   const marker = buildPhase697V5Marker({
     runId,
     runScope: parsed.runScope,
-    executorProvenance: 'synthetic_test',
+    executorProvenance: injectedHarnessFactory ? 'synthetic_test' : 'deepseek_network',
   });
   const reserved = await reservePhase697V5Marker({
     root,
@@ -177,6 +220,16 @@ export async function executePhase697TutorOrganizerV5Cli(
       runScope: parsed.runScope,
       runId,
     });
+    if (
+      harness.mode !== 'live' ||
+      harness.provider !== 'deepseek' ||
+      harness.model !== 'deepseek-v4-pro' ||
+      harness.structuredOutputMode !== 'deepseek_v4_pro_nonthinking_json' ||
+      harness.executorProvenance !== marker.executorProvenance
+    ) {
+      await journal.writer.close().catch(() => undefined);
+      return { ok: false, code: 'runtime_factory_identity_invalid' };
+    }
     report = await runPhase697TutorOrganizerPairedEvalV5(harness, {
       lifecycle: createPhase697V5JournalLifecycle(journal.writer, runId),
     });

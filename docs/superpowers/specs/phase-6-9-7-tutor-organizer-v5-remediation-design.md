@@ -1,12 +1,13 @@
 # Phase 6.9.7 Tutor / WrongQuestionOrganizer V5 Remediation Design
 
-日期：2026-07-26
+日期：2026-07-27
 
-状态：R0--R5 已完成，均为 zero-provider。独立 V2 dataset/coherence、eval policy、deterministic
-baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal shortlist/
-strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与生产极端
-边界均已冻结；R5 static/Mock、数据库并发、Compose 与两路终审已通过。尚未调用 Provider 或接产品，
-下一步仅 R6 授权门。
+状态：R0--R5 已完成且均为 zero-provider。独立 V2 dataset/coherence、eval policy/baseline、Tutor
+local-signal candidate、Organizer owner-snapshot ordinal shortlist、原生 runner/lineage 与 R5
+static/Mock 均已冻结。唯一 V5 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 已使用
+`deepseek_network` 执行并以 `quality_gate_failed` 封存：`24/24` guard、12 次 Provider invocation、
+`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。
+V5 R6 不得重跑，R7/main/Phase 6.10 被阻断；下一步只能先做零 Provider 复盘与新版本设计。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -33,6 +34,9 @@ R4 acceptance：
 
 R5 acceptance：
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`
+
+R6 failure authority：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`
 
 ## 1. 决策摘要
 
@@ -264,6 +268,17 @@ local merger；fresh Mock 为 `24/24` zero-call、`48/48` strict runtime、seman
 artifact=0 与两路终审通过。48 次 synthetic invocation 不是真实 Provider call；R5 没有读取
 credential、调用 Provider、接产品或启动 Docker/API/browser。
 
+R6 已按独立 V5 identity 执行并失败封存。唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8`
+使用 `deepseek_network`，24 个 guard 全部 zero-call；前 6 对启动 12 次 Provider 调用并得到
+11 个 strict runtime。第 6 对 Tutor 在 `3021ms` 越过冻结的 `3000ms` timeout 后打开 breaker，同对
+Organizer strict success，后续 36 runtime 未启动。Report 因分母不完整把 semantic、P95、aggregate
+token 与总费用全部保持 `null`，最终 `quality_gate_failed`。Marker、58 条 hash-chain journal 与
+evidence 已 durable seal，validator 通过且无 recovery claim；R6 禁止 retry/resume/replay。
+
+该结果验证了 guard-first、dispatch-before-call、lane terminal、fixed denominator、breaker 与
+incomplete-null 设计确实在真实 Provider 路径生效，但没有形成质量 authority，也没有证明产品
+composition/API/browser 可用。R7 及其后的 main/Phase 6.10 必须保持阻断。
+
 ## 7. 非目标
 
 - 不重跑或改写 V1–V4；
@@ -272,4 +287,4 @@ credential、调用 Provider、接产品或启动 Docker/API/browser。
 - 不保存 raw prompt/model output、credential、真实用户原文或自由文本错误；
 - 不让本地 merger 静默修正越权 subject、非法 ordinal 或不支持 intent；
 - 不自动执行 Organizer suggestion；
-- 不在 V5 Live 通过前启动产品验收、合并 main、进入 Phase 6.10 或写博客收尾。
+- 不在新的独立 Live quality authority 通过前启动产品验收、合并 main、进入 Phase 6.10 或写博客收尾。

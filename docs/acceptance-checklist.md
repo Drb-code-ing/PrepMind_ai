@@ -808,9 +808,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R5）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5 与 V4 R6 四条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0 已确认坏 fixture、产品 candidate 拒绝与真实语义弱点是三个不同问题；V5 R1 已完成独立 V2 dataset/coherence、冻结 policy 与 deterministic baseline；V5 R2/R3 已完成两条 bounded candidate；V5 R4 已完成原生 runner/CLI/marker/journal/evidence/validator 与生产极端边界；V5 R5 已完成 reviewed Mock factory、fresh baseline/Mock、受影响静态门、PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。V5 R0--R5 均为 zero-provider，没有改写历史 authority，也没有接产品。当前下一步仅 V5 R6 授权门；重新确认 DeepSeek 数据边界并取得唯一一次精确授权前不得调用 Provider。Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6 与 V5 R6 五条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。V5 R0--R5 完成独立 V2 dataset/coherence、冻结 policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock、全量静态门与生产极端边界；唯一 V5 R6 为 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime，在第 6 对 Tutor timeout 后熔断，正式聚合均为 `null`。五条 Live authority 均不可重跑或拼接，V5 仍未接产品。Docker service/API/浏览器产品验收、Task 13/main、Phase 6.10、Phase 8/9 与博客收尾均不得开始；下一步只能先做零 Provider 复盘与新的独立版本设计。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1162,7 +1162,23 @@ Provider call；Mock evidence 已精确删除，V5 Live marker/journal/evidence/
 - [x] contract/security/concurrency 与 docs/history/operations 两路只读终审无 P0--P2；
 - [x] 未读取 `.env`/credential、调用 Provider、接产品 gate、启动 Docker/API/browser 或修改业务数据。
 
-下一步仅 V5 R6 授权门。必须重新确认当前 DeepSeek 数据保留/训练边界并明确授权唯一一次 V5 branch
-controlled-Live；此前不得执行 network CLI。产品验收、Task 13/main、Phase 6.10 与博客收尾仍不得
-开始。完整证据见
-`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
+V5 R6 失败封存回执：
+
+- [x] 唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 使用 `deepseek_network`，disposition 为
+      `completed_run`，最终 `quality_gate_failed`；
+- [x] `24/24` guard verified zero-call，6/6 pairs、12/12 dispatch/terminal，无 duplicate；
+- [x] `11/48` strict runtime；第 6 对 Tutor `tutor-v2-runtime-06` 为
+      `runtime_timeout (3021ms > 3000ms)`，后续 36 runtime 为 `not_started_quality_breaker`；
+- [x] critical/permission/mutation/broader fallback/Provider failure 均为 0；
+- [x] incomplete semantic、四类 P95、aggregate input/output/CNY 全部为 `null`；11 条 usage 的
+      `9761/902`、`0.034695 CNY` 仅作诊断 subtotal；
+- [x] evidence SHA `84487b448acd7bd5e65cd523eb7556cd9b3175bc9ba44572e06a78157c45b70a`，
+      V5 validator `ok=true`；marker/58-record journal/evidence 已 seal，无 recovery claim；
+- [x] V1--V4 evidence SHA/validator 不变；未启动 Docker/API/browser、创建产品账号或修改业务数据；
+- [x] 一次性名额已消费，禁止 retry/replay/resume、R7、Task 13/main、Phase 6.10、Phase 8/9 与博客
+      收尾。
+
+下一步只能先做零 Provider 复盘并设计与 V1--V5 双向隔离的新版本。R5 checkpoint 与 R6 failure
+authority 分别见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md` 与
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。

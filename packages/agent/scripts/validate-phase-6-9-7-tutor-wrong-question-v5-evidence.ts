@@ -139,6 +139,7 @@ export async function validatePhase697TutorOrganizerV5EvidenceBundle(input: {
     marker.markerSha256 !== envelope.durability.markerSha256 ||
     marker.marker.runId !== envelope.runId ||
     marker.marker.runScope !== envelope.runScope ||
+    marker.marker.executorProvenance !== envelope.report.executorProvenance ||
     !PHASE_6_9_7_V5_MARKER_SCHEMA.safeParse(marker.marker).success
   ) {
     return { ok: false, code: 'durability_identity_invalid' };

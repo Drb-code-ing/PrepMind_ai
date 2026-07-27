@@ -1,4 +1,4 @@
-import { appendFile, mkdtemp, open as fsOpen, rm } from 'node:fs/promises';
+import { appendFile, mkdtemp, open as fsOpen, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -8,6 +8,7 @@ import {
   PHASE_6_9_7_V5_APPROVAL_ENV,
   PHASE_6_9_7_V5_CONFIRMATION,
   PHASE_6_9_7_V5_MARKER_PATH,
+  sha256Phase697V5Stable,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v5-contract.ts';
 import {
   buildPhase697V5JournalRecord,
@@ -37,7 +38,23 @@ async function temporaryRoot() {
   return root;
 }
 
-describe('Phase 6.9.7 V5 R4 CLI', () => {
+function authorizedLiveEnv(overrides?: Readonly<Record<string, string | undefined>>) {
+  return {
+    [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true',
+    AI_PROVIDER_MODE: 'live',
+    AI_ENABLE_LIVE_CALLS: 'true',
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
+    TUTOR_AGENT_MODEL_ENABLED: 'true',
+    TUTOR_AGENT_MODEL_TIMEOUT_MS: '3000',
+    TUTOR_AGENT_DEEPSEEK_API_KEY: 'synthetic-tutor-component-key',
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
+    WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'synthetic-organizer-component-key',
+    ...overrides,
+  };
+}
+
+describe('Phase 6.9.7 V5 R6 CLI', () => {
   test('requires exact one-time authorization and rejects hostile environment accessors', () => {
     expect(parsePhase697TutorOrganizerV5Cli({ argv: ['live'], env: {} })).toEqual({
       ok: false,
@@ -67,14 +84,17 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     expect(reads).toBe(0);
   });
 
-  test('does not reserve a marker when the reviewed runtime factory is absent', async () => {
+  test('rejects incomplete Live configuration before reserving a marker', async () => {
     const root = await temporaryRoot();
     const result = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: {
+        [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true',
+        DEEPSEEK_API_KEY: 'generic-key-must-not-be-borrowed',
+      },
       repositoryRoot: root,
     });
-    expect(result).toEqual({ ok: false, code: 'runtime_factory_unavailable' });
+    expect(result).toEqual({ ok: false, code: 'live_configuration_invalid' });
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V5_MARKER_PATH)).exists()).toBe(false);
   });
 
@@ -108,7 +128,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     let markerExistedAtFactory = false;
     const result = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       runId: '00000000-0000-4000-8000-000000000532',
       harnessFactory: async ({ mode, runId, runScope }) => {
@@ -131,7 +151,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     ).toEqual({ ok: true });
     const replay = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       harnessFactory: ({ mode, runId, runScope }) =>
         createPhase697V5SyntheticHarness({ mode, runId, runScope }),
@@ -139,11 +159,53 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     expect(replay).toEqual({ ok: false, code: 'live_already_attempted' });
   });
 
+  test('fails closed when an injected Live harness disagrees with marker provenance', async () => {
+    const root = await temporaryRoot();
+    const result = await executePhase697TutorOrganizerV5Cli({
+      argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
+      env: authorizedLiveEnv(),
+      repositoryRoot: root,
+      runId: '00000000-0000-4000-8000-000000000538',
+      harnessFactory: ({ mode, runId, runScope }) => ({
+        ...createPhase697V5SyntheticHarness({ mode, runId, runScope }),
+        executorProvenance: 'deepseek_network',
+      }),
+    });
+    expect(result).toEqual({ ok: false, code: 'runtime_factory_identity_invalid' });
+    expect(await Bun.file(resolve(root, PHASE_6_9_7_V5_MARKER_PATH)).exists()).toBe(true);
+  });
+
+  test('rejects evidence whose report provenance drifts from the durable marker', async () => {
+    const root = await temporaryRoot();
+    const result = await executePhase697TutorOrganizerV5Cli({
+      argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
+      env: authorizedLiveEnv(),
+      repositoryRoot: root,
+      runId: '00000000-0000-4000-8000-000000000539',
+      harnessFactory: ({ mode, runId, runScope }) =>
+        createPhase697V5SyntheticHarness({ mode, runId, runScope }),
+    });
+    if (!result.ok) throw new Error('synthetic provenance fixture failed');
+    const evidencePath = resolve(root, result.evidencePath);
+    const envelope = JSON.parse(await Bun.file(evidencePath).text()) as {
+      reportSha256: string;
+      report: { executorProvenance: string; gate: string };
+    };
+    envelope.report.executorProvenance = 'deepseek_network';
+    envelope.report.gate = 'quality_gate_passed';
+    envelope.reportSha256 = sha256Phase697V5Stable(envelope.report);
+    await writeFile(evidencePath, `${JSON.stringify(envelope, null, 2)}\n`, 'utf8');
+    expect(await validatePhase697TutorOrganizerV5EvidenceBundle({ root, evidencePath })).toEqual({
+      ok: false,
+      code: 'durability_identity_invalid',
+    });
+  });
+
   test('consumes the marker when the injected factory crashes and seals only after owner death', async () => {
     const root = await temporaryRoot();
     const result = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       runId: '00000000-0000-4000-8000-000000000533',
       harnessFactory() {
@@ -176,7 +238,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     const runId = '00000000-0000-4000-8000-000000000534';
     const result = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       runId,
       harnessFactory: ({ mode, runId: harnessRunId, runScope }) =>
@@ -193,7 +255,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     expect(
       await executePhase697TutorOrganizerV5Cli({
         argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-        env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+        env: authorizedLiveEnv(),
         repositoryRoot: root,
         harnessFactory: ({ mode, runId: harnessRunId, runScope }) =>
           createPhase697V5SyntheticHarness({ mode, runId: harnessRunId, runScope }),
@@ -226,7 +288,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     }) as unknown as typeof fsOpen;
     const result = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       runId: '00000000-0000-4000-8000-000000000535',
       harnessFactory: ({ mode, runId, runScope }) =>
@@ -244,7 +306,7 @@ describe('Phase 6.9.7 V5 R4 CLI', () => {
     const runId = '00000000-0000-4000-8000-000000000536';
     const failed = await executePhase697TutorOrganizerV5Cli({
       argv: ['live', PHASE_6_9_7_V5_CONFIRMATION],
-      env: { [PHASE_6_9_7_V5_APPROVAL_ENV]: 'true' },
+      env: authorizedLiveEnv(),
       repositoryRoot: root,
       runId,
       harnessFactory() {

@@ -1,5 +1,34 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V5 R6 Controlled-Live 失败封存：补齐 V5 真实 Live harness、默认
+> DeepSeek V4 Pro non-thinking executor、marker 前配置 fail-closed、marker+journal fsync 后 executor
+> 创建、`deepseek_network` / `synthetic_test` provenance 隔离，以及 component key/gate/URL/timeout/
+> zero-call/no-retry/schema/provider/usage/abort/prompt 泄漏回归。根 `.env` 的通用 credential 仅在用户
+> 授权的本次进程内映射为 Tutor/Organizer 两个组件变量，未打印、未写盘或进入 artifact；临时 launcher
+> 已删除。
+>
+> 唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 使用 `deepseek_network`，完成 `24/24`
+> guard zero-call、6/6 paired requests、12 次 Provider invocation 与 `11/48` strict runtime。第 6 对
+> Tutor `tutor-v2-runtime-06` 在 `3021ms` 越过冻结 `3000ms` timeout，记录 `runtime_timeout` 并打开
+> `quality_gate_impossible` breaker；同对 Organizer strict success，后续 36 runtime 未启动。Safety、
+> permission、mutation、broader fallback 与 Provider failure 均为 0，最终 `quality_gate_failed`。
+>
+> 因运行不完整，正式 Tutor/Organizer/combined semantic、四类 P95、aggregate token 与总费用全部保持
+> `null`。11 条 verified entry 的 `9761/902 tokens`、`0.034695 CNY`，以及 Tutor `0.9`、Organizer
+> `0.7083333333` executed-subset axis mean，只作为零 Provider 复盘 subtotal，不是正式质量/账单聚合，
+> 不能与 Mock 或历史 run 拼接。
+>
+> Evidence SHA 为 `84487b448acd7bd5e65cd523eb7556cd9b3175bc9ba44572e06a78157c45b70a`；
+> 58 条 journal、marker 与 evidence 已 durable seal，V5 validator 返回 `ok=true`，无 recovery claim。
+> V1--V4 evidence SHA/validator 保持不变。V5 focused `78/78`（1961 assertions）、Agent
+> `753/753`（9260 assertions）、AI `199/199`（1054 assertions）及 typecheck/lint 均通过，独立复审
+> 无 P0/P1。
+>
+> 本轮没有启动 Docker/API/浏览器、创建产品账号或修改业务数据，也没有 prune、`down -v`、reset、
+> flush 或 wipe。V5 R6 一次性名额已消费且不得重跑；R7、Task 13/main、Phase 6.10、Phase 8/9 与博客
+> 收尾均不得开始。下一步只能先做零 Provider 复盘并设计与 V1--V5 双向隔离的新版本。完整证据见
+> `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
+>
 > 2026-07-26 — Phase 6.9.7 V5 R5 Static/Mock Checkpoint：新增 reviewed V5 Mock factory、公开
 > `@repo/agent/phase-6-9-7-v5-mock` 与 `eval:phase-6-9-7:v5:mock`。CLI Mock 默认真实经过 Tutor
 > local authority/V5 candidate/validator/local merger 和 Organizer owner-snapshot shortlist/ordinal

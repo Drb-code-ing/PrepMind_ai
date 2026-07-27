@@ -4,12 +4,12 @@
 evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
 evidence 和生产验收路径。
 
-**当前状态：** R0--R5 已完成，均为 zero-provider。独立 V2 dataset/coherence、冻结 eval policy 与
-deterministic baseline、Tutor local-signal authority/bounded candidate、Organizer owner-snapshot ordinal
-shortlist/strict candidate/local merger，以及原生 V5 runner/lineage/marker/journal/evidence/validator 与
-生产极端边界已落地；R5 又完成 reviewed Mock factory、fresh baseline/Mock、受影响静态门、Organizer
-PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审。尚未读取 credential、调用
-Provider、接产品、启动 Docker/API/浏览器或修改业务数据。下一步仅 R6 授权门。
+**当前状态：** R0--R5 已完成且均为 zero-provider；独立 V2 dataset/coherence、eval policy/baseline、
+Tutor local-signal candidate、Organizer ordinal shortlist、原生 runner/lineage 与 reviewed static/Mock
+checkpoint 已落地。唯一 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 已使用
+`deepseek_network` 执行并以 `quality_gate_failed` 封存：`24/24` guard、12 次 Provider invocation、
+`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。
+R6 不得重跑，R7/R8 被阻断；下一步只能先做零 Provider 复盘与新的独立版本设计。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
@@ -20,7 +20,7 @@ Provider、接产品、启动 Docker/API/浏览器或修改业务数据。下一
 - main agent 编辑、决策、验证和提交；subagent 只读取证；
 - 一个 R-task、一次相关文档同步、一个原子提交并推送功能分支；
 - V1–V4 Live、marker、journal、evidence、dataset bytes/SHA 不改、不删、不重跑、不拼接；
-- R0–R5 无 Provider；R6 必须重新取得 V5 精确一次性授权；
+- R0–R5 无 Provider；R6 一次性授权已消费，禁止 retry/resume/replay 或改写 durable artifacts；
 - 不保存 prompt、raw model output、credential、真实用户原文/ID 或自由文本失败；
 - 24 guard 先行、固定分母、单 pair 最多双并发、lane 独立、首个 contract failure 熔断；
 - semantic mismatch 不提前 breaker；无 retry、补跑、resume 或 replay；
@@ -155,17 +155,25 @@ executor 计数，不是真实 Provider call。
 
 ## R6：唯一 V5 branch controlled-Live
 
-**状态：** [ ] 未授权、不得开始。
+**状态：** [x] 已执行并失败封存，不得重跑。
 
-前置必须同时满足：R5 clean/pushed；用户重新接受当时 DeepSeek 数据边界；用户明确授权唯一一次
-V5 branch controlled-Live；V5 marker/journal/evidence 不存在；历史 SHA 和 default-off 全通过。
+前置已满足：R5 clean/pushed；用户重新接受当前 DeepSeek 数据边界并明确授权唯一一次 V5 branch
+controlled-Live；运行前 V5 marker/journal/evidence 不存在，历史 SHA 和 default-off 通过。
 
-执行：zero-network preflight -> component credential 映射 -> marker/journal -> 24 guard -> 24 pair ->
-evidence seal/validator。任何终态都只执行一次；失败即封存并停止。
+执行结果：zero-network preflight -> 进程内 component credential 映射 -> marker/journal -> 24 guard ->
+前 6 pair -> Tutor runtime timeout -> breaker -> evidence seal/validator。Run
+`aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、
+`11/48` strict runtime；第 6 对 Tutor `tutor-v2-runtime-06` 为 `3021ms > 3000ms`，后续 36 runtime
+未启动，最终 `quality_gate_failed`。正式 semantic/P95/token/费用聚合均为 `null`。
+
+Evidence SHA：`84487b448acd7bd5e65cd523eb7556cd9b3175bc9ba44572e06a78157c45b70a`；
+marker、58 条 hash-chain journal 与 evidence 已 durable seal，validator `ok=true`，无 recovery claim。
+完整记录：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
 ## R7：产品 Docker/API/可见浏览器验收
 
-**状态：** [ ] 仅 R6 全门通过后允许。
+**状态：** [ ] 被 R6 `quality_gate_failed` 阻断，不得开始。
 
 - Tutor Chat：中文/英文 specific intent、explicit zero-call、forced fallback、Trace/usage/price；
 - Organizer：single/batch、known/unknown subject、create/reuse、owner/locked/stale/concurrency；
@@ -175,7 +183,7 @@ evidence seal/validator。任何终态都只执行一次；失败即封存并停
 
 ## R8：分支收尾、main 合并与 main 回放
 
-**状态：** [ ] 仅 R7 通过后允许。
+**状态：** [ ] 被 R6/R7 阻断，不得开始。
 
 - 同步全部开发/验收/运维文档并完成最终复审；
 - 原子提交并推送功能分支；

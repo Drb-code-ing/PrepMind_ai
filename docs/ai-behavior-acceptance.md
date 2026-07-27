@@ -235,9 +235,9 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R5）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1、V2、V3、V4 四条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0 已确认 V1 fixture 不真实、产品 dynamic contract 拒绝与 Live 语义偏差并存；V5 R1 已另建 coherent V2 dataset、prompt-safe projection、冻结 eval policy 与 deterministic baseline；V5 R2/R3 已完成两条 bounded candidate；V5 R4 已完成原生 runner/lineage、持久化 evidence 与生产极端边界；V5 R5 已完成 reviewed Mock factory、fresh baseline/Mock、受影响静态门、PostgreSQL 并发 E2E、Compose default-off、历史不可变性与两路终审，但仍没有接 legacy 产品 composition。V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步仅 V5 R6 授权门。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V5 五条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0--R5 又建立 coherent V2 dataset、prompt-safe projection、冻结 eval policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock 与生产极端边界，但没有接 legacy 产品 composition。唯一 V5 R6 在 `24/24` guard、12 次 Provider invocation、`11/48` strict runtime 后因第 6 对 Tutor timeout 熔断并失败封存；V1--V4 authority 均未改写。产品 Docker/API/浏览器仍未启动，不能声称两个 Agent 已生产可用；下一步只能先做零 Provider 复盘与新版本设计。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -552,9 +552,22 @@ runtime、semantic `1/1/1`，gate 为 `mock_quality_not_evidence`。48 次 invoc
 V5 focused `62/62`（1570 assertions）、Agent `745/745`、AI `199/199`、Types `42/42`、Server boundary `3/3`、Web
 `439/439`、Organizer PostgreSQL `12/12`、Compose default-off、V1--V4 SHA/validator、V5 artifact=0
 与两路终审通过。本轮未读取 `.env`/credential、调用 Provider、接产品 gate、启动 Docker/API/browser
-或修改业务数据。V5 R0--R5 已完成且仍为 zero-provider；下一步仅 R6，必须重新确认 DeepSeek 数据
-边界并取得唯一一次 V5 branch controlled-Live 精确授权。完整证据见
+或修改业务数据。该段是 R5 当时的 zero-provider checkpoint；后续唯一 R6 结果见下段。完整证据见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
+
+V5 R6 当前证据：唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 使用 `deepseek_network`，
+`24/24` guard verified zero-call，前 6 对启动 12 次 Provider 调用并得到 `11/48` strict
+runtime。第 6 对 Tutor `tutor-v2-runtime-06` 在 `3021ms` 越过冻结的 `3000ms` timeout，记录
+`runtime_timeout` 并触发 breaker；同对 Organizer strict success，后续 36 runtime 未启动。Safety、
+permission、mutation、broader fallback 与 Provider failure 均为 0，最终 `quality_gate_failed`。
+
+因为 runtime 分母不完整，Tutor/Organizer/combined semantic、四类 P95、aggregate input/output/CNY
+均必须为 `null`。11 条 verified entry 的 `9761/902 tokens`、`0.034695 CNY` 与 Tutor `0.9`、
+Organizer `0.7083333333` executed-subset axis mean 只用于诊断，不是正式质量/费用聚合。Evidence SHA 为
+`84487b448acd7bd5e65cd523eb7556cd9b3175bc9ba44572e06a78157c45b70a`；marker、58 条 journal 与
+evidence 已 seal，validator `ok=true`，无 recovery claim。R6 不得重跑，也不得进入 R7、产品
+Docker/API/browser、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。完整证据见
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

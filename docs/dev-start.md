@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R5）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -1053,10 +1053,19 @@ Fresh baseline 预期 `12/48` complete、semantic
 semantic `1/1/1`，gate 为 `mock_quality_not_evidence`。Mock 报告中的 48 次 invocation 是 synthetic
 executor 计数，不是真实 Provider call；output/cost 为 0 也不代表真实模型 token/账单。
 
-R5 已完成并停止。下一步仅 R6，但下面命令不是日常开发命令，也不得凭“继续/所有权限”执行：必须先
-重新确认当前 DeepSeek 数据保留/训练边界，并取得唯一一次 V5 branch controlled-Live 精确授权。授权
-前不得读取 component credential、创建 V5 marker 或执行任何 V5 network CLI；产品 Docker/API/browser
-同样尚未开始。
+R5 完成后，用户已重新确认当前 DeepSeek 数据保留/训练边界并精确授权唯一一次 V5 branch
+controlled-Live。根 `.env` 的通用 key 只在授权进程内映射为两个 component-specific 变量，未打印、
+写盘或进入 artifact。唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard
+zero-call、12 次 Provider invocation、`11/48` strict runtime；第 6 对 Tutor
+`tutor-v2-runtime-06` 在 `3021ms` 越过冻结 `3000ms` timeout 后打开 breaker，后续 36 runtime 未启动，
+最终 `quality_gate_failed`。正式 semantic/P95/token/总费用聚合均为 `null`。
+
+V5 R6 一次性名额已消费。严禁再次运行 V5 network CLI，严禁删除、覆盖或重建 V5 marker、journal、
+evidence，也不得使用 seal/recovery 去 resume、replay 或补跑 Provider。日常开发仍保持 mock、live=false、
+Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未开始。下一步只能先做零
+Provider 复盘并设计新的独立版本，不能进入 R7、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。
+完整失败证据见
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
