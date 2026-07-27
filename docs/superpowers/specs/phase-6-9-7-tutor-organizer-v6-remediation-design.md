@@ -2,8 +2,10 @@
 
 日期：2026-07-27
 
-状态：R0/R1 已完成且均为 zero-provider。V6 source contracts 已冻结；尚未实现 candidate、产品
-composition、runner、marker、Mock 或 Live。当前没有新的 Provider 调用授权，下一步仅 R2。
+状态：R0--R2 已完成且均为 zero-provider。V6 source contracts、intent-only Tutor candidate、
+actual-shortlist ordinal-only Organizer candidate 与独立 robustness 已冻结；尚未实现产品 composition、
+runner、CLI、marker、journal、evidence、validator、Mock 或 Live。当前没有新的 Provider 调用授权，
+下一步仅 R3。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -18,6 +20,9 @@ R0 acceptance：
 
 R1 acceptance：
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`
+
+R2 acceptance：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`
 
 ## 1. 决策摘要
 
@@ -208,12 +213,44 @@ actual shortlist/fingerprint、pre/post stale fence、ABA、locked name 与真�
 candidate composition 完成。R1 也没有 runtime factory、runner、Mock 或 Live，不能据此声称 Agent 已
 接入新的模型路径。
 
+### 7.2 R2 已冻结的 candidate composition
+
+R2 已把 R1 source contracts 接入两个独立 package candidate，但仍没有产品 wiring：
+
+- Tutor prompt/strict schema 只允许 `{ intentIndex }`；projection 仅暴露安全文本、context availability、
+  authority SHA 与 eligible intent ordinal。本地 preferred-depth authority 重建 depth、context use、
+  guiding/final-answer boundary、answer structure 与最终 TutorStrategy；
+- Organizer 复用 V5 实际 owner shortlist。模型只能返回 shortlist fingerprint、每题 ordinal 与
+  subject/deck/topic ordinal；真实 ID、locked name、confidence、reason/description、command binding 与
+  写权限不进入模型；
+- Organizer 在 runtime 前后分别重新派生实际 shortlist，并验证 owner domain、snapshot version/
+  fingerprint 与 shortlist fingerprint。stale、ABA、cross-subject、duplicate/out-of-range ordinal、
+  locked-name collision 或 association drift 整批 fail-closed，不 retry；
+- confidence 只由本地 structured/knowledge-point/category/error-type/same-subject overlap evidence 重建；
+  跨语言阅读 overlap 只接受有界等价组，不能由任意 reuse 自动升级；
+- public Organizer merger 不信任 validated-shaped 调用者，先还原 raw ordinal decision 再执行完整
+  validator；hostile accessor/proxy 不被调用；
+- actual prompt 递归 leakage scanner 不允许 V1--V5 identity、frozen case ID、expected/oracle、source ID
+  或完整 label authority，且以 deliberate contamination 证明 scanner 有效。
+
+冻结 identity：
+
+| Contract                       | SHA-256                                                            |
+| ------------------------------ | ------------------------------------------------------------------ |
+| Tutor V6 prompt                | `4f73ae60e708ed9ba08bc5533cc489626543ca09e0396777ef4d725c9656a169` |
+| Organizer V6 prompt            | `c5f1f662ba380283aa08ffe2dc194874c9420b1c6b34ffc86107e476101f3450` |
+| independent robustness fixture | `314543fe1694c0caa2b8fc48fa79a1bfcd751eb0431664ffafb9ceee3103904b` |
+
+R2 focused `24/24`、Agent full `792/792`、typecheck/lint 与独立复审通过。V2 dataset/baseline SHA
+保持不变。R2 没有 runtime factory、product gate/Trace、runner、Mock 或 Live；expected-driven
+no-network executor 只证明工程 contract，不能作为模型语义质量 authority。
+
 ## 8. 原子实施路线
 
 1. **R0**：本文件、计划、acceptance 与仓库状态文档；全程零 Provider。（已完成）
 2. **R1**：deadline/eval-policy、单调计时与两条 local authority contract；零 Provider。（已完成）
 3. **R2**：Tutor intent-only bounded candidate、Organizer ordinal-only candidate、独立 held-out/
-   metamorphic 与 prompt-leakage；零 Provider。
+   metamorphic 与 prompt-leakage；零 Provider。（已完成）
 4. **R3**：独立 V6 runner/CLI 与 marker/journal/evidence/validator contract、fixed denominator、breaker、
    crash seal、V1--V5 双向隔离；只实现 contract，不创建 Live marker，零 Provider。
 5. **R4**：fresh baseline/Mock、focused/full/static、PostgreSQL concurrency、Compose default-off、历史

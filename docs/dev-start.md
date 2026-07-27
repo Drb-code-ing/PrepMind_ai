@@ -1067,27 +1067,28 @@ Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未
 完整失败证据见
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
 
-V6 R0/R1 后续已完成零 Provider 设计与 source contracts，但当前**仍没有可运行的 V6 CLI、marker、
-Mock 或 Live 路径**。不要把 V5 CLI 改参数后当成 V6，也不要手工创建 `v6` artifact。V6 policy 已
-冻结 Tutor executor hard timeout `3500ms` 与 Tutor candidate P95 `<=2500ms` 的独立含义；Organizer
-继续 `5000/4500ms`。每类 P95 必须恰好 24 个样本并取升序第 23 个值；任一 lane 不完整时四个 P95
-全为 `null`。R1 只实现 dataset/eval/deadline、model-owned metrics 与 Tutor depth/Organizer confidence
-local authority，没有把 `3500ms` 接入 executor，也没有 actual shortlist/fingerprint/stale composition。
+V6 R0--R2 后续已完成零 Provider 设计、source contracts 与 package 级 bounded candidates，但当前
+**仍没有可运行的 V6 CLI、marker、Mock 或 Live 路径**。不要把 V5 CLI 改参数后当成 V6，也不要手工
+创建 `v6` artifact。V6 policy 已冻结 Tutor executor hard timeout `3500ms` 与 Tutor candidate P95
+`<=2500ms` 的独立含义；Organizer 继续 `5000/4500ms`。每类 P95 必须恰好 24 个样本并取升序第
+23 个值；任一 lane 不完整时四个 P95 全为 `null`。R2 仍没有把 `3500ms` 接入 executor factory 或
+产品 composition；它只在注入式无网络 runtime 上验证 Tutor intent-only 与 Organizer actual-shortlist
+ordinal-only candidate、本地 depth/confidence/真实 ID authority 和双 stale fence。
 
-R1 的安全本地复验入口不会读取 `.env` 或创建 artifact：
+R2 的安全本地复验入口不会读取 `.env` 或创建 artifact：
 
 ```powershell
-bun test packages/agent/tests/phase-6-9-tutor-organizer-v6-r1-policy.test.ts packages/agent/tests/tutor-v6-preferred-depth-authority.test.ts packages/agent/tests/wrong-question-organizer-v6-confidence-authority.test.ts
+bun test packages/agent/tests/tutor-v6-model-candidate.test.ts packages/agent/tests/wrong-question-organizer-v6-model-candidate.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v6-independent-robustness.test.ts
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```
 
-下一步仅 V6 R2 bounded candidates、actual shortlist composition 与独立 robustness，且仍为
-zero-provider。R4 static/Mock checkpoint 与用户新的 V6 精确授权前，不读取 component credential、不
-创建 Live marker、不调用 Provider。设计、计划与 R1 验收见
+下一步仅 V6 R3 runner/CLI/marker/journal/evidence/validator、fixed denominator、breaker/crash seal 与
+V1--V5 双向 lineage 隔离，且仍为 zero-provider。R4 static/Mock checkpoint 与用户新的 V6 精确授权前，
+不读取 component credential、不创建 Live marker、不调用 Provider。设计、计划与 R2 验收见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`、
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`。
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

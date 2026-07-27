@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-07-27 — Phase 6.9.7 V6 R2 Bounded Candidates：新增公开
+> `@repo/agent/tutor-v6` 与 `@repo/agent/wrong-question-organizer-v6`。Tutor 的模型输出收敛为唯一
+> `{ intentIndex }`，只允许在本地 eligible intent ordinal 中做语义选择；preferred depth、active-context
+> 使用、guiding/final-answer boundary、answer structure 与完整 TutorStrategy 仍由本地 authority 重建。
+> route/safety/明确教学指令/abort/预算失败都在 runtime 前 zero-call；eligible 路径最多一次调用、无重试，
+> schema/runtime/usage/authority/post-abort 失败均回退原确定性策略。
+>
+> Organizer 复用 V5 实际 owner shortlist，只向模型暴露 shortlist fingerprint、question ordinal 与
+> subject/deck/topic ordinal。Provider 前后都会重新派生实际 shortlist 并核对 owner domain、snapshot
+> version/fingerprint 与 shortlist fingerprint；stale、ABA、cross-subject、重复/越界 ordinal、locked-name
+> collision 或本地 association 漂移整批 fail-closed。真实 question/deck ID、locked name、confidence、
+> reason/description、command binding 与写权限全部由本地重建。跨语言阅读 overlap 使用有界本地等价组，
+> 不把任意 reuse 直接提升为 high confidence。
+>
+> 公共 Organizer merger 不再信任 validated-shaped 调用方对象：它先还原 raw ordinal decision，再重新执行
+> 完整 strict validator，避免空 decision、重复 ordinal 或伪造 `resolvedSubject` 绕过。新增 hostile 顶层/
+> runtime accessor 零读取、locked-name collision 不跳过、owner/snapshot ABA、reorder、六学科、双语/
+> mixed/否定/引用干扰，以及 actual prompt 递归 leakage 与 deliberate contamination 反例。
+>
+> 冻结 Tutor/Organizer prompt SHA 为 `4f73ae60e708...a169` / `c5f1f662ba38...3450`，独立 robustness
+> fixture SHA 为 `314543fe1694...904b`；V2 dataset SHA `42803d45...b437b` 与 baseline SHA
+> `0ce7c3ca...116ca` 保持不变。最终 focused `24/24`（989 assertions），Agent full `792/792`
+> （10458 assertions），typecheck/lint exit 0；两路只读代码/测试复审无 P0/P1/P2 阻断。测试中的 expected
+> Mock 只证明 projection/validator/merger，不证明真实模型语义质量。
+>
+> 本任务全程 zero-provider：未读取 `.env`/credential、调用 Provider、创建 V6 Live artifact、启动
+> Docker/API/browser 或修改业务数据；也没有产品 composition/gate/Trace persistence、runner、CLI、marker、
+> journal、evidence、validator、Mock checkpoint 或 Live。下一原子任务仅 V6 R3 runner/lineage/durability
+> contract。验收见
+> `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V6 R1 Source Contracts：在 R0 冻结设计上新增独立 V6 dataset
 > binding/eval policy、单调 deadline evidence、固定分母 model-owned scorer、Tutor preferred-depth
 > local authority 与 WrongQuestionOrganizer confidence local authority。V2 dataset/expected/baseline bytes
@@ -23,8 +54,8 @@
 > V5 `3000ms` timeout 与 frozen policy SHA 隔离测试通过。
 >
 > 本任务全程 zero-provider：没有读取 `.env`/credential、实现 candidate/runner/marker/Mock/Live、调用
-> Provider、启动 Docker/API/browser 或修改业务数据。下一原子任务仅 V6 R2 bounded candidates、actual
-> shortlist composition 与独立 robustness；R4 checkpoint 和新的精确授权前仍不得创建 Live artifact
+> Provider、启动 Docker/API/browser 或修改业务数据。该检查点当时下一原子任务仅 V6 R2 bounded
+> candidates、actual shortlist composition 与独立 robustness；后续 R2 已完成。R4 checkpoint 和新的精确授权前仍不得创建 Live artifact
 > 或调用 Provider。验收见
 > `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r1-source-contracts.md`。
 >

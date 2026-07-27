@@ -4,9 +4,10 @@
 Organizer confidence 的 authority/评分耦合，并保留模型对 Tutor 歧义 intent 和 Organizer
 subject/deck/topic ordinal 的真实语义职责。
 
-**当前状态：** R0/R1 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
-metrics、Tutor preferred-depth 与 Organizer confidence source contracts；尚未实现 candidate、产品
-composition、runner、marker、Mock 或 Live，也没有新的 Provider 授权。下一原子任务仅 R2。
+**当前状态：** R0--R2 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
+metrics、Tutor preferred-depth/Organizer confidence source contracts、intent-only Tutor candidate、
+actual-shortlist ordinal-only Organizer candidate 与独立 robustness；尚未实现产品 composition、runner、
+CLI、marker、journal、evidence、validator、Mock 或 Live，也没有新的 Provider 授权。下一原子任务仅 R3。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`
@@ -80,7 +81,7 @@ composition、runner、marker、Mock 或 Live，也没有新的 Provider 授权�
 
 ## R2：V6 bounded candidates 与独立 robustness
 
-**状态：** [ ] 待开始；R1 前置已关闭，仍为 zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 - Tutor 模型只选择本地 eligible intent ordinal；depth 与策略字段由本地 authority 重建；
 - Organizer 模型只选择 subject/deck/topic ordinal；confidence 由本地 authority 重建；
@@ -94,9 +95,24 @@ composition、runner、marker、Mock 或 Live，也没有新的 Provider 授权�
 
 **停止点：** 不接产品 composition/gate/Trace persistence，不创建 Live runner，不调用 Provider。
 
+**完成证据：**
+
+- Tutor strict output 仅 `{ intentIndex }`；24 个冻结 V2 runtime intent 全部通过，本地重建 preferred
+  depth、context/guiding/final-answer 与 answer structure；
+- Organizer 32 个冻结 model-owned decisions 全部通过；实际 owner shortlist 在 runtime 前后重派生，
+  owner/snapshot/fingerprint/stale/ABA/locked-name/ordinal association 全部 fail-closed；
+- confidence、真实 ID、locked name、reason/description、command binding 与写权限保持本地；
+- public merger 二次完整验证，hostile accessor 零读取，跨语言 overlap 使用有界本地等价组；
+- actual prompt leakage/contamination、五类 Tutor intent、六学科 Organizer、reorder/owner/stale/ABA 覆盖；
+- focused `24/24`（989 assertions）、Agent full `792/792`（10458 assertions）、typecheck/lint 与独立
+  复审通过；没有 credential、Provider、Docker/API/browser、Live artifact 或业务数据操作。
+
+**验收文档：**
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md`
+
 ## R3：V6 runner、lineage 与生产极端边界
 
-**状态：** [ ] 被 R2 阻断。
+**状态：** [ ] 下一原子任务；R2 前置已关闭，仍为 zero-provider。
 
 - 独立 V6 runner/CLI/approval 与 marker/hash-chain journal/hard-link evidence/validator contract；
 - V1--V5/V6 双向 lineage 拒绝和历史 SHA 校验；
