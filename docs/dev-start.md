@@ -1111,18 +1111,19 @@ R7/main。日常开发继续保持 mock、live=false、Tutor/Organizer gate=fals
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
 
-V7 R0/R1/R2/R3 已完成零 Provider transport-remediation 设计、第一方 DeepSeek V4 Pro direct adapter、
-wire diagnostics、独立 runner/CLI/lineage/durable evidence、完整 fault matrix 与 reviewed static/Mock
-checkpoint。R2 新增的 CLI、marker、journal、evidence 与 recovery contract 是未来受控运行入口，不是
-当前运行授权。R3 默认 Mock 已接 reviewed factory，但只产生 `mock_synthetic` /
-`mock_quality_not_evidence` 工程证据；Mock evidence 已按精确 path 删除，仓库 `.tmp` 中 V7 Live
-marker/journal/evidence/recovery claim 均为 0。
+V7 R0--R3 已完成 transport-remediation 设计、第一方 DeepSeek V4 Pro direct adapter、wire
+diagnostics、独立 runner/CLI/lineage/durable evidence、完整 fault matrix 与 reviewed static/Mock。唯一 V7
+R4 branch controlled-Live run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 随后已执行并
+`quality_gate_failed`：`24/24` guard zero-call；首对 Tutor 完成 8-stage success，Organizer 在收到
+response、完成 JSON parse 后于 `provider_type_validation` 失败；最终 wire `2/2/2/1`、strict
+`1/48`，正式 semantic/P95/token/CNY 全为 `null`。Evidence/marker/journal 已 seal，bundle validator
+`ok=true / filesChecked=1`，无 recovery claim。
 
-当前只允许下一原子任务 R4 精确授权门。不要运行
-`bun --filter @repo/agent eval:phase-6-9-7:v7:live`，不要手工创建 marker/journal/evidence，不要把
-`PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`。用户必须重新接受运行当时 DeepSeek 数据
-边界并明确授权唯一一次 `Phase 6.9.7 Tutor/Organizer V7 branch controlled-Live`；普通“继续”不构成
-授权。R4 前仍不得读取根 `.env`、访问 Provider、启动产品 Docker/API/browser 或接产品 composition。
+V7 一次性名额已经消费。严禁运行
+`bun --filter @repo/agent eval:phase-6-9-7:v7:live`，也不得手工创建/修改 marker/journal/evidence、调用
+`v7:seal`/recovery、把 `PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`，或通过 curl、单
+case、另一 CLI、产品 API 做追加 Provider 探测。R5 产品 Docker/API/可见浏览器与 R6 main 回放被
+阻断；日常开发继续保持 mock、live=false、Tutor/Organizer gate=false、component key empty。
 
 V7 wire contract 固定区分：
 
@@ -1168,9 +1169,9 @@ V7 设计和当前停止门见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md` 与
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`、
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。R3 已通过 static/Mock/
-fault-matrix；只有本次提交 clean/pushed 且用户重新精确授权后，R4 才能创建唯一 V7 Live artifact。R5
-产品 Docker/API/可见浏览器与 R6 main 回放继续逐级阻断。
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。V7 R4 已失败封存且不可
+重跑；下一步只能先做新的独立 zero-provider 根因复盘与版本化设计，不能直接开始 R5/R6。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

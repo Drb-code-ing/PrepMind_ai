@@ -16,7 +16,9 @@ R3 只把 adapter 的 `fetch` delegate 替换为进程内 synthetic responder。
 
 Fresh reviewed Mock 为 `24/24` guard zero-call、`48/48` strict runtime，Tutor/Organizer/combined semantic 与 model-owned axes 全部为 `1`，四类 wire counter 均为 `48`。Gate 固定为 `mock_quality_not_evidence`，不会成为 controlled-Live authority。
 
-Phase 6.9.7 仍未完成。下一步仅 R4 唯一 V7 branch controlled-Live 授权门；当前“继续”不构成该授权。
+本文件冻结 R3 当时的 checkpoint：Phase 6.9.7 当时仍未完成，下一步仅 R4 唯一 V7 branch
+controlled-Live 授权门，“继续”不构成该授权。后续 R4 已执行并以 `quality_gate_failed` 封存；当前状态
+见 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
 
 ## 2. 两个 Agent 在本轮中的职责
 
@@ -89,7 +91,8 @@ Fresh reviewed V7 Mock：
 | synthetic estimated cost                        |                         `0.080139 CNY` |
 | gate                                            |            `mock_quality_not_evidence` |
 
-Mock evidence 已按本次精确 path 删除，没有清空 `.tmp`。V7 Live marker、journal、evidence 与 recovery claim 均为 0。
+Mock evidence 已按本次精确 path 删除，没有清空 `.tmp`。在 R3 checkpoint 当时，V7 Live marker、
+journal、evidence 与 recovery claim 均为 0。
 
 ## 6. 全量验收
 
@@ -138,7 +141,7 @@ V1--V6 validators 全部通过。V6 三份 physical SHA 与历史 authority 一�
 - 未开始 R4、R5、R6、Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾；
 - 未执行 Docker `down -v`、prune、volume/database reset、Redis flush 或 MinIO wipe。
 
-## 9. 下一步与授权门
+## 9. R3 当时的下一步与授权门
 
 下一原子任务仅 V7 R4。开始前必须同时满足：
 
@@ -149,6 +152,10 @@ V1--V6 validators 全部通过。V6 三份 physical SHA 与历史 authority 一�
 5. 用户明确授权唯一一次 `Phase 6.9.7 Tutor/Organizer V7 branch controlled-Live`。
 
 普通“继续”“开始”或此前 V1--V6 的授权都不能消费 V7 R4 名额。R4 无论通过或失败都只 seal 一次，不 retry、resume、replay 或 backfill；只有 R4 全门通过，R5 产品 Docker/API/可见浏览器才可能开始。
+
+当前补记：该唯一 R4 名额后续已经消费，run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 以
+`quality_gate_failed` 封存，不得重跑；R5/R6/main 均被阻断。本节保留的是 R3 进入 R4 前的授权合同，
+不是当前待执行步骤。
 
 回顾时可以问：
 

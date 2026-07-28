@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V7 R4 唯一 Controlled-Live 失败封存：用户重新接受运行时
+> DeepSeek 数据保留/训练边界并精确授权唯一一次 branch run。零网络 preflight 在 clean/pushed
+> `df5ed8c7` 上确认 V7 artifact=0、V1--V6 validators/SHA 与 V7 focused `26/26` 全部通过；根
+> `.env` 没有改写，底层 secret 只在授权 Bun 子进程内映射到 Tutor/Organizer component credential，
+> key 未打印、写盘、进入参数、evidence 或 Git。
+>
+> 唯一 run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 完成 `24/24` guard zero-call。首对
+> runtime 的 Tutor 与 Organizer 都完成 direct adapter dispatch/response：Tutor 完成完整 8-stage wire，
+> `candidate_applied`，usage `532/8`、estimated `0.001644 CNY`；Organizer 已通过 response audit 与
+> JSON parse，但在真实 V6 Organizer Zod schema 的 `provider_type_validation` 失败。Runner 收口当前
+> pair 后打开 `quality_gate_impossible` breaker，后续 46 runtime 未启动。
+>
+> 最终 executor/dispatch/response/verified-usage 为 `2/2/2/1`、strict runtime `1/48`，正式
+> semantic/P95/token/CNY 全为 `null`，gate `quality_gate_failed`；safety 为 24 verified zero-call、
+> critical/permission/mutation/broader fallback 全 0。Evidence/marker/journal physical SHA 分别为
+> `3cf3c077...bc9f` / `e7b9acc0...562d` / `1e84d624...82d`，journal 最后一条为
+> `evidence_sealed`，bundle validator `ok=true / filesChecked=1`，无 recovery claim。
+>
+> V7 一次性名额已经消费，禁止 retry/resume/replay/backfill、额外 curl/单 case/产品 API 探测或
+> 拼接 R3 Mock/Tutor 单条成功。R5 产品 Docker/API/可见浏览器、R6/main、Task 13 与后续阶段均被
+> 阻断；下一原子任务只能先做新的独立 zero-provider 根因复盘与版本化 remediation 设计。完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V7 R3 Zero-network Fault Matrix 与 Static/Mock Checkpoint：
 > 新增 reviewed V7 Mock factory，48 条 runtime 全部从冻结 V2 dataset 派生并穿过真实 V6 Tutor/
 > Organizer candidate、bounded projection、正式 prompt、strict schema、本地 authority merger 与 R1
@@ -29,8 +52,8 @@
 > Types lint 通过或顺带新增配置。
 >
 > 全程未读取根 `.env`/credential、调用 Provider、执行 `v7:live`、启动产品 Docker/API/browser、创建
-> V7 Live artifact、接产品 composition 或修改业务数据。下一原子任务仅 R4 精确授权门；普通“继续”
-> 不构成 Live 授权。完整验收见
+> V7 Live artifact、接产品 composition 或修改业务数据。该检查点当时下一原子任务仅 R4 精确授权门；
+> 后续唯一 R4 已失败封存。完整验收见
 > `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V7 R2 独立 runner、lineage 与 durable wire evidence：在 R1 第一方
@@ -1553,8 +1576,8 @@ invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace�
 
 > Lineage 边界：以下 V6--V9 均是 **Phase 6.9.5 Review/Planner** 的历史记录，与当前
 > **Phase 6.9.7 Tutor/Organizer V7** 不是同一 lineage。不得把下文任何 Live 终态、marker、授权或后续
-> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1/R2/R3 zero-provider，下一任务仅 R4
-> 精确授权门。
+> 计划用于当前 Phase 6.9.7；后者已完成 R0--R3 zero-provider checkpoint，唯一 R4 随后以
+> `quality_gate_failed` 封存且不得重跑，R5/R6/main 被阻断。
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 

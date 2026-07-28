@@ -4,8 +4,9 @@
 DeepSeek V4 Pro direct adapter 和 durable wire evidence 消除 `provider_runtime / unknown` 的传输诊断
 盲区，再由同一 72-case 合同决定是否具备一次新的 controlled-Live 资格。
 
-**当前状态：** R0/R1/R2/R3 已完成，均为 zero-provider。下一原子任务仅 R4 唯一 branch
-controlled-Live 授权门；R4 尚未获得新的精确授权，R5--R6、Provider、产品 Docker/API 与浏览器均未开始。
+**当前状态：** R0/R1/R2/R3 已完成。唯一 R4 branch controlled-Live run `81529c2c...` 已以
+`quality_gate_failed` 封存且不得重跑；R5--R6、产品 Docker/API/可见浏览器与 main 均被阻断。下一原子
+任务只能先做新的独立 zero-provider 根因复盘与版本化 remediation 设计。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`
@@ -149,7 +150,7 @@ V1--V6 validators/SHA、V7 artifact=0，以及 contract/security/wire 与 docs/h
 
 ## R4：唯一 V7 branch controlled-Live
 
-**状态：** [ ] 未授权。
+**状态：** [x] 已执行，失败封存。
 
 必须同时满足：R3 clean/pushed、V7 marker/journal/evidence/recovery claim 为 0、V1--V6 SHA/validators
 通过、用户重新接受运行当时 DeepSeek 数据边界，并明确授权唯一一次 **Phase 6.9.7
@@ -162,9 +163,19 @@ Tutor/Organizer V7 branch controlled-Live**。
 Live 除 V6 全部门外，还要求 48 executor、48 dispatch、48 response、48 verified usage 与完整 8-stage
 success prefix。任一 incomplete lane 使 semantic/P95/token/CNY 全为 `null`。
 
+**执行结果：** zero-network preflight 在 clean/pushed `df5ed8c7` 上确认 V7 artifact=0、V1--V6
+validators/SHA 与 V7 focused `26/26` 通过。唯一 run
+`81529c2c-79f5-4c21-9cee-e536a2fe78e3` 为 `24/24` guard zero-call；首对 Tutor 完成完整
+8-stage wire、`candidate_applied`、verified usage `532/8`，Organizer 已收到 response 并完成
+`content_parsed`，但在 `provider_type_validation` 失败。Runner 随即熔断，后续 46 runtime 未启动；最终
+wire `2/2/2/1`、strict `1/48`，semantic/P95/token/CNY 全 `null`，gate
+`quality_gate_failed`。Evidence/marker/journal 已 seal，bundle validator `ok=true / filesChecked=1`，无
+recovery claim。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
+
 ## R5：产品 Docker / API / 可见浏览器验收
 
-**状态：** [ ] 仅 R4 全门通过后允许。
+**状态：** [ ] 被 R4 `quality_gate_failed` 阻断，不得开始。
 
 - 将 V7 direct adapter 与冻结 V6 candidates 接入 Tutor Web / Organizer Server composition；
 - 保持现有独立 credential/gate/budget/owner/stale/Trace/command 权限；
@@ -176,7 +187,7 @@ success prefix。任一 incomplete lane 使 semantic/P95/token/CNY 全为 `null`
 
 ## R6：分支收尾、main 合并与回放
 
-**状态：** [ ] 仅 R5 全门通过后允许。
+**状态：** [ ] 被 R4 失败终态阻断，不得开始。
 
 - 同步最终数值、SHA、wire 边界、DEVLOG 与 acceptance；
 - 原子提交并推送功能分支；
@@ -185,5 +196,6 @@ success prefix。任一 incomplete lane 使 semantic/P95/token/CNY 全为 `null`
 - 精确清理、gates=false、credentials absent、volumes retained；
 - 推送 main 并确认本地/远程 SHA parity。
 
-R3 完成后的下一原子任务仅 R4 精确授权门。当前“继续”不构成 Live 授权；Phase 6.9.8、Phase 6.10、
-Phase 8/9 与两篇面试学习博客继续等待 Phase 6.9.7 和全部 Agent 架构完成。
+V7 R4 一次性名额已经消费。禁止再次执行 V7 Live、seal/recovery、额外 Provider 探测或把 R3 Mock 与
+Tutor 单条成功拼接为通过。下一原子任务只能先建立新的独立 zero-provider 复盘/设计；Phase 6.9.8、
+Phase 6.10、Phase 8/9 与两篇面试学习博客继续等待 Phase 6.9.7 和全部 Agent 架构完成。

@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V6 controlled-Live 均已以 `quality_gate_failed` 封存。唯一 V6 R5 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1/R2/R3 已完成零 Provider transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics、独立 runner/lineage/durable evidence、完整 fault matrix 与 reviewed static/Mock checkpoint。当前下一原子任务仅 R4 精确授权门；完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V7 controlled-Live 均已以 `quality_gate_failed` 封存。唯一 V7 R4 run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 为 `24/24` guard zero-call、wire `2/2/2/1`、`1/48` strict runtime；首对 Tutor 完成 8-stage success，Organizer 在 `content_parsed` 后于 `provider_type_validation` 失败，正式 aggregate 全 `null`。V7 不得重跑，R5/R6/main 被阻断；下一步只能先做新的独立 zero-provider 根因复盘与版本化 remediation 设计。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 
 ## 项目目标
 
@@ -15,23 +15,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                     |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                                   |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                                   |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                                   |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                                   |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                                   |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                                   |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                   |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                           |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成            |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V7 R3 已完成，阶段未完成 |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                    |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                   |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                                   |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                                   |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                       |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                                     |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                                     |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                                     |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                                     |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                                     |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                                     |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                     |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                             |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成              |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V7 R4 失败封存，阶段未完成 |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                  |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                      |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                     |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                                     |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                                     |
 
 ## 已完成阶段
 
@@ -270,6 +270,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V7 R1 已完成第一方 V4 Pro direct adapter 与 wire diagnostics。Adapter 固定 exact endpoint/model、non-thinking JSON-object、`stream=false`、no tools/retry；production/synthetic provenance 分离。Opaque capability、串行 reducer、8-stage 单调前缀、四类计数、first-terminal-wins/late drain、穷尽安全 failure 投影、dispatch hook zero-call 与 V6 Tutor/Organizer schema/prompt SHA 兼容均已验证。未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、创建 V7 runner/CLI/env/artifact 或接产品 composition。（已完成，zero-provider）
 - Phase 6.9.7 V7 R2 已完成独立 report/runner/CLI/approval、一次性 marker、dispatch-before-call hash-chain journal、hard-link evidence、crash-only recovery、四类 wire aggregate 与 V1--V6 双向 lineage。固定 `72/24/48/24/32`、guard-first、双 lane、single dispatch/no retry、首 runtime contract failure breaker 和 incomplete aggregate 全 `null` 已进入可执行合同；focused `22/22`、Agent `852/852`、历史 validator/SHA 与 `.tmp` V7 artifact=0 通过。未读取 credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser 或接产品。（已完成，zero-provider）
 - Phase 6.9.7 V7 R3 已完成真实 V6 candidate/schema/projection/prompt/merger 与第一方 direct adapter 的 zero-network fault matrix。Fresh baseline 保持 `12/48` 与 `0.6629642857/0.278125/0.4705446429`；reviewed Mock run `e09baa4a...` 为 `24/24` guard、`48/48` strict、semantic/model-owned `1/1/1` 与 wire `48/48/48/48`，gate `mock_quality_not_evidence`。Agent/AI/Types/Server/Web、PostgreSQL `12/12`、Compose default-off、V1--V6 validators/SHA、V7 artifact=0 与终审通过；无 Provider、根 `.env`、产品 Docker/API/browser。（已完成，zero-provider）
+- Phase 6.9.7 V7 R4 已失败封存。唯一 run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 为 `24/24` guard zero-call；首对 Tutor 完成完整 8-stage wire、usage `532/8`、费用 `0.001644 CNY`，Organizer 已收到 response 并完成 JSON parse，但在 `provider_type_validation` 失败。Breaker 阻止后续 46 runtime，最终 wire `2/2/2/1`、strict `1/48`，semantic/P95/token/CNY 全 `null`。Evidence/marker/journal 已 seal，validator 通过；不得重跑或进入 R5/R6/main。（失败封存，Phase 6.9.7 未完成）
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -389,7 +390,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V7 R1：第一方 DeepSeek V4 Pro direct adapter、8-stage wire capability、分离 counters、穷尽 failure 投影与 V6 schema/prompt compatibility。（已完成，zero-provider）
 - Phase 6.9.7 V7 R2：独立 runner/lineage/durability、四类 wire evidence 重算、crash-only recovery 与 V1--V6 双向隔离。（已完成，zero-provider）
 - Phase 6.9.7 V7 R3：真实 V6 schema/prompt zero-network fault matrix + fresh baseline/reviewed Mock/full static checkpoint。（已完成，zero-provider）
-- Phase 6.9.7 V7 R4--R6：新的唯一 controlled-Live、产品 Docker/API/可见浏览器、main merge/default-off replay；必须逐级通过前置门并在 R4 前取得新精确授权。（被阻断）
+- Phase 6.9.7 V7 R4：唯一 controlled-Live 已按 run `81529c2c...` 执行并以 `quality_gate_failed` 封存；一次性名额已消费，不得 retry/replay/resume、额外探测、删除或改写 marker/journal/evidence。（失败封存）
+- Phase 6.9.7 V7 R5--R6：产品 Docker/API/可见浏览器与 main merge/default-off replay；因 R4 未通过质量门而不得开始。（被阻断）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
@@ -415,7 +417,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 均已失败封存，各自一次性授权已经消费且不得重跑。V6 R5 的 `24/24` guard 与 2 次 invocation 不构成真实模型质量 authority。V7 R0/R1/R2/R3 已完成新的零 Provider 独立设计、第一方 direct adapter、wire diagnostics、独立 runner/lineage/durable evidence、fault matrix 与 reviewed static/Mock；当前只允许 R4 精确授权门，仍不授权网络运行。产品验收、Task 13/main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
+V2 R7、V3 R5、V4 R6、V5 R6、V6 R5 与 V7 R4 均已失败封存，各自一次性授权已经消费且不得重跑。V7 R4 的 `24/24` guard、Tutor 单条成功与 2 次 response 不构成完整真实模型质量 authority。R5 产品验收、R6/Task 13/main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始；下一步只能先做新 lineage 的 zero-provider 复盘与设计。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

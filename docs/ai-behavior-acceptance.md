@@ -235,9 +235,23 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V6 / V7 R0--R3）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V7 R4）
 
-本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V6 六条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成 owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch 单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些是 V1--V4 legacy 产品合同。V5 R0--R5 又建立 coherent V2 dataset、prompt-safe projection、冻结 eval policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock 与生产极端边界，但没有接 legacy 产品 composition。V6 R0--R4 随后以 zero-provider 方式完成 source contracts、intent-only Tutor candidate、actual-shortlist ordinal-only Organizer candidate、双 stale fence、独立 robustness、runner/CLI/lineage/durability 与 reviewed Mock checkpoint。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor 为 `provider_runtime / unknown`，Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1/R2/R3 已完成 transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics、独立 runner/CLI/lineage/durable evidence、crash-only recovery、完整 fault matrix 与 reviewed static/Mock checkpoint，冻结复用 V2 dataset/V6 candidates；R3 未执行 Live、创建 V7 Live artifact 或接产品 wiring，不能声称两个 Agent 已生产可用。
+本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V7
+七条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
+owner snapshot、三阶段 stale fence、model-free 写 command、server-only default-off runtime、single/batch
+单次 dispatch、两阶段 Trace、HTTP abort、strict request-level API runtime 与 `/error-book` 来源状态；这些
+是 V1--V4 legacy 产品合同。V5 R0--R5 又建立 coherent V2 dataset、prompt-safe projection、冻结 eval
+policy/baseline、两条 bounded candidate、原生 runner/lineage、reviewed Mock 与生产极端边界，但没有接
+legacy 产品 composition。V6 R0--R4 随后以 zero-provider 方式完成 source contracts、intent-only Tutor
+candidate、actual-shortlist ordinal-only Organizer candidate、双 stale fence、独立 robustness、runner/CLI/
+lineage/durability 与 reviewed Mock checkpoint；唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider
+invocation、`0/48` strict runtime，正式 aggregate 全 `null`。V7 R0--R3 再完成第一方 V4 Pro direct
+adapter、8-stage wire diagnostics、独立 runner/CLI/lineage/durable evidence、crash-only recovery、完整
+fault matrix 与 reviewed static/Mock checkpoint。唯一 V7 R4 为 `24/24` guard zero-call；首对 Tutor
+完成 8-stage success，Organizer 在 `content_parsed` 后于 `provider_type_validation` 失败，最终 wire
+`2/2/2/1`、strict `1/48`、正式 aggregate 全 `null`。V7 已失败封存且没有进入产品 wiring，因此仍不能
+声称两个 Agent 已生产可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -249,7 +263,10 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 - Compose 只把 Tutor gate/timeout/key 投影给 `web`，只把 WrongQuestionOrganizer gate/timeout/key 投影给 `server`；`worker/admin` 均不接收。四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只参与显式插值；worker 另有模块层强制关闭。部署 allowlist 与应用 fail-closed 都必须通过，不能互相替代；
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Tutor orchestration P95 <=6500ms；后者只含本地 Tutor strategy + candidate，不含真实 Router、HTTP、RAG 或最终流式 Chat，不能作为产品 P95。production gate 还必须要求 `executorProvenance=deepseek_network`；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
 - Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；
-- Live 只在分支静态/Mock checkpoint 后以新 identity 重新获得一次明确授权。V1--V6 均未通过且各自 marker/evidence 已封存，因此没有验收 Docker Tutor Chat、Organizer single/batch、owner/locked-name/zero-call/forced-failure、可见 `/chat`/`/error-book` 或 synthetic 清理；进程级 Live 变量随进程退出，tracked defaults 保持 mock/gates=false，Docker 卷未改动。V1--V6 都不得重跑。
+- Live 只在分支静态/Mock checkpoint 后以新 identity 重新获得一次明确授权。V1--V7 均未通过且各自
+  marker/evidence 已封存，因此没有验收 Docker Tutor Chat、Organizer single/batch、owner/locked-name/
+  zero-call/forced-failure、可见 `/chat`/`/error-book` 或 synthetic 清理；进程级 Live 变量随进程退出，
+  tracked defaults 保持 mock/gates=false，Docker 卷未改动。V1--V7 都不得重跑。
 
 Task 5 当前证据：Tutor Web server-only composition 固定 V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`；Route 在 live access/context prepare 后注册惰性 factory，非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final Tutor route 的 implicit/contextual/conflicting candidate 真正调用时构造一次。失败保留 deterministic strategy，Tutor budget 不污染 Router -> Verifier 共享预算，header/Trace 只含固定安全字段且 CNY 不混入顶层 USD。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build 与 Compose tracked-example quiet parse 已通过。该证据只证明静态/Mock 产品 composition，不证明 controlled-Live、Docker API、可见浏览器或真实回答质量。
 
@@ -630,7 +647,7 @@ response_audit_passed -> content_parsed -> schema_validated -> usage_validated` 
 - R3 使用真实 V6 schema/projection/prompt/strict schema/merger 和全部 48 runtime 做 zero-network fault
   matrix；预期 transport/HTTP/response/schema/usage faults 没有落入非预期 `unknown`，stage/counter 与
   no-leak 门通过；
-- V7 Live 仍需 `24/24` guard、`48/48` strict、原 V6 semantic/model-owned/P95/usage/CNY 全门通过，
+- V7 R4 冻结的 Live 合同要求 `24/24` guard、`48/48` strict、原 V6 semantic/model-owned/P95/usage/CNY 全门通过，
   另要求 48 executor、48 dispatch、48 response、48 verified usage；任一 incomplete lane 时正式 aggregate
   全部为 `null`。
 
@@ -658,17 +675,30 @@ R3 fresh baseline 保持 `12/48` 与 `0.6629642857/0.278125/0.4705446429`。Revi
 semantic/model-owned `1/1/1`、executor/dispatch/response/verified usage `48/48/48/48`，gate
 `mock_quality_not_evidence`。V7 focused `28/28`、Agent `856/856`、AI `224/224`、Types
 `42/42 + tsc`、Server `2154 passed / 30 skipped`、Web `439/439`、PostgreSQL `12/12`、Compose
-default-off、V1--V6 validators/SHA 与终审通过；Mock evidence 已精确删除，V7 Live artifact 为 0。
+default-off、V1--V6 validators/SHA 与终审通过；Mock evidence 已精确删除。以上是 R3 当时的
+zero-provider checkpoint，V7 Live artifact 当时为 0。R0--R3 均未读取 credential、调用 Provider、启动
+产品 Docker/API/browser、执行 V7 Live 或接产品 composition。R2/R3 只有文件 fsync、没有父目录
+fsync；单机 PID/file fencing 不是跨主机 lease，不证明突然断电后的目录项持久性或 Provider
+exactly-once。
 
-R0--R3 均未读取 credential、调用 Provider、启动产品 Docker/API/browser、执行 V7 Live 或接产品
-composition。R2/R3 只有文件 fsync、没有父目录 fsync；单机 PID/file fencing 不是跨主机 lease，不证明
-突然断电后的目录项持久性或 Provider exactly-once。当前下一原子任务仅 R4 精确授权门；普通“继续”不
-构成 Live 授权，R5 产品验收与 R6 main 均继续被阻断。完整设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`，R0--R3 证据见
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md` 与
+V7 R4 随后已在用户重新接受运行时 DeepSeek 数据边界并精确授权后执行唯一 controlled-Live。Run
+`81529c2c-79f5-4c21-9cee-e536a2fe78e3` 为 `24/24` guard zero-call；首对 Tutor 完成完整 8-stage
+wire 并成为 `candidate_applied`，Organizer 收到 response、通过 audit 且完成 `content_parsed`，但在
+`provider_type_validation` 失败。Runner 打开 `quality_gate_impossible` breaker，后续 46 runtime 未
+启动；最终 executor/dispatch/response/verified usage 为 `2/2/2/1`、strict runtime 为 `1/48`，正式
+semantic/P95/token/CNY 全部 `null`，gate 为 `quality_gate_failed`。该脱敏证据只能定位到正式类型/
+动态合同阶段，不能唯一归因 credential、网络、HTTP、endpoint、请求形状、模型或 Provider 内部行为。
+
+V7 一次性名额已经消费，marker/journal/evidence 已 seal 且 bundle validator 为
+`ok=true / filesChecked=1`；禁止 retry/resume/replay/backfill、seal/recovery、单 case/curl 或产品 API
+探测。R5 产品验收、R6/Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均被阻断；下一
+原子任务只能建立新的独立 zero-provider 根因复盘与 remediation 设计。完整设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`、
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`、
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`；R4 终态见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

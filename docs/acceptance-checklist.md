@@ -728,8 +728,9 @@ DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempte
 
 下文的 V7/V8/V9 全部属于 **Phase 6.9.5 Review/Planner** 历史，只用于解释其已消费的 one-shot
 evidence 和产品停止门；它们不是当前 **Phase 6.9.7 Tutor/Organizer V7** 的实现、Live 授权或后续路线。
-当前 Phase 6.9.7 V7 已完成 R0/R1/R2/R3 zero-provider checkpoint，下一任务仅 R4 精确授权门；普通
-“继续”不构成 Tutor/Organizer V7 controlled-Live 授权。
+当前 Phase 6.9.7 Tutor/Organizer V7 R4 已执行并以 `quality_gate_failed` 封存；一次性名额已经消费且
+不得 retry/resume/replay/backfill。R5 产品验收、R6/main 与后续阶段被阻断，下一步只能先做新的独立
+zero-provider 根因复盘与版本化 remediation 设计。
 
 Phase 6.9.5 历史 V7 不是其 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
@@ -815,9 +816,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0--R3）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V7 R4）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1/R2/R3 已完成零 Provider transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics、独立 runner/CLI/lineage/durable evidence、crash-only recovery、四类计数重算、完整 fault matrix 与 reviewed static/Mock checkpoint，冻结复用 V2 dataset/V6 candidates；R3 未执行 Live、创建 V7 Live artifact 或接产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R4 精确授权门。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6、V6 R5 与 V7 R4 七条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V7 R4 为 `24/24` guard zero-call；首对 Tutor 完成 8-stage success，Organizer 在 `content_parsed` 后于 `provider_type_validation` 失败，最终 wire `2/2/2/1`、strict `1/48`，正式 aggregate 全 `null`。七条 Live 均不可重跑、额外探测或拼接；R5 产品验收、R6/Task 13/main 与后续阶段继续被阻断。下一原子任务只能先做新的独立 zero-provider 根因复盘与版本化 remediation 设计。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1451,8 +1452,30 @@ V7 R3 zero-provider fault matrix / static / Mock 回执：
       Critical/Important/Minor；
 - [x] 未读取根 `.env`/credential、调用 Provider、执行 `v7:live`、启动产品 Docker/API/browser、接产品
       composition 或修改业务数据；
-- [x] R3 不是 Live、供应商 usage/P95/CNY 或产品可用性 authority。下一任务仅 R4 精确授权门；用户必须
-      重新接受运行时 DeepSeek 数据边界并明确授权唯一 V7 branch controlled-Live，普通“继续”不构成授权。
+- [x] R3 不是 Live、供应商 usage/P95/CNY 或产品可用性 authority。该 checkpoint 当时下一任务仅 R4
+      精确授权门；后续唯一 R4 已失败封存。
 
 完整证据见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。
+
+V7 R4 唯一 branch controlled-Live 回执：
+
+- [x] 用户重新接受运行时 DeepSeek 数据保留/训练边界并明确授权唯一一次 V7 branch Live；
+- [x] zero-network preflight 在 clean/pushed `df5ed8c7` 上确认 V7 artifact=0、V1--V6 validators/SHA 与
+      V7 focused `26/26` 通过；
+- [x] 根 `.env` 未改写；底层 secret 只在授权 Bun 子进程内映射为 Tutor/Organizer component
+      credential，key 未打印、写盘、进入参数、evidence 或 Git；
+- [x] 唯一 run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 完成 `24/24` guard zero-call；
+- [x] 首对 Tutor `candidate_applied`，完整 8-stage wire，usage `532/8`、estimated `0.001644 CNY`；
+- [x] 首对 Organizer 已完成 dispatch/response/audit/JSON parse，在 `provider_type_validation` 失败，
+      usage unknown；
+- [x] Breaker 使后续 46 runtime 保持 `not_started_quality_breaker`；最终 wire `2/2/2/1`、strict
+      `1/48`，semantic/P95/token/CNY 全 `null`，gate `quality_gate_failed`；
+- [x] Safety 为 verified zero-call `24`，critical/permission/mutation/broader fallback 均为 `0`；
+- [x] Evidence/marker/journal physical SHA 已固定，journal 最后一条为 `evidence_sealed`，bundle validator
+      `ok=true / filesChecked=1`，无 recovery claim；
+- [x] 没有启动产品 Docker/API/browser、创建 synthetic 业务数据或清理 Docker；R5/R6/main 被阻断；
+- [x] 禁止重跑、seal/recovery、curl/单 case/产品 API 探测或把 R3 Mock/Tutor 单条成功拼接为通过。
+
+完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。

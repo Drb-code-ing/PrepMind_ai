@@ -2,9 +2,10 @@
 
 日期：2026-07-28
 
-状态：R0/R1/R2/R3 已完成，均为 zero-provider；第一方 direct adapter、wire diagnostics、独立 V7
-runner/CLI/lineage/durability、完整 fault matrix 与 reviewed static/Mock checkpoint 已实现。正式 Live
-artifact 与产品接线尚未实现。本文件不构成任何 Provider 调用授权；下一原子任务仅 R4 精确授权门。
+状态：R0--R3 已完成；唯一 R4 Live run `81529c2c...` 已以 `quality_gate_failed` 封存。首对 Tutor
+8-stage success，Organizer 在 `content_parsed` 后于 `provider_type_validation` 失败，最终 wire
+`2/2/2/1`、strict `1/48`、正式聚合全 `null`。R5/R6 产品接线与 main 被阻断；本文件不授权任何
+追加 Provider 调用。下一原子任务只能是新的独立 zero-provider 根因复盘与版本化设计。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -25,6 +26,9 @@ R2 acceptance：
 
 R3 acceptance：
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`
+
+R4 failure authority：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`
 
 ## 1. 决策摘要
 
@@ -316,7 +320,7 @@ R3 只有在下面全部成立时才可进入新的授权门：
 - V1--V6 validators/SHA 不变，V7 Live artifact 为 0；
 - full static、typecheck/lint、Organizer PostgreSQL concurrency、Compose default-off 与两路复审通过。
 
-R4 若未来获得新的精确授权，语义与性能门完全复用 V6：`24/24` zero-call、`48/48` strict、critical/
+R4 冻结并实际使用的语义与性能门完全复用 V6：`24/24` zero-call、`48/48` strict、critical/
 permission/mutation/broader fallback=0、Tutor/Organizer/combined semantic 各 `>=0.85`、相对 baseline 两 lane
 各提升 `>=0.15`、Tutor/Organizer/paired/Tutor-orchestration P95 分别 `<=2500/4500/4500/6500ms`、Tutor
 intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总费用 `<=0.55 CNY`。新增 wire
@@ -335,23 +339,25 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 4. **R3**：真实 V6 schema/prompt fault matrix、fresh baseline/Mock、full static/PostgreSQL/Compose、历史
    validators 与两路终审。（已完成，zero-provider）
 5. **R4**：只有 R3 全门通过且用户重新精确授权后，执行唯一 V7 branch controlled-Live；任何终态只
-   seal 一次，不 retry/resume/replay。（未授权）
+   seal 一次，不 retry/resume/replay。（已执行，`quality_gate_failed` 封存）
 6. **R5**：只有 R4 全门通过后，才把 V7 adapter/V6 candidates 接入产品 composition，做 Docker API、
    可见 `/chat`/`/error-book`、Trace、default-off 与精确清理。（被阻断）
 7. **R6**：只有 R5 通过后，才同步最终文档、推送分支、`--no-ff` 合并 main、main default-off 回放并
    推送远程。（被阻断）
 
-每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R3 完成后只允许下一原子任务 R4
-精确授权门；用户当前尚未授权 R4，普通“继续”不能触发任何网络调用。
+每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。V7 R4 一次性名额已经消费，
+禁止再次触发 V7 Live、seal/recovery 或额外网络探测；下一步只能先建立新 lineage 的 zero-provider
+复盘/设计。
 
 ## 9. 非目标与禁止事项
 
-- 不重跑、恢复、删除、改写或拼接 V1--V6；
+- 不重跑、恢复、删除、改写或拼接 V1--V7；
 - 不修改 V2 dataset/expected、V6 prompt/candidate/local authority、预算、P95 或语义阈值；
-- 不把 V6 `unknown` 武断归因为 key、网络、HTTP、SDK、模型或 Provider；
+- 不把 V6 `unknown` 或 V7 `provider_type_validation` 武断归因为 key、网络、HTTP、SDK、模型或
+  Provider；
 - 不保存 raw prompt/model output、response/error/body/header、credential、URL、真实用户文本/ID；
 - 不把 fixed wire event 当成 Provider receipt、billing 或模型成功证明；
 - R0--R3 不读取 `.env`/credential，不调用 Provider，不启动产品 Docker/API/browser；
-- R4 前不创建 V7 marker/journal/evidence，不执行 curl、单 case 或产品 API 网络探测；
-- R4 未通过前不接产品、不开始 R5/R6/Task 13/main/Phase 6.9.8；
+- V7 已封存后不再创建/修改 marker/journal/evidence，不执行 curl、单 case 或产品 API 网络探测；
+- R4 未通过，因此不接产品、不开始 R5/R6/Task 13/main/Phase 6.9.8；
 - 不进入 Phase 6.10、Phase 8/9 或两篇博客收尾。
