@@ -1,6 +1,6 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V7 controlled-Live 均已以 `quality_gate_failed` 封存。V8 R0--R2 已完成 zero-provider 根因复盘、fixed-shape contract/diagnostic 与 Provider-like held-out/metamorphic/anti-overfit robustness；V8 只接受原生 JSON content，V7 exact fence 兼容和 V6 本地权威/预算/Trace/stale fence 保持不变。当前下一任务是 V8 R3 runner/lineage/durability；V7 不得重跑，Provider、产品验收和 main 继续阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V7 controlled-Live 均已以 `quality_gate_failed` 封存。V8 R0--R3 已完成 zero-provider 根因复盘、fixed-shape contract/diagnostic、Provider-like robustness，以及独立 runner/lineage/durability；V8 复用 V7 8-stage wire，V6 本地权威/预算/Trace/stale fence 保持不变。当前下一任务是 V8 R4 reviewed Mock 与全量 checkpoint；V7 不得重跑，Provider、产品验收和 main 继续阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 
 ## 项目目标
 
@@ -26,7 +26,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                   |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                           |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成            |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V8 R2 已完成，阶段未完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 V8 R3 已完成，阶段未完成 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                    |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                   |
@@ -274,6 +274,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V8 R0 已完成。只读复盘确认 V7 failure 位于 static Zod shape，不能恢复具体 raw field；`json_object`、V6 strict nested conditional union 与 ideal Mock responder 形成 coverage gap。V8 冻结 fixed-shape ordinal-only output、bounded schema diagnostic、Provider-like negative/anti-overfit matrix、独立 identity 和 R1--R7 路线；未实现源码、runner、Mock/Live 或产品 wiring。（已完成，zero-provider）
 - Phase 6.9.7 V8 R1 已完成。固定四字段 schema/prompt/dynamic validator、V6 merger runtime adapter 与 bounded no-raw diagnostic 已实现；预算/usage/Trace/abort、双 stale fence、真实 ID/locked name/confidence/write authority 保持本地。Focused/static 与历史 evidence validators 通过，未调用 Provider 或执行正式 Mock/Live。（已完成，zero-provider）
 - Phase 6.9.7 V8 R2 已完成。独立 held-out/Provider-like/metamorphic fixture 与 anti-overfit source scan 已冻结；V8 schema identity 只接受原生 JSON content，V7 exact fence 兼容不变。Synthetic direct adapter 覆盖 canonical/Unicode/reorder、wrapper/旧 V6 Shape/type drift、首/中/尾 malformed decision、动态 authority/stale 和 hostile no-leak。Focused `24/24`、Agent `878/878`、AI `226/226`、历史 validators 与独立复审通过；未读取 credential、调用 Provider、执行正式 Mock/Live 或启动产品验收。（已完成，zero-provider）
+- Phase 6.9.7 V8 R3 已完成独立 report/runner/CLI/approval、一次性 marker、hash-chain journal、hard-link evidence、crash-only recovery 与 validator。固定 `72/24/48/24/32`、guard-first、pair 串行、single dispatch/no retry、V1--V7 双向 lineage 和 incomplete aggregate `null` 均已进入可执行合同；V8 明确复用 V7 8-stage wire，只独立版本化 report/runtime/artifact lineage。Organizer static/dynamic contract failure 必须携带 bounded no-raw diagnostic；完成态 recovery 会按 journal breaker 重建 `not_started_case_guard` 或 `not_started_quality_breaker`，不再误报 orphan。R3/V8 focused、Agent/AI full、typecheck/lint/Prettier、历史 validators、artifact=0 与独立复审通过；未执行正式 Mock/Live、Provider、Docker/API/browser 或产品接线。（已完成，zero-provider；下一步 R4）
 - 模型目标：Review、Planner、KnowledgeDedup、KnowledgeOrganizer、FinalResponse、Memory 候选提取和 Orchestrator 必须有真实模型参与；Router、Tutor、Verifier、WrongQuestionOrganizer 与 Retriever 使用模型/规则混合路径。权限、安全、事实计算、schema、预算、人审和写库仍由本地权威代码控制。
 - 当前不把 `UserMemory` 自动注入 `/api/chat`，也不在每次 Chat 中自动执行 MemoryAgent；后续个性化回答需要单独设计用户开关、prompt 预算和可见提示。
 - RAG 资料不是绝对真理，只是用户私有上下文证据；KnowledgeVerifierAgent 会在检索命中后评估资料片段，避免 AI 盲从错误笔记。
@@ -425,7 +426,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
 
-V2 R7、V3 R5、V4 R6、V5 R6、V6 R5 与 V7 R4 均已失败封存，各自一次性授权已经消费且不得重跑。V8 R0--R2 fixed-shape/diagnostic/robustness 已完成，当前只允许 R3--R4 逐级完成 runner/lineage/durability 与静态/Mock checkpoint；V8 R5 Provider、产品验收、main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾仍不得开始。
+V2 R7、V3 R5、V4 R6、V5 R6、V6 R5 与 V7 R4 均已失败封存，各自一次性授权已经消费且不得重跑。V8 R0--R3 fixed-shape/diagnostic/robustness 与 runner/lineage/durability 已完成，当前只允许 R4 reviewed Mock/static full checkpoint；V8 R5 Provider、产品验收、main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾仍不得开始。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

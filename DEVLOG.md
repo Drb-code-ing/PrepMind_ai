@@ -1,5 +1,35 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V8 R3 Runner / Lineage / Durability：新增独立 V8 report/runner/
+> CLI/approval、一次性 marker、dispatch-before-call hash-chain journal、hard-link evidence、crash-only
+> recovery 与 strict validator。固定 `72/24/48/24/32`、guard-first、pair 串行、single dispatch/no retry、
+> 首 runtime contract failure breaker 与 incomplete semantic/P95/token/CNY 全 `null`。
+>
+> V8 schema remediation 不改变 Provider transport，因此底层显式复用 V7 已冻结的 8-stage wire，而不是
+> 伪造不存在的 V8 `@repo/ai` export；report/runtime/marker/journal/evidence/recovery/source manifest 均使用
+> 独立 V8 lineage，并与 V1--V7 双向拒绝。Source manifest SHA 为
+> `sha256:3ccba6d4d258a4f7356ad448ee2a12ab16d6afd27093063a84b739a09cb2ff52`，绑定 V6
+> dataset/semantic authority、V8 prompt/fixed-shape/diagnostic contract 与 wire identity。
+>
+> Runner 现在要求 Organizer 的 static `fallback_schema_invalid + structured_output /
+provider_type_validation` 和 dynamic `fallback_schema_invalid + dynamic_contract` 必须携带 bounded
+> diagnostic；guard、未启动、纯 transport/abort/orphan failure 保持 `null`，避免把未知原因伪装成字段
+> 诊断。通用敏感字段扫描只对白名单安全 hash/boolean 字段 `organizerPromptSha256` 与
+> `rawDataRetained=false` 放行，raw prompt/output/error/header/credential 扫描仍 fail-closed。
+>
+> 修复了一项实际 durability 缺口：完成态 journal 已记录 `guard_failed` 或
+> `quality_gate_impossible` 时，recovery 过去仍把未 dispatch case 重建为 `not_started_orphaned`。V8 现在按
+> breaker 终态分别重建 `not_started_case_guard` / `not_started_quality_breaker`；只有 run 未完成的 crash 才
+> 使用 orphan，且 diagnostic 的 reason/fingerprint/count/`rawDataRetained` 会贯穿 report -> journal ->
+> evidence -> recovery 并参与 drift 拒绝。
+>
+> R3 focused `24/24`（`215` assertions）、V8 focused `46/46`（`888` assertions）、Agent
+> `902/902`（`12822` assertions）、AI `226/226`（`1459` assertions）、Agent/AI typecheck/lint、
+> Prettier、V1--V7 sealed validators、正式 V8 artifact=0 与独立复审通过。全程未读取 `.env`/
+> credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、修改业务数据或合并 main。
+> 下一原子任务仅 R4 reviewed Mock/full checkpoint；R5 Live 未授权。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V8 R2 Provider-like Robustness 与 Anti-overfit：新增独立
 > `phase-6.9.7-tutor-organizer-v8-r2-provider-shapes-v1` fixture，冻结 SHA
 > `sha256:f0a93a83000cb1f3515057482eca7ebbbb0ce0ef441cfd1cb7075073e000793f`。Fixture

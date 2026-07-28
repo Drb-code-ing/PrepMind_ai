@@ -35,6 +35,8 @@ export function containsSensitivePhase697EvidenceKey(key: string): boolean {
     key === 'organizerPromptVersion' ||
     key === 'tutorPromptContentSha256' ||
     key === 'organizerPromptContentSha256' ||
+    key === 'organizerPromptSha256' ||
+    key === 'rawDataRetained' ||
     key === 'finalAnswer' ||
     key === 'finalAnswerBoundary' ||
     key === 'answerStructure' ||

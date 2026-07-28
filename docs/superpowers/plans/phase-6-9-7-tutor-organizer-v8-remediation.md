@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0--R2 已完成；下一原子任务仅 R3 zero-provider runner/lineage/durability。V7 一次性名额已消费，不得重跑。
+当前状态：R0--R3 已完成；下一原子任务仅 R4 reviewed Mock 与全量 checkpoint。V7 一次性名额已消费，不得重跑。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`
@@ -46,7 +46,8 @@
 - 保持 strict reject，不做隐式 coercion 或自动修复 Provider output。
 
 实现补充：V8 schema identity 要求 Provider content 为原生 JSON；V7 exact fence 兼容保持不变。独立
-fixture SHA 为 `sha256:f0a93a83000cb1f3515057482eca7ebbbb0ce0ef441cfd1cb7075073e000793f`；
+fixture 的冻结合同/content SHA 为
+`sha256:f0a93a83000cb1f3515057482eca7ebbbb0ce0ef441cfd1cb7075073e000793f`，不是物理文件 SHA；
 覆盖 static malformed decision 首/中/尾、动态 authority、双 stale fence 与 synthetic direct adapter。
 
 通过门：focused `24/24`、Agent `878/878`、AI `226/226`、typecheck/lint/Prettier、V1--V7
@@ -57,16 +58,28 @@ validators 与独立复审通过；无 Provider、正式 Mock/Live、Docker/API/
 
 ## R3：独立 V8 runner / lineage / durability
 
-状态：[ ] 当前下一原子任务；仅在 R2 已完成 checkpoint 上开始。
+状态：[x] 完成，zero-provider；未执行正式 Mock/Live。
 
 - 新 runner/report/CLI/approval/marker/journal/evidence/recovery/validator identity；
 - 固定 `72/24/48/24/32`、guard-first、pair 串行、single dispatch/no retry；
 - V1--V7 双向 lineage 拒绝、exclusive-create、hash-chain、hard-link evidence、crash-only recovery；
+- V8 复用 V7 已冻结的 8-stage wire protocol，只独立版本化 report/runtime/artifact lineage，不伪造新的
+  `@repo/ai` wire export；
+- Organizer static/dynamic contract failure 必须携带 bounded diagnostic，guard/not-started/纯 transport
+  failure 保持 `null`；
+- 完成态 recovery 按 journal breaker 终态重建未调度项，区分 `not_started_case_guard`、
+  `not_started_quality_breaker` 与真正 crash orphan；
 - 不创建正式 Mock/Live artifact，不读取 credential。
+
+通过门：R3 focused `24/24`（`215` assertions）、V8 focused `46/46`（`888` assertions）、Agent
+`902/902`、AI `226/226`、typecheck/lint/Prettier、V1--V7 validators、artifact=0 与独立复审通过。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`
 
 ## R4：reviewed Mock 与全量 checkpoint
 
-状态：[ ] 仅 R3 通过后开始。
+状态：[ ] 当前下一原子任务；仅在 R3 clean/committed/pushed 后开始。
 
 - fresh baseline、reviewed Mock、fault matrix；
 - Agent/AI/Types/Server/Web 全量与 typecheck/lint/build；

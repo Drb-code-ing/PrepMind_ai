@@ -2,7 +2,8 @@
 
 日期：2026-07-28
 
-状态：R0 zero-provider 复盘与设计已冻结；尚未实现 V8 源码、runner、Mock、Live 或产品接线。
+状态：R0--R3 zero-provider checkpoint 已完成；fixed-shape/diagnostic、独立 runner/lineage/durability
+已经实现。尚未执行 R4 正式 Mock、R5 Live 或 R6 产品接线；当前下一原子任务仅 R4。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -132,8 +133,10 @@ rawDataRetained=false
 Provider failure 的安全收口。
 
 V1--V7 wire、report、validator、marker、journal、evidence 和 physical SHA 全部保持不可变。V8 使用新
-version、prefix、approval env、confirmation、marker、journal、evidence、recovery claim 与 validator；
-V8/V1--V7 必须双向拒绝 lineage 混用。
+runner/runtime/report、prefix、approval env、confirmation、marker、journal、evidence、recovery claim 与
+validator；V8/V1--V7 必须双向拒绝 lineage 混用。V8 的 schema remediation 不改变 transport，因此继续
+复用 V7 已冻结的 8-stage wire protocol 与 capability；实现只能通过显式 alias 记录复用关系，不得伪造
+不存在的 V8 `@repo/ai` wire export。
 
 ## 5. Zero-network robustness
 
@@ -164,13 +167,13 @@ V8 必须在任何 Provider 资格前覆盖：
 
 ## 7. 原子路线
 
-1. **R0**：V7 zero-provider postmortem、固定形状合同、脱敏诊断与 V8 路线。（本次完成）
+1. **R0**：V7 zero-provider postmortem、固定形状合同、脱敏诊断与 V8 路线。（已完成）
 2. **R1**：实现 V8 fixed-shape Organizer contract/prompt/validator/candidate adapter 与脱敏 schema
-   diagnostic；focused TDD，zero-provider。
+   diagnostic；focused TDD，zero-provider。（已完成）
 3. **R2**：独立 schema-negative/metamorphic/held-out/Provider-like robustness 与 no-leak/anti-overfit；
-   zero-provider。
+   zero-provider。（已完成）
 4. **R3**：独立 V8 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，V1--V7 双向
-   lineage；zero-provider，不创建正式 Mock/Live artifact。
+   lineage；zero-provider，不创建正式 Mock/Live artifact。（已完成）
 5. **R4**：reviewed V8 Mock、fresh baseline、全量静态/PostgreSQL/Compose 与两路终审；Mock evidence
    精确删除，Live artifact 必须仍为 0。
 6. **R5**：只有 R4 clean/pushed、历史 SHA/validators 与 artifact=0 全门通过，且用户重新接受运行时
@@ -180,6 +183,18 @@ V8 必须在任何 Provider 资格前覆盖：
 
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 不读取根 `.env`/
 credential，不调用 Provider，不启动产品 Docker/API/browser，不修改业务数据。
+
+R3 实现 checkpoint 还固定以下边界：
+
+- report/source manifest 绑定 V8 runner/runtime/artifact identity、V6 dataset/semantic authority、V8
+  fixed-shape/prompt/diagnostic SHA 与复用的 V7 wire version；
+- Organizer 的 `fallback_schema_invalid + structured_output/provider_type_validation` 与
+  `fallback_schema_invalid + dynamic_contract` 必须携带 bounded diagnostic；guard、未启动、纯 transport/
+  abort/orphan failure 不伪造字段级原因；
+- journal 已有 `run_completed + breaker_opened` 时，recovery 按 guard/quality breaker 重建未调度项；只有
+  未完成运行才使用 orphan 终态，避免把预期熔断误写成 crash；
+- 该 checkpoint 的验收见
+  `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
 
 ## 8. 禁止事项
 
