@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0 zero-provider 复盘与设计已完成；R1 尚未开始。V7 一次性名额已消费，不得重跑。
+当前状态：R0/R1 已完成；下一原子任务仅 R2 zero-provider robustness/anti-overfit。V7 一次性名额已消费，不得重跑。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`
@@ -24,7 +24,7 @@
 
 ## R1：固定形状合同与脱敏诊断
 
-状态：[ ] 待开始，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - 新增 V8 Organizer fixed-shape Zod schema、prompt policy/SHA、dynamic validator 与 V6 merger adapter；
 - 新增 bounded schema diagnostic reason/count/type-shape fingerprint；
@@ -33,9 +33,12 @@
 
 通过门：focused tests、Agent/AI typecheck/lint/Prettier、V1--V7 validators/SHA；无 Provider、Mock、Live。
 
+验收：
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r1-fixed-shape-diagnostic.md`
+
 ## R2：Provider-like robustness 与 anti-overfit
 
-状态：[ ] 仅 R1 通过后开始。
+状态：[ ] 当前下一原子任务，zero-provider。
 
 - 独立 schema-negative、metamorphic、held-out 与常见 Provider JSON 变体；
 - responder 不得读取 expected/oracle 或复用 production validator 生成答案；

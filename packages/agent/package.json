@@ -25,6 +25,7 @@
     "./tutor-v6": "./src/model-candidates/tutor-v6.ts",
     "./wrong-question-organizer-v5": "./src/model-candidates/wrong-question-organizer-v5.ts",
     "./wrong-question-organizer-v6": "./src/model-candidates/wrong-question-organizer-v6.ts",
+    "./wrong-question-organizer-v8": "./src/model-candidates/wrong-question-organizer-v8.ts",
     "./wrong-question-organizer": "./src/nodes/wrong-question-organizer.ts"
   },
   "scripts": {

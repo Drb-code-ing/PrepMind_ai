@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V8 R1 Fixed-shape Contract 与 Bounded Diagnostic：新增
+> `@repo/agent/wrong-question-organizer-v8`，把 Organizer 模型输出固定为
+> `shortlistFingerprint + decisions[{questionIndex,subjectIndex,deckAction,targetIndex}]`。合同 SHA 为
+> `b21a6dd357ecc19e87869541c7ae6cb52adff130ce32173fd8422ad2f6506545`，prompt SHA 为
+> `9b85b0a9a310f128d35250e83b3927df8de87f159dac8aac8f412d1189ca6af9`。静态 schema 不执行
+> coercion/repair；动态 validator 只接受当前 owner shortlist 暴露的 ordinal，并把合法结果转换为既有 V6
+> validated decision 后复用原 merger。
+>
+> V8 runtime adapter 保留 V6 `1/3500/800` 预算、usage、Trace、abort 与调用前后实际 shortlist fence；
+> fingerprint、subject/deck/topic、真实 ID、locked name、confidence 和写权限继续由本地掌握。新增 bounded
+> diagnostic 只记录固定 reason、计数、类型/shape hash 与 `rawDataRetained=false`，不保存原始模型值、
+> 未知字段名、prompt/output/error/credential；hostile getter/proxy、malformed runtime、stale 和 abort 均
+> fail-closed。动态拒绝使用只供旧 V6 sanitizer 接收的 fingerprint-mismatch sentinel，原模型 decision 不会
+> 被修复或进入 merger；V8 输入/authority/runtime 被拒时先替换为不可调用的本地 fallback runtime，旧 V6
+> nested schema 不会获得 dispatch 机会。
+>
+> Focused `20/20`（`560` assertions）、Agent/AI typecheck/lint、Prettier、6.9.4.3/6.9.6 与 V1--V7
+> sealed evidence validators 全部通过。全程未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、
+> 启动 Docker/API/browser、创建 V8 artifact、修改业务数据或合并 main。下一原子任务仅 V8 R2
+> Provider-like robustness/anti-overfit，仍为 zero-provider。验收见
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r1-fixed-shape-diagnostic.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V8 R0 Zero-provider 根因复盘与设计：只读对照 V7 sealed evidence、
 > V6 Organizer schema/prompt/validator/merger、V7 direct adapter、reviewed Mock 与 fault matrix，确认
 > Organizer response 已完成 JSON parse，失败在 static Zod `safeParse`；dynamic fingerprint/count/subject/
