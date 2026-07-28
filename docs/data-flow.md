@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-28。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V6 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V6 R5 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，后续 46 runtime 未启动，正式 semantic/P95/token/CNY 全 `null`。Evidence/marker/journal 已 seal 且 validator 通过。V6 未接产品 wiring，`3500ms` 仍未接产品 executor；R6 产品 Docker/API/浏览器、R7/Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始。
+> 当前版本：2026-07-28。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V6 Live 均以 `quality_gate_failed` 封存且不得重跑。唯一 V6 R5 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0 已完成零 Provider transport-remediation 设计，冻结复用 V2 dataset/V6 candidates，规划第一方 V4 Pro direct adapter、8-stage wire evidence 与 executor/dispatch/response/usage 分离计数；尚未实现源码、runner、Mock、Live 或产品 wiring。当前下一原子任务仅 R1 zero-provider adapter，后续阶段继续被阻断。
 
 ## 1. 当前边界
 
@@ -626,6 +626,16 @@ V6 R5 unique branch controlled-Live
   -> 2 provider invocations + 0/48 strict runtime; semantic/P95/token/CNY all null
   -> completed_run evidence -> evidence_sealed -> bundle validator ok; no recovery claim
   -> V6 terminal quality_gate_failed; no retry/replay/probe and no R6/R7/main
+
+V7 R0 zero-provider transport-remediation design
+  -> freeze V2 dataset + V6 prompt/candidate/local-authority bytes and SHA
+  -> distinguish runner dispatch, executor invocation, HTTP dispatch, HTTP response, verified usage
+  -> first-party V4 Pro direct adapter; do not infer wire stage from AI SDK generic error markers
+  -> executor_entered -> request_validated -> provider_dispatch_started -> provider_response_received
+  -> response_audit_passed -> content_parsed -> schema_validated -> usage_validated
+  -> provider dispatch hook append+fsync before fetch; hook failure keeps delegate zero-call
+  -> fixed request/transport/HTTP/audit/structured/usage/abort/timeout/harness taxonomy; no raw content
+  -> R1 only is next; no source implementation/provider/Docker/API/browser/live artifact in R0
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
@@ -643,8 +653,11 @@ Provider 设计、source contracts、bounded candidates、actual shortlist 双 s
 robustness、runner/lineage/durability 与 reviewed static/Mock checkpoint。唯一 V6 R5 又在首对 Tutor
 `provider_runtime / unknown` 后熔断，Organizer sibling aborted；2 次 invocation、`0/48` strict runtime，
 正式聚合全 `null`。Artifact 已 seal 且 validator 通过；V6 不得重跑或进入产品验收。R3 的文件 fsync
-不等于父目录 fsync或跨主机 lease；recovery claim 的 journal tail 在
+不等于父目录 fsync 或跨主机 lease；recovery claim 的 journal tail 在
 appender/seal 二次校验，且尚缺 stale claim rename 后再次崩溃的专门测试。
+V7 R0 随后只读拆分现有 runner dispatch、candidate executor、AI SDK/middleware 与 HTTP wire 边界；冻结
+第一方 V4 Pro direct adapter、8-stage durable prefix、executor/dispatch/response/usage 四类计数和 R1--R6
+路线。R0 不改变任何运行数据流；当前产品仍走既有 default-off composition，V7 R1 也尚未实现。
 详见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
@@ -658,7 +671,9 @@ appender/seal 二次校验，且尚缺 stale claim rename 后再次崩溃的专�
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r2-bounded-candidates.md` 与
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md` 与
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md` 与
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`、
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`。
 
 当前 `/knowledge` 页面数据流：
 

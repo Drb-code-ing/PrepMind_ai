@@ -724,7 +724,13 @@ Review / Planner 的建议页不是 Chat 自动调用入口。先由 JWT owner-s
 
 DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempted / closed / providerAttemptCount=1 / usageKnown=false / structured_output`。因此 v5 的 48-case、Docker、浏览器、main 合并与推送均未执行，v5 marker 已消耗且不可重跑。V6 的 Task 1--6 已在独立 lineage 中完成 default-off typed non-thinking transport、resolver/factory、evidence/CLI、Mock、复审与离线文档：精确 DeepSeek V4 Pro `/v1` request 固定写入 `thinking:{type:'disabled'}`，本地拒绝 tool/schema drift 与 reasoning-content response；V1--V5 immutable no-reparse snapshot 在 V6 preflight 前复核。用户授权后，V6 唯一 canary 已封存为 `finalized / invalid_attempted / closed / 1 / false / usage_unverifiable`。V6 离线 wire、fake CLI 31/31、focused V6 suite 61/61、native 15/15 与 Mock 48/26/22/48/0 都不构成真实模型通过，两个业务 gate 继续保持 `false`。
 
-V7 不是 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
+### Phase 6.9.5 历史 V7/V8/V9 lineage（与当前 Phase 6.9.7 无关）
+
+下文的 V7/V8/V9 全部属于 **Phase 6.9.5 Review/Planner** 历史，只用于解释其已消费的 one-shot
+evidence 和产品停止门；它们不是当前 **Phase 6.9.7 Tutor/Organizer V7** 的实现、Live 授权或后续路线。
+当前 Phase 6.9.7 V7 仍停在 R0 zero-provider checkpoint，下一任务仅 R1。
+
+Phase 6.9.5 历史 V7 不是其 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
 当前 v1--v6 都是独立关闭证据，计数不得拼接：v1--v4 为 `invalid_attempted / structured_output`，v5 为 `invalid_attempted / closed / 1 / false / structured_output`，V6 为 `invalid_attempted / closed / 1 / false / usage_unverifiable`；所有 once marker 已消耗且不可重试。V6 48-case、Docker、浏览器、main 合并与推送都被终态关闭；不得从其 fact-free canary 推导模型质量、可用性、zero-call、零成本或账单。一次离线 Mock proof 为 48 cases / 26 verified zero-call / 22 Mock runtime / 48 strict / 0 critical、`mock_quality_not_evidence`，其 `.tmp` 已删除。完整静态验证在 lint-style 修复后重新通过 AI、Agent、Server、shared types、Web 测试/lint/build，以及 Compose `config --quiet` 和 `git diff --check`；这些都是 V6 pre-Live checks，而非 Live、Docker 或浏览器验收。
 
@@ -808,9 +814,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6 / V6 R0--R5）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，后续 46 runtime 未启动，正式 semantic/P95/token/CNY 全 `null`。Evidence/marker/journal 已 seal，bundle validator `ok=true`；六条 Live authority 均不可重跑、额外探测或拼接。V6 未接产品 wiring，`3500ms` 尚未接产品 executor。Docker service/API/浏览器产品验收、R7/Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均不得开始。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0 已完成零 Provider transport-remediation 设计，冻结复用 V2 dataset/V6 candidates，并规划第一方 V4 Pro direct adapter、8-stage wire evidence 与四类独立计数；尚未实现源码、runner、Mock、Live 或产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R1 zero-provider adapter。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1332,3 +1338,30 @@ V6 R5 唯一 controlled-Live 失败封存回执：
 
 完整证据见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
+
+V7 R0 zero-provider postmortem 与设计回执：
+
+- [x] V6 run `b18a0a13...`、`24/24` guard、2 次历史 invocation、`0/48` strict、全部 `null`
+      aggregate 与 evidence/marker/journal SHA 保持不可变；
+- [x] 明确 V6 runner `dispatch_started` 和 candidate executor invocation 都不能证明 HTTP 已发出、
+      DeepSeek 已接收或 response 已返回；
+- [x] 核对 AI SDK adapter、fixed failure classifier、V4 Pro non-thinking middleware 与现有 V4 Flash
+      direct runtime，未把 `unknown` 武断归因 key、HTTP、网络、SDK、模型或 Provider；
+- [x] V7 冻结复用 V2 dataset 与 V6 prompt/candidate/local authority bytes/SHA，不做 Live-driven
+      dataset/prompt/semantic tuning；
+- [x] 冻结第一方 V4 Pro direct adapter 与 8-stage 单调 wire prefix：executor、request、dispatch、
+      response、audit、content、schema、usage；
+- [x] 冻结 `executorInvocations/providerDispatches/providerResponses/verifiedUsages` 四类独立计数；
+- [x] dispatch durable hook 必须在 fetch delegate 前 append + fsync，hook 失败保持 delegate 0-call；
+- [x] failure taxonomy 仅使用 request/transport/HTTP/response/structured/usage/abort/timeout/harness/
+      unknown 固定枚举，不持久化 raw error/body/header/prompt/output/key；
+- [x] R3 必须以真实 V6 schema/prompt 完成 zero-network fault matrix；除专门兜底 case 外，任何非预期
+      `unknown`、stage/counter 不一致或敏感字段泄漏都阻断 Live；
+- [x] 冻结 R1 direct adapter -> R2 runner/lineage -> R3 static/Mock/fault matrix -> R4 unique Live ->
+      R5 product -> R6 main 的原子路线与逐级停止门；
+- [x] 未修改 TypeScript/source、dataset、prompt、schema、budget、timeout、product composition 或业务数据；
+- [x] 未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser 或创建/删除任一 Live artifact；
+- [x] 当前下一原子任务仅 R1 zero-provider adapter；R2--R6 与任何网络运行均未授权。
+
+完整证据见
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`。

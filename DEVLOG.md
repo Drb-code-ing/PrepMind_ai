@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V7 R0 零 Provider 根因复盘与 transport remediation 设计：在不读取
+> `.env`/credential、不调用 Provider、不启动 Docker/API/browser、不修改源码或业务数据的边界内，
+> 只读核对 V6 唯一失败 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8`、runner、candidate live
+> harness、共享 AI SDK adapter、failure classifier、V4 Pro non-thinking middleware 与现有 V4 Flash
+> first-party runtime。确认 V6 的 `dispatch_started` 在 harness operation 前持久化，2 次历史 Provider
+> invocation 实际证明 candidate executor 尝试，均不能单独证明 HTTP 请求已发出或 DeepSeek 已接收；
+> 当前 adapter 只识别官方 AI SDK error marker，middleware generic request/response safety error 与其它未
+> 分类异常可能统一投影为 `unknown`，而安全 evidence 不保存 raw error/body/header/prompt/output，故不能
+> 事后把 21ms 失败武断归因 key、网络、HTTP、SDK、模型或 Provider。
+>
+> V7 决定冻结复用 V2 dataset、V6 Tutor/Organizer prompt/candidate/local-authority bytes 与 SHA，不再
+> 做 Live-driven prompt/dataset 调整。R1 将新增第一方 DeepSeek V4 Pro direct adapter，固定
+> `executor_entered -> request_validated -> provider_dispatch_started -> provider_response_received ->
+response_audit_passed -> content_parsed -> schema_validated -> usage_validated`，并把 executor、dispatch、
+> response、verified usage 分开计数。Failure taxonomy 只保留 request/transport/HTTP/response audit/
+> structured-output/usage/abort/timeout/harness/unknown 固定枚举，不保存敏感正文；dispatch hook 必须在
+> fetch delegate 前 append + fsync，hook 失败保持 delegate 0-call。
+>
+> 原子路线压缩为 R1 direct adapter、R2 独立 runner/lineage、R3 真实 V6 schema/prompt zero-network fault
+> matrix + static/Mock checkpoint、R4 新精确授权下唯一 Live、R5 仅在 Live 全门通过后的产品 Docker/API/
+> 可见浏览器、R6 main merge/default-off replay。R3 除专门兜底 case 外出现非预期 `unknown` 就阻断
+> Live。R0 当前只授权 R1 zero-provider adapter；V1--V6 artifact 保持不可变，R2--R6、Provider、产品
+> 验收、Task 13/main 与后续阶段均未授权。设计、计划与验收分别见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v7-remediation.md` 与
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V6 R5 唯一 controlled-Live 失败封存：用户已接受运行当时 DeepSeek
 > 数据保留/训练边界并精确授权唯一一次 V6 branch run。零网络 preflight 确认分支 clean、V6 Live
 > artifact=0、V1--V5 validators 与历史 SHA 均通过；根 `.env` 的底层 secret 只在同一授权 Bun 进程内
@@ -1438,6 +1465,10 @@ invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace�
 结果：首次 workspace 入口因根 `.env` 未传播到 `apps/server` 而 `preflight_invalid / 0-call`，没有消费 V9。根 `.env` 显式注入后的唯一运行完成 `23` provider attempts、`22` paired admissions、`26` verified zero-call、`48` strict successes；durable reader 返回 `finalized / invalid_attempted / closed / quality_gate_failed`。P95 `1396ms`、usage `7943/510`、CNY `0.026889/1.00` 和 attempt/admission/schema gates 全通过，但 quality `30/48`、semantic `4/22`、critical `2` 未达门槛。
 
 边界：V9 once/evidence 已消费且不可重跑、覆盖或删除；没有 success seal，产品 authority fail-closed。因此没有 Docker、浏览器、Trace、合成账号、main replay 或 push。Review/Planner 产品 gate 已恢复缺省关闭，产品仍 deterministic。下一步只能以最小质量根因修复建立新 lineage。
+
+> Lineage 边界：以下 V6--V9 均是 **Phase 6.9.5 Review/Planner** 的历史记录，与当前
+> **Phase 6.9.7 Tutor/Organizer V7** 不是同一 lineage。不得把下文任何 Live 终态、marker、授权或后续
+> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 仍停在 R0 zero-provider，下一任务仅 R1。
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 

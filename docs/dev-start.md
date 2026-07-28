@@ -1111,6 +1111,37 @@ R7/main。日常开发继续保持 mock、live=false、Tutor/Organizer gate=fals
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
 
+V7 R0 已完成零 Provider transport-remediation 设计，但尚未实现任何 V7 runtime、CLI、script、env、
+marker、journal 或 evidence 入口。当前不要尝试运行猜测出来的 `v7` 命令，也不要把
+`PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`。R0 的“继续”只允许下一原子任务 R1 实现
+第一方 DeepSeek V4 Pro direct adapter 与 zero-network tests。
+
+R1--R3 的本地验证必须使用 synthetic fetch delegate 和 sentinel credential，不读取根 `.env`，不访问
+网络。V7 wire contract 将固定区分：
+
+```text
+executor_entered
+  -> request_validated
+  -> provider_dispatch_started
+  -> provider_response_received
+  -> response_audit_passed
+  -> content_parsed
+  -> schema_validated
+  -> usage_validated
+```
+
+同时分别报告 executor invocation、provider dispatch、provider response 与 verified usage。Dispatch hook
+必须在 fetch delegate 前 append + fsync；hook 失败时 synthetic delegate 必须保持 0-call。阶段事件只保存
+固定枚举，不保存 request/response/error/body/header/prompt/model output 或 key。R3 除专门验证最终兜底的
+case 外出现非预期 `unknown` 时必须停止，不得申请 Live。
+
+V7 设计和当前停止门见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v7-remediation.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`。只有 R3
+static/Mock/fault-matrix 全门通过、分支 clean/pushed 且用户重新精确授权后，未来 R4 才能创建唯一 V7
+Live artifact；R5 产品 Docker/API/可见浏览器与 R6 main 回放继续逐级阻断。
+
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
 Review / Planner 只在 Nest Server 的 suggestions 编排中使用模型，不能由浏览器参数、Chat 模式切换或 worker 启用。两个组件各自有独立 gate，日常开发和 Docker 默认均保持 `false`；只设置 `AI_PROVIDER_MODE=live` 或 `AI_ENABLE_LIVE_CALLS=true` 不会绕过它们。
