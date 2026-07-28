@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V7 R4）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V8 R0）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V7
 七条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -692,13 +692,23 @@ semantic/P95/token/CNY 全部 `null`，gate 为 `quality_gate_failed`。该脱�
 V7 一次性名额已经消费，marker/journal/evidence 已 seal 且 bundle validator 为
 `ok=true / filesChecked=1`；禁止 retry/resume/replay/backfill、seal/recovery、单 case/curl 或产品 API
 探测。R5 产品验收、R6/Task 13/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均被阻断；下一
-原子任务只能建立新的独立 zero-provider 根因复盘与 remediation 设计。完整设计见
+原子任务只能建立新的独立 zero-provider 根因复盘与 remediation 设计。
+
+V8 R0 已完成该复盘与设计。它没有从脱敏 V7 evidence 猜测具体字段，而是确认 Provider
+`json_object` 不执行本地 Zod、V6 Organizer static schema 使用 nested conditional union、V7 ideal Mock
+未覆盖 Provider shape drift。V8 冻结始终同形的
+`questionIndex/subjectIndex/deckAction/targetIndex` decision、本地 dynamic authority、bounded
+reason/count/type-shape diagnostic、Provider-like schema-negative/metamorphic/held-out/anti-overfit matrix
+与独立 R1--R7 lineage。R0 没有实现源码、runner、Mock/Live 或产品 wiring；当前下一任务仅 V8 R1
+zero-provider contract/diagnostic TDD。V7 完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md` 与
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`；R4 终态见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。V8 设计与 R0 证据见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r0-zero-provider-postmortem.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

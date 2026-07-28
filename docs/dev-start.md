@@ -1171,7 +1171,16 @@ V7 设计和当前停止门见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。V7 R4 已失败封存且不可
-重跑；下一步只能先做新的独立 zero-provider 根因复盘与版本化设计，不能直接开始 R5/R6。
+重跑。V8 R0 zero-provider 复盘与设计已完成，见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v8-remediation.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r0-zero-provider-postmortem.md`。
+
+当前只允许 V8 R1 的 zero-provider fixed-shape contract/diagnostic TDD。不得运行任何 V7/V8 Live、
+seal/recovery、curl、单 case 或产品 API；R1 不读取根 `.env`/credential，不启动产品 Docker/API/browser。
+V8 Organizer 计划使用始终包含 `questionIndex/subjectIndex/deckAction/targetIndex` 的 fixed-shape JSON，
+并只记录固定 reason/count/type-shape hash 的脱敏诊断；本地 owner/shortlist/stale/locked-name/confidence/
+write authority 不变。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

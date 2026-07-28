@@ -1479,3 +1479,26 @@ V7 R4 唯一 branch controlled-Live 回执：
 
 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。
+
+V8 R0 zero-provider 复盘与设计：
+
+- [x] 只读确认 V7 Organizer failure 位于 JSON parse 后、dynamic authority 前的 static Zod
+      `provider_type_validation`；
+- [x] 没有读取或恢复 raw model output，也没有猜测具体失败字段或 Provider 外部根因；
+- [x] 记录 `json_object` 不执行本地 schema、V6 nested conditional union 与 V7 ideal Mock 的 coverage
+      gap；
+- [x] 冻结 fixed-shape decision：`questionIndex/subjectIndex(null|integer)/deckAction/targetIndex`；
+- [x] fingerprint、subject/deck/topic ordinal、snapshot/stale/locked-name/confidence/真实 ID/write authority
+      继续本地掌握；
+- [x] bounded diagnostic 只含固定 reason/count/type-shape fingerprint，`rawDataRetained=false`；
+- [x] Provider-like schema-negative、metamorphic、held-out、bilingual、hostile/no-leak 与 anti-overfit matrix
+      已冻结；
+- [x] V8 使用独立 identity/approval/marker/journal/evidence/validator，V1--V7 不修改且必须双向拒绝；
+- [x] R0 未读取 credential、调用 Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或合并
+      main；
+- [x] 下一任务仅 V8 R1 zero-provider fixed-shape contract/diagnostic TDD，不构成任何 Live 授权。
+
+完整设计与证据见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v8-remediation.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r0-zero-provider-postmortem.md`。

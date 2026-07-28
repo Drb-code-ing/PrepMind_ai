@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V8 R0 Zero-provider 根因复盘与设计：只读对照 V7 sealed evidence、
+> V6 Organizer schema/prompt/validator/merger、V7 direct adapter、reviewed Mock 与 fault matrix，确认
+> Organizer response 已完成 JSON parse，失败在 static Zod `safeParse`；dynamic fingerprint/count/subject/
+> deck/topic authority 尚未运行。脱敏 evidence 无法恢复具体字段，因此没有猜测或读取 raw output。
+>
+> 工程缺口是 Provider 只受 `json_object` 约束，V6 输出使用 strict nested conditional union，而 V7
+> Mock responder 直接构造 ideal canonical object，未覆盖 `null`、extra field、numeric string、wrapper、
+> conditional index 等常见 shape drift。V8 冻结始终同形的
+> `questionIndex/subjectIndex/deckAction/targetIndex` ordinal contract、只保存固定 reason/count/type-shape
+> hash 的 bounded diagnostic，以及 Provider-like schema-negative/metamorphic/held-out/anti-overfit matrix。
+>
+> V8 使用独立 identity、approval、marker/journal/evidence/validator 与 R1--R7 路线；V1--V7 bytes/SHA、
+> V2 dataset、V6 local authority/merger、预算、timeout、固定分母、质量/P95 与 no-retry 均不放宽。R0 未
+> 读取 credential、调用 Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或合并 main。
+> 下一原子任务仅 V8 R1 fixed-shape contract/diagnostic TDD。完整设计见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`，验收见
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r0-zero-provider-postmortem.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V7 R4 唯一 Controlled-Live 失败封存：用户重新接受运行时
 > DeepSeek 数据保留/训练边界并精确授权唯一一次 branch run。零网络 preflight 在 clean/pushed
 > `df5ed8c7` 上确认 V7 artifact=0、V1--V6 validators/SHA 与 V7 focused `26/26` 全部通过；根
