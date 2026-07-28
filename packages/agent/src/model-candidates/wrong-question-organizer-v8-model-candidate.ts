@@ -4,6 +4,7 @@ import { deriveWrongQuestionOrganizerV5Shortlist } from './wrong-question-organi
 import {
   runWrongQuestionOrganizerV6ModelCandidate,
   type WrongQuestionOrganizerV6CandidateResult,
+  type WrongQuestionOrganizerV6CandidateReasonCode,
   type WrongQuestionOrganizerV6ModelCandidateEnvelope,
   type WrongQuestionOrganizerV6ModelCandidateInput,
 } from './wrong-question-organizer-v6-model-candidate.ts';
@@ -124,12 +125,24 @@ export async function runWrongQuestionOrganizerV8ModelCandidate(
       },
     };
   } else if (
-    diagnosticCollector.read() === null &&
     result.observation.attempted &&
     'trace' in result.observation &&
     result.observation.trace?.structuredOutputStage === 'provider_type_validation'
   ) {
-    diagnosticCollector.recordUnknownFailure();
+    if (diagnosticCollector.read() === null) diagnosticCollector.recordUnknownFailure();
+    normalizedResult = {
+      ...result,
+      observation: {
+        ...result.observation,
+        disposition: 'fallback_schema_invalid',
+        reasonCodes: [
+          'fallback_schema_invalid',
+          ...(result.observation.reasonCodes.slice(
+            1,
+          ) as readonly WrongQuestionOrganizerV6CandidateReasonCode[]),
+        ],
+      },
+    };
   }
 
   return liftV6Envelope(normalizedResult, diagnosticCollector.read());

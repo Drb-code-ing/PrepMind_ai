@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { requireModelAgentStrictJsonContent } from '@repo/ai';
+
 import { clonePlainModelData, deepFreezeModelValue } from './model-projection-safety.ts';
 import {
   WRONG_QUESTION_ORGANIZER_V8_MODEL_DECISION_SCHEMA,
@@ -131,7 +133,9 @@ export function createWrongQuestionOrganizerV8SchemaDiagnosticCollector(): Wrong
   }, WRONG_QUESTION_ORGANIZER_V8_MODEL_DECISION_SCHEMA);
 
   return Object.freeze({
-    schema: observedSchema as unknown as z.ZodType<WrongQuestionOrganizerV8ModelDecision>,
+    schema: requireModelAgentStrictJsonContent(
+      observedSchema as unknown as z.ZodType<WrongQuestionOrganizerV8ModelDecision>,
+    ),
     recordDynamicAuthorityFailure(value: unknown) {
       try {
         record(diagnoseWrongQuestionOrganizerV8Schema(value, 'dynamic_authority'));

@@ -1,5 +1,30 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V8 R2 Provider-like Robustness 与 Anti-overfit：新增独立
+> `phase-6.9.7-tutor-organizer-v8-r2-provider-shapes-v1` fixture，冻结 SHA
+> `sha256:f0a93a83000cb1f3515057482eca7ebbbb0ce0ef441cfd1cb7075073e000793f`。Fixture
+> 手写中英混合 held-out source/canonical payload，只导入 `node:crypto`，不读取 V2 expected/oracle，
+> 不调用 production candidate/validator/merger 或 reviewed Mock responder 生成答案。
+>
+> 新增按精确 schema identity 生效的 strict JSON content policy。V8 Provider message content 必须自身是
+> 完整原生 JSON；Markdown fence、prose、BOM、trailing comma 与 single quote 在 schema 前拒绝。未标记的
+> V7/历史 schema 保留 exact fence 兼容，不修改其 schema/prompt SHA。Synthetic fetch 穿过真实第一方
+> direct adapter、ModelAgentRuntime、V8 candidate 与 V6 local merger，但 executor provenance 固定为
+> `synthetic_test`，全程无网络/Provider。
+>
+> Provider-like matrix 覆盖 wrapper、顶层 array/null/double encode、旧 V6 nested Shape、snake_case、
+> missing/extra/type drift、numeric string/float/negative/out-of-range、static malformed decision 首/中/尾、
+> Unicode/reorder、动态 fingerprint/question/subject/deck/topic authority、pre/post stale fence、cycle/Proxy/
+> wide no-leak。Provider `provider_type_validation` 在 V8 归一为 `fallback_schema_invalid`，原 attempted/
+> budget/usage/Trace 与 reason tail 保留，不伪造 zero-call、不修复模型输出。
+>
+> Focused `24/24`（`680` assertions）、Agent `878/878`（`12579` assertions）、AI `226/226`
+> （`1459` assertions）、Agent/AI typecheck/lint、Prettier、V7 compatibility、6.9.4.3/6.9.6 与 V1--V7
+> sealed validators、独立复审均通过。全程未读取 credential、调用 Provider、执行正式 Mock/Live、启动
+> Docker/API/browser、创建 V8 artifact、改动业务数据或合并 main。下一原子任务仅 V8 R3
+> runner/lineage/durability，仍为 zero-provider。验收见
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r2-provider-robustness.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V8 R1 Fixed-shape Contract 与 Bounded Diagnostic：新增
 > `@repo/agent/wrong-question-organizer-v8`，把 Organizer 模型输出固定为
 > `shortlistFingerprint + decisions[{questionIndex,subjectIndex,deckAction,targetIndex}]`。合同 SHA 为

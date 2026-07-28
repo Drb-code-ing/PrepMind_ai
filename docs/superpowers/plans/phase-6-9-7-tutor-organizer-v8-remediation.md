@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0/R1 已完成；下一原子任务仅 R2 zero-provider robustness/anti-overfit。V7 一次性名额已消费，不得重跑。
+当前状态：R0--R2 已完成；下一原子任务仅 R3 zero-provider runner/lineage/durability。V7 一次性名额已消费，不得重跑。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`
@@ -38,16 +38,26 @@
 
 ## R2：Provider-like robustness 与 anti-overfit
 
-状态：[ ] 当前下一原子任务，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - 独立 schema-negative、metamorphic、held-out 与常见 Provider JSON 变体；
 - responder 不得读取 expected/oracle 或复用 production validator 生成答案；
 - 覆盖 reorder、bilingual、unknown keys/type drift、fence/prose/wrapper 与递归 no-leak；
 - 保持 strict reject，不做隐式 coercion 或自动修复 Provider output。
 
+实现补充：V8 schema identity 要求 Provider content 为原生 JSON；V7 exact fence 兼容保持不变。独立
+fixture SHA 为 `sha256:f0a93a83000cb1f3515057482eca7ebbbb0ce0ef441cfd1cb7075073e000793f`；
+覆盖 static malformed decision 首/中/尾、动态 authority、双 stale fence 与 synthetic direct adapter。
+
+通过门：focused `24/24`、Agent `878/878`、AI `226/226`、typecheck/lint/Prettier、V1--V7
+validators 与独立复审通过；无 Provider、正式 Mock/Live、Docker/API/browser。
+
+验收：
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r2-provider-robustness.md`
+
 ## R3：独立 V8 runner / lineage / durability
 
-状态：[ ] 仅 R2 通过后开始。
+状态：[ ] 当前下一原子任务；仅在 R2 已完成 checkpoint 上开始。
 
 - 新 runner/report/CLI/approval/marker/journal/evidence/recovery/validator identity；
 - 固定 `72/24/48/24/32`、guard-first、pair 串行、single dispatch/no retry；
