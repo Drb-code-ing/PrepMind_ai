@@ -728,7 +728,7 @@ DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempte
 
 下文的 V7/V8/V9 全部属于 **Phase 6.9.5 Review/Planner** 历史，只用于解释其已消费的 one-shot
 evidence 和产品停止门；它们不是当前 **Phase 6.9.7 Tutor/Organizer V7** 的实现、Live 授权或后续路线。
-当前 Phase 6.9.7 V7 仍停在 R0 zero-provider checkpoint，下一任务仅 R1。
+当前 Phase 6.9.7 V7 已完成 R0/R1 zero-provider checkpoint，下一任务仅 R2。
 
 Phase 6.9.5 历史 V7 不是其 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
@@ -814,9 +814,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0--R1）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0 已完成零 Provider transport-remediation 设计，冻结复用 V2 dataset/V6 candidates，并规划第一方 V4 Pro direct adapter、8-stage wire evidence 与四类独立计数；尚未实现源码、runner、Mock、Live 或产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R1 zero-provider adapter。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1 已完成零 Provider transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics 与四类独立计数，冻结复用 V2 dataset/V6 candidates；尚未创建 V7 runner、Mock/Live artifact 或产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R2 zero-provider runner/lineage。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1361,7 +1361,33 @@ V7 R0 zero-provider postmortem 与设计回执：
       R5 product -> R6 main 的原子路线与逐级停止门；
 - [x] 未修改 TypeScript/source、dataset、prompt、schema、budget、timeout、product composition 或业务数据；
 - [x] 未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser 或创建/删除任一 Live artifact；
-- [x] 当前下一原子任务仅 R1 zero-provider adapter；R2--R6 与任何网络运行均未授权。
+- [x] R0 当时只授权下一原子任务 R1 zero-provider adapter；R2--R6 与任何网络运行均未授权。
 
 完整证据见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`。
+
+V7 R1 zero-provider direct adapter 与 wire diagnostics 回执：
+
+- [x] 新增 `first-party-deepseek-v4-pro-direct-v1`，固定
+      `https://api.deepseek.com/v1/chat/completions`、`deepseek-v4-pro`、non-thinking、JSON-object、
+      `stream=false`、no tools/function/json_schema 与 no retry；
+- [x] 默认 delegate 才标记 `first_party_deepseek_v4_pro_direct`；任何注入 delegate 永久标记
+      `synthetic_test`，不能冒充生产 provenance；
+- [x] WeakMap opaque capability 只能 claim 一次，串行 reducer 固定 8-stage 单调前缀、
+      first-terminal-wins 与 late response/rejection/abort drain；
+- [x] 四类 counter 只由已提交 stage 重算；duplicate/skipped stage、跨 capability、hook I/O、异常
+      status/body 与 terminal race 全部 fail-closed，dispatch hook 失败保持 delegate 0-call；
+- [x] 私有 request/transport/HTTP/audit/structured/usage/abort/timeout/harness taxonomy 穷尽投影到既有
+      public failure contract；没有扩展历史 public enum 或 Trace schema；
+- [x] raw provider error/body/header、prompt、output、credential、URL 与 exact HTTP status 不进入 failure
+      handoff 或 diagnostics snapshot；
+- [x] V6 Tutor/Organizer strict schema 与 prompt SHA `4f73ae60...a169` / `c5f1f662...3450` 保持兼容；
+- [x] focused `66/66`、Agent `830/830`、AI `224/224`、AI/Agent typecheck/lint、Prettier、diff 与独立
+      code/security review 通过；
+- [x] 未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、修改 V1--V6 artifact、创建
+      V7 runner/CLI/env/marker/journal/evidence 或接产品 composition；
+- [x] R1 不是 Live、语义质量或产品可用性 authority；当前下一原子任务仅 R2 zero-provider
+      runner/lineage，R3--R6 与任何 Provider 运行继续未授权。
+
+完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`。

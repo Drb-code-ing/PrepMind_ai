@@ -2,8 +2,8 @@
 
 日期：2026-07-28
 
-状态：R0 已完成；V7 仅完成零 Provider 根因复盘与设计，尚未实现 direct adapter、runner、Mock、
-Live 或产品接线。本文件不构成任何 Provider 调用授权。
+状态：R0/R1 已完成，均为 zero-provider；第一方 direct adapter 与 wire diagnostics 已实现，V7 runner、
+Mock/Live artifact 与产品接线尚未实现。本文件不构成任何 Provider 调用授权；下一原子任务仅 R2。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -15,6 +15,9 @@ V6 failure authority：
 
 R0 acceptance：
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`
+
+R1 acceptance：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`
 
 ## 1. 决策摘要
 
@@ -191,6 +194,19 @@ V7 report 和 journal 必须分别重算：
 任何计数缺失、超出固定分母、和 stage prefix 不一致或由 report 直接信任调用方传入，都必须
 fail-closed。V6 的“2 次 Provider invocation”继续按其历史 schema 原样保留，不反向改名或改写。
 
+### 4.4 R1 实现回执
+
+R1 已在 `@repo/ai` 落地 `first-party-deepseek-v4-pro-direct-v1` 与
+`phase-6.9.7-v7-wire-diagnostics-v1`。Capability 只允许一次 claim；默认 fetch delegate 才能声明
+`first_party_deepseek_v4_pro_direct`，测试注入永久为 `synthetic_test`。Adapter 已覆盖 exact request、
+HTTP/transport/audit/structured/usage 分类、dispatch-hook zero-call、重复/跳级、complete/abort/timeout 与
+late response/rejection 竞态、failure handoff no-leak，并验证 V6 两份 schema/prompt SHA 不变。
+
+该实现尚未拥有 runner/journal，所以 R1 的 `appendStage` 只是由未来 R2 注入的 durability boundary；R2
+必须在 fetch delegate 前把 `provider_dispatch_started` append + fsync 成功后才允许继续。R1 focused
+`66/66`、Agent `830/830`、AI `224/224` 与静态门通过，但这些仍是 zero-network 工程证据，不是
+Provider、Live、语义质量或产品可用性证据。
+
 ## 5. 安全失败 taxonomy
 
 V7 只允许固定 enum，不把 error message、cause、stack、URL、HTTP body/header、prompt、response、key 或
@@ -304,7 +320,7 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 
 1. **R0**：V6 零 Provider 复盘、V7 设计/计划/acceptance 与核心文档同步。（已完成）
 2. **R1**：第一方 V4 Pro direct adapter、固定 failure taxonomy、wire stage/counter capability 与
-   zero-network adapter tests；不创建 V7 runner/artifact。（待开始）
+   zero-network adapter tests；不创建 V7 runner/artifact。（已完成）
 3. **R2**：独立 V7 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，绑定 V6
    candidate bytes 与 wire events；不创建真实 Live artifact。（未开始）
 4. **R3**：真实 V6 schema/prompt fault matrix、fresh baseline/Mock、full static/PostgreSQL/Compose、历史
@@ -316,8 +332,8 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 7. **R6**：只有 R5 通过后，才同步最终文档、推送分支、`--no-ff` 合并 main、main default-off 回放并
    推送远程。（被阻断）
 
-每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R0 完成只授权下一原子任务 R1，
-不授权 R2--R6 或任何网络调用。
+每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R1 完成后只允许下一原子任务 R2
+zero-provider runner/lineage；不授权 R3--R6 或任何网络调用。
 
 ## 9. 非目标与禁止事项
 

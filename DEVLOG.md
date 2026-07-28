@@ -1,5 +1,30 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V7 R1 第一方 V4 Pro direct adapter 与 wire diagnostics：在严格
+> zero-provider 边界内，`@repo/ai` 新增 `first-party-deepseek-v4-pro-direct-v1` 与
+> `phase-6.9.7-v7-wire-diagnostics-v1`。Adapter 只接受精确 DeepSeek 配置，直接构造
+> `https://api.deepseek.com/v1/chat/completions` 请求，固定 `deepseek-v4-pro`、
+> `thinking:{type:'disabled'}`、JSON-object、`stream=false`、无 tools/function/json_schema、无 retry；
+> 默认 delegate 才能获得 `first_party_deepseek_v4_pro_direct` provenance，任何注入 delegate 永久标记
+> `synthetic_test`，不能冒充生产传输。
+>
+> Wire capability 由 WeakMap 保存且只能 claim 一次；串行 reducer 固定 8-stage 单调前缀、
+> first-terminal-wins、late response/rejection/abort drain，以及 executor/dispatch/response/verified usage
+> 四类独立计数。Dispatch hook 必须在 delegate 前完成，hook 失败保持 delegate 0-call；HTTP、transport、
+> response audit、structured output、usage、abort/timeout/harness 的私有 taxonomy 以穷尽映射进入既有公共
+> Provider failure contract，不扩展历史 enum，也不把 raw error/body/header/prompt/output/key 放入 handoff。
+> HTTP 1xx/3xx/越界或畸形 status、2xx 空 body、late settlement 与 complete/abort/timeout 竞态均已用
+> zero-network barrier/matrix 固定。
+>
+> V6 Tutor/Organizer strict schema 与 prompt SHA
+> `4f73ae60...a169` / `c5f1f662...3450` 保持兼容。Focused `66/66`（`852` assertions）、Agent
+> `830/830`（`10839` assertions）、AI `224/224`（`1452` assertions），AI/Agent typecheck、lint、
+> Prettier、diff 与独立代码/安全复审通过。全程未读取 `.env`/credential、调用 Provider、启动
+> Docker/API/browser、修改 V1--V6 artifact 或接产品 composition；也未创建 V7 runner、CLI、env、
+> marker、journal 或 evidence。R1 不构成 Live、语义质量或产品可用性证据。下一原子任务仅 R2
+> zero-provider runner/lineage，验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V7 R0 零 Provider 根因复盘与 transport remediation 设计：在不读取
 > `.env`/credential、不调用 Provider、不启动 Docker/API/browser、不修改源码或业务数据的边界内，
 > 只读核对 V6 唯一失败 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8`、runner、candidate live
@@ -21,7 +46,7 @@ response_audit_passed -> content_parsed -> schema_validated -> usage_validated`�
 > 原子路线压缩为 R1 direct adapter、R2 独立 runner/lineage、R3 真实 V6 schema/prompt zero-network fault
 > matrix + static/Mock checkpoint、R4 新精确授权下唯一 Live、R5 仅在 Live 全门通过后的产品 Docker/API/
 > 可见浏览器、R6 main merge/default-off replay。R3 除专门兜底 case 外出现非预期 `unknown` 就阻断
-> Live。R0 当前只授权 R1 zero-provider adapter；V1--V6 artifact 保持不可变，R2--R6、Provider、产品
+> Live。R0 当时只授权 R1 zero-provider adapter；V1--V6 artifact 保持不可变，R2--R6、Provider、产品
 > 验收、Task 13/main 与后续阶段均未授权。设计、计划与验收分别见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v7-remediation.md` 与
@@ -1468,7 +1493,7 @@ invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace�
 
 > Lineage 边界：以下 V6--V9 均是 **Phase 6.9.5 Review/Planner** 的历史记录，与当前
 > **Phase 6.9.7 Tutor/Organizer V7** 不是同一 lineage。不得把下文任何 Live 终态、marker、授权或后续
-> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 仍停在 R0 zero-provider，下一任务仅 R1。
+> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1 zero-provider，下一任务仅 R2。
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 

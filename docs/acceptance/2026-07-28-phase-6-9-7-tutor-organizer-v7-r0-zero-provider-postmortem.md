@@ -136,7 +136,7 @@ evidence，不得 curl、单 case 或通过产品 API 探测 Provider。
 - [x] adapter/wire/security 独立复审无 P0；其 P1/P2 已写成 R1 私有 enum、reducer、status 与 canonical
       import 的可执行门；
 - [x] docs/history 独立复审发现的 Phase 6.9.5 V7/V8 与当前 Phase 6.9.7 V7 lineage 歧义已消除；
-- [x] 当前下一原子任务仅 R1 zero-provider adapter，不存在 Live 授权。
+- [x] R0 收口时的下一原子任务仅 R1 zero-provider adapter，不存在 Live 授权。
 
 ## 7. 回顾时可以问
 
