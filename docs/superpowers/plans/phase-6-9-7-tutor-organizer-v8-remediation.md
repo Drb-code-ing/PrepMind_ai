@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0--R3 已完成；下一原子任务仅 R4 reviewed Mock 与全量 checkpoint。V7 一次性名额已消费，不得重跑。
+当前状态：R0--R4 已完成；下一原子任务仅 R5 新的 V8 branch controlled-Live 授权门。V7 一次性名额已消费，不得重跑。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`
@@ -79,16 +79,27 @@ validators 与独立复审通过；无 Provider、正式 Mock/Live、Docker/API/
 
 ## R4：reviewed Mock 与全量 checkpoint
 
-状态：[ ] 当前下一原子任务；仅在 R3 clean/committed/pushed 后开始。
+状态：[x] 完成，zero-provider。
 
 - fresh baseline、reviewed Mock、fault matrix；
 - Agent/AI/Types/Server/Web 全量与 typecheck/lint/build；
 - Organizer PostgreSQL concurrency、Compose default-off、历史 SHA/validators；
 - 两路独立复审、Mock evidence 精确删除、V8 Live artifact=0。
 
+实现结果：fresh baseline 保持 `12/48` 与 semantic
+`0.6629642857/0.278125/0.4705446429`；reviewed Mock run
+`c8635a6a-0fbe-4d03-a7c9-9dd41c612d7c` 为 `24/24` zero-call、`48/48` strict
+runtime、semantic/model-owned `1/1/1`、wire `48/48/48/48`，gate 固定
+`mock_quality_not_evidence`。Mock evidence 已精确删除，V8 Live artifact=0；全量静态、PostgreSQL
+`12/12`、Compose default-off 与 V1--V7 validators 通过。Types 真实口径为 `42/42 + typecheck`，
+package 没有独立 ESLint 工具，未伪称 Types lint 通过。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`
+
 ## R5：唯一 V8 branch controlled-Live
 
-状态：[ ] 未授权，R4 前不得申请。
+状态：[ ] 当前下一原子任务，尚未授权。
 
 必须由用户在运行当时重新接受 DeepSeek 数据保留/训练边界，并明确授权唯一一次 V8 branch Live。
 普通“继续”不构成 R5 授权。无论通过或失败都只 seal 一次，不 retry/resume/replay/backfill。

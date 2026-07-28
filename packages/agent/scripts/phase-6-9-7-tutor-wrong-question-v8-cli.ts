@@ -20,6 +20,7 @@ import {
   resolvePhase697V8LiveConfiguration,
   type Phase697V8LiveConfiguration,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v8-live.ts';
+import { createPhase697TutorOrganizerV8MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v8-mock.ts';
 import {
   runPhase697TutorOrganizerPairedEvalV8,
   type Phase697V8Harness,
@@ -131,6 +132,13 @@ export async function executePhase697TutorOrganizerV8Cli(
   }
 
   let harnessFactory = input.harnessFactory;
+  if (!harnessFactory && parsed.mode === 'mock') {
+    harnessFactory = ({ runId: factoryRunId, runScope }) =>
+      createPhase697TutorOrganizerV8MockHarness({
+        runId: factoryRunId,
+        runScope,
+      });
+  }
   if (!harnessFactory && parsed.mode === 'live') {
     const configuration = liveConfiguration;
     if (configuration === null) return { ok: false, code: 'live_configuration_invalid' };

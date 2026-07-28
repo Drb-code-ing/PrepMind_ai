@@ -1,5 +1,40 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V8 R4 Reviewed Mock / Full Checkpoint：新增正式 V8 Mock factory 与
+> `@repo/agent/phase-6-9-7-v8-mock` export。Tutor 复用未变化的 V7/V6 candidate；Organizer 穿过 V8
+> fixed-shape candidate、strict schema、动态 authority、V6 本地 merger 与第一方 DeepSeek V4 Pro direct
+> adapter。唯一替换点是进程内 synthetic fetch；executor/report provenance 固定为
+> `synthetic_test/mock_synthetic`，responder 只读实际 bounded prompt，不读取 expected/oracle、真实 ID、
+> owner、locked name、confidence 或写 command。
+>
+> 新 fault matrix 保留 V7 transport/HTTP/response/usage wire 前缀，并增加旧 V6 nested shape、decision
+> extra/missing field、numeric string、`null` target，以及 fingerprint/duplicate question/subject/target
+> authority drift。Static/dynamic contract failure 只记录 bounded reason/count/type-shape hash 与
+> `rawDataRetained=false`；first/middle/last breaker、sibling abort、single dispatch/no retry、固定 48 分母与
+> raw secret/error/body 泄漏扫描全部通过。
+>
+> Fresh baseline 保持 `12/48`、Tutor/Organizer/combined semantic
+> `0.6629642857/0.278125/0.4705446429`。Reviewed Mock run
+> `c8635a6a-0fbe-4d03-a7c9-9dd41c612d7c` 为 `24/24` guard、`48/48` strict、
+> semantic/model-owned `1/1/1`、wire `48/48/48/48`，synthetic usage `23010/1459`、estimated
+> `0.077784 CNY`，gate 固定 `mock_quality_not_evidence`。Validator `ok=true/filesChecked=1`；Mock
+> evidence 已精确删除，V8 Live marker/journal/evidence/recovery claim 为 0。
+>
+> R4 focused `51/51`（`1787` assertions）、CLI/fault matrix `11/11`（`927` assertions）、Agent
+> `907/907`（`13728` assertions）、AI `226/226`（`1459` assertions）、Types `42/42 + typecheck`、
+> Server `227` suites / `2154` tests passed（`3` suites / `30` tests skipped）、Web `439/439`、
+> Organizer PostgreSQL `12/12`、Docker boundary `3/3`、Compose default-off 与 V1--V7 validators 通过。
+> 第一次 Server parallel full 的唯一 readiness subprocess 超时由 suite 并发负载触发；隔离 `9/9` 与
+> `--runInBand` full 均通过，没有修改或放宽产品 timeout。Types package 没有独立 ESLint 工具，本轮未
+> 伪称 Types lint 通过。Post-doc V8 regression `29/29`（`1114` expect calls）、artifact 物理检查、
+> Prettier/diff 与 contract/security/wire、docs/history/operations 双路终审均通过，无未关闭
+> Critical/Important。
+>
+> 全程未读取 `.env`/credential、调用 Provider、执行 V8 Live、启动/重建产品 Docker/API/browser、修改
+> 业务数据或清空容器/镜像/卷。下一原子任务仅 R5 新的 V8 branch controlled-Live 授权门；普通“继续”
+> 不构成授权。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V8 R3 Runner / Lineage / Durability：新增独立 V8 report/runner/
 > CLI/approval、一次性 marker、dispatch-before-call hash-chain journal、hard-link evidence、crash-only
 > recovery 与 strict validator。固定 `72/24/48/24/32`、guard-first、pair 串行、single dispatch/no retry、

@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V8 R3）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V8 R4）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V7
 七条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -251,9 +251,10 @@ adapter、8-stage wire diagnostics、独立 runner/CLI/lineage/durable evidence�
 fault matrix 与 reviewed static/Mock checkpoint。唯一 V7 R4 为 `24/24` guard zero-call；首对 Tutor
 完成 8-stage success，Organizer 在 `content_parsed` 后于 `provider_type_validation` 失败，最终 wire
 `2/2/2/1`、strict `1/48`、正式 aggregate 全 `null`。V7 已失败封存且没有进入产品 wiring，因此仍不能
-声称两个 Agent 已生产可用。V8 R0--R3 已完成 zero-provider 复盘、fixed-shape Organizer contract/
-diagnostic、独立 Provider-like robustness，以及 runner/lineage/durability；但尚未完成 R4 reviewed Mock 或
-R5 Live，因此同样不构成真实模型或产品可用性结论。
+声称两个 Agent 已生产可用。V8 R0--R4 已完成 zero-provider 复盘、fixed-shape Organizer contract/
+diagnostic、独立 Provider-like robustness、runner/lineage/durability，以及 reviewed Mock/full checkpoint；
+R4 满分 gate 固定为 `mock_quality_not_evidence`，尚未执行 R5 Live，因此仍不构成真实模型或产品可用性
+结论。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -731,7 +732,18 @@ authority failure 必须携带 bounded diagnostic；guard、未启动、纯 tran
 猜测字段原因。完成态 recovery 会按 journal breaker 重建 `not_started_case_guard` 或
 `not_started_quality_breaker`，只有未完成 crash 才使用 orphan。R3 全程 zero-provider，正式 V8 artifact=0。
 
-当前下一任务仅 V8 R4 reviewed Mock/full checkpoint；R5 Live 未授权，R6 产品 wiring 与 R7 main 继续阻断。
+V8 R4 已把默认 Mock CLI 接到 reviewed factory。Tutor 复用未变化的 V7/V6 candidate；Organizer 穿过
+V8 fixed-shape candidate、动态 authority、V6 merger 与第一方 direct adapter，只有 fetch delegate 为
+进程内 synthetic responder。Responder 只读实际 bounded prompt，不读取 expected/oracle、真实 ID 或写
+command。Fresh baseline 保持 `12/48`；reviewed Mock run `c8635a6a-0fbe-4d03-a7c9-9dd41c612d7c`
+为 `24/24` guard、`48/48` strict、semantic/model-owned `1/1/1`、wire `48/48/48/48`，gate
+`mock_quality_not_evidence`。V6 nested/extra/missing/type/null 与动态 authority drift 均 fail-closed，并只
+留下 bounded no-raw diagnostic。全量静态、PostgreSQL `12/12`、Compose default-off、V1--V7
+validators 与 artifact=0 通过；Mock evidence 已精确删除。未读取 credential、调用 Provider或启动产品
+Docker/API/browser。
+
+当前下一任务仅 V8 R5 新的 controlled-Live 精确授权门；普通“继续”不构成授权，R6 产品 wiring 与 R7
+main 继续阻断。
 V7 完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
@@ -744,6 +756,8 @@ V7 完整设计见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r1-fixed-shape-diagnostic.md`；R2 证据见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r2-provider-robustness.md`；R3 证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
+R4 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

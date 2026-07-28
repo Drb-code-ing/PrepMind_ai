@@ -2,8 +2,9 @@
 
 日期：2026-07-28
 
-状态：R0--R3 zero-provider checkpoint 已完成；fixed-shape/diagnostic、独立 runner/lineage/durability
-已经实现。尚未执行 R4 正式 Mock、R5 Live 或 R6 产品接线；当前下一原子任务仅 R4。
+状态：R0--R4 zero-provider checkpoint 已完成；fixed-shape/diagnostic、独立 runner/lineage/durability
+与 reviewed Mock/full checkpoint 已实现。尚未执行 R5 Live 或 R6 产品接线；当前下一原子任务仅 R5
+新的精确授权门。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -14,8 +15,8 @@
 - `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live.marker`
 - `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live-81529c2c-79f5-4c21-9cee-e536a2fe78e3.journal.jsonl`
 
-本文件不授权读取 credential、调用 Provider、执行 V7/V8 Mock/Live/seal/recovery、启动产品
-Docker/API/browser 或修改业务数据。
+本文件本身不授权读取 credential、调用 Provider、重新执行 R4 Mock、执行 V7/V8 Live/seal/recovery、
+启动产品 Docker/API/browser 或修改业务数据。
 
 ## 1. 决策摘要
 
@@ -175,7 +176,7 @@ V8 必须在任何 Provider 资格前覆盖：
 4. **R3**：独立 V8 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，V1--V7 双向
    lineage；zero-provider，不创建正式 Mock/Live artifact。（已完成）
 5. **R4**：reviewed V8 Mock、fresh baseline、全量静态/PostgreSQL/Compose 与两路终审；Mock evidence
-   精确删除，Live artifact 必须仍为 0。
+   精确删除，Live artifact 必须仍为 0。（已完成，zero-provider）
 6. **R5**：只有 R4 clean/pushed、历史 SHA/validators 与 artifact=0 全门通过，且用户重新接受运行时
    数据边界并精确授权唯一 V8 branch controlled-Live，才允许执行一次；任一终态只 seal，不重跑。
 7. **R6**：只有 R5 全门通过，才允许产品 Docker/API/可见浏览器、Trace、default-off 与精确清理。
@@ -195,6 +196,20 @@ R3 实现 checkpoint 还固定以下边界：
   未完成运行才使用 orphan 终态，避免把预期熔断误写成 crash；
 - 该 checkpoint 的验收见
   `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
+
+R4 reviewed Mock/full checkpoint 进一步确认：
+
+- 默认 V8 Mock CLI 使用 reviewed factory；Tutor 复用未变化的 V7/V6 candidate，Organizer 穿过 V8
+  fixed-shape candidate、dynamic authority、V6 merger 与第一方 direct adapter；
+- 只有 `fetch` delegate 为进程内 synthetic responder，provenance 固定为 `synthetic_test` /
+  `mock_synthetic`；responder 只读实际 bounded prompt，不读 expected/oracle、真实 ID 或写 command；
+- fresh baseline 为 `12/48`，reviewed Mock 为 `24/24` guard、`48/48` strict、semantic/model-owned
+  `1/1/1`、wire `48/48/48/48`，gate 仍是 `mock_quality_not_evidence`；
+- Provider-like matrix 覆盖 V6 nested shape、extra/missing/type/null drift 与 fingerprint/question/subject/
+  target authority drift，并保持 bounded no-raw diagnostic、single dispatch、breaker 与固定分母；
+- 全量静态、PostgreSQL `12/12`、Compose default-off、历史 validators 与 artifact=0 通过；Mock evidence
+  已精确删除，没有读取 credential、调用 Provider或启动产品验收；
+- 验收见 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`。下一步只允许 R5 新授权门。
 
 ## 8. 禁止事项
 

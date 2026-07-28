@@ -62,7 +62,7 @@ describe('Phase 6.9.7 V8 CLI authorization and recovery-only boundary', () => {
     expect(reads).toBe(0);
   });
 
-  test('rejects incomplete Live configuration and keeps the unreviewed default Mock unavailable', async () => {
+  test('rejects incomplete Live configuration and publishes the reviewed default Mock only', async () => {
     const root = await temporaryRoot();
     const runId = '00000000-0000-4000-8000-000000000730';
     expect(
@@ -81,13 +81,29 @@ describe('Phase 6.9.7 V8 CLI authorization and recovery-only boundary', () => {
       repositoryRoot: root,
       runId,
     });
-    expect(mock).toEqual({ ok: false, code: 'runtime_factory_unavailable' });
+    expect(mock).toMatchObject({
+      ok: true,
+      gate: 'mock_quality_not_evidence',
+      disposition: 'mock_direct',
+      counts: { cases: 72, zeroCallCases: 24, runtimeCases: 48, pairedRequests: 24 },
+      wire: {
+        complete: true,
+        executorInvocations: 48,
+        providerDispatches: 48,
+        providerResponses: 48,
+        verifiedUsages: 48,
+      },
+    });
+    if (!mock.ok) throw new Error('V8 reviewed default Mock CLI failed');
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V8_MARKER_PATH)).exists()).toBe(false);
-    expect(
-      await Bun.file(
-        resolve(root, phase697V8EvidencePath({ runId, runScope: 'branch', mode: 'mock' })),
-      ).exists(),
-    ).toBe(false);
+    const evidencePath = resolve(
+      root,
+      phase697V8EvidencePath({ runId, runScope: 'branch', mode: 'mock' }),
+    );
+    expect(await Bun.file(evidencePath).exists()).toBe(true);
+    expect(await validatePhase697TutorOrganizerV8EvidenceBundle({ root, evidencePath })).toEqual({
+      ok: true,
+    });
     expect(await Bun.file(resolve(root, phase697V8JournalPath(runId))).exists()).toBe(false);
   });
 
@@ -262,7 +278,7 @@ function authorizedSyntheticLiveEnv() {
 }
 
 async function temporaryRoot() {
-  const root = await mkdtemp(join(tmpdir(), 'prepmind-v8-r3-cli-'));
+  const root = await mkdtemp(join(tmpdir(), 'prepmind-v8-r4-cli-'));
   roots.push(root);
   return root;
 }
