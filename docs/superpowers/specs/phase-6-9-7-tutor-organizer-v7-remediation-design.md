@@ -2,8 +2,9 @@
 
 日期：2026-07-28
 
-状态：R0/R1 已完成，均为 zero-provider；第一方 direct adapter 与 wire diagnostics 已实现，V7 runner、
-Mock/Live artifact 与产品接线尚未实现。本文件不构成任何 Provider 调用授权；下一原子任务仅 R2。
+状态：R0/R1/R2 已完成，均为 zero-provider；第一方 direct adapter、wire diagnostics、独立 V7
+runner/CLI/lineage/durability 已实现。正式 Mock/Live artifact 与产品接线尚未实现。本文件不构成任何
+Provider 调用授权；下一原子任务仅 R3 zero-network fault matrix 与 static/Mock checkpoint。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -18,6 +19,9 @@ R0 acceptance：
 
 R1 acceptance：
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`
+
+R2 acceptance：
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`
 
 ## 1. 决策摘要
 
@@ -202,8 +206,9 @@ R1 已在 `@repo/ai` 落地 `first-party-deepseek-v4-pro-direct-v1` 与
 HTTP/transport/audit/structured/usage 分类、dispatch-hook zero-call、重复/跳级、complete/abort/timeout 与
 late response/rejection 竞态、failure handoff no-leak，并验证 V6 两份 schema/prompt SHA 不变。
 
-该实现尚未拥有 runner/journal，所以 R1 的 `appendStage` 只是由未来 R2 注入的 durability boundary；R2
-必须在 fetch delegate 前把 `provider_dispatch_started` append + fsync 成功后才允许继续。R1 focused
+R1 完成时尚未拥有 runner/journal，所以 `appendStage` 只是未来 durability boundary；R2 现已把它接入
+独立 hash-chain journal，并在 fetch delegate 前要求 `provider_dispatch_started` append + file fsync 成功。
+R1 focused
 `66/66`、Agent `830/830`、AI `224/224` 与静态门通过，但这些仍是 zero-network 工程证据，不是
 Provider、Live、语义质量或产品可用性证据。
 
@@ -264,9 +269,10 @@ V7 继承并补强 V6 的运行不变量：
 - crash recovery 只从 durable prefix seal，不读取 credential、不创建 adapter、不 resume/replay；
 - evidence 使用 temp fsync + exclusive hard-link；同 bytes 幂等，不同 bytes 拒绝覆盖。
 
-V6 已知 durability 边界继续如实保留，除非 R2 用专门测试关闭：当前只有文件 fsync、没有父目录
-fsync；claim 获取时的 tail 会在 appender/seal 二次校验；stale claim rename 后再次崩溃仍缺专测。V7
-不得把单主机 PID/文件 fencing 表述为跨主机 lease 或 Provider exactly-once。
+R2 已用专门测试关闭 claim 获取后的 marker/tail drift、same-token ABA、unknown/cross-lane dispatch key 与
+stale claim rename 后再次崩溃的恢复缺口；claim 获取后会再次读取 marker/journal，appender 在打开和每次
+append 前继续校验 owner 与 tail。仍须如实保留的边界是：当前只有文件 fsync、没有父目录 fsync；单主机
+PID/文件 fencing 不是跨主机 lease，不保证物理断电后的目录项持久性，也不构成 Provider exactly-once。
 
 ## 7. Zero-network fault matrix 与质量门
 
@@ -322,7 +328,7 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 2. **R1**：第一方 V4 Pro direct adapter、固定 failure taxonomy、wire stage/counter capability 与
    zero-network adapter tests；不创建 V7 runner/artifact。（已完成）
 3. **R2**：独立 V7 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，绑定 V6
-   candidate bytes 与 wire events；不创建真实 Live artifact。（未开始）
+   candidate bytes 与 wire events；不创建正式 Mock/Live artifact。（已完成，zero-provider）
 4. **R3**：真实 V6 schema/prompt fault matrix、fresh baseline/Mock、full static/PostgreSQL/Compose、历史
    validators 与两路终审。（未开始，zero-provider）
 5. **R4**：只有 R3 全门通过且用户重新精确授权后，执行唯一 V7 branch controlled-Live；任何终态只
@@ -332,8 +338,8 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 7. **R6**：只有 R5 通过后，才同步最终文档、推送分支、`--no-ff` 合并 main、main default-off 回放并
    推送远程。（被阻断）
 
-每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R1 完成后只允许下一原子任务 R2
-zero-provider runner/lineage；不授权 R3--R6 或任何网络调用。
+每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R2 完成后只允许下一原子任务 R3
+zero-network fault matrix/static/Mock checkpoint；不授权 R4--R6 或任何网络调用。
 
 ## 9. 非目标与禁止事项
 

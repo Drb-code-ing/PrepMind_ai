@@ -728,7 +728,8 @@ DeepSeek V4 Pro v5 已执行其唯一 canary 并终态关闭：`invalid_attempte
 
 下文的 V7/V8/V9 全部属于 **Phase 6.9.5 Review/Planner** 历史，只用于解释其已消费的 one-shot
 evidence 和产品停止门；它们不是当前 **Phase 6.9.7 Tutor/Organizer V7** 的实现、Live 授权或后续路线。
-当前 Phase 6.9.7 V7 已完成 R0/R1 zero-provider checkpoint，下一任务仅 R2。
+当前 Phase 6.9.7 V7 已完成 R0/R1/R2 zero-provider checkpoint，下一任务仅 R3 zero-network
+fault matrix/static/Mock。
 
 Phase 6.9.5 历史 V7 不是其 V6 retry。Task 1--7 离线工程已完成，但唯一 controlled-Live 已终态为 `finalized / invalid_attempted / closed / 23 / false / evidence_io`。once marker 已消费，无 success seal、token/cost 或 quality counters；V1--V6 tree hash 未改变。不得把 23 attempts 写成 22 runtime 成功、质量通过、零成本或账单。必须保持两个产品 gate 为 `false`，不运行 Docker/浏览器/main/push，不重跑、删除或重建 V7 evidence。5. 只有新 48-case controlled-Live 同时满足 strict、质量、安全、权限、P95、usage/cost 和 zero-call 门时，才能临时开启 Docker Server 内的单个组件 gate，做 authenticated suggestions/plan、Trace 与 headed 浏览器验收。结束后恢复两个 gate 为 `false`，精确清理本轮合成数据但不清理 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
@@ -814,9 +815,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0--R1）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V6 / V7 R0--R2）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1 已完成零 Provider transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics 与四类独立计数，冻结复用 V2 dataset/V6 candidates；尚未创建 V7 runner、Mock/Live artifact 或产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R2 zero-provider runner/lineage。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6 与 V6 R5 六条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存。唯一 V6 R5 为 `24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor `provider_runtime / unknown` 后 Organizer sibling aborted，正式 aggregate 全 `null`。V7 R0/R1/R2 已完成零 Provider transport-remediation 设计、第一方 V4 Pro direct adapter、8-stage wire diagnostics、独立 runner/CLI/lineage/durable evidence、crash-only recovery 与四类计数重算，冻结复用 V2 dataset/V6 candidates；R2 未执行正式 Mock/Live、创建 V7 artifact 或接产品 wiring。六条历史 Live 不可重跑、额外探测或拼接；当前下一原子任务仅 R3 zero-network fault matrix/static/Mock。产品验收、Task 13/main 与后续阶段继续被阻断。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1386,8 +1387,38 @@ V7 R1 zero-provider direct adapter 与 wire diagnostics 回执：
       code/security review 通过；
 - [x] 未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、修改 V1--V6 artifact、创建
       V7 runner/CLI/env/marker/journal/evidence 或接产品 composition；
-- [x] R1 不是 Live、语义质量或产品可用性 authority；当前下一原子任务仅 R2 zero-provider
-      runner/lineage，R3--R6 与任何 Provider 运行继续未授权。
+- [x] R1 不是 Live、语义质量或产品可用性 authority；该 checkpoint 当时下一原子任务仅 R2，后续
+      R2 已完成；R3--R6 与任何 Provider 运行在 R1 时均未授权。
 
 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`。
+
+V7 R2 zero-provider runner / lineage / durability 回执：
+
+- [x] 新增独立 V7 report/case/evidence contract、paired runner、CLI/approval、marker、hash-chain journal、
+      hard-link evidence、recovery claim 与 strict validator；
+- [x] 固定 source manifest、eval policy、semantic authority、runner/runtime/marker/journal/evidence/recovery
+      identity、approval env 与 confirmation；
+- [x] 固定 `72/24/48/24/32` 分母、guard-first、pair 串行、pair 内最多双 lane、single dispatch、no retry
+      与首个 runtime contract failure `quality_gate_impossible` breaker；
+- [x] 每个 runtime lane 使用唯一 reservation/dispatch key/capability；成功 terminal 必须具有 wire version、
+      完整 8-stage 前缀、`usageDisposition=verified` 与四类 `1/1/1/1` counter；
+- [x] 任一 runtime 未完成、usage 未验证、duration/terminal/wire aggregate 不完整时，正式 semantic/P95/
+      token/CNY 全部为 `null`；synthetic Live 永远不能打开生产质量门；
+- [x] marker `wx`、journal 初始化文件 fsync、dispatch-before-fetch append queue + 文件 fsync、temp evidence
+      文件 fsync + hard-link final、same-byte idempotency 与 different-byte conflict 已进入可执行合同；
+- [x] recovery 只 seal durable prefix，不创建 adapter、不读取 key、不 resume/replay/retry/backfill Provider；
+      stale claim rename 后再次崩溃、ABA、tail drift 与单胜者重新抢占均有回归；
+- [x] V7 递归拒绝 V1--V6 runner/artifact token，V1--V6 validators 同样拒绝 V7；provenance/aggregate/
+      runtime snapshot、unknown/cross-lane dispatch key 与 evidence 跨仓库根路径篡改均 fail-closed；
+- [x] focused `22/22`（`184` assertions）、Agent `852/852`（`11041` assertions）、typecheck/lint、
+      Prettier/diff、V1--V6 validators 与 V6 evidence/marker/journal physical SHA 复核通过；
+- [x] 未读取 `.env`/credential、调用 Provider、启动 Docker/API/browser、执行正式 V7 Mock/Live、创建
+      仓库 V7 marker/journal/evidence/recovery claim、接产品 composition 或修改业务数据；
+- [x] 已知边界如实保留：只有文件 fsync、无父目录 fsync；PID/file fencing 只适用于单机，不证明突然
+      断电后的目录项持久性、跨主机 lease 或 Provider exactly-once；
+- [x] R2 不是 Live、语义质量或产品可用性 authority；当前下一原子任务仅 R3 zero-network fault
+      matrix/static/Mock，R4--R6 与任何 Provider 运行继续未授权。
+
+完整证据见
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`。

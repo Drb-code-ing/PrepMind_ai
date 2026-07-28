@@ -4,8 +4,8 @@
 DeepSeek V4 Pro direct adapter 和 durable wire evidence 消除 `provider_runtime / unknown` 的传输诊断
 盲区，再由同一 72-case 合同决定是否具备一次新的 controlled-Live 资格。
 
-**当前状态：** R0/R1 已完成，均为 zero-provider。下一原子任务仅 R2 runner/lineage；R3--R6、
-Provider、Docker、产品 API 与浏览器均未授权。
+**当前状态：** R0/R1/R2 已完成，均为 zero-provider。下一原子任务仅 R3 zero-network fault matrix 与
+static/Mock checkpoint；R4--R6、Provider、Docker、产品 API 与浏览器均未授权。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`
@@ -88,7 +88,7 @@ Tutor/Organizer schema/prompt SHA compatibility 均已固定。
 
 ## R2：V7 runner、lineage 与 durable wire evidence
 
-**状态：** [ ] 未开始，必须 zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 **交付：**
 
@@ -102,6 +102,16 @@ Tutor/Organizer schema/prompt SHA compatibility 均已固定。
 - 冻结 V7 source manifest、eval policy、runner、wire evidence 与 artifact SHA identities。
 
 **停止点：** 不创建仓库真实 Live artifact，不执行 Mock/Live，不启动 Docker/API/browser。
+
+**完成证据：** 独立 V7 report/entry/evidence、runner、CLI/confirmation/approval、marker、hash-chain
+journal、recovery claim、hard-link publisher 与 validator 已实现；固定 `72/24/48/24/32`、guard-first、
+single-dispatch、首 contract failure breaker、四类 wire counter、incomplete aggregate=`null` 与 synthetic
+Live fail-closed 已冻结。Focused `22/22`（`184` assertions）、Agent full `852/852`（`11041`
+assertions）、typecheck/lint、V1--V6 validators 与 V6 physical SHA 均通过。没有读取 `.env`/credential、
+调用 Provider、启动 Docker/API/browser 或创建仓库正式 V7 artifact。
+
+**验收文档：**
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`
 
 ## R3：Zero-network fault matrix 与 static/Mock checkpoint
 
@@ -163,5 +173,5 @@ success prefix。任一 incomplete lane 使 semantic/P95/token/CNY 全为 `null`
 - 精确清理、gates=false、credentials absent、volumes retained；
 - 推送 main 并确认本地/远程 SHA parity。
 
-R1 完成后的下一原子任务仅 R2 zero-provider runner/lineage。Phase 6.9.8、Phase 6.10、Phase 8/9 与
+R2 完成后的下一原子任务仅 R3 zero-network fault matrix/static/Mock。Phase 6.9.8、Phase 6.10、Phase 8/9 与
 两篇面试学习博客继续等待 Phase 6.9.7 和全部 Agent 架构完成。

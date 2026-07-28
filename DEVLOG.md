@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V7 R2 独立 runner、lineage 与 durable wire evidence：在 R1 第一方
+> V4 Pro direct adapter 之上新增 V7 report/paired runner、CLI/approval、一次性 marker、
+> dispatch-before-call hash-chain journal、hard-link evidence、crash-only recovery claim 与 strict
+> validator。Runner 固定 `72/24/48/24/32` 分母、guard-first、pair 串行、pair 内最多双 lane、single
+> dispatch/no retry 与首个 runtime contract failure breaker；未启动项继续留在 48 runtime 分母中。
+>
+> 每个 runtime lane 使用唯一 reservation、dispatch key 与 opaque capability。成功 terminal 必须复核
+> `phase-6.9.7-v7-wire-diagnostics-v1`、完整 8-stage 前缀、`usageDisposition=verified`，以及
+> executor/dispatch/response/verified usage 四类 `1/1/1/1` 计数；任一 runtime 不完整、usage unknown、
+> terminal 缺失或 aggregate 篡改时，正式 semantic/P95/token/CNY 全部为 `null`。Synthetic Live 永远
+> 不能打开生产质量门；R2 默认 Mock factory 仍返回 `mock_harness_unavailable`，正式 reviewed Mock 留给
+> R3。
+>
+> Marker/journal/evidence/recovery 使用独立 V7 identity，V1--V6 validators 与 V7 validator 双向拒绝旧
+> runner/artifact token。回归补齐四类 wire/report counter 篡改、runtime snapshot 伪造、unknown/cross-lane
+> dispatch key、递归旧 identity 注入、stale claim rename 后再次崩溃、CLI/marker/journal provenance drift 与
+> evidence 跨仓库根路径污染。Recovery 只 seal durable prefix，不创建 adapter、不读取 key，也不
+> resume/replay/retry/backfill Provider。
+>
+> Focused `22/22`（`184` assertions）、Agent `852/852`（`11041` assertions）、typecheck/lint、
+> Prettier、diff、V1--V6 validators 与 V6 evidence/marker/journal physical SHA 复核通过。全程未读取
+> `.env`/credential、调用 Provider、启动 Docker/API/browser、执行正式 V7 Mock/Live、创建仓库 V7
+> artifact、接产品 composition 或修改业务数据。已知 durability 边界如实保留：只有文件 fsync、无父目录
+> fsync；单机 PID/file fencing 不是跨主机 lease，不证明断电后的目录项持久性或 Provider exactly-once。
+> 下一原子任务仅 R3 zero-network fault matrix/static/Mock。验收见
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V7 R1 第一方 V4 Pro direct adapter 与 wire diagnostics：在严格
 > zero-provider 边界内，`@repo/ai` 新增 `first-party-deepseek-v4-pro-direct-v1` 与
 > `phase-6.9.7-v7-wire-diagnostics-v1`。Adapter 只接受精确 DeepSeek 配置，直接构造
@@ -21,8 +48,8 @@
 > `830/830`（`10839` assertions）、AI `224/224`（`1452` assertions），AI/Agent typecheck、lint、
 > Prettier、diff 与独立代码/安全复审通过。全程未读取 `.env`/credential、调用 Provider、启动
 > Docker/API/browser、修改 V1--V6 artifact 或接产品 composition；也未创建 V7 runner、CLI、env、
-> marker、journal 或 evidence。R1 不构成 Live、语义质量或产品可用性证据。下一原子任务仅 R2
-> zero-provider runner/lineage，验收见
+> marker、journal 或 evidence。R1 不构成 Live、语义质量或产品可用性证据；该 checkpoint 当时的下一
+> 原子任务仅 R2，后续 R2 已完成。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V7 R0 零 Provider 根因复盘与 transport remediation 设计：在不读取
@@ -1493,7 +1520,8 @@ invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace�
 
 > Lineage 边界：以下 V6--V9 均是 **Phase 6.9.5 Review/Planner** 的历史记录，与当前
 > **Phase 6.9.7 Tutor/Organizer V7** 不是同一 lineage。不得把下文任何 Live 终态、marker、授权或后续
-> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1 zero-provider，下一任务仅 R2。
+> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1/R2 zero-provider，下一任务仅 R3
+> zero-network fault matrix/static/Mock。
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 

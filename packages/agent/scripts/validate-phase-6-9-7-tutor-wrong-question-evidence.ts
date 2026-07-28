@@ -42,6 +42,7 @@ export function containsSensitivePhase697EvidenceKey(key: string): boolean {
     key === 'question_count_mismatch' ||
     key === 'duplicate_question_index' ||
     key === 'question_index_out_of_range' ||
+    key === 'providerResponses' ||
     key.endsWith('SchemaVersion') ||
     key.endsWith('ProjectionVersion')
   ) {

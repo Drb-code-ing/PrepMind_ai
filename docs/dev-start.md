@@ -1111,14 +1111,17 @@ R7/main。日常开发继续保持 mock、live=false、Tutor/Organizer gate=fals
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
 
-V7 R0/R1 已完成零 Provider transport-remediation 设计、第一方 DeepSeek V4 Pro direct adapter 与
-wire diagnostics。R1 只新增 package 级 `StructuredModelExecutor` adapter/capability 和 zero-network tests；
-尚未创建 V7 runner、CLI、script、env、marker、journal、evidence 或产品 composition。当前不要尝试运行
-猜测出来的 `v7` 命令，也不要把 `PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`。下一原子
-任务仅 R2 zero-provider runner/lineage，仍不授权 Provider、Docker、API 或浏览器。
+V7 R0/R1/R2 已完成零 Provider transport-remediation 设计、第一方 DeepSeek V4 Pro direct adapter、
+wire diagnostics 与独立 runner/CLI/lineage/durable evidence。R2 新增的 CLI、marker、journal、evidence 与
+recovery contract 是未来受控运行入口，不是当前运行授权。R2 没有执行正式 V7 Mock/Live，仓库 `.tmp`
+中没有 V7 artifact；默认 Mock factory 仍返回 `mock_harness_unavailable`，正式 reviewed Mock 属于 R3。
 
-R1 已使用 synthetic fetch delegate 和 sentinel credential 完成本地验证；R2--R3 继续不得读取根
-`.env` 或访问网络。V7 wire contract 已固定区分：
+当前只允许下一原子任务 R3 zero-network fault matrix/static/Mock。不要运行
+`bun --filter @repo/agent eval:phase-6-9-7:v7:live`，不要手工创建 marker/journal/evidence，不要把
+`PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`。R3 继续不得读取根 `.env`、访问 Provider、
+启动产品 Docker/API/browser 或接产品 composition。
+
+V7 wire contract 固定区分：
 
 ```text
 executor_entered
@@ -1132,18 +1135,32 @@ executor_entered
 ```
 
 同时分别报告 executor invocation、provider dispatch、provider response 与 verified usage。R1 adapter 会
-在 fetch delegate 前等待 dispatch hook；hook 失败时 synthetic delegate 保持 0-call。R2 才负责把该 hook
-接入 append + fsync 的 durable journal。阶段事件只保存固定枚举，不保存 request/response/error/body/
-header/prompt/model output 或 key。R3 除专门验证最终兜底的 case 外出现非预期 `unknown` 时必须停止，
-不得申请 Live。
+在 fetch delegate 前等待 dispatch hook；hook 失败时 synthetic delegate 保持 0-call。R2 已把该 hook 接入
+append queue + 文件 fsync 的 durable journal，并冻结 `lane_reserved -> wire stage -> runtime/pair terminal ->
+breaker/run completion -> evidence seal` 顺序。阶段事件只保存固定枚举，不保存 request/response/error/body/
+header/prompt/model output 或 key。Recovery 只封存 durable prefix，不创建 adapter、不读取 key，也不
+resume/replay/retry Provider。
+
+当前 durability 只保证单机文件级顺序：没有父目录 fsync，不证明突然断电后的目录项持久；PID/file
+fencing 不是跨主机 lease，single dispatch/no retry 也不构成 Provider exactly-once。R3 除专门验证最终
+兜底的 case 外出现非预期 `unknown`、stage/counter 不一致或敏感字段泄漏时必须停止，不得申请 Live。
+
+R2 可安全回放的 focused 命令只有 no-network tests 与静态门：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-organizer-v7-runner-contract.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-durability.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-cli.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-lineage.test.ts
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
 
 V7 设计和当前停止门见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v7-remediation.md` 与
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md`。只有 R3 static/Mock/
-fault-matrix 全门通过、分支 clean/pushed 且用户重新精确授权后，未来 R4 才能创建唯一 V7 Live
-artifact；R5 产品 Docker/API/可见浏览器与 R6 main 回放继续逐级阻断。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`。只有 R3 static/Mock/
+fault-matrix 全门通过、分支 clean/pushed 且用户重新精确授权后，未来 R4 才能创建唯一 V7 Live artifact；
+R5 产品 Docker/API/可见浏览器与 R6 main 回放继续逐级阻断。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

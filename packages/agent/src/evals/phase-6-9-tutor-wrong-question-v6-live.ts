@@ -136,9 +136,15 @@ export function createPhase697TutorOrganizerV6LiveHarness(input: {
     executorProvenance: input.executorProvenance,
     runZeroCall: async (entry) => runPhase697V6ZeroCallCase(entry),
     runTutor: (entry, signal) =>
-      runTutorLive(entry, signal, input.runId, input.tutorExecutor, input.tutorTimeoutMs),
+      runPhase697V6TutorRuntimeCase(
+        entry,
+        signal,
+        input.runId,
+        input.tutorExecutor,
+        input.tutorTimeoutMs,
+      ),
     runOrganizer: (entry, signal) =>
-      runOrganizerLive(
+      runPhase697V6OrganizerRuntimeCase(
         entry,
         signal,
         input.runId,
@@ -148,7 +154,7 @@ export function createPhase697TutorOrganizerV6LiveHarness(input: {
   });
 }
 
-async function runTutorLive(
+export async function runPhase697V6TutorRuntimeCase(
   entry: Phase697V2TutorRuntimeCase,
   signal: AbortSignal,
   runId: string,
@@ -201,7 +207,7 @@ async function runTutorLive(
   });
 }
 
-async function runOrganizerLive(
+export async function runPhase697V6OrganizerRuntimeCase(
   entry: Phase697V2OrganizerRuntimeCase,
   signal: AbortSignal,
   runId: string,
