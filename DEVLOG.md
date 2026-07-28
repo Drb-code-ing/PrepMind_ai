@@ -1,5 +1,31 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V6 R5 唯一 controlled-Live 失败封存：用户已接受运行当时 DeepSeek
+> 数据保留/训练边界并精确授权唯一一次 V6 branch run。零网络 preflight 确认分支 clean、V6 Live
+> artifact=0、V1--V5 validators 与历史 SHA 均通过；根 `.env` 的底层 secret 只在同一授权 Bun 进程内
+> 映射到 Tutor/Organizer component variables，没有打印、写盘、进入 artifact 或 Git。
+>
+> 唯一 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 使用 `deepseek-v4-pro` non-thinking JSON 与
+> `deepseek_network` provenance。`24/24` guard zero-call 通过；第一对两个 lane 均完成 dispatch 记录，
+> Tutor `tutor-v2-runtime-01` 在 executor `21.2116ms` 内得到 `provider_runtime / unknown`，不是
+> `3500ms` timeout，也没有 structured-output stage；Organizer sibling 以 `post_dispatch_abort` 收口。
+> Runner 随后打开 `quality_gate_impossible` breaker，后续 46 runtime 未启动。最终 2 次 Provider
+> invocation、`0/48` strict runtime，正式 semantic/P95/token/CNY 全部为 `null`，gate 为
+> `quality_gate_failed`。
+>
+> 脱敏 evidence 不保存 provider raw error、HTTP 状态、prompt 或 response，因此不能把 `unknown` 武断
+> 归因于 credential、网络、模型、endpoint、SDK request shape 或 Provider response；它只证明当前固定
+> classifier 未识别该异常并安全回退。任何额外 curl/单 case/CLI 都会形成事实重试，已按合同禁止。
+>
+> Evidence/marker/journal physical SHA-256 分别为 `beb9d460...21ea5e9`、
+> `cbddba87...c99f988`、`be91b0c4...8c2a2f`；journal sequence `0..32`，最后一条为
+> `evidence_sealed`，bundle validator `ok=true`，无 recovery claim。`.tmp` artifacts 保留且不纳入 Git；
+> marker 的固定 `attempt_reserved` 是一次性 reservation schema，不覆盖 sealed terminal authority。
+>
+> V6 一次性名额已消费，不得 retry/resume/replay/backfill、删除或改写证据，也不得进入 R6 产品
+> Docker/API/可见浏览器、R7/main、Task 13、Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。完整证据
+> 见 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
+>
 > 2026-07-27 — Phase 6.9.7 V6 R4 Static/Mock Checkpoint：新增 reviewed V6 Mock factory、
 > `eval:phase-6-9-7:v6:baseline` 与 `eval:phase-6-9-7:v6:mock`。公共 Mock CLI 真实经过 V6 Tutor/
 > Organizer candidate、strict validator、本地 authority merger 与正式 runner；24 条 guard 不构造
@@ -24,7 +50,8 @@
 > 本 checkpoint 仍为 zero-provider：未读取 credential、调用 Provider、启动产品 Docker/API/browser、
 > 接产品 composition 或把 V6 `3500ms` 接入产品 executor。Mock 满分只证明工程合同，不证明真实模型
 > 语义、网络 P95、Provider token/账单或产品可用性。R3 的无父目录 fsync、claim tail 延后复核、缺
-> stale-rename 后二次崩溃专测三项边界仍保留。下一步仅 V6 R5 branch controlled-Live，当前未授权；
+> stale-rename 后二次崩溃专测三项边界仍保留。该条记录 R4 当时停止在 V6 R5 授权门前；后续唯一
+> R5 已于 2026-07-28 失败封存；
 > 验收见 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`。
 >
 > 2026-07-27 — Phase 6.9.7 V6 R3 Runner / Lineage / Durability：新增原生 V6 report/case/

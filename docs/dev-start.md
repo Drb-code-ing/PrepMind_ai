@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6 / V6 R0--R5）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -1096,13 +1096,20 @@ Fresh baseline 应保持 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`
 Mock 文件，不得清空 `.tmp`。48 次 invocation、正 output token、本机 P95 与 `0 CNY` 都是 synthetic
 工程证据，不是 Provider 调用、网络 P95 或账单。
 
-下一步仅 V6 R5 branch controlled-Live，当前未授权。不要运行 `v6:cli -- live ...`；新授权前不读取
-component credential、不创建 Live marker/journal/evidence/recovery claim、不调用 Provider。设计、
-计划与 R3/R4 验收见
+唯一 V6 R5 branch controlled-Live 已按 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 执行并
+`quality_gate_failed`：`24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个
+Tutor 为 `provider_runtime / unknown`，Organizer sibling aborted，正式 semantic/P95/token/CNY 全部为
+`null`。Evidence/marker/journal 已 seal，bundle validator `ok=true`，无 recovery claim。
+
+V6 一次性名额已消费。严禁再次运行 `v6:cli -- live ...`、手工 curl/单 case/产品 API 探测、删除或
+覆盖 marker/journal/evidence、调用 seal/recovery 做 replay，也不得进入 R6 产品 Docker/API/浏览器或
+R7/main。日常开发继续保持 mock、live=false、Tutor/Organizer gate=false、component key empty；不要
+清空 `.tmp`，不要 prune、`down -v`、reset、flush 或 wipe。设计、计划与 R3--R5 验收见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md` 与
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`、
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md` 与
-`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`。
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`、
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

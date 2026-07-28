@@ -1,11 +1,12 @@
 # Phase 6.9.7 Tutor / WrongQuestionOrganizer V6 Remediation Design
 
-日期：2026-07-27
+日期：2026-07-27（2026-07-28 R5 终态更新）
 
-状态：R0--R4 已完成且均为 zero-provider。V6 source contracts、两条 bounded candidate、独立
-robustness、runner/CLI/approval、marker/hash-chain journal/hard-link evidence、validator lineage 与
-reviewed Mock checkpoint 已冻结；尚未实现产品 composition 或 Live。当前没有新的 Provider 调用
-授权，下一步仅 R5 branch controlled-Live。
+状态：R0--R4 已完成；唯一 R5 branch controlled-Live run
+`b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 已以 `quality_gate_failed` 封存。`24/24` guard zero-call
+通过，但首个 Tutor runtime 为 `provider_runtime / unknown`、Organizer sibling aborted，最终只有 2 次
+Provider invocation 与 `0/48` strict runtime；正式 aggregate 全部为 `null`。V6 不得重跑，也不得进入
+R6/R7 产品验收或 main。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -29,6 +30,9 @@ R3 acceptance：
 
 R4 acceptance：
 `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`
+
+R5 failure authority：
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`
 
 ## 1. 决策摘要
 
@@ -310,18 +314,18 @@ R4 没有读取 credential、调用 Provider、启动产品 Docker/API/browser�
    crash seal、V1--V5 双向隔离；只实现 contract，不创建 Live marker，零 Provider。（已完成）
 5. **R4**：fresh baseline/Mock、focused/full/static、PostgreSQL concurrency、Compose default-off、历史
    SHA/validator 与两路终审；零 Provider。（已完成）
-6. **R5**：只有新的 static/Mock checkpoint 通过且用户重新接受当时 DeepSeek 数据边界、明确授权唯一
-   一次 V6 branch controlled-Live，并且 zero-network preflight 通过后，才允许在首次 Provider 调用前
-   创建实际 marker/journal 并进入 Live。（当前未授权）
-7. **R6**：R5 全门通过后才做产品 Docker/API/可见浏览器与精确清理。
-8. **R7**：R6 通过后才做分支收尾、main `--no-ff` 合并、main default-off 回放与远程 parity。
+6. **R5**：用户精确授权后执行唯一 V6 branch controlled-Live；run `b18a0a13...` 已
+   `quality_gate_failed` 并完成 evidence seal。（已失败封存，不得重跑）
+7. **R6**：R5 全门通过后才做产品 Docker/API/可见浏览器与精确清理；R5 已失败，R6 不得开始。
+8. **R7**：R6 通过后才做分支收尾、main `--no-ff` 合并、main default-off 回放与远程 parity；当前被
+   R5/R6 阻断。
 
 每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。任何失败立即按该版本终态封存，
 不跨任务偷跑后续步骤。
 
 ## 9. 非目标与禁止事项
 
-- 不重跑、恢复、删除或改写 V1--V5；
+- 不重跑、恢复、删除或改写 V1--V6；
 - 不把本次“允许重新评估 Tutor 时延”解释为 Provider、Docker 或产品验收授权；
 - 不修改 V2 dataset/expected、删除慢 case、降低 semantic/P95/安全门或动态适配 Live 结果；
 - 不让模型拥有最终回答、真实 ID、owner、locked name、写库、route、tool 或 FSRS 权限；

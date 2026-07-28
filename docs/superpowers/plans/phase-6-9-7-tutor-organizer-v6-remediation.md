@@ -4,11 +4,12 @@
 Organizer confidence 的 authority/评分耦合，并保留模型对 Tutor 歧义 intent 和 Organizer
 subject/deck/topic ordinal 的真实语义职责。
 
-**当前状态：** R0--R4 已完成且均为 zero-provider。V6 已冻结 dataset/eval/deadline、model-owned
-metrics、Tutor preferred-depth/Organizer confidence source contracts、两条 bounded candidate、独立
-robustness、runner/CLI/approval/marker/hash-chain journal/hard-link evidence/validator lineage，以及
-reviewed Mock checkpoint。R4 没有创建 V6 Live artifact、调用 Provider 或接产品；也没有新的 Provider
-授权。下一原子任务仅 R5 branch controlled-Live。
+**当前状态：** R0--R4 已完成；唯一 R5 branch controlled-Live run
+`b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 已以 `quality_gate_failed` 封存。R5 为 `24/24` guard
+zero-call、2 次 Provider invocation、`0/48` strict runtime；首个 Tutor runtime
+`provider_runtime / unknown` 后 Organizer sibling aborted，后续 runtime 未启动，正式 semantic/P95/token/
+CNY 全部为 `null`。V6 一次性名额已消费，不得重跑；R6/R7 被质量门永久阻断，本计划不授权新版本或
+新的 Provider 调用。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`
@@ -19,7 +20,7 @@ reviewed Mock checkpoint。R4 没有创建 V6 Live artifact、调用 Provider �
 - main agent 编辑、决策、验证和提交；subagent 只读取证；
 - 一个 R-task、一次相关文档同步、一个原子提交并推送功能分支；
 - V1--V5 run/marker/journal/evidence/dataset bytes/SHA 不改、不删、不重跑、不拼接；
-- R0--R4 全部 zero-provider；R5 前不得读取 component credential、创建 V6 Live marker 或调用 Provider；
+- R0--R4 全部 zero-provider；R5 已消费且失败封存，marker/journal/evidence 不改、不删、不重跑；
 - 固定 72/24/48/24/32 分母、guard-first、单 pair/最多双 lane、首个 contract failure breaker、
   no-retry、incomplete aggregate=`null`；
 - gates/live/component key 默认关闭；禁止 Docker prune、`down -v`、volume/database reset、Redis flush
@@ -179,7 +180,7 @@ P95、Provider token/账单或产品可用性。
 
 ## R5：唯一 V6 branch controlled-Live
 
-**状态：** [ ] 未授权、不得开始。
+**状态：** [x] 已执行并以 `quality_gate_failed` 封存；不得重跑。
 
 必须同时满足：R4 clean/pushed、V6 marker/journal/evidence/recovery claim 为 0、历史 SHA 通过、用户重新
 接受运行当时 DeepSeek 数据保留/训练边界，并明确授权唯一一次 **V6 branch controlled-Live**。
@@ -189,9 +190,19 @@ P95、Provider token/账单或产品可用性。
 只有取得本节精确授权且 zero-network preflight 通过后，才在首次 Provider 调用前创建 marker/journal。
 任一终态只执行一次；失败立即封存，不 retry/resume/replay。
 
+**终态证据：**
+
+- run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8`；
+- `24/24` guard zero-call，1 对 dispatched/completed，2 次 Provider invocation，`0/48` strict runtime；
+- Tutor `provider_runtime / unknown`，Organizer sibling `post_dispatch_abort`，breaker
+  `quality_gate_impossible`；
+- 正式 semantic/P95/token/CNY 全为 `null`，bundle validator `ok=true`；
+- evidence/marker/journal SHA 与失败边界见
+  `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
+
 ## R6：产品 Docker / API / 可见浏览器验收
 
-**状态：** [ ] 被 R5 全门通过阻断。
+**状态：** [ ] 被 R5 `quality_gate_failed` 永久阻断；不得开始。
 
 - Tutor Chat：双语歧义 intent、明确指令 zero-call、timeout/schema/provider fallback、Trace/usage/price；
 - Organizer：single/batch、topic ordinal、authority confidence、owner/locked/stale/concurrency；
@@ -201,7 +212,7 @@ P95、Provider token/账单或产品可用性。
 
 ## R7：分支收尾、main 合并与回放
 
-**状态：** [ ] 被 R5/R6 阻断。
+**状态：** [ ] 被 R5/R6 阻断；不得合并 main 或执行回放。
 
 - 同步最终数值、SHA、边界、DEVLOG 与 acceptance；
 - 原子提交并推送功能分支；
@@ -210,5 +221,6 @@ P95、Provider token/账单或产品可用性。
 - 精确清理、gates=false、credentials absent、volumes retained；
 - 推送 main 并确认本地/远程 SHA parity。
 
-只有 R7 完成，Phase 6.9.7 才能进入阶段完成判断；此前 Phase 6.9.8、Phase 6.10、Phase 8/9 与两篇
-面试学习博客收尾全部不得开始。
+R5 已失败，因此本 V6 计划在失败封存处终止。Phase 6.9.7 仍未完成；Phase 6.9.8、Phase 6.10、
+Phase 8/9 与两篇面试学习博客收尾全部不得开始。若继续真实模型方向，必须另立零 Provider、独立 identity
+的新版本设计；本计划不构成其授权。
