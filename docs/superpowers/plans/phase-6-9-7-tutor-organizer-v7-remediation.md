@@ -4,8 +4,8 @@
 DeepSeek V4 Pro direct adapter 和 durable wire evidence 消除 `provider_runtime / unknown` 的传输诊断
 盲区，再由同一 72-case 合同决定是否具备一次新的 controlled-Live 资格。
 
-**当前状态：** R0/R1/R2 已完成，均为 zero-provider。下一原子任务仅 R3 zero-network fault matrix 与
-static/Mock checkpoint；R4--R6、Provider、Docker、产品 API 与浏览器均未授权。
+**当前状态：** R0/R1/R2/R3 已完成，均为 zero-provider。下一原子任务仅 R4 唯一 branch
+controlled-Live 授权门；R4 尚未获得新的精确授权，R5--R6、Provider、产品 Docker/API 与浏览器均未开始。
 
 **设计 authority：**
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`
@@ -115,7 +115,7 @@ assertions）、typecheck/lint、V1--V6 validators 与 V6 physical SHA 均通过
 
 ## R3：Zero-network fault matrix 与 static/Mock checkpoint
 
-**状态：** [ ] 未开始，必须 zero-provider。
+**状态：** [x] 已完成，zero-provider。
 
 **交付：**
 
@@ -134,6 +134,18 @@ assertions）、typecheck/lint、V1--V6 validators 与 V6 physical SHA 均通过
 **通过门：** 除专门最终兜底 case 外没有非预期 `unknown`；guard 三类计数均 0；48 条 Mock success 的
 executor/dispatch/response/usage 各 48；Mock `24/24` zero-call、`48/48` strict、semantic/model-owned
 `1/1/1`。任一门失败都停在 R3，不申请 Live。
+
+**完成证据：** 48 条 runtime 全部从冻结 V2 dataset 派生并穿过真实 V6 candidate、projection、prompt、
+strict schema、本地 merger 与第一方 direct adapter；进程内 synthetic fetch 覆盖 transport/HTTP/response/
+non-thinking/schema/usage/abort/breaker/sibling attribution，未读取 expected/oracle。Fresh baseline 保持
+`12/48` 与 `0.6629642857/0.278125/0.4705446429`；reviewed Mock run `e09baa4a...` 为
+`24/24` guard、`48/48` strict、semantic/model-owned `1/1/1`，四类 wire counter 均 `48`，gate
+`mock_quality_not_evidence`。Agent/AI/Types/Server/Web、PostgreSQL `12/12`、Compose default-off、
+V1--V6 validators/SHA、V7 artifact=0，以及 contract/security/wire 与 docs/history/operations 两路终审
+通过；无 Provider、根 `.env`、产品 Docker/API/browser。
+
+**验收文档：**
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`
 
 ## R4：唯一 V7 branch controlled-Live
 
@@ -173,5 +185,5 @@ success prefix。任一 incomplete lane 使 semantic/P95/token/CNY 全为 `null`
 - 精确清理、gates=false、credentials absent、volumes retained；
 - 推送 main 并确认本地/远程 SHA parity。
 
-R2 完成后的下一原子任务仅 R3 zero-network fault matrix/static/Mock。Phase 6.9.8、Phase 6.10、Phase 8/9 与
-两篇面试学习博客继续等待 Phase 6.9.7 和全部 Agent 架构完成。
+R3 完成后的下一原子任务仅 R4 精确授权门。当前“继续”不构成 Live 授权；Phase 6.9.8、Phase 6.10、
+Phase 8/9 与两篇面试学习博客继续等待 Phase 6.9.7 和全部 Agent 架构完成。

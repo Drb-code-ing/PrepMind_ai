@@ -2,9 +2,9 @@
 
 日期：2026-07-28
 
-状态：R0/R1/R2 已完成，均为 zero-provider；第一方 direct adapter、wire diagnostics、独立 V7
-runner/CLI/lineage/durability 已实现。正式 Mock/Live artifact 与产品接线尚未实现。本文件不构成任何
-Provider 调用授权；下一原子任务仅 R3 zero-network fault matrix 与 static/Mock checkpoint。
+状态：R0/R1/R2/R3 已完成，均为 zero-provider；第一方 direct adapter、wire diagnostics、独立 V7
+runner/CLI/lineage/durability、完整 fault matrix 与 reviewed static/Mock checkpoint 已实现。正式 Live
+artifact 与产品接线尚未实现。本文件不构成任何 Provider 调用授权；下一原子任务仅 R4 精确授权门。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -22,6 +22,9 @@ R1 acceptance：
 
 R2 acceptance：
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`
+
+R3 acceptance：
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`
 
 ## 1. 决策摘要
 
@@ -330,7 +333,7 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 3. **R2**：独立 V7 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，绑定 V6
    candidate bytes 与 wire events；不创建正式 Mock/Live artifact。（已完成，zero-provider）
 4. **R3**：真实 V6 schema/prompt fault matrix、fresh baseline/Mock、full static/PostgreSQL/Compose、历史
-   validators 与两路终审。（未开始，zero-provider）
+   validators 与两路终审。（已完成，zero-provider）
 5. **R4**：只有 R3 全门通过且用户重新精确授权后，执行唯一 V7 branch controlled-Live；任何终态只
    seal 一次，不 retry/resume/replay。（未授权）
 6. **R5**：只有 R4 全门通过后，才把 V7 adapter/V6 candidates 接入产品 composition，做 Docker API、
@@ -338,8 +341,8 @@ intent `>=21/24`、Organizer 三轴各 `>=28/32`、usage/price/CNY 完整且总�
 7. **R6**：只有 R5 通过后，才同步最终文档、推送分支、`--no-ff` 合并 main、main default-off 回放并
    推送远程。（被阻断）
 
-每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R2 完成后只允许下一原子任务 R3
-zero-network fault matrix/static/Mock checkpoint；不授权 R4--R6 或任何网络调用。
+每个 R-task 单独提交并推送当前功能分支，不创建 worktree 或子分支。R3 完成后只允许下一原子任务 R4
+精确授权门；用户当前尚未授权 R4，普通“继续”不能触发任何网络调用。
 
 ## 9. 非目标与禁止事项
 

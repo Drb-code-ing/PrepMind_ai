@@ -15,6 +15,7 @@
     "./phase-6-9-eval": "./src/evals/phase-6-9-eval-contract.ts",
     "./phase-6-9-7-v5-mock": "./src/evals/phase-6-9-tutor-wrong-question-v5-mock.ts",
     "./phase-6-9-7-v6-mock": "./src/evals/phase-6-9-tutor-wrong-question-v6-mock.ts",
+    "./phase-6-9-7-v7-mock": "./src/evals/phase-6-9-tutor-wrong-question-v7-mock.ts",
     "./planner": "./src/nodes/planner.ts",
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",

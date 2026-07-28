@@ -14,7 +14,7 @@ V7 R2 已完成。R1 的第一方 DeepSeek V4 Pro direct adapter 和 8-stage wir
 
 R2 还建立了 V7 专用 CLI、一次性 marker、dispatch-before-call hash-chain journal、hard-link evidence、crash-only recovery claim 与 evidence validator。固定分母、guard-first、pair 串行、pair 内最多双 lane、single dispatch、no retry、首个 runtime contract failure breaker、incomplete aggregate 全 `null` 和 synthetic Live 永不成为质量 authority 等停止门均已进入可执行合同。
 
-本结论只证明 V7 runner、lineage、wire evidence 和进程崩溃恢复合同已具备。R2 没有执行正式 V7 Mock 或 Live，没有读取 `.env`/credential、调用 Provider、启动 Docker/API/浏览器、接入产品 composition 或创建仓库 V7 artifact。Phase 6.9.7 仍未完成；下一原子任务仅 R3 zero-network fault matrix 与 static/Mock checkpoint。
+本结论只证明 V7 runner、lineage、wire evidence 和进程崩溃恢复合同已具备。R2 没有执行正式 V7 Mock 或 Live，没有读取 `.env`/credential、调用 Provider、启动 Docker/API/浏览器、接入产品 composition 或创建仓库 V7 artifact。Phase 6.9.7 仍未完成；该 checkpoint 当时下一原子任务仅 R3 zero-network fault matrix 与 static/Mock checkpoint，后续已完成。
 
 ## 2. 为什么需要 R2
 
@@ -159,7 +159,7 @@ bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```
 
-这些命令只运行 synthetic/no-network tests，不应设置 component credential，也不应执行 V7 `live`。R2 默认 Mock factory 仍返回 `mock_harness_unavailable`；正式 reviewed Mock 属于 R3。
+这些命令只运行 synthetic/no-network tests，不应设置 component credential，也不应执行 V7 `live`。R2 当时默认 Mock factory 仍返回 `mock_harness_unavailable`；正式 reviewed Mock 属于 R3，后续结果见 `2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。
 
 ## 9. 明确保留的 durability 边界
 
@@ -187,9 +187,9 @@ R2 没有把下列事项包装成已解决：
 
 ## 11. 下一步与回顾入口
 
-下一原子任务仅 V7 R3：使用真实 V6 Tutor/Organizer schema、projection、prompt formatter 和 48 个 runtime input，完成完全 zero-network 的 transport/HTTP/response/structured-output/usage/abort/timeout fault matrix；随后执行 fresh baseline、reviewed V7 Mock、full static/PostgreSQL/Compose、历史 SHA/validators、V7 Live artifact=0 与两路独立复审。
+R2 当时的下一原子任务仅 V7 R3：使用真实 V6 Tutor/Organizer schema、projection、prompt formatter 和 48 个 runtime input，完成完全 zero-network 的 transport/HTTP/response/structured-output/usage/abort/timeout fault matrix；随后执行 fresh baseline、reviewed V7 Mock、full static/PostgreSQL/Compose、历史 SHA/validators、V7 Live artifact=0 与两路独立复审。R3 后续已完成。
 
-R3 必须保持不读取 `.env`、不调用 Provider、不启动产品 Docker/API/browser。只有 R3 全门通过、单独提交并推送且用户重新接受运行时数据边界并精确授权唯一一次 V7 branch controlled-Live，R4 才可能开始；当前“继续”不构成该授权。
+R3 已保持不读取 `.env`、不调用 Provider、不启动产品 Docker/API/browser。只有 R3 全门通过、单独提交并推送且用户重新接受运行时数据边界并精确授权唯一一次 V7 branch controlled-Live，R4 才可能开始；当前“继续”不构成该授权。
 
 回顾时可以问：
 

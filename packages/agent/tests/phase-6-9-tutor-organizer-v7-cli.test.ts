@@ -23,7 +23,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-describe('Phase 6.9.7 V7 R2 CLI authorization and recovery-only boundary', () => {
+describe('Phase 6.9.7 V7 CLI authorization and recovery-only boundary', () => {
   test('requires the exact Live authorization and never evaluates hostile accessors', () => {
     expect(parsePhase697TutorOrganizerV7Cli({ argv: ['live'], env: {} })).toEqual({
       ok: false,
@@ -58,7 +58,7 @@ describe('Phase 6.9.7 V7 R2 CLI authorization and recovery-only boundary', () =>
     expect(reads).toBe(0);
   });
 
-  test('rejects incomplete Live configuration and unavailable default Mock before marker creation', async () => {
+  test('rejects incomplete Live configuration and runs the reviewed default Mock without marker creation', async () => {
     const root = await temporaryRoot();
     expect(
       await executePhase697TutorOrganizerV7Cli({
@@ -70,13 +70,23 @@ describe('Phase 6.9.7 V7 R2 CLI authorization and recovery-only boundary', () =>
         repositoryRoot: root,
       }),
     ).toEqual({ ok: false, code: 'live_configuration_invalid' });
-    expect(
-      await executePhase697TutorOrganizerV7Cli({
-        argv: ['mock'],
-        env: {},
-        repositoryRoot: root,
-      }),
-    ).toEqual({ ok: false, code: 'mock_harness_unavailable' });
+    const mock = await executePhase697TutorOrganizerV7Cli({
+      argv: ['mock'],
+      env: {},
+      repositoryRoot: root,
+      runId: '00000000-0000-4000-8000-000000000730',
+    });
+    expect(mock).toMatchObject({
+      ok: true,
+      gate: 'mock_quality_not_evidence',
+      disposition: 'mock_direct',
+      wire: {
+        executorInvocations: 48,
+        providerDispatches: 48,
+        providerResponses: 48,
+        verifiedUsages: 48,
+      },
+    });
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V7_MARKER_PATH)).exists()).toBe(false);
   });
 

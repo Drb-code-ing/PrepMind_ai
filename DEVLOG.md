@@ -1,5 +1,38 @@
 # PrepMind AI 开发日志
 
+> 2026-07-28 — Phase 6.9.7 V7 R3 Zero-network Fault Matrix 与 Static/Mock Checkpoint：
+> 新增 reviewed V7 Mock factory，48 条 runtime 全部从冻结 V2 dataset 派生并穿过真实 V6 Tutor/
+> Organizer candidate、bounded projection、正式 prompt、strict schema、本地 authority merger 与 R1
+> 第一方 DeepSeek V4 Pro direct adapter。网络边界只替换为进程内 synthetic fetch；responder 从实际
+> bounded prompt 选择 ordinal，不读取 case expected/oracle、真实 ID 或写命令。
+>
+> Fault matrix 覆盖 fetch sync/reject、HTTP auth/rate-limit/client/server/异常 status、空或畸形
+> response、non-thinking audit、completion parse、strict schema、usage missing/zero/negative/fraction/
+> overflow、first/middle/last breaker 与 sibling abort 归因。每个预期 fault 精确断言 8-stage prefix、
+> private failure category、usage disposition 与 executor/dispatch/response/verified-usage 四类 counter，
+> 并递归扫描 synthetic key、raw body/error/reasoning/schema payload 泄漏。
+>
+> Fresh baseline 保持 `12/48`、Tutor/Organizer/combined semantic
+> `0.6629642857/0.278125/0.4705446429`。Fresh Mock run `e09baa4a-6f48-41c3-bb48-607a72c300df`
+> 为 `24/24` guard zero-call、`48/48` strict runtime、semantic/model-owned `1/1/1`、四类 wire
+> counter `48/48/48/48`，synthetic usage `22949/1882`、estimated `0.080139 CNY`，gate 固定
+> `mock_quality_not_evidence`。Validator `ok=true`；Mock evidence 已按精确 path 删除，V7 Live
+> marker/journal/evidence/recovery claim 为 0，没有清空 `.tmp`。
+>
+> V7 focused `28/28`（`1028` assertions）、Agent `856/856`（`11881` assertions）、AI
+> `224/224`（`1452` assertions）、Types `42/42 + tsc --noEmit`、Server `227` suites passed /
+> `3` skipped、`2154` passed / `30` skipped、Web `439/439`、Organizer PostgreSQL `12/12`、
+> Docker runtime boundary `3/3`、Compose default-off、V1--V6 validators/SHA，以及独立
+> contract/security/wire 与 docs/history/operations 两路终审通过。PostgreSQL 只复用既有容器；
+> synthetic users/questions/orphan
+> groups/decks/items/traces 全为 0。Types package 仍没有独立 ESLint dependency/config，本轮没有伪称
+> Types lint 通过或顺带新增配置。
+>
+> 全程未读取根 `.env`/credential、调用 Provider、执行 `v7:live`、启动产品 Docker/API/browser、创建
+> V7 Live artifact、接产品 composition 或修改业务数据。下一原子任务仅 R4 精确授权门；普通“继续”
+> 不构成 Live 授权。完整验收见
+> `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V7 R2 独立 runner、lineage 与 durable wire evidence：在 R1 第一方
 > V4 Pro direct adapter 之上新增 V7 report/paired runner、CLI/approval、一次性 marker、
 > dispatch-before-call hash-chain journal、hard-link evidence、crash-only recovery claim 与 strict
@@ -10,8 +43,8 @@
 > `phase-6.9.7-v7-wire-diagnostics-v1`、完整 8-stage 前缀、`usageDisposition=verified`，以及
 > executor/dispatch/response/verified usage 四类 `1/1/1/1` 计数；任一 runtime 不完整、usage unknown、
 > terminal 缺失或 aggregate 篡改时，正式 semantic/P95/token/CNY 全部为 `null`。Synthetic Live 永远
-> 不能打开生产质量门；R2 默认 Mock factory 仍返回 `mock_harness_unavailable`，正式 reviewed Mock 留给
-> R3。
+> 不能打开生产质量门；R2 当时默认 Mock factory 仍返回 `mock_harness_unavailable`，正式 reviewed Mock
+> 留给 R3，后续已完成。
 >
 > Marker/journal/evidence/recovery 使用独立 V7 identity，V1--V6 validators 与 V7 validator 双向拒绝旧
 > runner/artifact token。回归补齐四类 wire/report counter 篡改、runtime snapshot 伪造、unknown/cross-lane
@@ -24,7 +57,7 @@
 > `.env`/credential、调用 Provider、启动 Docker/API/browser、执行正式 V7 Mock/Live、创建仓库 V7
 > artifact、接产品 composition 或修改业务数据。已知 durability 边界如实保留：只有文件 fsync、无父目录
 > fsync；单机 PID/file fencing 不是跨主机 lease，不证明断电后的目录项持久性或 Provider exactly-once。
-> 下一原子任务仅 R3 zero-network fault matrix/static/Mock。验收见
+> 该 checkpoint 当时下一原子任务仅 R3，后续已完成。验收见
 > `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V7 R1 第一方 V4 Pro direct adapter 与 wire diagnostics：在严格
@@ -1520,8 +1553,8 @@ invalid_response/unknown` 及三个 structured stage，并写入 runtime Trace�
 
 > Lineage 边界：以下 V6--V9 均是 **Phase 6.9.5 Review/Planner** 的历史记录，与当前
 > **Phase 6.9.7 Tutor/Organizer V7** 不是同一 lineage。不得把下文任何 Live 终态、marker、授权或后续
-> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1/R2 zero-provider，下一任务仅 R3
-> zero-network fault matrix/static/Mock。
+> 计划用于当前 Phase 6.9.7；后者截至 2026-07-28 已完成 R0/R1/R2/R3 zero-provider，下一任务仅 R4
+> 精确授权门。
 
 ### 2026-07-18 - Phase 6.9.5 V8 唯一 controlled-Live 终态
 
