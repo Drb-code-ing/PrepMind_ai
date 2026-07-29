@@ -15,6 +15,11 @@ import {
   buildPhase697V9SealedReport,
   phase697V9EvidencePath as phase697V9DurableEvidencePath,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v9-durability-contract.ts';
+import {
+  createPhase697TutorOrganizerV9LiveHarness,
+  resolvePhase697V9LiveConfiguration,
+  type Phase697V9LiveConfiguration,
+} from '../src/evals/phase-6-9-tutor-wrong-question-v9-live.ts';
 import { createPhase697TutorOrganizerV9MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v9-mock.ts';
 import {
   runPhase697TutorOrganizerPairedEvalV9,
@@ -119,8 +124,11 @@ export async function executePhase697TutorOrganizerV9Cli(
 
   const runId = input.runId ?? randomUUID();
   const injectedHarnessFactory = input.harnessFactory !== undefined;
-  if (parsed.mode === 'live' && !syntheticLiveConfigurationValid(input.env)) {
-    return { ok: false, code: 'live_configuration_invalid' };
+  let liveConfiguration: Phase697V9LiveConfiguration | null = null;
+  if (parsed.mode === 'live') {
+    const resolved = resolvePhase697V9LiveConfiguration(input.env);
+    if (!resolved.ok) return resolved;
+    liveConfiguration = resolved.value;
   }
   let harnessFactory = input.harnessFactory;
   if (!harnessFactory && parsed.mode === 'mock') {
@@ -130,12 +138,17 @@ export async function executePhase697TutorOrganizerV9Cli(
         runScope,
       });
   }
-  if (!harnessFactory) {
-    return {
-      ok: false,
-      code: 'live_runtime_unavailable_until_r5',
-    };
+  if (!harnessFactory && parsed.mode === 'live') {
+    const configuration = liveConfiguration;
+    if (configuration === null) return { ok: false, code: 'live_configuration_invalid' };
+    harnessFactory = ({ runId: factoryRunId, runScope }) =>
+      createPhase697TutorOrganizerV9LiveHarness({
+        configuration,
+        runId: factoryRunId,
+        runScope,
+      });
   }
+  if (!harnessFactory) return { ok: false, code: 'runtime_factory_unavailable' };
 
   if (parsed.mode === 'mock') {
     let report: Readonly<Phase697TutorOrganizerV9Report>;
@@ -472,35 +485,6 @@ function safeReadEnv(
 function approvalEnabled(env: Readonly<Record<string, string | undefined>>): boolean {
   try {
     return safeReadEnv(env, PHASE_6_9_7_V9_APPROVAL_ENV) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-function syntheticLiveConfigurationValid(
-  env: Readonly<Record<string, string | undefined>>,
-): boolean {
-  try {
-    const required = {
-      AI_PROVIDER_MODE: 'live',
-      AI_ENABLE_LIVE_CALLS: 'true',
-      AI_BASE_URL: 'https://api.deepseek.com/v1',
-      TUTOR_AGENT_MODEL_ENABLED: 'true',
-      TUTOR_AGENT_MODEL_TIMEOUT_MS: '3500',
-      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
-      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
-    } as const;
-    for (const [key, expected] of Object.entries(required)) {
-      if (safeReadEnv(env, key) !== expected) return false;
-    }
-    const tutorKey = safeReadEnv(env, 'TUTOR_AGENT_DEEPSEEK_API_KEY');
-    const organizerKey = safeReadEnv(env, 'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY');
-    return (
-      typeof tutorKey === 'string' &&
-      tutorKey.trim().length > 0 &&
-      typeof organizerKey === 'string' &&
-      organizerKey.trim().length > 0
-    );
   } catch {
     return false;
   }

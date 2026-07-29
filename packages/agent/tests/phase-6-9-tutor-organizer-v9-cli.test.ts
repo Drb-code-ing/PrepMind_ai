@@ -62,7 +62,7 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
     expect(reads).toBe(0);
   });
 
-  test('publishes reviewed default Mock evidence while keeping the Live factory unavailable', async () => {
+  test('publishes reviewed default Mock evidence without consuming Live state', async () => {
     const root = await temporaryRoot();
     const runId = '00000000-0000-4000-8000-000000000730';
     expect(
@@ -106,14 +106,6 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
         verifiedUsages: 48,
       },
     });
-    expect(
-      await executePhase697TutorOrganizerV9Cli({
-        argv: ['live', PHASE_6_9_7_V9_CONFIRMATION],
-        env: authorizedSyntheticLiveEnv(),
-        repositoryRoot: root,
-        runId,
-      }),
-    ).toEqual({ ok: false, code: 'live_runtime_unavailable_until_r5' });
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V9_MARKER_PATH)).exists()).toBe(false);
     if (!mock.ok) throw new Error('V9 reviewed Mock CLI failed');
     const evidencePath = resolve(root, mock.evidencePath);
@@ -129,6 +121,35 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
     await rm(evidencePath);
     expect(await Bun.file(evidencePath).exists()).toBe(false);
     expect(await Bun.file(resolve(root, phase697V9JournalPath(runId))).exists()).toBe(false);
+  });
+
+  test('rejects invalid Live composition before marker reservation or harness creation', async () => {
+    const root = await temporaryRoot();
+    const runId = '00000000-0000-4000-8000-000000000735';
+    let harnessFactoryCalls = 0;
+    for (const override of [
+      { TUTOR_AGENT_DEEPSEEK_API_KEY: undefined },
+      { WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: undefined },
+      { AI_BASE_URL: 'https://example.invalid/v1' },
+      { TUTOR_AGENT_MODEL_TIMEOUT_MS: '3499' },
+      { WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5001' },
+      { ROUTER_MODEL_ENABLED: 'true' },
+    ]) {
+      const result = await executePhase697TutorOrganizerV9Cli({
+        argv: ['live', PHASE_6_9_7_V9_CONFIRMATION],
+        env: { ...authorizedSyntheticLiveEnv(), ...override },
+        repositoryRoot: root,
+        runId,
+        harnessFactory: ({ mode, runId, runScope }) => {
+          harnessFactoryCalls += 1;
+          return createPhase697V9SyntheticHarness({ mode, runId, runScope });
+        },
+      });
+      expect(result).toEqual({ ok: false, code: 'live_configuration_invalid' });
+      expect(await Bun.file(resolve(root, PHASE_6_9_7_V9_MARKER_PATH)).exists()).toBe(false);
+      expect(await Bun.file(resolve(root, phase697V9JournalPath(runId))).exists()).toBe(false);
+    }
+    expect(harnessFactoryCalls).toBe(0);
   });
 
   test('publishes injected synthetic Mock evidence without consuming Live state', async () => {
@@ -217,6 +238,15 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
       disposition: 'completed_run',
     });
     if (!result.ok) throw new Error('V9 synthetic Live CLI failed');
+    const marker = JSON.parse(
+      await Bun.file(resolve(root, PHASE_6_9_7_V9_MARKER_PATH)).text(),
+    ) as Record<string, unknown>;
+    const evidence = JSON.parse(await Bun.file(resolve(root, result.evidencePath)).text()) as {
+      report?: Record<string, unknown>;
+    };
+    expect(marker.executorProvenance).toBe('synthetic_test');
+    expect(evidence.report?.executorProvenance).toBe('synthetic_test');
+    expect(evidence.report?.gate).toBe('quality_gate_failed');
     expect(
       await validatePhase697TutorOrganizerV9EvidenceBundle({
         root,
