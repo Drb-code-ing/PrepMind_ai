@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 V9 R5 Controlled-Live 失败封存：从 clean/pushed
+> `ce308da643bfb0b9c150f0612f0c5aa926442687` 开始，local HEAD、tracking ref 与 GitHub remote
+> parity、V9 artifact=0、Phase 6.9.6 与 V1--V8 validators、focused/full/static 和独立复审前门均通过。
+> 用户在运行当时重新接受 DeepSeek 当前账号的数据保留/训练边界，并精确授权唯一一次 V9 branch
+> controlled-Live。授权仅由一个隔离 Bun 子进程消费：根 `DEEPSEEK_API_KEY` 只映射为 Tutor/Organizer
+> component credential，根 `.env` 未修改或打印，其它 Agent gate 未开启。
+>
+> 唯一 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard verified zero-call。
+> pair 0 两条 lane 各完成一次 durable reservation、executor entry 与 Provider dispatch，但均没有收到
+> Provider response。Tutor `tutor-v2-runtime-01` 固定为
+> `executed_failure / fallback_runtime_error / provider_runtime / transport`；Organizer
+> `organizer-v2-runtime-01` 在 sibling failure 后以
+> `attempted_aborted / fallback_aborted / post_dispatch_abort` 收口，没有复制 Tutor 的 transport category。
+> Runner 随即打开 `quality_gate_impossible` breaker，后续 46 runtime 未启动。
+>
+> 正式结果为 pair dispatched/completed `1/1`、runtime reserved/terminal/orphan/not-started
+> `2/2/0/46`、wire executor/dispatch/response/verified usage `2/2/0/0`、strict `0/48`、critical/provider/
+> permission/mutation/broader fallback `0/1/0/0/0`，最终 `quality_gate_failed`。因为没有 response 或
+> verified usage，Tutor/Organizer/combined semantic、四项 P95、token 与 CNY aggregate 全部为 `null`；
+> 不能写成 `0 CNY`，也不能把 transport 进一步归因为 DNS、TLS、代理、账号、余额、模型权限或服务端。
+>
+> Marker、journal 与 evidence 已由正常路径 durable seal；evidence 绑定 seal 前 journal sequence `37`，
+> 物理 journal 最后一条为 sequence `38` 的 `evidence_sealed(completed_run)`。V9 bundle validator 返回
+> `ok=true/filesChecked=1`，不存在 recovery claim。授权已消费，禁止 retry/resume/replay/backfill、再次
+> `v9:live`、seal/recovery、删除/覆盖/改写 artifact，以及 curl、单 case、产品 API 等追加 Provider 探测。
+>
+> 本次没有启动或清理 Docker、API、浏览器或业务数据。R6 产品 Docker/API/可见浏览器、R7/main、
+> Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾均被阻断；当前只允许读取、校验、文档化和独立审查
+> 已封存事实。完整验收见
+> `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V9 R4 Reviewed Mock / Full Checkpoint：从 clean/pushed
 > `a88ff533` 开始，在同一 `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider
 > 原子任务。新增 V9 evaluation runtime、reviewed Mock factory 与公开 package export；CLI `mock` 默认接入
@@ -28,8 +59,8 @@
 >
 > 本任务未读取 `.env`/credential、调用 Provider、执行 Live、启动产品 Web/Server/Worker/Admin/MinIO、
 > 调用 API/浏览器、修改业务数据、触碰 V1--V8 artifact 或合并 main。Mock 满分不证明真实模型质量、
-> Provider P95/usage/费用或产品可用性。下一原子任务仅 R5 新的精确一次性 V9 branch controlled-Live
-> 授权门；R6/R7/main 与后续阶段继续阻断。验收见
+> Provider P95/usage/费用或产品可用性。该 R4 checkpoint 当时的下一原子任务仅 R5 新的精确一次性 V9
+> branch controlled-Live 授权门；后续唯一 R5 已失败封存。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`。
 >
 > 2026-07-29 — Phase 6.9.7 V9 R3 Runner / Lineage / Durability：从 clean/pushed

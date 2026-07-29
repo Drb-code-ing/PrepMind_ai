@@ -886,7 +886,7 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
 
-### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2 R7 / V3 R0--R5 / V4 R0--R6 / V5 R0--R6 / V6 R0--R5）
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2--V9）
 
 Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
 
@@ -1171,16 +1171,24 @@ V7 设计和当前停止门见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`、
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。V7 R4 已失败封存且不可
-重跑。V8 R0 zero-provider 复盘与设计已完成，见
+重跑。V8 R0--R5 已完成并失败封存，见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v8-remediation.md` 与
-`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v8-r0-zero-provider-postmortem.md`。
+`docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
 
-当前只允许 V8 R1 的 zero-provider fixed-shape contract/diagnostic TDD。不得运行任何 V7/V8 Live、
-seal/recovery、curl、单 case 或产品 API；R1 不读取根 `.env`/credential，不启动产品 Docker/API/browser。
-V8 Organizer 计划使用始终包含 `questionIndex/subjectIndex/deckAction/targetIndex` 的 fixed-shape JSON，
-并只记录固定 reason/count/type-shape hash 的脱敏诊断；本地 owner/shortlist/stale/locked-name/confidence/
-write authority 不变。
+V9 R0--R4 随后完成本地完整合法 option authority、exact `questionIndex + optionIndex` contract、
+Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock。
+唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard、wire `2/2/0/0`、
+strict `0/48`；Tutor 在 Provider response 前成为 `provider_runtime / transport`，Organizer sibling 为
+`post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator
+`ok=true/filesChecked=1`，无 recovery claim。完整终态见
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+
+当前不得运行任何 V7/V8/V9 Live、seal/recovery、curl、单 case 或产品 API 探测；不得删除、覆盖或改写
+V9 artifact，也不得启动 V9 R6 产品 Docker/API/浏览器或 R7/main。日常开发继续保持 mock、
+live=false、Tutor/Organizer gate=false 与 component key empty。已有容器、镜像和卷保持不变，禁止 prune、
+`down -v`、reset、flush 或 wipe。若未来改变产品路线，必须作为新的用户决策和独立阶段规划，不能通过
+新 runner、marker 或版本号把它包装为 V9 retry。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

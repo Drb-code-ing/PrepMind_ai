@@ -22,8 +22,16 @@ Web/Server/Worker/Admin/MinIO、调用产品 API 或打开浏览器，也没有�
 候选、schema、local authority、runner 与证据合同在合成输入下闭合；它不证明真实模型语义质量、真实
 Provider P95/usage/费用或产品可用性。
 
-V9 R0--R4 已完成。下一原子任务只能是 R5 新的精确一次性 V9 branch controlled-Live 授权门；R6 产品
-Docker/API/可见浏览器、R7/main、Phase 6.9.8、Phase 6.10、Phase 8/9 与两篇面试学习博客继续阻断。
+V9 R0--R4 已完成。本 checkpoint 当时的下一原子任务只能是 R5 新的精确一次性 V9 branch
+controlled-Live 授权门；后续唯一 R5 已执行并失败封存。R6 产品 Docker/API/可见浏览器、R7/main、
+Phase 6.9.8、Phase 6.10、Phase 8/9 与两篇面试学习博客继续阻断。
+
+> 后续终态（2026-07-30）：唯一 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24`
+> guard、wire `2/2/0/0`、strict `0/48`；Tutor 在 Provider response 前
+> `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 aggregate 全 `null`。
+> Marker/journal/evidence 已 seal，validator 通过且无 recovery claim。一次性授权已消费，不得重跑或追加
+> Provider 探测。当前终态以
+> `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md` 为准。
 
 ## 2. R4 实现
 
@@ -137,7 +145,7 @@ BullMQ 持续重连导致测试进程超时；恢复既有 `docker-postgres-1` �
 - contract/security/code 终审：APPROVED，无 Critical/Important/Minor；
 - test/fault-matrix/operations 终审：APPROVED，无 Critical/Important。
 
-## 8. 明确未完成
+## 8. R4 checkpoint 时点明确未完成
 
 - 没有执行 V9 controlled-Live，没有真实模型 semantic、Provider network P95、真实 usage 或账单证据；
 - 没有把 V9 candidate 作为新的产品 production authority；现有 Tutor/Organizer 产品 gate 仍默认关闭；
@@ -146,17 +154,17 @@ BullMQ 持续重连导致测试进程超时；恢复既有 `docker-postgres-1` �
 - 没有完成 Phase 6.9.7、Phase 6 全部 Agent、可执行 LangGraph 或 Phase 6.10 分层记忆；
 - 没有开始 Phase 6.9.8/6.9.9/6.9.10、Phase 8/9 或《多 Agent 架构》《记忆系统》博客收尾。
 
-## 9. 停止条件与下一步
+## 9. R4 停止条件与后续 R5 终态
 
-R4 必须先 clean commit、推送当前功能分支，并核对 local/tracking/remote SHA 一致。之后仍须停止在 R5
-授权门前。只有用户在运行当时重新接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权唯一一次
-Phase 6.9.7 Tutor/Organizer V9 branch controlled-Live，才允许进入 R5。普通“继续”“好的”“所有权限”
-或任何 V1--V8 历史授权都不能替代该精确授权。
+R4 已先 clean commit、推送当前功能分支，并核对 local/tracking/remote SHA 一致；随后用户在运行当时重新
+接受 DeepSeek 当前账号的数据保留/训练边界，并明确授权唯一一次 Phase 6.9.7 Tutor/Organizer V9 branch
+controlled-Live。该 R5 已以 `quality_gate_failed` 封存，R4 的等待授权条件已经履行且不能再次使用。禁止
+retry/resume/replay/backfill、额外 Provider/curl/单 case/产品 API 探测、seal/recovery 或改写 artifact。
 
 可以这样回顾：
 
 - “为什么 V9 Mock semantic `1/1/1` 仍不能证明真实模型可用？”
 - “V9 如何把 Organizer 从自由组合 subject/action/target 收敛为本地 option selection？”
 - “怎样证明 synthetic responder 只读实际 bounded prompt，没有读取 expected/oracle？”
-- “为什么 R4 结束后 V9 artifact 必须为 0？”
-- “R5 前 local/tracking/remote、历史 validators 与哪些 gate 必须再次核对？”
+- “为什么 R4 结束时 V9 artifact 必须为 0，而 R5 后只能保留唯一已 seal artifact？”
+- “R5 的 `2/2/0/0` 为什么只证明 dispatch，不能证明 Provider response 或模型语义？”

@@ -2,12 +2,12 @@
 
 日期：2026-07-29
 
-当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD、R2 Provider-like
-robustness、R3 runner/lineage/durability 与 R4 reviewed Mock/full checkpoint 已完成。R4 Mock run
-`f039a7d2-c3b2-4286-9630-fee49d365a33` 为 `24/24` guard、`48/48` strict、wire
-`48/48/48/48`、semantic `1/1/1`，gate 固定 `mock_quality_not_evidence`；evidence 已精确删除，正式
-V9 artifact=0。下一原子任务仅 R5 新的精确一次性 branch controlled-Live 授权门。V1--V8 一次性 Live
-历史均不可重跑，V9 仍未读取 credential、调用 Provider、执行 Live 或启动产品验收。
+当前状态：R0--R4 已完成。唯一 R5 branch controlled-Live run
+`c530ca02-3ece-4f11-898c-5695c8252bd5` 已以 `quality_gate_failed` 封存：`24/24` guard，第一对两条
+lane 各 dispatch 一次但均无 Provider response；Tutor 为 `provider_runtime / transport`，Organizer sibling
+为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全
+`null`。Marker/journal/evidence 已 durable seal，validator `ok=true/filesChecked=1`，无 recovery claim。
+V1--V9 一次性 Live 历史均不可重跑；R6/R7/main 与后续阶段被阻断。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`
@@ -138,23 +138,27 @@ artifact=0 与两路独立终审通过。验收后 Mock evidence 已按精确路
 
 ## R5：唯一 V9 Branch Controlled-Live
 
-状态：[ ] 未授权。
+状态：[x] 失败封存。
 
-只有 R4 clean/pushed、local/tracking/remote SHA 一致、历史 validators 与 V9 artifact=0 全门通过，且用户在
-运行当时重新接受 DeepSeek 数据保留/训练边界并精确授权唯一 V9 branch Live，才允许执行一次。普通
-“继续”“好的”或此前对 V8 的授权都不构成 V9 R5 授权。任一终态只 seal，不
-retry/resume/replay/backfill。
+R4 clean/pushed、local/tracking/remote SHA、历史 validators 与 artifact=0 前门均通过后，用户在运行当时
+接受 DeepSeek 数据边界并精确授权唯一一次。Run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成
+`24/24` guard；pair 0 Tutor 命中 `transport`，Organizer 在 dispatch 后被 sibling abort 收口，wire
+`2/2/0/0`、strict `0/48`、gate `quality_gate_failed`。一次性名额已消费，artifact 已 seal；禁止
+retry/resume/replay/backfill、额外 Provider 探测、seal/recovery 或改写证据。
+
+验收：
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`
 
 ## R6：产品 Docker / API / 可见浏览器
 
-状态：[ ] 仅 R5 全门通过后允许。
+状态：[x] 因 R5 未通过质量门永久阻断。
 
-覆盖 Tutor Chat、Organizer single/batch、default-off/forced-failure/owner/stale/Trace、可见
-`/chat`/`/error-book` 与精确 synthetic 清理；保留 Docker 容器、镜像和卷。
+不得启动 Tutor Chat、Organizer single/batch、default-off/forced-failure/owner/stale/Trace、可见
+`/chat`/`/error-book` 产品验收。现有 Docker 容器、镜像和卷保持不变。
 
 ## R7：Main 合并与回放
 
-状态：[ ] 仅 R6 与独立复审通过后允许。
+状态：[x] 因 R6 被阻断而永久阻断。
 
-从最新 main 使用普通 git 分支流程执行 `--no-ff` 合并；main 不重跑已消费 Live，只复验 committed
-static/Mock authority 与 default-off Docker/API/可见浏览器，精确清理后推送并核对远程 SHA。
+不得合并 main、执行 main default-off 产品回放或以新版本/新 marker 绕过 R5 终态。功能分支只允许提交
+本次失败证据文档并推送；已消费 Live 不得在任何分支重跑。

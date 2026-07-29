@@ -2,9 +2,10 @@
 
 日期：2026-07-29
 
-状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract、R2 Provider-like robustness、
-R3 runner/lineage/durability 与 R4 reviewed Mock/full checkpoint 已完成。R4 仍为 zero-provider，正式 V9
-artifact=0；下一原子任务仅 R5 新的精确一次性 branch controlled-Live 授权门。
+状态：R0--R4 已完成；唯一 R5 branch controlled-Live run
+`c530ca02-3ece-4f11-898c-5695c8252bd5` 已以 `quality_gate_failed` durable seal。24 条 guard 全部
+zero-call，pair 0 两条 lane 各 dispatch 一次但无 Provider response；Tutor 为 `transport`，Organizer 为
+`post_dispatch_abort`，wire `2/2/0/0`、strict `0/48`，正式 aggregate 全 `null`。R6/R7/main 已阻断。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -19,8 +20,9 @@ R1 实现起点：`780c5037435ea62b43417a8a5cae9577fe4c7abc`
 - `.tmp/phase-6-9-7-tutor-organizer-v8-controlled-live.marker`
 - `.tmp/phase-6-9-7-tutor-organizer-v8-controlled-live-7ff09c36-50f2-445a-b309-dc9500e5e13c.journal.jsonl`
 
-本文件不授权读取 credential、调用 Provider、执行任何 V8/V9 Mock/Live/seal/recovery、启动产品
-Docker/API/browser、修改业务数据或合并 main。
+本文件最初不授权读取 credential、调用 Provider 或执行 V9 Live；后续唯一 R5 已依据独立用户授权执行并
+失败封存。该授权已消费，本文件现在不授权任何 retry/resume/replay/backfill、额外 Provider 探测、
+seal/recovery、产品 Docker/API/browser、业务数据修改或 main 合并。
 
 ## 1. 决策摘要
 
@@ -341,8 +343,9 @@ Tutor、V9 Organizer candidate 与 V6 merger。
 
 `lane_reserved` 必须 append + fsync 后才能进入 executor。First-party Live provenance 如果没有完整 durable
 lifecycle，会在 guard/executor 前以 `PHASE_6_9_7_V9_DURABLE_LIVE_LIFECYCLE_REQUIRED` 拒绝；crash-only
-recovery 仍只 seal 持久化事实，不创建 executor、不读取 credential、不 resume/replay。正式 V9
-marker/journal/evidence/recovery artifact 为 0。
+recovery 仍只 seal 持久化事实，不创建 executor、不读取 credential、不 resume/replay。R3/R4 checkpoint
+结束时正式 V9 marker/journal/evidence/recovery artifact 为 0；后续唯一 R5 已正常创建并封存 marker、
+journal 与 evidence，且无 recovery claim。
 
 ### 8.4 R4 reviewed Mock / full checkpoint 收敛结果
 
@@ -359,6 +362,23 @@ Fresh baseline 保持 `12/48` 与 semantic
 `mock_quality_not_evidence`。全量静态/PostgreSQL/Compose/历史 validator 与两路独立终审通过；Mock evidence
 已精确删除，正式 V9 artifact 继续为 0。这不是 Live、真实 Provider 或产品 authority。
 
+### 8.5 R5 唯一 Controlled-Live 终态
+
+R5 在 clean/pushed `ce308da643bfb0b9c150f0612f0c5aa926442687` 上通过 local/tracking/remote、历史
+validator 与 artifact=0 前门后，使用独立 Bun 子进程把根 `DEEPSEEK_API_KEY` 仅映射为 Tutor/Organizer
+component credential。正式 provenance 为 `first_party_deepseek_v4_pro_direct`，其它 Agent gate 未开启。
+
+唯一 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 得到 `24/24` guard；pair 0 Tutor 在
+`provider_dispatch_started` 后以 `provider_runtime / transport` 结束，Organizer 同样越过 dispatch 后被
+sibling `post_dispatch_abort` 收口。最终 pair `1/1`、runtime accounting `2/2/0/46`、wire `2/2/0/0`、
+strict `0/48`、gate `quality_gate_failed`，semantic/P95/token/CNY 全 `null`。Evidence 已正常 seal，validator
+`ok=true/filesChecked=1`，无 recovery claim。
+
+该证据没有 Provider response，不能判断 DNS/TLS/代理、账号、余额、模型权限或服务端状态，也没有验证
+真实 Tutor/Organizer 语义选择。一次性名额已经消费；禁止用 curl、单 case、产品 API、新 runner 或新
+marker 追加探测或绕过终态。完整验收见
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+
 ## 9. 独立 V9 Lineage
 
 V1--V8 的 dataset binding、prompt/policy SHA、runner、approval、marker、journal、evidence、recovery、validator
@@ -371,7 +391,8 @@ V1--V8 的 dataset binding、prompt/policy SHA、runner、approval、marker、jo
 - option policy/prompt/diagnostic/held-out fixture SHA。
 
 Transport 不变时可以像 V8 一样显式复用 V7 冻结的 8-stage wire capability，但不得伪造新的 AI wire
-export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
+export。正式 V9 artifact 在 R5 精确授权前保持 0；R5 后只允许保留已 seal 的唯一 marker/journal/evidence，
+不得删除、覆盖、改写或增加另一份 Live authority。
 
 ## 10. 原子路线
 
@@ -386,10 +407,9 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 5. **R4**：reviewed Mock、fresh baseline、全量 Agent/AI/Types/Server/Web、Organizer PostgreSQL 并发、
    Compose default-off、历史 validators、artifact=0、Reader Testing 与双路终审；zero-provider。
    （已完成；Mock gate=`mock_quality_not_evidence`）
-6. **R5**：只有 R4 clean/pushed 且用户在运行当时重新接受 DeepSeek 数据边界并精确授权唯一 V9 branch
-   controlled-Live，才允许执行一次；任一终态只 seal，不重跑。（当前下一原子任务，未授权）
-7. **R6**：只有 R5 全门通过才允许产品 Docker/API/可见浏览器、Trace、default-off 与精确清理。
-8. **R7**：只有 R6 通过且独立复审无问题才允许 `--no-ff` 合并 main、main default-off 回放和推送。
+6. **R5**：唯一 branch controlled-Live 已执行并以 `quality_gate_failed` seal；不得重跑。（失败封存）
+7. **R6**：因 R5 未通过质量门，产品 Docker/API/可见浏览器、Trace 与 default-off 验收永久阻断。
+8. **R7**：因 R6 被阻断，main 合并、main default-off 回放与推送永久阻断。
 
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 均不读取 credential、调用
 Provider、启动产品 Docker/API/browser 或修改业务数据。
@@ -398,8 +418,8 @@ R1/R2/R3/R4 验收分别见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`；当前只允许在取得新精确授权后继续
-R5。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`；R5 终态见
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
 
 ## 11. 禁止事项
 
@@ -410,8 +430,8 @@ R5。
 - 不让 Mock responder读取 expected/oracle 或调用 production validator 生成答案；
 - 不放宽 owner、snapshot、stale、locked-name、Trace、budget、timeout、quality、permission 或 write authority；
 - 不把 zero-provider R0、后续 Mock 或合法 option builder 写成真实模型/产品可用；
-- 不在 R5 前读取 credential、写 approval、创建正式 artifact 或调用 Provider；
-- 不在 R6 前启动产品验收，不在 R7 前合并 main；
+- 不 retry/resume/replay/backfill V9，不追加 Provider/curl/单 case/产品 API 探测，不执行 seal/recovery；
+- 不删除、覆盖、改写或拼接 V9 marker/journal/evidence，不启动 R6 产品验收或 R7/main；
 - 不开始 Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。
 
 ## 12. 回顾时可以问
@@ -423,3 +443,4 @@ R5。
 - “option cap 与 token budget 如何避免静默删除整个 subject/action bucket？”
 - “V9 如何继续复用 V6 validator/merger 和三阶段 stale fence？”
 - “为什么 V9 必须使用独立 lineage，而不能修改或补跑 V8？”
+- “为什么 R5 的 `2/2/0/0` 只证明 dispatch，不证明 Provider response、usage 或模型语义？”

@@ -816,9 +816,9 @@ candidate、API/UI、strict paired runner 与 API-only Docker 配置已经实现
 
 完成回执：main focused 为 Agent `118/118`、Types `1/1`、Server `50/50`、Web `7/7`，相应 typecheck/lint/build 均通过；当前源码 Docker server/worker 健康。main `/knowledge` 回放得到 suggestions `200`、upload `201`、process `201`、search `201`，390px 与 1440px 均无横向溢出，显示本地规则 badge 且自动整理控件为 0。唯一合成账号、Document/Chunk/MinIO object/ACCOUNT job/Trace/Session/RefreshToken 和浏览器 storage residue 全为 0；两个 Knowledge gate、live gate、Review/Planner gate 均为 false，Knowledge credential absent，Docker 卷保留。V2 Live 与 R7 未重跑。
 
-## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V9 R4）
+## 11. Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收入口（含 V2--V9 R5）
 
-Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4 与 V8 R5 八条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存，且不可重跑、额外探测或拼接。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint。R4 Mock 为 `24/24` guard、`48/48` strict、wire `48/48/48/48`、semantic `1/1/1`，但 gate 固定 `mock_quality_not_evidence`；Mock evidence 已精确删除，正式 V9 artifact=0。下一原子任务仅 R5 新精确一次性 V9 branch controlled-Live 授权门；产品验收、main 与后续阶段继续阻断。下列合同继续作为不可放宽的历史基线：
+Task 0--11 已完成：72-case baseline、strict contract/projection、Tutor/Organizer package candidate/merger、产品 default-off composition、Organizer owner/write/Trace/API/UI、strict paired Mock/evidence、Docker runtime boundary 与分支全量 checkpoint 均已落地。Task 12 V1、V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4、V8 R5 与 V9 R5 九条唯一 controlled-Live 均已执行并以 `quality_gate_failed` 封存，且不可重跑、额外探测或拼接。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor `provider_runtime / transport`、Organizer sibling `post_dispatch_abort`，正式 aggregate 全 `null`。Artifact 已 seal，validator 通过且无 recovery claim；产品验收、main 与后续阶段继续阻断。下列合同继续作为不可放宽的历史基线：
 
 1. 从已推送最新 main 创建普通 `codex/` 分支，不使用 worktree；一任务一提交并同步核心文档。
 2. 冻结 72-case dataset：Tutor/Organizer 各 12 zero-call + 24 runtime，Organizer 共 32 decision units；SHA-256 为 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`。未修饰 baseline 为 `6/48`、Tutor `0.4418666667`、Organizer `0.278125`、critical/provider/token/cost `0`；失败 case 不删除，且该零调用不冒充未来 guard 验收。
@@ -1517,7 +1517,7 @@ V8 R1--R5 收口回执：
 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md` 与
 `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
 
-V9 R0--R4 zero-provider checkpoint：
+V9 R0--R5 收口回执：
 
 - [x] 本地从 validated V5 shortlist 枚举完整合法 option；模型 exact output 只允许
       `decisions[{questionIndex,optionIndex}]`，不回显 fingerprint、不自由组合 subject/action/target；
@@ -1534,17 +1534,23 @@ V9 R0--R4 zero-provider checkpoint：
       `0.6629642857142858/0.278125/0.4705446428571429`；
 - [x] Mock run `f039a7d2-c3b2-4286-9630-fee49d365a33` 为 `24/24` guard、`48/48` strict、wire
       `48/48/48/48`、semantic `1/1/1`、synthetic usage `17732/504`、estimated `0.05622 CNY`；
-- [x] gate 固定 `mock_quality_not_evidence`；Mock evidence 已精确删除，V9 marker/journal/evidence/
-      recovery claim 为 0；
+- [x] R4 gate 固定 `mock_quality_not_evidence`；Mock evidence 已精确删除，R4 checkpoint 时 V9
+      marker/journal/evidence/recovery claim 为 0；
 - [x] Agent/AI/Types/Server/Web 全量、Organizer PostgreSQL `12/12`、Docker boundary/static contract `3/3`、Compose
       default-off、Phase 6.9.6 与 V1--V8 validators、测试账号残留 0 和两路终审通过；
-- [x] 未读取 `.env`/credential、调用 Provider、执行 V9 Live、启动产品 Docker/API/browser、修改业务数据
-      或合并 main；Mock 不证明真实模型、Provider P95/usage/费用或产品可用性；
-- [ ] R5 只有在 R4 clean/pushed、local/tracking/remote SHA 一致、历史 validators 与 V9 artifact=0
-      复核通过，且用户运行当时重新接受 DeepSeek 数据边界并精确授权唯一 V9 branch Live 后才允许一次；
-- [ ] R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+- [x] R4 未读取 `.env`/credential、调用 Provider、执行 V9 Live、启动产品 Docker/API/browser、修改
+      业务数据或合并 main；Mock 不证明真实模型、Provider P95/usage/费用或产品可用性；
+- [x] R5 在 clean/pushed `ce308da643bfb0b9c150f0612f0c5aa926442687`、local/tracking/remote parity、
+      历史 validators 与 artifact=0 前门通过后，依据用户当次精确授权执行唯一 Live；
+- [x] run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard、pair `1/1`、runtime
+      `2/2/0/46`、wire `2/2/0/0`、strict `0/48`；Tutor `transport`，Organizer sibling
+      `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`；
+- [x] Marker/journal/evidence 已 durable seal，validator `ok=true/filesChecked=1`，无 recovery claim；
+      一次性授权已消费，不得 retry/resume/replay/backfill、seal/recovery、改写 artifact 或追加 Provider 探测；
+- [x] R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。

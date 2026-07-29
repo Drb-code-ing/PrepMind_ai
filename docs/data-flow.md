@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-29。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V8 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；R4 Mock 为 `24/24` guard、`48/48` strict、wire `48/48/48/48`、semantic `1/1/1`，但 gate 固定 `mock_quality_not_evidence`，正式 V9 artifact=0。当前下一任务仅 R5 新精确一次性 branch controlled-Live 授权门；产品 Docker/API/browser、main 与后续阶段仍被阻断。
+> 当前版本：2026-07-30。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 
 ## 1. 当前边界
 
@@ -22,7 +22,7 @@
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 已可从同一 owner snapshot 生成 deterministic facts、owner-scoped Qwen Chunk embedding shortlist，并在完整安全投影和双 stale fence 后选择性调用受限 DeepSeek V4 Pro candidate；本地 merger 始终重建真实 ID、时间、recommendation 与权限。`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料；默认 gate 关闭时仍返回 deterministic 建议。
 - Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。当前 11 个 graph 名称仍是 descriptor，Retriever/FinalResponse 职责隐含于 RAG/Chat 链路，Tool-Using Orchestrator 尚未实现。
 - Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
-- Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。V7 R1 新增的 V4 Pro direct adapter 仍只是一种 `StructuredModelExecutor`；V9 R4 reviewed Mock 让正式 Tutor/Organizer candidate 穿过该 adapter，但只注入进程内 synthetic fetch，尚未形成新的产品 composition 或 Provider authority。其 wire capability 只暴露固定 stage/category/counter，不暴露 fetch、response 或 raw error。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
+- Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。V7 R1 新增的 V4 Pro direct adapter 仍只是一种 `StructuredModelExecutor`；V9 R4 reviewed Mock 让正式 Tutor/Organizer candidate 穿过该 adapter，但只注入进程内 synthetic fetch。V9 R5 唯一 Live 证明两条 lane 能进入第一方 durable dispatch 边界，但没有 Provider response，因此不形成语义、usage、费用或产品 authority。其 wire capability 只暴露固定 stage/category/counter，不暴露 fetch、response 或 raw error。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
 - 会话状态职责：`POST /conversation-context/prepare` 固定执行 ownership -> state patch/cache/PG -> 已有 summary -> uncovered count。PostgreSQL 是 state 权威源；Redis key 是 user/conversation 的 SHA-256 组合且最长 TTL 24 小时，只保存 public state。客户端只能 patch active goal/question，内部 action/tool 字段不会进入 request/response/cache。缓存 miss、Redis error、坏 JSON、schema mismatch 或过期都会安全回源/返回 PG 结果。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
@@ -106,7 +106,7 @@
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier/Tutor candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成，Tutor candidate 只选择并由本地重建教学策略。
 - `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 的 V1--V8 Live 均已失败封存，产品验收没有启动。V9 R0--R4 只证明 option selection、runner/durability 与 reviewed Mock 的 zero-provider 工程边界；R4 的 `mock_quality_not_evidence` 满分不是真实 Live、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余未完成节点仍按各自后续任务推进。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 的 V1--V9 Live 均已失败封存，产品验收没有启动。V9 R0--R4 证明 option selection、runner/durability 与 reviewed Mock 的 zero-provider 工程边界；唯一 R5 又只证明两条 lane 进入 durable dispatch 后在 response 前 transport/abort，仍没有真实语义、usage、费用、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
@@ -716,6 +716,20 @@ V9 R4 reviewed Mock
   -> V9 marker/journal/evidence/recovery = 0; no Provider/product/main
 ```
 
+```text
+V9 R5 唯一 controlled-Live
+  -> 24 guard -> candidate guard -> verified Provider zero-call 24/24
+  -> reserve pair 0 Tutor + Organizer lanes -> append/fsync lane_reserved
+  -> Tutor executor -> request_validated -> provider_dispatch_started
+  -> Organizer executor -> request_validated -> provider_dispatch_started
+  -> Tutor response 前 transport failure -> provider_runtime / transport
+  -> sibling abort Organizer -> post_dispatch_abort
+  -> terminal 2 -> quality_gate_impossible breaker -> remaining runtime not_started 46
+  -> wire 2/2/0/0 -> strict 0/48 -> semantic/P95/token/CNY null
+  -> marker/journal/evidence durable seal -> validator ok -> no recovery claim
+  -> no retry/probe/product Docker/main
+```
+
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
 
 后续唯一 V4 R6 已使用独立 identity 执行并失败封存；V5 R0 随后区分坏 fixture、产品 candidate 拒绝
@@ -747,8 +761,10 @@ durability 与 reviewed Mock；唯一 R5 已在 static schema 后命中本地 `d
 V9 R0--R3 再把 Organizer 收敛为本地完整合法 option + 模型 exact index selection，并建立独立
 runner/lineage/durability；R4 reviewed Mock 已穿过正式 V6 Tutor、V9 Organizer、V6 merger 与 direct
 adapter，只有 fetch 为 synthetic。Mock run `f039a7d2...` 为 `24/24` guard、`48/48` strict、wire
-`48/48/48/48`、semantic `1/1/1`，gate 固定 `mock_quality_not_evidence`；evidence 已精确删除，正式 V9
-artifact=0。当前下一任务仅 R5 新精确授权门，尚无 V9 Provider 或产品结论。
+`48/48/48/48`、semantic `1/1/1`，gate 固定 `mock_quality_not_evidence`；evidence 已精确删除，R4
+checkpoint 当时正式 V9 artifact=0。唯一 R5 随后在 pair 0 的 Provider response 前以 Tutor transport 与
+Organizer sibling abort 结束，wire `2/2/0/0`、strict `0/48`、正式聚合全 `null`。V9 artifact 已 seal，
+不得重跑或追加探测；仍无 V9 真实语义或产品结论。
 详见
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r0-zero-provider-root-cause.md` 与
 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
@@ -774,7 +790,8 @@ artifact=0。当前下一任务仅 R5 新精确授权门，尚无 V9 Provider �
 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`、
 `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`、
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
 
 当前 `/knowledge` 页面数据流：
 
