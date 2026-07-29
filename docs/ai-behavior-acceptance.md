@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R2）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R3）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V8
 八条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -255,11 +255,13 @@ fault matrix 与 reviewed static/Mock checkpoint。唯一 V7 R4 为 `24/24` guar
 diagnostic、独立 Provider-like robustness、runner/lineage/durability，以及 reviewed Mock/full checkpoint；
 唯一 R5 Live 已证明 fixed-shape schema 在 4 次真实 response 上成立，但第二条 Organizer 命中本地
 `dynamic_authority`，最终 `3/48` strict、正式 aggregate 全 `null`。V8 已失败封存，仍不构成真实模型或
-产品可用性结论。V9 R0--R2 已以 zero-provider 方式完成本地合法 option authority 的设计、实现与
-robustness：模型只返回 `questionIndex + optionIndex`，fingerprint、完整 V6 decision、真实 ID/
-confidence/write authority 与三阶段 stale fence 继续由本地掌握；R2 又覆盖 Provider-like JSON shape、
-metamorphic reorder、cap/token、Unicode、hostile value、abort/stale 与最终写权限边界。V9 尚未执行正式
-Mock/Live、创建 artifact 或接产品 wiring，不能据此声称真实模型或产品可用。
+产品可用性结论。V9 R0--R3 已以 zero-provider 方式完成本地合法 option authority 的设计、实现与
+robustness，以及独立 runner/lineage/durability：模型只返回 `questionIndex + optionIndex`，fingerprint、
+完整 V6 decision、真实 ID/confidence/write authority 与三阶段 stale fence 继续由本地掌握；R2 覆盖
+Provider-like JSON shape、metamorphic reorder、cap/token、Unicode、hostile value、abort/stale 与最终写
+权限边界，R3 再固定 72/24/48/24/32、guard-first、双 lane、wire/terminal accounting、breaker、
+hash-chain journal、hard-link evidence 与 crash-only recovery。V9 尚未执行正式 Mock/Live，正式 artifact
+保持 0，也未接产品 wiring，不能据此声称真实模型或产品可用。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -814,7 +816,26 @@ authority。实现修复 V9 strict JSON schema identity、`provider_type_validat
 failure sanitizer 对 parse failure 伪造 diagnostic 的副作用；transport failure、static schema failure 与
 selection/dynamic failure 继续分层且 raw data 不保留。Focused `24/24`、Agent `938/938`、AI `226/226`、
 Server 写权限 3 suites/34 tests、历史 validators 与 V9 artifact=0 通过。R2 全程 zero-provider；下一原子
-任务仅 R3 runner/lineage/durability。
+任务当时仅 R3 runner/lineage/durability，后续已完成。
+
+V9 R3 已建立独立 report/runner/CLI/approval/marker/journal/evidence/recovery/validator identity，固定
+`72/24/48/24/32`、guard-first、pair 串行、pair 内双 lane、single dispatch/no retry、首 runtime contract
+failure breaker 与 incomplete semantic/P95/token/CNY 全 `null`。V9 显式继承 V7 8-stage wire，并以独立
+alias/source manifest 绑定 V2 dataset、V6 semantic authority、V9 prompt/estimator/option rules、selection、
+diagnostic 和 runner runtime SHA，不伪造新的 AI wire export。V1--V8 双向 lineage rejection 保持成立。
+
+每个 `lane_reserved` 必须 append + fsync 后才允许 executor；first-party Live provenance 缺少完整 durable
+lifecycle 时会在 guard/executor 前拒绝。Reserved lane 正常路径必须恰好一个 runtime terminal；crash-only
+recovery 只按 journal 把缺 terminal reservation seal 为 attempted orphan，不创建 executor或重放；未 reserved
+case 按 guard/breaker/orphan 事实分类。Runtime accounting 显式记录 reserved/terminal/orphaned/not-started，
+sibling abort 不复制另一 lane 的故障或 diagnostic。
+
+R3 synthetic runner/wire fault matrix 覆盖 guard failure、transport/HTTP/schema/usage、selection/option
+authority、first/middle/last breaker、固定分母、single dispatch/no retry、sibling abort 与 aggregate 全
+`null`。它只验证 runner/wire/durability，不是 R4 reviewed candidate Mock。Focused `29/29`、Agent
+`967/967`、AI `226/226`、typecheck/lint/Prettier/diff、Phase 6.9.6 与 V1--V8 validators 通过；正式 V9
+marker/journal/evidence/recovery artifact 为 0。R3 全程 zero-provider，下一原子任务仅 R4 reviewed
+Mock/full checkpoint；R5 未授权。
 
 V7 完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
@@ -839,6 +860,8 @@ V9 R1 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`。
 V9 R2 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`。
+V9 R3 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

@@ -73,6 +73,11 @@
     "eval:phase-6-9-7:v8:live": "bun scripts/phase-6-9-7-tutor-wrong-question-v8-cli.ts live",
     "eval:phase-6-9-7:v8:seal": "bun scripts/phase-6-9-7-tutor-wrong-question-v8-cli.ts seal",
     "eval:phase-6-9-7:v8:validate": "bun scripts/validate-phase-6-9-7-tutor-wrong-question-v8-evidence.ts",
+    "eval:phase-6-9-7:v9:cli": "bun scripts/phase-6-9-7-tutor-wrong-question-v9-cli.ts",
+    "eval:phase-6-9-7:v9:mock": "bun scripts/phase-6-9-7-tutor-wrong-question-v9-cli.ts mock",
+    "eval:phase-6-9-7:v9:live": "bun scripts/phase-6-9-7-tutor-wrong-question-v9-cli.ts live",
+    "eval:phase-6-9-7:v9:seal": "bun scripts/phase-6-9-7-tutor-wrong-question-v9-cli.ts seal",
+    "eval:phase-6-9-7:v9:validate": "bun scripts/validate-phase-6-9-7-tutor-wrong-question-v9-evidence.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

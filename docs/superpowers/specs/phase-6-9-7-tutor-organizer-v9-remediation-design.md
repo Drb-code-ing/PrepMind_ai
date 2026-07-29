@@ -2,8 +2,9 @@
 
 日期：2026-07-29
 
-状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract、R2 Provider-like robustness
-已完成；下一原子任务仅 R3 runner/lineage/durability，仍为 zero-provider。
+状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract、R2 Provider-like robustness、
+R3 runner/lineage/durability 已完成；下一原子任务仅 R4 reviewed Mock/full checkpoint，仍为
+zero-provider。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -305,6 +306,43 @@ Provider-like fault matrix 发现并关闭三项实现偏差：
 timeout、产品 wiring 或 V1--V8 artifact。`NaN/Infinity/unsafe integer` 不能由合法 JSON 表达，因此只在本地
 schema/diagnostic 边界测试；Provider-like fixture 不伪造非法 JSON 数字。
 
+### 8.3 R3 runner / lineage / durability 收敛结果
+
+R3 已建立独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator。Runner 固定
+`72/24/48/24/32`、guard-first、pair 串行、pair 内双 lane、single dispatch/no retry、首 runtime contract
+failure breaker 与 incomplete aggregate 全 `null`；正式 V9 Mock/Live factory 分别继续硬拒绝到 R4/R5。
+
+Source manifest 已冻结并绑定：
+
+- source manifest：
+  `sha256:dfb13b9dc97b0bb2c2d80920bdbb1147467a40a53eab24098d7d376788976651`；
+- selection contract：
+  `sha256:85fdf2cde033e90922d62956b921b64816eaf3a41060f40d0a39cc183ff89050`；
+- runner runtime：
+  `sha256:861121455a8365662186e0a821e88ed002095da403af8061a3bb8bea651226d3`；
+- V7 wire alias：
+  `sha256:6ff323dfa548d4ca73ba5e8bb1ed7fa0d72be2de9ee3fe57b1080c0f98991f17`；
+- bounded diagnostic：
+  `sha256:8d66f5a198060b44579c80e823d686814fa5fff6a582faa78cab2059f7ebba7f`；
+- eval policy：
+  `sha256:ab8ed3539f4868d773930777c89cfc66138e44c3899c6f7ae7d6e8697386d74a`；
+- semantic authority：
+  `sha256:1982561f3e01b4bd1f15f525866df2d34e124c18cd7fb20917c4e004c264f951`。
+
+实际 input estimator SHA 已进入 source manifest，并与 frozen estimator SHA 一起在 module load 时校验；
+prompt/option-rules 保持同样的 actual/frozen drift guard。V9 transport 仍显式继承 V7 8-stage wire，不伪造
+新的 AI export。
+
+R3 的 zero-provider fault matrix 覆盖 guard failure、transport/HTTP/schema/usage、selection/option
+authority、first/middle/last breaker、fixed denominator、single dispatch/no retry、sibling abort 本地归属与
+aggregate 全 `null`。该矩阵只验证 runner/wire/durability；R4 才把 reviewed Mock 穿过正式 V6 Tutor、V9
+Organizer candidate 与 V6 merger。
+
+`lane_reserved` 必须 append + fsync 后才能进入 executor。First-party Live provenance 如果没有完整 durable
+lifecycle，会在 guard/executor 前以 `PHASE_6_9_7_V9_DURABLE_LIVE_LIFECYCLE_REQUIRED` 拒绝；crash-only
+recovery 仍只 seal 持久化事实，不创建 executor、不读取 credential、不 resume/replay。正式 V9
+marker/journal/evidence/recovery artifact 为 0。
+
 ## 9. 独立 V9 Lineage
 
 V1--V8 的 dataset binding、prompt/policy SHA、runner、approval、marker、journal、evidence、recovery、validator
@@ -328,9 +366,10 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 3. **R2**：独立 Provider-like/held-out/metamorphic/schema-negative/anti-overfit/no-leak 与 option reorder/
    cap/stale/abort/concurrency fault matrix；zero-provider。（已完成）
 4. **R3**：独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，固定分母、breaker 与
-   V1--V8 双向 lineage；zero-provider。
+   V1--V8 双向 lineage；zero-provider。（已完成）
 5. **R4**：reviewed Mock、fresh baseline、全量 Agent/AI/Types/Server/Web、Organizer PostgreSQL 并发、
    Compose default-off、历史 validators、artifact=0、Reader Testing 与双路终审；zero-provider。
+   （当前下一原子任务）
 6. **R5**：只有 R4 clean/pushed 且用户在运行当时重新接受 DeepSeek 数据边界并精确授权唯一 V9 branch
    controlled-Live，才允许执行一次；任一终态只 seal，不重跑。
 7. **R6**：只有 R5 全门通过才允许产品 Docker/API/可见浏览器、Trace、default-off 与精确清理。
@@ -339,9 +378,10 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 均不读取 credential、调用
 Provider、启动产品 Docker/API/browser 或修改业务数据。
 
-R1/R2 验收分别见
+R1/R2/R3 验收分别见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`；当前只允许继续 R3。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`；当前只允许继续 R4。
 
 ## 11. 禁止事项
 

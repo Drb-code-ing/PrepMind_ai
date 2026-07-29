@@ -1,5 +1,53 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V9 R3 Runner / Lineage / Durability：从 clean/pushed
+> `e288f19386f64331e641fc27dfcbee058685ee67` 开始，在同一
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 已初始化，
+> 但其它进程持有写锁；本轮没有反复争锁，源码、测试和文档结论均以 FastCtx 当前磁盘文件与实际命令
+> 为准。
+>
+> 新增独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator。Runner 固定
+> `72 cases / 24 guard / 48 runtime / 24 pair / 32 Organizer decisions`、guard-first、pair 串行、pair 内
+> 双 lane、single dispatch/no retry、首 runtime contract failure breaker 与 fixed denominator；任一 runtime
+> 不完整时 semantic、四项 P95、token 和 CNY 聚合全部为 `null`。`runtimeAccounting` 显式记录
+> reserved/terminal/orphaned/not-started，并强制 `terminal + orphaned = reserved`、
+> `reserved + notStarted = 48`；recovery 的 `attempted_orphaned` 只计 orphaned，不与 durable terminal
+> 重叠。sibling abort 只归属本 lane，不复制另一 lane 的 transport 或 diagnostic。
+>
+> Durability 要求 marker/initial journal 和每个 `lane_reserved` 均在 executor 前 append + fsync；正常
+> reservation 恰好一个 `runtime_terminal`。Journal 使用 sequence + SHA-256 hash chain，evidence 使用
+> fsync temp + hard-link final；dead owner 只能由单一 recovery claim 接管，crash-only recovery 只 seal
+> 持久化事实，不创建 executor、不读取 credential、不 resume/replay/retry。First-party Live provenance 如果
+> 缺少完整 lifecycle，会在 guard/executor 前以
+> `PHASE_6_9_7_V9_DURABLE_LIVE_LIFECYCLE_REQUIRED` 拒绝，防止绕过 durable reservation。
+>
+> Source manifest SHA 为
+> `sha256:dfb13b9dc97b0bb2c2d80920bdbb1147467a40a53eab24098d7d376788976651`；selection、runner
+> runtime、V7 wire alias、diagnostic、eval policy、semantic authority SHA 分别为
+> `85fdf2cd...f89050 / 86112145...226d3 / 6ff323df...91f17 / 8d66f5a1...ebba7f /
+ab8ed353...86d74a / 1982561f...4c264f951`。Source manifest 现在记录实际 input estimator SHA，并在 module
+> load 时将 prompt/estimator/option-rules actual SHA 与 frozen SHA 全部比较；V9 显式继承 V7 8-stage wire，
+> 不伪造新的 AI export。V1--V8 双向 lineage rejection 与旧 validator 拒绝 V9 report 均有精确测试。
+>
+> 新增独立 zero-provider fault matrix，覆盖 guard failure 后 48 条 `not_started_case_guard`、transport/
+> HTTP/schema/usage、selection/option authority、first/middle/last breaker、fixed denominator、single
+> dispatch/no retry/no backfill、sibling abort 本地归属，以及 not-started/transport/abort 不伪造 option
+> diagnostic。同步篡改 ledger/公开 terminal 计数也会被固定分母不变量拒绝，外层 report `safeParse`
+> 正常返回失败而不从 refinement 抛异常。该 matrix 使用进程内 synthetic wire/executor，只验证
+> runner/durability，不是 R4 reviewed candidate Mock。
+>
+> R3 focused 为 `29/29`（`393` assertions）；Agent 全量为 `967/967`（`14667` assertions）；AI 全量为
+> `226/226`（`1459` assertions）；Agent typecheck/lint、仓库本地 Prettier 与 `git diff --check` 通过。
+> Phase 6.9.6 validator 为 `ok=true/evidenceCount=4`；V1--V8 canonical sealed validators 各
+> `ok=true/filesChecked=1`。正式 V9 marker/journal/evidence/recovery claim 精确检查为 0。Contract/security/
+> durability 与 docs/history/lineage 双路终审无未关闭 Critical/Important。
+>
+> 本任务未读取 `.env`/credential、调用 Provider、执行正式 V9 Mock/Live、启动 Docker/API/browser、接
+> 产品 gate/composition、修改业务数据、运行正式 seal/recovery、触碰 V1--V8 artifact 或合并 main。下一
+> 原子任务仅 V9 R4 reviewed Mock/full checkpoint；R4 才允许 reviewed Mock 穿过正式 V6 Tutor、V9
+> Organizer candidate 与 V6 merger。R5 controlled-Live 未授权。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V9 R2 Provider-like Robustness 与 Anti-overfit：从
 > `577210ede1e9d50287e0ff757ce1404e8419fa4c` 开始，在同一
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 已初始化，

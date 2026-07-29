@@ -3,8 +3,9 @@
 日期：2026-07-29
 
 当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD、R2 Provider-like
-robustness 已完成；下一原子任务仅 R3 runner/lineage/durability。V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用
-Provider、执行正式 Mock/Live 或创建正式 artifact。
+robustness、R3 runner/lineage/durability 已完成；下一原子任务仅 R4 reviewed Mock/full checkpoint。
+V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用 Provider、执行正式 Mock/Live 或
+创建正式 artifact。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`
@@ -76,7 +77,7 @@ Provider、正式 Mock/Live、Docker/API/browser。
 
 ## R3：独立 V9 Runner / Lineage / Durability
 
-状态：[ ] 当前下一原子任务，仅 R2 通过后允许，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - 新 report/runner/CLI/approval/marker/journal/evidence/recovery/validator identity；
 - 固定 `72/24/48/24/32`、guard-first、pair 串行、双 lane、single dispatch/no retry；
@@ -93,9 +94,24 @@ Provider、正式 Mock/Live、Docker/API/browser。
 - breaker 后固定分母，incomplete semantic/P95/token/CNY 全 `null`；
 - 正式 V9 Mock/Live artifact 保持 0。
 
+已完成补强：
+
+- 新增独立 runner/wire synthetic fault matrix，覆盖 guard-first、transport/HTTP/schema/usage、
+  selection/option authority、first/middle/last breaker、single dispatch/no retry、sibling abort 归属与
+  incomplete aggregate 全 `null`；这不是 R4 reviewed candidate Mock；
+- source manifest 绑定实际 estimator SHA，并将 prompt/estimator/option-rules actual SHA 与 frozen SHA
+  一并 fail-closed；
+- first-party Live provenance 缺少完整 durable lifecycle 时在 guard/executor 前拒绝，防止绕过
+  `lane_reserved` fsync；
+- focused `29/29`、Agent `967/967`、AI `226/226`、typecheck/lint/Prettier/diff、Phase 6.9.6 与 V1--V8
+  validators、正式 V9 artifact=0 通过。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`
+
 ## R4：Reviewed Mock 与全量 Checkpoint
 
-状态：[ ] 仅 R3 通过后允许，zero-provider。
+状态：[ ] 当前下一原子任务，仅 R3 通过后允许，zero-provider。
 
 - fresh deterministic baseline 与 reviewed Mock/fault matrix；
 - Mock 穿过正式 V6 Tutor candidate、V9 option authority/selection candidate、V6 merger 与第一方 direct
