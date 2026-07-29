@@ -17,6 +17,7 @@
     "./phase-6-9-7-v6-mock": "./src/evals/phase-6-9-tutor-wrong-question-v6-mock.ts",
     "./phase-6-9-7-v7-mock": "./src/evals/phase-6-9-tutor-wrong-question-v7-mock.ts",
     "./phase-6-9-7-v8-mock": "./src/evals/phase-6-9-tutor-wrong-question-v8-mock.ts",
+    "./phase-6-9-7-v9-mock": "./src/evals/phase-6-9-tutor-wrong-question-v9-mock.ts",
     "./planner": "./src/nodes/planner.ts",
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",

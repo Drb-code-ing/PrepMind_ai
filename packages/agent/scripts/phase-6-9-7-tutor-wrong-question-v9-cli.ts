@@ -15,6 +15,7 @@ import {
   buildPhase697V9SealedReport,
   phase697V9EvidencePath as phase697V9DurableEvidencePath,
 } from '../src/evals/phase-6-9-tutor-wrong-question-v9-durability-contract.ts';
+import { createPhase697TutorOrganizerV9MockHarness } from '../src/evals/phase-6-9-tutor-wrong-question-v9-mock.ts';
 import {
   runPhase697TutorOrganizerPairedEvalV9,
   type Phase697V9Harness,
@@ -121,14 +122,18 @@ export async function executePhase697TutorOrganizerV9Cli(
   if (parsed.mode === 'live' && !syntheticLiveConfigurationValid(input.env)) {
     return { ok: false, code: 'live_configuration_invalid' };
   }
-  const harnessFactory = input.harnessFactory;
+  let harnessFactory = input.harnessFactory;
+  if (!harnessFactory && parsed.mode === 'mock') {
+    harnessFactory = ({ runId: factoryRunId, runScope }) =>
+      createPhase697TutorOrganizerV9MockHarness({
+        runId: factoryRunId,
+        runScope,
+      });
+  }
   if (!harnessFactory) {
     return {
       ok: false,
-      code:
-        parsed.mode === 'mock'
-          ? 'mock_runtime_unavailable_until_r4'
-          : 'live_runtime_unavailable_until_r5',
+      code: 'live_runtime_unavailable_until_r5',
     };
   }
 

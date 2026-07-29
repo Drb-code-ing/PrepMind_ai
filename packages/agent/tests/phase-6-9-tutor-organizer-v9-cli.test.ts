@@ -62,7 +62,7 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
     expect(reads).toBe(0);
   });
 
-  test('rejects incomplete Live configuration and keeps default Mock/Live factories unavailable', async () => {
+  test('publishes reviewed default Mock evidence while keeping the Live factory unavailable', async () => {
     const root = await temporaryRoot();
     const runId = '00000000-0000-4000-8000-000000000730';
     expect(
@@ -81,7 +81,31 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
       repositoryRoot: root,
       runId,
     });
-    expect(mock).toEqual({ ok: false, code: 'mock_runtime_unavailable_until_r4' });
+    expect(mock).toMatchObject({
+      ok: true,
+      gate: 'mock_quality_not_evidence',
+      disposition: 'mock_direct',
+      counts: {
+        cases: 72,
+        zeroCallCases: 24,
+        runtimeCases: 48,
+        pairedRequests: 24,
+        organizerDecisionUnits: 32,
+      },
+      scheduler: {
+        guardPhasePassed: true,
+        breakerState: 'closed',
+        dispatchedPairs: 24,
+        completedPairs: 24,
+      },
+      wire: {
+        complete: true,
+        executorInvocations: 48,
+        providerDispatches: 48,
+        providerResponses: 48,
+        verifiedUsages: 48,
+      },
+    });
     expect(
       await executePhase697TutorOrganizerV9Cli({
         argv: ['live', PHASE_6_9_7_V9_CONFIRMATION],
@@ -91,10 +115,18 @@ describe('Phase 6.9.7 V9 CLI authorization and recovery-only boundary', () => {
       }),
     ).toEqual({ ok: false, code: 'live_runtime_unavailable_until_r5' });
     expect(await Bun.file(resolve(root, PHASE_6_9_7_V9_MARKER_PATH)).exists()).toBe(false);
-    const evidencePath = resolve(
-      root,
+    if (!mock.ok) throw new Error('V9 reviewed Mock CLI failed');
+    const evidencePath = resolve(root, mock.evidencePath);
+    expect(mock.evidencePath).toBe(
       phase697V9EvidencePath({ runId, runScope: 'branch', mode: 'mock' }),
     );
+    expect(
+      await validatePhase697TutorOrganizerV9EvidenceBundle({
+        root,
+        evidencePath,
+      }),
+    ).toEqual({ ok: true });
+    await rm(evidencePath);
     expect(await Bun.file(evidencePath).exists()).toBe(false);
     expect(await Bun.file(resolve(root, phase697V9JournalPath(runId))).exists()).toBe(false);
   });

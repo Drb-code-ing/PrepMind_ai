@@ -3,9 +3,11 @@
 日期：2026-07-29
 
 当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD、R2 Provider-like
-robustness、R3 runner/lineage/durability 已完成；下一原子任务仅 R4 reviewed Mock/full checkpoint。
-V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用 Provider、执行正式 Mock/Live 或
-创建正式 artifact。
+robustness、R3 runner/lineage/durability 与 R4 reviewed Mock/full checkpoint 已完成。R4 Mock run
+`f039a7d2-c3b2-4286-9630-fee49d365a33` 为 `24/24` guard、`48/48` strict、wire
+`48/48/48/48`、semantic `1/1/1`，gate 固定 `mock_quality_not_evidence`；evidence 已精确删除，正式
+V9 artifact=0。下一原子任务仅 R5 新的精确一次性 branch controlled-Live 授权门。V1--V8 一次性 Live
+历史均不可重跑，V9 仍未读取 credential、调用 Provider、执行 Live 或启动产品验收。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`
@@ -111,7 +113,7 @@ Provider、正式 Mock/Live、Docker/API/browser。
 
 ## R4：Reviewed Mock 与全量 Checkpoint
 
-状态：[ ] 当前下一原子任务，仅 R3 通过后允许，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - fresh deterministic baseline 与 reviewed Mock/fault matrix；
 - Mock 穿过正式 V6 Tutor candidate、V9 option authority/selection candidate、V6 merger 与第一方 direct
@@ -123,11 +125,22 @@ Provider、正式 Mock/Live、Docker/API/browser。
 
 Mock 满分只允许 `mock_quality_not_evidence`，不能写成真实模型或产品通过。
 
+完成证据：fresh baseline `12/48`、semantic
+`0.6629642857142858/0.278125/0.4705446428571429`；reviewed Mock run
+`f039a7d2-c3b2-4286-9630-fee49d365a33` 为 `24/24` guard、`48/48` strict、wire
+`48/48/48/48`、semantic `1/1/1`、synthetic usage `17732/504`、estimated `0.05622 CNY`，V9
+validator `ok=true/filesChecked=1`。Agent/AI/Types/Server/Web 全量、Organizer PostgreSQL `12/12`、
+Docker boundary `3/3`、Compose default-off、Phase 6.9.6 与 V1--V8 validators、测试账号残留 0、正式 V9
+artifact=0 与两路独立终审通过。验收后 Mock evidence 已按精确路径删除。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`
+
 ## R5：唯一 V9 Branch Controlled-Live
 
 状态：[ ] 未授权。
 
-只有 R4 clean/pushed、local/tracking/GitHub SHA 一致、历史 validators 与 V9 artifact=0 全门通过，且用户在
+只有 R4 clean/pushed、local/tracking/remote SHA 一致、历史 validators 与 V9 artifact=0 全门通过，且用户在
 运行当时重新接受 DeepSeek 数据保留/训练边界并精确授权唯一 V9 branch Live，才允许执行一次。普通
 “继续”“好的”或此前对 V8 的授权都不构成 V9 R5 授权。任一终态只 seal，不
 retry/resume/replay/backfill。

@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V9 R4 Reviewed Mock / Full Checkpoint：从 clean/pushed
+> `a88ff533` 开始，在同一 `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider
+> 原子任务。新增 V9 evaluation runtime、reviewed Mock factory 与公开 package export；CLI `mock` 默认接入
+> factory，`live` 继续硬拒绝为 `live_runtime_unavailable_until_r5`。
+>
+> Tutor 复用未修改的正式 V6 candidate；Organizer 穿过 V9 本地合法 option authority、exact
+> `questionIndex + optionIndex` selection、V6 validator/merger 与第一方 direct adapter，只有 `fetch`
+> delegate 为 synthetic。Responder 只读实际 bounded prompt，不读 expected/oracle 或生产 validator answer
+> generator。Factory SHA 为
+> `sha256:e0918cbfa23ee4463c569f49db69b026d97f47597ab7cf9621579bf10465bf08`。
+>
+> Fresh baseline 保持 `12/48`，Tutor/Organizer/combined semantic 为
+> `0.6629642857142858/0.278125/0.4705446428571429`。Reviewed Mock run
+> `f039a7d2-c3b2-4286-9630-fee49d365a33` 为 `24/24` guard、`48/48` strict、wire
+> `48/48/48/48`、semantic `1/1/1`、synthetic usage `17732/504`、estimated `0.05622 CNY`，gate
+> `mock_quality_not_evidence`，validator `ok=true/filesChecked=1`。Mock evidence 已精确删除；V9
+> marker/journal/evidence/recovery artifact 均为 0。
+>
+> R4 focused `12/12`（`1717` assertions）、V9 full `62/62`（`2430` assertions）、Agent
+> `969/969`（`16228` assertions）、AI `226/226`、Types `42/42 + typecheck`、Web `439/439`、Server
+> `227 suites / 2154 tests / 30 skipped`、readiness `9/9`、Organizer PostgreSQL `12/12`、Docker static
+> boundary contract `3/3`、Compose default-off、相关 typecheck/lint/build、Phase 6.9.6 与 V1--V8 validators、测试
+> 账号残留 0 和两路独立终审通过。初始并发验证出现历史 5 秒 timeout、Web ENOMEM 与 readiness 子进程
+> 噪声，保持产品合同不变后改为低并发串行全部通过；只恢复既有 PostgreSQL/Redis，没有重建、删除、
+> prune 或清卷。
+>
+> 本任务未读取 `.env`/credential、调用 Provider、执行 Live、启动产品 Web/Server/Worker/Admin/MinIO、
+> 调用 API/浏览器、修改业务数据、触碰 V1--V8 artifact 或合并 main。Mock 满分不证明真实模型质量、
+> Provider P95/usage/费用或产品可用性。下一原子任务仅 R5 新的精确一次性 V9 branch controlled-Live
+> 授权门；R6/R7/main 与后续阶段继续阻断。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V9 R3 Runner / Lineage / Durability：从 clean/pushed
 > `e288f19386f64331e641fc27dfcbee058685ee67` 开始，在同一
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 已初始化，
@@ -279,7 +311,7 @@ provider_type_validation` 和 dynamic `fallback_schema_invalid + dynamic_contrac
 > `902/902`（`12822` assertions）、AI `226/226`（`1459` assertions）、Agent/AI typecheck/lint、
 > Prettier、V1--V7 sealed validators、正式 V8 artifact=0 与独立复审通过。全程未读取 `.env`/
 > credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、修改业务数据或合并 main。
-> 下一原子任务仅 R4 reviewed Mock/full checkpoint；R5 Live 未授权。验收见
+> 该 checkpoint 当时下一原子任务仅 R4 reviewed Mock/full checkpoint，后续 R4 已完成。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V8 R2 Provider-like Robustness 与 Anti-overfit：新增独立

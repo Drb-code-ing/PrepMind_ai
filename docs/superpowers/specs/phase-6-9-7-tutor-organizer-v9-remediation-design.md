@@ -3,8 +3,8 @@
 日期：2026-07-29
 
 状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract、R2 Provider-like robustness、
-R3 runner/lineage/durability 已完成；下一原子任务仅 R4 reviewed Mock/full checkpoint，仍为
-zero-provider。
+R3 runner/lineage/durability 与 R4 reviewed Mock/full checkpoint 已完成。R4 仍为 zero-provider，正式 V9
+artifact=0；下一原子任务仅 R5 新的精确一次性 branch controlled-Live 授权门。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -310,7 +310,8 @@ schema/diagnostic 边界测试；Provider-like fixture 不伪造非法 JSON 数�
 
 R3 已建立独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator。Runner 固定
 `72/24/48/24/32`、guard-first、pair 串行、pair 内双 lane、single dispatch/no retry、首 runtime contract
-failure breaker 与 incomplete aggregate 全 `null`；正式 V9 Mock/Live factory 分别继续硬拒绝到 R4/R5。
+failure breaker 与 incomplete aggregate 全 `null`；R4 已接入 reviewed Mock factory，Live factory 继续硬
+拒绝到 R5。
 
 Source manifest 已冻结并绑定：
 
@@ -335,13 +336,28 @@ prompt/option-rules 保持同样的 actual/frozen drift guard。V9 transport 仍
 
 R3 的 zero-provider fault matrix 覆盖 guard failure、transport/HTTP/schema/usage、selection/option
 authority、first/middle/last breaker、fixed denominator、single dispatch/no retry、sibling abort 本地归属与
-aggregate 全 `null`。该矩阵只验证 runner/wire/durability；R4 才把 reviewed Mock 穿过正式 V6 Tutor、V9
-Organizer candidate 与 V6 merger。
+aggregate 全 `null`。该矩阵只验证 runner/wire/durability；后续 R4 已把 reviewed Mock 穿过正式 V6
+Tutor、V9 Organizer candidate 与 V6 merger。
 
 `lane_reserved` 必须 append + fsync 后才能进入 executor。First-party Live provenance 如果没有完整 durable
 lifecycle，会在 guard/executor 前以 `PHASE_6_9_7_V9_DURABLE_LIVE_LIFECYCLE_REQUIRED` 拒绝；crash-only
 recovery 仍只 seal 持久化事实，不创建 executor、不读取 credential、不 resume/replay。正式 V9
 marker/journal/evidence/recovery artifact 为 0。
+
+### 8.4 R4 reviewed Mock / full checkpoint 收敛结果
+
+R4 新增 V9 evaluation runtime、reviewed Mock factory 与公开 package export。Tutor 复用未修改的 V7/V6
+正式 candidate；Organizer 运行 V9 option selection、V6 validator/merger 与第一方 direct adapter，只有
+`fetch` delegate 为 synthetic。Responder 只解析实际 bounded prompt，禁止读取 expected/oracle 或用生产
+validator生成答案。Factory identity 为
+`sha256:e0918cbfa23ee4463c569f49db69b026d97f47597ab7cf9621579bf10465bf08`。
+
+Fresh baseline 保持 `12/48` 与 semantic
+`0.6629642857142858/0.278125/0.4705446428571429`。Reviewed Mock run
+`f039a7d2-c3b2-4286-9630-fee49d365a33` 达到 `24/24` guard zero-call、`48/48` strict runtime、wire
+`48/48/48/48` 与 semantic `1/1/1`；synthetic usage/cost 为 `17732/504`、`0.05622 CNY`，gate 固定
+`mock_quality_not_evidence`。全量静态/PostgreSQL/Compose/历史 validator 与两路独立终审通过；Mock evidence
+已精确删除，正式 V9 artifact 继续为 0。这不是 Live、真实 Provider 或产品 authority。
 
 ## 9. 独立 V9 Lineage
 
@@ -369,19 +385,21 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
    V1--V8 双向 lineage；zero-provider。（已完成）
 5. **R4**：reviewed Mock、fresh baseline、全量 Agent/AI/Types/Server/Web、Organizer PostgreSQL 并发、
    Compose default-off、历史 validators、artifact=0、Reader Testing 与双路终审；zero-provider。
-   （当前下一原子任务）
+   （已完成；Mock gate=`mock_quality_not_evidence`）
 6. **R5**：只有 R4 clean/pushed 且用户在运行当时重新接受 DeepSeek 数据边界并精确授权唯一 V9 branch
-   controlled-Live，才允许执行一次；任一终态只 seal，不重跑。
+   controlled-Live，才允许执行一次；任一终态只 seal，不重跑。（当前下一原子任务，未授权）
 7. **R6**：只有 R5 全门通过才允许产品 Docker/API/可见浏览器、Trace、default-off 与精确清理。
 8. **R7**：只有 R6 通过且独立复审无问题才允许 `--no-ff` 合并 main、main default-off 回放和推送。
 
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 均不读取 credential、调用
 Provider、启动产品 Docker/API/browser 或修改业务数据。
 
-R1/R2/R3 验收分别见
+R1/R2/R3/R4 验收分别见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`；当前只允许继续 R4。
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r3-runner-lineage-durability.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`；当前只允许在取得新精确授权后继续
+R5。
 
 ## 11. 禁止事项
 
