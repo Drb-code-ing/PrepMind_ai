@@ -41,6 +41,7 @@ import {
   type WrongQuestionOrganizerV6MergeFailureCode,
 } from './wrong-question-organizer-v6-model-candidate.ts';
 import {
+  WRONG_QUESTION_ORGANIZER_V9_MODEL_DECISION_SCHEMA,
   validateWrongQuestionOrganizerV9ModelDecision,
   type WrongQuestionOrganizerV9DecisionFailureCode,
   type WrongQuestionOrganizerV9ModelDecision,
@@ -240,7 +241,7 @@ export async function runWrongQuestionOrganizerV9ModelCandidate(
   const runtimeResult = await invokeV6Structured({
     runtime: adapter.runtime,
     request,
-    dataSchema: diagnosticCollector.schema,
+    dataSchema: WRONG_QUESTION_ORGANIZER_V9_MODEL_DECISION_SCHEMA,
     task: 'wrong_question_organization',
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     callerBudget: base.budget,
@@ -266,15 +267,16 @@ export async function runWrongQuestionOrganizerV9ModelCandidate(
     );
   }
   if (!runtimeResult.ok) {
-    if (
-      runtimeResult.trace.structuredOutputStage === 'provider_type_validation' &&
-      diagnosticCollector.read() === null
-    ) {
+    const providerTypeValidation =
+      runtimeResult.trace.structuredOutputStage === 'provider_type_validation';
+    if (providerTypeValidation && diagnosticCollector.read() === null) {
       diagnosticCollector.recordUnknownFailure();
     }
     return attemptedEnvelope(
       base.localResult,
-      mapModelAgentErrorDisposition(runtimeResult.error.code),
+      providerTypeValidation
+        ? 'fallback_schema_invalid'
+        : mapModelAgentErrorDisposition(runtimeResult.error.code),
       runtimeResult.budget,
       runtimeResult.usage,
       runtimeResult.trace,

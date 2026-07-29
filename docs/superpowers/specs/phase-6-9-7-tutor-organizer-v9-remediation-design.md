@@ -2,8 +2,8 @@
 
 日期：2026-07-29
 
-状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract 已完成；下一原子任务仅 R2
-zero-provider robustness。
+状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract、R2 Provider-like robustness
+已完成；下一原子任务仅 R3 runner/lineage/durability，仍为 zero-provider。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -284,6 +284,27 @@ coverage 无法装入预算，才是
 安全整数并位于正式 cap 内；未知、超限或与完整 runtime contract 不一致时 fail-closed，不能用 estimate
 伪造 verified usage、P95 或费用。
 
+### 8.2 R2 robustness 收敛结果
+
+R2 的独立 fixture identity 为
+`phase-6.9.7-tutor-organizer-v9-r2-provider-shapes-v1`，冻结 SHA 为
+`sha256:0870799257dcd2b88841b286b9cc64e6410702fe2bcbe86c6e153d8af88a4200`。Fixture 和 synthetic
+responder 均不读取 V2 expected/oracle，也不调用生产 builder/validator 生成答案；synthetic direct adapter
+只解析实际 bounded prompt。
+
+Provider-like fault matrix 发现并关闭三项实现偏差：
+
+1. V9 collector schema 必须以精确 in-process identity 标记 strict JSON content，禁止 Markdown fence、prose
+   或 BOM 被兼容解析器剥壳后进入 V9 schema；
+2. JSON parse 已完成但 Zod 在 `provider_type_validation` 失败时，公开 disposition 必须为
+   `fallback_schema_invalid`，不能误归类为 runtime failure；
+3. runtime 结果 sanitation 必须使用无副作用 canonical schema，不能复用 observer schema 对 transport/
+   parse failure 的 `undefined` 伪造 `top_level_shape` diagnostic。
+
+以上收敛不改变 V9 decision shape、R1 prompt/estimator/option-rules SHA、V2 dataset、V6 merger、预算、
+timeout、产品 wiring 或 V1--V8 artifact。`NaN/Infinity/unsafe integer` 不能由合法 JSON 表达，因此只在本地
+schema/diagnostic 边界测试；Provider-like fixture 不伪造非法 JSON 数字。
+
 ## 9. 独立 V9 Lineage
 
 V1--V8 的 dataset binding、prompt/policy SHA、runner、approval、marker、journal、evidence、recovery、validator
@@ -305,7 +326,7 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 2. **R1**：TDD 实现 option builder/projection、exact selection contract/prompt、validator、V6 adapter 与
    diagnostic；zero-provider。（已完成）
 3. **R2**：独立 Provider-like/held-out/metamorphic/schema-negative/anti-overfit/no-leak 与 option reorder/
-   cap/stale/abort/concurrency fault matrix；zero-provider。
+   cap/stale/abort/concurrency fault matrix；zero-provider。（已完成）
 4. **R3**：独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，固定分母、breaker 与
    V1--V8 双向 lineage；zero-provider。
 5. **R4**：reviewed Mock、fresh baseline、全量 Agent/AI/Types/Server/Web、Organizer PostgreSQL 并发、
@@ -318,8 +339,9 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 均不读取 credential、调用
 Provider、启动产品 Docker/API/browser 或修改业务数据。
 
-R1 验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`；当前只允许继续 R2。
+R1/R2 验收分别见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`；当前只允许继续 R3。
 
 ## 11. 禁止事项
 

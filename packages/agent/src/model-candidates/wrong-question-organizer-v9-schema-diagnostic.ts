@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { requireModelAgentStrictJsonContent } from '@repo/ai';
+
 import { deepFreezeModelValue } from './model-projection-safety.ts';
 import {
   WRONG_QUESTION_ORGANIZER_V9_MODEL_DECISION_SCHEMA,
@@ -118,7 +120,7 @@ export function createWrongQuestionOrganizerV9SchemaDiagnosticCollector(): Wrong
   }, WRONG_QUESTION_ORGANIZER_V9_MODEL_DECISION_SCHEMA);
 
   return Object.freeze({
-    schema: Object.freeze(
+    schema: requireModelAgentStrictJsonContent(
       observedSchema as unknown as z.ZodType<WrongQuestionOrganizerV9ModelDecision>,
     ),
     recordSelectionFailure(value: unknown, reason: WrongQuestionOrganizerV9DecisionFailureCode) {

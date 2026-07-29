@@ -1,5 +1,49 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V9 R2 Provider-like Robustness 与 Anti-overfit：从
+> `577210ede1e9d50287e0ff757ce1404e8419fa4c` 开始，在同一
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 已初始化，
+> 但另一个 writer 长期持锁使 auto-sync disabled；本轮没有重复争锁，源码、测试和文档结论均以 FastCtx
+> 当前磁盘文件与实际命令为准。
+>
+> 新增独立 fixture `phase-6.9.7-tutor-organizer-v9-r2-provider-shapes-v1`，冻结 SHA 为
+> `sha256:0870799257dcd2b88841b286b9cc64e6410702fe2bcbe86c6e153d8af88a4200`。Fixture 只导入
+> `node:crypto`，不读 V2 expected/oracle，也不导入生产 candidate/validator/merger 或 reviewed Mock
+> responder。Synthetic responder 只解析实际 bounded user prompt；路径实际穿过第一方 DeepSeek V4 Pro
+> direct adapter、ModelAgentRuntime、V9 candidate/selection 与 V6 local merger，provenance 固定为
+> `synthetic_test`，没有网络访问。
+>
+> Provider-like matrix 覆盖 wrapper/prose/fence/BOM/type drift、字段缺失/增加、partial/duplicate/out-of-range
+> selection、合法 whitespace/decision reorder；metamorphic matrix 覆盖 question/deck/keyword/knowledge-point
+> reorder、NFKC duplicate、locked-name collision、24/question、144/request、mandatory action bucket 与 3500
+> input-token cap。Estimator 直接覆盖 ASCII/CJK/emoji/combining/孤立 surrogate 和 `3499/3500/3501`；
+> 本地 schema 另行拒绝 JSON 无法表达的 `NaN/Infinity/unsafe integer`，没有伪造 Provider JSON fixture。
+>
+> 安全与故障矩阵覆盖尾部 credential、Unicode `Cf`/control、递归敏感 key、owner/真实 ID/fingerprint/
+> status/timestamp/locked name/write authority prompt no-leak，getter/Proxy/symbol/cycle/deep/wide/node overflow，
+> pre/in-flight/post abort、pre/post stale 与 post-runtime rename/locked-name drift。Server 既有真实 PostgreSQL
+> 最终写权限 3 suites/34 tests 继续证明 owner snapshot、事务内最终 fence、rename/move/remove/locked-name
+> 并发边界未被 package 改动削弱。
+>
+> 测试驱动发现并修复三项真实缺口：V9 diagnostic collector 未标记 strict JSON content，导致 Markdown
+> fence 可被兼容解析；`provider_type_validation` 被误归为 `fallback_runtime_error`；failure sanitizer 复用带
+> observer side effect 的 schema，会在 `provider_json_parse` 失败时对 `undefined` 伪造
+> `top_level_shape` diagnostic。现在 V9 exact schema identity 要求原生 JSON，static type failure 固定
+> `fallback_schema_invalid`，sanitizer 使用无副作用 canonical schema；transport/static/selection failure
+> 继续分层且 raw data 不保留。
+>
+> R2 focused + R1 companion 为 `24/24`（`407` assertions）；Agent `938/938`（`14255`
+> assertions）；AI `226/226`（`1459` assertions）；Agent/AI typecheck/lint、Prettier 与
+> `git diff --check` 通过。Phase 6.9.4.3 Mock、Attempts B--E、canonical JSON-mode Live 均按历史语义通过，
+> Attempt A 继续按预期 `profile_mismatch`；Phase 6.9.6 与 V1--V8 sealed validators 通过，V9 marker/
+> journal/evidence/recovery claim 仍为 0。两路独立终审无未关闭 Critical/Important。
+>
+> 本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、创建 V9 artifact、启动 Docker/API/
+> browser、接产品 gate/composition、修改业务数据、seal/recover 历史证据或合并 main；V1--V8 artifact/SHA、
+> V2 dataset、R1 prompt/estimator/option-rules SHA、预算与产品接线不变。下一原子任务仅 V9 R3
+> zero-provider runner/lineage/durability。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V9 R1 Option Authority 与 Selection Contract：从 clean/pushed
 > `780c5037435ea62b43417a8a5cae9577fe4c7abc` 开始，在同一
 > `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 因另一
@@ -36,9 +80,9 @@
 > security/no-leak 两路实现复审均 `APPROVED`；最终代码/文档双路终审无 Critical/Important。
 >
 > 本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、创建 V9 marker/journal/evidence、
-> 启动 Docker/API/browser、修改业务数据或合并 main；V1--V8 immutable artifact 保持原字节。下一原子任务
-> 仅 V9 R2 zero-provider robustness，不得提前开始 R3 runner、正式 Mock/Live、产品验收、main、Phase
-> 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。验收见
+> 启动 Docker/API/browser、修改业务数据或合并 main；V1--V8 immutable artifact 保持原字节。该 checkpoint
+> 当时下一原子任务仅 V9 R2，后续已完成；R1 本身不授权 R3 runner、正式 Mock/Live、产品验收、main、
+> Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`。
 >
 > 2026-07-29 — Phase 6.9.7 V9 R0 Zero-provider 复盘与设计：从 clean/pushed

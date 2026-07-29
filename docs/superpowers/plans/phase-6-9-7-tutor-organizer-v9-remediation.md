@@ -2,8 +2,8 @@
 
 日期：2026-07-29
 
-当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD 已完成；下一原子任务
-仅 R2 Provider-like robustness。V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用
+当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD、R2 Provider-like
+robustness 已完成；下一原子任务仅 R3 runner/lineage/durability。V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用
 Provider、执行正式 Mock/Live 或创建正式 artifact。
 
 设计 authority：
@@ -56,7 +56,7 @@ Mock/Live、Docker/API/browser。
 
 ## R2：Provider-like Robustness 与 Anti-overfit
 
-状态：[ ] 当前下一原子任务，仅 R1 通过后允许，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - 独立 held-out/metamorphic/schema-negative/Provider-like fixture；
 - 覆盖 option reorder、question reorder、cap/token boundary、Unicode/canonical duplicate、no-option、
@@ -71,9 +71,12 @@ Mock/Live、Docker/API/browser。
 通过门：focused + Agent/AI full、typecheck/lint/Prettier、历史 validators、独立 source scan 与复审；无
 Provider、正式 Mock/Live、Docker/API/browser。
 
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r2-provider-robustness.md`
+
 ## R3：独立 V9 Runner / Lineage / Durability
 
-状态：[ ] 仅 R2 通过后允许，zero-provider。
+状态：[ ] 当前下一原子任务，仅 R2 通过后允许，zero-provider。
 
 - 新 report/runner/CLI/approval/marker/journal/evidence/recovery/validator identity；
 - 固定 `72/24/48/24/32`、guard-first、pair 串行、双 lane、single dispatch/no retry；
