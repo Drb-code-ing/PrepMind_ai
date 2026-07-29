@@ -1,5 +1,46 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V9 R1 Option Authority 与 Selection Contract：从 clean/pushed
+> `780c5037435ea62b43417a8a5cae9577fe4c7abc` 开始，在同一
+> `codex/phase-6-9-7-tutor-wrong-question-agents` 分支完成 zero-provider 原子任务。CodeGraph 因另一
+> writer 持锁未重复同步，本轮源码与文档判断全部以 FastCtx 当前磁盘文件为准。
+>
+> 新增 `@repo/agent/wrong-question-organizer-v9`。本地 option authority 只接受 validated V5 shortlist，
+> 为每题枚举完整 `resolvedSubject + subjectDecision + deckDecision`；`reuse_existing/create_topic` 必须同
+> subject，canonical duplicate 与 locked-name create collision 被排除，结果稳定排序、canonical 去重并
+> deep-freeze。Mandatory `(question, subject, action)` bucket 优先保留；每题 24、请求 144、Organizer
+> 3500 input-token 任何一个 hard cap 无法满足时均在 Provider 前 fail-closed。
+>
+> 模型 exact contract 只允许原生 JSON `decisions[{questionIndex,optionIndex}]`，不回显 fingerprint，也不
+> 输出 subject/action/target、真实 ID、locked name、confidence 或写命令。Selection 完整覆盖后由本地
+> option 映射注入 V5 shortlist fingerprint，再执行完整 V6 validator/merger；预算、usage、Trace、abort、
+> 前后 stale fence 与全部写权限保持本地。Prompt、estimator、option-rules SHA 分别为
+> `ef2ff007cb55aedf5710c86a9a70e68368e24cc06afd8a09af84024f12e5586c`、
+> `06caeb2d5b957ce122ea11db417b65c90e852e029f1fb1e2484dbffa6fbdbada`、
+> `1013c43950c4b351e5ffa77286ec732ef522b38a4f294dd507ecac7a42c28eec`。
+>
+> Zero-option 固定为 `attempted=false / not_eligible / candidate_option_authority_empty`；mandatory
+> coverage 超 cap 固定为 `fallback_budget_exceeded / candidate_option_authority_budget_exceeded`；authority
+> 或 estimator identity 漂移固定 invalid-input fallback。Bounded diagnostic 只保存固定 reason、计数/
+> type-shape hash 与 `rawDataRetained=false`，不保存原始 index、模型 output、prompt、ID、unknown key 或
+> error 正文。文档同时纠正旧安全口径：V9 只接受 validated V5 authority；V5 允许的 model-facing 文本先
+> 完整扫描再裁剪，`status/updatedAt` 不投影；`answer/userNote` 若出现会作为 strict schema 的未知额外字段
+> 直接 `invalid_input`，不是被接受后再扫描；
+> 未扩展 V5 schema，历史 fingerprint/SHA 不变。
+>
+> Focused 为 `11/11`（`124` assertions），Agent 全量为 `918/918`（`13885` assertions），Agent/AI
+> typecheck/lint、仓库本地 Prettier 与 `git diff --check` 通过。Phase 6.9.6 validator 为
+> `ok=true/evidenceCount=4`；V1--V8 sealed validators 各 `ok=true/filesChecked=1`。Phase 6.9.4.3 Mock 与
+> canonical complete Live 通过，Attempts B--E 按历史语义为 valid incomplete；Attempt A 继续因已记录的
+> filename identity mismatch 被拒绝，没有放宽 validator 或改写 evidence。Source/authority 与
+> security/no-leak 两路实现复审均 `APPROVED`；最终代码/文档双路终审无 Critical/Important。
+>
+> 本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、创建 V9 marker/journal/evidence、
+> 启动 Docker/API/browser、修改业务数据或合并 main；V1--V8 immutable artifact 保持原字节。下一原子任务
+> 仅 V9 R2 zero-provider robustness，不得提前开始 R3 runner、正式 Mock/Live、产品验收、main、Phase
+> 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V9 R0 Zero-provider 复盘与设计：从 clean/pushed
 > `6f37b34aa54642da43171e6e2e1a854cbd304d4b` 开始，只读对照 V8 sealed acceptance、V5 owner
 > shortlist、V6 validator/merger、V8 fixed-shape contract/runtime adapter，以及 Server owner snapshot/
@@ -25,9 +66,11 @@
 >
 > Reader Testing 首轮提出并已关闭四个 Important：有效 shortlist 任一题无合法 option 时固定
 > `attempted=false / not_eligible / candidate_option_authority_empty`，保留完整 deterministic binding/
-> suggestions；mandatory bucket 装不进 cap/token 时固定 degraded budget fallback。Prompt projection 继续对
-> 包括 `answer/userNote` 在内的完整字段先扫描后裁剪，超过 16384 UTF-16、malformed Unicode、control/Cf、
-> credential/instruction/tool/write 或额外 key 均整份拒绝，公开 label 最多 80 Unicode scalar。
+> suggestions；mandatory bucket 装不进 cap/token 时固定 degraded budget fallback。Prompt projection 只接受
+> validated V5 authority；V5 允许的 model-facing 文本先完整扫描再裁剪，超过 16384 UTF-16、malformed
+> Unicode、control/Cf、credential/instruction/tool/write 均整份拒绝，`status/updatedAt` 不投影。
+> `answer/userNote` 是 V5 strict schema 的未知额外字段，出现即 `invalid_input`；公开 label 最多 80
+> Unicode scalar。
 >
 > 3500 input cap 的 estimator 已精确冻结为
 > `64 + ceil(utf8Bytes([system, canonical projection, schema].join('\n')) / 3)`，candidate/adapter 必须共用

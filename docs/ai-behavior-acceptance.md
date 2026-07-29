@@ -769,21 +769,34 @@ Option 采用 canonical 去重、稳定排序、每题 24/请求 144 hard cap �
 fail-closed allocator；mandatory subject/action bucket 无法完整保留、任一 unknown index、partial/duplicate
 question 或 option-set drift 都在 Provider 前或无写入路径失败，不 clamp/repair/default/retry。Owner-scoped
 READ ONLY snapshot、事务外双 fence、owner-lock Serializable 最终 fence、Trace admission、预算与用户
-authority 不变。R0 未实现源码或调用 Provider；当前下一任务仅 V9 R1 zero-provider TDD。
+authority 不变。R0 当时未实现源码或调用 Provider；后续 R1 已完成。
 
 V9 的 zero-option 与预算终态也已冻结：有效 shortlist 但任一题没有合法 option 时，必须在 Provider 前以
 `attempted=false / not_eligible / candidate_option_authority_empty` 返回完整 deterministic binding/suggestions、
 `usage=0/0` 和无 runtime Trace；mandatory bucket 无法装入 cap/token 时则为
 `fallback_budget_exceeded / candidate_option_authority_budget_exceeded`，不得删 bucket 后继续调用。Projection
-继续先完整扫描包括 `answer/userNote` 在内的字段，超过 `16384` UTF-16、malformed Unicode、control/Cf、
-credential/instruction/tool/write 或额外 sensitive key 均整份拒绝；公开 label 最多 `80` Unicode scalar，
-真实映射与权限字段不投影。
+只接受 validated V5 authority；V5 允许的 model-facing 文本会在裁剪前完整扫描，超过 `16384` UTF-16、
+malformed Unicode、control/Cf、credential/instruction/tool/write 均整份拒绝，`status/updatedAt` 不进入
+prompt。`answer/userNote` 不属于 V5 source schema，出现即作为未知额外字段 strict fail-closed 为
+`invalid_input`，不会扩展历史 schema。公开 label 最多 `80` Unicode scalar，真实映射与权限字段不投影。
 
 `3500` 上限使用冻结的确定性近似 `64 + ceil(utf8Bytes([system, canonical projection,
 schema].join('\n')) / 3)`，不是 Provider tokenizer；candidate/adapter 必须共用 parts builder，Provider usage 仍
 独立验证。产品路径保持同步 HTTP，不写 BackgroundJob/Outbox 或后台补发；未来 V9 runner 则必须把 reserved
 lane、wire stage、terminal/orphan/not-started 与 executor/dispatch/response/usage 计数 durable 化，不能让
 transport/abort/process crash 静默成为 no-option。
+
+V9 R1 已实现 `@repo/agent/wrong-question-organizer-v9`。本地 option authority 只从 validated V5
+shortlist 派生，按同 subject 枚举 `reuse_existing/create_topic`，排除 canonical duplicate 与 locked-name
+create collision，并以 mandatory bucket、`24/question`、`144/request` 和 3500 input-token hard cap
+fail-closed。模型 contract 只允许 exact `decisions[{questionIndex,optionIndex}]`；本地映射 selection 后注入
+V5 shortlist fingerprint，再执行完整 V6 validator/merger。Prompt、estimator、option rules SHA 分别为
+`ef2ff007cb55aedf5710c86a9a70e68368e24cc06afd8a09af84024f12e5586c`、
+`06caeb2d5b957ce122ea11db417b65c90e852e029f1fb1e2484dbffa6fbdbada`、
+`1013c43950c4b351e5ffa77286ec732ef522b38a4f294dd507ecac7a42c28eec`。R1 focused
+`11/11`、Agent `918/918`、Agent/AI typecheck/lint、历史 evidence validators 与双路复审通过；全程
+zero-provider，未执行正式 Mock/Live、创建 V9 artifact 或启动产品验收。下一原子任务仅 R2
+zero-provider robustness。
 
 V7 完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
@@ -804,6 +817,8 @@ V9 R0 设计、计划与验收见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
 `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v9-r0-zero-provider-postmortem.md`。
+V9 R1 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

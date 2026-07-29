@@ -2,11 +2,14 @@
 
 日期：2026-07-29
 
-状态：R0 zero-provider 复盘与设计 checkpoint 已完成；R1 尚未实现。
+状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract 已完成；下一原子任务仅 R2
+zero-provider robustness。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
 起始提交：`6f37b34aa54642da43171e6e2e1a854cbd304d4b`
+
+R1 实现起点：`780c5037435ea62b43417a8a5cae9577fe4c7abc`
 
 历史 authority：
 
@@ -140,21 +143,24 @@ V9 不新造一套宽松的 label sanitizer，而是复用现有 Organizer 完�
 
 1. source 先经过 plain-data clone 与 strict schema；深度 `8`、数组 `256`、对象 key `512`、总节点
    `4096`，accessor、Proxy、symbol key、cycle、非 plain prototype 或超限结构 fail-closed；
-2. 每个 source 字段在任何裁剪前以最多 `16384` UTF-16 code unit 完整扫描；超过上限固定为
-   `field_too_large` 并整份拒绝，不做受限截断。问题侧包括
-   `subject/category/errorType/questionText/analysis/answer/userNote/knowledgePoints`，deck 侧包括完整
-   `name/keywords`；即使 `answer/userNote` 不进入 prompt，也必须先扫描；
-3. 扫描拒绝 malformed UTF-16、C0/DEL control、Unicode `Cf`、credential、instruction override、system
-   prompt exfiltration 与 tool/write instruction；随后才允许 NFKC、trim、lowercase、空白归一化和邮箱
-   redaction；
+2. V9 只接受通过 `validateWrongQuestionOrganizerV5Shortlist` 的 V5 authority。V5 对允许的 source
+   字段在任何裁剪前以最多 `16384` UTF-16 code unit 完整扫描；超过上限固定为 `field_too_large` 并整份
+   拒绝，不做受限截断。问题侧允许
+   `subject/category/errorType/questionText/analysis/knowledgePoints/status/updatedAt`，deck 侧允许完整
+   `subject/name/keywords/updatedAt`；其中 model-facing 文本拒绝 malformed UTF-16、C0/DEL control、Unicode
+   `Cf`、credential、instruction override、system prompt exfiltration 与 tool/write instruction，
+   `status/updatedAt` 不进入 prompt；`answer/userNote` 不属于 V5 source schema，若出现会作为未知额外字段
+   strict fail-closed 为 `invalid_input`，不会扩展 V5 schema 或改变历史 fingerprint/SHA；
+3. 完整扫描通过后才允许 NFKC、trim、lowercase、空白归一化和邮箱 redaction；
 4. V9 公开 projection 使用按层级固定的 key allowlist。Option 只能含 `optionIndex`、固定 enum
    `subjectLabel/actionLabel/sourceLabel` 与可选 `targetLabel`；任意额外 key，包括 credential/token/cookie/
    authorization/secret 类 key，都不是可忽略 metadata，而是整份 fail-closed；
 5. `subjectLabel/actionLabel/sourceLabel` 只能来自本地固定 enum；`targetLabel` 只能来自已经完整扫描的 deck
    name 或 topic candidate。所有公开 label 最多 `80` 个 Unicode scalar，必须先完整扫描再裁剪；禁止先裁剪
    再扫描尾部；
-6. question excerpt、analysis、knowledge point 与 deck keyword 继续使用现有 `480/320/80/60` scalar 和
-   `3/8` 数量上限；`answer/userNote`、真实 ID、owner hash、fingerprint 映射、locked-name authority、
+6. V5 authority 的 category、error type 与每个 knowledge point 最多 `96` scalar，question/analysis excerpt
+   各最多 `320` scalar，knowledge point 最多 `12` 个；deck keyword 不进入 V9 projection。V5 不接受的
+   `answer/userNote`、真实 ID、owner hash、fingerprint 映射、locked-name authority、
    confidence/reason、credential、Trace、permission 与 command 永不进入 projection。
 
 最终 projection 在估算、hash 和 runtime 调用前再次 strict parse、递归 key allowlist 检查并 deep-freeze。
@@ -297,7 +303,7 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 1. **R0**：V8 zero-provider 复盘、本地 option authority、bounded diagnostic、独立 V9 lineage 与路线。
    （本 checkpoint 完成）
 2. **R1**：TDD 实现 option builder/projection、exact selection contract/prompt、validator、V6 adapter 与
-   diagnostic；zero-provider。
+   diagnostic；zero-provider。（已完成）
 3. **R2**：独立 Provider-like/held-out/metamorphic/schema-negative/anti-overfit/no-leak 与 option reorder/
    cap/stale/abort/concurrency fault matrix；zero-provider。
 4. **R3**：独立 V9 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，固定分母、breaker 与
@@ -311,6 +317,9 @@ export。正式 V9 artifact 在 R5 精确授权前必须保持 0。
 
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 均不读取 credential、调用
 Provider、启动产品 Docker/API/browser 或修改业务数据。
+
+R1 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`；当前只允许继续 R2。
 
 ## 11. 禁止事项
 

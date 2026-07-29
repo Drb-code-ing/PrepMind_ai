@@ -2,9 +2,9 @@
 
 日期：2026-07-29
 
-当前状态：R0 zero-provider 复盘与设计 checkpoint 已完成；下一原子任务仅 R1 option authority/selection
-contract TDD。V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用 Provider、执行
-Mock/Live 或创建正式 artifact。
+当前状态：R0 zero-provider 复盘与设计、R1 option authority/selection contract TDD 已完成；下一原子任务
+仅 R2 Provider-like robustness。V1--V8 一次性 Live 历史均不可重跑，V9 尚未读取 credential、调用
+Provider、执行正式 Mock/Live 或创建正式 artifact。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`
@@ -27,7 +27,7 @@ Mock/Live 或创建正式 artifact。
 
 ## R1：Option Authority 与 Selection Contract
 
-状态：[ ] 当前下一原子任务，zero-provider。
+状态：[x] 完成，zero-provider。
 
 - 新增 V9 option policy/builder/projection/version/SHA；
 - 从 validated V5 shortlist 确定性枚举完整合法 option，canonical 去重、稳定排序、bucket coverage、
@@ -36,8 +36,10 @@ Mock/Live 或创建正式 artifact。
   `attempted=false / not_eligible / candidate_option_authority_empty`，保留 binding 与逐题 deterministic
   suggestions；cap/token 无法保留 mandatory bucket 时使用
   `fallback_budget_exceeded / candidate_option_authority_budget_exceeded`；
-- prompt-safe projection 复用完整字段 pre-scan，固定递归 key allowlist 与 `80` Unicode-scalar label cap；
-  `answer/userNote` 虽不投影也必须扫描，真实 ID/owner/fingerprint map/credential/permission 永不进入 prompt；
+- prompt-safe projection 只接受 validated V5 authority；V5 允许的 model-facing 文本先完整安全扫描再
+  裁剪，`status/updatedAt` 不投影，并固定递归 key allowlist 与 `80` Unicode-scalar option label cap；
+  `answer/userNote` 是 V5 strict schema 的未知额外字段，出现即 `invalid_input`，不会扩展历史 schema；真实
+  ID/owner/fingerprint map/credential/permission 永不进入 prompt；
 - 新增 exact schema/prompt：模型只返回 `decisions[{questionIndex,optionIndex}]`，不回显 fingerprint；
 - 本地将 selection 映射为 V6 decision，注入本地 fingerprint，再执行 V6 validator 与 merger；
 - 冻结 `phase-6.9.7-v9-candidate-input-estimator-v1`：
@@ -49,9 +51,12 @@ Mock/Live 或创建正式 artifact。
 通过门：focused TDD、Agent/AI typecheck/lint/Prettier、V1--V8 validators/SHA；无 Provider、正式
 Mock/Live、Docker/API/browser。
 
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`
+
 ## R2：Provider-like Robustness 与 Anti-overfit
 
-状态：[ ] 仅 R1 通过后允许，zero-provider。
+状态：[ ] 当前下一原子任务，仅 R1 通过后允许，zero-provider。
 
 - 独立 held-out/metamorphic/schema-negative/Provider-like fixture；
 - 覆盖 option reorder、question reorder、cap/token boundary、Unicode/canonical duplicate、no-option、

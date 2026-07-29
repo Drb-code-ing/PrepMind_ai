@@ -91,9 +91,11 @@ Zero-option/failure 终态已经冻结：
   batch。
 
 Prompt-safe projection 继续复用现有完整字段安全链：plain-data clone 限制为 depth `8`、array `256`、
-object keys `512`、nodes `4096`；每个字段在裁剪前最多 `16384` UTF-16 code unit，并拒绝 malformed
-UTF-16、C0/DEL、Unicode `Cf`、credential、instruction/system-prompt 与 tool/write instruction。问题的
-`answer/userNote` 即使永不进入 prompt 也必须完整扫描。最终 option 只允许固定 key，subject/action/source
+object keys `512`、nodes `4096`；V5 允许的 model-facing 文本在裁剪前最多 `16384` UTF-16 code unit，并
+拒绝 malformed UTF-16、C0/DEL、Unicode `Cf`、credential、instruction/system-prompt 与 tool/write
+instruction；`status/updatedAt` 不进入 prompt。
+`answer/userNote` 不属于 V5 source schema，出现时作为未知额外字段 strict fail-closed 为 `invalid_input`；
+不扩展 V5 schema 或改变历史 fingerprint/SHA。最终 option 只允许固定 key，subject/action/source
 只来自本地 enum，target 只来自已扫描 deck/topic；所有公开 label 最多 `80` Unicode scalar。任意额外 key
 或 credential/token/cookie/authorization/secret 类 key 都整份 fail-closed；真实 ID、owner/fingerprint map、
 locked-name、confidence、Trace、permission 和 command 不进入 projection。
@@ -173,11 +175,12 @@ terminal/orphaned/not-started、pair、breaker 与 executor/dispatch/response/ve
 - [x] 未读取 `.env`/credential、调用 Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或
       合并 main。
 
-## 9. 下一原子任务
+## 9. 后续原子任务
 
-下一任务仅 V9 R1：以 TDD 实现 option authority/projection、exact selection schema/prompt、validator、V6
-runtime adapter 与 bounded diagnostic。R1 全程 zero-provider，不读取 credential，不执行正式 Mock/Live，
-不启动产品 Docker/API/browser。
+R0 checkpoint 当时的下一任务仅 V9 R1：以 TDD 实现 option authority/projection、exact selection
+schema/prompt、validator、V6 runtime adapter 与 bounded diagnostic。R1 后续已按 zero-provider 边界完成，
+验收见 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r1-option-authority.md`；当前下一任务仅 R2，仍不读取
+credential、不执行正式 Mock/Live、不启动产品 Docker/API/browser。
 
 回顾时可以问：
 
