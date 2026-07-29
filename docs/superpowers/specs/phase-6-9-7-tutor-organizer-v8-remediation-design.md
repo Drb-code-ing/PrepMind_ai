@@ -2,9 +2,9 @@
 
 日期：2026-07-28
 
-状态：R0--R4 zero-provider checkpoint 已完成；fixed-shape/diagnostic、独立 runner/lineage/durability
-与 reviewed Mock/full checkpoint 已实现。尚未执行 R5 Live 或 R6 产品接线；当前下一原子任务仅 R5
-新的精确授权门。
+状态：R0--R4 zero-provider checkpoint 已完成；唯一 R5 Live 已以 `quality_gate_failed` durable seal。
+Fixed-shape schema 在 4 次真实 response 上全部通过，但第二条 Organizer 命中本地
+`dynamic_authority`；R6/R7 被阻断。当前下一原子任务只能是新的独立 zero-provider R0，不得重跑 V8。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -177,10 +177,11 @@ V8 必须在任何 Provider 资格前覆盖：
    lineage；zero-provider，不创建正式 Mock/Live artifact。（已完成）
 5. **R4**：reviewed V8 Mock、fresh baseline、全量静态/PostgreSQL/Compose 与两路终审；Mock evidence
    精确删除，Live artifact 必须仍为 0。（已完成，zero-provider）
-6. **R5**：只有 R4 clean/pushed、历史 SHA/validators 与 artifact=0 全门通过，且用户重新接受运行时
-   数据边界并精确授权唯一 V8 branch controlled-Live，才允许执行一次；任一终态只 seal，不重跑。
-7. **R6**：只有 R5 全门通过，才允许产品 Docker/API/可见浏览器、Trace、default-off 与精确清理。
-8. **R7**：只有 R6 通过且独立复审无问题，才允许 `--no-ff` 合并 main、main default-off 回放和推送。
+6. **R5**：唯一 run `7ff09c36-50f2-445a-b309-dc9500e5e13c` 已失败封存；`24/24` guard、
+   `4/4/4/4` wire、`3/48` strict，第二条 Organizer 为 `dynamic_contract / dynamic_authority`，正式聚合全
+   `null`。不得 retry/resume/replay/backfill。（失败封存）
+7. **R6**：只有 R5 全门通过才允许；R5 已失败，因此产品 Docker/API/可见浏览器不得开始。（被阻断）
+8. **R7**：R6 被阻断，因此不得 `--no-ff` 合并 main、执行 main 回放或推送 main。（被阻断）
 
 每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 不读取根 `.env`/
 credential，不调用 Provider，不启动产品 Docker/API/browser，不修改业务数据。
@@ -208,8 +209,10 @@ R4 reviewed Mock/full checkpoint 进一步确认：
 - Provider-like matrix 覆盖 V6 nested shape、extra/missing/type/null drift 与 fingerprint/question/subject/
   target authority drift，并保持 bounded no-raw diagnostic、single dispatch、breaker 与固定分母；
 - 全量静态、PostgreSQL `12/12`、Compose default-off、历史 validators 与 artifact=0 通过；Mock evidence
-  已精确删除，没有读取 credential、调用 Provider或启动产品验收；
-- 验收见 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`。下一步只允许 R5 新授权门。
+  已精确删除，没有读取 credential、调用 Provider 或启动产品验收；
+- R4 验收见 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`；其后唯一 R5 已失败
+  封存，见
+  `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
 
 ## 8. 禁止事项
 
@@ -219,8 +222,8 @@ R4 reviewed Mock/full checkpoint 进一步确认：
 - 不把固定形状修复写成已证明具体 V7 字段错误；
 - 不放宽 owner、snapshot、stale、locked-name、Trace、budget、timeout、quality 或 write authority；
 - 不把 zero-network、Mock、单条 Tutor success 或 validator `ok=true` 写成模型/产品可用；
-- 不在 R5 前写入 Live approval、创建 marker/journal/evidence 或调用 Provider；
-- 不在 R6 前启动产品验收，不在 R7 前合并 main；
+- 不再次写入 V8 Live approval、执行 V8 Live/seal/recovery、删除或改写 marker/journal/evidence；
+- R6/R7 已被 V8 失败终态阻断，不启动产品验收或合并 main；
 - 不开始 Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。
 
 ## 9. 回顾时可以问

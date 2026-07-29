@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0--R4 已完成；下一原子任务仅 R5 新的 V8 branch controlled-Live 授权门。V7 一次性名额已消费，不得重跑。
+当前状态：R0--R4 已完成；唯一 R5 V8 branch controlled-Live 已以 `quality_gate_failed` 封存。V7/V8 一次性名额均已消费，不得重跑；R6/R7 被阻断，下一原子任务只能是新的独立 zero-provider R0。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`
@@ -99,21 +99,31 @@ package 没有独立 ESLint 工具，未伪称 Types lint 通过。
 
 ## R5：唯一 V8 branch controlled-Live
 
-状态：[ ] 当前下一原子任务，尚未授权。
+状态：[x] 失败封存。
 
 必须由用户在运行当时重新接受 DeepSeek 数据保留/训练边界，并明确授权唯一一次 V8 branch Live。
 普通“继续”不构成 R5 授权。无论通过或失败都只 seal 一次，不 retry/resume/replay/backfill。
 
+唯一 run `7ff09c36-50f2-445a-b309-dc9500e5e13c` 为 `24/24` guard zero-call、前两对
+dispatched/completed、4 次 executor/dispatch/response/verified usage、`3/48` strict runtime。第二条
+Organizer 已通过完整 wire、fixed-shape schema 与 usage，但在本地 dynamic shortlist authority 成为
+`fallback_schema_invalid / dynamic_contract`，bounded reason 为 `dynamic_authority`；后续 44 runtime 未
+启动，正式 semantic/P95/token/CNY 全 `null`，gate `quality_gate_failed`。Artifact 已 durable seal，bundle
+validator `ok=true / filesChecked=1`，无 recovery claim。
+
+验收：
+`docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`
+
 ## R6：产品 Docker / API / 可见浏览器
 
-状态：[ ] 仅 R5 全门通过后允许。
+状态：[ ] 被阻断；R5 未通过质量门，不得开始。
 
 覆盖 Tutor Chat、Organizer single/batch、default-off/forced-failure/owner/stale/Trace、可见
 `/chat`/`/error-book` 与精确清理；保留 Docker 容器、镜像和卷。
 
 ## R7：main 合并与回放
 
-状态：[ ] 仅 R6 与独立复审通过后允许。
+状态：[ ] 被阻断；R6 不得开始，因此不能合并 main。
 
 在当前功能分支完成文档与提交推送；随后从最新 main 执行 `--no-ff` 合并，main 不重跑已消费 Live，
 只做 committed static/Mock 与 default-off Docker/API/可见浏览器回放，精确清理后推送并核对远程 SHA。

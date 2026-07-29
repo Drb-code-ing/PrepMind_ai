@@ -1,5 +1,34 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V8 R5 唯一 Controlled-Live 失败封存：用户接受本次运行时 DeepSeek
+> 当前账号的数据保留/训练边界，并授权唯一一次 V8 branch run。零 Provider preflight 确认分支 clean，
+> HEAD、tracking ref 与 GitHub remote 都是 `b487ffe859ff75e5b8375791045da9ef21ddc9de`；V8 artifact=0，
+> V1--V7 七份 sealed validator 全部 `ok=true/filesChecked=1`，Agent `907/907`（`13728` assertions）与
+> Agent/AI typecheck/lint 通过。
+>
+> 第一次宿主启动把 PowerShell Bun shim 交给 `Start-Process`，在 Bun 进程创建前返回 invalid Win32
+> application、PID=null。物理复核 marker/journal/evidence/recovery 仍为 0，因此没有进入 CLI、没有调用
+> Provider，也没有消费 one-shot；随后只改用已验证 `bun.exe` 启动唯一 run
+> `7ff09c36-50f2-445a-b309-dc9500e5e13c`。根 `.env` 未修改；通用 DeepSeek key 只在该子进程内映射
+> 到 Tutor/Organizer component credential，未打印、写盘或进入 artifact/Git。
+>
+> 唯一 run 为 `24/24` guard zero-call、前两对 dispatched/completed、4 次
+> executor/dispatch/response/verified usage。两个 Tutor 与第一条 Organizer 为 `candidate_applied`；第二条
+> Organizer 已完成完整 8-stage wire、V8 fixed-shape schema 与 usage validation，但本地 dynamic shortlist
+> authority 返回 `fallback_schema_invalid / dynamic_contract`，bounded diagnostic 为
+> `dynamic_authority`、`rawDataRetained=false`。Runner 随即打开 `quality_gate_impossible` breaker，后续
+> 44 runtime 未启动；最终 `3/48` strict，正式 semantic/P95/token/CNY 全 `null`，gate
+> `quality_gate_failed`。这证明 V8 修复了 V7 static shape 问题，但没有证明模型能稳定组合本地允许的
+> subject/deck/topic ordinal。
+>
+> Evidence/marker/journal physical SHA 分别为 `377b82a7...71a85`、`85caaa57...a5da7`、
+> `3caaa82d...efda`；journal sequence `0..69`，最后一条为 `evidence_sealed`，bundle validator
+> `ok=true/filesChecked=1`，无 recovery claim。V8 一次性名额已消费，不得 retry/resume/replay/backfill、
+> seal/recovery 或追加 Provider 探测。R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8、Phase 6.10、
+> Phase 8/9 与博客收尾继续阻断；下一任务只能建立新的独立 zero-provider R0，优先把 Organizer 改为
+> 只选择本地预枚举合法 option，而不是自由拼接多字段组合。完整证据见
+> `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
+>
 > 2026-07-28 — Phase 6.9.7 V8 R4 Reviewed Mock / Full Checkpoint：新增正式 V8 Mock factory 与
 > `@repo/agent/phase-6-9-7-v8-mock` export。Tutor 复用未变化的 V7/V6 candidate；Organizer 穿过 V8
 > fixed-shape candidate、strict schema、动态 authority、V6 本地 merger 与第一方 DeepSeek V4 Pro direct
@@ -31,8 +60,9 @@
 > Critical/Important。
 >
 > 全程未读取 `.env`/credential、调用 Provider、执行 V8 Live、启动/重建产品 Docker/API/browser、修改
-> 业务数据或清空容器/镜像/卷。下一原子任务仅 R5 新的 V8 branch controlled-Live 授权门；普通“继续”
-> 不构成授权。验收见
+> 业务数据或清空容器/镜像/卷。该 R4 checkpoint 当时的下一原子任务仅 R5 新的 V8 branch
+> controlled-Live 授权门；普通“继续”不构成授权。后续唯一 R5 已失败封存，见顶部 2026-07-29 记录。
+> R4 验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V8 R3 Runner / Lineage / Durability：新增独立 V8 report/runner/
