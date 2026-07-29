@@ -2,7 +2,7 @@
 
 日期：2026-07-28
 
-当前状态：R0--R4 已完成；唯一 R5 V8 branch controlled-Live 已以 `quality_gate_failed` 封存。V7/V8 一次性名额均已消费，不得重跑；R6/R7 被阻断，下一原子任务只能是新的独立 zero-provider R0。
+当前状态：R0--R4 已完成；唯一 R5 V8 branch controlled-Live 已以 `quality_gate_failed` 封存。V7/V8 一次性名额均已消费，不得重跑；R6/R7 被阻断。后续 V9 R0 zero-provider 设计已完成，当前下一原子任务仅 V9 R1。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`

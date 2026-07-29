@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V8 R5）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R0）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V8
 八条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -255,7 +255,9 @@ fault matrix 与 reviewed static/Mock checkpoint。唯一 V7 R4 为 `24/24` guar
 diagnostic、独立 Provider-like robustness、runner/lineage/durability，以及 reviewed Mock/full checkpoint；
 唯一 R5 Live 已证明 fixed-shape schema 在 4 次真实 response 上成立，但第二条 Organizer 命中本地
 `dynamic_authority`，最终 `3/48` strict、正式 aggregate 全 `null`。V8 已失败封存，仍不构成真实模型或
-产品可用性结论。
+产品可用性结论。V9 R0 已以 zero-provider 方式冻结本地合法 option authority：模型只返回
+`questionIndex + optionIndex`，fingerprint、完整 V6 decision、真实 ID/confidence/write authority 与三阶段
+stale fence 继续由本地掌握；R0 只有设计 authority，尚未实现 candidate、Mock/Live 或产品 wiring。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -267,10 +269,10 @@ diagnostic、独立 Provider-like robustness、runner/lineage/durability，以�
 - Compose 只把 Tutor gate/timeout/key 投影给 `web`，只把 WrongQuestionOrganizer gate/timeout/key 投影给 `server`；`worker/admin` 均不接收。四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只参与显式插值；worker 另有模块层强制关闭。部署 allowlist 与应用 fail-closed 都必须通过，不能互相替代；
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Tutor orchestration P95 <=6500ms；后者只含本地 Tutor strategy + candidate，不含真实 Router、HTTP、RAG 或最终流式 Chat，不能作为产品 P95。production gate 还必须要求 `executorProvenance=deepseek_network`；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
 - Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；
-- Live 只在分支静态/Mock checkpoint 后以新 identity 重新获得一次明确授权。V1--V7 均未通过且各自
+- Live 只在分支静态/Mock checkpoint 后以新 identity 重新获得一次明确授权。V1--V8 均未通过且各自
   marker/evidence 已封存，因此没有验收 Docker Tutor Chat、Organizer single/batch、owner/locked-name/
   zero-call/forced-failure、可见 `/chat`/`/error-book` 或 synthetic 清理；进程级 Live 变量随进程退出，
-  tracked defaults 保持 mock/gates=false，Docker 卷未改动。V1--V7 都不得重跑。
+  tracked defaults 保持 mock/gates=false，Docker 卷未改动。V1--V8 都不得重跑。
 
 Task 5 当前证据：Tutor Web server-only composition 固定 V4 Pro non-thinking JSON、3000ms、独立 `1/1200/300` 预算与 `0.006 CNY` cap，只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY`；Route 在 live access/context prepare 后注册惰性 factory，非 Tutor final route 不创建 Tutor bundle/runtime 或读取 component credential，Live executor/runtime 只在 final Tutor route 的 implicit/contextual/conflicting candidate 真正调用时构造一次。失败保留 deterministic strategy，Tutor budget 不污染 Router -> Verifier 共享预算，header/Trace 只含固定安全字段且 CNY 不混入顶层 USD。focused `27/27`、Web `432/432`、Agent `529/529`、AI `194/194`、Web lint/build 与 Compose tracked-example quiet parse 已通过。该证据只证明静态/Mock 产品 composition，不证明 controlled-Live、Docker API、可见浏览器或真实回答质量。
 
@@ -757,10 +759,32 @@ mutation/broader fallback 均为 0，gate `quality_gate_failed`。Evidence/marke
 validator `ok=true/filesChecked=1`，无 recovery claim。V8 不得重跑、seal/recovery 或追加 Provider 探测；
 R6 产品 wiring 与 R7/main 已被阻断。
 
-当前下一任务只能建立新的独立 zero-provider R0：优先由本地枚举每题全部合法 decision option，让模型
-只选择 `questionIndex + optionIndex`，再由本地恢复真实 ID、locked name、confidence 与写权限；同时保留
-fingerprint、双 stale fence、预算、Trace 和 no-retry。该方向尚未实现或调用 Provider，不能提前写成修复
-完成。
+V9 R0 已完成新的独立 zero-provider 复盘与设计。V9 从 validated V5 shortlist 为每题枚举完整合法
+decision option，模型 exact output 只允许 `decisions[{questionIndex,optionIndex}]`；模型不再回显
+fingerprint，也不能自由组合 subject/action/target。Option authority 在本地保存 shortlist/option-set
+fingerprint、完整 V6 subject/deck decision 与真实映射；selection 完整覆盖后，本地注入 fingerprint，再次
+运行 V6 validator/merger 并重建真实 ID、locked name、confidence、reason 与 write binding。
+
+Option 采用 canonical 去重、稳定排序、每题 24/请求 144 hard cap 与 Organizer 3500 input-token
+fail-closed allocator；mandatory subject/action bucket 无法完整保留、任一 unknown index、partial/duplicate
+question 或 option-set drift 都在 Provider 前或无写入路径失败，不 clamp/repair/default/retry。Owner-scoped
+READ ONLY snapshot、事务外双 fence、owner-lock Serializable 最终 fence、Trace admission、预算与用户
+authority 不变。R0 未实现源码或调用 Provider；当前下一任务仅 V9 R1 zero-provider TDD。
+
+V9 的 zero-option 与预算终态也已冻结：有效 shortlist 但任一题没有合法 option 时，必须在 Provider 前以
+`attempted=false / not_eligible / candidate_option_authority_empty` 返回完整 deterministic binding/suggestions、
+`usage=0/0` 和无 runtime Trace；mandatory bucket 无法装入 cap/token 时则为
+`fallback_budget_exceeded / candidate_option_authority_budget_exceeded`，不得删 bucket 后继续调用。Projection
+继续先完整扫描包括 `answer/userNote` 在内的字段，超过 `16384` UTF-16、malformed Unicode、control/Cf、
+credential/instruction/tool/write 或额外 sensitive key 均整份拒绝；公开 label 最多 `80` Unicode scalar，
+真实映射与权限字段不投影。
+
+`3500` 上限使用冻结的确定性近似 `64 + ceil(utf8Bytes([system, canonical projection,
+schema].join('\n')) / 3)`，不是 Provider tokenizer；candidate/adapter 必须共用 parts builder，Provider usage 仍
+独立验证。产品路径保持同步 HTTP，不写 BackgroundJob/Outbox 或后台补发；未来 V9 runner 则必须把 reserved
+lane、wire stage、terminal/orphan/not-started 与 executor/dispatch/response/usage 计数 durable 化，不能让
+transport/abort/process crash 静默成为 no-option。
+
 V7 完整设计见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`；R0--R3 checkpoint 见
 `docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
@@ -776,6 +800,10 @@ V7 完整设计见
 R4 证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`；R5 终态见
 `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
+V9 R0 设计、计划与验收见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
+`docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v9-r0-zero-provider-postmortem.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

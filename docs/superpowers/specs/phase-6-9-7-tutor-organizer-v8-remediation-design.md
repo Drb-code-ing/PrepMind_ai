@@ -4,7 +4,8 @@
 
 状态：R0--R4 zero-provider checkpoint 已完成；唯一 R5 Live 已以 `quality_gate_failed` durable seal。
 Fixed-shape schema 在 4 次真实 response 上全部通过，但第二条 Organizer 命中本地
-`dynamic_authority`；R6/R7 被阻断。当前下一原子任务只能是新的独立 zero-provider R0，不得重跑 V8。
+`dynamic_authority`；R6/R7 被阻断。后续 V9 R0 zero-provider 设计已完成，当前下一原子任务仅 V9 R1；
+不得重跑 V8。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -15,7 +16,7 @@ Fixed-shape schema 在 4 次真实 response 上全部通过，但第二条 Organ
 - `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live.marker`
 - `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live-81529c2c-79f5-4c21-9cee-e536a2fe78e3.journal.jsonl`
 
-本文件本身不授权读取 credential、调用 Provider、重新执行 R4 Mock、执行 V7/V8 Live/seal/recovery、
+本文件本身不授权读取 credential、调用 Provider、重新执行 R4 Mock、执行 V7/V8/V9 Live/seal/recovery、
 启动产品 Docker/API/browser 或修改业务数据。
 
 ## 1. 决策摘要

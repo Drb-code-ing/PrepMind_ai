@@ -1,5 +1,57 @@
 # PrepMind AI 开发日志
 
+> 2026-07-29 — Phase 6.9.7 V9 R0 Zero-provider 复盘与设计：从 clean/pushed
+> `6f37b34aa54642da43171e6e2e1a854cbd304d4b` 开始，只读对照 V8 sealed acceptance、V5 owner
+> shortlist、V6 validator/merger、V8 fixed-shape contract/runtime adapter，以及 Server owner snapshot/
+> service/command 权限链。CodeGraph project ensure 为 up-to-date；结构查询因另一个 writer 持锁报告 watcher
+> auto-sync disabled，因此所有设计结论最终都以 FastCtx 当前磁盘文件为准，没有依赖冻结索引。
+>
+> V8 四条真实 response 均已通过 fixed-shape schema/usage；第二条 Organizer 的失败位于后续本地
+> `dynamic_authority`。Sealed diagnostic 不能确定是 fingerprint、coverage、subject、action、deck/topic
+> index 或 cross-subject 中的哪一项，R0 没有猜测或追加 Provider 探测。可以确认的结构性缺口是模型仍需
+> 自由组合 `subjectIndex + deckAction + targetIndex`，静态合法字段不保证形成该题的合法权限组合。
+>
+> V9 冻结本地合法 option authority：从 validated V5 shortlist 为每题预枚举完整
+> `resolvedSubject + subjectDecision + deckDecision`，canonical 去重、稳定排序，每题最多 24、请求最多
+> 144，并受 Organizer 3500 input-token estimator fail-closed 约束。模型 exact output 只允许
+> `decisions[{questionIndex,optionIndex}]`，不回显 fingerprint、不输出 subject/action/target/ID/confidence/
+> command。模型仍在多个合法 option 间负责语义选择；本地注入 shortlist fingerprint、运行完整 V6
+> validator/merger，并重建真实 ID、名称、confidence、reason 与 binding。
+>
+> Owner-scoped `REPEATABLE READ + READ ONLY` snapshot、Provider 前/后事务外双 fence、owner-lock
+> `Serializable` 写事务内最终 fence、single/batch 单 dispatch、abort、Trace admission、locked-name、用户
+> authority 与 Provider no-retry 均保持不变。OptionIndex 未知、覆盖不全、option set 漂移或 cap/token 无法
+> 保留 mandatory subject/action bucket 时，均在无写入路径 fail-closed，不 clamp、repair、默认选择或补发。
+>
+> Reader Testing 首轮提出并已关闭四个 Important：有效 shortlist 任一题无合法 option 时固定
+> `attempted=false / not_eligible / candidate_option_authority_empty`，保留完整 deterministic binding/
+> suggestions；mandatory bucket 装不进 cap/token 时固定 degraded budget fallback。Prompt projection 继续对
+> 包括 `answer/userNote` 在内的完整字段先扫描后裁剪，超过 16384 UTF-16、malformed Unicode、control/Cf、
+> credential/instruction/tool/write 或额外 key 均整份拒绝，公开 label 最多 80 Unicode scalar。
+>
+> 3500 input cap 的 estimator 已精确冻结为
+> `64 + ceil(utf8Bytes([system, canonical projection, schema].join('\n')) / 3)`，candidate/adapter 必须共用
+> parts builder，不能把 estimate 当成 Provider verified usage。产品 Organizer 保持同步 HTTP，不写
+> BackgroundJob/Outbox 或后台补发；未来 V9 runner 必须 durable 区分 reserved terminal、attempted orphan、
+> guard/breaker/orphan 三类 not-started，并重算 executor/dispatch/response/usage 计数。复测结论为
+> `APPROVED`，无 Critical/Important。
+>
+> 文档门使用仓库本地 Prettier `3.8.3` 对 9 个变更文件格式化并复核，`git diff --check` 通过。V8
+> evidence/marker/journal physical SHA-256 重新计算后分别精确等于
+> `377b82a7...71a85 / 85caaa57...a5da7 / 3caaa82d...efda`，V9 正式 artifact 仍为 0；当前 diff
+> 只有 6 个既有文档和 3 个 V9 新文档，没有源码或历史 artifact 变化。Windows LF -> CRLF 提示经
+> `git diff --numstat` 核对不是整文件换行改写。Source/security 与 docs/history/operations 两路最终只读
+> 复审均为 `APPROVED`，无 Critical/Important；三份 V9 新文档将在本次 R0 提交中共同纳入。
+>
+> V1--V8 artifact/SHA、V2 dataset/baseline、预算、timeout、quality/P95/fixed denominator 均保持只读；V9
+> 冻结独立 runner/approval/marker/journal/evidence/recovery/validator lineage 与 R1--R7 路线。R0 只新增
+> design/plan/acceptance 并同步当前文档，没有修改 Agent/AI/Server/Web 源码、读取 `.env`/credential、调用
+> Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或合并 main。下一原子任务仅 V9 R1
+> zero-provider TDD。设计与验收见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
+> `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v9-r0-zero-provider-postmortem.md`。
+>
 > 2026-07-29 — Phase 6.9.7 V8 R5 唯一 Controlled-Live 失败封存：用户接受本次运行时 DeepSeek
 > 当前账号的数据保留/训练边界，并授权唯一一次 V8 branch run。零 Provider preflight 确认分支 clean，
 > HEAD、tracking ref 与 GitHub remote 都是 `b487ffe859ff75e5b8375791045da9ef21ddc9de`；V8 artifact=0，
@@ -25,8 +77,8 @@
 > `3caaa82d...efda`；journal sequence `0..69`，最后一条为 `evidence_sealed`，bundle validator
 > `ok=true/filesChecked=1`，无 recovery claim。V8 一次性名额已消费，不得 retry/resume/replay/backfill、
 > seal/recovery 或追加 Provider 探测。R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8、Phase 6.10、
-> Phase 8/9 与博客收尾继续阻断；下一任务只能建立新的独立 zero-provider R0，优先把 Organizer 改为
-> 只选择本地预枚举合法 option，而不是自由拼接多字段组合。完整证据见
+> Phase 8/9 与博客收尾继续阻断；该终态当时只允许建立新的独立 zero-provider R0，优先把 Organizer
+> 改为只选择本地预枚举合法 option，而不是自由拼接多字段组合；后续 V9 R0 已完成。完整证据见
 > `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
 >
 > 2026-07-28 — Phase 6.9.7 V8 R4 Reviewed Mock / Full Checkpoint：新增正式 V8 Mock factory 与
