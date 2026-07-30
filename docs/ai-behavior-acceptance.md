@@ -307,9 +307,13 @@ Crash-only seal 只在 owner 已死亡时从 durable prefix 重建
 takeover 收口；它不读取 credential、不构造 transport、不 retry/resume/replay Provider。首次授权 CLI 在
 Windows 默认 evidence root 尾分隔符的旧字符串围栏中于 reservation 前失败：Provider invocation/dispatch=0，
 marker/journal/claim/artifact=0。修复以 `resolve + relative` 做词法 containment，并新增目录 URL 回归；R3 focused
-`18/18`、R2 regression `14/14`、AI full `264/264` 均为 zero-provider 工程证据。旧 exact confirmation 不复用，
-下一次真实 canary 仍需用户新的 exact confirmation；即使 canary `complete`，也只获得 fact-free Provider
-diagnostic authority，不能直接通过 Tutor/Organizer semantic 或产品 gate。
+`18/18`、R2 regression `14/14`、AI full `264/264` 均为 zero-provider 工程证据。
+
+修复后的唯一 R3 controlled-Live run `253a5df5...` 随后正常 runtime seal：`transport_failed /
+connection_refused`、`dispatched_no_response`、wire `1/1/0/0`，usage/token/CNY 全 `null`，7-record journal
+已到 `evidence_published` 且无 recovery claim。本地 proxy 指向无监听 loopback `127.0.0.1:7897` 是高度相关
+但未证实的条件，不能升级为 socket 唯一根因。R3 不得重跑；该 diagnostic failure 不能通过
+Tutor/Organizer semantic 或产品 gate，R4 继续阻断。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

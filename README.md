@@ -8,7 +8,7 @@ Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，�
 
 V1--V9 marker/evidence 均已封存；V3--V9 journal 记录 dispatch、wire stage、terminal、breaker、run completed 与 evidence sealed。V9 R0--R4 已把 Organizer 收敛为本地预枚举完整合法 option，模型只返回 exact `questionIndex + optionIndex`；fingerprint、V6 validator/merger、snapshot/stale、confidence、真实 ID 与写权限继续由本地掌握。R5 marker/journal/evidence 已 durable seal，validator `ok=true/filesChecked=1` 且无 recovery claim。该终态只证明 dispatch 后在 response 前 transport/abort，不能证明真实模型语义或产品可用；禁止重跑、额外 Provider 探测、seal/recovery、改写 artifact 或进入 R6 产品验收与 R7/main。
 
-用户已作出新的独立路线决策：停止 V10/V11 式整套重试，先完成 Phase 6.9.7 Architecture Recovery。Recovery R1 已增加不修改 sealed V1 adapter 的 transport diagnostic wrapper，将 future fetch throw 安全映射为固定 `aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown` subtype；公共 `transport`、V1--V9 report/schema/validator/artifact 均保持不变。Recovery R2 已完成独立 fact-free request/report/artifact contract、封闭 zero-network runner、安全 CLI 与 `21/21` synthetic fault matrix。Recovery R3 又完成独立 controlled-Live CLI、专用授权/凭据、一次性 marker、hash-chain journal、crash-only seal、exclusive hard-link evidence 与 strict validator；公开 CLI 固定内部 production ports。首次授权 CLI 在 Windows evidence root 的尾分隔符围栏中于 reservation 前失败，Provider invocation/dispatch=`0`，marker/journal/claim/artifact 均未创建；这与 DeepSeek 服务无关。根因已改为 `resolve + relative` containment 并新增目录 URL 回归。修复后 R3 focused `18/18`、R2 regression `14/14`、AI full `264/264`，仓库正式 R3 artifact 仍为 `0`。旧 exact confirmation 不复用；当前已重新接受数据边界，仍等待修复提交后的新 exact confirmation，期间不调用 Provider，也不启动 48-case 或产品验收。
+用户已作出新的独立路线决策：停止 V10/V11 式整套重试，先完成 Phase 6.9.7 Architecture Recovery。Recovery R1 已增加不修改 sealed V1 adapter 的 transport diagnostic wrapper；Recovery R2 已完成独立 fact-free zero-network canary contract/runner。Recovery R3 在修复 Windows evidence-root 围栏后执行了唯一 controlled-Live run `253a5df5-c443-4950-b517-849efb941728`：一次 executor 与一次 dispatch 后、HTTP Response 前以 `transport_failed / connection_refused` 结束，wire `1/1/0/0`，usage/token/CNY 全为 `null`。Marker、7 条 hash-chain journal 与 artifact 已由正常 runtime 路径封存，`evidenceSealed=true`、无 recovery claim、artifact SHA=`56fb5b1d...e6c4`；authority 仅为 `controlled_live / diagnostic_only / qualityAuthority=none`。本地 zero-network 检查发现进程 proxy 指向无监听的 loopback `127.0.0.1:7897`，与拒绝连接高度一致但未被 sealed evidence 证实为唯一根因。R3 不得重跑或追加 Provider 探测；R4、48-case 与产品验收继续阻断。
 
 ## 当前状态
 
@@ -250,10 +250,10 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7 Architecture Recovery：V1--V9 Live 均保持失败封存；R1 transport subtype、R2 zero-network canary contract/runner，以及 R3 controlled-Live 一次性/durability/validator 工程边界均已完成。首次授权 CLI 只映射了专用 credential，随后在 reservation 前因 Windows 尾分隔符围栏误判失败；Provider 调用为 0，正式 R3 artifact 仍为 0，路径缺陷已修复。
-3. 下一原子任务只是在修复提交推送后，由用户给出新的 R3 exact confirmation，再执行唯一一次低成本真实 health canary。未先获得真实 HTTP Response，不启动 Tutor/Organizer 小样本或 48-case、产品 Docker/API/浏览器、main 或 Phase 6.9.8。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+2. 当前执行 Phase 6.9.7 Architecture Recovery：V1--V9 Live 均保持失败封存；R1/R2 工程边界成立，R3 唯一 canary 也已失败封存。它只证明一次 durable dispatch 后出现 bounded `connection_refused`，没有 Provider Response、usage、费用、Agent 语义或产品 authority。
+3. 下一原子任务仅 zero-provider proxy/preflight 架构复盘；不得重跑 R3、绕过 proxy 做 Provider 探测或启动 Tutor/Organizer 小样本、48-case、产品 Docker/API/浏览器、main 或 Phase 6.9.8。只有用户未来作出新的路线决策并完成新的工程边界，才讨论新的外部调用。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
-回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”“为什么 synthetic provenance 永远不能通过生产 gate？”
+回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 loopback proxy 无监听只能作为未证实的相关条件？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 
 V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence SHA 与 validators 仍不变。禁止删除任何 V1--V9 marker、重跑已消费 Live，或把 Mock/部分成功拼接成通过。
 
@@ -329,6 +329,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.7 Architecture Recovery R1 transport diagnostics](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md)
 - [Phase 6.9.7 Architecture Recovery R2 zero-network Provider health canary](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md)
 - [Phase 6.9.7 Architecture Recovery R3 controlled-Live zero-provider checkpoint](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md)
+- [Phase 6.9.7 Architecture Recovery R3 controlled-Live 诊断失败封存](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

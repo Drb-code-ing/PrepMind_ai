@@ -1598,9 +1598,15 @@ V9 R0--R5 收口回执：
       无未关闭 Critical/Important；
 - [x] 本次失败保持 zero-provider：专用 credential 仅完成进程内映射且未输出；未调用 Provider 或执行 seal，
       未启动 Docker/API/browser、修改业务数据或触碰 V1--V9；仓库正式 R3 marker/journal/claim/artifact 为 0；
-- [ ] 旧 exact confirmation 不复用；修复提交推送后只有用户给出新的 R3 exact confirmation，才允许执行
-      唯一一次低成本真实 health canary；只有真实 canary
-      收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case，不得直接恢复 V9 R6/R7/main。
+- [x] 修复后的唯一 run `253a5df5...` 已正常 runtime seal：`transport_failed / connection_refused`、
+      `dispatched_no_response`、wire `1/1/0/0`、usage/token/CNY=`null`；7 条 journal 到
+      `evidence_published`，artifact SHA=`56fb5b1d...e6c4`，无 recovery claim；
+- [x] zero-network 本地复盘发现当前进程 proxy 指向无监听 loopback `127.0.0.1:7897`，根 `.env` 不定义
+      proxy；只记录为高度相关但未证实条件，不归因 Provider、DNS/TLS、账号、余额、权限或服务端；
+- [x] 唯一 R3 授权已消费；禁止 retry/resume/replay/backfill、Live/seal、删除/改写 artifact、curl 或第二次
+      Provider 调用；
+- [ ] 下一原子任务仅 zero-provider proxy/preflight 架构复盘；R4、小样本 semantic、48-case、V9 R6/R7/
+      main 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1609,4 +1615,5 @@ V9 R0--R5 收口回执：
 `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md` 与
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。

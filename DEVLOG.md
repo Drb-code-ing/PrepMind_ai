@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Controlled-Live Diagnostic Failure Seal：
+> 用户重新接受 DeepSeek 数据边界并在 evidence-root 修复提交 `9c297da3` 推送后给出新的 exact
+> confirmation。唯一 run `253a5df5-c443-4950-b517-849efb941728` 已消费授权并由正常 runtime 路径
+> durable seal：`outcome=transport_failed`、`attemptDisposition=dispatched_no_response`、provider
+> `transportSubtype=connection_refused`、wire `1/1/0/0`，最后完成阶段为 `provider_dispatch_started`。
+> `responseObserved=false`，usage、actual token、estimated CNY 与 within-cap 全为 `null`，不能写成零费用。
+>
+> Marker、7 条 hash-chain journal 与 artifact 已完成 `runtime_terminal -> publication_started ->
+evidence_published`；无 recovery claim，不需要也不允许 crash-only seal。Artifact SHA-256 为
+> `56fb5b1d196d2af9cc4aab5476d766d87ca9d794896e3c93df9268d13e62e6c4`。独立复审重新核对 source、
+> marker/report/evidence SHA、7 条 hash chain、wire/预算/null 聚合与 authority，无 Critical/Important/Minor。
+>
+> 封存后 zero-network 检查发现当前进程四个 HTTP(S) proxy 变量均指向 loopback `127.0.0.1:7897`，
+> 当时本机该端口监听数为 0；根 `.env` 不定义这些变量。该条件与 `connection_refused` 高度一致，但 artifact
+> 有意不保存 socket peer/raw error，因此只记录为未证实的最可能本地相关因素，不能归因 DeepSeek、DNS/TLS、
+> 代理软件、路由、防火墙、凭据、账号、余额、模型权限或限流。
+>
+> 本轮没有 curl、DNS/TLS、清空 proxy、第二次 Provider、Tutor/Organizer 小样本/48-case、Docker/API/
+> browser、业务写或 main。R3 不得 retry/resume/replay/backfill、删除/改写 artifact 或运行 seal。R4 与
+> 后续阶段继续阻断；下一安全原子任务仅 zero-provider proxy/preflight 架构复盘。完整证据见
+> `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Windows Evidence-root Pre-reservation Fix：
 > 用户给出旧 R3 exact confirmation 并接受 DeepSeek 数据边界后，分支、tracked clean、`HEAD == @{u}`、
 > 正式 artifact=0 与专用 credential 映射 preflight 均通过。唯一一次 CLI 进程随后返回

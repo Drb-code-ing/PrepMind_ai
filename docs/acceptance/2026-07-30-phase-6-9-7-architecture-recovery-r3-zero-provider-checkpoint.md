@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R3 controlled-Live 工程边界已完成；首次授权 CLI 在 reservation 前 zero-call 失败，根因已修复，等待新的 exact confirmation
+状态：历史 zero-provider checkpoint；后续 evidence-root 修复与唯一 R3 controlled-Live 均已完成，Live 以 diagnostic failure 封存
 
 Authority：`zero-provider engineering evidence`，不是 Provider health、Live quality、Agent 语义或产品可用性证据
 
@@ -183,13 +183,13 @@ Provider transport 环节；也不能声称真实 Tutor/Organizer 已可用。
 
 ## 9. 下一停止门
 
-R3 路径修复任务到此结束。当前数据边界已重新接受；下一步仅在修复提交推送后由用户给出新的上表 exact
-confirmation，才允许从 clean、已推送且与 tracking commit 一致的当前分支执行唯一一次低成本 health
-canary。未获得该新授权前，不再次读取 credential、不调用 Provider，也不运行 crash seal。
+本 checkpoint 后续已在修复提交 `9c297da3` 上获得新的 exact confirmation。唯一 run `253a5df5...` 完成
+一次 dispatch 后，在 HTTP Response 前以 `transport_failed / connection_refused` 正常 runtime seal；wire
+`1/1/0/0`，usage/token/CNY 全 `null`，无 recovery claim。该授权已消费且不得重跑。
 
-真实 canary 无论成功或失败都必须先封存并解释自己的 diagnostic artifact；不能自动启动小样本或 48-case。
-只有观察到真实 HTTP Response，才允许另行规划小样本 Tutor/Organizer semantic gate，并再次取得授权。
-V1--V9 历史始终保持不可变。
+正式终态、artifact SHA、本地 proxy 相关条件与后续阻断见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。R4、小样本与
+48-case 未解锁；V1--V9 历史始终保持不可变。
 
 回顾时可以问：
 

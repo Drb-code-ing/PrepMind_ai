@@ -1225,15 +1225,16 @@ DeepSeek 健康。R2 没有正式 artifact writer、marker、journal、seal/reco
 启动 48-case、产品 Docker/API/browser 与 main 验收。R2 的历史 zero-network 证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
 
-R3 已完成独立 controlled-Live 一次性/durability 边界，但当前仍是 zero-provider checkpoint。日常安全回归
-只运行测试，不需要 approval 或 credential：
+R3 controlled-Live 已失败封存。日常安全回归仍只运行测试，不需要 approval 或 credential，也不得因为
+回归通过而再次运行 Live：
 
 ```powershell
 bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-durability-cli.test.ts
 bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-cli.test.ts
 ```
 
-正式 R3 CLI 固定检查当前 branch、tracked worktree clean 和 `HEAD == @{u}`，并要求：
+历史上正式 R3 CLI 固定检查当前 branch、tracked worktree clean 和 `HEAD == @{u}`，并要求以下一次性条件；
+当前授权已消费，下面的变量与参数不得再次用于执行：
 
 - `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_APPROVED=true`；
 - 专用 `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_DEEPSEEK_API_KEY`，不能借用通用或 Agent credential；
@@ -1243,20 +1244,26 @@ bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.
 首次旧授权 CLI 已完成 source/credential preflight，但 Windows 目录 URL 产生的默认 evidence root 带尾分隔符，
 旧字符串围栏在 reservation 前误判越界。该进程 Provider invocation/dispatch=`0`，没有 marker/journal/claim/
 artifact，也不适用 crash-only seal。实现现已使用 `resolve + relative` containment 并覆盖尾分隔符回归；旧 exact
-confirmation 已使用且源码变化，不得复用。用户已重新接受本次 DeepSeek 数据边界，但在修复提交推送后给出
-新的 exact confirmation 前，不得再次设置 approval、映射/读取 credential 或执行正式 CLI。公开
-`runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，内部固定 production ports；不能注入 fetch、
-transport、URL、model、writer 或 output path。
+confirmation 已使用且源码变化，不得复用。修复提交推送后取得的新 exact confirmation 也已由下述唯一 run
+消费。公开 `runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，内部固定 production ports；不能注入
+fetch、transport、URL、model、writer 或 output path。
 
-如果且仅如果正式尝试已经创建 marker/journal 后进程中断，独立确认词
+设计上只有正式尝试已创建 marker/journal 且进程中断时，独立确认词
 `I_SEAL_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_INTERRUPTED_ATTEMPT_WITHOUT_PROVIDER` 可执行 crash-only
 seal。它不读取 credential、不调用 Provider、不 retry/resume/replay，只从 durable prefix 封存
 `not_dispatched / dispatched_no_response / response_observed`。`publication_started` 后任何 I/O failure
-永久 fail-closed，不得再次 publish。
+永久 fail-closed，不得再次 publish。当前 run 已正常到 `evidence_published`，不符合 seal 条件。
 
-当前正式 R3 marker/journal/recovery claim/artifact 仍为 0。下一原子任务只是在修复提交推送后取得新的
-精确授权并执行唯一一次低成本真实 canary；未观察到 HTTP Response 前，不启动小样本或 48-case。完整工程证据见
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
+修复后的唯一 R3 canary 已由 run `253a5df5-c443-4950-b517-849efb941728` 消费并正常封存。不得再次设置
+R3 approval/credential 或运行 Live/seal：artifact 为 `dispatched_no_response`，wire `1/1/0/0`，终态
+`transport_failed / connection_refused`，usage/token/CNY 全 `null`；7 条 journal 已到 `evidence_published`，
+无 recovery claim。
+
+封存后的本地检查发现当前进程 HTTP(S) proxy 指向无监听的 loopback `127.0.0.1:7897`；该条件高度相关但
+不是 sealed evidence 已证实的唯一根因。不得通过 curl、清空 proxy、单 case 或第二次 Provider 调用验证。
+下一原子任务仅 zero-provider proxy/preflight 架构复盘；未观察到 HTTP Response 前，不启动小样本或
+48-case。完整工程证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
