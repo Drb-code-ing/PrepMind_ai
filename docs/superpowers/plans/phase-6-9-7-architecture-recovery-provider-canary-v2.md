@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-当前状态：D0/C1/C2/S1 已完成，zero-provider；下一步停在未授权 L1
+当前状态：D0/C1/C2/S1/L1 已完成；唯一 L1 已成功封存，下一步仅 P1 zero-provider 小样本语义门设计
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`
@@ -89,11 +89,11 @@ S1 完成后提交并推送，必须停止在 L1 exact authorization 门前。
 
 实际证据：Architecture Recovery `91/91`（`780` assertions）、AI full `323/323`（`2366`
 assertions）、typecheck/lint/Prettier/diff、R3 validator/SHA、正式 V2 artifact=0 与独立实现/安全/文档复审均
-通过；相关项目文档已同步。当前不得继续执行 L1。
+通过；相关项目文档已同步。该 checkpoint 当时停止在 L1 授权门前。
 
 ## L1：唯一 Provider Canary V2 Controlled-Live
 
-状态：[ ] 未授权，禁止执行。
+状态：[x] 唯一运行已完成并封存，不得重跑。
 
 前置必须全部成立：
 
@@ -107,11 +107,19 @@ assertions）、typecheck/lint/Prettier/diff、R3 validator/SHA、正式 V2 arti
 运行最多一次 fact-free dispatch。无论 complete、transport、HTTP、schema、usage、abort、timeout 或 I/O 终态，
 都必须封存且不得 retry/resume/replay/backfill。普通“继续”“开始”“同意”不是 L1 授权。
 
+实际证据：用户重新接受运行时 DeepSeek 数据边界并给出 exact confirmation 后，唯一 run
+`dc09214c-0300-4153-8273-e548ac768d20` 在 source commit `8d463e8c...` 上完成。结果为
+`complete / strict_response_with_verified_usage`，response/strict 均为 `true`，wire `1/1/1/1`，usage
+`49/5`，费用 `0.00017700 CNY`。Journal `12` 条并以 `evidence_published` 收口，validator
+`ok=true / evidenceCount=1`，artifact SHA 为 `98368de...a7e4`；`status=diagnostic_only /
+qualityAuthority=none`。验收见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
+
 ## P1：L1 后路线决策
 
-状态：[ ] 被 L1 阻断。
+状态：[ ] 已由 L1 success 解锁，但当前仅允许 zero-provider 设计，不允许执行 semantic eval。
 
-- L1 完整观察 strict response 与 verified usage：只规划新的小样本 semantic gate；
+- L1 已完整观察 strict response 与 verified usage：下一原子任务只规划新的小样本 semantic gate；
 - L1 其它终态：回到独立 zero-provider 架构决策；
 - 任何情况下都不直接进入 48-case、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9；
 - 任何情况下都不改写 R3、V9 或其它 sealed evidence。

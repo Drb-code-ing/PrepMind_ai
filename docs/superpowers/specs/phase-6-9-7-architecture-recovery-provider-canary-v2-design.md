@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-状态：D0/C1/C2/S1 已完成，zero-provider；当前停在尚未授权的 L1 controlled-Live 门前
+状态：D0/C1/C2/S1/L1 已完成；唯一 L1 已成功封存，当前停在 P1 zero-provider 设计门
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -48,11 +48,13 @@ semantic eval，不接产品，不把 listener ready 写成 Provider health。
 | L1   | 用户重新确认数据边界并精确授权唯一 controlled-Live         |
 | P1   | 仅按 L1 终态决定是否规划小样本 semantic gate               |
 
-截至 2026-07-30，D0/C1/C2/S1 已完成。C1 落地独立 request/proxy-attestation/budget/report identity、
+截至 2026-07-30，D0/C1/C2/S1/L1 已完成。C1 落地独立 request/proxy-attestation/budget/report identity、
 进程内 single-consume capability、15-case closed synthetic fault matrix 与只允许 `mock/fault-matrix` 的
 CLI。C2 又完成固定 production composition、source、专用授权、exclusive marker、hash-chain journal、
 bounded terminal、hard-link artifact、strict validator 与 crash-only seal；S1 完成 branch zero-provider 静态门与
-终审。项目根正式 V2 artifact 保持 0，下一步只能是新的 L1 exact authorization。
+终审。唯一 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 随后得到 strict response 与 verified usage，
+wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，并由 runtime 路径完整封存；其 authority 仍仅为
+`diagnostic_only / qualityAuthority=none`。
 
 ## 2. 已知事实与不可推导事项
 
@@ -63,6 +65,8 @@ bounded terminal、hard-link artifact、strict validator 与 crash-only seal；S
 - 旧宿主快照中四个 HTTP(S) proxy 变量一致指向 loopback，监听为 0；
 - 当前重新运行的 preflight 为 `loopback_proxy_ready`，Provider call 仍为 0；
 - R3 marker、journal、artifact SHA 与 validator 仍保持不变。
+- V2 L1 唯一 run 为 `complete / strict_response_with_verified_usage`，artifact validator `ok=true`；
+- V2 L1 只证明该次 fact-free request 的 response/usage/evidence，不形成 Agent 或产品质量 authority。
 
 不可推导：
 
@@ -262,15 +266,20 @@ marker/journal/artifact/recovery claim 为 0，R3 validator 与三份物理 SHA 
 
 ## 10. 停止门与后续决策
 
-S1 已完成并提交、推送；当前必须停止。L1 只能在用户重新接受**运行当时** DeepSeek 数据保留/训练边界，并给出
-冻结 exact confirmation 后执行一次。普通“继续”“开始”“同意”不能替代 L1 精确授权。
+S1 已完成并提交、推送。用户随后重新接受**运行当时** DeepSeek 数据保留/训练边界并给出冻结 exact
+confirmation；唯一 L1 已执行并封存，禁止再次运行、retry/resume/replay/backfill 或追加 Provider 探测。
 
 L1 终态处理：
 
-- `complete + response observed + verified usage + artifact valid`：只允许规划新的小样本 Tutor/Organizer
-  semantic gate；仍不直接运行 48-case、产品或 main；
+- 实际终态为 `complete + response observed + verified usage + artifact valid`：只允许规划新的小样本
+  Tutor/Organizer semantic gate；仍不直接执行小样本/48-case、产品或 main；
 - 任何其它终态：正常封存 V2，禁止 retry/resume/replay/backfill，并回到零 Provider 架构决策；
 - 无论结果如何，都不改写 R3、V9 或其它历史 evidence。
+
+L1 evidence 见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。P1 必须先
+以 zero-provider 方式冻结独立 dataset、预算、quality gate、lineage 与未来授权条件，不能把本次 health
+canary 当成 semantic dataset 的一条通过样本。
 
 回顾时可以问：
 

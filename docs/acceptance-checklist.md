@@ -1654,8 +1654,20 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] C2/S1 未读取根 `.env`/真实 credential、调用 Provider、启动 Docker/API/browser 或触碰 sealed
       evidence；所有成功 publication 只在自动清理的系统临时测试根，项目根正式 V2 marker/journal/artifact/
       recovery claim 为 0；
-- [x] S1 已完成并推送，当前停在 L1 运行时数据边界与新 exact authorization。普通“继续/开始/同意”不
-      授权；R3、原 R4、小样本、48-case、V9 R6/R7/main 与后续阶段继续阻断。
+- [x] S1 已完成并推送；用户随后重新接受运行时 DeepSeek 数据边界并给出 V2 exact confirmation；
+- [x] 唯一 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 为
+      `complete / strict_response_with_verified_usage`，response/strict 均为 `true`，wire `1/1/1/1`；
+- [x] L1 verified usage 为 input/output `49/5`，费用 `0.00017700 CNY` 且低于 `0.00200000 CNY` cap；
+- [x] L1 journal 共 `12` 条并以 `evidence_published` 收口；bundle validator
+      `ok=true / evidenceCount=1`，V2 marker/journal/artifact SHA 分别为
+      `c3e5ac...b287e5 / c19abf...903d7 / 98368de...a7e4`，无 recovery claim；
+- [x] R3 validator 仍 `ok=true`，marker/journal/artifact SHA 仍为
+      `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`；V1--V9/R3 evidence 未改写；
+- [x] L1 `status=diagnostic_only / qualityAuthority=none`；只证明本次 fact-free Provider response/usage/evidence，
+      不证明 Tutor/Organizer 语义、Provider 长期健康、RAG、业务写入或产品可用；
+- [x] L1 名额已消费，禁止重跑、retry/resume/replay/backfill、crash seal 或追加 Provider 探测；
+- [ ] P1 仅以 zero-provider 方式冻结小样本 semantic gate dataset、预算、quality gate、lineage 与未来授权；
+      在此之前，小样本/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1671,4 +1683,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md` 与
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`、
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md` 与
-`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`、
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。

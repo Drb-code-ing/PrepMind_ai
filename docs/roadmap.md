@@ -2,7 +2,7 @@
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；R6/R7/main、Phase 6.9.8 与后续阶段被阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 >
-> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2 与 R3 one-shot/durability 工程边界均已完成。Windows evidence-root 修复后的唯一 R3 run `253a5df5...` 已正常封存：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，authority 仅 `diagnostic_only`。其后的独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`；两者都不把 proxy 相关性升级为唯一根因或 Provider health。Provider Canary V2 D0/C1/C2/S1 已完成；C2 建立固定 one-shot/durability/evidence，S1 完成静态门、R3 parity 与正式 V2 artifact=0。当前停在尚未授权的 L1。R3 不得重跑，原 R4、产品/main/后续阶段阻断均未解除。
+> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2 与 R3 one-shot/durability 工程边界均已完成。Windows evidence-root 修复后的唯一 R3 run `253a5df5...` 已正常封存：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，authority 仅 `diagnostic_only`。其后的独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该证据仍是 `diagnostic_only / qualityAuthority=none`，只解锁 P1 zero-provider 小样本语义门设计；R3/V2 均不得重跑，原 R4、48-case、产品/main/后续阶段阻断均未解除。
 
 ## 项目目标
 
@@ -429,7 +429,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Architecture Recovery Provider Canary V2 C1：独立 request/attestation/budget/report、进程内 opaque single-consume capability、15-case closed synthetic fault matrix 与只允许 `mock/fault-matrix` 的 CLI；authority 固定 `synthetic_test / none / unknown`，downstream/wire 全 0。（已完成，zero-provider）
 - Phase 6.9.7 Architecture Recovery Provider Canary V2 C2：独立 source、one-shot CLI、approval/credential gate、marker/hash-chain journal、artifact/validator 与 crash-only seal；只用 fake ports/synthetic transport，正式 artifact=0。（已完成，zero-provider）
 - Phase 6.9.7 Architecture Recovery Provider Canary V2 S1：branch static/zero-provider checkpoint、远程 parity、R3 SHA/validator、AI 全量门与独立终审；完成并推送后停在 L1。（已完成，zero-provider）
-- Phase 6.9.7 Architecture Recovery Provider Canary V2 L1：唯一 fact-free controlled-Live；必须重新确认运行时数据边界并给出新 exact confirmation，当前未授权。（被阻断）
+- Phase 6.9.7 Architecture Recovery Provider Canary V2 L1：唯一 run `dc09214c...` 已成功封存；`complete / strict_response_with_verified_usage`、wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`、artifact SHA `98368de...a7e4`，但 `qualityAuthority=none`，不得重跑。（已完成，diagnostic-only）
+- Phase 6.9.7 Architecture Recovery Provider Canary V2 P1：只以 zero-provider 方式冻结新的小样本 Tutor/Organizer semantic gate dataset、预算、质量门、lineage 与未来授权条件；当前不得执行小样本、48-case 或产品验收。（下一原子任务）
 - Phase 6.9.7 Architecture Recovery R4：原计划要求 canary 获得 HTTP Response 后才迁移 Tutor/Organizer 到 diagnostic adapter 并执行小样本语义门；R3 未获得 Response，因此不得开始。（被阻断）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）

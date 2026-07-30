@@ -338,8 +338,8 @@ D0/C1/C2/S1/L1/P1；C2 production composition 强制
 `exact args -> 8-key proxy preflight -> source parity -> dedicated credential -> V2 marker/reservation -> one
 fact-free dispatch -> bounded terminal/publication`。Preflight failure 前 credential/source/marker/Provider 都必须
 0-call；ready 只产生进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论。C1/C2/S1
-全部保持 zero-provider；S1 已提交、推送和终审，当前才可向用户申请 L1 运行时数据边界与新 exact authorization。
-普通“继续/开始/同意”不能替代 L1 授权；即使 L1 complete，也只解锁新的小样本 semantic 设计。
+全部保持 zero-provider；S1 已提交、推送和终审。用户随后重新接受运行时数据边界并给出 exact authorization，
+唯一 L1 已执行并封存；即使 L1 complete，也只解锁新的小样本 semantic 设计。
 
 Provider Canary V2 C1 已完成上述 zero-network admission contract。V2 request、proxy-attestation、budget、
 report、fault-matrix 与 CLI 使用独立 identity；preflight success 只在模块私有 `WeakMap` 中为一个空对象绑定
@@ -361,11 +361,16 @@ hash-chain + fsync，dispatch stage 必须先 durable 才进入 delegate。Termi
 或调用 Provider；活 owner 拒绝，死 owner 由单胜者 claim 收口，已有 runtime terminal 只允许原样完成
 publication。V2/R3 confirmation、filename、marker/schema 双向拒绝。
 
-C2 focused `32/32`、Recovery `91/91`、AI full `323/323` 与静态门通过；所有成功 publication 都只发生
-在自动清理的系统临时测试根。项目根正式 V2 marker/journal/artifact/recovery claim 为 0，R3 validator/SHA
-不变。该证据只证明未来 L1 的一次性执行与 evidence durability，不证明 Provider health、真实 usage/cost、
-Tutor/Organizer semantic 或产品可用。当前停在 L1；仍不能在缺少运行时数据边界与 exact authorization 时读取
-真实 credential 或调用 Provider。
+C2 focused `32/32`、Recovery `91/91`、AI full `323/323` 与静态门通过。唯一 L1 run
+`dc09214c-0300-4153-8273-e548ac768d20` 随后得到 `complete / strict_response_with_verified_usage`，response/
+strict 均为 `true`，wire `1/1/1/1`，usage `49/5`，费用 `0.00017700 CNY`。Journal `12` 条并以
+`evidence_published` 收口；validator `ok=true / evidenceCount=1`，artifact SHA 为 `98368de...a7e4`，无
+recovery claim，R3 validator/SHA 不变。
+
+L1 只能证明这一次 fact-free 请求在当时 source/credential/network path 下得到 strict response、verified
+usage 与可验证 evidence。`status=diagnostic_only / qualityAuthority=none`，因此不能证明 Provider 长期健康、
+Tutor/Organizer semantic、RAG/写隔离或产品可用，也不能外推 P95、48-case 成本或 SLA。L1 名额已消费并禁止
+重跑；当前只允许 P1 zero-provider 小样本 semantic gate 设计。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

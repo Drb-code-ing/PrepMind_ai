@@ -1,5 +1,29 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 L1 Controlled-Live：
+> 用户重新接受运行时 DeepSeek 当前账号的数据保留/训练边界并给出冻结 exact confirmation 后，唯一 L1 run
+> `dc09214c-0300-4153-8273-e548ac768d20` 在 source commit `8d463e8c...` 上执行并成功封存。Fresh
+> zero-provider preflight 为 `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`，source gate
+> 确认 branch/tracked clean/HEAD-upstream-remote parity、正式 V2 artifact=0 与 R3 parity。
+>
+> 正式终态为 `complete / strict_response_with_verified_usage`，response/strict 均为 `true`，wire
+> executor/dispatch/response/usage=`1/1/1/1`，usage input/output=`49/5`，费用 `0.00017700 CNY` 且低于
+> `0.00200000 CNY` cap。Journal 共 `12` 条并以 `evidence_published` 收口；bundle validator
+> `ok=true / evidenceCount=1`，V2 marker/journal/artifact SHA 分别为
+> `c3e5ac...b287e5 / c19abf...903d7 / 98368de...a7e4`，无 recovery claim。R3 validator 仍 `ok=true`，
+> 三份 SHA 保持 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`。
+>
+> 一条临时 launcher 命令曾在进入 Bun 前因 Bash 引号解析失败；当时再次确认正式 V2 文件为 0，未读取
+> credential、创建 marker 或调用 Provider，因此不构成 L1 attempt。正式运行使用不含密钥的临时启动器；
+> approval/credential 仅映射到授权进程，启动器在退出后删除，未写回 `.env` 或 evidence。
+>
+> 本次 artifact 仍为 `status=diagnostic_only / qualityAuthority=none`：只证明一次 fact-free request 的 strict
+> response、verified usage 与 durability，不证明 Provider 长期健康、Tutor/Organizer 语义、RAG/写隔离或
+> 产品可用。L1 名额已消费，禁止 retry/resume/replay/backfill、crash seal 或追加 Provider 探测。下一原子任务
+> 仅为 P1 zero-provider 小样本 semantic gate 设计；小样本/48-case、Docker/API/browser、main、Phase 6.9.8
+> 继续阻断。验收见
+> `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 C2/S1 One-shot Durability：
 > 已完成独立 V2 source、approval/credential gate、固定 production CLI、exclusive marker、fsynced
 > hash-chain journal、bounded terminal、hard-link artifact/strict validator 与 crash-only seal。Public CLI 只
