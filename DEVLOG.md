@@ -1,5 +1,38 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery R2 Zero-network Provider Health Canary：
+> 在 R1 bounded transport subtype 基础上，新增独立版本的 fact-free request、每次调用预算、strict report 与
+> diagnostic-only artifact contract。请求固定 `deepseek-v4-pro` non-thinking JSON、no tools/stream/retry，
+> 输出只允许 `{ "ok": true }`；每次 canary 预算固定为 `1 call / 512 input / 16 output`，hard cap
+> `0.00200000 CNY`，并显式标记 `scope=per_invocation`。
+>
+> Runner 只接受 `mode=synthetic + closed scenario enum + timeout + AbortSignal`。初版独立审查发现
+> synthetic factory 仍可接收调用方任意 `fetch`，理论上可注入真实网络却继续标记 `synthetic_test`；本轮
+> 未保留该脆弱设计，而是彻底移除公开 `fetch/createTransport` 注入口。最终 runner 只把 20 个固定场景映射
+> 到模块内 `Response/throw/abort-wait` 脚本，并在内部校验精确 URL/header/request body；调用方额外注入
+> `fetch`、transport、Live mode、输出路径、未知参数或 hostile object 均在 executor 前 fail-closed。
+>
+> Report 区分 `complete/response_observed/transport_failed/response_invalid/aborted/timeout/
+budget_exceeded/config_invalid/harness_internal`，复用 R1 九类 transport subtype 与 V7 executor/dispatch/
+> response/verified-usage 计数。取消与 timeout 必须绑定一致 wire terminal；成功 terminal 优先于迟到 abort，
+> 避免 `aborted + succeeded wire`。CLI 只允许 `mock` 与 `fault-matrix`，没有 env reader、credential resolver、
+> 文件 writer、artifact publish、retry、seal 或 recovery；hostile output port 只返回 exit code 1。
+>
+> RED 为三个新模块 export 不存在；最终 R2 focused 为 `14/14`（`218` assertions），AI package
+> `246/246`（`1804` assertions），AI/Agent typecheck/lint 通过。安全 CLI Mock 为 `complete`，固定 fault
+> matrix 为 `21/21`，覆盖九类 transport、四类 HTTP、non-Response、JSON/schema/usage、预算、pre-abort 与
+> runner timeout，并逐项校验 wire、reservation、usage、冻结与 no-raw。该输出全部是
+> `authority=synthetic_test`；synthetic token/结果不是 Provider telemetry，也不证明 DNS/TLS、代理、账号、
+> 余额、模型权限、服务端或 DeepSeek 健康。
+>
+> 本任务没有读取 `.env`/credential、调用 Provider/curl/DNS/TLS、运行 V9 Live/seal/recovery、启动
+> Docker/API/browser、修改业务数据或创建正式 canary artifact；V1--V9 封存文件未触碰。首次 `bunx
+prettier` 只在包清单下载阶段 `ConnectionRefused`，随后使用仓库本地 Prettier；该现象仍不能作为外部
+> transport 根因。当前停止在新的真实 canary 授权门前；下一步只有用户另行明确授权后，才允许设计并
+> 执行一次低成本真实 health canary，不能直接启动 Tutor/Organizer 48-case、产品验收或 main。
+> 完整验收见
+> `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery R1 Transport 可诊断边界：用户在 V9 失败封存后
 > 明确决定停止 V10/V11 式整套重试，先定位故障链路，再判断是否需要调整 Agent 或 Provider 架构。
 > 只读调用链与 sealed evidence 复核确认：V9 Tutor 已通过 config、request validation 与 durable dispatch，
@@ -30,8 +63,8 @@
 > 本任务未访问 DeepSeek。首次格式化调用 `bunx prettier` 时，Bun 对包仓库立即
 > `ConnectionRefused`；随后改用仓库本地 Prettier。该现象仅作为当前 Bun 出站路径的旁证，不等于 V9
 > DNS/TLS/TCP 根因，也不回填 V9 evidence。没有读取/打印 credential，没有执行 Provider、curl、DNS/TLS、
-> V9 Live/seal/recovery、Docker/API/browser 或业务写入。下一原子任务仅 Recovery R2 zero-network Provider
-> health canary contract/runner；完成静态门并获得用户另行授权前，不得执行真实 canary 或 48-case。
+> V9 Live/seal/recovery、Docker/API/browser 或业务写入。该 R1 checkpoint 当时的下一原子任务仅 Recovery
+> R2 zero-network Provider health canary contract/runner；后续 R2 已完成并停在真实 canary 授权门前。
 > 完整验收见
 > `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
 >

@@ -1203,9 +1203,28 @@ bun --filter @repo/ai lint
 ```
 
 注入 fetch 永久是 `synthetic_test`，上述命令不读根 `.env`、不发网络请求，也不创建正式
-canary artifact。当前下一原子任务仅 R2 zero-network Provider health canary contract/runner；真实
-canary 仍需新的用户授权。完整边界见
+canary artifact。完整边界见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
+
+R2 已完成独立 zero-network Provider health canary contract/runner。它不读取 env，也不允许调用方注入
+fetch、transport、credential、URL 或 artifact path；`mock` 与 `fault-matrix` 都只使用模块内 closed
+synthetic responder。日常安全回归命令为：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-cli.test.ts
+bun --filter @repo/ai eval:phase-6-9-7:recovery-r2:canary -- mock
+bun --filter @repo/ai eval:phase-6-9-7:recovery-r2:canary -- fault-matrix
+```
+
+CLI 只接受精确的 `mock` 或 `fault-matrix` 单参数；`live`、`--mode live`、`--out`、重复或未知参数都
+fail-closed。Mock `complete` 与 fault matrix `21/21` 的 authority 都是 `synthetic_test`，其中 token 是
+合成响应值，不是 Provider telemetry；不能据此判断 DNS/TLS、代理、账号、余额、模型权限、服务端或
+DeepSeek 健康。R2 没有正式 artifact writer、marker、journal、seal/recovery 或一次性 Live 授权消费。
+
+当前停止在新的真实 canary 授权门前。不得自行给 R2 CLI 增加 Live 参数、读取根 `.env`、运行 curl/
+Provider、复用 V9 marker/evidence，或直接启动 48-case、产品 Docker/API/browser 与 main 验收。真实
+canary 必须作为下一原子任务重新设计，并取得用户另行明确授权。完整证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

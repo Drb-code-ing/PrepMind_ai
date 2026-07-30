@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5 / Recovery R1）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5 / Recovery R1--R2）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V9
 九条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -274,9 +274,22 @@ artifact 不变，新增独立 `first-party-deepseek-v4-pro-transport-diagnostic
 delegate throw 会在新 adapter 实例内存中映射为 frozen
 `aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown`；它不会进入
 既有 Trace/evidence/API。分类器只读 own data `code/name` 与最多四层 cause，不执行 getter、`toString`，不读
-或保存 message/stack/raw error/URL/header/body/prompt/key。Injected fetch 永久是 synthetic；R1 没有读取
-credential、调用 Provider 或接产品。下一步 R2 只建立 zero-network Provider health canary contract/runner，
-真实 canary 仍需新的用户授权。
+或保存 message/stack/raw error/URL/header/body/prompt/key。
+
+Architecture Recovery R2 已完成独立 zero-network health canary 合同：固定 fact-free prompt、exact
+`{ ok: true }`、DeepSeek V4 Pro non-thinking JSON、no tools/stream/retry、每次 `1/512/16` 与
+`0.00200000 CNY` cap。Runner 只接收 closed synthetic scenario enum、timeout 和 AbortSignal；外部增加
+fetch、transport、credential、URL、Live mode 或 artifact path 均在 executor 前拒绝。初版审查发现任意
+injected fetch 会破坏 zero-network 保证，最终实现已删除该注入口，20 个场景全部在模块内映射为
+Response/fixed throw/abort wait。
+
+R2 report 只保存 bounded outcome、R1 subtype、V7 wire counter、per-invocation reservation 与 synthetic
+usage；取消/timeout 必须与 wire terminal 一致，迟到 abort 不能覆盖 succeeded terminal。CLI 只接受
+`mock` / `fault-matrix`，21 个 fault case 覆盖九类 transport、HTTP、response/JSON/schema/usage、预算、
+pre-abort 与 runner timeout。所有输出固定 `authority=synthetic_test`、artifact
+`qualityAuthority=none`；R2 没有读取 credential、调用 Provider、写正式 artifact、接产品或修改 V9。
+因此 synthetic success/usage/latency 不能证明 HTTP、DNS/TLS、代理、账号、余额、模型权限、服务端健康、
+真实费用、Tutor/Organizer 语义或产品可用。下一步真实 canary 仍需用户新的明确授权。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

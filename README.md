@@ -8,7 +8,7 @@ Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，�
 
 V1--V9 marker/evidence 均已封存；V3--V9 journal 记录 dispatch、wire stage、terminal、breaker、run completed 与 evidence sealed。V9 R0--R4 已把 Organizer 收敛为本地预枚举完整合法 option，模型只返回 exact `questionIndex + optionIndex`；fingerprint、V6 validator/merger、snapshot/stale、confidence、真实 ID 与写权限继续由本地掌握。R5 marker/journal/evidence 已 durable seal，validator `ok=true/filesChecked=1` 且无 recovery claim。该终态只证明 dispatch 后在 response 前 transport/abort，不能证明真实模型语义或产品可用；禁止重跑、额外 Provider 探测、seal/recovery、改写 artifact 或进入 R6 产品验收与 R7/main。
 
-用户已作出新的独立路线决策：停止 V10/V11 式整套重试，先完成 Phase 6.9.7 Architecture Recovery。Recovery R1 已增加不修改 sealed V1 adapter 的 transport diagnostic wrapper，将未来 fetch throw 安全映射为固定 `aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown` subtype；公共 `transport`、V1--V9 report/schema/validator/artifact 均保持不变。R1 全程 zero-provider，当前下一步仅 R2 Provider health canary 的 zero-network contract/runner。
+用户已作出新的独立路线决策：停止 V10/V11 式整套重试，先完成 Phase 6.9.7 Architecture Recovery。Recovery R1 已增加不修改 sealed V1 adapter 的 transport diagnostic wrapper，将 future fetch throw 安全映射为固定 `aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown` subtype；公共 `transport`、V1--V9 report/schema/validator/artifact 均保持不变。Recovery R2 已完成独立 fact-free request/report/artifact contract、封闭 zero-network runner、安全 CLI 与 `21/21` synthetic fault matrix：它没有 fetch/transport/credential 注入口，不写正式 artifact，authority 固定为 `synthetic_test`。这只证明 canary 工程合同，不证明 Provider 健康；下一步仍需用户另行授权一次低成本真实 canary。
 
 ## 当前状态
 
@@ -56,7 +56,7 @@ V1--V9 marker/evidence 均已封存；V3--V9 journal 记录 dispatch、wire stag
 | Phase 6.9.4.4 | Router/Verifier 混合生产接入、共享预算、Trace、Docker/Live/浏览器验收                          | 已完成                         |
 | Phase 6.9.5   | Review/Planner 受限真实模型只读路径、Docker/API/浏览器与 main default-off 回放                 | 已完成                         |
 | Phase 6.9.6   | KnowledgeDedup/Organizer embedding shortlist + 真实模型语义路径                                | 已完成                         |
-| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | Recovery R1 已完成；阶段未完成 |
+| Phase 6.9.7   | Tutor/WrongQuestionOrganizer 混合模型、教学策略与组织层写入隔离                                | Recovery R2 已完成；阶段未完成 |
 | Phase 7       | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit         | 核心工程化已完成               |
 | Phase 7.8.5   | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                       | 已完成                         |
 | Phase 7.23    | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                       | 已完成                         |
@@ -89,6 +89,7 @@ V1--V9 marker/evidence 均已封存；V3--V9 journal 记录 dispatch、wire stag
 - Agent Trace：`/api/chat` 在有 access token 时 best-effort 写入脱敏 trace，`/agent-traces` 提供账号级在线 API，`/agent-trace` 展示路由、步骤、降级、token 和估算成本；trace 不保存完整 prompt、完整回答、完整 RAG chunk 或 API key，成本看板不替代供应商账单。
 - KnowledgeDedupAgent / KnowledgeOrganizerAgent：`GET /knowledge-agent/suggestions` 已接入 owner-scoped Qwen Chunk embedding shortlist、受限 DeepSeek V4 Pro candidate、本地权威 merger 与 local/hybrid/degraded 来源状态。exact hash、越权、不安全投影、abort 和预算失败保持 provider 前零调用；模型只裁决本地 ordinal，不接触真实 document ID，也不自动合并、删除、替换、重命名或分类资料。唯一 V2 controlled-Live run `10ae2f36-69f6-422c-a99f-6bf6b3aeb226` 以 semantic `0.9875`、`quality_gate_passed` 封存；R7 Docker/API 的 Dedup-only、Organizer-only 和双开关均得到 `candidate_applied`，exact hash/安全/凭据/跨账号 guard 均为 provider 前零调用。可见浏览器完成真实上传、处理、列表、Qwen 混合检索以及 semantic/local/degraded/失败/响应式回放；浏览器阶段没有新增模型调用。分支验收后合成数据精确清理为 0，API 恢复 `mock / live=false / gate=false/false / credential absent`。main `f31335c6` 又完成 default-off focused、Docker/API、桌面/移动端可见浏览器回放与零残留清理，Phase 6.9.6 已完成。详见 [Phase 6.9.6 验收记录](./docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md)。
 - Agent 成本边界：生产 Agent 的真实模型调用必须同时经过 server-only composition、全局 Live 双开关、组件独立 gate、不可变预算、超时、零自动重试、安全 eligibility 与脱敏 Trace；组件 gate 默认关闭并可独立回滚。Knowledge 两个 candidate 共享 `2 calls / 6000 input / 1200 output`，单请求硬 cap 为 `0.03 CNY`，并使用只注入 API server 的独立 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`。Tutor 使用独立 `1/1200/300`、`0.006 CNY` 与仅注入 Web server runtime 的 `TUTOR_AGENT_DEEPSEEK_API_KEY`；WrongQuestionOrganizer 使用独立 `1/3500/800`、`0.016 CNY` 与只由 API server 读取的 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`，worker 强制关闭。它们不借用通用或其它 Agent 凭据，也不消耗 Router -> Verifier 共享预算。V1--V9 使用独立确认词、授权变量、marker、evidence prefix、runner identity 与 validator；V3--V9 还拥有 dispatch-before-call hash-chain journal、crash-only seal 与 hard-link evidence，适用版本另含受限 recovery claim。V9 R5 只有 2 次 Provider dispatch、0 次 response 与 0 条 verified usage，故正式 token/费用/P95/semantic aggregate 全部为 `null`，不能推导零成本或完整账单。任何 Mock 满分、局部成功或历史 run 都不能拼接为质量通过。`tutorOrchestrationP95Ms` 只测本地 Tutor strategy + candidate，不是 Router/API/最终流式 Chat 产品 P95。当前终态见 [V9 R5 failure seal](./docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md)；V8/V7 历史分别见 [V8 R5 failure seal](./docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md) 与 [V7 R4 failure seal](./docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md)。
+- Architecture Recovery canary：R2 只提供包内封闭 synthetic 场景，固定 fact-free prompt、`1/512/16` per-invocation budget、`0.00200000 CNY` cap 与 strict bounded report。CLI 只接受 `mock` / `fault-matrix`，不能读取 env、注入 fetch/transport、写 artifact 或执行 Live。Mock `complete` 与 fault matrix `21/21` 只能作为 contract evidence；真实 HTTP、Provider usage/cost、外部健康与 Agent 语义必须由后续独立授权的真实 canary/验收证明。
 - Phase 6.9.7 V5 R0 根因：V1 `tutor-runtime-06` 的中文代数 latest text 被配到英文微积分 active context，language tag 还被数组奇偶误标为 `en`。零网络差分回归同时证明合法 `step_check + submitted_step` 会在产品 candidate 应用，缺 primary/错误 evidence 才会被产品 candidate 拒绝，V4 diagnostic 只是如实投影。
 - Phase 6.9.7 V5 R1 数据权威：新建 `phase-6.9-tutor-wrong-question-v2`，显式绑定 Tutor language/exercise-family/coherent-context 与 Organizer subject/taxonomy/topic ordinal/batch relation；dataset/policy/baseline SHA 已冻结，deterministic baseline 为 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`。R1 没有 candidate/provider；后续 Tutor 使用本地 evidence authority + 模型有界 intent/depth 选择，Organizer 使用本地 shortlist + ordinal-only 选择。
 - Phase 6.9.7 V5 R2 Tutor authority：本地 latest-text-only detector 冻结 primary/negated signal、`step > explain > concept > hint > general` precedence 与 eligible intent/depth；模型 strict output 仅 `intent/depth/confidence`，merger 在本地重建 TutorStrategy。32 条独立 held-out 与 24/24 V2 runtime detector 对照通过，全程 zero-provider，尚未接 Web product composition/gate。
@@ -249,8 +250,8 @@ bun --cwd packages/fsrs test
 下一步主线：
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
-2. 当前执行 Phase 6.9.7 Architecture Recovery：V1--V9 Live 均保持失败封存；R1 已完成 bounded transport subtype foundation，但尚未接 canary、产品或读取 credential。
-3. 下一原子任务仅 R2 zero-network Provider health canary contract/runner。R2 完成后停在新的用户授权门前；未先获得真实 HTTP Response，不启动 Tutor/Organizer 48-case、产品 Docker/API/浏览器、main 或 Phase 6.9.8。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+2. 当前执行 Phase 6.9.7 Architecture Recovery：V1--V9 Live 均保持失败封存；R1 bounded transport subtype 与 R2 zero-network canary contract/runner 已完成，但 R2 `synthetic_test` 不证明 Provider 健康，也未读取 credential、调用 Provider 或创建正式 artifact。
+3. 下一原子任务只是在用户另行明确授权后设计并执行一次低成本真实 health canary。未先获得真实 HTTP Response，不启动 Tutor/Organizer 48-case、产品 Docker/API/浏览器、main 或 Phase 6.9.8。全部 Agent 完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”“为什么 synthetic provenance 永远不能通过生产 gate？”
 
@@ -326,6 +327,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.7 V9 R4 static/Mock checkpoint](./docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md)
 - [Phase 6.9.7 V9 R5 controlled-Live 失败封存](./docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md)
 - [Phase 6.9.7 Architecture Recovery R1 transport diagnostics](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md)
+- [Phase 6.9.7 Architecture Recovery R2 zero-network Provider health canary](./docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

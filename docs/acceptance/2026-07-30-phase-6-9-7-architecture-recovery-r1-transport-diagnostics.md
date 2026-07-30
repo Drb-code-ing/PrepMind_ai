@@ -119,10 +119,12 @@ WinHTTP 事件可用于进一步归因。这些只读观察不替代未来可诊
 本任务没有读取或打印 credential，没有调用 Provider、DNS/TLS 探测、curl、产品 API，也没有启动 Docker、
 Server、Web 或浏览器；没有执行 V9 Live/seal/recovery，V9 artifact 字节和 SHA 保持不变。
 
-下一原子任务仅为 Architecture Recovery R2：建立独立 Provider health canary 的 request/report/CLI/预算与
-新 artifact contract，并用 injected fetch 完成 zero-network fault matrix。R2 仍不得读取 credential 或调用
-Provider。完成 R2 静态验收后，是否授权一次低成本真实 canary 由用户另行决定；canary 未先获得 HTTP
-Response 时，禁止启动 Tutor/Organizer 48-case、产品 Docker/API/browser 或 main 合并。
+该检查点当时的下一原子任务仅为 Architecture Recovery R2。R2 后续已完成独立 Provider health canary
+request/report/CLI/预算与 artifact contract。实现审查发现公开 injected fetch 会留下真实网络注入口，因此
+最终改为 closed scenario enum + 模块内 synthetic responder，而不是沿用初始 injected-fetch 设想。R2 仍未
+读取 credential 或调用 Provider；是否授权一次低成本真实 canary 由用户另行决定。canary 未先获得 HTTP
+Response 时，禁止启动 Tutor/Organizer 48-case、产品 Docker/API/browser 或 main 合并。后续证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
 
 ## 7. 回顾时可以问
 

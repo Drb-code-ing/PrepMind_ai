@@ -1568,14 +1568,27 @@ V9 R0--R5 收口回执：
       V9 evidence/journal/marker 前后 SHA-256 一致；
 - [x] 三路独立只读复审无 Critical/Important；
 - [x] 未调用 DeepSeek、curl、DNS/TLS、产品 API 或 V9 Live/seal/recovery，未启动 Docker/API/browser；
-- [ ] R2 建立独立 Provider health canary request/report/CLI/预算与 synthetic fault matrix；R2 仍必须
-      zero-provider，完成后停在新的用户授权门前；
-- [ ] 只有 canary 收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case；不得直接恢复
-      V9 R6/R7/main。
+- [x] R2 已建立独立 fact-free request、strict report、diagnostic-only artifact schema、每次
+      `1 call / 512 input / 16 output / 0.00200000 CNY` 预算和安全 CLI；版本 namespace 与 V1--V9
+      marker/journal/evidence/recovery 完全隔离；
+- [x] Runner 只接受 closed synthetic scenario enum、timeout 与 AbortSignal；最终实现已移除初版任意
+      fetch/createTransport 注入口，外部不能注入 credential、URL、Live transport 或输出路径；
+- [x] outcome、R1 transport subtype、V7 wire 四计数、reservation/usage 与取消/timeout terminal 使用 strict
+      invariant；成功 terminal 不被迟到 abort 覆盖，raw error/prompt/key/endpoint 不进入 report/artifact；
+- [x] CLI 只允许 `mock` / `fault-matrix`；R2 focused `14/14`（`218` assertions）、AI package
+      `246/246`（`1804` assertions）、AI/Agent typecheck/lint 通过；Mock `complete`、fault matrix
+      `21/21`，并逐项验证 wire、budget、usage、冻结与 no-raw；
+- [x] R2 全程 zero-provider：未读取 `.env`/credential、调用 Provider/curl/DNS/TLS、创建正式 artifact、
+      启动 Docker/API/browser、修改业务数据或触碰 V1--V9 sealed artifact；
+- [x] 所有 R2 输出固定 `authority=synthetic_test`、artifact `qualityAuthority=none`；synthetic success/
+      usage 只证明工程合同，不能证明 HTTP、DeepSeek/DNS/TLS/账号/余额/模型权限/服务端健康或 Agent 语义；
+- [ ] 下一步只有用户另行明确授权，才允许设计并执行一次低成本真实 health canary；只有真实 canary
+      收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case，不得直接恢复 V9 R6/R7/main。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`、
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md` 与
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
