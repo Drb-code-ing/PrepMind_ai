@@ -1605,8 +1605,19 @@ V9 R0--R5 收口回执：
       proxy；只记录为高度相关但未证实条件，不归因 Provider、DNS/TLS、账号、余额、权限或服务端；
 - [x] 唯一 R3 授权已消费；禁止 retry/resume/replay/backfill、Live/seal、删除/改写 artifact、curl 或第二次
       Provider 调用；
-- [ ] 下一原子任务仅 zero-provider proxy/preflight 架构复盘；R4、小样本 semantic、48-case、V9 R6/R7/
-      main 与后续阶段继续阻断。
+- [x] 独立 proxy preflight contract/CLI 已完成：只允许 direct 或一致 loopback HTTP proxy；非空
+      `NO_PROXY`、authority 冲突、credential/非法 URL、hostile env 在 listener 前 fail-closed；
+- [x] Windows/Bun composition 只快照八个固定 proxy key；不枚举整份 env、不读取 `.env`/credential；
+      listener 只连接 loopback、250ms、无 payload，核心 watchdog 覆盖 never-settle 与 abort；
+- [x] focused `14/14`（`108` assertions）、R3 regression `18/18`（`123` assertions）、AI full
+      `278/278`（`2035` assertions）、typecheck/lint、Prettier/diff 与独立实现/测试/安全复审通过；
+- [x] 实际 CLI 以预期 exit `1` 返回 `loopback_proxy_unavailable / configured=4 / probe=1 /
+providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/artifact 均为 0；
+- [x] R3 marker/journal/artifact SHA 保持 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`；
+      preflight 结果不升级 Provider/network health 或 R3 唯一根因；
+- [ ] 当前宿主环境仍需先满足 direct 或 coherent loopback-listener 条件并只重跑本地 preflight；不得自动
+      清空/绕过 proxy。Preflight ready 后仍需新的设计 checkpoint、数据边界确认与 exact 授权；R3、R4、
+      小样本 semantic、48-case、V9 R6/R7/main 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1616,4 +1627,5 @@ V9 R0--R5 收口回执：
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md` 与
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`、
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。

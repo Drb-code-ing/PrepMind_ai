@@ -1,5 +1,26 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery Zero-provider Proxy Preflight：
+> R3 failure seal 之后新增独立、未编号的 proxy preflight；它不复用 R3 confirmation、marker、journal、
+> artifact 或 recovery claim。纯 contract 只允许无 proxy 的 direct 模式，或所有已配置 proxy 变量严格一致
+> 指向显式 loopback HTTP URL；`NO_PROXY` 非空、uppercase/lowercase authority 冲突、userinfo、非 HTTP、
+> 非 loopback、缺失/非法端口、path/query/hash、控制字符和 hostile getter/Proxy 均在 listener 前 fail-closed。
+>
+> Windows/Bun 的 `process.env` 使用 accessor descriptor，因此正式 CLI 只在 composition root 读取固定八个
+> proxy/`NO_PROXY` key 并转成 own-data snapshot；不会枚举整份环境、读取根 `.env` 或模型 credential。
+> listener probe 只连接已验证的 `127.0.0.1` / `::1`，250ms、无 payload、连接后立即销毁；核心 runner
+> 自己强制 watchdog，永不 settle 或忽略 abort 的 probe 也会有界收口。输出只含固定 enum、boolean、计数，
+> `providerCalls` 永远为 `0`。
+>
+> Focused `14/14`、R3 regression `18/18`、AI full `278/278`（`2035` assertions）、typecheck/lint、
+> Prettier/diff 与三路独立复审通过。
+> 实际 CLI 预期以 exit `1` fail-closed：`loopback_proxy_unavailable / configured=4 / probe=1 /
+providerCalls=0`。这只证明当前 loopback listener 未就绪，不证明或否定 Provider、DNS/TLS、代理转发、
+> 账号、余额、模型权限或服务端健康，也没有把 R3 相关性升级成唯一根因。本任务未调用 Provider/fetch、
+> 未读取 credential、未创建新 marker/journal/artifact、未启动 Docker/API/browser 或修改业务数据；R3 仍
+> 禁止重跑/Live/seal，R4、产品/main 与后续阶段继续阻断。完整证据见
+> `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Controlled-Live Diagnostic Failure Seal：
 > 用户重新接受 DeepSeek 数据边界并在 evidence-root 修复提交 `9c297da3` 推送后给出新的 exact
 > confirmation。唯一 run `253a5df5-c443-4950-b517-849efb941728` 已消费授权并由正常 runtime 路径

@@ -2,7 +2,7 @@
 
 > 当前版本：2026-07-30。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。当前进程 proxy 指向无监听 loopback `127.0.0.1:7897` 是高度相关但未证实的本地条件。R3 不得重跑；下一步仅 zero-provider proxy/preflight 复盘，R4 与产品/后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 现已完成，实际为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`；它只证明本地 listener 未就绪，不证明 Provider health 或唯一根因。R3 不得重跑，R4 与产品/后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -790,6 +790,30 @@ Architecture Recovery R3（zero-provider controlled-Live boundary）
        -> dispatched_no_response -> usage/token/CNY=null
        -> 7-record journal -> evidence_published -> recovery claim=null
   -> zero-network correlation：proxy -> loopback:7897；listener=0；未证实为唯一 socket 根因
+  -> R3 不得重跑；R4、小样本、48-case、产品/main 继续阻断
+```
+
+```text
+Architecture Recovery proxy preflight（independent / zero-provider）
+  -> CLI composition 只读取固定 8 个 proxy / NO_PROXY key
+       -> Windows/Bun accessor -> own-data snapshot
+       -> 不枚举整份 env，不读取 .env 或模型 credential
+  -> exact own-data validation
+       -> NO_PROXY 非空 -> no_proxy_unsupported
+       -> proxy authority 冲突 -> proxy_config_conflict
+       -> credential / 非 HTTP / 非 loopback / 非法端口 / path/query/hash -> fail-closed
+  -> proxy absent -> direct_ready / listenerProbeCalls=0 / providerCalls=0
+  -> coherent loopback HTTP proxy
+       -> core-owned 250ms watchdog
+       -> one TCP connect to 127.0.0.1 or ::1 / no payload / immediate destroy
+       -> listening -> loopback_proxy_ready
+       -> refused or timed out -> loopback_proxy_unavailable
+       -> throw or abnormal result -> listener_probe_failed
+       -> external abort -> aborted
+  -> output only version + enum + boolean + counters; no URL/raw error/socket peer
+  -> actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
+  -> diagnostic-only：不创建 marker/journal/artifact，不证明 HTTP/DNS/TLS/Provider/账号健康
+  -> future ordering（尚未实现或授权）：preflight ok -> credential/source -> marker/reservation -> dispatch
   -> R3 不得重跑；R4、小样本、48-case、产品/main 继续阻断
 ```
 

@@ -315,6 +315,26 @@ connection_refused`、`dispatched_no_response`、wire `1/1/0/0`，usage/token/CN
 但未证实的条件，不能升级为 socket 唯一根因。R3 不得重跑；该 diagnostic failure 不能通过
 Tutor/Organizer semantic 或产品 gate，R4 继续阻断。
 
+Architecture Recovery proxy preflight 已作为独立未编号的 zero-provider 合同完成。它只读取 own-data proxy
+snapshot；Windows/Bun composition root 也只把八个固定 proxy/`NO_PROXY` key 从平台 accessor 复制为普通
+数据，不枚举整份环境、不读取 `.env` 或模型 credential。允许状态只有 proxy absent 的 `direct_ready`，或
+所有已配置变量严格一致指向显式 loopback HTTP URL 且 250ms listener probe 成功的
+`loopback_proxy_ready`。
+
+非空 `NO_PROXY`、uppercase/lowercase authority 冲突、userinfo、非 HTTP、非 loopback、缺失/非法端口、
+path/query/hash、控制字符、hostile getter/Proxy 均在 listener 前 fail-closed。Listener 只连接经验证的
+`127.0.0.1` / `::1`，不发送 payload，连接后立即销毁；核心 runner 自己用 internal AbortController 和
+watchdog 强制 250ms，因此永不 settle、throw、异常返回与 abort 都有 bounded terminal。Report 只保留固定
+version/enum/boolean/counter，`providerCalls=0`，不保存 proxy URL、credential、raw error、socket peer 或
+stack。
+
+实际 CLI 为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`。该 authority 仅是
+本地 preflight diagnostic：不证明 HTTP、DNS、TLS、代理转发、DeepSeek、账号、余额、模型权限、限流或
+服务端健康，也不把 R3 的 proxy 相关性升级为唯一根因。Future composition 的固定顺序必须是
+`proxy preflight -> credential/source -> marker/reservation -> Provider dispatch`；本任务没有实现或授权
+后半段。即使 preflight 后续变为 ready，也仍需新的设计 checkpoint、运行时数据边界确认和 exact
+controlled-Live 授权。R3、R4、产品与后续阶段的阻断不变。
+
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
 - Task 2 已固定 strict schema 与动态 validator：Tutor 模型没有 `answer_direct` 权限；Organizer 必须完整覆盖 `q0..q11`，只能引用 `d0..d19`，重复/越界/部分 batch、跨 subject deck、本地 subject 权威冲突和危险 topic label 全批拒绝。projection 使用有界 descriptor clone、完整字段先扫描、safety metadata、裁剪/token 重验/deep freeze，公开值不含真实 ID、完整 answer/userNote 或写能力；这仍不等于 candidate/runtime 已完成；

@@ -1261,9 +1261,36 @@ R3 approval/credential 或运行 Live/seal：artifact 为 `dispatched_no_respons
 
 封存后的本地检查发现当前进程 HTTP(S) proxy 指向无监听的 loopback `127.0.0.1:7897`；该条件高度相关但
 不是 sealed evidence 已证实的唯一根因。不得通过 curl、清空 proxy、单 case 或第二次 Provider 调用验证。
-下一原子任务仅 zero-provider proxy/preflight 架构复盘；未观察到 HTTP Response 前，不启动小样本或
-48-case。完整工程证据见
+未观察到 HTTP Response 前，不启动小样本或 48-case。完整 R3 工程证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。
+
+### Phase 6.9.7 Architecture Recovery Proxy Preflight
+
+独立 zero-provider preflight 已完成。它不接受参数、不读取根 `.env` 或任何模型 credential、不调用
+`fetch`/Provider，也不创建 R3 或新的 marker、journal、artifact。CLI 只快照当前进程八个固定 key：
+`NO_PROXY/no_proxy`、`HTTPS_PROXY/https_proxy`、`HTTP_PROXY/http_proxy`、`ALL_PROXY/all_proxy`。
+
+```powershell
+bun --filter @repo/ai diagnose:phase-6-9-7:recovery:proxy-preflight
+```
+
+可接受状态只有两种：
+
+- 所有 proxy key 均 absent/空，返回 `direct_ready`；
+- 所有已配置 proxy key 严格一致指向显式 `http://127.0.0.1:<port>` 或
+  `http://[::1]:<port>`，且一次 250ms loopback TCP listener probe 成功。
+
+`NO_PROXY` 非空、大小写/类型 proxy authority 冲突、URL 携带 credential、非 HTTP、非 loopback、
+缺端口或非法端口、path/query/hash、控制字符与 hostile descriptor 都会 fail-closed。Listener probe 只建立
+本地 TCP 连接，连接后立即销毁且不发送 payload；核心 runner 自己强制 250ms watchdog。Exit `1` 表示
+环境前置条件不满足，不是 Provider 测试失败。
+
+当前实际输出为 `loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 /
+providerCalls=0`。不要自动清空或绕过 proxy，也不要通过 curl、DNS/TLS、单 case、产品 API 或第二次 Provider
+调用补证。Preflight 变为 ready 也只证明本地前置条件；新的外部 canary 仍需要独立设计 checkpoint、运行时
+数据边界确认和 exact 授权。R3 继续禁止 retry/resume/replay/backfill、Live/seal、删除/改写 artifact；R4、
+产品/main 与后续阶段仍被阻断。完整证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

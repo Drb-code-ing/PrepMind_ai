@@ -2,7 +2,7 @@
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；R6/R7/main、Phase 6.9.8 与后续阶段被阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 >
-> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2 与 R3 one-shot/durability 工程边界均已完成。Windows evidence-root 修复后的唯一 R3 run `253a5df5...` 已正常封存：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，authority 仅 `diagnostic_only`。Zero-network 复盘发现当前进程 proxy 指向无监听 loopback `127.0.0.1:7897`，该条件高度相关但不是 sealed evidence 已证实的唯一根因。R3 不得重跑，R4、产品/main/后续阶段阻断均未解除；下一原子任务仅 zero-provider proxy/preflight 架构复盘。
+> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2 与 R3 one-shot/durability 工程边界均已完成。Windows evidence-root 修复后的唯一 R3 run `253a5df5...` 已正常封存：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，authority 仅 `diagnostic_only`。其后的独立 zero-provider proxy preflight 已完成；当前实际环境为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`。该结果只证明本地 loopback listener 未就绪，不把 proxy 相关性升级为唯一根因。R3 不得重跑，R4、产品/main/后续阶段阻断均未解除。
 
 ## 项目目标
 
@@ -424,7 +424,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Architecture Recovery R2：独立 fact-free Provider health canary request/report/artifact contract、封闭 synthetic runner、安全 CLI、每次 `1/512/16` 与 `0.00200000 CNY` cap、`21/21` fault matrix；调用方不能注入 fetch/transport/credential，未创建正式 artifact，authority 固定 `synthetic_test`。（已完成，zero-provider）
 - Phase 6.9.7 Architecture Recovery R3 zero-provider checkpoint：独立 exact-confirmation CLI、专用 approval/credential、clean + tracking-parity preflight、固定内部 production ports、一次性 marker、wire hash-chain journal、bounded terminal report、crash-only 单胜者 seal、exclusive hard-link artifact 与 strict validator 已完成；`publication_started` 后任何 I/O failure 永久 fail-closed。首次授权 CLI 在 reservation 前命中 Windows 尾分隔符围栏缺陷，zero-provider 且当时 artifact=0；缺陷已修复。Focused `18/18`、R2 regression `14/14`、AI `264/264`。（历史 checkpoint 已完成）
 - Phase 6.9.7 Architecture Recovery R3 controlled-Live：唯一 run `253a5df5...` 为 `transport_failed / connection_refused`，wire `1/1/0/0`、`dispatched_no_response`，usage/token/CNY 全 `null`；7 条 journal 与 artifact 已正常 runtime seal，无 recovery claim，不得重跑。（失败封存）
-- Phase 6.9.7 Architecture Recovery R3 proxy/preflight 复盘：当前进程 proxy 指向无监听 loopback `127.0.0.1:7897`，与 bounded subtype 高度一致但未证实为唯一根因；下一步仅设计 zero-provider proxy authority、监听 preflight 与 fail-closed 诊断，不调用 Provider。（规划中）
+- Phase 6.9.7 Architecture Recovery proxy preflight：独立未编号 contract/CLI 已完成；只允许 direct 或一致 loopback HTTP proxy，非空 `NO_PROXY`、冲突、credential/非法 URL 与 hostile env fail-closed；核心强制 250ms watchdog，实际为 `loopback_proxy_unavailable / 4 / 1 / 0`，不读取 credential、不调用 Provider、不创建 artifact。（已完成，zero-provider）
 - Phase 6.9.7 Architecture Recovery R4：原计划要求 canary 获得 HTTP Response 后才迁移 Tutor/Organizer 到 diagnostic adapter 并执行小样本语义门；R3 未获得 Response，因此不得开始。（被阻断）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
@@ -450,6 +450,9 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么应用层已有 worker-off，Compose 仍必须做 service allowlist？”
 - “为什么 `--env-file .env` 不等于把整份 env 注入每个容器？”
 - “为什么 `config --quiet` 通过仍不能声称 Docker/真实模型验收完成？”
+- “为什么 R3 的 `connection_refused` 与无监听 loopback 高度相关，仍不能写成唯一根因？”
+- “为什么 proxy preflight 必须在 credential、marker 和 reservation 之前，而且 ready 仍不等于 Provider health？”
+- “为什么核心 runner 必须自己强制 250ms watchdog，而不能只相信 listener probe 的 timeout 参数？”
 
 V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4、V8 R5 与 V9 R5 均已失败封存，各自一次性授权已经消费且不得重跑。V8 fixed-shape 已通过真实 Provider static schema，但本地 dynamic authority 仍失败；V9 本地合法 option selection 与 reviewed Mock 工程合同已完成，但唯一 Live 在首个 pair 的 response 前 transport/sibling abort 终止，不能形成真实模型或产品可用性结论。产品验收、main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾仍不得开始。
 
