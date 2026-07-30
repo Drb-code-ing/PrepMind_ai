@@ -304,9 +304,11 @@ tail。`publication_started` 后任何 I/O failure 永久 fail-closed，不能�
 
 Crash-only seal 只在 owner 已死亡时从 durable prefix 重建
 `not_dispatched / dispatched_no_response / response_observed`，通过 exclusive 单胜者 claim 和 stale-claim
-takeover 收口；它不读取 credential、不构造 transport、不 retry/resume/replay Provider。R3 focused
-`17/17`、R2 regression `14/14`、AI full `263/263` 均为 zero-provider 工程证据，当前正式 R3 artifact=0。
-下一步真实 canary 仍需用户新的 exact confirmation；即使 canary `complete`，也只获得 fact-free Provider
+takeover 收口；它不读取 credential、不构造 transport、不 retry/resume/replay Provider。首次授权 CLI 在
+Windows 默认 evidence root 尾分隔符的旧字符串围栏中于 reservation 前失败：Provider invocation/dispatch=0，
+marker/journal/claim/artifact=0。修复以 `resolve + relative` 做词法 containment，并新增目录 URL 回归；R3 focused
+`18/18`、R2 regression `14/14`、AI full `264/264` 均为 zero-provider 工程证据。旧 exact confirmation 不复用，
+下一次真实 canary 仍需用户新的 exact confirmation；即使 canary `complete`，也只获得 fact-free Provider
 diagnostic authority，不能直接通过 Tutor/Organizer semantic 或产品 gate。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { link, lstat, mkdir, open, readFile, readdir, rename, unlink } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 import {
   buildPhase697ArchitectureRecoveryR3CanaryArtifact,
@@ -1025,13 +1025,16 @@ function requireRoot(value: unknown) {
   ) {
     throw new Error();
   }
-  return value;
+  return resolve(value);
 }
 
 function resolveRelative(root: string, relativePath: string) {
-  const normalized = relativePath.replaceAll('/', '\\');
-  const resolved = join(root, normalized);
-  if (!resolved.startsWith(`${root}\\`) && !resolved.startsWith(`${root}/`)) throw new Error();
+  const resolvedRoot = resolve(root);
+  const resolved = resolve(resolvedRoot, ...relativePath.split('/'));
+  const child = relative(resolvedRoot, resolved);
+  if (child.length === 0 || child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child)) {
+    throw new Error();
+  }
   return resolved;
 }
 

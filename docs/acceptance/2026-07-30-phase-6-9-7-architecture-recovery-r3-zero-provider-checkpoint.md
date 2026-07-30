@@ -4,7 +4,7 @@
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
-状态：R3 controlled-Live 工程边界已完成；真实 canary 尚未授权、尚未执行
+状态：R3 controlled-Live 工程边界已完成；首次授权 CLI 在 reservation 前 zero-call 失败，根因已修复，等待新的 exact confirmation
 
 Authority：`zero-provider engineering evidence`，不是 Provider health、Live quality、Agent 语义或产品可用性证据
 
@@ -115,14 +115,14 @@ Provider response 和 usage；它仍不能证明 Tutor/Organizer 语义质量、
 
 | 验证                                      | 结果                                  |
 | ----------------------------------------- | ------------------------------------- |
-| R3 focused tests                          | `17 pass / 0 fail / 121 assertions`   |
+| R3 focused tests                          | `18 pass / 0 fail / 123 assertions`   |
 | R2 regression                             | `14 pass / 0 fail / 218 assertions`   |
-| AI package full                           | `263 pass / 0 fail / 1925 assertions` |
+| AI package full                           | `264 pass / 0 fail / 1927 assertions` |
 | `@repo/ai` typecheck / lint               | 通过                                  |
 | 独立实现、安全与测试缺口复审              | 无未关闭 Critical/Important           |
 | 仓库正式 R3 marker/journal/claim/artifact | `0`                                   |
 
-Focused tests 覆盖 exact input/authority、单调用/no-retry、marker/journal 失败、wire monotonicity、report 与
+Focused tests 覆盖目录 URL 尾分隔符标准化、exact input/authority、单调用/no-retry、marker/journal 失败、wire monotonicity、report 与
 artifact 篡改、hard-link 与 `publication_started` 永久 fail-closed、并发 terminal/publication、活 owner 拒绝、
 死 owner crash seal、单胜者 claim、stale claim takeover、journal tail drift，以及已有 terminal 的 publication
 recovery。所有网络行为都由进程内 synthetic transport/fake ports 提供。
@@ -133,17 +133,45 @@ recovery。所有网络行为都由进程内 synthetic transport/fake ports 提�
 | ---------------------- | ------------------------------------------------------------------ |
 | `canary-contract.ts`   | `68a3edf6aa8203e56123717013a87721cd3a3f080eb3fa9b59cc867b08e5929c` |
 | `canary-runner.ts`     | `a30ca1957549bad4f03b26642950ad1def3f91a6a84e112506e4ca1e4cdee82a` |
-| `canary-durability.ts` | `5272ba46c4d7f2d98288e8d50eb9e13fb6c6a9bb9d0b39a9d729200fce7dbdc0` |
+| `canary-durability.ts` | `7e069af4312eb1f9c9730ba91ffbc2bb3d9afa7c4ad71dd822e37034b1fccf7d` |
 | `canary-cli.ts`        | `af31301addb8fff0d54b4b3f9a5a010c9a6a3a0f57cee4f2b1ffe177501bf24d` |
 | contract test          | `6797070028d270a95aba8eaee1efeb5e283e3aafdc1a331941b0bb6a02b430dc` |
 | runner test            | `c4c221a3d75b95de4e6f46878086dc020c7c186fa19d8f987f05c46115b5c307` |
-| durability / CLI test  | `d08ac1587219f73f40a937de69c2f861d8e79deae3ff11c89682f36a468e7935` |
+| durability / CLI test  | `b6caf76b4cf6fa1610ef5870367e078896fae437630bf8356a205604427c4cd2` |
 
-## 7. 明确没有做什么
+## 7. 首次授权 CLI 的 pre-reservation 终态
 
-- 没有读取、打印或修改根 `.env` 与任何 credential；
+用户给出旧 exact confirmation 并接受 DeepSeek 数据边界后，正式 source preflight 通过：分支正确、tracked
+worktree clean、`HEAD == @{u}`，当时 commit/tracking commit 均为
+`7f8871bd08ec6fc204c52ed886c13aa077ad2d03`；仓库正式 R3 artifact 数量为 0。根 `.env` 中的
+`DEEPSEEK_API_KEY` 只被映射为本进程专用变量，值没有输出、记录或写入 artifact。
+
+唯一 CLI 进程返回：
+
+```text
+r3_live_once_already_consumed_or_evidence_io
+evidenceSealed=false
+exit=1
+```
+
+失败发生在 reservation、marker/journal 创建和 transport 构造之前。Provider invocation/dispatch 均为 0；
+marker、journal、recovery claim、artifact 均没有创建，所以不适用 crash-only seal。这个终态不能判断
+DeepSeek、DNS/TLS、代理、账号、余额、模型权限或服务端健康。
+
+根因是 Windows 下目录 URL 生成的默认 root 带尾部 `\\`，旧实现又用
+`startsWith(root + "\\")` 检查子路径，形成双反斜杠并把合法 `.tmp` 路径误判为越界。修复后的
+`requireRoot()` 先用 `node:path.resolve()` 标准化 root；`resolveRelative()` 再用 `resolve + relative`
+containment 拒绝空 child、父目录和绝对逃逸。该边界是受信工作区内的词法 containment，不扩张为对恶意
+本地 symlink/TOCTOU 的防御承诺。
+
+旧 exact confirmation 已用于一次 CLI 进程，且此后源码发生变化，因此不得复用。用户已重新接受本次
+DeepSeek 数据边界；修复提交并推送后仍需新的 exact confirmation，才能执行新的唯一 canary。
+
+## 8. 当前明确没有做什么
+
+- 没有打印、记录、提交或修改任何 credential；
 - 没有调用 DeepSeek、curl、DNS/TLS 探测、产品 API 或其它 Provider；
-- 没有执行正式 R3 controlled-Live CLI 或 crash seal；
+- 没有越过 reservation 进入正式 R3 Provider runner，也没有执行 crash seal；
 - 没有运行 Tutor/Organizer 48-case、V1--V9 retry/recovery 或额外 Provider 探测；
 - 没有启动 Docker、API、浏览器，未修改 PostgreSQL、Redis、MinIO 或业务数据；
 - 没有创建仓库正式 R3 marker、journal、recovery claim 或 artifact；
@@ -153,11 +181,11 @@ recovery。所有网络行为都由进程内 synthetic transport/fake ports 提�
 因此本 checkpoint 不能回答当前失败究竟来自 DNS、TLS、代理、账号、余额、模型权限、服务端还是其它
 Provider transport 环节；也不能声称真实 Tutor/Organizer 已可用。
 
-## 8. 下一停止门
+## 9. 下一停止门
 
-R3 zero-provider 工程任务到此结束。下一步仅在用户另行给出上表 exact confirmation、并再次接受运行时
-DeepSeek 数据保留/训练边界后，才允许从 clean、已推送且与 tracking commit 一致的当前分支执行唯一一次
-低成本 health canary。未获得该授权前，不读取 credential、不调用 Provider，也不运行 crash seal。
+R3 路径修复任务到此结束。当前数据边界已重新接受；下一步仅在修复提交推送后由用户给出新的上表 exact
+confirmation，才允许从 clean、已推送且与 tracking commit 一致的当前分支执行唯一一次低成本 health
+canary。未获得该新授权前，不再次读取 credential、不调用 Provider，也不运行 crash seal。
 
 真实 canary 无论成功或失败都必须先封存并解释自己的 diagnostic artifact；不能自动启动小样本或 48-case。
 只有观察到真实 HTTP Response，才允许另行规划小样本 Tutor/Organizer semantic gate，并再次取得授权。
@@ -171,3 +199,4 @@ V1--V9 历史始终保持不可变。
 - 为什么 `publication_started` 后宁可永久 fail-closed，也不能再试一次发布？
 - crash-only seal 与 retry/resume/replay 有什么本质区别？
 - 为什么 health canary `complete` 仍不能证明 Tutor/Organizer 可用？
+- 为什么 reservation 前 zero-call 失败仍必须使用新的 exact confirmation？

@@ -1590,12 +1590,16 @@ V9 R0--R5 收口回执：
       marker/report/evidence SHA、terminal outcome/report、completion/publication mode、recovery claim 与原始 tail；
 - [x] `publication_started` 后任何 I/O failure 永久 fail-closed；crash-only seal 只从 durable prefix 重建
       attempt disposition，活 owner 拒绝、dead owner 单胜者 claim、stale takeover 与 journal drift 均已覆盖；
-- [x] R3 focused `17/17`（`121` assertions）、R2 regression `14/14`（`218` assertions）、AI package
-      `263/263`（`1925` assertions），AI typecheck/lint、Prettier 与 diff check 通过；独立实现/安全/测试复审
+- [x] 首次授权 CLI 已通过 source/credential preflight，但在 reservation 前因 Windows 默认 evidence root
+      尾分隔符被旧字符串围栏误拒绝；Provider invocation/dispatch=0，未创建 marker/journal/claim/artifact；
+- [x] 根因已以 `resolve + relative` containment 修复并新增目录 URL 尾分隔符回归；R3 focused `18/18`
+      （`123` assertions）、R2 regression `14/14`（`218` assertions）、AI package `264/264`（`1927`
+      assertions），AI typecheck/lint、Prettier 与 diff check 通过；独立实现/安全复审
       无未关闭 Critical/Important；
-- [x] R3 全程 zero-provider：未读取 `.env`/credential、调用 Provider、执行正式 CLI/seal、启动
-      Docker/API/browser、修改业务数据或触碰 V1--V9；仓库正式 R3 marker/journal/claim/artifact 为 0；
-- [ ] 下一步只有用户另行给出 R3 exact confirmation，才允许执行唯一一次低成本真实 health canary；只有真实 canary
+- [x] 本次失败保持 zero-provider：专用 credential 仅完成进程内映射且未输出；未调用 Provider 或执行 seal，
+      未启动 Docker/API/browser、修改业务数据或触碰 V1--V9；仓库正式 R3 marker/journal/claim/artifact 为 0；
+- [ ] 旧 exact confirmation 不复用；修复提交推送后只有用户给出新的 R3 exact confirmation，才允许执行
+      唯一一次低成本真实 health canary；只有真实 canary
       收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case，不得直接恢复 V9 R6/R7/main。
 
 完整设计与证据见

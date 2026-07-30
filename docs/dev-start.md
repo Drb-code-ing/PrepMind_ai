@@ -1240,9 +1240,13 @@ bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.
 - 唯一参数 `I_AUTHORIZE_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_ONCE`；
 - 固定 `5000ms`、一次 `1/512/16`、`0.00200000 CNY` hard cap、no retry/resume/replay。
 
-在用户另行给出上述 exact confirmation 并再次接受运行时 DeepSeek 数据边界前，不得设置 approval、映射或
-读取 credential，也不得执行正式 CLI。公开 `runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，
-内部固定 production ports；不能注入 fetch、transport、URL、model、writer 或 output path。
+首次旧授权 CLI 已完成 source/credential preflight，但 Windows 目录 URL 产生的默认 evidence root 带尾分隔符，
+旧字符串围栏在 reservation 前误判越界。该进程 Provider invocation/dispatch=`0`，没有 marker/journal/claim/
+artifact，也不适用 crash-only seal。实现现已使用 `resolve + relative` containment 并覆盖尾分隔符回归；旧 exact
+confirmation 已使用且源码变化，不得复用。用户已重新接受本次 DeepSeek 数据边界，但在修复提交推送后给出
+新的 exact confirmation 前，不得再次设置 approval、映射/读取 credential 或执行正式 CLI。公开
+`runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，内部固定 production ports；不能注入 fetch、
+transport、URL、model、writer 或 output path。
 
 如果且仅如果正式尝试已经创建 marker/journal 后进程中断，独立确认词
 `I_SEAL_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_INTERRUPTED_ATTEMPT_WITHOUT_PROVIDER` 可执行 crash-only
@@ -1250,8 +1254,8 @@ seal。它不读取 credential、不调用 Provider、不 retry/resume/replay，
 `not_dispatched / dispatched_no_response / response_observed`。`publication_started` 后任何 I/O failure
 永久 fail-closed，不得再次 publish。
 
-当前正式 R3 marker/journal/recovery claim/artifact 为 0。下一原子任务只是在用户精确授权后执行唯一一次
-低成本真实 canary；未观察到 HTTP Response 前，不启动小样本或 48-case。完整工程证据见
+当前正式 R3 marker/journal/recovery claim/artifact 仍为 0。下一原子任务只是在修复提交推送后取得新的
+精确授权并执行唯一一次低成本真实 canary；未观察到 HTTP Response 前，不启动小样本或 48-case。完整工程证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置

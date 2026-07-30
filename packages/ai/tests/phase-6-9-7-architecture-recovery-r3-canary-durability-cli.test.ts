@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -36,6 +36,28 @@ afterEach(async () => {
 });
 
 describe('Phase 6.9.7 Architecture Recovery R3 durability and CLI', () => {
+  test('normalizes a directory-URL root with a trailing separator before path fencing', async () => {
+    const root = await tempRoot();
+    const reservation = await reservePhase697ArchitectureRecoveryR3Canary({
+      root: `${root}${sep}`,
+      runId: RUN_ID,
+      createdAt: GENERATED_AT,
+      source: sourceState(),
+    });
+
+    expect(reservation.markerRelativePath).toBe(
+      PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_MARKER_RELATIVE_PATH,
+    );
+    expect(
+      JSON.parse(
+        await readFile(
+          join(root, PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_MARKER_RELATIVE_PATH),
+          'utf8',
+        ),
+      ),
+    ).toMatchObject({ runId: RUN_ID, authority: 'controlled_live' });
+  });
+
   test('uses one fixed exclusive marker and permits exactly one concurrent reservation', async () => {
     const root = await tempRoot();
     const input = { root, runId: RUN_ID, createdAt: GENERATED_AT, source: sourceState() };

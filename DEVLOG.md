@@ -1,5 +1,26 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Windows Evidence-root Pre-reservation Fix：
+> 用户给出旧 R3 exact confirmation 并接受 DeepSeek 数据边界后，分支、tracked clean、`HEAD == @{u}`、
+> 正式 artifact=0 与专用 credential 映射 preflight 均通过。唯一一次 CLI 进程随后返回
+> `r3_live_once_already_consumed_or_evidence_io / evidenceSealed=false / exit=1`。失败发生在 reservation、
+> marker/journal 创建和 Provider transport 之前：Provider invocation/dispatch=`0`，marker、journal、claim、
+> artifact 仍全部为 `0`，因此不适用 crash-only seal，也没有任何 Provider health authority。
+>
+> 根因是 Windows 下由目录 URL 生成的默认 evidence root 自带尾部 `\\`；旧 `resolveRelative()` 又用
+> `startsWith(root + "\\")` 做字符串围栏，拼出了双反斜杠并把合法 `.tmp` 子路径误判为越界。该问题与
+> DeepSeek、DNS/TLS、代理、账号、余额、模型权限或服务端无关，因为 transport 根本没有构造或调用。
+>
+> 修复将 `requireRoot()` 统一经 `node:path.resolve()` 去除非根目录尾分隔符，并把子路径围栏改为
+> `resolve + relative` containment；空 child、父目录逃逸与绝对逃逸均 fail-closed。新增真实目录 URL
+> 尾分隔符回归。该围栏是受信工作区内的词法 containment，不宣称抵御恶意本地 symlink/TOCTOU。
+>
+> 修复后 R3 focused `18/18`（`123` assertions）、R2 regression `14/14`（`218` assertions）、AI package
+> `264/264`（`1927` assertions），`@repo/ai` typecheck/lint、Prettier 与 diff check 通过；独立实现与安全
+> 复审无 Critical/Important。正式 R3 artifact 仍为 `0`。旧 exact confirmation 已用于一次 CLI 进程且
+> 源码已变化，不得复用；用户已重新接受本次 DeepSeek 数据边界，修复提交并推送后仍须新的 exact
+> confirmation，才能执行新的唯一 canary。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Controlled-Live Canary Zero-provider Checkpoint：
 > 在 R2 fact-free request/report/预算基础上新增完全独立的 R3 report/artifact/marker/journal/recovery-claim/
 > CLI identity。正式 CLI 只接受 exact confirmation，并固定检查
@@ -23,7 +44,7 @@
 > `not_dispatched / dispatched_no_response / response_observed`。它不读取 credential、不创建 transport、
 > 不 retry/resume/replay/backfill Provider；活 owner、journal drift 和并发 loser 均安全拒绝。
 >
-> 最终 R3 focused 为 `17/17`（`121` assertions），R2 regression `14/14`（`218` assertions），AI package
+> 该初始 checkpoint 当时的 R3 focused 为 `17/17`（`121` assertions），R2 regression `14/14`（`218` assertions），AI package
 > `263/263`（`1925` assertions），`@repo/ai` typecheck/lint、Prettier 与 diff check 通过。实现、安全、测试缺口
 > 三路复审均无未关闭 Critical/Important。测试覆盖 marker/journal/terminal/publication I/O、并发终态、
 > terminal report 篡改、活/死 owner、单胜者/stale claim、crash-only seal 与已有 terminal publication recovery。
