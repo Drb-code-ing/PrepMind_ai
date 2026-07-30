@@ -1190,6 +1190,23 @@ live=false、Tutor/Organizer gate=false 与 component key empty。已有容器�
 `down -v`、reset、flush 或 wipe。若未来改变产品路线，必须作为新的用户决策和独立阶段规划，不能通过
 新 runner、marker 或版本号把它包装为 V9 retry。
 
+V9 失败后已进入独立 Architecture Recovery，不再复制 V10/V11 式整套 Live runner。R1 新增
+`first-party-deepseek-v4-pro-transport-diagnostic-adapter-v1`：它包装而不修改 sealed V1
+direct adapter，只把 future fetch throw 在当前 adapter 内存中分为九个固定 subtype。公共
+`providerFailureCategory=transport`、V1--V9 report/schema/validator/artifact 和产品 composition 均不变。
+R1 未读取 credential、调用 Provider 或解封 V9；安全回放命令仅为：
+
+```powershell
+bun test packages/ai/tests/first-party-deepseek-v4-pro-transport-diagnostic.test.ts
+bun --filter @repo/ai typecheck
+bun --filter @repo/ai lint
+```
+
+注入 fetch 永久是 `synthetic_test`，上述命令不读根 `.env`、不发网络请求，也不创建正式
+canary artifact。当前下一原子任务仅 R2 zero-network Provider health canary contract/runner；真实
+canary 仍需新的用户授权。完整边界见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
+
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
 Review / Planner 只在 Nest Server 的 suggestions 编排中使用模型，不能由浏览器参数、Chat 模式切换或 worker 启用。两个组件各自有独立 gate，日常开发和 Docker 默认均保持 `false`；只设置 `AI_PROVIDER_MODE=live` 或 `AI_ENABLE_LIVE_CALLS=true` 不会绕过它们。

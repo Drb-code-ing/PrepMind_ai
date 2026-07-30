@@ -17,6 +17,18 @@ export type {
   FirstPartyDeepSeekV4ProDirectDependencies,
 } from './first-party-deepseek-v4-pro-direct.ts';
 export {
+  createFirstPartyDeepSeekV4ProTransportDiagnosticAdapter,
+  FIRST_PARTY_DEEPSEEK_V4_PRO_TRANSPORT_DIAGNOSTIC_ADAPTER_VERSION,
+  FIRST_PARTY_DEEPSEEK_V4_PRO_TRANSPORT_DIAGNOSTIC_SUBTYPES,
+  FIRST_PARTY_DEEPSEEK_V4_PRO_TRANSPORT_DIAGNOSTIC_VERSION,
+} from './first-party-deepseek-v4-pro-transport-diagnostic.ts';
+export type {
+  FirstPartyDeepSeekV4ProTransportDiagnostic,
+  FirstPartyDeepSeekV4ProTransportDiagnosticAdapter,
+  FirstPartyDeepSeekV4ProTransportDiagnosticDependencies,
+  FirstPartyDeepSeekV4ProTransportDiagnosticSubtype,
+} from './first-party-deepseek-v4-pro-transport-diagnostic.ts';
+export {
   createPhase697V7WireDiagnostics,
   PHASE_6_9_7_V7_WIRE_CAPABILITY_VERSION,
   PHASE_6_9_7_V7_WIRE_DIAGNOSTICS_VERSION,

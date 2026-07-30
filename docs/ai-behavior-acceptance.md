@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5 / Recovery R1）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V9
 九条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -267,6 +267,16 @@ strict、wire `48/48/48/48` 与 semantic `1/1/1`；gate 固定 `mock_quality_not
 controlled-Live 随后完成 `24/24` guard，但首个 pair 两条 lane 均在 Provider response 前终止：Tutor 为
 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`。最终 wire `2/2/0/0`、strict
 `0/48`，正式 aggregate 全 `null`，以 `quality_gate_failed` seal。V9 仍未形成真实语义或产品可用性结论。
+
+V9 失败后，用户决定停止继续复制版本化 Live runner，先定位 Provider 链路。Architecture Recovery R1
+保持 sealed V1 direct adapter、公共 `providerFailureCategory=transport`、V1--V9 report/schema/validator/
+artifact 不变，新增独立 `first-party-deepseek-v4-pro-transport-diagnostic-adapter-v1`。只有 future fetch
+delegate throw 会在新 adapter 实例内存中映射为 frozen
+`aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown`；它不会进入
+既有 Trace/evidence/API。分类器只读 own data `code/name` 与最多四层 cause，不执行 getter、`toString`，不读
+或保存 message/stack/raw error/URL/header/body/prompt/key。Injected fetch 永久是 synthetic；R1 没有读取
+credential、调用 Provider 或接产品。下一步 R2 只建立 zero-network Provider health canary contract/runner，
+真实 canary 仍需新的用户授权。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

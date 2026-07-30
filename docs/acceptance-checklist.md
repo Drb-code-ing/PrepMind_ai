@@ -1547,10 +1547,35 @@ V9 R0--R5 收口回执：
       `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`；
 - [x] Marker/journal/evidence 已 durable seal，validator `ok=true/filesChecked=1`，无 recovery claim；
       一次性授权已消费，不得 retry/resume/replay/backfill、seal/recovery、改写 artifact 或追加 Provider 探测；
-- [x] R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+- [x] R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断；用户后续
+      Architecture Recovery 决策不解封 V9，也不允许把新诊断回填为 V9 authority。
+
+### Phase 6.9.7 Architecture Recovery R1 — Transport Diagnostics
+
+- [x] 用户明确停止 V10/V11 式整套重试，先定位 Provider transport 链路；该路线是 V9 之后的独立
+      Architecture Recovery，不删除、不覆盖、不恢复或重放任何 V1--V9 artifact；
+- [x] sealed `first-party-deepseek-v4-pro-direct-v1`、公共 provider category、wire schema、V1--V9
+      report/source identity/validator 均未修改；
+- [x] 新 adapter `first-party-deepseek-v4-pro-transport-diagnostic-adapter-v1` 只返回 frozen
+      `first-party-deepseek-v4-pro-transport-diagnostic-v1` 与九个固定 subtype；
+- [x] 分类只读 own data `code/name`、最多四层 cause 和标准 AbortSignal；不调用 hostile getter、
+      `toString`，不读取/保留 message/stack/raw error/URL/header/body/prompt/credential；未知与循环 fail-closed；
+- [x] 默认 global fetch 才能声明 `first_party_deepseek_v4_pro_transport_diagnostic`；任意 injected fetch
+      永久 `synthetic_test`，伪造/hostile dependency 在 wire claim 前拒绝；
+- [x] RED 为新 export 不存在；GREEN focused `6/6`（`127` assertions），AI package `232/232`
+      （`1586` assertions），V7/V8/V9 相关零网络合同 `59/59`（`3555` assertions）；
+- [x] AI/Agent typecheck/lint 通过；V7/V8/V9 历史 validator 均为 `ok=true/filesChecked=1`，
+      V9 evidence/journal/marker 前后 SHA-256 一致；
+- [x] 三路独立只读复审无 Critical/Important；
+- [x] 未调用 DeepSeek、curl、DNS/TLS、产品 API 或 V9 Live/seal/recovery，未启动 Docker/API/browser；
+- [ ] R2 建立独立 Provider health canary request/report/CLI/预算与 synthetic fault matrix；R2 仍必须
+      zero-provider，完成后停在新的用户授权门前；
+- [ ] 只有 canary 收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case；不得直接恢复
+      V9 R6/R7/main。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`、
-`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。

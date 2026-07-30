@@ -1,5 +1,40 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery R1 Transport 可诊断边界：用户在 V9 失败封存后
+> 明确决定停止 V10/V11 式整套重试，先定位故障链路，再判断是否需要调整 Agent 或 Provider 架构。
+> 只读调用链与 sealed evidence 复核确认：V9 Tutor 已通过 config、request validation 与 durable dispatch，
+> 在 `20.4014ms` 内、`3500ms` timeout 之前由 fetch delegate throw；Runner 只在 Tutor terminal 之后
+> abort Organizer。因此当前最小故障域是 Bun `globalThis.fetch` 到 HTTP Response 之间，而不是 Tutor
+> contract、V9 option authority、Runner 主动 abort、JSON/schema 或 semantic。
+>
+> R1 新增 `first-party-deepseek-v4-pro-transport-diagnostic-adapter-v1`，以独立 wrapper 复用且不修改
+> sealed `first-party-deepseek-v4-pro-direct-v1`。新 diagnostic
+> `first-party-deepseek-v4-pro-transport-diagnostic-v1` 只返回固定
+> `aborted/timeout/dns/tls/proxy/connection_refused/connection_reset/network_unreachable/unknown` subtype；
+> 公共 `providerFailureCategory` 继续为 `transport`，V1--V9 wire/report/schema/source identity/validator 与
+> sealed artifact 不增加字段、不重算 SHA。默认 delegate 才可标记
+> `first_party_deepseek_v4_pro_transport_diagnostic` provenance；任何注入 delegate 永久为 `synthetic_test`。
+>
+> 分类只读取 error/cause 链最多四个对象的 own data descriptor `code/name`，不调用
+> accessor getter 或 `toString`，不读取或保存 `message/stack`、URL、header、body、prompt、
+> credential 或 raw error；循环、primitive、超长/未知 code 均 fail-closed 为 `unknown`。JavaScript
+> 反射无法保证 Proxy descriptor trap 不执行，但 trap 失败会被捕获且不会通过诊断结果暴露原始数据；首个
+> subtype 不被后续错误覆盖。RED 为新 export missing；GREEN focused 为 `6/6`（`127`
+> assertions）。最终 AI package 为 `232/232`（`1586` assertions），V7/V8/V9 direct adapter/fault/
+> runner/V9 option-security 零网络合同为 `59/59`（`3555` assertions）；AI/Agent typecheck/lint 均通过。
+> V7/V8/V9 历史 validator 均为 `ok=true/filesChecked=1`，三路独立复审无 Critical/Important。V9
+> evidence/journal/marker 在只读 validator 前后 SHA-256 逐字节一致。首次未向 V7 validator 别名
+> 传 artifact path 时按合同返回 `evidence_read_failed/filesChecked=0`；改为显式只读路径后通过，该命令
+> 未写 artifact，也未运行 Live/seal/recovery。
+>
+> 本任务未访问 DeepSeek。首次格式化调用 `bunx prettier` 时，Bun 对包仓库立即
+> `ConnectionRefused`；随后改用仓库本地 Prettier。该现象仅作为当前 Bun 出站路径的旁证，不等于 V9
+> DNS/TLS/TCP 根因，也不回填 V9 evidence。没有读取/打印 credential，没有执行 Provider、curl、DNS/TLS、
+> V9 Live/seal/recovery、Docker/API/browser 或业务写入。下一原子任务仅 Recovery R2 zero-network Provider
+> health canary contract/runner；完成静态门并获得用户另行授权前，不得执行真实 canary 或 48-case。
+> 完整验收见
+> `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
+>
 > 2026-07-30 — Phase 6.9.7 V9 R5 Controlled-Live 失败封存：从 clean/pushed
 > `ce308da643bfb0b9c150f0612f0c5aa926442687` 开始，local HEAD、tracking ref 与 GitHub remote
 > parity、V9 artifact=0、Phase 6.9.6 与 V1--V8 validators、focused/full/static 和独立复审前门均通过。
