@@ -126,6 +126,10 @@ request/report/CLI/预算与 artifact contract。实现审查发现公开 inject
 Response 时，禁止启动 Tutor/Organizer 48-case、产品 Docker/API/browser 或 main 合并。后续证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
 
+此后 R3 已完成独立 controlled-Live 授权、专用凭据、一次性 durability、crash-only seal 与 artifact
+validator 工程边界，但仍未读取 credential 或调用 Provider；最新停止门见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
+
 ## 7. 回顾时可以问
 
 - “为什么 V9 `20.4014ms` transport 能排除 timeout，却不能区分 DNS 与 TLS？”

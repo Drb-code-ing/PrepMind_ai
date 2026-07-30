@@ -1221,10 +1221,38 @@ fail-closed。Mock `complete` 与 fault matrix `21/21` 的 authority 都是 `syn
 合成响应值，不是 Provider telemetry；不能据此判断 DNS/TLS、代理、账号、余额、模型权限、服务端或
 DeepSeek 健康。R2 没有正式 artifact writer、marker、journal、seal/recovery 或一次性 Live 授权消费。
 
-当前停止在新的真实 canary 授权门前。不得自行给 R2 CLI 增加 Live 参数、读取根 `.env`、运行 curl/
-Provider、复用 V9 marker/evidence，或直接启动 48-case、产品 Docker/API/browser 与 main 验收。真实
-canary 必须作为下一原子任务重新设计，并取得用户另行明确授权。完整证据见
+不得自行给 R2 CLI 增加 Live 参数、读取根 `.env`、运行 curl/Provider、复用 V9 marker/evidence，或直接
+启动 48-case、产品 Docker/API/browser 与 main 验收。R2 的历史 zero-network 证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
+
+R3 已完成独立 controlled-Live 一次性/durability 边界，但当前仍是 zero-provider checkpoint。日常安全回归
+只运行测试，不需要 approval 或 credential：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-durability-cli.test.ts
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-cli.test.ts
+```
+
+正式 R3 CLI 固定检查当前 branch、tracked worktree clean 和 `HEAD == @{u}`，并要求：
+
+- `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_APPROVED=true`；
+- 专用 `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_DEEPSEEK_API_KEY`，不能借用通用或 Agent credential；
+- 唯一参数 `I_AUTHORIZE_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_ONCE`；
+- 固定 `5000ms`、一次 `1/512/16`、`0.00200000 CNY` hard cap、no retry/resume/replay。
+
+在用户另行给出上述 exact confirmation 并再次接受运行时 DeepSeek 数据边界前，不得设置 approval、映射或
+读取 credential，也不得执行正式 CLI。公开 `runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，
+内部固定 production ports；不能注入 fetch、transport、URL、model、writer 或 output path。
+
+如果且仅如果正式尝试已经创建 marker/journal 后进程中断，独立确认词
+`I_SEAL_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_INTERRUPTED_ATTEMPT_WITHOUT_PROVIDER` 可执行 crash-only
+seal。它不读取 credential、不调用 Provider、不 retry/resume/replay，只从 durable prefix 封存
+`not_dispatched / dispatched_no_response / response_observed`。`publication_started` 后任何 I/O failure
+永久 fail-closed，不得再次 publish。
+
+当前正式 R3 marker/journal/recovery claim/artifact 为 0。下一原子任务只是在用户精确授权后执行唯一一次
+低成本真实 canary；未观察到 HTTP Response 前，不启动小样本或 48-case。完整工程证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

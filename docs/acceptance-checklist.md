@@ -1550,7 +1550,7 @@ V9 R0--R5 收口回执：
 - [x] R6 产品 Docker/API/可见浏览器、R7/main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断；用户后续
       Architecture Recovery 决策不解封 V9，也不允许把新诊断回填为 V9 authority。
 
-### Phase 6.9.7 Architecture Recovery R1 — Transport Diagnostics
+### Phase 6.9.7 Architecture Recovery R1--R3 — Provider Canary Boundary
 
 - [x] 用户明确停止 V10/V11 式整套重试，先定位 Provider transport 链路；该路线是 V9 之后的独立
       Architecture Recovery，不删除、不覆盖、不恢复或重放任何 V1--V9 artifact；
@@ -1582,7 +1582,20 @@ V9 R0--R5 收口回执：
       启动 Docker/API/browser、修改业务数据或触碰 V1--V9 sealed artifact；
 - [x] 所有 R2 输出固定 `authority=synthetic_test`、artifact `qualityAuthority=none`；synthetic success/
       usage 只证明工程合同，不能证明 HTTP、DeepSeek/DNS/TLS/账号/余额/模型权限/服务端健康或 Agent 语义；
-- [ ] 下一步只有用户另行明确授权，才允许设计并执行一次低成本真实 health canary；只有真实 canary
+- [x] R3 已建立独立 exact-confirmation controlled-Live CLI、专用 approval/credential、固定 branch 与
+      clean/tracking preflight；公开 CLI 固定内部 production ports，不能注入 fetch/transport/URL/model/writer；
+- [x] Provider dispatch 前先 exclusive-create owner PID/token marker，并 durable append marker-SHA-bound
+      `attempt_reserved`；wire/terminal/publication 使用独立 hash-chain journal，terminal 内嵌 bounded report；
+- [x] artifact 固定 `controlled_live / diagnostic_only / qualityAuthority=none`；validator 重新关联
+      marker/report/evidence SHA、terminal outcome/report、completion/publication mode、recovery claim 与原始 tail；
+- [x] `publication_started` 后任何 I/O failure 永久 fail-closed；crash-only seal 只从 durable prefix 重建
+      attempt disposition，活 owner 拒绝、dead owner 单胜者 claim、stale takeover 与 journal drift 均已覆盖；
+- [x] R3 focused `17/17`（`121` assertions）、R2 regression `14/14`（`218` assertions）、AI package
+      `263/263`（`1925` assertions），AI typecheck/lint、Prettier 与 diff check 通过；独立实现/安全/测试复审
+      无未关闭 Critical/Important；
+- [x] R3 全程 zero-provider：未读取 `.env`/credential、调用 Provider、执行正式 CLI/seal、启动
+      Docker/API/browser、修改业务数据或触碰 V1--V9；仓库正式 R3 marker/journal/claim/artifact 为 0；
+- [ ] 下一步只有用户另行给出 R3 exact confirmation，才允许执行唯一一次低成本真实 health canary；只有真实 canary
       收到 HTTP Response 后，才允许另行规划小样本 semantic 与最终 48-case，不得直接恢复 V9 R6/R7/main。
 
 完整设计与证据见
@@ -1590,5 +1603,6 @@ V9 R0--R5 收口回执：
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-v9-remediation.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`、
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md` 与
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`、
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md` 与
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。

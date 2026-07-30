@@ -2,7 +2,7 @@
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；R6/R7/main、Phase 6.9.8 与后续阶段被阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 >
-> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1 已以 zero-provider 方式新增独立 transport diagnostic adapter，把 future delegate throw 安全细分为九个固定 subtype，同时保持 sealed V1 adapter、公共 `transport` category 与 V1--V9 artifact/report/validator 不变。Recovery R2 已完成独立 fact-free request/report/artifact contract、封闭 synthetic runner、安全 CLI 与 `21/21` fault matrix；无 fetch/transport/credential 注入口，未写正式 artifact，`synthetic_test` 不证明 Provider 健康。下一步仍需用户另行授权一次低成本真实 canary；任何产品/main/后续阶段阻断均未解除。
+> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1 已以 zero-provider 方式新增独立 transport diagnostic adapter，把 future delegate throw 安全细分为九个固定 subtype，同时保持 sealed V1 adapter、公共 `transport` category 与 V1--V9 artifact/report/validator 不变。Recovery R2 已完成独立 fact-free request/report/artifact contract、封闭 synthetic runner、安全 CLI 与 `21/21` fault matrix。Recovery R3 已完成一次性 controlled-Live CLI、专用授权/credential、branch/tracking-clean preflight、marker/hash-chain journal、crash-only seal、exclusive evidence 与 strict validator；公开 CLI 固定内部 production ports。R3 `17/17`、R2 `14/14`、AI `263/263` 均为 zero-provider 证据，正式 R3 artifact=0。下一步仍需用户另行精确授权唯一一次低成本真实 canary；任何产品/main/后续阶段阻断均未解除。
 
 ## 项目目标
 
@@ -28,7 +28,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 Recovery R2 已完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.6 已完成；Phase 6.9.7 Recovery R3 已完成 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
@@ -422,7 +422,8 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 V9 R6--R7：产品 Docker/API/可见浏览器、main merge/default-off replay；因 R5 未通过质量门而不得开始。（被阻断）
 - Phase 6.9.7 Architecture Recovery R1：不修改 sealed V1 direct adapter，新增独立 diagnostic wrapper；固定九类 transport subtype、own-data/四层 cause/hostile getter/no-raw 边界与 synthetic RED/GREEN；公共 category、V1--V9 report/schema/validator/artifact 不变。（已完成，zero-provider）
 - Phase 6.9.7 Architecture Recovery R2：独立 fact-free Provider health canary request/report/artifact contract、封闭 synthetic runner、安全 CLI、每次 `1/512/16` 与 `0.00200000 CNY` cap、`21/21` fault matrix；调用方不能注入 fetch/transport/credential，未创建正式 artifact，authority 固定 `synthetic_test`。（已完成，zero-provider）
-- Phase 6.9.7 Architecture Recovery R3：R2 已停在新的 canary 授权门；只有用户另行明确授权才允许设计并执行一次低成本真实 canary，未获得 HTTP Response 时不启动 48-case。（规划中）
+- Phase 6.9.7 Architecture Recovery R3 zero-provider checkpoint：独立 exact-confirmation CLI、专用 approval/credential、clean + tracking-parity preflight、固定内部 production ports、一次性 marker、wire hash-chain journal、bounded terminal report、crash-only 单胜者 seal、exclusive hard-link artifact 与 strict validator 已完成；`publication_started` 后任何 I/O failure 永久 fail-closed。Focused `17/17`、R2 regression `14/14`、AI `263/263`，正式 R3 artifact=0。（已完成，zero-provider）
+- Phase 6.9.7 Architecture Recovery R3 controlled-Live：仅在用户另行给出 exact confirmation 后执行唯一一次低成本真实 canary；未获得 HTTP Response 时不启动小样本或 48-case。（等待授权）
 - Phase 6.9.7 Architecture Recovery R4：仅在 canary 成功并获得后续授权后迁移 Tutor/Organizer 到 diagnostic adapter，执行小样本语义门，再决定是否进入最终完整验收；不复制新的历史 runner/lineage。（规划中）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
@@ -451,7 +452,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 
 V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4、V8 R5 与 V9 R5 均已失败封存，各自一次性授权已经消费且不得重跑。V8 fixed-shape 已通过真实 Provider static schema，但本地 dynamic authority 仍失败；V9 本地合法 option selection 与 reviewed Mock 工程合同已完成，但唯一 Live 在首个 pair 的 response 前 transport/sibling abort 终止，不能形成真实模型或产品可用性结论。产品验收、main 合并、Phase 6.9.8、Phase 6.10、Phase 8/9 与博客收尾仍不得开始。
 
-Architecture Recovery 是 V9 之后的新产品路线，不是 V9 retry 或 artifact recovery。R1 只建立未来 canary 可消费的 bounded in-memory transport subtype；它不能反向恢复 V9 raw error，也不解除产品验收与 main 阻断。R2 已用模块内 closed synthetic responder 关闭 canary contract、per-invocation 预算、no-secret artifact schema、取消竞态与 CLI fail-closed，并停在新的用户授权门前。R2 没有网络注入口，其成功只能解释为工程合同通过，不能解释为 DeepSeek 或本机 Provider 出站健康。
+Architecture Recovery 是 V9 之后的新产品路线，不是 V9 retry 或 artifact recovery。R1 只建立未来 canary 可消费的 bounded in-memory transport subtype；它不能反向恢复 V9 raw error，也不解除产品验收与 main 阻断。R2 已用模块内 closed synthetic responder 关闭 canary contract、per-invocation 预算、no-secret artifact schema、取消竞态与 CLI fail-closed。R3 又把未来唯一真实 canary 的授权、专用凭据、source preflight、单次 durable reservation、wire terminal、不可重放 crash seal、独占发布和 validator 固定下来，但本 checkpoint 没有读取 credential 或执行 Live。R1--R3 的成功只能解释为工程合同通过，不能解释为 DeepSeek 或本机 Provider 出站健康。
 
 ### 2026-07-20 Phase 6.9.5 V12 host-wiring correction
 

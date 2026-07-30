@@ -152,11 +152,16 @@ Synthetic `complete` 只说明固定本地 responder 让 request/response/report
 timeout 和任何本地耗时都不是 Provider telemetry，不能证明 HTTP、DNS/TLS、代理、账号、余额、模型权限、
 服务端健康、真实费用、Tutor/Organizer 语义或产品可用。
 
-## 8. 下一停止门
+## 8. 当时的下一停止门与当前状态
 
-R2 到此结束。下一原子任务只能是：用户另行明确授权后，设计并执行一次低成本真实 Provider health
-canary。该真实路径必须拥有独立 controlled-Live authority、credential boundary、一次性限制和正式 artifact
-writer，不能给当前 R2 CLI 临时增加 `live` 参数。
+R2 到此结束。该检查点当时的下一原子任务只能是：用户另行明确授权后，设计并执行一次低成本真实
+Provider health canary。该真实路径必须拥有独立 controlled-Live authority、credential boundary、一次性
+限制和正式 artifact writer，不能给当前 R2 CLI 临时增加 `live` 参数。
+
+此后 R3 已完成上述独立 CLI、专用 approval/credential、source preflight、marker/hash-chain journal、
+crash-only seal、exclusive evidence 与 strict validator 工程边界；R3 仍是 zero-provider checkpoint，仓库正式
+artifact 为 0。当前只等待用户另行给出 R3 exact confirmation 后执行唯一一次真实 canary，详见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
 
 只有真实 canary 观察到 HTTP Response，才允许另行规划小样本 Tutor/Organizer semantic gate；只有小样本通过
 且再次获得授权，才讨论最终完整验收。任何结果都不得回填或改写 V9 sealed evidence。

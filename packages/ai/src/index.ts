@@ -47,3 +47,7 @@ export type {
 export * from './phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 export * from './phase-6-9-7-architecture-recovery-r2-canary-runner.ts';
 export * from './phase-6-9-7-architecture-recovery-r2-canary-cli.ts';
+export * from './phase-6-9-7-architecture-recovery-r3-canary-contract.ts';
+export * from './phase-6-9-7-architecture-recovery-r3-canary-runner.ts';
+export * from './phase-6-9-7-architecture-recovery-r3-canary-durability.ts';
+export * from './phase-6-9-7-architecture-recovery-r3-canary-cli.ts';

@@ -1,5 +1,41 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery R3 Controlled-Live Canary Zero-provider Checkpoint：
+> 在 R2 fact-free request/report/预算基础上新增完全独立的 R3 report/artifact/marker/journal/recovery-claim/
+> CLI identity。正式 CLI 只接受 exact confirmation，并固定检查
+> `codex/phase-6-9-7-tutor-wrong-question-agents`、tracked worktree clean 与 `HEAD == @{u}`；只有专用
+> `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_APPROVED=true` 和
+> `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_DEEPSEEK_API_KEY` 同时存在才允许继续。公开 CLI 已取消外部
+> ports 注入，不能替换 fetch/transport/URL/model/writer/clock/UUID/source reader，也不接受 retry、resume、
+> replay 或 output path。
+>
+> R3 复用 R2 固定 fact-free request、`1 call / 512 input / 16 output` 与 `0.00200000 CNY` hard cap，
+> timeout 固定 `5000ms`。Provider dispatch 前先 exclusive-create 带 owner PID/token 的一次性 marker，并将
+> marker SHA 写入 `attempt_reserved`。Wire stage、terminal、publication 使用独立 hash-chain journal；terminal
+> 记录内嵌完整 bounded report，artifact 固定
+> `authority=controlled_live / status=diagnostic_only / qualityAuthority=none`。Validator 会重新关联 source、
+> marker/report/evidence SHA、terminal outcome/report、completion/publication mode、recovery claim 与原始 journal
+> tail，拒绝重哈希后的语义篡改。
+>
+> 发布状态新增 durable `publication_started`；该事件之后任何 hard-link、journal、stdout 或 validator I/O
+> failure 永久 fail-closed，不会再次发布。Crash-only sealer 只在 owner 已死亡时读取已有 marker/journal，
+> 用 exclusive 单胜者 claim、dead stale-claim takeover、claim ownership 和 journal-tail fence 重建
+> `not_dispatched / dispatched_no_response / response_observed`。它不读取 credential、不创建 transport、
+> 不 retry/resume/replay/backfill Provider；活 owner、journal drift 和并发 loser 均安全拒绝。
+>
+> 最终 R3 focused 为 `17/17`（`121` assertions），R2 regression `14/14`（`218` assertions），AI package
+> `263/263`（`1925` assertions），`@repo/ai` typecheck/lint、Prettier 与 diff check 通过。实现、安全、测试缺口
+> 三路复审均无未关闭 Critical/Important。测试覆盖 marker/journal/terminal/publication I/O、并发终态、
+> terminal report 篡改、活/死 owner、单胜者/stale claim、crash-only seal 与已有 terminal publication recovery。
+>
+> 本任务全程 zero-provider：没有读取 `.env`/credential、调用 DeepSeek/curl/DNS/TLS、执行正式 R3 Live 或
+> crash seal、启动 Tutor/Organizer 48-case、Docker/API/browser，亦未修改业务数据或 V1--V9 sealed
+> artifact。仓库正式 R3 marker/journal/recovery claim/artifact 为 0。下一原子任务只是在用户另行给出
+> `I_AUTHORIZE_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_ONCE` 并再次接受运行时 DeepSeek
+> 数据边界后，执行唯一一次低成本 health canary；授权前不得读取 credential 或调用 Provider。即使 canary
+> `complete`，也不自动证明 Tutor/Organizer 语义或产品可用。完整验收见
+> `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery R2 Zero-network Provider Health Canary：
 > 在 R1 bounded transport subtype 基础上，新增独立版本的 fact-free request、每次调用预算、strict report 与
 > diagnostic-only artifact contract。请求固定 `deepseek-v4-pro` non-thinking JSON、no tools/stream/retry，

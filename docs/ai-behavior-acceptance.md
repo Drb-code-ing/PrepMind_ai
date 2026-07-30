@@ -235,7 +235,7 @@ V12 不改变 V10 authority 或 V11 terminal identity：它只把后续 branch a
 
 可见浏览器 run `012bc3ce-486e-4dce-be32-d29c246f47cd` 完成真实 Docker 注册、TXT 上传、处理、列表、Qwen 混合检索和 default-off 本地 badge；semantic/degraded/error 使用绑定 R7 authority 的 strict response-shape 回放，因此本阶段新增 Live 调用为 0。1440/510/390px 均无横向溢出，页面没有自动整理动作。分支清理后 synthetic User/Document/Chunk/Object/Job/Trace/Session 与浏览器 storage 均为 0，API 恢复 mock/live=false/gate=false/false/credential absent，Docker 卷保留。两个独立复审无 Critical/Important。main `f31335c6` 又完成 focused、真实 Docker API、桌面/移动端可见 default-off 回放和零残留清理；没有重跑 V2 Live 或 R7，远程 parity 已确认，Phase 6.9.6 已完成。
 
-## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5 / Recovery R1--R2）
+## Phase 6.9.7 Tutor / WrongQuestionOrganizer 验收合同（Task 0--12 / V2--V9 R5 / Recovery R1--R3）
 
 本节同时记录已完成的 Task 0--11 静态/Mock/本地写/evidence/部署边界/分支 checkpoint，以及 V1--V9
 九条唯一 Live 的失败终态。Tutor 已完成 Web default-off composition；WrongQuestionOrganizer 已完成
@@ -289,7 +289,25 @@ usage；取消/timeout 必须与 wire terminal 一致，迟到 abort 不能覆�
 pre-abort 与 runner timeout。所有输出固定 `authority=synthetic_test`、artifact
 `qualityAuthority=none`；R2 没有读取 credential、调用 Provider、写正式 artifact、接产品或修改 V9。
 因此 synthetic success/usage/latency 不能证明 HTTP、DNS/TLS、代理、账号、余额、模型权限、服务端健康、
-真实费用、Tutor/Organizer 语义或产品可用。下一步真实 canary 仍需用户新的明确授权。
+真实费用、Tutor/Organizer 语义或产品可用。
+
+Architecture Recovery R3 已完成未来唯一真实 health canary 的独立工程边界。正式路径只接受 exact
+confirmation，并同时要求专用 approval、专用 credential、固定 branch、tracked clean 与
+`HEAD == tracking commit`；公开 CLI 固定内部 production ports，不能注入 fetch、transport、URL、model、
+writer、retry、resume、replay 或 output path。Provider dispatch 前必须 exclusive-create 带 owner PID/token
+的 marker，并 durable append 绑定 marker SHA 的 `attempt_reserved`。
+
+R3 wire stage、terminal、publication 使用独立 hash-chain journal。Terminal 内嵌完整 bounded report；
+artifact 固定 `authority=controlled_live / status=diagnostic_only / qualityAuthority=none`。Validator 重新关联
+marker/report/evidence SHA、terminal outcome/report、completion/publication mode、recovery claim 与原始 journal
+tail。`publication_started` 后任何 I/O failure 永久 fail-closed，不能再次发布。
+
+Crash-only seal 只在 owner 已死亡时从 durable prefix 重建
+`not_dispatched / dispatched_no_response / response_observed`，通过 exclusive 单胜者 claim 和 stale-claim
+takeover 收口；它不读取 credential、不构造 transport、不 retry/resume/replay Provider。R3 focused
+`17/17`、R2 regression `14/14`、AI full `263/263` 均为 zero-provider 工程证据，当前正式 R3 artifact=0。
+下一步真实 canary 仍需用户新的 exact confirmation；即使 canary `complete`，也只获得 fact-free Provider
+diagnostic authority，不能直接通过 Tutor/Organizer semantic 或产品 gate。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

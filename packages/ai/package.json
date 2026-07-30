@@ -9,6 +9,7 @@
   },
   "scripts": {
     "eval:phase-6-9-7:recovery-r2:canary": "bun src/phase-6-9-7-architecture-recovery-r2-canary-cli.ts",
+    "eval:phase-6-9-7:recovery-r3:canary": "bun src/phase-6-9-7-architecture-recovery-r3-canary-cli.ts",
     "lint": "eslint src/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"
