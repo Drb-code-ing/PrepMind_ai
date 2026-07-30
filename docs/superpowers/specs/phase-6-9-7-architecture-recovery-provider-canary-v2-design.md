@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-状态：D0 设计已冻结，zero-provider；尚未实现 C1/C2/S1，也未授权 L1 controlled-Live
+状态：D0 与 C1 已完成，zero-provider；下一原子任务仅 C2，尚未实现 S1 或授权 L1 controlled-Live
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -47,6 +47,10 @@ semantic eval，不接产品，不把 listener ready 写成 Provider health。
 | S1   | 完成 branch static/zero-provider checkpoint 与终审         |
 | L1   | 用户重新确认数据边界并精确授权唯一 controlled-Live         |
 | P1   | 仅按 L1 终态决定是否规划小样本 semantic gate               |
+
+截至 2026-07-30，D0 与 C1 已完成。C1 已落地独立 request/proxy-attestation/budget/report identity、进程内
+single-consume capability、15-case closed synthetic fault matrix 与只允许 `mock/fault-matrix` 的 CLI；所有输出
+固定 `synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`。下一原子任务仅 C2。
 
 ## 2. 已知事实与不可推导事项
 
@@ -129,6 +133,11 @@ V2 正式本机证据路径冻结为新的前缀：
 
 C1/C2 不导入 R3 顶层 contract、R3 marker/journal/artifact identity，且不修改 R3
 contract/runner/durability/CLI。R3 只通过物理 SHA 与既有 validator 做只读 parity。
+
+C1 实际边界不包含 source、approval、credential reader、marker、journal、artifact、validator、recovery、fetch
+或 Provider delegate。Preflight ready 后仅在模块私有 `WeakMap` 中绑定一个空对象 capability；同步消费使第一
+个调用方成为唯一胜者，clone、伪造、replay 与并发其余消费者全部拒绝。V7 wire 固定 `not_started`，所有
+executor/dispatch/response/usage 与 downstream counter 为 0，budget 未 reservation，实际 usage/费用为 `null`。
 
 ## 5. 固定执行顺序
 
@@ -239,6 +248,10 @@ C2/S1 必须覆盖：
 
 所有 C1/C2/S1 测试必须使用进程内 synthetic/fake ports，`providerCalls=0`，不读取真实 credential，不启动
 Docker/API/browser。
+
+C1 fresh 验收为 focused `13/13`（`117` assertions）与 fault matrix `15/15`；有效 R2/R3 report 与 V2 report
+已完成双向 identity rejection。C1 验收见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
 
 ## 10. 停止门与后续决策
 

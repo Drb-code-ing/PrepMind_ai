@@ -52,3 +52,7 @@ export * from './phase-6-9-7-architecture-recovery-r3-canary-runner.ts';
 export * from './phase-6-9-7-architecture-recovery-r3-canary-durability.ts';
 export * from './phase-6-9-7-architecture-recovery-r3-canary-cli.ts';
 export * from './phase-6-9-7-architecture-recovery-proxy-preflight.ts';
+export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-contract.ts';
+export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1.ts';
+export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-fault-matrix.ts';
+export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-cli.ts';

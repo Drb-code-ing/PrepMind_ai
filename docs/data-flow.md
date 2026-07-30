@@ -2,7 +2,7 @@
 
 > 当前版本：2026-07-30。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`；两者都不证明 Provider health 或唯一根因。新的 Provider Canary V2 D0 re-entry 设计已冻结，下一任务仅 C1；R3 不得重跑，原 R4 与产品/后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`；两者都不证明 Provider health 或唯一根因。Provider Canary V2 D0/C1 已完成：C1 只含独立 zero-network contract、opaque single-consume capability、15-case synthetic fault matrix 与安全 CLI，downstream/wire 全 0。下一任务仅 C2；R3 不得重跑，原 R4 与产品/后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -818,10 +818,20 @@ Architecture Recovery proxy preflight（independent / zero-provider）
 ```
 
 ```text
-Architecture Recovery Provider Canary V2（D0 frozen / zero-provider）
+Architecture Recovery Provider Canary V2（D0 + C1 complete / zero-provider）
   -> independent namespace；不复用 R3/R4 confirmation/marker/journal/artifact/recovery
   -> semantic stages：D0 design -> C1 contract -> C2 durability -> S1 static -> L1 Live -> P1 decision
-  -> fixed future ordering
+  -> C1 actual closed path
+       -> CLI exact one arg：mock | fault-matrix
+       -> module-owned synthetic env/probe；无 host credential/source/Provider port
+       -> proxy preflight rejected -> no attestation
+       -> proxy preflight ready -> mint empty in-memory WeakMap capability
+       -> synchronous single-consume；clone/forgery/replay/concurrent losers rejected
+       -> report synthetic_test / none / unknown / zeroNetwork=true
+       -> downstream credential/source/marker/delegate/call = 0/0/0/0/0
+       -> V7 wire not_started = executor/dispatch/response/usage 0/0/0/0
+       -> fault matrix 15/15；rawDataRetained=false
+  -> fixed C2/L1 future ordering
        -> exact CLI args
        -> snapshot only 8 proxy / NO_PROXY keys
        -> proxy preflight
@@ -834,7 +844,7 @@ Architecture Recovery Provider Canary V2（D0 frozen / zero-provider）
        -> bounded terminal -> exclusive artifact -> strict validator
   -> listener ready 不是代理转发、DNS/TLS、Provider、账号或产品 authority
   -> D0 actual：loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0
-  -> current stop：C1 only；C1/C2/S1 全程 zero-provider，L1 尚未授权
+  -> current stop：C2 only；C2/S1 继续 zero-provider，L1 尚未授权
   -> L1 complete 也只解锁新的小样本 semantic 设计，不直接进入 48-case/产品/main
 ```
 

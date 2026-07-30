@@ -341,6 +341,16 @@ fact-free dispatch -> bounded terminal/publication`。Preflight failure 前 cred
 仍全部 zero-provider；S1 提交、推送和终审后才可向用户申请 L1 运行时数据边界与新 exact authorization。
 普通“继续/开始/同意”不能替代 L1 授权；即使 L1 complete，也只解锁新的小样本 semantic 设计。
 
+Provider Canary V2 C1 已完成上述 zero-network admission contract。V2 request、proxy-attestation、budget、
+report、fault-matrix 与 CLI 使用独立 identity；preflight success 只在模块私有 `WeakMap` 中为一个空对象绑定
+进程内 capability，第一次调用同步消费，clone、伪造、replay 与并发其余消费者全部拒绝。Preflight
+failure/abort 不铸造 capability。Report 固定
+`authority=synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`，V7 wire 为
+`not_started`，credential/source/marker/provider 与 executor/dispatch/response/usage counter 全为 0，实际
+usage/费用为 `null`。CLI 只允许 `mock/fault-matrix`，15-case closed matrix 全部通过；有效 R2/R3 report 与
+V2 report 已双向拒绝。该证据不证明 Provider 或 Agent 质量；下一原子任务仅 C2，S1 之前仍不能读取真实
+credential、调用 Provider、创建正式 artifact 或申请 L1 授权。
+
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
 - Task 2 已固定 strict schema 与动态 validator：Tutor 模型没有 `answer_direct` 权限；Organizer 必须完整覆盖 `q0..q11`，只能引用 `d0..d19`，重复/越界/部分 batch、跨 subject deck、本地 subject 权威冲突和危险 topic label 全批拒绝。projection 使用有界 descriptor clone、完整字段先扫描、safety metadata、裁剪/token 重验/deep freeze，公开值不含真实 ID、完整 answer/userNote 或写能力；这仍不等于 candidate/runtime 已完成；

@@ -1296,9 +1296,21 @@ preflight 证据见
 
 ### Phase 6.9.7 Architecture Recovery Provider Canary V2
 
-Provider Canary V2 D0 re-entry 设计已冻结。它不复用旧 R3/R4 approval、credential、confirmation、marker、
-journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。当前尚无 V2 CLI、marker、artifact 或
-Live 入口，下一原子任务仅 C1 zero-network contract。
+Provider Canary V2 D0 re-entry 设计与 C1 zero-network contract 已完成。它不复用旧 R3/R4 approval、
+credential、confirmation、marker、journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。
+当前只有 C1 closed synthetic CLI，尚无 V2 Live CLI、source、marker、journal、artifact、validator 或 recovery
+入口；下一原子任务仅 C2。
+
+C1 固定验收命令：
+
+```powershell
+bun --filter @repo/ai test:phase-6-9-7:recovery:provider-canary-v2:c1
+```
+
+该命令只接受内置 `fault-matrix` 路径，运行 15 个模块内 synthetic 场景；不会读取宿主 `.env`、模型
+credential 或 source，不会创建 marker/journal/artifact，也不会构造 fetch/Provider transport。Fresh 结果为
+`scenarioCount=15 / passed=15 / failed=0 / providerCalls=0`。不要给它追加 Live、URL、proxy、credential、
+retry 或 output 参数；这些输入必须以 exit `1` 拒绝。
 
 未来固定顺序为：
 
@@ -1322,7 +1334,8 @@ confirmation 写进 `.env` 或普通开发命令。
 
 - `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md`；
-- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
 
 S1 完成、提交、推送并通过终审后仍必须停止在 L1：用户重新接受运行当时 DeepSeek 数据边界并给出新的
 exact confirmation 前，不读取 credential、不调用 Provider。普通“继续”“开始”“同意”不是 L1 授权。

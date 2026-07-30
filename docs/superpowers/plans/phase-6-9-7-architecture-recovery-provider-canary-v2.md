@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-当前状态：D0 已完成，zero-provider；下一原子任务仅 C1
+当前状态：D0/C1 已完成，zero-provider；下一原子任务仅 C2
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`
@@ -29,7 +29,7 @@ Provider/network/Agent/product authority。
 
 ## C1：Proxy-capability-bound Zero-network Contract
 
-状态：[ ] 未开始。
+状态：[x] 完成，zero-network / zero-provider。
 
 范围：
 
@@ -43,9 +43,14 @@ Provider/network/Agent/product authority。
 通过门：focused、R2/R3/proxy regression、AI full、typecheck/lint/Prettier/diff、R3 SHA/validator parity；无
 credential、Provider、marker/journal/artifact、Docker/API/browser。
 
+实际证据：focused `13/13`（`117` assertions）、closed fault matrix `15/15`、Recovery regression `59/59`
+（`566` assertions）、AI full `291/291`（`2152` assertions）、typecheck/lint/Prettier/diff、R2/R3/V2
+双向 identity rejection、进程内 opaque capability single-consume 与全 downstream/wire 0-call 均通过。验收见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
+
 ## C2：独立 One-shot / Durability / Evidence
 
-状态：[ ] 未开始。
+状态：[ ] 下一原子任务。
 
 范围：
 

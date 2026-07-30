@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 C1 Zero-network Contract：
+> 已新增独立 V2 request、proxy-attestation、budget、report、fault-matrix 与 CLI identity；不导入或复用 R3
+> 顶层 contract、marker、journal、artifact 或 recovery authority。Report 固定
+> `synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`，V7 wire 为
+> `not_started`，executor/dispatch/response/verified-usage 与 credential/source/marker/provider counter 全为 0。
+>
+> Proxy preflight ready 后只在进程内铸造空对象 capability，真实状态保存在模块私有 `WeakMap`；消费在异步
+> 边界前同步完成，clone、伪造、replay 与 8 个并发消费者中的后 7 个均 fail-closed。Preflight failure/abort
+> 不铸造 capability。有效 R2/R3 report 与 V2 report 已做双向 schema/version rejection。
+>
+> C1 CLI 只允许 `mock` 或 `fault-matrix`，拒绝 Live、credential、URL、proxy override、retry、output；closed
+> fault matrix 覆盖 direct/loopback ready、unavailable、throw/hang、abort、hostile env、`NO_PROXY`、proxy
+> conflict 与 capability 边界。Fresh focused `13/13`（`117` assertions）、Recovery regression `59/59`
+>（`566` assertions）、AI full `291/291`（`2152` assertions）、CLI `15/15`、typecheck/lint/Prettier/diff
+> 均通过；独立实现/安全/测试复审无未关闭 Critical/Important/Minor。
+>
+> 本任务未读取 `.env`/credential、调用 Provider/curl/DNS/TLS、创建 V2 source/marker/journal/artifact/
+> recovery claim、启动 Docker/API/browser 或修改业务数据。R3 validator 仍
+> `ok=true / runId=253a5df5-c443-4950-b517-849efb941728`，marker/journal/artifact SHA 保持
+> `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`。下一原子任务仅 C2 zero-provider
+> one-shot/durability/evidence；L1 仍未授权。验收见
+> `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 D0 Re-entry Design：
 > 宿主 Clash Verge core 按既有配置恢复 listener 后，只重跑了已验收的 zero-provider proxy preflight；结果为
 > `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`。本次没有手工清空/绕过或改写当前进程

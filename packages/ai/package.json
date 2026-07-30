@@ -11,6 +11,7 @@
     "eval:phase-6-9-7:recovery-r2:canary": "bun src/phase-6-9-7-architecture-recovery-r2-canary-cli.ts",
     "eval:phase-6-9-7:recovery-r3:canary": "bun src/phase-6-9-7-architecture-recovery-r3-canary-cli.ts",
     "diagnose:phase-6-9-7:recovery:proxy-preflight": "bun src/phase-6-9-7-architecture-recovery-proxy-preflight-cli.ts",
+    "test:phase-6-9-7:recovery:provider-canary-v2:c1": "bun src/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-cli.ts fault-matrix",
     "lint": "eslint src/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

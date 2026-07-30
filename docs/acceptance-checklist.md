@@ -1627,7 +1627,19 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论；
 - [x] R3 marker/journal/artifact SHA 仍为 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`，bundle
       validator `ok=true / runId=253a5df5...`；D0 未触碰任何 sealed artifact；
-- [ ] 下一原子任务仅 Provider Canary V2 C1 zero-network contract；C1/C2/S1 必须 Provider 0-call，S1
+- [x] Provider Canary V2 C1 已建立独立 request/proxy-attestation/budget/report/fault-matrix/CLI identity；
+      report 固定 `synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`；
+- [x] preflight ready 只铸造模块私有 `WeakMap` 绑定的进程内空对象 capability；同步 single-consume，plain
+      object、clone、伪造、replay 与 8 个并发消费者中的后 7 个全部拒绝；failure/abort 不铸造；
+- [x] C1 CLI 只允许 `mock/fault-matrix`，拒绝 Live、credential、URL、proxy override、retry、output；15-case
+      closed matrix 为 `15/15`，focused `13/13`（`117` assertions），Recovery regression `59/59`（`566`
+      assertions）、AI full `291/291`（`2152` assertions）、typecheck/lint/Prettier/diff 均通过，所有
+      raw-retained=false；
+- [x] C1 credential/source/marker/provider counter 为 0，V7 wire 固定 `not_started / 0/0/0/0`，budget
+      reservation 为 0，usage/费用为 `null`；有效 R2/R3 report 与 V2 report 双向 schema/version rejection；
+- [x] C1 未读取 `.env`/credential、调用 Provider、创建 V2 source/marker/journal/artifact/recovery claim、
+      启动 Docker/API/browser 或修改业务数据；R3 validator/SHA 与 V1--V9 sealed evidence 不变；
+- [ ] 下一原子任务仅 Provider Canary V2 C2 zero-provider one-shot/durability/evidence；之后才是 S1。S1
       提交、推送、终审后停在 L1 运行时数据边界与新 exact authorization。R3、原 R4、小样本、48-case、
       V9 R6/R7/main 与后续阶段继续阻断。
 
@@ -1643,4 +1655,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`、
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`、
 `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md` 与
-`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`、
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
