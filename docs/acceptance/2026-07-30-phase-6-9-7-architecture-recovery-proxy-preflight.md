@@ -114,13 +114,33 @@ R3 sealed 文件在本任务后保持物理 SHA-256 不变：
 
 ## 7. 未完成与下一步
 
-- 当前环境仍是 `loopback_proxy_unavailable`，因此不具备任何新 Provider run 的环境前置条件；
+- 本任务首次验收时环境仍是 `loopback_proxy_unavailable`，当时不具备任何新 Provider run 的环境前置条件；
 - 本任务没有修复或启动代理软件，也没有修改宿主 proxy/`NO_PROXY`；
 - R3 仍然失败封存且不得 retry/resume/replay/backfill、Live/seal、删除或改写 artifact；
 - R4、小样本、48-case、产品 Docker/API/可见浏览器、main、Phase 6.9.8 与后续阶段仍被阻断；
 - 后续只能先让宿主环境满足 direct 或 coherent loopback-listener 条件，再重复运行本地 preflight；即使
   preflight 变为 ready，也仍需新的设计边界、静态 checkpoint、用户重新接受运行时数据边界并给出新的
   exact controlled-Live 授权，才能讨论任何 Provider 调用。
+
+### 7.1 后续 re-entry 状态（不改写本次历史验收）
+
+宿主 Clash Verge core 后续按既有配置恢复 listener，只重跑了本文件验收的同一 zero-provider 命令。Fresh
+结果为：
+
+```text
+loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0
+```
+
+本节不改写上文首次 `loopback_proxy_unavailable` 的历史事实。恢复过程中没有清空/绕过 proxy、修改
+`NO_PROXY`、读取模型 credential、调用 Provider 或创建 marker/journal/artifact。Fresh ready 只证明当前
+listener 前置条件，仍不证明代理转发、DNS/TLS、DeepSeek、账号、余额、模型权限、限流或服务端健康。
+
+新的独立 Provider Canary V2 D0 re-entry 设计现已冻结；它不复用 R3/R4 identity，下一原子任务仅 C1
+zero-network contract。完整设计与验收见：
+
+- `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。
 
 ## 8. 回顾时可以问
 

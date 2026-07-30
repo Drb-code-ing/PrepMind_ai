@@ -1285,12 +1285,47 @@ bun --filter @repo/ai diagnose:phase-6-9-7:recovery:proxy-preflight
 本地 TCP 连接，连接后立即销毁且不发送 payload；核心 runner 自己强制 250ms watchdog。Exit `1` 表示
 环境前置条件不满足，不是 Provider 测试失败。
 
-当前实际输出为 `loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 /
-providerCalls=0`。不要自动清空或绕过 proxy，也不要通过 curl、DNS/TLS、单 case、产品 API 或第二次 Provider
-调用补证。Preflight 变为 ready 也只证明本地前置条件；新的外部 canary 仍需要独立设计 checkpoint、运行时
-数据边界确认和 exact 授权。R3 继续禁止 retry/resume/replay/backfill、Live/seal、删除/改写 artifact；R4、
-产品/main 与后续阶段仍被阻断。完整证据见
+首次实际输出为 `loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 /
+providerCalls=0`。宿主 Clash Verge core 按既有配置恢复 listener 后，只重跑同一安全命令，fresh 输出为
+`loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。不要自动清空或
+绕过 proxy，也不要通过 curl、DNS/TLS、单 case、产品 API 或第二次 Provider 调用补证。Ready 只证明当前
+本地 listener 前置条件，不证明代理转发或 Provider health。R3 继续禁止
+retry/resume/replay/backfill、Live/seal、删除/改写 artifact；原 R4、产品/main 与后续阶段仍被阻断。历史
+preflight 证据见
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。
+
+### Phase 6.9.7 Architecture Recovery Provider Canary V2
+
+Provider Canary V2 D0 re-entry 设计已冻结。它不复用旧 R3/R4 approval、credential、confirmation、marker、
+journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。当前尚无 V2 CLI、marker、artifact 或
+Live 入口，下一原子任务仅 C1 zero-network contract。
+
+未来固定顺序为：
+
+```text
+exact args
+  -> snapshot only 8 proxy keys
+  -> zero-provider preflight
+  -> fixed branch + tracked clean + HEAD/upstream/remote parity
+  -> read V2 dedicated approval/credential
+  -> V2 marker + durable reservation
+  -> one fact-free Provider dispatch / no retry
+  -> bounded terminal + exclusive evidence
+```
+
+Preflight 失败时不能读取 credential、执行 source reader、创建 marker 或调用 Provider。Preflight ready 只生成
+进程内 single-consume attestation，不保存 proxy URL/port，也不等于网络健康。C1/C2/S1 只能使用 synthetic/
+fake ports，全程 `providerCalls=0`；不得提前设置未来 V2 approval/credential，亦不得把 future exact
+confirmation 写进 `.env` 或普通开发命令。
+
+完整设计、计划与 D0 验收：
+
+- `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。
+
+S1 完成、提交、推送并通过终审后仍必须停止在 L1：用户重新接受运行当时 DeepSeek 数据边界并给出新的
+exact confirmation 前，不读取 credential、不调用 Provider。普通“继续”“开始”“同意”不是 L1 授权。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

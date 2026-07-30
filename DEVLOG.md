@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 D0 Re-entry Design：
+> 宿主 Clash Verge core 按既有配置恢复 listener 后，只重跑了已验收的 zero-provider proxy preflight；结果为
+> `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`。本次没有手工清空/绕过或改写当前进程
+> proxy/`NO_PROXY`，也没有读取模型 credential、调用 Provider、创建 marker/journal/artifact，或触碰
+> Docker/业务数据。
+> Listener ready 只证明当前本地 TCP 前置条件，不证明代理转发、DNS/TLS、DeepSeek、账号、余额、模型权限、
+> 限流或服务端健康，也不能反向把 proxy 写成 R3 唯一根因。
+>
+> 新的独立 Provider Canary V2 D0 设计已冻结：不复用旧 R3/R4 confirmation、marker、journal、artifact、
+> recovery 或版本 namespace；阶段改用 D0/C1/C2/S1/L1/P1。未来单次 fact-free canary 固定 DeepSeek V4
+> Pro、5000ms、`1/512/16`、`0.00200000 CNY`、no retry，并强制
+> `exact args -> 8-key proxy snapshot/preflight -> source parity -> dedicated credential -> marker -> one
+dispatch -> bounded terminal -> exclusive publication`。Preflight 失败时 credential/source/marker/Provider
+> 必须全部 0-call；success 也只生成进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论。
+>
+> R3 marker/journal/artifact 物理 SHA 仍为 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`，bundle
+> validator `ok=true`。D0 authority 仅为 `design_checkpoint / diagnostic_only / qualityAuthority=none`；没有
+> 实现或授权 controlled-Live。下一原子任务仅 C1 zero-network contract；C1/C2/S1 完成并推送后还必须停在
+> L1 新数据边界与 exact confirmation 门前。设计、计划与验收见
+> `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md` 与
+> `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery Zero-provider Proxy Preflight：
 > R3 failure seal 之后新增独立、未编号的 proxy preflight；它不复用 R3 confirmation、marker、journal、
 > artifact 或 recovery claim。纯 contract 只允许无 proxy 的 direct 模式，或所有已配置 proxy 变量严格一致

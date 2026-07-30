@@ -1615,9 +1615,21 @@ V9 R0--R5 收口回执：
 providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/artifact 均为 0；
 - [x] R3 marker/journal/artifact SHA 保持 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`；
       preflight 结果不升级 Provider/network health 或 R3 唯一根因；
-- [ ] 当前宿主环境仍需先满足 direct 或 coherent loopback-listener 条件并只重跑本地 preflight；不得自动
-      清空/绕过 proxy。Preflight ready 后仍需新的设计 checkpoint、数据边界确认与 exact 授权；R3、R4、
-      小样本 semantic、48-case、V9 R6/R7/main 与后续阶段继续阻断。
+- [x] 宿主 Clash Verge core 按既有配置恢复 listener 后，只重跑本地 preflight；fresh 结果为
+      `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`。未清空/绕过 proxy、修改
+      `NO_PROXY`、读取 credential、调用 Provider 或创建 marker/artifact；ready 仍不是 Provider health；
+- [x] Provider Canary V2 D0 re-entry 设计已冻结：独立 namespace 与 D0/C1/C2/S1/L1/P1，不复用旧 R3/R4
+      approval/credential/confirmation/marker/journal/artifact/recovery identity；
+- [x] V2 固定执行顺序为 exact args -> 八变量 proxy preflight -> source parity -> dedicated credential ->
+      marker/reservation -> one fact-free dispatch -> bounded terminal/publication；preflight failure 前
+      credential/source/marker/Provider 全部 0-call；
+- [x] V2 固定 DeepSeek V4 Pro、5000ms、`1/512/16`、`0.00200000 CNY`、no retry；listener ready 只生成
+      进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论；
+- [x] R3 marker/journal/artifact SHA 仍为 `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`，bundle
+      validator `ok=true / runId=253a5df5...`；D0 未触碰任何 sealed artifact；
+- [ ] 下一原子任务仅 Provider Canary V2 C1 zero-network contract；C1/C2/S1 必须 Provider 0-call，S1
+      提交、推送、终审后停在 L1 运行时数据边界与新 exact authorization。R3、原 R4、小样本、48-case、
+      V9 R6/R7/main 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1628,4 +1640,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md` 与
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-zero-provider-checkpoint.md`、
 `docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`、
-`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`、
+`docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`、
+`docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md` 与
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`。

@@ -2,7 +2,7 @@
 
 > 当前版本：2026-07-30。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 现已完成，实际为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`；它只证明本地 listener 未就绪，不证明 Provider health 或唯一根因。R3 不得重跑，R4 与产品/后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`；两者都不证明 Provider health 或唯一根因。新的 Provider Canary V2 D0 re-entry 设计已冻结，下一任务仅 C1；R3 不得重跑，原 R4 与产品/后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -811,10 +811,31 @@ Architecture Recovery proxy preflight（independent / zero-provider）
        -> throw or abnormal result -> listener_probe_failed
        -> external abort -> aborted
   -> output only version + enum + boolean + counters; no URL/raw error/socket peer
-  -> actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
+  -> first actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
   -> diagnostic-only：不创建 marker/journal/artifact，不证明 HTTP/DNS/TLS/Provider/账号健康
   -> future ordering（尚未实现或授权）：preflight ok -> credential/source -> marker/reservation -> dispatch
   -> R3 不得重跑；R4、小样本、48-case、产品/main 继续阻断
+```
+
+```text
+Architecture Recovery Provider Canary V2（D0 frozen / zero-provider）
+  -> independent namespace；不复用 R3/R4 confirmation/marker/journal/artifact/recovery
+  -> semantic stages：D0 design -> C1 contract -> C2 durability -> S1 static -> L1 Live -> P1 decision
+  -> fixed future ordering
+       -> exact CLI args
+       -> snapshot only 8 proxy / NO_PROXY keys
+       -> proxy preflight
+            -> rejected: credential/source/marker/Provider all 0-call
+            -> ready: mint one in-memory single-consume attestation
+       -> source branch/clean/tracking/remote parity
+       -> read V2 approval + dedicated credential
+       -> exclusive V2 marker + durable attempt reservation
+       -> one fact-free dispatch / 5000ms / 1-512-16 / 0.002 CNY / no retry
+       -> bounded terminal -> exclusive artifact -> strict validator
+  -> listener ready 不是代理转发、DNS/TLS、Provider、账号或产品 authority
+  -> D0 actual：loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0
+  -> current stop：C1 only；C1/C2/S1 全程 zero-provider，L1 尚未授权
+  -> L1 complete 也只解锁新的小样本 semantic 设计，不直接进入 48-case/产品/main
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。

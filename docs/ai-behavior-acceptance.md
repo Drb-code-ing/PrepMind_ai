@@ -328,12 +328,18 @@ watchdog 强制 250ms，因此永不 settle、throw、异常返回与 abort 都�
 version/enum/boolean/counter，`providerCalls=0`，不保存 proxy URL、credential、raw error、socket peer 或
 stack。
 
-实际 CLI 为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`。该 authority 仅是
-本地 preflight diagnostic：不证明 HTTP、DNS、TLS、代理转发、DeepSeek、账号、余额、模型权限、限流或
-服务端健康，也不把 R3 的 proxy 相关性升级为唯一根因。Future composition 的固定顺序必须是
-`proxy preflight -> credential/source -> marker/reservation -> Provider dispatch`；本任务没有实现或授权
-后半段。即使 preflight 后续变为 ready，也仍需新的设计 checkpoint、运行时数据边界确认和 exact
-controlled-Live 授权。R3、R4、产品与后续阶段的阻断不变。
+首次实际 CLI 为 `loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0`；宿主 listener
+恢复后，fresh CLI 为 `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`。两次 authority
+都只是本地 preflight diagnostic：不证明 HTTP、DNS、TLS、代理转发、DeepSeek、账号、余额、模型权限、
+限流或服务端健康，也不把 R3 的 proxy 相关性升级为唯一根因。R3、原 R4、产品与后续阶段的阻断不变。
+
+Provider Canary V2 D0 re-entry 设计已独立冻结。它不复用 R3/R4 identity，阶段使用
+D0/C1/C2/S1/L1/P1；future composition 强制
+`exact args -> 8-key proxy preflight -> source parity -> dedicated credential -> V2 marker/reservation -> one
+fact-free dispatch -> bounded terminal/publication`。Preflight failure 前 credential/source/marker/Provider 都必须
+0-call；ready 只产生进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论。C1/C2/S1
+仍全部 zero-provider；S1 提交、推送和终审后才可向用户申请 L1 运行时数据边界与新 exact authorization。
+普通“继续/开始/同意”不能替代 L1 授权；即使 L1 complete，也只解锁新的小样本 semantic 设计。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
