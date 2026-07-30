@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 C2/S1 One-shot Durability：
+> 已完成独立 V2 source、approval/credential gate、固定 production CLI、exclusive marker、fsynced
+> hash-chain journal、bounded terminal、hard-link artifact/strict validator 与 crash-only seal。Public CLI 只
+> 接收 `args + AbortSignal`；root/env/fetch/URL/model/proxy/timeout/clock/UUID/writer/output/retry 等注入均不
+> 存在，test-only seam 也未从 package index 导出。
+>
+> 调用顺序固定为 preflight -> source -> approval -> dedicated credential -> marker -> single dispatch ->
+> terminal -> publication。测试覆盖 preflight/source/credential zero-stop、single dispatch/no retry、abort/
+> timeout/late completion、exclusive marker、wire monotonicity、terminal/publication race、活 owner 拒绝、死
+> owner single-winner seal、terminal publication recovery、journal drift 与 `publication_started` 永久
+> fail-closed；V2/R3 confirmation、filename、marker/schema 双向隔离。
+>
+> Fresh C2 focused `32/32`（`214` assertions）、Architecture Recovery `91/91`（`780` assertions）、AI
+> full `323/323`（`2366` assertions）、typecheck/lint/Prettier/diff 与独立实现/安全/文档复审通过。所有
+> runtime/publication 成功只发生在自动清理的系统临时测试根，项目根正式 V2 marker/journal/artifact/
+> recovery claim 为 0。
+>
+> 本阶段未读取根 `.env`/真实 credential、调用 Provider、启动 Docker/API/browser 或触碰 V1--V9/R3
+> sealed evidence。R3 validator 仍 `ok=true`，三份 SHA 保持 `6eef1a...89b6a / 426d64...7f7b /
+56fb5b...e6c4`。C2/S1 已完成并推送后必须停在 L1；普通“继续/开始/同意”不授权。验收见
+> `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 C1 Zero-network Contract：
 > 已新增独立 V2 request、proxy-attestation、budget、report、fault-matrix 与 CLI identity；不导入或复用 R3
 > 顶层 contract、marker、journal、artifact 或 recovery authority。Report 固定
@@ -13,13 +35,13 @@
 > C1 CLI 只允许 `mock` 或 `fault-matrix`，拒绝 Live、credential、URL、proxy override、retry、output；closed
 > fault matrix 覆盖 direct/loopback ready、unavailable、throw/hang、abort、hostile env、`NO_PROXY`、proxy
 > conflict 与 capability 边界。Fresh focused `13/13`（`117` assertions）、Recovery regression `59/59`
->（`566` assertions）、AI full `291/291`（`2152` assertions）、CLI `15/15`、typecheck/lint/Prettier/diff
+> （`566` assertions）、AI full `291/291`（`2152` assertions）、CLI `15/15`、typecheck/lint/Prettier/diff
 > 均通过；独立实现/安全/测试复审无未关闭 Critical/Important/Minor。
 >
 > 本任务未读取 `.env`/credential、调用 Provider/curl/DNS/TLS、创建 V2 source/marker/journal/artifact/
 > recovery claim、启动 Docker/API/browser 或修改业务数据。R3 validator 仍
 > `ok=true / runId=253a5df5-c443-4950-b517-849efb941728`，marker/journal/artifact SHA 保持
-> `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`。下一原子任务仅 C2 zero-provider
+> `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4`。该 C1 checkpoint 当时下一原子任务仅 C2 zero-provider
 > one-shot/durability/evidence；L1 仍未授权。验收见
 > `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
 >

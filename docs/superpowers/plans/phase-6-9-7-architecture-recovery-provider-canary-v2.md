@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-当前状态：D0/C1 已完成，zero-provider；下一原子任务仅 C2
+当前状态：D0/C1/C2/S1 已完成，zero-provider；下一步停在未授权 L1
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`
@@ -50,7 +50,7 @@ credential、Provider、marker/journal/artifact、Docker/API/browser。
 
 ## C2：独立 One-shot / Durability / Evidence
 
-状态：[ ] 下一原子任务。
+状态：[x] 完成，zero-provider。
 
 范围：
 
@@ -65,9 +65,15 @@ credential、Provider、marker/journal/artifact、Docker/API/browser。
 通过门：只运行 fake ports/synthetic transport；V2 正式 marker/journal/artifact 数量为 0；R3 与 V1--V9
 sealed evidence 不变。
 
+实际证据：C2 focused `32/32`（`214` assertions）；固定 public composition、package testing seam 隔离、
+preflight/source/approval/credential/reservation 顺序、single dispatch/no retry、abort/timeout/late completion、
+exclusive marker、hash-chain journal、hard-link publication、live-owner reject、dead-owner single-winner seal、
+terminal recovery、journal drift 与 publication fail-closed 均通过。验收见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
+
 ## S1：Branch Static / Zero-provider Checkpoint
 
-状态：[ ] 未开始。
+状态：[x] 完成，zero-provider。
 
 范围：
 
@@ -80,6 +86,10 @@ sealed evidence 不变。
 - 同步 AGENTS、DEVLOG、README、roadmap、data-flow、dev-start、AI acceptance、checklist。
 
 S1 完成后提交并推送，必须停止在 L1 exact authorization 门前。
+
+实际证据：Architecture Recovery `91/91`（`780` assertions）、AI full `323/323`（`2366`
+assertions）、typecheck/lint/Prettier/diff、R3 validator/SHA、正式 V2 artifact=0 与独立实现/安全/文档复审均
+通过；相关项目文档已同步。当前不得继续执行 L1。
 
 ## L1：唯一 Provider Canary V2 Controlled-Live
 

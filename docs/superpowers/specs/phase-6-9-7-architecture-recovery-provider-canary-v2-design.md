@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-状态：D0 与 C1 已完成，zero-provider；下一原子任务仅 C2，尚未实现 S1 或授权 L1 controlled-Live
+状态：D0/C1/C2/S1 已完成，zero-provider；当前停在尚未授权的 L1 controlled-Live 门前
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -48,9 +48,11 @@ semantic eval，不接产品，不把 listener ready 写成 Provider health。
 | L1   | 用户重新确认数据边界并精确授权唯一 controlled-Live         |
 | P1   | 仅按 L1 终态决定是否规划小样本 semantic gate               |
 
-截至 2026-07-30，D0 与 C1 已完成。C1 已落地独立 request/proxy-attestation/budget/report identity、进程内
-single-consume capability、15-case closed synthetic fault matrix 与只允许 `mock/fault-matrix` 的 CLI；所有输出
-固定 `synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`。下一原子任务仅 C2。
+截至 2026-07-30，D0/C1/C2/S1 已完成。C1 落地独立 request/proxy-attestation/budget/report identity、
+进程内 single-consume capability、15-case closed synthetic fault matrix 与只允许 `mock/fault-matrix` 的
+CLI。C2 又完成固定 production composition、source、专用授权、exclusive marker、hash-chain journal、
+bounded terminal、hard-link artifact、strict validator 与 crash-only seal；S1 完成 branch zero-provider 静态门与
+终审。项目根正式 V2 artifact 保持 0，下一步只能是新的 L1 exact authorization。
 
 ## 2. 已知事实与不可推导事项
 
@@ -253,9 +255,14 @@ C1 fresh 验收为 focused `13/13`（`117` assertions）与 fault matrix `15/15`
 已完成双向 identity rejection。C1 验收见
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
 
+C2/S1 fresh 验收为 C2 focused `32/32`（`214` assertions）、Recovery regression `91/91`（`780`
+assertions）、AI full `323/323`（`2366` assertions），typecheck/lint/Prettier/diff 均通过；正式 V2
+marker/journal/artifact/recovery claim 为 0，R3 validator 与三份物理 SHA 不变。验收见
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
+
 ## 10. 停止门与后续决策
 
-S1 完成并提交、推送后必须停止。L1 只能在用户重新接受**运行当时** DeepSeek 数据保留/训练边界，并给出
+S1 已完成并提交、推送；当前必须停止。L1 只能在用户重新接受**运行当时** DeepSeek 数据保留/训练边界，并给出
 冻结 exact confirmation 后执行一次。普通“继续”“开始”“同意”不能替代 L1 精确授权。
 
 L1 终态处理：

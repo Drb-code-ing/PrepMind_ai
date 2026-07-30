@@ -1296,10 +1296,10 @@ preflight 证据见
 
 ### Phase 6.9.7 Architecture Recovery Provider Canary V2
 
-Provider Canary V2 D0 re-entry 设计与 C1 zero-network contract 已完成。它不复用旧 R3/R4 approval、
-credential、confirmation、marker、journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。
-当前只有 C1 closed synthetic CLI，尚无 V2 Live CLI、source、marker、journal、artifact、validator 或 recovery
-入口；下一原子任务仅 C2。
+Provider Canary V2 D0/C1/C2/S1 已完成。它不复用旧 R3/R4 approval、credential、confirmation、marker、
+journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
+source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门；项目
+根正式 V2 文件保持 0，当前停在未授权 L1。
 
 C1 固定验收命令：
 
@@ -1312,7 +1312,24 @@ credential 或 source，不会创建 marker/journal/artifact，也不会构造 f
 `scenarioCount=15 / passed=15 / failed=0 / providerCalls=0`。不要给它追加 Live、URL、proxy、credential、
 retry 或 output 参数；这些输入必须以 exit `1` 拒绝。
 
-未来固定顺序为：
+C2/S1 固定验收命令：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-contract.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-runner.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-durability.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-cli.test.ts
+bun test packages/ai/tests/*architecture-recovery*.test.ts
+bun --cwd packages/ai test
+bun --cwd packages/ai typecheck
+bun --cwd packages/ai lint
+```
+
+上述测试只使用系统临时目录、fake ports 与 closed synthetic transport；成功路径测试会创建临时
+marker/journal/artifact 并精确删除，不创建项目根正式证据。Fresh 结果分别为 C2 `32/32`、Recovery
+`91/91`、AI full `323/323`。
+
+L1 若未来获精确授权，固定顺序为：
 
 ```text
 exact args
@@ -1326,18 +1343,21 @@ exact args
 ```
 
 Preflight 失败时不能读取 credential、执行 source reader、创建 marker 或调用 Provider。Preflight ready 只生成
-进程内 single-consume attestation，不保存 proxy URL/port，也不等于网络健康。C1/C2/S1 只能使用 synthetic/
-fake ports，全程 `providerCalls=0`；不得提前设置未来 V2 approval/credential，亦不得把 future exact
-confirmation 写进 `.env` 或普通开发命令。
+进程内 single-consume attestation，不保存 proxy URL/port，也不等于网络健康。C1/C2/S1 只使用 synthetic/
+fake ports，全程 `providerCalls=0`；不得提前设置 V2 approval/credential，亦不得把 exact confirmation 写进
+`.env` 或普通开发命令。虽然 package 已提供
+`eval:phase-6-9-7:recovery:provider-canary-v2` production 入口，但在用户重新确认运行时数据边界并给出 exact
+authorization 前禁止执行；也禁止执行 crash seal，因为当前没有正式 V2 attempt。
 
 完整设计、计划与 D0 验收：
 
 - `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md`；
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`；
-- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
 
-S1 完成、提交、推送并通过终审后仍必须停止在 L1：用户重新接受运行当时 DeepSeek 数据边界并给出新的
+S1 已完成、提交、推送并通过终审，当前仍必须停止在 L1：用户重新接受运行当时 DeepSeek 数据边界并给出新的
 exact confirmation 前，不读取 credential、不调用 Provider。普通“继续”“开始”“同意”不是 L1 授权。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置

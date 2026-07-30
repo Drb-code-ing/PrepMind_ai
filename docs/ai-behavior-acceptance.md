@@ -334,11 +334,11 @@ stack。
 限流或服务端健康，也不把 R3 的 proxy 相关性升级为唯一根因。R3、原 R4、产品与后续阶段的阻断不变。
 
 Provider Canary V2 D0 re-entry 设计已独立冻结。它不复用 R3/R4 identity，阶段使用
-D0/C1/C2/S1/L1/P1；future composition 强制
+D0/C1/C2/S1/L1/P1；C2 production composition 强制
 `exact args -> 8-key proxy preflight -> source parity -> dedicated credential -> V2 marker/reservation -> one
 fact-free dispatch -> bounded terminal/publication`。Preflight failure 前 credential/source/marker/Provider 都必须
 0-call；ready 只产生进程内 single-consume attestation，不保存 proxy URL/port 或网络健康结论。C1/C2/S1
-仍全部 zero-provider；S1 提交、推送和终审后才可向用户申请 L1 运行时数据边界与新 exact authorization。
+全部保持 zero-provider；S1 已提交、推送和终审，当前才可向用户申请 L1 运行时数据边界与新 exact authorization。
 普通“继续/开始/同意”不能替代 L1 授权；即使 L1 complete，也只解锁新的小样本 semantic 设计。
 
 Provider Canary V2 C1 已完成上述 zero-network admission contract。V2 request、proxy-attestation、budget、
@@ -348,8 +348,24 @@ failure/abort 不铸造 capability。Report 固定
 `authority=synthetic_test / qualityAuthority=none / providerHealth=unknown / zeroNetwork=true`，V7 wire 为
 `not_started`，credential/source/marker/provider 与 executor/dispatch/response/usage counter 全为 0，实际
 usage/费用为 `null`。CLI 只允许 `mock/fault-matrix`，15-case closed matrix 全部通过；有效 R2/R3 report 与
-V2 report 已双向拒绝。该证据不证明 Provider 或 Agent 质量；下一原子任务仅 C2，S1 之前仍不能读取真实
-credential、调用 Provider、创建正式 artifact 或申请 L1 授权。
+V2 report 已双向拒绝。该证据不证明 Provider 或 Agent 质量。
+
+Provider Canary V2 C2/S1 已完成 one-shot/durability/evidence 工程合同。Public CLI 只接收
+`args + AbortSignal`，固定 production ports，不允许调用者注入 root/env/fetch/URL/model/proxy/timeout/clock/
+UUID/writer/output/retry；CLI core 与 testing seam 不从 package index 导出。Source gate 在 approval/credential
+前固定验证 branch、tracked clean、HEAD/upstream/remote、正式 V2 artifact=0 与 R3 sealed parity。
+
+Marker 以 exclusive-create 消费名额；`attempt_reserved`、8-stage wire、terminal、publication 使用 sequence +
+hash-chain + fsync，dispatch stage 必须先 durable 才进入 delegate。Terminal/publication 各只有一个胜者；
+`publication_started` 后失败永久 fail-closed。Crash-only seal 不 preflight、不读取 credential、不构造 transport
+或调用 Provider；活 owner 拒绝，死 owner 由单胜者 claim 收口，已有 runtime terminal 只允许原样完成
+publication。V2/R3 confirmation、filename、marker/schema 双向拒绝。
+
+C2 focused `32/32`、Recovery `91/91`、AI full `323/323` 与静态门通过；所有成功 publication 都只发生
+在自动清理的系统临时测试根。项目根正式 V2 marker/journal/artifact/recovery claim 为 0，R3 validator/SHA
+不变。该证据只证明未来 L1 的一次性执行与 evidence durability，不证明 Provider health、真实 usage/cost、
+Tutor/Organizer semantic 或产品可用。当前停在 L1；仍不能在缺少运行时数据边界与 exact authorization 时读取
+真实 credential 或调用 Provider。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

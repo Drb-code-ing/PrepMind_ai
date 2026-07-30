@@ -23,7 +23,7 @@ type Phase697ArchitectureRecoveryProxyPreflightCliPorts = Readonly<{
 }>;
 
 const DEFAULT_PORTS: Phase697ArchitectureRecoveryProxyPreflightCliPorts = Object.freeze({
-  probeLoopbackListener: probeLocalTcpListener,
+  probeLoopbackListener: probePhase697ArchitectureRecoveryLoopbackListener,
   write: (line) => process.stdout.write(`${line}\n`),
 });
 
@@ -64,7 +64,7 @@ function serializeReport(report: Phase697ArchitectureRecoveryProxyPreflightResul
   });
 }
 
-async function probeLocalTcpListener(input: {
+export async function probePhase697ArchitectureRecoveryLoopbackListener(input: {
   host: '127.0.0.1' | '::1';
   port: number;
   timeoutMs: typeof PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_TIMEOUT_MS;

@@ -1639,9 +1639,23 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       reservation 为 0，usage/费用为 `null`；有效 R2/R3 report 与 V2 report 双向 schema/version rejection；
 - [x] C1 未读取 `.env`/credential、调用 Provider、创建 V2 source/marker/journal/artifact/recovery claim、
       启动 Docker/API/browser 或修改业务数据；R3 validator/SHA 与 V1--V9 sealed evidence 不变；
-- [ ] 下一原子任务仅 Provider Canary V2 C2 zero-provider one-shot/durability/evidence；之后才是 S1。S1
-      提交、推送、终审后停在 L1 运行时数据边界与新 exact authorization。R3、原 R4、小样本、48-case、
-      V9 R6/R7/main 与后续阶段继续阻断。
+- [x] C2 已完成独立 source、approval/dedicated credential gate、固定 production CLI、exclusive marker、
+      hash-chain+fsync journal、bounded terminal、hard-link artifact/strict validator 与 crash-only seal；
+- [x] public CLI 只接收 `args + AbortSignal`，root/env/fetch/URL/model/proxy/timeout/clock/UUID/writer/output/
+      retry 不可注入；CLI core/testing seam 不从 package index 导出；
+- [x] preflight failure 前 source/approval/credential/marker/runtime 为 0-call；source -> approval -> credential ->
+      reservation 顺序、single dispatch/no retry、pre/in-flight abort、timeout 与 late completion 已覆盖；
+- [x] exclusive marker、wire monotonicity、single terminal/publication winner、live-owner reject、dead-owner
+      single-winner seal、terminal publication recovery、journal drift 与 `publication_started` 永久 fail-closed；
+- [x] V2/R3 confirmation、filename、marker/schema 双向拒绝；R3 validator 与 marker/journal/artifact SHA
+      `6eef1a...89b6a / 426d64...7f7b / 56fb5b...e6c4` 不变；
+- [x] C2 focused `32/32`（`214` assertions）、Recovery `91/91`（`780` assertions）、AI full `323/323`
+      （`2366` assertions）、typecheck/lint/Prettier/diff 与独立实现/安全/文档复审通过；
+- [x] C2/S1 未读取根 `.env`/真实 credential、调用 Provider、启动 Docker/API/browser 或触碰 sealed
+      evidence；所有成功 publication 只在自动清理的系统临时测试根，项目根正式 V2 marker/journal/artifact/
+      recovery claim 为 0；
+- [x] S1 已完成并推送，当前停在 L1 运行时数据边界与新 exact authorization。普通“继续/开始/同意”不
+      授权；R3、原 R4、小样本、48-case、V9 R6/R7/main 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1656,4 +1670,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`、
 `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md` 与
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`、
-`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`。
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md` 与
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`。
