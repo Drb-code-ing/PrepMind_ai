@@ -1666,8 +1666,21 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] L1 `status=diagnostic_only / qualityAuthority=none`；只证明本次 fact-free Provider response/usage/evidence，
       不证明 Tutor/Organizer 语义、Provider 长期健康、RAG、业务写入或产品可用；
 - [x] L1 名额已消费，禁止重跑、retry/resume/replay/backfill、crash seal 或追加 Provider 探测；
-- [ ] P1 仅以 zero-provider 方式冻结小样本 semantic gate dataset、预算、quality gate、lineage 与未来授权；
-      在此之前，小样本/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
+- [x] P1 已以 zero-provider 冻结独立 small-sample lineage、V2 source SHA、4+4 critical guards、8 runtime
+      pairs（16 lanes / 12 Organizer decisions）与 manifest SHA `ae667f1c...edf61`；
+- [x] P1 deterministic subset baseline 为 Tutor/Organizer/Combined
+      `0.7070238095238095 / 0.2375 / 0.47226190476190477`，canonical payload SHA
+      `d36d0789...d9f4e`，Provider/token/cost 为 0；G1 必须正式复现并冻结 report SHA；
+- [x] P1 quality gate 固定 guard `8/8` actual zero-call、runtime strict/wire/usage `16/16/16/16`、三个
+      semantic `>=0.85`、Tutor/Organizer improvement 各 `>=0.15`、invalid/critical/permission/mutation/
+      broader fallback 为 0；incomplete aggregate 全 `null`；
+- [x] 8-sample 不产生 P95 authority，只记录 `3500/5000ms` hard timeout 与 median/max；未来 L2 cap 固定
+      `16 calls / 37600 input / 8800 output / 0.176 CNY`、no retry/resume/replay/backfill；
+- [x] P1 冻结 guard-first、pair-serial、pair 内 sibling lane 独立 terminal、fixed denominator、breaker、
+      exclusive marker/hash-chain journal/hard-link artifact/crash-only seal 与历史双向 lineage rejection；
+- [x] P1 未读取 credential、调用 Provider/Mock、启动 Docker/API/browser、创建正式 evidence 或修改业务数据；
+- [ ] 下一任务 G1 仅以 zero-provider 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离；G2/S2 完成并
+      推送前 L2 不开放。L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1684,4 +1697,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`、
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md` 与
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`、
-`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
+`docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`、
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。

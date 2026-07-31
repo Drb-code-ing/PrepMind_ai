@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-当前状态：D0/C1/C2/S1/L1 已完成；唯一 L1 已成功封存，下一步仅 P1 zero-provider 小样本语义门设计
+当前状态：D0/C1/C2/S1/L1/P1 已完成；下一步仅 G1 zero-provider 小样本 contract/baseline
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`
@@ -117,9 +117,19 @@ qualityAuthority=none`。验收见
 
 ## P1：L1 后路线决策
 
-状态：[ ] 已由 L1 success 解锁，但当前仅允许 zero-provider 设计，不允许执行 semantic eval。
+状态：[x] 已完成，zero-provider；未执行 semantic eval。
 
-- L1 已完整观察 strict response 与 verified usage：下一原子任务只规划新的小样本 semantic gate；
+- L1 已完整观察 strict response 与 verified usage，因此只解锁新的小样本 semantic gate 设计；
 - L1 其它终态：回到独立 zero-provider 架构决策；
 - 任何情况下都不直接进入 48-case、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9；
 - 任何情况下都不改写 R3、V9 或其它 sealed evidence。
+
+实际交付：独立 small-sample lineage、4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、
+deterministic subset baseline payload `d36d0789...d9f4e`、semantic/latency/budget/durability/authorization 门已
+冻结，providerCalls=0。下一任务仅 G1 zero-provider contract/baseline 实现；G2/S2 完成并推送前 L2 不开放。
+
+设计、实施计划与验收：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。

@@ -1,8 +1,8 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-07-30。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
+> 当前版本：2026-07-31。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`，只流向 P1 zero-provider 设计门；R3/V2 不得重跑，原 R4、48-case、产品/main 与后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`，P1 zero-provider 设计已完成并只流向 G1 contract/baseline；R3/V2 不得重跑，原 R4、L2/48-case、产品/main 与后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -815,7 +815,7 @@ Architecture Recovery proxy preflight（independent / zero-provider）
   -> first actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
   -> diagnostic-only：不创建 marker/journal/artifact，不证明 HTTP/DNS/TLS/Provider/账号健康
   -> V2 C2 已实现固定 ordering；L1 已按该顺序完成唯一 dispatch 并封存
-  -> R3/V2 不得重跑；P1 只做设计，原 R4、小样本、48-case、产品/main 继续阻断
+  -> R3/V2 不得重跑；P1 设计已完成，原 R4、L2 小样本、48-case、产品/main 继续阻断
 ```
 
 ```text
@@ -861,8 +861,38 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> wire 1/1/1/1；usage 49/5；cost 0.00017700 CNY
        -> journal 12 records -> evidence_published；validator ok=true；artifact 98368de...a7e4
        -> diagnostic_only / qualityAuthority=none；no recovery claim；不得重跑
-  -> current stop：P1 仅做 zero-provider 小样本 semantic gate 设计
-  -> 不直接执行小样本/48-case，也不进入产品 Docker/API/browser/main
+  -> P1 complete：zero-provider small-sample semantic gate 设计已冻结
+  -> current stop：G1 仅实现 manifest/baseline/report/scorer/gate 与 oracle 隔离
+  -> 不执行 L2 小样本/48-case，也不进入产品 Docker/API/browser/main
+```
+
+```text
+P1 Small-sample Semantic Gate（design only / providerCalls=0）
+  -> source dataset phase-6.9-tutor-wrong-question-v2 / SHA 42803d45...b437b
+  -> manifest ae667f1c...edf61
+       -> Tutor guards 4：route / credential / injection / hostile accessor
+       -> Organizer guards 4：owner / credential / injection / hostile accessor
+       -> runtime pairs 8：01/08/10/12/15/19/23/24
+       -> 16 lanes / 12 Organizer decisions
+       -> Tutor 5 intents + zh/en/mixed/conflicting
+       -> Organizer 6 subjects + create/reuse + single/batch + locked/no-write
+  -> deterministic subset baseline / providerCalls=0
+       -> Tutor 5/8 / semantic 0.7070238095238095
+       -> Organizer 0/12 / semantic 0.2375
+       -> Combined 0.47226190476190477
+       -> canonical payload d36d0789...d9f4e
+  -> future quality gate
+       -> guards 8/8 zero-call
+       -> runtime strict/wire/verified usage 16/16/16/16
+       -> Tutor/Organizer/Combined semantic >=0.85
+       -> Tutor/Organizer improvement >=0.15
+       -> critical/permission/mutation/broader fallback = 0
+  -> latency：8 values 不生成 P95；3500/5000ms hard timeout + median/max only
+  -> budget：16 calls / 37600 input / 8800 output / 0.176 CNY / no retry
+  -> execution：guard-first -> pair-serial -> independent sibling lanes -> fixed denominator
+  -> lineage：new marker/journal/artifact/validator；拒绝 V1--V9/R3/R4/L1 identity
+  -> next：G1 zero-provider；G2 -> S2 -> future exact-authorized L2 -> P2
+  -> L2 pass 也只解锁 P2 full-gate design，不直接授权产品/main
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。

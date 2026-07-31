@@ -370,7 +370,27 @@ recovery claim，R3 validator/SHA 不变。
 L1 只能证明这一次 fact-free 请求在当时 source/credential/network path 下得到 strict response、verified
 usage 与可验证 evidence。`status=diagnostic_only / qualityAuthority=none`，因此不能证明 Provider 长期健康、
 Tutor/Organizer semantic、RAG/写隔离或产品可用，也不能外推 P95、48-case 成本或 SLA。L1 名额已消费并禁止
-重跑；当前只允许 P1 zero-provider 小样本 semantic gate 设计。
+重跑。其解锁的 P1 zero-provider 小样本 semantic gate 设计已完成；当前只允许 G1 zero-provider
+contract/baseline 实现。
+
+P1 使用独立 `phase-6.9.7-tutor-organizer-small-sample-v1`，不恢复 V1--V9/R3/R4/L1 identity。来源固定为
+V2 dataset `42803d45...b437b`；manifest `ae667f1c...edf61` 选择 4+4 critical guards 与 runtime
+`01/08/10/12/15/19/23/24`，共 8 pairs、16 lanes、12 Organizer decisions。覆盖 Tutor 全部 5 intents、
+zh/en/mixed/conflicting-signals，以及 Organizer 6 subjects、create/reuse、single/batch、structured subject、
+locked-name/no-write。
+
+未修饰 deterministic subset baseline 为 Tutor/Organizer/Combined
+`0.7070238095238095 / 0.2375 / 0.47226190476190477`，canonical payload SHA 为
+`d36d0789...d9f4e`；Provider/token/cost 为 0。未来 quality gate 固定 guard `8/8` actual zero-call、runtime
+strict/wire/verified usage `16/16/16/16`、三个 semantic 均 `>=0.85`、Tutor/Organizer 各提升
+`>=0.15`、invalid/critical/permission/mutation/broader fallback 为 0，且 provenance 必须是
+`deepseek_network`。任一 runtime/wire/duration/usage/pricing 不完整时 semantic/latency/token/CNY aggregate
+全 `null`。
+
+8-pair sample 不产生既有 24-value P95 authority；只允许 `3500/5000ms` hard timeout、sample median/max，P95
+字段保持 `null / insufficient_sample_size_8`。未来 L2 cap 固定 `16 calls / 37600 input / 8800 output /
+0.176 CNY`，guard-first、pair-serial、pair 内 sibling lane 独立 abort/timeout/terminal，no retry/resume/replay/
+backfill。P1 未读取 credential 或调用 Provider；G1/G2/S2 完成并推送前，L2 精确授权门不会开放。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

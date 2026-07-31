@@ -2,7 +2,7 @@
 
 日期：2026-07-30
 
-状态：D0/C1/C2/S1/L1 已完成；唯一 L1 已成功封存，当前停在 P1 zero-provider 设计门
+状态：D0/C1/C2/S1/L1/P1 已完成；唯一 L1 已成功封存，当前停在 G1 zero-provider contract/baseline
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -279,7 +279,11 @@ L1 终态处理：
 L1 evidence 见
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。P1 必须先
 以 zero-provider 方式冻结独立 dataset、预算、quality gate、lineage 与未来授权条件，不能把本次 health
-canary 当成 semantic dataset 的一条通过样本。
+canary 当成 semantic dataset 的一条通过样本。P1 已于 2026-07-31 按该边界完成：固定 4+4 guards、8
+runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
+`d36d0789...d9f4e`、质量/预算/lineage/L2 授权门，全程 providerCalls=0。下一原子任务仅 G1 zero-provider
+contract/baseline；完整设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`。
 
 回顾时可以问：
 

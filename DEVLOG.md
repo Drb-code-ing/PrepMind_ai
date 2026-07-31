@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
+> Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的
+> small-sample 路线设计，没有把 L1 fact-free health response 写成 Agent 语义证据。新 lineage 固定为
+> `phase-6.9.7-tutor-organizer-small-sample-v1`。
+>
+> 从 frozen `phase-6.9-tutor-wrong-question-v2` / `42803d45...b437b` 固定选择 4+4 critical guards 与
+> 8 个 runtime pairs（16 lanes / 12 Organizer decisions）；pair IDs 为 `01/08/10/12/15/19/23/24`，覆盖
+> Tutor 全部 5 intents、zh/en/mixed/conflicting-signals，以及 Organizer 全部 6 subjects、create/reuse、
+> single/batch、structured subject、locked-name/no-write。Manifest SHA 为 `ae667f1c...edf61`。
+>
+> 只读 deterministic subset 审计得到 Tutor/Organizer/Combined
+> `0.7070238095238095 / 0.2375 / 0.47226190476190477`，baseline authority payload SHA 为
+> `d36d0789...d9f4e`；Provider/token/cost 为 0。未来 G1 必须用正式 contract 复现并冻结 report SHA，
+> 不能复用 72-case full baseline SHA 或 Mock `1/1/1`。
+>
+> 质量门固定为 guard `8/8` zero-call、runtime strict/wire/verified usage `16/16/16/16`、三个 semantic
+> 均 `>=0.85`、Tutor/Organizer 各提升 `>=0.15`、critical/permission/mutation/broader fallback=0。8-sample
+> 不伪造 24-sample P95，只记录 `3500/5000ms` hard timeout 与 median/max；未来 L2 cap 固定
+> `16 calls / 37600 input / 8800 output / 0.176 CNY`，no retry/resume/replay/backfill。
+>
+> 收口验证重算 manifest/baseline/source SHA 与 8 guards、8 pairs、16 lanes、12 decisions 全部精确匹配；
+> 未修饰 deterministic functions 再现全部 subset baseline axes。14 个相关 Markdown 的 Prettier、96 个本地
+> 链接、冲突标记、`git diff --check` 与掩码敏感赋值扫描通过；无上下文 Reader Testing 及独立一致性/安全
+> 复审无剩余 Critical/Important。该验证仍只证明 P1 设计自洽，不是 G1 可执行证据。
+>
+> 本阶段没有读取 `.env`/credential、调用 Provider、运行小样本/Mock、启动 Docker/API/browser、创建正式
+> marker/journal/artifact 或修改业务数据。下一原子任务仅 G1 zero-provider manifest/baseline/report/scorer/gate；
+> G2/S2 完成并推送前不得请求 L2。完整设计、计划与验收见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
+> `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
+>
 > 2026-07-30 — Phase 6.9.7 Architecture Recovery Provider Canary V2 L1 Controlled-Live：
 > 用户重新接受运行时 DeepSeek 当前账号的数据保留/训练边界并给出冻结 exact confirmation 后，唯一 L1 run
 > `dc09214c-0300-4153-8273-e548ac768d20` 在 source commit `8d463e8c...` 上执行并成功封存。Fresh
@@ -19,8 +51,8 @@
 >
 > 本次 artifact 仍为 `status=diagnostic_only / qualityAuthority=none`：只证明一次 fact-free request 的 strict
 > response、verified usage 与 durability，不证明 Provider 长期健康、Tutor/Organizer 语义、RAG/写隔离或
-> 产品可用。L1 名额已消费，禁止 retry/resume/replay/backfill、crash seal 或追加 Provider 探测。下一原子任务
-> 仅为 P1 zero-provider 小样本 semantic gate 设计；小样本/48-case、Docker/API/browser、main、Phase 6.9.8
+> 产品可用。L1 名额已消费，禁止 retry/resume/replay/backfill、crash seal 或追加 Provider 探测。当时下一原子
+> 任务仅为 P1 zero-provider 小样本 semantic gate 设计；小样本/48-case、Docker/API/browser、main、Phase 6.9.8
 > 继续阻断。验收见
 > `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
 >
