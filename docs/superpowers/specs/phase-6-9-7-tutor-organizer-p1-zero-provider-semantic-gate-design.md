@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1 设计与 G1 contract/baseline 已完成，zero-provider；尚未实现 G2 runner/durability，未执行
-Mock/Live、未启动 Docker/API/browser
+状态：P1、G1、G2 已完成，zero-provider；下一步仅 S2 reviewed Mock/static checkpoint，未执行
+正式 Mock/Live、未启动 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -438,7 +438,7 @@ pricing decision；不得保留旧 profile 名称却静默替换数值，也不�
 后静默丢失。外部 request abort 可以取消在途 lane，但每条已 reserved lane 仍须获得自己的
 `attempted_aborted` terminal，未开始 lane 保留固定 `not_started` 原因。
 
-未来 G2 必须实现：
+G2 已按以下设计实现：
 
 - exclusive marker：创建成功即消费 L2 名额；并发启动只有一个胜者；
 - dispatch-before-call journal：`lane_reserved`、`executor_entered`、`provider_dispatch_started` 先 append +
@@ -452,6 +452,16 @@ pricing decision；不得保留旧 profile 名称却静默替换数值，也不�
   cost、semantic 与 SHA，不能信任 report 自报 aggregate。
 
 该合同只提供单机进程与本地文件 durability，不宣称跨主机 distributed lease 或 Provider exactly-once。
+
+G2 还把两类崩溃边界固定为可验证的 recovery anchor：第一条 lane 已 durable reservation、sibling 尚未
+reservation；以及 8 guards 已完成、首对 lane 尚未 reservation。Crash-only seal 只为当前开放/待锚定 pair
+补齐零-wire reservation 并立即写入 `attempted_aborted`，其余 pair 写为
+`not_started_quality_breaker`；该行为不构造 harness/transport，不调用 Provider，也不是
+resume/replay/retry。父请求取消与 lane 内部 abort 已分开，前者统一使用 `external_abort`。
+
+实现仍使用 Node 可移植文件 API的 `lstat + realpath + dev/ino` 围栏。Node 没有跨平台
+`openat/dirfd + O_NOFOLLOW`，因此同一用户主动并发换位仍是 trusted single-user workspace 下的极窄
+TOCTOU 边界；这不是跨主机 lease，也不证明断电后的目录项持久性。
 
 ### 9.1 Wire、terminal 与文件命名
 
@@ -574,8 +584,8 @@ durable seal，禁止任何补跑。
 | ---- | --------------------------------------------------------------------- | --------------------- |
 | P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
 | G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
-| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 下一原子任务          |
-| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 未开始                |
+| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider |
+| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 下一原子任务          |
 | L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 未授权、未开始        |
 | P2   | 只按 L2 sealed 终态决定是否设计 24-pair full semantic gate            | 被阻断                |
 
@@ -586,8 +596,9 @@ L2 即使通过，也只形成 `small_sample_semantic_gate` authority，最多�
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
 logical report SHA 为 `ad3aa54d...d002`、physical file SHA 为 `e8bcbcb5...658b`、eval policy SHA 为
-`1cab7786...399a`；这些只形成 `zero_provider_contract_baseline` authority，不替代 G2 durability 或 S2
-reviewed Mock。
+`1cab7786...399a`；这些只形成 `zero_provider_contract_baseline` authority。G2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；G2 durability 仍不替代
+S2 reviewed Mock。
 
 ## 12. 回顾问题
 

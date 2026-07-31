@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1、G1 已完成；下一原子任务为 G2 zero-provider one-shot runner / durability / evidence
+当前状态：P1、G1、G2 已完成；下一原子任务仅 S2 reviewed Mock / static checkpoint
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -79,7 +79,7 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 
 ## G2：One-shot Runner / Durability / Evidence
 
-状态：[ ] 下一原子任务，必须 zero-provider。
+状态：[x] 已完成，zero-provider；未创建正式 L2 marker/journal/artifact/recovery claim。
 
 建议源码：
 
@@ -96,7 +96,7 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
    顺序不可交换；
 3. proxy attestation 由 module-private `WeakMap` 持有、同步 single-consume；plain/clone/replay/cross-process 与
    caller injection 全拒绝，evidence 只保留安全 enum/stage；
-4. 8 guards 必须执行真实 admission path并证明 executor/dispatch/response/usage 全 0；
+4. 8 guards 必须执行真实 admission path 并证明 executor/dispatch/response/usage 全 0；
 5. pair 串行、pair 内最多双 lane；lane 独立 budget/abort/timeout/terminal，一条 lane 失败不能吞掉 sibling；
 6. `lane_reserved` 与 dispatch stage 在 Provider 前 hash-chain + fsync；reserved/terminal/orphan/not-started 守恒；
 7. 首个 contract failure 关闭当前 pair 后 breaker，semantic mismatch 不提前停；
@@ -106,9 +106,30 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
     sibling isolation、concurrent start、crash/publication race 与 hostile filesystem metadata；
 11. 正式 marker/journal/artifact/recovery claim 数量保持 0。
 
+实际交付：
+
+- public production CLI 只接收 `args + AbortSignal`，固定 root/env/clock/UUID/writer/model/URL/fetch/
+  retry ports；
+- source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式 artifact=0
+  与 Tutor/Organizer/adapter 源码 SHA；S2 tag 当前尚未创建，因此 L2 入口仍在 credential/marker 前关闭；
+- runner 固定 8 guards 全部先行、8 pairs 串行、pair 内双 lane，父请求取消统一投影为
+  `external_abort`；普通 semantic mismatch 不开 breaker，首个 contract failure 收口 sibling 后才阻断后续 pair；
+- marker、`lane_reserved`、wire stage、lane/pair/run terminal、`publication_started` 与
+  `evidence_published` 使用 fsynced hash-chain journal，artifact 通过 exclusive hard-link 发布并由 bundle
+  validator 从 marker/journal/source/report 重算；
+- crash-only seal 不执行 preflight、source/approval/credential、transport 或 Provider。两个显式 recovery
+  anchor 已覆盖：第一条 lane 已 reservation 而 sibling 尚未 reservation，以及 8 guards 已完成但首对 lane
+  尚未 reservation；recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即
+  `attempted_aborted`，后续 pair 固定为 `not_started_quality_breaker`，不是 resume/replay；
+- 正式 G2 marker/journal/artifact/recovery claim 保持 0；G2 focused `32/32`（857 assertions）、G1+G2
+  `52/52`（992 assertions）、Agent full `1027/1027`（17337 assertions）通过。
+
+验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
+
 ## S2：Reviewed Mock / Static Checkpoint
 
-状态：[ ] 被 G2 阻断，zero-provider。
+状态：[ ] 下一原子任务，必须 zero-provider；不得读取 credential 或执行 L2。
 
 必须完成：
 

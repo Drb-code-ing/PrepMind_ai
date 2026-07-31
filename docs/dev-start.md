@@ -1300,7 +1300,7 @@ Provider Canary V2 D0/C1/C2/S1/L1 已完成。它不复用旧 R3/R4 approval、c
 journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
-contract/baseline 均已完成，当前停在 G2 one-shot runner/durability 实现门。
+contract/baseline、G2 one-shot runner/durability 均已完成，当前停在 S2 reviewed Mock/static 实现门。
 
 C1 固定验收命令：
 
@@ -1369,12 +1369,13 @@ Provider；不要添加 credential、Live 参数、output、recovery 或任何�
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`；
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
 
-P1/G1 小样本设计与 contract 入口：
+P1/G1/G2 小样本设计、contract 与 durability 入口：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
 
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
@@ -1390,9 +1391,32 @@ bun test tests/phase-6-9-tutor-organizer-small-sample-g1.test.ts
 必须失败。固定 logical report SHA 为 `ad3aa54d...d002`，physical file SHA 为 `e8bcbcb5...658b`。不要把这条
 命令当成 Mock/Live runner，也不要手工挑 case、调用 Provider 或复用 L1 confirmation。
 
-L1 已消费并完成，不得再次运行。下一原子任务只能是 G2 zero-provider one-shot runner/durability/evidence；
-当前禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 还必须在
-G1/G2/S2 提交推送后重新接受运行时数据边界并给出 exact authorization。
+G2 的本地 focused 验证只运行 synthetic fault matrix 和临时目录 durability，不读取 credential 或创建项目根
+正式 L2 文件：
+
+```powershell
+Set-Location packages/agent
+bun test `
+  tests/phase-6-9-tutor-organizer-small-sample-cli-authority-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-runner-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-durability-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-crash-lineage-g2.test.ts
+bun run typecheck
+bun run lint
+```
+
+Public production CLI 只接收 `args + AbortSignal`，但现在不要运行
+`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。Source gate要求未来 S2
+approved tag，G2 没有创建该 tag；缺 tag 必须在 approval/credential/marker 前 fail-closed。Crash-only seal 只
+用于已有 dead-owner正式 attempt，不能作为测试命令、预创建 artifact 或绕过 L2 授权门。
+
+G2 recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即 `attempted_aborted`，后续 pair 为
+`not_started_quality_breaker`；这不是 resume/replay/retry，也不构造 harness/transport 或调用 Provider。外部父
+请求取消统一为 `external_abort`，与 lane 内部 `abort` 分开。
+
+L1 已消费并完成，不得再次运行。下一原子任务只能是 S2 zero-provider reviewed Mock/static checkpoint；当前
+禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 还必须在 G1/G2/S2
+提交推送后重新接受运行时数据边界并给出 exact authorization。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

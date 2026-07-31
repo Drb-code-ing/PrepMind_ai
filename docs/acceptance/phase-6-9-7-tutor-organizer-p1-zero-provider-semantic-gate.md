@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；后续 G1 contract/baseline 也已 zero-provider 完成，当前下一任务仅 G2
+状态：P1 设计验收完成；后续 G1/G2 也已 zero-provider 完成，当前下一任务仅 S2 reviewed Mock/static
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -133,8 +133,9 @@ P1 收口完成以下 zero-provider 检查：
 
 G1 随后已 zero-provider 完成 manifest、独立 deterministic baseline、report/scorer/gate 与 oracle 隔离；
 baseline logical report/physical file/eval policy SHA 分别为
-`ad3aa54d...d002 / e8bcbcb5...658b / 1cab7786...399a`。当前下一原子任务仅 G2 durability，随后仍需
-S2 reviewed Mock/static checkpoint。只有这些阶段分别提交、推送、终审完成后，才可能请求未来 L2：
+`ad3aa54d...d002 / e8bcbcb5...658b / 1cab7786...399a`。G2 也已完成固定 production CLI/source gate、
+runner、journal/marker/artifact/validator 与 crash-only seal，正式 L2 文件保持 0。当前下一原子任务仅 S2
+reviewed Mock/static checkpoint。只有 S2 独立提交、推送、终审完成后，才可能请求未来 L2：
 
 ```text
 I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
@@ -150,7 +151,8 @@ I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
 
 回顾时可以问：
 

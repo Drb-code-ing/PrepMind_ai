@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：G1 已完成，zero-provider；下一原子任务仅 G2 one-shot runner / durability / evidence
+状态：G1 已完成，zero-provider；后续 G2 也已完成，当前下一原子任务仅 S2 reviewed Mock/static
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -85,8 +85,8 @@ wrong agent/case/pair、旧 lineage 和自报 aggregate 漂移全部拒绝。Agg
   `>=0.15`，以及全部安全/预算门通过。
 
 G1 的 pure builder 可以在单元测试中构造各种 report，因此单独一个 schema pass 不是 Provider provenance 或质量
-authority。G2 必须把这些合同接到不可注入的 one-shot runner、durable journal、marker、artifact 和重算 validator，
-才有资格进入 S2；G1 本身不声称运行过 candidate。
+authority。后续 G2 已把这些合同接到不可注入的 one-shot runner、durable journal、marker、artifact 和重算
+validator；G1 本身仍不声称运行过 candidate，G2 也没有执行正式 Mock/Live。
 
 ## 4. Oracle、权限与历史隔离
 
@@ -147,12 +147,13 @@ aggregate、budget、P95、Mock/Live authority 与历史 lineage 无阻断；独
 
 ## 8. 下一步
 
-下一原子任务仅 G2，继续 zero-provider：实现 one-shot runner、不可注入 production composition、guard-first /
-pair-serial 调度、独立 sibling terminal、dispatch-before-call hash-chain journal、exclusive marker/publication、
-crash-only seal 与 strict recomputing validator。
+G2 已 zero-provider 完成 one-shot runner、不可注入 production composition、guard-first/pair-serial 调度、独立
+sibling terminal、dispatch-before-call hash-chain journal、exclusive marker/publication、crash-only seal 与 strict
+recomputing validator；验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
 
-G2 之后仍要完成 S2 reviewed Mock/static checkpoint。只有 G1/G2/S2 分别提交、推送、终审且新正式 artifact
-仍为 0，才可能请求未来 L2 exact authorization。当前普通“继续/开始/同意/所有权限”仍不授权 L2。
+下一原子任务仅 S2 reviewed Mock/static checkpoint。只有 S2 独立提交、推送、终审且新正式 artifact 仍为 0，
+才可能请求未来 L2 exact authorization。当前普通“继续/开始/同意/所有权限”仍不授权 L2。
 
 回顾时可以问：
 

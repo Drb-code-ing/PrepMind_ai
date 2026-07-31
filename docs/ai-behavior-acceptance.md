@@ -370,8 +370,7 @@ recovery claim，R3 validator/SHA 不变。
 L1 只能证明这一次 fact-free 请求在当时 source/credential/network path 下得到 strict response、verified
 usage 与可验证 evidence。`status=diagnostic_only / qualityAuthority=none`，因此不能证明 Provider 长期健康、
 Tutor/Organizer semantic、RAG/写隔离或产品可用，也不能外推 P95、48-case 成本或 SLA。L1 名额已消费并禁止
-重跑。其解锁的 P1 zero-provider 小样本 semantic gate 设计与 G1 contract/baseline 已完成；当前只允许 G2
-zero-provider runner/durability。
+重跑。其解锁的 P1/G1/G2 已 zero-provider 完成；当前只允许 S2 reviewed Mock/static checkpoint。
 
 P1 使用独立 `phase-6.9.7-tutor-organizer-small-sample-v1`，不恢复 V1--V9/R3/R4/L1 identity。来源固定为
 V2 dataset `42803d45...b437b`；manifest `ae667f1c...edf61` 选择 4+4 critical guards 与 runtime
@@ -390,17 +389,29 @@ strict/wire/verified usage `16/16/16/16`、三个 semantic 均 `>=0.85`、Tutor/
 8-pair sample 不产生既有 24-value P95 authority；只允许 `3500/5000ms` hard timeout、sample median/max，P95
 字段保持 `null / insufficient_sample_size_8`。未来 L2 cap 固定 `16 calls / 37600 input / 8800 output /
 0.176 CNY`，guard-first、pair-serial、pair 内 sibling lane 独立 abort/timeout/terminal，no retry/resume/replay/
-backfill。P1/G1 未读取 credential 或调用 Provider；G2/S2 完成并推送前，L2 精确授权门不会开放。
+backfill。P1/G1/G2 未读取 credential 或调用 Provider；S2 完成并推送前，L2 精确授权门不会开放。
 
 G1 已把 manifest、deterministic baseline、strict report/scorer/gate 落成纯本地合同。Baseline
 authority/logical report/physical file SHA 分别为
 `d36d0789...d9f4e / ad3aa54d...d002 / e8bcbcb5...658b`。Report 从固定 24 entries 重算 aggregate，Mock
 永远只能得到 `mock_quality_not_evidence`；在单元测试中构造一个
-`executorProvenance=deepseek_network` 的 schema pass 也不构成真实 provenance。G2 必须由不可注入 one-shot
-runner、durable journal/marker/artifact 与重算 validator 建立来源，S2 reviewed Mock 之后才可能请求 L2。
+`executorProvenance=deepseek_network` 的 schema pass 也不构成真实 provenance。
 
-G1 全程没有改 prompt、candidate 或最终 Chat 输出，也未运行 Mock/Live，因此本阶段不需要、也不允许用一般
-live smoke 规则追加 Provider 调用。当前 48-case、产品 Docker/API/browser 和 main 仍被阻断。
+G2 已实现不可注入 one-shot production CLI、source/authority、runner、durable journal/marker/artifact 与重算
+validator。Public CLI 只接收 `args + AbortSignal`；source 必须绑定未来 S2 approved tag，当前 tag 未创建，
+因此 L2 在 credential/marker 前保持关闭。运行顺序固定为 preflight -> source -> approval -> dedicated
+credential -> marker -> 8 guards -> 8 pairs -> publication。Guard-first、pair-serial、pair 内双 lane、独立
+budget/abort/timeout/terminal 与首 contract failure breaker 均由 runner 执行；semantic mismatch 不提前停止。
+
+Crash-only seal 不运行 preflight、不读取 credential、不构造 transport、不调用 Provider。若第一条 lane 已
+reservation 而 sibling 尚未 reservation，或 8 guards 已完成但首对 lane 尚未 reservation，recovery 只补当前
+开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 固定
+`not_started_quality_breaker`。这不是 resume/replay/retry。父请求取消使用 `external_abort`，lane 内部取消才
+使用 `abort`。G2 只形成 `zero_provider_runner_durability`；S2 reviewed Mock 之后才可能请求 L2。
+
+G1/G2 全程没有改 prompt、candidate 或最终 Chat 输出，也未运行正式 Mock/Live，因此本阶段不需要、也不允许
+用一般 live smoke 规则追加 Provider 调用。当前 S2、L2、48-case、产品 Docker/API/browser 和 main 仍按顺序
+受门禁约束；下一步只能先完成 S2 zero-provider checkpoint。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

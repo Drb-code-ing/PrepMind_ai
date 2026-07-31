@@ -1692,8 +1692,30 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       `995/995`（16462 assertions）、typecheck/lint/Prettier/diff、敏感扫描与独立 contract/security 复审通过；
 - [x] G1 未读取 credential、调用 Provider、运行 Mock/Live、启动 Docker/API/browser、创建正式 evidence 或
       修改业务数据；authority 仅 `zero_provider_contract_baseline`；
-- [ ] 下一任务 G2 仅以 zero-provider 实现 one-shot runner/durability/evidence；G2/S2 完成并推送前 L2 不
-      开放。L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
+- [x] G2 已 zero-provider 实现固定 production CLI/source authority、guard-first/pair-serial 双 lane runner、
+      external-abort 分类、exclusive marker、fsynced hash-chain journal、hard-link artifact/strict validator 与
+      crash-only seal；public CLI 只接收 `args + AbortSignal`；
+- [x] G2 source admission要求固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式
+      artifact=0 与 Tutor/Organizer/adapter SHA；G2 未创建 S2 tag，L2 仍在 credential/marker 前 fail-closed；
+- [x] G2 runner 先完成 8 guards，再串行执行 8 pairs；pair 内两条 lane 独立 budget/abort/timeout/terminal；
+      semantic mismatch 不开 breaker，首 contract failure 保留 sibling terminal 并让后续 14 lane
+      `not_started_quality_breaker`；
+- [x] 外部父请求取消统一为 `external_abort`；已进入 lane 为 `attempted_aborted`，后续 lane 为
+      `not_started_external_abort`，不与 lane 内部 `abort` 混淆；
+- [x] crash-only seal 不 preflight/source/approval/credential、不创建 harness/transport、不调用 Provider；第一条
+      lane 已 reservation 但 sibling 未 reservation，以及 8 guards 完成但首对未 reservation 两个 anchor 均只
+      补当前 pair 零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 quality breaker；不是
+      resume/replay/retry；
+- [x] validator 拒绝 truncated/CRLF/hash rewrite/extra formal files、duplicate claim、hidden completion mode、
+      非普通 marker 与历史 lineage；`publication_started` 后 I/O failure 永久 fail-closed；
+- [x] G2 focused `32/32`（857 assertions）、G1+G2 `52/52`（992 assertions）、Agent full
+      `1027/1027`（17337 assertions）、typecheck/lint/Prettier/diff、baseline same-bytes、V1--V9/R3/L1
+      validators 与 SHA parity 通过；
+- [x] G2 未读取 credential、调用 Provider、运行正式 Mock/Live、启动 Docker/API/browser、创建 S2 tag 或正式
+      L2 marker/journal/artifact/recovery claim；authority 仅 `zero_provider_runner_durability`；
+- [ ] 下一任务 S2 仅以 zero-provider 完成 reviewed Mock/static、fresh baseline、正式 candidate/adapter/
+      validator/merger 全链、全量静态/历史 parity、三路终审和 Reader Testing。S2 提交推送前 L2 不开放；
+      L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1714,4 +1736,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。

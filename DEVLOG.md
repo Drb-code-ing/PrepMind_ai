@@ -1,5 +1,42 @@
 # PrepMind AI 开发日志
 
+> 2026-07-31 — Phase 6.9.7 Tutor / Organizer Small-sample G2 Runner / Durability：
+> G1 的 pure report/scorer/gate 已接入独立 one-shot execution/evidence 路径。新增固定 production CLI、
+> source/approval/dedicated credential gate、guard-first/pair-serial 双 lane runner、Live composition、exclusive
+> marker、fsynced hash-chain journal、hard-link artifact、strict bundle validator 与 crash-only seal；G2 全程
+> zero-provider，未执行正式 Mock/L2。
+>
+> Public CLI 只接收 `args + AbortSignal`；root/env/clock/UUID/writer/model/URL/fetch/transport/retry 均由模块
+> 固定。执行顺序为 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs ->
+> publication。Source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式
+> artifact=0 与 Tutor/Organizer/adapter SHA；G2 没有创建该 tag，因此 L2 仍在 credential/marker 前关闭。
+>
+> Runner 先真实执行 8 guards，再串行推进 8 pairs；pair 内 Tutor/Organizer lane 各有独立 budget、
+> AbortController、hard timeout、wire 和 terminal。Semantic mismatch 不开 breaker；transport/HTTP/schema/usage/
+> timeout/abort 等 contract failure 会先保留 sibling terminal，再让后续 14 lane 保持 fixed-denominator
+> `not_started_quality_breaker`。外部父请求取消已与 lane 内部 abort 分开，统一记录为 `external_abort`。
+>
+> Crash-only seal 不 preflight/source/approval/credential、不创建 harness/transport、不调用 Provider。两个关键
+> anchor 均已覆盖：第一条 lane 已 durable reservation、sibling 尚未 reservation；以及 8 guards 已完成、首对
+> lane 尚未 reservation。Recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即
+> `attempted_aborted`，后续 pair 固定 quality breaker；这不是 resume/replay/retry。Runtime terminal 已 durable
+> 时只允许原 report 的 publication recovery。
+>
+> Durability fault matrix 覆盖并发 marker、truncated/CRLF/hash rewrite、额外正式文件、live owner、dead-owner
+> single-winner claim、claim-tail rewrite、`publication_started` 永久 fail-closed、历史 lineage 双向拒绝与非普通
+> marker。Node 无跨平台 `openat/dirfd` 的同用户窄 TOCTOU 仍保留为 trusted single-user workspace 边界，不
+> 宣称跨主机 lease、Provider exactly-once 或断电目录项 durability。
+>
+> 最终 G2 focused `32/32`（857 assertions）、G1+G2 `52/52`（992 assertions）、Agent full
+> `1027/1027`（17337 assertions）、typecheck/lint、baseline `same_bytes`、V1--V9/R3/L1 validators 与 SHA
+> parity 通过。项目根正式 L2 marker/journal/artifact/recovery claim 为 0；未读取 `.env`/credential、调用
+> Provider、启动 Docker/API/browser、修改业务数据或合并 main。完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
+>
+> G2 authority 仅为 `zero_provider_runner_durability`，不证明 Agent 真实语义或产品可用。下一原子任务仅 S2
+> reviewed Mock/static checkpoint；S2 完成、独立提交并推送前，L2/48-case、产品 Docker/API/browser、main、
+> Phase 6.9.8 与后续阶段继续阻断。
+>
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer Small-sample G1 Contract / Baseline：
 > P1 设计已落成独立 zero-provider manifest、deterministic baseline、strict report/scorer/gate 与 fixed-path
 > baseline CLI。新实现不读取 `.env`/credential，不导入 Provider/Mock/Live/candidate，不启动 Docker/API/
@@ -29,9 +66,9 @@
 > `same_bytes` 且 logical/physical SHA 精确匹配。完整验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 >
-> G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。下一原子
-> 任务仅 G2 zero-provider one-shot runner/durability/evidence；G2/S2 完成并推送前，L2、48-case、产品
-> Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
+> G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
+> 当时下一原子任务仅 G2；后续 G2 已按上方日志完成，当前下一步为 S2。S2 完成并推送前，L2、48-case、
+> 产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的
@@ -60,7 +97,7 @@
 >
 > 本阶段没有读取 `.env`/credential、调用 Provider、运行小样本/Mock、启动 Docker/API/browser、创建正式
 > marker/journal/artifact 或修改业务数据。本 P1 收口当时下一原子任务为 G1；后续 G1 已按上方日志完成。
-> G2/S2 完成并推送前不得请求 L2。完整设计、计划与验收见
+> P1 验收当时要求 G2/S2 完成并推送前不得请求 L2；后续 G2 已完成，S2 仍未开始。完整设计、计划与验收见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
 > `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
