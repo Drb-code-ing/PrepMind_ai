@@ -281,9 +281,10 @@ L1 evidence 见
 以 zero-provider 方式冻结独立 dataset、预算、quality gate、lineage 与未来授权条件，不能把本次 health
 canary 当成 semantic dataset 的一条通过样本。P1 已于 2026-07-31 按该边界完成：固定 4+4 guards、8
 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
-`d36d0789...d9f4e`、质量/预算/lineage/L2 授权门，全程 providerCalls=0。下一原子任务仅 G1 zero-provider
-contract/baseline；完整设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`。
+`d36d0789...d9f4e`、质量/预算/lineage/L2 授权门，全程 providerCalls=0。后续 G1 也已 zero-provider 落成
+contract/baseline/report/scorer/gate；当前下一原子任务仅 G2 runner/durability。完整设计与 G1 验收见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 
 回顾时可以问：
 

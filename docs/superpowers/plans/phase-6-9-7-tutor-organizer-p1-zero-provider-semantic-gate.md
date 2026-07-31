@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1 设计已完成；下一原子任务为 G1 zero-provider contract/baseline 实现
+当前状态：P1、G1 已完成；下一原子任务为 G2 zero-provider one-shot runner / durability / evidence
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -35,7 +35,7 @@
 
 ## G1：Manifest / Baseline / Contract / Quality Gate
 
-状态：[ ] 未开始，必须 zero-provider。
+状态：[x] 已完成，zero-provider。
 
 建议源码：
 
@@ -61,11 +61,25 @@
    physical artifact SHA 关系；
 10. V1--V9、R3/R4、Canary V2 L1 report/manifest/schema 双向 rejection。
 
+实际冻结 SHA：
+
+- manifest：`ae667f1c...edf61`；
+- baseline authority：`d36d0789...d9f4e`；
+- baseline logical report：`ad3aa54d...d002`；
+- baseline physical file：`e8bcbcb5...658b`；
+- eval policy：`1cab7786...399a`。
+
+Focused `20/20`、V2 baseline regression `11/11`、Agent full `995/995`、typecheck/lint 与独立
+contract/security 复审通过。Baseline writer 使用 fixed path、exclusive-create、open 前后及 sync 后
+parent/path/handle identity 校验；Node 无 `openat/dirfd` 的同用户恶意竞态如实保留为 trusted-workspace
+边界。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
+
 G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 
 ## G2：One-shot Runner / Durability / Evidence
 
-状态：[ ] 被 G1 阻断，必须 zero-provider。
+状态：[ ] 下一原子任务，必须 zero-provider。
 
 建议源码：
 

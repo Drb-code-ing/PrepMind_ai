@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；providerCalls=0，下一任务仅 G1 zero-provider contract/baseline
+状态：P1 设计验收完成；后续 G1 contract/baseline 也已 zero-provider 完成，当前下一任务仅 G2
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -43,7 +43,7 @@ Critical/provider/token/cost: 0 / 0 / 0 / 0
 
 这是未修饰本地规则在固定子集上的 baseline，不是 reviewed Mock，更不是 Provider 结果。理论满分相对
 Tutor/Organizer baseline 的提升为 `0.2929761904761905 / 0.7625`，因此固定 `>=0.15` improvement 门可达。
-G1 必须用正式 contract 复现这些值并冻结正式 report SHA；不能复用 72-case full baseline SHA。
+后续 G1 已用正式 contract 复现这些值并冻结独立 report/file SHA；没有复用 72-case full baseline SHA。
 
 ## 2. 冻结的质量、延迟和预算
 
@@ -127,13 +127,14 @@ P1 收口完成以下 zero-provider 检查：
 - 敏感赋值掩码扫描未发现 secret-like 值；`docs/dev-start.md` 的 Qwen key 命中为既有中文占位符，不是
   credential；
 - 无上下文 Reader Testing 经两轮修正后无剩余 Critical/Important；独立一致性与安全复审未发现新的
-  Critical/Important，但再次确认 P1 尚无可执行 small-sample 源码，文档 SHA 不能冒充 G1 runtime evidence。
+  Critical/Important；P1 验收当时尚无可执行 small-sample 源码，文档 SHA 不能冒充后续 G1 evidence。
 
 ## 5. 下一步与精确授权门
 
-下一原子任务是 G1：实现并测试 manifest、独立 deterministic baseline、report/scorer/gate 与 oracle 隔离；
-仍然必须 zero-provider。随后依次是 G2 durability、S2 reviewed Mock/static checkpoint。只有这些阶段提交、推送、
-终审完成后，才可能请求未来 L2：
+G1 随后已 zero-provider 完成 manifest、独立 deterministic baseline、report/scorer/gate 与 oracle 隔离；
+baseline logical report/physical file/eval policy SHA 分别为
+`ad3aa54d...d002 / e8bcbcb5...658b / 1cab7786...399a`。当前下一原子任务仅 G2 durability，随后仍需
+S2 reviewed Mock/static checkpoint。只有这些阶段分别提交、推送、终审完成后，才可能请求未来 L2：
 
 ```text
 I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
@@ -148,7 +149,8 @@ I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
 完整设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
-- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 
 回顾时可以问：
 

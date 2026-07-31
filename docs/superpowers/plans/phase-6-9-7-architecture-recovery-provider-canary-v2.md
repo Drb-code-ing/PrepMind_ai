@@ -126,10 +126,12 @@ qualityAuthority=none`。验收见
 
 实际交付：独立 small-sample lineage、4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、
 deterministic subset baseline payload `d36d0789...d9f4e`、semantic/latency/budget/durability/authorization 门已
-冻结，providerCalls=0。下一任务仅 G1 zero-provider contract/baseline 实现；G2/S2 完成并推送前 L2 不开放。
+冻结，providerCalls=0。后续 G1 也已 zero-provider 完成 contract/baseline/report/scorer/gate，当前下一任务仅
+G2 one-shot runner/durability；G2/S2 完成并推送前 L2 不开放。
 
 设计、实施计划与验收：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。

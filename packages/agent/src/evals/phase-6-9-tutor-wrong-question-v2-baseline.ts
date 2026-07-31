@@ -88,13 +88,13 @@ export function runPhase697V2DeterministicBaseline(): Phase697V2DeterministicBas
       (testCase): testCase is Phase697V2TutorRuntimeCase =>
         testCase.expectedRuntimeInvocations === 1,
     )
-    .map(runTutorCase);
+    .map(runPhase697V2DeterministicTutorCase);
   const organizerResults = phase697V2OrganizerCases
     .filter(
       (testCase): testCase is Phase697V2OrganizerRuntimeCase =>
         testCase.expectedRuntimeInvocations === 1,
     )
-    .map(runOrganizerCase);
+    .map(runPhase697V2DeterministicOrganizerCase);
   const runs = deepFreeze([
     ...tutorResults.map((result) => result.run),
     ...organizerResults.map((result) => result.run),
@@ -140,7 +140,9 @@ export function computePhase697V5BaselineSha256(value: unknown) {
     .digest('hex');
 }
 
-function runTutorCase(testCase: Phase697V2TutorRuntimeCase): Readonly<{
+export function runPhase697V2DeterministicTutorCase(
+  testCase: Phase697V2TutorRuntimeCase,
+): Readonly<{
   run: Phase697V2DeterministicBaselineRun;
   observation: TutorRuntimeObservation;
 }> {
@@ -211,7 +213,9 @@ function runTutorCase(testCase: Phase697V2TutorRuntimeCase): Readonly<{
   }
 }
 
-function runOrganizerCase(testCase: Phase697V2OrganizerRuntimeCase): Readonly<{
+export function runPhase697V2DeterministicOrganizerCase(
+  testCase: Phase697V2OrganizerRuntimeCase,
+): Readonly<{
   run: Phase697V2DeterministicBaselineRun;
   observations: readonly OrganizerDecisionObservation[];
 }> {

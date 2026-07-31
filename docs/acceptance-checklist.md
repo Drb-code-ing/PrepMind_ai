@@ -1670,7 +1670,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       pairs（16 lanes / 12 Organizer decisions）与 manifest SHA `ae667f1c...edf61`；
 - [x] P1 deterministic subset baseline 为 Tutor/Organizer/Combined
       `0.7070238095238095 / 0.2375 / 0.47226190476190477`，canonical payload SHA
-      `d36d0789...d9f4e`，Provider/token/cost 为 0；G1 必须正式复现并冻结 report SHA；
+      `d36d0789...d9f4e`，Provider/token/cost 为 0；G1 已正式复现并冻结 report/file SHA；
 - [x] P1 quality gate 固定 guard `8/8` actual zero-call、runtime strict/wire/usage `16/16/16/16`、三个
       semantic `>=0.85`、Tutor/Organizer improvement 各 `>=0.15`、invalid/critical/permission/mutation/
       broader fallback 为 0；incomplete aggregate 全 `null`；
@@ -1679,8 +1679,21 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] P1 冻结 guard-first、pair-serial、pair 内 sibling lane 独立 terminal、fixed denominator、breaker、
       exclusive marker/hash-chain journal/hard-link artifact/crash-only seal 与历史双向 lineage rejection；
 - [x] P1 未读取 credential、调用 Provider/Mock、启动 Docker/API/browser、创建正式 evidence 或修改业务数据；
-- [ ] 下一任务 G1 仅以 zero-provider 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离；G2/S2 完成并
-      推送前 L2 不开放。L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
+- [x] G1 已 zero-provider 实现 manifest/baseline/strict report/scorer/gate 与 oracle/candidate/Mock 单向隔离；
+      manifest、baseline authority、logical report、physical file、eval policy SHA 分别为
+      `ae667f...edf61 / d36d07...d9f4e / ad3aa5...d002 / e8bcbcb5...658b / 1cab77...399a`；
+- [x] G1 report 从固定 24 entries 重算 scheduler/wire/semantic/latency/usage/safety/breaker/gate；guard
+      不进 runtime wire 分母，pair terminal 与 breaker 后 not-started 守恒，incomplete aggregate 全 `null`，
+      8-sample P95 固定 `null`，Mock 永远 `mock_quality_not_evidence`；
+- [x] G1 baseline writer 固定路径并使用 exclusive-create、open 前后及 sync 后 parent/path/handle identity
+      校验；parent swap、existing symlink 与 post-sync swap 负向测试通过；Node 无 `openat/dirfd` 的同用户竞态
+      保留为 trusted-workspace 边界；
+- [x] G1 focused `20/20`（135 assertions）、V2 baseline regression `11/11`（371 assertions）、Agent full
+      `995/995`（16462 assertions）、typecheck/lint/Prettier/diff、敏感扫描与独立 contract/security 复审通过；
+- [x] G1 未读取 credential、调用 Provider、运行 Mock/Live、启动 Docker/API/browser、创建正式 evidence 或
+      修改业务数据；authority 仅 `zero_provider_contract_baseline`；
+- [ ] 下一任务 G2 仅以 zero-provider 实现 one-shot runner/durability/evidence；G2/S2 完成并推送前 L2 不
+      开放。L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1700,4 +1713,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`、
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。

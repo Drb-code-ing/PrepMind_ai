@@ -2,7 +2,7 @@
 
 > 当前版本：2026-07-31。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`，P1 zero-provider 设计已完成并只流向 G1 contract/baseline；R3/V2 不得重跑，原 R4、L2/48-case、产品/main 与后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`。P1 设计与 G1 zero-provider contract/baseline 已完成，当前只流向 G2 runner/durability；R3/V2 不得重跑，原 R4、L2/48-case、产品/main 与后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -815,7 +815,7 @@ Architecture Recovery proxy preflight（independent / zero-provider）
   -> first actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
   -> diagnostic-only：不创建 marker/journal/artifact，不证明 HTTP/DNS/TLS/Provider/账号健康
   -> V2 C2 已实现固定 ordering；L1 已按该顺序完成唯一 dispatch 并封存
-  -> R3/V2 不得重跑；P1 设计已完成，原 R4、L2 小样本、48-case、产品/main 继续阻断
+  -> R3/V2 不得重跑；P1/G1 已完成，原 R4、L2 小样本、48-case、产品/main 继续阻断
 ```
 
 ```text
@@ -862,12 +862,13 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> journal 12 records -> evidence_published；validator ok=true；artifact 98368de...a7e4
        -> diagnostic_only / qualityAuthority=none；no recovery claim；不得重跑
   -> P1 complete：zero-provider small-sample semantic gate 设计已冻结
-  -> current stop：G1 仅实现 manifest/baseline/report/scorer/gate 与 oracle 隔离
+  -> G1 complete：manifest/baseline/report/scorer/gate 与 oracle 隔离已 zero-provider 落地
+  -> current stop：G2 one-shot runner/durability/evidence
   -> 不执行 L2 小样本/48-case，也不进入产品 Docker/API/browser/main
 ```
 
 ```text
-P1 Small-sample Semantic Gate（design only / providerCalls=0）
+P1/G1 Small-sample Semantic Gate（design + contract/baseline / providerCalls=0）
   -> source dataset phase-6.9-tutor-wrong-question-v2 / SHA 42803d45...b437b
   -> manifest ae667f1c...edf61
        -> Tutor guards 4：route / credential / injection / hostile accessor
@@ -881,7 +882,13 @@ P1 Small-sample Semantic Gate（design only / providerCalls=0）
        -> Organizer 0/12 / semantic 0.2375
        -> Combined 0.47226190476190477
        -> canonical payload d36d0789...d9f4e
-  -> future quality gate
+       -> logical report ad3aa54d...d002 / physical file e8bcbcb5...658b
+  -> G1 strict contract / eval policy 1cab7786...399a
+       -> fixed 24-entry order + source/oracle binding
+       -> aggregate/wire/usage/scheduler/gate 全由 entries 重算
+       -> incomplete formal aggregates = null / P95 = null
+       -> Mock = mock_quality_not_evidence / prior lineage rejected
+  -> future Live quality gate
        -> guards 8/8 zero-call
        -> runtime strict/wire/verified usage 16/16/16/16
        -> Tutor/Organizer/Combined semantic >=0.85
@@ -891,7 +898,7 @@ P1 Small-sample Semantic Gate（design only / providerCalls=0）
   -> budget：16 calls / 37600 input / 8800 output / 0.176 CNY / no retry
   -> execution：guard-first -> pair-serial -> independent sibling lanes -> fixed denominator
   -> lineage：new marker/journal/artifact/validator；拒绝 V1--V9/R3/R4/L1 identity
-  -> next：G1 zero-provider；G2 -> S2 -> future exact-authorized L2 -> P2
+  -> next：G2 zero-provider -> S2 -> future exact-authorized L2 -> P2
   -> L2 pass 也只解锁 P2 full-gate design，不直接授权产品/main
 ```
 

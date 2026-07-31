@@ -1,5 +1,38 @@
 # PrepMind AI 开发日志
 
+> 2026-07-31 — Phase 6.9.7 Tutor / Organizer Small-sample G1 Contract / Baseline：
+> P1 设计已落成独立 zero-provider manifest、deterministic baseline、strict report/scorer/gate 与 fixed-path
+> baseline CLI。新实现不读取 `.env`/credential，不导入 Provider/Mock/Live/candidate，不启动 Docker/API/
+> browser，也没有创建正式 marker/journal/artifact 或修改业务数据。
+>
+> Manifest 继续固定 4+4 guards、8 pairs、16 runtime lanes、12 Organizer decisions，SHA 为
+> `ae667f1c...edf61`。正式 baseline 复现 Tutor/Organizer/Combined
+> `0.7070238095238095 / 0.2375 / 0.47226190476190477`；authority/logical report/physical file SHA 分别冻结为
+> `d36d0789...d9f4e / ad3aa54d...d002 / e8bcbcb5...658b`，eval policy SHA 为
+> `1cab7786...399a`。Baseline 文件内部只记录 logical report SHA，validator 对实际 bytes 单独返回 physical
+> SHA，避免自引用 hash。
+>
+> Report 从 24 entries 重算 scheduler、wire、semantic、latency、usage、safety、breaker 与 gate。Guard
+> dispatch 不进入 16-lane wire 分母但记 critical；pair 缺 lane、asymmetric terminal、breaker 后继续执行、
+> aggregate/usage/wire 篡改与旧 V1--V9/R3/R4/L1 lineage 全 fail-closed。任一正式 evidence 不完整时
+> semantic/latency/token/CNY aggregate 全 `null`；8-sample P95 永远 `null`；Mock 永远只能是
+> `mock_quality_not_evidence`。
+>
+> Baseline writer 固定 `.tmp/phase-6-9-7-tutor-organizer-small-sample-baseline.json`，使用 exclusive-create、
+> parent/final path realpath+lstat、handle/path dev+ino，并在写前与 sync 后重复核验；same-bytes 也经 readonly
+> handle、strict bytes validator 与末次 identity 校验。Parent swap、existing symlink、post-sync swap 测试通过。
+> Node 缺少跨平台 `openat/dirfd` 的同用户极窄竞态如实保留为 trusted-workspace 边界，不冒充对主动本地攻击
+> 的完整防护。
+>
+> 最终 G1 focused `20/20`（135 assertions）、V2 baseline regression `11/11`（371 assertions）、Agent full
+> `995/995`（16462 assertions）、typecheck/lint 与独立 contract/security 复审通过。Baseline CLI 最终返回
+> `same_bytes` 且 logical/physical SHA 精确匹配。完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
+>
+> G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。下一原子
+> 任务仅 G2 zero-provider one-shot runner/durability/evidence；G2/S2 完成并推送前，L2、48-case、产品
+> Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
+>
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的
 > small-sample 路线设计，没有把 L1 fact-free health response 写成 Agent 语义证据。新 lineage 固定为
@@ -26,7 +59,7 @@
 > 复审无剩余 Critical/Important。该验证仍只证明 P1 设计自洽，不是 G1 可执行证据。
 >
 > 本阶段没有读取 `.env`/credential、调用 Provider、运行小样本/Mock、启动 Docker/API/browser、创建正式
-> marker/journal/artifact 或修改业务数据。下一原子任务仅 G1 zero-provider manifest/baseline/report/scorer/gate；
+> marker/journal/artifact 或修改业务数据。本 P1 收口当时下一原子任务为 G1；后续 G1 已按上方日志完成。
 > G2/S2 完成并推送前不得请求 L2。完整设计、计划与验收见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与

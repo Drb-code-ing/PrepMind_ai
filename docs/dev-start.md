@@ -1299,8 +1299,8 @@ preflight 证据见
 Provider Canary V2 D0/C1/C2/S1/L1 已完成。它不复用旧 R3/R4 approval、credential、confirmation、marker、
 journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
-L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计也已完成，当前
-停在 G1 contract/baseline 实现门。
+L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
+contract/baseline 均已完成，当前停在 G2 one-shot runner/durability 实现门。
 
 C1 固定验收命令：
 
@@ -1369,18 +1369,29 @@ Provider；不要添加 credential、Live 参数、output、recovery 或任何�
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`；
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
 
-P1 小样本设计入口：
+P1/G1 小样本设计与 contract 入口：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 
-P1 只冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
-`d36d0789...d9f4e`、quality/budget/lineage/authorization contract；没有新增可运行命令。不要尝试猜测未来 CLI、
-手工挑 case、调用 Provider 或复用 L1 confirmation。
+P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
+`d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
+只写 fixed ignored path，不读取环境变量、credential、Provider、Mock/Live 或 candidate：
 
-L1 已消费并完成，不得再次运行。下一原子任务只能是 G1 zero-provider manifest/baseline/report/scorer/gate
-实现；当前禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 还必须在
+```powershell
+Set-Location packages/agent
+bun run eval:phase-6-9-7:small-sample:baseline
+bun test tests/phase-6-9-tutor-organizer-small-sample-g1.test.ts
+```
+
+首次输出只能是 `created`，相同 bytes 的重复检查为 `same_bytes`；冲突、symlink 或 parent/path identity 漂移
+必须失败。固定 logical report SHA 为 `ad3aa54d...d002`，physical file SHA 为 `e8bcbcb5...658b`。不要把这条
+命令当成 Mock/Live runner，也不要手工挑 case、调用 Provider 或复用 L1 confirmation。
+
+L1 已消费并完成，不得再次运行。下一原子任务只能是 G2 zero-provider one-shot runner/durability/evidence；
+当前禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 还必须在
 G1/G2/S2 提交推送后重新接受运行时数据边界并给出 exact authorization。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置

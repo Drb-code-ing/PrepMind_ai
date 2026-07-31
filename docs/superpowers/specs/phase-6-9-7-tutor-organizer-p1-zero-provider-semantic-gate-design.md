@@ -2,7 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1 设计已冻结，zero-provider；尚未实现 runner、未执行 Mock/Live、未启动 Docker/API/browser
+状态：P1 设计与 G1 contract/baseline 已完成，zero-provider；尚未实现 G2 runner/durability，未执行
+Mock/Live、未启动 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -18,7 +19,8 @@ P1 不把 L1 health canary 扩写为 Agent 质量证据，也不恢复 V1--V9 �
 > 在固定的 8 对 Tutor / WrongQuestionOrganizer 合成输入上，最新受治理 candidate 能否完整得到 strict
 > response、verified usage，并达到既有语义、安全和本地权威门槛？
 
-本阶段只完成设计与文档同步，`providerCalls=0`。小样本本身也尚未执行，因此当前不能声称：
+P1 只完成设计；随后 G1 已把 manifest、deterministic baseline、strict report/scorer/gate 落成纯本地合同，
+`providerCalls=0`。小样本 candidate 本身仍未执行，因此当前不能声称：
 
 - TutorAgent 或 WrongQuestionOrganizerAgent 的真实模型语义已通过；
 - 48-case 全量质量、P95、长期 Provider 健康或生产 SLA 已通过；
@@ -571,8 +573,8 @@ durable seal，禁止任何补跑。
 | 阶段 | 内容                                                                  | 当前状态              |
 | ---- | --------------------------------------------------------------------- | --------------------- |
 | P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
-| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 下一原子任务          |
-| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 未开始                |
+| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
+| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 下一原子任务          |
 | S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 未开始                |
 | L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 未授权、未开始        |
 | P2   | 只按 L2 sealed 终态决定是否设计 24-pair full semantic gate            | 被阻断                |
@@ -580,6 +582,12 @@ durable seal，禁止任何补跑。
 L2 即使通过，也只形成 `small_sample_semantic_gate` authority，最多解锁 P2 的 zero-provider 全量设计；不得直接
 进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。若 L2 失败，回到 zero-provider
 复盘；不得复制 V10/V11 式整套重试、放宽阈值或重跑同一 manifest。
+
+G1 实现验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
+logical report SHA 为 `ad3aa54d...d002`、physical file SHA 为 `e8bcbcb5...658b`、eval policy SHA 为
+`1cab7786...399a`；这些只形成 `zero_provider_contract_baseline` authority，不替代 G2 durability 或 S2
+reviewed Mock。
 
 ## 12. 回顾问题
 

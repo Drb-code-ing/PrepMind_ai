@@ -5,8 +5,8 @@
 状态（L1 封存时）：唯一 L1 controlled-Live 已成功封存；authority 仅为
 `diagnostic_only / qualityAuthority=none`，当时下一步停在 P1 zero-provider 设计门
 
-后续状态（2026-07-31）：P1 zero-provider 小样本语义门设计已完成，未调用 Provider；当前下一任务仅 G1
-zero-provider contract/baseline。该补注不改写本页 L1 run、artifact 或 authority。
+后续状态（2026-07-31）：P1 设计与 G1 zero-provider contract/baseline 已完成，均未调用 Provider；当前下一
+任务仅 G2 one-shot runner/durability。该补注不改写本页 L1 run、artifact 或 authority。
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
