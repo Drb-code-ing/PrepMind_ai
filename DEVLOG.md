@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer Small-sample S2 Reviewed Mock / Static：
+> S2 已在 zero-provider 边界内完成。新增 reviewed Mock composition，真实穿过 Tutor V6、Organizer V9、
+> 第一方 DeepSeek V4 Pro direct adapter 的 synthetic fetch seam、strict validator、本地 authority/merger 与 G2
+> fixed-denominator runner。Mock responder 只读取实际 bounded prompt；`expected` 只进入后置 scorer，actual
+> 由 model-owned decision 与本地 authority/merger 重建并与 runtime semantic axes 交叉核验。
+>
+> 正常路径为 guard `8/8` actual zero-call、runtime/wire/verified usage `16/16/16/16`、Tutor/Organizer/
+> Combined semantic `1/1/1`、usage `5949/180`、synthetic estimated cost `0.018927 CNY`，gate 固定
+> `mock_quality_not_evidence`。8-sample 不生成 P95 authority；本机 synthetic token、费用、median/max 不是
+> Provider 账单、真实延迟或产品质量证据。
+>
+> Fault matrix 覆盖 25 类 transport/HTTP/response/schema/selection/usage failure、semantic axes drift、
+> write-command shape、pre/mid abort、single-dispatch/no-backfill，以及 Tutor `3500ms` / Organizer `5000ms`
+> hard timeout。locked-name/no-write 从实际结果重新观测，任一漂移都 fail-closed。
+>
+> S2 focused `35/35`（603 assertions）、G1+G2+S2 `87/87`（1595 assertions）、Agent full
+> `1062/1062`（17953 assertions）、AI full `323/323`（2366 assertions）、Types `42/42 + tsc --noEmit`、
+> Web `439/439`、Agent/AI typecheck/lint、Web lint、Prettier、baseline same-bytes 与 `git diff --check`
+> 通过。V1--V9/R3/L1 validators 与 artifact SHA parity 保持；项目根正式 L2 marker/journal/artifact/
+> recovery claim 为 0。三路独立 composition/security/fault 复审均 `APPROVED`，最终 Reader Testing 见 S2
+> 验收文档。
+>
+> S2 未读取 `.env`/credential、未调用 Provider、未创建 approved tag、未启动 Docker/API/browser、未修改
+> 业务数据、未合并 main。未来独立 L2 admission 只能在 S2 commit 已推送且 HEAD/upstream/remote parity 后
+> 创建/绑定 approved tag，并仍需重新接受运行当时的数据边界和给出 exact authorization。完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
+>
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer Small-sample G2 Runner / Durability：
 > G1 的 pure report/scorer/gate 已接入独立 one-shot execution/evidence 路径。新增固定 production CLI、
 > source/approval/dedicated credential gate、guard-first/pair-serial 双 lane runner、Live composition、exclusive
@@ -8,8 +35,9 @@
 >
 > Public CLI 只接收 `args + AbortSignal`；root/env/clock/UUID/writer/model/URL/fetch/transport/retry 均由模块
 > 固定。执行顺序为 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs ->
-> publication。Source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式
-> artifact=0 与 Tutor/Organizer/adapter SHA；G2 没有创建该 tag，因此 L2 仍在 credential/marker 前关闭。
+> publication。Source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 L2 admission 创建/
+> 绑定的 approved tag、正式 artifact=0 与 Tutor/Organizer/adapter SHA；G2/S2 均未创建该 tag，因此 L2
+> 仍在 credential/marker 前关闭。
 >
 > Runner 先真实执行 8 guards，再串行推进 8 pairs；pair 内 Tutor/Organizer lane 各有独立 budget、
 > AbortController、hard timeout、wire 和 terminal。Semantic mismatch 不开 breaker；transport/HTTP/schema/usage/
@@ -33,8 +61,8 @@
 > Provider、启动 Docker/API/browser、修改业务数据或合并 main。完整验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
 >
-> G2 authority 仅为 `zero_provider_runner_durability`，不证明 Agent 真实语义或产品可用。下一原子任务仅 S2
-> reviewed Mock/static checkpoint；S2 完成、独立提交并推送前，L2/48-case、产品 Docker/API/browser、main、
+> G2 authority 仅为 `zero_provider_runner_durability`，不证明 Agent 真实语义或产品可用。G2 当时的下一原子
+> 任务仅 S2 reviewed Mock/static checkpoint；后续 S2 已完成。L2/48-case、产品 Docker/API/browser、main、
 > Phase 6.9.8 与后续阶段继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer Small-sample G1 Contract / Baseline：
@@ -67,7 +95,7 @@
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
-> 当时下一原子任务仅 G2；后续 G2 已按上方日志完成，当前下一步为 S2。S2 完成并推送前，L2、48-case、
+> 当时下一原子任务仅 G2；后续 G2/S2 均已按上方日志完成。当前停止在未来 L2 admission；L2、48-case、
 > 产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
@@ -97,7 +125,7 @@
 >
 > 本阶段没有读取 `.env`/credential、调用 Provider、运行小样本/Mock、启动 Docker/API/browser、创建正式
 > marker/journal/artifact 或修改业务数据。本 P1 收口当时下一原子任务为 G1；后续 G1 已按上方日志完成。
-> P1 验收当时要求 G2/S2 完成并推送前不得请求 L2；后续 G2 已完成，S2 仍未开始。完整设计、计划与验收见
+> P1 验收当时要求 G2/S2 完成并推送前不得请求 L2；后续 G2/S2 均已完成，L2 仍未授权。完整设计、计划与验收见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
 > `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。

@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：G2 已完成，zero-provider；下一原子任务仅 S2 reviewed Mock / static checkpoint
+状态：G2 已完成，zero-provider；其后 S2 reviewed Mock / static checkpoint 也已完成
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -39,7 +39,7 @@ UUID、stdout writer、model、base URL、fetch、transport、retry、runner、v
 exact CLI argument
   -> zero-provider proxy preflight
   -> synchronous single-consume proxy attestation
-  -> source branch/clean/HEAD/upstream/remote/S2-tag/hash admission
+  -> source branch/clean/HEAD/upstream/remote/L2-admission-tag/hash admission
   -> exact approval
   -> dedicated L2 credential
   -> exclusive marker + attempt journal
@@ -54,7 +54,8 @@ Proxy capability 使用两段 module-private `WeakMap` 状态：preflight 结果
 
 Source reader 要求固定分支、tracked source clean、`HEAD == upstream == remote`，并要求本地与远程
 `refs/tags/phase-6-9-7-tutor-organizer-small-sample-s2-approved` 都指向同一 commit；同时重新计算 Tutor
-prompt/schema/merger、Organizer prompt/schema/merger 和第一方 adapter SHA。G2 没有创建 S2 approved tag，
+prompt/schema/merger、Organizer prompt/schema/merger 和第一方 adapter SHA。该 tag 名称保留既有 contract，
+但只允许未来独立 L2 admission 在已推送且 parity 的 S2 commit 上创建/绑定；G2 与 S2 都不创建该 tag，
 所以当前 production L2 路径仍会在 approval/credential/marker 前 fail-closed。
 
 `small-sample:cli` 与 `small-sample:live` 是同一固定 production 入口的显式别名，前者不是可绕过授权的
@@ -150,17 +151,20 @@ G2 authority 仅为 `zero_provider_runner_durability`。Synthetic fault tests �
 
 ## 8. 下一步
 
-下一原子任务仅 S2，继续 zero-provider：建立 reviewed Mock factory，真实穿过 Tutor V6、Organizer V9、第一方
-adapter、strict validator、本地 merger 与本 G2 runner；完成 fresh baseline、fault matrix、受影响全量静态门、
-历史 validator/SHA、正式 artifact=0、三路独立复审和无上下文 Reader Testing。
+G2 当时的下一原子任务仅 S2，继续 zero-provider：建立 reviewed Mock factory，真实穿过 Tutor V6、
+Organizer V9、第一方 adapter、strict validator、本地 merger 与本 G2 runner；完成 fresh baseline、fault
+matrix、受影响全量静态门、历史 validator/SHA、正式 artifact=0、三路独立复审和无上下文 Reader Testing。
 
-S2 必须独立提交并推送，随后停止在 L2 授权门前。只有用户重新接受未来运行当时 DeepSeek 数据边界并给出
-冻结 exact confirmation，L2 才可能执行一次。当前普通“继续”“开始”“同意”“所有权限”都不授权 L2。
+上述 S2 现已 zero-provider 完成；验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。S2 未创建 approved
+tag、未读取 credential、未执行 L2。S2 独立提交并推送后仍停止在 L2 admission 门前；未来独立 L2
+admission 才能在已推送且 parity 的 commit 上创建/绑定 tag，并仍需重新接受运行当时 DeepSeek 数据边界
+与给出 exact confirmation。普通“继续”“开始”“同意”“所有权限”都不授权 L2。
 
 回顾时可以问：
 
 - 为什么 public CLI 只允许 `args + AbortSignal`？
-- 为什么 source reader 必须绑定未来 S2 tag，而不能只检查当前 branch clean？
+- 为什么 source reader 必须绑定未来 L2 admission 创建/绑定的 approved tag，而不能只检查当前 branch clean？
 - 为什么 semantic mismatch 不开 breaker，contract failure 才开？
 - 为什么 crash 后要为当前待锚定 pair 补零-wire reservation，而不是继续执行 candidate？
 - 为什么 `publication_started` 后失败必须永久 fail-closed？

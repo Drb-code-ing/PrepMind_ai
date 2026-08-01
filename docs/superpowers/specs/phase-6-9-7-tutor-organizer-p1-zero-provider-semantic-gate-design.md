@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1、G1、G2 已完成，zero-provider；下一步仅 S2 reviewed Mock/static checkpoint，未执行
-正式 Mock/Live、未启动 Docker/API/browser
+状态：P1、G1、G2、S2 已完成，zero-provider；S2 仅执行 reviewed synthetic Mock，未执行 L2
+Controlled-Live、未启动 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -20,7 +20,8 @@ P1 不把 L1 health canary 扩写为 Agent 质量证据，也不恢复 V1--V9 �
 > response、verified usage，并达到既有语义、安全和本地权威门槛？
 
 P1 只完成设计；随后 G1 已把 manifest、deterministic baseline、strict report/scorer/gate 落成纯本地合同，
-`providerCalls=0`。小样本 candidate 本身仍未执行，因此当前不能声称：
+`providerCalls=0`。随后 S2 让小样本 candidate 穿过 synthetic fetch、validator/merger 与 runner，但 gate 固定
+`mock_quality_not_evidence`；因此当前仍不能声称：
 
 - TutorAgent 或 WrongQuestionOrganizerAgent 的真实模型语义已通过；
 - 48-case 全量质量、P95、长期 Provider 健康或生产 SLA 已通过；
@@ -343,8 +344,8 @@ G1 必须停止，不能调整 expected、选择 case 或在 Live 后放宽阈�
 未来唯一 L2 只有同时满足以下全部条件，才可得到
 `small_sample_quality_gate_passed`：
 
-1. Manifest version/SHA、source dataset/policy SHA、S2 acceptance 冻结的 exact runnable source commit、
-   prompt/schema/merger/adapter SHA 全匹配；
+1. Manifest version/SHA、source dataset/policy SHA、未来 L2 admission 冻结的 exact runnable source commit、
+   approved tag 与 prompt/schema/merger/adapter SHA 全匹配；
 2. 8/8 guard 实际 zero-call，guard executor/dispatch/response/usage 全为 `0`；
 3. 16/16 runtime 均 reserved、terminal、strict success，wire 为 `16/16/16/16`；
 4. 16/16 runtime 都有正安全整数 verified input/output usage、known pricing 和逐 lane CNY；
@@ -549,9 +550,11 @@ consumed stage，不保存 object、URL、port、proxy variable value 或 owner 
 
 1. G1 contracts/manifest/baseline 和 G2 runner/durability 已提交；
 2. S2 reviewed Mock、fault matrix、静态/历史 validator、Reader Testing 与独立终审全部通过并推送；S2
-   acceptance 同时记录唯一 `approvedRunnableSourceCommit`；
-3. tracked source clean，固定 branch、`HEAD == upstream == remote == approvedRunnableSourceCommit`，新正式
-   artifact=0；P1 当前无法预填这个未来 commit，空值或当前文档 commit 都不能通过 L2 source reader；
+   不自引用尚未产生的 commit，也不创建 approved tag；
+3. 未来独立 L2 admission 把唯一 `approvedRunnableSourceCommit` 冻结为上述已推送 S2 commit，并创建/绑定
+   approved tag；tracked source clean，固定 branch、
+   `HEAD == upstream == remote == approvedRunnableSourceCommit`，新正式 artifact=0；空值或未推送 commit
+   都不能通过 L2 source reader；
 4. V1--V9、R3 和 Canary V2 L1 sealed bundle validator/SHA parity 不变；
 5. 同一授权进程内 fresh proxy preflight 为 `direct_ready`，或
    `loopback_proxy_ready / providerCalls=0` 并铸造一次消费 attestation；它仍发生在 source、credential、marker
@@ -585,7 +588,7 @@ durable seal，禁止任何补跑。
 | P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
 | G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
 | G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider |
-| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 下一原子任务          |
+| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider |
 | L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 未授权、未开始        |
 | P2   | 只按 L2 sealed 终态决定是否设计 24-pair full semantic gate            | 被阻断                |
 
@@ -597,8 +600,9 @@ G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
 logical report SHA 为 `ad3aa54d...d002`、physical file SHA 为 `e8bcbcb5...658b`、eval policy SHA 为
 `1cab7786...399a`；这些只形成 `zero_provider_contract_baseline` authority。G2 验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；G2 durability 仍不替代
-S2 reviewed Mock。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；S2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。G2 durability 与 S2
+reviewed Mock 都不替代未来 L2 Provider quality authority。
 
 ## 12. 回顾问题
 

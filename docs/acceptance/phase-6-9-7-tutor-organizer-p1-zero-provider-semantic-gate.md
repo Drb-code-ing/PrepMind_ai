@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；后续 G1/G2 也已 zero-provider 完成，当前下一任务仅 S2 reviewed Mock/static
+状态：P1 设计验收完成；后续 G1/G2/S2 也已 zero-provider 完成，当前停止在未来 L2 admission 门
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -86,9 +86,10 @@ validator 必须从 marker/journal/source 重算 aggregate。该路线使用全�
 V2 L1 双向拒绝。
 
 Wire `16/16/16/16` 固定指
-`executorEntered/providerDispatchStarted/providerResponseReceived/verifiedUsageObserved`。S2 将冻结唯一
-`approvedRunnableSourceCommit`；未来 L2 必须满足
-`HEAD == upstream == remote == approvedRunnableSourceCommit`。P1 当前不会预填一个尚不存在的 commit。
+`executorEntered/providerDispatchStarted/providerResponseReceived/verifiedUsageObserved`。S2 不自引用或预填
+尚未产生的 commit，也不创建 approved tag；未来独立 L2 admission 才把唯一
+`approvedRunnableSourceCommit` 冻结为已经推送且 parity 的 S2 commit，并创建/绑定 tag。L2 必须满足
+`HEAD == upstream == remote == approvedRunnableSourceCommit`。
 四个 wire 计数的分母都只包含 16 条 runtime lane；8 条 guard 另计且各维必须为 0。
 
 Report 固定为 artifact 内唯一 strict embedded object，不另写第二份物理 report；artifact 同时绑定
@@ -134,8 +135,10 @@ P1 收口完成以下 zero-provider 检查：
 G1 随后已 zero-provider 完成 manifest、独立 deterministic baseline、report/scorer/gate 与 oracle 隔离；
 baseline logical report/physical file/eval policy SHA 分别为
 `ad3aa54d...d002 / e8bcbcb5...658b / 1cab7786...399a`。G2 也已完成固定 production CLI/source gate、
-runner、journal/marker/artifact/validator 与 crash-only seal，正式 L2 文件保持 0。当前下一原子任务仅 S2
-reviewed Mock/static checkpoint。只有 S2 独立提交、推送、终审完成后，才可能请求未来 L2：
+runner、journal/marker/artifact/validator 与 crash-only seal。S2 reviewed Mock/static 也已完成：
+`8/8` guard、`16/16` strict/wire/verified usage、semantic `1/1/1`，但 authority 仅
+`mock_quality_not_evidence`；正式 L2 文件保持 0。S2 未读 credential、未调用 Provider、未创建 approved
+tag。只有 S2 独立提交并推送后，未来 L2 admission 才能冻结 commit/tag，并另行请求：
 
 ```text
 I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
@@ -152,7 +155,8 @@ I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
 
 回顾时可以问：
 

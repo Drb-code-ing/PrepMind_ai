@@ -372,11 +372,18 @@ function inferEvidenceCodes(
     | 'insufficient_signal'
   )[] = [];
   if (question.subject?.trim()) evidence.push('structured_subject');
-  if (signals.includes('knowledgePoint') || signals.includes('category')) {
+  if (
+    signals.includes('knowledgePoint') ||
+    signals.includes('knowledge_point') ||
+    signals.includes('category') ||
+    signals.includes('question_semantic') ||
+    signals.includes('v6LocalShortlist')
+  ) {
     evidence.push('semantic_topic');
   }
   if (signals.includes('existingDeck')) evidence.push('existing_deck_overlap');
-  if (signals.includes('errorType')) evidence.push('error_pattern');
+  if (signals.includes('errorType') || signals.includes('error_type'))
+    evidence.push('error_pattern');
   if (signals.includes('fallback')) evidence.push('insufficient_signal');
   return Object.freeze([...new Set(evidence)]);
 }

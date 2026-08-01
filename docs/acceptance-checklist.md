@@ -1695,8 +1695,9 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] G2 已 zero-provider 实现固定 production CLI/source authority、guard-first/pair-serial 双 lane runner、
       external-abort 分类、exclusive marker、fsynced hash-chain journal、hard-link artifact/strict validator 与
       crash-only seal；public CLI 只接收 `args + AbortSignal`；
-- [x] G2 source admission要求固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式
-      artifact=0 与 Tutor/Organizer/adapter SHA；G2 未创建 S2 tag，L2 仍在 credential/marker 前 fail-closed；
+- [x] G2 source admission 要求固定分支、tracked clean、HEAD/upstream/remote、未来 L2 admission 创建/
+      绑定的 approved tag、正式 artifact=0 与 Tutor/Organizer/adapter SHA；G2/S2 均未创建 tag，L2 仍在
+      credential/marker 前 fail-closed；
 - [x] G2 runner 先完成 8 guards，再串行执行 8 pairs；pair 内两条 lane 独立 budget/abort/timeout/terminal；
       semantic mismatch 不开 breaker，首 contract failure 保留 sibling terminal 并让后续 14 lane
       `not_started_quality_breaker`；
@@ -1711,11 +1712,20 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] G2 focused `32/32`（857 assertions）、G1+G2 `52/52`（992 assertions）、Agent full
       `1027/1027`（17337 assertions）、typecheck/lint/Prettier/diff、baseline same-bytes、V1--V9/R3/L1
       validators 与 SHA parity 通过；
-- [x] G2 未读取 credential、调用 Provider、运行正式 Mock/Live、启动 Docker/API/browser、创建 S2 tag 或正式
+- [x] G2 未读取 credential、调用 Provider、运行正式 Mock/Live、启动 Docker/API/browser、创建 approved tag 或正式
       L2 marker/journal/artifact/recovery claim；authority 仅 `zero_provider_runner_durability`；
-- [ ] 下一任务 S2 仅以 zero-provider 完成 reviewed Mock/static、fresh baseline、正式 candidate/adapter/
-      validator/merger 全链、全量静态/历史 parity、三路终审和 Reader Testing。S2 提交推送前 L2 不开放；
-      L2/48-case、产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。
+- [x] S2 已 zero-provider 完成 reviewed Mock/static：正式 Tutor V6、Organizer V9、第一方 adapter、strict
+      validator、本地 authority/merger 与 G2 runner 全链；responder 不读 expected/oracle，actual 从
+      model-owned decision 与本地 authority 重建并与 runtime axes 交叉核验；
+- [x] S2 正常结果为 `8/8` guard、`16/16` strict/wire/verified usage、semantic `1/1/1`、gate
+      `mock_quality_not_evidence`；S2 `35/35`（603 assertions）、G1+G2+S2 `87/87`（1595 assertions）、
+      Agent `1062/1062`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`；
+- [x] S2 fault/abort/双 hard-timeout、历史 validator/SHA parity、正式 L2 marker/journal/artifact/recovery=0、
+      三路独立终审和 Reader Testing 通过；验收见
+      `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
+- [x] S2 未读取 credential、调用 Provider、创建 approved tag、启动 Docker/API/browser、修改业务数据或合并
+      main。未来独立 L2 admission 才能在已推送且 HEAD/upstream/remote parity 的 commit 上创建/绑定 tag，
+      并仍需 fresh 数据边界接受与 exact authorization；L2/48-case、产品/main、Phase 6.9.8 继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1737,4 +1747,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。

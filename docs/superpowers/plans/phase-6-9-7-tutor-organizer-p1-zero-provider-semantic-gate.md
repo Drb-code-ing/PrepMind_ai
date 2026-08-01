@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1、G1、G2 已完成；下一原子任务仅 S2 reviewed Mock / static checkpoint
+当前状态：P1、G1、G2、S2 已完成；当前停止在未来 L2 admission 门，L2 未授权
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -110,8 +110,9 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 
 - public production CLI 只接收 `args + AbortSignal`，固定 root/env/clock/UUID/writer/model/URL/fetch/
   retry ports；
-- source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 S2 approved tag、正式 artifact=0
-  与 Tutor/Organizer/adapter 源码 SHA；S2 tag 当前尚未创建，因此 L2 入口仍在 credential/marker 前关闭；
+- source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 L2 admission 创建/绑定的
+  approved tag、正式 artifact=0 与 Tutor/Organizer/adapter 源码 SHA；G2/S2 均未创建 tag，因此 L2
+  入口仍在 credential/marker 前关闭；
 - runner 固定 8 guards 全部先行、8 pairs 串行、pair 内双 lane，父请求取消统一投影为
   `external_abort`；普通 semantic mismatch 不开 breaker，首个 contract failure 收口 sibling 后才阻断后续 pair；
 - marker、`lane_reserved`、wire stage、lane/pair/run terminal、`publication_started` 与
@@ -129,7 +130,7 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 
 ## S2：Reviewed Mock / Static Checkpoint
 
-状态：[ ] 下一原子任务，必须 zero-provider；不得读取 credential 或执行 L2。
+状态：[x] 已完成，zero-provider；未读取 credential、未执行 L2、未创建 approved tag。
 
 必须完成：
 
@@ -144,7 +145,13 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 - 至少三路独立实现/安全/测试文档终审和无上下文 Reader Testing；
 - 同步 AGENTS、DEVLOG、README、roadmap、data-flow、dev-start、AI acceptance、checklist。
 
-S2 必须独立提交并推送。完成后停止在 L2 授权门前。
+完成证据：reviewed Mock 为 `8/8` guard、`16/16` strict/wire/verified usage、semantic `1/1/1`、
+`mock_quality_not_evidence`；S2 focused `35/35`、G1+G2+S2 `87/87`、Agent `1062/1062`、AI
+`323/323`、Types `42/42 + tsc`、Web `439/439`。V1--V9/R3/L1 validator 与 SHA parity 保持，正式
+L2 marker/journal/artifact/recovery claim 为 0。
+
+S2 必须独立提交并推送，随后停止在 L2 admission 门前。S2 不创建 approved tag；只有未来独立 L2
+admission 才能在已推送且 HEAD/upstream/remote parity 的 S2 commit 上创建/绑定 tag。
 
 ## L2：唯一 Small-sample Controlled-Live
 
@@ -153,8 +160,8 @@ S2 必须独立提交并推送。完成后停止在 L2 授权门前。
 前置必须全部成立：
 
 - S2 commit 已推送且 branch/HEAD/upstream/remote parity、tracked clean、新 artifact=0；
-- S2 acceptance 已冻结 `approvedRunnableSourceCommit`，L2 source reader 要求
-  `HEAD == upstream == remote == approvedRunnableSourceCommit`；
+- 未来独立 L2 admission 把 `approvedRunnableSourceCommit` 冻结为上述已推送 S2 commit，并创建/绑定
+  approved tag；L2 source reader 要求 `HEAD == upstream == remote == approvedRunnableSourceCommit`；
 - 历史 sealed evidence validator/SHA 全保持；
 - fresh zero-provider proxy preflight ready；
 - 用户重新接受运行当时 DeepSeek 当前账号的数据保留/训练边界；

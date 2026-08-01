@@ -1300,7 +1300,8 @@ Provider Canary V2 D0/C1/C2/S1/L1 已完成。它不复用旧 R3/R4 approval、c
 journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
-contract/baseline、G2 one-shot runner/durability 均已完成，当前停在 S2 reviewed Mock/static 实现门。
+contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。当前停止在未来 L2
+数据边界接受、exact authorization 与 source/tag admission 门前。
 
 C1 固定验收命令：
 
@@ -1375,7 +1376,8 @@ P1/G1/G2 小样本设计、contract 与 durability 入口：
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
 
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
@@ -1406,17 +1408,35 @@ bun run lint
 ```
 
 Public production CLI 只接收 `args + AbortSignal`，但现在不要运行
-`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。Source gate要求未来 S2
-approved tag，G2 没有创建该 tag；缺 tag 必须在 approval/credential/marker 前 fail-closed。Crash-only seal 只
+`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。Source gate 要求未来 L2
+admission 创建并绑定专用 `phase-6-9-7-tutor-organizer-small-sample-s2-approved` tag；G2 与 S2 都没有创建该
+tag，缺 tag 必须在 approval/credential/marker 前 fail-closed。Crash-only seal 只
 用于已有 dead-owner正式 attempt，不能作为测试命令、预创建 artifact 或绕过 L2 授权门。
 
 G2 recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即 `attempted_aborted`，后续 pair 为
 `not_started_quality_breaker`；这不是 resume/replay/retry，也不构造 harness/transport 或调用 Provider。外部父
 请求取消统一为 `external_abort`，与 lane 内部 `abort` 分开。
 
-L1 已消费并完成，不得再次运行。下一原子任务只能是 S2 zero-provider reviewed Mock/static checkpoint；当前
-禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 还必须在 G1/G2/S2
-提交推送后重新接受运行时数据边界并给出 exact authorization。
+S2 的安全本地复核命令只运行 reviewed synthetic fetch，不读取 `.env`/credential、不调用 Provider，也不创建
+正式 marker/journal/artifact/recovery claim：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-small-sample-s2-reviewed-mock.test.ts
+bun run typecheck
+bun run lint
+```
+
+期望 focused 为 `35/35`。正常路径固定 `8/8` guard、`16/16` strict/wire/verified usage、semantic
+`1/1/1`、gate `mock_quality_not_evidence`；fault matrix 还验证 25 类 transport/HTTP/response/schema/usage、
+parent abort、single-dispatch/no-backfill 与 Tutor/Organizer `3500/5000ms` hard timeout。不要把 synthetic
+token/费用或本机 median/max 写成 Provider 账单、P95 或产品延迟。
+
+L1 已消费并完成，不得再次运行；S2 已完成 zero-provider 收口，但本地完成状态本身不构成远程 parity
+证据。当前禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 必须在
+S2 commit 已推送且
+HEAD/upstream/remote parity 后，由独立 admission 创建/绑定 tag，并重新接受运行时数据边界、给出 exact
+authorization；S2 本身不预创建 tag 或授权 L2。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

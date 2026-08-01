@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：G1 已完成，zero-provider；后续 G2 也已完成，当前下一原子任务仅 S2 reviewed Mock/static
+状态：G1 已完成，zero-provider；后续 G2/S2 也已完成，当前停止在未来 L2 admission 门
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -152,8 +152,13 @@ sibling terminal、dispatch-before-call hash-chain journal、exclusive marker/pu
 recomputing validator；验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`。
 
-下一原子任务仅 S2 reviewed Mock/static checkpoint。只有 S2 独立提交、推送、终审且新正式 artifact 仍为 0，
-才可能请求未来 L2 exact authorization。当前普通“继续/开始/同意/所有权限”仍不授权 L2。
+G1 之后的 S2 reviewed Mock/static 已 zero-provider 完成；验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。G1 的历史
+`zero_provider_contract_baseline` authority 与上述数值不因 S2 结果而改写。
+
+S2 不创建 approved tag。只有 S2 独立提交并推送后，未来独立 L2 admission 才能针对已推送且
+HEAD/upstream/remote parity 的 commit 创建/绑定 tag，并重新取得数据边界接受与 exact authorization。
+当前普通“继续/开始/同意/所有权限”仍不授权 L2。
 
 回顾时可以问：
 
