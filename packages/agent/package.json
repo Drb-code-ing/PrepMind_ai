@@ -84,6 +84,7 @@
     "eval:phase-6-9-7:small-sample:live": "bun scripts/phase-6-9-7-tutor-organizer-small-sample-cli.ts",
     "eval:phase-6-9-7:small-sample:seal": "bun scripts/phase-6-9-7-tutor-organizer-small-sample-cli.ts I_SEAL_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CRASH_ONLY_ONCE",
     "eval:phase-6-9-7:small-sample:validate": "bun scripts/validate-phase-6-9-7-tutor-organizer-small-sample-evidence.ts",
+    "eval:phase-6-9-7:full-gate:baseline": "bun scripts/phase-6-9-7-tutor-organizer-full-gate-baseline.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

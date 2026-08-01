@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：P2 设计已冻结，zero-provider；下一原子任务仅 F1 full contract/baseline 实现
+状态：P2 设计与 F1 full contract/baseline 已完成，zero-provider；下一原子任务仅 F2 runner/durability
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -355,6 +355,11 @@ F1 必须先复现该 authority payload，再冻结正式 baseline logical repor
 分别计算，不能预填占位值。P2 的文档 hash 不能冒充尚未实现的 F1 report/file evidence；这里的缺省是阶段
 边界，不是已有 evidence 缺失。
 
+后续 F1 已按上述边界生成并冻结 logical report SHA
+`16c574b1cf9f22beace9ac4c60fb098989795752fb57421ef957795b5f4782c9` 与 physical file SHA
+`16aa1773d3774380eac7e7379601c1f812d9c920ef8f81e6f91a6ab5ae8a6f73`。这不改写 P2 当时的
+`not_generated_in_p2` 历史状态；F1 authority 独立为 `zero_provider_full_contract_baseline`。
+
 ## 6. Full-gate eval policy
 
 完整 policy canonical payload SHA-256 冻结为：
@@ -688,15 +693,15 @@ PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_DEEPSEEK_API_KEY
 | 阶段 | 内容                                                                     | 当前状态                |
 | ---- | ------------------------------------------------------------------------ | ----------------------- |
 | P2   | 本设计：full identity、manifest、baseline、policy、预算、P95、durability | 已完成，zero-provider   |
-| F1   | 实现 full manifest/baseline/report/scorer/gate 与双向 lineage rejection  | 下一任务，zero-provider |
-| F2   | 实现 full one-shot runner/source/marker/journal/artifact/validator/seal  | 未开始，zero-provider   |
+| F1   | 实现 full manifest/baseline/report/scorer/gate 与双向 lineage rejection  | 已完成，zero-provider   |
+| F2   | 实现 full one-shot runner/source/marker/journal/artifact/validator/seal  | 下一任务，zero-provider |
 | S3   | Reviewed Mock/fault/static/history parity/Reader Testing，提交推送后停止 | 未开始，zero-provider   |
 | L3   | Fresh 数据边界接受 + exact authorization 后唯一 full-gate Live           | 未授权、未开始          |
 | R6   | 仅 L3 pass 后的 branch Docker/API/可见浏览器与精确清理                   | 阻断                    |
 | R7   | main 合并、推送与 default-off 再验收                                     | 阻断                    |
 
-P2 完成只解锁 F1。不得跳过 F1/F2/S3 直接执行 L3，不得重跑 L2，也不得启动产品 Docker/API/browser、
-创建测试账号/业务数据、合并 main 或进入 Phase 6.9.8/6.10/8/9。
+P2 当时只解锁 F1；F1 现已完成并且只解锁 F2。不得跳过 F2/S3 直接执行 L3，不得重跑 L2，也不得启动
+产品 Docker/API/browser、创建测试账号/业务数据、合并 main 或进入 Phase 6.9.8/6.10/8/9。
 
 ## 12. 回顾问题
 

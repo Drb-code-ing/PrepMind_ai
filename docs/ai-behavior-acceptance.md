@@ -434,8 +434,11 @@ parity 和独立 source/tag admission 下执行一次并 durable seal：run
 retry/resume/replay/backfill、追加 Provider 探测、seal/recovery 或改写 artifact。P2 随后已 zero-provider
 冻结完整 `72/24/48/24/32` full gate、manifest `e68e6e27...12c78`、baseline authority
 `2ab1030f...a5f2`、eval policy `11371d16...f503`、L2 anchor subset、24-sample P95 与
-`48 calls / 0.55 CNY` cap。P2 不形成 Provider quality authority；当前下一任务仅 F1 contract/baseline，48-case
-Live、产品 Docker/API/browser 与 main 继续受门禁约束。
+`48 calls / 0.55 CNY` cap。F1 又把 exact manifest、deterministic baseline、安全 writer、strict
+report/scorer/gate、anchor/P95/null aggregate 与历史 lineage 双向拒绝落地；baseline logical/physical SHA 为
+`16c574b1...2c9 / 16aa1773...6f73`，authority 仅 `zero_provider_full_contract_baseline`。P2/F1 均不形成
+Provider quality authority；当前下一任务仅 F2 runner/durability/evidence，48-case Live、产品 Docker/API/browser
+与 main 继续受门禁约束。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

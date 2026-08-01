@@ -1,5 +1,34 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate F1 Contract / Baseline：
+> F1 已在 `zero_provider_full_contract_baseline` authority 下完成；独立 lineage
+> `phase-6.9.7-tutor-organizer-full-gate-v1` 继续与 V1--V9、R3、Canary L1 和 small-sample lineage 双向隔离。
+>
+> 新增 exact 72-entry manifest、未修饰 deterministic baseline、安全 baseline writer、strict
+> report/scorer/gate 与 focused tests。固定分母为 `72 entries / 24 guards / 24 pairs / 48 runtime lanes / 32
+Organizer decisions`，L2 anchor pairs 为 `0/7/9/11/14/18/22/23`。
+>
+> Manifest/source baseline/baseline authority SHA 精确复现 P2 冻结值
+> `e68e6e27...12c78 / 0ce7c3ca...116ca / 2ab1030f...a5f2`；F1 新冻结 baseline logical report/physical
+> file SHA `16c574b1...2c9 / 16aa1773...6f73`，eval policy 保持 `11371d16...f503`。Physical validator
+> 直接 hash 原始 bytes，并拒绝 BOM、CRLF 与 byte/payload/source drift。
+>
+> Strict contract 从 entries 重算 full 与 L2 anchor semantic、安全、四维 wire、verified usage、预算和四项
+> 24-sample nearest-rank P95；不完整分母时 semantic/anchor/P95/token/CNY 全为 `null`。Semantic mismatch 不
+> breaker；contract/safety failure 只能在当前 pair terminal 后 breaker。Mock/synthetic 固定
+> `full_gate_mock_quality_not_evidence / qualityAuthority=none`，只有完整 `deepseek_network` pass 才可能形成
+> `full_gate_semantic_gate`。
+>
+> Baseline writer 使用 root containment、非 symlink parent、exclusive create、dev/inode identity、fsync 与写后
+> 二次复核；exact import allowlist、credential/network 静态门与 runtime fetch spy 均通过，Provider 调用为 0。
+> Focused `14/14`（87 assertions）、Agent full `1076/1076`（18048 assertions / 128 files）、typecheck/lint、
+> Prettier 与 `git diff --check` 通过；四路独立复审均 `APPROVED`。
+>
+> 本阶段 approved tag、项目根 baseline、正式 marker/journal/artifact/recovery claim 为 `0/0/0/0/0/0`；未读
+> credential、未调用 Provider、未启动 Docker/API/browser、未修改业务数据或合并 main。当前下一原子任务仅
+> F2 one-shot runner/durability/evidence；完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+>
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer P2 Zero-provider Full-gate Design：
 > 唯一 L2 继续保持 `small_sample_quality_gate_passed / small_sample_semantic_gate` sealed 终态且不得重跑；
 > P2 没有读取 credential 或调用 Provider，只在任何新 full runner/Mock/Live 前冻结独立
@@ -156,7 +185,8 @@ decisions`，dataset/policy SHA 保持 `42803d45...b437b / b3913403...f009d`。�
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
 > 当时下一原子任务仅 G2；后续 G2/S2、唯一 L2 与 P2 zero-provider full-gate design 均已按上方日志完成。
-> 当前下一任务仅 F1 full contract/baseline；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
+> 当前下一任务已推进为 F2 one-shot runner/durability/evidence；48-case、产品 Docker/API/browser、main 与
+> Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的

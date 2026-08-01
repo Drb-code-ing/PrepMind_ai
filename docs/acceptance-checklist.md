@@ -1764,7 +1764,22 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] P2 candidate/adapter 七个 source hash 继续绑定 L2 approved source `4c608445...c22af1c4`；旧 approved
       tag 未移动或重建，新 full-gate tag/marker/journal/artifact/recovery 均未创建；
 - [x] P2 未读取 credential、调用 Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或合并
-      main；authority 仅 `zero_provider_full_gate_design`，下一任务仅 F1 full contract/baseline；
+      main；authority 仅 `zero_provider_full_gate_design`，当时只解锁 F1 full contract/baseline；
+- [x] F1 实现 exact `72-entry` manifest、48-run deterministic baseline、安全 writer 与 strict
+      report/scorer/gate；manifest/source baseline/baseline authority/eval policy SHA 精确复现 P2 冻结值；
+- [x] F1 冻结 baseline logical report SHA `16c574b1...2c9` 与 physical file SHA
+      `16aa1773...6f73`；validator 对原始 bytes 计算物理 hash，并拒绝 BOM、CRLF、byte/payload/source drift；
+- [x] F1 从固定 entries 重算 full 与 L2 anchor semantic、安全、wire、usage、预算和四项 24-sample
+      nearest-rank P95；不完整分母时 semantic/anchor/P95/token/CNY 全为 `null`；
+- [x] F1 固定 semantic mismatch 不打开 breaker；Mock/synthetic 只返回
+      `full_gate_mock_quality_not_evidence / qualityAuthority=none`，只有完整 `deepseek_network` pass 才能形成
+      `full_gate_semantic_gate`；
+- [x] F1 双向拒绝 V1--V9、R3、Canary L1 与 small-sample lineage；exact import allowlist、credential/network
+      静态门和 runtime fetch spy 证明 Provider 调用为 0；
+- [x] F1 focused `14/14`、Agent full `1076/1076`、typecheck/lint 通过，四路独立复审均
+      `APPROVED`；正式 full-gate marker/journal/artifact/recovery claim、approved tag 与项目根 baseline 均为 0；
+- [x] F1 authority 仅 `zero_provider_full_contract_baseline`，未读 credential、未调用 Provider、未启动
+      Docker/API/browser、未改业务数据、未合并 main；当前下一任务仅 F2 one-shot runner/durability/evidence；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1791,4 +1806,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`、
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。

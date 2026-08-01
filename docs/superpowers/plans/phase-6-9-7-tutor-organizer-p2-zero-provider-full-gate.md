@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-当前状态：P2 已完成，zero-provider；下一任务仅 F1 full contract/baseline
+当前状态：P2/F1 已完成，zero-provider；下一任务仅 F2 one-shot runner/durability/evidence
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`
@@ -33,7 +33,7 @@
 
 ## F1：Full Manifest / Baseline / Contract / Gate
 
-状态：[ ] 下一原子任务，zero-provider。
+状态：[x] 完成，zero-provider。
 
 建议源码：
 
@@ -60,9 +60,15 @@
 F1 不读取 credential、不调用 Provider、不创建 approved tag、不启动 Docker/API/browser。F1 完成后独立提交并
 推送，下一步才是 F2。
 
+完成证据：manifest/source baseline/baseline authority/eval policy SHA 已精确复现
+`e68e6e27...12c78 / 0ce7c3ca...116ca / 2ab1030f...a5f2 / 11371d16...f503`；baseline logical
+report/physical file SHA 冻结为 `16c574b1...2c9 / 16aa1773...6f73`。Focused `14/14`、Agent full
+`1076/1076`、typecheck/lint 与四路独立复审通过；Provider/credential/tag/正式 evidence/Docker 均为 0。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+
 ## F2：One-shot Runner / Durability / Evidence
 
-状态：[ ] 未开始，zero-provider。
+状态：[ ] 下一原子任务，zero-provider。
 
 必须完成：
 

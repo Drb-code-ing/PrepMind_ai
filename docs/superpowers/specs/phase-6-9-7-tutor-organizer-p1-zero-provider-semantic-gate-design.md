@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1、G1、G2、S2、唯一 L2 与 P2 已完成；下一步仅 F1 full contract/baseline；未启动产品
+状态：P1、G1、G2、S2、唯一 L2、P2 与 F1 已完成；下一步仅 F2 runner/durability；未启动产品
 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
@@ -609,7 +609,8 @@ authority。
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
 `11371d16...f503`；完整设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`。当前只解锁 F1，仍
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`。F1 已完成；当前只解锁
+F2，仍
 不得直接进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。不得复制 V10/V11 式
 整套重试、放宽阈值或重跑同一 manifest。
 

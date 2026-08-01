@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；后续 G1/G2/S2、唯一 L2 与 P2 已完成，下一步仅 F1
+状态：P1 设计验收完成；后续 G1/G2/S2、唯一 L2、P2 与 F1 已完成，下一步仅 F2
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -165,8 +165,9 @@ Provider 探测；其后 P2 只以 zero-provider 方式冻结全量门，不直�
 P2 已冻结 full-gate manifest/baseline authority/eval policy SHA
 `e68e6e27...12c78 / 2ab1030f...a5f2 / 11371d16...f503`，恢复 24-sample P95、
 `48 calls / 0.55 CNY` cap、L2 anchor subset 与独立 durability lineage。P2 authority 仅
-`zero_provider_full_gate_design`；当前下一任务仅 F1 full contract/baseline。完整证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+`zero_provider_full_gate_design`；F1 `zero_provider_full_contract_baseline` 也已完成，当前下一任务仅 F2
+runner/durability。完整证据见 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
 
 完整设计与计划见：
 

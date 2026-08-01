@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：P2 设计验收完成；下一任务仅 F1 full contract/baseline
+状态：P2 设计验收完成；后续 F1 已完成，当前下一任务仅 F2 runner/durability
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -21,6 +21,8 @@ formal full-gate marker/journal/artifact/recovery claim: 0/0/0/0
 ```
 
 P2 完成只解锁 F1 实现，不授权 full-gate Live、产品验收、main 或后续 Phase。
+
+后续 F1 已独立完成并只解锁 F2；它不回写本页 P2 authority，也不授权 full-gate Live、产品验收或 main。
 
 ## 2. 冻结数据、baseline 与 policy
 
@@ -149,13 +151,19 @@ Critical/Important。提交前分支 HEAD/upstream/remote 为 `08c15f8...cc3bb2c
 
 ## 8. 下一步
 
-下一原子任务仅 F1：实现 full manifest/baseline/report/scorer/gate，并复现三个 P2 canonical SHA。F1 仍
-zero-provider，不读取 credential、不创建 approved tag/正式 evidence、不启动产品。
+P2 当时的下一任务 F1 已完成：exact full manifest/baseline/report/scorer/gate、安全 writer 与双向 lineage
+rejection 已落地，三个 P2 canonical SHA 精确复现；baseline logical/physical SHA 冻结为
+`16c574b1...2c9 / 16aa1773...6f73`。F1 authority 仅 `zero_provider_full_contract_baseline`，没有读取
+credential、调用 Provider、创建 approved tag/正式 evidence 或启动产品。
+
+当前下一原子任务仅 F2：实现 full one-shot runner/source/marker/hash-chain journal/hard-link
+artifact/strict validator/crash-only seal，继续保持 zero-provider 与正式 full-gate evidence 为 0。
 
 完整设计与计划：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
-- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
 
 回顾时可以问：
 
