@@ -2,7 +2,8 @@
 
 日期：2026-07-31
 
-当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存
+当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 SR0 zero-provider
+Schema Recovery 设计已完成，SR1 尚未开始
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -199,3 +200,26 @@ runner/durability/evidence 与 S3 reviewed Mock/static 均已完成；后续唯�
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+
+## SR0：L3 后独立 Schema Recovery 设计
+
+状态：[x] 已完成，zero-provider；SR1 尚未开始。
+
+- 不重跑、不 seal/recover、不改写 L3；其 gate/authority 继续是
+  `full_gate_quality_gate_failed / qualityAuthority=none`；
+- 只读定位到 `content_parsed` 后、`schema_validated` 前，sealed evidence 不支持猜测具体字段或模型原文；
+- 冻结 Provider envelope -> canonical `intentIndex` selection projection -> strict projected decision -> local
+  authority/merger；无权威 extension fields 经有界审计后丢弃，missing/alias/type/range/duplicate/wrapper 等仍
+  fail-closed；
+- 冻结 bounded no-raw diagnostic、独立 lineage、SR1--SR7 和产品/main 停止门；
+- SR0 未实现新 contract、runner、Mock、Live 或产品接线，只有
+  `zero_provider_full_gate_schema_recovery_design` authority。
+
+设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+
+下一任务仅 SR1 zero-provider TDD；禁止 Provider、正式 Mock/Live、Docker/API/browser、业务数据、tag 与正式
+marker/journal/artifact。

@@ -176,6 +176,10 @@ S3 已完成 zero-provider reviewed Mock/static，结果与边界见
 failure 以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存，未解锁产品验收；详见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
+L3 后续的 Schema Recovery SR0 已完成独立 zero-provider 设计，不修改 F1/L3 contract 或 evidence。当前下一
+任务仅 SR1 envelope/parser、selection projection、strict projected decision 与 bounded diagnostic TDD；见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+
 回顾时可以问：
 
 - F1 为什么要把 baseline authority、logical report 和 physical file 分成三个 SHA？

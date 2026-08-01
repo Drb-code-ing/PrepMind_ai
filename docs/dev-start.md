@@ -1533,6 +1533,22 @@ SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider�
 停止门见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
+Full-gate Schema Recovery SR0 随后只完成 zero-provider 设计，没有新增可执行命令。当前安全边界为：
+
+- 不运行任何 `full-gate:live`、`seal`、production CLI、curl、单 case 或 Provider 探测；
+- 不修改/移动/删除 L3 marker、journal、artifact 或 approved tag；
+- 只允许读取当前源码与 sealed bundle，并运行上面的只读 validator；
+- SR1 后续测试必须使用 injected synthetic data/runtime，显式证明 `globalThis.fetch=0`、credential read=0、
+  formal artifact=0；
+- SR1 只实现 Provider envelope/parser、canonical `intentIndex` projection、strict projected decision 与 bounded
+  no-raw diagnostic；不执行正式 Mock、Docker/API/browser 或业务写入。
+
+设计、计划与 SR0 验收分别见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+
 `@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
 executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把
 CLI-only modules 重新加入 shared barrel，否则 CommonJS/Nest/Jest 会在普通 runtime import 时加载可执行模块。

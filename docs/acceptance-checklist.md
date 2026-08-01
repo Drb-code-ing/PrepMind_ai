@@ -1825,6 +1825,21 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] L3 最终 `full_gate_quality_gate_failed / qualityAuthority=none`；名额已消费，禁止
       retry/resume/replay/backfill、Live/seal/recovery、追加 Provider 探测或修改 evidence。产品
       Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断；
+- [x] Schema Recovery SR0 只读取证 L3、Tutor V6 contract/candidate、第一方 adapter、F2 runner 与 S3
+      reviewed Mock；确认失败位于 `content_parsed` 后、`schema_validated` 前，但不推断具体字段、原始输出或
+      外部唯一根因；
+- [x] SR0 冻结 Provider envelope -> selection projection -> strict projected decision -> local authority/merger；
+      只有 canonical integer `intentIndex` 获得模型选择权，depth/策略/answer/权限仍由本地重建；
+- [x] SR0 允许无权威 extension fields 在有界 shape audit 后丢弃，但 missing/alias/string/fraction/null/range、
+      duplicate key、wrapper/fence/prose/BOM/trailing data 仍 fail-closed，禁止 coercion/default/clamp/retry；
+- [x] SR0 bounded diagnostic 只允许 fixed stage/reason/type/count bucket、枚举化 shape SHA 与
+      `rawDataRetained=false`，禁止 raw output/hash、Zod path/value、unknown key 名、prompt、credential、用户正文
+      或 oracle；
+- [x] SR0 冻结独立 `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1` lineage、SR1--SR7、source
+      admission、journal/report/validator invariants 与逐阶段停止门；旧 L3 tag/artifact/validator 不改写；
+- [x] SR0 authority 仅 `zero_provider_full_gate_schema_recovery_design`；未修改 packages/apps 源码，未读取
+      credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式 artifact/tag 或修改
+      业务数据；当前下一原子任务仅 SR1 zero-provider TDD；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1855,4 +1870,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`、
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。

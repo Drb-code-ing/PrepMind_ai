@@ -449,6 +449,17 @@ content parse 后发生 schema failure，breaker 阻止剩余 26 lane。完整 s
 CNY aggregate 全 `null`，终态 `full_gate_quality_gate_failed / qualityAuthority=none`。L3 不得重跑，产品
 Docker/API/browser、main 与后续阶段继续受门禁约束。
 
+Full-gate Schema Recovery SR0 已冻结新的行为边界，但尚未实现。未来 Tutor Provider content 先作为不可信
+envelope 接受有界 native JSON/duplicate/shape audit；selection projection 只读取 canonical own-data
+`intentIndex` safe integer，并重新构造 strict projected decision。无权威 extension fields 只允许形成固定
+type/count/shape diagnostic 后丢弃，不进入 candidate result、Trace、report、产品 prompt 或日志；missing、alias、
+string/fraction/null/out-of-range、duplicate key、wrapper/fence/prose/BOM/trailing data 与结构超限继续
+fail-closed，禁止 coercion/default/clamp/retry。随后仍须通过 local signal/preferred-depth authority 与本地 merger；
+模型不能选择 depth、answer structure、`answer_direct`、route、tool、permission、真实 ID 或写命令。Diagnostic
+固定 `rawDataRetained=false`，不保存 raw completion/hash、Zod path/value、unknown key 名、prompt、credential、
+用户正文或 oracle。SR0 authority 仅 `zero_provider_full_gate_schema_recovery_design`，不证明真实模型或产品
+可用；当前下一任务 SR1 仍是 zero-provider TDD。
+
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
 - Task 2 已固定 strict schema 与动态 validator：Tutor 模型没有 `answer_direct` 权限；Organizer 必须完整覆盖 `q0..q11`，只能引用 `d0..d19`，重复/越界/部分 batch、跨 subject deck、本地 subject 权威冲突和危险 topic label 全批拒绝。projection 使用有界 descriptor clone、完整字段先扫描、safety metadata、裁剪/token 重验/deep freeze，公开值不含真实 ID、完整 answer/userNote 或写能力；这仍不等于 candidate/runtime 已完成；

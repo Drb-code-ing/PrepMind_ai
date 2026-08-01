@@ -157,9 +157,19 @@ L3 一次性名额已经消费。永久禁止对本 identity 执行 retry、resu
 - R7 main 合并、main replay 与远程 main 推送；
 - Phase 6.9.8、6.9.9、6.9.10、Phase 6.10、Phase 8/9 与博客收尾。
 
-若继续修复，只能先建立新的、独立的 zero-provider schema diagnostics / remediation 设计；它不得改写本 L3
+在 L3 刚封存时，若继续修复只能先建立新的、独立的 zero-provider schema diagnostics / remediation 设计；它不得改写本 L3
 证据或把同一 manifest 包装成重跑。任何未来 Provider 调用都需要新的 lineage、预算、source admission、运行时
 数据边界接受与 exact authorization。
+
+该后续设计现已作为独立 Full-gate Schema Recovery SR0 完成，authority 仅
+`zero_provider_full_gate_schema_recovery_design`。SR0 冻结 Provider envelope -> canonical `intentIndex`
+selection projection -> strict projected decision -> local authority/merger，以及 bounded no-raw diagnostic 与
+SR1--SR7 新 lineage；它没有修改本 L3 artifact，也没有调用 Provider 或形成产品 authority。当前下一原子任务仅
+SR1 zero-provider TDD。设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
 
 ## 7. 回顾问题
 

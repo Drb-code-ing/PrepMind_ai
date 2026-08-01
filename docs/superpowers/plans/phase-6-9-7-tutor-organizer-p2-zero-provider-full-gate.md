@@ -143,12 +143,23 @@ seal，禁止 retry/resume/replay/backfill、单 case 补跑或追加 Provider �
 claim=0、`qualityAuthority=none`。完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
+## SR0 / SR1：独立 Full-gate Schema Recovery
+
+状态：SR0 [x] 完成，zero-provider；SR1 [ ] 下一任务，zero-provider。
+
+SR0 只读取证 L3 schema boundary，冻结 Provider envelope -> canonical `intentIndex` selection projection ->
+strict projected decision -> local authority/merger、bounded no-raw diagnostic、新 journal/report/validator 与独立
+SR1--SR7 lineage。它不修改或重跑 L3。SR1 只实现上述 contract/diagnostic TDD，禁止 credential、Provider、
+正式 Mock/Live、Docker/API/browser、tag 与正式 artifact。完整路线见
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`。
+
 ## R6 / R7：产品与 main
 
-状态：[ ] 阻断。
+状态：[ ] 旧 full-gate-v1 路线永久阻断。
 
-只有 L3 得到 `full_gate_quality_gate_passed / full_gate_semantic_gate` 后，才能另开 R6 验收：分支 Docker、
-API、可见浏览器、Trace、guard/forced-failure、owner/locked-name/write isolation 与精确清理。R6 完成并提交推送后，
-才允许 R7 合并 main、推送远程并执行 main default-off 静态、Docker/API/可见浏览器再验收。
+本路线原合同要求 L3 得到 `full_gate_quality_gate_passed / full_gate_semantic_gate` 后才能开始 R6；但唯一 L3
+已经失败封存，因此旧 R6/R7 永久阻断。未来产品与 main 验收只能在独立 Schema Recovery 的 SR5 quality pass
+后，按 SR6 branch Docker/API/可见浏览器/Trace/精确清理，再到 SR7 main 合并、推送与 default-off 回放的顺序
+推进；不得回填、重跑或改写本 L3。
 
 P2/F1/F2/S3/L3 任何一个都不能替代 R6/R7 产品 authority。

@@ -171,6 +171,10 @@ breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。本 i
 Docker/API/可见浏览器验收继续阻断；详见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
+后续 Schema Recovery SR0 已冻结独立 schema-recovery-v1 lineage 与 bounded schema stage journal/validator
+设计；它不修改 F2/L3 runner、journal 或 artifact。当前下一任务仅 SR1 zero-provider TDD；见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+
 回顾时可以问：
 
 - 为什么 `lane_reserved` 必须在跨 harness boundary 前 fsync？

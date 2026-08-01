@@ -2,7 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存，未启动产品 Docker/API/browser
+状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 SR0 zero-provider
+Schema Recovery 设计已完成，未启动产品 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -607,6 +608,8 @@ authority。
 | F1   | full manifest/baseline/report/scorer/gate                             | 已完成，zero-provider |
 | F2   | full runner/durability/evidence                                       | 已完成，zero-provider |
 | S3   | full reviewed Mock/static/history parity                              | 已完成，zero-provider |
+| L3   | 唯一 full-gate controlled-Live                                        | 质量门失败并封存      |
+| SR0  | L3 只读复盘与独立 full-gate schema recovery 设计                      | 已完成，zero-provider |
 
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
@@ -617,6 +620,15 @@ L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P
 6.9.8/6.10/8/9。不得复制 V10/V11 式整套重试、放宽阈值或重跑同一 manifest。S3/L3 证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
+
+L3 失败后没有重跑或放宽既有 full gate。独立 SR0 已冻结 Provider envelope、canonical `intentIndex`
+selection projection、strict projected decision、本地 authority/merger、bounded no-raw diagnostic 与全新
+lineage；它只有 `zero_provider_full_gate_schema_recovery_design` authority，尚未实现新 contract、runner、Mock、
+Live 或产品接线。后续唯一任务是 SR1 zero-provider TDD。设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
