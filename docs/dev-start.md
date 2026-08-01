@@ -1301,8 +1301,9 @@ journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 �
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
 contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
-source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design 与
-F1 full contract/baseline 均已 zero-provider 完成，当前下一任务仅 F2 one-shot runner/durability/evidence。
+source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design、
+F1 full contract/baseline 与 F2 runner/durability/evidence 均已 zero-provider 完成，当前下一任务仅 S3 reviewed
+Mock/static checkpoint。
 
 C1 固定验收命令：
 
@@ -1457,10 +1458,11 @@ bun run --cwd packages/agent eval:phase-6-9-7:small-sample:validate
 期望摘要为 `ok=true / journalRecords=180 / finalJournalEvent=evidence_published / artifact
 SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不调用 Provider，也不创建 recovery claim。
 禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。P2 已完成但只形成
-`zero_provider_full_gate_design`；F1 随后已把 full manifest/baseline/report/scorer/gate、安全 writer 与 lineage
-rejection 落地，authority 仅 `zero_provider_full_contract_baseline`。F1 未读取 credential、调用 Provider、创建
-approved tag/正式 evidence 或启动 Docker/API/browser；当前只允许 F2 one-shot runner/durability/evidence，
-48-case Live、产品、main 与 Phase 6.9.8 仍被阻断。
+`zero_provider_full_gate_design`；F1/F2 随后已把 full manifest/baseline/report/scorer/gate、安全 writer、固定
+production CLI/source admission、完整 runner、durability 与 strict evidence validator 落地，authority 分别仅
+`zero_provider_full_contract_baseline` / `zero_provider_full_runner_durability_evidence`。F2 未读取 credential、
+调用 Provider、创建 approved tag/正式 evidence、执行正式 Mock/Live 或启动 Docker/API/browser；当前只允许 S3
+reviewed Mock/static，L3 48-case Live、产品、main 与 Phase 6.9.8 仍被阻断。
 
 P2/F1 固定值为：dataset `72/24/48/24/32`，manifest `e68e6e27...12c78`，full baseline `12/48` 与
 semantic `0.6629642857/0.278125/0.4705446429`，source baseline `0ce7c3ca...116ca`，baseline authority
@@ -1477,6 +1479,24 @@ bun run lint
 Focused 期望为 `14/14`。测试只在系统临时目录验证 writer，并以 runtime fetch spy 证明调用次数为 0；不会读取
 `.env`/credential、调用 Provider、创建 approved tag 或正式 marker/journal/artifact/recovery claim。不要运行任何
 `live`/`seal` 命令、手工创建 full-gate `.tmp` 文件，或把 F1 的 Mock/schema pass 当成 48-case/产品质量证据。
+
+F2 已完成后的安全本地复核命令为：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-full-gate-f1.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-cli-authority-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-durability-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-lineage-security-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-runner-f2.test.ts
+bun run typecheck
+bun run lint
+```
+
+Focused 期望为 `32/32`，Agent full 为 `1108/1108`。这些测试只使用 synthetic/fault ports 与系统临时目录；
+F2 authority 仅 `zero_provider_full_runner_durability_evidence`。S3 前不要运行 `full-gate:live`、
+`full-gate:seal` 或 production CLI，不要创建/移动 `phase-6-9-7-tutor-organizer-full-gate-s3-approved` tag，也不要
+手工创建正式 marker/journal/artifact/recovery claim。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

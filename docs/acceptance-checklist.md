@@ -1779,7 +1779,18 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] F1 focused `14/14`、Agent full `1076/1076`、typecheck/lint 通过，四路独立复审均
       `APPROVED`；正式 full-gate marker/journal/artifact/recovery claim、approved tag 与项目根 baseline 均为 0；
 - [x] F1 authority 仅 `zero_provider_full_contract_baseline`，未读 credential、未调用 Provider、未启动
-      Docker/API/browser、未改业务数据、未合并 main；当前下一任务仅 F2 one-shot runner/durability/evidence；
+      Docker/API/browser、未改业务数据、未合并 main；当时只解锁 F2 one-shot runner/durability/evidence；
+- [x] F2 固定 production CLI/source admission，先执行 24 guards，再按 24 pairs 串行推进 48 lanes；pair 内两条
+      lane 拥有独立 budget/abort/timeout/terminal，semantic mismatch 不 breaker，contract failure 收口 sibling 后
+      breaker；
+- [x] F2 exclusive marker、`lane_reserved`/wire/terminal fsynced hash-chain journal、hard-link publication、strict
+      recomputing validator 与 crash-only seal 已落地；48-lane reserved/terminal/orphan/not-started 守恒且禁止
+      retry/resume/replay/backfill；
+- [x] F2 focused `32/32`、Agent full `1108/1108`、typecheck/lint/Prettier/diff、历史 validator/SHA parity 与两路
+      独立复审通过；
+- [x] F2 authority 仅 `zero_provider_full_runner_durability_evidence`；未读 credential、未调用 Provider、未执行
+      正式 Mock/Live、未启动 Docker/API/browser、未改业务数据、未合并 main；approved tag 与正式
+      marker/journal/artifact/recovery claim 均为 0；当前下一任务仅 S3 reviewed Mock/static，L3 继续阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1807,4 +1818,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。

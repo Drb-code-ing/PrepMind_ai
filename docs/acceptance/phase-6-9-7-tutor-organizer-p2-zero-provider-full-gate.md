@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：P2 设计验收完成；后续 F1 已完成，当前下一任务仅 F2 runner/durability
+状态：P2 设计验收完成；后续 F1/F2 已完成，当前下一任务仅 S3 reviewed Mock/static checkpoint
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -22,7 +22,7 @@ formal full-gate marker/journal/artifact/recovery claim: 0/0/0/0
 
 P2 完成只解锁 F1 实现，不授权 full-gate Live、产品验收、main 或后续 Phase。
 
-后续 F1 已独立完成并只解锁 F2；它不回写本页 P2 authority，也不授权 full-gate Live、产品验收或 main。
+后续 F1/F2 已分别独立完成；它们不回写本页 P2 authority，也不授权 full-gate Live、产品验收或 main。
 
 ## 2. 冻结数据、baseline 与 policy
 
@@ -95,9 +95,10 @@ P2 已冻结：guard-first、24 pairs 串行、pair 内最大并发 2、独立 s
 semantic mismatch 不 breaker、contract/safety failure 在当前 pair 收口后 breaker，以及后续 entry 保持固定
 `not_started_quality_breaker`。
 
-未来 F2 必须证明：dispatch 前 reservation/hash-chain/fsync、wire 单调、每 lane 单 terminal、external abort 与内部
+后续 F2 已证明：dispatch 前 reservation/hash-chain/fsync、wire 单调、每 lane 单 terminal、external abort 与内部
 abort 分离、exclusive marker、hard-link single publication、crash-only zero-wire seal、严格重算 validator，以及
-runtime accounting 不丢任务、不缩小分母。
+runtime accounting 不丢任务、不缩小分母。该完成事实只具有
+`zero_provider_full_runner_durability_evidence` authority。
 
 Full-gate 使用全新 report/marker/journal/artifact/validator/source tag/approval/credential/confirmation namespace；
 历史 V1--V9/R3/L1/P1--L2 identity 与新路线双向拒绝。
@@ -153,17 +154,20 @@ Critical/Important。提交前分支 HEAD/upstream/remote 为 `08c15f8...cc3bb2c
 
 P2 当时的下一任务 F1 已完成：exact full manifest/baseline/report/scorer/gate、安全 writer 与双向 lineage
 rejection 已落地，三个 P2 canonical SHA 精确复现；baseline logical/physical SHA 冻结为
-`16c574b1...2c9 / 16aa1773...6f73`。F1 authority 仅 `zero_provider_full_contract_baseline`，没有读取
-credential、调用 Provider、创建 approved tag/正式 evidence 或启动产品。
+`16c574b1...2c9 / 16aa1773...6f73`。其后的 F2 也已完成 fixed production CLI/source admission、完整
+24-guard/24-pair runner、hash-chain journal/hard-link artifact、strict validator 与 crash-only seal。F1/F2
+authority 分别仅为 `zero_provider_full_contract_baseline` 与
+`zero_provider_full_runner_durability_evidence`；正式 approved tag/bundle 仍为 0，未执行正式 Mock/Live。
 
-当前下一原子任务仅 F2：实现 full one-shot runner/source/marker/hash-chain journal/hard-link
-artifact/strict validator/crash-only seal，继续保持 zero-provider 与正式 full-gate evidence 为 0。
+当前下一原子任务仅 S3 reviewed Mock/static checkpoint；S3 继续 zero-provider、不创建 approved tag，也不自动
+授权 L3。
 
 完整设计与计划：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
 回顾时可以问：
 

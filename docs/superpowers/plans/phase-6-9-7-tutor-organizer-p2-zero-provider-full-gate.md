@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-当前状态：P2/F1 已完成，zero-provider；下一任务仅 F2 one-shot runner/durability/evidence
+当前状态：P2/F1/F2 已完成，zero-provider；下一任务仅 S3 reviewed Mock/static checkpoint
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`
@@ -68,7 +68,7 @@ report/physical file SHA 冻结为 `16c574b1...2c9 / 16aa1773...6f73`。Focused 
 
 ## F2：One-shot Runner / Durability / Evidence
 
-状态：[ ] 下一原子任务，zero-provider。
+状态：[x] 完成，zero-provider。
 
 必须完成：
 
@@ -83,7 +83,12 @@ report/physical file SHA 冻结为 `16c574b1...2c9 / 16aa1773...6f73`。Focused 
 9. fault matrix 覆盖 concurrent start、external abort、timeout、usage、publication/crash race、hostile filesystem；
 10. 正式 full-gate marker/journal/artifact/recovery claim 保持 0。
 
-F2 不读取 credential、不调用 Provider、不创建 approved tag、不启动产品。
+完成证据：固定 production CLI/source admission、24 guards + 24 serial pairs/48 lanes、独立
+budget/abort/timeout、exclusive marker、fsynced hash-chain journal、hard-link artifact、strict recomputing
+validator 与 crash-only seal 均已落地。Focused `32/32`、Agent full `1108/1108`、typecheck/lint 通过；
+authority 仅 `zero_provider_full_runner_durability_evidence`，正式 approved tag/marker/journal/artifact/recovery
+claim 均为 0。F2 未读取 credential、未调用 Provider、未执行正式 Mock/Live、未启动产品。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
 ## S3：Reviewed Mock / Static Checkpoint
 

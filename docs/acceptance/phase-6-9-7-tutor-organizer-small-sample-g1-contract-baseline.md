@@ -171,10 +171,12 @@ HEAD/upstream/remote parity 的 commit 创建/绑定 tag，并重新取得数据
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
 L2 结果不改写 G1 的 `zero_provider_contract_baseline` authority、baseline 数值或 SHA。其后 P2 已
-zero-provider 完成 full-gate design，F1 已完成 full contract/baseline；它们都不改写 G1 历史。当前下一任务
-仅 F2 runner/durability；L2 重跑、48-case Provider 调用、产品验收与 main 均未获授权。P2/F1 验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+zero-provider 完成 full-gate design，F1/F2 已完成 full contract/baseline 与 runner/durability/evidence；它们都
+不改写 G1 历史。当前下一任务仅 S3 reviewed Mock/static；L2 重跑、48-case Provider 调用、产品验收与 main
+均未获授权。P2/F1/F2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
 回顾时可以问：
 

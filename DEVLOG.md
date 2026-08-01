@@ -1,5 +1,39 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate F2 Runner / Durability / Evidence：
+> F2 已在 `zero_provider_full_runner_durability_evidence` authority 下完成；F1 的
+> `phase-6.9.7-tutor-organizer-full-gate-v1` manifest/report/scorer/gate 继续作为唯一 aggregate 规则源，未复制或
+> 改写 V1--V9、Recovery R3、Canary L1、Small-sample L2 的 sealed lineage。
+>
+> 新增固定 production CLI、full source admission、24-guard/24-pair runner、DeepSeek V4 Pro first-party
+> composition、exclusive marker、fsynced hash-chain journal、hard-link artifact、strict bundle validator 与
+> crash-only seal。Public CLI 只接收 `args + AbortSignal`；root/env/model/URL/fetch/runner/evidence ports 均固定。
+>
+> Admission 顺序为 exact args -> zero-provider proxy attestation -> source -> dedicated approval -> dedicated
+> credential -> marker -> guards -> pairs -> publication。Source 要求固定分支、tracked clean、
+> HEAD/upstream/remote/未来 S3 approved tag commit parity、七个 candidate/adapter SHA 与正式 evidence=0。S3 tag
+> 当前不存在，因此 production path 仍在 credential/marker 前关闭；approval env 的值必须精确等于 L3 exact
+> confirmation。
+>
+> Runner 先完成 `24` guards，再串行推进 `24` pairs；pair 内 Tutor/Organizer 最大并发 2，并各自持有 budget、
+> AbortController、`3500/5000ms` hard timeout、wire capability 与 terminal。Semantic mismatch 不 breaker；
+> contract failure 先收口 sibling，再让后续 lane 以 `not_started_quality_breaker` 保留在固定 48 分母。父请求取消
+> 作为 `external_abort`，terminal append 失败不在进程内重试。
+>
+> `lane_reserved` 与每个 wire stage 在跨 delegate 前 durable append + fsync。Crash-only seal 不读取
+> approval/credential、不构造 transport、不调用 Provider，只解释 durable prefix：当前开放/待锚定 pair 以
+> zero-wire `attempted_aborted` 收口，后续 pair 固定 not-started；已有 run terminal 只允许原 report publication
+> recovery。Validator 从 marker/journal/source/entries 重算 report、accounting、wire、semantic、P95、usage、费用、
+> gate 与 logical/physical SHA，并拒绝 truncated/CRLF/hash rewrite、重复 claim 与额外正式文件。
+>
+> F2 focused `32/32`（2105 assertions）、Agent full `1108/1108`（20172 assertions / 132 files）、typecheck/lint、
+> Prettier、`git diff --check`、历史 validators/SHA parity 通过；两路独立只读复审无阻断项。正式 approved
+> tag/marker/journal/artifact/recovery claim 为 `0/0/0/0/0`，Provider/credential/Docker/API/browser 调用为 0。
+>
+> 本阶段未执行 S3 reviewed Mock、L3 controlled-Live、产品或 main。当前下一原子任务仅 S3 reviewed
+> Mock/static checkpoint；完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
+>
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate F1 Contract / Baseline：
 > F1 已在 `zero_provider_full_contract_baseline` authority 下完成；独立 lineage
 > `phase-6.9.7-tutor-organizer-full-gate-v1` 继续与 V1--V9、R3、Canary L1 和 small-sample lineage 双向隔离。
@@ -25,8 +59,8 @@ Organizer decisions`，L2 anchor pairs 为 `0/7/9/11/14/18/22/23`。
 > Prettier 与 `git diff --check` 通过；四路独立复审均 `APPROVED`。
 >
 > 本阶段 approved tag、项目根 baseline、正式 marker/journal/artifact/recovery claim 为 `0/0/0/0/0/0`；未读
-> credential、未调用 Provider、未启动 Docker/API/browser、未修改业务数据或合并 main。当前下一原子任务仅
-> F2 one-shot runner/durability/evidence；完整验收见
+> credential、未调用 Provider、未启动 Docker/API/browser、未修改业务数据或合并 main。该检查点当时下一原子
+> 任务仅 F2；后续 F2 已按上方日志完成。完整验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
 >
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer P2 Zero-provider Full-gate Design：
@@ -185,8 +219,8 @@ decisions`，dataset/policy SHA 保持 `42803d45...b437b / b3913403...f009d`。�
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
 > 当时下一原子任务仅 G2；后续 G2/S2、唯一 L2 与 P2 zero-provider full-gate design 均已按上方日志完成。
-> 当前下一任务已推进为 F2 one-shot runner/durability/evidence；48-case、产品 Docker/API/browser、main 与
-> Phase 6.9.8 继续阻断。
+> 当前下一任务已推进为 S3 reviewed Mock/static；L3 48-case Live、产品 Docker/API/browser、main 与 Phase 6.9.8
+> 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的

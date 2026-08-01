@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：F1 验收完成，zero-provider；下一任务仅 F2 one-shot runner/durability/evidence
+状态：F1 验收完成；后续 F2 已完成，zero-provider；下一任务仅 S3 reviewed Mock/static checkpoint
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -21,8 +21,8 @@ formal marker/journal/artifact/recovery claim: 0/0/0/0
 project-root baseline file: 0
 ```
 
-F1 只解锁 F2 的 zero-provider one-shot runner/durability/evidence 实现；不授权 S3 Mock、L3
-controlled-Live、产品 Docker/API/可见浏览器、main 或后续 Phase。
+F1 当时只解锁 F2 的 zero-provider one-shot runner/durability/evidence 实现；后续 F2 已完成，但仍不授权
+S3 之外的工作、L3 controlled-Live、产品 Docker/API/可见浏览器、main 或后续 Phase。
 
 ## 2. 本次交付
 
@@ -164,12 +164,14 @@ F1 没有：
 
 ## 8. 下一步
 
-下一原子任务仅 F2：实现 full one-shot runner/source/marker/hash-chain journal/hard-link artifact/strict
-recomputing validator/crash-only seal 与并发/取消/崩溃 fault matrix。F2 仍必须 zero-provider，正式 full-gate
-marker/journal/artifact/recovery claim 保持 0。
+F2 已完成 full one-shot runner/source/marker/hash-chain journal/hard-link artifact/strict recomputing
+validator/crash-only seal 与并发/取消/崩溃 fault matrix；authority 仅
+`zero_provider_full_runner_durability_evidence`，正式 approved tag/marker/journal/artifact/recovery claim 保持 0，
+未执行正式 Mock/Live。证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
-只有 F2 完成并独立提交推送后，才允许进入 S3 reviewed Mock/static；S3 完成也不能自动调用 Provider。未来 L3
-仍需 fresh 数据边界接受和 exact authorization，且 L3 pass 后才可能解锁独立产品验收。
+当前下一原子任务仅 S3 reviewed Mock/static；S3 完成也不能自动调用 Provider。未来 L3 仍需 fresh 数据边界
+接受和 exact authorization，且 L3 pass 后才可能解锁独立产品验收。
 
 回顾时可以问：
 

@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1、G1、G2、S2、唯一 L2、P2 与 F1 已完成；下一任务仅 F2 runner/durability
+当前状态：P1、G1、G2、S2、唯一 L2、P2、F1 与 F2 已完成；下一任务仅 S3 reviewed Mock/static
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -190,9 +190,10 @@ case、curl/产品 API 追加探测、删除/改写 artifact 或 crash seal 已�
 
 P2 已冻结独立 full-gate identity、`72/24/48/24/32` 分母、manifest `e68e6e27...12c78`、baseline
 authority `2ab1030f...a5f2`、eval policy `11371d16...f503`、L2 anchor subset、24-sample P95、
-`48 calls / 0.55 CNY` cap 与 durability/authorization 边界。F1 contract/baseline 已完成；当前下一任务仅
-F2；设计、计划与验收见：
+`48 calls / 0.55 CNY` cap 与 durability/authorization 边界。F1 contract/baseline 与 F2
+runner/durability/evidence 均已完成；当前下一任务仅 S3；设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。

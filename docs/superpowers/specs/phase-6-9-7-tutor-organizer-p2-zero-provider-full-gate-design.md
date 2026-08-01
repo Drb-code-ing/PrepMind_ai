@@ -2,7 +2,8 @@
 
 日期：2026-08-01
 
-状态：P2 设计与 F1 full contract/baseline 已完成，zero-provider；下一原子任务仅 F2 runner/durability
+状态：P2 设计、F1 full contract/baseline 与 F2 runner/durability/evidence 已完成，zero-provider；下一原子
+任务仅 S3 reviewed Mock/static checkpoint
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -694,14 +695,17 @@ PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_DEEPSEEK_API_KEY
 | ---- | ------------------------------------------------------------------------ | ----------------------- |
 | P2   | 本设计：full identity、manifest、baseline、policy、预算、P95、durability | 已完成，zero-provider   |
 | F1   | 实现 full manifest/baseline/report/scorer/gate 与双向 lineage rejection  | 已完成，zero-provider   |
-| F2   | 实现 full one-shot runner/source/marker/journal/artifact/validator/seal  | 下一任务，zero-provider |
-| S3   | Reviewed Mock/fault/static/history parity/Reader Testing，提交推送后停止 | 未开始，zero-provider   |
+| F2   | 实现 full one-shot runner/source/marker/journal/artifact/validator/seal  | 已完成，zero-provider   |
+| S3   | Reviewed Mock/fault/static/history parity/Reader Testing，提交推送后停止 | 下一任务，zero-provider |
 | L3   | Fresh 数据边界接受 + exact authorization 后唯一 full-gate Live           | 未授权、未开始          |
 | R6   | 仅 L3 pass 后的 branch Docker/API/可见浏览器与精确清理                   | 阻断                    |
 | R7   | main 合并、推送与 default-off 再验收                                     | 阻断                    |
 
-P2 当时只解锁 F1；F1 现已完成并且只解锁 F2。不得跳过 F2/S3 直接执行 L3，不得重跑 L2，也不得启动
-产品 Docker/API/browser、创建测试账号/业务数据、合并 main 或进入 Phase 6.9.8/6.10/8/9。
+P2 当时只解锁 F1，F1 当时只解锁 F2；F1/F2 现均已完成。F2 authority 仅
+`zero_provider_full_runner_durability_evidence`，没有执行正式 Mock/Live。当前只能进入 S3；不得跳过 S3
+直接执行 L3，不得重跑 L2，也不得启动产品 Docker/API/browser、创建测试账号/业务数据、合并 main 或进入
+Phase 6.9.8/6.10/8/9。F2 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
 ## 12. 回顾问题
 
