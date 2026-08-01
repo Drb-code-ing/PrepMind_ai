@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate S3 Reviewed Mock / Static：
+> S3 已在 zero-provider 边界完成。新增 full-gate reviewed Mock factory，真实穿过 Tutor V6、Organizer V9、
+> 第一方 DeepSeek V4 Pro direct adapter 的 synthetic fetch seam、strict validator、本地 authority/merger 与
+> F2 fixed-denominator runner；factory SHA 固定为
+> `sha256:53bcf0d4378f9a6c36b867053201f41bebbc7b05bf14f94edd0f24fc9f22da55`。
+>
+> 正常结果为 `24/24` guard、runtime reserved/terminal/orphan/not-started `48/48/0/0`、wire/verified usage
+> `48/48/48/48`、Tutor/Organizer/Combined semantic
+> `1 / 0.9968750000000001 / 0.9984375000000001`、L2 anchor `1/1/1`，安全失败全 0；synthetic usage
+> `17732/504`、estimated cost `0.05622 CNY`。Gate 固定为
+> `full_gate_mock_quality_not_evidence / qualityAuthority=none`，global fetch 与外部 Provider 调用均为 0。
+>
+> Focused matrix `14/14` 覆盖 transport/HTTP/schema/usage、dynamic authority/write leak、semantic mismatch、
+> pre-abort、locked-name/no-write、unknown fault fail-closed 与 anti-oracle。临时隔离 bundle 的 strict validator
+> 通过，journal 为 24 guards、48 reservations、384 wire stages、48 lane terminals、24 pair terminals，并以
+> `evidence_published` 收口；测试后精确删除，正式 full-gate bundle/tag/recovery claim 保持 0。
+>
+> S3 focused `14/14`、Agent `1122/1122`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`、Server
+> build/lint 与非数据库 226 suites/2153 tests 通过；历史 V1--V9、R3、Canary L1、Small-sample L2 validators
+> 保持通过。`@repo/types lint` 因包内找不到 `eslint` 未通过；Server 完整 Jest 的数据库 suites 因本机
+> PostgreSQL `127.0.0.1:5433` 未启动未通过，均未包装成全量成功。
+>
+> Server 回归同时发现 `@repo/ai` shared runtime barrel 不应重导出含 `import.meta` / top-level await 的可执行
+> CLI。现已保留 CLI 文件/package scripts、让 CLI tests 直接导入文件，并从 runtime barrel 移除四个 CLI-only
+> exports；修复后非数据库 Server 与 AI 全量通过。
+>
+> 本阶段未读 credential、未调用 Provider、未创建/移动 S3 approved tag、未启动 Docker/API/browser、未合并
+> main。下一步仅独立 L3 admission，仍需 fresh 数据边界接受、exact authorization、专用 credential 与 source/
+> tag parity；完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+>
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate F2 Runner / Durability / Evidence：
 > F2 已在 `zero_provider_full_runner_durability_evidence` authority 下完成；F1 的
 > `phase-6.9.7-tutor-organizer-full-gate-v1` manifest/report/scorer/gate 继续作为唯一 aggregate 规则源，未复制或
@@ -30,8 +61,8 @@
 > Prettier、`git diff --check`、历史 validators/SHA parity 通过；两路独立只读复审无阻断项。正式 approved
 > tag/marker/journal/artifact/recovery claim 为 `0/0/0/0/0`，Provider/credential/Docker/API/browser 调用为 0。
 >
-> 本阶段未执行 S3 reviewed Mock、L3 controlled-Live、产品或 main。当前下一原子任务仅 S3 reviewed
-> Mock/static checkpoint；完整验收见
+> F2 本阶段未执行 S3 reviewed Mock、L3 controlled-Live、产品或 main；当时下一原子任务仅 S3 reviewed
+> Mock/static checkpoint，后续 S3 已按上方日志完成。F2 完整验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 >
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Full-gate F1 Contract / Baseline：
@@ -219,8 +250,8 @@ decisions`，dataset/policy SHA 保持 `42803d45...b437b / b3913403...f009d`。�
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
 > 当时下一原子任务仅 G2；后续 G2/S2、唯一 L2 与 P2 zero-provider full-gate design 均已按上方日志完成。
-> 当前下一任务已推进为 S3 reviewed Mock/static；L3 48-case Live、产品 Docker/API/browser、main 与 Phase 6.9.8
-> 继续阻断。
+> S3 reviewed Mock/static 后续已按上方日志完成；当前下一任务仅独立 L3 admission。L3、产品
+> Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的

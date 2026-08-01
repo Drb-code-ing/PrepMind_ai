@@ -172,12 +172,13 @@ seal。Journal `180` 条并以 `evidence_published` 收口；validator `ok=true`
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
 L2 的 `small_sample_semantic_gate` 不升级或改写 G2 的 `zero_provider_runner_durability` authority。8-pair 不
-产生 P95/SLA/产品 authority；L2 不得重跑。其后 P2 已只在 zero-provider 边界冻结新的 full-gate durability
-要求，F1/F2 已完成 full contract/baseline 与 runner/durability/evidence；三者不回写 G2 历史。当前下一任务
-仅 S3 reviewed Mock/static，48-case Live、产品与 main 仍被阻断。P2/F1/F2 验收见
+产生 P95/SLA/产品 authority；L2 不得重跑。其后 P2/F1/F2/S3 已依次 zero-provider 完成 full-gate design、
+contract/baseline、runner/durability/evidence 与 reviewed Mock；它们不回写 G2 历史。当前下一任务仅独立 L3
+admission，未经 admission 的 48-case Live、产品与 main 仍被阻断。P2/F1/F2/S3 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
 回顾时可以问：
 

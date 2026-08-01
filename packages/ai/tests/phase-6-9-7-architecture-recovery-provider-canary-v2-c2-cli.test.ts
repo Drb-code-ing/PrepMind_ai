@@ -280,12 +280,17 @@ describe('Phase 6.9.7 Provider Canary V2 C2 CLI', () => {
     expect(injectedCalls).toBe(0);
   });
 
-  test('exports the fixed production entry without exporting either injection seam', async () => {
+  test('keeps CLI-only modules out of the shared runtime barrel', async () => {
     const packageExports = await import('../src/index.ts');
 
-    expect(packageExports.runPhase697ArchitectureRecoveryProviderCanaryV2C2Cli).toBe(
-      runPhase697ArchitectureRecoveryProviderCanaryV2C2Cli,
-    );
+    for (const cliExport of [
+      'runPhase697ArchitectureRecoveryR2CanaryCli',
+      'runPhase697ArchitectureRecoveryR3CanaryCli',
+      'runPhase697ArchitectureRecoveryProviderCanaryV2C1Cli',
+      'runPhase697ArchitectureRecoveryProviderCanaryV2C2Cli',
+    ]) {
+      expect(cliExport in packageExports).toBe(false);
+    }
     expect('executePhase697ArchitectureRecoveryProviderCanaryV2C2CliCore' in packageExports).toBe(
       false,
     );

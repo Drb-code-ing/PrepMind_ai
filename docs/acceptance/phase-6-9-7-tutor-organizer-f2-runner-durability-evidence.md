@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：F2 验收完成，zero-provider；下一任务仅 S3 reviewed Mock/static checkpoint
+状态：F2 验收完成；后续 S3 已完成，zero-provider；下一任务仅独立 L3 admission
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -160,12 +160,14 @@ env 的值等于 exact confirmation 是本 F2 实现的明确约定，已由 foc
 F2 没有执行正式 reviewed Mock、controlled-Live、curl、单 case或其它 Provider 探测；没有读取 credential、创建
 approved tag/正式 bundle、启动 Docker/API/browser、创建账号/Trace/业务数据、合并 main 或推进 Phase 6.9.8。
 
-下一原子任务仅 S3 reviewed Mock/static checkpoint：真实穿过两条受治理 candidate、第一方 adapter 的
-synthetic fetch seam、strict validator、本地 merger 与 F2 runner，完成 full/anchor semantic、P95、预算、
+S3 已按上述边界完成 reviewed Mock/static checkpoint：真实穿过两条受治理 candidate、第一方 adapter 的
+synthetic fetch seam、strict validator、本地 merger 与 F2 runner，并完成 full/anchor semantic、P95、预算、
 breaker、abort、locked-name/no-write、anti-overfit、全量静态、历史 parity 与 Reader Testing。S3 仍是
-zero-provider，不创建 approved tag；S3 完成并独立提交推送后也不能自动执行 L3。
+zero-provider，不创建 approved tag；完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
-未来 L3 仍须 fresh 数据边界接受、exact authorization、专用 credential 和独立 admission；只有 L3 获得
+当前下一原子任务仅独立 L3 admission；仍须 fresh 数据边界接受、exact authorization、专用 credential 和
+source/tag parity。只有 L3 获得
 `full_gate_quality_gate_passed / full_gate_semantic_gate`，才可能另行解锁产品 Docker/API/可见浏览器验收。
 
 回顾时可以问：

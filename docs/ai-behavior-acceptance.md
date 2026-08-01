@@ -439,9 +439,12 @@ report/scorer/gate、anchor/P95/null aggregate 与历史 lineage 双向拒绝落
 `16c574b1...2c9 / 16aa1773...6f73`，authority 仅 `zero_provider_full_contract_baseline`。F2 又把固定
 production CLI/source admission、24-guard/24-pair runner、独立 budget/abort/timeout、exclusive marker、fsynced
 hash-chain journal、hard-link artifact、strict validator 与 crash-only seal 落地；authority 仅
-`zero_provider_full_runner_durability_evidence`。P2/F1/F2 均不形成 Provider quality authority；F2 未执行正式
-Mock/Live，approved tag/正式 bundle 为 0。当前下一任务仅 S3 reviewed Mock/static，L3 48-case Live、产品
-Docker/API/browser 与 main 继续受门禁约束。
+`zero_provider_full_runner_durability_evidence`。S3 又以 reviewed `mock_synthetic` composition 真实穿过两条
+candidate、第一方 adapter、strict validator、本地 merger 与 F2 runner，得到 `24/24` guard、`48/48`
+strict/wire/usage、Tutor/Organizer/Combined semantic `1/0.996875/0.9984375`、L2 anchor `1/1/1`；但 gate
+固定 `full_gate_mock_quality_not_evidence / qualityAuthority=none`，global fetch/Provider/credential 与正式
+tag/bundle 均为 0。P2/F1/F2/S3 都不形成真实 Provider quality authority；当前下一任务仅独立 L3 admission，
+仍需 fresh 数据边界接受和 exact authorization，产品 Docker/API/browser 与 main 继续受门禁约束。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

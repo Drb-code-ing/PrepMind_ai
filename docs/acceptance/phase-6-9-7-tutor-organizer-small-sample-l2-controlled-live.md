@@ -121,10 +121,12 @@ L2 名额已经消费，禁止再次执行 `live`、`seal` 或 recovery。其后
 完成：基于本 sealed 终态冻结新的 24-pair/48-runtime 全量语义门，但没有执行全量 Live、产品验收或 main。
 P2 manifest/baseline authority/eval policy SHA 为
 `e68e6e27...12c78 / 2ab1030f...a5f2 / 11371d16...f503`；F1/F2 full contract/baseline 与
-runner/durability/evidence 已完成，当前下一任务仅 S3 reviewed Mock/static。P2/F1/F2 验收见
+runner/durability/evidence、S3 reviewed Mock/static 均已完成。当前下一任务仅独立 L3 admission；
+P2/F1/F2/S3 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
 ## 6. 回顾问题
 

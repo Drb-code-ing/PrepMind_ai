@@ -46,18 +46,14 @@ export type {
 } from './phase-6-9-7-v7-wire-diagnostics.ts';
 export * from './phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 export * from './phase-6-9-7-architecture-recovery-r2-canary-runner.ts';
-export * from './phase-6-9-7-architecture-recovery-r2-canary-cli.ts';
 export * from './phase-6-9-7-architecture-recovery-r3-canary-contract.ts';
 export * from './phase-6-9-7-architecture-recovery-r3-canary-runner.ts';
 export * from './phase-6-9-7-architecture-recovery-r3-canary-durability.ts';
-export * from './phase-6-9-7-architecture-recovery-r3-canary-cli.ts';
 export * from './phase-6-9-7-architecture-recovery-proxy-preflight.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-contract.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-fault-matrix.ts';
-export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c1-cli.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c2-contract.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c2-runner.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c2-durability.ts';
 export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c2-source.ts';
-export * from './phase-6-9-7-architecture-recovery-provider-canary-v2-c2-cli.ts';

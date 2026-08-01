@@ -18,13 +18,13 @@ import {
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_RECOVERY_CLAIM_RELATIVE_PATH,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_RECOVERY_CLAIM_VERSION,
   reservePhase697ArchitectureRecoveryR3Canary,
-  runPhase697ArchitectureRecoveryR3CanaryCli,
   sealPhase697ArchitectureRecoveryR3InterruptedCanary,
   validatePhase697ArchitectureRecoveryR3CanaryBundle,
   type Phase697ArchitectureRecoveryR2CanaryReport,
   type Phase697ArchitectureRecoveryR3CanarySource,
   type Phase697V7WireStage,
 } from '../src/index.ts';
+import { runPhase697ArchitectureRecoveryR3CanaryCli } from '../src/phase-6-9-7-architecture-recovery-r3-canary-cli.ts';
 
 const RUN_ID = '11111111-2222-4333-8444-555555555555';
 const GENERATED_AT = '2026-07-30T12:00:00.000Z';

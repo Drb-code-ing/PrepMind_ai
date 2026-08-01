@@ -1790,7 +1790,24 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       独立复审通过；
 - [x] F2 authority 仅 `zero_provider_full_runner_durability_evidence`；未读 credential、未调用 Provider、未执行
       正式 Mock/Live、未启动 Docker/API/browser、未改业务数据、未合并 main；approved tag 与正式
-      marker/journal/artifact/recovery claim 均为 0；当前下一任务仅 S3 reviewed Mock/static，L3 继续阻断；
+      marker/journal/artifact/recovery claim 均为 0；
+- [x] S3 reviewed Mock 真实穿过 Tutor V6、Organizer V9、第一方 adapter synthetic fetch、strict validator、
+      本地 authority/merger 与 F2 runner；factory SHA 为 `sha256:53bcf0d...da55`；
+- [x] S3 正常路径为 `24/24` guard、runtime `48/48/0/0`、strict/wire/verified usage `48/48/48/48`、
+      Tutor/Organizer/Combined semantic `1/0.9968750000000001/0.9984375000000001`、L2 anchor `1/1/1`；
+- [x] S3 四项 P95 均有完整 24-sample 且低于 frozen cap，synthetic usage `17732/504`、estimated cost
+      `0.05622 CNY`，安全/权限/mutation/broader fallback/locked-name/write leak 全为 0；这些不是 Provider
+      账单或产品 SLA；
+- [x] S3 focused `14/14`、Agent `1122/1122`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`、Server
+      build/lint 与非数据库 226 suites/2153 tests 通过；Types lint 因既有 eslint/PATH 问题未通过，Server
+      数据库 suites 因 PostgreSQL `127.0.0.1:5433` 未启动未通过；
+- [x] S3 fault/abort/semantic mismatch/unknown fault fail-closed、anti-oracle、临时 bundle strict validator 与
+      V1--V9/R3/L1/L2 history parity 通过；global fetch/credential/Provider、approved tag 与正式 full-gate
+      marker/journal/artifact/recovery claim 全为 0；
+- [x] `@repo/ai` shared runtime barrel 不再重导出四个 executable CLI；CLI 文件/package scripts 保留，测试
+      直接导入对应文件，CommonJS/Nest/Jest 不再因普通 runtime import 解析 CLI 的 `import.meta`；
+- [x] S3 authority 仅 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。下一步仅独立 L3
+      admission；仍需 fresh 数据边界接受、exact authorization、专用 credential 与 source/tag parity；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1819,4 +1836,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。

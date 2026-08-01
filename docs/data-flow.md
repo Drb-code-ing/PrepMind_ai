@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-01。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`。P1/G1/G2/S2 已 zero-provider 完成；S2 reviewed Mock 为 `8/8` guard、`16/16` strict/wire/usage、semantic `1/1/1`，但 authority 固定 `mock_quality_not_evidence`。R3/V2/L2 均不得重跑；唯一 L2 已通过 8-pair `small_sample_semantic_gate`。P2 full-gate design、F1 full contract/baseline 与 F2 runner/durability/evidence 均已 zero-provider 完成；F2 authority 仅 `zero_provider_full_runner_durability_evidence`，正式 approved tag/bundle 为 0，未执行正式 Mock/Live。当前下一步仅 S3 reviewed Mock/static，L3、产品/main 与后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2 均已按独立边界完成。S3 full reviewed Mock 现已在 F2 runner 上完成：`24/24` guard、`48/48` strict/wire/usage、Tutor/Organizer/Combined semantic `1/0.996875/0.9984375`、L2 anchor `1/1/1`，但 authority 固定为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`；global fetch、credential、Provider 与正式 tag/bundle 均为 0。R3/L1/L2 不得重跑；下一步仅独立 L3 admission，仍需 fresh 数据边界接受与 exact authorization，产品/main 与后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -32,7 +32,8 @@
 - Small-sample L2 职责：独立 admission 将 pushed S2 source commit/tag、fresh proxy attestation、exact authorization 与专用 credential 绑定到唯一进程；G2 runner 真实执行 8 guards + 8 pairs，并把 reservation、wire、terminal 和 publication durable 写入 marker/hash-chain journal/hard-link artifact。唯一 run 已以 `small_sample_quality_gate_passed / small_sample_semantic_gate` 收口；它不连接产品或 main，只向后续 P2 提供设计准入。
 - Full-gate P2 职责：zero-provider 固定完整 72-entry manifest、full deterministic baseline、全量与 L2 anchor subset 双层语义门、四项 24-sample P95、48-call/0.55 CNY cap、pair-serial/双 lane、breaker 与 crash-only durability。P2 只形成 `zero_provider_full_gate_design`，不创建 full-gate tag/evidence、不调用 Provider。
 - Full-gate F1 职责：把 P2 设计固化为 exact manifest、deterministic baseline、安全 writer、strict report/scorer/gate 与历史 lineage 双向拒绝。所有正式 aggregate 都从 72 条固定 entry 重算；分母不完整时 semantic/anchor/P95/token/CNY 全为 `null`，Mock/synthetic 永远 `qualityAuthority=none`。F1 只形成 `zero_provider_full_contract_baseline`。
-- Full-gate F2 职责：把 F1 contract 接入固定 production CLI/source admission、24-guard/24-pair runner、独立 lane budget/abort/timeout、exclusive marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only seal。F2 只形成 `zero_provider_full_runner_durability_evidence`；正式 approved tag/marker/journal/artifact/recovery claim 为 0，未执行正式 Mock/Live，当前下一节点仅 S3 reviewed Mock/static。
+- Full-gate F2 职责：把 F1 contract 接入固定 production CLI/source admission、24-guard/24-pair runner、独立 lane budget/abort/timeout、exclusive marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only seal。F2 只形成 `zero_provider_full_runner_durability_evidence`。
+- Full-gate S3 职责：把 reviewed `mock_synthetic` composition 接到 F2 runner，真实穿过 Tutor V6、Organizer V9、第一方 adapter、strict validator 与本地 merger，并在完整 72-entry 分母上验证 full/anchor semantic、四项 P95、预算、breaker/abort、locked-name/no-write、durability 与 anti-oracle。S3 gate 永远是 `full_gate_mock_quality_not_evidence / qualityAuthority=none`，不创建 approved tag 或正式 bundle。
 - 会话状态职责：`POST /conversation-context/prepare` 固定执行 ownership -> state patch/cache/PG -> 已有 summary -> uncovered count。PostgreSQL 是 state 权威源；Redis key 是 user/conversation 的 SHA-256 组合且最长 TTL 24 小时，只保存 public state。客户端只能 patch active goal/question，内部 action/tool 字段不会进入 request/response/cache。缓存 miss、Redis error、坏 JSON、schema mismatch 或过期都会安全回源/返回 PG 结果。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
@@ -890,8 +891,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> 24 guards + 24 serial pairs / 48 lanes；independent budget/abort/timeout
        -> exclusive marker + fsynced hash-chain journal + hard-link artifact + strict validator
        -> crash-only seal；focused 32/32；Agent full 1108/1108；formal bundle/tag=0
-  -> current stop：仅 S3 reviewed Mock/static
-  -> 不执行 L3 48-case Live，也不进入产品 Docker/API/browser/main
+  -> S3 complete：zero-provider reviewed Mock/static
+       -> 24/24 guard；48/48 strict/wire/usage；semantic 1/0.996875/0.9984375
+       -> L2 anchor 1/1/1；full_gate_mock_quality_not_evidence；formal bundle/tag=0
+  -> current stop：仅独立 L3 admission
+  -> 未取得 fresh 数据边界接受或 exact authorization；不执行 L3/产品/main
 ```
 
 ```text

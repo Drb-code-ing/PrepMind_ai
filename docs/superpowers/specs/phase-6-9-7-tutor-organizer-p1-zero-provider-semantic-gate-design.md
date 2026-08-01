@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1、G1、G2、S2、唯一 L2、P2、F1 与 F2 已完成；下一步仅 S3 reviewed Mock/static；未启动
-产品 Docker/API/browser
+状态：P1、G1、G2、S2、唯一 L2、P2、F1、F2 与 S3 已完成；下一步仅独立 L3 admission；未启动产品
+Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -605,15 +605,18 @@ authority。
 | S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider |
 | L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal |
 | P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 已完成，zero-provider |
+| F1   | full manifest/baseline/report/scorer/gate                             | 已完成，zero-provider |
+| F2   | full runner/durability/evidence                                       | 已完成，zero-provider |
+| S3   | full reviewed Mock/static/history parity                              | 已完成，zero-provider |
 
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
 `11371d16...f503`；完整设计见
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`。F1/F2 已完成；当前只
-解锁 S3 reviewed Mock/static，仍不得直接进入 48-case Live、产品 Docker/API/browser、main、Phase
-6.9.8/6.10/8/9。F2 authority 仅 `zero_provider_full_runner_durability_evidence`，未执行正式 Mock/Live；不得
-复制 V10/V11 式整套重试、放宽阈值或重跑同一 manifest。F2 证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`。F1/F2/S3 已完成；
+当前只允许独立 L3 admission，仍不得直接进入 48-case Live、产品 Docker/API/browser、main、Phase
+6.9.8/6.10/8/9。S3 authority 仅 `full_gate_mock_quality_not_evidence / qualityAuthority=none`；不得复制
+V10/V11 式整套重试、放宽阈值或重跑同一 manifest。S3 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline

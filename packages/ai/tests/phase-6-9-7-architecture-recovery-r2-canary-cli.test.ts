@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { runPhase697ArchitectureRecoveryR2CanaryCli } from '../src/index.ts';
+import { runPhase697ArchitectureRecoveryR2CanaryCli } from '../src/phase-6-9-7-architecture-recovery-r2-canary-cli.ts';
 
 const FORBIDDEN =
   /r2-synthetic-key|api\.deepseek\.com|authorization|systemPrompt|userPrompt|raw-provider|credential/u;

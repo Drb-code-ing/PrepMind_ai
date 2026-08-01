@@ -1302,8 +1302,8 @@ source、marker、hash-chain journal、artifact/validator 与 crash-only seal，
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
 contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
 source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design、
-F1 full contract/baseline 与 F2 runner/durability/evidence 均已 zero-provider 完成，当前下一任务仅 S3 reviewed
-Mock/static checkpoint。
+F1 full contract/baseline、F2 runner/durability/evidence 与 S3 reviewed Mock/static 均已 zero-provider 完成；
+当前下一任务仅独立 L3 admission。
 
 C1 固定验收命令：
 
@@ -1387,7 +1387,9 @@ P2/F1 full-gate zero-provider 设计、计划与验收入口：
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
@@ -1460,9 +1462,10 @@ SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不
 禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。P2 已完成但只形成
 `zero_provider_full_gate_design`；F1/F2 随后已把 full manifest/baseline/report/scorer/gate、安全 writer、固定
 production CLI/source admission、完整 runner、durability 与 strict evidence validator 落地，authority 分别仅
-`zero_provider_full_contract_baseline` / `zero_provider_full_runner_durability_evidence`。F2 未读取 credential、
-调用 Provider、创建 approved tag/正式 evidence、执行正式 Mock/Live 或启动 Docker/API/browser；当前只允许 S3
-reviewed Mock/static，L3 48-case Live、产品、main 与 Phase 6.9.8 仍被阻断。
+`zero_provider_full_contract_baseline` / `zero_provider_full_runner_durability_evidence`。S3 随后已完成 reviewed
+Mock/static，得到 `24/24` guard、`48/48` strict/wire/usage、semantic `1/0.996875/0.9984375` 与 anchor
+`1/1/1`，但 authority 仍为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。当前只允许独立 L3
+admission；L3、产品、main 与 Phase 6.9.8 仍被阻断。
 
 P2/F1 固定值为：dataset `72/24/48/24/32`，manifest `e68e6e27...12c78`，full baseline `12/48` 与
 semantic `0.6629642857/0.278125/0.4705446429`，source baseline `0ce7c3ca...116ca`，baseline authority
@@ -1494,9 +1497,27 @@ bun run lint
 ```
 
 Focused 期望为 `32/32`，Agent full 为 `1108/1108`。这些测试只使用 synthetic/fault ports 与系统临时目录；
-F2 authority 仅 `zero_provider_full_runner_durability_evidence`。S3 前不要运行 `full-gate:live`、
-`full-gate:seal` 或 production CLI，不要创建/移动 `phase-6-9-7-tutor-organizer-full-gate-s3-approved` tag，也不要
-手工创建正式 marker/journal/artifact/recovery claim。
+F2 authority 仅 `zero_provider_full_runner_durability_evidence`。
+
+S3 的安全本地复核命令为：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-full-gate-s3-reviewed-mock.test.ts
+bun run typecheck
+bun run lint
+```
+
+Focused 期望为 `14/14`。正常结果固定 `24/24` guard、`48/48` strict/wire/verified usage、Tutor/Organizer/
+Combined semantic `1/0.9968750000000001/0.9984375000000001`、L2 anchor `1/1/1`，但 gate 必须保持
+`full_gate_mock_quality_not_evidence / qualityAuthority=none`。该测试只使用 synthetic fetch 和系统临时隔离
+bundle；global fetch、credential 与 Provider 调用为 0。不要运行 `full-gate:live`、`full-gate:seal` 或
+production CLI，不要创建/移动 `phase-6-9-7-tutor-organizer-full-gate-s3-approved` tag，也不要手工创建正式
+marker/journal/artifact/recovery claim。
+
+`@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
+executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把
+CLI-only modules 重新加入 shared barrel，否则 CommonJS/Nest/Jest 会在普通 runtime import 时加载可执行模块。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
