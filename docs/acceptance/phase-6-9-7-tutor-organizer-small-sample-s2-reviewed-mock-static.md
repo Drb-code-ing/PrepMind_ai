@@ -15,8 +15,8 @@ merger、第一方 DeepSeek V4 Pro direct adapter 的 synthetic fetch seam，以
 - critical / permission / mutation / broader fallback / locked-name / write-command failure 全为 `0`；
 - gate 固定为 `mock_quality_not_evidence`。
 
-该结果只证明本地工程合同、scorer 和安全降级链自洽，不证明 DeepSeek 真实语义、Provider 稳定性、
-产品 API/页面可用、生产就绪或 L2 已获授权。
+该结果只证明本地工程合同、scorer 和安全降级链自洽；S2 本身不证明 DeepSeek 真实语义、Provider 稳定性、
+产品 API/页面可用、生产就绪或 L2 已获授权。后续 L2 的独立结果见第 10 节。
 
 ## 2. 为什么需要 S2
 
@@ -188,6 +188,25 @@ validator 为 `ok=true / evidenceCount=1`，artifact SHA 仍为
 - 创建测试账号、Trace、数据库/MinIO/Redis 业务数据或修改生产 gate；
 - 合并 main 或解锁 Phase 6.9.8、6.10、8、9 与博客收尾。
 
-S2 提交并推送后必须停止在未来 L2 admission 门。L2 仍需运行当时重新接受 DeepSeek 当前账号数据边界、
+S2 收口时要求提交并推送后停止在未来 L2 admission 门。L2 仍需运行当时重新接受 DeepSeek 当前账号数据边界、
 给出冻结 exact confirmation，并由独立 source/tag admission 证明 pushed commit、远程 parity、tracked clean、
 历史 evidence parity 与 formal artifact=0。普通“继续/开始/同意/所有权限”不构成 L2 授权。
+
+## 10. 后续唯一 L2 sealed checkpoint
+
+上述第 7--9 节保留 S2 收口时的 zero-provider 事实，不回写成 S2 已调用 Provider。S2 commit 推送后，独立
+L2 admission 将 approved source/tag 固定到
+`4c6084455d0cea6b4a5ddd94511bce29c22af1c4`，并在 fresh 数据边界接受与 exact authorization 下执行唯一
+run `6918df4f-a4ae-4de0-aa21-c7614ed5861d`。
+
+L2 得到 guard `8/8`、runtime reserved/terminal/orphan/not-started `16/16/0/0`、strict/wire/verified usage
+`16/16/16/16`，Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`，usage `7032/244`、费用 `0.02256 CNY`，安全失败全 0。
+最终 gate 为 `small_sample_quality_gate_passed`，authority 为 `small_sample_semantic_gate`。
+
+Journal `180` 条并以 `evidence_published` 收口；validator `ok=true`，artifact SHA `a1b51f...eb0d`，无
+recovery claim。8-pair P95 仍为 `null / insufficient_sample_size_8`。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+
+L2 不得重跑或追加 Provider 探测，approved tag 不随文档提交移动。下一任务仅 P2 zero-provider full-gate
+design；不得直接执行 48-case Live、产品 Docker/API/browser 或 main。

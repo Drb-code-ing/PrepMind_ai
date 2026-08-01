@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：G1 已完成，zero-provider；后续 G2/S2 也已完成，当前停止在未来 L2 admission 门
+状态：G1 已完成，zero-provider；后续 G2/S2 与唯一 L2 已完成，G1 authority 保持不变
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -158,7 +158,20 @@ G1 之后的 S2 reviewed Mock/static 已 zero-provider 完成；验收见
 
 S2 不创建 approved tag。只有 S2 独立提交并推送后，未来独立 L2 admission 才能针对已推送且
 HEAD/upstream/remote parity 的 commit 创建/绑定 tag，并重新取得数据边界接受与 exact authorization。
-当前普通“继续/开始/同意/所有权限”仍不授权 L2。
+普通“继续/开始/同意/所有权限”不授权 L2。上述内容保留 G1/S2 当时边界；后续唯一 L2 已按独立 admission
+完成。
+
+### 8.1 后续 L2 sealed checkpoint
+
+唯一 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已以 guard `8/8`、strict/wire/verified usage
+`16/16/16/16`、Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`、费用 `0.02256 CNY` 通过
+`small_sample_quality_gate_passed` 并 durable seal。Authority 仅 `small_sample_semantic_gate`；8-pair P95 仍
+为 `null`。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+
+L2 结果不改写 G1 的 `zero_provider_contract_baseline` authority、baseline 数值或 SHA。当前下一任务仅 P2
+zero-provider full-gate design；L2 重跑/48-case Provider 调用、产品验收与 main 均未获授权。
 
 回顾时可以问：
 

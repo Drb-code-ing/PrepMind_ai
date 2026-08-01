@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1、G1、G2、S2 已完成；当前停止在未来 L2 admission 门，L2 未授权
+当前状态：P1、G1、G2、S2 与唯一 L2 已完成；下一任务仅 P2 zero-provider full-gate design
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -111,8 +111,8 @@ G1 验收后只允许进入 G2；禁止读取 credential 或调用 Provider。
 - public production CLI 只接收 `args + AbortSignal`，固定 root/env/clock/UUID/writer/model/URL/fetch/
   retry ports；
 - source admission 绑定固定分支、tracked clean、HEAD/upstream/remote、未来 L2 admission 创建/绑定的
-  approved tag、正式 artifact=0 与 Tutor/Organizer/adapter 源码 SHA；G2/S2 均未创建 tag，因此 L2
-  入口仍在 credential/marker 前关闭；
+  approved tag、正式 artifact=0 与 Tutor/Organizer/adapter 源码 SHA；G2/S2 当时均未创建 tag，因此 L2
+  入口在 credential/marker 前关闭；
 - runner 固定 8 guards 全部先行、8 pairs 串行、pair 内双 lane，父请求取消统一投影为
   `external_abort`；普通 semantic mismatch 不开 breaker，首个 contract failure 收口 sibling 后才阻断后续 pair；
 - marker、`lane_reserved`、wire stage、lane/pair/run terminal、`publication_started` 与
@@ -155,7 +155,7 @@ admission 才能在已推送且 HEAD/upstream/remote parity 的 S2 commit 上创
 
 ## L2：唯一 Small-sample Controlled-Live
 
-状态：[ ] 未授权、不得运行。
+状态：[x] 唯一 run 已通过并 durable seal；不得重跑。
 
 前置必须全部成立：
 
@@ -171,13 +171,19 @@ admission 才能在已推送且 HEAD/upstream/remote parity 的 S2 commit 上创
   `PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_DEEPSEEK_API_KEY`；只进入唯一进程，不写 `.env`、CLI、
   日志或 evidence，通用/产品/Canary/其它 Agent key 不能替代。
 
-L2 只运行一次 8-pair manifest。任何终态都必须 durable seal，禁止 retry/resume/replay/backfill、补跑单 case、
-curl/产品 API 追加探测、删除/改写 artifact 或 crash seal 已完成 run。
+L2 只运行一次 8-pair manifest。唯一 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已绑定 source/tag
+`4c608445...c22af1c4`，得到 guard `8/8`、strict/wire/verified usage `16/16/16/16`、
+Tutor/Organizer/Combined semantic `0.9141666666666668 / 1 / 0.9570833333333334`、usage `7032/244`、费用
+`0.02256 CNY`，并以 `small_sample_quality_gate_passed / small_sample_semantic_gate` durable seal。
+
+Journal `180` 条并以 `evidence_published` 收口，artifact SHA `a1b51f...eb0d`，validator `ok=true`，无
+recovery claim。8-pair P95 为 `null / insufficient_sample_size_8`。禁止 retry/resume/replay/backfill、补跑单
+case、curl/产品 API 追加探测、删除/改写 artifact 或 crash seal 已完成 run。
 
 ## P2：L2 后路线决策
 
-状态：[ ] 被 L2 阻断，必须先 zero-provider。
+状态：[ ] 下一任务，只允许 zero-provider 设计。
 
-- `small_sample_quality_gate_passed`：只允许设计新的 24-pair full semantic gate；
-- 其它任何终态：只允许只读/zero-provider 复盘，不允许重跑 L2 或放宽 P1 门；
-- 两种终态都不直接进入产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。
+- 基于已封存的 `small_sample_quality_gate_passed`，只允许设计新的 24-pair/48-case full semantic gate；
+- P2 不读取 credential、不调用 Provider，也不重跑 L2 或放宽 P1 门；
+- P2 设计不直接授权 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。

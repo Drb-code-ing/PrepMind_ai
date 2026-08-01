@@ -370,7 +370,7 @@ recovery claim，R3 validator/SHA 不变。
 L1 只能证明这一次 fact-free 请求在当时 source/credential/network path 下得到 strict response、verified
 usage 与可验证 evidence。`status=diagnostic_only / qualityAuthority=none`，因此不能证明 Provider 长期健康、
 Tutor/Organizer semantic、RAG/写隔离或产品可用，也不能外推 P95、48-case 成本或 SLA。L1 名额已消费并禁止
-重跑。其解锁的 P1/G1/G2/S2 已 zero-provider 完成；当前只允许准备未来独立 L2 admission，L2 未授权。
+重跑。其解锁的 P1/G1/G2/S2 已 zero-provider 完成；后续唯一 L2 已按独立 admission 完成并封存。
 
 P1 使用独立 `phase-6.9.7-tutor-organizer-small-sample-v1`，不恢复 V1--V9/R3/R4/L1 identity。来源固定为
 V2 dataset `42803d45...b437b`；manifest `ae667f1c...edf61` 选择 4+4 critical guards 与 runtime
@@ -380,17 +380,17 @@ locked-name/no-write。
 
 未修饰 deterministic subset baseline 为 Tutor/Organizer/Combined
 `0.7070238095238095 / 0.2375 / 0.47226190476190477`，canonical payload SHA 为
-`d36d0789...d9f4e`；Provider/token/cost 为 0。未来 quality gate 固定 guard `8/8` actual zero-call、runtime
+`d36d0789...d9f4e`；Provider/token/cost 为 0。L2 quality gate 固定 guard `8/8` actual zero-call、runtime
 strict/wire/verified usage `16/16/16/16`、三个 semantic 均 `>=0.85`、Tutor/Organizer 各提升
 `>=0.15`、invalid/critical/permission/mutation/broader fallback 为 0，且 provenance 必须是
 `deepseek_network`。任一 runtime/wire/duration/usage/pricing 不完整时 semantic/latency/token/CNY aggregate
 全 `null`。
 
 8-pair sample 不产生既有 24-value P95 authority；只允许 `3500/5000ms` hard timeout、sample median/max，P95
-字段保持 `null / insufficient_sample_size_8`。未来 L2 cap 固定 `16 calls / 37600 input / 8800 output /
+字段保持 `null / insufficient_sample_size_8`。L2 cap 固定 `16 calls / 37600 input / 8800 output /
 0.176 CNY`，guard-first、pair-serial、pair 内 sibling lane 独立 abort/timeout/terminal，no retry/resume/replay/
-backfill。P1/G1/G2/S2 未读取 credential 或调用 Provider；S2 不创建 approved tag，未来 L2 admission
-只有在 S2 commit 推送且 HEAD/upstream/remote parity 后才可能创建/绑定 tag，并重新取得数据边界接受与
+backfill。P1/G1/G2/S2 当时未读取 credential 或调用 Provider；S2 本身不创建 approved tag。后续独立 L2
+admission 已在 S2 commit 推送且 HEAD/upstream/remote parity 后创建/绑定 tag，并重新取得数据边界接受与
 exact authorization。
 
 G1 已把 manifest、deterministic baseline、strict report/scorer/gate 落成纯本地合同。Baseline
@@ -400,8 +400,9 @@ authority/logical report/physical file SHA 分别为
 `executorProvenance=deepseek_network` 的 schema pass 也不构成真实 provenance。
 
 G2 已实现不可注入 one-shot production CLI、source/authority、runner、durable journal/marker/artifact 与重算
-validator。Public CLI 只接收 `args + AbortSignal`；source 必须绑定未来 L2 admission 创建/绑定的 approved
-tag，G2 与 S2 都未创建该 tag，因此 L2 在 credential/marker 前保持关闭。运行顺序固定为 preflight ->
+validator。Public CLI 只接收 `args + AbortSignal`；G2 当时要求 source 绑定未来 L2 admission 创建/绑定的
+approved tag，G2 与 S2 都未创建该 tag，因此在 credential/marker 前保持关闭。后续 admission 已独立创建并
+绑定 approved tag。运行顺序固定为 preflight ->
 source -> approval -> dedicated
 credential -> marker -> 8 guards -> 8 pairs -> publication。Guard-first、pair-serial、pair 内双 lane、独立
 budget/abort/timeout/terminal 与首 contract failure breaker 均由 runner 执行；semantic mismatch 不提前停止。
@@ -416,12 +417,22 @@ S2 reviewed Mock 已真实穿过 Tutor V6、Organizer V9、第一方 direct adap
 authority/merger 与 G2 runner。Responder 不读取 expected/oracle；actual 从 model-owned decision 与本地
 authority 重建并与 runtime axes 交叉核验。正常结果为 `8/8` guard、`16/16` strict/wire/verified usage、
 semantic `1/1/1`，但 gate 永远是 `mock_quality_not_evidence`。Focused `35/35`、G1+G2+S2 `87/87`、
-Agent `1062/1062`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`；正式 L2 文件为 0。
+Agent `1062/1062`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`；S2 收口时正式 L2 文件为 0。
 
 P1/G1/G2/S2 都没有改最终 Chat 输出或形成真实 Provider quality authority，因此不需要、也不允许用一般
-live smoke 规则追加 Provider 调用。S2 未创建 approved tag；当前 L2、48-case、产品 Docker/API/browser 和
-main 继续受门禁约束。未来 L2 admission 仍需 fresh 数据边界接受、exact confirmation、已推送 commit parity
-和独立 source/tag admission。
+live smoke 规则追加 Provider 调用。唯一 L2 随后在 fresh 数据边界接受、exact confirmation、已推送 commit
+parity 和独立 source/tag admission 下执行一次并 durable seal：run
+`6918df4f-a4ae-4de0-aa21-c7614ed5861d`，guard `8/8`、strict/wire/verified usage
+`16/16/16/16`，Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`，improvement
+`0.2071428571428573 / 0.7625`，usage `7032/244`、费用 `0.02256 CNY`，安全失败全 `0`。Gate 为
+`small_sample_quality_gate_passed`，authority 为 `small_sample_semantic_gate`；journal `180` 条并以
+`evidence_published` 收口，validator `ok=true`，artifact SHA `a1b51f...eb0d`，recovery claim 为 0。
+
+该 authority 只覆盖固定 8-pair 小样本语义门。8 样本 P95 仍为
+`null / insufficient_sample_size_8`，不能证明 SLA、48-case、产品 API/页面或生产就绪。L2 名额已消费，禁止
+retry/resume/replay/backfill、追加 Provider 探测、seal/recovery 或改写 artifact；当前下一任务仅 P2
+zero-provider full-gate design，48-case、产品 Docker/API/browser 与 main 继续受门禁约束。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

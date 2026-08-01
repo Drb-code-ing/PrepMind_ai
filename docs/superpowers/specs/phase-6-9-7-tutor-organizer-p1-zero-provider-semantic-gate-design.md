@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1、G1、G2、S2 已完成，zero-provider；S2 仅执行 reviewed synthetic Mock，未执行 L2
-Controlled-Live、未启动 Docker/API/browser
+状态：P1、G1、G2、S2 已完成；唯一 L2 已通过并 durable seal，下一步仅 P2 zero-provider 设计；未启动
+产品 Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -21,9 +21,10 @@ P1 不把 L1 health canary 扩写为 Agent 质量证据，也不恢复 V1--V9 �
 
 P1 只完成设计；随后 G1 已把 manifest、deterministic baseline、strict report/scorer/gate 落成纯本地合同，
 `providerCalls=0`。随后 S2 让小样本 candidate 穿过 synthetic fetch、validator/merger 与 runner，但 gate 固定
-`mock_quality_not_evidence`；因此当前仍不能声称：
+`mock_quality_not_evidence`。唯一 L2 随后在独立 admission 下通过，但其 authority 只覆盖固定 8-pair；因此仍
+不能声称：
 
-- TutorAgent 或 WrongQuestionOrganizerAgent 的真实模型语义已通过；
+- TutorAgent 或 WrongQuestionOrganizerAgent 的 48-case/产品级真实模型语义已通过；
 - 48-case 全量质量、P95、长期 Provider 健康或生产 SLA 已通过；
 - 产品 Docker/API/可见浏览器、Trace、数据库写隔离或 main 已验收；
 - Phase 6.9.7、Phase 6.9.8、Phase 6.10、Phase 8/9 已解锁。
@@ -341,7 +342,7 @@ G1 必须停止，不能调整 expected、选择 case 或在 Live 后放宽阈�
 
 ## 6. 小样本质量门
 
-未来唯一 L2 只有同时满足以下全部条件，才可得到
+唯一 L2 的设计要求是只有同时满足以下全部条件，才可得到
 `small_sample_quality_gate_passed`：
 
 1. Manifest version/SHA、source dataset/policy SHA、未来 L2 admission 冻结的 exact runnable source commit、
@@ -546,12 +547,12 @@ consumed stage，不保存 object、URL、port、proxy variable value 或 owner 
 
 ## 10. Source 与授权门
 
-未来 L2 前置必须全部完成：
+L2 执行前置必须全部完成：
 
 1. G1 contracts/manifest/baseline 和 G2 runner/durability 已提交；
 2. S2 reviewed Mock、fault matrix、静态/历史 validator、Reader Testing 与独立终审全部通过并推送；S2
    不自引用尚未产生的 commit，也不创建 approved tag；
-3. 未来独立 L2 admission 把唯一 `approvedRunnableSourceCommit` 冻结为上述已推送 S2 commit，并创建/绑定
+3. 独立 L2 admission 把唯一 `approvedRunnableSourceCommit` 冻结为上述已推送 S2 commit，并创建/绑定
    approved tag；tracked source clean，固定 branch、
    `HEAD == upstream == remote == approvedRunnableSourceCommit`，新正式 artifact=0；空值或未推送 commit
    都不能通过 L2 source reader；
@@ -559,7 +560,7 @@ consumed stage，不保存 object、URL、port、proxy variable value 或 owner 
 5. 同一授权进程内 fresh proxy preflight 为 `direct_ready`，或
    `loopback_proxy_ready / providerCalls=0` 并铸造一次消费 attestation；它仍发生在 source、credential、marker
    和 Provider 前，不持久化 URL/port；
-6. 用户重新接受**未来运行当时** DeepSeek 当前账号的数据保留/训练边界；
+6. 用户重新接受**实际运行当时** DeepSeek 当前账号的数据保留/训练边界；
 7. 用户给出 exact confirmation：
 
 ```text
@@ -577,32 +578,46 @@ credential env: PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_DEEPSEEK_API_KEY
 它们只映射到单个授权进程，不写入 `.env`、CLI 参数、日志或 evidence。通用 `DEEPSEEK_API_KEY`、现有产品
 Tutor/Organizer component key、Canary V2 credential 和其它 Agent key 都不能替代 L2 专用 credential。
 
-普通“继续”“开始”“同意”“所有权限”都不是 L2 exact authorization。P1 当前没有 authorization，也没有读取
+普通“继续”“开始”“同意”“所有权限”都不是 L2 exact authorization。P1 阶段没有 authorization，也没有读取
 credential。L2 无论成功、语义失败、transport/HTTP/schema/usage/timeout/abort 或 I/O failure，都只允许一次
-durable seal，禁止任何补跑。
+durable seal，禁止任何补跑；该名额现已消费。
+
+### 10.1 后续唯一 L2 sealed outcome
+
+唯一 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已绑定 source commit/tag
+`4c6084455d0cea6b4a5ddd94511bce29c22af1c4`，在 fresh 数据边界接受与 exact authorization 下运行一次并
+durable seal：guard `8/8`、runtime `16/16/0/0`、wire/strict/verified usage `16/16/16/16`；
+Tutor/Organizer/Combined semantic 为 `0.9141666666666668 / 1 / 0.9570833333333334`，improvement 为
+`0.2071428571428573 / 0.7625`，usage `7032/244`，费用 `0.02256 CNY`，安全失败全 0。Gate 为
+`small_sample_quality_gate_passed`，authority 为 `small_sample_semantic_gate`。
+
+Journal `180` 条并以 `evidence_published` 收口；artifact SHA 为 `a1b51f...eb0d`，validator `ok=true`，无
+recovery claim。8-pair P95 仍为 `null / insufficient_sample_size_8`；该结果不产生 SLA、48-case 或产品
+authority。
 
 ## 11. 后续原子路线与停止门
 
-| 阶段 | 内容                                                                  | 当前状态              |
-| ---- | --------------------------------------------------------------------- | --------------------- |
-| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
-| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
-| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider |
-| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider |
-| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 未授权、未开始        |
-| P2   | 只按 L2 sealed 终态决定是否设计 24-pair full semantic gate            | 被阻断                |
+| 阶段 | 内容                                                                  | 当前状态                |
+| ---- | --------------------------------------------------------------------- | ----------------------- |
+| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider   |
+| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider   |
+| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider   |
+| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider   |
+| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal   |
+| P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 下一任务，zero-provider |
 
-L2 即使通过，也只形成 `small_sample_semantic_gate` authority，最多解锁 P2 的 zero-provider 全量设计；不得直接
-进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。若 L2 失败，回到 zero-provider
-复盘；不得复制 V10/V11 式整套重试、放宽阈值或重跑同一 manifest。
+L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计；不得直接
+进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。不得复制 V10/V11 式整套重试、
+放宽阈值或重跑同一 manifest。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
 logical report SHA 为 `ad3aa54d...d002`、physical file SHA 为 `e8bcbcb5...658b`、eval policy SHA 为
 `1cab7786...399a`；这些只形成 `zero_provider_contract_baseline` authority。G2 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；S2 验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。G2 durability 与 S2
-reviewed Mock 都不替代未来 L2 Provider quality authority。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；L2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。G2 durability 与 S2 reviewed
+Mock 的历史 authority 不因 L2 结果改写。
 
 ## 12. 回顾问题
 

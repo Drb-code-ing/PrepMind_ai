@@ -1674,7 +1674,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] P1 quality gate 固定 guard `8/8` actual zero-call、runtime strict/wire/usage `16/16/16/16`、三个
       semantic `>=0.85`、Tutor/Organizer improvement 各 `>=0.15`、invalid/critical/permission/mutation/
       broader fallback 为 0；incomplete aggregate 全 `null`；
-- [x] 8-sample 不产生 P95 authority，只记录 `3500/5000ms` hard timeout 与 median/max；未来 L2 cap 固定
+- [x] 8-sample 不产生 P95 authority，只记录 `3500/5000ms` hard timeout 与 median/max；L2 cap 固定
       `16 calls / 37600 input / 8800 output / 0.176 CNY`、no retry/resume/replay/backfill；
 - [x] P1 冻结 guard-first、pair-serial、pair 内 sibling lane 独立 terminal、fixed denominator、breaker、
       exclusive marker/hash-chain journal/hard-link artifact/crash-only seal 与历史双向 lineage rejection；
@@ -1696,7 +1696,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       external-abort 分类、exclusive marker、fsynced hash-chain journal、hard-link artifact/strict validator 与
       crash-only seal；public CLI 只接收 `args + AbortSignal`；
 - [x] G2 source admission 要求固定分支、tracked clean、HEAD/upstream/remote、未来 L2 admission 创建/
-      绑定的 approved tag、正式 artifact=0 与 Tutor/Organizer/adapter SHA；G2/S2 均未创建 tag，L2 仍在
+      绑定的 approved tag、正式 artifact=0 与 Tutor/Organizer/adapter SHA；G2/S2 当时均未创建 tag，因此在
       credential/marker 前 fail-closed；
 - [x] G2 runner 先完成 8 guards，再串行执行 8 pairs；pair 内两条 lane 独立 budget/abort/timeout/terminal；
       semantic mismatch 不开 breaker，首 contract failure 保留 sibling terminal 并让后续 14 lane
@@ -1724,8 +1724,28 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       三路独立终审和 Reader Testing 通过；验收见
       `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
 - [x] S2 未读取 credential、调用 Provider、创建 approved tag、启动 Docker/API/browser、修改业务数据或合并
-      main。未来独立 L2 admission 才能在已推送且 HEAD/upstream/remote parity 的 commit 上创建/绑定 tag，
-      并仍需 fresh 数据边界接受与 exact authorization；L2/48-case、产品/main、Phase 6.9.8 继续阻断。
+      main。后续独立 L2 admission 已在已推送且 HEAD/upstream/remote parity 的 commit 上创建/绑定 tag，并
+      取得 fresh 数据边界接受与 exact authorization；S2 历史 zero-provider 事实不因后续结果改写。
+- [x] 唯一 L2 approved source commit、HEAD/upstream/remote 与 tag 均为
+      `4c6084455d0cea6b4a5ddd94511bce29c22af1c4`；tracked source clean、正式 artifact=0，fresh preflight 为
+      `direct_ready / providerCalls=0`；
+- [x] 用户已重新接受本次运行时 DeepSeek 数据边界并给出 exact authorization；credential 只映射到唯一子进程
+      专用变量，未打印、写回或进入 CLI/journal/artifact/Git；
+- [x] 唯一 L2 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 为 guard `8/8`、runtime
+      reserved/terminal/orphan/not-started `16/16/0/0`、wire `16/16/16/16`、strict runtime `16/16`；
+- [x] L2 Tutor/Organizer/Combined semantic 为
+      `0.9141666666666668 / 1 / 0.9570833333333334`，improvement 为
+      `0.2071428571428573 / 0.7625`，invalid/critical/permission/mutation/broader fallback/locked-name/
+      write-command failure 全为 0；
+- [x] L2 verified usage 为 `7032/244`，费用 `0.02256 CNY`；8-pair P95 保持
+      `null / insufficient_sample_size_8`，不产生 SLA/产品性能 authority；
+- [x] L2 gate 为 `small_sample_quality_gate_passed`，quality authority 为
+      `small_sample_semantic_gate`；正式 marker/journal/artifact/recovery claim 为 `1/1/1/0`；
+- [x] L2 journal `180` 条并以 `evidence_published` 收口；logical report SHA 为
+      `a981e188...eeb8`，physical artifact SHA 为 `a1b51f05...eb0d`，bundle validator `ok=true`；
+- [x] L2 名额已消费；禁止 retry/resume/replay/backfill、Live/seal/recovery、追加 Provider 探测、删除或改写
+      artifact。下一任务仅 P2 zero-provider full-gate design；48-case、产品 Docker/API/browser、main 与 Phase
+      6.9.8 继续阻断。
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1748,4 +1768,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。

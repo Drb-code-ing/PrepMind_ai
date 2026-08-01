@@ -1300,8 +1300,9 @@ Provider Canary V2 D0/C1/C2/S1/L1 已完成。它不复用旧 R3/R4 approval、c
 journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
-contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。当前停止在未来 L2
-数据边界接受、exact authorization 与 source/tag admission 门前。
+contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
+source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；当前下一任务仅 P2
+zero-provider full-gate design。
 
 C1 固定验收命令：
 
@@ -1370,14 +1371,15 @@ Provider；不要添加 credential、Live 参数、output、recovery 或任何�
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`；
 - `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
 
-P1/G1/G2 小样本设计、contract 与 durability 入口：
+P1/G1/G2/S2/L2 小样本设计、contract、durability 与 sealed evidence 入口：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
@@ -1407,11 +1409,11 @@ bun run typecheck
 bun run lint
 ```
 
-Public production CLI 只接收 `args + AbortSignal`，但现在不要运行
-`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。Source gate 要求未来 L2
-admission 创建并绑定专用 `phase-6-9-7-tutor-organizer-small-sample-s2-approved` tag；G2 与 S2 都没有创建该
-tag，缺 tag 必须在 approval/credential/marker 前 fail-closed。Crash-only seal 只
-用于已有 dead-owner正式 attempt，不能作为测试命令、预创建 artifact 或绕过 L2 授权门。
+Public production CLI 只接收 `args + AbortSignal`。唯一 L2 已完成，因此现在不得运行
+`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。执行前 source gate 曾要求独立
+L2 admission 创建并绑定专用 `phase-6-9-7-tutor-organizer-small-sample-s2-approved` tag；该 tag 现已固定在
+实际运行 source commit `4c608445...c22af1c4`，不得移动或重建。Crash-only seal 只适用于未完成的
+dead-owner attempt；已正常 `evidence_published` 的 run 禁止 seal/recovery。
 
 G2 recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即 `attempted_aborted`，后续 pair 为
 `not_started_quality_breaker`；这不是 resume/replay/retry，也不构造 harness/transport 或调用 Provider。外部父
@@ -1432,11 +1434,23 @@ bun run lint
 parent abort、single-dispatch/no-backfill 与 Tutor/Organizer `3500/5000ms` hard timeout。不要把 synthetic
 token/费用或本机 median/max 写成 Provider 账单、P95 或产品延迟。
 
-L1 已消费并完成，不得再次运行；S2 已完成 zero-provider 收口，但本地完成状态本身不构成远程 parity
-证据。当前禁止执行 L2 小样本/48-case、产品 Docker/API/browser、main 或 Phase 6.9.8。未来 L2 必须在
-S2 commit 已推送且
-HEAD/upstream/remote parity 后，由独立 admission 创建/绑定 tag，并重新接受运行时数据边界、给出 exact
-authorization；S2 本身不预创建 tag 或授权 L2。
+L1 与 L2 均已消费并完成，不得再次运行。L2 唯一 run
+`6918df4f-a4ae-4de0-aa21-c7614ed5861d` 为 guard `8/8`、strict/wire/verified usage
+`16/16/16/16`、Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`、usage `7032/244`、费用 `0.02256 CNY`，最终
+`small_sample_quality_gate_passed / small_sample_semantic_gate`。8-pair P95 仍为
+`null / insufficient_sample_size_8`。
+
+只读复核 sealed L2 bundle 可使用：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-7:small-sample:validate
+```
+
+期望摘要为 `ok=true / journalRecords=180 / finalJournalEvent=evidence_published / artifact
+SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不调用 Provider，也不创建 recovery claim。
+禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。当前只允许 P2
+zero-provider full-gate design；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 仍被阻断。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-01。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`。P1/G1/G2/S2 已 zero-provider 完成；S2 reviewed Mock 为 `8/8` guard、`16/16` strict/wire/usage、semantic `1/1/1`，但 authority 固定 `mock_quality_not_evidence`。R3/V2 不得重跑，L2 仍未授权，48-case、产品/main 与后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1 新增 transport diagnostic wrapper；R2 完成 zero-network canary contract/runner；R3 完成 one-shot/durability 边界并修复 Windows evidence-root 围栏。唯一 run `253a5df5...` 已正常 runtime seal：一次 dispatch 后、HTTP Response 前为 `transport_failed / connection_refused`，wire `1/1/0/0`，usage/token/CNY 全 `null`，artifact authority 仅 `diagnostic_only`。独立 zero-provider proxy preflight 首次为 `loopback_proxy_unavailable / 4 / 1 / 0`，宿主 listener 恢复后 fresh 结果为 `loopback_proxy_ready / 4 / 1 / 0`。Provider Canary V2 D0/C1/C2/S1/L1 已完成；唯一 L1 run `dc09214c...` 得到 strict response 与 verified usage，wire `1/1/1/1`、usage `49/5`、费用 `0.00017700 CNY`，validator `ok=true`。该 evidence 仍为 `diagnostic_only / qualityAuthority=none`。P1/G1/G2/S2 已 zero-provider 完成；S2 reviewed Mock 为 `8/8` guard、`16/16` strict/wire/usage、semantic `1/1/1`，但 authority 固定 `mock_quality_not_evidence`。R3/V2/L2 均不得重跑；唯一 L2 已通过 8-pair `small_sample_semantic_gate`，下一步仅 P2 zero-provider full-gate design，48-case、产品/main 与后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -27,8 +27,9 @@
 - Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。V7 R1 新增的 V4 Pro direct adapter 仍只是一种 `StructuredModelExecutor`；V9 R4 reviewed Mock 让正式 Tutor/Organizer candidate 穿过该 adapter，但只注入进程内 synthetic fetch。V9 R5 唯一 Live 证明两条 lane 能进入第一方 durable dispatch 边界，但没有 Provider response，因此不形成语义、usage、费用或产品 authority。其 wire capability 只暴露固定 stage/category/counter，不暴露 fetch、response 或 raw error。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
 - Provider Transport Diagnostic 职责：Recovery R1 的新 adapter 只在实例内存中保存 frozen `version + subtype`，用 own data descriptor 和最多四层 cause 将 fetch throw 映射为九个固定类别；公共 runtime/error/Trace 仍只接收原有 `transport`。Recovery R2 仅在独立 zero-network canary runner 中用模块内 synthetic responder 消费该 adapter。Recovery R3 的真实 composition 仍与产品 Tutor/Organizer 分离，只能在 exact confirmation、专用 credential、clean/tracking source 和未消费 marker 同时满足时构造一次 transport；结果只进入 diagnostic-only artifact，不能反向诊断 V9，也不能自动成为 Provider 外部健康或 Agent 语义事实。
 - Provider Canary V2 职责：C1 的 proxy attestation 只存在于当前进程并只能消费一次；C2 public CLI 固定执行 preflight -> source -> approval/dedicated credential -> exclusive marker -> single fact-free dispatch -> terminal -> publication，不接受 transport 或输出注入。Marker、hash-chain journal 与 hard-link artifact 只解决一次性执行和证据 durability，不负责 Tutor/Organizer 语义、产品接线或业务写入。唯一 L1 已以 `complete / strict_response_with_verified_usage` 封存，但仍为 `qualityAuthority=none`；它只向 P1 提供一次 Provider health diagnostic，不得成为 semantic 或产品输入。
-- Small-sample G2 职责：public CLI 只接收 `args + AbortSignal`，固定 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication；未来 L2 source admission 必须绑定专用 approved tag，但 S2 不创建该 tag。Runner 先执行 8 guards，再串行推进 8 pairs，pair 内 Tutor/Organizer lane 各自拥有 budget/abort/timeout/terminal。Crash-only seal 只补当前开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 `not_started_quality_breaker`；不读取 credential、不构造 transport、不调用 Provider，也不是 resume/replay。G2 只形成 `zero_provider_runner_durability`。
-- Small-sample S2 职责：在 G2 runner 上注入 reviewed `mock_synthetic` harness；Responder 只读取实际 bounded prompt，Tutor/Organizer actual 从 model-owned decision 与本地 authority/merger 重建，再与 runtime semantic axes 交叉核验。S2 验证 locked-name/no-write、25 类 transport/HTTP/schema/usage fault、父取消与 `3500/5000ms` 双 hard timeout，但不读取 credential、不调用 Provider、不创建正式 artifact 或 approved tag；gate 永远是 `mock_quality_not_evidence`，不能代替未来 L2 语义 authority。
+- Small-sample G2 职责：public CLI 只接收 `args + AbortSignal`，固定 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication；G2 当时要求未来 L2 source admission 绑定专用 approved tag，S2 本身不创建该 tag。Runner 先执行 8 guards，再串行推进 8 pairs，pair 内 Tutor/Organizer lane 各自拥有 budget/abort/timeout/terminal。Crash-only seal 只补当前开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 `not_started_quality_breaker`；不读取 credential、不构造 transport、不调用 Provider，也不是 resume/replay。G2 只形成 `zero_provider_runner_durability`。
+- Small-sample S2 职责：在 G2 runner 上注入 reviewed `mock_synthetic` harness；Responder 只读取实际 bounded prompt，Tutor/Organizer actual 从 model-owned decision 与本地 authority/merger 重建，再与 runtime semantic axes 交叉核验。S2 验证 locked-name/no-write、25 类 transport/HTTP/schema/usage fault、父取消与 `3500/5000ms` 双 hard timeout，但不读取 credential、不调用 Provider、不创建正式 artifact 或 approved tag；gate 永远是 `mock_quality_not_evidence`，不能替代真实 L2 语义 authority。
+- Small-sample L2 职责：独立 admission 将 pushed S2 source commit/tag、fresh proxy attestation、exact authorization 与专用 credential 绑定到唯一进程；G2 runner 真实执行 8 guards + 8 pairs，并把 reservation、wire、terminal 和 publication durable 写入 marker/hash-chain journal/hard-link artifact。唯一 run 已以 `small_sample_quality_gate_passed / small_sample_semantic_gate` 收口；该数据流到此停止，不连接 48-case、产品 Docker/API/browser 或 main，下一节点仅 P2 zero-provider full-gate design。
 - 会话状态职责：`POST /conversation-context/prepare` 固定执行 ownership -> state patch/cache/PG -> 已有 summary -> uncovered count。PostgreSQL 是 state 权威源；Redis key 是 user/conversation 的 SHA-256 组合且最长 TTL 24 小时，只保存 public state。客户端只能 patch active goal/question，内部 action/tool 字段不会进入 request/response/cache。缓存 miss、Redis error、坏 JSON、schema mismatch 或过期都会安全回源/返回 PG 结果。
 - 本地轻状态：今日任务轻手账 checklist 和学习偏好继续使用 userId scoped localStorage。
 
@@ -817,7 +818,7 @@ Architecture Recovery proxy preflight（independent / zero-provider）
   -> first actual: loopback_proxy_unavailable / configured=4 / probe=1 / providerCalls=0
   -> diagnostic-only：不创建 marker/journal/artifact，不证明 HTTP/DNS/TLS/Provider/账号健康
   -> V2 C2 已实现固定 ordering；L1 已按该顺序完成唯一 dispatch 并封存
-  -> R3/V2 不得重跑；P1/G1 已完成，原 R4、L2 小样本、48-case、产品/main 继续阻断
+  -> R3/V2/L2 均不得重跑；原 R4、48-case、产品/main 继续阻断
 ```
 
 ```text
@@ -869,8 +870,13 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
   -> S2 complete：reviewed candidate/adapter/validator/merger + fault/static/history checkpoint
        -> 8/8 guard；16/16 strict/wire/usage；semantic 1/1/1
        -> mock_quality_not_evidence；formal L2 artifact=0；approved tag=0
-  -> current stop：future L2 data-boundary + exact authorization + source/tag admission
-  -> 不执行 L2 小样本/48-case，也不进入产品 Docker/API/browser/main
+  -> L2 complete：source/tag 4c608445...c22af1c4 + data-boundary + exact authorization
+       -> run 6918df4f...；8/8 guard；16/16 strict/wire/usage
+       -> semantic 0.9141666667/1/0.9570833333；usage 7032/244；0.02256 CNY
+       -> journal 180 -> evidence_published；validator ok=true；artifact a1b51f...eb0d
+       -> small_sample_semantic_gate；P95=null；不得重跑
+  -> current stop：仅 P2 zero-provider full-gate design
+  -> 不执行 48-case，也不进入产品 Docker/API/browser/main
 ```
 
 ```text
@@ -918,8 +924,12 @@ P1/G1/G2 Small-sample Semantic Gate（design + contract/baseline + durability / 
        -> semantic axes / locked name / no-write cross-check
        -> 35/35 focused；8/8 guard；16/16 strict/wire/usage；semantic 1/1/1
        -> mock_quality_not_evidence；formal L2 files=0；S2 不创建 approved tag
-  -> next：future exact-authorized L2 -> P2
-  -> L2 pass 也只解锁 P2 full-gate design，不直接授权产品/main
+  -> L2 unique controlled-Live
+       -> exact source/tag + fresh data boundary + exact authorization
+       -> 8/8 guard；16/16 strict/wire/usage；semantic 0.9141666667/1/0.9570833333
+       -> durable seal；small_sample_semantic_gate；P95=null；no retry/replay
+  -> next：P2 zero-provider full-gate design
+  -> 不直接授权 48-case Live、产品或 main
 ```
 
 Tutor Task 3/5 已完成受治理 candidate 与 Web default-off composition；Organizer Task 4/6/7/8 已完成 candidate、owner/write fencing、server-only runtime、Trace/API/UI 来源闭环。Task 9--11 建立 72-case paired evidence 与分支 checkpoint；Task 12 V1 证明一次真实 provider/usage/费用路径，但 canonical strict runtime 与语义质量不足。V2 R1--R6 完成 prompt/contract、anti-overfit、独立 lineage、一次性 evidence、请求取消、失败终态、同题跨路由写入收敛和未写题补偿；R7 则在结构化对象形成前全量 runtime 失败。V3 R0--R4 已把有界 failure evidence、breaker、固定分母、双 lane 隔离、真实 invocation、dispatch ledger、usage/P95 fail-closed、dispatch-before-call hash-chain journal、活 owner/recovery claim、orphan seal、hard-link evidence 与 static/Mock checkpoint 落地。唯一 V3 R5 的 28 个 runtime 均获得 verified usage；第 14 对 Organizer 的结构化对象在本地 subject authority 动态合同失败后熔断，剩余 20 个 runtime 不启动，固定分母仍为 48，journal 完整封存 `quality_gate_failed`。V4 R0 又把已执行语义偏差、动态合同失败与 breaker 未执行分开并冻结新设计；V4 R1 已落地独立 case/report diagnostics、合同 stage、两 Agent bounded 语义轴、Organizer 单一 reason 链和历史隔离；V4 R2/R3 分别把 Tutor 与 Organizer 的 formatter/validator/merger 及本地不变量收敛为深冻结 policy，同时让历史 paired eval 显式保留 V2 prompt path。V4 R4 再以独立 fixtures 验证 anti-overfit、prompt leakage、authority/reorder/abort/budget/write isolation，并建立与三版历史双向隔离的 V4 marker/journal/recovery/evidence；R5 通过 fresh Mock、全量静态、PostgreSQL E2E、Compose default-off、历史 SHA/validator 与零残留 checkpoint。六步都没有改写历史 Live authority 或调用 Provider。Organizer 仍是同步 API，不冒充 durable job 或跨实例 provider exactly-once；本地 journal/claim 也不证明跨主机分布式 lease、Provider exactly-once 或突然断电后的目录元数据持久性。两个 candidate 仍不拥有最终回答、RAG/approval、userId/真实 ID、用户锁定名称或数据库写权限；default-off 时继续使用本地确定性策略。V1/V2/V3 都不得重跑；后续唯一 V4 R6 已经失败封存且同样不得重跑。V4 完整边界见 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v4-remediation-design.md`；R1--R5 证据见 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r1-bounded-diagnostics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r2-tutor-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r3-organizer-semantics.md`、`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r4-robustness-lineage.md` 与 `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。

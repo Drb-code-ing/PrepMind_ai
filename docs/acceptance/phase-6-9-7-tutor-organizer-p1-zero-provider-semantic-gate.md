@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；后续 G1/G2/S2 也已 zero-provider 完成，当前停止在未来 L2 admission 门
+状态：P1 设计验收完成；后续 G1/G2/S2 与唯一 L2 已完成，下一步仅 P2 zero-provider 设计
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -130,25 +130,35 @@ P1 收口完成以下 zero-provider 检查：
 - 无上下文 Reader Testing 经两轮修正后无剩余 Critical/Important；独立一致性与安全复审未发现新的
   Critical/Important；P1 验收当时尚无可执行 small-sample 源码，文档 SHA 不能冒充后续 G1 evidence。
 
-## 5. 下一步与精确授权门
+## 5. 后续执行状态
 
 G1 随后已 zero-provider 完成 manifest、独立 deterministic baseline、report/scorer/gate 与 oracle 隔离；
 baseline logical report/physical file/eval policy SHA 分别为
 `ad3aa54d...d002 / e8bcbcb5...658b / 1cab7786...399a`。G2 也已完成固定 production CLI/source gate、
 runner、journal/marker/artifact/validator 与 crash-only seal。S2 reviewed Mock/static 也已完成：
 `8/8` guard、`16/16` strict/wire/verified usage、semantic `1/1/1`，但 authority 仅
-`mock_quality_not_evidence`；正式 L2 文件保持 0。S2 未读 credential、未调用 Provider、未创建 approved
-tag。只有 S2 独立提交并推送后，未来 L2 admission 才能冻结 commit/tag，并另行请求：
+`mock_quality_not_evidence`；S2 收口时正式 L2 文件保持 0。S2 未读 credential、未调用 Provider、未创建
+approved tag。S2 独立提交并推送后，独立 L2 admission 冻结了 commit/tag，并取得：
 
 ```text
 I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
 ```
 
-该 confirmation 还必须与未来运行当时的数据保留/训练边界接受同时成立。普通“继续/开始/同意/所有权限”不
-授权 L2。Approval/credential env 分别固定为
+该 confirmation 与实际运行当时的数据保留/训练边界接受同时成立。普通“继续/开始/同意/所有权限”不构成
+该授权。Approval/credential env 分别固定为
 `PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_APPROVED` 与
-`PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_DEEPSEEK_API_KEY`；通用或现有产品 key 不可替代。L2 即使
-通过，也只解锁 P2 zero-provider 全量门设计，不直接授权 48-case Live、产品或 main。
+`PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_DEEPSEEK_API_KEY`；通用或现有产品 key 不可替代。
+
+唯一 L2 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已绑定 source/tag
+`4c608445...c22af1c4`，得到 guard `8/8`、runtime `16/16/0/0`、strict/wire/verified usage
+`16/16/16/16`，Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`、improvement
+`0.2071428571428573 / 0.7625`、usage `7032/244`、费用 `0.02256 CNY`，最终
+`small_sample_quality_gate_passed / small_sample_semantic_gate`。Journal `180` 条并以
+`evidence_published` 收口，artifact SHA `a1b51f...eb0d`，validator `ok=true`，无 recovery claim。
+
+8-pair P95 仍为 `null / insufficient_sample_size_8`，不能形成 SLA/产品 authority。L2 不得重跑或追加
+Provider 探测；下一步只允许 P2 zero-provider 全量门设计，不直接授权 48-case Live、产品或 main。
 
 完整设计与计划见：
 
@@ -156,7 +166,8 @@ I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_SMALL_SAMPLE_L2_CONTROLLED_LIVE_ONCE
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
 回顾时可以问：
 

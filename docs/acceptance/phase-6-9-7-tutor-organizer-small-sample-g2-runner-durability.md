@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：G2 已完成，zero-provider；其后 S2 reviewed Mock / static checkpoint 也已完成
+状态：G2 已完成，zero-provider；其后 S2 与唯一 L2 已完成，G2 authority 保持不变
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -56,10 +56,10 @@ Source reader 要求固定分支、tracked source clean、`HEAD == upstream == r
 `refs/tags/phase-6-9-7-tutor-organizer-small-sample-s2-approved` 都指向同一 commit；同时重新计算 Tutor
 prompt/schema/merger、Organizer prompt/schema/merger 和第一方 adapter SHA。该 tag 名称保留既有 contract，
 但只允许未来独立 L2 admission 在已推送且 parity 的 S2 commit 上创建/绑定；G2 与 S2 都不创建该 tag，
-所以当前 production L2 路径仍会在 approval/credential/marker 前 fail-closed。
+所以 G2/S2 收口时 production L2 路径会在 approval/credential/marker 前 fail-closed。
 
 `small-sample:cli` 与 `small-sample:live` 是同一固定 production 入口的显式别名，前者不是可绕过授权的
-普通模式。当前入口固定 `runScope=branch`；main replay 不属于 G2/S2 范围，仍由后续独立验收门阻断。
+普通模式。G2 入口固定 `runScope=branch`；main replay 不属于 G2/S2 范围，仍由后续独立验收门阻断。
 
 ## 3. Runner、失败和取消
 
@@ -159,7 +159,21 @@ matrix、受影响全量静态门、历史 validator/SHA、正式 artifact=0、�
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`。S2 未创建 approved
 tag、未读取 credential、未执行 L2。S2 独立提交并推送后仍停止在 L2 admission 门前；未来独立 L2
 admission 才能在已推送且 parity 的 commit 上创建/绑定 tag，并仍需重新接受运行当时 DeepSeek 数据边界
-与给出 exact confirmation。普通“继续”“开始”“同意”“所有权限”都不授权 L2。
+与给出 exact confirmation。普通“继续”“开始”“同意”“所有权限”都不授权 L2。上述内容保留 G2/S2 当时
+边界；后续唯一 L2 已按独立 admission 完成。
+
+### 8.1 后续 L2 sealed checkpoint
+
+唯一 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已以 guard `8/8`、runtime `16/16/0/0`、
+strict/wire/verified usage `16/16/16/16`、Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`、usage `7032/244`、费用 `0.02256 CNY` 通过并 durable
+seal。Journal `180` 条并以 `evidence_published` 收口；validator `ok=true`，artifact SHA
+`a1b51f...eb0d`，无 recovery claim。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+
+L2 的 `small_sample_semantic_gate` 不升级或改写 G2 的 `zero_provider_runner_durability` authority。8-pair 不
+产生 P95/SLA/产品 authority；L2 不得重跑，下一步仅 P2 zero-provider full-gate design，48-case、产品与 main
+仍被阻断。
 
 回顾时可以问：
 

@@ -1,5 +1,33 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer Small-sample L2 唯一 Controlled-Live：
+> 用户已重新接受本次运行时 DeepSeek 当前账号的数据保留/训练边界，并给出冻结 exact authorization。
+> Approved source commit、HEAD、upstream、远程分支与 tag
+> `phase-6-9-7-tutor-organizer-small-sample-s2-approved` 均解析到
+> `4c6084455d0cea6b4a5ddd94511bce29c22af1c4`；tracked source clean、正式 artifact=0，fresh preflight 为
+> `direct_ready / providerCalls=0`。既有根 `.env` credential 只映射到唯一子进程专用变量，未打印、写回或
+> 进入 CLI、journal、artifact 与 Git。
+>
+> 唯一 run `6918df4f-a4ae-4de0-aa21-c7614ed5861d` 已由正常 runtime 路径 durable seal。Guard `8/8`；
+> runtime reserved/terminal/orphan/not-started 为 `16/16/0/0`；wire executor/dispatch/response/verified usage
+> 为 `16/16/16/16`；strict runtime `16/16`。Tutor/Organizer/Combined semantic 为
+> `0.9141666666666668 / 1 / 0.9570833333333334`，相对冻结 baseline 的提升为
+> `0.2071428571428573 / 0.7625`，安全失败全 `0`。
+>
+> Verified usage 为 input/output `7032/244`，费用 `0.02256 CNY`。8-pair 样本只记录 median/max，P95 仍为
+> `null / insufficient_sample_size_8`，不产生 SLA 或产品性能 authority。最终 gate 为
+> `small_sample_quality_gate_passed`，quality authority 为 `small_sample_semantic_gate`。
+>
+> 正式 marker/journal/artifact/recovery claim 为 `1/1/1/0`；journal `180` 条并以
+> `evidence_published` 收口。Logical report SHA 为 `a981e188...eeb8`，physical artifact SHA 为
+> `a1b51f05...eb0d`；只读 bundle validator 返回 `ok=true`。Approved tag 继续固定在实际运行源码 commit，
+> 不随本次文档提交移动。
+>
+> L2 名额已消费，禁止 retry/resume/replay/backfill、Live/seal/recovery、单 case 或其它追加 Provider 探测，
+> 也不得删除或改写 sealed artifact。本次未执行 48-case、产品 Docker/API/browser、业务数据、main 或后续
+> phase。下一任务仅为 P2 zero-provider full-gate design。完整验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+>
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Small-sample S2 Reviewed Mock / Static：
 > S2 已在 zero-provider 边界内完成。新增 reviewed Mock composition，真实穿过 Tutor V6、Organizer V9、
 > 第一方 DeepSeek V4 Pro direct adapter 的 synthetic fetch seam、strict validator、本地 authority/merger 与 G2
@@ -95,8 +123,8 @@
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
-> 当时下一原子任务仅 G2；后续 G2/S2 均已按上方日志完成。当前停止在未来 L2 admission；L2、48-case、
-> 产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
+> 当时下一原子任务仅 G2；后续 G2/S2 与唯一 L2 均已按上方日志完成。当前下一任务仅 P2 zero-provider
+> full-gate design；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的
@@ -115,7 +143,7 @@
 >
 > 质量门固定为 guard `8/8` zero-call、runtime strict/wire/verified usage `16/16/16/16`、三个 semantic
 > 均 `>=0.85`、Tutor/Organizer 各提升 `>=0.15`、critical/permission/mutation/broader fallback=0。8-sample
-> 不伪造 24-sample P95，只记录 `3500/5000ms` hard timeout 与 median/max；未来 L2 cap 固定
+> 不伪造 24-sample P95，只记录 `3500/5000ms` hard timeout 与 median/max；L2 cap 固定
 > `16 calls / 37600 input / 8800 output / 0.176 CNY`，no retry/resume/replay/backfill。
 >
 > 收口验证重算 manifest/baseline/source SHA 与 8 guards、8 pairs、16 lanes、12 decisions 全部精确匹配；
@@ -125,7 +153,7 @@
 >
 > 本阶段没有读取 `.env`/credential、调用 Provider、运行小样本/Mock、启动 Docker/API/browser、创建正式
 > marker/journal/artifact 或修改业务数据。本 P1 收口当时下一原子任务为 G1；后续 G1 已按上方日志完成。
-> P1 验收当时要求 G2/S2 完成并推送前不得请求 L2；后续 G2/S2 均已完成，L2 仍未授权。完整设计、计划与验收见
+> P1 验收当时要求 G2/S2 完成并推送前不得请求 L2；后续 G2/S2 与唯一 L2 均已完成。完整设计、计划与验收见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md` 与
 > `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`。
