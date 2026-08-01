@@ -2,7 +2,7 @@
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；R6/R7/main、Phase 6.9.8 与后续阶段被阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 >
-> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2 均已按独立边界完成。S3 full reviewed Mock 也已 zero-provider 完成：`24/24` guard、`48/48` strict/wire/usage、semantic `1/0.996875/0.9984375`、L2 anchor `1/1/1`，但只具有 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。R3/L1/L2 不得重跑；下一步仅独立 L3 admission，仍需 fresh 数据边界接受和 exact authorization，产品/main/后续阶段阻断未解除。
+> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 Full-gate L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已正常封存：guard `24/24`、runtime `22/22/0/26`、wire `22/22/22/21`；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`。R3/L1/L2/L3 均不得重跑；产品/main/后续阶段阻断未解除。若继续，下一任务只能先建立新的 zero-provider schema diagnostics/remediation 设计。
 
 ## 项目目标
 
@@ -439,7 +439,7 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Full-gate F1：exact full manifest/baseline/report/scorer/gate、L2 anchor、24-sample P95/null aggregate、双向 lineage rejection 与安全 baseline writer 已实现；复现 P2 三个 canonical SHA，并冻结 logical/physical SHA `16c574b1...2c9 / 16aa1773...6f73`，正式 full-gate evidence 保持 0。（已完成，zero-provider）
 - Phase 6.9.7 Full-gate F2：固定 production CLI/source admission、24-guard/24-pair runner、独立 lane budget/abort/timeout、exclusive marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only seal 已实现；focused `32/32`、Agent `1108/1108`，正式 approved tag/evidence 为 0。（已完成，zero-provider）
 - Phase 6.9.7 Full-gate S3：reviewed Mock 真实穿过两条 candidate、第一方 adapter、strict validator、本地 merger 与 F2 runner；结果为 `24/24` guard、`48/48` strict/wire/usage、Tutor/Organizer/Combined `1/0.996875/0.9984375`、anchor `1/1/1`，并完成 P95/预算、fault/static/history parity 与 Reader Testing；approved tag/正式 bundle 为 0。（已完成，zero-provider）
-- Phase 6.9.7 Full-gate L3：只允许在独立 admission 重新取得 fresh 数据边界接受、exact authorization、专用 credential 与 source/tag parity 后执行唯一 24-pair Live；当前未授权、未开始。
+- Phase 6.9.7 Full-gate L3：唯一 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已在 approved source `3c5cc6c...` 上执行并正常封存；`24/24` guard，runtime reserved/terminal/orphan/not-started `22/22/0/26`，wire `22/22/22/21`。Tutor runtime 11 在 response/content parse 后发生 schema failure，breaker 阻止剩余 26 lane；semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、recovery claim=0。终态 `full_gate_quality_gate_failed / qualityAuthority=none`，不得重跑、追加 Provider 探测或进入产品验收。（失败封存）
 - Phase 6.9.7 Architecture Recovery R4（历史路线）：它绑定已消费且无 Response 的 R3 identity，永久不得开始；后来的独立 Canary V2 L1 success 不恢复 R3/R4。小样本工作只沿新的 P1/G1/G2/S2/L2 lineage 推进。（被独立路线取代）
 - Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）

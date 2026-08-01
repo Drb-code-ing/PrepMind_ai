@@ -1302,8 +1302,9 @@ source、marker、hash-chain journal、artifact/validator 与 crash-only seal，
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
 contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
 source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design、
-F1 full contract/baseline、F2 runner/durability/evidence 与 S3 reviewed Mock/static 均已 zero-provider 完成；
-当前下一任务仅独立 L3 admission。
+F1 full contract/baseline、F2 runner/durability/evidence 与 S3 reviewed Mock/static 均已 zero-provider 完成。
+其后唯一 L3 已执行并以 `full_gate_quality_gate_failed / qualityAuthority=none` 正常封存；不得重跑，产品与
+main 继续阻断。
 
 C1 固定验收命令：
 
@@ -1382,14 +1383,15 @@ P1/G1/G2/S2/L2 小样本设计、contract、durability 与 sealed evidence 入�
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
-P2/F1 full-gate zero-provider 设计、计划与验收入口：
+P2/F1/F2/S3 full-gate zero-provider 与唯一 L3 sealed evidence 入口：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
@@ -1464,8 +1466,11 @@ SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不
 production CLI/source admission、完整 runner、durability 与 strict evidence validator 落地，authority 分别仅
 `zero_provider_full_contract_baseline` / `zero_provider_full_runner_durability_evidence`。S3 随后已完成 reviewed
 Mock/static，得到 `24/24` guard、`48/48` strict/wire/usage、semantic `1/0.996875/0.9984375` 与 anchor
-`1/1/1`，但 authority 仍为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。当前只允许独立 L3
-admission；L3、产品、main 与 Phase 6.9.8 仍被阻断。
+`1/1/1`，但 authority 仍为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。唯一 L3 随后已在
+approved source `3c5cc6c...` 上执行并正常封存：run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a`，guard
+`24/24`、runtime `22/22/0/26`、wire `22/22/22/21`、strict `21/48`；Tutor runtime 11 的 schema failure
+打开 breaker。最终 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全
+`null`。L3 不得重跑，产品、main 与 Phase 6.9.8 仍被阻断。
 
 P2/F1 固定值为：dataset `72/24/48/24/32`，manifest `e68e6e27...12c78`，full baseline `12/48` 与
 semantic `0.6629642857/0.278125/0.4705446429`，source baseline `0ce7c3ca...116ca`，baseline authority
@@ -1511,9 +1516,22 @@ bun run lint
 Focused 期望为 `14/14`。正常结果固定 `24/24` guard、`48/48` strict/wire/verified usage、Tutor/Organizer/
 Combined semantic `1/0.9968750000000001/0.9984375000000001`、L2 anchor `1/1/1`，但 gate 必须保持
 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。该测试只使用 synthetic fetch 和系统临时隔离
-bundle；global fetch、credential 与 Provider 调用为 0。不要运行 `full-gate:live`、`full-gate:seal` 或
-production CLI，不要创建/移动 `phase-6-9-7-tutor-organizer-full-gate-s3-approved` tag，也不要手工创建正式
+bundle；global fetch、credential 与 Provider 调用为 0。L3 source tag 现已固定在 `3c5cc6c...`，不得移动、
+删除或重建。不要运行 `full-gate:live`、`full-gate:seal`、production CLI，也不要手工修改正式
 marker/journal/artifact/recovery claim。
+
+L3 现有 sealed bundle 的唯一安全入口是只读 validator：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-7:full-gate:validate
+```
+
+期望摘要为 `ok=true / runId=2b0ac3a0... / gate=full_gate_quality_gate_failed /
+qualityAuthority=none / journalRecords=296 / finalJournalEvent=evidence_published / artifact
+SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider，也不创建 recovery claim。不要把
+22 次 response、21 次 verified usage、S3 Mock 或 L2 小样本成功拼接为完整 full-gate pass。L3 失败证明与
+停止门见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 `@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
 executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把

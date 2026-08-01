@@ -2,8 +2,7 @@
 
 日期：2026-08-01
 
-状态：P2 设计、F1 full contract/baseline、F2 runner/durability/evidence 与 S3 reviewed Mock/static 已完成，
-zero-provider；下一原子任务仅独立 L3 admission
+状态：P2/F1/F2/S3 已完成；后续唯一 L3 已以 `full_gate_quality_gate_failed` 封存，产品与后续阶段继续阻断
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -697,15 +696,17 @@ PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_DEEPSEEK_API_KEY
 | F1   | 实现 full manifest/baseline/report/scorer/gate 与双向 lineage rejection  | 已完成，zero-provider |
 | F2   | 实现 full one-shot runner/source/marker/journal/artifact/validator/seal  | 已完成，zero-provider |
 | S3   | Reviewed Mock/fault/static/history parity/Reader Testing，提交推送后停止 | 已完成，zero-provider |
-| L3   | Fresh 数据边界接受 + exact authorization 后唯一 full-gate Live           | 未授权、未开始        |
+| L3   | Fresh 数据边界接受 + exact authorization 后唯一 full-gate Live           | 质量门失败并封存      |
 | R6   | 仅 L3 pass 后的 branch Docker/API/可见浏览器与精确清理                   | 阻断                  |
 | R7   | main 合并、推送与 default-off 再验收                                     | 阻断                  |
 
-P2 当时只解锁 F1，F1 当时只解锁 F2；F1/F2/S3 现均已完成。S3 authority 仅
-`full_gate_mock_quality_not_evidence / qualityAuthority=none`，没有调用 Provider、创建 approved tag/正式
-bundle 或形成真实质量 authority。当前只允许独立 L3 admission；不得重跑 L2、用普通“继续”触发 L3、启动
-产品 Docker/API/browser、创建测试账号/业务数据、合并 main 或进入 Phase 6.9.8/6.10/8/9。S3 证据见
-`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+P2 当时只解锁 F1，F1 当时只解锁 F2；F1/F2/S3 均已完成。S3 authority 仅
+`full_gate_mock_quality_not_evidence / qualityAuthority=none`。其后 approved tag 已绑定并推送，唯一 L3 run
+`2b0ac3a0...` 在 22/48 runtime 后因 Tutor schema failure 打开 breaker，最终
+`full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`。L2/L3 均不得
+重跑；禁止产品 Docker/API/browser、main 或 Phase 6.9.8/6.10/8/9。S3 与 L3 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 和
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 ## 12. 回顾问题
 

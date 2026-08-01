@@ -1,8 +1,8 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-08-01。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
+> 当前版本：2026-08-02。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2 均已按独立边界完成。S3 full reviewed Mock 现已在 F2 runner 上完成：`24/24` guard、`48/48` strict/wire/usage、Tutor/Organizer/Combined semantic `1/0.996875/0.9984375`、L2 anchor `1/1/1`，但 authority 固定为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`；global fetch、credential、Provider 与正式 tag/bundle 均为 0。R3/L1/L2 不得重跑；下一步仅独立 L3 admission，仍需 fresh 数据边界接受与 exact authorization，产品/main 与后续阶段继续阻断。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已走完整 admission、真实 `deepseek_network` runner 与 runtime publication：24 guards 保持 zero-call，22 条 runtime lane 收到 response，21 条完成 strict/usage；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，剩余 26 lane 未启动。终态为 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、无 recovery claim。R3/L1/L2/L3 不得重跑；产品/main 与后续阶段继续阻断。
 
 ## 1. 当前边界
 
@@ -894,8 +894,13 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
   -> S3 complete：zero-provider reviewed Mock/static
        -> 24/24 guard；48/48 strict/wire/usage；semantic 1/0.996875/0.9984375
        -> L2 anchor 1/1/1；full_gate_mock_quality_not_evidence；formal bundle/tag=0
-  -> current stop：仅独立 L3 admission
-  -> 未取得 fresh 数据边界接受或 exact authorization；不执行 L3/产品/main
+  -> L3 failed sealed：run 2b0ac3a0... / deepseek_network / full_gate_quality_gate_failed
+       -> approved source/tag 3c5cc6c...；fresh preflight direct_ready / providerCalls=0
+       -> 24 guards zero-call；runtime 22/22/0/26；wire 22/22/22/21；strict 21/48
+       -> tutor runtime-11 response parsed -> schema failure -> breaker；remaining 26 not-started
+       -> semantic / anchor / P95 / token / CNY = null；safety failures=0
+       -> journal 296 -> evidence_published；validator ok=true；recovery claim=0
+  -> current stop：L3 不得重跑；不执行产品/main/Phase 6.9.8
 ```
 
 ```text

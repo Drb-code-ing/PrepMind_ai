@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-当前状态：P2/F1/F2/S3 已完成，zero-provider；下一任务仅独立 L3 admission
+当前状态：P2/F1/F2/S3 已完成；后续唯一 L3 已以 `full_gate_quality_gate_failed` 封存
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`
@@ -106,8 +106,8 @@ claim 均为 0。F2 未读取 credential、未调用 Provider、未执行正式 
 - 正式 full-gate文件为 0；至少三路独立复审和无上下文 Reader Testing；
 - 同步全部工程文档，独立提交并推送后停止。
 
-S3 不创建 approved tag。只有未来独立 L3 admission 才能在已推送且 parity 的 S3 commit 上创建/绑定
-`phase-6-9-7-tutor-organizer-full-gate-s3-approved`。
+S3 当时不创建 approved tag。后续独立 L3 admission 已在已推送且 parity 的 S3 commit 上创建并绑定
+`phase-6-9-7-tutor-organizer-full-gate-s3-approved`；该 tag 现固定在 `3c5cc6c...`，不得移动或重建。
 
 完成证据：factory SHA 为 `sha256:53bcf0d...da55`；正常路径为 `24/24` guard、`48/48`
 strict/wire/verified usage、Tutor/Organizer/Combined semantic `1/0.9968750000000001/0.9984375000000001`、
@@ -118,7 +118,7 @@ L2 anchor `1/1/1`，gate 固定 `full_gate_mock_quality_not_evidence / qualityAu
 
 ## L3：唯一 Full-gate Controlled-Live
 
-状态：[ ] 未授权、未开始。
+状态：[x] 唯一 run 已执行并以 `full_gate_quality_gate_failed` 封存。
 
 前置必须全部成立：
 
@@ -136,6 +136,12 @@ L2 anchor `1/1/1`，gate 固定 `full_gate_mock_quality_not_evidence / qualityAu
 
 L3 无论 pass、semantic fail、transport/HTTP/schema/usage/timeout/abort 或 I/O failure都只执行一次并 durable
 seal，禁止 retry/resume/replay/backfill、单 case 补跑或追加 Provider 探测。
+
+实际 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 为 guard `24/24`、runtime `22/22/0/26`、wire
+`22/22/22/21`、strict `21/48`；Tutor runtime 11 在 response/content parse 后发生 schema failure，breaker
+阻止剩余 26 lane。最终 semantic/P95/token/CNY 全 `null`、journal `296`、validator `ok=true`、recovery
+claim=0、`qualityAuthority=none`。完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 ## R6 / R7：产品与 main
 

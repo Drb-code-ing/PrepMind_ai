@@ -1806,8 +1806,25 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       marker/journal/artifact/recovery claim 全为 0；
 - [x] `@repo/ai` shared runtime barrel 不再重导出四个 executable CLI；CLI 文件/package scripts 保留，测试
       直接导入对应文件，CommonJS/Nest/Jest 不再因普通 runtime import 解析 CLI 的 `import.meta`；
-- [x] S3 authority 仅 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。下一步仅独立 L3
-      admission；仍需 fresh 数据边界接受、exact authorization、专用 credential 与 source/tag parity；
+- [x] S3 authority 仅 `full_gate_mock_quality_not_evidence / qualityAuthority=none`；它随后只解锁独立 L3
+      admission，不形成真实 Provider quality authority；
+- [x] L3 admission 已在用户 fresh 数据边界接受与 exact authorization 后完成；approved tag 本地/远端、
+      HEAD/upstream/remote 均固定为 `3c5cc6c57fdf6d3366ac695d3305e2cc85fd2599`，七个 source SHA、历史
+      V1--V9/R3/L1/L2 validators 与 reservation 前正式文件为 0 均通过；
+- [x] L3 fresh preflight 为 `direct_ready / configured=0 / probe=0 / providerCalls=0`；credential 只在唯一
+      独立进程内映射为专用变量，未输出、写回、提交或进入 evidence；
+- [x] 唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 为 guard `24/24`、runtime
+      reserved/terminal/orphan/not-started `22/22/0/26`、wire `22/22/22/21`、strict runtime `21/48`；
+- [x] `tutor-v2-runtime-11` 在 response audit/content parse 后以 `attempted_failed / schema / wire 1/1/1/0`
+      收口；Organizer sibling 成功，pair close 后 `schema` breaker 令剩余 26 lane 为
+      `not_started_quality_breaker`；
+- [x] L3 incomplete aggregate 正确保持 semantic/L2 anchor/P95/token/CNY 全 `null`；safety、permission、
+      mutation、broader fallback、locked-name 与 write-command failure 全 0；
+- [x] L3 marker/journal/artifact SHA 为 `ed0648d...8ebb8 / e8f9046a...d6ef / e081939b...dbe5`；journal
+      `296` 条并以 `evidence_published` 收口，validator `ok=true`，recovery claim=0；
+- [x] L3 最终 `full_gate_quality_gate_failed / qualityAuthority=none`；名额已消费，禁止
+      retry/resume/replay/backfill、Live/seal/recovery、追加 Provider 探测或修改 evidence。产品
+      Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1837,4 +1854,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。

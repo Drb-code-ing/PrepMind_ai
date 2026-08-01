@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-状态：P1 设计验收完成；后续 G1/G2/S2、唯一 L2、P2/F1/F2/S3 已完成，下一步仅独立 L3 admission
+状态：P1 设计验收完成；后续 G1/G2/S2/L2/P2/F1/F2/S3 已完成，唯一 L3 已失败封存
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -167,11 +167,13 @@ P2 已冻结 full-gate manifest/baseline authority/eval policy SHA
 `48 calls / 0.55 CNY` cap、L2 anchor subset 与独立 durability lineage。P2 authority 仅
 `zero_provider_full_gate_design`；F1 `zero_provider_full_contract_baseline`、F2
 `zero_provider_full_runner_durability_evidence` 与 S3 reviewed Mock/static 也已完成。S3 只形成
-`full_gate_mock_quality_not_evidence / qualityAuthority=none`；当前下一任务仅独立 L3 admission。完整证据见
+`full_gate_mock_quality_not_evidence / qualityAuthority=none`；后续唯一 L3 已以
+`full_gate_quality_gate_failed / qualityAuthority=none` 封存。完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 完整设计与计划见：
 

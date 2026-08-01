@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：F2 验收完成；后续 S3 已完成，zero-provider；下一任务仅独立 L3 admission
+状态：F2 验收完成；后续 S3 已完成，唯一 L3 已失败封存
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -166,9 +166,10 @@ breaker、abort、locked-name/no-write、anti-overfit、全量静态、历史 pa
 zero-provider，不创建 approved tag；完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
 
-当前下一原子任务仅独立 L3 admission；仍须 fresh 数据边界接受、exact authorization、专用 credential 和
-source/tag parity。只有 L3 获得
-`full_gate_quality_gate_passed / full_gate_semantic_gate`，才可能另行解锁产品 Docker/API/可见浏览器验收。
+后续 L3 已在 fresh admission 下执行唯一 run `2b0ac3a0...`，但 Tutor schema failure 在 22/48 lane 后打开
+breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。本 identity 不得重跑，产品
+Docker/API/可见浏览器验收继续阻断；详见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 回顾时可以问：
 

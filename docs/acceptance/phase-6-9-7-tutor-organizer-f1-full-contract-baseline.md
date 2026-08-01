@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：F1 验收完成；后续 F2/S3 已完成，zero-provider；下一任务仅独立 L3 admission
+状态：F1 验收完成；后续 F2/S3 已完成，唯一 L3 已失败封存
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -21,8 +21,9 @@ formal marker/journal/artifact/recovery claim: 0/0/0/0
 project-root baseline file: 0
 ```
 
-F1 当时只解锁 F2 的 zero-provider one-shot runner/durability/evidence 实现；后续 F2/S3 已完成，但仍不授权
-直接执行 L3 controlled-Live、产品 Docker/API/可见浏览器、main 或后续 Phase。
+F1 当时只解锁 F2 的 zero-provider one-shot runner/durability/evidence 实现；后续 F2/S3 已完成。唯一 L3
+随后已在独立 admission 下执行但质量门失败并封存，因此仍不授权产品 Docker/API/可见浏览器、main 或后续
+Phase。
 
 ## 2. 本次交付
 
@@ -171,8 +172,9 @@ validator/crash-only seal 与并发/取消/崩溃 fault matrix；authority 仅
 `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`。
 
 S3 已完成 zero-provider reviewed Mock/static，结果与边界见
-`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。当前下一原子任务仅独立 L3 admission；
-仍需 fresh 数据边界接受和 exact authorization，且 L3 pass 后才可能解锁独立产品验收。
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。后续唯一 L3 已因 Tutor schema
+failure 以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存，未解锁产品验收；详见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 回顾时可以问：
 

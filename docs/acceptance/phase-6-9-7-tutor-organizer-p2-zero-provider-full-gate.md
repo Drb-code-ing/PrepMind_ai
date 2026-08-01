@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：P2 设计验收完成；后续 F1/F2/S3 已完成，当前下一任务仅独立 L3 admission
+状态：P2 设计验收完成；后续 F1/F2/S3 已完成，唯一 L3 已失败封存
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -161,8 +161,10 @@ authority 分别仅为 `zero_provider_full_contract_baseline` 与
 
 S3 已完成 zero-provider reviewed Mock/static：`24/24` guard、`48/48` strict/wire/usage、semantic
 `1/0.996875/0.9984375`、anchor `1/1/1`，但只具有
-`full_gate_mock_quality_not_evidence / qualityAuthority=none`。当前下一原子任务仅独立 L3 admission；仍需
-fresh 数据边界接受和 exact authorization，S3 没有创建 approved tag 或自动授权 L3。
+`full_gate_mock_quality_not_evidence / qualityAuthority=none`。后续唯一 L3 已在独立 admission 后执行，因
+Tutor schema failure 在 22/48 lane 后打开 breaker，最终
+`full_gate_quality_gate_failed / qualityAuthority=none`；详见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 完整设计与计划：
 

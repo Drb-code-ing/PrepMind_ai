@@ -2,7 +2,7 @@
 
 日期：2026-08-01
 
-状态：S3 已完成并通过 zero-provider checkpoint；下一步仅独立 L3 admission
+状态：S3 已完成并通过 zero-provider checkpoint；后续唯一 L3 已失败封存
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -158,7 +158,7 @@ S3 没有读取根 `.env` 或 credential，没有调用 Provider，没有创建/
 
 ## 10. 下一步与停止门
 
-S3 独立提交并推送后必须停止。下一任务仅独立 L3 admission；该 admission 仍须在未来当前任务中重新取得：
+S3 独立提交并推送后曾停止在 L3 admission。后续 L3 已按以下前门重新取得：
 
 - fresh DeepSeek 当前账号数据保留/训练边界接受；
 - exact authorization
@@ -167,8 +167,11 @@ S3 独立提交并推送后必须停止。下一任务仅独立 L3 admission；�
 - fresh zero-provider proxy preflight、七个 source SHA 与历史 sealed evidence parity；
 - 专用 L3 credential 和正式 full-gate artifact=0。
 
-普通“继续/开始/同意/所有权限”不是 L3 authorization。L3 即使通过也只形成 full-gate semantic authority；
-产品 Docker/API/可见浏览器与 main 仍需后续独立 R6/R7 验收。
+普通“继续/开始/同意/所有权限”不是 L3 authorization。唯一 L3 run `2b0ac3a0...` 后续已执行，但因
+Tutor runtime 11 schema failure 在 22/48 lane 后打开 breaker，最终
+`full_gate_quality_gate_failed / qualityAuthority=none`。该 run 已 durable seal 且不得重跑；产品
+Docker/API/可见浏览器、main 与后续阶段继续阻断。详见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 ## 11. 回顾问题
 

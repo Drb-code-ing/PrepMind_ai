@@ -210,9 +210,10 @@ recovery claim。8-pair P95 仍为 `null / insufficient_sample_size_8`。完整�
 
 L2 不得重跑或追加 Provider 探测，approved tag 不随文档提交移动。其后 P2/F1/F2/S3 已依次 zero-provider
 完成 full-gate design、contract/baseline、runner/durability/evidence 与 reviewed Mock，并保持 S2/L2
-authority 不变。当前下一任务仅独立 L3 admission；不得未经 admission 直接执行 48-case Live、产品
-Docker/API/browser 或 main。P2/F1/F2/S3 验收见
+authority 不变。后续唯一 L3 已以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存；不得重跑
+L3、执行产品 Docker/API/browser 或 main。P2/F1/F2/S3/L3 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
