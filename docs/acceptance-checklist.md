@@ -1744,8 +1744,27 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] L2 journal `180` 条并以 `evidence_published` 收口；logical report SHA 为
       `a981e188...eeb8`，physical artifact SHA 为 `a1b51f05...eb0d`，bundle validator `ok=true`；
 - [x] L2 名额已消费；禁止 retry/resume/replay/backfill、Live/seal/recovery、追加 Provider 探测、删除或改写
-      artifact。下一任务仅 P2 zero-provider full-gate design；48-case、产品 Docker/API/browser、main 与 Phase
-      6.9.8 继续阻断。
+      artifact。其后 P2 只进行 zero-provider full-gate design；48-case、产品 Docker/API/browser、main 与
+      Phase 6.9.8 继续阻断。
+- [x] P2 冻结独立 `phase-6.9.7-tutor-organizer-full-gate-v1`，固定 `72 entries / 24 guards / 24 pairs /
+48 runtime lanes / 32 Organizer decisions`；full manifest SHA 为 `e68e6e27...12c78`；
+- [x] P2 fresh deterministic full baseline 保持 `12/48`、Tutor/Organizer/Combined
+      `0.6629642857/0.278125/0.4705446429`；source baseline SHA `0ce7c3ca...116ca`，新 baseline authority
+      SHA `2ab1030f...a5f2`；Provider/token/cost 全 0；
+- [x] P2 full eval policy SHA 为 `11371d16...f503`：三个 full semantic 各 `>=0.85`、两 lane improvement
+      各 `>=0.15`，同次 full run 的 L2 anchor subset 也须过 P1 门，但不要求复现 L2 随机实际分数；
+- [x] P2 固定 guard/runtime/wire/verified usage `24/48/48/48`、安全/权限/mutation/locked-name/write
+      leakage 全 0，以及 incomplete semantic/P95/token/CNY aggregate 全 `null`；
+- [x] P2 恢复恰好 24 samples 的四项 nearest-rank P95：Tutor `2500ms`、Organizer/paired `4500ms`、Tutor
+      local orchestration `6500ms`；hard timeout 独立为 `3500/5000ms`；
+- [x] P2 预算固定 `48 calls / 112800 input / 26400 output / 0<CNY<=0.55`，no
+      retry/resume/replay/backfill；
+- [x] P2 固定 guard-first、pair-serial、pair 内最大并发 2、独立 sibling terminal、pair-close breaker、
+      dispatch-before-call hash-chain+fsync、exclusive marker/hard-link publication 与 crash-only zero-wire seal；
+- [x] P2 candidate/adapter 七个 source hash 继续绑定 L2 approved source `4c608445...c22af1c4`；旧 approved
+      tag 未移动或重建，新 full-gate tag/marker/journal/artifact/recovery 均未创建；
+- [x] P2 未读取 credential、调用 Provider、执行 Mock/Live、启动 Docker/API/browser、修改业务数据或合并
+      main；authority 仅 `zero_provider_full_gate_design`，下一任务仅 F1 full contract/baseline；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1769,4 +1788,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`、
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。

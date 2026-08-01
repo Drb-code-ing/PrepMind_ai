@@ -1301,8 +1301,8 @@ journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 �
 source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
 L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
 contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
-source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；当前下一任务仅 P2
-zero-provider full-gate design。
+source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design
+也已 zero-provider 完成，当前下一任务仅 F1 full contract/baseline。
 
 C1 固定验收命令：
 
@@ -1381,6 +1381,12 @@ P1/G1/G2/S2/L2 小样本设计、contract、durability 与 sealed evidence 入�
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
+P2 full-gate zero-provider 设计、计划与验收入口：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+
 P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
 `d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
 只写 fixed ignored path，不读取环境变量、credential、Provider、Mock/Live 或 candidate：
@@ -1449,8 +1455,15 @@ bun run --cwd packages/agent eval:phase-6-9-7:small-sample:validate
 
 期望摘要为 `ok=true / journalRecords=180 / finalJournalEvent=evidence_published / artifact
 SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不调用 Provider，也不创建 recovery claim。
-禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。当前只允许 P2
-zero-provider full-gate design；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 仍被阻断。
+禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。P2 已完成但只形成
+`zero_provider_full_gate_design`；当前只允许 F1 full manifest/baseline/report/scorer/gate 实现。F1 仍不得读取
+credential、调用 Provider、创建 approved tag/正式 evidence 或启动 Docker/API/browser；48-case Live、产品、
+main 与 Phase 6.9.8 仍被阻断。
+
+P2 现场重算的固定值为：dataset `72/24/48/24/32`，manifest `e68e6e27...12c78`，full baseline
+`12/48` 与 semantic `0.6629642857/0.278125/0.4705446429`，baseline authority
+`2ab1030f...a5f2`，eval policy `11371d16...f503`。Future F1 只能用本地 deterministic path 复现这些值；
+不要运行任何 `live`/`seal` 命令或手工创建 full-gate `.tmp` 文件。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 

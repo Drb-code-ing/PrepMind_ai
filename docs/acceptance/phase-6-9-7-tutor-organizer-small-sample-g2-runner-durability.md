@@ -172,8 +172,9 @@ seal。Journal `180` 条并以 `evidence_published` 收口；validator `ok=true`
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
 L2 的 `small_sample_semantic_gate` 不升级或改写 G2 的 `zero_provider_runner_durability` authority。8-pair 不
-产生 P95/SLA/产品 authority；L2 不得重跑，下一步仅 P2 zero-provider full-gate design，48-case、产品与 main
-仍被阻断。
+产生 P95/SLA/产品 authority；L2 不得重跑。其后 P2 已只在 zero-provider 边界冻结新的 full-gate durability
+要求，不回写 G2 历史；当前下一任务仅 F1 full contract/baseline，48-case、产品与 main 仍被阻断。P2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
 
 回顾时可以问：
 

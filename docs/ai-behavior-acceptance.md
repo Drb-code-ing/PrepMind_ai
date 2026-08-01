@@ -431,8 +431,11 @@ parity 和独立 source/tag admission 下执行一次并 durable seal：run
 
 该 authority 只覆盖固定 8-pair 小样本语义门。8 样本 P95 仍为
 `null / insufficient_sample_size_8`，不能证明 SLA、48-case、产品 API/页面或生产就绪。L2 名额已消费，禁止
-retry/resume/replay/backfill、追加 Provider 探测、seal/recovery 或改写 artifact；当前下一任务仅 P2
-zero-provider full-gate design，48-case、产品 Docker/API/browser 与 main 继续受门禁约束。
+retry/resume/replay/backfill、追加 Provider 探测、seal/recovery 或改写 artifact。P2 随后已 zero-provider
+冻结完整 `72/24/48/24/32` full gate、manifest `e68e6e27...12c78`、baseline authority
+`2ab1030f...a5f2`、eval policy `11371d16...f503`、L2 anchor subset、24-sample P95 与
+`48 calls / 0.55 CNY` cap。P2 不形成 Provider quality authority；当前下一任务仅 F1 contract/baseline，48-case
+Live、产品 Docker/API/browser 与 main 继续受门禁约束。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
@@ -440,7 +443,7 @@ zero-provider full-gate design，48-case、产品 Docker/API/browser 与 main �
 - Tutor 明确 direct/hint/step/concept/explain 指令、非 tutor route、不安全输入、abort/budget/gate-off 保持 zero-call；模型只处理隐含、上下文或冲突教学意图，不能输出 `answer_direct`，最终 TutorStrategy/prompt 由本地重建；V4 model precedence 固定为 `step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`，active context 不得把具体 intent 降级为 general；
 - Organizer 已有 item、高置信结构字段、精确 deck、不安全/越权/stale/gate-off 路径 zero-call；single/batch 每 HTTP request 最多一次 provider 调用，batch 最多投影 12 个 eligible item；
 - V1--V4 legacy Organizer 模型可返回 question/deck ordinal、固定 subject enum 或有界 topic label；V5 R3 已将新 candidate 收敛为 subject/deck/topic ordinal-only，但尚未接产品。两条路径的 JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、reason/description、Trace admission 与写 command 都是本地权威；
-- Tutor/Organizer 独立 default-off gate，固定 V4 Pro non-thinking JSON、3000/5000ms timeout、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY，唯一 24-pair Live 总 cap 0.55 CNY；usage 必须为正安全整数且价格可验证；
+- Tutor/Organizer 独立 default-off product gate；现有 legacy product composition 仍使用 `3000/5000ms`，P2 full-gate 评测 hard timeout 则冻结为 V6 的 `3500/5000ms`，二者不得混称。两路固定 V4 Pro non-thinking JSON、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY，未来唯一 24-pair L3 总 cap 0.55 CNY；usage 必须为正安全整数且价格可验证；
 - Compose 只把 Tutor gate/timeout/key 投影给 `web`，只把 WrongQuestionOrganizer gate/timeout/key 投影给 `server`；`worker/admin` 均不接收。四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只参与显式插值；worker 另有模块层强制关闭。部署 allowlist 与应用 fail-closed 都必须通过，不能互相替代；
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Tutor orchestration P95 <=6500ms；后者只含本地 Tutor strategy + candidate，不含真实 Router、HTTP、RAG 或最终流式 Chat，不能作为产品 P95。production gate 还必须要求 `executorProvenance=deepseek_network`；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
 - Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；

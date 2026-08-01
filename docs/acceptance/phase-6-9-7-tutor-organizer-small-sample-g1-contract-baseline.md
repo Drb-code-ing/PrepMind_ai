@@ -170,8 +170,10 @@ HEAD/upstream/remote parity 的 commit 创建/绑定 tag，并重新取得数据
 为 `null`。完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 
-L2 结果不改写 G1 的 `zero_provider_contract_baseline` authority、baseline 数值或 SHA。当前下一任务仅 P2
-zero-provider full-gate design；L2 重跑/48-case Provider 调用、产品验收与 main 均未获授权。
+L2 结果不改写 G1 的 `zero_provider_contract_baseline` authority、baseline 数值或 SHA。其后 P2 已
+zero-provider 完成 full-gate design；这也不改写 G1 历史。当前下一任务仅 F1 full contract/baseline；L2
+重跑、48-case Provider 调用、产品验收与 main 均未获授权。P2 验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
 
 回顾时可以问：
 

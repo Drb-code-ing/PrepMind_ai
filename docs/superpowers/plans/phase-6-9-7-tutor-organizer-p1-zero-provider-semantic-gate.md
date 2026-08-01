@@ -2,7 +2,7 @@
 
 日期：2026-07-31
 
-当前状态：P1、G1、G2、S2 与唯一 L2 已完成；下一任务仅 P2 zero-provider full-gate design
+当前状态：P1、G1、G2、S2、唯一 L2 与 P2 已完成；下一任务仅 F1 full contract/baseline
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -182,8 +182,16 @@ case、curl/产品 API 追加探测、删除/改写 artifact 或 crash seal 已�
 
 ## P2：L2 后路线决策
 
-状态：[ ] 下一任务，只允许 zero-provider 设计。
+状态：[x] 已完成，zero-provider 设计。
 
 - 基于已封存的 `small_sample_quality_gate_passed`，只允许设计新的 24-pair/48-case full semantic gate；
 - P2 不读取 credential、不调用 Provider，也不重跑 L2 或放宽 P1 门；
 - P2 设计不直接授权 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。
+
+P2 已冻结独立 full-gate identity、`72/24/48/24/32` 分母、manifest `e68e6e27...12c78`、baseline
+authority `2ab1030f...a5f2`、eval policy `11371d16...f503`、L2 anchor subset、24-sample P95、
+`48 calls / 0.55 CNY` cap 与 durability/authorization 边界。当前下一任务仅 F1；设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。

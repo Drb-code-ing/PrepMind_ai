@@ -1,0 +1,130 @@
+# Phase 6.9.7 Tutor / Organizer P2 全量质量门实施计划
+
+日期：2026-08-01
+
+当前状态：P2 已完成，zero-provider；下一任务仅 F1 full contract/baseline
+
+设计 authority：
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`
+
+## P2：Zero-provider full-gate 设计冻结
+
+状态：[x] 完成，zero-provider。
+
+交付：
+
+- 新建独立 `phase-6.9.7-tutor-organizer-full-gate-v1` lineage；
+- 固定完整 V2 dataset：72 entries、24 guards、24 pairs、48 runtime lanes、32 Organizer decisions；
+- 冻结 manifest SHA `e68e6e27...12c78`；
+- 现场重算 full deterministic baseline `12/48`，Tutor/Organizer/Combined
+  `0.6629642857 / 0.278125 / 0.4705446429`；
+- 冻结 baseline authority SHA `2ab1030f...a5f2` 与 eval policy SHA `11371d16...f503`；
+- 固定 full semantic 与 improvement 门，并增加不额外调用 Provider 的 L2 anchor subset 门；
+- 恢复四项 24-sample nearest-rank P95，区分 `3500/5000ms` hard timeout；
+- 固定 `48 calls / 112800 input / 26400 output / 0.55 CNY` 全局 cap，其中 Tutor 为
+  `28800/7200`、Organizer 为 `84000/19200`，数学最坏费用为 `0.528 CNY`；
+- 固定 guard-first、pair-serial、pair 内最大并发 2、sibling terminal、breaker、任务丢失与 crash-only seal；
+- 固定全新 source tag、approval、credential、confirmation、marker、journal、artifact 与 validator namespace；
+- 固定 candidate/adapter hash 必须与 L2 approved source 一致；
+- 明确 P2 只解锁 F1，不授权 full Live、产品或 main。
+
+验收：
+`docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`
+
+## F1：Full Manifest / Baseline / Contract / Gate
+
+状态：[ ] 下一原子任务，zero-provider。
+
+建议源码：
+
+- `packages/agent/src/evals/phase-6-9-tutor-organizer-full-gate-manifest.ts`；
+- `packages/agent/src/evals/phase-6-9-tutor-organizer-full-gate-contract.ts`；
+- `packages/agent/src/evals/phase-6-9-tutor-organizer-full-gate-baseline.ts`；
+- 对应 focused tests、held-out/metamorphic 与历史 lineage rejection fixtures。
+
+必须完成：
+
+1. 实现 exact 72-entry manifest 并现场重算 `e68e6e27...12c78`；
+2. 用未修饰 deterministic functions 复现 `0ce7c3ca...116ca` 与 P2 baseline authority
+   `2ab1030f...a5f2`；
+3. 从 P2 的 `not_generated_in_p2` 状态生成并冻结 baseline logical report/physical file SHA，使用 fixed
+   ignored path 与安全 writer；不得把 P2 authority/document hash 冒充这两个 F1 SHA；
+4. 实现 strict report、full scorer、L2 anchor subset scorer 与 `11371d16...f503` policy；
+5. 固定 24 guards、48 runtime、32 decisions、四维 wire、48 usage 与全部安全分母；
+6. 实现恰好 24 samples 的四项 nearest-rank P95，任一不完整时 aggregate 全 `null`；
+7. 实现 Mock/synthetic 永不 pass，以及 V1--V9/R3/L1/small-sample/full-gate 双向 rejection；
+8. 保持 candidate/adapter 七个 source hash 与 L2 approved source 一致；
+9. 完成 focused/full/typecheck/lint/Prettier、敏感扫描与独立 contract/security review；
+10. 正式 full-gate marker/journal/artifact/recovery claim 保持 0。
+
+F1 不读取 credential、不调用 Provider、不创建 approved tag、不启动 Docker/API/browser。F1 完成后独立提交并
+推送，下一步才是 F2。
+
+## F2：One-shot Runner / Durability / Evidence
+
+状态：[ ] 未开始，zero-provider。
+
+必须完成：
+
+1. Public CLI 只接受固定 production args + AbortSignal；
+2. preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication 顺序固定；
+3. 24 guards 真实穿过 candidate guard，四维 wire 全 0；
+4. 24 pairs 严格串行，pair 内最大两 lane，独立 budget/abort/timeout/terminal；
+5. `lane_reserved` 与 dispatch stage 在 delegate 前 hash-chain + fsync；
+6. reserved/terminal/orphan/not-started 与 48-lane fixed denominator 守恒；
+7. semantic mismatch 不 breaker，contract/safety failure 收口 sibling 后 breaker；
+8. exclusive marker、hard-link artifact、strict recomputing validator 与 crash-only seal；
+9. fault matrix 覆盖 concurrent start、external abort、timeout、usage、publication/crash race、hostile filesystem；
+10. 正式 full-gate marker/journal/artifact/recovery claim 保持 0。
+
+F2 不读取 credential、不调用 Provider、不创建 approved tag、不启动产品。
+
+## S3：Reviewed Mock / Static Checkpoint
+
+状态：[ ] 未开始，zero-provider。
+
+必须完成：
+
+- fresh full baseline 与全部 SHA parity；
+- reviewed Mock 真实穿过两条 candidate、第一方 adapter、strict validator、local merger 与 F2 runner；
+- `24/24` guard、`48/48` strict/wire/usage、full 与 anchor subset semantic 只得到
+  `full_gate_mock_quality_not_evidence`；
+- latency/budget/breaker/abort/locked-name/no-write/option reorder/anti-overfit fault matrix；
+- Agent/AI/Types/Server/Web 受影响全量、typecheck/lint/Prettier/diff；
+- 历史 V1--V9/R3/L1/L2 validator 与 artifact SHA parity；
+- 正式 full-gate文件为 0；至少三路独立复审和无上下文 Reader Testing；
+- 同步全部工程文档，独立提交并推送后停止。
+
+S3 不创建 approved tag。只有未来独立 L3 admission 才能在已推送且 parity 的 S3 commit 上创建/绑定
+`phase-6-9-7-tutor-organizer-full-gate-s3-approved`。
+
+## L3：唯一 Full-gate Controlled-Live
+
+状态：[ ] 未授权、未开始。
+
+前置必须全部成立：
+
+- F1/F2/S3 已分别验收、提交并推送；
+- fixed branch、tracked clean、HEAD/upstream/remote/tag/approved commit parity；
+- candidate/adapter hashes 与 L2 approved source 一致；
+- 历史 sealed evidence validator/SHA parity；新 full-gate artifact=0；
+- fresh zero-provider proxy preflight ready；
+- 用户在当前 L3 admission 中重新给出固定数据边界语句：
+  `我已接受本次运行时 DeepSeek 当前账号的数据保留/训练边界。`；admission 只记录固定 disposition/provider/
+  accountScope/statementVersion/acceptedAt，不保存原始聊天正文；
+- 用户给出 exact confirmation：
+  `I_AUTHORIZE_PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_CONTROLLED_LIVE_ONCE`；
+- 专用 approval/credential 只映射到唯一进程，不写 `.env`、CLI、日志或 evidence。
+
+L3 无论 pass、semantic fail、transport/HTTP/schema/usage/timeout/abort 或 I/O failure都只执行一次并 durable
+seal，禁止 retry/resume/replay/backfill、单 case 补跑或追加 Provider 探测。
+
+## R6 / R7：产品与 main
+
+状态：[ ] 阻断。
+
+只有 L3 得到 `full_gate_quality_gate_passed / full_gate_semantic_gate` 后，才能另开 R6 验收：分支 Docker、
+API、可见浏览器、Trace、guard/forced-failure、owner/locked-name/write isolation 与精确清理。R6 完成并提交推送后，
+才允许 R7 合并 main、推送远程并执行 main default-off 静态、Docker/API/可见浏览器再验收。
+
+P2/F1/F2/S3/L3 任何一个都不能替代 R6/R7 产品 authority。

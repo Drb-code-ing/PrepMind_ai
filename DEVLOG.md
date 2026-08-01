@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-08-01 — Phase 6.9.7 Tutor / Organizer P2 Zero-provider Full-gate Design：
+> 唯一 L2 继续保持 `small_sample_quality_gate_passed / small_sample_semantic_gate` sealed 终态且不得重跑；
+> P2 没有读取 credential 或调用 Provider，只在任何新 full runner/Mock/Live 前冻结独立
+> `phase-6.9.7-tutor-organizer-full-gate-v1` lineage。
+>
+> 完整 V2 dataset 现场复核为 `72 entries / 24 guards / 24 pairs / 48 runtime lanes / 32 Organizer
+decisions`，dataset/policy SHA 保持 `42803d45...b437b / b3913403...f009d`。新 full manifest SHA 为
+> `e68e6e27...12c78`；fresh deterministic baseline 仍为 `12/48`、Tutor/Organizer/Combined
+> `0.6629642857 / 0.278125 / 0.4705446429`，source baseline SHA `0ce7c3ca...116ca`，新 baseline authority
+> SHA `2ab1030f...a5f2`。
+>
+> Full eval policy SHA 冻结为 `11371d16...f503`：全量三个 semantic 均 `>=0.85`，两 lane 相对 full
+> baseline 各提升 `>=0.15`；L2 八对作为同一次 full run 内的 anchor subset 再过原门，但不要求复现 L2
+> 的随机实际分数。Guard/runtime/wire/verified usage 分母固定 `24/48/48/48`，安全/权限/mutation/locked-name/
+> write leakage 全 0。
+>
+> P2 恢复四组 24-sample nearest-rank P95（第 23 值）：Tutor `<=2500ms`、Organizer/paired
+> `<=4500ms`、Tutor local orchestration `<=6500ms`；executor hard timeout 为 `3500/5000ms`。预算冻结
+> `48 calls / 112800 input / 26400 output / 0.55 CNY`，no retry/resume/replay/backfill。
+>
+> 并发/丢失边界固定 guard-first、pair-serial、pair 内最大双 lane、独立 sibling terminal、contract failure
+> 收口当前 pair 后 breaker、dispatch 前 hash-chain+fsync、exclusive marker/hard-link publication 与 crash-only
+> zero-wire seal。Candidate/adapter 七个内容 SHA 继续绑定 L2 source commit `4c608445...c22af1c4`；旧 approved
+> tag 未移动或重建。
+>
+> 本阶段 formal full-gate marker/journal/artifact/recovery claim 为 `0/0/0/0`，未启动 Docker/API/browser、
+> 未修改业务数据或合并 main。下一原子任务仅 F1 full manifest/baseline/report/scorer/gate 实现，仍为
+> zero-provider；完整设计、计划与验收见
+> `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`、
+> `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md` 与
+> `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`。
+>
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Small-sample L2 唯一 Controlled-Live：
 > 用户已重新接受本次运行时 DeepSeek 当前账号的数据保留/训练边界，并给出冻结 exact authorization。
 > Approved source commit、HEAD、upstream、远程分支与 tag
@@ -25,7 +57,7 @@
 >
 > L2 名额已消费，禁止 retry/resume/replay/backfill、Live/seal/recovery、单 case 或其它追加 Provider 探测，
 > 也不得删除或改写 sealed artifact。本次未执行 48-case、产品 Docker/API/browser、业务数据、main 或后续
-> phase。下一任务仅为 P2 zero-provider full-gate design。完整验收见
+> phase。L2 收口当时只解锁 P2 zero-provider full-gate design；该 P2 后续已按上方日志完成。完整验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
 >
 > 2026-08-01 — Phase 6.9.7 Tutor / Organizer Small-sample S2 Reviewed Mock / Static：
@@ -123,8 +155,8 @@
 > `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。
 >
 > G1 authority 仅为 `zero_provider_contract_baseline`，不证明真实 Tutor/Organizer 语义或产品可用。G1 验收
-> 当时下一原子任务仅 G2；后续 G2/S2 与唯一 L2 均已按上方日志完成。当前下一任务仅 P2 zero-provider
-> full-gate design；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
+> 当时下一原子任务仅 G2；后续 G2/S2、唯一 L2 与 P2 zero-provider full-gate design 均已按上方日志完成。
+> 当前下一任务仅 F1 full contract/baseline；48-case、产品 Docker/API/browser、main 与 Phase 6.9.8 继续阻断。
 >
 > 2026-07-31 — Phase 6.9.7 Tutor / Organizer P1 Zero-provider Small-sample Semantic Gate：
 > Provider Canary V2 L1 仍保持 `diagnostic_only / qualityAuthority=none` 且不得重跑；本任务只完成新的

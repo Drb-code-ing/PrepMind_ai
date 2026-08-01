@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-状态：P1、G1、G2、S2 已完成；唯一 L2 已通过并 durable seal，下一步仅 P2 zero-provider 设计；未启动
-产品 Docker/API/browser
+状态：P1、G1、G2、S2、唯一 L2 与 P2 已完成；下一步仅 F1 full contract/baseline；未启动产品
+Docker/API/browser
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -597,18 +597,21 @@ authority。
 
 ## 11. 后续原子路线与停止门
 
-| 阶段 | 内容                                                                  | 当前状态                |
-| ---- | --------------------------------------------------------------------- | ----------------------- |
-| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider   |
-| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider   |
-| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider   |
-| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider   |
-| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal   |
-| P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 下一任务，zero-provider |
+| 阶段 | 内容                                                                  | 当前状态              |
+| ---- | --------------------------------------------------------------------- | --------------------- |
+| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
+| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
+| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider |
+| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider |
+| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal |
+| P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 已完成，zero-provider |
 
-L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计；不得直接
-进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。不得复制 V10/V11 式整套重试、
-放宽阈值或重跑同一 manifest。
+L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
+已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
+`11371d16...f503`；完整设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`。当前只解锁 F1，仍
+不得直接进入 48-case Live、产品 Docker/API/browser、main、Phase 6.9.8/6.10/8/9。不得复制 V10/V11 式
+整套重试、放宽阈值或重跑同一 manifest。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
