@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR1 Zero-provider TDD：
+>
+> SR1 以 `zero_provider_full_gate_schema_recovery_tdd` 落地独立
+> `phase-6.9.7-tutor-schema-recovery-contract-v1` / `candidate-v1`。`@repo/ai` 新增只绑定 exact schema
+> identity 的 bounded raw-content parser capability；第一方 DeepSeek direct adapter 在该 capability 下先完成
+> native JSON audit，再保持 `content_parsed -> provider_type_validation` wire 语义。Tutor contract 使用
+> `8192 bytes / depth 8 / nodes 128 / keys 64` 限制，在任何 whole-document `JSON.parse` 前拒绝重复 key、BOM、
+> fence/prose/trailing/multiple top-level 和结构超限。
+>
+> Selection projection 只读取 canonical own-data safe integer `intentIndex`，重新构造 strict
+> `{intentIndex}`；扩展字段只形成 fixed stage/reason/projection/type/count bucket 与 shape fingerprint 后丢弃，
+> `rawDataRetained=false`。Schema Recovery candidate 最多调用一次 runtime、不 retry，继续复用 Tutor V6 local
+> signal、preferred depth、answer structure、`answer_direct` 权限与 merger；模型没有新增 depth、答案、route、
+> tool、permission、真实 ID 或写权限。Contract SHA 冻结为
+> `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`。
+>
+> RED 为新 public subpath/contract/candidate 尚不存在的 `0 pass / 3 fail`；GREEN 后 focused/direct
+> `41/41`、V6/V8/V9/F1/S3 兼容 `70/70`、Agent `1135/1135`、AI `325/325`、Agent/AI
+> typecheck/lint、Prettier 与 `git diff --check` 均通过。旧 L3 只读 validator 仍为
+> `ok=true / journalRecords=296 / evidence_published`，physical artifact SHA
+> `e081939bb7f4b17235b1d9afb61d78031879bb80b9d64c952e4b86531cd7dbe5`。
+>
+> 本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式
+> tag/marker/journal/artifact 或修改业务数据；`.codex/` 仍为本地未跟踪目录。旧 L3 bytes/tag/validator 未修改。
+> 下一原子任务仅 SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR0 Zero-provider 设计：
 > 唯一 L3 `2b0ac3a0...` 继续保持 `full_gate_quality_gate_failed / qualityAuthority=none`，marker、journal、
 > artifact、approved tag 与 source SHA 均未修改。SR0 只读对照 sealed report/journal、Tutor V6
@@ -27,7 +54,7 @@
 >
 > SR0 authority 仅 `zero_provider_full_gate_schema_recovery_design`。本任务未修改 packages/apps 源码，未读取
 > credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建 tag/artifact 或修改业务数据。
-> 只读 L3 validator 仍为 `ok=true / journalRecords=296 / evidence_published`。下一原子任务仅 SR1
+> 只读 L3 validator 仍为 `ok=true / journalRecords=296 / evidence_published`。该 checkpoint 当时下一原子任务仅 SR1
 > zero-provider TDD；完整设计、计划与验收见
 > `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 > `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与

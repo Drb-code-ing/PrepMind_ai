@@ -3,7 +3,14 @@ export * from './model-agent-budget.ts';
 export * from './model-agent-contract.ts';
 export * from './model-agent-provider.ts';
 export * from './model-agent-runtime.ts';
-export { requireModelAgentStrictJsonContent } from './model-agent-structured-output-policy.ts';
+export {
+  requireModelAgentBoundedJsonContentParser,
+  requireModelAgentStrictJsonContent,
+} from './model-agent-structured-output-policy.ts';
+export type {
+  ModelAgentBoundedJsonContentParseResult,
+  ModelAgentBoundedJsonContentParser,
+} from './model-agent-structured-output-policy.ts';
 export * from './model-agent-safety.ts';
 export * from './model-agent-structured-schema.ts';
 export * from './first-party-deepseek-v4-runtime.ts';

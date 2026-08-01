@@ -2,13 +2,15 @@
 
 日期：2026-08-02
 
-状态：SR0 zero-provider 复盘与设计已冻结；尚未实现新 contract、diagnostic、runner、Mock、Live 或产品接线
+状态：SR0 zero-provider 复盘与设计、SR1 zero-provider contract/diagnostic/candidate TDD 已完成；SR2 尚未开始，runner、正式 Mock、Live 与产品接线仍未实现
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
 起始提交：`fa29deef9382acb7e7f177f251d76d6f52b0544a`
 
 R0 authority：`zero_provider_full_gate_schema_recovery_design`
+
+SR1 checkpoint authority：`zero_provider_full_gate_schema_recovery_tdd`
 
 未来独立 lineage：`phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`
 
@@ -327,16 +329,16 @@ journal、artifact 与 recovery prefix。
 
 ## 10. 原子路线
 
-| 阶段 | 内容                                                                 | 当前状态              |
-| ---- | -------------------------------------------------------------------- | --------------------- |
-| SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider |
-| SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 未开始                |
-| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 未开始                |
-| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 未开始                |
-| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 未开始                |
-| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 阻断                  |
-| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                  |
-| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                  |
+| 阶段 | 内容                                                                 | 当前状态                |
+| ---- | -------------------------------------------------------------------- | ----------------------- |
+| SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider   |
+| SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 已完成，zero-provider   |
+| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 下一任务，zero-provider |
+| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 未开始                  |
+| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 未开始                  |
+| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 阻断                    |
+| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                    |
+| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                    |
 
 每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均不得读取
 credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。

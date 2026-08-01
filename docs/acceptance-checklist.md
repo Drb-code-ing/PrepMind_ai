@@ -1839,7 +1839,19 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       admission、journal/report/validator invariants 与逐阶段停止门；旧 L3 tag/artifact/validator 不改写；
 - [x] SR0 authority 仅 `zero_provider_full_gate_schema_recovery_design`；未修改 packages/apps 源码，未读取
       credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式 artifact/tag 或修改
-      业务数据；当前下一原子任务仅 SR1 zero-provider TDD；
+      业务数据；
+- [x] SR1 以 `zero_provider_full_gate_schema_recovery_tdd` 新增 exact-schema raw parser capability、有界 native
+      JSON envelope parser、canonical integer `intentIndex` projection、strict projected decision 与 bounded no-raw
+      diagnostic；contract SHA 为 `e2453fae...11579`；
+- [x] SR1 candidate 最多一次 runtime dispatch、不 retry，继续复用 Tutor V6 local signal/preferred depth、
+      `answer_direct` 权限与 merger；budget/abort/usage/Trace 继续 fail-closed；
+- [x] SR1 focused/direct `41/41`、V6/V8/V9/F1/S3 兼容 `70/70`、Agent `1135/1135`、AI
+      `325/325`、Agent/AI typecheck/lint、Prettier 与 `git diff --check` 通过；
+- [x] SR1 未读取 credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式
+      tag/marker/journal/artifact 或修改业务数据；旧 L3 validator 仍为
+      `ok=true / journalRecords=296 / evidence_published`，artifact SHA `e081939b...dbe5`；
+- [x] 当前下一原子任务仅 SR2 Provider-like/held-out/metamorphic/no-leak/fault matrix；产品、main、Phase
+      6.9.8 与后续阶段仍阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1873,4 +1885,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`、
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。

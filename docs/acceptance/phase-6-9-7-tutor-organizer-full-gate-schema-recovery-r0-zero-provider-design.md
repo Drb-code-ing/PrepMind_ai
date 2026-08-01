@@ -126,11 +126,13 @@ SR0 不证明：
 
 S3 Mock、L2 小样本、L3 21 条 strict success 与 SR0 设计均不能拼接为 full-gate pass。
 
-## 7. 下一原子任务
+## 7. 后续原子任务
 
-下一任务仅 SR1：以 zero-provider TDD 实现独立 Provider envelope/parser、selection projection、strict projected
-decision、本地 authority adapter 与 bounded diagnostic。SR1 不读取 credential、不调用 Provider、不执行正式
-Mock/Live、不启动产品 Docker/API/browser，也不创建新 approved tag 或正式 evidence。
+该 checkpoint 当时只解锁 SR1：以 zero-provider TDD 实现独立 Provider envelope/parser、selection
+projection、strict projected decision、本地 authority adapter 与 bounded diagnostic。SR1 现已完成，验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`；当前下一任务仅 SR2
+zero-provider robustness。Provider、正式 Mock/Live、产品 Docker/API/browser、新 approved tag 与正式 evidence
+仍未解锁。
 
 回顾时可以问：
 

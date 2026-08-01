@@ -2,8 +2,8 @@
 
 日期：2026-07-31
 
-当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 SR0 zero-provider
-Schema Recovery 设计已完成，SR1 尚未开始
+当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 Schema Recovery
+SR0/SR1 已完成，当前下一任务仅 SR2 zero-provider robustness
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -203,7 +203,7 @@ runner/durability/evidence 与 S3 reviewed Mock/static 均已完成；后续唯�
 
 ## SR0：L3 后独立 Schema Recovery 设计
 
-状态：[x] 已完成，zero-provider；SR1 尚未开始。
+状态：[x] 已完成，zero-provider；其后 SR1 已完成。
 
 - 不重跑、不 seal/recover、不改写 L3；其 gate/authority 继续是
   `full_gate_quality_gate_failed / qualityAuthority=none`；
@@ -221,5 +221,7 @@ runner/durability/evidence 与 S3 reviewed Mock/static 均已完成；后续唯�
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
 
-下一任务仅 SR1 zero-provider TDD；禁止 Provider、正式 Mock/Live、Docker/API/browser、业务数据、tag 与正式
-marker/journal/artifact。
+SR1 zero-provider TDD 已完成，验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。当前下一任务仅
+SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix；Provider、正式 Mock/Live、
+Docker/API/browser、业务数据、tag 与正式 marker/journal/artifact 继续禁止。

@@ -23,6 +23,7 @@
     "./review": "./src/nodes/review.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
+    "./tutor-schema-recovery": "./src/model-candidates/tutor-schema-recovery.ts",
     "./tutor-v5": "./src/model-candidates/tutor-v5.ts",
     "./tutor-v6": "./src/model-candidates/tutor-v6.ts",
     "./wrong-question-organizer-v5": "./src/model-candidates/wrong-question-organizer-v5.ts",

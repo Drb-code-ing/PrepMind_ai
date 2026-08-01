@@ -1533,21 +1533,36 @@ SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider�
 停止门见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
-Full-gate Schema Recovery SR0 随后只完成 zero-provider 设计，没有新增可执行命令。当前安全边界为：
+Full-gate Schema Recovery SR0/SR1 已完成 zero-provider 设计与 TDD。SR1 只新增 library/candidate seam 与
+synthetic tests，没有新增 production CLI。当前安全边界为：
 
 - 不运行任何 `full-gate:live`、`seal`、production CLI、curl、单 case 或 Provider 探测；
 - 不修改/移动/删除 L3 marker、journal、artifact 或 approved tag；
 - 只允许读取当前源码与 sealed bundle，并运行上面的只读 validator；
-- SR1 后续测试必须使用 injected synthetic data/runtime，显式证明 `globalThis.fetch=0`、credential read=0、
-  formal artifact=0；
-- SR1 只实现 Provider envelope/parser、canonical `intentIndex` projection、strict projected decision 与 bounded
-  no-raw diagnostic；不执行正式 Mock、Docker/API/browser 或业务写入。
+- SR1 测试只使用 injected synthetic data/runtime，`globalThis.fetch=0`、credential read=0、formal artifact=0；
+- SR1 已实现 exact-schema raw parser、有界 Provider envelope、canonical `intentIndex` projection、strict
+  projected decision、bounded no-raw diagnostic 与一次性 V6 candidate seam；contract SHA 为
+  `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`；
+- 当前下一任务仅 SR2 Provider-like/held-out/metamorphic/no-leak/fault matrix；仍不执行 Provider、正式 Mock、
+  Docker/API/browser 或业务写入。
 
-设计、计划与 SR0 验收分别见：
+SR1 安全回归命令（均为 zero-provider；不要替换为任何 `eval:*:live/mock/seal` 命令）：
+
+```powershell
+bun test packages/ai/tests/first-party-deepseek-v4-pro-direct.test.ts packages/ai/tests/model-agent-strict-json-content-policy.test.ts packages/agent/tests/tutor-schema-recovery-contract.test.ts packages/agent/tests/tutor-schema-recovery-model-candidate.test.ts
+bun run --cwd packages/ai typecheck
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/ai lint
+bun run --cwd packages/agent lint
+bun packages/agent/scripts/validate-phase-6-9-7-tutor-organizer-full-gate-evidence.ts
+```
+
+设计、计划与 SR0/SR1 验收分别见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
 
 `@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
 executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把

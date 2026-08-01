@@ -1,5 +1,8 @@
 import type { StructuredModelExecutor } from './model-agent-contract.ts';
-import { requiresModelAgentStrictJsonContent } from './model-agent-structured-output-policy.ts';
+import {
+  parseModelAgentJsonContentWithPolicy,
+  requiresModelAgentStrictJsonContent,
+} from './model-agent-structured-output-policy.ts';
 import {
   DEEPSEEK_V4_PRO_NONTHINKING_BASE_URL,
   DEEPSEEK_V4_PRO_NONTHINKING_COMPLETIONS_URL,
@@ -173,7 +176,15 @@ async function executeDirect(input: {
 
     const content = readCompletionContent(payload);
     if (content === null) throw new DirectAdapterFailure('provider_object_missing');
-    const parsedContent = parseCompletionContent(content, request.schema);
+    let parsedContent: unknown;
+    try {
+      parsedContent = parseCompletionContent(content, request.schema);
+    } catch (error) {
+      if (error instanceof DirectAdapterFailure && error.category === 'provider_type_validation') {
+        await advanceOrStop(input.wireCapability, 'content_parsed');
+      }
+      throw error;
+    }
     await advanceOrStop(input.wireCapability, 'content_parsed');
 
     const parsedSchema = parseSchema(request, parsedContent);
@@ -326,13 +337,19 @@ function readCompletionContent(payload: Record<string, unknown>): string | null 
 
 function parseCompletionContent(content: string, schema: unknown): unknown {
   try {
+    const policy = parseModelAgentJsonContentWithPolicy(schema, content);
+    if (policy.handled) {
+      if (!policy.result.ok) throw new DirectAdapterFailure(policy.result.stage);
+      return policy.result.value;
+    }
     const candidate = requiresModelAgentStrictJsonContent(schema)
       ? content
       : content.startsWith('```')
         ? readExactFencedPayload(content)
         : content;
     return JSON.parse(candidate);
-  } catch {
+  } catch (error) {
+    if (error instanceof DirectAdapterFailure) throw error;
     throw new DirectAdapterFailure('provider_json_parse');
   }
 }

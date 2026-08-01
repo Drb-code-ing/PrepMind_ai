@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-当前状态：SR0 zero-provider 设计已完成；SR1 尚未开始。旧 L3 保持失败封存，任何 Provider、产品、main 与
+当前状态：SR0/SR1 zero-provider 设计与 TDD 已完成；下一任务仅 SR2。旧 L3 保持失败封存，任何 Provider、产品、main 与
 后续 Phase 仍被阻断。
 
 设计 authority：
@@ -33,7 +33,8 @@
 
 ## SR1：Envelope、Selection Projection 与 Diagnostic TDD
 
-状态：[ ] 未开始，zero-provider。
+状态：[x] 完成，zero-provider。Checkpoint authority：
+`zero_provider_full_gate_schema_recovery_tdd`。
 
 实施：
 
@@ -60,6 +61,18 @@ RED/GREEN：
 `globalThis.fetch=0`、credential read=0、formal artifact=0。
 
 禁止：Provider、正式 Mock/Live、Docker/API/browser、业务数据、tag、marker/journal/artifact。
+
+已冻结身份与验收：
+
+- contract/candidate version 分别为 `phase-6.9.7-tutor-schema-recovery-contract-v1` 与
+  `phase-6.9.7-tutor-schema-recovery-candidate-v1`；contract SHA 为
+  `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`；
+- focused/direct `41/41`、V6/V8/V9/F1/S3 兼容 `70/70`、Agent `1135/1135`、AI `325/325`、
+  Agent/AI typecheck/lint 与 Prettier 均通过；
+- 旧 L3 只读 validator 仍为 `ok=true / journalRecords=296 / evidence_published`，physical artifact SHA
+  `e081939b...dbe5`；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
 
 ## SR2：Provider-like Robustness 与 Anti-overfit
 

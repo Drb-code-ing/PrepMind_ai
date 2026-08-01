@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-02。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已走完整 admission、真实 `deepseek_network` runner 与 runtime publication：24 guards 保持 zero-call，22 条 runtime lane 收到 response，21 条完成 strict/usage；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，剩余 26 lane 未启动。终态为 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、无 recovery claim。R3/L1/L2/L3 不得重跑；产品/main 与后续阶段继续阻断。其后 Full-gate Schema Recovery SR0 已完成 zero-provider 设计：Provider JSON 先进入有界 envelope audit，再只投影 canonical integer `intentIndex`，重新构造 strict decision 后进入本地 authority/merger；扩展字段只形成枚举化诊断后丢弃，缺失/alias/type/range/duplicate/wrapper 仍 fail-closed。SR0 未实现源码或形成 Provider/产品 authority。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已走完整 admission、真实 `deepseek_network` runner 与 runtime publication：24 guards 保持 zero-call，22 条 runtime lane 收到 response，21 条完成 strict/usage；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，剩余 26 lane 未启动。终态为 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、无 recovery claim。R3/L1/L2/L3 不得重跑；产品/main 与后续阶段继续阻断。其后 Full-gate Schema Recovery SR0/SR1 已完成 zero-provider 设计与 TDD：Provider JSON 先进入有界 native envelope parser，再只投影 canonical integer `intentIndex`，重新构造 strict decision 后进入 V6 本地 authority/merger；扩展字段只形成枚举化诊断后丢弃，缺失/alias/type/range/duplicate/wrapper 仍 fail-closed。SR1 contract SHA 为 `e2453fae...11579`，不形成 Provider/产品 authority；下一任务仅 SR2 zero-provider robustness。
 
 ## 1. 当前边界
 
@@ -900,13 +900,16 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> tutor runtime-11 response parsed -> schema failure -> breaker；remaining 26 not-started
        -> semantic / anchor / P95 / token / CNY = null；safety failures=0
        -> journal 296 -> evidence_published；validator ok=true；recovery claim=0
-  -> Schema Recovery SR0 complete：zero-provider design only
-       -> provider envelope -> selection projection -> strict projected decision
+  -> Schema Recovery SR0/SR1 complete：zero-provider design + TDD
+       -> exact-schema raw parser -> bounded native JSON envelope -> selection projection
+       -> reconstructed strict projected decision -> V6 local authority/merger
        -> only canonical integer intentIndex gains model-selection authority
        -> extension fields bounded-audited then discarded；no coercion/default/clamp/retry
        -> bounded stage/reason/type/count/shape diagnostic；rawDataRetained=false
+       -> one runtime dispatch maximum；contract SHA e2453fae...11579
        -> independent schema-recovery-v1 lineage；old L3 bytes/tag/validator unchanged
-  -> current next：SR1 zero-provider TDD；不执行 Provider/Mock/产品/main/Phase 6.9.8
+  -> current next：SR2 Provider-like/held-out/metamorphic/no-leak robustness
+       -> 不执行 Provider/正式 Mock/产品/main/Phase 6.9.8
 ```
 
 ```text
