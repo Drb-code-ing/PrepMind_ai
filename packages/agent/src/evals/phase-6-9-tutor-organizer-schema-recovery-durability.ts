@@ -11,6 +11,12 @@ import {
   type Phase697SchemaRecoverySource,
 } from './phase-6-9-tutor-organizer-schema-recovery-authority.ts';
 import {
+  PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
+  claimPhase697SchemaRecoverySr5ConsumedProxyAttestation,
+  type Phase697SchemaRecoverySr5ConsumedProxyAttestation,
+  type Phase697SchemaRecoverySr5Source,
+} from './phase-6-9-tutor-organizer-schema-recovery-sr5-authority.ts';
+import {
   PHASE_6_9_7_SCHEMA_RECOVERY_CASE_ENTRY_SCHEMA,
   PHASE_6_9_7_SCHEMA_RECOVERY_NOT_OBSERVED,
   PHASE_6_9_7_SCHEMA_RECOVERY_REPORT_SCHEMA,
@@ -62,6 +68,13 @@ const DURABILITY_ERROR = 'PHASE_6_9_7_SCHEMA_RECOVERY_DURABILITY_REJECTED';
 const MAX_JOURNAL_BYTES = 8 * 1024 * 1024;
 const MAX_JOURNAL_LINE_BYTES = 2 * 1024 * 1024;
 
+export const PHASE_6_9_7_SCHEMA_RECOVERY_PERSISTED_SOURCE_SCHEMA = z.union([
+  PHASE_6_9_7_SCHEMA_RECOVERY_SOURCE_SCHEMA,
+  PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
+]);
+export type Phase697SchemaRecoveryPersistedSource =
+  Phase697SchemaRecoverySource | Phase697SchemaRecoverySr5Source;
+
 const UUID = z.string().uuid();
 const SHA256 = z.string().regex(/^[0-9a-f]{64}$/u);
 const ISO_DATE = z.string().datetime({ offset: true });
@@ -103,7 +116,7 @@ export const PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_SCHEMA = z
     createdAt: ISO_DATE,
     ownerProcessId: z.number().int().safe().positive(),
     ownerToken: UUID,
-    source: PHASE_6_9_7_SCHEMA_RECOVERY_SOURCE_SCHEMA,
+    source: PHASE_6_9_7_SCHEMA_RECOVERY_PERSISTED_SOURCE_SCHEMA,
     preflight: preflightRecordSchema,
   })
   .strict()
@@ -313,7 +326,7 @@ export const PHASE_6_9_7_SCHEMA_RECOVERY_ARTIFACT_SCHEMA = z
     runId: UUID,
     runScope: z.enum(['branch', 'main']),
     generatedAt: ISO_DATE,
-    source: PHASE_6_9_7_SCHEMA_RECOVERY_SOURCE_SCHEMA,
+    source: PHASE_6_9_7_SCHEMA_RECOVERY_PERSISTED_SOURCE_SCHEMA,
     preflight: preflightRecordSchema,
     reportLogicalSha256: SHA256,
     report: PHASE_6_9_7_SCHEMA_RECOVERY_REPORT_SCHEMA,
@@ -469,37 +482,92 @@ export async function reservePhase697SchemaRecoverySyntheticAttemptForTest(input
         },
       }),
     );
-    const markerBytes = `${JSON.stringify(marker)}\n`;
-    const markerPath = resolveRelative(root, PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_RELATIVE_PATH);
-    const journalPath = resolveRelative(root, schemaRecoveryJournalRelativePath(marker.runId));
-    await writeExclusiveRegularFile(markerPath, markerBytes);
-    const state: ReservationState = {
-      root,
-      marker,
-      markerBytes,
-      markerSha256: sha256(markerBytes),
-      journalPath,
-      sequence: 0,
-      previousHash: null,
-      records: [],
-      guards: new Map(),
-      lanes: createLaneStates(),
-      pairs: new Set(),
-      terminal: null,
-      report: null,
-      completionMode: 'runtime',
-      publicationMode: 'runtime',
-      recoveryClaimSha256: null,
-      publicationStarted: false,
-      published: false,
-      fence: null,
-      tail: Promise.resolve(),
-    };
-    await createJournal(state);
-    return createReservation(state);
+    return reserveParsedAttempt(root, marker);
   } catch {
     throw new Error(DURABILITY_ERROR);
   }
+}
+
+/**
+ * SR5 production-only reservation. The opaque preflight capability is claimed
+ * synchronously exactly once before the first filesystem await. No synthetic
+ * source or provenance can cross this boundary.
+ */
+export async function reservePhase697SchemaRecoveryControlledLiveAttempt(input: {
+  root: string;
+  runId: string;
+  runScope: 'branch';
+  authority: 'controlled_live';
+  mode: 'live';
+  executorProvenance: 'deepseek_network';
+  createdAt: string;
+  source: Phase697SchemaRecoverySr5Source;
+  proxyAttestation: Phase697SchemaRecoverySr5ConsumedProxyAttestation;
+}): Promise<Phase697SchemaRecoveryReservation> {
+  try {
+    const preflight = claimPhase697SchemaRecoverySr5ConsumedProxyAttestation(
+      input.proxyAttestation,
+      'controlled_live',
+    );
+    const source = PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA.parse(input.source);
+    const marker = deepFreeze(
+      PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_SCHEMA.parse({
+        markerVersion: PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_VERSION,
+        durabilityVersion: PHASE_6_9_7_SCHEMA_RECOVERY_DURABILITY_VERSION,
+        lineage: PHASE_6_9_7_SCHEMA_RECOVERY_FULL_GATE_LINEAGE,
+        authority: input.authority,
+        mode: input.mode,
+        executorProvenance: input.executorProvenance,
+        runId: input.runId,
+        runScope: input.runScope,
+        createdAt: input.createdAt,
+        ownerProcessId: process.pid,
+        ownerToken: randomUUID(),
+        source,
+        preflight: {
+          version: 'phase-6.9.7-tutor-organizer-schema-recovery-preflight-record-v1',
+          status: preflight.status,
+          providerCalls: preflight.providerCalls,
+        },
+      }),
+    );
+    const root = await requireRoot(input.root);
+    await ensureTmpDirectory(root);
+    return reserveParsedAttempt(root, marker);
+  } catch {
+    throw new Error(DURABILITY_ERROR);
+  }
+}
+
+async function reserveParsedAttempt(root: string, marker: Phase697SchemaRecoveryMarker) {
+  const markerBytes = `${JSON.stringify(marker)}\n`;
+  const markerPath = resolveRelative(root, PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_RELATIVE_PATH);
+  const journalPath = resolveRelative(root, schemaRecoveryJournalRelativePath(marker.runId));
+  await writeExclusiveRegularFile(markerPath, markerBytes);
+  const state: ReservationState = {
+    root,
+    marker,
+    markerBytes,
+    markerSha256: sha256(markerBytes),
+    journalPath,
+    sequence: 0,
+    previousHash: null,
+    records: [],
+    guards: new Map(),
+    lanes: createLaneStates(),
+    pairs: new Set(),
+    terminal: null,
+    report: null,
+    completionMode: 'runtime',
+    publicationMode: 'runtime',
+    recoveryClaimSha256: null,
+    publicationStarted: false,
+    published: false,
+    fence: null,
+    tail: Promise.resolve(),
+  };
+  await createJournal(state);
+  return createReservation(state);
 }
 
 /**

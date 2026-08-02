@@ -20,6 +20,10 @@ import {
   type Phase697SchemaRecoverySource,
 } from './phase-6-9-tutor-organizer-schema-recovery-authority.ts';
 import {
+  PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
+  type Phase697SchemaRecoverySr5Source,
+} from './phase-6-9-tutor-organizer-schema-recovery-sr5-authority.ts';
+import {
   PHASE_6_9_7_SCHEMA_RECOVERY_NOT_OBSERVED,
   PHASE_6_9_7_SCHEMA_RECOVERY_SCHEMA_OBSERVATION,
   buildPhase697SchemaRecoveryReport,
@@ -80,7 +84,7 @@ export type Phase697SchemaRecoveryLifecycle = Readonly<{
 export type RunPhase697SchemaRecoveryInput = Readonly<{
   runId: string;
   runScope: 'branch' | 'main';
-  source: Phase697SchemaRecoverySource;
+  source: Phase697SchemaRecoverySource | Phase697SchemaRecoverySr5Source;
   harness: Phase697SchemaRecoveryHarness;
   lifecycle: Phase697SchemaRecoveryLifecycle;
   signal: AbortSignal;
@@ -93,7 +97,9 @@ export type RunPhase697SchemaRecoveryInput = Readonly<{
 export async function runPhase697TutorOrganizerSchemaRecovery(
   input: RunPhase697SchemaRecoveryInput,
 ): Promise<Readonly<Phase697SchemaRecoveryReport>> {
-  const source = PHASE_6_9_7_SCHEMA_RECOVERY_SOURCE_SCHEMA.parse(input.source);
+  const source = PHASE_6_9_7_SCHEMA_RECOVERY_SOURCE_SCHEMA.or(
+    PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
+  ).parse(input.source);
   if (input.signal === null || typeof input.signal !== 'object') {
     throw new Error('PHASE_6_9_7_SCHEMA_RECOVERY_RUNNER_INPUT_INVALID');
   }

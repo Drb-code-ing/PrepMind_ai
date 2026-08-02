@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { type Phase697ArchitectureRecoveryR2CanaryReport } from '../src/phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 import {
-  buildPhase697ArchitectureRecoveryR3CanaryReport,
   buildPhase697ArchitectureRecoveryR3CrashSealReport,
+  buildPhase697ArchitectureRecoveryR3CanaryReport,
   phase697ArchitectureRecoveryR3CanaryArtifactPath,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_APPROVAL_ENV,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_CONFIRMATION,
@@ -17,13 +18,14 @@ import {
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_MARKER_RELATIVE_PATH,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_RECOVERY_CLAIM_RELATIVE_PATH,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_RECOVERY_CLAIM_VERSION,
+  type Phase697ArchitectureRecoveryR3CanarySource,
+} from '../src/phase-6-9-7-architecture-recovery-r3-canary-contract.ts';
+import {
   reservePhase697ArchitectureRecoveryR3Canary,
   sealPhase697ArchitectureRecoveryR3InterruptedCanary,
   validatePhase697ArchitectureRecoveryR3CanaryBundle,
-  type Phase697ArchitectureRecoveryR2CanaryReport,
-  type Phase697ArchitectureRecoveryR3CanarySource,
-  type Phase697V7WireStage,
-} from '../src/index.ts';
+} from '../src/phase-6-9-7-architecture-recovery-r3-canary-durability.ts';
+import type { Phase697V7WireStage } from '../src/phase-6-9-7-v7-wire-diagnostics.ts';
 import { runPhase697ArchitectureRecoveryR3CanaryCli } from '../src/phase-6-9-7-architecture-recovery-r3-canary-cli.ts';
 
 const RUN_ID = '11111111-2222-4333-8444-555555555555';
@@ -510,12 +512,15 @@ async function createInterruptedReservationInChild(
   wireStages: readonly Phase697V7WireStage[],
   appendTerminal = false,
 ) {
-  const moduleUrl = pathToFileURL(join(import.meta.dir, '../src/index.ts')).href;
+  const contractUrl = pathToFileURL(
+    join(import.meta.dir, '../src/phase-6-9-7-architecture-recovery-r3-canary-contract.ts'),
+  ).href;
+  const durabilityUrl = pathToFileURL(
+    join(import.meta.dir, '../src/phase-6-9-7-architecture-recovery-r3-canary-durability.ts'),
+  ).href;
   const code = `
-    import {
-      buildPhase697ArchitectureRecoveryR3CanaryReport,
-      reservePhase697ArchitectureRecoveryR3Canary,
-    } from ${JSON.stringify(moduleUrl)};
+    import { buildPhase697ArchitectureRecoveryR3CanaryReport } from ${JSON.stringify(contractUrl)};
+    import { reservePhase697ArchitectureRecoveryR3Canary } from ${JSON.stringify(durabilityUrl)};
     const reservation = await reservePhase697ArchitectureRecoveryR3Canary(${JSON.stringify({
       root,
       runId: RUN_ID,

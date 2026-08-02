@@ -3,10 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolve } from 'node:path';
 
-import {
-  PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROVIDER_CANARY_V2_C2_ARTIFACT_SCHEMA,
-  PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_ARTIFACT_SCHEMA,
-} from '@repo/ai';
+import { PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROVIDER_CANARY_V2_C2_ARTIFACT_SCHEMA } from '../../ai/src/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-contract.ts';
+import { PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_ARTIFACT_SCHEMA } from '../../ai/src/phase-6-9-7-architecture-recovery-r3-canary-contract.ts';
 import { describe, expect, test } from 'bun:test';
 
 import {

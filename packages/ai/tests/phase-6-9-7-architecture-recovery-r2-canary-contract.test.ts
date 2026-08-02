@@ -14,7 +14,7 @@ import {
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R2_CANARY_REQUEST_PROFILE,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R2_CANARY_REQUEST_VERSION,
   type Phase697ArchitectureRecoveryR2CanaryReport,
-} from '../src/index.ts';
+} from '../src/phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 
 const RUN_ID = '11111111-2222-4333-8444-555555555555';
 const GENERATED_AT = '2026-07-30T12:00:00.000Z';

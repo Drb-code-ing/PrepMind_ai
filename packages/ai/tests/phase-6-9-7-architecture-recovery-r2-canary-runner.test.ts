@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
+import { PHASE_6_9_7_ARCHITECTURE_RECOVERY_R2_CANARY_REQUEST_PROFILE } from '../src/phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 import {
-  PHASE_6_9_7_ARCHITECTURE_RECOVERY_R2_CANARY_REQUEST_PROFILE,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R2_SYNTHETIC_SCENARIOS,
   runPhase697ArchitectureRecoveryR2Canary,
   type Phase697ArchitectureRecoveryR2CanaryRunInput,
   type Phase697ArchitectureRecoveryR2SyntheticScenario,
-} from '../src/index.ts';
+} from '../src/phase-6-9-7-architecture-recovery-r2-canary-runner.ts';
 
 const RAW_CANARY = 'r2-raw-provider-value-must-not-leak';
 const FORBIDDEN =

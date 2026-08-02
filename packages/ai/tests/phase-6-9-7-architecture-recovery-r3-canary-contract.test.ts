@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { type Phase697ArchitectureRecoveryR2CanaryReport } from '../src/phase-6-9-7-architecture-recovery-r2-canary-contract.ts';
 import {
   buildPhase697ArchitectureRecoveryR3CanaryArtifact,
   buildPhase697ArchitectureRecoveryR3CanaryMarker,
@@ -19,9 +20,8 @@ import {
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_PRICE_PROFILE,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_REPORT_SCHEMA,
   PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CANARY_REPORT_VERSION,
-  type Phase697ArchitectureRecoveryR2CanaryReport,
   type Phase697ArchitectureRecoveryR3CanarySource,
-} from '../src/index.ts';
+} from '../src/phase-6-9-7-architecture-recovery-r3-canary-contract.ts';
 
 const RUN_ID = '11111111-2222-4333-8444-555555555555';
 const GENERATED_AT = '2026-07-30T12:00:00.000Z';
