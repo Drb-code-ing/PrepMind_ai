@@ -131,8 +131,10 @@ runtime、`tutor-v2-runtime-11`、18 个 Provider shape、Unicode/shape/limit/ab
 且不读取 L3 raw output。验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
-当前下一原子任务仅 SR3 runner/lineage/durability。SR3 仍禁止 credential、Provider、正式 Mock/Live、
-Docker/API/browser、业务数据与 main；SR4--SR7 与后续阶段继续按设计门禁阻断。
+SR2 当时只解锁 SR3 runner/lineage/durability；SR3 后续已 zero-provider 完成。当前下一原子任务仅 SR4
+reviewed Mock/static。SR4 仍禁止 credential、Provider、正式 Live、Docker/API/browser、业务数据与 main；
+SR5--SR7 与后续阶段继续按设计门禁阻断。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 
 ## 10. 主要文件
 

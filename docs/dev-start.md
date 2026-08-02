@@ -1533,27 +1533,34 @@ SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider�
 停止门见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
-Full-gate Schema Recovery SR0/SR1/SR2 已完成 zero-provider 设计、TDD 与 robustness。SR1/SR2 只新增
-library/candidate seam 与 synthetic tests，没有新增 production CLI。当前安全边界为：
+Full-gate Schema Recovery SR0--SR3 已完成 zero-provider 设计、TDD、robustness 与独立 runner/durability。
+SR3 新增固定 zero-provider 运维 CLI，但没有 Live script、Provider port 或可用的 SR5 authorization。当前安全
+边界为：
 
 - 不运行任何 `full-gate:live`、`seal`、production CLI、curl、单 case 或 Provider 探测；
 - 不修改/移动/删除 L3 marker、journal、artifact 或 approved tag；
 - 只允许读取当前源码与 sealed bundle，并运行上面的只读 validator；
-- SR1/SR2 测试只使用 injected synthetic data/runtime，`globalThis.fetch=0`、credential read=0、formal
+- SR1--SR3 测试只使用 injected synthetic data/runtime 与系统临时目录，`globalThis.fetch=0`、credential
+  read=0、formal
   artifact=0；
 - SR1 已实现 exact-schema raw parser、有界 Provider envelope、canonical `intentIndex` projection、strict
   projected decision、bounded no-raw diagnostic 与一次性 V6 candidate seam；contract SHA 为
   `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`；
 - SR2 fixture SHA 为 `43248bfa...0d41e`；prompt-only responder 覆盖 24 个 Tutor runtime、18 个 Provider
   shape、5 个 held-out、fault/abort 与 F2 sibling/breaker，不读取 expected/oracle 或 L3 raw；
-- 当前下一任务仅 SR3 独立 runner/lineage/durability；仍不执行 Provider、正式 Mock、Docker/API/browser 或
+- SR3 使用独立 `schema-recovery-v1` report/runner/source/CLI、schema-stage hash-chain journal、hard-link
+  artifact、strict validator 与 crash-only recovery；source manifest SHA 为 `1a811394...adfbb`；
+- SR3 crash-only recovery 只解释 durable prefix，不创建 executor、不 retry/resume/replay/backfill；公共 CLI 只
+  允许 bundle validation 或 crash-only seal；
+- 当前下一任务仅 SR4 reviewed Mock/static；仍不执行 Provider、正式 Live、Docker/API/browser 或
   业务写入。
 
-SR1/SR2 安全回归命令（均为 zero-provider；不要替换为任何 `eval:*:live/mock/seal` 命令）：
+SR1--SR3 安全回归命令（均为 zero-provider；不要替换为任何 `eval:*:live/mock/seal` 命令）：
 
 ```powershell
 bun test packages/ai/tests/first-party-deepseek-v4-pro-direct.test.ts packages/ai/tests/model-agent-strict-json-content-policy.test.ts packages/agent/tests/tutor-schema-recovery-contract.test.ts packages/agent/tests/tutor-schema-recovery-model-candidate.test.ts
 bun test packages/agent/tests/tutor-schema-recovery-sr2-provider-robustness.test.ts packages/agent/tests/tutor-schema-recovery-sr2-runtime-metamorphic.test.ts packages/agent/tests/tutor-schema-recovery-sr2-fault-runner.test.ts
+bun test packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-runner.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-journal-validator.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-crash-publication.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-lineage-cli-security.test.ts
 bun run --cwd packages/ai typecheck
 bun run --cwd packages/agent typecheck
 bun run --cwd packages/ai lint
@@ -1561,13 +1568,18 @@ bun run --cwd packages/agent lint
 bun packages/agent/scripts/validate-phase-6-9-7-tutor-organizer-full-gate-evidence.ts
 ```
 
-设计、计划与 SR0/SR1/SR2 验收分别见：
+SR3 focused 期望为 `23/23`。`eval:phase-6-9-7:schema-recovery:validate` 与
+`eval:phase-6-9-7:schema-recovery:seal` 只服务未来正式 SR5 bundle/中断 attempt；当前正式文件为 0，不要为了
+让命令成功而手工创建 marker/journal/artifact，也不要运行 seal。
+
+设计、计划与 SR0--SR3 验收分别见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 
 `@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
 executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把

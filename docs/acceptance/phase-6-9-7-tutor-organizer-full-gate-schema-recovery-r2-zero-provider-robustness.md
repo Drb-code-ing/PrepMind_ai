@@ -122,8 +122,8 @@ SR2 schema failure 通过既有 F2 memory lifecycle 接入 full-gate runner：
 - breaker：`opened=true / reason=schema`；
 - Tutor synthetic Provider dispatch：`1`。
 
-该 lifecycle 只使用内存 Map/trace，不创建 marker、journal、artifact 或 recovery claim。SR3 才负责新 lineage
-runner/durability 的正式 TDD。
+该 lifecycle 只使用内存 Map/trace，不创建 marker、journal、artifact 或 recovery claim；在 SR2 完成时，
+新 lineage runner/durability 仍由后续 SR3 负责。SR3 现已独立完成，不回填本 checkpoint authority。
 
 ## 6. 验证结果
 
@@ -154,13 +154,14 @@ qualityAuthority=none / journalRecords=296 / finalJournalEvent=evidence_publishe
 - 旧 L3 evidence 修改：`0`；
 - `.codex/`：保持既有本地未跟踪状态，不进入提交。
 
-## 8. 下一任务与停止门
+## 8. 后续状态与停止门
 
-下一原子任务仅 SR3 zero-provider 独立 Runner、Lineage 与 Durability：新 report/runner/CLI/approval/marker/
-journal/artifact/recovery/validator identity，以及 bounded schema stage durability。
+SR3 已随后以 zero-provider 完成独立 report/runner/source/CLI/marker/journal/artifact/recovery/validator identity
+与 bounded schema stage durability；验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 
-SR3 仍禁止 credential、Provider、正式 Mock/Live、Docker/API/browser、业务数据和 main。SR4--SR7、Phase
-6.9.8/6.10/8/9 与博客收尾继续阻断。
+当前下一原子任务仅 SR4 reviewed Mock/static。SR4 仍禁止 credential、Provider、正式 Live、Docker/API/
+browser、业务数据和 main；SR5--SR7、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
 
 ## 9. 主要文件
 
@@ -179,4 +180,4 @@ SR3 仍禁止 credential、Provider、正式 Mock/Live、Docker/API/browser、�
 - 为什么 `response_audit` 在公开 Trace 中会投影为 `invalid_response`？
 - extension discard 如何避免放宽 depth、answer structure 与写权限？
 - 为什么 SR2 复用 F2 memory lifecycle，却不能声称新 lineage durability 已完成？
-- 为什么下一步必须先做 SR3，不能直接运行 Provider 或产品 Docker？
+- 为什么 SR2 后必须先完成 SR3 durability，才能进入 SR4 reviewed Mock，而不能直接运行 Provider？

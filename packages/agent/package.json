@@ -90,6 +90,9 @@
     "eval:phase-6-9-7:full-gate:live": "bun scripts/phase-6-9-7-tutor-organizer-full-gate-cli.ts",
     "eval:phase-6-9-7:full-gate:seal": "bun scripts/phase-6-9-7-tutor-organizer-full-gate-cli.ts I_SEAL_PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_CRASH_ONLY_ONCE",
     "eval:phase-6-9-7:full-gate:validate": "bun scripts/validate-phase-6-9-7-tutor-organizer-full-gate-evidence.ts",
+    "eval:phase-6-9-7:schema-recovery:cli": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts",
+    "eval:phase-6-9-7:schema-recovery:seal": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts I_SEAL_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_CRASH_ONLY_ONCE",
+    "eval:phase-6-9-7:schema-recovery:validate": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts VALIDATE_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_BUNDLE_ZERO_PROVIDER",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

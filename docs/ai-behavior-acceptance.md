@@ -449,7 +449,7 @@ content parse 后发生 schema failure，breaker 阻止剩余 26 lane。完整 s
 CNY aggregate 全 `null`，终态 `full_gate_quality_gate_failed / qualityAuthority=none`。L3 不得重跑，产品
 Docker/API/browser、main 与后续阶段继续受门禁约束。
 
-Full-gate Schema Recovery SR0/SR1/SR2 已冻结并验证 zero-provider 行为边界。Tutor Provider content 先作为不可信
+Full-gate Schema Recovery SR0--SR3 已冻结并验证 zero-provider 行为与 durability 边界。Tutor Provider content 先作为不可信
 envelope 接受有界 native JSON/duplicate/shape audit；exact schema identity 才获得 raw parser capability，selection projection 只读取 canonical own-data
 `intentIndex` safe integer，并重新构造 strict projected decision。无权威 extension fields 只允许形成固定
 type/count/shape diagnostic 后丢弃，不进入 candidate result、Trace、report、产品 prompt 或日志；missing、alias、
@@ -462,8 +462,14 @@ Trace fail-closed。SR1 contract SHA 为 `e2453fae...11579`。SR2 fixture SHA �
 实际 bounded prompt/eligible ordinals 的 anti-oracle responder，覆盖 24 个 Tutor runtime、18 个 Provider
 shape、5 个 held-out、Unicode/limit、transport/HTTP/audit/usage、budget/abort 与 pair sibling/breaker。SR2
 `24/24 candidate_applied` 只证明结构路径可用，不与 expected intent 比分，也不产生 semantic quality authority。
-SR2 checkpoint authority 仅 `zero_provider_full_gate_schema_recovery_robustness`，不证明真实模型或产品可用；
-当前下一任务仅 SR3 zero-provider runner/lineage/durability。
+SR2 checkpoint authority 仅 `zero_provider_full_gate_schema_recovery_robustness`，不证明真实模型或产品可用。
+SR3 又把固定 `72/24/48/24/32`、schema accounting、wire/usage/metric/breaker 重算放入独立 report/runner，
+把 `schema_stage_started/succeeded/failed` 写入 fsynced hash-chain journal，并提供 hard-link artifact、strict
+validator 与 crash-only recovery。Recovery 只解释 durable prefix；即使 wire 已到 verified usage，schema
+terminal 未 durable 时也只能记录 `not_observed`，usage/semantic aggregate 保持 `null`。公共 CLI 仅开放
+zero-provider validate/crash-only seal，没有 Live/credential/fetch port。SR3 authority 仅
+`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`；当前下一任务仅 SR4
+zero-provider reviewed Mock/static。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

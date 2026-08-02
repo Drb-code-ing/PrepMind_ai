@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR3 Runner / Lineage / Durability：
+>
+> SR3 以 `zero_provider_full_gate_schema_recovery_runner_durability` 建立独立
+> `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1` lineage。新增 report/runner/source/CLI、exclusive
+> marker、append + fsync + SHA-256 hash-chain journal、hard-link artifact、strict recomputing validator 与
+> crash-only recovery；source manifest SHA 为
+> `1a811394b6e6c182ef33bb22c8aa5545400e8083a5f226d9d5eab5e7c40adfbb`。固定
+> `72/24/48/24/32` 分母、guard-first/pair-serial 双 lane、single dispatch/no retry 与旧 full-gate 质量门不变。
+>
+> 新 journal 独立记录 `schema_stage_started/succeeded/failed`；Schema Recovery wrapper 私有保存该
+> lifecycle，旧 F2 只作为非持久化 scheduler/metric kernel，不能把新 stage 写入旧 L3 lineage。Report/validator
+> 重算 canonical/extension-discarded/rejected/not-observed、wire、usage、semantic/anchor/P95/CNY、breaker 与
+> publication；分母不完整时正式 aggregate 全 `null`。截断/CRLF/hash/重排/duplicate terminal/raw field、
+> marker/claim race、ABA/live owner/PID reuse、hard-link conflict 与 artifact mutation 均 fail-closed。
+>
+> Crash-only recovery 只解释 durable prefix，不创建 executor 或 retry/resume/replay/backfill。新增
+> crash-after-usage 回归确认：`usage_validated` wire 已 durable、schema terminal 尚未 durable 时保留 wire
+> `1/1/1/1`，但 lane usage 与 aggregate 仍为 `null`，schema 为 `not_observed`。公共 CLI 只开放 zero-provider
+> bundle validation/crash-only seal，并对依赖结果做 exact-own-data 白名单；SR5 confirmation/approval/
+> credential/source admission/marker reservation/harness/executor/fetch port 仍未开放，也没有 Live script。
+>
+> SR3 focused `23/23`、SR2/SR3/F2 compatibility `105/105`（`3633` assertions）、Agent full
+> `1167/1167`（`21651` assertions）、AI full `325/325`（`2378` assertions）；Agent/AI typecheck/lint、
+> Prettier、`git diff --check` 与独立 contract/security/test-coverage 终审通过。旧 L3 validator 仍为
+> `ok=true / journalRecords=296 / evidence_published`，physical artifact SHA `e081939b...dbe5`；正式 SR5
+> files/tag 为 0。本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser
+> 或修改业务数据；`.codex/` 不提交。
+>
+> 下一原子任务仅 SR4 zero-provider reviewed Mock/static；验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR2 Zero-provider Robustness：
 >
 > SR2 冻结独立 `phase-6.9.7-tutor-schema-recovery-sr2-robustness-v1` fixture 与 prompt-only
@@ -22,7 +53,8 @@ qualityAuthority=none / journalRecords=296`，artifact SHA `e081939b...dbe5`。�
 > credential、调用 Provider、执行正式 Mock/Live/production CLI、启动 Docker/API/browser、创建正式 tag/
 > marker/journal/artifact/recovery claim 或修改业务数据；`.codex/` 不提交。
 >
-> 下一原子任务仅 SR3 zero-provider 独立 Runner、Lineage 与 Durability；验收见
+> 该 checkpoint 当时只解锁 SR3 zero-provider 独立 Runner、Lineage 与 Durability；SR3 后续已完成，当前下一
+> 原子任务为 SR4 reviewed Mock/static。SR2 验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 >
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR1 Zero-provider TDD：

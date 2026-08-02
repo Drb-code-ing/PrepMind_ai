@@ -1859,8 +1859,22 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] SR2 focused `9/9`（`484` assertions）、兼容 `51/51`（`1133` assertions）、Agent `1144/1144`、
       AI `325/325`、typecheck/Prettier 与旧 L3
       validator 通过；credential/Provider/正式 Mock/Live/Docker/API/browser/业务数据/formal artifact=0；
-- [x] 当前下一原子任务仅 SR3 zero-provider runner/lineage/durability；产品、main、Phase 6.9.8 与后续阶段
-      仍阻断；
+- [x] SR3 以独立 `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1` lineage 建立 report/runner/
+      source/CLI/marker/journal/artifact/validator/crash-only recovery；source manifest SHA
+      `1a811394...adfbb`；
+- [x] SR3 固定 `72/24/48/24/32`，Schema Recovery wrapper 私有持久化
+      `schema_stage_started/succeeded/failed`，旧 F2 只作为非持久化 scheduler/metric kernel；
+- [x] SR3 strict validator 重算 schema/wire/usage/semantic/anchor/P95/CNY/breaker/publication；截断、CRLF、
+      hash/reorder/duplicate terminal/raw field、额外正式文件、旧 lineage 与 artifact mutation 均拒绝；
+- [x] SR3 crash-only recovery 只解释 durable prefix，不创建 executor 或 retry/resume/replay/backfill；
+      crash-after-usage 保留 wire `1/1/1/1`，但 schema `not_observed`、usage/aggregate 仍为 `null`；
+- [x] SR3 CLI 只开放 zero-provider validate/crash-only seal，对依赖结果执行 exact-own-data 白名单；SR5
+      confirmation/approval/credential/source admission/marker reservation/harness/executor/fetch ports 未开放；
+- [x] SR3 focused `23/23`、兼容 `105/105`（`3633` assertions）、Agent `1167/1167`、AI `325/325`、
+      typecheck/lint/Prettier/diff 与独立 contract/security/test-coverage 终审通过；
+- [x] SR3 未读取 credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser 或修改业务数据；
+      旧 L3 validator/SHA 不变，正式 SR5 files/tag 为 0；
+- [x] 当前下一原子任务仅 SR4 zero-provider reviewed Mock/static；产品、main、Phase 6.9.8 与后续阶段仍阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1896,4 +1910,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。

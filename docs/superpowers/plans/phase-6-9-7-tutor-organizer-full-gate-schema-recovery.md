@@ -2,8 +2,8 @@
 
 日期：2026-08-02
 
-当前状态：SR0/SR1/SR2 zero-provider 设计、TDD 与 robustness 已完成；下一任务仅 SR3。旧 L3 保持失败封存，任何 Provider、产品、main 与
-后续 Phase 仍被阻断。
+当前状态：SR0--SR3 zero-provider 设计、TDD、robustness 与独立 runner/durability 已完成；下一任务仅 SR4
+reviewed Mock/static。旧 L3 保持失败封存，任何 Provider、产品、main 与后续 Phase 仍被阻断。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`
@@ -107,7 +107,8 @@ validators/SHA，Provider/credential/formal artifact=0。
 
 ## SR3：独立 Runner、Lineage 与 Durability
 
-状态：[ ] 下一任务，zero-provider。
+状态：[x] 完成，zero-provider。Checkpoint authority：
+`zero_provider_full_gate_schema_recovery_runner_durability`。
 
 实施：
 
@@ -123,9 +124,23 @@ validators/SHA，Provider/credential/formal artifact=0。
 
 通过门：runner/durability/security fault matrix、focused/full/static、历史 validator/SHA、formal files=0。
 
+已交付与验证：
+
+- 独立 lineage `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`，source manifest SHA
+  `1a811394b6e6c182ef33bb22c8aa5545400e8083a5f226d9d5eab5e7c40adfbb`；
+- report/runner/source/CLI/marker/journal/artifact/validator/crash-only recovery 均使用独立 identity；
+- schema started/succeeded/failed 与八阶段 wire 分离 append + fsync + hash-chain；
+- hard-link 排他发布、exact validator 重算、claim/ABA/live-owner/PID reuse/journal drift/publication conflict 与
+  crash-after-usage 均 fail-closed；
+- CLI 仅开放 zero-provider validate/crash-only seal，SR5 confirmation/approval/credential/Provider ports 未开放；
+- focused `23/23`、SR2/SR3/F2 兼容 `105/105`、Agent `1167/1167`、AI `325/325`，typecheck/lint/
+  Prettier/diff 与独立终审通过；旧 L3 validator/SHA 不变，正式 SR5 files/tag 为 0；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+
 ## SR4：Reviewed Mock 与全量 Checkpoint
 
-状态：[ ] 未开始，zero-provider。
+状态：[ ] 下一任务，zero-provider。
 
 实施：
 

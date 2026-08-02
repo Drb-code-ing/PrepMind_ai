@@ -612,7 +612,8 @@ authority。
 | SR0  | L3 只读复盘与独立 full-gate schema recovery 设计                      | 已完成，zero-provider   |
 | SR1  | 新 envelope/parser、selection projection 与 bounded diagnostic TDD    | 已完成，zero-provider   |
 | SR2  | Provider-like/held-out/metamorphic/no-leak/fault robustness matrix    | 已完成，zero-provider   |
-| SR3  | 独立 runner/lineage/durability                                        | 下一任务，zero-provider |
+| SR3  | 独立 runner/lineage/durability                                        | 已完成，zero-provider   |
+| SR4  | Schema Recovery reviewed Mock/static checkpoint                       | 下一任务，zero-provider |
 
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
@@ -626,13 +627,15 @@ L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P
 
 L3 失败后没有重跑或放宽既有 full gate。独立 SR0 已冻结 Provider envelope、canonical `intentIndex`
 selection projection、strict projected decision、本地 authority/merger、bounded no-raw diagnostic 与全新
-lineage；SR1 contract TDD 与 SR2 robustness 已 zero-provider 完成，SR2 authority 仅
-`zero_provider_full_gate_schema_recovery_robustness / qualityAuthority=none`。当前下一任务仅 SR3
-runner/lineage/durability；尚未执行正式 Mock/Live、产品接线或创建正式 evidence。设计、计划与验收见：
+lineage；SR1 contract TDD、SR2 robustness 与 SR3 runner/lineage/durability 已 zero-provider 完成。SR3
+authority 仅 `zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`，正式 SR5
+files/tag 为 0。当前下一任务仅 SR4 reviewed Mock/static；尚未执行 Provider/正式 Live、产品接线或创建正式
+evidence。设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline

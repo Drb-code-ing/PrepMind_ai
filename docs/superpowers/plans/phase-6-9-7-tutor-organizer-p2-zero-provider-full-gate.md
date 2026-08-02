@@ -143,16 +143,17 @@ seal，禁止 retry/resume/replay/backfill、单 case 补跑或追加 Provider �
 claim=0、`qualityAuthority=none`。完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
-## SR0--SR3：独立 Full-gate Schema Recovery
+## SR0--SR4：独立 Full-gate Schema Recovery
 
-状态：SR0 [x]、SR1 [x]、SR2 [x] 完成，zero-provider；SR3 [ ] 下一任务，zero-provider。
+状态：SR0 [x]、SR1 [x]、SR2 [x]、SR3 [x] 完成，zero-provider；SR4 [ ] 下一任务，zero-provider。
 
 SR0 只读取证 L3 schema boundary，冻结 Provider envelope -> canonical `intentIndex` selection projection ->
 strict projected decision -> local authority/merger、bounded no-raw diagnostic、新 journal/report/validator 与独立
 SR1--SR7 lineage。它不修改或重跑 L3。SR1 已实现 contract/diagnostic TDD，SR2 已完成 Provider-like、
-held-out、metamorphic、no-leak 与 fault robustness matrix；SR2 authority 仅
-`zero_provider_full_gate_schema_recovery_robustness / qualityAuthority=none`。当前只允许进入 SR3
-runner/lineage/durability；禁止 credential、Provider、正式 Mock/Live、Docker/API/browser、tag 与正式
+held-out、metamorphic、no-leak 与 fault robustness matrix；SR3 已完成独立 report/runner/source/CLI、
+schema-stage durability、strict validator 与 crash-only recovery，authority 仅
+`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`。当前只允许进入 SR4
+reviewed Mock/static；禁止 credential、Provider、正式 Live、Docker/API/browser、approved tag 与正式 SR5
 artifact。完整路线见
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`。
 

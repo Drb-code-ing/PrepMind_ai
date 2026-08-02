@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-状态：SR0 zero-provider 复盘与设计、SR1 contract/diagnostic/candidate TDD、SR2 robustness 已完成；下一任务仅 SR3，正式 Mock、Live 与产品接线仍未实现
+状态：SR0--SR3 zero-provider 设计、TDD、robustness 与独立 runner/durability 已完成；下一任务仅 SR4 reviewed Mock/static，正式 Live 与产品接线仍未实现
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -13,6 +13,8 @@ R0 authority：`zero_provider_full_gate_schema_recovery_design`
 SR1 checkpoint authority：`zero_provider_full_gate_schema_recovery_tdd`
 
 SR2 checkpoint authority：`zero_provider_full_gate_schema_recovery_robustness`
+
+SR3 checkpoint authority：`zero_provider_full_gate_schema_recovery_runner_durability`
 
 未来独立 lineage：`phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`
 
@@ -332,7 +334,14 @@ journal、artifact 与 recovery prefix。
 SR2 已按本设计完成独立 fixture SHA `43248bfa...0d41e`、prompt-only anti-oracle responder、24 个 Tutor
 runtime（含 runtime 11）、18 个 Provider shape、5 个 held-out、Unicode/structure limits、fault/abort 与 F2
 sibling/breaker。该 checkpoint 全程 zero-provider，只建立 robustness authority；不建立 semantic、P95、
-durability、Provider 或产品 authority。下一任务只能是 SR3。
+durability、Provider 或产品 authority。
+
+SR3 随后以独立 `schema-recovery-v1` lineage 落成 report/runner/source/CLI/marker/journal/artifact/validator 与
+crash-only recovery；source manifest SHA 为 `1a811394...adfbb`。新 journal 将 bounded schema
+started/succeeded/failed 与既有 wire 分离持久化，strict validator 重算固定 `72/24/48/24/32`、schema/wire/
+usage/metric/breaker 与 publication；crash-only recovery 只解释 durable prefix。SR3 focused `23/23`、兼容
+`105/105`、Agent `1167/1167`、AI `325/325` 通过，正式 SR5 files/tag 为 0。该 checkpoint authority 仅
+`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`；下一任务只能是 SR4。
 
 ## 10. 原子路线
 
@@ -341,8 +350,8 @@ durability、Provider 或产品 authority。下一任务只能是 SR3。
 | SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider   |
 | SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 已完成，zero-provider   |
 | SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 已完成，zero-provider   |
-| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 下一任务，zero-provider |
-| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 未开始                  |
+| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 已完成，zero-provider   |
+| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 下一任务，zero-provider |
 | SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 阻断                    |
 | SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                    |
 | SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                    |
