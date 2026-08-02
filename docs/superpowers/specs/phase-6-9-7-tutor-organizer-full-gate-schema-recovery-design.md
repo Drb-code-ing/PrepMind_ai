@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-状态：SR0--SR4 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static 已完成；下一任务仅 SR5 fresh admission，正式 Live 与产品接线仍未实现
+状态：SR0--SR4 zero-provider 与 reviewed Mock/static 已完成；唯一 SR5 controlled-Live 已通过并 durable seal；当前下一任务仅 SR6 分支产品验收
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -349,6 +349,15 @@ SR4 随后使用独立 reviewed Mock factory（SHA `8f18c1c2...3d44`）真实穿
 `1`、usage `17732/654` 与 `0.05712 CNY`。Gate 固定
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，不能形成 Provider 或产品 authority。
 
+SR5 随后在 approved source/tag `67661f5f...d4441` 上消费唯一 controlled-Live 名额。Run
+`63f8a76b-1c2a-403d-b774-0235caae04cb` 得到 guards `24/24` zero-call、runtime `48/48/0/0`、
+wire/strict/usage `48/48/48/48`、schema `48 canonical / 0 extension / 0 rejected / 0 not-observed`，
+Tutor/Organizer/Combined semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage
+`20966/789`，费用 `0.067632 CNY`。Gate/authority 为
+`schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`；journal `628` 条并以
+`evidence_published` 收口，validator `ok=true`，recovery claim=0。该 authority 只覆盖固定分支评测，不覆盖产品、
+Docker/API/browser、Trace、业务写入、SLA 或 main。SR5 不得重跑。
+
 ## 10. 原子路线
 
 | 阶段 | 内容                                                                 | 当前状态              |
@@ -358,12 +367,13 @@ SR4 随后使用独立 reviewed Mock factory（SHA `8f18c1c2...3d44`）真实穿
 | SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 已完成，zero-provider |
 | SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 已完成，zero-provider |
 | SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 已完成，zero-provider |
-| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 下一任务，阻断        |
-| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                  |
+| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 已完成，通过并封存    |
+| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 下一任务              |
 | SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                  |
 
-每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均不得读取
-credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。
+每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均未读取
+credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。SR5 只消费上述唯一
+48-lane Live，后续 SR6 不得再次调用 Provider。
 
 ## 11. SR0 禁止事项
 

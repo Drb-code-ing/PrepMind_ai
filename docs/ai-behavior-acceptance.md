@@ -473,7 +473,17 @@ recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/m
 runtime `48/48/0/0`、wire `48/48/48/48`、schema `42 canonical + 6 extension discarded`、Tutor/Organizer/
 Combined semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage `17732/654` 与 `0.05712 CNY`。该结果只具有
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；不能证明 Provider、真实语义或产品可用。
-当前下一任务仅 SR5 fresh admission，尚未授权且不得启动。
+
+唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 随后在独立 approved source/tag
+`67661f5f...d4441` 上完成真实 `deepseek_network` full gate：guards `24/24` zero-call，runtime
+`48/48/0/0`，wire/strict/verified usage `48/48/48/48`，schema canonical `48/48`，Tutor/Organizer/Combined
+semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用
+`0.067632 CNY`，安全与权限失败全 0。最终 gate/authority 为
+`schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`；journal `628` 条并以
+`evidence_published` 收口，validator `ok=true`，recovery claim=0。它证明固定评测集上的真实模型 schema 与语义
+质量门通过，但不证明 Tutor Chat、Organizer single/batch、Trace、业务写入、Docker/API/browser、SLA、main 或
+生产可用；旧 L3 failure 与 SR4 Mock-only authority 不被覆盖。SR5 不得重跑，当前唯一下一任务是 SR6 分支产品
+验收。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

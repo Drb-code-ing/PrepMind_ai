@@ -1,5 +1,31 @@
 # PrepMind AI 开发日志
 
+> 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR5 Controlled-Live：
+>
+> 已在 branch/upstream/remote 与 lightweight approved tag 全部固定到 admission source
+> `67661f5f3a302b547e804c2c1839ec89898d4441` 后，执行并仅执行一次 SR5 controlled-Live。第一次 production
+> CLI 前门因 `source_invalid` 在 marker/credential/Provider 前安全拒绝，`providerCalls=0`、未创建正式文件且未
+> 消耗 reservation；zero-provider 分解复核通过后才创建唯一正式 reservation。
+>
+> 唯一 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 以
+> `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` 收口：guard `24/24`
+> zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict `48/48`，schema
+> `48 canonical / 0 extension / 0 rejected / 0 not-observed`。Tutor/Organizer/Combined semantic 为
+> `0.9736111111111112 / 0.9515968406593407 / 0.962603975885226`，L2 anchor
+> `0.9141666666666668 / 0.9041666666666667 / 0.9091666666666667`，paired P95 `2240ms`，usage
+> `20966/789`，费用 `0.067632 CNY`；全部 safety/permission/mutation/write leakage 为 0。
+>
+> Marker、628 条 hash-chain journal 与 hard-link artifact 已由正常 runtime publication durable seal，final event
+> 为 `evidence_published`，strict validator `ok=true`，recovery claim=0。Artifact SHA 为
+> `87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be`。SR5 一次性名额已经消费，禁止
+> retry/resume/replay/backfill、Live/seal/recovery、curl、单 case、产品 API 或其它 Provider 探测。
+>
+> SR5 只证明固定 72-case/24-pair 分支评测的真实模型语义与 schema/usage/P95/预算门，不证明 Tutor Chat、
+> Organizer single/batch、Trace、业务写入、Docker API、可见浏览器、SLA、main 或生产可用。旧 L3 仍为失败
+> 封存，SR4 仍为 Mock-only。当前唯一下一原子任务是 SR6 分支产品 Docker/API/可见浏览器/Trace/精确清理；
+> SR7/main ���有 SR6 完成并推送后才解锁。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR4 Reviewed Mock / Static：
 >
 > SR4 新增独立 `phase-6.9.7-tutor-organizer-schema-recovery-reviewed-mock-v1` factory，factory SHA 为
@@ -33,7 +59,7 @@
 > 未启动产品 server/web/worker/admin、未调用 Provider、未创建 SR5 admission/tag/artifact、未执行 API/browser，
 > 未清理 Docker/volume/database/Redis/MinIO；`.codex/` 不提交。
 >
-> 当前下一原子任务仅 SR5 fresh admission。开始前仍需 SR4 commit/remote parity、新 approved source tag、历史
+> 该 SR4 checkpoint 当时的下一原子任务仅 SR5 fresh admission。开始前仍需 SR4 commit/remote parity、新 approved source tag、历史
 > validator/SHA parity、fresh proxy preflight、当次 DeepSeek 数据边界接受与 exact authorization；当前不得
 > 创建 tag、读取 credential 或调用 Provider。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。

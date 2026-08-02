@@ -166,8 +166,9 @@ L3 一次性名额已经消费。永久禁止对本 identity 执行 retry、resu
 selection projection -> strict projected decision -> local authority/merger，以及 bounded no-raw diagnostic 与
 SR1--SR7 新 lineage；它没有修改本 L3 artifact，也没有调用 Provider 或形成产品 authority。其后 SR1 TDD、
 SR2 robustness、SR3 runner/lineage/durability 与 SR4 reviewed Mock/static 均已 zero-provider 完成；SR4
-只具有 Mock authority，不能改写本 L3。当前下一原子任务仅 SR5 fresh admission，尚未授权。设计、计划与
-最新验收见：
+只具有 Mock authority，不能改写本 L3。唯一 SR5 run `63f8a76b...04cb` 随后以
+`schema_recovery_full_gate_semantic_gate` durable seal；它仍不改写本 L3，也不形成产品 authority。当前下一
+原子任务仅 SR6 分支产品验收。设计、计划与最新验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
@@ -175,6 +176,7 @@ SR2 robustness、SR3 runner/lineage/durability 与 SR4 reviewed Mock/static 均�
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 ## 7. 回顾问题
 

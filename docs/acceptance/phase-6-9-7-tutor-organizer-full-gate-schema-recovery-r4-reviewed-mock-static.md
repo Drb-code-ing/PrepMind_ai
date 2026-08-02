@@ -6,8 +6,9 @@
 
 结论：SR4 已完成并通过 zero-provider reviewed Mock/static checkpoint。该结论只具有
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，不证明 DeepSeek Provider、真实模型语义、
-产品 API、可见浏览器或生产可用。当前下一原子任务仅 SR5 fresh admission；本任务没有创建 admission、
-approved tag、正式 marker/journal/artifact，也没有授权或启动 SR5。
+产品 API、可见浏览器或生产可用。该 checkpoint 当时只解锁 SR5 fresh admission；本任务没有创建
+admission、approved tag、正式 marker/journal/artifact，也没有授权或启动 SR5。其后 SR5 已独立通过并封存，
+但不改写本页 Mock-only authority；当前下一任务为 SR6 产品验收。
 
 ## 1. 为什么需要 SR4
 
@@ -169,9 +170,9 @@ MinIO wipe。
 - 正式业务写入：`0`；
 - `.codex/`：保持既有本地未跟踪状态，不进入提交。
 
-## 10. 下一任务与停止门
+## 10. 后续状态与停止门
 
-下一原子任务仅 SR5 fresh admission。开始 SR5 前必须另行证明：
+SR4 完成时只解锁 SR5 fresh admission。开始 SR5 前当时必须另行证明：
 
 1. SR4 commit 已推送，tracked clean，HEAD/upstream/remote parity；
 2. 新 approved source tag 精确绑定同一 commit 并完成 remote parity；
@@ -183,8 +184,12 @@ MinIO wipe。
 8. 用户给出新 lineage 的 exact authorization；
 9. 专用 credential 只在上述门之后进入唯一独立进程。
 
-当前没有这些 admission 条件，因此不得创建 tag、读取 credential、调用 Provider、运行正式 Live、curl、单
-case、产品 API 或浏览器。SR6 产品验收、SR7 main、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+这些条件随后已独立满足。唯一 SR5 run `63f8a76b...04cb` 已以
+`schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；它不改写本 SR4
+Mock-only authority、旧 L3 或任何历史 evidence，也不形成产品 authority。SR5 一次性名额已消费，禁止任何
+重跑或追加 Provider 探测。当前下一原子任务仅 SR6 分支产品验收；SR7/main、Phase 6.9.8/6.10/8/9 与博客
+收尾继续阻断。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 回顾时可以问：
 

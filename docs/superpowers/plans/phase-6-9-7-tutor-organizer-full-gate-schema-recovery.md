@@ -2,9 +2,9 @@
 
 日期：2026-08-02
 
-当前状态：SR0--SR4 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static 已
-完成；下一任务仅 SR5 fresh admission。旧 L3 保持失败封存，SR5 尚未授权，任何 Provider、产品、main 与
-后续 Phase 仍被阻断。
+当前状态：SR0--SR4 zero-provider 与 reviewed Mock/static 已完成；唯一 SR5 controlled-Live 已通过并 durable
+seal。旧 L3 保持失败封存，SR4 保持 Mock-only；当前下一任务仅 SR6 分支产品验收，SR7/main 与后续 Phase
+仍被阻断。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`
@@ -173,9 +173,9 @@ Mock gate 固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=n
 - 验收：
   `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
-## SR5：未来唯一 Schema Recovery Controlled-Live
+## SR5：唯一 Schema Recovery Controlled-Live
 
-状态：[ ] 阻断。
+状态：[x] 已完成，通过并 durable seal。
 
 只有 SR1--SR4 分别验收、提交并推送后，才允许另做 fresh admission。必须重新取得当次 DeepSeek 数据边界
 接受与新 lineage exact authorization，并在 credential/marker 前证明：
@@ -190,11 +190,17 @@ Mock gate 固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=n
 SR5 无论成功、semantic、schema、usage、transport、timeout、abort 或 I/O failure 都只运行一次并 durable
 publication。禁止 retry/resume/replay/backfill、单 case、curl、产品 API 或其它 Provider 探测。
 
-本计划不预写 exact confirmation，防止被误当成当前授权。
+实际 admission source/tag 为 `67661f5f...d4441`。第一次 CLI 前门 `source_invalid` 在 credential/marker/Provider
+前安全拒绝，未消耗 reservation；zero-provider 复核后，唯一 run `63f8a76b...04cb` 得到 guards `24/24`、
+strict/wire/usage `48/48/48/48`、schema canonical `48/48`、semantic
+`0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、usage `20966/789`、费用 `0.067632 CNY`。
+最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator
+`ok=true`、recovery claim=0。一次性名额已消费，禁止任何重跑、seal/recovery 或追加 Provider 探测。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 ## SR6：产品 Docker / API / 可见浏览器
 
-状态：[ ] 阻断。
+状态：[ ] 下一任务，尚未开始。
 
 只有 SR5 得到完整新 lineage quality pass 后才能启动。验收范围必须包括 Tutor Chat、Organizer single/batch、
 default-off/forced failure、Trace、owner/locked-name/write isolation、headed browser 和本轮合成数据精确清理。

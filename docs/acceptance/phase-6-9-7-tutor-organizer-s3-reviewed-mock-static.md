@@ -176,9 +176,10 @@ Docker/API/可见浏览器、main 与后续阶段继续阻断。详见
 后续 Schema Recovery SR0 已只读识别 Tutor Provider-like shape/diagnostic 覆盖缺口，并冻结新的两层 selection
 projection 与独立 lineage；它不把 S3 canonical Mock 改写为失败根因或真实 Provider authority。其后
 SR1--SR4 的 TDD、robustness、runner/lineage/durability 与 reviewed Mock/static 均已 zero-provider 完成；SR4
-仍是 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。当前下一任务仅 SR5 fresh admission，
-尚未授权；见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+仍是 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb`
+随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不覆盖本页或 L3/SR4 历史，且不形成产品
+authority。当前下一任务仅 SR6 分支产品验收；见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 ## 11. 回顾问题
 

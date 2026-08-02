@@ -178,9 +178,10 @@ failure 以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存，未
 
 L3 后续的 Schema Recovery SR0 已完成独立 zero-provider 设计，不修改 F1/L3 contract 或 evidence；其后
 SR1--SR4 的 TDD、robustness、runner/lineage/durability 与 reviewed Mock/static 也已完成。SR4 仅形成
-`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；当前下一任务仅 SR5 fresh admission，尚未
-授权。见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 随后以
+`schema_recovery_full_gate_semantic_gate` durable seal；它不覆盖本页或 L3/SR4 历史，且不形成产品 authority。
+当前下一任务仅 SR6 分支产品验收。见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 回顾时可以问：
 

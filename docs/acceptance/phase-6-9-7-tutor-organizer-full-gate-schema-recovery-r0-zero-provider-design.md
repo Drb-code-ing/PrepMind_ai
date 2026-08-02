@@ -131,9 +131,9 @@ S3 Mock、L2 小样本、L3 21 条 strict success 与 SR0 设计均不能拼接�
 该 checkpoint 当时只解锁 SR1：以 zero-provider TDD 实现独立 Provider envelope/parser、selection
 projection、strict projected decision、本地 authority adapter 与 bounded diagnostic。其后 SR1--SR4 的 TDD、
 robustness、runner/lineage/durability 与 reviewed Mock/static 均已完成；SR4 仍无 Provider/产品 authority。
-当前下一任务仅 SR5 fresh admission，尚未授权；最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。Provider、正式
-Live、产品 Docker/API/browser、新 approved tag 与正式 SR5 evidence 仍未解锁。
+唯一 SR5 run `63f8a76b...04cb` 随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不改写本页、
+旧 L3 或 SR4，也不形成产品 authority。当前下一任务仅 SR6 分支产品验收；最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 回顾时可以问：
 

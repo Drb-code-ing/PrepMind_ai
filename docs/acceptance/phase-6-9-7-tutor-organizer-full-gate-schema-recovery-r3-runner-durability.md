@@ -157,8 +157,10 @@ Testing 与正式 SR5 零产物复核均通过。SR4 仅形成
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；详见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
-当前下一原子任务仅 SR5 fresh admission，尚未取得 fresh 数据边界接受、exact authorization 或 approved
-source/tag/remote parity。SR5--SR7、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+唯一 SR5 run `63f8a76b...04cb` 后续已以 `schema_recovery_full_gate_semantic_gate` durable seal；它不改写本页、
+旧 L3 或 SR4，也不形成产品 authority。当前下一原子任务仅 SR6 分支产品验收；SR7/main、Phase
+6.9.8/6.10/8/9 与博客收尾继续阻断。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 ## 10. 主要文件
 

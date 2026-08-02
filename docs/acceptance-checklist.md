@@ -1884,8 +1884,26 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] SR4 fault/pre-abort/fixed-denominator、anti-oracle/no-raw/no-env、SR3 临时 bundle validator、旧/新
       lineage rejection、history parity、Reader Testing 与两路独立终审通过；
 - [x] global fetch、credential、Provider、正式 SR5 files/tag、产品 API/browser 与正式业务写入均为 0；
-- [x] 当前下一原子任务仅 SR5 fresh admission；尚无 fresh 数据边界接受、exact authorization、approved
-      source/tag/remote parity，产品、main、Phase 6.9.8 与后续阶段仍阻断；
+- [x] SR5 admission source commit、HEAD/upstream/remote branch 与 local/remote approved tag 均精确固定在
+      `67661f5f...d4441`；SR3 source manifest、SR5 admission manifest 与 runnable bundle SHA 分别为
+      `1a811394...adfbb / ce3eccee...d5ddf / 61e6bb60...d08c`；
+- [x] 第一次 SR5 CLI 前门 `source_invalid` 发生在 credential/marker/Provider 前，`providerCalls=0`、
+      `evidenceSealed=false`、正式文件=0，未消耗唯一 reservation；zero-provider 分解复核通过后才开始正式 run；
+- [x] 唯一 SR5 run `63f8a76b...04cb` 为 `live / deepseek_network`，guard `24/24` zero-call，runtime
+      `48/48/0/0`，wire `48/48/48/48`，strict `48/48`，schema
+      `48 canonical / 0 extension / 0 rejected / 0 not-observed`；
+- [x] SR5 Tutor/Organizer/Combined semantic 为
+      `0.9736111111/0.9515968407/0.9626039759`，improvement
+      `0.3106468254/0.6734718407`，L2 anchor `0.9141666667/0.9041666667/0.9091666667`；Tutor/Organizer/
+      paired P95 `1836/2240/2240ms`，usage `20966/789`，费用 `0.067632 CNY`；
+- [x] SR5 critical/permission/mutation/broader fallback/locked-name/write leak 全 0，breaker closed；最终
+      `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`；
+- [x] SR5 marker、628 条 hash-chain journal 与 hard-link artifact 由正常 runtime publication 封存，final event
+      `evidence_published`，strict validator `ok=true`，artifact SHA `87dd826b...18be`，recovery claim=0；
+- [x] SR5 一次性名额已消费；禁止 retry/resume/replay/backfill、Live/seal/recovery、curl、单 case、产品 API
+      或其它 Provider 探测，也禁止移动 approved tag 或修改 L3/SR4/SR5 evidence；
+- [x] SR5 只形成固定 72-case/24-pair 分支评测语义 authority，不形成产品、Docker/API/browser、Trace、业务
+      写入、SLA 或 main authority；当前唯一下一任务是 SR6 分支产品验收，SR7/main 与 Phase 6.9.8 继续阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1923,4 +1941,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。

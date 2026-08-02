@@ -132,10 +132,10 @@ runtime、`tutor-v2-runtime-11`、18 个 Provider shape、Unicode/shape/limit/ab
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 SR2 当时只解锁 SR3 runner/lineage/durability；SR3 与 SR4 reviewed Mock/static 后续均已 zero-provider 完成。
-SR4 仅形成 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。当前下一原子任务仅 SR5 fresh
-admission，尚未授权；credential、Provider、正式 Live、产品 Docker/API/browser、业务数据与 main 继续按门禁
-阻断。最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+SR4 仅形成 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run
+`63f8a76b...04cb` 随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不改写本页、旧 L3 或 SR4，
+也不形成产品 authority。当前下一原子任务仅 SR6 分支产品验收。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 ## 10. 主要文件
 

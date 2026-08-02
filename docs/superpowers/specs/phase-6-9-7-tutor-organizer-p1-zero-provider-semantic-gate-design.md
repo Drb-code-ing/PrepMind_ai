@@ -614,7 +614,8 @@ authority。
 | SR2  | Provider-like/held-out/metamorphic/no-leak/fault robustness matrix    | 已完成，zero-provider |
 | SR3  | 独立 runner/lineage/durability                                        | 已完成，zero-provider |
 | SR4  | Schema Recovery reviewed Mock/static checkpoint                       | 已完成，zero-provider |
-| SR5  | Fresh admission 后唯一 Schema Recovery controlled-Live                | 下一任务，阻断        |
+| SR5  | Fresh admission 后唯一 Schema Recovery controlled-Live                | 已通过并 durable seal |
+| SR6  | SR5 pass 后的产品 Docker/API/browser/Trace/精确清理                   | 下一任务              |
 
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
@@ -631,14 +632,17 @@ selection projection、strict projected decision、本地 authority/merger、bou
 lineage；SR1 contract TDD、SR2 robustness、SR3 runner/lineage/durability 与 SR4 reviewed Mock/static 已
 zero-provider 完成。SR4 固定得到 `48/48` strict/wire/usage、schema `42 canonical + 6 extension discarded`、
 semantic `1/0.996875/0.9984375`，但 authority 仅
-`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，正式 SR5 files/tag 为 0。当前下一任务仅
-SR5 fresh admission；尚未执行 Provider/正式 Live、产品接线或创建正式 evidence。设计、计划与验收见：
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 随后以
+strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95
+`2240ms` 与 `schema_recovery_full_gate_semantic_gate` durable seal；不得重跑，且不覆盖 L3/SR4 历史。当前
+下一任务仅 SR6 分支产品验收。设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline
