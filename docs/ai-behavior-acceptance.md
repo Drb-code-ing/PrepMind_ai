@@ -449,7 +449,7 @@ content parse 后发生 schema failure，breaker 阻止剩余 26 lane。完整 s
 CNY aggregate 全 `null`，终态 `full_gate_quality_gate_failed / qualityAuthority=none`。L3 不得重跑，产品
 Docker/API/browser、main 与后续阶段继续受门禁约束。
 
-Full-gate Schema Recovery SR0--SR3 已冻结并验证 zero-provider 行为与 durability 边界。Tutor Provider content 先作为不可信
+Full-gate Schema Recovery SR0--SR4 已冻结并验证 zero-provider 行为、durability 与 reviewed Mock 边界。Tutor Provider content 先作为不可信
 envelope 接受有界 native JSON/duplicate/shape audit；exact schema identity 才获得 raw parser capability，selection projection 只读取 canonical own-data
 `intentIndex` safe integer，并重新构造 strict projected decision。无权威 extension fields 只允许形成固定
 type/count/shape diagnostic 后丢弃，不进入 candidate result、Trace、report、产品 prompt 或日志；missing、alias、
@@ -468,8 +468,12 @@ SR3 又把固定 `72/24/48/24/32`、schema accounting、wire/usage/metric/breake
 validator 与 crash-only recovery。Recovery 只解释 durable prefix；即使 wire 已到 verified usage，schema
 terminal 未 durable 时也只能记录 `not_observed`，usage/semantic aggregate 保持 `null`。公共 CLI 仅开放
 zero-provider validate/crash-only seal，没有 Live/credential/fetch port。SR3 authority 仅
-`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`；当前下一任务仅 SR4
-zero-provider reviewed Mock/static。
+`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`。SR4 reviewed Mock 真实穿过
+recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/merger 与 SR3 runner，固定得到
+runtime `48/48/0/0`、wire `48/48/48/48`、schema `42 canonical + 6 extension discarded`、Tutor/Organizer/
+Combined semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage `17732/654` 与 `0.05712 CNY`。该结果只具有
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；不能证明 Provider、真实语义或产品可用。
+当前下一任务仅 SR5 fresh admission，尚未授权且不得启动。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

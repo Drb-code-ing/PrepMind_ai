@@ -151,12 +151,14 @@ qualityAuthority=none / journalRecords=296 / finalJournalEvent=evidence_publishe
 
 ## 9. 下一任务与停止门
 
-下一原子任务仅 SR4 zero-provider reviewed Mock/static checkpoint：fresh deterministic baseline、reviewed Mock
-穿过 recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/merger 与 SR3 runner，并完成全量
-static/history parity、Reader Testing、正式 SR5 文件/tag 为 0 的复核。
+SR4 zero-provider reviewed Mock/static checkpoint 随后已完成：fresh deterministic baseline、recovery Tutor、
+Organizer V9、第一方 synthetic adapter、本地 authority/merger、SR3 runner、全量 static/history parity、Reader
+Testing 与正式 SR5 零产物复核均通过。SR4 仅形成
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；详见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
-SR4 仍禁止 credential、Provider、正式 Live、Docker/API/browser、业务数据与 main。SR5--SR7、Phase
-6.9.8/6.10/8/9 与博客收尾继续阻断。
+当前下一原子任务仅 SR5 fresh admission，尚未取得 fresh 数据边界接受、exact authorization 或 approved
+source/tag/remote parity。SR5--SR7、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
 
 ## 10. 主要文件
 

@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-状态：SR0--SR3 zero-provider 设计、TDD、robustness 与独立 runner/durability 已完成；下一任务仅 SR4 reviewed Mock/static，正式 Live 与产品接线仍未实现
+状态：SR0--SR4 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static 已完成；下一任务仅 SR5 fresh admission，正式 Live 与产品接线仍未实现
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -341,20 +341,26 @@ crash-only recovery；source manifest SHA 为 `1a811394...adfbb`。新 journal �
 started/succeeded/failed 与既有 wire 分离持久化，strict validator 重算固定 `72/24/48/24/32`、schema/wire/
 usage/metric/breaker 与 publication；crash-only recovery 只解释 durable prefix。SR3 focused `23/23`、兼容
 `105/105`、Agent `1167/1167`、AI `325/325` 通过，正式 SR5 files/tag 为 0。该 checkpoint authority 仅
-`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`；下一任务只能是 SR4。
+`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`。
+
+SR4 随后使用独立 reviewed Mock factory（SHA `8f18c1c2...3d44`）真实穿过 recovery Tutor、Organizer V9、
+第一方 synthetic adapter、本地 authority/merger 与 SR3 runner；固定结果为 runtime `48/48/0/0`、wire
+`48/48/48/48`、schema `42 canonical + 6 extension discarded`、semantic `1/0.996875/0.9984375`、L2 anchor
+`1`、usage `17732/654` 与 `0.05712 CNY`。Gate 固定
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，不能形成 Provider 或产品 authority。
 
 ## 10. 原子路线
 
-| 阶段 | 内容                                                                 | 当前状态                |
-| ---- | -------------------------------------------------------------------- | ----------------------- |
-| SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider   |
-| SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 已完成，zero-provider   |
-| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 已完成，zero-provider   |
-| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 已完成，zero-provider   |
-| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 下一任务，zero-provider |
-| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 阻断                    |
-| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                    |
-| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                    |
+| 阶段 | 内容                                                                 | 当前状态              |
+| ---- | -------------------------------------------------------------------- | --------------------- |
+| SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider |
+| SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 已完成，zero-provider |
+| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 已完成，zero-provider |
+| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 已完成，zero-provider |
+| SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 已完成，zero-provider |
+| SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 下一任务，阻断        |
+| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                  |
+| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                  |
 
 每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均不得读取
 credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。

@@ -2,8 +2,9 @@
 
 日期：2026-08-02
 
-当前状态：SR0--SR3 zero-provider 设计、TDD、robustness 与独立 runner/durability 已完成；下一任务仅 SR4
-reviewed Mock/static。旧 L3 保持失败封存，任何 Provider、产品、main 与后续 Phase 仍被阻断。
+当前状态：SR0--SR4 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static 已
+完成；下一任务仅 SR5 fresh admission。旧 L3 保持失败封存，SR5 尚未授权，任何 Provider、产品、main 与
+后续 Phase 仍被阻断。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`
@@ -140,7 +141,8 @@ validators/SHA，Provider/credential/formal artifact=0。
 
 ## SR4：Reviewed Mock 与全量 Checkpoint
 
-状态：[ ] 下一任务，zero-provider。
+状态：[x] 完成，zero-provider。Checkpoint authority：
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。
 
 实施：
 
@@ -155,6 +157,21 @@ validators/SHA，Provider/credential/formal artifact=0。
 
 Mock gate 固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。SR4 不能形成 Provider、
 产品或 main authority。
+
+已交付与验证：
+
+- factory/version/SHA：`phase-6.9.7-tutor-organizer-schema-recovery-reviewed-mock-v1` /
+  `8f18c1c2...3d44`，checkpoint SHA `03bb81a6...6960`；
+- fixed counts `72/24/48/24/32`，runtime `48/48/0/0`，wire `48/48/48/48`；
+- schema accounting `42 canonical + 6 extension fields discarded`，rejected/not-observed `0/0`；
+- Tutor/Organizer/Combined semantic `1/0.996875/0.9984375`，L2 anchor `1`，usage `17732/654`，费用
+  `0.05712 CNY`；
+- focused `9/9`（`506` assertions）、SR1--SR4/F1/F2/S3/Small-sample compatibility `201/201`
+  （`5734` assertions），Agent/AI/Types/Web/Server 与 Compose default-off/static 门通过；
+- global fetch、credential、Provider、正式 SR5 files/tag、产品 API/browser 与正式业务写入为 0；Reader
+  Testing 与两路独立终审均 `APPROVED`；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
 ## SR5：未来唯一 Schema Recovery Controlled-Live
 

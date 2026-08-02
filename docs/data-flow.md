@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-02。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；产品 Docker/API/browser、main 与后续阶段仍被阻断。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已走完整 admission、真实 `deepseek_network` runner 与 runtime publication：24 guards 保持 zero-call，22 条 runtime lane 收到 response，21 条完成 strict/usage；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，剩余 26 lane 未启动。终态为 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、无 recovery claim。R3/L1/L2/L3 不得重跑；产品/main 与后续阶段继续阻断。其后 Full-gate Schema Recovery SR0--SR3 已完成 zero-provider 设计、TDD、robustness 与独立 runner/durability：Provider JSON 先进入有界 native envelope parser，再只投影 canonical integer `intentIndex`，重新构造 strict decision 后进入 V6 本地 authority/merger；扩展字段只形成枚举化诊断后丢弃，缺失/alias/type/range/duplicate/wrapper 仍 fail-closed。SR3 使用独立 report/source/CLI、fsynced schema-stage hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery；不形成 Provider/产品 authority。下一任务仅 SR4 zero-provider reviewed Mock/static。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已走完整 admission、真实 `deepseek_network` runner 与 runtime publication：24 guards 保持 zero-call，22 条 runtime lane 收到 response，21 条完成 strict/usage；`tutor-v2-runtime-11` 的 schema failure 打开 breaker，剩余 26 lane 未启动。终态为 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`，journal `296` 条、validator `ok=true`、无 recovery claim。R3/L1/L2/L3 不得重跑；产品/main 与后续阶段继续阻断。其后 Full-gate Schema Recovery SR0--SR4 已完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static：Provider JSON 先进入有界 native envelope parser，再只投影 canonical integer `intentIndex`，重新构造 strict decision 后进入 V6 本地 authority/merger；扩展字段只形成枚举化诊断后丢弃，缺失/alias/type/range/duplicate/wrapper 仍 fail-closed。SR4 固定 `48/48` runtime/wire/verified usage、schema `42 canonical + 6 extension discarded`、semantic `1/0.996875/0.9984375`，但 gate 仍是 Mock-only、`qualityAuthority=none`。当前下一任务仅 SR5 fresh admission，尚未授权且不得启动。
 
 ## 1. 当前边界
 
@@ -900,7 +900,7 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> tutor runtime-11 response parsed -> schema failure -> breaker；remaining 26 not-started
        -> semantic / anchor / P95 / token / CNY = null；safety failures=0
        -> journal 296 -> evidence_published；validator ok=true；recovery claim=0
-  -> Schema Recovery SR0--SR3 complete：zero-provider design + TDD + robustness + durability
+  -> Schema Recovery SR0--SR4 complete：zero-provider design + TDD + robustness + durability + reviewed Mock
        -> exact-schema raw parser -> bounded native JSON envelope -> selection projection
        -> reconstructed strict projected decision -> V6 local authority/merger
        -> only canonical integer intentIndex gains model-selection authority
@@ -914,8 +914,14 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> schema started/succeeded/failed append+fsync+hash-chain；hard-link artifact + strict validator
        -> crash-only recovery only interprets durable prefix；no executor/retry/resume/replay/backfill
        -> focused 23/23；compat 105/105；Agent/AI 1167/325；formal SR5 files/tag=0
-  -> current next：SR4 reviewed Mock / static / history parity / Reader Testing
-       -> 不执行 Provider/正式 Live/产品/main/Phase 6.9.8
+       -> SR4 factory SHA 8f18c1c2...3d44；checkpoint SHA 03bb81a6...6960
+       -> reviewed Mock crosses recovery Tutor + Organizer V9 + first-party synthetic adapters + SR3 runner
+       -> runtime 48/48/0/0；wire 48/48/48/48；schema canonical 42 / extension-discarded 6
+       -> semantic 1/0.996875/0.9984375；anchor 1；usage 17732/654；CNY 0.05712
+       -> schema_recovery_mock_quality_not_evidence / qualityAuthority=none；formal SR5 files/tag=0
+  -> current next：SR5 fresh admission only
+       -> fresh data-boundary acceptance + exact authorization + source/tag/remote parity required
+       -> 未授权；不执行 Provider/正式 Live/产品/main/Phase 6.9.8
 ```
 
 ```text

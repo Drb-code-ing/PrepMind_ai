@@ -160,8 +160,10 @@ SR3 已随后以 zero-provider 完成独立 report/runner/source/CLI/marker/jour
 与 bounded schema stage durability；验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 
-当前下一原子任务仅 SR4 reviewed Mock/static。SR4 仍禁止 credential、Provider、正式 Live、Docker/API/
-browser、业务数据和 main；SR5--SR7、Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+SR4 reviewed Mock/static 随后已 zero-provider 完成，并只形成
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。当前下一原子任务仅 SR5 fresh admission，
+尚未授权；credential、Provider、正式 Live、产品 Docker/API/browser、业务数据和 main 继续阻断。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
 ## 9. 主要文件
 

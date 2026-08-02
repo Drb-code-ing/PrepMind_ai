@@ -1,5 +1,43 @@
 # PrepMind AI 开发日志
 
+> 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR4 Reviewed Mock / Static：
+>
+> SR4 新增独立 `phase-6.9.7-tutor-organizer-schema-recovery-reviewed-mock-v1` factory，factory SHA 为
+> `8f18c1c2a73790818f63b64e0da67852900d341c99b9f599e9838eba41c93d44`，checkpoint SHA 为
+> `03bb81a65b0ae838646191fb58abf2dcf0af73f5e720812b5789a185afcb6960`。Reviewed Mock 真实穿过
+> Schema Recovery Tutor envelope/parser/selection projection/strict merger、Organizer V9 option authority、两条
+> 第一方 synthetic adapter 与 SR3 fixed-denominator runner；expected/oracle 只进入后置 scorer。
+>
+> 固定结果为 counts `72/24/48/24/32`，runtime `48/48/0/0`，wire `48/48/48/48`，schema
+> `42 canonical + 6 extension discarded`，Tutor/Organizer/Combined semantic
+> `1 / 0.9968750000000001 / 0.9984375000000001`，L2 anchor `1`，usage `17732/654`，费用
+> `0.05712 CNY`。24 guards 全部实际 zero-call；六个 Tutor extension case 只形成 bounded no-raw diagnostic 并
+> 丢弃扩展字段。Gate 固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，不能证明
+> Provider、真实模型语义、产品或 SLA。
+>
+> Fault/pre-abort 回归覆盖 malformed JSON、missing usage、transport reject、Organizer ordinal drift、sibling
+> settlement、breaker 与固定 48-lane denominator；不完整时 schema/semantic/P95/CNY 继续 fail-closed。隔离临时
+> root 的 SR3 publication/validator 通过，旧 full-gate 与 schema-recovery report 双向拒绝；旧 L3 validator/SHA、
+> 正式 SR5 files/tag=0 与无 retry/resume/replay/backfill 边界保持。
+>
+> SR4 focused `9/9`（`506` assertions）、SR1--SR4/F1/F2/S3/small-sample compatibility `201/201`
+> （`5734` assertions）、Agent/AI/Types/Web 全量门通过；Web `439/439`、lint 与 production build 通过。
+> PostgreSQL 启动后 Server 全量 `227` suites passed / `3` skipped、`2154` tests passed / `30` skipped，
+> operator-audit integration `1/1`、Organizer concurrency E2E `12/12`、Server build/lint 与 Compose
+> default-off/static `24/24` 均通过。Reader Testing 与 Contract/Security 两路独立终审均
+> `APPROVED`，无 Critical/Important/Minor。
+>
+> Web build 先暴露共享 `@repo/ai` barrel 误导出 Architecture Recovery Node-only diagnostic/durability 模块的
+> 既有 BigInt/ES2017 边界问题；独立提交 `2f649a96` 只移除 root re-export，保留原文件、direct tests、scripts、
+> sealed contract/SHA，并恢复 Web build。只启动既有 Docker Desktop、PostgreSQL 与 Redis 完成数据库回归；
+> 未启动产品 server/web/worker/admin、未调用 Provider、未创建 SR5 admission/tag/artifact、未执行 API/browser，
+> 未清理 Docker/volume/database/Redis/MinIO；`.codex/` 不提交。
+>
+> 当前下一原子任务仅 SR5 fresh admission。开始前仍需 SR4 commit/remote parity、新 approved source tag、历史
+> validator/SHA parity、fresh proxy preflight、当次 DeepSeek 数据边界接受与 exact authorization；当前不得
+> 创建 tag、读取 credential 或调用 Provider。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR3 Runner / Lineage / Durability：
 >
 > SR3 以 `zero_provider_full_gate_schema_recovery_runner_durability` 建立独立

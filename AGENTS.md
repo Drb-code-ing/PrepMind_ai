@@ -39,14 +39,20 @@ held-out、Unicode/structure limits、transport/HTTP/audit/usage、budget/abort 
 strict validator 与 crash-only recovery；source manifest SHA `1a811394...adfbb`。SR3 focused `23/23`、兼容
 `105/105`、Agent `1167/1167`、AI `325/325`、typecheck/lint/Prettier 与旧 L3 validator 均通过。SR1--SR3 均未读取
 credential、调用 Provider、执行正式 Mock/Live/Docker/API/browser、创建正式 SR5 tag/marker/journal/artifact 或
-修改业务数据。当前下一原子任务仅 SR4 zero-provider reviewed Mock/static；旧 L3
+修改业务数据。SR4 reviewed Mock/static 随后已完成：独立 factory SHA `8f18c1c2...3d44`，固定
+`72/24/48/24/32`，runtime `48/48/0/0`、wire `48/48/48/48`、schema `42 canonical + 6 extension
+discarded`、semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage `17732/654` 与 `0.05712 CNY`。Gate
+固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；global fetch、credential、Provider、
+正式 SR5 files/tag 与业务写入均为 0。当前下一原子任务仅 SR5 fresh admission，但尚未取得 fresh 数据边界
+接受、exact authorization 或 approved source/tag/remote parity，因此不得启动；旧 L3
 tag/marker/journal/artifact/validator 保持不可变。详见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
 ## 项目快照
 
@@ -193,7 +199,8 @@ tag/marker/journal/artifact/validator 保持不可变。详见
 | Phase 6.9.7 Schema Recovery SR0 | 已完成     | 只读取证 L3 schema boundary；冻结两层 selection projection、bounded no-raw diagnostic、独立 schema-recovery-v1 lineage 与 SR1--SR7 路线；未改源码或调用 Provider；该 checkpoint 当时只解锁 SR1 zero-provider TDD                                                                               |
 | Phase 6.9.7 Schema Recovery SR1 | 已完成     | exact-schema raw parser、有界 native JSON envelope、canonical `intentIndex` projection、strict decision、bounded no-raw diagnostic 与 V6 local authority/merger seam 已 TDD 落地；contract SHA `e2453fae...11579`，该 checkpoint 当时只解锁 SR2 zero-provider robustness                       |
 | Phase 6.9.7 Schema Recovery SR2 | 已完成     | fixture SHA `43248bfa...0d41e`；24 Tutor runtime、18 Provider shape、5 held-out、anti-oracle/no-leak、fault/abort 与 F2 sibling/breaker 已 zero-provider 通过；不形成 semantic/产品 authority，该 checkpoint 当时只解锁 SR3                                                                    |
-| Phase 6.9.7 Schema Recovery SR3 | 已完成     | 独立 report/runner/source/CLI/schema-stage journal/artifact/validator/crash-only recovery；manifest `1a811394...adfbb`，focused `23/23`、Agent `1167/1167`；正式 SR5 files/tag 为 0，下一任务仅 SR4 reviewed Mock/static                                                                       |
+| Phase 6.9.7 Schema Recovery SR3 | 已完成     | 独立 report/runner/source/CLI/schema-stage journal/artifact/validator/crash-only recovery；manifest `1a811394...adfbb`，focused `23/23`、Agent `1167/1167`；正式 SR5 files/tag 为 0，该 checkpoint 当时只解锁 SR4                                                                              |
+| Phase 6.9.7 Schema Recovery SR4 | 已完成     | reviewed Mock 穿过 recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/merger 与 SR3 runner；`48/48` strict/wire/usage、schema `42+6`、semantic `1/0.996875/0.9984375`；仅 Mock authority，下一任务仅 SR5 fresh admission                                                   |
 | Phase 7.0                       | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                   |
 | Phase 7.1                       | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                           |
 | Phase 7.2                       | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                           |
@@ -784,7 +791,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. Phase 6.9.5 Review/Planner 的 V1--V9 保持只读历史；该阶段 V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。P1/G1/G2/S2/L2/P2/F1/F2/S3 已按独立边界完成；S3 只有 Mock authority。唯一 L3 run `2b0ac3a0...` 因 Tutor runtime 11 的 schema failure 在 22/48 lane 后打开 breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。Full-gate Schema Recovery SR0--SR3 已完成 zero-provider 设计、TDD、robustness 与独立 Runner/Lineage/Durability；当前下一任务仅 SR4 reviewed Mock/static。SR4 仍禁止 credential/Provider/正式 Live/产品；main、Phase 6.9.8 与记忆注入继续阻断。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。P1/G1/G2/S2/L2/P2/F1/F2/S3 已按独立边界完成；S3 只有 Mock authority。唯一 L3 run `2b0ac3a0...` 因 Tutor runtime 11 的 schema failure 在 22/48 lane 后打开 breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。Full-gate Schema Recovery SR0--SR4 已完成 zero-provider 设计、TDD、robustness、独立 Runner/Lineage/Durability 与 reviewed Mock/static；SR4 仅为 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。当前下一任务仅 SR5 fresh admission，尚未授权且不得启动；main、Phase 6.9.8 与记忆注入继续阻断。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. V1--V9 marker/evidence 均不可删除、改写或重跑；V3--V9 journal 继续保留。禁止把不同版本、Mock 或部分成功拼接成通过。V5--V9 路线与历史证据继续由原文档维护。

@@ -176,9 +176,11 @@ S3 已完成 zero-provider reviewed Mock/static，结果与边界见
 failure 以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存，未解锁产品验收；详见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
-L3 后续的 Schema Recovery SR0 已完成独立 zero-provider 设计，不修改 F1/L3 contract 或 evidence；其后 SR1
-TDD、SR2 robustness 与 SR3 runner/lineage/durability 也已完成。当前下一任务仅 SR4 reviewed Mock/static；见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+L3 后续的 Schema Recovery SR0 已完成独立 zero-provider 设计，不修改 F1/L3 contract 或 evidence；其后
+SR1--SR4 的 TDD、robustness、runner/lineage/durability 与 reviewed Mock/static 也已完成。SR4 仅形成
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；当前下一任务仅 SR5 fresh admission，尚未
+授权。见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
 回顾时可以问：
 

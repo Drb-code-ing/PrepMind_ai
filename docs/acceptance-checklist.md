@@ -1874,7 +1874,18 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       typecheck/lint/Prettier/diff 与独立 contract/security/test-coverage 终审通过；
 - [x] SR3 未读取 credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser 或修改业务数据；
       旧 L3 validator/SHA 不变，正式 SR5 files/tag 为 0；
-- [x] 当前下一原子任务仅 SR4 zero-provider reviewed Mock/static；产品、main、Phase 6.9.8 与后续阶段仍阻断；
+- [x] SR4 使用独立 reviewed Mock factory `phase-6.9.7-tutor-organizer-schema-recovery-reviewed-mock-v1`，
+      factory/checkpoint SHA 为 `8f18c1c2...3d44 / 03bb81a6...6960`；
+- [x] SR4 fresh baseline 与固定 `72/24/48/24/32` 分母通过；runtime `48/48/0/0`、wire
+      `48/48/48/48`、schema `42 canonical + 6 extension discarded`；
+- [x] Tutor/Organizer/Combined semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage
+      `17732/654`、费用 `0.05712 CNY`；gate 固定
+      `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
+- [x] SR4 fault/pre-abort/fixed-denominator、anti-oracle/no-raw/no-env、SR3 临时 bundle validator、旧/新
+      lineage rejection、history parity、Reader Testing 与两路独立终审通过；
+- [x] global fetch、credential、Provider、正式 SR5 files/tag、产品 API/browser 与正式业务写入均为 0；
+- [x] 当前下一原子任务仅 SR5 fresh admission；尚无 fresh 数据边界接受、exact authorization、approved
+      source/tag/remote parity，产品、main、Phase 6.9.8 与后续阶段仍阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1911,4 +1922,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。

@@ -3,7 +3,7 @@
 日期：2026-07-31
 
 当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 Schema Recovery
-SR0--SR3 已完成，当前下一任务仅 SR4 zero-provider reviewed Mock/static
+SR0--SR4 已完成，当前下一任务仅 SR5 fresh admission，尚未授权
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -221,7 +221,8 @@ runner/durability/evidence 与 S3 reviewed Mock/static 均已完成；后续唯�
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
 
-SR1 TDD、SR2 robustness 与 SR3 runner/lineage/durability 已 zero-provider 完成，最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。当前下一任务仅
-SR4 zero-provider reviewed Mock/static；Provider、正式 Live、Docker/API/browser、业务数据、approved tag 与正式
-SR5 marker/journal/artifact 继续禁止。
+SR1 TDD、SR2 robustness、SR3 runner/lineage/durability 与 SR4 reviewed Mock/static 已 zero-provider 完成；
+SR4 仅形成 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。当前下一任务仅
+SR5 fresh admission；在 fresh 数据边界接受、exact authorization、approved source/tag/remote parity 前，
+Provider、正式 Live、产品 Docker/API/browser、业务写入与正式 SR5 marker/journal/artifact 继续禁止。

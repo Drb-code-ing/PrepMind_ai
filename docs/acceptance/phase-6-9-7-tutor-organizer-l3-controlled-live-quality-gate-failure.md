@@ -165,14 +165,16 @@ L3 一次性名额已经消费。永久禁止对本 identity 执行 retry、resu
 `zero_provider_full_gate_schema_recovery_design`。SR0 冻结 Provider envelope -> canonical `intentIndex`
 selection projection -> strict projected decision -> local authority/merger，以及 bounded no-raw diagnostic 与
 SR1--SR7 新 lineage；它没有修改本 L3 artifact，也没有调用 Provider 或形成产品 authority。其后 SR1 TDD、
-SR2 robustness 与 SR3 runner/lineage/durability 均已 zero-provider 完成；当前下一原子任务仅 SR4 reviewed
-Mock/static。设计、计划与最新验收见：
+SR2 robustness、SR3 runner/lineage/durability 与 SR4 reviewed Mock/static 均已 zero-provider 完成；SR4
+只具有 Mock authority，不能改写本 L3。当前下一原子任务仅 SR5 fresh admission，尚未授权。设计、计划与
+最新验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 
 ## 7. 回顾问题
 

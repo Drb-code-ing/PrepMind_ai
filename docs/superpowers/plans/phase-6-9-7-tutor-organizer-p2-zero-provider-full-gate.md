@@ -145,16 +145,18 @@ claim=0、`qualityAuthority=none`。完整证据见
 
 ## SR0--SR4：独立 Full-gate Schema Recovery
 
-状态：SR0 [x]、SR1 [x]、SR2 [x]、SR3 [x] 完成，zero-provider；SR4 [ ] 下一任务，zero-provider。
+状态：SR0 [x]、SR1 [x]、SR2 [x]、SR3 [x]、SR4 [x] 完成，zero-provider；SR5 fresh admission 为下一任务，
+尚未授权。
 
 SR0 只读取证 L3 schema boundary，冻结 Provider envelope -> canonical `intentIndex` selection projection ->
 strict projected decision -> local authority/merger、bounded no-raw diagnostic、新 journal/report/validator 与独立
 SR1--SR7 lineage。它不修改或重跑 L3。SR1 已实现 contract/diagnostic TDD，SR2 已完成 Provider-like、
 held-out、metamorphic、no-leak 与 fault robustness matrix；SR3 已完成独立 report/runner/source/CLI、
-schema-stage durability、strict validator 与 crash-only recovery，authority 仅
-`zero_provider_full_gate_schema_recovery_runner_durability / qualityAuthority=none`。当前只允许进入 SR4
-reviewed Mock/static；禁止 credential、Provider、正式 Live、Docker/API/browser、approved tag 与正式 SR5
-artifact。完整路线见
+schema-stage durability、strict validator 与 crash-only recovery；SR4 reviewed Mock/static 又得到 `48/48`
+strict/wire/usage、schema `42 canonical + 6 extension discarded` 与 semantic `1/0.996875/0.9984375`，但 authority
+仅 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。当前只允许进入 SR5 fresh admission；
+在 fresh 数据边界接受、exact authorization、approved source/tag/remote parity 前，禁止 credential、Provider、
+正式 Live、产品 Docker/API/browser、approved tag 与正式 SR5 artifact。完整路线见
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`。
 
 ## R6 / R7：产品与 main
