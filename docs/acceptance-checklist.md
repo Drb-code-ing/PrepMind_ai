@@ -1850,8 +1850,17 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] SR1 未读取 credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式
       tag/marker/journal/artifact 或修改业务数据；旧 L3 validator 仍为
       `ok=true / journalRecords=296 / evidence_published`，artifact SHA `e081939b...dbe5`；
-- [x] 当前下一原子任务仅 SR2 Provider-like/held-out/metamorphic/no-leak/fault matrix；产品、main、Phase
-      6.9.8 与后续阶段仍阻断；
+- [x] SR2 冻结独立 fixture/responder identity，fixture SHA `43248bfa...0d41e`；responder 只读取实际
+      bounded prompt/eligible ordinals，不导入 expected/oracle/scorer/production validator；
+- [x] SR2 覆盖全部 24 个 Tutor runtime（含 runtime 11）、18 个 Provider shape、5 个 held-out、Unicode/
+      byte/depth/node/key limit、transport/HTTP/response-audit/usage、budget 与 pre/in-flight/post abort；
+- [x] SR2 attempted 路径 exactly one dispatch/no retry；schema failure 接入 F2 memory runner 后得到
+      `2/2/0/46`，Organizer sibling 收口、46 lane 由 schema breaker 阻断，正式 durability 文件为 0；
+- [x] SR2 focused `9/9`（`484` assertions）、兼容 `51/51`（`1133` assertions）、Agent `1144/1144`、
+      AI `325/325`、typecheck/Prettier 与旧 L3
+      validator 通过；credential/Provider/正式 Mock/Live/Docker/API/browser/业务数据/formal artifact=0；
+- [x] 当前下一原子任务仅 SR3 zero-provider runner/lineage/durability；产品、main、Phase 6.9.8 与后续阶段
+      仍阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1886,4 +1895,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。

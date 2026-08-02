@@ -126,12 +126,13 @@ SR1 未修改、移动或删除 L3 approved tag、marker、journal、artifact、
 
 ## 9. 下一任务与停止门
 
-下一原子任务仅 SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix：覆盖全部 24 个 Tutor
-runtime、`tutor-v2-runtime-11`、Unicode/shape/limit/abort/provider-like failures 与 anti-oracle source scan，但不读取
-L3 raw output。
+SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix 现已完成：覆盖全部 24 个 Tutor
+runtime、`tutor-v2-runtime-11`、18 个 Provider shape、Unicode/shape/limit/abort/fault 与 anti-oracle source scan，
+且不读取 L3 raw output。验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
-SR2 仍禁止 credential、Provider、正式 Mock/Live、Docker/API/browser、业务数据、tag、marker/journal/artifact。
-SR3--SR7、产品、main、Phase 6.9.8/6.10/8/9 与博客收尾继续按设计门禁阻断。
+当前下一原子任务仅 SR3 runner/lineage/durability。SR3 仍禁止 credential、Provider、正式 Mock/Live、
+Docker/API/browser、业务数据与 main；SR4--SR7 与后续阶段继续按设计门禁阻断。
 
 ## 10. 主要文件
 

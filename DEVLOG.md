@@ -1,5 +1,30 @@
 # PrepMind AI 开发日志
 
+> 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR2 Zero-provider Robustness：
+>
+> SR2 冻结独立 `phase-6.9.7-tutor-schema-recovery-sr2-robustness-v1` fixture 与 prompt-only
+> anti-oracle responder，fixture SHA 为 `43248bfa7156c29eafa110b475a8998611209dd808847be79dacd1c02460d41e`。
+> Responder 只读取 direct adapter 实际 bounded request 与 `eligibleIntents`，不导入 expected/oracle/scorer/
+> production validator；24 个 frozen Tutor runtime（含 `tutor-v2-runtime-11`）均 exactly one synthetic
+> dispatch，实际 request bytes 不含 case ID、oracle、baseline、quality gate 或 key。
+>
+> Provider-like matrix 覆盖 18 个 shape：canonical/whitespace/escaped key/key order、scalar/object/array/
+> Unicode extension，以及 missing/alias/string/null/fraction/range、top-level array、double-encoded、wrapper/
+> fence/BOM/trailing/duplicate；byte/depth/node/key limit 均 fail-closed。Transport、HTTP 429、non-thinking
+> response-audit、missing usage、budget 与 pre/in-flight/post abort 均保持 bounded category、single dispatch、
+> no retry。SR2 candidate 的 duplicate-key schema failure 接入 F2 memory runner 后得到 runtime
+> `2/2/0/46`，Organizer sibling 成功收口，后续 46 lane 由 schema breaker 阻断；未创建 durability 文件。
+>
+> SR2 focused `9/9`（`484` assertions）、兼容 `51/51`（`1133` assertions）、Agent full `1144/1144`
+> （`21463` assertions）、AI full `325/325`（`2378` assertions）；Agent/AI typecheck/lint、Prettier、
+> `git diff --check` 与旧 L3 只读 validator 均通过，两路独立终审无阻断项。旧 L3 仍为 `full_gate_quality_gate_failed /
+qualityAuthority=none / journalRecords=296`，artifact SHA `e081939b...dbe5`。本任务未读取 `.env`/
+> credential、调用 Provider、执行正式 Mock/Live/production CLI、启动 Docker/API/browser、创建正式 tag/
+> marker/journal/artifact/recovery claim 或修改业务数据；`.codex/` 不提交。
+>
+> 下一原子任务仅 SR3 zero-provider 独立 Runner、Lineage 与 Durability；验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR1 Zero-provider TDD：
 >
 > SR1 以 `zero_provider_full_gate_schema_recovery_tdd` 落地独立
@@ -24,7 +49,7 @@
 >
 > 本任务未读取 `.env`/credential、调用 Provider、执行正式 Mock/Live、启动 Docker/API/browser、创建正式
 > tag/marker/journal/artifact 或修改业务数据；`.codex/` 仍为本地未跟踪目录。旧 L3 bytes/tag/validator 未修改。
-> 下一原子任务仅 SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix。验收见
+> 该 checkpoint 当时下一原子任务仅 SR2 zero-provider Provider-like/held-out/metamorphic/no-leak/fault matrix。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
 >
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR0 Zero-provider 设计：

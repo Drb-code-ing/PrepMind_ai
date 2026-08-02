@@ -177,9 +177,8 @@ failure 以 `full_gate_quality_gate_failed / qualityAuthority=none` 封存，未
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 L3 后续的 Schema Recovery SR0 已完成独立 zero-provider 设计，不修改 F1/L3 contract 或 evidence；其后 SR1
-envelope/parser、selection projection、strict projected decision 与 bounded diagnostic TDD 也已完成。当前
-下一任务仅 SR2 zero-provider robustness；见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+TDD 与 SR2 robustness 也已完成。当前下一任务仅 SR3 runner/lineage/durability；见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 回顾时可以问：
 

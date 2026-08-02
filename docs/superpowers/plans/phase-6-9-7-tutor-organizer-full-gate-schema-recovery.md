@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-当前状态：SR0/SR1 zero-provider 设计与 TDD 已完成；下一任务仅 SR2。旧 L3 保持失败封存，任何 Provider、产品、main 与
+当前状态：SR0/SR1/SR2 zero-provider 设计、TDD 与 robustness 已完成；下一任务仅 SR3。旧 L3 保持失败封存，任何 Provider、产品、main 与
 后续 Phase 仍被阻断。
 
 设计 authority：
@@ -76,7 +76,8 @@ RED/GREEN：
 
 ## SR2：Provider-like Robustness 与 Anti-overfit
 
-状态：[ ] 未开始，zero-provider。
+状态：[x] 完成，zero-provider。Checkpoint authority：
+`zero_provider_full_gate_schema_recovery_robustness`。
 
 实施：
 
@@ -91,9 +92,22 @@ RED/GREEN：
 通过门：focused + Agent/AI full、typecheck/lint/Prettier/diff、V1--V9/R3/Canary/L2/old full-gate
 validators/SHA，Provider/credential/formal artifact=0。
 
+已冻结身份与验收：
+
+- fixture/responder version 分别为 `phase-6.9.7-tutor-schema-recovery-sr2-robustness-v1` 与
+  `phase-6.9.7-tutor-schema-recovery-sr2-prompt-hash-responder-v1`；fixture SHA 为
+  `43248bfa7156c29eafa110b475a8998611209dd808847be79dacd1c02460d41e`；
+- 24 个 Tutor runtime、18 个 Provider shape、5 个 held-out、4 个 adapter fault、budget/三阶段 abort 与 F2
+  sibling/breaker 均通过；responder 不读取 expected/oracle/L3 raw；
+- focused `9/9`（`484` assertions）、兼容 `51/51`（`1133` assertions）、Agent `1144/1144`、AI
+  `325/325`、typecheck/Prettier 与旧 L3 validator
+  通过；Provider/credential/formal artifact=0；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+
 ## SR3：独立 Runner、Lineage 与 Durability
 
-状态：[ ] 未开始，zero-provider。
+状态：[ ] 下一任务，zero-provider。
 
 实施：
 

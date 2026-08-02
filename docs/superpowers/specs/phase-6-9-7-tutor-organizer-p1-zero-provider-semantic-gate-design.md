@@ -597,19 +597,22 @@ authority。
 
 ## 11. 后续原子路线与停止门
 
-| 阶段 | 内容                                                                  | 当前状态              |
-| ---- | --------------------------------------------------------------------- | --------------------- |
-| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider |
-| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider |
-| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider |
-| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider |
-| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal |
-| P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 已完成，zero-provider |
-| F1   | full manifest/baseline/report/scorer/gate                             | 已完成，zero-provider |
-| F2   | full runner/durability/evidence                                       | 已完成，zero-provider |
-| S3   | full reviewed Mock/static/history parity                              | 已完成，zero-provider |
-| L3   | 唯一 full-gate controlled-Live                                        | 质量门失败并封存      |
-| SR0  | L3 只读复盘与独立 full-gate schema recovery 设计                      | 已完成，zero-provider |
+| 阶段 | 内容                                                                  | 当前状态                |
+| ---- | --------------------------------------------------------------------- | ----------------------- |
+| P1   | 本设计：manifest、质量门、预算、lineage、授权条件                     | 已完成，zero-provider   |
+| G1   | 实现 manifest/baseline/report/scorer/gate 与 oracle 隔离              | 已完成，zero-provider   |
+| G2   | 实现 one-shot runner、journal、marker、artifact、validator/seal       | 已完成，zero-provider   |
+| S2   | reviewed Mock/fault matrix、全量静态、历史 parity、文档与终审         | 已完成，zero-provider   |
+| L2   | 用户 fresh data-boundary acceptance + exact authorization 后一次 Live | 已通过并 durable seal   |
+| P2   | 只按 L2 sealed 终态设计 24-pair full semantic gate                    | 已完成，zero-provider   |
+| F1   | full manifest/baseline/report/scorer/gate                             | 已完成，zero-provider   |
+| F2   | full runner/durability/evidence                                       | 已完成，zero-provider   |
+| S3   | full reviewed Mock/static/history parity                              | 已完成，zero-provider   |
+| L3   | 唯一 full-gate controlled-Live                                        | 质量门失败并封存        |
+| SR0  | L3 只读复盘与独立 full-gate schema recovery 设计                      | 已完成，zero-provider   |
+| SR1  | 新 envelope/parser、selection projection 与 bounded diagnostic TDD    | 已完成，zero-provider   |
+| SR2  | Provider-like/held-out/metamorphic/no-leak/fault robustness matrix    | 已完成，zero-provider   |
+| SR3  | 独立 runner/lineage/durability                                        | 下一任务，zero-provider |
 
 L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P2 的 zero-provider 全量设计。P2 随后
 已冻结 full manifest `e68e6e27...12c78`、baseline authority `2ab1030f...a5f2` 与 eval policy
@@ -623,12 +626,13 @@ L2 已通过，但只形成 `small_sample_semantic_gate` authority，只解锁 P
 
 L3 失败后没有重跑或放宽既有 full gate。独立 SR0 已冻结 Provider envelope、canonical `intentIndex`
 selection projection、strict projected decision、本地 authority/merger、bounded no-raw diagnostic 与全新
-lineage；它只有 `zero_provider_full_gate_schema_recovery_design` authority，尚未实现新 contract、runner、Mock、
-Live 或产品接线。后续唯一任务是 SR1 zero-provider TDD。设计、计划与验收见：
+lineage；SR1 contract TDD 与 SR2 robustness 已 zero-provider 完成，SR2 authority 仅
+`zero_provider_full_gate_schema_recovery_robustness / qualityAuthority=none`。当前下一任务仅 SR3
+runner/lineage/durability；尚未执行正式 Mock/Live、产品接线或创建正式 evidence。设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
-- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline

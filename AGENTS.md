@@ -20,8 +20,9 @@ Full-gate F1 已在 `zero_provider_full_contract_baseline` authority 下完成�
 
 Full-gate S3 已完成 zero-provider reviewed Mock/static：factory SHA 为 `sha256:53bcf0d...da55`，48 条 runtime 真实穿过 Tutor V6、Organizer V9、第一方 adapter synthetic fetch、strict validator、本地 merger 与 F2 runner；结果为 guard `24/24`、strict/wire/verified usage `48/48/48/48`、Tutor/Organizer/Combined semantic `1 / 0.9968750000000001 / 0.9984375000000001`、L2 anchor `1/1/1`，安全失败全 0。Gate 固定 `full_gate_mock_quality_not_evidence / qualityAuthority=none`；global fetch/credential/Provider 为 0，正式 approved tag/marker/journal/artifact/recovery claim 为 0。S3 focused `14/14`、Agent `1122/1122`、AI `323/323`、Types `42/42 + tsc`、Web `439/439`、Server build/lint 与非数据库 226 suites/2153 tests 通过；Types lint 因既有包内 eslint/PATH 问题未通过，Server 数据库 suites 因 PostgreSQL `127.0.0.1:5433` 未启动未通过。`@repo/ai` shared runtime barrel 已移除四个 executable CLI re-export，CLI 文件/scripts 保留并由 tests 直接导入，避免 CommonJS/Nest/Jest 解析 `import.meta`。其后 approved tag 已固定并推送到 source commit `3c5cc6c...`；唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 已正常 runtime publication，但因 `tutor-v2-runtime-11` 在 response/content parse 后发生 `schema` failure 而打开 breaker。终态为 guard `24/24`、runtime `22/22/0/26`、wire `22/22/22/21`、strict `21/48`、`full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全 `null`；journal `296` 条并以 `evidence_published` 收口，validator `ok=true`，recovery claim 为 0。L3 不得重跑、seal、recovery 或追加 Provider 探测；产品 Docker/API/browser、main、Phase 6.9.8 与后续阶段继续阻断。详见 `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md` 与 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
-Full-gate Schema Recovery SR0/SR1 已在 L3 后以 zero-provider 完成设计冻结与首个 TDD 实现，authority 分别仅
-为 `zero_provider_full_gate_schema_recovery_design` 与 `zero_provider_full_gate_schema_recovery_tdd`。只读取证确认
+Full-gate Schema Recovery SR0/SR1/SR2 已在 L3 后以 zero-provider 完成设计冻结、首个 TDD 实现与 robustness
+checkpoint，authority 分别仅为 `zero_provider_full_gate_schema_recovery_design`、
+`zero_provider_full_gate_schema_recovery_tdd` 与 `zero_provider_full_gate_schema_recovery_robustness`。只读取证确认
 L3 失败位于 `content_parsed` 后、`schema_validated` 前，sealed evidence 不能恢复具体字段或模型原文。新独立 lineage
 `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1` 使用 Provider envelope -> canonical integer
 `intentIndex` selection projection -> strict projected decision -> local authority/merger；无权威 extension fields
@@ -30,15 +31,18 @@ fail-closed，禁止 coercion/default/clamp/retry。Diagnostic 固定 `rawDataRe
 path/value、unknown key 名、prompt、credential、用户正文或 oracle。SR1 已新增 exact-schema parser capability、
 有界 native JSON parser、strict projection、candidate seam 与测试，冻结 contract SHA
 `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`；最多一次 runtime 调用，继续复用 V6
-local signal/preferred depth/answer authority 与 merger。Focused/direct `41/41`、兼容 `70/70`、Agent
-`1135/1135`、AI `325/325`、typecheck/lint 与旧 L3 validator 均通过。SR1 未读取 credential、调用 Provider、
-执行正式 Mock/Live/Docker/API/browser、创建 tag/marker/journal/artifact 或修改业务数据。当前下一原子任务仅 SR2
-zero-provider Provider-like/held-out/metamorphic/no-leak robustness；旧 L3 tag/marker/journal/artifact/validator
-保持不可变。详见
+local signal/preferred depth/answer authority 与 merger。SR2 fixture SHA 为 `43248bfa...0d41e`；prompt-only
+responder 不读取 expected/oracle，覆盖全部 24 个 Tutor runtime（含 runtime 11）、18 个 Provider shape、5 个
+held-out、Unicode/structure limits、transport/HTTP/audit/usage、budget/abort 与 F2 sibling/breaker。SR2 focused
+`9/9`、Agent `1144/1144`、AI `325/325`、typecheck/Prettier 与旧 L3 validator 均通过。SR1/SR2 均未读取
+credential、调用 Provider、执行正式 Mock/Live/Docker/API/browser、创建 tag/marker/journal/artifact 或修改业务
+数据。当前下一原子任务仅 SR3 zero-provider Runner、Lineage 与 Durability；旧 L3
+tag/marker/journal/artifact/validator 保持不可变。详见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`、
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 ## 项目快照
 
@@ -183,7 +187,8 @@ zero-provider Provider-like/held-out/metamorphic/no-leak robustness；旧 L3 tag
 | Phase 6.9.7 Full Gate S3        | 已完成     | reviewed Mock 穿过正式双 candidate、第一方 adapter、本地 merger 与 F2 runner；`24/24` guard、`48/48` strict/wire/usage、semantic `1/0.996875/0.9984375`；仅 `full_gate_mock_quality_not_evidence`，正式 tag/bundle 为 0                                                                        |
 | Phase 6.9.7 Full Gate L3        | 失败封存   | 唯一 run `2b0ac3a0...`：guard `24/24`、runtime `22/22/0/26`、wire `22/22/22/21`、strict `21/48`；Tutor runtime 11 schema failure 后 breaker，semantic/P95/token/CNY 全 `null`；journal `296`、validator `ok=true`、recovery claim=0，不得重跑或进入产品验收                                    |
 | Phase 6.9.7 Schema Recovery SR0 | 已完成     | 只读取证 L3 schema boundary；冻结两层 selection projection、bounded no-raw diagnostic、独立 schema-recovery-v1 lineage 与 SR1--SR7 路线；未改源码或调用 Provider；该 checkpoint 当时只解锁 SR1 zero-provider TDD                                                                               |
-| Phase 6.9.7 Schema Recovery SR1 | 已完成     | exact-schema raw parser、有界 native JSON envelope、canonical `intentIndex` projection、strict decision、bounded no-raw diagnostic 与 V6 local authority/merger seam 已 TDD 落地；contract SHA `e2453fae...11579`，下一任务仅 SR2 zero-provider robustness                                     |
+| Phase 6.9.7 Schema Recovery SR1 | 已完成     | exact-schema raw parser、有界 native JSON envelope、canonical `intentIndex` projection、strict decision、bounded no-raw diagnostic 与 V6 local authority/merger seam 已 TDD 落地；contract SHA `e2453fae...11579`，该 checkpoint 当时只解锁 SR2 zero-provider robustness                       |
+| Phase 6.9.7 Schema Recovery SR2 | 已完成     | fixture SHA `43248bfa...0d41e`；24 Tutor runtime、18 Provider shape、5 held-out、anti-oracle/no-leak、fault/abort 与 F2 sibling/breaker 已 zero-provider 通过；不形成 semantic/产品 authority，下一任务仅 SR3 runner/lineage/durability                                                        |
 | Phase 7.0                       | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                   |
 | Phase 7.1                       | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                           |
 | Phase 7.2                       | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                           |
@@ -774,7 +779,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. Phase 6.9.5 Review/Planner 的 V1--V9 保持只读历史；该阶段 V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。P1/G1/G2/S2/L2/P2/F1/F2/S3 已按独立边界完成；S3 只有 Mock authority。唯一 L3 run `2b0ac3a0...` 因 Tutor runtime 11 的 schema failure 在 22/48 lane 后打开 breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。Full-gate Schema Recovery SR0/SR1 已完成 zero-provider 设计与 TDD；当前下一任务仅 SR2 Provider-like/held-out/metamorphic/no-leak/fault matrix。SR2 仍禁止 credential/Provider/正式 Mock/Live/产品；main、Phase 6.9.8 与记忆注入继续阻断。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。P1/G1/G2/S2/L2/P2/F1/F2/S3 已按独立边界完成；S3 只有 Mock authority。唯一 L3 run `2b0ac3a0...` 因 Tutor runtime 11 的 schema failure 在 22/48 lane 后打开 breaker，最终 `full_gate_quality_gate_failed / qualityAuthority=none`。Full-gate Schema Recovery SR0/SR1/SR2 已完成 zero-provider 设计、TDD 与 robustness；当前下一任务仅 SR3 独立 Runner、Lineage 与 Durability。SR3 仍禁止 credential/Provider/正式 Mock/Live/产品；main、Phase 6.9.8 与记忆注入继续阻断。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. V1--V9 marker/evidence 均不可删除、改写或重跑；V3--V9 journal 继续保留。禁止把不同版本、Mock 或部分成功拼接成通过。V5--V9 路线与历史证据继续由原文档维护。

@@ -2,7 +2,7 @@
 
 日期：2026-08-02
 
-状态：SR0 zero-provider 复盘与设计、SR1 zero-provider contract/diagnostic/candidate TDD 已完成；SR2 尚未开始，runner、正式 Mock、Live 与产品接线仍未实现
+状态：SR0 zero-provider 复盘与设计、SR1 contract/diagnostic/candidate TDD、SR2 robustness 已完成；下一任务仅 SR3，正式 Mock、Live 与产品接线仍未实现
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -11,6 +11,8 @@
 R0 authority：`zero_provider_full_gate_schema_recovery_design`
 
 SR1 checkpoint authority：`zero_provider_full_gate_schema_recovery_tdd`
+
+SR2 checkpoint authority：`zero_provider_full_gate_schema_recovery_robustness`
 
 未来独立 lineage：`phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`
 
@@ -327,14 +329,19 @@ journal、artifact 与 recovery prefix。
 
 本设计不提供未来 confirmation 文本，防止 SR0 文档被误当成预授权。
 
+SR2 已按本设计完成独立 fixture SHA `43248bfa...0d41e`、prompt-only anti-oracle responder、24 个 Tutor
+runtime（含 runtime 11）、18 个 Provider shape、5 个 held-out、Unicode/structure limits、fault/abort 与 F2
+sibling/breaker。该 checkpoint 全程 zero-provider，只建立 robustness authority；不建立 semantic、P95、
+durability、Provider 或产品 authority。下一任务只能是 SR3。
+
 ## 10. 原子路线
 
 | 阶段 | 内容                                                                 | 当前状态                |
 | ---- | -------------------------------------------------------------------- | ----------------------- |
 | SR0  | L3 只读复盘、两层 schema、bounded diagnostic、独立 lineage 与路线    | 已完成，zero-provider   |
 | SR1  | TDD 实现 envelope/parser、selection projection、strict schema/merger | 已完成，zero-provider   |
-| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 下一任务，zero-provider |
-| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 未开始                  |
+| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix              | 已完成，zero-provider   |
+| SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 下一任务，zero-provider |
 | SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 未开始                  |
 | SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 阻断                    |
 | SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 阻断                    |

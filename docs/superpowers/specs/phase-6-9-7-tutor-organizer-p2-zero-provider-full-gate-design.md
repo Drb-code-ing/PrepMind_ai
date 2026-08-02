@@ -699,7 +699,8 @@ PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_DEEPSEEK_API_KEY
 | L3   | Fresh 数据边界接受 + exact authorization 后唯一 full-gate Live           | 质量门失败并封存        |
 | SR0  | L3 后独立 schema recovery 只读复盘、诊断/投影设计与新 lineage            | 已完成，zero-provider   |
 | SR1  | 新 envelope/parser、selection projection 与 bounded diagnostic TDD       | 已完成，zero-provider   |
-| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix                  | 下一任务，zero-provider |
+| SR2  | Provider-like/held-out/metamorphic/no-leak/fault matrix                  | 已完成，zero-provider   |
+| SR3  | 独立 runner/lineage/durability                                           | 下一任务，zero-provider |
 | R6   | 旧 full-gate-v1 仅 L3 pass 后的产品验收路线                              | 永久阻断                |
 | R7   | 旧 full-gate-v1 的 main 合并、推送与 default-off 再验收                  | 永久阻断                |
 
@@ -714,10 +715,10 @@ P2 当时只解锁 F1，F1 当时只解锁 F2；F1/F2/S3 均已完成。S3 autho
 后续 SR0 没有重解释或重跑 L3，而是冻结独立
 `phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`：Provider envelope 经有界 JSON/duplicate/shape audit
 后只投影 canonical integer `intentIndex`，重新构造 strict decision 并继续走本地 authority/merger；额外无权威
-字段只形成 fixed bucket/shape diagnostic 后丢弃。SR1 zero-provider TDD 已完成，当前下一任务仅 SR2
-Provider-like/held-out/metamorphic/no-leak/fault matrix；详见 Schema Recovery
-`docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md` 与 SR1
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+字段只形成 fixed bucket/shape diagnostic 后丢弃。SR1 TDD 与 SR2 robustness 已 zero-provider 完成，当前下一任务
+仅 SR3 runner/lineage/durability；详见 Schema Recovery
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md` 与 SR2
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 旧 R6/R7 的唯一前提是本 lineage L3 pass；L3 已失败封存，所以该旧路线永久阻断。未来产品与 main 验收只能沿
 独立 Schema Recovery 的 SR5 quality pass -> SR6 -> SR7 顺序推进，不能回填或改写本路线。

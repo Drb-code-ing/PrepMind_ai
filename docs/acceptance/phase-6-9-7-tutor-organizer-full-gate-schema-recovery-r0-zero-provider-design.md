@@ -129,10 +129,10 @@ S3 Mock、L2 小样本、L3 21 条 strict success 与 SR0 设计均不能拼接�
 ## 7. 后续原子任务
 
 该 checkpoint 当时只解锁 SR1：以 zero-provider TDD 实现独立 Provider envelope/parser、selection
-projection、strict projected decision、本地 authority adapter 与 bounded diagnostic。SR1 现已完成，验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`；当前下一任务仅 SR2
-zero-provider robustness。Provider、正式 Mock/Live、产品 Docker/API/browser、新 approved tag 与正式 evidence
-仍未解锁。
+projection、strict projected decision、本地 authority adapter 与 bounded diagnostic。其后 SR1 TDD 与 SR2
+robustness 均已完成，当前下一任务仅 SR3 runner/lineage/durability；最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。Provider、正式
+Mock/Live、产品 Docker/API/browser、新 approved tag 与正式 evidence 仍未解锁。
 
 回顾时可以问：
 

@@ -172,9 +172,9 @@ Docker/API/可见浏览器验收继续阻断；详见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
 
 后续 Schema Recovery SR0 已冻结独立 schema-recovery-v1 lineage 与 bounded schema stage journal/validator
-设计；它不修改 F2/L3 runner、journal 或 artifact。其后 SR1 zero-provider TDD 已完成，当前下一任务仅 SR2
-zero-provider robustness；见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+设计；它不修改 F2/L3 runner、journal 或 artifact。其后 SR1 TDD 与 SR2 robustness 已 zero-provider 完成，
+当前下一任务仅 SR3 runner/lineage/durability；见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
 
 回顾时可以问：
 
