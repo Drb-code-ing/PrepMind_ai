@@ -14,6 +14,7 @@ import {
   type ModelAgentTrace,
 } from '../src/model-agent-contract';
 import {
+  createTrustedFirstPartyModelAgentProviderFailureSignal,
   createTrustedModelAgentProviderFailureSignal,
   createUntrustedModelAgentProviderFailureSignal,
   takeModelAgentProviderFailure,
@@ -232,13 +233,16 @@ describe('model agent provider failure signal', () => {
         }),
       expectedStage: 'provider_type_validation',
     },
-  ])('classifies $label errors as fixed safe structured-output stages', ({ error, expectedStage }) => {
-    expectSanitizedSignal(
-      createTrustedModelAgentProviderFailureSignal(error(), TEST_SCOPE),
-      'structured_output',
-      expectedStage,
-    );
-  });
+  ])(
+    'classifies $label errors as fixed safe structured-output stages',
+    ({ error, expectedStage }) => {
+      expectSanitizedSignal(
+        createTrustedModelAgentProviderFailureSignal(error(), TEST_SCOPE),
+        'structured_output',
+        expectedStage,
+      );
+    },
+  );
 
   it('keeps structured output priority when a real structured error also has an API marker', () => {
     const structuredError = new JSONParseError({
@@ -332,6 +336,45 @@ describe('model agent provider failure signal', () => {
     expect(takeModelAgentProviderFailureCategory(untrustedSignal, scope)).toBeUndefined();
   });
 
+  it('revalidates first-party fixed classifications and rejects malformed or hostile projections', () => {
+    expectSanitizedSignal(
+      createTrustedFirstPartyModelAgentProviderFailureSignal(TEST_SCOPE, {
+        category: 'http_rate_limit',
+      }),
+      'http_rate_limit',
+    );
+    expectSanitizedSignal(
+      createTrustedFirstPartyModelAgentProviderFailureSignal(TEST_SCOPE, {
+        category: 'structured_output',
+        structuredOutputStage: 'provider_type_validation',
+      }),
+      'structured_output',
+      'provider_type_validation',
+    );
+    for (const malformed of [
+      { category: 'http_auth', raw: CANARY },
+      { category: 'structured_output' },
+      { category: 'structured_output', structuredOutputStage: 'unknown_stage' },
+      { category: 'not_public' },
+      new Proxy(
+        {},
+        {
+          get() {
+            throw new Error(CANARY);
+          },
+          ownKeys() {
+            throw new Error(CANARY);
+          },
+        },
+      ),
+    ]) {
+      expectSanitizedSignal(
+        createTrustedFirstPartyModelAgentProviderFailureSignal(TEST_SCOPE, malformed),
+        'unknown',
+      );
+    }
+  });
+
   it('stores neither the original error nor canary data in trusted or untrusted signals', () => {
     const providerError = apiCallError(401);
     const trustedSignal = createTrustedModelAgentProviderFailureSignal(providerError, TEST_SCOPE);
@@ -345,6 +388,7 @@ describe('model agent provider failure signal', () => {
     const packageRoot = await import('../src/index');
 
     expect('createTrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
+    expect('createTrustedFirstPartyModelAgentProviderFailureSignal' in packageRoot).toBe(false);
     expect('createUntrustedModelAgentProviderFailureSignal' in packageRoot).toBe(false);
     expect('takeModelAgentProviderFailure' in packageRoot).toBe(false);
     expect('takeModelAgentProviderFailureCategory' in packageRoot).toBe(false);

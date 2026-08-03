@@ -19,7 +19,13 @@ import {
 } from '@repo/types/api/agent-trace';
 
 import { estimateAiCost } from './ai-cost-estimator.ts';
-import type { SafeChatModelAgentObservation } from './chat-model-agent-observation.ts';
+import {
+  isTutorSafeReasonCode,
+  type SafeChatModelAgentObservation,
+  type SafeTutorModelAgentObservation,
+  type TutorSafeReasonCode,
+} from './chat-model-agent-observation.ts';
+import { estimateTutorRequestCostCny } from './tutor-model-pricing.ts';
 
 type TraceMessage = {
   role: string;
@@ -70,6 +76,7 @@ export type BuildChatAgentTracePayloadInput = {
   modelAgentObservations?: {
     router?: SafeChatModelAgentObservation;
     verifier?: SafeChatModelAgentObservation;
+    tutor?: SafeTutorModelAgentObservation;
   };
   startedAt: Date;
   finishedAt: Date;
@@ -131,6 +138,9 @@ export function buildChatAgentTracePayload(
   const verifierModelObservation = normalizeModelAgentObservation(
     input.modelAgentObservations?.verifier,
   );
+  const tutorModelObservation = normalizeTutorModelAgentObservation(
+    input.modelAgentObservations?.tutor,
+  );
   const inputTokenEstimate = saturatingSum([
     input.budget.estimatedInputTokens,
     routerModelObservation?.inputTokens ?? 0,
@@ -161,6 +171,7 @@ export function buildChatAgentTracePayload(
     verifierStatus,
     routerModelObservation,
     verifierModelObservation,
+    tutorModelObservation,
   });
 
   return agentTraceCreateRequestSchema.parse({
@@ -201,6 +212,7 @@ function buildTraceSteps(input: {
   verifierStatus: AgentTraceVerifierStatus;
   routerModelObservation?: NormalizedModelAgentObservation;
   verifierModelObservation?: NormalizedModelAgentObservation;
+  tutorModelObservation?: NormalizedTutorModelAgentObservation;
 }): CreateAgentTraceStepRequest[] {
   const steps: CreateAgentTraceStepRequest[] = [
     createStep({
@@ -227,6 +239,16 @@ function buildTraceSteps(input: {
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
         observation: input.routerModelObservation,
+      }),
+    );
+  }
+
+  if (input.tutorModelObservation) {
+    steps.push(
+      createTutorModelCandidateStep({
+        startedAt: input.startedAt,
+        finishedAt: input.finishedAt,
+        observation: input.tutorModelObservation,
       }),
     );
   }
@@ -284,6 +306,13 @@ type NormalizedModelAgentObservation = SafeChatModelAgentObservation & {
   usageUnavailable: boolean;
 };
 
+type NormalizedTutorModelAgentObservation = NormalizedModelAgentObservation & {
+  reasonCode: TutorSafeReasonCode;
+  pricingKnown: boolean;
+  costCny?: number;
+  currency?: 'CNY';
+};
+
 function createModelCandidateStep(input: {
   node: 'RouterModelCandidate' | 'KnowledgeVerifierModelCandidate';
   startedAt: string;
@@ -298,6 +327,22 @@ function createModelCandidateStep(input: {
     durationMs: input.observation.durationMs,
     inputSummary: 'safeObservation=true',
     outputSummary: formatModelAgentObservation(input.observation),
+  });
+}
+
+function createTutorModelCandidateStep(input: {
+  startedAt: string;
+  finishedAt: string;
+  observation: NormalizedTutorModelAgentObservation;
+}): CreateAgentTraceStepRequest {
+  return createStep({
+    node: 'TutorModelCandidate',
+    status: 'completed',
+    startedAt: input.startedAt,
+    finishedAt: input.finishedAt,
+    durationMs: input.observation.durationMs,
+    inputSummary: 'safeObservation=true',
+    outputSummary: formatTutorModelAgentObservation(input.observation),
   });
 }
 
@@ -326,6 +371,34 @@ function normalizeModelAgentObservation(
     usageUnavailable,
     ...(errorCode ? { errorCode } : {}),
     ...(providerFailureCategory ? { providerFailureCategory } : {}),
+  };
+}
+
+function normalizeTutorModelAgentObservation(
+  value?: SafeTutorModelAgentObservation,
+): NormalizedTutorModelAgentObservation | undefined {
+  if (value === undefined) return undefined;
+  const base = normalizeModelAgentObservation(value);
+  if (base === undefined) return undefined;
+  const reasonCode = isTutorSafeReasonCode(value.reasonCode)
+    ? value.reasonCode
+    : base.disposition;
+  const expectedCost = base.usageUnavailable
+    ? null
+    : estimateTutorRequestCostCny({
+        inputTokens: base.inputTokens,
+        outputTokens: base.outputTokens,
+      });
+  const costVerified =
+    value.pricingKnown === true &&
+    value.currency === 'CNY' &&
+    expectedCost !== null &&
+    value.costCny === expectedCost;
+  return {
+    ...base,
+    reasonCode,
+    pricingKnown: costVerified,
+    ...(costVerified ? { costCny: expectedCost, currency: 'CNY' as const } : {}),
   };
 }
 
@@ -360,6 +433,29 @@ function formatModelAgentObservation(
   if (usageMarker) parts.push(usageMarker);
 
   return parts.join(' ');
+}
+
+function formatTutorModelAgentObservation(
+  observation: NormalizedTutorModelAgentObservation,
+): string {
+  const base = [
+    `attempted=${observation.attempted}`,
+    `disposition=${observation.disposition}`,
+    `durationMs=${observation.durationMs}`,
+    `inputTokens=${observation.inputTokens}`,
+    `outputTokens=${observation.outputTokens}`,
+    `reason=${observation.reasonCode}`,
+    `pricing=${observation.pricingKnown ? 'CNY' : 'unknown'}`,
+  ];
+  if (observation.pricingKnown && observation.costCny !== undefined) {
+    base.push(`costCny=${formatCnyCost(observation.costCny)}`);
+  }
+  if (observation.usageUnavailable) base.push('usageUnavailable=true');
+  return base.join(' ');
+}
+
+function formatCnyCost(value: number): string {
+  return value.toFixed(12).replace(/0+$/u, '').replace(/\.$/u, '');
 }
 
 function formatTraceInputSummary(inputPreview: string, contextPolicy?: AgentContextPolicy) {

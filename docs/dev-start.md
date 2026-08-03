@@ -308,9 +308,9 @@ true，并在检查后人工清理。token、ZIP 内容、object key、payload �
 
 项目里有两种启动前端的方式，它们看到的都是同一个页面入口 `http://127.0.0.1:3000`，但运行位置和读取的 env 文件不同。
 
-| 方式        | 启动命令                                                                     | 适合场景                                                 | 前端 env 改哪里       |
-| ----------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------- |
-| 本机前端    | `bun --filter @repo/web dev`                                                 | 日常改 UI、调页面、热更新最快                            | `apps/web/.env.local` |
+| 方式        | 启动命令                                                                                     | 适合场景                                                 | 前端 env 改哪里       |
+| ----------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------- |
+| 本机前端    | `bun --filter @repo/web dev`                                                                 | 日常改 UI、调页面、热更新最快                            | `apps/web/.env.local` |
 | Docker 前端 | `docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d web` | 验收 Docker 部署、Next standalone 打包产物、完整容器链路 | 项目根目录 `.env`     |
 
 如果你看到 Docker Desktop 里有 `docker-web-1`，或者你是用 `docker compose ... web` 启动页面，那就是 Docker 前端。Compose 只用根目录 `.env` 为 `${...}` 做插值，并把 `docker-compose.dev.yml` 中明确列出的 Web allowlist 注入 `web`；它不会把整个根 `.env` 作为 Web 的 `env_file`。这时只改 `apps/web/.env.local` 不会影响容器里的前端。
@@ -837,15 +837,23 @@ Remove-Item Env:COMPOSE_BAKE
 
 ### Docker server / web 真实模型配置补充
 
-> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`web` 不再使用根 `.env` 的 `env_file`，而是只接收明确列出的 Chat、Router、Verifier 服务端运行变量；`admin` 仍有自己的 `env_file`，但不执行 Chat provider。Review/Planner 以及 KnowledgeDedup/Organizer 的 gate 和 timeout 只进入 `server`，不进入 `web`、`worker` 或 `admin`。本节下方任何“web/admin 都使用 `env_file`”的历史表述均以本说明为准。
+> 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`server`、`worker`、`web`、`admin` 都不再通过 service `env_file` 导入整份根 `.env`，只接收各自 `environment` 中明列的 allowlist。`web` 接收 Chat、Router、Verifier 与 Tutor；`server` 接收 Review/Planner、KnowledgeDedup/Organizer 与 WrongQuestionOrganizer；`worker` 只接收 RAG/队列/运维变量；`admin` 只接收后台所需 URL。根 `.env` 只是宿主 Compose 插值输入，不会整份进入任一容器。
 
-Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`，也不会把整个文件注入所有容器。`server` 与 `worker` 不导入整个文件，而是只接收 `environment` 中显式列出的运行变量；`web` 同样只接收明确列出的 Chat、Router、Verifier provider allowlist，根 `.env` 不是 Web 的 `env_file`；只有 `admin` 保留独立的 `env_file`，且不执行 Chat provider。Review/Planner 与 Knowledge 的 gate/timeout 都只进入 `server`；Knowledge 还使用独立的 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`，不回退到 Chat 的 `DEEPSEEK_API_KEY` 或 Review/Planner 的产品验收凭据。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
+Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`。Tutor 只使用 `TUTOR_AGENT_DEEPSEEK_API_KEY`，WrongQuestionOrganizer 只使用 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic key、另一组件 key、Review/Planner 或 Knowledge credential 都不能替代。Review/Planner、Knowledge 与 WrongQuestionOrganizer 的 gate/timeout 只进入 `server`；`SERVER_ROLE=worker` 即使被宿主额外伪造注入 Organizer gate/key，模块也强制关闭 executor。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
 
 不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker config --quiet
 ```
+
+在不读取根 `.env` 的静态/CI 检查中，改用受版本控制且只有占位值的模板：
+
+```powershell
+docker compose --env-file docker/.env.example -f docker/docker-compose.dev.yml --profile worker config --quiet
+```
+
+两条命令成功时都不输出解析后的 key；不要把 `--quiet` 换成 `config`、`config --environment` 或 `config --format json` 后粘贴终端结果。
 
 Docker 栈要改根 `.env`，本机 `bun --filter @repo/web dev` 前端要改 `apps/web/.env.local`。
 
@@ -859,6 +867,12 @@ ROUTER_MODEL_ENABLED=false
 KNOWLEDGE_VERIFIER_MODEL_ENABLED=false
 ROUTER_MODEL_TIMEOUT_MS=5000
 KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
+TUTOR_AGENT_MODEL_ENABLED=false
+TUTOR_AGENT_MODEL_TIMEOUT_MS=3000
+TUTOR_AGENT_DEEPSEEK_API_KEY=
+WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false
+WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=5000
+WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY=
 REVIEW_AGENT_MODEL_ENABLED=false
 PLANNER_AGENT_MODEL_ENABLED=false
 REVIEW_AGENT_MODEL_TIMEOUT_MS=4500
@@ -871,6 +885,731 @@ KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=4500
 ```
 
 Phase 6.9.4.4 的两个 Agent gate 是独立 rollback 开关，不能用一个总开关替代。Router 的 deterministic safety/high-confidence 路径始终零调用，只有 ambiguous/contextual 请求才有资格进入真实模型；Verifier 只有在 RAG 证据通过 prompt injection、high-risk、credential material 等本地安全门且需要语义核验时才调用模型。两者共享每个 Chat request 的 `maxCalls=2`、`maxInputTokens=2400`、`maxOutputTokens=800` 预算，timeout 分别是 5 秒和 4 秒。Provider 使用 JSON-object mode，canonical Zod 仍是结构和安全语义权威；失败、timeout、schema invalid、预算耗尽或 abort 均回退到限制性 deterministic 结果。Trace/headers 只记录有界状态、固定 reason、usage 与降级元数据，不记录 prompt、query、chunk、provider output、raw error 或 credential。
+
+### Phase 6.9.7 Tutor / WrongQuestionOrganizer 部署与 checkpoint 边界（Task 10--12 / V2--V9）
+
+Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Compose 只向 `web` 投影 `TUTOR_AGENT_MODEL_ENABLED`、固定 3000ms timeout 与 `TUTOR_AGENT_DEEPSEEK_API_KEY`；`server`、`worker`、`admin` 不接收。独立 key 不能由 `DEEPSEEK_API_KEY`、Review/Planner、Knowledge 或 Organizer key 替代。
+
+真实 executor 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、Tutor gate=true、`AI_BASE_URL=https://api.deepseek.com/v1`、独立 key 非空、价格/timeout 已知且请求 eligibility 安全时才创建。模型固定 `deepseek-v4-pro` non-thinking JSON、无 tools/retry；单请求预算 `1 call / 1200 input / 300 output`，硬 cap `0.006 CNY`，并与 Router -> Verifier 的共享预算隔离。非 Tutor final route、明确教学指令、不安全输入、abort 或任一配置失败都保持 zero-call；运行失败保留 deterministic Tutor strategy。
+
+WrongQuestionOrganizer candidate 只在 Nest `server` 的 `SERVER_ROLE=api|both` 中运行。Compose 只向 `server` 投影 `WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED`、固定 5000ms timeout 与 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；`web`、`worker`、`admin` 不接收。真实配置固定 DeepSeek V4 Pro non-thinking JSON、无 tools/retry、`1 call / 3500 input / 800 output` 与 `0.016 CNY` cap；generic 或 Tutor key 都不能替代 Organizer key。worker 模块还会在代码层把 gate 强制为 false，Compose 隔离和运行时隔离缺一不可。
+
+Task 10 只完成部署 allowlist、tracked example、角色隔离测试和回滚说明；它本身没有启动 Docker service、执行 API 或可见浏览器验收。日常开发必须保持两个 gate=false、两条 component key 空；不要把 `config --quiet` 或 Mock 解释为真实模型可用性。Task 5/7/10 证据分别见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`、`docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md` 与 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
+
+Task 11 已在不读取 credential、不调用 provider、不启动产品 Docker/API/浏览器的前提下完成分支 focused/full/static、fresh strict Mock、Organizer PostgreSQL E2E、Compose quiet config 与残留检查。Mock 的 `quality_gate_failed` 是 Live-only authority 预期结果，不能通过修改本节配置把它变成产品验收。该 checkpoint 的历史证据见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-agents.md`。
+
+Task 12 唯一 V1 Live 已在进程级把现有底层 secret 映射到两个 component-specific 变量；CLI/runtime 仍只读取组件变量，没有让 generic key 绕过能力边界，也没有修改根 `.env`。run `39a62241...` 的 zero-call、安全、延迟、usage 和费用门通过，但 strict runtime 为 `27/48`，Tutor/Organizer semantic `0.3485119048/0.7`，最终 `quality_gate_failed`。V1 marker/evidence 不得删除或重跑；按合同没有启动/重建 Docker service、调用产品 API、打开浏览器或创建 synthetic 数据。历史权威记录见 `docs/acceptance/phase-6-9-7-tutor-wrong-question-controlled-live.md`。
+
+V2 R0--R6 后执行的唯一 R7 run `67ce18dd...` 保持 `24/24` guard zero-call，但 48 个 runtime 全部在结构化对象前 `fallback_runtime_error`，最终 `0/48` strict runtime、semantic `0/0`、verified usage `0`、`quality_gate_failed`。V2 evidence/marker 已封存且不得重跑；原始异常未保存，不能把失败指定为 credential、网络、模型、endpoint 或 prompt 的单一问题。按合同没有启动 R8 Docker/API/browser。当前继续保持两个 gate=false、component key 空。
+
+V3 R1 已完成 failure/stage 投影、真实 invocation recorder 与 zero-network compatibility harness；
+V3 R2 已新增 guard-first、首个 runtime contract failure 熔断、固定 48 runtime 分母、双 lane 独立
+abort/预算/故障归属、单 dispatch ledger 与 sibling orphan 有界收口。V3 R3 又新增独立 CLI、一次性
+marker、dispatch-before-call hash-chain journal、活 owner/recovery claim、zero-network seal 与
+hard-link evidence。V3 R4 已完成 fresh Mock、breaker/failure report、分支全量静态门、PostgreSQL
+E2E、历史不可变性与独立复审。唯一 V3 R5 run `ff2e1a54...` 保持 `24/24` guard zero-call，但在
+第 14 对 Organizer `subject_authority_violation` 后熔断，最终 `27/48` strict runtime、
+Tutor/Organizer semantic `0.5280555556/0.4376201923` 与 `quality_gate_failed`；marker/journal/evidence
+已封存且不得重跑。开发者可以用下面的命令重放 R1--R4 静态合同；测试只使用
+sentinel/fake fetch/Mock，不读取根 `.env` 或真实 key，也不会启动 Docker：
+
+```powershell
+bun test packages/agent/tests/model-candidate-runtime-result.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-runner.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-durability.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-paired-runner.test.ts packages/ai/tests/model-agent-v3-zero-network-compatibility.test.ts
+```
+
+R3 CLI 已注册 `eval:phase-6-9-7:v3:mock|live|seal|validate`。其中 V3 `live` 一次性名额已由 R5
+消费，严禁再次执行；完整 run 已有 `evidence_sealed`，也不得再用 `seal` 改写。设计见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v3-remediation-design.md`，R1--R4 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r1-diagnostics-compatibility.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r2-breaker-lane-ledger.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v3-r3-crash-safe-evidence.md` 与
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-r4-static-mock.md`；R5 失败 authority 见
+`docs/acceptance/2026-07-25-phase-6-9-7-tutor-organizer-v3-controlled-live-failure.md`。
+
+V4 R0--R5 已完成且都为 zero-network。产品 Tutor/Organizer candidate 的 prompt identity 分别是
+`tutor-model-candidate-v4` 与 `wrong-question-organizer-model-candidate-v4`，但 tracked gates 仍为
+`false`；两条 V4 路径各自从一份深冻结 policy 派生 formatter、validator、merger 和本地不变量。
+历史 paired eval 则显式调用 Tutor/Organizer V2 policy，以保持 V2 prompt bytes、V3 prompt SHA 和
+已封存 evidence 不变。不要用历史 V1/V2/V3 CLI 试跑 V4，也不要把 V2 candidate 接回产品 runtime。
+
+R4 已新增与 72-case authority 隔离的 independent robustness fixtures，以及独立 V4 runner/report、
+CLI/validator、marker/journal/recovery/evidence durability。下面的回归命令只使用 Mock/synthetic
+executor 和临时目录，不读取 `.env`、不创建网络 executor、不启动 Docker：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-v4-semantics.test.ts packages/agent/tests/tutor-model-contract.test.ts packages/agent/tests/tutor-model-candidate.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-baseline.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v3-contract.test.ts
+bun test packages/agent/tests/phase-6-9-wrong-question-organizer-v4-semantics.test.ts packages/agent/tests/wrong-question-organizer-model-contract.test.ts packages/agent/tests/wrong-question-organizer-model-candidate.test.ts packages/agent/tests/phase-6-9-wrong-question-organizer-v2-robustness.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v2-prompt-leakage.test.ts
+bun test packages/agent/tests/phase-6-9-tutor-wrong-question-v4-independent-robustness.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v4-lineage.test.ts packages/agent/tests/phase-6-9-tutor-wrong-question-v4-durability.test.ts
+bun run --cwd packages/agent eval:phase-6-9-7:v4:mock
+bun run --cwd packages/agent typecheck
+```
+
+R5 fresh Mock run `c1bdf998-6fae-4c32-a4e3-bd6bea053454` 为 `24/24` verified zero-call、`48/48`
+strict runtime、Tutor/Organizer/combined semantic `1/1/1`，P95 `246/328/328/276ms`、usage
+`21948/5647`、estimated `0.099726 CNY`；`mock_synthetic` provenance 使 Live-only gate 按设计保持
+`quality_gate_failed`。Agent/AI/Types/Server/Web 全量、Organizer PostgreSQL E2E `12/12`、Compose
+default-off、历史 SHA/validator、V4 artifact=0、测试账号零残留与两路终审均通过。完整证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-r5-static-mock.md`。
+
+R5 当时的 `eval:phase-6-9-7:v4:live` 在 R6 前硬返回 `live_not_available_before_r6`；后续用户已重新
+确认 DeepSeek retention/training 边界并精确授权唯一一次 V4 branch run。Run
+`0fb47591-5ff4-4e46-bcf3-2cd267d1fb2f` 已 durable seal 为 `quality_gate_failed`：`24/24` guard
+zero-call、6 对完成、12 executor started、`10/48` strict runtime；第 6 对 Tutor 命中
+`invalid_evidence_association`，Organizer sibling attempted-aborted 且 usage unknown，剩余 36 runtime
+因 breaker 未启动。完整费用与 P95 均保持 `null`。
+
+V4 一次性名额已经消费，禁止再次运行 `eval:phase-6-9-7:v4:live`，也不得删除/覆盖/重建 marker、
+journal 或 evidence。R7--R9 产品 Docker/API/可见浏览器、Task 13/main、Phase 6.10 与博客收尾均不得
+开始。若继续，只能先新建与 V1--V4 双向隔离的零 Provider remediation；它必须有新的 runner、
+授权变量、marker/journal/evidence/validator identity，并先完成新的 static/Mock checkpoint。禁止
+`docker compose down -v`、Docker prune、container/image/volume 删除、database reset、Redis flush
+或 MinIO wipe。完整失败证据见
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v4-controlled-live-failure.md`。
+
+V5 R0 已在不读取 `.env`、不调用 Provider、不启动 Docker 的条件下定位根因。下面命令只运行 exact
+fixture/product-candidate/diagnostic 差分回归：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-wrong-question-v5-root-cause.test.ts
+```
+
+预期为 `7 pass / 0 fail / 34 expect()`。它证明 V1 `tutor-runtime-06` 同时含中文代数 latest text、
+英文微积分 active context 与错误 `en` tag；也证明合法 `submitted_step` 会由产品 candidate 应用，
+缺 primary/错误 evidence 才由同一 candidate 拒绝，V4 diagnostic 只是映射拒绝结果。
+
+该测试不是 V5 Mock/Live，也不允许运行任何 V4 Live 命令。V5 R1 已新增独立
+`phase-6.9-tutor-wrong-question-v2` dataset/coherence、冻结 policy 与 deterministic baseline。下面命令
+仍然不读取 credential 或调用 Provider：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-wrong-question-v2-cases.test.ts
+bun run --cwd packages/agent eval:phase-6-9-7:v5:baseline
+```
+
+预期聚焦测试为 `8 pass / 346 expect()`；baseline 固定 `12/48` complete，Tutor/Organizer/combined
+semantic 为 `0.6629642857/0.278125/0.4705446429`。Dataset/policy/baseline SHA 分别固定为
+`42803d45...b437b`、`b3913403...f009d`、`0ce7c3ca...116ca`。
+
+V5 R2 也保持 zero-provider。下面命令验证 Tutor local-signal authority、三字段 bounded candidate、32 条
+independent fixture 与冻结 V2 的 24 条 Tutor runtime 对照，不会读取 credential 或发起网络请求：
+
+```powershell
+bun test packages/agent/tests/tutor-v5-local-signal-authority.test.ts
+```
+
+预期为 `12 pass / 0 fail / 859 expect()`。Rules/prompt/held-out SHA 分别固定为
+`a1e9a3b...f4892`、`7c7442ff...c5f87`、`d08e8ed5...8ab55`。该命令使用注入式 Mock/no-network
+runtime，只证明本地 authority、contract 与安全边界，不是 Provider、Docker/API/browser 或产品验收。
+
+V5 R3 同样保持 zero-provider。下面命令验证 Organizer owner-snapshot shortlist、ordinal-only contract、
+local merger、24 条 independent fixture、冻结 V2 的 32 个 Organizer decision，以及
+reorder/分页/去重/ABA/stale/cross-subject 边界，不会读取 credential 或发起网络请求：
+
+```powershell
+bun test packages/agent/tests/wrong-question-organizer-v5-shortlist.test.ts
+```
+
+预期为 `13 pass / 0 fail / 469 expect()`。Shortlist rules/model prompt/held-out SHA 分别固定为
+`9747383...1299d3`、`915084a8...ac69ab`、`49336b12...ee097`。该命令使用注入式
+Mock/no-network runtime，只证明 package authority、contract、budget/abort/stale 与写隔离，不是
+Provider、Docker/API/browser 或产品验收。
+
+V5 R4 继续保持 zero-provider，新增原生 V5 report/runner/CLI/marker/hash-chain journal/hard-link
+evidence/validator 与 crash-only recovery。下面命令只运行 synthetic/no-network runner 与临时目录
+durability 测试；不会读取 `.env`、创建 Provider executor、启动 Docker 或写业务数据：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-organizer-v5-runner.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-durability.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-lineage.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v5-cli.test.ts
+bun run --cwd packages/agent typecheck
+```
+
+预期 R4 聚焦结果为 `26 pass / 0 fail / 145 expect()`。V5 report 固定 `72 cases / 24 guards /
+48 runtime / 24 pairs / 32 Organizer decisions`；24 guard 先行、单 pair 调度、pair 内最多双 lane，首个
+runtime contract failure 后熔断。Dispatch journal 必须在 Provider 前 append+fsync；marker、journal 或
+evidence 发布失败会消费一次性名额，恢复只允许 seal，不允许 resume/replay/retry。Usage、latency 或
+semantic 样本不完整时聚合值保持 `null`。测试注入的 `synthetic_test` Live 永远不能通过质量门；只有
+后续真实 CLI 自建的 `deepseek_network` provenance 才可能成为质量 authority。
+
+R4 没有接产品 composition/gate、Provider、Trace persistence、Docker/API/browser，也没有创建 V5 Live
+artifact。后续 R5 static/Mock checkpoint 已完成，仍为 zero-provider。设计、计划与 R1--R5 证据见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v5-remediation.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`、
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`、
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md` 与
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`。
+
+V5 R5 的公开 Mock 入口使用正式源码 reviewed factory；它不会读取 `.env`、创建 Live marker 或调用真实
+Provider：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-7:v5:baseline
+bun --filter @repo/agent eval:phase-6-9-7:v5:mock
+```
+
+Fresh baseline 预期 `12/48` complete、semantic
+`0.6629642857/0.278125/0.4705446429`；fresh Mock 预期 `24/24` zero-call、`48/48` strict runtime、
+semantic `1/1/1`，gate 为 `mock_quality_not_evidence`。Mock 报告中的 48 次 invocation 是 synthetic
+executor 计数，不是真实 Provider call；output/cost 为 0 也不代表真实模型 token/账单。
+
+R5 完成后，用户已重新确认当前 DeepSeek 数据保留/训练边界并精确授权唯一一次 V5 branch
+controlled-Live。根 `.env` 的通用 key 只在授权进程内映射为两个 component-specific 变量，未打印、
+写盘或进入 artifact。唯一 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard
+zero-call、12 次 Provider invocation、`11/48` strict runtime；第 6 对 Tutor
+`tutor-v2-runtime-06` 在 `3021ms` 越过冻结 `3000ms` timeout 后打开 breaker，后续 36 runtime 未启动，
+最终 `quality_gate_failed`。正式 semantic/P95/token/总费用聚合均为 `null`。
+
+V5 R6 一次性名额已消费。严禁再次运行 V5 network CLI，严禁删除、覆盖或重建 V5 marker、journal、
+evidence，也不得使用 seal/recovery 去 resume、replay 或补跑 Provider。日常开发仍保持 mock、live=false、
+Tutor/Organizer gate=false、component key empty；产品 Docker/API/browser 未开始。该终态当时只允许先做
+零 Provider 复盘与独立版本设计，不能进入 V5 R7、Task 13/main、Phase 6.10、Phase 8/9 或博客收尾。
+完整失败证据见
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
+
+V6 R0--R4 后续已完成且均为 zero-provider：设计、source contracts、package 级 bounded candidates、独立
+runner/CLI/lineage/durability contract 与 reviewed static/Mock checkpoint 已落地。不要把 V5 CLI 改参数后
+当成 V6，也不要手工创建 `v6` Live artifact。V6 policy 已冻结 Tutor executor hard timeout `3500ms`
+与 Tutor candidate P95 `<=2500ms`
+的独立含义；Organizer 继续 `5000/4500ms`。每类 P95 必须恰好 24 个样本并取升序第 23 个值；任一
+lane 不完整时四个 P95 全为 `null`。R3 runner 已接入 `3500/5000ms` deadline contract，但仍没有把
+V6 timeout/candidate 接入产品 executor/composition。
+
+R3 的安全本地复验入口不会读取 `.env` 或创建仓库真实 artifact：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-organizer-v6-runner.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v6-durability.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v6-lineage.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v6-cli.test.ts
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
+
+R4 已注册正式 baseline/Mock 入口；两条命令不会读取 credential 或调用 Provider：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-7:v6:baseline
+bun --filter @repo/agent eval:phase-6-9-7:v6:mock
+```
+
+Fresh baseline 应保持 `12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh Mock 应为
+`24/24` zero-call、`48/48` strict runtime、semantic/model-owned `1/1/1`，gate 固定为
+`mock_quality_not_evidence`。Mock 命令会输出本次 `runId` 与精确 evidence path；复验结束只能删除该
+Mock 文件，不得清空 `.tmp`。48 次 invocation、正 output token、本机 P95 与 `0 CNY` 都是 synthetic
+工程证据，不是 Provider 调用、网络 P95 或账单。
+
+唯一 V6 R5 branch controlled-Live 已按 run `b18a0a13-a2a0-4cb0-8f9c-296271c0dfa8` 执行并
+`quality_gate_failed`：`24/24` guard zero-call、2 次 Provider invocation、`0/48` strict runtime；首个
+Tutor 为 `provider_runtime / unknown`，Organizer sibling aborted，正式 semantic/P95/token/CNY 全部为
+`null`。Evidence/marker/journal 已 seal，bundle validator `ok=true`，无 recovery claim。
+
+V6 一次性名额已消费。严禁再次运行 `v6:cli -- live ...`、手工 curl/单 case/产品 API 探测、删除或
+覆盖 marker/journal/evidence、调用 seal/recovery 做 replay，也不得进入 R6 产品 Docker/API/浏览器或
+R7/main。日常开发继续保持 mock、live=false、Tutor/Organizer gate=false、component key empty；不要
+清空 `.tmp`，不要 prune、`down -v`、reset、flush 或 wipe。设计、计划与 R3--R5 验收见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md` 与
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`、
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r3-runner-lineage.md` 与
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r4-static-mock.md`、
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v6-controlled-live-failure.md`。
+
+V7 R0--R3 已完成 transport-remediation 设计、第一方 DeepSeek V4 Pro direct adapter、wire
+diagnostics、独立 runner/CLI/lineage/durable evidence、完整 fault matrix 与 reviewed static/Mock。唯一 V7
+R4 branch controlled-Live run `81529c2c-79f5-4c21-9cee-e536a2fe78e3` 随后已执行并
+`quality_gate_failed`：`24/24` guard zero-call；首对 Tutor 完成 8-stage success，Organizer 在收到
+response、完成 JSON parse 后于 `provider_type_validation` 失败；最终 wire `2/2/2/1`、strict
+`1/48`，正式 semantic/P95/token/CNY 全为 `null`。Evidence/marker/journal 已 seal，bundle validator
+`ok=true / filesChecked=1`，无 recovery claim。
+
+V7 一次性名额已经消费。严禁运行
+`bun --filter @repo/agent eval:phase-6-9-7:v7:live`，也不得手工创建/修改 marker/journal/evidence、调用
+`v7:seal`/recovery、把 `PHASE_6_9_7_V7_CONTROLLED_LIVE_APPROVED` 写入根 `.env`，或通过 curl、单
+case、另一 CLI、产品 API 做追加 Provider 探测。R5 产品 Docker/API/可见浏览器与 R6 main 回放被
+阻断；日常开发继续保持 mock、live=false、Tutor/Organizer gate=false、component key empty。
+
+V7 wire contract 固定区分：
+
+```text
+executor_entered
+  -> request_validated
+  -> provider_dispatch_started
+  -> provider_response_received
+  -> response_audit_passed
+  -> content_parsed
+  -> schema_validated
+  -> usage_validated
+```
+
+同时分别报告 executor invocation、provider dispatch、provider response 与 verified usage。R1 adapter 会
+在 fetch delegate 前等待 dispatch hook；hook 失败时 synthetic delegate 保持 0-call。R2 已把该 hook 接入
+append queue + 文件 fsync 的 durable journal，并冻结 `lane_reserved -> wire stage -> runtime/pair terminal ->
+breaker/run completion -> evidence seal` 顺序。阶段事件只保存固定枚举，不保存 request/response/error/body/
+header/prompt/model output 或 key。Recovery 只封存 durable prefix，不创建 adapter、不读取 key，也不
+resume/replay/retry Provider。
+
+当前 durability 只保证单机文件级顺序：没有父目录 fsync，不证明突然断电后的目录项持久；PID/file
+fencing 不是跨主机 lease，single dispatch/no retry 也不构成 Provider exactly-once。R3 fault matrix 已
+证明预期 transport/HTTP/response/schema/usage faults 没有落入非预期 `unknown`，stage/counter 与
+no-leak 门通过；这仍不证明 Provider 已收到请求或真实模型质量。
+
+R3 可安全回放的命令只有 no-network baseline/Mock/tests 与静态门；不要把 mode 改成 `live`：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-tutor-organizer-v7-runner-contract.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-durability.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-cli.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-lineage.test.ts packages/agent/tests/phase-6-9-tutor-organizer-v7-fault-matrix.test.ts
+bun --filter @repo/agent eval:phase-6-9-7:v7:mock
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
+
+`v7:mock` 会创建本次 Mock evidence；验证后只能按 stdout 给出的精确 path 删除该文件，不得清空
+`.tmp`。48 次 synthetic executor/dispatch/response/usage、synthetic token/P95/CNY 都不是 Provider
+调用、真实网络性能或供应商账单。
+
+V7 设计和当前停止门见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v7-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v7-remediation.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r0-zero-provider-postmortem.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-r1-zero-provider-adapter.md` 与
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r2-runner-lineage.md`、
+`docs/acceptance/2026-07-28-phase-6-9-7-tutor-organizer-v7-r3-static-mock.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`。V7 R4 已失败封存且不可
+重跑。V8 R0--R5 已完成并失败封存，见
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v8-remediation-design.md`、
+`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v8-remediation.md` 与
+`docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
+
+V9 R0--R4 随后完成本地完整合法 option authority、exact `questionIndex + optionIndex` contract、
+Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock。
+唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard、wire `2/2/0/0`、
+strict `0/48`；Tutor 在 Provider response 前成为 `provider_runtime / transport`，Organizer sibling 为
+`post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator
+`ok=true/filesChecked=1`，无 recovery claim。完整终态见
+`docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+
+当前不得运行任何 V7/V8/V9 Live、seal/recovery、curl、单 case 或产品 API 探测；不得删除、覆盖或改写
+V9 artifact，也不得启动 V9 R6 产品 Docker/API/浏览器或 R7/main。日常开发继续保持 mock、
+live=false、Tutor/Organizer gate=false 与 component key empty。已有容器、镜像和卷保持不变，禁止 prune、
+`down -v`、reset、flush 或 wipe。若未来改变产品路线，必须作为新的用户决策和独立阶段规划，不能通过
+新 runner、marker 或版本号把它包装为 V9 retry。
+
+V9 失败后已进入独立 Architecture Recovery，不再复制 V10/V11 式整套 Live runner。R1 新增
+`first-party-deepseek-v4-pro-transport-diagnostic-adapter-v1`：它包装而不修改 sealed V1
+direct adapter，只把 future fetch throw 在当前 adapter 内存中分为九个固定 subtype。公共
+`providerFailureCategory=transport`、V1--V9 report/schema/validator/artifact 和产品 composition 均不变。
+R1 未读取 credential、调用 Provider 或解封 V9；安全回放命令仅为：
+
+```powershell
+bun test packages/ai/tests/first-party-deepseek-v4-pro-transport-diagnostic.test.ts
+bun --filter @repo/ai typecheck
+bun --filter @repo/ai lint
+```
+
+注入 fetch 永久是 `synthetic_test`，上述命令不读根 `.env`、不发网络请求，也不创建正式
+canary artifact。完整边界见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r1-transport-diagnostics.md`。
+
+R2 已完成独立 zero-network Provider health canary contract/runner。它不读取 env，也不允许调用方注入
+fetch、transport、credential、URL 或 artifact path；`mock` 与 `fault-matrix` 都只使用模块内 closed
+synthetic responder。日常安全回归命令为：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-cli.test.ts
+bun --filter @repo/ai eval:phase-6-9-7:recovery-r2:canary -- mock
+bun --filter @repo/ai eval:phase-6-9-7:recovery-r2:canary -- fault-matrix
+```
+
+CLI 只接受精确的 `mock` 或 `fault-matrix` 单参数；`live`、`--mode live`、`--out`、重复或未知参数都
+fail-closed。Mock `complete` 与 fault matrix `21/21` 的 authority 都是 `synthetic_test`，其中 token 是
+合成响应值，不是 Provider telemetry；不能据此判断 DNS/TLS、代理、账号、余额、模型权限、服务端或
+DeepSeek 健康。R2 没有正式 artifact writer、marker、journal、seal/recovery 或一次性 Live 授权消费。
+
+不得自行给 R2 CLI 增加 Live 参数、读取根 `.env`、运行 curl/Provider、复用 V9 marker/evidence，或直接
+启动 48-case、产品 Docker/API/browser 与 main 验收。R2 的历史 zero-network 证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r2-provider-health-canary.md`。
+
+R3 controlled-Live 已失败封存。日常安全回归仍只运行测试，不需要 approval 或 credential，也不得因为
+回归通过而再次运行 Live：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r3-canary-durability-cli.test.ts
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-contract.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-runner.test.ts packages/ai/tests/phase-6-9-7-architecture-recovery-r2-canary-cli.test.ts
+```
+
+历史上正式 R3 CLI 固定检查当前 branch、tracked worktree clean 和 `HEAD == @{u}`，并要求以下一次性条件；
+当前授权已消费，下面的变量与参数不得再次用于执行：
+
+- `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_APPROVED=true`；
+- 专用 `PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_DEEPSEEK_API_KEY`，不能借用通用或 Agent credential；
+- 唯一参数 `I_AUTHORIZE_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_CONTROLLED_LIVE_ONCE`；
+- 固定 `5000ms`、一次 `1/512/16`、`0.00200000 CNY` hard cap、no retry/resume/replay。
+
+首次旧授权 CLI 已完成 source/credential preflight，但 Windows 目录 URL 产生的默认 evidence root 带尾分隔符，
+旧字符串围栏在 reservation 前误判越界。该进程 Provider invocation/dispatch=`0`，没有 marker/journal/claim/
+artifact，也不适用 crash-only seal。实现现已使用 `resolve + relative` containment 并覆盖尾分隔符回归；旧 exact
+confirmation 已使用且源码变化，不得复用。修复提交推送后取得的新 exact confirmation 也已由下述唯一 run
+消费。公开 `runPhase697ArchitectureRecoveryR3CanaryCli` 只接受 input，内部固定 production ports；不能注入
+fetch、transport、URL、model、writer 或 output path。
+
+设计上只有正式尝试已创建 marker/journal 且进程中断时，独立确认词
+`I_SEAL_PHASE_6_9_7_ARCHITECTURE_RECOVERY_R3_INTERRUPTED_ATTEMPT_WITHOUT_PROVIDER` 可执行 crash-only
+seal。它不读取 credential、不调用 Provider、不 retry/resume/replay，只从 durable prefix 封存
+`not_dispatched / dispatched_no_response / response_observed`。`publication_started` 后任何 I/O failure
+永久 fail-closed，不得再次 publish。当前 run 已正常到 `evidence_published`，不符合 seal 条件。
+
+修复后的唯一 R3 canary 已由 run `253a5df5-c443-4950-b517-849efb941728` 消费并正常封存。不得再次设置
+R3 approval/credential 或运行 Live/seal：artifact 为 `dispatched_no_response`，wire `1/1/0/0`，终态
+`transport_failed / connection_refused`，usage/token/CNY 全 `null`；7 条 journal 已到 `evidence_published`，
+无 recovery claim。
+
+封存后的本地检查发现当前进程 HTTP(S) proxy 指向无监听的 loopback `127.0.0.1:7897`；该条件高度相关但
+不是 sealed evidence 已证实的唯一根因。不得通过 curl、清空 proxy、单 case 或第二次 Provider 调用验证。
+未观察到 HTTP Response 前，不启动小样本或 48-case。完整 R3 工程证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-r3-controlled-live-failure.md`。
+
+### Phase 6.9.7 Architecture Recovery Proxy Preflight
+
+独立 zero-provider preflight 已完成。它不接受参数、不读取根 `.env` 或任何模型 credential、不调用
+`fetch`/Provider，也不创建 R3 或新的 marker、journal、artifact。CLI 只快照当前进程八个固定 key：
+`NO_PROXY/no_proxy`、`HTTPS_PROXY/https_proxy`、`HTTP_PROXY/http_proxy`、`ALL_PROXY/all_proxy`。
+
+```powershell
+bun --filter @repo/ai diagnose:phase-6-9-7:recovery:proxy-preflight
+```
+
+可接受状态只有两种：
+
+- 所有 proxy key 均 absent/空，返回 `direct_ready`；
+- 所有已配置 proxy key 严格一致指向显式 `http://127.0.0.1:<port>` 或
+  `http://[::1]:<port>`，且一次 250ms loopback TCP listener probe 成功。
+
+`NO_PROXY` 非空、大小写/类型 proxy authority 冲突、URL 携带 credential、非 HTTP、非 loopback、
+缺端口或非法端口、path/query/hash、控制字符与 hostile descriptor 都会 fail-closed。Listener probe 只建立
+本地 TCP 连接，连接后立即销毁且不发送 payload；核心 runner 自己强制 250ms watchdog。Exit `1` 表示
+环境前置条件不满足，不是 Provider 测试失败。
+
+首次实际输出为 `loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 /
+providerCalls=0`。宿主 Clash Verge core 按既有配置恢复 listener 后，只重跑同一安全命令，fresh 输出为
+`loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。不要自动清空或
+绕过 proxy，也不要通过 curl、DNS/TLS、单 case、产品 API 或第二次 Provider 调用补证。Ready 只证明当前
+本地 listener 前置条件，不证明代理转发或 Provider health。R3 继续禁止
+retry/resume/replay/backfill、Live/seal、删除/改写 artifact；原 R4、产品/main 与后续阶段仍被阻断。历史
+preflight 证据见
+`docs/acceptance/2026-07-30-phase-6-9-7-architecture-recovery-proxy-preflight.md`。
+
+### Phase 6.9.7 Architecture Recovery Provider Canary V2
+
+Provider Canary V2 D0/C1/C2/S1/L1 已完成。它不复用旧 R3/R4 approval、credential、confirmation、marker、
+journal、artifact 或 recovery identity；阶段使用 D0/C1/C2/S1/L1/P1。C2 已新增固定 production CLI、
+source、marker、hash-chain journal、artifact/validator 与 crash-only seal，S1 已完成 zero-provider 静态门。唯一
+L1 run `dc09214c-0300-4153-8273-e548ac768d20` 已成功封存；其解锁的 P1 zero-provider 设计与后续 G1
+contract/baseline、G2 one-shot runner/durability、S2 reviewed Mock/static 均已完成。其后唯一 L2 已在独立
+source/tag admission、fresh 数据边界接受和 exact authorization 下完成并 durable seal；P2 full-gate design、
+F1 full contract/baseline、F2 runner/durability/evidence 与 S3 reviewed Mock/static 均已 zero-provider 完成。
+其后唯一 L3 已执行并以 `full_gate_quality_gate_failed / qualityAuthority=none` 正常封存；不得重跑，产品与
+main 继续阻断。
+
+C1 固定验收命令：
+
+```powershell
+bun --filter @repo/ai test:phase-6-9-7:recovery:provider-canary-v2:c1
+```
+
+该命令只接受内置 `fault-matrix` 路径，运行 15 个模块内 synthetic 场景；不会读取宿主 `.env`、模型
+credential 或 source，不会创建 marker/journal/artifact，也不会构造 fetch/Provider transport。Fresh 结果为
+`scenarioCount=15 / passed=15 / failed=0 / providerCalls=0`。不要给它追加 Live、URL、proxy、credential、
+retry 或 output 参数；这些输入必须以 exit `1` 拒绝。
+
+C2/S1 固定验收命令：
+
+```powershell
+bun test packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-contract.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-runner.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-durability.test.ts `
+  packages/ai/tests/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-cli.test.ts
+bun test packages/ai/tests/*architecture-recovery*.test.ts
+bun --cwd packages/ai test
+bun --cwd packages/ai typecheck
+bun --cwd packages/ai lint
+```
+
+上述测试只使用系统临时目录、fake ports 与 closed synthetic transport；成功路径测试会创建临时
+marker/journal/artifact 并精确删除，不创建项目根正式证据。Fresh 结果分别为 C2 `32/32`、Recovery
+`91/91`、AI full `323/323`。
+
+L1 实际按以下固定顺序完成：
+
+```text
+exact args
+  -> snapshot only 8 proxy keys
+  -> zero-provider preflight
+  -> fixed branch + tracked clean + HEAD/upstream/remote parity
+  -> read V2 dedicated approval/credential
+  -> V2 marker + durable reservation
+  -> one fact-free Provider dispatch / no retry
+  -> bounded terminal + exclusive evidence
+```
+
+Preflight 失败时不能读取 credential、执行 source reader、创建 marker 或调用 Provider。Preflight ready 只生成
+进程内 single-consume attestation，不保存 proxy URL/port，也不等于网络健康。C1/C2/S1 只使用 synthetic/
+fake ports，全程 `providerCalls=0`。L1 在用户重新接受运行时数据边界并给出 exact authorization 后运行一次：
+`complete / strict_response_with_verified_usage`，wire `1/1/1/1`，usage `49/5`，费用 `0.00017700 CNY`，
+validator `ok=true`。Production 入口 `eval:phase-6-9-7:recovery:provider-canary-v2` 的名额已经消费，禁止再次
+执行、retry/resume/replay/backfill 或 crash seal。
+
+只读复核本地 sealed bundle 可使用：
+
+```powershell
+bun --no-env-file -e "import { validatePhase697ArchitectureRecoveryProviderCanaryV2C2Bundle as validate } from './packages/ai/src/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-durability.ts'; console.log(JSON.stringify(await validate({ root: process.cwd() })));"
+```
+
+期望固定摘要为 `ok=true / evidenceCount=1 / runId=dc09214c... / journalRecords=12 /
+finalJournalEvent=evidence_published / outcome=complete`。该命令只读本地 evidence，不读取 `.env` 或调用
+Provider；不要添加 credential、Live 参数、output、recovery 或任何网络探测。
+
+完整设计、计划与 D0 验收：
+
+- `docs/superpowers/specs/phase-6-9-7-architecture-recovery-provider-canary-v2-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-architecture-recovery-provider-canary-v2.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-d0-reentry-design.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c1-zero-network-contract.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-c2-one-shot-durability.md`；
+- `docs/acceptance/phase-6-9-7-architecture-recovery-provider-canary-v2-l1-success-diagnostic-only.md`。
+
+P1/G1/G2/S2/L2 小样本设计、contract、durability 与 sealed evidence 入口：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g2-runner-durability.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-s2-reviewed-mock-static.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-l2-controlled-live.md`。
+
+P2/F1/F2/S3 full-gate zero-provider 与唯一 L3 sealed evidence 入口：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f1-full-contract-baseline.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-f2-runner-durability-evidence.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-s3-reviewed-mock-static.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
+
+P1 冻结 4+4 guards、8 runtime pairs、manifest `ae667f1c...edf61`、deterministic subset baseline payload
+`d36d0789...d9f4e`、quality/budget/lineage/authorization contract。G1 已新增唯一安全的 baseline 生成命令；它
+只写 fixed ignored path，不读取环境变量、credential、Provider、Mock/Live 或 candidate：
+
+```powershell
+Set-Location packages/agent
+bun run eval:phase-6-9-7:small-sample:baseline
+bun test tests/phase-6-9-tutor-organizer-small-sample-g1.test.ts
+```
+
+首次输出只能是 `created`，相同 bytes 的重复检查为 `same_bytes`；冲突、symlink 或 parent/path identity 漂移
+必须失败。固定 logical report SHA 为 `ad3aa54d...d002`，physical file SHA 为 `e8bcbcb5...658b`。不要把这条
+命令当成 Mock/Live runner，也不要手工挑 case、调用 Provider 或复用 L1 confirmation。
+
+G2 的本地 focused 验证只运行 synthetic fault matrix 和临时目录 durability，不读取 credential 或创建项目根
+正式 L2 文件：
+
+```powershell
+Set-Location packages/agent
+bun test `
+  tests/phase-6-9-tutor-organizer-small-sample-cli-authority-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-runner-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-durability-g2.test.ts `
+  tests/phase-6-9-tutor-organizer-small-sample-crash-lineage-g2.test.ts
+bun run typecheck
+bun run lint
+```
+
+Public production CLI 只接收 `args + AbortSignal`。唯一 L2 已完成，因此现在不得运行
+`eval:phase-6-9-7:small-sample:live` 或 `eval:phase-6-9-7:small-sample:seal`。执行前 source gate 曾要求独立
+L2 admission 创建并绑定专用 `phase-6-9-7-tutor-organizer-small-sample-s2-approved` tag；该 tag 现已固定在
+实际运行 source commit `4c608445...c22af1c4`，不得移动或重建。Crash-only seal 只适用于未完成的
+dead-owner attempt；已正常 `evidence_published` 的 run 禁止 seal/recovery。
+
+G2 recovery 只为当前开放/待锚定 pair 补零-wire reservation 并立即 `attempted_aborted`，后续 pair 为
+`not_started_quality_breaker`；这不是 resume/replay/retry，也不构造 harness/transport 或调用 Provider。外部父
+请求取消统一为 `external_abort`，与 lane 内部 `abort` 分开。
+
+S2 的安全本地复核命令只运行 reviewed synthetic fetch，不读取 `.env`/credential、不调用 Provider，也不创建
+正式 marker/journal/artifact/recovery claim：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-small-sample-s2-reviewed-mock.test.ts
+bun run typecheck
+bun run lint
+```
+
+期望 focused 为 `35/35`。正常路径固定 `8/8` guard、`16/16` strict/wire/verified usage、semantic
+`1/1/1`、gate `mock_quality_not_evidence`；fault matrix 还验证 25 类 transport/HTTP/response/schema/usage、
+parent abort、single-dispatch/no-backfill 与 Tutor/Organizer `3500/5000ms` hard timeout。不要把 synthetic
+token/费用或本机 median/max 写成 Provider 账单、P95 或产品延迟。
+
+L1 与 L2 均已消费并完成，不得再次运行。L2 唯一 run
+`6918df4f-a4ae-4de0-aa21-c7614ed5861d` 为 guard `8/8`、strict/wire/verified usage
+`16/16/16/16`、Tutor/Organizer/Combined semantic
+`0.9141666666666668 / 1 / 0.9570833333333334`、usage `7032/244`、费用 `0.02256 CNY`，最终
+`small_sample_quality_gate_passed / small_sample_semantic_gate`。8-pair P95 仍为
+`null / insufficient_sample_size_8`。
+
+只读复核 sealed L2 bundle 可使用：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-7:small-sample:validate
+```
+
+期望摘要为 `ok=true / journalRecords=180 / finalJournalEvent=evidence_published / artifact
+SHA=a1b51f05...eb0d`。该命令只读本地 bundle，不读取 credential、不调用 Provider，也不创建 recovery claim。
+禁止 retry/resume/replay/backfill、单 case/网络追加探测、删除或改写 artifact。P2 已完成但只形成
+`zero_provider_full_gate_design`；F1/F2 随后已把 full manifest/baseline/report/scorer/gate、安全 writer、固定
+production CLI/source admission、完整 runner、durability 与 strict evidence validator 落地，authority 分别仅
+`zero_provider_full_contract_baseline` / `zero_provider_full_runner_durability_evidence`。S3 随后已完成 reviewed
+Mock/static，得到 `24/24` guard、`48/48` strict/wire/usage、semantic `1/0.996875/0.9984375` 与 anchor
+`1/1/1`，但 authority 仍为 `full_gate_mock_quality_not_evidence / qualityAuthority=none`。唯一 L3 随后已在
+approved source `3c5cc6c...` 上执行并正常封存：run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a`，guard
+`24/24`、runtime `22/22/0/26`、wire `22/22/22/21`、strict `21/48`；Tutor runtime 11 的 schema failure
+打开 breaker。最终 `full_gate_quality_gate_failed / qualityAuthority=none`，semantic/P95/token/CNY 全
+`null`。L3 不得重跑，产品、main 与 Phase 6.9.8 仍被阻断。
+
+P2/F1 固定值为：dataset `72/24/48/24/32`，manifest `e68e6e27...12c78`，full baseline `12/48` 与
+semantic `0.6629642857/0.278125/0.4705446429`，source baseline `0ce7c3ca...116ca`，baseline authority
+`2ab1030f...a5f2`，logical report `16c574b1...2c9`，physical file `16aa1773...6f73`，eval policy
+`11371d16...f503`。安全本地复核只运行 fixed F1 test、typecheck 与 lint：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-full-gate-f1.test.ts
+bun run typecheck
+bun run lint
+```
+
+Focused 期望为 `14/14`。测试只在系统临时目录验证 writer，并以 runtime fetch spy 证明调用次数为 0；不会读取
+`.env`/credential、调用 Provider、创建 approved tag 或正式 marker/journal/artifact/recovery claim。不要运行任何
+`live`/`seal` 命令、手工创建 full-gate `.tmp` 文件，或把 F1 的 Mock/schema pass 当成 48-case/产品质量证据。
+
+F2 已完成后的安全本地复核命令为：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-full-gate-f1.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-cli-authority-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-durability-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-lineage-security-f2.test.ts `
+  tests/phase-6-9-tutor-organizer-full-gate-runner-f2.test.ts
+bun run typecheck
+bun run lint
+```
+
+Focused 期望为 `32/32`，Agent full 为 `1108/1108`。这些测试只使用 synthetic/fault ports 与系统临时目录；
+F2 authority 仅 `zero_provider_full_runner_durability_evidence`。
+
+S3 的安全本地复核命令为：
+
+```powershell
+Set-Location packages/agent
+bun test tests/phase-6-9-tutor-organizer-full-gate-s3-reviewed-mock.test.ts
+bun run typecheck
+bun run lint
+```
+
+Focused 期望为 `14/14`。正常结果固定 `24/24` guard、`48/48` strict/wire/verified usage、Tutor/Organizer/
+Combined semantic `1/0.9968750000000001/0.9984375000000001`、L2 anchor `1/1/1`，但 gate 必须保持
+`full_gate_mock_quality_not_evidence / qualityAuthority=none`。该测试只使用 synthetic fetch 和系统临时隔离
+bundle；global fetch、credential 与 Provider 调用为 0。L3 source tag 现已固定在 `3c5cc6c...`，不得移动、
+删除或重建。不要运行 `full-gate:live`、`full-gate:seal`、production CLI，也不要手工修改正式
+marker/journal/artifact/recovery claim。
+
+L3 现有 sealed bundle 的唯一安全入口是只读 validator：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-7:full-gate:validate
+```
+
+期望摘要为 `ok=true / runId=2b0ac3a0... / gate=full_gate_quality_gate_failed /
+qualityAuthority=none / journalRecords=296 / finalJournalEvent=evidence_published / artifact
+SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider，也不创建 recovery claim。不要把
+22 次 response、21 次 verified usage、S3 Mock 或 L2 小样本成功拼接为完整 full-gate pass。L3 失败证明与
+停止门见
+`docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
+
+Full-gate Schema Recovery SR0--SR4 已完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与
+reviewed Mock/static。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已以
+`schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；strict/wire/usage
+`48/48/48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，journal `628`、validator `ok=true`、
+recovery claim=0。SR6 又在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品 Docker/API/可见浏览器/Trace/
+forced-failure/权限隔离与精确清理；全部 Agent/replay gate 已恢复关闭。SR5 一次性名额已经消费。当前安全边界为：
+
+- 不运行任何 `full-gate:live`、SR5 production CLI、`seal`、recovery、curl、单 case 或其它 Provider 探测；
+- 不修改/移动/删除 L3 或 SR5 marker、journal、artifact、recovery claim 或 approved tag；
+- 不再次启用 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED` 或重做 SR6 success/forced-failure 产品 replay；SR7 只
+  允许 default-off static/Docker/API/可见浏览器与历史 evidence 只读回放；
+- 只允许读取当前源码与 sealed bundle、运行只读 strict validator，以及执行上述 SR7 default-off 验收；
+- SR1--SR3 测试只使用 injected synthetic data/runtime 与系统临时目录，`globalThis.fetch=0`、credential
+  read=0、formal
+  artifact=0；
+- SR1 已实现 exact-schema raw parser、有界 Provider envelope、canonical `intentIndex` projection、strict
+  projected decision、bounded no-raw diagnostic 与一次性 V6 candidate seam；contract SHA 为
+  `e2453faeb077faa76ab018a038790cd5a7e73f617be800c0958c098361511579`；
+- SR2 fixture SHA 为 `43248bfa...0d41e`；prompt-only responder 覆盖 24 个 Tutor runtime、18 个 Provider
+  shape、5 个 held-out、fault/abort 与 F2 sibling/breaker，不读取 expected/oracle 或 L3 raw；
+- SR3 使用独立 `schema-recovery-v1` report/runner/source/CLI、schema-stage hash-chain journal、hard-link
+  artifact、strict validator 与 crash-only recovery；source manifest SHA 为 `1a811394...adfbb`；
+- SR3 crash-only recovery 只解释 durable prefix，不创建 executor、不 retry/resume/replay/backfill；公共 CLI 只
+  允许 bundle validation 或 crash-only seal；
+- SR4 reviewed Mock factory SHA 为 `8f18c1c2...3d44`，固定结果为 `48/48` strict/wire/usage、schema
+  `42 canonical + 6 extension discarded`、semantic `1/0.996875/0.9984375`，但 gate 仅
+  `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
+- SR5 approved source/tag 固定在 `67661f5f...d4441`，不得移动；正式 `.tmp` 文件恰好为一个 marker、一个
+  journal 和一个 branch artifact；
+- SR6 replay 绑定 physical artifact SHA `87dd826b...18be`，但只依据当前 bounded Tutor V6 / Organizer V9
+  prompt 生成 deterministic Mock output；不读取或逐字重放 SR5 Provider response/Trace，不增加 semantic
+  authority；
+- SR6 产品验收已完成：Tutor `/api/chat`、Organizer single/batch、Trace/Mock 计费、forced failure、owner/
+  locked-name/write isolation、可见浏览器、精确清理与最终源码 Docker/default-off 均通过；
+- 当前唯一下一任务是 SR7：先提交并推送当前功能分支，再合并/push main 并只做 default-off 回放；Phase
+  6.9.8/6.10/8/9 继续阻断。
+
+SR6 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
+`PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/
+Organizer gate 全部 false。RAG server/worker 仍为 `qwen / text-embedding-v4 / 1536`；只检查 credential 是否存在，
+禁止输出值。不得用 `down -v`、prune、database reset、Redis `FLUSH*` 或 MinIO wipe 来“恢复环境”。
+
+SR1--SR5 安全回归命令（除只读 validator 外均为静态/zero-provider；不要替换为任何
+`eval:*:live/seal` 或 SR5 production CLI 命令）：
+
+```powershell
+bun test packages/ai/tests/first-party-deepseek-v4-pro-direct.test.ts packages/ai/tests/model-agent-strict-json-content-policy.test.ts packages/agent/tests/tutor-schema-recovery-contract.test.ts packages/agent/tests/tutor-schema-recovery-model-candidate.test.ts
+bun test packages/agent/tests/tutor-schema-recovery-sr2-provider-robustness.test.ts packages/agent/tests/tutor-schema-recovery-sr2-runtime-metamorphic.test.ts packages/agent/tests/tutor-schema-recovery-sr2-fault-runner.test.ts
+bun test packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-runner.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-journal-validator.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-crash-publication.test.ts packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr3-lineage-cli-security.test.ts
+bun test packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr4-reviewed-mock.test.ts
+bun test packages/agent/tests/phase-6-9-tutor-organizer-schema-recovery-sr5-authority-cli.test.ts
+bun run --cwd packages/ai typecheck
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/ai lint
+bun run --cwd packages/agent lint
+bun run --cwd packages/agent eval:phase-6-9-7:schema-recovery:validate
+```
+
+`eval:phase-6-9-7:schema-recovery:validate` 是当前唯一允许读取正式 SR5 bundle 的运维命令；它不读取
+credential、不调用 Provider、不创建或修改 evidence。禁止运行 `eval:phase-6-9-7:schema-recovery:sr5`、任何
+`seal`/recovery 命令，或为了“再确认一次”创建/移动/修改 marker、journal、artifact。
+
+设计、计划与 SR0--SR6 验收分别见：
+
+- `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
+- `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r0-zero-provider-design.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r1-zero-provider-tdd.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+
+`@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
+executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把
+CLI-only modules 重新加入 shared barrel，否则 CommonJS/Nest/Jest 会在普通 runtime import 时加载可执行模块。
 
 ### Phase 6.9.5 Review / Planner 模型建议配置
 
@@ -897,7 +1636,7 @@ controlled-Live 只允许使用合成账号和合成资料，必须先获得新�
 
 Phase 6.9.4.4 Task 8 当时只把 Router/Verifier 变量显式传入 Docker `web` runtime；`web` 不使用根 `.env` 的 `env_file`，也没有把凭据放进 build args 或 `NEXT_PUBLIC_*` 客户端变量。Review/Planner gate 与 timeout 不属于 Web allowlist，只由 `server` 消费。Phase 6.9.4.3 additional P95 `4264ms` 是当时的历史延迟 verdict，不是永久禁止 Router 模型的产品决定；后续 Task 9/10 已完成 controlled-Live、Docker、可见浏览器和 main 复验，并恢复两个 gate 默认关闭。权威架构路线见 `docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`；这不代表 Memory、Orchestrator、其余 Agent 或 Phase 6 已完成。
 
-`/agent-trace` 的 `AI 模式` 开关只切换最终 Chat 流式回答的 Mock / Live 请求模式，不会替 Router/Verifier 打开 Agent runtime gate。仅设置 `AI_ENABLE_LIVE_CALLS=true` 时，若 `AI_PROVIDER_MODE` 仍为 `mock` 或两个组件 gate 仍为 `false`，Agent 候选路径仍不会调用真实模型。
+`/agent-trace` 的 `AI 模式` 开关只切换最终 Chat 流式回答的 Mock / Live 请求模式，不会替 Router/Verifier/Tutor 打开 Agent runtime gate。仅设置 `AI_ENABLE_LIVE_CALLS=true` 时，若 `AI_PROVIDER_MODE` 仍为 `mock` 或对应组件 gate 仍为 `false`，Agent 候选路径仍不会调用真实模型。
 
 Phase 6.9.4.4 Task 9 的受控 Docker Live 必须在未跟踪的根 `.env` 中临时同时提供完整运行条件。下面只列非敏感值；还必须通过根 `.env` 或受控 secret 注入与所选 provider 匹配的有效 key，例如 DeepSeek 使用 `DEEPSEEK_API_KEY`、OpenAI 使用 `OPENAI_API_KEY`，但不要把 key 值复制到命令、终端输出、日志或文档：
 
@@ -918,13 +1657,13 @@ KNOWLEDGE_VERIFIER_MODEL_TIMEOUT_MS=4000
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web
 ```
 
-验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Knowledge credential，保留 5000/4000 与 4500/4500 timeout。Router/Verifier 属于 `web` runtime，恢复后精确重建 `web`；Review/Planner 与 Knowledge 只由 Nest `server` 消费，恢复后必须精确重建并探测 `server`，不能用重建 `web` 代替：
+验收结束后必须把当前 PowerShell 与本地 env 恢复为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、`ROUTER_MODEL_ENABLED=false`、`KNOWLEDGE_VERIFIER_MODEL_ENABLED=false`、`TUTOR_AGENT_MODEL_ENABLED=false`、`WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false`、`REVIEW_AGENT_MODEL_ENABLED=false`、`PLANNER_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false`、`KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED=false`，并清空临时 Tutor、WrongQuestionOrganizer 与 Knowledge credential，保留 5000/4000、3000、5000 与 4500/4500 timeout。Router/Verifier/Tutor 属于 `web` runtime，Review/Planner、Knowledge 与 WrongQuestionOrganizer 属于 Nest `server` runtime；恢复后精确重建并探测 `web server`，不能只重建其中一个：
 
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --force-recreate web server
 ```
 
-只验收 Review/Planner 或 Knowledge 时只需重建 `server`。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
+只验收 Review/Planner、Knowledge 或 WrongQuestionOrganizer 时只需重建 `server`。不要运行会打印完整解析内容的 `docker compose config`，不要输出 env 文件或 key；静态解析只能使用本节前述 `config --quiet`。
 
 Docker Web 容器内部访问后端使用 `PREPMIND_INTERNAL_API_BASE_URL=http://server:3001`，浏览器访问后端仍使用 `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:3001`。这两个地址不要混用：前者解决容器内 `/api/chat`、`/api/dev/ai-mode` 校验登录态，后者给浏览器页面访问本机后端。
 

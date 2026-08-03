@@ -446,7 +446,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(compose).toContain('  minio-init:');
   });
 
-  it('uses an explicit Web environment allowlist when a safe root fixture carries model credentials', () => {
+  it('uses explicit service allowlists when a safe root fixture carries model credentials', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const webService = extractYamlSection(compose, '  web:', 2);
 
@@ -484,10 +484,10 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const originalQwenApiKey = process.env.QWEN_API_KEY;
     process.env.QWEN_API_KEY = 'host_only_qwen_fixture_canary';
     let environments: ReturnType<
-      typeof resolveWebEnvironmentFromSafeRootFixture
+      typeof resolveServiceEnvironmentsFromSafeRootFixture
     >;
     try {
-      environments = resolveWebEnvironmentFromSafeRootFixture();
+      environments = resolveServiceEnvironmentsFromSafeRootFixture();
     } finally {
       if (originalQwenApiKey === undefined) delete process.env.QWEN_API_KEY;
       else process.env.QWEN_API_KEY = originalQwenApiKey;
@@ -498,6 +498,9 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'PLANNER_AGENT_MODEL_ENABLED',
       'REVIEW_AGENT_MODEL_TIMEOUT_MS',
       'PLANNER_AGENT_MODEL_TIMEOUT_MS',
+      'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED',
+      'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS',
+      'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY',
     ]) {
       expect(webEnvironment).not.toHaveProperty(forbiddenVariable);
     }
@@ -510,10 +513,42 @@ describe('Docker Compose worker readiness healthcheck', () => {
       OPENAI_API_KEY: 'safe_fixture_openai_key',
       ROUTER_MODEL_ENABLED: 'true',
       KNOWLEDGE_VERIFIER_MODEL_ENABLED: 'true',
+      TUTOR_AGENT_MODEL_ENABLED: 'true',
+      TUTOR_AGENT_MODEL_TIMEOUT_MS: '3000',
+      TUTOR_AGENT_DEEPSEEK_API_KEY: 'safe_fixture_tutor_key',
       NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3001',
       PREPMIND_INTERNAL_API_BASE_URL: 'http://server:3001',
     });
     expect(environments.server.QWEN_API_KEY).toBe('');
+    expect(environments.server).toMatchObject({
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
+      WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+        'safe_fixture_wrong_question_organizer_key',
+    });
+
+    for (const environment of [
+      environments.server,
+      environments.worker,
+      environments.admin,
+    ]) {
+      if (environment !== environments.server) {
+        expect(environment).not.toHaveProperty(
+          'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED',
+        );
+        expect(environment).not.toHaveProperty(
+          'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS',
+        );
+        expect(environment).not.toHaveProperty(
+          'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY',
+        );
+      }
+      expect(environment).not.toHaveProperty('TUTOR_AGENT_MODEL_ENABLED');
+      expect(environment).not.toHaveProperty('TUTOR_AGENT_MODEL_TIMEOUT_MS');
+      expect(environment).not.toHaveProperty('TUTOR_AGENT_DEEPSEEK_API_KEY');
+    }
+    expect(environments.admin).not.toHaveProperty('DEEPSEEK_API_KEY');
+    expect(environments.admin).not.toHaveProperty('OPENAI_API_KEY');
   });
 
   it('keeps the admin Dockerfile aligned with the Bun workspace and Next standalone output', () => {
@@ -596,7 +631,7 @@ function expectComposeOptionBeforeSubcommand(
   expect(optionIndex).toBeLessThan(subcommandIndex);
 }
 
-function resolveWebEnvironmentFromSafeRootFixture() {
+function resolveServiceEnvironmentsFromSafeRootFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'prepmind-compose-'));
   const dockerDirectory = path.join(root, 'docker');
   const composePath = path.join(dockerDirectory, 'docker-compose.dev.yml');
@@ -624,6 +659,12 @@ function resolveWebEnvironmentFromSafeRootFixture() {
         'PLANNER_AGENT_MODEL_ENABLED=true',
         'REVIEW_AGENT_MODEL_TIMEOUT_MS=4500',
         'PLANNER_AGENT_MODEL_TIMEOUT_MS=4500',
+        'TUTOR_AGENT_MODEL_ENABLED=true',
+        'TUTOR_AGENT_MODEL_TIMEOUT_MS=3000',
+        'TUTOR_AGENT_DEEPSEEK_API_KEY=safe_fixture_tutor_key',
+        'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=true',
+        'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=5000',
+        'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY=safe_fixture_wrong_question_organizer_key',
       ].join('\n'),
       'utf8',
     );
@@ -635,6 +676,8 @@ function resolveWebEnvironmentFromSafeRootFixture() {
         envPath,
         '-f',
         composePath,
+        '--profile',
+        'worker',
         'config',
         '--format',
         'json',
@@ -653,6 +696,8 @@ function resolveWebEnvironmentFromSafeRootFixture() {
     return {
       web: resolved.services?.web?.environment ?? {},
       server: resolved.services?.server?.environment ?? {},
+      worker: resolved.services?.worker?.environment ?? {},
+      admin: resolved.services?.admin?.environment ?? {},
     };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

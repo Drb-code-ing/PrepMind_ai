@@ -1,0 +1,237 @@
+# Phase 6.9.7 Tutor / WrongQuestionOrganizer V8 固定形状与脱敏诊断设计
+
+日期：2026-07-28
+
+状态：R0--R4 zero-provider checkpoint 已完成；唯一 R5 Live 已以 `quality_gate_failed` durable seal。
+Fixed-shape schema 在 4 次真实 response 上全部通过，但第二条 Organizer 命中本地
+`dynamic_authority`；R6/R7 被阻断。后续 V9 R0 zero-provider 设计已完成，当前下一原子任务仅 V9 R1；
+不得重跑 V8。
+
+分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
+
+历史 authority：
+
+- `docs/acceptance/phase-6-9-7-tutor-organizer-v7-controlled-live-failure.md`
+- `.tmp/phase-6-9-7-tutor-organizer-v7-branch-live-81529c2c-79f5-4c21-9cee-e536a2fe78e3.json`
+- `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live.marker`
+- `.tmp/phase-6-9-7-tutor-organizer-v7-controlled-live-81529c2c-79f5-4c21-9cee-e536a2fe78e3.journal.jsonl`
+
+本文件本身不授权读取 credential、调用 Provider、重新执行 R4 Mock、执行 V7/V8/V9 Live/seal/recovery、
+启动产品 Docker/API/browser 或修改业务数据。
+
+## 1. 决策摘要
+
+V7 已把 V6 的 `provider_runtime / unknown` 盲区收敛到 Organizer 的
+`content_parsed -> provider_type_validation`：Provider response 已收到，non-thinking audit 与 JSON parse
+已通过，但解析值没有通过冻结的 V6 静态 Zod schema。V7 脱敏证据没有保存 raw output 或 Zod issues，
+因此不能诚实声称具体是哪一个字段，也不能把原因归咎于 credential、网络、HTTP、endpoint、SDK、模型
+或 Provider 内部行为。
+
+可以确认的工程问题不是“JSON 不可解析”，而是以下组合风险：
+
+1. Direct adapter 只向 Provider 请求 `response_format=json_object`，Provider 不执行本地 Zod schema；
+2. V6 Organizer 输出使用嵌套 discriminated union 与条件字段：`keep_local` 不允许 `subjectIndex`，
+   `reuse_existing` 不允许 `topicIndex`，`.strict()` 又拒绝任何额外字段；
+3. V6 的 compact descriptor 使用 `subjectIndex? / deckIndex? / topicIndex?` 表达条件字段，但没有提供
+   一个始终同形的 JSON 合同；模型常见的 `null`、同时输出两个 index、字符串数字或解释字段都会在
+   `provider_type_validation` 失败；
+4. V7 reviewed Mock responder 从实际 projection 直接构造完全合法的理想对象，能证明本地链路自洽，
+   不能代表 Provider generation distribution；原 fault matrix 只有单一 `{ unexpected: true }` schema
+   mismatch，未覆盖常见合法 JSON 形态漂移。
+
+V8 采用“固定形状输出 + 本地动态权威 + 脱敏字段级诊断 + Provider-like zero-network 负例”的组合修复，
+不放宽任何权限、安全、预算、快照、stale fence 或质量门。
+
+## 2. V8 固定形状模型合同
+
+V8 Organizer 模型只能返回：
+
+```json
+{
+  "shortlistFingerprint": "sha256:<64 lowercase hex>",
+  "decisions": [
+    {
+      "questionIndex": 0,
+      "subjectIndex": null,
+      "deckAction": "reuse_existing",
+      "targetIndex": 0
+    }
+  ]
+}
+```
+
+所有 decision 始终只有四个字段，不再使用嵌套条件对象：
+
+- `questionIndex`：投影问题 ordinal；
+- `subjectIndex`：结构化 subject 时必须为 `null`；需要模型选择 subject 时必须为暴露的整数 ordinal；
+- `deckAction`：只允许 `reuse_existing | create_topic`；
+- `targetIndex`：`reuse_existing` 时解释为 deck ordinal，`create_topic` 时解释为该题 topic ordinal。
+
+静态 schema 只验证固定 JSON 形状、安全整数、最大数组长度和 fingerprint 格式。随后本地动态 validator
+继续验证：
+
+- fingerprint 与 owner-scoped shortlist 完全一致；
+- decision 数量等于实际 projected questions，questionIndex 不重复且完整；
+- structured subject 必须 `subjectIndex=null`，非 structured subject 必须引用该题实际暴露的 ordinal；
+- deckAction 必须属于该题 eligible actions；
+- targetIndex 必须引用存在且同 resolved subject 的 deck/topic；
+- authority revalidation、snapshot/stale/ABA、locked name、confidence、本地 ID 与写入权限不变。
+
+V8 validator 成功后只转换成既有 V6 validated decision，再复用 V6 本地 merger；模型仍不能获得真实
+question/deck ID、userId、自由 subject/topic/deck 名、confidence、reason、Trace admission、route、tool
+或写 command。
+
+## 3. Prompt 单一规则源
+
+V8 prompt policy、Zod schema、dynamic validator、formatter 与测试 fixture 必须共享同一冻结合同：
+
+- 明确列出顶层与 decision 的 exact keys；
+- 明确所有 decision 必须始终包含 `subjectIndex`，结构化 subject 使用 JSON `null`；
+- 明确只使用 JSON number，禁止数字字符串；
+- 明确 `targetIndex` 的语义由 `deckAction` 决定；
+- 提供一个无真实数据的固定 JSON 示例；
+- 禁止 Markdown、prose、wrapper、snake_case、额外字段、自由标签、真实 ID、权限或写命令；
+- user prompt 仍只包含深冻结 bounded projection，不拼接 expected/oracle。
+
+Prompt SHA、fixed-shape contract SHA、V2 dataset SHA、V6 local authority SHA 与 source manifest 必须分别
+记录；不得通过改 expected、缩小分母或放宽 validator 获得分数。
+
+## 4. 脱敏字段级诊断
+
+V8 在新的独立 wire/report 中增加 `boundedSchemaDiagnostic`，只允许固定字段：
+
+```text
+version
+reason
+topLevelShape
+missingRequiredFieldCount
+unexpectedFieldCount
+invalidFieldTypeCount
+decisionCountBucket
+shapeFingerprint
+rawDataRetained=false
+```
+
+`reason` 固定为：
+
+- `top_level_shape`
+- `top_level_keys`
+- `fingerprint_type`
+- `fingerprint_format`
+- `decisions_type`
+- `decisions_count`
+- `decision_shape`
+- `decision_keys`
+- `question_index`
+- `subject_index`
+- `deck_action`
+- `target_index`
+- `dynamic_authority`
+- `unknown`
+
+`shapeFingerprint` 只散列规范化后的已知 key 类别、未知 key 数量和 primitive type，不散列或保存实际
+值、未知 key 原文、prompt、response、error、message、URL、header、credential、题目文本或真实 ID。
+任何 hostile getter/proxy、超限结构、诊断 hook 异常或字段缺失都 fail-closed 为 `unknown`，不得影响
+Provider failure 的安全收口。
+
+V1--V7 wire、report、validator、marker、journal、evidence 和 physical SHA 全部保持不可变。V8 使用新
+runner/runtime/report、prefix、approval env、confirmation、marker、journal、evidence、recovery claim 与
+validator；V8/V1--V7 必须双向拒绝 lineage 混用。V8 的 schema remediation 不改变 transport，因此继续
+复用 V7 已冻结的 8-stage wire protocol 与 capability；实现只能通过显式 alias 记录复用关系，不得伪造
+不存在的 V8 `@repo/ai` wire export。
+
+## 5. Zero-network robustness
+
+V8 必须在任何 Provider 资格前覆盖：
+
+1. 缺 fingerprint、错误大小写/长度、空 decisions、少一题、重复/越界 questionIndex；
+2. `null`、字符串数字、浮点、负数、超限整数；
+3. 旧 V6 nested shape、snake_case、wrapper `{data: ...}`、顶层/decision extra fields；
+4. Markdown fence、前后 prose、double-encoded JSON、BOM、trailing comma、single quote；
+5. subject/deck/topic reorder、candidate reorder、fingerprint mutation、同题跨路由；
+6. bilingual labels、Unicode escaped JSON、held-out action combinations；
+7. first/middle/last contract failure、sibling abort、timeout、usage unknown 与 fixed denominator；
+8. hostile accessor/proxy、超深/超宽对象与 recursive sensitive-key scan；
+9. responder 不得 import dataset expected/oracle，也不得直接调用 production validator 来生成答案；
+10. Mock 满分仍固定 `mock_quality_not_evidence`。
+
+## 6. 不变的质量、预算和运行门
+
+- dataset：72 cases、24 guard、48 runtime、24 pair、32 Organizer decisions；
+- guard：`24/24` verified zero-call；
+- runtime：`48/48` strict success，失败项不删除；
+- semantic/model-owned/P95 阈值与 V6/V7 相同；
+- Tutor `1/1200/300`，Organizer `1/3500/800`；总 Live cap `0.55 CNY`；
+- pair 串行、pair 内最多双 lane、single dispatch、no retry/resume/replay/backfill；
+- 首个 runtime contract failure 收口当前 pair并熔断后续 pair，固定 48 分母不缩小；
+- incomplete semantic/P95/token/CNY 全为 `null`；
+- tracked defaults 保持 mock、live=false、Tutor/Organizer gate=false、component credential empty。
+
+## 7. 原子路线
+
+1. **R0**：V7 zero-provider postmortem、固定形状合同、脱敏诊断与 V8 路线。（已完成）
+2. **R1**：实现 V8 fixed-shape Organizer contract/prompt/validator/candidate adapter 与脱敏 schema
+   diagnostic；focused TDD，zero-provider。（已完成）
+3. **R2**：独立 schema-negative/metamorphic/held-out/Provider-like robustness 与 no-leak/anti-overfit；
+   zero-provider。（已完成）
+4. **R3**：独立 V8 report/runner/CLI/approval/marker/journal/evidence/recovery/validator，V1--V7 双向
+   lineage；zero-provider，不创建正式 Mock/Live artifact。（已完成）
+5. **R4**：reviewed V8 Mock、fresh baseline、全量静态/PostgreSQL/Compose 与两路终审；Mock evidence
+   精确删除，Live artifact 必须仍为 0。（已完成，zero-provider）
+6. **R5**：唯一 run `7ff09c36-50f2-445a-b309-dc9500e5e13c` 已失败封存；`24/24` guard、
+   `4/4/4/4` wire、`3/48` strict，第二条 Organizer 为 `dynamic_contract / dynamic_authority`，正式聚合全
+   `null`。不得 retry/resume/replay/backfill。（失败封存）
+7. **R6**：只有 R5 全门通过才允许；R5 已失败，因此产品 Docker/API/可见浏览器不得开始。（被阻断）
+8. **R7**：R6 被阻断，因此不得 `--no-ff` 合并 main、执行 main 回放或推送 main。（被阻断）
+
+每个 R-task 单独提交并推送当前功能分支；不创建 worktree 或子分支。R0--R4 不读取根 `.env`/
+credential，不调用 Provider，不启动产品 Docker/API/browser，不修改业务数据。
+
+R3 实现 checkpoint 还固定以下边界：
+
+- report/source manifest 绑定 V8 runner/runtime/artifact identity、V6 dataset/semantic authority、V8
+  fixed-shape/prompt/diagnostic SHA 与复用的 V7 wire version；
+- Organizer 的 `fallback_schema_invalid + structured_output/provider_type_validation` 与
+  `fallback_schema_invalid + dynamic_contract` 必须携带 bounded diagnostic；guard、未启动、纯 transport/
+  abort/orphan failure 不伪造字段级原因；
+- journal 已有 `run_completed + breaker_opened` 时，recovery 按 guard/quality breaker 重建未调度项；只有
+  未完成运行才使用 orphan 终态，避免把预期熔断误写成 crash；
+- 该 checkpoint 的验收见
+  `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r3-runner-lineage-durability.md`。
+
+R4 reviewed Mock/full checkpoint 进一步确认：
+
+- 默认 V8 Mock CLI 使用 reviewed factory；Tutor 复用未变化的 V7/V6 candidate，Organizer 穿过 V8
+  fixed-shape candidate、dynamic authority、V6 merger 与第一方 direct adapter；
+- 只有 `fetch` delegate 为进程内 synthetic responder，provenance 固定为 `synthetic_test` /
+  `mock_synthetic`；responder 只读实际 bounded prompt，不读 expected/oracle、真实 ID 或写 command；
+- fresh baseline 为 `12/48`，reviewed Mock 为 `24/24` guard、`48/48` strict、semantic/model-owned
+  `1/1/1`、wire `48/48/48/48`，gate 仍是 `mock_quality_not_evidence`；
+- Provider-like matrix 覆盖 V6 nested shape、extra/missing/type/null drift 与 fingerprint/question/subject/
+  target authority drift，并保持 bounded no-raw diagnostic、single dispatch、breaker 与固定分母；
+- 全量静态、PostgreSQL `12/12`、Compose default-off、历史 validators 与 artifact=0 通过；Mock evidence
+  已精确删除，没有读取 credential、调用 Provider 或启动产品验收；
+- R4 验收见 `docs/acceptance/phase-6-9-7-tutor-organizer-v8-r4-static-mock.md`；其后唯一 R5 已失败
+  封存，见
+  `docs/acceptance/2026-07-29-phase-6-9-7-tutor-organizer-v8-controlled-live-failure.md`。
+
+## 8. 禁止事项
+
+- 不重跑、seal、recover、删除、覆盖、改写或拼接 V1--V7；
+- 不通过 curl、单 case、其它 CLI 或产品 API 探测 V7/Provider；
+- 不保存 raw prompt/output/error/body/header、credential、URL、题目正文或真实 ID；
+- 不把固定形状修复写成已证明具体 V7 字段错误；
+- 不放宽 owner、snapshot、stale、locked-name、Trace、budget、timeout、quality 或 write authority；
+- 不把 zero-network、Mock、单条 Tutor success 或 validator `ok=true` 写成模型/产品可用；
+- 不再次写入 V8 Live approval、执行 V8 Live/seal/recovery、删除或改写 marker/journal/evidence；
+- R6/R7 已被 V8 失败终态阻断，不启动产品验收或合并 main；
+- 不开始 Phase 6.9.8、Phase 6.10、Phase 8/9 或博客收尾。
+
+## 9. 回顾时可以问
+
+- “为什么 `json_object` 不等于本地 Zod schema enforcement？”
+- “为什么 fixed-shape contract 比 nested conditional union 更适合 Provider JSON generation？”
+- “为什么 V7 Mock 48/48 没有暴露真实 Provider 的 shape drift？”
+- “如何记录字段级失败原因而不保存原始模型输出？”
+- “为什么 V8 仍必须保持本地 subject/deck/topic authority 和三阶段 stale fence？”
+- “为什么 V8 必须使用新 lineage，而不能修完后补跑 V7？”

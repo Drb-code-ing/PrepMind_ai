@@ -281,6 +281,8 @@ const MODEL_AGENT_TASKS = new Set<ModelAgentTask>([
   'knowledge_verification',
   'knowledge_dedup',
   'knowledge_organizer',
+  'tutor_strategy',
+  'wrong_question_organization',
   'review_suggestion',
   'planner_suggestion',
   'memory_candidate_extraction',

@@ -102,6 +102,12 @@ describe('knowledge model projection', () => {
     ).toEqual({ ok: false, reasonCode: 'invalid_input' });
     expect(
       projectKnowledgeSnapshot({
+        documents: [safeDocument('owner-doc-1', { name: `数学笔记${String.fromCharCode(0xd800)}` })],
+        pairs: [],
+      }),
+    ).toEqual({ ok: false, reasonCode: 'invalid_input' });
+    expect(
+      projectKnowledgeSnapshot({
         documents: [safeDocument('owner-doc-1', { safety: 'unknown' })],
         pairs: [],
       }),
@@ -187,6 +193,18 @@ describe('knowledge model projection', () => {
           ],
         }),
       ),
+    ).toEqual({ ok: false, reasonCode: 'invalid_input' });
+    expect(
+      projectKnowledgeSnapshot({
+        documents: new Array(1_000_000),
+        pairs: [],
+      }),
+    ).toEqual({ ok: false, reasonCode: 'invalid_input' });
+    expect(
+      projectKnowledgeSnapshot({
+        documents: [safeDocument('owner-doc-1', { summaries: [] })],
+        pairs: [],
+      }),
     ).toEqual({ ok: false, reasonCode: 'invalid_input' });
   });
 });

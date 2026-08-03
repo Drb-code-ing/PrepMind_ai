@@ -8,6 +8,7 @@ import {
 } from 'ai';
 
 import {
+  MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES,
   MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
 } from './model-agent-contract.ts';
 import type {
@@ -66,10 +67,19 @@ export function createTrustedModelAgentStructuredOutputFailureSignal(
   );
 }
 
-function createSignal(
-  classification: ProviderFailureClassification,
+/**
+ * Private handoff for first-party direct adapters that have already reduced
+ * provider-controlled data to the shared fixed category/stage enums. The
+ * classification is revalidated here and no source error or response is kept.
+ */
+export function createTrustedFirstPartyModelAgentProviderFailureSignal(
   scope: AbortSignal,
+  classification: unknown,
 ): Error {
+  return createSignal(readFirstPartyClassification(classification), scope);
+}
+
+function createSignal(classification: ProviderFailureClassification, scope: AbortSignal): Error {
   const signal = new Error('MODEL_AGENT_PROVIDER_REQUEST_FAILED');
   signal.name = 'ModelAgentProviderFailure';
   providerFailureCategories.set(signal, {
@@ -100,9 +110,7 @@ export function takeModelAgentProviderFailure(
   providerFailureCategories.delete(value);
   return {
     category: entry.category,
-    ...(entry.structuredOutputStage
-      ? { structuredOutputStage: entry.structuredOutputStage }
-      : {}),
+    ...(entry.structuredOutputStage ? { structuredOutputStage: entry.structuredOutputStage } : {}),
   };
 }
 
@@ -122,10 +130,7 @@ function classifyProviderFailure(error: unknown): ProviderFailureClassification 
     };
   }
 
-  if (
-    safeGuard(error, EmptyResponseBodyError) ||
-    safeGuard(error, InvalidResponseDataError)
-  ) {
+  if (safeGuard(error, EmptyResponseBodyError) || safeGuard(error, InvalidResponseDataError)) {
     return { category: 'invalid_response' };
   }
 
@@ -141,9 +146,7 @@ function classifyProviderFailure(error: unknown): ProviderFailureClassification 
  * examines only official error markers and never forwards an error, message,
  * parsed value, response, or raw model text past that boundary.
  */
-function classifyStructuredOutputFailure(
-  error: unknown,
-): ModelAgentStructuredOutputStage | null {
+function classifyStructuredOutputFailure(error: unknown): ModelAgentStructuredOutputStage | null {
   if (safeGuard(error, JSONParseError)) return 'provider_json_parse';
   if (safeGuard(error, TypeValidationError)) {
     return 'provider_type_validation';
@@ -169,14 +172,58 @@ function readStructuredOutputCause(error: NoObjectGeneratedError): unknown {
   }
 }
 
-function isStructuredOutputStage(
-  value: unknown,
-): value is ModelAgentStructuredOutputStage {
+function isStructuredOutputStage(value: unknown): value is ModelAgentStructuredOutputStage {
   return (
     typeof value === 'string' &&
-    MODEL_AGENT_STRUCTURED_OUTPUT_STAGES.includes(
-      value as ModelAgentStructuredOutputStage,
-    )
+    MODEL_AGENT_STRUCTURED_OUTPUT_STAGES.includes(value as ModelAgentStructuredOutputStage)
+  );
+}
+
+function readFirstPartyClassification(input: unknown): ProviderFailureClassification {
+  try {
+    const categoryDescriptor = readOwnDataDescriptor(input, 'category');
+    if (!categoryDescriptor) return { category: 'unknown' };
+    const category = categoryDescriptor.value as unknown;
+    if (!isProviderFailureCategory(category)) return { category: 'unknown' };
+    const keys = Reflect.ownKeys(input as object);
+    if (category === 'structured_output') {
+      const stageDescriptor = readOwnDataDescriptor(input, 'structuredOutputStage');
+      if (
+        keys.length !== 2 ||
+        !keys.includes('structuredOutputStage') ||
+        !stageDescriptor ||
+        !isStructuredOutputStage(stageDescriptor.value)
+      ) {
+        return { category: 'unknown' };
+      }
+      return {
+        category,
+        structuredOutputStage: stageDescriptor.value,
+      };
+    }
+    if (keys.length !== 1) return { category: 'unknown' };
+    return { category };
+  } catch {
+    return { category: 'unknown' };
+  }
+}
+
+function readOwnDataDescriptor(input: unknown, key: string): PropertyDescriptor | null {
+  if (
+    (typeof input !== 'object' && typeof input !== 'function') ||
+    input === null ||
+    Array.isArray(input)
+  ) {
+    return null;
+  }
+  const descriptor = Reflect.getOwnPropertyDescriptor(input, key);
+  return descriptor && 'value' in descriptor ? descriptor : null;
+}
+
+function isProviderFailureCategory(value: unknown): value is ModelAgentProviderFailureCategory {
+  return (
+    typeof value === 'string' &&
+    MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES.includes(value as ModelAgentProviderFailureCategory)
   );
 }
 

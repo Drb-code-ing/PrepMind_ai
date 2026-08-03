@@ -4,6 +4,12 @@ import {
   runRouterModelCandidate,
   type RouterModelCandidateEnvelope,
 } from '@repo/agent/model-candidates';
+import { isPhase697Sr6ProductReplayTrace } from '@repo/agent/model-candidates';
+import {
+  runTutorSchemaRecoveryModelCandidate,
+  type TutorSchemaRecoveryModelCandidateEnvelope,
+} from '@repo/agent/tutor-schema-recovery';
+import type { TutorV6ModelCandidateReasonCode } from '@repo/agent/tutor-v6';
 import {
   buildGenericTutorPrompt,
   buildTutorStrategy,
@@ -20,6 +26,7 @@ import {
 import type { AgentRoute, AgentState, RouterResult } from '@repo/types/api/agent';
 
 import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
+import { estimateTutorRequestCostCny } from './tutor-model-pricing.ts';
 
 export type ChatAgentDecision = {
   route: AgentRoute;
@@ -46,7 +53,9 @@ export type BuildChatAgentDecisionInput = {
 export type ChatAgentExecution = {
   decision: ChatAgentDecision;
   routerObservation: RouterModelCandidateEnvelope['observation'];
+  tutorObservation: TutorSchemaRecoveryModelCandidateEnvelope['observation'];
   budget: ModelAgentRunBudget;
+  tutorBudget: ModelAgentRunBudget;
 };
 
 export type BuildChatAgentExecutionInput = {
@@ -60,11 +69,25 @@ export type BuildChatAgentExecutionInput = {
     runtime: ModelAgentRuntime;
     budget: ModelAgentRunBudget;
   };
+  tutorModel?: {
+    enabled: boolean;
+    authority: TutorRuntimeAuthority;
+    runtime: ModelAgentRuntime;
+    budget: ModelAgentRunBudget;
+  };
+  tutorModelFactory?: () =>
+    | {
+        enabled: boolean;
+        authority: TutorRuntimeAuthority;
+        runtime: ModelAgentRuntime;
+        budget: ModelAgentRunBudget;
+      }
+    | undefined;
 };
 
-export function buildChatAgentDecision(
-  input: BuildChatAgentDecisionInput,
-): ChatAgentDecision {
+export type TutorRuntimeAuthority = 'production_live' | 'sr5_sealed_replay';
+
+export function buildChatAgentDecision(input: BuildChatAgentDecisionInput): ChatAgentDecision {
   try {
     const latestUserText = getLatestUserText(input.messages);
     const state = createChatAgentState(input, latestUserText);
@@ -125,13 +148,27 @@ export async function buildChatAgentExecution(
         ? withCanonicalRoutePermissions(envelope.result)
         : envelope.result;
 
+    const deterministicDecision = toDecision(route, false, {
+      latestUserText,
+      activeStudyContext: input.activeContext?.questionText,
+    });
+    const tutorExecution = await resolveTutorCandidateSafely({
+      decision: deterministicDecision,
+      finalRoute: route,
+      latestUserText,
+      activeStudyContext: input.activeContext?.questionText,
+      runId: input.runId,
+      signal: input.signal,
+      tutorModel: input.tutorModel,
+      tutorModelFactory: input.tutorModelFactory,
+    });
+
     return {
-      decision: toDecision(route, false, {
-        latestUserText,
-        activeStudyContext: input.activeContext?.questionText,
-      }),
+      decision: tutorExecution.decision,
       routerObservation: envelope.observation,
+      tutorObservation: tutorExecution.observation,
       budget: safeRunBudgetSnapshot(envelope.observation.budget),
+      tutorBudget: safeRunBudgetSnapshot(tutorExecution.observation.budget),
     };
   } catch {
     return localChatAgentExecution(
@@ -149,9 +186,7 @@ export async function buildChatAgentExecution(
   }
 }
 
-function createIneligibleRouterCapabilities(
-  model: BuildChatAgentExecutionInput['model'],
-): {
+function createIneligibleRouterCapabilities(model: BuildChatAgentExecutionInput['model']): {
   budget: ModelAgentRunBudget;
   runtime: ModelAgentRuntime;
 } {
@@ -182,10 +217,9 @@ const MODEL_AGENT_BUDGET_FIELDS = [
   'usedOutputTokens',
 ] as const satisfies readonly (keyof ModelAgentRunBudget)[];
 
-function snapshotOwnDataBudget(
-  model: BuildChatAgentExecutionInput['model'],
-): ModelAgentRunBudget | null {
+function snapshotOwnDataBudget(model: unknown): ModelAgentRunBudget | null {
   try {
+    if (typeof model !== 'object' || model === null) return null;
     const modelBudget = Object.getOwnPropertyDescriptor(model, 'budget');
     if (!modelBudget || !('value' in modelBudget)) return null;
 
@@ -200,6 +234,161 @@ function snapshotOwnDataBudget(
   } catch {
     return null;
   }
+}
+
+async function resolveTutorCandidateSafely(input: {
+  decision: ChatAgentDecision;
+  finalRoute: RouterResult;
+  latestUserText: string;
+  activeStudyContext?: string;
+  runId: string;
+  signal?: AbortSignal;
+  tutorModel?: BuildChatAgentExecutionInput['tutorModel'];
+  tutorModelFactory?: BuildChatAgentExecutionInput['tutorModelFactory'];
+}): Promise<{
+  decision: ChatAgentDecision;
+  observation: TutorSchemaRecoveryModelCandidateEnvelope['observation'];
+}> {
+  let activeBudget = createModelAgentBudget({
+    maxCalls: 1,
+    maxInputTokens: 1_200,
+    maxOutputTokens: 300,
+  });
+  if (input.finalRoute.name !== 'tutor') {
+    return {
+      decision: input.decision,
+      observation: localTutorObservation(activeBudget, 'not_eligible', 'route_not_tutor'),
+    };
+  }
+  if (!input.decision.tutorStrategy) {
+    return {
+      decision: markDecisionDegraded(input.decision),
+      observation: localTutorObservation(activeBudget, 'fallback_invalid_input', 'invalid_input'),
+    };
+  }
+
+  try {
+    const tutorModel = input.tutorModel ?? input.tutorModelFactory?.();
+    activeBudget = snapshotOwnDataBudget(tutorModel) ?? activeBudget;
+    if (tutorModel?.enabled !== true) {
+      return {
+        decision: input.decision,
+        observation: localTutorObservation(activeBudget, 'not_eligible', 'LIVE_CALLS_DISABLED'),
+      };
+    }
+    const envelope = await runTutorSchemaRecoveryModelCandidate({
+      runId: input.runId,
+      finalRoute: input.finalRoute.name,
+      latestUserText: input.latestUserText,
+      ...(input.activeStudyContext === undefined
+        ? {}
+        : { activeStudyContext: input.activeStudyContext }),
+      deterministic: input.decision.tutorStrategy,
+      safety: {
+        latestUserText: 'safe_for_model',
+        ...(input.activeStudyContext === undefined ? {} : { activeStudyContext: 'safe_for_model' }),
+      },
+      runtime: tutorModel.runtime,
+      budget: activeBudget,
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+    });
+    if (envelope.observation.disposition === 'candidate_applied') {
+      const costCny = estimateTutorRequestCostCny(envelope.observation.usage);
+      const replayAccepted =
+        tutorModel.authority === 'sr5_sealed_replay' &&
+        'trace' in envelope.observation &&
+        isPhase697Sr6ProductReplayTrace(envelope.observation.trace, 'tutor_strategy');
+      if (!replayAccepted && costCny === null) {
+        return {
+          decision: markDecisionDegraded(input.decision),
+          observation: rejectUnpricedTutorObservation(envelope.observation),
+        };
+      }
+      return {
+        decision: withTutorStrategy(input.decision, envelope.result),
+        observation: envelope.observation,
+      };
+    }
+    return {
+      decision: envelope.observation.attempted
+        ? markDecisionDegraded(input.decision)
+        : input.decision,
+      observation: envelope.observation,
+    };
+  } catch {
+    return {
+      decision: markDecisionDegraded(input.decision),
+      observation: localTutorObservation(
+        activeBudget,
+        'fallback_runtime_error',
+        'EXECUTOR_UNAVAILABLE',
+      ),
+    };
+  }
+}
+
+function withTutorStrategy(
+  decision: ChatAgentDecision,
+  tutorStrategy: TutorStrategy,
+): ChatAgentDecision {
+  return {
+    ...decision,
+    tutorStrategy,
+    promptAddition: tutorStrategy.promptAddition,
+    debugHeaders: {
+      ...decision.debugHeaders,
+      'x-prepmind-tutor-intent': tutorStrategy.intent,
+      'x-prepmind-tutor-depth': tutorStrategy.depth,
+    },
+  };
+}
+
+function markDecisionDegraded(decision: ChatAgentDecision): ChatAgentDecision {
+  return {
+    ...decision,
+    degraded: true,
+    debugHeaders: {
+      ...decision.debugHeaders,
+      'x-prepmind-agent-degraded': 'true',
+    },
+  };
+}
+
+function localTutorObservation(
+  budget: ModelAgentRunBudget,
+  disposition: TutorSchemaRecoveryModelCandidateEnvelope['observation']['disposition'],
+  reasonCode?: TutorV6ModelCandidateReasonCode,
+): TutorSchemaRecoveryModelCandidateEnvelope['observation'] {
+  return {
+    attempted: false,
+    disposition,
+    budget: safeRunBudgetSnapshot(budget),
+    usage: { inputTokens: 0, outputTokens: 0 },
+    reasonCodes: reasonCode ? [disposition, reasonCode] : [disposition],
+  } as TutorSchemaRecoveryModelCandidateEnvelope['observation'];
+}
+
+function rejectUnpricedTutorObservation(
+  observation: TutorSchemaRecoveryModelCandidateEnvelope['observation'],
+): TutorSchemaRecoveryModelCandidateEnvelope['observation'] {
+  if (observation.attempted !== true) {
+    return localTutorObservation(observation.budget, 'fallback_runtime_error', 'INVALID_REQUEST');
+  }
+  const common = {
+    attempted: true as const,
+    disposition: 'fallback_runtime_error' as const,
+    budget: safeRunBudgetSnapshot(observation.budget),
+    usage: { ...observation.usage },
+    reasonCodes: ['fallback_runtime_error', 'INVALID_REQUEST'] as const,
+  };
+  if ('trace' in observation && observation.trace !== undefined) {
+    return { ...common, trace: observation.trace };
+  }
+  return {
+    ...common,
+    traceUnavailable: true,
+    usageUnavailable: true,
+  };
 }
 
 export function combineChatAdditionalPrompts(agentPrompt: string, knowledgePrompt: string) {
@@ -300,9 +489,7 @@ function withCanonicalRoutePermissions(route: RouterResult): RouterResult {
   return { ...route, requiresRag: false, requiresHumanApproval: false };
 }
 
-function localChatAgentExecution(
-  decision: ChatAgentDecision,
-): ChatAgentExecution {
+function localChatAgentExecution(decision: ChatAgentDecision): ChatAgentExecution {
   const budget = safeRunBudgetSnapshot(undefined);
   const routerObservation: RouterModelCandidateEnvelope['observation'] = {
     attempted: false,
@@ -311,10 +498,22 @@ function localChatAgentExecution(
     usage: { inputTokens: 0, outputTokens: 0 },
     reasonCodes: ['fallback_invalid_input'],
   };
+  const tutorBudget = createModelAgentBudget({
+    maxCalls: 1,
+    maxInputTokens: 1_200,
+    maxOutputTokens: 300,
+  });
+  const tutorObservation = localTutorObservation(
+    tutorBudget,
+    'fallback_invalid_input',
+    'invalid_input',
+  );
   return {
     decision,
     routerObservation,
+    tutorObservation,
     budget,
+    tutorBudget,
   };
 }
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { prepareCandidateText } from './model-candidate-policy.ts';
+import { clonePlainModelData } from './model-projection-safety.ts';
 
 export const KNOWLEDGE_MODEL_PROJECTION_VERSION = 'knowledge-model-projection-v1';
 
@@ -24,7 +25,7 @@ const SOURCE_DOCUMENT_SCHEMA = z
     type: z.enum(['PDF', 'DOCX', 'MD', 'TXT']),
     relativeTime: z.enum(['older', 'same_time', 'newer']),
     safety: SAFETY_STATE_SCHEMA,
-    summaries: z.array(SOURCE_SUMMARY_SCHEMA).max(MAX_SOURCE_SUMMARIES),
+    summaries: z.array(SOURCE_SUMMARY_SCHEMA).min(1).max(MAX_SOURCE_SUMMARIES),
   })
   .strict();
 const SOURCE_PAIR_SCHEMA = z
@@ -108,7 +109,7 @@ export function projectKnowledgeSnapshotForCandidate(
   input: unknown,
 ): InternalKnowledgeProjectionResult {
   try {
-    const cloned = clonePlainData(input);
+    const cloned = clonePlainModelData(input);
     if (!cloned.ok) return { ok: false, reasonCode: 'invalid_input' };
 
     const parsed = KNOWLEDGE_MODEL_PROJECTION_SOURCE_SCHEMA.safeParse(cloned.value);
@@ -286,55 +287,6 @@ function buildFrozenProjection(
   });
 }
 
-function clonePlainData(
-  input: unknown,
-  depth = 0,
-): { ok: true; value: unknown } | { ok: false } {
-  if (depth > 8) return { ok: false };
-  if (
-    input === null ||
-    typeof input === 'string' ||
-    typeof input === 'number' ||
-    typeof input === 'boolean'
-  ) {
-    return { ok: true, value: input };
-  }
-  if (typeof input !== 'object') return { ok: false };
-
-  const keys = Reflect.ownKeys(input);
-  if (Array.isArray(input)) {
-    const allowed = new Set(['length', ...Array.from({ length: input.length }, (_, i) => String(i))]);
-    if (keys.some((key) => typeof key !== 'string' || !allowed.has(key))) return { ok: false };
-    const output: unknown[] = [];
-    for (let index = 0; index < input.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(input, String(index));
-      if (descriptor === undefined || !('value' in descriptor)) return { ok: false };
-      const cloned = clonePlainData(descriptor.value, depth + 1);
-      if (!cloned.ok) return cloned;
-      output.push(cloned.value);
-    }
-    return { ok: true, value: output };
-  }
-
-  const prototype = Reflect.getPrototypeOf(input);
-  if (prototype !== Object.prototype && prototype !== null) return { ok: false };
-  const output: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const key of keys) {
-    if (typeof key !== 'string') return { ok: false };
-    const descriptor = Object.getOwnPropertyDescriptor(input, key);
-    if (descriptor === undefined || !('value' in descriptor)) return { ok: false };
-    const cloned = clonePlainData(descriptor.value, depth + 1);
-    if (!cloned.ok) return cloned;
-    Object.defineProperty(output, key, {
-      value: cloned.value,
-      enumerable: true,
-      configurable: true,
-      writable: true,
-    });
-  }
-  return { ok: true, value: output };
-}
-
 function containsForbiddenControlCharacter(value: string): boolean {
   return /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]|\p{Cf}/u.test(value);
 }
@@ -343,6 +295,7 @@ function hasWellFormedUtf16(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
     const codeUnit = value.charCodeAt(index);
     if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      if (index + 1 >= value.length) return false;
       const following = value.charCodeAt(index + 1);
       if (following < 0xdc00 || following > 0xdfff) return false;
       index += 1;

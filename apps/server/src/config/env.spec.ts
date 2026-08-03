@@ -48,6 +48,9 @@ describe('parseEnv', () => {
       AI_ENABLE_LIVE_CALLS: false,
       AI_MODEL: 'deepseek-v4-flash',
       AI_BASE_URL: 'https://api.deepseek.com/v1',
+      ROUTER_MODEL_ENABLED: false,
+      KNOWLEDGE_VERIFIER_MODEL_ENABLED: false,
+      TUTOR_AGENT_MODEL_ENABLED: false,
       CONVERSATION_SUMMARY_MAX_CALLS: 1,
       CONVERSATION_SUMMARY_MAX_INPUT_TOKENS: 1600,
       CONVERSATION_SUMMARY_MAX_OUTPUT_TOKENS: 400,
@@ -58,12 +61,19 @@ describe('parseEnv', () => {
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT: '',
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_CAPABILITY_SHA256: '',
       REVIEW_PLANNER_PRODUCT_ACCEPTANCE_MAX_REQUESTS: 0,
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: false,
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: '',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: '',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: '',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: 0,
       REVIEW_AGENT_MODEL_TIMEOUT_MS: 4500,
       PLANNER_AGENT_MODEL_TIMEOUT_MS: 4500,
       KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: false,
       KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: false,
       KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: 4500,
       KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 4500,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
     });
   });
 
@@ -109,6 +119,173 @@ describe('parseEnv', () => {
         KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: '   ',
       }).KNOWLEDGE_AGENT_DEEPSEEK_API_KEY,
     ).toBeUndefined();
+  });
+
+  it('validates the dedicated server-only WrongQuestionOrganizer gate, timeout, and credential', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'false',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: '5000',
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+          '  synthetic-organizer-key  ',
+      }),
+    ).toMatchObject({
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
+      WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+        'synthetic-organizer-key',
+    });
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: '   ',
+      }).WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY,
+    ).toBeUndefined();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 999,
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 15001,
+      }),
+    ).toThrow();
+  });
+
+  it('requires the dedicated Organizer credential when its live gate is requested', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+          'synthetic-organizer-key',
+      }),
+    ).toMatchObject({
+      WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: true,
+      WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
+        'synthetic-organizer-key',
+    });
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        SERVER_ROLE: 'api',
+        AI_PROVIDER_MODE: 'live',
+        AI_ENABLE_LIVE_CALLS: 'true',
+        AI_MODEL: 'deepseek-v4-pro',
+        AI_BASE_URL: 'https://api.deepseek.com/v1',
+        DEEPSEEK_API_KEY: 'generic-key-cannot-serve-organizer',
+        WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts only the exact server-side SR6 sealed replay zero-Provider boundary', () => {
+    const replay = {
+      ...requiredEnv,
+      SERVER_ROLE: 'api',
+      AI_PROVIDER_MODE: 'mock',
+      AI_ENABLE_LIVE_CALLS: 'false',
+      RAG_EMBEDDING_PROVIDER: 'fake',
+      RAG_EMBEDDING_MODEL: 'sr6-zero-provider',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: 'true',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'organizer',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'success',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256:
+        '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '1',
+    };
+    expect(parseEnv(replay)).toMatchObject({
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: true,
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'organizer',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'success',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: 1,
+      AI_PROVIDER_MODE: 'mock',
+      AI_ENABLE_LIVE_CALLS: false,
+    });
+    expect(
+      parseEnv({
+        ...replay,
+        NODE_ENV: 'production',
+      }),
+    ).toMatchObject({
+      NODE_ENV: 'production',
+      RAG_EMBEDDING_PROVIDER: 'fake',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: true,
+    });
+    expect(
+      parseEnv({
+        ...replay,
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'both',
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'forced_failure',
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '2',
+      }),
+    ).toMatchObject({
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'both',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'forced_failure',
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: 2,
+    });
+
+    for (const override of [
+      { SERVER_ROLE: 'worker' },
+      { SERVER_ROLE: 'both' },
+      { AI_PROVIDER_MODE: 'live' },
+      { AI_ENABLE_LIVE_CALLS: 'true' },
+      { RAG_EMBEDDING_PROVIDER: 'openai' },
+      { ROUTER_MODEL_ENABLED: 'true' },
+      { KNOWLEDGE_VERIFIER_MODEL_ENABLED: 'true' },
+      { TUTOR_AGENT_MODEL_ENABLED: 'true' },
+      { PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: '' },
+      { PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: '' },
+      {
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: '0'.repeat(64),
+      },
+      { PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '0' },
+      { PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '2' },
+      { REVIEW_AGENT_MODEL_ENABLED: 'true' },
+      { PLANNER_AGENT_MODEL_ENABLED: 'true' },
+      { KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: 'true' },
+      { KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: 'true' },
+      { WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'true' },
+      { DEEPSEEK_API_KEY: 'must-not-coexist' },
+      { TUTOR_AGENT_DEEPSEEK_API_KEY: 'must-not-coexist' },
+      { KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: 'must-not-coexist' },
+      {
+        WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'must-not-coexist',
+      },
+      { OPENAI_API_KEY: 'must-not-coexist' },
+      { QWEN_API_KEY: 'must-not-coexist' },
+      { Qwen_API_KEY: 'must-not-coexist' },
+      { DASHSCOPE_API_KEY: 'must-not-coexist' },
+    ]) {
+      expect(() => parseEnv({ ...replay, ...override })).toThrow();
+    }
+  });
+
+  it('keeps disabled SR6 replay inert while accepting a well-formed stale authority value', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: '0'.repeat(64),
+      }),
+    ).toMatchObject({
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: false,
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: '0'.repeat(64),
+    });
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: 'A'.repeat(64),
+      }),
+    ).toThrow();
   });
 
   it('rejects out-of-range Review and Planner model timeouts while keeping gates default-off', () => {

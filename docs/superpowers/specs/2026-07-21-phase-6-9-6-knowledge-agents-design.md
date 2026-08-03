@@ -1,7 +1,7 @@
 # Phase 6.9.6 Knowledge Agents Semantic Path Design
 
 日期：2026-07-21
-状态：设计已通过书面审阅；实施计划已完成，尚未开始代码实现
+状态：历史设计已完成实施；当前权威运行结果见 `docs/acceptance/2026-07-21-phase-6-9-6-knowledge-agents.md`
 上游权威：`docs/superpowers/specs/2026-07-15-phase-6-9-agent-architecture-completion-design.md`
 
 ## 1. 目标与价值

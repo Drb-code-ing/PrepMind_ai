@@ -2,9 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL,
+  createPhase697Sr6ProductReplayRuntime,
+} from '@repo/agent/model-candidates';
+import { TUTOR_SCHEMA_RECOVERY_PROJECTED_DECISION_SCHEMA } from '@repo/agent/tutor-schema-recovery';
+import { createModelAgentBudget } from '@repo/ai';
+
+import {
   aggregateChatModelAgentObservations,
   buildChatModelAgentObservationHeaders,
   projectChatModelAgentObservation,
+  projectTutorModelAgentObservation,
 } from './chat-model-agent-observation.ts';
 
 const CANARY = 'CANARY_prompt_query_chunk_sk-secret_https_raw-error';
@@ -192,8 +200,7 @@ test('never throws for null, hostile getters, or hostile proxies', () => {
     });
     assert.deepEqual(projected, {
       attempted: false,
-      disposition:
-        value === getter ? 'candidate_applied' : 'fallback_invalid_input',
+      disposition: value === getter ? 'candidate_applied' : 'fallback_invalid_input',
       durationMs: 0,
       inputTokens: 0,
       outputTokens: 0,
@@ -294,18 +301,120 @@ test('headers project both observations without leaking hostile fields', () => {
   });
 
   assert.equal(headers['x-prepmind-router-model-attempted'], 'false');
-  assert.equal(
-    headers['x-prepmind-router-model-disposition'],
-    'fallback_invalid_input',
-  );
+  assert.equal(headers['x-prepmind-router-model-disposition'], 'fallback_invalid_input');
   assert.equal(headers['x-prepmind-verifier-model-attempted'], 'true');
-  assert.equal(
-    headers['x-prepmind-verifier-model-disposition'],
-    'fallback_runtime_error',
-  );
+  assert.equal(headers['x-prepmind-verifier-model-disposition'], 'fallback_runtime_error');
   assert.equal(headers['x-prepmind-verifier-model-error-code'], 'UNKNOWN');
   assert.equal(headers['x-prepmind-verifier-model-provider-failure'], 'unknown');
   assert.equal(headers['x-prepmind-model-agent-calls'], '1');
   assert.equal(headers['x-prepmind-model-agent-total-tokens'], '13');
   assert.equal(JSON.stringify(headers).includes(CANARY), false);
+});
+
+test('projects Tutor reason and known CNY cost without exposing raw candidate fields', () => {
+  const projected = projectTutorModelAgentObservation({
+    attempted: true,
+    disposition: 'candidate_applied',
+    reasonCodes: ['candidate_applied', 'contextual_reference'],
+    usage: { inputTokens: 240, outputTokens: 24 },
+    trace: { durationMs: 17, rawProviderOutput: CANARY },
+    latestUserText: CANARY,
+    prompt: CANARY,
+  });
+
+  assert.deepEqual(projected, {
+    attempted: true,
+    disposition: 'candidate_applied',
+    durationMs: 17,
+    inputTokens: 240,
+    outputTokens: 24,
+    reasonCode: 'contextual_reference',
+    pricingKnown: true,
+    costCny: 0.000864,
+    currency: 'CNY',
+  });
+  assert.equal(JSON.stringify(projected).includes(CANARY), false);
+});
+
+test('retains attested SR6 Tutor replay usage without presenting mock tokens as billable CNY', async () => {
+  const replay = await createPhase697Sr6ProductReplayRuntime({
+    component: 'tutor',
+    behavior: 'success',
+    maxRequests: 1,
+  }).invokeStructured({
+    runId: 'sr6-tutor-observation',
+    task: 'tutor_strategy',
+    schema: TUTOR_SCHEMA_RECOVERY_PROJECTED_DECISION_SCHEMA,
+    systemPrompt: 'Bounded Tutor replay observation.',
+    userPrompt: JSON.stringify({
+      version: 'tutor-model-projection-v6',
+      latestText: '请检查这一步。',
+      activeContext: { available: false },
+      authorityBinding: {
+        localSignalAuthoritySha256: 'a'.repeat(64),
+        localStrategyAuthoritySha256: 'b'.repeat(64),
+      },
+      eligibleIntents: [{ intentIndex: 0, intent: 'step_check' }],
+    }),
+    estimatedInputTokens: 643,
+    maxOutputTokens: 300,
+    budget: createModelAgentBudget({
+      maxCalls: 1,
+      maxInputTokens: 1_200,
+      maxOutputTokens: 300,
+    }),
+  });
+  assert.equal(replay.ok, true);
+  if (!replay.ok) throw new Error('expected attested SR6 Tutor replay');
+  const projected = projectTutorModelAgentObservation({
+    attempted: true,
+    disposition: 'candidate_applied',
+    reasonCodes: ['candidate_applied', 'local_intent_and_preferred_depth_applied'],
+    usage: replay.usage,
+    trace: replay.trace,
+  });
+
+  assert.deepEqual(projected, {
+    attempted: true,
+    disposition: 'candidate_applied',
+    durationMs: replay.trace.durationMs,
+    inputTokens: 643,
+    outputTokens: replay.usage.outputTokens,
+    reasonCode: 'candidate_applied',
+    pricingKnown: false,
+  });
+  assert.equal(replay.trace.model, PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL);
+});
+
+test('adds bounded Tutor headers and includes Tutor usage only in the aggregate', () => {
+  const headers = buildChatModelAgentObservationHeaders({
+    router: {
+      attempted: false,
+      disposition: 'not_eligible',
+      usage: { inputTokens: 0, outputTokens: 0 },
+    },
+    tutor: {
+      attempted: true,
+      disposition: 'candidate_applied',
+      reasonCodes: ['candidate_applied', CANARY],
+      usage: { inputTokens: 100, outputTokens: 20 },
+      trace: { durationMs: 9, rawError: CANARY },
+    },
+  });
+
+  assert.equal(headers['x-prepmind-tutor-model-attempted'], 'true');
+  assert.equal(headers['x-prepmind-tutor-model-disposition'], 'candidate_applied');
+  assert.equal(headers['x-prepmind-tutor-model-reason-code'], 'candidate_applied');
+  assert.equal(headers['x-prepmind-tutor-model-pricing-known'], 'true');
+  assert.equal(headers['x-prepmind-tutor-model-cost-cny'], '0.00042');
+  assert.equal(headers['x-prepmind-tutor-model-currency'], 'CNY');
+  assert.equal(headers['x-prepmind-model-agent-calls'], '1');
+  assert.equal(headers['x-prepmind-model-agent-input-tokens'], '100');
+  assert.equal(headers['x-prepmind-model-agent-output-tokens'], '20');
+  assert.equal(headers['x-prepmind-model-agent-total-tokens'], '120');
+  assert.equal(JSON.stringify(headers).includes(CANARY), false);
+  for (const [name, value] of Object.entries(headers)) {
+    assert.match(name, /^[a-z0-9-]{1,64}$/);
+    assert.match(value, /^[\x20-\x7e]{1,32}$/);
+  }
 });

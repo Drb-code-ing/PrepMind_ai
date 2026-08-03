@@ -19,10 +19,76 @@ export {
   type ReviewModelCandidateInput,
 } from './review-planner-model-candidate.ts';
 export {
+  TUTOR_MODEL_DECISION_SCHEMA,
+  TUTOR_MODEL_INTENT_POLICY,
+  TUTOR_MODEL_PROMPT_VERSION,
+  formatTutorModelIntentPolicyForPrompt,
+  isTutorModelDepthCompatible,
+  validateTutorModelDecision,
+  type TutorModelDecision,
+  type TutorModelDepth,
+  type TutorModelEvidenceCode,
+  type TutorModelIntent,
+  type TutorModelIntentPolicy,
+} from './tutor-model-contract.ts';
+export {
+  TUTOR_MODEL_PROJECTION_VERSION,
+  projectTutorModelInput,
+  type TutorModelProjection,
+  type TutorModelProjectionReasonCode,
+  type TutorModelProjectionResult,
+} from './tutor-model-projection.ts';
+export {
+  mergeTutorModelDecision,
+  runTutorModelCandidate,
+  type TutorModelCandidateEnvelope,
+  type TutorModelCandidateInput,
+  type TutorModelCandidateReasonCode,
+} from './tutor-model-candidate.ts';
+export {
+  mergeWrongQuestionOrganizerModelDecision,
+  runWrongQuestionOrganizerModelCandidate,
+  type WrongQuestionOrganizerModelCandidateEnvelope,
+  type WrongQuestionOrganizerModelCandidateItem,
+  type WrongQuestionOrganizerModelCandidateInput,
+  type WrongQuestionOrganizerModelCandidateReasonCode,
+} from './wrong-question-organizer-model-candidate.ts';
+export {
+  WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY,
+  WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
+  WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA,
+  formatWrongQuestionOrganizerAssociationPolicyForPrompt,
+  validateWrongQuestionOrganizerModelDecision,
+  type WrongQuestionOrganizerAssociationPolicy,
+  type WrongQuestionOrganizerDeckAction,
+  type WrongQuestionOrganizerDecisionContext,
+  type WrongQuestionOrganizerDecisionReasonCode,
+  type WrongQuestionOrganizerDecisionValidationResult,
+  type WrongQuestionOrganizerEvidenceCode,
+  type WrongQuestionOrganizerEvidenceRequirement,
+  type WrongQuestionOrganizerModelDecision,
+  type WrongQuestionOrganizerModelSubject,
+  type WrongQuestionOrganizerSubject,
+} from './wrong-question-organizer-model-contract.ts';
+export {
   MODEL_CANDIDATE_DISPOSITIONS,
   type ModelCandidateDisposition,
   type ModelCandidateObservation,
 } from './model-candidate-policy.ts';
+export {
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIORS,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENTS,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_VERSION,
+  createPhase697Sr6ProductReplayRuntime,
+  isPhase697Sr6ProductReplayTrace,
+  resolvePhase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayBehavior,
+  type Phase697Sr6ProductReplayComponent,
+  type Phase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayTarget,
+} from './phase-6-9-7-sr6-product-replay.ts';
 export {
   KNOWLEDGE_DEDUP_MODEL_SCHEMA,
   KNOWLEDGE_ORGANIZER_MODEL_SCHEMA,

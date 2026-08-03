@@ -1,0 +1,207 @@
+# Phase 6.9.7 Tutor / WrongQuestionOrganizer V5 Remediation Plan
+
+**目标：** 在保持 V1–V4 历史不可变的前提下，修复不真实 dataset fixture、Tutor 中文语义与冗余
+evidence 自证合同、Organizer 自由文本 topic/taxonomy 不稳定；建立独立 V5 dataset、candidate、runner、
+evidence 和生产验收路径。
+
+**当前状态：** R0--R5 已完成且均为 zero-provider；独立 V2 dataset/coherence、eval policy/baseline、
+Tutor local-signal candidate、Organizer ordinal shortlist、原生 runner/lineage 与 reviewed static/Mock
+checkpoint 已落地。唯一 R6 run `aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 已使用
+`deepseek_network` 执行并以 `quality_gate_failed` 封存：`24/24` guard、12 次 Provider invocation、
+`11/48` strict runtime，第 6 对 Tutor `3021ms > 3000ms` timeout 后熔断，正式聚合均为 `null`。
+R6 不得重跑，R7/R8 永久被该结果阻断。后续 V6 R0 已以零 Provider 方式完成独立复盘与设计；V5
+identity 不作为 V6 的授权或 artifact 入口。
+
+**设计 authority：**
+`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v5-remediation-design.md`
+
+## 执行不变量
+
+- 只在 `codex/phase-6-9-7-tutor-wrong-question-agents` 工作，不创建 worktree 或子分支；
+- main agent 编辑、决策、验证和提交；subagent 只读取证；
+- 一个 R-task、一次相关文档同步、一个原子提交并推送功能分支；
+- V1–V4 Live、marker、journal、evidence、dataset bytes/SHA 不改、不删、不重跑、不拼接；
+- R0–R5 无 Provider；R6 一次性授权已消费，禁止 retry/resume/replay 或改写 durable artifacts；
+- 不保存 prompt、raw model output、credential、真实用户原文/ID 或自由文本失败；
+- 24 guard 先行、固定分母、单 pair 最多双并发、lane 独立、首个 contract failure 熔断；
+- semantic mismatch 不提前 breaker；无 retry、补跑、resume 或 replay；
+- gates/live/component key 默认关闭；禁止 Docker prune、`down -v`、volume/database reset、Redis
+  flush 或 MinIO wipe。
+
+## R0：V4 零 Provider 根因与 V5 设计
+
+**状态：** [x] 已完成。
+
+**交付：**
+
+- 新增 exact `tutor-runtime-06` product-candidate differential regression；
+- 证明 V1 fixture 的跨题/跨语言 context 与错误 language tag；
+- 证明合法 evidence 通过、非法 evidence 在产品 candidate 被拒，adapter 未凭空改判；
+- 保留 V4 failure authority，不猜 raw evidence；
+- 冻结 V5 dataset/candidate/runner/evidence 方向与 R1–R8 原子路线；
+- 同步仓库协作、入口、路线、数据流、启动与验收文档。
+
+**验收：**
+
+- [x] V1 dataset SHA 仍为 `7ac2f4b...2207e`；
+- [x] exact fixture 与四组 synthetic decision 差分测试通过；
+- [x] product rejection 与 bounded diagnostic 一致；
+- [x] 无 credential、Provider、Docker/API/browser 或业务数据操作。
+
+**提交：** `docs(agent): diagnose phase 6.9.7 v4 live failure`
+
+## R1：V2 dataset authority 与 coherence validator
+
+**状态：** [x] 已完成，zero-provider。
+
+- 新建 `phase-6.9-tutor-wrong-question-v2`，V1 bytes/SHA 不变；
+- Tutor definition 显式绑定 language、exercise family、latest text、coherent active context；
+- Organizer definition 显式绑定 structured subject authority、taxonomy boundary、topic candidates/ordinal 与 batch relation；
+- candidate 前冻结 dataset SHA `42803d45...b437b`、policy SHA `b3913403...f009d`、baseline SHA `0ce7c3ca...116ca`；
+- 冻结 72/24/48/24 分母、Tutor/Organizer/combined semantic `>=0.85`、各 absolute improvement `>=0.15`、安全/延迟/usage/费用门；
+- deterministic baseline 为 `12/48` complete，Tutor/Organizer/combined semantic `0.6629642857/0.278125/0.4705446429`，Provider/usage/cost 为 0；
+- coherence、language、family、prompt-safe projection、deep-freeze、paired-index/ordinal mutation 与 V1 historical isolation 测试通过。
+
+**验收：** `docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r1-dataset-authority.md`
+
+**停止点：** 已遵守；只完成 dataset/policy/baseline，没有接 candidate/provider。
+
+## R2：Tutor V5 bilingual bounded choice
+
+**状态：** [x] 已完成，zero-provider。
+
+- 本地 projection 派生 primary signals、precedence 与 `eligibleIntents`；
+- 冻结 `tutor-local-signal-authority-v1` schema/version/content SHA/provenance；
+- 加入 detector 误报/漏报、中英/混合、否定、干扰、context reorder、单变量 mutation 与
+  detector-policy differential oracle；
+- V5 output 移除模型自报 evidence codes，只保留 intent/depth/confidence；
+- validator 以 local authority 校验 intent/depth，不允许 general 压过具体 signal；
+- 中英双语 policy formatter、positive/negative/counterexample；
+- 中文 held-out、混合语言、context reorder、否定、干扰和 metamorphic tests；
+- Chat route、答案、tool、permission 与 deterministic fallback 边界不变。
+
+**冻结 identity：** rules SHA `a1e9a3b...f4892`、prompt policy SHA
+`7c7442ff...c5f87`、32 条独立 held-out fixture SHA `d08e8ed5...8ab55`。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r2-tutor-local-signal-authority.md`
+
+**停止点：** 已遵守；没有接 product composition/provider/gate，也没有开始 R3。
+
+## R3：Organizer V5 ordinal shortlist
+
+**状态：** [x] 已完成，zero-provider。
+
+- 本地生成 bounded topic candidates 和 existing deck ordinals；
+- shortlist 稳定排序/去重并绑定 owner+question+deck+topic 序列 fingerprint；
+- 模型只返回 subject decision、deck action、deck/topic ordinal、confidence；
+- structured subject、computer/major/other taxonomy、locked name 与 owner authority 不变；
+- candidate 缺失、越界、cross-subject、unsafe、stale、分页/重排/去重漂移与 ordinal ABA
+  fail-closed；projection、Trace pending、decision 与 command 必须绑定同一 fingerprint；
+- merger 不自由改名、不补非法输出、不执行 mutation。
+
+**冻结 identity：** shortlist rules SHA `9747383...1299d3`、model prompt SHA
+`915084a8...ac69ab`、24 条独立 held-out fixture SHA `49336b12...ee097`。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r3-organizer-ordinal-shortlist.md`
+
+**停止点：** 已遵守；没有接 product/provider/gate/paired runner，也没有开始 R4。
+
+## R4：V5 runner、lineage 与生产极端边界
+
+**状态：** [x] 已完成，zero-provider。
+
+- 独立 V5 runner/CLI/approval/marker/journal/evidence/validator；
+- V1–V4/V5 双向拒绝与历史 SHA 校验；
+- dispatch-before-call journal、单胜者 marker、hash chain、fsync、hard-link final；
+- marker 后任一 journal/evidence failure 消费名额；crash-only orphan seal、活 owner 防误封、dead
+  owner 单胜者 recovery、ABA fence、same-byte idempotency；
+- 固定分母、首错 breaker、sibling abort/usage unknown、lane budget/timeout/credential 隔离；
+- lane-specific failure attribution 与 aggregate usage/pricing/P95 incomplete fail-closed；
+- non-tutor/pre-abort/post-dispatch-abort/orphan/duplicate-dispatch/stale-shortlist 的固定 terminal、usage、
+  ledger assertions；
+- 递归拒绝 V1–V4 runId、partial metrics/usage/cost、source case ID、旧 dataset/prompt SHA 与 artifact path。
+
+**验证：** focused `26/26`（145 assertions）、Agent full `741/741`（9128 assertions）、Agent
+typecheck/lint、Web/Server lint、Prettier、diff check、四份历史 evidence SHA/validator 与两路独立复审
+均通过；V5 Live artifact 为 0。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r4-runner-lineage.md`
+
+**停止点：** 已遵守；未接 product/provider/gate/Trace persistence，未开始 R5。
+
+## R5：分支 static/Mock checkpoint
+
+**状态：** [x] 已完成，zero-provider。
+
+- V5 focused/full/static、Agent/AI/Types/Server/Web 受影响门；
+- fresh deterministic baseline 与 fresh V5 Mock；
+- `24/24` verified zero-call、`48/48` strict runtime；
+- Organizer PostgreSQL concurrency E2E 与 Compose quiet/default-off；
+- V1–V4 artifacts/validators/SHA 不变，V5 Live artifact 为 0；
+- 两路独立复审：contract/security/concurrency 与 docs/history/operations。
+
+**验证：** fresh baseline `12/48`、semantic `0.6629642857/0.278125/0.4705446429`；fresh Mock
+`24/24` zero-call、`48/48` strict runtime、semantic `1/1/1`。V5 focused `62/62`、Agent
+`745/745`、AI `199/199`、Types `42/42`、Server boundary `3/3`、Web `439/439`、Organizer
+PostgreSQL `12/12` 与相关 typecheck/lint/build/Compose 通过。Mock 的 48 次 invocation 是 synthetic
+executor 计数，不是真实 Provider call。
+
+**验收：**
+`docs/acceptance/2026-07-26-phase-6-9-7-tutor-organizer-v5-r5-static-mock.md`
+
+**停止点：** 已遵守；没有新的 V5 精确授权不得执行 R6。
+
+## R6：唯一 V5 branch controlled-Live
+
+**状态：** [x] 已执行并失败封存，不得重跑。
+
+前置已满足：R5 clean/pushed；用户重新接受当前 DeepSeek 数据边界并明确授权唯一一次 V5 branch
+controlled-Live；运行前 V5 marker/journal/evidence 不存在，历史 SHA 和 default-off 通过。
+
+执行结果：zero-network preflight -> 进程内 component credential 映射 -> marker/journal -> 24 guard ->
+前 6 pair -> Tutor runtime timeout -> breaker -> evidence seal/validator。Run
+`aa637d3a-f7c4-4549-a724-9cdbefdd89c8` 为 `24/24` guard zero-call、12 次 Provider invocation、
+`11/48` strict runtime；第 6 对 Tutor `tutor-v2-runtime-06` 为 `3021ms > 3000ms`，后续 36 runtime
+未启动，最终 `quality_gate_failed`。正式 semantic/P95/token/费用聚合均为 `null`。
+
+Evidence SHA：`84487b448acd7bd5e65cd523eb7556cd9b3175bc9ba44572e06a78157c45b70a`；
+marker、58 条 hash-chain journal 与 evidence 已 durable seal，validator `ok=true`，无 recovery claim。
+完整记录：
+`docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v5-controlled-live-failure.md`。
+
+## R7：产品 Docker/API/可见浏览器验收
+
+**状态：** [ ] 被 R6 `quality_gate_failed` 阻断，不得开始。
+
+- Tutor Chat：中文/英文 specific intent、explicit zero-call、forced fallback、Trace/usage/price；
+- Organizer：single/batch、known/unknown subject、create/reuse、owner/locked/stale/concurrency；
+- headed `/chat`、`/error-book`，保留可见窗口供用户观察；
+- 精确清理本轮 synthetic user/question/deck/item/Trace/session/storage；
+- 恢复 default-off，不删除 Docker 容器、镜像、卷或持久数据。
+
+## R8：分支收尾、main 合并与 main 回放
+
+**状态：** [ ] 被 R6/R7 阻断，不得开始。
+
+- 同步全部开发/验收/运维文档并完成最终复审；
+- 原子提交并推送功能分支；
+- 从 main 合并功能分支，不在功能分支上再开分支；
+- main 运行静态、Docker/API、可见浏览器 default-off 回放；
+- main 精确清理、恢复 gates=false、推送远程并确认 parity；
+- 完成 Phase 6.9 全部 Agent 后才进入 Phase 6.10 分层记忆；两篇博客按后续用户要求分别收尾。
+
+## V6 独立交接
+
+V5 的 R7/R8 不会在 V6 下重新打开。V6 使用独立 design/plan/approval/runner/marker/journal/evidence/
+validator，并从 R0 重新建立前置门：
+
+- 设计：`docs/superpowers/specs/phase-6-9-7-tutor-organizer-v6-remediation-design.md`；
+- 计划：`docs/superpowers/plans/phase-6-9-7-tutor-organizer-v6-remediation.md`；
+- R0 验收：
+  `docs/acceptance/2026-07-27-phase-6-9-7-tutor-organizer-v6-r0-zero-provider-design.md`。
+
+用户允许重新评估 Tutor 时延边界只属于 V6 设计许可；新的 R4 static/Mock checkpoint 与新的精确
+授权前，禁止创建 V6 Live marker、读取 component credential 或调用 Provider。

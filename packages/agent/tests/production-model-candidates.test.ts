@@ -9,23 +9,48 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'KNOWLEDGE_MODEL_PROJECTION_VERSION',
   'KNOWLEDGE_ORGANIZER_MODEL_SCHEMA',
   'MODEL_CANDIDATE_DISPOSITIONS',
+  'PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256',
+  'PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIORS',
+  'PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENTS',
+  'PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL',
+  'PHASE_6_9_7_SR6_PRODUCT_REPLAY_VERSION',
   'PLANNER_MODEL_CANDIDATE_SCHEMA',
   'REVIEW_MODEL_CANDIDATE_SCHEMA',
+  'TUTOR_MODEL_DECISION_SCHEMA',
+  'TUTOR_MODEL_INTENT_POLICY',
+  'TUTOR_MODEL_PROJECTION_VERSION',
+  'TUTOR_MODEL_PROMPT_VERSION',
+  'WRONG_QUESTION_ORGANIZER_ASSOCIATION_POLICY',
+  'WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION',
+  'WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA',
+  'createPhase697Sr6ProductReplayRuntime',
   'decideKnowledgeVerifierModelEligibility',
   'decideRouterModelEligibility',
+  'formatTutorModelIntentPolicyForPrompt',
+  'formatWrongQuestionOrganizerAssociationPolicyForPrompt',
   'isKnowledgeVerifierModelEligible',
+  'isPhase697Sr6ProductReplayTrace',
   'isRouterModelEligible',
+  'isTutorModelDepthCompatible',
   'mergeKnowledgeDedupDecision',
   'mergeKnowledgeOrganizerDecision',
+  'mergeTutorModelDecision',
+  'mergeWrongQuestionOrganizerModelDecision',
   'projectKnowledgeSnapshot',
+  'projectTutorModelInput',
+  'resolvePhase697Sr6ProductReplayConfig',
   'runKnowledgeDedupModelCandidate',
   'runKnowledgeOrganizerModelCandidate',
   'runKnowledgeVerifierModelCandidate',
   'runPlannerModelCandidate',
   'runReviewModelCandidate',
   'runRouterModelCandidate',
+  'runTutorModelCandidate',
+  'runWrongQuestionOrganizerModelCandidate',
   'validateKnowledgeDedupModelDecision',
   'validateKnowledgeOrganizerModelDecision',
+  'validateTutorModelDecision',
+  'validateWrongQuestionOrganizerModelDecision',
 ];
 
 describe('production model candidate exports', () => {
@@ -37,12 +62,11 @@ describe('production model candidate exports', () => {
     expect(productionModelCandidates.runKnowledgeOrganizerModelCandidate).toBeFunction();
     expect(productionModelCandidates.runReviewModelCandidate).toBeFunction();
     expect(productionModelCandidates.runPlannerModelCandidate).toBeFunction();
-    expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
-      'candidate_applied',
-    );
-    expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain(
-      'safety_blocked',
-    );
+    expect(productionModelCandidates.runTutorModelCandidate).toBeFunction();
+    expect(productionModelCandidates.runWrongQuestionOrganizerModelCandidate).toBeFunction();
+    expect(productionModelCandidates.WRONG_QUESTION_ORGANIZER_MODEL_SCHEMA).toBeDefined();
+    expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain('candidate_applied');
+    expect(productionModelCandidates.MODEL_CANDIDATE_DISPOSITIONS).toContain('safety_blocked');
   });
 
   test('loads the package self-reference with native Node ESM', () => {

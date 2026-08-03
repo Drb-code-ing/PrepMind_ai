@@ -13,10 +13,7 @@ import {
   validateChatLiveAccess,
 } from '@/lib/chat-api-policy';
 import type { ChatAgentDecision } from '@/lib/chat-agent-runtime';
-import {
-  type ActiveStudyContext,
-  type ChatContextMessage,
-} from '@/lib/chat-context';
+import { type ActiveStudyContext, type ChatContextMessage } from '@/lib/chat-context';
 import {
   assembleChatContextForRoute,
   buildConversationContextHeaders,
@@ -32,17 +29,18 @@ import {
 import {
   buildChatModelAgentObservationHeaders,
   projectChatModelAgentObservation,
+  projectTutorModelAgentObservation,
 } from '@/lib/chat-model-agent-observation';
 import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
+import { createTutorModelRuntimeBundle } from '@/lib/tutor-model-runtime';
 import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
 const AGENT_TRACE_TIMEOUT_MS = 800;
 const agentTraceApi = createAgentTraceApi(apiClient);
 
-const CHAT_ERROR_MESSAGE =
-  'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
+const CHAT_ERROR_MESSAGE = 'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
 
 const BASE_SYSTEM_PROMPT = `你是 PrepMind AI，一个专业的智能备考助手。你的职责是：
 1. 帮助学生理解知识点，用简洁清晰的语言讲解。
@@ -141,8 +139,7 @@ function createMockChatResponse(input: {
     headers: {
       'x-prepmind-ai-mode': 'mock',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
-      'x-prepmind-knowledge-verifier-status':
-        input.knowledgeVerifierResult?.status ?? 'skipped',
+      'x-prepmind-knowledge-verifier-status': input.knowledgeVerifierResult?.status ?? 'skipped',
       'x-prepmind-knowledge-verifier-chunks': String(
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
@@ -165,6 +162,7 @@ function createLiveChatResponse(input: {
   systemPrompt: string;
   messages: ChatContextMessage[];
   maxOutputTokens: number;
+  signal: AbortSignal;
   knowledgeHits: KnowledgeSearchHit[];
   knowledgeSafetySummary: RagSafetySummary;
   knowledgeVerifierResult?: KnowledgeVerifierResult;
@@ -178,14 +176,14 @@ function createLiveChatResponse(input: {
     system: input.systemPrompt,
     messages: input.messages,
     maxTokens: input.maxOutputTokens,
+    abortSignal: input.signal,
   });
 
   return createDataStreamResponse({
     headers: {
       'x-prepmind-ai-mode': 'live',
       'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
-      'x-prepmind-knowledge-verifier-status':
-        input.knowledgeVerifierResult?.status ?? 'skipped',
+      'x-prepmind-knowledge-verifier-status': input.knowledgeVerifierResult?.status ?? 'skipped',
       'x-prepmind-knowledge-verifier-chunks': String(
         input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
       ),
@@ -218,10 +216,7 @@ export async function POST(req: Request) {
     const parsedRequest = parseChatApiRequestBody(await req.json());
 
     if (!parsedRequest.ok) {
-      return Response.json(
-        { error: parsedRequest.error },
-        { status: parsedRequest.status },
-      );
+      return Response.json({ error: parsedRequest.error }, { status: parsedRequest.status });
     }
 
     const { messages, activeContext, accessToken, conversationId } = parsedRequest.data;
@@ -252,10 +247,7 @@ export async function POST(req: Request) {
     );
 
     if (!accessAndContext.ok) {
-      return Response.json(
-        { error: accessAndContext.error },
-        { status: accessAndContext.status },
-      );
+      return Response.json({ error: accessAndContext.error }, { status: accessAndContext.status });
     }
     const conversationContext = accessAndContext.context;
 
@@ -267,6 +259,7 @@ export async function POST(req: Request) {
     const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
     const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
       bundle: modelAgentBundle,
+      createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
       runId: traceRunId,
@@ -291,11 +284,13 @@ export async function POST(req: Request) {
     const verifierModelObservation =
       knowledgeSearch.verifierObservation === undefined
         ? undefined
-        : projectChatModelAgentObservation(
-            knowledgeSearch.verifierObservation,
-          );
+        : projectChatModelAgentObservation(knowledgeSearch.verifierObservation);
+    const tutorModelObservation = projectTutorModelAgentObservation(
+      agentExecution.tutorObservation,
+    );
     const modelAgentHeaders = buildChatModelAgentObservationHeaders({
       router: agentExecution.routerObservation,
+      tutor: agentExecution.tutorObservation,
       ...(knowledgeSearch.verifierObservation === undefined
         ? {}
         : { verifier: knowledgeSearch.verifierObservation }),
@@ -363,9 +358,8 @@ export async function POST(req: Request) {
         knowledgeVerifierResult: citationVerifierResult,
         modelAgentObservations: {
           router: routerModelObservation,
-          ...(verifierModelObservation === undefined
-            ? {}
-            : { verifier: verifierModelObservation }),
+          tutor: tutorModelObservation,
+          ...(verifierModelObservation === undefined ? {} : { verifier: verifierModelObservation }),
         },
         startedAt: traceStartedAt,
         finishedAt: new Date(),
@@ -395,6 +389,7 @@ export async function POST(req: Request) {
       systemPrompt: budget.systemPrompt,
       messages: budget.modelMessages,
       maxOutputTokens: budget.maxOutputTokens,
+      signal: req.signal,
       knowledgeHits: citationHits,
       knowledgeSafetySummary: citationSafetySummary,
       knowledgeVerifierResult: citationVerifierResult,

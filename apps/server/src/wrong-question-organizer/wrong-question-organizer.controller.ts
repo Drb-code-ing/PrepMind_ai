@@ -7,9 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 import {
   moveWrongQuestionToDeckRequestSchema,
   organizeWrongQuestionBatchRequestSchema,
@@ -57,23 +59,34 @@ export class WrongQuestionOrganizerController {
   }
 
   @Post('wrong-question-organizer/organize/:wrongQuestionId')
-  organizeOne(
+  async organizeOne(
     @CurrentUser() user: AuthenticatedUser,
     @Param('wrongQuestionId') wrongQuestionId: string,
     @Body() body: unknown,
+    @Req() request: Request,
   ) {
-    return this.service.organizeOne(
-      user.id,
-      wrongQuestionId,
-      organizeWrongQuestionRequestSchema.parse(body ?? {}),
+    return this.withRequestAbort(request, (signal) =>
+      this.service.organizeOne(
+        user.id,
+        wrongQuestionId,
+        organizeWrongQuestionRequestSchema.parse(body ?? {}),
+        signal,
+      ),
     );
   }
 
   @Post('wrong-question-organizer/organize-batch')
-  organizeBatch(@CurrentUser() user: AuthenticatedUser, @Body() body: unknown) {
-    return this.service.organizeBatch(
-      user.id,
-      organizeWrongQuestionBatchRequestSchema.parse(body ?? {}),
+  async organizeBatch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: unknown,
+    @Req() request: Request,
+  ) {
+    return this.withRequestAbort(request, (signal) =>
+      this.service.organizeBatch(
+        user.id,
+        organizeWrongQuestionBatchRequestSchema.parse(body ?? {}),
+        signal,
+      ),
     );
   }
 
@@ -110,5 +123,20 @@ export class WrongQuestionOrganizerController {
     @Param('wrongQuestionId') wrongQuestionId: string,
   ) {
     return this.service.removeDeckItem(user.id, deckId, wrongQuestionId);
+  }
+
+  private async withRequestAbort<T>(
+    request: Request,
+    callback: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const abortController = new AbortController();
+    const abort = () => abortController.abort();
+    request.once('aborted', abort);
+    if (request.aborted) abort();
+    try {
+      return await callback(abortController.signal);
+    } finally {
+      request.off('aborted', abort);
+    }
   }
 }

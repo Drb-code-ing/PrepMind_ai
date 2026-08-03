@@ -9,6 +9,7 @@ import { assembleChatContextForRoute } from './chat-context-orchestration.ts';
 import {
   projectChatModelAgentObservation,
   type SafeChatModelAgentObservation,
+  type SafeTutorModelAgentObservation,
 } from './chat-model-agent-observation.ts';
 
 assert.equal(createInputPreview(` ${'题'.repeat(120)} `).length, 80);
@@ -433,5 +434,61 @@ assert.match(
 );
 assert.equal(
   JSON.stringify(markerDescriptorPayload).includes(markerDescriptorCanary),
+  false,
+);
+
+const tutorTraceCanary = 'CANARY_tutor_prompt_output_key_url_context';
+const safeTutorObservation: SafeTutorModelAgentObservation = {
+  attempted: true,
+  disposition: 'candidate_applied',
+  durationMs: 17,
+  inputTokens: 240,
+  outputTokens: 24,
+  reasonCode: 'contextual_reference',
+  pricingKnown: true,
+  costCny: 0.000864,
+  currency: 'CNY',
+};
+const tutorTraceBase = {
+  runId: 'trace_run_tutor_candidate',
+  conversationId: 'conv_tutor_candidate',
+  messages: [{ role: 'user', content: 'safe tutor request' }],
+  mode: 'live' as const,
+  modelProvider: 'deepseek',
+  modelName: 'deepseek-v4-flash',
+  budget: { estimatedInputTokens: 500, maxOutputTokens: 200 },
+  agentDecision: {
+    route: 'tutor' as const,
+    confidence: 0.9,
+    reason: tutorTraceCanary,
+    requiresRag: false,
+    requiresHumanApproval: false,
+    tutorStrategy: { intent: 'socratic_hint', depth: 'brief' },
+  },
+  startedAt: new Date('2026-07-23T08:00:00.000Z'),
+  finishedAt: new Date('2026-07-23T08:00:01.000Z'),
+};
+const withoutTutorObservation = buildChatAgentTracePayload(tutorTraceBase);
+const withTutorObservation = buildChatAgentTracePayload({
+  ...tutorTraceBase,
+  modelAgentObservations: { tutor: safeTutorObservation },
+});
+
+assert.equal(withTutorObservation.inputTokenEstimate, withoutTutorObservation.inputTokenEstimate);
+assert.equal(withTutorObservation.outputTokenEstimate, withoutTutorObservation.outputTokenEstimate);
+assert.equal(withTutorObservation.costEstimate, withoutTutorObservation.costEstimate);
+assert.equal(
+  withTutorObservation.steps.map((step) => step.node).join(','),
+  'RouterAgent,TutorModelCandidate,TutorAgent',
+);
+assert.equal(
+  withTutorObservation.steps.find((step) => step.node === 'TutorModelCandidate')
+    ?.outputSummary,
+  'attempted=true disposition=candidate_applied durationMs=17 inputTokens=240 outputTokens=24 reason=contextual_reference pricing=CNY costCny=0.000864',
+);
+assert.equal(withTutorObservation.tutorIntent, 'socratic_hint');
+assert.equal(withTutorObservation.tutorDepth, 'brief');
+assert.equal(
+  JSON.stringify(withTutorObservation).includes('tutor_prompt_output_key_url_context'),
   false,
 );
