@@ -76,6 +76,20 @@ export {
   type ModelCandidateObservation,
 } from './model-candidate-policy.ts';
 export {
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIORS,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENTS,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL,
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_VERSION,
+  createPhase697Sr6ProductReplayRuntime,
+  isPhase697Sr6ProductReplayTrace,
+  resolvePhase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayBehavior,
+  type Phase697Sr6ProductReplayComponent,
+  type Phase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayTarget,
+} from './phase-6-9-7-sr6-product-replay.ts';
+export {
   KNOWLEDGE_DEDUP_MODEL_SCHEMA,
   KNOWLEDGE_ORGANIZER_MODEL_SCHEMA,
   validateKnowledgeDedupModelDecision,

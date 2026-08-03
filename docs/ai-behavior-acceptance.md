@@ -482,16 +482,30 @@ semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage 
 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`；journal `628` 条并以
 `evidence_published` 收口，validator `ok=true`，recovery claim=0。它证明固定评测集上的真实模型 schema 与语义
 质量门通过，但不证明 Tutor Chat、Organizer single/batch、Trace、业务写入、Docker/API/browser、SLA、main 或
-生产可用；旧 L3 failure 与 SR4 Mock-only authority 不被覆盖。SR5 不得重跑，当前唯一下一任务是 SR6 分支产品
-验收。
+生产可用；旧 L3 failure 与 SR4 Mock-only authority 不被覆盖。SR5 不得重跑。该 checkpoint 当时只解锁 SR6
+分支产品验收。
+
+SR6 随后在 `providerCalls=0` 边界完成产品 composition 验收。新增
+`phase-6.9.7-sr6-product-replay-v1` 只在绑定 SR5 artifact SHA `87dd826b...18be`、mode=mock、全部
+Agent/Live gate 关闭、全部 Provider credential 为空、RAG=fake、API role 与 exact component/request cap 同时
+成立时启用。`sr5_sealed_replay` 不是重放 SR5 Provider response/Trace：它解析当前 bounded Tutor V6 /
+Organizer V9 prompt，并从当前本地合法 eligible option 中确定性选择第一项；不读取 expected/oracle 或 SR5
+模型原文。Replay Trace 必须保持固定 mock identity、成功状态、正整数 usage 与合法 task/output cap；Tutor
+pricing 为 unknown/null，Organizer 为 not-applicable/0，因此不能冒充 `production_live` 或计入 DeepSeek billing。
+
+SR6 Docker/API 中，Tutor 登录态 + OCR context Chat 与 Organizer single/batch 均为 `candidate_applied`，batch
+`3/3`、locked name 不变；跨账号统一 404 且无写入。Forced Tutor failure 保持 Chat 成功，Organizer 回到
+`local_deterministic/fallback_runtime_error`。可见 `/chat`、`/error-book`、`/agent-trace`、精确数据/浏览器清理
+与最终源码 default-off Docker 回放通过。该证据只证明 zero-provider 产品接线、权限、Trace、降级、UI 和清理，
+不提升 SR5 semantic authority，不形成真实模型产品质量、SLA、生产部署或 main authority。当前下一任务仅 SR7/main。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；
 - Task 2 已固定 strict schema 与动态 validator：Tutor 模型没有 `answer_direct` 权限；Organizer 必须完整覆盖 `q0..q11`，只能引用 `d0..d19`，重复/越界/部分 batch、跨 subject deck、本地 subject 权威冲突和危险 topic label 全批拒绝。projection 使用有界 descriptor clone、完整字段先扫描、safety metadata、裁剪/token 重验/deep freeze，公开值不含真实 ID、完整 answer/userNote 或写能力；这仍不等于 candidate/runtime 已完成；
 - Tutor 明确 direct/hint/step/concept/explain 指令、非 tutor route、不安全输入、abort/budget/gate-off 保持 zero-call；模型只处理隐含、上下文或冲突教学意图，不能输出 `answer_direct`，最终 TutorStrategy/prompt 由本地重建；V4 model precedence 固定为 `step_check > explain_solution > concept_bridge > socratic_hint > general_follow_up`，active context 不得把具体 intent 降级为 general；
 - Organizer 已有 item、高置信结构字段、精确 deck、不安全/越权/stale/gate-off 路径 zero-call；single/batch 每 HTTP request 最多一次 provider 调用，batch 最多投影 12 个 eligible item；
-- V1--V4 legacy Organizer 模型可返回 question/deck ordinal、固定 subject enum 或有界 topic label；V5 R3 已将新 candidate 收敛为 subject/deck/topic ordinal-only，但尚未接产品。两条路径的 JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、reason/description、Trace admission 与写 command 都是本地权威；
-- Tutor/Organizer 独立 default-off product gate；现有 legacy product composition 仍使用 `3000/5000ms`，P2 full-gate 评测 hard timeout 则冻结为 V6 的 `3500/5000ms`，二者不得混称。两路固定 V4 Pro non-thinking JSON、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY，已消费的唯一 24-pair L3 总 cap 为 0.55 CNY；由于完整 verified usage 不成立，本次 token/CNY aggregate 保持 `null`；
+- V1--V4 legacy Organizer 模型可返回 question/deck ordinal、固定 subject enum 或有界 topic label；当前 SR6 product composition 已切换到 V9 exact `questionIndex + optionIndex` ordinal-only candidate。JWT/owner、真实 ID、用户锁定名称、WrongQuestion/FSRS 事实、subject/topic/deck authority、Trace admission 与写 command 都是本地权威；
+- Tutor/Organizer 独立 default-off product gate；当前 Tutor 使用 Schema Recovery candidate、Organizer 使用 V9 candidate，产品 timeout 仍为 `3000/5000ms`，P2/SR5 full-gate 评测 hard timeout 则冻结为 `3500/5000ms`，二者不得混称。两路生产 Live 固定 V4 Pro non-thinking JSON、no tools/retry，并分别只读取 `TUTOR_AGENT_DEEPSEEK_API_KEY` / `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic/其它 Agent key 不得替代。Tutor/Organizer request cap 分别为 0.006/0.016 CNY；SR6 replay 则严格 zero-provider、每 component 1 次且不计真实费用；
 - Compose 只把 Tutor gate/timeout/key 投影给 `web`，只把 WrongQuestionOrganizer gate/timeout/key 投影给 `server`；`worker/admin` 均不接收。四个应用 service 都不使用整份根 `.env` 的 service `env_file`，根 env 只参与显式插值；worker 另有模块层强制关闭。部署 allowlist 与应用 fail-closed 都必须通过，不能互相替代；
 - quality gate 要求 24/24 zero-call、48/48 strict runtime、critical=0、两个 semantic score 均 >=0.85 且各自比 baseline 提升 >=0.15，Tutor/Organizer/paired-candidate P95 分别 <=2500/4500/4500ms，Tutor orchestration P95 <=6500ms；后者只含本地 Tutor strategy + candidate，不含真实 Router、HTTP、RAG 或最终流式 Chat，不能作为产品 P95。production gate 还必须要求 `executorProvenance=deepseek_network`；计时窗口和可复现公式见专项设计 §10.2，baseline 数值由 Task 1 acceptance 冻结；
 - Tutor Trace 延续 best-effort，失败不得中断 Chat；Organizer model-influenced write 必须先持久化安全 Trace，否则丢弃 candidate 并使用 deterministic command；

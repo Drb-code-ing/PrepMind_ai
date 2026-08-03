@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test src/**/*.test.mts",
+    "test": "node --experimental-transform-types --test src/**/*.test.mts",
     "lint": "eslint"
   },
   "dependencies": {

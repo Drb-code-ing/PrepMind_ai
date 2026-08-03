@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256 } from '@repo/agent/model-candidates';
+
 const booleanStringSchema = z
   .union([z.boolean(), z.string()])
   .transform((value) => {
@@ -38,9 +40,29 @@ const envSchema = z
     AI_MODEL: z.string().trim().min(1).max(120).default('deepseek-v4-flash'),
     AI_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
     DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
+    TUTOR_AGENT_DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
     KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: optionalNonEmptyStringSchema,
     WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY:
       optionalNonEmptyStringSchema,
+    ROUTER_MODEL_ENABLED: booleanStringSchema.default(false),
+    KNOWLEDGE_VERIFIER_MODEL_ENABLED: booleanStringSchema.default(false),
+    TUTOR_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: booleanStringSchema.default(false),
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: z
+      .enum(['', 'tutor', 'organizer', 'both'])
+      .default(''),
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: z
+      .enum(['', 'success', 'forced_failure'])
+      .default(''),
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: z
+      .union([z.literal(''), z.string().regex(/^[a-f0-9]{64}$/)])
+      .default(''),
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(2)
+      .default(0),
     REVIEW_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     PLANNER_AGENT_MODEL_ENABLED: booleanStringSchema.default(false),
     REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED:
@@ -407,6 +429,79 @@ const envSchema = z
     DASHSCOPE_API_KEY: optionalNonEmptyStringSchema,
   })
   .superRefine((env, context) => {
+    if (env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED) {
+      const component = env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT;
+      const exactRequestCap =
+        component === 'both'
+          ? env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS === 2
+          : (component === 'tutor' || component === 'organizer') &&
+            env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS === 1;
+      const zeroProviderBoundary =
+        env.AI_PROVIDER_MODE === 'mock' &&
+        env.AI_ENABLE_LIVE_CALLS === false &&
+        env.RAG_EMBEDDING_PROVIDER === 'fake' &&
+        env.ROUTER_MODEL_ENABLED === false &&
+        env.KNOWLEDGE_VERIFIER_MODEL_ENABLED === false &&
+        env.TUTOR_AGENT_MODEL_ENABLED === false &&
+        env.REVIEW_AGENT_MODEL_ENABLED === false &&
+        env.PLANNER_AGENT_MODEL_ENABLED === false &&
+        env.KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED === false &&
+        env.KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED === false &&
+        env.WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED === false &&
+        env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED === false &&
+        env.DEEPSEEK_API_KEY === undefined &&
+        env.TUTOR_AGENT_DEEPSEEK_API_KEY === undefined &&
+        env.KNOWLEDGE_AGENT_DEEPSEEK_API_KEY === undefined &&
+        env.WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY === undefined &&
+        env.OPENAI_API_KEY === undefined &&
+        env.QWEN_API_KEY === undefined &&
+        env.Qwen_API_KEY === undefined &&
+        env.DASHSCOPE_API_KEY === undefined;
+      if (env.SERVER_ROLE !== 'api') {
+        context.addIssue({
+          code: 'custom',
+          path: ['PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED'],
+          message: 'SR6 product replay is restricted to the HTTP API server',
+        });
+      }
+      if (
+        component === '' ||
+        env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR === ''
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT'],
+          message: 'enabled SR6 product replay requires component and behavior',
+        });
+      }
+      if (
+        env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256 !==
+        PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256'],
+          message:
+            'enabled SR6 product replay requires the sealed SR5 artifact SHA-256',
+        });
+      }
+      if (!exactRequestCap) {
+        context.addIssue({
+          code: 'custom',
+          path: ['PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS'],
+          message: 'enabled SR6 product replay requires its exact request cap',
+        });
+      }
+      if (!zeroProviderBoundary) {
+        context.addIssue({
+          code: 'custom',
+          path: ['PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED'],
+          message:
+            'SR6 product replay requires an isolated zero-Provider runtime',
+        });
+      }
+    }
+
     if (env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_ENABLED) {
       const component = env.REVIEW_PLANNER_PRODUCT_ACCEPTANCE_COMPONENT;
       const exactBusinessGate =
@@ -542,7 +637,8 @@ const envSchema = z
 
     if (
       env.NODE_ENV === 'production' &&
-      env.RAG_EMBEDDING_PROVIDER === 'fake'
+      env.RAG_EMBEDDING_PROVIDER === 'fake' &&
+      env.PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED === false
     ) {
       context.addIssue({
         code: 'custom',

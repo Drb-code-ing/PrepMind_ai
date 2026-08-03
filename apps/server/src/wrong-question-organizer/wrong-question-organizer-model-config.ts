@@ -5,7 +5,11 @@ import {
   type ModelAgentRunBudget,
   type OpenAICompatibleExecutorConfig,
 } from '@repo/ai';
-import { WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION } from '@repo/agent/model-candidates';
+import {
+  resolvePhase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayConfig,
+} from '@repo/agent/model-candidates';
+import { WRONG_QUESTION_ORGANIZER_V9_MODEL_PROMPT_VERSION as WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION } from '@repo/agent/wrong-question-organizer-v9';
 
 export const WRONG_QUESTION_ORGANIZER_MODEL = 'deepseek-v4-pro';
 export const WRONG_QUESTION_ORGANIZER_MODEL_BASE_URL =
@@ -46,6 +50,8 @@ export type WrongQuestionOrganizerModelConfig = Readonly<{
   model: typeof WRONG_QUESTION_ORGANIZER_MODEL;
   promptVersion: typeof WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION;
   pricingKnown: boolean;
+  runtimeAuthority: 'disabled' | 'production_live' | 'sr5_sealed_replay';
+  replay?: Extract<Phase697Sr6ProductReplayConfig, { enabled: true }>;
 }>;
 
 export type WrongQuestionOrganizerCandidateBudgetReservation = Readonly<{
@@ -71,6 +77,7 @@ export function resolveWrongQuestionOrganizerLiveExecutorConfig(
 ): OpenAICompatibleExecutorConfig | null {
   try {
     const config = resolveConfigUnchecked(input, priceProfile);
+    if (config.runtimeAuthority !== 'production_live') return null;
     const apiKey = readNonEmptyString(
       input.WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY,
     );
@@ -154,6 +161,20 @@ function resolveConfigUnchecked(
   input: Record<string, unknown>,
   priceProfile: unknown,
 ): WrongQuestionOrganizerModelConfig {
+  const replay = resolvePhase697Sr6ProductReplayConfig(input, 'organizer');
+  if (replay.enabled) {
+    return Object.freeze({
+      enabled: true,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+      mode: 'mock',
+      provider: 'mock',
+      model: WRONG_QUESTION_ORGANIZER_MODEL,
+      promptVersion: WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
+      pricingKnown: false,
+      runtimeAuthority: 'sr5_sealed_replay',
+      replay,
+    });
+  }
   const pricingKnown = isExactPriceProfile(priceProfile);
   const enabled =
     input.AI_PROVIDER_MODE === 'live' &&
@@ -175,6 +196,7 @@ function resolveConfigUnchecked(
     model: WRONG_QUESTION_ORGANIZER_MODEL,
     promptVersion: WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
     pricingKnown,
+    runtimeAuthority: enabled ? 'production_live' : 'disabled',
   });
 }
 
@@ -189,6 +211,7 @@ function disabledConfig(
     model: WRONG_QUESTION_ORGANIZER_MODEL,
     promptVersion: WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
     pricingKnown,
+    runtimeAuthority: 'disabled',
   });
 }
 

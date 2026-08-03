@@ -1,7 +1,11 @@
 import 'server-only';
 
 import type { OpenAICompatibleExecutorConfig } from '@repo/ai';
-import { TUTOR_MODEL_PROMPT_VERSION } from '@repo/agent/model-candidates';
+import {
+  resolvePhase697Sr6ProductReplayConfig,
+  type Phase697Sr6ProductReplayConfig,
+} from '@repo/agent/model-candidates';
+import { TUTOR_V6_MODEL_PROMPT_VERSION as TUTOR_MODEL_PROMPT_VERSION } from '@repo/agent/tutor-v6';
 
 import {
   TUTOR_MODEL,
@@ -29,11 +33,10 @@ export type TutorModelConfig = Readonly<{
   timeoutMs: typeof TUTOR_MODEL_TIMEOUT_MS;
   pricingKnown: boolean;
   configured: boolean;
+  runtimeAuthority: 'disabled' | 'production_live' | 'sr5_sealed_replay';
+  replay?: Extract<Phase697Sr6ProductReplayConfig, { enabled: true }>;
   disabledReason?:
-    | 'gate_disabled'
-    | 'mock_mode'
-    | 'global_live_disabled'
-    | 'invalid_component_config';
+    'gate_disabled' | 'mock_mode' | 'global_live_disabled' | 'invalid_component_config';
 }>;
 
 type Environment = Record<string, unknown>;
@@ -52,6 +55,21 @@ export function resolveTutorModelConfig(
   priceProfile: unknown = TUTOR_MODEL_PRICE_CNY,
 ): TutorModelConfig {
   try {
+    const replay = resolvePhase697Sr6ProductReplayConfig(env, 'tutor');
+    if (replay.enabled) {
+      return Object.freeze({
+        enabled: true,
+        mode: 'mock',
+        provider: 'mock',
+        model: TUTOR_MODEL,
+        promptVersion: TUTOR_MODEL_PROMPT_VERSION,
+        timeoutMs: TUTOR_MODEL_TIMEOUT_MS,
+        pricingKnown: false,
+        configured: true,
+        runtimeAuthority: 'sr5_sealed_replay',
+        replay,
+      });
+    }
     const snapshot = readEnvironmentSnapshot(env);
     const pricingKnown = isExactTutorPriceProfile(priceProfile);
     const timeoutValid = resolveTimeout(snapshot.TUTOR_AGENT_MODEL_TIMEOUT_MS) !== null;
@@ -101,6 +119,7 @@ export function resolveTutorModelConfig(
       timeoutMs: TUTOR_MODEL_TIMEOUT_MS,
       pricingKnown: true,
       configured: true,
+      runtimeAuthority: 'production_live',
     });
   } catch {
     return disabledConfig({
@@ -118,7 +137,7 @@ export function resolveTutorLiveExecutorConfig(
 ): OpenAICompatibleExecutorConfig | null {
   try {
     const config = resolveTutorModelConfig(env, priceProfile);
-    if (!config.enabled) return null;
+    if (!config.enabled || config.runtimeAuthority !== 'production_live') return null;
     const snapshot = readEnvironmentSnapshot(env);
     const apiKey = snapshot.TUTOR_AGENT_DEEPSEEK_API_KEY?.trim();
     if (!apiKey || snapshot.AI_BASE_URL !== TUTOR_MODEL_BASE_URL) return null;
@@ -143,14 +162,8 @@ function readEnvironmentSnapshot(env: Environment): SafeEnvironmentSnapshot {
     AI_PROVIDER_MODE: readOptionalString(env, 'AI_PROVIDER_MODE'),
     AI_ENABLE_LIVE_CALLS: readOptionalString(env, 'AI_ENABLE_LIVE_CALLS'),
     TUTOR_AGENT_MODEL_ENABLED: readOptionalString(env, 'TUTOR_AGENT_MODEL_ENABLED'),
-    TUTOR_AGENT_MODEL_TIMEOUT_MS: readOptionalString(
-      env,
-      'TUTOR_AGENT_MODEL_TIMEOUT_MS',
-    ),
-    TUTOR_AGENT_DEEPSEEK_API_KEY: readOptionalString(
-      env,
-      'TUTOR_AGENT_DEEPSEEK_API_KEY',
-    ),
+    TUTOR_AGENT_MODEL_TIMEOUT_MS: readOptionalString(env, 'TUTOR_AGENT_MODEL_TIMEOUT_MS'),
+    TUTOR_AGENT_DEEPSEEK_API_KEY: readOptionalString(env, 'TUTOR_AGENT_DEEPSEEK_API_KEY'),
     AI_BASE_URL: readOptionalString(env, 'AI_BASE_URL'),
   });
 }
@@ -190,6 +203,7 @@ function disabledConfig(input: {
     timeoutMs: TUTOR_MODEL_TIMEOUT_MS,
     pricingKnown: input.pricingKnown,
     configured: input.configured,
+    runtimeAuthority: 'disabled',
     disabledReason: input.reason,
   });
 }

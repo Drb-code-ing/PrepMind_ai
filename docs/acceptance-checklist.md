@@ -1903,7 +1903,35 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] SR5 一次性名额已消费；禁止 retry/resume/replay/backfill、Live/seal/recovery、curl、单 case、产品 API
       或其它 Provider 探测，也禁止移动 approved tag 或修改 L3/SR4/SR5 evidence；
 - [x] SR5 只形成固定 72-case/24-pair 分支评测语义 authority，不形成产品、Docker/API/browser、Trace、业务
-      写入、SLA 或 main authority；当前唯一下一任务是 SR6 分支产品验收，SR7/main 与 Phase 6.9.8 继续阻断；
+      写入、SLA 或 main authority；该 checkpoint 当时只解锁 SR6 分支产品验收；
+- [x] SR6 新增 SHA-bound `phase-6.9.7-sr6-product-replay-v1`，只在 `AI_PROVIDER_MODE=mock`、全部
+      Agent/Live gate 关闭、全部 Provider credential 为空、RAG=fake、API role 与 exact component/request cap
+      同时成立时启用；任一条件不符 fail-closed；
+- [x] SR6 `sr5_sealed_replay` 绑定 SR5 physical artifact SHA `87dd826b...18be`，但只依据当前 bounded Tutor
+      V6 / Organizer V9 prompt 生成 deterministic first-local-option Mock output；不读取/逐字重放 SR5 Provider
+      response、Trace、模型原文或业务写入，不读取 expected/oracle；
+- [x] Tutor Web product composition 已切换到 Schema Recovery candidate；Organizer Nest single/batch 已切换到
+      V9 ordinal-only candidate；两条路径继续保留 signal/depth/answer、owner/真实 ID/locked-name/stale/Trace/
+      write command 本地权威；
+- [x] replay Trace 固定为 mock identity；Tutor `pricingKnown=false/cost=null`、Organizer
+      `pricing=not_applicable/cost=0`，不能冒充 `production_live` 或进入 DeepSeek billing；`both` 总 cap=2 且
+      Tutor/Organizer 各最多 1 次；
+- [x] Docker/API：Tutor 登录态 + OCR context `/api/chat` 为 `candidate_applied`；Organizer single/batch 为
+      `hybrid_model/candidate_applied`，batch `3/3`、locked name 不变；跨账号统一 404 且无 Trace/业务写入；
+- [x] forced failure：Tutor 保持 Chat 成功，Organizer 返回
+      `local_deterministic/fallback_runtime_error`；没有伪造 Provider usage/费用或丢失本地组织结果；
+- [x] 可见 `/chat`、`/error-book`、`/agent-trace` 通过；三张截图 SHA 分别为
+      `215b7d67...9dc / 668f9621...2956 / bc564931...e79f`，浏览器清理后窗口保留在 `/login`；
+- [x] 精确清理 3 个合成账号、6 道错题、2 个分组、2 个专题、5 个关联项、8 条 Trace/31 steps、8 条
+      ChatMessage、16 个 refresh token；业务与 browser storage residue=0；未 reset 数据库、删 volume、Redis
+      FLUSH、MinIO wipe、`down -v` 或 prune；
+- [x] SR6 replay `4/4`、Tutor/Web `10/10`、Web `444/444`、Server env `87/87`、Agent typecheck、Server
+      build、最终源码 Docker server/web build 与 SR5 strict validator 均通过；四路只读复审 APPROVED；
+- [x] 最终 server healthy、web `/login=200`、worker healthy；全部 Agent/replay gate=false，server/worker RAG
+      为 `qwen/text-embedding-v4/1536`；凭据只检查存在性且未输出值；
+- [x] SR6 全程 `providerCalls=0`，只形成分支 zero-provider 产品 composition/权限/Trace/降级/UI/清理证据；
+      不提升 SR5 semantic authority，不形成真实模型产品质量、SLA、生产部署或 main authority；当前仅 SR7/main
+      合并/推送/default-off 回放待执行，Phase 6.9.8 与后续 Phase 继续阻断；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1942,4 +1970,5 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。

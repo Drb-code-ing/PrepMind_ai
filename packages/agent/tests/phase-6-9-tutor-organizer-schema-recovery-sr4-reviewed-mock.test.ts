@@ -49,6 +49,11 @@ import {
 
 const roots: string[] = [];
 const REPOSITORY_ROOT = resolve(import.meta.dir, '../../..');
+const SEALED_SR5_EVIDENCE_FILES = [
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-branch-controlled-live-63f8a76b-1c2a-403d-b774-0235caae04cb.json',
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-controlled-live-63f8a76b-1c2a-403d-b774-0235caae04cb.journal.jsonl',
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-controlled-live.marker',
+] as const;
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -377,7 +382,7 @@ describe('Phase 6.9.7 Schema Recovery SR4 reviewed Mock/static', () => {
     expect(memory.trace.filter((event) => event.startsWith('reserve:'))).toHaveLength(0);
   });
 
-  test('keeps the responder anti-oracle, formal SR5 files absent, and old/new lineages mutually rejecting', async () => {
+  test('keeps the responder anti-oracle, the sealed SR5 boundary, and old/new lineages mutually rejecting', async () => {
     const source = await readFile(
       resolve(
         REPOSITORY_ROOT,
@@ -421,10 +426,12 @@ describe('Phase 6.9.7 Schema Recovery SR4 reviewed Mock/static', () => {
     }
 
     const tmpEntries = await readdir(resolve(REPOSITORY_ROOT, '.tmp')).catch(() => [] as string[]);
-    const formal = tmpEntries.filter((entry) =>
-      /^phase-6-9-7-tutor-organizer-schema-recovery-sr5-/u.test(entry),
-    );
-    expect(formal).toHaveLength(0);
+    const formal = tmpEntries
+      .filter((entry) => /^phase-6-9-7-tutor-organizer-schema-recovery-sr5-/u.test(entry))
+      .sort();
+    if (formal.length > 0) {
+      expect(formal).toEqual([...SEALED_SR5_EVIDENCE_FILES].sort());
+    }
     expect(PHASE_6_9_7_SCHEMA_RECOVERY_MARKER_RELATIVE_PATH).toContain(
       'schema-recovery-sr5-controlled-live.marker',
     );

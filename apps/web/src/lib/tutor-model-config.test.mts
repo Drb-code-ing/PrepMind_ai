@@ -35,12 +35,25 @@ const LIVE_ENV = {
   AI_BASE_URL: 'https://api.deepseek.com/v1',
 };
 
+const SR6_REPLAY_ENV = {
+  AI_PROVIDER_MODE: 'mock',
+  AI_ENABLE_LIVE_CALLS: 'false',
+  TUTOR_AGENT_MODEL_ENABLED: 'false',
+  WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'false',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: 'true',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'tutor',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'success',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '1',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256:
+    '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+};
+
 test('Tutor model config is server-only and freezes the approved profile', async () => {
   const source = await readFile(new URL('./tutor-model-config.ts', import.meta.url), 'utf8');
   assert.equal(source.split(/\r?\n/u)[0], "import 'server-only';");
   assert.equal(TUTOR_MODEL, 'deepseek-v4-pro');
   assert.equal(TUTOR_MODEL_BASE_URL, 'https://api.deepseek.com/v1');
-  assert.equal(TUTOR_MODEL_PROMPT_VERSION, 'tutor-model-candidate-v4');
+  assert.equal(TUTOR_MODEL_PROMPT_VERSION, 'tutor-model-candidate-v6');
   assert.deepEqual(TUTOR_MODEL_PRICE_CNY, {
     model: 'deepseek-v4-pro',
     inputPerMillion: 3,
@@ -55,10 +68,11 @@ test('resolves only the complete component-specific Live conjunction', () => {
     mode: 'live',
     provider: 'deepseek',
     model: 'deepseek-v4-pro',
-    promptVersion: 'tutor-model-candidate-v4',
+    promptVersion: 'tutor-model-candidate-v6',
     timeoutMs: 3000,
     pricingKnown: true,
     configured: true,
+    runtimeAuthority: 'production_live',
   });
 
   const executorConfig = resolveTutorLiveExecutorConfig(LIVE_ENV);
@@ -72,6 +86,61 @@ test('resolves only the complete component-specific Live conjunction', () => {
       structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
     },
   );
+});
+
+test('enables the sealed SR5 replay only inside the exact zero-Provider boundary', () => {
+  assert.deepEqual(resolveTutorModelConfig(SR6_REPLAY_ENV), {
+    enabled: true,
+    mode: 'mock',
+    provider: 'mock',
+    model: 'deepseek-v4-pro',
+    promptVersion: 'tutor-model-candidate-v6',
+    timeoutMs: 3000,
+    pricingKnown: false,
+    configured: true,
+    runtimeAuthority: 'sr5_sealed_replay',
+    replay: {
+      enabled: true,
+      component: 'tutor',
+      behavior: 'success',
+      maxRequests: 1,
+      totalMaxRequests: 1,
+      authoritySha256: '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+    },
+  });
+  assert.equal(resolveTutorLiveExecutorConfig(SR6_REPLAY_ENV), null);
+
+  let credentialGetterCalls = 0;
+  const hostileReplayEnv = Object.defineProperty(
+    { ...SR6_REPLAY_ENV, AI_BASE_URL: TUTOR_MODEL_BASE_URL },
+    'TUTOR_AGENT_DEEPSEEK_API_KEY',
+    {
+      enumerable: true,
+      get() {
+        credentialGetterCalls += 1;
+        throw new Error('credential_accessor_must_not_run');
+      },
+    },
+  );
+  assert.equal(resolveTutorModelConfig(hostileReplayEnv).runtimeAuthority, 'disabled');
+  assert.equal(resolveTutorLiveExecutorConfig(hostileReplayEnv), null);
+  assert.equal(credentialGetterCalls, 0);
+
+  for (const env of [
+    { ...SR6_REPLAY_ENV, PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: 'false' },
+    { ...SR6_REPLAY_ENV, AI_PROVIDER_MODE: 'live' },
+    { ...SR6_REPLAY_ENV, AI_ENABLE_LIVE_CALLS: 'true' },
+    { ...SR6_REPLAY_ENV, TUTOR_AGENT_MODEL_ENABLED: 'true' },
+    { ...SR6_REPLAY_ENV, PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'organizer' },
+    { ...SR6_REPLAY_ENV, PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'unknown' },
+    { ...SR6_REPLAY_ENV, PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '3' },
+    {
+      ...SR6_REPLAY_ENV,
+      PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: 'sha256:tampered',
+    },
+  ]) {
+    assert.equal(resolveTutorModelConfig(env).enabled, false);
+  }
 });
 
 test('gate, mode, global gate, exact URL, component key, timeout and pricing fail closed', () => {

@@ -3,8 +3,10 @@ import { register } from 'node:module';
 import test from 'node:test';
 
 import {
+  createFirstPartyDeepSeekV4ProDirectAdapter,
   createModelAgentBudget,
   createModelAgentRuntime,
+  createPhase697V7WireDiagnostics,
   type ModelAgentRequest,
   type ModelAgentRuntime,
 } from '@repo/ai';
@@ -28,7 +30,7 @@ const { buildChatAgentExecution } = await import('./chat-agent-runtime.ts');
 const { orchestrateChatModelAgents } = await import('./chat-model-agent-orchestration.ts');
 const { createTutorModelBudget } = await import('./tutor-model-config.ts');
 
-const AMBIGUOUS_TUTOR_TEXT = '我有点卡住，能不能别一下说完，带我往下走？';
+const MODEL_ELIGIBLE_TUTOR_TEXT = '我写了一步但不确定哪里错了，帮我检查一下。';
 const ACTIVE_CONTEXT = {
   type: 'ocr-question' as const,
   questionText: '合成代数题：已知 3x+2=11，继续判断移项步骤。',
@@ -50,7 +52,7 @@ test('applies one governed Tutor candidate after the final Tutor route', async (
   const tutorBudget = createTutorModelBudget();
 
   const execution = await buildChatAgentExecution({
-    messages: [{ role: 'user', content: AMBIGUOUS_TUTOR_TEXT }],
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
     runId: 'run_tutor_candidate_applied',
     userId: 'user_tutor_candidate_applied',
@@ -62,6 +64,7 @@ test('applies one governed Tutor candidate after the final Tutor route', async (
     },
     tutorModel: {
       enabled: true,
+      authority: 'production_live',
       runtime: tutorRuntime,
       budget: tutorBudget,
     },
@@ -72,9 +75,9 @@ test('applies one governed Tutor candidate after the final Tutor route', async (
   assert.equal(seenSignal, controller.signal);
   assert.equal(execution.tutorObservation.attempted, true);
   assert.equal(execution.tutorObservation.disposition, 'candidate_applied');
-  assert.equal(execution.decision.tutorStrategy?.intent, 'socratic_hint');
-  assert.equal(execution.decision.tutorStrategy?.depth, 'brief');
-  assert.equal(execution.decision.debugHeaders['x-prepmind-tutor-intent'], 'socratic_hint');
+  assert.equal(execution.decision.tutorStrategy?.intent, 'step_check');
+  assert.equal(execution.decision.tutorStrategy?.depth, 'standard');
+  assert.equal(execution.decision.debugHeaders['x-prepmind-tutor-intent'], 'step_check');
   assert.equal(execution.tutorBudget.maxCalls, 1);
   assert.equal(execution.tutorBudget.usedCalls, 1);
   assert.equal(execution.budget.maxCalls, 2);
@@ -97,7 +100,12 @@ test('non-Tutor final routes and explicit Tutor instructions are provider-zero-c
     runId: 'run_tutor_non_route',
     userId: 'user_tutor_non_route',
     model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
-    tutorModel: { enabled: true, runtime, budget: createTutorModelBudget() },
+    tutorModel: {
+      enabled: true,
+      authority: 'production_live',
+      runtime,
+      budget: createTutorModelBudget(),
+    },
   });
   assert.equal(nonTutor.decision.route, 'rag_answer');
   assert.equal(nonTutor.tutorObservation.attempted, false);
@@ -109,7 +117,12 @@ test('non-Tutor final routes and explicit Tutor instructions are provider-zero-c
     runId: 'run_tutor_explicit',
     userId: 'user_tutor_explicit',
     model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
-    tutorModel: { enabled: true, runtime, budget: createTutorModelBudget() },
+    tutorModel: {
+      enabled: true,
+      authority: 'production_live',
+      runtime,
+      budget: createTutorModelBudget(),
+    },
   });
   assert.equal(explicit.decision.route, 'tutor');
   assert.equal(explicit.decision.tutorStrategy?.intent, 'step_check');
@@ -120,13 +133,14 @@ test('non-Tutor final routes and explicit Tutor instructions are provider-zero-c
 
 test('Tutor runtime failure preserves the canonical Tutor route and local strategy', async () => {
   const execution = await buildChatAgentExecution({
-    messages: [{ role: 'user', content: AMBIGUOUS_TUTOR_TEXT }],
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
     runId: 'run_tutor_runtime_fallback',
     userId: 'user_tutor_runtime_fallback',
     model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
     tutorModel: {
       enabled: true,
+      authority: 'production_live',
       runtime: {
         async invokeStructured() {
           throw new Error('raw_tutor_runtime_failure_prompt_key_url');
@@ -137,9 +151,54 @@ test('Tutor runtime failure preserves the canonical Tutor route and local strate
   });
 
   assert.equal(execution.decision.route, 'tutor');
-  assert.equal(execution.decision.tutorStrategy?.intent, 'general_follow_up');
+  assert.equal(execution.decision.tutorStrategy?.intent, 'step_check');
   assert.equal(execution.tutorObservation.disposition, 'fallback_runtime_error');
   assert.equal(JSON.stringify(execution).includes('raw_tutor_runtime_failure'), false);
+});
+
+test('Tutor Web composition discards bounded response extensions through Schema Recovery', async () => {
+  const rawSentinel = 'sr6_raw_extension_must_not_escape';
+  const execution = await buildChatAgentExecution({
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
+    activeContext: ACTIVE_CONTEXT,
+    runId: 'run_tutor_schema_recovery_extension',
+    userId: 'user_tutor_schema_recovery_extension',
+    model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
+    tutorModel: {
+      enabled: true,
+      authority: 'production_live',
+      runtime: syntheticTutorContentRuntime(
+        JSON.stringify({ intentIndex: 0, explanation: rawSentinel }),
+      ),
+      budget: createTutorModelBudget(),
+    },
+  });
+
+  assert.equal(execution.tutorObservation.disposition, 'candidate_applied');
+  assert.equal(execution.decision.tutorStrategy?.intent, 'step_check');
+  assert.equal(JSON.stringify(execution).includes(rawSentinel), false);
+  assert.equal(JSON.stringify(execution).includes('explanation'), false);
+});
+
+test('Tutor Web composition fails closed on an invalid Schema Recovery ordinal', async () => {
+  const execution = await buildChatAgentExecution({
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
+    activeContext: ACTIVE_CONTEXT,
+    runId: 'run_tutor_schema_recovery_invalid',
+    userId: 'user_tutor_schema_recovery_invalid',
+    model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
+    tutorModel: {
+      enabled: true,
+      authority: 'production_live',
+      runtime: syntheticTutorContentRuntime('{"intentIndex":"0"}'),
+      budget: createTutorModelBudget(),
+    },
+  });
+
+  assert.equal(execution.tutorObservation.attempted, true);
+  assert.equal(execution.tutorObservation.disposition, 'fallback_runtime_error');
+  assert.equal(execution.decision.degraded, true);
+  assert.equal(execution.decision.tutorStrategy?.intent, 'step_check');
 });
 
 test('aborted requests stay zero-call and unverifiable usage cannot influence Tutor strategy', async () => {
@@ -147,7 +206,7 @@ test('aborted requests stay zero-call and unverifiable usage cannot influence Tu
   const controller = new AbortController();
   controller.abort();
   const aborted = await buildChatAgentExecution({
-    messages: [{ role: 'user', content: AMBIGUOUS_TUTOR_TEXT }],
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
     runId: 'run_tutor_aborted',
     userId: 'user_tutor_aborted',
@@ -155,6 +214,7 @@ test('aborted requests stay zero-call and unverifiable usage cannot influence Tu
     model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
     tutorModel: {
       enabled: true,
+      authority: 'production_live',
       runtime: trackedTutorRuntime(() => {
         abortedInvokes += 1;
       }),
@@ -173,28 +233,26 @@ test('aborted requests stay zero-call and unverifiable usage cannot influence Tu
     timeoutMs: 3_000,
     executor: async () => ({
       object: {
-        intent: 'socratic_hint',
-        depth: 'brief',
-        confidence: 'high',
-        evidenceCodes: ['implicit_hint_request'],
+        intentIndex: 0,
       },
       usage: { inputTokens: 200, outputTokens: 0 },
     }),
   });
   const unpriced = await buildChatAgentExecution({
-    messages: [{ role: 'user', content: AMBIGUOUS_TUTOR_TEXT }],
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
     runId: 'run_tutor_unpriced_usage',
     userId: 'user_tutor_unpriced_usage',
     model: { enabled: false, runtime: hostileRuntime(), budget: routerVerifierBudget() },
     tutorModel: {
       enabled: true,
+      authority: 'production_live',
       runtime: zeroOutputRuntime,
       budget: createTutorModelBudget(),
     },
   });
   assert.equal(unpriced.decision.route, 'tutor');
-  assert.equal(unpriced.decision.tutorStrategy?.intent, 'general_follow_up');
+  assert.equal(unpriced.decision.tutorStrategy?.intent, 'step_check');
   assert.equal(unpriced.tutorObservation.disposition, 'fallback_runtime_error');
   assert.equal(unpriced.decision.degraded, true);
 });
@@ -218,7 +276,7 @@ test('orchestration keeps Tutor budget separate from the Router to Verifier budg
       tutorBundleCalls += 1;
       return tutorBundle;
     },
-    messages: [{ role: 'user', content: AMBIGUOUS_TUTOR_TEXT }],
+    messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
     runId: 'run_tutor_orchestration_budget',
     userId: 'user_tutor_orchestration_budget',
@@ -268,10 +326,7 @@ function trackedTutorRuntime(
     timeoutMs: 3_000,
     executor: async () => ({
       object: {
-        intent: 'socratic_hint',
-        depth: 'brief',
-        confidence: 'high',
-        evidenceCodes: ['implicit_hint_request'],
+        intentIndex: 0,
       },
       usage: { inputTokens: 240, outputTokens: 24 },
     }),
@@ -347,10 +402,50 @@ function makeTutorBundle(
       mode: 'live',
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
-      promptVersion: 'tutor-model-candidate-v4',
+      promptVersion: 'tutor-model-candidate-v6',
+      runtimeAuthority: 'production_live',
       timeoutMs: 3_000,
       pricingKnown: true,
       configured: true,
     },
   };
+}
+
+function syntheticTutorContentRuntime(content: string): ModelAgentRuntime {
+  const diagnostics = createPhase697V7WireDiagnostics({
+    appendStage() {
+      return undefined;
+    },
+  });
+  const adapter = createFirstPartyDeepSeekV4ProDirectAdapter(
+    {
+      provider: 'deepseek',
+      apiKey: 'sr6-synthetic-key-never-network',
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-pro',
+    },
+    diagnostics.capability,
+    {
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content } }],
+            usage: {
+              prompt_tokens: 120,
+              completion_tokens: 12,
+              completion_tokens_details: { reasoning_tokens: 0 },
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+    },
+  );
+  return createModelAgentRuntime({
+    mode: 'live',
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
+    liveCallsEnabled: true,
+    timeoutMs: 500,
+    executor: adapter.executor,
+  });
 }

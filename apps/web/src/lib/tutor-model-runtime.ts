@@ -9,6 +9,7 @@ import {
   type OpenAICompatibleExecutorConfig,
   type StructuredModelExecutor,
 } from '@repo/ai';
+import { createPhase697Sr6ProductReplayRuntime } from '@repo/agent/model-candidates';
 
 import {
   TUTOR_MODEL,
@@ -26,9 +27,7 @@ type Environment = Record<string, unknown>;
 type TutorModelRuntimeDependencies = {
   env?: Environment;
   pricingProfile?: unknown;
-  createExecutor?: (
-    config: OpenAICompatibleExecutorConfig,
-  ) => StructuredModelExecutor;
+  createExecutor?: (config: OpenAICompatibleExecutorConfig) => StructuredModelExecutor;
   createRuntime?: (input: CreateModelAgentRuntimeInput) => ModelAgentRuntime;
 };
 
@@ -48,14 +47,24 @@ export function createTutorModelRuntimeBundle(
       ? readDependency(dependencies, 'pricingProfile')
       : TUTOR_MODEL_PRICE_CNY;
     const createExecutor =
-      readDependency(dependencies, 'createExecutor') ??
-      createOpenAICompatibleStructuredExecutor;
-    const createRuntime =
-      readDependency(dependencies, 'createRuntime') ?? createModelAgentRuntime;
+      readDependency(dependencies, 'createExecutor') ?? createOpenAICompatibleStructuredExecutor;
+    const createRuntime = readDependency(dependencies, 'createRuntime') ?? createModelAgentRuntime;
     const initialConfig = resolveTutorModelConfig(env, pricingProfile);
 
     if (!initialConfig.enabled) {
       return createDisabledBundle(initialConfig, createRuntime);
+    }
+    if (initialConfig.runtimeAuthority === 'sr5_sealed_replay' && initialConfig.replay?.enabled) {
+      return Object.freeze({
+        enabled: true,
+        runtime: createPhase697Sr6ProductReplayRuntime({
+          component: 'tutor',
+          behavior: initialConfig.replay.behavior,
+          maxRequests: initialConfig.replay.maxRequests,
+        }),
+        config: initialConfig,
+        createBudget: createTutorModelBudget,
+      });
     }
     const runtime = createDeferredTutorRuntime({
       env,
@@ -120,8 +129,9 @@ function resolveTutorLiveRuntime(input: {
 
 function createDisabledBundle(
   config: TutorModelConfig,
-  createRuntime: (input: CreateModelAgentRuntimeInput) => ModelAgentRuntime =
-    createModelAgentRuntime,
+  createRuntime: (
+    input: CreateModelAgentRuntimeInput,
+  ) => ModelAgentRuntime = createModelAgentRuntime,
 ): TutorModelRuntimeBundle {
   let runtime: ModelAgentRuntime;
   try {
@@ -157,6 +167,7 @@ function disableConfig(config: TutorModelConfig): TutorModelConfig {
     provider: 'mock',
     configured: false,
     disabledReason: 'invalid_component_config',
+    runtimeAuthority: 'disabled',
   });
 }
 
@@ -170,13 +181,12 @@ function disabledFallbackConfig(): TutorModelConfig {
     timeoutMs: TUTOR_MODEL_TIMEOUT_MS,
     pricingKnown: false,
     configured: false,
+    runtimeAuthority: 'disabled',
     disabledReason: 'invalid_component_config',
   });
 }
 
-function readDependency<
-  Key extends keyof TutorModelRuntimeDependencies,
->(
+function readDependency<Key extends keyof TutorModelRuntimeDependencies>(
   dependencies: TutorModelRuntimeDependencies,
   key: Key,
 ): TutorModelRuntimeDependencies[Key] {

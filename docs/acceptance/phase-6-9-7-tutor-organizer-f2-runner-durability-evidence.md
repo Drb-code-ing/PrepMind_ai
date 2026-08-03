@@ -175,8 +175,10 @@ Docker/API/可见浏览器验收继续阻断；详见
 设计；它不修改 F2/L3 runner、journal 或 artifact。其后 SR1--SR4 的 TDD、robustness、独立
 runner/lineage/durability 与 reviewed Mock/static 已 zero-provider 完成。SR4 只具有 Mock authority。唯一 SR5
 run `63f8a76b...04cb` 随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不覆盖本页或 L3/SR4
-历史，且不形成产品 authority。当前下一任务仅 SR6 分支产品验收。见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+历史，且不形成产品 authority。SR6 随后已以 `providerCalls=0` 完成分支产品验收且不提升 SR5 semantic
+authority；当前下一任务仅 SR7/main。见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 回顾时可以问：
 

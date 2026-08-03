@@ -1,5 +1,9 @@
-import type { WrongQuestionOrganizerModelCandidateEnvelope } from '@repo/agent/model-candidates';
 import { isModelAgentRunBudget, type ModelAgentTrace } from '@repo/ai';
+import {
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL,
+  isPhase697Sr6ProductReplayTrace,
+} from '@repo/agent/model-candidates';
+import type { WrongQuestionOrganizerV9ModelCandidateEnvelope } from '@repo/agent/wrong-question-organizer-v9';
 import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
 
 import {
@@ -7,26 +11,29 @@ import {
   WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION,
   WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET,
   estimateWrongQuestionOrganizerRequestCostCny,
+  type WrongQuestionOrganizerModelConfig,
 } from './wrong-question-organizer-model-config';
 
 type CandidateObservation =
-  WrongQuestionOrganizerModelCandidateEnvelope['observation'];
+  WrongQuestionOrganizerV9ModelCandidateEnvelope['observation'];
+type CandidateRuntimeAuthority = Exclude<
+  WrongQuestionOrganizerModelConfig['runtimeAuthority'],
+  'disabled'
+>;
 
 export type WrongQuestionOrganizerCandidateAdmission = Readonly<{
   usage: Readonly<{ inputTokens: number; outputTokens: number }>;
   estimatedCostCny: number;
   trace: ModelAgentTrace;
+  runtimeAuthority: CandidateRuntimeAuthority;
 }>;
 
 export type WrongQuestionOrganizerCommandTraceOutcome =
-  | 'applied'
-  | 'authority'
-  | 'stale'
-  | 'aborted'
-  | 'failed';
+  'applied' | 'authority' | 'stale' | 'aborted' | 'failed';
 
 export function validateWrongQuestionOrganizerCandidateAdmission(
   observation: CandidateObservation,
+  runtimeAuthority: WrongQuestionOrganizerModelConfig['runtimeAuthority'] = 'production_live',
 ): WrongQuestionOrganizerCandidateAdmission | null {
   try {
     if (
@@ -42,9 +49,6 @@ export function validateWrongQuestionOrganizerCandidateAdmission(
     if (
       !trace ||
       trace.task !== 'wrong_question_organization' ||
-      trace.mode !== 'live' ||
-      trace.provider !== 'deepseek' ||
-      trace.model !== WRONG_QUESTION_ORGANIZER_MODEL ||
       trace.status !== 'succeeded' ||
       trace.degraded ||
       trace.maxOutputTokens !==
@@ -68,13 +72,24 @@ export function validateWrongQuestionOrganizerCandidateAdmission(
     ) {
       return null;
     }
-    const estimatedCostCny =
-      estimateWrongQuestionOrganizerRequestCostCny(usage);
+    const productionLive =
+      runtimeAuthority === 'production_live' &&
+      trace.mode === 'live' &&
+      trace.provider === 'deepseek' &&
+      trace.model === WRONG_QUESTION_ORGANIZER_MODEL;
+    const sealedReplay =
+      runtimeAuthority === 'sr5_sealed_replay' &&
+      isPhase697Sr6ProductReplayTrace(trace, 'wrong_question_organization');
+    if (!productionLive && !sealedReplay) return null;
+    const estimatedCostCny = productionLive
+      ? estimateWrongQuestionOrganizerRequestCostCny(usage)
+      : 0;
     if (estimatedCostCny === null) return null;
     return Object.freeze({
       usage: Object.freeze({ ...usage }),
       estimatedCostCny,
       trace: Object.freeze({ ...trace }),
+      runtimeAuthority,
     });
   } catch {
     return null;
@@ -167,9 +182,12 @@ function traceBase(input: {
     route: 'wrong_question_organize',
     confidence: 1,
     status: 'completed',
-    mode: 'live',
-    modelProvider: 'deepseek',
-    modelName: WRONG_QUESTION_ORGANIZER_MODEL,
+    mode: input.admission.trace.mode,
+    modelProvider: input.admission.trace.provider,
+    modelName:
+      input.admission.runtimeAuthority === 'sr5_sealed_replay'
+        ? PHASE_6_9_7_SR6_PRODUCT_REPLAY_MODEL
+        : WRONG_QUESTION_ORGANIZER_MODEL,
     inputTokenEstimate: usage.inputTokens,
     outputTokenEstimate: usage.outputTokens,
     maxOutputTokens: WRONG_QUESTION_ORGANIZER_REQUEST_BUDGET.maxOutputTokens,
@@ -214,12 +232,21 @@ function traceBase(input: {
       finishedAt: input.candidateFinishedAt.toISOString(),
       durationMs: candidateDuration,
       inputSummary: `scope=ordinal_projection;version=${WRONG_QUESTION_ORGANIZER_MODEL_PROMPT_VERSION}`,
-      outputSummary: [
-        'disposition=candidate_applied',
-        `usage=${usage.inputTokens}/${usage.outputTokens}`,
-        'pricing=cny_known',
-        `cost_cny=${input.admission.estimatedCostCny.toFixed(6)}`,
-      ].join(';'),
+      outputSummary:
+        input.admission.runtimeAuthority === 'sr5_sealed_replay'
+          ? [
+              'disposition=candidate_applied',
+              `usage=${usage.inputTokens}/${usage.outputTokens}`,
+              'pricing=not_applicable',
+              'cost_cny=0.000000',
+              'authority=sr5_sealed_replay',
+            ].join(';')
+          : [
+              'disposition=candidate_applied',
+              `usage=${usage.inputTokens}/${usage.outputTokens}`,
+              'pricing=cny_known',
+              `cost_cny=${input.admission.estimatedCostCny.toFixed(6)}`,
+            ].join(';'),
       errorMessage: null,
     },
   ];

@@ -1,5 +1,6 @@
 import {
   MODEL_CANDIDATE_DISPOSITIONS,
+  isPhase697Sr6ProductReplayTrace,
   type ModelCandidateDisposition,
 } from '@repo/agent/model-candidates';
 import {
@@ -53,17 +54,14 @@ export type ChatModelAgentObservationAggregate = {
   totalTokens: number;
 };
 
-export function projectChatModelAgentObservation(
-  value: unknown,
-): SafeChatModelAgentObservation {
+export function projectChatModelAgentObservation(value: unknown): SafeChatModelAgentObservation {
   try {
     const attempted = readOwnData(value, 'attempted') === true;
     const disposition = toDisposition(readOwnData(value, 'disposition'));
     const usageUnavailableState = readOwnDataState(value, 'usageUnavailable');
     const usageUnavailable =
       usageUnavailableState.kind === 'descriptor_error' ||
-      (usageUnavailableState.kind === 'data' &&
-        usageUnavailableState.value === true);
+      (usageUnavailableState.kind === 'data' && usageUnavailableState.value === true);
     const usage = readOwnData(value, 'usage');
     const trace = readOwnData(value, 'trace');
     const errorCode = toErrorCode(readOwnData(trace, 'errorCode'));
@@ -75,12 +73,8 @@ export function projectChatModelAgentObservation(
       attempted,
       disposition,
       durationMs: toSafeCount(readOwnData(trace, 'durationMs')),
-      inputTokens: usageUnavailable
-        ? 0
-        : toSafeCount(readOwnData(usage, 'inputTokens')),
-      outputTokens: usageUnavailable
-        ? 0
-        : toSafeCount(readOwnData(usage, 'outputTokens')),
+      inputTokens: usageUnavailable ? 0 : toSafeCount(readOwnData(usage, 'inputTokens')),
+      outputTokens: usageUnavailable ? 0 : toSafeCount(readOwnData(usage, 'outputTokens')),
       ...(usageUnavailable ? { usageUnavailable: true } : {}),
       ...(errorCode ? { errorCode } : {}),
       ...(providerFailureCategory ? { providerFailureCategory } : {}),
@@ -90,19 +84,22 @@ export function projectChatModelAgentObservation(
   }
 }
 
-export function projectTutorModelAgentObservation(
-  value: unknown,
-): SafeTutorModelAgentObservation {
+export function projectTutorModelAgentObservation(value: unknown): SafeTutorModelAgentObservation {
   const projected = projectChatModelAgentObservation(value);
   try {
     const reasonCodes = readOwnData(value, 'reasonCodes');
     const detailReason = toTutorSafeReasonCode(readOwnData(reasonCodes, '1'));
-    const costCny = projected.attempted
-      ? estimateTutorRequestCostCny({
-          inputTokens: projected.inputTokens,
-          outputTokens: projected.outputTokens,
-        })
-      : null;
+    const isZeroProviderReplay = isPhase697Sr6ProductReplayTrace(
+      readOwnData(value, 'trace'),
+      'tutor_strategy',
+    );
+    const costCny =
+      projected.attempted && !isZeroProviderReplay
+        ? estimateTutorRequestCostCny({
+            inputTokens: projected.inputTokens,
+            outputTokens: projected.outputTokens,
+          })
+        : null;
     return {
       ...projected,
       reasonCode: detailReason ?? projected.disposition,
@@ -125,16 +122,10 @@ export function aggregateChatModelAgentObservations(
 ): ChatModelAgentObservationAggregate {
   const routerObservation = projectChatModelAgentObservation(router);
   const verifierObservation =
-    verifier === undefined
-      ? undefined
-      : projectChatModelAgentObservation(verifier);
+    verifier === undefined ? undefined : projectChatModelAgentObservation(verifier);
   const tutorObservation =
     tutor === undefined ? undefined : projectTutorModelAgentObservation(tutor);
-  return aggregateProjectedObservations(
-    routerObservation,
-    verifierObservation,
-    tutorObservation,
-  );
+  return aggregateProjectedObservations(routerObservation, verifierObservation, tutorObservation);
 }
 
 export function buildChatModelAgentObservationHeaders(input: {
@@ -144,13 +135,9 @@ export function buildChatModelAgentObservationHeaders(input: {
 }): Record<string, string> {
   const router = projectChatModelAgentObservation(input.router);
   const verifier =
-    input.verifier === undefined
-      ? undefined
-      : projectChatModelAgentObservation(input.verifier);
+    input.verifier === undefined ? undefined : projectChatModelAgentObservation(input.verifier);
   const tutor =
-    input.tutor === undefined
-      ? undefined
-      : projectTutorModelAgentObservation(input.tutor);
+    input.tutor === undefined ? undefined : projectTutorModelAgentObservation(input.tutor);
   const aggregate = aggregateProjectedObservations(router, verifier, tutor);
 
   return {
@@ -208,8 +195,7 @@ function observationHeaders(
     [`${prefix}-input-tokens`]: String(observation?.inputTokens ?? 0),
     [`${prefix}-output-tokens`]: String(observation?.outputTokens ?? 0),
     [`${prefix}-error-code`]: observation?.errorCode ?? 'none',
-    [`${prefix}-provider-failure`]:
-      observation?.providerFailureCategory ?? 'none',
+    [`${prefix}-provider-failure`]: observation?.providerFailureCategory ?? 'none',
   };
 }
 
@@ -251,8 +237,9 @@ const TUTOR_SAFE_REASON_CODES = Object.freeze([
 export type TutorSafeReasonCode = (typeof TUTOR_SAFE_REASON_CODES)[number];
 
 export function isTutorSafeReasonCode(value: unknown): value is TutorSafeReasonCode {
-  return typeof value === 'string' &&
-    (TUTOR_SAFE_REASON_CODES as readonly string[]).includes(value);
+  return (
+    typeof value === 'string' && (TUTOR_SAFE_REASON_CODES as readonly string[]).includes(value)
+  );
 }
 
 function toTutorSafeReasonCode(value: unknown): TutorSafeReasonCode | undefined {
@@ -266,9 +253,7 @@ function formatSafeCost(value: number | undefined): string {
 }
 
 type OwnDataState =
-  | { kind: 'missing' }
-  | { kind: 'data'; value: unknown }
-  | { kind: 'descriptor_error' };
+  { kind: 'missing' } | { kind: 'data'; value: unknown } | { kind: 'descriptor_error' };
 
 function readOwnDataState(value: unknown, key: string): OwnDataState {
   try {
@@ -304,19 +289,14 @@ function toDisposition(value: unknown): ModelCandidateDisposition {
     : DEFAULT_DISPOSITION;
 }
 
-function toErrorCode(
-  value: unknown,
-): ModelAgentErrorCode | 'UNKNOWN' | undefined {
+function toErrorCode(value: unknown): ModelAgentErrorCode | 'UNKNOWN' | undefined {
   if (value === undefined) return undefined;
-  return typeof value === 'string' &&
-    (MODEL_AGENT_ERROR_CODES as readonly string[]).includes(value)
+  return typeof value === 'string' && (MODEL_AGENT_ERROR_CODES as readonly string[]).includes(value)
     ? (value as ModelAgentErrorCode)
     : 'UNKNOWN';
 }
 
-function toProviderFailureCategory(
-  value: unknown,
-): ModelAgentProviderFailureCategory | undefined {
+function toProviderFailureCategory(value: unknown): ModelAgentProviderFailureCategory | undefined {
   if (value === undefined) return undefined;
   return typeof value === 'string' &&
     (MODEL_AGENT_PROVIDER_FAILURE_CATEGORIES as readonly string[]).includes(value)

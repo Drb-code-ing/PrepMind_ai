@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  runWrongQuestionOrganizerModelCandidate,
-  type WrongQuestionOrganizerModelCandidateEnvelope,
-  type WrongQuestionOrganizerModelCandidateItem,
-} from '@repo/agent/model-candidates';
+  WRONG_QUESTION_ORGANIZER_V9_MODEL_PROMPT_VERSION,
+  runWrongQuestionOrganizerV9ModelCandidate,
+  type WrongQuestionOrganizerV9ModelCandidateEnvelope,
+  type WrongQuestionOrganizerV9ModelCandidateInput,
+} from '@repo/agent/wrong-question-organizer-v9';
 import {
   organizeWrongQuestion,
   type WrongQuestionOrganizerInput,
@@ -314,6 +315,13 @@ export class WrongQuestionOrganizerService {
         wrongQuestionId,
         result: this.organizerDecision(snapshot, wrongQuestionId),
       }));
+      if (
+        !modelAttemptConsumed &&
+        !this.snapshotSupportsModelCandidate(snapshot, input.targets)
+      ) {
+        modelAttemptConsumed = true;
+        runtime = localRuntimeMetadata('not_eligible');
+      }
       let decisions = localDecisions;
       let traceContext: OrganizerTraceContext | null = null;
       let postDecisionFenceCompleted = false;
@@ -328,6 +336,8 @@ export class WrongQuestionOrganizerService {
           const startedAt = new Date();
           const candidate = await this.safeModelCandidate({
             runId,
+            userId: input.userId,
+            ownerHashSecret,
             snapshot,
             targets: input.targets,
             budget: reservation.candidateBudget,
@@ -339,21 +349,21 @@ export class WrongQuestionOrganizerService {
           const admission = candidate
             ? validateWrongQuestionOrganizerCandidateAdmission(
                 candidate.observation,
+                this.modelRuntime.config.runtimeAuthority,
               )
+            : null;
+          const candidateDecisions = candidate
+            ? this.modelCandidateDecisions(snapshot, input.targets, candidate)
             : null;
           if (
             candidate !== null &&
             candidate.observation.disposition === 'candidate_applied' &&
             admission !== null &&
-            candidate.result.length !== input.targets.length
+            candidateDecisions === null
           ) {
             runtime = localRuntimeMetadata('fallback_schema_invalid');
           }
-          if (
-            admission !== null &&
-            candidate !== null &&
-            candidate.result.length === input.targets.length
-          ) {
+          if (admission !== null && candidateDecisions !== null) {
             const freshAfterCandidate = await this.snapshotSource.revalidate(
               this.prisma,
               {
@@ -382,10 +392,7 @@ export class WrongQuestionOrganizerService {
                 input.userId,
                 buildWrongQuestionOrganizerAdmissionTrace(context),
               );
-              decisions = input.targets.map((target, index) => ({
-                wrongQuestionId: target.wrongQuestionId,
-                result: candidate.result[index],
-              }));
+              decisions = candidateDecisions;
               traceContext = context;
             } catch {
               decisions = localDecisions;
@@ -499,28 +506,35 @@ export class WrongQuestionOrganizerService {
 
   private async safeModelCandidate(input: {
     runId: string;
+    userId: string;
+    ownerHashSecret: string;
     snapshot: WrongQuestionOrganizerOwnerSnapshot;
     targets: readonly OrganizerTarget[];
     budget: Parameters<
-      typeof runWrongQuestionOrganizerModelCandidate
+      typeof runWrongQuestionOrganizerV9ModelCandidate
     >[0]['budget'];
     signal?: AbortSignal;
-  }): Promise<WrongQuestionOrganizerModelCandidateEnvelope | null> {
+  }): Promise<WrongQuestionOrganizerV9ModelCandidateEnvelope | null> {
     try {
-      const items = input.targets.map(({ wrongQuestionId }) =>
-        this.modelCandidateItem(input.snapshot, wrongQuestionId),
+      const shortlistSource = this.modelShortlistSource(
+        input.snapshot,
+        input.targets,
       );
-      const force = input.targets[0]?.force ?? false;
-      if (input.targets.some((target) => target.force !== force)) return null;
-      return await runWrongQuestionOrganizerModelCandidate({
+      return await runWrongQuestionOrganizerV9ModelCandidate({
         runId: input.runId,
-        items,
-        force,
-        ownerEligible: true,
-        snapshotCurrent: true,
-        projectionSource: this.modelProjectionSource(input.snapshot, items),
+        shortlistSource,
         runtime: this.modelRuntime.runtime,
         budget: input.budget,
+        revalidateSource: async () => {
+          const current = await this.snapshotSource.revalidate(this.prisma, {
+            userId: input.userId,
+            ownerHashSecret: input.ownerHashSecret,
+            snapshot: input.snapshot,
+          });
+          return current
+            ? this.modelShortlistSource(input.snapshot, input.targets)
+            : null;
+        },
         ...(input.signal ? { signal: input.signal } : {}),
       });
     } catch {
@@ -528,58 +542,110 @@ export class WrongQuestionOrganizerService {
     }
   }
 
-  private modelCandidateItem(
+  private modelShortlistSource(
     snapshot: WrongQuestionOrganizerOwnerSnapshot,
-    wrongQuestionId: string,
-  ): WrongQuestionOrganizerModelCandidateItem {
+    targets: readonly OrganizerTarget[],
+  ): WrongQuestionOrganizerV9ModelCandidateInput['shortlistSource'] {
+    const questionById = new Map(
+      snapshot.wrongQuestions.map((question) => [question.id, question]),
+    );
     return {
-      deterministicInput: this.organizerInput(snapshot, wrongQuestionId),
-      hasExistingItem: snapshot.items.some(
-        (item) => item.wrongQuestionId === wrongQuestionId,
-      ),
+      ownerDomain: snapshot.ownerHash,
+      ownerSnapshotVersion: snapshot.version,
+      ownerSnapshotFingerprint: snapshot.fingerprint,
+      safety: 'safe_for_model',
+      questions: targets.map(({ wrongQuestionId }) => {
+        const question = questionById.get(wrongQuestionId);
+        if (!question) throw this.wrongQuestionNotFound();
+        const subject = organizerSubjectAuthority(question.subject);
+        return {
+          id: question.id,
+          ...(subject === null ? {} : { subject }),
+          category: question.category,
+          knowledgePoints: [...question.knowledgePoints],
+          errorType: question.errorType,
+          questionText: question.questionText,
+          analysis: question.analysis,
+          status: question.status,
+          updatedAt: question.updatedAt,
+        };
+      }),
+      decks: snapshot.decks.flatMap((deck) => {
+        const subject = organizerSubjectAuthority(deck.subject);
+        return subject === null
+          ? []
+          : [
+              {
+                id: deck.id,
+                subject,
+                name: deck.name,
+                nameLocked: deck.nameLocked,
+                keywords: [...deck.keywords],
+                updatedAt: deck.updatedAt,
+              },
+            ];
+      }),
     };
   }
 
-  private modelProjectionSource(
+  private snapshotSupportsModelCandidate(
     snapshot: WrongQuestionOrganizerOwnerSnapshot,
-    items: readonly WrongQuestionOrganizerModelCandidateItem[],
-  ) {
-    const deckIds = new Set(
-      items.flatMap((item) =>
-        (item.deterministicInput.existingDecks ?? []).map(({ id }) => id),
-      ),
+    targets: readonly OrganizerTarget[],
+  ): boolean {
+    const questionById = new Map(
+      snapshot.wrongQuestions.map((question) => [question.id, question]),
     );
-    return {
-      questions: items.map(({ deterministicInput }) => ({
-        questionId: deterministicInput.wrongQuestion.id,
-        subject: normalizedOrNull(deterministicInput.wrongQuestion.subject),
-        subjectHint: organizerSubjectHint(
-          deterministicInput.wrongQuestion.subject,
-        ),
-        category: normalizedOrNull(deterministicInput.wrongQuestion.category),
-        knowledgePoints: [
-          ...(deterministicInput.wrongQuestion.knowledgePoints ?? []),
-        ],
-        errorType: normalizedOrNull(deterministicInput.wrongQuestion.errorType),
-        questionText: normalizedOrNull(
-          deterministicInput.wrongQuestion.questionText,
-        ),
-        analysis: normalizedOrNull(deterministicInput.wrongQuestion.analysis),
-        answer: normalizedOrNull(deterministicInput.wrongQuestion.answer),
-        userNote: normalizedOrNull(deterministicInput.wrongQuestion.userNote),
-        safety: 'safe_for_model' as const,
-      })),
-      existingDecks: snapshot.decks
-        .filter((deck) => deckIds.has(deck.id))
-        .map((deck) => ({
-          deckId: deck.id,
-          subject: organizerSubjectHint(deck.subject, true),
-          name: deck.name,
-          nameLocked: deck.nameLocked,
-          keywords: [...deck.keywords],
-          safety: 'safe_for_model' as const,
-        })),
-    };
+    return targets.every(({ wrongQuestionId }) => {
+      const question = questionById.get(wrongQuestionId);
+      return question ? this.isPotentialModelCandidate(question) : false;
+    });
+  }
+
+  private modelCandidateDecisions(
+    snapshot: WrongQuestionOrganizerOwnerSnapshot,
+    targets: readonly OrganizerTarget[],
+    candidate: WrongQuestionOrganizerV9ModelCandidateEnvelope,
+  ): Array<{
+    wrongQuestionId: string;
+    result: WrongQuestionOrganizerResult;
+  }> | null {
+    try {
+      if (candidate.observation.disposition !== 'candidate_applied')
+        return null;
+      const binding = candidate.result.binding;
+      const questionIds = targets.map(({ wrongQuestionId }) => wrongQuestionId);
+      if (
+        binding === null ||
+        binding.candidateVersion !==
+          WRONG_QUESTION_ORGANIZER_V9_MODEL_PROMPT_VERSION ||
+        binding.ownerDomain !== snapshot.ownerHash ||
+        binding.ownerSnapshotVersion !== snapshot.version ||
+        binding.ownerSnapshotFingerprint !== snapshot.fingerprint ||
+        !sameUniqueStringMembers(binding.questionIds, questionIds) ||
+        candidate.result.suggestions.length !== questionIds.length
+      ) {
+        return null;
+      }
+      const suggestions = new Map(
+        candidate.result.suggestions.map((suggestion) => [
+          suggestion.questionId,
+          suggestion.organization,
+        ]),
+      );
+      if (suggestions.size !== questionIds.length) return null;
+      const decisions: Array<{
+        wrongQuestionId: string;
+        result: WrongQuestionOrganizerResult;
+      }> = [];
+      for (const wrongQuestionId of questionIds) {
+        const result = suggestions.get(wrongQuestionId);
+        if (!result) return null;
+        decisions.push({ wrongQuestionId, result });
+      }
+      return decisions;
+    } catch {
+      return null;
+    }
   }
 
   private organizerInput(
@@ -1193,12 +1259,7 @@ type BatchCandidateRow = Readonly<{
 }>;
 
 type OrganizerModelSubject =
-  | 'math'
-  | 'english'
-  | 'politics'
-  | 'computer'
-  | 'major'
-  | 'other';
+  'math' | 'english' | 'politics' | 'computer' | 'major' | 'other';
 
 type CountStats = {
   totalCount: number;
@@ -1215,24 +1276,29 @@ type OrganizerStats = {
   decks: Map<string, CountStats>;
 };
 
-function organizerSubjectHint(
+function sameUniqueStringMembers(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  if (left.length !== right.length) return false;
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  return (
+    leftSet.size === left.length &&
+    rightSet.size === right.length &&
+    [...leftSet].every((value) => rightSet.has(value))
+  );
+}
+
+function organizerSubjectAuthority(
   value: string | null | undefined,
-  requireKnown: true,
-): OrganizerModelSubject;
-function organizerSubjectHint(
-  value: string | null | undefined,
-  requireKnown?: false,
-): OrganizerModelSubject | 'unknown';
-function organizerSubjectHint(
-  value: string | null | undefined,
-  requireKnown = false,
-): OrganizerModelSubject | 'unknown' {
+): OrganizerModelSubject | null {
   const normalized = (value ?? '')
     .normalize('NFKC')
     .trim()
     .toLowerCase()
     .replace(/\s+/gu, '');
-  if (!normalized) return requireKnown ? 'other' : 'unknown';
+  if (!normalized) return null;
   if (normalized === 'math' || normalized.includes('数学')) return 'math';
   if (normalized === 'english' || normalized.includes('英语')) return 'english';
   if (normalized === 'politics' || normalized.includes('政治'))
@@ -1240,13 +1306,8 @@ function organizerSubjectHint(
   if (normalized === 'computer' || normalized.includes('计算机'))
     return 'computer';
   if (normalized === 'major' || normalized.includes('专业课')) return 'major';
-  return 'other';
-}
-
-function normalizedOrNull(value: string | null | undefined): string | null {
-  const normalized =
-    value?.normalize('NFKC').trim().replace(/\s+/gu, ' ') ?? '';
-  return normalized || null;
+  if (normalized === 'other' || normalized.includes('其他')) return 'other';
+  return null;
 }
 
 function chunks<T>(values: readonly T[], size: number): T[][] {
@@ -1279,7 +1340,7 @@ function hybridRuntimeMetadata(
 }
 
 function candidateRuntimeMetadata(
-  candidate: WrongQuestionOrganizerModelCandidateEnvelope | null,
+  candidate: WrongQuestionOrganizerV9ModelCandidateEnvelope | null,
 ): WrongQuestionOrganizerRuntimeMetadata {
   if (candidate === null) return localRuntimeMetadata('fallback_runtime_error');
   switch (candidate.observation.disposition) {

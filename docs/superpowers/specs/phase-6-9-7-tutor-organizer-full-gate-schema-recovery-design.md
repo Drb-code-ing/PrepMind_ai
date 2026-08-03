@@ -1,8 +1,8 @@
 # Phase 6.9.7 Tutor / Organizer Full-gate Schema Recovery 设计
 
-日期：2026-08-02
+日期：2026-08-02（SR6 状态更新：2026-08-03）
 
-状态：SR0--SR4 zero-provider 与 reviewed Mock/static 已完成；唯一 SR5 controlled-Live 已通过并 durable seal；当前下一任务仅 SR6 分支产品验收
+状态：SR0--SR4 zero-provider 与 reviewed Mock/static、唯一 SR5 controlled-Live、SR6 zero-provider 分支产品验收均已完成；当前下一任务仅 SR7/main
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -16,7 +16,7 @@ SR2 checkpoint authority：`zero_provider_full_gate_schema_recovery_robustness`
 
 SR3 checkpoint authority：`zero_provider_full_gate_schema_recovery_runner_durability`
 
-未来独立 lineage：`phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`
+独立 lineage：`phase-6.9.7-tutor-organizer-full-gate-schema-recovery-v1`
 
 ## 1. 决策摘要
 
@@ -358,6 +358,18 @@ Tutor/Organizer/Combined semantic `0.9736111111/0.9515968407/0.9626039759`，pai
 `evidence_published` 收口，validator `ok=true`，recovery claim=0。该 authority 只覆盖固定分支评测，不覆盖产品、
 Docker/API/browser、Trace、业务写入、SLA 或 main。SR5 不得重跑。
 
+SR6 随后只在分支建立 zero-provider 产品验收 capability。它必须绑定 SR5 physical artifact SHA
+`87dd826b...18be`，并同时满足 mode=mock、全部 Agent/Live gate 关闭、全部 Provider credential 为空、RAG=fake、
+API role 与 exact component/request cap；否则 fail-closed。所谓 `sr5_sealed_replay` 只表示 SHA-bound admission：
+runtime 解析当前 bounded Tutor V6 / Organizer V9 prompt，并确定性选择当前第一项本地合法 eligible option；不读取
+或逐字重放 SR5 Provider response/Trace，不读取 expected/oracle，也不增加 semantic authority。
+
+产品 composition 已切换到 Schema Recovery Tutor 与 Organizer V9。Replay Trace 固定为 mock identity；Tutor
+pricing unknown/null，Organizer not-applicable/0，不能进入 production Live 计费。Docker/API/headed browser 已验证
+Tutor Chat、Organizer single/batch、forced failure、owner/locked-name/write isolation、Trace 与精确清理；最终源码
+server/web build、default-off/Qwen 回放通过，全程 `providerCalls=0`。该证据仅为分支 zero-provider 产品
+composition authority，不形成真实模型产品质量、SLA、生产部署或 main authority。
+
 ## 10. 原子路线
 
 | 阶段 | 内容                                                                 | 当前状态              |
@@ -368,12 +380,12 @@ Docker/API/browser、Trace、业务写入、SLA 或 main。SR5 不得重跑。
 | SR3  | 新 report/runner/CLI/journal/artifact/validator/crash-only seal      | 已完成，zero-provider |
 | SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 已完成，zero-provider |
 | SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 已完成，通过并封存    |
-| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 下一任务              |
-| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断                  |
+| SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 已完成，zero-provider |
+| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断，待提交/推送     |
 
 每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均未读取
 credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。SR5 只消费上述唯一
-48-lane Live，后续 SR6 不得再次调用 Provider。
+48-lane Live；SR6 没有再次调用 Provider。SR7 也不得重跑 SR5 或再次启用 SR6 replay。
 
 ## 11. SR0 禁止事项
 

@@ -703,7 +703,8 @@ PHASE_6_9_7_TUTOR_ORGANIZER_FULL_GATE_L3_DEEPSEEK_API_KEY
 | SR3  | 独立 runner/lineage/durability                                           | 已完成，zero-provider |
 | SR4  | Reviewed Mock/static/history parity/Reader Testing                       | 已完成，zero-provider |
 | SR5  | Fresh admission 后唯一 Schema Recovery controlled-Live                   | 已通过并 durable seal |
-| SR6  | Schema Recovery 分支产品 Docker/API/browser/Trace/精确清理               | 下一任务              |
+| SR6  | Schema Recovery 分支产品 Docker/API/browser/Trace/精确清理               | 已完成，zero-provider |
+| SR7  | Schema Recovery main 合并、推送与 default-off 回放                       | 阻断，待提交/推送     |
 | R6   | 旧 full-gate-v1 仅 L3 pass 后的产品验收路线                              | 永久阻断              |
 | R7   | 旧 full-gate-v1 的 main 合并、推送与 default-off 再验收                  | 永久阻断              |
 
@@ -723,11 +724,12 @@ runner/lineage/durability 与 SR4 reviewed Mock/static 已 zero-provider 完成�
 strict/wire/usage、schema `42 canonical + 6 extension discarded`、semantic `1/0.996875/0.9984375`，但只有
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 随后以
 strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95
-`2240ms` 与 `schema_recovery_full_gate_semantic_gate` durable seal；一次性名额已消费。当前下一任务仅 SR6
-分支产品验收。详见 Schema Recovery
+`2240ms` 与 `schema_recovery_full_gate_semantic_gate` durable seal；一次性名额已消费。SR6 随后已以
+`providerCalls=0` 完成分支产品验收且不提升 SR5 semantic authority；当前下一任务仅 SR7/main。详见 Schema Recovery
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、SR4
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与 SR5
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`、SR6
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 旧 R6/R7 的唯一前提是本 lineage L3 pass；L3 已失败封存，所以该旧路线永久阻断。未来产品与 main 验收只能沿
 独立 Schema Recovery 的 SR5 quality pass 已封存；后续只按 SR6 -> SR7 顺序推进，不能回填或改写本路线。

@@ -1537,12 +1537,14 @@ Full-gate Schema Recovery SR0--SR4 已完成 zero-provider 设计、TDD、robust
 reviewed Mock/static。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已以
 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；strict/wire/usage
 `48/48/48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，journal `628`、validator `ok=true`、
-recovery claim=0。SR5 一次性名额已经消费。当前安全边界为：
+recovery claim=0。SR6 又在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品 Docker/API/可见浏览器/Trace/
+forced-failure/权限隔离与精确清理；全部 Agent/replay gate 已恢复关闭。SR5 一次性名额已经消费。当前安全边界为：
 
-- 不运行任何 `full-gate:live`、SR5 production CLI、`seal`、recovery、curl、单 case、产品 API 或其它 Provider
-  探测；
+- 不运行任何 `full-gate:live`、SR5 production CLI、`seal`、recovery、curl、单 case 或其它 Provider 探测；
 - 不修改/移动/删除 L3 或 SR5 marker、journal、artifact、recovery claim 或 approved tag；
-- 只允许读取当前源码与 sealed bundle，并运行只读 strict validator；
+- 不再次启用 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED` 或重做 SR6 success/forced-failure 产品 replay；SR7 只
+  允许 default-off static/Docker/API/可见浏览器与历史 evidence 只读回放；
+- 只允许读取当前源码与 sealed bundle、运行只读 strict validator，以及执行上述 SR7 default-off 验收；
 - SR1--SR3 测试只使用 injected synthetic data/runtime 与系统临时目录，`globalThis.fetch=0`、credential
   read=0、formal
   artifact=0；
@@ -1560,8 +1562,18 @@ recovery claim=0。SR5 一次性名额已经消费。当前安全边界为：
   `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
 - SR5 approved source/tag 固定在 `67661f5f...d4441`，不得移动；正式 `.tmp` 文件恰好为一个 marker、一个
   journal 和一个 branch artifact；
-- 当前唯一下一任务是 SR6 分支产品验收。它只能回放 sealed SR5 authority，完成 Docker/API/可见浏览器/
-  Trace/default-off/forced failure/权限隔离与合成数据精确清理，不能再次调用 Provider；SR7/main 继续阻断。
+- SR6 replay 绑定 physical artifact SHA `87dd826b...18be`，但只依据当前 bounded Tutor V6 / Organizer V9
+  prompt 生成 deterministic Mock output；不读取或逐字重放 SR5 Provider response/Trace，不增加 semantic
+  authority；
+- SR6 产品验收已完成：Tutor `/api/chat`、Organizer single/batch、Trace/Mock 计费、forced failure、owner/
+  locked-name/write isolation、可见浏览器、精确清理与最终源码 Docker/default-off 均通过；
+- 当前唯一下一任务是 SR7：先提交并推送当前功能分支，再合并/push main 并只做 default-off 回放；Phase
+  6.9.8/6.10/8/9 继续阻断。
+
+SR6 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
+`PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/
+Organizer gate 全部 false。RAG server/worker 仍为 `qwen / text-embedding-v4 / 1536`；只检查 credential 是否存在，
+禁止输出值。不得用 `down -v`、prune、database reset、Redis `FLUSH*` 或 MinIO wipe 来“恢复环境”。
 
 SR1--SR5 安全回归命令（除只读 validator 外均为静态/zero-provider；不要替换为任何
 `eval:*:live/seal` 或 SR5 production CLI 命令）：
@@ -1583,7 +1595,7 @@ bun run --cwd packages/agent eval:phase-6-9-7:schema-recovery:validate
 credential、不调用 Provider、不创建或修改 evidence。禁止运行 `eval:phase-6-9-7:schema-recovery:sr5`、任何
 `seal`/recovery 命令，或为了“再确认一次”创建/移动/修改 marker、journal、artifact。
 
-设计、计划与 SR0--SR5 验收分别见：
+设计、计划与 SR0--SR6 验收分别见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
 - `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`；
@@ -1593,6 +1605,7 @@ credential、不调用 Provider、不创建或修改 evidence。禁止运行 `ev
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 `@repo/ai` 根 `index.ts` 是 Nest/Web 共用 runtime barrel，不重导出带 `import.meta` / top-level await 的
 executable CLI；CLI 文件和 package scripts 仍是固定入口，CLI tests 直接导入对应文件。不要为方便导入而把

@@ -1,5 +1,41 @@
 # PrepMind AI 开发日志
 
+> 2026-08-03 — Phase 6.9.7 Full-gate Schema Recovery SR6 分支产品验收：
+>
+> SR6 已在 `codex/phase-6-9-7-tutor-wrong-question-agents` 完成，且全程
+> `providerCalls=0`。新增 `phase-6.9.7-sr6-product-replay-v1` 受限路径，必须绑定 SR5 physical artifact SHA
+> `87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be`、`AI_PROVIDER_MODE=mock`、全部
+> Agent/Live gate 关闭、全部 Provider credential 为空、RAG=fake 与 exact component/request cap 才能启用。
+> `sr5_sealed_replay` 不是读取/逐字重放 SR5 Provider response 或 Trace；它依据当前 bounded Tutor V6 /
+> Organizer V9 prompt，从本地合法 eligible option 中生成 deterministic Mock output，再穿过当前产品
+> validator/merger。`both` 已固定总 cap=2、每个 component 各 1 次。
+>
+> Tutor Web composition 已从 legacy candidate 切换到 Schema Recovery candidate；Organizer Nest single/batch 已
+> 切换到 V9 ordinal-only candidate。本地 signal/depth/answer 权限与 owner/真实 ID/subject/topic/deck/locked
+> name/stale/Trace/write command 继续权威。Replay Trace 只能是固定 mock identity，Tutor 不估价，Organizer
+> 固定 `pricing=not_applicable / cost=0`，不能冒充 `production_live` 或计入 DeepSeek billing。Server env schema
+> 同步补齐全部 Agent gate 和 DeepSeek/Tutor/Knowledge/Organizer/OpenAI/Qwen/DashScope credential 的
+> zero-provider fail-closed 矩阵；Web Trace 测试也改为验证实际非负 duration，不再假设 Mock 恒为 `0ms`。
+>
+> 真实 Docker/API 验收中，Tutor `/api/chat` 使用登录态与 OCR structured context 得到
+> `candidate_applied`；Organizer single/batch 得到 `hybrid_model / candidate_applied`，batch `3/3`，locked deck
+> name 不变；跨账号为 404 且无写入。Forced failure 下 Tutor Chat 继续可用，Organizer 回到
+> `local_deterministic / fallback_runtime_error`。可见 `/chat`、`/error-book`、`/agent-trace` 均通过，三张截图
+> SHA 已固定在 SR6 验收文档。
+>
+> 本轮精确清理 3 个合成账号、6 道错题、2 个分组、2 个专题、5 个关联项、8 条 Trace/31 个 steps、8 条
+> ChatMessage 与 16 个 refresh token；相关 residue、cookie/storage/IndexedDB/cache/service worker 均为 0，窗口
+> 保留在 `/login`。没有 Redis FLUSH、MinIO wipe、database/volume reset、`down -v` 或 prune。最终源码 server /
+> web 镜像分别以 `COMPOSE_BAKE=false` 构建成功并重建；server healthy、web `/login=200`、worker healthy，全部
+> Agent/replay gate 已恢复 false，Qwen 仍为 `text-embedding-v4 / 1536`。凭据只核对存在性，未输出值。
+>
+> 定向 replay `4/4`、Tutor/Web `10/10`、Web `444/444`、Server env `87/87`、Agent typecheck、Server build、
+> Docker server/web build 与 SR5 strict validator 均通过；四路只读复审 `APPROVED`。SR6 只形成 zero-provider
+> 产品 composition/权限/Trace/降级/UI/清理证据，不提升 SR5 真实模型语义 authority，不证明真实模型产品质量、
+> SLA、生产部署或 main。当前唯一下一原子任务是 SR7 main 合并、远程推送与 default-off 回放；不重跑 SR5，
+> 不再次启用 SR6 replay。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+>
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR5 Controlled-Live：
 >
 > 已在 branch/upstream/remote 与 lightweight approved tag 全部固定到 admission source
@@ -22,8 +58,8 @@
 >
 > SR5 只证明固定 72-case/24-pair 分支评测的真实模型语义与 schema/usage/P95/预算门，不证明 Tutor Chat、
 > Organizer single/batch、Trace、业务写入、Docker API、可见浏览器、SLA、main 或生产可用。旧 L3 仍为失败
-> 封存，SR4 仍为 Mock-only。当前唯一下一原子任务是 SR6 分支产品 Docker/API/可见浏览器/Trace/精确清理；
-> SR7/main ���有 SR6 完成并推送后才解锁。验收见
+> 封存，SR4 仍为 Mock-only。该 checkpoint 当时只解锁 SR6 分支产品验收；后续状态以上方 2026-08-03
+> SR6 记录为准。验收见
 > `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
 >
 > 2026-08-02 — Phase 6.9.7 Full-gate Schema Recovery SR4 Reviewed Mock / Static：

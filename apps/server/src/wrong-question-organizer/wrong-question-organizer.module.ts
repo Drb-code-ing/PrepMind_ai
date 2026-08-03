@@ -43,6 +43,27 @@ import { WrongQuestionOrganizerService } from './wrong-question-organizer.servic
             'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY',
             { infer: true },
           ),
+          PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: workerOnly
+            ? false
+            : config.get('PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED', {
+                infer: true,
+              }),
+          PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: config.get(
+            'PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT',
+            { infer: true },
+          ),
+          PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: config.get(
+            'PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR',
+            { infer: true },
+          ),
+          PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: config.get(
+            'PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256',
+            { infer: true },
+          ),
+          PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: config.get(
+            'PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS',
+            { infer: true },
+          ),
         });
       },
     },

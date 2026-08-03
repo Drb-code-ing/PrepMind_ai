@@ -18,6 +18,9 @@ type MockCalls = {
 type TestTraceInput = {
   runId: string;
   status?: string;
+  mode?: string;
+  modelProvider?: string;
+  modelName?: string;
   steps: Array<{ node: string; status?: string; errorMessage?: string | null }>;
 };
 
@@ -206,7 +209,14 @@ describe('WrongQuestionOrganizerService', () => {
     agentTracesService.createTrace.mockResolvedValue({});
   });
 
-  function createService(options: { modelEnabled?: boolean } = {}) {
+  function createService(
+    options: {
+      modelEnabled?: boolean;
+      runtimeAuthority?: 'production_live' | 'sr5_sealed_replay';
+    } = {},
+  ) {
+    const runtimeAuthority = options.runtimeAuthority ?? 'production_live';
+    const modelEnabled = options.modelEnabled ?? false;
     return new WrongQuestionOrganizerService(
       prisma as unknown as PrismaService,
       config as never,
@@ -214,13 +224,20 @@ describe('WrongQuestionOrganizerService', () => {
       commandExecutor as never,
       {
         config: {
-          enabled: options.modelEnabled ?? false,
+          enabled: modelEnabled,
           timeoutMs: 5000,
-          mode: options.modelEnabled ? 'live' : 'mock',
-          provider: options.modelEnabled ? 'deepseek' : 'mock',
+          mode:
+            modelEnabled && runtimeAuthority === 'production_live'
+              ? 'live'
+              : 'mock',
+          provider:
+            modelEnabled && runtimeAuthority === 'production_live'
+              ? 'deepseek'
+              : 'mock',
           model: 'deepseek-v4-pro',
-          promptVersion: 'wrong-question-organizer-model-candidate-v4',
-          pricingKnown: true,
+          promptVersion: 'wrong-question-organizer-model-candidate-v9',
+          pricingKnown: modelEnabled && runtimeAuthority === 'production_live',
+          runtimeAuthority: modelEnabled ? runtimeAuthority : 'disabled',
         },
         runtime: modelRuntime,
       } as never,
@@ -235,8 +252,8 @@ describe('WrongQuestionOrganizerService', () => {
         {
           ...snapshotMaterial.wrongQuestions[0],
           subject: '',
-          category: '',
-          knowledgePoints: [],
+          category: '函数',
+          knowledgePoints: ['函数极限'],
           errorType: null,
         },
       ],
@@ -249,7 +266,10 @@ describe('WrongQuestionOrganizerService', () => {
     };
   }
 
-  function prepareSuccessfulModelCandidate() {
+  function prepareSuccessfulModelCandidate(
+    runtimeAuthority:
+      'production_live' | 'sr5_sealed_replay' = 'production_live',
+  ) {
     modelRuntime.invokeStructured.mockImplementation(
       (request: {
         budget: {
@@ -265,19 +285,15 @@ describe('WrongQuestionOrganizerService', () => {
           ok: true,
           data: {
             decisions: (
-              JSON.parse(request.userPrompt) as { questions: unknown[] }
-            ).questions.map((_, questionIndex) => ({
-              questionIndex,
-              subject: 'math',
-              deck: {
-                action: 'create_topic',
-                topicLabel:
-                  questionIndex === 0
-                    ? '函数极限'
-                    : `函数极限${questionIndex + 1}`,
-              },
-              confidence: 'medium',
-              evidenceCodes: ['semantic_topic'],
+              JSON.parse(request.userPrompt) as {
+                questions: Array<{
+                  questionIndex: number;
+                  options: Array<{ optionIndex: number }>;
+                }>;
+              }
+            ).questions.map((question) => ({
+              questionIndex: question.questionIndex,
+              optionIndex: question.options[0].optionIndex,
             })),
           },
           budget: {
@@ -290,9 +306,13 @@ describe('WrongQuestionOrganizerService', () => {
           trace: {
             runIdHash: `sha256:${'b'.repeat(64)}`,
             task: 'wrong_question_organization',
-            mode: 'live',
-            provider: 'deepseek',
-            model: 'deepseek-v4-pro',
+            mode: runtimeAuthority === 'production_live' ? 'live' : 'mock',
+            provider:
+              runtimeAuthority === 'production_live' ? 'deepseek' : 'mock',
+            model:
+              runtimeAuthority === 'production_live'
+                ? 'deepseek-v4-pro'
+                : 'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
             status: 'succeeded',
             inputTokens: 120,
             outputTokens: 40,
@@ -732,6 +752,23 @@ describe('WrongQuestionOrganizerService', () => {
         }),
       }),
     );
+    const request = mockCall<[TestModelRequest]>(
+      modelRuntime.invokeStructured,
+      0,
+    )?.[0];
+    const projection = JSON.parse(request?.userPrompt ?? '{}') as {
+      version?: string;
+      questions?: Array<{ questionIndex?: number; options?: unknown[] }>;
+    };
+    expect(projection.version).toBe(
+      'wrong-question-organizer-model-projection-v9',
+    );
+    expect(projection.questions).toHaveLength(1);
+    expect(projection.questions?.[0]?.questionIndex).toBe(0);
+    expect(projection.questions?.[0]?.options?.length).toBeGreaterThan(0);
+    expect(request?.userPrompt).not.toContain('wrong_1');
+    expect(request?.userPrompt).not.toContain(snapshot.ownerHash);
+    expect(snapshotSource.revalidate).toHaveBeenCalledTimes(4);
     expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
     const admission = mockCall<[string, TestTraceInput]>(
       agentTracesService.createTrace,
@@ -767,6 +804,42 @@ describe('WrongQuestionOrganizerService', () => {
       disposition: 'candidate_applied',
       degraded: false,
       traceId: admission?.runId,
+    });
+  });
+
+  it('admits the explicit SR5 sealed replay without attributing a DeepSeek Live call', async () => {
+    const snapshot = lowConfidenceSnapshot();
+    prepareOrganizerFlow({ snapshot });
+    prepareSuccessfulModelCandidate('sr5_sealed_replay');
+    prisma.wrongQuestionDeck.findMany.mockResolvedValue([deck]);
+    prisma.wrongQuestionDeckItem.findMany.mockResolvedValue([]);
+
+    const service = createService({
+      modelEnabled: true,
+      runtimeAuthority: 'sr5_sealed_replay',
+    });
+    const result = await service.organizeOne('user_1', 'wrong_1', {
+      force: false,
+    });
+    const admission = mockCall<[string, TestTraceInput]>(
+      agentTracesService.createTrace,
+      0,
+    )?.[1];
+
+    expect(modelRuntime.invokeStructured).toHaveBeenCalledTimes(1);
+    expect(agentTracesService.createTrace).toHaveBeenCalledTimes(2);
+    expect(admission).toMatchObject({
+      mode: 'mock',
+      modelProvider: 'mock',
+      modelName:
+        'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+    });
+    expect(JSON.stringify(admission)).toContain('authority=sr5_sealed_replay');
+    expect(JSON.stringify(admission)).not.toContain('pricing=cny_known');
+    expect(result.runtime).toMatchObject({
+      source: 'hybrid_model',
+      disposition: 'candidate_applied',
+      degraded: false,
     });
   });
 
@@ -853,7 +926,7 @@ describe('WrongQuestionOrganizerService', () => {
             objectContaining({
               deck: objectContaining({
                 action: 'create',
-                name: '未分类错题',
+                name: '函数极限',
               }),
             }),
           ],
@@ -872,6 +945,8 @@ describe('WrongQuestionOrganizerService', () => {
     prepareOrganizerFlow({ snapshot });
     prepareSuccessfulModelCandidate();
     snapshotSource.revalidate
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true)
@@ -965,8 +1040,8 @@ describe('WrongQuestionOrganizerService', () => {
     const rows = Array.from({ length: 13 }, (_, index) => ({
       id: `wrong_${index + 1}`,
       subject: '',
-      category: '',
-      knowledgePoints: [],
+      category: '函数',
+      knowledgePoints: [`函数极限${index + 1}`],
       errorType: null,
       questionText: `判断第 ${index + 1} 道题的知识主题。`,
       analysis: '需要语义归类。',
@@ -985,8 +1060,8 @@ describe('WrongQuestionOrganizerService', () => {
             ...snapshotMaterial.wrongQuestions[0],
             id,
             subject: '',
-            category: '',
-            knowledgePoints: [],
+            category: '函数',
+            knowledgePoints: [`函数极限${index + 1}`],
             errorType: null,
             questionText: `判断第 ${index + 1} 道题的知识主题。`,
             analysis: '需要语义归类。',
@@ -1086,8 +1161,8 @@ describe('WrongQuestionOrganizerService', () => {
       {
         id: 'wrong_candidate',
         subject: '',
-        category: '',
-        knowledgePoints: [],
+        category: '函数',
+        knowledgePoints: ['函数极限'],
         errorType: null,
         questionText: '判断这道题的知识主题。',
         analysis: '需要语义归类。',

@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { register } from 'node:module';
 import test from 'node:test';
 
+import { TUTOR_SCHEMA_RECOVERY_PROJECTED_DECISION_SCHEMA } from '@repo/agent/tutor-schema-recovery';
+
 register(
   `data:text/javascript,${encodeURIComponent(`
     export async function resolve(specifier, context, nextResolve) {
@@ -24,6 +26,19 @@ const LIVE_ENV = {
   TUTOR_AGENT_MODEL_TIMEOUT_MS: '3000',
   TUTOR_AGENT_DEEPSEEK_API_KEY: 'runtime_tutor_key_canary',
   AI_BASE_URL: 'https://api.deepseek.com/v1',
+};
+
+const SR6_REPLAY_ENV = {
+  AI_PROVIDER_MODE: 'mock',
+  AI_ENABLE_LIVE_CALLS: 'false',
+  TUTOR_AGENT_MODEL_ENABLED: 'false',
+  WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: 'false',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: 'true',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'tutor',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'success',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: '1',
+  PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256:
+    '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
 };
 
 test('Tutor runtime composition is explicitly server-only', async () => {
@@ -119,6 +134,79 @@ test('invalid or disabled configuration never constructs an executor', () => {
     assert.equal(executorCalls, 0);
     assert.equal(bundle.enabled, false);
   }
+});
+
+test('uses the bounded sealed replay without constructing a Live executor', async () => {
+  let executorCalls = 0;
+  let runtimeCalls = 0;
+  const bundle = createTutorModelRuntimeBundle({
+    env: SR6_REPLAY_ENV,
+    createExecutor() {
+      executorCalls += 1;
+      throw new Error('live_executor_must_not_be_constructed');
+    },
+    createRuntime() {
+      runtimeCalls += 1;
+      throw new Error('live_runtime_must_not_be_constructed');
+    },
+  });
+  const budget = bundle.createBudget();
+  const result = await bundle.runtime.invokeStructured({
+    runId: 'sr6-tutor-product-replay',
+    task: 'tutor_strategy',
+    schema: TUTOR_SCHEMA_RECOVERY_PROJECTED_DECISION_SCHEMA,
+    systemPrompt: 'Bounded Tutor replay test.',
+    userPrompt: JSON.stringify({
+      version: 'tutor-model-projection-v6',
+      latestText: '我写了一步但不确定哪里错了,帮我检查一下。',
+      activeContext: { available: true, excerpt: '合成上下文。' },
+      authorityBinding: {
+        localSignalAuthoritySha256: 'a'.repeat(64),
+        localStrategyAuthoritySha256: 'b'.repeat(64),
+      },
+      eligibleIntents: [{ intentIndex: 0, intent: 'step_check' }],
+    }),
+    estimatedInputTokens: 100,
+    maxOutputTokens: 300,
+    budget,
+  });
+
+  assert.equal(bundle.enabled, true);
+  assert.equal(bundle.config.runtimeAuthority, 'sr5_sealed_replay');
+  assert.equal(executorCalls, 0);
+  assert.equal(runtimeCalls, 0);
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error('expected sealed replay success');
+  assert.deepEqual(result.data, { intentIndex: 0 });
+  assert.deepEqual(
+    {
+      mode: result.trace.mode,
+      provider: result.trace.provider,
+      model: result.trace.model,
+      status: result.trace.status,
+    },
+    {
+      mode: 'mock',
+      provider: 'mock',
+      model:
+        'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      status: 'succeeded',
+    },
+  );
+  await assert.rejects(
+    () =>
+      bundle.runtime.invokeStructured({
+        runId: 'sr6-tutor-product-replay-second-call',
+        task: 'tutor_strategy',
+        schema: TUTOR_SCHEMA_RECOVERY_PROJECTED_DECISION_SCHEMA,
+        systemPrompt: 'Must stay bounded.',
+        userPrompt: '{}',
+        estimatedInputTokens: 1,
+        maxOutputTokens: 300,
+        budget: bundle.createBudget(),
+      }),
+    /PHASE_6_9_7_SR6_PRODUCT_REPLAY_REQUEST_LIMIT/u,
+  );
 });
 
 test('executor construction failure is deferred to invocation and fails closed safely', async () => {

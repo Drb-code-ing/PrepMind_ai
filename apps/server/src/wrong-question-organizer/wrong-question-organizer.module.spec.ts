@@ -66,6 +66,27 @@ describe('WrongQuestionOrganizerModule model runtime composition', () => {
       );
     }
   });
+
+  it('composes the SR6 replay only for the api role without constructing a Live executor', () => {
+    const bundle = createModuleRuntime(replayValues());
+
+    expect(bundle.config).toMatchObject({
+      enabled: true,
+      mode: 'mock',
+      provider: 'mock',
+      runtimeAuthority: 'sr5_sealed_replay',
+    });
+    expect(createOpenAICompatibleStructuredExecutor).not.toHaveBeenCalled();
+
+    const worker = createModuleRuntime({
+      ...replayValues(),
+      SERVER_ROLE: 'worker',
+    });
+    expect(worker.config).toMatchObject({
+      enabled: false,
+      runtimeAuthority: 'disabled',
+    });
+  });
 });
 
 function liveValues(): Partial<ServerEnv> {
@@ -77,6 +98,21 @@ function liveValues(): Partial<ServerEnv> {
     WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: true,
     WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
     WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY: 'synthetic-organizer-key',
+  };
+}
+
+function replayValues(): Partial<ServerEnv> {
+  return {
+    SERVER_ROLE: 'api',
+    AI_PROVIDER_MODE: 'mock',
+    AI_ENABLE_LIVE_CALLS: false,
+    WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: true,
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: 'organizer',
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: 'success',
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256:
+      '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+    PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: 1,
   };
 }
 

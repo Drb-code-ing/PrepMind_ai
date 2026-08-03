@@ -5,6 +5,7 @@ import {
   type OpenAICompatibleExecutorConfig,
   type StructuredModelExecutor,
 } from '@repo/ai';
+import { createPhase697Sr6ProductReplayRuntime } from '@repo/agent/model-candidates';
 
 import {
   WRONG_QUESTION_ORGANIZER_MODEL,
@@ -44,6 +45,19 @@ export function createWrongQuestionOrganizerModelRuntime(
     env,
     pricingProfile,
   );
+  if (
+    initialConfig.runtimeAuthority === 'sr5_sealed_replay' &&
+    initialConfig.replay?.enabled
+  ) {
+    return Object.freeze({
+      config: initialConfig,
+      runtime: createPhase697Sr6ProductReplayRuntime({
+        component: 'organizer',
+        behavior: initialConfig.replay.behavior,
+        maxRequests: initialConfig.replay.maxRequests,
+      }),
+    });
+  }
   const executor = initialConfig.enabled
     ? createExecutorSafely(
         resolveWrongQuestionOrganizerLiveExecutorConfig(env, pricingProfile),
@@ -105,5 +119,6 @@ function disableConfig(
     enabled: false,
     mode: 'mock',
     provider: 'mock',
+    runtimeAuthority: 'disabled',
   });
 }

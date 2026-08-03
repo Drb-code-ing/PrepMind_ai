@@ -1,10 +1,10 @@
 # Phase 6.9.7 Tutor / Organizer Full-gate Schema Recovery 实施计划
 
-日期：2026-08-02
+日期：2026-08-02（SR6 状态更新：2026-08-03）
 
-当前状态：SR0--SR4 zero-provider 与 reviewed Mock/static 已完成；唯一 SR5 controlled-Live 已通过并 durable
-seal。旧 L3 保持失败封存，SR4 保持 Mock-only；当前下一任务仅 SR6 分支产品验收，SR7/main 与后续 Phase
-仍被阻断。
+当前状态：SR0--SR4 zero-provider 与 reviewed Mock/static、唯一 SR5 controlled-Live、SR6 zero-provider 分支
+产品验收均已完成。旧 L3 保持失败封存，SR4 保持 Mock-only，SR5 semantic authority 保持不可变；当前下一任务
+仅 SR7/main，后续 Phase 仍被阻断。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`
@@ -200,18 +200,38 @@ strict/wire/usage `48/48/48/48`、schema canonical `48/48`、semantic
 
 ## SR6：产品 Docker / API / 可见浏览器
 
-状态：[ ] 下一任务，尚未开始。
+状态：[x] 已完成，zero-provider product acceptance。
 
 只有 SR5 得到完整新 lineage quality pass 后才能启动。验收范围必须包括 Tutor Chat、Organizer single/batch、
 default-off/forced failure、Trace、owner/locked-name/write isolation、headed browser 和本轮合成数据精确清理。
 不得清空 Docker、volume、PostgreSQL、Redis 或 MinIO。
 
+实际交付：
+
+- 新增 SHA-bound SR6 replay：绑定 SR5 artifact `87dd826b...18be`，仅在 mode=mock、全部 Agent/Live gate 关闭、
+  全部 Provider credential 为空、RAG=fake、API role 与 exact component/request cap 成立时启用；
+- `sr5_sealed_replay` 从当前 bounded Tutor V6 / Organizer V9 prompt 生成 deterministic first-local-option Mock，
+  不读取或逐字重放 SR5 Provider response/Trace，不读取 expected/oracle；
+- Tutor Web composition 切换 Schema Recovery，Organizer Nest single/batch 切换 V9 ordinal-only；本地权限、
+  stale、Trace admission 与写 command authority 保持；
+- Tutor Chat、Organizer single/batch、forced failure、cross-owner 404、locked-name、Mock Trace/计费与可见
+  `/chat`、`/error-book`、`/agent-trace` 通过；
+- 3 个合成账号及其业务/Trace/browser state 精确清理为 0；未执行 Redis FLUSH、MinIO wipe、database/volume
+  reset、`down -v` 或 prune；
+- 最终源码 server/web 镜像分别 build exit 0 并重建；server/web/worker 健康，全部 Agent/replay gate=false，
+  Qwen RAG 保持 `text-embedding-v4/1536`；
+- replay `4/4`、Tutor/Web `10/10`、Web `444/444`、Server env `87/87`、Agent typecheck、Server build、SR5
+  strict validator 与四路只读复审通过；全程 `providerCalls=0`；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+
 ## SR7：Main 合并、推送与回放
 
-状态：[ ] 阻断。
+状态：[ ] 阻断，等待 SR6 原子提交与功能分支远程 parity。
 
 只有 SR6 完成、提交并推送当前 Phase 分支后，才能合并 main。main 只做 default-off static、Docker/API、
-可见浏览器和历史 evidence replay；不重跑已消费的 SR5 Live。合并后必须推送远程 main。
+可见浏览器和历史 evidence replay；不重跑已消费的 SR5 Live，也不再次启用 SR6 replay。合并后必须推送远程
+main 并核对 HEAD/upstream/remote parity。
 
 ## 执行纪律
 

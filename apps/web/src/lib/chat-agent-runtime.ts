@@ -3,10 +3,13 @@ import {
   isRouterModelEligible,
   runRouterModelCandidate,
   type RouterModelCandidateEnvelope,
-  runTutorModelCandidate,
-  type TutorModelCandidateEnvelope,
-  type TutorModelCandidateReasonCode,
 } from '@repo/agent/model-candidates';
+import { isPhase697Sr6ProductReplayTrace } from '@repo/agent/model-candidates';
+import {
+  runTutorSchemaRecoveryModelCandidate,
+  type TutorSchemaRecoveryModelCandidateEnvelope,
+} from '@repo/agent/tutor-schema-recovery';
+import type { TutorV6ModelCandidateReasonCode } from '@repo/agent/tutor-v6';
 import {
   buildGenericTutorPrompt,
   buildTutorStrategy,
@@ -50,7 +53,7 @@ export type BuildChatAgentDecisionInput = {
 export type ChatAgentExecution = {
   decision: ChatAgentDecision;
   routerObservation: RouterModelCandidateEnvelope['observation'];
-  tutorObservation: TutorModelCandidateEnvelope['observation'];
+  tutorObservation: TutorSchemaRecoveryModelCandidateEnvelope['observation'];
   budget: ModelAgentRunBudget;
   tutorBudget: ModelAgentRunBudget;
 };
@@ -68,19 +71,23 @@ export type BuildChatAgentExecutionInput = {
   };
   tutorModel?: {
     enabled: boolean;
+    authority: TutorRuntimeAuthority;
     runtime: ModelAgentRuntime;
     budget: ModelAgentRunBudget;
   };
-  tutorModelFactory?: () => {
-    enabled: boolean;
-    runtime: ModelAgentRuntime;
-    budget: ModelAgentRunBudget;
-  };
+  tutorModelFactory?: () =>
+    | {
+        enabled: boolean;
+        authority: TutorRuntimeAuthority;
+        runtime: ModelAgentRuntime;
+        budget: ModelAgentRunBudget;
+      }
+    | undefined;
 };
 
-export function buildChatAgentDecision(
-  input: BuildChatAgentDecisionInput,
-): ChatAgentDecision {
+export type TutorRuntimeAuthority = 'production_live' | 'sr5_sealed_replay';
+
+export function buildChatAgentDecision(input: BuildChatAgentDecisionInput): ChatAgentDecision {
   try {
     const latestUserText = getLatestUserText(input.messages);
     const state = createChatAgentState(input, latestUserText);
@@ -179,9 +186,7 @@ export async function buildChatAgentExecution(
   }
 }
 
-function createIneligibleRouterCapabilities(
-  model: BuildChatAgentExecutionInput['model'],
-): {
+function createIneligibleRouterCapabilities(model: BuildChatAgentExecutionInput['model']): {
   budget: ModelAgentRunBudget;
   runtime: ModelAgentRuntime;
 } {
@@ -212,9 +217,7 @@ const MODEL_AGENT_BUDGET_FIELDS = [
   'usedOutputTokens',
 ] as const satisfies readonly (keyof ModelAgentRunBudget)[];
 
-function snapshotOwnDataBudget(
-  model: unknown,
-): ModelAgentRunBudget | null {
+function snapshotOwnDataBudget(model: unknown): ModelAgentRunBudget | null {
   try {
     if (typeof model !== 'object' || model === null) return null;
     const modelBudget = Object.getOwnPropertyDescriptor(model, 'budget');
@@ -244,7 +247,7 @@ async function resolveTutorCandidateSafely(input: {
   tutorModelFactory?: BuildChatAgentExecutionInput['tutorModelFactory'];
 }): Promise<{
   decision: ChatAgentDecision;
-  observation: TutorModelCandidateEnvelope['observation'];
+  observation: TutorSchemaRecoveryModelCandidateEnvelope['observation'];
 }> {
   let activeBudget = createModelAgentBudget({
     maxCalls: 1,
@@ -260,11 +263,7 @@ async function resolveTutorCandidateSafely(input: {
   if (!input.decision.tutorStrategy) {
     return {
       decision: markDecisionDegraded(input.decision),
-      observation: localTutorObservation(
-        activeBudget,
-        'fallback_invalid_input',
-        'invalid_input',
-      ),
+      observation: localTutorObservation(activeBudget, 'fallback_invalid_input', 'invalid_input'),
     };
   }
 
@@ -274,14 +273,10 @@ async function resolveTutorCandidateSafely(input: {
     if (tutorModel?.enabled !== true) {
       return {
         decision: input.decision,
-        observation: localTutorObservation(
-          activeBudget,
-          'not_eligible',
-          'LIVE_CALLS_DISABLED',
-        ),
+        observation: localTutorObservation(activeBudget, 'not_eligible', 'LIVE_CALLS_DISABLED'),
       };
     }
-    const envelope = await runTutorModelCandidate({
+    const envelope = await runTutorSchemaRecoveryModelCandidate({
       runId: input.runId,
       finalRoute: input.finalRoute.name,
       latestUserText: input.latestUserText,
@@ -291,9 +286,7 @@ async function resolveTutorCandidateSafely(input: {
       deterministic: input.decision.tutorStrategy,
       safety: {
         latestUserText: 'safe_for_model',
-        ...(input.activeStudyContext === undefined
-          ? {}
-          : { activeStudyContext: 'safe_for_model' }),
+        ...(input.activeStudyContext === undefined ? {} : { activeStudyContext: 'safe_for_model' }),
       },
       runtime: tutorModel.runtime,
       budget: activeBudget,
@@ -301,7 +294,11 @@ async function resolveTutorCandidateSafely(input: {
     });
     if (envelope.observation.disposition === 'candidate_applied') {
       const costCny = estimateTutorRequestCostCny(envelope.observation.usage);
-      if (costCny === null) {
+      const replayAccepted =
+        tutorModel.authority === 'sr5_sealed_replay' &&
+        'trace' in envelope.observation &&
+        isPhase697Sr6ProductReplayTrace(envelope.observation.trace, 'tutor_strategy');
+      if (!replayAccepted && costCny === null) {
         return {
           decision: markDecisionDegraded(input.decision),
           observation: rejectUnpricedTutorObservation(envelope.observation),
@@ -359,27 +356,23 @@ function markDecisionDegraded(decision: ChatAgentDecision): ChatAgentDecision {
 
 function localTutorObservation(
   budget: ModelAgentRunBudget,
-  disposition: TutorModelCandidateEnvelope['observation']['disposition'],
-  reasonCode?: TutorModelCandidateReasonCode,
-): TutorModelCandidateEnvelope['observation'] {
+  disposition: TutorSchemaRecoveryModelCandidateEnvelope['observation']['disposition'],
+  reasonCode?: TutorV6ModelCandidateReasonCode,
+): TutorSchemaRecoveryModelCandidateEnvelope['observation'] {
   return {
     attempted: false,
     disposition,
     budget: safeRunBudgetSnapshot(budget),
     usage: { inputTokens: 0, outputTokens: 0 },
     reasonCodes: reasonCode ? [disposition, reasonCode] : [disposition],
-  } as TutorModelCandidateEnvelope['observation'];
+  } as TutorSchemaRecoveryModelCandidateEnvelope['observation'];
 }
 
 function rejectUnpricedTutorObservation(
-  observation: TutorModelCandidateEnvelope['observation'],
-): TutorModelCandidateEnvelope['observation'] {
+  observation: TutorSchemaRecoveryModelCandidateEnvelope['observation'],
+): TutorSchemaRecoveryModelCandidateEnvelope['observation'] {
   if (observation.attempted !== true) {
-    return localTutorObservation(
-      observation.budget,
-      'fallback_runtime_error',
-      'INVALID_REQUEST',
-    );
+    return localTutorObservation(observation.budget, 'fallback_runtime_error', 'INVALID_REQUEST');
   }
   const common = {
     attempted: true as const,
@@ -496,9 +489,7 @@ function withCanonicalRoutePermissions(route: RouterResult): RouterResult {
   return { ...route, requiresRag: false, requiresHumanApproval: false };
 }
 
-function localChatAgentExecution(
-  decision: ChatAgentDecision,
-): ChatAgentExecution {
+function localChatAgentExecution(decision: ChatAgentDecision): ChatAgentExecution {
   const budget = safeRunBudgetSnapshot(undefined);
   const routerObservation: RouterModelCandidateEnvelope['observation'] = {
     attempted: false,

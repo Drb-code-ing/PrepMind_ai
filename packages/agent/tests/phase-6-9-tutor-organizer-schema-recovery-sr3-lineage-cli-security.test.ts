@@ -16,6 +16,11 @@ import { parsePhase697SchemaRecoveryReport } from '../src/evals/phase-6-9-tutor-
 import { validatePhase697SchemaRecoveryBundle } from '../src/evals/phase-6-9-tutor-organizer-schema-recovery-durability.ts';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const SEALED_SR5_EVIDENCE_FILES = [
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-branch-controlled-live-63f8a76b-1c2a-403d-b774-0235caae04cb.json',
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-controlled-live-63f8a76b-1c2a-403d-b774-0235caae04cb.journal.jsonl',
+  'phase-6-9-7-tutor-organizer-schema-recovery-sr5-controlled-live.marker',
+] as const;
 
 describe('Phase 6.9.7 Schema Recovery SR3 lineage and CLI security', () => {
   test('keeps SR5 authorization unavailable and blocks before every mutation port', async () => {
@@ -265,10 +270,22 @@ describe('Phase 6.9.7 Schema Recovery SR3 lineage and CLI security', () => {
     expect(script).toContain('sealPhase697SchemaRecoveryInterruptedAttempt');
 
     const tmpEntries = await readdir(join(REPOSITORY_ROOT, '.tmp')).catch(() => [] as string[]);
-    expect(
-      tmpEntries.filter((entry) => entry.includes('tutor-organizer-schema-recovery-sr5')),
-    ).toHaveLength(0);
-    expect((await validatePhase697SchemaRecoveryBundle({ root: REPOSITORY_ROOT })).ok).toBe(false);
+    const formal = tmpEntries
+      .filter((entry) => entry.includes('tutor-organizer-schema-recovery-sr5'))
+      .sort();
+    const validation = await validatePhase697SchemaRecoveryBundle({ root: REPOSITORY_ROOT });
+    if (formal.length === 0) {
+      expect(validation.ok).toBe(false);
+    } else {
+      expect(formal).toEqual([...SEALED_SR5_EVIDENCE_FILES].sort());
+      expect(validation).toMatchObject({
+        ok: true,
+        runId: '63f8a76b-1c2a-403d-b774-0235caae04cb',
+        journalRecords: 628,
+        finalJournalEvent: 'evidence_published',
+        physicalArtifactSha256: '87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      });
+    }
   });
 
   test('preserves the sealed L3 validator and physical artifact SHA', async () => {

@@ -17,6 +17,11 @@ describe('Phase 6.9.7 Docker runtime boundaries', () => {
       'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false',
       'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=5000',
       'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY=',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT=',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR=',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256=',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS=0',
       'REVIEW_AGENT_MODEL_ENABLED=false',
       'PLANNER_AGENT_MODEL_ENABLED=false',
       'KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED=false',
@@ -55,6 +60,28 @@ describe('Phase 6.9.7 Docker runtime boundaries', () => {
     expect(web).not.toContain('WRONG_QUESTION_ORGANIZER_AGENT_');
   });
 
+  it('projects the bounded SR6 replay only to its Tutor and Organizer product hosts', () => {
+    const compose = readRepoFile('docker/docker-compose.dev.yml');
+    const server = extractService(compose, 'server');
+    const web = extractService(compose, 'web');
+    const worker = extractService(compose, 'worker');
+    const admin = extractService(compose, 'admin');
+    const projections = [
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED: ${PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED:-false}',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT: ${PHASE_6_9_7_SR6_PRODUCT_REPLAY_COMPONENT:-}',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR: ${PHASE_6_9_7_SR6_PRODUCT_REPLAY_BEHAVIOR:-}',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256: ${PHASE_6_9_7_SR6_PRODUCT_REPLAY_AUTHORITY_SHA256:-}',
+      'PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS: ${PHASE_6_9_7_SR6_PRODUCT_REPLAY_MAX_REQUESTS:-0}',
+    ];
+
+    for (const projection of projections) {
+      expect(server).toContain(projection);
+      expect(web).toContain(projection);
+      expect(worker).not.toContain(projection);
+      expect(admin).not.toContain(projection);
+    }
+  });
+
   it('does not project either component capability to worker or admin', () => {
     const compose = readRepoFile('docker/docker-compose.dev.yml');
     const worker = extractService(compose, 'worker');
@@ -63,10 +90,12 @@ describe('Phase 6.9.7 Docker runtime boundaries', () => {
     expect(worker).toContain('SERVER_ROLE: worker');
     expect(worker).not.toContain('TUTOR_AGENT_');
     expect(worker).not.toContain('WRONG_QUESTION_ORGANIZER_AGENT_');
+    expect(worker).not.toContain('PHASE_6_9_7_SR6_PRODUCT_REPLAY_');
 
     expect(admin).not.toContain('env_file:');
     expect(admin).not.toContain('TUTOR_AGENT_');
     expect(admin).not.toContain('WRONG_QUESTION_ORGANIZER_AGENT_');
+    expect(admin).not.toContain('PHASE_6_9_7_SR6_PRODUCT_REPLAY_');
     expect(admin).not.toContain('DEEPSEEK_API_KEY');
     expect(admin).not.toContain('OPENAI_API_KEY');
   });

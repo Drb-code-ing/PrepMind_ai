@@ -8,7 +8,8 @@
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`，不证明 DeepSeek Provider、真实模型语义、
 产品 API、可见浏览器或生产可用。该 checkpoint 当时只解锁 SR5 fresh admission；本任务没有创建
 admission、approved tag、正式 marker/journal/artifact，也没有授权或启动 SR5。其后 SR5 已独立通过并封存，
-但不改写本页 Mock-only authority；当前下一任务为 SR6 产品验收。
+但不改写本页 Mock-only authority；该 checkpoint 当时只解锁 SR6。SR6 后续已以 `providerCalls=0` 完成，
+当前下一任务为 SR7/main。
 
 ## 1. 为什么需要 SR4
 
@@ -187,9 +188,11 @@ SR4 完成时只解锁 SR5 fresh admission。开始 SR5 前当时必须另行证
 这些条件随后已独立满足。唯一 SR5 run `63f8a76b...04cb` 已以
 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；它不改写本 SR4
 Mock-only authority、旧 L3 或任何历史 evidence，也不形成产品 authority。SR5 一次性名额已消费，禁止任何
-重跑或追加 Provider 探测。当前下一原子任务仅 SR6 分支产品验收；SR7/main、Phase 6.9.8/6.10/8/9 与博客
-收尾继续阻断。最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+重跑或追加 Provider 探测。该 checkpoint 当时只解锁 SR6；SR6 随后已以 `providerCalls=0` 完成分支产品验收
+且不提升 SR5 semantic authority。当前下一任务仅 SR7/main；Phase 6.9.8/6.10/8/9 与博客收尾继续阻断。
+最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 回顾时可以问：
 

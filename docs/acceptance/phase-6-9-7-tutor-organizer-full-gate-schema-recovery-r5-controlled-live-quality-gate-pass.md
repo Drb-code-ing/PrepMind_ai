@@ -13,7 +13,11 @@ Trace、业务写入、Docker API、可见浏览器、SLA、main 或生产可用
 
 SR5 一次性名额已经消费。禁止 retry、resume、replay、backfill、crash seal、recovery、单 case、curl、产品 API
 或其它追加 Provider 探测，也禁止删除、移动、覆盖或改写 marker、journal、artifact、approved tag 和历史 L3
-证据。当前只解锁 SR6 分支产品 Docker/API/可见浏览器验收；SR7/main 与 Phase 6.9.8 继续阻断。
+证据。该 SR5 checkpoint 当时只解锁 SR6 分支产品 Docker/API/可见浏览器验收。
+
+后续状态更新（2026-08-03）：SR6 已在 `providerCalls=0` 边界完成并记录于
+`phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。SR6 不重跑 SR5，也不提升本
+文的 semantic authority；当前唯一下一任务是 SR7/main，Phase 6.9.8 与后续阶段继续阻断。
 
 ## 1. 为什么需要 SR5
 
@@ -184,9 +188,9 @@ Trace、WrongQuestion、deck/item、Review、Knowledge、BackgroundJob、Outbox�
 - 估算费用来自冻结价格表与 verified usage，不替代 Provider 账单；
 - 没有清空、删除或重置 Docker container、image、volume、PostgreSQL、Redis 或 MinIO。
 
-## 8. 下一任务与停止门
+## 8. SR5 checkpoint 当时的下一任务与停止门
 
-当前唯一下一原子任务是 SR6 分支产品验收：
+SR5 封存时唯一下一原子任务是 SR6 分支产品验收：
 
 1. 先设计并静态验证 SR5 authority 到 Tutor Web / Organizer Nest composition 的受限接线；
 2. Docker 中按 Tutor-only -> default-off -> Organizer-only -> default-off -> 双路/forced failure 顺序验收；
@@ -196,8 +200,8 @@ Trace、WrongQuestion、deck/item、Review、Knowledge、BackgroundJob、Outbox�
 6. 恢复 tracked/runtime gates 为默认关闭，并保留 Docker volume 与用户数据；
 7. SR6 完成后单独提交并推送当前功能分支。
 
-SR6 不重跑 SR5 Live。只有 SR6 验收、文档、提交与远程推送全部完成后，才允许 SR7 从 main 新建/执行合并
-与 default-off 回放；当前不合并 main，不推进 Phase 6.9.8/6.10/8/9 或博客收尾。
+SR6 不重跑 SR5 Live。后续 SR6 产品验收已完成，但其文档/原子提交/远程推送未全部收口前，SR7 仍不开始；
+当前不合并 main，不推进 Phase 6.9.8/6.10/8/9 或博客收尾。
 
 回顾时可以问：
 

@@ -134,8 +134,10 @@ runtime、`tutor-v2-runtime-11`、18 个 Provider shape、Unicode/shape/limit/ab
 SR2 当时只解锁 SR3 runner/lineage/durability；SR3 与 SR4 reviewed Mock/static 后续均已 zero-provider 完成。
 SR4 仅形成 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run
 `63f8a76b...04cb` 随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不改写本页、旧 L3 或 SR4，
-也不形成产品 authority。当前下一原子任务仅 SR6 分支产品验收。最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+也不形成产品 authority。该 checkpoint 当时只解锁 SR6；SR6 随后已以 `providerCalls=0` 完成分支产品验收且
+不提升 SR5 semantic authority，当前下一任务仅 SR7/main。最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 ## 10. 主要文件
 

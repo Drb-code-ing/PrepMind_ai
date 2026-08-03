@@ -51,7 +51,11 @@ Tutor/Organizer/Combined semantic `0.9736111111/0.9515968407/0.9626039759`，pai
 schema_recovery_full_gate_semantic_gate`；journal `628`、`evidence_published`、validator `ok=true`、recovery
 claim=0。SR5 一次性名额已消费且禁止重跑；它只形成分支评测语义 authority，不形成产品、Docker/API/browser、
 Trace、业务写入、SLA 或 main authority。旧 L3 tag/marker/journal/artifact/validator 与 SR4 Mock-only authority
-保持不可变。当前唯一下一原子任务是 SR6 分支产品 Docker/API/可见浏览器/Trace/精确清理；SR7/main、Phase
+保持不可变。其后 SR6 已在 `providerCalls=0` 边界完成分支产品验收：Tutor `/api/chat` 已切换 Schema Recovery
+candidate，Organizer single/batch 已切换 V9 ordinal-only candidate；success/forced failure、Trace/Mock 计费、
+owner/locked-name/write isolation、可见浏览器、合成数据精确清理与最终源码 default-off Docker 回放通过。
+`sr5_sealed_replay` 只绑定 SR5 artifact SHA，并依据当前 bounded prompt 生成 deterministic Mock output；不读取或
+逐字重放 SR5 Provider response/Trace，不提升 SR5 semantic authority。当前唯一下一原子任务是 SR7/main；Phase
 6.9.8/6.10/8/9 与博客收尾继续阻断。详见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
@@ -60,7 +64,8 @@ Trace、业务写入、SLA 或 main authority。旧 L3 tag/marker/journal/artifa
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
 
 ## 项目快照
 
@@ -209,7 +214,8 @@ Trace、业务写入、SLA 或 main authority。旧 L3 tag/marker/journal/artifa
 | Phase 6.9.7 Schema Recovery SR2 | 已完成     | fixture SHA `43248bfa...0d41e`；24 Tutor runtime、18 Provider shape、5 held-out、anti-oracle/no-leak、fault/abort 与 F2 sibling/breaker 已 zero-provider 通过；不形成 semantic/产品 authority，该 checkpoint 当时只解锁 SR3                                                                    |
 | Phase 6.9.7 Schema Recovery SR3 | 已完成     | 独立 report/runner/source/CLI/schema-stage journal/artifact/validator/crash-only recovery；manifest `1a811394...adfbb`，focused `23/23`、Agent `1167/1167`；正式 SR5 files/tag 为 0，该 checkpoint 当时只解锁 SR4                                                                              |
 | Phase 6.9.7 Schema Recovery SR4 | 已完成     | reviewed Mock 穿过 recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/merger 与 SR3 runner；`48/48` strict/wire/usage、schema `42+6`、semantic `1/0.996875/0.9984375`；仅 Mock authority，该 checkpoint 当时只解锁 SR5 fresh admission                                     |
-| Phase 6.9.7 Schema Recovery SR5 | 已完成     | 唯一 run `63f8a76b...04cb`：guard `24/24`、strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、`0.067632 CNY`；`schema_recovery_full_gate_semantic_gate` 已封存且不得重跑，当前只解锁 SR6 产品验收                                        |
+| Phase 6.9.7 Schema Recovery SR5 | 已完成     | 唯一 run `63f8a76b...04cb`：guard `24/24`、strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、`0.067632 CNY`；`schema_recovery_full_gate_semantic_gate` 已封存且不得重跑；该 checkpoint 当时只解锁 SR6，后续状态见 SR6 行                |
+| Phase 6.9.7 Schema Recovery SR6 | 已完成     | `providerCalls=0`；Tutor Schema Recovery + Organizer V9 产品 composition、single/batch、forced failure、Trace/Mock 计费、owner/locked-name/write isolation、headed browser、精确清理与最终源码 default-off Docker 回放通过；只形成 zero-provider 产品 authority，当前只解锁 SR7/main           |
 | Phase 7.0                       | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                   |
 | Phase 7.1                       | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                           |
 | Phase 7.2                       | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                           |
@@ -800,7 +806,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. Phase 6.9.5 Review/Planner 的 V1--V9 保持只读历史；该阶段 V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。当前唯一下一任务是 SR6 分支产品 Docker/API/可见浏览器/Trace/精确清理；SR7/main、Phase 6.9.8 与记忆注入继续阻断。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。SR6 已在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品 Docker/API/可见浏览器/Trace/forced-failure/权限隔离/精确清理与最终源码 default-off 回放；不提升 SR5 semantic authority。当前唯一下一任务是 SR7/main；Phase 6.9.8 与记忆注入继续阻断。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. V1--V9 marker/evidence 均不可删除、改写或重跑；V3--V9 journal 继续保留。禁止把不同版本、Mock 或部分成功拼接成通过。V5--V9 路线与历史证据继续由原文档维护。

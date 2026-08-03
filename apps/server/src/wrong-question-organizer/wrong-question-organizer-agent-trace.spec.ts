@@ -1,4 +1,4 @@
-import type { WrongQuestionOrganizerModelCandidateEnvelope } from '@repo/agent/model-candidates';
+import type { WrongQuestionOrganizerV9ModelCandidateEnvelope } from '@repo/agent/wrong-question-organizer-v9';
 import { agentTraceCreateRequestSchema } from '@repo/types/api/agent-trace';
 
 import {
@@ -71,11 +71,58 @@ describe('wrong-question organizer agent trace', () => {
     ]);
     const serialized = JSON.stringify(trace);
     expect(serialized).toContain(
-      'version=wrong-question-organizer-model-candidate-v4',
+      'version=wrong-question-organizer-model-candidate-v9',
     );
     expect(serialized).not.toContain('user_1');
     expect(serialized).not.toContain('wrong_1');
     expect(serialized).not.toContain('api_key');
+  });
+
+  it('admits the explicit sealed replay as mock zero-cost evidence without promoting it to Live', () => {
+    const replayObservation = candidateObservation({
+      trace: {
+        mode: 'mock',
+        provider: 'mock',
+        model:
+          'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      },
+    });
+    expect(
+      validateWrongQuestionOrganizerCandidateAdmission(replayObservation),
+    ).toBeNull();
+    const admission = validateWrongQuestionOrganizerCandidateAdmission(
+      replayObservation,
+      'sr5_sealed_replay',
+    );
+    expect(admission).toMatchObject({
+      runtimeAuthority: 'sr5_sealed_replay',
+      estimatedCostCny: 0,
+      trace: {
+        mode: 'mock',
+        provider: 'mock',
+        model:
+          'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      },
+    });
+    const trace = buildWrongQuestionOrganizerAdmissionTrace({
+      runId: 'run_sr6_replay_1',
+      snapshotFingerprint: `sha256:${'c'.repeat(64)}`,
+      targetCount: 1,
+      startedAt: new Date('2026-08-03T08:00:00.000Z'),
+      candidateFinishedAt: new Date('2026-08-03T08:00:00.010Z'),
+      admission: admission!,
+    });
+    expect(agentTraceCreateRequestSchema.parse(trace)).toEqual(trace);
+    expect(trace).toMatchObject({
+      mode: 'mock',
+      modelProvider: 'mock',
+      modelName:
+        'phase-6.9.7-sr6-sealed-replay-87dd826bf80fa2da4884ee8574beb6f8e252584c5edc8d1cc087e7d2b66f18be',
+      pricingKnown: false,
+      costEstimate: 0,
+    });
+    expect(JSON.stringify(trace)).toContain('authority=sr5_sealed_replay');
+    expect(JSON.stringify(trace)).not.toContain('pricing=cny_known');
   });
 
   it('uses the same run id and atomically replaces pending with the final command step', () => {
@@ -114,7 +161,7 @@ function candidateObservation(
     trace?: Record<string, unknown>;
     budget?: Record<string, unknown>;
   } = {},
-): WrongQuestionOrganizerModelCandidateEnvelope['observation'] {
+): WrongQuestionOrganizerV9ModelCandidateEnvelope['observation'] {
   const usage = overrides.usage ?? { inputTokens: 120, outputTokens: 40 };
   const trace = {
     runIdHash: `sha256:${'b'.repeat(64)}`,
@@ -147,5 +194,5 @@ function candidateObservation(
     usage,
     trace,
     reasonCodes: ['candidate_applied', 'semantic_organization'],
-  } as WrongQuestionOrganizerModelCandidateEnvelope['observation'];
+  } as WrongQuestionOrganizerV9ModelCandidateEnvelope['observation'];
 }
