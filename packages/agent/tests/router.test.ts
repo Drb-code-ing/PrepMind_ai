@@ -18,6 +18,20 @@ describe('routeAgentRequest', () => {
     expect(result.requiresHumanApproval).toBe(false);
   });
 
+  it('routes explicit step-check requests to tutor without requiring an exact question keyword', () => {
+    const state = createInitialAgentState({
+      runId: 'run_step_check',
+      userId: 'user_1',
+      text: "我算到 f'(2)=4，这一步对吗？请只检查这一步。",
+    });
+
+    const result = routeAgentRequest(state);
+
+    expect(result.name).toBe('tutor');
+    expect(result.requiresRag).toBe(false);
+    expect(result.requiresHumanApproval).toBe(false);
+  });
+
   it('routes knowledge-base requests to rag_answer', () => {
     const state = createInitialAgentState({
       runId: 'run_2',

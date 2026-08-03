@@ -44,7 +44,7 @@ const routeRules: RouteRule[] = [
   },
   {
     route: 'tutor',
-    keywords: ['这道题', '为什么', '怎么做', '讲一下', '解析', '答案'],
+    keywords: ['这道题', '这一步', '这步', '为什么', '怎么做', '讲一下', '解析', '答案'],
     confidence: 0.78,
     reason: '用户请求讲题或追问题目。',
     requiresRag: false,
