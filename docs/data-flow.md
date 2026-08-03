@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-03。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR5 语义 authority 不变，当前唯一下一任务是 SR7/main。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成，当前唯一下一任务是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 通信 contract。
 
 ## 1. 当前边界
 
@@ -939,8 +939,15 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> exact synthetic cleanup；browser state=0；window stays at /login
        -> final-source server/web image build exit 0；all gates/replay default-off
        -> Qwen RAG restored qwen/text-embedding-v4/1536；no Redis/MinIO/database/volume wipe
-  -> current next：SR7 main merge/push/default-off replay only
-       -> no SR5 rerun；no SR6 replay re-enable；Phase 6.9.8+ still blocked
+  -> SR7 complete：main merge/push/default-off replay / providerCalls=0
+       -> merge 510bbc94；step-check fix 43af2e85 -> merge 006f54e9
+       -> Organizer local_deterministic/gate_disabled/degraded=false；Trace 0
+       -> exact Tutor sentence -> route=tutor / intent=step_check
+       -> candidate attempted=false / model calls 0 / token 0/0 / LIVE_CALLS_DISABLED / pricing unknown
+       -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
+       -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
+       -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
+  -> current next：Phase 6.9.8 RetrieverAgent / FinalResponseAgent formalization and communication contract
 ```
 
 ```text

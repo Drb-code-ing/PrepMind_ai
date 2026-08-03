@@ -15,9 +15,10 @@ SR5 一次性名额已经消费。禁止 retry、resume、replay、backfill、cr
 或其它追加 Provider 探测，也禁止删除、移动、覆盖或改写 marker、journal、artifact、approved tag 和历史 L3
 证据。该 SR5 checkpoint 当时只解锁 SR6 分支产品 Docker/API/可见浏览器验收。
 
-后续状态更新（2026-08-03）：SR6 已在 `providerCalls=0` 边界完成并记录于
-`phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。SR6 不重跑 SR5，也不提升本
-文的 semantic authority；当前唯一下一任务是 SR7/main，Phase 6.9.8 与后续阶段继续阻断。
+后续状态更新（2026-08-04）：SR6 已在 `providerCalls=0` 边界完成并记录于
+`phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`；SR7 main/default-off 验收也已
+完成并记录于 `phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。SR6/SR7 均未重跑
+SR5，也不提升本文的 semantic authority。Phase 6.9.7 已收口，当前下一阶段仅 Phase 6.9.8。
 
 ## 1. 为什么需要 SR5
 

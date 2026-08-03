@@ -1932,6 +1932,24 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] SR6 全程 `providerCalls=0`，只形成分支 zero-provider 产品 composition/权限/Trace/降级/UI/清理证据；
       不提升 SR5 semantic authority，不形成真实模型产品质量、SLA、生产部署或 main authority；当前仅 SR7/main
       合并/推送/default-off 回放待执行，Phase 6.9.8 与后续 Phase 继续阻断；
+- [x] SR7 已将 SR6 功能提交 `64d4ff45` 以 `510bbc94` 合并 main 并推送远程；验收发现精确“这一步”句式
+      未路由 Tutor 后，从最新 main 新建普通分支，以 `43af2e85` 修复并由 `006f54e9` 再次合并/推送 main；
+- [x] 精确 Router 回归 `6/6`、Web server-only 正确 Node runner `25/25`、受影响 Router/runtime/Chat、Agent
+      typecheck/lint/Prettier/diff 均通过；错误 Bun runner 结果未计入产品失败；
+- [x] main Docker server/web 逐个 build 成功并精确重建；server healthy、web `/login=200`、worker healthy；
+      mode=mock、Live=false、全部 Agent/replay gate=false，未执行 `down -v`、prune、database reset、Redis
+      `FLUSH*` 或 MinIO wipe；
+- [x] Organizer default-off 为 `local_deterministic / gate_disabled / degraded=false / traceId absent`，调用前后
+      Trace=0，可见 `/error-book` 显示“本地规则”；
+- [x] 修复后的精确 Tutor 句为 `route=tutor / intent=step_check`；Tutor candidate
+      `attempted=false / inputTokens=0 / outputTokens=0 / LIVE_CALLS_DISABLED / pricing=unknown`，模型调用总数 0；
+      Trace 为 `mock/completed/cost=0`，顶层 Mock token estimate 未误写成 Provider verified usage；
+- [x] 四张本地可见浏览器截图 SHA 已固定在 SR7 验收文档；错误路由截图与 Playwright page/console 临时文件
+      已精确删除，浏览器窗口保留在空白 `/login`；
+- [x] 两个 main 合成账号及 refresh token、错题/Organizer 关系、会话/消息、Trace/steps、tracked Outbox 全部
+      精确清理为 0；cookie/local/session/cache/service worker=0，自动重建的 5 个 IndexedDB store rows=0；
+- [x] SR7 没有重跑 SR5、启用 SR6 replay 或执行 Provider 探测，只形成 zero-provider main/default-off
+      authority。Phase 6.9.7 正式完成，下一阶段仅 Phase 6.9.8 RetrieverAgent / FinalResponseAgent contract；
 
 完整设计与证据见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-v9-remediation-design.md`、
@@ -1970,5 +1988,6 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。

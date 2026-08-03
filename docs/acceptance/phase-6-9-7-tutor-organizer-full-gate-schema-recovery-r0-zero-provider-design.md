@@ -133,9 +133,11 @@ projection、strict projected decision、本地 authority adapter 与 bounded di
 robustness、runner/lineage/durability 与 reviewed Mock/static 均已完成；SR4 仍无 Provider/产品 authority。
 唯一 SR5 run `63f8a76b...04cb` 随后以 `schema_recovery_full_gate_semantic_gate` durable seal；它不改写本页、
 旧 L3 或 SR4，也不形成产品 authority。SR6 随后已以 `providerCalls=0` 完成分支产品验收且不提升 SR5
-semantic authority；当前下一任务仅 SR7/main。最新验收见
+semantic authority；SR7 main/default-off 验收随后完成且未重跑 SR5。Phase 6.9.7 已收口，当前下一阶段仅
+Phase 6.9.8。最新验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
 回顾时可以问：
 

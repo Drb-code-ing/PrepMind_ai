@@ -2,7 +2,9 @@
 
 日期：2026-08-01
 
-状态：P2/F1/F2/S3 已完成；后续唯一 L3 已以 `full_gate_quality_gate_failed` 封存，产品与后续阶段继续阻断
+状态（2026-08-04 更新）：P2/F1/F2/S3 已完成；唯一 L3 保持 `full_gate_quality_gate_failed` 封存；后续独立
+Schema Recovery SR0--SR7 已完成，Phase 6.9.7 正式收口，当前下一阶段为 Phase 6.9.8。本文其余“当时
+下一步/阻断”均为 P2 阶段历史边界，不授权重跑 L2/L3/SR5 或追加 Provider 探测
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -725,14 +727,16 @@ strict/wire/usage、schema `42 canonical + 6 extension discarded`、semantic `1/
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 随后以
 strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95
 `2240ms` 与 `schema_recovery_full_gate_semantic_gate` durable seal；一次性名额已消费。SR6 随后已以
-`providerCalls=0` 完成分支产品验收且不提升 SR5 semantic authority；当前下一任务仅 SR7/main。详见 Schema Recovery
+`providerCalls=0` 完成分支产品验收且不提升 SR5 semantic authority；SR7 又完成 main/default-off 验收并
+收口 Phase 6.9.7，当前下一阶段仅 Phase 6.9.8。详见 Schema Recovery
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、SR4
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md` 与 SR5
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`、SR6
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md` 与 SR7
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
 旧 R6/R7 的唯一前提是本 lineage L3 pass；L3 已失败封存，所以该旧路线永久阻断。未来产品与 main 验收只能沿
-独立 Schema Recovery 的 SR5 quality pass 已封存；后续只按 SR6 -> SR7 顺序推进，不能回填或改写本路线。
+独立 Schema Recovery 的 SR5 quality pass 已封存；后续已按 SR6 -> SR7 顺序完成，且没有回填或改写本路线。
 
 ## 12. 回顾问题
 

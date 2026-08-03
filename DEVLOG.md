@@ -1,5 +1,38 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.7 Full-gate Schema Recovery SR7 main/default-off 收口：
+>
+> SR6 功能提交 `64d4ff45` 已以 merge commit `510bbc94` 合并并推送 `main`。main default-off
+> Docker/API/可见浏览器回放期间，Organizer 保持
+> `local_deterministic / gate_disabled / degraded=false`、不创建 Trace，`/error-book` 显示“本地规则”；
+> 没有启用 SR6 replay 或调用 Provider。
+>
+> 首次 Tutor 回放发现确定性 Router 未识别精确句“我算到 `f'(2)=4`，这一步对吗？请只检查这一步。”。
+> 从最新 main 新建普通分支 `drb/phase-6-9-7-sr7-step-check-route`，只补充“这一步/这步”Tutor 关键词与
+> 精确回归用例；功能提交 `43af2e85` 单独推送后，以 merge commit `006f54e9` 合并并推送 main。Router
+> focused `6/6`、Web server-only 正确 Node runner `25/25`、受影响 Router/runtime/Chat 回归、Agent
+> typecheck/lint/Prettier/diff 均通过。一次 Bun 混跑 server-only Web test 的失败已确认是错误 runner，不是
+> 产品失败。
+>
+> 修复后可见 `/chat` 对同一句返回 `route=tutor / intent=step_check`；响应头与 Trace 同时证明 Tutor model
+> candidate `attempted=false`、input/output token `0/0`、`LIVE_CALLS_DISABLED`、`pricing=unknown`，顶层 Trace
+> 为 `mock / completed / cost=0`。顶层 `390/1200` 仅是本地 Mock 预算估算，不是 Provider verified usage。
+> 四张本地截图 SHA 已写入 SR7 验收文档；错误路由截图与 Playwright page/console 临时文件已精确删除，
+> 浏览器窗口保留。
+>
+> 两个 main 合成账号均已精确删除。首次账号删除前为 refresh token 7、错题 1、会话 1、消息 6、分组 1、
+> 专题 1、关联项 1、Trace 3/steps 10；step-check 账号为 refresh token 2、会话 1、消息 2、Trace 1/steps 4。
+> 删除后 User、全部用户关联与 tracked Outbox residue 均为 0。浏览器最终停在 `/login`，cookie/local/session/
+> cache/service worker 为 0，自动重建的 5 个 IndexedDB store 行数均为 0。没有 database/volume reset、Redis
+> FLUSH、MinIO wipe、`down -v` 或 prune。
+>
+> Docker server/web 逐个构建成功；正确携带 `--env-file .env` 精确重建后 server healthy、web
+> `/login=200`、worker healthy。AI mode=mock、Live=false、全部 Agent/replay gate=false。SR7 只形成
+> zero-provider main/default-off authority，不提升 SR5 semantic authority，也不证明真实模型最终产品回答、SLA
+> 或生产部署。Phase 6.9.7 正式完成；下一原子阶段是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent
+> 正式化与通信 contract。验收见
+> `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
+>
 > 2026-08-03 — Phase 6.9.7 Full-gate Schema Recovery SR6 分支产品验收：
 >
 > SR6 已在 `codex/phase-6-9-7-tutor-wrong-question-agents` 完成，且全程

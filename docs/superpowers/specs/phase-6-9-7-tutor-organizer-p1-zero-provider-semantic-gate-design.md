@@ -2,8 +2,9 @@
 
 日期：2026-07-31
 
-状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 SR0 zero-provider
-Schema Recovery 设计已完成，未启动产品 Docker/API/browser
+状态（2026-08-04 更新）：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；唯一 L3 保持失败封存；后续独立
+Schema Recovery SR0--SR7 已完成，Phase 6.9.7 正式收口，当前下一阶段为 Phase 6.9.8。本文其余“当时
+下一步/阻断”均为 P1 阶段历史边界，不授权重跑 L1/L2/L3/SR5 或追加 Provider 探测
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -636,7 +637,8 @@ semantic `1/0.996875/0.9984375`，但 authority 仅
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 随后以
 strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95
 `2240ms` 与 `schema_recovery_full_gate_semantic_gate` durable seal；不得重跑，且不覆盖 L3/SR4 历史。SR6
-随后已以 `providerCalls=0` 完成分支产品验收且不提升 SR5 semantic authority；当前下一任务仅 SR7/main。
+随后已以 `providerCalls=0` 完成分支产品验收且不提升 SR5 semantic authority；SR7 又完成 main/default-off
+验收并收口 Phase 6.9.7，当前下一阶段仅 Phase 6.9.8。
 设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`；
@@ -646,6 +648,7 @@ strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.96260397
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r3-runner-durability.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r4-reviewed-mock-static.md`。
 - `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`。
+- `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
 G1 实现验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-small-sample-g1-contract-baseline.md`。G1 冻结的 baseline

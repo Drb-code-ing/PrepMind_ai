@@ -2,7 +2,8 @@
 
 日期：2026-08-01
 
-当前状态：P2/F1/F2/S3 已完成；后续唯一 L3 已以 `full_gate_quality_gate_failed` 封存
+当前状态（2026-08-04 更新）：P2/F1/F2/S3 已完成；唯一 L3 保持 `full_gate_quality_gate_failed` 封存；
+后续独立 Schema Recovery SR0--SR7 已完成，Phase 6.9.7 正式收口，下一阶段仅 Phase 6.9.8
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p2-zero-provider-full-gate-design.md`
@@ -146,7 +147,7 @@ claim=0、`qualityAuthority=none`。完整证据见
 ## SR0--SR4：独立 Full-gate Schema Recovery
 
 状态：SR0 [x]、SR1 [x]、SR2 [x]、SR3 [x]、SR4 [x] 完成，zero-provider；唯一 SR5 [x] 已通过并
-durable seal；SR6 [x] 已以 `providerCalls=0` 完成分支产品验收，当前下一任务仅 SR7/main。
+durable seal；SR6 [x] 分支产品验收、SR7 [x] main/default-off 验收均已完成，Phase 6.9.7 已收口。
 
 SR0 只读取证 L3 schema boundary，冻结 Provider envelope -> canonical `intentIndex` selection projection ->
 strict projected decision -> local authority/merger、bounded no-raw diagnostic、新 journal/report/validator 与独立
@@ -156,8 +157,8 @@ schema-stage durability、strict validator 与 crash-only recovery；SR4 reviewe
 strict/wire/usage、schema `42 canonical + 6 extension discarded` 与 semantic `1/0.996875/0.9984375`，但 authority
 仅 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。唯一 SR5 run `63f8a76b...04cb` 已以
 strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759` 与
-`schema_recovery_full_gate_semantic_gate` durable seal；不得重跑。SR6 随后已完成且不提升该 authority；当前只
-允许进入 SR7/main。完整路线见
+`schema_recovery_full_gate_semantic_gate` durable seal；不得重跑。SR6/SR7 随后已完成且不提升该
+authority；当前只允许进入 Phase 6.9.8。完整路线见
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md`。
 
 ## R6 / R7：产品与 main

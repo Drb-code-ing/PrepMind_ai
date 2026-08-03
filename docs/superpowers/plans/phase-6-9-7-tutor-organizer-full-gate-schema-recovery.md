@@ -1,10 +1,11 @@
 # Phase 6.9.7 Tutor / Organizer Full-gate Schema Recovery 实施计划
 
-日期：2026-08-02（SR6 状态更新：2026-08-03）
+日期：2026-08-02（SR7 状态更新：2026-08-04）
 
 当前状态：SR0--SR4 zero-provider 与 reviewed Mock/static、唯一 SR5 controlled-Live、SR6 zero-provider 分支
-产品验收均已完成。旧 L3 保持失败封存，SR4 保持 Mock-only，SR5 semantic authority 保持不可变；当前下一任务
-仅 SR7/main，后续 Phase 仍被阻断。
+产品验收、SR7 main/default-off 验收均已完成。旧 L3 保持失败封存，SR4 保持 Mock-only，SR5 semantic
+authority 保持不可变；Phase 6.9.7 已完成，当前下一任务仅 Phase 6.9.8 RetrieverAgent /
+FinalResponseAgent 正式化与通信 contract。
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`
@@ -227,11 +228,26 @@ default-off/forced failure、Trace、owner/locked-name/write isolation、headed 
 
 ## SR7：Main 合并、推送与回放
 
-状态：[ ] 阻断，等待 SR6 原子提交与功能分支远程 parity。
+状态：[x] 已完成，zero-provider main/default-off product acceptance。
 
 只有 SR6 完成、提交并推送当前 Phase 分支后，才能合并 main。main 只做 default-off static、Docker/API、
 可见浏览器和历史 evidence replay；不重跑已消费的 SR5 Live，也不再次启用 SR6 replay。合并后必须推送远程
 main 并核对 HEAD/upstream/remote parity。
+
+实际交付：
+
+- SR6 功能提交 `64d4ff45` 由 `510bbc94` 合并并推送 main；
+- 首次可见 Tutor 回放发现精确“这一步”句式路由缺口；从最新 main 新建普通修复分支，以 `43af2e85`
+  补齐 Router 关键词与精确测试，再由 `006f54e9` 合并/推送 main；
+- Router focused `6/6`、Web server-only 正确 Node runner `25/25`、受影响 static/typecheck/lint/format/diff
+  通过；已完成的 SR5/SR6/Organizer 验收未重复；
+- Organizer default-off 为 `local_deterministic/gate_disabled/degraded=false` 且 Trace=0；修复后的 Tutor 为
+  `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED / pricing=unknown`，Mock Trace
+  `cost=0`；
+- server/web/worker 健康，mode=mock、Live=false、全部 Agent/replay gate=false；两个合成账号、tracked Outbox、
+  browser storage 精确清理，窗口保留在 `/login`；未执行 Provider、SR5 rerun、SR6 replay、Docker/数据清空；
+- 验收：
+  `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
 ## 执行纪律
 

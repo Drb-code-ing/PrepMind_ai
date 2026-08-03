@@ -1538,13 +1538,16 @@ reviewed Mock/static。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0
 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；strict/wire/usage
 `48/48/48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，journal `628`、validator `ok=true`、
 recovery claim=0。SR6 又在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品 Docker/API/可见浏览器/Trace/
-forced-failure/权限隔离与精确清理；全部 Agent/replay gate 已恢复关闭。SR5 一次性名额已经消费。当前安全边界为：
+forced-failure/权限隔离与精确清理；SR7 随后完成 main 合并、远程发布与 default-off Docker/API/可见浏览器/
+Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/replay/Live gate 均保持关闭。SR5 一次性名额
+已经消费。当前安全边界为：
 
 - 不运行任何 `full-gate:live`、SR5 production CLI、`seal`、recovery、curl、单 case 或其它 Provider 探测；
 - 不修改/移动/删除 L3 或 SR5 marker、journal、artifact、recovery claim 或 approved tag；
-- 不再次启用 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED` 或重做 SR6 success/forced-failure 产品 replay；SR7 只
-  允许 default-off static/Docker/API/可见浏览器与历史 evidence 只读回放；
-- 只允许读取当前源码与 sealed bundle、运行只读 strict validator，以及执行上述 SR7 default-off 验收；
+- 不再次启用 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED`，不重做 SR6 success/forced-failure replay，也不重复
+  执行已经完成的 SR7 default-off Docker/API/browser 验收；
+- 只允许读取当前源码与 sealed bundle、运行只读 strict validator；后续开发必须从最新 main 新开 Phase 6.9.8
+  普通分支，不得借 SR7 名义调用 Provider；
 - SR1--SR3 测试只使用 injected synthetic data/runtime 与系统临时目录，`globalThis.fetch=0`、credential
   read=0、formal
   artifact=0；
@@ -1567,10 +1570,16 @@ forced-failure/权限隔离与精确清理；全部 Agent/replay gate 已恢复�
   authority；
 - SR6 产品验收已完成：Tutor `/api/chat`、Organizer single/batch、Trace/Mock 计费、forced failure、owner/
   locked-name/write isolation、可见浏览器、精确清理与最终源码 Docker/default-off 均通过；
-- 当前唯一下一任务是 SR7：先提交并推送当前功能分支，再合并/push main 并只做 default-off 回放；Phase
-  6.9.8/6.10/8/9 继续阻断。
+- SR7 main/default-off 验收已完成：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace；精确 Tutor
+  step-check 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Trace 为 Mock、成本
+  0；两个合成账号、tracked Outbox 与浏览器业务数据 residue=0；
+- Phase 6.9.7 已完成。当前唯一下一任务是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化与通信
+  contract；Phase 6.10/8/9 与博客收尾继续阻断。
 
-SR6 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
+SR7 完整证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
+
+SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/
 Organizer gate 全部 false。RAG server/worker 仍为 `qwen / text-embedding-v4 / 1536`；只检查 credential 是否存在，
 禁止输出值。不得用 `down -v`、prune、database reset、Redis `FLUSH*` 或 MinIO wipe 来“恢复环境”。

@@ -1,8 +1,8 @@
 # Phase 6.9.7 Tutor / Organizer Full-gate Schema Recovery 设计
 
-日期：2026-08-02（SR6 状态更新：2026-08-03）
+日期：2026-08-02（SR7 状态更新：2026-08-04）
 
-状态：SR0--SR4 zero-provider 与 reviewed Mock/static、唯一 SR5 controlled-Live、SR6 zero-provider 分支产品验收均已完成；当前下一任务仅 SR7/main
+状态：SR0--SR4 zero-provider 与 reviewed Mock/static、唯一 SR5 controlled-Live、SR6 zero-provider 分支产品验收及 SR7 main/default-off 验收均已完成；Phase 6.9.7 正式收口，当前下一任务仅 Phase 6.9.8
 
 分支：`codex/phase-6-9-7-tutor-wrong-question-agents`
 
@@ -370,6 +370,13 @@ Tutor Chat、Organizer single/batch、forced failure、owner/locked-name/write i
 server/web build、default-off/Qwen 回放通过，全程 `providerCalls=0`。该证据仅为分支 zero-provider 产品
 composition authority，不形成真实模型产品质量、SLA、生产部署或 main authority。
 
+SR7 随后把 SR6 功能提交以 `510bbc94` 合并并推送 main。main default-off 回放发现精确“这一步”句式未
+路由 Tutor；修复提交 `43af2e85` 从最新 main 的普通分支产生，并由 `006f54e9` 再次合并/推送 main。修复后
+同一句为 `route=tutor / step_check`，candidate `attempted=false / 0 token / LIVE_CALLS_DISABLED /
+pricing=unknown`，Trace 为 Mock、成本 0；Organizer 为 `local_deterministic / gate_disabled` 且 Trace=0。
+Docker/API/可见浏览器、四张截图 SHA、两个合成账号/Outbox/browser state 精确清理与全部 gate=false 通过。
+SR7 全程 zero-provider，未重跑 SR5 或启用 SR6 replay；只形成 main/default-off authority。
+
 ## 10. 原子路线
 
 | 阶段 | 内容                                                                 | 当前状态              |
@@ -381,11 +388,12 @@ composition authority，不形成真实模型产品质量、SLA、生产部署�
 | SR4  | Reviewed Mock、全量 static/history parity、Reader Testing            | 已完成，zero-provider |
 | SR5  | Fresh admission 后唯一新 lineage controlled-Live                     | 已完成，通过并封存    |
 | SR6  | 仅 SR5 pass 后的 Docker/API/可见浏览器/Trace/精确清理                | 已完成，zero-provider |
-| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 阻断，待提交/推送     |
+| SR7  | 仅 SR6 pass 后的 main 合并、远程推送与 default-off 回放              | 已完成，zero-provider |
 
 每个阶段单独提交并推送当前 Phase 6.9.7 功能分支；不创建 worktree 或子分支。SR0--SR4 均未读取
 credential、调用 Provider、执行正式 Live、启动产品 Docker/API/browser 或修改业务数据。SR5 只消费上述唯一
-48-lane Live；SR6 没有再次调用 Provider。SR7 也不得重跑 SR5 或再次启用 SR6 replay。
+48-lane Live；SR6/SR7 没有再次调用 Provider。SR7 未重跑 SR5 或再次启用 SR6 replay。Phase 6.9.7 完成后，
+后续开发只能从最新 main 新建 Phase 6.9.8 普通分支。
 
 ## 11. SR0 禁止事项
 

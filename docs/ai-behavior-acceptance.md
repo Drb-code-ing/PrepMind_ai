@@ -497,7 +497,20 @@ SR6 Docker/API 中，Tutor 登录态 + OCR context Chat 与 Organizer single/bat
 `3/3`、locked name 不变；跨账号统一 404 且无写入。Forced Tutor failure 保持 Chat 成功，Organizer 回到
 `local_deterministic/fallback_runtime_error`。可见 `/chat`、`/error-book`、`/agent-trace`、精确数据/浏览器清理
 与最终源码 default-off Docker 回放通过。该证据只证明 zero-provider 产品接线、权限、Trace、降级、UI 和清理，
-不提升 SR5 semantic authority，不形成真实模型产品质量、SLA、生产部署或 main authority。当前下一任务仅 SR7/main。
+不提升 SR5 semantic authority，不形成真实模型产品质量、SLA、生产部署或 main authority。该 checkpoint 当时只
+解锁 SR7/main。
+
+SR7 已完成 main 合并、远程发布与 default-off Docker/API/可见浏览器/Trace/清理。Organizer gate-off 必须返回
+`local_deterministic / gate_disabled / degraded=false` 且不创建 Trace。精确 Tutor step-check 必须同时满足：
+`route=tutor`、`intent=step_check`、candidate `attempted=false`、模型调用总数 0、input/output token `0/0`、
+`LIVE_CALLS_DISABLED`、candidate pricing unknown；允许顶层本地 Mock Trace 记录 `cost=0` 和预算估算，但不得把
+Mock token estimate 当成 Provider verified usage。SR7 没有重跑 SR5 或启用 SR6 replay，所有 Agent/Live gate
+保持关闭。两个合成账号、tracked Outbox 与浏览器业务数据已精确清理。该证据只形成 zero-provider
+main/default-off authority；Phase 6.9.7 至此完成，下一阶段仅 Phase 6.9.8 RetrieverAgent /
+FinalResponseAgent 正式化与通信 contract。
+
+SR7 证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
 - 固定 `phase-6.9-tutor-wrong-question-v1` 共 72 cases：Tutor/Organizer 各 12 zero-call + 24 runtime；24 zero-call 必须实际穿过 guard 且 runtime counter=0，48 runtime 按 24 paired indexes 全部保留在分母；
 - Task 1 未修饰 baseline 已冻结：SHA-256 `7ac2f4b5411831308d46a9df939907444285081897848aeb250944e43382207e`，32 Organizer decision units，完整命中 `6/48`，Tutor/Organizer/combined semantic `0.4418666667/0.278125/0.3599958333`，critical/provider/token/cost 均为 0。该零调用只是 baseline 没有 runtime，不能替代未来 guard counter；

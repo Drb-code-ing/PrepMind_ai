@@ -2,9 +2,9 @@
 
 日期：2026-07-31
 
-当前状态：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；后续唯一 L3 已失败封存；独立 Schema Recovery
-SR0--SR4 已完成，唯一 SR5 controlled-Live 已通过并封存，SR6 zero-provider 分支产品验收已完成；当前
-下一任务仅 SR7/main
+当前状态（2026-08-04 更新）：P1/G1/G2/S2/L2/P2/F1/F2/S3 已完成；唯一 L3 保持失败封存；独立
+Schema Recovery SR0--SR7 已完成，SR5 controlled-Live 保持唯一且不可重跑，Phase 6.9.7 正式收口；当前
+下一任务仅 Phase 6.9.8 RetrieverAgent / FinalResponseAgent contract
 
 设计 authority：
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-p1-zero-provider-semantic-gate-design.md`
@@ -227,6 +227,8 @@ SR4 仅形成 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none
 `63f8a76b...04cb` 随后以 strict/wire/usage `48/48/48/48`、semantic
 `0.9736111111/0.9515968407/0.9626039759` 与 `schema_recovery_full_gate_semantic_gate` durable seal，且不得
 重跑。SR6 随后以 `providerCalls=0` 完成分支产品 Docker/API/可见浏览器/Trace/精确清理，不提升 SR5
-semantic authority；当前下一任务仅 SR7/main。最新验收见
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md` 与
-`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md`。
+semantic authority；SR7 又完成 main/default-off 回放并正式收口 Phase 6.9.7，当前下一阶段仅 Phase 6.9.8。
+最新验收见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`、
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md` 与
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。

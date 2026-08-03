@@ -190,3 +190,15 @@ default-off static/Docker/API/可见浏览器与历史 evidence 只读回放。S
 - “Tutor Schema Recovery 与 Organizer V9 分别把哪些权力留在本地？”
 - “forced failure 为什么必须保留 Chat/Organizer 的本地可用结果？”
 - “为什么 SR6 完成后仍必须单独做 SR7 main default-off 回放？”
+
+## 9. 2026-08-04 后续状态（不改写 SR6 历史）
+
+以上“main 未合并、当前下一任务 SR7”的表格与停止门记录的是 SR6 checkpoint 当时状态。后续 SR7 已完成：
+SR6 功能提交由 `510bbc94` 合并并推送 main；精确“这一步”Tutor 路由缺口以 `43af2e85` 修复，再由
+`006f54e9` 合并/推送 main。main/default-off Docker/API/可见浏览器/Trace/精确清理通过，全部 Agent/replay/
+Live gate 保持关闭，未重跑 SR5 或再次启用 SR6 replay。
+
+Phase 6.9.7 因此正式完成；下一阶段仅 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化与通信
+contract。SR6 的 zero-provider authority、SR5 的 semantic authority、旧 L3/SR4/V1--V9 历史终态均保持
+不变。后续证据见
+`docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
