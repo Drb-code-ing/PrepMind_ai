@@ -1136,6 +1136,45 @@ V9 R4 验收见
 V9 R5 终态见
 `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
 
+## Phase 6.9.8 RetrieverAgent / FinalResponseAgent 验收合同
+
+Task 0 已以 `zero_provider_retriever_final_response_design` 冻结以下边界，但尚未实现 runtime：
+
+- identity 只能由 Nest JWT 投影到 `AgentExecutionContextV1.principal`；request/model 不能提供 ownerId，无效 token
+  返回 401，anonymous owner/live 路径在 Provider 构造前 zero-call；
+- Retriever 复用当前 authenticated `/knowledge/search` 的 Qwen 1536 embedding + PostgreSQL vector/keyword hybrid
+  search。query rewrite 只在复杂多轮 RAG query 上建议一个 bounded query，本地仍权威决定 owner/topK/minScore/
+  filter 和 original/rewrite 选择；
+- rewrite 配置固定为 default-off `RETRIEVER_QUERY_REWRITE_MODEL_ENABLED`、4000ms 与 Web-only
+  `RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY`；FinalResponse 配置固定为 default-off
+  `FINAL_RESPONSE_AGENT_MODEL_ENABLED`、20000ms 与 Web-only `FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY`；两者不得
+  借用 generic/其它 Agent credential；
+- deterministic SafetyGuard + Verifier 只能收紧 evidence。FinalResponse model 最多看到
+  `citationId/sourceLabel/excerpt/trustLabel`，其中 sourceLabel 是非敏感 ordinal alias；模型不能看到用户文档标题、
+  `documentId/chunkId/sourceRef/safetyCodes`。citation event、tool status、usage/cost 和 Trace terminal 由本地
+  authority 生成；
+- FinalResponse 首 token 前失败返回固定不可用响应；首 token 后失败必须标记 partial/incomplete，禁止 citation
+  和工具成功。所有 transport no retry，parent abort 贯穿整条链路且服务端 terminal exactly-once；这不承诺网络
+  恰好交付，客户端断连也不得自动重放；
+- Trace 必须先 running、stream terminal 后 finalized；估算 token 与 verified usage 分开。Trace finalization 失败
+  不撤回已发送正文，但该 run 不形成质量 authority；
+- 同步 FinalResponse 不创建 BackgroundJob/Outbox；未来异步化必须同时设计
+  `BackgroundJob + Durable Outbox + idempotency key`。
+
+正式 `phase-6.9.8-retriever-final-response-v1` 固定 48 case：16 Retriever guard、16 rewrite paired runtime、16
+FinalResponse runtime。正式门要求 owner/safety/false citation/false tool success critical failure=0，Recall@5
+`>=0.90`、nDCG@5 `>=0.85`、eligible rewrite 相对 baseline `>=+0.08`、Final grounded rubric `>=0.90`、citation
+precision `=1`、required citation recall `>=0.90`，并满足 rewrite/retrieval/TTFT/Final/Chat P95。DeepSeek 32-call
+run cap 为 `0.32 CNY`；paired search 最多 32 次 Qwen embedding。Qwen 正式价格 profile 未冻结时 cost/总成本
+aggregate 必须为 `null`，禁止进入 controlled-Live admission。
+
+Task 0 只完成文档/格式/链接/独立复审，不修改 apps/packages、不读 `.env`、不调用 Provider、不启动 Docker/API/
+browser。它只解锁 Task 1 shared strict Zod contracts；不能写成 Retriever/FinalResponse、canonical identity、
+structured citation、terminal Trace、Mock/Live 或产品验收已完成。完整设计、计划与证据见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`。
+
 ## 8. Reflexion / Critic 验收要求
 
 当改动 RouterAgent、TutorAgent prompt、RAG prompt、KnowledgeVerifierAgent 或 `/api/chat` 输出行为时，除了 mock 单测和必要的 live smoke，还要记录 critic/rubric 结论。

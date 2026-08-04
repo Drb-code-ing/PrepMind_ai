@@ -1991,3 +1991,48 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-r5-controlled-live-quality-gate-pass.md`、
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr6-product-acceptance.md` 与
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
+
+## 12. Phase 6.9.8 Retriever / FinalResponse 验收入口
+
+Task 0 `zero_provider_retriever_final_response_design`：
+
+- [x] 从已推送最新 main `185b8171...` 新建普通分支
+      `drb/phase-6-9-8-retriever-final-response-contract`；未使用 worktree、未从功能分支再开分支；
+- [x] 记录 `packages/rag/src/retriever.ts` stub、真实 Nest owner-scoped Qwen hybrid search、Chat
+      `web-chat-user`、Markdown citation、pre-stream Trace 与 descriptor-only graph；
+- [x] 冻结 `AgentExecutionContextV1`、`AgentMessageEnvelopeV1`、`RetrieverRequest/ResultV1`、
+      `VerifiedEvidenceBundleV1` 与 `FinalResponseRequest/StreamEventV1`；
+- [x] owner/JWT、model/local authority、permission、reason/usage attribution、abort/concurrency/terminal/no-loss
+      边界已冻结；
+- [x] query rewrite 使用 default-off gate + 4000ms + Web-only 独立 key；FinalResponse 使用 default-off gate +
+      20000ms + Web-only 独立 key；generic/其它 Agent credential 不可替代；
+- [x] FinalResponse model projection 只含 `citationId/sourceLabel/excerpt/trustLabel`，sourceLabel 为非敏感 ordinal
+      alias；真实 title/document/chunk/source ref 不进入 prompt/output/public event；
+- [x] owner 与同一 auth receipt/request/bearer token deep-freeze 绑定；safe modelRef 不含 endpoint/credential；
+      exactly-once 仅指 server emitter/Trace terminal，不冒充网络交付保证；
+- [x] citation/tool status/verified usage/cost/Trace terminal 保持本地 authority；首 token 前后失败与 partial/
+      incomplete 规则已冻结；
+- [x] 同步 stream 不创建 BackgroundJob/Outbox；未来异步化必须同时设计 BackgroundJob + Durable Outbox +
+      idempotency key；
+- [x] 固定 16 guard + 16 rewrite runtime + 16 FinalResponse runtime、Recall/nDCG/grounded/citation/P95/token/CNY/
+      null aggregate 门；
+- [x] DeepSeek run cap 为 32 calls / 0.32 CNY；paired search 最多 32 次 Qwen embedding。Qwen price/cap 未冻结
+      时 controlled-Live admission fail-closed；
+- [x] Task 0 未修改 apps/packages、未读取 credential、未调用 Provider、未启动 Docker/API/browser、未创建正式
+      marker/journal/artifact；
+- [x] Task 0 完成后只解锁 Task 1 shared Zod contracts。
+
+后续仍未完成：
+
+- [ ] Task 1 shared strict Zod contracts/negative tests/deep freeze/export；
+- [ ] Task 2 canonical principal 接线并删除 `web-chat-user`；
+- [ ] Task 3--7 Retriever/evidence projector/query rewrite/FinalResponse/composition/terminal Trace runtime；
+- [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
+- [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
+- [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
+- [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
+
+设计、计划与 Task 0 验收见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`。

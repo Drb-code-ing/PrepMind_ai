@@ -1,5 +1,47 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 0 RetrieverAgent / FinalResponseAgent contract freeze：
+>
+> 从已推送 main `185b8171772d43bf49cfde9bb31323c5fe4647d4` 新建普通分支
+> `drb/phase-6-9-8-retriever-final-response-contract`，未使用 worktree。只读源码确认 `packages/rag` Retriever
+> 仍是 throw stub；真实检索位于 Nest `KnowledgeSearchService`，使用 Qwen `text-embedding-v4` / 1536 与
+> PostgreSQL vector + keyword hybrid search，并在两路 SQL 同时限制 Chunk/Document owner 与 `DONE`。Chat Agent
+> orchestration 仍传固定 `web-chat-user`，FinalResponse 仍是 `streamText`，citation 以 Markdown 追加，Trace 在
+> 最终 stream 前写入 finished/估算 token。`createAgentGraph()` 仍只是 descriptor。
+>
+> Task 0 以 `zero_provider_retriever_final_response_design` 冻结 `AgentExecutionContextV1`、
+> `AgentMessageEnvelopeV1`、`RetrieverRequest/ResultV1`、`VerifiedEvidenceBundleV1` 与
+> `FinalResponseRequest/StreamEventV1`。JWT/owner、topK/filter、安全 evidence、citation/tool status、verified
+> usage/cost 与 Trace terminal 均保持本地 authority；query rewrite 只能建议 bounded query。FinalResponse model
+> 最多看到 `citationId/sourceLabel/excerpt/trustLabel`，其中 sourceLabel 是本地非敏感 ordinal alias；模型不能
+> 看到真实 document/chunk/source ref 或用户文档标题。owner context 必须与同一 auth receipt/request/bearer token
+> 绑定并 deep-freeze，safe modelRef 也不得包含 endpoint、credential 或 provider raw metadata。
+>
+> 两条未来 Web-only 能力分别冻结独立 default-off gate、timeout 与 credential：Retriever rewrite 为
+> `RETRIEVER_QUERY_REWRITE_MODEL_ENABLED / 4000ms / RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY`，FinalResponse
+> 为 `FINAL_RESPONSE_AGENT_MODEL_ENABLED / 20000ms / FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY`；generic/其它
+> Agent key 不得替代。当前 AI SDK streaming 尚未被写成已满足 V4 Pro exact endpoint、non-thinking、verified
+> usage、abort 或 terminal contract，Task 6 必须专项验证 adapter。
+>
+> 固定 dataset `phase-6.9.8-retriever-final-response-v1` 为 16 guard + 16 rewrite paired runtime + 16
+> FinalResponse runtime。冻结 Recall@5/nDCG@5/rewrite uplift、grounded/citation、P95、zero-critical 与 null
+> aggregate 门；DeepSeek 32-call cap 为 `0.32 CNY`，paired search 最多 32 次 Qwen embedding。Qwen 正式价格
+> profile/cap 未冻结时总成本保持 `null`，不得进入 controlled-Live admission。同步 stream 不创建
+> BackgroundJob/Outbox；未来异步化必须同时设计 `BackgroundJob + Durable Outbox + idempotency key`。
+>
+> 本任务没有修改 apps/packages runtime，没有读取 `.env`/credential，没有调用 Provider，没有启动 Docker/API/
+> browser，也没有创建正式 marker/journal/artifact。Task 0 只解锁 Task 1 shared strict Zod contracts；Task 2--11、
+> Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。设计、计划与验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
+> `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`。
+>
+> 11 个本次 Markdown 文件 Prettier check、`git diff --check` 与全仓库 `349 files / 149 relative links /
+missing=0` 检查通过；authority/security 与 docs/history 两路 Reader Testing 均 `APPROVED`，无未关闭
+> Critical/Important。首次链接扫描发现一个已注销但仍残留的旧 Phase 6.9.5 `.worktrees` 目录；
+> `git worktree list` 确认它不是活动 worktree，随后按用户既有清理授权精确删除，最终 `.worktrees` residue=0，
+> 当前仍只使用普通功能分支。未触碰 Docker、数据库、Redis、MinIO 或 `.codex/`。
+>
 > 2026-08-04 — Phase 6.9.7 Full-gate Schema Recovery SR7 main/default-off 收口：
 >
 > SR6 功能提交 `64d4ff45` 已以 merge commit `510bbc94` 合并并推送 `main`。main default-off
