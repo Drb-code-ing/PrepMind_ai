@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 2 canonical principal / Chat access 完成；下一任务 Task 3 RetrieverAgent node 与 deterministic baseline
+> 当前状态：Task 3 RetrieverAgent node / original-query deterministic baseline 完成；下一任务 Task 4 VerifiedEvidenceBundle/evidence projector
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -155,6 +155,21 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - E2E 注入固定/fake embedding，Qwen attempt=0；
 - baseline report reproducible；
 - zero query-rewrite/FinalResponse Provider。
+
+### 完成状态（2026-08-04）
+
+- `packages/rag` throw stub 已替换为 WeakMap exact-scope opaque search port；clone/forge/cross-scope 在 executor
+  前 fail-closed，ESM/CJS export parity 保持；
+- `@repo/agent` 正式 Retriever node 固定 `topK=8/minScore=0.72/knowledge_document/DONE`，Task 3 只执行
+  original query，rewrite 固定 gate-off；单次 search、deadline/abort、stable dedupe/rank/tie、blocked-body
+  replacement 与 no-raw Trace 已落地；
+- Web server-only adapter 用 Task 2 canonical bearer 调用 `/knowledge/search`，owner 不进入 body，端点只来自可信
+  server env；可选 response `requestId` 必须与当前 request 精确一致；
+- 16 guard + 16 runtime baseline 的 manifest/report SHA 为 `8a1788aa...654d / a1478f22...6442`，Recall@5/
+  nDCG@5/Top1/no-hit/critical recall 为 `1/0.813219437888/0.571428571429/1/1`，Qwen/rewrite/
+  FinalResponse/Provider calls=0；
+- Agent `1215/1215`、RAG `19/19`、Web `462/462`、Web source typecheck `165/0`、Server service
+  `7/7`、fake-embedding PostgreSQL E2E `12/12` 通过；仅形成 `deterministic_baseline_only`，只解锁 Task 4。
 
 ## Task 4：VerifiedEvidenceBundle 与结构化 citation
 
@@ -360,15 +375,15 @@ Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.
 
 ## 当前停止边界
 
-Task 2 完成后只允许开始 Task 3。当前已有 shared contracts 与 Chat canonical principal/access 接线，但仍没有：
+Task 3 完成后只允许开始 Task 4。当前已有 shared contracts、Chat canonical principal/access、正式 Retriever
+node、opaque hybrid-search port 与 original-query deterministic baseline，但仍没有：
 
-- 正式 Retriever/FinalResponse node；
+- 正式 FinalResponse node；
 - query rewrite candidate；
-- 正式 Retriever node、hybrid-search composition port 与 deterministic baseline；
 - VerifiedEvidenceBundle projector；
 - terminal FinalResponse Trace；
 - 48-case baseline/Mock/Live authority；
 - Docker/API/browser/main authority。
 
-不得把 Task 2 的 Chat access 接线、旧 Chat live、Qwen hybrid search、Markdown citation 或 graph descriptor 写成
-上述能力已完成。
+不得把 Task 3 的 fake-search baseline、PostgreSQL fake-embedding E2E、旧 Chat live、Qwen hybrid search、Markdown
+citation 或 graph descriptor 写成上述能力已完成。

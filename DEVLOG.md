@@ -1,5 +1,46 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 3 RetrieverAgent node / original-query deterministic baseline：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 2 提交
+> `9cc15eddad926d0aa45609a354018162a7e6cba9` 之后，以
+> `zero_provider_retriever_original_query_deterministic_baseline` 完成正式 Retriever 地基。原
+> `packages/rag/src/retriever.ts` throw stub 已替换为 WeakMap-backed opaque composition port；port 只允许创建时
+> 绑定的同一 execution-context 引用调用，clone/forge/cross-scope 在 executor 前 fail-closed，ESM/CJS export
+> 保持一致。
+>
+> `@repo/agent` 新增 `RetrieverAgent` node，固定 `topK=8 / minScore=0.72 / knowledge_document / DONE`。Task 3
+> 只执行 original query，rewrite 固定 `gate_off/attempted=false`；anonymous、unsafe/credential、abort、deadline、
+> policy/context drift 均在 search 前终止。Eligible path 最多一次 search；响应执行 bounded safe clone、strict
+> schema、稳定去重/排序、score tie 和安全收紧，blocked chunk 正文替换固定占位符。Trace 只保存 query SHA、
+> policy、hit count、latency 和固定 reason，不保存 query/chunk/owner/token。
+>
+> Web server-only adapter 继续调用 authenticated `/knowledge/search`，owner 不进入 body，由 Nest
+> `JwtAuthGuard + CurrentUser` 从 canonical bearer 解析。bearer 每次执行时从 Task 2 access/request/context 三引用
+> capability 临时读取；URL 只来自可信 server env，响应可选 `requestId` 若存在必须与当前请求精确一致。
+> `packages/rag` / `@repo/agent` 没有依赖 Nest、Prisma 或复制 SQL。
+>
+> Frozen 16 guard + 16 original-query runtime manifest/report SHA 为
+> `8a1788aa8973507555931ce358c08dcd739dd166636376f6ddcc2eff3a33654d` /
+> `a1478f22a4a2fad154496c4ffbfd761532c102fe3ae9453d1916a10ba2c26442`。结果为 Recall@5 `1`、nDCG@5
+> `0.813219437888`、Top1 `0.571428571429`、expected no-hit `1`、critical target recall `1`；16 guards 的
+> fake-search calls=0，16 runtime 只调用固定 fake search，Qwen/rewrite/FinalResponse/Provider calls 全为 0。
+> 该 authority 仅为 `deterministic_baseline_only`，不润色为 query rewrite uplift 或正式产品质量门。
+>
+> 最终 Agent/RAG focused `15/15`、Agent full `1215/1215`、RAG full `19/19`、两包 typecheck、Web adapter
+> `5/5`、Web full `462/462`、同一 compiler options 下 Web 非测试源码 `165/0 diagnostics`、Server knowledge
+> search service `7/7` 均通过。仅启动/复用 PostgreSQL/Redis/MinIO 基础设施，Prisma 17 migrations 无 pending；
+> fixed fake 1536 embedding 的 knowledge documents E2E `12/12` 覆盖 401、A/B owner、DONE、safety、empty/minScore，
+> Qwen attempt=0。Web `.mts` 测试使用仓库 Node `--experimental-transform-types` runner；完整 Web `tsc` 仍有既有
+> 测试类型债，本任务只声明非测试源码结果。受影响文件 Prettier、`git diff --check` 与全仓 Markdown 相对链接
+> `158 links / missing=0` 均通过。
+>
+> 本任务未读取 `.env`/credential、未调用 Qwen/DeepSeek、未创建 controlled-Live evidence，也未启动产品
+> Web/Server Docker/API/browser 或清理 Docker volume；`.codex/` 保持未跟踪。Task 3 只解锁 Task 4
+> VerifiedEvidenceBundle/evidence projector；query rewrite、FinalResponse、structured citation/terminal Trace、
+> Mock/Live、产品、main 与后续阶段均未形成。验收见
+> `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 2 canonical principal / Chat access：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 1 提交 `50f04b82` 之后，以

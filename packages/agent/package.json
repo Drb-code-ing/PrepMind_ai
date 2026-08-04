@@ -19,6 +19,7 @@
     "./phase-6-9-7-v8-mock": "./src/evals/phase-6-9-tutor-wrong-question-v8-mock.ts",
     "./phase-6-9-7-v9-mock": "./src/evals/phase-6-9-tutor-wrong-question-v9-mock.ts",
     "./planner": "./src/nodes/planner.ts",
+    "./retriever": "./src/nodes/retriever.ts",
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",
     "./realtime-chat": "./src/contracts/realtime-chat.ts",
@@ -95,6 +96,7 @@
     "eval:phase-6-9-7:schema-recovery:seal": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts I_SEAL_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_CRASH_ONLY_ONCE",
     "eval:phase-6-9-7:schema-recovery:validate": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts VALIDATE_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_BUNDLE_ZERO_PROVIDER",
     "eval:phase-6-9-7:schema-recovery:sr5": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-sr5-cli.ts",
+    "eval:phase-6-9-8:retriever-baseline": "bun scripts/run-phase-6-9-8-retriever-baseline.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

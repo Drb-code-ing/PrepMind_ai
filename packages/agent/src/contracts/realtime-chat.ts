@@ -42,6 +42,10 @@ export const AGENT_REASON_CODES = [
 ] as const;
 
 export const RETRIEVER_REASON_CODES = [
+  'anonymous_forbidden',
+  'invalid_input',
+  'unsafe_input',
+  'schema_invalid',
   'rewrite_not_eligible',
   'rewrite_gate_off',
   'rewrite_applied',
@@ -108,7 +112,8 @@ export type RealtimeChatContractFailureCode =
   | 'stream_failure_invariant_invalid';
 
 export type RealtimeChatContractResult<T> =
-  { ok: true; value: T } | { ok: false; reasonCode: RealtimeChatContractFailureCode };
+  | { ok: true; value: T }
+  | { ok: false; reasonCode: RealtimeChatContractFailureCode };
 
 const IDENTIFIER_SCHEMA = z
   .string()
@@ -202,6 +207,7 @@ const AUTH_RECEIPT_INPUT_SCHEMA = z
   .strict();
 
 const authReceiptBindings = new WeakMap<AgentAuthReceiptV1, AgentAuthBindingSourcesV1>();
+const agentExecutionContexts = new WeakSet<object>();
 
 export function createAgentAuthReceiptV1(
   input: unknown,
@@ -280,7 +286,13 @@ export function createAgentExecutionContextV1(
     configurable: false,
     writable: false,
   });
-  return { ok: true, value: Object.freeze(context) };
+  const frozenContext = Object.freeze(context);
+  agentExecutionContexts.add(frozenContext);
+  return { ok: true, value: frozenContext };
+}
+
+export function isAgentExecutionContextV1(input: unknown): input is AgentExecutionContextV1 {
+  return isObjectReference(input) && agentExecutionContexts.has(input);
 }
 
 export const AGENT_USAGE_REF_V1_SCHEMA = z
@@ -753,7 +765,11 @@ export type FinalResponseModelInputV1 = Readonly<{
   routerDecision: Readonly<{ route: z.infer<typeof agentRouteSchema>; requiresRag: boolean }>;
   tutorGuidance?: Readonly<{
     strategy:
-      'explain_solution' | 'socratic_hint' | 'step_check' | 'concept_bridge' | 'general_follow_up';
+      | 'explain_solution'
+      | 'socratic_hint'
+      | 'step_check'
+      | 'concept_bridge'
+      | 'general_follow_up';
     instruction: string;
   }>;
   evidence: readonly Readonly<{
@@ -1144,7 +1160,9 @@ function isNativeAbortSignal(value: unknown): value is AbortSignal {
 }
 
 type OwnDataPropertyResult =
-  { kind: 'absent' } | { kind: 'value'; value: unknown } | { kind: 'invalid' };
+  | { kind: 'absent' }
+  | { kind: 'value'; value: unknown }
+  | { kind: 'invalid' };
 
 function getOwnDataProperty(input: unknown, key: string): OwnDataPropertyResult {
   if (input === null || typeof input !== 'object') return { kind: 'invalid' };

@@ -2,5 +2,5 @@
 export * from './chunker';
 export * from './embedder';
 export * from './safety';
-export { retriever } from './retriever';
+export * from './retriever';
 export { reranker } from './reranker';

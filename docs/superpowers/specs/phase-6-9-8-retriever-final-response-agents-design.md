@@ -1,9 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 0 zero-provider contract freeze
+> 状态：Task 3 zero-provider Retriever node / original-query deterministic baseline 已完成；下一任务仅 Task 4
 > 日期：2026-08-04
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> Authority：`zero_provider_retriever_final_response_design`
+> Design Authority：`zero_provider_retriever_final_response_design`
+> Current Checkpoint Authority：`zero_provider_retriever_original_query_deterministic_baseline`
 
 ## 1. 决策与目标
 
@@ -26,7 +27,7 @@ Docker 或浏览器。
 
 ## 2. 当前实现事实
 
-### 2.1 Retriever 仍是隐含能力
+### 2.1 Task 0 起点：Retriever 仍是隐含能力
 
 - `packages/rag/src/retriever.ts` 仍是抛出 `Not implemented` 的 stub，没有生产调用方。
 - 真实检索位于 NestJS `KnowledgeSearchService`：先生成 query embedding，再以
@@ -463,3 +464,24 @@ credential、未调用 Provider，也未执行 Docker/API/browser。它只解锁
 baseline；尚未形成 Retriever/FinalResponse runtime、query rewrite、evidence projector、structured stream/terminal
 Trace、Mock/Live、产品或 main authority。完整证据见
 `../../acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`。
+
+## 16. Task 3 完成回执（2026-08-04）
+
+Task 3 以 `zero_provider_retriever_original_query_deterministic_baseline` 把 Task 0 的 Retriever 设计落成正式
+node/port，但没有改写 Task 0 的设计 authority：
+
+- `packages/rag` 使用 WeakMap 保存 exact execution scope 与 executor，公开 port 只含 schema version；
+- `@repo/agent` Retriever 固定 `topK=8/minScore=0.72/knowledge_document/DONE`，只执行 original query，rewrite
+  固定 `gate_off/attempted=false`；
+- Web server-only adapter 复用 authenticated `/knowledge/search`，owner 只由后端 JWT authority 解析，bearer 每次
+  执行从 Task 2 三引用 capability 临时读取；
+- stable dedupe/rank/tie、single search、deadline/abort、strict response、blocked-body replacement 与 query-SHA-only
+  Trace 已通过回归；
+- 16 guard + 16 runtime baseline 固定 manifest/report SHA `8a1788aa...654d / a1478f22...6442`，Recall@5/
+  nDCG@5/Top1/no-hit/critical recall 为 `1/0.813219437888/0.571428571429/1/1`；Qwen/rewrite/
+  FinalResponse/Provider calls=0。
+
+该结果只形成 `qualityAuthority=deterministic_baseline_only`。PostgreSQL owner-isolation E2E 使用 fixed fake 1536
+embedding；没有产品 Web/Server Docker/API/browser、真实 Qwen/DeepSeek、P95/token/CNY/SLA 或 main authority，
+legacy Chat RAG 也尚未切换到该 node。当前只解锁 Task 4 VerifiedEvidenceBundle/evidence projector；完整证据见
+`../../acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`。

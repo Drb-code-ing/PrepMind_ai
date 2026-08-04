@@ -68,8 +68,13 @@ evidence model projection、stream terminal/citation ledger 与 package export�
 `zero_provider_retriever_final_response_chat_access` 将 `/auth/me` 的 strict `AuthUser.id` 固定为 Chat 唯一
 canonical owner，删除 `web-chat-user`，用 WeakMap bearer capability 和 auth response/request/execution context
 三引用绑定隔离 token；anonymous Mock、invalid/expired token、跨 owner 并发与 abort 均 fail-closed，Conversation、
-RAG 与 owner Trace 复用同一认证 capability。Task 0--2 均未读取 credential、调用 Provider 或执行
-Docker/API/browser；当前只解锁 Task 3 RetrieverAgent node 与 deterministic baseline。Phase 6.9.9/6.9.10/
+RAG 与 owner Trace 复用同一认证 capability。Task 3 又以
+`zero_provider_retriever_original_query_deterministic_baseline` 完成正式 Retriever node、WeakMap exact-scope
+composition port、canonical bearer `/knowledge/search` adapter 与 16 guard + 16 original-query runtime baseline；
+manifest/report SHA 为 `8a1788aa...654d / a1478f22...6442`，Recall@5/nDCG@5/Top1/no-hit/critical recall 为
+`1 / 0.813219437888 / 0.571428571429 / 1 / 1`，Qwen/rewrite/FinalResponse/Provider calls 全为 0。Task 0--3
+均未读取 credential、调用 Provider 或执行产品 Docker/API/browser；当前只解锁 Task 4
+VerifiedEvidenceBundle/evidence projector。Phase 6.9.9/6.9.10/
 6.10/8/9 与博客收尾继续阻断。详见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
@@ -85,7 +90,8 @@ Docker/API/browser；当前只解锁 Task 3 RetrieverAgent node 与 deterministi
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md` 与
-`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`。
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md` 与
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`。
 
 ## 项目快照
 
@@ -240,6 +246,7 @@ Docker/API/browser；当前只解锁 Task 3 RetrieverAgent node 与 deterministi
 | Phase 6.9.8 Task 0              | 已完成     | Retriever/FinalResponse authority、canonical principal/envelope、evidence projection、stream/Trace/abort/预算、48-case/P95/CNY 门与 Task 1--11 顺序已 zero-provider 冻结；未实现 runtime，只解锁 Task 1 shared contracts                                                                       |
 | Phase 6.9.8 Task 1              | 已完成     | Shared strict Zod contracts、auth receipt owner/request/bearer 绑定、hostile-input-safe parser、deep-freeze、local evidence model projection、stream terminal/citation ledger 与 root/subpath export；zero-provider，只解锁 Task 2 canonical principal / Chat access                           |
 | Phase 6.9.8 Task 2              | 已完成     | `/auth/me` canonical owner、WeakMap bearer capability、三引用 receipt binding、authenticated-only Conversation/RAG/Trace、anonymous Mock 与 abort/concurrency/no-leak 边界；zero-provider，只解锁 Task 3 Retriever node/baseline                                                               |
+| Phase 6.9.8 Task 3              | 已完成     | 正式 Retriever node、WeakMap exact-scope search port、canonical bearer `/knowledge/search` adapter、固定 `8/0.72/DONE` policy 与 16+16 original-query baseline；Recall@5/nDCG@5 `1/0.813219437888`，Provider calls=0，只解锁 Task 4 evidence projector                                         |
 | Phase 7.0                       | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                   |
 | Phase 7.1                       | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                           |
 | Phase 7.2                       | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                           |
@@ -830,7 +837,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. Phase 6.9.5 Review/Planner 的 V1--V9 保持只读历史；该阶段 V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。SR6 已在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品验收；SR7 又完成 main 合并/推送、default-off Docker/API/可见浏览器/Trace/精确清理与 step-check 路由修复。二者均不提升 SR5 semantic authority。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 contract freeze、Task 1 shared communication contracts 与 Task 2 canonical principal / Chat access 均已完成，当前唯一下一任务是 Task 3 RetrieverAgent node 与 deterministic baseline；query rewrite、FinalResponse runtime、Live、产品验收与记忆注入继续阻断。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。SR6 已在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品验收；SR7 又完成 main 合并/推送、default-off Docker/API/可见浏览器/Trace/精确清理与 step-check 路由修复。二者均不提升 SR5 semantic authority。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 contract freeze、Task 1 shared communication contracts、Task 2 canonical principal / Chat access 与 Task 3 Retriever node/original-query deterministic baseline 均已完成。当前唯一下一任务是 Task 4 VerifiedEvidenceBundle/evidence projector；query rewrite、FinalResponse runtime、Live、产品验收与记忆注入继续阻断。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. V1--V9 marker/evidence 均不可删除、改写或重跑；V3--V9 journal 继续保留。禁止把不同版本、Mock 或部分成功拼接成通过。V5--V9 路线与历史证据继续由原文档维护。
