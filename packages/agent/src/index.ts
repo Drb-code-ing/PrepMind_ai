@@ -21,6 +21,7 @@ export * from './nodes/retriever.ts';
 export * from './nodes/review.ts';
 export * from './nodes/tutor.ts';
 export * from './nodes/wrong-question-organizer.ts';
+export * from './model-candidates/retriever-query-rewrite-model-candidate.ts';
 export * from './model-candidates/tutor-model-contract.ts';
 export * from './model-candidates/tutor-model-projection.ts';
 export * from './model-candidates/tutor-model-candidate.ts';

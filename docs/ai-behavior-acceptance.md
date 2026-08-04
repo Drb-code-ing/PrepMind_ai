@@ -1175,13 +1175,37 @@ authenticated principal 必须绑定同一 opaque auth receipt/request/bearer re
 FinalResponse model projection 固定只含安全 evidence 四字段；stream ledger 同时校验单调 sequence、唯一 terminal、
 exact `citationId -> sourceLabel` 本地映射和首 token 前后/abort 失败边界。
 
-Task 1 仍未修改 apps/web 或 apps/server runtime，不读 `.env`、不调用 Provider、不启动 Docker/API/browser。它只
-解锁 Task 2 canonical principal / Chat access；不能写成 `web-chat-user` 已删除、Retriever/FinalResponse node、
-structured citation、terminal Trace、Mock/Live 或产品验收已完成。完整设计、计划与证据见
+Task 1 的历史边界保持不变：当时仍未修改 apps/web 或 apps/server runtime，只解锁 Task 2 canonical principal /
+Chat access。随后 Task 2 已删除 `web-chat-user` 并把 authenticated owner 绑定到一次 strict `/auth/me`；Task 3 已
+落地正式 Retriever node、opaque authenticated search port 与 16+16 original-query baseline；Task 4 已落地
+exact-context evidence projector、SafetyGuard/Verifier 保守收紧、本地 structured citation/Markdown adapter 与
+RAG 整层丢弃。
+
+Task 5 已以 `zero_provider_retriever_query_rewrite_candidate` 完成以下合同：
+
+- 只有 authenticated、`requiresRag=true`、复杂多轮指代且具有 active/recent context 的安全请求才可越过
+  eligibility；standalone/no-context、anonymous、non-RAG、不安全输入、abort/deadline、无效配置与超预算均在
+  credential/runtime factory 前 zero-call；
+- DeepSeek V4 Pro non-thinking 模型只返回 strict `{ rewrittenQuery }`，每次请求拥有独立
+  `1 call / 1200 input / 160 output / 0.005 CNY` 预算，最多调用一次且无 retry；
+- 本地 validator 必须保留实体、公式、数字、约束与上下文锚点；失败、schema/usage 不可信或候选不合格时使用
+  original query。模型无权修改 owner、`topK=8`、`minScore=0.72`、source/status filter；
+- 原 query、每条 recent turn、active question 与 active goal 分段完整扫描；observation 不含 query、turn、prompt、
+  owner、credential、endpoint 或 raw error；
+- 三项 default-off 配置与独立 key 只投影给 Next `web` server runtime。Task 5 未读根 `.env`/credential、未调用
+  Qwen/DeepSeek/Provider、未启动产品 Docker/API/browser，也尚未接入 `/api/chat`；reviewed Mock
+  `qualityAuthority=none`，不能证明 rewrite uplift、真实模型质量、产品可用性或 SLA。
+
+当前唯一下一任务为 Task 6 FinalResponseAgent 与 stream contract；Task 7 composition、Task 8 质量门、Live、产品/
+main 与后续阶段仍未完成。完整设计、计划与 Task 0--5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
-`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md` 与
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

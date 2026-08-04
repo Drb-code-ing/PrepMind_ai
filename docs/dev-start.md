@@ -1573,17 +1573,19 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
 - SR7 main/default-off 验收已完成：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace；精确 Tutor
   step-check 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Trace 为 Mock、成本
   0；两个合成账号、tracked Outbox 与浏览器业务数据 residue=0；
-- Phase 6.9.7 已完成。Phase 6.9.8 Task 0 contract freeze 与 Task 1 shared contracts 也已完成；当前唯一下一任务是
-  Task 2 canonical principal / Chat access；runtime/Live/产品验收、Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续
-  阻断。
+- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--5 也已完成；Task 5 只形成
+  `zero_provider_retriever_query_rewrite_candidate`，reviewed Mock `qualityAuthority=none`、Provider calls=0，且未接
+  `/api/chat`。当前唯一下一任务是 Task 6 FinalResponseAgent 与 stream contract；Task 7 composition、Task 8
+  质量门、Live/产品/main、Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
-### Phase 6.9.8 Task 0/1 运行边界
+### Phase 6.9.8 Task 0--5 运行边界
 
-Task 0 只冻结 RetrieverAgent / FinalResponseAgent 设计，不新增或启用任何当前运行配置。不要为了“预先准备”把
-下面的未来变量写入已跟踪 env、开启 gate、复制通用 key 或重建容器：
+Task 5 已把 Retriever query rewrite 的三项变量加入 tracked safe example 与 Docker Compose `web` allowlist；默认
+仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。FinalResponse 三项变量仍只是冻结名称，Task 6
+完成前不要写入 tracked env、开启 gate、复制通用 key 或重建容器：
 
 ```dotenv
 RETRIEVER_QUERY_REWRITE_MODEL_ENABLED=false
@@ -1594,16 +1596,21 @@ FINAL_RESPONSE_AGENT_MODEL_TIMEOUT_MS=20000
 FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY=
 ```
 
-这些变量在 Task 5/Task 6 接线前只是冻结名称。未来只允许显式投影给 Next `web` server runtime，不能注入 Nest
-`server`、`worker`、`admin` 或浏览器 client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、
-Review/Planner 或 Knowledge credential 替代。Task 0/1 没有读取根 `.env`，也没有运行 Qwen/DeepSeek、Docker/API/
-browser。Task 1 只新增 shared contract/test/export，没有接入这些配置；当前唯一下一任务是 Task 2 canonical
-principal / Chat access，仍不需要修改本地启动命令。
+Retriever 三项只允许显式投影给 Next `web` server runtime，不能注入 Nest `server`、`worker`、`admin` 或浏览器
+client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、Review/Planner 或 Knowledge credential
+替代。Task 5 的候选与配置已实现，但 `/api/chat` 要到 Task 7 才注入 runtime bundle；当前启动项目仍不会执行
+query rewrite。Task 5 未读取根 `.env`/credential、未运行 Qwen/DeepSeek、未启动产品 Docker/API/browser；Compose
+只完成 `docker/.env.example` 的 safe config 解析。当前唯一下一任务是 Task 6 FinalResponseAgent 与 stream
+contract，仍不需要为真实模型修改本地启动命令或开启任何 gate。
 
-设计与 Task 0/1 验收见
+设计与 Task 0--5 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
-`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md` 与
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

@@ -1,5 +1,42 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 5 Retriever query rewrite candidate：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 4 基线
+> `c6705897f51462bbe438911a839b77b4cd71d96a` 之后，以
+> `zero_provider_retriever_query_rewrite_candidate` 完成 Retriever query rewrite 工程合同。新增 DeepSeek V4 Pro
+> non-thinking strict `{ rewrittenQuery }` candidate、Retriever node candidate seam、Web server-only default-off
+> config/runtime、AI task allowlist、root/subpath export 与 Compose `web` 独立变量投影；尚未接入 `/api/chat`。
+>
+> Candidate 固定在 exact execution-context binding、authenticated principal、`requiresRag=true`、完整字段安全
+> 扫描、多轮指代/context eligibility、abort/deadline、non-secret config 与 token preflight 全部通过后，才惰性读取
+> 组件专用 credential/runtime factory。standalone/no-context、明确无需改写、anonymous、non-RAG、unsafe/
+> credential/instruction、gate-off、invalid config、pre-abort、expired deadline 与 prompt 超预算均在 factory 前
+> zero-call。每次调用使用独立 `1 call / 1200 input / 160 output / 0.005 CNY` 预算，最多一次调用、无 retry。
+>
+> 模型只建议 query；本地 validator 必须保留原 query 与上下文中的实体、公式、数字、约束和锚点，本地 merger
+> 决定使用 original 或 rewritten query。owner、`topK=8`、`minScore=0.72`、`knowledge_document/DONE` filter、
+> search port、稳定去重/排序、安全正文替换与 query SHA Trace 均保持本地 authority。runtime/schema/usage/abort/
+> validator 失败只回 original query，不创建 BackgroundJob/Outbox 或后台重试。observation 不保存 query、recent
+> turn、active context、prompt、owner、credential、endpoint 或 raw error；reviewed Mock 始终
+> `qualityAuthority=none`。
+>
+> 根据独立复审补齐真正 `recentTurns=[]` 且无 active context 的 standalone zero-call、original/后续 recent turn/
+> active question/active goal 分段安全扫描、跨调用预算隔离、普通 runtime throw/schema failure 恰好一次调用无
+> retry，以及 cross-context 精确 `principal_binding_invalid`。三路 architecture/security/test review 均无
+> blocker/high。
+>
+> 最终 Task 5 focused `18/18 / 223 expect()`、Web config/runtime `6/6`、Agent 串行 full
+> `1234/1234 / 22730 expect()`、AI `325/325`、Web `468/468`、Types `21/21`、Agent/AI typecheck 与 lint、Web
+> 受影响文件 lint、Compose safe example config 均通过。首次并行全量时一个历史 S3 发布测试因资源竞争越过
+> 5 秒；该文件独立复跑 `14/14`，随后 Agent 串行全量通过，确认不是 Task 5 回归。
+>
+> 本任务未读取根 `.env`/credential、未调用 DeepSeek/Qwen/其它 Provider、未启动产品 Docker/API/browser、未
+> 创建 Live artifact 或修改业务数据，也未合并 main；`.codex/` 保持未跟踪。Task 5 只解锁 Task 6
+> FinalResponseAgent 与 stream contract；Task 7 composition、Task 8 48-case gate、Live、产品/main 与后续阶段
+> 继续阻断。验收见
+> `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 4 VerifiedEvidenceBundle / evidence projector：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 3 提交

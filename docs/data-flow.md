@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-04。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--4 随后完成，Task 4 落地 exact-context-bound evidence projector、SafetyGuard/Verifier 保守收紧与本地 structured citation/Markdown adapter，当前唯一下一任务是 Task 5 Retriever query rewrite candidate。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--5 随后完成。Task 5 落地 default-off query rewrite candidate、独立 Web-only runtime/config、单调用预算与本地 validator/merger；authority 仅为 `zero_provider_retriever_query_rewrite_candidate`，Provider calls=0、reviewed Mock `qualityAuthority=none` 且尚未接 `/api/chat`。当前唯一下一任务是 Task 6 FinalResponseAgent 与 stream contract。
 
 ## 1. 当前边界
 
@@ -23,8 +23,8 @@
 - OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；Phase 7.5 为核心写接口补充中文说明和安全 request body 示例。`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 已可从同一 owner snapshot 生成 deterministic facts、owner-scoped Qwen Chunk embedding shortlist，并在完整安全投影和双 stale fence 后选择性调用受限 DeepSeek V4 Pro candidate；本地 merger 始终重建真实 ID、时间、recommendation 与权限。`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料；默认 gate 关闭时仍返回 deterministic 建议。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、正式 RetrieverAgent node、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。Retriever 已有 zero-provider node/port/baseline，但尚未接入 Chat 产品 composition；FinalResponse 职责仍隐含于 Chat 链路。当前 11 个 graph 名称仍只是 descriptor，Tool-Using Orchestrator 尚未实现。
-- Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；Retriever original-query baseline 使用 16 guard + 16 runtime 固定 fake search，Provider/Qwen/rewrite/FinalResponse calls=0，authority 仅 `deterministic_baseline_only`。其它 seed baseline 同样不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、正式 RetrieverAgent node、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。Retriever 已有 zero-provider node/port/baseline 与 default-off query rewrite candidate；模型只建议 query，本地仍决定 eligibility、original/rewrite、owner、`topK/minScore` 和 source/status filter。该能力尚未接入 Chat 产品 composition；FinalResponse 职责仍隐含于 Chat 链路。当前 11 个 graph 名称仍只是 descriptor，Tool-Using Orchestrator 尚未实现。
+- Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；Retriever original-query baseline 使用 16 guard + 16 runtime 固定 fake search，Provider/Qwen/rewrite/FinalResponse calls=0，authority 仅 `deterministic_baseline_only`。Task 5 reviewed Mock 只验证候选工程合同，固定 `qualityAuthority=none`，不能冒充 rewrite uplift、真实模型或产品质量。其它 seed baseline 同样不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
 - Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。V7 R1 新增的 V4 Pro direct adapter 仍只是一种 `StructuredModelExecutor`；V9 R4 reviewed Mock 让正式 Tutor/Organizer candidate 穿过该 adapter，但只注入进程内 synthetic fetch。V9 R5 唯一 Live 证明两条 lane 能进入第一方 durable dispatch 边界，但没有 Provider response，因此不形成语义、usage、费用或产品 authority。其 wire capability 只暴露固定 stage/category/counter，不暴露 fetch、response 或 raw error。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
 - Provider Transport Diagnostic 职责：Recovery R1 的新 adapter 只在实例内存中保存 frozen `version + subtype`，用 own data descriptor 和最多四层 cause 将 fetch throw 映射为九个固定类别；公共 runtime/error/Trace 仍只接收原有 `transport`。Recovery R2 仅在独立 zero-network canary runner 中用模块内 synthetic responder 消费该 adapter。Recovery R3 的真实 composition 仍与产品 Tutor/Organizer 分离，只能在 exact confirmation、专用 credential、clean/tracking source 和未消费 marker 同时满足时构造一次 transport；结果只进入 diagnostic-only artifact，不能反向诊断 V9，也不能自动成为 Provider 外部健康或 Agent 语义事实。
 - Provider Canary V2 职责：C1 的 proxy attestation 只存在于当前进程并只能消费一次；C2 public CLI 固定执行 preflight -> source -> approval/dedicated credential -> exclusive marker -> single fact-free dispatch -> terminal -> publication，不接受 transport 或输出注入。Marker、hash-chain journal 与 hard-link artifact 只解决一次性执行和证据 durability，不负责 Tutor/Organizer 语义、产品接线或业务写入。唯一 L1 已以 `complete / strict_response_with_verified_usage` 封存，但仍为 `qualityAuthority=none`；它只向 P1 提供一次 Provider health diagnostic，不得成为 semantic 或产品输入。
@@ -176,7 +176,7 @@ Agent Trace 边界：
 - Trace 是在线账号级观测能力，不进入 Dexie `mutationQueue`；离线或弱网时不补写历史 trace。
 - Trace 不保存完整 prompt、完整模型回答、完整 RAG chunk、access token、refresh token 或 API key。
 - `inputPreview`、`inputSummary`、`outputSummary` 和 `errorMessage` 只用于调试摘要，长度受 schema 与服务端双重限制。
-- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever 已有正式 zero-provider node/port/baseline，但仍需后续 evidence/Chat/Live/graph 独立验收，FinalResponse 和 Orchestrator 仍需正式 node/graph contract 与独立验收。
+- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever 已有正式 zero-provider node/port/baseline、evidence projector 与 query rewrite candidate，但仍需 Chat composition、paired quality gate、Live、产品和 graph 独立验收。FinalResponse 和 Orchestrator 仍需正式 node/graph contract 与独立验收。
 
 ## 4. RAG 知识库数据流
 
@@ -287,7 +287,8 @@ authenticated AgentExecutionContextV1 + RetrieverRequestV1
 
 Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述现有后端 runtime contract，
 不是该 Task 的 Provider 执行证据。Task 3 完成时正式 Retriever node 尚未接入 `/api/chat`，当时只解锁 Task 4
-VerifiedEvidenceBundle/evidence projector；Task 4 现已完成，但产品 composition 仍须由 Task 5--7 逐步替换。
+VerifiedEvidenceBundle/evidence projector；Task 4/5 现已完成，但仍须先完成 Task 6 FinalResponseAgent，再由
+Task 7 替换产品 composition。
 
 资料管理建议默认关闭 gate 时的 fallback 数据流：
 
@@ -981,11 +982,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> Phase 6.9.8 Task 0--4 complete：design + shared contract + Chat access + Retriever baseline + evidence projector
-       -> current next only：Task 5 Retriever query rewrite candidate
+  -> Phase 6.9.8 Task 0--5 complete：design + shared contract + Chat access + Retriever baseline + evidence + rewrite
+       -> current next only：Task 6 FinalResponseAgent + stream contract
 ```
 
-## Phase 6.9.8 Task 0--4 数据流（设计 + shared contract + Chat access + Retriever baseline + evidence projector）
+## Phase 6.9.8 Task 0--5 数据流（设计 + shared contract + Chat access + Retriever + evidence + query rewrite）
 
 ```text
 Next /api/chat composition root
@@ -995,8 +996,8 @@ Next /api/chat composition root
        -> invalid token = 401；anonymous owner/live path = provider zero-call
   -> RouterAgent local/model hybrid decision
        -> canonical requiresRag + route；model cannot open owner access
-  -> RetrieverAgent（Task 3 node/port complete；Chat composition still pending）
-       -> optional DeepSeek V4 Pro bounded query rewrite candidate
+  -> RetrieverAgent（Task 3 node/port + Task 5 candidate complete；Chat composition still pending）
+       -> optional default-off DeepSeek V4 Pro bounded query rewrite candidate
             -> local eligibility + gate + budget + timeout + abort
             -> model returns rewrittenQuery only
             -> local validator/merger selects original or rewritten query
@@ -1085,6 +1086,23 @@ Task 4 actual evidence projector effect
   -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
   -> authority=zero_provider_verified_evidence_projector
   -> only Task 5 Retriever query rewrite candidate unlocked
+
+Task 5 actual query rewrite effect
+  -> retriever-query-rewrite-model-candidate-v1 / DeepSeek V4 Pro non-thinking strict { rewrittenQuery }
+  -> requiresRag + authenticated principal + exact execution-context binding before any runtime access
+  -> original / every recent turn / active question / active goal scanned as separate complete safety fields
+  -> standalone/no-context, explicit query, unsafe/credential/instruction, abort/deadline, invalid config = zero-call
+  -> fixed local policy remains topK=8 / minScore=0.72 / knowledge_document / DONE
+  -> fresh isolated 1 call / 1200 input / 160 output / 0.005 CNY budget per invocation
+  -> Web-only lazy credential/runtime factory；Compose does not expose the component key to server/worker/admin
+  -> at most one structured invocation / no retry
+  -> local validator preserves entity/formula/number/constraint/context anchors and selects original or rewrite
+  -> runtime/schema/usage/abort/validator failure searches with original query
+  -> observation contains no query/turn/context/prompt/owner/credential/endpoint/raw error
+  -> reviewed Mock qualityAuthority=none；Provider/Qwen calls=0
+  -> no /api/chat product wiring, Docker/API/browser/main authority, BackgroundJob or Outbox
+  -> authority=zero_provider_retriever_query_rewrite_candidate
+  -> only Task 6 FinalResponseAgent + stream contract unlocked
 ```
 
 ```text

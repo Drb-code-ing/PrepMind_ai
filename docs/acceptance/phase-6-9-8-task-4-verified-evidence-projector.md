@@ -132,11 +132,14 @@ Task 4 不证明：
 - Task 7 Chat composition、end-to-end Trace finalization、并发/取消/no-loss 已完成；
 - 48-case reviewed Mock/controlled-Live、产品 Docker/API/browser、main 或后续阶段已完成。
 
-## 8. 唯一下一原子任务
+## 8. Task 4 收口时的唯一下一原子任务
 
 Task 4 只解锁 Task 5 Retriever query rewrite candidate。Task 5 仍为 zero-provider：实现 default-off DeepSeek V4 Pro
 non-thinking strict JSON candidate、独立 gate/credential/budget/timeout、eligibility-before-credential、最多一次调用、
 本地 validator/merger 与 reviewed Mock；不得提前执行真实 Provider、FinalResponse、产品验收或 main 合并。
+
+> 后续状态：Task 5 已按上述 zero-provider 边界完成；当前下一任务为 Task 6。见
+> [Task 5 验收](./phase-6-9-8-task-5-retriever-query-rewrite-candidate.md)。
 
 完整设计与计划见：
 

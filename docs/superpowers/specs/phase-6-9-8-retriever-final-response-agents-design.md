@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 4 zero-provider VerifiedEvidenceBundle/evidence projector 已完成；下一任务仅 Task 5 query rewrite candidate
+> 状态：Task 5 zero-provider Retriever query rewrite candidate 已完成；下一任务仅 Task 6 FinalResponseAgent
 > 日期：2026-08-04
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_verified_evidence_projector`
+> Current Checkpoint Authority：`zero_provider_retriever_query_rewrite_candidate`
 
 ## 1. 决策与目标
 
@@ -483,7 +483,7 @@ node/port，但没有改写 Task 0 的设计 authority：
 
 该结果只形成 `qualityAuthority=deterministic_baseline_only`。PostgreSQL owner-isolation E2E 使用 fixed fake 1536
 embedding；没有产品 Web/Server Docker/API/browser、真实 Qwen/DeepSeek、P95/token/CNY/SLA 或 main authority，
-legacy Chat RAG 也尚未切换到该 node。当前只解锁 Task 4 VerifiedEvidenceBundle/evidence projector；完整证据见
+legacy Chat RAG 也尚未切换到该 node。该 checkpoint 当时只解锁 Task 4 VerifiedEvidenceBundle/evidence projector；完整证据见
 `../../acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`。
 
 ## 17. Task 4 完成回执（2026-08-04）
@@ -505,5 +505,26 @@ Task 0 的设计 authority，也不提前接入 Task 5--7 runtime：
 
 该 checkpoint 的质量 authority 仅是本地 safety/permission/projection contract；没有读取 credential、调用
 Qwen/DeepSeek、接入 `/api/chat`、实现 FinalResponseAgent/structured stream terminal，或执行 Docker/API/browser/
-Live/main。当前只解锁 Task 5 query rewrite candidate；完整证据见
+Live/main。该 checkpoint 当时只解锁 Task 5 query rewrite candidate；完整证据见
 `../../acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`。
+
+## 18. Task 5 完成回执（2026-08-04）
+
+Task 5 以 `zero_provider_retriever_query_rewrite_candidate` 落成本设计的受限 query rewrite candidate，但不改写
+Task 0 的设计 authority，也不提前接入 Task 6--8：
+
+- `@repo/agent` 新增 DeepSeek V4 Pro non-thinking strict `{ rewrittenQuery }` candidate；authenticated、
+  `requiresRag=true`、安全输入、存在多轮指代/省略或 active context、deadline/abort/预算有效均先于 config、
+  credential 与 runtime factory；
+- original query、每条 recent turn、active question/goal 分段扫描；本地 validator 保留实体、公式、数字和约束，
+  本地 merger 决定 original/rewritten query。模型无权修改 owner、`topK/minScore` 或 document filter；
+- 独立 Web server-only default-off config/runtime 固定 `1/1200/160`、4000ms、`0.005 CNY` cap、一次调用、no
+  retry；Compose 只向 `web` 投影 gate/timeout/独立 key，generic/sibling credential 不可替代；
+- Retriever node 可消费 applied rewrite 并继续使用本地冻结 policy；candidate/schema/runtime/abort 失败均安全回
+  original query，Trace/observation 不保存 query、prompt、owner、credential 或 raw error。
+
+本 checkpoint 只通过 reviewed Mock 与静态回归，Mock `qualityAuthority=none`，不能证明 rewrite uplift、真实
+DeepSeek/Qwen、P95/usage/CNY 或产品可用。全程未读 `.env`/credential、未调用 Provider，也未启动 Docker/API/
+browser、接入 `/api/chat` 或合并 main。Task 6 FinalResponseAgent、Task 7 composition、Task 8 48-case gate 与后续
+任务仍未完成；当前只解锁 Task 6。完整证据见
+`../../acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。

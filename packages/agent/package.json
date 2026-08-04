@@ -24,6 +24,7 @@
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",
     "./realtime-chat": "./src/contracts/realtime-chat.ts",
+    "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
     "./tutor-schema-recovery": "./src/model-candidates/tutor-schema-recovery.ts",

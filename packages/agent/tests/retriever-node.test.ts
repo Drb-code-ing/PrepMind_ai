@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
+import { createModelAgentRuntime } from '@repo/ai';
+
 import {
   createAgentAuthReceiptV1,
   createAgentExecutionContextV1,
@@ -79,6 +81,70 @@ describe('RetrieverAgent node', () => {
     expect(traceBytes).not.toContain('duplicate stable content');
     expect(traceBytes).not.toContain('owner_alpha');
     expect(traceBytes).not.toMatch(/bearer|authorization|token/iu);
+  });
+
+  test('uses an applied rewrite as the search query while keeping retrieval policy and Trace local', async () => {
+    const context = authenticatedContext('owner_rewrite_node');
+    const rewrittenQuery = '根据牛顿第二定律 F=ma，为什么计算加速度时要用合外力除以质量？';
+    let seenQuery = '';
+    const outcome = await runRetrieverAgentNodeV1({
+      request: requestFor(context, {
+        originalQuery: '这一步为什么要除以质量？',
+        recentTurns: [
+          {
+            role: 'assistant',
+            content: '根据牛顿第二定律 F=ma，合外力除以质量可得到加速度。',
+          },
+        ],
+      }),
+      context,
+      port: createPort(context, async (request) => {
+        seenQuery = request.query;
+        expect(request.topK).toBe(RETRIEVER_AGENT_POLICY_V1.topK);
+        expect(request.minScore).toBe(RETRIEVER_AGENT_POLICY_V1.minScore);
+        return { ok: true, response: { hits: [] } };
+      }),
+      queryRewrite: {
+        config: {
+          schemaVersion: 'retriever-query-rewrite-candidate-config-v1',
+          enabled: true,
+          runtimeAuthority: 'reviewed_mock',
+          mode: 'mock',
+          provider: 'mock',
+          model: 'deepseek-v4-pro',
+          baseURL: 'https://api.deepseek.com/v1',
+          timeoutMs: 4_000,
+          globalLiveCallsEnabled: false,
+        },
+        createRuntime: () =>
+          createModelAgentRuntime({
+            mode: 'mock',
+            provider: 'mock',
+            model: 'deepseek-v4-pro',
+            liveCallsEnabled: false,
+            timeoutMs: 4_000,
+            mockResponder: () => ({ rewrittenQuery }),
+          }),
+      },
+      now: () => NOW,
+    });
+
+    expect(outcome.ok).toBe(true);
+    expect(seenQuery).toBe(rewrittenQuery);
+    if (!outcome.ok) return;
+    expect(outcome.result.reasonCodes).toEqual(['no_hits', 'rewrite_applied']);
+    expect(outcome.result.originalQueryHash).not.toBe(outcome.result.executedQueryHash);
+    expect(outcome.result.rewrite).toEqual({
+      attempted: true,
+      disposition: 'candidate_applied',
+      reasonCode: 'rewrite_applied',
+    });
+    expect(outcome.queryRewriteObservation).toMatchObject({
+      qualityAuthority: 'none',
+      provenance: 'reviewed_mock',
+      attempted: true,
+    });
+    expect(JSON.stringify(outcome.traceSummary)).not.toContain(rewrittenQuery);
   });
 
   test('keeps blocked retrieval text out of the result while retaining bounded safety metadata', async () => {

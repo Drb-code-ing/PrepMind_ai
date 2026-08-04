@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 4 VerifiedEvidenceBundle/evidence projector 完成；下一任务 Task 5 Retriever query rewrite candidate
+> 当前状态：Task 5 Retriever query rewrite candidate 完成；下一任务 Task 6 FinalResponseAgent 与 stream contract
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -209,7 +209,7 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
   stream validator 拒绝，Trace 只有固定状态、reason 与计数；
 - `@repo/agent/evidence-projector` 与 root export 已落地；最终 focused/full/static、独立 architecture/security
   复审及文档门通过；全程 zero-provider，未读 credential，未接产品 runtime 或执行 Docker/API/browser；
-- authority 仅 `zero_provider_verified_evidence_projector`，只解锁 Task 5 query rewrite candidate。
+- authority 仅 `zero_provider_verified_evidence_projector`，该 checkpoint 当时只解锁 Task 5 query rewrite candidate。
 
 ## Task 5：Retriever query rewrite candidate
 
@@ -239,6 +239,19 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - Compose 仅向 `web` 投影 gate/timeout/独立 key；
 - default false；
 - zero real Provider。
+
+### 完成状态（2026-08-04）
+
+- 新增 DeepSeek V4 Pro non-thinking strict `{ rewrittenQuery }` candidate；只有 authenticated、`requiresRag=true`、
+  存在多轮指代/省略或 active context、输入安全、deadline/abort/预算可用时才允许创建 runtime；
+- original query、每条 recent turn、active question/goal 分段安全扫描；模型不能修改 owner、`topK=8`、
+  `minScore=0.72`、source/status filter，实体、公式、数字与约束由本地 validator/merger 保留；
+- 独立 default-off Web server-only config/runtime 与 Compose web-only allowlist 已落地；组件 key 不借用 generic 或
+  sibling credential，单请求固定 `1/1200/160`、4000ms、`0.005 CNY` cap、no retry；
+- reviewed Mock、focused/full/typecheck/lint/Compose/static 与三路只读复审通过；全程未读 `.env`/credential、未调用
+  Qwen/DeepSeek/Provider，authority 仅 `zero_provider_retriever_query_rewrite_candidate`；
+- reviewed Mock 固定 `qualityAuthority=none`，不是 query rewrite uplift 或真实模型质量证据；尚未接入 `/api/chat`，
+  Task 6 FinalResponse、Task 7 composition、Task 8 48-case gate、Docker/API/browser/main 均未完成；只解锁 Task 6。
 
 ## Task 6：FinalResponseAgent 与 stream contract
 

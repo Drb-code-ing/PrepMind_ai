@@ -26,6 +26,14 @@ import {
   deepFreezeModelValue,
   scanCompleteModelField,
 } from '../model-candidates/model-projection-safety.ts';
+import {
+  RETRIEVER_QUERY_REWRITE_CANDIDATE_VERSION,
+  RETRIEVER_QUERY_REWRITE_MAX_INPUT_TOKENS,
+  RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS,
+  RETRIEVER_QUERY_REWRITE_OBSERVATION_VERSION,
+  runRetrieverQueryRewriteModelCandidateV1,
+  type RetrieverQueryRewriteObservationV1,
+} from '../model-candidates/retriever-query-rewrite-model-candidate.ts';
 
 export {
   createRetrieverSearchPortV1,
@@ -118,6 +126,7 @@ export type RetrieverAgentNodeExecutionV1 =
       ok: true;
       result: RetrieverResultV1;
       traceSummary: RetrieverAgentTraceSummaryV1;
+      queryRewriteObservation: RetrieverQueryRewriteObservationV1;
     }>
   | Readonly<{ ok: false; reasonCode: RetrieverNodeFailureReason }>;
 
@@ -125,6 +134,10 @@ export type RunRetrieverAgentNodeInputV1 = Readonly<{
   request: unknown;
   context: unknown;
   port: RetrieverSearchPortV1;
+  queryRewrite?: Readonly<{
+    config: unknown;
+    createRuntime: Parameters<typeof runRetrieverQueryRewriteModelCandidateV1>[0]['createRuntime'];
+  }>;
   now?: () => number;
 }>;
 
@@ -242,8 +255,77 @@ export async function runRetrieverAgentNodeV1(
     );
   }
 
-  const control = createSearchControl(context.signal, deadlineMs - now);
-  const portRequest = createPortRequest(request, control.signal);
+  const queryRewriteDependency = readQueryRewriteDependency(input.queryRewrite);
+  const queryRewriteOutcome =
+    queryRewriteDependency === null
+      ? defaultQueryRewriteOutcome(request.originalQuery)
+      : await runRetrieverQueryRewriteModelCandidateV1({
+          request,
+          context,
+          config: queryRewriteDependency.config,
+          createRuntime: queryRewriteDependency.createRuntime,
+          ...(input.now ? { now: input.now } : {}),
+        });
+  if (!queryRewriteOutcome.ok) {
+    return nodeFailure(queryRewriteOutcome.failureReasonCode ?? 'invalid_input');
+  }
+  const executedQuery = queryRewriteOutcome.executedQuery;
+  const executedQueryHash = hashReference(executedQuery);
+  const rewrite = queryRewriteOutcome.rewrite;
+  const rewriteObservation = queryRewriteOutcome.observation;
+  const afterRewriteNow = readClock(input.now) ?? now;
+  const rewriteLatencyMs = boundedLatency(afterRewriteNow - now);
+  if (context.signal.aborted) {
+    return completedExecution(
+      context,
+      buildRetrieverResult({
+        request,
+        status: 'failed',
+        reasonCodes: ['aborted', rewrite.reasonCode],
+        originalQueryHash,
+        executedQueryHash,
+        rewrite,
+        latencyMs: rewriteLatencyMs,
+        evidenceCandidates: [],
+      }),
+      rewriteObservation,
+    );
+  }
+  if (deadlineMs <= afterRewriteNow) {
+    return completedExecution(
+      context,
+      buildRetrieverResult({
+        request,
+        status: 'failed',
+        reasonCodes: ['deadline_exceeded', rewrite.reasonCode],
+        originalQueryHash,
+        executedQueryHash,
+        rewrite,
+        latencyMs: rewriteLatencyMs,
+        evidenceCandidates: [],
+      }),
+      rewriteObservation,
+    );
+  }
+  if (rewrite.disposition === 'failed_no_rag') {
+    return completedExecution(
+      context,
+      buildRetrieverResult({
+        request,
+        status: 'degraded',
+        reasonCodes: ['rewrite_failed_no_rag'],
+        originalQueryHash,
+        executedQueryHash,
+        rewrite,
+        latencyMs: rewriteLatencyMs,
+        evidenceCandidates: [],
+      }),
+      rewriteObservation,
+    );
+  }
+
+  const control = createSearchControl(context.signal, deadlineMs - afterRewriteNow);
+  const portRequest = createPortRequest(request, executedQuery, control.signal);
   const invocation = invokeRetrieverSearchPortV1({
     port: input.port,
     scope: context,
@@ -263,13 +345,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'failed',
-        reasonCodes: [raced.reasonCode, 'rewrite_gate_off'],
+        reasonCodes: [raced.reasonCode, rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
   if (context.signal.aborted) {
@@ -278,13 +361,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'failed',
-        reasonCodes: ['aborted', 'rewrite_gate_off'],
+        reasonCodes: ['aborted', rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
   if (finishedAt >= deadlineMs) {
@@ -293,13 +377,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'failed',
-        reasonCodes: ['deadline_exceeded', 'rewrite_gate_off'],
+        reasonCodes: ['deadline_exceeded', rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
   if (raced.kind === 'thrown') {
@@ -308,13 +393,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'degraded',
-        reasonCodes: ['retrieval_failed', 'rewrite_gate_off'],
+        reasonCodes: ['retrieval_failed', rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
   if (!raced.value.ok) return nodeFailure('principal_binding_invalid');
@@ -326,13 +412,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'degraded',
-        reasonCodes: ['schema_invalid', 'rewrite_gate_off'],
+        reasonCodes: ['schema_invalid', rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
   if (!portOutcome.ok) {
@@ -346,13 +433,14 @@ export async function runRetrieverAgentNodeV1(
         request,
         status:
           reasonCode === 'aborted' || reasonCode === 'deadline_exceeded' ? 'failed' : 'degraded',
-        reasonCodes: [reasonCode, 'rewrite_gate_off'],
+        reasonCodes: [reasonCode, rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
 
@@ -367,13 +455,14 @@ export async function runRetrieverAgentNodeV1(
       buildRetrieverResult({
         request,
         status: 'degraded',
-        reasonCodes: ['schema_invalid', 'rewrite_gate_off'],
+        reasonCodes: ['schema_invalid', rewrite.reasonCode],
         originalQueryHash,
-        executedQueryHash: originalQueryHash,
-        rewrite: rewriteGateOff(),
+        executedQueryHash,
+        rewrite,
         latencyMs,
         evidenceCandidates: [],
       }),
+      rewriteObservation,
     );
   }
 
@@ -384,14 +473,15 @@ export async function runRetrieverAgentNodeV1(
       status: 'completed',
       reasonCodes: [
         evidenceCandidates.length === 0 ? 'no_hits' : 'retrieval_completed',
-        'rewrite_gate_off',
+        rewrite.reasonCode,
       ],
       originalQueryHash,
-      executedQueryHash: originalQueryHash,
-      rewrite: rewriteGateOff(),
+      executedQueryHash,
+      rewrite,
       latencyMs,
       evidenceCandidates,
     }),
+    rewriteObservation,
   );
 }
 
@@ -434,6 +524,7 @@ function isRetrieverRequestSafe(request: RetrieverRequestV1): boolean {
 
 function createPortRequest(
   request: RetrieverRequestV1,
+  query: string,
   signal: AbortSignal,
 ): RetrieverSearchPortRequestV1 {
   const portRequest = {
@@ -441,7 +532,7 @@ function createPortRequest(
     runId: request.runId,
     requestId: request.requestId,
     deadlineAt: request.deadlineAt,
-    query: request.originalQuery,
+    query,
     topK: RETRIEVER_AGENT_POLICY_V1.topK,
     minScore: RETRIEVER_AGENT_POLICY_V1.minScore,
     sourceTypes: RETRIEVER_AGENT_POLICY_V1.sourceTypes,
@@ -709,6 +800,7 @@ function buildRetrieverResult(input: {
 function completedExecution(
   context: AgentExecutionContextV1,
   result: RetrieverResultV1 | null,
+  queryRewriteObservation: RetrieverQueryRewriteObservationV1 = defaultQueryRewriteObservation(),
 ): RetrieverAgentNodeExecutionV1 {
   if (result === null) return nodeFailure('invalid_input');
   retrieverResultBindings.set(result, context);
@@ -734,6 +826,7 @@ function completedExecution(
         latencyMs: result.retrieval.latencyMs,
       },
     },
+    queryRewriteObservation,
   });
 }
 
@@ -754,6 +847,60 @@ function rewriteGateOff(): RetrieverResultV1['rewrite'] {
     attempted: false,
     disposition: 'gate_off',
     reasonCode: 'rewrite_gate_off',
+  });
+}
+
+function readQueryRewriteDependency(
+  input: RunRetrieverAgentNodeInputV1['queryRewrite'],
+): NonNullable<RunRetrieverAgentNodeInputV1['queryRewrite']> | null {
+  if (input === undefined) return null;
+  try {
+    if (typeof input !== 'object' || input === null || Reflect.ownKeys(input).length !== 2) {
+      return null;
+    }
+    const config = Reflect.getOwnPropertyDescriptor(input, 'config');
+    const createRuntime = Reflect.getOwnPropertyDescriptor(input, 'createRuntime');
+    if (
+      !config ||
+      !('value' in config) ||
+      !createRuntime ||
+      !('value' in createRuntime) ||
+      typeof createRuntime.value !== 'function'
+    ) {
+      return null;
+    }
+    return Object.freeze({ config: config.value, createRuntime: createRuntime.value });
+  } catch {
+    return null;
+  }
+}
+
+function defaultQueryRewriteOutcome(originalQuery: string) {
+  return Object.freeze({
+    ok: true as const,
+    executedQuery: originalQuery,
+    rewrite: rewriteGateOff(),
+    observation: defaultQueryRewriteObservation(),
+  });
+}
+
+function defaultQueryRewriteObservation(): RetrieverQueryRewriteObservationV1 {
+  return deepFreezeModelValue({
+    schemaVersion: RETRIEVER_QUERY_REWRITE_OBSERVATION_VERSION,
+    candidateVersion: RETRIEVER_QUERY_REWRITE_CANDIDATE_VERSION,
+    qualityAuthority: 'none' as const,
+    provenance: 'not_invoked' as const,
+    attempted: false,
+    disposition: 'gate_off' as const,
+    budget: {
+      maxCalls: 1,
+      usedCalls: 0,
+      maxInputTokens: RETRIEVER_QUERY_REWRITE_MAX_INPUT_TOKENS,
+      usedInputTokens: 0,
+      maxOutputTokens: RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS,
+      usedOutputTokens: 0,
+    },
+    usage: { inputTokens: 0, outputTokens: 0 },
   });
 }
 
