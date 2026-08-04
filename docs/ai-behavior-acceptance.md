@@ -1168,12 +1168,20 @@ precision `=1`、required citation recall `>=0.90`，并满足 rewrite/retrieval
 run cap 为 `0.32 CNY`；paired search 最多 32 次 Qwen embedding。Qwen 正式价格 profile 未冻结时 cost/总成本
 aggregate 必须为 `null`，禁止进入 controlled-Live admission。
 
-Task 0 只完成文档/格式/链接/独立复审，不修改 apps/packages、不读 `.env`、不调用 Provider、不启动 Docker/API/
-browser。它只解锁 Task 1 shared strict Zod contracts；不能写成 Retriever/FinalResponse、canonical identity、
+Task 1 已以 `zero_provider_retriever_final_response_shared_contract` 实现上述通信地基：所有新 DTO 先执行
+hostile-accessor-safe bounded clone，再通过 strict Zod、固定 allowlist 与跨字段不变量，成功值 deep-freeze；
+authenticated principal 必须绑定同一 opaque auth receipt/request/bearer reference，`AbortSignal` 仅作为不可枚举的
+进程内控制对象。`skipped` envelope 不得携带任何 usageRef；同一 model call 只能有一个 direct attribution。
+FinalResponse model projection 固定只含安全 evidence 四字段；stream ledger 同时校验单调 sequence、唯一 terminal、
+exact `citationId -> sourceLabel` 本地映射和首 token 前后/abort 失败边界。
+
+Task 1 仍未修改 apps/web 或 apps/server runtime，不读 `.env`、不调用 Provider、不启动 Docker/API/browser。它只
+解锁 Task 2 canonical principal / Chat access；不能写成 `web-chat-user` 已删除、Retriever/FinalResponse node、
 structured citation、terminal Trace、Mock/Live 或产品验收已完成。完整设计、计划与证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
-`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`。
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

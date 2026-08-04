@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 0 contract freeze
+> 当前状态：Task 1 shared communication contracts 完成；下一任务 Task 2 canonical principal / Chat access
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -79,6 +79,15 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - focused contract tests；
 - Agent full/typecheck/lint；
 - zero Provider/env/Docker/browser。
+
+### 完成状态（2026-08-04）
+
+- `packages/agent/src/contracts/realtime-chat.ts` 已实现 strict schema、hostile-input-safe parser、deep-freeze、
+  authenticated receipt binding、local evidence/model projection 与 stream ledger validator；
+- `@repo/agent` root 和 `@repo/agent/realtime-chat` subpath 均已导出；
+- focused、Agent full、typecheck、lint、Prettier 与 SR5 approved-tag history parity 均通过；
+- 全程 zero-provider，未读 `.env`/credential，未接 Web/Server runtime，未启动 Docker/API/browser；
+- 只解锁 Task 2，不形成 Retriever/FinalResponse runtime、Mock/Live、产品或 main authority。
 
 ## Task 2：Canonical principal 与 Chat access
 
@@ -338,10 +347,10 @@ Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.
 
 ## 当前停止边界
 
-Task 0 完成后只允许开始 Task 1。当前没有：
+Task 1 完成后只允许开始 Task 2。当前已有 shared contracts，但仍没有：
 
 - 正式 Retriever/FinalResponse node；
-- canonical principal runtime 接线；
+- canonical principal runtime 接线与 `web-chat-user` 删除；
 - query rewrite candidate；
 - VerifiedEvidenceBundle projector；
 - terminal FinalResponse Trace；

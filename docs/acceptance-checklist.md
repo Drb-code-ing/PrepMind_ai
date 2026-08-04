@@ -2022,9 +2022,29 @@ Task 0 `zero_provider_retriever_final_response_design`：
       marker/journal/artifact；
 - [x] Task 0 完成后只解锁 Task 1 shared Zod contracts。
 
+Task 1 `zero_provider_retriever_final_response_shared_contract`：
+
+- [x] `AgentExecutionContextV1` strict principal union、opaque owner format、deep-freeze 与同一 auth receipt/request/
+      bearer reference binding；`AbortSignal` 保持不可枚举、不可序列化；
+- [x] `AgentMessageEnvelopeV1` strict unknown-key/status/payload/degraded/reason/usage invariants；`skipped` 不得携带
+      usageRef，同一 modelCallId 只能有一个 direct attribution；
+- [x] `RetrieverRequest/ResultV1` 固定 query/context/topK/minScore/filter、hash、hybrid metadata、最多 8 条 evidence
+      candidate 与 ID/score/safety/reason 上限；
+- [x] `VerifiedEvidenceBundleV1` 通过本地 constructor 创建，最多 4 条；ordinal `sourceLabel`、citation/reason 去重、
+      unsafe excerpt 与非本地 bundle fail-closed；
+- [x] `FinalResponseRequestV1` 拒绝 owner/token/raw 字段；RAG budget 整层丢弃时 bundle/citation 同步清空；模型
+      evidence projection 只有 `citationId/sourceLabel/excerpt/trustLabel`；
+- [x] `FinalResponseStreamEventV1` safe modelRef、单调 contiguous sequence、唯一 terminal、terminal-last、exact
+      `citationId -> sourceLabel` allowlist 与 pre-token/partial/abort failure invariant；
+- [x] hostile getter/proxy、NaN/unsafe integer、unknown key、duplicate reason/citation/message/model attribution、输入
+      不变性与返回值 deep-freeze negative tests 通过；
+- [x] `@repo/agent` root 与 `@repo/agent/realtime-chat` subpath export 已完成；SR5 历史回归改为 approved-tag Git
+      blob bundle/commit/detached anchor 校验，不再错误绑定当前可变 worktree，sealed authority 未改写；
+- [x] focused、Agent full/typecheck/lint、Prettier、diff 与独立 contract/history 复审通过；全程 zero-provider，未读
+      `.env`/credential，未启动 Docker/API/browser。
+
 后续仍未完成：
 
-- [ ] Task 1 shared strict Zod contracts/negative tests/deep freeze/export；
 - [ ] Task 2 canonical principal 接线并删除 `web-chat-user`；
 - [ ] Task 3--7 Retriever/evidence projector/query rewrite/FinalResponse/composition/terminal Trace runtime；
 - [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
@@ -2032,7 +2052,8 @@ Task 0 `zero_provider_retriever_final_response_design`：
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0 验收见
+设计、计划与 Task 0/1 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
-`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`。
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。

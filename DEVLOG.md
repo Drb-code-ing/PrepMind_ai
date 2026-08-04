@@ -1,5 +1,44 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 1 shared communication contracts：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 0 提交 `c6cd10a2` 之后，新增
+> `packages/agent/src/contracts/realtime-chat.ts` 与 15 条 focused contract tests。Task 1 以
+> `zero_provider_retriever_final_response_shared_contract` 落地 strict `AgentExecutionContextV1`、
+> `AgentMessageEnvelopeV1`、`RetrieverRequest/ResultV1`、`VerifiedEvidenceBundleV1`、
+> `FinalResponseRequest/StreamEventV1`，并从 `@repo/agent` root 与 `@repo/agent/realtime-chat` subpath 导出。
+>
+> 所有不可信 DTO 先经过 bounded plain clone，再执行 strict Zod、跨字段 invariant 与 deep-freeze；hostile
+> getter/proxy、unknown key、非法 Unicode/control、NaN/unsafe integer、重复 message/reason/citation/evidence/
+> direct usage attribution 均 fail-closed。authenticated owner 通过进程内 WeakMap receipt 与同一个 auth
+> response/request/bearer 对象引用绑定；`AbortSignal` 只作为不可枚举进程内字段存在，不进入 JSON DTO。
+> `skipped` envelope 不得携带 usageRef，同一 modelCallId 最多一个 direct attribution。
+>
+> Verified bundle 最多 4 条且只能由本地 constructor 创建；sourceLabel 固定为 `资料 1..N`。FinalResponse model
+> evidence projection 精确只有 `citationId/sourceLabel/excerpt/trustLabel`，不含 documentId/chunkId/sourceRef/
+> safetyCodes。stream validator 强制 sequence 连续、唯一 terminal 且 terminal-last、精确 citationId→sourceLabel
+> allowlist，以及首 token 前/后 failure、abort、partial、citation 与 direct verified usage 不变量。
+>
+> 新增 package export 触发旧 SR5 测试暴露历史校验耦合：它原先从当前 worktree 重算已封存 runnable bundle，
+> 会把合法后续演进误报为 SR5 drift。修复只调整测试，不修改 SR5 production source/artifact/marker/journal/
+> 常量：approved tag 必须解析到 `67661f5f...d4441`，按 manifest 顺序哈希 approved Git blobs 得到
+> `91b52eb2...04c56`，approved commit 内 detached anchor 仍为 `61e6bb60...d08c`。独立历史复审确认 sealed
+> authority 未改写。
+>
+> 最终 Agent full 另暴露 SR2 source identity 的 Windows EOL 耦合：fixture 冻结的是 LF Git blob SHA，而
+> `core.autocrlf=true` checkout 为 CRLF。五个文件的 approved Git blob SHA 均与 fixture 精确一致；测试只在
+> 哈希前执行 `CRLF -> LF`，仍拒绝任何正文/空格/lone-CR drift。SR2 production source、fixture 与 sealed
+> evidence 未修改，独立复审无 Critical/Important。
+>
+> focused realtime contract 为 `15/15`、`88` assertions，SR5 history parity 为 `8/8`、`64` assertions，SR2
+> compatibility 为 `4/4`、`134` assertions，最终 Agent full 为 `1204/1204`、`22380` assertions；Agent
+> typecheck/lint、17 文件 Prettier 与 diff check 通过，Markdown links 为 `350 files / 152 links / missing=0`；
+> docs/current-status 与 authority/security 两路最终复审均 `APPROVED`，无 Critical/Important。本任务未读 `.env`/
+> credential、未调用 Provider、未接 Web/Server runtime、未启动 Docker/API/browser、未创建正式 evidence 或
+> 修改业务数据；`.codex/` 保持未跟踪。Task 1 只解锁 Task 2 canonical principal / Chat access，Retriever/
+> FinalResponse runtime、Mock/Live、产品验收和 main authority 均未形成。验收见
+> `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 0 RetrieverAgent / FinalResponseAgent contract freeze：
 >
 > 从已推送 main `185b8171772d43bf49cfde9bb31323c5fe4647d4` 新建普通分支

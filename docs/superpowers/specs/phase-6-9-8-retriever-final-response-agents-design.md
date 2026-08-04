@@ -438,3 +438,15 @@ verified usage 与费用必须分开记账。
 - “为什么 Trace 必须在 stream terminal 后 finalize，不能在调用模型前先写 completed？”
 - “同步 FinalResponse 为什么不需要 BackgroundJob/Outbox，什么时候两者必须一起加入？”
 - “为什么 Mock 满分和旧 Chat live 可用都不能替代 Phase 6.9.8 controlled-Live paired gate？”
+
+## 16. 实施 checkpoint（2026-08-04）
+
+Task 1 已在 `zero_provider_retriever_final_response_shared_contract` authority 下实现本设计的 shared contract
+地基：canonical principal/envelope、Retriever request/result、local-only VerifiedEvidenceBundle、FinalResponse
+request/model evidence projection 与 strict stream event/ledger。输入先做 bounded plain snapshot，再执行 strict Zod 与
+跨字段校验；返回值 deep-freeze。`AbortSignal` 保持进程内、不可枚举，不进入序列化 DTO。
+
+该 checkpoint 只证明 contract 与 negative-test 边界，不表示 Nest JWT 已接 Chat、`web-chat-user` 已删除、
+Retriever/FinalResponse node 已执行、Qwen/DeepSeek 已调用，或 structured citation/terminal Trace 已接入产品。当前
+只解锁 Task 2 canonical principal / Chat access；完整证据见
+`../../acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。

@@ -1,5 +1,6 @@
 export * from './graph/index.ts';
 export * from './control-plane.ts';
+export * from './contracts/realtime-chat.ts';
 export * from './evals/critic-rubric.ts';
 export * from './evals/phase-6-9-eval-contract.ts';
 export * from './evals/phase-6-9-review-planner-cases.ts';

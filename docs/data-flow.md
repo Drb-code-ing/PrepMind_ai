@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-04。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 随后完成 zero-provider contract freeze，当前唯一下一任务是 Task 1 shared Zod contracts。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 contract freeze 与 Task 1 shared contracts 随后完成，当前唯一下一任务是 Task 2 canonical principal / Chat access。
 
 ## 1. 当前边界
 
@@ -947,11 +947,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> Phase 6.9.8 Task 0 complete：zero-provider design freeze
-       -> current next only：Task 1 shared Zod contracts
+  -> Phase 6.9.8 Task 0/1 complete：zero-provider design + shared contract
+       -> current next only：Task 2 canonical principal / Chat access
 ```
 
-## Phase 6.9.8 Task 0 冻结的数据流（设计 authority，尚未接 runtime）
+## Phase 6.9.8 Task 0/1 数据流（设计 + shared contract authority，尚未接 runtime）
 
 ```text
 Next /api/chat composition root
@@ -986,12 +986,20 @@ Next /api/chat composition root
        -> TTFT/total/verified usage separated from estimates
        -> trace unavailable keeps delivered answer but removes quality authority
 
-Task 0 runtime effect
-  -> apps/packages source unchanged
+Task 1 actual shared-contract effect
+  -> @repo/agent/realtime-chat + root export
+  -> safe plain snapshot -> strict Zod -> cross-field invariants -> deep-frozen value
+  -> authenticated owner bound to one opaque auth receipt/request/bearer reference
+  -> AbortSignal remains non-enumerable process-local control, absent from serialized DTO
+  -> VerifiedEvidenceBundle accepted only through local constructor; model projection exposes
+     citationId/sourceLabel/excerpt/trustLabel only
+  -> stream ledger validates exact sequence, one terminal, citationId -> sourceLabel authority,
+     and pre-token/partial/abort failure invariants
+  -> apps/web + apps/server runtime unchanged；web-chat-user still exists
   -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
   -> no BackgroundJob or Outbox for synchronous request/stream
   -> future async generation requires BackgroundJob + Durable Outbox + idempotency key together
-  -> only Task 1 shared contract implementation unlocked
+  -> only Task 2 canonical principal / Chat access unlocked
 ```
 
 ```text

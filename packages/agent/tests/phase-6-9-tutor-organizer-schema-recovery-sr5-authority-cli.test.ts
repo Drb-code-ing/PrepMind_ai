@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -11,13 +13,13 @@ import {
   PHASE_6_9_7_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
   PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_PATHS,
   claimPhase697SchemaRecoverySr5ConsumedProxyAttestation,
-  computePhase697SchemaRecoverySr5RunnableSourceBundleSha256,
   consumePhase697SchemaRecoverySr5ProxyAttestation,
   createPhase697SchemaRecoverySr5SyntheticProxyAttestationForTest,
   createPhase697SchemaRecoverySr5SyntheticSourceForTest,
   readPhase697SchemaRecoverySr5Approval,
   readPhase697SchemaRecoverySr5Credential,
 } from '../src/evals/phase-6-9-tutor-organizer-schema-recovery-sr5-authority.ts';
+import { computePhase697FullGateCanonicalSha256 } from '../src/evals/phase-6-9-tutor-organizer-full-gate-manifest.ts';
 import { PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_BUNDLE_SHA256 } from '../src/evals/phase-6-9-tutor-organizer-schema-recovery-sr5-source-manifest.ts';
 import {
   PHASE_6_9_7_SCHEMA_RECOVERY_SR5_CRASH_SEAL_CONFIRMATION,
@@ -36,7 +38,42 @@ import {
 } from './phase-6-9-tutor-organizer-schema-recovery-sr3-helpers.ts';
 
 const SR5_RUN_ID = '00000000-0000-4000-8000-000000000975';
+const SR5_APPROVED_SOURCE_COMMIT = '67661f5f3a302b547e804c2c1839ec89898d4441';
+const SR5_APPROVED_GIT_BLOB_BUNDLE_SHA256 =
+  '91b52eb28c88d08faa65e5d37aeddf172c16137d19be182292e191c66bb04c56';
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+
+function resolveApprovedSr5SourceCommit(): string {
+  return execFileSync(
+    'git',
+    ['rev-parse', `${PHASE_6_9_7_SCHEMA_RECOVERY_SR5_APPROVED_SOURCE_REF}^{commit}`],
+    { cwd: REPOSITORY_ROOT, encoding: 'utf8', windowsHide: true },
+  ).trim();
+}
+
+function readApprovedSr5GitBlob(path: string): Buffer {
+  return execFileSync(
+    'git',
+    ['show', `${PHASE_6_9_7_SCHEMA_RECOVERY_SR5_APPROVED_SOURCE_REF}:${path}`],
+    { cwd: REPOSITORY_ROOT, windowsHide: true },
+  );
+}
+
+function computeApprovedSr5GitBlobBundleSha256(): string {
+  return computePhase697FullGateCanonicalSha256(
+    PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_PATHS.map((path) => ({
+      path,
+      sha256: createHash('sha256').update(readApprovedSr5GitBlob(path)).digest('hex'),
+    })),
+  );
+}
+
+function readApprovedSr5DetachedBundleAnchor(): string | null {
+  const source = readApprovedSr5GitBlob(
+    'packages/agent/src/evals/phase-6-9-tutor-organizer-schema-recovery-sr5-source-manifest.ts',
+  ).toString('utf8');
+  return source.match(/RUNNABLE_SOURCE_BUNDLE_SHA256\s*=\s*\n?\s*'([0-9a-f]{64})'/u)?.[1] ?? null;
+}
 
 describe('Phase 6.9.7 schema recovery SR5 authority and CLI', () => {
   test('uses an independent approved tag and rejects source parity drift', () => {
@@ -61,7 +98,7 @@ describe('Phase 6.9.7 schema recovery SR5 authority and CLI', () => {
     ).toBe(false);
   });
 
-  test('recomputes the detached runnable bundle including authority without self-reference', async () => {
+  test('binds the detached bundle to the immutable approved commit without later worktree coupling', () => {
     expect(new Set(PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_PATHS).size).toBe(
       PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_PATHS.length,
     );
@@ -72,7 +109,12 @@ describe('Phase 6.9.7 schema recovery SR5 authority and CLI', () => {
       'packages/agent/src/evals/phase-6-9-tutor-organizer-schema-recovery-sr5-source-manifest.ts',
     );
     expect(PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_BUNDLE_SHA256).not.toBe('0'.repeat(64));
-    expect(await computePhase697SchemaRecoverySr5RunnableSourceBundleSha256(REPOSITORY_ROOT)).toBe(
+    expect(PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_BUNDLE_SHA256).toBe(
+      '61e6bb60fa2c5aa2a74d511b4ba8fbaf86ed186d8993afb9e5ddb844bb05d08c',
+    );
+    expect(resolveApprovedSr5SourceCommit()).toBe(SR5_APPROVED_SOURCE_COMMIT);
+    expect(computeApprovedSr5GitBlobBundleSha256()).toBe(SR5_APPROVED_GIT_BLOB_BUNDLE_SHA256);
+    expect(readApprovedSr5DetachedBundleAnchor()).toBe(
       PHASE_6_9_7_SCHEMA_RECOVERY_SR5_RUNNABLE_SOURCE_BUNDLE_SHA256,
     );
   });
