@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 2 canonical principal / Chat access：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 1 提交 `50f04b82` 之后，以
+> `zero_provider_retriever_final_response_chat_access` 完成 Chat canonical owner 接线。新增
+> `apps/web/src/lib/chat-agent-access.ts`：`/auth/me` 返回值必须先通过 strict `authUserSchema`，authenticated
+> owner 唯一取 `AuthUser.id`；request body 显式拒绝 `userId/ownerId/principal`，固定 `web-chat-user` 已从生产
+> route 删除。
+>
+> 无 token Mock 只创建 request-scoped anonymous context，认证调用为 0；无 token Live 在 Agent/runtime 前固定
+> 401；任意非空 Mock/Live token 都必须恰好一次 `/auth/me`，invalid/expired/malformed 固定 401。raw bearer 只
+> 存在 WeakMap capability，并与 Task 1 receipt 的同一 auth response、原始 Request、execution context 三个引用
+> 绑定；clone、cross-owner、cross-request 或 forged access 均 fail-closed，不降级成 anonymous。
+>
+> `/api/chat` 现在先解析 bounded request/provider metadata，再完成 canonical auth 与 bearer binding，随后才检查
+> provider configured、准备 Conversation context 并创建 Router/Verifier/Tutor runtime。Conversation、
+> authenticated-only RAG 与 owner Trace 使用同一绑定 bearer；orchestration 不再接收可替换的
+> `runId/userId/signal`，authenticated state 取 canonical owner，anonymous state 使用
+> `anonymous_${requestId}`。pre-auth/auth-time abort 固定为 499；不同 owner 即使认证反序完成也不会串
+> principal、token、state 或 budget。
+>
+> 最终 Task 2 focused Web `53/53`、Web full `457/457`、同一 compiler options 下 158 个非测试 Web 源文件
+> `0 diagnostics`、受影响 Web lint、Server Auth `6/6`、Prettier、`git diff --check` 与全仓 Markdown 相对链接
+> `missing=0` 均通过。完整 Web `tsc -p apps/web/tsconfig.json` 仍会命中既有 `.test.mts` 类型债，因此没有把
+> 非测试源码结果写成全仓测试源码 typecheck 清零。identity/security 独立复审无 blocker；测试复审确认主矩阵
+> 已覆盖，同时明确本 Task 没有真实 `POST /api/chat`、Docker 或浏览器产品运行 authority。
+>
+> 本任务未读取 `.env`/credential，未调用 Qwen/DeepSeek，未启动 Docker/API/browser，未创建
+> marker/journal/artifact，也未修改数据库、Redis、MinIO 或业务数据；`.codex/` 保持未跟踪。Task 2 只解锁
+> Task 3 RetrieverAgent node 与 original-query deterministic baseline；query rewrite、FinalResponse runtime、
+> Mock/Live 质量门、产品验收、main 与后续阶段均未形成。验收见
+> `docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 1 shared communication contracts：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 0 提交 `c6cd10a2` 之后，新增

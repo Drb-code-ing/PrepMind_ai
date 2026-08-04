@@ -7,11 +7,11 @@ import { aiProvider } from '@/lib/ai-provider';
 import { createMockChatText } from '@/lib/ai-usage-guard';
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
+import { parseChatApiRequestBody, shouldSearchKnowledgeForChat } from '@/lib/chat-api-policy';
 import {
-  parseChatApiRequestBody,
-  shouldSearchKnowledgeForChat,
-  validateChatLiveAccess,
-} from '@/lib/chat-api-policy';
+  readCanonicalChatBearerToken,
+  resolveCanonicalChatAgentAccess,
+} from '@/lib/chat-agent-access';
 import type { ChatAgentDecision } from '@/lib/chat-agent-runtime';
 import { type ActiveStudyContext, type ChatContextMessage } from '@/lib/chat-context';
 import {
@@ -19,7 +19,7 @@ import {
   buildConversationContextHeaders,
   filterKnowledgeForAssembledContext,
   logChatRouteFailureSafely,
-  runChatAccessAndContextPreparation,
+  runChatContextPreparation,
 } from '@/lib/chat-context-orchestration';
 import {
   appendCitationMarkdown,
@@ -38,6 +38,7 @@ import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
 
 const AGENT_TRACE_TIMEOUT_MS = 800;
+const CHAT_REQUEST_DEADLINE_MS = 120_000;
 const agentTraceApi = createAgentTraceApi(apiClient);
 
 const CHAT_ERROR_MESSAGE = 'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
@@ -73,16 +74,6 @@ async function recordAgentTraceSafely(
     return false;
   } finally {
     clearTimeout(timeout);
-  }
-}
-
-async function verifyAccessTokenForLive(accessToken: string) {
-  try {
-    await apiClient.get<unknown>('/auth/me', { accessToken });
-    return true;
-  } catch (error) {
-    console.warn('[Chat Auth]', error);
-    return false;
   }
 }
 
@@ -226,54 +217,74 @@ export async function POST(req: Request) {
     }
 
     const providerStatus = resolveChatProviderStatus();
+    const traceRunId = crypto.randomUUID();
+    const requestId = crypto.randomUUID();
+    const traceStartedAt = new Date();
+    const canonicalAccess = await resolveCanonicalChatAgentAccess(
+      {
+        mode: providerStatus.mode,
+        accessToken,
+        request: req,
+        runId: traceRunId,
+        requestId,
+        deadlineAt: new Date(traceStartedAt.getTime() + CHAT_REQUEST_DEADLINE_MS).toISOString(),
+        signal: req.signal,
+      },
+      {
+        authenticate: ({ accessToken: canonicalToken, signal }) =>
+          apiClient.get<unknown>('/auth/me', {
+            accessToken: canonicalToken,
+            signal,
+          }),
+      },
+    );
+
+    if (!canonicalAccess.ok) {
+      return Response.json({ error: canonicalAccess.error }, { status: canonicalAccess.status });
+    }
+    const executionContext = canonicalAccess.access.executionContext;
+    const canonicalBearer = readCanonicalChatBearerToken({
+      access: canonicalAccess.access,
+      request: req,
+      executionContext,
+    });
+    if (!canonicalBearer.ok) {
+      return Response.json({ error: canonicalBearer.error }, { status: canonicalBearer.status });
+    }
+    const canonicalAccessToken = canonicalBearer.accessToken;
 
     if (!providerStatus.configured) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
-    const accessAndContext = await runChatAccessAndContextPreparation(
-      {
-        mode: providerStatus.mode,
-        accessToken,
-        conversationId,
-        maxInputTokens: providerStatus.maxInputTokens,
-        requestSignal: req.signal,
-        timeoutValue: process.env.CONVERSATION_CONTEXT_PREPARE_TIMEOUT_MS,
-      },
-      {
-        validateAccess: (mode, token) =>
-          validateChatLiveAccess(mode, token, verifyAccessTokenForLive),
-      },
-    );
+    const accessAndContext = await runChatContextPreparation({
+      accessToken: canonicalAccessToken,
+      conversationId,
+      maxInputTokens: providerStatus.maxInputTokens,
+      requestSignal: executionContext.signal,
+      timeoutValue: process.env.CONVERSATION_CONTEXT_PREPARE_TIMEOUT_MS,
+    });
 
-    if (!accessAndContext.ok) {
-      return Response.json({ error: accessAndContext.error }, { status: accessAndContext.status });
-    }
     const conversationContext = accessAndContext.context;
 
     const normalizedMessages = messages as ChatContextMessage[];
     const normalizedActiveContext = activeContext;
-    const normalizedAccessToken = accessToken;
-    const traceRunId = crypto.randomUUID();
-    const traceStartedAt = new Date();
     const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
     const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
       bundle: modelAgentBundle,
       createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
       messages: normalizedMessages,
       activeContext: normalizedActiveContext,
-      runId: traceRunId,
-      userId: 'web-chat-user',
-      signal: req.signal,
+      executionContext,
     });
     const agentDecision = agentExecution.decision;
     const knowledgeSearch = await searchKnowledgeForChat({
       enabled: shouldSearchKnowledgeForChat({
-        accessToken: normalizedAccessToken,
+        authenticated: executionContext.principal.kind === 'authenticated',
         requiresRag: agentDecision.requiresRag,
         latestUserText: getLatestUserText(normalizedMessages),
       }),
-      accessToken: normalizedAccessToken,
+      accessToken: canonicalAccessToken,
       messages: normalizedMessages,
       logger: console,
       model: verifierModel,
@@ -340,7 +351,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const traceRecorded = await recordAgentTraceSafely(normalizedAccessToken, () =>
+    const traceRecorded = await recordAgentTraceSafely(canonicalAccessToken, () =>
       buildChatAgentTracePayload({
         runId: traceRunId,
         conversationId,
@@ -389,7 +400,7 @@ export async function POST(req: Request) {
       systemPrompt: budget.systemPrompt,
       messages: budget.modelMessages,
       maxOutputTokens: budget.maxOutputTokens,
-      signal: req.signal,
+      signal: executionContext.signal,
       knowledgeHits: citationHits,
       knowledgeSafetySummary: citationSafetySummary,
       knowledgeVerifierResult: citationVerifierResult,

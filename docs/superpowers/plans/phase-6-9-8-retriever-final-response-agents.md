@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 1 shared communication contracts 完成；下一任务 Task 2 canonical principal / Chat access
+> 当前状态：Task 2 canonical principal / Chat access 完成；下一任务 Task 3 RetrieverAgent node 与 deterministic baseline
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -115,6 +115,19 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - 并发不同 owner 不串 state/budget；
 - Web/Server focused + typecheck/lint；
 - zero Provider。
+
+### 完成状态（2026-08-04）
+
+- 新增 server-only canonical access seam：无 token Mock 创建 anonymous context，无 token Live 为 401；任意非空
+  Mock/Live token 都只调用一次 `/auth/me`，owner 唯一取 strict `AuthUser.id`；
+- raw bearer 只存在 WeakMap capability，并与 Task 1 receipt 的 auth response、原始 Request、execution context
+  引用绑定；clone/cross-owner/cross-request 读取 fail-closed；
+- `/api/chat` 已删除 `web-chat-user`，Agent orchestration 只接收 immutable execution context；Conversation、RAG 与
+  owner Trace 使用同一绑定 token，未认证路径在 runtime 前终止或保持 owner Agent zero-call；
+- request body 拒绝 `userId/ownerId/principal`，并发反序、invalid/expired/malformed、pre/auth abort 与 no-leak
+  回归通过；Web full `457/457`、非测试源码 typecheck `158/0`、受影响 lint、Server Auth `6/6` 通过；
+- 全程 zero-provider，未读 `.env`/credential，未启动 Docker/API/browser；只解锁 Task 3，不形成 Retriever/
+  FinalResponse runtime、产品或 main authority。
 
 ## Task 3：RetrieverAgent node 与 deterministic baseline
 
@@ -347,14 +360,15 @@ Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.
 
 ## 当前停止边界
 
-Task 1 完成后只允许开始 Task 2。当前已有 shared contracts，但仍没有：
+Task 2 完成后只允许开始 Task 3。当前已有 shared contracts 与 Chat canonical principal/access 接线，但仍没有：
 
 - 正式 Retriever/FinalResponse node；
-- canonical principal runtime 接线与 `web-chat-user` 删除；
 - query rewrite candidate；
+- 正式 Retriever node、hybrid-search composition port 与 deterministic baseline；
 - VerifiedEvidenceBundle projector；
 - terminal FinalResponse Trace；
 - 48-case baseline/Mock/Live authority；
 - Docker/API/browser/main authority。
 
-不得把本计划、旧 Chat live、Qwen hybrid search、Markdown citation 或 graph descriptor写成上述能力已完成。
+不得把 Task 2 的 Chat access 接线、旧 Chat live、Qwen hybrid search、Markdown citation 或 graph descriptor 写成
+上述能力已完成。

@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-04。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 contract freeze 与 Task 1 shared contracts 随后完成，当前唯一下一任务是 Task 2 canonical principal / Chat access。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0 contract freeze、Task 1 shared contracts 与 Task 2 canonical principal / Chat access 随后完成，当前唯一下一任务是 Task 3 RetrieverAgent node 与 deterministic baseline。
 
 ## 1. 当前边界
 
@@ -11,6 +11,7 @@
 - 错题组织层职责：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 只负责学科卡片、专题 deck 和错题归属视图，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
+- Chat access 职责：`/api/chat` 只把 `/auth/me` strict `AuthUser.id` 作为 authenticated canonical owner；raw bearer 只存在 WeakMap capability，并与 auth response、原始 Request、execution context 三个引用绑定。无 token Mock 只允许 anonymous 普通 Chat；无 token Live、invalid token、cross-request/owner binding 均在 Agent runtime 前 fail-closed。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
@@ -84,13 +85,19 @@
 用户输入文本
   -> ChatInputBar
   -> /api/chat
+  -> parse bounded request + provider mode/config metadata（尚不创建 runtime）
+  -> canonical Chat access
+       -> 无 token Mock：request-scoped anonymous context，认证 0 次
+       -> 任意非空 token：/auth/me 恰好一次，owner 只取 strict AuthUser.id
+       -> 无 token Live / invalid token / abort / binding failure：runtime 前终止
+  -> provider configured gate
+  -> authenticated 时用同一 opaque bearer 准备 Conversation context
   -> server-only Agent bundle 创建 Router/Verifier runtime、共享预算与独立 Tutor runtime/预算
   -> chat-agent-runtime 先执行 deterministic Router eligibility；歧义请求可调用 Router model candidate
   -> final tutor route 时先执行 Tutor policy；隐含/上下文/冲突意图可调用 Tutor model candidate
-  -> 有 accessToken 时检索知识库，命中后先执行 deterministic safety，再按 semantic-needed eligibility 调用 Verifier model candidate
-  -> resolveChatProviderStatus() 基于 env 与开发调试开关判断 mock / live
+  -> authenticated principal 时用同一 bearer 检索知识库；命中后先执行 deterministic safety，再按 semantic-needed eligibility 调用 Verifier model candidate
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
-  -> 有 accessToken 时 best-effort 写入 /agent-traces 脱敏观测元数据
+  -> authenticated principal 时用同一 bearer best-effort 写入 /agent-traces 脱敏观测元数据
   -> mock data stream 或 OpenAI / DeepSeek SSE；request abort 传播到最终 streamText
   -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
@@ -119,14 +126,14 @@
 - `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
 - `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 的 V1--V9 Live 均已失败封存，产品验收没有启动。V9 R0--R4 证明 option selection、runner/durability 与 reviewed Mock 的 zero-provider 工程边界；唯一 R5 又只证明两条 lane 进入 durable dispatch 后在 response 前 transport/abort，仍没有真实语义、usage、费用、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
-- Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
+- Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 bounded request/provider metadata 与 canonical `/auth/me` projection，再在 authenticated principal + id 同时存在时用同一 opaque bearer 调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并传播同一个 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
 - Mock/live response 只通过 `x-prepmind-conversation-summary-status`、`x-prepmind-conversation-summary-version` 和 `x-prepmind-context-dropped-layers` 暴露固定状态；Agent Trace 只记录实际 conversationId、计数、版本与 bounded codes，不保存 summary、prompt、RAG chunk 或 state 正文。
 - PostgreSQL 继续是 ConversationState/ConversationSummary 权威源，Redis 只做服务端 public-state cache，Dexie v9 `conversationStates` 只保存 `activeGoal`、`activeQuestionId`、stateVersion、expiresAt、updatedAt 与身份键。local write/clear 按 user 串行，serverVersion 不低于 local 才覆盖；过期、坏 schema、key/user mismatch、logout/clear 与迟到请求均 fail-safe。Dexie 不存 summary、pending proposal、tool names、prompt 或 token，也不根据 activeQuestionId 伪造 OCR 题面。
 - Phase 6.9.3.5 已验证真实 OpenAI-compatible structured output 边界：共享 executor 对 strict object generation 固定使用 JSON mode，再交给 Zod schema、不可变预算、超时和 live 双开关；provider 原始错误、key 和 base URL 仍不出 adapter。DeepSeek Live summary 成功后，Web 只把安全 summary buffer 交给 assembler；Trace 记录 `summary=true` 与 `layerTokens=m/a/s/o/r/k/y`，不复制 summary/prompt/chunk。Mock/Live 验收结束后 server/web 恢复 Mock，合成用户、权威数据、Redis cache 与浏览器站点数据均清理。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
-- `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。
+- `/api/chat` 只有在 access token 已认证并形成 canonical principal 后才会 best-effort 构造 Agent Trace payload，并用同一 opaque bearer 调用 `/agent-traces`；anonymous 不创建 owner Trace，写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。
 - Agent Trace payload 在写入前会裁剪并脱敏用户输入预览、step summary 和错误信息；服务端也会再次裁剪和脱敏，防止保存 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...` 或 `Cookie: ...` 等敏感片段。
 - `/agent-trace` 的 token 与成本只做估算，用于调试 Agent 链路和观察趋势，不作为供应商真实账单或财务凭证。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
@@ -246,8 +253,9 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 ```text
 用户提问
   -> ChatRuntimeProvider 将 accessToken 放入 /api/chat 请求体
-  -> /api/chat 使用最新用户消息调用 /knowledge/search
-  -> 无 token / 无资料 / 未命中 / 检索失败：普通 AI 回答
+  -> /api/chat 先经 /auth/me 建立 authenticated canonical principal
+  -> 使用同一绑定 bearer + 最新用户消息调用 /knowledge/search
+  -> anonymous / 无效 token / 无资料 / 未命中 / 检索失败：不进入 owner RAG 或继续普通 AI 回答
   -> 命中知识库：先过滤 high-risk chunks，medium-risk chunks 只作为可疑原文引用
   -> 调用 KnowledgeVerifierAgent 评估 raw retrieved chunks 与 safety metadata
   -> 注入过滤后的 chunks 与 verifier / safety guidance 到 system prompt
@@ -947,11 +955,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> Phase 6.9.8 Task 0/1 complete：zero-provider design + shared contract
-       -> current next only：Task 2 canonical principal / Chat access
+  -> Phase 6.9.8 Task 0/1/2 complete：zero-provider design + shared contract + canonical Chat access
+       -> current next only：Task 3 RetrieverAgent node + deterministic baseline
 ```
 
-## Phase 6.9.8 Task 0/1 数据流（设计 + shared contract authority，尚未接 runtime）
+## Phase 6.9.8 Task 0--2 数据流（设计 + shared contract + Chat access authority）
 
 ```text
 Next /api/chat composition root
@@ -995,11 +1003,28 @@ Task 1 actual shared-contract effect
      citationId/sourceLabel/excerpt/trustLabel only
   -> stream ledger validates exact sequence, one terminal, citationId -> sourceLabel authority,
      and pre-token/partial/abort failure invariants
-  -> apps/web + apps/server runtime unchanged；web-chat-user still exists
+  -> Task 1 当时未修改 apps/web + apps/server runtime；该历史边界不由后续任务倒写
   -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
   -> no BackgroundJob or Outbox for synchronous request/stream
   -> future async generation requires BackgroundJob + Durable Outbox + idempotency key together
-  -> only Task 2 canonical principal / Chat access unlocked
+  -> Task 1 当时只解锁 Task 2 canonical principal / Chat access
+
+Task 2 actual canonical Chat access effect
+  -> bounded request + provider metadata（no runtime）
+  -> no-token Mock => anonymous_${requestId} / authCalls=0
+  -> no-token Live => 401 before runtime
+  -> non-empty Mock/Live token => exactly one /auth/me
+       -> strict AuthUser.id => only authenticated owner authority
+       -> invalid/expired/malformed => fixed 401
+       -> pre/auth-time abort => fixed 499
+  -> WeakMap bearer capability + auth response/request/executionContext reference binding
+       -> clone / cross-owner / cross-request / forged access => fail-closed
+  -> provider configured gate -> Conversation prepare -> Agent runtime creation
+  -> authenticated Conversation/RAG/owner Trace reuse the same bound bearer
+  -> request body userId/ownerId/principal rejected；owner/token absent from prompt/header/Trace
+  -> concurrent reverse auth completion remains request/owner/token isolated
+  -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
+  -> Retriever/FinalResponse nodes still absent；only Task 3 unlocked
 ```
 
 ```text

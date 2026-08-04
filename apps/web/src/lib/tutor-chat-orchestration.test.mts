@@ -278,9 +278,7 @@ test('orchestration keeps Tutor budget separate from the Router to Verifier budg
     },
     messages: [{ role: 'user', content: MODEL_ELIGIBLE_TUTOR_TEXT }],
     activeContext: ACTIVE_CONTEXT,
-    runId: 'run_tutor_orchestration_budget',
-    userId: 'user_tutor_orchestration_budget',
-    signal: new AbortController().signal,
+    executionContext: executionContext('run_tutor_orchestration_budget'),
   });
 
   assert.equal(routerBudgetCalls, 1);
@@ -303,9 +301,7 @@ test('orchestration never creates a Tutor bundle for a non-Tutor final route', a
     },
     messages: [{ role: 'user', content: '结合我的笔记讲一下这道题。' }],
     activeContext: null,
-    runId: 'run_non_tutor_factory_zero_call',
-    userId: 'user_non_tutor_factory_zero_call',
-    signal: new AbortController().signal,
+    executionContext: executionContext('run_non_tutor_factory_zero_call'),
   });
 
   assert.equal(result.agentExecution.decision.route, 'rag_answer');
@@ -338,6 +334,16 @@ function trackedTutorRuntime(
       return runtime.invokeStructured(request);
     },
   };
+}
+
+function executionContext(runId: string) {
+  return Object.freeze({
+    runId,
+    requestId: `request_${runId}`,
+    principal: Object.freeze({ kind: 'anonymous' as const }),
+    deadlineAt: '2026-08-04T12:00:00.000Z',
+    signal: new AbortController().signal,
+  });
 }
 
 function routerVerifierBudget() {

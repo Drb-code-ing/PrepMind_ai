@@ -447,6 +447,19 @@ request/model evidence projection 与 strict stream event/ledger。输入先做 
 跨字段校验；返回值 deep-freeze。`AbortSignal` 保持进程内、不可枚举，不进入序列化 DTO。
 
 该 checkpoint 只证明 contract 与 negative-test 边界，不表示 Nest JWT 已接 Chat、`web-chat-user` 已删除、
-Retriever/FinalResponse node 已执行、Qwen/DeepSeek 已调用，或 structured citation/terminal Trace 已接入产品。当前
+Retriever/FinalResponse node 已执行、Qwen/DeepSeek 已调用，或 structured citation/terminal Trace 已接入产品。当时
 只解锁 Task 2 canonical principal / Chat access；完整证据见
 `../../acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
+
+Task 2 随后以 `zero_provider_retriever_final_response_chat_access` 把 `/auth/me` strict `AuthUser.id` 投影为
+`/api/chat` 的 canonical principal，删除固定 `web-chat-user`，并以 WeakMap bearer capability 绑定同一 auth
+response、原始 Request 与 execution context。无 token Mock 只创建 anonymous context；无 token Live、无效/
+过期 token 与 binding failure 均在 Agent runtime 前 fail-closed。带 token 的 Mock 也必须认证一次；Conversation、
+authenticated-only RAG 与 owner Trace 只读取同一绑定 bearer。客户端身份字段被拒绝，owner/token 不进入
+prompt/header/Trace，两个 owner 反序认证不串 context/token。
+
+Task 2 的 Web full、非测试源码 typecheck、受影响 lint、Server Auth focused 与独立安全复审通过，全程未读
+credential、未调用 Provider，也未执行 Docker/API/browser。它只解锁 Task 3 Retriever node + deterministic
+baseline；尚未形成 Retriever/FinalResponse runtime、query rewrite、evidence projector、structured stream/terminal
+Trace、Mock/Live、产品或 main authority。完整证据见
+`../../acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`。
