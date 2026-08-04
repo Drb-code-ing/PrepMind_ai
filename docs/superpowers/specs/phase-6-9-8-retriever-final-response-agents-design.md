@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 5 zero-provider Retriever query rewrite candidate 已完成；下一任务仅 Task 6 FinalResponseAgent
+> 状态：Task 6 zero-provider FinalResponseAgent / stream contract 已完成；下一任务仅 Task 7 Chat composition / terminal Trace
 > 日期：2026-08-04
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_query_rewrite_candidate`
+> Current Checkpoint Authority：`zero_provider_final_response_stream_contract`
 
 ## 1. 决策与目标
 
@@ -526,5 +526,26 @@ Task 0 的设计 authority，也不提前接入 Task 6--8：
 本 checkpoint 只通过 reviewed Mock 与静态回归，Mock `qualityAuthority=none`，不能证明 rewrite uplift、真实
 DeepSeek/Qwen、P95/usage/CNY 或产品可用。全程未读 `.env`/credential、未调用 Provider，也未启动 Docker/API/
 browser、接入 `/api/chat` 或合并 main。Task 6 FinalResponseAgent、Task 7 composition、Task 8 48-case gate 与后续
-任务仍未完成；当前只解锁 Task 6。完整证据见
+任务在该 checkpoint 当时仍未完成；该 checkpoint 当时只解锁 Task 6。完整证据见
 `../../acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
+
+## 19. Task 6 完成回执（2026-08-04）
+
+Task 6 以 `zero_provider_final_response_stream_contract` 落成本设计的 FinalResponse node 与 streaming contract，
+但不改写 Task 0 的设计 authority，也不提前形成 Task 7/8 或产品 authority：
+
+- `@repo/ai` 新增独立 DeepSeek V4 Pro non-thinking streaming adapter，固定 exact
+  `/v1/chat/completions`、`stream=true`、`stream_options.include_usage=true`、`max_tokens=1200`、no
+  tools/reasoning/retry，并严格核对 step/final finish reason 与 verified usage；
+- `@repo/agent` 新增 authenticated-only FinalResponse node；exact context、完整模型字段安全、config、abort/
+  deadline、输入预算均先于 executor，固定 `20000ms / 1 call / 2500 input / 1200 output / 0.015 CNY`；
+- Citation 只由本地 allowlist 生成，模型无 citation/tool authority。首 token 前后失败、partial text、连续
+  sequence 与 exactly-one terminal 由本地 ledger 验证；citation/completed 先封存再 best-effort 投递，断连不
+  改写本地 completed，也不声称网络 exactly-once；
+- Web server-only default-off config/runtime 使用组件专用 key 与 single-consume executor factory；Compose 仅向
+  `web` 投影 gate/timeout/key，generic/sibling credential 不可替代。
+
+本 checkpoint 全程未读 `.env`/credential、未调用 Provider，也未接 `/api/chat`、启动产品 Docker/API/browser、
+执行 48-case/controlled-Live 或合并 main。`qualityAuthority=none`，因此不能证明真实模型质量、产品可用性、
+Trace、P95 或 SLA；当前只解锁 Task 7 Chat composition 与 terminal Trace。完整证据见
+`../../acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。

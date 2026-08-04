@@ -801,6 +801,9 @@ export function projectFinalResponseModelInputV1(
   if (boundContext !== context) {
     return { ok: false, reasonCode: 'principal_binding_invalid' };
   }
+  if (!isFinalResponseModelProjectionSafe(request)) {
+    return { ok: false, reasonCode: 'schema_invalid' };
+  }
   const projection: FinalResponseModelInputV1 = {
     latestUserMessage: request.latestUserMessage,
     recentConversation: request.recentConversation.map((turn) => ({
@@ -943,6 +946,15 @@ const RESPONSE_FAILED_EVENT_SCHEMA = z
       (event.errorCode !== 'aborted' || event.traceTerminal !== 'aborted' || event.retryable)
     ) {
       context.addIssue({ code: 'custom', message: 'invalid aborted terminal' });
+    }
+    if (event.retryable) {
+      context.addIssue({ code: 'custom', message: 'background retry is forbidden' });
+    }
+    if (
+      event.phase !== 'aborted' &&
+      (event.errorCode === 'aborted' || event.traceTerminal === 'aborted')
+    ) {
+      context.addIssue({ code: 'custom', message: 'non-abort failure used aborted authority' });
     }
   });
 
@@ -1094,6 +1106,43 @@ function parsePlain<Output>(
 
 function schemaFailure(): { ok: false; reasonCode: 'schema_invalid' } {
   return { ok: false, reasonCode: 'schema_invalid' };
+}
+
+function isFinalResponseModelProjectionSafe(request: FinalResponseRequestV1): boolean {
+  if (
+    !scanCompleteModelField(request.latestUserMessage, {
+      maxUtf16CodeUnits: 4_000,
+    }).ok
+  ) {
+    return false;
+  }
+  for (const turn of request.recentConversation) {
+    if (
+      !scanCompleteModelField(turn.content, {
+        maxUtf16CodeUnits: 2_000,
+      }).ok
+    ) {
+      return false;
+    }
+  }
+  if (
+    request.tutorGuidance !== undefined &&
+    !scanCompleteModelField(request.tutorGuidance.instruction, {
+      maxUtf16CodeUnits: 800,
+      rejectToolOrWriteInstruction: true,
+    }).ok
+  ) {
+    return false;
+  }
+  return (
+    request.evidenceBundle?.entries.every(
+      (entry) =>
+        scanCompleteModelField(entry.excerpt, {
+          maxUtf16CodeUnits: 700,
+          rejectToolOrWriteInstruction: true,
+        }).ok,
+    ) ?? true
+  );
 }
 
 function isWellFormedText(value: string): boolean {

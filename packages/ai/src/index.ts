@@ -1,4 +1,5 @@
 export * from './ai-cost-estimator.ts';
+export * from './final-response-stream-provider.ts';
 export * from './model-agent-budget.ts';
 export * from './model-agent-contract.ts';
 export * from './model-agent-provider.ts';

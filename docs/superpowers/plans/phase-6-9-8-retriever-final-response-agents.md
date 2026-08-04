@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 5 Retriever query rewrite candidate 完成；下一任务 Task 6 FinalResponseAgent 与 stream contract
+> 当前状态：Task 6 FinalResponseAgent / stream contract 完成；下一任务 Task 7 Chat composition / terminal Trace
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -251,7 +251,8 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - reviewed Mock、focused/full/typecheck/lint/Compose/static 与三路只读复审通过；全程未读 `.env`/credential、未调用
   Qwen/DeepSeek/Provider，authority 仅 `zero_provider_retriever_query_rewrite_candidate`；
 - reviewed Mock 固定 `qualityAuthority=none`，不是 query rewrite uplift 或真实模型质量证据；尚未接入 `/api/chat`，
-  Task 6 FinalResponse、Task 7 composition、Task 8 48-case gate、Docker/API/browser/main 均未完成；只解锁 Task 6。
+  Task 6 FinalResponse、Task 7 composition、Task 8 48-case gate、Docker/API/browser/main 在该 checkpoint 当时均未
+  完成；该 checkpoint 当时只解锁 Task 6。
 
 ## Task 6：FinalResponseAgent 与 stream contract
 
@@ -286,6 +287,23 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - stream cancellation test；
 - cost profile test；
 - zero real Provider。
+
+### 完成状态（2026-08-04）
+
+- `@repo/ai` 已新增 exact DeepSeek V4 Pro non-thinking streaming adapter：固定 endpoint、`stream=true`、
+  verified usage、1200 output、no tools/reasoning/retry；
+- `@repo/agent` 已新增正式 FinalResponse node：authenticated/exact-context/safety/config/deadline/abort/budget
+  均先于 executor，固定 `20000ms / 1 call / 2500 input / 1200 output / 0.015 CNY`；
+- 本地 citation allowlist、连续 sequence、唯一 terminal 与首 token 前后失败边界已落地。Citation/completed
+  本地 ledger 先封存再 best-effort 投递；断连只标记 delivery failure，不改写 completed，也不声称网络
+  exactly-once；
+- Web server-only default-off config/runtime、组件专用 key、single-consume executor factory 与 Compose web-only
+  allowlist 已完成；
+- focused `30/30 + 6/6`、Agent `1244/1244`、AI `330/330`、Web `474/474`、Agent/AI typecheck/lint、Web
+  受影响文件 lint 与 Compose safe-example config 通过；三路只读复审无 blocker；
+- 全程未读 `.env`/credential、未调用 Provider、未接 `/api/chat`，也未执行产品 Docker/API/browser、48-case、
+  controlled-Live 或 main；authority 仅 `zero_provider_final_response_stream_contract / qualityAuthority=none`，
+  只解锁 Task 7。
 
 ## Task 7：实时 Chat composition 与 terminal Trace
 

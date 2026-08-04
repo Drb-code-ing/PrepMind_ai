@@ -1196,16 +1196,32 @@ Task 5 已以 `zero_provider_retriever_query_rewrite_candidate` 完成以下合�
   Qwen/DeepSeek/Provider、未启动产品 Docker/API/browser，也尚未接入 `/api/chat`；reviewed Mock
   `qualityAuthority=none`，不能证明 rewrite uplift、真实模型质量、产品可用性或 SLA。
 
-当前唯一下一任务为 Task 6 FinalResponseAgent 与 stream contract；Task 7 composition、Task 8 质量门、Live、产品/
-main 与后续阶段仍未完成。完整设计、计划与 Task 0--5 证据见
+Task 6 已以 `zero_provider_final_response_stream_contract` 完成以下合同：
+
+- 正式 FinalResponseAgent 只接受 authenticated、同一 exact execution context 绑定且完整安全扫描通过的 request；
+  config、abort/deadline、输入预算均在 executor 前 fail-closed；
+- 独立 DeepSeek V4 Pro non-thinking adapter 固定 exact `/v1/chat/completions`、`stream=true`、verified usage、
+  `max_tokens=1200`、no tools/reasoning/retry；Node 固定 `20000ms / 1 call / 2500 input / 1200 output /
+0.015 CNY`；
+- citation 只来自本地 allowlist；模型不得创建 citation 或 tool-success authority。首 token 前失败为固定诚实不可用，
+  首 token 后失败只保留 partial text，不追加 citation/tool success；
+- 本地 ledger 校验连续 sequence 与唯一 terminal。Citation/completed 先在本地封存再 best-effort 投递；客户端断连
+  记录 `client_disconnected/deliveryFailed=true`，不把 completed 改写成 aborted，也不声称网络 exactly-once；
+- Web server-only config/runtime 与 Compose 只向 `web` 投影独立 default-off gate/timeout/key。Task 6 未读根
+  `.env`/credential、未调用 Provider、未接 `/api/chat`，未执行产品 Docker/API/browser、48-case、
+  controlled-Live 或 main；`qualityAuthority=none`。
+
+当前唯一下一任务为 Task 7 Chat composition 与 terminal Trace；Task 8 质量门、Live、产品/main 与后续阶段仍未
+完成。完整设计、计划与 Task 0--6 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
 `docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
 `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
-`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md` 与
-`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

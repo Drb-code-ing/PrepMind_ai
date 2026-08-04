@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-04。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--5 随后完成。Task 5 落地 default-off query rewrite candidate、独立 Web-only runtime/config、单调用预算与本地 validator/merger；authority 仅为 `zero_provider_retriever_query_rewrite_candidate`，Provider calls=0、reviewed Mock `qualityAuthority=none` 且尚未接 `/api/chat`。当前唯一下一任务是 Task 6 FinalResponseAgent 与 stream contract。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--6 随后完成。Task 6 落地正式 FinalResponseAgent、独立 DeepSeek V4 Pro non-thinking streaming adapter、local citation/terminal ledger 与 Web-only default-off runtime/config；authority 仅为 `zero_provider_final_response_stream_contract / qualityAuthority=none`，Provider calls=0 且尚未接 `/api/chat`。当前唯一下一任务是 Task 7 Chat composition 与 terminal Trace。
 
 ## 1. 当前边界
 
@@ -287,8 +287,8 @@ authenticated AgentExecutionContextV1 + RetrieverRequestV1
 
 Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述现有后端 runtime contract，
 不是该 Task 的 Provider 执行证据。Task 3 完成时正式 Retriever node 尚未接入 `/api/chat`，当时只解锁 Task 4
-VerifiedEvidenceBundle/evidence projector；Task 4/5 现已完成，但仍须先完成 Task 6 FinalResponseAgent，再由
-Task 7 替换产品 composition。
+VerifiedEvidenceBundle/evidence projector；Task 4/5/6 现已完成，但正式 Retriever/FinalResponse 仍未接产品
+`/api/chat`，必须由 Task 7 完成 composition 与 terminal Trace。
 
 资料管理建议默认关闭 gate 时的 fallback 数据流：
 
@@ -982,11 +982,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> Phase 6.9.8 Task 0--5 complete：design + shared contract + Chat access + Retriever baseline + evidence + rewrite
-       -> current next only：Task 6 FinalResponseAgent + stream contract
+  -> Phase 6.9.8 Task 0--6 complete：design + shared contract + Chat access + Retriever + evidence + rewrite + final stream
+       -> current next only：Task 7 Chat composition + terminal Trace
 ```
 
-## Phase 6.9.8 Task 0--5 数据流（设计 + shared contract + Chat access + Retriever + evidence + query rewrite）
+## Phase 6.9.8 Task 0--6 数据流（设计 + shared contract + Chat access + Retriever + evidence + rewrite + final stream）
 
 ```text
 Next /api/chat composition root
@@ -1010,7 +1010,7 @@ Next /api/chat composition root
        -> local evidence projector（Task 4 complete；Chat composition still pending）
        -> VerifiedEvidenceBundleV1 max 4 entries
        -> blocked/cross-owner/credential/injection/unknown-safety body removed
-  -> FinalResponseAgent
+  -> FinalResponseAgent（Task 6 node/adapter complete；Task 7 Chat composition still pending）
        -> model-visible evidence only citationId/non-sensitive ordinal sourceLabel/excerpt/trustLabel
        -> DeepSeek V4 Pro non-thinking streaming body
        -> local renderer owns citation events and tool-execution status
@@ -1102,8 +1102,31 @@ Task 5 actual query rewrite effect
   -> reviewed Mock qualityAuthority=none；Provider/Qwen calls=0
   -> no /api/chat product wiring, Docker/API/browser/main authority, BackgroundJob or Outbox
   -> authority=zero_provider_retriever_query_rewrite_candidate
-  -> only Task 6 FinalResponseAgent + stream contract unlocked
+  -> Task 5 当时只解锁 Task 6 FinalResponseAgent + stream contract
+
+Task 6 actual FinalResponse stream effect
+  -> @repo/ai fixed DeepSeek V4 Pro non-thinking streaming adapter
+       -> exact /v1/chat/completions / stream=true / include_usage=true / max output 1200
+       -> no reasoning / tools / source / file / retry；strict finish + verified usage parity
+  -> @repo/agent formal FinalResponse node
+       -> authenticated + exact execution-context binding + full-field safety before executor
+       -> deadline + parent abort + 20000ms timeout / one call / 2500 input / 1200 output / 0.015 CNY
+       -> no-RAG/trusted/conflict/insufficient consume only locally projected model fields
+       -> local citationId/sourceLabel allowlist；model cannot create citation/tool authority
+       -> first-token failure is honest unavailable；post-token failure retains partial text without citation success
+       -> server ledger seals contiguous sequence and exactly one completed/failed/aborted terminal
+       -> citation/completed delivery failure records client_disconnected without rewriting local completed authority
+       -> this is not a network exactly-once guarantee and never schedules a background retry
+  -> Web server-only default-off config/runtime + dedicated component credential
+       -> Compose injects gate/timeout/key into web only；generic/sibling credentials cannot substitute
+  -> providerCalls=0 / credentialReads=0 / product Docker/API/browser=0
+  -> no /api/chat composition / terminal Trace / 48-case / controlled-Live / main authority
+  -> authority=zero_provider_final_response_stream_contract / qualityAuthority=none
+  -> only Task 7 Chat composition + terminal Trace unlocked
 ```
+
+Task 6 完整证据见
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
 
 ```text
 P1/G1/G2 Small-sample Semantic Gate（design + contract/baseline + durability / providerCalls=0）

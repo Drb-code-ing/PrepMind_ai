@@ -2,7 +2,7 @@
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--5 已完成：设计与共享通信合同、canonical principal / Chat access、Retriever original-query baseline、VerifiedEvidenceBundle/evidence projector，以及 default-off Retriever query rewrite candidate 均已落地；当前只解锁 Task 6 FinalResponseAgent 与 stream contract。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--6 已完成：设计与共享通信合同、canonical principal / Chat access、Retriever original-query baseline、VerifiedEvidenceBundle/evidence projector、default-off Retriever query rewrite candidate，以及 FinalResponseAgent/stream contract 均已落地；当前只解锁 Task 7 Chat composition 与 terminal Trace。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 
@@ -20,7 +20,7 @@ SR4 reviewed Mock 使用独立 factory `phase-6.9.7-tutor-organizer-schema-recov
 
 唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已在 approved source `67661f5f...d4441` 上 durable seal 并通过完整 Schema Recovery full gate：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict `48/48`，schema `48 canonical / 0 extension / 0 rejected / 0 not-observed`，Tutor/Organizer/Combined semantic `0.9736111111 / 0.9515968407 / 0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`。Gate/authority 为 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`；journal `628` 条并以 `evidence_published` 收口，strict validator `ok=true`，recovery claim=0。SR5 一次性名额已消费且不得重跑；它只形成分支评测语义 authority，不等于产品、Docker/API/browser、Trace、业务写入、SLA 或 main authority。
 
-SR6 分支产品验收已完成，且全程 `providerCalls=0`：Tutor `/api/chat` 已切换到 Schema Recovery candidate，Organizer single/batch 已切换到 V9 ordinal-only candidate；成功路径为 `candidate_applied`，forced failure 保留 Chat/Organizer 本地降级，跨账号 404、locked-name、Trace/Mock 计费隔离与精确清理通过。`sr5_sealed_replay` 只用 SR5 artifact SHA 做 admission，并依据当前 bounded prompt 生成 deterministic Mock output，不读取或逐字重放 SR5 Provider response/Trace。SR7 随后完成 main 合并、远程发布与 default-off Docker/API/可见浏览器回放；精确句“这一步对吗”在补齐 Router 关键词后稳定得到 `route=tutor / step_check`，Tutor candidate 为 `attempted=false / 0 token / LIVE_CALLS_DISABLED / pricing=unknown`，Trace 为 Mock、成本 0。两个 main 合成账号及关联数据、tracked Outbox 与浏览器业务数据已精确清理，窗口保留在 `/login`；全部 Agent/replay/Live gate 继续关闭。该证据只形成 zero-provider main/default-off authority，不提升 SR5 语义 authority，也不证明真实模型产品质量、SLA 或生产部署。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--5 随后完成。Task 5 新增 default-off、单调用、无重试的 DeepSeek V4 Pro query rewrite candidate，本地仍掌握 eligibility、实体/公式/数字/约束校验、original/rewrite 选择与完整检索权限；该 checkpoint 仅为 `zero_provider_retriever_query_rewrite_candidate`，当前下一原子任务仅为 Task 6 FinalResponseAgent 与 stream contract。
+SR6 分支产品验收已完成，且全程 `providerCalls=0`：Tutor `/api/chat` 已切换到 Schema Recovery candidate，Organizer single/batch 已切换到 V9 ordinal-only candidate；成功路径为 `candidate_applied`，forced failure 保留 Chat/Organizer 本地降级，跨账号 404、locked-name、Trace/Mock 计费隔离与精确清理通过。`sr5_sealed_replay` 只用 SR5 artifact SHA 做 admission，并依据当前 bounded prompt 生成 deterministic Mock output，不读取或逐字重放 SR5 Provider response/Trace。SR7 随后完成 main 合并、远程发布与 default-off Docker/API/可见浏览器回放；精确句“这一步对吗”在补齐 Router 关键词后稳定得到 `route=tutor / step_check`，Tutor candidate 为 `attempted=false / 0 token / LIVE_CALLS_DISABLED / pricing=unknown`，Trace 为 Mock、成本 0。两个 main 合成账号及关联数据、tracked Outbox 与浏览器业务数据已精确清理，窗口保留在 `/login`；全部 Agent/replay/Live gate 继续关闭。该证据只形成 zero-provider main/default-off authority，不提升 SR5 语义 authority，也不证明真实模型产品质量、SLA 或生产部署。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--6 随后完成。Task 6 新增 default-off、单调用、无重试的 DeepSeek V4 Pro non-thinking streaming adapter 与正式 FinalResponseAgent；本地继续掌握 prompt safety、citation allowlist、verified usage/cost 和唯一 terminal ledger。该 checkpoint 仅为 `zero_provider_final_response_stream_contract / qualityAuthority=none`，Provider calls=0，尚未接 `/api/chat`；当前下一原子任务仅为 Task 7 Chat composition 与 terminal Trace。
 
 ## 当前状态
 
@@ -75,6 +75,7 @@ SR6 分支产品验收已完成，且全程 `providerCalls=0`：Tutor `/api/chat
 | Phase 6.9.8 T3 | Retriever node、opaque search port、authenticated adapter 与 16+16 original-query baseline        | 已完成           |
 | Phase 6.9.8 T4 | exact-context evidence projector、SafetyGuard/Verifier 收紧、4×700 bundle 与本地 citation adapter | 已完成           |
 | Phase 6.9.8 T5 | default-off query rewrite candidate、独立预算/凭据、local validator/merger 与 Web-only 配置       | 已完成           |
+| Phase 6.9.8 T6 | FinalResponseAgent、V4 Pro streaming adapter、local citation/terminal ledger 与 default-off 配置  | 已完成           |
 | Phase 7        | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit            | 核心工程化已完成 |
 | Phase 7.8.5    | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                          | 已完成           |
 | Phase 7.23     | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                          | 已完成           |
@@ -269,7 +270,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. Phase 6.9.7 已完成：V1--V9 Live 与 R3/L3 失败历史保持封存；Provider Canary V2、Small/Full Gate、Schema Recovery SR0--SR7 已按各自 authority 收口。唯一 SR5 run `63f8a76b...04cb` 形成分支语义门，SR6/SR7 完成 zero-provider 产品与 main/default-off 验收且不提升 SR5 语义 authority。
-3. Phase 6.9.8 Task 0--5 已完成。Task 5 已实现 DeepSeek V4 Pro non-thinking strict `{ rewrittenQuery }` candidate、独立 `1/1200/160/0.005 CNY` 预算、Web-only default-off 配置、完整安全/上下文 eligibility 与本地 original/rewrite merger；reviewed Mock 的 `qualityAuthority=none`，Provider calls=0，尚未接 `/api/chat`。当前唯一下一原子任务是 Task 6 FinalResponseAgent 与 stream contract。Task 7 composition、Task 8 质量门、Mock/Live、Docker/API/浏览器、main、Phase 6.9.9/6.9.10 和记忆注入继续阻断。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. Phase 6.9.8 Task 0--6 已完成。Task 6 已实现 DeepSeek V4 Pro non-thinking streaming adapter、正式 FinalResponseAgent、独立 `1/2500/1200/0.015 CNY` 预算、Web-only default-off 配置与 local citation/terminal ledger；authority 为 `zero_provider_final_response_stream_contract / qualityAuthority=none`，Provider calls=0，尚未接 `/api/chat`。当前唯一下一原子任务是 Task 7 Chat composition 与 terminal Trace。Task 8 质量门、Mock/Live、Docker/API/浏览器、main、Phase 6.9.9/6.9.10 和记忆注入继续阻断。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 L1 的 `1/1/1/1` 仍是 `qualityAuthority=none`？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 
@@ -387,6 +388,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Task 3 Retriever node / deterministic baseline 验收](./docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md)
 - [Phase 6.9.8 Task 4 VerifiedEvidenceBundle / evidence projector 验收](./docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md)
 - [Phase 6.9.8 Task 5 Retriever query rewrite candidate 验收](./docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md)
+- [Phase 6.9.8 Task 6 FinalResponse stream contract 验收](./docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

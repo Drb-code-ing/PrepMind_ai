@@ -2053,18 +2053,24 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 5 default-off query rewrite candidate、独立预算/凭据、完整字段安全扫描、本地 validator/merger、
       Web-only config/runtime 与 Compose allowlist；authority 仅
       `zero_provider_retriever_query_rewrite_candidate`，reviewed Mock `qualityAuthority=none`、Provider calls=0；
-- [ ] Task 6--7 FinalResponseAgent/stream contract、Chat composition 与 terminal Trace runtime；
+- [x] Task 6 正式 FinalResponseAgent、DeepSeek V4 Pro non-thinking streaming adapter、authenticated/exact-context/
+      safety/config/deadline/abort/budget 前置门、本地 citation allowlist 与唯一 terminal ledger、Web-only default-off
+      config/runtime/Compose allowlist；authority 仅 `zero_provider_final_response_stream_contract`，
+      `qualityAuthority=none`、Provider calls=0；尚未接 `/api/chat`，未做产品 Docker/API/browser、48-case、
+      controlled-Live 或 main；
+- [ ] Task 7 Chat composition 与 terminal Trace runtime；
 - [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
 - [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--5 验收见
+设计、计划与 Task 0--6 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
 `docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
 `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
-`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md` 与
-`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md`。
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。

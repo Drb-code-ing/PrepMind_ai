@@ -1,5 +1,47 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 6 FinalResponseAgent / stream contract：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 5 基线
+> `5c778b7711ad2187b43a5daf03edb73492d934d9` 之后，以
+> `zero_provider_final_response_stream_contract` 完成正式 FinalResponseAgent 与 streaming 工程合同。
+> `@repo/ai` 新增独立 DeepSeek V4 Pro non-thinking streaming adapter，固定 exact
+> `https://api.deepseek.com/v1/chat/completions`、`stream=true`、`stream_options.include_usage=true`、
+> `max_tokens=1200`、strict compatibility、一次 step、no retry/tools/reasoning；step/final finish reason 与 verified
+> usage 必须一致，warnings/source/file/tool 扩展一律 fail-closed。
+>
+> `@repo/agent` 新增 authenticated-only FinalResponse node。Request 必须绑定同一个 canonical execution context，
+> latest user/recent conversation/Tutor guidance/evidence excerpt 完整安全扫描通过；config、parent abort、deadline、
+> prompt token preflight 均先于 executor。运行边界固定 `20000ms / 1 call / 2500 input / 1200 output /
+0.015 CNY`，Provider/timeout/schema/budget/abort 失败无 retry，也不创建 BackgroundJob/Outbox。
+>
+> 模型只生成正文，不拥有 citation、tool success、verified usage/cost 或 Trace terminal authority。Citation 只能从
+> Task 4 本地 allowlist 投影；no-RAG/insufficient 不生成 citation，conflict 只生成保守提示。首 token 前失败返回固定
+> 诚实不可用 terminal；首 token 后失败保留 partial text，但禁止 citation/tool success。Server ledger 校验连续
+> sequence、terminal-last 与唯一 completed/failed/aborted terminal。
+>
+> 独立复审发现“citation 已发送、completed 网络投递失败”可能被旧实现追加冲突 aborted terminal；现已改为先在
+> 本地 authoritative ledger 封存 citation + completed，再 best-effort 投递。断连只记录
+> `client_disconnected / deliveryFailed=true`，不会改写 completed；该合同明确不声称网络 exactly-once。Parent
+> abort、重复 timeout callback、mid-stream abort 和 transport rejection 均已有单 terminal/no-retry 覆盖。
+>
+> Web 新增 server-only default-off config/runtime 与 single-consume executor factory；只有 global Live、精确
+> DeepSeek URL、组件 gate、20000ms 和专用 `FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY` 全部满足后才惰性读取
+> credential。Tracked safe example 与 Compose 仅向 `web` 投影 FinalResponse gate/timeout/key，generic/sibling key
+> 不可替代，默认始终为 false。
+>
+> 最终 focused Agent/contract/AI `30/30 / 263 expect()`、Web config/runtime `6/6`、Agent full
+> `1244/1244 / 22851 expect()`、AI full `330/330 / 2433 expect()`、Web full `474/474`；Agent/AI typecheck 与
+> lint、Web 受影响文件 lint、Compose safe-example quiet config、Prettier、diff 与文档链接检查通过。三路独立
+> architecture/security/test 复审无 blocker。完整 Web `tsc` 仍有仓库既有 `.test.mts` 类型债；本任务新增文件
+> 的 focused/runtime/lint 与 Agent/AI typecheck 均通过。
+>
+> 本任务未读取根 `.env`/credential、未调用 DeepSeek/Qwen/其它 Provider、未接 `/api/chat`、未启动产品
+> Docker/API/browser、未执行 48-case/controlled-Live、未创建 Live artifact 或修改业务数据，也未合并 main；
+> `.codex/` 保持未跟踪。Task 6 的 `qualityAuthority=none`，只解锁 Task 7 Chat composition 与 terminal Trace；
+> Task 8 质量门、Live、产品/main 与后续阶段继续阻断。验收见
+> `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 5 Retriever query rewrite candidate：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 4 基线
