@@ -6,6 +6,10 @@ import {
   deepFreezeModelValue,
   scanCompleteModelField,
 } from '../model-candidates/model-projection-safety.ts';
+import {
+  isFormalVerifiedEvidenceBundleBoundToContextV1,
+  isFormalVerifiedEvidenceBundleV1,
+} from './verified-evidence-authority.ts';
 
 export const AGENT_NODE_NAMES = [
   'RouterAgent',
@@ -112,8 +116,7 @@ export type RealtimeChatContractFailureCode =
   | 'stream_failure_invariant_invalid';
 
 export type RealtimeChatContractResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; reasonCode: RealtimeChatContractFailureCode };
+  { ok: true; value: T } | { ok: false; reasonCode: RealtimeChatContractFailureCode };
 
 const IDENTIFIER_SCHEMA = z
   .string()
@@ -654,15 +657,10 @@ export const VERIFIED_EVIDENCE_BUNDLE_V1_SCHEMA = z
 export type VerifiedEvidenceEntryV1 = z.infer<typeof VERIFIED_EVIDENCE_ENTRY_V1_SCHEMA>;
 export type VerifiedEvidenceBundleV1 = z.infer<typeof VERIFIED_EVIDENCE_BUNDLE_V1_SCHEMA>;
 
-const locallyProjectedBundles = new WeakSet<VerifiedEvidenceBundleV1>();
-
 export function createVerifiedEvidenceBundleV1(
   input: unknown,
 ): RealtimeChatContractResult<VerifiedEvidenceBundleV1> {
-  const parsed = parsePlain(VERIFIED_EVIDENCE_BUNDLE_V1_SCHEMA, input);
-  if (!parsed.ok) return parsed;
-  locallyProjectedBundles.add(parsed.value);
-  return parsed;
+  return parsePlain(VERIFIED_EVIDENCE_BUNDLE_V1_SCHEMA, input);
 }
 
 const FINAL_RESPONSE_CONVERSATION_TURN_SCHEMA = z
@@ -739,23 +737,39 @@ export const FINAL_RESPONSE_REQUEST_V1_SCHEMA = z
 
 export type FinalResponseRequestV1 = z.infer<typeof FINAL_RESPONSE_REQUEST_V1_SCHEMA>;
 
-const validatedFinalResponseRequests = new WeakSet<FinalResponseRequestV1>();
+const validatedFinalResponseRequests = new WeakMap<
+  FinalResponseRequestV1,
+  AgentExecutionContextV1
+>();
 
 export function parseFinalResponseRequestV1(
   input: unknown,
+  context: unknown,
 ): RealtimeChatContractResult<FinalResponseRequestV1> {
+  if (!isAgentExecutionContextV1(context)) {
+    return { ok: false, reasonCode: 'principal_binding_invalid' };
+  }
   const evidenceBundle = getOwnDataProperty(input, 'evidenceBundle');
   if (evidenceBundle.kind === 'invalid') return schemaFailure();
-  if (
-    evidenceBundle.kind === 'value' &&
-    !locallyProjectedBundles.has(evidenceBundle.value as VerifiedEvidenceBundleV1)
-  ) {
-    return { ok: false, reasonCode: 'bundle_not_locally_projected' };
+  if (evidenceBundle.kind === 'value') {
+    if (!isFormalVerifiedEvidenceBundleV1(evidenceBundle.value)) {
+      return { ok: false, reasonCode: 'bundle_not_locally_projected' };
+    }
+    if (!isFormalVerifiedEvidenceBundleBoundToContextV1(evidenceBundle.value, context)) {
+      return { ok: false, reasonCode: 'principal_binding_invalid' };
+    }
   }
 
   const parsed = parsePlain(FINAL_RESPONSE_REQUEST_V1_SCHEMA, input);
   if (!parsed.ok) return parsed;
-  validatedFinalResponseRequests.add(parsed.value);
+  if (
+    parsed.value.runId !== context.runId ||
+    parsed.value.requestId !== context.requestId ||
+    parsed.value.deadlineAt !== context.deadlineAt
+  ) {
+    return { ok: false, reasonCode: 'principal_binding_invalid' };
+  }
+  validatedFinalResponseRequests.set(parsed.value, context);
   return parsed;
 }
 
@@ -765,11 +779,7 @@ export type FinalResponseModelInputV1 = Readonly<{
   routerDecision: Readonly<{ route: z.infer<typeof agentRouteSchema>; requiresRag: boolean }>;
   tutorGuidance?: Readonly<{
     strategy:
-      | 'explain_solution'
-      | 'socratic_hint'
-      | 'step_check'
-      | 'concept_bridge'
-      | 'general_follow_up';
+      'explain_solution' | 'socratic_hint' | 'step_check' | 'concept_bridge' | 'general_follow_up';
     instruction: string;
   }>;
   evidence: readonly Readonly<{
@@ -782,9 +792,14 @@ export type FinalResponseModelInputV1 = Readonly<{
 
 export function projectFinalResponseModelInputV1(
   request: FinalResponseRequestV1,
+  context: unknown,
 ): RealtimeChatContractResult<FinalResponseModelInputV1> {
-  if (!validatedFinalResponseRequests.has(request)) {
+  const boundContext = validatedFinalResponseRequests.get(request);
+  if (boundContext === undefined) {
     return { ok: false, reasonCode: 'request_not_validated' };
+  }
+  if (boundContext !== context) {
+    return { ok: false, reasonCode: 'principal_binding_invalid' };
   }
   const projection: FinalResponseModelInputV1 = {
     latestUserMessage: request.latestUserMessage,
@@ -1160,9 +1175,7 @@ function isNativeAbortSignal(value: unknown): value is AbortSignal {
 }
 
 type OwnDataPropertyResult =
-  | { kind: 'absent' }
-  | { kind: 'value'; value: unknown }
-  | { kind: 'invalid' };
+  { kind: 'absent' } | { kind: 'value'; value: unknown } | { kind: 'invalid' };
 
 function getOwnDataProperty(input: unknown, key: string): OwnDataPropertyResult {
   if (input === null || typeof input !== 'object') return { kind: 'invalid' };

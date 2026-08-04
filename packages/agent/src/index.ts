@@ -11,6 +11,7 @@ export * from './evals/run-phase-6-9-review-planner-v10-paired.ts';
 export * from './evals/phase-6-9-seed-cases.ts';
 export * from './evals/run-phase-6-9-baseline.ts';
 export * from './evals/phase-6-9-8-retriever-baseline.ts';
+export * from './nodes/evidence-projector.ts';
 export * from './nodes/knowledge-dedup.ts';
 export * from './nodes/knowledge-organizer.ts';
 export * from './nodes/knowledge-verifier.ts';

@@ -131,6 +131,20 @@ export type RunRetrieverAgentNodeInputV1 = Readonly<{
 type SafePortHit = z.infer<typeof PORT_HIT_SCHEMA>;
 type NormalizedEvidence = EvidenceCandidateV1 & Readonly<{ rawContent: string }>;
 
+const retrieverResultBindings = new WeakMap<RetrieverResultV1, AgentExecutionContextV1>();
+
+export function isRetrieverResultBoundToExecutionContextV1(
+  result: unknown,
+  context: unknown,
+): result is RetrieverResultV1 {
+  return (
+    result !== null &&
+    typeof result === 'object' &&
+    isAgentExecutionContextV1(context) &&
+    retrieverResultBindings.get(result as RetrieverResultV1) === context
+  );
+}
+
 export async function runRetrieverAgentNodeV1(
   input: RunRetrieverAgentNodeInputV1,
 ): Promise<RetrieverAgentNodeExecutionV1> {
@@ -154,6 +168,7 @@ export async function runRetrieverAgentNodeV1(
   const originalQueryHash = hashReference(request.originalQuery);
   if (!request.requiresRag) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'skipped',
@@ -168,6 +183,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (context.principal.kind !== 'authenticated') {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -182,6 +198,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (!isRetrieverRequestSafe(request)) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -196,6 +213,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (context.signal.aborted) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -210,6 +228,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (deadlineMs <= now) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -240,6 +259,7 @@ export async function runRetrieverAgentNodeV1(
 
   if (raced.kind === 'interrupted') {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -254,6 +274,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (context.signal.aborted) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -268,6 +289,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (finishedAt >= deadlineMs) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'failed',
@@ -282,6 +304,7 @@ export async function runRetrieverAgentNodeV1(
   }
   if (raced.kind === 'thrown') {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'degraded',
@@ -299,6 +322,7 @@ export async function runRetrieverAgentNodeV1(
   const portOutcome = parsePortOutcome(raced.value.outcome);
   if (portOutcome === null) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'degraded',
@@ -317,6 +341,7 @@ export async function runRetrieverAgentNodeV1(
     }
     const reasonCode = mapPortFailureReason(portOutcome.reasonCode);
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status:
@@ -338,6 +363,7 @@ export async function runRetrieverAgentNodeV1(
   );
   if (evidenceCandidates === null) {
     return completedExecution(
+      context,
       buildRetrieverResult({
         request,
         status: 'degraded',
@@ -352,6 +378,7 @@ export async function runRetrieverAgentNodeV1(
   }
 
   return completedExecution(
+    context,
     buildRetrieverResult({
       request,
       status: 'completed',
@@ -679,8 +706,12 @@ function buildRetrieverResult(input: {
   return parsed.ok ? parsed.value : null;
 }
 
-function completedExecution(result: RetrieverResultV1 | null): RetrieverAgentNodeExecutionV1 {
+function completedExecution(
+  context: AgentExecutionContextV1,
+  result: RetrieverResultV1 | null,
+): RetrieverAgentNodeExecutionV1 {
   if (result === null) return nodeFailure('invalid_input');
+  retrieverResultBindings.set(result, context);
   return deepFreezeModelValue({
     ok: true as const,
     result,

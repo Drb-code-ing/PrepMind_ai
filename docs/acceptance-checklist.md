@@ -2043,17 +2043,24 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] focused、Agent full/typecheck/lint、Prettier、diff 与独立 contract/history 复审通过；全程 zero-provider，未读
       `.env`/credential，未启动 Docker/API/browser。
 
-后续仍未完成：
+当前完成状态与后续边界：
 
-- [ ] Task 2 canonical principal 接线并删除 `web-chat-user`；
-- [ ] Task 3--7 Retriever/evidence projector/query rewrite/FinalResponse/composition/terminal Trace runtime；
+- [x] Task 2 canonical principal 接线、删除 `web-chat-user`、opaque bearer/owner/context binding 与并发/取消回归；
+- [x] Task 3 正式 Retriever node、opaque authenticated search port 与 16+16 original-query deterministic
+      baseline；
+- [x] Task 4 exact-context-bound evidence projector、SafetyGuard/Verifier 保守收紧、4×700 bundle、本地
+      structured citation/Markdown adapter、RAG 整层丢弃与脱敏 Trace；
+- [ ] Task 5--7 query rewrite candidate、FinalResponseAgent、Chat composition 与 terminal Trace runtime；
 - [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
 - [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0/1 验收见
+设计、计划与 Task 0--4 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
-`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`。
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md` 与
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`。

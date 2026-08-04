@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-08-04 — Phase 6.9.8 Task 4 VerifiedEvidenceBundle / evidence projector：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 3 提交
+> `3c0dd6ae23eace892f12c47e26cd14ff2486e989` 之后，以 `zero_provider_verified_evidence_projector`
+> 完成本地证据 authority。Retriever node 的每个正式 result 现在通过 WeakMap 绑定 exact
+> `AgentExecutionContextV1`；projector 只接受同一 context 的正式 result。正式 bundle、structured citation、
+> FinalResponse request 与 model projection 继续绑定同一 context；低层 bundle constructor 只验证结构，clone、
+> 伪造、cross-owner/context、缺失 context 以及 run/request/deadline 漂移均 fail-closed。
+>
+> Projector 先执行 deterministic owner/SafetyGuard，再应用 Verifier 五态。blocked/unknown safety、prompt
+> injection、credential、high-risk、control character 与 cross-owner body 在 bundle 前删除；Verifier
+> `trusted/suspicious/conflict/insufficient/skipped` 只能维持或收紧本地结果，`unavailable` 不能升级证据。正式
+> bundle 最多 4 条，每条最多 700 UTF-16 code units；稳定 score/tie 排序与 Retriever 的
+> `documentId + chunkId` citation identity 不受输入重排影响，模型只可见
+> `citationId/sourceLabel/excerpt/trustLabel`，其中 label 固定为 `资料 1..N`。
+>
+> 本地 citation adapter 同时生成 strict allowlist 与 legacy UI 可消费的 Markdown fragment；这只是兼容投影，
+> 尚未替换 `/api/chat` 的 legacy RAG composition。`ragIncluded=false` 时 bundle、allowlist、citation 和 Markdown
+> 整层清零；伪造 citation 仍由 strict stream ledger 拒绝。Trace summary 只保存固定 disposition/status/reason、
+> bundleId 与计数，不保存 evidence 正文、owner、token、credential 或 raw error。
+>
+> 最终 focused `30/30 / 250 expect()`、Agent full `1223/1223 / 22577 expect()`、Agent typecheck/lint、Web
+> `462/462`、AI `325/325`、Types `42/42 + typecheck` 均通过。Types lint 仍受既有 Bun/PATH eslint 问题影响，
+> 不属于 Task 4 回归。独立 architecture、security 与 test review 均无 blocker/high；同包任意代码执行者主动调用
+> internal registrar 属于本 Task 外部输入威胁模型之外的防御性边界。
+>
+> 本任务未读取 `.env`/credential，未调用 Qwen/DeepSeek/Provider，未启动产品 Docker/API/browser，未创建
+> Live marker/journal/artifact，也未修改业务数据或合并 main；`.codex/` 保持未跟踪。Task 4 只形成本地
+> safety/permission/projection contract，只解锁 Task 5 Retriever query rewrite candidate；FinalResponseAgent、
+> structured stream terminal、Chat composition、Mock/Live、产品与 main authority 均未形成。验收见
+> `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 3 RetrieverAgent node / original-query deterministic baseline：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 2 提交

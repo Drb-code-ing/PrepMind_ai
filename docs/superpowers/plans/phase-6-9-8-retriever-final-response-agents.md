@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 3 RetrieverAgent node / original-query deterministic baseline 完成；下一任务 Task 4 VerifiedEvidenceBundle/evidence projector
+> 当前状态：Task 4 VerifiedEvidenceBundle/evidence projector 完成；下一任务 Task 5 Retriever query rewrite candidate
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -197,6 +197,20 @@ Task 1 shared Zod contracts。不得进入 runtime、Live 或产品验收。
 - no raw evidence in Trace snapshot；
 - zero Provider。
 
+### 完成状态（2026-08-04）
+
+- 新增本地 evidence projector，以 exact execution-context-bound Retriever result 为唯一检索输入；正式 bundle、
+  citation projection、FinalResponse request/model projection 全部绑定同一 context，低层 constructor、clone、伪造、
+  cross-owner/context 与缺失 context 均 fail-closed；
+- deterministic owner/SafetyGuard 先删除 blocked/unknown/injection/credential/high-risk/control/cross-owner body，
+  Verifier 五态与 unavailable 只允许维持或收紧；最多 4 条、每条 700 UTF-16、稳定排序/citation identity 和
+  `资料 1..N` ordinal 已落地；
+- `ragIncluded=false` 会同时清空 bundle、structured allowlist/citations 和 Markdown；模型伪造 citation 被 strict
+  stream validator 拒绝，Trace 只有固定状态、reason 与计数；
+- `@repo/agent/evidence-projector` 与 root export 已落地；最终 focused/full/static、独立 architecture/security
+  复审及文档门通过；全程 zero-provider，未读 credential，未接产品 runtime 或执行 Docker/API/browser；
+- authority 仅 `zero_provider_verified_evidence_projector`，只解锁 Task 5 query rewrite candidate。
+
 ## Task 5：Retriever query rewrite candidate
 
 ### 目标
@@ -375,15 +389,16 @@ Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.
 
 ## 当前停止边界
 
-Task 3 完成后只允许开始 Task 4。当前已有 shared contracts、Chat canonical principal/access、正式 Retriever
-node、opaque hybrid-search port 与 original-query deterministic baseline，但仍没有：
+Task 4 完成后只允许开始 Task 5。当前已有 shared contracts、Chat canonical principal/access、正式 Retriever
+node、opaque hybrid-search port、original-query deterministic baseline，以及 exact-context-bound evidence
+projector/VerifiedEvidenceBundle/structured citation allowlist，但仍没有：
 
 - 正式 FinalResponse node；
 - query rewrite candidate；
-- VerifiedEvidenceBundle projector；
 - terminal FinalResponse Trace；
 - 48-case baseline/Mock/Live authority；
 - Docker/API/browser/main authority。
 
-不得把 Task 3 的 fake-search baseline、PostgreSQL fake-embedding E2E、旧 Chat live、Qwen hybrid search、Markdown
-citation 或 graph descriptor 写成上述能力已完成。
+不得把 Task 3 的 fake-search baseline、Task 4 的本地 evidence projection、PostgreSQL fake-embedding E2E、旧
+Chat live、Qwen hybrid search、Markdown citation 或 graph descriptor 写成 query rewrite、FinalResponse、产品或
+Live 能力已完成。

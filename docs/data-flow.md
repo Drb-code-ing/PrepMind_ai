@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-04。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--3 随后完成，Task 3 落地正式 Retriever node、opaque hybrid-search port 与 original-query deterministic baseline，当前唯一下一任务是 Task 4 VerifiedEvidenceBundle/evidence projector。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--4 随后完成，Task 4 落地 exact-context-bound evidence projector、SafetyGuard/Verifier 保守收紧与本地 structured citation/Markdown adapter，当前唯一下一任务是 Task 5 Retriever query rewrite candidate。
 
 ## 1. 当前边界
 
@@ -286,8 +286,8 @@ authenticated AgentExecutionContextV1 + RetrieverRequestV1
 ```
 
 Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述现有后端 runtime contract，
-不是本 Task 的 Provider 执行证据。正式 Retriever node 也尚未接入 `/api/chat`；Task 4 先建立
-VerifiedEvidenceBundle/evidence projector，后续任务再逐步替换产品 composition。
+不是该 Task 的 Provider 执行证据。Task 3 完成时正式 Retriever node 尚未接入 `/api/chat`，当时只解锁 Task 4
+VerifiedEvidenceBundle/evidence projector；Task 4 现已完成，但产品 composition 仍须由 Task 5--7 逐步替换。
 
 资料管理建议默认关闭 gate 时的 fallback 数据流：
 
@@ -981,11 +981,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> Phase 6.9.8 Task 0--3 complete：design + shared contract + Chat access + Retriever baseline
-       -> current next only：Task 4 VerifiedEvidenceBundle/evidence projector
+  -> Phase 6.9.8 Task 0--4 complete：design + shared contract + Chat access + Retriever baseline + evidence projector
+       -> current next only：Task 5 Retriever query rewrite candidate
 ```
 
-## Phase 6.9.8 Task 0--3 数据流（设计 + shared contract + Chat access + Retriever baseline）
+## Phase 6.9.8 Task 0--4 数据流（设计 + shared contract + Chat access + Retriever baseline + evidence projector）
 
 ```text
 Next /api/chat composition root
@@ -1006,7 +1006,7 @@ Next /api/chat composition root
             -> Chunk.userId + Document.userId + Document.status=DONE
        -> strict RetrieverResultV1；no owner/query/chunk body in Trace
   -> KnowledgeVerifierAgent? + deterministic SafetyGuard
-       -> local evidence projector
+       -> local evidence projector（Task 4 complete；Chat composition still pending）
        -> VerifiedEvidenceBundleV1 max 4 entries
        -> blocked/cross-owner/credential/injection/unknown-safety body removed
   -> FinalResponseAgent
@@ -1068,8 +1068,23 @@ Task 3 actual Retriever effect
        -> Qwen/rewrite/FinalResponse/Provider calls=0
        -> qualityAuthority=deterministic_baseline_only
   -> PostgreSQL owner-isolation E2E uses fixed fake 1536 embedding; not product/Provider authority
-  -> no Chat product wiring, bundle projector, structured citation or terminal Trace yet
-  -> only Task 4 VerifiedEvidenceBundle/evidence projector unlocked
+  -> no Chat product wiring or terminal Trace yet；Task 4 does not replace legacy Chat RAG composition
+
+Task 4 actual evidence projector effect
+  -> formal Retriever result -> exact AgentExecutionContextV1 WeakMap binding
+  -> deterministic owner/SafetyGuard removes blocked/unknown/injection/credential/high-risk/control/cross-owner body
+  -> Verifier trusted/suspicious/conflict/insufficient/skipped + unavailable can only preserve or tighten
+  -> VerifiedEvidenceBundle max 4 entries × 700 UTF-16 code units
+       -> stable score/tie sorting + documentId/chunkId citation identity
+       -> local sourceLabel = 资料 1..N
+  -> model projection only citationId/sourceLabel/excerpt/trustLabel
+  -> local structured allowlist/citation + legacy-compatible Markdown fragment
+  -> ragIncluded=false drops bundle/allowlist/citation/Markdown as one layer
+  -> FinalResponse request/model projection requires the same exact context and run/request/deadline
+  -> Trace summary only fixed disposition/status/reason/counts；no evidence body/owner/token/credential
+  -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
+  -> authority=zero_provider_verified_evidence_projector
+  -> only Task 5 Retriever query rewrite candidate unlocked
 ```
 
 ```text

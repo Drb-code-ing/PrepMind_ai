@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 3 zero-provider Retriever node / original-query deterministic baseline 已完成；下一任务仅 Task 4
+> 状态：Task 4 zero-provider VerifiedEvidenceBundle/evidence projector 已完成；下一任务仅 Task 5 query rewrite candidate
 > 日期：2026-08-04
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_original_query_deterministic_baseline`
+> Current Checkpoint Authority：`zero_provider_verified_evidence_projector`
 
 ## 1. 决策与目标
 
@@ -485,3 +485,25 @@ node/port，但没有改写 Task 0 的设计 authority：
 embedding；没有产品 Web/Server Docker/API/browser、真实 Qwen/DeepSeek、P95/token/CNY/SLA 或 main authority，
 legacy Chat RAG 也尚未切换到该 node。当前只解锁 Task 4 VerifiedEvidenceBundle/evidence projector；完整证据见
 `../../acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`。
+
+## 17. Task 4 完成回执（2026-08-04）
+
+Task 4 以 `zero_provider_verified_evidence_projector` 落成本设计第 7 节的本地证据 authority，但不改写
+Task 0 的设计 authority，也不提前接入 Task 5--7 runtime：
+
+- 正式 Retriever result、VerifiedEvidenceBundle、citation projection、FinalResponse request 与 model projection
+  均通过进程内 WeakMap 绑定同一个 exact `AgentExecutionContextV1`；结构 clone、低层 bundle constructor、跨
+  owner/context 复用、run/request/deadline 漂移与缺失 context 均 fail-closed；
+- projector 先执行 deterministic owner/safety eligibility，再按 Verifier
+  `trusted/suspicious/conflict/insufficient/skipped` 收紧；Verifier unavailable 只能维持或收紧，不能把证据升级；
+- prompt injection、credential、high-risk、control character、unknown safety、blocked 与 cross-owner body 在
+  bundle 前删除；最多保留 4 条，每条截断到 700 UTF-16 code units；稳定 score/tie 排序和 Retriever 的
+  `documentId + chunkId` citation identity 不受输入重排影响；
+- 模型只可见 `citationId/sourceLabel/excerpt/trustLabel`；结构化 citation allowlist 与兼容 Markdown fragment
+  均由本地 adapter 生成。`ragIncluded=false` 时 bundle、allowlist、citation 和 Markdown 整层清零；
+- Trace summary 只保存固定 disposition/status/reason 与计数，不保存正文、owner、token 或 credential。
+
+该 checkpoint 的质量 authority 仅是本地 safety/permission/projection contract；没有读取 credential、调用
+Qwen/DeepSeek、接入 `/api/chat`、实现 FinalResponseAgent/structured stream terminal，或执行 Docker/API/browser/
+Live/main。当前只解锁 Task 5 query rewrite candidate；完整证据见
+`../../acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`。

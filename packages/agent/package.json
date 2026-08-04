@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./critic-rubric": "./src/evals/critic-rubric.ts",
+    "./evidence-projector": "./src/nodes/evidence-projector.ts",
     "./knowledge-dedup": "./src/nodes/knowledge-dedup.ts",
     "./knowledge-organizer": "./src/nodes/knowledge-organizer.ts",
     "./knowledge-verifier": "./src/nodes/knowledge-verifier.ts",

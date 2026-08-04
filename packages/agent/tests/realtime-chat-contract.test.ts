@@ -12,6 +12,7 @@ import {
   parseRetrieverResultV1,
   projectFinalResponseModelInputV1,
   validateFinalResponseStreamV1,
+  type AgentExecutionContextV1,
 } from '../src/contracts/realtime-chat.ts';
 
 const DEADLINE = '2026-08-04T12:00:00.000Z';
@@ -126,8 +127,6 @@ function validBundleInput() {
 }
 
 function validFinalResponseRequest() {
-  const bundle = createVerifiedEvidenceBundleV1(validBundleInput());
-  if (!bundle.ok) throw new Error('test fixture must be valid');
   return {
     schemaVersion: 'final-response-request-v1' as const,
     runId: 'run_1',
@@ -142,13 +141,12 @@ function validFinalResponseRequest() {
       strategy: 'explain_solution' as const,
       instruction: '先说明公式，再给出代入过程。',
     },
-    evidenceBundle: bundle.value,
     toolResults: [],
     contextBudget: {
       maxInputTokens: 6_000,
-      ragIncluded: true,
+      ragIncluded: false,
     },
-    allowedCitationIds: ['cite_1'],
+    allowedCitationIds: [],
     deadlineAt: DEADLINE,
   };
 }
@@ -529,42 +527,63 @@ describe('VerifiedEvidenceBundleV1 and FinalResponseRequestV1', () => {
     }
   });
 
-  test('rejects owner/token/raw fields and clears citations when RAG is omitted', () => {
-    expect(parseFinalResponseRequestV1(validFinalResponseRequest()).ok).toBe(true);
+  test('rejects owner/token/raw fields, low-level bundles, and citations when RAG is omitted', () => {
+    const context = validAnonymousExecutionContext();
+    expect(parseFinalResponseRequestV1(validFinalResponseRequest(), context).ok).toBe(true);
+    expect(parseFinalResponseRequestV1(validFinalResponseRequest(), undefined)).toEqual({
+      ok: false,
+      reasonCode: 'principal_binding_invalid',
+    });
     expect(
-      parseFinalResponseRequestV1({ ...validFinalResponseRequest(), ownerId: 'owner_1' }).ok,
+      parseFinalResponseRequestV1({ ...validFinalResponseRequest(), ownerId: 'owner_1' }, context)
+        .ok,
     ).toBe(false);
     expect(
-      parseFinalResponseRequestV1({ ...validFinalResponseRequest(), bearerToken: 'secret' }).ok,
+      parseFinalResponseRequestV1(
+        { ...validFinalResponseRequest(), bearerToken: 'secret' },
+        context,
+      ).ok,
     ).toBe(false);
+    const lowLevelBundle = createVerifiedEvidenceBundleV1(validBundleInput());
+    expect(lowLevelBundle.ok).toBe(true);
+    if (lowLevelBundle.ok) {
+      expect(
+        parseFinalResponseRequestV1(
+          {
+            ...validFinalResponseRequest(),
+            evidenceBundle: lowLevelBundle.value,
+            contextBudget: { maxInputTokens: 6_000, ragIncluded: true },
+            allowedCitationIds: ['cite_1'],
+          },
+          context,
+        ),
+      ).toEqual({ ok: false, reasonCode: 'bundle_not_locally_projected' });
+    }
     expect(
-      parseFinalResponseRequestV1({
-        ...validFinalResponseRequest(),
-        contextBudget: { maxInputTokens: 6_000, ragIncluded: false },
-      }).ok,
-    ).toBe(false);
-    expect(
-      parseFinalResponseRequestV1({
-        ...validFinalResponseRequest(),
-        allowedCitationIds: ['cite_outside_bundle'],
-      }).ok,
+      parseFinalResponseRequestV1(
+        {
+          ...validFinalResponseRequest(),
+          allowedCitationIds: ['cite_outside_bundle'],
+        },
+        context,
+      ).ok,
     ).toBe(false);
   });
 
-  test('projects exactly the model-visible evidence fields and keeps local IDs hidden', () => {
-    const request = parseFinalResponseRequestV1(validFinalResponseRequest());
+  test('projects a validated no-RAG request without local IDs or raw authority fields', () => {
+    const context = validAnonymousExecutionContext();
+    const request = parseFinalResponseRequestV1(validFinalResponseRequest(), context);
     expect(request.ok).toBe(true);
     if (!request.ok) return;
-    const projection = projectFinalResponseModelInputV1(request.value);
+    const projection = projectFinalResponseModelInputV1(request.value, context);
     expect(projection.ok).toBe(true);
     if (!projection.ok) return;
 
-    expect(Object.keys(projection.value.evidence[0]).sort()).toEqual([
-      'citationId',
-      'excerpt',
-      'sourceLabel',
-      'trustLabel',
-    ]);
+    expect(
+      projectFinalResponseModelInputV1(request.value, validAnonymousExecutionContext()),
+    ).toEqual({ ok: false, reasonCode: 'principal_binding_invalid' });
+
+    expect(projection.value.evidence).toEqual([]);
     const serialized = JSON.stringify(projection.value);
     for (const forbidden of [
       'ownerId',
@@ -580,6 +599,20 @@ describe('VerifiedEvidenceBundleV1 and FinalResponseRequestV1', () => {
     expect(Object.isFrozen(projection.value)).toBe(true);
   });
 });
+
+function validAnonymousExecutionContext(): AgentExecutionContextV1 {
+  const context = createAgentExecutionContextV1(
+    {
+      runId: 'run_1',
+      requestId: 'request_1',
+      principal: { kind: 'anonymous' },
+      deadlineAt: DEADLINE,
+    },
+    { signal: new AbortController().signal },
+  );
+  if (!context.ok) throw new Error('expected valid anonymous execution context');
+  return context.value;
+}
 
 describe('FinalResponseStreamEventV1', () => {
   test('accepts only strict events and a safe local modelRef allowlist', () => {
