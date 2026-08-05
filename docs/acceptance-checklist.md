@@ -2089,11 +2089,20 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 8 focused `8/8`、受影响 Agent/Web `47/47 + 24/24`、Agent full `1252/1252`、Agent typecheck/lint、
       CLI frozen SHA、Prettier/diff/Compose default-off static 与两路独立只读复审通过；未启动 Docker/API/browser、
       修改业务数据或合并 main；
-- [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
+- [x] Task 9A 依据阿里云百炼官方模型与 OpenAI-compatible Embedding 文档冻结北京区
+      `text-embedding-v4 / 1536 / 0.5 CNY per 1M input tokens`、业务空间/legacy endpoint profile、
+      `prompt_tokens == total_tokens` 与 32 次单文本最坏 `262144 tokens / 0.131072 CNY` cap；
+- [x] Task 9A `@repo/ai` strict direct transport 固定 single call/no retry/AbortSignal、exact request/response/index、
+      1536 维 finite non-zero vector、verified usage/CNY 与固定脱敏错误；injected fetch 永久 `synthetic_test`；
+- [x] Task 9A focused `8/8`、AI full `337/337`、AI typecheck/lint、Prettier、diff/link/static 与两路只读复审
+      通过；未读 credential、未调用 Provider、未创建 approved tag/正式 marker/journal/artifact，authority 仅
+      `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`；
+- [ ] Task 9B zero-provider paired runner、DeepSeek/Qwen 独立 accounting、source admission、durability/validator/CLI；
+- [ ] Task 9C fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--8 验收见
+设计、计划与 Task 0--9A 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2104,4 +2113,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
-`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。

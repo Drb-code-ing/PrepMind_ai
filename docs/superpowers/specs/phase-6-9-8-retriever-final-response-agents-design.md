@@ -1,6 +1,6 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 8 zero-provider reviewed Mock/static 已完成；停在 Task 9 fresh 数据边界接受与精确授权门前
+> 状态：Task 9A Qwen zero-provider transport/price contract 已完成；下一步 Task 9B runner/durability
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
@@ -350,9 +350,15 @@ FinalResponseAgent
 - DeepSeek price profile：`deepseek-v4-pro-cny-2026-07-15`，input/output `3/6 CNY / 1M tokens`；
 - Provider endpoint、模型、thinking、price profile 任一漂移都必须在调用前 fail-closed。
 
-Qwen embedding 的正式 Live 成本 authority 必须在 Live admission 前绑定可审计的官方价格 profile；未知价格时
-embedding 成本保持 `null`，不得用 0 代替，且不能通过完整成本门。Task 0 不猜测价格，也不暗示已经有可复用
-的正式 price profile。
+Task 9A 已在 2026-08-05 依据阿里云百炼官方 `text-embedding-v4` 模型页与 OpenAI-compatible Embedding
+接口页冻结北京区价格 profile `qwen-text-embedding-v4-cn-beijing-cny-2026-08-05`：普通同步文本输入
+`0.5 CNY / 1M input tokens`，输出不计费；响应必须提供 `usage.prompt_tokens` 与 `usage.total_tokens`，且本能力
+要求二者相等。北京区 endpoint profile 只允许业务空间
+`https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1` 或官方仍兼容的 legacy
+`https://dashscope.aliyuncs.com/compatible-mode/v1`，并固定 `/embeddings`、`text-embedding-v4`、1536 维。
+Task 9 的 32 次单文本 query embedding 以官方单文本 `8192 tokens` 上限冻结最坏情况预算：最多
+`262144 input tokens / 0.131072 CNY`。这只是 admission/transport 合同；usage、price、任一分母不完整仍使正式
+aggregate 为 `null`，Task 9A 不形成 Live 成本或质量 authority。
 
 ### 12.2 单请求预算
 
@@ -388,7 +394,8 @@ embedding 最多一次；每次必须有唯一 `modelCallId` 和不重复 usage�
   conflict/insufficient notice critical recall=1；
 - rewrite P95 `<=3500ms`，hybrid retrieval P95 `<=5500ms`；
 - FinalResponse TTFT P95 `<=5000ms`、total P95 `<=15000ms`、Chat end-to-end P95 `<=20000ms`；
-- 16 rewrite + 16 FinalResponse 的 DeepSeek run cap `<=0.32 CNY`；Qwen usage/cost 另列且必须可验证；
+- 16 rewrite + 16 FinalResponse 的 DeepSeek run cap `<=0.32 CNY`；Qwen 最多 32 calls、
+  `262144 input tokens / 0.131072 CNY`，usage/cost 独立列示且必须可验证；
 - paired Retriever runtime 对每个 case 分别运行 original-query baseline 与 rewritten-query candidate，Qwen query
   embedding 最多 `32` 次；价格 profile 未冻结前 Qwen cap 和总成本 aggregate 均为 `null`，Task 9 不得 admission；
 - report 不完整、usage/price unknown、任何 critical failure 或任一分母缺失都使正式 aggregate 为 `null`，
@@ -410,7 +417,9 @@ Mock 满分只形成 `mock_quality_not_evidence`，不能启用 production gate�
 | 6    | FinalResponseAgent node、专项 streaming adapter、stream event、固定 failure 与 local citation renderer | 0                |
 | 7    | Chat composition、end-to-end Trace finalization、abort/concurrency/no-loss                             | 0                |
 | 8    | 48-case baseline、reviewed Mock、strict report/validator 与 static checkpoint                          | 0                |
-| 9    | 唯一 controlled-Live paired eval；未授权不得开始                                                       | 需 fresh 授权    |
+| 9A   | Qwen 北京区官方 price/endpoint/usage contract 与严格 direct transport/fault matrix                     | 0                |
+| 9B   | paired runner、DeepSeek/Qwen 独立 accounting、source admission、durability/validator/CLI               | 0                |
+| 9C   | 唯一 controlled-Live paired eval；未授权不得开始                                                       | 需 fresh 授权    |
 | 10   | 分支 Docker/API/可见浏览器/Trace/权限/清理/default-off 验收                                            | 仅按 Task 9 结论 |
 | 11   | 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐                                         | 0                |
 
@@ -418,8 +427,9 @@ Mock 满分只形成 `mock_quality_not_evidence`，不能启用 production gate�
 Phase 6.9.9/6.9.10/6.10/8/9 或博客收尾。
 
 Task 3 的 zero-provider PostgreSQL owner isolation/baseline 测试必须注入固定 embedding 或 fake embedding port，
-不能调用 Qwen。Task 9 才允许在 fresh admission 后消费独立 DeepSeek/Qwen credential；两类 credential、attempt、
-verified usage 与费用必须分开记账。
+不能调用 Qwen。Task 9A/9B 仍然必须使用 injected transport、保持 Provider/credential 计数为 0；只有 Task 9C
+在 fresh admission 后才允许消费独立 DeepSeek/Qwen credential。两类 credential、attempt、verified usage 与费用
+必须分开记账。
 
 ## 14. Task 0 完成标准
 
@@ -600,6 +610,26 @@ Task 0 的设计 authority，也不提前形成 Task 9 controlled-Live、产品�
 
 Task 8 focused `8/8`、Agent full `1252/1252`、typecheck/lint、CLI frozen report、Prettier/diff、Compose default-off
 静态检查与两路独立只读复审通过。未启动 Docker/API/browser、修改业务数据、创建 approved tag/正式 evidence 或
-合并 main。Task 8 完成后必须停止；只有 source parity、fresh 数据边界接受、精确一次性授权与专用 credential
-admission 全部满足后，才可开始 Task 9。完整证据见
+合并 main。Task 8 完成后按当时边界停止；后续审计把 Task 9 拆成 zero-provider 的 9A/9B 与唯一
+controlled-Live 9C。Source parity、fresh 数据边界接受、精确一次性授权与专用 credential admission 的条件只
+适用于 9C，9A/9B 继续严格保持 zero-provider。Task 8 完整证据见
 `../../acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+
+## 22. Task 9A 完成回执（2026-08-05）
+
+Task 8 终审发现，虽然静态 source admission schema 已存在，但正式 Task 9 尚没有可核验 Qwen usage/费用
+transport。Task 9 因而拆成 9A/9B/9C，避免在取得一次性授权后才临时编写 runner：
+
+- `@repo/ai` 新增隔离的 `qwen-text-embedding-v4-provider-v1` direct transport；不读取 env、不记录 endpoint/key/
+  provider raw error、不 retry，也不拥有 source admission、marker 或 artifact；
+- config 只接受北京业务空间或 legacy 北京域名、exact `/compatible-mode/v1`、`text-embedding-v4`、1536 维与已审计
+  price profile；请求固定 `/embeddings`、float encoding、redirect error、credential omit；
+- response 只接受 exact list/model/id/data/usage，按唯一连续 index 重排，逐向量检查 1536 个有限数且非零；
+  `prompt_tokens == total_tokens` 且不超过每文本 8192，费用由 `0.5 CNY / 1M input tokens` 本地重算；
+- injected fetch 永久标记 `synthetic_test`。Fault matrix 覆盖 endpoint/config/request、HTTP/transport/abort、JSON/
+  content-type、shape/index/vector/usage 与 no-retry；全程真实 Qwen/DeepSeek/credential calls=0。
+
+Task 9A authority 仅 `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`。它只解锁
+Task 9B runner/durability，不创建 approved tag/marker/journal/artifact，也不授权 Task 9C、Docker/API/browser 或
+main。完整证据见
+`../../acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。

@@ -9,6 +9,10 @@ describe('@repo/ai public model agent runtime exports', () => {
     expect(typeof module.createOpenAICompatibleStructuredExecutor).toBe('function');
     expect(typeof module.createFirstPartyDeepSeekV4Runtime).toBe('function');
     expect(typeof module.createFirstPartyDeepSeekV4ProDirectAdapter).toBe('function');
+    expect(typeof module.createQwenTextEmbeddingV4Provider).toBe('function');
+    expect(module.QWEN_TEXT_EMBEDDING_V4_PRICE_PROFILE).toBe(
+      'qwen-text-embedding-v4-cn-beijing-cny-2026-08-05',
+    );
     expect(typeof module.createPhase697V7WireDiagnostics).toBe('function');
     expect(module.FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION).toBe(
       'first-party-deepseek-v4-pro-direct-v1',

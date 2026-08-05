@@ -1244,8 +1244,18 @@ Task 8 已以 `zero_provider_retriever_final_response_reviewed_mock_static` 完�
 - Provider/credential/Qwen calls 与正式 marker/journal/evidence/recovery 均为 0；source admission contract 已实现但
   `sourceAdmissionExecuted=false`，未启动 Docker/API/browser 或形成产品/main authority。
 
-当前唯一下一任务为 Task 9，但 fresh 数据边界接受与精确一次性授权尚未提供；Live、产品/main 与后续阶段仍未
-完成。完整设计、计划与 Task 0--8 证据见
+Task 9A 已以 `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none` 完成 Qwen
+`text-embedding-v4` 独立 transport/price 合同：
+
+- 固定北京区 official endpoint/profile、1536 维、`0.5 CNY / 1M input tokens` 与 32 次调用最坏
+  `262144 tokens / 0.131072 CNY` cap；
+- direct fetch、single-call/no-retry、AbortSignal、strict response/vector/index/usage validation，费用只由本地冻结价格
+  与 verified `prompt_tokens == total_tokens` 重算；
+- injected fetch 永久标记 `synthetic_test`。Task 9A 未读取 credential、未调用 Provider、未接产品 RAG、未创建
+  approved tag/marker/journal/artifact/recovery，也不形成 Live/产品/main authority。
+
+当前唯一下一任务为 Task 9B zero-provider runner/durability；fresh 数据边界接受与精确一次性授权只在 Task 9C
+controlled-Live 前获取。Live、产品/main 与后续阶段仍未完成。完整设计、计划与 Task 0--9A 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1256,7 +1266,8 @@ Task 8 已以 `zero_provider_retriever_final_response_reviewed_mock_static` 完�
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
-`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

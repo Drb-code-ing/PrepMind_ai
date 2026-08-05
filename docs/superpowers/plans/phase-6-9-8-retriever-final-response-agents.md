@@ -2,15 +2,15 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 8 reviewed Mock/static 完成；停在 Task 9 fresh 数据边界接受与精确授权门前
+> 当前状态：Task 9A Qwen transport/price contract 完成；下一步 Task 9B zero-provider runner/durability
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
 
 - 每个 Task 只处理一个可独立验证的关注点，并形成一个提交。
 - 当前分支始终来自已推送的最新 `main`；不创建 worktree，不从功能分支再开分支。
-- Task 0--8 全部 zero-provider；禁止读取或输出 `.env`、credential，禁止调用 Qwen/DeepSeek。
-- Task 9 必须在静态/Mock checkpoint、source parity、fresh 数据边界接受和精确一次性授权后单独执行。
+- Task 0--8 与 Task 9A/9B 全部 zero-provider；禁止读取或输出 `.env`、credential，禁止调用 Qwen/DeepSeek。
+- Task 9C 必须在静态/Mock checkpoint、9A/9B、source parity、fresh 数据边界接受和精确一次性授权后单独执行。
 - Mock、synthetic、旧 Chat Live 或 Phase 6.9.7 evidence 均不能替代 Phase 6.9.8 质量 authority。
 - 任何 owner、安全、usage、价格、分母或 Trace terminal 不可验证都 fail-closed。
 - 每个 Task 完成后同步 AGENTS/DEVLOG/roadmap/acceptance；只有新增运行配置时才更新 dev-start/README。
@@ -399,14 +399,38 @@ canonical principal
 - 完整证据见
   `../../acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
 
-### 停止点
+### 历史停止点
 
-Task 8 已完成并停在此处。只有 fresh 数据边界接受和 exact Phase 6.9.8 authorization 才能执行 Task 9；当前没有
-该接受与授权，不得预读 credential、创建 approved tag/marker/evidence 或发起 Provider/Qwen 调用。
+Task 8 完成时没有 fresh 数据边界接受或 exact Phase 6.9.8 authorization，因此不得直接执行 controlled-Live。
+后续审计确认 Task 9 还缺正式 Qwen transport 与 runner/durability；这些缺口必须先 zero-provider 完成，不能等到
+一次性授权后临时编写。
 
-## Task 9：唯一 controlled-Live paired eval
+## Task 9：paired eval 工程准备与唯一 controlled-Live
 
-### Admission
+### Task 9A：Qwen transport / official price contract（已完成，zero-provider）
+
+- 官方北京区 profile：`text-embedding-v4 / 1536 / 0.5 CNY per 1M input tokens`；OpenAI-compatible 响应
+  `prompt_tokens == total_tokens`；
+- endpoint 只允许北京业务空间或 legacy 北京域名，path/model/dimensions/profile 漂移均在 dispatch 前关闭；
+- 独立 direct fetch 固定单次调用/no retry/AbortSignal，严格校验 response、index、1536 维有限非零向量、verified
+  usage 与本地 CNY；
+- 32 次单文本 embedding 的 Task 9 cap 冻结为 `262144 input tokens / 0.131072 CNY`；
+- injected fetch fault matrix 与 public export 通过，Provider/credential/正式 evidence=0；
+- authority 仅 `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`，只解锁 9B。
+
+### Task 9B：paired runner / durability / admission（下一任务，zero-provider）
+
+- 新建独立 Task 9 report/schema/scorer/gate，不能修改 Task 8 frozen manifest/report；
+- 先跑 16 guards，再按 case 串行执行 original/rewrite search pair，最后执行 16 FinalResponse；
+- DeepSeek 与 Qwen 各自拥有 dispatch/response/usage/cost/timeout counters，任一不完整使 aggregate=`null`；
+- source parity、approved tag、dedicated credential gate、exclusive marker、dispatch-before-call fsynced hash-chain
+  journal、hard-link artifact、strict validator 与 crash-only seal；
+- recovery 只补安全 terminal/not-started，不调用 Provider，禁止 retry/resume/replay/backfill；
+- 使用 injected DeepSeek/Qwen transport 完成 fault/durability/static 验证；不创建正式 tag/marker/evidence。
+
+### Task 9C：唯一 controlled-Live paired eval
+
+#### Admission
 
 - branch/upstream/remote/source tag SHA 完全一致；
 - working tree clean；
@@ -416,18 +440,18 @@ Task 8 已完成并停在此处。只有 fresh 数据边界接受和 exact Phase
 - unique marker 不存在；
 - fresh data-retention acceptance + exact authorization。
 
-### 正式运行
+#### 正式运行
 
 - 16 Retriever guard；
 - 16 query-rewrite paired runtime；
 - 16 FinalResponse runtime；
 - max DeepSeek calls=32、run cap `0.32 CNY`；
-- original/rewrite paired search 的 Qwen embedding 最多 32 次，attempt/usage/cost 独立记录；Qwen price profile 与
-  cap 未冻结时禁止 admission；
+- original/rewrite paired search 的 Qwen embedding 最多 32 次，attempt/usage/cost 独立记录；冻结 Qwen cap 为
+  `262144 input tokens / 0.131072 CNY`；
 - no retry/resume/replay/backfill；
 - strict terminal/evidence publication。
 
-### Gate
+#### Gate
 
 完全复用设计文档 `12.3`。任一分母、usage、price、Trace terminal 或 critical safety 不完整时 aggregate
 为 null，gate fail-closed；失败后先封存和复盘，不得盲目重跑。
@@ -461,15 +485,16 @@ Task 8 已完成并停在此处。只有 fresh 数据边界接受和 exact Phase
 
 ## 当前停止边界
 
-Task 0--8 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Task 0--8 与 Task 9A 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
-48-case reviewed Mock/static checkpoint。当前仍没有：
+48-case reviewed Mock/static checkpoint 和严格 Qwen price/endpoint/usage transport。当前仍没有：
 
-- Task 9 fresh-admission controlled-Live 质量 authority；
+- Task 9B runner/durability 与 Task 9C fresh-admission controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 
-不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、旧 Chat Live、Qwen hybrid search 或 graph descriptor
-写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。当前只允许停下并等待 Task 9 的 fresh 数据边界接受与
-精确一次性授权。
+不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、旧 Chat Live、Qwen
+hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。当前只允许推进
+Task 9B zero-provider 工程；其完成、提交、推送、复审与 source parity 之前，不创建 approved tag，也不请求或消费
+Task 9C 的精确一次性授权。

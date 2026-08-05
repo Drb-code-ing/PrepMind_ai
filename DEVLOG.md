@@ -1,5 +1,40 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Task 9A Qwen Embedding transport / official price contract：
+>
+> Task 8 终审确认正式 Task 9 仍缺 Qwen 可核验 usage/CNY transport 与独立 runner/durability，不能在取得一次性
+> Live 授权后才临时补代码。因此 Task 9 拆成 9A/9B/9C；本原子任务先以
+> `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none` 完成 9A，后续 9B 仍为
+> zero-provider，只有 9C 才允许在 fresh 精确授权后执行唯一 controlled-Live。
+>
+> 2026-08-05 重新核对阿里云百炼官方 `text-embedding-v4` 模型页、OpenAI-compatible Embedding 接口与同步
+> API：北京区普通文本输入为 `0.5 CNY / 1M tokens`，业务空间 endpoint 为
+> `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`，官方 legacy 北京域名仍兼容；模型支持
+> 1536 维、单文本 8192 tokens、单次最多 10 条，响应含相等的 `prompt_tokens/total_tokens`。据此冻结 price
+> profile `qwen-text-embedding-v4-cn-beijing-cny-2026-08-05`、endpoint profile 与 Task 9 的 32 次单文本最坏
+> `262144 input tokens / 0.131072 CNY` cap；北京/新加坡价格不得混用，unknown usage/price 不能按 0 处理。
+>
+> `@repo/ai` 新增 `qwen-text-embedding-v4-provider-v1` 隔离 direct transport：不读取 env、不 retry、不保存 endpoint/
+> key/raw error；config 只接受北京业务空间/legacy host、exact path/model/dimensions/profile。请求固定
+> `/embeddings`、float、redirect error、credential omit；response strict 校验 exact list/model/id/data/usage、唯一连续
+> index、1536 维 finite non-zero vector、`prompt_tokens == total_tokens` 与 provider token 上限，再按官方 price
+> 本地重算 CNY 并 deep-freeze。Injected fetch 永久标记 `synthetic_test`，不能被 runner 提升为 Live authority。
+>
+> Focused provider/export `8/8 / 179 expect()`、AI full `337/337 / 2598 expect()`、AI typecheck/lint、Prettier、
+> `git diff --check`、全仓 `343 Markdown / 167 relative links / missing=0` 与正式 Task 9 tag/.tmp/tracked evidence
+> `0/0/0` 均通过。两路独立只读复审中 security 无 blocker，contract 复审要求补齐官方可审计价格来源，现已由
+> 源码 source URL 常量与 acceptance 第 2 节完成。本任务未读取根 `.env`/credential、未调用 Qwen/DeepSeek/其它
+> Provider、未启动 Docker/API/browser、未创建 approved tag/正式 marker/journal/artifact/recovery、未修改业务数据
+> 或合并 main。验收见
+> `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
+>
+> 当前唯一下一原子任务是 Task 9B：独立 report/gate、16 guard + 16 original/rewrite paired retrieval + 16
+> FinalResponse scheduler、DeepSeek/Qwen 独立 attempt/usage/CNY、source admission、exclusive marker、dispatch-before-
+> call hash-chain journal、hard-link artifact、strict validator 与 crash-only seal。9B 完成、提交、推送和复审前不创建
+> approved tag；Task 9C fresh 数据边界接受与精确授权尚未开始。回顾时可以问：为什么产品 Qwen 已可用仍缺 eval
+> usage authority？为什么北京/新加坡要分 price profile？为什么 injected fetch 只能是 synthetic？为什么 transport
+> 不自己拥有 runner timeout/journal？
+>
 > 2026-08-05 — Phase 6.9.8 Task 8 Retriever / FinalResponse reviewed Mock/static：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 7 基线
@@ -39,8 +74,8 @@
 > 本地未跟踪、由 `.gitignore` 排除且未暂存。验收见
 > `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
 >
-> Task 8 完成后按计划停止。当前唯一下一任务是 Task 9；必须先具备已推送 source parity、fresh 数据边界接受、
-> 精确 Phase 6.9.8 一次性授权与专用 credential admission，不能把本 Mock checkpoint 升级为 Live authority。
+> Task 8 完成后按当时计划停止；当时记录的下一任务是 Task 9 fresh admission，且不能把 Mock checkpoint 升级为
+> Live authority。后续审计发现正式 Qwen transport/runner 仍缺失，现已由上方 Task 9A/9B/9C 拆分取代该旧停止点。
 > 回顾时可以问：为什么 Task 3 与 Task 8 original baseline 指标不同？为什么 prompt-only responder 不能导入 oracle？
 > 为什么 synthetic CNY/P95 不能形成质量 authority？为什么 source admission schema 已实现仍要记录未执行？
 >

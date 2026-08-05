@@ -126,8 +126,8 @@ schema 或 requestId mismatch 都使用固定失败结果，不保留 raw respon
 | Total Provider calls      | `0`              |
 
 `nDCG@5=0.813219437888` 和 Top1 `0.571428571429` 是未修饰 original-query baseline，不应被润色成正式质量门已通过。
-Task 5 的 rewrite candidate 必须在同一冻结 dataset 上独立证明 uplift；Task 9 才能在 fresh admission 后形成正式
-Provider/质量 authority。
+Task 5 的 rewrite candidate 必须在同一冻结 dataset 上独立证明 uplift；后续 Task 9 拆分后，只有 9C 才可能在
+fresh admission 下形成正式 Provider/质量 authority，9A/9B 的 zero-provider 工程不能替代它。
 
 ## 5. PostgreSQL Owner-Isolation E2E
 

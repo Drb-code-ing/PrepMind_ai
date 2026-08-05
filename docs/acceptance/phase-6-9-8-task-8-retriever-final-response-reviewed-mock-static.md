@@ -18,8 +18,9 @@ expected 比较。
 本地权限/安全门、prompt-only Mock 运行路径、指标重算与报告完整性在当前源码下自洽；不证明 DeepSeek/Qwen 的真实
 质量、真实费用、P95、产品 API、Docker、浏览器、SLA 或生产可用性。
 
-Task 8 完成后必须停止。Task 9 只有在当前提交已推送且 source parity 成立、fresh 数据保留边界重新接受、精确
-Phase 6.9.8 一次性授权与专用 credential admission 全部满足后，才可独立执行；本任务没有创建或消费该授权。
+Task 8 完成后按当时边界必须停止。后续审计发现正式 Qwen usage/price transport 与 paired runner 尚未实现，因此
+Task 9 已拆成 zero-provider 的 9A/9B 与唯一 controlled-Live 9C；当前提交已推送、source parity、fresh 数据保留
+边界、精确一次性授权与专用 credential admission 的条件只适用于 9C。本 Task 8 没有创建或消费该授权。
 
 ## 2. 为什么需要这个任务
 
@@ -165,7 +166,7 @@ bun --filter @repo/agent eval:phase-6-9-8:static
 
 ## 9. 明确未完成
 
-- Task 9 fresh admission 下的唯一 controlled-Live paired gate；
+- Task 9B zero-provider paired runner/durability 与 Task 9C fresh admission 下的唯一 controlled-Live paired gate；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 指标、verified usage/CNY 与 16-sample P95；
 - Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - Task 11 文档终审、main `--no-ff` 合并、main default-off 回放与远程 main SHA 对齐；
@@ -179,4 +180,5 @@ bun --filter @repo/agent eval:phase-6-9-8:static
 - 为什么 synthetic CNY 可以做预算回归，却不能写成 verified cost？
 - 为什么 16 个 runtime case 不生成 P95 authority？
 - 为什么 source admission validator 已实现，Task 8 报告仍必须写 `sourceAdmissionExecuted=false`？
-- 为什么 Task 8 gate passed 仍是 `qualityAuthority=none`，并必须停在 Task 9 fresh authorization 门前？
+- 为什么 Task 8 gate passed 仍是 `qualityAuthority=none`，且后续必须先补 9A/9B zero-provider 工程再进入 9C
+  fresh authorization？

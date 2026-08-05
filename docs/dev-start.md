@@ -1573,17 +1573,19 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
 - SR7 main/default-off 验收已完成：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace；精确 Tutor
   step-check 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Trace 为 Mock、成本
   0；两个合成账号、tracked Outbox 与浏览器业务数据 residue=0；
-- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--8 也已完成；Task 8 只形成
+- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--8 与 Task 9A 也已完成；Task 8 只形成
   `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`。固定 48-case 的 guard、rewrite、
   FinalResponse 均 `16/16`，Provider/credential/Qwen 与正式 marker/journal/evidence/recovery 均为 0；两个模型 gate
   仍 default-off，同步流不创建 BackgroundJob/Outbox。Task 7 数据库 E2E 的 Redis/PostgreSQL
-  `environment_blocked` 历史不由 Task 8 倒写为通过。当前唯一下一任务是 Task 9，但 fresh 数据边界接受和精确一次
-  性授权尚未提供；Live/产品/main、Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
+  `environment_blocked` 历史不由 Task 8 倒写为通过。Task 9A 只冻结 Qwen 北京区 official
+  price/endpoint/usage 与 strict direct transport，仍是 Provider/credential/formal evidence 全零的 contract。
+  当前唯一下一任务是 Task 9B zero-provider runner/durability；fresh 数据边界接受与精确一次性授权只在后续
+  Task 9C controlled-Live 前获取。Live/产品/main、Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
-### Phase 6.9.8 Task 0--8 运行边界
+### Phase 6.9.8 Task 0--9A 运行边界
 
 Task 5/6 已把 Retriever query rewrite 与 FinalResponse 的三项变量分别加入 tracked safe example 与 Docker
 Compose `web` allowlist；默认仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。不要开启 gate、
@@ -1603,14 +1605,21 @@ client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、Revi
 替代。Task 7 已把两组 runtime bundle 接入 `/api/chat`，但 tracked default 仍为 false；普通本地启动不会执行
 query rewrite 或新的真实 FinalResponse Provider stream，只走 gate-off/Mock/安全降级路径。Task 8 的静态 runner
 只使用 prompt-only in-process Mock 与固定 fake search，不读取模型 credential、调用 Qwen/DeepSeek、启动 Docker/
-API/browser 或修改业务数据。当前停在 Task 9 授权门前；不要为 Task 8/9 擅自修改本地启动命令、打开 gate、读取
-根 `.env` 或创建正式 evidence。
+API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不读取 env，所有测试只使用 injected fetch；
+它没有接入产品 RAG service，也没有创建正式 evidence。当前只允许推进 Task 9B zero-provider 工程；不要为
+Task 8/9A/9B 擅自修改本地启动命令、打开 gate、读取根 `.env` 或创建正式 evidence。
 
 Task 8 的安全静态回归命令：
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-task8.test.ts
 bun --filter @repo/agent eval:phase-6-9-8:static
+```
+
+Task 9A 的安全 provider/export 回归命令：
+
+```powershell
+bun test packages/ai/tests/qwen-text-embedding-v4-provider.test.ts packages/ai/tests/model-agent-exports.test.ts
 ```
 
 CLI 只输出固定 schema/authority/SHA、计数、指标和 synthetic cost；不输出 prompt、回答、owner、chunk、credential、
@@ -1620,7 +1629,7 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
 补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
 
-设计与 Task 0--8 验收见
+设计与 Task 0--9A 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
@@ -1630,7 +1639,8 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
-`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/
