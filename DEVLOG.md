@@ -1,5 +1,50 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Task 9B Runner / Durability / Admission：
+>
+> 在 Task 9A Qwen strict transport 之后，本任务以
+> `zero_provider_retriever_final_response_runner_durability / qualityAuthority=none` 完成正式 Task 9 eval 的
+> report/gate、runner、source admission、durability、strict validator 与未来 9C production CLI。固定调度为先跑
+> 16 个 zero-call guard，再串行推进 16 个
+> `original Qwen retrieval -> DeepSeek rewrite -> candidate Qwen retrieval` pair，最后运行 16 个 DeepSeek
+> FinalResponse；完整分母为 64 calls，Qwen/DeepSeek 各 32。
+>
+> Qwen cap 固定为 `262144 input tokens / 0.131072 CNY`，DeepSeek cap 为 `0.32 CNY`，总 cap 为
+> `0.451072 CNY`。两 Provider 独立记录 attempt/dispatch/response/verified usage/token/CNY；任一分母、usage、价格
+> 或 terminal 不完整时相关 aggregate=`null`。普通 semantic mismatch 留在固定分母中由最终 gate 失败；首个
+> guard/runtime/schema/usage/budget/timeout/abort/durability contract failure 打开 breaker，后续 schedule 以
+> not-started terminal 保留，禁止 retry/resume/replay/backfill。
+>
+> Source admission 固定 branch/HEAD/upstream/origin/approved-tag/clean-tree/formal-artifact-zero 与 exact-commit blob
+> bundle SHA；runner 与 reservation 分别消费独立 WeakMap opaque capability，调用者不能伪造 authority/source/
+> credentialReads。Reservation 前重新读取 Git observation，关闭 admission-to-marker source drift。正常 evidence
+> 使用 exclusive marker、dispatch-before-call fsynced hash-chain journal、exclusive temp + hard-link artifact 与
+> strict recomputing validator；crash-only seal 只解释 durable prefix，不读取 credential、不构造 transport、不继续
+> 执行或重放调用。句柄 stat/path lstat dev+ino 围栏、journal/lineage/tail tamper、active owner、duplicate claim 与
+> publication conflict 均 fail-closed。
+>
+> Reviewed Mock 真实穿过 Task 9 runner/wire/scorer：guard `16/16`，Qwen/DeepSeek wire+usage 均
+> `32/32/32/32`，rewrite original/candidate Recall@5 `0.875/1`、nDCG@5 `0.56923614767/1`、uplift
+> `0.43076385233`；FinalResponse strict `16/16`，grounded/citation/critical notice 均为 `1`，安全失败为 0。
+> Factory/report SHA 为 `38e35703...a586 / 820d7b2a...f07`。Gate 固定
+> `task9b_mock_quality_not_evidence / qualityAuthority=none`；synthetic cost `0.02951 CNY` 与 synthetic P95 不是
+> Provider bill 或 SLA。临时目录完整 durable Mock 得到 64-call、372-record journal、hard-link artifact、validator
+> `ok=true`，随后精确删除。
+>
+> Task 9B focused `27/27`、Agent full `1279/1279 / 23051 expect()`、AI full
+> `337/337 / 2598 expect()`、Agent typecheck/source lint、Prettier、`git diff --check`、CodeGraph sync 与
+> Markdown `344 files / 168 links / missing=0` 通过；authority/contract/durability/docs 四路独立终审均无
+> blocker。
+> 全程 Provider/credential/Qwen external calls=`0/0/0`；未读取根 `.env`，未创建 approved tag 或正式 marker/
+> journal/artifact/recovery claim，未启动 Docker/API/browser，未修改业务数据或合并 main。验收见
+> `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
+>
+> 当前唯一下一原子任务是 Task 9C fresh admission + 唯一 controlled-Live。必须先完成 Task 9B 提交/推送/
+> 复审与 source parity，再单独取得 fresh DeepSeek/Qwen 数据边界接受和精确一次性授权；此前不得创建 approved
+> tag、读取专用 credential 或调用 Provider。回顾时可以问：为什么 16 个 rewrite pair 产生 48 次调用？为什么
+> 双 Provider 必须独立记账？为什么 evidence I/O failure 不能伪装为 Provider failure？为什么 crash seal 不能
+> resume？为什么 Mock 的完整 `32/32/32/32` 仍是 `qualityAuthority=none`？
+>
 > 2026-08-05 — Phase 6.9.8 Task 9A Qwen Embedding transport / official price contract：
 >
 > Task 8 终审确认正式 Task 9 仍缺 Qwen 可核验 usage/CNY transport 与独立 runner/durability，不能在取得一次性

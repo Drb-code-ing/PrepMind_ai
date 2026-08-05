@@ -2,7 +2,7 @@
 
 > 当前版本：2026-08-05。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。当前只解锁 Task 9B zero-provider runner/durability，Task 9C fresh authorization 尚未开始。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。Task 9B 又完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。当前只解锁 Task 9C fresh admission + 唯一 controlled-Live。
 
 ## 1. 当前边界
 
@@ -30,8 +30,13 @@
   direct transport，不读取 env、不 retry、不拥有 runner timeout/source admission/durability。Config 固定北京业务空间
   或 legacy host、`/compatible-mode/v1`、`text-embedding-v4/1536` 与官方价格 profile；response 固定 exact
   index/vector/`prompt_tokens == total_tokens`，费用按 `0.5 CNY / 1M input tokens` 本地重算。Injected fetch 永久
-  `synthetic_test`。Task 9A 没有替换产品 Nest `EmbeddingService` 或 knowledge API；Task 9B 才负责 32-call cap、
-  watchdog、journal、terminal 与 aggregate，Task 9C 才可能在 fresh 授权后调用真实 Qwen。
+  `synthetic_test`。Task 9A 没有替换产品 Nest `EmbeddingService` 或 knowledge API。
+- Task 9B eval runner 职责：独立 Task 9 lineage 固定 16 guard + 64-call schedule；每个 rewrite pair 串行经过
+  original Qwen、DeepSeek rewrite、candidate Qwen，全部 pair 收口后再执行 16 个 DeepSeek FinalResponse。Qwen/
+  DeepSeek 各 32 次并独立记录 attempt/dispatch/response/verified usage/token/CNY；任一分母或 terminal 不完整时相关
+  aggregate 为 `null`。Source admission、双 opaque capability、exclusive marker、dispatch-before-call hash-chain
+  journal、hard-link artifact、strict validator 与 crash-only seal 只解决唯一评测的执行和证据可靠性。Task 9B
+  Reviewed Mock 永久 `qualityAuthority=none`；只有 Task 9C 才可能在 fresh 授权后调用真实 Qwen/DeepSeek。
 - Provider Transport Diagnostic 职责：Recovery R1 的新 adapter 只在实例内存中保存 frozen `version + subtype`，用 own data descriptor 和最多四层 cause 将 fetch throw 映射为九个固定类别；公共 runtime/error/Trace 仍只接收原有 `transport`。Recovery R2 仅在独立 zero-network canary runner 中用模块内 synthetic responder 消费该 adapter。Recovery R3 的真实 composition 仍与产品 Tutor/Organizer 分离，只能在 exact confirmation、专用 credential、clean/tracking source 和未消费 marker 同时满足时构造一次 transport；结果只进入 diagnostic-only artifact，不能反向诊断 V9，也不能自动成为 Provider 外部健康或 Agent 语义事实。
 - Provider Canary V2 职责：C1 的 proxy attestation 只存在于当前进程并只能消费一次；C2 public CLI 固定执行 preflight -> source -> approval/dedicated credential -> exclusive marker -> single fact-free dispatch -> terminal -> publication，不接受 transport 或输出注入。Marker、hash-chain journal 与 hard-link artifact 只解决一次性执行和证据 durability，不负责 Tutor/Organizer 语义、产品接线或业务写入。唯一 L1 已以 `complete / strict_response_with_verified_usage` 封存，但仍为 `qualityAuthority=none`；它只向 P1 提供一次 Provider health diagnostic，不得成为 semantic 或产品输入。
 - Small-sample G2 职责：public CLI 只接收 `args + AbortSignal`，固定 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication；G2 当时要求未来 L2 source admission 绑定专用 approved tag，S2 本身不创建该 tag。Runner 先执行 8 guards，再串行推进 8 pairs，pair 内 Tutor/Organizer lane 各自拥有 budget/abort/timeout/terminal。Crash-only seal 只补当前开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 `not_started_quality_breaker`；不读取 credential、不构造 transport、不调用 Provider，也不是 resume/replay。G2 只形成 `zero_provider_runner_durability`。
@@ -990,11 +995,11 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
   -> Phase 6.9.8 Task 0--8 complete：design + contracts + Chat access + Retriever/evidence/rewrite + final stream + composition/Trace + reviewed Mock/static
   -> Task 9A complete：Qwen Beijing official price/endpoint/usage + strict direct transport / providerCalls=0
-       -> current next only：Task 9B zero-provider runner/durability
-       -> Task 9C still requires fresh data-boundary acceptance + exact one-shot authorization
+  -> Task 9B complete：16 guards + 64 calls + dual-provider accounting + admission/durability/validator / providerCalls=0
+       -> current next only：Task 9C fresh admission + exact one-shot controlled-Live
 ```
 
-## Phase 6.9.8 Task 0--8 + Task 9A 数据流（含正式 Chat composition、terminal Trace 与 Qwen transport contract）
+## Phase 6.9.8 Task 0--9B 数据流（含 Chat composition、Qwen transport 与 eval durability）
 
 ```text
 Next /api/chat composition root
@@ -1195,14 +1200,46 @@ Task 9A actual Qwen transport effect
   -> injected fetch => synthetic_test；real Provider/credential/formal evidence=0
   -> Task 9 worst-case Qwen budget 32 calls / 262144 input tokens / 0.131072 CNY
   -> authority=zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none
-  -> only Task 9B runner/durability unlocked；Task 9C/Docker/main remain blocked
+  -> Task 9B runner/durability subsequently completed
+
+Task 9B fixed eval effect
+  -> 16 guards first / all zero-call
+  -> 16 rewrite pairs serial
+       -> original retrieval：Qwen text-embedding-v4
+       -> query rewrite：DeepSeek V4 Pro non-thinking
+       -> candidate retrieval：Qwen text-embedding-v4
+  -> 16 FinalResponse after every pair：DeepSeek V4 Pro non-thinking stream
+  -> fixed call schedule 64
+       -> Qwen 32 / 262144 input tokens max / 0.131072 CNY max
+       -> DeepSeek 32 / 0.32 CNY max
+       -> aggregate 0.451072 CNY max
+       -> incomplete denominator/usage/price/terminal => related aggregate=null
+  -> source admission
+       -> branch == fixed branch
+       -> HEAD == upstream == origin branch == approved source tag commit
+       -> clean tree + formal Task 9C files=0 + exact-commit source bundle SHA
+       -> runner/reservation consume separate WeakMap capabilities once
+       -> reservation rechecks live source observation before marker
+  -> durability
+       -> exclusive marker -> attempt_reserved
+       -> call_reserved -> dispatch_started -> response_received -> usage_verified -> call_terminal
+       -> run_terminal -> publication_started -> hard-link artifact -> evidence_published
+       -> strict validator recomputes journal/report/gate/logical+physical SHA/allowed files
+       -> crash-only seal closes durable prefix；no credential/transport/retry/resume/replay/backfill
+  -> Reviewed Mock
+       -> Qwen/DeepSeek wire+usage 32/32/32/32 each
+       -> rewrite nDCG 0.56923614767 -> 1；FinalResponse/safety full pass
+       -> task9b_mock_quality_not_evidence / qualityAuthority=none
+  -> real Provider/credential/Qwen external/formal evidence 0/0/0/0
+  -> only Task 9C fresh admission + one-shot controlled-Live unlocked；Docker/main remain blocked
 ```
 
-Task 6--9A 完整证据见
+Task 6--9B 完整证据见
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
 
 ```text
 P1/G1/G2 Small-sample Semantic Gate（design + contract/baseline + durability / providerCalls=0）

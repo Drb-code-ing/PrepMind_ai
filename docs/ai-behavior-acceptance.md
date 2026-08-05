@@ -1254,8 +1254,21 @@ Task 9A 已以 `zero_provider_qwen_embedding_transport_price_contract / qualityA
 - injected fetch 永久标记 `synthetic_test`。Task 9A 未读取 credential、未调用 Provider、未接产品 RAG、未创建
   approved tag/marker/journal/artifact/recovery，也不形成 Live/产品/main authority。
 
-当前唯一下一任务为 Task 9B zero-provider runner/durability；fresh 数据边界接受与精确一次性授权只在 Task 9C
-controlled-Live 前获取。Live、产品/main 与后续阶段仍未完成。完整设计、计划与 Task 0--9A 证据见
+Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / qualityAuthority=none` 完成正式评测地基：
+
+- 固定 16 guard-first、16 个 original-Qwen/rewrite-DeepSeek/candidate-Qwen 串行 pair 与 16 个 FinalResponse；
+  64-call 分母中 Qwen/DeepSeek 各 32；
+- 双 Provider 分别记录 attempt/dispatch/response/verified usage/token/CNY，费用 cap 为
+  `0.131072 / 0.32 / total 0.451072 CNY`；任一分母、price、usage 或 terminal 不完整时 aggregate=`null`；
+- source parity、双 opaque single-use capability、exclusive marker、dispatch-before-call hash-chain journal、
+  hard-link artifact、strict validator 与 crash-only seal 已完成；recovery 不读取 credential、不调用 Provider、不
+  retry/resume/replay/backfill；
+- Reviewed Mock 的 guard `16/16`、两 Provider wire+usage `32/32/32/32`、rewrite nDCG uplift
+  `0.43076385233`、FinalResponse/safety 均通过，但 gate 固定
+  `task9b_mock_quality_not_evidence / qualityAuthority=none`；Provider/credential/approved tag/正式 evidence 为 0。
+
+当前唯一下一任务为 Task 9C fresh admission + 唯一 controlled-Live；fresh 数据边界接受与精确一次性授权尚未
+取得。Live、产品/main 与后续阶段仍未完成。完整设计、计划与 Task 0--9B 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1267,7 +1280,8 @@ controlled-Live 前获取。Live、产品/main 与后续阶段仍未完成。完
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

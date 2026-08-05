@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9A Qwen transport/price contract 完成；下一步 Task 9B zero-provider runner/durability
+> 当前状态：Task 9B zero-provider runner/durability/admission 完成；下一步 Task 9C fresh controlled-Live admission
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -418,7 +418,7 @@ Task 8 完成时没有 fresh 数据边界接受或 exact Phase 6.9.8 authorizati
 - injected fetch fault matrix 与 public export 通过，Provider/credential/正式 evidence=0；
 - authority 仅 `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`，只解锁 9B。
 
-### Task 9B：paired runner / durability / admission（下一任务，zero-provider）
+### Task 9B：paired runner / durability / admission（已完成，zero-provider）
 
 - 新建独立 Task 9 report/schema/scorer/gate，不能修改 Task 8 frozen manifest/report；
 - 先跑 16 guards，再按 case 串行执行 original/rewrite search pair，最后执行 16 FinalResponse；
@@ -427,6 +427,13 @@ Task 8 完成时没有 fresh 数据边界接受或 exact Phase 6.9.8 authorizati
   journal、hard-link artifact、strict validator 与 crash-only seal；
 - recovery 只补安全 terminal/not-started，不调用 Provider，禁止 retry/resume/replay/backfill；
 - 使用 injected DeepSeek/Qwen transport 完成 fault/durability/static 验证；不创建正式 tag/marker/evidence。
+
+完成回执：固定 64-call schedule、Qwen/DeepSeek 独立 accounting/null aggregation、双 opaque capability/source
+drift recheck、breaker、exclusive marker、dispatch-before-call journal、hard-link artifact、strict validator、crash-only
+seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、双 Provider wire+usage 各
+`32/32/32/32`、rewrite nDCG `0.56923614767 -> 1`、FinalResponse/safety 全门通过，但固定
+`task9b_mock_quality_not_evidence / qualityAuthority=none`。Provider/credential/approved tag/正式 evidence 均为
+0；证据见 `../../acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
 
 ### Task 9C：唯一 controlled-Live paired eval
 
@@ -485,16 +492,17 @@ Task 8 完成时没有 fresh 数据边界接受或 exact Phase 6.9.8 authorizati
 
 ## 当前停止边界
 
-Task 0--8 与 Task 9A 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Task 0--8 与 Task 9A/9B 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
-48-case reviewed Mock/static checkpoint 和严格 Qwen price/endpoint/usage transport。当前仍没有：
+48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
+Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
 
-- Task 9B runner/durability 与 Task 9C fresh-admission controlled-Live 质量 authority；
+- Task 9C fresh-admission controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 
-不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、旧 Chat Live、Qwen
+不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。当前只允许推进
-Task 9B zero-provider 工程；其完成、提交、推送、复审与 source parity 之前，不创建 approved tag，也不请求或消费
-Task 9C 的精确一次性授权。
+Task 9C fresh admission；Task 9B 完成、提交、推送、复审与 source parity 之前不创建 approved tag，且没有 fresh
+DeepSeek/Qwen 数据边界接受与精确一次性授权时，不读取 credential、不创建 marker、不调用 Provider。

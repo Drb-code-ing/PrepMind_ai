@@ -101,6 +101,9 @@
     "eval:phase-6-9-7:schema-recovery:sr5": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-sr5-cli.ts",
     "eval:phase-6-9-8:retriever-baseline": "bun scripts/run-phase-6-9-8-retriever-baseline.ts",
     "eval:phase-6-9-8:static": "bun scripts/run-phase-6-9-8-retriever-final-response-static.ts",
+    "eval:phase-6-9-8:task9:cli": "bun scripts/phase-6-9-8-retriever-final-response-task9-cli.ts",
+    "eval:phase-6-9-8:task9:seal": "bun scripts/phase-6-9-8-retriever-final-response-task9-cli.ts I_SEAL_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TASK9C_CRASH_ONLY_ONCE",
+    "eval:phase-6-9-8:task9:validate": "bun scripts/validate-phase-6-9-8-retriever-final-response-task9-evidence.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

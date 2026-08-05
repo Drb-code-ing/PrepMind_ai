@@ -2097,12 +2097,23 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 9A focused `8/8`、AI full `337/337`、AI typecheck/lint、Prettier、diff/link/static 与两路只读复审
       通过；未读 credential、未调用 Provider、未创建 approved tag/正式 marker/journal/artifact，authority 仅
       `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`；
-- [ ] Task 9B zero-provider paired runner、DeepSeek/Qwen 独立 accounting、source admission、durability/validator/CLI；
+- [x] Task 9B 固定 16 guard-first + 16 个 original-Qwen/rewrite-DeepSeek/candidate-Qwen 串行 pair + 16
+      FinalResponse 的 64-call schedule；Qwen/DeepSeek 各 32 次独立 attempt/dispatch/response/verified usage/
+      token/CNY，cap `0.131072 / 0.32 / total 0.451072 CNY`，不完整 aggregate=`null`；
+- [x] Task 9B source admission、双 single-use WeakMap capability、reservation 前 source drift recheck、exclusive
+      marker、dispatch-before-call fsynced hash-chain journal、hard-link artifact、strict recomputing validator 与
+      crash-only seal 已完成；禁止 retry/resume/replay/backfill；
+- [x] Task 9B Reviewed Mock 得到 guard `16/16`、Qwen/DeepSeek wire+usage 各 `32/32/32/32`、rewrite nDCG
+      `0.56923614767 -> 1`、FinalResponse/safety 全门通过；gate 固定
+      `task9b_mock_quality_not_evidence / qualityAuthority=none`，synthetic CNY/P95 不是 Live authority；
+- [x] Task 9B focused `27/27`、Agent full `1279/1279`、AI full `337/337`、Agent typecheck/source lint、
+      Prettier/diff/CodeGraph 与独立 authority/durability/contract 复审通过；Provider/credential/Qwen external
+      calls=0，approved tag/正式 marker/journal/artifact/recovery=0，未启动 Docker/API/browser；
 - [ ] Task 9C fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--9A 验收见
+设计、计划与 Task 0--9B 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2114,4 +2125,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。

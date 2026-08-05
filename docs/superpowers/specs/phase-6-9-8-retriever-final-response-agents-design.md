@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9A Qwen zero-provider transport/price contract 已完成；下一步 Task 9B runner/durability
+> 状态：Task 9B zero-provider runner/durability/admission 已完成；下一步 Task 9C fresh controlled-Live admission
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_final_response_reviewed_mock_static`
+> Current Checkpoint Authority：`zero_provider_retriever_final_response_runner_durability`
 
 ## 1. 决策与目标
 
@@ -633,3 +633,33 @@ Task 9A authority 仅 `zero_provider_qwen_embedding_transport_price_contract / q
 Task 9B runner/durability，不创建 approved tag/marker/journal/artifact，也不授权 Task 9C、Docker/API/browser 或
 main。完整证据见
 `../../acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`。
+
+## 23. Task 9B 完成回执（2026-08-05）
+
+Task 9B 已在 `zero_provider_retriever_final_response_runner_durability / qualityAuthority=none` 边界完成：
+
+- 独立 Task 9 report/gate 固定 16 guard-first、16 个
+  `original Qwen -> DeepSeek rewrite -> candidate Qwen` 串行 pair 与 16 个 DeepSeek FinalResponse；完整调用分母
+  64，Qwen/DeepSeek 各 32；
+- Qwen cap 为 `262144 input tokens / 0.131072 CNY`，DeepSeek cap 为 `0.32 CNY`，总 cap 为
+  `0.451072 CNY`。attempt/dispatch/response/verified usage/token/CNY 按 Provider 独立记录；任何分母、usage、
+  price 或 terminal 不完整都会使相关 aggregate=`null`；
+- source admission 绑定 fixed branch、HEAD/upstream/origin/approved tag、clean tree、formal-artifact-zero 与
+  exact-commit blob bundle SHA。Runner 与 reservation 分别消费独立 WeakMap capability；reservation 前重新核对
+  Git observation，调用者不能伪造 authority/source/credentialReads；
+- durability 固定 exclusive marker、dispatch-before-call fsynced hash-chain journal、hard-link artifact、strict
+  recomputing validator 与 crash-only seal。Evidence lifecycle I/O failure 直接终止 runner，不伪装为 Provider failure；
+  recovery 只解释 durable prefix，不读取 credential、不执行调用、不 retry/resume/replay/backfill；
+- future Task 9C CLI 顺序已冻结为 exact argv -> source -> data boundary -> authorization -> 3 dedicated credentials
+  -> marker -> runner -> artifact -> validator，但本 Task 未执行该 CLI。
+
+Reviewed Mock 得到 guard `16/16`、Qwen/DeepSeek wire+usage 各 `32/32/32/32`、rewrite original/candidate nDCG@5
+`0.56923614767/1`、FinalResponse/safety 全门通过；gate 固定
+`task9b_mock_quality_not_evidence / qualityAuthority=none`。Factory/report SHA 为
+`38e35703...a586 / 820d7b2a...f07`。Focused `27/27`、Agent full `1279/1279`、AI full `337/337`、
+typecheck/lint 与三路独立复审通过。
+
+Task 9B 未读取 credential、调用 Provider、创建 approved tag/正式 marker/journal/artifact/recovery、启动
+Docker/API/browser 或修改业务数据。它只解锁 Task 9C fresh admission + 唯一 controlled-Live，不授权产品/main 或
+后续阶段。完整证据见
+`../../acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
