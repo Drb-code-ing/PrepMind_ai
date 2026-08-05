@@ -1586,11 +1586,14 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
   `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次 not-started。最终 `task9_quality_gate_failed /
 qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑；产品/main、
   Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
-- Architecture Recovery R0--R1 已完成 zero-provider 设计与 rewrite TDD：新 lineage 同时覆盖 rewrite、Qwen
+- Phase 6.9.8 Architecture Recovery R0--R2 已完成 zero-provider 设计、rewrite TDD 与 Qwen/FinalResponse
+  robustness：新 lineage 同时覆盖 rewrite、Qwen
   retrieval 与 FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash；R1
-  只从第一方 V7 terminal wire snapshot 推导 Provider boundary，forged/reused/active capability 均 fail-closed。R1 不
-  新增启动命令、环境变量、gate、credential mapping、Docker profile 或正式 evidence；当前只解锁 R2
-  zero-provider Qwen / FinalResponse robustness。
+  只从第一方 V7 terminal wire snapshot 推导 rewrite Provider boundary。R2 新增 Qwen/FinalResponse 两个第一方
+  wire family，覆盖 embedding/stream/terminal/usage；首个畸形 stream event 固定为
+  `response_observed + stream_event_invalid`。forged/reused/active/cross-family capability 均 fail-closed。R0--R2 不
+  新增启动命令、环境变量、gate、credential mapping、Docker profile 或正式 evidence；当前只解锁 R3
+  zero-provider runner / durability / admission。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
@@ -1622,9 +1625,9 @@ API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不�
 marker、journal 与 artifact 必须保留；禁止再次设置 9C 授权变量、运行 production CLI、seal/recovery、curl、单
 case 或产品 API Provider 探测。
 
-R0 Architecture Recovery 只是设计文档，不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。后续 R1--R4
-仍必须使用 synthetic/injected transport；在独立 R3 source/CLI 和 R4 reviewed Mock 完成前，不存在合法的 Recovery
-Live 命令。
+Architecture Recovery R0--R2 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。后续 R3--R4 仍必须
+使用 synthetic/injected transport；在独立 R3 source/CLI 和 R4 reviewed Mock 完成前，不存在合法的 Recovery Live
+命令。
 
 Task 8 的安全静态回归命令：
 

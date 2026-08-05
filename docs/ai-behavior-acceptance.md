@@ -1283,7 +1283,8 @@ Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / quali
 - 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。产品/main 与后续
   阶段仍未完成，Task 10/11 继续阻断。
 
-Architecture Recovery R0--R1 已完成 zero-provider AI 行为边界设计与 rewrite TDD：
+Architecture Recovery R0--R2 已完成 zero-provider AI 行为边界设计、rewrite TDD 与 Qwen/FinalResponse
+robustness：
 
 - 不反向解释或改写 Task 9C；新 lineage 只服务未来独立恢复评测；
 - 分别定义 rewrite、Qwen retrieval、FinalResponse stream 阶段机，避免一个 `schema_invalid` 覆盖 candidate、
@@ -1296,11 +1297,17 @@ Architecture Recovery R0--R1 已完成 zero-provider AI 行为边界设计与 re
   推导，caller-supplied response/usage、forged/reused/active capability 均不能提升 authority；
 - R1 synthetic tests 真实穿过第一方 direct adapter injected fetch，但 provenance 固定 `synthetic_test`；focused
   `11/11`、AI wire/export `25/25`、Agent full `1289/1289`；
-- R0--R1 external Provider/credential/formal evidence=0，当前只形成
-  `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`；包内 local mapper 尚待 R3
-  runner/validator 绑定，下一步只解锁 R2 Qwen / FinalResponse robustness。
+- R2 新增 `qwen_retrieval/final_response_stream` 两个第一方 wire family 与一次性 recovery session；Qwen 将
+  Provider/envelope/embedding/usage 分域，FinalResponse 将 stream/terminal/false-tool/usage 分域；
+- 第一条实际 stream event 即使畸形，也只形成 `response_observed + stream_event_invalid`；full stream 为空才是
+  `response_not_observed`，两者都不能形成成功或正文 authority；
+- forged/reused/active/cross-family/out-of-order capability 与 hostile getter/Proxy 均 fail-closed；focused
+  compatibility `58/58`、AI full `345/345`、Agent full `1301/1301`；
+- R0--R2 external Provider/credential/formal evidence=0，当前只形成
+  `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`；包内
+  cost/ranking/citation/Trace/delivery/result mapper 尚待 R3 runner/validator/durability 绑定，下一步只解锁 R3。
 
-完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R1 证据见
+完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R2 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1318,7 +1325,8 @@ Architecture Recovery R0--R1 已完成 zero-provider AI 行为边界设计与 re
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

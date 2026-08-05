@@ -1,11 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计
 
 > - 日期：2026-08-05
-> - 状态：R0--R1 zero-provider 完成；下一步仅 R2 Qwen / FinalResponse robustness
+> - 状态：R0--R2 zero-provider 完成；下一步仅 R3 runner / durability / admission
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 起始提交：`7026dc4cac83bb656b81739abcb68287c133066a`
 > - R0 authority：`zero_provider_retriever_final_response_architecture_recovery_design`
-> - 当前 checkpoint authority：`zero_provider_retriever_final_response_architecture_recovery_tdd`
+> - 当前 checkpoint authority：`zero_provider_retriever_final_response_architecture_recovery_robustness`
 > - Quality Authority：`none`
 > - 独立 lineage：`phase-6.9.8-retriever-final-response-architecture-recovery-v1`
 
@@ -368,6 +368,26 @@ source-admitted runner/result/Trace/cost validator 绑定后，才可能形成 d
 FinalResponse、Mock、Live、产品或 main authority。验收见
 [R1 zero-provider diagnostic contract / rewrite TDD](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md)。
 
+### 7.5 R2 已落地的 Qwen / FinalResponse wire authority
+
+R2 已在 zero-provider 边界补齐独立 `qwen_retrieval` 与 `final_response_stream` wire family。两个 family 都使用
+module-owned WeakMap capability、single claim、严格单调 stage 与 terminal frozen snapshot；`@repo/ai` 只公开
+create/read，mutation transition 仍留在第一方 adapter 内。Recovery session 只接受尚未使用、family 匹配且未被
+其它 session 绑定的 capability，forged/reused/active/cross-family 均 fail-closed。
+
+Qwen 第一方 adapter 现在能区分 transport/HTTP/envelope、embedding count/index、dimension、finite/non-zero value 与
+usage；FinalResponse 第一方 stream adapter 能区分 transport/HTTP、stream event、terminal missing/duplicate/not-last、
+false tool success、usage 与 abort。第一条实际 stream event 即使畸形，也只表示
+`response_observed + stream_event_invalid`，不表示 success；只有完全未观察到 Response/event 才是
+`response_not_observed`。两条链路都不保存 raw、prompt/query、credential、URL/error、unknown key 或 raw-derived
+hash。
+
+R2 的 cost/ranking/citation/Trace/delivery/result mapper 仍只接收包内 fixed status，必须由 R3 的 source-admitted
+runner、strict validator 与 durability lifecycle 绑定，才能形成正式 evidence。R2 authority 仅为
+`zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`，不形成 Provider、
+语义、产品或 main authority。验收见
+[R2 zero-provider Qwen / FinalResponse robustness](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)。
+
 ## 8. Result、Wire 与 Gate
 
 新 lineage 继续保留公共 `failureReason` 以兼容 report 聚合，同时新增 strict bounded diagnostic。Validator 必须同时
@@ -482,8 +502,8 @@ R1--R4 至少覆盖：
 | ---- | ------------------------------------------------------------------------ | --------------------- |
 | R0   | sealed 只读复盘、三链路阶段机、bounded diagnostic、独立 lineage 与路线   | 已完成，zero-provider |
 | R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 已完成，zero-provider |
-| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 下一步，zero-provider |
-| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 未开始，zero-provider |
+| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider |
+| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 下一步，zero-provider |
 | R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 未开始，zero-provider |
 | R5   | 仅在全新 admission 与用户新授权后可能执行的一次 controlled-Live          | 未授权、未开始        |
 | R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                  |
@@ -493,7 +513,7 @@ R1--R4 至少覆盖：
 当前源码尚未进入 main，因此不能从缺少 Task 0--9B 基线的 main 开始 Recovery；同时也禁止为了满足分支形式而
 提前把失败 gate 合并 main。
 
-## 13. R0--R1 当前禁止事项
+## 13. R0--R2 当前禁止事项
 
 - 不运行 Task 9C production CLI、seal、curl、单 case或产品 API Provider 探测；
 - 不删除、移动、改写、重建 Task 9C tag/marker/journal/artifact；
@@ -502,7 +522,7 @@ R1--R4 至少覆盖：
 - 不保存 raw、raw-derived hash、unknown key、Zod issue、prompt、query、chunk、answer、credential 或 error；
 - 不修改产品 gate、`.env`、Docker、数据库、BackgroundJob、Outbox 或业务数据；
 - 不降低分母、质量门、预算、安全、owner、citation 或 local authority；
-- 不执行 R3 durability、R4 Mock、R5 Live、Task 10/11 或 main；下一原子任务仅 R2 zero-provider robustness。
+- 不执行 R4 Mock、R5 Live、Task 10/11 或 main；下一原子任务仅 R3 zero-provider runner/durability/admission。
 
 ## 14. 回顾时可以问
 
@@ -514,5 +534,5 @@ R1--R4 至少覆盖：
 - 为什么 diagnostic 不保存 raw hash 或 unknown key 名？
 - FinalResponse 为什么不能照搬 Tutor 的单 ordinal schema recovery？
 - 为什么完整分母失败时，四条成功费用仍不能作为 run aggregate？
-- 为什么 R1 完成后仍不能创建新 tag、读取 credential 或请求 Live 授权？
+- 为什么 R2 完成后仍不能创建新 tag、读取 credential 或请求 Live 授权？
 - 为什么 Phase 6.9.8 Recovery 继续留在当前功能分支，而不能从缺少基线的 main 新建？

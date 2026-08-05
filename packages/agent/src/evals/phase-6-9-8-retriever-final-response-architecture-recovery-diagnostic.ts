@@ -490,6 +490,25 @@ export function setPhase698ArchitectureRecoveryShapeBuckets(
   return true;
 }
 
+export function setPhase698ArchitectureRecoveryTerminalCountBucket(
+  capability: Phase698ArchitectureRecoveryDiagnosticCapability,
+  terminalCountBucket: Phase698ArchitectureRecoveryTerminalCountBucket,
+): boolean {
+  const state = readState(capability);
+  if (
+    !state ||
+    state.diagnostic ||
+    state.callPhase !== 'final_response_model' ||
+    state.terminalCountBucket !== 'unknown' ||
+    terminalCountBucket === 'not_applicable' ||
+    terminalCountBucket === 'unknown'
+  ) {
+    return false;
+  }
+  state.terminalCountBucket = terminalCountBucket;
+  return true;
+}
+
 export function readPhase698ArchitectureRecoveryDiagnostic(
   capability: Phase698ArchitectureRecoveryDiagnosticCapability,
 ): Phase698ArchitectureRecoveryBoundedDiagnostic | null {

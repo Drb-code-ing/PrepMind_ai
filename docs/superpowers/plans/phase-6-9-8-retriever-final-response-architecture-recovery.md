@@ -2,9 +2,9 @@
 
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
-> - 当前状态：R0--R1 zero-provider 完成；下一步仅 R2 Qwen / FinalResponse robustness
+> - 当前状态：R0--R2 zero-provider 完成；下一步仅 R3 runner / durability / admission
 > - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`
+> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`
 
 ## 1. 总体规则
 
@@ -82,7 +82,7 @@
 
 ## 4. R2 — Qwen / FinalResponse Robustness
 
-状态：下一步；仅 R1 已完成，不代表 R2 已开始或通过。
+状态：已完成，zero-provider。
 
 ### 目标
 
@@ -104,14 +104,28 @@
 
 ### R2 验收
 
-- 全部测试使用 synthetic/injected transport，global fetch/credential/Provider=0；
-- fault case 只产生 fixed diagnostic，不抛出 raw error；
-- success case 通过本地 strict authority，不靠 coercion、repair 或 extension discard；
-- 旧 Task 9C 与 Phase 6.9.7 evidence parity 保持。
+- [x] 全部测试使用 synthetic/injected transport，external Provider/credential=0；
+- [x] 新增 `qwen_retrieval` 与 `final_response_stream` 两个互斥 wire family；只有第一方 adapter 能推进
+      dispatch/response/usage，公共 barrel 只导出 create/read；
+- [x] Qwen 覆盖 transport/HTTP/envelope、embedding count/index/dimension/value、usage 与本地
+      cost/ranking/result 独立阶段；
+- [x] FinalResponse 覆盖 transport/HTTP/stream、terminal 0/1/2+ 与 not-last、false-tool、usage，以及本地
+      citation/Trace/cost/delivery/result 独立阶段；
+- [x] forged/reused/active/cross-family/out-of-order capability、hostile getter/Proxy 与 abort 均 fail-closed；
+- [x] 首个畸形 stream event 明确为 `response_observed + stream_event_invalid`，不冒充 success，也不误写为
+      `response_not_observed`；
+- [x] fault case 只产生 fixed diagnostic，不保存 raw/error/unknown key/hash；success 不靠 coercion、repair 或
+      extension discard；
+- [x] focused compatibility `58/58`、AI full `345/345`、Agent full `1301/1301`、typecheck/lint 与 Task 9C
+      sealed validator parity 通过；
+- [x] 单独同步 R2 acceptance 与当前状态文档，提交并推送当前功能分支。
+
+验收见
+[R2 zero-provider Qwen / FinalResponse robustness](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)。
 
 ## 5. R3 — Runner / Durability / Admission
 
-状态：未开始；仅 R2 完成后解锁。
+状态：下一步；仅 R2 已完成，不代表 R3 已开始或通过。
 
 ### 交付
 
@@ -200,13 +214,13 @@ git diff --check
 
 ## 10. 当前停止边界
 
-R0--R1 只形成设计与 rewrite TDD authority。当前已有 strict bounded diagnostic、opaque rewrite session、第一方
-wire snapshot 只读投影与 zero-provider fault tests；当前仍没有：
+R0--R2 只形成设计、rewrite TDD 与 Qwen/FinalResponse robustness authority。当前已有 strict bounded diagnostic、
+三个独立 call-family、opaque session、第一方 terminal wire snapshot 只读投影与 zero-provider fault tests；当前仍
+没有：
 
-- Qwen/FinalResponse recovery integration 与 robustness fault matrix；
 - recovery runner、CLI、marker/journal/artifact/validator；
 - reviewed Mock、controlled-Live、产品或 main authority；
 - 对 Task 9C 具体失败字段或 Provider 根因的结论。
 
-下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness。不得执行 R3--R7、Task 9C CLI/seal、Task
+下一步只能开始 R3 zero-provider runner / durability / admission。不得执行 R4--R7、Task 9C CLI/seal、Task
 10/11、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。

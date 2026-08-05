@@ -2136,11 +2136,23 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] R1 authority 仅
       `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`；包内 local mapper
       仍须 R3 source-admitted runner/validator 绑定，不形成 durability、Live、产品或 main authority；
-- [ ] Recovery R2 Qwen/FinalResponse robustness；R3 runner/durability；R4 reviewed Mock/static；
+- [x] Recovery R2 新增 `qwen_retrieval/final_response_stream` 两个第一方 wire family、module-owned single-use
+      capability 与 terminal snapshot；mutation 不进入 `@repo/ai` 公共 barrel；
+- [x] R2 Qwen 将 transport/HTTP/envelope、embedding count/index/dimension/value、usage 分域；FinalResponse 将
+      transport/HTTP/stream、terminal missing/duplicate/not-last、false-tool、usage 与 abort 分域；
+- [x] 首个畸形 stream event 固定为 `response_observed + stream_event_invalid`，empty/no-event 才是
+      `response_not_observed`；两者都不冒充 success，且不保留 raw/error/unknown key/hash；
+- [x] R2 forged/reused/active/cross-family/out-of-order capability 与 hostile getter/Proxy 全部 fail-closed；focused
+      compatibility `58/58`、AI full `345/345`、Agent full `1301/1301`、Agent/AI typecheck/lint 通过；
+- [x] R2 authority 仅
+      `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`；external
+      Provider/credential/formal evidence/Docker/API/browser/business writes 全为 0；cost/ranking/citation/Trace/
+      delivery/result mapper 仍须 R3 runner/validator/durability 绑定；
+- [ ] Recovery R3 runner/durability/admission；R4 reviewed Mock/static；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划、Task 0--9C 与 Architecture Recovery R0--R1 验收见
+设计、计划、Task 0--9C 与 Architecture Recovery R0--R2 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2158,4 +2170,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`。

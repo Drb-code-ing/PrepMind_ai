@@ -72,6 +72,11 @@ export type QwenTextEmbeddingV4Provider = Readonly<{
   executor: QwenTextEmbeddingV4Executor;
 }>;
 
+export type QwenTextEmbeddingV4DiagnosticProvider = QwenTextEmbeddingV4Provider &
+  Readonly<{
+    wireCapability: Phase698ProviderWireCapability;
+  }>;
+
 export class QwenTextEmbeddingV4ProviderError extends Error {
   readonly code: QwenTextEmbeddingV4FailureCode;
 
@@ -126,14 +131,56 @@ export function createQwenTextEmbeddingV4Provider(
   configInput: QwenTextEmbeddingV4ProviderConfig,
   dependenciesInput?: QwenTextEmbeddingV4ProviderDependencies,
 ): QwenTextEmbeddingV4Provider {
+  return createQwenTextEmbeddingV4ProviderInternal(configInput, dependenciesInput, null);
+}
+
+/**
+ * Binds one Qwen executor to a module-owned Phase 6.9.8 wire capability.
+ * Only the first-party provider path can advance that capability.
+ */
+export function createQwenTextEmbeddingV4DiagnosticProvider(
+  configInput: QwenTextEmbeddingV4ProviderConfig,
+  wireCapability: Phase698ProviderWireCapability,
+  dependenciesInput?: QwenTextEmbeddingV4ProviderDependencies,
+): QwenTextEmbeddingV4DiagnosticProvider {
+  const provider = createQwenTextEmbeddingV4ProviderInternal(
+    configInput,
+    dependenciesInput,
+    wireCapability,
+  );
+  return Object.freeze({ ...provider, wireCapability });
+}
+
+function createQwenTextEmbeddingV4ProviderInternal(
+  configInput: QwenTextEmbeddingV4ProviderConfig,
+  dependenciesInput: QwenTextEmbeddingV4ProviderDependencies | undefined,
+  wireCapability: Phase698ProviderWireCapability | null,
+): QwenTextEmbeddingV4Provider {
   const config = normalizeConfig(configInput);
   const dependencies = normalizeDependencies(dependenciesInput);
 
   const executor: QwenTextEmbeddingV4Executor = async (requestInput) => {
-    const request = normalizeRequest(requestInput);
-    if (request.signal.aborted) throw failure('aborted');
+    if (
+      wireCapability !== null &&
+      !claimPhase698ProviderWireCapability(wireCapability, 'qwen_retrieval')
+    ) {
+      throw failure('provider_unavailable');
+    }
+    let request: NormalizedRequest;
+    try {
+      request = normalizeRequest(requestInput);
+    } catch (error) {
+      failWire(wireCapability, 'request_contract');
+      throw error;
+    }
+    requireWireAdvance(wireCapability, 'request_validated');
+    if (request.signal.aborted) {
+      failWire(wireCapability, 'pre_dispatch_abort');
+      throw failure('aborted');
+    }
 
     let response: Response;
+    requireWireAdvance(wireCapability, 'provider_dispatch_started');
     try {
       const candidate = await dependencies.fetch(config.embeddingsURL, {
         method: 'POST',
@@ -152,26 +199,49 @@ export function createQwenTextEmbeddingV4Provider(
         credentials: 'omit',
         cache: 'no-store',
       });
-      if (!(candidate instanceof Response)) throw failure('response_invalid');
+      if (!(candidate instanceof Response)) {
+        failWire(wireCapability, 'response_not_observed');
+        throw failure('response_invalid');
+      }
       response = candidate;
     } catch (error) {
       if (isQwenTextEmbeddingV4ProviderError(error)) throw error;
+      failWire(wireCapability, request.signal.aborted ? 'post_dispatch_abort' : 'transport');
       throw failure(request.signal.aborted ? 'aborted' : 'provider_unavailable');
     }
 
-    if (request.signal.aborted) throw failure('aborted');
+    requireWireAdvance(wireCapability, 'provider_response_received');
+    if (request.signal.aborted) {
+      failWire(wireCapability, 'post_dispatch_abort');
+      throw failure('aborted');
+    }
     const status = readStatus(response);
-    if (status !== 200) throw failure(classifyHttpStatus(status));
-    if (!isJsonContentType(response)) throw failure('response_invalid');
+    if (status !== 200) {
+      const code = classifyHttpStatus(status);
+      failWire(wireCapability, wireFailureForQwenCode(code));
+      throw failure(code);
+    }
+    if (!isJsonContentType(response)) {
+      failWire(wireCapability, 'provider_envelope_invalid');
+      throw failure('response_invalid');
+    }
 
     let rawPayload: string;
     try {
       rawPayload = await response.text();
     } catch {
+      failWire(
+        wireCapability,
+        request.signal.aborted ? 'post_dispatch_abort' : 'provider_envelope_invalid',
+      );
       throw failure(request.signal.aborted ? 'aborted' : 'response_invalid');
     }
-    if (request.signal.aborted) throw failure('aborted');
+    if (request.signal.aborted) {
+      failWire(wireCapability, 'post_dispatch_abort');
+      throw failure('aborted');
+    }
     if (rawPayload.length < 1 || rawPayload.length > MAX_RESPONSE_UTF16) {
+      failWire(wireCapability, 'provider_envelope_invalid');
       throw failure('response_invalid');
     }
 
@@ -179,9 +249,15 @@ export function createQwenTextEmbeddingV4Provider(
     try {
       payload = JSON.parse(rawPayload);
     } catch {
+      failWire(wireCapability, 'provider_envelope_invalid');
       throw failure('response_invalid');
     }
-    return parseProviderPayload(payload, request.inputs.length);
+    setWireShape(wireCapability, payload);
+    const result = parseProviderPayload(payload, request.inputs.length, wireCapability);
+    if (wireCapability !== null && !completePhase698ProviderWire(wireCapability)) {
+      throw failure('provider_unavailable');
+    }
+    return result;
   };
 
   return Object.freeze({
@@ -287,16 +363,25 @@ function parseBeijingEmbeddingsURL(baseURL: string): string {
   return `${baseURL}/embeddings`;
 }
 
-function parseProviderPayload(payload: unknown, expectedCount: number): QwenTextEmbeddingV4Result {
+function parseProviderPayload(
+  payload: unknown,
+  expectedCount: number,
+  wireCapability: Phase698ProviderWireCapability | null,
+): QwenTextEmbeddingV4Result {
   const values = readExactOwnDataValues(payload, PAYLOAD_KEYS);
   if (
     !values ||
     values.object !== 'list' ||
     values.model !== QWEN_TEXT_EMBEDDING_V4_MODEL ||
     !isBoundedVisibleAscii(values.id, 1, 200) ||
-    !Array.isArray(values.data) ||
-    values.data.length !== expectedCount
+    !Array.isArray(values.data)
   ) {
+    failWire(wireCapability, 'provider_envelope_invalid');
+    throw failure('response_invalid');
+  }
+  requireWireAdvance(wireCapability, 'provider_envelope_validated');
+  if (values.data.length !== expectedCount) {
+    failWire(wireCapability, 'embedding_count_invalid');
     throw failure('response_invalid');
   }
 
@@ -312,24 +397,38 @@ function parseProviderPayload(payload: unknown, expectedCount: number): QwenText
       !Number.isSafeInteger(item.index) ||
       (item.index as number) < 0 ||
       (item.index as number) >= expectedCount ||
-      ordered[item.index as number] !== undefined ||
+      ordered[item.index as number] !== undefined
+    ) {
+      failWire(wireCapability, 'embedding_count_invalid');
+      throw failure('response_invalid');
+    }
+    if (
       !Array.isArray(item.embedding) ||
       item.embedding.length !== QWEN_TEXT_EMBEDDING_V4_DIMENSIONS
     ) {
+      failWire(wireCapability, 'embedding_dimension_invalid');
       throw failure('response_invalid');
     }
     let normSquared = 0;
     const embedding = item.embedding.map((component) => {
       if (typeof component !== 'number' || !Number.isFinite(component)) {
+        failWire(wireCapability, 'embedding_value_invalid');
         throw failure('response_invalid');
       }
       normSquared += component * component;
       return component;
     });
-    if (!Number.isFinite(normSquared) || normSquared <= 0) throw failure('response_invalid');
+    if (!Number.isFinite(normSquared) || normSquared <= 0) {
+      failWire(wireCapability, 'embedding_value_invalid');
+      throw failure('response_invalid');
+    }
     ordered[item.index as number] = Object.freeze(embedding);
   }
-  if (ordered.some((embedding) => embedding === undefined)) throw failure('response_invalid');
+  if (ordered.some((embedding) => embedding === undefined)) {
+    failWire(wireCapability, 'embedding_count_invalid');
+    throw failure('response_invalid');
+  }
+  requireWireAdvance(wireCapability, 'embedding_validated');
 
   const usage = readExactOwnDataValues(values.usage, USAGE_KEYS);
   const inputTokens = usage?.prompt_tokens;
@@ -340,8 +439,10 @@ function parseProviderPayload(payload: unknown, expectedCount: number): QwenText
     inputTokens !== totalTokens ||
     inputTokens > expectedCount * QWEN_TEXT_EMBEDDING_V4_MAX_INPUT_TOKENS_PER_TEXT
   ) {
+    failWire(wireCapability, 'usage_invalid');
     throw failure('usage_invalid');
   }
+  requireWireAdvance(wireCapability, 'usage_validated');
 
   return Object.freeze({
     embeddings: Object.freeze(ordered as readonly (readonly number[])[]),
@@ -352,6 +453,85 @@ function parseProviderPayload(payload: unknown, expectedCount: number): QwenText
       verifiedCostCny: calculateQwenTextEmbeddingV4CostCny(inputTokens),
     }),
   });
+}
+
+function requireWireAdvance(
+  capability: Phase698ProviderWireCapability | null,
+  stage:
+    | 'request_validated'
+    | 'provider_dispatch_started'
+    | 'provider_response_received'
+    | 'provider_envelope_validated'
+    | 'embedding_validated'
+    | 'usage_validated',
+) {
+  if (capability !== null && !advancePhase698ProviderWireStage(capability, stage)) {
+    throw failure('provider_unavailable');
+  }
+}
+
+function failWire(
+  capability: Phase698ProviderWireCapability | null,
+  category: Phase698ProviderWireFailureCategory,
+) {
+  if (capability !== null) failPhase698ProviderWire(capability, category);
+}
+
+function wireFailureForQwenCode(
+  code: QwenTextEmbeddingV4FailureCode,
+): Phase698ProviderWireFailureCategory {
+  switch (code) {
+    case 'http_auth':
+    case 'http_rate_limit':
+    case 'http_client':
+    case 'http_server':
+      return code;
+    case 'aborted':
+      return 'post_dispatch_abort';
+    case 'provider_unavailable':
+      return 'transport';
+    default:
+      return 'provider_envelope_invalid';
+  }
+}
+
+function setWireShape(capability: Phase698ProviderWireCapability | null, value: unknown) {
+  if (capability === null) return;
+  const shape = readWireShape(value);
+  if (!setPhase698ProviderWireShapeBuckets(capability, shape)) {
+    failPhase698ProviderWire(capability, 'unknown');
+  }
+}
+
+function readWireShape(value: unknown): Readonly<{
+  topLevelTypeBucket: Phase698ProviderWireTopLevelTypeBucket;
+  fieldCountBucket: Phase698ProviderWireFieldCountBucket;
+}> {
+  if (value === null) return { topLevelTypeBucket: 'null', fieldCountBucket: '0' };
+  if (Array.isArray(value)) return { topLevelTypeBucket: 'array', fieldCountBucket: '0' };
+  const primitive = typeof value;
+  if (primitive === 'string' || primitive === 'number' || primitive === 'boolean') {
+    return { topLevelTypeBucket: primitive, fieldCountBucket: '0' };
+  }
+  if (primitive !== 'object') {
+    return { topLevelTypeBucket: 'unknown', fieldCountBucket: 'unknown' };
+  }
+  try {
+    const count = Reflect.ownKeys(value as object).length;
+    return {
+      topLevelTypeBucket: 'object',
+      fieldCountBucket: bucketFieldCount(count),
+    };
+  } catch {
+    return { topLevelTypeBucket: 'unknown', fieldCountBucket: 'unknown' };
+  }
+}
+
+function bucketFieldCount(value: number): Phase698ProviderWireFieldCountBucket {
+  if (value === 0) return '0';
+  if (value === 1) return '1';
+  if (value <= 4) return '2_4';
+  return '5_plus';
 }
 
 function readStatus(response: Response): number {
@@ -453,3 +633,14 @@ function isPositiveSafeInteger(value: unknown): value is number {
 function failure(code: QwenTextEmbeddingV4FailureCode): QwenTextEmbeddingV4ProviderError {
   return new QwenTextEmbeddingV4ProviderError(code);
 }
+import {
+  advancePhase698ProviderWireStage,
+  claimPhase698ProviderWireCapability,
+  completePhase698ProviderWire,
+  failPhase698ProviderWire,
+  setPhase698ProviderWireShapeBuckets,
+  type Phase698ProviderWireCapability,
+  type Phase698ProviderWireFailureCategory,
+  type Phase698ProviderWireFieldCountBucket,
+  type Phase698ProviderWireTopLevelTypeBucket,
+} from './phase-6-9-8-provider-wire-diagnostics.ts';

@@ -1,5 +1,50 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R2：
+>
+> 本任务以
+> `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none` 完成 Qwen
+> retrieval 与 DeepSeek FinalResponse stream 的第一方 wire diagnostics、recovery stage projection 和
+> zero-provider robustness。新 `phase-6.9.8-provider-wire-diagnostics-v1` 把调用分成
+> `qwen_retrieval/final_response_stream` 两个互斥 family；各自使用 module-owned WeakMap capability、single claim、
+> 严格 stage sequence、terminal frozen snapshot 与从 stage 推导的 0/1 counter。
+>
+> Qwen 第一方 adapter 现在把 transport、HTTP、envelope、embedding count/index、dimension、finite/non-zero value
+> 与 verified usage 分域；Provider `data` 顺序变化仍按 index 本地重建，missing/duplicate/out-of-range 不做修复。
+> FinalResponse 第一方 stream adapter 则区分 transport/HTTP、stream event、terminal missing/duplicate/not-last、
+> false-tool success、usage 与 abort。第一条实际 stream event 即使畸形，也只形成
+> `response_observed + stream_event_invalid`；只有确实没有观察到 Response/event 才是
+> `response_not_observed`，两者都不表示 success。
+>
+> `@repo/ai` 公共 barrel 只导出 wire create/read，claim/advance/fail/complete/set-shape mutation 仍留在第一方
+> adapter 内。Qwen/FinalResponse recovery session 只接受真实、未使用、family 匹配且未重复绑定的 capability；
+> forged/reused/active/cross-family/out-of-order 均 fail-closed。Diagnostic 只保留 fixed stage/reason/boundary/type-
+> count bucket 与 `rawDataRetained=false`，不保存 raw、prompt/query、stream delta、credential/URL/error、unknown key
+> 或 raw-derived hash。
+>
+> 包内 cost/ranking/citation/Trace/delivery/result mapper 仍只接收 fixed status，尚未与 source-admitted runner、
+> strict validator 和 durability lifecycle 绑定，因此 R2 不形成数值、durability、Provider、语义、产品或 main
+> authority；该边界留给 R3。R2 也没有新增 CLI、tag、admission、marker/journal/artifact/recovery claim、环境变量、
+> gate、BackgroundJob、Outbox 或业务写入。
+>
+> 验证结果为 R1/R2 + affected Task 9 compatibility `58/58 / 10 files / 522 assertions`、AI full
+> `345/345 / 28 files / 2651 assertions`、Agent full `1301/1301 / 161 files / 23364 assertions`；Agent/AI
+> typecheck 与 lint 均通过。Task 9C 只读 validator 保持
+> `ok=true / 134 / evidence_published`，report/artifact SHA 仍为
+> `c612d6f7164d5491e54422abb2e8504cbb707aeea3b641e8c57285d957b8b4a4 /
+7d45329debde6def4c5bc8bbda28609b507a71766ae06e00806e44eaf7b3614c`；没有运行旧 CLI/seal 或改写 sealed
+> evidence。两路独立只读复审均无 blocking/high，测试复审建议的 HTTP 分类与 mid-stream abort 缺口已补齐。
+> Post-format R2 focused `23/23 / 4 files / 258 assertions`、Prettier、`git diff --check`、CodeGraph 与仓库
+> Markdown `365 files / 189 links / missing=0` 均通过；current-status、secret candidate 与 forbidden diagnostic
+> field 扫描无未关闭命中。
+>
+> R2 external Provider/DeepSeek/Qwen/credential/formal evidence/Docker/API/browser/business writes 均为 0。下一原子
+> 任务仅 R3 zero-provider source admission / runner / durability；R4--R7、Task 10/11、main 与后续阶段继续阻断。
+> 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`。回顾时可以
+> 问：为什么 Qwen/FinalResponse 必须分 family？为什么畸形首事件仍是 response observed？为什么 R2 mapper
+> 通过后仍不是 durability 或数值 authority？
+>
 > 2026-08-05 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R1：
 >
 > 本任务以
@@ -27,8 +72,8 @@
 > evidence。
 >
 > R1 Provider/DeepSeek/Qwen/credential/formal evidence/Docker/API/browser/business writes 均为 0；没有新增 CLI、tag、
-> admission、gate、BackgroundJob 或 Outbox。下一原子任务仅 R2 zero-provider Qwen / FinalResponse robustness；R3--R7、
-> Task 10/11、main 与后续阶段继续阻断。验收见
+> admission、gate、BackgroundJob 或 Outbox。R1 收口时的下一原子任务仅 R2 zero-provider Qwen / FinalResponse
+> robustness；该 R2 后续已独立完成，未改写本回执。R3--R7、Task 10/11、main 与后续阶段当时继续阻断。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`。回顾时可以问：
 > 为什么 caller-supplied `response_observed` 不可信？为什么只读 snapshot 可以公开而 mutation 不能？为什么 R1
 > `applied` 仍不是质量或产品 authority？

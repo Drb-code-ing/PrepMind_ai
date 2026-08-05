@@ -8,8 +8,8 @@ R1 已以
 zero-provider TDD。
 
 本阶段解决的是“以后怎样把 rewrite 的失败定位到固定 stage/reason，同时不保存 raw”，不是 Qwen/FinalResponse
-robustness、runner/durability、评测质量或产品完成。下一原子任务仅为 R2 zero-provider Qwen / FinalResponse
-robustness。
+robustness、runner/durability、评测质量或产品完成。R1 收口时的下一原子任务仅为 R2 zero-provider Qwen /
+FinalResponse robustness；R2 后续已独立完成，未改写本验收的 R1 authority。
 
 ## 2. 实现范围
 
@@ -115,9 +115,9 @@ transport、账号或服务端。
 | CodeGraph                              | `Already up to date`                                                                                                 |
 | 独立安全复审                           | Provider boundary 无 blocker；记录包内 mapper 尚待 R3 runner/validator 绑定的 non-blocking 诚实边界                  |
 
-## 9. 明确未完成
+## 9. R1 收口时明确未完成
 
-- R2 Qwen embedding/ranking 与 FinalResponse stream/terminal/citation robustness；
+- R2 Qwen embedding/ranking 与 FinalResponse stream/terminal/citation robustness（后续已独立完成）；
 - R3 source admission、report/runner/CLI、marker/journal/artifact/validator/crash-only seal；
 - R4 64-call reviewed Mock/static；
 - R5 controlled-Live、R6 产品验收、R7 main；
@@ -129,7 +129,8 @@ transport、账号或服务端。
 - 禁止 curl、单 case、产品 API 或其它 Provider 探测；
 - 不读取 `.env`/credential，不创建 approved tag 或正式 Recovery evidence；
 - 不启动 Docker/API/browser，不修改产品 gate、业务数据、BackgroundJob 或 Outbox；
-- R1 提交并推送后，下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness。
+- R1 提交并推送后，当时下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness；R2 现已完成，当前
+  下一步仅 R3 zero-provider runner/durability/admission。
 
 ## 11. 回顾时可以问
 
@@ -139,3 +140,11 @@ transport、账号或服务端。
 - 为什么 `applied` 只代表单 call contract 成功，不代表质量门或产品成功？
 - 为什么 R1 的包内 mapper 仍不能算 runner/durability authority？
 - 为什么 Task 9C validator 可以只读重放，但 CLI/seal 绝不能再执行？
+
+## 12. 后续状态（2026-08-06）
+
+R2 已以
+`zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none` 完成 Qwen /
+FinalResponse 第一方 wire diagnostics 与 zero-provider robustness；R1 的 source、authority、测试结果和 Task 9C
+不可变性均未重写。当前只解锁 R3 runner/durability/admission。R2 证据见
+[R2 zero-provider Qwen / FinalResponse robustness](./phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)。
