@@ -100,6 +100,7 @@
     "eval:phase-6-9-7:schema-recovery:validate": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts VALIDATE_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_BUNDLE_ZERO_PROVIDER",
     "eval:phase-6-9-7:schema-recovery:sr5": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-sr5-cli.ts",
     "eval:phase-6-9-8:retriever-baseline": "bun scripts/run-phase-6-9-8-retriever-baseline.ts",
+    "eval:phase-6-9-8:static": "bun scripts/run-phase-6-9-8-retriever-final-response-static.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

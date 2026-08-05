@@ -1,5 +1,49 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Task 8 Retriever / FinalResponse reviewed Mock/static：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 7 基线
+> `a60692c8bf26bf99f1a9d7ee40f736b7f176ce23` 之后，以
+> `zero_provider_retriever_final_response_reviewed_mock_static` 建立独立
+> `phase-6.9.8-retriever-final-response-v1` 48-case checkpoint。Manifest 固定为
+> `16 guard + 16 query rewrite + 16 FinalResponse`；manifest/policy/Mock factory/report SHA 分别为
+> `3734b698...31d8 / e7f19f34...1464 / d9fa0ddc...c51 / 02294586...1be`，并锚定 Task 3 original-query
+> baseline manifest/report `8a1788aa...654d / a1478f22...6442`，但不混用两个数据集的分母。
+>
+> Guard 实际穿过正式 Retriever/candidate eligibility 与 exact context authority，得到 `16/16` pass、`16/16`
+> zero-call。Rewrite 的 original/candidate 两侧都穿过 production Retriever node 与固定 fake ranked search；candidate
+> 只把真实 bounded prompt 交给独立 prompt-only Mock runtime，再经过本地 validator/merger。结果 strict/usage/
+> invocation 为 `16/16/16`，original Recall@5/nDCG@5 为 `0.875/0.56923614767`，candidate 为 `1/1`，nDCG
+> uplift `0.43076385233`，critical target recall 与 intent preservation 均为 `1`，unsafe rewrite=0。
+>
+> FinalResponse 侧实际穿过 Retriever result、本地 evidence projector、strict request、prompt-only Mock executor、
+> production FinalResponse node、local citation renderer 与 terminal ledger；expected 只进入后置 scorer。结果
+> strict/terminal/accounted usage 为 `16/16/16`，grounded rubric、citation precision、required citation recall 与
+> critical notice recall 均为 `1`，false tool success/citation 为 `0/0`。Report 不保存 prompt、回答、owner、chunk、
+> credential 或 raw error，只保留固定计数、usage、synthetic cost 与 hash audit；canonical bytes validator 对 mutation、
+> invalid UTF-8 和所有冻结 SHA 漂移 fail-closed。
+>
+> Gate 为 `mock_quality_not_evidence / passed=true / qualityAuthority=none`。Synthetic DeepSeek 估算为
+> `0.027366 CNY`，不是 verified bill；没有真实 Qwen embedding，故 Qwen/aggregate verified cost 与 P95 authority
+> 均为 `null`。Provider/credential/Qwen calls=`0/0/0`，正式 marker/journal/evidence/recovery=`0/0/0/0`；source
+> admission 与 single-consume/no-retry capability 已落地。终审发现早期 admission 只验证 bundle SHA 格式，无法
+> 证明其来自声明源码；现已改为核对 actual Git top-level/branch/HEAD/upstream/origin ref/clean tree，并从 exact
+> commit 的固定 source blobs 独立重算 canonical bundle SHA，伪造 SHA/ref 漂移/dirty tree/缺 blob 均 fail-closed。
+> 项目本地 Codex 状态目录已通过仓库 `.gitignore` 固定排除，因此 `.codex/` 不会让未来 Task 9 admission 永久
+> 失败；目录内容仍不进入版本控制，除此之外的 untracked/任何 tracked 漂移仍会关闭 admission。
+> 静态报告仍明确 `sourceAdmissionExecuted=false`，不冒充 Task 9 admission。
+>
+> Task 8 focused `8/8`、受影响 Agent/Web 回归 `47/47 + 24/24`、Agent full `1252/1252`、Agent typecheck/lint、
+> CLI frozen report、Prettier、diff 与 tracked Compose default-off 静态检查通过；两路独立只读终审无 blocker。未读取/使用模型 credential，未调用 Provider，
+> 未启动 Docker/API/browser，未创建 approved tag/正式 evidence，未修改业务数据，也未合并 main；`.codex/` 保持
+> 本地未跟踪、由 `.gitignore` 排除且未暂存。验收见
+> `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+>
+> Task 8 完成后按计划停止。当前唯一下一任务是 Task 9；必须先具备已推送 source parity、fresh 数据边界接受、
+> 精确 Phase 6.9.8 一次性授权与专用 credential admission，不能把本 Mock checkpoint 升级为 Live authority。
+> 回顾时可以问：为什么 Task 3 与 Task 8 original baseline 指标不同？为什么 prompt-only responder 不能导入 oracle？
+> 为什么 synthetic CNY/P95 不能形成质量 authority？为什么 source admission schema 已实现仍要记录未执行？
+>
 > 2026-08-05 — Phase 6.9.8 Task 7 Chat composition / terminal Trace：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 6 基线

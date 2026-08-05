@@ -1229,8 +1229,23 @@ Task 7 已以 `zero_provider_chat_composition_terminal_trace` 完成以下合同
 - focused Web/Server/Types 与静态门已通过。数据库 E2E 已覆盖三阶段 lifecycle/concurrency，但因本地 Redis/
   PostgreSQL 未运行而 `environment_blocked`；未执行 Docker/API/browser、48-case、controlled-Live 或 main。
 
-当前唯一下一任务为 Task 8 48-case baseline/reviewed Mock/static；Live、产品/main 与后续阶段仍未完成。完整设计、
-计划与 Task 0--7 证据见
+Task 8 已以 `zero_provider_retriever_final_response_reviewed_mock_static` 完成以下静态质量门：
+
+- 固定独立 `16 guard + 16 rewrite + 16 FinalResponse` manifest/policy；prompt-only Mock responder 不导入 manifest、
+  expected/oracle，只读取 production candidate/node 生成的 actual bounded prompt；
+- guard `16/16` 且 zero-call `16/16`；rewrite strict/usage/runtime `16/16/16`，original/candidate Recall@5 为
+  `0.875/1`、nDCG@5 为 `0.56923614767/1`，critical target recall 与 intent preservation 均为 `1`；
+- FinalResponse actual 穿过 Retriever/evidence projector/strict request/production stream ledger；strict/terminal/usage
+  `16/16/16`，grounded、citation precision/recall、critical notice 均为 `1`，false tool success/citation 为 0；
+- report 不保存 prompt、回答、owner、chunk、credential 或 raw error；canonical bytes、manifest/policy/factory/report
+  SHA 漂移 fail-closed；single-run capability 在执行前消费且无 retry/replay；
+- gate 固定 `mock_quality_not_evidence / qualityAuthority=none`。Synthetic DeepSeek estimate 为
+  `0.027366 CNY`，不是 verified bill；P95/Qwen verified/aggregate verified cost 为 `null`；
+- Provider/credential/Qwen calls 与正式 marker/journal/evidence/recovery 均为 0；source admission contract 已实现但
+  `sourceAdmissionExecuted=false`，未启动 Docker/API/browser 或形成产品/main authority。
+
+当前唯一下一任务为 Task 9，但 fresh 数据边界接受与精确一次性授权尚未提供；Live、产品/main 与后续阶段仍未
+完成。完整设计、计划与 Task 0--8 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1240,7 +1255,8 @@ Task 7 已以 `zero_provider_chat_composition_terminal_trace` 完成以下合同
 `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
-`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

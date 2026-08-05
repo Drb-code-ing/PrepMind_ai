@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 7 zero-provider Chat composition / terminal Trace 已完成；下一任务仅 Task 8 48-case baseline / reviewed Mock / static
+> 状态：Task 8 zero-provider reviewed Mock/static 已完成；停在 Task 9 fresh 数据边界接受与精确授权门前
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_chat_composition_terminal_trace`
+> Current Checkpoint Authority：`zero_provider_retriever_final_response_reviewed_mock_static`
 
 ## 1. 决策与目标
 
@@ -573,3 +573,33 @@ Task 7 以 `zero_provider_chat_composition_terminal_trace` 将 Task 0--6 的正�
 
 Task 7 只解锁 Task 8 48-case deterministic baseline、reviewed Mock 与 static checkpoint。完整证据见
 `../../acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
+
+## 21. Task 8 完成回执（2026-08-05）
+
+Task 8 以 `zero_provider_retriever_final_response_reviewed_mock_static` 落成本设计的 48-case 静态质量门，但不改写
+Task 0 的设计 authority，也不提前形成 Task 9 controlled-Live、产品或 main authority：
+
+- 独立 `phase-6.9.8-retriever-final-response-v1` manifest 固定 `16 guard + 16 rewrite + 16 FinalResponse`；
+  manifest/policy/Mock factory/report SHA 为 `3734b698...31d8 / e7f19f34...1464 / d9fa0ddc...c51 /
+02294586...1be`，并单独锚定 Task 3 manifest/report；
+- guard 实际穿过 production eligibility/context authority，得到 `16/16` pass 与 `16/16` zero-call；
+- rewrite 两侧都穿过 production Retriever node 与同一 fake ranked search authority；candidate 只消费真实 bounded
+  prompt，再经过本地 validator/merger。strict/usage/runtime 为 `16/16/16`，original/candidate Recall@5
+  `0.875/1`、nDCG@5 `0.56923614767/1`、uplift `0.43076385233`，critical/intent 为 `1/1`；
+- FinalResponse actual 穿过 Retriever、evidence projector、strict request、prompt-only executor、production node 与
+  local terminal/citation ledger；expected 只进入后置 scorer。strict/terminal/usage 为 `16/16/16`，grounded、
+  citation precision/recall 与 critical notice 均为 `1`，false tool/citation 为 0；
+- report/canonical bytes 不保存 prompt、回答、owner、chunk、credential 或 raw error；mutation/UTF-8/SHA drift
+  fail-closed。Single-run capability 在执行前消费；source admission 会核对 actual Git root/branch/HEAD/upstream/
+  origin ref/clean tree，并从 exact commit blobs 重算 bundle SHA，伪造 claim 不可通过。仓库 `.gitignore` 仅排除
+  本地 `.codex/` 状态，其他 untracked/tracked drift 仍会关闭 admission。静态报告仍明确
+  `sourceAdmissionExecuted=false`，不冒充 Task 9 admission；
+- gate 固定 `mock_quality_not_evidence / qualityAuthority=none`；synthetic DeepSeek estimate `0.027366 CNY`，P95、
+  Qwen verified cost 与 aggregate verified cost 为 `null`；Provider/credential/Qwen calls 和正式 marker/journal/
+  evidence/recovery 均为 0。
+
+Task 8 focused `8/8`、Agent full `1252/1252`、typecheck/lint、CLI frozen report、Prettier/diff、Compose default-off
+静态检查与两路独立只读复审通过。未启动 Docker/API/browser、修改业务数据、创建 approved tag/正式 evidence 或
+合并 main。Task 8 完成后必须停止；只有 source parity、fresh 数据边界接受、精确一次性授权与专用 credential
+admission 全部满足后，才可开始 Task 9。完整证据见
+`../../acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。

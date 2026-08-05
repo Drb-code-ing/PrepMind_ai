@@ -2071,12 +2071,29 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 7 focused Web `17/17`、AgentTracesService `17/17`、Types `42/42 + tsc`、Server build 与受影响
       Web/Server lint 已通过；完整 Web `tsc` 仍有仓库既有 `.test.mts` 类型债，Task 7 新增文件无诊断；数据库 E2E
       已更新，但因 Redis/PostgreSQL 未运行而 `environment_blocked`，不形成真实数据库迁移/API authority；
-- [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
+- [x] Task 8 固定独立 `16 guard + 16 rewrite + 16 FinalResponse` manifest/policy 与 prompt-only Mock responder；
+      responder 只读取 production candidate/node 生成的 actual bounded prompt，不导入 manifest/expected/oracle；
+- [x] Task 8 guard `16/16` 且 zero-call `16/16`；rewrite strict/usage/runtime `16/16/16`，original/candidate
+      Recall@5 `0.875/1`、nDCG@5 `0.56923614767/1`、uplift `0.43076385233`、critical/intent `1/1`；
+- [x] Task 8 FinalResponse strict/terminal/usage `16/16/16`，grounded/citation precision/required recall/critical notice
+      `1/1/1/1`，false tool success/citation 与全部 critical safety failure 为 0；
+- [x] Task 8 strict report/scorer/canonical bytes validator、single-consume/no-retry capability、source admission/parity/
+      artifact-zero contract 已完成；admission 核对 Git root/branch/HEAD/upstream/origin ref/clean tree，并从 exact
+      commit blobs 重算 bundle SHA，伪造 SHA/ref 漂移/dirty tree/缺 blob 均拒绝；静态报告明确
+      `sourceAdmissionExecuted=false`，不冒充 Task 9 正式 admission；
+- [x] `.codex/` 已由仓库 `.gitignore` 固定为本地状态目录，不进入提交且不再让 Task 9 admission 永久失败；其它
+      untracked 与所有 tracked 漂移仍按 dirty tree 拒绝；
+- [x] Task 8 gate 固定 `mock_quality_not_evidence / qualityAuthority=none`；synthetic DeepSeek estimate
+      `0.027366 CNY`，P95/Qwen verified/aggregate verified cost 为 `null`；Provider/credential/Qwen calls 与正式
+      marker/journal/evidence/recovery 均为 0；
+- [x] Task 8 focused `8/8`、受影响 Agent/Web `47/47 + 24/24`、Agent full `1252/1252`、Agent typecheck/lint、
+      CLI frozen SHA、Prettier/diff/Compose default-off static 与两路独立只读复审通过；未启动 Docker/API/browser、
+      修改业务数据或合并 main；
 - [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--7 验收见
+设计、计划与 Task 0--8 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2086,4 +2103,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
 `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
-`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。

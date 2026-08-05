@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 7 Chat composition / terminal Trace 完成；下一任务 Task 8 48-case baseline / reviewed Mock / static
+> 当前状态：Task 8 reviewed Mock/static 完成；停在 Task 9 fresh 数据边界接受与精确授权门前
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -379,9 +379,30 @@ canonical principal
 - Mock authority 固定 `mock_quality_not_evidence`；
 - 正式 Live marker/evidence 为 0。
 
+### 完成状态（2026-08-05）
+
+- 已冻结独立 `16 guard + 16 rewrite + 16 FinalResponse` manifest/policy 与 prompt-only Mock responder；
+  manifest/policy/factory/report SHA 为 `3734b698...31d8 / e7f19f34...1464 / d9fa0ddc...c51 /
+02294586...1be`；
+- guard `16/16` 且 zero-call `16/16`；rewrite strict/usage/runtime `16/16/16`，original/candidate Recall@5
+  `0.875/1`、nDCG@5 `0.56923614767/1`、critical/intent `1/1`；
+- FinalResponse strict/terminal/usage `16/16/16`，grounded/citation precision/recall/critical notice `1/1/1/1`，
+  false tool/citation 与 critical safety failure 为 0；
+- strict report/scorer/canonical bytes validator、single-consume/no-retry capability 与 source admission/parity/
+  artifact-zero contract 已完成；admission 核对 Git root/branch/HEAD/upstream/origin ref/clean tree，并从 exact commit
+  blobs 独立重算 bundle SHA；`.gitignore` 仅排除本地 `.codex/` 状态，其他 untracked/tracked drift 仍拒绝；静态
+  report 固定 `sourceAdmissionExecuted=false`；
+- gate 为 `mock_quality_not_evidence / qualityAuthority=none`；synthetic DeepSeek estimate `0.027366 CNY`，P95/
+  Qwen verified/aggregate verified cost 为 `null`；Provider/credential/Qwen 与正式 marker/journal/evidence/recovery=0；
+- focused `8/8`、Agent full `1252/1252`、typecheck/lint、CLI/Prettier/diff/Compose static 与两路独立复审通过；
+  未启动 Docker/API/browser、修改业务数据、创建 approved tag/正式 evidence 或合并 main；
+- 完整证据见
+  `../../acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`。
+
 ### 停止点
 
-Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.9.8 authorization 才能执行 Task 9。
+Task 8 已完成并停在此处。只有 fresh 数据边界接受和 exact Phase 6.9.8 authorization 才能执行 Task 9；当前没有
+该接受与授权，不得预读 credential、创建 approved tag/marker/evidence 或发起 Provider/Qwen 调用。
 
 ## Task 9：唯一 controlled-Live paired eval
 
@@ -440,16 +461,15 @@ Task 8 完成后必须停下。只有 fresh 数据边界接受和 exact Phase 6.
 
 ## 当前停止边界
 
-Task 4 完成后只允许开始 Task 5。当前已有 shared contracts、Chat canonical principal/access、正式 Retriever
-node、opaque hybrid-search port、original-query deterministic baseline，以及 exact-context-bound evidence
-projector/VerifiedEvidenceBundle/structured citation allowlist，但仍没有：
+Task 0--8 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
+48-case reviewed Mock/static checkpoint。当前仍没有：
 
-- 正式 FinalResponse node；
-- query rewrite candidate；
-- terminal FinalResponse Trace；
-- 48-case baseline/Mock/Live authority；
-- Docker/API/browser/main authority。
+- Task 9 fresh-admission controlled-Live 质量 authority；
+- 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
+- Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
+- Task 11 main/default-off 回放与远程 main parity authority。
 
-不得把 Task 3 的 fake-search baseline、Task 4 的本地 evidence projection、PostgreSQL fake-embedding E2E、旧
-Chat live、Qwen hybrid search、Markdown citation 或 graph descriptor 写成 query rewrite、FinalResponse、产品或
-Live 能力已完成。
+不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、旧 Chat Live、Qwen hybrid search 或 graph descriptor
+写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。当前只允许停下并等待 Task 9 的 fresh 数据边界接受与
+精确一次性授权。
