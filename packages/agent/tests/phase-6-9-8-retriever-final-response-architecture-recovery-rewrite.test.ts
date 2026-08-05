@@ -11,6 +11,7 @@ import {
 import {
   completePhase698ArchitectureRecoveryRewriteDiagnostic,
   createPhase698ArchitectureRecoveryRewriteDiagnosticSession,
+  createPhase698ArchitectureRecoveryRewriteRunnerObservation,
   recordPhase698ArchitectureRecoveryRewriteAdmission,
   recordPhase698ArchitectureRecoveryRewriteCallResult,
   recordPhase698ArchitectureRecoveryRewriteCandidateProjection,
@@ -23,6 +24,11 @@ import {
   recordPhase698ArchitectureRecoveryRewriteUsage,
   type Phase698ArchitectureRecoveryRewriteDiagnosticSession,
 } from '../src/evals/phase-6-9-8-retriever-final-response-architecture-recovery-contract.ts';
+import {
+  calculatePhase698ArchitectureRecoveryCostCny,
+  expectedPhase698ArchitectureRecoveryCallSchedule,
+} from '../src/evals/phase-6-9-8-retriever-final-response-architecture-recovery-runner-contract.ts';
+import { createPhase698ArchitectureRecoveryControlledOutcome } from '../src/evals/phase-6-9-8-retriever-final-response-architecture-recovery-runner.ts';
 import { RETRIEVER_QUERY_REWRITE_MODEL_SCHEMA } from '../src/model-candidates/retriever-query-rewrite-model-candidate.ts';
 
 const SENTINEL_KEY = 'r1-synthetic-key-never-send';
@@ -45,6 +51,7 @@ describe('Phase 6.9.8 Architecture Recovery rewrite diagnostic stage machine', (
       'recordPhase698ArchitectureRecoveryRewriteUsage',
       'recordPhase698ArchitectureRecoveryRewriteCost',
       'completePhase698ArchitectureRecoveryRewriteDiagnostic',
+      'createPhase698ArchitectureRecoveryRewriteRunnerObservation',
     ]) {
       expect(name in publicModule).toBe(false);
     }
@@ -121,6 +128,58 @@ describe('Phase 6.9.8 Architecture Recovery rewrite diagnostic stage machine', (
       'call_result_contract',
       'applied',
     ]);
+    const identity = expectedPhase698ArchitectureRecoveryCallSchedule().find(
+      (entry) => entry.callId === 'rewrite_01.rewrite_candidate_model',
+    )!;
+    const observation = createPhase698ArchitectureRecoveryRewriteRunnerObservation(
+      harness.session.capability,
+      identity.callId,
+    );
+    expect(observation).toMatchObject({
+      version:
+        'phase-6.9.8-retriever-final-response-architecture-recovery-runner-observation-capability-v1',
+    });
+    const controlled = createPhase698ArchitectureRecoveryControlledOutcome({
+      identity,
+      observationCapability: observation!,
+      usage: { inputTokens: 17, outputTokens: 5 },
+      verifiedCostCny: calculatePhase698ArchitectureRecoveryCostCny('deepseek', {
+        inputTokens: 17,
+        outputTokens: 5,
+      }),
+      result: {
+        phase: 'rewrite_candidate_model',
+        executedQuery: '根据单调且有界条件解释收敛',
+        intentPreserved: true,
+        unsafeRewrite: false,
+      },
+    });
+    expect(controlled.version).toBe(
+      'phase-6.9.8-retriever-final-response-architecture-recovery-outcome-capability-v1',
+    );
+    expect(() =>
+      createPhase698ArchitectureRecoveryControlledOutcome({
+        identity,
+        observationCapability: observation!,
+        usage: { inputTokens: 17, outputTokens: 5 },
+        verifiedCostCny: calculatePhase698ArchitectureRecoveryCostCny('deepseek', {
+          inputTokens: 17,
+          outputTokens: 5,
+        }),
+        result: {
+          phase: 'rewrite_candidate_model',
+          executedQuery: '根据单调且有界条件解释收敛',
+          intentPreserved: true,
+          unsafeRewrite: false,
+        },
+      }),
+    ).toThrow('PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_INVALID');
+    expect(
+      createPhase698ArchitectureRecoveryRewriteRunnerObservation(
+        harness.session.capability,
+        identity.callId,
+      ),
+    ).toBeNull();
     expect(harness.adapter.provenance).toBe('synthetic_test');
     expect(JSON.stringify(harness.session.read())).not.toMatch(
       /raw query|prompt|credential|api[_-]?key|rewrittenQuery|deepseek\.com/iu,
@@ -280,6 +339,12 @@ describe('Phase 6.9.8 Architecture Recovery rewrite diagnostic stage machine', (
       callerStatus: string,
     ) => boolean;
     expect(unsafeCall(harness.session.capability, 'observed')).toBe(false);
+    expect(
+      createPhase698ArchitectureRecoveryRewriteRunnerObservation(
+        harness.session.capability,
+        'rewrite_01.rewrite_candidate_model',
+      ),
+    ).toBeNull();
     expect(harness.session.read()).toBeNull();
     expect(harness.session.readSnapshot().completedStages).toEqual([
       'admission',
@@ -296,6 +361,51 @@ describe('Phase 6.9.8 Architecture Recovery rewrite diagnostic stage machine', (
       recordPhase698ArchitectureRecoveryRewriteProviderObservation(harness.session.capability),
     ).toBe(false);
     expect(harness.session.readSnapshot()).toEqual(snapshotAfterFirst);
+  });
+
+  test('binds a first-party observation to its exact call instead of only its phase', async () => {
+    const harness = createHarness(async () =>
+      successResponse({ rewrittenQuery: 'safe exact call' }, 8, 3),
+    );
+    await recordToRuntimeResult(harness);
+    recordToTrace(harness.session);
+    expect(
+      recordPhase698ArchitectureRecoveryRewriteTrace(harness.session.capability, 'accepted'),
+    ).toBe(true);
+    expect(recordPhase698ArchitectureRecoveryRewriteUsage(harness.session.capability)).toBe(true);
+    expect(
+      recordPhase698ArchitectureRecoveryRewriteCost(harness.session.capability, 'accepted'),
+    ).toBe(true);
+    expect(
+      recordPhase698ArchitectureRecoveryRewriteCallResult(harness.session.capability, 'accepted'),
+    ).toBe(true);
+    expect(completePhase698ArchitectureRecoveryRewriteDiagnostic(harness.session.capability)).toBe(
+      true,
+    );
+    const schedule = expectedPhase698ArchitectureRecoveryCallSchedule();
+    const first = schedule.find((entry) => entry.callId === 'rewrite_01.rewrite_candidate_model')!;
+    const second = schedule.find((entry) => entry.callId === 'rewrite_02.rewrite_candidate_model')!;
+    const observation = createPhase698ArchitectureRecoveryRewriteRunnerObservation(
+      harness.session.capability,
+      first.callId,
+    )!;
+    expect(() =>
+      createPhase698ArchitectureRecoveryControlledOutcome({
+        identity: second,
+        observationCapability: observation,
+        usage: { inputTokens: 8, outputTokens: 3 },
+        verifiedCostCny: calculatePhase698ArchitectureRecoveryCostCny('deepseek', {
+          inputTokens: 8,
+          outputTokens: 3,
+        }),
+        result: {
+          phase: 'rewrite_candidate_model',
+          executedQuery: 'safe exact call',
+          intentPreserved: true,
+          unsafeRewrite: false,
+        },
+      }),
+    ).toThrow('PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_INVALID');
   });
 
   test('rejects forged, reused, and out-of-order capabilities without a Provider call', () => {

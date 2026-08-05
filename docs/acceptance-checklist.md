@@ -2147,12 +2147,36 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] R2 authority 仅
       `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`；external
       Provider/credential/formal evidence/Docker/API/browser/business writes 全为 0；cost/ranking/citation/Trace/
-      delivery/result mapper 仍须 R3 runner/validator/durability 绑定；
-- [ ] Recovery R3 runner/durability/admission；R4 reviewed Mock/static；
+      delivery/result mapper 在该 checkpoint 当时仍须 R3 runner/validator/durability 绑定，后续 R3 已完成；
+- [x] Recovery R3 已新增独立 report/gate 与固定 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64 calls`
+      runner；guard-first、pair serial、first-failure breaker 与 incomplete semantic/P95/token/CNY=`null` 已冻结；
+- [x] R3 `runnerWire` reservation/dispatch/harness-return/verified-result 与 `providerWire` executor/dispatch/response/
+      verified-usage 独立记账，不能互相替代；
+- [x] 共享 observation issuer 已删除；Rewrite/Qwen/FinalResponse 各自用模块私有 WeakMap 单次签发，精确绑定
+      `callId + phase + family`，forged/active/reused/cross-call/cross-family/out-of-order 均 fail-closed；
+- [x] R3 source bundle、clean/parity/formal-evidence-zero admission 与 admission/reservation 双 opaque capability 已
+      完成；synthetic test authority 不能升级为 controlled-Live；
+- [x] R3 exclusive marker、reservation-before-dispatch、fsynced hash-chain diagnostic journal、exclusive temp +
+      hard-link artifact、strict replay/recompute validator 与 crash-only seal 已完成；
+- [x] `run_terminal` 后和 `publication_started` 后的 terminal publication recovery 已覆盖；recovery claim 绑定
+      `recovery_claimed.previousHash`，重算后续 hash 的 claim-tail drift 仍拒绝；
+- [x] R3 CLI 只接受 validate/seal 两个 zero-provider maintenance argv，不暴露 Live/retry/replay/resume/backfill；
+      本阶段没有运行正式 R3 CLI；
+- [x] R3 focused `39/39`、Agent/AI full `1318/345`、typecheck/lint、Prettier/diff 与旧 Task 9C validator/SHA parity
+      通过；Provider/credential/正式 tag/marker/journal/artifact/recovery claim/Docker/API/browser/business writes 全为 0；
+- [x] R3 独立 Reader Testing 8 个关键问题均可从核心文档准确回答；Markdown 相对链接、current-status、secret 与
+      正式 evidence=0 扫描通过；独立安全复审无 blocker；
+- [x] R3 如实保留单机文件系统边界：不声称 hostile same-user 进程并发替换 `.tmp`/子路径、跨主机 lease 或
+      Provider exactly-once 已解决；
+- [x] R3 authority 仅
+      `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission /
+qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main authority；
+- [ ] Recovery R4 zero-provider reviewed Mock/static；这是唯一下一原子任务；
+- [ ] Recovery R5 controlled-Live、R6 产品 Docker/API/可见浏览器/Trace、R7 main；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划、Task 0--9C 与 Architecture Recovery R0--R2 验收见
+设计、计划、Task 0--9C 与 Architecture Recovery R0--R3 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2171,4 +2195,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`。

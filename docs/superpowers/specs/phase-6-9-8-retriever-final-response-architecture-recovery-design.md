@@ -1,11 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计
 
 > - 日期：2026-08-05
-> - 状态：R0--R2 zero-provider 完成；下一步仅 R3 runner / durability / admission
+> - 状态：R0--R3 zero-provider 完成；下一步仅 R4 reviewed Mock / static checkpoint
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 起始提交：`7026dc4cac83bb656b81739abcb68287c133066a`
 > - R0 authority：`zero_provider_retriever_final_response_architecture_recovery_design`
-> - 当前 checkpoint authority：`zero_provider_retriever_final_response_architecture_recovery_robustness`
+> - 当前 checkpoint authority：`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission`
 > - Quality Authority：`none`
 > - 独立 lineage：`phase-6.9.8-retriever-final-response-architecture-recovery-v1`
 
@@ -388,6 +388,32 @@ runner、strict validator 与 durability lifecycle 绑定，才能形成正式 e
 语义、产品或 main authority。验收见
 [R2 zero-provider Qwen / FinalResponse robustness](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)。
 
+### 7.6 R3 已落地的 Runner / Durability / Admission authority
+
+R3 已在 zero-provider 边界把 R1/R2 的三类 terminal observation 接入独立
+`phase-6.9.8-retriever-final-response-architecture-recovery-v1` runner。固定调度为 `16 guards + 16 rewrite pairs +
+16 FinalResponse cases = 64 Provider call slots`；每条调用分别记录 reservation/dispatch/harness-return/verified-result
+的 `runnerWire`，以及第一方 executor/dispatch/response/verified-usage 的 `providerWire`。首个失败打开 breaker 后，
+未开始调用不生成 diagnostic、usage 或费用；分母不完整时 semantic、P95、token 与 CNY aggregate 全为 `null`。
+
+共享 runner-observation 模块只保留严格记录校验，不再导出 capability issuer。Rewrite、Qwen 与 FinalResponse 各自在
+模块私有 WeakMap 中签发、保存和单次消费 observation，精确绑定 `callId + phase + family`；forged、active、reused、
+cross-call 与 cross-family capability 均 fail-closed。Synthetic outcome 永远保持 `synthetic_test`，不能升级为
+controlled-Live authority。
+
+Source admission 已绑定 branch、HEAD/upstream/origin/new approved ref parity、clean tree、formal evidence=0、冻结
+identity 与完整 source bundle SHA，并用 admission/reservation 两个 opaque capability 分离 runner 使用权和 evidence
+预留权。Durability 已实现 exclusive marker、reservation-before-dispatch、fsynced hash-chain diagnostic journal、
+exclusive temp + hard-link artifact、strict replay/recompute validator 与 crash-only seal；`run_terminal` 后或
+`publication_started` 后崩溃均只恢复 terminal publication，不继续 Provider 工作。Recovery claim 绑定
+`recovery_claimed.previousHash`，即使攻击者重算后续 hash，claim-tail drift 仍被拒绝。
+
+R3 只在隔离临时目录运行 synthetic durability/fault tests；没有执行正式 R3 CLI、创建 approved tag/marker/journal/
+artifact/recovery claim、读取 credential 或调用 Provider。其 authority 仅为
+`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`，不形成
+reviewed Mock、Live、产品、SLA 或 main authority。验收见
+[R3 zero-provider runner / durability / admission](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)。
+
 ## 8. Result、Wire 与 Gate
 
 新 lineage 继续保留公共 `failureReason` 以兼容 report 聚合，同时新增 strict bounded diagnostic。Validator 必须同时
@@ -418,7 +444,7 @@ runner、strict validator 与 durability lifecycle 绑定，才能形成正式 e
 旧 Task 9C evidence namespace 完全只读。新 lineage 使用新的 source manifest、approval、marker、journal、artifact、
 validator 和 recovery prefix。
 
-未来 journal 在既有 call lifecycle 外增加：
+R3 journal 在既有 call lifecycle 外增加：
 
 ```text
 diagnostic_stage_started
@@ -470,7 +496,7 @@ R1--R4 至少覆盖：
 
 ## 11. Source Admission
 
-未来 source manifest 至少绑定：
+R3 source manifest 已绑定：
 
 - Task 8 manifest、Task 3 baseline、Task 9 eval policy 与 scorer；
 - 三类 provider request/response/stream contract；
@@ -503,8 +529,8 @@ R1--R4 至少覆盖：
 | R0   | sealed 只读复盘、三链路阶段机、bounded diagnostic、独立 lineage 与路线   | 已完成，zero-provider |
 | R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 已完成，zero-provider |
 | R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider |
-| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 下一步，zero-provider |
-| R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 未开始，zero-provider |
+| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 已完成，zero-provider |
+| R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 下一步，zero-provider |
 | R5   | 仅在全新 admission 与用户新授权后可能执行的一次 controlled-Live          | 未授权、未开始        |
 | R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                  |
 | R7   | 仅 R6 pass 后的 main 合并、远程推送与 default-off 回放                   | 阻断                  |
@@ -513,7 +539,7 @@ R1--R4 至少覆盖：
 当前源码尚未进入 main，因此不能从缺少 Task 0--9B 基线的 main 开始 Recovery；同时也禁止为了满足分支形式而
 提前把失败 gate 合并 main。
 
-## 13. R0--R2 当前禁止事项
+## 13. R0--R3 当前禁止事项
 
 - 不运行 Task 9C production CLI、seal、curl、单 case或产品 API Provider 探测；
 - 不删除、移动、改写、重建 Task 9C tag/marker/journal/artifact；
@@ -522,7 +548,7 @@ R1--R4 至少覆盖：
 - 不保存 raw、raw-derived hash、unknown key、Zod issue、prompt、query、chunk、answer、credential 或 error；
 - 不修改产品 gate、`.env`、Docker、数据库、BackgroundJob、Outbox 或业务数据；
 - 不降低分母、质量门、预算、安全、owner、citation 或 local authority；
-- 不执行 R4 Mock、R5 Live、Task 10/11 或 main；下一原子任务仅 R3 zero-provider runner/durability/admission。
+- 不执行 R5 Live、Task 10/11 或 main；下一原子任务仅 R4 zero-provider reviewed Mock/static。
 
 ## 14. 回顾时可以问
 
@@ -534,5 +560,7 @@ R1--R4 至少覆盖：
 - 为什么 diagnostic 不保存 raw hash 或 unknown key 名？
 - FinalResponse 为什么不能照搬 Tutor 的单 ordinal schema recovery？
 - 为什么完整分母失败时，四条成功费用仍不能作为 run aggregate？
-- 为什么 R2 完成后仍不能创建新 tag、读取 credential 或请求 Live 授权？
+- 为什么 R3 完成后仍不能创建正式 tag/evidence、读取 credential 或请求 Live 授权？
+- 为什么 observation 必须由三个第一方模块各自私有签发，而不能暴露一个共享 issuer？
+- `run_terminal` 后崩溃与普通 crash-only recovery 的 publication authority 有什么区别？
 - 为什么 Phase 6.9.8 Recovery 继续留在当前功能分支，而不能从缺少基线的 main 新建？

@@ -21,6 +21,13 @@ import {
   type Phase698ArchitectureRecoveryDiagnosticReasonCode,
   type Phase698ArchitectureRecoveryDiagnosticSnapshot,
 } from './phase-6-9-8-retriever-final-response-architecture-recovery-diagnostic.ts';
+import {
+  PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_CAPABILITY_VERSION,
+  validatePhase698ArchitectureRecoveryRunnerObservation,
+  type Phase698ArchitectureRecoveryRunnerObservation,
+  type Phase698ArchitectureRecoveryRunnerObservationCapability,
+} from './phase-6-9-8-retriever-final-response-architecture-recovery-runner-observation.ts';
+import { expectedPhase698ArchitectureRecoveryCallSchedule } from './phase-6-9-8-retriever-final-response-architecture-recovery-runner-contract.ts';
 
 export const PHASE_6_9_8_ARCHITECTURE_RECOVERY_FINAL_RESPONSE_DIAGNOSTIC_CAPABILITY_VERSION =
   'phase-6.9.8-retriever-final-response-stream-diagnostic-capability-v1' as const;
@@ -57,6 +64,7 @@ type FinalResponseSessionState = {
   diagnosticCapability: Phase698ArchitectureRecoveryDiagnosticCapability;
   wireCapability: Phase698ProviderWireCapability | null;
   providerObservationRecorded: boolean;
+  runnerObservationIssued: boolean;
 };
 
 const FINAL_RESPONSE_WIRE_SEQUENCE = Object.freeze([
@@ -71,6 +79,11 @@ const FINAL_RESPONSE_WIRE_SEQUENCE = Object.freeze([
 
 const finalResponseCapabilities = new WeakMap<object, FinalResponseSessionState>();
 const boundWireCapabilities = new WeakSet<object>();
+const finalResponseRunnerObservations = new WeakMap<
+  object,
+  Phase698ArchitectureRecoveryRunnerObservation
+>();
+const consumedFinalResponseRunnerObservations = new WeakSet<object>();
 
 export function createPhase698ArchitectureRecoveryFinalResponseDiagnosticSession(
   wireCapability: unknown,
@@ -92,6 +105,7 @@ export function createPhase698ArchitectureRecoveryFinalResponseDiagnosticSession
     diagnosticCapability,
     wireCapability: available ? (wireCapability as Phase698ProviderWireCapability) : null,
     providerObservationRecorded: false,
+    runnerObservationIssued: false,
   });
   if (available) {
     boundWireCapabilities.add(wireObject);
@@ -302,6 +316,75 @@ export function completePhase698ArchitectureRecoveryFinalResponseDiagnostic(
 ): boolean {
   const internal = readSessionState(capability)?.diagnosticCapability;
   return internal ? completePhase698ArchitectureRecoveryDiagnosticState(internal) : false;
+}
+
+/** Read-only, single-use bridge from the module-owned terminal state into the R3 runner. */
+export function createPhase698ArchitectureRecoveryFinalResponseRunnerObservation(
+  capability: Phase698ArchitectureRecoveryFinalResponseDiagnosticCapability,
+  callId: string,
+): Phase698ArchitectureRecoveryRunnerObservationCapability | null {
+  const state = readSessionState(capability);
+  if (
+    !state ||
+    state.runnerObservationIssued ||
+    !state.providerObservationRecorded ||
+    state.wireCapability === null
+  ) {
+    return null;
+  }
+  const diagnosticSnapshot = readPhase698ArchitectureRecoveryDiagnosticSnapshot(
+    state.diagnosticCapability,
+  );
+  const wireSnapshot = readPhase698ProviderWireSnapshot(state.wireCapability);
+  if (!diagnosticSnapshot?.diagnostic || !wireSnapshot || wireSnapshot.state === 'active')
+    return null;
+  try {
+    const identity = expectedFinalResponseIdentity(callId);
+    if (!identity) return null;
+    const record = validatePhase698ArchitectureRecoveryRunnerObservation(
+      {
+        family: 'final_response',
+        callId,
+        callPhase: 'final_response_model',
+        diagnostic: diagnosticSnapshot.diagnostic,
+        diagnosticStages: diagnosticSnapshot.completedStages,
+        providerWire: {
+          executions: wireSnapshot.counters.executorInvocations,
+          dispatches: wireSnapshot.counters.providerDispatches,
+          responses: wireSnapshot.counters.providerResponses,
+          verifiedUsage: wireSnapshot.counters.verifiedUsages,
+        },
+      },
+      identity,
+    );
+    const observation = Object.freeze({
+      version: PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_CAPABILITY_VERSION,
+    });
+    finalResponseRunnerObservations.set(observation, record);
+    state.runnerObservationIssued = true;
+    return observation;
+  } catch {
+    return null;
+  }
+}
+
+/** Runner-only consumer. The module-private WeakMap is the issuer authority. */
+export function consumePhase698ArchitectureRecoveryFinalResponseRunnerObservation(
+  capability: unknown,
+): Phase698ArchitectureRecoveryRunnerObservation | null {
+  const key = asObject(capability);
+  if (!key || consumedFinalResponseRunnerObservations.has(key)) return null;
+  const observation = finalResponseRunnerObservations.get(key);
+  if (!observation) return null;
+  consumedFinalResponseRunnerObservations.add(key);
+  return observation;
+}
+
+function expectedFinalResponseIdentity(callId: string) {
+  const identity = expectedPhase698ArchitectureRecoveryCallSchedule().find(
+    (entry) => entry.callId === callId,
+  );
+  return identity?.phase === 'final_response_model' ? identity : null;
 }
 
 function projectProviderObservation(

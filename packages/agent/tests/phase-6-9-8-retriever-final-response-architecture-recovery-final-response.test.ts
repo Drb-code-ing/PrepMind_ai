@@ -12,6 +12,7 @@ import {
 import {
   completePhase698ArchitectureRecoveryFinalResponseDiagnostic,
   createPhase698ArchitectureRecoveryFinalResponseDiagnosticSession,
+  createPhase698ArchitectureRecoveryFinalResponseRunnerObservation,
   recordPhase698ArchitectureRecoveryFinalResponseAdmission,
   recordPhase698ArchitectureRecoveryFinalResponseCallResult,
   recordPhase698ArchitectureRecoveryFinalResponseCitationLedger,
@@ -57,6 +58,7 @@ describe('Phase 6.9.8 Architecture Recovery FinalResponse diagnostic integration
       'recordPhase698ArchitectureRecoveryFinalResponseStreamContract',
       'recordPhase698ArchitectureRecoveryFinalResponseTerminalLedger',
       'completePhase698ArchitectureRecoveryFinalResponseDiagnostic',
+      'createPhase698ArchitectureRecoveryFinalResponseRunnerObservation',
     ]) {
       expect(name in publicModule).toBe(false);
     }
@@ -133,6 +135,21 @@ describe('Phase 6.9.8 Architecture Recovery FinalResponse diagnostic integration
       'call_result_contract',
       'applied',
     ]);
+    expect(
+      createPhase698ArchitectureRecoveryFinalResponseRunnerObservation(
+        harness.session.capability,
+        'final_01.final_response_model',
+      ),
+    ).toMatchObject({
+      version:
+        'phase-6.9.8-retriever-final-response-architecture-recovery-runner-observation-capability-v1',
+    });
+    expect(
+      createPhase698ArchitectureRecoveryFinalResponseRunnerObservation(
+        harness.session.capability,
+        'final_01.final_response_model',
+      ),
+    ).toBeNull();
     expect(JSON.stringify(harness.session.read())).not.toMatch(
       /prompt-raw|synthetic-key|deepseek\.com|credential/iu,
     );
@@ -335,6 +352,12 @@ describe('Phase 6.9.8 Architecture Recovery FinalResponse diagnostic integration
       recordPhase698ArchitectureRecoveryFinalResponseProviderObservation(active.session.capability),
     ).toBe(false);
     expect(active.session.read()).toBeNull();
+    expect(
+      createPhase698ArchitectureRecoveryFinalResponseRunnerObservation(
+        active.session.capability,
+        'final_01.final_response_model',
+      ),
+    ).toBeNull();
     release?.();
     await pending;
   });

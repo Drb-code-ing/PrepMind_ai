@@ -9,7 +9,7 @@ zero-provider robustness TDD。
 
 本阶段解决的是“Qwen/FinalResponse 调用失败时，怎样由第一方适配器证明 Provider 边界，并落入互斥、有限、
 不保存 raw 的 stage/reason”，不是 runner/durability、64-call reviewed Mock、controlled-Live、产品或 main
-验收。R2 完成后只解锁 R3 source admission / runner / durability。
+验收。R2 完成后当时只解锁 R3 source admission / runner / durability；R3 后续已独立完成。
 
 ## 2. 实现范围
 
@@ -82,8 +82,9 @@ no-retry、`credentials=omit`、严格 status/content-type/JSON/exact envelope/i
 Provider `data` 顺序变化不改变按 index 重建的 embedding authority。缺失、重复或越界 index 均是
 `embedding_count_invalid`，不会靠排序、默认值或修复继续执行。
 
-Cost、ranking 与 call-result 当前仍只接收包内 fixed status；R2 没有把它们写成数值 authority。未来 R3 必须由
-source-admitted runner、冻结价格/ranking/result validator 与 durability lifecycle 绑定。
+Cost、ranking 与 call-result 在 R2 checkpoint 仍只接收包内 fixed status；R2 没有把它们写成数值 authority。
+后续 R3 已由 source-admitted runner、冻结价格/ranking/result validator 与 durability lifecycle 完成绑定，但仍只
+形成 zero-provider runner/durability authority，不形成真实数值或质量 authority。
 
 ## 5. FinalResponse robustness
 
@@ -191,7 +192,8 @@ R2 的新分类只验证未来 recovery lineage 的 bounded behavior，不能反
 - 禁止 curl、单 case、产品 API 或其它 Provider 探测；
 - 不读取 `.env`/credential，不创建 approved tag 或正式 Recovery evidence；
 - 不启动 Docker/API/browser，不修改产品 gate、业务数据、BackgroundJob 或 Outbox；
-- R2 独立提交并推送后，下一步只能开始 R3 zero-provider runner / durability / admission；
+- R2 独立提交并推送后，当时下一步只能开始 R3 zero-provider runner / durability / admission；R3 后续已完成，
+  当前下一步仅 R4 zero-provider reviewed Mock/static；
 - 不得提前执行 R4--R7、Task 10/11、main 或后续 Phase。
 
 ## 12. 回顾时可以问
@@ -204,3 +206,12 @@ R2 的新分类只验证未来 recovery lineage 的 bounded behavior，不能反
 - 为什么 citation/Trace/cost/delivery mapper 在 R2 通过后仍不是 durability 或数值 authority？
 - 为什么测试中的 synthetic first-party adapter 不能证明 Provider、真实语义或产品可用？
 - 为什么 R2 新诊断不能反向补全 Task 9C 的 sealed failure？
+
+## 13. 后续状态（2026-08-06）
+
+R3 已以
+`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+完成独立 report/runner、三个模块私有 observation authority、source admission、durability、strict validator 与
+zero-provider maintenance CLI；正式 approved tag/marker/journal/artifact/recovery claim 均为 0。R2 的 source、
+authority 与测试结论未被改写。R3 证据见
+[R3 zero-provider runner/durability/admission](./phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)。

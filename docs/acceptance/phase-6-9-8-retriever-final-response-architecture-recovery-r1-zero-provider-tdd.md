@@ -118,7 +118,7 @@ transport、账号或服务端。
 ## 9. R1 收口时明确未完成
 
 - R2 Qwen embedding/ranking 与 FinalResponse stream/terminal/citation robustness（后续已独立完成）；
-- R3 source admission、report/runner/CLI、marker/journal/artifact/validator/crash-only seal；
+- R3 source admission、report/runner/CLI、marker/journal/artifact/validator/crash-only seal（后续已独立完成）；
 - R4 64-call reviewed Mock/static；
 - R5 controlled-Live、R6 产品验收、R7 main；
 - Task 10/11、Phase 6.9.8 收口与后续阶段。
@@ -129,8 +129,8 @@ transport、账号或服务端。
 - 禁止 curl、单 case、产品 API 或其它 Provider 探测；
 - 不读取 `.env`/credential，不创建 approved tag 或正式 Recovery evidence；
 - 不启动 Docker/API/browser，不修改产品 gate、业务数据、BackgroundJob 或 Outbox；
-- R1 提交并推送后，当时下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness；R2 现已完成，当前
-  下一步仅 R3 zero-provider runner/durability/admission。
+- R1 提交并推送后，当时下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness；R2/R3 现已完成，
+  当前下一步仅 R4 zero-provider reviewed Mock/static。
 
 ## 11. 回顾时可以问
 
@@ -145,6 +145,9 @@ transport、账号或服务端。
 
 R2 已以
 `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none` 完成 Qwen /
-FinalResponse 第一方 wire diagnostics 与 zero-provider robustness；R1 的 source、authority、测试结果和 Task 9C
-不可变性均未重写。当前只解锁 R3 runner/durability/admission。R2 证据见
-[R2 zero-provider Qwen / FinalResponse robustness](./phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)。
+FinalResponse 第一方 wire diagnostics 与 zero-provider robustness；R3 又以
+`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+完成独立 runner/durability/admission。R1 的 source、authority、测试结果和 Task 9C 不可变性均未重写；当前只
+解锁 R4 reviewed Mock/static。证据见
+[R2 zero-provider Qwen / FinalResponse robustness](./phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)
+与 [R3 zero-provider runner/durability/admission](./phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)。

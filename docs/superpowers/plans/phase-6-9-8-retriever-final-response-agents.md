@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 失败封存；Architecture Recovery R0--R2 zero-provider 完成，下一步仅 R3 runner/durability/admission
+> 当前状态：Task 9C 失败封存；Architecture Recovery R0--R3 zero-provider 完成，下一步仅 R4 reviewed Mock/static
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -480,7 +480,7 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 当前 evidence 只能定位到本地 strict rewrite schema/contract，不能声称具体 Provider payload、transport、账号或
 服务端根因。Task 9C 不得重跑；Task 10 admission 未满足。
 
-## Architecture Recovery R0--R2：独立 zero-provider 设计、rewrite TDD 与 robustness
+## Architecture Recovery R0--R3：独立 zero-provider 设计、TDD、robustness 与 durability
 
 R0 已完成，authority 为
 `zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`：
@@ -500,13 +500,20 @@ R1 随后已完成 strict diagnostic、module-owned opaque rewrite session 与�
 R2 又完成 Qwen/FinalResponse 两个独立第一方 wire family 与 recovery session，覆盖 transport/HTTP/envelope/
 embedding/usage、stream/terminal/false-tool/abort 与 hostile capability/input；首个畸形 stream event 固定为
 `response_observed + stream_event_invalid`。Focused compatibility `58/58`、AI full `345/345`、Agent full
-`1301/1301` 通过。包内 cost/ranking/citation/Trace/delivery/result mapper 尚待 R3 source-admitted runner/validator
-绑定，因此当前只形成
+`1301/1301` 通过。该 checkpoint 当时的包内 cost/ranking/citation/Trace/delivery/result mapper 尚未绑定
+source-admitted runner/validator，因此只形成
 `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`。
 
+R3 随后完成固定 16-guard/64-call report/runner、`providerWire/runnerWire` 双层 accounting、source admission、
+三个模块私有 observation authority、exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、
+hard-link artifact、strict validator、crash-only seal 与 zero-provider maintenance CLI。所有 durability artifact 只在
+临时 synthetic root 创建；正式 approved tag/marker/journal/artifact/recovery claim 均为 0。Focused `39/39`、
+Agent full `1318/1318`、AI full `345/345`、typecheck/lint 与 Task 9C validator/SHA parity 通过；当前 authority 为
+`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`。
+
 完整路线已转入独立
-[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。当前只允许其中 R3
-zero-provider runner / durability / admission；Task 10/11 继续阻断。
+[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。当前只允许其中 R4
+zero-provider reviewed Mock/static；R5 Live、Task 10/11 与产品/main 继续阻断。
 
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
@@ -537,8 +544,8 @@ zero-provider runner / durability / admission；Task 10/11 继续阻断。
 
 ## 当前停止边界
 
-Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0--R2 设计、rewrite TDD 与
-Qwen/FinalResponse robustness 已完成。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0--R3 设计、rewrite TDD、
+Qwen/FinalResponse robustness 与 runner/durability/admission 已完成。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
@@ -547,9 +554,9 @@ Provider accounting、source admission 与 durability/validator/CLI。当前仍�
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
-- R3 durability 与 R4 reviewed-Mock authority。
+- R4 reviewed-Mock authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
 marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main 和任何 Task 9C Provider 追加调用。
-下一原子任务只允许按独立 Recovery 计划执行 R3 zero-provider runner / durability / admission。
+下一原子任务只允许按独立 Recovery 计划执行 R4 zero-provider reviewed Mock / static checkpoint。

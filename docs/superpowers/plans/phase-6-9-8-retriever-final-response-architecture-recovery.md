@@ -2,9 +2,9 @@
 
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
-> - 当前状态：R0--R2 zero-provider 完成；下一步仅 R3 runner / durability / admission
+> - 当前状态：R0--R3 zero-provider 完成；下一步仅 R4 reviewed Mock / static checkpoint
 > - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`
+> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
 
 ## 1. 总体规则
 
@@ -125,17 +125,19 @@
 
 ## 5. R3 — Runner / Durability / Admission
 
-状态：下一步；仅 R2 已完成，不代表 R3 已开始或通过。
+状态：已完成，zero-provider。
 
-### 交付
+### 交付结果
 
-- 独立 report/gate 与固定 16-guard/64-call scheduler；
-- `providerWire` 与 `runnerWire` 双层 accounting；
-- 新 source manifest、source admission 与双 opaque capability；
-- exclusive marker、dispatch-before-call fsynced hash-chain journal；
-- diagnostic stage journal、exclusive temp + hard-link artifact；
-- strict recomputing validator 与 crash-only seal；
-- 只允许固定 argv 的未来 production CLI，默认关闭且无当前授权。
+- [x] 独立 report/gate 与固定 16-guard/64-call scheduler；
+- [x] `providerWire` 与 `runnerWire` 双层 accounting；
+- [x] 新 source manifest、source admission 与 admission/reservation 双 opaque capability；
+- [x] Rewrite/Qwen/FinalResponse 各自用模块私有 WeakMap 单次签发 runner observation；不存在共享可调用 issuer；
+- [x] exclusive marker、reservation-before-dispatch、fsynced hash-chain journal；
+- [x] diagnostic stage journal、exclusive temp + hard-link artifact；
+- [x] strict replay/recomputing validator 与 crash-only seal；
+- [x] `run_terminal` 后和 `publication_started` 后的 terminal publication recovery；
+- [x] 只允许 validate/seal 两个 zero-provider maintenance argv 的 CLI；不存在 Live/retry/replay/resume/backfill argv。
 
 ### Durability 断言
 
@@ -152,14 +154,22 @@
 
 ### R3 验收
 
-- 正式 approved tag/marker/journal/artifact/recovery claim 仍为 0；
-- synthetic durability/fault matrix 全通过；
-- validator 能从 journal/artifact 独立重算 gate、wire、usage、cost 与 diagnostic；
-- CLI 未读取 credential，未调用 Provider。
+- [x] 正式 approved tag/marker/journal/artifact/recovery claim 仍为 0；
+- [x] synthetic runner/durability/fault matrix 全通过；
+- [x] validator 能从 journal/artifact 独立重算 gate、wire、usage、cost 与 diagnostic；
+- [x] recovery claim 严格绑定 `recovery_claimed.previousHash`，claim-tail drift 与后续 hash 重算攻击仍拒绝；
+- [x] CLI 未读取 credential，未调用 Provider，也未执行正式 R3 validate/seal；
+- [x] 旧 Task 9C report/artifact SHA 与 validator 结果保持不变；
+- [x] R3 acceptance 与全部当前状态文档同步，单独提交并推送当前功能分支。
+- [x] 独立 Reader Testing 能从三份核心文档准确回答 authority、recovery、Task 9C 与下一阶段边界；安全复审无
+      blocker。R3 仍不声称 hostile same-user 文件系统 race、跨主机 lease 或 Provider exactly-once authority。
+
+验收见
+[R3 zero-provider runner / durability / admission](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)。
 
 ## 6. R4 — Reviewed Mock / Static Checkpoint
 
-状态：未开始；仅 R3 完成后解锁。
+状态：下一步；仅 R3 已完成，不代表 R4 已开始或通过。
 
 ### 目标
 
@@ -214,13 +224,14 @@ git diff --check
 
 ## 10. 当前停止边界
 
-R0--R2 只形成设计、rewrite TDD 与 Qwen/FinalResponse robustness authority。当前已有 strict bounded diagnostic、
-三个独立 call-family、opaque session、第一方 terminal wire snapshot 只读投影与 zero-provider fault tests；当前仍
-没有：
+R0--R3 只形成设计、三链路 diagnostic/robustness 与 runner/durability/admission authority。当前已有 strict bounded
+diagnostic、三个独立 call-family、模块私有单次 observation、固定 16-guard/64-call runner、双 wire accounting、
+source admission、journal/artifact/validator 与 crash-only recovery 合同；但本阶段只在临时 synthetic 根验证，正式
+R3 tag/marker/journal/artifact/recovery claim 仍为 0，`qualityAuthority=none`。当前仍没有：
 
-- recovery runner、CLI、marker/journal/artifact/validator；
-- reviewed Mock、controlled-Live、产品或 main authority；
+- R4 reviewed Mock/static authority；
+- R5 controlled-Live、产品、Docker/API/browser、Trace 或 main authority；
 - 对 Task 9C 具体失败字段或 Provider 根因的结论。
 
-下一步只能开始 R3 zero-provider runner / durability / admission。不得执行 R4--R7、Task 9C CLI/seal、Task
+下一步只能开始 R4 zero-provider reviewed Mock / static checkpoint。不得执行 R5--R7、Task 9C CLI/seal、Task
 10/11、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。

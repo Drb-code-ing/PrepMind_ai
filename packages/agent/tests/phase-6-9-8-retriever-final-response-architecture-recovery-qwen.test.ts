@@ -12,6 +12,7 @@ import {
 import {
   completePhase698ArchitectureRecoveryQwenDiagnostic,
   createPhase698ArchitectureRecoveryQwenDiagnosticSession,
+  createPhase698ArchitectureRecoveryQwenRunnerObservation,
   recordPhase698ArchitectureRecoveryQwenAdmission,
   recordPhase698ArchitectureRecoveryQwenCallResult,
   recordPhase698ArchitectureRecoveryQwenCost,
@@ -41,6 +42,7 @@ describe('Phase 6.9.8 Architecture Recovery Qwen diagnostic integration', () => 
       'recordPhase698ArchitectureRecoveryQwenEmbedding',
       'recordPhase698ArchitectureRecoveryQwenUsage',
       'completePhase698ArchitectureRecoveryQwenDiagnostic',
+      'createPhase698ArchitectureRecoveryQwenRunnerObservation',
     ]) {
       expect(name in publicModule).toBe(false);
     }
@@ -91,6 +93,21 @@ describe('Phase 6.9.8 Architecture Recovery Qwen diagnostic integration', () => 
       'call_result_contract',
       'applied',
     ]);
+    expect(
+      createPhase698ArchitectureRecoveryQwenRunnerObservation(
+        harness.session.capability,
+        'rewrite_01.rewrite_original_retrieval',
+      ),
+    ).toMatchObject({
+      version:
+        'phase-6.9.8-retriever-final-response-architecture-recovery-runner-observation-capability-v1',
+    });
+    expect(
+      createPhase698ArchitectureRecoveryQwenRunnerObservation(
+        harness.session.capability,
+        'rewrite_01.rewrite_original_retrieval',
+      ),
+    ).toBeNull();
     expect(JSON.stringify(harness.session.read())).not.toMatch(
       /query-credential|synthetic-key|dashscope|embedding/iu,
     );
@@ -259,6 +276,12 @@ describe('Phase 6.9.8 Architecture Recovery Qwen diagnostic integration', () => 
       recordPhase698ArchitectureRecoveryQwenProviderObservation(active.session.capability),
     ).toBe(false);
     expect(active.session.read()).toBeNull();
+    expect(
+      createPhase698ArchitectureRecoveryQwenRunnerObservation(
+        active.session.capability,
+        'rewrite_01.rewrite_original_retrieval',
+      ),
+    ).toBeNull();
     release?.(qwenResponse({}));
     await pending;
   });

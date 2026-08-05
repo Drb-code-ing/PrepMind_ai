@@ -1,5 +1,49 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R3：
+>
+> 本任务以
+> `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission /
+qualityAuthority=none` 完成独立 report/runner、三模块 observation authority、source admission、durability、strict
+> validator 与 zero-provider maintenance CLI。Runner 固定执行 `16 guards + 16 rewrite pairs + 16 FinalResponse =
+64 Provider call slots`，分别记录 reservation/dispatch/harness-return/verified-result 的 `runnerWire` 与第一方
+> executor/dispatch/response/verified-usage 的 `providerWire`。首个失败打开 breaker，后续不启动；分母不完整时
+> semantic、P95、token 与 CNY aggregate 全为 `null`。
+>
+> 独立复审发现早期草案的共享 observation issuer 虽使用 WeakMap token，却仍是可导入函数，调用者可以绕过“只有
+> 第一方模块签发”的边界。最终实现删除共享 issuer，改为 Rewrite/Qwen/FinalResponse 各自的模块私有 WeakMap
+> 单次签发与消费；共享模块只校验从私有 map 取回的 bounded record。Capability 精确绑定
+> `callId + phase + family`，forged/active/reused/cross-call/cross-family/out-of-order 全部 fail-closed，synthetic outcome
+> 也不能升级为 controlled-Live authority。
+>
+> Source admission 绑定 branch、HEAD/upstream/origin/new approved ref、clean tree、formal evidence=0、旧 Task 9C
+> identity 与完整 source bundle SHA，并用 admission/reservation 双 opaque capability 分权。Durability 已实现
+> exclusive marker、reservation-before-dispatch、fsynced hash-chain diagnostic journal、exclusive temp + hard-link
+> artifact、strict replay/recompute validator 与 crash-only seal。`run_terminal` 后和 `publication_started` 后崩溃可只
+> 恢复 terminal publication；recovery claim 严格绑定 `recovery_claimed.previousHash`，即使重算后续 hash 的 tail drift
+> 也被拒绝。旧 Task 9C namespace 有显式只读写围栏。
+>
+> R0--R3 focused `39/39 / 7 files / 455 assertions`、Agent full `1318/1318`、AI full `345/345`、Agent
+> typecheck/lint、Prettier 与 `git diff --check` 通过。Task 9C 只读 validator 保持
+> `ok=true / 134 / evidence_published`，report/artifact SHA 仍为
+> `c612d6f7164d5491e54422abb2e8504cbb707aeea3b641e8c57285d957b8b4a4 /
+7d45329debde6def4c5bc8bbda28609b507a71766ae06e00806e44eaf7b3614c`；没有运行旧 CLI/seal 或改写 sealed
+> evidence。
+>
+> 独立 Reader Testing 对 8 个关键问题均能从 R3 design/plan/acceptance 准确回答，未发现坏链接或自相矛盾；
+> Markdown 相对链接、current-status、secret 与正式 evidence=0 扫描通过。独立安全复审无 blocker，同时保留一个
+> 诚实 residual boundary：标准 Node 文件路径检查不形成 hostile same-user 进程并发替换 `.tmp`/子路径、跨主机
+> lease 或 Provider exactly-once authority；该边界不影响本次 zero-provider checkpoint，但未来生产 admission 必须
+> 继续按受信单机 workspace 处理或另行强化。
+>
+> 本阶段 external Provider/DeepSeek/Qwen/credential/formal R3 tag/marker/journal/artifact/recovery claim、正式 R3
+> validate/seal、Docker/API/browser 与业务写均为 0。公开 CLI 只接受 validate/seal 两个 zero-provider maintenance
+> argv，不存在 Live/retry/replay/resume/backfill argv。R3 独立提交并推送后，下一原子任务仅 R4 zero-provider
+> reviewed Mock/static；R5--R7、Task 10/11、main、Phase 6.9.9+ 和记忆/博客收尾继续阻断。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`。回顾时可以
+> 问：两层 wire 分别证明什么？为什么共享 issuer 不可信？为什么 recovery claim 要绑定
+> `recovery_claimed.previousHash`？为什么 R3 完成仍不能进入 Live 或产品验收？
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R2：
 >
 > 本任务以

@@ -4,15 +4,18 @@
 >
 > 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。Task 9B 又完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：第二条 DeepSeek rewrite 在 dispatch 后命中本地 `schema_invalid`，仅执行 `5/64` Provider calls，其余 59 次被 breaker 阻止；journal `134`、validator `ok=true`。一次性名额已消费，Task 10/11、产品/main 继续阻断。
 
-> Phase 6.9.8 Architecture Recovery R0--R2 后续状态：R0 已冻结三类调用阶段机、`providerWire/runnerWire` 双层观察、
+> Phase 6.9.8 Architecture Recovery R0--R3 后续状态：R0 已冻结三类调用阶段机、`providerWire/runnerWire` 双层观察、
 > no-raw/no-hash bounded diagnostic、新 lineage/source admission、durability 与 R1--R7 路线。R1 又以
 > `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none` 实现 strict diagnostic、
 > opaque rewrite session 与第一方 V7 terminal wire snapshot 只读投影；Provider observation 不接收调用方状态，
 > forged/reused/active capability 均 fail-closed。R2 再以
 > `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none` 增加 Qwen/
 > FinalResponse 两个第一方 wire family、single-use recovery session 与 embedding/stream/terminal/usage fault matrix；
-> 首个畸形 stream event 固定为 `response_observed + stream_event_invalid`。R0--R2 未读取 credential、调用 Provider
-> 或创建正式 evidence；当前只解锁 R3 zero-provider runner/durability/admission。
+> 首个畸形 stream event 固定为 `response_observed + stream_event_invalid`。R3 再以
+> `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+> 落成固定 16-guard/64-call runner、三个模块私有 observation、双 wire accounting、source admission、hash-chain
+> journal、hard-link artifact、strict validator 与 crash-only recovery。R0--R3 未读取 credential、调用 Provider 或创建
+> 正式 Recovery evidence；当前只解锁 R4 zero-provider reviewed Mock/static。
 
 ## 1. 当前边界
 
@@ -52,15 +55,16 @@
   DeepSeek rewrite `schema_invalid / 1/1/0/0` 后 breaker 将剩余 59 次调用收为 not-started。正式 semantic/P95/
   token/CNY aggregate 全 `null`，gate 为 `task9_quality_gate_failed / qualityAuthority=none`。它只形成失败前缀和
   durability authority，不形成 Retriever/FinalResponse 产品或质量 authority；一次性名额已消费且不得重跑。
-- Phase 6.9.8 Architecture Recovery R0--R2 职责：新 lineage 只定义未来 diagnostic 的信任边界，不进入当前产品数据流。R0
+- Phase 6.9.8 Architecture Recovery R0--R3 职责：新 lineage 只定义独立评测 diagnostic/durability 信任边界，不进入当前产品数据流。R0
   把第一方 adapter 的 Provider dispatch/response/usage 与 harness/runner 的本地返回生命周期分开，并为 rewrite、
   Qwen embedding/ranking、FinalResponse stream/terminal/citation 分别冻结 strict stage/reason。R1 已落地 rewrite
   子图；R2 又落地 Qwen/FinalResponse 子图。三个 session 都绑定一次性真实 family capability，Provider boundary
   只由 terminal frozen snapshot 推导；第一条畸形 stream event 是 response observed 后的 event invalid，不是
-  response missing。包内 runtime/candidate/local-authority/ranking/citation/Trace/cost/delivery/result mapper 尚待 R3
-  source-admitted runner/validator 绑定。Diagnostic 只能包含 fixed enum/bucket 与 `rawDataRetained=false`，不能保存
-  raw、raw-derived hash、prompt/query/chunk/answer、unknown key、credential、URL 或 raw error。R0--R2 external
-  `providerCalls=0`，不形成质量、durability 或产品 authority。
+  response missing。R3 已将 runtime/candidate/local-authority/ranking/citation/Trace/cost/delivery/result 接入固定
+  source-admitted runner/validator；三类 runner observation 由各模块私有 WeakMap 单次签发，不能由共享调用方自报。
+  Diagnostic 只能包含 fixed enum/bucket 与 `rawDataRetained=false`，不能保存 raw、raw-derived hash、prompt/query/chunk/
+  answer、unknown key、credential、URL 或 raw error。R0--R3 external `providerCalls=0`，只形成 runner/durability/
+  admission authority，不形成 reviewed Mock、Live、产品或质量 authority。
 - Provider Transport Diagnostic 职责：Recovery R1 的新 adapter 只在实例内存中保存 frozen `version + subtype`，用 own data descriptor 和最多四层 cause 将 fetch throw 映射为九个固定类别；公共 runtime/error/Trace 仍只接收原有 `transport`。Recovery R2 仅在独立 zero-network canary runner 中用模块内 synthetic responder 消费该 adapter。Recovery R3 的真实 composition 仍与产品 Tutor/Organizer 分离，只能在 exact confirmation、专用 credential、clean/tracking source 和未消费 marker 同时满足时构造一次 transport；结果只进入 diagnostic-only artifact，不能反向诊断 V9，也不能自动成为 Provider 外部健康或 Agent 语义事实。
 - Provider Canary V2 职责：C1 的 proxy attestation 只存在于当前进程并只能消费一次；C2 public CLI 固定执行 preflight -> source -> approval/dedicated credential -> exclusive marker -> single fact-free dispatch -> terminal -> publication，不接受 transport 或输出注入。Marker、hash-chain journal 与 hard-link artifact 只解决一次性执行和证据 durability，不负责 Tutor/Organizer 语义、产品接线或业务写入。唯一 L1 已以 `complete / strict_response_with_verified_usage` 封存，但仍为 `qualityAuthority=none`；它只向 P1 提供一次 Provider health diagnostic，不得成为 semantic 或产品输入。
 - Small-sample G2 职责：public CLI 只接收 `args + AbortSignal`，固定 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication；G2 当时要求未来 L2 source admission 绑定专用 approved tag，S2 本身不创建该 tag。Runner 先执行 8 guards，再串行推进 8 pairs，pair 内 Tutor/Organizer lane 各自拥有 budget/abort/timeout/terminal。Crash-only seal 只补当前开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 `not_started_quality_breaker`；不读取 credential、不构造 transport、不调用 Provider，也不是 resume/replay。G2 只形成 `zero_provider_runner_durability`。
@@ -1025,6 +1029,16 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> rewrite_02 DeepSeek schema_invalid / wire 1/1/0/0；remaining 59 not-started
        -> journal 134 / evidence_published / validator ok / recovery claim null
        -> no retry/resume/replay/backfill；Task 10/11 and product/main remain blocked
+  -> Architecture Recovery R0--R3 complete / providerCalls=0 / qualityAuthority=none
+       -> three bounded diagnostic families -> module-private single-use observations
+       -> 16 guard first -> 16 serial rewrite pairs -> 16 FinalResponse -> 64 fixed call slots
+       -> runnerWire reservation/dispatch/harness-return/verified-result
+       -> providerWire executor/dispatch/response/verified-usage
+       -> first failure breaker；incomplete semantic/P95/token/CNY = null
+       -> source admission + exclusive marker + fsynced hash-chain journal
+       -> exclusive temp/hard-link artifact + strict validator + crash-only publication recovery
+       -> formal tag/marker/journal/artifact/claim = 0；next only R4 reviewed Mock/static
+       -> R5 Live/product/Docker/API/browser/main/Phase 6.9.9+ remain blocked
 ```
 
 ## Phase 6.9.8 Task 0--9C 数据流（含 Chat composition、Qwen transport 与 sealed Live failure）

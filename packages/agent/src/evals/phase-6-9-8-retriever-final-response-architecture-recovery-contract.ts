@@ -21,6 +21,13 @@ import {
   type Phase698ArchitectureRecoveryDiagnosticReasonCode,
   type Phase698ArchitectureRecoveryDiagnosticSnapshot,
 } from './phase-6-9-8-retriever-final-response-architecture-recovery-diagnostic.ts';
+import {
+  PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_CAPABILITY_VERSION,
+  validatePhase698ArchitectureRecoveryRunnerObservation,
+  type Phase698ArchitectureRecoveryRunnerObservation,
+  type Phase698ArchitectureRecoveryRunnerObservationCapability,
+} from './phase-6-9-8-retriever-final-response-architecture-recovery-runner-observation.ts';
+import { expectedPhase698ArchitectureRecoveryCallSchedule } from './phase-6-9-8-retriever-final-response-architecture-recovery-runner-contract.ts';
 
 export const PHASE_6_9_8_ARCHITECTURE_RECOVERY_REWRITE_DIAGNOSTIC_CAPABILITY_VERSION =
   'phase-6.9.8-retriever-final-response-rewrite-diagnostic-capability-v1' as const;
@@ -58,10 +65,16 @@ type RewriteSessionState = {
   diagnosticCapability: Phase698ArchitectureRecoveryDiagnosticCapability;
   wireCapability: Phase697V7WireCapability | null;
   providerObservationRecorded: boolean;
+  runnerObservationIssued: boolean;
 };
 
 const rewriteCapabilities = new WeakMap<object, RewriteSessionState>();
 const boundWireCapabilities = new WeakSet<object>();
+const rewriteRunnerObservations = new WeakMap<
+  object,
+  Phase698ArchitectureRecoveryRunnerObservation
+>();
+const consumedRewriteRunnerObservations = new WeakSet<object>();
 
 export function createPhase698ArchitectureRecoveryRewriteDiagnosticSession(
   wireCapability: unknown,
@@ -82,6 +95,7 @@ export function createPhase698ArchitectureRecoveryRewriteDiagnosticSession(
     diagnosticCapability,
     wireCapability: wireAvailable ? (wireCapability as Phase697V7WireCapability) : null,
     providerObservationRecorded: false,
+    runnerObservationIssued: false,
   };
   rewriteCapabilities.set(capability, state);
   if (wireAvailable) {
@@ -204,6 +218,75 @@ export function completePhase698ArchitectureRecoveryRewriteDiagnostic(
 ): boolean {
   const internal = readInternalCapability(capability);
   return internal ? completePhase698ArchitectureRecoveryDiagnosticState(internal) : false;
+}
+
+/** Read-only, single-use bridge from the module-owned terminal state into the R3 runner. */
+export function createPhase698ArchitectureRecoveryRewriteRunnerObservation(
+  capability: Phase698ArchitectureRecoveryRewriteDiagnosticCapability,
+  callId: string,
+): Phase698ArchitectureRecoveryRunnerObservationCapability | null {
+  const state = readSessionState(capability);
+  if (
+    !state ||
+    state.runnerObservationIssued ||
+    !state.providerObservationRecorded ||
+    state.wireCapability === null
+  ) {
+    return null;
+  }
+  const diagnosticSnapshot = readPhase698ArchitectureRecoveryDiagnosticSnapshot(
+    state.diagnosticCapability,
+  );
+  const wireSnapshot = readPhase697V7WireSnapshot(state.wireCapability);
+  if (!diagnosticSnapshot?.diagnostic || !wireSnapshot || wireSnapshot.state === 'active')
+    return null;
+  try {
+    const identity = expectedRewriteIdentity(callId);
+    if (!identity) return null;
+    const record = validatePhase698ArchitectureRecoveryRunnerObservation(
+      {
+        family: 'rewrite',
+        callId,
+        callPhase: 'rewrite_candidate_model',
+        diagnostic: diagnosticSnapshot.diagnostic,
+        diagnosticStages: diagnosticSnapshot.completedStages,
+        providerWire: {
+          executions: wireSnapshot.counters.executorInvocations,
+          dispatches: wireSnapshot.counters.providerDispatches,
+          responses: wireSnapshot.counters.providerResponses,
+          verifiedUsage: wireSnapshot.counters.verifiedUsages,
+        },
+      },
+      identity,
+    );
+    const observation = Object.freeze({
+      version: PHASE_6_9_8_ARCHITECTURE_RECOVERY_RUNNER_OBSERVATION_CAPABILITY_VERSION,
+    });
+    rewriteRunnerObservations.set(observation, record);
+    state.runnerObservationIssued = true;
+    return observation;
+  } catch {
+    return null;
+  }
+}
+
+/** Runner-only consumer. The module-private WeakMap is the issuer authority. */
+export function consumePhase698ArchitectureRecoveryRewriteRunnerObservation(
+  capability: unknown,
+): Phase698ArchitectureRecoveryRunnerObservation | null {
+  const key = asObject(capability);
+  if (!key || consumedRewriteRunnerObservations.has(key)) return null;
+  const observation = rewriteRunnerObservations.get(key);
+  if (!observation) return null;
+  consumedRewriteRunnerObservations.add(key);
+  return observation;
+}
+
+function expectedRewriteIdentity(callId: string) {
+  const identity = expectedPhase698ArchitectureRecoveryCallSchedule().find(
+    (entry) => entry.callId === callId,
+  );
+  return identity?.phase === 'rewrite_candidate_model' ? identity : null;
 }
 
 function passOrFail(
