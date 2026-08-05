@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -18,6 +19,9 @@ import {
 import {
   agentTraceCreateRequestSchema,
   agentTraceListQuerySchema,
+  agentTraceRealtimeFinalizeRequestSchema,
+  agentTraceRealtimePrepareRequestSchema,
+  agentTraceRealtimeStartRequestSchema,
   agentTraceSummaryQuerySchema,
 } from '@repo/types/api/agent-trace';
 
@@ -299,6 +303,69 @@ export class AgentTracesController {
     );
   }
 
+  @Post('realtime')
+  @ApiOperation({
+    summary: '创建实时 Chat Agent Trace run',
+    description:
+      '在 FinalResponse stream 前创建不可覆盖的 RUNNING run；相同 owner/run/modelCall 的完全相同请求幂等，冲突身份拒绝。',
+  })
+  @ApiCreatedResponse({
+    description:
+      '返回 RUNNING trace；不会包含 prompt、回答、chunk 或 credential。',
+  })
+  startRealtimeTrace(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: unknown,
+  ) {
+    return this.agentTracesService.startRealtimeTrace(
+      user.id,
+      agentTraceRealtimeStartRequestSchema.parse(body),
+    );
+  }
+
+  @Patch('realtime/:id/prepare')
+  @ApiOperation({
+    summary: '准备实时 Chat Agent Trace run',
+    description:
+      '在 FinalResponse 前一次性写入本地权威的 route、预算、RAG、Verifier 与固定枚举步骤；完全相同请求幂等，冲突或 terminal 后写入拒绝。',
+  })
+  @ApiOkResponse({
+    description:
+      '返回已准备但仍为 RUNNING 的 trace；内部 prepared 标记不进入公共 DTO。',
+  })
+  prepareRealtimeTrace(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.agentTracesService.prepareRealtimeTrace(
+      user.id,
+      id,
+      agentTraceRealtimePrepareRequestSchema.parse(body),
+    );
+  }
+
+  @Patch('realtime/:id/terminal')
+  @ApiOperation({
+    summary: '终结实时 Chat Agent Trace run',
+    description:
+      '只允许同 owner/modelCallId 的 RUNNING run 原子迁移到一个 terminal；相同 terminal 幂等，冲突或迟到写入拒绝。',
+  })
+  @ApiOkResponse({
+    description: '返回已经封存的 terminal trace 与安全步骤摘要。',
+  })
+  finalizeRealtimeTrace(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    return this.agentTracesService.finalizeRealtimeTrace(
+      user.id,
+      id,
+      agentTraceRealtimeFinalizeRequestSchema.parse(body),
+    );
+  }
+
   @Get()
   @ApiOperation({
     summary: '列出 Agent 调试记录',
@@ -320,7 +387,7 @@ export class AgentTracesController {
   @ApiOperation({
     summary: '汇总 Agent Trace 成本估算',
     description:
-      '统计最近若干天的 mock/live 次数、失败次数、token 估算和估算成本；该值不替代供应商账单。',
+      '统计最近若干天的 running/mock/live/失败次数，并严格分开 token/成本估算与 terminal verified usage/cost；任一字段都不替代供应商账单。',
   })
   @ApiOkResponse({
     description:

@@ -1211,8 +1211,26 @@ Task 6 已以 `zero_provider_final_response_stream_contract` 完成以下合同�
   `.env`/credential、未调用 Provider、未接 `/api/chat`，未执行产品 Docker/API/browser、48-case、
   controlled-Live 或 main；`qualityAuthority=none`。
 
-当前唯一下一任务为 Task 7 Chat composition 与 terminal Trace；Task 8 质量门、Live、产品/main 与后续阶段仍未
-完成。完整设计、计划与 Task 0--6 证据见
+Task 7 已以 `zero_provider_chat_composition_terminal_trace` 完成以下合同：
+
+- `/api/chat` 按 canonical auth -> minimal RUNNING Trace -> context -> Router/Tutor -> Retriever/query rewrite ->
+  Verifier -> local evidence projector -> Trace prepare -> FinalResponse stream -> terminal finalize 串联；anonymous Mock
+  在 Provider config 和全部 Agent runtime 前直接返回；
+- realtime Trace start 只保存 run/modelCall/conversation/mode/time 与 pending/zero placeholder；prepare 只保存固定
+  node/status/reason/count summary 和 digest；finalize 通过 CAS 保证单 terminal，并可在 prepare ACK 不确定时原子补写
+  同一 preparation。Legacy overwrite、late prepare、conflicting retry 与 concurrent second finalize 均 fail-closed；
+- Retriever transport/schema failure 安全降级为 no-RAG；`ragIncluded=false` 时 bundle、allowlist、citation 与
+  Markdown 整层清零。Cross-scope principal binding 不被伪装成普通检索失败，返回 403；abort 返回 499；
+- AI SDK text channel 只承载正文、本地 citation Markdown 与诚实失败提示。Sequence、citation lockstep、唯一
+  terminal、terminal-last 由本地校验；`Response.body.cancel()` 和 parent request abort 都会取消同一 request scope
+  与底层 reader，且不会后台 replay；
+- 同步链路不创建 BackgroundJob/Outbox，两个模型 gate 继续 default-off，Provider calls=0；Task 7
+  `qualityAuthority=none`，不证明真实模型质量、P95、SLA 或产品可用性；
+- focused Web/Server/Types 与静态门已通过。数据库 E2E 已覆盖三阶段 lifecycle/concurrency，但因本地 Redis/
+  PostgreSQL 未运行而 `environment_blocked`；未执行 Docker/API/browser、48-case、controlled-Live 或 main。
+
+当前唯一下一任务为 Task 8 48-case baseline/reviewed Mock/static；Live、产品/main 与后续阶段仍未完成。完整设计、
+计划与 Task 0--7 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1221,7 +1239,8 @@ Task 6 已以 `zero_provider_final_response_stream_contract` 完成以下合同�
 `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
 `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
-`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

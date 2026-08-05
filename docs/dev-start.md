@@ -13,7 +13,7 @@ postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
 
 如果你只是想打开 Prisma Studio 看数据，推荐在项目根目录运行：
 
-```powershell
+```PowerShell
 bun run db:studio
 ```
 
@@ -287,7 +287,7 @@ bun --filter @repo/server smoke:operator-audit-export
 
 两个 token 应来自本轮专用临时账号：先通过 `/auth/register` 创建 ADMIN 候选和 STUDENT，再按本文
 “本地管理员账号准备”只提升候选账号，重新登录以取得带 ADMIN role 的新 access token。不要复用
-长期真实账号；验收结束后删除这两个测试账号及其 refresh token。若 KEEP_DATA=true，先按终端输出的
+长期真实账号；验收结束后删除这两个测试账号及其 refresh token。若 KEEP\_DATA=true，先按终端输出的
 安全 export id 检查，再通过 Prisma/数据库按 `clientRequestId + reason + export id` 精确删除该轮 facts，
 严禁按时间范围或整个 prefix 批量清空共享环境。
 
@@ -301,7 +301,7 @@ export=<id> records=<count> requestAudit=1 downloadAudit=1 expired=true objectDe
 脚本会验证 STUDENT list/create/download 均为 403、ADMIN 申请到 READY、ZIP 头和响应头、
 `records.csv`/`manifest.json`、CSV/ZIP SHA-256、申请/下载审计、到期 410 与 MinIO 删除；默认
 `finally` 精确清理本次 export/audit/outbox/SYSTEM job、Bull jobs 和对象。ADMIN/STUDENT 测试账号
-由验收人员预先准备，不属于脚本 cleanup，验收结束后要另行删除。只有排障时才把 KEEP_DATA 设为
+由验收人员预先准备，不属于脚本 cleanup，验收结束后要另行删除。只有排障时才把 KEEP\_DATA 设为
 true，并在检查后人工清理。token、ZIP 内容、object key、payload 和 metadata 都不应写进日志或文档。
 
 ### 本机前端和 Docker 前端怎么选
@@ -763,7 +763,7 @@ bun run db:generate
 
 当前 `db:generate` 会自动运行 `packages/database/scripts/repair-prisma-client.mjs`，修复 Bun workspace 下 Prisma Client 生成路径和运行路径不一致的问题。
 
-### e2e 提示 DATABASE_URL / JWT_SECRET undefined
+### e2e 提示 DATABASE\_URL / JWT\_SECRET undefined
 
 检查：
 
@@ -1573,15 +1573,17 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
 - SR7 main/default-off 验收已完成：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace；精确 Tutor
   step-check 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Trace 为 Mock、成本
   0；两个合成账号、tracked Outbox 与浏览器业务数据 residue=0；
-- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--6 也已完成；Task 6 只形成
-  `zero_provider_final_response_stream_contract / qualityAuthority=none`，Provider calls=0，且未接 `/api/chat`。
-  当前唯一下一任务是 Task 7 Chat composition 与 terminal Trace；Task 8 质量门、Live/产品/main、Phase
+- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--7 也已完成；Task 7 只形成
+  `zero_provider_chat_composition_terminal_trace / qualityAuthority=none`，Provider calls=0。`/api/chat` 已串联正式
+  Retriever/query rewrite、Verifier、evidence projector、FinalResponse stream 与 realtime Trace；两个模型 gate
+  仍 default-off，同步流不创建 BackgroundJob/Outbox。数据库 E2E 因本地 Redis/PostgreSQL 未运行而
+  `environment_blocked`；当前唯一下一任务是 Task 8 baseline/reviewed Mock/static，Live/产品/main、Phase
   6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 
-### Phase 6.9.8 Task 0--6 运行边界
+### Phase 6.9.8 Task 0--7 运行边界
 
 Task 5/6 已把 Retriever query rewrite 与 FinalResponse 的三项变量分别加入 tracked safe example 与 Docker
 Compose `web` allowlist；默认仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。不要开启 gate、
@@ -1598,13 +1600,17 @@ FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY=
 
 两组变量只允许显式投影给 Next `web` server runtime，不能注入 Nest `server`、`worker`、`admin` 或浏览器
 client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、Review/Planner 或 Knowledge credential
-替代。Task 5/6 的候选、FinalResponse node/adapter 与配置已实现，但 `/api/chat` 要到 Task 7 才注入 runtime
-bundle；当前启动项目仍不会执行 query rewrite 或新的 FinalResponse stream。Task 6 未读取根 `.env`/credential、
-未运行 Qwen/DeepSeek、未启动产品 Docker/API/browser；Compose 只完成 `docker/.env.example` 的 safe config
-解析。当前唯一下一任务是 Task 7 Chat composition 与 terminal Trace，仍不需要为真实模型修改本地启动命令或
+替代。Task 7 已把两组 runtime bundle 接入 `/api/chat`，但 tracked default 仍为 false；普通本地启动不会执行
+query rewrite 或新的真实 FinalResponse Provider stream，只走 gate-off/Mock/安全降级路径。Task 7 未调用 Qwen/
+DeepSeek，未启动产品 Docker/API/browser；早期 Prisma wrapper 曾加载根 `.env` 进程环境，但未读取、输出或使用
+模型 credential，后续直接 CLI 未再次加载。当前唯一下一任务是 Task 8，仍不需要为真实模型修改本地启动命令或
 开启任何 gate。
 
-设计与 Task 0--6 验收见
+Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` API。若要在未来 Task 10 产品验收时运行
+数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
+补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
+
+设计与 Task 0--7 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
@@ -1612,7 +1618,8 @@ bundle；当前启动项目仍不会执行 query rewrite 或新的 FinalResponse
 `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
 `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
-`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 6 zero-provider FinalResponseAgent / stream contract 已完成；下一任务仅 Task 7 Chat composition / terminal Trace
-> 日期：2026-08-04
+> 状态：Task 7 zero-provider Chat composition / terminal Trace 已完成；下一任务仅 Task 8 48-case baseline / reviewed Mock / static
+> 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_final_response_stream_contract`
+> Current Checkpoint Authority：`zero_provider_chat_composition_terminal_trace`
 
 ## 1. 决策与目标
 
@@ -549,3 +549,27 @@ Task 6 以 `zero_provider_final_response_stream_contract` 落成本设计的 Fin
 执行 48-case/controlled-Live 或合并 main。`qualityAuthority=none`，因此不能证明真实模型质量、产品可用性、
 Trace、P95 或 SLA；当前只解锁 Task 7 Chat composition 与 terminal Trace。完整证据见
 `../../acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
+
+## 20. Task 7 完成回执（2026-08-05）
+
+Task 7 以 `zero_provider_chat_composition_terminal_trace` 将 Task 0--6 的正式节点接入 `/api/chat`，但不改写 Task 0
+的设计 authority，也不提前形成 Task 8 质量、controlled-Live、产品或 main authority：
+
+- composition 固定为 canonical auth -> minimal RUNNING Trace -> context -> Router/Tutor -> Retriever/query rewrite ->
+  Verifier -> local evidence projector -> Trace prepare -> FinalResponse stream -> terminal finalize；anonymous Mock 在
+  Provider config 与全部 Agent runtime 前返回；
+- realtime Trace 新增 `start/prepare/finalize` 三阶段。Start 只写 run/modelCall/conversation/mode/time 和 pending/zero
+  placeholder；prepare 以 digest 幂等写固定脱敏 step；finalize 用 CAS 收口，并可在 prepare ACK 不确定时原子补写
+  同一 preparation。Legacy overwrite、late prepare、conflicting retry 与第二个 concurrent finalize 均 fail-closed；
+- Retriever transport/schema failure 继续 no-RAG；`ragIncluded=false` 时 bundle、allowlist、citation 与 Markdown
+  同时清空。Principal binding invalid 与 abort 分别保持 403/499，不被误报为普通检索失败；
+- AI SDK text channel 只承载正文、本地 citation Markdown 与诚实失败提示。Sequence、citation lockstep、唯一
+  terminal 和 terminal-last 由本地 ledger 校验；response cancel/parent abort 都会终止 request scope 并单次取消
+  底层 reader，清理 listener；
+- Trace steps 只接受固定节点、枚举、reason/count summary；不保存 query、chunk、owner、token、prompt、回答正文、
+  `inputHash` 或 `inputPreview`。同步 stream 不创建 BackgroundJob/Outbox，也不后台 replay；
+- 两个模型 gate 继续 default-off，Provider calls=0，`qualityAuthority=none`。数据库 E2E 已更新，但因本地 Redis/
+  PostgreSQL 未运行而 `environment_blocked`；未执行 Docker/API/browser、48-case、controlled-Live 或 main。
+
+Task 7 只解锁 Task 8 48-case deterministic baseline、reviewed Mock 与 static checkpoint。完整证据见
+`../../acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。

@@ -2056,15 +2056,27 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 6 正式 FinalResponseAgent、DeepSeek V4 Pro non-thinking streaming adapter、authenticated/exact-context/
       safety/config/deadline/abort/budget 前置门、本地 citation allowlist 与唯一 terminal ledger、Web-only default-off
       config/runtime/Compose allowlist；authority 仅 `zero_provider_final_response_stream_contract`，
-      `qualityAuthority=none`、Provider calls=0；尚未接 `/api/chat`，未做产品 Docker/API/browser、48-case、
+      `qualityAuthority=none`、Provider calls=0；该 checkpoint 当时尚未接 `/api/chat`；
+- [x] Task 7 `/api/chat` 已按 canonical auth -> minimal Trace -> Router/Tutor -> Retriever/query rewrite -> Verifier ->
+      evidence projector -> Trace prepare -> FinalResponse stream -> terminal finalize 串联；anonymous Mock 在 Provider
+      config/Agent runtime 前返回；
+- [x] Task 7 realtime Trace `start/prepare/finalize`、preparation digest 幂等、CAS terminal、全局唯一
+      `modelCallId`、legacy/late/conflicting 409 与 concurrent finalize 单胜者已实现；步骤只保存固定脱敏摘要与计数；
+- [x] Task 7 response cancel/parent abort 会清理底层 reader；stream sequence/citation lockstep/terminal-last/唯一
+      terminal fail-closed；Retriever transport/schema failure 保持 no-RAG，bundle/citation/Markdown 整层清零；
+      principal binding/abort 分别为 403/499；
+- [x] Task 7 authority 为 `zero_provider_chat_composition_terminal_trace`，`qualityAuthority=none`、Provider calls=0，
+      两个模型 gate default-off，同步流不创建 BackgroundJob/Outbox；未执行产品 Docker/API/browser、48-case、
       controlled-Live 或 main；
-- [ ] Task 7 Chat composition 与 terminal Trace runtime；
+- [x] Task 7 focused Web `17/17`、AgentTracesService `17/17`、Types `42/42 + tsc`、Server build 与受影响
+      Web/Server lint 已通过；完整 Web `tsc` 仍有仓库既有 `.test.mts` 类型债，Task 7 新增文件无诊断；数据库 E2E
+      已更新，但因 Redis/PostgreSQL 未运行而 `environment_blocked`，不形成真实数据库迁移/API authority；
 - [ ] Task 8 48-case deterministic baseline + reviewed Mock/static checkpoint；
 - [ ] Task 9 fresh authorization 下的唯一 controlled-Live paired gate；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--6 验收见
+设计、计划与 Task 0--7 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2073,4 +2085,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
 `docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
 `docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
-`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`。
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。

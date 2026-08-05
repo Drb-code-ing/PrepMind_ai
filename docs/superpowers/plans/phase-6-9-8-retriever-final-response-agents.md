@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 6 FinalResponseAgent / stream contract 完成；下一任务 Task 7 Chat composition / terminal Trace
+> 当前状态：Task 7 Chat composition / terminal Trace 完成；下一任务 Task 8 48-case baseline / reviewed Mock / static
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -338,6 +338,26 @@ canonical principal
 - concurrency、budget isolation、listener/timer cleanup；
 - Trace API/DB e2e；
 - zero real Provider。
+
+### 完成状态（2026-08-05）
+
+- `/api/chat` 已串联 canonical auth、minimal RUNNING Trace、Router/Tutor、Retriever/query rewrite、Verifier、本地
+  evidence projector、Trace prepare、FinalResponse stream 与 terminal finalize；anonymous Mock 在 Provider config/
+  Agent runtime 前返回；
+- realtime Trace `start/prepare/finalize` 已完成 minimal placeholder、digest 幂等、CAS terminal、prepare ACK 原子补写、
+  全局唯一 `modelCallId`、legacy/late/conflicting 409 与 concurrent finalize 单胜者；
+- AI SDK stream adapter 已完成 sequence/citation lockstep/terminal-last/唯一 terminal 校验；response cancel 与 parent
+  abort 都会终止 request scope 并单次取消底层 reader；
+- Retriever transport/schema failure 保持安全 no-RAG，`ragIncluded=false` 时 bundle/citation/Markdown 整层清零；
+  principal binding invalid=403，abort=499；Trace steps 只保存固定节点/枚举/reason/count summary；
+- focused Web composition/stream/abort/Trace/wiring `17/17`、Server AgentTracesService `17/17`、Types
+  `42/42 + tsc`、Server build 与受影响 Web/Server lint 已通过；完整 Web `tsc` 仍有仓库既有 `.test.mts`
+  类型债，Task 7 新增文件无诊断；
+- 数据库 E2E 已更新覆盖 minimal start、prepare 幂等/冲突、legacy/late 409 与 concurrent finalize，但因本地 Redis
+  `6379`、PostgreSQL `5433` 未运行而 `environment_blocked`；不声明真实数据库迁移/API authority；
+- providerCalls=0、模型 gate default-off、同步流无 BackgroundJob/Outbox；未执行 Docker/API/browser、48-case、
+  controlled-Live 或 main。Authority 为 `zero_provider_chat_composition_terminal_trace / qualityAuthority=none`，只
+  解锁 Task 8。
 
 ## Task 8：48-case baseline、reviewed Mock 与 static checkpoint
 

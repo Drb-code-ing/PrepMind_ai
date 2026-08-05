@@ -7,7 +7,7 @@ test('Chat route defers Agent runtime creation until after canonical access and 
   const accessIndex = source.indexOf(
     'const canonicalAccess = await resolveCanonicalChatAgentAccess',
   );
-  const contextIndex = source.indexOf('const accessAndContext = await runChatContextPreparation');
+  const contextIndex = source.indexOf('accessAndContext = await runChatContextPreparation');
   const runtimeIndex = source.indexOf(
     'createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env })',
   );
@@ -22,7 +22,7 @@ test('Chat route defers Agent runtime creation until after canonical access and 
   assert.match(source, /projectTutorModelAgentObservation\(\s*agentExecution\.tutorObservation/u);
   assert.match(source, /tutor:\s*agentExecution\.tutorObservation/u);
   assert.match(source, /tutor:\s*tutorModelObservation/u);
-  assert.match(source, /signal:\s*executionContext\.signal/u);
+  assert.match(source, /context:\s*executionContext/u);
 });
 
 test('Chat route uses the server-authenticated principal and one bound bearer capability', async () => {
@@ -44,24 +44,69 @@ test('Chat route uses the server-authenticated principal and one bound bearer ca
   assert.doesNotMatch(source, /web-chat-user/u);
   assert.match(orchestrationBlock, /executionContext,/u);
   assert.doesNotMatch(orchestrationBlock, /(?:userId|runId|signal):/u);
+  assert.match(source, /shouldSearchKnowledgeForChat\(\{[\s\S]*?authenticated:\s*true/u);
   assert.match(
     source,
-    /shouldSearchKnowledgeForChat\(\{[\s\S]*?authenticated:\s*executionContext\.principal\.kind\s*===\s*'authenticated'/u,
+    /createChatKnowledgeRetrieverSearchPortV1\(\{[\s\S]*?access:\s*canonicalAccess\.access[\s\S]*?executionContext/u,
   );
-  assert.match(source, /searchKnowledgeForChat\(\{[\s\S]*?accessToken:\s*canonicalAccessToken/u);
-  assert.match(source, /recordAgentTraceSafely\(canonicalAccessToken/u);
+  assert.match(source, /startAgentTraceSafely\(\s*canonicalAccessToken/u);
+  assert.match(
+    source,
+    /startAgentTraceSafely\(\s*canonicalAccessToken,[\s\S]*?executionContext\.signal/u,
+  );
+  assert.match(source, /finalizeAgentTraceSafely\(input\.accessToken,\s*terminalPayload\)/u);
+  assert.doesNotMatch(source, /searchKnowledgeForChat\(/u);
   assert.doesNotMatch(source, /console\.warn\('\[Chat Auth\]'[\s\S]*?error/u);
 });
 
-test('Chat route propagates request cancellation into the final live model stream', async () => {
+test('Chat route propagates one execution context through retrieval and FinalResponse', async () => {
   const source = await readFile(new URL('./route.ts', import.meta.url), 'utf8');
 
+  assert.match(source, /runRealtimeRetrieverCompositionV1\(\{[\s\S]*?context:\s*executionContext/u);
   assert.match(
     source,
-    /function\s+createLiveChatResponse[\s\S]*?signal:\s*AbortSignal[\s\S]*?streamText\(\{[\s\S]*?abortSignal:\s*input\.signal/u,
+    /runFinalResponseAgentNodeV1\(\{[\s\S]*?context:\s*input\.executionContext/u,
   );
-  assert.match(
+  assert.doesNotMatch(source, /streamText\(/u);
+});
+
+test('Chat route starts Trace before every Agent runtime, prepares before stream, and finalizes after terminal', async () => {
+  const source = await readFile(new URL('./route.ts', import.meta.url), 'utf8');
+  const startIndex = source.indexOf('const traceStarted = await startAgentTraceSafely');
+  const contextIndex = source.indexOf('accessAndContext = await runChatContextPreparation');
+  const routerIndex = source.indexOf('agentExecutionResult = await orchestrateChatModelAgents');
+  const retrievalIndex = source.indexOf(
+    'const retrieval = await runRealtimeRetrieverCompositionV1',
+  );
+  const prepareIndex = source.indexOf('const tracePrepared = await prepareAgentTraceSafely');
+  const responseIndex = source.indexOf(
+    'const response = bindResponseBodyCancellationV1',
+    startIndex,
+  );
+  const finalResponseIndex = source.indexOf('const execution = await runFinalResponseAgentNodeV1');
+  const terminalPayloadIndex = source.indexOf(
+    'const terminalPayload = buildRealtimeChatTraceFinalizeV1',
+  );
+  const finalizeIndex = source.indexOf('await finalizeAgentTraceSafely', terminalPayloadIndex);
+
+  assert.ok(startIndex >= 0);
+  assert.ok(contextIndex > startIndex);
+  assert.ok(routerIndex > startIndex);
+  assert.ok(retrievalIndex > startIndex);
+  assert.ok(prepareIndex > retrievalIndex);
+  assert.ok(responseIndex > startIndex);
+  assert.ok(finalResponseIndex >= 0);
+  assert.ok(terminalPayloadIndex > finalResponseIndex);
+  assert.ok(finalizeIndex > terminalPayloadIndex);
+  assert.match(source, /modelCallId:\s*input\.modelCallId/u);
+  assert.match(source, /finalizeUnexpectedAgentTraceSafely\(\{/u);
+  assert.match(source, /bindResponseBodyCancellationV1\(/u);
+  assert.match(source, /createRequestAbortScopeV1\(req\.signal\)/u);
+  assert.match(source, /signal:\s*requestScope\.signal/u);
+  assert.match(source, /status:\s*requestAborted\s*\?\s*499\s*:\s*500/u);
+  assert.doesNotMatch(
     source,
-    /return\s+createLiveChatResponse\(\{[\s\S]*?signal:\s*executionContext\.signal/u,
+    /if\s*\(input\.traceStarted\)\s*\{\s*await finalizeAgentTraceSafely/u,
   );
+  assert.doesNotMatch(source, /BackgroundJob|Outbox/u);
 });

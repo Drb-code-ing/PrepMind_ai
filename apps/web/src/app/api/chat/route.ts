@@ -1,9 +1,15 @@
-import { createDataStreamResponse, formatDataStreamPart, streamText } from 'ai';
-import type { KnowledgeVerifierResult } from '@repo/agent/knowledge-verifier';
-import type { AgentTraceCreateRequest } from '@repo/types/api/agent-trace';
-import type { KnowledgeSearchHit } from '@repo/types/api/knowledge';
+import { createDataStreamResponse, formatDataStreamPart } from 'ai';
+import { runFinalResponseAgentNodeV1 } from '@repo/agent/final-response';
+import type {
+  KnowledgeVerifierChunk,
+  KnowledgeVerifierResult,
+} from '@repo/agent/knowledge-verifier';
+import type {
+  AgentTraceRealtimeFinalizeRequest,
+  AgentTraceRealtimePrepareRequest,
+  AgentTraceRealtimeStartRequest,
+} from '@repo/types/api/agent-trace';
 import { apiClient } from '@/lib/api-client';
-import { aiProvider } from '@/lib/ai-provider';
 import { createMockChatText } from '@/lib/ai-usage-guard';
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
@@ -17,15 +23,12 @@ import { type ActiveStudyContext, type ChatContextMessage } from '@/lib/chat-con
 import {
   assembleChatContextForRoute,
   buildConversationContextHeaders,
-  filterKnowledgeForAssembledContext,
   logChatRouteFailureSafely,
   runChatContextPreparation,
 } from '@/lib/chat-context-orchestration';
-import {
-  appendCitationMarkdown,
-  buildKnowledgeContextPrompt,
-  searchKnowledgeForChat,
-} from '@/lib/chat-rag-context';
+import { verifyKnowledgeChunksForChat } from '@/lib/chat-rag-context';
+import { createChatFinalResponseRuntimeV1 } from '@/lib/chat-final-response-runtime';
+import { createFinalResponseDataStreamAdapterV1 } from '@/lib/final-response-data-stream-adapter';
 import {
   buildChatModelAgentObservationHeaders,
   projectChatModelAgentObservation,
@@ -34,8 +37,25 @@ import {
 import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
 import { createTutorModelRuntimeBundle } from '@/lib/tutor-model-runtime';
-import type { RagSafetySummary } from '@/lib/rag-safety';
 import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
+import {
+  buildVerifiedEvidenceContextPromptV1,
+  prepareRealtimeFinalResponseV1,
+  runRealtimeRetrieverCompositionV1,
+  type PreparedRealtimeFinalResponseV1,
+} from '@/lib/chat-realtime-composition';
+import {
+  buildRealtimeChatTraceFailureFinalizeV1,
+  buildRealtimeChatTraceFinalizeV1,
+  buildRealtimeChatTracePreparationV1,
+  buildRealtimeChatTraceStartV1,
+} from '@/lib/chat-realtime-trace';
+import { createChatKnowledgeRetrieverSearchPortV1 } from '@/lib/retriever-search-port';
+import { createRetrieverQueryRewriteModelRuntimeBundle } from '@/lib/retriever-query-rewrite-model-runtime';
+import {
+  bindResponseBodyCancellationV1,
+  createRequestAbortScopeV1,
+} from '@/lib/response-abort-bridge';
 
 const AGENT_TRACE_TIMEOUT_MS = 800;
 const CHAT_REQUEST_DEADLINE_MS = 120_000;
@@ -55,25 +75,86 @@ const BASE_SYSTEM_PROMPT = `你是 PrepMind AI，一个专业的智能备考助�
 - 多行推导或积分公式必须使用独立公式块，公式前后保留空行。
 - 关键结论可以加粗，但不要整段加粗。`;
 
-async function recordAgentTraceSafely(
+async function startAgentTraceSafely(
   accessToken: string | null,
-  createPayload: () => AgentTraceCreateRequest,
+  payload: AgentTraceRealtimeStartRequest,
+  parentSignal: AbortSignal,
 ) {
   if (!accessToken) return false;
+  return runTraceWriteSafely(
+    (signal) => agentTraceApi.startRealtimeTrace(accessToken, payload, { signal }),
+    parentSignal,
+  );
+}
 
+async function finalizeAgentTraceSafely(
+  accessToken: string | null,
+  payload: AgentTraceRealtimeFinalizeRequest,
+) {
+  if (!accessToken) return false;
+  return runTraceWriteSafely((signal) =>
+    agentTraceApi.finalizeRealtimeTrace(accessToken, payload.runId, payload, { signal }),
+  );
+}
+
+async function prepareAgentTraceSafely(
+  accessToken: string | null,
+  payload: AgentTraceRealtimePrepareRequest,
+  parentSignal: AbortSignal,
+) {
+  if (!accessToken) return false;
+  return runTraceWriteSafely(
+    (signal) => agentTraceApi.prepareRealtimeTrace(accessToken, payload.runId, payload, { signal }),
+    parentSignal,
+  );
+}
+
+async function runTraceWriteSafely(
+  write: (signal: AbortSignal) => Promise<unknown>,
+  parentSignal?: AbortSignal,
+) {
+  if (parentSignal?.aborted) return false;
   const controller = new AbortController();
+  const onParentAbort = () => controller.abort();
+  parentSignal?.addEventListener('abort', onParentAbort, { once: true });
+  if (parentSignal?.aborted) onParentAbort();
   const timeout = setTimeout(() => controller.abort(), AGENT_TRACE_TIMEOUT_MS);
-
   try {
-    await agentTraceApi.createTrace(accessToken, createPayload(), {
-      signal: controller.signal,
-    });
+    await write(controller.signal);
     return true;
-  } catch (error) {
-    console.warn('[AgentTrace]', error);
+  } catch {
+    console.warn('[AgentTrace] persistence unavailable');
     return false;
   } finally {
     clearTimeout(timeout);
+    parentSignal?.removeEventListener('abort', onParentAbort);
+  }
+}
+
+async function finalizeUnexpectedAgentTraceSafely(
+  input: Readonly<{
+    accessToken: string | null;
+    traceStartPayload: AgentTraceRealtimeStartRequest;
+    tracePreparationPayload?: AgentTraceRealtimePrepareRequest;
+    reasonCode: Parameters<typeof buildRealtimeChatTraceFailureFinalizeV1>[0]['reasonCode'];
+    finalResponseAttempted?: boolean;
+  }>,
+) {
+  try {
+    const terminal = buildRealtimeChatTraceFailureFinalizeV1({
+      start: input.traceStartPayload,
+      ...(input.tracePreparationPayload === undefined
+        ? {}
+        : { preparation: input.tracePreparationPayload }),
+      finishedAt: new Date(),
+      reasonCode: input.reasonCode,
+      ...(input.finalResponseAttempted === undefined
+        ? {}
+        : { finalResponseAttempted: input.finalResponseAttempted }),
+    });
+    await finalizeAgentTraceSafely(input.accessToken, terminal);
+  } catch {
+    console.warn('[AgentTrace] terminal projection unavailable');
   }
 }
 
@@ -90,119 +171,115 @@ function getLatestUserText(messages: ChatContextMessage[]) {
   return [...messages].reverse().find((message) => message.role === 'user')?.content;
 }
 
-function splitMockText(text: string) {
-  const chunks: string[] = [];
-  const chunkSize = 18;
-
-  for (let index = 0; index < text.length; index += chunkSize) {
-    chunks.push(text.slice(index, index + chunkSize));
-  }
-
-  return chunks;
-}
-
-function createMockChatResponse(input: {
-  messages: ChatContextMessage[];
-  activeContext: ActiveStudyContext | null;
-  knowledgeHits: KnowledgeSearchHit[];
-  knowledgeSafetySummary: RagSafetySummary;
-  knowledgeVerifierResult?: KnowledgeVerifierResult;
+function createRealtimeChatResponse(input: {
+  mode: 'mock' | 'live';
+  prepared: PreparedRealtimeFinalResponseV1;
+  runtime: ReturnType<typeof createChatFinalResponseRuntimeV1>;
+  executionContext: Parameters<typeof runFinalResponseAgentNodeV1>[0]['context'];
+  responseId: string;
+  modelCallId: string;
+  traceStarted: boolean;
+  tracePrepared: boolean;
+  traceStartPayload: AgentTraceRealtimeStartRequest;
+  tracePreparationPayload: AgentTraceRealtimePrepareRequest;
+  accessToken: string | null;
+  verifierResult?: KnowledgeVerifierResult;
   agentDecision: ChatAgentDecision;
-  traceRecorded: boolean;
   contextHeaders: Record<string, string>;
   modelAgentHeaders: Record<string, string>;
 }) {
-  const mockText = createMockChatText({
-    hasActiveContext: Boolean(input.activeContext),
-    latestUserText: getLatestUserText(input.messages),
-    agentRoute: input.agentDecision.route,
-    tutorIntent: input.agentDecision.tutorStrategy?.intent,
-    verifierStatus: input.knowledgeVerifierResult?.status,
-  });
-  const responseText = appendCitationMarkdown(
-    mockText,
-    input.knowledgeHits,
-    input.knowledgeVerifierResult,
-    input.knowledgeSafetySummary,
-  );
-
+  const ragHitCount = input.prepared.evidence.traceSummary.projectedCount;
   return createDataStreamResponse({
     headers: {
-      'x-prepmind-ai-mode': 'mock',
-      'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
-      'x-prepmind-knowledge-verifier-status': input.knowledgeVerifierResult?.status ?? 'skipped',
+      'x-prepmind-ai-mode': input.mode,
+      'x-prepmind-rag-hit-count': String(ragHitCount),
+      'x-prepmind-knowledge-verifier-status': input.verifierResult?.status ?? 'skipped',
       'x-prepmind-knowledge-verifier-chunks': String(
-        input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
+        input.verifierResult?.debug.checkedChunkCount ?? 0,
       ),
-      'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
+      'x-prepmind-agent-trace-recorded': String(input.traceStarted && input.tracePrepared),
       ...input.contextHeaders,
       ...input.agentDecision.debugHeaders,
       ...input.modelAgentHeaders,
     },
     execute: async (dataStream) => {
-      for (const chunk of splitMockText(responseText)) {
-        dataStream.write(formatDataStreamPart('text', chunk));
-        await new Promise((resolve) => setTimeout(resolve, 8));
-      }
-    },
-  });
-}
-
-function createLiveChatResponse(input: {
-  model: string;
-  systemPrompt: string;
-  messages: ChatContextMessage[];
-  maxOutputTokens: number;
-  signal: AbortSignal;
-  knowledgeHits: KnowledgeSearchHit[];
-  knowledgeSafetySummary: RagSafetySummary;
-  knowledgeVerifierResult?: KnowledgeVerifierResult;
-  agentDecision: ChatAgentDecision;
-  traceRecorded: boolean;
-  contextHeaders: Record<string, string>;
-  modelAgentHeaders: Record<string, string>;
-}) {
-  const result = streamText({
-    model: aiProvider(input.model),
-    system: input.systemPrompt,
-    messages: input.messages,
-    maxTokens: input.maxOutputTokens,
-    abortSignal: input.signal,
-  });
-
-  return createDataStreamResponse({
-    headers: {
-      'x-prepmind-ai-mode': 'live',
-      'x-prepmind-rag-hit-count': String(input.knowledgeHits.length),
-      'x-prepmind-knowledge-verifier-status': input.knowledgeVerifierResult?.status ?? 'skipped',
-      'x-prepmind-knowledge-verifier-chunks': String(
-        input.knowledgeVerifierResult?.debug.checkedChunkCount ?? 0,
-      ),
-      'x-prepmind-agent-trace-recorded': String(input.traceRecorded),
-      ...input.contextHeaders,
-      ...input.agentDecision.debugHeaders,
-      ...input.modelAgentHeaders,
-    },
-    execute: async (dataStream) => {
-      for await (const chunk of result.textStream) {
-        dataStream.write(formatDataStreamPart('text', chunk));
-      }
-
-      const citationMarkdown = appendCitationMarkdown(
-        '',
-        input.knowledgeHits,
-        input.knowledgeVerifierResult,
-        input.knowledgeSafetySummary,
-      );
-      if (citationMarkdown.trim()) {
-        dataStream.write(formatDataStreamPart('text', citationMarkdown));
+      const adapter = createFinalResponseDataStreamAdapterV1({
+        citationMarkdown: input.prepared.evidence.citationProjection.markdown,
+        writeText: (text) => dataStream.write(formatDataStreamPart('text', text)),
+      });
+      try {
+        const execution = await runFinalResponseAgentNodeV1({
+          request: input.prepared.request,
+          context: input.executionContext,
+          config: input.runtime.config,
+          responseId: input.responseId,
+          modelCallId: input.modelCallId,
+          ...(input.runtime.executor === undefined ? {} : { executor: input.runtime.executor }),
+          emit: adapter.emit,
+          traceAvailable: input.traceStarted && input.tracePrepared,
+        });
+        if (!execution.ok) throw new Error('FINAL_RESPONSE_COMPOSITION_INVALID');
+        if (!adapter.isTerminal()) throw new Error('FINAL_RESPONSE_STREAM_TERMINAL_MISSING');
+        const terminalPayload = buildRealtimeChatTraceFinalizeV1({
+          start: input.traceStartPayload,
+          preparation: input.tracePreparationPayload,
+          observation: execution.observation,
+          finishedAt: new Date(),
+        });
+        await finalizeAgentTraceSafely(input.accessToken, terminalPayload);
+      } catch (error) {
+        await finalizeUnexpectedAgentTraceSafely({
+          accessToken: input.accessToken,
+          traceStartPayload: input.traceStartPayload,
+          tracePreparationPayload: input.tracePreparationPayload,
+          finalResponseAttempted: true,
+          reasonCode: input.executionContext.signal.aborted
+            ? 'request_aborted'
+            : error instanceof Error && error.message === 'FINAL_RESPONSE_COMPOSITION_INVALID'
+              ? 'composition_invalid'
+              : error instanceof Error && error.message === 'FINAL_RESPONSE_STREAM_TERMINAL_MISSING'
+                ? 'terminal_missing'
+                : 'unexpected_failure',
+        });
+        throw error;
       }
     },
     onError: () => CHAT_ERROR_MESSAGE,
   });
 }
 
+function createAnonymousMockChatResponse(input: {
+  messages: ChatContextMessage[];
+  activeContext: ActiveStudyContext | null;
+}) {
+  const text = createMockChatText({
+    hasActiveContext: Boolean(input.activeContext),
+    latestUserText: getLatestUserText(input.messages),
+    agentRoute: 'chat',
+  });
+  return createDataStreamResponse({
+    headers: {
+      'x-prepmind-ai-mode': 'mock',
+      'x-prepmind-rag-hit-count': '0',
+      'x-prepmind-knowledge-verifier-status': 'skipped',
+      'x-prepmind-knowledge-verifier-chunks': '0',
+      'x-prepmind-agent-trace-recorded': 'false',
+      'x-prepmind-agent-route': 'chat',
+    },
+    execute: async (dataStream) => {
+      for (let index = 0; index < text.length; index += 18) {
+        dataStream.write(formatDataStreamPart('text', text.slice(index, index + 18)));
+      }
+    },
+  });
+}
+
 export async function POST(req: Request) {
+  const requestScope = createRequestAbortScopeV1(req.signal);
+  let responseOwnsRequestScope = false;
+  let traceStartPayload: AgentTraceRealtimeStartRequest | undefined;
+  let tracePreparationPayload: AgentTraceRealtimePrepareRequest | undefined;
+  let canonicalAccessToken: string | null = null;
   try {
     const parsedRequest = parseChatApiRequestBody(await req.json());
 
@@ -218,6 +295,7 @@ export async function POST(req: Request) {
 
     const providerStatus = resolveChatProviderStatus();
     const traceRunId = crypto.randomUUID();
+    const modelCallId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
     const traceStartedAt = new Date();
     const canonicalAccess = await resolveCanonicalChatAgentAccess(
@@ -228,7 +306,7 @@ export async function POST(req: Request) {
         runId: traceRunId,
         requestId,
         deadlineAt: new Date(traceStartedAt.getTime() + CHAT_REQUEST_DEADLINE_MS).toISOString(),
-        signal: req.signal,
+        signal: requestScope.signal,
       },
       {
         authenticate: ({ accessToken: canonicalToken, signal }) =>
@@ -251,66 +329,176 @@ export async function POST(req: Request) {
     if (!canonicalBearer.ok) {
       return Response.json({ error: canonicalBearer.error }, { status: canonicalBearer.status });
     }
-    const canonicalAccessToken = canonicalBearer.accessToken;
+    canonicalAccessToken = canonicalBearer.accessToken;
+
+    const normalizedMessages = messages as ChatContextMessage[];
+    const normalizedActiveContext = activeContext;
+    if (executionContext.principal.kind === 'anonymous') {
+      const response = bindResponseBodyCancellationV1(
+        createAnonymousMockChatResponse({
+          messages: normalizedMessages,
+          activeContext: normalizedActiveContext,
+        }),
+        requestScope,
+      );
+      responseOwnsRequestScope = true;
+      return response;
+    }
 
     if (!providerStatus.configured) {
       return Response.json({ error: providerStatus.message }, { status: 503 });
     }
+    if (canonicalAccessToken === null) {
+      return Response.json(
+        { error: 'Chat authorization context is unavailable.' },
+        { status: 500 },
+      );
+    }
 
-    const accessAndContext = await runChatContextPreparation({
-      accessToken: canonicalAccessToken,
+    traceStartPayload = buildRealtimeChatTraceStartV1({
+      runId: traceRunId,
+      modelCallId,
       conversationId,
-      maxInputTokens: providerStatus.maxInputTokens,
-      requestSignal: executionContext.signal,
-      timeoutValue: process.env.CONVERSATION_CONTEXT_PREPARE_TIMEOUT_MS,
+      mode: providerStatus.mode,
+      startedAt: traceStartedAt,
     });
+    const traceStarted = await startAgentTraceSafely(
+      canonicalAccessToken,
+      traceStartPayload,
+      executionContext.signal,
+    );
+
+    let accessAndContext: Awaited<ReturnType<typeof runChatContextPreparation>>;
+    try {
+      accessAndContext = await runChatContextPreparation({
+        accessToken: canonicalAccessToken,
+        conversationId,
+        maxInputTokens: providerStatus.maxInputTokens,
+        requestSignal: executionContext.signal,
+        timeoutValue: process.env.CONVERSATION_CONTEXT_PREPARE_TIMEOUT_MS,
+      });
+    } catch {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: executionContext.signal.aborted
+          ? 'request_aborted'
+          : 'context_preparation_failed',
+      });
+      return Response.json(
+        { error: executionContext.signal.aborted ? '请求已取消' : '会话上下文准备失败' },
+        { status: executionContext.signal.aborted ? 499 : 500 },
+      );
+    }
 
     const conversationContext = accessAndContext.context;
 
-    const normalizedMessages = messages as ChatContextMessage[];
-    const normalizedActiveContext = activeContext;
     const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
-    const { agentExecution, verifierModel } = await orchestrateChatModelAgents({
-      bundle: modelAgentBundle,
-      createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
-      messages: normalizedMessages,
-      activeContext: normalizedActiveContext,
-      executionContext,
-    });
-    const agentDecision = agentExecution.decision;
-    const knowledgeSearch = await searchKnowledgeForChat({
-      enabled: shouldSearchKnowledgeForChat({
-        authenticated: executionContext.principal.kind === 'authenticated',
-        requiresRag: agentDecision.requiresRag,
+    let agentExecutionResult: Awaited<ReturnType<typeof orchestrateChatModelAgents>>;
+    try {
+      agentExecutionResult = await orchestrateChatModelAgents({
+        bundle: modelAgentBundle,
+        createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
+        messages: normalizedMessages,
+        activeContext: normalizedActiveContext,
+        executionContext,
+      });
+    } catch {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: executionContext.signal.aborted ? 'request_aborted' : 'router_failed',
+      });
+      return Response.json(
+        { error: executionContext.signal.aborted ? '请求已取消' : 'Agent 路由失败' },
+        { status: executionContext.signal.aborted ? 499 : 500 },
+      );
+    }
+    const { agentExecution, verifierModel } = agentExecutionResult;
+    const routedDecision = agentExecution.decision;
+    const agentDecision: ChatAgentDecision = {
+      ...routedDecision,
+      requiresRag: shouldSearchKnowledgeForChat({
+        authenticated: true,
+        requiresRag: routedDecision.requiresRag,
         latestUserText: getLatestUserText(normalizedMessages),
       }),
-      accessToken: canonicalAccessToken,
-      messages: normalizedMessages,
-      logger: console,
-      model: verifierModel,
+    };
+    const retrieverPort = createChatKnowledgeRetrieverSearchPortV1({
+      access: canonicalAccess.access,
+      request: req,
+      executionContext,
     });
+    if (!retrieverPort.ok) {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: 'retrieval_failed',
+      });
+      return Response.json({ error: '知识检索权限绑定失败' }, { status: 403 });
+    }
+    const queryRewrite = createRetrieverQueryRewriteModelRuntimeBundle({ env: process.env });
+    const retrieval = await runRealtimeRetrieverCompositionV1({
+      context: executionContext,
+      messages: normalizedMessages,
+      activeContext: normalizedActiveContext,
+      decision: agentDecision,
+      port: retrieverPort.port,
+      queryRewrite,
+      verify: async ({ query, result }) => {
+        const verified = await verifyKnowledgeChunksForChat({
+          query,
+          chunks: toKnowledgeVerifierChunks(result),
+          model: verifierModel,
+        });
+        return {
+          assessment: {
+            status: verified.result.status,
+            availability: 'available',
+          },
+          detail: verified.result,
+          ...(verified.observation === undefined ? {} : { observation: verified.observation }),
+        };
+      },
+    });
+    if (!retrieval.ok) {
+      const requestAborted = retrieval.reasonCode === 'aborted';
+      const principalBindingInvalid = retrieval.reasonCode === 'principal_binding_invalid';
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: requestAborted ? 'request_aborted' : 'retrieval_failed',
+      });
+      return Response.json(
+        {
+          error: requestAborted
+            ? '请求已取消'
+            : principalBindingInvalid
+              ? '知识检索权限绑定失败'
+              : '实时 Agent 检索编排失败',
+        },
+        { status: requestAborted ? 499 : principalBindingInvalid ? 403 : 400 },
+      );
+    }
+    const knowledgeVerifierResult = retrieval.value.verifier.detail;
     const routerModelObservation = projectChatModelAgentObservation(
       agentExecution.routerObservation,
     );
     const verifierModelObservation =
-      knowledgeSearch.verifierObservation === undefined
+      retrieval.value.verifier.observation === undefined
         ? undefined
-        : projectChatModelAgentObservation(knowledgeSearch.verifierObservation);
+        : projectChatModelAgentObservation(retrieval.value.verifier.observation);
     const tutorModelObservation = projectTutorModelAgentObservation(
       agentExecution.tutorObservation,
     );
     const modelAgentHeaders = buildChatModelAgentObservationHeaders({
       router: agentExecution.routerObservation,
       tutor: agentExecution.tutorObservation,
-      ...(knowledgeSearch.verifierObservation === undefined
+      ...(retrieval.value.verifier.observation === undefined
         ? {}
-        : { verifier: knowledgeSearch.verifierObservation }),
+        : { verifier: retrieval.value.verifier.observation }),
     });
-    const knowledgeContextPrompt = buildKnowledgeContextPrompt(
-      knowledgeSearch.hits,
-      knowledgeSearch.verifierResult,
-      knowledgeSearch.safetySummary,
-    );
+    const knowledgeContextPrompt = buildVerifiedEvidenceContextPromptV1(retrieval.value);
     const budget = assembleChatContextForRoute({
       baseSystemPrompt: BASE_SYSTEM_PROMPT,
       agentGuidance: agentDecision.promptAddition,
@@ -321,17 +509,6 @@ export async function POST(req: Request) {
       maxInputTokens: providerStatus.maxInputTokens,
       maxOutputTokens: providerStatus.maxOutputTokens,
     });
-    const filteredKnowledge = filterKnowledgeForAssembledContext(
-      {
-        hits: knowledgeSearch.hits,
-        verifierResult: knowledgeSearch.verifierResult,
-        safetySummary: knowledgeSearch.safetySummary,
-      },
-      budget.contextPolicy,
-    );
-    const citationHits = filteredKnowledge.hits;
-    const citationVerifierResult = filteredKnowledge.verifierResult;
-    const citationSafetySummary = filteredKnowledge.safetySummary;
     const contextHeaders = buildConversationContextHeaders({
       summaryStatus: conversationContext.summaryStatus,
       summaryVersion: conversationContext.summaryVersion,
@@ -339,10 +516,20 @@ export async function POST(req: Request) {
     });
 
     if (budget.modelMessages.length === 0) {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: 'budget_invalid',
+      });
       return Response.json({ error: '消息内容不能为空' }, { status: 400 });
     }
 
     if (budget.exceedsInputLimit) {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode: 'budget_invalid',
+      });
       return Response.json(
         {
           error: `本次输入上下文过长，估算 ${budget.estimatedInputTokens} tokens，超过当前上限 ${budget.maxInputTokens} tokens。请缩短问题或开启更高预算后重试。`,
@@ -350,67 +537,148 @@ export async function POST(req: Request) {
         { status: 413 },
       );
     }
-
-    const traceRecorded = await recordAgentTraceSafely(canonicalAccessToken, () =>
-      buildChatAgentTracePayload({
-        runId: traceRunId,
-        conversationId,
-        messages: normalizedMessages,
-        mode: providerStatus.mode,
-        modelProvider: resolveTraceModelProvider(
-          providerStatus.mode,
-          providerStatus.model,
-          providerStatus.baseURL,
-        ),
-        modelName: providerStatus.model,
-        budget,
-        agentDecision,
-        knowledgeHits: citationHits,
-        knowledgeVerifierResult: citationVerifierResult,
-        modelAgentObservations: {
-          router: routerModelObservation,
-          tutor: tutorModelObservation,
-          ...(verifierModelObservation === undefined ? {} : { verifier: verifierModelObservation }),
-        },
-        startedAt: traceStartedAt,
-        finishedAt: new Date(),
-      }),
+    const ragIncluded =
+      agentDecision.requiresRag &&
+      knowledgeContextPrompt.length > 0 &&
+      !(budget.contextPolicy.droppedLayers ?? []).includes('rag');
+    const prepared = prepareRealtimeFinalResponseV1({
+      context: executionContext,
+      messages: budget.modelMessages,
+      decision: agentDecision,
+      retriever: retrieval.value,
+      ragIncluded,
+      maxInputTokens: budget.maxInputTokens,
+    });
+    if (!prepared.ok) {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        reasonCode:
+          prepared.reasonCode === 'aborted' ? 'request_aborted' : 'final_response_prepare_failed',
+      });
+      return Response.json({ error: '最终回答上下文校验失败' }, { status: 400 });
+    }
+    const mockText = createMockChatText({
+      hasActiveContext: Boolean(normalizedActiveContext),
+      latestUserText: getLatestUserText(budget.modelMessages),
+      agentRoute: agentDecision.route,
+      tutorIntent: agentDecision.tutorStrategy?.intent,
+      verifierStatus: knowledgeVerifierResult?.status,
+    });
+    const runtime = createChatFinalResponseRuntimeV1({
+      mode: providerStatus.mode,
+      mockText,
+      env: process.env,
+    });
+    const preparedAt = new Date();
+    const traceBase = buildChatAgentTracePayload({
+      runId: traceRunId,
+      conversationId,
+      messages: normalizedMessages,
+      mode: providerStatus.mode,
+      modelProvider: resolveTraceModelProvider(
+        providerStatus.mode,
+        providerStatus.model,
+        providerStatus.baseURL,
+      ),
+      modelName: runtime.config.modelRef,
+      budget,
+      agentDecision,
+      knowledgeHits: retrieval.value.retriever.result.evidenceCandidates.map((candidate) => ({
+        documentId: candidate.documentId,
+        chunkId: candidate.chunkId,
+        documentName: candidate.sourceRef,
+        content: candidate.excerpt,
+        score: candidate.score,
+      })),
+      knowledgeVerifierResult,
+      modelAgentObservations: {
+        router: routerModelObservation,
+        tutor: tutorModelObservation,
+        ...(verifierModelObservation === undefined ? {} : { verifier: verifierModelObservation }),
+      },
+      startedAt: traceStartedAt,
+      finishedAt: preparedAt,
+    });
+    tracePreparationPayload = buildRealtimeChatTracePreparationV1({
+      start: traceStartPayload,
+      base: traceBase,
+      requiresRag: agentDecision.requiresRag,
+      retriever: retrieval.value,
+      evidence: prepared.value.evidence,
+      preparedAt,
+    });
+    const tracePrepared = await prepareAgentTraceSafely(
+      canonicalAccessToken,
+      tracePreparationPayload,
+      executionContext.signal,
     );
 
-    if (providerStatus.mode === 'mock') {
-      return createMockChatResponse({
-        messages: budget.modelMessages,
-        activeContext: normalizedActiveContext,
-        knowledgeHits: citationHits,
-        knowledgeSafetySummary: citationSafetySummary,
-        knowledgeVerifierResult: citationVerifierResult,
+    const response = bindResponseBodyCancellationV1(
+      createRealtimeChatResponse({
+        mode: providerStatus.mode,
+        prepared: prepared.value,
+        runtime,
+        executionContext,
+        responseId: crypto.randomUUID(),
+        modelCallId,
+        traceStarted,
+        tracePrepared,
+        traceStartPayload,
+        tracePreparationPayload,
+        accessToken: canonicalAccessToken,
+        verifierResult: knowledgeVerifierResult,
         agentDecision,
-        traceRecorded,
         contextHeaders,
         modelAgentHeaders,
+      }),
+      requestScope,
+    );
+    responseOwnsRequestScope = true;
+    return response;
+  } catch {
+    const requestAborted = requestScope.signal.aborted;
+    if (traceStartPayload !== undefined) {
+      await finalizeUnexpectedAgentTraceSafely({
+        accessToken: canonicalAccessToken,
+        traceStartPayload,
+        ...(tracePreparationPayload === undefined ? {} : { tracePreparationPayload }),
+        reasonCode: requestAborted ? 'request_aborted' : 'unexpected_failure',
       });
     }
-
-    console.info(
-      `[AI usage estimate] mode=live model=${providerStatus.model} input=${budget.estimatedInputTokens}/${budget.maxInputTokens} maxOutput=${budget.maxOutputTokens} messages=${budget.modelMessages.length} activeContext=${Boolean(normalizedActiveContext)} ragHits=${citationHits.length} agentRoute=${agentDecision.route}`,
-    );
-
-    return createLiveChatResponse({
-      model: providerStatus.model,
-      systemPrompt: budget.systemPrompt,
-      messages: budget.modelMessages,
-      maxOutputTokens: budget.maxOutputTokens,
-      signal: executionContext.signal,
-      knowledgeHits: citationHits,
-      knowledgeSafetySummary: citationSafetySummary,
-      knowledgeVerifierResult: citationVerifierResult,
-      agentDecision,
-      traceRecorded,
-      contextHeaders,
-      modelAgentHeaders,
-    });
-  } catch {
     logChatRouteFailureSafely(console);
-    return Response.json({ error: 'AI 服务暂时不可用，请稍后重试' }, { status: 500 });
+    return Response.json(
+      { error: requestAborted ? '请求已取消' : 'AI 服务暂时不可用，请稍后重试' },
+      { status: requestAborted ? 499 : 500 },
+    );
+  } finally {
+    if (!responseOwnsRequestScope) requestScope.dispose();
   }
+}
+
+function toKnowledgeVerifierChunks(
+  result: Parameters<
+    Parameters<typeof runRealtimeRetrieverCompositionV1>[0]['verify']
+  >[0]['result'],
+): KnowledgeVerifierChunk[] {
+  return result.evidenceCandidates.map((candidate) => ({
+    documentId: candidate.documentId,
+    documentTitle: candidate.sourceRef,
+    chunkId: candidate.chunkId,
+    content: candidate.excerpt,
+    score: candidate.score,
+    metadata: {
+      safety: {
+        riskLevel:
+          candidate.safety.status === 'blocked'
+            ? 'high'
+            : candidate.safety.status === 'caution'
+              ? 'medium'
+              : 'low',
+        categories: [...candidate.safety.codes],
+        matchedPatterns: [],
+        safeForPrompt: candidate.safety.status === 'safe' || candidate.safety.status === 'caution',
+      },
+    },
+  }));
 }

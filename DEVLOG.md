@@ -1,5 +1,40 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Task 7 Chat composition / terminal Trace：
+>
+> 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 6 基线
+> `415c31e2f09acbff2099547121cfd3b6ffbac34d` 之后，以
+> `zero_provider_chat_composition_terminal_trace` 完成实时 Chat composition 与 terminal Trace。
+> `/api/chat` 已按 canonical auth -> minimal RUNNING Trace -> context -> Router/Tutor -> Retriever/query rewrite ->
+> Verifier -> 本地 evidence projector -> Trace prepare -> FinalResponse stream -> terminal finalize 串联 Task 0--6
+> 正式能力；anonymous Mock 在 Provider config 与 Agent runtime 前直接返回。
+>
+> Realtime Trace 新增 `start/prepare/finalize` 三阶段 API。Start 只保存 run/modelCall/conversation/mode/time 与安全
+> placeholder；prepare 以 digest 幂等写入脱敏 Agent steps；finalize 使用 CAS，并可在 prepare ACK 不确定时原子补写
+> 同一 preparation。成功 terminal 必须具备 preparation 与唯一 FinalResponse completed step；早期 failed/aborted
+> 可无 preparation。`modelCallId` 全局唯一，legacy POST、late prepare 和第二个 concurrent finalize 均 fail-closed。
+>
+> AI SDK data stream 只映射正文、本地 citation Markdown 与诚实失败提示；sequence、citation lockstep、terminal-last
+> 和唯一 terminal 由本地 ledger 校验。`Response.body.cancel()` 先 abort request scope，再 cancel 底层 reader；父
+> `Request.signal` abort 也主动 cancel reader，cleanup/single-cancel 处理竞态。Retriever transport/schema failure
+> 安全降级为 no-RAG，`ragIncluded=false` 时 bundle/citation/Markdown 整层清零；cross-scope principal binding
+> 返回 403，abort 返回 499，其它非法 composition 返回 400。
+>
+> Focused Web composition/stream/abort/Trace/wiring `17/17`、Server AgentTracesService `17/17`、Types
+> `42/42 + tsc`、Server build 与受影响 Web/Server lint 已通过。完整 Web `tsc` 仍命中仓库既有 `.test.mts`
+> 类型债；按本任务文件名过滤后只剩未修改的 `chat-rag-context.test.mts:599` type-identity 诊断，Task 7 新增文件
+> 无诊断。数据库 E2E 已更新覆盖 minimal start、
+> prepare 幂等/冲突、legacy 409、late prepare 409 与 concurrent finalize 单胜者，但本地 Redis `6379` 与
+> PostgreSQL `5433` 均未运行，Nest 重连后命令被 120 秒工具上限终止，因此如实标记
+> `environment_blocked`，不声称真实数据库迁移/E2E authority。
+>
+> Task 7 未调用 Qwen/DeepSeek/其它 Provider，Provider calls=0；模型 gate 保持 default-off，同步流不创建
+> `BackgroundJob`/`Outbox`。早期 Prisma wrapper 曾加载根 `.env` 进程环境，但未读取、输出或使用模型 credential；
+> 后续直接 CLI 未再次加载。本任务未启动 Docker/API/browser、未执行 48-case/controlled-Live、未修改业务数据，
+> 也未合并 main；`qualityAuthority=none`。当前只解锁 Task 8 deterministic baseline/reviewed Mock/static，产品与
+> main 继续阻断。验收见
+> `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`。
+>
 > 2026-08-04 — Phase 6.9.8 Task 6 FinalResponseAgent / stream contract：
 >
 > 在普通分支 `drb/phase-6-9-8-retriever-final-response-contract`、Task 5 基线
