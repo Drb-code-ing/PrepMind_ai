@@ -1586,6 +1586,9 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
   `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次 not-started。最终 `task9_quality_gate_failed /
 qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑；产品/main、
   Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
+- Architecture Recovery R0 已完成 pure-doc/zero-provider 设计冻结：新 lineage 同时覆盖 rewrite、Qwen retrieval 与
+  FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash。R0 不新增启动
+  命令、环境变量、gate、credential mapping、Docker profile 或正式 evidence；当前只解锁 R1 zero-provider TDD。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
@@ -1617,6 +1620,10 @@ API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不�
 marker、journal 与 artifact 必须保留；禁止再次设置 9C 授权变量、运行 production CLI、seal/recovery、curl、单
 case 或产品 API Provider 探测。
 
+R0 Architecture Recovery 只是设计文档，不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。后续 R1--R4
+仍必须使用 synthetic/injected transport；在独立 R3 source/CLI 和 R4 reviewed Mock 完成前，不存在合法的 Recovery
+Live 命令。
+
 Task 8 的安全静态回归命令：
 
 ```powershell
@@ -1647,7 +1654,7 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
 补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
 
-设计与 Task 0--9C 验收见
+设计、Task 0--9C 与 Architecture Recovery R0 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
@@ -1660,7 +1667,10 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
-`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

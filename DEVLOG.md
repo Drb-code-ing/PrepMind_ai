@@ -1,5 +1,34 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R0：
+>
+> Task 9C 失败封存后，本任务没有重跑 Provider，而是以
+> `zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none` 完成独立 R0
+> 设计冻结。只读源码复盘确认：rewrite live harness 会把 runtime invocation、candidate disposition、provenance、
+> Trace、usage 与第一方 wire counters 的任一不匹配统一抛为 `schema_invalid`；runner 的 call-result strict
+> schema/phase mismatch 也使用同一错误。Runner 又只在 harness 成功返回后记录 `response_received`，因此 Task 9C
+> 的外层 `wire 1/1/0/0` 不能单独证明 Provider 没有响应，也不能直接写成错误 JSON。
+>
+> 新独立 lineage 固定为 `phase-6.9.8-retriever-final-response-architecture-recovery-v1`。方案不是只修当前
+> rewrite，而是同时覆盖 DeepSeek rewrite、Qwen retrieval 与 DeepSeek FinalResponse stream；分别冻结阶段机，
+> 分离 `providerWire` 与 `runnerWire`，保留 16 guards、64 calls、双 Provider budget/accounting、质量阈值、owner/
+> citation/local authority、no-retry 与 breaker 语义。
+>
+> Bounded diagnostic 只允许 fixed `stage / reasonCode / providerBoundary / type-count bucket /
+rawDataRetained=false`。明确不保存 Provider completion、stream delta、prompt、query、chunk、answer、credential、
+> URL、raw error、Zod issue/path/value、unknown key，也不保存 raw-derived hash；journal hash-chain 未来只证明记录
+> 完整性，不对 Provider/业务 raw 计算 hash。Hostile getter/Proxy、oracle leakage、fake Trace/usage/cost/wire、
+> cross-owner 与 durability tamper 均已进入后续 zero-provider fault matrix。
+>
+> R0 全程 Provider/DeepSeek/Qwen/credential reads=`0/0/0/0`；TypeScript、`.env`、Task 9C tag/marker/journal/
+> artifact、正式 Recovery evidence、Docker/API/browser 与业务数据均未修改。R0 只解锁 R1 zero-provider strict
+> diagnostic contract、opaque capability 与 rewrite TDD；R2--R7、Task 10/11、main 与后续阶段继续阻断。设计、计划与
+> 验收分别见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`。回顾时可以问：
+> 为什么 runner response 与 Provider response 必须分开？为什么 FinalResponse 不能照搬 Tutor ordinal recovery？
+> 为什么连 raw hash 和 unknown key 名也不能保存？
+>
 > 2026-08-05 — Phase 6.9.8 Task 9C 唯一 controlled-Live 质量门失败封存：
 >
 > 用户逐字接受 DeepSeek + Qwen fresh 数据边界并给出 exact one-shot authorization 后，先完成 zero-provider
@@ -27,7 +56,8 @@ not_started_quality_breaker`。Qwen wire/usage 为 `3/3/3/3`，DeepSeek 为 `2/2
 >
 > Task 9C 一次性名额已消费，禁止 retry/resume/replay/backfill、补跑、seal/recovery、删除/改写 artifact 或追加
 > Provider 探测。Task 10/11 与产品/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9、两篇博客继续阻断。若继续，
-> 下一原子任务只能是独立 zero-provider bounded-diagnostic Architecture Recovery 设计，不是 Task 9C 重跑。验收见
+> 截至 Task 9C 封存时，下一原子任务只能是独立 zero-provider bounded-diagnostic Architecture Recovery 设计，
+> 不是 Task 9C 重跑；该设计现已由上方 R0 回执完成。验收见
 > `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。回顾时可以问：为什么
 > `schema_invalid + 1/1/0/0` 不能直接等于错误 JSON？为什么四条成功费用不能冒充 run 总账？为什么正常
 > `evidence_published` 后不能再 seal？

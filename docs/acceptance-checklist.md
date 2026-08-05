@@ -2119,10 +2119,19 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
       report/artifact SHA `c612d6f7... / 7d45329d...`、recovery claim=`null`；
 - [x] Task 9C 失败封存边界已记录：禁止 retry/resume/replay/backfill、补跑、seal/recovery、artifact 改写或追加
       Provider 探测；不能把本地 `schema_invalid` 归因为具体 payload/transport/账号/服务端；
+- [x] Architecture Recovery R0 已冻结独立 lineage、三类调用阶段机与 `providerWire/runnerWire` 双层观察；明确
+      runner response=0 不能单独证明 Provider response=0，也不能反向重写 Task 9C；
+- [x] R0 bounded diagnostic 只允许 fixed stage/reason/provider-boundary/type-count bucket 与
+      `rawDataRetained=false`；禁止 raw、unknown key、Zod issue/path/value、credential/URL/raw error 及
+      raw-derived hash；
+- [x] R0 保持 16 guards、64 calls、双 Provider accounting、阈值、预算、owner/citation/local authority、
+      no-retry 与 breaker 不变；Provider/credential/formal evidence/Docker/API/browser/business writes 全为 0；
+- [ ] Recovery R1 diagnostic contract / opaque capability / rewrite TDD；
+- [ ] Recovery R2 Qwen/FinalResponse robustness；R3 runner/durability；R4 reviewed Mock/static；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--9C 验收见
+设计、计划、Task 0--9C 与 Architecture Recovery R0 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2136,4 +2145,7 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
-`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`。

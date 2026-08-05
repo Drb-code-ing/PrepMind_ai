@@ -2,13 +2,15 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：唯一 Task 9C 已以 `task9_quality_gate_failed / qualityAuthority=none` 封存；Task 10/11 阻断
+> 当前状态：Task 9C 失败封存；Architecture Recovery R0 zero-provider 设计完成，下一步仅 R1 TDD
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
 
 - 每个 Task 只处理一个可独立验证的关注点，并形成一个提交。
-- 当前分支始终来自已推送的最新 `main`；不创建 worktree，不从功能分支再开分支。
+- Phase 6.9.8 功能分支最初来自已推送的最新 `main`；不创建 worktree，也不从该功能分支再开子分支。当前
+  Recovery 必须复用尚未进入 main 的 Task 0--9B 基线，因此继续在同一功能分支做原子提交，禁止为满足分支形式
+  提前合并失败 gate。
 - Task 0--8 与 Task 9A/9B 全部 zero-provider；禁止读取或输出 `.env`、credential，禁止调用 Qwen/DeepSeek。
 - Task 9C 必须在静态/Mock checkpoint、9A/9B、source parity、fresh 数据边界接受和精确一次性授权后单独执行。
 - Task 9C 唯一名额现已消费；禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。
@@ -478,6 +480,23 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 当前 evidence 只能定位到本地 strict rewrite schema/contract，不能声称具体 Provider payload、transport、账号或
 服务端根因。Task 9C 不得重跑；Task 10 admission 未满足。
 
+## Architecture Recovery R0：独立 zero-provider 设计
+
+R0 已完成，authority 为
+`zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`：
+
+- 新 lineage 同时覆盖 DeepSeek rewrite、Qwen retrieval 与 DeepSeek FinalResponse stream；
+- 分离第一方 `providerWire` 与 runner lifecycle `runnerWire`；
+- diagnostic 仅允许固定 stage/reason/provider-boundary/type-count bucket 与
+  `rawDataRetained=false`；
+- 禁止 raw、unknown key、Zod issue、credential、URL、raw error 与 raw-derived hash；
+- 保持 16 guards、64 calls、阈值、预算、权限、no-retry、breaker 与 aggregate-null 语义；
+- R0 未修改 TypeScript、读取 credential、调用 Provider、创建正式 evidence 或执行产品验收。
+
+完整路线已转入独立
+[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。当前只允许其中 R1
+zero-provider diagnostic contract / rewrite TDD；Task 10/11 继续阻断。
+
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
 仅当 Task 9 形成可接产品的 quality authority 时执行：
@@ -507,7 +526,7 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 
 ## 当前停止边界
 
-Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0 设计已完成。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
@@ -516,8 +535,9 @@ Provider accounting、source admission 与 durability/validator/CLI。当前仍�
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
+- R1--R4 recovery implementation/durability/reviewed-Mock authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
 marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main 和任何 Task 9C Provider 追加调用。
-若用户决定继续，只能先单独规划 zero-provider bounded-diagnostic Architecture Recovery 与新 lineage。
+下一原子任务只允许按独立 Recovery 计划执行 R1 zero-provider diagnostic contract / rewrite TDD。
