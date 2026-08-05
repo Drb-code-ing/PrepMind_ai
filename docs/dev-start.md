@@ -1586,9 +1586,11 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
   `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次 not-started。最终 `task9_quality_gate_failed /
 qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑；产品/main、
   Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
-- Architecture Recovery R0 已完成 pure-doc/zero-provider 设计冻结：新 lineage 同时覆盖 rewrite、Qwen retrieval 与
-  FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash。R0 不新增启动
-  命令、环境变量、gate、credential mapping、Docker profile 或正式 evidence；当前只解锁 R1 zero-provider TDD。
+- Architecture Recovery R0--R1 已完成 zero-provider 设计与 rewrite TDD：新 lineage 同时覆盖 rewrite、Qwen
+  retrieval 与 FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash；R1
+  只从第一方 V7 terminal wire snapshot 推导 Provider boundary，forged/reused/active capability 均 fail-closed。R1 不
+  新增启动命令、环境变量、gate、credential mapping、Docker profile 或正式 evidence；当前只解锁 R2
+  zero-provider Qwen / FinalResponse robustness。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
@@ -1642,6 +1644,18 @@ Task 9B 的安全 zero-provider focused 回归命令：
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-runner.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-durability.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-lineage-cli.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-live-config.test.ts
 ```
+
+Architecture Recovery R1 的安全 zero-provider 回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-diagnostic.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-rewrite.test.ts packages/ai/tests/model-agent-exports.test.ts
+bun test packages/ai/tests/first-party-deepseek-v4-pro-direct.test.ts packages/ai/tests/model-agent-exports.test.ts
+bun --filter @repo/agent eval:phase-6-9-8:task9:validate
+```
+
+前两条只运行 injected synthetic adapter/contract tests；第三条只读重算已封存 Task 9C bundle。三条命令都不读取
+credential、不访问 Provider，也不会创建 marker/journal/artifact。不要把 R1 test 的 `applied` 当成 Live、产品或
+质量门通过。
 
 `eval:phase-6-9-8:task9:cli` 的唯一 Task 9C 名额已消费，不得再次执行。当前 artifact 已由正常 runtime 到达
 `evidence_published`，因此 `eval:phase-6-9-8:task9:seal` 也不得执行；它不是普通检查或失败重试命令。只读验证

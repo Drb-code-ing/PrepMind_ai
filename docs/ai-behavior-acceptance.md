@@ -1275,13 +1275,15 @@ Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / quali
   `schema_invalid / wire 1/1/0/0` 失败，其余 59 次调用均未启动；
 - rewrite/FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY aggregate 全 `null`；
 - gate `task9_quality_gate_failed / qualityAuthority=none`，journal `134`、validator `ok=true`、recovery
-  claim=`null`；
+  claim=`null`；report/artifact SHA 为
+  `c612d6f7164d5491e54422abb2e8504cbb707aeea3b641e8c57285d957b8b4a4 /
+7d45329debde6def4c5bc8bbda28609b507a71766ae06e00806e44eaf7b3614c`；
 - sealed evidence 不足以区分具体 Provider payload、candidate local rejection、Trace/usage/wire invariant 或 runner
   result schema 分支，因此不得声称具体字段、transport、账号或服务端根因；
 - 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。产品/main 与后续
   阶段仍未完成，Task 10/11 继续阻断。
 
-Architecture Recovery R0 已完成 zero-provider AI 行为边界设计：
+Architecture Recovery R0--R1 已完成 zero-provider AI 行为边界设计与 rewrite TDD：
 
 - 不反向解释或改写 Task 9C；新 lineage 只服务未来独立恢复评测；
 - 分别定义 rewrite、Qwen retrieval、FinalResponse stream 阶段机，避免一个 `schema_invalid` 覆盖 candidate、
@@ -1290,10 +1292,15 @@ Architecture Recovery R0 已完成 zero-provider AI 行为边界设计：
 - diagnostic 只允许 fixed enum/bucket 与 `rawDataRetained=false`，禁止模型原文、prompt/query/chunk/answer、
   unknown key、credential/URL/raw error 与 raw-derived hash；
 - 模型仍不能修改 owner、retrieval policy、citation allowlist、价格、预算、工具/写权限或 expected/oracle；
-- R0 Provider/credential/formal evidence=0，只形成
-  `zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`，当前只解锁 R1 TDD。
+- R1 的 rewrite session 只能绑定一次性真实 V7 wire capability；Provider observation 只从 terminal frozen snapshot
+  推导，caller-supplied response/usage、forged/reused/active capability 均不能提升 authority；
+- R1 synthetic tests 真实穿过第一方 direct adapter injected fetch，但 provenance 固定 `synthetic_test`；focused
+  `11/11`、AI wire/export `25/25`、Agent full `1289/1289`；
+- R0--R1 external Provider/credential/formal evidence=0，当前只形成
+  `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`；包内 local mapper 尚待 R3
+  runner/validator 绑定，下一步只解锁 R2 Qwen / FinalResponse robustness。
 
-完整设计、计划、Task 0--9C 与 Architecture Recovery R0 证据见
+完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R1 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1310,7 +1317,8 @@ Architecture Recovery R0 已完成 zero-provider AI 行为边界设计：
 `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

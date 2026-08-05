@@ -43,6 +43,7 @@ export {
   PHASE_6_9_7_V7_WIRE_DIAGNOSTICS_VERSION,
   PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES,
   PHASE_6_9_7_V7_WIRE_STAGES,
+  readPhase697V7WireSnapshot,
 } from './phase-6-9-7-v7-wire-diagnostics.ts';
 export type {
   Phase697V7WireCapability,

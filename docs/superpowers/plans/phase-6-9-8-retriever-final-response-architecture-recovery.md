@@ -2,9 +2,9 @@
 
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
-> - 当前状态：R0 zero-provider 设计冻结完成；下一步仅 R1 diagnostic contract / TDD
+> - 当前状态：R0--R1 zero-provider 完成；下一步仅 R2 Qwen / FinalResponse robustness
 > - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`
+> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`
 
 ## 1. 总体规则
 
@@ -44,7 +44,7 @@
 
 ## 3. R1 — Diagnostic Contract / Rewrite TDD
 
-状态：未开始；R0 提交并推送后才允许开始。
+状态：已完成，zero-provider。
 
 ### 目标文件
 
@@ -55,17 +55,19 @@
 
 实际文件可在不改变 namespace/职责的前提下按模块长度拆分，但禁止改写旧 Task 9C evidence contract。
 
-### 实施顺序
+### 实施结果
 
-1. RED：exact-object、hostile getter/Proxy、unknown field、raw/hash leakage、非法 stage/reason；
-2. 实现 strict diagnostic schema、deep-freeze plain projection 与 module-owned opaque capability；
-3. RED：rewrite runtime result、candidate disposition、provenance、Trace、usage、wire、result schema 分支；
-4. 实现 rewrite 阶段机与 bounded mapper，不改写现有 product fallback；
-5. 冻结 deterministic failure precedence，验证 external caller 不能选择或伪造 diagnostic、provider/model/usage/
-   cost；
-6. 验证 anonymous/cross-owner/abort 在 dispatch 前 zero-call；
-7. 运行 focused tests、Agent full/typecheck/lint、Task 9C legacy validator parity；
-8. 同步 R1 acceptance 与所有当前状态文档，单独提交并推送。
+1. [x] RED/GREEN：exact-object、hostile getter/Proxy、unknown field、raw/hash leakage、非法 stage/reason；
+2. [x] 实现 strict diagnostic schema、deep-freeze plain projection 与 module-owned opaque capability；
+3. [x] Rewrite session 一次绑定未使用的真实 V7 wire capability，foreign/reuse/active snapshot fail-closed；
+4. [x] 删除 caller-supplied Provider dispatch/response/envelope/usage status，以只读 terminal wire snapshot 确定性
+       推导 `providerBoundary`、schema bucket 与 verified usage；
+5. [x] Synthetic TDD 真实穿过第一方 DeepSeek direct adapter injected fetch；不读取 credential、不访问网络；
+6. [x] 冻结 transport/HTTP/envelope/usage 与 runtime/candidate/local authority/Trace/cost/result 的最早失败 precedence；
+7. [x] R1 transitions 不进入 `@repo/agent` 公共 barrel；`@repo/ai` 只新增 snapshot read，mutation transitions 仍
+       不导出；
+8. [x] 完成 focused、Agent/AI compatibility、typecheck/lint 与 Task 9C legacy validator parity；
+9. [x] 同步 R1 acceptance 与所有当前状态文档，单独提交并推送。
 
 ### R1 验收
 
@@ -75,9 +77,12 @@
 - 只读运行 Task 9C validator 并比对 artifact SHA；旧 namespace 无写入且 bytes 不变；
 - 不存在新 CLI、Live admission 或产品 gate。
 
+验收见
+[R1 zero-provider diagnostic contract / rewrite TDD](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md)。
+
 ## 4. R2 — Qwen / FinalResponse Robustness
 
-状态：未开始；仅 R1 完成后解锁。
+状态：下一步；仅 R1 已完成，不代表 R2 已开始或通过。
 
 ### 目标
 
@@ -195,13 +200,13 @@ git diff --check
 
 ## 10. 当前停止边界
 
-R0 只形成设计 authority。当前没有：
+R0--R1 只形成设计与 rewrite TDD authority。当前已有 strict bounded diagnostic、opaque rewrite session、第一方
+wire snapshot 只读投影与 zero-provider fault tests；当前仍没有：
 
-- diagnostic TypeScript contract 或 TDD 证据；
-- rewrite/Qwen/FinalResponse recovery integration；
+- Qwen/FinalResponse recovery integration 与 robustness fault matrix；
 - recovery runner、CLI、marker/journal/artifact/validator；
 - reviewed Mock、controlled-Live、产品或 main authority；
 - 对 Task 9C 具体失败字段或 Provider 根因的结论。
 
-下一步只能开始 R1 zero-provider diagnostic contract / rewrite TDD。不得执行 R2--R7、Task 9C CLI/seal、Task
+下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness。不得执行 R3--R7、Task 9C CLI/seal、Task
 10/11、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。

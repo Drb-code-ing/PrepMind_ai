@@ -1,10 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计
 
 > - 日期：2026-08-05
-> - 状态：R0 zero-provider 设计冻结完成；下一步仅 R1 diagnostic contract / TDD
+> - 状态：R0--R1 zero-provider 完成；下一步仅 R2 Qwen / FinalResponse robustness
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 起始提交：`7026dc4cac83bb656b81739abcb68287c133066a`
 > - R0 authority：`zero_provider_retriever_final_response_architecture_recovery_design`
+> - 当前 checkpoint authority：`zero_provider_retriever_final_response_architecture_recovery_tdd`
 > - Quality Authority：`none`
 > - 独立 lineage：`phase-6.9.8-retriever-final-response-architecture-recovery-v1`
 
@@ -267,6 +268,7 @@ result，不等于整份 gate、产品或 main 通过。
 - `result_shape_invalid`
 - `phase_mismatch`
 - `unknown`
+- `applied`（唯一成功终态 reason；R0 列表漏写，R1 合同补全；不表示整份 gate、产品或 main 通过）
 
 Rewrite reason：
 
@@ -352,6 +354,19 @@ admission -> request_contract -> provider_dispatch -> provider_response
 FinalResponse 必须保持 server-ledger：唯一 terminal、terminal-last、citation allowlist、grounding/critical notice、
 false-tool-success、TTFT/total/end-to-end 与本地 cost 重算。客户端断连仍只影响 delivery，不得改写已完成的本地
 terminal；但 eval 的 parent abort/timeout 必须按固定 stage 收口。
+
+### 7.4 R1 已落地的 rewrite authority
+
+R1 已在 zero-provider 边界实现 §7.1：module-owned rewrite session 只绑定一个尚未使用的真实 V7 wire capability；
+foreign、duplicate/reused capability 与 active snapshot 都不能推进 Provider authority。`@repo/ai` 只公开 frozen
+snapshot reader，claim/advance/fail/abort/complete mutation 继续不从 barrel 导出。Rewrite diagnostic 不再接受
+caller-supplied dispatch/response/envelope/usage status，而是只从 terminal wire stage/counter/failure/usage disposition
+确定性投影；synthetic TDD 也必须真实穿过第一方 DeepSeek direct adapter 的 injected fetch。
+
+这仍只是 R1 contract/TDD：包内 local mapper transition 不进入 `@repo/agent` 公共 barrel，且 R3 未来必须把它与
+source-admitted runner/result/Trace/cost validator 绑定后，才可能形成 durability authority。R1 不形成 Qwen、
+FinalResponse、Mock、Live、产品或 main authority。验收见
+[R1 zero-provider diagnostic contract / rewrite TDD](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md)。
 
 ## 8. Result、Wire 与 Gate
 
@@ -466,8 +481,8 @@ R1--R4 至少覆盖：
 | 阶段 | 内容                                                                     | 当前状态              |
 | ---- | ------------------------------------------------------------------------ | --------------------- |
 | R0   | sealed 只读复盘、三链路阶段机、bounded diagnostic、独立 lineage 与路线   | 已完成，zero-provider |
-| R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 下一步，zero-provider |
-| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 未开始，zero-provider |
+| R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 已完成，zero-provider |
+| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 下一步，zero-provider |
 | R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 未开始，zero-provider |
 | R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 未开始，zero-provider |
 | R5   | 仅在全新 admission 与用户新授权后可能执行的一次 controlled-Live          | 未授权、未开始        |
@@ -478,7 +493,7 @@ R1--R4 至少覆盖：
 当前源码尚未进入 main，因此不能从缺少 Task 0--9B 基线的 main 开始 Recovery；同时也禁止为了满足分支形式而
 提前把失败 gate 合并 main。
 
-## 13. R0 禁止事项
+## 13. R0--R1 当前禁止事项
 
 - 不运行 Task 9C production CLI、seal、curl、单 case或产品 API Provider 探测；
 - 不删除、移动、改写、重建 Task 9C tag/marker/journal/artifact；
@@ -487,7 +502,7 @@ R1--R4 至少覆盖：
 - 不保存 raw、raw-derived hash、unknown key、Zod issue、prompt、query、chunk、answer、credential 或 error；
 - 不修改产品 gate、`.env`、Docker、数据库、BackgroundJob、Outbox 或业务数据；
 - 不降低分母、质量门、预算、安全、owner、citation 或 local authority；
-- 不执行 R1 代码、R2 fault matrix、R3 durability、R4 Mock、R5 Live、Task 10/11 或 main。
+- 不执行 R3 durability、R4 Mock、R5 Live、Task 10/11 或 main；下一原子任务仅 R2 zero-provider robustness。
 
 ## 14. 回顾时可以问
 
@@ -499,5 +514,5 @@ R1--R4 至少覆盖：
 - 为什么 diagnostic 不保存 raw hash 或 unknown key 名？
 - FinalResponse 为什么不能照搬 Tutor 的单 ordinal schema recovery？
 - 为什么完整分母失败时，四条成功费用仍不能作为 run aggregate？
-- 为什么 R0 完成后仍不能创建新 tag、读取 credential 或请求 Live 授权？
+- 为什么 R1 完成后仍不能创建新 tag、读取 credential 或请求 Live 授权？
 - 为什么 Phase 6.9.8 Recovery 继续留在当前功能分支，而不能从缺少基线的 main 新建？

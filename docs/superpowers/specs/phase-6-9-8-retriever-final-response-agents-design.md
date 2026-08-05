@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9C 失败封存；Architecture Recovery R0 zero-provider 设计完成，下一步仅 R1 TDD
+> 状态：Task 9C 失败封存；Architecture Recovery R0--R1 zero-provider 完成，下一步仅 R2 robustness
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`
+> Current Checkpoint Authority：`zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`
 
 ## 1. 决策与目标
 
@@ -688,7 +688,7 @@ Task 9C 的一次性名额已消费，禁止 retry/resume/replay/backfill、seal
 不能把它包装成 Task 9C retry。完整证据见
 `../../acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
 
-## 25. Architecture Recovery R0 后续状态（2026-08-05）
+## 25. Architecture Recovery R0--R1 后续状态（2026-08-05）
 
 独立 R0 已在不改写 Task 9C 的前提下完成三链路 bounded-diagnostic 设计：
 
@@ -701,9 +701,13 @@ Task 9C 的一次性名额已消费，禁止 retry/resume/replay/backfill、seal
 - 保持 16 guards、64 calls、双 Provider accounting、阈值、预算、权限、no-retry 与 breaker 不变；
 - R0 未修改 TypeScript、读取 credential、调用 Provider、创建正式 evidence 或执行产品/main 验收。
 
-R0 authority 只证明恢复方案已冻结，不形成质量或产品 authority。当前只解锁 R1 zero-provider strict diagnostic
-contract、opaque capability 与 rewrite TDD；R2--R7、Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
+R1 随后已完成 strict bounded diagnostic、module-owned opaque rewrite session 与第一方 V7 terminal wire snapshot
+只读投影。Provider observation 不接受 caller-supplied 状态，forged/reused/active capability 均 fail-closed；focused
+`11/11`、AI wire/export `25/25`、Agent full `1289/1289` 通过。R1 仍是 zero-provider TDD，包内 local mapper 尚待
+R3 source-admitted runner/validator 绑定，不形成 durability、质量或产品 authority。当前只解锁 R2 zero-provider
+Qwen / FinalResponse robustness；R3--R7、Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
 
 - [Architecture Recovery 设计](./phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
 - [Architecture Recovery 实施计划](../plans/phase-6-9-8-retriever-final-response-architecture-recovery.md)
 - [Architecture Recovery R0 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md)
+- [Architecture Recovery R1 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md)
