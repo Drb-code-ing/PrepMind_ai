@@ -1267,8 +1267,21 @@ Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / quali
   `0.43076385233`、FinalResponse/safety 均通过，但 gate 固定
   `task9b_mock_quality_not_evidence / qualityAuthority=none`；Provider/credential/approved tag/正式 evidence 为 0。
 
-当前唯一下一任务为 Task 9C fresh admission + 唯一 controlled-Live；fresh 数据边界接受与精确一次性授权尚未
-取得。Live、产品/main 与后续阶段仍未完成。完整设计、计划与 Task 0--9B 证据见
+唯一 Task 9C controlled-Live 已在 fresh DeepSeek/Qwen 数据边界接受与 exact authorization 下执行并失败封存：
+
+- run `28b5f92f...` 为 guard `16/16` zero-call，实际 `5/64` Provider calls；Qwen `3/3/3/3`、DeepSeek
+  `2/2/1/1`；
+- `rewrite_01` 完整成功，`rewrite_02` DeepSeek rewrite 在 dispatch 后以本地
+  `schema_invalid / wire 1/1/0/0` 失败，其余 59 次调用均未启动；
+- rewrite/FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY aggregate 全 `null`；
+- gate `task9_quality_gate_failed / qualityAuthority=none`，journal `134`、validator `ok=true`、recovery
+  claim=`null`；
+- sealed evidence 不足以区分具体 Provider payload、candidate local rejection、Trace/usage/wire invariant 或 runner
+  result schema 分支，因此不得声称具体字段、transport、账号或服务端根因；
+- 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。产品/main 与后续
+  阶段仍未完成，Task 10/11 继续阻断。
+
+完整设计、计划与 Task 0--9C 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1281,7 +1294,8 @@ Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / quali
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
-`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

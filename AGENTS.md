@@ -109,8 +109,16 @@ aggregate、source admission、双 opaque capability、exclusive marker、dispat
 hard-link artifact、strict validator、crash-only seal 与未来 9C CLI。Reviewed Mock 为 guard `16/16`、Qwen/DeepSeek
 wire+usage 各 `32/32/32/32`、rewrite original/candidate nDCG@5 `0.56923614767/1`、FinalResponse/safety 全门通过，
 但 gate 固定 `task9b_mock_quality_not_evidence / qualityAuthority=none`；Provider/credential/Qwen external calls 与
-approved tag/正式 evidence 均为 0。当前只解锁 Task 9C fresh admission + 唯一 controlled-Live；产品/main 与后续
-阶段均未完成。
+approved tag/正式 evidence 均为 0。唯一 Task 9C controlled-Live 随后已在 approved source `66a009dd...` 上执行并
+由正常 runtime durable seal：run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 为 guard `16/16` zero-call、实际
+Provider calls `5/64`；Qwen wire/usage `3/3/3/3`、DeepSeek `2/2/1/1`。`rewrite_01` 完整成功，
+`rewrite_02` 的 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 将剩余 59 次
+调用收为 `not_started_quality_breaker`。最终 rewrite/FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY
+aggregate 全 `null`，gate 为 `task9_quality_gate_failed / qualityAuthority=none`。Journal `134` 条并以
+`evidence_published` 收口，validator `ok=true`，recovery claim=`null`。该 sealed evidence 只能证明本地 strict
+rewrite schema/contract 未满足，不能归因具体 Provider payload、transport、账号或服务端，也不形成产品/main
+authority。Task 9C 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测；
+Task 10/11 与产品/main 继续阻断。下一步只能先独立规划 zero-provider bounded-diagnostic Architecture Recovery。
 Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 `docs/superpowers/specs/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-7-tutor-organizer-full-gate-schema-recovery.md` 与
@@ -134,7 +142,8 @@ Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
-`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
 
 ## 项目快照
 
@@ -297,6 +306,7 @@ Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 | Phase 6.9.8 Task 8              | 已完成     | 固定 48-case manifest/policy、prompt-only reviewed Mock、production candidate/node/ledger、strict report/scorer/canonical bytes；三组均 `16/16`，仅 `mock_quality_not_evidence`，Provider/credential/Qwen/formal evidence=0；当时停在 Task 9 fresh authorization 门前                            |
 | Phase 6.9.8 Task 9A             | 已完成     | Qwen 北京区官方 price/endpoint/usage contract、1536 维 strict direct transport、single-call/no-retry/AbortSignal、injected fault matrix 与 `262144 tokens / 0.131072 CNY` cap；Provider/credential/formal evidence=0，只解锁 Task 9B runner/durability                                           |
 | Phase 6.9.8 Task 9B             | 已完成     | 16 guard + 64-call fixed schedule、Qwen/DeepSeek 独立 usage/CNY、source admission/双 capability、breaker、exclusive marker、hash-chain journal、hard-link artifact、strict validator、crash-only seal 与 9C CLI；Reviewed Mock 仅 `qualityAuthority=none`，Provider/credential/formal evidence=0 |
+| Phase 6.9.8 Task 9C             | 失败封存   | 唯一 run `28b5f92f...`：guard `16/16`、Provider `5/64`；Qwen `3/3/3/3`、DeepSeek `2/2/1/1`，第二条 rewrite `schema_invalid / 1/1/0/0` 后 59 次 not-started；journal `134`、validator `ok=true`，`qualityAuthority=none`，不得重跑，Task 10/11 阻断                                               |
 | Phase 7.0                       | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                     |
 | Phase 7.1                       | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                             |
 | Phase 7.2                       | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                             |
@@ -887,7 +897,7 @@ mcp -> ai, fsrs, rag, types
 
 1. Phase 6.9.4.4 已在 main 完成：Mock、controlled-Live、Docker、Router/Verifier 可见浏览器、注入零调用、Trace 价格、RAG internal parity 与精确清理均有 evidence；生产 gate 已恢复默认关闭。
 2. Phase 6.9.5 Review/Planner 的 V1--V9 保持只读历史；该阶段 V9 唯一 Live 的 `quality_gate_failed` 不再是产品阻断，因为独立 V10 质量 authority、分支验收和 main default-off replay 已完成。V22 的 `operation_failed -> recovered` 与其余历史仍不可重跑或改写。
-3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。SR6 已在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品验收；SR7 又完成 main 合并/推送、default-off Docker/API/可见浏览器/Trace/精确清理与 step-check 路由修复。二者均不提升 SR5 semantic authority。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--9B 均已完成。Task 8 只形成 reviewed Mock/static authority；Task 9A 冻结 Qwen 北京区 strict transport/price；Task 9B 又完成 64-call runner、双 Provider accounting、source admission、durability/validator/CLI，但 Reviewed Mock 仍固定 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence 仍为 0。当前唯一下一任务是 Task 9C fresh admission + 唯一 controlled-Live；产品/main 验收与记忆注入继续阻断。
+3. Phase 6.9.6 的唯一 V2 Live、R7 产品 acceptance、可见 `/knowledge`、精确清理、main default-off 回放与远程推送已经完成。Phase 6.9.7 Task 0--11 已完成；V1--V9 Live 均已分别以 `quality_gate_failed` 封存且不得重跑。Architecture Recovery R3、Provider Canary V2 L1、Small-sample L2 与 Full-gate L3 均保持各自 sealed 终态且不得重跑。Schema Recovery SR0--SR4 完成独立修复与 Mock-only checkpoint；唯一 SR5 run `63f8a76b...04cb` 已以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal，strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`，不得重跑。SR6 已在 `providerCalls=0` 边界完成 Tutor/Organizer 分支产品验收；SR7 又完成 main 合并/推送、default-off Docker/API/可见浏览器/Trace/精确清理与 step-check 路由修复。二者均不提升 SR5 semantic authority。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--9B 均已完成。Task 8 只形成 reviewed Mock/static authority；Task 9A 冻结 Qwen 北京区 strict transport/price；Task 9B 又完成 64-call runner、双 Provider accounting、source admission、durability/validator/CLI，但 Reviewed Mock 仍固定 `task9b_mock_quality_not_evidence / qualityAuthority=none`。唯一 Task 9C run `28b5f92f...2ff2` 已以 `task9_quality_gate_failed / qualityAuthority=none` durable seal；第二条 DeepSeek rewrite 在本地 strict schema/contract 边界失败，剩余 59 次调用由 breaker 阻止，正式 semantic/P95/token/CNY aggregate 均为 `null`。Task 9C 一次性名额已消费且禁止重跑、seal、追加 Provider 探测或进入 Task 10。当前下一原子任务只能是独立、zero-provider、bounded-diagnostic 的 Architecture Recovery 设计；产品 Docker/API/browser、main 验收与记忆注入继续阻断。
 4. 全部 Agent 架构完成后进入 Phase 6.10 分层记忆，再进入 Phase 8 性能/PWA 与 Phase 9 MCP Tool 体系。
 5. 未来分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客，具体题目与结构由用户届时确认。
 6. V1--V9 marker/evidence 均不可删除、改写或重跑；V3--V9 journal 继续保留。禁止把不同版本、Mock 或部分成功拼接成通过。V5--V9 路线与历史证据继续由原文档维护。

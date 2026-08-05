@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9B zero-provider runner/durability/admission 完成；下一步 Task 9C fresh controlled-Live admission
+> 当前状态：唯一 Task 9C 已以 `task9_quality_gate_failed / qualityAuthority=none` 封存；Task 10/11 阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -11,6 +11,7 @@
 - 当前分支始终来自已推送的最新 `main`；不创建 worktree，不从功能分支再开分支。
 - Task 0--8 与 Task 9A/9B 全部 zero-provider；禁止读取或输出 `.env`、credential，禁止调用 Qwen/DeepSeek。
 - Task 9C 必须在静态/Mock checkpoint、9A/9B、source parity、fresh 数据边界接受和精确一次性授权后单独执行。
+- Task 9C 唯一名额现已消费；禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。
 - Mock、synthetic、旧 Chat Live 或 Phase 6.9.7 evidence 均不能替代 Phase 6.9.8 质量 authority。
 - 任何 owner、安全、usage、价格、分母或 Trace terminal 不可验证都 fail-closed。
 - 每个 Task 完成后同步 AGENTS/DEVLOG/roadmap/acceptance；只有新增运行配置时才更新 dev-start/README。
@@ -463,6 +464,20 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 完全复用设计文档 `12.3`。任一分母、usage、price、Trace terminal 或 critical safety 不完整时 aggregate
 为 null，gate fail-closed；失败后先封存和复盘，不得盲目重跑。
 
+#### 完成回执（失败封存）
+
+- approved source/tag/HEAD/upstream/origin：`66a009ddb40b14d5117cfc0ec785a0d328708c5b`；
+- runId：`28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2`；
+- guard `16/16` zero-call；Provider `4 succeeded / 1 failed / 59 not_started_quality_breaker`；
+- Qwen wire/usage `3/3/3/3`；DeepSeek `2/2/1/1`；
+- 第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败；
+- rewrite/FinalResponse strict `1/16 / 0/16`；semantic/P95/token/CNY aggregate 全 `null`；
+- `task9_quality_gate_failed / qualityAuthority=none`；journal `134`、`evidence_published`、validator
+  `ok=true`、recovery claim=`null`。
+
+当前 evidence 只能定位到本地 strict rewrite schema/contract，不能声称具体 Provider payload、transport、账号或
+服务端根因。Task 9C 不得重跑；Task 10 admission 未满足。
+
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
 仅当 Task 9 形成可接产品的 quality authority 时执行：
@@ -492,17 +507,17 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 
 ## 当前停止边界
 
-Task 0--8 与 Task 9A/9B 已完成；当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
 
-- Task 9C fresh-admission controlled-Live 质量 authority；
+- Task 9C 已执行，但没有形成 controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
-hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。当前只允许推进
-Task 9C fresh admission；Task 9B 完成、提交、推送、复审与 source parity 之前不创建 approved tag，且没有 fresh
-DeepSeek/Qwen 数据边界接受与精确一次性授权时，不读取 credential、不创建 marker、不调用 Provider。
+hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
+marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main 和任何 Task 9C Provider 追加调用。
+若用户决定继续，只能先单独规划 zero-provider bounded-diagnostic Architecture Recovery 与新 lineage。

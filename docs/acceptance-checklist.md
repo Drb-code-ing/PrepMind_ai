@@ -2109,11 +2109,20 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] Task 9B focused `27/27`、Agent full `1279/1279`、AI full `337/337`、Agent typecheck/source lint、
       Prettier/diff/CodeGraph 与独立 authority/durability/contract 复审通过；Provider/credential/Qwen external
       calls=0，approved tag/正式 marker/journal/artifact/recovery=0，未启动 Docker/API/browser；
-- [ ] Task 9C fresh authorization 下的唯一 controlled-Live paired gate；
+- [x] Task 9C fresh DeepSeek/Qwen 数据边界接受与 exact one-shot authorization 已消费；approved source/tag/
+      HEAD/upstream/origin 均为 `66a009dd...`，source bundle `2c1b2bb3...`，proxy preflight zero-call ready；
+- [x] 唯一 run `28b5f92f...` 已正常 durable seal：guard `16/16` zero-call，实际 Provider calls `5/64`，
+      Qwen wire/usage `3/3/3/3`、DeepSeek `2/2/1/1`；第二条 DeepSeek rewrite
+      `schema_invalid / wire 1/1/0/0` 后剩余 59 次 `not_started_quality_breaker`；
+- [x] 最终 rewrite/FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY aggregate 全 `null`；gate
+      `task9_quality_gate_failed / qualityAuthority=none`。Journal `134`、`evidence_published`、validator `ok=true`、
+      report/artifact SHA `c612d6f7... / 7d45329d...`、recovery claim=`null`；
+- [x] Task 9C 失败封存边界已记录：禁止 retry/resume/replay/backfill、补跑、seal/recovery、artifact 改写或追加
+      Provider 探测；不能把本地 `schema_invalid` 归因为具体 payload/transport/账号/服务端；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划与 Task 0--9B 验收见
+设计、计划与 Task 0--9C 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2126,4 +2135,5 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
 `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
-`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。

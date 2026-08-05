@@ -214,7 +214,7 @@ terminal、artifact conflict、active owner 与 crash publication。
 因此 Task 9B 只证明 runner/durability/admission 工程合同成立，不证明真实模型质量、真实 usage/CNY、真实 P95、
 Retriever/FinalResponse 产品可用、Trace 可见性或 Phase 6.9.8 已完成。
 
-## 9. 下一步
+## 9. Task 9B 完成时的下一步
 
 唯一下一原子任务是 Task 9C fresh admission + 唯一 controlled-Live。开始前必须先确保 Task 9B 提交与远程分支
 完全对齐，再单独完成 approved source tag、fresh DeepSeek/Qwen 数据边界接受和精确一次性授权。没有这些新边界
@@ -234,3 +234,10 @@ Task 9C 无论通过或失败都必须先 durable seal、strict validate 和复�
 - 为什么 crash-only seal 只能解释 durable prefix，不能继续执行未完成调用？
 - 为什么 Reviewed Mock 的 `0.02951 CNY` 和 P95 不能写成真实成本或 SLA？
 - 为什么 Task 9C 的数据边界接受和一次性授权不能由 Task 9B 自动继承？
+
+## 10. 后续状态（不改写 Task 9B authority）
+
+唯一 Task 9C 后续已执行并以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存；run
+`28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 在第二条 DeepSeek rewrite strict schema/contract 边界失败，剩余
+59 次调用由 breaker 阻止。Task 9C 一次性名额已消费且不得重跑；完整终态见
+[Task 9C controlled-Live 质量门失败验收](./phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md)。

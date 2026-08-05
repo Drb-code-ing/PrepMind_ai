@@ -1,5 +1,37 @@
 # PrepMind AI 开发日志
 
+> 2026-08-05 — Phase 6.9.8 Task 9C 唯一 controlled-Live 质量门失败封存：
+>
+> 用户逐字接受 DeepSeek + Qwen fresh 数据边界并给出 exact one-shot authorization 后，先完成 zero-provider
+> admission：branch/HEAD/upstream/origin/approved tag 全部绑定
+> `66a009ddb40b14d5117cfc0ec785a0d328708c5b`，source bundle SHA 为
+> `2c1b2bb3...e23cf8`，工作树 clean、正式 evidence=0；approved tag 已推送。Proxy preflight 为
+> `loopback_proxy_ready / configured=4 / probe=1 / providerCalls=0`，无关 Agent/Chat gate 保持关闭。
+>
+> 唯一 run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 已由正常 runtime 路径 durable seal。Guard
+> `16/16` pass 且 zero-call；完整分母仍为 64 calls，实际为 `4 succeeded / 1 failed / 59
+not_started_quality_breaker`。Qwen wire/usage 为 `3/3/3/3`，DeepSeek 为 `2/2/1/1`。`rewrite_01`
+> 完整成功；`rewrite_02` original Qwen 成功后，DeepSeek rewrite 在 dispatch 后以
+> `schema_invalid / wire 1/1/0/0 / 895.038ms` 失败，breaker 阻止剩余 59 次调用。没有
+> retry/resume/replay/backfill、BackgroundJob 或 Outbox。
+>
+> 最终 rewrite strict `1/16`、FinalResponse strict `0/16`；正式语义、五项 P95、Provider token/CNY 与总费用
+> aggregate 全为 `null`。四条成功 entry 的 verified usage/cost 不是 run aggregate，失败 dispatch 的 usage/cost
+> 未知，不能写成 0。Gate 为 `task9_quality_gate_failed / qualityAuthority=none`；该结果不形成 Retriever/
+> FinalResponse 质量、SLA、产品、Docker/API/browser、Trace、main 或 Phase 6.9.8 authority。
+>
+> Journal `134` 条，以 `run_terminal -> publication_started -> evidence_published` 收口；report/artifact SHA 为
+> `c612d6f7...b8b4a4 / 7d45329d...3614c`，strict validator `ok=true`，recovery claim=`null`。当前
+> `schema_invalid` 只能证明 dispatch 后未满足本地 strict rewrite schema/contract；sealed evidence 不含 raw，
+> 不能归因具体字段、Provider 内容、DNS/TLS/proxy、账号、余额、权限或服务端。
+>
+> Task 9C 一次性名额已消费，禁止 retry/resume/replay/backfill、补跑、seal/recovery、删除/改写 artifact 或追加
+> Provider 探测。Task 10/11 与产品/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9、两篇博客继续阻断。若继续，
+> 下一原子任务只能是独立 zero-provider bounded-diagnostic Architecture Recovery 设计，不是 Task 9C 重跑。验收见
+> `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。回顾时可以问：为什么
+> `schema_invalid + 1/1/0/0` 不能直接等于错误 JSON？为什么四条成功费用不能冒充 run 总账？为什么正常
+> `evidence_published` 后不能再 seal？
+>
 > 2026-08-05 — Phase 6.9.8 Task 9B Runner / Durability / Admission：
 >
 > 在 Task 9A Qwen strict transport 之后，本任务以
@@ -39,7 +71,7 @@
 > journal/artifact/recovery claim，未启动 Docker/API/browser，未修改业务数据或合并 main。验收见
 > `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
 >
-> 当前唯一下一原子任务是 Task 9C fresh admission + 唯一 controlled-Live。必须先完成 Task 9B 提交/推送/
+> 截至 Task 9B 完成时，唯一下一原子任务是 Task 9C fresh admission + 唯一 controlled-Live。必须先完成 Task 9B 提交/推送/
 > 复审与 source parity，再单独取得 fresh DeepSeek/Qwen 数据边界接受和精确一次性授权；此前不得创建 approved
 > tag、读取专用 credential 或调用 Provider。回顾时可以问：为什么 16 个 rewrite pair 产生 48 次调用？为什么
 > 双 Provider 必须独立记账？为什么 evidence I/O failure 不能伪装为 Provider failure？为什么 crash seal 不能
@@ -76,7 +108,7 @@
 > 当前唯一下一原子任务是 Task 9B：独立 report/gate、16 guard + 16 original/rewrite paired retrieval + 16
 > FinalResponse scheduler、DeepSeek/Qwen 独立 attempt/usage/CNY、source admission、exclusive marker、dispatch-before-
 > call hash-chain journal、hard-link artifact、strict validator 与 crash-only seal。9B 完成、提交、推送和复审前不创建
-> approved tag；Task 9C fresh 数据边界接受与精确授权尚未开始。回顾时可以问：为什么产品 Qwen 已可用仍缺 eval
+> approved tag；截至 Task 9A 完成时，Task 9C fresh 数据边界接受与精确授权尚未开始。回顾时可以问：为什么产品 Qwen 已可用仍缺 eval
 > usage authority？为什么北京/新加坡要分 price profile？为什么 injected fetch 只能是 synthetic？为什么 transport
 > 不自己拥有 runner timeout/journal？
 >

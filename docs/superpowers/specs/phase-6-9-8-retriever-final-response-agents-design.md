@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9B zero-provider runner/durability/admission 已完成；下一步 Task 9C fresh controlled-Live admission
+> 状态：唯一 Task 9C 已以 `task9_quality_gate_failed / qualityAuthority=none` 封存；Task 10/11 阻断
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_final_response_runner_durability`
+> Current Checkpoint Authority：`controlled_live_failure / qualityAuthority=none`
 
 ## 1. 决策与目标
 
@@ -663,3 +663,27 @@ Task 9B 未读取 credential、调用 Provider、创建 approved tag/正式 mark
 Docker/API/browser 或修改业务数据。它只解锁 Task 9C fresh admission + 唯一 controlled-Live，不授权产品/main 或
 后续阶段。完整证据见
 `../../acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`。
+
+## 24. Task 9C 失败封存回执（2026-08-05）
+
+唯一 Task 9C controlled-Live 已在 source commit/tag `66a009dd...`、fresh DeepSeek/Qwen 数据边界接受与 exact
+one-shot authorization 下执行。Run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 得到：
+
+- guards `16/16` pass/zero-call；固定 64-call 分母不变；
+- `4 succeeded / 1 failed / 59 not_started_quality_breaker`；
+- Qwen attempts/dispatches/responses/verified usage `3/3/3/3`；DeepSeek `2/2/1/1`；
+- `rewrite_01` 完整成功，`rewrite_02.rewrite_candidate_model` 在 dispatch 后以
+  `schema_invalid / wire 1/1/0/0` 失败；
+- rewrite/FinalResponse strict `1/16 / 0/16`；semantic/P95/provider token/CNY aggregate 全 `null`；
+- gate `task9_quality_gate_failed / qualityAuthority=none`；journal `134` 条并以 `evidence_published` 收口；
+- strict validator `ok=true`，report/artifact SHA `c612d6f7...b8b4a4 / 7d45329d...3614c`，recovery claim=`null`。
+
+当前 `schema_invalid` 是 live harness 与 runner 的本地 strict schema/contract 总括边界。Artifact 不保留 Provider
+原文或足以区分 candidate disposition、Trace/usage/wire invariant 与 runner result schema 的 bounded diagnostic，
+因此不能进一步归因具体字段、模型内容、transport、账号或服务端。
+
+Task 9C 的一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery、artifact 改写或追加 Provider
+探测。该失败不形成 Retriever/FinalResponse 质量、产品、SLA、Docker/API/browser、Trace 或 main authority；Task
+10/11 继续阻断。若继续，必须先建立独立 zero-provider bounded-diagnostic Architecture Recovery 设计和新 lineage，
+不能把它包装成 Task 9C retry。完整证据见
+`../../acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
