@@ -109,6 +109,9 @@
     "eval:phase-6-9-8:architecture-recovery:seal": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-cli.ts I_SEAL_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R3_CRASH_ONLY_ONCE",
     "eval:phase-6-9-8:architecture-recovery:validate": "bun scripts/validate-phase-6-9-8-retriever-final-response-architecture-recovery-evidence.ts",
     "eval:phase-6-9-8:architecture-recovery:r4:mock": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock.ts mock",
+    "eval:phase-6-9-8:architecture-recovery:r5:cli": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-r5-cli.ts",
+    "eval:phase-6-9-8:architecture-recovery:r5:seal": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-r5-cli.ts I_SEAL_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_CRASH_ONLY_ONCE",
+    "eval:phase-6-9-8:architecture-recovery:r5:validate": "bun scripts/validate-phase-6-9-8-retriever-final-response-architecture-recovery-evidence.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

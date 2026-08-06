@@ -5,6 +5,18 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0A. Phase 6.9.8 Architecture Recovery R5 controlled-Live（当前）
+
+R5 已完成实现、独立复审和 zero-provider 回归，当前只允许在 clean-source admission 后执行用户授权的唯一一次
+controlled-Live。固定分母是 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64 slots`；focused `18/18`、CLI
+`6/6`、Agent `1329/1329`，typecheck/lint/Prettier 均通过。R5 的 DeepSeek rewrite、Qwen retrieval 与
+FinalResponse credential 只在授权 CLI 子进程 late-bind，默认产品 gate 不受影响；Provider、credential、formal
+evidence 与业务写入在 Live 前均为 0。不得执行 retry/resume/replay/backfill、curl、单 case 或额外 Provider 探测。
+
+执行入口、数据边界、固定 corpus、citation ledger、预算和 crash-only 规则见
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。R5 只有完整
+`controlled_live` quality gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收；Mock/static 结果不能替代真实模型质量。
+
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 
 > 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收为 `candidate_applied`；main default-off replay 已通过，gate 保持关闭、合成账户/Trace 已清理。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。

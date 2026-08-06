@@ -1598,6 +1598,50 @@ qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`n
   `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R0--R4 不新增环境变量、gate、credential
   mapping、Docker profile 或正式 evidence；当前只解锁 R5 fresh admission（未授权、未开始）。
 
+### Phase 6.9.8 Architecture Recovery R5（当前：Live 前 admission）
+
+R5 已完成实现、独立复审和 zero-provider 回归，固定调度为 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64`
+slots。DeepSeek rewrite、Qwen original/candidate retrieval 与 DeepSeek FinalResponse stream 均使用真实第一方
+adapter；三项 credential 只由授权 CLI 子进程 late-bind，产品 gate、Docker Compose、Nest server/worker 与浏览器
+默认配置不改变。当前 focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过，尚未读取
+credential、调用 Provider 或创建正式 evidence。
+
+用户已接受：
+
+```text
+I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY
+```
+
+并授权：
+
+```text
+I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_CONTROLLED_LIVE_ONCE
+```
+
+在分支 clean、tracking/remote/approved tag 完全同 commit 且 formal evidence=0 后，唯一允许的入口是：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:cli I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_CONTROLLED_LIVE_ONCE
+```
+
+CLI 会先校验 source/data boundary/approval，再 late-bind 三项 R5 专用 key，随后 reservation、guards、64 slots、
+publication 和 strict validator。不要把通用 `DEEPSEEK_API_KEY` 或 Qwen 产品 key 复制到 R5 变量；不要在主代理
+上下文打印 key。若 reservation 后进程异常，只允许进程结束后执行一次：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:seal
+```
+
+之后必须执行一次只读校验：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:validate
+```
+
+无论 gate pass/fail 都不得 retry、resume、replay、backfill、curl、单 case 或追加 Provider 探测；只有完整
+`controlled_live` gate pass 才能进入 R6 产品 Docker/API/可见浏览器验收。完整边界与结果记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
 

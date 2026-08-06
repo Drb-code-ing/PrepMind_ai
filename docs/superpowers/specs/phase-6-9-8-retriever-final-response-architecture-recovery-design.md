@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计
 
 > - 日期：2026-08-05
-> - 状态：R0--R4 zero-provider 完成；下一步仅 R5 controlled-Live admission（未授权）
+> - 状态：R0--R4 zero-provider 完成；R5 实现/复审/zero-provider 回归完成，当前等待 clean-source admission 后执行用户已授权的唯一 controlled-Live
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 起始提交：`7026dc4cac83bb656b81739abcb68287c133066a`
 > - R0 authority：`zero_provider_retriever_final_response_architecture_recovery_design`
@@ -427,6 +427,18 @@ sealed SHA 与旧 validator 只读 parity 保持。R4 只能证明固定 Mock fi
 产品、SLA 或 main authority。验收见
 [R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
 
+### 7.8 R5 controlled-Live admission（已实现，待执行）
+
+R5 在不改写 R0--R4 或 Task 9C identity 的前提下新增 production CLI、DeepSeek rewrite/Qwen retrieval/DeepSeek
+FinalResponse 三链路 live harness、三项专用 credential late-binding、固定检索 fixture、严格 citation coverage、
+usage/cost budget diagnostic 与 crash-only 异常收口。固定调度仍是 `16 guards + 16 rewrite pairs + 16 FinalResponse =
+64 slots`，首个失败打开 breaker，未启动调用不补跑。R5 focused `18/18`、CLI `6/6`、Agent `1329/1329`，
+typecheck/lint/Prettier 均通过；当前没有 credential/provider/evidence。用户已接受 DeepSeek/Qwen 数据边界并给出
+exact authorization；只有 source branch、tracking、origin、approved tag、clean tree 和 formal evidence=0 全部一致时
+才执行一次 Live。R5 通过只形成 branch semantic authority，仍不自动代表产品、Docker/API/browser、Trace、SLA 或 main。
+实现与操作边界见
+[R5 acceptance](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
+
 ## 8. Result、Wire 与 Gate
 
 新 lineage 继续保留公共 `failureReason` 以兼容 report 聚合，同时新增 strict bounded diagnostic。Validator 必须同时
@@ -544,7 +556,7 @@ R3 source manifest 已绑定：
 | R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider |
 | R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 已完成，zero-provider |
 | R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 已完成，zero-provider |
-| R5   | 仅在全新 admission 与用户新授权后可能执行的一次 controlled-Live          | 未授权、未开始        |
+| R5   | 全新 admission、三链路真实 Provider、一次 controlled-Live 与 strict seal | 已授权，待 source admission |
 | R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                  |
 | R7   | 仅 R6 pass 后的 main 合并、远程推送与 default-off 回放                   | 阻断                  |
 
@@ -552,7 +564,7 @@ R3 source manifest 已绑定：
 当前源码尚未进入 main，因此不能从缺少 Task 0--9B 基线的 main 开始 Recovery；同时也禁止为了满足分支形式而
 提前把失败 gate 合并 main。
 
-## 13. R0--R4 当前禁止事项
+## 13. R5 执行边界
 
 - 不运行 Task 9C production CLI、seal、curl、单 case或产品 API Provider 探测；
 - 不删除、移动、改写、重建 Task 9C tag/marker/journal/artifact；
@@ -561,7 +573,8 @@ R3 source manifest 已绑定：
 - 不保存 raw、raw-derived hash、unknown key、Zod issue、prompt、query、chunk、answer、credential 或 error；
 - 不修改产品 gate、`.env`、Docker、数据库、BackgroundJob、Outbox 或业务数据；
 - 不降低分母、质量门、预算、安全、owner、citation 或 local authority；
-- 不执行 R5 Live、Task 10/11 或 main；下一原子任务仅在新的用户授权边界下准备 R5 fresh admission。
+- R5 只能在 clean source、approved tag、fresh preflight、数据边界与 exact authorization 全部满足后执行一次；
+- 不执行 Task 10/11、R6/R7 或 main；R5 完整 gate pass 前产品 Docker/API/browser 仍阻断。
 
 ## 14. 回顾时可以问
 

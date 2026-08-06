@@ -1,5 +1,12 @@
 # PrepMind AI 智能备考助手
 
+> 最新状态（2026-08-06）：Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 已完成实现、独立复审和
+> zero-provider 回归，当前在 clean-source admission 后执行用户已授权的唯一 controlled-Live。固定分母为
+> `16 guards + 16 rewrite pairs（DeepSeek rewrite + Qwen original/candidate）+ 16 FinalResponse = 64 slots`；
+> focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过。此刻 Provider、credential、
+> approved tag、marker、journal、artifact 与业务写入仍为 0；R5 通过前不能进入 R6 产品 Docker/API/可见浏览器验收。
+> 详见 [`R5 controlled-Live 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
+
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。下一步仅 R5 fresh admission（未授权、未开始）；不能自动进入 Live、产品或 main。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。

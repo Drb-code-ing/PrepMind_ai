@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5（Live 前准备完成）：
+>
+> R5 独立 lineage 的 DeepSeek query rewrite、Qwen `text-embedding-v4` original/candidate retrieval、DeepSeek
+> FinalResponse stream、三模块私有 observation、64-slot runner、source admission、reservation-before-dispatch、
+> hash-chain journal、hard-link artifact、strict validator 与 crash-only seal 已落地。针对独立复审已补齐 FinalResponse
+> citation coverage（缺失/多余/重复均 fail-closed）、固定检索 fixture（不从 query/context/oracle 构造 target）、
+> `suspicious + verifier unavailable` 保守投影和 Qwen usage/cost 超预算诊断；reservation 后异常会明确
+> `providerCalls=null / crashOnlySealRequired=true`。Focused `18/18`、R5 CLI `6/6`、Agent 全量 `1329/1329`，
+> typecheck/lint/Prettier 通过。当前尚未读取 credential、调用 Provider、创建 approved tag/marker/journal/artifact，
+> 也未启动 Docker/API/browser；用户已接受 DeepSeek/Qwen 数据边界并授权唯一一次 R5 controlled-Live，下一步是
+> clean-source admission、推送 approved tag 后执行该唯一 run。详细验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R4：
 >
 > R4 zero-provider reviewed Mock/static 已完成。Task 8 的 production Retriever/FinalResponse node、ledger 与
