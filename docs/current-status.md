@@ -20,8 +20,8 @@ PrepMind AI 的 Phase 7 核心工程化、Phase 6.9.7 Tutor/Organizer 主线和 
 
 ## 当前允许与禁止
 
-当前文档工作在 `drb/docs-governance-main`；它从 `main=185b8171` 创建并以 merge commit `9a2d6056`
-纳入已推送的 R4 基线。`main` 与本地 `origin/main` 仍为 `185b8171`，没有被本次文档审阅修改。
+当前文档工作在 `drb/docs-governance-main`，当前 tip 为 `31936436`；它从 `main=185b8171` 创建并以 merge commit
+`9a2d6056` 纳入已推送的 R4 基线。`main` 与本地 `origin/main` 仍为 `185b8171`，没有被本次文档审阅修改。
 完整 source/merge/replay 关系见 [branch-map.md](./branch-map.md)。
 
 | 范围                       | 当前状态       | 允许动作                                    | 明确禁止                                            |

@@ -31,7 +31,8 @@ drb/phase-6-9-8-retriever-final-response-contract
 
 drb/docs-governance-main
   └─ 9a2d6056  explicit merge of 5c4d27d9 for documentation review
-      └─ current documentation governance commit on this branch
+      └─ c2fd7c5a  documentation governance baseline
+          └─ 31936436  R5 admission-readiness zero-provider checkpoint
 ```
 
 `drb/docs-governance-main` 是从 `main=185b8171` 创建的文档治理分支，然后显式合入已推送的 R4 分支。它不是 `main` 的替代品；因此当前 `main` 仍保持 `185b8171`，不会因为文档审阅而偷偷获得 R4 的产品或 Live authority。
