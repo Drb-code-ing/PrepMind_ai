@@ -70,16 +70,17 @@ formal artifact count 为 `0`，T2 gate 为 `transport_evidence_t2_zero_provider
 
 ## 4. 失败定位与影响
 
-失败发生在 durable reservation 之后、首个 Provider slot 之前的 late-bound credential gate。执行命令没有显式从仓库
-根目录加载 `.env`，因此 CLI 读取不到有效的受控 credential composition；这属于 CLI/configuration 问题，不是
-Provider transport 失败。
+已封存的事实是：失败发生在 durable reservation 之后、首个 Provider slot 之前的 late-bound credential gate，
+终态为 `configuration_invalid`，没有 slot 启动。静态复盘把“执行入口未显式绑定仓库根 `.env`”列为待修复的
+CLI/configuration composition 风险，但这不是由本次 sealed evidence 唯一证明的根因；因此不能把它写成确定的环境、
+凭据或 Provider 诊断，也不能将该结果归类为 Provider transport 失败。
 
 因此本次证据不能推测 DNS、TLS、代理、账号、余额、模型权限或服务端根因，也不能证明 DeepSeek、Qwen、Retriever 或
 FinalResponse 的真实可用性。一次性 reservation 已消费，但由于没有 slot 启动，实际 Provider 成本为 `0`。
 
 随后补充了生产脚本的显式环境边界（提交 `3d903055`，已推送）：受控脚本使用
 `bun --env-file=../../.env`（从 `@repo/agent` 包目录解析仓库根 `.env`），并增加了只允许 crash-only seal 的独立 CLI。
-该修复不能、也不会用于重跑本次 T3。
+这是未来新 lineage 的防回归措施，不是对本次根因的追溯证明；该修复不能、也不会用于重跑本次 T3。
 
 ## 5. Durable evidence
 

@@ -1,5 +1,12 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — T3 失败诊断口径复核：
+>
+> 对 Transport Evidence Recovery T3 的设计与验收文字做了独立证据复核。sealed fact 仅为
+> `configuration_invalid` 出现在 durable reservation 后、首个 Provider slot 前，且 `providerCalls=0`；“未显式绑定
+> 根 `.env`”现在明确标注为静态复盘得到的 configuration-composition 风险/修复假设，不再写成已被本次 artifact 唯一证明的
+> 根因。该修订不改写 marker、journal、report、artifact 或一次性名额，也不解锁任何新 Live/产品验收。
+>
 > 2026-08-07 — Phase 6.9.8 Transport Evidence Recovery T3-C configuration composition zero-provider guard 已完成：
 >
 > 新增 `packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts`，静态

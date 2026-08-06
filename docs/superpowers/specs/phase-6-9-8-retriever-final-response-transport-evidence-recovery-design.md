@@ -187,10 +187,12 @@ gate 以 `configuration_invalid` 停止。三个 slot 均未启动，`providerCa
 `configuration`；进程退出后已 crash-only seal，journal `7` 条、validator `ok=true`，report/artifact SHA 记录见
 [`T3 controlled canary 验收记录`](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)。
 
-这次失败只说明执行时 CLI 没有显式绑定仓库根 `.env`，属于 configuration composition 失败；不能归因 DNS、TLS、代理、
-账号、余额、模型权限或服务端，也不能证明 Provider health 或 Agent 语义。一次性名额已消费，禁止 retry/resume/replay/
+这次失败的 sealed fact 仅是：在 durable reservation 之后、首个 Provider slot 之前，late-bound credential gate 返回了
+`configuration_invalid`；三个 slot 均未启动。静态复盘把“受控命令未显式绑定仓库根 `.env`”列为需要修复的
+configuration-composition 风险/假设，而不是已由 sealed evidence 唯一证实的根因。不能归因 DNS、TLS、代理、账号、
+余额、模型权限或服务端，也不能证明 Provider health 或 Agent 语义。一次性名额已消费，禁止 retry/resume/replay/
 backfill、seal/recovery、curl、单 case 或追加 Provider 探测。随后提交 `3d903055` 为受控脚本增加显式
-`--env-file=../../.env` 并提供独立 crash-only seal CLI，但不得用于本 run。
+`--env-file=../../.env` 并提供独立 crash-only seal CLI；该修复只能作为未来新 lineage 的入口 guard，不得用于本 run。
 
 T3 形成的 authority 仅为 `controlled_live_transport_evidence_t3`，`qualityAuthority=none`；不解锁产品、Docker/API/
 browser、Trace、SLA、main 或 Phase 6.9.8 后续任务。
