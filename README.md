@@ -1,23 +1,20 @@
 # PrepMind AI 智能备考助手
 
-> R5 最新结果（2026-08-06）：Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 唯一 controlled-Live
-> run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但 gate 为
-> `architecture_recovery_quality_gate_failed / qualityAuthority=none`。16 guards 全通过；第二个 rewrite pair 的
-> DeepSeek rewrite 在 `provider_dispatch / unknown` 失败，breaker 后剩余 59 slots 未启动；external Provider calls `4`
-> （Qwen `3`、DeepSeek `1`），rewrite strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全为
-> `null`，validator `ok=true`，artifact SHA=`423e3f2e...43b1e5`。一次性名额已消费，不得重跑或追加探测，R6 产品
-> Docker/API/可见浏览器验收仍阻断。详见 [`R5 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
+> 最新结果（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 唯一 controlled canary
+> `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 已在 late-bound credential gate 以
+> `transport_evidence_t3_controlled_canary_failed` durable seal。计划 3 个 slot、启动 0、Provider calls `0`、
+> credential reads `0`，breaker reason=`configuration`，三个 suffix lane 均为 `not_started_quality_breaker`；journal `7`、
+> validator `ok=true`，report logical SHA=`8d529bb7...4875d1`，physical artifact SHA=`50beb053...7ee9c`。
+> 这是 CLI/configuration 失败，不是 DNS/TLS/代理/账号/余额/模型权限/服务端证据；不能证明真实 Retriever/FinalResponse
+> 语义或产品可用性。T3 一次性名额已消费，不得重跑、追加 Provider 探测或改写 artifact。详见 [`T3 controlled canary 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)。
 
-> 当前状态：Transport Evidence Recovery T0/T1/T2 与 T3-A 已完成。T3-A 新增 source admission、T2 gate binding、
-> branch/HEAD/upstream/origin parity、clean tree/formal artifact fence、双 opaque single-consume capability、fresh
-> proxy nonce 和 exact data-boundary/authorization reader；zero-provider runner 固定
-> `rewrite -> qwen -> final_response` 三槽位、最多 3 slots、预算上限 `0.024096 CNY`
-> （`0.005 + 0.004096 + 0.015`，每个 slot 各一次；不复用 Task 9 的 32-call Qwen cap） 与首错 breaker。focused
-> `12/12`、Agent `1360/1360`、23805 assertions、169 files、typecheck/lint/Prettier/`git diff --check` 全部通过；
-> Provider、credential、global fetch、正式 evidence 与业务/Trace 写入均为 0。当前 authority 固定为
-> `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，不解锁 R6/R7/main。T3-B controlled canary
-> 仍未授权、未实现；如需申请，必须重新接受当次 DeepSeek/Qwen 数据边界并给出两行 exact authorization。详见
-> [`T3-A 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md)
+> Transport Evidence Recovery T0/T1/T2/T3-A 的 zero-provider contract 与 admission 已完成；T3 controlled canary 已按
+> 一次性授权执行并失败封存。T3-A 固定 source/T2/proxy/data-boundary/authorization 顺序、三槽位预算 `0.024096 CNY`、
+> 首错 breaker 与 no-raw durability；T3 controlled 仅在 reservation 后 late-bind credential。补充提交 `3d903055` 已让
+> package script 显式加载仓库根 `.env`，并增加仅限 crash-only seal 的 CLI，但不改变已消费的 T3。当前 authority 为
+> `controlled_live_transport_evidence_t3 / qualityAuthority=none`，不解锁产品、main 或后续阶段。详见
+> [`T3-A 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md)、
+> [`T3 controlled canary 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)
 > 与 [`Transport Evidence Recovery 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
 
 > Live 前 checkpoint（已由上述 sealed run 收口）：R5 已完成实现、独立复审和 zero-provider 回归。固定分母为
@@ -30,9 +27,9 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R5 唯一 controlled-Live 已失败封存（run 34eb99be...），不能重跑或追加探测；R6 产品、main 与后续阶段继续阻断。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
-当前不把 R5 失败拼接成“部分通过”；T0/T1/T2/T3-A 已完成 Transport Evidence Recovery 的 zero-provider contract、
-可判别性、admission、调度与 durability 前置验证。下一步仍不是自动运行 Live，而是由用户决定是否申请新的最多
-3-slot T3-B transport canary；没有 fresh 数据边界接受和 exact authorization 时保持停止。
+当前不把 R5 或 T3 配置失败拼接成“部分通过”；T0/T1/T2/T3-A 已完成 Transport Evidence Recovery 的 zero-provider
+contract、可判别性、admission、调度与 durability 前置验证，T3 controlled 已一次性失败封存。当前只允许读取证据、
+运行 validator、修正文档或另立新任务；不得自动重跑 T3、追加 Provider 探测或进入产品/main 验收。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 
@@ -128,6 +125,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 R2  | Qwen/FinalResponse 双 wire family、opaque session、embedding/stream/terminal/usage robustness       | 已完成              |
 | Phase 6.9.8 R3  | 固定 64-call runner、三模块 observation、双 wire、source admission、journal/artifact/validator      | 已完成              |
 | Phase 6.9.8 R4  | zero-provider reviewed Mock/static、64 双 wire、64 applied diagnostic、strict scorer                | 已完成（Mock-only） |
+| Phase 6.9.8 T3  | DeepSeek rewrite → Qwen embedding → DeepSeek FinalResponse transport-only controlled canary              | 失败封存（0 Provider call） |
 | Phase 7         | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成    |
 | Phase 7.8.5     | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成              |
 | Phase 7.23      | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成              |
@@ -459,6 +457,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Evidence Recovery T0 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md)
 - [Phase 6.9.8 Transport Evidence Recovery T1 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md)
 - [Phase 6.9.8 Transport Evidence Recovery T2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)
+- [Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 失败封存验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

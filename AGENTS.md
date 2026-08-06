@@ -1,21 +1,26 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 Transport Evidence Recovery T3-A 已完成（2026-08-06）
+## 当前任务：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已失败封存（2026-08-07）
 
-T3-A 只完成 zero-provider admission/runner，不是 T3-B controlled canary。当前 authority 为
-`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，gate 为
-`transport_evidence_t3_admission_ready`。source admission 绑定 branch、HEAD、upstream、origin、approved source ref、
-clean tree、formal artifact count=0、T2 gate 与 source bundle SHA；admission/reservation capability 为模块私有
-single-consume，proxy preflight 使用 fresh nonce。runner 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 次
-synthetic slot、总预算 `0.024096 CNY`、首错 breaker 与固定未启动 suffix；CLI 不提供 credential、fetch、executor 或
-持久化端口。
+唯一 T3 run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 已在 source commit
+`2423baf3768c245d2e4d6ea0038c6fb1bf8f9bc7` 上通过 source/T2/direct-proxy/data-boundary/authorization gate，并在
+late-bound credential gate 以 `configuration_invalid` 停止。固定顺序为
+`DeepSeek rewrite -> Qwen embedding -> DeepSeek FinalResponse stream`，计划 `3`、启动 `0`、完成 `0`，breaker
+reason=`configuration`，三个 suffix lane 为 `not_started_quality_breaker`；`providerCalls=0`、`credentialReads=0`、
+verified usage/cost/semantic/P95 全为 `null`。
 
-T3-A focused `12/12`（49 assertions）、Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/
-`git diff --check` 均通过；Provider、credential、global fetch、正式 marker/journal/report/artifact/recovery claim、业务
-与 Trace 写入均为 `0`。它不证明 Provider health、真实 Agent 语义、产品 Docker/API/browser、Trace、SLA 或 main。
-T3-B 仍未实现、未授权；在用户重新接受当次 DeepSeek/Qwen 数据边界并发送 exact authorization 前，禁止读取 `.env`
-credential、启动 Live/curl/单 case 探测、创建正式 evidence、进入产品验收或合并 `main`。完整记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+进程退出后已按 crash-only 规则 durable seal：authority=`controlled_live_transport_evidence_t3`、
+`qualityAuthority=none`、journal `7` 条、最终事件 `evidence_published`、validator `ok=true`，report logical SHA=
+`8d529bb7...4875d1`、physical artifact SHA=`50beb053...7ee9c`。该终态只证明 CLI/configuration gate 失败，不能
+归因 DNS、TLS、代理、账号、余额、模型权限或服务端，也不能证明真实 Retriever/FinalResponse 语义或产品可用。
+
+T3 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery、curl、单 case 或追加 Provider 探测；不得
+删除或改写 `.tmp` marker/journal/report 与根 hard-link artifact。补充提交 `3d903055` 已让受控 package script 显式
+加载仓库根 `.env`，并提供独立 crash-only seal CLI，但不得用于重跑本 run。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+
+T3 不解锁 Phase 6.9.8 Task 10/11、产品 Docker/API/browser、Trace、`main`、SLA、Phase 6.10 或博客收尾；当前只
+允许只读 validator、zero-provider 回归和文档同步。
 
 ## R5 sealed result（2026-08-06）
 
@@ -402,8 +407,9 @@ Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 | Phase 6.9.8 Recovery R3           | 已完成     | 16-guard/64-call runner、双 wire、source admission、三个模块私有 observation authority、marker/journal/hard-link artifact、strict validator/crash-only seal/CLI；focused `39/39`、Agent `1318/1318`、AI `345/345`；formal evidence=0，当时仅解锁 R4，后续已完成                                                                                                                    |
 | Phase 6.9.8 Recovery R4           | 已完成     | zero-provider reviewed Mock/static：guards `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence=0；该 checkpoint 当时仅解锁 R5，后续 R5 已失败封存                                                                |
 | Phase 6.9.8 Recovery R5           | 失败封存   | 唯一 run `34eb99be...`：guards `16/16` zero-call，external calls `4`（Qwen `3`、DeepSeek `1`）；第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后 breaker，剩余 `59` slots not-started；rewrite strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全 `null`；journal `237`、validator `ok=true`、artifact `423e3f2e...43b1e5`，不得重跑，R6 阻断 |
-| Phase 6.9.8 Transport Evidence T2 | 已完成     | 新 lineage 的 30-case zero-provider contract、固定 stage/boundary/reason、no-raw 数据模型、三 family 私有 capability、15 classifier fixture 与 synthetic durability 已通过；T2 authority 仅 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，T3 未授权，未调用 Provider、未创建正式 evidence，不解锁 R6/R7/main                                                      |
-| Phase 6.9.8 Transport Evidence T3-A | 已完成  | zero-provider source admission、T2 gate binding、branch/source parity、clean tree/formal artifact fence、双 opaque single-consume capability、fresh proxy nonce、三槽位 runner（`rewrite -> qwen -> final_response`）、`0.024096 CNY` budget、首错 breaker 与 CLI gate 已完成；focused `12/12`、Agent `1360/1360`，authority 仅 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`；T3-B 未授权，不解锁产品/main |
+| Phase 6.9.8 Transport Evidence T2 | 已完成     | 新 lineage 的 30-case zero-provider contract、固定 stage/boundary/reason、no-raw 数据模型、三 family 私有 capability、15 classifier fixture 与 synthetic durability 已通过；T2 authority 仅 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，后续 T3 另行授权，不解锁 R6/R7/main                                                      |
+| Phase 6.9.8 Transport Evidence T3-A | 已完成  | zero-provider source admission、T2 gate binding、branch/source parity、clean tree/formal artifact fence、双 opaque single-consume capability、fresh proxy nonce、三槽位 runner（`rewrite -> qwen -> final_response`）、`0.024096 CNY` budget、首错 breaker 与 CLI gate 已完成；focused `12/12`、Agent `1360/1360`，authority 为 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none` |
+| Phase 6.9.8 Transport Evidence T3 controlled | 失败封存 | 唯一 run `075e2d5f...` 在 late-bound credential gate 以 `configuration_invalid` 停止；planned/started/completed=`3/0/0`、Provider/credential=`0/0`、breaker reason=`configuration`、journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`；一次性名额已消费，不得重跑或追加探测，不解锁产品/main |
 | Phase 7.0                         | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                                                                                                       |
 | Phase 7.1                         | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                                                                                                               |
 | Phase 7.2                         | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                                                                                                               |

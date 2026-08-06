@@ -2,18 +2,22 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Transport Evidence Recovery T3-A 当前边界
+## Phase 6.9.8 Transport Evidence Recovery T3 当前边界
 
 T3-A 是 zero-provider admission/runner checkpoint，不是模型质量或产品行为验收。它验证 source parity、T2 gate、
 fresh proxy nonce、DeepSeek/Qwen 数据边界与 exact authorization 的 gate 顺序，以及
 `rewrite -> qwen -> final_response` 三槽位、`0.024096 CNY` 总预算、首错 breaker 和固定未启动 suffix。focused
-`12/12`、Agent full `1360/1360`（23805 assertions，169 files）通过；Provider、credential、global fetch、正式
-evidence、业务/Trace 写入均为 `0`，authority 固定为 `zero_provider_transport_evidence_t3_admission /
-qualityAuthority=none`。
+`12/12`、Agent full `1360/1360`（23805 assertions，169 files）通过。
 
-T3-A 不能证明 DeepSeek/Qwen health、真实 rewrite/Retriever/FinalResponse 语义、P95/verified cost 或 `/api/chat` 可用。
-T3-B controlled canary 尚未授权；在用户重新接受当次数据边界并发送 exact authorization 前，继续使用 Mock/zero-provider
-回归，禁止读取 credential、运行 Live/curl/单 case 或把结果写成 semantic gate。
+随后唯一 T3 controlled canary `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 durable reservation 后的 late-bound credential
+gate 以 `configuration_invalid` 失败并 crash-only seal：planned/started/completed=`3/0/0`、Provider/credential=`0/0`、
+journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。这只能说明
+CLI/configuration composition 未满足，不能归因 DeepSeek/Qwen health、DNS/TLS/代理、账号/余额/权限/服务端，也不能
+证明真实 rewrite/Retriever/FinalResponse 语义、P95/verified cost 或 `/api/chat` 可用。
+
+T3 一次性名额已消费，禁止重跑、追加 Provider 探测、curl、单 case、seal/recovery 或把失败写成 semantic gate。提交
+`3d903055` 已让 package controlled script 显式加载仓库根 `.env`，但只用于未来另立 lineage，不能改变本次 T3 终态；
+继续使用 Mock/zero-provider 回归。
 
 ## Phase 6.9.5 Review / Planner 当前边界
 
@@ -1332,14 +1336,17 @@ robustness 与 runner/durability/admission：
   `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
   strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
   与后续阶段继续阻断。
-- Transport Evidence Recovery T0/T1/T2 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，
+- Transport Evidence Recovery T0/T1/T2/T3 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，
   T1 落地 strict no-raw parser、双 wire 单调校验与 rewrite/Qwen/FinalResponse 私有 single-consume capability，T2
   又完成 `30/30` matrix、`15/15` classifier、partial/terminal prefix 与 publication recovery、multiple-marker
   rejection、hard-link artifact、strict validator 和 Windows/Bun fsync compatibility。T2 focused `11/11`、Agent
   `1348/1348`、typecheck/lint/Prettier 均通过，authority 为
   `zero_provider_transport_evidence_t2 / qualityAuthority=none`；不形成 Provider health、Agent semantic 或产品
-  authority，也不反向解释 R5 的 `provider_dispatch / unknown`。T3 transport canary 尚未授权；申请前必须重新接受
-  当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
+  authority，也不反向解释 R5 的 `provider_dispatch / unknown`。唯一 T3 controlled run
+  `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 随后在 late-bound credential gate 以 `configuration_invalid` durable seal，
+  planned/started/completed=`3/0/0`、Provider/credential=`0/0`、journal `7`、validator `ok=true`，
+  authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。这是 CLI/configuration 失败，不归因
+  Provider 根因；T3 一次性名额已消费，不得重跑、追加探测或把它写成语义质量证据。
 
 完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
@@ -1356,6 +1363,7 @@ robustness 与 runner/durability/admission：
 `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
 `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
 `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`、
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与

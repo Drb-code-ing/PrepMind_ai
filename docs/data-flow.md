@@ -1,12 +1,12 @@
 # PrepMind AI 数据流
 
-> 当前原子任务（2026-08-06）：Transport Evidence Recovery T3-A zero-provider admission/runner 已完成。数据流为
-> `argv -> source/T2 admission -> fresh proxy nonce -> data boundary -> exact authorization -> synthetic runner`；runner
-> 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 slots、预算 `0.024096 CNY`，首错 breaker 保留未启动
-> suffix。T3-A focused `12/12`、Agent full `1360/1360`，Provider、credential、fetch、正式 evidence、业务/Trace 写入
-> 均为 `0`，authority=`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。该流不进入 `/api/chat`、
-> BackgroundJob、Outbox、Docker、browser 或 main；T3-B controlled canary 仍未授权。详见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+> 当前原子任务（2026-08-07）：Transport Evidence Recovery T3 controlled canary 已一次性失败封存。数据流为
+> `argv -> source/T2 admission -> fresh proxy nonce -> data boundary -> exact authorization -> reservation -> late credential gate`；
+> 三槽位固定 `rewrite -> qwen -> final_response`，本次在首个 slot 前停止，planned/started/completed=`3/0/0`，
+> Provider/credential/fetch=`0/0/0`，三个 suffix lane 为 `not_started_quality_breaker`。Authority 为
+> `controlled_live_transport_evidence_t3 / qualityAuthority=none`，journal `7`、validator `ok=true`。该流不进入 `/api/chat`、
+> BackgroundJob、Outbox、Docker、browser 或 main；T3 名额不得重跑。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
 > R5 sealed result（2026-08-06）：唯一 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已从 canonical source admission
 > 进入真实 DeepSeek/Qwen adapter；16 guards 通过，首个 rewrite pair 的三次 Provider call 成功，第二个 pair 的
@@ -25,15 +25,16 @@
 > 仍阻断。结果与边界见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
-> Transport Evidence Recovery T0/T1/T2 已冻结并实现独立数据流：synthetic input → bounded adapter seam → strict
+> Transport Evidence Recovery T0/T1/T2/T3-A 已冻结并实现独立数据流：synthetic input → bounded adapter seam → strict
 > stage/boundary/wire parser → no-raw snapshot → synthetic durability publication/recovery。T2 固定
 > `30` matrix + `15` classifier fixture，并验证 partial/terminal prefix、existing-artifact publication、multiple-marker、
 > hard-link 与 Windows/Bun fsync 边界；focused `11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过。全程不读取
 > credential、不调用 Provider、不写 `/api/chat`、Trace、BackgroundJob、Outbox 或业务表，formal evidence=0，
-> authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T3 transport canary 尚未授权；如需申请，
-> 必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。设计、T2 验收见
+> authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。唯一 T3 controlled 已在 configuration gate 失败
+> 并封存，补充提交 `3d903055` 只修复 package script 的显式根 `.env` 加载，不改变已消费的 run。设计、T2/T3 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
 > 当前版本：2026-08-06。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >

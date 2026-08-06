@@ -3,11 +3,18 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Transport Evidence Recovery 入口（T3-A）
+## 当前 Transport Evidence Recovery 入口（T3 已失败封存）
 
-T3-A 只运行 zero-provider admission/runner，不读取 `.env` credential、不调用 DeepSeek/Qwen、不启动 Docker/API/browser，
+T3-A 的 zero-provider admission/runner 已完成；唯一 T3 controlled canary
+`075e2d5f-682b-426d-847e-f5a6ce5b97c6` 已在 late-bound credential gate 以
+`transport_evidence_t3_controlled_canary_failed` durable seal。planned/started/completed=`3/0/0`、
+Provider/credential=`0/0`、journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。
+失败属于 CLI/configuration 边界，不能归因 Provider 根因；一次性名额已消费，不得重跑或追加探测。
+详细证据见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+
+T3-A 本身只运行 zero-provider admission/runner，不读取 `.env` credential、不调用 DeepSeek/Qwen、不启动 Docker/API/browser，
 也不创建正式 marker/journal/artifact。它验证 source parity、T2 gate、fresh proxy nonce、三槽位顺序、预算和首错
-breaker。当前 authority 为 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。
+breaker。
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.test.ts
@@ -16,9 +23,21 @@ bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```
 
-T3-B controlled canary 尚未授权。除非用户在新的运行时同时提供 DeepSeek/Qwen 数据边界接受和 exact authorization，
-不要运行 Live、curl、单 case Provider 探测或产品验收。不要使用 `docker compose down -v`、删除 volume、数据库 reset、
-Redis flush 或 MinIO wipe。
+受控 package script 已固定从包目录显式加载仓库根 `.env`：
+
+```powershell
+bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:controlled
+```
+
+该命令只适用于未来另立 lineage 且重新授权的 canary；本次 T3 已消费，严禁执行。已提供
+`eval:phase-6-9-8:transport-evidence:t3:seal`，只用于封存尚未发布的 crash-only 配置/中断前缀，不能恢复或重放已发布 run。
+只读复核使用：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
+```
+
+不要使用 `docker compose down -v`、删除 volume、数据库 reset、Redis flush 或 MinIO wipe。
 
 ## 0. 先看这里：Prisma Studio、数据库和管理员账号
 

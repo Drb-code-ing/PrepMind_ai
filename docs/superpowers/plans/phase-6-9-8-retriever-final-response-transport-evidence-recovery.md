@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 仍未授权、未实现；没有 Provider、credential 或正式 evidence
+> 当前状态：T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 已按一次性授权执行并以配置失败 durable seal；没有 Provider 请求，qualityAuthority 仍为 `none`
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`
+> 当前 authority：`controlled_live_transport_evidence_t3 / qualityAuthority=none`（唯一 T3 已失败封存）
 
 ## 1. 为什么另立 lineage
 
@@ -68,11 +68,19 @@ Prettier/`git diff --check` 通过；Provider、credential、global fetch、正�
 `transport_evidence_t3_admission_ready`。完整验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
 
-### T3-B：可选 transport controlled canary（当前未授权、未实现）
+### T3-B：transport controlled canary（已执行，失败封存）
 
-T3-B 不属于本提交，也不能自动开始。只有 T3-A 通过后，重新完成 source admission、fresh proxy preflight、
-DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最多 3 个 Provider slots：rewrite、Qwen、FinalResponse
-各一次。首个失败即停止，不补跑，不形成 semantic quality gate，也不进入 Docker/API/browser/main。
+在 T3-A 通过后，用户重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization。唯一 run
+`075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 source commit
+`2423baf3768c245d2e4d6ea0038c6fb1bf8f9bc7` 上通过 source/T2/proxy/boundary/approval，并创建 durable reservation；
+随后在 late-bound credential gate 以 `configuration_invalid` 失败。首个 slot 尚未启动，breaker 将三个 slot 都收为
+`not_started_quality_breaker`，`providerCalls=0`、`credentialReads=0`。进程退出后已按 crash-only 规则发布固定失败报告，
+validator `ok=true`，journal `7` 条，report logical SHA=`8d529bb7...4875d1`，physical artifact SHA=
+`50beb053...7ee9c`。这不是 Provider transport/semantic 失败，也不能归因具体 DNS、TLS、代理、账号、余额、权限或服务端。
+
+本次一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。后续补充了生产脚本的显式
+根 `.env` 加载与独立 crash-only seal CLI（提交 `3d903055`），但不得用于重跑本 run。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
 ## 3. 文件与权限边界
 
@@ -80,7 +88,7 @@ DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最�
 | ---------------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
 | 新 Transport Evidence module | 生成 bounded diagnostic、验证 stage/wire、发布 synthetic report | 读取 credential、调用 global fetch、写业务表          |
 | 旧 R5 module                 | 只读复用 schema/validator 事实                                  | 改写 R5 artifact、tag、journal、marker                |
-| runner/CLI                   | T3-A 只接 `args + AbortSignal` 和受限 synthetic ports           | 接受 credential、scorer/prompt/oracle/fetch/transport |
+| runner/CLI                   | T3-A 只接 `args + AbortSignal`；T3-B 仅在授权后 late-bind credential | 接受 scorer/prompt/oracle，或绕过 source/data-boundary gate |
 | 产品 `/api/chat`             | 本阶段不变，gate 继续 default-off                               | 接入 T3 或创建 BackgroundJob/Outbox/Trace             |
 
 ## 4. 安全与可观测性约束
@@ -94,7 +102,7 @@ DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最�
 
 ## 5. 验收命令
 
-T1/T2/T3-A 使用以下 zero-provider 命令；T3-A 的 CLI 只接受固定 zero-provider argv，本阶段不创建 Live CLI 入口：
+T1/T2/T3-A 使用以下 zero-provider 命令；已封存的 T3 只允许运行只读 validator：
 
 ```text
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
@@ -102,26 +110,35 @@ bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evi
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
+bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
 ```
 
-禁止在 T3-B 的两行数据边界接受/精确授权前运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。
+受控脚本现在显式从 `@repo/agent` 包目录加载仓库根 `.env`：
+
+```text
+bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:controlled
+```
+
+该命令只适用于未来另立 lineage 且重新授权的 canary；本 T3 名额已消费，严禁执行。crash-only seal 入口为
+`eval:phase-6-9-8:transport-evidence:t3:seal`，只能封存尚未发布的配置/进程中断前缀，不得用于恢复或重放已发布 run。
 
 ## 6. 交付与文档同步
 
 - T0：本设计与计划单独提交；
 - T1：实现与 focused tests 单独提交；
 - T2：robustness/static checkpoint 单独提交并推送当前功能分支（已完成）；
-- T3-A：zero-provider admission/runner、focused tests 与本验收记录单独提交并推送当前功能分支（本任务）；
+- T3-A：zero-provider admission/runner、focused tests 与本验收记录单独提交并推送当前功能分支（已完成）；
+- T3-B：唯一 controlled canary、crash-only seal、失败验收记录与环境加载修复分别提交并推送当前功能分支；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
-- T1/T2/T3-A 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
+- T1/T2/T3-A/T3-B 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
   acceptance 与本设计/计划；
 - 不合并 main，不移动 approved tag，除非后续阶段明确形成新的质量 authority 并完成分支/产品/main 验收。
 
 ## 7. 停止条件
 
-任一 zero-provider gate 失败，停止在当前 T 任务，记录 bounded diagnostic，不能自动进入 T3-B。T3-B 即使通过，也只证明
-受限 transport/evidence contract；Retriever/FinalResponse semantic、产品 Docker/API/browser、Trace、SLA 和 main
-仍需单独授权与验收。
+任一 gate 失败，停止在当前 T 任务并记录 bounded diagnostic；本次 T3-B 已在 credential configuration gate 停止并
+durable seal。它只形成 transport/evidence authority；Retriever/FinalResponse semantic、产品 Docker/API/browser、
+Trace、SLA 和 main 仍需单独授权与验收，且不得把本次失败改写为 Provider 根因。
 
 ## 8. Reader Testing 问题
 

@@ -20,7 +20,7 @@ recovery、curl、单 case 或额外 Provider 探测。
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。R5 只有完整
 `controlled_live` quality gate pass 才解锁 R6；本次失败因此继续阻断产品 Docker/API/可见浏览器验收与 main。
 
-## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1/T2/T3-A（zero-provider 已完成）
+## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1/T2/T3（T3 已失败封存）
 
 T0 不是 R5 retry，也不是产品验收。当前已冻结独立 lineage
 `phase-6.9.8-retriever-final-response-transport-evidence-v1` 的 zero-provider contract：3 个 family × 8 个
@@ -36,12 +36,20 @@ focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 fi
 `provider_dispatch / unknown` 的不可判别性。
 
 T3-A 又新增 source admission、T2 gate binding、fresh proxy nonce、双 opaque single-consume capability、三槽位
-`rewrite -> qwen -> final_response` zero-provider runner、`0.024096 CNY` 预算与首错 breaker。focused `12/12`（44
+`rewrite -> qwen -> final_response` zero-provider runner、`0.024096 CNY` 预算与首错 breaker。focused `12/12`（49
 assertions）、Agent `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；
-Provider、credential、global fetch、正式 evidence、业务/Trace 写入均为 `0`。authority 固定为
+Provider、credential、global fetch、正式 evidence、业务/Trace 写入均为 `0`。T3-A authority 固定为
 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，gate 为
-`transport_evidence_t3_admission_ready`。它仍不证明 Provider health、Agent 语义或产品可用性，T3-B controlled canary
-仍未授权。当前仍不得执行 T3-B Live、seal、recovery、curl、单 case、产品 API Provider 探测或 Docker/API/browser/main 验收。
+`transport_evidence_t3_admission_ready`。
+
+随后用户重新接受 DeepSeek/Qwen 数据边界并授权一次 T3 controlled canary。唯一 run
+`075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 durable reservation 后的 late-bound credential gate 以
+`configuration_invalid` 失败；planned/started/completed=`3/0/0`、breaker reason=`configuration`、
+Provider/credential=`0/0`、三个 suffix lane 为 `not_started_quality_breaker`。Crash-only seal 已完成，journal `7`、
+validator `ok=true`、authority=`controlled_live_transport_evidence_t3`、`qualityAuthority=none`；report/artifact SHA 见
+专门验收记录。该终态只能说明 CLI/configuration 边界失败，不能归因 DNS/TLS/代理/账号/余额/权限/服务端，也不证明
+真实 Agent 语义或产品可用性。T3 一次性名额已消费，禁止重跑、追加 Provider 探测、seal/recovery、curl 或单 case。
+提交 `3d903055` 已让 package controlled script 显式加载仓库根 `.env`，但不得用于重跑本次 T3。
 设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
@@ -50,6 +58,7 @@ Provider、credential、global fetch、正式 evidence、业务/Trace 写入均�
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`
 
 T0/T1/T2/T3-A 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
 
@@ -60,6 +69,7 @@ bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evi
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
+bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
 ```
 
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）

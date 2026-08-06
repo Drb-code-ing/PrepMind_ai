@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T0/T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 尚未授权、未实现或执行
+> 状态：T0/T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 已执行一次并以配置失败 durable seal
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
-> Authority：`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`
+> Authority：`controlled_live_transport_evidence_t3 / qualityAuthority=none`（T3 失败封存；不构成语义质量 authority）
 
 ## 1. 决策摘要
 
@@ -64,7 +64,8 @@ R5 的唯一 controlled-Live 已经 durable seal，但在第二个 rewrite pair 
 
 ### 4.2 禁止事项
 
-- 不读取 `.env`、任何真实 credential 或用户正文；
+- T0/T1/T2/T3-A 不读取 `.env`、任何真实 credential 或用户正文；T3-B 若获得独立授权，只能在 durable reservation
+  之后 late-bind 三项受控 credential，值不得进入输出或 evidence；
 - 不调用 Provider、Docker/API/browser、产品 Chat 或 Trace persistence；
 - 不修改 R5/Task 9C 的任何 sealed artifact、marker、journal、tag 或 validator；
 - 不 retry/resume/replay/backfill，不执行 seal/recovery，不降低分母或质量门；
@@ -177,15 +178,22 @@ T3-A focused `12/12`（49 assertions）、Agent full `1360/1360`（23805 expect(
 `git diff --check` 均通过。详细证据见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
 
-## 8. T3-B 未来极小 canary（未授权、未实现）
+## 8. T3-B controlled canary 终态（已执行一次）
 
-只有 T3-A zero-provider gate 通过，且用户重新接受当次 DeepSeek/Qwen 数据边界并给出全新 exact authorization，
-才可以考虑新的独立 canary。建议最多三个 Provider slots：DeepSeek rewrite、Qwen embedding、DeepSeek
-FinalResponse 各一次；首个失败立即停止，不补跑，不形成 semantic quality gate。
+用户在新的运行时接受 DeepSeek/Qwen 数据边界并授权一次 T3。唯一 run
+`075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 source commit
+`2423baf3768c245d2e4d6ea0038c6fb1bf8f9bc7` 上通过 source/T2/proxy/boundary/approval，随后在 late-bound credential
+gate 以 `configuration_invalid` 停止。三个 slot 均未启动，`providerCalls=0`、`credentialReads=0`，breaker reason 为
+`configuration`；进程退出后已 crash-only seal，journal `7` 条、validator `ok=true`，report/artifact SHA 记录见
+[`T3 controlled canary 验收记录`](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)。
 
-该 canary 的唯一问题是“每条第一方 adapter 是否能完成受限 transport/evidence contract”，不是“Agent 质量是否
-通过”。每次调用的预算、超时、AbortSignal、credential late-binding、source admission 和 durable publication
-必须重新绑定新 lineage；R5 的 tag、marker、journal、artifact 和授权不能复用。
+这次失败只说明执行时 CLI 没有显式绑定仓库根 `.env`，属于 configuration composition 失败；不能归因 DNS、TLS、代理、
+账号、余额、模型权限或服务端，也不能证明 Provider health 或 Agent 语义。一次性名额已消费，禁止 retry/resume/replay/
+backfill、seal/recovery、curl、单 case 或追加 Provider 探测。随后提交 `3d903055` 为受控脚本增加显式
+`--env-file=../../.env` 并提供独立 crash-only seal CLI，但不得用于本 run。
+
+T3 形成的 authority 仅为 `controlled_live_transport_evidence_t3`，`qualityAuthority=none`；不解锁产品、Docker/API/
+browser、Trace、SLA、main 或 Phase 6.9.8 后续任务。
 
 ## 9. 实施顺序
 
@@ -195,28 +203,26 @@ FinalResponse 各一次；首个失败立即停止，不补跑，不形成 seman
    `transport_evidence_t2_zero_provider_passed`）；
 4. T3-A：zero-provider source admission、三槽位 runner 与 CLI gate（已完成，
    `transport_evidence_t3_admission_ready`）；
-5. T3-B（可选）：新授权下的最多 3-slot transport canary；无论结果如何单次 durable seal，不能直接进入产品。
+5. T3-B（已执行并封存）：最多 3-slot transport canary 在 credential configuration gate 失败；单次 durable seal，不能直接进入产品。
 
-每个任务单独提交并推送；T1/T2/T3-A 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
-data-flow 和本设计/计划。T3-B 没有明确授权时不得读取 credential。
+每个任务单独提交并推送；T1/T2/T3-A/T3-B 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
+data-flow、AI behavior acceptance 和本设计/计划。T3-B 只在本次精确授权后 late-bind credential；本次名额已消费。
 
 ## 10. 通过定义与下一决策
 
-只有同时满足下列条件，才可以判断“值得申请 T3-B canary”（T3-A 已满足 zero-provider 条件，但这不是授权）：
+T3-A 的 zero-provider 条件已满足；T3-B 唯一 run 已在 credential configuration gate 失败并 durable seal。该结果不
+构成 Provider health、Agent semantic、产品或 main authority，也不提供可重跑的修复窗口。补充的显式根 `.env` 加载
+（提交 `3d903055`）只改善未来新 lineage 的入口可审计性，不能恢复本次一次性名额。
 
-- 30-case zero-provider matrix 与 T3-A admission/runner 全部通过；
-- synthetic `dispatched_no_response / unknown` case 能稳定保持 unknown，并能与已知 fault bucket 区分；
-- 没有 raw retention、authority 越权、跨 owner/call/family capability 或 durable publication 漏洞；
-- 新 lineage 的 source admission、预算和数据边界可独立审计；
-- 一次最多 3-slot canary 能回答一个明确问题，且失败后不会诱发自动 retry。
-
-任一条件不满足，就继续改进零网络 contract，不申请真实调用。Transport Evidence Recovery 本身永远不解锁
-R6 产品验收、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。
+Transport Evidence Recovery 当前只允许：读取既有 marker/journal/report/artifact、运行 strict validator、同步文档和
+进行 zero-provider 设计审查。禁止 retry/resume/replay/backfill、seal/recovery、curl、单 case 或追加 Provider 探测。
+若未来产品路线仍需要真实 Retriever/FinalResponse 语义，必须另立任务并重新定义 source、数据边界、预算、权限和产品
+验收；不能从本 T3 失败自动进入 R6、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。
 
 ## 11. 回顾时可以问
 
 - 为什么 `provider_dispatch` 是阶段事实，不是 DNS/TLS/代理根因？
 - 为什么要把 `providerWire` 与 `runnerWire` 分开？
 - 为什么 `unknown` 必须保留为终态，不能“尽量猜一个原因”？
-- 为什么 30 个 zero-provider cases 足以决定是否值得申请 3-slot canary，但不能证明 Agent 语义质量？
-- 为什么新 canary 不能复用 R5 的 tag、credential、marker 或授权？
+- 为什么 T3-A 的 zero-provider cases 通过仍不能把 T3-B 的配置失败写成 Provider 根因？
+- 为什么新 lineage 不能复用本次 T3 的 tag、credential、marker、artifact 或授权？

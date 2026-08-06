@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按用户一次性授权执行并 durable seal：
+>
+> 唯一 run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 source commit
+> `2423baf3768c245d2e4d6ea0038c6fb1bf8f9bc7` 上通过 source/T2/direct-proxy/data-boundary/approval gate，并在
+> late-bound credential gate 以 `configuration_invalid` 停止。固定顺序为 `DeepSeek rewrite -> Qwen embedding ->
+> DeepSeek FinalResponse stream`；planned/started/completed=`3/0/0`，breaker reason=`configuration`，三个 suffix lane
+> 均为 `not_started_quality_breaker`，Provider calls=`0`、credential reads=`0`、verified usage/cost/semantic/P95 全为
+> `null`。这属于 CLI/configuration composition 失败，不是 Provider transport 失败，不能归因 DNS、TLS、代理、账号、
+> 余额、模型权限或服务端，也不能证明 Retriever/FinalResponse 真实语义或产品可用。
+>
+> Crash-only seal 已完成：authority=`controlled_live_transport_evidence_t3`、`qualityAuthority=none`，journal `7`
+> 条并以 `evidence_published` 收口，validator `ok=true`；report logical SHA=`8d529bb78ce2fc18129e5561f1306855bbdaa6a40f8007921c3ffa0bd14875d1`，
+> physical artifact SHA=`50beb053475f8bb6b652624ec533347728740c60c5a3902757fa71f3a247ee9c`。T3 一次性名额已消费，禁止
+> retry/resume/replay/backfill、seal/recovery、curl、单 case、追加 Provider 探测或删除/改写 artifact。补充提交
+> `3d903055` 已让受控 package script 显式加载仓库根 `.env`，并增加仅限 crash-only seal 的 CLI；该修复不能用于重跑本次
+> T3。产品 Docker/API/browser、Trace、main、Phase 6.9.8 后续任务与 Phase 6.10 继续阻断。完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T3-A zero-provider admission/runner 已完成：
 >
 > 新增独立 source admission、T2 gate binding、branch/HEAD/upstream/origin parity、clean tree/formal artifact fence、
@@ -14,9 +32,10 @@
 > credential、global fetch、formal evidence、业务/Trace 写入均为 `0`，authority 固定为
 > `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。
 >
-> T3-A 不能证明 Provider health、真实 Retriever/FinalResponse 语义或产品可用性；T3-B controlled canary 仍未授权、
-> 未实现，不能读取 `.env` credential、执行 Live/curl/单 case 探测、创建正式 evidence 或进入 Docker/API/browser/main。
-> 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+> T3-A 不能证明 Provider health、真实 Retriever/FinalResponse 语义或产品可用性；这是 T3 controlled 之前的历史 checkpoint。
+> 随后唯一 T3 已按新授权执行并以 configuration failure durable seal，不能重跑或追加探测。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T2 robustness + durability static 已完成：
 >

@@ -1,13 +1,17 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-06）：Phase 6.9.8 Transport Evidence Recovery T3-A zero-provider admission/runner 已完成。
+> 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
 > source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
 > bundle SHA；三槽位顺序固定为 `rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`、首错
 > breaker、fresh proxy nonce 与 exact data-boundary/authorization reader 均已通过 focused `12/12`（49 assertions）。
-> Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；Provider、
-> credential、global fetch、正式 evidence 与业务/Trace 写入均为 0，authority=`zero_provider_transport_evidence_t3_admission /
-qualityAuthority=none`。T3-B controlled canary 仍未授权、未实现，不解锁产品 Docker/API/browser 或 main。验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+> Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；唯一 T3 run
+> `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 late-bound credential gate 以
+> `transport_evidence_t3_controlled_canary_failed` 停止，planned/started/completed=`3/0/0`，breaker reason=`configuration`，
+> Provider calls=`0`、credential reads=`0`，三个 suffix lane 均为 `not_started_quality_breaker`。Journal `7`、validator
+> `ok=true`，report logical SHA=`8d529bb7...4875d1`，physical artifact SHA=`50beb053...7ee9c`，authority=
+> `controlled_live_transport_evidence_t3 / qualityAuthority=none`。这是 CLI/configuration 失败，不归因 Provider 根因，
+> 不解锁产品 Docker/API/browser 或 main。完整记录见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
 > R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但
 > `architecture_recovery_quality_gate_failed / qualityAuthority=none`。guards `16/16` zero-call；第二个 rewrite pair
@@ -24,11 +28,12 @@ qualityAuthority=none`。T3-B controlled canary 仍未授权、未实现，不�
 > R5 结果无论通过或失败都只封存一次；只有 gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
-> Transport Evidence Recovery T0/T1/T2 已完成：T0 冻结独立 zero-provider contract，T1/T2 已落地 strict no-raw parser、
+> Transport Evidence Recovery T0/T1/T2/T3-A 已完成：T0 冻结独立 zero-provider contract，T1/T2 已落地 strict no-raw parser、
 > 双 wire 校验、三 family 私有 single-consume capability、30-case/15-classifier matrix 与 synthetic durability；focused
 > `11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过。全程未读取 credential、未调用 Provider、未创建 formal
-> evidence，authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T2 不解锁 R6/R7/main，也不是
-> R5 retry；T3 transport canary 尚未授权，若需申请必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
+> evidence，authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T2/T3-A 不解锁 R6/R7/main，也不是
+> R5 retry；T3 controlled 已消费一次性名额并在 credential configuration gate 失败封存，禁止重跑或追加探测。补充提交
+> `3d903055` 已将受控 package script 绑定仓库根 `.env`，但不改变本次终态。
 > 设计与计划见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
@@ -66,7 +71,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 Task 9C 失败封存；Recovery R0--R4 完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Recovery T0--T3 完成 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
@@ -634,14 +639,20 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   Journal `237`、validator `ok=true`、artifact SHA=`423e3f2e...43b1e5`；一次性名额已消费且不得重跑，R6/R7/main
   继续阻断。（失败封存；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`）
-- Phase 6.9.8 Transport Evidence Recovery T0/T1/T2：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
-  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1/T2 已完成 strict parser、双 wire、三 family
-  capability TDD、15 classifier fixture 与 synthetic durability，未调用 Provider、不创建正式 evidence。T2 gate 为
-  `transport_evidence_t2_zero_provider_passed / qualityAuthority=none`；T3 尚未授权。
-  （T0/T1/T2 证据见
+- Phase 6.9.8 Transport Evidence Recovery T0/T1/T2/T3：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
+  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1/T2/T3-A 已完成 strict parser、双 wire、三 family
+  capability TDD、15 classifier fixture 与 synthetic durability。唯一 T3 controlled run
+  `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 late-bound credential gate 以
+  `transport_evidence_t3_controlled_canary_failed` durable seal：planned/started/completed=`3/0/0`、Provider/credential
+  `0/0`、journal `7`、validator `ok=true`、qualityAuthority=`none`。这是 configuration 失败，不归因 Provider 根因，
+  不解锁产品或 main；T3 名额不得重跑。补充提交 `3d903055` 已让 package script 显式加载根 `.env`，仅改善未来新 lineage 的
+  入口，不改变本次证据。
+  （T0/T1/T2/T3 证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md` 与
-  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`）
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）
