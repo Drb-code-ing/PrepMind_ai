@@ -79,6 +79,11 @@ export const PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_SOURCE_PATHS = Object.freeze([
   'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.ts',
   'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-runner.ts',
   'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-cli-core.ts',
+  'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-live.ts',
+  'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-durability.ts',
+  'packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-cli-core.ts',
+  'packages/agent/scripts/phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-cli.ts',
+  'packages/agent/scripts/validate-phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-evidence.ts',
   'packages/ai/src/phase-6-9-7-architecture-recovery-proxy-preflight.ts',
 ] as const);
 
@@ -139,6 +144,8 @@ const consumedReservations = new WeakSet<object>();
 
 const FORMAL_T3_FILE =
   /^phase-6-9-8-retriever-final-response-transport-evidence-t3(?:-[0-9a-f-]{36})?\.(?:marker\.json|journal\.jsonl|report\.json|json)$/u;
+const FORMAL_T3_ROOT_FILE =
+  /^phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-[0-9a-f-]{36}\.json(?:\.tmp-[0-9a-f-]{36})?$/u;
 const GIT_TIMEOUT_MS = 10_000;
 const GIT_MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 const ZERO_COMMIT = '0'.repeat(40);
@@ -503,7 +510,14 @@ function readOwnString(env: Readonly<Record<string, unknown>>, key: string) {
 function countFormalArtifacts(root: string) {
   try {
     const entries = readdirSync(resolve(root, '.tmp'), { withFileTypes: true });
-    return entries.filter((entry) => entry.isFile() && FORMAL_T3_FILE.test(entry.name)).length;
+    const tmpCount = entries.filter(
+      (entry) => entry.isFile() && FORMAL_T3_FILE.test(entry.name),
+    ).length;
+    const rootEntries = readdirSync(resolve(root), { withFileTypes: true });
+    const rootCount = rootEntries.filter(
+      (entry) => entry.isFile() && FORMAL_T3_ROOT_FILE.test(entry.name),
+    ).length;
+    return tmpCount + rootCount;
   } catch (error) {
     return isErrorCode(error, 'ENOENT') ? 0 : Number.NaN;
   }
