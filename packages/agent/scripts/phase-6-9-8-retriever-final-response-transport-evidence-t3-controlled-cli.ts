@@ -44,11 +44,13 @@ const PRODUCTION_PORTS: Phase698TransportEvidenceT3ControlledCliPorts = Object.f
   readT2Gate() {
     return runPhase698TransportEvidenceT2Static();
   },
-  runProxyPreflight: async ({ env, signal }) =>
-    runPhase697ArchitectureRecoveryProxyPreflight(
+  runProxyPreflight: async ({ env, signal, nonce }) => {
+    const result = await runPhase697ArchitectureRecoveryProxyPreflight(
       { env: snapshotProxyEnv(env), signal },
       { probeLoopbackListener },
-    ),
+    );
+    return Object.freeze({ nonce, ...result });
+  },
   readDataBoundary: readPhase698TransportEvidenceT3DataBoundary,
   readApproval: readPhase698TransportEvidenceT3Approval,
   readCredentials: readCredentialsFromRootEnv,
