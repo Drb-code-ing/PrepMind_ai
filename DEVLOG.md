@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T3-A zero-provider admission/runner 已完成：
+>
+> 新增独立 source admission、T2 gate binding、branch/HEAD/upstream/origin parity、clean tree/formal artifact fence、
+> source bundle SHA、admission/reservation 双 opaque single-consume capability、fresh proxy nonce 与 exact data-boundary/
+> authorization reader。CLI gate 顺序固定为 `argv -> source -> T2 -> proxy -> boundary -> authorization -> runner`，
+> proxy watchdog 为 `1000ms`，不暴露 credential/provider/fetch port。
+>
+> Zero-provider runner 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 slots、总预算 `0.024096 CNY`
+> （`0.005 + 0.004096 + 0.015`，每个 slot 各一次；不复用 Task 9 的 32-call Qwen cap）；首个
+> synthetic failure/timeout/abort 打开 breaker，未启动 suffix 保留在固定分母。T3-A focused `12/12`（49 assertions），
+> Agent full `1360/1360`（23805 expect()，169 files），typecheck/lint/Prettier/`git diff --check` 均通过。Provider、
+> credential、global fetch、formal evidence、业务/Trace 写入均为 `0`，authority 固定为
+> `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。
+>
+> T3-A 不能证明 Provider health、真实 Retriever/FinalResponse 语义或产品可用性；T3-B controlled canary 仍未授权、
+> 未实现，不能读取 `.env` credential、执行 Live/curl/单 case 探测、创建正式 evidence 或进入 Docker/API/browser/main。
+> 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T2 robustness + durability static 已完成：
 >
 > 在 T0/T1 独立 lineage 上完成 `3 family × 8 cases + 6 boundary/capability/publication cases = 30` 个

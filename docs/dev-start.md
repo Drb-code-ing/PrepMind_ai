@@ -3,6 +3,23 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 Transport Evidence Recovery 入口（T3-A）
+
+T3-A 只运行 zero-provider admission/runner，不读取 `.env` credential、不调用 DeepSeek/Qwen、不启动 Docker/API/browser，
+也不创建正式 marker/journal/artifact。它验证 source parity、T2 gate、fresh proxy nonce、三槽位顺序、预算和首错
+breaker。当前 authority 为 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.test.ts
+bun --filter @repo/agent test
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
+
+T3-B controlled canary 尚未授权。除非用户在新的运行时同时提供 DeepSeek/Qwen 数据边界接受和 exact authorization，
+不要运行 Live、curl、单 case Provider 探测或产品验收。不要使用 `docker compose down -v`、删除 volume、数据库 reset、
+Redis flush 或 MinIO wipe。
+
 ## 0. 先看这里：Prisma Studio、数据库和管理员账号
 
 本项目本地开发默认使用 Docker PostgreSQL，宿主机访问端口是 `5433`：

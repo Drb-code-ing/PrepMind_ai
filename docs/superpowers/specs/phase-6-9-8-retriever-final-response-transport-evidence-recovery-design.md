@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T0/T1/T2 zero-provider contract、robustness 与 durability 已完成；T3 尚未授权、未实现或执行
+> 状态：T0/T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 尚未授权、未实现或执行
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
-> Authority：`zero_provider_transport_evidence_t2 / qualityAuthority=none`
+> Authority：`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`
 
 ## 1. 决策摘要
 
@@ -158,9 +158,28 @@ classifier fixture 覆盖，但不增加 runner denominator，也不得把子类
 - R5、Task 9C validator/SHA parity 只读通过；
 - 不产生 semantic、P95、verified usage/CNY 或产品 authority。
 
-## 7. 未来极小 canary（未授权、未实现）
+## 7. T3-A zero-provider admission（已完成）
 
-只有 T1/T2 zero-provider gate 通过，且用户重新接受当次 DeepSeek/Qwen 数据边界并给出全新 exact authorization，
+T3-A 在任何真实调用之前冻结并验证 canary 的入口 contract：
+
+- source admission 绑定 branch、HEAD、upstream、origin、approved source ref、clean tree、formal artifact count=0、
+  T2 gate 和固定 source bundle SHA；
+- admission 与 reservation 使用两个模块私有 single-consume opaque capability，不能伪造、复制、复用或跨 authority；
+- fresh proxy preflight 使用新的 UUID nonce，receipt 只允许 `direct_ready` 或 `loopback_proxy_ready`，且
+  `providerCalls=0`；
+- CLI gate 顺序固定为 `argv -> source -> T2 -> proxy -> data boundary -> authorization -> runner`，proxy watchdog 为
+  `1000ms`；
+- zero-provider runner 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 slots、总预算 `0.024096 CNY`
+  （`0.005 + 0.004096 + 0.015`，每个 slot 各一次；不复用 Task 9 的 32-call Qwen cap），首错
+  breaker 保留未启动 suffix，所有 Provider/credential/fetch/formal evidence/product/Trace counters 为 0。
+
+T3-A focused `12/12`（49 assertions）、Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/
+`git diff --check` 均通过。详细证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
+## 8. T3-B 未来极小 canary（未授权、未实现）
+
+只有 T3-A zero-provider gate 通过，且用户重新接受当次 DeepSeek/Qwen 数据边界并给出全新 exact authorization，
 才可以考虑新的独立 canary。建议最多三个 Provider slots：DeepSeek rewrite、Qwen embedding、DeepSeek
 FinalResponse 各一次；首个失败立即停止，不补跑，不形成 semantic quality gate。
 
@@ -168,22 +187,24 @@ FinalResponse 各一次；首个失败立即停止，不补跑，不形成 seman
 通过”。每次调用的预算、超时、AbortSignal、credential late-binding、source admission 和 durable publication
 必须重新绑定新 lineage；R5 的 tag、marker、journal、artifact 和授权不能复用。
 
-## 8. 实施顺序
+## 9. 实施顺序
 
 1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件（已完成）；
 2. T1：zero-provider strict contract + TDD，复用现有 diagnostic/wire 校验但使用新 lineage namespace（已完成）；
 3. T2：30-case robustness、abort/timeout/capability/durability static checkpoint（已完成，
    `transport_evidence_t2_zero_provider_passed`）；
-4. T3（可选）：新授权下的最多 3-slot transport canary；无论结果如何单次 durable seal，不能直接进入产品。
+4. T3-A：zero-provider source admission、三槽位 runner 与 CLI gate（已完成，
+   `transport_evidence_t3_admission_ready`）；
+5. T3-B（可选）：新授权下的最多 3-slot transport canary；无论结果如何单次 durable seal，不能直接进入产品。
 
-每个任务单独提交并推送；T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
-data-flow 和本设计/计划。T3 没有明确授权时不得读取 credential。
+每个任务单独提交并推送；T1/T2/T3-A 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
+data-flow 和本设计/计划。T3-B 没有明确授权时不得读取 credential。
 
-## 9. 通过定义与下一决策
+## 10. 通过定义与下一决策
 
-只有同时满足下列条件，才可以判断“值得申请 T3 canary”（T2 已满足 zero-provider 条件，但这不是授权）：
+只有同时满足下列条件，才可以判断“值得申请 T3-B canary”（T3-A 已满足 zero-provider 条件，但这不是授权）：
 
-- 30-case zero-provider matrix 全部通过；
+- 30-case zero-provider matrix 与 T3-A admission/runner 全部通过；
 - synthetic `dispatched_no_response / unknown` case 能稳定保持 unknown，并能与已知 fault bucket 区分；
 - 没有 raw retention、authority 越权、跨 owner/call/family capability 或 durable publication 漏洞；
 - 新 lineage 的 source admission、预算和数据边界可独立审计；
@@ -192,7 +213,7 @@ data-flow 和本设计/计划。T3 没有明确授权时不得读取 credential�
 任一条件不满足，就继续改进零网络 contract，不申请真实调用。Transport Evidence Recovery 本身永远不解锁
 R6 产品验收、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。
 
-## 10. 回顾时可以问
+## 11. 回顾时可以问
 
 - 为什么 `provider_dispatch` 是阶段事实，不是 DNS/TLS/代理根因？
 - 为什么要把 `providerWire` 与 `runnerWire` 分开？

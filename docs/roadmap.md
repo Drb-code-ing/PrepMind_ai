@@ -1,5 +1,14 @@
 # PrepMind AI 学习与开发路线图
 
+> 当前原子任务（2026-08-06）：Phase 6.9.8 Transport Evidence Recovery T3-A zero-provider admission/runner 已完成。
+> source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
+> bundle SHA；三槽位顺序固定为 `rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`、首错
+> breaker、fresh proxy nonce 与 exact data-boundary/authorization reader 均已通过 focused `12/12`（49 assertions）。
+> Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；Provider、
+> credential、global fetch、正式 evidence 与业务/Trace 写入均为 0，authority=`zero_provider_transport_evidence_t3_admission /
+qualityAuthority=none`。T3-B controlled canary 仍未授权、未实现，不解锁产品 Docker/API/browser 或 main。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
 > R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但
 > `architecture_recovery_quality_gate_failed / qualityAuthority=none`。guards `16/16` zero-call；第二个 rewrite pair
 > 的 DeepSeek 在 `provider_dispatch / unknown` 失败，external calls `4`（Qwen `3`、DeepSeek `1`），breaker 后 `59`

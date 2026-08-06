@@ -1,5 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前任务：Phase 6.9.8 Transport Evidence Recovery T3-A 已完成（2026-08-06）
+
+T3-A 只完成 zero-provider admission/runner，不是 T3-B controlled canary。当前 authority 为
+`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，gate 为
+`transport_evidence_t3_admission_ready`。source admission 绑定 branch、HEAD、upstream、origin、approved source ref、
+clean tree、formal artifact count=0、T2 gate 与 source bundle SHA；admission/reservation capability 为模块私有
+single-consume，proxy preflight 使用 fresh nonce。runner 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 次
+synthetic slot、总预算 `0.024096 CNY`、首错 breaker 与固定未启动 suffix；CLI 不提供 credential、fetch、executor 或
+持久化端口。
+
+T3-A focused `12/12`（49 assertions）、Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/
+`git diff --check` 均通过；Provider、credential、global fetch、正式 marker/journal/report/artifact/recovery claim、业务
+与 Trace 写入均为 `0`。它不证明 Provider health、真实 Agent 语义、产品 Docker/API/browser、Trace、SLA 或 main。
+T3-B 仍未实现、未授权；在用户重新接受当次 DeepSeek/Qwen 数据边界并发送 exact authorization 前，禁止读取 `.env`
+credential、启动 Live/curl/单 case 探测、创建正式 evidence、进入产品验收或合并 `main`。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
 ## R5 sealed result（2026-08-06）
 
 Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 的唯一 controlled-Live run
@@ -386,6 +403,7 @@ Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 | Phase 6.9.8 Recovery R4           | 已完成     | zero-provider reviewed Mock/static：guards `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence=0；该 checkpoint 当时仅解锁 R5，后续 R5 已失败封存                                                                |
 | Phase 6.9.8 Recovery R5           | 失败封存   | 唯一 run `34eb99be...`：guards `16/16` zero-call，external calls `4`（Qwen `3`、DeepSeek `1`）；第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后 breaker，剩余 `59` slots not-started；rewrite strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全 `null`；journal `237`、validator `ok=true`、artifact `423e3f2e...43b1e5`，不得重跑，R6 阻断 |
 | Phase 6.9.8 Transport Evidence T2 | 已完成     | 新 lineage 的 30-case zero-provider contract、固定 stage/boundary/reason、no-raw 数据模型、三 family 私有 capability、15 classifier fixture 与 synthetic durability 已通过；T2 authority 仅 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，T3 未授权，未调用 Provider、未创建正式 evidence，不解锁 R6/R7/main                                                      |
+| Phase 6.9.8 Transport Evidence T3-A | 已完成  | zero-provider source admission、T2 gate binding、branch/source parity、clean tree/formal artifact fence、双 opaque single-consume capability、fresh proxy nonce、三槽位 runner（`rewrite -> qwen -> final_response`）、`0.024096 CNY` budget、首错 breaker 与 CLI gate 已完成；focused `12/12`、Agent `1360/1360`，authority 仅 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`；T3-B 未授权，不解锁产品/main |
 | Phase 7.0                         | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                                                                                                       |
 | Phase 7.1                         | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                                                                                                               |
 | Phase 7.2                         | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                                                                                                               |

@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T1/T2 zero-provider strict contract、robustness 与 durability 已完成；T3 未授权、未实现；没有 Provider、credential 或正式 evidence
+> 当前状态：T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 仍未授权、未实现；没有 Provider、credential 或正式 evidence
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_evidence_t2 / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`
 
 ## 1. 为什么另立 lineage
 
@@ -50,20 +50,38 @@ expect()，168 files）、typecheck/lint/Prettier/diff check 全通过。Provide
 prefix、existing-artifact publication recovery、multiple-marker 与 Windows fsync compatibility 验证。完整验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`。
 
-### T3：可选 transport canary（当前未授权）
+### T3-A：Zero-provider admission + runner（已完成）
 
-T3 不属于本提交，也不能自动开始。只有 T1/T2 通过后，重新完成 source admission、fresh proxy preflight、
+- 固定 source schema：branch、HEAD、upstream、origin、approved ref 必须 parity，working tree clean，formal artifact
+  count 必须为 0，并绑定 T2 gate 与 source bundle SHA；
+- 增加 admission/reservation 两个 module-owned、single-consume opaque capability，fresh proxy nonce receipt，以及
+  只读取固定 own-data descriptor 的 DeepSeek/Qwen data-boundary 与 exact authorization reader；
+- 增加固定三槽位 zero-provider runner：`rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`
+  （`0.005 + 0.004096 + 0.015`，每个 slot 各一次；不复用 Task 9 的 32-call Qwen cap），
+  首错 breaker、abort/timeout/budget 与固定未启动 suffix accounting；不接收 credential、fetch、executor 或 persistence port；
+- CLI core gate 顺序固定为 `argv -> source -> T2 -> proxy -> data boundary -> authorization -> runner`，proxy watchdog 为
+  `1000ms`，任何失败都在后续 mutation/provider port 前停止。
+
+T3-A 结果：focused `12/12`（49 assertions）、Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/
+Prettier/`git diff --check` 通过；Provider、credential、global fetch、正式 evidence、业务/Trace 写入均为 0。authority
+固定为 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，gate 为
+`transport_evidence_t3_admission_ready`。完整验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
+### T3-B：可选 transport controlled canary（当前未授权、未实现）
+
+T3-B 不属于本提交，也不能自动开始。只有 T3-A 通过后，重新完成 source admission、fresh proxy preflight、
 DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最多 3 个 Provider slots：rewrite、Qwen、FinalResponse
 各一次。首个失败即停止，不补跑，不形成 semantic quality gate，也不进入 Docker/API/browser/main。
 
 ## 3. 文件与权限边界
 
-| 责任                         | 允许                                                            | 禁止                                            |
-| ---------------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
-| 新 Transport Evidence module | 生成 bounded diagnostic、验证 stage/wire、发布 synthetic report | 读取 credential、调用 global fetch、写业务表    |
-| 旧 R5 module                 | 只读复用 schema/validator 事实                                  | 改写 R5 artifact、tag、journal、marker          |
-| runner/CLI                   | T1/T2 只接 `args + AbortSignal` 和注入式 ports                  | 接受调用方 scorer/prompt/oracle/fetch/transport |
-| 产品 `/api/chat`             | 本阶段不变，gate 继续 default-off                               | 接入 T3 或创建 BackgroundJob/Outbox/Trace       |
+| 责任                         | 允许                                                            | 禁止                                                  |
+| ---------------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
+| 新 Transport Evidence module | 生成 bounded diagnostic、验证 stage/wire、发布 synthetic report | 读取 credential、调用 global fetch、写业务表          |
+| 旧 R5 module                 | 只读复用 schema/validator 事实                                  | 改写 R5 artifact、tag、journal、marker                |
+| runner/CLI                   | T3-A 只接 `args + AbortSignal` 和受限 synthetic ports           | 接受 credential、scorer/prompt/oracle/fetch/transport |
+| 产品 `/api/chat`             | 本阶段不变，gate 继续 default-off                               | 接入 T3 或创建 BackgroundJob/Outbox/Trace             |
 
 ## 4. 安全与可观测性约束
 
@@ -71,34 +89,37 @@ DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最�
 - 不记录 raw response、raw error、URL、prompt/query/chunk/answer、unknown key、Zod path/value、token、cookie 或 key；
 - `unknown` 不得被映射为 DNS/TLS/proxy/账号/余额/权限/服务端；
 - capability 必须 module-owned、single-use、绑定 call/phase/family/lineage，跨边界一律 fail-closed；
-- 任何 reservation/publication/validation 异常都不能假报 `providerCalls=0`，但 T1/T2 默认不创建正式 reservation。
+- 任何 reservation/publication/validation 异常都不能假报 `providerCalls=0`；T1/T2/T3-A 只在 synthetic scope 验证，
+  不创建正式 marker/journal/artifact/reservation。
 
 ## 5. 验收命令
 
-T1 已运行以下 zero-provider 命令；T2 完成后继续扩展同一边界。本阶段不创建 Live CLI 入口：
+T1/T2/T3-A 使用以下 zero-provider 命令；T3-A 的 CLI 只接受固定 zero-provider argv，本阶段不创建 Live CLI 入口：
 
 ```text
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.test.ts
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```
 
-禁止在 T3 授权前运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。
+禁止在 T3-B 的两行数据边界接受/精确授权前运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。
 
 ## 6. 交付与文档同步
 
 - T0：本设计与计划单独提交；
 - T1：实现与 focused tests 单独提交；
-- T2：robustness/static checkpoint 单独提交并推送当前功能分支（本任务已完成）；
+- T2：robustness/static checkpoint 单独提交并推送当前功能分支（已完成）；
+- T3-A：zero-provider admission/runner、focused tests 与本验收记录单独提交并推送当前功能分支（本任务）；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
-- T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
+- T1/T2/T3-A 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
   acceptance 与本设计/计划；
 - 不合并 main，不移动 approved tag，除非后续阶段明确形成新的质量 authority 并完成分支/产品/main 验收。
 
 ## 7. 停止条件
 
-任一 zero-provider gate 失败，停止在当前 T 任务，记录 bounded diagnostic，不能自动进入 T3。T3 即使通过，也只证明
+任一 zero-provider gate 失败，停止在当前 T 任务，记录 bounded diagnostic，不能自动进入 T3-B。T3-B 即使通过，也只证明
 受限 transport/evidence contract；Retriever/FinalResponse semantic、产品 Docker/API/browser、Trace、SLA 和 main
 仍需单独授权与验收。
 
@@ -106,5 +127,5 @@ bun --filter @repo/agent lint
 
 - 读者能否区分“dispatch 阶段”与“具体网络根因”？
 - 读者能否看出 R5 artifact 不会被新 lineage 改写？
-- 读者能否知道 T1/T2 完成不等于 Provider 健康或 Agent 质量通过？
+- 读者能否知道 T1/T2/T3-A 完成不等于 Provider 健康或 Agent 质量通过？
 - 读者能否根据本计划知道下一次需要什么授权、预算和证据？

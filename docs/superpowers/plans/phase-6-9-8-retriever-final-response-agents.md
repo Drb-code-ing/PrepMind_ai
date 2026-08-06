@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2 已完成，T3
+> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
 > transport canary 未授权；R6/R7、产品/main 与后续阶段阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
@@ -522,7 +522,7 @@ R4 随后把 Task 8 production node/ledger reviewed Mock 路径接入 R3 runner�
 [Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；其后
 唯一 R5 run `34eb99be...fc68` 已失败封存且不得重跑，Task 10/11 与产品/main 继续阻断。
 
-## Transport Evidence Recovery T0--T2（已完成，T3 未授权）
+## Transport Evidence Recovery T0--T3-A（zero-provider 已完成，T3-B 未授权）
 
 T0/T1 冻结并实现独立 no-raw diagnostic contract 后，T2 完成 `30` zero-provider matrix、`15` classifier fixture
 和 synthetic durability checkpoint。Focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、
@@ -532,8 +532,18 @@ T2 还验证了 strict journal state machine、partial/terminal prefix recovery�
 publication recovery、multiple-marker rejection、hard-link artifact 与 Windows/Bun fsync compatibility。Synthetic
 temp-root 文件只用于测试并已清理。完整证据见
 [T2 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)。
-T2 不形成 Provider/semantic/product authority；T3 仍需 fresh data-boundary acceptance、source admission 与 exact
-authorization，不能自动开始。
+
+T3-A 又完成 source admission（branch/HEAD/upstream/origin/approved ref parity、clean tree、formal artifact=0、source
+bundle SHA）、T2 gate binding、admission/reservation 双 module-owned single-consume capability、fresh proxy nonce 与
+exact data-boundary/authorization reader。Zero-provider runner 固定 `rewrite -> qwen -> final_response` 三槽位、最多
+3 slots、总预算 `0.024096 CNY`、首错 breaker 与固定未启动 suffix；CLI gate 顺序为
+`argv -> source -> T2 -> proxy -> boundary -> authorization -> runner`。T3-A focused `12/12`（49 assertions）、
+Agent `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过，Provider、credential、
+global fetch、formal evidence、业务/Trace 写入均为 0。完整证据见
+[T3-A 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md)。
+
+T3-A 不形成 Provider/semantic/product authority；T3-B 仍需 fresh data-boundary acceptance 与 exact authorization，
+不能自动开始。
 
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
@@ -569,16 +579,16 @@ Qwen/FinalResponse robustness、runner/durability/admission 与 reviewed Mock/st
 `architecture_recovery_quality_gate_failed / qualityAuthority=none` 封存。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
-Provider accounting、source admission 与 durability/validator/CLI。Transport Evidence Recovery T0/T1/T2 已完成
-30-case/15-classifier zero-provider 与 synthetic durability，但 T3 未授权。当前仍没有：
+Provider accounting、source admission 与 durability/validator/CLI。Transport Evidence Recovery T0/T1/T2/T3-A 已完成
+30-case/15-classifier zero-provider、synthetic durability 与 admission/runner contract，但 T3-B 未授权。当前仍没有：
 
 - Task 9C 已执行，但没有形成 controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 - R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；R5 只形成 bounded failure/durability
-  evidence；Transport T2 只形成 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，三者都不形成产品或
-  main authority。
+  evidence；Transport T2/T3-A 只形成 `qualityAuthority=none` 的 zero-provider authority，三者都不形成产品或 main
+  authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、

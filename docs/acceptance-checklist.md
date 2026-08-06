@@ -20,7 +20,7 @@ recovery、curl、单 case 或额外 Provider 探测。
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。R5 只有完整
 `controlled_live` quality gate pass 才解锁 R6；本次失败因此继续阻断产品 Docker/API/可见浏览器验收与 main。
 
-## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1/T2（T2 robustness + durability 已完成）
+## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1/T2/T3-A（zero-provider 已完成）
 
 T0 不是 R5 retry，也不是产品验收。当前已冻结独立 lineage
 `phase-6.9.8-retriever-final-response-transport-evidence-v1` 的 zero-provider contract：3 个 family × 8 个
@@ -33,8 +33,15 @@ T1 已把 strict no-raw diagnostic parser、五阶段/boundary/wire 校验和三
 focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、typecheck/lint/Prettier/
 `git diff --check` 通过，authority 为 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，gate 为
 `transport_evidence_t2_zero_provider_passed`。T2 不证明 Provider 健康、模型语义或产品可用性，也不改变 R5 历史
-`provider_dispatch / unknown` 的不可判别性。T3 transport canary 尚未授权；若要评估，必须取得全新的数据边界接受和
-精确授权。当前仍不得执行 Live、seal、recovery、curl、单 case、产品 API Provider 探测或 Docker/API/browser/main 验收。
+`provider_dispatch / unknown` 的不可判别性。
+
+T3-A 又新增 source admission、T2 gate binding、fresh proxy nonce、双 opaque single-consume capability、三槽位
+`rewrite -> qwen -> final_response` zero-provider runner、`0.024096 CNY` 预算与首错 breaker。focused `12/12`（44
+assertions）、Agent `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；
+Provider、credential、global fetch、正式 evidence、业务/Trace 写入均为 `0`。authority 固定为
+`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`，gate 为
+`transport_evidence_t3_admission_ready`。它仍不证明 Provider health、Agent 语义或产品可用性，T3-B controlled canary
+仍未授权。当前仍不得执行 T3-B Live、seal、recovery、curl、单 case、产品 API Provider 探测或 Docker/API/browser/main 验收。
 设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
@@ -42,12 +49,14 @@ focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 fi
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`
 
-T1/T2 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
+T0/T1/T2/T3-A 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t2.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.test.ts
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint

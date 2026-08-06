@@ -1,5 +1,13 @@
 # PrepMind AI 数据流
 
+> 当前原子任务（2026-08-06）：Transport Evidence Recovery T3-A zero-provider admission/runner 已完成。数据流为
+> `argv -> source/T2 admission -> fresh proxy nonce -> data boundary -> exact authorization -> synthetic runner`；runner
+> 固定 `rewrite -> qwen -> final_response` 三槽位、最多 3 slots、预算 `0.024096 CNY`，首错 breaker 保留未启动
+> suffix。T3-A focused `12/12`、Agent full `1360/1360`，Provider、credential、fetch、正式 evidence、业务/Trace 写入
+> 均为 `0`，authority=`zero_provider_transport_evidence_t3_admission / qualityAuthority=none`。该流不进入 `/api/chat`、
+> BackgroundJob、Outbox、Docker、browser 或 main；T3-B controlled canary 仍未授权。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`。
+
 > R5 sealed result（2026-08-06）：唯一 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已从 canonical source admission
 > 进入真实 DeepSeek/Qwen adapter；16 guards 通过，首个 rewrite pair 的三次 Provider call 成功，第二个 pair 的
 > DeepSeek rewrite 在 `provider_dispatch / unknown` 失败，breaker 后 59 slots 未启动。External calls `4`（Qwen `3`、

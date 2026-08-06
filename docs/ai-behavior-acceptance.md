@@ -2,6 +2,19 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.8 Transport Evidence Recovery T3-A 当前边界
+
+T3-A 是 zero-provider admission/runner checkpoint，不是模型质量或产品行为验收。它验证 source parity、T2 gate、
+fresh proxy nonce、DeepSeek/Qwen 数据边界与 exact authorization 的 gate 顺序，以及
+`rewrite -> qwen -> final_response` 三槽位、`0.024096 CNY` 总预算、首错 breaker 和固定未启动 suffix。focused
+`12/12`、Agent full `1360/1360`（23805 assertions，169 files）通过；Provider、credential、global fetch、正式
+evidence、业务/Trace 写入均为 `0`，authority 固定为 `zero_provider_transport_evidence_t3_admission /
+qualityAuthority=none`。
+
+T3-A 不能证明 DeepSeek/Qwen health、真实 rewrite/Retriever/FinalResponse 语义、P95/verified cost 或 `/api/chat` 可用。
+T3-B controlled canary 尚未授权；在用户重新接受当次数据边界并发送 exact authorization 前，继续使用 Mock/zero-provider
+回归，禁止读取 credential、运行 Live/curl/单 case 或把结果写成 semantic gate。
+
 ## Phase 6.9.5 Review / Planner 当前边界
 
 Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。
