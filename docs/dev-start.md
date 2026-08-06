@@ -1652,21 +1652,24 @@ slots 未启动；rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic
 正式 CLI 启动前曾因 `.env` UTF-8 BOM 发生一次环境加载退出；没有进入 admission/reservation、没有 Provider call，
 不计为 Live。上述 run 是唯一 R5 controlled-Live。
 
-### Transport Evidence Recovery T0/T1（T1 strict contract + TDD 已完成）
+### Transport Evidence Recovery T0/T1/T2（T2 robustness + durability 已完成）
 
-T0 已冻结 zero-provider transport/evidence contract；T1 已提供 strict parser 与三条 family 私有 capability seam，
-并完成 focused/Agent/typecheck/lint 回归。当前仍没有 Live CLI。T2 会使用注入式 ports 和固定 `30`-case matrix；在
-T2 完成及新的精确授权前，不得运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。设计与
-计划见：
+T0 已冻结 zero-provider transport/evidence contract；T1 已提供 strict parser 与三条 family 私有 capability seam；
+T2 已用注入式 ports 完成固定 `30`-case matrix、`15` classifier fixture 与 synthetic durability。最终 focused
+`11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过，formal evidence=0。当前仍没有已授权的 Live CLI；如需
+T3 transport canary，必须先重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。在此之前不得运行任何
+`live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`
 
-T1 安全回归命令：
+T1/T2 安全回归命令：
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t2.test.ts
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint

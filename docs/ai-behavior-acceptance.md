@@ -1319,10 +1319,14 @@ robustness 与 runner/durability/admission：
   `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
   strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
   与后续阶段继续阻断。
-- Transport Evidence Recovery T0/T1 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，T1
-  落地 strict no-raw parser、双 wire 单调校验与 rewrite/Qwen/FinalResponse 私有 single-consume capability。T1
-  authority 仍为 `zero_provider_transport_evidence_tdd / qualityAuthority=none`，不形成 Provider health、Agent
-  semantic 或产品 authority。当前下一步是 T2 robustness + durability static；T2 未完成前不得申请新 canary。
+- Transport Evidence Recovery T0/T1/T2 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，
+  T1 落地 strict no-raw parser、双 wire 单调校验与 rewrite/Qwen/FinalResponse 私有 single-consume capability，T2
+  又完成 `30/30` matrix、`15/15` classifier、partial/terminal prefix 与 publication recovery、multiple-marker
+  rejection、hard-link artifact、strict validator 和 Windows/Bun fsync compatibility。T2 focused `11/11`、Agent
+  `1348/1348`、typecheck/lint/Prettier 均通过，authority 为
+  `zero_provider_transport_evidence_t2 / qualityAuthority=none`；不形成 Provider health、Agent semantic 或产品
+  authority，也不反向解释 R5 的 `provider_dispatch / unknown`。T3 transport canary 尚未授权；申请前必须重新接受
+  当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
 
 完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、

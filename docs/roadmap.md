@@ -15,11 +15,12 @@
 > R5 结果无论通过或失败都只封存一次；只有 gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
-> Transport Evidence Recovery T0/T1 已完成：T0 冻结独立 zero-provider contract，T1 已落地 strict no-raw parser、
-> 双 wire 校验与三 family 私有 single-consume capability；focused `8/8`、Agent `1337/1337`、typecheck/lint 通过。
-> 这些步骤未读取 credential、未调用 Provider、未创建 formal evidence。当前下一原子任务是 T2 robustness + durability
-> static；T2 通过后才评估是否值得申请最多 3-slot 的新 transport canary。它不解锁 R6/R7/main，也不是 R5 retry。设计与计划见
-> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> Transport Evidence Recovery T0/T1/T2 已完成：T0 冻结独立 zero-provider contract，T1/T2 已落地 strict no-raw parser、
+> 双 wire 校验、三 family 私有 single-consume capability、30-case/15-classifier matrix 与 synthetic durability；focused
+> `11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过。全程未读取 credential、未调用 Provider、未创建 formal
+> evidence，authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T2 不解锁 R6/R7/main，也不是
+> R5 retry；T3 transport canary 尚未授权，若需申请必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
+> 设计与计划见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；V9 当时的 R6/R7/main 与后续阶段被阻断，后续另行进入 Architecture/Schema Recovery 路线。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
@@ -624,12 +625,14 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   Journal `237`、validator `ok=true`、artifact SHA=`423e3f2e...43b1e5`；一次性名额已消费且不得重跑，R6/R7/main
   继续阻断。（失败封存；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`）
-- Phase 6.9.8 Transport Evidence Recovery T0/T1：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
-  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1 已完成 strict parser、双 wire 与三 family
-  capability TDD，未调用 Provider、不创建正式 evidence。当前下一步为 T2 robustness + durability static。
-  （T0/T1 证据见
+- Phase 6.9.8 Transport Evidence Recovery T0/T1/T2：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
+  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1/T2 已完成 strict parser、双 wire、三 family
+  capability TDD、15 classifier fixture 与 synthetic durability，未调用 Provider、不创建正式 evidence。T2 gate 为
+  `transport_evidence_t2_zero_provider_passed / qualityAuthority=none`；T3 尚未授权。
+  （T0/T1/T2 证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md` 与
-  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`）
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）

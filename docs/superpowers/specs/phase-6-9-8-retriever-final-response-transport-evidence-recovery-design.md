@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T1 zero-provider strict contract + TDD 已完成；T2 尚未实现，T3 尚未授权或执行
+> 状态：T0/T1/T2 zero-provider contract、robustness 与 durability 已完成；T3 尚未授权、未实现或执行
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
-> Authority：`zero_provider_transport_evidence_design / qualityAuthority=none`
+> Authority：`zero_provider_transport_evidence_t2 / qualityAuthority=none`
 
 ## 1. 决策摘要
 
@@ -172,7 +172,8 @@ FinalResponse 各一次；首个失败立即停止，不补跑，不形成 seman
 
 1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件（已完成）；
 2. T1：zero-provider strict contract + TDD，复用现有 diagnostic/wire 校验但使用新 lineage namespace（已完成）；
-3. T2：30-case robustness、abort/timeout/capability/durability static checkpoint（下一步）；
+3. T2：30-case robustness、abort/timeout/capability/durability static checkpoint（已完成，
+   `transport_evidence_t2_zero_provider_passed`）；
 4. T3（可选）：新授权下的最多 3-slot transport canary；无论结果如何单次 durable seal，不能直接进入产品。
 
 每个任务单独提交并推送；T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
@@ -180,7 +181,7 @@ data-flow 和本设计/计划。T3 没有明确授权时不得读取 credential�
 
 ## 9. 通过定义与下一决策
 
-只有同时满足下列条件，才可以判断“值得申请 T3 canary”：
+只有同时满足下列条件，才可以判断“值得申请 T3 canary”（T2 已满足 zero-provider 条件，但这不是授权）：
 
 - 30-case zero-provider matrix 全部通过；
 - synthetic `dispatched_no_response / unknown` case 能稳定保持 unknown，并能与已知 fault bucket 区分；

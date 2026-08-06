@@ -1,7 +1,7 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1 已完成，下一步 T2
-> zero-provider robustness + durability static；R6/R7、产品/main 与后续阶段阻断
+> 状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2 已完成，T3
+> transport canary 未授权；R6/R7、产品/main 与后续阶段阻断
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
@@ -735,3 +735,21 @@ Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见
 - [Architecture Recovery R3 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)
 - [Architecture Recovery R4 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)
 - [Architecture Recovery R5 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)
+
+## 21. Transport Evidence Recovery T0--T2 完成回执（2026-08-06）
+
+T0/T1 的独立 Transport Evidence lineage 在 R5 失败后继续完成 T2 zero-provider robustness + durability static。
+T2 固定 `3 family × 8 cases + 6 boundary/capability/publication cases = 30`，另有 `15` 个 bounded classifier fixture；
+所有实际观察仍经过 Rewrite/Qwen/FinalResponse 私有 single-consume capability、strict stage/boundary/wire parser 和
+no-raw projection。
+
+T2 durability 只在 synthetic temp-root 验证 exclusive marker、唯一 marker discovery、Windows/Bun file barrier、
+受控 directory fsync、串行 case terminal、严格 hash-chain journal、幂等 report snapshot、hard-link artifact、strict
+validator 与 crash-only recovery。partial prefix、terminal prefix、artifact 已落盘但 evidence 未写入和多 marker 均
+有独立测试；synthetic 文件在测试后清理，formal evidence/Provider/credential/global fetch 均为 0。
+
+最终 focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、typecheck/lint/Prettier/
+`git diff --check` 通过，authority 固定为 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，gate 为
+`transport_evidence_t2_zero_provider_passed`。这只解锁“是否值得申请 T3”的架构决策，不解锁真实 canary、产品 Docker/
+API/browser、Trace、main 或 semantic quality。完整证据见
+[Transport Evidence Recovery T2 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)。

@@ -2,8 +2,8 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1 已完成，下一步 T2
-> zero-provider robustness + durability static；R6/R7、产品/main 与后续阶段阻断
+> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2 已完成，T3
+> transport canary 未授权；R6/R7、产品/main 与后续阶段阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -522,6 +522,19 @@ R4 随后把 Task 8 production node/ledger reviewed Mock 路径接入 R3 runner�
 [Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；其后
 唯一 R5 run `34eb99be...fc68` 已失败封存且不得重跑，Task 10/11 与产品/main 继续阻断。
 
+## Transport Evidence Recovery T0--T2（已完成，T3 未授权）
+
+T0/T1 冻结并实现独立 no-raw diagnostic contract 后，T2 完成 `30` zero-provider matrix、`15` classifier fixture
+和 synthetic durability checkpoint。Focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、
+typecheck/lint/Prettier/`git diff --check` 全部通过；Provider、credential、global fetch、正式 evidence 和业务写入均为 0。
+
+T2 还验证了 strict journal state machine、partial/terminal prefix recovery、幂等 report snapshot、existing-artifact
+publication recovery、multiple-marker rejection、hard-link artifact 与 Windows/Bun fsync compatibility。Synthetic
+temp-root 文件只用于测试并已清理。完整证据见
+[T2 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)。
+T2 不形成 Provider/semantic/product authority；T3 仍需 fresh data-boundary acceptance、source admission 与 exact
+authorization，不能自动开始。
+
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
 仅当 Task 9 形成可接产品的 quality authority 时执行：
@@ -556,14 +569,16 @@ Qwen/FinalResponse robustness、runner/durability/admission 与 reviewed Mock/st
 `architecture_recovery_quality_gate_failed / qualityAuthority=none` 封存。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
-Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
+Provider accounting、source admission 与 durability/validator/CLI。Transport Evidence Recovery T0/T1/T2 已完成
+30-case/15-classifier zero-provider 与 synthetic durability，但 T3 未授权。当前仍没有：
 
 - Task 9C 已执行，但没有形成 controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 - R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；R5 只形成 bounded failure/durability
-  evidence，二者都不形成产品或 main authority。
+  evidence；Transport T2 只形成 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，三者都不形成产品或
+  main authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、

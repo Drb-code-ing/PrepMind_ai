@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T2 robustness + durability static 已完成：
+>
+> 在 T0/T1 独立 lineage 上完成 `3 family × 8 cases + 6 boundary/capability/publication cases = 30` 个
+> zero-provider case 与 `15` 个 bounded classifier fixture。T2 覆盖唯一 marker、严格 journal state machine、
+> partial/terminal prefix crash-only recovery、幂等 report snapshot、artifact publication recovery、multiple-marker
+> rejection、Windows/Bun fsync 兼容、hard-link artifact 与 strict validator；synthetic temp-root 在每个 case 后精确清理。
+>
+> focused `11/11`（39 assertions）、Agent full `1348/1348`（23746 expect()，168 files）、typecheck/lint/Prettier/
+> `git diff --check` 全部通过；Provider、global fetch、credential、Docker/API/browser、正式 evidence 与业务写入均为
+> `0`。authority 固定为 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，gate 为
+> `transport_evidence_t2_zero_provider_passed`。T2 只说明可以讨论是否值得申请新的最多 3-slot transport canary，
+> 不自动解锁 T3、R6/R7、main 或产品验收；后续若申请 T3，必须重新接受当次 DeepSeek/Qwen 数据边界并给出全新 exact
+> authorization。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`。
+>
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T1 strict contract + TDD 已完成：
 >
 > 在 T0 独立 lineage 之上新增 strict no-raw diagnostic schema/parser，固定五阶段
@@ -10,8 +25,8 @@
 > focused `8/8`（51 assertions）、Agent full `1337/1337`（23700 expect()）、typecheck/lint/Prettier 均通过；Provider、
 > credential、global fetch、Docker/API/browser、formal marker/journal/artifact/recovery claim 与业务写入均为 0。未知
 > 类别继续保持 `unknown`，不会把 R5 历史 `provider_dispatch / unknown` 反向归因。T1 验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`；下一步为 T2
-> 30-case robustness + durability static checkpoint。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`；该条是 T2
+> 完成前的历史 checkpoint，当前以本日志最上方 T2 回执为准。
 >
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T0 决策：
 >
@@ -20,7 +35,7 @@
 > zero-provider 可判别性：3 个 family × 8 个固定边界/失败类，加 6 个 abort/capability/publication cases，共
 > `30` cases；只保留 stage/reason/boundary/wire/opaque callId，`rawDataRetained=false`。
 >
-> T0 已冻结 ADR、contract、authority、停止条件和最多 3-slot canary 的决策门；T1 已完成，T2 尚未实现，未读取 credential、未调用
+> T0 已冻结 ADR、contract、authority、停止条件和最多 3-slot canary 的决策门；T1 已完成，T2 随后也已完成，未读取 credential、未调用
 > Provider、未创建 formal evidence，不解锁 R6/R7/main。T1 为 strict contract/TDD，T2 为 robustness/durability static，
 > T3（可选）才是重新授权后的 transport-only canary。完整设计与计划见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与

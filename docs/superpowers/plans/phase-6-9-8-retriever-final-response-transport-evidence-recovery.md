@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T1 zero-provider strict contract + TDD 已完成；T2 未实现；没有 Provider、credential 或正式 evidence
+> 当前状态：T1/T2 zero-provider strict contract、robustness 与 durability 已完成；T3 未授权、未实现；没有 Provider、credential 或正式 evidence
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_evidence_tdd / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_evidence_t2 / qualityAuthority=none`
 
 ## 1. 为什么另立 lineage
 
@@ -34,7 +34,7 @@ focused `8/8`（51 assertions）、Agent full `1337/1337`、typecheck/lint 通�
 `0/0/0`，旧 R5/Task 9C SHA parity 保持不变。完整 T1 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 
-### T2：Robustness + durability static checkpoint（下一步）
+### T2：Robustness + durability static checkpoint（已完成）
 
 - 固定 24 个 family/boundary cases + 6 个 abort/capability/publication cases；
 - 30 个 runner/robustness cases 固定不变；另用 classifier fixture 覆盖
@@ -44,8 +44,11 @@ focused `8/8`（51 assertions）、Agent full `1337/1337`、typecheck/lint 通�
   synthetic root 工作，正式 evidence 仍为 0；
 - 运行一次独立 reader/secret/link 检查，不能把结果写成 Provider health 或 semantic quality。
 
-T2 通过条件：30/30、classifier fixture、focused/Agent/typecheck/lint 全通过；Provider、credential、formal evidence、
-产品写入均为 0。
+T2 结果：30/30 matrix、15/15 classifier、focused `11/11`（39 assertions）、Agent full `1348/1348`（23746
+expect()，168 files）、typecheck/lint/Prettier/diff check 全通过。Provider、credential、global fetch、正式 evidence、
+产品写入均为 0；synthetic temp-root marker/journal/report/artifact 在测试后精确清理。新增 terminal-prefix、partial
+prefix、existing-artifact publication recovery、multiple-marker 与 Windows fsync compatibility 验证。完整验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`。
 
 ### T3：可选 transport canary（当前未授权）
 
@@ -87,7 +90,7 @@ bun --filter @repo/agent lint
 
 - T0：本设计与计划单独提交；
 - T1：实现与 focused tests 单独提交；
-- T2：robustness/static checkpoint 单独提交；
+- T2：robustness/static checkpoint 单独提交并推送当前功能分支（本任务已完成）；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
 - T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
   acceptance 与本设计/计划；

@@ -20,7 +20,7 @@ recovery、curl、单 case 或额外 Provider 探测。
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。R5 只有完整
 `controlled_live` quality gate pass 才解锁 R6；本次失败因此继续阻断产品 Docker/API/可见浏览器验收与 main。
 
-## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1（T1 strict contract + TDD 已完成）
+## 0B. Phase 6.9.8 Transport Evidence Recovery T0/T1/T2（T2 robustness + durability 已完成）
 
 T0 不是 R5 retry，也不是产品验收。当前已冻结独立 lineage
 `phase-6.9.8-retriever-final-response-transport-evidence-v1` 的 zero-provider contract：3 个 family × 8 个
@@ -28,21 +28,26 @@ T0 不是 R5 retry，也不是产品验收。当前已冻结独立 lineage
 reads=`0`、formal evidence=`0`，所有结果都有 bounded stage/reason/boundary/wire，且 `rawDataRetained=false`。
 
 T1 已把 strict no-raw diagnostic parser、五阶段/boundary/wire 校验和三个 family 私有 single-consume capability
-落地并通过 focused `8/8`、Agent `1337/1337`、typecheck/lint。T1 仍只有 `zero_provider_transport_evidence_tdd /
-qualityAuthority=none` authority；它不证明 Provider 健康、模型语义或产品可用性。下一步还必须完成 T2
-robustness/durability static；只有 T2 也通过、取得全新的数据边界接受和精确授权，才可以评估最多 3-slot transport
-canary。当前不得执行 Live、seal、recovery、curl、单 case、产品 API Provider 探测或 Docker/API/browser/main 验收。
+落地；T2 又完成 `30/30` matrix、`15/15` classifier、strict journal state machine、partial/terminal prefix recovery、
+幂等 publication recovery、multiple-marker rejection、hard-link artifact 与 Windows/Bun fsync compatibility。最终
+focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、typecheck/lint/Prettier/
+`git diff --check` 通过，authority 为 `zero_provider_transport_evidence_t2 / qualityAuthority=none`，gate 为
+`transport_evidence_t2_zero_provider_passed`。T2 不证明 Provider 健康、模型语义或产品可用性，也不改变 R5 历史
+`provider_dispatch / unknown` 的不可判别性。T3 transport canary 尚未授权；若要评估，必须取得全新的数据边界接受和
+精确授权。当前仍不得执行 Live、seal、recovery、curl、单 case、产品 API Provider 探测或 Docker/API/browser/main 验收。
 设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`
 
-T1 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
+T1/T2 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t2.test.ts
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint

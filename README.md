@@ -8,12 +8,14 @@
 > `null`，validator `ok=true`，artifact SHA=`423e3f2e...43b1e5`。一次性名额已消费，不得重跑或追加探测，R6 产品
 > Docker/API/可见浏览器验收仍阻断。详见 [`R5 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
 
-> 当前状态：Transport Evidence Recovery T0/T1 已完成。T0 冻结 30-case zero-provider contract；T1 已落地 strict
-> diagnostic parser、单调双 wire 与 rewrite/Qwen/FinalResponse 三条私有 single-consume capability seam。已知 bounded
-> subtype 能否与 `unknown` 稳定区分仍由下一步 T2 synthetic matrix 判断；R5 的历史
-> `provider_dispatch / unknown` 不被反向归因。T0/T1 未读取 credential、未调用 Provider、未创建 formal
-> evidence，也不解锁 R6/R7/main。当前下一原子任务是 T2 robustness + durability static；只有 T1/T2 gate 通过并取得全新
-> 授权后，才考虑最多 3-slot canary。设计与计划见 [`Transport Evidence Recovery 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
+> 当前状态：Transport Evidence Recovery T0/T1/T2 已完成。T0 冻结 30-case zero-provider contract；T1/T2 已落地
+> strict no-raw diagnostic parser、单调双 wire、rewrite/Qwen/FinalResponse 三条私有 single-consume capability seam，
+> 以及 30-case/15-classifier synthetic durability。focused `11/11`、Agent `1348/1348`、typecheck/lint/Prettier/
+> `git diff --check` 通过，Provider、credential、global fetch、正式 evidence 与业务写入均为 0。R5 的历史
+> `provider_dispatch / unknown` 不被反向归因，T2 authority 固定为
+> `zero_provider_transport_evidence_t2 / qualityAuthority=none`，不解锁 R6/R7/main。T3 transport canary 尚未授权；
+> 如需申请，必须重新接受当次 DeepSeek/Qwen 数据边界并给出全新 exact authorization。设计与计划见
+> [`Transport Evidence Recovery 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
 
 > Live 前 checkpoint（已由上述 sealed run 收口）：R5 已完成实现、独立复审和 zero-provider 回归。固定分母为
 > `16 guards + 16 rewrite pairs（DeepSeek rewrite + Qwen original/candidate）+ 16 FinalResponse = 64 slots`；
@@ -25,8 +27,9 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R5 唯一 controlled-Live 已失败封存（run 34eb99be...），不能重跑或追加探测；R6 产品、main 与后续阶段继续阻断。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
-当前不把 R5 失败拼接成“部分通过”；T0/T1 只建立了 Transport Evidence Recovery 的 zero-provider contract，下一步按
-T2 验证 dispatch/response 边界是否可判别，再决定是否申请新 canary。
+当前不把 R5 失败拼接成“部分通过”；T0/T1/T2 已完成 Transport Evidence Recovery 的 zero-provider contract、
+可判别性与 durability 验证。下一步不是自动运行 Live，而是先决定是否值得申请新的最多 3-slot transport canary；
+没有 fresh 数据边界接受和 exact authorization 时保持停止。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 
@@ -452,6 +455,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Evidence Recovery 计划](./docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md)
 - [Phase 6.9.8 Transport Evidence Recovery T0 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md)
 - [Phase 6.9.8 Transport Evidence Recovery T1 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md)
+- [Phase 6.9.8 Transport Evidence Recovery T2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)
