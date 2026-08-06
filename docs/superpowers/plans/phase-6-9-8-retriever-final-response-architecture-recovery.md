@@ -2,9 +2,9 @@
 
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
-> - 当前状态：R0--R3 zero-provider 完成；下一步仅 R4 reviewed Mock / static checkpoint
+> - 当前状态：R0--R4 zero-provider 完成；下一步仅 R5 controlled-Live admission（未授权）
 > - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> - 当前 authority：`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+> - 当前 authority：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
 
 ## 1. 总体规则
 
@@ -169,22 +169,27 @@
 
 ## 6. R4 — Reviewed Mock / Static Checkpoint
 
-状态：下一步；仅 R3 已完成，不代表 R4 已开始或通过。
+状态：已完成，zero-provider；形成 Mock-only checkpoint，不形成 Provider、产品或 main authority。
 
 ### 目标
 
-- 16 guards + 16 rewrite pairs + 16 FinalResponse 的完整 64-call reviewed Mock；
-- rewrite、retrieval、FinalResponse、安全、P95 与预算门完整通过；
-- providerWire/runnerWire/usage 均按 64-call 完整；
-- diagnostic 全部到 `applied`，同时覆盖单独 fault matrix；
-- anti-oracle、source SHA、legacy evidence parity 与 Reader Testing 通过。
+- [x] 16 guards + 16 rewrite pairs + 16 FinalResponse 的完整 64-call reviewed Mock；
+- [x] Task 8 production node/ledger 路径先行，再进入 R3 runner；
+- [x] rewrite、retrieval、FinalResponse、安全、P95 与预算门完整通过；
+- [x] providerWire/runnerWire/usage 均按 64-call 完整，diagnostic `applied=64`；
+- [x] anti-oracle、source/Task 9C SHA parity、canonical bytes 与 single-use capability 通过；
+- [x] formal approved tag/marker/journal/artifact/recovery claim 保持 0；
+- [x] Reader Testing 与独立安全复审无 blocker。
 
 Gate 必须固定为 recovery Mock-only authority，例如
 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；不得写成真实 Provider 或产品质量。
 
+验收见
+[R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
+
 ## 7. R5 — 未来可选 Controlled-Live
 
-状态：未授权、未开始。
+状态：未授权、未开始；R4 通过不会自动授权。
 
 R4 完成、提交、推送和独立复审不自动授权 R5。若用户未来决定继续，必须重新完成：
 
@@ -224,14 +229,13 @@ git diff --check
 
 ## 10. 当前停止边界
 
-R0--R3 只形成设计、三链路 diagnostic/robustness 与 runner/durability/admission authority。当前已有 strict bounded
+R0--R4 只形成设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock checkpoint authority。当前已有 strict bounded
 diagnostic、三个独立 call-family、模块私有单次 observation、固定 16-guard/64-call runner、双 wire accounting、
 source admission、journal/artifact/validator 与 crash-only recovery 合同；但本阶段只在临时 synthetic 根验证，正式
 R3 tag/marker/journal/artifact/recovery claim 仍为 0，`qualityAuthority=none`。当前仍没有：
 
-- R4 reviewed Mock/static authority；
 - R5 controlled-Live、产品、Docker/API/browser、Trace 或 main authority；
 - 对 Task 9C 具体失败字段或 Provider 根因的结论。
 
-下一步只能开始 R4 zero-provider reviewed Mock / static checkpoint。不得执行 R5--R7、Task 9C CLI/seal、Task
+下一步只能在新的用户授权边界下准备 R5 controlled-Live admission；不得执行 R5 Provider 调用、R6/R7、Task 9C CLI/seal、Task
 10/11、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。

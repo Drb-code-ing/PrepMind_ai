@@ -1,5 +1,27 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R4：
+>
+> R4 zero-provider reviewed Mock/static 已完成。Task 8 的 production Retriever/FinalResponse node、ledger 与
+> prompt-only responder 先完成本地 bounded projection，再接入 R3 synthetic-admitted runner；固定 `16 guards + 16
+rewrite pairs + 16 FinalResponse = 64 slots`。结果为 guard `16/16` zero-call、rewrite/FinalResponse `16/16`、
+> runner/provider wire `64/64/64/64`、diagnostic `64 applied`，安全失败与未启动均为 `0`。Gate 固定
+> `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential、formal
+> approved tag/marker/journal/artifact/recovery claim 与业务写入均为 `0`。
+>
+> DeepSeek synthetic accounting `8704/225`、Qwen `4096/0` 得到预算回归值 `0.02951 CNY`；由于没有 Provider
+> verified usage，`aggregateVerifiedProviderCostCny=null`。prompt-only responder 只接收实际 bounded prompt，expected/
+> oracle 只在后置 scorer 使用；三个模块的 observation 继续由私有 single-use WeakMap 签发并绑定
+> `callId + phase + family`，forged/reused/cross-call/cross-family/out-of-order 均 fail-closed。
+>
+> R4 focused `5/5`（`32` assertions），与 R3 parity、Task 8 回归合计 `29/29` tests、`200` assertions；Agent 全量
+> 回归为 `1323` tests / `165` files / `23579` expect() calls / `0` fail。Prettier、
+> lint、`git diff --check` 与独立 Reader Testing 通过。新增验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`；同步更新
+> AGENTS、README、roadmap、acceptance checklist、dev-start、data-flow 与本计划/设计。R5 controlled-Live 仍未授权、
+> 未开始；在用户新的 DeepSeek/Qwen 数据边界接受与一次性授权前，不执行 Provider、Docker/API/browser、Trace 产品验收
+> 或 main 合并。
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R3：
 >
 > 本任务以

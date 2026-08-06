@@ -2171,12 +2171,14 @@ Task 1 `zero_provider_retriever_final_response_shared_contract`：
 - [x] R3 authority 仅
       `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission /
 qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main authority；
-- [ ] Recovery R4 zero-provider reviewed Mock/static；这是唯一下一原子任务；
-- [ ] Recovery R5 controlled-Live、R6 产品 Docker/API/可见浏览器/Trace、R7 main；
+- [x] Recovery R4 zero-provider reviewed Mock/static 已完成：guards `16/16` zero-call、双 wire
+      `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate 固定
+      `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence=0；
+- [ ] Recovery R5 controlled-Live（未授权、未开始）、R6 产品 Docker/API/可见浏览器/Trace、R7 main；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划、Task 0--9C 与 Architecture Recovery R0--R3 验收见
+设计、计划、Task 0--9C 与 Architecture Recovery R0--R4 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2196,4 +2198,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。

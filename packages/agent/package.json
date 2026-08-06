@@ -20,6 +20,7 @@
     "./phase-6-9-7-v7-mock": "./src/evals/phase-6-9-tutor-wrong-question-v7-mock.ts",
     "./phase-6-9-7-v8-mock": "./src/evals/phase-6-9-tutor-wrong-question-v8-mock.ts",
     "./phase-6-9-7-v9-mock": "./src/evals/phase-6-9-tutor-wrong-question-v9-mock.ts",
+    "./phase-6-9-8-recovery-r4-mock": "./src/evals/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock.ts",
     "./planner": "./src/nodes/planner.ts",
     "./retriever": "./src/nodes/retriever.ts",
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
@@ -107,6 +108,7 @@
     "eval:phase-6-9-8:architecture-recovery:cli": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-cli.ts",
     "eval:phase-6-9-8:architecture-recovery:seal": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-cli.ts I_SEAL_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R3_CRASH_ONLY_ONCE",
     "eval:phase-6-9-8:architecture-recovery:validate": "bun scripts/validate-phase-6-9-8-retriever-final-response-architecture-recovery-evidence.ts",
+    "eval:phase-6-9-8:architecture-recovery:r4:mock": "bun scripts/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock.ts mock",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

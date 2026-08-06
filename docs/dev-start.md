@@ -1586,15 +1586,17 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
   `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次 not-started。最终 `task9_quality_gate_failed /
 qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑；产品/main、
   Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
-- Phase 6.9.8 Architecture Recovery R0--R3 已完成 zero-provider 设计、diagnostic robustness 与 runner/durability/
+- Phase 6.9.8 Architecture Recovery R0--R4 已完成 zero-provider 设计、diagnostic robustness、runner/durability/
   admission：新 lineage 同时覆盖 rewrite、Qwen
   retrieval 与 FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash；R1
   只从第一方 V7 terminal wire snapshot 推导 rewrite Provider boundary。R2 新增 Qwen/FinalResponse 两个第一方
   wire family，覆盖 embedding/stream/terminal/usage；首个畸形 stream event 固定为
   `response_observed + stream_event_invalid`。R3 再固定 16-guard/64-call runner、模块私有 single-use observation、
   双 wire accounting、source admission、fsynced journal、hard-link artifact、strict validator 与 crash-only recovery；
-  forged/reused/active/cross-call/cross-family capability 均 fail-closed。R0--R3 不新增环境变量、gate、credential
-  mapping、Docker profile 或正式 evidence；当前只解锁 R4 zero-provider reviewed Mock/static。
+  forged/reused/active/cross-call/cross-family capability 均 fail-closed。R4 reviewed Mock/static 已完成：guards
+  `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`，gate 固定
+  `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R0--R4 不新增环境变量、gate、credential
+  mapping、Docker profile 或正式 evidence；当前只解锁 R5 fresh admission（未授权、未开始）。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
@@ -1626,8 +1628,8 @@ API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不�
 marker、journal 与 artifact 必须保留；禁止再次设置 9C 授权变量、运行 production CLI、seal/recovery、curl、单
 case 或产品 API Provider 探测。
 
-Architecture Recovery R0--R3 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。R4 仍必须使用
-synthetic/injected transport；在 R4 reviewed Mock 完成并单独收口前，不存在合法的 Recovery Live 命令。
+Architecture Recovery R0--R4 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。R4 已使用
+synthetic/injected transport 完成；在 R5 fresh admission 与用户精确授权前，不存在合法的 Recovery Live 命令。
 
 Task 8 的安全静态回归命令：
 
@@ -1660,7 +1662,7 @@ bun --filter @repo/agent eval:phase-6-9-8:task9:validate
 credential、不访问 Provider，也不会创建 marker/journal/artifact。不要把 R1 test 的 `applied` 当成 Live、产品或
 质量门通过。
 
-Architecture Recovery R0--R3 的安全 zero-provider 回归命令：
+Architecture Recovery R0--R4 的安全 zero-provider 回归命令：
 
 ```powershell
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-*.test.ts
@@ -1669,9 +1671,12 @@ bun --filter @repo/ai test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 bun --filter @repo/agent eval:phase-6-9-8:task9:validate
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock.test.ts
+bun --cwd=packages/agent run eval:phase-6-9-8:architecture-recovery:r4:mock
 ```
 
-前五条只运行源码/临时 synthetic runner 与 durability tests；最后一条只读验证旧 Task 9C sealed bundle。不要运行
+前五条只运行源码/临时 synthetic runner 与 durability tests；Task 9C validate 只读验证旧 sealed bundle；R4 两条命令
+只运行 reviewed Mock/static，不读取 credential、不访问 Provider、不创建正式 evidence。不要运行
 `eval:phase-6-9-8:architecture-recovery:cli` 或 `eval:phase-6-9-8:architecture-recovery:seal`：R3 没有正式 evidence，
 这两个 zero-provider maintenance 入口也不是日常测试命令，更不是 R4/Live 授权。
 
@@ -1686,7 +1691,7 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
 补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
 
-设计、Task 0--9C 与 Architecture Recovery R0--R3 验收见
+设计、Task 0--9C 与 Architecture Recovery R0--R4 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
@@ -1705,7 +1710,8 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`、
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

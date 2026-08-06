@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 失败封存；Architecture Recovery R0--R3 zero-provider 完成，下一步仅 R4 reviewed Mock/static
+> 当前状态：Task 9C 失败封存；Architecture Recovery R0--R4 zero-provider 完成，下一步仅 R5 controlled-Live admission（未授权）
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -480,7 +480,7 @@ seal 与 Task 9C production CLI 已落成。Reviewed Mock 为 guard `16/16`、�
 当前 evidence 只能定位到本地 strict rewrite schema/contract，不能声称具体 Provider payload、transport、账号或
 服务端根因。Task 9C 不得重跑；Task 10 admission 未满足。
 
-## Architecture Recovery R0--R3：独立 zero-provider 设计、TDD、robustness 与 durability
+## Architecture Recovery R0--R4：独立 zero-provider 设计、TDD、robustness、durability 与 reviewed Mock
 
 R0 已完成，authority 为
 `zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`：
@@ -508,12 +508,18 @@ R3 随后完成固定 16-guard/64-call report/runner、`providerWire/runnerWire`
 三个模块私有 observation authority、exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、
 hard-link artifact、strict validator、crash-only seal 与 zero-provider maintenance CLI。所有 durability artifact 只在
 临时 synthetic root 创建；正式 approved tag/marker/journal/artifact/recovery claim 均为 0。Focused `39/39`、
-Agent full `1318/1318`、AI full `345/345`、typecheck/lint 与 Task 9C validator/SHA parity 通过；当前 authority 为
+Agent full `1318/1318`、AI full `345/345`、typecheck/lint 与 Task 9C validator/SHA parity 通过；该 R3 checkpoint authority 为
 `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`。
 
+R4 随后把 Task 8 production node/ledger reviewed Mock 路径接入 R3 runner，固定 guards `16/16` zero-call、双 wire
+`64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`。其 gate 固定为
+`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential 与 formal evidence
+均为 0，synthetic cost 仅是本地预算回归值，verified provider cost 保持 `null`。完整验收见
+[R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
+
 完整路线已转入独立
-[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。当前只允许其中 R4
-zero-provider reviewed Mock/static；R5 Live、Task 10/11 与产品/main 继续阻断。
+[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；当前只允许准备
+R5 fresh admission，但仍未授权，Task 10/11 与产品/main 继续阻断。
 
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
@@ -544,7 +550,7 @@ zero-provider reviewed Mock/static；R5 Live、Task 10/11 与产品/main 继续�
 
 ## 当前停止边界
 
-Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0--R3 设计、rewrite TDD、
+Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0--R4 设计、rewrite TDD、
 Qwen/FinalResponse robustness 与 runner/durability/admission 已完成。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
@@ -554,9 +560,9 @@ Provider accounting、source admission 与 durability/validator/CLI。当前仍�
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
-- R4 reviewed-Mock authority。
+- R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，不形成真实 Provider、产品或 main authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
 marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main 和任何 Task 9C Provider 追加调用。
-下一原子任务只允许按独立 Recovery 计划执行 R4 zero-provider reviewed Mock / static checkpoint。
+下一原子任务只允许按独立 Recovery 计划准备 R5 fresh admission；在新数据边界接受与精确授权前不得执行 Provider。

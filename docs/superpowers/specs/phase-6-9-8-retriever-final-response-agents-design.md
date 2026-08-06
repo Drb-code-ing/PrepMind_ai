@@ -1,10 +1,10 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9C 失败封存；Architecture Recovery R0--R3 zero-provider 完成，下一步仅 R4 reviewed Mock/static
+> 状态：Task 9C 失败封存；Architecture Recovery R0--R4 zero-provider 完成，下一步仅 R5 controlled-Live admission（未授权）
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+> Current Checkpoint Authority：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
 
 ## 1. 决策与目标
 
@@ -688,7 +688,7 @@ Task 9C 的一次性名额已消费，禁止 retry/resume/replay/backfill、seal
 不能把它包装成 Task 9C retry。完整证据见
 `../../acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
 
-## 25. Architecture Recovery R0--R3 后续状态（2026-08-06）
+## 25. Architecture Recovery R0--R4 后续状态（2026-08-06）
 
 独立 R0 已在不改写 Task 9C 的前提下完成三链路 bounded-diagnostic 设计：
 
@@ -717,9 +717,11 @@ artifact、strict validator、crash-only seal 与 zero-provider CLI。所有 dur
 验证；正式 approved tag/marker/journal/artifact/recovery claim 均为 0。Focused `39/39`、Agent full
 `1318/1318`、AI full `345/345`、typecheck/lint 与 Task 9C validator/SHA parity 通过。
 
-R0--R3 均为 zero-provider，当前只形成
-`zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`；
-下一步仅 R4 reviewed Mock/static。R5--R7、Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
+R4 随后把 Task 8 production Retriever/FinalResponse node、ledger 与 prompt-only reviewed Mock 接入 R3 runner，
+固定 guards `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`。
+Gate 固定为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential、formal
+evidence 均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`。R0--R4 均为
+zero-provider；下一步仅 R5 fresh admission（未授权、未开始）。R6/R7、Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
 
 - [Architecture Recovery 设计](./phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
 - [Architecture Recovery 实施计划](../plans/phase-6-9-8-retriever-final-response-architecture-recovery.md)
@@ -727,3 +729,4 @@ R0--R3 均为 zero-provider，当前只形成
 - [Architecture Recovery R1 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md)
 - [Architecture Recovery R2 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)
 - [Architecture Recovery R3 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)
+- [Architecture Recovery R4 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)

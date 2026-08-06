@@ -1283,7 +1283,7 @@ Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / quali
 - 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。产品/main 与后续
   阶段仍未完成，Task 10/11 继续阻断。
 
-Architecture Recovery R0--R3 已完成 zero-provider AI 行为边界设计、rewrite TDD、Qwen/FinalResponse
+Architecture Recovery R0--R4 已完成 zero-provider AI 行为边界设计、rewrite TDD、Qwen/FinalResponse
 robustness 与 runner/durability/admission：
 
 - 不反向解释或改写 Task 9C；新 lineage 只服务未来独立恢复评测；
@@ -1311,11 +1311,13 @@ robustness 与 runner/durability/admission：
   crash-only seal 与 run-terminal publication recovery 已在临时 synthetic root 验证；正式 R3 namespace 仍为 0；
 - R0--R3 focused `39/39`、Agent full `1318/1318`、AI full `345/345`、typecheck/lint 通过；external
   Provider/credential/approved tag/formal marker/journal/artifact/recovery claim 均为 0；
-- 当前只形成
-  `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`，
-  下一步仅 R4 zero-provider reviewed Mock/static；R5 Live、产品/main 与后续阶段继续阻断。
+- R4 又把 Task 8 production node/ledger 与 prompt-only reviewed Mock 接入 R3 runner，得到 guards `16/16` zero-call、
+  双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate 固定为
+  `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。Provider、credential、formal evidence
+  均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`；下一步仅 R5 fresh admission
+  （未授权、未开始），R5 Live、产品/main 与后续阶段继续阻断。
 
-完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R3 证据见
+完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R4 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1335,7 +1337,8 @@ robustness 与 runner/durability/admission：
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
 
 ## 8. Reflexion / Critic 验收要求
 
