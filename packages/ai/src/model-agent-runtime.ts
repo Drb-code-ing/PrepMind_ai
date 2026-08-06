@@ -202,10 +202,9 @@ async function executeLive<T>(
     } catch (error) {
       if (cancellationCode === TIMEOUT_ERROR) return { ok: false, code: 'TIMEOUT' };
       if (cancellationCode === ABORTED_ERROR) return { ok: false, code: 'ABORTED' };
-      const providerFailure = takeModelAgentProviderFailure(
-        error,
-        controller.signal,
-      ) ?? { category: 'unknown' as const };
+      const providerFailure = takeModelAgentProviderFailure(error, controller.signal) ?? {
+        category: 'unknown' as const,
+      };
       return {
         ok: false,
         code: 'PROVIDER_ERROR',
@@ -231,9 +230,10 @@ function classifyExecutionError(): {
   };
 }
 
-function normalizeUsage(
-  usage?: { inputTokens?: number; outputTokens?: number },
-): ModelAgentUsage | null {
+function normalizeUsage(usage?: {
+  inputTokens?: number;
+  outputTokens?: number;
+}): ModelAgentUsage | null {
   const inputTokens = usage?.inputTokens;
   const outputTokens = usage?.outputTokens;
   if (!isVerifiedLiveTokenCount(inputTokens) || !isVerifiedLiveTokenCount(outputTokens)) {
@@ -278,6 +278,7 @@ function validateRuntimeConfig(input: CreateModelAgentRuntimeInput) {
 const MODEL_AGENT_TASKS = new Set<ModelAgentTask>([
   'conversation_summary',
   'router_fallback',
+  'retriever_query_rewrite',
   'knowledge_verification',
   'knowledge_dedup',
   'knowledge_organizer',

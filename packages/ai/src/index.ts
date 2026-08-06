@@ -1,4 +1,27 @@
 export * from './ai-cost-estimator.ts';
+export * from './final-response-stream-provider.ts';
+export * from './qwen-text-embedding-v4-provider.ts';
+export {
+  createPhase698ProviderWireDiagnostics,
+  PHASE_6_9_8_PROVIDER_WIRE_CAPABILITY_VERSION,
+  PHASE_6_9_8_PROVIDER_WIRE_DIAGNOSTICS_VERSION,
+  PHASE_6_9_8_PROVIDER_WIRE_FAILURE_CATEGORIES,
+  PHASE_6_9_8_PROVIDER_WIRE_FAMILIES,
+  PHASE_6_9_8_PROVIDER_WIRE_FIELD_COUNT_BUCKETS,
+  PHASE_6_9_8_PROVIDER_WIRE_STAGES,
+  PHASE_6_9_8_PROVIDER_WIRE_TOP_LEVEL_TYPE_BUCKETS,
+  readPhase698ProviderWireSnapshot,
+} from './phase-6-9-8-provider-wire-diagnostics.ts';
+export type {
+  Phase698ProviderWireCapability,
+  Phase698ProviderWireDiagnostics,
+  Phase698ProviderWireFailureCategory,
+  Phase698ProviderWireFamily,
+  Phase698ProviderWireFieldCountBucket,
+  Phase698ProviderWireSnapshot,
+  Phase698ProviderWireStage,
+  Phase698ProviderWireTopLevelTypeBucket,
+} from './phase-6-9-8-provider-wire-diagnostics.ts';
 export * from './model-agent-budget.ts';
 export * from './model-agent-contract.ts';
 export * from './model-agent-provider.ts';
@@ -41,6 +64,7 @@ export {
   PHASE_6_9_7_V7_WIRE_DIAGNOSTICS_VERSION,
   PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES,
   PHASE_6_9_7_V7_WIRE_STAGES,
+  readPhase697V7WireSnapshot,
 } from './phase-6-9-7-v7-wire-diagnostics.ts';
 export type {
   Phase697V7WireCapability,

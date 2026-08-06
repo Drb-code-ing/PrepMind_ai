@@ -41,9 +41,7 @@ type ChatPreparedContext = {
   safeErrorCode: typeof CONVERSATION_CONTEXT_PREPARE_FAILED | null;
 };
 
-type AccessResult =
-  | { ok: true }
-  | { ok: false; status: number; error: string };
+type AccessResult = { ok: true } | { ok: false; status: number; error: string };
 
 type RunInput = {
   mode: 'mock' | 'live';
@@ -65,6 +63,9 @@ type RunDependencies = {
   prepare?: (input: PrepareInput) => Promise<ChatPreparedContext>;
   timers?: TimerDependencies;
 };
+
+type ContextPreparationInput = Omit<RunInput, 'mode'>;
+type ContextPreparationDependencies = Pick<RunDependencies, 'prepare' | 'timers'>;
 
 type TimerDependencies = {
   setTimeout: (callback: () => void, delayMs: number) => unknown;
@@ -132,11 +133,17 @@ export async function runChatAccessAndContextPreparation(
   input: RunInput,
   dependencies: RunDependencies,
 ): Promise<
-  | { ok: true; context: ChatPreparedContext }
-  | { ok: false; status: number; error: string }
+  { ok: true; context: ChatPreparedContext } | { ok: false; status: number; error: string }
 > {
   const access = await dependencies.validateAccess(input.mode, input.accessToken);
   if (!access.ok) return access;
+  return runChatContextPreparation(input, dependencies);
+}
+
+export async function runChatContextPreparation(
+  input: ContextPreparationInput,
+  dependencies: ContextPreparationDependencies = {},
+): Promise<{ ok: true; context: ChatPreparedContext }> {
   if (!input.accessToken || !input.conversationId) {
     return { ok: true, context: createSkippedContext(input.conversationId) };
   }
@@ -223,9 +230,7 @@ export function buildConversationContextHeaders(input: {
   return {
     'x-prepmind-conversation-summary-status': summaryStatus,
     'x-prepmind-conversation-summary-version': summaryVersion,
-    'x-prepmind-context-dropped-layers': droppedLayers.length
-      ? droppedLayers.join(',')
-      : 'none',
+    'x-prepmind-context-dropped-layers': droppedLayers.length ? droppedLayers.join(',') : 'none',
   };
 }
 
@@ -238,8 +243,7 @@ export function filterKnowledgeForAssembledContext<THit, TVerifier>(
   contextPolicy: AgentContextPolicy,
 ) {
   const ragIncluded =
-    (contextPolicy.layerTokenCounts?.rag ?? 0) > 0 &&
-    !contextPolicy.droppedLayers?.includes('rag');
+    (contextPolicy.layerTokenCounts?.rag ?? 0) > 0 && !contextPolicy.droppedLayers?.includes('rag');
   if (ragIncluded) return knowledge;
   return {
     hits: [] as THit[],
@@ -248,8 +252,6 @@ export function filterKnowledgeForAssembledContext<THit, TVerifier>(
   };
 }
 
-export function logChatRouteFailureSafely(logger: {
-  error: (...values: unknown[]) => void;
-}) {
+export function logChatRouteFailureSafely(logger: { error: (...values: unknown[]) => void }) {
   logger.error('[Chat API] request failed');
 }

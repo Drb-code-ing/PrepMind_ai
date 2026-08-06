@@ -13,7 +13,7 @@ postgresql://prepmind:devpass@127.0.0.1:5433/prepmind
 
 如果你只是想打开 Prisma Studio 看数据，推荐在项目根目录运行：
 
-```powershell
+```PowerShell
 bun run db:studio
 ```
 
@@ -287,7 +287,7 @@ bun --filter @repo/server smoke:operator-audit-export
 
 两个 token 应来自本轮专用临时账号：先通过 `/auth/register` 创建 ADMIN 候选和 STUDENT，再按本文
 “本地管理员账号准备”只提升候选账号，重新登录以取得带 ADMIN role 的新 access token。不要复用
-长期真实账号；验收结束后删除这两个测试账号及其 refresh token。若 KEEP_DATA=true，先按终端输出的
+长期真实账号；验收结束后删除这两个测试账号及其 refresh token。若 KEEP\_DATA=true，先按终端输出的
 安全 export id 检查，再通过 Prisma/数据库按 `clientRequestId + reason + export id` 精确删除该轮 facts，
 严禁按时间范围或整个 prefix 批量清空共享环境。
 
@@ -301,7 +301,7 @@ export=<id> records=<count> requestAudit=1 downloadAudit=1 expired=true objectDe
 脚本会验证 STUDENT list/create/download 均为 403、ADMIN 申请到 READY、ZIP 头和响应头、
 `records.csv`/`manifest.json`、CSV/ZIP SHA-256、申请/下载审计、到期 410 与 MinIO 删除；默认
 `finally` 精确清理本次 export/audit/outbox/SYSTEM job、Bull jobs 和对象。ADMIN/STUDENT 测试账号
-由验收人员预先准备，不属于脚本 cleanup，验收结束后要另行删除。只有排障时才把 KEEP_DATA 设为
+由验收人员预先准备，不属于脚本 cleanup，验收结束后要另行删除。只有排障时才把 KEEP\_DATA 设为
 true，并在检查后人工清理。token、ZIP 内容、object key、payload 和 metadata 都不应写进日志或文档。
 
 ### 本机前端和 Docker 前端怎么选
@@ -763,7 +763,7 @@ bun run db:generate
 
 当前 `db:generate` 会自动运行 `packages/database/scripts/repair-prisma-client.mjs`，修复 Bun workspace 下 Prisma Client 生成路径和运行路径不一致的问题。
 
-### e2e 提示 DATABASE_URL / JWT_SECRET undefined
+### e2e 提示 DATABASE\_URL / JWT\_SECRET undefined
 
 检查：
 
@@ -1573,11 +1573,145 @@ Trace/清理，并补齐精确“这一步”Tutor 路由回归。全部 Agent/r
 - SR7 main/default-off 验收已完成：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace；精确 Tutor
   step-check 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Trace 为 Mock、成本
   0；两个合成账号、tracked Outbox 与浏览器业务数据 residue=0；
-- Phase 6.9.7 已完成。当前唯一下一任务是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化与通信
-  contract；Phase 6.10/8/9 与博客收尾继续阻断。
+- Phase 6.9.7 已完成。Phase 6.9.8 Task 0--9B 工程地基也已完成；Task 8 只形成
+  `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`。固定 48-case 的 guard、rewrite、
+  FinalResponse 均 `16/16`，Provider/credential/Qwen 与正式 marker/journal/evidence/recovery 均为 0；两个模型 gate
+  仍 default-off，同步流不创建 BackgroundJob/Outbox。Task 7 数据库 E2E 的 Redis/PostgreSQL
+  `environment_blocked` 历史不由 Task 8 倒写为通过。Task 9A 只冻结 Qwen 北京区 official
+  price/endpoint/usage 与 strict direct transport。Task 9B 又固定 16 guard + 64-call runner、Qwen/DeepSeek 各 32
+  次独立 accounting、source admission、durability/validator/CLI；Reviewed Mock gate 仍为
+  `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence 当时全为
+  0。唯一 Task 9C run `28b5f92f...` 随后已正常 durable seal：guard `16/16`，Provider `5/64`，Qwen
+  `3/3/3/3`、DeepSeek `2/2/1/1`；第二条 DeepSeek rewrite 在 dispatch 后以
+  `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次 not-started。最终 `task9_quality_gate_failed /
+qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑；产品/main、
+  Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。
+- Phase 6.9.8 Architecture Recovery R0--R4 已完成 zero-provider 设计、diagnostic robustness、runner/durability/
+  admission：新 lineage 同时覆盖 rewrite、Qwen
+  retrieval 与 FinalResponse stream，分离 `providerWire/runnerWire`，diagnostic 禁止 raw/unknown-key/raw-hash；R1
+  只从第一方 V7 terminal wire snapshot 推导 rewrite Provider boundary。R2 新增 Qwen/FinalResponse 两个第一方
+  wire family，覆盖 embedding/stream/terminal/usage；首个畸形 stream event 固定为
+  `response_observed + stream_event_invalid`。R3 再固定 16-guard/64-call runner、模块私有 single-use observation、
+  双 wire accounting、source admission、fsynced journal、hard-link artifact、strict validator 与 crash-only recovery；
+  forged/reused/active/cross-call/cross-family capability 均 fail-closed。R4 reviewed Mock/static 已完成：guards
+  `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`，gate 固定
+  `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R0--R4 不新增环境变量、gate、credential
+  mapping、Docker profile 或正式 evidence；当前只解锁 R5 fresh admission（未授权、未开始）。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
+
+### Phase 6.9.8 Task 0--9C 运行边界
+
+Task 5/6 已把 Retriever query rewrite 与 FinalResponse 的三项变量分别加入 tracked safe example 与 Docker
+Compose `web` allowlist；默认仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。不要开启 gate、
+复制通用 key，或把这些变量投影给其它服务：
+
+```dotenv
+RETRIEVER_QUERY_REWRITE_MODEL_ENABLED=false
+RETRIEVER_QUERY_REWRITE_MODEL_TIMEOUT_MS=4000
+RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY=
+FINAL_RESPONSE_AGENT_MODEL_ENABLED=false
+FINAL_RESPONSE_AGENT_MODEL_TIMEOUT_MS=20000
+FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY=
+```
+
+两组变量只允许显式投影给 Next `web` server runtime，不能注入 Nest `server`、`worker`、`admin` 或浏览器
+client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、Review/Planner 或 Knowledge credential
+替代。Task 7 已把两组 runtime bundle 接入 `/api/chat`，但 tracked default 仍为 false；普通本地启动不会执行
+query rewrite 或新的真实 FinalResponse Provider stream，只走 gate-off/Mock/安全降级路径。Task 8 的静态 runner
+只使用 prompt-only in-process Mock 与固定 fake search，不读取模型 credential、调用 Qwen/DeepSeek、启动 Docker/
+API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不读取 env，所有测试只使用 injected fetch；
+它没有接入产品 RAG service，也没有创建正式 evidence。Task 9B 只用 synthetic capability/transport 和临时目录
+验证 runner/durability。Task 9C production CLI 随后已执行唯一一次并以失败 gate 正常发布 artifact；该运行只在
+受限进程内映射 3 项评测 credential，没有打开产品 query-rewrite/FinalResponse/Chat gate。现有 approved tag、
+marker、journal 与 artifact 必须保留；禁止再次设置 9C 授权变量、运行 production CLI、seal/recovery、curl、单
+case 或产品 API Provider 探测。
+
+Architecture Recovery R0--R4 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。R4 已使用
+synthetic/injected transport 完成；在 R5 fresh admission 与用户精确授权前，不存在合法的 Recovery Live 命令。
+
+Task 8 的安全静态回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-task8.test.ts
+bun --filter @repo/agent eval:phase-6-9-8:static
+```
+
+Task 9A 的安全 provider/export 回归命令：
+
+```powershell
+bun test packages/ai/tests/qwen-text-embedding-v4-provider.test.ts packages/ai/tests/model-agent-exports.test.ts
+```
+
+Task 9B 的安全 zero-provider focused 回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-runner.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-durability.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-lineage-cli.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-live-config.test.ts
+```
+
+Architecture Recovery R1 的安全 zero-provider 回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-diagnostic.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-rewrite.test.ts packages/ai/tests/model-agent-exports.test.ts
+bun test packages/ai/tests/first-party-deepseek-v4-pro-direct.test.ts packages/ai/tests/model-agent-exports.test.ts
+bun --filter @repo/agent eval:phase-6-9-8:task9:validate
+```
+
+前两条只运行 injected synthetic adapter/contract tests；第三条只读重算已封存 Task 9C bundle。三条命令都不读取
+credential、不访问 Provider，也不会创建 marker/journal/artifact。不要把 R1 test 的 `applied` 当成 Live、产品或
+质量门通过。
+
+Architecture Recovery R0--R4 的安全 zero-provider 回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-*.test.ts
+bun --filter @repo/agent test
+bun --filter @repo/ai test
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+bun --filter @repo/agent eval:phase-6-9-8:task9:validate
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock.test.ts
+bun --cwd=packages/agent run eval:phase-6-9-8:architecture-recovery:r4:mock
+```
+
+前五条只运行源码/临时 synthetic runner 与 durability tests；Task 9C validate 只读验证旧 sealed bundle；R4 两条命令
+只运行 reviewed Mock/static，不读取 credential、不访问 Provider、不创建正式 evidence。不要运行
+`eval:phase-6-9-8:architecture-recovery:cli` 或 `eval:phase-6-9-8:architecture-recovery:seal`：R3 没有正式 evidence，
+这两个 zero-provider maintenance 入口也不是日常测试命令，更不是 R4/Live 授权。
+
+`eval:phase-6-9-8:task9:cli` 的唯一 Task 9C 名额已消费，不得再次执行。当前 artifact 已由正常 runtime 到达
+`evidence_published`，因此 `eval:phase-6-9-8:task9:seal` 也不得执行；它不是普通检查或失败重试命令。只读验证
+现有 bundle 只能使用 `eval:phase-6-9-8:task9:validate`。
+
+CLI 只输出固定 schema/authority/SHA、计数、指标和 synthetic cost；不输出 prompt、回答、owner、chunk、credential、
+URL 或 raw error。`mock_quality_not_evidence` 不是运行真实模型的开关，也不能作为 Task 9 authorization。
+
+Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` API。若要在未来 Task 10 产品验收时运行
+数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
+补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
+
+设计、Task 0--9C 与 Architecture Recovery R0--R4 验收见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

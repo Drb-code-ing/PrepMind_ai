@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type { AgentExecutionContextV1 } from '@repo/agent/realtime-chat';
 import type { ModelAgentRunBudget, ModelAgentRuntime } from '@repo/ai';
 
 import { buildChatAgentExecution, type ChatAgentExecution } from './chat-agent-runtime.ts';
@@ -26,19 +27,21 @@ export async function orchestrateChatModelAgents(input: {
   createTutorBundle?: () => TutorModelRuntimeBundle;
   messages: ChatContextMessage[];
   activeContext: ActiveStudyContext | null;
-  runId: string;
-  userId: string;
-  signal: AbortSignal;
+  executionContext: AgentExecutionContextV1;
 }): Promise<ChatModelAgentOrchestrationResult> {
+  const userId =
+    input.executionContext.principal.kind === 'authenticated'
+      ? input.executionContext.principal.ownerId
+      : `anonymous_${input.executionContext.requestId}`;
   const budget = input.bundle.createBudget();
   const tutorBudget = input.tutorBundle?.createBudget();
   const tutorRuntimeAuthority = input.tutorBundle?.config.runtimeAuthority;
   const agentExecution = await buildChatAgentExecution({
     messages: input.messages,
     activeContext: input.activeContext,
-    runId: input.runId,
-    userId: input.userId,
-    signal: input.signal,
+    runId: input.executionContext.runId,
+    userId,
+    signal: input.executionContext.signal,
     model: {
       enabled: input.bundle.routerEnabled,
       runtime: input.bundle.routerRuntime,
@@ -81,8 +84,8 @@ export async function orchestrateChatModelAgents(input: {
       enabled: input.bundle.verifierEnabled,
       runtime: input.bundle.verifierRuntime,
       budget: agentExecution.budget,
-      runId: input.runId,
-      signal: input.signal,
+      runId: input.executionContext.runId,
+      signal: input.executionContext.signal,
     },
   };
 }

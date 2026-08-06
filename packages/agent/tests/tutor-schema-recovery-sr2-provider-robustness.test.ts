@@ -36,7 +36,12 @@ describe('Phase 6.9.7 Tutor Schema Recovery SR2 provider robustness', () => {
     } as const;
     for (const [identity, path] of Object.entries(files)) {
       const bytes = await readFile(fileURLToPath(new URL(path, import.meta.url)));
-      expect(`sha256:${createHash('sha256').update(bytes).digest('hex')}`, identity).toBe(
+      // Frozen identities represent LF Git blobs; ignore only checkout-level CRLF conversion.
+      const canonicalGitText = bytes.toString('utf8').replace(/\r\n/gu, '\n');
+      expect(
+        `sha256:${createHash('sha256').update(canonicalGitText, 'utf8').digest('hex')}`,
+        identity,
+      ).toBe(
         PHASE_6_9_7_TUTOR_SCHEMA_RECOVERY_SR2_SOURCE_IDENTITIES[
           identity as keyof typeof PHASE_6_9_7_TUTOR_SCHEMA_RECOVERY_SR2_SOURCE_IDENTITIES
         ],

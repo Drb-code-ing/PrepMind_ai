@@ -3,6 +3,7 @@ import type { z } from 'zod';
 export type ModelAgentTask =
   | 'conversation_summary'
   | 'router_fallback'
+  | 'retriever_query_rewrite'
   | 'knowledge_verification'
   | 'knowledge_dedup'
   | 'knowledge_organizer'
@@ -37,8 +38,7 @@ export const MODEL_AGENT_STRUCTURED_OUTPUT_STAGES = Object.freeze([
   'provider_object_missing',
 ] as const);
 
-export type ModelAgentStructuredOutputStage =
-  (typeof MODEL_AGENT_STRUCTURED_OUTPUT_STAGES)[number];
+export type ModelAgentStructuredOutputStage = (typeof MODEL_AGENT_STRUCTURED_OUTPUT_STAGES)[number];
 
 export type ModelAgentRunBudget = {
   maxCalls: number;
