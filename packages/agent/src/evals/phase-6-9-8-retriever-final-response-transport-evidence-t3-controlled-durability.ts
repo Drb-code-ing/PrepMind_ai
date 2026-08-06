@@ -26,11 +26,14 @@ import {
 import { PHASE_6_9_8_TRANSPORT_EVIDENCE_LINEAGE } from './phase-6-9-8-retriever-final-response-transport-evidence-contract.ts';
 import {
   PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_AUTHORITY,
+  PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_GATE_FAILED,
+  PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_VERSION,
   PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_REPORT_SCHEMA,
+  PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_SLOT_SCHEMA,
   type Phase698TransportEvidenceT3ControlledReport,
   type Phase698TransportEvidenceT3ControlledSlot,
-  PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_SLOT_SCHEMA,
 } from './phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-live.ts';
+import { PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_MAX_COST_CNY } from './phase-6-9-8-retriever-final-response-transport-evidence-t3-admission.ts';
 
 export const PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_DURABILITY_VERSION =
   'phase-6.9.8-retriever-final-response-transport-evidence-t3-controlled-durability-v1' as const;
@@ -228,6 +231,24 @@ export type Phase698TransportEvidenceT3ControlledReservation = Readonly<{
   ): Promise<Readonly<{ evidenceSha256: string }>>;
 }>;
 
+export type Phase698TransportEvidenceT3ControlledSealResult =
+  | Readonly<{
+      ok: true;
+      runId: string;
+      disposition: 'crash_only_sealed';
+      artifactSha256: string;
+      gate: typeof PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_GATE_FAILED;
+    }>
+  | Readonly<{
+      ok: false;
+      code:
+        | 'marker_missing_or_invalid'
+        | 'process_active'
+        | 'journal_invalid'
+        | 'already_published'
+        | 'publication_invalid';
+    }>;
+
 type State = {
   root: string;
   runId: string;
@@ -399,6 +420,77 @@ export async function validatePhase698TransportEvidenceT3ControlledBundle(input:
   }
 }
 
+/**
+ * Crash-only seal for a reservation that stopped before the first slot became
+ * terminal (for example, a late credential gate failure). It never invokes a
+ * Provider and never reconstructs a successful result.
+ */
+export async function sealPhase698TransportEvidenceT3ControlledInterruptedAttempt(input: {
+  root: string;
+  isProcessAlive?: (processId: number) => boolean;
+}): Promise<Phase698TransportEvidenceT3ControlledSealResult> {
+  const alive = input.isProcessAlive ?? isProcessAlive;
+  let root: string;
+  let marker: Marker;
+  let markerBytes: string;
+  try {
+    root = await requireRoot(input.root);
+    const markerRelative = await findMarkerRelativePath(root);
+    markerBytes = await readRegular(resolveContained(root, markerRelative));
+    marker = MARKER.parse(JSON.parse(markerBytes));
+    if (markerBytes !== `${canonical(marker)}\n`) throw new Error('marker_canonical');
+  } catch {
+    return Object.freeze({ ok: false, code: 'marker_missing_or_invalid' });
+  }
+  if (alive(marker.creatorPid)) return Object.freeze({ ok: false, code: 'process_active' });
+  try {
+    const records = await readJournal(root, marker);
+    if (records.some((record) => record.event === 'evidence_published')) {
+      return Object.freeze({ ok: false, code: 'already_published' });
+    }
+    if (records.length !== 1 || records[0]?.event !== 'attempt_reserved') {
+      return Object.freeze({ ok: false, code: 'journal_invalid' });
+    }
+    const state: State = {
+      root,
+      runId: marker.runId,
+      marker,
+      markerSha256: sha256(markerBytes),
+      journalPath: resolveContained(root, journalPathFor(marker.runId)),
+      records: [...records],
+      slots: new Map(),
+      report: null,
+      queue: Promise.resolve(),
+    };
+    const report = buildCredentialGateFailureReport();
+    for (const slot of report.slots) {
+      await appendRecord(state, { event: 'slot_terminal', slot });
+      state.slots.set(slot.slot, slot);
+    }
+    await writeReportSnapshot(state.root, state.runId, report);
+    state.report = report;
+    await appendRecord(state, {
+      event: 'run_terminal',
+      reportSha256: sha256(canonical(report)),
+      slotCount: 3,
+    });
+    const published = await publishStateArtifact(state, report);
+    const validation = await validatePhase698TransportEvidenceT3ControlledBundle({ root });
+    if (!validation.ok || validation.runId !== marker.runId) {
+      return Object.freeze({ ok: false, code: 'publication_invalid' });
+    }
+    return Object.freeze({
+      ok: true,
+      runId: marker.runId,
+      disposition: 'crash_only_sealed' as const,
+      artifactSha256: published.evidenceSha256,
+      gate: PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_GATE_FAILED,
+    });
+  } catch {
+    return Object.freeze({ ok: false, code: 'journal_invalid' });
+  }
+}
+
 function reservationFromState(state: State): Phase698TransportEvidenceT3ControlledReservation {
   return Object.freeze({
     runId: state.runId,
@@ -434,6 +526,49 @@ function reservationFromState(state: State): Phase698TransportEvidenceT3Controll
       }),
     publishArtifact: (report) =>
       enqueueResult(state, async () => publishStateArtifact(state, report)),
+  });
+}
+
+function buildCredentialGateFailureReport(): Phase698TransportEvidenceT3ControlledReport {
+  const slots = ['rewrite', 'qwen', 'final_response'].map((slot, index) =>
+    PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_SLOT_SCHEMA.parse({
+      slot,
+      provider: slot === 'qwen' ? 'qwen' : 'deepseek',
+      sequence: index + 1,
+      disposition: 'not_started_quality_breaker',
+      failureCode: 'configuration_invalid',
+      runnerWire: { reservations: 0, dispatches: 0, harnessReturns: 0, verifiedResults: 0 },
+      providerWire: { executions: 0, dispatches: 0, responses: 0, verifiedUsage: 0 },
+      providerCalls: 0,
+      credentialReads: 0,
+      usage: null,
+      verifiedCostCny: null,
+      durationMs: null,
+      diagnostic: null,
+      rawDataRetained: false,
+    }),
+  );
+  return PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_REPORT_SCHEMA.parse({
+    version: PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_VERSION,
+    lineage: PHASE_6_9_8_TRANSPORT_EVIDENCE_LINEAGE,
+    authority: PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_AUTHORITY,
+    qualityAuthority: 'none',
+    gate: PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_CONTROLLED_GATE_FAILED,
+    passed: false,
+    slotCount: 3,
+    startedSlots: 0,
+    completedSlots: 0,
+    notStartedQualityBreaker: 3,
+    notStartedExternalAbort: 0,
+    providerCalls: 0,
+    credentialReads: 0,
+    verifiedUsageSlots: 0,
+    verifiedCostCny: null,
+    budgetCnyMax: PHASE_6_9_8_TRANSPORT_EVIDENCE_T3_MAX_COST_CNY,
+    breaker: { open: true, reason: 'configuration', openedAtSequence: null },
+    slotOrder: ['rewrite', 'qwen', 'final_response'],
+    slots,
+    rawDataRetained: false,
   });
 }
 
@@ -752,4 +887,14 @@ function isCode(error: unknown, code: string) {
   return (
     typeof error === 'object' && error !== null && (error as NodeJS.ErrnoException).code === code
   );
+}
+
+function isProcessAlive(processId: number) {
+  if (!Number.isSafeInteger(processId) || processId <= 0) return false;
+  try {
+    process.kill(processId, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
