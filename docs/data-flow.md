@@ -7,6 +7,9 @@
 > `controlled_live_transport_evidence_t3 / qualityAuthority=none`，journal `7`、validator `ok=true`。该流不进入 `/api/chat`、
 > BackgroundJob、Outbox、Docker、browser 或 main；T3 名额不得重跑。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+> T3-C 又以 zero-provider 静态 guard 固定 package cwd 到根 `.env` 的显式路径和 seal CLI 的无 credential/Provider port 边界；
+> 不读取实际 `.env`、不调用 Provider、不创建 evidence。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
 
 > R5 sealed result（2026-08-06）：唯一 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已从 canonical source admission
 > 进入真实 DeepSeek/Qwen adapter；16 guards 通过，首个 rewrite pair 的三次 Provider call 成功，第二个 pair 的

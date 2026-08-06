@@ -1,5 +1,16 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Evidence Recovery T3-C configuration composition zero-provider guard 已完成：
+>
+> 新增 `packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts`，静态
+> 验证 controlled package script 从 package cwd 使用 `bun --env-file=../../.env` 指向仓库根 `.env`，并验证 crash-only
+> seal CLI 不携带 credential、`process.env`、fetch 或 Provider port。focused `2/2`（10 assertions）、typecheck/lint/
+> `git diff --check` 通过；不读取真实 `.env`、不调用 Provider、不创建正式 evidence。authority=
+> `zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。
+>
+> 该 guard 只防止 T3 配置入口回归，不恢复已消费的一次性 T3 名额，也不解锁产品、main 或后续阶段。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
+
 > 2026-08-07 — Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按用户一次性授权执行并 durable seal：
 >
 > 唯一 run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 source commit

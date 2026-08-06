@@ -12,6 +12,9 @@
 > `controlled_live_transport_evidence_t3 / qualityAuthority=none`。这是 CLI/configuration 失败，不归因 Provider 根因，
 > 不解锁产品 Docker/API/browser 或 main。完整记录见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+> 随后 T3-C zero-provider configuration guard 已完成，focused `2/2`；它只防止 package/root `.env` 入口回归，不读取真实
+> `.env`、不调用 Provider、不恢复 T3 名额。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
 
 > R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但
 > `architecture_recovery_quality_gate_failed / qualityAuthority=none`。guards `16/16` zero-call；第二个 rewrite pair
@@ -34,6 +37,7 @@
 > evidence，authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T2/T3-A 不解锁 R6/R7/main，也不是
 > R5 retry；T3 controlled 已消费一次性名额并在 credential configuration gate 失败封存，禁止重跑或追加探测。补充提交
 > `3d903055` 已将受控 package script 绑定仓库根 `.env`，但不改变本次终态。
+> T3-C 又以静态 guard 固定该路径与 seal CLI 的无 credential/Provider port 边界，authority=`zero_provider_transport_evidence_t3_configuration_guard`。
 > 设计与计划见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
@@ -71,7 +75,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Recovery T0--T3 完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Recovery T0--T3-C 完成 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
@@ -652,7 +656,8 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md` 与
-  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`）
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）

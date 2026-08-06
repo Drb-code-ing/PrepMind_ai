@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 已按一次性授权执行并以配置失败 durable seal；没有 Provider 请求，qualityAuthority 仍为 `none`
+> 当前状态：T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已按一次性授权执行并以配置失败 durable seal；没有新增 Provider 请求，qualityAuthority 仍为 `none`
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`controlled_live_transport_evidence_t3 / qualityAuthority=none`（唯一 T3 已失败封存）
+> 当前 authority：`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`（T3 失败已不可变封存）
 
 ## 1. 为什么另立 lineage
 
@@ -82,6 +82,15 @@ validator `ok=true`，journal `7` 条，report logical SHA=`8d529bb7...4875d1`�
 根 `.env` 加载与独立 crash-only seal CLI（提交 `3d903055`），但不得用于重跑本 run。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
+### T3-C：CLI configuration composition guard（已完成，zero-provider）
+
+新增 `phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts`，静态验证 controlled package
+script 从 package cwd 显式解析仓库根 `.env`，并验证 crash-only seal CLI 不携带 credential、fetch 或 Provider port。该
+guard 不读取真实 `.env` 内容、不启动 controlled script、不创建正式 evidence；focused `2/2`（10 assertions）、
+typecheck/lint/`git diff --check` 通过。authority 固定为
+`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
+
 ## 3. 文件与权限边界
 
 | 责任                         | 允许                                                            | 禁止                                                  |
@@ -111,6 +120,7 @@ bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
 受控脚本现在显式从 `@repo/agent` 包目录加载仓库根 `.env`：
@@ -129,8 +139,9 @@ bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:
 - T2：robustness/static checkpoint 单独提交并推送当前功能分支（已完成）；
 - T3-A：zero-provider admission/runner、focused tests 与本验收记录单独提交并推送当前功能分支（已完成）；
 - T3-B：唯一 controlled canary、crash-only seal、失败验收记录与环境加载修复分别提交并推送当前功能分支；
+- T3-C：configuration composition zero-provider guard 与验收记录单独提交并推送当前功能分支；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
-- T1/T2/T3-A/T3-B 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
+- T1/T2/T3-A/T3-B/T3-C 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
   acceptance 与本设计/计划；
 - 不合并 main，不移动 approved tag，除非后续阶段明确形成新的质量 authority 并完成分支/产品/main 验收。
 

@@ -17,6 +17,10 @@
 > [`T3 controlled canary 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)
 > 与 [`Transport Evidence Recovery 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
 
+> T3-C configuration guard 已完成：静态验证 package cwd 到根 `.env` 的显式路径与 crash-only seal CLI 的无 credential/Provider
+> 端口，focused `2/2`，不读取真实 `.env`、不调用 Provider、不恢复 T3 名额。详见
+> [`T3-C zero-provider 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md)。
+
 > Live 前 checkpoint（已由上述 sealed run 收口）：R5 已完成实现、独立复审和 zero-provider 回归。固定分母为
 > `16 guards + 16 rewrite pairs（DeepSeek rewrite + Qwen original/candidate）+ 16 FinalResponse = 64 slots`；
 > focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过。此刻 Provider、credential、
@@ -126,6 +130,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 R3  | 固定 64-call runner、三模块 observation、双 wire、source admission、journal/artifact/validator      | 已完成              |
 | Phase 6.9.8 R4  | zero-provider reviewed Mock/static、64 双 wire、64 applied diagnostic、strict scorer                | 已完成（Mock-only） |
 | Phase 6.9.8 T3  | DeepSeek rewrite → Qwen embedding → DeepSeek FinalResponse transport-only controlled canary              | 失败封存（0 Provider call） |
+| Phase 6.9.8 T3-C | package/root `.env` configuration composition 与 crash-only seal 静态 guard                                     | 已完成（zero-provider） |
 | Phase 7         | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成    |
 | Phase 7.8.5     | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成              |
 | Phase 7.23      | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成              |
@@ -458,6 +463,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Evidence Recovery T1 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md)
 - [Phase 6.9.8 Transport Evidence Recovery T2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md)
 - [Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 失败封存验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)
+- [Phase 6.9.8 Transport Evidence Recovery T3-C configuration guard 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

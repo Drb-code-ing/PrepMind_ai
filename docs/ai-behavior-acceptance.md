@@ -19,6 +19,9 @@ T3 一次性名额已消费，禁止重跑、追加 Provider 探测、curl、单
 `3d903055` 已让 package controlled script 显式加载仓库根 `.env`，但只用于未来另立 lineage，不能改变本次 T3 终态；
 继续使用 Mock/zero-provider 回归。
 
+T3-C configuration guard 已以 zero-provider 静态测试固定该 env 入口与 crash-only seal CLI 边界（`2/2`），不形成任何
+真实模型、语义或产品 authority。
+
 ## Phase 6.9.5 Review / Planner 当前边界
 
 Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。

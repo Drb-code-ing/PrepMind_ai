@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T0/T1/T2 与 T3-A zero-provider admission/runner 已完成；T3-B controlled canary 已执行一次并以配置失败 durable seal
+> 状态：T0/T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已执行一次并以配置失败 durable seal
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
-> Authority：`controlled_live_transport_evidence_t3 / qualityAuthority=none`（T3 失败封存；不构成语义质量 authority）
+> Authority：`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`（T3 失败封存；不构成语义质量 authority）
 
 ## 1. 决策摘要
 
@@ -195,6 +195,15 @@ backfill、seal/recovery、curl、单 case 或追加 Provider 探测。随后提
 T3 形成的 authority 仅为 `controlled_live_transport_evidence_t3`，`qualityAuthority=none`；不解锁产品、Docker/API/
 browser、Trace、SLA、main 或 Phase 6.9.8 后续任务。
 
+## 8.1 T3-C configuration composition guard（zero-provider）
+
+T3 失败后新增独立静态 guard，验证 `@repo/agent` controlled package script 的
+`bun --env-file=../../.env` 从 package cwd 稳定解析仓库根 `.env`，并验证 crash-only seal CLI 不携带 credential、
+`process.env`、fetch 或 Provider port。该 guard 只读取 tracked package/source 文本，不读取实际 `.env`，不执行 controlled
+script，不创建 formal evidence。focused `2/2`（10 assertions）、typecheck/lint/`git diff --check` 通过；authority 固定为
+`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。它只防止配置入口回归，不恢复 T3
+一次性名额，也不形成 Provider、semantic、产品或 main authority。
+
 ## 9. 实施顺序
 
 1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件（已完成）；
@@ -204,8 +213,9 @@ browser、Trace、SLA、main 或 Phase 6.9.8 后续任务。
 4. T3-A：zero-provider source admission、三槽位 runner 与 CLI gate（已完成，
    `transport_evidence_t3_admission_ready`）；
 5. T3-B（已执行并封存）：最多 3-slot transport canary 在 credential configuration gate 失败；单次 durable seal，不能直接进入产品。
+6. T3-C（已完成）：zero-provider configuration composition guard，防止 package/root `.env` 入口回归。
 
-每个任务单独提交并推送；T1/T2/T3-A/T3-B 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
+每个任务单独提交并推送；T1/T2/T3-A/T3-B/T3-C 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
 data-flow、AI behavior acceptance 和本设计/计划。T3-B 只在本次精确授权后 late-bind credential；本次名额已消费。
 
 ## 10. 通过定义与下一决策

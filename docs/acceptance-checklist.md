@@ -50,6 +50,8 @@ validator `ok=true`、authority=`controlled_live_transport_evidence_t3`、`quali
 专门验收记录。该终态只能说明 CLI/configuration 边界失败，不能归因 DNS/TLS/代理/账号/余额/权限/服务端，也不证明
 真实 Agent 语义或产品可用性。T3 一次性名额已消费，禁止重跑、追加 Provider 探测、seal/recovery、curl 或单 case。
 提交 `3d903055` 已让 package controlled script 显式加载仓库根 `.env`，但不得用于重跑本次 T3。
+T3-C configuration guard 已静态验证该路径与 crash-only seal CLI 的无 credential/Provider port 边界，focused `2/2`；
+它不读取真实 `.env`、不调用 Provider、不创建正式 evidence。
 设计与计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
@@ -59,6 +61,7 @@ validator `ok=true`、authority=`controlled_live_transport_evidence_t3`、`quali
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`
 
 T0/T1/T2/T3-A 可重算的安全命令（不读 credential、不访问 Provider、不创建正式 evidence）：
 
@@ -70,6 +73,7 @@ bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）

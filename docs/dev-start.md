@@ -11,6 +11,7 @@ T3-A 的 zero-provider admission/runner 已完成；唯一 T3 controlled canary
 Provider/credential=`0/0`、journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。
 失败属于 CLI/configuration 边界，不能归因 Provider 根因；一次性名额已消费，不得重跑或追加探测。
 详细证据见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+T3-C configuration guard 已验证 package/root `.env` 路径与 seal CLI 的静态边界，不读取真实 `.env`。
 
 T3-A 本身只运行 zero-provider admission/runner，不读取 `.env` credential、不调用 DeepSeek/Qwen、不启动 Docker/API/browser，
 也不创建正式 marker/journal/artifact。它验证 source parity、T2 gate、fresh proxy nonce、三槽位顺序、预算和首错
@@ -21,6 +22,7 @@ bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evi
 bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
 受控 package script 已固定从包目录显式加载仓库根 `.env`：

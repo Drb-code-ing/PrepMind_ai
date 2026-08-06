@@ -3,7 +3,8 @@
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
 > 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
-> transport canary 未授权；R6/R7、产品/main 与后续阶段阻断
+> controlled canary 已按一次性授权执行并以配置失败 durable seal，T3-C configuration guard 已完成；R6/R7、产品/main
+> 与后续阶段阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -522,7 +523,7 @@ R4 随后把 Task 8 production node/ledger reviewed Mock 路径接入 R3 runner�
 [Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；其后
 唯一 R5 run `34eb99be...fc68` 已失败封存且不得重跑，Task 10/11 与产品/main 继续阻断。
 
-## Transport Evidence Recovery T0--T3-A（zero-provider 已完成，T3-B 未授权）
+## Transport Evidence Recovery T0--T3-C（T3-B 失败封存，T3-C zero-provider guard 已完成）
 
 T0/T1 冻结并实现独立 no-raw diagnostic contract 后，T2 完成 `30` zero-provider matrix、`15` classifier fixture
 和 synthetic durability checkpoint。Focused `11/11`（39 assertions）、Agent `1348/1348`（23746 expect()，168 files）、
@@ -542,8 +543,20 @@ Agent `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git
 global fetch、formal evidence、业务/Trace 写入均为 0。完整证据见
 [T3-A 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md)。
 
-T3-A 不形成 Provider/semantic/product authority；T3-B 仍需 fresh data-boundary acceptance 与 exact authorization，
-不能自动开始。
+T3-A 不形成 Provider/semantic/product authority。随后在 fresh data-boundary acceptance 与 exact authorization 下，
+唯一 T3-B controlled canary run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 late-bound credential gate 以
+`configuration_invalid` 失败并 durable seal：planned/started/completed=`3/0/0`、三个 slot 均为
+`not_started_quality_breaker`、`providerCalls=0`、`credentialReads=0`、journal `7`、validator `ok=true`。该结果只能
+证明配置门在 Provider 调用前 fail-closed，不能归因 DNS/TLS/proxy/账号/余额/权限/服务端，也不形成 Provider health、
+semantic、product 或 main authority；完整记录见
+[T3-B controlled failure](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md)。
+
+T3-C 随后完成 zero-provider configuration composition guard：静态锁定 controlled package 对仓库根 `.env` 的显式
+加载路径，并确认 crash-only seal CLI 不携带 credential/fetch/Provider port。Focused `2/2`（10 assertions）、
+typecheck/lint/`git diff --check` 通过；authority 固定为
+`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。该 guard 不读取真实 `.env`、
+不启动 controlled CLI、不创建正式 evidence；完整记录见
+[T3-C configuration guard](../../acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md)。
 
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
@@ -580,17 +593,19 @@ Qwen/FinalResponse robustness、runner/durability/admission 与 reviewed Mock/st
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。Transport Evidence Recovery T0/T1/T2/T3-A 已完成
-30-case/15-classifier zero-provider、synthetic durability 与 admission/runner contract，但 T3-B 未授权。当前仍没有：
+30-case/15-classifier zero-provider、synthetic durability 与 admission/runner contract；T3-B controlled canary 已失败
+封存，T3-C configuration guard 已完成。当前仍没有：
 
 - Task 9C 已执行，但没有形成 controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 - R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；R5 只形成 bounded failure/durability
-  evidence；Transport T2/T3-A 只形成 `qualityAuthority=none` 的 zero-provider authority，三者都不形成产品或 main
-  authority。
+  evidence；Transport T2/T3-A/T3-C 只形成 `qualityAuthority=none` 的 zero-provider authority，T3-B 只形成
+  `controlled_live_transport_evidence_t3 / qualityAuthority=none` 的配置失败证据，三者都不形成产品或 main authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
-marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main，以及任何 Task 9C/R5 retry、seal、
-recovery 或 Provider 追加调用。下一步必须先形成新的独立架构决策；不得把重跑 R5 当作推进。
+marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main，以及任何 Task 9C/R5/T3-B retry、
+resume、replay、backfill、seal、recovery 或 Provider 追加调用。T3-C 仅是 zero-provider 配置回归 guard，不构成重新
+授权或重跑 T3-B 的理由。下一步必须先形成新的独立架构决策；不得把重跑 R5/T3-B 当作推进。
