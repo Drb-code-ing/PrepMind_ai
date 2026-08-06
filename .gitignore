@@ -30,6 +30,7 @@ dist/
 .playwright-mcp/
 .logs/
 logs/
+phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-*.json*
 
 # OS
 .DS_Store
