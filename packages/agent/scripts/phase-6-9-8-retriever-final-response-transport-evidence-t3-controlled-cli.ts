@@ -49,7 +49,15 @@ const PRODUCTION_PORTS: Phase698TransportEvidenceT3ControlledCliPorts = Object.f
       { env: snapshotProxyEnv(env), signal },
       { probeLoopbackListener },
     );
-    return Object.freeze({ nonce, ...result });
+    return Object.freeze({
+      nonce,
+      ok: result.ok,
+      code: result.code,
+      mode: result.mode,
+      listener: result.listener,
+      listenerProbeCalls: result.listenerProbeCalls,
+      providerCalls: result.providerCalls,
+    });
   },
   readDataBoundary: readPhase698TransportEvidenceT3DataBoundary,
   readApproval: readPhase698TransportEvidenceT3Approval,
