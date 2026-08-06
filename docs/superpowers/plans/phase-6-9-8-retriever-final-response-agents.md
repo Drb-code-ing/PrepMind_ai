@@ -2,7 +2,7 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 失败封存；Architecture Recovery R0--R4 zero-provider 完成，下一步仅 R5 controlled-Live admission（未授权）
+> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；R5 禁止重跑，R6/R7、产品/main 与后续阶段阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -518,8 +518,8 @@ R4 随后把 Task 8 production node/ledger reviewed Mock 路径接入 R3 runner�
 [R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
 
 完整路线已转入独立
-[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；当前只允许准备
-R5 fresh admission，但仍未授权，Task 10/11 与产品/main 继续阻断。
+[Architecture Recovery 实施计划](./phase-6-9-8-retriever-final-response-architecture-recovery.md)。R4 已完成；其后
+唯一 R5 run `34eb99be...fc68` 已失败封存且不得重跑，Task 10/11 与产品/main 继续阻断。
 
 ## Task 10：分支产品 Docker/API/可见浏览器验收
 
@@ -551,7 +551,8 @@ R5 fresh admission，但仍未授权，Task 10/11 与产品/main 继续阻断。
 ## 当前停止边界
 
 Task 0--8 与 Task 9A/9B 已完成；唯一 Task 9C 已失败封存，Architecture Recovery R0--R4 设计、rewrite TDD、
-Qwen/FinalResponse robustness 与 runner/durability/admission 已完成。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
+Qwen/FinalResponse robustness、runner/durability/admission 与 reviewed Mock/static 已完成；唯一 R5 又以
+`architecture_recovery_quality_gate_failed / qualityAuthority=none` 封存。当前已有 shared contracts、canonical Chat principal/access、正式 Retriever/query rewrite、
 exact-context evidence projector、正式 FinalResponse stream、`/api/chat` composition/terminal Trace，以及独立
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。当前仍没有：
@@ -560,9 +561,10 @@ Provider accounting、source admission 与 durability/validator/CLI。当前仍�
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
-- R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，不形成真实 Provider、产品或 main authority。
+- R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；R5 只形成 bounded failure/durability
+  evidence，二者都不形成产品或 main authority。
 
 不得把 Task 3 fake-search baseline、Task 5/8 reviewed Mock、Task 9A injected transport、Task 9B synthetic runner、旧 Chat Live、Qwen
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
-marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main 和任何 Task 9C Provider 追加调用。
-下一原子任务只允许按独立 Recovery 计划准备 R5 fresh admission；在新数据边界接受与精确授权前不得执行 Provider。
+marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main，以及任何 Task 9C/R5 retry、seal、
+recovery 或 Provider 追加调用。下一步必须先形成新的独立架构决策；不得把重跑 R5 当作推进。

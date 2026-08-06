@@ -1,6 +1,6 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9C 失败封存；Architecture Recovery R0--R4 zero-provider 完成，下一步仅 R5 controlled-Live admission（未授权）
+> 状态：Task 9C 与 Architecture Recovery R5 均已失败封存；R5 禁止重跑，R6/R7、产品/main 与后续阶段阻断
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
@@ -721,7 +721,10 @@ R4 随后把 Task 8 production Retriever/FinalResponse node、ledger 与 prompt-
 固定 guards `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`。
 Gate 固定为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential、formal
 evidence 均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`。R0--R4 均为
-zero-provider；下一步仅 R5 fresh admission（未授权、未开始）。R6/R7、Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
+zero-provider。其后唯一 R5 run `34eb99be...fc68` 在第二个 rewrite pair 的 DeepSeek
+`provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal；
+external calls `4`，rewrite strict `1/16`、FinalResponse `0/16`，正式 aggregate 为 `null`。R5 禁止重跑，R6/R7、
+Task 10/11 和后续阶段继续阻断。完整设计、实施计划与验收见：
 
 - [Architecture Recovery 设计](./phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
 - [Architecture Recovery 实施计划](../plans/phase-6-9-8-retriever-final-response-architecture-recovery.md)
@@ -730,3 +733,4 @@ zero-provider；下一步仅 R5 fresh admission（未授权、未开始）。R6/
 - [Architecture Recovery R2 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)
 - [Architecture Recovery R3 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)
 - [Architecture Recovery R4 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)
+- [Architecture Recovery R5 验收](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)

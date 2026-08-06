@@ -193,7 +193,7 @@ R2 的新分类只验证未来 recovery lineage 的 bounded behavior，不能反
 - 不读取 `.env`/credential，不创建 approved tag 或正式 Recovery evidence；
 - 不启动 Docker/API/browser，不修改产品 gate、业务数据、BackgroundJob 或 Outbox；
 - R2 独立提交并推送后，当时下一步只能开始 R3 zero-provider runner / durability / admission；R3/R4 后续已完成，
-  当前下一步仅 R5 fresh admission（未授权、未开始）；
+  唯一 R5 也已执行并失败封存；本 checkpoint 不构成 R5 重跑或追加探测授权；
 - 不得提前执行 R5--R7、Task 10/11、main 或后续 Phase。
 
 ## 12. 回顾时可以问

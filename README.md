@@ -1,15 +1,22 @@
 # PrepMind AI 智能备考助手
 
-> 最新状态（2026-08-06）：Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 已完成实现、独立复审和
-> zero-provider 回归，当前在 clean-source admission 后执行用户已授权的唯一 controlled-Live。固定分母为
+> R5 最新结果（2026-08-06）：Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 唯一 controlled-Live
+> run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但 gate 为
+> `architecture_recovery_quality_gate_failed / qualityAuthority=none`。16 guards 全通过；第二个 rewrite pair 的
+> DeepSeek rewrite 在 `provider_dispatch / unknown` 失败，breaker 后剩余 59 slots 未启动；external Provider calls `4`
+>（Qwen `3`、DeepSeek `1`），rewrite strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全为
+> `null`，validator `ok=true`，artifact SHA=`423e3f2e...43b1e5`。一次性名额已消费，不得重跑或追加探测，R6 产品
+> Docker/API/可见浏览器验收仍阻断。详见 [`R5 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
+
+> Live 前 checkpoint（已由上述 sealed run 收口）：R5 已完成实现、独立复审和 zero-provider 回归。固定分母为
 > `16 guards + 16 rewrite pairs（DeepSeek rewrite + Qwen original/candidate）+ 16 FinalResponse = 64 slots`；
 > focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过。此刻 Provider、credential、
-> approved tag、marker、journal、artifact 与业务写入仍为 0；R5 通过前不能进入 R6 产品 Docker/API/可见浏览器验收。
+> approved tag、marker、journal、artifact 与业务写入当时仍为 0；R5 通过前不能进入 R6 产品 Docker/API/可见浏览器验收。
 > 详见 [`R5 controlled-Live 验收记录`](docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
 
 PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍照识题、AI 讲题、错题本、间隔复习、知识库检索和 Agent 工具调用串成完整学习闭环。
 
-项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。下一步仅 R5 fresh admission（未授权、未开始）；不能自动进入 Live、产品或 main。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
+项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R5 唯一 controlled-Live 已失败封存（run 34eb99be...），不能重跑或追加探测；R6 产品、main 与后续阶段继续阻断。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 
@@ -40,7 +47,7 @@ accounting、source admission、fsynced hash-chain journal、hard-link artifact�
 recovery；focused `39/39`、Agent/AI full `1318/345` 通过。R4 reviewed Mock/static 又固定
 `16/16` guard zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；当前
 authority 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal
-evidence 仍为 0。下一步仅 R5 fresh admission（未授权、未开始），不能自动进入 Live、产品或 main。
+evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Live 已失败封存，R6 产品、main 与后续阶段继续阻断。
 
 ## 当前状态
 
@@ -299,7 +306,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. Phase 6.9.7 已完成：V1--V9 Live 与 R3/L3 失败历史保持封存；Provider Canary V2、Small/Full Gate、Schema Recovery SR0--SR7 已按各自 authority 收口。唯一 SR5 run `63f8a76b...04cb` 形成分支语义门，SR6/SR7 完成 zero-provider 产品与 main/default-off 验收且不提升 SR5 语义 authority。
-3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存。Run `28b5f92f...` 为 guard `16/16`、Provider `5/64`；Qwen `3/3/3/3`、DeepSeek `2/2/1/1`，`rewrite_02` DeepSeek dispatch 后命中本地 `schema_invalid`，剩余 59 次 not-started。Gate 为 `task9_quality_gate_failed / qualityAuthority=none`，journal `134`、validator `ok=true`，正式 semantic/P95/token/CNY aggregate 全 `null`。禁止 Task 9C retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测；Task 10/11、Docker/API/浏览器、main、Phase 6.9.9/6.9.10 和记忆注入继续阻断。Architecture Recovery R0--R4 已形成设计与 reviewed Mock/static、三链路 diagnostic/robustness 与 runner/durability/admission authority，当前 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；正式 R3 evidence 与 Provider/credential 均为 0，下一原子任务仅 R5 fresh admission（未授权、未开始）。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测；R6/R7、Task 10/11、Docker/API/浏览器、main、Phase 6.9.9/6.9.10 和记忆注入继续阻断。下一步必须先做新的架构决策，不能把 R5 重试当作推进。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 L1 的 `1/1/1/1` 仍是 `qualityAuthority=none`？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 
@@ -430,6 +437,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md)
 - [Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R3 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md)
 - [Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R4 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)
+- [Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R5 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

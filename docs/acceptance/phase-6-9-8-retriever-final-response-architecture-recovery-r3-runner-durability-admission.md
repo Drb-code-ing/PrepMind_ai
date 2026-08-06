@@ -97,8 +97,9 @@ Production admission contract 固定校验：
 - 完整 source path bundle SHA 与观察值一致；
 - admission/reservation capability 均为 module-owned、opaque、single-use。
 
-R3 测试只使用 `synthetic_fixture` admission。真实 `git_verified` admission 尚未执行，也没有创建 approved tag；
-该 production contract 只为未来 R5 fresh admission 提供 fail-closed 前门。
+R3 测试只使用 `synthetic_fixture` admission。真实 `git_verified` admission 在该 checkpoint 尚未执行，也没有创建
+approved tag；该 production contract 当时只为未来 R5 fresh admission 提供 fail-closed 前门。后续 R5 已独立完成
+admission 并以失败封存，本文件不授权任何重跑或追加 Provider 探测。
 
 ## 6. Durability 与 Crash-only recovery
 

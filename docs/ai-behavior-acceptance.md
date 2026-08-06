@@ -1314,10 +1314,13 @@ robustness 与 runner/durability/admission：
 - R4 又把 Task 8 production node/ledger 与 prompt-only reviewed Mock 接入 R3 runner，得到 guards `16/16` zero-call、
   双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate 固定为
   `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。Provider、credential、formal evidence
-  均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`；下一步仅 R5 fresh admission
-  （未授权、未开始），R5 Live、产品/main 与后续阶段继续阻断。
+  均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`；
+- 其后唯一 R5 run `34eb99be...fc68` 在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以
+  `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
+  strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
+  与后续阶段继续阻断。
 
-完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R4 证据见
+完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -1337,8 +1340,9 @@ robustness 与 runner/durability/admission：
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

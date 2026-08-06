@@ -1596,15 +1596,14 @@ qualityAuthority=none`，journal `134`、validator `ok=true`、recovery claim=`n
   forged/reused/active/cross-call/cross-family capability 均 fail-closed。R4 reviewed Mock/static 已完成：guards
   `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`，gate 固定
   `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R0--R4 不新增环境变量、gate、credential
-  mapping、Docker profile 或正式 evidence；当前只解锁 R5 fresh admission（未授权、未开始）。
+  mapping、Docker profile 或正式 evidence；该 R4 checkpoint 后续解锁的唯一 R5 已失败封存，R6 继续阻断。
 
-### Phase 6.9.8 Architecture Recovery R5（当前：Live 前 admission）
+### Phase 6.9.8 Architecture Recovery R5（唯一 Live 已封存）
 
 R5 已完成实现、独立复审和 zero-provider 回归，固定调度为 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64`
 slots。DeepSeek rewrite、Qwen original/candidate retrieval 与 DeepSeek FinalResponse stream 均使用真实第一方
 adapter；三项 credential 只由授权 CLI 子进程 late-bind，产品 gate、Docker Compose、Nest server/worker 与浏览器
-默认配置不改变。当前 focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过，尚未读取
-credential、调用 Provider 或创建正式 evidence。
+默认配置不改变。focused `18/18`、CLI `6/6`、Agent `1329/1329`，typecheck/lint/Prettier 通过。
 
 用户已接受：
 
@@ -1618,15 +1617,16 @@ I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_DEEPSEEK_
 I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_CONTROLLED_LIVE_ONCE
 ```
 
-在分支 clean、tracking/remote/approved tag 完全同 commit 且 formal evidence=0 后，唯一允许的入口是：
+在分支 clean、tracking/remote/approved tag 完全同 commit 且 formal evidence=0 后，唯一入口已执行一次。下面的命令仅作
+历史审计记录，禁止再次复制执行：
 
 ```powershell
 bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:cli I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_ARCHITECTURE_RECOVERY_R5_CONTROLLED_LIVE_ONCE
 ```
 
-CLI 会先校验 source/data boundary/approval，再 late-bind 三项 R5 专用 key，随后 reservation、guards、64 slots、
+CLI 当时会先校验 source/data boundary/approval，再 late-bind 三项 R5 专用 key，随后 reservation、guards、64 slots、
 publication 和 strict validator。不要把通用 `DEEPSEEK_API_KEY` 或 Qwen 产品 key 复制到 R5 变量；不要在主代理
-上下文打印 key。若 reservation 后进程异常，只允许进程结束后执行一次：
+上下文打印 key。本次没有发生 reservation 后异常；下列 seal 命令只记录历史 crash-only 边界，当前禁止执行：
 
 ```powershell
 bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:seal
@@ -1641,6 +1641,16 @@ bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:validate
 无论 gate pass/fail 都不得 retry、resume、replay、backfill、curl、单 case 或追加 Provider 探测；只有完整
 `controlled_live` gate pass 才能进入 R6 产品 Docker/API/可见浏览器验收。完整边界与结果记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
+本次唯一结果为 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68`、
+`architecture_recovery_quality_gate_failed / qualityAuthority=none`：guards `16/16` zero-call，第二个 rewrite pair
+的 DeepSeek 在 `provider_dispatch / unknown` 失败；external calls `4`，Qwen `3`、DeepSeek `1`，breaker 后 `59`
+slots 未启动；rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/usage/cost aggregate 为 `null`。Journal
+`237`、final event `evidence_published`、recovery claim=`null`、validator `ok=true / bundle_valid`，artifact SHA=
+`423e3f2e4dcb442a71a346334624642ca7c14ed898c894b5180910d04943b1e5`。R5 一次性名额已消费，禁止再次运行上述 Live
+入口或 seal/recovery；R6 产品验收仍阻断。sealed diagnostic 不足以归因 DNS/TLS/代理/账号/余额/权限/服务端根因。
+正式 CLI 启动前曾因 `.env` UTF-8 BOM 发生一次环境加载退出；没有进入 admission/reservation、没有 Provider call，
+不计为 Live。上述 run 是唯一 R5 controlled-Live。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
@@ -1672,8 +1682,9 @@ API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不�
 marker、journal 与 artifact 必须保留；禁止再次设置 9C 授权变量、运行 production CLI、seal/recovery、curl、单
 case 或产品 API Provider 探测。
 
-Architecture Recovery R0--R4 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。R4 已使用
-synthetic/injected transport 完成；在 R5 fresh admission 与用户精确授权前，不存在合法的 Recovery Live 命令。
+Architecture Recovery R0--R4 不需要也不允许在 `.env`、Compose 或本地终端新增任何开关。R4 使用
+synthetic/injected transport 完成；R5 唯一 production CLI 已消费并失败封存，现在不再存在合法的 Recovery Live/
+seal/recovery 命令，禁止再次设置授权变量或追加 Provider 探测。
 
 Task 8 的安全静态回归命令：
 
@@ -1735,7 +1746,7 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 数据库 E2E，必须先按本文件正常启动 PostgreSQL `127.0.0.1:5433` 与 Redis `127.0.0.1:6379`；本 Task 7 没有为
 补齐环境而启动 Docker，现有 E2E 结果为 `environment_blocked`，不能写成迁移/API 已真实验收。
 
-设计、Task 0--9C 与 Architecture Recovery R0--R4 验收见
+设计、Task 0--9C 与 Architecture Recovery R0--R5 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
 `docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
@@ -1755,7 +1766,8 @@ Task 7 新增 realtime Trace 数据库迁移与 `start -> prepare -> finalize` A
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
 SR7 收口后的 Docker 期望状态：server/web 均为 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、
 `PHASE_6_9_7_SR6_PRODUCT_REPLAY_ENABLED=false`、request cap `0`，Router/Verifier/Tutor/Review/Planner/Knowledge/

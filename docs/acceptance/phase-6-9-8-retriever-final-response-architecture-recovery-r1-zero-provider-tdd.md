@@ -130,7 +130,7 @@ transport、账号或服务端。
 - 不读取 `.env`/credential，不创建 approved tag 或正式 Recovery evidence；
 - 不启动 Docker/API/browser，不修改产品 gate、业务数据、BackgroundJob 或 Outbox；
 - R1 提交并推送后，当时下一步只能开始 R2 zero-provider Qwen / FinalResponse robustness；R2/R3/R4 现已完成，
-  当前下一步仅 R5 fresh admission（未授权、未开始）。
+  唯一 R5 也已执行并失败封存；本 checkpoint 不构成 R5 重跑或追加探测授权。
 
 ## 11. 回顾时可以问
 

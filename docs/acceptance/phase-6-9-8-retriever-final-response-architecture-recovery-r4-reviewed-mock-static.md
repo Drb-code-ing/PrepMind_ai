@@ -4,9 +4,9 @@
 >
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 >
-> 当前阶段：R4 zero-provider reviewed Mock/static
+> 当前阶段：R4 zero-provider reviewed Mock/static（历史 checkpoint）
 >
-> 下一阶段：R5 controlled-Live（未授权、未开始）
+> 后续结果：唯一 R5 controlled-Live 已失败封存；本文件不构成 R5 或产品 authority
 
 ## 1. 结论
 
@@ -124,7 +124,8 @@ admission、proxy、数据边界和一次性授权全部通过后，才可能形
 
 ## 8. 后续边界
 
-R4 完成、提交、推送和独立复审后，下一步才是用户单独决定是否进入 R5。R5 必须重新完成 clean tree、approved
-source parity、formal evidence=0、fresh proxy preflight、DeepSeek+Qwen 数据边界接受、精确一次性授权和三项
-credential late-binding。R5 未获授权前，不得执行 Provider、Docker/API/browser、Trace 产品验收、main 合并或
-Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾。
+R4 完成、提交、推送和独立复审后，当时的下一步才是用户单独决定是否进入 R5；该历史条件后来已履行，唯一 R5
+controlled-Live 已以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` 封存。R5 必须重新完成
+clean tree、approved source parity、formal evidence=0、fresh proxy preflight、DeepSeek+Qwen 数据边界接受、精确
+一次性授权和三项 credential late-binding；R5 失败后不得重跑，Docker/API/browser、Trace 产品验收、main 合并或
+后续 Phase 仍未解锁。

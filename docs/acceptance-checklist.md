@@ -7,15 +7,18 @@
 
 ## 0A. Phase 6.9.8 Architecture Recovery R5 controlled-Live（当前）
 
-R5 已完成实现、独立复审和 zero-provider 回归，当前只允许在 clean-source admission 后执行用户授权的唯一一次
-controlled-Live。固定分母是 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64 slots`；focused `18/18`、CLI
-`6/6`、Agent `1329/1329`，typecheck/lint/Prettier 均通过。R5 的 DeepSeek rewrite、Qwen retrieval 与
-FinalResponse credential 只在授权 CLI 子进程 late-bind，默认产品 gate 不受影响；Provider、credential、formal
-evidence 与业务写入在 Live 前均为 0。不得执行 retry/resume/replay/backfill、curl、单 case 或额外 Provider 探测。
+R5 唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已正常 durable seal，但 gate 为
+`architecture_recovery_quality_gate_failed / qualityAuthority=none`。16 guards 全通过；第二个 pair 的 DeepSeek rewrite
+在 `provider_dispatch / unknown` 失败，external calls `4`，剩余 59 slots breaker not-started；rewrite strict `1/16`、
+FinalResponse `0/16`，正式 semantic/P95/usage/cost aggregate 全 `null`。Journal `237`、validator `ok=true`、artifact
+SHA=`423e3f2e...43b1e5`。默认产品 gate 未改变，Docker/API/browser 未开始。不得 retry/resume/replay/backfill、seal/
+recovery、curl、单 case 或额外 Provider 探测。
+正式 CLI 启动前曾因 `.env` UTF-8 BOM 发生一次环境加载退出；没有进入 admission/reservation、没有 Provider call，
+不计为 Live。上述 run 是唯一 R5 controlled-Live。
 
 执行入口、数据边界、固定 corpus、citation ledger、预算和 crash-only 规则见
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。R5 只有完整
-`controlled_live` quality gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收；Mock/static 结果不能替代真实模型质量。
+`controlled_live` quality gate pass 才解锁 R6；本次失败因此继续阻断产品 Docker/API/可见浏览器验收与 main。
 
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 
@@ -2186,11 +2189,14 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Recovery R4 zero-provider reviewed Mock/static 已完成：guards `16/16` zero-call、双 wire
       `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate 固定
       `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence=0；
-- [ ] Recovery R5 controlled-Live（未授权、未开始）、R6 产品 Docker/API/可见浏览器/Trace、R7 main；
+- [x] Recovery R5 唯一 controlled-Live 已失败封存：run `34eb99be...`、guards `16/16`、external calls `4`、
+      second-pair DeepSeek `provider_dispatch / unknown`、remaining `59` not-started、rewrite strict `1/16`、
+      FinalResponse `0/16`、journal `237`、validator `ok=true`；不得重跑；
+- [ ] R6 产品 Docker/API/可见浏览器/Trace、R7 main（因 R5 quality gate failed 阻断）；
 - [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
 - [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
 
-设计、计划、Task 0--9C 与 Architecture Recovery R0--R4 验收见
+设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
 `docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
@@ -2211,4 +2217,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。

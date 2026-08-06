@@ -1,8 +1,14 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 实施计划
 
+> R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已正常 runtime seal，
+> 但 gate=`architecture_recovery_quality_gate_failed / qualityAuthority=none`。第二个 rewrite pair 的 DeepSeek 在
+> `provider_dispatch / unknown` 失败，external calls `4`，剩余 `59` slots breaker not-started；rewrite strict `1/16`、
+> FinalResponse `0/16`，semantic/P95/verified aggregate 全为 `null`；journal `237`、validator `ok=true`、artifact
+> SHA=`423e3f2e...43b1e5`。一次性名额已消费，R6 继续阻断。
+
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
-> - 当前状态：R0--R4 zero-provider 完成；R5 实现/复审/zero-provider 回归完成，待 clean-source admission 后执行唯一已授权 controlled-Live
+> - 当前状态：R0--R4 zero-provider 完成；R5 唯一 controlled-Live 已失败封存，禁止重跑；R6 阻断
 > - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 当前 authority：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
 
@@ -187,20 +193,20 @@ Gate 必须固定为 recovery Mock-only authority，例如
 验收见
 [R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
 
-## 7. R5 — Controlled-Live（已授权，待 clean-source admission）
+## 7. R5 — Controlled-Live（已执行，失败封存）
 
-状态：实现与 zero-provider 回归完成；用户已接受 DeepSeek/Qwen 数据边界并给出 exact authorization，尚未读取
-credential、调用 Provider 或创建 formal evidence。
+状态：实现与 zero-provider 回归完成；用户已接受 DeepSeek/Qwen 数据边界并给出 exact authorization，唯一 run 已
+durable seal 为 `quality_gate_failed`，credential/Provider 名额已消费，禁止重跑。
 
 R5 固定 `16 guards + 16 rewrite pairs + 16 FinalResponse = 64 slots`，并已完成 citation coverage、固定 corpus、
-保守 verifier 投影、usage/cost budget 与 reservation 后 crash-only 异常处理。执行前仍必须完成：
+保守 verifier 投影、usage/cost budget 与 reservation 后 crash-only 异常处理。执行前已完成：
 
 1. clean tree、HEAD/upstream/origin/new approved tag parity；
 2. source manifest 与 Task 9C sealed evidence parity；
 3. 新 lineage formal evidence=0；
 4. fresh proxy preflight；
 5. 已接受的 DeepSeek + Qwen 数据边界保持在授权 CLI 子进程；
-6. 已给出的新 lineage 精确一次性授权只使用一次；
+6. 已给出的新 lineage 精确一次性授权已使用且不可重复；
 7. 三项专用 credential late-binding，主代理不读取或回显 key。
 
 任何 R5 失败都先正常 durable seal、strict validate 和复盘；禁止重跑或用单 case/curl/产品 API 补证。
@@ -231,10 +237,10 @@ git diff --check
 ## 10. 当前停止边界
 
 R0--R4 只形成设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock checkpoint authority。
-R5 实现与静态回归已补齐真实第一方 adapter 的 Live 边界；当前仍在 formal reservation 前，因此仍没有：
+R5 已补齐真实第一方 adapter 的 Live 边界并形成一次失败 sealed evidence；该 evidence 仍不形成：
 
-- R5 controlled-Live 结果、产品、Docker/API/browser、Trace 或 main authority；
+- 产品、Docker/API/browser、Trace 或 main authority；
 - 对 Task 9C 具体失败字段或 Provider 根因的结论。
 
-下一步是 clean-source admission、approved tag、proxy preflight 后执行唯一 R5 Provider run；不得执行 R6/R7、Task 9C
-CLI/seal、Task 10/11、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。
+R5 已完成唯一 Provider run；下一步不得执行 R6/R7、Task 9C CLI/seal、Task 10/11、Phase 6.9.9/6.9.10/6.10、
+Phase 8/9 或博客收尾，除非用户基于新的架构决策重新授权一条全新 lineage。

@@ -1,7 +1,13 @@
 # Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计
 
+> R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已正常 runtime seal，但
+> `architecture_recovery_quality_gate_failed / qualityAuthority=none`。16 guards 通过；第二个 rewrite pair 的
+> DeepSeek 在 `provider_dispatch / unknown` 失败，external calls `4`，剩余 59 slots breaker not-started；rewrite
+> strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全为 `null`。Journal `237`、validator
+> `ok=true`、artifact SHA=`423e3f2e...43b1e5`。sealed diagnostic 不归因 Provider 具体根因，不形成产品/main authority。
+
 > - 日期：2026-08-05
-> - 状态：R0--R4 zero-provider 完成；R5 实现/复审/zero-provider 回归完成，当前等待 clean-source admission 后执行用户已授权的唯一 controlled-Live
+> - 状态：R0--R4 zero-provider 完成；R5 唯一 controlled-Live 已失败封存，禁止重跑；R6 产品验收阻断
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > - 起始提交：`7026dc4cac83bb656b81739abcb68287c133066a`
 > - R0 authority：`zero_provider_retriever_final_response_architecture_recovery_design`
@@ -427,15 +433,16 @@ sealed SHA 与旧 validator 只读 parity 保持。R4 只能证明固定 Mock fi
 产品、SLA 或 main authority。验收见
 [R4 reviewed Mock / static](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md)。
 
-### 7.8 R5 controlled-Live admission（已实现，待执行）
+### 7.8 R5 controlled-Live（已执行，失败封存）
 
 R5 在不改写 R0--R4 或 Task 9C identity 的前提下新增 production CLI、DeepSeek rewrite/Qwen retrieval/DeepSeek
 FinalResponse 三链路 live harness、三项专用 credential late-binding、固定检索 fixture、严格 citation coverage、
 usage/cost budget diagnostic 与 crash-only 异常收口。固定调度仍是 `16 guards + 16 rewrite pairs + 16 FinalResponse =
 64 slots`，首个失败打开 breaker，未启动调用不补跑。R5 focused `18/18`、CLI `6/6`、Agent `1329/1329`，
-typecheck/lint/Prettier 均通过；当前没有 credential/provider/evidence。用户已接受 DeepSeek/Qwen 数据边界并给出
-exact authorization；只有 source branch、tracking、origin、approved tag、clean tree 和 formal evidence=0 全部一致时
-才执行一次 Live。R5 通过只形成 branch semantic authority，仍不自动代表产品、Docker/API/browser、Trace、SLA 或 main。
+typecheck/lint/Prettier 均通过。用户已接受 DeepSeek/Qwen 数据边界并给出 exact authorization；approved source/tag、clean
+source 和 proxy preflight 通过后唯一 run 已执行。第二个 rewrite pair 的 DeepSeek 在 `provider_dispatch / unknown`
+失败，breaker 后剩余 59 slots 未启动，最终 gate 为 `architecture_recovery_quality_gate_failed / qualityAuthority=none`。
+R5 失败只形成 bounded diagnostic/durability authority，不代表产品、Docker/API/browser、Trace、SLA 或 main。
 实现与操作边界见
 [R5 acceptance](../../acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md)。
 
@@ -556,7 +563,7 @@ R3 source manifest 已绑定：
 | R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider |
 | R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 已完成，zero-provider |
 | R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 已完成，zero-provider |
-| R5   | 全新 admission、三链路真实 Provider、一次 controlled-Live 与 strict seal | 已授权，待 source admission |
+| R5   | 全新 admission、三链路真实 Provider、一次 controlled-Live 与 strict seal | 已执行，quality gate failed 封存 |
 | R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                  |
 | R7   | 仅 R6 pass 后的 main 合并、远程推送与 default-off 回放                   | 阻断                  |
 
@@ -573,7 +580,7 @@ R3 source manifest 已绑定：
 - 不保存 raw、raw-derived hash、unknown key、Zod issue、prompt、query、chunk、answer、credential 或 error；
 - 不修改产品 gate、`.env`、Docker、数据库、BackgroundJob、Outbox 或业务数据；
 - 不降低分母、质量门、预算、安全、owner、citation 或 local authority；
-- R5 只能在 clean source、approved tag、fresh preflight、数据边界与 exact authorization 全部满足后执行一次；
+- R5 已在 clean source、approved tag、fresh preflight、数据边界与 exact authorization 全部满足后执行唯一一次；名额已消费，禁止重跑；
 - 不执行 Task 10/11、R6/R7 或 main；R5 完整 gate pass 前产品 Docker/API/browser 仍阻断。
 
 ## 14. 回顾时可以问

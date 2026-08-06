@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 controlled-Live 已封存：
+>
+> 在 approved source/tag `6570ce05...`、clean source admission 和 `loopback_proxy_ready` preflight 后，按用户接受的
+> DeepSeek/Qwen 数据边界执行了唯一一次 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68`。16 guards 全部通过且 zero-call；
+> 首个 rewrite pair 完成 Qwen original、DeepSeek rewrite、Qwen candidate，第二个 pair 的 DeepSeek rewrite 在
+> `provider_dispatch` 以 bounded `reasonCode=unknown / providerBoundary=unknown / rawDataRetained=false` 失败，
+> breaker 将剩余 59 slots 收为 not-started。最终 runner dispatch `5`、external Provider calls `4`、Qwen `3`、DeepSeek
+> `1`，wire 为 Qwen `3/3/3/3`、DeepSeek `1/1/1/1`（runner DeepSeek `2/2/1/1`），gate 为
+> `architecture_recovery_quality_gate_failed / qualityAuthority=none`；rewrite strict `1/16`、FinalResponse `0/16`，
+> semantic/P95/verified aggregate usage 与费用全为 `null`。已观察前缀 usage 为 Qwen `326` input / `0.000163 CNY`、
+> DeepSeek `178/23` input/output / `0.000672 CNY`，不能当作完整 run aggregate。Journal `237` 条以
+> `evidence_published` 收口，recovery claim=`null`，strict validator `ok=true / bundle_valid`，artifact SHA=
+> `423e3f2e4dcb442a71a346334624642ca7c14ed898c894b5180910d04943b1e5`。该证据不能归因具体 DNS/TLS/代理/账号/余额/
+> 权限/服务端根因，也不能证明 Retriever/FinalResponse 语义或产品可用；R5 一次性名额已消费，R6 产品验收继续阻断。
+> 正式 CLI 启动前曾因 `.env` UTF-8 BOM 发生一次环境加载退出；该过程没有进入 source admission/reservation、没有
+> Provider call，也不计为 controlled-Live。随后执行并封存的上述 run 是唯一 R5 Live。
+> 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5（Live 前准备完成）：
 >
 > R5 独立 lineage 的 DeepSeek query rewrite、Qwen `text-embedding-v4` original/candidate retrieval、DeepSeek
@@ -8,9 +26,9 @@
 > citation coverage（缺失/多余/重复均 fail-closed）、固定检索 fixture（不从 query/context/oracle 构造 target）、
 > `suspicious + verifier unavailable` 保守投影和 Qwen usage/cost 超预算诊断；reservation 后异常会明确
 > `providerCalls=null / crashOnlySealRequired=true`。Focused `18/18`、R5 CLI `6/6`、Agent 全量 `1329/1329`，
-> typecheck/lint/Prettier 通过。当前尚未读取 credential、调用 Provider、创建 approved tag/marker/journal/artifact，
-> 也未启动 Docker/API/browser；用户已接受 DeepSeek/Qwen 数据边界并授权唯一一次 R5 controlled-Live，下一步是
-> clean-source admission、推送 approved tag 后执行该唯一 run。详细验收见
+> typecheck/lint/Prettier 通过。该 Live 前 checkpoint 当时尚未读取 credential、调用 Provider、创建
+> approved tag/marker/journal/artifact，也未启动 Docker/API/browser；用户已接受 DeepSeek/Qwen 数据边界并授权
+> 唯一一次 R5 controlled-Live。后续该唯一 run 已失败封存。详细验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 >
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R4：
@@ -31,9 +49,9 @@ rewrite pairs + 16 FinalResponse = 64 slots`。结果为 guard `16/16` zero-call
 > 回归为 `1323` tests / `165` files / `23579` expect() calls / `0` fail。Prettier、
 > lint、`git diff --check` 与独立 Reader Testing 通过。新增验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`；同步更新
-> AGENTS、README、roadmap、acceptance checklist、dev-start、data-flow 与本计划/设计。R5 controlled-Live 仍未授权、
-> 未开始；在用户新的 DeepSeek/Qwen 数据边界接受与一次性授权前，不执行 Provider、Docker/API/browser、Trace 产品验收
-> 或 main 合并。
+> AGENTS、README、roadmap、acceptance checklist、dev-start、data-flow 与本计划/设计。该 R4 checkpoint 当时的
+> R5 controlled-Live 尚未授权、未开始；后续唯一 R5 已失败封存，且仍未执行 Docker/API/browser、Trace 产品验收或
+> main 合并。
 >
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R3：
 >
