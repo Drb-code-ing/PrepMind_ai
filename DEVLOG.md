@@ -1,5 +1,19 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T0 决策：
+>
+> R5 的 `provider_dispatch / unknown` 不能安全归因到 DNS、TLS、代理、账号、余额、权限或服务端，因此不重跑
+> R5，也不直接进入产品验收。新 lineage `phase-6.9.8-retriever-final-response-transport-evidence-v1` 先做
+> zero-provider 可判别性：3 个 family × 8 个固定边界/失败类，加 6 个 abort/capability/publication cases，共
+> `30` cases；只保留 stage/reason/boundary/wire/opaque callId，`rawDataRetained=false`。
+>
+> T0 已冻结 ADR、contract、authority、停止条件和最多 3-slot canary 的决策门；T1/T2 尚未实现，未读取 credential、未调用
+> Provider、未创建 formal evidence，不解锁 R6/R7/main。T1 为 strict contract/TDD，T2 为 robustness/durability static，
+> T3（可选）才是重新授权后的 transport-only canary。完整设计与计划见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`；T0 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`。
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 controlled-Live 已封存：
 >
 > 在 approved source/tag `6570ce05...`、clean source admission 和 `loopback_proxy_ready` preflight 后，按用户接受的

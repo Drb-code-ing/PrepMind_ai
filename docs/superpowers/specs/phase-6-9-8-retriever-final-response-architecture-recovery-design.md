@@ -6,6 +6,10 @@
 > strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全为 `null`。Journal `237`、validator
 > `ok=true`、artifact SHA=`423e3f2e...43b1e5`。sealed diagnostic 不归因 Provider 具体根因，不形成产品/main authority。
 
+> R5 后续决策：不重跑本 lineage；独立 Transport Evidence Recovery T0 zero-provider 设计已完成，下一步由 T1/T2
+> 验证 stage/boundary/reason/wire 的可判别性。详见
+> [Transport Evidence Recovery 设计](./phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
+
 > - 日期：2026-08-05
 > - 状态：R0--R4 zero-provider 完成；R5 唯一 controlled-Live 已失败封存，禁止重跑；R6 产品验收阻断
 > - 分支：`drb/phase-6-9-8-retriever-final-response-contract`
@@ -556,16 +560,16 @@ R3 source manifest 已绑定：
 
 ## 12. 原子路线
 
-| 阶段 | 内容                                                                     | 当前状态              |
-| ---- | ------------------------------------------------------------------------ | --------------------- |
-| R0   | sealed 只读复盘、三链路阶段机、bounded diagnostic、独立 lineage 与路线   | 已完成，zero-provider |
-| R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 已完成，zero-provider |
-| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider |
-| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 已完成，zero-provider |
-| R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 已完成，zero-provider |
+| 阶段 | 内容                                                                     | 当前状态                         |
+| ---- | ------------------------------------------------------------------------ | -------------------------------- |
+| R0   | sealed 只读复盘、三链路阶段机、bounded diagnostic、独立 lineage 与路线   | 已完成，zero-provider            |
+| R1   | strict diagnostic contract、opaque capability、阶段机与 rewrite TDD      | 已完成，zero-provider            |
+| R2   | Qwen/FinalResponse 集成、hostile/provider-like/fault matrix              | 已完成，zero-provider            |
+| R3   | 独立 report/runner/source/CLI/journal/artifact/validator/crash-only seal | 已完成，zero-provider            |
+| R4   | 64-call reviewed Mock/static、history parity、Reader Testing             | 已完成，zero-provider            |
 | R5   | 全新 admission、三链路真实 Provider、一次 controlled-Live 与 strict seal | 已执行，quality gate failed 封存 |
-| R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                  |
-| R7   | 仅 R6 pass 后的 main 合并、远程推送与 default-off 回放                   | 阻断                  |
+| R6   | 仅 R5 pass 后的 Docker/API/可见浏览器/Trace/权限/精确清理                | 阻断                             |
+| R7   | 仅 R6 pass 后的 main 合并、远程推送与 default-off 回放                   | 阻断                             |
 
 每个阶段单独提交并推送当前 Phase 6.9.8 功能分支；不创建 worktree 或从当前分支再派生子分支。Phase 6.9.8
 当前源码尚未进入 main，因此不能从缺少 Task 0--9B 基线的 main 开始 Recovery；同时也禁止为了满足分支形式而

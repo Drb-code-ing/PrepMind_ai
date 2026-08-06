@@ -1319,6 +1319,9 @@ robustness 与 runner/durability/admission：
   `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
   strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
   与后续阶段继续阻断。
+- Transport Evidence Recovery T0 已完成：冻结 `30`-case zero-provider stage/boundary/reason/wire contract，不形成
+  Provider health、Agent semantic 或产品 authority。当前下一步是 T1 strict contract + TDD；T1/T2 未完成前不得
+  申请新 canary。
 
 完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、

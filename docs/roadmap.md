@@ -9,11 +9,17 @@
 
 > R5 实现 checkpoint（已由上方 sealed run 收口）：Retriever / FinalResponse Architecture Recovery R5 已完成实现、独立复审与
 > zero-provider 回归。固定 `16 guards + 16 rewrite pairs + 16 FinalResponse =
-> 64 slots`，focused/CLI/Agent 回归分别为 `18/18`、`6/6`、`1329/1329`；citation coverage、固定检索 fixture、
+64 slots`，focused/CLI/Agent 回归分别为 `18/18`、`6/6`、`1329/1329`；citation coverage、固定检索 fixture、
 > conservative verifier projection、usage/cost budget 与 crash-only 异常边界均已修复并验证。用户已接受 DeepSeek/Qwen
 > 数据边界并授权唯一 R5 controlled-Live；正式 run 已封存，但不形成产品 authority。
 > R5 结果无论通过或失败都只封存一次；只有 gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
+> Transport Evidence Recovery T0 已冻结独立 zero-provider contract 和 `30`-case 可判别性门，且未读取 credential、
+> 未调用 Provider、未创建 formal evidence。当前下一原子任务是 T1 strict contract + TDD；T1/T2 通过后才评估是否
+> 值得申请最多 3-slot 的新 transport canary。它不解锁 R6/R7/main，也不是 R5 retry。设计与计划见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；V9 当时的 R6/R7/main 与后续阶段被阻断，后续另行进入 Architecture/Schema Recovery 路线。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
 >
@@ -617,6 +623,10 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   Journal `237`、validator `ok=true`、artifact SHA=`423e3f2e...43b1e5`；一次性名额已消费且不得重跑，R6/R7/main
   继续阻断。（失败封存；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`）
+- Phase 6.9.8 Transport Evidence Recovery T0：已冻结独立 lineage、30-case zero-provider matrix、固定
+  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；尚未实现、未调用 Provider、不创建正式 evidence。
+  （设计阶段；证据见
+  `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）

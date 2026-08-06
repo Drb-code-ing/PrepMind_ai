@@ -1,0 +1,104 @@
+# Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
+
+> 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
+> 当前状态：T0 zero-provider 设计已完成；T1/T2 未实现；没有 Provider、credential 或正式 evidence
+> 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> 当前 authority：`zero_provider_transport_evidence_design / qualityAuthority=none`
+
+## 1. 为什么另立 lineage
+
+R5 已失败封存，不能 retry/resume/replay。当前需要回答的是“现有第一方 adapter 能否把 dispatch 前后边界安全
+分类”，而不是重新测一次 Agent 语义。新 lineage 只做 transport/evidence contract，不改变 R5、Task 9C 或产品
+authority。
+
+## 2. 任务拆分
+
+### T0：决策、manifest 与 contract 冻结（本提交）
+
+- 固定 lineage、三 family、阶段序列、boundary、reason bucket、30-case 分母和 no-raw 数据模型；
+- 记录采用 Transport Evidence Recovery、拒绝 R5 retry/产品绕过/单纯 health canary 的理由；
+- 只更新设计/计划和当前状态索引，不读 credential，不创建正式 evidence。
+
+### T1：Zero-provider strict contract + TDD
+
+责任范围：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-*`（新文件）及其
+focused tests；旧 R5 文件只读复用，不改写。
+
+- 新建 lineage-owned diagnostic schema、stage/boundary/reason parser；
+- 新建三 family 私有 capability seam，复用现有 validator 的 fail-closed 形态；
+- 注入式 delegate 只能返回 synthetic bounded signals；global fetch、credential 和 Provider 必须为 0；
+- focused tests 覆盖 exact own keys、deep freeze、unknown-field drop、raw retention 和 capability forgery。
+
+T1 通过条件：contract focused tests 全通过、`providerCalls=0`、`credentialReads=0`，旧 R5/Task 9C SHA parity
+保持不变。
+
+### T2：Robustness + durability static checkpoint
+
+- 固定 24 个 family/boundary cases + 6 个 abort/capability/publication cases；
+- 30 个 runner/robustness cases 固定不变；另用 classifier fixture 覆盖
+  DNS/TLS/proxy/connection/abort/timeout、envelope/schema/stream/usage 子类；
+- 验证 `providerWire/runnerWire` 单调性、stage prefix、未知 bucket 保留、breaker 与 sibling 收口；
+- 验证 crash-only prefix、exclusive marker、hash-chain journal、hard-link artifact 和 strict validator 只在
+  synthetic root 工作，正式 evidence 仍为 0；
+- 运行一次独立 reader/secret/link 检查，不能把结果写成 Provider health 或 semantic quality。
+
+T2 通过条件：30/30、classifier fixture、focused/Agent/typecheck/lint 全通过；Provider、credential、formal evidence、
+产品写入均为 0。
+
+### T3：可选 transport canary（当前未授权）
+
+T3 不属于本提交，也不能自动开始。只有 T1/T2 通过后，重新完成 source admission、fresh proxy preflight、
+DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最多 3 个 Provider slots：rewrite、Qwen、FinalResponse
+各一次。首个失败即停止，不补跑，不形成 semantic quality gate，也不进入 Docker/API/browser/main。
+
+## 3. 文件与权限边界
+
+| 责任                         | 允许                                                            | 禁止                                            |
+| ---------------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
+| 新 Transport Evidence module | 生成 bounded diagnostic、验证 stage/wire、发布 synthetic report | 读取 credential、调用 global fetch、写业务表    |
+| 旧 R5 module                 | 只读复用 schema/validator 事实                                  | 改写 R5 artifact、tag、journal、marker          |
+| runner/CLI                   | T1/T2 只接 `args + AbortSignal` 和注入式 ports                  | 接受调用方 scorer/prompt/oracle/fetch/transport |
+| 产品 `/api/chat`             | 本阶段不变，gate 继续 default-off                               | 接入 T3 或创建 BackgroundJob/Outbox/Trace       |
+
+## 4. 安全与可观测性约束
+
+- 记录固定 enum/bucket、opaque `callId`、phase/family、wire、stage prefix 和 `rawDataRetained=false`；
+- 不记录 raw response、raw error、URL、prompt/query/chunk/answer、unknown key、Zod path/value、token、cookie 或 key；
+- `unknown` 不得被映射为 DNS/TLS/proxy/账号/余额/权限/服务端；
+- capability 必须 module-owned、single-use、绑定 call/phase/family/lineage，跨边界一律 fail-closed；
+- 任何 reservation/publication/validation 异常都不能假报 `providerCalls=0`，但 T1/T2 默认不创建正式 reservation。
+
+## 5. 验收命令（计划名，不代表当前可执行）
+
+T1/T2 实现后才添加并运行类似以下的 zero-provider 命令；本提交不创建 CLI 入口：
+
+```text
+bun --filter @repo/agent test -- transport-evidence-recovery
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
+
+禁止在 T3 授权前运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。
+
+## 6. 交付与文档同步
+
+- T0：本设计与计划单独提交；
+- T1：实现与 focused tests 单独提交；
+- T2：robustness/static checkpoint 单独提交；
+- 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
+- T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
+  acceptance 与本设计/计划；
+- 不合并 main，不移动 approved tag，除非后续阶段明确形成新的质量 authority 并完成分支/产品/main 验收。
+
+## 7. 停止条件
+
+任一 zero-provider gate 失败，停止在当前 T 任务，记录 bounded diagnostic，不能自动进入 T3。T3 即使通过，也只证明
+受限 transport/evidence contract；Retriever/FinalResponse semantic、产品 Docker/API/browser、Trace、SLA 和 main
+仍需单独授权与验收。
+
+## 8. Reader Testing 问题
+
+- 读者能否区分“dispatch 阶段”与“具体网络根因”？
+- 读者能否看出 R5 artifact 不会被新 lineage 改写？
+- 读者能否知道 T1/T2 完成不等于 Provider 健康或 Agent 质量通过？
+- 读者能否根据本计划知道下一次需要什么授权、预算和证据？

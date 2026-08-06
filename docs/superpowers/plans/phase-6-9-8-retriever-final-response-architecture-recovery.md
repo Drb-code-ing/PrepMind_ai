@@ -6,6 +6,10 @@
 > FinalResponse `0/16`，semantic/P95/verified aggregate 全为 `null`；journal `237`、validator `ok=true`、artifact
 > SHA=`423e3f2e...43b1e5`。一次性名额已消费，R6 继续阻断。
 
+> R5 后续不重跑；当前已转入独立
+> [Transport Evidence Recovery 计划](./phase-6-9-8-retriever-final-response-transport-evidence-recovery.md)，先完成
+> T0 zero-provider 设计；下一步完成 T1/T2 可判别性，再决定是否申请新的极小 canary。
+
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
 > - 当前状态：R0--R4 zero-provider 完成；R5 唯一 controlled-Live 已失败封存，禁止重跑；R6 阻断
