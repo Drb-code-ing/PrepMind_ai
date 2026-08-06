@@ -6,8 +6,8 @@
 > strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全为 `null`。Journal `237`、validator
 > `ok=true`、artifact SHA=`423e3f2e...43b1e5`。sealed diagnostic 不归因 Provider 具体根因，不形成产品/main authority。
 
-> R5 后续决策：不重跑本 lineage；独立 Transport Evidence Recovery T0 zero-provider 设计已完成，下一步由 T1/T2
-> 验证 stage/boundary/reason/wire 的可判别性。详见
+> R5 后续决策：不重跑本 lineage；独立 Transport Evidence Recovery T0/T1 zero-provider contract/TDD 已完成，下一步
+> 由 T2 验证 stage/boundary/reason/wire 的 robustness 与 durability。详见
 > [Transport Evidence Recovery 设计](./phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)。
 
 > - 日期：2026-08-05

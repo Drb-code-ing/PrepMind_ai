@@ -7,8 +7,9 @@
 > SHA=`423e3f2e...43b1e5`。一次性名额已消费，R6 继续阻断。
 
 > R5 后续不重跑；当前已转入独立
-> [Transport Evidence Recovery 计划](./phase-6-9-8-retriever-final-response-transport-evidence-recovery.md)，先完成
-> T0 zero-provider 设计；下一步完成 T1/T2 可判别性，再决定是否申请新的极小 canary。
+> [Transport Evidence Recovery 计划](./phase-6-9-8-retriever-final-response-transport-evidence-recovery.md)，T0/T1
+> zero-provider 设计与 strict contract/TDD 已完成；下一步完成 T2 robustness/durability，再决定是否申请新的极小
+> canary。
 
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)

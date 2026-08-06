@@ -1319,9 +1319,10 @@ robustness 与 runner/durability/admission：
   `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
   strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
   与后续阶段继续阻断。
-- Transport Evidence Recovery T0 已完成：冻结 `30`-case zero-provider stage/boundary/reason/wire contract，不形成
-  Provider health、Agent semantic 或产品 authority。当前下一步是 T1 strict contract + TDD；T1/T2 未完成前不得
-  申请新 canary。
+- Transport Evidence Recovery T0/T1 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，T1
+  落地 strict no-raw parser、双 wire 单调校验与 rewrite/Qwen/FinalResponse 私有 single-consume capability。T1
+  authority 仍为 `zero_provider_transport_evidence_tdd / qualityAuthority=none`，不形成 Provider health、Agent
+  semantic 或产品 authority。当前下一步是 T2 robustness + durability static；T2 未完成前不得申请新 canary。
 
 完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
@@ -1345,7 +1346,9 @@ robustness 与 runner/durability/admission：
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 
 ## 8. Reflexion / Critic 验收要求
 

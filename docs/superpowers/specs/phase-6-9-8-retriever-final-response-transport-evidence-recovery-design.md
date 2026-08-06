@@ -1,6 +1,6 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T0 zero-provider 设计已完成；T1/T2 尚未实现，T3 尚未授权或执行
+> 状态：T1 zero-provider strict contract + TDD 已完成；T2 尚未实现，T3 尚未授权或执行
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
@@ -125,8 +125,8 @@ providerBoundary, runnerWire, providerWire, diagnosticStages,
 rawDataRetained=false
 ```
 
-`callId` 由本地固定 manifest 生成，不由 raw response、prompt 或 credential 派生。所有未知字段丢弃，并只归入
-已有的 `envelope_invalid` 或 `schema_invalid` 固定 bucket；不保留字段名或值。
+`callId` 由本地固定 manifest 生成，不由 raw response、prompt 或 credential 派生。输入含未知字段时 strict parser
+fail-closed；上游只能把它映射为已有的 `envelope_invalid` 或 `schema_invalid` 固定 bucket，绝不保留字段名或值。
 
 ## 6. Zero-provider 验证矩阵
 
@@ -170,9 +170,9 @@ FinalResponse 各一次；首个失败立即停止，不补跑，不形成 seman
 
 ## 8. 实施顺序
 
-1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件；
-2. T1：zero-provider strict contract + TDD，复用现有 diagnostic/wire 校验但使用新 lineage namespace；
-3. T2：30-case robustness、abort/timeout/capability/durability static checkpoint；
+1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件（已完成）；
+2. T1：zero-provider strict contract + TDD，复用现有 diagnostic/wire 校验但使用新 lineage namespace（已完成）；
+3. T2：30-case robustness、abort/timeout/capability/durability static checkpoint（下一步）；
 4. T3（可选）：新授权下的最多 3-slot transport canary；无论结果如何单次 durable seal，不能直接进入产品。
 
 每个任务单独提交并推送；T1/T2 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、

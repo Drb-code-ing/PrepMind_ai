@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T0 zero-provider 设计已完成；T1/T2 未实现；没有 Provider、credential 或正式 evidence
+> 当前状态：T1 zero-provider strict contract + TDD 已完成；T2 未实现；没有 Provider、credential 或正式 evidence
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_evidence_design / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_evidence_tdd / qualityAuthority=none`
 
 ## 1. 为什么另立 lineage
 
@@ -13,13 +13,13 @@ authority。
 
 ## 2. 任务拆分
 
-### T0：决策、manifest 与 contract 冻结（本提交）
+### T0：决策、manifest 与 contract 冻结（已完成）
 
 - 固定 lineage、三 family、阶段序列、boundary、reason bucket、30-case 分母和 no-raw 数据模型；
 - 记录采用 Transport Evidence Recovery、拒绝 R5 retry/产品绕过/单纯 health canary 的理由；
 - 只更新设计/计划和当前状态索引，不读 credential，不创建正式 evidence。
 
-### T1：Zero-provider strict contract + TDD
+### T1：Zero-provider strict contract + TDD（已完成）
 
 责任范围：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-evidence-*`（新文件）及其
 focused tests；旧 R5 文件只读复用，不改写。
@@ -29,10 +29,12 @@ focused tests；旧 R5 文件只读复用，不改写。
 - 注入式 delegate 只能返回 synthetic bounded signals；global fetch、credential 和 Provider 必须为 0；
 - focused tests 覆盖 exact own keys、deep freeze、unknown-field drop、raw retention 和 capability forgery。
 
-T1 通过条件：contract focused tests 全通过、`providerCalls=0`、`credentialReads=0`，旧 R5/Task 9C SHA parity
-保持不变。
+T1 结果：新增 lineage-owned strict diagnostic parser 与三条 family 私有 single-consume WeakMap/WeakSet seam；
+focused `8/8`（51 assertions）、Agent full `1337/1337`、typecheck/lint 通过。Provider/credential/formal evidence 为
+`0/0/0`，旧 R5/Task 9C SHA parity 保持不变。完整 T1 验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 
-### T2：Robustness + durability static checkpoint
+### T2：Robustness + durability static checkpoint（下一步）
 
 - 固定 24 个 family/boundary cases + 6 个 abort/capability/publication cases；
 - 30 个 runner/robustness cases 固定不变；另用 classifier fixture 覆盖
@@ -68,12 +70,13 @@ DeepSeek/Qwen 数据边界接受和新的 exact authorization，才可考虑最�
 - capability 必须 module-owned、single-use、绑定 call/phase/family/lineage，跨边界一律 fail-closed；
 - 任何 reservation/publication/validation 异常都不能假报 `providerCalls=0`，但 T1/T2 默认不创建正式 reservation。
 
-## 5. 验收命令（计划名，不代表当前可执行）
+## 5. 验收命令
 
-T1/T2 实现后才添加并运行类似以下的 zero-provider 命令；本提交不创建 CLI 入口：
+T1 已运行以下 zero-provider 命令；T2 完成后继续扩展同一边界。本阶段不创建 Live CLI 入口：
 
 ```text
-bun --filter @repo/agent test -- transport-evidence-recovery
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
+bun --filter @repo/agent test
 bun --filter @repo/agent typecheck
 bun --filter @repo/agent lint
 ```

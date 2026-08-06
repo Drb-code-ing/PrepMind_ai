@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T1 strict contract + TDD 已完成：
+>
+> 在 T0 独立 lineage 之上新增 strict no-raw diagnostic schema/parser，固定五阶段
+> `preflight -> dispatch_started -> response_observed -> usage_observed -> terminal`、provider boundary、reason
+> bucket 与 `providerWire/runnerWire` 单调关系；rewrite、Qwen、FinalResponse 各自持有 module-private single-consume
+> WeakMap/WeakSet capability，跨 family/call、forged、reused、active 与 out-of-order 输入均 fail-closed。
+>
+> focused `8/8`（51 assertions）、Agent full `1337/1337`（23700 expect()）、typecheck/lint/Prettier 均通过；Provider、
+> credential、global fetch、Docker/API/browser、formal marker/journal/artifact/recovery claim 与业务写入均为 0。未知
+> 类别继续保持 `unknown`，不会把 R5 历史 `provider_dispatch / unknown` 反向归因。T1 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`；下一步为 T2
+> 30-case robustness + durability static checkpoint。
+>
 > 2026-08-06 — Phase 6.9.8 Transport Evidence Recovery T0 决策：
 >
 > R5 的 `provider_dispatch / unknown` 不能安全归因到 DNS、TLS、代理、账号、余额、权限或服务端，因此不重跑
@@ -7,12 +20,13 @@
 > zero-provider 可判别性：3 个 family × 8 个固定边界/失败类，加 6 个 abort/capability/publication cases，共
 > `30` cases；只保留 stage/reason/boundary/wire/opaque callId，`rawDataRetained=false`。
 >
-> T0 已冻结 ADR、contract、authority、停止条件和最多 3-slot canary 的决策门；T1/T2 尚未实现，未读取 credential、未调用
+> T0 已冻结 ADR、contract、authority、停止条件和最多 3-slot canary 的决策门；T1 已完成，T2 尚未实现，未读取 credential、未调用
 > Provider、未创建 formal evidence，不解锁 R6/R7/main。T1 为 strict contract/TDD，T2 为 robustness/durability static，
 > T3（可选）才是重新授权后的 transport-only canary。完整设计与计划见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`；T0 验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`；T1 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 >
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R5 controlled-Live 已封存：
 >

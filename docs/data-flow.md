@@ -17,10 +17,12 @@
 > 仍阻断。结果与边界见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
-> Transport Evidence Recovery T0 已冻结下一条数据流：synthetic input → bounded adapter seam → stage/wire
-> classifier → no-raw report。当前只允许 T1/T2 在该 zero-provider contract 内实现与验证；不读取 credential、不调用
-> Provider、不写 `/api/chat`、Trace、BackgroundJob、Outbox 或业务表，30-case gate 通过前不会产生新的 Live 或产品 authority。设计见
-> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`。
+> Transport Evidence Recovery T0/T1 已冻结并实现下一条数据流：synthetic input → bounded adapter seam → strict
+> stage/boundary/wire parser → no-raw snapshot。T1 focused `8/8`、Agent `1337/1337`、typecheck/lint 通过；当前只
+> 允许 T2 在该 zero-provider contract 内实现与验证。不读取 credential、不调用 Provider、不写 `/api/chat`、Trace、
+> BackgroundJob、Outbox 或业务表，30-case gate 通过前不会产生新的 Live 或产品 authority。设计、T1 验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 
 > 当前版本：2026-08-06。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >

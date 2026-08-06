@@ -15,9 +15,10 @@
 > R5 结果无论通过或失败都只封存一次；只有 gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
 
-> Transport Evidence Recovery T0 已冻结独立 zero-provider contract 和 `30`-case 可判别性门，且未读取 credential、
-> 未调用 Provider、未创建 formal evidence。当前下一原子任务是 T1 strict contract + TDD；T1/T2 通过后才评估是否
-> 值得申请最多 3-slot 的新 transport canary。它不解锁 R6/R7/main，也不是 R5 retry。设计与计划见
+> Transport Evidence Recovery T0/T1 已完成：T0 冻结独立 zero-provider contract，T1 已落地 strict no-raw parser、
+> 双 wire 校验与三 family 私有 single-consume capability；focused `8/8`、Agent `1337/1337`、typecheck/lint 通过。
+> 这些步骤未读取 credential、未调用 Provider、未创建 formal evidence。当前下一原子任务是 T2 robustness + durability
+> static；T2 通过后才评估是否值得申请最多 3-slot 的新 transport canary。它不解锁 R6/R7/main，也不是 R5 retry。设计与计划见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
@@ -623,10 +624,12 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   Journal `237`、validator `ok=true`、artifact SHA=`423e3f2e...43b1e5`；一次性名额已消费且不得重跑，R6/R7/main
   继续阻断。（失败封存；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`）
-- Phase 6.9.8 Transport Evidence Recovery T0：已冻结独立 lineage、30-case zero-provider matrix、固定
-  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；尚未实现、未调用 Provider、不创建正式 evidence。
-  （设计阶段；证据见
-  `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`）
+- Phase 6.9.8 Transport Evidence Recovery T0/T1：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
+  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1 已完成 strict parser、双 wire 与三 family
+  capability TDD，未调用 Provider、不创建正式 evidence。当前下一步为 T2 robustness + durability static。
+  （T0/T1 证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）

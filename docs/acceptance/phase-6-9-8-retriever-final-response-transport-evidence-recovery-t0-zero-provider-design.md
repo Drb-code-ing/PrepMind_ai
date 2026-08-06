@@ -32,7 +32,8 @@ approved tag 与一次性授权继续保持不可变。
 - DNS/TLS/proxy/connection/envelope/schema/stream/usage 子类由 classifier fixture 覆盖，不扩大 runner 分母；
 - diagnostic 只保留 fixed enum/bucket、opaque `callId`、stage/wire/count 与 `rawDataRetained=false`；
 - capability 由各 family 模块私有签发，绑定 `callId + phase + family + lineage`，single-use 且 fail-closed；
-- T1/T2 全部 zero-provider；T3 只有在 T1/T2 通过并取得新数据边界接受与 exact authorization 后才能评估。
+- T1/T2 全部 zero-provider；T1 已完成 strict contract + TDD，T2 尚未完成；T3 只有在 T1/T2 通过并取得新数据边界接受与
+  exact authorization 后才能评估。
 
 完整设计见
 [Transport Evidence Recovery 设计](../superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)，
@@ -41,7 +42,7 @@ approved tag 与一次性授权继续保持不可变。
 
 ## 4. 如何确定，而不是猜测
 
-T0 不会重新解释历史 R5 的 `unknown`。后续 T1/T2 只通过可控 synthetic delegate 验证：
+T0 不会重新解释历史 R5 的 `unknown`。T1 已通过可控 parser/contract fixtures 验证；T2 还要继续验证：
 
 1. 已知故障是否只能映射到对应固定 bucket；
 2. 缺乏足够信号时是否稳定保持 `unknown`；
@@ -82,13 +83,13 @@ T0 不会重新解释历史 R5 的 `unknown`。后续 T1/T2 只通过可控 synt
 
 ## 7. 明确未完成
 
-- T1 strict contract + TDD；
+- T1 strict contract + TDD（已完成，详见 `phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`）；
 - T2 30-case robustness、classifier fixture 与 durability static checkpoint；
 - T3 最多 3-slot transport-only canary（未授权、未实现）；
 - Retriever/FinalResponse 新语义质量门、产品 Docker/API/browser/Trace、main；
 - Phase 6.9.9/6.9.10/6.10、Phase 8/9 与博客收尾。
 
-当前唯一下一原子任务是 T1。T1 仍不得读取 credential、调用 Provider、创建正式 evidence 或修改 R5/Task 9C sealed
+当前唯一下一原子任务是 T2。T2 仍不得读取 credential、调用 Provider、创建正式 evidence 或修改 R5/Task 9C sealed
 artifact。
 
 ## 8. 回顾时可以问

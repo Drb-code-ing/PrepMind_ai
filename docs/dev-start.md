@@ -1652,14 +1652,27 @@ slots 未启动；rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic
 正式 CLI 启动前曾因 `.env` UTF-8 BOM 发生一次环境加载退出；没有进入 admission/reservation、没有 Provider call，
 不计为 Live。上述 run 是唯一 R5 controlled-Live。
 
-### Transport Evidence Recovery T0（设计已完成）
+### Transport Evidence Recovery T0/T1（T1 strict contract + TDD 已完成）
 
-T0 已冻结 zero-provider transport/evidence contract，尚未提供可执行 CLI。计划中的 T1/T2 会使用注入式 ports 和
-固定 `30`-case matrix；在 T1/T2 完成及新的精确授权前，不得运行任何 `live`、`seal`、`recovery`、curl、单 case 或
-产品 API Provider 命令。设计与计划见：
+T0 已冻结 zero-provider transport/evidence contract；T1 已提供 strict parser 与三条 family 私有 capability seam，
+并完成 focused/Agent/typecheck/lint 回归。当前仍没有 Live CLI。T2 会使用注入式 ports 和固定 `30`-case matrix；在
+T2 完成及新的精确授权前，不得运行任何 `live`、`seal`、`recovery`、curl、单 case 或产品 API Provider 命令。设计与
+计划见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`
+
+T1 安全回归命令：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-contract.test.ts
+bun --filter @repo/agent test
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+```
+
+这些命令只运行本地 contract/测试，不读取 credential、不访问 Provider、不创建正式 marker/journal/artifact。
 
 SR7 完整证据见
 `docs/acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md`。
